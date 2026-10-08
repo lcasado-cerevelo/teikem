@@ -28527,6 +28527,9 @@
           },
           "assignToMe": {
             "type": "boolean"
+          },
+          "resumeOpen": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -28561,6 +28564,9 @@
           "reveal": {
             "type": "string",
             "nullable": true
+          },
+          "resumed": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -28861,6 +28867,10 @@
           },
           "binIsProvisional": {
             "type": "boolean"
+          },
+          "checkState": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -43500,6 +43510,43 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "moves": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WarehouseTaskMoveDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WarehouseTaskMoveDto": {
+        "type": "object",
+        "properties": {
+          "transactionId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "fromBinCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "toBinCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "lotNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "atUtc": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "additionalProperties": false

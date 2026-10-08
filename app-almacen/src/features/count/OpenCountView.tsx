@@ -11,7 +11,7 @@ import { ApiError, apiErrorMessage, isNetworkError } from '../../kernel/api/clie
 import { useT } from '../../kernel/i18n/useT'
 import { BigButton } from '../../kernel/ui/BigButton'
 import { LineList } from '../../kernel/ui/LineList'
-import { ScanField } from '../../kernel/ui/ScanField'
+import { ScanField, type ScanPrefill } from '../../kernel/ui/ScanField'
 import { ScanMessage } from '../../kernel/ui/ScanMessage'
 import { vibrateError, vibrateOk } from '../../kernel/ui/feedback'
 import { colors, fontSize, radius, spacing } from '../../kernel/ui/theme'
@@ -52,6 +52,8 @@ interface Draft {
   lotExpiry: string | null
   isProvisional: boolean
   message: string | null
+  /** El producto está en posiciones del sistema pero TODAS ya están contadas: no queda ninguna que proponer. */
+  allCounted: boolean
 }
 
 export function OpenCountView({ openCount, busy, onConfirm, onCancelCount, initialProduct, error }: OpenCountViewProps) {
@@ -63,6 +65,8 @@ export function OpenCountView({ openCount, busy, onConfirm, onCancelCount, initi
   const [scanError, setScanError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  // Tocar un producto de la lista lo pone en el campo de escaneo (se confirma con Aceptar) y sube la pantalla hasta ese campo.
+  const [prefill, setPrefill] = useState<ScanPrefill | null>(null)
 
   const refresh = () => setTick((n) => n + 1)
 
@@ -80,11 +84,13 @@ export function OpenCountView({ openCount, busy, onConfirm, onCancelCount, initi
       lotExpiry: null,
       isProvisional: false,
       message: null,
+      allCounted: false,
     }
   }
 
   /** Producto escaneado: dónde está (en línea) → propuesta de posición; una fila igual ya contada se abre para corregir. */
   async function scanProduct(code: string) {
+    setPrefill(null)
     setScanError(null)
     setNotice(null)
     const found = findProductByCode(code)
@@ -116,13 +122,12 @@ export function OpenCountView({ openCount, busy, onConfirm, onCancelCount, initi
           return
         } else throw err
       }
-      const next = newDraft(product, options, offline)
-      // la propuesta ya está contada: se abre esa línea para corregir la cantidad (no se duplica ni se suma)
-      const proposed = next.choice
-      const listed = proposed ? findListedRow(rows.filter((r) => r.productPublicId === product.publicId), proposed.binCode, proposed.lotNumber) : null
-      if (listed) {
-        setDraft({ ...next, editingRowId: listed.id, qtyText: listed.countedQty == null ? '' : String(listed.countedQty), message: t('count.openEditing', { sku: product.sku, bin: listed.binCode }) })
-      } else setDraft(next)
+      // 2026-10-07: las posiciones (y lotes) que ya están contadas NO se ofrecen otra vez; para corregir una cantidad se toca ✎ en su línea de la lista.
+      const productRows = rows.filter((r) => r.productPublicId === product.publicId)
+      const free = options.filter((o) => !findListedRow(productRows, o.binCode, o.lotNumber))
+      const allCounted = options.length > 0 && free.length === 0
+      const next = newDraft(product, free, offline)
+      setDraft(allCounted ? { ...next, allCounted: true, message: t('count.openAllCounted') } : next)
       vibrateOk()
     } finally {
       setLoading(false)
@@ -251,7 +256,9 @@ export function OpenCountView({ openCount, busy, onConfirm, onCancelCount, initi
             ) : null}
           </View>
         ) : (
-          <Text style={styles.warn}>{draft.offline ? t('count.openBinOffline') : draft.options.length > 1 ? t('count.openChooseBin') : t('count.openNoStock')}</Text>
+          draft.allCounted ? null : (
+            <Text style={styles.warn}>{draft.offline ? t('count.openBinOffline') : draft.options.length > 1 ? t('count.openChooseBin') : t('count.openNoStock')}</Text>
+          )
         )}
 
         {/* varias posiciones, o cambiar la propuesta: se elige una, se escanea otra o se crea una nueva */}
@@ -311,7 +318,7 @@ export function OpenCountView({ openCount, busy, onConfirm, onCancelCount, initi
 
   // ------------------------------------------------------------------ escaneando productos y viendo lo contado
   return (
-    <KeyboardScreen contentContainerStyle={styles.fill}>
+    <KeyboardScreen contentContainerStyle={styles.fill} scrollToTopKey={prefill?.seq ?? 0}>
       <Text style={styles.title}>{t('count.title')}</Text>
       {openCount.isBlind ? <Text style={styles.help}>{t('count.blindNotice')}</Text> : null}
       <ScanField
@@ -321,12 +328,19 @@ export function OpenCountView({ openCount, busy, onConfirm, onCancelCount, initi
         error={scanError}
         notice={notice}
         onSubmit={(c) => void scanProduct(c)}
+        prefill={prefill}
         pick="product"
       />
       {loading ? <ActivityIndicator color={colors.brand} /> : null}
 
       <Text style={styles.label}>{t('count.openLinesTitle')}</Text>
+      {rows.length > 0 ? <Text style={styles.help}>{t('count.openTapHint')}</Text> : null}
       <LineList
+        onPressItem={(id) => {
+          const row = rows.find((r) => r.id === Number(id))
+          if (row) setPrefill((p) => ({ value: row.sku, seq: (p?.seq ?? 0) + 1 }))
+        }}
+        pressLabel={(item) => t('count.useProduct', { sku: item.subtitle?.split(' · ')[0] ?? item.title })}
         items={rows.map((r) => ({
           id: r.id,
           title: t('count.foundLineTitle', { name: r.productName, qty: r.countedQty ?? 0 }),
@@ -354,6 +368,7 @@ export function OpenCountView({ openCount, busy, onConfirm, onCancelCount, initi
             lotExpiry: null,
             isProvisional: row.isProvisionalBin,
             message: null,
+            allCounted: false,
           })
         }}
         editLabel={t('common.edit')}

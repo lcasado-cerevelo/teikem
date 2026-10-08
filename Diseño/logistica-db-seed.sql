@@ -205,7 +205,7 @@ INSERT INTO #L (Entity, Code, Es, En, Srt) VALUES
 ('UnitOfMeasure','UN','Unidad','Unit',1),('UnitOfMeasure','BOX','Caja','Box',2),('UnitOfMeasure','PALLET','Tarima','Pallet',3),('UnitOfMeasure','KG','Kilogramo','Kilogram',4),('UnitOfMeasure','L','Litro','Liter',5),
 ('TrackingType','NONE','Ninguno','None',1),('TrackingType','LOT','Lote','Lot',2),('TrackingType','SERIAL','Serie','Serial',3),
 ('ZoneType','PICKING','Picking','Picking',1),('ZoneType','RESERVE','Reserva','Reserve',2),('ZoneType','REFRIGERATED','Refrigerado','Refrigerated',3),('ZoneType','QUARANTINE','Cuarentena','Quarantine',4),('ZoneType','CROSSDOCK','Cross-dock','Cross-dock',5),
-('InventoryTxnType','RECEIPT','Recepción','Receipt',1),('InventoryTxnType','ISSUE','Despacho','Issue',2),('InventoryTxnType','TRANSFER','Transferencia','Transfer',3),('InventoryTxnType','ADJUSTMENT','Ajuste','Adjustment',4),('InventoryTxnType','CROSSDOCK','Cruce de muelle','Cross-dock',5),
+('InventoryTxnType','RECEIPT','Recepción','Receipt',1),('InventoryTxnType','ISSUE','Despacho','Issue',2),('InventoryTxnType','TRANSFER','Transferencia','Transfer',3),('InventoryTxnType','ADJUSTMENT','Ajuste','Adjustment',4),('InventoryTxnType','CROSSDOCK','Cruce de muelle','Cross-dock',5),('InventoryTxnType','PUTAWAY','Acomodo','Putaway',6),
 ('OptimizerEngine','VROOM','VROOM','VROOM',1),('OptimizerEngine','ORTOOLS','OR-Tools','OR-Tools',2),('OptimizerEngine','MANUAL','Manual','Manual',3),
 -- Capability
 ('Capability','EDIT_CARGO','Editar carga','Edit cargo',1),('Capability','ASSIGN_TRIP','Asignar a trip','Assign trip',2),('Capability','CANCEL','Cancelar','Cancel',3),('Capability','REPRICE','Reprecio','Reprice',4),('Capability','ADD_DOCUMENT','Añadir documento','Add document',5),

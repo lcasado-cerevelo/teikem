@@ -5,7 +5,7 @@
 // tareas y categorías se agregan con Acomodar/Conteo (próxima entrega); las tablas locales ya existen (schema.ts).
 // Lote 16: también las posiciones del almacén del aparato (GET /sync/bins, tabla `bin`), para el recibo directo a posición.
 import { api, ApiError, unwrap } from '../api/client'
-import { getSessionState } from '../auth/session'
+import { getActiveWarehousePublicId } from '../warehouse/activeWarehouse'
 import { getDb, type SQLiteDatabase } from '../db/database'
 import { mapExitRow, replaceStockExit, type StockExitRow } from '../../features/dispatch/stockExit'
 
@@ -394,7 +394,7 @@ export async function downloadStockExit(warehousePublicId: string, force = false
  *  si el aparato tiene almacén por defecto (Lote 16). */
 export async function downloadForReceiving(options: { forceStockExit?: boolean } = {}): Promise<DownloadResult[]> {
   const results = [await downloadProducts(), await downloadPurchaseOrdersIfAllowed(), await downloadAsns()]
-  const warehousePublicId = getSessionState().device?.defaultWarehousePublicId
+  const warehousePublicId = getActiveWarehousePublicId()
   if (warehousePublicId) {
     results.push(await downloadBins(warehousePublicId))
     results.push(await downloadStockExit(warehousePublicId, options.forceStockExit === true))

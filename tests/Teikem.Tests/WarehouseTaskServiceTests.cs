@@ -31,6 +31,9 @@ public sealed class WarehouseTaskServiceTests
             s.AddSingleton<IWarehouseTaskHandler, ReplenishTaskHandler>();
             s.AddSingleton<WarehouseTaskService>();
             s.AddSingleton<ReplenishmentService>();
+            s.AddSingleton<Teikem.Infrastructure.Abstractions.ITenantClock>(Teikem.Infrastructure.Abstractions.TenantClock.Default);
+            s.AddSingleton<InventoryReconciler>();
+            s.AddSingleton<InventoryReadService>();
         });
         var w = await f.AddWarehouseAsync("W1");
         var stg = await f.AddBinAsync(await f.AddZoneAsync(w, "STG", ZoneTypes.Staging), "STG-01");
@@ -333,5 +336,79 @@ public sealed class WarehouseTaskServiceTests
             new TaskDistributeRequest(20m, new[] { s.Reserve.WarehouseBinId, s.OtherWarehouseBin.WarehouseBinId }), default));
         Assert.Equal(60m, await f.OnHandAsync(s.Product.ProductId, s.Staging.WarehouseBinId));
         Assert.Equal(0m, await f.OnHandAsync(s.Product.ProductId, s.Reserve.WarehouseBinId));
+    }
+
+    // ---------------------------------------------------------------- 2026-10-07: «Acomodo» en el Kárdex y el detalle de la tarea
+
+    private static async Task<(Setup S, WarehouseBin R2)> DistributedAsync()
+    {
+        var s = await PutawayAsync(60m);
+        var rsv2 = await s.F.AddBinAsync(await s.F.Db.WarehouseZones.AsNoTracking().FirstAsync(z => z.Code == "RSV" && z.WarehouseId == s.W.WarehouseId), "R-02");
+        await s.F.Get<WarehouseTaskService>().DistributeAsync(s.Task.WarehouseTaskId,
+            new TaskDistributeRequest(20m, new[] { s.Reserve.WarehouseBinId, rsv2.WarehouseBinId }), default);
+        return (s, rsv2);
+    }
+
+    [Fact]
+    public async Task A_distributed_putaway_lists_each_position_it_moved_in_the_task_detail()
+    {
+        var (s, rsv2) = await DistributedAsync();
+        await using var f = s.F;
+
+        var dto = await f.Get<WarehouseTaskService>().GetAsync(s.Task.WarehouseTaskId, default);
+
+        Assert.NotNull(dto.Moves);
+        Assert.Equal(2, dto.Moves!.Count);
+        Assert.All(dto.Moves, m => { Assert.Equal("STG-01", m.FromBinCode); Assert.Equal(20m, m.Quantity); });
+        Assert.Equal(new[] { "R-01", "R-02" }, dto.Moves.Select(m => m.ToBinCode).ToArray());
+        // la cola trae lo mismo y una tarea que no movió nada trae la lista vacía
+        var page = await f.Get<WarehouseTaskService>().ListAsync(new WarehouseTaskQuery(IncludeClosed: true), default);
+        Assert.Equal(2, page.Items.Single(t => t.Id == s.Task.WarehouseTaskId).Moves!.Count);
+        Assert.Empty(page.Items.Single(t => t.Id != s.Task.WarehouseTaskId).Moves!);
+    }
+
+    [Fact]
+    public async Task Kardex_shows_putaway_transfers_as_Acomodo_and_the_type_filter_tells_them_apart_from_real_transfers()
+    {
+        var (s, _) = await DistributedAsync();
+        await using var f = s.F;
+        // una transferencia MANUAL (sin tarea) entre dos posiciones del mismo almacén
+        await f.PostAsync(new InventoryPosting(InventoryTxnTypes.Transfer, s.Product.ProductId, 1m, FromWarehouseId: s.W.WarehouseId,
+            FromBinId: s.Staging.WarehouseBinId, ToWarehouseId: s.W.WarehouseId, ToBinId: s.Picking.WarehouseBinId));
+        var reads = f.Get<InventoryReadService>();
+        var q = new KardexQuery(ProductPublicIds: new[] { s.Product.PublicId });
+
+        var all = await reads.KardexAsync(q, InventoryScope.Any, default);
+        var acomodos = all.Items.Where(r => r.TypeCode == "PUTAWAY").ToList();
+        Assert.Equal(2, acomodos.Count);
+        Assert.All(acomodos, r => { Assert.Equal("Acomodo", r.Type); Assert.Equal("Tarea #" + s.Task.WarehouseTaskId, r.RefLabel); });
+        var manual = all.Items.Single(r => r.TypeCode == "TRANSFER");
+
+        var onlyPutaway = await reads.KardexAsync(q with { Types = new[] { "PUTAWAY" } }, InventoryScope.Any, default);
+        Assert.Equal(2, onlyPutaway.Items.Count);
+        var onlyTransfer = await reads.KardexAsync(q with { Types = new[] { "TRANSFER" } }, InventoryScope.Any, default);
+        Assert.Equal(manual.Id, onlyTransfer.Items.Single().Id);
+        var both = await reads.KardexAsync(q with { Types = new[] { "TRANSFER", "PUTAWAY", "RECEIPT" } }, InventoryScope.Any, default);
+        Assert.Equal(4, both.Items.Count);
+
+        f.Tenant.Lang = "en";
+        var en = await reads.KardexAsync(q, InventoryScope.Any, default);
+        Assert.Equal("Putaway", en.Items.First(r => r.TypeCode == "PUTAWAY").Type);
+    }
+
+    [Fact]
+    public async Task A_replenishment_transfer_stays_a_Transfer_in_the_Kardex_only_putaway_tasks_become_Acomodo()
+    {
+        var s = await PutawayAsync(10m);
+        await using var f = s.F;
+        // la misma referencia (WAREHOUSE_TASK) pero de una tarea de REABASTO: no es acomodo
+        var replenish = await f.AddTaskAsync(new WarehouseTaskSpec(WarehouseTaskTypes.Replenish, s.W.WarehouseId, s.Product.ProductId, 2m,
+            FromBinId: s.Staging.WarehouseBinId, ToBinId: s.Picking.WarehouseBinId));
+        await f.PostAsync(new InventoryPosting(InventoryTxnTypes.Transfer, s.Product.ProductId, 2m, FromWarehouseId: s.W.WarehouseId, FromBinId: s.Staging.WarehouseBinId,
+            ToWarehouseId: s.W.WarehouseId, ToBinId: s.Picking.WarehouseBinId, RefEntityType: EntityTypes.WarehouseTask, RefId: replenish.WarehouseTaskId));
+
+        var res = await f.Get<InventoryReadService>().KardexAsync(new KardexQuery(ProductPublicIds: new[] { s.Product.PublicId }), InventoryScope.Any, default);
+
+        Assert.Equal("TRANSFER", res.Items.Single(r => r.RefId == replenish.WarehouseTaskId).TypeCode);
     }
 }

@@ -205,6 +205,25 @@ pantalla de Despacho igual abre, pero "Empacar" falla con el error del permiso).
 Cómo se usa: tocar una acción navega a su pantalla, salvo que haya otro documento en curso (§1): entonces avisa en
 vez de navegar. Tocar el texto del estado de sincronización lleva a la pantalla de Sincronización (§8).
 
+### 3.1 Trabajar en más de un almacén (2026-10-07)
+
+Un aparato registrado en una compañía puede trabajar en **cualquier almacén activo de esa compañía**, no solo en el «por defecto» que
+se le fijó desde la web (Sistema → Aparatos). Debajo del título, Inicio muestra **«Almacén: <nombre>»** y, si la compañía tiene más de
+uno, el botón **«Cambiar»**. Al tocarlo aparece la lista de almacenes (el actual marcado y el «por defecto del aparato» indicado); tocar uno
+lo deja activo y la app avisa «Ahora trabajas en <nombre>.» y sincroniza al momento.
+
+- **Qué cambia con el almacén activo:** Recibir (y su modo: «con acomodo» o «directo a posición», que es propio de cada almacén),
+  Acomodar, Despacho, Conteo, Consultar, el buscador de listas y la bajada de posiciones y existencias de la sincronización. Cada almacén
+  guarda sus propias copias locales, así que volver a uno ya usado no baja todo de nuevo.
+- **Quién puede:** quien tenga `inventory.view` (el permiso con que el API entrega la lista de almacenes). Sin ese permiso o si nunca hubo señal,
+  no aparece «Cambiar» y el aparato sigue en su almacén por defecto.
+- **Con un recibo, despacho o conteo en curso no se puede cambiar:** «Termina o cancela el documento en curso antes de cambiar de almacén.»
+  (aviso de la app, sin llamada al servidor).
+- **Sin señal:** la lista de almacenes queda guardada en el aparato (se renueva cada vez que se abre Inicio con señal), así que se puede cambiar sin red.
+- **La elección es de ese aparato y esa compañía** (cada compañía registrada en el teléfono recuerda la suya). Se descarta sola cuando
+  (a) desde la web se cambia el almacén por defecto del aparato, o (b) el almacén elegido se da de baja: entonces el aparato vuelve al por defecto.
+- **Servidor:** no cambió nada. Las llamadas ya llevaban el almacén en la petición; el aparato no está limitado a su almacén por defecto.
+
 ---
 
 ## 4. Recibir
@@ -471,8 +490,8 @@ Desde el Lote A4 la pantalla empieza con **"¿Cómo vas a contar?"**: **Por posi
 escanea un producto, el aviso dice `Ese código es de un producto. Para contarlo así, toca «Por producto».`
 
 Qué hace (por posición): cuenta una posición del almacén. Escanear la posición **reclama el conteo en el servidor**
-(`POST /api/v1/cycle-counts`, capítulo 8A §6): la posición es un recurso compartido (nadie más puede contarla
-mientras esté abierta), así que este primer paso necesita señal. De ahí en adelante, capturar lo encontrado es
+(`POST /api/v1/cycle-counts` con `resumeOpen`, capítulo 8A §6): la posición es un recurso compartido (si ya hay un conteo abierto de esa posición se **retoma**; si lo tiene
+otra persona, el servidor responde con su nombre; ver 7.5), así que este primer paso necesita señal. De ahí en adelante, capturar lo encontrado es
 local y "Terminar esta posición" encola el lote capturado y el cierre, en ese orden (dos filas en la cola de
 salida). Un conteo a la vez por aparato.
 
@@ -564,8 +583,11 @@ Cómo se usa:
      del aparato, sin señal) o se usa **Otra posición** (crea una provisional, necesita señal; en productos con lote pide el número de lote).
    - **Cambiar posición**: elegir otra de la lista, escanear otra o **Otra posición**. En productos con lote sin lote conocido se escribe el **número de lote**.
 3. **Agregar** guarda la línea en el aparato (`SKU agregado en A-01.`). El producto se puede escanear otra vez en **otra** posición (otra línea). En la **misma**
-   posición y lote abre la línea ya contada para **corregir** la cantidad (`SKU ya estaba contado en A-01: corrige la cantidad.`): no se duplica ni se suma. Tocar una
-   línea de la lista la corrige; ✕ la quita.
+   posición y lote **ya no se vuelve a ofrecer**: la lista de posiciones del producto (y la propuesta) **no incluye las que ya contaste** (2026-10-07). Si ya contaste todas, dice
+   `Ya contaste este producto en todas las posiciones donde el sistema dice que está. Si lo encontraste en otra, escanea esa posición; para corregir una cantidad, toca ✎ en su línea de la lista.`
+   Para corregir una cantidad, ✎ en su línea de la lista; ✕ la quita.
+   **Tocar un producto de la lista** (2026-10-07) lo pone en el campo de escaneo (sin enviarlo) y sube la pantalla hasta ese campo: se confirma con **Aceptar** y sigue el camino normal
+   (propone las posiciones que aún no has contado). Ayuda en pantalla: `Toca un producto de la lista para contarlo en otra posición.` Lo mismo en «Por posición»: tocar un producto de «Lo que se espera aquí» sube la pantalla al campo.
 4. **Terminar conteo** (se enciende con al menos una línea) encola **un lote** con todas las líneas (posición + producto + cantidad + lote por número) y el cierre;
    funciona sin señal y vuelve a Inicio. La diferencia se calcula al reconciliar en la web.
 5. **Retomar**: lo contado se guarda en el aparato; al cerrar y abrir la app el conteo sigue ahí, sin señal. Un conteo a la vez por aparato.
@@ -580,7 +602,7 @@ Cómo se usa:
 | Sin existencia en ninguna posición | `El sistema no tiene este producto en ninguna posición. Escanea la posición donde lo encontraste.` | App |
 | Sin señal al buscar dónde está | `Sin señal: no se pudo buscar la posición del producto. Escanea la posición donde lo contaste.` | App |
 | Posición escaneada que no existe | `No hay una posición con ese código.` | App |
-| Mismo producto, posición y lote ya contados | `SKU ya estaba contado en A-01: corrige la cantidad.` (al escanear) / `SKU ya está contado en A-01: toca su línea de la lista para corregir la cantidad.` (al cambiar la posición a una ya contada) | App |
+| Mismo producto, posición y lote ya contados | (al escanear, esa posición ya no se ofrece; si eran todas: `Ya contaste este producto en todas las posiciones donde el sistema dice que está. …`) / `SKU ya está contado en A-01: toca su línea de la lista para corregir la cantidad.` (al cambiar la posición a una ya contada) | App |
 | Lote sin número (producto con lote) | `Este producto lleva lote: escribe el número de lote.` | App |
 | Sin líneas | `Todavía no has contado nada. Escanea un producto.` (Terminar apagado) | App |
 | Errores del servidor al buscar dónde está | El mensaje del servidor tal cual (404 `Producto no encontrado.`, 404 `Conteo no encontrado.`) | API |
@@ -664,6 +686,50 @@ El botón con la **flecha ←** (arriba a la izquierda, junto al título «Calcu
 - Teclado en pantalla (Lote A9): con el teclado en pantalla abierto, el campo que se está escribiendo (por ejemplo **Sueltas**) sube solo para quedar
   **encima del teclado**; si algo queda tapado, se puede deslizar la pantalla. Esto vale para todas las pantallas con campos (Recibir, Acomodar, Despacho,
   Conteo, Consultar y Registrar el aparato). Con el lector o el teclado físico del Zebra el teclado en pantalla no sale y la pantalla no se mueve.
+
+### 7.5 Retomar un conteo, terminar con líneas sin contar y conteos abiertos (2026-10-07)
+
+**Retomar en vez de duplicar.** Al escanear una posición, la app manda `POST /api/v1/cycle-counts` con `resumeOpen: true`. Si esa posición ya tiene un conteo **abierto** (Pendiente)
+cuyas líneas son **solo de esa posición**, el servidor devuelve **ese mismo conteo** (campo `resumed: true`) con lo que ya se contó (`countedQty` y `checkState` de cada línea) y la app
+lo vuelve a poner en pantalla: `Retomaste el conteo CC-00042 de GENERAL: ya llevas 1 de 3 contados.` No se abre otro conteo.
+- **Quién lo tiene:** si el conteo está asignado a quien escanea, o a nadie (por ejemplo, uno generado desde «lo cambiado» en la web), se retoma (y el que no tenía asignado queda a nombre de quien lo retoma).
+  Si lo tiene **otra persona**: 409 `Esa posición la está contando {Nombre} ({CC-#####}).`
+- **Qué no se retoma:** un conteo de varias posiciones, el conteo por producto y uno ya terminado (Contado) o reconciliado: en esos casos se abre uno nuevo, como antes. La web (sin `resumeOpen`) tampoco cambia.
+- **Varios conteos abiertos de la misma posición** (duplicados de antes de este cambio): se retoma primero uno del propio usuario, el que lleve más líneas contadas. Los demás se alcanzan desde la lista «Conteos abiertos» (abajo) o se dan de baja en la web (Conteo cíclico → papelera).
+
+**Terminar esta posición con líneas sin contar.** El servidor solo cierra un conteo cuando **todas** sus líneas tienen cantidad (`Faltan N línea(s) por contar.`, 422). Por eso, si faltan líneas, la app ya no manda un cierre que
+sería rechazado: pregunta **«Faltan N producto(s) por contar»** con tres salidas:
+
+| Botón | Qué hace |
+|---|---|
+| **Seguir contando** | Cierra el aviso; sigues en la pantalla del conteo. |
+| **Guardar y seguir después** | Manda lo contado (lote) **sin cerrar** el conteo. Avisa `Guardado. El conteo CC-00042 sigue abierto: retómalo desde Conteo.` y vuelve a Inicio. El conteo queda abierto en el servidor. |
+| **Dejar en 0 y terminar** | Pone **0** a las líneas que faltan y manda un lote con todas las líneas y el cierre. Los 0 quedan como diferencia para quien reconcilie en la web (no se verifican contra lo esperado). |
+
+Con todas las líneas contadas, **Terminar esta posición** cierra directo (sin preguntar).
+
+**Conteos abiertos y bloqueo.** Un conteo que el usuario dejó abierto en el servidor (guardó y siguió después, o cerró la app sin terminar) se considera **en curso**:
+- Inicio lo consulta (`GET /api/v1/cycle-counts/page?status=OPEN`, solo los asignados al usuario, de una posición, en el almacén activo) y guarda una copia para saberlo también sin señal.
+- Mientras exista, **las demás acciones** (Recibir, Acomodar, Despacho, Consultar) avisan `Termina o cancela el conteo en curso antes de usar esto.` y **Conteo** muestra arriba la lista **«Conteos abiertos»**
+  (`CC-00042 · GENERAL`, `1 de 3 contados`); tocar uno (**Continuar**) lo retoma por su id con lo ya contado. Tampoco se puede cambiar de almacén.
+- No se puede abrir **otro** conteo (otra posición o «Por producto») mientras haya uno abierto: `Tienes abierto el conteo CC-00042 (GENERAL). Termínalo o guárdalo antes de contar otra cosa.`
+  Escanear **la misma posición** sí lo retoma.
+- Sale de la lista al **terminarlo** (con el cierre ya en la cola de salida no cuenta como abierto), al **cancelarlo** o cuando alguien lo da de baja (al intentar continuarlo: 404 `Conteo no encontrado.` y desaparece).
+- Cancelar un conteo sigue exigiendo `warehouse.count`. Quien solo tiene `.capture` lo cierra con **Dejar en 0 y terminar** o contando todo.
+
+**Si el servidor rechaza el cierre.** Tras mandar «Terminar», la app sincroniza al momento y, si el servidor rechazó el lote o el cierre, lo avisa **en ese momento**: `El servidor no aceptó terminar el conteo: {mensaje}`
+(además de seguir visible en Sincronización).
+
+| Caso | Mensaje exacto | Origen |
+|---|---|---|
+| Posición con un conteo abierto de otra persona | `Esa posición la está contando {Nombre} ({CC-#####}).` (409) | API |
+| Conteo retomado | `Retomaste el conteo {CC-#####} de {posición}: ya llevas {n} de {m} contados.` | App |
+| Faltan líneas al terminar | `Faltan {n} producto(s) por contar` + `Seguir contando` / `Guardar y seguir después` / `Dejar en 0 y terminar` | App |
+| Guardado para después | `Guardado. El conteo {CC-#####} sigue abierto: retómalo desde Conteo.` | App |
+| Otro conteo abierto al intentar abrir uno | `Tienes abierto el conteo {CC-#####} ({posición}). Termínalo o guárdalo antes de contar otra cosa.` | App |
+| Acción distinta con un conteo abierto | `Termina o cancela el conteo en curso antes de usar esto.` | App |
+| Cierre rechazado por el servidor | `El servidor no aceptó terminar el conteo: {mensaje}` | App |
+| Cierre con líneas sin contar (si se mandara igual) | `Faltan {n} línea(s) por contar.` (422) | API |
 
 ## 8. Consultar
 

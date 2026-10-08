@@ -280,6 +280,7 @@ const TYPE_TONES: Record<string, ChipTone> = {
   RECEIPT: 'deliv',
   ISSUE: 'route',
   TRANSFER: 'disp',
+  PUTAWAY: 'wh', // Acomodo: una TRANSFER que viene de una tarea de acomodo (solo se muestra así; el movimiento real sigue siendo TRANSFER)
   ADJUSTMENT: 'fail',
   CROSSDOCK: 'cod',
 }

@@ -245,14 +245,32 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
 
         if (q.Types is { Length: > 0 })
         {
+            // «Acomodo» (PUTAWAY) es solo de presentación: una TRANSFER cuya referencia es una tarea de acomodo. Por eso «Transferencia» deja
+            // fuera esas filas (en pantalla se ven como Acomodo) y «Acomodo» trae solo esas.
             var typeIds = new List<int>();
+            var wantTransfer = false;
+            var wantPutaway = false;
             foreach (var code in SplitCodes(q.Types))
             {
+                if (string.Equals(code, InventoryTxnTypes.Putaway, StringComparison.OrdinalIgnoreCase)) { wantPutaway = true; continue; }
                 var id = await lookups.TryGetIdAsync(LookupDomains.InventoryTxnType, code, ct)
                          ?? throw new ValidationException("types", KardexRules.UnknownTypeMessage(code));
-                typeIds.Add(id);
+                if (string.Equals(code, InventoryTxnTypes.Transfer, StringComparison.OrdinalIgnoreCase)) wantTransfer = true;
+                else typeIds.Add(id);
             }
-            query = query.Where(t => typeIds.Contains(t.TxnTypeLookupId));
+            Expression<Func<InventoryTransaction, bool>> byType = t => typeIds.Contains(t.TxnTypeLookupId);
+            if (wantTransfer || wantPutaway)
+            {
+                var transferId = await lookups.TryGetIdAsync(LookupDomains.InventoryTxnType, InventoryTxnTypes.Transfer, ct) ?? -1;
+                var taskEntityId = await lookups.TryGetIdAsync(LookupDomains.EntityType, EntityTypes.WarehouseTask, ct) ?? -1;
+                var putawayTypeId = await lookups.TryGetIdAsync(LookupDomains.WarehouseTaskType, WarehouseTaskTypes.Putaway, ct) ?? -1;
+                var putawayTaskIds = db.Set<WarehouseTask>().AsNoTracking().Where(w => w.TaskTypeLookupId == putawayTypeId).Select(w => w.WarehouseTaskId);
+                Expression<Func<InventoryTransaction, bool>> isPutaway = t => t.TxnTypeLookupId == transferId && t.RefEntityLookupId == taskEntityId
+                                                                              && t.RefId != null && putawayTaskIds.Contains(t.RefId.Value);
+                if (wantPutaway) byType = Expr.Or(byType, isPutaway);
+                if (wantTransfer) byType = Expr.Or(byType, Expr.And<InventoryTransaction>(t => t.TxnTypeLookupId == transferId, Expr.Not(isPutaway)));
+            }
+            query = query.Where(byType);
         }
         if (q.Reasons is { Length: > 0 })
         {
@@ -658,8 +676,12 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
             // Tipo: etiqueta del catálogo InventoryTxnType en el idioma del usuario (maestro L582); respaldo TypeChip.
             var typeLabel = refs.Labels.GetValueOrDefault(t.TxnTypeLookupId);
             if (string.IsNullOrEmpty(typeLabel)) typeLabel = KardexRules.TypeChip(typeCode, tenant.Lang);
+            // Una TRANSFER que viene de una tarea de acomodo se ve como «Acomodo»; el tipo REAL (typeCode) sigue mandando en SignedQuantity y los saldos.
+            var shownCode = KardexRules.DisplayTypeCode(typeCode, string.Equals(refCode, EntityTypes.WarehouseTask, StringComparison.OrdinalIgnoreCase)
+                                                               && t.RefId is int taskRef && refs.PutawayTaskIds.Contains(taskRef));
+            if (shownCode != typeCode) typeLabel = KardexRules.TypeChip(shownCode, tenant.Lang);
 
-            result.Add(new KardexRowDto(t.InventoryTransactionId, t.CreatedAtUtc, typeCode, typeLabel,
+            result.Add(new KardexRowDto(t.InventoryTransactionId, t.CreatedAtUtc, shownCode, typeLabel,
                 p?.PublicId ?? Guid.Empty, p?.Sku ?? string.Empty, p?.Name ?? string.Empty,
                 t.Quantity,
                 KardexRules.SignedQuantity(t.Quantity, typeCode, t.FromWarehouseId, t.FromBinId, t.ToWarehouseId, t.ToBinId, filter),
@@ -713,7 +735,17 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
         var categories = await CategoryNamesAsync(products.Values.Where(p => p.CategoryId.HasValue).Select(p => p.CategoryId!.Value), ct);
         var owners = await ClientNamesAsync(products.Values.Where(p => p.ClientId.HasValue).Select(p => p.ClientId!.Value), ct);
 
-        return new KardexRefs(products, warehouses, bins, lots, serials, codes, labels, refNumbers, users, categories, owners);
+        // Tareas de acomodo entre las referenciadas: sus TRANSFER se muestran como «Acomodo» (KardexRules.DisplayTypeCode).
+        var taskRefIds = rows.Where(r => r.RefEntityLookupId is int re && codes.TryGetValue(re, out var c)
+                                         && string.Equals(c, EntityTypes.WarehouseTask, StringComparison.OrdinalIgnoreCase) && r.RefId.HasValue)
+            .Select(r => r.RefId!.Value).Distinct().ToList();
+        var putawayTaskIds = new HashSet<int>();
+        if (taskRefIds.Count > 0 && await lookups.TryGetIdAsync(LookupDomains.WarehouseTaskType, WarehouseTaskTypes.Putaway, ct) is int putawayTypeId)
+            putawayTaskIds = (await db.Set<WarehouseTask>().AsNoTracking()
+                .Where(w => taskRefIds.Contains(w.WarehouseTaskId) && w.TaskTypeLookupId == putawayTypeId)
+                .Select(w => w.WarehouseTaskId).ToListAsync(ct)).ToHashSet();
+
+        return new KardexRefs(products, warehouses, bins, lots, serials, codes, labels, refNumbers, users, categories, owners, putawayTaskIds);
     }
 
     /// <summary>
@@ -942,7 +974,7 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
     internal sealed record KardexRefs(Dictionary<int, ProductInfo> Products, Dictionary<int, WarehouseInfo> Warehouses,
         Dictionary<int, BinInfo> Bins, Dictionary<int, LotInfo> Lots, Dictionary<int, string> Serials,
         Dictionary<int, string> Codes, Dictionary<int, string> Labels, Dictionary<string, Dictionary<int, string>> RefNumbers,
-        Dictionary<int, string> Users, Dictionary<int, string> Categories, Dictionary<int, string> Owners);
+        Dictionary<int, string> Users, Dictionary<int, string> Categories, Dictionary<int, string> Owners, HashSet<int> PutawayTaskIds);
 
     /// <summary>Composición de predicados (Lote 14: dirección con la perspectiva del filtro de ubicación), traducible por EF.</summary>
     private static class Expr

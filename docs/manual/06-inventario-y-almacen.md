@@ -566,6 +566,8 @@ Puerto Rico** (America/Puerto_Rico, UTC−4), no días UTC. Aplica al Kárdex, a
 
 ### 3.1 Kárdex: filtros, resumen y detalle del movimiento
 
+**Tipo «Acomodo» (2026-10-07).** Un movimiento que viene de una **tarea de acomodo** (PUTAWAY) se ve en el Kárdex como **«Acomodo»** (`typeCode = PUTAWAY`), no como «Transferencia»: así no se confunde con un traslado entre almacenes. Solo cambia lo que se ve: en el ledger el movimiento sigue siendo una TRANSFER con referencia a la tarea (`refEntity = WAREHOUSE_TASK`, «Tarea #n»), así que los saldos, la conciliación y la trazabilidad no cambian. El filtro **Tipo** ofrece «Acomodo»; **«Transferencia»** trae solo las transferencias que no son acomodos (las de Transferencias y ajustes, conteo, rentas…). Las transferencias de una tarea de reabasto siguen como Transferencia.
+
 Cómo se usa:
 - `GET /api/v1/inventory/balances?warehousePublicIds=&binIds=&productPublicIds=&categoryIds=&lotNumber=&
   includeZero=&onlyAvailable=&search=&skip=&take=` (`take` ≤ 200). La respuesta trae, además de las filas, `totalOnHand` y
@@ -1199,6 +1201,8 @@ pertenece: `PUTAWAY` en Recibo (pestaña "Acomodo pendiente" y el detalle del re
 con tooltip: Asignar, Iniciar, Completar y Cancelar. Los permisos y endpoints de arriba no cambian. Ver
 [F6 — Tareas de almacén](frontend/f6-almacen-e-inventario.md#tareas-de-almacén).
 
+**Detalle de una tarea de acomodo repartido (2026-10-07).** La tarea guarda una sola posición destino, pero un acomodo repartido (la cantidad por posición del aparato o `POST /warehouse-tasks/{id}/distribute`) movió el inventario a varias. `WarehouseTaskDto.moves` trae **una línea por posición** tomada del ledger (`transactionId`, `fromBinCode`, `toBinCode`, `quantity`, `lotNumber`, `atUtc`); vacío mientras la tarea no mueva nada. En la lista de tareas y en el detalle del recibo la columna «De → a» dice **«R1 → 5 posiciones»** y debajo cada posición con su cantidad (`01-E-03 · 20, 01-E-04 · 20…`); con una sola posición se ve «De → a» como siempre.
+
 **Acomodo pendiente en los almacenes directos (Lote 16).** Un recibo **directo a posición** (sección 4.1) no genera tareas `PUTAWAY`: la mercancía entra a su posición destino al
 confirmar y el recibo pasa a Acomodado. Por eso, en un almacén directo, la pestaña "Acomodo pendiente" solo muestra (a) los recibos **anteriores al cambio de modo** que seguían con tareas,
 (b) los recibos abiertos que se pasaron a "Con acomodo" y (c) los que tuvieron **cruce de muelle**. Las tareas que ya existían **siguen** su curso. `GET /api/v1/warehouse-tasks/putaway-suggestions`
@@ -1276,6 +1280,10 @@ Cómo se usa:
   `assignedToName`. Respuesta: `{ total, skip, take, items }`.
 - `POST /api/v1/cycle-counts` — `{ "warehousePublicId": "...", "zoneIds": [...], "binIds": [...] }` (todo
   opcional: sin filtros toma todo el saldo en mano del almacén). Máximo 1000 líneas. Origen `MANUAL`.
+  **`resumeOpen` (2026-10-07, lo usa la app):** con **una sola** posición en `binIds` y `resumeOpen: true`, si esa posición ya tiene un conteo **abierto** (Pendiente) cuyas líneas son todas de esa posición
+  (no el de varias posiciones ni el de por producto), se **devuelve ese conteo** con `resumed: true` en vez de crear otro; si tiene asignado a otra persona → 409
+  `Esa posición la está contando {Nombre} ({CC-#####}).`; si no tiene asignado, queda asignado a quien lo retoma. Cada línea trae ahora `checkState` (MATCH | RECOUNT | FINAL | null) para que el aparato sepa cuáles
+  ya se verificaron. Sin `resumeOpen` (la web) todo sigue igual.
 - `GET /api/v1/cycle-counts/{id}` — ficha en modo informado (foto, contado, diferencia informativa, series
   esperadas/contadas, saldo actual). Cada línea trae ahora `barcode` (el código de barras del producto, que el escáner de la web usa para
   llegar a la línea; no revela lo esperado, así que también llega a ciegas).

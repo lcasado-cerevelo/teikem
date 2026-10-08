@@ -1,9 +1,11 @@
 // Genera la hoja de códigos de barras de la demostración a Dani (docs/demo-dani.md): por escenario, los productos y las posiciones que se escanean.
 // Usa el codificador zxing-wasm que ya trae app-almacen (sin descargar nada). Código 128 para todo: lo lee el lector del Zebra y el campo de la app
 // acepta «código de barras o SKU» (si el producto no tiene código de barras, se imprime su SKU).
-// Uso:  node scripts/demo/generar-codigos-demo.mjs        → escribe docs/demo/codigos-demo-dani.html (y el PDF si encuentra Chrome o Edge)
+// Uso:  node scripts/demo/generar-codigos-demo.mjs [nombre.pdf]   → escribe docs/demo/codigos-demo-dani.html y el PDF (por defecto codigos-demo-dani.pdf) si encuentra Chrome o Edge.
+//       Si el PDF está abierto en otro programa no se puede reemplazar: ciérrelo, o pase otro nombre.
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
@@ -13,62 +15,64 @@ const zx = join(repo, 'app-almacen', 'node_modules', 'zxing-wasm')
 const { prepareZXingModule, writeBarcode } = await import(pathToFileURL(join(zx, 'dist', 'es', 'writer', 'index.js')).href)
 await prepareZXingModule({ overrides: { wasmBinary: readFileSync(join(zx, 'dist', 'writer', 'zxing_writer.wasm')) }, fireImmediately: true })
 
-// Productos (código = su código de barras si lo tiene; si no, su SKU) y posiciones, por escenario. Datos de la base local (2026-10-07).
+// Productos (código = su código de barras si lo tiene; si no, su SKU) y posiciones, por escenario. Datos verificados contra la base local el 2026-10-08
+// y contra los pasos de docs/demo-dani.md (si cambia uno, hay que cambiar el otro y volver a correr este script).
 const P = {
-  tourniquet: { tipo: 'Producto', nombre: '171-AC-100-A · TOURNIQUET', codigo: '3726918104001', nota: 'Depot · hoy 60 en 09-C-15 y 60 en 10-C-15' },
+  guante: { tipo: 'Producto', nombre: '171-AC-201-M · GLOVE NITRILE PF N/ST MEDIUM', codigo: '3022123181425', nota: 'Depot · sin existencia: se recibe 100 con recibo ciego' },
+  tourniquet: { tipo: 'Producto', nombre: '171-AC-100-A · TOURNIQUET', codigo: '3726918104001', nota: 'Depot · 60 en 09-C-15 y 60 en 10-C-15 (otro producto de dos posiciones)' },
+  guanteL: { tipo: 'Producto', nombre: '171-AC-201-L · GLOVE NITRILE PF N/ST LARGE', codigo: '3022123181432', nota: 'Depot · sin existencia · para repetir el escenario A' },
+  guanteS: { tipo: 'Producto', nombre: '171-AC-201-S · GLOVE NITRILE PF N/ST SMALL', codigo: '3022123181418', nota: 'Depot · sin existencia · para repetir el escenario A' },
+  guanteXL: { tipo: 'Producto', nombre: '171-AC-201-XL · EXAM NITRILE POWDER FREE GLOVE X-LARGE 1,000', codigo: '3022123181449', nota: 'Depot · sin existencia · para repetir el escenario A' },
   underpad: { tipo: 'Producto', nombre: '171-DU-1724 · UNDERPAD 17X24 3PK/100EA', codigo: '1201804326993', nota: 'Depot · 60 en 13-C-20 y 60 en 14-C-20' },
   colchon: { tipo: 'Producto', nombre: '56-CM-100F-42 · COMFORD ZONE FOAM MATRESS 6X42', codigo: '+B676CM100F420+', nota: 'Depot · 8 en cada una de 6 posiciones' },
   alta: { tipo: 'Producto', nombre: '53350 · PRODIGY CONTROL SOLUTION HIGH 4ML', codigo: '53350', nota: 'Solutions · sin código de barras: se imprime el SKU · 20 en GENERAL' },
   baja: { tipo: 'Producto', nombre: '53310 · PRODIGY CONTROL SOLUTION LOW 4ML', codigo: '53310', nota: 'Solutions · sin código de barras: se imprime el SKU · 19 en GENERAL' },
-  hisopos: { tipo: 'Producto', nombre: '00050-7 · GLOBAL COTTON SWABS 300CT.', codigo: '00050-7', nota: 'Solutions · sin código de barras: se imprime el SKU · 50 en GENERAL (pasar 20 a A-01)' },
+  redondos: { tipo: 'Producto', nombre: '00614-1 · GLOBAL COTTON ROUND 80CT.', codigo: '00614-1', nota: 'Solutions · sin código de barras: se imprime el SKU · 168 en GENERAL' },
+  algodon: { tipo: 'Producto', nombre: '00052-1 · GLOBAL COTTON BALLS 100CT.', codigo: '00052-1', nota: 'Solutions · sin código de barras: se imprime el SKU · 237 en GENERAL · para repetir C o D con otro producto' },
 }
 const pos = (codigo, nota = '') => ({ tipo: 'Posición', nombre: codigo, codigo, nota })
 
 const escenarios = [
   {
     id: 'A',
-    titulo: 'Depot: recibo con acomodo y reparto por posición',
-    texto: 'Se recibe la orden con acomodo y en Acomodar se escanean las posiciones: en cada una se deja la cantidad por posición (20) hasta repartir las 100.',
+    titulo: 'Depot: recibo ciego con acomodo y reparto por posición',
+    texto: 'Recibir → Recibo ciego (sin orden de compra), modo «Con acomodo»: se reciben 100 y en Acomodar se escanean las posiciones; en cada una se dejan 20. Para el sexto escaneo («ya no hay unidades por acomodar») sirve cualquier posición de la lista, o repetir una.',
     items: [
-      P.tourniquet,
-      pos('09-A-01', 'cupo 50 · vacía'),
-      pos('09-A-03', 'cupo 70 · vacía'),
-      pos('09-A-07', 'cupo 70 · vacía'),
-      pos('09-A-09', 'cupo 40 · vacía'),
-      pos('09-A-15', 'cupo 70 · vacía'),
+      P.guante,
+      pos('01-E-03', 'cupo 40 · vacía'),
+      pos('01-E-04', 'cupo 40 · vacía'),
+      pos('01-E-05', 'cupo 40 · vacía'),
+      pos('01-E-06', 'cupo 40 · vacía'),
+      pos('01-E-09', 'cupo 40 · vacía'),
       pos('09-A-08', 'cupo 10 · vacía · para mostrar el aviso de cupo'),
+      P.guanteL,
+      P.guanteS,
+      P.guanteXL,
     ],
-    aviso: 'La orden de compra se crea en la web; cuando tenga su número se puede escanear en Recibir (no está aquí porque todavía no existe).',
   },
   {
     id: 'B',
     titulo: 'Depot: despacho que sale de varias posiciones',
-    texto: 'Se escanea el producto, se piden 100 y salen 60 de una posición y 40 de la otra.',
-    items: [P.underpad, pos('13-C-20', '60 disponibles'), pos('14-C-20', '60 disponibles')],
-    aviso: 'Para más posiciones usar el colchón (escenario F): 30 unidades salen 8 + 8 + 8 + 6.',
+    texto: 'Se escanea el producto, se piden 100 y salen 60 de una posición y 40 de la otra. Las posiciones salen en la lista «Posiciones con existencia»: no hace falta escanearlas (se imprimen por si se quieren mostrar).',
+    items: [P.underpad, pos('13-C-20', '60 disponibles'), pos('14-C-20', '60 disponibles'), P.tourniquet],
+    aviso: 'Con más posiciones: si ya se hizo el escenario A, los guantes (código del escenario A) están de 20 en cinco posiciones; pedir 70 sale 20 + 20 + 20 + 10.',
   },
   {
-    id: 'C',
-    titulo: 'Solutions: contar mal, segunda oportunidad y coincide (Por posición, como Contador)',
-    texto: 'Se escanea la posición GENERAL y el producto; se cuenta 15 (no coincide, vuelve a contar) y luego 20 (coincide).',
-    items: [pos('GENERAL', 'posición de Solutions'), P.alta],
-  },
-  {
-    id: 'D',
-    titulo: 'Solutions: dos intentos mal y se acabó (Por posición, como Contador)',
-    texto: 'Se escanea GENERAL y el producto; se cuenta 10 y luego 12: la línea se cierra y queda para revisión.',
-    items: [pos('GENERAL', 'posición de Solutions'), P.baja],
+    id: 'C y D',
+    titulo: 'Solutions: contar mal, segunda oportunidad y terminar con faltantes (Por posición, como Contador)',
+    texto: 'Se escanea la posición GENERAL (una sola vez) y, en el mismo conteo, los dos productos. C: el primero se cuenta 15 (no coincide, vuelve a contar) y luego 20 (coincide). D: el segundo se cuenta 10 y luego 12 (la línea se cierra y queda para revisión). Al terminar faltan 31 productos de la posición: se enseña «Guardar y seguir después» y luego «Dejar en 0 y terminar».',
+    items: [pos('GENERAL', 'posición de Solutions · 33 productos con existencia'), P.alta, P.baja, P.algodon],
   },
   {
     id: 'E',
     titulo: 'Solutions: conteo por producto con el producto en varias posiciones',
-    texto: 'Se escanea el producto; la app pide elegir la posición. Contar 30 en GENERAL y 20 en A-01 (después de pasar 20 unidades a A-01).',
-    items: [P.hisopos, pos('GENERAL', '30 después de la transferencia'), pos('A-01', 'posición nueva · 20 después de la transferencia')],
+    texto: 'Primero se recibe 20 de este producto directo a A-01 (Recibir → Directo a posición → Recibo ciego; la posición A-01 se crea antes con scripts/demo/solutions-nueva-posicion.sql). Luego, Conteo → Por producto: la app pide elegir la posición; contar 168 en GENERAL y 20 en A-01. Cada posición ya contada deja de ofrecerse; tocar el producto en la lista lo vuelve a poner en el campo.',
+    items: [P.redondos, pos('GENERAL', '168 existentes'), pos('A-01', 'posición nueva · recibir 20 aquí (directo)')],
   },
   {
     id: 'F',
     titulo: 'Depot: conteo por producto con el producto en varias posiciones',
-    texto: 'Se escanea el producto; la app lista las seis posiciones y se cuenta una línea por posición (07-D-14 con 6 para dejar una diferencia).',
+    texto: 'Se escanea el producto; la app lista las seis posiciones y se cuenta una línea por posición (07-D-14 con 6 para dejar una diferencia). Tras cada una, tocar el producto en la lista y Aceptar: ya no ofrece la posición contada. Las posiciones se eligen tocándolas en la lista; no hace falta escanearlas.',
     items: [
       P.colchon,
       pos('07-B-14', '8 · contar 8'),
@@ -141,7 +145,7 @@ td { vertical-align: middle; padding: 1.5mm 1mm }
 .aviso { color: #555; font-size: 9pt; margin: 1.5mm 0 0; font-style: italic }
 </style></head><body>
 <h1>Códigos de barras de la demostración</h1>
-<p class="sub">Todos en Código 128. Un producto sin código de barras en el sistema lleva su SKU. Datos de la base local, 2026-10-07; ver docs/demo-dani.md.</p>
+<p class="sub">Todos en Código 128. Un producto sin código de barras en el sistema lleva su SKU. Datos verificados contra la base local el 2026-10-08; ver docs/demo-dani.md.</p>
 ${cuerpo}
 </body></html>`
 
@@ -154,7 +158,11 @@ console.log(`HTML: ${archivoHtml}`)
 const navegadores = ['C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe']
 const navegador = navegadores.find((n) => existsSync(n))
 if (navegador) {
-  const pdf = join(salida, 'codigos-demo-dani.pdf')
-  execFileSync(navegador, ['--headless=new', '--disable-gpu', '--no-pdf-header-footer', `--print-to-pdf=${pdf}`, pathToFileURL(archivoHtml).href], { stdio: 'ignore' })
-  console.log(`PDF:  ${pdf}`)
+  const pdf = join(salida, process.argv[2] ?? 'codigos-demo-dani.pdf')
+  const antes = existsSync(pdf) ? statSync(pdf).mtimeMs : 0
+  // perfil aparte: si Chrome ya está abierto, el modo sin ventana no escribe nada con el perfil de siempre
+  const perfil = mkdtempSync(join(tmpdir(), 'codigos-demo-'))
+  execFileSync(navegador, ['--headless=new', '--disable-gpu', '--no-pdf-header-footer', `--user-data-dir=${perfil}`, `--print-to-pdf=${pdf}`, pathToFileURL(archivoHtml).href], { stdio: 'ignore' })
+  if (existsSync(pdf) && statSync(pdf).mtimeMs > antes) console.log(`PDF:  ${pdf}`)
+  else console.log(`NO se pudo escribir el PDF (${pdf}): si está abierto en otro programa, ciérrelo y vuelva a correr esto, o pase otro nombre (node scripts/demo/generar-codigos-demo.mjs otro.pdf).`)
 } else console.log('No encontré Chrome ni Edge: abra el HTML y use Imprimir → Guardar como PDF.')

@@ -28,6 +28,10 @@ export const KvKeys = {
   lang: 'lang',
   apiBaseUrl: 'apiBaseUrl',
   selectedWarehousePublicId: 'selectedWarehousePublicId',
+  /** 2026-10-07: almacenes activos de la compañía (JSON de kernel/warehouse/activeWarehouse.ts), para elegir con qué almacén se trabaja aun sin señal. */
+  warehouseOptions: 'warehouseOptions',
+  /** 2026-10-07: conteos por posición que este usuario dejó abiertos en el servidor (JSON de features/count/openCountHints.ts); bloquean las otras acciones. */
+  openCountHints: 'openCountHints',
   theme: 'theme',
   /** Región y formatos de la compañía (JSON de kernel/format/settings.ts): en la base de la compañía, para trabajar sin señal. */
   tenantFormat: 'tenantFormat',

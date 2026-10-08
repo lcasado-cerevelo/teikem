@@ -20,11 +20,13 @@ import {
   Form,
   IconEdit,
   IconEye,
+  IconEyeOff,
   IconKey,
   IconLogOut,
   IconRotateCcw,
   IconShield,
   IconUsers,
+  IconXCircle,
   Modal,
   Panel,
   QBox,
@@ -573,10 +575,19 @@ export function UsersTab({ creating = false, onCreateClose }: UsersTabProps) {
               header: t('system.users.users.colCountSee'),
               sortValue: (u: UserSummaryDto) => (u.countSeeExpected === true ? 2 : u.countSeeExpected === false ? 0 : 1),
               cell: (u: UserSummaryDto) =>
+                // Ojo abierto = ve lo esperado al contar; ojo con la línea = no lo ve; guion = sin marcar (pedido del dueño 2026-10-07).
                 u.countSeeExpected == null ? (
                   '—'
+                ) : u.countSeeExpected ? (
+                  <span className="see-flag yes" title={t('system.users.users.countSeeYes')}>
+                    <IconEye />
+                    {t('system.users.users.yes')}
+                  </span>
                 ) : (
-                  <Chip tone={u.countSeeExpected ? 'deliv' : 'cap'}>{u.countSeeExpected ? t('system.users.users.yes') : t('system.users.users.no')}</Chip>
+                  <span className="see-flag no" title={t('system.users.users.countSeeNo')}>
+                    <IconEyeOff />
+                    {t('system.users.users.no')}
+                  </span>
                 ),
             } satisfies DataColumn<UserSummaryDto>,
           ]
@@ -632,8 +643,8 @@ export function UsersTab({ creating = false, onCreateClose }: UsersTabProps) {
       }
       list.push(
         { key: 'countSeeYes', label: t('system.users.users.countSeeYes'), perm: 'admin.users', visible: (u) => u.countSeeExpected !== true, icon: <IconEye />, onClick: (u) => mark(u, true) },
-        { key: 'countSeeNo', label: t('system.users.users.countSeeNo'), perm: 'admin.users', visible: (u) => u.countSeeExpected !== false, icon: <IconEye />, onClick: (u) => mark(u, false) },
-        { key: 'countSeeClear', label: t('system.users.users.countSeeClear'), perm: 'admin.users', visible: (u) => u.countSeeExpected != null, icon: <IconEye />, onClick: (u) => mark(u, null) },
+        { key: 'countSeeNo', label: t('system.users.users.countSeeNo'), perm: 'admin.users', visible: (u) => u.countSeeExpected !== false, icon: <IconEyeOff />, onClick: (u) => mark(u, false) },
+        { key: 'countSeeClear', label: t('system.users.users.countSeeClear'), perm: 'admin.users', visible: (u) => u.countSeeExpected != null, icon: <IconXCircle />, onClick: (u) => mark(u, null) },
       )
     }
     list.push(

@@ -153,6 +153,7 @@ public static class KardexRules
             InventoryTxnTypes.Transfer => "Transfer",
             InventoryTxnTypes.Adjustment => "Adjustment",
             InventoryTxnTypes.CrossDock => "Cross-dock",
+            InventoryTxnTypes.Putaway => "Putaway",
             _ => typeCode ?? string.Empty,
         }
         : (typeCode ?? string.Empty).ToUpperInvariant() switch
@@ -162,8 +163,16 @@ public static class KardexRules
             InventoryTxnTypes.Transfer => "Transferencia",
             InventoryTxnTypes.Adjustment => "Ajuste",
             InventoryTxnTypes.CrossDock => "Cruce de muelle",
+            InventoryTxnTypes.Putaway => "Acomodo",
             _ => typeCode ?? string.Empty,
         };
+
+    /// <summary>
+    /// Tipo que se MUESTRA (2026-10-07): una TRANSFER que viene de una tarea de acomodo se ve como «Acomodo» (PUTAWAY); todo lo demás conserva su tipo.
+    /// Solo cambia lo que ve el usuario: SignedQuantity y los saldos siguen usando el tipo real.
+    /// </summary>
+    public static string DisplayTypeCode(string typeCode, bool fromPutawayTask)
+        => fromPutawayTask && string.Equals(typeCode, InventoryTxnTypes.Transfer, StringComparison.OrdinalIgnoreCase) ? InventoryTxnTypes.Putaway : typeCode;
 
     /// <summary>¿'desde' es posterior a 'hasta'? (400 RangeInverted).</summary>
     public static bool IsRangeInverted(DateOnly? from, DateOnly? to) => from is DateOnly f && to is DateOnly t && f > t;

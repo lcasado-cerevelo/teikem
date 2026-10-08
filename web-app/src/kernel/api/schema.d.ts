@@ -19310,6 +19310,7 @@ export interface components {
             categoryIds?: number[] | null;
             allowEmpty?: boolean;
             assignToMe?: boolean;
+            resumeOpen?: boolean;
         };
         CycleCountDetailDto: {
             count?: components["schemas"]["CycleCountDto"];
@@ -19318,6 +19319,7 @@ export interface components {
             isBlind?: boolean;
             skippedLines?: components["schemas"]["CountSkippedLineDto"][] | null;
             reveal?: string | null;
+            resumed?: boolean;
         };
         CycleCountDto: {
             /** Format: int32 */
@@ -19420,6 +19422,7 @@ export interface components {
             correctedAtUtc?: string | null;
             wasCorrected?: boolean;
             binIsProvisional?: boolean;
+            checkState?: string | null;
         };
         CycleCountPageDto: {
             /** Format: int32 */
@@ -24268,6 +24271,18 @@ export interface components {
             createdAtUtc?: string;
             /** Format: date-time */
             completedAtUtc?: string | null;
+            moves?: components["schemas"]["WarehouseTaskMoveDto"][] | null;
+        };
+        WarehouseTaskMoveDto: {
+            /** Format: int64 */
+            transactionId?: number;
+            fromBinCode?: string | null;
+            toBinCode?: string | null;
+            /** Format: double */
+            quantity?: number;
+            lotNumber?: string | null;
+            /** Format: date-time */
+            atUtc?: string;
         };
         WarehouseTaskPageDto: {
             /** Format: int32 */

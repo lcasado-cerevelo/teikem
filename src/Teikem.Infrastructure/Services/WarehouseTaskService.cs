@@ -447,11 +447,14 @@ internal static class WarehouseTaskReads
         var productIds = tasks.Where(t => t.ProductId != null).Select(t => t.ProductId!.Value).Distinct().ToList();
         var products = await db.Set<Product>().AsNoTracking().Where(p => productIds.Contains(p.ProductId))
             .Select(p => new { p.ProductId, p.PublicId, p.Sku, p.Name }).ToDictionaryAsync(p => p.ProductId, ct);
-        var binIds = tasks.SelectMany(t => new[] { t.FromBinId, t.ToBinId }).Where(b => b != null).Select(b => b!.Value).Distinct().ToList();
+        var moves = await MovesAsync(db, lookups, tasks, ct);
+        var binIds = tasks.SelectMany(t => new[] { t.FromBinId, t.ToBinId }).Concat(moves.Values.SelectMany(m => m).SelectMany(m => new[] { m.FromBinId, m.ToBinId }))
+            .Where(b => b != null).Select(b => b!.Value).Distinct().ToList();
         var bins = await db.Set<WarehouseBin>().AsNoTracking()
             .Where(b => binIds.Contains(b.WarehouseBinId) && whIds.Contains(b.WarehouseId))
             .ToDictionaryAsync(b => b.WarehouseBinId, b => b.Code, ct);
-        var lotIds = tasks.Where(t => t.LotId != null).Select(t => t.LotId!.Value).Distinct().ToList();
+        var lotIds = tasks.Where(t => t.LotId != null).Select(t => t.LotId!.Value)
+            .Concat(moves.Values.SelectMany(m => m).Where(m => m.LotId != null).Select(m => m.LotId!.Value)).Distinct().ToList();
         var lots = await db.Set<InventoryLot>().AsNoTracking().Where(l => lotIds.Contains(l.LotId) && productIds.Contains(l.ProductId))
             .ToDictionaryAsync(l => l.LotId, l => l.LotNumber, ct);
         var serialIds = tasks.Where(t => t.SerialId != null).Select(t => t.SerialId!.Value).Distinct().ToList();
@@ -487,7 +490,37 @@ internal static class WarehouseTaskReads
                 refCode, t.RefId, refLabels.GetValueOrDefault(t.WarehouseTaskId),
                 t.AssignedToUserId, t.AssignedToUserId is int u ? users.GetValueOrDefault(u) : null,
                 handler is not null && handler.NotFromQueueMessage is null,
-                t.CreatedAtUtc, t.CompletedAtUtc));
+                t.CreatedAtUtc, t.CompletedAtUtc,
+                moves.TryGetValue(t.WarehouseTaskId, out var taskMoves)
+                    ? taskMoves.Select(m => new WarehouseTaskMoveDto(m.TransactionId, m.FromBinId is int mf ? bins.GetValueOrDefault(mf) : null,
+                        m.ToBinId is int mt ? bins.GetValueOrDefault(mt) : null, m.Quantity, m.LotId is int ml ? lots.GetValueOrDefault(ml) : null, m.CreatedAtUtc)).ToList()
+                    : Array.Empty<WarehouseTaskMoveDto>()));
+        }
+        return result;
+    }
+
+    private sealed record TaskMove(long TransactionId, int? FromBinId, int? ToBinId, decimal Quantity, int? LotId, DateTime CreatedAtUtc);
+
+    /// <summary>
+    /// Movimientos del ledger que hizo cada tarea (referencia WAREHOUSE_TASK + id de la tarea), en el orden en que se registraron. Una sola consulta
+    /// para todas las tareas de la página. Un acomodo repartido deja una línea por posición.
+    /// </summary>
+    private static async Task<Dictionary<int, List<TaskMove>>> MovesAsync(TeikemDbContext db, ILookupCache lookups, IReadOnlyList<WarehouseTask> tasks,
+        CancellationToken ct)
+    {
+        var result = new Dictionary<int, List<TaskMove>>();
+        var taskEntityId = await lookups.TryGetIdAsync(LookupDomains.EntityType, EntityTypes.WarehouseTask, ct);
+        if (taskEntityId is null) return result;
+        var ids = tasks.Select(t => t.WarehouseTaskId).ToList();
+        var rows = await db.Set<InventoryTransaction>().AsNoTracking()
+            .Where(x => x.RefEntityLookupId == taskEntityId && x.RefId != null && ids.Contains(x.RefId.Value))
+            .OrderBy(x => x.InventoryTransactionId)
+            .Select(x => new { x.RefId, x.InventoryTransactionId, x.FromBinId, x.ToBinId, x.Quantity, x.LotId, x.CreatedAtUtc })
+            .ToListAsync(ct);
+        foreach (var r in rows)
+        {
+            if (!result.TryGetValue(r.RefId!.Value, out var list)) result[r.RefId.Value] = list = new List<TaskMove>();
+            list.Add(new TaskMove(r.InventoryTransactionId, r.FromBinId, r.ToBinId, r.Quantity, r.LotId, r.CreatedAtUtc));
         }
         return result;
     }

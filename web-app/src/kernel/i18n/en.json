@@ -2439,6 +2439,7 @@
         "confirmed": "Receipt {number} confirmed.",
         "putaway": "Putaway tasks",
         "goTasks": "See all pending putaway",
+        "binsMany": "{count} positions",
         "columns": {
           "product": "Product",
           "quantity": "Quantity",

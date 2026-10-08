@@ -75,7 +75,16 @@
     "syncNow": "Sync now",
     "signOut": "Sign out",
     "lock": "Lock",
-    "warehouseLabel": "Warehouse: {name}"
+    "warehouseLabel": "Warehouse: {name}",
+    "warehouseNone": "No warehouse",
+    "changeWarehouse": "Change"
+  },
+  "warehousePick": {
+    "title": "Which warehouse are you working in?",
+    "current": "Current warehouse",
+    "isDefault": "Device default",
+    "empty": "There are no other warehouses to choose. Connect to the server at least once.",
+    "changed": "You are now working in {name}."
   },
   "receive": {
     "title": "Receive",
@@ -140,7 +149,8 @@
   "lock": {
     "receiveInProgress": "Finish or cancel the receipt in progress before using this.",
     "dispatchInProgress": "Finish or cancel the dispatch in progress before using this.",
-    "countInProgress": "Finish or cancel the count in progress before using this."
+    "countInProgress": "Finish or cancel the count in progress before using this.",
+    "warehouseInProgress": "Finish or cancel the document in progress before changing warehouse."
   },
   "putaway": {
     "empty": "No putaway tasks pending.",
@@ -234,6 +244,22 @@
     "addFound": "Add",
     "finishBin": "Finish this bin",
     "finishHelp": "It sends once there is a signal; reconciliation happens on the web.",
+    "resumed": "You resumed count {number} for {bin}: {counted} of {lines} already counted.",
+    "openCountsTitle": "Open counts",
+    "openCountsHelp": "You have unfinished counts. Continue one to finish or save it; nothing else can be done meanwhile.",
+    "openCountTitle": "{number} · {bin}",
+    "openCountSubtitle": "{counted} of {lines} counted",
+    "continueCount": "Continue {number}",
+    "otherCountBlocked": "Count {number} ({bin}) is still open. Finish or save it before counting anything else.",
+    "finishPendingTitle": "{count} product(s) still to count",
+    "finishPendingBody": "You can keep counting, save what you counted and finish later, or leave the missing ones at 0 and finish the count.",
+    "keepCounting": "Keep counting",
+    "saveForLater": "Save and continue later",
+    "finishWithZeros": "Leave at 0 and finish",
+    "savedForLater": "Saved. Count {number} is still open: resume it from Count.",
+    "finishRejected": "The server did not accept finishing the count: {message}",
+    "openAllCounted": "You already counted this product in every position where the system says it is. If you found it in another one, scan that position; to correct a quantity, tap ✎ on its line in the list.",
+    "openTapHint": "Tap a product in the list to count it in another position.",
     "cancelCount": "Cancel count",
     "cancelConfirmTitle": "Cancel this count?",
     "cancelConfirmBody": "Releases the bin without saving what was captured. Needs a signal.",

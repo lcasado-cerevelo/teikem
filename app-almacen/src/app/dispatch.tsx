@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router'
 import { ApiError } from '../kernel/api/client'
 import { useFormat } from '../kernel/format/useFormat'
 import { useSession } from '../kernel/auth/useSession'
+import { useActiveWarehouse } from '../kernel/warehouse/activeWarehouse'
 import { findProductByCode } from '../kernel/warehouse/productLookup'
 import { useT } from '../kernel/i18n/useT'
 import { runSync } from '../kernel/sync/engine'
@@ -57,7 +58,8 @@ export default function DispatchScreen() {
   const { t } = useT()
   const router = useRouter()
   const { device } = useSession()
-  const warehousePublicId = device?.defaultWarehousePublicId ?? null
+  const activeWarehouse = useActiveWarehouse()
+  const warehousePublicId = activeWarehouse.publicId
   const [tick, setTick] = useState(0)
   const [scanError, setScanError] = useState<string | null>(null)
   const [draft, setDraft] = useState<PickLineDraft | null>(null)

@@ -366,6 +366,14 @@ public sealed class CycleCountService(
         if (!warehouse.IsActive) throw new StatusRuleException(WarehouseInactive);
         var wid = warehouse.WarehouseId;
 
+        // 2026-10-07 (app): al escanear una posición que ya tiene un conteo abierto, se RETOMA ese conteo en vez de abrir otro.
+        if (req.ResumeOpen && !openEmpty && req.BinIds is { Length: 1 } && req.ZoneIds is not { Length: > 0 }
+            && req.ProductPublicIds is not { Length: > 0 } && req.CategoryIds is not { Length: > 0 })
+        {
+            var resumedId = await FindOpenCountOfBinAsync(wid, req.BinIds[0], ct);
+            if (resumedId is int rid) return (await GetAsync(rid, null, ct)) with { Resumed = true };
+        }
+
         // Hijas resueltas SIEMPRE dentro del almacén filtrado: de otro almacén u otro tenant → 404 sin oráculo.
         List<int>? zoneIds = null, binIds = null, productIds = null;
         HashSet<int>? categoryIds = null;
@@ -454,6 +462,53 @@ public sealed class CycleCountService(
         }, ct);
 
         return await GetAsync(id, null, ct);
+    }
+
+    /// <summary>
+    /// Retomar (2026-10-07): el conteo ABIERTO (Pendiente) cuyas líneas son todas de esa posición (un conteo de varias posiciones no se retoma
+    /// por una sola; el de por producto tampoco). Si es de quien llama o no tiene asignado, se devuelve (y, sin asignado, queda asignado a quien
+    /// llama); si lo tiene otro → 409 con su nombre. Con varios (duplicados anteriores), primero los del propio usuario, el de más líneas contadas.
+    /// null = no hay nada que retomar y se abre uno nuevo.
+    /// </summary>
+    private async Task<int?> FindOpenCountOfBinAsync(int warehouseId, int binId, CancellationToken ct)
+    {
+        var openId = await db.StatusCodes.AsNoTracking()
+            .Where(s => s.Entity == StatusDomains.CycleCountStatus && s.InternalCode == CycleCountStatuses.Open)
+            .Select(s => (int?)s.StatusCodeId).FirstOrDefaultAsync(ct);
+        if (openId is null) return null;
+        var productOrigin = await lookups.TryGetIdAsync(LookupDomains.CycleCountOrigin, CycleCountOrigins.Product, ct);
+        var lines = db.Set<CycleCountLine>().AsNoTracking();
+        var candidates = await db.Set<CycleCount>().AsNoTracking()
+            .Where(c => c.IsActive && c.WarehouseId == warehouseId && c.StatusCodeId == openId && (productOrigin == null || c.OriginLookupId != productOrigin)
+                        && lines.Any(l => l.CycleCountId == c.CycleCountId && l.WarehouseBinId == binId)
+                        && !lines.Any(l => l.CycleCountId == c.CycleCountId && l.WarehouseBinId != binId))
+            .Select(c => new { c.CycleCountId, c.Number, Counted = lines.Count(l => l.CycleCountId == c.CycleCountId && l.CountedQty != null) })
+            .ToListAsync(ct);
+        if (candidates.Count == 0) return null;
+        var tasks = await CountTasksAsync(candidates.Select(c => c.CycleCountId).ToList(), ct);
+        var me = tenant.UserId;
+        int? Assignee(int countId) => tasks.GetValueOrDefault(countId)?.AssignedToUserId;
+        var mine = candidates.Where(c => Assignee(c.CycleCountId) == me).OrderByDescending(c => c.Counted).ThenBy(c => c.CycleCountId).FirstOrDefault();
+        if (mine is not null) return mine.CycleCountId;
+        var free = candidates.Where(c => Assignee(c.CycleCountId) is null).OrderByDescending(c => c.Counted).ThenBy(c => c.CycleCountId).FirstOrDefault();
+        if (free is not null)
+        {
+            // Sin asignado: queda a nombre de quien lo retoma (así Inicio sabe que lo tiene abierto).
+            if (tasks.TryGetValue(free.CycleCountId, out var t))
+                await db.RunInTransactionAsync(async ct2 =>
+                {
+                    var task = await LockTaskAsync(t.WarehouseTaskId, ct2);
+                    if (task.AssignedToUserId is null) task.AssignedToUserId = me;
+                    await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
+                }, ct);
+            return free.CycleCountId;
+        }
+        var other = candidates.OrderBy(c => c.CycleCountId).First();
+        var otherId = Assignee(other.CycleCountId);
+        var name = otherId is int oid
+            ? await db.Users.AsNoTracking().Where(u => u.Id == oid).Select(u => u.FullName ?? u.Email).FirstOrDefaultAsync(ct)
+            : null;
+        throw new ConflictException(CycleCountRules.BinBeingCounted(name ?? "otro usuario", other.Number));
     }
 
     // ================================================================ lo cambiado (Lote 14: D2, D3, D4)
@@ -1806,7 +1861,7 @@ public sealed class CycleCountService(
                 l.AdjustmentTxnId, p.Barcode,
                 l.CapturedQty, l.CapturedBy is int cb ? userNames.GetValueOrDefault(cb) : null, l.CapturedBy, Utc(l.CapturedAtUtc),
                 l.CorrectedBy is int xb ? userNames.GetValueOrDefault(xb) : null, l.CorrectedBy, Utc(l.CorrectedAtUtc), l.CorrectedAtUtc != null,
-                bin?.IsProvisional ?? false));
+                bin?.IsProvisional ?? false, l.CheckState));
         }
         return new CycleCountDetailDto(header, dtos, rowVersion);
     }

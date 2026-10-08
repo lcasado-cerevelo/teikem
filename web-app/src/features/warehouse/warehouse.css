@@ -447,7 +447,9 @@ button.whs-zone-main:focus-visible{outline:2px solid var(--flow);outline-offset:
 .qcalc-sum{display:grid;gap:2px}
 .qcalc-expr{font-size:12px;color:var(--muted);font-family:var(--mono)}
 .qcalc-total{font-size:22px;font-family:var(--mono)}
-.cc-calc-btn{margin-left:4px}
+.cc-calc-btn{margin-left:0;flex:none}
+.cc-qty-row{display:flex;flex-wrap:nowrap;align-items:center;justify-content:flex-end;gap:4px;white-space:nowrap}
+.cc-qty-row .rcp-qty{flex:0 1 84px;min-width:56px}
 
 /* Reparto por posición (editor compartido por Acomodo y el recibo directo) */
 .split{display:grid;gap:10px}

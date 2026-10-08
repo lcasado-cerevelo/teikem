@@ -12,8 +12,18 @@ import { buildBatchItems, type BinOption, type CapturedEntry, type ExpectedLine,
 
 export interface StartedCount {
   countId: number
+  number: string
   isBlind: boolean
   expectedLines: ExpectedLine[]
+  /** 2026-10-07: true si ya existía un conteo abierto de esa posición y se retomó (en vez de abrir otro). */
+  resumed: boolean
+  /** Lo ya contado en un conteo retomado (líneas con cantidad). */
+  captured: Array<{ lineId: number; countedQty: number }>
+  /** Estado de verificación (MATCH/RECOUNT/FINAL) de las líneas de un conteo retomado. */
+  checks: Array<{ lineId: number; state: 'MATCH' | 'RECOUNT' | 'FINAL' }>
+  /** Posición del conteo (la de sus líneas); null si no trae líneas. */
+  binId: number | null
+  binCode: string | null
 }
 
 type LineDto = {
@@ -27,6 +37,8 @@ type LineDto = {
   lotId?: number | null
   lotNumber?: string | null
   binIsProvisional?: boolean
+  countedQty?: number | null
+  checkState?: string | null
 }
 
 function mapExpectedLines(lines: LineDto[] | null | undefined): ExpectedLine[] {
@@ -54,10 +66,43 @@ function mapProductLines(lines: LineDto[] | null | undefined): ProductCountLine[
   }))
 }
 
-/** Crea el conteo para esa posición (o falla si ya hay uno abierto ahí: el servidor lo rechaza). */
+type DetailDto = {
+  count?: { id?: number; number?: string | null }
+  isBlind?: boolean
+  resumed?: boolean
+  lines?: LineDto[] | null
+}
+
+function toStarted(detail: DetailDto): StartedCount {
+  const lines = detail.lines ?? []
+  return {
+    countId: detail.count?.id ?? 0,
+    number: detail.count?.number ?? '',
+    isBlind: detail.isBlind ?? true,
+    expectedLines: mapExpectedLines(lines),
+    resumed: detail.resumed ?? false,
+    captured: lines.filter((l) => l.countedQty != null).map((l) => ({ lineId: l.id ?? 0, countedQty: l.countedQty as number })),
+    checks: lines
+      .filter((l) => l.checkState === 'MATCH' || l.checkState === 'RECOUNT' || l.checkState === 'FINAL')
+      .map((l) => ({ lineId: l.id ?? 0, state: l.checkState as 'MATCH' | 'RECOUNT' | 'FINAL' })),
+    binId: lines[0]?.binId ?? null,
+    binCode: lines[0]?.binCode ?? null,
+  }
+}
+
+/** Abre el conteo de esa posición; si ya hay uno abierto ahí lo RETOMA (resumeOpen) con lo que ya se contó. Si lo tiene otro contador, el servidor
+ *  responde 409 «Esa posición la está contando X (CC-…).». */
 export async function startCountOnline(warehousePublicId: string, binId: number): Promise<StartedCount> {
-  const detail = await unwrap(api.POST('/api/v1/cycle-counts', { params: { query: { forCounting: true } }, body: { warehousePublicId, binIds: [binId], assignToMe: true } }))
-  return { countId: detail.count?.id ?? 0, isBlind: detail.isBlind ?? true, expectedLines: mapExpectedLines(detail.lines) }
+  const detail = await unwrap(
+    api.POST('/api/v1/cycle-counts', { params: { query: { forCounting: true } }, body: { warehousePublicId, binIds: [binId], assignToMe: true, resumeOpen: true } }),
+  )
+  return toStarted(detail)
+}
+
+/** Retoma un conteo abierto por su id (lista «Conteos abiertos»): sirve también para los duplicados de la misma posición. */
+export async function loadOpenCount(countId: number): Promise<StartedCount> {
+  const detail = await unwrap(api.GET('/api/v1/cycle-counts/{id}', { params: { path: { id: countId }, query: { forCounting: true } } }))
+  return { ...toStarted(detail), resumed: true }
 }
 
 export interface StartedProductCount {
@@ -104,12 +149,17 @@ export async function cancelCountOnline(countId: number): Promise<void> {
 /** Encola el lote capturado y el cierre del conteo (kernel/sync/outbox.ts): dos filas en orden, el lote primero. Cada
  *  línea lleva su propia posición (conteo por producto: varias posiciones en el mismo lote). */
 export function enqueueFinishCount(countId: number, entries: CapturedEntry[]): void {
+  enqueueSaveCount(countId, entries)
+  enqueue({ kind: 'countFinish', path: `/api/v1/cycle-counts/${countId}/finish`, body: {} })
+}
+
+/** «Guardar y seguir después»: manda lo contado SIN cerrar el conteo (queda abierto en el servidor para retomarlo). */
+export function enqueueSaveCount(countId: number, entries: CapturedEntry[]): void {
   enqueue({
     kind: 'countBatch',
     path: `/api/v1/cycle-counts/${countId}/lines/batch`,
     body: { lines: buildBatchItems(entries) },
   })
-  enqueue({ kind: 'countFinish', path: `/api/v1/cycle-counts/${countId}/finish`, body: {} })
 }
 
 // ------------------------------------------------------------------ "Otra posición"

@@ -1,6 +1,6 @@
 // Lote A9 — pantalla con campos de captura que nunca deja el campo que se escribe debajo del teclado en pantalla. Por qué y cómo:
 // keyboardScroll.ts.
-import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, type ReactNode } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, type ReactNode } from 'react'
 import { KeyboardAvoidingView, ScrollView, StyleSheet, TextInput, type ScrollViewProps, type TextInputProps } from 'react-native'
 
 import { KeyboardScrollContext, useFieldFocus, useKeyboardScroll, type KeyboardScrollContextValue, type MeasurableField } from './keyboardScroll'
@@ -11,6 +11,9 @@ export interface KeyboardScreenProps extends ScrollViewProps {
   banner?: ReactNode
   /** Solo para pruebas: de dónde sale el campo enfocado. */
   getFocused?: () => MeasurableField | null
+  /** Cada vez que cambia (y no es 0), la pantalla se desplaza hasta arriba: p. ej. al tocar un producto de la lista para ponerlo en el campo de
+   *  escaneo que está arriba, sin tener que subir a mano. */
+  scrollToTopKey?: number
 }
 
 /**
@@ -18,8 +21,11 @@ export interface KeyboardScreenProps extends ScrollViewProps {
  * ya viene en "handled" para que tocar un botón no solo cierre el teclado). `KeyboardAvoidingView` con `behavior="padding"` en las dos
  * plataformas + desplazamiento automático hasta el campo enfocado.
  */
-export function KeyboardScreen({ children, banner, getFocused, onScroll, onLayout, keyboardShouldPersistTaps = 'handled', ...props }: KeyboardScreenProps) {
+export function KeyboardScreen({ children, banner, getFocused, scrollToTopKey, onScroll, onLayout, keyboardShouldPersistTaps = 'handled', ...props }: KeyboardScreenProps) {
   const { scrollRef, onScroll: trackScroll, onLayout: trackLayout, onFieldFocus } = useKeyboardScroll({ getFocused })
+  useEffect(() => {
+    if (scrollToTopKey) scrollRef.current?.scrollTo({ y: 0, animated: true })
+  }, [scrollToTopKey, scrollRef])
   const ctx = useMemo<KeyboardScrollContextValue>(() => ({ onFieldFocus }), [onFieldFocus])
   return (
     <KeyboardAvoidingView style={styles.fill} behavior="padding" testID="keyboard-screen">

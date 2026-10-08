@@ -12,6 +12,7 @@ import {
 import { getMfaChallenge } from '../../kernel/auth/tokens'
 import { useT } from '../../kernel/i18n/useT'
 import { AuthLayout } from './AuthLayout'
+import { PasswordInput } from './PasswordInput'
 import { safeNext } from './next'
 
 /** Largo mínimo de la contraseña (Identity: RequiredLength = 12). */
@@ -176,11 +177,11 @@ export default function OnboardingPage() {
       <form onSubmit={onPassword} noValidate>
         <div className="f">
           <label htmlFor="onb-pwd">{t('auth.onboarding.newPassword')}</label>
-          <input id="onb-pwd" type="password" autoComplete="new-password" autoFocus value={pwd} onChange={(e) => setPwd(e.target.value)} />
+          <PasswordInput id="onb-pwd" autoFocus value={pwd} onChange={setPwd} />
         </div>
         <div className="f">
           <label htmlFor="onb-pwd2">{t('auth.onboarding.confirmPassword')}</label>
-          <input id="onb-pwd2" type="password" autoComplete="new-password" value={pwd2} onChange={(e) => setPwd2(e.target.value)} />
+          <PasswordInput id="onb-pwd2" value={pwd2} onChange={setPwd2} />
           {pwdError && <p className="ferr">{pwdError}</p>}
         </div>
         <button type="submit" className="btn flow block" disabled={busy || !!pwdError || pwd.length < MIN_PASSWORD || pwd !== pwd2}>

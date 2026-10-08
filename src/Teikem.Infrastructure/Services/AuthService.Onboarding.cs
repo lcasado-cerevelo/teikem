@@ -81,7 +81,7 @@ public sealed partial class AuthService
             """;
         try
         {
-            await email.SendAsync(user.Email!, user.FullName, "Su código de verificación de Teikem", html, ct);
+            await email.SendAsync(user.Email!, user.FullName, "Su código de verificación de Teikem", html, ct, await CompanyNameForEmailAsync(user, tenantId, ct));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

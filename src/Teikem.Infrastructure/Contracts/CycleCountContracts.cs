@@ -13,7 +13,7 @@ namespace Teikem.Infrastructure.Contracts;
 /// productos escaneados (cada uno con su cantidad y su posición, por defecto la única con existencia).
 /// </summary>
 public sealed record CycleCountCreateRequest(Guid? WarehousePublicId = null, int[]? ZoneIds = null, int[]? BinIds = null,
-    Guid[]? ProductPublicIds = null, int[]? CategoryIds = null, bool AllowEmpty = false, bool AssignToMe = false);
+    Guid[]? ProductPublicIds = null, int[]? CategoryIds = null, bool AllowEmpty = false, bool AssignToMe = false, bool ResumeOpen = false);
 
 /// <summary>
 /// Encabezado del conteo. VarianceLines y NetVariance llegan null en el conteo a ciegas (Lote 8A: quien consulta no tiene
@@ -51,7 +51,7 @@ public sealed record CycleCountLineDto(int Id, int BinId, string BinCode, string
     bool SystemQtyChanged, decimal? AdjustedQty, long? AdjustmentTxnId, string? Barcode = null,
     decimal? CapturedQty = null, string? CapturedByName = null, int? CapturedByUserId = null, DateTime? CapturedAtUtc = null,
     string? CorrectedByName = null, int? CorrectedByUserId = null, DateTime? CorrectedAtUtc = null, bool WasCorrected = false,
-    bool BinIsProvisional = false);
+    bool BinIsProvisional = false, string? CheckState = null);
 
 /// <summary>
 /// Ficha del conteo. IsBlind (Lote 8A) = true cuando las cantidades esperadas de las líneas se omitieron (conteo a ciegas).
@@ -59,7 +59,7 @@ public sealed record CycleCountLineDto(int Id, int BinId, string BinCode, string
 /// supervisor — se omitieron (no se tocaron) y las demás sí se guardaron; null cuando no se omitió ninguna. También llega a ciegas.
 /// </summary>
 public sealed record CycleCountDetailDto(CycleCountDto Count, IReadOnlyList<CycleCountLineDto> Lines, string RowVersion, bool IsBlind = false,
-    IReadOnlyList<CountSkippedLineDto>? SkippedLines = null, string? Reveal = null);
+    IReadOnlyList<CountSkippedLineDto>? SkippedLines = null, string? Reveal = null, bool Resumed = false);
 
 /// <summary>
 /// Tarea 25 — verificación de una línea contra lo esperado (POST /cycle-counts/{id}/lines/{lineId}/check, warehouse.count.capture). El contador manda

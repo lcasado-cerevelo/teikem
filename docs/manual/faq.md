@@ -5545,6 +5545,50 @@ Es lo esperado: las marcas se recortan para no pasarse del total, empezando por 
 **¿Por qué no sale el listado en un producto con lote?**
 Con lote la posición es la del lote que vence primero y no se escoge.
 
+## Conteo cíclico en la app: retomar, terminar con faltantes y conteos abiertos (2026-10-07)
+
+**Escaneé otra vez la misma posición y no se abrió otro conteo.**
+Es a propósito: si esa posición ya tiene un conteo abierto tuyo (o sin asignar) se **retoma** con lo que ya contaste (`Retomaste el conteo CC-… de …: ya llevas n de m contados.`). Antes se abría uno nuevo cada vez.
+
+**`Esa posición la está contando {Nombre} ({CC-#####}).`**
+Otra persona tiene abierto el conteo de esa posición. Que lo termine o lo guarde, o que un supervisor lo dé de baja o lo reasigne en la web (Conteo cíclico).
+
+**¿Por qué en la web veo la lista completa de líneas del conteo y no solo lo que conté?**
+Un conteo por posición trae **todas** las líneas que el sistema espera en esa posición; lo que contaste aparece como «Contado» y el resto como «Pendiente».
+
+**Toqué «Terminar esta posición» y me preguntó «Faltan N producto(s) por contar».**
+El conteo solo se cierra con todas las líneas contadas. Elige **Seguir contando**, **Guardar y seguir después** (el conteo queda abierto para retomarlo) o **Dejar en 0 y terminar** (lo que falta se cuenta como 0 y queda como diferencia para el supervisor).
+
+**Guardé y seguí después, pero ahora no me deja hacer otra cosa.**
+Es a propósito: mientras tengas un conteo abierto, las demás acciones avisan `Termina o cancela el conteo en curso antes de usar esto.` En **Conteo → Conteos abiertos** toca **Continuar** para terminarlo (o cancelarlo si tienes `warehouse.count`).
+
+**`Tienes abierto el conteo CC-… (…). Termínalo o guárdalo antes de contar otra cosa.`**
+Estás intentando abrir otra posición o «Por producto» con un conteo abierto. Retoma ese (escanear su misma posición también lo retoma) y termínalo.
+
+**Un conteo abierto aparece en la lista pero ya no existe / no puedo continuarlo.**
+Si un supervisor lo dio de baja, al tocar **Continuar** sale `Conteo no encontrado.` y se quita de la lista.
+
+**`El servidor no aceptó terminar el conteo: …`**
+El cierre fue rechazado en el servidor (por ejemplo, una línea ya corregida por el supervisor). El mensaje dice el motivo; también queda en Sincronización.
+
+**«Por producto»: la posición donde ya conté ese producto ya no aparece.**
+Es a propósito: solo se ofrecen las posiciones que aún no contaste. Para corregir una cantidad ya contada, toca ✎ en su línea de la lista. Para contar el mismo producto en otra posición, toca el producto en la lista (se pone en el campo de escaneo) y da Aceptar.
+
+## Nombre del remitente de los correos (2026-10-08)
+
+**¿Por qué el correo dice «Advance Solutions» y no «Teikem»?** (y de dónde sale el «via Teikem» que muestra Gmail)
+El nombre del remitente es el de la compañía a la que pertenece el correo (la aplicación no le agrega nada más; el «via Teikem» que Gmail pone al lado lo pone Gmail porque el dominio que firma el correo no es el de la dirección del remitente, ver abajo): el código de verificación del primer ingreso usa la compañía con la que se está entrando; «Olvidé mi contraseña» usa la
+compañía del usuario **si pertenece a una sola**; el aviso de «verificación en dos pasos reiniciada» usa la compañía del administrador que la reinició.
+
+**Un usuario que está en varias compañías recibe el correo como «Teikem».**
+Es a propósito: sin saber cuál elegir, se usa el nombre general (`Brevo__FromName`).
+
+**¿Se puede cambiar la dirección de correo por compañía?**
+No: la dirección es una sola (`Brevo__FromEmail`). Cambiarla por compañía exigiría autenticar un dominio por cada una en Brevo.
+
+**Gmail muestra «vía …» junto al remitente.**
+Es la autenticación del dominio (DKIM/SPF) en Brevo, no el nombre. Se corrige agregando los registros del dominio del remitente en el DNS (ver `deploy/README.md`).
+
 ## Recuperar la contraseña (2026-10-07)
 
 **Olvidé mi contraseña.**
@@ -5578,3 +5622,22 @@ Ese conteo lo abrió otra persona. Pídale que lo cancele o pida a un supervisor
 
 **Dice `Solo se elimina un conteo abierto; este ya se terminó de contar.`**
 Un conteo terminado ya no se cancela; el supervisor lo reconcilia desde la web.
+
+## Varios almacenes en un mismo aparato (2026-10-07)
+
+**¿Puedo usar el mismo aparato en más de un almacén de la misma compañía?**
+Sí. En Inicio toque **«Cambiar»** (junto a «Almacén: …») y elija el almacén. Todas las pantallas pasan a trabajar con ese almacén. Cada compañía
+registrada en el teléfono recuerda el suyo.
+
+**No me aparece el botón «Cambiar».**
+Solo aparece si la compañía tiene más de un almacén activo y el usuario tiene `inventory.view`. Si es un aparato nuevo, abra Inicio con señal
+una vez para que baje la lista de almacenes.
+
+**«Termina o cancela el documento en curso antes de cambiar de almacén.»**
+Hay un recibo, despacho o conteo abierto, y ese documento es de su almacén. Termínelo o cancélelo y cambie después.
+
+**Cambié de almacén y volvió al de antes.**
+Desde la web se cambió el almacén por defecto del aparato (manda la web) o el almacén elegido se dio de baja. Elíjalo otra vez.
+
+**Recibir me pide otro modo (directo o con acomodo) después de cambiar.**
+Es normal: el modo de recepción es de cada almacén (Almacenes → modo de recepción en la web).

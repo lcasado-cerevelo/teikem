@@ -21,6 +21,7 @@ import { ToggleFilter } from './filterControls'
 import { formatDateTime, formatNumber } from './lineRules'
 import { WarehousePicker } from './pickers'
 import { useTaskRowActions, type WarehouseTaskType } from './taskActions'
+import { TaskBins, taskBinsSort } from './TaskBins'
 
 const PAGE_SIZE = 25
 const STATUS_DOMAIN = 'WarehouseTaskStatus'
@@ -190,8 +191,8 @@ export function TaskQueue({ types, title, icon, actions, handleAccessDenied }: T
       {
         id: 'bins',
         header: t('warehouse.tasks.columns.bins'),
-        cell: (r) => [r.fromBinCode, r.toBinCode].filter(Boolean).join(' → ') || '—',
-        sortValue: (r) => r.fromBinCode ?? r.toBinCode,
+        cell: (r) => <TaskBins task={r} />,
+        sortValue: taskBinsSort,
       },
       { id: 'ref', header: t('warehouse.tasks.columns.ref'), cell: (r) => r.refLabel ?? '—', sortValue: (r) => r.refLabel },
       {

@@ -91,7 +91,9 @@ export async function sendHeartbeat(): Promise<{ isActive: boolean }> {
       next.theme !== device.theme ||
       next.defaultWarehouseReceivingMode !== (device.defaultWarehouseReceivingMode ?? null)
     ) {
-      await updateDeviceIdentity(next)
+      // Si la web cambió el almacén por defecto, manda la web: se descarta el almacén que se había elegido en el aparato.
+      const defaultChanged = next.defaultWarehousePublicId !== device.defaultWarehousePublicId
+      await updateDeviceIdentity(defaultChanged ? { ...next, selectedWarehouse: null } : next)
     }
     return { isActive: true }
   } catch {

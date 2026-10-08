@@ -1080,6 +1080,11 @@ public static class InventoryTxnTypes
     public const string Transfer = "TRANSFER";
     public const string Adjustment = "ADJUSTMENT";
     public const string CrossDock = "CROSSDOCK";
+    /// <summary>
+    /// SOLO de presentación (2026-10-07): el Kárdex muestra «Acomodo» en una TRANSFER que viene de una tarea PUTAWAY (y el filtro Tipo lo ofrece).
+    /// Nunca se registra en el ledger: el movimiento sigue siendo TRANSFER (saldos, conciliación, trazabilidad no cambian).
+    /// </summary>
+    public const string Putaway = "PUTAWAY";
 }
 
 /// <summary>LookupDomains.ReceiptType.</summary>

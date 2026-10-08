@@ -177,6 +177,19 @@ public sealed partial class AuthService(
         return new AuthResultDto("ok", pair, null, false, null);
     }
 
+    /// <summary>
+    /// Compañía que se muestra como remitente del correo (nombre de la compañía, 2026-10-08): la indicada, o si no se indica (por ejemplo «olvidé mi contraseña», sin
+    /// compañía elegida), la ÚNICA compañía activa del usuario. Con varias (o un administrador de plataforma) o ninguna: null y sale el remitente general «Teikem».
+    /// </summary>
+    private async Task<string?> CompanyNameForEmailAsync(ApplicationUser user, int? tenantId, CancellationToken ct)
+    {
+        if (tenantId is int tid)
+            return await db.Tenants.IgnoreQueryFilters().AsNoTracking().Where(t => t.TenantId == tid).Select(t => t.Name).FirstOrDefaultAsync(ct);
+        if (user.IsPlatformAdmin) return null;
+        var memberships = await ActiveMembershipsAsync(user, ct);
+        return memberships.Count == 1 ? memberships[0].Name : null;
+    }
+
     private async Task<List<TenantOptionDto>> ActiveMembershipsAsync(ApplicationUser user, CancellationToken ct)
     {
         var active = await db.StatusCodes.AsNoTracking().Where(s => s.Entity == StatusDomains.MembershipStatus && s.InternalCode == MembershipStatuses.Active).Select(s => (int?)s.StatusCodeId).FirstOrDefaultAsync(ct) ?? throw new NotFoundException($"Estatus {StatusDomains.MembershipStatus}", MembershipStatuses.Active);
@@ -654,7 +667,7 @@ public sealed partial class AuthService(
                   <p>Si usted no lo pidió, avise de inmediato a su administrador.</p>
                 </div>
                 """;
-            try { await email.SendAsync(user.Email, user.FullName, "Su verificación en dos pasos de Teikem fue reiniciada", html, ct); }
+            try { await email.SendAsync(user.Email, user.FullName, "Su verificación en dos pasos de Teikem fue reiniciada", html, ct, company); }
             catch (Exception ex) when (ex is not OperationCanceledException) { /* el reinicio ya quedó; el log del proveedor registra el fallo */ }
         }
     }
