@@ -37,11 +37,11 @@ describe('NAV_GROUPS', () => {
 })
 
 describe('menú completo (routes.tsx)', () => {
-  it('con todos los permisos y módulos se ven los 7 grupos y los 43 ítems, en el orden de la maqueta', () => {
+  it('con todos los permisos y módulos se ven los 7 grupos y los 42 ítems, en el orden de la maqueta', () => {
     const groups = visibleNav(appRoutes, ALL_PERMS, ALL_MODULES)
     expect(groups.map((g) => [g.key, g.items.length])).toEqual([
       ['ops', 5],
-      ['warehouse', 13],
+      ['warehouse', 12],
       ['money', 5],
       ['catalog', 4],
       ['analytics', 4],
@@ -66,7 +66,6 @@ describe('menú completo (routes.tsx)', () => {
       'Cruce de muelle',
       'Rentas',
       'Kárdex de movimientos',
-      'Daños',   // 2026-10-08
       'Contabilización de compras',
       'Contabilización de despachos',
       'Procesar entregas',
@@ -96,7 +95,7 @@ describe('menú completo (routes.tsx)', () => {
   })
 
   it('cada ítem tiene título y subtítulo en español e inglés, y `order` = posición × 10', () => {
-    expect(navRoutes).toHaveLength(43)
+    expect(navRoutes).toHaveLength(42)
     for (const r of navRoutes) {
       for (const lang of ['es', 'en'] as const) {
         expect(translate(lang, navTitleKey(r.nav!.key)), `${lang} ${r.path}`).not.toBe(navTitleKey(r.nav!.key))
@@ -139,7 +138,7 @@ describe('menú completo (routes.tsx)', () => {
     expect(old.module).toBeUndefined()
   })
 
-  it("Fase 8: 'Productos e inventario' es un solo ítem (3.º) y 'Kárdex de movimientos' el penúltimo de Almacén (2026-10-08: 'Daños' al final); 'Inventario' ya no es ítem", () => {
+  it("Fase 8: 'Productos e inventario' es un solo ítem (3.º) y 'Kárdex de movimientos' el penúltimo de Almacén (2026-10-08: 'Daños' es una pestaña de Productos e inventario, sin ítem propio); 'Inventario' ya no es ítem", () => {
     const warehouse = visibleNav(appRoutes, ALL_PERMS, ALL_MODULES).find((g) => g.key === 'warehouse')!.items
     expect(warehouse.map((r) => r.path)).toEqual([
       '/warehouse/warehouses',
@@ -154,7 +153,6 @@ describe('menú completo (routes.tsx)', () => {
       '/warehouse/cross-dock-plans',
       '/warehouse/rentals',
       '/warehouse/kardex',
-      '/warehouse/damage',   // 2026-10-08
     ])
     expect(translate('en', navTitleKey('products'))).toBe('Products & inventory')
     expect(translate('en', navTitleKey('kardex'))).toBe('Movement ledger')

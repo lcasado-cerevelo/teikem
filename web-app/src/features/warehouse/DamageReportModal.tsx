@@ -53,6 +53,7 @@ function DamageModalBody({ onClose, receipt, onReported }: Omit<DamageReportModa
           quantity: z.number(t(`${M}.quantityInvalid`)).nullable().refine((v) => v !== null && v > 0, t(`${M}.quantityPositive`)),
           cause: z.string().min(1, t(`${M}.causeRequired`)),
           disposition: z.enum(['QUARANTINE', 'DISCARD'], t(`${M}.dispositionRequired`)),
+          quarantineBinId: z.string(),
           notes: z.string().max(300, t(`${M}.notesMax`)),
         })
         .superRefine((v, c) => {
@@ -76,6 +77,7 @@ function DamageModalBody({ onClose, receipt, onReported }: Omit<DamageReportModa
       quantity: null,
       cause: defaultCause(initialOrigin),
       disposition: '',
+      quarantineBinId: '',
       notes: '',
     },
   })
@@ -196,6 +198,11 @@ function DamageModalBody({ onClose, receipt, onReported }: Omit<DamageReportModa
         <Field name="disposition" label={t('warehouse.damage.fields.disposition')} required help={t(disposition === 'DISCARD' ? 'warehouse.damage.discardHelp' : 'warehouse.damage.quarantineHelp')}>
           <SegInput label={t('warehouse.damage.fields.disposition')} options={dispositionOptions} />
         </Field>
+        {disposition === 'QUARANTINE' && (
+          <Field name="quarantineBinId" label={t('warehouse.damage.fields.quarantineBin')} help={t('warehouse.damage.quarantineBinHelp')}>
+            <BinPickerInput warehousePublicId={warehousePublicId} placeholder={t('warehouse.damage.quarantineBinPlaceholder')} />
+          </Field>
+        )}
         <Field name="notes" label={t('warehouse.damage.fields.notes')}>
           <TextArea rows={2} maxLength={300} />
         </Field>

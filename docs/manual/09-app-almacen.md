@@ -267,6 +267,31 @@ Cómo se usa:
 | Confirmar sin señal | Se guarda igual, se manda solo cuando haya conexión (`errors.network`) | Cola de salida |
 | El servidor rechaza el recibo al confirmarlo (dato inválido, orden ya cerrada, etc.) | El mensaje exacto que el servidor devuelva, ver [06 §4](06-inventario-y-almacen.md#4-recepción-avisos-de-llegada-asn-y-recibos) | API, vía cola |
 
+### Unidades dañadas al recibir (2026-10-08)
+
+Qué hace: en la pantalla de la **cantidad recibida** hay un cuadro **«Vinieron unidades dañadas»** (no sale en productos con serie). Al marcarlo aparecen, **uno al lado del otro**, la **Cantidad dañada** (con el foco y el número seleccionado) y la **Razón** (lista: *Vino así*, *Accidente en el camino*, *Accidente en el almacén*, *Otra*; con *Otra* sale un cuadro para escribir la razón). Las dañadas están **dentro** de lo recibido (recibí 100, 10 dañadas). Funciona **sin señal**: el daño viaja dentro de la línea del recibo en la cola de salida y el servidor crea el reporte `DAN-#####` al confirmar el recibo (ver [06 §4b](06-inventario-y-almacen.md#4b-daños-lo-que-llegó-dañado-o-se-dañó-en-el-almacén-2026-10-08)).
+
+Quién puede: quien recibe (el servidor revisa `warehouse.receive` al confirmar).
+
+Cómo se usa:
+1. Capture la cantidad como siempre y marque **Vinieron unidades dañadas**; escriba cuántas y escoja la razón (si es *Otra*, escríbala). **Agregar / Siguiente** se apaga mientras falte algo.
+2. En **recibo directo**, escanee primero la posición de lo bueno (como siempre). En **recibo con acomodo** pasa directo al paso siguiente.
+3. Paso **Unidades dañadas** — «{n} dañadas de {SKU}. ¿Dónde se dejan?»: arriba la pista **Sugerida: {posición}** (la de **cuarentena** si el almacén tiene una; si no, la posición que escogió para lo bueno —en directo— o la de recepción —con acomodo—). Tóquela para llenar el campo, o escanee/escriba otra, o use el botón de lista de posiciones; **Aceptar** agrega la línea. Cualquier posición activa del almacén vale.
+4. **Desechar** (pide confirmar: `¿Desechar lo dañado?` / `Las {n} unidades dañadas se descartan de una vez: no pasan a cuarentena.`) deja la línea marcada para desechar al confirmar el recibo, sin posición. **Volver** regresa a la captura sin agregar nada.
+5. En la lista de líneas se ve `{n} dañadas` o `{n} dañadas (desechar)`.
+
+Con **reparto por posición** (cantidad por posición) las dañadas se asignan a las primeras líneas del reparto sin pasar de lo que trae cada una (una línea no puede llevar más dañadas que recibidas); si el reparto no cubre toda la cantidad, lo dañado que falta sigue en la captura de lo que queda.
+
+| Campo / caso | Mensaje exacto | Origen |
+|---|---|---|
+| Casilla | `Vinieron unidades dañadas` | Local |
+| Campos | `Cantidad dañada`, `Razón`, `Escoge la razón`, `Escribe la razón` | Local |
+| Cantidad dañada vacía, 0 o mayor que la recibida; sin razón; *Otra* sin texto | Botón Agregar/Siguiente deshabilitado | Local, sin mensaje |
+| Posición de lo dañado | `Escanea la posición de lo dañado`, pista `Sugerida: {posición}` | Local |
+| La posición no existe / está desactivada | `Esa posición no existe en este almacén.` / `Esa posición está desactivada.` | Local |
+| Sin posiciones descargadas | `El aparato todavía no tiene las posiciones de este almacén. Sincroniza con señal e intenta de nuevo.` (el mismo aviso del destino) | Local |
+| El servidor rechaza el daño al confirmar | El mensaje exacto del servidor (06 §4b) | API, vía cola |
+
 ### Recibir en un almacén directo a posición (Lote 16)
 
 Qué hace: si el almacén del aparato recibe **directo a posición** ([06 §1.4](06-inventario-y-almacen.md#14-modo-de-recepción-y-posición-de-recepción-por-defecto-lote-16)),
@@ -809,7 +834,8 @@ Tile **Daño** en Inicio (solo con el permiso `warehouse.damage`). **Necesita se
 2. Escanee el producto (o búsquelo en la lista), escriba la **cantidad dañada** (y el **lote** si el producto lleva lote), elija la **causa** (informativa) y toque **Mandar a cuarentena** o **Desechar** (este último pide confirmar: `¿Desechar de una vez?`).
 3. Sale `DAN-00012: enviado a cuarentena.` o `DAN-00012: desechado.`.
 - Avisos: `No encontré esa posición en este almacén.`, `No encontré ese recibo en este almacén.`, `No encontré ese producto.`, `Escribe una cantidad mayor que 0.`, `Escribe el lote.`, `Los productos con serie se reportan con un ajuste de inventario (motivo Daño) desde la web.`, `Reportar un daño necesita señal. Intente de nuevo con conexión.`; los del servidor (inventario insuficiente, sin posición de cuarentena…) salen tal cual (ver capítulo 06, §4b).
-- Desechar lo que quedó en cuarentena o recuperarlo se hace en la web (Almacén → Daños).
+- Desechar lo que quedó en cuarentena o recuperarlo se hace en la web (Productos e inventario → pestaña Daños).
+- Si lo dañado se descubre **al recibir**, no hace falta este tile: marque «Vinieron unidades dañadas» en la captura del recibo (arriba, «Unidades dañadas al recibir»).
 
 ### Cerrar sesión, bloquear y quitar una compañía (2026-10-07)
 

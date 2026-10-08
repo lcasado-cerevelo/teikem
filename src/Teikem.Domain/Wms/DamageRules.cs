@@ -24,7 +24,7 @@ public static class DamageRules
     public static string UnknownOrigin(string value) => $"Origen desconocido: '{value}'. Use RECEIPT o WAREHOUSE.";
     public static string UnknownCause(string value) => $"Causa desconocida: '{value}'.";
     public static string UnknownDisposition(string value) => $"Destino desconocido: '{value}'. Use QUARANTINE o DISCARD.";
-    public static string NotQuarantineBin(string code) => $"La posición {code} no es de una zona de cuarentena.";
+    public static string BinInactive(string code) => $"La posición {code} está desactivada.";
     public static string RecoverZoneNotAllowed(string code, string zoneType) => $"La posición {code} está en una zona {zoneType}; lo recuperado vuelve a una posición de guardado.";
 
     /// <summary>Código visible DAN-#####.</summary>

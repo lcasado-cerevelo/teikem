@@ -16,7 +16,7 @@
 // Lectura: inventory.view + WMS_LOTSERIAL (aplicado por la ruta).
 import { useMemo, useRef, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Can } from '../../kernel/access'
+import { Can, useCan } from '../../kernel/access'
 import { useLookups } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n'
 import { Chip, DataTable, Filters, IconBox, IconLayers, IconTag, Panel, SearchSelect, Tabs, useRegisterFilter, type DataColumn } from '../../kernel/ui'
@@ -37,13 +37,14 @@ import { AdjustmentsReportButton, InventoryReportButton } from './InventoryRepor
 import { listParam } from './kardexView'
 import { formatNumber, useDebounced } from './lineRules'
 import { ProductMultiFilter, type ProductFilterItem } from './pickers'
+import { DamagePanel } from './DamageListScreen'
 import { ProductCategoriesPanel } from './ProductCategoriesPanel'
 import { ProductEditorByIdModal, ProductEditorModal } from './ProductEditorModal'
 import { parseKpiParam, productListQuery, toggleKpi, type ProductFilterState, type ProductKpi } from './productFilters'
 import '../analytics/pulse.css'
 import './warehouse.css'
 
-type ListTab = 'products' | 'categories'
+type ListTab = 'products' | 'categories' | 'damage'
 
 const PAGE_SIZE = 25
 const NO_ROWS: ProductListItemDto[] = []
@@ -373,7 +374,10 @@ export default function ProductListScreen() {
   const t = useT()
   // La pestaña va en la URL (?tab=categories; Productos, la primera, sin parámetro) para poder enlazarla.
   const [params, setParams] = useSearchParams()
-  const tab: ListTab = params.get('tab') === 'categories' ? 'categories' : 'products'
+  // «Daños» (2026-10-08) solo con warehouse.damage; sin él la dirección ?tab=damage cae en Productos.
+  const canDamage = useCan('warehouse.damage')
+  const raw = params.get('tab')
+  const tab: ListTab = raw === 'categories' ? 'categories' : raw === 'damage' && canDamage ? 'damage' : 'products'
   const setTab = (key: ListTab) => setParams(key === 'products' ? {} : { tab: key }, { replace: true })
 
   return (
@@ -386,10 +390,11 @@ export default function ProductListScreen() {
           tabs={[
             { key: 'products', label: t('warehouse.products.tabProducts') },
             { key: 'categories', label: t('warehouse.products.tabCategories') },
+            ...(canDamage ? [{ key: 'damage' as const, label: t('warehouse.damage.tab') }] : []),
           ]}
         />
       </div>
-      {tab === 'products' ? <ProductsTab /> : <ProductCategoriesPanel />}
+      {tab === 'products' ? <ProductsTab /> : tab === 'categories' ? <ProductCategoriesPanel /> : <DamagePanel />}
     </div>
   )
 }

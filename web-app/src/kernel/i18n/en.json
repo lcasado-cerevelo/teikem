@@ -2540,7 +2540,8 @@
         "targetSuggested": "Suggested: {bin} · {reason}",
         "targetPlaceholder": "Choose where it is stored…",
         "overCapacity": "Exceeds the capacity of {bin}: {free} fit",
-        "split": "Split across several bins"
+        "split": "Split across several bins",
+        "damage": "Damaged units"
       },
       "header": {
         "newTitle": "New receipt",
@@ -2578,6 +2579,34 @@
       },
       "chip": {
         "direct": "Direct to bin"
+      },
+      "damage": {
+        "title": "Damaged units of {product}",
+        "intro": "Of the {received} received, how many arrived damaged? The report is created when the receipt is confirmed and they leave the good stock.",
+        "quantity": "Damaged quantity",
+        "cause": "Reason",
+        "causePlaceholder": "Choose the reason",
+        "note": "Write the reason",
+        "disposition": "What happens to them?",
+        "place": "Leave them in a bin",
+        "discard": "Discard right away",
+        "placeHelp": "They are left in the bin you choose; if none, the first quarantine bin (or where the line lands if there is none).",
+        "discardHelp": "They leave the inventory when the receipt is confirmed, with a Damage adjustment.",
+        "bin": "Bin where they are left",
+        "binPlaceholder": "Quarantine (the first one)",
+        "saved": "Line damage saved.",
+        "cleared": "Line damage removed.",
+        "clear": "Remove damage",
+        "chip": "{qty} damaged",
+        "chipDiscard": "discard",
+        "errors": {
+          "qtyInvalid": "Enter a number.",
+          "qtyPositive": "The damaged quantity must be greater than 0.",
+          "qtyMax": "The damaged quantity cannot exceed the received one ({max}).",
+          "causeRequired": "Say how the damage happened.",
+          "noteRequired": "Write the reason for the damage when the cause is Other.",
+          "noteMax": "The note cannot exceed 300 characters."
+        }
       }
     },
     "asns": {
@@ -3361,7 +3390,8 @@
         "disposition": "What to do with it?",
         "notes": "Note (optional)",
         "toBin": "Position it returns to",
-        "resolutionNotes": "Note (optional)"
+        "resolutionNotes": "Note (optional)",
+        "quarantineBin": "Bin where it stays"
       },
       "cols": {
         "code": "Number",
@@ -3393,7 +3423,10 @@
         "lotRequired": "Say the lot.",
         "toBinRequired": "Say the position the recovered goods return to."
       },
-      "reportFromReceipt": "Report damage"
+      "reportFromReceipt": "Report damage",
+      "tab": "Damage",
+      "quarantineBinHelp": "Empty: the first quarantine bin of the warehouse. It can be any active bin.",
+      "quarantineBinPlaceholder": "Quarantine (the first one)"
     }
   },
   "system": {

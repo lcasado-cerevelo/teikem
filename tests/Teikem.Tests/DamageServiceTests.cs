@@ -69,6 +69,19 @@ public class DamageServiceTests
     }
 
     [Fact]
+    public async Task The_bin_where_damage_is_left_can_be_any_active_bin_not_only_quarantine()
+    {
+        var w = await SeedAsync();
+        var dto = await w.F.Get<DamageService>().ReportAsync(
+            Req(w, DamageOrigins.Warehouse, DamageDispositions.Quarantine, fromBin: w.Pick.WarehouseBinId, quarantineBin: w.Reserve.WarehouseBinId), default);
+
+        Assert.Equal("R-01", dto.QuarantineBinCode);
+        Assert.Equal(6m, await OnHandAsync(w, w.Pick));
+        Assert.Equal(4m, await OnHandAsync(w, w.Reserve));
+        Assert.Equal(0m, await OnHandAsync(w, w.Quarantine));
+    }
+
+    [Fact]
     public async Task Warehouse_damage_can_be_discarded_right_away_with_a_damage_adjustment()
     {
         var w = await SeedAsync();

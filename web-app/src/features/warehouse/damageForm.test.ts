@@ -12,6 +12,7 @@ const BASE: DamageFormValues = {
   quantity: 4,
   cause: 'WAREHOUSE_ACCIDENT',
   disposition: 'QUARANTINE',
+  quarantineBinId: '',
   notes: '  se cayó  ',
 }
 
@@ -31,6 +32,7 @@ describe('damageForm', () => {
       quantity: 4,
       cause: 'WAREHOUSE_ACCIDENT',
       disposition: 'QUARANTINE',
+      quarantineBinId: null,
       lotId: null,
       lot: null,
       notes: 'se cayó',
@@ -40,6 +42,11 @@ describe('damageForm', () => {
   it('un daño de recibo manda el recibo y no la posición', () => {
     const body = damageBody({ ...BASE, origin: 'RECEIPT', receiptPublicId: 'r-1', cause: 'ARRIVED_DAMAGED', disposition: 'DISCARD', notes: '' }, 'NONE')
     expect(body).toMatchObject({ origin: 'RECEIPT', receiptPublicId: 'r-1', fromBinId: null, disposition: 'DISCARD', notes: null })
+  })
+
+  it('la posición donde se deja lo dañado solo viaja si se manda a cuarentena', () => {
+    expect(damageBody({ ...BASE, quarantineBinId: '33' }, 'NONE')).toMatchObject({ quarantineBinId: 33 })
+    expect(damageBody({ ...BASE, quarantineBinId: '33', disposition: 'DISCARD' }, 'NONE')).toMatchObject({ quarantineBinId: null })
   })
 
   it('con lote usa el lote elegido; un lote nuevo solo vale al recibir lo dañado', () => {

@@ -5642,13 +5642,25 @@ Es normal: el modo de recepción es de cada almacén (Almacenes → modo de rece
 ## Daños: llegaron dañados o se dañaron en el almacén (2026-10-08)
 
 **¿Cómo registro algo que llegó dañado en un recibo?**
-Reciba solo lo bueno y reporte lo dañado: web (ficha del recibo → **Reportar daño**, o Almacén → Daños) o app (Inicio → Daño → «Llegó dañado en un recibo»). Elija **Mandar a cuarentena** (entra a la posición de cuarentena) o **Desechar** (no entra al inventario).
+Lo más fácil: **en la propia línea del recibo**. En la app, en la pantalla de la cantidad recibida marque **Vinieron unidades dañadas**, escriba cuántas y la razón (y, si es *Otra*, escríbala); después diga dónde se dejan (la sugerida es la de cuarentena) o toque **Desechar**. En la web, ficha del recibo abierto → ícono **Unidades dañadas** de la fila. Las dañadas cuentan dentro de lo recibido (100 recibidas, 10 dañadas → 90 buenas). Al confirmar el recibo se crea el `DAN-#####` y lo dañado sale de lo bueno. También puede reportarlo después: web (ficha del recibo → **Reportar daño**, o Productos e inventario → pestaña Daños) o app (Inicio → Daño → «Llegó dañado en un recibo»); ahí reciba solo lo bueno.
+
+**Dice `La cantidad dañada no puede ser mayor que la cantidad recibida.`**
+Las dañadas van dentro de lo recibido: escribió más dañadas que recibidas, o bajó lo recibido por debajo de lo ya declarado como dañado. Corrija una de las dos cantidades.
+
+**Dice `Escriba la razón del daño cuando la causa es Otro.`**
+Escogió la razón *Otra*: escriba en el cuadro qué pasó. Con las otras razones no hace falta.
+
+**¿Qué pasa con lo dañado si el recibo es «con acomodo»?**
+Entra con el resto a la posición de recepción y, al confirmar, sale de ahí hacia la posición que indicó (la de cuarentena por defecto) o se descarta. La tarea de acomodo solo lleva las unidades buenas. Si no hay posición de cuarentena y no indicó otra, se queda en la posición de recepción pero ya no se acomoda: es el daño en espera de decidir.
+
+**¿Puedo dejar lo dañado en una posición que no sea de cuarentena?**
+Sí, cualquier posición activa del almacén (en la app: escanee o escoja de la lista; en la web: «Posición donde queda»). El daño queda «En cuarentena» en esa posición hasta que lo desecha o lo recupera desde la pestaña Daños.
 
 **¿Y si se dañó en el almacén?**
 Reporte con origen «Se dañó en el almacén» y la posición donde estaba. Cuarentena la mueve a la posición de cuarentena; desechar la baja del inventario con un ajuste de motivo Daño.
 
 **Dice `El almacén no tiene una posición de cuarentena activa; cree una en una zona de tipo Cuarentena.`**
-Falta la zona. En Almacén → Posiciones cree una zona de tipo Cuarentena con al menos una posición activa, o desbloquee la existente.
+Falta la zona. En Almacén → Posiciones cree una zona de tipo Cuarentena con al menos una posición activa, o desbloquee la existente. (Al reportar un daño, o al declararlo en un recibo, también puede indicar cualquier otra posición activa.)
 
 **Dice `Inventario insuficiente de {sku} en {posición}: disponible {x}, solicitado {y}.`**
 Reportó más unidades de las que hay disponibles en esa posición (lo reservado no cuenta). Revise la cantidad o la posición.
@@ -5660,10 +5672,10 @@ Ese daño ya se desechó o se recuperó (o se desechó de una vez). No se resuel
 Por ahora los productos con serie no pasan por Daños: use Transferencias y ajustes → Ajustar → Bajar, motivo Daño, con la serie.
 
 **¿Dónde veo cuánto se ha dañado y por qué?**
-En Almacén → Daños (filtros por estatus, origen y búsqueda). Para gráficos o indicadores use la fuente de datos «Daños» en Vistas e informes.
+En Productos e inventario → pestaña **Daños** (filtros por estatus, origen y búsqueda). Para gráficos o indicadores use la fuente de datos «Daños» en Vistas e informes.
 
 **Lo mandé a cuarentena por error.**
-En Daños, **Recuperar** (elija una posición de guardado): la existencia vuelve y el daño queda como Recuperado.
+En la pestaña Daños, **Recuperar** (elija una posición de guardado): la existencia vuelve y el daño queda como Recuperado.
 
 **¿Por qué no sale el tile Daño en la app?**
 Su usuario no tiene el permiso «Reportar y resolver daños» (`warehouse.damage`). Pídalo al administrador (Sistema → Roles y usuarios).

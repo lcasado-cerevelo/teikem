@@ -19,10 +19,12 @@ import type { components } from '../../kernel/api/schema'
 import { useLang, useT } from '../../kernel/i18n'
 import { formatQuantity } from '../../kernel/i18n/numberFormat'
 import { ConfirmDialog, DataTable, EmptyState, IconGrid, IconTag, IconTrash, toast, useElementWidth, type DataColumn, type RowAction } from '../../kernel/ui'
+import { IconAlert } from '../../kernel/ui/icons'
 import { productLabel, useReceiptTargetSuggestions, type ReceiptDetailDto } from './api'
 import { formatNumber } from './lineRules'
 import { BinPicker, ProductPicker } from './pickers'
 import { ReceiptLineCaptureModal } from './ReceiptLineCaptureModal'
+import { ReceiptLineDamageModal } from './ReceiptLineDamageModal'
 import { ReceiptSplitModal } from './ReceiptSplitModal'
 import { isEmptyRow, parseQtyText, rowNeedsTarget, rowVariance, type LineRow } from './receiptLineEdit'
 import { exceedsCapacity, TARGET_EXCLUDED_ZONE_TYPES, topSuggestion } from './receivingMode'
@@ -116,11 +118,27 @@ function ProductCell({ row, editable }: { row: LineRow; editable: boolean }) {
           {row.errors.row}
         </span>
       )}
+      <DamageChip row={row} />
       {row.saving && (
         <span className="rcp-faint" role="status">
           {t('warehouse.receipts.lines.saving')}
         </span>
       )}
+    </span>
+  )
+}
+
+/** 2026-10-08: lo dañado declarado en la línea («3 dañadas · Q-01», «… · desechar» o el DAN-##### ya creado al confirmar). */
+function DamageChip({ row }: { row: LineRow }) {
+  const t = useT()
+  const lang = useLang()
+  const { receipt } = useEditor()
+  const line = row.lineId === null ? null : (receipt.lines ?? []).find((l) => l.id === row.lineId)
+  if (!line || (line.damagedQty ?? 0) <= 0) return null
+  const where = line.damageDiscard ? t('warehouse.receipts.damage.chipDiscard') : line.damageBinCode
+  return (
+    <span className="chip s-cod rcp-over" role="status">
+      {[t('warehouse.receipts.damage.chip', { qty: formatNumber(line.damagedQty ?? 0, lang) }), where, line.damageReportCode].filter(Boolean).join(' · ')}
     </span>
   )
 }
@@ -206,6 +224,8 @@ export function ReceiptLinesEditor({ receipt, state }: ReceiptLinesEditorProps) 
   const width = useElementWidth(boxRef)
   const [capturing, setCapturing] = useState<LineDto | null>(null)
   const [removing, setRemoving] = useState<LineRow | null>(null)
+  // 2026-10-08: unidades dañadas de la línea
+  const [damaging, setDamaging] = useState<LineDto | null>(null)
   // repartir una línea en varias posiciones (recibo directo sin documento)
   const [splitting, setSplitting] = useState<LineRow | null>(null)
 
@@ -282,6 +302,16 @@ export function ReceiptLinesEditor({ receipt, state }: ReceiptLinesEditorProps) 
         onClick: (r) => setCapturing((receipt.lines ?? []).find((l) => l.id === r.lineId) ?? null),
       },
       {
+        key: 'damage',
+        label: t('warehouse.receipts.lines.damage'),
+        icon: <IconAlert />,
+        perm: 'warehouse.receive',
+        // líneas ya guardadas con algo recibido y sin serie (los productos por serie todavía no declaran daño aquí)
+        visible: (r) => editable && r.lineId !== null && r.trackingTypeCode !== 'SERIAL' && (parseQtyText(r.received) ?? 0) > 0,
+        disabled: (r) => r.saving,
+        onClick: (r) => setDamaging((receipt.lines ?? []).find((l) => l.id === r.lineId) ?? null),
+      },
+      {
         key: 'split',
         label: t('warehouse.receipts.lines.split'),
         icon: <IconGrid />,
@@ -331,6 +361,16 @@ export function ReceiptLinesEditor({ receipt, state }: ReceiptLinesEditorProps) 
           receipt={receipt}
           line={capturing}
           onClose={() => setCapturing(null)}
+          onSaved={(_dto, line) => {
+            if (line) state.applyLine(line)
+          }}
+        />
+      )}
+      {damaging && (
+        <ReceiptLineDamageModal
+          receipt={receipt}
+          line={damaging}
+          onClose={() => setDamaging(null)}
           onSaved={(_dto, line) => {
             if (line) state.applyLine(line)
           }}

@@ -7,7 +7,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AccessProvider } from '../../kernel/access'
 import { setLang } from '../../kernel/i18n/i18n'
-import DamageListScreen from './DamageListScreen'
+import { DamagePanel } from './DamageListScreen'
 
 interface Call {
   method: string
@@ -73,7 +73,7 @@ function wrap(permissions: string[]) {
     <MemoryRouter>
       <QueryClientProvider client={client}>
         <AccessProvider permissions={permissions} modules={['WMS_LOTSERIAL']}>
-          <DamageListScreen />
+          <DamagePanel />
         </AccessProvider>
       </QueryClientProvider>
     </MemoryRouter>,

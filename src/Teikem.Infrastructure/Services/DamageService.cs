@@ -369,7 +369,8 @@ public sealed class DamageService(TeikemDbContext db, ITenantContext tenant, ILo
         if (requested is int binId)
         {
             var bin = await ResolveBinAsync(warehouseId, binId, ct);
-            if (await ZoneTypeOfAsync(bin.WarehouseZoneId, ct) != ZoneTypes.Quarantine) throw new ValidationException("quarantineBinId", DamageRules.NotQuarantineBin(bin.Code));
+            // 2026-10-08: la posición indicada puede ser cualquiera activa del almacén (no solo de cuarentena): "dónde se deja lo dañado".
+            if (!bin.IsActive) throw new ValidationException("quarantineBinId", DamageRules.BinInactive(bin.Code));
             return bin;
         }
         var found = quarantineTypeId is int tid

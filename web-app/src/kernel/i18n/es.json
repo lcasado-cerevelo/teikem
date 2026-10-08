@@ -2540,7 +2540,8 @@
         "targetSuggested": "Sugerida: {bin} · {reason}",
         "targetPlaceholder": "Elija dónde se guarda…",
         "overCapacity": "Excede el cupo de {bin}: caben {free}",
-        "split": "Repartir en varias posiciones"
+        "split": "Repartir en varias posiciones",
+        "damage": "Unidades dañadas"
       },
       "header": {
         "newTitle": "Nuevo recibo",
@@ -2578,6 +2579,34 @@
       },
       "chip": {
         "direct": "Directo a posición"
+      },
+      "damage": {
+        "title": "Unidades dañadas de {product}",
+        "intro": "De las {received} recibidas, ¿cuántas vinieron dañadas? Al confirmar el recibo se crea el reporte y salen de lo bueno.",
+        "quantity": "Cantidad dañada",
+        "cause": "Razón",
+        "causePlaceholder": "Escoja la razón",
+        "note": "Escriba la razón",
+        "disposition": "¿Qué se hace con ellas?",
+        "place": "Dejarlas en una posición",
+        "discard": "Desechar de una vez",
+        "placeHelp": "Se dejan en la posición que indique; sin indicarla, la primera de cuarentena (o donde quede la línea si no hay).",
+        "discardHelp": "Salen del inventario al confirmar el recibo, con un ajuste de motivo Daño.",
+        "bin": "Posición donde se dejan",
+        "binPlaceholder": "Cuarentena (la primera)",
+        "saved": "Daño de la línea guardado.",
+        "cleared": "Se quitó el daño de la línea.",
+        "clear": "Quitar daño",
+        "chip": "{qty} dañadas",
+        "chipDiscard": "desechar",
+        "errors": {
+          "qtyInvalid": "Escriba un número.",
+          "qtyPositive": "La cantidad dañada debe ser mayor que 0.",
+          "qtyMax": "La cantidad dañada no puede ser mayor que la recibida ({max}).",
+          "causeRequired": "Indique cómo ocurrió el daño.",
+          "noteRequired": "Escriba la razón del daño cuando la causa es Otro.",
+          "noteMax": "La nota no puede pasar de 300 caracteres."
+        }
       }
     },
     "asns": {
@@ -3361,7 +3390,8 @@
         "disposition": "¿Qué se hace con ello?",
         "notes": "Nota (opcional)",
         "toBin": "Posición a la que vuelve",
-        "resolutionNotes": "Nota (opcional)"
+        "resolutionNotes": "Nota (opcional)",
+        "quarantineBin": "Posición donde queda"
       },
       "cols": {
         "code": "Número",
@@ -3393,7 +3423,10 @@
         "lotRequired": "Indique el lote.",
         "toBinRequired": "Indique la posición a la que vuelve lo recuperado."
       },
-      "reportFromReceipt": "Reportar daño"
+      "reportFromReceipt": "Reportar daño",
+      "tab": "Daños",
+      "quarantineBinHelp": "Vacía: la primera posición de cuarentena del almacén. Puede ser cualquier posición activa.",
+      "quarantineBinPlaceholder": "Cuarentena (la primera)"
     }
   },
   "system": {

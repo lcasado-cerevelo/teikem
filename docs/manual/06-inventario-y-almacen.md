@@ -1171,21 +1171,21 @@ Casos frecuentes (Lote 16):
 
 ## 4b. Daños: lo que llegó dañado o se dañó en el almacén (2026-10-08)
 
-**Qué hace.** Registra un daño con su causa y manda lo dañado a **cuarentena** (a una posición de una zona de tipo Cuarentena) o lo **desecha de una vez**. Lo que queda en cuarentena se **desecha** después o se **recupera** a una posición de guardado. Todo movimiento de inventario lo hace el ledger (ajuste con motivo *Daño* o transferencia): queda en el Kárdex con la nota `DAN-00012 · {causa} · {nota}`. No hay fotos ni reclamos: la **causa** es solo informativa.
+**Qué hace.** Registra un daño con su causa y manda lo dañado a **cuarentena** (por defecto a la primera posición de una zona de tipo Cuarentena; también puede indicar **cualquier otra posición activa** del almacén) o lo **desecha de una vez**. Lo que queda en cuarentena se **desecha** después o se **recupera** a una posición de guardado. Todo movimiento de inventario lo hace el ledger (ajuste con motivo *Daño* o transferencia): queda en el Kárdex con la nota `DAN-00012 · {causa} · {nota}`. No hay fotos ni reclamos: la **causa** es solo informativa.
 
-**Quién y dónde.** Permiso **Reportar y resolver daños** (`warehouse.damage`; lo trae «Operador de almacén»; módulo WMS). Web: **Almacén → Daños** (`/warehouse/damage`) y el botón **Reportar daño** de la ficha de un recibo. App: tile **Daño** en Inicio (solo con ese permiso).
+**Quién y dónde.** Permiso **Reportar y resolver daños** (`warehouse.damage`; lo trae «Operador de almacén»; módulo WMS). Web: **Almacén → Productos e inventario → pestaña Daños** (`/warehouse/products?tab=damage`; la dirección anterior `/warehouse/damage` redirige ahí) y el botón **Reportar daño** de la ficha de un recibo. App: tile **Daño** en Inicio (solo con ese permiso).
 
 **Dos orígenes.**
 - **Se dañó en el almacén** (la mercancía ya está en inventario): se indica la **posición donde estaba**. *Cuarentena* = transferencia de esa posición a la de cuarentena. *Desechar* = ajuste negativo con motivo Daño.
-- **Llegó dañado en un recibo** (esas unidades **no entran como buenas**): se indica el **recibo**. *Cuarentena* = esas unidades entran directo a la posición de cuarentena (ajuste positivo, motivo Daño). *Desechar de una vez* = no entran al inventario; solo queda el reporte. Al confirmar el recibo, reciba solo lo bueno; lo dañado se reporta aparte (la diferencia contra lo esperado la ve como siempre).
+- **Llegó dañado en un recibo** (esas unidades **no entran como buenas**): se indica el **recibo**. *Cuarentena* = esas unidades entran directo a la posición de cuarentena (ajuste positivo, motivo Daño). *Desechar de una vez* = no entran al inventario; solo queda el reporte. Al confirmar el recibo, reciba solo lo bueno; lo dañado se reporta aparte (la diferencia contra lo esperado la ve como siempre). **Mejor: declare el daño en la propia línea del recibo** (ver «Daño declarado en la línea del recibo», abajo): así no hay que reportar nada aparte.
 
 **Causa:** *Vino así*, *Accidente en el camino*, *Accidente en el almacén*, *Otra* (catálogo `DamageCause`). Por defecto, un daño de recibo propone *Vino así* y uno del almacén *Accidente en el almacén*.
 
 **Estatus** (`DamageStatus`): Reportado (inicial) → **En cuarentena** → **Desechado** o **Recuperado** (terminales); también Reportado → Desechado cuando se desecha de una vez. Un daño resuelto no se vuelve a resolver.
 
 **Cómo se usa.**
-1. *Reportar:* web (Almacén → Daños → **Reportar daño**, o desde la ficha del recibo) o app (Inicio → **Daño**). Se elige origen, producto (y lote si el producto lleva lote), cantidad, causa y **Mandar a cuarentena / Desechar**. La posición de cuarentena es la primera activa del almacén por código (o la que se indique al API).
-2. *Desechar o recuperar lo que está en cuarentena:* en la lista web, íconos **Desechar** (nota opcional) y **Recuperar** (hay que elegir la posición de guardado; nunca de cuarentena, recepción, cruce de muelle ni renta). La app solo reporta; resolver se hace en la web.
+1. *Reportar:* web (Productos e inventario → pestaña **Daños** → **Reportar daño**, o desde la ficha del recibo) o app (Inicio → **Daño**). Se elige origen, producto (y lote si el producto lleva lote), cantidad, causa y **Mandar a cuarentena / Desechar**. Al mandar a cuarentena la web pregunta **«Posición donde queda»** (opcional): vacía, es la primera posición de cuarentena activa del almacén por código; puede ser cualquier posición activa.
+2. *Desechar o recuperar lo que está en cuarentena:* en la lista de la pestaña Daños, íconos **Desechar** (nota opcional) y **Recuperar** (hay que elegir la posición de guardado; nunca de cuarentena, recepción, cruce de muelle ni renta). La app solo reporta; resolver se hace en la web.
 3. *Consultar:* la lista filtra por estatus, origen y búsqueda libre (SKU, producto o `DAN-00012`). La fuente de datos `DAMAGE_REPORT` queda disponible para vistas, indicadores y gráficos (por causa, origen, producto o estatus).
 
 **Validaciones (mensaje exacto y código).**
@@ -1199,7 +1199,7 @@ Casos frecuentes (Lote 16):
 | Origen recibo sin recibo | `Indique el recibo del que llegó dañado.` | 400 |
 | Origen almacén sin posición | `Indique la posición donde está lo dañado.` | 400 |
 | Nota de más de 300 caracteres | `La nota no puede pasar de 300 caracteres.` | 400 |
-| Posición de cuarentena indicada que no lo es | `La posición {código} no es de una zona de cuarentena.` | 400 |
+| Posición indicada desactivada | `La posición {código} está desactivada.` | 400 |
 | Recuperar sin posición | `Indique la posición a la que vuelve lo recuperado.` | 400 |
 | Recuperar a zona no permitida | `La posición {código} está en una zona {tipo}; lo recuperado vuelve a una posición de guardado.` | 400 |
 | Más de lo que hay en la posición | `Inventario insuficiente de {sku} en {posición}: disponible {x}, solicitado {y}.` | 409 |
@@ -1208,7 +1208,21 @@ Casos frecuentes (Lote 16):
 | Desechar/recuperar algo que no está en cuarentena | `Solo se resuelve un daño que está en cuarentena.` | 422 |
 | Daño, recibo, producto, posición o lote inexistente | `… no encontrado.` | 404 |
 
-**Casos frecuentes.** *Llegaron 100 y 10 venían rotas:* reciba 90 y reporte 10 con origen «Llegó dañado» (a cuarentena o desechar). *Se cayó una tarima en A-01:* reporte con origen «Se dañó en el almacén» y la posición A-01. *Lo mandé a cuarentena y se puede vender:* en Daños, **Recuperar** a una posición de guardado. *Crear la zona de cuarentena:* Almacén → Posiciones → zona de tipo Cuarentena con al menos una posición.
+**Daño declarado en la línea del recibo (2026-10-08).** Al capturar la línea de un recibo, la app y la web permiten decir *«de lo recibido, vinieron N unidades dañadas»*: cantidad dañada, **razón** (catálogo *Vino así*, *Accidente en el camino*, *Accidente en el almacén*, *Otra*; con *Otra* hay que escribir la razón) y **dónde quedan** (una posición — por defecto la de cuarentena si existe, si no donde queda la línea —) o **desechar de una vez**. Las dañadas **cuentan dentro de lo recibido** (recibí 100, 10 dañadas → recibidas 100, buenas 90). Al **confirmar** el recibo, el servidor crea un reporte `DAN-00012` por línea con daño (origen *Llegó dañado*, enlazado al recibo): las unidades entran con el resto de la línea y salen de ahí hacia la posición indicada (transferencia) o se descartan (ajuste negativo, motivo Daño); la **tarea de acomodo solo cuenta lo bueno**. Si la posición indicada es la misma donde aterrizó la línea no hay movimiento: el reporte queda *En cuarentena* ahí. En la web: ficha del recibo abierto → ícono **Unidades dañadas** de la fila (y **Quitar daño**); la fila muestra «3 dañadas · Q-01» y, ya confirmado, el `DAN-…`. Productos con serie: no se declaran aquí. Si el recibo es contra aviso u orden de compra y se captura el mismo producto en varias líneas, lo dañado se suma a la línea del documento.
+
+Validaciones de la línea (`400`, bajo el campo `damagedQty` / `damageCause` / `damageNote`):
+| Situación | Mensaje | HTTP |
+|---|---|---|
+| Más dañadas que recibidas | `La cantidad dañada no puede ser mayor que la cantidad recibida.` | 400 |
+| Más de 3 decimales | `La cantidad dañada admite hasta 3 decimales.` | 400 |
+| Cantidad dañada negativa | `La cantidad dañada debe ser mayor que 0.` | 400 |
+| Sin razón | `Indique cómo ocurrió el daño.` | 400 |
+| Razón *Otra* sin comentario | `Escriba la razón del daño cuando la causa es Otro.` | 400 |
+| Producto con serie | `Los productos con serie todavía no se reportan aquí; use un ajuste de inventario con motivo Daño.` | 400 |
+| Bajar lo recibido por debajo de lo dañado | `La cantidad dañada no puede ser mayor que la cantidad recibida.` | 400 |
+| Posición del daño inexistente / desactivada | `… no encontrada.` (404) / `La posición {código} está desactivada.` | 404 / 422 |
+
+**Casos frecuentes.** *Llegaron 100 y 10 venían rotas:* en la línea marque 10 dañadas (recibidas 100) con su razón; al confirmar quedan 90 buenas y 10 en cuarentena. También puede recibir 90 y reportar 10 aparte con origen «Llegó dañado» (a cuarentena o desechar). *Se cayó una tarima en A-01:* reporte con origen «Se dañó en el almacén» y la posición A-01. *Lo mandé a cuarentena y se puede vender:* en la pestaña Daños, **Recuperar** a una posición de guardado. *Crear la zona de cuarentena:* Almacén → Posiciones → zona de tipo Cuarentena con al menos una posición.
 
 ## 5. Tareas de almacén: cola unificada, putaway dirigido y reabasto
 

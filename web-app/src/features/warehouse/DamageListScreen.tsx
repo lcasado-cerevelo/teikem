@@ -1,4 +1,4 @@
-// Daños (2026-10-08): `/warehouse/damage`. Lectura y todo lo demás: `warehouse.damage` (+ módulo WMS por la ruta). Lista de los reportes con filtro por
+// Daños (2026-10-08): pestaña «Daños» de Productos e inventario (`/warehouse/products?tab=damage`; `/warehouse/damage` redirige). Lectura y todo lo demás: `warehouse.damage` (+ módulo WMS por la ruta). Lista de los reportes con filtro por
 // estatus y origen y búsqueda libre (SKU, producto o DAN-#####); «Reportar daño» abre el modal; lo que está EN CUARENTENA se desecha o se recupera con
 // los íconos de la fila. Clic en la fila no abre nada: la lista ya muestra todo (posición, causa, notas, quién y cuándo).
 import { useMemo, useState } from 'react'
@@ -16,7 +16,7 @@ import { formatNumber } from './lineRules'
 const STATUS_COLORS: Record<string, string> = { REPORTED: '#9CA3AF', QUARANTINED: '#F59E0B', DISCARDED: '#EF4444', RECOVERED: '#059669' }
 const STATUSES = ['QUARANTINED', 'DISCARDED', 'RECOVERED'] as const
 
-export default function DamageListScreen() {
+export function DamagePanel() {
   const t = useT()
   const f = useFormat()
   const [status, setStatus] = useState('')
@@ -72,10 +72,10 @@ export default function DamageListScreen() {
   )
 
   return (
-    <div className="wrap">
+    <>
       <div className="head">
         <div>
-          <h1>{t('warehouse.damage.title')}</h1>
+          <h2>{t('warehouse.damage.title')}</h2>
           <p>{t('warehouse.damage.subtitle')}</p>
         </div>
         <div className="act">
@@ -136,6 +136,8 @@ export default function DamageListScreen() {
 
       <DamageReportModal open={reporting} onClose={() => setReporting(false)} />
       <DamageResolveModal damage={resolving?.damage ?? null} action={resolving?.action ?? 'discard'} onClose={() => setResolving(null)} />
-    </div>
+    </>
   )
 }
+
+export default DamagePanel
