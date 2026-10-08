@@ -82,9 +82,17 @@ describe('Conteo abierto — varios productos', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Agregar' }))
     await waitFor(() => expect(screen.getByText('SKU-2 agregado en C-03.')).toBeTruthy())
 
-    // el primer producto otra vez en la misma posición: abre su línea para corregir (no duplica ni suma)
+    // 2026-10-07: tocar un producto de la lista lo pone en el campo de escaneo (se confirma con Aceptar)
+    await fireEvent.press(screen.getByLabelText('Poner SKU-1 en el campo'))
+    expect(screen.getByLabelText('Escanea el producto contado').props.value).toBe('SKU-1')
+
+    // el primer producto otra vez: su única posición (A-01) ya está contada, así que NO se vuelve a ofrecer
     await scan('Escanea el producto contado', '7501')
-    await waitFor(() => expect(screen.getByText('SKU-1 ya estaba contado en A-01: corrige la cantidad.')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/Ya contaste este producto en todas las posiciones/)).toBeTruthy())
+    expect(screen.queryByTestId('open-count-bin')).toBeNull()
+    await fireEvent.press(screen.getByRole('button', { name: 'Cancelar' }))
+    // para corregir la cantidad se toca ✎ en su línea (no duplica ni suma)
+    await fireEvent.press(screen.getByRole('button', { name: 'Editar Tornillo · 5' }))
     await fireEvent.changeText(screen.getByLabelText('Cantidad encontrada'), '6')
     await fireEvent.press(screen.getByRole('button', { name: 'Guardar' }))
     await waitFor(() => expect(screen.getByText('Tornillo · 6')).toBeTruthy())

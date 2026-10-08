@@ -5545,6 +5545,35 @@ Es lo esperado: las marcas se recortan para no pasarse del total, empezando por 
 **¿Por qué no sale el listado en un producto con lote?**
 Con lote la posición es la del lote que vence primero y no se escoge.
 
+## Conteo cíclico en la app: retomar, terminar con faltantes y conteos abiertos (2026-10-07)
+
+**Escaneé otra vez la misma posición y no se abrió otro conteo.**
+Es a propósito: si esa posición ya tiene un conteo abierto tuyo (o sin asignar) se **retoma** con lo que ya contaste (`Retomaste el conteo CC-… de …: ya llevas n de m contados.`). Antes se abría uno nuevo cada vez.
+
+**`Esa posición la está contando {Nombre} ({CC-#####}).`**
+Otra persona tiene abierto el conteo de esa posición. Que lo termine o lo guarde, o que un supervisor lo dé de baja o lo reasigne en la web (Conteo cíclico).
+
+**¿Por qué en la web veo la lista completa de líneas del conteo y no solo lo que conté?**
+Un conteo por posición trae **todas** las líneas que el sistema espera en esa posición; lo que contaste aparece como «Contado» y el resto como «Pendiente».
+
+**Toqué «Terminar esta posición» y me preguntó «Faltan N producto(s) por contar».**
+El conteo solo se cierra con todas las líneas contadas. Elige **Seguir contando**, **Guardar y seguir después** (el conteo queda abierto para retomarlo) o **Dejar en 0 y terminar** (lo que falta se cuenta como 0 y queda como diferencia para el supervisor).
+
+**Guardé y seguí después, pero ahora no me deja hacer otra cosa.**
+Es a propósito: mientras tengas un conteo abierto, las demás acciones avisan `Termina o cancela el conteo en curso antes de usar esto.` En **Conteo → Conteos abiertos** toca **Continuar** para terminarlo (o cancelarlo si tienes `warehouse.count`).
+
+**`Tienes abierto el conteo CC-… (…). Termínalo o guárdalo antes de contar otra cosa.`**
+Estás intentando abrir otra posición o «Por producto» con un conteo abierto. Retoma ese (escanear su misma posición también lo retoma) y termínalo.
+
+**Un conteo abierto aparece en la lista pero ya no existe / no puedo continuarlo.**
+Si un supervisor lo dio de baja, al tocar **Continuar** sale `Conteo no encontrado.` y se quita de la lista.
+
+**`El servidor no aceptó terminar el conteo: …`**
+El cierre fue rechazado en el servidor (por ejemplo, una línea ya corregida por el supervisor). El mensaje dice el motivo; también queda en Sincronización.
+
+**«Por producto»: la posición donde ya conté ese producto ya no aparece.**
+Es a propósito: solo se ofrecen las posiciones que aún no contaste. Para corregir una cantidad ya contada, toca ✎ en su línea de la lista. Para contar el mismo producto en otra posición, toca el producto en la lista (se pone en el campo de escaneo) y da Aceptar.
+
 ## Recuperar la contraseña (2026-10-07)
 
 **Olvidé mi contraseña.**

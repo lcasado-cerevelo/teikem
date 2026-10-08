@@ -49,7 +49,7 @@ describe('Conteo por producto — retomar, buscador y cancelar', () => {
     await renderRouter('src/app', { initialUrl: '/count' })
     await waitFor(() => expect(screen.getByText('Tornillo')).toBeTruthy())
     // nada se pidió al servidor para retomar
-    expect(calls).toEqual([])
+    expect(calls.filter((c) => c.path !== '/api/v1/cycle-counts/page')).toEqual([]) // salvo la consulta de «Conteos abiertos» (sin señal falla en silencio)
     expect(screen.getByLabelText('Cantidad en A-02').props.value).toBe('8')
     expect(screen.getByText('6 posiciones en blanco se toman como 0.')).toBeTruthy()
     // a ciegas: no hay "Esperado"

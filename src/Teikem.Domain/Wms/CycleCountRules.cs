@@ -48,6 +48,8 @@ public static class CycleCountRules
     public const string NothingSelected = "Los filtros no seleccionan inventario en mano para contar; amplíe los filtros o agregue líneas a mano.";
     public const string AllowEmptyOnlyOneProduct = "Crear un conteo vacío (allowEmpty) solo aplica a uno o ningún producto, sin posiciones, zonas ni categorías.";
     public const string CountNotOpen = "El conteo ya fue reconciliado; solo se consulta.";
+    /// <summary>2026-10-07 (app, retomar): la posición ya la tiene abierta otro contador (POST /cycle-counts con resumeOpen).</summary>
+    public static string BinBeingCounted(string countedBy, string number) => $"Esa posición la está contando {countedBy} ({number}).";
     public const string CountAlreadyFinished = "El conteo ya se terminó; puede corregir la captura o reconciliarlo.";
     public const string DeleteOnlyOpen = "Solo se elimina un conteo abierto; este ya se terminó de contar.";
     public const string NoLines = "El conteo no tiene líneas.";

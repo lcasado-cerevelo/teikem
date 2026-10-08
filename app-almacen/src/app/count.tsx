@@ -20,10 +20,14 @@ import { KeyboardScreen } from '../kernel/ui/KeyboardScreen'
 import {
   cancelCountOnline,
   enqueueFinishCount,
+  enqueueSaveCount,
   fetchExpectedLines,
+  loadOpenCount,
   startCountOnline,
   startOpenCountOnline,
+  type StartedCount,
 } from '../features/count/countApi'
+import { addOpenCountHint, getOpenCountHints, refreshOpenCountHints, rejectionOfCount, removeOpenCountHint, type OpenCountHint } from '../features/count/openCountHints'
 import { hasAnyCountedQty, matchExpectedLine, parseQty, productCountBlocker, remainingExpectedLines, type ExpectedLine } from '../features/count/countLogic'
 import {
   addExtraLine,
@@ -59,7 +63,7 @@ type Edit = { id: number; sku: string; productName: string; systemQty: number | 
 export default function CountScreen() {
   const { t } = useT()
   const router = useRouter()
-  const { device } = useSession()
+  const { session } = useSession()
   const activeWarehouse = useActiveWarehouse()
   const warehousePublicId = activeWarehouse.publicId
   const [tick, setTick] = useState(0)
@@ -80,6 +84,24 @@ export default function CountScreen() {
   const [pendingProduct, setPendingProduct] = useState<CountProduct | null>(null)
   // Tarea 25 (conteo informado al capturar): resultado de verificar la última cantidad aceptada contra lo esperado (se quita al escanear otro producto).
   const [reveal, setReveal] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null)
+  // 2026-10-07: conteos de ESTE usuario que quedaron abiertos en el servidor (guardó y siguió después, o cerró la app): se listan para continuarlos y
+  // bloquean abrir otro. La copia guardada sale al instante; con señal se corrige con lo que diga el servidor.
+  const userId = session?.userId
+  const [hints, setHints] = useState<OpenCountHint[]>(() => getOpenCountHints(warehousePublicId, userId))
+  // Número (CC-#####) del conteo abierto ahora, para el aviso de «guardar y seguir después».
+  const [countNumber, setCountNumber] = useState<string>('')
+  // Sube la pantalla hasta el campo de escaneo al tocar un producto de «Lo que se espera aquí».
+  const prefillSeq = prefill?.seq ?? 0
+  useEffect(() => {
+    if (!warehousePublicId || userId == null) return
+    let alive = true
+    void refreshOpenCountHints(warehousePublicId, userId).then((list) => {
+      if (alive) setHints(list)
+    })
+    return () => {
+      alive = false
+    }
+  }, [warehousePublicId, userId])
 
   // tick fuerza releer la base local tras cada mutación; getOpenCount() no usa tick.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -124,12 +146,56 @@ export default function CountScreen() {
         vibrateError()
         return
       }
-      const started = await startCountOnline(warehousePublicId!, bin.id)
-      startLocalCount(warehousePublicId!, bin, { countId: started.countId, isBlind: started.isBlind })
-      setExpectedLines(started.expectedLines)
-      vibrateOk()
-      refresh()
+      // Con un conteo abierto de OTRA posición no se abre otro (el de esta misma posición se retoma).
+      const blocker = hints.find((h) => h.binCode.toLowerCase() !== bin.code.toLowerCase())
+      if (blocker) {
+        setBinError(t('count.otherCountBlocked', { number: blocker.number, bin: blocker.binCode }))
+        vibrateError()
+        return
+      }
+      openLocally(await startCountOnline(warehousePublicId!, bin.id), bin)
     } catch (err) {
+      setBinError(err instanceof ApiError ? err.title : t('count.startError'))
+      vibrateError()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** Deja el conteo (nuevo o retomado) abierto en el aparato; en uno retomado vuelve a poner lo que ya estaba contado y su estado de verificación. */
+  function openLocally(started: StartedCount, bin: { id: number; code: string }) {
+    const localId = startLocalCount(warehousePublicId!, bin, { countId: started.countId, isBlind: started.isBlind })
+    for (const c of started.captured) {
+      const line = started.expectedLines.find((l) => l.lineId === c.lineId)
+      if (line) captureExpectedLine(localId, line, c.countedQty)
+    }
+    for (const k of started.checks) rememberCheck(k.lineId, k.state)
+    setCountNumber(started.number)
+    setExpectedLines(started.expectedLines)
+    if (started.resumed) {
+      setReveal({ tone: 'ok', text: t('count.resumed', { number: started.number, bin: bin.code, counted: started.captured.length, lines: started.expectedLines.length }) })
+    }
+    vibrateOk()
+    refresh()
+  }
+
+  /** «Continuar» en la lista de conteos abiertos: se retoma por su id (también sirve con duplicados de la misma posición). */
+  async function resumeHint(hint: OpenCountHint) {
+    setBinError(null)
+    setBusy(true)
+    try {
+      const started = await loadOpenCount(hint.countId)
+      if (started.binId == null || !started.binCode) {
+        setBinError(t('count.startError'))
+        return
+      }
+      openLocally(started, { id: started.binId, code: started.binCode })
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) {
+        // el conteo ya no existe (lo canceló un supervisor): se quita de la lista
+        removeOpenCountHint(hint.countId)
+        setHints(getOpenCountHints(warehousePublicId, userId))
+      }
       setBinError(err instanceof ApiError ? err.title : t('count.startError'))
       vibrateError()
     } finally {
@@ -157,6 +223,11 @@ export default function CountScreen() {
     if (productCountBlocker(product) === 'serial') {
       // no se crea ningún conteo: no se podría terminar desde la app (no hay captura de series)
       setProductError(t('count.serialNotSupported'))
+      vibrateError()
+      return
+    }
+    if (hints.length > 0) {
+      setProductError(t('count.otherCountBlocked', { number: hints[0].number, bin: hints[0].binCode }))
       vibrateError()
       return
     }
@@ -248,6 +319,8 @@ export default function CountScreen() {
           setBusy(true)
           try {
             await cancelCountOnline(openCount.countId)
+            removeOpenCountHint(openCount.countId)
+            setHints(getOpenCountHints(warehousePublicId, userId))
             discardLocalCount()
             forgetChecks()
             setDraft(null)
@@ -264,14 +337,71 @@ export default function CountScreen() {
     ])
   }
 
+  /** Manda el cierre y, en cuanto se sincroniza, avisa si el servidor lo rechazó (sin esperar a que alguien abra la pantalla de Sincronización). */
+  function sendAndWatch(countId: number) {
+    void runSync().then(() => {
+      const message = rejectionOfCount(countId)
+      if (message) Alert.alert(t('count.finishRejected', { message }))
+    })
+  }
+
+  /** Terminar esta posición: con todas las líneas contadas se cierra; si faltan, se pregunta qué hacer (seguir, guardar para después o dejarlas en 0). */
   function finishBin() {
+    if (!openCount) return
+    const captured = getCapturedLines(openCount.id)
+    if (captured.length === 0) return
+    const capturedIds = new Set(captured.map((r) => r.lineId).filter((id): id is number => id != null))
+    const missing = expectedLines ? remainingExpectedLines(expectedLines, capturedIds) : []
+    if (missing.length === 0) {
+      completeBin()
+      return
+    }
+    Alert.alert(t('count.finishPendingTitle', { count: missing.length }), t('count.finishPendingBody'), [
+      { text: t('count.keepCounting'), style: 'cancel' },
+      { text: t('count.saveForLater'), onPress: () => saveBinForLater(captured.length) },
+      {
+        text: t('count.finishWithZeros'),
+        style: 'destructive',
+        onPress: () => {
+          for (const line of missing) captureExpectedLine(openCount.id, line, 0)
+          completeBin()
+        },
+      },
+    ])
+  }
+
+  function completeBin() {
     if (!openCount) return
     const captured = toCapturedEntries(getCapturedLines(openCount.id))
     if (captured.length === 0) return
-    enqueueFinishCount(openCount.countId, captured)
+    const countId = openCount.countId
+    enqueueFinishCount(countId, captured)
+    removeOpenCountHint(countId)
+    discardLocalCount()
+    forgetChecks()
+    sendAndWatch(countId)
+    router.replace('/home')
+  }
+
+  /** «Guardar y seguir después»: manda lo contado SIN cerrar el conteo; queda abierto (y bloqueando lo demás) hasta retomarlo y terminarlo. */
+  function saveBinForLater(capturedCount: number) {
+    if (!openCount || userId == null) return
+    const captured = toCapturedEntries(getCapturedLines(openCount.id))
+    const countId = openCount.countId
+    enqueueSaveCount(countId, captured)
+    addOpenCountHint({
+      countId,
+      number: countNumber,
+      binCode: openCount.binCode ?? '',
+      warehousePublicId: openCount.warehousePublicId,
+      userId,
+      lines: expectedLines?.length ?? capturedCount,
+      counted: capturedCount,
+    })
     discardLocalCount()
     forgetChecks()
     void runSync()
+    Alert.alert(t('count.savedForLater', { number: countNumber || (openCount.binCode ?? '') }))
     router.replace('/home')
   }
 
@@ -281,11 +411,13 @@ export default function CountScreen() {
     const rows = getProductCountRows(openCount.id)
     // la vista ya avisa; esto evita encolar un conteo vacío o todo en blanco (decisión del dueño 4) si se llegara aquí igual
     if (rows.length === 0 || !hasAnyCountedQty(rows.map((r) => r.countedQty))) return
-    enqueueFinishCount(openCount.countId, toProductEntries(rows))
+    const countId = openCount.countId
+    enqueueFinishCount(countId, toProductEntries(rows))
+    removeOpenCountHint(countId)
     discardLocalCount()
     forgetChecks()
     vibrateOk()
-    void runSync()
+    sendAndWatch(countId)
     router.replace('/home')
   }
 
@@ -295,6 +427,25 @@ export default function CountScreen() {
     return (
       <KeyboardScreen contentContainerStyle={styles.fill}>
         <Text style={styles.title}>{t('count.title')}</Text>
+        {hints.length > 0 ? (
+          <View style={styles.hintBox} testID="open-counts">
+            <Text style={styles.label}>{t('count.openCountsTitle')}</Text>
+            <Text style={styles.help}>{t('count.openCountsHelp')}</Text>
+            <LineList
+              items={hints.map((h) => ({
+                id: h.countId,
+                title: t('count.openCountTitle', { number: h.number, bin: h.binCode }),
+                subtitle: t('count.openCountSubtitle', { counted: h.counted, lines: h.lines }),
+              }))}
+              removeLabel={t('common.remove')}
+              onPressItem={(id) => {
+                const hint = hints.find((h) => h.countId === Number(id))
+                if (hint) void resumeHint(hint)
+              }}
+              pressLabel={(item) => t('count.continueCount', { number: hints.find((h) => h.countId === Number(item.id))?.number ?? '' })}
+            />
+          </View>
+        ) : null}
         <Text style={styles.label}>{t('count.modeLabel')}</Text>
         <View style={styles.modes} accessibilityRole="radiogroup">
           {(['BIN', 'PRODUCT'] as const).map((mode) => {
@@ -458,7 +609,7 @@ export default function CountScreen() {
 
   // Conteo abierto: escaneando productos y viendo lo ya capturado.
   return (
-    <KeyboardScreen contentContainerStyle={styles.fill}>
+    <KeyboardScreen contentContainerStyle={styles.fill} scrollToTopKey={prefillSeq}>
       <Text style={styles.title}>{openCount.binCode}</Text>
       {openCount.isBlind ? <Text style={styles.help}>{t('count.blindNotice')}</Text> : null}
       <ScanField label={t('count.scanProductLabel')} error={scanError} onSubmit={scanProduct} prefill={prefill} pick="product" />
@@ -518,6 +669,7 @@ export default function CountScreen() {
 }
 
 const styles = StyleSheet.create({
+  hintBox: { gap: spacing.sm, backgroundColor: colors.panel, borderRadius: radius.md, padding: spacing.md },
   fill: { flexGrow: 1, backgroundColor: colors.bg, padding: spacing.lg, gap: spacing.md },
   title: { color: colors.text, fontSize: fontSize.title, fontWeight: '700' },
   label: { color: colors.text, fontSize: fontSize.label, fontWeight: '600' },

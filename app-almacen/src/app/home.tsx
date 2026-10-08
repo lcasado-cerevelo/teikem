@@ -7,6 +7,7 @@ import { useSession } from '../kernel/auth/useSession'
 import { getOpenReceipt } from '../features/receive/localLookup'
 import { getOpenPick } from '../features/dispatch/localPick'
 import { getOpenCount } from '../features/count/localCount'
+import { getOpenCountHints, refreshOpenCountHints } from '../features/count/openCountHints'
 import { useT } from '../kernel/i18n/useT'
 import {
   getCachedWarehouseOptions,
@@ -39,13 +40,29 @@ export default function HomeScreen() {
   useAutoSync()
 
   const [openKind, setOpenKind] = useState<OpenKind | null>(null)
+  const userId = session?.userId
+  const warehouseId = activeWarehouse.publicId
   useFocusEffect(
     useCallback(() => {
-      if (getOpenReceipt() !== null) setOpenKind('receive')
-      else if (getOpenPick() !== null) setOpenKind('dispatch')
-      else if (getOpenCount() !== null) setOpenKind('count')
-      else setOpenKind(null)
-    }, []),
+      // Documento abierto en el aparato o, desde 2026-10-07, un conteo que este usuario dejó abierto en el servidor (guardó y siguió después):
+      // en ambos casos solo se puede retomar ese documento.
+      const compute = () => {
+        if (getOpenReceipt() !== null) setOpenKind('receive')
+        else if (getOpenPick() !== null) setOpenKind('dispatch')
+        else if (getOpenCount() !== null || getOpenCountHints(warehouseId, userId).length > 0) setOpenKind('count')
+        else setOpenKind(null)
+      }
+      compute()
+      let alive = true
+      if (warehouseId && userId != null) {
+        void refreshOpenCountHints(warehouseId, userId).then(() => {
+          if (alive) compute()
+        })
+      }
+      return () => {
+        alive = false
+      }
+    }, [warehouseId, userId]),
   )
 
   // 2026-10-07 (varios almacenes): la lista de almacenes de la compañía se baja al entrar (queda guardada para elegir sin señal).

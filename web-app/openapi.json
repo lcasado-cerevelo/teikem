@@ -28527,6 +28527,9 @@
           },
           "assignToMe": {
             "type": "boolean"
+          },
+          "resumeOpen": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -28561,6 +28564,9 @@
           "reveal": {
             "type": "string",
             "nullable": true
+          },
+          "resumed": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -28861,6 +28867,10 @@
           },
           "binIsProvisional": {
             "type": "boolean"
+          },
+          "checkState": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

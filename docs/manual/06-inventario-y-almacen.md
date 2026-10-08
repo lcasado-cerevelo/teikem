@@ -1280,6 +1280,10 @@ Cómo se usa:
   `assignedToName`. Respuesta: `{ total, skip, take, items }`.
 - `POST /api/v1/cycle-counts` — `{ "warehousePublicId": "...", "zoneIds": [...], "binIds": [...] }` (todo
   opcional: sin filtros toma todo el saldo en mano del almacén). Máximo 1000 líneas. Origen `MANUAL`.
+  **`resumeOpen` (2026-10-07, lo usa la app):** con **una sola** posición en `binIds` y `resumeOpen: true`, si esa posición ya tiene un conteo **abierto** (Pendiente) cuyas líneas son todas de esa posición
+  (no el de varias posiciones ni el de por producto), se **devuelve ese conteo** con `resumed: true` en vez de crear otro; si tiene asignado a otra persona → 409
+  `Esa posición la está contando {Nombre} ({CC-#####}).`; si no tiene asignado, queda asignado a quien lo retoma. Cada línea trae ahora `checkState` (MATCH | RECOUNT | FINAL | null) para que el aparato sepa cuáles
+  ya se verificaron. Sin `resumeOpen` (la web) todo sigue igual.
 - `GET /api/v1/cycle-counts/{id}` — ficha en modo informado (foto, contado, diferencia informativa, series
   esperadas/contadas, saldo actual). Cada línea trae ahora `barcode` (el código de barras del producto, que el escáner de la web usa para
   llegar a la línea; no revela lo esperado, así que también llega a ciegas).

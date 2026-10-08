@@ -10,7 +10,9 @@ import {
   cancelCountOnline,
   createProvisionalBin,
   enqueueFinishCount,
+  enqueueSaveCount,
   fetchExpectedLines,
+  loadOpenCount,
   fetchProductBins,
   fetchZones,
   findLocalBin,
@@ -54,12 +56,46 @@ describe('startCountOnline', () => {
       }),
     )
     const result = await startCountOnline('wh-1', 5)
-    expect(postMock.mock.calls[0][1].body).toEqual({ warehousePublicId: 'wh-1', binIds: [5], assignToMe: true })
+    expect(postMock.mock.calls[0][1].body).toEqual({ warehousePublicId: 'wh-1', binIds: [5], assignToMe: true, resumeOpen: true })
     expect(result).toEqual({
       countId: 42,
+      number: '',
       isBlind: true,
       expectedLines: [{ lineId: 7, productPublicId: 'p1', sku: 'A', productName: 'Uno', systemQty: 3 }],
+      resumed: false,
+      captured: [],
+      checks: [],
+      binId: null,
+      binCode: null,
     })
+  })
+
+  it('un conteo retomado trae lo ya contado, su verificación y la posición', async () => {
+    postMock.mockResolvedValueOnce(
+      ok({
+        count: { id: 42, number: 'CC-00042' },
+        isBlind: true,
+        resumed: true,
+        lines: [
+          { id: 7, productPublicId: 'p1', sku: 'A', productName: 'Uno', binId: 5, binCode: 'GENERAL', countedQty: 12, checkState: 'MATCH' },
+          { id: 8, productPublicId: 'p2', sku: 'B', productName: 'Dos', binId: 5, binCode: 'GENERAL', countedQty: null, checkState: 'RECOUNT' },
+          { id: 9, productPublicId: 'p3', sku: 'C', productName: 'Tres', binId: 5, binCode: 'GENERAL' },
+        ],
+      }),
+    )
+    const result = await startCountOnline('wh-1', 5)
+    expect(result).toMatchObject({ countId: 42, number: 'CC-00042', resumed: true, binId: 5, binCode: 'GENERAL' })
+    expect(result.expectedLines).toHaveLength(3)
+    expect(result.captured).toEqual([{ lineId: 7, countedQty: 12 }])
+    expect(result.checks).toEqual([
+      { lineId: 7, state: 'MATCH' },
+      { lineId: 8, state: 'RECOUNT' },
+    ])
+  })
+
+  it('un conteo contado en 0 también cuenta como capturado', async () => {
+    postMock.mockResolvedValueOnce(ok({ count: { id: 42 }, lines: [{ id: 7, productPublicId: 'p1', sku: 'A', productName: 'Uno', countedQty: 0 }] }))
+    expect((await startCountOnline('wh-1', 5)).captured).toEqual([{ lineId: 7, countedQty: 0 }])
   })
 
   it('conteo a ciegas: systemQty ausente se mapea a null', async () => {
@@ -96,6 +132,26 @@ describe('enqueueFinishCount', () => {
     expect(JSON.parse(rows[0].body)).toEqual({ lines: [{ lineId: 7, countedQty: 3 }] })
     expect(rows[1]).toMatchObject({ kind: 'countFinish', method: 'POST', path: '/api/v1/cycle-counts/42/finish' })
     expect(JSON.parse(rows[1].body)).toEqual({})
+  })
+})
+
+describe('enqueueSaveCount — guardar y seguir después', () => {
+  it('encola SOLO el lote (el conteo queda abierto en el servidor)', () => {
+    enqueueSaveCount(42, [{ lineId: 7, productPublicId: 'p1', sku: 'A', productName: 'Uno', countedQty: 3, isExtra: false, binId: 5 }])
+    const rows = listOutbox()
+    expect(rows.map((r) => r.kind)).toEqual(['countBatch'])
+    expect(JSON.parse(rows[0].body)).toEqual({ lines: [{ lineId: 7, countedQty: 3 }] })
+  })
+})
+
+describe('loadOpenCount — retomar por id', () => {
+  it('lee el conteo con forCounting y lo devuelve como retomado', async () => {
+    getMock.mockResolvedValueOnce(
+      ok({ count: { id: 42, number: 'CC-00042' }, isBlind: true, lines: [{ id: 7, productPublicId: 'p1', sku: 'A', productName: 'Uno', binId: 5, binCode: 'GENERAL', countedQty: 4 }] }),
+    )
+    const started = await loadOpenCount(42)
+    expect(getMock.mock.calls[0][1]).toMatchObject({ params: { path: { id: 42 }, query: { forCounting: true } } })
+    expect(started).toMatchObject({ countId: 42, number: 'CC-00042', resumed: true, binId: 5, binCode: 'GENERAL', captured: [{ lineId: 7, countedQty: 4 }] })
   })
 })
 
