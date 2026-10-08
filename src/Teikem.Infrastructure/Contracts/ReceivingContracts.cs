@@ -25,7 +25,9 @@ public sealed record AsnQuery(Guid? WarehousePublicId = null, string[]? Status =
 /// recibo (id ajeno → 404; código inexistente → 400), de guardado (STAGING o CROSSDOCK → 400) y activa (422).
 /// </summary>
 public sealed record ReceiptLineRequest(Guid? ProductPublicId, decimal? ReceivedQty, LotInput? Lot = null, IReadOnlyList<string>? SerialNumbers = null,
-    int? StagingBinId = null, decimal? ExpectedQty = null, int? TargetBinId = null, string? TargetBinCode = null);
+    int? StagingBinId = null, decimal? ExpectedQty = null, int? TargetBinId = null, string? TargetBinCode = null,
+    decimal? DamagedQty = null, string? DamageCause = null, string? DamageNote = null, int? DamageBinId = null, string? DamageBinCode = null,
+    bool? DamageDiscard = null);
 
 /// <summary>
 /// Alta del recibo. Confirm (Lote 8A, cola del aparato) = crear, capturar las líneas de la solicitud y confirmar en UNA sola
@@ -51,7 +53,9 @@ public sealed record ReceiptCreateRequest(Guid? WarehousePublicId = null, string
 /// </summary>
 public sealed record ReceiptLineUpdateRequest(decimal? ReceivedQty = null, LotInput? Lot = null, bool? ClearLot = null,
     IReadOnlyList<string>? SerialNumbers = null, int? StagingBinId = null, Guid? ProductPublicId = null, decimal? ExpectedQty = null,
-    bool? ClearExpected = null, int? TargetBinId = null, bool? ClearTargetBin = null);
+    bool? ClearExpected = null, int? TargetBinId = null, bool? ClearTargetBin = null,
+    decimal? DamagedQty = null, string? DamageCause = null, string? DamageNote = null, int? DamageBinId = null, bool? DamageDiscard = null,
+    bool? ClearDamage = null);
 
 /// <summary>
 /// Lote 13 — PATCH del encabezado de un recibo abierto: null = no cambiar. Type (BLIND ↔ RETURN) solo sin aviso ni orden de
@@ -98,7 +102,8 @@ public sealed record ReceiptLineDto(int Id, int? AsnLineId, Guid ProductPublicId
     decimal? ExpectedQty, decimal ReceivedQty, decimal VarianceQty, int? LotId, string? LotNumber, DateOnly? ExpiryDate,
     IReadOnlyList<string> SerialNumbers, int? StagingBinId, string? StagingBinCode, long? AdjustmentTxnId, decimal? UnitCost,
     decimal AllocatedToCrossDock, int? TargetBinId = null, string? TargetBinCode = null, string? TargetZoneTypeCode = null,
-    decimal? TargetFreeQty = null);
+    decimal? TargetFreeQty = null, decimal DamagedQty = 0m, string? DamageCauseCode = null, string? DamageNote = null, int? DamageBinId = null,
+    string? DamageBinCode = null, bool DamageDiscard = false, int? DamageReportId = null, string? DamageReportCode = null);
 
 /// <summary>
 /// Lote 16 — posición destino sugerida para una línea (GET /receipts/{id}/lines/{lineId}/target-suggestions): razón (la del

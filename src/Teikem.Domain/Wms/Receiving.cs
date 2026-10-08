@@ -97,4 +97,15 @@ public class ReceiptLine
     /// servicio). En un recibo directo la línea entra ahí al confirmar; en uno con acomodo es el destino de su tarea.
     /// </summary>
     public int? TargetBinId { get; set; }
+    /// <summary>
+    /// 2026-10-08 — de lo recibido (ReceivedQty), las unidades que vinieron dañadas. Causa (catálogo DamageCause), comentario y posición donde se dejan
+    /// (null = cuarentena si existe; si no, donde aterrizó la línea) o DamageDiscard = se desechan de una vez. Al confirmar se crea el reporte
+    /// (DamageReportId) y las unidades salen de lo "bueno": la tarea de acomodo y el inventario disponible no las cuentan.
+    /// </summary>
+    public decimal DamagedQty { get; set; }
+    public int? DamageCauseLookupId { get; set; }
+    public string? DamageNote { get; set; }
+    public int? DamageBinId { get; set; }
+    public bool DamageDiscard { get; set; }
+    public int? DamageReportId { get; set; }
 }

@@ -123,6 +123,68 @@ public sealed class DamageService(TeikemDbContext db, ITenantContext tenant, ILo
         return await GetAsync(id, ct);
     }
 
+    // ================================================================ daño declarado en la línea de un recibo que se confirma
+
+    /// <summary>
+    /// 2026-10-08 — Llamado por ReceiptService al confirmar un recibo cuya línea declara unidades dañadas. A diferencia del daño de recibo reportado
+    /// después (ReportAsync), aquí las unidades YA entraron al inventario con el resto de la línea (la recepción asienta todo lo recibido en la posición
+    /// donde aterrizó, <paramref name="landingBinId"/>), así que:
+    /// - desechar = ajuste negativo DAMAGE desde donde aterrizó (el reporte nace DISCARDED, sin posición);
+    /// - cuarentena = transferencia desde donde aterrizó a la posición indicada (si es la misma, no hay movimiento: las unidades se quedan y el reporte
+    ///   queda QUARANTINED ahí). Sin posición indicada: la primera de cuarentena activa del almacén por código o, si no hay, donde aterrizó.
+    /// Corre dentro de la transacción de la confirmación. Devuelve el id del reporte.
+    /// </summary>
+    public async Task<int> ReportReceiptLineAsync(int warehouseId, int receiptId, int productId, int? lotId, decimal quantity, int causeLookupId, string? notes,
+        int? landingBinId, int? damageBinId, bool discard, CancellationToken ct)
+    {
+        return await db.RunInTransactionAsync(async ct2 =>
+        {
+            var tenantId = ((TenantContext)tenant).RequireTenantId();
+            var product = await db.Set<Product>().AsNoTracking().FirstAsync(p => p.ProductId == productId, ct2);
+            var warehouse = await db.Set<Warehouse>().AsNoTracking().FirstAsync(w => w.WarehouseId == warehouseId, ct2);
+            WarehouseBin? destination = null;
+            if (!discard)
+            {
+                if (damageBinId is int explicitBin) destination = await ResolveBinAsync(warehouseId, explicitBin, ct2);
+                else
+                {
+                    try { destination = await ResolveQuarantineBinAsync(warehouseId, null, ct2); }
+                    catch (StatusRuleException) { destination = landingBinId is int lb ? await ResolveBinAsync(warehouseId, lb, ct2) : null; }
+                }
+                if (destination is null) throw new StatusRuleException(DamageRules.NoQuarantineBin);
+            }
+
+            var initial = await InitialStatusAsync(ct2);
+            var d = new DamageReport
+            {
+                TenantId = tenantId, WarehouseId = warehouseId, ProductId = productId, LotId = lotId, FromBinId = landingBinId,
+                QuarantineBinId = destination?.WarehouseBinId, Quantity = quantity,
+                OriginLookupId = await lookups.GetIdAsync(LookupDomains.DamageOrigin, DamageOrigins.Receipt, ct2), CauseLookupId = causeLookupId,
+                ReceiptHeaderId = receiptId, Notes = notes, StatusCodeId = initial.StatusCodeId, ReportedAtUtc = DateTime.UtcNow, ReportedBy = tenant.UserId, IsActive = true,
+            };
+            db.Set<DamageReport>().Add(d);
+            await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
+            await statuses.TransitionAsync(StatusDomains.DamageStatus, EntityTypes.DamageReport, d.DamageReportId, null, DamageStatuses.Reported, null, ct2);
+            await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
+
+            var note = DamageRules.MovementNote(d.DamageReportId, await CauseLabelAsync(causeLookupId, ct2), notes);
+            var damageId = d.DamageReportId;
+            if (landingBinId is int from)
+            {
+                if (discard)
+                    await inventory.AdjustAsync(new AdjustmentRequest(product.PublicId, warehouse.PublicId, from, -quantity, AdjustmentReasons.Damage, note, lotId), ct2);
+                else if (destination!.WarehouseBinId != from)
+                    await inventory.TransferAsync(new TransferRequest(product.PublicId, from, destination.WarehouseBinId, quantity, warehouse.PublicId, null, lotId, null, note), ct2);
+            }
+            d = await db.Set<DamageReport>().FirstAsync(x => x.DamageReportId == damageId, ct2);
+            var target = discard ? DamageStatuses.Discarded : DamageStatuses.Quarantined;
+            await TransitionAsync(d, initial.StatusCodeId, target, null, ct2);
+            if (discard) { d.ResolvedAtUtc = DateTime.UtcNow; d.ResolvedBy = tenant.UserId; }
+            await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
+            return damageId;
+        }, ct);
+    }
+
     // ================================================================ desechar / recuperar lo que está en cuarentena
 
     public async Task<DamageReportDto> DiscardAsync(int id, DamageResolveRequest? req, CancellationToken ct)

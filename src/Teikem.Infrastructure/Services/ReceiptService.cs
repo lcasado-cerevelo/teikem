@@ -49,7 +49,8 @@ public sealed class ReceiptService(
     PutawaySuggester suggester,
     IPurchaseOrderReceiving purchaseOrders,
     IEnumerable<IReceiptConfirmationParticipant> participants,
-    IEnumerable<IWarehouseTaskHandler> taskHandlers)
+    IEnumerable<IWarehouseTaskHandler> taskHandlers,
+    DamageService damages)
 {
     public const string NumberPattern = "REC-#####";
     public const string NumberTakenMessage = "Ya existe un recibo con ese número; intente de nuevo.";
@@ -566,7 +567,23 @@ public sealed class ReceiptService(
                 var target = await ResolveTargetBinAsync(r.WarehouseId, tb, null, "targetBinId", "targetBinCode", errors, ct2);
                 if (target is not null) targetId = target.BinId;
             }
+            // 2026-10-08: daño declarado. ClearDamage lo quita; DamagedQty lo reemplaza completo (causa, comentario, posición, desechar);
+            // sin ninguno de los dos se conserva, pero no puede quedar mayor que lo recibido.
+            var damageChanged = false;
+            LineDamage? newDamage = null;
+            if (errors.Count == 0)
+            {
+                if (req.ClearDamage == true) damageChanged = true;
+                else if (req.DamagedQty is not null)
+                {
+                    damageChanged = true;
+                    newDamage = await ResolveDamageAsync(r.WarehouseId, req.DamagedQty, received, trackingCode == TrackingTypes.Serial, req.DamageCause, req.DamageNote,
+                        req.DamageBinId, null, req.DamageDiscard, "line", errors, ct2);
+                }
+                else if (line.DamagedQty > received) errors["line.damagedQty"] = new[] { DamageRules.LineDamagedTooMuch };
+            }
             if (errors.Count > 0) throw new ValidationException(errors);
+            if (damageChanged) ApplyDamage(line, newDamage);
 
             line.TargetBinId = targetId;
             line.ProductId = product.ProductId;
@@ -699,6 +716,7 @@ public sealed class ReceiptService(
                 var code = tracking.GetValueOrDefault(p.TrackingTypeLookupId, TrackingTypes.None);
                 var te = ReceiptRules.ValidateTracking(code, p.Sku, l.ReceivedQty, l.LotId is not null, serials.Count);
                 if (te is not null) errors[$"lines[{i}]"] = new[] { te };
+                if (l.DamagedQty > l.ReceivedQty) errors[$"lines[{i}].damagedQty"] = new[] { DamageRules.LineDamagedTooMuch };
                 if (!EntersTarget(l)) continue;
                 if (l.TargetBinId is int tb && targets.TryGetValue(tb, out var target))
                 {
@@ -745,6 +763,7 @@ public sealed class ReceiptService(
             var optionalStagingResolved = false;
             var postings = new List<InventoryPosting>();
             var owners = new List<(ReceiptLine Line, PlannedReceiptPosting Planned)>();
+            var landingByLine = new Dictionary<int, int?>();   // posición donde aterriza cada línea (para sacar de ahí lo dañado)
             foreach (var l in lines)
             {
                 var p = products[l.ProductId];
@@ -778,6 +797,7 @@ public sealed class ReceiptService(
                     }
                     bin = l.StagingBinId;
                 }
+                landingByLine[l.ReceiptLineId] = bin;
                 foreach (var planned in ReceiptPostingRules.Plan(expects, l.ExpectedQty, l.ReceivedQty, code, serialsByLine[l.ReceiptLineId]))
                 {
                     postings.Add(new InventoryPosting(planned.TxnType, l.ProductId, planned.Quantity,
@@ -831,7 +851,8 @@ public sealed class ReceiptService(
             foreach (var l in lines)
             {
                 if (EntersTarget(l)) continue;
-                var remaining = l.ReceivedQty - crossDock.GetValueOrDefault(l.ReceiptLineId);
+                // lo dañado no se acomoda: se queda (o se mueve) según su reporte
+                var remaining = l.ReceivedQty - l.DamagedQty - crossDock.GetValueOrDefault(l.ReceiptLineId);
                 if (remaining <= 0m) continue;
                 var p = products[l.ProductId];
                 if (tracking.GetValueOrDefault(p.TrackingTypeLookupId, TrackingTypes.None) == TrackingTypes.Lot && l.LotId is null) continue;
@@ -849,6 +870,22 @@ public sealed class ReceiptService(
                 r.StatusCodeId = done.StatusCodeId;
             }
             await SaveReceiptAsync(ct2);
+
+            // 13. Daño declarado en las líneas: un reporte DAN-##### por línea; las unidades salen de donde aterrizaron (desecho o cuarentena). Va al
+            // final porque el ledger puede limpiar el seguimiento del contexto: lo que se necesita se copia antes y la línea se vuelve a leer.
+            var damaged = lines.Where(l => l.DamagedQty > 0m && l.DamageReportId is null && l.DamageCauseLookupId != null)
+                .Select(l => (l.ReceiptLineId, l.ProductId, l.LotId, Qty: l.DamagedQty, Cause: l.DamageCauseLookupId!.Value, l.DamageNote, l.DamageBinId, l.DamageDiscard,
+                    Landing: landingByLine.GetValueOrDefault(l.ReceiptLineId))).ToList();
+            var receiptId = r.ReceiptHeaderId;
+            var warehouseId = r.WarehouseId;
+            foreach (var x in damaged)
+            {
+                var reportId = await damages.ReportReceiptLineAsync(warehouseId, receiptId, x.ProductId, x.LotId, x.Qty, x.Cause, x.DamageNote, x.Landing,
+                    x.DamageBinId, x.DamageDiscard, ct2);
+                var fresh = await db.Set<ReceiptLine>().FirstAsync(l => l.ReceiptLineId == x.ReceiptLineId, ct2);
+                fresh.DamageReportId = reportId;
+                await SaveReceiptAsync(ct2);
+            }
         }, ct);
     }
 
@@ -1116,6 +1153,7 @@ public sealed class ReceiptService(
                 match.SerialNumbersJson = built.SerialNumbersJson;
                 match.StagingBinId = built.StagingBinId ?? match.StagingBinId;
                 match.TargetBinId = built.TargetBinId ?? match.TargetBinId;   // Lote 16: la posición destino escaneada
+                CopyDamage(built, match);
                 applied.Add(match);
                 continue;
             }
@@ -1136,6 +1174,15 @@ public sealed class ReceiptService(
             if (se is not null) { errors[key + ".serialNumbers"] = new[] { se }; continue; }
             same.ReceivedQty += built.ReceivedQty;
             same.SerialNumbersJson = serials.Count == 0 ? null : JsonSerializer.Serialize(serials, Json);
+            // lo dañado de la nueva captura se suma; la causa, el comentario y la posición son los de la primera que los trajo
+            if (built.DamagedQty > 0m)
+            {
+                var hadDamage = same.DamagedQty > 0m;
+                same.DamagedQty += built.DamagedQty;
+                if (!hadDamage) CopyDamage(built, same, qtyToo: false);
+                else same.DamageNote = same.DamageNote is null ? built.DamageNote : built.DamageNote is null ? same.DamageNote : $"{same.DamageNote} · {built.DamageNote}";
+                if (same.DamageNote is { Length: > DamageRules.NotesMax }) same.DamageNote = same.DamageNote[..DamageRules.NotesMax];
+            }
         }
         if (errors.Count > 0) throw new ValidationException(errors);
         if (lines.Count + extras.Count > ReceiptRules.MaxLines) throw new ValidationException("lines", ReceiptRules.TooManyLines);
@@ -1189,11 +1236,80 @@ public sealed class ReceiptService(
         var target = await ResolveTargetBinAsync(warehouseId, l.TargetBinId, l.TargetBinCode, key + ".targetBinId", key + ".targetBinCode", errors, ct);
         if (target is null && (l.TargetBinId is not null || !string.IsNullOrWhiteSpace(l.TargetBinCode))) return null;
 
-        return new ReceiptLine
+        var damage = await ResolveDamageAsync(warehouseId, l.DamagedQty, qty.Value, trackingCode == TrackingTypes.Serial, l.DamageCause, l.DamageNote,
+            l.DamageBinId, l.DamageBinCode, l.DamageDiscard, key, errors, ct);
+        if (errors.Count > 0 && (l.DamagedQty ?? 0m) > 0m && damage is null) return null;
+
+        var line = new ReceiptLine
         {
             ProductId = product.ProductId, LotId = lotId, ReceivedQty = qty.Value, ExpectedQty = l.ExpectedQty, StagingBinId = stagingId,
             SerialNumbersJson = serials.Count == 0 ? null : JsonSerializer.Serialize(serials, Json), TargetBinId = target?.BinId,
         };
+        ApplyDamage(line, damage);
+        return line;
+    }
+
+    // ---------------------------------------------------------------- daño declarado en la línea (2026-10-08)
+
+    /// <summary>Daño ya validado de una línea: cantidad, causa del catálogo, comentario y posición donde se deja (null = la que elija el servidor).</summary>
+    private sealed record LineDamage(decimal Qty, int CauseLookupId, string? Note, int? BinId, bool Discard);
+
+    private static void CopyDamage(ReceiptLine from, ReceiptLine to, bool qtyToo = true)
+    {
+        if (qtyToo) to.DamagedQty = from.DamagedQty;
+        to.DamageCauseLookupId = from.DamageCauseLookupId;
+        to.DamageNote = from.DamageNote;
+        to.DamageBinId = from.DamageBinId;
+        to.DamageDiscard = from.DamageDiscard;
+    }
+
+    private static void ApplyDamage(ReceiptLine line, LineDamage? damage)
+    {
+        line.DamagedQty = damage?.Qty ?? 0m;
+        line.DamageCauseLookupId = damage?.CauseLookupId;
+        line.DamageNote = damage?.Note;
+        line.DamageBinId = damage is { Discard: false } ? damage.BinId : null;
+        line.DamageDiscard = damage?.Discard ?? false;
+    }
+
+    /// <summary>
+    /// Valida el daño declarado (reglas puras de DamageRules.ValidateLineDamage) y resuelve la causa y la posición donde se deja: cualquier
+    /// posición activa del almacén del recibo (cuarentena, recepción, guardado…), por id o por código. Los errores van a errors con la clave de la
+    /// línea; sin cantidad dañada devuelve null sin error.
+    /// </summary>
+    private async Task<LineDamage?> ResolveDamageAsync(int warehouseId, decimal? damaged, decimal received, bool serialProduct, string? cause, string? note,
+        int? binId, string? binCode, bool? discard, string key, Dictionary<string, string[]> errors, CancellationToken ct)
+    {
+        if (damaged is null or 0m) return null;
+        var problems = DamageRules.ValidateLineDamage(damaged, received, serialProduct, cause, note);
+        if (problems.Count > 0)
+        {
+            foreach (var (field, message) in problems) errors[$"{key}.{field}"] = new[] { message };
+            return null;
+        }
+        var (causeCode, _) = DamageRules.ParseCause(cause);
+        var (notes, _) = DamageRules.NormalizeNotes(note);
+        var causeId = await lookups.GetIdAsync(LookupDomains.DamageCause, causeCode!, ct);
+        int? resolvedBin = null;
+        if (discard != true && (binId is not null || !string.IsNullOrWhiteSpace(binCode)))
+        {
+            if (binId is not null && !string.IsNullOrWhiteSpace(binCode)) { errors[key + ".damageBinId"] = new[] { ReceivingModeRules.TargetIdAndCode }; return null; }
+            var trimmed = binCode?.Trim() ?? string.Empty;
+            var upper = trimmed.ToUpperInvariant();
+            var found = binId is int id
+                ? await TargetBinsQuery(warehouseId, b => b.WarehouseBinId == id).FirstOrDefaultAsync(ct)
+                : await TargetBinsQuery(warehouseId, b => b.Code == trimmed || b.Code == upper).FirstOrDefaultAsync(ct);
+            if (found is null)
+            {
+                if (binId is not null) throw new NotFoundException("Posición", feminine: true);
+                errors[key + ".damageBinCode"] = new[] { ReceivingModeRules.TargetCodeNotFound(trimmed) };
+                return null;
+            }
+            if (!found.IsActive) throw new StatusRuleException(ReceivingModeRules.TargetBinInactive(found.Code));
+            if (!found.ZoneActive) throw new StatusRuleException(ReceivingModeRules.TargetZoneInactive(found.Code));
+            resolvedBin = found.BinId;
+        }
+        return new LineDamage(damaged.Value, causeId, notes, resolvedBin, discard == true);
     }
 
     /// <summary>
@@ -1450,7 +1566,7 @@ public sealed class ReceiptService(
                       select new { lot.LotId, lot.LotNumber, lot.ExpiryDate }).ToListAsync(ct))
                 .ToDictionary(x => x.LotId, x => (x.LotNumber, x.ExpiryDate));
         // Lote 16: también las posiciones destino (con tipo de zona y cupo).
-        var binIds = lines.SelectMany(x => new[] { x.Line.StagingBinId, x.Line.TargetBinId }).Where(b => b != null).Select(b => b!.Value).Distinct().ToList();
+        var binIds = lines.SelectMany(x => new[] { x.Line.StagingBinId, x.Line.TargetBinId, x.Line.DamageBinId }).Where(b => b != null).Select(b => b!.Value).Distinct().ToList();
         var binRows = await (from b in db.Set<WarehouseBin>().AsNoTracking()
                      join z in db.Set<WarehouseZone>().AsNoTracking() on b.WarehouseZoneId equals z.WarehouseZoneId
                      where whIds.Contains(b.WarehouseId) && binIds.Contains(b.WarehouseBinId)
@@ -1510,7 +1626,10 @@ public sealed class ReceiptService(
                 tracking.GetValueOrDefault(x.TrackingTypeLookupId, TrackingTypes.None), l.ExpectedQty, l.ReceivedQty,
                 ReceiptRules.LineVariance(expects, l.ExpectedQty, l.ReceivedQty), l.LotId, lot?.LotNumber, lot?.ExpiryDate,
                 ParseSerials(l.SerialNumbersJson), l.StagingBinId, binCode, l.AdjustmentTxnId, unitCost,
-                crossDock.GetValueOrDefault(l.ReceiptLineId), targetId, targetCode, targetZoneType, targetFree);
+                crossDock.GetValueOrDefault(l.ReceiptLineId), targetId, targetCode, targetZoneType, targetFree,
+                l.DamagedQty, l.DamageCauseLookupId is int dc ? (await lookups.GetAsync(dc, ct))?.InternalCode : null, l.DamageNote, l.DamageBinId,
+                l.DamageBinId is int db0 && bins.TryGetValue(db0, out var dbin) && dbin.WarehouseId == r.WarehouseId ? dbin.Code : null, l.DamageDiscard,
+                l.DamageReportId, l.DamageReportId is int dr ? DamageRules.Code(dr) : null);
             if (!byReceipt.TryGetValue(l.ReceiptHeaderId, out var list)) byReceipt[l.ReceiptHeaderId] = list = new List<ReceiptLineDto>();
             list.Add(dto);
         }

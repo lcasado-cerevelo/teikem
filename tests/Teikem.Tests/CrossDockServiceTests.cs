@@ -39,6 +39,7 @@ public sealed class CrossDockServiceTests
             s.AddSingleton<IReceiptConfirmationParticipant, CrossDockReceiptParticipant>();
             s.AddSingleton<AsnService>();
             s.AddSingleton<ReceiptService>();
+            s.AddReceiptDamageDeps();
             s.AddSingleton<CrossDockService>();
             s.AddSingleton<WarehouseTaskService>();
             s.AddSingleton<DockAppointmentService>();

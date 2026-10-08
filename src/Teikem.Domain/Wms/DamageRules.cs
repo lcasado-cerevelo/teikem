@@ -81,6 +81,32 @@ public static class DamageRules
             ? RecoverZoneNotAllowed(binCode, zoneTypeCode)
             : null;
 
+    // ---- daño declarado en la línea del recibo (2026-10-08)
+    public const string LineDamagedTooMuch = "La cantidad dañada no puede ser mayor que la cantidad recibida.";
+    public const string LineDamagedDecimals = "La cantidad dañada admite hasta 3 decimales.";
+    public const string LineOtherNeedsNote = "Escriba la razón del daño cuando la causa es Otro.";
+    public const string LineDamageWithoutQty = "Indique la cantidad dañada.";
+
+    /// <summary>
+    /// Valida el daño declarado en una línea de recibo y devuelve (campo, mensaje) por cada error. Sin cantidad dañada (null o 0) no hay daño: lo demás
+    /// se ignora. Con ella: no ser mayor que lo recibido ni pasar de 3 decimales, producto sin serie, causa del catálogo, y si la causa es Otro, el comentario.
+    /// </summary>
+    public static IReadOnlyList<(string Field, string Message)> ValidateLineDamage(decimal? damaged, decimal received, bool serialProduct, string? cause, string? note)
+    {
+        var errors = new List<(string, string)>();
+        if (damaged is null or 0m) return errors;
+        if (damaged < 0m) { errors.Add(("damagedQty", QuantityInvalid)); return errors; }
+        if (decimal.Round(damaged.Value, 3) != damaged.Value) errors.Add(("damagedQty", LineDamagedDecimals));
+        else if (damaged > received) errors.Add(("damagedQty", LineDamagedTooMuch));
+        if (serialProduct) errors.Add(("damagedQty", SerialNotSupported));
+        var (causeCode, causeError) = ParseCause(cause);
+        if (causeError is not null) errors.Add(("damageCause", causeError));
+        else if (causeCode == DamageCauses.Other && string.IsNullOrWhiteSpace(note)) errors.Add(("damageNote", LineOtherNeedsNote));
+        var (_, noteError) = NormalizeNotes(note);
+        if (noteError is not null) errors.Add(("damageNote", noteError));
+        return errors;
+    }
+
     /// <summary>Nota de los movimientos del ledger: 'DAN-00012 · Llegó dañado · {nota}'.</summary>
     public static string MovementNote(int id, string causeLabel, string? notes)
         => string.IsNullOrWhiteSpace(notes) ? $"{Code(id)} · {causeLabel}" : $"{Code(id)} · {causeLabel} · {notes.Trim()}";

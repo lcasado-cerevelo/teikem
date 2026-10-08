@@ -159,6 +159,11 @@ public sealed class ReceiptLineConfiguration : IEntityTypeConfiguration<ReceiptL
         b.HasOne<WarehouseBin>().WithMany().HasForeignKey(l => l.StagingBinId).OnDelete(DeleteBehavior.NoAction);
         // Lote 16: posición destino (FK_ReceiptLine_TargetBin); el servicio garantiza que sea del almacén del recibo.
         b.HasOne<WarehouseBin>().WithMany().HasForeignKey(l => l.TargetBinId).OnDelete(DeleteBehavior.NoAction);
+        // 2026-10-08: daño declarado en la línea (FK_ReceiptLine_DamageBin / DamageReport).
+        b.Property(l => l.DamagedQty).HasColumnType("decimal(16,3)");
+        b.Property(l => l.DamageNote).HasMaxLength(300);
+        b.HasOne<WarehouseBin>().WithMany().HasForeignKey(l => l.DamageBinId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<DamageReport>().WithMany().HasForeignKey(l => l.DamageReportId).OnDelete(DeleteBehavior.NoAction);
     }
 }
 

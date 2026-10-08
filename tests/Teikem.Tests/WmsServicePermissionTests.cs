@@ -135,6 +135,7 @@ public sealed class WmsServicePermissionTests
             s.AddSingleton<IReceiptConfirmationParticipant, ReceivingFakeCrossDock>();
             s.AddSingleton<AsnService>();
             s.AddSingleton<ReceiptService>();
+            s.AddReceiptDamageDeps();
         });
         // Tiene warehouse.receive (lo que pide el controlador), pero no purchasing.receive.
         f.SetPermissions(PermissionCatalog.InventoryView, PermissionCatalog.WarehouseReceive);

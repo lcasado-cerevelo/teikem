@@ -2313,6 +2313,26 @@ CREATE INDEX IX_DamageReport_Tenant_Status ON dbo.DamageReport(TenantId, StatusC
 END
 GO
 
+-- 2026-10-08 — Daño declarado en la línea del recibo: de lo recibido, cuántas unidades vinieron dañadas, por qué (causa del catálogo + comentario),
+-- dónde se dejan (NULL = cuarentena si existe, si no donde aterrizó) o si se desechan de una vez. Al confirmar el recibo se crea el reporte DAN-#####
+-- (DamageReportId). Guardado con COL_LENGTH para agregar las columnas a una base ya creada sin tocar sus datos.
+IF COL_LENGTH('dbo.ReceiptLine', 'DamagedQty') IS NULL
+    ALTER TABLE dbo.ReceiptLine ADD DamagedQty DECIMAL(16,3) NOT NULL CONSTRAINT DF_ReceiptLine_DamagedQty DEFAULT 0;
+IF COL_LENGTH('dbo.ReceiptLine', 'DamageCauseLookupId') IS NULL
+    ALTER TABLE dbo.ReceiptLine ADD DamageCauseLookupId INT NULL CONSTRAINT FK_ReceiptLine_DamageCause REFERENCES dbo.LookupCode(LookupCodeId);
+IF COL_LENGTH('dbo.ReceiptLine', 'DamageNote') IS NULL
+    ALTER TABLE dbo.ReceiptLine ADD DamageNote NVARCHAR(300) NULL;
+IF COL_LENGTH('dbo.ReceiptLine', 'DamageBinId') IS NULL
+    ALTER TABLE dbo.ReceiptLine ADD DamageBinId INT NULL CONSTRAINT FK_ReceiptLine_DamageBin REFERENCES dbo.WarehouseBin(WarehouseBinId);
+IF COL_LENGTH('dbo.ReceiptLine', 'DamageDiscard') IS NULL
+    ALTER TABLE dbo.ReceiptLine ADD DamageDiscard BIT NOT NULL CONSTRAINT DF_ReceiptLine_DamageDiscard DEFAULT 0;
+IF COL_LENGTH('dbo.ReceiptLine', 'DamageReportId') IS NULL
+    ALTER TABLE dbo.ReceiptLine ADD DamageReportId INT NULL CONSTRAINT FK_ReceiptLine_DamageReport REFERENCES dbo.DamageReport(DamageReportId);
+GO
+IF OBJECT_ID('dbo.CK_ReceiptLine_Damaged', 'C') IS NULL
+    ALTER TABLE dbo.ReceiptLine ADD CONSTRAINT CK_ReceiptLine_Damaged CHECK (DamagedQty >= 0 AND DamagedQty <= ReceivedQty);
+GO
+
 -- Lote 6 (D19): WarehouseTaskId pasa a INT (historial de estatus, resolvers y RefId son int).
 CREATE TABLE dbo.WarehouseTask (
     WarehouseTaskId INT IDENTITY(1,1) PRIMARY KEY,

@@ -25,6 +25,7 @@ public sealed class WarehouseReceivingModeTests
             s.AddSingleton<Teikem.Infrastructure.Wms.IPurchaseOrderReceiving>(new ReceivingFakePurchaseOrders());
             s.AddSingleton<AsnService>();
             s.AddSingleton<ReceiptService>();
+            s.AddReceiptDamageDeps();
         });
 
     /// <summary>Posición de recepción que toma la línea de un recibo ciego nuevo sin posición indicada (la por defecto del almacén).</summary>
