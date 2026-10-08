@@ -1,9 +1,9 @@
-# Libreto de la demostración a Dani (actualizado 2026-10-07)
+# Libreto de la demostración a Dani (actualizado 2026-10-08)
 
 **Todo se hace en la app del aparato (el Zebra o el emulador). Nada en la web.** Está escrito para que lo pueda seguir alguien que nunca ha tocado el sistema:
 cada paso dice **dónde tocar** y **qué debe ver** en la pantalla. Los textos entre « » son los que aparecen escritos en la app.
-Los datos son de la base local `Teikem`: **Depot** (compañía 2) y **Solutions** (compañía 3). Se armó leyendo el código y la base; **no se probó en un aparato**:
-conviene ensayarlo una vez antes. Los códigos de barras para imprimir están en `docs/demo/codigos-demo-dani.pdf`.
+Los datos son de la base local `Teikem`: **Depot** y **Solutions**. Los productos, posiciones y existencias se **verificaron contra la base local el 2026-10-08**; los pasos de la app se armaron
+leyendo el código y **no se probaron en un aparato**: conviene ensayarlo una vez antes. Los códigos de barras para imprimir están en `docs/demo/codigos-demo-dani-2026-10-08.pdf`.
 
 ---
 
@@ -24,13 +24,12 @@ conviene ensayarlo una vez antes. Los códigos de barras para imprimir están en
 
 | Qué | Cómo está hoy | Qué hacer |
 |---|---|---|
-| Aparato de Solutions | Registrado («Emulador», ALM-SOL), con PIN | Nada |
-| Aparato de Depot | Registrado («Emulador», ALM-DEPOT), con PIN | Nada |
-| Posición `A-01` de Solutions | Ya creada | Nada (`scripts/demo/solutions-nueva-posicion.sql`, por si recrea la base) |
+| Aparatos (uno por compañía) | **Hoy no hay ninguno registrado** (la base se recreó) | Para cada compañía, **una vez y antes de la demo**: en la web, Sistema → Aparatos → crear el aparato y copiar su **código de registro** (de un solo uso, vence en 24 h); en el aparato, escribir la dirección del servidor y ese código; cada usuario necesita su **PIN** (Sistema → Usuarios). Sin esto no se puede entrar a la app |
+| Posición `A-01` de Solutions | **Hoy no existe** (la base se recreó) | Correr una vez: `sqlcmd -S localhost -E -C -d Teikem -i scripts\demo\solutions-nueva-posicion.sql` (la necesita el escenario E) |
 | Conteos viejos de pruebas | Pueden quedar conteos abiertos de ensayos anteriores | Entre a **Conteo**: si arriba aparece **«Conteos abiertos»**, toque cada uno en **Continuar** y termínelo con **«Dejar en 0 y terminar»** (o dé de baja el conteo en la web: Conteo cíclico → papelera). **Con un conteo abierto la app no deja hacer otra cosa** |
 | Reconteo (escenarios C y D) | El administrador de Solutions tiene el permiso «Contar» y por eso la app **no le hace reconteo** | Antes de C y D: `sqlcmd -S localhost -E -C -d Teikem -v Modo=ON -i scripts\demo\solutions-modo-contador.sql`. Esperar 5 minutos o reiniciar el API (guarda los permisos en memoria). **Al terminar:** el mismo comando con `Modo=OFF` |
 | Ajustes de conteo | Las dos compañías: «Solo los marcados», margen 0 % (cualquier diferencia pide recontar), muestra el número | Nada |
-| Recibos hechos | Depot ya tiene `REC-00001` (hecho antes de este libreto); el producto del escenario A es otro, sin existencia | Nada |
+| Existencias de partida | Los guantes del escenario A **no tienen existencia** y las posiciones `01-E-03/04/05/06/09`, `09-A-08` y `R1` están **vacías**; los productos de B, C, D, E y F tienen la existencia que dicen sus tablas | Nada (si repite un escenario, vea «Orden y cuidados») |
 
 **Para entrar a la app** (siempre igual): abra la app → si el teléfono tiene varias compañías, toque la compañía (**Advance Depot** o **Advance Solutions**) → toque su usuario →
 escriba su **PIN** → llega a **Inicio**. Arriba de los botones dice **«Almacén: …»** (el almacén con el que se trabaja; si hay más de uno aparece el botón **«Cambiar»**).
@@ -78,7 +77,7 @@ En Solutions ningún producto trae código de barras: se escribe (o se escanea d
 | Producto | `171-DU-1724` UNDERPAD 17X24 3PK/100EA — código de barras `1201804326993` |
 | Posiciones | `13-C-20` con 60 y `14-C-20` con 60 (120 en total, nada reservado) |
 | Cantidad a despachar | 100 |
-| Con más posiciones | `171-AC-100-A` TOURNIQUET — código `3726918104001`: `09-C-15` 60, `10-C-15` 60, y `09-A-01`, `09-A-03`, `09-A-07`, `09-A-09`, `09-A-15` con 20 cada una (220 en total). Pida 150 → 60 + 60 + 20 + 10 |
+| Con más posiciones (opcional) | `171-AC-100-A` TOURNIQUET — código `3726918104001`: `09-C-15` 60 y `10-C-15` 60 (otro producto de dos posiciones). **Si ya hizo el escenario A**, los guantes `3022123181425` quedaron de 20 en cinco posiciones: pida 70 → 20 + 20 + 20 + 10 |
 
 | Paso | Qué hace usted | Qué debe ver |
 |---|---|---|
@@ -126,17 +125,17 @@ Primero se mete existencia en la posición nueva `A-01` con un recibo ciego dire
 
 | Dato | Valor |
 |---|---|
-| Producto | `00050-7` GLOBAL COTTON SWABS 300CT. (sin código de barras: se escribe el SKU) |
-| Existencia hoy | 50 en `GENERAL` |
-| Recibo ciego directo | 20 unidades a `A-01` (cupo 100) → queda `GENERAL` 50 y `A-01` 20 |
-| Cantidad contada | 50 en `GENERAL`, 20 en `A-01` |
+| Producto | `00614-1` GLOBAL COTTON ROUND 80CT. (sin código de barras: se escribe el SKU) |
+| Existencia hoy | 168 en `GENERAL` |
+| Recibo ciego directo | 20 unidades a `A-01` (cupo 100) → queda `GENERAL` 168 y `A-01` 20 |
+| Cantidad contada | 168 en `GENERAL`, 20 en `A-01` |
 
 | Paso | Qué hace usted | Qué debe ver |
 |---|---|---|
-| 1 | En **Inicio** toque **Recibir**. Elija el modo **«Directo a posición»** y toque **«Recibo ciego»**. Escanee `00050-7`, cantidad **20**, escanee la posición destino `A-01` y confirme | Recibo hecho; el producto queda también en `A-01` |
-| 2 | **Volver** a **Inicio** → **Conteo** → elija **«Por producto»**. Escriba `00050-7` y toque **Aceptar** | «El producto está en varias posiciones: elige en cuál lo contaste.» con una lista (`GENERAL`, `A-01`) |
-| 3 | Toque `GENERAL`. En «Cantidad encontrada» escriba **50** y toque **Agregar** | «00050-7 agregado en GENERAL.» y la línea aparece en la lista |
-| 4 | **Toque el producto en la lista** (o escríbalo otra vez) | El SKU `00050-7` aparece en el campo de arriba y la pantalla sube hasta él. Toque **Aceptar** |
+| 1 | En **Inicio** toque **Recibir**. Elija el modo **«Directo a posición»** y toque **«Recibo ciego»**. Escanee `00614-1`, cantidad **20**, escanee la posición destino `A-01` y confirme | Recibo hecho; el producto queda también en `A-01` |
+| 2 | **Volver** a **Inicio** → **Conteo** → elija **«Por producto»**. Escriba `00614-1` y toque **Aceptar** | «El producto está en varias posiciones: elige en cuál lo contaste.» con una lista (`GENERAL`, `A-01`) |
+| 3 | Toque `GENERAL`. En «Cantidad encontrada» escriba **168** y toque **Agregar** | «00614-1 agregado en GENERAL.» y la línea aparece en la lista |
+| 4 | **Toque el producto en la lista** (o escríbalo otra vez) | El SKU `00614-1` aparece en el campo de arriba y la pantalla sube hasta él. Toque **Aceptar** |
 | 5 | Mire la lista de posiciones | Solo sale `A-01`: **`GENERAL` ya no aparece** porque ya se contó. Toque `A-01`, cantidad **20**, **Agregar** |
 | 6 | Toque otra vez el producto en la lista y **Aceptar** | «Ya contaste este producto en todas las posiciones donde el sistema dice que está.» (para corregir una cantidad se toca ✎ en su línea). Toque **Cancelar** |
 | 7 | Toque **«Terminar conteo»** | Vuelve a **Inicio**; el conteo se envía |
@@ -174,4 +173,4 @@ Para mostrar el reconteo con este mismo producto: cuente `GENERAL` y luego `A-01
 - Repetir A, B o E **cambia las existencias**. A usa un producto sin existencia y posiciones vacías; para repetirlo habría que usar otro producto del mismo tipo y otras posiciones vacías.
 - Conteo, acomodo, recibo y la consulta de posiciones de Despacho necesitan señal al servidor.
 - **Un conteo abierto bloquea las demás acciones** de la app (Recibir, Acomodar, Despacho, Consultar y el cambio de almacén) hasta terminarlo: es a propósito. Si algo se queda abierto, **Conteo → Conteos abiertos → Continuar**.
-- Si recrea la base (`scripts\recrear-base.ps1`) se pierden los aparatos registrados, los PIN y la posición `A-01`.
+- Si recrea la base (`scripts\recrear-base.ps1`) se pierden los aparatos registrados, los PIN, la posición `A-01` y todo lo que se haya hecho en los escenarios: vuelva a hacer lo de la sección 1.
