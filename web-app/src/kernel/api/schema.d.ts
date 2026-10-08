@@ -5571,6 +5571,205 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/damage-reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    status?: string;
+                    origin?: string;
+                    q?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DamageReportPageDto"];
+                        "application/json": components["schemas"]["DamageReportPageDto"];
+                        "text/json": components["schemas"]["DamageReportPageDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["DamageReportRequest"];
+                    "text/json": components["schemas"]["DamageReportRequest"];
+                    "application/*+json": components["schemas"]["DamageReportRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DamageReportDto"];
+                        "application/json": components["schemas"]["DamageReportDto"];
+                        "text/json": components["schemas"]["DamageReportDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/damage-reports/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DamageReportDto"];
+                        "application/json": components["schemas"]["DamageReportDto"];
+                        "text/json": components["schemas"]["DamageReportDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/damage-reports/{id}/discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["DamageResolveRequest"];
+                    "text/json": components["schemas"]["DamageResolveRequest"];
+                    "application/*+json": components["schemas"]["DamageResolveRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DamageReportDto"];
+                        "application/json": components["schemas"]["DamageReportDto"];
+                        "text/json": components["schemas"]["DamageReportDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/damage-reports/{id}/recover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["DamageResolveRequest"];
+                    "text/json": components["schemas"]["DamageResolveRequest"];
+                    "application/*+json": components["schemas"]["DamageResolveRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DamageReportDto"];
+                        "application/json": components["schemas"]["DamageReportDto"];
+                        "text/json": components["schemas"]["DamageReportDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/devices/enroll": {
         parameters: {
             query?: never;
@@ -19486,6 +19685,81 @@ export interface components {
             reason?: string | null;
             /** Format: int32 */
             count?: number | null;
+        };
+        DamageReportDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            publicId?: string;
+            code?: string | null;
+            originCode?: string | null;
+            origin?: string | null;
+            causeCode?: string | null;
+            cause?: string | null;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            warehouseCode?: string | null;
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            lotNumber?: string | null;
+            /** Format: double */
+            quantity?: number;
+            /** Format: int32 */
+            fromBinId?: number | null;
+            fromBinCode?: string | null;
+            /** Format: int32 */
+            quarantineBinId?: number | null;
+            quarantineBinCode?: string | null;
+            /** Format: uuid */
+            receiptPublicId?: string | null;
+            receiptNumber?: string | null;
+            notes?: string | null;
+            statusCode?: string | null;
+            status?: string | null;
+            /** Format: date-time */
+            reportedAtUtc?: string;
+            reportedByName?: string | null;
+            /** Format: date-time */
+            resolvedAtUtc?: string | null;
+            resolvedByName?: string | null;
+            resolutionNotes?: string | null;
+        };
+        DamageReportPageDto: {
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+            items?: components["schemas"]["DamageReportDto"][] | null;
+        };
+        DamageReportRequest: {
+            origin?: string | null;
+            /** Format: uuid */
+            warehousePublicId?: string | null;
+            /** Format: uuid */
+            productPublicId?: string | null;
+            /** Format: int32 */
+            lotId?: number | null;
+            lot?: components["schemas"]["LotInput"];
+            /** Format: int32 */
+            fromBinId?: number | null;
+            /** Format: double */
+            quantity?: number | null;
+            cause?: string | null;
+            disposition?: string | null;
+            /** Format: int32 */
+            quarantineBinId?: number | null;
+            /** Format: uuid */
+            receiptPublicId?: string | null;
+            notes?: string | null;
+        };
+        DamageResolveRequest: {
+            /** Format: int32 */
+            toBinId?: number | null;
+            notes?: string | null;
         };
         DataFieldDto: {
             key?: string | null;

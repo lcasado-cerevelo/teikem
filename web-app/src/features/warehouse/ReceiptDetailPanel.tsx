@@ -23,6 +23,7 @@ import { problemText } from './problemText'
 import { hasDocument, RECEIPT_STATUS_DOMAIN, receiptOriginText } from './receiptFilters'
 import { confirmBlockers, missingTargets, rowVariance } from './receiptLineEdit'
 import { isDirectMode } from './receivingMode'
+import { DamageReportModal } from './DamageReportModal'
 import { ReceiptLinesEditor } from './ReceiptLinesEditor'
 import { ReceiptPutawayTasks } from './ReceiptPutawayTasks'
 import { useReceiptLineRows } from './useReceiptLineRows'
@@ -66,6 +67,7 @@ function ReceiptDetailBody({ receipt, onEditHeader }: { receipt: ReceiptDetailDt
   const applySuggested = useApplyReceiptTargetSuggestions()
   const [confirming, setConfirming] = useState(false)
   const [history, setHistory] = useState(false)
+  const [damaging, setDamaging] = useState(false)   // 2026-10-08: reportar lo que llegó dañado en este recibo
   const header = receipt.header ?? {}
   const publicId = header.publicId ?? ''
   const isOpen = header.isOpen === true
@@ -108,6 +110,11 @@ function ReceiptDetailBody({ receipt, onEditHeader }: { receipt: ReceiptDetailDt
         actions={
           <>
             <span className="rcp-origin">{receiptOriginText(header, t)}</span>
+            <Can perm="warehouse.damage">
+              <button type="button" className="btn sm" onClick={() => setDamaging(true)}>
+                {t('warehouse.damage.reportFromReceipt')}
+              </button>
+            </Can>
             <button type="button" className="rowbtn" aria-label={editLabel} title={editLabel} onClick={onEditHeader}>
               <IconEdit />
             </button>
@@ -189,6 +196,12 @@ function ReceiptDetailBody({ receipt, onEditHeader }: { receipt: ReceiptDetailDt
       </Panel>
 
       {!isOpen && tasks.length > 0 && <ReceiptPutawayTasks tasks={tasks} queueLink />}
+
+      <DamageReportModal
+        open={damaging}
+        onClose={() => setDamaging(false)}
+        receipt={header.warehousePublicId ? { publicId, number: header.number ?? '', warehousePublicId: header.warehousePublicId } : undefined}
+      />
 
       <Modal open={history} size="md" title={t('warehouse.receipts.detail.historyTitle', { number: header.number ?? '' })} onClose={() => setHistory(false)}>
         {history && header.id != null && <StatusHistory entityType={ENTITY_TYPE} entityId={header.id} domain={RECEIPT_STATUS_DOMAIN} />}

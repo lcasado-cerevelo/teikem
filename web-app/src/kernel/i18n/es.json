@@ -318,6 +318,10 @@
     "rentals": {
       "title": "Rentas",
       "subtitle": "equipos con serie rentados a la localidad del cliente"
+    },
+    "damage": {
+      "title": "Daños",
+      "subtitle": "lo que llegó dañado o se dañó en el almacén"
     }
   },
   "status": {
@@ -3310,6 +3314,86 @@
       "receiptIntro": "Se reparten las {qty} recibidas en esta línea. Lo que no quepa en posiciones llenas queda en una línea sin posición para elegirla en la rejilla.",
       "receiptSaved": "Línea repartida en {count} línea(s).",
       "receiptFailed": "Se hicieron {done} cambio(s) y falló uno: {message} Revise las líneas del recibo."
+    },
+    "damage": {
+      "title": "Daños",
+      "subtitle": "lo que llegó dañado en un recibo o se dañó en el almacén: cuarentena, desechar o recuperar",
+      "report": "Reportar daño",
+      "reportTitle": "Reportar daño",
+      "reportSubmit": "Reportar",
+      "searchPlaceholder": "SKU, producto o DAN-00001",
+      "all": "Todos",
+      "empty": "No hay daños con estos filtros.",
+      "originWarehouse": "Se dañó en el almacén",
+      "originReceipt": "Llegó dañado en un recibo",
+      "originReceiptHelp": "Esas unidades no entran como buenas: si las manda a cuarentena entran a esa posición; si las desecha, no entran al inventario.",
+      "originWarehouseHelp": "La mercancía ya está en inventario: se mueve de su posición a cuarentena, o se baja del inventario si se desecha.",
+      "fromReceipt": "Daño del recibo {number}: llegó dañado.",
+      "receiptPlaceholder": "Elija el recibo",
+      "lotPlaceholder": "Elija el lote",
+      "newLotHelp": "Si el lote no existe todavía, escriba su número.",
+      "causeHelp": "Solo informativa: cómo ocurrió.",
+      "toQuarantine": "Mandar a cuarentena",
+      "toDiscard": "Desechar de una vez",
+      "quarantineHelp": "Va a la posición de cuarentena del almacén; después se desecha o se recupera.",
+      "discardHelp": "Sale del inventario ahora, con un ajuste de motivo Daño.",
+      "reportedQuarantine": "{code}: enviado a cuarentena.",
+      "reportedDiscard": "{code}: desechado.",
+      "discard": "Desechar",
+      "recover": "Recuperar",
+      "discardTitle": "Desechar {code}",
+      "recoverTitle": "Recuperar {code}",
+      "discardBody": "Se desechan {qty} de {sku} que están en {bin}: salen del inventario con un ajuste de motivo Daño.",
+      "recoverBody": "Se sacan {qty} de {sku} de {bin} y vuelven a una posición de guardado.",
+      "discarded": "{code} desechado.",
+      "recovered": "{code} recuperado.",
+      "toBinHelp": "Una posición de guardado (no de cuarentena, recepción, cruce de muelle ni renta).",
+      "fields": {
+        "origin": "¿Dónde se detectó?",
+        "warehouse": "Almacén",
+        "receipt": "Recibo",
+        "product": "Producto",
+        "fromBin": "Posición donde estaba",
+        "lot": "Lote",
+        "newLot": "Lote nuevo",
+        "quantity": "Cantidad dañada",
+        "cause": "Causa",
+        "disposition": "¿Qué se hace con ello?",
+        "notes": "Nota (opcional)",
+        "toBin": "Posición a la que vuelve",
+        "resolutionNotes": "Nota (opcional)"
+      },
+      "cols": {
+        "code": "Número",
+        "product": "Producto",
+        "quantity": "Cantidad",
+        "origin": "Origen",
+        "cause": "Causa",
+        "where": "Posición",
+        "status": "Estatus",
+        "reported": "Reportado",
+        "by": "Por",
+        "notes": "Notas"
+      },
+      "status": {
+        "QUARANTINED": "En cuarentena",
+        "DISCARDED": "Desechado",
+        "RECOVERED": "Recuperado"
+      },
+      "errors": {
+        "warehouseRequired": "Elija el almacén.",
+        "productRequired": "Elija el producto.",
+        "quantityInvalid": "Escriba un número.",
+        "quantityPositive": "La cantidad dañada debe ser mayor que 0.",
+        "causeRequired": "Indique cómo ocurrió el daño.",
+        "dispositionRequired": "Indique si va a cuarentena o se desecha.",
+        "notesMax": "La nota no puede pasar de 300 caracteres.",
+        "fromBinRequired": "Indique la posición donde está lo dañado.",
+        "receiptRequired": "Indique el recibo del que llegó dañado.",
+        "lotRequired": "Indique el lote.",
+        "toBinRequired": "Indique la posición a la que vuelve lo recuperado."
+      },
+      "reportFromReceipt": "Reportar daño"
     }
   },
   "system": {

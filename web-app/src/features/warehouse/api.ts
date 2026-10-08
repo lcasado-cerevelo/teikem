@@ -162,6 +162,8 @@ export const warehouseKeys = {
   orders: ['/api/v1/orders'],
   order: ['/api/v1/orders/{publicId}'],
   orderLookup: ['/api/v1/orders/lookup'],
+  // 2026-10-08: daños (llegaron dañados o se dañaron en el almacén)
+  damageReports: ['/api/v1/damage-reports'],
 } as const
 
 type KeyName = keyof typeof warehouseKeys
@@ -1649,3 +1651,44 @@ export type BinProductsQuery = GetQuery<'/api/v1/warehouses/{publicId}/bin-produ
 /** `GET /api/v1/warehouses/{publicId}/bin-products`: una tanda de posiciones con sus productos (take ≤ 200; más de 200 = 400). */
 export const fetchBinProducts = (publicId: string, query: BinProductsQuery, signal?: AbortSignal) =>
   unwrap(api.GET('/api/v1/warehouses/{publicId}/bin-products', { params: { path: { publicId }, query }, signal }))
+
+
+// ---------------------------------------------------------------------------------------------------------------------
+// 2026-10-08 — Daños (`warehouse.damage`): reportar (cuarentena o desechar de una vez), desechar y recuperar lo que está en cuarentena
+// ---------------------------------------------------------------------------------------------------------------------
+
+export type DamageReportDto = Schemas['DamageReportDto']
+export type DamageReportRequest = Schemas['DamageReportRequest']
+export type DamageResolveRequest = Schemas['DamageResolveRequest']
+
+/** `GET /api/v1/damage-reports?status=&origin=&q=&skip=&take=` (paginado; `status` admite varios separados por coma). */
+export function useDamageReports(query: GetQuery<'/api/v1/damage-reports'> = {}, options?: WarehouseQueryOptions) {
+  return useQuery({
+    queryKey: [warehouseKeys.damageReports[0], query],
+    queryFn: () => unwrap(api.GET('/api/v1/damage-reports', { params: { query } })),
+    enabled: options?.enabled ?? true,
+    placeholderData: keepPreviousData,
+    meta: meta(options),
+  })
+}
+
+/** `POST /api/v1/damage-reports` (409 `insufficient_stock`; 422 serie o almacén sin posición de cuarentena). */
+export function useReportDamage() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: DamageReportRequest) => unwrap(api.POST('/api/v1/damage-reports', { body })),
+    onSuccess: () => Promise.all([invalidate(qc, 'damageReports'), invalidate(qc, ...STOCK)]),
+  })
+}
+
+/** `POST /api/v1/damage-reports/{id}/discard` (desecha lo que está en cuarentena) o `/recover` (lo devuelve a una posición de guardado). */
+export function useResolveDamage() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { action: 'discard' | 'recover'; id: number; body: DamageResolveRequest }) =>
+      v.action === 'discard'
+        ? unwrap(api.POST('/api/v1/damage-reports/{id}/discard', { params: { path: { id: v.id } }, body: v.body }))
+        : unwrap(api.POST('/api/v1/damage-reports/{id}/recover', { params: { path: { id: v.id } }, body: v.body })),
+    onSuccess: () => Promise.all([invalidate(qc, 'damageReports'), invalidate(qc, ...STOCK)]),
+  })
+}

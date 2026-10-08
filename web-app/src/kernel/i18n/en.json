@@ -318,6 +318,10 @@
     "rentals": {
       "title": "Rentals",
       "subtitle": "serial-tracked equipment rented to a client location"
+    },
+    "damage": {
+      "title": "Damage",
+      "subtitle": "what arrived damaged or got damaged in the warehouse"
     }
   },
   "status": {
@@ -3310,6 +3314,86 @@
       "receiptIntro": "The {qty} received on this line are split. Whatever does not fit in full bins stays in a line without a bin, to pick one in the grid.",
       "receiptSaved": "Line split into {count} line(s).",
       "receiptFailed": "{done} change(s) were made and one failed: {message} Check the receipt lines."
+    },
+    "damage": {
+      "title": "Damage",
+      "subtitle": "what arrived damaged in a receipt or got damaged in the warehouse: quarantine, discard or recover",
+      "report": "Report damage",
+      "reportTitle": "Report damage",
+      "reportSubmit": "Report",
+      "searchPlaceholder": "SKU, product or DAN-00001",
+      "all": "All",
+      "empty": "No damage reports match these filters.",
+      "originWarehouse": "Damaged in the warehouse",
+      "originReceipt": "Arrived damaged in a receipt",
+      "originReceiptHelp": "Those units do not enter as good stock: sent to quarantine they enter that position; discarded, they never enter inventory.",
+      "originWarehouseHelp": "The goods are already in inventory: they move from their position to quarantine, or come out of inventory if discarded.",
+      "fromReceipt": "Damage from receipt {number}: arrived damaged.",
+      "receiptPlaceholder": "Choose the receipt",
+      "lotPlaceholder": "Choose the lot",
+      "newLotHelp": "If the lot does not exist yet, type its number.",
+      "causeHelp": "Informational only: how it happened.",
+      "toQuarantine": "Send to quarantine",
+      "toDiscard": "Discard right away",
+      "quarantineHelp": "Goes to the warehouse quarantine position; later it is discarded or recovered.",
+      "discardHelp": "Leaves inventory now, with a Damage adjustment.",
+      "reportedQuarantine": "{code}: sent to quarantine.",
+      "reportedDiscard": "{code}: discarded.",
+      "discard": "Discard",
+      "recover": "Recover",
+      "discardTitle": "Discard {code}",
+      "recoverTitle": "Recover {code}",
+      "discardBody": "{qty} of {sku} in {bin} will be discarded: they leave inventory with a Damage adjustment.",
+      "recoverBody": "{qty} of {sku} leave {bin} and return to a storage position.",
+      "discarded": "{code} discarded.",
+      "recovered": "{code} recovered.",
+      "toBinHelp": "A storage position (not quarantine, receiving, cross-dock or rental).",
+      "fields": {
+        "origin": "Where was it found?",
+        "warehouse": "Warehouse",
+        "receipt": "Receipt",
+        "product": "Product",
+        "fromBin": "Position where it was",
+        "lot": "Lot",
+        "newLot": "New lot",
+        "quantity": "Damaged quantity",
+        "cause": "Cause",
+        "disposition": "What to do with it?",
+        "notes": "Note (optional)",
+        "toBin": "Position it returns to",
+        "resolutionNotes": "Note (optional)"
+      },
+      "cols": {
+        "code": "Number",
+        "product": "Product",
+        "quantity": "Quantity",
+        "origin": "Origin",
+        "cause": "Cause",
+        "where": "Position",
+        "status": "Status",
+        "reported": "Reported",
+        "by": "By",
+        "notes": "Notes"
+      },
+      "status": {
+        "QUARANTINED": "In quarantine",
+        "DISCARDED": "Discarded",
+        "RECOVERED": "Recovered"
+      },
+      "errors": {
+        "warehouseRequired": "Choose the warehouse.",
+        "productRequired": "Choose the product.",
+        "quantityInvalid": "Type a number.",
+        "quantityPositive": "The damaged quantity must be greater than 0.",
+        "causeRequired": "Say how the damage happened.",
+        "dispositionRequired": "Say whether it goes to quarantine or is discarded.",
+        "notesMax": "The note cannot exceed 300 characters.",
+        "fromBinRequired": "Say the position where the damaged goods are.",
+        "receiptRequired": "Say the receipt it arrived damaged in.",
+        "lotRequired": "Say the lot.",
+        "toBinRequired": "Say the position the recovered goods return to."
+      },
+      "reportFromReceipt": "Report damage"
     }
   },
   "system": {

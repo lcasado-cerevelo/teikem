@@ -330,7 +330,15 @@ export const appRoutes: readonly AppRoute[] = [
     perm: 'inventory.view',
     module: ModuleKeys.WmsLotSerial,
     nav: { group: 'warehouse', key: 'kardex', order: 120 },
+  },  // 2026-10-08 — Daños: lo que llegó dañado en un recibo o se dañó en el almacén (cuarentena, desechar, recuperar). Va después de Transferencias y ajustes.
+  {
+    path: '/warehouse/damage',
+    element: lazy(() => import('../features/warehouse/DamageListScreen')),
+    perm: 'warehouse.damage',
+    module: ModuleKeys.WmsLotSerial,
+    nav: { group: 'warehouse', key: 'damage', order: 130 },
   },
+
   // Direcciones anteriores (sin ítem de menú): 'Tareas de almacén', 'Citas de muelle' e 'Inventario' ya no son pantallas propias.
   { path: '/warehouse/tasks', element: redirectTo('/warehouse/receipts?tab=putaway') },
   { path: '/warehouse/dock-appointments', element: redirectTo('/warehouse/cross-dock-plans?tab=appointments') },
