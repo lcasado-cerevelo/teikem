@@ -196,6 +196,26 @@ public class DamageServiceTests
     }
 
     [Fact]
+    public async Task A_lot_can_be_named_by_its_number_for_warehouse_damage()
+    {
+        var w = await SeedAsync();
+        var lotProduct = await w.F.AddProductAsync("LOT-1", TrackingTypes.Lot);
+        var lot = await w.F.AddLotAsync(lotProduct, "L-7");
+        await w.F.PostAsync(new InventoryPosting(InventoryTxnTypes.Receipt, lotProduct.ProductId, 8m, LotId: lot.LotId, ToWarehouseId: w.W.WarehouseId, ToBinId: w.Pick.WarehouseBinId));
+        var svc = w.F.Get<DamageService>();
+
+        var dto = await svc.ReportAsync(new DamageReportRequest(DamageOrigins.Warehouse, w.W.PublicId, lotProduct.PublicId, null, new LotInput("L-7"), w.Pick.WarehouseBinId, 3m,
+            DamageCauses.Other, DamageDispositions.Quarantine), default);
+        Assert.Equal("L-7", dto.LotNumber);
+        Assert.Equal(5m, await w.F.OnHandAsync(lotProduct.ProductId, w.Pick.WarehouseBinId, lot.LotId));
+        Assert.Equal(3m, await w.F.OnHandAsync(lotProduct.ProductId, w.Quarantine.WarehouseBinId, lot.LotId));
+
+        // un lote que no existe en un daño del almacén → 404
+        await Assert.ThrowsAsync<NotFoundException>(() => svc.ReportAsync(new DamageReportRequest(DamageOrigins.Warehouse, w.W.PublicId, lotProduct.PublicId, null, new LotInput("NO-EXISTE"),
+            w.Pick.WarehouseBinId, 1m, DamageCauses.Other, DamageDispositions.Discard), default));
+    }
+
+    [Fact]
     public async Task The_list_filters_by_status_origin_and_search()
     {
         var w = await SeedAsync();

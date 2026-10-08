@@ -77,7 +77,8 @@
     "lock": "Bloquear",
     "warehouseLabel": "Almacén: {name}",
     "warehouseNone": "Sin almacén",
-    "changeWarehouse": "Cambiar"
+    "changeWarehouse": "Cambiar",
+    "damage": "Daño"
   },
   "warehousePick": {
     "title": "¿En qué almacén trabajas?",
@@ -475,5 +476,43 @@
     "tapToUse": "Toca para usarla",
     "free": "libre {qty}",
     "capacityWarn": "{bin}: caben {free} y se pondrán {qty}."
+  },
+  "damage": {
+    "title": "Daño",
+    "chooseOrigin": "¿Dónde se detectó el daño?",
+    "originWarehouse": "Se dañó en el almacén",
+    "originWarehouseHelp": "Escaneas la posición donde está lo dañado.",
+    "originReceipt": "Llegó dañado en un recibo",
+    "originReceiptHelp": "Tecleas o escaneas el número del recibo. Esas unidades no entran como buenas.",
+    "scanBin": "Escanea la posición donde está",
+    "scanBinHelp": "La posición donde está lo dañado",
+    "scanReceipt": "Número del recibo",
+    "scanReceiptHelp": "Por ejemplo REC-00012",
+    "scanProduct": "Escanea el producto dañado",
+    "binNotFound": "No encontré esa posición en este almacén.",
+    "receiptNotFound": "No encontré ese recibo en este almacén.",
+    "productNotFound": "No encontré ese producto.",
+    "serialNotSupported": "Los productos con serie se reportan con un ajuste de inventario (motivo Daño) desde la web.",
+    "needSignal": "Reportar un daño necesita señal. Intenta de nuevo con conexión.",
+    "inBin": "Posición {bin}",
+    "inReceipt": "Recibo {number}",
+    "qtyLabel": "Cantidad dañada",
+    "qtyInvalid": "Escribe una cantidad mayor que 0.",
+    "lotLabel": "Lote",
+    "lotRequired": "Escribe el lote.",
+    "causeLabel": "Causa",
+    "causeArrived": "Vino así",
+    "causeTransit": "Accidente en el camino",
+    "causeWarehouse": "Accidente en el almacén",
+    "causeOther": "Otra",
+    "toQuarantine": "Mandar a cuarentena",
+    "quarantineHelp": "Va a la posición de cuarentena; después se desecha o se recupera desde la web.",
+    "toDiscard": "Desechar",
+    "discardHelp": "Sale del inventario ahora.",
+    "discardConfirmTitle": "¿Desechar de una vez?",
+    "discardConfirmBody": "Se desechan {qty} de {sku}. No se puede deshacer.",
+    "reportedQuarantine": "{code}: enviado a cuarentena.",
+    "reportedDiscard": "{code}: desechado.",
+    "restart": "Empezar de nuevo"
   }
 }

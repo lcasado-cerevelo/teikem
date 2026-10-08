@@ -68,6 +68,15 @@ public sealed class DamageService(TeikemDbContext db, ITenantContext tenant, ILo
                 lotId = await db.Set<InventoryLot>().AsNoTracking().Where(l => l.LotId == requestedLot && l.ProductId == product.ProductId)
                     .Select(l => (int?)l.LotId).FirstOrDefaultAsync(ct2) ?? throw WmsResolve.LotNotFound();
 
+            // El lote también puede venir por su número (la app lo teclea o escanea): un daño del almacén exige que exista; uno de recibo que se
+            // desecha de una vez solo lo anota si existe; uno de recibo que entra a cuarentena lo da de alta al ajustar (más abajo).
+            if (lotId is null && req.Lot?.Number is string lotNumber && !string.IsNullOrWhiteSpace(lotNumber) && !(origin == DamageOrigins.Receipt && disposition == DamageDispositions.Quarantine))
+            {
+                var wanted = lotNumber.Trim();
+                lotId = await db.Set<InventoryLot>().AsNoTracking().Where(l => l.ProductId == product.ProductId && l.LotNumber == wanted).Select(l => (int?)l.LotId).FirstOrDefaultAsync(ct2);
+                if (lotId is null && origin == DamageOrigins.Warehouse) throw WmsResolve.LotNotFound();
+            }
+
             WarehouseBin? quarantine = null;
             if (disposition == DamageDispositions.Quarantine) quarantine = await ResolveQuarantineBinAsync(warehouse.WarehouseId, req.QuarantineBinId, ct2);
 

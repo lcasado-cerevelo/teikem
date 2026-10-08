@@ -1,6 +1,7 @@
 // docs/mobile/mejoras-ux-zebra.md §1 y §4: la raíz deja un margen inferior para la barra de navegación del aparato, e
 // Inicio pone las acciones en dos columnas de botones altos, dentro de una pantalla desplazable. En archivo propio:
 // renderRouter() no aísla del todo su estado global de navegación entre dos llamadas del mismo archivo (ver homeLock.test.tsx).
+import { Children } from 'react'
 import { StyleSheet } from 'react-native'
 import { __resetAllForTests } from 'expo-sqlite'
 import { __resetSecureStoreForTests } from 'expo-secure-store'
@@ -33,7 +34,8 @@ describe('navegación — Inicio y márgenes de la app', () => {
     // Grilla de dos columnas: fila que se parte, cada celda a la mitad (la quinta, sola, a todo el ancho).
     const grid = screen.getByTestId('home-grid')
     expect(StyleSheet.flatten(grid.props.style)).toMatchObject({ flexDirection: 'row', flexWrap: 'wrap' })
-    expect(grid.props.children).toHaveLength(5)
+    // (2026-10-08: «Daño» es un sexto tile condicionado al permiso warehouse.damage; sin saberlo, los hijos reales son 5)
+    expect(Children.toArray(grid.props.children)).toHaveLength(5)
     for (const label of ['Recibir', 'Acomodar', 'Despacho', 'Conteo', 'Consultar']) {
       const button = screen.getByRole('button', { name: new RegExp(label) })
       expect(StyleSheet.flatten(button.props.style).minHeight).toBe(88)

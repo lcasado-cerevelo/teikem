@@ -77,7 +77,8 @@
     "lock": "Lock",
     "warehouseLabel": "Warehouse: {name}",
     "warehouseNone": "No warehouse",
-    "changeWarehouse": "Change"
+    "changeWarehouse": "Change",
+    "damage": "Damage"
   },
   "warehousePick": {
     "title": "Which warehouse are you working in?",
@@ -475,5 +476,43 @@
     "tapToUse": "Tap to use it",
     "free": "free {qty}",
     "capacityWarn": "{bin}: {free} fit and {qty} will be put."
+  },
+  "damage": {
+    "title": "Damage",
+    "chooseOrigin": "Where was the damage found?",
+    "originWarehouse": "Damaged in the warehouse",
+    "originWarehouseHelp": "You scan the position where the damaged goods are.",
+    "originReceipt": "Arrived damaged in a receipt",
+    "originReceiptHelp": "You type or scan the receipt number. Those units do not enter as good stock.",
+    "scanBin": "Scan the position where it is",
+    "scanBinHelp": "The position where the damaged goods are",
+    "scanReceipt": "Receipt number",
+    "scanReceiptHelp": "For example REC-00012",
+    "scanProduct": "Scan the damaged product",
+    "binNotFound": "I could not find that position in this warehouse.",
+    "receiptNotFound": "I could not find that receipt in this warehouse.",
+    "productNotFound": "I could not find that product.",
+    "serialNotSupported": "Serial products are reported with an inventory adjustment (reason Damage) from the web.",
+    "needSignal": "Reporting damage needs signal. Try again with a connection.",
+    "inBin": "Position {bin}",
+    "inReceipt": "Receipt {number}",
+    "qtyLabel": "Damaged quantity",
+    "qtyInvalid": "Type a quantity greater than 0.",
+    "lotLabel": "Lot",
+    "lotRequired": "Type the lot.",
+    "causeLabel": "Cause",
+    "causeArrived": "Came that way",
+    "causeTransit": "Accident in transit",
+    "causeWarehouse": "Warehouse accident",
+    "causeOther": "Other",
+    "toQuarantine": "Send to quarantine",
+    "quarantineHelp": "Goes to the quarantine position; later it is discarded or recovered from the web.",
+    "toDiscard": "Discard",
+    "discardHelp": "Leaves inventory now.",
+    "discardConfirmTitle": "Discard right away?",
+    "discardConfirmBody": "{qty} of {sku} will be discarded. This cannot be undone.",
+    "reportedQuarantine": "{code}: sent to quarantine.",
+    "reportedDiscard": "{code}: discarded.",
+    "restart": "Start over"
   }
 }

@@ -802,6 +802,15 @@ de la búsqueda libre del mismo texto.
 - **Listado de posiciones:** aparece solo cuando la cantidad no cabe en la sugerida; con «Ver otras posiciones» se abre también cuando sí cabe. Despacho lista las posiciones con existencia (con lote y vencimiento); Recibo directo, las posiciones que propone el sistema con su espacio libre. Las **sugeridas** (las que juntas completan la cantidad) salen primero y en otro azul. Tocar una la marca con lo que falte (hasta su existencia o espacio libre); el contador **Tomado X de Y** sube; nunca se puede marcar más del total. Si cambia la cantidad, las marcas se recortan solas. «Marcar las sugeridas» marca todas las sugeridas de una vez. **Usar estas posiciones** (Despacho) o **Recibir en estas posiciones** (Recibo) se enciende cuando lo tomado es igual al total y agrega una línea por posición.
 - **Con lote** (Despacho): sin listado; la posición la manda el lote que vence primero. En Recibo directo, productos con serie y el modo «cantidad por posición» no muestran este listado.
 
+### Daño (2026-10-08)
+
+Tile **Daño** en Inicio (solo con el permiso `warehouse.damage`). **Necesita señal**: mueve inventario en el servidor, sin cola.
+1. Elija **Se dañó en el almacén** (escanee la posición donde está) o **Llegó dañado en un recibo** (teclee o escanee el número del recibo, por ejemplo `REC-00012`).
+2. Escanee el producto (o búsquelo en la lista), escriba la **cantidad dañada** (y el **lote** si el producto lleva lote), elija la **causa** (informativa) y toque **Mandar a cuarentena** o **Desechar** (este último pide confirmar: `¿Desechar de una vez?`).
+3. Sale `DAN-00012: enviado a cuarentena.` o `DAN-00012: desechado.`.
+- Avisos: `No encontré esa posición en este almacén.`, `No encontré ese recibo en este almacén.`, `No encontré ese producto.`, `Escribe una cantidad mayor que 0.`, `Escribe el lote.`, `Los productos con serie se reportan con un ajuste de inventario (motivo Daño) desde la web.`, `Reportar un daño necesita señal. Intente de nuevo con conexión.`; los del servidor (inventario insuficiente, sin posición de cuarentena…) salen tal cual (ver capítulo 06, §4b).
+- Desechar lo que quedó en cuarentena o recuperarlo se hace en la web (Almacén → Daños).
+
 ### Cerrar sesión, bloquear y quitar una compañía (2026-10-07)
 
 - **Cerrar sesión** (antes «Cambiar de usuario»): sale del usuario; el siguiente elige su nombre y teclea su PIN. Lo capturado y pendiente de enviar se conserva.

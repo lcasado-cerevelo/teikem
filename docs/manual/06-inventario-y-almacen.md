@@ -1169,6 +1169,47 @@ Casos frecuentes (Lote 16):
 
 ---
 
+## 4b. Daños: lo que llegó dañado o se dañó en el almacén (2026-10-08)
+
+**Qué hace.** Registra un daño con su causa y manda lo dañado a **cuarentena** (a una posición de una zona de tipo Cuarentena) o lo **desecha de una vez**. Lo que queda en cuarentena se **desecha** después o se **recupera** a una posición de guardado. Todo movimiento de inventario lo hace el ledger (ajuste con motivo *Daño* o transferencia): queda en el Kárdex con la nota `DAN-00012 · {causa} · {nota}`. No hay fotos ni reclamos: la **causa** es solo informativa.
+
+**Quién y dónde.** Permiso **Reportar y resolver daños** (`warehouse.damage`; lo trae «Operador de almacén»; módulo WMS). Web: **Almacén → Daños** (`/warehouse/damage`) y el botón **Reportar daño** de la ficha de un recibo. App: tile **Daño** en Inicio (solo con ese permiso).
+
+**Dos orígenes.**
+- **Se dañó en el almacén** (la mercancía ya está en inventario): se indica la **posición donde estaba**. *Cuarentena* = transferencia de esa posición a la de cuarentena. *Desechar* = ajuste negativo con motivo Daño.
+- **Llegó dañado en un recibo** (esas unidades **no entran como buenas**): se indica el **recibo**. *Cuarentena* = esas unidades entran directo a la posición de cuarentena (ajuste positivo, motivo Daño). *Desechar de una vez* = no entran al inventario; solo queda el reporte. Al confirmar el recibo, reciba solo lo bueno; lo dañado se reporta aparte (la diferencia contra lo esperado la ve como siempre).
+
+**Causa:** *Vino así*, *Accidente en el camino*, *Accidente en el almacén*, *Otra* (catálogo `DamageCause`). Por defecto, un daño de recibo propone *Vino así* y uno del almacén *Accidente en el almacén*.
+
+**Estatus** (`DamageStatus`): Reportado (inicial) → **En cuarentena** → **Desechado** o **Recuperado** (terminales); también Reportado → Desechado cuando se desecha de una vez. Un daño resuelto no se vuelve a resolver.
+
+**Cómo se usa.**
+1. *Reportar:* web (Almacén → Daños → **Reportar daño**, o desde la ficha del recibo) o app (Inicio → **Daño**). Se elige origen, producto (y lote si el producto lleva lote), cantidad, causa y **Mandar a cuarentena / Desechar**. La posición de cuarentena es la primera activa del almacén por código (o la que se indique al API).
+2. *Desechar o recuperar lo que está en cuarentena:* en la lista web, íconos **Desechar** (nota opcional) y **Recuperar** (hay que elegir la posición de guardado; nunca de cuarentena, recepción, cruce de muelle ni renta). La app solo reporta; resolver se hace en la web.
+3. *Consultar:* la lista filtra por estatus, origen y búsqueda libre (SKU, producto o `DAN-00012`). La fuente de datos `DAMAGE_REPORT` queda disponible para vistas, indicadores y gráficos (por causa, origen, producto o estatus).
+
+**Validaciones (mensaje exacto y código).**
+| Situación | Mensaje | HTTP |
+|---|---|---|
+| Sin cantidad o ≤ 0 | `La cantidad dañada debe ser mayor que 0.` | 400 |
+| Sin producto | `Indique el producto dañado.` | 400 |
+| Sin causa | `Indique cómo ocurrió el daño.` | 400 |
+| Sin destino | `Indique si lo dañado va a cuarentena o se desecha.` | 400 |
+| Destino desconocido | `Destino desconocido: '{valor}'. Use QUARANTINE o DISCARD.` | 400 |
+| Origen recibo sin recibo | `Indique el recibo del que llegó dañado.` | 400 |
+| Origen almacén sin posición | `Indique la posición donde está lo dañado.` | 400 |
+| Nota de más de 300 caracteres | `La nota no puede pasar de 300 caracteres.` | 400 |
+| Posición de cuarentena indicada que no lo es | `La posición {código} no es de una zona de cuarentena.` | 400 |
+| Recuperar sin posición | `Indique la posición a la que vuelve lo recuperado.` | 400 |
+| Recuperar a zona no permitida | `La posición {código} está en una zona {tipo}; lo recuperado vuelve a una posición de guardado.` | 400 |
+| Más de lo que hay en la posición | `Inventario insuficiente de {sku} en {posición}: disponible {x}, solicitado {y}.` | 409 |
+| El almacén no tiene posición de cuarentena | `El almacén no tiene una posición de cuarentena activa; cree una en una zona de tipo Cuarentena.` | 422 |
+| Producto con serie | `Los productos con serie todavía no se reportan aquí; use un ajuste de inventario con motivo Daño.` | 422 |
+| Desechar/recuperar algo que no está en cuarentena | `Solo se resuelve un daño que está en cuarentena.` | 422 |
+| Daño, recibo, producto, posición o lote inexistente | `… no encontrado.` | 404 |
+
+**Casos frecuentes.** *Llegaron 100 y 10 venían rotas:* reciba 90 y reporte 10 con origen «Llegó dañado» (a cuarentena o desechar). *Se cayó una tarima en A-01:* reporte con origen «Se dañó en el almacén» y la posición A-01. *Lo mandé a cuarentena y se puede vender:* en Daños, **Recuperar** a una posición de guardado. *Crear la zona de cuarentena:* Almacén → Posiciones → zona de tipo Cuarentena con al menos una posición.
+
 ## 5. Tareas de almacén: cola unificada, putaway dirigido y reabasto
 
 Qué hace: una cola única de tareas por tipo (`PUTAWAY`, `REPLENISH`, `COUNT`, `CROSSDOCK`, y los tipos `PICK`/

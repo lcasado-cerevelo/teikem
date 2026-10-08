@@ -4,6 +4,7 @@ import { useFocusEffect, useRouter } from 'expo-router'
 
 import { clearUserSession, lockSession } from '../kernel/auth/session'
 import { useSession } from '../kernel/auth/useSession'
+import { useMyPermissions } from '../kernel/auth/permissions'
 import { getOpenReceipt } from '../features/receive/localLookup'
 import { getOpenPick } from '../features/dispatch/localPick'
 import { getOpenCount } from '../features/count/localCount'
@@ -38,6 +39,8 @@ export default function HomeScreen() {
   const pending = usePendingCount()
   const lastSync = useLastSync()
   useAutoSync()
+  const permissions = useMyPermissions()
+  const canReportDamage = permissions?.includes('warehouse.damage') ?? false
 
   const [openKind, setOpenKind] = useState<OpenKind | null>(null)
   const userId = session?.userId
@@ -99,7 +102,7 @@ export default function HomeScreen() {
 
   /** Navega a `path`, salvo que haya un documento distinto abierto (avisa cuál en vez de navegar). `ownKind` es el
    *  tipo de documento que esa pantalla retoma (undefined si no maneja ninguno, como Acomodar o Consultar). */
-  function go(path: '/receive' | '/putaway' | '/dispatch' | '/count' | '/lookup', ownKind?: OpenKind) {
+  function go(path: '/receive' | '/putaway' | '/dispatch' | '/count' | '/lookup' | '/damage', ownKind?: OpenKind) {
     if (openKind && openKind !== ownKind) {
       Alert.alert(t(`lock.${openKind}InProgress`))
       return
@@ -163,6 +166,12 @@ export default function HomeScreen() {
         <View style={styles.cell}>
           <BigButton layout="tile" label={t('home.lookup')} icon="🔎" variant="secondary" onPress={() => go('/lookup')} />
         </View>
+        {/* 2026-10-08: solo con el permiso warehouse.damage (sin saberlo, no se ofrece) */}
+        {canReportDamage ? (
+          <View style={styles.cell}>
+            <BigButton layout="tile" label={t('home.damage')} icon="💥" variant="secondary" onPress={() => go('/damage')} testID="home-damage" />
+          </View>
+        ) : null}
       </View>
 
       <View style={styles.syncBar}>
