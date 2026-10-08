@@ -349,3 +349,25 @@ public sealed class InventoryDiscrepancyConfiguration : IEntityTypeConfiguration
         b.HasOne<CycleCount>().WithMany().HasForeignKey(d => d.CycleCountId).OnDelete(DeleteBehavior.NoAction);
     }
 }
+
+public sealed class DamageReportConfiguration : IEntityTypeConfiguration<DamageReport>
+{
+    public void Configure(EntityTypeBuilder<DamageReport> b)
+    {
+        b.ToTable("DamageReport");
+        b.HasKey(d => d.DamageReportId);
+        b.Property(d => d.PublicId).HasDefaultValueSql("NEWID()").ValueGeneratedOnAdd();
+        b.Property(d => d.Quantity).HasColumnType("decimal(16,3)");
+        b.Property(d => d.Notes).HasMaxLength(300);
+        b.Property(d => d.ResolutionNotes).HasMaxLength(300);
+        b.Property(d => d.RowVersion).IsRowVersion();
+        b.HasIndex(d => new { d.TenantId, d.StatusCodeId }).HasDatabaseName("IX_DamageReport_Tenant_Status");
+        b.HasOne(d => d.Status).WithMany().HasForeignKey(d => d.StatusCodeId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<Warehouse>().WithMany().HasForeignKey(d => d.WarehouseId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<Product>().WithMany().HasForeignKey(d => d.ProductId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<InventoryLot>().WithMany().HasForeignKey(d => d.LotId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<WarehouseBin>().WithMany().HasForeignKey(d => d.FromBinId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<WarehouseBin>().WithMany().HasForeignKey(d => d.QuarantineBinId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<ReceiptHeader>().WithMany().HasForeignKey(d => d.ReceiptHeaderId).OnDelete(DeleteBehavior.NoAction);
+    }
+}

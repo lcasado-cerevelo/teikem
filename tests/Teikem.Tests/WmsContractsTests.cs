@@ -341,6 +341,7 @@ public class WmsContractsTests
         new object?[] { typeof(ReceiptLine), EntityTypes.Receipt },
         new object?[] { typeof(CycleCount), EntityTypes.CycleCount },
         new object?[] { typeof(CycleCountLine), EntityTypes.CycleCount },
+        new object?[] { typeof(DamageReport), EntityTypes.DamageReport },   // 2026-10-08
         new object?[] { typeof(PickBatch), EntityTypes.PickBatch },
         new object?[] { typeof(PickBatchLine), EntityTypes.PickBatch },
         new object?[] { typeof(DockAppointment), EntityTypes.DockAppointment },

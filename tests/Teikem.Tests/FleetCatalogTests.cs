@@ -81,11 +81,11 @@ public class FleetCatalogTests
     }
 
     [Fact]
-    public void Permission_catalog_has_68_distinct_codes_with_the_three_new_fleet_permissions()
+    public void Permission_catalog_has_69_distinct_codes_with_the_three_new_fleet_permissions()
     {
         // Lote 5: 52 → 54 (trips.view, trips.scan). Lote 6: 54 → 58 (inventory.*, warehouse.manage). Lote 8A: 58 → 60 (devices.manage, warehouse.count.capture). Lote F8a: 60 → 65 (pulse.*). Lote 14: 65 → 66 (pulse.attention). Lote 27: 66 → 68 (rental.extend, rental.return); los tres de flota siguen igual.
-        Assert.Equal(68, PermissionCatalog.All.Count);
-        Assert.Equal(68, PermissionCatalog.All.Select(p => p.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        Assert.Equal(69, PermissionCatalog.All.Count);   // 2026-10-08: + warehouse.damage
+        Assert.Equal(69, PermissionCatalog.All.Select(p => p.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count());
 
         var view = Assert.Single(PermissionCatalog.All, p => p.Code == "fleet.view");
         Assert.Equal(("FLEET", "Ver flota y choferes", "View fleet & drivers"), (view.Category, view.LabelEs, view.LabelEn));

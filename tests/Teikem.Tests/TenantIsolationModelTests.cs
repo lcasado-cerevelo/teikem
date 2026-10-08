@@ -253,7 +253,7 @@ public class TenantIsolationModelTests
         var withTenant = wms.Where(e => e.FindProperty("TenantId") is not null).Select(e => e.ClrType.Name).OrderBy(n => n, StringComparer.Ordinal).ToArray();
         Assert.Equal(new[]
         {
-            "Asn", "CrossDockPlan", "CycleCount", "DockAppointment", "InventoryDiscrepancy", "InventoryTransaction", "PickBatch", "Product", "ProductCategory", "PurchaseOrder",
+            "Asn", "CrossDockPlan", "CycleCount", "DamageReport", "DockAppointment", "InventoryDiscrepancy", "InventoryTransaction", "PickBatch", "Product", "ProductCategory", "PurchaseOrder",
             "PurchaseOrderShortageResolution", "ReceiptHeader", "Rental", "RentalProcess", "RentalReturn", "StockBalance", "Supplier", "Warehouse", "WarehouseTask",   // Lote 27: Rental, RentalReturn, RentalProcess
         }, withTenant);
         Assert.All(wms.Where(e => e.FindProperty("TenantId") is not null), e => Assert.NotNull(e.GetQueryFilter()));
@@ -324,7 +324,7 @@ public class TenantIsolationModelTests
         using var db = CreateSqlServerModelContext();
         foreach (var e in DomainEntities(db).Where(e => e.ClrType.Namespace == "Teikem.Domain.Wms"))
             Assert.Equal(e.ClrType == typeof(ReceiptHeader) ? "ReceiptHeader" : e.ClrType.Name, e.GetTableName());
-        Assert.Equal(34, DomainEntities(db).Count(e => e.ClrType.Namespace == "Teikem.Domain.Wms"));   // Lote 14: + InventoryDiscrepancy; Lote 27: + 7 de rentas
+        Assert.Equal(35, DomainEntities(db).Count(e => e.ClrType.Namespace == "Teikem.Domain.Wms"));   // Lote 14: + InventoryDiscrepancy; Lote 27: + 7 de rentas
 
         string Type<T>(string prop) => db.Model.FindEntityType(typeof(T))!.FindProperty(prop)!.GetColumnType();
         foreach (var (qty, type) in new[]

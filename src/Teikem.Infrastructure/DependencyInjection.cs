@@ -193,6 +193,7 @@ public static class DependencyInjection
         services.AddScoped<WarehouseTaskService>();
         services.AddScoped<ReplenishmentService>();
         services.AddScoped<CycleCountService>();
+        services.AddScoped<DamageService>();   // 2026-10-08: daños (cuarentena / desechar / recuperar)
         services.AddScoped<PickBatchService>();
         services.AddScoped<SupplierService>();
         services.AddScoped<PurchaseOrderService>();
@@ -301,6 +302,7 @@ public static class DependencyInjection
         services.AddScoped<IDataSource, StockBalanceDataSource>();
         services.AddScoped<IDataSource, InventoryTransactionDataSource>();
         services.AddScoped<IDataSource, ReceiptDataSource>();
+        services.AddScoped<IDataSource, DamageDataSource>();   // 2026-10-08: daños
         services.AddScoped<IDataSource, WarehouseTaskDataSource>();
         services.AddScoped<IDataSource, PickBatchDataSource>();
         services.AddScoped<IDataSource, CycleCountDataSource>();   // Lote 7A (P2): indicador de Pulso 'Conteos con diferencia'

@@ -117,3 +117,23 @@ public sealed record ReconciliationRowDto(Guid ProductPublicId, string Sku, stri
     decimal LedgerQty, decimal BalanceQty);
 
 public sealed record ReconciliationDto(DateTime CheckedAtUtc, int BalancesChecked, IReadOnlyList<ReconciliationRowDto> Mismatches);
+
+// ---------------- 2026-10-08 — Daños ----------------
+
+/// <summary>
+/// Reportar un daño. <c>Origin</c> RECEIPT (llegó dañado: indique el recibo; esas unidades no entran como buenas) o WAREHOUSE (se dañó en el
+/// almacén: indique la posición donde estaba). <c>Disposition</c> QUARANTINE (a una posición de cuarentena; si no se indica, la del almacén) o
+/// DISCARD (se desecha de una vez). <c>Cause</c>: ARRIVED_DAMAGED, TRANSIT_ACCIDENT, WAREHOUSE_ACCIDENT u OTHER.
+/// </summary>
+public sealed record DamageReportRequest(string? Origin, Guid? WarehousePublicId, Guid? ProductPublicId, int? LotId, LotInput? Lot, int? FromBinId, decimal? Quantity,
+    string? Cause, string? Disposition, int? QuarantineBinId = null, Guid? ReceiptPublicId = null, string? Notes = null);
+
+/// <summary>Desechar (nota opcional) o recuperar (posición de guardado a la que vuelve) lo que está en cuarentena.</summary>
+public sealed record DamageResolveRequest(int? ToBinId = null, string? Notes = null);
+
+public sealed record DamageReportDto(int Id, Guid PublicId, string Code, string OriginCode, string Origin, string CauseCode, string Cause,
+    Guid WarehousePublicId, string WarehouseCode, Guid ProductPublicId, string Sku, string ProductName, string? LotNumber, decimal Quantity,
+    int? FromBinId, string? FromBinCode, int? QuarantineBinId, string? QuarantineBinCode, Guid? ReceiptPublicId, string? ReceiptNumber, string? Notes,
+    string StatusCode, string Status, DateTime ReportedAtUtc, string? ReportedByName, DateTime? ResolvedAtUtc, string? ResolvedByName, string? ResolutionNotes);
+
+public sealed record DamageReportPageDto(int Total, int Skip, int Take, IReadOnlyList<DamageReportDto> Items);

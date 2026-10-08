@@ -104,6 +104,10 @@ public static class LookupDomains
     public const string RentalReturnReason = "RentalReturnReason";
     /// <summary>Condición del equipo devuelto (RentalReturnLine.ConditionLookupId; bloque R2).</summary>
     public const string RentalReturnCondition = "RentalReturnCondition";
+    /// <summary>2026-10-08 — Daños: dónde se detectó (RECEIPT, WAREHOUSE).</summary>
+    public const string DamageOrigin = "DamageOrigin";
+    /// <summary>2026-10-08 — Daños: cómo ocurrió (vino así, accidente en el camino, accidente en el almacén, otro).</summary>
+    public const string DamageCause = "DamageCause";
 }
 
 /// <summary>
@@ -248,6 +252,8 @@ public static class StatusDomains
     public const string RentalStatus = "RentalStatus";
     /// <summary>Proceso de un equipo devuelto (configurable): PENDING → … → READY (terminal); REPAIR y AWAITING_PARTS laterales; SCRAPPED terminal.</summary>
     public const string RentalProcessStatus = "RentalProcessStatus";
+    /// <summary>2026-10-08 — Daños: REPORTED (inicial) → QUARANTINED → DISCARDED | RECOVERED (terminales); también REPORTED → DISCARDED (se desecha de una vez).</summary>
+    public const string DamageStatus = "DamageStatus";
 }
 
 public static class StageKinds
@@ -577,6 +583,8 @@ public static class EntityTypes
     public const string Rental = "RENTAL";
     public const string RentalReturn = "RENTAL_RETURN";
     public const string RentalProcess = "RENTAL_PROCESS";
+    /// <summary>2026-10-08: reporte de daño (llegó dañado en un recibo o se dañó en el almacén).</summary>
+    public const string DamageReport = "DAMAGE_REPORT";
 }
 
 // ---------------- Lote 3 — Órdenes de transporte ----------------
@@ -1145,4 +1153,44 @@ public static class RotationClasses
 {
     public const string Fast = "FAST";
     public const string Slow = "SLOW";
+}
+
+
+// ---------------- 2026-10-08 — Daños ----------------
+
+/// <summary>Dominio DamageStatus.</summary>
+public static class DamageStatuses
+{
+    public const string Reported = "REPORTED";
+    public const string Quarantined = "QUARANTINED";
+    public const string Discarded = "DISCARDED";
+    public const string Recovered = "RECOVERED";
+}
+
+/// <summary>LookupCode 'DamageOrigin': dónde se detectó el daño.</summary>
+public static class DamageOrigins
+{
+    /// <summary>Llegó dañado en un recibo: esas unidades no entran como buenas.</summary>
+    public const string Receipt = "RECEIPT";
+    /// <summary>Se dañó (o se encontró dañado) en el almacén: ya estaba en inventario.</summary>
+    public const string Warehouse = "WAREHOUSE";
+    public static readonly string[] All = { Receipt, Warehouse };
+}
+
+/// <summary>LookupCode 'DamageCause': cómo ocurrió el daño (dato informativo, no hay reclamo a nadie).</summary>
+public static class DamageCauses
+{
+    public const string ArrivedDamaged = "ARRIVED_DAMAGED";
+    public const string TransitAccident = "TRANSIT_ACCIDENT";
+    public const string WarehouseAccident = "WAREHOUSE_ACCIDENT";
+    public const string Other = "OTHER";
+    public static readonly string[] All = { ArrivedDamaged, TransitAccident, WarehouseAccident, Other };
+}
+
+/// <summary>Qué se hace con lo dañado al reportarlo: mandarlo a una posición de cuarentena o desecharlo de una vez.</summary>
+public static class DamageDispositions
+{
+    public const string Quarantine = "QUARANTINE";
+    public const string Discard = "DISCARD";
+    public static readonly string[] All = { Quarantine, Discard };
 }

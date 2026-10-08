@@ -189,6 +189,10 @@ internal sealed class WmsFixture : IAsyncDisposable
         // Lote 28 (Rentas R2): motivos y condiciones de la devolución (al final: ids previos intactos).
         foreach (var c in RentalReturnReasons.All) L(LookupDomains.RentalReturnReason, c);
         foreach (var c in RentalReturnConditions.All) L(LookupDomains.RentalReturnCondition, c);
+        // 2026-10-08 (Daños): entidad, origen y causa (al final: ids previos intactos).
+        L(LookupDomains.EntityType, EntityTypes.DamageReport);
+        foreach (var c in DamageOrigins.All) L(LookupDomains.DamageOrigin, c);
+        foreach (var c in DamageCauses.All) L(LookupDomains.DamageCause, c);
         Db.LookupCodes.AddRange(all);
         Lookups.Load(all);
 
@@ -277,6 +281,11 @@ internal sealed class WmsFixture : IAsyncDisposable
         S(StatusDomains.RentalProcessStatus, RentalProcessStatuses.Repair, lat, 6);
         S(StatusDomains.RentalProcessStatus, RentalProcessStatuses.AwaitingParts, lat, 7);
         S(StatusDomains.RentalProcessStatus, RentalProcessStatuses.Scrapped, term, 8);
+        // 2026-10-08 (Daños): REPORTED → QUARANTINED → DISCARDED | RECOVERED, como logistica-db-seed.sql (al final: ids previos intactos).
+        S(StatusDomains.DamageStatus, DamageStatuses.Reported, pipe, 1, true);
+        S(StatusDomains.DamageStatus, DamageStatuses.Quarantined, pipe, 2);
+        S(StatusDomains.DamageStatus, DamageStatuses.Discarded, term, 3);
+        S(StatusDomains.DamageStatus, DamageStatuses.Recovered, term, 4);
         ReceiptStatusSeed.AddLateralEntries(Db, LookupId(LookupDomains.EntityType, EntityTypes.Receipt), StatusId);
 
         // 3G: WAREHOUSE_TASK CANCELLED solo desde PENDING e IN_PROGRESS.

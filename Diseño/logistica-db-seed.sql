@@ -137,7 +137,9 @@ GO
     ('ReceivingMode',1,'Modo de recepción','Receiving mode'),
     -- Lote 27 — Rentas: estatus de la renta y del proceso del equipo devuelto (configurable), motivo y condición de la devolución
     ('RentalStatus',2,'Estatus de la renta','Rental status'),('RentalProcessStatus',2,'Proceso del equipo devuelto','Returned equipment process'),
-    ('RentalReturnReason',1,'Motivo de devolución de renta','Rental return reason'),('RentalReturnCondition',1,'Condición del equipo devuelto','Returned equipment condition')
+    ('RentalReturnReason',1,'Motivo de devolución de renta','Rental return reason'),('RentalReturnCondition',1,'Condición del equipo devuelto','Returned equipment condition'),
+    -- 2026-10-08 — Daños: dónde se detectó, cómo ocurrió y estatus del reporte
+    ('DamageOrigin',1,'Origen del daño','Damage origin'),('DamageCause',1,'Causa del daño','Damage cause'),('DamageStatus',2,'Estatus del daño','Damage status')
     ) v(DomainKey,Scope,Es,En)
 )
 MERGE dbo.CatalogDomain AS t
@@ -357,7 +359,12 @@ INSERT INTO #L (Entity, Code, Es, En, Srt) VALUES
 ('RentalReturnReason','EARLY_CLIENT','Anticipada a pedido del cliente','Early: client request',3),('RentalReturnReason','OTHER','Otro','Other',9),
 ('RentalReturnCondition','GOOD','Buena','Good',1),('RentalReturnCondition','DAMAGED','Dañado','Damaged',2),('RentalReturnCondition','INCOMPLETE','Incompleto','Incomplete',3),
 ('EntityType','RENTAL','Renta','Rental',84),('EntityType','RENTAL_RETURN','Devolución de renta','Rental return',85),
-('EntityType','RENTAL_PROCESS','Proceso de equipo devuelto','Returned equipment process',86);
+('EntityType','RENTAL_PROCESS','Proceso de equipo devuelto','Returned equipment process',86),
+-- 2026-10-08 — Daños
+('EntityType','DAMAGE_REPORT','Daño','Damage report',87),
+('DamageOrigin','RECEIPT','Llegó dañado en un recibo','Arrived damaged in a receipt',1),('DamageOrigin','WAREHOUSE','Se dañó en el almacén','Damaged in the warehouse',2),
+('DamageCause','ARRIVED_DAMAGED','Vino así','Came that way',1),('DamageCause','TRANSIT_ACCIDENT','Accidente en el camino','Accident in transit',2),
+('DamageCause','WAREHOUSE_ACCIDENT','Accidente en el almacén','Warehouse accident',3),('DamageCause','OTHER','Otra','Other',9);
 
 MERGE dbo.LookupCode AS t
 USING #L AS s ON t.Entity = s.Entity AND t.InternalCode = s.Code
@@ -540,7 +547,12 @@ INSERT INTO #S VALUES
 ('RentalProcessStatus','READY','Lista','Ready',@TERM,5,'#059669',0),
 ('RentalProcessStatus','REPAIR','Reparación','Repair',@LAT,6,'#F59E0B',0),
 ('RentalProcessStatus','AWAITING_PARTS','Esperando piezas','Awaiting parts',@LAT,7,'#F97316',0),
-('RentalProcessStatus','SCRAPPED','Dada de baja','Scrapped',@TERM,8,'#EF4444',0);
+('RentalProcessStatus','SCRAPPED','Dada de baja','Scrapped',@TERM,8,'#EF4444',0),
+-- 2026-10-08 — Daños: Reportado → En cuarentena → Desechado | Recuperado (también Reportado → Desechado de una vez)
+('DamageStatus','REPORTED','Reportado','Reported',@PIPE,1,'#9CA3AF',1),
+('DamageStatus','QUARANTINED','En cuarentena','In quarantine',@PIPE,2,'#F59E0B',0),
+('DamageStatus','DISCARDED','Desechado','Discarded',@TERM,3,'#EF4444',0),
+('DamageStatus','RECOVERED','Recuperado','Recovered',@TERM,4,'#059669',0);
 
 MERGE dbo.StatusCode AS t
 USING #S AS s ON t.Entity = s.Entity AND t.InternalCode = s.Code
@@ -1083,6 +1095,8 @@ INSERT INTO #P VALUES
 ('devices.manage','SECURITY','Gestionar aparatos y PIN','Manage devices & PINs'),
 -- Lote 8A — conteo a ciegas: capturar sin ver lo esperado ni reconciliar (warehouse.count lo implica en PermissionService)
 ('warehouse.count.capture','WAREHOUSE','Capturar conteo (a ciegas)','Capture count (blind)'),
+-- 2026-10-08 — Daños: reportar (cuarentena o desechar de una vez), desechar y recuperar; TenantAdmin lo recibe por "todos"
+('warehouse.damage','WAREHOUSE','Reportar y resolver daños','Report & resolve damage'),
 -- Lote F8a — Pulso del día (categoría PULSE): un permiso por panel + organizar el de la compañía; TenantAdmin los recibe por "todos"
 ('pulse.indicators','PULSE','Ver indicadores en el Pulso','See indicators on the Pulse'),
 ('pulse.charts','PULSE','Ver gráficos en el Pulso','See charts on the Pulse'),
@@ -1159,6 +1173,7 @@ INSERT INTO #RP VALUES ('WarehouseOperator','warehouse.receive'),('WarehouseOper
 -- 2026-10-01 (Luis): sin purchasing.view/receive/manage ni trips.view/scan (como lo dejó en Advance Logistics).
 ('WarehouseOperator','inventory.view'),   -- Lote 6
 ('WarehouseOperator','warehouse.count.capture'),   -- Lote 8A
+('WarehouseOperator','warehouse.damage'),   -- 2026-10-08: daños
 ('WarehouseOperator','analytics.view'),   -- Lote F8a: para ver Actividad reciente en su Pulso (decisión de Luis)
 ('WarehouseOperator','pulse.warehouse'),('WarehouseOperator','pulse.indicators'),('WarehouseOperator','pulse.charts'),('WarehouseOperator','pulse.activity'),   -- Lote F8a
 ('WarehouseOperator','pulse.attention'),   -- Lote 14 (D6)
@@ -44167,5 +44182,5 @@ JOIN dbo.LookupCode c ON c.Entity = 'Country' AND c.InternalCode = v.Country
 WHERE NOT EXISTS (SELECT 1 FROM dbo.PostalLocality p WHERE p.CountryLookupId = c.LookupCodeId AND p.PostalCode = v.PostalCode AND p.City = v.City);
 GO
 
-PRINT 'Seed completado: módulos (13), dominios, lookups, estatus, capacidades por defecto (CONTRACT, TRANSPORT_ORDER, WORK_ORDER, TRIP y PURCHASE_ORDER), entradas laterales (TRIP, ROUTE, PICK_BATCH, WAREHOUSE_TASK, DOCK_APPOINTMENT, CROSSDOCK_ALLOCATION, ASN y RENTAL), permisos (68), roles plantilla, zonas de despacho demo y localidades postales (42522 ZIP de EE. UU. y Puerto Rico). El almacén demo ALM-01 lo siembra DemoTenantSeeder.';
+PRINT 'Seed completado: módulos (13), dominios, lookups, estatus, capacidades por defecto (CONTRACT, TRANSPORT_ORDER, WORK_ORDER, TRIP y PURCHASE_ORDER), entradas laterales (TRIP, ROUTE, PICK_BATCH, WAREHOUSE_TASK, DOCK_APPOINTMENT, CROSSDOCK_ALLOCATION, ASN y RENTAL), permisos (69), roles plantilla, zonas de despacho demo y localidades postales (42522 ZIP de EE. UU. y Puerto Rico). El almacén demo ALM-01 lo siembra DemoTenantSeeder.';
 GO

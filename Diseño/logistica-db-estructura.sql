@@ -2282,6 +2282,37 @@ BEGIN
 END
 GO
 
+-- 2026-10-08 — Daños: algo que llegó dañado en un recibo (RECEIPT) o se dañó en el almacén (WAREHOUSE). Se manda a cuarentena o se desecha; lo que
+-- está en cuarentena se desecha después o se recupera. Los movimientos de inventario son del ledger; aquí solo el reporte y su estatus.
+IF OBJECT_ID('dbo.DamageReport') IS NULL
+BEGIN
+CREATE TABLE dbo.DamageReport (
+    DamageReportId INT IDENTITY(1,1) PRIMARY KEY,
+    PublicId     UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
+    TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    WarehouseId  INT NOT NULL,
+    ProductId    INT NOT NULL REFERENCES dbo.Product(ProductId),
+    LotId        INT NULL REFERENCES dbo.InventoryLot(LotId),
+    FromBinId    INT NULL REFERENCES dbo.WarehouseBin(WarehouseBinId),          -- dónde estaba (origen WAREHOUSE)
+    QuarantineBinId INT NULL REFERENCES dbo.WarehouseBin(WarehouseBinId),       -- dónde quedó en cuarentena
+    Quantity     DECIMAL(16,3) NOT NULL CONSTRAINT CK_DamageReport_Qty CHECK (Quantity > 0),
+    OriginLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),        -- Entity='DamageOrigin'
+    CauseLookupId  INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),        -- Entity='DamageCause'
+    ReceiptHeaderId INT NULL REFERENCES dbo.ReceiptHeader(ReceiptHeaderId),     -- recibo del que llegó dañado
+    Notes        NVARCHAR(300) NULL,
+    StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),          -- Entity='DamageStatus'
+    ReportedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    ReportedBy   INT NULL REFERENCES dbo.AspNetUsers(Id),
+    ResolvedAtUtc DATETIME2 NULL,
+    ResolvedBy   INT NULL REFERENCES dbo.AspNetUsers(Id),
+    ResolutionNotes NVARCHAR(300) NULL,
+    IsActive     BIT NOT NULL DEFAULT 1, RowVersion ROWVERSION,
+    CONSTRAINT FK_DamageReport_Warehouse FOREIGN KEY (WarehouseId, TenantId) REFERENCES dbo.Warehouse(WarehouseId, TenantId)
+);
+CREATE INDEX IX_DamageReport_Tenant_Status ON dbo.DamageReport(TenantId, StatusCodeId);
+END
+GO
+
 -- Lote 6 (D19): WarehouseTaskId pasa a INT (historial de estatus, resolvers y RefId son int).
 CREATE TABLE dbo.WarehouseTask (
     WarehouseTaskId INT IDENTITY(1,1) PRIMARY KEY,

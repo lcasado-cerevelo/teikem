@@ -159,6 +159,7 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<ReceiptLine> ReceiptLines => Set<ReceiptLine>();
     public DbSet<WarehouseTask> WarehouseTasks => Set<WarehouseTask>();
     public DbSet<CycleCount> CycleCounts => Set<CycleCount>();
+    public DbSet<DamageReport> DamageReports => Set<DamageReport>();   // 2026-10-08: daños
     public DbSet<CycleCountLine> CycleCountLines => Set<CycleCountLine>();
     public DbSet<PickBatch> PickBatches => Set<PickBatch>();
     public DbSet<PickBatchLine> PickBatchLines => Set<PickBatchLine>();

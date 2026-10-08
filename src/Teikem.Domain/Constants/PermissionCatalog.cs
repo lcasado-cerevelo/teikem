@@ -39,6 +39,8 @@ public static class PermissionCatalog
     /// ciegas del almacenista en el aparato. warehouse.count (reconciliar, modo informado) lo implica (<see cref="Implied"/>).
     /// </summary>
     public const string WarehouseCountCapture = "warehouse.count.capture";
+    /// <summary>2026-10-08: reportar daños (llegaron dañados o se dañaron en el almacén), mandarlos a cuarentena, desecharlos o recuperarlos.</summary>
+    public const string WarehouseDamage = "warehouse.damage";
     public const string WarehouseCrossdock = "warehouse.crossdock";
     /// <summary>Lote 6: estructura del almacén (almacenes, zonas, posiciones, muelles) y asignar/cancelar tareas de la cola.</summary>
     public const string WarehouseManage = "warehouse.manage";
@@ -193,6 +195,7 @@ public static class PermissionCatalog
         // Lote 8A — App de almacén: aparatos de confianza y PIN
         new(DevicesManage, "SECURITY", "Gestionar aparatos y PIN", "Manage devices & PINs"),
         new(WarehouseCountCapture, "WAREHOUSE", "Capturar conteo (a ciegas)", "Capture count (blind)"),
+        new(WarehouseDamage, "WAREHOUSE", "Reportar y resolver daños", "Report & resolve damage"),
         // Lote F8a — Pulso del día (categoría PULSE)
         new(PulseIndicators, "PULSE", "Ver indicadores en el Pulso", "See indicators on the Pulse"),
         new(PulseCharts, "PULSE", "Ver gráficos en el Pulso", "See charts on the Pulse"),
@@ -369,7 +372,7 @@ public static class PermissionCatalog
             PulseAttention },   // Lote 14 (D6): la ve quien ve inventario
         // 2026-10-01 (Luis), como lo dejó en Advance Logistics: sin cod.reconcile, sin rutas (trips.*) ni compras (purchasing.*;
         // no recibe contra órdenes de compra) y con ajustar/administrar inventario y administrar almacenes.
-        ["WarehouseOperator"] = new[] { WarehouseReceive, WarehousePick, WarehouseCount, WarehouseCountCapture, WarehouseCrossdock, RentalView, RentalManage, RentalMaintenance, InventoryView,
+        ["WarehouseOperator"] = new[] { WarehouseReceive, WarehousePick, WarehouseCount, WarehouseCountCapture, WarehouseDamage, WarehouseCrossdock, RentalView, RentalManage, RentalMaintenance, InventoryView,
             InventoryAdjust, InventoryManage, WarehouseManage,
             // AnalyticsView: decisión de Luis (Lote F8a) — sin él, la política de /analytics/activity bloquea a este
             // rol antes de llegar al servicio, y no vería "Actividad reciente" en su Pulso pese a tener pulse.activity.
