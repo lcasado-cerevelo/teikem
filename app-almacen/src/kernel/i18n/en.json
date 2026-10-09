@@ -358,7 +358,9 @@
     "revealFinalNumber": "You counted {counted} and {expected} was expected. It goes to review.",
     "revealFinalNoNumber": "It does not match what was expected. It goes to review.",
     "lineChecked": "That line was already verified; it cannot be changed or removed.",
-    "verifyHint": "Review the result of each bin. Those asking for a recount are corrected; tap Confirm again to continue."
+    "verifyHint": "Review the result of each bin. Those asking for a recount are corrected; tap Confirm again to continue.",
+    "capturedTitle": "Counted here ({count})",
+    "capturedEmpty": "You haven't counted anything in this bin yet."
   },
   "calc": {
     "open": "Calculator",

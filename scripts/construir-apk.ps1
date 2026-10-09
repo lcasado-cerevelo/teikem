@@ -6,12 +6,17 @@
       ¡GUARDE COPIA de ese archivo y de su contraseña! Sin ellos no se pueden publicar actualizaciones de la misma app.
   Al terminar, devuelve la carpeta android\ a la variante de desarrollo (para seguir usando el emulador con HTTP).
   Uso:   powershell -ExecutionPolicy Bypass -File "F:\Visual Studio 2022\Projects\teikem\scripts\construir-apk.ps1"
-  Opciones: -ApiUrl <https://...>  -Salida <carpeta>  -SinRestaurar (deja android\ en producción)
+  ACTUALIZAR SIN DESINSTALAR: este mismo script sirve. Cada compilación sube sola el «código de versión» (se recuerda en
+  %USERPROFILE%\.teikem\apk-versioncode.txt; el primero que sale es el 2, porque los aparatos instalados traen el 1) y firma con la MISMA llave, que
+  es lo que Android exige para instalar encima y conservar la configuración del aparato (servidor, registro, PIN y datos). Instale el APK nuevo
+  con  scripts\actualizar-aparatos.ps1  (aparatos conectados por USB) o copiándolo al aparato y abriéndolo. NUNCA desinstale antes.
+  Opciones: -ApiUrl <https://...>  -Salida <carpeta>  -SinRestaurar (deja android\ en producción)  -CodigoVersion <n> (fuerza el código)
 #>
 param(
     [string]$ApiUrl = 'https://teikem.advancelogisticspr.com',
     [string]$Salida = 'F:\Download\TeikemApp',
-    [switch]$SinRestaurar
+    [switch]$SinRestaurar,
+    [int]$CodigoVersion = 0
 )
 
 $ErrorActionPreference = 'Stop'
@@ -52,6 +57,16 @@ $env:TEIKEM_RELEASE_KEYSTORE = $llave
 $env:TEIKEM_RELEASE_KEYSTORE_PASSWORD = $clave
 $env:TEIKEM_RELEASE_KEY_ALIAS = $alias
 $env:TEIKEM_RELEASE_KEY_PASSWORD = $clave
+
+# --- Código de versión: siempre mayor que el anterior (si no, Android no deja instalar encima) ---
+$archivoCodigo = Join-Path $dirLlave 'apk-versioncode.txt'
+if ($CodigoVersion -le 0) {
+    $anterior = 1   # los aparatos ya instalados traen el código 1
+    if (Test-Path $archivoCodigo) { $leido = 0; if ([int]::TryParse((Get-Content $archivoCodigo -Raw).Trim(), [ref]$leido) -and $leido -ge 1) { $anterior = $leido } }
+    $CodigoVersion = $anterior + 1
+}
+$env:TEIKEM_VERSION_CODE = "$CodigoVersion"
+Write-Host "Código de versión de este APK: $CodigoVersion (tiene que ser mayor que el de los aparatos; no lo baje)" -ForegroundColor Cyan
 
 # --- Compilar ---
 Set-Location $app
@@ -94,7 +109,8 @@ $apkOrigen = Join-Path $app 'android\app\build\outputs\apk\release\app-release.a
 if ($ok -and (Test-Path $apkOrigen)) {
     $version = (Get-Content (Join-Path $app 'package.json') -Raw | ConvertFrom-Json).version
     New-Item -ItemType Directory -Force $Salida | Out-Null
-    $apk = Join-Path $Salida ("TeikemAlmacen-$version.apk")
+    $apk = Join-Path $Salida ("TeikemAlmacen-$version-c$CodigoVersion.apk")
+    Set-Content -Path $archivoCodigo -Value "$CodigoVersion" -Encoding ASCII   # solo si compiló: el próximo APK sube de aquí
     Copy-Item $apkOrigen $apk -Force
     $firmador = Get-ChildItem (Join-Path $env:ANDROID_HOME 'build-tools') -Recurse -Filter apksigner.bat -ErrorAction SilentlyContinue | Sort-Object FullName | Select-Object -Last 1
     if ($firmador) {
@@ -112,10 +128,11 @@ if ($ok -and (Test-Path $apkOrigen)) {
 if (-not $SinRestaurar) {
     Paso 'Devolviendo android\ a la variante de desarrollo (emulador con HTTP)'
     Remove-Item Env:APP_VARIANT -ErrorAction SilentlyContinue
+    Remove-Item Env:TEIKEM_VERSION_CODE -ErrorAction SilentlyContinue
     Remove-Item Env:EXPO_PUBLIC_API_URL -ErrorAction SilentlyContinue
     npx expo prebuild --platform android --clean
 }
 Remove-Item Env:TEIKEM_RELEASE_KEYSTORE_PASSWORD, Env:TEIKEM_RELEASE_KEY_PASSWORD -ErrorAction SilentlyContinue
 if (-not $ok) { exit 1 }
 Write-Host ''
-Write-Host 'Para instalar en un aparato: copie el APK al teléfono (o  adb install -r archivo.apk ) y ábralo.'
+Write-Host 'Para ACTUALIZAR los aparatos (sin desinstalar, conservan su configuración): scripts\actualizar-aparatos.ps1  o copie el APK al aparato y ábralo (diga «Actualizar»/«Instalar»).'
