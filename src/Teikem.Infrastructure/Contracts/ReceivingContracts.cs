@@ -27,7 +27,7 @@ public sealed record AsnQuery(Guid? WarehousePublicId = null, string[]? Status =
 public sealed record ReceiptLineRequest(Guid? ProductPublicId, decimal? ReceivedQty, LotInput? Lot = null, IReadOnlyList<string>? SerialNumbers = null,
     int? StagingBinId = null, decimal? ExpectedQty = null, int? TargetBinId = null, string? TargetBinCode = null,
     decimal? DamagedQty = null, string? DamageCause = null, string? DamageNote = null, int? DamageBinId = null, string? DamageBinCode = null,
-    bool? DamageDiscard = null);
+    bool? DamageDiscard = null, string? DamageFinalDestination = null);
 
 /// <summary>
 /// Alta del recibo. Confirm (Lote 8A, cola del aparato) = crear, capturar las líneas de la solicitud y confirmar en UNA sola
@@ -55,7 +55,7 @@ public sealed record ReceiptLineUpdateRequest(decimal? ReceivedQty = null, LotIn
     IReadOnlyList<string>? SerialNumbers = null, int? StagingBinId = null, Guid? ProductPublicId = null, decimal? ExpectedQty = null,
     bool? ClearExpected = null, int? TargetBinId = null, bool? ClearTargetBin = null,
     decimal? DamagedQty = null, string? DamageCause = null, string? DamageNote = null, int? DamageBinId = null, bool? DamageDiscard = null,
-    bool? ClearDamage = null);
+    bool? ClearDamage = null, string? DamageFinalDestination = null);
 
 /// <summary>
 /// Lote 13 — PATCH del encabezado de un recibo abierto: null = no cambiar. Type (BLIND ↔ RETURN) solo sin aviso ni orden de
@@ -103,7 +103,8 @@ public sealed record ReceiptLineDto(int Id, int? AsnLineId, Guid ProductPublicId
     IReadOnlyList<string> SerialNumbers, int? StagingBinId, string? StagingBinCode, long? AdjustmentTxnId, decimal? UnitCost,
     decimal AllocatedToCrossDock, int? TargetBinId = null, string? TargetBinCode = null, string? TargetZoneTypeCode = null,
     decimal? TargetFreeQty = null, decimal DamagedQty = 0m, string? DamageCauseCode = null, string? DamageNote = null, int? DamageBinId = null,
-    string? DamageBinCode = null, bool DamageDiscard = false, int? DamageReportId = null, string? DamageReportCode = null);
+    string? DamageBinCode = null, bool DamageDiscard = false, int? DamageReportId = null, string? DamageReportCode = null,
+    string? DamageFinalDestinationCode = null);
 
 /// <summary>
 /// Lote 16 — posición destino sugerida para una línea (GET /receipts/{id}/lines/{lineId}/target-suggestions): razón (la del

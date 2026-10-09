@@ -1,6 +1,6 @@
 // Lote 8A-app — esquema de la base local (expo-sqlite). Ver docs/mobile/app-almacen-plan.md §1 "Base local".
 // Migraciones por PRAGMA user_version: cada versión agrega su bloque de SQL; nunca se reescribe uno ya publicado.
-export const SCHEMA_VERSION = 7
+export const SCHEMA_VERSION = 8
 
 export const MIGRATIONS: readonly string[] = [
   // v1: kv, catálogos sincronizados, documentos abiertos, cola de salida y marcas de agua.
@@ -339,5 +339,9 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE local_receipt_line ADD COLUMN damage_note TEXT;
   ALTER TABLE local_receipt_line ADD COLUMN damage_bin_code TEXT;
   ALTER TABLE local_receipt_line ADD COLUMN damage_discard INTEGER NOT NULL DEFAULT 0;
+  `,
+  // v8 (2026-10-09): a dónde va lo dañado cuando se le da salida de una vez en Recibir (tirado, devuelto al proveedor, donado, vendido como saldo).
+  `
+  ALTER TABLE local_receipt_line ADD COLUMN damage_destination TEXT;
   `,
 ]

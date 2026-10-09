@@ -128,8 +128,9 @@ describe('Recibir — unidades dañadas', () => {
     await fireEvent.press(screen.getByText('Agregar'))
     await waitFor(() => expect(screen.getByText('Dar salida')).toBeTruthy())
     await fireEvent.press(screen.getByText('Dar salida'))
+    await fireEvent.press(await screen.findByText('Donado'))
     await waitFor(() =>
-      expect(getOpenReceipt()?.lines).toMatchObject([{ receivedQty: 5, damagedQty: 4, damageDiscard: true, damageBinCode: null }]),
+      expect(getOpenReceipt()?.lines).toMatchObject([{ receivedQty: 5, damagedQty: 4, damageDiscard: true, damageBinCode: null, damageDestination: 'DONATED' }]),
     )
   })
 

@@ -2334,6 +2334,8 @@ IF COL_LENGTH('dbo.ReceiptLine', 'DamageBinId') IS NULL
     ALTER TABLE dbo.ReceiptLine ADD DamageBinId INT NULL CONSTRAINT FK_ReceiptLine_DamageBin REFERENCES dbo.WarehouseBin(WarehouseBinId);
 IF COL_LENGTH('dbo.ReceiptLine', 'DamageDiscard') IS NULL
     ALTER TABLE dbo.ReceiptLine ADD DamageDiscard BIT NOT NULL CONSTRAINT DF_ReceiptLine_DamageDiscard DEFAULT 0;
+IF COL_LENGTH('dbo.ReceiptLine', 'DamageFinalDestinationLookupId') IS NULL
+    ALTER TABLE dbo.ReceiptLine ADD DamageFinalDestinationLookupId INT NULL CONSTRAINT FK_ReceiptLine_DamageFinalDest REFERENCES dbo.LookupCode(LookupCodeId);   -- a dónde va si se le da salida
 IF COL_LENGTH('dbo.ReceiptLine', 'DamageReportId') IS NULL
     ALTER TABLE dbo.ReceiptLine ADD DamageReportId INT NULL CONSTRAINT FK_ReceiptLine_DamageReport REFERENCES dbo.DamageReport(DamageReportId);
 GO

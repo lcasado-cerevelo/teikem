@@ -22311,6 +22311,7 @@ export interface components {
             /** Format: int32 */
             damageReportId?: number | null;
             damageReportCode?: string | null;
+            damageFinalDestinationCode?: string | null;
         };
         ReceiptLineRequest: {
             /** Format: uuid */
@@ -22334,6 +22335,7 @@ export interface components {
             damageBinId?: number | null;
             damageBinCode?: string | null;
             damageDiscard?: boolean | null;
+            damageFinalDestination?: string | null;
         };
         ReceiptLineUpdateRequest: {
             /** Format: double */
@@ -22359,6 +22361,7 @@ export interface components {
             damageBinId?: number | null;
             damageDiscard?: boolean | null;
             clearDamage?: boolean | null;
+            damageFinalDestination?: string | null;
         };
         ReceiptListItemDto: {
             /** Format: int32 */

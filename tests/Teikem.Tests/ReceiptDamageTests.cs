@@ -40,8 +40,9 @@ public class ReceiptDamageTests
     }
 
     private static ReceiptLineRequest Line(World x, decimal qty, decimal? damaged = null, string? cause = DamageCauses.TransitAccident, string? note = "caja mojada",
-        int? damageBin = null, bool? discard = null, int? target = null)
-        => new(x.P.PublicId, qty, TargetBinId: target, DamagedQty: damaged, DamageCause: cause, DamageNote: note, DamageBinId: damageBin, DamageDiscard: discard);
+        int? damageBin = null, bool? discard = null, int? target = null, string? destination = null)
+        => new(x.P.PublicId, qty, TargetBinId: target, DamagedQty: damaged, DamageCause: cause, DamageNote: note, DamageBinId: damageBin, DamageDiscard: discard,
+            DamageFinalDestination: destination);
 
     private static Task<ReceiptDetailDto> ConfirmedAsync(World x, ReceiptLineRequest line, string? mode = null)
         => x.F.Get<ReceiptService>().CreateAsync(new ReceiptCreateRequest(WarehousePublicId: x.W.PublicId, Type: ReceiptTypes.Blind,
@@ -85,7 +86,7 @@ public class ReceiptDamageTests
     {
         var x = await CreateAsync();
         await using var f = x.F;
-        var receipt = await ConfirmedAsync(x, Line(x, 10m, damaged: 4m, discard: true));
+        var receipt = await ConfirmedAsync(x, Line(x, 10m, damaged: 4m, discard: true, destination: DamageFinalDestinations.ReturnedToSupplier));
 
         Assert.Equal(6m, await OnHandAsync(x, x.Staging));
         Assert.Equal(0m, await OnHandAsync(x, x.Quarantine));
@@ -94,7 +95,10 @@ public class ReceiptDamageTests
         Assert.Null(report.QuarantineBinId);
         Assert.NotNull(report.ResolvedAtUtc);
         Assert.Equal(new[] { DamageStatuses.Reported, DamageStatuses.Discarded }, await f.HistoryCodesAsync(EntityTypes.DamageReport, report.DamageReportId));
-        Assert.True(Assert.Single(receipt.Lines).DamageDiscard);
+        var discarded = Assert.Single(receipt.Lines);
+        Assert.True(discarded.DamageDiscard);
+        Assert.Equal(DamageFinalDestinations.ReturnedToSupplier, discarded.DamageFinalDestinationCode);   // a dónde fue
+        Assert.Equal(DamageFinalDestinations.ReturnedToSupplier, (await f.Get<DamageService>().GetAsync(report.DamageReportId, default)).FinalDestinationCode);
     }
 
     [Fact]

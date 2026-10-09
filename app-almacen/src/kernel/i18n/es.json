@@ -530,6 +530,12 @@
     "discardConfirmBody": "Salen del inventario {qty} de {sku}. No se puede deshacer.",
     "reportedQuarantine": "{code}: enviado a cuarentena.",
     "reportedDiscard": "{code}: salida registrada.",
-    "restart": "Empezar de nuevo"
+    "restart": "Empezar de nuevo",
+    "destinationTitle": "¿A dónde va?",
+    "destinationHelp": "Escoja el destino de lo que sale.",
+    "destDiscarded": "Tirado",
+    "destReturned": "Devuelto al proveedor",
+    "destDonated": "Donado",
+    "destSalvage": "Vendido como saldo"
   }
 }

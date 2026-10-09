@@ -44,6 +44,11 @@ function route({ method, url }: Call): unknown {
       { code: 'ARRIVED_DAMAGED', label: 'Vino así' },
       { code: 'OTHER', label: 'Otra' },
     ]
+  if (p === '/api/v1/catalogs/DamageFinalDestination')
+    return [
+      { code: 'DISCARDED_WASTE', label: 'Tirado' },
+      { code: 'RETURNED_TO_SUPPLIER', label: 'Devuelto al proveedor' },
+    ]
   if (p.startsWith('/api/v1/catalogs/') || p.startsWith('/api/v1/status/')) return []
   return new Response(JSON.stringify({ title: 'No encontrado', code: 'not_found' }), { status: 404, headers: { 'Content-Type': 'application/problem+json' } })
 }
@@ -91,8 +96,14 @@ describe('Daño de la línea del recibo', () => {
     await user.click(screen.getByRole('combobox', { name: /Razón/ }))
     await user.click(await screen.findByRole('option', { name: 'Vino así' }))
     await user.click(screen.getByRole('radio', { name: 'Dar salida de una vez' }))
+    // sin destino no guarda
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
-    await waitFor(() => expect(mock.calls.find((c) => c.method === 'PUT')?.body).toMatchObject({ damagedQty: 3, damageCause: 'ARRIVED_DAMAGED', damageDiscard: true, damageBinId: null }))
+    expect(await screen.findByText('Indique a dónde va lo que sale (tirado, devuelto al proveedor, donado…).')).toBeInTheDocument()
+    expect(mock.calls.some((c) => c.method === 'PUT')).toBe(false)
+    await user.click(screen.getByRole('combobox', { name: /Destino final/ }))
+    await user.click(await screen.findByRole('option', { name: 'Devuelto al proveedor' }))
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(mock.calls.find((c) => c.method === 'PUT')?.body).toMatchObject({ damagedQty: 3, damageCause: 'ARRIVED_DAMAGED', damageDiscard: true, damageBinId: null, damageFinalDestination: 'RETURNED_TO_SUPPLIER' }))
   })
 
   it('«Quitar daño» aparece solo si la línea ya tiene daño y manda clearDamage', async () => {

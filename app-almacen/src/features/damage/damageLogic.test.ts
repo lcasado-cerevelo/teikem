@@ -41,9 +41,12 @@ describe('damageLogic', () => {
       quantity: 4,
       cause: 'OTHER',
       disposition: 'QUARANTINE',
+      finalDestination: null,
       lot: undefined,
     })
     const receipt: DamageDraft = { ...EMPTY_DAMAGE, origin: 'RECEIPT', receipt: { publicId: 'r-9', number: 'REC-9' }, product: { ...PRODUCT, trackingTypeCode: 'LOT' }, qtyText: '2', lot: 'L-3' }
-    expect(buildDamageRequest('wh', receipt, 'DISCARD')).toMatchObject({ origin: 'RECEIPT', receiptPublicId: 'r-9', fromBinId: null, cause: 'ARRIVED_DAMAGED', disposition: 'DISCARD', lot: { number: 'L-3' } })
+    expect(buildDamageRequest('wh', receipt, 'DISCARD')).toMatchObject({ origin: 'RECEIPT', receiptPublicId: 'r-9', fromBinId: null, cause: 'ARRIVED_DAMAGED', disposition: 'DISCARD', finalDestination: null, lot: { number: 'L-3' } })
+    expect(buildDamageRequest('wh', receipt, 'DISCARD', 'DONATED')).toMatchObject({ finalDestination: 'DONATED' })
+    expect(buildDamageRequest('wh', receipt, 'QUARANTINE', 'DONATED')).toMatchObject({ finalDestination: null })
   })
 })

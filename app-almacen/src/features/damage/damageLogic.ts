@@ -11,6 +11,14 @@ export const DAMAGE_CAUSES = [
   { code: 'OTHER', key: 'damage.causeOther' },
 ] as const
 
+/** Destino final al darle salida a lo dañado (catálogo DamageFinalDestination; el aparato usa los cuatro de fábrica). */
+export const DAMAGE_DESTINATIONS = [
+  { code: 'DISCARDED_WASTE', key: 'damage.destDiscarded' },
+  { code: 'RETURNED_TO_SUPPLIER', key: 'damage.destReturned' },
+  { code: 'DONATED', key: 'damage.destDonated' },
+  { code: 'SOLD_AS_SALVAGE', key: 'damage.destSalvage' },
+] as const
+
 export interface DamageProduct {
   publicId: string
   sku: string
@@ -63,7 +71,7 @@ export function damageBlock(d: DamageDraft): DamageBlock {
 }
 
 /** Cuerpo del POST /api/v1/damage-reports. */
-export function buildDamageRequest(warehousePublicId: string, d: DamageDraft, disposition: DamageDisposition) {
+export function buildDamageRequest(warehousePublicId: string, d: DamageDraft, disposition: DamageDisposition, finalDestination: string | null = null) {
   const warehouse = d.origin === 'WAREHOUSE'
   return {
     origin: d.origin,
@@ -74,6 +82,7 @@ export function buildDamageRequest(warehousePublicId: string, d: DamageDraft, di
     quantity: parseDamageQty(d.qtyText),
     cause: d.cause || (d.origin ? defaultCause(d.origin) : null),
     disposition,
+    finalDestination: disposition === 'DISCARD' ? finalDestination : null,
     lot: d.product?.trackingTypeCode === 'LOT' && d.lot.trim() ? { number: d.lot.trim() } : undefined,
   }
 }

@@ -223,6 +223,7 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
    posiciones y el botón **Productos por posición**: PDF con una posición por página y el código de barras de cada producto (hasta 10 por
    página, tamaño adaptable, "Hoja 2 de 2", "Sin productos") para escanear desde el papel en un rack alto; la exportación de la tabla trae todo
    lo filtrado; mensajes y casos frecuentes. Reemplaza a las hojas de posición. Capturas `f15-pdf-*`.
+12b. [Etiquetas de producto](frontend/f17b-etiquetas-de-producto.md): en **Productos e inventario**, el botón **Etiquetas de producto**: una etiqueta adhesiva por producto (código de barras del SKU, SKU en grande y nombre) en 4 × 2, 4 × 4 o 4 × 6 pulgadas, solo la etiqueta.
 12. [F16 — Etiquetas de posición](frontend/f16-etiquetas-de-posicion.md): en **Posiciones**, el botón **Etiquetas de posición**: una
    etiqueta por posición (código de barras Code 128 lo más grande posible, el código en letra grande y los datos de la ubicación) para
    impresoras de etiquetas de **4 × 2, 4 × 4 o 4 × 6 pulgadas** (una página del PDF del tamaño exacto por etiqueta, orientación Automática

@@ -97,6 +97,7 @@ describe('buildLine', () => {
       damageNote: null,
       damageBinCode: null,
       damageDiscard: false,
+      damageDestination: null,
     })
   })
 
@@ -151,6 +152,7 @@ describe('buildReceiptBody', () => {
         damageNote: null,
         damageBinCode: null,
         damageDiscard: null,
+        damageFinalDestination: null,
       },
     ])
   })
@@ -273,6 +275,7 @@ describe('findTargetConflict (H11)', () => {
     damageNote: null,
     damageBinCode: null,
     damageDiscard: false,
+    damageDestination: null,
   })
 
   it('el mismo producto dos veces con destinos distintos en un documento de una sola línea choca en la segunda', () => {
@@ -368,7 +371,7 @@ describe('daño declarado en la captura', () => {
     expect(placed.lines.map((l) => l.damagedQty)).toEqual([4, 3])
     expect(placed.leftover).toBe(0)
     expect(placed.lines[0]).toMatchObject({ damageCause: DAMAGE_CAUSE_OTHER, damageNote: 'se mojó', damageBinCode: 'Q-01', damageDiscard: false })
-    expect(attachDamage(draft, [lines[0]], { binCode: null, discard: true })).toMatchObject({ leftover: 3, lines: [{ damagedQty: 4, damageBinCode: null, damageDiscard: true }] })
+    expect(attachDamage(draft, [lines[0]], { binCode: null, discard: true, destination: 'DONATED' })).toMatchObject({ leftover: 3, lines: [{ damagedQty: 4, damageBinCode: null, damageDiscard: true, damageDestination: 'DONATED' }] })
   })
 
   it('la nota solo viaja con la causa Otra', () => {
@@ -379,10 +382,10 @@ describe('daño declarado en la captura', () => {
   it('el cuerpo del envío lleva el daño de la línea (y nada si no hay)', () => {
     const draft = { ...base, damagedQtyText: '2', damageCause: 'TRANSIT_ACCIDENT' }
     const [damaged] = attachDamage(draft, [buildLine(draft)], { binCode: 'Q-01', discard: false }).lines
-    const [discarded] = attachDamage(draft, [buildLine(draft)], { binCode: null, discard: true }).lines
+    const [discarded] = attachDamage(draft, [buildLine(draft)], { binCode: null, discard: true, destination: 'DONATED' }).lines
     const body = buildReceiptBody('wh-1', null, [damaged, discarded, buildLine({ ...newLineDraft(NONE_PRODUCT), qtyText: '1' })])
     expect(body.lines[0]).toMatchObject({ damagedQty: 2, damageCause: 'TRANSIT_ACCIDENT', damageBinCode: 'Q-01', damageDiscard: null })
-    expect(body.lines[1]).toMatchObject({ damagedQty: 2, damageBinCode: null, damageDiscard: true })
+    expect(body.lines[1]).toMatchObject({ damagedQty: 2, damageBinCode: null, damageDiscard: true, damageFinalDestination: 'DONATED' })
     expect(body.lines[2]).toMatchObject({ damagedQty: null, damageCause: null, damageBinCode: null, damageDiscard: null })
   })
 

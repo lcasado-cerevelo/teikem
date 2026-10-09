@@ -64,8 +64,8 @@ export function startLocalReceipt(warehousePublicId: string, doc: LocalDoc | nul
 export function addLocalReceiptLine(receiptId: number, line: DraftLine): void {
   getDb().runSync(
     `INSERT INTO local_receipt_line (receipt_id, product_public_id, sku, product_name, tracking_type_code, received_qty, lot_number, expiry_date,
-                                     serial_numbers, target_bin_code, damaged_qty, damage_cause, damage_note, damage_bin_code, damage_discard)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                                     serial_numbers, target_bin_code, damaged_qty, damage_cause, damage_note, damage_bin_code, damage_discard, damage_destination)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       receiptId,
       line.productPublicId,
@@ -82,6 +82,7 @@ export function addLocalReceiptLine(receiptId: number, line: DraftLine): void {
       line.damageNote,
       line.damageBinCode,
       line.damageDiscard ? 1 : 0,
+      line.damageDestination,
     ],
   )
 }
@@ -123,6 +124,7 @@ export function getOpenReceipt(): (OpenReceipt & { lineRows: LocalReceiptLineRow
       damage_note: string | null
       damage_bin_code: string | null
       damage_discard: number
+      damage_destination: string | null
     }>('SELECT * FROM local_receipt_line WHERE receipt_id = ? ORDER BY id', [header.id])
     .map((r) => ({
       id: r.id,
@@ -140,6 +142,7 @@ export function getOpenReceipt(): (OpenReceipt & { lineRows: LocalReceiptLineRow
       damageNote: r.damage_note,
       damageBinCode: r.damage_bin_code,
       damageDiscard: r.damage_discard === 1,
+      damageDestination: r.damage_destination,
     }))
   const doc =
     header.purchase_order_public_id || header.asn_id

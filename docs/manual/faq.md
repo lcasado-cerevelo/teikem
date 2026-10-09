@@ -5657,7 +5657,7 @@ Entra con el resto a la posición de recepción y, al confirmar, sale de ahí ha
 Se **cuenta** (es existencia física de esa posición) pero **no se puede despachar**: en una zona de Cuarentena ya queda fuera de la asignación y, si lo dejó en otra posición (guardado, recepción), el sistema lo **reserva** y baja el disponible; la lista de Daños dice «reservado (no se despacha)». Al desecharlo o recuperarlo la reserva se libera.
 
 **Vienen a recoger lo dañado de cuarentena. ¿Qué hago?**
-En la pestaña Daños use **Dar salida** sobre ese daño y escoja el **destino final**: *Tirado*, *Devuelto al proveedor*, *Donado* o *Vendido como saldo*. No es un despacho: baja el inventario con un ajuste de motivo Daño y queda el destino en el Kárdex y en la lista. Si necesita otro destino, agréguelo en Sistema → Catálogos (Destino final de lo dañado).
+En la pestaña Daños use **Dar salida** sobre ese daño y escoja el **destino final** (en la app, al dar salida a lo dañado al recibir o desde el tile Daño, también pregunta **¿A dónde va?**): *Tirado*, *Devuelto al proveedor*, *Donado* o *Vendido como saldo*. No es un despacho: baja el inventario con un ajuste de motivo Daño y queda el destino en el Kárdex y en la lista. Si necesita otro destino, agréguelo en Sistema → Catálogos (Destino final de lo dañado).
 
 **Dice `Indique a dónde va lo que sale (tirado, devuelto al proveedor, donado…).`**
 Al darle salida a lo que está en cuarentena hay que escoger el destino final. Elíjalo en la lista y vuelva a dar salida.
@@ -5688,3 +5688,22 @@ En la pestaña Daños, **Recuperar** (elija una posición de guardado): la exist
 
 **¿Por qué no sale el tile Daño en la app?**
 Su usuario no tiene el permiso «Reportar y resolver daños» (`warehouse.damage`). Pídalo al administrador (Sistema → Roles y usuarios).
+
+## Etiquetas de producto (Productos e inventario, 2026-10-09)
+
+Detalle en [Etiquetas de producto](frontend/f17b-etiquetas-de-producto.md).
+
+**¿Cómo imprimo etiquetas adhesivas de mis productos?**
+Productos e inventario → filtre la tabla → **Etiquetas de producto** → tamaño (4 × 2, 4 × 4 o 4 × 6) → **Generar PDF**. Sale una etiqueta por producto con el código de barras del SKU, el SKU en grande y el nombre.
+
+**Dice `Son {n} productos; el máximo por PDF es 500 etiquetas. Acote con los filtros.`**
+El filtro trae más de 500 productos. Filtre por categoría, marca o nombre y genere por tandas.
+
+**Dice `No hay productos para imprimir con los filtros actuales.`**
+El filtro no devuelve ningún producto: quite o cambie los filtros.
+
+**Dice `{n} salieron sin código de barras (solo con el código en texto):`**
+Esos SKU tienen caracteres que el código Code 128 no admite o son demasiado largos para el tamaño: la etiqueta sale con el SKU en texto. Elija un tamaño más grande o corrija el SKU.
+
+**La etiqueta sale de lado o cortada.**
+Revise que el tamaño del driver sea el mismo que eligió y la escala 100 %; si sigue, genere el PDF con **Orientación → Girar 90°**.

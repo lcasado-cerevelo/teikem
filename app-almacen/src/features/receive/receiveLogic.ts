@@ -35,6 +35,8 @@ export interface DraftLine {
   damageNote: string | null
   damageBinCode: string | null
   damageDiscard: boolean
+  /** A dónde va si se le da salida (catálogo DamageFinalDestination); null = sin dato. */
+  damageDestination: string | null
 }
 
 export interface LineDraft {
@@ -178,10 +180,10 @@ export function buildLine(draft: LineDraft): DraftLine {
   }
 }
 
-const NO_DAMAGE = { damagedQty: 0, damageCause: null, damageNote: null, damageBinCode: null, damageDiscard: false } as const
+const NO_DAMAGE = { damagedQty: 0, damageCause: null, damageNote: null, damageBinCode: null, damageDiscard: false, damageDestination: null } as const
 
 /** Dónde quedan las unidades dañadas: una posición escaneada o se desechan de una vez. */
-export type DamagePlacement = { binCode: string; discard: false } | { binCode: null; discard: true }
+export type DamagePlacement = { binCode: string; discard: false } | { binCode: null; discard: true; destination: string | null }
 
 /**
  * Reparte lo dañado del borrador entre las líneas que salen de él (una por posición en un reparto): se asigna en orden, sin pasar de lo que trae cada
@@ -201,6 +203,7 @@ export function attachDamage(draft: LineDraft, lines: readonly DraftLine[], plac
       damageNote: draft.damageCause === DAMAGE_CAUSE_OTHER ? draft.damageNote.trim() : null,
       damageBinCode: placement.binCode,
       damageDiscard: placement.discard,
+      damageDestination: placement.discard ? placement.destination : null,
     }
   })
   return { lines: out, leftover: remaining }
@@ -358,6 +361,7 @@ export function buildReceiptBody(
       damageNote: l.damagedQty > 0 ? l.damageNote : null,
       damageBinCode: l.damagedQty > 0 && !l.damageDiscard ? l.damageBinCode : null,
       damageDiscard: l.damagedQty > 0 && l.damageDiscard ? true : null,
+      damageFinalDestination: l.damagedQty > 0 && l.damageDiscard ? l.damageDestination : null,
     })),
   }
 }

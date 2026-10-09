@@ -530,6 +530,12 @@
     "discardConfirmBody": "{qty} of {sku} will leave inventory. This cannot be undone.",
     "reportedQuarantine": "{code}: sent to quarantine.",
     "reportedDiscard": "{code}: release recorded.",
-    "restart": "Start over"
+    "restart": "Start over",
+    "destinationTitle": "Where does it go?",
+    "destinationHelp": "Choose where the goods that leave go.",
+    "destDiscarded": "Thrown away",
+    "destReturned": "Returned to supplier",
+    "destDonated": "Donated",
+    "destSalvage": "Sold as salvage"
   }
 }

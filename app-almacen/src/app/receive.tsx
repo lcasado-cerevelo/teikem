@@ -33,6 +33,7 @@ import { StickyAlert } from '../kernel/ui/StickyAlert'
 import { BinMarkList } from '../features/positions/BinMarkList'
 import { capMarks, markRecommended, marksToRows, toggleMark, type MarkOption, type Marks } from '../features/positions/binMarks'
 import { CauseSelect } from '../features/damage/CauseSelect'
+import { DestinationModal } from '../features/damage/DestinationModal'
 import { KeyboardInput } from '../kernel/ui/KeyboardInput'
 import { KeyboardScreen } from '../kernel/ui/KeyboardScreen'
 import {
@@ -105,6 +106,8 @@ export default function ReceiveScreen() {
   const [pending, setPending] = useState<{ lines: DraftLine[]; left: LineDraft | null } | null>(null)
   const [damageError, setDamageError] = useState<string | null>(null)
   const [damagePrefill, setDamagePrefill] = useState<{ value: string; seq: number } | null>(null)
+  // «Dar salida» a lo dañado: primero a dónde va (tirado, devuelto al proveedor, donado, saldo), luego se confirma
+  const [askDestination, setAskDestination] = useState(false)
 
   // tick fuerza releer la base local tras cada mutación (start/add/remove/confirm); getOpenReceipt() no usa tick.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -231,9 +234,15 @@ export default function ReceiveScreen() {
 
   function discardDamaged() {
     if (!pending || !draft) return
+    setAskDestination(true)
+  }
+
+  function discardDamagedTo(destination: string) {
+    setAskDestination(false)
+    if (!pending || !draft) return
     Alert.alert(t('receive.damageDiscardTitle'), t('receive.damageDiscardBody', { qty: f.qty(draftDamagedQty(draft)) }), [
       { text: t('common.no'), style: 'cancel' },
-      { text: t('receive.damageDiscard'), style: 'destructive', onPress: () => commitLines(pending.lines, pending.left, { binCode: null, discard: true }) },
+      { text: t('receive.damageDiscard'), style: 'destructive', onPress: () => commitLines(pending.lines, pending.left, { binCode: null, discard: true, destination }) },
     ])
   }
 
@@ -427,6 +436,7 @@ export default function ReceiveScreen() {
           pick="bin"
         />
         <BigButton label={t('receive.damageDiscard')} variant="danger" onPress={discardDamaged} />
+        <DestinationModal visible={askDestination} onSelect={discardDamagedTo} onClose={() => setAskDestination(false)} />
         <Text style={styles.help}>{t('receive.damageDiscardHelp')}</Text>
         <BigButton
           label={t('common.back')}

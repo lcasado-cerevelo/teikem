@@ -37232,6 +37232,10 @@
           "damageReportCode": {
             "type": "string",
             "nullable": true
+          },
+          "damageFinalDestinationCode": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -37302,6 +37306,10 @@
           },
           "damageDiscard": {
             "type": "boolean",
+            "nullable": true
+          },
+          "damageFinalDestination": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -37381,6 +37389,10 @@
           },
           "clearDamage": {
             "type": "boolean",
+            "nullable": true
+          },
+          "damageFinalDestination": {
+            "type": "string",
             "nullable": true
           }
         },

@@ -89,10 +89,12 @@ describe('Daño', () => {
     await waitFor(() => expect(screen.getByLabelText('Cantidad dañada')).toBeTruthy())
     await fireEvent.changeText(screen.getByLabelText('Cantidad dañada'), '2,5')
     await fireEvent.press(screen.getByTestId('damage-discard'))
+    await fireEvent.press(await screen.findByText('Devuelto al proveedor'))
 
     await waitFor(() => expect(screen.getByText('DAN-00001: salida registrada.')).toBeTruthy())
     expect(alert).toHaveBeenCalledWith('¿Dar salida de una vez?', 'Salen del inventario 2,5 de SKU-1. No se puede deshacer.', expect.any(Array))
     expect(calls.find((c) => c.method === 'POST')?.body).toMatchObject({
+      finalDestination: 'RETURNED_TO_SUPPLIER',
       origin: 'RECEIPT',
       receiptPublicId: 'rec-uuid',
       quantity: 2.5,

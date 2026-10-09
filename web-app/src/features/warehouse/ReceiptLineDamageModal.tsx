@@ -25,6 +25,8 @@ interface Values {
   note: string
   disposition: 'PLACE' | 'DISCARD'
   binId: string
+  /** A dónde va si se le da salida de una vez (obligatorio): catálogo DamageFinalDestination. */
+  finalDestination: string
 }
 
 export interface ReceiptLineDamageModalProps {
@@ -39,6 +41,7 @@ export function ReceiptLineDamageModal({ receipt, line, onClose, onSaved }: Rece
   const lang = useLang()
   const save = useSaveReceiptLine()
   const causes = useLookups('DamageCause')
+  const destinations = useLookups('DamageFinalDestination')
   const publicId = receipt.header?.publicId ?? ''
   const received = line.receivedQty ?? 0
   const hasDamage = (line.damagedQty ?? 0) > 0
@@ -53,9 +56,11 @@ export function ReceiptLineDamageModal({ receipt, line, onClose, onSaved }: Rece
           note: z.string().max(300, t(`${M}.errors.noteMax`)),
           disposition: z.enum(['PLACE', 'DISCARD']),
           binId: z.string(),
+          finalDestination: z.string(),
         })
         .superRefine((v, ctx) => {
           if (v.quantity !== null && v.quantity > received) ctx.addIssue({ code: 'custom', path: ['quantity'], message: t(`${M}.errors.qtyMax`, { max: formatNumber(received, lang) }) })
+          if (v.disposition === 'DISCARD' && !v.finalDestination) ctx.addIssue({ code: 'custom', path: ['finalDestination'], message: t(`${M}.errors.finalDestinationRequired`) })
           if (v.cause === 'OTHER' && !v.note.trim()) ctx.addIssue({ code: 'custom', path: ['note'], message: t(`${M}.errors.noteRequired`) })
         }),
     [t, lang, received],
@@ -68,10 +73,12 @@ export function ReceiptLineDamageModal({ receipt, line, onClose, onSaved }: Rece
       note: line.damageNote ?? '',
       disposition: line.damageDiscard ? 'DISCARD' : 'PLACE',
       binId: line.damageBinId != null ? String(line.damageBinId) : '',
+      finalDestination: line.damageFinalDestinationCode ?? '',
     },
   })
   const [cause, disposition] = useWatch({ control: form.control, name: ['cause', 'disposition'] })
   const causeOptions = useMemo(() => (causes.data ?? []).map((c) => ({ value: c.code, label: c.label })), [causes.data])
+  const destinationOptions = useMemo(() => (destinations.data ?? []).map((c) => ({ value: c.code, label: c.label })), [destinations.data])
   const dispositionOptions = [
     { value: 'PLACE', label: t(`${M}.place`) },
     { value: 'DISCARD', label: t(`${M}.discard`) },
@@ -118,6 +125,7 @@ export function ReceiptLineDamageModal({ receipt, line, onClose, onSaved }: Rece
               damageNote: v.note.trim() || null,
               damageBinId: v.disposition === 'PLACE' && v.binId ? Number(v.binId) : null,
               damageDiscard: v.disposition === 'DISCARD',
+              damageFinalDestination: v.disposition === 'DISCARD' ? v.finalDestination : null,
             },
             `${M}.saved`,
           )
@@ -140,6 +148,11 @@ export function ReceiptLineDamageModal({ receipt, line, onClose, onSaved }: Rece
         <Field name="disposition" label={t(`${M}.disposition`)} help={t(disposition === 'DISCARD' ? `${M}.discardHelp` : `${M}.placeHelp`)}>
           <SegInput label={t(`${M}.disposition`)} options={dispositionOptions} />
         </Field>
+        {disposition === 'DISCARD' && (
+          <Field name="finalDestination" label={t(`${M}.finalDestination`)} required>
+            <ComboSelectInput options={destinationOptions} loading={destinations.isLoading} placeholder={t('warehouse.damage.finalDestinationPlaceholder')} />
+          </Field>
+        )}
         {disposition === 'PLACE' && (
           <Field name="binId" label={t(`${M}.bin`)}>
             <BinPickerInput warehousePublicId={receipt.header?.warehousePublicId} placeholder={t(`${M}.binPlaceholder`)} />

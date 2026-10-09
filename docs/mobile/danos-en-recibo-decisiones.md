@@ -33,3 +33,9 @@ Servidor: `ReceiptDamageTests` (11: cuarentena, desechar, sin cuarentena, posici
 - **Dar salida de una vez** (al reportar, web) admite un destino final **opcional** (`finalDestination` en `POST /damage-reports`; vacío = tirado). En la línea del recibo y en la app sigue sin destino (se registra como tirado; el destino se puede afinar al sacar algo de cuarentena desde la web).
 - Mensajes nuevos: `Indique si lo dañado va a cuarentena o se le da salida.` y `Indique a dónde va lo que sale (tirado, devuelto al proveedor, donado…).`; la nota del Kárdex dice `DAN-… · Salida: {destino}`.
 - «Devuelto al proveedor» solo **registra el destino**: el inventario baja con un ajuste de motivo Daño; no genera devolución de compra ni crédito del proveedor.
+
+## Adenda 3 — el destino se pregunta siempre que se da salida (2026-10-09)
+- **App** (Recibir → unidades dañadas → *Dar salida*, y tile Daño → *Dar salida*): antes de confirmar abre «¿A dónde va?» con los cuatro destinos de fábrica. Con señal o sin ella; el aparato no baja el catálogo, así que un destino agregado por la compañía solo se escoge en la web. Migración local v8 (`damage_destination`).
+- **Línea del recibo:** `ReceiptLine.DamageFinalDestinationLookupId` (SQL con `COL_LENGTH`), `damageFinalDestination` en el request/update de la línea y `damageFinalDestinationCode` en el DTO; al confirmar pasa al `DAN-…`.
+- **Web:** obligatorio en el modal de la línea del recibo («Dar salida de una vez») y en Reportar daño con «Dar salida de una vez».
+- **Servidor tolerante:** un reporte o una línea con salida y sin destino se acepta (envíos viejos en la cola); queda vacío = tirado. Un destino desconocido se rechaza: `Destino final desconocido: '{valor}'.`

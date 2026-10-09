@@ -107,5 +107,7 @@ public class ReceiptLine
     public string? DamageNote { get; set; }
     public int? DamageBinId { get; set; }
     public bool DamageDiscard { get; set; }
+    /// <summary>A dónde va lo dañado si se le da salida de una vez (LookupCode 'DamageFinalDestination'); null = tirado.</summary>
+    public int? DamageFinalDestinationLookupId { get; set; }
     public int? DamageReportId { get; set; }
 }

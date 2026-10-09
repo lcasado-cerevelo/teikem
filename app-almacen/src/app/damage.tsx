@@ -14,6 +14,7 @@ import { ScanField } from '../kernel/ui/ScanField'
 import { ScanMessage } from '../kernel/ui/ScanMessage'
 import { colors, fontSize, radius, spacing } from '../kernel/ui/theme'
 import { vibrateError, vibrateOk } from '../kernel/ui/feedback'
+import { DestinationModal } from '../features/damage/DestinationModal'
 import { findReceiptByNumber, reportDamage } from '../features/damage/damageApi'
 import {
   buildDamageRequest,
@@ -40,6 +41,7 @@ export default function DamageScreen() {
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [askDestination, setAskDestination] = useState(false)
 
   if (!warehousePublicId) {
     return (
@@ -97,7 +99,7 @@ export default function DamageScreen() {
     vibrateOk()
   }
 
-  async function submit(disposition: DamageDisposition) {
+  async function submit(disposition: DamageDisposition, finalDestination: string | null = null) {
     if (block) {
       fail(t(block === 'qty' ? 'damage.qtyInvalid' : 'damage.lotRequired'))
       return
@@ -105,7 +107,7 @@ export default function DamageScreen() {
     setError(null)
     setBusy(true)
     try {
-      const dto = await reportDamage(buildDamageRequest(warehousePublicId!, draft, disposition))
+      const dto = await reportDamage(buildDamageRequest(warehousePublicId!, draft, disposition, finalDestination))
       setDraft(EMPTY_DAMAGE)
       setNotice(t(disposition === 'QUARANTINE' ? 'damage.reportedQuarantine' : 'damage.reportedDiscard', { code: dto.code ?? '' }))
       vibrateOk()
@@ -121,9 +123,15 @@ export default function DamageScreen() {
       fail(t(block === 'qty' ? 'damage.qtyInvalid' : 'damage.lotRequired'))
       return
     }
+    // primero a dónde va (tirado, devuelto, donado, saldo), luego se confirma
+    setAskDestination(true)
+  }
+
+  function confirmDiscardTo(destination: string) {
+    setAskDestination(false)
     Alert.alert(t('damage.discardConfirmTitle'), t('damage.discardConfirmBody', { qty: draft.qtyText.trim(), sku: draft.product?.sku ?? '' }), [
       { text: t('common.no'), style: 'cancel' },
-      { text: t('damage.toDiscard'), style: 'destructive', onPress: () => void submit('DISCARD') },
+      { text: t('damage.toDiscard'), style: 'destructive', onPress: () => void submit('DISCARD', destination) },
     ])
   }
 
@@ -215,6 +223,7 @@ export default function DamageScreen() {
       <View style={styles.bottom}>
         <BigButton label={t('common.back')} variant="secondary" onPress={() => router.replace('/home')} disabled={busy} />
       </View>
+      <DestinationModal visible={askDestination} onSelect={confirmDiscardTo} onClose={() => setAskDestination(false)} />
     </KeyboardScreen>
   )
 }

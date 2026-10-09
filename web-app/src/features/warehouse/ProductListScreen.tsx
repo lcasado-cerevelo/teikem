@@ -40,6 +40,7 @@ import { ProductMultiFilter, type ProductFilterItem } from './pickers'
 import { DamagePanel } from './DamageListScreen'
 import { ProductCategoriesPanel } from './ProductCategoriesPanel'
 import { ProductEditorByIdModal, ProductEditorModal } from './ProductEditorModal'
+import { ProductLabelsButton } from './ProductLabelsPanel'
 import { parseKpiParam, productListQuery, toggleKpi, type ProductFilterState, type ProductKpi } from './productFilters'
 import '../analytics/pulse.css'
 import './warehouse.css'
@@ -304,6 +305,8 @@ function ProductsTab() {
           <AdjustmentsReportButton filters={filters} />
           {/* Lote F14: un código de barras por SKU de lo filtrado, para imprimir y escanear el papel en el conteo */}
           <ProductBarcodeReportButton filters={filters} />
+          {/* 2026-10-09: una etiqueta por producto (4 × 2, 4 × 4, 4 × 6) para impresora de etiquetas, solo la etiqueta */}
+          <ProductLabelsButton filters={filters} />
           <Can perm="inventory.manage">
             <button type="button" className="btn flow" onClick={() => setCreating(true)}>
               {t('warehouse.products.new')}

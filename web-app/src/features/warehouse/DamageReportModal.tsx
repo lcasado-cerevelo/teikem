@@ -59,6 +59,7 @@ function DamageModalBody({ onClose, receipt, onReported }: Omit<DamageReportModa
           notes: z.string().max(300, t(`${M}.notesMax`)),
         })
         .superRefine((v, c) => {
+          if (v.disposition === 'DISCARD' && !v.finalDestination) c.addIssue({ code: 'custom', path: ['finalDestination'], message: t(`${M}.finalDestinationRequired`) })
           if (v.origin === 'WAREHOUSE' && !v.fromBinId) c.addIssue({ code: 'custom', path: ['fromBinId'], message: t(`${M}.fromBinRequired`) })
           if (v.origin === 'RECEIPT' && !v.receiptPublicId) c.addIssue({ code: 'custom', path: ['receiptPublicId'], message: t(`${M}.receiptRequired`) })
           if (tracking === 'LOT' && !v.lotId && !(v.origin === 'RECEIPT' && v.disposition === 'QUARANTINE' && v.lotNumber.trim()))
@@ -208,7 +209,7 @@ function DamageModalBody({ onClose, receipt, onReported }: Omit<DamageReportModa
           </Field>
         )}
         {disposition === 'DISCARD' && (
-          <Field name="finalDestination" label={t('warehouse.damage.fields.reportFinalDestination')} help={t('warehouse.damage.reportFinalDestinationHelp')}>
+          <Field name="finalDestination" label={t('warehouse.damage.fields.finalDestination')} required help={t('warehouse.damage.finalDestinationHelp')}>
             <ComboSelectInput options={destinationOptions} loading={destinations.isLoading} placeholder={t('warehouse.damage.finalDestinationPlaceholder')} />
           </Field>
         )}

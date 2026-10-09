@@ -2605,8 +2605,10 @@
           "qtyMax": "La cantidad dañada no puede ser mayor que la recibida ({max}).",
           "causeRequired": "Indique cómo ocurrió el daño.",
           "noteRequired": "Escriba la razón del daño cuando la causa es Otro.",
-          "noteMax": "La nota no puede pasar de 300 caracteres."
-        }
+          "noteMax": "La nota no puede pasar de 300 caracteres.",
+          "finalDestinationRequired": "Indique a dónde va lo que sale (tirado, devuelto al proveedor, donado…)."
+        },
+        "finalDestination": "Destino final"
       }
     },
     "asns": {
@@ -3392,8 +3394,7 @@
         "toBin": "Posición a la que vuelve",
         "resolutionNotes": "Nota (opcional)",
         "quarantineBin": "Posición donde queda",
-        "finalDestination": "Destino final",
-        "reportFinalDestination": "Destino final (opcional)"
+        "finalDestination": "Destino final"
       },
       "cols": {
         "code": "Número",
@@ -3433,8 +3434,17 @@
       "quarantineBinPlaceholder": "Cuarentena (la primera)",
       "finalDestinationHelp": "A dónde va lo que sale de cuarentena. Queda en el Kárdex y en los reportes de daños.",
       "finalDestinationPlaceholder": "Escoja el destino",
-      "reserved": "reservado (no se despacha)",
-      "reportFinalDestinationHelp": "Sin dato, queda como tirado."
+      "reserved": "reservado (no se despacha)"
+    },
+    "productLabels": {
+      "button": "Etiquetas de producto",
+      "hint": "PDF con una etiqueta por producto (código de barras del SKU, SKU en grande y nombre) para impresoras de etiquetas de 4 × 2, 4 × 4 o 4 × 6 pulgadas. Imprime lo que muestra la tabla.",
+      "title": "Etiquetas de producto",
+      "pdfTitle": "Etiquetas de producto",
+      "intro": "Una etiqueta por producto de la lista filtrada, con el código de barras de su SKU, el SKU en letra grande y su nombre. Cada etiqueta es una página del PDF del tamaño exacto de la etiqueta (solo la etiqueta, sin hoja). Puede volver a imprimirlas cuando quiera: no cambian nada en el sistema.",
+      "working": "Leyendo productos y generando el PDF…",
+      "tooMany": "Son {count} productos; el máximo por PDF es {max} etiquetas. Acote con los filtros.",
+      "nothing": "No hay productos para imprimir con los filtros actuales."
     }
   },
   "system": {

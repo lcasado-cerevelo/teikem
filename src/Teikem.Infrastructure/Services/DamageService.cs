@@ -148,7 +148,7 @@ public sealed class DamageService(TeikemDbContext db, ITenantContext tenant, ILo
     /// Corre dentro de la transacción de la confirmación. Devuelve el id del reporte.
     /// </summary>
     public async Task<int> ReportReceiptLineAsync(int warehouseId, int receiptId, int productId, int? lotId, decimal quantity, int causeLookupId, string? notes,
-        int? landingBinId, int? damageBinId, bool discard, CancellationToken ct)
+        int? landingBinId, int? damageBinId, bool discard, int? finalDestinationId, CancellationToken ct)
     {
         return await db.RunInTransactionAsync(async ct2 =>
         {
@@ -174,6 +174,7 @@ public sealed class DamageService(TeikemDbContext db, ITenantContext tenant, ILo
                 QuarantineBinId = destination?.WarehouseBinId, Quantity = quantity,
                 OriginLookupId = await lookups.GetIdAsync(LookupDomains.DamageOrigin, DamageOrigins.Receipt, ct2), CauseLookupId = causeLookupId,
                 ReceiptHeaderId = receiptId, Notes = notes, StatusCodeId = initial.StatusCodeId, ReportedAtUtc = DateTime.UtcNow, ReportedBy = tenant.UserId, IsActive = true,
+                FinalDestinationLookupId = discard ? finalDestinationId : null,
             };
             db.Set<DamageReport>().Add(d);
             await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);

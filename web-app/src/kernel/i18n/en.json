@@ -2605,8 +2605,10 @@
           "qtyMax": "The damaged quantity cannot exceed the received one ({max}).",
           "causeRequired": "Say how the damage happened.",
           "noteRequired": "Write the reason for the damage when the cause is Other.",
-          "noteMax": "The note cannot exceed 300 characters."
-        }
+          "noteMax": "The note cannot exceed 300 characters.",
+          "finalDestinationRequired": "Say where the goods that leave go (thrown away, returned to supplier, donated…)."
+        },
+        "finalDestination": "Final destination"
       }
     },
     "asns": {
@@ -3392,8 +3394,7 @@
         "toBin": "Position it returns to",
         "resolutionNotes": "Note (optional)",
         "quarantineBin": "Bin where it stays",
-        "finalDestination": "Final destination",
-        "reportFinalDestination": "Final destination (optional)"
+        "finalDestination": "Final destination"
       },
       "cols": {
         "code": "Number",
@@ -3433,8 +3434,17 @@
       "quarantineBinPlaceholder": "Quarantine (the first one)",
       "finalDestinationHelp": "Where what leaves quarantine goes. It is recorded in the ledger and in the damage reports.",
       "finalDestinationPlaceholder": "Choose the destination",
-      "reserved": "reserved (not dispatched)",
-      "reportFinalDestinationHelp": "Without one, it is recorded as thrown away."
+      "reserved": "reserved (not dispatched)"
+    },
+    "productLabels": {
+      "button": "Product labels",
+      "hint": "PDF with one label per product (SKU barcode, large SKU and name) for 4 × 2, 4 × 4 or 4 × 6 inch label printers. Prints what the table shows.",
+      "title": "Product labels",
+      "pdfTitle": "Product labels",
+      "intro": "One label per product in the filtered list, with its SKU barcode, the SKU in large type and its name. Each label is one PDF page of the exact label size (label only, no sheet). You can reprint them any time: they change nothing in the system.",
+      "working": "Reading products and generating the PDF…",
+      "tooMany": "There are {count} products; the maximum per PDF is {max} labels. Narrow it with the filters.",
+      "nothing": "There are no products to print with the current filters."
     }
   },
   "system": {
