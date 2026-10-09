@@ -66,7 +66,7 @@ export interface BarcodeReportRow {
 }
 
 export interface BarcodeReportGroup {
-  /** Título del grupo (ya traducido, con su cantidad si se quiere). */
+  /** Título del grupo (ya traducido, con su cantidad si se quiere). Vacío en todos los grupos = lista corrida sin barras de título. */
   title: string
   rows: readonly BarcodeReportRow[]
 }
@@ -397,7 +397,9 @@ export async function renderBarcodeReportPdf(spec: BarcodeReportSpec, options: R
     for (let i = 0; i < cells.length; i += cols) rows.push(cells.slice(i, i + cols))
     return { title: g.title, rows, rowHeights: rows.map((r) => Math.max(...r.map((c) => c.height)) + ROW_GAP) }
   })
-  const pages = paginateBarcodeGrid(measured, GROUP_TITLE_H, bodyBottom - startY, bodyBottom - pageTop)
+  // un solo grupo sin título (lista corrida en el orden del filtro): no hay barra de título ni espacio para ella
+  const titleH = measured.every((g) => g.title === '') ? 0 : GROUP_TITLE_H
+  const pages = paginateBarcodeGrid(measured, titleH, bodyBottom - startY, bodyBottom - pageTop)
 
   pages.forEach((placements, p) => {
     if (p > 0) doc.addPage('letter', 'portrait')
@@ -406,6 +408,7 @@ export async function renderBarcodeReportPdf(spec: BarcodeReportSpec, options: R
       const g = measured[item.group]
       const y = top + item.y
       if (item.kind === 'title') {
+        if (titleH === 0) continue
         // título del grupo a todo el ancho (con "(continuación)" si el grupo viene de la página anterior)
         const text = item.continued ? translate('ui.barcodeReport.continued', { title: g.title }) : g.title
         doc.setFillColor(232, 239, 251)
