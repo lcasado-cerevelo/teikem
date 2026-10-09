@@ -358,7 +358,9 @@
     "revealFinalNumber": "Contaste {counted} y se esperaba {expected}. Queda para revisión.",
     "revealFinalNoNumber": "No coincide con lo esperado. Queda para revisión.",
     "lineChecked": "Esa línea ya se verificó; no se puede cambiar ni quitar.",
-    "verifyHint": "Revisa el resultado de cada posición. Las que piden recontar se corrigen; toca Confirmar de nuevo para seguir."
+    "verifyHint": "Revisa el resultado de cada posición. Las que piden recontar se corrigen; toca Confirmar de nuevo para seguir.",
+    "capturedTitle": "Contado aquí ({count})",
+    "capturedEmpty": "Aún no has contado nada en esta posición."
   },
   "calc": {
     "open": "Calculadora",

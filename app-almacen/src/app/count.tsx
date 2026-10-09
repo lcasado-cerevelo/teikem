@@ -618,9 +618,26 @@ export default function CountScreen() {
       <ScanField label={t('count.scanProductLabel')} error={scanError} onSubmit={scanProduct} prefill={prefill} pick="product" />
       <ScanMessage message={reveal?.text} tone={reveal?.tone ?? 'error'} />
 
-      {/* lo contado y los botones van justo debajo del escaneo (pedido del dueño): con muchas líneas esperadas quedaban
-          al final de la lista y había que desplazarse para terminar o cancelar */}
-      <Text style={styles.label}>{t('count.foundQtyLabel')}</Text>
+      <Text style={styles.label}>{t('count.expectedTitle')}</Text>
+      {remaining.length === 0 ? (
+        <Text style={styles.help}>{t('count.emptyExpected')}</Text>
+      ) : (
+        <>
+          <Text style={styles.help}>{t('count.pickHint')}</Text>
+          <LineList
+            items={remaining.map((l) => ({ id: l.lineId, title: l.productName, subtitle: l.sku }))}
+            removeLabel={t('common.remove')}
+            onPressItem={(id) => {
+              const line = remaining.find((l) => l.lineId === Number(id))
+              if (line) setPrefill((p) => ({ value: line.sku, seq: (p?.seq ?? 0) + 1 }))
+            }}
+            pressLabel={(item) => t('count.useProduct', { sku: item.subtitle ?? item.title })}
+          />
+        </>
+      )}
+
+      {/* 2026-10-09 (dueño): primero lo que se espera aquí (ayuda a decidir qué escanear), luego lo contado con los botones de terminar y cancelar */}
+      <Text style={styles.label}>{t('count.capturedTitle', { count: capturedRows.length })}</Text>
       <LineList
         items={capturedRows.map((r) => ({ id: r.id, title: t('count.foundLineTitle', { name: r.productName, qty: r.countedQty }), subtitle: r.sku }))}
         onRemove={(id) => {
@@ -642,31 +659,13 @@ export default function CountScreen() {
           if (row) setEdit({ id: row.id, sku: row.sku, productName: row.productName, systemQty: row.systemQty, qtyText: String(row.countedQty) })
         }}
         editLabel={t('common.edit')}
-        emptyLabel={t('count.emptyExpected')}
+        emptyLabel={t('count.capturedEmpty')}
       />
 
       {busy ? <ActivityIndicator color={colors.brand} /> : null}
       <BigButton label={t('count.finishBin')} onPress={finishBin} disabled={capturedRows.length === 0 || busy} />
       <Text style={styles.help}>{t('count.finishHelp')}</Text>
       <BigButton label={t('count.cancelCount')} variant="danger" onPress={cancelCount} disabled={busy} />
-
-      <Text style={styles.label}>{t('count.expectedTitle')}</Text>
-      {remaining.length === 0 ? (
-        <Text style={styles.help}>{t('count.emptyExpected')}</Text>
-      ) : (
-        <>
-          <Text style={styles.help}>{t('count.pickHint')}</Text>
-          <LineList
-            items={remaining.map((l) => ({ id: l.lineId, title: l.productName, subtitle: l.sku }))}
-            removeLabel={t('common.remove')}
-            onPressItem={(id) => {
-              const line = remaining.find((l) => l.lineId === Number(id))
-              if (line) setPrefill((p) => ({ value: line.sku, seq: (p?.seq ?? 0) + 1 }))
-            }}
-            pressLabel={(item) => t('count.useProduct', { sku: item.subtitle ?? item.title })}
-          />
-        </>
-      )}
     </KeyboardScreen>
   )
 }

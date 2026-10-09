@@ -32,7 +32,9 @@ const config: ExpoConfig = {
   icon: './assets/icon.png',
   android: {
     package: 'com.teikem.almacen',
-    versionCode: 1,
+    // Android solo deja instalar ENCIMA (sin perder la configuración del aparato) una versión con versionCode MAYOR que la instalada y firmada con la
+    // misma llave. scripts/construir-apk.ps1 lo sube solo en cada compilación (TEIKEM_VERSION_CODE).
+    versionCode: Number.parseInt(process.env.TEIKEM_VERSION_CODE ?? '', 10) || 1,
     adaptiveIcon: {
       backgroundColor: brandBlue,
       foregroundImage: './assets/android-icon-foreground.png',
