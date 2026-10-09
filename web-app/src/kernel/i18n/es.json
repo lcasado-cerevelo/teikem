@@ -1504,7 +1504,8 @@
         "reserved": "Reservado",
         "total": "Total",
         "tracking": "Rastreo",
-        "state": "Estatus"
+        "state": "Estatus",
+        "pack": "Empaque"
       },
       "states": {
         "ok": "OK",
@@ -1577,7 +1578,10 @@
         "whereOnHand": "En mano",
         "whereReserved": "Reservado",
         "whereAvailable": "Disponible",
-        "whereTotal": "Total"
+        "whereTotal": "Total",
+        "packUom": "Empaque (opcional)",
+        "packQty": "Unidades por empaque",
+        "packHelp": "Ej.: Caja de 12 o Barril de 50 (galones). El inventario siempre se lleva en la unidad base; el empaque solo ayuda a contar y a leer cantidades."
       },
       "fields": {
         "sku": "SKU",
@@ -1710,7 +1714,11 @@
         "pickZoneRequired": "El mínimo de picking requiere una posición preferida en una zona PICKING.",
         "measuresNegative": "El peso y el volumen no pueden ser negativos.",
         "weightInvalid": "El peso admite como máximo 3 decimales y debe ser menor que 1,000,000,000.",
-        "volumeInvalid": "El volumen admite como máximo 4 decimales y debe ser menor que 100,000,000."
+        "volumeInvalid": "El volumen admite como máximo 4 decimales y debe ser menor que 100,000,000.",
+        "packUnitWithoutQty": "Indique cuántas unidades trae el empaque.",
+        "packQtyWithoutUnit": "Indique la unidad del empaque (caja, barril, paquete…).",
+        "packQtyInvalid": "Las unidades por empaque deben ser un número mayor que 0 (hasta 3 decimales).",
+        "packSameAsBase": "La unidad del empaque no puede ser la misma que la unidad base."
       }
     },
     "categories": {
@@ -3133,7 +3141,14 @@
         "incompleteBlock": "Cada bloque necesita filas y columnas.",
         "invalid": "Escriba números enteros en filas, columnas y fondo (el fondo, 1 o más) y un número en sueltas.",
         "tooLarge": "El total es demasiado grande.",
-        "useTotal": "Usar el total ({total})"
+        "useTotal": "Usar el total ({total})",
+        "unit": "Contar en",
+        "unitAt": "Unidad del bloque {n}",
+        "units": "Unidades",
+        "packsOf": "{name} (de {qty})",
+        "extraPacks": "{name} sueltas",
+        "of": "de",
+        "packHint": "Empaque: {pack}. El inventario sigue en unidades."
       }
     },
     "productFilter": {

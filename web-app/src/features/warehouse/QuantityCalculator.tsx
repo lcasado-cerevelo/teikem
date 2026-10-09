@@ -3,19 +3,21 @@
 // lo que se guarda es la cantidad, no la fórmula. Controlada: quien la usa guarda el CalcState y decide qué hacer con el total (`quantityCalc.ts`).
 import { useId } from 'react'
 import { useT } from '../../kernel/i18n'
-import { addBlock, calcTotal, removeBlock, setBlock, totalToText, type CalcState } from './quantityCalc'
+import { addBlock, calcTotal, removeBlock, setBlock, totalToText, type CalcPack, type CalcState } from './quantityCalc'
 
 export interface QuantityCalculatorProps {
   state: CalcState
+  /** Empaque del producto (Caja de 12…): habilita contar cada bloque en empaques o en unidades, y los empaques sueltos. */
+  pack?: CalcPack | null
   onChange: (next: CalcState) => void
   /** Se llama con Enter en cualquier campo (por ejemplo, para usar el total). */
   onEnter?: () => void
 }
 
-export function QuantityCalculator({ state, onChange, onEnter }: QuantityCalculatorProps) {
+export function QuantityCalculator({ state, pack, onChange, onEnter }: QuantityCalculatorProps) {
   const t = useT()
   const id = useId()
-  const result = calcTotal(state)
+  const result = calcTotal(state, pack)
   const issueText =
     result.issue === 'incompleteBlock'
       ? t('warehouse.cycleCounts.calc.incompleteBlock')
@@ -82,6 +84,19 @@ export function QuantityCalculator({ state, onChange, onEnter }: QuantityCalcula
               onFocus={(e) => e.currentTarget.select()}
             />
           </label>
+          {pack && (
+            <label className="qcalc-cell qcalc-unit">
+              <span>{t('warehouse.cycleCounts.calc.unit')}</span>
+              <select
+                aria-label={t('warehouse.cycleCounts.calc.unitAt', { n: i + 1 })}
+                value={b.unit === 'pack' ? 'pack' : 'base'}
+                onChange={(e) => onChange(setBlock(state, i, { unit: e.target.value === 'pack' ? 'pack' : 'base' }))}
+              >
+                <option value="base">{t('warehouse.cycleCounts.calc.units')}</option>
+                <option value="pack">{t('warehouse.cycleCounts.calc.packsOf', { name: pack.name, qty: pack.qty })}</option>
+              </select>
+            </label>
+          )}
           {state.blocks.length > 1 && (
             <button type="button" className="btn sm qcalc-remove" aria-label={t('warehouse.cycleCounts.calc.removeBlock', { n: i + 1 })} onClick={() => onChange(removeBlock(state, i))}>
               ✕
@@ -95,6 +110,21 @@ export function QuantityCalculator({ state, onChange, onEnter }: QuantityCalcula
       <button type="button" className="btn sm qcalc-add" onClick={() => onChange(addBlock(state))}>
         {t('warehouse.cycleCounts.calc.addBlock')}
       </button>
+      {pack && (
+        <label className="qcalc-extra">
+          <span>{t('warehouse.cycleCounts.calc.extraPacks', { name: pack.name })}</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            aria-label={t('warehouse.cycleCounts.calc.extraPacks', { name: pack.name })}
+            value={state.extraPacks ?? ''}
+            onChange={(e) => onChange({ ...state, extraPacks: e.target.value })}
+            onKeyDown={enter}
+            onFocus={(e) => e.currentTarget.select()}
+          />
+        </label>
+      )}
       <label className="qcalc-extra">
         <span>{t('warehouse.cycleCounts.calc.extra')}</span>
         <input

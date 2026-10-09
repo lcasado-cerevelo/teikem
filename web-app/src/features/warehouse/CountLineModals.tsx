@@ -11,13 +11,13 @@ import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { useLang, useT } from '../../kernel/i18n'
 import { Field, Form, Modal, NumberInput, Select, TextArea, TextInput, toast } from '../../kernel/ui'
-import { productLabel, useCycleCountAction, useProductLots, type CycleCountDetailDto, type CycleCountLineDto } from './api'
+import { productLabel, useCycleCountAction, useProduct, useProductLots, type CycleCountDetailDto, type CycleCountLineDto } from './api'
 import { countedText, parseCounted } from './countView'
 import { countLineIssues, countLotIssue, formatNumber, parseSerials, remapProblemFields, type LineIssue } from './lineRules'
 import { BinPickerInput, ProductPickerInput } from './pickers'
 import { problemText } from './problemText'
 import { QuantityCalculator } from './QuantityCalculator'
-import { calcFromText, calcTotal, totalToText, type CalcState } from './quantityCalc'
+import { calcFromText, calcTotal, packLabel, totalToText, type CalcPack, type CalcState } from './quantityCalc'
 import type { CountCaptureBody } from './useCountDrafts'
 
 function useIssueText() {
@@ -59,6 +59,10 @@ export function CountQtyModal({ line, scannedSerial, isBlind, startInCalculator,
   const [fieldError, setFieldError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  // empaque del producto (Caja de 12): permite contar por cajas en la calculadora; lo guardado sigue en unidades
+  const product = useProduct(line.productPublicId, { enabled: !serial })
+  const pc = product.data?.product
+  const pack: CalcPack | null = pc?.packUomName && pc.packQty ? { name: pc.packUomName, qty: pc.packQty } : null
 
   const submit = async (e?: FormEvent) => {
     e?.preventDefault()
@@ -153,9 +157,10 @@ export function CountQtyModal({ line, scannedSerial, isBlind, startInCalculator,
               <>
                 <QuantityCalculator
                   state={calc}
+                  pack={pack}
                   onChange={(next) => {
                     setCalc(next)
-                    setQty(totalToText(calcTotal(next).total))
+                    setQty(totalToText(calcTotal(next, pack).total))
                   }}
                   onEnter={() => void submit()}
                 />
@@ -191,6 +196,7 @@ export function CountQtyModal({ line, scannedSerial, isBlind, startInCalculator,
             )}
             <p className="help" id={helpId}>
               {t('warehouse.cycleCounts.qty.countedHelp')}
+              {pack && <> {t('warehouse.cycleCounts.calc.packHint', { pack: packLabel(pack, t('warehouse.cycleCounts.calc.of')) })}</>}
             </p>
           </div>
         )}

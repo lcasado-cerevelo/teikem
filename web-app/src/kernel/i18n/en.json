@@ -1504,7 +1504,8 @@
         "reserved": "Reserved",
         "total": "Total",
         "tracking": "Tracking",
-        "state": "Status"
+        "state": "Status",
+        "pack": "Packaging"
       },
       "states": {
         "ok": "OK",
@@ -1577,7 +1578,10 @@
         "whereOnHand": "On hand",
         "whereReserved": "Reserved",
         "whereAvailable": "Available",
-        "whereTotal": "Total"
+        "whereTotal": "Total",
+        "packUom": "Packaging (optional)",
+        "packQty": "Units per pack",
+        "packHelp": "E.g. Box of 12 or Barrel of 50 (gallons). Inventory is always kept in the base unit; packaging only helps counting and reading quantities."
       },
       "fields": {
         "sku": "SKU",
@@ -1710,7 +1714,11 @@
         "pickZoneRequired": "A minimum pick quantity requires a preferred bin in a PICKING zone.",
         "measuresNegative": "Weight and volume cannot be negative.",
         "weightInvalid": "Weight admits at most 3 decimals and must be less than 1,000,000,000.",
-        "volumeInvalid": "Volume admits at most 4 decimals and must be less than 100,000,000."
+        "volumeInvalid": "Volume admits at most 4 decimals and must be less than 100,000,000.",
+        "packUnitWithoutQty": "Enter how many units the pack holds.",
+        "packQtyWithoutUnit": "Enter the pack unit (box, barrel, bundle…).",
+        "packQtyInvalid": "Units per pack must be a number greater than 0 (up to 3 decimals).",
+        "packSameAsBase": "The pack unit cannot be the same as the base unit."
       }
     },
     "categories": {
@@ -3133,7 +3141,14 @@
         "incompleteBlock": "Each block needs rows and columns.",
         "invalid": "Enter whole numbers in rows, columns and depth (depth 1 or more) and a number in loose.",
         "tooLarge": "The total is too large.",
-        "useTotal": "Use the total ({total})"
+        "useTotal": "Use the total ({total})",
+        "unit": "Count in",
+        "unitAt": "Unit of block {n}",
+        "units": "Units",
+        "packsOf": "{name} (of {qty})",
+        "extraPacks": "Loose {name}",
+        "of": "of",
+        "packHint": "Packaging: {pack}. Inventory stays in units."
       }
     },
     "productFilter": {

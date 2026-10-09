@@ -14,6 +14,7 @@
 // - Tabla paginada en el servidor: SKU, Producto, Categoría, Marca (con el modelo debajo), Dueño, Disponible, Reservado,
 //   Total, Rastreo, Estado. Exportar = todo lo filtrado. Clic en una fila = "Editar producto" (ProductEditorModal).
 // Lectura: inventory.view + WMS_LOTSERIAL (aplicado por la ruta).
+import { packLabel, splitByPack } from './quantityCalc'
 import { useMemo, useRef, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Can, useCan } from '../../kernel/access'
@@ -245,6 +246,12 @@ function ProductsTab() {
       { id: 'name', header: t('warehouse.products.columns.product'), cell: (p) => p.name, sortValue: (p) => p.name },
       { id: 'category', header: t('warehouse.products.columns.category'), cell: (p) => p.categoryName ?? '', sortValue: (p) => p.categoryName },
       {
+        id: 'pack',
+        header: t('warehouse.products.columns.pack'),
+        cell: (p) => (p.packUomName && p.packQty ? packLabel({ name: p.packUomName, qty: p.packQty }, t('warehouse.cycleCounts.calc.of')) : ''),
+        sortValue: (p) => p.packUomName,
+      },
+      {
         id: 'brand',
         header: t('warehouse.products.columns.brand'),
         // el modelo va tenue debajo de la marca (no cabe una columna más sin apretar la tabla)
@@ -266,7 +273,15 @@ function ProductsTab() {
         cell: (p) => (p.isOwn ? <span className="inv-own">{t('warehouse.products.own')}</span> : (p.ownerName ?? '')),
         sortValue: (p) => (p.isOwn ? t('warehouse.products.own') : p.ownerName),
       },
-      { id: 'available', header: t('warehouse.products.columns.available'), cell: (p) => num(p.qtyAvailable), sortValue: (p) => p.qtyAvailable, align: 'end' },
+      { id: 'available', header: t('warehouse.products.columns.available'), cell: (p) => {
+          // con empaque, el disponible también se lee en cajas: «= 24 Caja + 2» (el inventario sigue en unidades)
+          const split = p.packUomName && p.packQty ? splitByPack(p.qtyAvailable ?? 0, { name: p.packUomName, qty: p.packQty }) : null
+          return split ? (
+            <span title={`= ${formatNumber(split.packs, lang)} ${p.packUomName} + ${formatNumber(split.loose, lang)}`}>{num(p.qtyAvailable)}</span>
+          ) : (
+            num(p.qtyAvailable)
+          )
+        }, sortValue: (p) => p.qtyAvailable, align: 'end' },
       {
         id: 'reserved',
         header: t('warehouse.products.columns.reserved'),

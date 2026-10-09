@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addBlock, calcFromText, calcTotal, emptyCalc, removeBlock, setBlock, totalToText, CALC_MAX, type CalcState } from './quantityCalc'
+import { addBlock, calcFromText, calcTotal, emptyCalc, removeBlock, setBlock, totalToText, CALC_MAX, splitByPack, packLabel, type CalcState } from './quantityCalc'
 
 const st = (blocks: Array<[string, string] | [string, string, string]>, extra = ''): CalcState => ({ blocks: blocks.map(([rows, cols, depth]) => ({ rows, cols, depth: depth ?? '' })), extra })
 
@@ -62,5 +62,26 @@ describe('calculadora de cantidad', () => {
     expect(calcTotal(st([['', '', '2']]))).toMatchObject({ total: null, issue: 'incompleteBlock' })
     expect(calcTotal(st([['', '', '0']]))).toMatchObject({ total: null, issue: 'invalid' })
     expect(calcTotal(st([['99999', '999', '2']]))).toMatchObject({ total: null, issue: 'tooLarge' })
+  })
+})
+
+describe('calculadora con empaque', () => {
+  const box = { qty: 12, name: 'Caja' }
+  it('un bloque en empaques multiplica por las unidades del empaque', () => {
+    const state: CalcState = { blocks: [{ rows: '3', cols: '4', depth: '2', unit: 'pack' }], extra: '5', extraPacks: '2' }
+    expect(calcTotal(state, box)).toEqual({ total: 24 * 12 + 24 + 5, expression: '(3 × 4 × 2) × 12 + 2 × 12 + 5', issue: null })
+  })
+  it('sin empaque del producto, la unidad del bloque se ignora', () => {
+    const state: CalcState = { blocks: [{ rows: '3', cols: '4', depth: '', unit: 'pack' }], extra: '' }
+    expect(calcTotal(state).total).toBe(12)
+  })
+  it('empaques sueltos inválidos', () => {
+    expect(calcTotal({ blocks: [{ rows: '', cols: '', depth: '' }], extra: '', extraPacks: '1.5' }, box).issue).toBe('invalid')
+  })
+  it('splitByPack y packLabel', () => {
+    expect(splitByPack(290, box)).toEqual({ packs: 24, loose: 2 })
+    expect(splitByPack(5, box)).toBeNull()
+    expect(splitByPack(5, null)).toBeNull()
+    expect(packLabel({ qty: 50, name: 'Barril' })).toBe('Barril de 50')
   })
 })

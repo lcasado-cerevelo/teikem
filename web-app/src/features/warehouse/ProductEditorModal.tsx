@@ -225,6 +225,8 @@ function ProductEditorForm({
           name: z.string().trim().min(1, t('warehouse.products.errors.nameRequired')).max(200, t('warehouse.products.errors.nameMax')),
           brand: brandModelSchema(t, 'brand'),
           model: brandModelSchema(t, 'model'),
+          packUom: z.string(),
+          packQty: z.number(t('warehouse.products.errors.numberInvalid')).nullable(),
           categoryId: z.string(),
           trackingType: z.string(),
           ownerClientPublicId: z.string().nullable(),
@@ -239,6 +241,13 @@ function ProductEditorForm({
           volumeM3: volumeM3Schema(t),
           minPickQty: z.number(t('warehouse.products.errors.numberInvalid')).min(0, t('warehouse.products.errors.minNegative')).nullable(),
           maxPickQty: z.number(t('warehouse.products.errors.numberInvalid')).min(0, t('warehouse.products.errors.minNegative')).nullable(),
+        })
+        .superRefine((v, ctx) => {
+          // empaque: unidad y cantidad van juntas, la cantidad es mayor que 0 y la unidad no es la base
+          if (v.packUom && v.packQty == null) ctx.addIssue({ code: 'custom', path: ['packQty'], message: t('warehouse.products.errors.packUnitWithoutQty') })
+          if (!v.packUom && v.packQty != null) ctx.addIssue({ code: 'custom', path: ['packUom'], message: t('warehouse.products.errors.packQtyWithoutUnit') })
+          if (v.packQty != null && !(v.packQty > 0)) ctx.addIssue({ code: 'custom', path: ['packQty'], message: t('warehouse.products.errors.packQtyInvalid') })
+          if (v.packUom && v.packUom === v.baseUom) ctx.addIssue({ code: 'custom', path: ['packUom'], message: t('warehouse.products.errors.packSameAsBase') })
         })
         .refine((v) => v.maxPickQty == null || v.minPickQty == null || v.maxPickQty >= v.minPickQty, {
           path: ['maxPickQty'],
@@ -255,6 +264,8 @@ function ProductEditorForm({
       name: product?.name ?? '',
       brand: product?.brand ?? '',
       model: product?.model ?? '',
+      packUom: product?.packUomCode ?? '',
+      packQty: product?.packQty ?? null,
       categoryId: product?.categoryId != null ? String(product.categoryId) : '',
       trackingType: product?.trackingTypeCode ?? (hasTrackingOption(DEFAULT_TRACKING) ? DEFAULT_TRACKING : ''),
       ownerClientPublicId: product?.ownerClientPublicId ?? null,
@@ -324,6 +335,8 @@ function ProductEditorForm({
         maxPickQty: v.maxPickQty,
         brand: v.brand || null,
         model: v.model || null,
+        packUom: v.packUom || null,
+        packQty: v.packUom ? v.packQty : null,
       })
       const id = created.product?.id
       if (typeof id === 'number' && id > 0) {
@@ -369,6 +382,10 @@ function ProductEditorForm({
           // PATCH: null = sin cambio, '' = quitar (solo se mandan si cambiaron)
           brand: dirty.brand ? v.brand : null,
           model: dirty.model ? v.model : null,
+          // empaque: se manda completo si cambió algo; quitarlo = clearPack
+          packUom: (dirty.packUom || dirty.packQty) && v.packUom ? v.packUom : null,
+          packQty: (dirty.packUom || dirty.packQty) && v.packUom ? v.packQty : null,
+          clearPack: (dirty.packUom || dirty.packQty) && !v.packUom ? true : null,
           rowVersion: detail?.rowVersion,
         },
       })
@@ -440,6 +457,15 @@ function ProductEditorForm({
               <TextInput maxLength={MODEL_MAX} autoComplete="off" />
             </Field>
           </div>
+          <div className="r2">
+            <Field name="packUom" label={t('warehouse.products.editor.packUom')}>
+              <ComboSelectInput options={uomCodes.filter((o) => o.value !== form.watch('baseUom'))} placeholder={nonePlaceholder} />
+            </Field>
+            <Field name="packQty" label={t('warehouse.products.editor.packQty')}>
+              <NumberInput className="mono" min={0} />
+            </Field>
+          </div>
+          <p className="help">{t('warehouse.products.editor.packHelp')}</p>
           {/* sugerencias de las marcas ya usadas en la compañía; se puede escribir una nueva */}
           <datalist id={brandListId}>
             {brands.map((b) => (

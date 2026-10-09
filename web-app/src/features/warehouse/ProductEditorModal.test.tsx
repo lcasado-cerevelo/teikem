@@ -171,6 +171,8 @@ describe('ProductEditorModal', () => {
       'Nombre',
       'Marca',
       'Modelo',
+      'Empaque (opcional)',
+      'Unidades por empaque',
       'Categoría',
       'Rastreo',
       'Dueño del inventario',
