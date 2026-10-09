@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<link rel="icon" href="favicon.ico">
+<title>Teikem Almacén — Descargas</title>
+<style>
+  :root { --brand: #1F6FE5; --navy: #0B2C66; --accent: #FF6A1A; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #f5f6f8; color: #1c1c1e; min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 32px 16px;
+  }
+  .logo { width: 240px; max-width: 70vw; margin-bottom: 14px; }
+  h1 { font-size: 1.5rem; color: var(--navy); margin-bottom: 4px; text-align: center; }
+  .subtitle { color: #6b7280; font-size: .95rem; margin-bottom: 28px; text-align: center; }
+  .cards { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 420px; }
+  .card {
+    background: #fff; border-radius: 14px; padding: 18px 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .card .info { flex: 1; }
+  .card .name { font-weight: 700; font-size: 1.05rem; }
+  .card .desc { color: #6b7280; font-size: .85rem; margin-top: 2px; }
+  .card .ver { color: #6b7280; font-size: .8rem; margin-top: 4px; }
+  .btn {
+    background: var(--brand); color: #fff; text-decoration: none;
+    padding: 10px 18px; border-radius: 10px; font-weight: 600; font-size: .95rem;
+    white-space: nowrap;
+  }
+  .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .btn.outline { background: #fff; color: var(--brand); border: 1.5px solid var(--brand); }
+  .card.featured { border: 2px solid var(--brand); }
+  .badge {
+    display: inline-block; background: var(--accent); color: #1c1c1e;
+    font-size: .7rem; font-weight: 700; border-radius: 999px;
+    padding: 2px 10px; margin-bottom: 6px; letter-spacing: .3px;
+  }
+  .help {
+    width: 100%; max-width: 420px; margin-top: 30px; background: #fff; border-radius: 14px;
+    padding: 18px 20px; box-shadow: 0 1px 4px rgba(0,0,0,.08); font-size: .88rem;
+  }
+  .help h2 { font-size: 1rem; color: var(--navy); margin-bottom: 10px; }
+  .help ol { padding-left: 20px; display: flex; flex-direction: column; gap: 6px; color: #374151; }
+  footer { margin-top: 32px; color: #6b7280; font-size: .8rem; }
+</style>
+</head>
+<body>
+  <img class="logo" src="logo.png" alt="Teikem">
+  <h1>Teikem Almacén</h1>
+  <p class="subtitle">Aplicación móvil para el almacén — Android</p>
+
+  <div class="cards">
+    <div class="card featured">
+      <div class="info">
+        <span class="badge">RECOMENDADA</span>
+        <div class="name">Última versión</div>
+        <div class="desc">Versión estable para uso diario</div>
+        <div class="ver" id="v-ultima"></div>
+      </div>
+      <a class="btn" href="apk/teikem-almacen.apk">Descargar</a>
+    </div>
+
+    <!-- Descomentar cuando haya una versión de prueba (QA):
+    <div class="card">
+      <div class="info">
+        <div class="name">Prueba</div>
+        <div class="desc">Versión interna de pruebas (QA)</div>
+        <div class="ver" id="v-prueba"></div>
+      </div>
+      <a class="btn outline" href="apk/teikem-almacen-prueba.apk">Descargar</a>
+    </div>
+    -->
+  </div>
+
+  <div class="help">
+    <h2>Cómo instalar</h2>
+    <ol>
+      <li>Toca <strong>Descargar</strong>. Chrome avisará
+        <em>"El archivo podría ser dañino"</em> ("File might be harmful") — es el aviso
+        estándar para TODO archivo de instalación (APK), no significa que haya un problema.
+        Toca <strong>"Descargar de todos modos"</strong> ("Download anyway").</li>
+      <li>Cuando termine, abre el archivo descargado (barra de notificaciones o carpeta
+        Descargas).</li>
+      <li>La primera vez, el teléfono dirá que <em>no tiene permiso para instalar
+        aplicaciones desconocidas de esta fuente</em>. Toca <strong>"Ajustes"</strong>
+        ("Settings"), activa <strong>"Permitir de esta fuente"</strong> ("Allow from this
+        source") y regresa con el botón atrás — la instalación continúa sola.
+        Esto se hace una sola vez.</li>
+      <li>Si <strong>Google Play Protect</strong> muestra "App bloqueada" / "App blocked",
+        es normal: la app no se distribuye por Play Store y Google no la reconoce.
+        Toca el enlace pequeño <strong>"Instalar de todos modos"</strong> ("Install anyway").
+        <strong>OJO:</strong> el botón grande "Entendido" ("Got it") CANCELA la instalación — no lo uses.</li>
+      <li>Si ya tenías la app, se actualiza <strong>encima</strong> sin perder tu configuración
+        ni tus datos. <strong>No la desinstales antes.</strong></li>
+    </ol>
+  </div>
+
+  <footer>Powered by Cerevelo</footer>
+
+<script>
+  // versions.json (junto a este archivo) controla los números mostrados:
+  // { "ultima": "1.0.0", "prueba": "1.0.0" }
+  fetch('versions.json', { cache: 'no-store' })
+    .then(function (r) { return r.json(); })
+    .then(function (v) {
+      ['ultima', 'prueba'].forEach(function (k) {
+        var el = document.getElementById('v-' + k);
+        if (v[k] && el) el.textContent = 'Versión ' + v[k];
+      });
+    })
+    .catch(function () { /* sin versions.json la página funciona igual */ });
+</script>
+</body>
+</html>
