@@ -570,6 +570,13 @@ public class LegacyImportServiceTests
     }
 
     [Fact]
+    public void The_admin_initial_password_is_optional_and_comes_from_an_environment_variable_not_from_the_json()
+    {
+        Assert.Equal("TEIKEM_IMPORT_ADMIN_PASSWORD", LegacyImportRunner.AdminPasswordVariable);
+        Assert.Null(new LegacyCompanyConfig().AdminPassword);
+    }
+
+    [Fact]
     public void Service_and_runner_are_registered()
     {
         var services = new ServiceCollection();

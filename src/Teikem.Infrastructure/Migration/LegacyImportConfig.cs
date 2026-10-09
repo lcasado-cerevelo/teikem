@@ -187,6 +187,12 @@ public sealed class LegacyCompanyConfig
     public List<string> Modules { get; set; } = new();
     public string? AdminEmail { get; set; }
     public string? AdminFullName { get; set; }
+    /// <summary>
+    /// Contraseña inicial del administrador (opcional). No se escribe en el JSON: el verbo la toma de la variable de entorno
+    /// <c>TEIKEM_IMPORT_ADMIN_PASSWORD</c> (la usa scripts\recrear-base-depot.ps1). Sin ella se genera una temporal que no se muestra.
+    /// El usuario igual pasa por el primer ingreso y debe cambiarla.
+    /// </summary>
+    public string? AdminPassword { get; set; }
 }
 
 /// <summary>Archivos fuente de QuickBooks y, opcionalmente, la base MSWM del WMS.</summary>

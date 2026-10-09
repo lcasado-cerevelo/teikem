@@ -932,7 +932,7 @@ public sealed class LegacyImportService(
             using (tc.As(existing.TenantId))
             {
                 var (adminId, temp) = await provisioning.EnsureAdminUserAsync(existing, cfg.Company.AdminEmail.Trim(),
-                    cfg.Company.AdminFullName ?? cfg.Company.AdminEmail.Trim(), null, ct);
+                    cfg.Company.AdminFullName ?? cfg.Company.AdminEmail.Trim(), string.IsNullOrWhiteSpace(cfg.Company.AdminPassword) ? null : cfg.Company.AdminPassword, ct);
                 TemporaryAdminPassword = temp;
                 return (existing.TenantId, adminId, true, true);
             }
@@ -952,7 +952,8 @@ public sealed class LegacyImportService(
         try
         {
             var result = await provisioning.ProvisionAsync(new TenantProvisionRequest(name, cfg.Company.LegalName, cfg.Company.TaxId, cfg.Company.Lang,
-                cfg.Company.Modules, cfg.Company.AdminEmail.Trim(), cfg.Company.AdminFullName ?? cfg.Company.AdminEmail.Trim(), null), ct);
+                cfg.Company.Modules, cfg.Company.AdminEmail.Trim(), cfg.Company.AdminFullName ?? cfg.Company.AdminEmail.Trim(),
+                string.IsNullOrWhiteSpace(cfg.Company.AdminPassword) ? null : cfg.Company.AdminPassword), ct);
             TemporaryAdminPassword = result.TemporaryPassword;
             report.AddInfo("Compañía", $"{name} (id {result.Tenant.Id}, aprovisionada)");
             return (result.Tenant.Id, result.AdminUserId, true, false);

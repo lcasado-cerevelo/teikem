@@ -87,3 +87,38 @@ Tarda unos minutos. Al final debe decir **"Listo: base recreada, Depot y Solutio
 | *La cadena de conexión no apunta a un servidor local* | `ConnectionStrings:Teikem` apunta a otro servidor; el script solo recrea bases locales. |
 
 Para el detalle del importador (qué se migra, mapeos, `--dry-run`) ver [README.md](README.md).
+
+
+---
+
+# Solo Advance Depot (para el deploy) — `scripts\recrear-base-depot.ps1`
+
+Igual que `recrear-base.ps1` pero **sin Advance Solutions y sin la demo Advance Logistics**: la base queda con **una sola compañía, Advance Depot**
+(QuickBooks de Depot + el inventario por posición del MSWM de producción, almacén `Main`, hoy `172.31.40.124\sqlexpress`). El script apaga el seed de la
+demo solo para su proceso (`Seed__Demo__Enabled=false`, lo mismo que hace el instalador del deploy). Del MSWM solo se lee.
+
+```
+powershell -ExecutionPolicy Bypass -File "F:\Visual Studio 2022\Projects\teikem\scripts\recrear-base-depot.ps1"
+```
+
+| Opción | Para qué |
+|---|---|
+| `-Carpeta "D:\otra"` | Carpeta de los **3** CSV de Depot (`Depot Products.csv`, `Depot Customers.csv`, `Depot Vendor.csv`); los de Solutions no hacen falta. |
+| `-Conexion "Server=IP,1433;Database=Teikem;User Id=…;Password=…;TrustServerCertificate=True;Encrypt=True;MultipleActiveResultSets=True"` | Base **destino** (la del servidor de producción). Sin ella usa `ConnectionStrings__Teikem` o la de `appsettings`. |
+| `-PermitirRemoto` | Obligatorio si la base destino no es de este equipo (el API se niega a borrar una base remota sin ello). |
+| `-SinConfirmar` | No pregunta. Sin este switch, en una base **remota** hay que escribir el nombre de la base; en una local, `RECREAR`. |
+
+Qué hace de más que el de siempre:
+- Muestra **de dónde lee** (servidor y base del MSWM) y **qué va a borrar** (servidor, base y si es LOCAL o REMOTO) **antes** de tocar nada.
+- Se niega con cualquier base que empiece con `MSWM`.
+- Pide la **contraseña inicial del administrador de Depot** (`teikem+admin@cerevelo.com`); no se escribe en ningún archivo (viaja por la variable
+  `TEIKEM_IMPORT_ADMIN_PASSWORD` solo durante la migración). Si se deja vacía se genera una temporal que no se muestra y hay que entrar por
+  «¿Olvidó su contraseña?» (necesita el correo configurado). Igual el usuario pasa por el **primer ingreso** (correo, contraseña propia y MFA).
+- Al terminar **verifica la base**: debe haber **1 compañía**, y muestra productos, posiciones, saldos con existencia, clientes y proveedores.
+
+Qué NO trae esta base: la demo Advance Logistics, el almacén ALM-01, los usuarios de prueba (`teikem+dispatch@…`) ni el usuario de plataforma de la demo
+(`teikem+support@cerevelo.com`). **No existe otro medio de crear un administrador de plataforma**; si lo necesita en producción, hay que decidirlo aparte.
+
+Orden recomendado en el deploy: 1) instalar con `deploy\windows\instalar.ps1` (o el paquete que use) para crear el sitio y la configuración;
+2) con el API detenido, correr este script apuntando a la base de producción (`-Conexion … -PermitirRemoto`); 3) arrancar el API;
+4) registrar el aparato y asignar los PIN.

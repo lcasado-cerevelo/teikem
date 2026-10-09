@@ -67,6 +67,9 @@ public sealed class LegacyImportRunner(IServiceScopeFactory scopes, ILogger<Lega
         catch (InvalidOperationException) { return path; }
     }
 
+    /// <summary>Variable de entorno con la contraseña inicial del administrador de la compañía (opcional).</summary>
+    public const string AdminPasswordVariable = "TEIKEM_IMPORT_ADMIN_PASSWORD";
+
     public async Task<int> RunAsync(string[] args, CancellationToken ct = default)
     {
         // La consola de Windows no usa UTF-8 por defecto: sin esto los acentos del resumen salen ilegibles.
@@ -84,6 +87,9 @@ public sealed class LegacyImportRunner(IServiceScopeFactory scopes, ILogger<Lega
         try
         {
             cfg = LegacyImportConfig.Load(ResolveConfigPath(parsed.ConfigPath!));
+            // la contraseña inicial del administrador no va en el JSON: viene de la variable de entorno (si no, se genera una temporal)
+            var envPassword = Environment.GetEnvironmentVariable(AdminPasswordVariable);
+            if (!string.IsNullOrWhiteSpace(envPassword) && string.IsNullOrWhiteSpace(cfg.Company.AdminPassword)) cfg.Company.AdminPassword = envPassword;
         }
         catch (ValidationException ex)
         {
