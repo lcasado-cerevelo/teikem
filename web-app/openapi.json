@@ -29535,6 +29535,10 @@
           "notes": {
             "type": "string",
             "nullable": true
+          },
+          "finalDestination": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

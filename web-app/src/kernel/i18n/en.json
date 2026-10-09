@@ -2589,7 +2589,7 @@
         "note": "Write the reason",
         "disposition": "What happens to them?",
         "place": "Leave them in a bin",
-        "discard": "Discard right away",
+        "discard": "Release right away",
         "placeHelp": "They are left in the bin you choose; if none, the first quarantine bin (or where the line lands if there is none).",
         "discardHelp": "They leave the inventory when the receipt is confirmed, with a Damage adjustment.",
         "bin": "Bin where they are left",
@@ -2598,7 +2598,7 @@
         "cleared": "Line damage removed.",
         "clear": "Remove damage",
         "chip": "{qty} damaged",
-        "chipDiscard": "discard",
+        "chipDiscard": "release",
         "errors": {
           "qtyInvalid": "Enter a number.",
           "qtyPositive": "The damaged quantity must be greater than 0.",
@@ -3346,7 +3346,7 @@
     },
     "damage": {
       "title": "Damage",
-      "subtitle": "what arrived damaged in a receipt or got damaged in the warehouse: quarantine, discard or recover",
+      "subtitle": "what arrived damaged in a receipt or got damaged in the warehouse: quarantine, release or recover",
       "report": "Report damage",
       "reportTitle": "Report damage",
       "reportSubmit": "Report",
@@ -3355,26 +3355,26 @@
       "empty": "No damage reports match these filters.",
       "originWarehouse": "Damaged in the warehouse",
       "originReceipt": "Arrived damaged in a receipt",
-      "originReceiptHelp": "Those units do not enter as good stock: sent to quarantine they enter that position; discarded, they never enter inventory.",
-      "originWarehouseHelp": "The goods are already in inventory: they move from their position to quarantine, or come out of inventory if discarded.",
+      "originReceiptHelp": "Those units do not enter as good stock: sent to quarantine they enter that position; released, they never enter inventory.",
+      "originWarehouseHelp": "The goods are already in inventory: they move from their position to quarantine, or come out of inventory if released.",
       "fromReceipt": "Damage from receipt {number}: arrived damaged.",
       "receiptPlaceholder": "Choose the receipt",
       "lotPlaceholder": "Choose the lot",
       "newLotHelp": "If the lot does not exist yet, type its number.",
       "causeHelp": "Informational only: how it happened.",
       "toQuarantine": "Send to quarantine",
-      "toDiscard": "Discard right away",
-      "quarantineHelp": "Goes to the warehouse quarantine position; later it is discarded or recovered.",
+      "toDiscard": "Release right away",
+      "quarantineHelp": "Goes to the warehouse quarantine position; later it is released or recovered.",
       "discardHelp": "Leaves inventory now, with a Damage adjustment.",
       "reportedQuarantine": "{code}: sent to quarantine.",
-      "reportedDiscard": "{code}: discarded.",
-      "discard": "Discard",
+      "reportedDiscard": "{code}: release recorded.",
+      "discard": "Release",
       "recover": "Recover",
-      "discardTitle": "Discard {code}",
+      "discardTitle": "Release {code}",
       "recoverTitle": "Recover {code}",
       "discardBody": "{qty} of {sku} in {bin} are taken out: they leave the inventory with a Damage adjustment. Say where they go.",
       "recoverBody": "{qty} of {sku} leave {bin} and return to a storage position.",
-      "discarded": "{code} discarded.",
+      "discarded": "{code}: release recorded.",
       "recovered": "{code} recovered.",
       "toBinHelp": "A storage position (not quarantine, receiving, cross-dock or rental).",
       "fields": {
@@ -3392,7 +3392,8 @@
         "toBin": "Position it returns to",
         "resolutionNotes": "Note (optional)",
         "quarantineBin": "Bin where it stays",
-        "finalDestination": "Final destination"
+        "finalDestination": "Final destination",
+        "reportFinalDestination": "Final destination (optional)"
       },
       "cols": {
         "code": "Number",
@@ -3409,7 +3410,7 @@
       },
       "status": {
         "QUARANTINED": "In quarantine",
-        "DISCARDED": "Discarded",
+        "DISCARDED": "Released",
         "RECOVERED": "Recovered"
       },
       "errors": {
@@ -3418,13 +3419,13 @@
         "quantityInvalid": "Type a number.",
         "quantityPositive": "The damaged quantity must be greater than 0.",
         "causeRequired": "Say how the damage happened.",
-        "dispositionRequired": "Say whether it goes to quarantine or is discarded.",
+        "dispositionRequired": "Say whether it goes to quarantine or is released.",
         "notesMax": "The note cannot exceed 300 characters.",
         "fromBinRequired": "Say the position where the damaged goods are.",
         "receiptRequired": "Say the receipt it arrived damaged in.",
         "lotRequired": "Say the lot.",
         "toBinRequired": "Say the position the recovered goods return to.",
-        "finalDestinationRequired": "Say where the discarded goods go (thrown away, returned to supplier, donated…)."
+        "finalDestinationRequired": "Say where the goods that leave go (thrown away, returned to supplier, donated…)."
       },
       "reportFromReceipt": "Report damage",
       "tab": "Damage",
@@ -3432,7 +3433,8 @@
       "quarantineBinPlaceholder": "Quarantine (the first one)",
       "finalDestinationHelp": "Where what leaves quarantine goes. It is recorded in the ledger and in the damage reports.",
       "finalDestinationPlaceholder": "Choose the destination",
-      "reserved": "reserved (not dispatched)"
+      "reserved": "reserved (not dispatched)",
+      "reportFinalDestinationHelp": "Without one, it is recorded as thrown away."
     }
   },
   "system": {

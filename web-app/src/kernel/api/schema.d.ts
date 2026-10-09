@@ -19758,6 +19758,7 @@ export interface components {
             /** Format: uuid */
             receiptPublicId?: string | null;
             notes?: string | null;
+            finalDestination?: string | null;
         };
         DamageResolveRequest: {
             /** Format: int32 */

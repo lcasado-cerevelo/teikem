@@ -36,6 +36,7 @@ function DamageModalBody({ onClose, receipt, onReported }: Omit<DamageReportModa
   const lang = useLang()
   const report = useReportDamage()
   const causes = useLookups('DamageCause')
+  const destinations = useLookups('DamageFinalDestination')
   const [tracking, setTracking] = useState('')
   const initialOrigin: DamageOrigin = receipt ? 'RECEIPT' : 'WAREHOUSE'
 
@@ -54,6 +55,7 @@ function DamageModalBody({ onClose, receipt, onReported }: Omit<DamageReportModa
           cause: z.string().min(1, t(`${M}.causeRequired`)),
           disposition: z.enum(['QUARANTINE', 'DISCARD'], t(`${M}.dispositionRequired`)),
           quarantineBinId: z.string(),
+          finalDestination: z.string(),
           notes: z.string().max(300, t(`${M}.notesMax`)),
         })
         .superRefine((v, c) => {
@@ -78,6 +80,7 @@ function DamageModalBody({ onClose, receipt, onReported }: Omit<DamageReportModa
       cause: defaultCause(initialOrigin),
       disposition: '',
       quarantineBinId: '',
+      finalDestination: '',
       notes: '',
     },
   })
@@ -98,6 +101,7 @@ function DamageModalBody({ onClose, receipt, onReported }: Omit<DamageReportModa
     [lotsQ.data, lang],
   )
   const causeOptions = useMemo(() => (causes.data ?? []).map((c) => ({ value: c.code, label: c.label })), [causes.data])
+  const destinationOptions = useMemo(() => (destinations.data ?? []).map((c) => ({ value: c.code, label: c.label })), [destinations.data])
   const busy = form.formState.isSubmitting
 
   const originOptions = [
@@ -201,6 +205,11 @@ function DamageModalBody({ onClose, receipt, onReported }: Omit<DamageReportModa
         {disposition === 'QUARANTINE' && (
           <Field name="quarantineBinId" label={t('warehouse.damage.fields.quarantineBin')} help={t('warehouse.damage.quarantineBinHelp')}>
             <BinPickerInput warehousePublicId={warehousePublicId} placeholder={t('warehouse.damage.quarantineBinPlaceholder')} />
+          </Field>
+        )}
+        {disposition === 'DISCARD' && (
+          <Field name="finalDestination" label={t('warehouse.damage.fields.reportFinalDestination')} help={t('warehouse.damage.reportFinalDestinationHelp')}>
+            <ComboSelectInput options={destinationOptions} loading={destinations.isLoading} placeholder={t('warehouse.damage.finalDestinationPlaceholder')} />
           </Field>
         )}
         <Field name="notes" label={t('warehouse.damage.fields.notes')}>

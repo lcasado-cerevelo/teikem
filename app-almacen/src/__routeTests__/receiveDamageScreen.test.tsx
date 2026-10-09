@@ -120,14 +120,14 @@ describe('Recibir — unidades dañadas', () => {
     await waitFor(() => expect(screen.getByText('Sugerida: STG-01')).toBeTruthy())
   })
 
-  it('Desechar de una vez no pide posición: la línea queda marcada para desechar', async () => {
+  it('Dar salida de una vez no pide posición: la línea queda marcada para dar salida', async () => {
     await setup()
     await toCapture('PUTAWAY')
     await fireEvent.changeText(screen.getByLabelText('Cantidad'), '5')
     await markDamaged('4', 'Vino así')
     await fireEvent.press(screen.getByText('Agregar'))
-    await waitFor(() => expect(screen.getByText('Desechar')).toBeTruthy())
-    await fireEvent.press(screen.getByText('Desechar'))
+    await waitFor(() => expect(screen.getByText('Dar salida')).toBeTruthy())
+    await fireEvent.press(screen.getByText('Dar salida'))
     await waitFor(() =>
       expect(getOpenReceipt()?.lines).toMatchObject([{ receivedQty: 5, damagedQty: 4, damageDiscard: true, damageBinCode: null }]),
     )

@@ -97,7 +97,7 @@ describe('Daños', () => {
     const table = await screen.findByRole('table')
     expect(await within(table).findByText('DAN-00001')).toBeInTheDocument()
     expect(within(table).getByText('DAN-00002')).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: 'Desechar' })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: 'Dar salida' })).toHaveLength(1)
     expect(screen.getAllByRole('button', { name: 'Recuperar' })).toHaveLength(1)
   })
 
@@ -105,7 +105,7 @@ describe('Daños', () => {
     wrap(['inventory.view'])
     await screen.findByRole('table')
     expect(screen.queryByRole('button', { name: 'Reportar daño' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Desechar' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Dar salida' })).toBeNull()
   })
 
   it('los filtros viajan al API (estatus, origen y búsqueda)', async () => {
@@ -116,21 +116,21 @@ describe('Daños', () => {
     await waitFor(() => expect(mock.calls.some((c) => c.url.searchParams.get('q') === 'SKU-1')).toBe(true))
   })
 
-  it('desechar exige el destino final y lo manda con la nota al endpoint de desechar', async () => {
+  it('dar salida exige el destino final y lo manda con la nota al endpoint de desechar', async () => {
     const user = userEvent.setup()
     wrap(['warehouse.damage'])
     await screen.findByRole('table')
-    await user.click(screen.getByRole('button', { name: 'Desechar' }))
+    await user.click(screen.getByRole('button', { name: 'Dar salida' }))
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText(/Se sacan 4 de SKU-1 que están en Q-01/)).toBeInTheDocument()
-    await user.click(within(dialog).getByRole('button', { name: 'Desechar' }))
-    expect(await within(dialog).findByText('Indique a dónde va lo desechado (tirado, devuelto al proveedor, donado…).')).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Dar salida' }))
+    expect(await within(dialog).findByText('Indique a dónde va lo que sale (tirado, devuelto al proveedor, donado…).')).toBeInTheDocument()
     expect(mock.calls.some((c) => c.method === 'POST')).toBe(false)
 
     await user.click(within(dialog).getByRole('combobox', { name: /Destino final/ }))
     await user.click(await screen.findByRole('option', { name: 'Devuelto al proveedor' }))
     await user.type(within(dialog).getByLabelText('Nota (opcional)'), 'lo recogió el proveedor')
-    await user.click(within(dialog).getByRole('button', { name: 'Desechar' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Dar salida' }))
     await waitFor(() => expect(mock.calls.find((c) => c.method === 'POST' && c.url.pathname === '/api/v1/damage-reports/1/discard')).toBeTruthy())
     expect(mock.calls.find((c) => c.url.pathname.endsWith('/discard'))?.body).toEqual({
       toBinId: null,
@@ -158,7 +158,7 @@ describe('Daños', () => {
     const dialog = await screen.findByRole('dialog')
     await user.click(within(dialog).getByRole('button', { name: 'Reportar' }))
     expect(await within(dialog).findByText('Elija el producto.')).toBeInTheDocument()
-    expect(within(dialog).getByText('Indique si va a cuarentena o se desecha.')).toBeInTheDocument()
+    expect(within(dialog).getByText('Indique si va a cuarentena o se le da salida.')).toBeInTheDocument()
     expect(within(dialog).getByText('Elija el almacén.')).toBeInTheDocument()
     expect(within(dialog).getByText('La cantidad dañada debe ser mayor que 0.')).toBeInTheDocument()
     expect(mock.calls.some((c) => c.method === 'POST')).toBe(false)

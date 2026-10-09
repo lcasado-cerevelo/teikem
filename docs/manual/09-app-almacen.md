@@ -277,8 +277,8 @@ Cómo se usa:
 1. Capture la cantidad como siempre y marque **Vinieron unidades dañadas**; escriba cuántas y escoja la razón (si es *Otra*, escríbala). **Agregar / Siguiente** se apaga mientras falte algo.
 2. En **recibo directo**, escanee primero la posición de lo bueno (como siempre). En **recibo con acomodo** pasa directo al paso siguiente.
 3. Paso **Unidades dañadas** — «{n} dañadas de {SKU}. ¿Dónde se dejan?»: arriba la pista **Sugerida: {posición}** (la de **cuarentena** si el almacén tiene una; si no, la posición que escogió para lo bueno —en directo— o la de recepción —con acomodo—). Tóquela para llenar el campo, o escanee/escriba otra, o use el botón de lista de posiciones; **Aceptar** agrega la línea. Cualquier posición activa del almacén vale.
-4. **Desechar** (pide confirmar: `¿Desechar lo dañado?` / `Las {n} unidades dañadas se descartan de una vez: no pasan a cuarentena.`) deja la línea marcada para desechar al confirmar el recibo, sin posición. **Volver** regresa a la captura sin agregar nada.
-5. En la lista de líneas se ve `{n} dañadas` o `{n} dañadas (desechar)`.
+4. **Dar salida** (pide confirmar: `¿Dar salida a lo dañado?` / `Las {n} unidades dañadas salen de una vez: no pasan a cuarentena.`) deja la línea marcada para darle salida al confirmar el recibo, sin posición (se registra como tirado; el destino final se afina en la web). **Volver** regresa a la captura sin agregar nada.
+5. En la lista de líneas se ve `{n} dañadas` o `{n} dañadas (dar salida)`.
 
 Con **reparto por posición** (cantidad por posición) las dañadas se asignan a las primeras líneas del reparto sin pasar de lo que trae cada una (una línea no puede llevar más dañadas que recibidas); si el reparto no cubre toda la cantidad, lo dañado que falta sigue en la captura de lo que queda.
 
@@ -287,6 +287,7 @@ Con **reparto por posición** (cantidad por posición) las dañadas se asignan a
 | Casilla | `Vinieron unidades dañadas` | Local |
 | Campos | `Cantidad dañada`, `Razón`, `Escoge la razón`, `Escribe la razón` | Local |
 | Cantidad dañada vacía, 0 o mayor que la recibida; sin razón; *Otra* sin texto | Botón Agregar/Siguiente deshabilitado | Local, sin mensaje |
+| Botón de salida | `Dar salida`, ayuda `Salen del inventario al confirmar el recibo.` | Local |
 | Posición de lo dañado | `Escanea la posición de lo dañado`, pista `Sugerida: {posición}` | Local |
 | La posición no existe / está desactivada | `Esa posición no existe en este almacén.` / `Esa posición está desactivada.` | Local |
 | Sin posiciones descargadas | `El aparato todavía no tiene las posiciones de este almacén. Sincroniza con señal e intenta de nuevo.` (el mismo aviso del destino) | Local |
@@ -831,10 +832,10 @@ de la búsqueda libre del mismo texto.
 
 Tile **Daño** en Inicio (solo con el permiso `warehouse.damage`). **Necesita señal**: mueve inventario en el servidor, sin cola.
 1. Elija **Se dañó en el almacén** (escanee la posición donde está) o **Llegó dañado en un recibo** (teclee o escanee el número del recibo, por ejemplo `REC-00012`).
-2. Escanee el producto (o búsquelo en la lista), escriba la **cantidad dañada** (y el **lote** si el producto lleva lote), elija la **causa** (informativa) y toque **Mandar a cuarentena** o **Desechar** (este último pide confirmar: `¿Desechar de una vez?`).
-3. Sale `DAN-00012: enviado a cuarentena.` o `DAN-00012: desechado.`.
+2. Escanee el producto (o búsquelo en la lista), escriba la **cantidad dañada** (y el **lote** si el producto lleva lote), elija la **causa** (informativa) y toque **Mandar a cuarentena** o **Dar salida** (este último pide confirmar: `¿Dar salida de una vez?` / `Salen del inventario {qty} de {sku}. No se puede deshacer.`).
+3. Sale `DAN-00012: enviado a cuarentena.` o `DAN-00012: salida registrada.`.
 - Avisos: `No encontré esa posición en este almacén.`, `No encontré ese recibo en este almacén.`, `No encontré ese producto.`, `Escribe una cantidad mayor que 0.`, `Escribe el lote.`, `Los productos con serie se reportan con un ajuste de inventario (motivo Daño) desde la web.`, `Reportar un daño necesita señal. Intente de nuevo con conexión.`; los del servidor (inventario insuficiente, sin posición de cuarentena…) salen tal cual (ver capítulo 06, §4b).
-- Desechar lo que quedó en cuarentena o recuperarlo se hace en la web (Productos e inventario → pestaña Daños).
+- Dar salida a lo que quedó en cuarentena (con su destino final: tirado, devuelto al proveedor, donado, vendido como saldo) o recuperarlo se hace en la web (Productos e inventario → pestaña Daños).
 - Si lo dañado se descubre **al recibir**, no hace falta este tile: marque «Vinieron unidades dañadas» en la captura del recibo (arriba, «Unidades dañadas al recibir»).
 
 ### Cerrar sesión, bloquear y quitar una compañía (2026-10-07)

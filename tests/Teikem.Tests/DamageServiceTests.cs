@@ -141,6 +141,22 @@ public class DamageServiceTests
         Assert.Equal(0m, afterRecover.QtyReserved);
     }
 
+    [Fact]
+    public async Task Giving_the_damage_an_immediate_exit_can_record_where_it_goes()
+    {
+        var w = await SeedAsync();
+        var svc = w.F.Get<DamageService>();
+        var req = Req(w, DamageOrigins.Warehouse, DamageDispositions.Discard, fromBin: w.Pick.WarehouseBinId) with { FinalDestination = DamageFinalDestinations.Donated };
+        var dto = await svc.ReportAsync(req, default);
+        Assert.Equal(DamageFinalDestinations.Donated, dto.FinalDestinationCode);
+
+        var unknown = await Assert.ThrowsAsync<ValidationException>(() => svc.ReportAsync(req with { FinalDestination = "NOPE" }, default));
+        Assert.Equal(DamageRules.UnknownFinalDestination("NOPE"), unknown.Errors["finalDestination"][0]);
+        // sin destino queda vacío (= tirado)
+        var plain = await svc.ReportAsync(Req(w, DamageOrigins.Warehouse, DamageDispositions.Discard, qty: 1m, fromBin: w.Pick.WarehouseBinId), default);
+        Assert.Null(plain.FinalDestinationCode);
+    }
+
     // ---- destino final al desechar lo que está en cuarentena
 
     [Fact]
@@ -157,7 +173,7 @@ public class DamageServiceTests
 
         var done = await svc.DiscardAsync(d.Id, new DamageResolveRequest(Notes: "lo recogió el proveedor", FinalDestination: DamageFinalDestinations.ReturnedToSupplier), default);
         Assert.Equal(DamageFinalDestinations.ReturnedToSupplier, done.FinalDestinationCode);
-        Assert.Contains("Desechado: RETURNED_TO_SUPPLIER", (await w.F.TransactionsAsync()).Last().Notes);   // queda en el Kárdex
+        Assert.Contains("Salida: RETURNED_TO_SUPPLIER", (await w.F.TransactionsAsync()).Last().Notes);   // queda en el Kárdex
     }
 
     [Fact]

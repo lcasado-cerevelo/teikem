@@ -13,6 +13,7 @@ const BASE: DamageFormValues = {
   cause: 'WAREHOUSE_ACCIDENT',
   disposition: 'QUARANTINE',
   quarantineBinId: '',
+  finalDestination: '',
   notes: '  se cayó  ',
 }
 
@@ -33,6 +34,7 @@ describe('damageForm', () => {
       cause: 'WAREHOUSE_ACCIDENT',
       disposition: 'QUARANTINE',
       quarantineBinId: null,
+      finalDestination: null,
       lotId: null,
       lot: null,
       notes: 'se cayó',
@@ -47,6 +49,11 @@ describe('damageForm', () => {
   it('la posición donde se deja lo dañado solo viaja si se manda a cuarentena', () => {
     expect(damageBody({ ...BASE, quarantineBinId: '33' }, 'NONE')).toMatchObject({ quarantineBinId: 33 })
     expect(damageBody({ ...BASE, quarantineBinId: '33', disposition: 'DISCARD' }, 'NONE')).toMatchObject({ quarantineBinId: null })
+  })
+
+  it('el destino final solo viaja si se le da salida de una vez', () => {
+    expect(damageBody({ ...BASE, disposition: 'DISCARD', finalDestination: 'DONATED' }, 'NONE')).toMatchObject({ finalDestination: 'DONATED' })
+    expect(damageBody({ ...BASE, disposition: 'QUARANTINE', finalDestination: 'DONATED' }, 'NONE')).toMatchObject({ finalDestination: null })
   })
 
   it('con lote usa el lote elegido; un lote nuevo solo vale al recibir lo dañado', () => {

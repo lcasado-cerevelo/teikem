@@ -44,6 +44,13 @@ public sealed class DamageService(TeikemDbContext db, ITenantContext tenant, ILo
         if (req.Quantity is null or <= 0m) errors["quantity"] = new[] { DamageRules.QuantityInvalid };
         if (originError is null && DamageRules.ValidateSource(origin, req.ReceiptPublicId is not null, req.FromBinId is not null) is { } src) errors[src.Field] = new[] { src.Message };
         if (req.LotId is not null && req.Lot is not null) errors["lot"] = new[] { AdjustmentRules.LotAmbiguous };
+        // 2026-10-08: al darle salida de una vez se puede decir a dónde va (opcional: sin dato queda vacío = tirado)
+        int? reportFinalDestinationId = null;
+        if (disposition == DamageDispositions.Discard && !string.IsNullOrWhiteSpace(req.FinalDestination))
+        {
+            reportFinalDestinationId = await lookups.TryGetIdAsync(LookupDomains.DamageFinalDestination, req.FinalDestination.Trim().ToUpperInvariant(), ct);
+            if (reportFinalDestinationId is null) errors["finalDestination"] = new[] { DamageRules.UnknownFinalDestination(req.FinalDestination.Trim()) };
+        }
         if (errors.Count > 0) throw new ValidationException(errors);
 
         var id = await db.RunInTransactionAsync(async ct2 =>
@@ -85,7 +92,7 @@ public sealed class DamageService(TeikemDbContext db, ITenantContext tenant, ILo
             {
                 TenantId = tenantId, WarehouseId = warehouse.WarehouseId, ProductId = product.ProductId, LotId = lotId, FromBinId = fromBin?.WarehouseBinId,
                 QuarantineBinId = quarantine?.WarehouseBinId, Quantity = req.Quantity!.Value, OriginLookupId = await lookups.GetIdAsync(LookupDomains.DamageOrigin, origin, ct2),
-                CauseLookupId = await lookups.GetIdAsync(LookupDomains.DamageCause, cause!, ct2), ReceiptHeaderId = receiptId, Notes = notes,
+                CauseLookupId = await lookups.GetIdAsync(LookupDomains.DamageCause, cause!, ct2), ReceiptHeaderId = receiptId, Notes = notes, FinalDestinationLookupId = reportFinalDestinationId,
                 StatusCodeId = initial.StatusCodeId, ReportedAtUtc = DateTime.UtcNow, ReportedBy = tenant.UserId, IsActive = true,
             };
             db.Set<DamageReport>().Add(d);
@@ -208,7 +215,7 @@ public sealed class DamageService(TeikemDbContext db, ITenantContext tenant, ILo
             var (product, warehouse, lotId) = await RefsAsync(d, ct2);
             await ReleaseIfReservedAsync(d, ct2);
             var destinationLabel = LabelOf(await lookups.GetAsync(finalDestinationId, ct2));
-            var note = DamageRules.MovementNote(d.DamageReportId, string.IsNullOrEmpty(destinationLabel) ? "Desechado" : $"Desechado: {destinationLabel}", notes ?? d.Notes);
+            var note = DamageRules.MovementNote(d.DamageReportId, string.IsNullOrEmpty(destinationLabel) ? "Salida" : $"Salida: {destinationLabel}", notes ?? d.Notes);
             await inventory.AdjustAsync(new AdjustmentRequest(product.PublicId, warehouse.PublicId, d.QuarantineBinId, -d.Quantity, AdjustmentReasons.Damage, note, lotId), ct2);
             d = await ReloadAsync(id, ct2);
             d.FinalDestinationLookupId = finalDestinationId;

@@ -2589,7 +2589,7 @@
         "note": "Escriba la razón",
         "disposition": "¿Qué se hace con ellas?",
         "place": "Dejarlas en una posición",
-        "discard": "Desechar de una vez",
+        "discard": "Dar salida de una vez",
         "placeHelp": "Se dejan en la posición que indique; sin indicarla, la primera de cuarentena (o donde quede la línea si no hay).",
         "discardHelp": "Salen del inventario al confirmar el recibo, con un ajuste de motivo Daño.",
         "bin": "Posición donde se dejan",
@@ -2598,7 +2598,7 @@
         "cleared": "Se quitó el daño de la línea.",
         "clear": "Quitar daño",
         "chip": "{qty} dañadas",
-        "chipDiscard": "desechar",
+        "chipDiscard": "dar salida",
         "errors": {
           "qtyInvalid": "Escriba un número.",
           "qtyPositive": "La cantidad dañada debe ser mayor que 0.",
@@ -3346,7 +3346,7 @@
     },
     "damage": {
       "title": "Daños",
-      "subtitle": "lo que llegó dañado en un recibo o se dañó en el almacén: cuarentena, desechar o recuperar",
+      "subtitle": "lo que llegó dañado en un recibo o se dañó en el almacén: cuarentena, dar salida o recuperar",
       "report": "Reportar daño",
       "reportTitle": "Reportar daño",
       "reportSubmit": "Reportar",
@@ -3355,26 +3355,26 @@
       "empty": "No hay daños con estos filtros.",
       "originWarehouse": "Se dañó en el almacén",
       "originReceipt": "Llegó dañado en un recibo",
-      "originReceiptHelp": "Esas unidades no entran como buenas: si las manda a cuarentena entran a esa posición; si las desecha, no entran al inventario.",
-      "originWarehouseHelp": "La mercancía ya está en inventario: se mueve de su posición a cuarentena, o se baja del inventario si se desecha.",
+      "originReceiptHelp": "Esas unidades no entran como buenas: si las manda a cuarentena entran a esa posición; si les da salida, no entran al inventario.",
+      "originWarehouseHelp": "La mercancía ya está en inventario: se mueve de su posición a cuarentena, o se baja del inventario si se le da salida.",
       "fromReceipt": "Daño del recibo {number}: llegó dañado.",
       "receiptPlaceholder": "Elija el recibo",
       "lotPlaceholder": "Elija el lote",
       "newLotHelp": "Si el lote no existe todavía, escriba su número.",
       "causeHelp": "Solo informativa: cómo ocurrió.",
       "toQuarantine": "Mandar a cuarentena",
-      "toDiscard": "Desechar de una vez",
-      "quarantineHelp": "Va a la posición de cuarentena del almacén; después se desecha o se recupera.",
+      "toDiscard": "Dar salida de una vez",
+      "quarantineHelp": "Va a la posición de cuarentena del almacén; después se le da salida o se recupera.",
       "discardHelp": "Sale del inventario ahora, con un ajuste de motivo Daño.",
       "reportedQuarantine": "{code}: enviado a cuarentena.",
-      "reportedDiscard": "{code}: desechado.",
-      "discard": "Desechar",
+      "reportedDiscard": "{code}: salida registrada.",
+      "discard": "Dar salida",
       "recover": "Recuperar",
-      "discardTitle": "Desechar {code}",
+      "discardTitle": "Dar salida a {code}",
       "recoverTitle": "Recuperar {code}",
       "discardBody": "Se sacan {qty} de {sku} que están en {bin}: salen del inventario con un ajuste de motivo Daño. Diga a dónde van.",
       "recoverBody": "Se sacan {qty} de {sku} de {bin} y vuelven a una posición de guardado.",
-      "discarded": "{code} desechado.",
+      "discarded": "{code}: salida registrada.",
       "recovered": "{code} recuperado.",
       "toBinHelp": "Una posición de guardado (no de cuarentena, recepción, cruce de muelle ni renta).",
       "fields": {
@@ -3392,7 +3392,8 @@
         "toBin": "Posición a la que vuelve",
         "resolutionNotes": "Nota (opcional)",
         "quarantineBin": "Posición donde queda",
-        "finalDestination": "Destino final"
+        "finalDestination": "Destino final",
+        "reportFinalDestination": "Destino final (opcional)"
       },
       "cols": {
         "code": "Número",
@@ -3409,7 +3410,7 @@
       },
       "status": {
         "QUARANTINED": "En cuarentena",
-        "DISCARDED": "Desechado",
+        "DISCARDED": "Con salida",
         "RECOVERED": "Recuperado"
       },
       "errors": {
@@ -3418,13 +3419,13 @@
         "quantityInvalid": "Escriba un número.",
         "quantityPositive": "La cantidad dañada debe ser mayor que 0.",
         "causeRequired": "Indique cómo ocurrió el daño.",
-        "dispositionRequired": "Indique si va a cuarentena o se desecha.",
+        "dispositionRequired": "Indique si va a cuarentena o se le da salida.",
         "notesMax": "La nota no puede pasar de 300 caracteres.",
         "fromBinRequired": "Indique la posición donde está lo dañado.",
         "receiptRequired": "Indique el recibo del que llegó dañado.",
         "lotRequired": "Indique el lote.",
         "toBinRequired": "Indique la posición a la que vuelve lo recuperado.",
-        "finalDestinationRequired": "Indique a dónde va lo desechado (tirado, devuelto al proveedor, donado…)."
+        "finalDestinationRequired": "Indique a dónde va lo que sale (tirado, devuelto al proveedor, donado…)."
       },
       "reportFromReceipt": "Reportar daño",
       "tab": "Daños",
@@ -3432,7 +3433,8 @@
       "quarantineBinPlaceholder": "Cuarentena (la primera)",
       "finalDestinationHelp": "A dónde va lo que sale de cuarentena. Queda en el Kárdex y en los reportes de daños.",
       "finalDestinationPlaceholder": "Escoja el destino",
-      "reserved": "reservado (no se despacha)"
+      "reserved": "reservado (no se despacha)",
+      "reportFinalDestinationHelp": "Sin dato, queda como tirado."
     }
   },
   "system": {

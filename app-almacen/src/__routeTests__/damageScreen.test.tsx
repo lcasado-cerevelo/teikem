@@ -74,7 +74,7 @@ describe('Daño', () => {
     await waitFor(() => expect(screen.getByText('No encontré esa posición en este almacén.')).toBeTruthy())
   })
 
-  it('desechar de una vez pide confirmar; si llegó dañado en un recibo, manda el recibo', async () => {
+  it('dar salida de una vez pide confirmar; si llegó dañado en un recibo, manda el recibo', async () => {
     await setupDevice()
     insertProduct(1, 'p1', 'SKU-1', 'Tornillo', '7501', 'NONE')
     const alert = jest.spyOn(Alert, 'alert').mockImplementation((_t, _m, buttons) => {
@@ -90,8 +90,8 @@ describe('Daño', () => {
     await fireEvent.changeText(screen.getByLabelText('Cantidad dañada'), '2,5')
     await fireEvent.press(screen.getByTestId('damage-discard'))
 
-    await waitFor(() => expect(screen.getByText('DAN-00001: desechado.')).toBeTruthy())
-    expect(alert).toHaveBeenCalledWith('¿Desechar de una vez?', 'Se desechan 2,5 de SKU-1. No se puede deshacer.', expect.any(Array))
+    await waitFor(() => expect(screen.getByText('DAN-00001: salida registrada.')).toBeTruthy())
+    expect(alert).toHaveBeenCalledWith('¿Dar salida de una vez?', 'Salen del inventario 2,5 de SKU-1. No se puede deshacer.', expect.any(Array))
     expect(calls.find((c) => c.method === 'POST')?.body).toMatchObject({
       origin: 'RECEIPT',
       receiptPublicId: 'rec-uuid',

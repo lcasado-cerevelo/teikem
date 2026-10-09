@@ -13,12 +13,12 @@ public static class DamageRules
     public const string ReceiptRequired = "Indique el recibo del que llegó dañado.";
     public const string FromBinRequired = "Indique la posición donde está lo dañado.";
     public const string CauseRequired = "Indique cómo ocurrió el daño.";
-    public const string DispositionRequired = "Indique si lo dañado va a cuarentena o se desecha.";
+    public const string DispositionRequired = "Indique si lo dañado va a cuarentena o se le da salida.";
     public const string NoQuarantineBin = "El almacén no tiene una posición de cuarentena activa; cree una en una zona de tipo Cuarentena.";
     public const string SerialNotSupported = "Los productos con serie todavía no se reportan aquí; use un ajuste de inventario con motivo Daño.";
     public const string ResolveOnlyQuarantined = "Solo se resuelve un daño que está en cuarentena.";
     public const string RecoverBinRequired = "Indique la posición a la que vuelve lo recuperado.";
-    public const string FinalDestinationRequired = "Indique a dónde va lo desechado (tirado, devuelto al proveedor, donado…).";
+    public const string FinalDestinationRequired = "Indique a dónde va lo que sale (tirado, devuelto al proveedor, donado…).";
     public static string UnknownFinalDestination(string value) => $"Destino final desconocido: '{value}'.";
 
     /// <summary>Destino final normalizado (mayúsculas) o error. En un catálogo editable no se restringe a los valores de fábrica: lo valida el servicio contra LookupCode.</summary>

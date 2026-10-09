@@ -27,3 +27,9 @@ Servidor: `ReceiptDamageTests` (11: cuarentena, desechar, sin cuarentena, posici
 - **Destino final al desechar.** Nuevo catálogo editable `DamageFinalDestination` (*Tirado*, *Devuelto al proveedor*, *Donado*, *Vendido como saldo*); obligatorio al desechar desde cuarentena; se guarda en `DamageReport.FinalDestinationLookupId`, va en la nota del Kárdex y en la lista web. Sin cambios en la app (resolver sigue siendo de la web). Un desecho inmediato al reportar no lleva destino.
 - **Riesgo conocido.** Si al confirmar un recibo parte de la línea ya fue tomada por cruce de muelle, la reserva de lo dañado puede fallar con inventario insuficiente y rechazar la confirmación.
 - **Pruebas.** Servidor 3292 verdes (+5 de reserva/destino); web 1374 verdes. Sin probar contra SQL Server ni en el Zebra.
+
+## Adenda 2 — «Dar salida» en lugar de «Desechar» (2026-10-08)
+- «Desechar» suena a tirar, y lo dañado también se devuelve, se dona o se vende como saldo. En pantalla, manual y FAQ el verbo es **Dar salida**; el estatus terminal se rotula **Con salida** (antes «Desechado»; el código interno `DISCARDED` y el endpoint `/discard` no cambian, la etiqueta es editable por compañía en Estatus). *Tirado* queda como un destino final más.
+- **Dar salida de una vez** (al reportar, web) admite un destino final **opcional** (`finalDestination` en `POST /damage-reports`; vacío = tirado). En la línea del recibo y en la app sigue sin destino (se registra como tirado; el destino se puede afinar al sacar algo de cuarentena desde la web).
+- Mensajes nuevos: `Indique si lo dañado va a cuarentena o se le da salida.` y `Indique a dónde va lo que sale (tirado, devuelto al proveedor, donado…).`; la nota del Kárdex dice `DAN-… · Salida: {destino}`.
+- «Devuelto al proveedor» solo **registra el destino**: el inventario baja con un ajuste de motivo Daño; no genera devolución de compra ni crédito del proveedor.

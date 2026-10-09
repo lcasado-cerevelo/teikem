@@ -84,13 +84,13 @@ describe('Daño de la línea del recibo', () => {
     expect(await screen.findByText('Indique cómo ocurrió el daño.')).toBeInTheDocument()
   })
 
-  it('desechar de una vez manda damageDiscard y no la posición', async () => {
+  it('dar salida de una vez manda damageDiscard y no la posición', async () => {
     const user = userEvent.setup()
     show()
     await user.type(await screen.findByRole('spinbutton', { name: /Cantidad dañada/ }), '3')
     await user.click(screen.getByRole('combobox', { name: /Razón/ }))
     await user.click(await screen.findByRole('option', { name: 'Vino así' }))
-    await user.click(screen.getByRole('radio', { name: 'Desechar de una vez' }))
+    await user.click(screen.getByRole('radio', { name: 'Dar salida de una vez' }))
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
     await waitFor(() => expect(mock.calls.find((c) => c.method === 'PUT')?.body).toMatchObject({ damagedQty: 3, damageCause: 'ARRIVED_DAMAGED', damageDiscard: true, damageBinId: null }))
   })

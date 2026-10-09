@@ -19,6 +19,8 @@ export interface DamageFormValues {
   disposition: DamageDisposition | ''
   /** Posición donde se deja lo dañado (solo si se manda a cuarentena); vacía = la primera de cuarentena del almacén. */
   quarantineBinId: string
+  /** Destino final al darle salida de una vez (opcional; vacío = tirado). */
+  finalDestination: string
   notes: string
 }
 
@@ -43,6 +45,7 @@ export function damageBody(v: DamageFormValues, tracking: string): DamageReportR
     lotId: tracking === 'LOT' && v.lotId ? Number(v.lotId) : null,
     // un lote que todavía no existe solo se puede dar de alta al recibir lo dañado en cuarentena
     lot: tracking === 'LOT' && !v.lotId && !warehouse && v.lotNumber.trim() ? { number: v.lotNumber.trim() } : null,
+    finalDestination: v.disposition === 'DISCARD' && v.finalDestination ? v.finalDestination : null,
     notes: v.notes.trim() || null,
   }
 }

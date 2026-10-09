@@ -126,9 +126,9 @@ public sealed record ReconciliationDto(DateTime CheckedAtUtc, int BalancesChecke
 /// DISCARD (se desecha de una vez). <c>Cause</c>: ARRIVED_DAMAGED, TRANSIT_ACCIDENT, WAREHOUSE_ACCIDENT u OTHER.
 /// </summary>
 public sealed record DamageReportRequest(string? Origin, Guid? WarehousePublicId, Guid? ProductPublicId, int? LotId, LotInput? Lot, int? FromBinId, decimal? Quantity,
-    string? Cause, string? Disposition, int? QuarantineBinId = null, Guid? ReceiptPublicId = null, string? Notes = null);
+    string? Cause, string? Disposition, int? QuarantineBinId = null, Guid? ReceiptPublicId = null, string? Notes = null, string? FinalDestination = null);
 
-/// <summary>Desechar (nota opcional) o recuperar (posición de guardado a la que vuelve) lo que está en cuarentena.</summary>
+/// <summary>Dar salida (destino final obligatorio, nota opcional) o recuperar (posición de guardado a la que vuelve) lo que está en cuarentena.</summary>
 /// <summary>FinalDestination (obligatorio al desechar lo que está en cuarentena): DISCARDED_WASTE, RETURNED_TO_SUPPLIER, DONATED, SOLD_AS_SALVAGE u otro del catálogo DamageFinalDestination.</summary>
 public sealed record DamageResolveRequest(int? ToBinId = null, string? Notes = null, string? FinalDestination = null);
 

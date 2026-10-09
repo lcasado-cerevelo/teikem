@@ -551,10 +551,10 @@ INSERT INTO #S VALUES
 ('RentalProcessStatus','REPAIR','Reparación','Repair',@LAT,6,'#F59E0B',0),
 ('RentalProcessStatus','AWAITING_PARTS','Esperando piezas','Awaiting parts',@LAT,7,'#F97316',0),
 ('RentalProcessStatus','SCRAPPED','Dada de baja','Scrapped',@TERM,8,'#EF4444',0),
--- 2026-10-08 — Daños: Reportado → En cuarentena → Desechado | Recuperado (también Reportado → Desechado de una vez)
+-- 2026-10-08 — Daños: Reportado → En cuarentena → Con salida (DISCARDED: tirado, devuelto, donado…) | Recuperado (también Reportado → Con salida de una vez)
 ('DamageStatus','REPORTED','Reportado','Reported',@PIPE,1,'#9CA3AF',1),
 ('DamageStatus','QUARANTINED','En cuarentena','In quarantine',@PIPE,2,'#F59E0B',0),
-('DamageStatus','DISCARDED','Desechado','Discarded',@TERM,3,'#EF4444',0),
+('DamageStatus','DISCARDED','Con salida','Released',@TERM,3,'#EF4444',0),
 ('DamageStatus','RECOVERED','Recuperado','Recovered',@TERM,4,'#059669',0);
 
 MERGE dbo.StatusCode AS t

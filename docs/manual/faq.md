@@ -5642,7 +5642,7 @@ Es normal: el modo de recepción es de cada almacén (Almacenes → modo de rece
 ## Daños: llegaron dañados o se dañaron en el almacén (2026-10-08)
 
 **¿Cómo registro algo que llegó dañado en un recibo?**
-Lo más fácil: **en la propia línea del recibo**. En la app, en la pantalla de la cantidad recibida marque **Vinieron unidades dañadas**, escriba cuántas y la razón (y, si es *Otra*, escríbala); después diga dónde se dejan (la sugerida es la de cuarentena) o toque **Desechar**. En la web, ficha del recibo abierto → ícono **Unidades dañadas** de la fila. Las dañadas cuentan dentro de lo recibido (100 recibidas, 10 dañadas → 90 buenas). Al confirmar el recibo se crea el `DAN-#####` y lo dañado sale de lo bueno. También puede reportarlo después: web (ficha del recibo → **Reportar daño**, o Productos e inventario → pestaña Daños) o app (Inicio → Daño → «Llegó dañado en un recibo»); ahí reciba solo lo bueno.
+Lo más fácil: **en la propia línea del recibo**. En la app, en la pantalla de la cantidad recibida marque **Vinieron unidades dañadas**, escriba cuántas y la razón (y, si es *Otra*, escríbala); después diga dónde se dejan (la sugerida es la de cuarentena) o toque **Dar salida**. En la web, ficha del recibo abierto → ícono **Unidades dañadas** de la fila. Las dañadas cuentan dentro de lo recibido (100 recibidas, 10 dañadas → 90 buenas). Al confirmar el recibo se crea el `DAN-#####` y lo dañado sale de lo bueno. También puede reportarlo después: web (ficha del recibo → **Reportar daño**, o Productos e inventario → pestaña Daños) o app (Inicio → Daño → «Llegó dañado en un recibo»); ahí reciba solo lo bueno.
 
 **Dice `La cantidad dañada no puede ser mayor que la cantidad recibida.`**
 Las dañadas van dentro de lo recibido: escribió más dañadas que recibidas, o bajó lo recibido por debajo de lo ya declarado como dañado. Corrija una de las dos cantidades.
@@ -5657,16 +5657,16 @@ Entra con el resto a la posición de recepción y, al confirmar, sale de ahí ha
 Se **cuenta** (es existencia física de esa posición) pero **no se puede despachar**: en una zona de Cuarentena ya queda fuera de la asignación y, si lo dejó en otra posición (guardado, recepción), el sistema lo **reserva** y baja el disponible; la lista de Daños dice «reservado (no se despacha)». Al desecharlo o recuperarlo la reserva se libera.
 
 **Vienen a recoger lo dañado de cuarentena. ¿Qué hago?**
-En la pestaña Daños use **Desechar** sobre ese daño y escoja el **destino final**: *Tirado*, *Devuelto al proveedor*, *Donado* o *Vendido como saldo*. No es un despacho: baja el inventario con un ajuste de motivo Daño y queda el destino en el Kárdex y en la lista. Si necesita otro destino, agréguelo en Sistema → Catálogos (Destino final de lo dañado).
+En la pestaña Daños use **Dar salida** sobre ese daño y escoja el **destino final**: *Tirado*, *Devuelto al proveedor*, *Donado* o *Vendido como saldo*. No es un despacho: baja el inventario con un ajuste de motivo Daño y queda el destino en el Kárdex y en la lista. Si necesita otro destino, agréguelo en Sistema → Catálogos (Destino final de lo dañado).
 
-**Dice `Indique a dónde va lo desechado (tirado, devuelto al proveedor, donado…).`**
-Al desechar lo que está en cuarentena hay que escoger el destino final. Elíjalo en la lista y vuelva a desechar.
+**Dice `Indique a dónde va lo que sale (tirado, devuelto al proveedor, donado…).`**
+Al darle salida a lo que está en cuarentena hay que escoger el destino final. Elíjalo en la lista y vuelva a dar salida.
 
 **¿Puedo dejar lo dañado en una posición que no sea de cuarentena?**
 Sí, cualquier posición activa del almacén (en la app: escanee o escoja de la lista; en la web: «Posición donde queda»). El daño queda «En cuarentena» en esa posición hasta que lo desecha o lo recupera desde la pestaña Daños.
 
 **¿Y si se dañó en el almacén?**
-Reporte con origen «Se dañó en el almacén» y la posición donde estaba. Cuarentena la mueve a la posición de cuarentena; desechar la baja del inventario con un ajuste de motivo Daño.
+Reporte con origen «Se dañó en el almacén» y la posición donde estaba. Cuarentena la mueve a la posición de cuarentena; dar salida la baja del inventario con un ajuste de motivo Daño.
 
 **Dice `El almacén no tiene una posición de cuarentena activa; cree una en una zona de tipo Cuarentena.`**
 Falta la zona. En Almacén → Posiciones cree una zona de tipo Cuarentena con al menos una posición activa, o desbloquee la existente. (Al reportar un daño, o al declararlo en un recibo, también puede indicar cualquier otra posición activa.)
