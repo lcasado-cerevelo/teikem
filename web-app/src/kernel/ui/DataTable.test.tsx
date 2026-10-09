@@ -460,3 +460,16 @@ describe('DataTable: pie (rango, filas por página, exportar)', () => {
     }
   })
 })
+
+describe('DataTable · onSortChange', () => {
+  it('avisa el orden local al hacer clic en un encabezado (el mismo que muestra la tabla)', async () => {
+    const user = userEvent.setup()
+    const seen: Array<SortState | null> = []
+    render(<DataTable columns={COLUMNS} rows={ROWS} rowKey={(r) => r.id} onSortChange={(s) => seen.push(s)} />)
+    expect(seen.at(-1)).toBeNull()
+    await user.click(screen.getByRole('button', { name: /Código/ }))
+    expect(seen.at(-1)).toEqual({ id: 'code', desc: false })
+    await user.click(screen.getByRole('button', { name: /Código/ }))
+    expect(seen.at(-1)).toEqual({ id: 'code', desc: true })
+  })
+})

@@ -47,8 +47,9 @@ muestra, con la marca *Inactivo*.
   angostos.*). Con posiciones de códigos cortos caben unas 24 por página (3 × 8).
 - **Grupos.** Cada grupo empieza con una franja azul con su título y la cantidad. Si el grupo sigue en la página siguiente, la franja se
   repite como *… (continuación)*. Un título nunca queda solo al pie de una página y un recuadro nunca se parte entre dos páginas.
-  - **Productos** (desde 2026-10-09): **sin grupos ni franjas**; los códigos salen corridos, de izquierda a derecha, en el **mismo orden en que
-    el filtro devuelve la lista**.
+  - **Productos** (desde 2026-10-09): **sin grupos ni franjas**; los códigos salen corridos, de izquierda a derecha, en el **mismo orden que
+    ve en la tabla**: si hizo clic en el encabezado de una columna (SKU, Producto, Categoría…), el informe sale ordenado así, con **todos** los
+    productos del filtro (no solo la página visible); si no ordenó nada, en el orden en que el filtro devuelve la lista.
   - **Posiciones**: por el **primer número del código** (la primera secuencia de dígitos: `A01-R01-N1-P01` → grupo **01**, `R1` → **1**,
     `B-06` → **06**). Se comparan como números (el 2 antes que el 10) y `01` y `1` son el **mismo grupo**, que se titula como aparece en
     su primer código (*Grupo 01 (8)*). Los códigos sin dígitos (`GENERAL`, `MUELLE`) van a **Otras posiciones** al final. Dentro de cada

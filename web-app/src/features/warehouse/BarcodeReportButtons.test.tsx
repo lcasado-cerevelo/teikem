@@ -101,6 +101,15 @@ describe('ProductBarcodeReportButton', () => {
     expect(spec.filters).toEqual([{ label: 'Nombre', value: 'contiene «sku»' }])
   })
 
+  it('con un orden elegido en la tabla, el informe sale en ese orden (SKU descendente aquí)', async () => {
+    const user = userEvent.setup()
+    wrap(<ProductBarcodeReportButton filters={EMPTY_PRODUCT_FILTERS} sortItems={(items) => [...items].sort((a, b) => (b.sku ?? '').localeCompare(a.sku ?? ''))} />)
+    await user.click(screen.getByRole('button', { name: 'Códigos de barras' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Automático' }))
+    await waitFor(() => expect(downloadBarcodeReportPdf).toHaveBeenCalledTimes(1))
+    expect(lastSpec().groups[0].rows.map((r) => r.value)).toEqual(['X-1', 'SKU-2', 'SKU-10'])
+  })
+
   it('el botón es un menú: sin elegir no se genera nada; "2 columnas" genera el PDF a 2 columnas y no hay selector aparte', async () => {
     const user = userEvent.setup()
     wrap(<ProductBarcodeReportButton filters={EMPTY_PRODUCT_FILTERS} />)

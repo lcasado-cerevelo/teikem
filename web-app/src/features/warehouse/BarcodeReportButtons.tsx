@@ -17,6 +17,7 @@ import type { BarcodeColumnsOption } from '../../kernel/ui/barcodeReportPdf'
 import type { ReportFilter } from '../../kernel/ui/reportPdf'
 import type { WarehouseZoneDto } from './api'
 import { generateBinBarcodeReport, generateProductBarcodeReport } from './barcodeReports'
+import type { ProductListItemDto } from './api'
 import type { BinListQuery } from './locations'
 import type { ProductFilterState } from './productFilters'
 import { useProductReportContext } from './useProductReportContext'
@@ -37,13 +38,15 @@ export const BARCODE_REPORT_PERMISSION = 'inventory.view'
 export interface ProductBarcodeReportButtonProps {
   filters: ProductFilterState
   className?: string
+  /** Orden que el usuario eligió en la tabla (clic en un encabezado); el informe sale en ese mismo orden. */
+  sortItems?: (items: readonly ProductListItemDto[]) => readonly ProductListItemDto[]
 }
 
 /** "Códigos de barras" de Productos e inventario: un código por SKU de lo filtrado. */
-export function ProductBarcodeReportButton({ filters, className }: ProductBarcodeReportButtonProps) {
+export function ProductBarcodeReportButton({ filters, className, sortItems }: ProductBarcodeReportButtonProps) {
   const t = useT()
   const ctx = useProductReportContext(filters)
-  const items = useColumnItems((columns) => generateProductBarcodeReport(ctx, columns))
+  const items = useColumnItems((columns) => generateProductBarcodeReport(ctx, columns, sortItems))
   return (
     <Can perm={BARCODE_REPORT_PERMISSION}>
       <ReportMenuButton
