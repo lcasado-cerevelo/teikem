@@ -327,7 +327,7 @@ export default function CountScreen() {
             setDraft(null)
             setExpectedLines(null)
             refresh()
-            router.replace('/home')
+            // se queda en Conteo: sin conteo abierto la pantalla vuelve sola a la página inicial (elegir cómo contar y escanear)
           } catch (err) {
             setScanError(err instanceof ApiError ? err.title : t('count.cancelError'))
           } finally {
