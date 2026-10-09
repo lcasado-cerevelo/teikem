@@ -12,7 +12,8 @@ public sealed record LotInput(string? Number, DateOnly? ManufactureDate = null, 
 public sealed record ProductCreateRequest(string? Sku, string? Name, Guid? OwnerClientPublicId = null, int? CategoryId = null,
     string? BaseUom = null, string? TrackingType = null, decimal? WeightKg = null, decimal? VolumeM3 = null, string? Barcode = null,
     decimal? PurchaseCost = null, decimal? SalePrice = null, Guid? PreferredWarehousePublicId = null, int? PreferredBinId = null,
-    decimal? MinQty = null, decimal? MinPickQty = null, decimal? MaxPickQty = null, string? Brand = null, string? Model = null);
+    decimal? MinQty = null, decimal? MinPickQty = null, decimal? MaxPickQty = null, string? Brand = null, string? Model = null,
+    string? PackUom = null, decimal? PackQty = null);
 
 /// <summary>
 /// PATCH del producto: el SKU es inmutable ('sku' en Extra → 400). Lote 12: Brand/Model null = sin cambio; "" (o solo
@@ -22,7 +23,8 @@ public sealed record ProductPatchRequest(string? Name = null, Guid? OwnerClientP
     bool? ClearCategory = null, string? BaseUom = null, string? TrackingType = null, decimal? WeightKg = null, decimal? VolumeM3 = null,
     string? Barcode = null, bool? ClearBarcode = null, decimal? PurchaseCost = null, decimal? SalePrice = null,
     Guid? PreferredWarehousePublicId = null, int? PreferredBinId = null, bool? ClearPreferred = null, decimal? MinQty = null,
-    decimal? MinPickQty = null, decimal? MaxPickQty = null, string? RowVersion = null, string? Brand = null, string? Model = null)
+    decimal? MinPickQty = null, decimal? MaxPickQty = null, string? RowVersion = null, string? Brand = null, string? Model = null,
+    string? PackUom = null, decimal? PackQty = null, bool? ClearPack = null)
 {
     [JsonExtensionData]
     public IDictionary<string, JsonElement>? Extra { get; set; }
@@ -52,7 +54,7 @@ public sealed record ProductListQuery(string? Search = null, int[]? CategoryIds 
 public sealed record ProductListItemDto(int Id, Guid PublicId, string Sku, string Name, int? CategoryId, string? CategoryName,
     Guid? OwnerClientPublicId, string? OwnerName, bool IsOwn, string BaseUomCode, string TrackingTypeCode, string? Barcode,
     decimal? PurchaseCost, decimal? SalePrice, decimal QtyOnHand, decimal QtyReserved, decimal QtyAvailable, decimal? MinQty,
-    bool IsBelowMin, bool IsActive, string? Brand, string? Model);
+    bool IsBelowMin, bool IsActive, string? Brand, string? Model, string? PackUomCode = null, string? PackUomName = null, decimal? PackQty = null);
 
 public sealed record ProductPageDto(int Total, int Skip, int Take, IReadOnlyList<ProductListItemDto> Items);
 

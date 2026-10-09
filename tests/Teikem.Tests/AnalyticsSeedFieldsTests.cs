@@ -469,7 +469,7 @@ public class AnalyticsSeedFieldsTests
         {
             [EntityTypes.Warehouse] = (null, new[] { "Id", "PublicId", "Code", "Name", "City", "Status", "StatusCode", "IsActive", "ZoneCount", "BinCount", "ActiveBinCount", "DockCount", "QtyOnHand",
                 "ReceivingMode", "ReceivingModeCode" }, Array.Empty<string>()),   // Lote 16
-            [EntityTypes.Product] = (null, new[] { "Id", "PublicId", "Sku", "Name", "CategoryId", "Category", "OwnerClientId", "OwnerName", "IsOwn", "BaseUom", "TrackingType", "Barcode",
+            [EntityTypes.Product] = (null, new[] { "Id", "PublicId", "Sku", "Name", "CategoryId", "Category", "OwnerClientId", "OwnerName", "IsOwn", "BaseUom", "PackUom", "PackQty", "TrackingType", "Barcode",
                 "PurchaseCost", "SalePrice", "QtyOnHand", "QtyReserved", "QtyAvailable", "CostValue", "SaleValue", "MinQty", "IsBelowMin", "IsActive" }, new[] { "PurchaseCost", "SalePrice", "CostValue", "SaleValue" }),
             [EntityTypes.StockBalance] = (null, new[] { "Id", "WarehouseId", "WarehouseCode", "ZoneCode", "ZoneType", "BinCode", "ProductId", "Sku", "ProductName", "Category", "OwnerName",
                 "IsOwn", "LotNumber", "ExpiryDate", "DaysToExpiry", "QtyOnHand", "QtyReserved", "QtyAvailable", "CostValue", "SaleValue", "UpdatedAtUtc" }, new[] { "CostValue", "SaleValue" }),

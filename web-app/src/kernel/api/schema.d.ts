@@ -21838,6 +21838,9 @@ export interface components {
             maxPickQty?: number | null;
             brand?: string | null;
             model?: string | null;
+            packUom?: string | null;
+            /** Format: double */
+            packQty?: number | null;
         };
         ProductDetailDto: {
             product?: components["schemas"]["ProductListItemDto"];
@@ -21891,6 +21894,10 @@ export interface components {
             isActive?: boolean;
             brand?: string | null;
             model?: string | null;
+            packUomCode?: string | null;
+            packUomName?: string | null;
+            /** Format: double */
+            packQty?: number | null;
         };
         ProductPageDto: {
             /** Format: int32 */
@@ -21935,6 +21942,10 @@ export interface components {
             rowVersion?: string | null;
             brand?: string | null;
             model?: string | null;
+            packUom?: string | null;
+            /** Format: double */
+            packQty?: number | null;
+            clearPack?: boolean | null;
         } & {
             [key: string]: unknown;
         };
@@ -23548,6 +23559,10 @@ export interface components {
             /** Format: int32 */
             preferredBinId?: number | null;
             isActive?: boolean;
+            packUomCode?: string | null;
+            packUomName?: string | null;
+            /** Format: double */
+            packQty?: number | null;
         };
         SyncProductDtoSyncPage: {
             items?: components["schemas"]["SyncProductDto"][] | null;

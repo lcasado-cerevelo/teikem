@@ -206,6 +206,8 @@ INSERT INTO #L (Entity, Code, Es, En, Srt) VALUES
 ('ZoneMatchType','POSTAL_CODE','Código postal','Postal code',1),('ZoneMatchType','POSTAL_RANGE','Rango postal','Postal range',2),('ZoneMatchType','MUNICIPALITY','Municipio','Municipality',3),('ZoneMatchType','POLYGON','Polígono','Polygon',4),
 -- UnitOfMeasure / TrackingType / ZoneType / InventoryTxnType / OptimizerEngine
 ('UnitOfMeasure','UN','Unidad','Unit',1),('UnitOfMeasure','BOX','Caja','Box',2),('UnitOfMeasure','PALLET','Tarima','Pallet',3),('UnitOfMeasure','KG','Kilogramo','Kilogram',4),('UnitOfMeasure','L','Litro','Liter',5),
+-- 2026-10-09 — más unidades para empaques (Caja = BOX y Tarima = PALLET ya existen): se editan desde Catálogos
+('UnitOfMeasure','PACK','Paquete','Pack',6),('UnitOfMeasure','BARREL','Barril','Barrel',7),('UnitOfMeasure','BAG','Bulto','Bag',8),('UnitOfMeasure','GAL','Galón','Gallon',9),('UnitOfMeasure','DRUM','Tambor','Drum',10),('UnitOfMeasure','ROLL','Rollo','Roll',11),
 ('TrackingType','NONE','Ninguno','None',1),('TrackingType','LOT','Lote','Lot',2),('TrackingType','SERIAL','Serie','Serial',3),
 ('ZoneType','PICKING','Picking','Picking',1),('ZoneType','RESERVE','Reserva','Reserve',2),('ZoneType','REFRIGERATED','Refrigerado','Refrigerated',3),('ZoneType','QUARANTINE','Cuarentena','Quarantine',4),('ZoneType','CROSSDOCK','Cross-dock','Cross-dock',5),
 ('InventoryTxnType','RECEIPT','Recepción','Receipt',1),('InventoryTxnType','ISSUE','Despacho','Issue',2),('InventoryTxnType','TRANSFER','Transferencia','Transfer',3),('InventoryTxnType','ADJUSTMENT','Ajuste','Adjustment',4),('InventoryTxnType','CROSSDOCK','Cruce de muelle','Cross-dock',5),('InventoryTxnType','PUTAWAY','Acomodo','Putaway',6),

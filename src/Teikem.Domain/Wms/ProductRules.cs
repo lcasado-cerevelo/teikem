@@ -158,6 +158,29 @@ public static class ProductRules
     public static bool IsSerialMissing(bool isActive, bool isSerial, decimal onHand, int serialsInStock)
         => isActive && isSerial && onHand > serialsInStock;
 
+    // ---------------------------------------------------------------- empaque (2026-10-09)
+
+    public const string PackQtyInvalid = "Las unidades por empaque deben ser un número mayor que 0 (hasta 3 decimales).";
+    public const string PackQtyWithoutUnit = "Indique la unidad del empaque (caja, barril, paquete…).";
+    public const string PackUnitWithoutQty = "Indique cuántas unidades trae el empaque.";
+    public const string PackSameAsBase = "La unidad del empaque no puede ser la misma que la unidad base.";
+    public static string UnknownPackUom(string code) => $"Unidad de empaque desconocida: '{code}'.";
+
+    /// <summary>
+    /// Empaque del producto (estado FINAL: ambos o ninguno): unidades por empaque &gt; 0 con hasta 3 decimales y distinta de la unidad base.
+    /// Devuelve (campo, mensaje).
+    /// </summary>
+    public static IReadOnlyList<(string Field, string Message)> ValidatePack(bool hasUnit, decimal? packQty, bool sameAsBase)
+    {
+        var errors = new List<(string, string)>();
+        if (!hasUnit && packQty is null) return errors;
+        if (!hasUnit) errors.Add(("packUom", PackQtyWithoutUnit));
+        else if (packQty is null) errors.Add(("packQty", PackUnitWithoutQty));
+        else if (packQty <= 0m || decimal.Round(packQty.Value, 3, MidpointRounding.ToZero) != packQty.Value || packQty >= 10_000_000_000m) errors.Add(("packQty", PackQtyInvalid));
+        if (hasUnit && sameAsBase) errors.Add(("packUom", PackSameAsBase));
+        return errors;
+    }
+
     // ---------------------------------------------------------------- números
 
     /// <summary>

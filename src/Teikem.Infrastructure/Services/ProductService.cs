@@ -368,6 +368,16 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
         var trackingCode = string.IsNullOrWhiteSpace(req.TrackingType) ? TrackingTypes.None : req.TrackingType.Trim().ToUpperInvariant();
         var trackingId = await lookups.TryGetIdAsync(LookupDomains.TrackingType, trackingCode, ct);
         if (trackingId is null) errors["trackingType"] = new[] { UnknownTrackingMessage(trackingCode) };
+        // 2026-10-09: empaque (ambos o ninguno)
+        int? packId = null;
+        if (!string.IsNullOrWhiteSpace(req.PackUom))
+        {
+            var packCode = req.PackUom.Trim().ToUpperInvariant();
+            packId = await lookups.TryGetIdAsync(LookupDomains.UnitOfMeasure, packCode, ct);
+            if (packId is null) errors["packUom"] = new[] { ProductRules.UnknownPackUom(packCode) };
+        }
+        if (errors.ContainsKey("packUom") is false)
+            foreach (var (field, message) in ProductRules.ValidatePack(packId is not null, req.PackQty, packId is not null && packId == uomId)) errors[field] = new[] { message };
         if (errors.Count > 0) throw new ValidationException(errors);
 
         // Dueño (cliente 3PL) activo del tenant; NULL = propio. Categoría activa del tenant. Preferidos del tenant.
@@ -397,6 +407,8 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
             Name = name!,
             ProductCategoryId = categoryId,
             BaseUomLookupId = uomId!.Value,
+            PackUomLookupId = packId,
+            PackQty = packId is null ? null : req.PackQty,
             TrackingTypeLookupId = trackingId!.Value,
             WeightKg = req.WeightKg,
             VolumeM3 = req.VolumeM3,
@@ -482,6 +494,13 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
             trackingId = await lookups.TryGetIdAsync(LookupDomains.TrackingType, code, ct);
             if (trackingId is null) errors["trackingType"] = new[] { UnknownTrackingMessage(code) };
         }
+        int? newPackId = null;
+        if (req.ClearPack != true && !string.IsNullOrWhiteSpace(req.PackUom))
+        {
+            var code = req.PackUom.Trim().ToUpperInvariant();
+            newPackId = await lookups.TryGetIdAsync(LookupDomains.UnitOfMeasure, code, ct);
+            if (newPackId is null) errors["packUom"] = new[] { ProductRules.UnknownPackUom(code) };
+        }
         if (errors.Count > 0) throw new ValidationException(errors);
 
         // Referencias del tenant resueltas antes de la transacción (lecturas bajo el filtro de tenant).
@@ -541,8 +560,25 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
                 && await db.Set<Product>().AnyAsync(p => p.ProductId != product.ProductId && p.IsActive && p.Barcode == barcodeTarget, ct2))
                 throw new ConflictException(ProductRules.BarcodeTaken);
 
+            // 4b. Empaque (2026-10-09), sobre el estado final: ClearPack lo quita; unidad y/o cantidad nuevas se combinan con lo actual. No es inmutable:
+            //     el inventario siempre está en unidad base, así que cambiarlo no mueve nada.
+            int? packFinalId = product.PackUomLookupId;
+            decimal? packFinalQty = product.PackQty;
+            if (req.ClearPack == true) { packFinalId = null; packFinalQty = null; }
+            else
+            {
+                if (newPackId is int np) packFinalId = np;
+                if (req.PackQty.HasValue) packFinalQty = req.PackQty;
+                if (packFinalId is null && req.PackQty is null) packFinalQty = null;
+            }
+            var finalBaseId = uomId ?? product.BaseUomLookupId;
+            var packErrors = ProductRules.ValidatePack(packFinalId is not null, packFinalQty, packFinalId is not null && packFinalId == finalBaseId);
+            if (packErrors.Count > 0) throw new ValidationException(packErrors.ToDictionary(e => e.Field, e => new[] { e.Message }));
+
             // 6. Escritura.
             if (name is not null) product.Name = name;
+            product.PackUomLookupId = packFinalId;
+            product.PackQty = packFinalQty;
             if (trackingId is int tid) product.TrackingTypeLookupId = tid;
             if (uomId is int uid) product.BaseUomLookupId = uid;
             product.ClientId = ownerTarget;
@@ -677,7 +713,7 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
                 await CodeAsync(p.BaseUomLookupId, ct), await CodeAsync(p.TrackingTypeLookupId, ct),
                 p.Barcode, p.PurchaseCost, p.SalePrice,
                 t.OnHand, t.Reserved, available, p.MinQty, ProductRules.IsBelowMin(p.MinQty, available, p.IsActive), p.IsActive,
-                p.Brand, p.Model));
+                p.Brand, p.Model, p.PackUomLookupId is int pu ? await CodeAsync(pu, ct) : null, p.PackUomLookupId is int pn ? await LabelAsync(pn, ct) : null, p.PackQty));
         }
         return items;
     }
@@ -815,6 +851,10 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
         return codes.ToDictionary(c => c.StatusCodeId, c => new StatusInfo(c.InternalCode,
             MultilingualText.Resolve(MultilingualText.Merge(c.LabelJson, overrides.GetValueOrDefault(c.StatusCodeId)?.CustomLabelJson), tenant.Lang)));
     }
+
+    /// <summary>Nombre del catálogo en el idioma de la compañía (Caja, Barril…).</summary>
+    private async Task<string> LabelAsync(int lookupCodeId, CancellationToken ct)
+        => (await lookups.GetAsync(lookupCodeId, ct)) is { } l ? MultilingualText.Resolve(l.LabelJson, tenant.Lang) : string.Empty;
 
     private async Task<string> CodeAsync(int lookupCodeId, CancellationToken ct)
         => (await lookups.GetAsync(lookupCodeId, ct))?.InternalCode ?? lookupCodeId.ToString(System.Globalization.CultureInfo.InvariantCulture);

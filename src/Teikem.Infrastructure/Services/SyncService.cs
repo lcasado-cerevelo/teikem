@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Teikem.Domain.Common;
 using Teikem.Domain.Clients;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Wms;
@@ -17,7 +18,8 @@ namespace Teikem.Infrastructure.Contracts
 
     /// <summary>Producto compacto para la base local del aparato (búsqueda por código de barras o SKU sin red).</summary>
     public sealed record SyncProductDto(int Id, Guid PublicId, string Sku, string Name, string? Barcode, string TrackingTypeCode,
-        string BaseUomCode, int? CategoryId, Guid? OwnerClientPublicId, string? OwnerName, int? PreferredBinId, bool IsActive);
+        string BaseUomCode, int? CategoryId, Guid? OwnerClientPublicId, string? OwnerName, int? PreferredBinId, bool IsActive,
+        string? PackUomCode = null, string? PackUomName = null, decimal? PackQty = null);
 
     public sealed record SyncProductCategoryDto(int Id, string Name, int? ParentId, bool IsActive);
 
@@ -130,7 +132,7 @@ namespace Teikem.Infrastructure.Services
     /// se devuelven siempre (su asignación no deja bitácora). Todo se lee bajo el filtro global de tenant; las tablas sin
     /// TenantId (posición, zona, líneas) se alcanzan SOLO uniendo con su padre filtrado.
     /// </summary>
-    public sealed class SyncService(TeikemDbContext db, ILookupCache lookups)
+    public sealed class SyncService(TeikemDbContext db, ILookupCache lookups, ITenantContext tenant)
     {
         private static readonly string[] OpenPurchaseOrderStatuses =
             { PurchaseOrderStatuses.Draft, PurchaseOrderStatuses.Sent, PurchaseOrderStatuses.Partial };
@@ -161,13 +163,19 @@ namespace Teikem.Infrastructure.Services
             var owners = await db.Set<Client>().AsNoTracking().Where(c => clientIds.Contains(c.ClientId))
                 .Select(c => new { c.ClientId, c.PublicId, c.Name }).ToDictionaryAsync(c => c.ClientId, ct);
             var codes = await LookupCodesAsync(page.SelectMany(p => new[] { p.TrackingTypeLookupId, p.BaseUomLookupId }), ct);
+            // empaque (2026-10-09): código y nombre en el idioma de la compañía, para la calculadora del conteo sin señal
+            var packLabels = new Dictionary<int, (string Code, string Name)>();
+            foreach (var packId in page.Where(p => p.PackUomLookupId != null).Select(p => p.PackUomLookupId!.Value).Distinct())
+                if (await lookups.GetAsync(packId, ct) is { } pl) packLabels[packId] = (pl.InternalCode, MultilingualText.Resolve(pl.LabelJson, tenant.Lang));
 
             var items = page.Select(p =>
             {
                 var owner = p.ClientId is int cid ? owners.GetValueOrDefault(cid) : null;
                 return new SyncProductDto(p.ProductId, p.PublicId, p.Sku, p.Name, p.Barcode,
                     codes.GetValueOrDefault(p.TrackingTypeLookupId, TrackingTypes.None), codes.GetValueOrDefault(p.BaseUomLookupId, string.Empty),
-                    p.ProductCategoryId, owner?.PublicId, owner?.Name, p.PreferredBinId, p.IsActive);
+                    p.ProductCategoryId, owner?.PublicId, owner?.Name, p.PreferredBinId, p.IsActive,
+                    p.PackUomLookupId is int pk && packLabels.TryGetValue(pk, out var pack) ? pack.Code : null,
+                    p.PackUomLookupId is int pk2 && packLabels.TryGetValue(pk2, out var pack2) ? pack2.Name : null, p.PackQty);
             }).ToList();
             return new SyncPage<SyncProductDto>(items, next, w.Now);
         }

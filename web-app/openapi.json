@@ -35822,6 +35822,15 @@
           "model": {
             "type": "string",
             "nullable": true
+          },
+          "packUom": {
+            "type": "string",
+            "nullable": true
+          },
+          "packQty": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -35972,6 +35981,19 @@
           "model": {
             "type": "string",
             "nullable": true
+          },
+          "packUomCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "packUomName": {
+            "type": "string",
+            "nullable": true
+          },
+          "packQty": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -36101,6 +36123,19 @@
           },
           "model": {
             "type": "string",
+            "nullable": true
+          },
+          "packUom": {
+            "type": "string",
+            "nullable": true
+          },
+          "packQty": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "clearPack": {
+            "type": "boolean",
             "nullable": true
           }
         },
@@ -40922,6 +40957,19 @@
           },
           "isActive": {
             "type": "boolean"
+          },
+          "packUomCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "packUomName": {
+            "type": "string",
+            "nullable": true
+          },
+          "packQty": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
           }
         },
         "additionalProperties": false

@@ -161,6 +161,8 @@ internal sealed class WmsFixture : IAsyncDisposable
             L(LookupDomains.WarehouseTaskType, c);
         foreach (var c in new[] { DockTypes.Inbound, DockTypes.Outbound, DockTypes.Both }) L(LookupDomains.DockType, c);
         L(LookupDomains.UnitOfMeasure, "UN");
+        L(LookupDomains.UnitOfMeasure, "BOX");   // empaques (2026-10-09)
+        L(LookupDomains.UnitOfMeasure, "BARREL");
         L(LookupDomains.Country, "PR");
         L(LookupDomains.Country, "US");
         L(LookupDomains.Capability, Capabilities.EditPurchaseOrder);

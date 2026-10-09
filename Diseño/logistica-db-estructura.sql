@@ -1315,6 +1315,8 @@ GO
 -- Lote 6: ClientId = DUEÑO DEL INVENTARIO (cliente 3PL de dbo.Client; NULL = propio del tenant), distinto de TenantId (el
 -- dueño de los datos). FKs compuestas (Id, TenantId) contra Client, ProductCategory y Warehouse; la posición preferida con
 -- (Posición, Almacén). Seguimiento, UoM y dueño son inmutables tras el primer movimiento (regla de servicio, D25).
+-- 2026-10-09 — Empaque del producto (opcional, UNO por producto): PackUomLookupId (Entity='UnitOfMeasure': Caja, Barril, Paquete…) y PackQty =
+-- cuántas unidades BASE trae. Solo sirve para capturar y mostrar (calculadora del conteo, recibo…): el inventario sigue en unidad base. Ambos o ninguno.
 -- Lote 12 (Lote 2 del plan de cambios): Brand y Model = marca y modelo en texto libre (recortados; vacío = NULL). Guardado
 -- (IF OBJECT_ID / COL_LENGTH) para agregar las columnas a una base ya creada sin tocar sus datos.
 IF OBJECT_ID('dbo.Product') IS NULL
@@ -1359,6 +1361,16 @@ BEGIN
     IF COL_LENGTH('dbo.Product', 'Model') IS NULL
         ALTER TABLE dbo.Product ADD Model NVARCHAR(100) NULL;
 END
+GO
+
+-- 2026-10-09 — Empaque del producto (ver el comentario de arriba). Guardado con COL_LENGTH para una base ya creada.
+IF COL_LENGTH('dbo.Product', 'PackUomLookupId') IS NULL
+    ALTER TABLE dbo.Product ADD PackUomLookupId INT NULL CONSTRAINT FK_Product_PackUom REFERENCES dbo.LookupCode(LookupCodeId);   -- Entity='UnitOfMeasure'
+IF COL_LENGTH('dbo.Product', 'PackQty') IS NULL
+    ALTER TABLE dbo.Product ADD PackQty DECIMAL(16,3) NULL;   -- unidades base por empaque
+GO
+IF OBJECT_ID('dbo.CK_Product_Pack', 'C') IS NULL
+    ALTER TABLE dbo.Product ADD CONSTRAINT CK_Product_Pack CHECK ((PackUomLookupId IS NULL AND PackQty IS NULL) OR (PackUomLookupId IS NOT NULL AND PackQty > 0));
 GO
 
 -- Lote 6: código de barras único entre los productos activos del tenant (en su propio lote, solo si todavía no está).

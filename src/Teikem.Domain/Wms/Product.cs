@@ -32,6 +32,12 @@ public class Product : ITenantScoped, ISoftDeletable
     public string Name { get; set; } = string.Empty;
     public int? ProductCategoryId { get; set; }
     public int BaseUomLookupId { get; set; }
+    /// <summary>
+    /// 2026-10-09 — Empaque (opcional, UNO por producto): unidad de empaque (UnitOfMeasure: Caja, Barril, Paquete…) y cuántas unidades BASE trae.
+    /// Solo para capturar y mostrar (calculadora del conteo, recibo…): el inventario SIEMPRE está en unidad base. Ambos o ninguno (CK_Product_Pack).
+    /// </summary>
+    public int? PackUomLookupId { get; set; }
+    public decimal? PackQty { get; set; }
     public int TrackingTypeLookupId { get; set; }
     public decimal? WeightKg { get; set; }
     public decimal? VolumeM3 { get; set; }
