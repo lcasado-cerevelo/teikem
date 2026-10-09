@@ -176,7 +176,7 @@ function TransitionDialog({ target, onCancel, onConfirm }: TransitionDialogProps
   }
 
   return (
-    <div className="scrim on" onClick={(e) => e.target === e.currentTarget && !busy && onCancel()}>
+    <div className="scrim on">
       <div className="pal" role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <div className="pi">
           <strong id={titleId}>{t('status.confirmTitle', { status: target.label })}</strong>

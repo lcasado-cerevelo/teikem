@@ -14,7 +14,7 @@ export interface ModalProps {
   footer?: ReactNode
   /** 'sm' 440 px, 'md' 640 px (por defecto), 'lg' 880 px; siempre ≤ ancho de pantalla. */
   size?: 'sm' | 'md' | 'lg'
-  /** false = no se cierra con Escape ni con clic fuera (p. ej. mientras guarda). */
+  /** false = no se cierra con Escape ni con ✕ (p. ej. mientras guarda). El clic fuera nunca cierra. */
   dismissible?: boolean
   children?: ReactNode
 }
@@ -55,12 +55,8 @@ export function Modal({ open, title, onClose, footer, size = 'md', dismissible =
 
   if (!open) return null
   return createPortal(
-    <div
-      className="scrim on"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget && dismissible) onClose()
-      }}
-    >
+    // el clic fuera NO cierra (pedido del dueño 2026-10-09: tocar la barra de desplazamiento cerraba el modal); se cierra con ✕, Cancelar o Escape
+    <div className="scrim on">
       <div
         ref={boxRef}
         className={`pal kit-pal${size === 'md' ? '' : ` ${size}`}`}
