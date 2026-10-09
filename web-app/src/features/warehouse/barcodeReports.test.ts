@@ -40,7 +40,7 @@ describe('productos · agrupación y orden', () => {
     expect(groups[3].items.map((p) => p.sku)).toEqual(['X-1'])
   })
 
-  it('reporte: títulos con cantidad, el código lleva el SKU exacto (no el código de barras del producto), inactivo marcado', () => {
+  it('reporte: una sola lista corrida en el orden del filtro (sin títulos), el código lleva el SKU exacto (no el código de barras del producto), inactivo marcado', () => {
     const items = [product('GLU-100', 1, { barcode: '7501234567890', name: 'Medidor' }), product('OLD-1', null, { isActive: false })]
     const spec = buildProductBarcodeReport(items, true, {
       t,
@@ -52,9 +52,12 @@ describe('productos · agrupación y orden', () => {
     }, 2)
     expect(spec.title).toBe('Códigos de barras de productos')
     expect(spec.columns).toBe(2)
-    expect(spec.groups.map((g) => g.title)).toEqual(['Médico / Diabetes (1)', 'Sin categoría (1)'])
+    expect(spec.groups.map((g) => g.title)).toEqual([''])
     expect(spec.groups[0].rows[0]).toEqual({ value: 'GLU-100', title: 'GLU-100', description: 'Medidor', meta: null })
-    expect(spec.groups[1].rows[0].meta).toBe('Inactivo')
+    expect(spec.groups[0].rows[1].meta).toBe('Inactivo')
+    // el orden es el que devuelve el filtro, no SKU ni categoría
+    const reversed = buildProductBarcodeReport([product('Z-9', 2), product('A-1', 1), product('M-5', null)], false, { t, lang: 'es', company: 'x', user: 'y', filters: EMPTY_PRODUCT_FILTERS, names: { warehouses: new Map(), categories: PATHS } })
+    expect(reversed.groups[0].rows.map((r) => r.value)).toEqual(['Z-9', 'A-1', 'M-5'])
     // almacén sin la nota de cantidades (este reporte no tiene cantidades)
     expect(spec.filters).toEqual([
       { label: 'Almacén', value: 'ALM-01 · Principal' },

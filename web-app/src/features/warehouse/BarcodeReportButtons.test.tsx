@@ -86,7 +86,7 @@ describe('ProductBarcodeReportButton', () => {
     expect(screen.queryByRole('button', { name: 'Códigos de barras' })).toBeNull()
   })
 
-  it('lee todo lo filtrado y arma el reporte agrupado por categoría (ruta), SKU en orden natural, "Sin categoría" al final', async () => {
+  it('lee todo lo filtrado y arma el reporte corrido, sin agrupar, en el mismo orden en que el filtro devuelve los productos', async () => {
     const user = userEvent.setup()
     wrap(<ProductBarcodeReportButton filters={{ ...EMPTY_PRODUCT_FILTERS, name: 'sku' }} />)
     await user.click(screen.getByRole('button', { name: 'Códigos de barras' }))
@@ -97,10 +97,7 @@ describe('ProductBarcodeReportButton', () => {
     expect(read.searchParams.get('take')).toBe('200')
     const spec = lastSpec()
     expect(spec.columns).toBe('auto')
-    expect(spec.groups.map((g) => [g.title, g.rows.map((r) => r.value)])).toEqual([
-      ['Salud / Médico (2)', ['SKU-2', 'SKU-10']],
-      ['Sin categoría (1)', ['X-1']],
-    ])
+    expect(spec.groups.map((g) => [g.title, g.rows.map((r) => r.value)])).toEqual([['', ['SKU-10', 'SKU-2', 'X-1']]])
     expect(spec.filters).toEqual([{ label: 'Nombre', value: 'contiene «sku»' }])
   })
 
