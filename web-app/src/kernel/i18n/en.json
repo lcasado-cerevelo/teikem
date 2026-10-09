@@ -387,7 +387,8 @@
         "error": "The file could not be generated. Please try again.",
         "yes": "Yes",
         "no": "No"
-      }
+      },
+      "sortAllFailed": "Could not read the whole list to sort it. Only what is on screen is sorted."
     },
     "filters": {
       "label": "Filters",

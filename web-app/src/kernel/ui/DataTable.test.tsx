@@ -421,10 +421,12 @@ describe('DataTable: pie (rango, filas por página, exportar)', () => {
         exportRows={exportRows}
       />,
     )
+    // con orden local se lee toda la consulta para ordenar (5 filas): el total deja de ser el del servidor (551 de este mock)
+    await screen.findByText('1–2 de 5')
     await user.click(screen.getByRole('button', { name: 'Exportar' }))
-    expect(screen.getByText('Filas: 551')).toBeInTheDocument()
+    expect(screen.getByText('Filas: 5')).toBeInTheDocument()
     await user.click(screen.getByRole('menuitem', { name: 'CSV (.csv)' }))
-    expect(exportRows).toHaveBeenCalledTimes(1)
+    expect(exportRows).toHaveBeenCalledTimes(1) // la misma lectura sirve para ordenar y para exportar
     const rows = vi.mocked(exportTable).mock.calls[0][2] as Row[]
     expect(rows.map((r) => r.code)).toEqual(['A-2', 'A-10', 'B-02', 'C-01', 'D-07'])
   })
@@ -471,5 +473,26 @@ describe('DataTable · onSortChange', () => {
     expect(seen.at(-1)).toEqual({ id: 'code', desc: false })
     await user.click(screen.getByRole('button', { name: /Código/ }))
     expect(seen.at(-1)).toEqual({ id: 'code', desc: true })
+  })
+})
+
+describe('DataTable · ordenar todo lo filtrado (paginación del servidor)', () => {
+  it('al ordenar lee la consulta completa (exportRows) y ordena y pagina todo, no solo la página visible', async () => {
+    const user = userEvent.setup()
+    const PAGE1 = ROWS.slice(0, 2) // el servidor solo mandó 2 de 5
+    const exportRows = vi.fn(() => Promise.resolve({ items: ROWS, truncated: false }))
+    const onPage = vi.fn()
+    render(
+      <DataTable columns={COLUMNS} rows={PAGE1} rowKey={(r) => r.id} page={1} pageSize={2} total={5} onPage={onPage} exportRows={exportRows} />,
+    )
+    expect(codes()).toEqual(['B-02', 'A-10'])
+    await user.click(screen.getByRole('button', { name: /Código/ }))
+    // las 5 filas del filtro, ordenadas, en páginas de 2
+    expect(await screen.findByText('1–2 de 5')).toBeInTheDocument()
+    expect(codes()).toEqual(['A-2', 'A-10'])
+    await user.click(screen.getByRole('button', { name: 'Página siguiente' }))
+    expect(codes()).toEqual(['B-02', 'C-01'])
+    expect(onPage).not.toHaveBeenCalled()
+    expect(exportRows).toHaveBeenCalledTimes(1)
   })
 })

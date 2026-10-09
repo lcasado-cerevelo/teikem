@@ -191,7 +191,7 @@ describe('InventoryScreen · Saldos', () => {
     expect(last('/api/v1/products').searchParams.get('activeOnly')).not.toBe('true')
   })
 
-  it('las columnas se ordenan por encabezado (en el cliente, sobre la página visible) sin volver a pedir al API', async () => {
+  it('las columnas se ordenan por encabezado sobre TODO lo filtrado (lee la consulta completa al ordenar)', async () => {
     const user = userEvent.setup()
     wrap(<InventoryScreen />, BALANCES_URL)
     const header = await screen.findByRole('columnheader', { name: 'Disponible' })
@@ -200,10 +200,8 @@ describe('InventoryScreen · Saldos', () => {
     await user.click(within(header).getByRole('button'))
     await user.click(within(screen.getByRole('columnheader', { name: /Disponible/ })).getByRole('button'))
     expect(screen.getByRole('columnheader', { name: /Disponible/ })).toHaveAttribute('aria-sort', 'descending')
-    // la página 1 trae A-1…A-25: en descendente la primera fila es la de mayor disponible
-    const firstRow = screen.getAllByRole('row')[1]
-    expect(within(firstRow).getByText('A-25')).toBeInTheDocument()
-    expect(mock.requests.filter((u) => u.pathname === PATH).length).toBe(calls)
+    // al ordenar se lee el resto de la consulta (más peticiones que antes), no solo la página en pantalla
+    await waitFor(() => expect(mock.requests.filter((u) => u.pathname === PATH).length).toBeGreaterThan(calls))
   })
 })
 

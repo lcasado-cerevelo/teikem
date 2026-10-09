@@ -387,7 +387,8 @@
         "error": "No se pudo generar el archivo. Intente de nuevo.",
         "yes": "Sí",
         "no": "No"
-      }
+      },
+      "sortAllFailed": "No se pudo leer todo el listado para ordenarlo. Se ordena solo lo que se ve en pantalla."
     },
     "filters": {
       "label": "Filtros",
