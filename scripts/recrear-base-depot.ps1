@@ -58,7 +58,7 @@ try {
 
 # --- 2. Base DESTINO: cuál es y si es local ---
 # Sin -Conexion el API usa SU configuración de siempre (secretos de usuario "teikem-api", variable ConnectionStrings__Teikem o appsettings), igual
-# que recrear-base.ps1: el script NO la reemplaza, solo la lee para mostrarte a dónde va a borrar. Con -Conexion sí se usa esa cadena.
+# que recrear-base.ps1; el script la lee, la PRUEBA y usa esa misma. Si no entra, pide los datos a mano. Con -Conexion se usa esa cadena.
 Paso 'Revisando la base destino'
 $origenCadena = 'parámetro -Conexion'
 $cadena = $Conexion
@@ -99,18 +99,56 @@ Write-Host ("Destino (según {0}): servidor {1}, base {2}  ->  {3}" -f $origenCa
 if (-not $local -and -not $PermitirRemoto) {
     Fallar "La base destino NO es del equipo local. Si de verdad quiere borrarla y recrearla (deploy), repita con -PermitirRemoto. No se borró nada."
 }
-# Probar el acceso ANTES de borrar nada (un login fallido a mitad del db-reset deja la base a medias)
-try {
-    $prueba = New-Object System.Data.SqlClient.SqlConnectionStringBuilder $cadena
-    $prueba.InitialCatalog = 'master'; $prueba['Connect Timeout'] = 15
-    $cnPrueba = New-Object System.Data.SqlClient.SqlConnection $prueba.ConnectionString
-    $cnPrueba.Open(); $cnPrueba.Close()
-    Write-Host ("Acceso al servidor destino: OK (usuario {0})." -f $(if ($csb.IntegratedSecurity) { 'de Windows' } else { $csb.UserID })) -ForegroundColor Green
-} catch {
-    Fallar ("No pude entrar al servidor destino con esa cadena (según $origenCadena): $($_.Exception.Message)" + [Environment]::NewLine + "No se borró nada." + [Environment]::NewLine +
-            "Si es la base local, la cadena buena está en los secretos de usuario: revise 'dotnet user-secrets list --project $api'. Para otra, use -Conexion.")
+# Probar el acceso ANTES de borrar nada (un login fallido a mitad del db-reset deja la base a medias).
+# Devuelve $null si entra, o el mensaje de error. Entra a 'master' (la base destino puede no existir todavía).
+function Probar-Acceso([string]$cs) {
+    try {
+        $b = New-Object System.Data.SqlClient.SqlConnectionStringBuilder $cs
+        $b['Initial Catalog'] = 'master'
+        $b['Connect Timeout'] = 15
+        $c = New-Object System.Data.SqlClient.SqlConnection $b.ConnectionString
+        $c.Open(); $c.Close()
+        return $null
+    } catch { return $_.Exception.Message }
 }
-if ($Conexion) { $env:ConnectionStrings__Teikem = $Conexion }   # solo con -Conexion se reemplaza la configuración del API
+$fallo = Probar-Acceso $cadena
+if ($fallo) {
+    Write-Host ("No pude entrar al servidor destino con la cadena de {0}: {1}" -f $origenCadena, $fallo) -ForegroundColor Red
+    Write-Host 'Escriba los datos de acceso de la base DESTINO (SQL Server de este equipo o del servidor de producción). Enter vacío en el servidor = cancelar.' -ForegroundColor Yellow
+    $intentos = 0
+    while ($fallo -and $intentos -lt 3) {
+        $intentos++
+        $srv = Read-Host "Servidor [$servidor]"; if ([string]::IsNullOrWhiteSpace($srv)) { $srv = $servidor }
+        $bd = Read-Host "Base de datos [$base]"; if ([string]::IsNullOrWhiteSpace($bd)) { $bd = $base }
+        $modo = Read-Host 'Autenticación: 1 = Windows (su usuario), 2 = usuario de SQL Server [2]'
+        if ($modo -eq '1') { $auth = 'Integrated Security=True' }
+        else {
+            $usr = Read-Host 'Usuario de SQL Server [sa]'; if ([string]::IsNullOrWhiteSpace($usr)) { $usr = 'sa' }
+            $seg = Read-Host 'Contraseña' -AsSecureString
+            $pw = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($seg))
+            $auth = "User Id=$usr;Password=$pw"
+        }
+        $cadena = "Server=$srv;Database=$bd;$auth;TrustServerCertificate=True;Encrypt=True;MultipleActiveResultSets=True"
+        $origenCadena = 'lo que escribió'
+        $fallo = Probar-Acceso $cadena
+        if ($fallo) { Write-Host "  No entró: $fallo" -ForegroundColor Red }
+    }
+    if ($fallo) { Fallar 'No pude entrar al servidor destino. No se borró nada.' }
+    $csb = New-Object System.Data.SqlClient.SqlConnectionStringBuilder $cadena
+    $servidor = $csb.DataSource; $base = $csb.InitialCatalog
+    $host_ = $servidor.Trim(); if ($host_ -like 'tcp:*') { $host_ = $host_.Substring(4) }
+    if ($host_ -like '(localdb)*') { $local = $true } else {
+        $corte = $host_.IndexOfAny(@(',', '\')); if ($corte -ge 0) { $host_ = $host_.Substring(0, $corte) }
+        $local = @('localhost', '127.0.0.1', '(local)', '.', '::1', '[::1]') -contains $host_.Trim().ToLowerInvariant()
+    }
+    if ($base.Trim().StartsWith('MSWM', 'OrdinalIgnoreCase')) { Fallar "La base destino '$base' es del WMS heredado (MSWM*): jamás se borra desde aquí." }
+    if (-not $local -and -not $PermitirRemoto) { Fallar 'La base destino NO es del equipo local. Repita con -PermitirRemoto si de verdad quiere recrearla. No se borró nada.' }
+    $Conexion = $cadena   # la que funcionó reemplaza la configuración del API en este proceso
+    Write-Host ("Destino: servidor {0}, base {1}  ->  {2}" -f $servidor, $base, $(if ($local) { 'LOCAL' } else { 'REMOTO' })) -ForegroundColor Yellow
+}
+Write-Host ("Acceso al servidor destino: OK (usuario {0})." -f $(if ($csb.IntegratedSecurity) { 'de Windows' } else { $csb.UserID })) -ForegroundColor Green
+# Lo que se PROBÓ es exactamente lo que usa el API (db-reset e import-legacy): así no puede haber diferencia entre las dos.
+$env:ConnectionStrings__Teikem = $cadena
 # Solo Depot: sin la demo Advance Logistics (ni su almacén, usuarios de prueba y administrador de plataforma de la demo)
 $env:Seed__Demo__Enabled = 'false'
 
