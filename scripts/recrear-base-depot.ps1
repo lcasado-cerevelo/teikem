@@ -9,7 +9,7 @@
     powershell -ExecutionPolicy Bypass -File "F:\Visual Studio 2022\Projects\teikem\scripts\recrear-base-depot.ps1"
   Opciones:
     -Carpeta <ruta>      carpeta con los 3 CSV de Depot (por defecto F:\Download\TeikemMigracion)
-    -Conexion <cadena>   cadena de conexión de la base DESTINO (Teikem). Sin ella se usa la de ConnectionStrings__Teikem o la de appsettings.
+    -Conexion <cadena>   cadena de conexión de la base DESTINO (Teikem). Sin ella se usa la configuración de siempre del API (secretos de usuario, variable ConnectionStrings__Teikem o appsettings).
                          Para el servidor de producción:
                          "Server=IP,1433;Database=Teikem;User Id=USUARIO;Password=CLAVE;TrustServerCertificate=True;Encrypt=True;MultipleActiveResultSets=True"
     -PermitirRemoto      obligatorio si la base destino NO es del equipo local (el API se niega a borrar bases remotas sin esto)
@@ -57,10 +57,23 @@ try {
 }
 
 # --- 2. Base DESTINO: cuál es y si es local ---
+# Sin -Conexion el API usa SU configuración de siempre (secretos de usuario "teikem-api", variable ConnectionStrings__Teikem o appsettings), igual
+# que recrear-base.ps1: el script NO la reemplaza, solo la lee para mostrarte a dónde va a borrar. Con -Conexion sí se usa esa cadena.
 Paso 'Revisando la base destino'
 $origenCadena = 'parámetro -Conexion'
 $cadena = $Conexion
-if (-not $cadena -and $env:ConnectionStrings__Teikem) { $cadena = $env:ConnectionStrings__Teikem; $origenCadena = 'variable ConnectionStrings__Teikem' }
+if (-not $cadena) {
+    foreach ($ambito in 'Process', 'User', 'Machine') {
+        $v = [Environment]::GetEnvironmentVariable('ConnectionStrings__Teikem', $ambito)
+        if ($v) { $cadena = $v; $origenCadena = "variable de entorno ConnectionStrings__Teikem ($ambito)"; break }
+    }
+}
+if (-not $cadena) {
+    try {
+        $secretos = & dotnet user-secrets list --project $api 2>$null
+        foreach ($linea in $secretos) { if ($linea -match '^ConnectionStrings:Teikem\s*=\s*(.+)$') { $cadena = $Matches[1].Trim(); $origenCadena = 'secretos de usuario (teikem-api)' } }
+    } catch { }
+}
 if (-not $cadena) {
     $origenCadena = 'appsettings'
     foreach ($archivo in 'appsettings.json', 'appsettings.Development.json') {
@@ -86,7 +99,18 @@ Write-Host ("Destino (según {0}): servidor {1}, base {2}  ->  {3}" -f $origenCa
 if (-not $local -and -not $PermitirRemoto) {
     Fallar "La base destino NO es del equipo local. Si de verdad quiere borrarla y recrearla (deploy), repita con -PermitirRemoto. No se borró nada."
 }
-$env:ConnectionStrings__Teikem = $cadena   # el API (db-reset / import-legacy) usa esta misma cadena
+# Probar el acceso ANTES de borrar nada (un login fallido a mitad del db-reset deja la base a medias)
+try {
+    $prueba = New-Object System.Data.SqlClient.SqlConnectionStringBuilder $cadena
+    $prueba.InitialCatalog = 'master'; $prueba['Connect Timeout'] = 15
+    $cnPrueba = New-Object System.Data.SqlClient.SqlConnection $prueba.ConnectionString
+    $cnPrueba.Open(); $cnPrueba.Close()
+    Write-Host ("Acceso al servidor destino: OK (usuario {0})." -f $(if ($csb.IntegratedSecurity) { 'de Windows' } else { $csb.UserID })) -ForegroundColor Green
+} catch {
+    Fallar ("No pude entrar al servidor destino con esa cadena (según $origenCadena): $($_.Exception.Message)" + [Environment]::NewLine + "No se borró nada." + [Environment]::NewLine +
+            "Si es la base local, la cadena buena está en los secretos de usuario: revise 'dotnet user-secrets list --project $api'. Para otra, use -Conexion.")
+}
+if ($Conexion) { $env:ConnectionStrings__Teikem = $Conexion }   # solo con -Conexion se reemplaza la configuración del API
 # Solo Depot: sin la demo Advance Logistics (ni su almacén, usuarios de prueba y administrador de plataforma de la demo)
 $env:Seed__Demo__Enabled = 'false'
 

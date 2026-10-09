@@ -104,7 +104,7 @@ powershell -ExecutionPolicy Bypass -File "F:\Visual Studio 2022\Projects\teikem\
 | Opción | Para qué |
 |---|---|
 | `-Carpeta "D:\otra"` | Carpeta de los **3** CSV de Depot (`Depot Products.csv`, `Depot Customers.csv`, `Depot Vendor.csv`); los de Solutions no hacen falta. |
-| `-Conexion "Server=IP,1433;Database=Teikem;User Id=…;Password=…;TrustServerCertificate=True;Encrypt=True;MultipleActiveResultSets=True"` | Base **destino** (la del servidor de producción). Sin ella usa `ConnectionStrings__Teikem` o la de `appsettings`. |
+| `-Conexion "Server=IP,1433;Database=Teikem;User Id=…;Password=…;TrustServerCertificate=True;Encrypt=True;MultipleActiveResultSets=True"` | Base **destino** (la del servidor de producción). Sin ella el API usa **su configuración de siempre** (secretos de usuario `teikem-api`, variable `ConnectionStrings__Teikem` o `appsettings`); el script solo la lee para mostrarle a dónde va a borrar y **prueba el acceso antes de borrar**. |
 | `-PermitirRemoto` | Obligatorio si la base destino no es de este equipo (el API se niega a borrar una base remota sin ello). |
 | `-SinConfirmar` | No pregunta. Sin este switch, en una base **remota** hay que escribir el nombre de la base; en una local, `RECREAR`. |
 
