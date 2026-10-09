@@ -17,7 +17,7 @@ import {
   type SortingState,
   type Updater,
 } from '@tanstack/react-table'
-import { useMemo, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from 'react'
 import type { FetchAllResult } from '../api/fetchAllPages'
 import { useAccess } from '../access/accessContext'
 import { formatQuantity } from '../i18n/numberFormat'
@@ -98,6 +98,8 @@ export interface DataTableProps<T extends RowData> {
   onSort?: (sort: SortState | null) => void
   /** Orden inicial cuando el orden es local. */
   defaultSort?: SortState | null
+  /** Avisa el orden local cada vez que cambia (para que otra parte de la pantalla, p. ej. un reporte, use el mismo orden). */
+  onSortChange?: (sort: SortState | null) => void
   /** Página actual (base 1). Con `onPage` la paginación es del servidor y `total` es obligatorio. */
   page?: number
   /** Filas por página. Servidor: el tamaño que pidió la pantalla. Local: el tamaño inicial (por defecto 25). */
@@ -175,7 +177,7 @@ function compareValues(x: string | number, y: string | number): number {
 }
 
 /** Orden local de filas fuera del modelo de la tabla (exportación con `exportRows`): mismo criterio, vacíos al final. */
-function sortRows<T>(rows: readonly T[], col: DataColumn<T> | undefined, desc: boolean): readonly T[] {
+export function sortRows<T>(rows: readonly T[], col: DataColumn<T> | undefined, desc: boolean): readonly T[] {
   const get = col?.sortValue
   if (!get) return rows
   return rows
@@ -220,6 +222,10 @@ export function DataTable<T extends RowData>(props: DataTableProps<T>) {
   // ----- orden: del servidor (controlado con onSort) o local -----
   const [localSort, setLocalSort] = useState<SortState | null>(props.defaultSort ?? null)
   const serverSort = onSort !== undefined
+  const onSortChange = props.onSortChange
+  useEffect(() => {
+    onSortChange?.(localSort)
+  }, [localSort, onSortChange])
   const sort = serverSort ? (props.sort ?? null) : localSort
   const sorting = useMemo<SortingState>(() => (sort ? [{ id: sort.id, desc: sort.desc }] : []), [sort])
 

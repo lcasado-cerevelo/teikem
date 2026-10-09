@@ -15,7 +15,7 @@
 //   Total, Rastreo, Estado. Exportar = todo lo filtrado. Clic en una fila = "Editar producto" (ProductEditorModal).
 // Lectura: inventory.view + WMS_LOTSERIAL (aplicado por la ruta).
 import { packLabel, splitByPack } from './quantityCalc'
-import { useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Can, useCan } from '../../kernel/access'
 import { useLookups } from '../../kernel/catalogs'
@@ -32,6 +32,7 @@ import {
   warehouseLabel,
   type ProductListItemDto,
 } from './api'
+import { sortRows, type SortState } from '../../kernel/ui/DataTable'
 import { ProductBarcodeReportButton } from './BarcodeReportButtons'
 import { TextFilter } from './filterControls'
 import { AdjustmentsReportButton, InventoryReportButton } from './InventoryReportButtons'
@@ -308,6 +309,13 @@ function ProductsTab() {
     ]
   }, [t, lang, trackingLabel])
 
+  // orden que el usuario elige en la tabla (clic en un encabezado): el informe de códigos de barras sale en ese mismo orden
+  const [tableSort, setTableSort] = useState<SortState | null>(null)
+  const sortItems = useCallback(
+    (items: readonly ProductListItemDto[]) => (tableSort ? sortRows(items, columns.find((c) => c.id === tableSort.id), tableSort.desc) : items),
+    [tableSort, columns],
+  )
+
   return (
     <>
       <div className="head">
@@ -319,7 +327,7 @@ function ProductsTab() {
           <InventoryReportButton filters={filters} />
           <AdjustmentsReportButton filters={filters} />
           {/* Lote F14: un código de barras por SKU de lo filtrado, para imprimir y escanear el papel en el conteo */}
-          <ProductBarcodeReportButton filters={filters} />
+          <ProductBarcodeReportButton filters={filters} sortItems={sortItems} />
           {/* 2026-10-09: una etiqueta por producto (4 × 2, 4 × 4, 4 × 6) para impresora de etiquetas, solo la etiqueta */}
           <ProductLabelsButton filters={filters} />
           <Can perm="inventory.manage">
@@ -374,6 +382,7 @@ function ProductsTab() {
               setPageSize(size)
               setPage(1)
             }}
+            onSortChange={setTableSort}
             exportRows={() => exportProducts(baseQuery)}
             onRowClick={(p) => setEditingPublicId(p.publicId ?? null)}
             rowClassName={(p) => (p.isActive === false ? 'dim' : undefined)}

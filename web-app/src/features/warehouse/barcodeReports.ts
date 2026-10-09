@@ -103,8 +103,15 @@ export function buildProductBarcodeReport(
 }
 
 /** Lee todos los productos que filtra la tabla y descarga el PDF de códigos. */
-export async function generateProductBarcodeReport(ctx: ProductReportContext, columns: BarcodeColumnsOption = 'auto'): Promise<void> {
-  const { items, truncated } = await exportProducts(productListQuery(ctx.filters))
+export async function generateProductBarcodeReport(
+  ctx: ProductReportContext,
+  columns: BarcodeColumnsOption = 'auto',
+  /** Orden de la tabla (clic en un encabezado) aplicado a todo lo leído; sin él, el orden del filtro. */
+  sortItems?: (items: readonly ProductListItemDto[]) => readonly ProductListItemDto[],
+): Promise<void> {
+  const read = await exportProducts(productListQuery(ctx.filters))
+  const items = sortItems ? sortItems(read.items) : read.items
+  const truncated = read.truncated
   await downloadBarcodeReportPdf(buildProductBarcodeReport(items, truncated, { ...ctx, generatedAt: ctx.generatedAt ?? new Date() }, columns))
 }
 
