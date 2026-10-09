@@ -122,3 +122,9 @@ Qué NO trae esta base: la demo Advance Logistics, el almacén ALM-01, los usuar
 Orden recomendado en el deploy: 1) instalar con `deploy\windows\instalar.ps1` (o el paquete que use) para crear el sitio y la configuración;
 2) con el API detenido, correr este script apuntando a la base de producción (`-Conexion … -PermitirRemoto`); 3) arrancar el API;
 4) registrar el aparato y asignar los PIN.
+
+## Administrador de plataforma (soporte)
+
+El script marca al administrador de Depot (`teikem+admin@cerevelo.com`) también como **administrador de plataforma** (variable
+`TEIKEM_IMPORT_ADMIN_PLATFORM=1` durante la migración): puede operar cualquier compañía. No se crea un usuario `support` aparte (ese solo lo
+siembra la demo). Para otras migraciones, ponga la misma variable antes de `import-legacy`.

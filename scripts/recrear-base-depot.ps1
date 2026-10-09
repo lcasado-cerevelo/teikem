@@ -188,6 +188,9 @@ if (-not $env:TEIKEM_IMPORT_ADMIN_PASSWORD) {
     else { Write-Host 'Sin contraseña: entrará con "¿Olvidó su contraseña?" (requiere el correo configurado en el servidor).' -ForegroundColor Yellow }
 }
 
+# El administrador de Depot también es administrador de plataforma (soporte): opera cualquier compañía.
+$env:TEIKEM_IMPORT_ADMIN_PLATFORM = '1'
+
 # --- 6. Confirmación ---
 if (-not $SinConfirmar) {
     Write-Host ''
@@ -216,6 +219,7 @@ $resetArgs = @('db-reset', '--yes'); if (-not $local) { $resetArgs += '--allow-r
 if ((Correr 'Recreando la base (db-reset, sin demo)' $resetArgs) -ne 0) { Fallar "db-reset falló; revisa $log" }
 $depot = Correr 'Migrando Advance Depot (QuickBooks + MSWM de producción)' @('import-legacy', $config)
 Remove-Item Env:\TEIKEM_IMPORT_ADMIN_PASSWORD -ErrorAction SilentlyContinue
+Remove-Item Env:\TEIKEM_IMPORT_ADMIN_PLATFORM -ErrorAction SilentlyContinue
 if ($tmp) { Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue }
 
 # --- 8. Verificación de lo que quedó en la base ---

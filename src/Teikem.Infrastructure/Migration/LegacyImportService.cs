@@ -843,6 +843,19 @@ public sealed class LegacyImportService(
         report.CountRead(LegacyImportEntities.Company);
         var (tenantId, adminUserId, readDb, alreadyExisted) = await ResolveCompanyAsync(cfg, dryRun, report, ct);
         if (tenantId is null && !dryRun) return report; // no se pudo aprovisionar: rechazo grave ya anotado
+        if (!dryRun && cfg.Company.AdminIsPlatformAdmin && adminUserId is int platformAdminId)
+        {
+            using (tc.BypassTenantFilter())
+            {
+                var adminUser = await db.Users.FirstOrDefaultAsync(u => u.Id == platformAdminId, ct);
+                if (adminUser is not null && !adminUser.IsPlatformAdmin)
+                {
+                    adminUser.IsPlatformAdmin = true;
+                    await db.SaveChangesAsync(ct);
+                }
+            }
+            report.AddInfo("Administrador de plataforma", cfg.Company.AdminEmail!.Trim());
+        }
 
         var state = new RunState { DryRun = dryRun, ReadDb = readDb && tenantId is not null, CatalogReadable = readDb, Update = update, CompanyAlreadyExisted = alreadyExisted };
         tc.IsPlatformAdmin = true;

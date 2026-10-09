@@ -70,6 +70,9 @@ public sealed class LegacyImportRunner(IServiceScopeFactory scopes, ILogger<Lega
     /// <summary>Variable de entorno con la contraseña inicial del administrador de la compañía (opcional).</summary>
     public const string AdminPasswordVariable = "TEIKEM_IMPORT_ADMIN_PASSWORD";
 
+    /// <summary>Variable de entorno (= 1) para que el administrador de la compañía sea también administrador de plataforma.</summary>
+    public const string AdminPlatformVariable = "TEIKEM_IMPORT_ADMIN_PLATFORM";
+
     public async Task<int> RunAsync(string[] args, CancellationToken ct = default)
     {
         // La consola de Windows no usa UTF-8 por defecto: sin esto los acentos del resumen salen ilegibles.
@@ -90,6 +93,7 @@ public sealed class LegacyImportRunner(IServiceScopeFactory scopes, ILogger<Lega
             // la contraseña inicial del administrador no va en el JSON: viene de la variable de entorno (si no, se genera una temporal)
             var envPassword = Environment.GetEnvironmentVariable(AdminPasswordVariable);
             if (!string.IsNullOrWhiteSpace(envPassword) && string.IsNullOrWhiteSpace(cfg.Company.AdminPassword)) cfg.Company.AdminPassword = envPassword;
+            if (Environment.GetEnvironmentVariable(AdminPlatformVariable) is "1" or "true") cfg.Company.AdminIsPlatformAdmin = true;
         }
         catch (ValidationException ex)
         {

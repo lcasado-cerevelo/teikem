@@ -193,6 +193,11 @@ public sealed class LegacyCompanyConfig
     /// El usuario igual pasa por el primer ingreso y debe cambiarla.
     /// </summary>
     public string? AdminPassword { get; set; }
+    /// <summary>
+    /// El administrador de la compañía también es administrador de plataforma (soporte Teikem: opera cualquier compañía). No se escribe en el
+    /// JSON: el verbo lo toma de la variable de entorno <c>TEIKEM_IMPORT_ADMIN_PLATFORM</c> (= 1; la pone scripts\recrear-base-depot.ps1).
+    /// </summary>
+    public bool AdminIsPlatformAdmin { get; set; }
 }
 
 /// <summary>Archivos fuente de QuickBooks y, opcionalmente, la base MSWM del WMS.</summary>
