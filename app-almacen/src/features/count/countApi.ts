@@ -90,11 +90,11 @@ function toStarted(detail: DetailDto): StartedCount {
   }
 }
 
-/** Abre el conteo de esa posición; si ya hay uno abierto ahí lo RETOMA (resumeOpen) con lo que ya se contó. Si lo tiene otro contador, el servidor
+/** Abre el conteo de esa posición (aunque el sistema crea que está vacía: allowEmpty, para agregar lo que se encuentre); si ya hay uno abierto ahí lo RETOMA (resumeOpen) con lo que ya se contó. Si lo tiene otro contador, el servidor
  *  responde 409 «Esa posición la está contando X (CC-…).». */
 export async function startCountOnline(warehousePublicId: string, binId: number): Promise<StartedCount> {
   const detail = await unwrap(
-    api.POST('/api/v1/cycle-counts', { params: { query: { forCounting: true } }, body: { warehousePublicId, binIds: [binId], assignToMe: true, resumeOpen: true } }),
+    api.POST('/api/v1/cycle-counts', { params: { query: { forCounting: true } }, body: { warehousePublicId, binIds: [binId], assignToMe: true, resumeOpen: true, allowEmpty: true } }),
   )
   return toStarted(detail)
 }

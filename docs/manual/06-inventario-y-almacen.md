@@ -1665,7 +1665,7 @@ Módulo **WMS_LOTSERIAL**.
 **Abrir un conteo vacío.** `POST /api/v1/cycle-counts` con `{ "warehousePublicId": …, "allowEmpty": true }` y **sin productos, posiciones, zonas ni
 categorías** crea un conteo `OPEN` de origen `PRODUCT` **sin líneas** (no es "todo el almacén") y su tarea COUNT. Con **un** producto y `allowEmpty`
 funciona como antes (Lote 21, adenda). Con más de un producto, o con otros filtros, es 400 `allowEmpty`:
-`Crear un conteo vacío (allowEmpty) solo aplica a uno o ningún producto, sin posiciones, zonas ni categorías.`
+`Crear un conteo vacío (allowEmpty) solo aplica a uno o ningún producto, o a una sola posición, sin otras posiciones, zonas ni categorías.`
 
 **Dónde está el producto.** `GET /api/v1/cycle-counts/{id}/product-bins?productPublicId=…` (`warehouse.count.capture`) devuelve una fila por
 **posición y lote con existencia** en una posición activa del almacén del conteo: `binId`, `binCode`, `zoneCode`, `lotId`, `lotNumber` y `lineId` (la
