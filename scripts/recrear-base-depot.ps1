@@ -1,4 +1,5 @@
 ﻿<#
+  *** PROHIBIDO FUERA DE DESARROLLO: borra la base. Producción desde 2026-10-09; allá solo db-update con Diseño/cambios. ***
   Recrea la base de Teikem SOLO con Advance Depot (sin Solutions, sin la demo Advance Logistics) para el deploy:
     - Advance Depot: QuickBooks (3 CSV de Depot) + inventario del WMS MSWM de PRODUCCIÓN (variable ConnectionStrings__LegacyMswm;
       hoy 172.31.40.124\sqlexpress, almacén 'Main'). Del MSWM solo se LEE (ApplicationIntent=ReadOnly).
@@ -12,7 +13,7 @@
     -Conexion <cadena>   cadena de conexión de la base DESTINO (Teikem). Sin ella se usa la configuración de siempre del API (secretos de usuario, variable ConnectionStrings__Teikem o appsettings).
                          Para el servidor de producción:
                          "Server=IP,1433;Database=Teikem;User Id=USUARIO;Password=CLAVE;TrustServerCertificate=True;Encrypt=True;MultipleActiveResultSets=True"
-    -PermitirRemoto      obligatorio si la base destino NO es del equipo local (el API se niega a borrar bases remotas sin esto)
+    -PermitirRemoto      YA NO SE ACEPTA: la base destino debe ser LOCAL (prohibido recrear producción)
     -SinConfirmar        no pregunta antes de borrar (en una base remota igual hay que escribir el nombre de la base si NO se usa este switch)
   Contraseña del administrador de Depot (teikem+admin@cerevelo.com): el script la pide (no se escribe en ningún archivo). Si la deja
   vacía se genera una temporal que no se muestra y hay que usar "¿Olvidó su contraseña?" (necesita el correo configurado).
@@ -25,6 +26,15 @@ param(
     [switch]$PermitirRemoto,
     [switch]$SinConfirmar
 )
+
+# === PROHIBIDO FUERA DE DESARROLLO (producción desde 2026-10-09) ===
+# Este script BORRA la base. Solo se corre en la máquina de desarrollo contra una base LOCAL. Jamás en producción, staging ni un servidor remoto:
+# allá los cambios de base van en Diseño/cambios/NNNN-*.sql y se aplican con db-update (instalador).
+if ($env:ASPNETCORE_ENVIRONMENT -and $env:ASPNETCORE_ENVIRONMENT -ne 'Development') {
+    Write-Host 'PROHIBIDO: este script solo corre en desarrollo (ASPNETCORE_ENVIRONMENT debe ser Development). No se borró nada.' -ForegroundColor Red
+    exit 2
+}
+$env:ASPNETCORE_ENVIRONMENT = 'Development'
 
 $ErrorActionPreference = 'Continue'
 $repo = Split-Path -Parent $PSScriptRoot
@@ -96,8 +106,8 @@ if ($host_ -like '(localdb)*') { $local = $true } else {
     $local = @('localhost', '127.0.0.1', '(local)', '.', '::1', '[::1]') -contains $host_.Trim().ToLowerInvariant()
 }
 Write-Host ("Destino (según {0}): servidor {1}, base {2}  ->  {3}" -f $origenCadena, $servidor, $base, $(if ($local) { 'LOCAL' } else { 'REMOTO' })) -ForegroundColor Yellow
-if (-not $local -and -not $PermitirRemoto) {
-    Fallar "La base destino NO es del equipo local. Si de verdad quiere borrarla y recrearla (deploy), repita con -PermitirRemoto. No se borró nada."
+if (-not $local) {
+    Fallar "PROHIBIDO: la base destino NO es del equipo local. Recrear la base solo se permite en desarrollo, jamás en producción. No se borró nada."
 }
 # Probar el acceso ANTES de borrar nada (un login fallido a mitad del db-reset deja la base a medias).
 # Devuelve $null si entra, o el mensaje de error. Entra a 'master' (la base destino puede no existir todavía).
@@ -142,7 +152,7 @@ if ($fallo) {
         $local = @('localhost', '127.0.0.1', '(local)', '.', '::1', '[::1]') -contains $host_.Trim().ToLowerInvariant()
     }
     if ($base.Trim().StartsWith('MSWM', 'OrdinalIgnoreCase')) { Fallar "La base destino '$base' es del WMS heredado (MSWM*): jamás se borra desde aquí." }
-    if (-not $local -and -not $PermitirRemoto) { Fallar 'La base destino NO es del equipo local. Repita con -PermitirRemoto si de verdad quiere recrearla. No se borró nada.' }
+    if (-not $local) { Fallar 'PROHIBIDO: la base destino NO es del equipo local. Solo se recrea en desarrollo. No se borró nada.' }
     $Conexion = $cadena   # la que funcionó reemplaza la configuración del API en este proceso
     Write-Host ("Destino: servidor {0}, base {1}  ->  {2}" -f $servidor, $base, $(if ($local) { 'LOCAL' } else { 'REMOTO' })) -ForegroundColor Yellow
 }
@@ -215,7 +225,7 @@ Paso 'Compilando el API'
 & dotnet build $api -nologo -v q
 if ($LASTEXITCODE -ne 0) { Fallar 'No compiló. No se borró nada.' }
 
-$resetArgs = @('db-reset', '--yes'); if (-not $local) { $resetArgs += '--allow-remote' }
+$resetArgs = @('db-reset', '--yes')
 if ((Correr 'Recreando la base (db-reset, sin demo)' $resetArgs) -ne 0) { Fallar "db-reset falló; revisa $log" }
 $depot = Correr 'Migrando Advance Depot (QuickBooks + MSWM de producción)' @('import-legacy', $config)
 Remove-Item Env:\TEIKEM_IMPORT_ADMIN_PASSWORD -ErrorAction SilentlyContinue

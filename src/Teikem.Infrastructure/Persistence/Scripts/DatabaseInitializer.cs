@@ -10,7 +10,10 @@ namespace Teikem.Infrastructure.Persistence.Scripts;
 /// y hay UN SOLO set de scripts):
 ///   1. Diseño/logistica-db-estructura.sql            (estructura completa, incl. Identity; se aplica una sola vez por hash)
 ///   2. Diseño/logistica-db-seed.sql                  (seed idempotente)
-///   3. Seeders de código: permisos (siempre) y tenant demo (opcional).
+///   3. Diseño/cambios/NNNN-*.sql                     (cambios posteriores, idempotentes, en orden de nombre; se aplican una vez por hash)
+///   4. Seeders de código: permisos (siempre) y tenant demo (opcional).
+/// CONGELADOS desde la puesta en producción (2026-10-09): los scripts 1 y 2 NO se editan jamás (los protege FrozenSqlTests); todo cambio
+/// de estructura o de datos va en un archivo nuevo de Diseño/cambios (ver Diseño/cambios/README.md).
 /// </summary>
 public sealed class DatabaseInitializer(IServiceProvider services, IConfiguration config, ILogger<DatabaseInitializer> logger)
 {
@@ -30,9 +33,24 @@ public sealed class DatabaseInitializer(IServiceProvider services, IConfiguratio
             new("logistica-db-estructura.sql", Path.Combine(designDir, "logistica-db-estructura.sql")),
             new("logistica-db-seed.sql", Path.Combine(designDir, "logistica-db-seed.sql")),
         };
+        scripts.AddRange(ChangeScripts(designDir));
         await runner.ApplyAsync(scripts, ct);
         await RunCodeSeedersAsync(ct);
         logger.LogInformation("Inicialización de BD completada.");
+    }
+
+    /// <summary>
+    /// Cambios posteriores a la puesta en producción: Diseño/cambios/*.sql en orden de nombre (0001-…, 0002-…). Cada uno es idempotente
+    /// (se puede correr dos veces sin daño) y el runner lo aplica una sola vez por hash.
+    /// </summary>
+    public static IReadOnlyList<SqlScript> ChangeScripts(string designDir)
+    {
+        var dir = Path.Combine(designDir, "cambios");
+        if (!Directory.Exists(dir)) return [];
+        return Directory.GetFiles(dir, "*.sql")
+            .OrderBy(f => Path.GetFileName(f), StringComparer.Ordinal)
+            .Select(f => new SqlScript("cambios/" + Path.GetFileName(f), f))
+            .ToList();
     }
 
     private async Task RunCodeSeedersAsync(CancellationToken ct)
@@ -87,7 +105,7 @@ public sealed class DatabaseInitializer(IServiceProvider services, IConfiguratio
 
         if (plan.Changes.Count > 0) await sync.ApplyAsync(plan.Changes, ct);
         await runner.MarkAppliedAsync(structure, ct);
-        await runner.ApplyAsync([seed], ct);
+        await runner.ApplyAsync([seed, .. ChangeScripts(designDir)], ct);
         await RunCodeSeedersAsync(ct);
         Console.WriteLine(plan.Warnings.Count > 0
             ? "db-update: terminado, con diferencias que debe revisar a mano (arriba)."

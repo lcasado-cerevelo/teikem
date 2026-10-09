@@ -1,3 +1,9 @@
+/* ****************************************************************************
+   *** ARCHIVO CONGELADO — EN PRODUCCIÓN DESDE 2026-10-09 — NO EDITAR JAMÁS ***
+   Cualquier cambio de estructura o de datos va en un archivo NUEVO e idempotente en
+   Diseño/cambios/NNNN-descripcion.sql (ver Diseño/cambios/README.md). La prueba
+   FrozenSqlTests falla si este archivo cambia.
+   **************************************************************************** */
 /* ============================================================================
    PLATAFORMA DE LOGÍSTICA — ESTRUCTURA DE BASE DE DATOS (UNIFICADA)
    SQL Server / compatible con EF Core (.NET 8)

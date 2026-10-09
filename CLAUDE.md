@@ -1,5 +1,10 @@
 # Teikem — reglas del proyecto (las hereda todo agente)
 
+> ## ⛔ EN PRODUCCIÓN DESDE 2026-10-09
+> - **`Diseño/logistica-db-estructura.sql` y `Diseño/logistica-db-seed.sql` están CONGELADOS: no se editan, jamás.** Un cambio de estructura **o de datos** va en un archivo **nuevo e idempotente** en `Diseño/cambios/NNNN-descripcion.sql` (ver [Diseño/cambios/README.md](Diseño/cambios/README.md)). `FrozenSqlTests` falla si se tocan.
+> - **Recrear la base (`db-reset`, `scripts/recrear-base*.ps1`) está PROHIBIDO fuera de desarrollo.** En producción solo `db-update` (con simulación y respaldo).
+> - La rama `Depot-Implementation` guarda el estado de la puesta en producción de Advance Depot, para dar soporte a su operación.
+
 Plataforma de logística multi-tenant. Backend .NET 8 (ASP.NET Core + EF Core 8 + SQL Server). La referencia única de
 funcionalidad es `Diseño/logistica-funcionalidades-maestro.md`; el esquema vive en `Diseño/logistica-db-estructura.sql`
 y `Diseño/logistica-db-seed.sql`. Se construye por lotes (ver `docs/lote1-decisiones.md` para el formato de cierre de un lote).
@@ -17,9 +22,15 @@ y `Diseño/logistica-db-seed.sql`. Se construye por lotes (ver `docs/lote1-decis
 - **Auditoría automática**: entidades con `[AuditEntity("CODIGO_ENTITYTYPE")]` generan `AuditLog` desde el interceptor.
   Secretos con `[SensitiveData]`; timestamps técnicos con `[NotAudited]`. Eventos de acceso van a `ISecurityEventWriter`.
 - **Soft delete (`IsActive = 0`), nunca DELETE** de registros con historial. PK `INT IDENTITY` + `PublicId` para exposición externa.
-- **Un solo set de scripts SQL**: un lote que necesite tablas o columnas nuevas edita `Diseño/logistica-db-estructura.sql`
-  (respetando el orden de FKs por capas) y `Diseño/logistica-db-seed.sql` (MERGE idempotente). Nada de migraciones EF ni
-  scripts adicionales. Las entidades se mapean 1:1 en `src/Teikem.Infrastructure/Persistence/Configurations`.
+- **Scripts SQL — CONGELADOS desde la producción (2026-10-09)**: `Diseño/logistica-db-estructura.sql` y `Diseño/logistica-db-seed.sql` **no se
+  editan nunca** (la prueba `FrozenSqlTests` lo impide). Un lote que necesite tablas, columnas o datos nuevos crea un archivo nuevo e **idempotente**
+  `Diseño/cambios/NNNN-descripcion.sql` (siguiente número; `COL_LENGTH`/`OBJECT_ID` para estructura, `MERGE` para datos; nunca se edita uno ya
+  publicado). `db-init` y `db-update` los aplican solos, en orden, después de estructura y seed. Nada de migraciones EF. Las entidades se mapean
+  1:1 en `src/Teikem.Infrastructure/Persistence/Configurations`.
+- **Recrear la base está PROHIBIDO fuera de desarrollo**: `db-reset` (el API lo rechaza si el ambiente no es Development) y
+  `scripts/recrear-base.ps1` / `recrear-base-depot.ps1` solo se corren en la máquina de desarrollo, contra una base local. Jamás en producción.
+- **Rama `Depot-Implementation`**: foto de lo que se puso en producción para Advance Depot (base, API, web y app); se usa para dar soporte a
+  su operación. El trabajo sigue en `master`.
 - **Permisos sembrados desde código** en `PermissionCatalog` (y espejados en el seed). Módulos por tenant: los endpoints
   de un módulo llevan `[RequireModule(ModuleKeys.X)]`.
 - **Fuentes de datos para vistas/indicadores/gráficos**: cada módulo registra sus `IDataSource` en `DependencyInjection`
