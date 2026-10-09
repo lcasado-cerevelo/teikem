@@ -24,9 +24,11 @@ export interface ProductFilterState {
   categoryIds: readonly string[]
   brands: readonly string[]
   kpi: ProductKpi | null
+  /** Switch «Excluir no disponibles»: solo productos con disponible (en mano − reservado) mayor que 0, como la columna Disponible. */
+  hasAvailable: boolean
 }
 
-export const EMPTY_PRODUCT_FILTERS: ProductFilterState = { warehouses: [], products: [], name: '', categoryIds: [], brands: [], kpi: null }
+export const EMPTY_PRODUCT_FILTERS: ProductFilterState = { warehouses: [], products: [], name: '', categoryIds: [], brands: [], kpi: null, hasAvailable: false }
 
 /** `?kpi=` de la URL → KPI (valor desconocido = ninguno). */
 export function parseKpiParam(value: string | null | undefined): ProductKpi | null {
@@ -72,6 +74,7 @@ export function productListQuery(f: ProductFilterState): GetQuery<'/api/v1/produ
     name: name || undefined,
     categoryIds: nonEmpty(f.categoryIds.map(Number)),
     brands: nonEmpty(f.brands),
+    hasAvailable: f.hasAvailable || undefined,
     ...kpiQuery(f.kpi),
   }
 }
@@ -95,7 +98,7 @@ export function adjustmentsKardexQuery(f: ProductFilterState): GetQuery<'/api/v1
 
 /** true si hay algún filtro (incluido el KPI). */
 export function hasProductFilters(f: ProductFilterState): boolean {
-  return f.warehouses.length + f.products.length + f.categoryIds.length + f.brands.length > 0 || f.name.trim() !== '' || f.kpi !== null
+  return f.warehouses.length + f.products.length + f.categoryIds.length + f.brands.length > 0 || f.name.trim() !== '' || f.kpi !== null || f.hasAvailable
 }
 
 type Translate = (key: string, params?: Record<string, string | number>) => string
@@ -138,6 +141,7 @@ export function describeProductFilters(
     })
   }
   if (f.brands.length > 0) out.push({ label: t('warehouse.products.filters.brand'), value: list([...f.brands]) })
+  if (f.hasAvailable && report !== 'adjustments') out.push({ label: t('warehouse.products.filters.excludeUnavailable'), value: t('warehouse.products.reports.filters.yes') })
   if (f.kpi && report !== 'adjustments') out.push({ label: t('warehouse.products.reports.filters.view'), value: t(`warehouse.products.kpis.view.${f.kpi}`) })
   return out
 }

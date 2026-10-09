@@ -174,6 +174,14 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
                                      && (stockU.Where(b => b.ProductId == p.ProductId).Sum(b => (decimal?)(b.QtyOnHand - b.QtyReserved)) ?? 0m) <= 0m);
         }
 
+        if (q.HasAvailable)
+        {
+            // 2026-10-09 (switch «Con disponible»): disponible (en mano − reservado de todas las posiciones, o de los almacenes indicados) > 0:
+            // la misma suma de la columna «Disponible» de la tabla.
+            var stockH = StockIn(warehouseIds);
+            query = query.Where(p => (stockH.Where(b => b.ProductId == p.ProductId).Sum(b => (decimal?)(b.QtyOnHand - b.QtyReserved)) ?? 0m) > 0m);
+        }
+
         var total = await query.CountAsync(ct);
         IOrderedQueryable<Product> ordered;
         if (q.SelectorOrder)

@@ -44,6 +44,10 @@ public sealed class ProductAvailabilityTests
         var all = await products.ListAsync(new ProductListQuery(WarehousePublicId: w.PublicId), InventoryScope.Any, default);
         Assert.Equal(3, all.Total);
 
+        // «Excluir no disponibles» (HasAvailable): disponible = en mano − reservado de TODAS las posiciones (la columna de la tabla): cuarentena cuenta, lo reservado no
+        var hasAvailable = await products.ListAsync(new ProductListQuery(WarehousePublicId: w.PublicId, HasAvailable: true), InventoryScope.Any, default);
+        Assert.Equal(new[] { "PF", "PQ" }, hasAvailable.Items.Select(i => i.Sku).OrderBy(x => x).ToArray());
+
         var balances = await f.Get<InventoryReadService>().BalancesAsync(
             new BalanceQuery(ProductPublicIds: new[] { reserved.PublicId }, OnlyAvailable: true), InventoryScope.Any, default);
         Assert.Empty(balances.Items);

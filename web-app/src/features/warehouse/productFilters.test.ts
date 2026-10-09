@@ -23,6 +23,7 @@ const FULL: ProductFilterState = {
   categoryIds: ['3'],
   brands: ['Abbott'],
   kpi: 'low',
+  hasAvailable: false,
 }
 
 /** Traductor de prueba: la clave y sus parámetros, para ver qué se pidió. */
@@ -105,5 +106,14 @@ describe('productFilters', () => {
     const unknown = describeProductFilters({ ...EMPTY_PRODUCT_FILTERS, warehouses: ['x-1'] }, { warehouses: new Map(), categories: new Map() }, t, 'adjustments')
     expect(unknown[1].value).toBe('x-1')
     expect(describeProductFilters(EMPTY_PRODUCT_FILTERS, names, t, 'inventory')).toEqual([])
+  })
+})
+
+describe('Excluir no disponibles (hasAvailable)', () => {
+  it('manda hasAvailable solo encendido, cuenta como filtro y sale en «Filtros aplicados»', () => {
+    expect(productListQuery(EMPTY_PRODUCT_FILTERS).hasAvailable).toBeUndefined()
+    const on = { ...EMPTY_PRODUCT_FILTERS, hasAvailable: true }
+    expect(productListQuery(on).hasAvailable).toBe(true)
+    expect(hasProductFilters(on)).toBe(true)
   })
 })

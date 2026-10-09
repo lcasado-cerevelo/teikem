@@ -15747,6 +15747,14 @@
               "type": "boolean",
               "default": false
             }
+          },
+          {
+            "name": "hasAvailable",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
           }
         ],
         "responses": {
