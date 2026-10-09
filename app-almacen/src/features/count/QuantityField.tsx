@@ -12,7 +12,7 @@ import { CalculatorIcon } from '../../kernel/ui/CalculatorIcon'
 import { KeyboardInput, KeyboardToggleButton } from '../../kernel/ui/KeyboardInput'
 import { useSoftKeyboard } from '../../kernel/ui/useSoftKeyboard'
 import { colors, fontSize, radius, spacing, touchTarget } from '../../kernel/ui/theme'
-import { addBlock, calcFromText, calcTotal, removeBlock, setBlock, totalToText, type CalcState } from './quantityCalc'
+import { addBlock, calcFromText, calcTotal, removeBlock, setBlock, totalToText, type CalcPack, type CalcState } from './quantityCalc'
 
 export interface QuantityFieldProps {
   value: string
@@ -22,10 +22,12 @@ export interface QuantityFieldProps {
   autoFocus?: boolean
   style?: TextInputProps['style']
   selectTextOnFocus?: boolean
+  /** Empaque del producto: la calculadora deja contar por cajas (o el empaque que sea); lo guardado sigue en unidades. */
+  pack?: CalcPack | null
 }
 
 /** Cantidad directa con el botón de la calculadora al lado; el modo calculadora reemplaza al campo en el mismo lugar. */
-export function QuantityField({ value, onChangeText, accessibilityLabel, testID, autoFocus, style, selectTextOnFocus }: QuantityFieldProps) {
+export function QuantityField({ value, onChangeText, accessibilityLabel, testID, autoFocus, style, selectTextOnFocus, pack }: QuantityFieldProps) {
   const { t } = useT()
   const [calc, setCalc] = useState<CalcState | null>(null)
 
@@ -33,9 +35,10 @@ export function QuantityField({ value, onChangeText, accessibilityLabel, testID,
     return (
       <QuantityCalculator
         state={calc}
+        pack={pack}
         onChange={(next) => {
           setCalc(next)
-          onChangeText(totalToText(calcTotal(next).total))
+          onChangeText(totalToText(calcTotal(next, pack).total))
         }}
         onClose={() => setCalc(null)}
       />
@@ -70,16 +73,17 @@ export function QuantityField({ value, onChangeText, accessibilityLabel, testID,
 
 export interface QuantityCalculatorProps {
   state: CalcState
+  pack?: CalcPack | null
   onChange: (next: CalcState) => void
   /** Vuelve a la cantidad directa (con el total ya puesto). */
   onClose: () => void
 }
 
 /** El cuerpo de la calculadora: bloques filas × columnas, sueltas y el total. Controlado por quien lo usa (campo en línea o ventana de una fila). */
-export function QuantityCalculator({ state, onChange, onClose }: QuantityCalculatorProps) {
+export function QuantityCalculator({ state, pack, onChange, onClose }: QuantityCalculatorProps) {
   const { t } = useT()
   const kb = useSoftKeyboard()
-  const result = calcTotal(state)
+  const result = calcTotal(state, pack)
   const issueText =
     result.issue === 'incompleteBlock'
       ? t('calc.incompleteBlock')
@@ -157,6 +161,25 @@ export function QuantityCalculator({ state, onChange, onClose }: QuantityCalcula
               selectTextOnFocus
             />
           </View>
+          {pack ? (
+            <View style={styles.unitRow}>
+              {(['base', 'pack'] as const).map((u) => {
+                const on = (b.unit === 'pack' ? 'pack' : 'base') === u
+                return (
+                  <Pressable
+                    key={u}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                    accessibilityLabel={t('calc.unitAt', { n: i + 1, unit: u === 'pack' ? pack.name : t('calc.units') })}
+                    onPress={() => onChange(setBlock(state, i, { unit: u }))}
+                    style={[styles.unitChip, on && styles.unitChipOn]}
+                  >
+                    <Text style={[styles.unitLabel, on && styles.unitLabelOn]}>{u === 'pack' ? t('calc.packsOf', { name: pack.name, qty: pack.qty }) : t('calc.units')}</Text>
+                  </Pressable>
+                )
+              })}
+            </View>
+          ) : null}
           {state.blocks.length > 1 ? (
             <Pressable accessibilityRole="button" accessibilityLabel={t('calc.removeBlock', { n: i + 1 })} onPress={() => onChange(removeBlock(state, i))} style={styles.removeBtn}>
               <Text style={styles.removeLabel}>✕</Text>
@@ -170,6 +193,22 @@ export function QuantityCalculator({ state, onChange, onClose }: QuantityCalcula
       <Pressable accessibilityRole="button" accessibilityLabel={t('calc.addBlock')} onPress={() => onChange(addBlock(state))} style={styles.link}>
         <Text style={styles.linkLabel}>{t('calc.addBlock')}</Text>
       </Pressable>
+
+      {pack ? (
+        <View style={styles.cellFull}>
+          <Text style={styles.cellLabel}>{t('calc.extraPacks', { name: pack.name })}</Text>
+          <KeyboardInput
+            toggle={false}
+            softKeyboard={kb.show}
+            value={state.extraPacks ?? ''}
+            onChangeText={(v) => onChange({ ...state, extraPacks: v })}
+            keyboardType="number-pad"
+            style={styles.input}
+            accessibilityLabel={t('calc.extraPacks', { name: pack.name })}
+            selectTextOnFocus
+          />
+        </View>
+      ) : null}
 
       <View style={styles.cellFull}>
         <Text style={styles.cellLabel}>{t('calc.extra')}</Text>
@@ -202,6 +241,11 @@ export function QuantityCalculator({ state, onChange, onClose }: QuantityCalcula
 }
 
 const styles = StyleSheet.create({
+  unitRow: { flexDirection: 'row', gap: spacing.xs, flexBasis: '100%' },
+  unitChip: { flex: 1, minHeight: touchTarget, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, borderWidth: 1, borderColor: colors.line },
+  unitChipOn: { backgroundColor: colors.brand, borderColor: colors.brand },
+  unitLabel: { color: colors.text, fontSize: fontSize.label },
+  unitLabelOn: { color: colors.onStrong, fontWeight: '700' },
   row: { flexDirection: 'row', alignItems: 'stretch', gap: spacing.sm },
   grow: { flex: 1, minWidth: 0 },
   // fondo azul oscuro con icono blanco (contraste ~8:1) y borde azul: se distingue del campo y del fondo de la app; 56 × 56 dp

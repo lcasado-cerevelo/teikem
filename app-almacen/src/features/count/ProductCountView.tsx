@@ -5,6 +5,7 @@
 // Cada cambio se guarda en la base local (se puede cerrar la app y retomar, sin señal).
 // Lote A5 (decisión del dueño 4): Confirmar exige al menos una posición con un número escrito (0 vale); con todo en blanco no
 // se manda nada y sale el aviso grande (ScanMessage) encima de Confirmar.
+import { findProductPack } from '../../kernel/warehouse/productLookup'
 import { useMemo, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
@@ -168,11 +169,12 @@ export function ProductCountView({ openCount, busy, onConfirm, onCancelCount, er
   }
 
   if (calcRow) {
-    const calcTotalNow = calcTotal(calcRow.state).total
+    const pack = findProductPack({ publicId: product.publicId, sku: product.sku })
+    const calcTotalNow = calcTotal(calcRow.state, pack).total
     return (
       <View style={styles.wrap} testID="count-row-calculator">
         <Text style={styles.title}>{calcRow.row.lotNumber ? t('count.qtyAtLot', { bin: calcRow.row.binCode, lot: calcRow.row.lotNumber }) : t('count.qtyAt', { bin: calcRow.row.binCode })}</Text>
-        <QuantityCalculator state={calcRow.state} onChange={(next) => setCalcRow({ row: calcRow.row, state: next })} onClose={() => setCalcRow(null)} />
+        <QuantityCalculator state={calcRow.state} pack={pack} onChange={(next) => setCalcRow({ row: calcRow.row, state: next })} onClose={() => setCalcRow(null)} />
         <View style={styles.calcActions}>
           <BigButton label={t('common.cancel')} variant="secondary" onPress={() => setCalcRow(null)} />
           <BigButton

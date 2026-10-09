@@ -386,6 +386,34 @@ Cómo se usa:
 - `GET/POST /api/v1/product-categories`, `PATCH /api/v1/product-categories/{id}` (mover/renombrar), `POST .../{id}/
   deactivate|reactivate`.
 
+### Empaque del producto (2026-10-09)
+
+**Qué es.** Cada producto puede tener **un** empaque: una unidad de empaque (Caja, Barril, Paquete, Bulto, Tambor, Rollo… del catálogo editable
+*Unidad de medida*) y cuántas unidades base trae (Caja = 12; Barril = 50 galones). **El inventario siempre se lleva en la unidad base**: el empaque
+solo sirve para contar y para leer cantidades. Nada de lo guardado cambia.
+
+**Quién y dónde.** `inventory.manage`, módulo de inventario: Productos e inventario → *Nuevo/Editar producto* → campos **Empaque (opcional)** y
+**Unidades por empaque** (API: `packUom` y `packQty` en `POST/PATCH /api/v1/products`; `clearPack = true` para quitarlo). Se puede cambiar aunque el
+producto ya tenga movimientos.
+
+**Validaciones** (HTTP 400, campo `packUom` o `packQty`):
+
+| Caso | Mensaje |
+|---|---|
+| Unidades por empaque ≤ 0 o con más de 3 decimales | `Las unidades por empaque deben ser un número mayor que 0 (hasta 3 decimales).` |
+| Cantidad sin unidad | `Indique la unidad del empaque (caja, barril, paquete…).` |
+| Unidad sin cantidad | `Indique cuántas unidades trae el empaque.` |
+| Empaque igual a la unidad base | `La unidad del empaque no puede ser la misma que la unidad base.` |
+| Código de unidad inexistente | `Unidad de empaque desconocida: '{code}'.` |
+
+**Dónde se ve.** Columna **Empaque** de la lista («Caja de 12»); el *Disponible* muestra al pasar el cursor «= 24 Caja + 2»; la **calculadora** del
+conteo (web y app) y la calculadora y la captura de **Recibir** en la app. La fuente de datos de productos trae `PackUom` y `PackQty` para
+vistas e indicadores. La app descarga el empaque con la sincronización (la primera sincronización tras actualizar baja los productos completos).
+
+**Calculadora con empaque.** Si el producto tiene empaque, cada bloque (filas × columnas × fondo) se cuenta en **Unidades** o en **Caja (de 12)**,
+y aparece el campo **Cajas sueltas** además de **Sueltas**. Ejemplo: 3 × 4 × 2 cajas = 24 cajas × 12 = 288 unidades, + 2 cajas sueltas (24) + 5
+sueltas = **317**. Lo que se guarda es la cantidad total en unidades; la cuenta no se guarda.
+
 ### Marca, modelo y filtros de la lista (Lote 12)
 
 **Marca y modelo.** Dos campos de texto libre del producto, opcionales, de hasta 100 caracteres cada uno. Se recortan los

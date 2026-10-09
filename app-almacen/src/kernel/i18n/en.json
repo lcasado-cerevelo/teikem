@@ -162,7 +162,9 @@
     "lineDamaged": "{qty} damaged",
     "lineDamagedDiscard": "{qty} damaged (release)",
     "damageBinNotFound": "That bin does not exist in this warehouse.",
-    "damageBinInactive": "That bin is inactive."
+    "damageBinInactive": "That bin is inactive.",
+    "packSplit": "= {packs} {name} + {loose} loose",
+    "packInfo": "Packaging: {pack}. Use the calculator to count by pack."
   },
   "lock": {
     "receiveInProgress": "Finish or cancel the receipt in progress before using this.",
@@ -378,7 +380,13 @@
     "useTotal": "Use {total}",
     "depth": "Depth",
     "depthAt": "Depth of block {n}",
-    "depthHelp": "Depth: how many are one behind another (blank = 1)."
+    "depthHelp": "Depth: how many are one behind another (blank = 1).",
+    "unit": "Count in",
+    "unitAt": "Block {n} in {unit}",
+    "units": "Units",
+    "packsOf": "{name} (of {qty})",
+    "extraPacks": "Loose {name}",
+    "of": "of"
   },
   "lookup": {
     "title": "Lookup",

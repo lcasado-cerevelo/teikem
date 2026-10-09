@@ -4,6 +4,7 @@
 // cambiarla (elegir otra de la lista, escanear otra o crear una nueva). Al final se manda UN lote con todas las líneas y el
 // cierre por la cola de salida. Escanear otra vez un producto en la misma posición abre la línea ya contada para corregirla.
 // Sin señal no se puede buscar la posición del producto: se pide escanearla (la tabla de posiciones es local).
+import { findProductPack } from '../../kernel/warehouse/productLookup'
 import { useEffect, useMemo, useState } from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 
@@ -302,6 +303,7 @@ export function OpenCountView({ openCount, busy, onConfirm, onCancelCount, initi
             accessibilityLabel={t('count.foundQtyLabel')}
             autoFocus
             selectTextOnFocus
+            pack={findProductPack({ publicId: draft.product.publicId, sku: draft.product.sku })}
           />
         </View>
         <View style={styles.row}>

@@ -9,11 +9,22 @@ export interface CalcBlock {
   cols: string
   /** Fondo: cuántas hay una detrás de otra. En blanco = 1. */
   depth: string
+  /** 'pack' = el bloque cuenta empaques (cajas, barriles…); omitido o 'base' = unidades. Solo cuenta si el producto tiene empaque. */
+  unit?: 'pack' | 'base'
 }
 
 export interface CalcState {
   blocks: CalcBlock[]
+  /** Unidades sueltas. */
   extra: string
+  /** Empaques sueltos (enteros); solo con empaque del producto. */
+  extraPacks?: string
+}
+
+/** Empaque del producto: cuántas unidades base trae y cómo se llama (Caja, Barril…). Inventario siempre en unidades base. */
+export interface CalcPack {
+  qty: number
+  name: string
 }
 
 /** Tope de la cantidad calculada (misma idea que el máximo del servidor: nada absurdo por un dedo de más). */
@@ -58,7 +69,7 @@ export interface CalcResult {
  * Suma los bloques con filas y columnas escritas (por su fondo; 1 si está en blanco) y lo suelto. Un bloque con solo una de las dos medidas es un error (`incompleteBlock`); un bloque en
  * blanco se ignora; algo que no es un número, `invalid`; todo en blanco, `empty` (sin total todavía, no es error).
  */
-export function calcTotal(state: CalcState): CalcResult {
+export function calcTotal(state: CalcState, pack?: CalcPack | null): CalcResult {
   const parts: string[] = []
   let total = 0
   let any = false
@@ -74,9 +85,20 @@ export function calcTotal(state: CalcState): CalcResult {
     if (Number.isNaN(r) || Number.isNaN(c) || Number.isNaN(d) || (d !== null && d < 1)) return { total: null, expression: parts.join(' + '), issue: 'invalid' }
     if (r === null || c === null) return { total: null, expression: parts.join(' + '), issue: 'incompleteBlock' }
     const depth = d ?? 1
-    parts.push(d === null ? `(${r} × ${c})` : `(${r} × ${c} × ${depth})`)
-    total += (r as number) * (c as number) * depth
+    const asPack = pack != null && b.unit === 'pack'
+    const base = d === null ? `(${r} × ${c})` : `(${r} × ${c} × ${depth})`
+    parts.push(asPack ? `${base} × ${formatPart(pack.qty)}` : base)
+    total += (r as number) * (c as number) * depth * (asPack ? pack.qty : 1)
     any = true
+  }
+  if (pack != null) {
+    const packs = parseInteger(state.extraPacks ?? '')
+    if (Number.isNaN(packs)) return { total: null, expression: parts.join(' + '), issue: 'invalid' }
+    if (packs !== null) {
+      parts.push(`${packs} × ${formatPart(pack.qty)}`)
+      total += packs * pack.qty
+      any = true
+    }
   }
   const extra = parseExtra(state.extra)
   if (Number.isNaN(extra)) return { total: null, expression: parts.join(' + '), issue: 'invalid' }
@@ -114,4 +136,16 @@ export function removeBlock(state: CalcState, index: number): CalcState {
 
 export function setBlock(state: CalcState, index: number, patch: Partial<CalcBlock>): CalcState {
   return { ...state, blocks: state.blocks.map((b, i) => (i === index ? { ...b, ...patch } : b)) }
+}
+
+/** «= 7 Caja + 4»: cuántos empaques completos y cuántas unidades sueltas son `total` unidades. null si no hay empaque o no alcanza uno. */
+export function splitByPack(total: number, pack: CalcPack | null | undefined): { packs: number; loose: number } | null {
+  if (!pack || !(pack.qty > 0) || !(total >= pack.qty)) return null
+  const packs = Math.floor(roundQty(total) / pack.qty)
+  return { packs, loose: roundQty(total - packs * pack.qty) }
+}
+
+/** Texto corto del empaque: «Caja de 12». */
+export function packLabel(pack: CalcPack, of = 'de'): string {
+  return `${pack.name} ${of} ${formatPart(pack.qty)}`
 }

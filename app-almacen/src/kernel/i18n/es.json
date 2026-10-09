@@ -162,7 +162,9 @@
     "lineDamaged": "{qty} dañadas",
     "lineDamagedDiscard": "{qty} dañadas (dar salida)",
     "damageBinNotFound": "Esa posición no existe en este almacén.",
-    "damageBinInactive": "Esa posición está desactivada."
+    "damageBinInactive": "Esa posición está desactivada.",
+    "packSplit": "= {packs} {name} + {loose} sueltas",
+    "packInfo": "Empaque: {pack}. Usa la calculadora para contar por cajas."
   },
   "lock": {
     "receiveInProgress": "Termina o cancela el recibo en curso antes de usar esto.",
@@ -378,7 +380,13 @@
     "useTotal": "Usar {total}",
     "depth": "Fondo",
     "depthAt": "Fondo del bloque {n}",
-    "depthHelp": "Fondo: cuántas hay una detrás de otra (en blanco = 1)."
+    "depthHelp": "Fondo: cuántas hay una detrás de otra (en blanco = 1).",
+    "unit": "Contar en",
+    "unitAt": "Bloque {n} en {unit}",
+    "units": "Unidades",
+    "packsOf": "{name} (de {qty})",
+    "extraPacks": "{name} sueltas",
+    "of": "de"
   },
   "lookup": {
     "title": "Consultar",

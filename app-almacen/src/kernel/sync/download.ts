@@ -83,6 +83,9 @@ function applyProducts(db: SQLiteDatabase, items: Array<{
   ownerName?: string | null
   preferredBinId?: number | null
   isActive?: boolean
+  packUomCode?: string | null
+  packUomName?: string | null
+  packQty?: number | null
 }>): void {
   for (const p of items) {
     if (p.id == null) continue
@@ -92,12 +95,13 @@ function applyProducts(db: SQLiteDatabase, items: Array<{
     }
     db.runSync(
       `INSERT INTO product (id, public_id, sku, name, barcode, tracking_type_code, base_uom_code, category_id,
-                             owner_client_public_id, owner_name, preferred_bin_id, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+                             owner_client_public_id, owner_name, preferred_bin_id, is_active, pack_uom_code, pack_uom_name, pack_qty)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET public_id = excluded.public_id, sku = excluded.sku, name = excluded.name,
          barcode = excluded.barcode, tracking_type_code = excluded.tracking_type_code, base_uom_code = excluded.base_uom_code,
          category_id = excluded.category_id, owner_client_public_id = excluded.owner_client_public_id,
-         owner_name = excluded.owner_name, preferred_bin_id = excluded.preferred_bin_id, is_active = 1`,
+         owner_name = excluded.owner_name, preferred_bin_id = excluded.preferred_bin_id, is_active = 1,
+         pack_uom_code = excluded.pack_uom_code, pack_uom_name = excluded.pack_uom_name, pack_qty = excluded.pack_qty`,
       [
         p.id,
         p.publicId ?? '',
@@ -110,6 +114,9 @@ function applyProducts(db: SQLiteDatabase, items: Array<{
         p.ownerClientPublicId ?? null,
         p.ownerName ?? null,
         p.preferredBinId ?? null,
+        p.packUomCode ?? null,
+        p.packUomName ?? null,
+        p.packQty ?? null,
       ],
     )
   }

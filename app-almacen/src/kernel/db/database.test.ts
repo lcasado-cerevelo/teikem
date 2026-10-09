@@ -198,8 +198,9 @@ describe('migración v5 (Lote A4, adenda: posición provisional sincronizada)', 
       { id: 1, code: 'A-01', zone_code: 'PCK', is_active: 1, is_provisional: 0 },
       { id: 2, code: 'OLD-1', zone_code: 'PCK', is_active: 0, is_provisional: 0 },
     ])
-    // solo se reinicia la marca de agua de las posiciones
-    expect(db.getAllSync('SELECT resource FROM sync_watermark')).toEqual([{ resource: 'products' }])
+    // se reinicia la marca de agua de las posiciones (v5) y la de productos (v9, empaque): ambos bajan completos otra vez
+    expect(db.getAllSync('SELECT resource FROM sync_watermark')).toEqual([])
+    expect(db.getAllSync<{ name: string }>('PRAGMA table_info(product)').map((c) => c.name)).toEqual(expect.arrayContaining(['pack_uom_code', 'pack_uom_name', 'pack_qty']))
     // lo que había en un conteo por producto en curso sigue igual
     expect(db.getFirstSync('SELECT count_id, mode, sku FROM local_count')).toEqual({ count_id: 42, mode: 'PRODUCT', sku: 'SKU-1' })
     expect(db.getFirstSync('SELECT bin_code, counted_qty, is_provisional_bin FROM local_count_line')).toEqual({ bin_code: 'Z-09', counted_qty: 3, is_provisional_bin: 1 })

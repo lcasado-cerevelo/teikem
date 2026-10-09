@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
+import { QuantityField } from '../features/count/QuantityField'
+import { packLabel, splitByPack } from '../features/count/quantityCalc'
+import { findProductPack } from '../kernel/warehouse/productLookup'
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 
@@ -598,6 +601,10 @@ export default function ReceiveScreen() {
 
   // Paso 3: capturando cantidad/lote/series de un producto ya escaneado.
   if (draft) {
+    // empaque del producto (Caja de 12): la calculadora cuenta por cajas y aquí se lee «= 24 Caja + 2»; lo recibido sigue en unidades
+    const pack = findProductPack({ publicId: draft.productPublicId, sku: draft.sku })
+    const split = pack ? splitByPack(Number(draft.qtyText.replace(',', '.')) || 0, pack) : null
+    const packHint = pack ? (split ? t('receive.packSplit', { packs: split.packs, name: pack.name, loose: split.loose }) : t('receive.packInfo', { pack: packLabel(pack, t('calc.of')) })) : null
     return (
       <KeyboardScreen contentContainerStyle={styles.fill}>
         <Text style={styles.title}>{draft.productName}</Text>
@@ -620,14 +627,15 @@ export default function ReceiveScreen() {
         ) : (
           <View style={styles.field}>
             <Text style={styles.label}>{t('receive.qtyLabel')}</Text>
-            <KeyboardInput
+            <QuantityField
               autoFocus
               value={draft.qtyText}
               onChangeText={(v) => setDraft((d) => (d ? { ...d, qtyText: v } : d))}
-              keyboardType="decimal-pad"
               style={styles.input}
               accessibilityLabel={t('receive.qtyLabel')}
+              pack={pack}
             />
+            {packHint ? <Text style={styles.help}>{packHint}</Text> : null}
           </View>
         )}
 

@@ -1,6 +1,6 @@
 // Lote 8A-app — esquema de la base local (expo-sqlite). Ver docs/mobile/app-almacen-plan.md §1 "Base local".
 // Migraciones por PRAGMA user_version: cada versión agrega su bloque de SQL; nunca se reescribe uno ya publicado.
-export const SCHEMA_VERSION = 8
+export const SCHEMA_VERSION = 9
 
 export const MIGRATIONS: readonly string[] = [
   // v1: kv, catálogos sincronizados, documentos abiertos, cola de salida y marcas de agua.
@@ -343,5 +343,14 @@ export const MIGRATIONS: readonly string[] = [
   // v8 (2026-10-09): a dónde va lo dañado cuando se le da salida de una vez en Recibir (tirado, devuelto al proveedor, donado, vendido como saldo).
   `
   ALTER TABLE local_receipt_line ADD COLUMN damage_destination TEXT;
+  `,
+  // v9 (2026-10-09, empaque por producto): unidad de empaque (Caja, Barril…) y cuántas unidades base trae. Solo para capturar y leer cantidades:
+  // lo guardado y el inventario siguen en unidades base. Como los productos ya descargados no lo traen, se borra la marca de agua de productos
+  // para que la próxima sincronización los baje completos una vez.
+  `
+  ALTER TABLE product ADD COLUMN pack_uom_code TEXT;
+  ALTER TABLE product ADD COLUMN pack_uom_name TEXT;
+  ALTER TABLE product ADD COLUMN pack_qty REAL;
+  DELETE FROM sync_watermark WHERE resource = 'products' OR resource LIKE 'products:%';
   `,
 ]

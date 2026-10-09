@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { findProductPack } from '../kernel/warehouse/productLookup'
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 
@@ -550,6 +551,7 @@ export default function CountScreen() {
             style={styles.input}
             accessibilityLabel={t('count.foundQtyLabel')}
             autoFocus
+            pack={findProductPack({ publicId: draft.productPublicId })}
           />
         </View>
         <View style={styles.row}>
@@ -586,6 +588,7 @@ export default function CountScreen() {
             accessibilityLabel={t('count.editTitle')}
             autoFocus
             selectTextOnFocus
+            pack={findProductPack({ sku: edit.sku })}
           />
         </View>
         <View style={styles.row}>

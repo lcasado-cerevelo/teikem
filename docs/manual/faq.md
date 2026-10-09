@@ -5707,3 +5707,31 @@ Esos SKU tienen caracteres que el código Code 128 no admite o son demasiado lar
 
 **La etiqueta sale de lado o cortada.**
 Revise que el tamaño del driver sea el mismo que eligió y la escala 100 %; si sigue, genere el PDF con **Orientación → Girar 90°**.
+
+## Empaque del producto (2026-10-09)
+
+Detalle en [Empaque del producto](06-inventario-y-almacen.md#empaque-del-producto-2026-10-09).
+
+**¿El inventario se lleva en cajas?**
+No. Siempre en la unidad base del producto. El empaque (Caja de 12) solo ayuda a contar y a leer cantidades.
+
+**¿Cómo cuento por cajas?**
+Defina el empaque del producto (Editar producto → Empaque y Unidades por empaque). En la calculadora del conteo o de Recibir, elija **Caja** en el bloque, o use **Cajas sueltas**; el total sale en unidades.
+
+**Dice `Las unidades por empaque deben ser un número mayor que 0 (hasta 3 decimales).`**
+Escriba un número mayor que 0 en *Unidades por empaque*.
+
+**Dice `Indique la unidad del empaque (caja, barril, paquete…).`**
+Puso las unidades por empaque pero no eligió el empaque: elíjalo o borre la cantidad.
+
+**Dice `Indique cuántas unidades trae el empaque.`**
+Eligió el empaque pero no cuántas unidades trae: escriba la cantidad (Caja = 12).
+
+**Dice `La unidad del empaque no puede ser la misma que la unidad base.`**
+El empaque debe ser distinto de la unidad base (p. ej. base Galón, empaque Barril).
+
+**Dice `Unidad de empaque desconocida: '{code}'.`**
+Esa unidad no existe en el catálogo *Unidad de medida*. Agréguela en el catálogo o elija otra.
+
+**No me sale el selector de Caja en la calculadora de la app.**
+El producto no tiene empaque o la app no ha sincronizado desde la actualización: sincronice y reintente.

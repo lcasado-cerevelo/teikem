@@ -37,3 +37,16 @@ export function findProductByCode(code: string): LocalProduct | null {
     ownerName: row.owner_name,
   }
 }
+
+/** Empaque del producto (Caja de 12, Barril de 50…) de la base local, por SKU o por id público; null si no tiene o no está descargado. */
+export function findProductPack(ref: { sku?: string | null; publicId?: string | null }): { name: string; qty: number } | null {
+  try {
+    const row = getDb().getFirstSync<{ pack_uom_name: string | null; pack_qty: number | null }>(
+      'SELECT pack_uom_name, pack_qty FROM product WHERE (public_id = ? OR sku = ?) LIMIT 1',
+      [ref.publicId ?? '', ref.sku ?? ''],
+    )
+    return row?.pack_uom_name && row.pack_qty && row.pack_qty > 0 ? { name: row.pack_uom_name, qty: row.pack_qty } : null
+  } catch {
+    return null
+  }
+}
