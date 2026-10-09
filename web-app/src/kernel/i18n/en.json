@@ -1620,7 +1620,8 @@
         "sku": "SKU",
         "name": "Name",
         "namePlaceholder": "Contains…",
-        "brand": "Brand"
+        "brand": "Brand",
+        "excludeUnavailable": "Exclude unavailable"
       },
       "reports": {
         "working": "Generating…",
@@ -1679,7 +1680,8 @@
           "warehouseScope": "(quantities are from these warehouses only)",
           "contains": "contains «{text}»",
           "withSubcategories": "(includes subcategories)",
-          "view": "View"
+          "view": "View",
+          "yes": "Yes"
         }
       },
       "lots": {

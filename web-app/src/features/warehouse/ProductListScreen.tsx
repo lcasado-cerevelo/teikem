@@ -34,7 +34,7 @@ import {
 } from './api'
 import { sortRows, type SortState } from '../../kernel/ui/DataTable'
 import { ProductBarcodeReportButton } from './BarcodeReportButtons'
-import { TextFilter } from './filterControls'
+import { TextFilter, ToggleFilter } from './filterControls'
 import { AdjustmentsReportButton, InventoryReportButton } from './InventoryReportButtons'
 import { listParam } from './kardexView'
 import { formatNumber, useDebounced } from './lineRules'
@@ -187,6 +187,7 @@ function ProductsTab() {
   const [nameText, setNameText] = useState('')
   const [categoryIds, setCategoryIds] = useState<string[]>([])
   const [brands, setBrands] = useState<string[]>([])
+  const [hasAvailable, setHasAvailable] = useState(false)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [creating, setCreating] = useState(false)
@@ -232,8 +233,8 @@ function ProductsTab() {
 
   // Un solo estado de filtros para la tabla, su Exportar y los dos reportes PDF
   const filters = useMemo<ProductFilterState>(
-    () => ({ warehouses, products, name, categoryIds, brands, kpi }),
-    [warehouses, products, name, categoryIds, brands, kpi],
+    () => ({ warehouses, products, name, categoryIds, brands, kpi, hasAvailable }),
+    [warehouses, products, name, categoryIds, brands, kpi, hasAvailable],
   )
   const baseQuery = useMemo(() => productListQuery(filters), [filters])
   const query = useMemo(() => ({ ...baseQuery, skip: (page - 1) * pageSize, take: pageSize }), [baseQuery, page, pageSize])
@@ -347,6 +348,7 @@ function ProductsTab() {
           setNameText('')
           setCategoryIds([])
           setBrands([])
+          setHasAvailable(false)
           setKpi(null)
         }}
       >
@@ -360,6 +362,7 @@ function ProductsTab() {
         />
         <SearchSelect label={t('warehouse.products.filters.category')} options={categoryOptions} value={categoryIds} onChange={withPageReset(setCategoryIds)} />
         <SearchSelect label={t('warehouse.products.filters.brand')} options={brandOptions} value={brands} onChange={withPageReset(setBrands)} />
+        <ToggleFilter label={t('warehouse.products.filters.excludeUnavailable')} checked={hasAvailable} onChange={withPageReset(setHasAvailable)} />
       </Filters>
 
       <Panel flush icon={<IconLayers />} title={t('warehouse.products.title')} badge={data ? (data.total ?? 0) : undefined}>

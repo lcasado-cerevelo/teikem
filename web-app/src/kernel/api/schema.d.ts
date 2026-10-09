@@ -11570,6 +11570,7 @@ export interface paths {
                     serialMissing?: boolean;
                     onlyOnHand?: boolean;
                     unavailable?: boolean;
+                    hasAvailable?: boolean;
                 };
                 header?: never;
                 path?: never;

@@ -414,6 +414,10 @@ vistas e indicadores. La app descarga el empaque con la sincronización (la prim
 y aparece el campo **Cajas sueltas** además de **Sueltas**. Ejemplo: 3 × 4 × 2 cajas = 24 cajas × 12 = 288 unidades, + 2 cajas sueltas (24) + 5
 sueltas = **317**. Lo que se guarda es la cantidad total en unidades; la cuenta no se guarda.
 
+### Filtro «Excluir no disponibles» (2026-10-09)
+
+En Productos e inventario, un interruptor junto a los demás filtros. **Encendido**, la lista muestra solo los productos con **disponible mayor que 0** (en mano − reservado de todas las posiciones, o de los almacenes elegidos): la misma suma de la columna *Disponible*. Apagado, no filtra. Entra en *Exportar*, en los reportes PDF y en el informe de códigos de barras; *Limpiar* lo apaga. API: `GET /api/v1/products?hasAvailable=true` (`inventory.view`). Es el complemento de la tableta «No disponibles».
+
 ### Marca, modelo y filtros de la lista (Lote 12)
 
 **Marca y modelo.** Dos campos de texto libre del producto, opcionales, de hasta 100 caracteres cada uno. Se recortan los
