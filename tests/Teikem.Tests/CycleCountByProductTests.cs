@@ -812,6 +812,25 @@ public sealed class CycleCountByProductTests
     }
 
     [Fact]
+    public async Task Allow_empty_with_one_bin_opens_that_bin_even_if_the_system_thinks_it_is_empty()
+    {
+        await using var f = await NewAsync();
+        var svc = f.Get<CycleCountService>();
+        // sin AllowEmpty: la posición vacía sigue rechazada
+        await Assert.ThrowsAsync<ValidationException>(() => svc.CreateAsync(new CycleCountCreateRequest(BinIds: new[] { f.PickBin1 }), default));
+        // con AllowEmpty: conteo vacío de origen manual (por posición), con su tarea
+        var created = await svc.CreateAsync(new CycleCountCreateRequest(BinIds: new[] { f.PickBin1 }, AllowEmpty: true), default);
+        Assert.Equal((CycleCountOrigins.Manual, CycleCountStatuses.Open, 0), (created.Count.OriginCode, created.Count.StatusCode, created.Lines.Count));
+        Assert.NotNull(created.Count.TaskId);
+        // con existencia: sus líneas de siempre
+        await f.ReceiveAsync(f.ProductNoneId, f.PickBin1, 8m);
+        var withStock = await svc.CreateAsync(new CycleCountCreateRequest(BinIds: new[] { f.PickBin1 }, AllowEmpty: true), default);
+        Assert.Single(withStock.Lines);
+        // dos posiciones o una posición con producto siguen siendo 400
+        await Assert.ThrowsAsync<ValidationException>(() => svc.CreateAsync(new CycleCountCreateRequest(BinIds: new[] { f.PickBin1, f.PickBin1 + 1 }, AllowEmpty: true), default));
+    }
+
+    [Fact]
     public async Task Allow_empty_unknown_product_is_404_and_incompatible_filters_are_400()
     {
         await using var f = await NewAsync();

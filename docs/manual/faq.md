@@ -4276,7 +4276,7 @@ Detalle en el [capítulo 06 §6.x](06-inventario-y-almacen.md), el [capítulo 09
 Sin `binId` y el producto está en varias posiciones: elija una (la web la elige en el campo Posición; la app, en la lista). `GET /cycle-counts/{id}/product-bins`
 dice cuáles son.
 
-**400 — "Crear un conteo vacío (allowEmpty) solo aplica a uno o ningún producto, sin posiciones, zonas ni categorías."** (`errors.allowEmpty`)
+**400 — "Crear un conteo vacío (allowEmpty) solo aplica a uno o ningún producto, o a una sola posición, sin otras posiciones, zonas ni categorías."** (`errors.allowEmpty`)
 (Antes decía "a un único producto".) `allowEmpty` con más de un producto, o con zonas, posiciones o categorías.
 
 ### Preguntas frecuentes

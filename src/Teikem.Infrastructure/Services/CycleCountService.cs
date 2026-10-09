@@ -357,10 +357,14 @@ public sealed class CycleCountService(
     {
         req ??= new CycleCountCreateRequest();
         // Lote 24: AllowEmpty con NINGÚN producto abre un conteo vacío al que se van agregando productos escaneados.
-        if (req.AllowEmpty
+        // 2026-10-09 (app): AllowEmpty con UNA sola posición (sin producto, zonas ni categorías) abre el conteo de esa posición aunque el sistema
+        // crea que está vacía, para ir agregando lo que se encuentre (conteo por posición); si tiene existencia, trae sus líneas como siempre.
+        var emptyBinCount = req.AllowEmpty && req.BinIds is { Length: > 0 } && req.BinIds.Distinct().Count() == 1
+            && (req.ProductPublicIds?.Distinct().Count() ?? 0) == 0 && req.ZoneIds is not { Length: > 0 } && req.CategoryIds is not { Length: > 0 };
+        if (req.AllowEmpty && !emptyBinCount
             && ((req.ProductPublicIds?.Distinct().Count() ?? 0) > 1 || req.BinIds is { Length: > 0 } || req.ZoneIds is { Length: > 0 } || req.CategoryIds is { Length: > 0 }))
             throw new ValidationException("allowEmpty", CycleCountRules.AllowEmptyOnlyOneProduct);
-        var openEmpty = req.AllowEmpty && (req.ProductPublicIds?.Distinct().Count() ?? 0) == 0;
+        var openEmpty = req.AllowEmpty && !emptyBinCount && (req.ProductPublicIds?.Distinct().Count() ?? 0) == 0;
         var tenantId = ((TenantContext)tenant).RequireTenantId();
         var warehouse = await ResolveWarehouseOrDefaultAsync(req.WarehousePublicId, ct);
         if (!warehouse.IsActive) throw new StatusRuleException(WarehouseInactive);

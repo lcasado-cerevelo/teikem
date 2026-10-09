@@ -986,3 +986,7 @@ Despacho solo funciona con clientes 3PL, qué significa "con error" en Sincroniz
 Zebra, teclado, formatos de la compañía en la app), la sección **Lote A4** (contar por producto) y la sección **Lote A5** (al menos
 una cantidad al contar por producto; en Despacho, la cantidad antes de la posición), la sección **Lote A6** (captura de conteo rechazada
 porque el supervisor ya corrigió una línea) y la sección **Lote A8** (lo que hay en una posición en Consultar).
+
+### Contar una posición que el sistema cree vacía (2026-10-09)
+
+Al escanear una posición sin existencia en el sistema, la app **ya no rechaza** con *«Los filtros no seleccionan inventario en mano para contar; amplíe los filtros o agregue líneas a mano.»*: abre el conteo vacío de esa posición y usted escanea o elige de la lista lo que encuentre (sección «Lo que se espera aquí» dice que el sistema no espera nada). Se termina con **Terminar esta posición** como siempre; al reconciliar en la web, lo encontrado entra como ajuste de entrada en esa posición. (API: `POST /api/v1/cycle-counts` con `binIds` de una sola posición y `allowEmpty = true`.)

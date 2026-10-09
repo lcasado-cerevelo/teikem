@@ -56,7 +56,7 @@ describe('startCountOnline', () => {
       }),
     )
     const result = await startCountOnline('wh-1', 5)
-    expect(postMock.mock.calls[0][1].body).toEqual({ warehousePublicId: 'wh-1', binIds: [5], assignToMe: true, resumeOpen: true })
+    expect(postMock.mock.calls[0][1].body).toEqual({ warehousePublicId: 'wh-1', binIds: [5], assignToMe: true, resumeOpen: true, allowEmpty: true })
     expect(result).toEqual({
       countId: 42,
       number: '',
