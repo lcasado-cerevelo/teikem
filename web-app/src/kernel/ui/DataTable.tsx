@@ -17,7 +17,7 @@ import {
   type SortingState,
   type Updater,
 } from '@tanstack/react-table'
-import { useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import type { FetchAllResult } from '../api/fetchAllPages'
 import { useAccess } from '../access/accessContext'
 import { formatQuantity } from '../i18n/numberFormat'
@@ -207,7 +207,7 @@ function useAllowed(): (perm: RowAction<unknown>['perm']) => boolean {
  * Pasa `rows` memorizadas (useMemo o el `data` de la consulta): un arreglo nuevo en cada render reinicia la página local.
  */
 export function DataTable<T extends RowData>(props: DataTableProps<T>) {
-  const { columns, rows, rowKey, onSort, onPage, rowActions, onRowClick, rowClassName, loading, label } = props
+  const { columns, rows: pageRows, rowKey, onSort, onPage, rowActions, onRowClick, rowClassName, loading, label } = props
   const dense = props.dense ?? columns.length + (rowActions?.length ? 1 : 0) >= DENSE_COLUMNS
   const t = useT()
   const lang = useLang()
@@ -227,12 +227,47 @@ export function DataTable<T extends RowData>(props: DataTableProps<T>) {
     onSortChange?.(localSort)
   }, [localSort, onSortChange])
   const sort = serverSort ? (props.sort ?? null) : localSort
+
+  // ----- orden sobre TODO lo filtrado (2026-10-09, Luis): tabla paginada por el servidor, sin orden del servidor, con `exportRows` -----
+  // Al ordenar se lee la consulta completa (la misma de Exportar, hasta el tope) y se ordena y pagina aquí: el orden vale para todas las
+  // filas del filtro, no solo para la página en pantalla. Se vuelve a leer si cambia la página que manda la pantalla (filtros, recarga).
+  const sortAll = onPage !== undefined && !serverSort && Boolean(props.exportRows) && localSort !== null
+  const exportRef = useRef(props.exportRows)
+  useEffect(() => {
+    exportRef.current = props.exportRows
+  })
+  const [allRows, setAllRows] = useState<{ source: readonly T[]; items: readonly T[] } | null>(null)
+  useEffect(() => {
+    if (!sortAll) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const result = await exportRef.current!()
+        if (cancelled) return
+        const items: readonly T[] = 'items' in result ? result.items : result
+        if ('truncated' in result && result.truncated) toast.info(t('ui.table.export.truncated', { count: items.length }))
+        setAllRows({ source: pageRows, items })
+      } catch {
+        if (!cancelled) toast.error(t('ui.table.sortAllFailed'))
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- se relee cuando la pantalla manda otra página de filas (filtros, recarga) o se empieza a ordenar
+  }, [sortAll, pageRows])
+  const showingAll = sortAll && allRows !== null && allRows.source === pageRows
+  const rows: readonly T[] = showingAll ? allRows.items : pageRows
+  const sortingAll = sortAll && !showingAll
   const sorting = useMemo<SortingState>(() => (sort ? [{ id: sort.id, desc: sort.desc }] : []), [sort])
 
   // ----- paginación: del servidor (onPage + total), local (por defecto) o ninguna (pagination={false}) -----
-  const serverPaging = onPage !== undefined
+  const serverPaging = onPage !== undefined && !showingAll
   const localPaging = !serverPaging && (props.pagination ?? true)
   const [localSize, setLocalSize] = useState(props.pageSize ?? DEFAULT_PAGE_SIZE)
+  useEffect(() => {
+    if (showingAll) setLocalSize(props.pageSize ?? DEFAULT_PAGE_SIZE)
+  }, [showingAll, props.pageSize])
   const pageSize = serverPaging ? (props.pageSize ?? DEFAULT_PAGE_SIZE) : localPaging ? localSize : Math.max(rows.length, 1)
   const [localPage, setLocalPage] = useState(1)
   const [prevRows, setPrevRows] = useState(rows)
@@ -361,7 +396,10 @@ export function DataTable<T extends RowData>(props: DataTableProps<T>) {
   // filas de la consulta del servidor), reordenado como la tabla si el orden es local
   const runExport = async (format: ExportFormat) => {
     let list: readonly T[]
-    if (props.exportRows) {
+    if (showingAll) {
+      // ya se leyó toda la consulta para ordenar: es la misma lista (en el orden de la tabla)
+      list = table.getPrePaginatedRowModel().rows.map((r) => r.original)
+    } else if (props.exportRows) {
       const result = await props.exportRows()
       const items: readonly T[] = 'items' in result ? result.items : result
       if ('truncated' in result && result.truncated) {
@@ -457,7 +495,7 @@ export function DataTable<T extends RowData>(props: DataTableProps<T>) {
   } else {
     body = (
       <div className="dt-scroll">
-        <table className={dense ? 'lst densetbl' : 'lst'} aria-label={label} aria-busy={loading || undefined}>
+        <table className={dense ? 'lst densetbl' : 'lst'} aria-label={label} aria-busy={loading || sortingAll || undefined}>
           <thead>
             {table.getHeaderGroups().map((group) => (
               <tr key={group.id}>

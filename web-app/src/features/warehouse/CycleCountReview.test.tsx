@@ -129,7 +129,7 @@ function route(method: string, url: URL, body: unknown): [number, unknown] {
   if (p === '/api/v1/cycle-counts/review') {
     const by = url.searchParams.get('countedByUserId')
     const items = by ? REVIEW_ITEMS.filter((i) => String(i.countedByUserId) === by) : REVIEW_ITEMS
-    return [200, { total: 30, skip: Number(url.searchParams.get('skip') ?? 0), take: Number(url.searchParams.get('take') ?? 50), items }]
+    return [200, { total: 30, skip: Number(url.searchParams.get('skip') ?? 0), take: Number(url.searchParams.get('take') ?? 50), items: Number(url.searchParams.get('skip') ?? 0) === 0 ? items : [] }]
   }
   if (p === '/api/v1/cycle-counts/reconcile-matching' && method === 'POST') {
     const ids = (body as { ids: number[] }).ids

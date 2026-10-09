@@ -57,6 +57,7 @@ y `Diseño/logistica-db-seed.sql`. Se construye por lotes (ver `docs/lote1-decis
 - El contrato del kit y los patrones de pantalla están en `web-app/KIT.md`: quien construye una pantalla lee ese archivo, no el núcleo.
 - Textos de interfaz con `t('clave')` en `src/kernel/i18n/{es,en}.json`; identificadores en inglés; comentarios en español.
 - Permisos y módulos siempre con `<Can perm>` / `<ModuleGate module>` usando los códigos exactos del API.
+- **Ordenar una tabla paginada por el servidor ordena TODO lo que dice el filtro**, no solo la página en pantalla (`DataTable` lee la consulta completa con `exportRows`, hasta 10 000 filas, y ordena y pagina ahí): toda tabla paginada por el servidor debe llevar `exportRows`.
 - Full responsive (360 px en adelante), sin scroll horizontal de página; convenciones de interfaz del documento maestro (ordenar columnas, buscador libre `QBox`, chips sin envolver, idioma sin reiniciar).
 - Compuerta antes de cualquier revisión: `npm run check` (tipos generados, tsc, oxlint, vitest, build). Recorridos Playwright en `web-app/e2e` contra el API real.
 - Cierre de un lote de frontend: `docs/frontend/loteFN-decisiones.md` + capítulo del manual de pantallas en `docs/manual/frontend/` con capturas.
