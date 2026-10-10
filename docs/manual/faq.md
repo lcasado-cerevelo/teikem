@@ -5810,5 +5810,5 @@ Es un enlace: la posición tiene más de un producto. Al tocarlo se abre la vent
 Es a propósito: una posición con más de un producto sale en una línea por producto (columna SKU, producto y lo que tiene ese producto en esa posición).
 
 **¿Cómo veo qué productos hay en una posición desde Productos e inventario?**
-Use el filtro **Posición** (escriba parte del código, por ejemplo `A-01`): salen los productos que tienen existencia en alguna posición cuyo código **contiene** ese texto. Las cantidades de la tabla siguen siendo las del producto (no solo las de esa posición). El filtro también va en «Filtros aplicados» de los reportes y de Exportar; no aplica al Reporte de ajustes.
+Use el filtro **Posición** (escriba parte del código, por ejemplo `A-01`): salen los productos que tienen existencia en alguna posición cuyo código **contiene** ese texto. Con el filtro puesto, **En mano, Reservado y Disponible son SOLO las de las posiciones que coinciden** (si el texto coincide con varias posiciones, la suma de ellas), y el contador del panel dice cuántos productos hay ahí. Sin el filtro, las cantidades son las totales del producto. El filtro también va en «Filtros aplicados» de los reportes y de Exportar; no aplica al Reporte de ajustes.
 

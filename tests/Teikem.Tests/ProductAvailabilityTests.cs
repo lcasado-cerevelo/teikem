@@ -53,6 +53,10 @@ public sealed class ProductAvailabilityTests
         Assert.Equal(new[] { "PF", "PR" }, inA.Items.Select(i => i.Sku).OrderBy(x => x).ToArray());
         var inQ = await products.ListAsync(new ProductListQuery(BinSearch: " q-0 "), InventoryScope.Any, default);
         Assert.Equal(new[] { "PQ" }, inQ.Items.Select(i => i.Sku).ToArray());
+        // las cantidades de la lista son las de ESAS posiciones: PQ tiene 5 en Q-01 y 2 en XD-01
+        Assert.Equal(5m, inQ.Items.Single().QtyOnHand);
+        var inXd = await products.ListAsync(new ProductListQuery(BinSearch: "xd"), InventoryScope.Any, default);
+        Assert.Equal(2m, inXd.Items.Single().QtyOnHand);
         Assert.Empty((await products.ListAsync(new ProductListQuery(BinSearch: "ZZ"), InventoryScope.Any, default)).Items);
 
         var balances = await f.Get<InventoryReadService>().BalancesAsync(

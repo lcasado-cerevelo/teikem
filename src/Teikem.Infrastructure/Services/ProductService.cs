@@ -185,7 +185,7 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
         if (!string.IsNullOrWhiteSpace(q.BinSearch))
         {
             // 2026-10-10 (filtro «Posición» de Productos e inventario): productos con existencia en una posición cuyo código CONTIENE el texto,
-            // en los almacenes indicados si los hay. La cantidad que muestra la lista sigue siendo la del producto (no la de esa posición).
+            // en los almacenes indicados si los hay. Las cantidades de la lista son las de ESAS posiciones (ver ToItemsAsync).
             var binText = q.BinSearch.Trim().ToLowerInvariant();
             var matchingBins = db.Set<WarehouseBin>().AsNoTracking().Where(b => b.Code.ToLower().Contains(binText));
             var inBins = StockIn(warehouseIds).Where(b => b.QtyOnHand > 0 && b.WarehouseBinId != null);
@@ -219,7 +219,7 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
         }
         var page = await ordered.ThenBy(p => p.ProductId).Skip(skip).Take(take).ToListAsync(ct);
 
-        var items = await ToItemsAsync(page, warehouseIds, ct);
+        var items = await ToItemsAsync(page, warehouseIds, ct, string.IsNullOrWhiteSpace(q.BinSearch) ? null : q.BinSearch.Trim().ToLowerInvariant());
         return new ProductPageDto(total, skip, take, items);
     }
 
@@ -694,12 +694,19 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
     }
 
     /// <summary>Filas de la lista con totales agrupados en UNA consulta (sin N+1); en esos almacenes si warehouseIds.</summary>
-    private async Task<IReadOnlyList<ProductListItemDto>> ToItemsAsync(IReadOnlyList<Product> products, IReadOnlyList<int>? warehouseIds, CancellationToken ct)
+    /// <param name="binText">Con filtro de posición (minúsculas), las cantidades son SOLO las de las posiciones cuyo código contiene el texto.</param>
+    private async Task<IReadOnlyList<ProductListItemDto>> ToItemsAsync(IReadOnlyList<Product> products, IReadOnlyList<int>? warehouseIds, CancellationToken ct, string? binText = null)
     {
         if (products.Count == 0) return Array.Empty<ProductListItemDto>();
         var ids = products.Select(p => p.ProductId).ToList();
 
-        var totals = (await StockIn(warehouseIds)
+        var stockForTotals = StockIn(warehouseIds);
+        if (binText is not null)
+        {
+            var matchingBins = db.Set<WarehouseBin>().AsNoTracking().Where(x => x.Code.ToLower().Contains(binText));
+            stockForTotals = stockForTotals.Where(b => b.WarehouseBinId != null && matchingBins.Any(x => x.WarehouseBinId == b.WarehouseBinId));
+        }
+        var totals = (await stockForTotals
                 .Where(b => ids.Contains(b.ProductId))
                 .GroupBy(b => b.ProductId)
                 .Select(g => new { ProductId = g.Key, OnHand = g.Sum(b => b.QtyOnHand), Reserved = g.Sum(b => b.QtyReserved) })
