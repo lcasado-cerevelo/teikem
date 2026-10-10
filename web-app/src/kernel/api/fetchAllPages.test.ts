@@ -39,8 +39,8 @@ describe('fetchAllPages', () => {
     expect(truncated).toBe(false)
   })
 
-  it('corta en el tope de 10 000 y marca truncated', async () => {
-    const fetchPage = server(12_345)
+  it('corta en el tope de lectura (100 000) y marca truncated', async () => {
+    const fetchPage = server(EXPORT_MAX_ROWS + 345)
     const { items, truncated } = await fetchAllPages(fetchPage)
     expect(items).toHaveLength(EXPORT_MAX_ROWS)
     expect(truncated).toBe(true)

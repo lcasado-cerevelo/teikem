@@ -3,7 +3,7 @@
 // etiqueta en una impresora térmica (no la hoja de "Códigos de barras", que lleva muchos por hoja). Reutiliza el generador de etiquetas de
 // `kernel/ui/binLabelPdf` (código de barras Code 128 a todo lo ancho, código en letra grande y hasta dos renglones de datos).
 // - Qué se imprime: EXACTAMENTE los productos que filtra la tabla de Productos e inventario (`productListQuery`, de a 200 hasta 10 000 como Exportar),
-//   en orden natural de SKU, con tope de `PRODUCT_LABELS_MAX` etiquetas por PDF (si se pasa, avisa y pide acotar con los filtros).
+//   en orden natural de SKU, sin tope de etiquetas (si pasa de `PRODUCT_LABELS_NOTICE` la pantalla solo AVISA que el PDF es grande).
 // - Cada etiqueta: el código de barras lleva el SKU exacto (la app del lector busca el producto por código de barras o por SKU: el código de
 //   barras propio del producto NO se usa, igual que en el reporte de códigos de barras); debajo el SKU en grande y, en letra pequeña, el nombre del
 //   producto y su categoría.
@@ -18,8 +18,8 @@ type Translate = (key: string, params?: Record<string, string | number>) => stri
 
 /** Permiso: el de la pantalla de Productos y de su reporte de códigos de barras (`inventory.view`). */
 export const PRODUCT_LABELS_PERMISSION = 'inventory.view'
-/** Tope de etiquetas por PDF (el mismo que las de posición). */
-export const PRODUCT_LABELS_MAX = 500
+/** Desde cuántas etiquetas se AVISA que el PDF es grande (no se limita nada: se imprime todo). */
+export const PRODUCT_LABELS_NOTICE = 500
 
 /** Datos de la etiqueta: nombre del producto y, si tiene, su categoría. */
 export function productLabelDetails(p: Pick<ProductListItemDto, 'name' | 'categoryName'>): BinSheetDetail[] {
@@ -46,16 +46,13 @@ export interface ProductLabelsFlowArgs {
   spec: Pick<BinLabelSpec, 'title' | 'company' | 'locale' | 'size' | 'orientation'>
   t: Translate
   lang: string
-  max?: number
 }
 
 /** Lee, ordena por SKU y descarga. Un error al leer o al generar se propaga. Nunca marca nada. */
 export async function printProductLabels(deps: ProductLabelsFlowDeps, args: ProductLabelsFlowArgs): Promise<BinLabelsResult> {
-  const max = args.max ?? PRODUCT_LABELS_MAX
   deps.onProgress?.({ phase: 'read' })
   const { items } = await deps.fetchProducts()
   if (items.length === 0) return { status: 'nothing' }
-  if (items.length > max) return { status: 'tooMany', total: items.length, max }
   const cmp = naturalCompare(args.lang)
   const labels = [...items].sort((a, b) => cmp(a.sku ?? '', b.sku ?? '')).map(toProductLabel)
   deps.onProgress?.({ phase: 'render', labels: labels.length })

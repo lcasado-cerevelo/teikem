@@ -6,7 +6,7 @@ import { setLang, t } from '../../kernel/i18n/i18n'
 import { planBinLabels, type BinLabelSpec } from '../../kernel/ui/binLabelPdf'
 import type { WarehouseBinDto } from './api'
 import {
-  BIN_LABELS_MAX,
+  BIN_LABELS_NOTICE,
   BIN_LABELS_PAGE_SIZE,
   BIN_LABELS_PERMISSION,
   binLabelsSources,
@@ -119,15 +119,11 @@ describe('binLabels · flujo', () => {
     expect(calls.every((c) => c.skip === 0 && c.take === 200)).toBe(true)
   })
 
-  it('más de 500: avisa tras la primera lectura y no genera nada', async () => {
-    const { calls, fetchPage } = fakeList(Array.from({ length: BIN_LABELS_MAX + 1 }, (_, i) => bin(i + 1, `C-${i}`)))
-    const d = deps(fetchPage)
-    expect(await printBinLabels(d, { sources: [{}], spec, t, lang: 'es' })).toEqual({ status: 'tooMany', total: 501, max: 500 })
-    expect(calls).toHaveLength(1)
-    expect(d.download).not.toHaveBeenCalled()
-    // exactamente 500 sí
-    const ok = fakeList(Array.from({ length: BIN_LABELS_MAX }, (_, i) => bin(i + 1, `C-${i}`)))
-    expect(await printBinLabels(deps(ok.fetchPage), { sources: [{}], spec, t, lang: 'es' })).toMatchObject({ status: 'printed', labels: 500 })
+  it('sin tope: más de 500 también se imprimen todas (la pantalla solo avisa que el PDF es grande)', async () => {
+    const many = fakeList(Array.from({ length: BIN_LABELS_NOTICE + 1 }, (_, i) => bin(i + 1, `C-${i}`)))
+    const d = deps(many.fetchPage)
+    expect(await printBinLabels(d, { sources: [{}], spec, t, lang: 'es' })).toMatchObject({ status: 'printed', labels: 501 })
+    expect(d.download).toHaveBeenCalledTimes(1)
   })
 
   it('sin posiciones: "nada" sin PDF', async () => {

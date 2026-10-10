@@ -182,6 +182,16 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
             query = query.Where(p => (stockH.Where(b => b.ProductId == p.ProductId).Sum(b => (decimal?)(b.QtyOnHand - b.QtyReserved)) ?? 0m) > 0m);
         }
 
+        if (!string.IsNullOrWhiteSpace(q.BinSearch))
+        {
+            // 2026-10-10 (filtro «Posición» de Productos e inventario): productos con existencia en una posición cuyo código CONTIENE el texto,
+            // en los almacenes indicados si los hay. La cantidad que muestra la lista sigue siendo la del producto (no la de esa posición).
+            var binText = q.BinSearch.Trim().ToLowerInvariant();
+            var matchingBins = db.Set<WarehouseBin>().AsNoTracking().Where(b => b.Code.ToLower().Contains(binText));
+            var inBins = StockIn(warehouseIds).Where(b => b.QtyOnHand > 0 && b.WarehouseBinId != null);
+            query = query.Where(p => inBins.Any(b => b.ProductId == p.ProductId && matchingBins.Any(x => x.WarehouseBinId == b.WarehouseBinId)));
+        }
+
         var total = await query.CountAsync(ct);
         IOrderedQueryable<Product> ordered;
         if (q.SelectorOrder)

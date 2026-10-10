@@ -52,7 +52,7 @@ public sealed record ProductListQuery(string? Search = null, int[]? CategoryIds 
     bool ActiveOnly = false, Guid? WarehousePublicId = null, bool OnlyAvailable = false, int Skip = 0, int Take = 100, bool SelectorOrder = false,
     bool BelowMin = false, Guid[]? WarehousePublicIds = null, Guid[]? ProductPublicIds = null, string? Name = null, string[]? Brands = null,
     bool SerialOnly = false, bool SerialMissing = false, bool OnlyOnHand = false, bool Unavailable = false,
-    bool HasAvailable = false);
+    bool HasAvailable = false, string? BinSearch = null);
 
 public sealed record ProductListItemDto(int Id, Guid PublicId, string Sku, string Name, int? CategoryId, string? CategoryName,
     Guid? OwnerClientPublicId, string? OwnerName, bool IsOwn, string BaseUomCode, string TrackingTypeCode, string? Barcode,

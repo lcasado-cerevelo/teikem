@@ -1117,10 +1117,10 @@
     },
     "binProducts": {
       "button": "Products by bin",
-      "hint": "PDF with one bin per page and the barcode of each product in it, to scan from paper (for example, on a high rack).",
+      "hint": "Letter-size PDF, like the barcode one: for each bin, the barcodes of the products it holds, to scan from the paper.",
       "title": "Products by bin",
       "pdfTitle": "Products by bin",
-      "intro": "One bin per page with its products (up to 10 per page) and each product's barcode, to scan from paper. It lists what is in the bins at the moment you generate it.",
+      "intro": "Letter page with several codes per page (like the “Barcodes” report): each bin opens a group with its products and the barcode of each. It is a list of what is there at the moment it is generated.",
       "scope": {
         "legend": "What to print",
         "filter": "The bins in the current filter ({count})",
@@ -1128,8 +1128,7 @@
         "selectedNone": "To print only some bins, check them in the list."
       },
       "includeEmpty": "Include empty bins",
-      "includeEmptyHint": "When off, bins without products are not printed. When on, they get a \"No products\" page.",
-      "tooMany": "That is {count} bins; the maximum per print is {max}. Narrow the filters or check fewer bins.",
+      "includeEmptyHint": "Bins without products have no codes. On, they are named in a notice in the PDF; off, they are only counted.",
       "noneInScope": "There are no bins in your choice.",
       "nothing": "There is nothing to print: the chosen bins have no products. Turn on \"Include empty bins\" to print them.",
       "generate": "Generate PDF",
@@ -1137,12 +1136,11 @@
       "cancel": "Cancel",
       "progress": {
         "read": "Reading bins… {done} of {total}",
-        "render": "Generating the PDF ({sheets} pages)…"
+        "render": "Generating the PDF ({products} products)…"
       },
       "result": {
-        "printed": "{sheets} page(s) for {bins} bin(s) were generated.",
+        "printed": "PDF generated: {products} product(s) in {bins} bin(s).",
         "omittedEmpty": "{count} bin(s) without products were not printed.",
-        "withoutCode": "{count} product(s) without a readable barcode: see the notice at the bottom of their page.",
         "cancelled": "Printing cancelled.",
         "error": "The products-by-bin PDF could not be generated. {error}"
       },
@@ -1161,7 +1159,15 @@
       "selectPage": "Select all on this page",
       "selected": "{count} checked",
       "selectedOne": "1 checked",
-      "clearSelection": "Clear checks"
+      "clearSelection": "Clear checks",
+      "large": "That is {count}: the PDF will be large and may take a moment. All of them are printed; there is no limit.",
+      "pdfSubtitle": "The products in each bin, with their barcode to scan with the reader. A snapshot of the moment it is generated.",
+      "warehouseFilter": "Warehouse",
+      "group": "Bin {bin}{details} — {count} product(s)",
+      "emptyOmitted": "{count} bin(s) without products have no codes: {bins}.",
+      "emptyListed": "Bins without products ({count}): {bins}.",
+      "emptyMore": "and {count} more",
+      "nothingInReport": "The chosen bins have no products."
     },
     "binLabels": {
       "button": "Location labels",
@@ -1204,7 +1210,6 @@
       "details": {
         "warehouse": "Warehouse"
       },
-      "tooMany": "That is {count} locations; the maximum per PDF is {max} labels. Narrow the filters or check fewer locations.",
       "noneInScope": "There are no locations in your choice.",
       "nothing": "There are no locations to print with your choice.",
       "generate": "Generate PDF",
@@ -1222,7 +1227,8 @@
         "withoutCodeOne": "1 came out without a barcode (code in text only):",
         "cancelled": "Cancelled; the PDF was not generated.",
         "error": "The labels could not be generated. {error}"
-      }
+      },
+      "large": "That is {count}: the PDF will be large and may take a moment. All of them are printed; there is no limit."
     },
     "locations": {
       "title": "Bins",
@@ -1252,7 +1258,8 @@
         "product": "Product",
         "capacity": "Capacity",
         "occupancy": "Occupancy",
-        "status": "Status"
+        "status": "Status",
+        "sku": "SKU"
       },
       "filters": {
         "bin": "Slot",
@@ -1269,6 +1276,17 @@
         "PARTIAL": "Partial",
         "FULL": "Full",
         "NO_CAPACITY": "In use, no capacity"
+      },
+      "contents": {
+        "title": "Products in {bin}",
+        "close": "Close",
+        "empty": "This bin has no stock right now.",
+        "sku": "SKU",
+        "product": "Product",
+        "lot": "Lot",
+        "onHand": "On hand",
+        "available": "Available",
+        "open": "See the products in {bin}"
       }
     },
     "detail": {
@@ -1621,7 +1639,9 @@
         "name": "Name",
         "namePlaceholder": "Contains…",
         "brand": "Brand",
-        "excludeUnavailable": "Exclude unavailable"
+        "excludeUnavailable": "Exclude unavailable",
+        "bin": "Bin",
+        "binPlaceholder": "Contains… (e.g. A-01)"
       },
       "reports": {
         "working": "Generating…",
@@ -3461,7 +3481,6 @@
       "pdfTitle": "Product labels",
       "intro": "One label per product in the filtered list, with its SKU barcode, the SKU in large type and its name. Each label is one PDF page of the exact label size (label only, no sheet). You can reprint them any time: they change nothing in the system.",
       "working": "Reading products and generating the PDF…",
-      "tooMany": "There are {count} products; the maximum per PDF is {max} labels. Narrow it with the filters.",
       "nothing": "There are no products to print with the current filters."
     }
   },

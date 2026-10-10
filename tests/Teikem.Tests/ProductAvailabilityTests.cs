@@ -48,6 +48,13 @@ public sealed class ProductAvailabilityTests
         var hasAvailable = await products.ListAsync(new ProductListQuery(WarehousePublicId: w.PublicId, HasAvailable: true), InventoryScope.Any, default);
         Assert.Equal(new[] { "PF", "PQ" }, hasAvailable.Items.Select(i => i.Sku).OrderBy(x => x).ToArray());
 
+        // filtro «Posición»: el código de la posición CONTIENE el texto (y la posición tiene existencia de ese producto)
+        var inA = await products.ListAsync(new ProductListQuery(BinSearch: "P-0"), InventoryScope.Any, default);
+        Assert.Equal(new[] { "PF", "PR" }, inA.Items.Select(i => i.Sku).OrderBy(x => x).ToArray());
+        var inQ = await products.ListAsync(new ProductListQuery(BinSearch: " q-0 "), InventoryScope.Any, default);
+        Assert.Equal(new[] { "PQ" }, inQ.Items.Select(i => i.Sku).ToArray());
+        Assert.Empty((await products.ListAsync(new ProductListQuery(BinSearch: "ZZ"), InventoryScope.Any, default)).Items);
+
         var balances = await f.Get<InventoryReadService>().BalancesAsync(
             new BalanceQuery(ProductPublicIds: new[] { reserved.PublicId }, OnlyAvailable: true), InventoryScope.Any, default);
         Assert.Empty(balances.Items);

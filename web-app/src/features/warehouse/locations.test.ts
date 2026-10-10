@@ -8,6 +8,7 @@ import {
   binOccupancy,
   binProductCell,
   buildBinListQuery,
+  expandBinsForExport,
   parseZoneParam,
   toggleZoneSelection,
   zoneCapacities,
@@ -109,5 +110,30 @@ describe('buildBinListQuery', () => {
     const r = buildBinListQuery({ ...EMPTY_LOCATION_FILTERS, zoneIds: ['3'], zoneTypes: ['STORAGE'] }, ZONES)
     expect(r.impossible).toBe(true)
     expect(buildBinListQuery({ ...EMPTY_LOCATION_FILTERS, zoneTypes: ['CROSSDOCK'] }, ZONES).impossible).toBe(true)
+  })
+})
+
+
+describe('expandBinsForExport (una línea por producto)', () => {
+  const bin = (id: number, code: string, productCount: number, extra: Record<string, unknown> = {}) => ({ id, code, productCount, qtyOnHand: 9, ...extra })
+  const bal = (binId: number, sku: string, qtyOnHand: number, productPublicId = sku) => ({ binId, productPublicId, sku, productName: `Nombre ${sku}`, qtyOnHand })
+
+  it('una posición con varios productos sale repetida, una vez por producto (por SKU, lotes sumados); las de 0 o 1 salen igual', () => {
+    const bins = [bin(1, 'A-01', 3), bin(2, 'A-02', 1, { singleProductSku: 'X', singleProductName: 'X' }), bin(3, 'A-03', 0)]
+    const out = expandBinsForExport(bins, [bal(1, 'TUER', 4), bal(1, 'ARAN', 3), bal(1, 'TORN', 2), bal(1, 'TORN', 1), bal(2, 'X', 9)])
+    expect(out.map((r) => [r.code, r.exportProduct?.sku, r.exportProduct?.qty])).toEqual([
+      ['A-01', 'ARAN', 3],
+      ['A-01', 'TORN', 3],
+      ['A-01', 'TUER', 4],
+      ['A-02', undefined, undefined],
+      ['A-03', undefined, undefined],
+    ])
+    expect(out[0]).toMatchObject({ id: 1, productCount: 3, exportProduct: { name: 'Nombre ARAN' } })
+  })
+
+  it('si de una posición con varios no llegó ningún saldo, queda en una sola línea', () => {
+    const out = expandBinsForExport([bin(1, 'A-01', 2)], [])
+    expect(out).toHaveLength(1)
+    expect(out[0].exportProduct).toBeUndefined()
   })
 })

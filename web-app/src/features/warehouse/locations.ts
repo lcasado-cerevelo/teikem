@@ -147,3 +147,45 @@ export function buildBinListQuery(f: LocationFilters, zones: readonly WarehouseZ
   }
   return { query, impossible: zoneIds !== undefined && zoneIds.length === 0 }
 }
+
+
+/** Una fila de la tabla de posiciones; al exportar, una posición con varios productos sale repetida con `exportProduct` (una línea por producto). */
+export type BinRow = WarehouseBinDto & { exportProduct?: { sku: string; name: string; qty: number } }
+
+/** Saldo mínimo que necesita la exportación (lo que devuelve `GET /inventory/balances`). */
+export interface BinBalanceLike {
+  binId?: number | null
+  productPublicId?: string
+  sku?: string | null
+  productName?: string | null
+  qtyOnHand?: number
+}
+
+/**
+ * Exportación de Posiciones (2026-10-10, Luis): una posición con más de un producto sale en VARIAS líneas, una por producto (SKU, nombre y su
+ * existencia en esa posición; lotes sumados), en el orden de la tabla y con los productos por SKU. Las de 0 o 1 producto salen igual que siempre. Si
+ * de una posición con varios no llegó ningún saldo (se movió entre la tabla y la exportación), sale una sola línea.
+ */
+export function expandBinsForExport(bins: readonly WarehouseBinDto[], balances: readonly BinBalanceLike[]): BinRow[] {
+  const byBin = new Map<number, Map<string, { sku: string; name: string; qty: number }>>()
+  for (const b of balances) {
+    if (b.binId == null || !(b.qtyOnHand && b.qtyOnHand > 0)) continue
+    const key = b.productPublicId ?? b.sku ?? ''
+    const inBin = byBin.get(b.binId) ?? new Map()
+    const cur = inBin.get(key)
+    if (cur) cur.qty += b.qtyOnHand
+    else inBin.set(key, { sku: b.sku ?? '', name: b.productName ?? '', qty: b.qtyOnHand })
+    byBin.set(b.binId, inBin)
+  }
+  const out: BinRow[] = []
+  for (const bin of bins) {
+    const products = bin.id != null && (bin.productCount ?? 0) > 1 ? [...(byBin.get(bin.id)?.values() ?? [])] : []
+    if (products.length === 0) {
+      out.push(bin)
+      continue
+    }
+    products.sort((x, y) => x.sku.localeCompare(y.sku, undefined, { numeric: true, sensitivity: 'base' }))
+    for (const p of products) out.push({ ...bin, exportProduct: p })
+  }
+  return out
+}

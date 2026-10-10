@@ -5036,9 +5036,11 @@ El almacén no existe o es de otra compañía.
 
 ### Mensajes que se ven en la pantalla (sin código HTTP propio)
 
-**"Son {n} posiciones; el máximo por impresión es 500. Acote con los filtros o marque menos posiciones."**
-Lo elegido pasa del tope de 500 posiciones por impresión. Filtre por zona (recuadro del río), por **Pasillo** o por texto en **Posición**, o marque
-menos casillas, e imprima por partes.
+**"Son {n}: el PDF será grande y puede tardar un poco. Se imprimen todas; no hay límite."** (aviso, no error)
+Desde 2026-10-10 ya **no hay tope** de posiciones por impresión: el aviso solo dice que el PDF será grande. Si prefiere imprimir menos, filtre por zona, por **Pasillo** o por texto en **Posición**, o marque casillas.
+
+**¿Cómo se ve ahora el informe «Productos por posición»?**
+En hoja carta, igual que «Códigos de barras»: varias celdas por página, un grupo por posición con su título y el código de barras de cada producto debajo.
 
 **"No hay posiciones en lo que eligió."**
 La opción elegida no tiene posiciones (p. ej. *Las posiciones marcadas (0)*). Elija otra opción o cambie los filtros.
@@ -5096,9 +5098,8 @@ final de *"No se pudieron generar las etiquetas."*.
 
 ### Mensajes que se ven en la pantalla (sin código HTTP propio)
 
-**"Son {n} posiciones; el máximo por PDF es 500 etiquetas. Acote con los filtros o marque menos posiciones."**
-Lo elegido pasa del tope de 500 etiquetas por PDF. Filtre por zona (recuadro del río), por el código en **Posición**, o marque menos
-casillas, e imprima por partes. **Generar PDF** queda deshabilitado.
+**"Son {n}: el PDF será grande y puede tardar un poco. Se imprimen todas; no hay límite."** (aviso, no error)
+Desde 2026-10-10 ya no hay tope de 500 etiquetas por PDF: se imprimen todas las que pida. **Generar PDF** sigue habilitado.
 
 **"No hay posiciones en lo que eligió."**
 La opción elegida no tiene posiciones (p. ej. *Las posiciones del filtro actual (0)*). Cambie los filtros o marque posiciones.
@@ -5141,7 +5142,7 @@ Revise que el tamaño de etiqueta del driver sea el mismo que eligió y que la e
 
 **¿Por qué no salen todas las posiciones del almacén?**
 Salen las del **filtro actual** de la tabla (todos los filtros, también el texto de **Posición**) o las **marcadas**. Quite los filtros
-(**Limpiar**) para todas, hasta 500 por PDF.
+(**Limpiar**) para todas (sin tope).
 
 **¿Las marcas se quitan al imprimir etiquetas?**
 No: se quedan por si quiere reimprimir. **Quitar marcas** las borra.
@@ -5696,8 +5697,8 @@ Detalle en [Etiquetas de producto](frontend/f17b-etiquetas-de-producto.md).
 **¿Cómo imprimo etiquetas adhesivas de mis productos?**
 Productos e inventario → filtre la tabla → **Etiquetas de producto** → tamaño (4 × 2, 4 × 4 o 4 × 6) → **Generar PDF**. Sale una etiqueta por producto con el código de barras del SKU, el SKU en grande y el nombre.
 
-**Dice `Son {n} productos; el máximo por PDF es 500 etiquetas. Acote con los filtros.`**
-El filtro trae más de 500 productos. Filtre por categoría, marca o nombre y genere por tandas.
+**¿Hay un máximo de etiquetas de producto por PDF?**
+No (desde 2026-10-10): se imprimen todos los productos del filtro. Con muchos, el PDF tarda más en generarse.
 
 **Dice `No hay productos para imprimir con los filtros actuales.`**
 El filtro no devuelve ningún producto: quite o cambie los filtros.
@@ -5799,3 +5800,15 @@ El servidor revisó la operación al recibirla y no pudo aplicarla (por ejemplo,
 
 **Hice una transferencia sin señal y el saldo de otro aparato no cambió.**
 Es normal: el otro aparato lo verá cuando la operación llegue al servidor y él sincronice. Hasta entonces dos aparatos pueden ver cifras distintas.
+
+## Posiciones y Productos e inventario (2026-10-10)
+
+**¿Qué es «3 productos» en la columna Producto de Posiciones?**
+Es un enlace: la posición tiene más de un producto. Al tocarlo se abre la ventana **Productos en {posición}** con SKU, producto, lote, en mano y disponible.
+
+**Exporté Posiciones y una posición sale varias veces.**
+Es a propósito: una posición con más de un producto sale en una línea por producto (columna SKU, producto y lo que tiene ese producto en esa posición).
+
+**¿Cómo veo qué productos hay en una posición desde Productos e inventario?**
+Use el filtro **Posición** (escriba parte del código, por ejemplo `A-01`): salen los productos que tienen existencia en alguna posición cuyo código **contiene** ese texto. Las cantidades de la tabla siguen siendo las del producto (no solo las de esa posición). El filtro también va en «Filtros aplicados» de los reportes y de Exportar; no aplica al Reporte de ajustes.
+

@@ -19,7 +19,7 @@ import { BIN_LABEL_ORIENTATIONS, BIN_LABEL_SIZES, BIN_LABEL_SIZE_KEYS, downloadB
 import { IconTag } from '../../kernel/ui/screenIcons'
 import { fetchWarehouseBins } from './api'
 import {
-  BIN_LABELS_MAX,
+  BIN_LABELS_NOTICE,
   BIN_LABELS_PERMISSION,
   binLabelsSources,
   parseLabelOrientation,
@@ -103,7 +103,7 @@ export function BinLabelsModal({ open, onClose, warehousePublicId, warehouse, qu
   const running = progress !== null
 
   const count = scope === 'filter' ? counts.filter : counts.selected
-  const tooMany = count !== null && count > BIN_LABELS_MAX
+  const large = count !== null && count > BIN_LABELS_NOTICE
   const none = count === 0
   const fmt = (n: number) => f.number(n)
 
@@ -146,9 +146,6 @@ export function BinLabelsModal({ open, onClose, warehousePublicId, warehouse, qu
         },
       )
       switch (result.status) {
-        case 'tooMany':
-          setNotice(t(`${S}.tooMany`, { count: fmt(result.total), max: fmt(result.max) }))
-          break
         case 'nothing':
           setNotice(t(`${S}.nothing`))
           break
@@ -196,7 +193,7 @@ export function BinLabelsModal({ open, onClose, warehousePublicId, warehouse, qu
           <button type="button" className="btn" onClick={cancel} disabled={running && progress?.phase !== 'read'}>
             {warnings && !running ? t(`${S}.close`) : t(`${S}.cancel`)}
           </button>
-          <button type="button" className="btn flow" onClick={generate} disabled={running || tooMany || none || count === null} aria-busy={running || undefined}>
+          <button type="button" className="btn flow" onClick={generate} disabled={running || none || count === null} aria-busy={running || undefined}>
             <IconTag />
             {running ? t(`${S}.generating`) : t(`${S}.generate`)}
           </button>
@@ -234,12 +231,8 @@ export function BinLabelsModal({ open, onClose, warehousePublicId, warehouse, qu
           ))}
           <p className="bs-hint">{t(`${S}.orientation.hint`)}</p>
         </fieldset>
-        {tooMany && (
-          <p className="note ferr" role="alert">
-            {t(`${S}.tooMany`, { count: fmt(count ?? 0), max: fmt(BIN_LABELS_MAX) })}
-          </p>
-        )}
-        {none && !tooMany && <p className="bs-hint">{t(`${S}.noneInScope`)}</p>}
+        {large && <p className="bs-hint">{t(`${S}.large`, { count: fmt(count ?? 0) })}</p>}
+        {none && <p className="bs-hint">{t(`${S}.noneInScope`)}</p>}
         {progressText && (
           <p className="bs-progress" role="status" aria-live="polite">
             {progressText}

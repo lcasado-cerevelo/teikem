@@ -11657,6 +11657,7 @@ export interface paths {
                     onlyOnHand?: boolean;
                     unavailable?: boolean;
                     hasAvailable?: boolean;
+                    binSearch?: string;
                 };
                 header?: never;
                 path?: never;

@@ -7,12 +7,12 @@ import { useContext, useId, useRef, useState } from 'react'
 import { SessionContext } from '../../app/session'
 import { useFormat } from '../../kernel/format'
 import { useLang, useT } from '../../kernel/i18n'
-import { Modal, toast } from '../../kernel/ui'
-import { downloadBinSheetsPdf } from '../../kernel/ui/binSheetPdf'
+import { Modal, toast, useAppliedFilters } from '../../kernel/ui'
+import { downloadBarcodeReportPdf } from '../../kernel/ui/barcodeReportPdf'
 import { IconDoc } from '../../kernel/ui/screenIcons'
 import { fetchBinProducts, warehouseLabel } from './api'
 import {
-  BIN_PRODUCTS_MAX_BINS,
+  BIN_PRODUCTS_NOTICE,
   binProductsSources,
   printBinProducts,
   printedSummary,
@@ -43,6 +43,7 @@ export function BinProductsModal({ open, onClose, warehousePublicId, warehouse, 
   const lang = useLang()
   const f = useFormat()
   const me = useContext(SessionContext)?.me
+  const appliedFilters = useAppliedFilters()
   const groupId = useId()
   const emptyId = useId()
   const [scope, setScope] = useState<BinProductsScope>(initialScope)
@@ -53,7 +54,7 @@ export function BinProductsModal({ open, onClose, warehousePublicId, warehouse, 
   const running = progress !== null
 
   const count = scope === 'filter' ? counts.filter : counts.selected
-  const tooMany = count !== null && count > BIN_PRODUCTS_MAX_BINS
+  const large = count !== null && count > BIN_PRODUCTS_NOTICE
   const none = count === 0
   const fmt = (n: number) => f.number(n)
 
@@ -73,22 +74,27 @@ export function BinProductsModal({ open, onClose, warehousePublicId, warehouse, 
       const result = await printBinProducts(
         {
           fetchPage: (q) => fetchBinProducts(warehousePublicId, q, ctrl.signal),
-          download: (spec) => downloadBinSheetsPdf(spec),
+          download: (spec) => downloadBarcodeReportPdf(spec),
           signal: ctrl.signal,
           onProgress: setProgress,
         },
         {
           sources: binProductsSources(scope, query, selectedIds),
           includeEmpty,
-          spec: { title: t(`${S}.pdfTitle`), company: me?.tenantName, warehouse: warehouseLabel(warehouse), locale: lang },
+          spec: {
+            title: t(`${S}.pdfTitle`),
+            subtitle: t(`${S}.pdfSubtitle`),
+            company: me?.tenantName,
+            user: me?.fullName || me?.email,
+            locale: lang,
+            // el almacén y la barra de filtros de la pantalla en el momento del clic (mismo texto que la línea de filtros de Exportar)
+            filters: [{ label: t(`${S}.warehouseFilter`), value: warehouseLabel(warehouse) }, ...appliedFilters()],
+          },
           t,
           lang,
         },
       )
       switch (result.status) {
-        case 'tooMany':
-          setNotice(t(`${S}.tooMany`, { count: fmt(result.total), max: fmt(result.max) }))
-          break
         case 'nothing':
           setNotice(t(`${S}.nothing`))
           break
@@ -116,7 +122,7 @@ export function BinProductsModal({ open, onClose, warehousePublicId, warehouse, 
 
   let progressText: string | null = null
   if (progress?.phase === 'read') progressText = t(`${S}.progress.read`, { done: fmt(progress.done), total: fmt(progress.total) })
-  else if (progress?.phase === 'render') progressText = t(`${S}.progress.render`, { sheets: fmt(progress.sheets) })
+  else if (progress?.phase === 'render') progressText = t(`${S}.progress.render`, { products: fmt(progress.products) })
 
   return (
     <Modal
@@ -129,7 +135,7 @@ export function BinProductsModal({ open, onClose, warehousePublicId, warehouse, 
           <button type="button" className="btn" onClick={cancel} disabled={running && progress?.phase !== 'read'}>
             {t(`${S}.cancel`)}
           </button>
-          <button type="button" className="btn flow" onClick={generate} disabled={running || tooMany || none || count === null} aria-busy={running || undefined}>
+          <button type="button" className="btn flow" onClick={generate} disabled={running || none || count === null} aria-busy={running || undefined}>
             <IconDoc />
             {running ? t(`${S}.generating`) : t(`${S}.generate`)}
           </button>
@@ -150,12 +156,8 @@ export function BinProductsModal({ open, onClose, warehousePublicId, warehouse, 
           <span>{t(`${S}.includeEmpty`)}</span>
         </label>
         <p className="bs-hint">{t(`${S}.includeEmptyHint`)}</p>
-        {tooMany && (
-          <p className="note ferr" role="alert">
-            {t(`${S}.tooMany`, { count: fmt(count ?? 0), max: fmt(BIN_PRODUCTS_MAX_BINS) })}
-          </p>
-        )}
-        {none && !tooMany && <p className="bs-hint">{t(`${S}.noneInScope`)}</p>}
+        {large && <p className="bs-hint">{t(`${S}.large`, { count: fmt(count ?? 0) })}</p>}
+        {none && <p className="bs-hint">{t(`${S}.noneInScope`)}</p>}
         {progressText && (
           <p className="bs-progress" role="status" aria-live="polite">
             {progressText}

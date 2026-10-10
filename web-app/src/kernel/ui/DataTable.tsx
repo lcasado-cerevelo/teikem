@@ -113,6 +113,8 @@ export interface DataTableProps<T extends RowData> {
   /** false = sin paginación local: todas las filas, sin rango ni "Filas por página" (tablas de apoyo en modales, líneas
    *  con controles editables). Por defecto true. No afecta a la paginación del servidor (`onPage`). */
   pagination?: boolean
+  /** Columnas distintas SOLO para exportar (p. ej. una columna extra de SKU que la tabla no muestra); sin ellas se exportan `columns`. */
+  exportColumns?: readonly DataColumn<T>[]
   rowActions?: readonly RowAction<T>[]
   /** Clic en la fila (p. ej. abrir el detalle). También con Enter. */
   onRowClick?: (row: T) => void
@@ -409,7 +411,7 @@ export function DataTable<T extends RowData>(props: DataTableProps<T>) {
     } else {
       list = table.getPrePaginatedRowModel().rows.map((r) => r.original)
     }
-    await exportTable(format, columns, list, {
+    await exportTable(format, props.exportColumns ?? columns, list, {
       locale: lang,
       yes: t('ui.table.export.yes'),
       no: t('ui.table.export.no'),

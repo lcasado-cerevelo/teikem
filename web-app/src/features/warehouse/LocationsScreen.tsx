@@ -27,7 +27,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Can, useCan } from '../../kernel/access'
 import { api, unwrap } from '../../kernel/api/client'
-import { fetchAllPages } from '../../kernel/api/fetchAllPages'
+import { fetchAllPages, type FetchAllResult } from '../../kernel/api/fetchAllPages'
 import { useLang, useT } from '../../kernel/i18n'
 import {
   Chip,
@@ -48,6 +48,7 @@ import type { BinLabelsScope } from './binLabels'
 import { BinProductsModal } from './BinProductsPanel'
 import { BIN_PRODUCTS_PERMISSION, type BinProductsScope } from './binProducts'
 import { BinCapacityModal } from './BinCapacityModal'
+import { BinContentsModal } from './BinContentsModal'
 import { BinModal } from './BinModal'
 import { formatNumber, useDebounced } from './lineRules'
 import { IconDoc } from '../../kernel/ui/screenIcons'
@@ -58,9 +59,12 @@ import {
   binOccupancy,
   binProductCell,
   buildBinListQuery,
+  expandBinsForExport,
   parseZoneParam,
   toggleZoneSelection,
   zoneCapacities,
+  type BinBalanceLike,
+  type BinRow,
   type ZoneCapacity,
 } from './locations'
 import { TextFilter } from './filterControls'
@@ -171,6 +175,8 @@ function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zone
   // posiciones marcadas (id → código) y el modal de productos por posición (alcance con que se abrió)
   const [selected, setSelected] = useState<ReadonlyMap<number, string>>(() => new Map())
   const [products4Bin, setProducts4Bin] = useState<BinProductsScope | null>(null)
+  // «N productos» de una posición con varios: abre la ventana con lo que hay en ella
+  const [contentsBin, setContentsBin] = useState<{ id: number; code: string } | null>(null)
   // Lote F16: modal de etiquetas de posición (alcance con que se abrió)
   const [labels, setLabels] = useState<BinLabelsScope | null>(null)
   // clic en la fila = editar la posición (mismo BinModal que la pestaña Posiciones de la ficha); solo con warehouse.manage
@@ -268,10 +274,10 @@ function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zone
     setZoneIds([])
   }
 
-  const columns = useMemo<DataColumn<WarehouseBinDto>[]>(() => {
+  const columns = useMemo<DataColumn<BinRow>[]>(() => {
     const zoneById = new Map(zones.map((z) => [z.id, z]))
-    const zoneName = (b: WarehouseBinDto) => zoneById.get(b.zoneId)?.name || b.zoneCode || ''
-    const productText = (b: WarehouseBinDto): string | undefined => {
+    const zoneName = (b: BinRow) => zoneById.get(b.zoneId)?.name || b.zoneCode || ''
+    const productText = (b: BinRow): string | undefined => {
       const cell = binProductCell(b)
       if (cell.kind === 'one') return cell.name
       if (cell.kind === 'many') return t('warehouse.locations.products', { count: formatNumber(cell.count, lang) })
@@ -320,7 +326,8 @@ function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zone
         header: t('warehouse.locations.columns.qty'),
         cell: (b) => <span className="mono">{b.qtyOnHand ? formatNumber(b.qtyOnHand, lang) : '—'}</span>,
         sortValue: (b) => b.qtyOnHand ?? 0,
-        exportValue: (b) => b.qtyOnHand ?? 0,
+        // una línea por producto al exportar una posición con varios: aquí va lo que tiene ESE producto
+        exportValue: (b) => b.exportProduct?.qty ?? b.qtyOnHand ?? 0,
         align: 'end',
       },
       {
@@ -335,10 +342,23 @@ function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zone
                 {cell.name}
               </span>
             )
-          return <span>{productText(b)}</span>
+          // varios productos: el texto es un enlace que abre la ventana con la lista
+          return (
+            <button
+              type="button"
+              className="loc-link"
+              title={t('warehouse.locations.contents.open', { bin: b.code ?? '' })}
+              onClick={(e) => {
+                e.stopPropagation()
+                if (b.id != null) setContentsBin({ id: b.id, code: b.code ?? '' })
+              }}
+            >
+              {productText(b)}
+            </button>
+          )
         },
         sortValue: (b) => productText(b),
-        exportValue: (b) => productText(b) ?? '',
+        exportValue: (b) => b.exportProduct?.name ?? productText(b) ?? '',
       },
       {
         id: 'capacity',
@@ -372,12 +392,35 @@ function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zone
     // `selected` cambia las casillas: las columnas se rehacen al marcar (no hay campos de texto que pierdan el foco)
   }, [t, lang, zones, selected])
 
-  const exportRows = () =>
-    impossible
-      ? Promise.resolve(NO_BINS)
-      : fetchAllPages((skip, take) =>
-          unwrap(api.GET('/api/v1/warehouses/{publicId}/bins', { params: { path: { publicId: warehousePublicId }, query: { ...searchQuery, skip, take } } })),
-        )
+  // Exportar: una posición con varios productos sale en varias líneas (una por producto) y con una columna SKU que la tabla no muestra
+  const exportColumns = useMemo<DataColumn<BinRow>[]>(() => {
+    const at = columns.findIndex((c) => c.id === 'product')
+    const sku: DataColumn<BinRow> = {
+      id: 'sku',
+      header: t('warehouse.locations.columns.sku'),
+      cell: (b) => b.exportProduct?.sku ?? b.singleProductSku ?? '',
+      exportValue: (b) => b.exportProduct?.sku ?? b.singleProductSku ?? '',
+    }
+    return at < 0 ? [...columns] : [...columns.slice(0, at), sku, ...columns.slice(at)]
+  }, [columns, t])
+
+  const exportRows = async (): Promise<FetchAllResult<BinRow>> => {
+    if (impossible) return { items: [], truncated: false }
+    const read = await fetchAllPages<WarehouseBinDto>((skip, take) =>
+      unwrap(api.GET('/api/v1/warehouses/{publicId}/bins', { params: { path: { publicId: warehousePublicId }, query: { ...searchQuery, skip, take } } })),
+    )
+    // las posiciones con varios productos: sus saldos (en tandas de ids) para repartirlas en una línea por producto
+    const many = read.items.filter((b) => b.id != null && (b.productCount ?? 0) > 1).map((b) => b.id as number)
+    const balances: BinBalanceLike[] = []
+    for (let i = 0; i < many.length; i += 100) {
+      const ids = many.slice(i, i + 100)
+      const got = await fetchAllPages<BinBalanceLike>((skip, take) =>
+        unwrap(api.GET('/api/v1/inventory/balances', { params: { query: { warehousePublicIds: [warehousePublicId], binIds: ids, skip, take } } })),
+      )
+      balances.push(...got.items)
+    }
+    return { items: expandBinsForExport(read.items, balances), truncated: read.truncated }
+  }
 
   if (zonesError || binsQ.error) {
     return (
@@ -510,6 +553,7 @@ function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zone
             setPage(1)
           }}
           exportRows={exportRows}
+          exportColumns={exportColumns}
           loading={loading}
           empty={<EmptyState icon={<IconGrid />} title={filtered ? t('warehouse.locations.noMatch') : t('warehouse.locations.noBins')} />}
         />
@@ -527,6 +571,7 @@ function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zone
           selectedIds={[...selected.keys()]}
         />
       )}
+      {contentsBin && <BinContentsModal warehousePublicId={warehousePublicId} bin={contentsBin} onClose={() => setContentsBin(null)} />}
       {labels && (
         <BinLabelsModal
           open

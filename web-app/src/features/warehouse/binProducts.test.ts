@@ -1,18 +1,21 @@
 // Informe "Productos por posición" (sin React): alcances (filtro, marcadas en tandas de 200), lectura por tandas de 200 con
-// tope de 500, orden natural, descarga, cancelar sin descargar, "nada que imprimir" y errores.
+// SIN tope, orden natural, reporte con el formato de «Códigos de barras» (un grupo por posición, una celda por producto), cancelar sin
+// descargar, "nada que imprimir" y errores.
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { setLang, t } from '../../kernel/i18n/i18n'
-import type { BinSheetSpec } from '../../kernel/ui/binSheetPdf'
+import type { BarcodeReportSpec } from '../../kernel/ui/barcodeReportPdf'
 import type { BinProductsDto, BinProductsPageDto, BinProductsQuery } from './api'
 import {
-  BIN_PRODUCTS_MAX_BINS,
+  BIN_PRODUCTS_NOTICE,
   BIN_PRODUCTS_PAGE_SIZE,
   binDetails,
+  binDetailsText,
+  buildBinProductsReport,
+  productReportRow,
   binProductsSources,
   earliestUtc,
   printBinProducts,
   printedSummary,
-  toSheetBin,
   type BinProductsFlowDeps,
 } from './binProducts'
 
@@ -44,13 +47,13 @@ function fakeServer(all: BinProductsDto[], filter: (q: BinProductsQuery, s: BinP
 const args = (sources: BinProductsQuery[], includeEmpty = false) => ({
   sources,
   includeEmpty,
-  spec: { title: 'Productos por posición', company: 'Advance Logistics', warehouse: 'ALM-01 · Principal', locale: 'es' },
+  spec: { title: 'Productos por posición', company: 'Advance Logistics', user: 'Luis', locale: 'es', filters: [{ label: 'Almacén', value: 'ALM-01 · Principal' }] },
   t,
   lang: 'es',
 })
 
 function deps(server: ReturnType<typeof fakeServer>, over: Partial<BinProductsFlowDeps> = {}) {
-  const download = vi.fn(async (_spec: BinSheetSpec) => undefined)
+  const download = vi.fn(async (_spec: BarcodeReportSpec) => undefined)
   return { download, d: { fetchPage: server.fetchPage, download, ...over } as BinProductsFlowDeps }
 }
 
@@ -72,8 +75,12 @@ describe('binProducts · alcances y datos', () => {
       { label: 'Posición', value: 'P1' },
       { label: 'Inactiva', value: '' },
     ])
-    const b = toSheetBin(bin(7, 'A-7', 2), t)
-    expect(b).toMatchObject({ code: 'A-7', key: 7, products: [{ sku: 'SKU-7-0', barcode: '' }, { sku: 'SKU-7-1', barcode: '7500071' }] })
+    expect(binDetailsText({ zoneCode: 'RSV', aisle: ' 01 ', rack: '', level: null, position: 'P1', isActive: false }, t)).toBe('Zona RSV · Pasillo 01 · Posición P1 · Inactiva')
+    // la celda de un producto: el código de barras del producto si Code 128 lo admite (si no, el SKU); SKU en negrita y nombre debajo
+    const [p0, p1] = bin(7, 'A-7', 2).products!
+    expect(productReportRow(p0)).toEqual({ value: 'SKU-7-0', title: 'SKU-7-0', description: 'Producto 0', meta: null })
+    expect(productReportRow(p1)).toEqual({ value: '7500071', title: 'SKU-7-1', description: 'Producto 1', meta: '7500071' })
+    expect(productReportRow({ ...p1, barcode: 'ÑANDÚ' }).value).toBe('SKU-7-1')
     expect(earliestUtc([null, '2026-10-03T14:05:00', '2026-10-03T14:01:00.5', 'x'])).toBe('2026-10-03T14:01:00.5')
     expect(earliestUtc([])).toBeNull()
   })
@@ -94,35 +101,41 @@ describe('binProducts · flujo de impresión', () => {
     expect(server.calls.every((c) => c.zoneIds?.[0] === 3)).toBe(true)
     expect(BIN_PRODUCTS_PAGE_SIZE).toBe(200)
     const spec = download.mock.calls[0][0]
-    expect(spec.bins.slice(0, 3).map((b) => b.code)).toEqual(['A-1', 'A-2', 'A-3'])
-    expect(spec.bins[spec.bins.length - 1].code).toBe('A-431')
-    expect(spec.printedAt.toISOString()).toBe('2026-10-03T14:01:00.123Z')
-    expect(r).toMatchObject({ status: 'printed', sheets: 431, bins: 431, omittedEmpty: 0 })
+    expect(spec.groups.slice(0, 3).map((g) => g.title.split(' ')[1])).toEqual(['A-1', 'A-2', 'A-3'])
+    expect(spec.groups[spec.groups.length - 1].title).toContain('A-431')
+    expect(spec.generatedAt?.toISOString()).toBe('2026-10-03T14:01:00.123Z')
+    expect(spec).toMatchObject({ title: 'Productos por posición', company: 'Advance Logistics', user: 'Luis', locale: 'es', columns: 'auto' })
+    expect(spec.filters).toEqual([{ label: 'Almacén', value: 'ALM-01 · Principal' }])
+    expect(r).toMatchObject({ status: 'printed', bins: 431, products: 431, omittedEmpty: 0 })
     expect(progress).toEqual(['read', 'read', 'read', 'render'])
   })
 
-  it('posiciones vacías: no se imprimen; con includeEmpty sí; todo vacío → "nada" sin PDF', async () => {
+  it('posiciones vacías: no llevan códigos, solo un aviso (nombradas con el interruptor, contadas sin él); todo vacío → "nada" sin PDF', async () => {
     const all = [bin(1, 'B-1', 0), bin(2, 'B-2', 3), bin(3, 'B-3', 0)]
     const off = deps(fakeServer(all))
-    expect(await printBinProducts(off.d, args([{}]))).toMatchObject({ status: 'printed', sheets: 1, bins: 1, omittedEmpty: 2 })
+    expect(await printBinProducts(off.d, args([{}]))).toMatchObject({ status: 'printed', bins: 1, products: 3, omittedEmpty: 2 })
+    expect(off.download.mock.calls[0][0].groups).toHaveLength(1)
+    expect(off.download.mock.calls[0][0].notices).toEqual(['2 posición(es) sin productos no llevan códigos: B-1, B-3.'])
     const on = deps(fakeServer(all))
-    expect(await printBinProducts(on.d, args([{}], true))).toMatchObject({ status: 'printed', sheets: 3, bins: 3 })
+    await printBinProducts(on.d, args([{}], true))
+    expect(on.download.mock.calls[0][0].notices).toEqual(['Posiciones sin productos (2): B-1, B-3.'])
     const none = deps(fakeServer([bin(1, 'B-1', 0)]))
     expect(await printBinProducts(none.d, args([{}]))).toEqual({ status: 'nothing', bins: 1, omittedEmpty: 1 })
     expect(none.download).not.toHaveBeenCalled()
   })
 
-  it('más de 10 productos: varias páginas para una posición', async () => {
-    const s = deps(fakeServer([bin(1, 'C-1', 23), bin(2, 'C-2', 10)]))
-    expect(await printBinProducts(s.d, args([{}]))).toMatchObject({ status: 'printed', sheets: 4, bins: 2 })
+  it('el título del grupo lleva el código, el detalle de la posición y cuántos productos tiene; cada producto es una celda', () => {
+    const { spec, products, withProducts } = buildBinProductsReport([bin(1, 'C-1', 3)], { spec: args([]).spec, t, includeEmpty: false })
+    expect(spec.groups[0].title).toBe('Posición C-1 · Zona RSV · Pasillo 01 — 3 producto(s)')
+    expect(spec.groups[0].rows.map((r) => r.title)).toEqual(['SKU-1-0', 'SKU-1-1', 'SKU-1-2'])
+    expect([products, withProducts]).toEqual([3, 1])
   })
 
-  it('más del tope (500): avisa y no sigue leyendo ni genera', async () => {
-    const server = fakeServer(Array.from({ length: BIN_PRODUCTS_MAX_BINS + 1 }, (_, i) => bin(i + 1, `D-${i}`)))
+  it('sin tope: más de 500 posiciones también se imprimen (la pantalla solo avisa que el PDF es grande)', async () => {
+    const server = fakeServer(Array.from({ length: BIN_PRODUCTS_NOTICE + 1 }, (_, i) => bin(i + 1, `D-${i}`, 1)))
     const s = deps(server)
-    expect(await printBinProducts(s.d, args([{}]))).toEqual({ status: 'tooMany', total: 501, max: 500 })
-    expect(server.calls).toHaveLength(1)
-    expect(s.download).not.toHaveBeenCalled()
+    expect(await printBinProducts(s.d, args([{}]))).toMatchObject({ status: 'printed', bins: 501 })
+    expect(s.download).toHaveBeenCalledTimes(1)
   })
 
   it('marcadas: una lectura por tanda de ids; posiciones repetidas entre fuentes cuentan una vez', async () => {
@@ -171,9 +184,9 @@ describe('binProducts · flujo de impresión', () => {
     expect(await printBinProducts(aborting.d, args([{}]))).toEqual({ status: 'cancelled' })
   })
 
-  it('aviso final: páginas, posiciones, vacías omitidas y productos sin código', () => {
-    expect(printedSummary({ status: 'printed', sheets: 3, bins: 2, omittedEmpty: 1, withoutCode: 2 }, t)).toBe(
-      'Se generaron 3 página(s) de 2 posición(es). 1 posición(es) sin productos no se imprimieron. 2 producto(s) sin código de barras legible: vea el aviso al pie de su página.',
+  it('aviso final: productos, posiciones y vacías omitidas', () => {
+    expect(printedSummary({ status: 'printed', bins: 2, products: 7, omittedEmpty: 1 }, t)).toBe(
+      'PDF generado: 7 producto(s) en 2 posición(es). 1 posición(es) sin productos no se imprimieron.',
     )
   })
 })

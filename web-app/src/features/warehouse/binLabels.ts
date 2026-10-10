@@ -3,7 +3,7 @@
 // - Qué imprimir (`BinLabelsScope`): las posiciones del filtro actual de la tabla (TODOS sus filtros: zona, tipo, producto,
 //   estatus, hoja y el buscador) o las marcadas con sus casillas (en tandas de 200 `binIds`).
 // - Flujo (`printBinLabels`): lee `GET /warehouses/{id}/bins` por tandas de ≤ 200 con `skip` (el máximo del listado), con
-//   tope de `BIN_LABELS_MAX` etiquetas (si se pasa, avisa y pide acotar sin generar nada); ordena por código (orden
+//   sin tope (si pasa de `BIN_LABELS_NOTICE` la pantalla solo AVISA que el PDF es grande); ordena por código (orden
 //   natural, como los reportes de códigos y las hojas) y arma y descarga el PDF (`kernel/ui/binLabelPdf`): una etiqueta =
 //   una página del tamaño elegido. Cancelar durante la lectura no genera nada.
 // - Reimprimir: las etiquetas NO tienen estado. Imprimirlas no marca nada ni llama a "marcar impresas" (eso es solo de las
@@ -31,9 +31,10 @@ const S = 'warehouse.binLabels'
 
 /** Permiso de las etiquetas: el de la pantalla y el del reporte de códigos de barras de posiciones (`inventory.view`). */
 export const BIN_LABELS_PERMISSION = 'inventory.view'
-/** Posiciones por lectura (el máximo de `GET .../bins`) y tope de etiquetas por PDF. */
+/** Posiciones por lectura (el máximo de `GET .../bins`) y desde cuántas etiquetas se avisa que el PDF es grande. */
 export const BIN_LABELS_PAGE_SIZE = 200
-export const BIN_LABELS_MAX = 500
+/** Desde cuántas etiquetas se AVISA que el PDF es grande (no se limita nada: se imprime todo). */
+export const BIN_LABELS_NOTICE = 500
 
 /** Qué imprimir. */
 export type BinLabelsScope = 'filter' | 'selected'
@@ -97,19 +98,15 @@ export interface BinLabelsFlowArgs {
   warehouseCode?: string | null
   t: Translate
   lang: string
-  /** Tope de etiquetas (por defecto `BIN_LABELS_MAX`). */
-  max?: number
 }
 
 export type BinLabelsResult =
-  | { status: 'tooMany'; total: number; max: number }
   | { status: 'nothing' }
   | { status: 'cancelled' }
   | { status: 'printed'; labels: number; withoutCode: number; notices: string[] }
 
 /** Lee, ordena y descarga (ver el encabezado del archivo). Un error al leer o al generar se propaga. Nunca marca nada. */
 export async function printBinLabels(deps: BinLabelsFlowDeps, args: BinLabelsFlowArgs): Promise<BinLabelsResult> {
-  const max = args.max ?? BIN_LABELS_MAX
   const aborted = () => deps.signal?.aborted === true
   const read = new Map<number, WarehouseBinDto>()
   let total = 0
@@ -128,8 +125,6 @@ export async function printBinLabels(deps: BinLabelsFlowDeps, args: BinLabelsFlo
       if (sourceTotal === null) {
         sourceTotal = page.total ?? 0
         total += sourceTotal
-        // más del tope: no se genera nada (ni se sigue leyendo); la pantalla pide acotar
-        if (total > max) return { status: 'tooMany', total, max }
       }
       const items = page.items ?? []
       for (const bin of items) if (bin.id != null && !read.has(bin.id)) read.set(bin.id, bin)
