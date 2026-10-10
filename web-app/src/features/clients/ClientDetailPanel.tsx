@@ -1,6 +1,6 @@
 // Ficha / expediente del cliente (derecha de la pantalla): paneles apilados, en el orden de la maqueta —
 // cabecera (nombre, código, pipeline de estatus, baja/reactivación), perfil, teléfonos y correos, personas de contacto,
-// numeración, campos personalizados, contratos (solo lectura) e historial de estatus.
+// numeración, campos personalizados, contratos (pestañas: Contrato, Tarifas, SLA, Servicios especiales) e historial de estatus.
 import { Can, useCan } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { StatusHistory, StatusPipeline } from '../../kernel/catalogs'
@@ -10,7 +10,7 @@ import { IconPower, IconRotateCcw } from '../../kernel/ui/actionIcons'
 import { IconClock, IconUsers } from '../../kernel/ui/screenIcons'
 import { useClient, useSetClientActive, useTransitionClient } from './api'
 import { ClientContactPointsPanel } from './ClientContactPointsPanel'
-import { ClientContractsPanel } from './ClientContractsPanel'
+import { ClientContractsSection } from './ClientContractsSection'
 import { ClientCustomFieldsPanel } from './ClientCustomFieldsPanel'
 import { ClientNumberingPanel } from './ClientNumberingPanel'
 import { ClientPeoplePanel } from './ClientPeoplePanel'
@@ -108,7 +108,7 @@ export function ClientDetailPanel({ publicId }: { publicId: string }) {
       <ClientPeoplePanel client={client} />
       <ClientNumberingPanel client={client} />
       <ClientCustomFieldsPanel client={client} />
-      <ClientContractsPanel client={client} />
+      <ClientContractsSection key={client.publicId} client={client} />
       <Panel icon={<IconClock />} title={t('status.history')}>
         <StatusHistory entityType={CLIENT_ENTITY_TYPE} entityId={client.id} domain={CLIENT_STATUS_DOMAIN} />
       </Panel>

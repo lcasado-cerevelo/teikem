@@ -241,7 +241,11 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
    indicadores y gráfico de Análisis). Capturas `f18-*`.
 15. [F-A1 — Clientes: lista, alta y ficha](frontend/fa1-clientes.md): Catálogo → **Clientes**: lista maestra con buscador y «Mostrar inactivos», alta con contrato
    inicial opcional (código duplicado 409) y la ficha con perfil (409 de `rowVersion`), teléfonos y correos, personas de contacto, numeración con ejemplo en vivo,
-   campos personalizados, contratos (solo lectura), estatus y baja/reactivación; permisos de cada acción. Capturas pendientes.
+   campos personalizados, contratos, estatus y baja/reactivación; permisos de cada acción. Capturas `fa1-*`.
+16. [F-A2 — Contratos del cliente](frontend/fa2-contratos.md): en la ficha del cliente, la sección **Contratos** con pestañas **Contrato** (datos, estatus con historial, los 5 checks del
+   modelo de facturación, cargo por despacho y por COD, selector de contrato y **Nuevo contrato**), **Tarifas** (por servicio y pieza extra por tramos, versión nueva y cierre, historial),
+   **SLA** (por tipo de servicio, borrador y guardado) y **Servicios especiales** (tipos nuevos, tarifa, versión nueva, cierre); permisos `contracts.*` y todos los mensajes del servidor.
+   Capturas `fa2-*`.
 
 ## Preguntas frecuentes
 
@@ -285,4 +289,4 @@ y qué hace "Cerrar las demás sesiones". La sección "Lote 19" recoge los mensa
 hexadecimales, tema inexistente, contraste y matiz), los de los logos (ranura, archivo, 413, 415, imagen dañada y cada motivo por el que un SVG se rechaza) y el 409 del
 feriado repetido, y las preguntas sobre cuándo se guardan los logos, qué variante se usa en cada tema y por qué la barra colapsada puede seguir mostrando el símbolo de Teikem. La sección "Lote F12" recoge los mensajes que se ven en la pantalla de revisión del conteo (reservado, conflicto al confirmar,
 conteo ya reconciliado, posición ya confirmada), los que solo se ven en pantalla y las preguntas sobre qué cierra "Cerrar los que
-cuadran", por qué una corrección no mueve inventario y la diferencia entre Varianza y Ajuste. La sección "Productos por posición" recoge los mensajes del informe (más de 200 posiciones por consulta, almacén no encontrado, los avisos del modal) y las preguntas sobre qué código lleva cada producto, cómo imprimir un pasillo, por qué el papel no se desactualiza y por qué Exportar trae todo lo filtrado. La sección "Lote F-A1" recoge los mensajes de Clientes (código duplicado, nombre, límite de crédito, `rowVersion`, punto de recogido, teléfonos y correos, personas de contacto, patrones de numeración y reglas de estatus) y las preguntas sobre permisos, bajas, dirección, SLA y la diferencia entre estatus y baja.
+cuadran", por qué una corrección no mueve inventario y la diferencia entre Varianza y Ajuste. La sección "Productos por posición" recoge los mensajes del informe (más de 200 posiciones por consulta, almacén no encontrado, los avisos del modal) y las preguntas sobre qué código lleva cada producto, cómo imprimir un pasillo, por qué el papel no se desactualiza y por qué Exportar trae todo lo filtrado. La sección "Lote F-A2" recoge los mensajes de los contratos del cliente (datos, `rowVersion`, modelo de facturación, despacho y COD, estatus, SLA, tarifas por servicio y pieza extra, tramos y servicios especiales) y las preguntas sobre permisos, `canEdit`, historial de tarifas y por qué un contrato no se puede activar. La sección "Lote F-A1" recoge los mensajes de Clientes (código duplicado, nombre, límite de crédito, `rowVersion`, punto de recogido, teléfonos y correos, personas de contacto, patrones de numeración y reglas de estatus) y las preguntas sobre permisos, bajas, dirección, SLA y la diferencia entre estatus y baja.

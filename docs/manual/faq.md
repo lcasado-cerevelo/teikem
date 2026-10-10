@@ -5875,3 +5875,95 @@ Las direcciones se administran en Localizaciones (en el perfil son de solo lectu
 
 **¿El estado «Activo/Inactivo» de la maqueta es el estatus?**
 Son dos cosas: el **estatus** (etapas configurables, p. ej. Activo → En revisión) y la **baja** (Inactivo). La lista muestra las dos.
+
+
+## Lote F-A2 — Contratos del cliente (2026-10-10)
+
+Mensajes de la sección Contratos de la ficha del cliente (Catálogo → Clientes). Los del servidor salen tal cual, debajo del campo o en el diálogo. Capítulo: [fa2-contratos.md](frontend/fa2-contratos.md).
+
+**`El contrato fue modificado por otro usuario; recargue e intente de nuevo.` (409) al guardar los datos del contrato.**
+Otra persona guardó el mismo contrato antes. El contrato se vuelve a leer solo y lo que usted escribió se conserva: revise y pulse **Guardar** otra vez.
+
+**`El estatus actual no permite la acción 'EDIT_CONTRACT'.` (422) / aviso «El estatus actual del contrato no permite editarlo…».**
+Un contrato Vencido o Cancelado ya no se edita (datos, modelo de facturación, SLA, tarifas, tramos ni servicios especiales). Solo se puede mirar y su historial queda. Si necesita seguir trabajando, cree un contrato nuevo (**Nuevo contrato**); el administrador puede cambiar esa regla en Sistema → Estatus.
+
+**`La fecha fin no puede ser anterior a la fecha de inicio.` (400) / `Indique una fecha fin o márquela para borrar, no ambas.` (400).**
+Corrija «Cliente desde» o «Fecha fin». Para quitar la fecha fin deje el campo vacío y guarde.
+
+**`El título del contrato es obligatorio.` / `Máximo 200 caracteres.` (400).**
+Escriba un título de hasta 200 caracteres. El número admite 40.
+
+**`Ya existe un contrato con el número 'X'.` (409) al crear un contrato.**
+Los números de contrato son únicos en la compañía. Escriba otro o deje el número vacío para que lo genere el sistema (`{Código}-C{n}`).
+
+**`El cliente está dado de baja; solo se consulta su historial.` (409) al crear contratos, tarifas o servicios especiales.**
+Reactive el cliente (botón **Reactivar** de la cabecera) y repita.
+
+**`Catálogo Currency 'X' no encontrado.` / `Catálogo BillingModel 'X' no encontrado.` (404).**
+La moneda o el disparador de cobro ya no están en el catálogo de la compañía; elija otro de la lista.
+
+**`El cargo por despacho no puede ser negativo.` / `El cargo fijo por COD no puede ser negativo.` / `El por ciento del cargo por COD debe estar entre 0 y 100.` (400).**
+Use 0 o más; si el tipo es **Porciento (%)** el valor va de 0 a 100 y se calcula sobre el monto COD cobrado, no sobre el total de la orden. En pantalla también se pide el monto cuando se marca el interruptor.
+
+**Desmarqué un interruptor del modelo de facturación y el monto/tarifas siguen ahí.**
+Es a propósito: desmarcar no borra nada (cargo por despacho, COD, tarifas y servicios especiales se conservan y dejan de cobrarse). Al volver a marcarlo reaparecen.
+
+**`No se puede activar el contrato: el cliente está suspendido. Reactive al cliente primero.` (422).**
+Cambie el estatus del cliente (cabecera de la ficha) y repita.
+
+**`El cliente ya tiene un contrato vigente. Cancele o expire el contrato anterior antes de activar este.` (422).**
+Solo un contrato puede estar Vigente a la vez. Elija el anterior en el selector, pase ese a Cancelado o Vencido y active el nuevo.
+
+**`Las horas máximas de tránsito deben ser mayores que cero.` / `La ventana de recogido (minutos) no puede ser negativa.` / `La meta de puntualidad debe estar entre 0 y 100.` / `La penalidad no puede ser negativa.` (400).**
+Salen bajo el campo del renglón del tipo de servicio. Para un tipo sin SLA deje sus cuatro campos vacíos.
+
+**`Tipo de servicio desconocido: 'X'.` (400) / `Solo puede haber un nivel de servicio activo por tipo de servicio.` (409) al guardar el SLA.**
+El tipo ya no está en el catálogo, o dos personas guardaron a la vez: recargue la ficha y repita.
+
+**`Ya existe una tarifa vigente en esa fecha para ese servicio y tipo de paquete en el contrato; edítela o ciérrela antes de crear otra.` (409).**
+Solo puede haber una tarifa vigente por servicio y paquete. Use **Editar** (versión nueva) o **Quitar** (cerrar) la existente.
+
+**`El componente 'Por servicio' está apagado en el modelo de facturación del contrato; enciéndalo antes de trabajar sus tarifas.` (409) (y el de «Pieza extra»).**
+Marque el interruptor en la pestaña Contrato. Mientras esté apagado las filas se ven pero no se pueden crear ni editar.
+
+**`La fecha no puede ser anterior a hoy: el historial de tarifas no se reescribe.` (400).**
+Una versión nueva o un cierre se fechan hoy o después. Solo el alta de una tarifa nueva acepta una fecha pasada.
+
+**`La tarifa ya está cerrada; cree una nueva en lugar de editarla.` / `El componente ya está cerrado.` / `El tramo ya está cerrado.` (409).**
+Otra persona la cerró antes. Vuelva a abrir la pestaña (o active **Ver historial**) y agregue una nueva si hace falta.
+
+**`Rango inválido: 'desde' debe ser al menos 2 …` (400) / `El tramo 4–7 se traslapa con el tramo vigente 2–5.` (400).**
+La pieza 1 va en la tarifa por servicio, así que el primer tramo empieza en 2. «Hasta» vacío significa «en adelante». Dos tramos vigentes del mismo servicio y paquete no pueden compartir piezas: edite o quite el existente.
+
+**`El componente de pieza extra está cerrado; cree uno nuevo para agregar tramos.` (409) / `Los tramos solo aplican a componentes de pieza extra.` (400).**
+Agregue una pieza extra nueva (servicio + paquete) y sus tramos.
+
+**`Solo las tarifas por servicio se editan aquí; los tramos de pieza extra se editan en /tiers.` (400).**
+En pieza extra se editan los tramos (lápiz de cada tramo), no el bloque.
+
+**`El cliente no tiene un contrato vigente; cree o active un contrato antes de configurar servicios especiales.` (409).**
+Los servicios especiales cuelgan del contrato vigente. Cree el contrato (**Nuevo contrato**) o pase uno a Vigente.
+
+**`El componente 'Servicios especiales' está apagado en el contrato vigente; enciéndalo en el modelo de facturación para agregar servicios especiales.` (409).**
+Marque «Servicios especiales» en la pestaña Contrato del contrato vigente.
+
+**`El nombre del tipo de servicio especial es obligatorio.` / `…no puede exceder 120 caracteres.` (400) / `Ya existe un tipo de servicio especial con el nombre 'X'.` (409).**
+Al elegir «+ Nuevo tipo de servicio especial…» escriba un nombre de hasta 120 caracteres. Los nombres se comparan sin mayúsculas, acentos ni espacios dobles: «Vagón del muelle» y «VAGON DEL MUELLE» son el mismo tipo (si ya existe, elíjalo de la lista).
+
+**`El cliente ya tiene una tarifa vigente en esa fecha para el tipo 'X'; edite esa tarifa o ciérrela antes de agregar otra.` (409) / `La tarifa ya está cerrada; agregue un servicio especial nuevo si necesita volver a cobrarlo.` (409).**
+Use **Editar** (versión nueva) o **Quitar** de la fila vigente; si ya estaba cerrada, agregue el servicio otra vez.
+
+**`La tarifa del servicio especial no puede ser negativa.` (400) / `El tipo de servicio especial está inactivo; reactívelo o elija otro.` (400).**
+Use 0 o más. Los tipos inactivos no se ofrecen en la lista; esta pantalla no los reactiva (lo hace soporte con el API).
+
+**¿Por qué solo veo un aviso en Contratos y no las pestañas?**
+Falta el permiso `contracts.read`. El resto de la ficha funciona igual. Guardar pide `contracts.update` y crear contratos `contracts.create`.
+
+**¿Por qué no veo la sección de Tarifas por pieza extra (o por servicio)?**
+Se muestra solo si su interruptor del modelo de facturación está marcado (o si ya tiene filas). Márquelo en la pestaña Contrato.
+
+**¿Dónde se cotiza una orden?**
+No está en esta pantalla; la cotización se hará junto con las órdenes de venta.
+
+**¿Qué pasa con «Cliente desde» del alta?**
+Es la fecha de inicio del contrato; se edita en la pestaña Contrato. El contrato vigente es el activo (o el borrador más reciente si no hay activo) cuyo inicio ya llegó.

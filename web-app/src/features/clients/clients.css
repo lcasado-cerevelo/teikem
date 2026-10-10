@@ -42,10 +42,28 @@
 .cl-pattern{min-width:0}
 .cl-example{margin:-4px 0 8px}
 
-/* contratos */
-.cl-billing{padding-bottom:6px}
-.cl-note{margin:10px 14px 14px}
+/* contratos: pestañas Contrato · Tarifas · SLA · Servicios especiales */
+.cl-billing{margin:0 0 10px}
+.cl-ctr-pick{margin:12px 0 4px;max-width:420px}
+.cl-ctr-tab{display:flex;flex-direction:column;gap:10px;margin-top:12px;min-width:0}
+.cl-ctr-h{font-size:13px;font-weight:600;margin:8px 0 0}
+.cl-ctr-note{margin:0}
+.cl-summary{margin:0 0 8px}
+.cl-checks{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:4px 16px}
+.cl-sla-row{border:1px solid var(--line-2);border-radius:10px;padding:10px 12px;margin-bottom:10px;min-width:0}
+.cl-sla-name{margin-bottom:6px;overflow-wrap:anywhere}
+.cl-sla-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0 12px}
+.cl-sla-fields .f{min-width:0}
+.cl-rates-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.cl-rates-sec{display:flex;flex-direction:column;gap:8px;min-width:0}
+.cl-sec-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.cl-sec-head .cl-ctr-h{margin:0}
+.cl-comp{border:1px solid var(--line-2);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.cl-comp-acts{display:flex;gap:6px;flex-wrap:wrap}
 
+@media(max-width:900px){
+  .cl-sla-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 @media(max-width:720px){
   .cl-addrs,.cl-points-cols{grid-template-columns:minmax(0,1fr)}
   .cl-list{max-height:none}

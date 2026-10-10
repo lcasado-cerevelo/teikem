@@ -4,7 +4,7 @@ Pantalla **Catálogo → Clientes** (`/catalog/clients`). En una sola pantalla: 
 (expediente) del cliente elegido. Backend: capítulo 02 del manual (Clientes y contratos). Decisiones del frontend:
 `docs/frontend/loteFA1-decisiones.md`.
 
-> Capturas pendientes: este capítulo se escribió sin capturas de pantalla; se agregarán en el cierre del bloque de contratos.
+Capturas (recorrido `web-app/e2e/loteFA2-clientes.spec.ts`): `img/fa1-lista.png` (lista), `img/fa1-alta.png` (modal Nuevo cliente) e `img/fa1-ficha.png` (ficha).
 
 **Quién puede.** Ver la pantalla: permiso **`clients.read`** con el módulo **Catálogo** (`CATALOG`) encendido (sin el permiso el menú no la muestra y la
 dirección lleva a «Sin permiso»; con el módulo apagado, a «Módulo apagado»). Cada acción pide su permiso y, sin él, el botón no se pinta y los campos
@@ -88,9 +88,9 @@ Sin `contacts.manage` el modal guarda nombre, puesto y principal, y avisa que no
 ### Campos personalizados
 Aparece solo si el módulo de campos personalizados está encendido y la compañía definió campos para clientes. Se guardan con **Guardar** del panel (`clients.update`).
 
-### Contratos (solo lectura)
-Los contratos del cliente (número y título, estatus, vigencia, marca **Vigente**) y el resumen de facturación. Aquí no se editan: **los contratos, tarifas, cargos por COD y
-servicios especiales se administran en el siguiente bloque**.
+### Contratos
+Desde el lote F-A2 este panel es una sección con pestañas **Contrato · Tarifas · SLA · Servicios especiales**: ver [F-A2 — Contratos del cliente](fa2-contratos.md).
+Sin el permiso `contracts.read` solo se ve el resumen de facturación y un aviso.
 
 ### Historial de estatus
 Cada cambio de estatus del cliente: de qué a qué, quién, cuándo y el comentario.
@@ -100,5 +100,5 @@ Cada cambio de estatus del cliente: de qué a qué, quién, cuándo y el comenta
 - **No veo Agregar teléfono**: pide `contacts.manage` y `clients.update` a la vez.
 - **Di de baja un cliente y desapareció de la lista**: la lista oculta los inactivos; encienda **Mostrar inactivos** y use **Reactivar**.
 - **El ejemplo de la numeración no cambia**: espere un instante tras la última tecla; si el patrón es inválido el motivo sale en rojo en lugar del ejemplo.
-- **¿Dónde pongo el SLA o el cliente desde después del alta?**: son del contrato; se editan en el bloque de contratos.
+- **¿Dónde pongo el SLA o el cliente desde después del alta?**: son del contrato; se editan en la sección Contratos de la ficha ([F-A2](fa2-contratos.md)).
 - **No puedo cambiar la dirección**: las direcciones se administran en Localizaciones; en el perfil son de solo lectura.

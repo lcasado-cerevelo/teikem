@@ -1262,4 +1262,21 @@ patrón de referencia para una lista con búsqueda al API y una ficha de paneles
   `useSaveClientContact` (personas), `useSaveContactPoint` (medios de contacto de `CLIENT`/`CLIENT_CONTACT`).
 - `clientRules.ts` (puro): `patternIssue`/`resolvePattern` (espejo de `NumberFormat`), esquemas zod espejo del servidor y los `build*Request` (vacío → null; PATCH del perfil
   manda el texto tal cual y `clearDefaultPickup`). Escribir teléfonos/correos exige `contacts.manage` **y** `clients.update`.
-- Contratos, tarifas, COD y servicios especiales NO están (bloque F-A2); el panel de contratos es de solo lectura.
+- Contratos: ver «Contratos del cliente (Lote F-A2)» abajo.
+
+## Contratos del cliente (`src/features/clients`, Lote F-A2)
+Sección de la ficha (`ClientContractsSection`, reemplaza al panel de solo lectura) con `Tabs` Contrato · Tarifas · SLA · Servicios especiales y un selector de contrato (por
+omisión `currentContract`). Patrón de referencia para una ficha con varias pestañas de escritura, cada una con su permiso y sus errores del servidor.
+- `contractApi.ts`: `useContract(publicId)`, `useRateComponents(publicId, includeHistory)`, `useSpecialServices(clientPublicId, includeHistory)`, `useSpecialServiceTypes()` (todas
+  con `handleAccessDenied: false`: un 403 no saca de la ficha) y escrituras (`useCreateContract`, `useUpdateContract`, `useBillingMutations`, `useSetServiceLevels`,
+  `useTransitionContract`, `useRateMutations`, `useSpecialMutations`). Las del contrato dejan la ficha devuelta en caché e invalidan la ficha y la lista del cliente
+  (`billingSummary`); las de tarifas y servicios especiales invalidan su prefijo (`contractKeys.rates/specials`).
+- `contractRules.ts` (puro): esquemas zod espejo del servidor, `buildContractPatch` (solo lo cambiado; fecha fin vacía → `clearEndDate`), `planBillingSave` (checks cambiados + montos
+  solo con su check marcado), borrador del SLA (`slaRowsOf`, `buildSlaRequest`, `remapSlaErrors`: el servidor numera lo ENVIADO, el formulario lo MOSTRADO), `tierSchema`/`buildTierPatch`
+  (`clearToUnit`), `buildSpecialCreate` (`typeId` o `newTypeName`), `defaultEffectiveDate` («hoy» = el día más reciente entre la compañía y el UTC del servidor, que rechaza fechas
+  pasadas en versiones nuevas) y `rethrowRenamed`/`renameErrors` (un error `amount` del servidor sale bajo el campo `dispatchAmount`).
+- `FormModal` (`contractUi.tsx`): `Modal` + `Form` con Cancelar/Guardar en el pie (`form={id}`), para los modales de tarifas, tramos, servicios especiales y nuevo contrato.
+- Reglas que se repiten: las escrituras se pintan con `useCan('contracts.update') && contract.canEdit`; con un check del modelo de facturación apagado las filas existentes se ven sin
+  escrituras; `409` de `rowVersion` → `invalidateQueries` del contrato y se conserva lo escrito (`resetOptions: { keepDirtyValues: true }`).
+- **`useForm({ values, resetOptions: { keepDirtyValues: true } })` y `form.reset(x)`**: el `reset` explícito HEREDA `keepDirtyValues` y no limpia lo escrito (un número vacío queda como estaba);
+  para descartar o tras guardar pasa `form.reset(x, { keepDirtyValues: false })`.

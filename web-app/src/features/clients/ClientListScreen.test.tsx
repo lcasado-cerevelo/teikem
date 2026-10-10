@@ -468,16 +468,14 @@ describe('Clientes — ficha', () => {
     expect(await within(panel).findByText('El patrón no puede exceder 40 caracteres.')).toBeInTheDocument()
   })
 
-  it('contratos: tabla de solo lectura con vigencia y nota del siguiente bloque', async () => {
+  it('contratos: sin contracts.read la sección avisa, muestra el resumen y no rompe la ficha (el detalle va en ClientContracts.test)', async () => {
     wrap(ALL)
     const panel = (await screen.findByRole('heading', { name: 'Contratos' })).closest('section') as HTMLElement
-    expect(within(panel).getByText('ACME-001 · Contrato marco')).toBeInTheDocument()
-    expect(within(panel).getByText('Borrador')).toBeInTheDocument()
-    expect(within(panel).getByText('Vigente')).toBeInTheDocument()
-    expect(within(panel).getByText(/Desde 01\/15\/2026/)).toBeInTheDocument()
-    expect(within(panel).getByText(/siguiente bloque/)).toBeInTheDocument()
-    // solo los botones de ordenar de la tabla: ninguna acción de edición
-    expect(within(panel).queryByRole('button', { name: /Editar|Quitar|Agregar|Guardar/ })).toBeNull()
+    expect(within(panel).getByText('Por servicio')).toBeInTheDocument()
+    expect(within(panel).getByText(/contracts\.read/)).toBeInTheDocument()
+    expect(within(panel).queryByRole('tablist')).toBeNull()
+    expect(callsTo('GET', '/api/v1/contracts/k-1')).toHaveLength(0)
+    expect(await screen.findByRole('heading', { name: 'Historial de estatus' })).toBeInTheDocument()
   })
 
   it('baja y reactivación con confirmación (no es DELETE)', async () => {
