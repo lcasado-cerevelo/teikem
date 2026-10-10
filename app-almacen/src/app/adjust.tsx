@@ -22,7 +22,8 @@ import { localBinRows } from '../features/lookup/lookupFlow'
 import { RefreshNote, type RefreshState } from '../kernel/ui/RefreshNote'
 import type { BalanceRow } from '../features/lookup/lookupLogic'
 import { isBlockedZone } from '../features/transfer/transferLogic'
-import { adjustQuantity } from '../features/adjust/adjustApi'
+import { flushNow } from '../kernel/sync/engine'
+import { queueAdjustment } from '../features/adjust/adjustApi'
 import { adjustIssue, afterQty, NOTE_MAX, reasonsFor, type AdjustDirection } from '../features/adjust/adjustLogic'
 
 /**
@@ -45,7 +46,6 @@ export default function AdjustScreen() {
   const [reason, setReason] = useState<string | null>(null)
   const [note, setNote] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [refresh, setRefresh] = useState<RefreshState>('idle')
 
@@ -150,28 +150,18 @@ export default function AdjustScreen() {
   }
 
   async function submit(dir: AdjustDirection, q: number, why: string) {
-    setBusy(true)
     setError(null)
-    try {
-      await adjustQuantity({ warehousePublicId: warehousePublicId!, productPublicId, binId, lotId: lots.length > 0 ? lotId : null, direction: dir, quantity: q, reason: why, note })
-      setNotice(t('adjust.done', { dir: t(`adjust.${dir}`), qty: f.qty(q), sku, bin: binCode }))
-      vibrateOk()
-      setDirection(null)
-      setQtyText('')
-      setReason(null)
-      setNote('')
-      router.replace('/lookup')
-    } catch (err) {
-      failure(err)
-    } finally {
-      setBusy(false)
-    }
+    // D2b: se guarda en el aparato (el saldo local ya refleja el ajuste) y se manda solo; se vuelve a Consultar sin esperar al servidor
+    const outboxId = queueAdjustment({ warehousePublicId: warehousePublicId!, productPublicId, binId, lotId: lots.length > 0 ? lotId : null, direction: dir, quantity: q, reason: why, note })
+    vibrateOk()
+    router.replace('/lookup')
+    const result = await flushNow(outboxId)
+    if (result.status === 'rejected') Alert.alert(t('common.rejectedTitle'), t('common.rejectedBody', { error: result.error }))
   }
 
   return (
     <KeyboardScreen contentContainerStyle={styles.fill}>
       <Text style={styles.title}>{t('adjust.title')}</Text>
-      <ScanMessage message={notice} tone="ok" />
       <Text style={styles.summary}>{t('adjust.inBin', { bin: binCode })}</Text>
       {first ? <Text style={styles.product}>{`${first.sku} · ${first.productName}`}</Text> : null}
       <ScanMessage message={error} tone="error" />

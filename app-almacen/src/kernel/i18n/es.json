@@ -14,7 +14,10 @@
     "pending": "pendientes",
     "warehouse": "Almacén",
     "edit": "Editar",
-    "closeAlert": "Cerrar aviso"
+    "closeAlert": "Cerrar aviso",
+    "savedPending": "Guardado en el aparato. Se envía solo en cuanto haya señal.",
+    "rejectedTitle": "El servidor no aceptó la operación",
+    "rejectedBody": "{error}\nSe deshizo en el aparato. Revísala en Sincronización."
   },
   "errors": {
     "generic": "Ocurrió un error. Intente de nuevo.",
@@ -555,7 +558,9 @@
     "destDiscarded": "Tirado",
     "destReturned": "Devuelto al proveedor",
     "destDonated": "Donado",
-    "destSalvage": "Vendido como saldo"
+    "destSalvage": "Vendido como saldo",
+    "sentQuarantine": "Daño enviado a cuarentena.",
+    "sentDiscard": "Daño: salida registrada."
   },
   "transfer": {
     "title": "Transferir",

@@ -42,12 +42,22 @@ Se construye en bloques probados; el sistema está en producción (solo `Diseño
 ### Lo que todavía depende del servidor (honesto)
 - **Abrir un conteo nuevo** (el conteo se crea en el servidor): pendiente un conteo creado localmente que se concilia después. Es un bloque aparte.
 - **Acomodar y Recibir**: usan el espacio libre de la posición (`freeQty`, capacidad), que no está sincronizado; siguen consultando al servidor para eso.
-- **Transferir/Ajustar/Daño al confirmar**: siguen en línea (decisión **D2b** abierta: pasarlos a la cola de salida con efecto en el saldo local).
 - **Despacho**: el plan de salida ya usaba una copia local (`stock_exit`) desde el lote anterior.
+
+## Bloque S4 — Transferir, Ajustar y Daño a la cola de salida (D2b: «A para las 3», hecho)
+- **Cola:** `OutboxKind` ahora incluye `transfer`, `adjust` y `damage` (rutas fijas, POST con `Idempotency-Key`; el middleware del servidor ya cubre esas rutas, sin cambios en el API).
+- **Saldo local = servidor + pendientes** (`kernel/warehouse/balanceProjection.ts`): al encolar se aplica el efecto a `stock_balance` (la fila nueva de un destino lleva id
+  negativo hasta que llega la verdadera); si el servidor rechaza, se deshace; al reintentar, se vuelve a aplicar; cada bajada de saldos vuelve a sumar lo pendiente a las filas que
+  reemplaza y borra la fila provisional. Daño no se proyecta (el servidor decide la posición de cuarentena y las reservas).
+- **Respuesta rápida sin bloquear:** `flushNow` (engine) intenta mandar y espera como máximo 3 s; `sent` → «hecho», `rejected` → alerta con el motivo, `pending` → «guardado, se envía solo».
+- **Pantallas:** Transferir, Ajustar y Daño ya no esperan al servidor; Ajustar vuelve a Consultar de inmediato.
+- **Pruebas:** `balanceProjection.test.ts` (efecto, deshacer, rechazo, bajada con pendientes, fila provisional), pruebas de pantalla de Daño actualizadas (598 de la app verdes).
+- **Límites conocidos (a vigilar):** si el servidor ya aplicó una operación pero la respuesta se perdió, el aparato la sigue viendo pendiente hasta el siguiente envío (la clave de idempotencia
+  evita duplicarla) y durante ese rato un saldo bajado puede contarla dos veces; dos aparatos moviendo lo mismo sin señal: el segundo en llegar queda «requiere revisión». La validación de
+  «no mover más de lo disponible» ahora se hace contra el saldo local (puede estar atrasado); el servidor es quien decide.
 
 ## Bloques que siguen
 - **S3 (app):** indicador único de sincronización y pantallas leyendo lo local (Consultar, Conteo, Acomodar, Transferir, Ajustar, Daño, Despacho).
-- **Decisión pendiente D2b:** pasar Transferir/Ajustar/Daño a la cola de salida con efecto en el saldo local (recomendado: sí).
 
 ## A revisar por Luis
 - Tamaño de la descarga inicial en Depot (cuántos saldos con existencia tiene el almacén activo): se medirá al construir S2.

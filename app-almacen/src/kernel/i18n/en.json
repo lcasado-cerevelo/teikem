@@ -14,7 +14,10 @@
     "pending": "pending",
     "warehouse": "Warehouse",
     "edit": "Edit",
-    "closeAlert": "Close alert"
+    "closeAlert": "Close alert",
+    "savedPending": "Saved on the device. It will be sent as soon as there is signal.",
+    "rejectedTitle": "The server did not accept the operation",
+    "rejectedBody": "{error}\nIt was undone on the device. Review it in Sync."
   },
   "errors": {
     "generic": "Something went wrong. Try again.",
@@ -555,7 +558,9 @@
     "destDiscarded": "Thrown away",
     "destReturned": "Returned to supplier",
     "destDonated": "Donated",
-    "destSalvage": "Sold as salvage"
+    "destSalvage": "Sold as salvage",
+    "sentQuarantine": "Damage sent to quarantine.",
+    "sentDiscard": "Damage: exit recorded."
   },
   "transfer": {
     "title": "Transfer",

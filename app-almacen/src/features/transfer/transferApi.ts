@@ -1,8 +1,14 @@
-// 2026-10-10 — Transferir en línea: mueve inventario en el servidor (POST /inventory/transfers/in-warehouse), sin cola: el operario necesita saber ya si
-// se pudo (lo reservado no se mueve, la existencia pudo cambiar). Como Daño y Consultar, necesita señal.
-import { api, unwrap } from '../../kernel/api/client'
+// 2026-10-10 (D2b) — Transferir va a la cola de salida: se guarda en el aparato, el saldo local refleja el movimiento de inmediato y se manda solo
+// (con su Idempotency-Key) en cuanto hay señal. Si el servidor la rechaza (ya no hay disponible, zona no permitida…) queda «requiere revisión» en
+// Sincronización y el efecto se deshace.
+import { enqueue } from '../../kernel/sync/outbox'
+import { projectOperation } from '../../kernel/warehouse/balanceProjection'
 import { buildTransferRequest, type TransferInput } from './transferLogic'
 
-export async function transferInWarehouse(input: TransferInput): Promise<void> {
-  await unwrap(api.POST('/api/v1/inventory/transfers/in-warehouse', { body: buildTransferRequest(input) }))
+/** Encola la transferencia y aplica su efecto a los saldos locales. Devuelve el id de la cola (para `flushNow`). */
+export function queueTransfer(input: TransferInput): number {
+  const body = buildTransferRequest(input)
+  const id = enqueue({ kind: 'transfer', body })
+  projectOperation('transfer', body, 1)
+  return id
 }

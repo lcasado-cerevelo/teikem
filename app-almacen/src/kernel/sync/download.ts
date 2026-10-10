@@ -7,6 +7,7 @@
 import { api, ApiError, unwrap } from '../api/client'
 import { getActiveWarehousePublicId } from '../warehouse/activeWarehouse'
 import { getDb, type SQLiteDatabase } from '../db/database'
+import { deltaKey, pendingDeltas } from '../warehouse/balanceProjection'
 import { mapExitRow, replaceStockExit, type StockExitRow } from '../../features/dispatch/stockExit'
 
 const TAKE = 500
@@ -343,10 +344,19 @@ function applyBalances(db: SQLiteDatabase, items: Array<{
   updatedAtUtc?: string
   isActive?: boolean
 }>): void {
+  // lo que el aparato ya hizo y todavía no llegó al servidor se vuelve a sumar al saldo que baja (D2b: saldo local = servidor + pendientes)
+  const pending = pendingDeltas(db)
   for (const b of items) {
     if (b.id == null) continue
-    // un saldo que quedó en cero (isActive = false) se borra del aparato: no hay nada que mostrar
-    if (b.isActive === false) {
+    const delta = pending.get(deltaKey(b.warehousePublicId ?? '', b.binId ?? null, b.productPublicId ?? '', b.lotId ?? null)) ?? 0
+    // ya llegó la fila verdadera: la provisional (id negativo) de esa misma posición, producto y lote sobra
+    db.runSync(
+      `DELETE FROM stock_balance WHERE id < 0 AND warehouse_public_id = ? AND bin_id IS ? AND product_public_id = ? AND lot_id IS ?`,
+      [b.warehousePublicId ?? '', b.binId ?? null, b.productPublicId ?? '', b.lotId ?? null],
+    )
+    const onHand = Math.max(0, (b.qtyOnHand ?? 0) + delta)
+    // un saldo que quedó en cero (isActive = false) se borra del aparato: no hay nada que mostrar (salvo que haya algo pendiente por sumarle)
+    if (b.isActive === false && onHand === 0) {
       db.runSync('DELETE FROM stock_balance WHERE id = ?', [b.id])
       continue
     }
@@ -367,7 +377,7 @@ function applyBalances(db: SQLiteDatabase, items: Array<{
         b.lotId ?? null,
         b.lotNumber ?? null,
         b.lotExpiryDate ?? null,
-        b.qtyOnHand ?? 0,
+        onHand,
         b.qtyReserved ?? 0,
         b.updatedAtUtc ?? new Date().toISOString(),
       ],

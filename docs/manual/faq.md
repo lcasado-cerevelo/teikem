@@ -5791,5 +5791,11 @@ Son saldos guardados en el aparato, no confirmados ahora con el servidor. Para o
 **No me sale nada al escanear, pero el producto existe.**
 Si el aparato nunca ha bajado los saldos de ese almacén, espera al servidor como antes. Sincronice una vez con buena señal (Inicio → **Sincronizar ahora**) y la próxima vez saldrá al instante.
 
-**¿Puedo transferir o ajustar sin señal?**
-No todavía: Transferir, Ajustar y Daño siguen necesitando conexión al confirmar (`Sin señal. Esto necesita conexión…`). Lo que ahora no se queda esperando es la pantalla que muestra lo que hay en la posición.
+**¿Puedo transferir, ajustar o reportar un daño sin señal?**
+Sí. La operación se guarda en el aparato («Guardado en el aparato. Se envía solo en cuanto haya señal.»), el saldo que ve el aparato ya la refleja y sube sola en la siguiente sincronización. Ver cuántas faltan por enviar en Inicio → Sincronización.
+
+**Dice `El servidor no aceptó la operación`.**
+El servidor revisó la operación al recibirla y no pudo aplicarla (por ejemplo, la existencia ya no estaba porque otra persona la movió, o la posición cambió de zona). El aparato deshizo el movimiento en sus saldos. Entre a **Sincronización**, lea el motivo y **reintente** (si ya se puede) o **descarte**.
+
+**Hice una transferencia sin señal y el saldo de otro aparato no cambió.**
+Es normal: el otro aparato lo verá cuando la operación llegue al servidor y él sincronice. Hasta entonces dos aparatos pueden ver cifras distintas.

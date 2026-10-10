@@ -81,7 +81,7 @@ P0 Producción y deuda ──► P1 Web de lo que ya tiene backend ──► P2 
 
 ## P0 — Producción y deuda inmediata
 
-### P0.1 Señal débil: el aparato trabaja con sus datos locales (decisión de Luis, 2026-10-10; **EN CURSO: S1 servidor, S2 base local y S3a Consultar/Transferir/Ajustar/Conteo/Daño hechos; faltan abrir conteo sin señal, capacidad en Acomodar/Recibir y D2b — ver `docs/mobile/senal-debil-decisiones.md`**)
+### P0.1 Señal débil: el aparato trabaja con sus datos locales (decisión de Luis, 2026-10-10; **EN CURSO: S1 servidor, S2 base local y S3 Consultar/Transferir/Ajustar/Conteo/Daño y S4 (cola de Transferir/Ajustar/Daño) hechos; faltan abrir conteo sin señal y capacidad en Acomodar/Recibir — ver `docs/mobile/senal-debil-decisiones.md`**)
 **Problema:** el cliente del API (`app-almacen/src/kernel/api/client.ts`) no tiene tiempo máximo y las pantallas esperan al servidor antes de
 mostrar (Consultar, Acomodar, Transferir, Ajustar, Daño, conteo, plan de salida del Despacho, `findBinByCode`). Con señal floja la petición
 queda colgada. Los saldos no residen en el aparato (solo `balance_cache` de lo último consultado).
@@ -308,7 +308,7 @@ Sin SMS ni biometría en MFA (decisión 11 del lote 1); `RentalCharge` y factura
 |---|---|---|
 | D1 | ¿Impuestos antes de órdenes de venta? | **Decidido: sí** |
 | D2 | ¿Sincronizar saldos por posición al aparato? | **Decidido: sí, todo desde el aparato** (ver P0.1) |
-| D2b | ¿Transferir/Ajustar/Daño pasan a la cola de salida con efecto optimista? | Sí; un rechazo queda «requiere revisión» |
+| D2b | ¿Transferir/Ajustar/Daño pasan a la cola de salida con efecto optimista? | **Decidido: sí, las tres (hecho en el bloque S4)** |
 | D3 | ¿Llevar Transferir/Ajustar/`update.sql` a `Depot-Implementation`? | **Sin responder** — solo si Dani lo necesita para soporte |
 | D4 | Permiso para cancelar un conteo (opciones 1 vs 2 pendientes) | Revisar `docs/decisiones-del-dueno-2026-10-03.md` |
 | D5 | Motor de trabajos: BackgroundService propio vs. librería | Propio, con bloqueo en tabla |

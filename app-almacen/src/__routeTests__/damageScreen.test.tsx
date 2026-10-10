@@ -53,7 +53,7 @@ describe('Daño', () => {
     await fireEvent.press(screen.getByText('Accidente en el camino'))
     await fireEvent.press(screen.getByTestId('damage-quarantine'))
 
-    await waitFor(() => expect(screen.getByText('DAN-00001: enviado a cuarentena.')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Daño enviado a cuarentena.')).toBeTruthy())
     expect(calls.find((c) => c.method === 'POST')?.body).toMatchObject({
       origin: 'WAREHOUSE',
       warehousePublicId: 'wh-1',
@@ -91,7 +91,7 @@ describe('Daño', () => {
     await fireEvent.press(screen.getByTestId('damage-discard'))
     await fireEvent.press(await screen.findByText('Devuelto al proveedor'))
 
-    await waitFor(() => expect(screen.getByText('DAN-00001: salida registrada.')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Daño: salida registrada.')).toBeTruthy())
     expect(alert).toHaveBeenCalledWith('¿Dar salida de una vez?', 'Salen del inventario 2,5 de SKU-1. No se puede deshacer.', expect.any(Array))
     expect(calls.find((c) => c.method === 'POST')?.body).toMatchObject({
       finalDestination: 'RETURNED_TO_SUPPLIER',

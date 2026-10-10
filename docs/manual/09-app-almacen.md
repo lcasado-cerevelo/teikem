@@ -1003,11 +1003,16 @@ cuando llega, **actualiza lo que se ve**. La señal floja solo retrasa la actual
 
 **Dónde aplica hoy.**
 - **Consultar:** producto, posición y búsqueda libre salen al instante de lo local y se actualizan solos.
-- **Transferir** y **Ajustar:** la lista de lo que hay en la posición de origen sale de lo local y se pone al día en segundo plano. Si el servidor dice
-  luego que ya no se puede mover (cambió de zona o ya no hay disponible), la pantalla lo avisa y vuelve a empezar. **Mover y ajustar siguen necesitando
-  señal en el momento de confirmar** (siguen sin cola): sin señal, el aviso es `Sin señal. Esto necesita conexión…` y no se pierde nada.
+- **Transferir, Ajustar y Daño (D2b): se guardan en el aparato y se mandan solos.** Al confirmar, la operación entra en la **cola de salida** (como Recibir
+  o Despacho): el saldo que ve el aparato **ya refleja el movimiento** y la pantalla no espera al servidor. El aparato intenta mandarla de inmediato (espera
+  hasta 3 segundos); si hay señal, queda enviada y lo dice; si no, queda **«Guardado en el aparato. Se envía solo en cuanto haya señal.»** y sube sola con
+  la sincronización de cada minuto (con su `Idempotency-Key`, así que un reintento nunca duplica el movimiento). Si el servidor la **rechaza** (por ejemplo,
+  alguien más ya movió esa existencia, o la posición cambió de zona), el aparato **deshace el efecto** en sus saldos, avisa **«El servidor no aceptó la
+  operación»** con el motivo y la deja en **Sincronización** como «requiere revisión» (reintentar o descartar); no detiene el resto de la cola. En **Daño** no se
+  proyecta el efecto en los saldos del aparato (el servidor decide la posición de cuarentena y las reservas): el saldo se corrige en la siguiente sincronización.
+  La lista de lo que hay en la posición de origen sale de lo local y se pone al día en segundo plano.
 - **Conteo, Daño, Despacho:** la posición escaneada se reconoce de lo que el aparato ya tiene (sin esperar a la red); si no está ahí (por ejemplo, se
-  creó después de la última sincronización), se le pregunta al servidor. **Abrir un conteo nuevo todavía necesita señal** (el conteo vive en el servidor).
+  creó después de la última sincronización), se le pregunta al servidor. **Abrir un conteo nuevo todavía necesita señal** (el conteo vive en el servidor). **Daño que llegó dañado en un recibo** necesita señal solo para buscar el recibo por su número.
 
 **Cuándo se bajan los saldos.** En la sincronización de cada minuto, junto con productos y posiciones: la primera vez baja todo lo que tiene existencia en
 el almacén activo; después solo lo que cambió (`GET /api/v1/sync/balances`). Si el aparato nunca ha bajado saldos de ese almacén, las pantallas se

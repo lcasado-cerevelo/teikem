@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 
 import { ApiError, isNetworkError } from '../kernel/api/client'
@@ -21,7 +21,8 @@ import { parseQty } from '../features/count/countLogic'
 import { fetchBinContents, resolveLookupBin } from '../features/lookup/lookupApi'
 import { localBinRows } from '../features/lookup/lookupFlow'
 import { RefreshNote, type RefreshState } from '../kernel/ui/RefreshNote'
-import { transferInWarehouse } from '../features/transfer/transferApi'
+import { flushNow } from '../kernel/sync/engine'
+import { queueTransfer } from '../features/transfer/transferApi'
 import {
   isBlockedZone,
   lotChoices,
@@ -205,17 +206,18 @@ export default function TransferScreen() {
 
   async function confirm() {
     if (!from || !to || !product || qty === null) return
-    setBusy(true)
     setError(null)
-    try {
-      await transferInWarehouse({ warehousePublicId: warehousePublicId!, productPublicId: product.productPublicId, from, to, quantity: qty, lotId: lots.length > 0 ? lotId : null })
-      setNotice(t('transfer.done', { qty: f.qty(qty), sku: product.sku, from: from.code, to: to.code }))
-      reset()
-      vibrateOk()
-    } catch (err) {
-      failure(err)
-    } finally {
-      setBusy(false)
+    // D2b: se guarda en el aparato (el saldo local ya refleja el movimiento) y se manda solo; aquí no se espera al servidor
+    const done = t('transfer.done', { qty: f.qty(qty), sku: product.sku, from: from.code, to: to.code })
+    const outboxId = queueTransfer({ warehousePublicId: warehousePublicId!, productPublicId: product.productPublicId, from, to, quantity: qty, lotId: lots.length > 0 ? lotId : null })
+    setNotice(t('common.savedPending'))
+    reset()
+    vibrateOk()
+    const result = await flushNow(outboxId)
+    if (result.status === 'sent') setNotice(done)
+    else if (result.status === 'rejected') {
+      setNotice(null)
+      Alert.alert(t('common.rejectedTitle'), t('common.rejectedBody', { error: result.error }))
     }
   }
 

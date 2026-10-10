@@ -25,6 +25,9 @@ const SELECT = `
   LEFT JOIN product p ON p.public_id = b.product_public_id
   LEFT JOIN bin bn ON bn.id = b.bin_id`
 
+// una fila en cero (p. ej. tras sacar todo en una operación pendiente) no es existencia: no se muestra
+const HAS_STOCK = '(b.qty_on_hand > 0 OR b.qty_reserved > 0)'
+
 function toRow(r: Row): BalanceRow {
   return {
     id: r.id,
@@ -44,14 +47,14 @@ function toRow(r: Row): BalanceRow {
 /** Saldos de una posición (todas sus filas: producto × lote), por código de posición y luego SKU. */
 export function localBalancesForBin(warehousePublicId: string, binId: number): BalanceRow[] {
   return getDb()
-    .getAllSync<Row>(`${SELECT} WHERE b.warehouse_public_id = ? AND b.bin_id = ? ORDER BY p.sku, b.lot_number`, [warehousePublicId, binId])
+    .getAllSync<Row>(`${SELECT} WHERE b.warehouse_public_id = ? AND b.bin_id = ? AND ${HAS_STOCK} ORDER BY p.sku, b.lot_number`, [warehousePublicId, binId])
     .map(toRow)
 }
 
 /** Saldos de un producto en el almacén (una fila por posición y lote), por código de posición. */
 export function localBalancesForProduct(warehousePublicId: string, productPublicId: string): BalanceRow[] {
   return getDb()
-    .getAllSync<Row>(`${SELECT} WHERE b.warehouse_public_id = ? AND b.product_public_id = ? ORDER BY bn.code, b.lot_number`, [
+    .getAllSync<Row>(`${SELECT} WHERE b.warehouse_public_id = ? AND b.product_public_id = ? AND ${HAS_STOCK} ORDER BY bn.code, b.lot_number`, [
       warehousePublicId,
       productPublicId,
     ])
@@ -63,7 +66,7 @@ export function localBalancesSearch(warehousePublicId: string, text: string, lim
   const like = `%${text.trim().replace(/[\\%_]/g, (c) => `\\${c}`)}%`
   return getDb()
     .getAllSync<Row>(
-      `${SELECT} WHERE b.warehouse_public_id = ? AND (p.sku LIKE ? ESCAPE '\\' OR p.name LIKE ? ESCAPE '\\' OR bn.code LIKE ? ESCAPE '\\' OR b.lot_number LIKE ? ESCAPE '\\')
+      `${SELECT} WHERE b.warehouse_public_id = ? AND ${HAS_STOCK} AND (p.sku LIKE ? ESCAPE '\\' OR p.name LIKE ? ESCAPE '\\' OR bn.code LIKE ? ESCAPE '\\' OR b.lot_number LIKE ? ESCAPE '\\')
        ORDER BY bn.code, p.sku LIMIT ?`,
       [warehousePublicId, like, like, like, like, limit],
     )
