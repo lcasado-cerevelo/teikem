@@ -41,6 +41,7 @@ Este documento es la referencia única de **qué hace** la plataforma. El detall
 13. API para integraciones
 13B. Compras (módulo PURCHASING)
 13C. Órdenes de venta (módulo SALES_ORDERS)
+13D. Devoluciones de venta y notas de crédito
 16C. Equipos en alquiler (módulo RENTAL_EQUIPMENT / RENTAL_BILLING)
 
 ---
@@ -454,12 +455,19 @@ Pedido explícito de Luis: **el portal del cliente debe requerir usuario y contr
 
 **Tarifas escalonadas (modelo final):** `RateComponent` + `RateTier` con `TierMode` (GRADUATED = marginal por tramo / VOLUME = un solo tramo según volumen total) cubre cualquier escalonamiento. El `BillingModel` del contrato (por recogido / por entrega / mixto) es el disparador; es **ortogonal** al escalonamiento. Caguas usa GRADUATED.
 
+- **Impuestos (IVU de Puerto Rico y otros) — diseño (2026-10-10, pedido de Luis: "eso debe estar en el diseño también, porque eso se debe trabajar")**. Hoy `Invoice.TaxAmount` existe pero `InvoiceLine` no tiene impuesto: se completa así.
+  - **Tasas configurables, nunca fijas en código ni mutables**: `TaxRate` (por tenant: código, nombre, porcentaje, vigencia `EffectiveFrom/To`) con **componentes** (`TaxRateComponent`: p. ej. estatal y municipal del IVU, para poder reportarlos por separado). Una tasa que cambia **no se edita**: se cierra su vigencia y se crea la nueva (mismo principio de tarifas históricas). Las facturas ya emitidas conservan la tasa con que se calcularon.
+  - **Qué paga impuesto**: `Product.TaxCategoryLookupId` (catálogo `TaxCategory`: gravable, exento, tasa cero; por defecto gravable) y, para flete y servicios, una regla del tenant por `ChargeType` (`TenantTaxSetting`: ¿el flete y el manejo son gravables?, ¿los precios ya incluyen el impuesto?, redondeo por línea o por documento). No se asume nada legal en el código: lo decide la configuración del tenant con su contador.
+  - **Clientes exentos**: `ClientTaxExemption` (cliente, tipo de exención, número de certificado, vigencia). Una venta a un cliente con exención **vigente** sale sin impuesto (`IsTaxExempt = 1`, con el certificado anotado); con la exención **vencida** la orden avisa al solicitarse y se calcula con impuesto.
+  - **Copia en cada línea** (orden de venta y factura): `TaxRateId`, `TaxRatePct`, `TaxAmount`, `IsTaxExempt`; `Invoice.TaxAmount` = suma de las líneas. Las notas de crédito (13D) acreditan el impuesto **con la copia de la línea original**, no con la tasa de hoy.
+  - **Informe de impuestos** por período: base gravable, ventas exentas, impuesto cobrado (por componente) y notas de crédito del período, exportable con las plantillas; sirve para la declaración. Permiso `tax.manage` (tasas, categorías y exenciones; el resto de usuarios solo ven el resultado en la orden y la factura).
+
 - **Generación de cargos** desde órdenes/trips completados, aplicando el `RateComponent`/`RateTier` correcto según `BillingModel` y guardando el `RateComponentId` en la línea para auditar el cálculo.
 - **Venta de producto desde órdenes de venta (13C)**: las líneas de `SalesOrderLine` despachadas y no facturadas (`QtyShipped − QtyInvoiced`) entran a la corrida como `ChargeType='PRODUCT_SALE'`, con su `UnitPrice` e impuesto y `InvoiceLine.SalesOrderLineId`. **La base es configurable por tenant (`SalesBillingTrigger`)**: `ON_DISPATCH` (se factura el producto al recoger, antes de la entrega: Advance Logistics) u `ON_DELIVERY` (al entregar: Island Wide). El flete de la entrega sigue el `BillingModel` del contrato. Estado: el módulo de facturación está diseñado (tablas y tarifas existen) pero **sin construir**; la orden de venta deja listos precios, impuestos, cantidades y vínculos para conectarlo.
 - **Corrida por lote con aprobación** (`BillingRun`): generar → revisar → aprobar → exportar. **Es uno de los dos flujos con paso humano del producto** (el otro es `DriverSettlementRun`, ver abajo); ambos comparten la misma máquina de estados simple, no un grafo de workflow.
 - **Exportación a contabilidad** (archivo/endpoint), sin emitir pagos directamente — la plataforma calcula y exporta, igual que el principio HUD-compliant de SEPHAS.
 - **Mecanismo de intentos de entrega, pensado para cargo opcional al cliente (diseño, no activo aún en el mock):** cada entrega puede necesitar más de un intento; el ledger `DeliveryAttempt` (ver 11C) registra cada uno con su resultado. Eso deja lista la fuente de datos para que, el día que un contrato lo pida, `Facturación` pueda sumar una línea opcional "cargo por intento" (ej. solo a partir del 2do intento) igual que hoy suma Base/Extra/COD — falta el `RateComponent` de tipo intento en el contrato y la columna en la corrida; el dato ya existe.
-- **Notas de crédito y reconciliación** de pagos contra facturas; estado de cuenta del cliente.
+- **Notas de crédito y reconciliación** de pagos contra facturas; estado de cuenta del cliente. Las notas de crédito nacen de devoluciones de venta, de ajustes de precio o de fallas del servicio: ver **13D**.
 - **Plantillas de exportación configurables y guardables (mismo mecanismo que Contabilización de compras/despachos, módulo 13B, extendido aquí):** una corrida ya aprobada/exportada trae un selector de plantilla, un botón "Configurar…" (nombre, formato CSV/TXT, delimitador, formato de fecha, encabezado, columnas) y un botón "Archivo de exportación" que arma el archivo en vivo con la plantilla activa — sin alterar la máquina de estados generar→revisar→aprobar→exportar ya existente, es una vista adicional sobre la corrida. Ver bitácora para el detalle de implementación (`ACCT_TEMPLATES` con alcance `facturacion`, compartiendo el mismo motor que compras/despacho/liquidación).
 
 ## 11A. Liquidación a choferes (`DriverSettlementRun`)
@@ -509,7 +517,7 @@ Confirmado con Advance: además de mover cargo de terceros, **compran inventario
 
 ### Entidades
 - **`SalesOrder`** (`OV-#####`, `PublicId`, por tenant): almacén que la atiende, **`ClientId` = el comprador (obligatorio)**, `ConsigneeId` **opcional** (solo se usa si habrá entrega), quién la pidió (`RequestedBy`), fecha de solicitud y fecha requerida, entrega prevista (retiro o entrega: informativo, se decide al despachar), moneda, notas, totales (subtotal e impuesto, copia al guardar) y estatus `SalesOrderStatus`.
-- **`SalesOrderLine`**: producto, lote pedido (opcional), `QtyOrdered`, `QtyReserved`, **`QtyBackordered`**, `QtyShipped`, `QtyInvoiced`, **`UnitPrice`** (copia del `Product.SalePrice` al crear; cambiarlo exige el permiso `sales.price`) y la copia de su impuesto (`IsTaxable`/`TaxRate`).
+- **`SalesOrderLine`**: producto, lote pedido (opcional), `QtyOrdered`, `QtyReserved`, **`QtyBackordered`**, `QtyShipped`, `QtyInvoiced`, **`UnitPrice`** (copia del `Product.SalePrice` al crear; cambiarlo exige el permiso `sales.price`) `QtyReturned`/`QtyCredited` (13D) y la **copia del impuesto** (`TaxRateId`, `TaxRatePct`, `TaxAmount`, `IsTaxExempt`; ver «Impuestos» en 11).
 - **`SalesOrderReservation`**: qué saldo (almacén, posición, lote) reservó cada línea y cuánto, para liberar **exactamente** lo reservado al cancelar, modificar o despachar. Usa el mismo `QtyReserved` del ledger (`InventoryLedger.ReserveAsync/ReleaseAsync`).
 - **Enlaces** (columnas nuevas, nullable): `PickBatch.SalesOrderId` y `PickBatchLine.SalesOrderLineId` (qué despacho atendió qué línea), `TransportOrder.SalesOrderId` (la entrega nacida de la venta) e `InvoiceLine.SalesOrderLineId` (qué se facturó de qué línea).
 
@@ -534,7 +542,7 @@ Confirmado con Advance: además de mover cargo de terceros, **compran inventario
 - **Base de facturación configurable por tenant** (`SalesBillingTrigger`): **`ON_DISPATCH`** (el producto se factura al recoger, antes de que salga la entrega: Advance Logistics) o **`ON_DELIVERY`** (al entregar: Island Wide). Aplica a las líneas de **producto** (`ChargeType='PRODUCT_SALE'`); el **flete** de la entrega sigue el `BillingModel` del contrato.
 - **Facturable** = `QtyShipped − QtyInvoiced` (`ON_DISPATCH`) o lo despachado cuya orden de transporte ya fue entregada (`ON_DELIVERY`; un retiro cuenta como entregado al despachar). Precio = `UnitPrice` de la línea. `InvoiceLine.SalesOrderLineId` y `QtyInvoiced` impiden facturar dos veces.
 - La **corrida de facturación** (`BillingRun`, módulo 11) incluye esas líneas junto con el flete y se exporta con las plantillas a contabilidad (QuickBooks). El módulo 11 sigue en diseño: lo que se deja listo desde ya en la orden de venta son los **precios, impuestos, cantidades y vínculos**.
-- **Pendientes de decisión**: impuestos (producto gravable o no, tasa por línea) y **devoluciones/notas de crédito** (si el cliente devuelve cartones); se resuelven con el módulo 11.
+- **Impuestos (IVU) y devoluciones/notas de crédito**: forman parte del diseño y se trabajan: impuestos en la sección 11 («Impuestos») y devoluciones y notas de crédito en la **13D**. Lo facturable de una línea es `QtyShipped − QtyReturned − QtyInvoiced` (lo devuelto antes de facturar no se factura; lo devuelto después se acredita con una nota de crédito).
 
 ### Avisos (capa J)
 Eventos: `SalesOrderRequested` (al almacén), `SalesBackorderAvailable` (a ventas y almacén), `SalesOrderShipped` (a ventas), `SalesOrderCancelled` (a quien corresponda) y `SalesCreditOverrideNeeded` (a quien autoriza). Además, la orden solicitada y el backorder surtible salen en los **avisos del Pulso** del almacén y como "N órdenes por despachar" en el aparato.
@@ -545,7 +553,30 @@ Eventos: `SalesOrderRequested` (al almacén), `SalesBackorderAvailable` (a venta
 - **Pantallas web**: *Órdenes de venta* (lista con filtros y ficha; crear con el diálogo de faltante), *Backorders*, *Despacho contra orden de venta*. **App del almacén**: «Despachar contra orden de venta» y la lista de órdenes por despachar. **Análisis**: fuentes de datos `SALES_ORDER` y `SALES_ORDER_LINE`; indicadores (órdenes abiertas, unidades en backorder, cumplimiento *fill rate*, tiempo solicitud→despacho).
 
 ### Orden de construcción
-S1 orden de venta, validación, reserva y backorder (servidor y web) · S2 despacho contra la orden (web y app) · S3 reglas de aviso (capa J) · S4 reportes, indicadores y avisos del Pulso · después, con el módulo 11: facturación de producto, impuestos y devoluciones. Todo el SQL va como secciones nuevas de `Diseño/logistica-db-update.sql` (la estructura y el seed están congelados).
+S1 orden de venta, validación, reserva y backorder (servidor y web) · S2 despacho contra la orden (web y app) · S3 reglas de aviso (capa J) · S4 reportes, indicadores y avisos del Pulso · S5 impuestos (IVU: tasas, exenciones, copia en la línea) · S6 devoluciones de venta (13D) · S7 notas de crédito y facturación de producto (con el módulo 11). Todo el SQL va como secciones nuevas de `Diseño/logistica-db-update.sql` (la estructura y el seed están congelados).
+
+## 13D. Devoluciones de venta y notas de crédito (parte del módulo SALES_ORDERS)
+
+*Diseño (2026-10-10).* El cliente devuelve parte de lo que se le vendió (cartones dañados, equivocados, sobrantes, vencidos). Hay que **recibir** la mercancía, decidir **qué pasa con el inventario** y **acreditarle** al cliente.
+
+### Entidades
+- **`SalesReturn`** (`DV-#####`, `PublicId`, por tenant): orden de venta de origen (`SalesOrderId`; opcional para una devolución sin orden identificable, con aprobación), cliente, almacén que la recibe, motivo (`ReturnReason`: dañado, equivocado, no lo necesitaba/sobrante, vencido, otro), quién la pidió, notas y estatus `SalesReturnStatus`.
+- **`SalesReturnLine`**: `SalesOrderLineId`, `QtyRequested`, `QtyReceived`, **disposición** de lo recibido (`ReturnDisposition`: **volver a vender** → regresa al inventario disponible; **cuarentena** → a revisión; **desechar** → sigue el flujo de daños con su destino final) y estado de la mercancía (lote/serie si aplica).
+- **`CreditNote`** (`NC-#####`): cliente, factura de origen (`InvoiceId`; nulo si el producto se facturó fuera de Teikem, p. ej. en QuickBooks, caso en que lleva la referencia de la factura externa), devolución de origen (`SalesReturnId`, opcional), motivo (`CreditReason`: devolución, ajuste de precio, falla del servicio, error de facturación), moneda y totales, estatus `CreditNoteStatus`. **`CreditNoteLine`**: línea de factura o de venta acreditada, cantidad, monto unitario, e impuesto **proporcional a la copia de la línea original** (11, «Impuestos»); admite líneas de **flete** (falla del servicio) sin producto.
+- **`CreditApplication`**: cómo se usa la nota: aplicada contra facturas abiertas del cliente, o saldo a favor (el estado de cuenta del módulo 11 lo muestra).
+
+### Flujo y estatus
+- **Devolución**: `REQUESTED` (ventas la pide) → `AUTHORIZED` (un supervisor la autoriza; define si el cliente la lleva o se recoge) → `RECEIVED` (el almacén la recibe; puede ser en partes) → `CREDITED` (tiene su nota de crédito) · `REJECTED` / `CANCELLED`.
+- **Recibirla** reutiliza el recibo existente: `ReceiptHeader` de **tipo devolución** (RETURN) enlazado a la devolución, con sugerencia de **cuarentena primero**; por la disposición, lo recibido pasa a disponible, a cuarentena o al flujo de daños. Nada se duplica: mismo ledger (`InventoryTransaction`), mismas posiciones, mismo aparato.
+- **Reglas**: no se devuelve más de `QtyShipped − QtyReturned` de la línea; ventana de devolución configurable por tenant (`SalesReturnWindowDays`; fuera de ella exige permiso); un producto con serie se devuelve por sus series. `QtyReturned` y `QtyCredited` quedan en la línea de la orden de venta.
+- **Nota de crédito**: `DRAFT` → `APPROVED` (**AAL2**, como aprobar facturación) → `APPLIED` / exportada a contabilidad con las mismas plantillas (QuickBooks). Aprobar una nota **no** mueve inventario (eso ya lo hizo la recepción de la devolución); un ajuste de precio o una falla del servicio no necesita devolución.
+- **Con la base de facturación (11)**: si lo devuelto **aún no se facturó** (`QtyShipped − QtyReturned − QtyInvoiced`), simplemente deja de ser facturable; si **ya se facturó**, se acredita con una nota de crédito. Una venta **COD** devuelta se concilia con su remesa (11B) por la nota.
+
+### Avisos, permisos y pantallas
+- **Eventos (capa J)**: `SalesReturnRequested` (a quien autoriza), `SalesReturnAuthorized` (al almacén), `SalesReturnReceived` (a ventas y facturación), `CreditNoteApproved`.
+- **Permisos**: `sales.return` (pedir), `sales.return.authorize`, `billing.credit` (crear y aprobar notas de crédito); recibir usa `warehouse.receive`.
+- **Pantallas**: *Devoluciones de venta* (lista y ficha), recibir devolución en el aparato (Recibir → devolución) y *Notas de crédito* en Facturación. **Análisis**: fuentes `SALES_RETURN` y `CREDIT_NOTE`; indicadores: devoluciones por motivo, tasa de devolución, notas de crédito del período.
+- Fuera de alcance de esta versión: reembolsos en efectivo y cambios de mercancía (se resuelven con una nota de crédito y una orden de venta nueva).
 
 ## 16C. Equipos en alquiler (módulo RENTAL_EQUIPMENT / RENTAL_BILLING)
 
@@ -738,7 +769,8 @@ Decisiones de Luis incorporadas al diseño (sin construir todavía; ver 13C, J y
 - **El despacho se mantiene y siempre baja inventario**; después es retiro o entrega (la orden de transporte nace del despacho, enlazada a la orden de venta).
 - **Base de facturación del producto configurable** por tenant: al recoger (Advance Logistics) o al entregar (Island Wide).
 - **Capa J, reglas de aviso por evento** (correo ahora, push después), genérica para todos los módulos.
-- Pendientes: impuestos y devoluciones/notas de crédito (con el módulo 11).
+- **Impuestos (IVU)**: tasas configurables con vigencia y componentes (estatal/municipal), categoría de producto, exenciones de cliente con certificado, copia del impuesto en cada línea e informe por período (sección 11, «Impuestos»).
+- **Devoluciones de venta y notas de crédito** (13D): se recibe con el recibo de tipo devolución, la disposición decide el inventario (volver a vender, cuarentena, desechar) y la nota de crédito acredita con el impuesto de la línea original; con aprobación AAL2.
 
 ## Bitácora de cambios del mock UI (sesión jul 2026)
 
