@@ -36,3 +36,15 @@ JOIN dbo.Permission p ON p.Code = 'warehouse.transfer'
 WHERE r.TenantId IS NULL AND r.Name = 'WarehouseOperator'
   AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-10 — Permiso warehouse.adjust (ajustar la CANTIDAD de una posición desde el aparato;
+   sube o baja, nunca mueve). NINGUNA plantilla de rol lo trae: el administrador lo asigna a un
+   rol propio (Sistema → Roles). TenantAdmin lo recibe por "todos" (PermissionSeeder).
+   ---------------------------------------------------------------------------- */
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'warehouse.adjust')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('warehouse.adjust',
+            (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'WAREHOUSE'),
+            N'{"es":"Ajustar la cantidad de una posición (aparato)","en":"Adjust a bin''s quantity (device)"}', 1);
+GO

@@ -180,6 +180,26 @@ public class InventoryAdjustmentServiceTests
     }
 
     [Fact]
+    public async Task Adjust_quantity_changes_only_the_quantity_and_refuses_special_zones()
+    {
+        var w = await SeedAsync();
+        var svc = w.F.Get<InventoryAdjustmentService>();
+        var up = await svc.AdjustQuantityAsync(Adjust(w, 4m, "FOUND"), default);
+        Assert.Equal("ADJUSTMENT", Assert.Single(up.Transactions).TypeCode);
+        Assert.Equal(4m, await OnHandAsync(w, w.PN, w.B1));
+        Assert.Equal(0m, await OnHandAsync(w, w.PN, w.B2));   // un ajuste no mueve nada a otra posición
+        var down = await svc.AdjustQuantityAsync(Adjust(w, -1m, "LOSS"), default);
+        Assert.Equal(-1m, Assert.Single(down.Transactions).Quantity);
+        Assert.Equal(3m, await OnHandAsync(w, w.PN, w.B1));
+
+        // cuarentena: tiene su propio flujo (Daño)
+        var qz = await w.F.AddZoneAsync(w.W1, "QUA", "QUARANTINE");
+        var q = await w.F.AddBinAsync(qz, "Q-01");
+        var blocked = await Assert.ThrowsAsync<StatusRuleException>(() => svc.AdjustQuantityAsync(Adjust(w, 1m, "FOUND", bin: q), default));
+        Assert.Equal(AdjustmentRules.AdjustZoneNotAllowed("Q-01"), blocked.Message);
+    }
+
+    [Fact]
     public async Task Adjust_bin_of_other_warehouse_is_404()
     {
         var w = await SeedAsync();

@@ -12,13 +12,20 @@ export interface BalanceRowsListProps {
   rows: BalanceRow[]
   /** Con función, cada fila movible muestra «Mover». */
   onMove?: (row: BalanceRow) => void
+  /** Con función (permiso warehouse.adjust), cada fila con posición muestra «Ajustar» (cambia solo la cantidad). */
+  onAdjust?: (row: BalanceRow) => void
 }
 
 export function canMoveRow(row: BalanceRow): boolean {
   return row.binId != null && Boolean(row.binCode) && row.qtyAvailable > 0 && !isBlockedZone(row.zoneTypeCode)
 }
 
-export function BalanceRowsList({ rows, onMove }: BalanceRowsListProps) {
+/** «Ajustar»: la fila tiene posición y no es de cuarentena, en renta ni cross-dock (aunque no quede nada disponible: se puede subir). */
+export function canAdjustRow(row: BalanceRow): boolean {
+  return row.binId != null && Boolean(row.binCode) && !isBlockedZone(row.zoneTypeCode)
+}
+
+export function BalanceRowsList({ rows, onMove, onAdjust }: BalanceRowsListProps) {
   const { t } = useT()
   const f = useFormat()
   if (rows.length === 0) return <Text style={styles.empty}>{t('lookup.empty')}</Text>
@@ -32,6 +39,17 @@ export function BalanceRowsList({ rows, onMove }: BalanceRowsListProps) {
               {[r.binCode, r.lotNumber, `${t('lookup.onHand')}: ${f.qty(r.qtyOnHand)}`, `${t('lookup.available')}: ${f.qty(r.qtyAvailable)}`].filter(Boolean).join(' · ')}
             </Text>
           </View>
+          {onAdjust && canAdjustRow(r) ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('lookup.adjustLabel', { sku: r.sku })}
+              onPress={() => onAdjust(r)}
+              style={({ pressed }) => [styles.btn, styles.btnAlt, pressed && styles.pressed]}
+              testID={`adjust-${r.id}`}
+            >
+              <Text style={styles.btnLabel}>{t('lookup.adjust')}</Text>
+            </Pressable>
+          ) : null}
           {onMove && canMoveRow(r) ? (
             <Pressable
               accessibilityRole="button"
@@ -50,12 +68,13 @@ export function BalanceRowsList({ rows, onMove }: BalanceRowsListProps) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.panelAlt, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.sm },
+  row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.md, backgroundColor: colors.panelAlt, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.sm },
   text: { flex: 1, gap: 2 },
   title: { color: colors.text, fontSize: fontSize.message, fontWeight: '700' },
   sub: { color: colors.muted, fontSize: fontSize.message },
   btn: { minHeight: touchTarget, minWidth: 88, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, backgroundColor: colors.brand, paddingHorizontal: spacing.md },
   btnLabel: { color: colors.onStrong, fontSize: fontSize.label, fontWeight: '700' },
+  btnAlt: { backgroundColor: colors.panel, borderWidth: 2, borderColor: colors.brand },
   pressed: { opacity: 0.7 },
   empty: { color: colors.muted, fontSize: fontSize.message, textAlign: 'center', paddingVertical: spacing.lg },
 })

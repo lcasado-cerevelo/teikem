@@ -91,6 +91,7 @@ public class WmsControllerSecurityTests
         [(typeof(InventoryController), nameof(InventoryController.Adjust))] = PermissionCatalog.InventoryAdjust,
         [(typeof(InventoryController), nameof(InventoryController.Transfer))] = PermissionCatalog.InventoryAdjust,
         [(typeof(InventoryController), nameof(InventoryController.TransferInWarehouse))] = PermissionCatalog.WarehouseTransfer,
+        [(typeof(InventoryController), nameof(InventoryController.AdjustQuantity))] = PermissionCatalog.WarehouseAdjust,
         [(typeof(InventoryController), nameof(InventoryController.Genealogy))] = PermissionCatalog.InventoryView,
         [(typeof(InventoryController), nameof(InventoryController.SerialTrace))] = PermissionCatalog.InventoryView,
         [(typeof(InventoryController), nameof(InventoryController.Reconciliation))] = PermissionCatalog.InventoryAdjust,
@@ -324,7 +325,7 @@ public class WmsControllerSecurityTests
         Assert.Equal(PermissionCatalog.RentalMaintenance, Expected[(typeof(RentalProcessesController), nameof(RentalProcessesController.Scrap))]);
         Assert.Equal(ModuleKeys.RentalEquipment, ModuleOf[typeof(RentalReturnsController)]);
         Assert.Equal(ModuleKeys.RentalEquipment, ModuleOf[typeof(RentalProcessesController)]);
-        Assert.Equal(154, Expected.Count); // 132 de master + 1 de reparto por posición (Distribute) + 1 de verificación de línea (CheckLine) + 12 de RentalsController + 3 de RentalReturnsController + 4 de RentalProcessesController
+        Assert.Equal(155, Expected.Count); // 132 de master + 1 de reparto por posición (Distribute) + 1 de verificación de línea (CheckLine) + 12 de RentalsController + 3 de RentalReturnsController + 4 de RentalProcessesController
     }
 
     [Fact]

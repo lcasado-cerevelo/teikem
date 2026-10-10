@@ -191,6 +191,30 @@ public sealed class InventoryAdjustmentService(TeikemDbContext db, ILookupCache 
         return await TransferAsync(req with { ToWarehousePublicId = null }, ct);
     }
 
+    /// <summary>
+    /// Ajuste de CANTIDAD desde el aparato del almacén (2026-10-10, permiso warehouse.adjust): sube o baja la existencia de UNA posición (nunca mueve nada
+    /// de un sitio a otro: eso es una transferencia). Sin posiciones de cuarentena, en renta ni de cross-dock. Las demás reglas son las de
+    /// <see cref="AdjustAsync"/> (motivo del catálogo, nota obligatoria, lo reservado no sale → 409 insufficient_stock).
+    /// </summary>
+    public async Task<MovementResultDto> AdjustQuantityAsync(AdjustmentRequest req, CancellationToken ct)
+    {
+        if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
+        if (req.BinId is int binId)
+        {
+            var warehouse = await ResolveWarehouseOrDefaultAsync(req.WarehousePublicId, ct);
+            var blocked = new List<int>();
+            foreach (var code in new[] { ZoneTypes.Quarantine, ZoneTypes.Rental, ZoneTypes.CrossDock })
+                if (await lookups.TryGetIdAsync(LookupDomains.ZoneType, code, ct) is int id) blocked.Add(id);
+            var bin = await (from b in db.Set<WarehouseBin>().AsNoTracking()
+                             join z in db.Set<WarehouseZone>().AsNoTracking() on b.WarehouseZoneId equals z.WarehouseZoneId
+                             where b.WarehouseId == warehouse.WarehouseId && b.WarehouseBinId == binId
+                             select new { b.Code, ZoneType = z.ZoneTypeLookupId }).FirstOrDefaultAsync(ct);
+            if (bin is { ZoneType: int zt } && blocked.Contains(zt))
+                throw new StatusRuleException(AdjustmentRules.AdjustZoneNotAllowed(bin.Code));
+        }
+        return await AdjustAsync(req, ct);
+    }
+
     // ================================================================ ledger
 
     /// <summary>Contabiliza en el ledger y devuelve los ids de los movimientos en el orden de los postings.</summary>

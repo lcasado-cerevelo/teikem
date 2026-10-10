@@ -5757,3 +5757,22 @@ Los productos con serie se mueven desde la web (Transferencias y ajustes), eligi
 
 **Dice `Transferir necesita señal…`**
 La transferencia se hace en el servidor para poder confirmar la existencia: reintente con señal.
+
+## Ajustar cantidad desde el aparato (2026-10-10)
+
+Detalle en [Ajustar cantidad](09-app-almacen.md#ajustar-cantidad-2026-10-10).
+
+**No me sale «Ajustar» en Consultar.**
+Su usuario no tiene el permiso `warehouse.adjust`. Ninguna plantilla de rol lo trae: el administrador crea un rol con ese permiso (Sistema → Roles) y se lo asigna.
+
+**¿Un ajuste sirve para pasar mercancía de una posición a otra?**
+No. El ajuste cambia solo la cantidad de **una** posición. Para mover use *Transferir* (o *Mover* en Consultar).
+
+**Dice `Escriba una nota que explique el ajuste.`**
+La nota es obligatoria en todo ajuste manual: explique el motivo en pocas palabras.
+
+**Dice `Solo se puede bajar hasta {qty} (lo reservado no sale).`**
+Parte de lo que hay está reservado para un despacho: solo se puede bajar lo disponible.
+
+**Dice `La posición {bin} es de cuarentena, en renta o de cross-dock: no se ajusta desde aquí…`**
+Esas posiciones tienen su propio flujo (Daño, Rentas, Cross-dock).

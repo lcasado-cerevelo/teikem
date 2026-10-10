@@ -414,7 +414,9 @@
     "binInactive": "La posición {bin} está desactivada.",
     "binTruncated": "Se muestran los primeros {max} renglones de esta posición; el resto, en la web.",
     "move": "Mover",
-    "moveLabel": "Mover {sku} desde {bin}"
+    "moveLabel": "Mover {sku} desde {bin}",
+    "adjust": "Ajustar",
+    "adjustLabel": "Ajustar la cantidad de {sku}"
   },
   "scanner": {
     "manualLabel": "O escribe el código",
@@ -580,5 +582,41 @@
     "zoneBlocked": "{bin} es una posición de cuarentena, en renta o de cross-dock: no se transfiere desde aquí (usa Daño, Rentas o Cross-dock).",
     "productNotHere": "Ese producto no está en {bin} (o no se puede mover).",
     "serialNotSupported": "{sku} lleva número de serie: por ahora se transfiere desde la web."
+  },
+  "adjust": {
+    "title": "Ajustar cantidad",
+    "inBin": "Posición {bin}",
+    "up": "Subir",
+    "down": "Bajar",
+    "upLabel": "Subir (hay más)",
+    "downLabel": "Bajar (hay menos)",
+    "qtyLabel": "Cantidad",
+    "canLower": "Se puede bajar hasta {qty} (lo reservado no sale).",
+    "systemQty": "En el sistema: {onHand} · Disponible: {available}",
+    "onHand": "En mano: {qty}",
+    "reasonLabel": "Motivo",
+    "noteLabel": "Nota (obligatoria)",
+    "noteHelp": "Explica por qué se ajusta; queda registrada con tu nombre.",
+    "doIt": "Ajustar",
+    "confirmTitle": "¿Ajustar la cantidad?",
+    "confirmBody": "{dir} {qty} de {sku} en {bin}.",
+    "confirmBodyQty": "{dir} {qty} de {sku} en {bin}: de {from} pasa a {to}.",
+    "done": "Listo: {dir} {qty} de {sku} en {bin}.",
+    "chooseLot": "Elige el lote a ajustar",
+    "useLot": "Ajustar el lote {lot}",
+    "needSignal": "Ajustar necesita señal: cambia el inventario en el servidor. Inténtalo con señal.",
+    "zoneBlocked": "{bin} es una posición de cuarentena, en renta o de cross-dock: no se ajusta desde aquí (usa Daño, Rentas o Cross-dock).",
+    "serialNotSupported": "{sku} lleva número de serie: por ahora se ajusta desde la web.",
+    "reasonFound": "Encontrado",
+    "reasonDamage": "Daño",
+    "reasonLoss": "Pérdida",
+    "reasonExpired": "Vencido",
+    "reasonOther": "Otro",
+    "issueDirection": "Elige si sube o baja.",
+    "issueQty": "Escribe una cantidad mayor que 0.",
+    "issueTooMany": "Solo se puede bajar hasta {qty} (lo reservado no sale).",
+    "issueReason": "Elige el motivo.",
+    "issueNote": "Escribe una nota que explique el ajuste.",
+    "issueNoteTooLong": "La nota admite como máximo {max} caracteres."
   }
 }

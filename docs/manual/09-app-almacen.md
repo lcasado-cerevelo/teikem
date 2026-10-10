@@ -1017,3 +1017,33 @@ Al escanear una posición sin existencia en el sistema, la app **ya no rechaza**
 API: `POST /api/v1/inventory/transfers/in-warehouse` (`warehouse.transfer`); la transferencia de la web (`POST /inventory/transfers`, `inventory.adjust`) no cambia. El Kárdex la registra como TRANSFER.
 
 **Menú principal.** Orden de los botones: Consultar, Transferir, Recibir, Acomodar, Despacho, Conteo y Daño.
+
+## Ajustar cantidad (2026-10-10)
+
+**Qué hace.** Cambia **solo la cantidad** de una posición: sube o baja la existencia de ese producto ahí. **No mueve nada de una posición a otra**: para eso está Transferir. En el Kárdex queda como ADJUSTMENT, con el motivo, la nota y el nombre de quien lo hizo.
+
+**Quién puede.** Permiso `warehouse.adjust` (inventario). **Ninguna plantilla de rol lo trae**: el administrador lo da a un rol propio (Sistema → Roles) y lo asigna a quien deba ajustar. El Administrador de la compañía lo tiene por "todos". Sin el permiso no aparece el botón.
+
+**Cómo se usa.** Desde **Consultar**: al consultar una posición, cada producto trae *Ajustar*; al consultar un producto, cada fila con posición lo trae. Se abre la pantalla con la posición y el producto ya puestos:
+1. (si el producto tiene varios lotes) elegir el lote;
+2. **Subir** (hay más) o **Bajar** (hay menos);
+3. cantidad (con la calculadora; también por cajas si el producto tiene empaque);
+4. **motivo**: al subir, *Encontrado* u *Otro*; al bajar, *Daño*, *Pérdida*, *Vencido* u *Otro* (los motivos de recibo, conteo, saldo inicial, etc. los pone solo el sistema);
+5. **nota obligatoria** (hasta 300 caracteres);
+6. *Ajustar* y confirmar. Si tiene permiso de ver cantidades del sistema (`warehouse.count`), la confirmación dice «de X pasa a Y».
+
+Necesita señal (cambia el inventario en el servidor, sin cola).
+
+**Reglas y mensajes.**
+
+| Caso | Mensaje (HTTP) |
+|---|---|
+| Bajar más de lo disponible | `Solo se puede bajar hasta {qty} (lo reservado no sale).` (pantalla); servidor: 409 `insufficient_stock` |
+| Sin nota | `Escriba una nota que explique el ajuste.` (400) |
+| Cantidad 0 o vacía | `Escribe una cantidad mayor que 0.` (pantalla) |
+| Motivo reservado al sistema | 400 (no se ofrece en la pantalla) |
+| Posición de cuarentena, en renta o de cross-dock | `La posición {bin} es de cuarentena, en renta o de cross-dock: no se ajusta desde aquí (use Daño, Rentas o Cross-dock).` (422) |
+| Producto con número de serie | `{sku} lleva número de serie: por ahora se ajusta desde la web.` |
+| Sin señal | `Ajustar necesita señal: cambia el inventario en el servidor. Inténtalo con señal.` |
+
+API: `POST /api/v1/inventory/adjustments/quantity` (`warehouse.adjust`); el ajuste de la web (`POST /inventory/adjustments`, `inventory.adjust`) no cambia.

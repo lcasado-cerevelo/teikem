@@ -41,6 +41,8 @@ export default function LookupScreen() {
   const showQty = canSeeSystemQty(permissions)
   // 2026-10-10: «Mover» (abre Transferir con la posición y el producto ya puestos) solo con el permiso warehouse.transfer
   const canTransfer = permissions?.includes('warehouse.transfer') ?? false
+  // «Ajustar» (cambia solo la cantidad de la posición) con el permiso warehouse.adjust, que el administrador da a un rol propio
+  const canAdjust = permissions?.includes('warehouse.adjust') ?? false
 
   if (!warehousePublicId) {
     return (
@@ -118,6 +120,11 @@ export default function LookupScreen() {
                     ? (item) => router.push({ pathname: '/transfer', params: { fromBinId: String(result.bin.id), fromBinCode: result.bin.code, productPublicId: item.productPublicId } })
                     : undefined
                 }
+                onAdjust={
+                  canAdjust
+                    ? (item) => router.push({ pathname: '/adjust', params: { fromBinId: String(result.bin.id), fromBinCode: result.bin.code, productPublicId: item.productPublicId } })
+                    : undefined
+                }
               />
               {result.truncated ? <Text style={styles.help}>{t('lookup.binTruncated', { max: BIN_CONTENT_PAGE * BIN_CONTENT_MAX_PAGES })}</Text> : null}
             </>
@@ -127,6 +134,11 @@ export default function LookupScreen() {
               onMove={
                 canTransfer
                   ? (r) => router.push({ pathname: '/transfer', params: { fromBinId: String(r.binId), fromBinCode: r.binCode ?? '', productPublicId: r.productPublicId } })
+                  : undefined
+              }
+              onAdjust={
+                canAdjust
+                  ? (r) => router.push({ pathname: '/adjust', params: { fromBinId: String(r.binId), fromBinCode: r.binCode ?? '', productPublicId: r.productPublicId } })
                   : undefined
               }
             />

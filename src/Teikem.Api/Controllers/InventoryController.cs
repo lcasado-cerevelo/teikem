@@ -138,6 +138,14 @@ public sealed class InventoryController(InventoryReadService reads, InventoryAdj
     public Task<MovementResultDto> Transfer([FromBody] TransferRequest req, CancellationToken ct) => adjustments.TransferAsync(req, ct);
 
     /// <summary>
+    /// Ajuste de CANTIDAD desde el aparato (2026-10-10, <c>warehouse.adjust</c>: se da a un rol propio, no viene en el Operador): sube o baja la existencia de UNA
+    /// posición (mover es una transferencia). Mismo cuerpo y reglas que <c>POST adjustments</c> (motivo del catálogo, nota obligatoria, salida mayor que lo disponible
+    /// → 409 insufficient_stock) y sin posiciones de cuarentena, en renta ni de cross-dock (422).
+    /// </summary>
+    [HttpPost("adjustments/quantity"), RequirePermission(PermissionCatalog.WarehouseAdjust)]
+    public Task<MovementResultDto> AdjustQuantity([FromBody] AdjustmentRequest req, CancellationToken ct) => adjustments.AdjustQuantityAsync(req, ct);
+
+    /// <summary>
     /// Transferencia desde el aparato (2026-10-10, <c>warehouse.transfer</c>: el operario): solo dentro de un almacén y sin posiciones de
     /// cuarentena, en renta ni de cross-dock (422). Mismo cuerpo y resultado que <c>POST transfers</c>; lo reservado no se mueve (409 insufficient_stock).
     /// </summary>

@@ -52,6 +52,8 @@ public static class PermissionCatalog
     public const string InventoryAdjust = "inventory.adjust";
     /// <summary>2026-10-10: transferir inventario entre posiciones del mismo almacén desde el aparato (el operario). inventory.adjust lo implica (<see cref="Implied"/>).</summary>
     public const string WarehouseTransfer = "warehouse.transfer";
+    /// <summary>2026-10-10: ajustar la CANTIDAD de una posición desde el aparato (sube o baja; nunca mueve). NO lo trae ninguna plantilla de rol: el administrador lo da a un rol propio.</summary>
+    public const string WarehouseAdjust = "warehouse.adjust";
     public const string BillingGenerate = "billing.generate";
     public const string BillingApprove = "billing.approve";
     public const string BillingExport = "billing.export";
@@ -199,6 +201,7 @@ public static class PermissionCatalog
         new(WarehouseCountCapture, "WAREHOUSE", "Capturar conteo (a ciegas)", "Capture count (blind)"),
         new(WarehouseDamage, "WAREHOUSE", "Reportar y resolver daños", "Report & resolve damage"),
         new(WarehouseTransfer, "WAREHOUSE", "Transferir inventario entre posiciones (aparato)", "Transfer stock between bins (device)"),
+        new(WarehouseAdjust, "WAREHOUSE", "Ajustar la cantidad de una posición (aparato)", "Adjust a bin's quantity (device)"),
         // Lote F8a — Pulso del día (categoría PULSE)
         new(PulseIndicators, "PULSE", "Ver indicadores en el Pulso", "See indicators on the Pulse"),
         new(PulseCharts, "PULSE", "Ver gráficos en el Pulso", "See charts on the Pulse"),

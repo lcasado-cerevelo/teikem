@@ -414,7 +414,9 @@
     "binInactive": "Bin {bin} is deactivated.",
     "binTruncated": "Showing the first {max} rows of this bin; see the rest on the web.",
     "move": "Move",
-    "moveLabel": "Move {sku} from {bin}"
+    "moveLabel": "Move {sku} from {bin}",
+    "adjust": "Adjust",
+    "adjustLabel": "Adjust the quantity of {sku}"
   },
   "scanner": {
     "manualLabel": "Or type the code",
@@ -580,5 +582,41 @@
     "zoneBlocked": "{bin} is a quarantine, rental or cross-dock bin: it cannot be transferred from here (use Damage, Rentals or Cross-dock).",
     "productNotHere": "That product is not in {bin} (or cannot be moved).",
     "serialNotSupported": "{sku} is serial-tracked: for now it is transferred from the web."
+  },
+  "adjust": {
+    "title": "Adjust quantity",
+    "inBin": "Bin {bin}",
+    "up": "Increase",
+    "down": "Decrease",
+    "upLabel": "Increase (there is more)",
+    "downLabel": "Decrease (there is less)",
+    "qtyLabel": "Quantity",
+    "canLower": "Can be lowered by up to {qty} (reserved stock does not leave).",
+    "systemQty": "In the system: {onHand} · Available: {available}",
+    "onHand": "On hand: {qty}",
+    "reasonLabel": "Reason",
+    "noteLabel": "Note (required)",
+    "noteHelp": "Explain why it is adjusted; it is recorded with your name.",
+    "doIt": "Adjust",
+    "confirmTitle": "Adjust the quantity?",
+    "confirmBody": "{dir} {qty} of {sku} in {bin}.",
+    "confirmBodyQty": "{dir} {qty} of {sku} in {bin}: from {from} to {to}.",
+    "done": "Done: {dir} {qty} of {sku} in {bin}.",
+    "chooseLot": "Choose the lot to adjust",
+    "useLot": "Adjust lot {lot}",
+    "needSignal": "Adjusting needs a signal: it changes stock on the server. Try again with signal.",
+    "zoneBlocked": "{bin} is a quarantine, rental or cross-dock bin: it cannot be adjusted from here (use Damage, Rentals or Cross-dock).",
+    "serialNotSupported": "{sku} is serial-tracked: for now it is adjusted from the web.",
+    "reasonFound": "Found",
+    "reasonDamage": "Damage",
+    "reasonLoss": "Loss",
+    "reasonExpired": "Expired",
+    "reasonOther": "Other",
+    "issueDirection": "Choose increase or decrease.",
+    "issueQty": "Enter a quantity greater than 0.",
+    "issueTooMany": "Can only be lowered by up to {qty} (reserved stock does not leave).",
+    "issueReason": "Choose the reason.",
+    "issueNote": "Write a note explaining the adjustment.",
+    "issueNoteTooLong": "The note allows at most {max} characters."
   }
 }
