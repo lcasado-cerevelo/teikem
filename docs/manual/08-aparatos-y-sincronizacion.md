@@ -327,6 +327,14 @@ Protocolo:
    `isActive: false`; una orden de compra que recibe una segunda entrega parcial (sigue `PARTIAL`) vuelve a llegar con el
    pendiente nuevo.
 
+**Saldos por posición (2026-10-10, señal débil): `GET /api/v1/sync/balances?warehousePublicId=`.** Trae, por (producto, posición, lote):
+`binId` (nulo si el saldo no está en una posición), `productId`/`productPublicId`, `lotId`/`lotNumber`/`lotExpiryDate`, `qtyOnHand`,
+`qtyReserved` y `updatedAtUtc`. El disponible es `qtyOnHand − qtyReserved` (lo calcula el aparato). Sin `since` solo llegan los saldos
+con existencia o reservado; con `since` llegan **todos los que cambiaron**, incluidos los que quedaron en cero (`isActive: false`: el
+aparato los pone en cero o los borra). A diferencia de las otras tablas, el cambio se detecta por la marca propia del saldo
+(`UpdatedAtUtc`, que el ledger escribe en cada movimiento y reserva), no por la bitácora. Mismo protocolo, mismos errores y mismos
+permisos que el resto. Es la base para que el aparato muestre saldos al instante y sincronice en segundo plano.
+
 El parámetro se llama exactamente `since` (UTC). Un parámetro con otro nombre (por ejemplo `modifiedSinceUtc`) se
 ignora **sin error**: la respuesta sería una carga completa de lo vigente, que nunca trae las bajas.
 

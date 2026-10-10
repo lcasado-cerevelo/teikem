@@ -2890,7 +2890,7 @@ for i in 1 2; do req POST "/api/v1/warehouse-tasks/$REM6/complete" "{\"toBinId\"
 CODES=$(codes "$TMP6"/1 "$TMP6"/2); rm -rf "$TMP6"
 [[ "$CODES" == "200 422 " ]] || fail "doble completado de la misma tarea: $CODES"
 expect 200 "$(req GET "/api/v1/receipts/$R6P")" | jq -e '.header.statusCode=="PUTAWAY"' >/dev/null || fail "el recibo no pasó a PUTAWAY con la última tarea"
-kardex "refEntity=WAREHOUSE_TASK&productPublicIds=$PN" | jq -e '.total==2 and all(.items[]; .typeCode=="TRANSFER" and .quantity>0)' >/dev/null || fail "TRANSFER con Ref WAREHOUSE_TASK"
+kardex "refEntity=WAREHOUSE_TASK&productPublicIds=$PN" | jq -e '.total==2 and all(.items[]; .typeCode=="PUTAWAY" and .quantity>0)' >/dev/null || fail "Acomodo (PUTAWAY) con Ref WAREHOUSE_TASK"
 # Reabasto: PR con 2 en su posición de picking (mínimo 5, máximo 8) y 10 en reserva.
 expect 200 "$(adjust "$PR" "$W6P" "$B_PCK2" 2 FOUND)" >/dev/null; expect 200 "$(adjust "$PR" "$W6P" "$B_RSV" 10 FOUND)" >/dev/null
 RUN1=$(expect 200 "$(req POST /api/v1/warehouse-tasks/replenishment/run "{\"warehousePublicId\":\"$W6P\"}")")
@@ -4222,6 +4222,8 @@ echo "$PG8" | jq -e '.serverTimeUtc != null' >/dev/null || fail "sync sin server
 expect 400 "$(req GET '/api/v1/sync/products?take=501' '' "$DT")" | jq -e --arg m "El máximo por página es 500." "$HASM" >/dev/null || fail "take > 500 → 400"
 expect 400 "$(req GET '/api/v1/sync/products?cursor=zzz' '' "$DT")" | jq -e --arg m "El cursor no es válido." "$HASM" >/dev/null || fail "cursor inválido → 400"
 expect 200 "$(req GET "/api/v1/sync/bins?warehousePublicId=$W6P" '' "$DT")" | jq -e --argjson b "$B_STG" 'any(.items[]; .id==$b and .zoneCode=="STG" and .zoneTypeCode=="STAGING" and .isActive==true)' >/dev/null || fail "sync/bins con su zona"
+expect 200 "$(req GET "/api/v1/sync/balances?warehousePublicId=$W6P&take=500" '' "$DT")" | jq -e "(.items | type==\"array\") and (.serverTimeUtc != null)" >/dev/null || fail "sync/balances"
+expect 400 "$(req GET '/api/v1/sync/balances?take=501' '' "$DT")" | jq -e --arg m "El máximo por página es 500." "$HASM" >/dev/null || fail "sync/balances take > 500 → 400"
 for R in purchase-orders asns warehouse-tasks product-categories; do expect 200 "$(req GET "/api/v1/sync/$R?since=$SINCE8" '' "$DT")" | jq -e '.items | type=="array"' >/dev/null || fail "sync/$R"; done
 # Las órdenes de compra conservan la defensa del recurso nativo: Solo lectura (inventory.view sin purchasing.view) → 403.
 expect 403 "$(req GET "/api/v1/sync/purchase-orders" '' "$TREAD6")" >/dev/null || fail "sync/purchase-orders sin purchasing.view → 403"
@@ -4795,7 +4797,7 @@ expect 400 "$(req POST /api/v1/cycle-counts "$EMPTY_BODY" "$TCNT21")" | jq -e --
 EMPTY_OK="{\"warehousePublicId\":\"$W6P\",\"productPublicIds\":[\"$PE21\"],\"allowEmpty\":true}"
 CCE=$(expect 200 "$(req POST /api/v1/cycle-counts "$EMPTY_OK" "$TCNT21")"); IDE=$(echo "$CCE" | jq -r .count.id)
 echo "$CCE" | jq -e '.count.originCode=="PRODUCT" and .count.statusCode=="OPEN" and .count.lineCount==0 and (.lines|length)==0 and .count.taskId!=null' >/dev/null || fail "conteo vacío por producto: $(echo "$CCE" | jq -c '{o:.count.originCode,s:.count.statusCode,l:(.lines|length)}')"
-M21AE="Crear un conteo vacío (allowEmpty) solo aplica a uno o ningún producto, sin posiciones, zonas ni categorías."
+M21AE="Crear un conteo vacío (allowEmpty) solo aplica a uno o ningún producto, o a una sola posición, sin otras posiciones, zonas ni categorías."
 HASAE='((.title // "") + " " + ([(.errors // {})[][]] | join(" "))) | contains($m)'
 expect 400 "$(req POST /api/v1/cycle-counts "{\"warehousePublicId\":\"$W6P\",\"productPublicIds\":[\"$PE21\"],\"binIds\":[$B21A],\"allowEmpty\":true}" "$TCNT21")" | jq -e --arg m "$M21AE" "$HASAE" >/dev/null || fail "allowEmpty con posiciones → 400"
 expect 400 "$(req POST /api/v1/cycle-counts "{\"warehousePublicId\":\"$W6P\",\"productPublicIds\":[\"$PE21\",\"$P21\"],\"allowEmpty\":true}" "$TCNT21")" | jq -e --arg m "$M21AE" "$HASAE" >/dev/null || fail "allowEmpty con dos productos → 400"

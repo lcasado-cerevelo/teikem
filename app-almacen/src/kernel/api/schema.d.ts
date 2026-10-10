@@ -8843,6 +8843,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/inventory/adjustments/quantity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["AdjustmentRequest"];
+                    "text/json": components["schemas"]["AdjustmentRequest"];
+                    "application/*+json": components["schemas"]["AdjustmentRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MovementResultDto"];
+                        "application/json": components["schemas"]["MovementResultDto"];
+                        "text/json": components["schemas"]["MovementResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/transfers/in-warehouse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TransferRequest"];
+                    "text/json": components["schemas"]["TransferRequest"];
+                    "application/*+json": components["schemas"]["TransferRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MovementResultDto"];
+                        "application/json": components["schemas"]["MovementResultDto"];
+                        "text/json": components["schemas"]["MovementResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/inventory/lots/{lotId}/genealogy": {
         parameters: {
             query?: never;
@@ -14778,6 +14864,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sync/balances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    warehousePublicId?: string;
+                    since?: string;
+                    cursor?: string;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SyncBalanceDtoSyncPage"];
+                        "application/json": components["schemas"]["SyncBalanceDtoSyncPage"];
+                        "text/json": components["schemas"]["SyncBalanceDtoSyncPage"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sync/purchase-orders": {
         parameters: {
             query?: never;
@@ -18425,92 +18553,6 @@ export interface paths {
                         "text/plain": components["schemas"]["ReplenishmentResultDto"];
                         "application/json": components["schemas"]["ReplenishmentResultDto"];
                         "text/json": components["schemas"]["ReplenishmentResultDto"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/inventory/transfers/in-warehouse": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["TransferRequest"];
-                    "text/json": components["schemas"]["TransferRequest"];
-                    "application/*+json": components["schemas"]["TransferRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["MovementResultDto"];
-                        "application/json": components["schemas"]["MovementResultDto"];
-                        "text/json": components["schemas"]["MovementResultDto"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/inventory/adjustments/quantity": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["AdjustmentRequest"];
-                    "text/json": components["schemas"]["AdjustmentRequest"];
-                    "application/*+json": components["schemas"]["AdjustmentRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["MovementResultDto"];
-                        "application/json": components["schemas"]["MovementResultDto"];
-                        "text/json": components["schemas"]["MovementResultDto"];
                     };
                 };
             };
@@ -23589,6 +23631,36 @@ export interface components {
             lotNumber?: string | null;
             /** Format: int32 */
             purchaseOrderLineId?: number | null;
+        };
+        SyncBalanceDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            /** Format: int32 */
+            binId?: number | null;
+            /** Format: int32 */
+            productId?: number;
+            /** Format: uuid */
+            productPublicId?: string;
+            /** Format: int32 */
+            lotId?: number | null;
+            lotNumber?: string | null;
+            /** Format: date */
+            lotExpiryDate?: string | null;
+            /** Format: double */
+            qtyOnHand?: number;
+            /** Format: double */
+            qtyReserved?: number;
+            /** Format: date-time */
+            updatedAtUtc?: string;
+            isActive?: boolean;
+        };
+        SyncBalanceDtoSyncPage: {
+            items?: components["schemas"]["SyncBalanceDto"][] | null;
+            nextCursor?: string | null;
+            /** Format: date-time */
+            serverTimeUtc?: string;
         };
         SyncBinDto: {
             /** Format: int32 */
