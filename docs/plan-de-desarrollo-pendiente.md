@@ -1,4 +1,4 @@
-# Plan de desarrollo de lo que falta (2026-10-10)
+# Plan de desarrollo de lo que falta (2026-10-10, actualizado tras las decisiones de Luis)
 
 Documento para llevar a otra sesión. Resume **qué está construido, qué falta, en qué orden hacerlo, qué decidir y qué verificar**.
 Fuentes: `Diseño/logistica-funcionalidades-maestro.md` (diseño), `Diseño/teikem-mockups.html` (maqueta), código en `src/`, `web-app/`,
@@ -66,34 +66,37 @@ Principio: primero lo que protege la operación que ya está en producción, lue
 módulos nuevos en su orden de dependencia. **Luis decide el orden final**; este es el que recomiendo.
 
 ```
-P0 Producción y deuda ──► P1 Web de lo que ya tiene backend ──► P2 Cimientos (J, jobs, módulos) ──► P3 Ventas (S1–S4)
+P0 Producción y deuda ──► P1 Web de lo que ya tiene backend ──► P2 Cimientos (J, jobs, módulos) ──► P3 Impuestos ──► P4 Ventas (S1–S4)
                                                                                         │
-                      P4 Impuestos ──► P5 Facturación ──► P6 Devoluciones y notas de crédito (S6/S7)
+                      P5 Facturación ──► P6 Devoluciones y notas de crédito (S6/S7)
                                               ▲
         P7 App de choferes + POD + intentos ──► P8 COD ──► P9 Liquidación a choferes
                                                                                         │
                                    P10 Portal de clientes ──► P11 API de integraciones ──► P12 Dashboards/Pulso completos
 ```
 
-Cambio propuesto al orden S1–S7 del diseño (13C): hacer **impuestos (S5) antes de S1**, para que cada línea de orden de venta nazca con
-su copia de impuesto. Si Luis prefiere el orden original, las columnas de impuesto de la línea quedan nulas hasta S5 y hay que
-rellenarlas después (peor). **Decisión pendiente D1.**
+**Decidido (D1): impuestos antes de órdenes de venta**, para que cada línea nazca con su copia de impuesto. El diseño ya lo dice (13C: S0).
 
 ---
 
 ## P0 — Producción y deuda inmediata
 
-### P0.1 Señal débil en el aparato (pedido de Luis, 2026-10-10)
-**Problema:** el cliente del API (`app-almacen/src/kernel/api/client.ts`) no tiene tiempo máximo. Solo cae a lo local/copia cuando el `fetch`
-lanza error. Con señal floja la petición queda colgada hasta que el sistema operativo se rinde. Consultar, Acomodar, Transferir, Ajustar,
-Daño, conteo (abrir/verificar línea), plan de salida del Despacho y `findBinByCode` (hasta 5 páginas) piden al servidor en el momento.
-**Alcance:**
-1. Tiempo máximo corto (3–4 s) para lecturas (`GET`); vencido = tratar como «sin señal» (`ApiError code 'network'`) y usar local/copia.
-2. Mostrar de inmediato lo local (producto/posición identificados) y traer saldos en segundo plano.
-3. Indicador de «señal débil» y mismo criterio en la sincronización (`kernel/sync/engine.ts`).
-4. Operaciones que cambian inventario (Transferir, Ajustar, Daño): siguen en línea pero **fallan rápido** con mensaje claro.
-5. **Decisión D2:** ¿sincronizar saldos por posición del almacén activo para que Consultar funcione igual con o sin señal (con hora de la última sincronización visible)? Recomendado: sí, solo almacén activo.
-**Verificar:** prueba unitaria con `fetch` que nunca responde (timers falsos); con señal cortada y con señal lenta; cola de salida sigue enviando en orden; APK nuevo con `versionCode` mayor (`scripts/construir-apk.ps1`, `actualizar-aparatos.ps1`); probar **en el Zebra** al fondo del almacén.
+### P0.1 Señal débil: el aparato trabaja con sus datos locales (decisión de Luis, 2026-10-10; **pendiente de que Luis dé el arranque**)
+**Problema:** el cliente del API (`app-almacen/src/kernel/api/client.ts`) no tiene tiempo máximo y las pantallas esperan al servidor antes de
+mostrar (Consultar, Acomodar, Transferir, Ajustar, Daño, conteo, plan de salida del Despacho, `findBinByCode`). Con señal floja la petición
+queda colgada. Los saldos no residen en el aparato (solo `balance_cache` de lo último consultado).
+**Principio (en el diseño, 8A):** *todo se trabaja desde el aparato*. Cada pantalla muestra **primero lo local, al instante**, sincroniza en paralelo,
+muestra un **indicador de estado** (sincronizando / al día + hora / sin conexión / señal débil) y **actualiza la pantalla** cuando llega el dato. Al cambiar de pantalla,
+la nueva muestra lo que hay y su indicador trabaja de fondo. Ya **no** se usa el tiempo máximo de 3–4 s para bloquear: nada bloquea la pantalla.
+**Alcance (cada punto con su prueba):**
+1. **Servidor:** sincronización por diferencia de **saldos por posición** del almacén (`sync/balances?since=`), con marca de cambio por saldo. Verificar si `StockBalance` tiene una marca fiable de actualización; si no, agregarla con una sección de `update.sql` (no tocar los SQL congelados) o derivarla del ledger (`InventoryTransaction`). Incluir lotes/series, reservado y disponible recolectable.
+2. **App, base local:** tabla local de saldos (migración `SCHEMA_VERSION` 10), descarga inicial por almacén activo y por diferencia; limpiar al cambiar de almacén; cada fila con su hora de sincronización.
+3. **App, pantallas:** Consultar, Conteo, Acomodar, Transferir, Ajustar, Daño y Despacho leen de lo local; reemplazar `searchBalances`/`fetchBinContents`/`findBinByCode`/`fetchProductBins`/exit-options por lecturas locales + refresco en segundo plano.
+4. **Indicador único** (componente del núcleo, `kernel/ui`) alimentado por un estado global de sincronización (`syncStatus`): tamaño de cola de salida, última sincronización, error, señal débil. Visible en todas las pantallas de trabajo.
+5. **Sincronización con prioridad:** primero la cola de salida, luego diferencias; reintento con espera creciente; una petición de fondo con vencimiento largo (15–20 s) solo para marcar «señal débil», sin bloquear.
+6. **Operaciones que cambian inventario (Transferir, Ajustar, Daño):** hoy son solo en línea. Con «todo desde el aparato» hay que decidir **D2b**: ¿pasan a la cola de salida con efecto optimista en el saldo local (se reconcilia al sincronizar, y si el servidor la rechaza —saldo insuficiente, zona no permitida— queda «requiere revisión»)? Recomendado: sí para Ajustar (es una cantidad con signo) y Daño; Transferir también, con la regla de que un rechazo no detiene la cola.
+7. **Riesgos a verificar:** datos viejos (mostrar hora y avisar si pasan de N minutos), saldo local contra ledger tras una operación propia (recalcular al sincronizar), tamaño de la descarga inicial en Depot (contar saldos), batería, conflictos entre dos aparatos sobre la misma posición, y que la cola de salida mantenga el orden.
+**Verificar:** pruebas unitarias con SQL real (`better-sqlite3`, como ya se hace); `fetch` que nunca responde, que responde lento y sin red; cola sigue enviando en orden; APK con `versionCode` mayor (`scripts/construir-apk.ps1`, `actualizar-aparatos.ps1`); **probar en el Zebra** al fondo del almacén; manual 09 y FAQ actualizados.
 
 ### P0.2 Cosas de producción que dependen de Luis (no son código)
 - Redeploy de API + web + APK con lo último (Transferir, Ajustar, orden del menú, `update.sql`).
@@ -143,17 +146,15 @@ genera con `npm run api:types` desde `web-app/openapi.json` (regenerar tras camb
 
 ## P2 — Cimientos transversales (antes de cualquier módulo nuevo)
 
-### P2.1 Capa J — Reglas de aviso (S3)
-- **Entidades nuevas** (sección nueva en `update.sql`): `NotificationEvent` (catálogo sembrado desde código), `NotificationRule`,
-  `NotificationOutbox`, `NotificationLog` (idempotente por evento + regla + destinatario).
-- **Servicios:** registro de eventos por módulo (como `IDataSource`), `INotificationPublisher` que escribe en la outbox **dentro de la misma transacción**,
-  `NotificationWorker` (BackgroundService) con reintentos acotados; envío por `ITransactionalEmailSender` (Brevo). Plantillas es/en con variables.
-- **Permiso** `notifications.manage` (admin del tenant; actualizar `PermissionCatalog`, `update.sql`, pruebas de conteo de permisos y `WmsControllerSecurityTests`).
-- **Módulo** `NOTIFICATIONS` en `ModuleKeys`/`ModuleDefinition` (verificar si es necesario o si va siempre encendido).
-- **Pantalla** Sistema → Reglas de aviso (con envío de prueba) y consulta del log.
+### P2.1 Capa J — Reglas de aviso (S3), con canales configurables
+- **Reglas con interruptores:** cada `NotificationRule` se prende o apaga y elige **uno o varios canales** (`EMAIL`, `SMS`, `APP`, `PUSH`), cada uno con su propio interruptor y su plantilla. Un canal que el tenant no tenga configurado aparece apagado.
+- **Entidades nuevas** (secciones nuevas en `update.sql`): `NotificationEvent` (catálogo sembrado desde código), `NotificationRule`, `NotificationRuleChannel` (o columnas por canal; decidir al diseñar), `NotificationOutbox`, `NotificationLog` (por canal; idempotente por evento + regla + destinatario + canal), `UserNotification` (bandeja de avisos del usuario) y `UserNotificationPref` (silenciar eventos opcionales).
+- **Servicios:** registro de eventos por módulo (como `IDataSource`), `INotificationPublisher` que escribe en la outbox **dentro de la misma transacción**, `NotificationWorker` (BackgroundService) con reintentos acotados y un `INotificationChannelSender` por canal: correo (existente, Brevo), SMS (**D16: proveedor** —p. ej. Twilio— con límite mensual por tenant), app/push.
+- **Etapas:** (a) **ahora**: eventos + reglas + outbox + correo + bandeja `UserNotification` en servidor y pantalla de reglas; (b) **después**: pantalla *Avisos* y contador en la app del almacén (sincroniza la bandeja, funciona sin señal); (c) **después**: SMS y push (Expo/FCM) y la app de choferes (P7).
+- **Permiso** `notifications.manage` (actualizar `PermissionCatalog`, `update.sql`, pruebas de conteo de permisos y `WmsControllerSecurityTests`). Módulo `NOTIFICATIONS` (verificar si es necesario o va siempre encendido).
+- **Pantalla** Sistema → Reglas de aviso: eventos por módulo, interruptor de regla y de cada canal, destinatarios (roles, usuarios, correos/teléfonos), plantillas por canal, envío de prueba por canal y consulta del log.
 - Eventos primeros: los de ventas (13C). Después: recibo con diferencia, daño reportado, conteo por revisar, faltante de compra, devolución con daño.
-- Avisos del Pulso/atención y contador del menú del aparato para trabajo pendiente.
-**Verificar:** un correo que falla no deshace la operación; reintentos; idempotencia; sin enumeración de destinatarios; el log solo del tenant; aislamiento multi-tenant; prueba con servidor de correo caído.
+**Verificar:** un aviso que falla nunca deshace la operación; reintentos; idempotencia; un canal apagado no envía; teléfonos y correos validados; sin fuga entre tenants; el SMS respeta el límite; el aviso en la app aparece sin señal una vez descargado; prueba con servidor de correo caído.
 
 ### P2.2 Motor de trabajos programados
 Hoy solo existe `InventoryReconciliationWorker`. Falta una base común para: barrido SCHEDULED de conciliación, foto diaria (`KpiDailySnapshot`),
@@ -166,7 +167,17 @@ Encender por tenant: Advance Logistics e Island Wide (ventas), según `TenantMod
 
 ---
 
-## P3 — Órdenes de venta (13C), partes S1–S4
+## P3 — Impuestos (IVU) (S0: va primero, decisión de Luis 2026-10-10)
+
+- Tablas nuevas: `TaxRate`, `TaxRateComponent`, `TenantTaxSetting`, `ClientTaxExemption`; `Product.TaxCategoryLookupId` + catálogo `TaxCategory`; columnas de copia en líneas (`TaxRateId`, `TaxRatePct`, `TaxAmount`, `IsTaxExempt`) en orden de venta e `InvoiceLine`.
+- Reglas: una tasa **no se edita** (se cierra la vigencia y se crea otra); redondeo por línea o documento; precios con impuesto incluido o no; flete/manejo gravables por `ChargeType`; exención vigente → sin impuesto con certificado anotado; vencida → avisa y cobra.
+- Permiso `tax.manage`; pantallas (tasas, categorías, exenciones) + informe de impuestos por período.
+- **D6:** las tasas, los componentes (estatal/municipal), qué es gravable (flete, manejo) y el redondeo los entrega el contador de Luis; **Teikem programa el mecanismo completo** para que todo sea configuración. Se siembra con valores de ejemplo claramente marcados, no con cifras legales.
+**Verificar:** cálculo con casos reales de la compañía; nota de crédito acredita con la copia de la línea original; pruebas con vigencias que cambian a mitad de mes.
+
+---
+
+## P4 — Órdenes de venta (13C), partes S1–S4 (después de impuestos)
 
 Entidades nuevas (no existen en el DDL congelado; verificar): `SalesOrder`, `SalesOrderLine`, `SalesOrderReservation`; columnas nuevas nullable
 `PickBatch.SalesOrderId`, `PickBatchLine.SalesOrderLineId`, `TransportOrder.SalesOrderId`, `InvoiceLine.SalesOrderLineId`. Estatus `SalesOrderStatus` en
@@ -185,16 +196,6 @@ propagados a los roles de los tenants existentes (revisar cómo lo hizo `Permiss
 
 ---
 
-## P4 — Impuestos (IVU) (S5)
-
-- Tablas nuevas: `TaxRate`, `TaxRateComponent`, `TenantTaxSetting`, `ClientTaxExemption`; `Product.TaxCategoryLookupId` + catálogo `TaxCategory`; columnas de copia en líneas (`TaxRateId`, `TaxRatePct`, `TaxAmount`, `IsTaxExempt`) en orden de venta e `InvoiceLine`.
-- Reglas: una tasa **no se edita** (se cierra la vigencia y se crea otra); redondeo por línea o documento; precios con impuesto incluido o no; flete/manejo gravables por `ChargeType`; exención vigente → sin impuesto con certificado anotado; vencida → avisa y cobra.
-- Permiso `tax.manage`; pantallas (tasas, categorías, exenciones) + informe de impuestos por período.
-- **Decisión D6 (necesita al contador de Luis):** tasas y componentes actuales del IVU, qué es gravable (flete, manejo), redondeo, cómo se trata el municipal.
-**Verificar:** cálculo con casos reales de la compañía; nota de crédito acredita con la copia de la línea original; pruebas con vigencias que cambian a mitad de mes.
-
----
-
 ## P5 — Facturación (módulo 11)
 
 Las tablas `BillingRun`, `Invoice`, `InvoiceLine`, `Payment` ya existen en el DDL congelado (**verificar columnas contra el diseño**: `RateComponentId`, `ChargeType`,
@@ -207,7 +208,7 @@ Las tablas `BillingRun`, `Invoice`, `InvoiceLine`, `Payment` ya existen en el DD
 5. Cargo opcional por intento de entrega (depende de `DeliveryAttempt`, P7).
 6. Contabilización de compras (13B) y de despachos: corridas con plantilla (nunca se construyó; los docs la llaman «lote 10» pero ese lote fue la migración).
 7. Pantallas: Facturación, Contabilización de compras y de despachos.
-**Decisiones:** D7 ¿los precios viven en Teikem (se asumió que sí)? D8 ¿QuickBooks exacto: formato IIF/CSV? D9 numeración de facturas (hay `Client.InvoiceNumberBy` y `NumberFormat`).
+**Decisiones:** D7 resuelta (precios en Teikem). D8 resuelta: exportación **genérica** por plantillas, ajustable luego al formato de QuickBooks. D9 numeración de facturas (hay `Client.InvoiceNumberBy` y `NumberFormat`).
 **Verificar:** nunca se factura dos veces (`QtyInvoiced`, `SalesOrderLineId`); `Facturable = QtyShipped − QtyReturned − QtyInvoiced`; aprobar exige AAL2 reciente; exportación reproducible; el flete sigue el `BillingModel` del contrato.
 
 ## P6 — Devoluciones de venta y notas de crédito (13D, S6/S7)
@@ -305,21 +306,23 @@ Sin SMS ni biometría en MFA (decisión 11 del lote 1); `RentalCharge` y factura
 
 | # | Decisión | Recomendación |
 |---|---|---|
-| D1 | ¿Impuestos antes de órdenes de venta (S5 antes de S1)? | Sí |
-| D2 | ¿Sincronizar saldos por posición al aparato (almacén activo)? | Sí, con hora de última sincronización |
-| D3 | ¿Llevar Transferir/Ajustar/`update.sql` a `Depot-Implementation`? | Solo si Dani lo necesita para soporte |
+| D1 | ¿Impuestos antes de órdenes de venta? | **Decidido: sí** |
+| D2 | ¿Sincronizar saldos por posición al aparato? | **Decidido: sí, todo desde el aparato** (ver P0.1) |
+| D2b | ¿Transferir/Ajustar/Daño pasan a la cola de salida con efecto optimista? | Sí; un rechazo queda «requiere revisión» |
+| D3 | ¿Llevar Transferir/Ajustar/`update.sql` a `Depot-Implementation`? | **Sin responder** — solo si Dani lo necesita para soporte |
 | D4 | Permiso para cancelar un conteo (opciones 1 vs 2 pendientes) | Revisar `docs/decisiones-del-dueno-2026-10-03.md` |
 | D5 | Motor de trabajos: BackgroundService propio vs. librería | Propio, con bloqueo en tabla |
-| D6 | Reglas del IVU con el contador (tasas, componentes, gravables, redondeo) | Configurable; no se codifica nada legal |
-| D7 | ¿Los precios viven en Teikem? | Sí (se asumió) |
-| D8 | Formato exacto de exportación a QuickBooks | Definir con muestra real |
+| D6 | Reglas del IVU | **Las da el contador de Luis; Teikem programa todo el mecanismo configurable** (sin tasas fijas en código) |
+| D7 | ¿Los precios viven en Teikem? | **Decidido: sí** |
+| D8 | Formato exacto de exportación a QuickBooks | **Decidido: formato genérico configurable ahora; se ajusta después con una muestra real** |
+| D16 | Proveedor de SMS y push para los avisos | Decidir antes de la etapa (c) de P2.1 |
 | D9 | Numeración de facturas | Usar `NumberFormat` del cliente |
 | D10 | Almacenamiento de firmas y fotos (POD) | Blob/archivo del proveedor que ya use el despliegue |
 | D11 | App de choferes: proyecto separado o monorepo | Carpeta hermana `app-chofer/` reutilizando el núcleo |
 | D12 | Motor de rutas real (VROOM/OSRM) | Después; mantener heurística |
 | D13 | Push (Expo o FCM) | Expo push |
 | D14 | Portal: mismo `web-app` con otra entrada o proyecto aparte | Entrada aparte del mismo repo, dominio aparte |
-| D15 | Orden global de las fases | El de la sección 2, salvo que Luis priorice otra cosa |
+| D15 | Orden global de las fases | El de la sección 2 (impuestos antes de ventas ya decidido) |
 
 ## 5. Para arrancar en otra sesión
 1. Leer `CLAUDE.md`, este plan y la sección del diseño de la fase (`Diseño/logistica-funcionalidades-maestro.md`).
