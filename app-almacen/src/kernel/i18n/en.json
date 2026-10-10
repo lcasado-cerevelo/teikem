@@ -416,7 +416,11 @@
     "move": "Move",
     "moveLabel": "Move {sku} from {bin}",
     "adjust": "Adjust",
-    "adjustLabel": "Adjust the quantity of {sku}"
+    "adjustLabel": "Adjust the quantity of {sku}",
+    "updating": "Updating…",
+    "updated": "Up to date",
+    "offlineNote": "No connection or weak signal: showing the device's data.",
+    "localNote": "Device data from {time} ({minutes} min ago)"
   },
   "scanner": {
     "manualLabel": "Or type the code",
