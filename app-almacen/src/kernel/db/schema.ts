@@ -1,6 +1,6 @@
 // Lote 8A-app — esquema de la base local (expo-sqlite). Ver docs/mobile/app-almacen-plan.md §1 "Base local".
 // Migraciones por PRAGMA user_version: cada versión agrega su bloque de SQL; nunca se reescribe uno ya publicado.
-export const SCHEMA_VERSION = 9
+export const SCHEMA_VERSION = 10
 
 export const MIGRATIONS: readonly string[] = [
   // v1: kv, catálogos sincronizados, documentos abiertos, cola de salida y marcas de agua.
@@ -352,5 +352,25 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE product ADD COLUMN pack_uom_name TEXT;
   ALTER TABLE product ADD COLUMN pack_qty REAL;
   DELETE FROM sync_watermark WHERE resource = 'products' OR resource LIKE 'products:%';
+  `,
+  // v10 (2026-10-10, señal débil): saldos por posición del almacén (GET /sync/balances, por diferencia con marca de agua `balances:{almacén}`),
+  // para que Consultar, Conteo, Acomodar, Transferir, Ajustar y Daño muestren al instante lo que hay y se pongan al día en segundo plano. El
+  // producto, la posición y el tipo de zona se leen uniendo con `product` y `bin`. Es una copia: el servidor manda (el ledger).
+  `
+  CREATE TABLE IF NOT EXISTS stock_balance (
+    id INTEGER PRIMARY KEY NOT NULL,
+    warehouse_public_id TEXT NOT NULL,
+    bin_id INTEGER,
+    product_id INTEGER NOT NULL,
+    product_public_id TEXT NOT NULL,
+    lot_id INTEGER,
+    lot_number TEXT,
+    lot_expiry_date TEXT,
+    qty_on_hand REAL NOT NULL,
+    qty_reserved REAL NOT NULL,
+    updated_at_utc TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS ix_stock_balance_bin ON stock_balance(warehouse_public_id, bin_id);
+  CREATE INDEX IF NOT EXISTS ix_stock_balance_product ON stock_balance(warehouse_public_id, product_public_id);
   `,
 ]

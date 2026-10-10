@@ -21,8 +21,17 @@ Se construye en bloques probados; el sistema está en producción (solo `Diseño
 - Job `android-e2e` (Maestro en emulador): falla tras ~30 minutos sin dejar una causa legible en el registro; no se pudo reproducir aquí
   (sin emulador). **Pendiente de revisar** con los artefactos del job.
 
+## Bloque S2 — app: base local de saldos (hecho)
+- **Migración local v10** (`SCHEMA_VERSION` 10, `kernel/db/schema.ts`): tabla `stock_balance` (saldo por posición, producto y lote, con en mano y
+  reservado) e índices por almacén+posición y almacén+producto. Los aparatos con la versión 9 migran solos al abrir la app; no se pierde nada.
+- **Bajada** (`kernel/sync/download.ts`, `downloadBalances`): por diferencia con marca de agua propia por almacén (`balances:{almacén}`), dentro de
+  la misma pasada de sincronización (después de las posiciones). Un saldo en cero se borra del aparato. Sin `inventory.view` (403) se salta.
+- **Lectura local** (`kernel/warehouse/localBalances.ts`): saldos de una posición, de un producto y búsqueda libre, uniendo `product` y `bin`
+  (nombre, SKU, código y tipo de zona); disponible = en mano − reservado. `balancesSyncedAtUtc` dice cuándo se puso al día por última vez.
+- **Pruebas:** descarga con páginas y marca de agua, actualización y borrado, 403, lecturas locales y orden de recursos de la pasada
+  (jest con SQL real; 577 pruebas verdes, `tsc` limpio).
+
 ## Bloques que siguen
-- **S2 (app):** migración local v10 (tabla de saldos), descarga inicial por almacén activo y por diferencia, hora de última sincronización.
 - **S3 (app):** indicador único de sincronización y pantallas leyendo lo local (Consultar, Conteo, Acomodar, Transferir, Ajustar, Daño, Despacho).
 - **Decisión pendiente D2b:** pasar Transferir/Ajustar/Daño a la cola de salida con efecto en el saldo local (recomendado: sí).
 
