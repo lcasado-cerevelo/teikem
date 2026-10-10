@@ -41,8 +41,8 @@ Get-ChildItem (Join-Path $stage 'app') -Filter 'appsettings.*.json' | Remove-Ite
 New-Item -ItemType Directory -Force (Join-Path $stage 'db') | Out-Null
 Copy-Item (Join-Path $repo 'Diseño\logistica-db-estructura.sql') (Join-Path $stage 'db')
 Copy-Item (Join-Path $repo 'Diseño\logistica-db-seed.sql') (Join-Path $stage 'db')
-# cambios posteriores a la producción (idempotentes; db-update los aplica en orden)
-if (Test-Path (Join-Path $repo 'Diseño\cambios')) { Copy-Item (Join-Path $repo 'Diseño\cambios') (Join-Path $stage 'db\cambios') -Recurse }
+# cambios posteriores a la producción: UN solo archivo idempotente (estructura y datos); db-update lo aplica después de estructura y seed
+Copy-Item (Join-Path $repo 'Diseño\logistica-db-update.sql') (Join-Path $stage 'db')
 Copy-Item (Join-Path $PSScriptRoot 'instalar.ps1') $stage
 Copy-Item (Join-Path $PSScriptRoot 'README.md') $stage
 

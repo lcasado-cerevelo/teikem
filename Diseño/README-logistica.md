@@ -2,7 +2,7 @@
 
 
 > ## ⛔ EN PRODUCCIÓN DESDE 2026-10-09
-> - **`Diseño/logistica-db-estructura.sql` y `Diseño/logistica-db-seed.sql` están CONGELADOS: no se editan, jamás.** Un cambio de estructura **o de datos** va en un archivo **nuevo e idempotente** en `Diseño/cambios/NNNN-descripcion.sql` (ver [Diseño/cambios/README.md](cambios/README.md)). `FrozenSqlTests` falla si se tocan.
+> - **`Diseño/logistica-db-estructura.sql` y `Diseño/logistica-db-seed.sql` están CONGELADOS: no se editan, jamás.** Un cambio de estructura **o de datos** va en el archivo **`Diseño/logistica-db-update.sql`** (UN solo archivo para estructura y datos, **idempotente**; se agrega al final) (ver [Diseño/logistica-db-update.sql](logistica-db-update.sql)). `FrozenSqlTests` falla si se tocan.
 > - **Recrear la base (`db-reset`, `scripts/recrear-base*.ps1`) está PROHIBIDO fuera de desarrollo.** En producción solo `db-update` (con simulación y respaldo).
 > - La rama `Depot-Implementation` guarda el estado de la puesta en producción de Advance Depot, para dar soporte a su operación.
 

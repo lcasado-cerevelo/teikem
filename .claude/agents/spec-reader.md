@@ -15,4 +15,4 @@ Reglas:
 - Señala explícitamente los vacíos: tablas que el documento nombra y el SQL no tiene, reglas sin decisión, términos ambiguos.
 - No inventes requisitos ni propongas diseño; eso es de otra etapa.
 
-Ojo: desde la producción (2026-10-09) el SQL congelado (`logistica-db-estructura.sql`, `logistica-db-seed.sql`) se completa con los cambios posteriores en `Diseño/cambios/*.sql`; léelos también.
+Ojo: desde la producción (2026-10-09) el SQL congelado (`logistica-db-estructura.sql`, `logistica-db-seed.sql`) se completa con los cambios posteriores en `Diseño/logistica-db-update.sql`; léelo también.

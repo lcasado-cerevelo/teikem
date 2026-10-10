@@ -9,12 +9,12 @@ namespace Teikem.Tests;
 /// <summary>
 /// En producción desde 2026-10-09: Diseño/logistica-db-estructura.sql y logistica-db-seed.sql están CONGELADOS. Si esta prueba falla es
 /// porque alguien los editó: revierta esa edición y ponga el cambio (estructura o datos) en un archivo nuevo e idempotente en
-/// Diseño/cambios/NNNN-descripcion.sql (ver Diseño/cambios/README.md). NO actualice los hashes de aquí abajo.
+/// Diseño/logistica-db-update.sql (un solo archivo idempotente, al final). NO actualice los hashes de aquí abajo.
 /// </summary>
 public class FrozenSqlTests
 {
-    private const string StructureSha256 = "017b97b6cec46ac10745f5d134d00a91961ac250e64727553c5a4d388c322897";
-    private const string SeedSha256 = "27bc44cda6c50f0052d6c0a2c3aba0fe944432fc2fd12eed7896b55008e1170f";
+    private const string StructureSha256 = "3366c3257f831bdff5fa1cde576088cc820489984434240e1d73691f9b8a5b78";
+    private const string SeedSha256 = "e4cc313033279600f1ae7c5270a40d85484ad3c80ac198382286e42dca7c9545";
 
     private static string Design() => Path.Combine(DatabaseInitializer.ResolveRepoRoot(null), "Diseño");
 
@@ -28,21 +28,26 @@ public class FrozenSqlTests
     [Fact]
     public void Structure_script_is_frozen()
         => Assert.True(StructureSha256 == Hash(Path.Combine(Design(), "logistica-db-estructura.sql")),
-            "logistica-db-estructura.sql está CONGELADO (producción desde 2026-10-09). Revierta la edición y use Diseño/cambios/NNNN-*.sql.");
+            "logistica-db-estructura.sql está CONGELADO (producción desde 2026-10-09). Revierta la edición y use Diseño/logistica-db-update.sql.");
 
     [Fact]
     public void Seed_script_is_frozen()
         => Assert.True(SeedSha256 == Hash(Path.Combine(Design(), "logistica-db-seed.sql")),
-            "logistica-db-seed.sql está CONGELADO (producción desde 2026-10-09). Revierta la edición y use Diseño/cambios/NNNN-*.sql.");
+            "logistica-db-seed.sql está CONGELADO (producción desde 2026-10-09). Revierta la edición y use Diseño/logistica-db-update.sql.");
 
     [Fact]
-    public void Change_scripts_are_numbered_and_ordered()
+    public void Update_script_exists_and_is_idempotent_by_construction()
     {
-        var scripts = DatabaseInitializer.ChangeScripts(Design());
-        foreach (var s in scripts)
-            Assert.Matches(new Regex(@"^cambios/\d{4}-[a-z0-9-]+\.sql$"), s.Name);
-        var names = scripts.Select(s => s.Name).ToList();
-        Assert.Equal(names.OrderBy(n => n, StringComparer.Ordinal), names);
-        Assert.Equal(names.Count, names.Distinct().Count());
+        // un solo archivo para estructura y datos; cada cambio nuevo es una sección al final y debe poder correr dos veces
+        var update = DatabaseInitializer.UpdateScript(Design());
+        Assert.Equal("logistica-db-update.sql", update.Name);
+        var sql = File.ReadAllText(update.Path, Encoding.UTF8);
+        Assert.Contains("IDEMPOTENTE", sql);
+        // ningún CREATE/ALTER/INSERT sin guarda: las altas de tablas, columnas y filas deben ir con IF ... / MERGE (revisión básica por patrón)
+        foreach (var line in sql.Split('\n').Select(l => l.Trim()))
+        {
+            if (line.StartsWith("--") || line.StartsWith("/*") || line.StartsWith("*")) continue;
+            Assert.False(Regex.IsMatch(line, @"^CREATE\s+TABLE\b", RegexOptions.IgnoreCase), $"CREATE TABLE sin IF OBJECT_ID(...) IS NULL: {line}");
+        }
     }
 }

@@ -104,11 +104,11 @@ public class TripCatalogTests
         Assert.Contains("permisos (69)", Seed.Value);
 
         // Cada permiso del catálogo aparece en el seed.
-        // (el seed está congelado desde la producción: los permisos nuevos se espejan en Diseño/cambios/*.sql)
-        var changes = string.Concat(Directory.GetFiles(Path.Combine(RepoRoot(), "Diseño", "cambios"), "*.sql").Select(File.ReadAllText));
+        // (el seed está congelado desde la producción: los permisos nuevos se espejan en Diseño/logistica-db-update.sql)
+        var changes = File.ReadAllText(Path.Combine(RepoRoot(), "Diseño", "logistica-db-update.sql"));
         foreach (var p in PermissionCatalog.All)
             Assert.True(Seed.Value.Contains($"('{p.Code}','", StringComparison.Ordinal) || changes.Contains($"'{p.Code}'", StringComparison.Ordinal),
-                $"Permiso {p.Code} no está en el seed ni en Diseño/cambios");
+                $"Permiso {p.Code} no está en el seed ni en Diseño/logistica-db-update.sql");
     }
 
     [Fact]

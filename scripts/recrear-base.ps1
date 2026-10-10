@@ -1,5 +1,5 @@
 ﻿<#
-  *** PROHIBIDO FUERA DE DESARROLLO: borra la base. Producción desde 2026-10-09; allá solo db-update con Diseño/cambios. ***
+  *** PROHIBIDO FUERA DE DESARROLLO: borra la base. Producción desde 2026-10-09; allá solo db-update con Diseño/logistica-db-update.sql. ***
   Recrea DESDE CERO la base local de Teikem y vuelve a migrar las dos compañías:
     - Advance Depot:     QuickBooks (CSV) + inventario del WMS MSWM de PRODUCCIÓN (variable ConnectionStrings__LegacyMswm).
     - Advance Solutions: QuickBooks (CSV).
@@ -20,7 +20,7 @@ param(
 
 # === PROHIBIDO FUERA DE DESARROLLO (producción desde 2026-10-09) ===
 # Este script BORRA la base. Solo se corre en la máquina de desarrollo contra una base LOCAL. Jamás en producción, staging ni un servidor remoto:
-# allá los cambios de base van en Diseño/cambios/NNNN-*.sql y se aplican con db-update (instalador).
+# allá los cambios de base van en Diseño/logistica-db-update.sql y se aplican con db-update (instalador).
 if ($env:ASPNETCORE_ENVIRONMENT -and $env:ASPNETCORE_ENVIRONMENT -ne 'Development') {
     Write-Host 'PROHIBIDO: este script solo corre en desarrollo (ASPNETCORE_ENVIRONMENT debe ser Development). No se borró nada.' -ForegroundColor Red
     exit 2

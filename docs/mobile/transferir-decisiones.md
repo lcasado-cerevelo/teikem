@@ -1,7 +1,7 @@
 # Transferir desde el aparato — decisiones (2026-10-10)
 
 ## Qué se construyó
-- **Servidor**: permiso `warehouse.transfer` (implicado por `inventory.adjust`, plantilla *WarehouseOperator*), `POST /api/v1/inventory/transfers/in-warehouse` (`TransferInWarehouseAsync`): solo dentro del almacén y sin posiciones de cuarentena, en renta ni cross-dock; reutiliza `TransferAsync` (lo reservado no se mueve). Archivo de cambios `Diseño/cambios/0001-permiso-warehouse-transfer.sql` (idempotente; el seed y la estructura siguen congelados).
+- **Servidor**: permiso `warehouse.transfer` (implicado por `inventory.adjust`, plantilla *WarehouseOperator*), `POST /api/v1/inventory/transfers/in-warehouse` (`TransferInWarehouseAsync`): solo dentro del almacén y sin posiciones de cuarentena, en renta ni cross-dock; reutiliza `TransferAsync` (lo reservado no se mueve). Archivo de cambios `Diseño/logistica-db-update.sql/0001-permiso-warehouse-transfer.sql` (idempotente; el seed y la estructura siguen congelados).
 - **App**: tile *Transferir* (con permiso), pantalla de 5 pasos, botón *Mover* en Consultar (por posición y por producto), `BalanceRow` trae `binId/lotId/zoneTypeCode`; menú principal en el orden Consultar, Transferir, Recibir, Acomodar, Despacho, Conteo, Daño.
 
 ## Cómo se probó
