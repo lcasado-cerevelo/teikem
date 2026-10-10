@@ -10,7 +10,10 @@ namespace Teikem.Infrastructure.Persistence.Scripts;
 /// y hay UN SOLO set de scripts):
 ///   1. Diseño/logistica-db-estructura.sql            (estructura completa, incl. Identity; se aplica una sola vez por hash)
 ///   2. Diseño/logistica-db-seed.sql                  (seed idempotente)
-///   3. Seeders de código: permisos (siempre) y tenant demo (opcional).
+///   3. Diseño/logistica-db-update.sql                (cambios posteriores a producción: estructura Y datos en un solo archivo idempotente; se reaplica si cambia su hash)
+///   4. Seeders de código: permisos (siempre) y tenant demo (opcional).
+/// CONGELADOS desde la puesta en producción (2026-10-09): los scripts 1 y 2 NO se editan jamás (los protege FrozenSqlTests); todo cambio
+/// de estructura o de datos va como sección nueva al final de Diseño/logistica-db-update.sql.
 /// </summary>
 public sealed class DatabaseInitializer(IServiceProvider services, IConfiguration config, ILogger<DatabaseInitializer> logger)
 {
@@ -30,9 +33,21 @@ public sealed class DatabaseInitializer(IServiceProvider services, IConfiguratio
             new("logistica-db-estructura.sql", Path.Combine(designDir, "logistica-db-estructura.sql")),
             new("logistica-db-seed.sql", Path.Combine(designDir, "logistica-db-seed.sql")),
         };
+        scripts.Add(UpdateScript(designDir));
         await runner.ApplyAsync(scripts, ct);
         await RunCodeSeedersAsync(ct);
         logger.LogInformation("Inicialización de BD completada.");
+    }
+
+    /// <summary>
+    /// Cambios posteriores a la puesta en producción: Diseño/logistica-db-update.sql, UN solo archivo con estructura y datos, idempotente (se puede correr
+    /// cuantas veces haga falta). Corre después de estructura y seed; el runner lo vuelve a aplicar cuando cambia su contenido (hash).
+    /// </summary>
+    public static SqlScript UpdateScript(string designDir)
+    {
+        var path = Path.Combine(designDir, "logistica-db-update.sql");
+        if (!File.Exists(path)) throw new FileNotFoundException($"Script SQL no encontrado: {path}");
+        return new SqlScript("logistica-db-update.sql", path);
     }
 
     private async Task RunCodeSeedersAsync(CancellationToken ct)
@@ -87,7 +102,7 @@ public sealed class DatabaseInitializer(IServiceProvider services, IConfiguratio
 
         if (plan.Changes.Count > 0) await sync.ApplyAsync(plan.Changes, ct);
         await runner.MarkAppliedAsync(structure, ct);
-        await runner.ApplyAsync([seed], ct);
+        await runner.ApplyAsync([seed, UpdateScript(designDir)], ct);
         await RunCodeSeedersAsync(ct);
         Console.WriteLine(plan.Warnings.Count > 0
             ? "db-update: terminado, con diferencias que debe revisar a mano (arriba)."

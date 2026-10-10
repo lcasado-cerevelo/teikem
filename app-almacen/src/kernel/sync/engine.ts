@@ -7,7 +7,7 @@ import { useEffect, useRef, useSyncExternalStore } from 'react'
 import { sendHeartbeat } from '../auth/deviceAuth'
 import { refreshTenantFormat } from '../format/tenantFormatApi'
 import { downloadForReceiving, type DownloadResult } from './download'
-import { countPending, runOutbox, subscribeOutbox, type RunOutboxResult } from './outbox'
+import { countPending, outboxStatus, runOutbox, subscribeOutbox, type RunOutboxResult } from './outbox'
 
 export interface SyncSummary {
   outbox: RunOutboxResult
@@ -34,10 +34,45 @@ export function getLastSync(): SyncSummary | null {
 
 /** Un solo ciclo en vuelo: si ya hay uno corriendo (temporizador y botón a la vez), se espera el mismo. */
 export function runSync(): Promise<SyncSummary> {
-  running ??= runOnce().finally(() => {
-    running = null
-  })
+  if (!running) {
+    running = runOnce().finally(() => {
+      running = null
+      emit()
+    })
+    emit()
+  }
   return running
+}
+
+export type FlushOutcome = { status: 'sent' } | { status: 'rejected'; error: string } | { status: 'pending' }
+
+const FLUSH_WAIT_MS = 3000
+
+/**
+ * D2b: después de encolar una operación se intenta mandar de inmediato, pero SIN hacer esperar al operario: se espera como máximo FLUSH_WAIT_MS.
+ * `sent` = el servidor la aceptó; `rejected` = la rechazó (con su motivo); `pending` = sigue en la cola (sin señal o señal débil) y se manda sola.
+ */
+export async function flushNow(outboxId: number): Promise<FlushOutcome> {
+  const settle = (): FlushOutcome => {
+    const st = outboxStatus(outboxId)
+    if (st?.status === 'sent') return { status: 'sent' }
+    if (st?.status === 'rejected') return { status: 'rejected', error: st.error ?? '' }
+    return { status: 'pending' }
+  }
+  const wait = new Promise<void>((resolve) => setTimeout(resolve, FLUSH_WAIT_MS))
+  await Promise.race([runSync().then(() => undefined), wait])
+  let out = settle()
+  if (out.status === 'pending' && !isSyncing()) {
+    // una pasada que ya corría pudo haber leído la cola antes de encolar esta: una más
+    await Promise.race([runSync().then(() => undefined), wait])
+    out = settle()
+  }
+  return out
+}
+
+/** ¿Hay una sincronización corriendo ahora mismo? (para el indicador de las pantallas). */
+export function isSyncing(): boolean {
+  return running !== null
 }
 
 async function runOnce(): Promise<SyncSummary> {
@@ -86,6 +121,11 @@ export function useAutoSync(): void {
 /** Pendientes de enviar en este momento (cuenta viva: cambia al encolar, reintentar, descartar o al vaciarse). */
 export function usePendingCount(): number {
   return useSyncExternalStore(subscribeOutbox, countPending, countPending)
+}
+
+/** Indicador vivo: true mientras el aparato se sincroniza con el servidor (cola de salida y bajada). */
+export function useIsSyncing(): boolean {
+  return useSyncExternalStore(subscribeSync, isSyncing, isSyncing)
 }
 
 /** Resultado de la última pasada (para mostrar "última vez" y errores en Inicio/Sincronización). */

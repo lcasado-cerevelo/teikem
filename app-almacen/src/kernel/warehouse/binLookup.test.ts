@@ -1,5 +1,8 @@
+import { __resetAllForTests } from 'expo-sqlite'
+
 import { api } from '../api/client'
-import { BIN_LOOKUP_PAGE, findBinByCode, freeQtyOf } from './binLookup'
+import { __resetDbForTests, getDb } from '../db/database'
+import { BIN_LOOKUP_PAGE, findBinByCode, freeQtyOf, resolveBinLocalFirst } from './binLookup'
 
 jest.mock('../api/client', () => {
   const actual = jest.requireActual('../api/client')
@@ -18,6 +21,8 @@ function page(items: { id: number; code: string; maxCapacityQty?: number | null;
 }
 
 beforeEach(() => {
+  __resetAllForTests()
+  __resetDbForTests()
   getMock.mockReset()
 })
 
@@ -67,5 +72,29 @@ describe('cupo libre de la posición', () => {
   it('findBinByCode trae el espacio libre del listado', async () => {
     getMock.mockResolvedValueOnce(page([{ id: 5, code: 'A-01', maxCapacityQty: 25, qtyOnHand: 10 }]))
     expect(await findBinByCode('wh-1', 'A-01')).toEqual({ id: 5, code: 'A-01', freeQty: 15 })
+  })
+})
+
+describe('resolveBinLocalFirst (señal débil: no espera a la red si la posición ya está en el aparato)', () => {
+  it('una posición sincronizada y activa se resuelve sin tocar la red (sin distinguir mayúsculas)', async () => {
+    getDb().runSync(`INSERT INTO bin (id, code, warehouse_public_id, is_active) VALUES (7, 'A-01', 'wh-1', 1)`)
+    await expect(resolveBinLocalFirst('wh-1', 'a-01')).resolves.toEqual({ id: 7, code: 'A-01' })
+    expect(getMock).not.toHaveBeenCalled()
+  })
+
+  it('si no está en el aparato (o está inactiva o es de otro almacén), le pregunta al servidor', async () => {
+    getDb().runSync(`INSERT INTO bin (id, code, warehouse_public_id, is_active) VALUES (8, 'B-02', 'wh-1', 0), (9, 'C-03', 'wh-2', 1)`)
+    getMock.mockResolvedValue(page([{ id: 8, code: 'B-02' }]))
+    await expect(resolveBinLocalFirst('wh-1', 'B-02')).resolves.toMatchObject({ id: 8 })
+    expect(getMock).toHaveBeenCalledTimes(1)
+    getMock.mockReset()
+    getMock.mockResolvedValue(page([]))
+    await expect(resolveBinLocalFirst('wh-1', 'C-03')).resolves.toBeNull()
+    expect(getMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('código vacío: nada', async () => {
+    await expect(resolveBinLocalFirst('wh-1', '  ')).resolves.toBeNull()
+    expect(getMock).not.toHaveBeenCalled()
   })
 })

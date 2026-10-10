@@ -5735,3 +5735,67 @@ Esa unidad no existe en el catálogo *Unidad de medida*. Agréguela en el catál
 
 **No me sale el selector de Caja en la calculadora de la app.**
 El producto no tiene empaque o la app no ha sincronizado desde la actualización: sincronice y reintente.
+
+## Transferir desde el aparato (2026-10-10)
+
+Detalle en [Transferir](09-app-almacen.md#transferir-2026-10-10).
+
+**No me sale el botón Transferir (ni «Mover» en Consultar).**
+Su usuario no tiene el permiso `warehouse.transfer`. El *Operador de almacén* y quien ya puede ajustar inventario lo tienen; si usa un rol propio, pídale al administrador que se lo agregue (Sistema → Roles).
+
+**Dice `Solo se pueden mover {qty} (lo reservado no se mueve).`**
+Parte de lo que hay en esa posición está reservado para un despacho. Mueva solo lo disponible o espere a que se despache.
+
+**Dice `La posición {bin} es de cuarentena, en renta o de cross-dock: no se transfiere desde aquí…`**
+Esas posiciones tienen su propio flujo: lo dañado con *Daño*, lo rentado con Rentas y el cross-dock con su pantalla.
+
+**Dice `Desde el aparato solo se transfiere dentro del mismo almacén.`**
+Para mover entre almacenes use la web (Transferencias y ajustes).
+
+**Dice `{sku} lleva número de serie: por ahora se transfiere desde la web.`**
+Los productos con serie se mueven desde la web (Transferencias y ajustes), eligiendo las series.
+
+**Dice `Transferir necesita señal…`**
+La transferencia se hace en el servidor para poder confirmar la existencia: reintente con señal.
+
+## Ajustar cantidad desde el aparato (2026-10-10)
+
+Detalle en [Ajustar cantidad](09-app-almacen.md#ajustar-cantidad-2026-10-10).
+
+**No me sale «Ajustar» en Consultar.**
+Su usuario no tiene el permiso `warehouse.adjust`. Ninguna plantilla de rol lo trae: el administrador crea un rol con ese permiso (Sistema → Roles) y se lo asigna.
+
+**¿Un ajuste sirve para pasar mercancía de una posición a otra?**
+No. El ajuste cambia solo la cantidad de **una** posición. Para mover use *Transferir* (o *Mover* en Consultar).
+
+**Dice `Escriba una nota que explique el ajuste.`**
+La nota es obligatoria en todo ajuste manual: explique el motivo en pocas palabras.
+
+**Dice `Solo se puede bajar hasta {qty} (lo reservado no sale).`**
+Parte de lo que hay está reservado para un despacho: solo se puede bajar lo disponible.
+
+**Dice `La posición {bin} es de cuarentena, en renta o de cross-dock: no se ajusta desde aquí…`**
+Esas posiciones tienen su propio flujo (Daño, Rentas, Cross-dock).
+
+## Señal débil (app, 2026-10-10)
+
+**¿Por qué Consultar me muestra datos y dice «Actualizando…»?**
+Porque el aparato muestra primero lo que ya tiene guardado y, en paralelo, le pregunta al servidor. Cuando llega la respuesta, la pantalla se actualiza sola y el indicador pasa a «✓ Al día».
+
+**Dice `Sin conexión o con señal débil: se muestran los datos del aparato.`**
+El servidor no respondió a tiempo. Lo que ve es lo último que el aparato sincronizó (la hora está debajo). Acérquese a una zona con mejor señal o toque **Sincronizar ahora** en Inicio.
+
+**Dice `Datos del aparato de las {hora} (hace {n} min)`.**
+Son saldos guardados en el aparato, no confirmados ahora con el servidor. Para operar con certeza espere el «✓ Al día».
+
+**No me sale nada al escanear, pero el producto existe.**
+Si el aparato nunca ha bajado los saldos de ese almacén, espera al servidor como antes. Sincronice una vez con buena señal (Inicio → **Sincronizar ahora**) y la próxima vez saldrá al instante.
+
+**¿Puedo transferir, ajustar o reportar un daño sin señal?**
+Sí. La operación se guarda en el aparato («Guardado en el aparato. Se envía solo en cuanto haya señal.»), el saldo que ve el aparato ya la refleja y sube sola en la siguiente sincronización. Ver cuántas faltan por enviar en Inicio → Sincronización.
+
+**Dice `El servidor no aceptó la operación`.**
+El servidor revisó la operación al recibirla y no pudo aplicarla (por ejemplo, la existencia ya no estaba porque otra persona la movió, o la posición cambió de zona). El aparato deshizo el movimiento en sus saldos. Entre a **Sincronización**, lea el motivo y **reintente** (si ya se puede) o **descarte**.
+
+**Hice una transferencia sin señal y el saldo de otro aparato no cambió.**
+Es normal: el otro aparato lo verá cuando la operación llegue al servidor y él sincronice. Hasta entonces dos aparatos pueden ver cifras distintas.

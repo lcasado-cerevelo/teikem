@@ -88,8 +88,8 @@ public class TripCatalogTests
     [Fact]
     public void Permission_catalog_has_69_codes_with_trips_view_and_scan()
     {
-        Assert.Equal(69, PermissionCatalog.All.Count);   // Lote 14: + pulse.attention; Lote 27: + rental.extend, rental.return
-        Assert.Equal(69, PermissionCatalog.All.Select(p => p.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        Assert.Equal(71, PermissionCatalog.All.Count);   // Lote 14: + pulse.attention; Lote 27: + rental.extend, rental.return
+        Assert.Equal(71, PermissionCatalog.All.Select(p => p.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count());
 
         var view = Assert.Single(PermissionCatalog.All, p => p.Code == "trips.view");
         Assert.Equal(("TRIPS", "Ver rutas y despacho", "View trips & dispatch"), (view.Category, view.LabelEs, view.LabelEn));
@@ -104,8 +104,11 @@ public class TripCatalogTests
         Assert.Contains("permisos (69)", Seed.Value);
 
         // Cada permiso del catálogo aparece en el seed.
+        // (el seed está congelado desde la producción: los permisos nuevos se espejan en Diseño/logistica-db-update.sql)
+        var changes = File.ReadAllText(Path.Combine(RepoRoot(), "Diseño", "logistica-db-update.sql"));
         foreach (var p in PermissionCatalog.All)
-            Assert.True(Seed.Value.Contains($"('{p.Code}','", StringComparison.Ordinal), $"Permiso {p.Code} no está en el seed");
+            Assert.True(Seed.Value.Contains($"('{p.Code}','", StringComparison.Ordinal) || changes.Contains($"'{p.Code}'", StringComparison.Ordinal),
+                $"Permiso {p.Code} no está en el seed ni en Diseño/logistica-db-update.sql");
     }
 
     [Fact]

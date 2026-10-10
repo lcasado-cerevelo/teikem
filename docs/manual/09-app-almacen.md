@@ -990,3 +990,90 @@ porque el supervisor ya corrigió una línea) y la sección **Lote A8** (lo que 
 ### Contar una posición que el sistema cree vacía (2026-10-09)
 
 Al escanear una posición sin existencia en el sistema, la app **ya no rechaza** con *«Los filtros no seleccionan inventario en mano para contar; amplíe los filtros o agregue líneas a mano.»*: abre el conteo vacío de esa posición y usted escanea o elige de la lista lo que encuentre (sección «Lo que se espera aquí» dice que el sistema no espera nada). Se termina con **Terminar esta posición** como siempre; al reconciliar en la web, lo encontrado entra como ajuste de entrada en esa posición. (API: `POST /api/v1/cycle-counts` con `binIds` de una sola posición y `allowEmpty = true`.)
+
+## Señal débil: la pantalla muestra primero lo que el aparato ya tiene (2026-10-10)
+
+**Qué cambió.** Antes, varias pantallas esperaban la respuesta del servidor para mostrar algo, y con señal floja se quedaban colgadas. Ahora el aparato
+guarda también los **saldos por posición del almacén activo** y la pantalla **muestra de inmediato lo que ya sabe**; en paralelo consulta al servidor y,
+cuando llega, **actualiza lo que se ve**. La señal floja solo retrasa la actualización, no el resultado.
+
+**El indicador.** Mientras el aparato se pone al día se ve una rueda con **«Actualizando…»**; al terminar dice **«✓ Al día»**; si el servidor no alcanzó
+(sin conexión o señal débil) dice **«Sin conexión o con señal débil: se muestran los datos del aparato.»** y debajo la hora de esos datos
+(**«Datos del aparato de las {hora} (hace {n} min)»**). En **Inicio** el mismo indicador aparece mientras corre la sincronización general.
+
+**Dónde aplica hoy.**
+- **Consultar:** producto, posición y búsqueda libre salen al instante de lo local y se actualizan solos.
+- **Transferir, Ajustar y Daño (D2b): se guardan en el aparato y se mandan solos.** Al confirmar, la operación entra en la **cola de salida** (como Recibir
+  o Despacho): el saldo que ve el aparato **ya refleja el movimiento** y la pantalla no espera al servidor. El aparato intenta mandarla de inmediato (espera
+  hasta 3 segundos); si hay señal, queda enviada y lo dice; si no, queda **«Guardado en el aparato. Se envía solo en cuanto haya señal.»** y sube sola con
+  la sincronización de cada minuto (con su `Idempotency-Key`, así que un reintento nunca duplica el movimiento). Si el servidor la **rechaza** (por ejemplo,
+  alguien más ya movió esa existencia, o la posición cambió de zona), el aparato **deshace el efecto** en sus saldos, avisa **«El servidor no aceptó la
+  operación»** con el motivo y la deja en **Sincronización** como «requiere revisión» (reintentar o descartar); no detiene el resto de la cola. En **Daño** no se
+  proyecta el efecto en los saldos del aparato (el servidor decide la posición de cuarentena y las reservas): el saldo se corrige en la siguiente sincronización.
+  La lista de lo que hay en la posición de origen sale de lo local y se pone al día en segundo plano.
+- **Conteo, Daño, Despacho:** la posición escaneada se reconoce de lo que el aparato ya tiene (sin esperar a la red); si no está ahí (por ejemplo, se
+  creó después de la última sincronización), se le pregunta al servidor. **Abrir un conteo nuevo todavía necesita señal** (el conteo vive en el servidor). **Daño que llegó dañado en un recibo** necesita señal solo para buscar el recibo por su número.
+
+**Cuándo se bajan los saldos.** En la sincronización de cada minuto, junto con productos y posiciones: la primera vez baja todo lo que tiene existencia en
+el almacén activo; después solo lo que cambió (`GET /api/v1/sync/balances`). Si el aparato nunca ha bajado saldos de ese almacén, las pantallas se
+comportan como antes (esperan al servidor). Al actualizar la app, la base local migra sola a la versión 10; no se pierde nada.
+
+**Qué hacer si un dato se ve viejo.** El saldo del aparato puede estar unos minutos atrasado. Toque **Sincronizar ahora** en Inicio, o espere a que el
+indicador diga «Al día». El servidor siempre manda: si lo que se ve ya no coincide, el servidor lo corrige al llegar.
+
+## Transferir (2026-10-10)
+
+**Qué hace.** Mueve inventario de una posición a otra **del mismo almacén** desde el aparato. Pasos: posición de origen → producto → lote (si el producto lo trae) → cantidad → posición de destino → *Transferir*.
+
+**Quién puede.** Permiso `warehouse.transfer` (módulo de inventario). Lo trae el rol *Operador de almacén* y quien ya tiene `inventory.adjust` (lo implica). Sin el permiso no aparece el botón.
+
+**Cómo se usa.**
+- **Menú principal → Transferir.** Escanee la posición de origen (o búsquela en la lista); toque el producto de la lista de lo que hay ahí o escanéelo; si el producto tiene varios lotes, elija el lote; escriba la cantidad (la pantalla dice cuánto se puede mover: en mano − reservado) y *Siguiente*; escanee el destino y confirme.
+- **Desde Consultar → «Mover».** Al consultar una posición, cada producto con algo disponible trae *Mover*; al consultar un producto, cada fila con posición y disponible trae *Mover*. Abre Transferir con la posición de origen y el producto ya puestos.
+- Necesita señal (mueve inventario en el servidor, sin cola; como Daño). Con la calculadora de cantidad también cuenta por cajas si el producto tiene empaque.
+
+**Reglas y mensajes.**
+
+| Caso | Mensaje (HTTP) |
+|---|---|
+| Cantidad mayor que lo movible | `Solo se pueden mover {qty} (lo reservado no se mueve).` (pantalla); el servidor: 409 `insufficient_stock` |
+| Origen = destino | `El destino es la misma posición de origen.` (pantalla) / `La posición de origen y la de destino son la misma.` (400) |
+| Otro almacén | `Desde el aparato solo se transfiere dentro del mismo almacén.` (400) |
+| Posición de cuarentena, en renta o de cross-dock | `La posición {bin} es de cuarentena, en renta o de cross-dock: no se transfiere desde aquí (use Daño, Rentas o Cross-dock).` (422) |
+| Posición inexistente / inactiva | `No hay una posición con ese código en este almacén.` / `La posición {bin} está inactiva.` |
+| Producto con número de serie | `{sku} lleva número de serie: por ahora se transfiere desde la web.` |
+| Sin señal | `Transferir necesita señal: mueve el inventario en el servidor. Inténtalo con señal.` |
+
+API: `POST /api/v1/inventory/transfers/in-warehouse` (`warehouse.transfer`); la transferencia de la web (`POST /inventory/transfers`, `inventory.adjust`) no cambia. El Kárdex la registra como TRANSFER.
+
+**Menú principal.** Orden de los botones: Consultar, Transferir, Recibir, Acomodar, Despacho, Conteo y Daño.
+
+## Ajustar cantidad (2026-10-10)
+
+**Qué hace.** Cambia **solo la cantidad** de una posición: sube o baja la existencia de ese producto ahí. **No mueve nada de una posición a otra**: para eso está Transferir. En el Kárdex queda como ADJUSTMENT, con el motivo, la nota y el nombre de quien lo hizo.
+
+**Quién puede.** Permiso `warehouse.adjust` (inventario). **Ninguna plantilla de rol lo trae**: el administrador lo da a un rol propio (Sistema → Roles) y lo asigna a quien deba ajustar. El Administrador de la compañía lo tiene por "todos". Sin el permiso no aparece el botón.
+
+**Cómo se usa.** Desde **Consultar**: al consultar una posición, cada producto trae *Ajustar*; al consultar un producto, cada fila con posición lo trae. Se abre la pantalla con la posición y el producto ya puestos:
+1. (si el producto tiene varios lotes) elegir el lote;
+2. **Subir** (hay más) o **Bajar** (hay menos);
+3. cantidad (con la calculadora; también por cajas si el producto tiene empaque);
+4. **motivo**: al subir, *Encontrado* u *Otro*; al bajar, *Daño*, *Pérdida*, *Vencido* u *Otro* (los motivos de recibo, conteo, saldo inicial, etc. los pone solo el sistema);
+5. **nota obligatoria** (hasta 300 caracteres);
+6. *Ajustar* y confirmar. Si tiene permiso de ver cantidades del sistema (`warehouse.count`), la confirmación dice «de X pasa a Y».
+
+Necesita señal (cambia el inventario en el servidor, sin cola).
+
+**Reglas y mensajes.**
+
+| Caso | Mensaje (HTTP) |
+|---|---|
+| Bajar más de lo disponible | `Solo se puede bajar hasta {qty} (lo reservado no sale).` (pantalla); servidor: 409 `insufficient_stock` |
+| Sin nota | `Escriba una nota que explique el ajuste.` (400) |
+| Cantidad 0 o vacía | `Escribe una cantidad mayor que 0.` (pantalla) |
+| Motivo reservado al sistema | 400 (no se ofrece en la pantalla) |
+| Posición de cuarentena, en renta o de cross-dock | `La posición {bin} es de cuarentena, en renta o de cross-dock: no se ajusta desde aquí (use Daño, Rentas o Cross-dock).` (422) |
+| Producto con número de serie | `{sku} lleva número de serie: por ahora se ajusta desde la web.` |
+| Sin señal | `Ajustar necesita señal: cambia el inventario en el servidor. Inténtalo con señal.` |
+
+API: `POST /api/v1/inventory/adjustments/quantity` (`warehouse.adjust`); el ajuste de la web (`POST /inventory/adjustments`, `inventory.adjust`) no cambia.

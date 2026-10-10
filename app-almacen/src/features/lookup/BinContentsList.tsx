@@ -3,7 +3,7 @@
 // juntos), SKU grande, nombre y lotes (solo se muestran); las cantidades del sistema solo si `showQty` (permiso
 // warehouse.count, kernel/auth/permissions.ts). Las filas no se tocan: Consultar no tenía ninguna acción sobre una fila.
 import { useState } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { useFormat } from '../../kernel/format/useFormat'
 import { useT } from '../../kernel/i18n/useT'
@@ -16,9 +16,13 @@ export interface BinContentsListProps {
   items: BinContentItem[]
   /** Mostrar "En mano" y "Disponible" (solo con warehouse.count). */
   showQty: boolean
+  /** Con función (permiso warehouse.transfer), cada producto con algo disponible muestra «Mover». */
+  onMove?: (item: BinContentItem) => void
+  /** Con función (permiso warehouse.adjust), cada producto muestra «Ajustar» (cambia solo la cantidad). */
+  onAdjust?: (item: BinContentItem) => void
 }
 
-export function BinContentsList({ items, showQty }: BinContentsListProps) {
+export function BinContentsList({ items, showQty, onMove, onAdjust }: BinContentsListProps) {
   const { t } = useT()
   const f = useFormat()
   const [query, setQuery] = useState('')
@@ -61,6 +65,28 @@ export function BinContentsList({ items, showQty }: BinContentsListProps) {
                   {`${t('lookup.onHand')}: ${f.qty(item.qtyOnHand)} · ${t('lookup.available')}: ${f.qty(item.qtyAvailable)}`}
                 </Text>
               ) : null}
+              {onAdjust ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t('lookup.adjustLabel', { sku: item.sku })}
+                  onPress={() => onAdjust(item)}
+                  style={({ pressed }) => [styles.moveBtn, styles.adjustBtn, pressed && styles.pressed]}
+                  testID={`adjust-${item.sku}`}
+                >
+                  <Text style={styles.moveLabel}>{t('lookup.adjust')}</Text>
+                </Pressable>
+              ) : null}
+              {onMove && item.qtyAvailable > 0 ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t('lookup.moveLabel', { sku: item.sku, bin: '' }).trim()}
+                  onPress={() => onMove(item)}
+                  style={({ pressed }) => [styles.moveBtn, pressed && styles.pressed]}
+                  testID={`move-${item.sku}`}
+                >
+                  <Text style={styles.moveLabel}>{t('lookup.move')}</Text>
+                </Pressable>
+              ) : null}
             </View>
           )
         })}
@@ -97,5 +123,9 @@ const styles = StyleSheet.create({
   name: { color: colors.text, fontSize: fontSize.message },
   detail: { color: colors.muted, fontSize: fontSize.message },
   qty: { color: colors.text, fontSize: fontSize.message, fontWeight: '700' },
+  moveBtn: { marginTop: spacing.sm, minHeight: touchTarget, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, backgroundColor: colors.brand },
+  moveLabel: { color: colors.onStrong, fontSize: fontSize.label, fontWeight: '700' },
+  adjustBtn: { backgroundColor: colors.panel, borderWidth: 2, borderColor: colors.brand },
+  pressed: { opacity: 0.7 },
   empty: { color: colors.muted, fontSize: fontSize.message, textAlign: 'center', paddingVertical: spacing.lg },
 })

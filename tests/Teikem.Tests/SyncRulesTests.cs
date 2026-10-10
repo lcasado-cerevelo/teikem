@@ -143,7 +143,7 @@ public sealed class SyncRulesTests
         var actions = typeof(SyncController).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
             .Where(m => m.GetCustomAttributes<HttpMethodAttribute>().Any()).ToList();
         var routes = actions.Select(a => a.GetCustomAttribute<HttpGetAttribute>()!.Template).OrderBy(x => x).ToArray();
-        Assert.Equal(new[] { "asns", "bins", "product-categories", "products", "purchase-orders", "warehouse-tasks" }, routes);
+        Assert.Equal(new[] { "asns", "balances", "bins", "product-categories", "products", "purchase-orders", "warehouse-tasks" }, routes);
         foreach (var action in actions)
         {
             var policies = action.GetCustomAttributes<RequirePermissionAttribute>().Select(a => a.Policy).ToList();
@@ -266,6 +266,73 @@ public sealed class SyncRulesTests
         Assert.DoesNotContain(diff.Items, i => i.Id == active.WarehouseBinId && !i.IsActive);
         var full = await sync.BinsAsync(new SyncQuery(WarehousePublicId: w1.PublicId), default);
         Assert.Equal(new[] { active.WarehouseBinId }, full.Items.Select(i => i.Id));
+    }
+
+    [Fact]
+    public async Task Balances_full_load_returns_only_stock_of_the_warehouse_and_the_difference_includes_zeroed_ones()
+    {
+        await using var f = await SyncFixtureAsync();
+        var w1 = await f.AddWarehouseAsync("W1");
+        var w2 = await f.AddWarehouseAsync("W2");
+        var b1 = await f.AddBinAsync(await f.AddZoneAsync(w1, "PCK", ZoneTypes.Picking), "P-01");
+        var b2 = await f.AddBinAsync(await f.AddZoneAsync(w2, "PCK", ZoneTypes.Picking), "P-02");
+        var p = await f.AddProductAsync("BAL-A", TrackingTypes.Lot);
+        var lot = await f.AddLotAsync(p, "L-1", new DateOnly(2027, 1, 31));
+        var q = await f.AddProductAsync("BAL-B");
+        await f.PostAsync(
+            new InventoryPosting(InventoryTxnTypes.Receipt, p.ProductId, 10m, ToWarehouseId: w1.WarehouseId, ToBinId: b1.WarehouseBinId, LotId: lot.LotId),
+            new InventoryPosting(InventoryTxnTypes.Receipt, q.ProductId, 4m, ToWarehouseId: w1.WarehouseId, ToBinId: b1.WarehouseBinId),
+            new InventoryPosting(InventoryTxnTypes.Receipt, q.ProductId, 7m, ToWarehouseId: w2.WarehouseId, ToBinId: b2.WarehouseBinId));
+        var sync = f.Get<SyncService>();
+
+        var full = await sync.BalancesAsync(new SyncQuery(WarehousePublicId: w1.PublicId), default);
+
+        Assert.Equal(2, full.Items.Count);
+        var withLot = Assert.Single(full.Items, i => i.ProductId == p.ProductId);
+        Assert.Equal(10m, withLot.QtyOnHand);
+        Assert.Equal(0m, withLot.QtyReserved);
+        Assert.Equal("L-1", withLot.LotNumber);
+        Assert.Equal(new DateOnly(2027, 1, 31), withLot.LotExpiryDate);
+        Assert.Equal(b1.WarehouseBinId, withLot.BinId);
+        Assert.Equal(p.PublicId, withLot.ProductPublicId);
+        Assert.Equal(w1.PublicId, withLot.WarehousePublicId);
+        Assert.True(withLot.IsActive);
+        Assert.Equal(DateTimeKind.Utc, withLot.UpdatedAtUtc.Kind);
+
+        // sacar todo deja el saldo en cero: no sale en la carga completa pero SÍ en la diferencia, como inactivo
+        var mark = DateTime.UtcNow.AddMinutes(-1);
+        await f.PostAsync(new InventoryPosting(InventoryTxnTypes.Adjustment, q.ProductId, 4m, FromWarehouseId: w1.WarehouseId, FromBinId: b1.WarehouseBinId,
+            ReasonCode: AdjustmentReasons.Damage));
+        var afterFull = await sync.BalancesAsync(new SyncQuery(WarehousePublicId: w1.PublicId), default);
+        Assert.Equal(new[] { p.ProductId }, afterFull.Items.Select(i => i.ProductId));
+        var diff = await sync.BalancesAsync(new SyncQuery(Since: mark, WarehousePublicId: w1.PublicId), default);
+        Assert.Contains(diff.Items, i => i.ProductId == q.ProductId && !i.IsActive && i.QtyOnHand == 0m);
+    }
+
+    [Fact]
+    public async Task Balances_page_by_cursor_and_reject_a_warehouse_of_another_tenant()
+    {
+        await using var f = await SyncFixtureAsync();
+        var w1 = await f.AddWarehouseAsync("W1");
+        var bin = await f.AddBinAsync(await f.AddZoneAsync(w1, "PCK", ZoneTypes.Picking), "P-01");
+        var a = await f.AddProductAsync("PG-A");
+        var b = await f.AddProductAsync("PG-B");
+        var c = await f.AddProductAsync("PG-C");
+        await f.PostAsync(
+            new InventoryPosting(InventoryTxnTypes.Receipt, a.ProductId, 1m, ToWarehouseId: w1.WarehouseId, ToBinId: bin.WarehouseBinId),
+            new InventoryPosting(InventoryTxnTypes.Receipt, b.ProductId, 2m, ToWarehouseId: w1.WarehouseId, ToBinId: bin.WarehouseBinId),
+            new InventoryPosting(InventoryTxnTypes.Receipt, c.ProductId, 3m, ToWarehouseId: w1.WarehouseId, ToBinId: bin.WarehouseBinId));
+        var sync = f.Get<SyncService>();
+
+        var first = await sync.BalancesAsync(new SyncQuery(Take: 2), default);
+        Assert.Equal(2, first.Items.Count);
+        Assert.NotNull(first.NextCursor);
+        var second = await sync.BalancesAsync(new SyncQuery(Cursor: first.NextCursor, Take: 2), default);
+        Assert.Single(second.Items);
+        Assert.Null(second.NextCursor);
+
+        var foreign = await f.AddWarehouseAsync("FOREIGN", tenantId: WmsFixture.OtherTenantId);
+        await Assert.ThrowsAsync<NotFoundException>(() => sync.BalancesAsync(new SyncQuery(WarehousePublicId: foreign.PublicId), default));
     }
 
     // ---------------------------------------------------------------- órdenes de compra, avisos, tareas y categorías

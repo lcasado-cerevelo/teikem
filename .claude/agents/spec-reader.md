@@ -14,3 +14,5 @@ Reglas:
 - Distingue lo que el documento dice que "el mock hace" de lo que dice que "el sistema real debe hacer"; solo lo segundo es requisito.
 - Señala explícitamente los vacíos: tablas que el documento nombra y el SQL no tiene, reglas sin decisión, términos ambiguos.
 - No inventes requisitos ni propongas diseño; eso es de otra etapa.
+
+Ojo: desde la producción (2026-10-09) el SQL congelado (`logistica-db-estructura.sql`, `logistica-db-seed.sql`) se completa con los cambios posteriores en `Diseño/logistica-db-update.sql`; léelo también.

@@ -50,6 +50,10 @@ public static class PermissionCatalog
     public const string InventoryManage = "inventory.manage";
     /// <summary>Lote 6: ajustes manuales, transferencias, conciliación y resolución de faltantes de compras.</summary>
     public const string InventoryAdjust = "inventory.adjust";
+    /// <summary>2026-10-10: transferir inventario entre posiciones del mismo almacén desde el aparato (el operario). inventory.adjust lo implica (<see cref="Implied"/>).</summary>
+    public const string WarehouseTransfer = "warehouse.transfer";
+    /// <summary>2026-10-10: ajustar la CANTIDAD de una posición desde el aparato (sube o baja; nunca mueve). NO lo trae ninguna plantilla de rol: el administrador lo da a un rol propio.</summary>
+    public const string WarehouseAdjust = "warehouse.adjust";
     public const string BillingGenerate = "billing.generate";
     public const string BillingApprove = "billing.approve";
     public const string BillingExport = "billing.export";
@@ -196,6 +200,8 @@ public static class PermissionCatalog
         new(DevicesManage, "SECURITY", "Gestionar aparatos y PIN", "Manage devices & PINs"),
         new(WarehouseCountCapture, "WAREHOUSE", "Capturar conteo (a ciegas)", "Capture count (blind)"),
         new(WarehouseDamage, "WAREHOUSE", "Reportar y resolver daños", "Report & resolve damage"),
+        new(WarehouseTransfer, "WAREHOUSE", "Transferir inventario entre posiciones (aparato)", "Transfer stock between bins (device)"),
+        new(WarehouseAdjust, "WAREHOUSE", "Ajustar la cantidad de una posición (aparato)", "Adjust a bin's quantity (device)"),
         // Lote F8a — Pulso del día (categoría PULSE)
         new(PulseIndicators, "PULSE", "Ver indicadores en el Pulso", "See indicators on the Pulse"),
         new(PulseCharts, "PULSE", "Ver gráficos en el Pulso", "See charts on the Pulse"),
@@ -217,6 +223,7 @@ public static class PermissionCatalog
     public static readonly IReadOnlyDictionary<string, string[]> Implied = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
     {
         [WarehouseCount] = new[] { WarehouseCountCapture },
+        [InventoryAdjust] = new[] { WarehouseTransfer },   // 2026-10-10: quien ya ajusta inventario puede transferir
     };
 
     /// <summary>Agrega al conjunto los permisos implícitos de los que ya contiene (lógica pura, probada con xunit).</summary>
@@ -372,7 +379,7 @@ public static class PermissionCatalog
             PulseAttention },   // Lote 14 (D6): la ve quien ve inventario
         // 2026-10-01 (Luis), como lo dejó en Advance Logistics: sin cod.reconcile, sin rutas (trips.*) ni compras (purchasing.*;
         // no recibe contra órdenes de compra) y con ajustar/administrar inventario y administrar almacenes.
-        ["WarehouseOperator"] = new[] { WarehouseReceive, WarehousePick, WarehouseCount, WarehouseCountCapture, WarehouseDamage, WarehouseCrossdock, RentalView, RentalManage, RentalMaintenance, InventoryView,
+        ["WarehouseOperator"] = new[] { WarehouseReceive, WarehousePick, WarehouseCount, WarehouseCountCapture, WarehouseDamage, WarehouseTransfer, WarehouseCrossdock, RentalView, RentalManage, RentalMaintenance, InventoryView,
             InventoryAdjust, InventoryManage, WarehouseManage,
             // AnalyticsView: decisión de Luis (Lote F8a) — sin él, la política de /analytics/activity bloquea a este
             // rol antes de llegar al servicio, y no vería "Actividad reciente" en su Pulso pese a tener pulse.activity.

@@ -8,8 +8,9 @@
 import { api, ApiError, unwrap } from '../api/client'
 import { recordSkippedFromResult } from '../../features/count/countSkipped'
 import { getDb } from '../db/database'
+import { projectOperation } from '../warehouse/balanceProjection'
 
-export type OutboxKind = 'receipt' | 'pack' | 'collect' | 'countBatch' | 'countFinish'
+export type OutboxKind = 'receipt' | 'pack' | 'collect' | 'countBatch' | 'countFinish' | 'transfer' | 'adjust' | 'damage'
 type OutboxMethod = 'POST' | 'PUT'
 
 interface EnqueueInput {
@@ -56,8 +57,12 @@ const DEFAULT_PATH: Partial<Record<OutboxKind, string>> = {
   pack: '/api/v1/pick-batches/collect-and-pack',
   // completar el despacho sin empacar: solo recolecta (el inventario sale; sin orden ni empaque)
   collect: '/api/v1/pick-batches',
+  // 2026-10-10 (D2b): Transferir, Ajustar y Daño también van a la cola (el saldo local refleja el efecto de inmediato: kernel/warehouse/balanceProjection.ts)
+  transfer: '/api/v1/inventory/transfers/in-warehouse',
+  adjust: '/api/v1/inventory/adjustments/quantity',
+  damage: '/api/v1/damage-reports',
 }
-const METHOD: Record<OutboxKind, OutboxMethod> = { receipt: 'POST', pack: 'POST', collect: 'POST', countBatch: 'PUT', countFinish: 'POST' }
+const METHOD: Record<OutboxKind, OutboxMethod> = { receipt: 'POST', pack: 'POST', collect: 'POST', countBatch: 'PUT', countFinish: 'POST', transfer: 'POST', adjust: 'POST', damage: 'POST' }
 
 /** Encola una operación (kind + cuerpo ya armado); devuelve el id local de la fila. */
 export function enqueue(input: EnqueueInput): number {
@@ -71,6 +76,12 @@ export function enqueue(input: EnqueueInput): number {
   )
   notify()
   return info.lastInsertRowId
+}
+
+/** Estado de una fila de la cola (para avisar al operario si ya se envió, la rechazó el servidor o sigue esperando señal). */
+export function outboxStatus(id: number): { status: string; error: string | null } | null {
+  const row = getDb().getFirstSync<{ status: string; last_error: string | null }>('SELECT status, last_error FROM outbox WHERE id = ?', [id])
+  return row ? { status: row.status, error: row.last_error } : null
 }
 
 export function listOutbox(): OutboxRow[] {
@@ -89,7 +100,10 @@ export function countRejected(): number {
 
 /** Reintenta una operación rechazada (el usuario la revisó y quiere volver a intentarla). */
 export function retryRow(id: number): void {
+  const row = getDb().getFirstSync<OutboxRow>('SELECT * FROM outbox WHERE id = ?', [id])
   getDb().runSync("UPDATE outbox SET status = 'pending', last_error = NULL WHERE id = ?", [id])
+  // una operación rechazada ya había deshecho su efecto en los saldos locales: al reintentarla se vuelve a aplicar
+  if (row && row.status === 'rejected') projectOperation(row.kind, JSON.parse(row.body), 1)
   notify()
 }
 
@@ -162,6 +176,8 @@ export async function runOutbox(): Promise<RunOutboxResult> {
           err.title,
           row.id,
         ])
+        // el servidor no la aceptó: el efecto que se había puesto en los saldos locales se deshace
+        projectOperation(row.kind, JSON.parse(row.body), -1)
         rejected += 1
         continue
       }

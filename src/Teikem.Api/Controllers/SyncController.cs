@@ -53,6 +53,16 @@ public sealed class SyncController(SyncService sync) : ControllerBase
         => sync.BinsAsync(new SyncQuery(since, cursor, take, warehousePublicId), ct);
 
     /// <summary>
+    /// Saldos por posición del almacén indicado (warehousePublicId; sin él, de todos): producto, posición, lote, en mano y reservado.
+    /// Sin since: lo que tiene existencia o reservado. Con since (= serverTimeUtc anterior − 5 minutos): todo saldo que cambió,
+    /// incluidos los que quedaron en cero (isActive = false: el aparato los borra). Permite consultar y contar sin esperar al servidor.
+    /// </summary>
+    [HttpGet("balances"), RequirePermission(PermissionCatalog.InventoryView)]
+    public Task<SyncPage<SyncBalanceDto>> Balances([FromQuery] Guid? warehousePublicId, [FromQuery] DateTime? since, [FromQuery] string? cursor,
+        [FromQuery] int take = SyncRules.DefaultTake, CancellationToken ct = default)
+        => sync.BalancesAsync(new SyncQuery(since, cursor, take, warehousePublicId), ct);
+
+    /// <summary>
     /// Órdenes de compra abiertas (DRAFT, SENT, PARTIAL) con sus líneas: pedido, recibido y pendiente (descontando faltantes
     /// resueltos). Con since llegan también las que se cerraron o cancelaron (isActive = false). Filtro opcional
     /// warehousePublicId. since en UTC (since = serverTimeUtc anterior − 5 minutos).

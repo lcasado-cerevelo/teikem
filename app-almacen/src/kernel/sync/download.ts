@@ -7,6 +7,7 @@
 import { api, ApiError, unwrap } from '../api/client'
 import { getActiveWarehousePublicId } from '../warehouse/activeWarehouse'
 import { getDb, type SQLiteDatabase } from '../db/database'
+import { deltaKey, pendingDeltas } from '../warehouse/balanceProjection'
 import { mapExitRow, replaceStockExit, type StockExitRow } from '../../features/dispatch/stockExit'
 
 const TAKE = 500
@@ -329,6 +330,84 @@ export async function downloadBins(warehousePublicId: string): Promise<DownloadR
   return { ...result, resource: 'bins' }
 }
 
+function applyBalances(db: SQLiteDatabase, items: Array<{
+  id?: number
+  warehousePublicId?: string
+  binId?: number | null
+  productId?: number
+  productPublicId?: string
+  lotId?: number | null
+  lotNumber?: string | null
+  lotExpiryDate?: string | null
+  qtyOnHand?: number
+  qtyReserved?: number
+  updatedAtUtc?: string
+  isActive?: boolean
+}>): void {
+  // lo que el aparato ya hizo y todavía no llegó al servidor se vuelve a sumar al saldo que baja (D2b: saldo local = servidor + pendientes)
+  const pending = pendingDeltas(db)
+  for (const b of items) {
+    if (b.id == null) continue
+    const delta = pending.get(deltaKey(b.warehousePublicId ?? '', b.binId ?? null, b.productPublicId ?? '', b.lotId ?? null)) ?? 0
+    // ya llegó la fila verdadera: la provisional (id negativo) de esa misma posición, producto y lote sobra
+    db.runSync(
+      `DELETE FROM stock_balance WHERE id < 0 AND warehouse_public_id = ? AND bin_id IS ? AND product_public_id = ? AND lot_id IS ?`,
+      [b.warehousePublicId ?? '', b.binId ?? null, b.productPublicId ?? '', b.lotId ?? null],
+    )
+    const onHand = Math.max(0, (b.qtyOnHand ?? 0) + delta)
+    // un saldo que quedó en cero (isActive = false) se borra del aparato: no hay nada que mostrar (salvo que haya algo pendiente por sumarle)
+    if (b.isActive === false && onHand === 0) {
+      db.runSync('DELETE FROM stock_balance WHERE id = ?', [b.id])
+      continue
+    }
+    db.runSync(
+      `INSERT INTO stock_balance (id, warehouse_public_id, bin_id, product_id, product_public_id, lot_id, lot_number, lot_expiry_date,
+                                   qty_on_hand, qty_reserved, updated_at_utc)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET warehouse_public_id = excluded.warehouse_public_id, bin_id = excluded.bin_id,
+         product_id = excluded.product_id, product_public_id = excluded.product_public_id, lot_id = excluded.lot_id,
+         lot_number = excluded.lot_number, lot_expiry_date = excluded.lot_expiry_date, qty_on_hand = excluded.qty_on_hand,
+         qty_reserved = excluded.qty_reserved, updated_at_utc = excluded.updated_at_utc`,
+      [
+        b.id,
+        b.warehousePublicId ?? '',
+        b.binId ?? null,
+        b.productId ?? 0,
+        b.productPublicId ?? '',
+        b.lotId ?? null,
+        b.lotNumber ?? null,
+        b.lotExpiryDate ?? null,
+        onHand,
+        b.qtyReserved ?? 0,
+        b.updatedAtUtc ?? new Date().toISOString(),
+      ],
+    )
+  }
+}
+
+/**
+ * Señal débil (2026-10-10): saldos por posición del almacén del aparato (GET /sync/balances), por diferencia. Marca de agua propia por
+ * almacén (`balances:{almacén}`). Un 403 (sin inventory.view) se salta como las demás bajadas opcionales.
+ */
+export async function downloadBalances(warehousePublicId: string): Promise<DownloadResult> {
+  try {
+    const result = await runDiffDownload(
+      `balances:${warehousePublicId}`,
+      async (since, cursor) => {
+        const page = await unwrap(
+          api.GET('/api/v1/sync/balances', { params: { query: { warehousePublicId, since, cursor, take: TAKE } } }),
+        )
+        return { items: page.items ?? [], nextCursor: page.nextCursor ?? null, serverTimeUtc: page.serverTimeUtc ?? new Date().toISOString() }
+      },
+      applyBalances,
+    )
+    return { ...result, resource: 'balances' }
+  } catch (err) {
+    if (!(err instanceof ApiError) || err.status !== 403) throw err
+    return { resource: 'balances', pages: 0, items: 0 }
+  }
+}
+
 /**
  * 2026-10-01: las órdenes de compra exigen `purchasing.view` y el módulo Compras. Un usuario sin ellos (p. ej. el Operador de
  * almacén desde que Luis le quitó los permisos de compras) recibe 403: eso NO es una falla de sincronización, solo no recibe
@@ -404,6 +483,7 @@ export async function downloadForReceiving(options: { forceStockExit?: boolean }
   const warehousePublicId = getActiveWarehousePublicId()
   if (warehousePublicId) {
     results.push(await downloadBins(warehousePublicId))
+    results.push(await downloadBalances(warehousePublicId))
     results.push(await downloadStockExit(warehousePublicId, options.forceStockExit === true))
   }
   return results

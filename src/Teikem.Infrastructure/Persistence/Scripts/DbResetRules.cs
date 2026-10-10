@@ -6,7 +6,7 @@ public sealed record DbResetDecision(bool Ok, int ExitCode, string? Message);
 /// <summary>
 /// Lote 10 (P3, pedido de Luis 2026-09-29): reglas puras del verbo <c>dotnet run --project src/Teikem.Api -- db-reset --yes [--allow-remote]</c>,
 /// que borra la base de <c>ConnectionStrings:Teikem</c> y la vuelve a inicializar como db-init sobre servidor limpio.
-/// Seguros: confirmación explícita (--yes), rechazo de servidores no locales sin --allow-remote y nunca la base del WMS heredado (MSWM*).
+/// PROHIBIDO fuera de desarrollo (Program.cs lo rechaza si el ambiente no es Development). Seguros: confirmación explícita (--yes), rechazo de servidores no locales sin --allow-remote y nunca la base del WMS heredado (MSWM*).
 /// </summary>
 public static class DbResetRules
 {
@@ -17,6 +17,7 @@ public static class DbResetRules
     public const string Usage = "Uso: dotnet run --project src/Teikem.Api -- db-reset --yes [--allow-remote]";
     public const string ConfirmRequired = "db-reset borra la base de datos completa; confirme con --yes.";
     public const string RemoteRefused = "La cadena de conexión no apunta a un servidor local; use --allow-remote si de verdad quiere borrar esa base.";
+    public const string NotDevelopmentRefused = "db-reset está PROHIBIDO fuera de desarrollo (la base está en producción desde 2026-10-09). Solo corre con ASPNETCORE_ENVIRONMENT=Development en la máquina de desarrollo.";
     public const string LegacyRefused = "db-reset no toca la base del WMS heredado.";
     public const string ConnectionMissing = "Falta ConnectionStrings:Teikem o no indica la base de datos.";
 

@@ -1,11 +1,17 @@
 # Teikem — Plataforma de logística multi-tenant
 
+
+> ## ⛔ EN PRODUCCIÓN DESDE 2026-10-09
+> - **`Diseño/logistica-db-estructura.sql` y `Diseño/logistica-db-seed.sql` están CONGELADOS: no se editan, jamás.** Un cambio de estructura **o de datos** va en el archivo **`Diseño/logistica-db-update.sql`** (UN solo archivo para estructura y datos, **idempotente**; se agrega al final) (ver [Diseño/logistica-db-update.sql](Diseño/logistica-db-update.sql)). `FrozenSqlTests` falla si se tocan.
+> - **Recrear la base (`db-reset`, `scripts/recrear-base*.ps1`) está PROHIBIDO fuera de desarrollo.** En producción solo `db-update` (con simulación y respaldo).
+> - La rama `Depot-Implementation` guarda el estado de la puesta en producción de Advance Depot, para dar soporte a su operación.
+
 Backend .NET 8 (ASP.NET Core + EF Core + SQL Server) construido por lotes a partir del documento maestro
 `Diseño/logistica-funcionalidades-maestro.md`. Este repositorio contiene:
 
 | Carpeta | Contenido |
 |---|---|
-| `Diseño/` | Documento maestro y el **único** set de scripts SQL: `logistica-db-estructura.sql` (incluye las tablas de Identity) y `logistica-db-seed.sql`. La BD se entrega separada del API, según el README de Diseño. |
+| `Diseño/` | Documento maestro y el **único** set de scripts SQL: `logistica-db-estructura.sql` (incluye las tablas de Identity) y `logistica-db-seed.sql` — **congelados** —, más `logistica-db-update.sql` (idempotente, estructura y datos) con los cambios posteriores a producción. |
 | `src/Teikem.Domain` | Entidades (mapeo 1:1 a las tablas), constantes de catálogo, catálogo de permisos (sembrado desde código). |
 | `src/Teikem.Infrastructure` | `TeikemDbContext` (filtro global de tenant), interceptor de auditoría, runner de scripts SQL, motor de DSL/análisis y servicios de negocio. |
 | `src/Teikem.Api` | ASP.NET Core: JWT, RBAC por policy, filtros de módulo y AAL2, controladores `/api/v1/*`, Swagger. |

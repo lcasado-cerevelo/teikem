@@ -1,3 +1,9 @@
+/* ****************************************************************************
+   *** ARCHIVO CONGELADO — EN PRODUCCIÓN DESDE 2026-10-09 — NO EDITAR JAMÁS ***
+   Cualquier cambio de estructura o de datos va en Diseño/logistica-db-update.sql (UN solo
+   archivo, idempotente; se agrega al final). La prueba FrozenSqlTests falla si este
+   archivo cambia.
+   **************************************************************************** */
 /* ============================================================================
    PLATAFORMA DE LOGÍSTICA — SEED DE CATÁLOGOS, ESTATUS, PERMISOS Y ROLES
    Correr DESPUÉS de logistica-db-estructura.sql.

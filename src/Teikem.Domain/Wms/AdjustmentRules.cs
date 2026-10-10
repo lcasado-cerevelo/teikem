@@ -36,6 +36,14 @@ public static class AdjustmentRules
     public const string ProductRequired = "Indique el producto.";
     public const string TransferQuantityRequired = "Indique la cantidad a transferir.";
     public const string SameBin = "La posición de origen y la de destino son la misma.";
+    /// <summary>Transferencia desde el aparato (2026-10-10): solo dentro de un almacén.</summary>
+    /// <summary>Ajuste de cantidad desde el aparato (2026-10-10): las posiciones de cuarentena, en renta o de cross-dock tienen su propio flujo.</summary>
+    public static string AdjustZoneNotAllowed(string bin) =>
+        $"La posición {bin} es de cuarentena, en renta o de cross-dock: no se ajusta desde aquí (use Daño, Rentas o Cross-dock).";
+    public const string TransferSameWarehouseOnly = "Desde el aparato solo se transfiere dentro del mismo almacén.";
+    /// <summary>Transferencia desde el aparato: las posiciones de cuarentena, en renta o de cross-dock tienen su propio flujo (daños, rentas, cross-dock).</summary>
+    public static string TransferZoneNotAllowed(string bin) =>
+        $"La posición {bin} es de cuarentena, en renta o de cross-dock: no se transfiere desde aquí (use Daño, Rentas o Cross-dock).";
     public const string FromBinRequired = "Indique la posición de origen.";
     public const string ToBinRequired = "Indique la posición de destino.";
     public const string SerialInteger = "En productos con serie la cantidad debe ser entera.";

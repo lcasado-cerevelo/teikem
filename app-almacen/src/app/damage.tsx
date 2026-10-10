@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router'
 
 import { ApiError, isNetworkError } from '../kernel/api/client'
 import { useT } from '../kernel/i18n/useT'
-import { findBinByCode } from '../kernel/warehouse/binLookup'
+import { resolveBinLocalFirst } from '../kernel/warehouse/binLookup'
 import { findProductByCode } from '../kernel/warehouse/productLookup'
 import { useActiveWarehouse } from '../kernel/warehouse/activeWarehouse'
 import { BigButton } from '../kernel/ui/BigButton'
@@ -15,7 +15,8 @@ import { ScanMessage } from '../kernel/ui/ScanMessage'
 import { colors, fontSize, radius, spacing } from '../kernel/ui/theme'
 import { vibrateError, vibrateOk } from '../kernel/ui/feedback'
 import { DestinationModal } from '../features/damage/DestinationModal'
-import { findReceiptByNumber, reportDamage } from '../features/damage/damageApi'
+import { findReceiptByNumber, queueDamage } from '../features/damage/damageApi'
+import { flushNow } from '../kernel/sync/engine'
 import {
   buildDamageRequest,
   DAMAGE_CAUSES,
@@ -74,7 +75,7 @@ export default function DamageScreen() {
     setBusy(true)
     try {
       if (draft.origin === 'WAREHOUSE') {
-        const bin = await findBinByCode(warehousePublicId!, code)
+        const bin = await resolveBinLocalFirst(warehousePublicId!, code)
         if (!bin) return fail(t('damage.binNotFound'))
         setDraft((d) => ({ ...d, bin: { id: bin.id, code: bin.code } }))
       } else {
@@ -105,16 +106,16 @@ export default function DamageScreen() {
       return
     }
     setError(null)
-    setBusy(true)
-    try {
-      const dto = await reportDamage(buildDamageRequest(warehousePublicId!, draft, disposition, finalDestination))
-      setDraft(EMPTY_DAMAGE)
-      setNotice(t(disposition === 'QUARANTINE' ? 'damage.reportedQuarantine' : 'damage.reportedDiscard', { code: dto.code ?? '' }))
-      vibrateOk()
-    } catch (err) {
-      failure(err)
-    } finally {
-      setBusy(false)
+    // D2b: se guarda en el aparato y se manda solo; aquí no se espera al servidor
+    const outboxId = queueDamage(buildDamageRequest(warehousePublicId!, draft, disposition, finalDestination))
+    setDraft(EMPTY_DAMAGE)
+    setNotice(t('common.savedPending'))
+    vibrateOk()
+    const result = await flushNow(outboxId)
+    if (result.status === 'sent') setNotice(t(disposition === 'QUARANTINE' ? 'damage.sentQuarantine' : 'damage.sentDiscard'))
+    else if (result.status === 'rejected') {
+      setNotice(null)
+      Alert.alert(t('common.rejectedTitle'), t('common.rejectedBody', { error: result.error }))
     }
   }
 

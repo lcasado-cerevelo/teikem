@@ -1,6 +1,10 @@
 // Lote 8A-app — reglas puras de Consultar (docs/mobile/app-almacen-plan.md §2, pantalla 7). Sin API ni base.
 export interface BalanceRow {
   id: number
+  /** Posición, lote y tipo de zona (para «Mover» y Transferir); ausentes en respuestas guardadas por versiones anteriores. */
+  binId?: number | null
+  lotId?: number | null
+  zoneTypeCode?: string | null
   binCode: string | null
   productPublicId: string
   sku: string

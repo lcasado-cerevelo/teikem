@@ -149,6 +149,13 @@ if (args.Contains("db-update", StringComparer.OrdinalIgnoreCase))
 // inicializar como db-init sobre servidor limpio (para repetir la migración desde cero). Nunca toca MSWM*. ---
 if (args.Contains(DbResetRules.Verb, StringComparer.OrdinalIgnoreCase))
 {
+    // Producción desde 2026-10-09: recrear la base solo se permite en desarrollo (nunca en un sitio instalado/producción).
+    if (!app.Environment.IsDevelopment())
+    {
+        Console.Error.WriteLine(DbResetRules.NotDevelopmentRefused);
+        Environment.ExitCode = DbResetRules.ExitRefused;
+        return;
+    }
     var teikemCs = app.Configuration.GetConnectionString("Teikem");
     var csb = string.IsNullOrWhiteSpace(teikemCs) ? null : new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(teikemCs);
     var decision = DbResetRules.Decide(args, csb?.DataSource, csb?.InitialCatalog);

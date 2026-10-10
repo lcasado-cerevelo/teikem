@@ -27,6 +27,14 @@ namespace Teikem.Infrastructure.Contracts
     public sealed record SyncBinDto(int Id, string Code, Guid WarehousePublicId, int ZoneId, string ZoneCode, string ZoneName,
         string? ZoneTypeCode, string? Aisle, string? Rack, string? Level, string? Position, bool IsActive, bool IsProvisional = false);
 
+    /// <summary>
+    /// Señal débil (2026-10-10) — saldo por (producto, posición, lote) para la base local del aparato. IsActive = hay existencia o
+    /// reservado (QtyOnHand &gt; 0 o QtyReserved &gt; 0); con since llegan también los saldos que quedaron en cero (IsActive = false)
+    /// para que el aparato los borre. QtyAvailable = QtyOnHand − QtyReserved (lo calcula el aparato).
+    /// </summary>
+    public sealed record SyncBalanceDto(int Id, Guid WarehousePublicId, int? BinId, int ProductId, Guid ProductPublicId, int? LotId, string? LotNumber,
+        DateOnly? LotExpiryDate, decimal QtyOnHand, decimal QtyReserved, DateTime UpdatedAtUtc, bool IsActive);
+
     public sealed record SyncPurchaseOrderLineDto(int Id, Guid ProductPublicId, string Sku, string ProductName, decimal QtyOrdered,
         decimal QtyReceived, decimal QtyPending);
 
@@ -196,6 +204,38 @@ namespace Teikem.Infrastructure.Services
                 .Select(x => new SyncProductCategoryDto(x.ProductCategoryId, x.Name, x.ParentId, x.IsActive)).ToListAsync(ct);
             var (items, next) = SyncRules.Cut(rows, w.Take, x => x.Id);
             return new SyncPage<SyncProductCategoryDto>(items, next, w.Now);
+        }
+
+        // ================================================================ saldos (señal débil)
+
+        /// <summary>
+        /// Saldos por posición del almacén (warehousePublicId; sin él, de todos). Sin since: carga completa de lo que tiene existencia o
+        /// reservado. Con since: todo saldo cuyo UpdatedAtUtc sea &gt;= since (el ledger lo escribe en CADA movimiento y reserva; los
+        /// saldos nunca se borran, solo quedan en cero), INCLUIDOS los que quedaron en cero (IsActive = false). A diferencia de las
+        /// otras tablas, no depende de AuditLog: StockBalance tiene su propia marca de cambio (UpdatedAtUtc).
+        /// </summary>
+        public async Task<SyncPage<SyncBalanceDto>> BalancesAsync(SyncQuery q, CancellationToken ct)
+        {
+            var w = Prepare(q);
+            var warehouseId = await WarehouseIdAsync(q.WarehousePublicId, ct);
+
+            var query = from b in db.Set<StockBalance>().AsNoTracking()
+                        join wh in db.Set<Warehouse>().AsNoTracking() on b.WarehouseId equals wh.WarehouseId
+                        join l in db.Set<InventoryLot>().AsNoTracking() on b.LotId equals l.LotId into lots
+                        from lot in lots.DefaultIfEmpty()
+                        join p in db.Set<Product>().AsNoTracking() on b.ProductId equals p.ProductId
+                        select new { Balance = b, Warehouse = wh, Lot = lot, p.PublicId };
+            if (warehouseId is int whId) query = query.Where(x => x.Balance.WarehouseId == whId);
+            if (w.Since is DateTime since) query = query.Where(x => x.Balance.UpdatedAtUtc >= since);
+            else query = query.Where(x => x.Balance.QtyOnHand > 0m || x.Balance.QtyReserved > 0m);
+            if (w.AfterId is int after) query = query.Where(x => x.Balance.StockBalanceId > after);
+
+            var rows = await query.OrderBy(x => x.Balance.StockBalanceId).Take(w.Take + 1).ToListAsync(ct);
+            var (page, next) = SyncRules.Cut(rows, w.Take, x => x.Balance.StockBalanceId);
+            var items = page.Select(x => new SyncBalanceDto(x.Balance.StockBalanceId, x.Warehouse.PublicId, x.Balance.WarehouseBinId,
+                x.Balance.ProductId, x.PublicId, x.Balance.LotId, x.Lot?.LotNumber, x.Lot?.ExpiryDate, x.Balance.QtyOnHand, x.Balance.QtyReserved,
+                DateTime.SpecifyKind(x.Balance.UpdatedAtUtc, DateTimeKind.Utc), x.Balance.QtyOnHand > 0m || x.Balance.QtyReserved > 0m)).ToList();
+            return new SyncPage<SyncBalanceDto>(items, next, w.Now);
         }
 
         // ================================================================ posiciones

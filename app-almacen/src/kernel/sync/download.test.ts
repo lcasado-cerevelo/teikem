@@ -5,7 +5,8 @@ import { __resetDbForTests, getDb } from '../db/database'
 import { __resetSecureStoreForTests } from 'expo-secure-store'
 
 import { __resetSessionForTests, saveDeviceIdentity } from '../auth/session'
-import { downloadAsns, downloadBins, downloadForReceiving, downloadStockExit, downloadProducts, downloadPurchaseOrders, downloadPurchaseOrdersIfAllowed } from './download'
+import { localBalancesForBin, localBalancesForProduct, localBalancesSearch, balancesSyncedAtUtc } from '../warehouse/localBalances'
+import { downloadAsns, downloadBalances, downloadBins, downloadForReceiving, downloadStockExit, downloadProducts, downloadPurchaseOrders, downloadPurchaseOrdersIfAllowed } from './download'
 
 jest.mock('../api/client', () => {
   const actual = jest.requireActual('../api/client')
@@ -219,7 +220,7 @@ describe('órdenes de compra sin permiso (403)', () => {
       path === '/api/v1/sync/purchase-orders' ? forbidden() : Promise.resolve(page([], null, '2026-01-01T00:00:00.000Z')),
     )
     const results = await downloadForReceiving()
-    expect(results.map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins', 'stockExit'])
+    expect(results.map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins', 'balances', 'stockExit'])
     expect(results[1]).toEqual({ resource: 'purchaseOrders', pages: 0, items: 0 })
   })
 
@@ -245,7 +246,7 @@ describe('downloadForReceiving', () => {
     expect((await downloadForReceiving()).map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns'])
 
     await saveDeviceIdentity({ devicePublicId: 'dev-1', deviceSecret: 's', tenantName: 'T', defaultWarehousePublicId: 'wh-1', theme: null })
-    expect((await downloadForReceiving()).map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins', 'stockExit'])
+    expect((await downloadForReceiving()).map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins', 'balances', 'stockExit'])
   })
 })
 
@@ -300,5 +301,67 @@ describe('downloadStockExit (orden de salida)', () => {
     expect(await downloadStockExit('wh-1', true)).toEqual({ resource: 'stockExit', pages: 0, items: 0 })
     getMock.mockImplementationOnce(() => Promise.reject(new ApiError(500, null)))
     await expect(downloadStockExit('wh-1', true)).rejects.toMatchObject({ status: 500 })
+  })
+})
+
+describe('downloadBalances (señal débil)', () => {
+  const WH = 'w-1'
+  const bal = (id: number, over: Record<string, unknown> = {}) => ({
+    id, warehousePublicId: WH, binId: 10, productId: 1, productPublicId: 'p1', lotId: null, lotNumber: null, lotExpiryDate: null,
+    qtyOnHand: 5, qtyReserved: 1, updatedAtUtc: '2026-10-10T10:00:00.000Z', isActive: true, ...over,
+  })
+
+  it('baja todas las páginas, guarda los saldos y usa la marca de agua del almacén en la siguiente pasada', async () => {
+    getMock
+      .mockResolvedValueOnce(page([bal(1), bal(2, { binId: 11, productPublicId: 'p2', productId: 2, qtyOnHand: 3, qtyReserved: 0 })], 'c2', '2026-10-10T10:00:00.000Z'))
+      .mockResolvedValueOnce(page([bal(3, { lotId: 7, lotNumber: 'L-1', lotExpiryDate: '2027-01-31' })], null, '2026-10-10T10:00:01.000Z'))
+
+    const result = await downloadBalances(WH)
+
+    expect(result).toEqual({ resource: 'balances', pages: 2, items: 3 })
+    expect(getMock.mock.calls[0][1].params.query).toMatchObject({ warehousePublicId: WH, take: 500 })
+    expect(getMock.mock.calls[0][1].params.query.since).toBeUndefined()
+    const rows = getDb().getAllSync<{ id: number; qty_on_hand: number; lot_number: string | null }>('SELECT id, qty_on_hand, lot_number FROM stock_balance ORDER BY id')
+    expect(rows).toEqual([
+      { id: 1, qty_on_hand: 5, lot_number: null },
+      { id: 2, qty_on_hand: 3, lot_number: null },
+      { id: 3, qty_on_hand: 5, lot_number: 'L-1' },
+    ])
+
+    getMock.mockResolvedValueOnce(page([], null, '2026-10-10T10:05:00.000Z'))
+    await downloadBalances(WH)
+    // marca de agua = serverTimeUtc de la PRIMERA página de la pasada anterior − 5 minutos
+    expect(getMock.mock.calls[2][1].params.query.since).toBe('2026-10-10T09:55:00.000Z')
+  })
+
+  it('un saldo que quedó en cero (isActive=false) se borra y uno que cambió se actualiza', async () => {
+    getMock.mockResolvedValueOnce(page([bal(1), bal(2)], null, '2026-10-10T10:00:00.000Z'))
+    await downloadBalances(WH)
+    getMock.mockResolvedValueOnce(page([bal(1, { qtyOnHand: 9, qtyReserved: 2 }), bal(2, { qtyOnHand: 0, qtyReserved: 0, isActive: false })], null, '2026-10-10T10:10:00.000Z'))
+    await downloadBalances(WH)
+    const rows = getDb().getAllSync<{ id: number; qty_on_hand: number; qty_reserved: number }>('SELECT id, qty_on_hand, qty_reserved FROM stock_balance')
+    expect(rows).toEqual([{ id: 1, qty_on_hand: 9, qty_reserved: 2 }])
+  })
+
+  it('sin inventory.view (403) se salta sin fallar la sincronización', async () => {
+    getMock.mockResolvedValueOnce({ data: undefined, error: { title: 'x' }, response: new Response(null, { status: 403 }) })
+    await expect(downloadBalances(WH)).resolves.toEqual({ resource: 'balances', pages: 0, items: 0 })
+  })
+
+  it('las lecturas locales unen producto, posición y zona, y calculan el disponible', async () => {
+    const db = getDb()
+    db.runSync(`INSERT INTO product (id, public_id, sku, name, is_active) VALUES (1, 'p1', 'SKU-1', 'Guantes', 1), (2, 'p2', 'SKU-2', 'Cajas', 1)`)
+    db.runSync(`INSERT INTO bin (id, code, warehouse_public_id, zone_type_code, is_active) VALUES (10, 'A-01', '${WH}', 'PICKING', 1), (11, 'Q-01', '${WH}', 'QUARANTINE', 1)`)
+    getMock.mockResolvedValueOnce(page([bal(1), bal(2, { binId: 11, productPublicId: 'p2', productId: 2, qtyOnHand: 3, qtyReserved: 0 })], null, '2026-10-10T10:00:00.000Z'))
+    await downloadBalances(WH)
+
+    const inBin = localBalancesForBin(WH, 10)
+    expect(inBin).toEqual([expect.objectContaining({ id: 1, binCode: 'A-01', zoneTypeCode: 'PICKING', sku: 'SKU-1', productName: 'Guantes', qtyOnHand: 5, qtyAvailable: 4 })])
+    expect(localBalancesForProduct(WH, 'p2')).toEqual([expect.objectContaining({ binCode: 'Q-01', zoneTypeCode: 'QUARANTINE', qtyAvailable: 3 })])
+    expect(localBalancesSearch(WH, 'guan').map((r) => r.sku)).toEqual(['SKU-1'])
+    expect(localBalancesSearch(WH, 'q-0').map((r) => r.binCode)).toEqual(['Q-01'])
+    expect(localBalancesForBin('otro-almacen', 10)).toEqual([])
+    expect(balancesSyncedAtUtc(WH)).not.toBeNull()
+    expect(balancesSyncedAtUtc('otro')).toBeNull()
   })
 })
