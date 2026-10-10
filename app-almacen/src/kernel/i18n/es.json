@@ -82,7 +82,8 @@
     "warehouseNone": "Sin almacén",
     "changeWarehouse": "Cambiar",
     "damage": "Daño",
-    "transfer": "Transferir"
+    "transfer": "Transferir",
+    "build": "Versión {build}"
   },
   "warehousePick": {
     "title": "¿En qué almacén trabajas?",

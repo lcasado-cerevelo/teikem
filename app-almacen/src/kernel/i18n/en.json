@@ -82,7 +82,8 @@
     "warehouseNone": "No warehouse",
     "changeWarehouse": "Change",
     "damage": "Damage",
-    "transfer": "Transfer"
+    "transfer": "Transfer",
+    "build": "Version {build}"
   },
   "warehousePick": {
     "title": "Which warehouse are you working in?",

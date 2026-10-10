@@ -130,6 +130,7 @@ jobs:
         working-directory: app-almacen
         env:
           APP_VARIANT: development
+          TEIKEM_BUILD_STAMP: ci-${{ github.run_number }} ${{ github.sha }}
         run: |
           npm ci --legacy-peer-deps
           npx expo prebuild --platform android --no-install
@@ -142,6 +143,7 @@ jobs:
       - name: Compilar el APK release (llave propia si el secreto existe; si no, firma de depuración)
         working-directory: app-almacen/android
         env:
+          TEIKEM_BUILD_STAMP: ci-${{ github.run_number }} ${{ github.sha }}
           TEIKEM_RELEASE_KEYSTORE: ${{ env.HAS_RELEASE_KEYSTORE == 'true' && 'release.keystore' || '' }}
           TEIKEM_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.TEIKEM_RELEASE_KEYSTORE_PASSWORD }}
           TEIKEM_RELEASE_KEY_ALIAS: ${{ secrets.TEIKEM_RELEASE_KEY_ALIAS }}

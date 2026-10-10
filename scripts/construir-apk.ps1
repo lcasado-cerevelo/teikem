@@ -66,6 +66,9 @@ if ($CodigoVersion -le 0) {
     $CodigoVersion = $anterior + 1
 }
 $env:TEIKEM_VERSION_CODE = "$CodigoVersion"
+# Sello de esta compilación (fecha y commit): Inicio de la app lo muestra al pie para saber qué APK tiene cada aparato
+$commit = (& git -C $repo rev-parse --short HEAD 2>$null)
+$env:TEIKEM_BUILD_STAMP = "$(Get-Date -Format 'yyyy-MM-dd HH:mm') $commit"
 Write-Host "Código de versión de este APK: $CodigoVersion (tiene que ser mayor que el de los aparatos; no lo baje)" -ForegroundColor Cyan
 
 # --- Compilar ---
@@ -129,6 +132,7 @@ if (-not $SinRestaurar) {
     Paso 'Devolviendo android\ a la variante de desarrollo (emulador con HTTP)'
     Remove-Item Env:APP_VARIANT -ErrorAction SilentlyContinue
     Remove-Item Env:TEIKEM_VERSION_CODE -ErrorAction SilentlyContinue
+    Remove-Item Env:TEIKEM_BUILD_STAMP -ErrorAction SilentlyContinue
     Remove-Item Env:EXPO_PUBLIC_API_URL -ErrorAction SilentlyContinue
     npx expo prebuild --platform android --clean
 }
