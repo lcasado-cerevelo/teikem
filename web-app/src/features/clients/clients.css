@@ -1,0 +1,51 @@
+/* F-A1 — Clientes: lista maestra a la izquierda (SplitPane) y ficha con paneles apilados a la derecha. */
+.cl-detail{min-width:0}
+.cl-stack{display:flex;flex-direction:column;gap:14px;min-width:0}
+.cl-stack>.panel{margin-bottom:0}
+
+/* lista maestra */
+.cl-q{display:flex;flex-direction:column;gap:8px;align-items:stretch;padding:10px 12px;border-bottom:1px solid var(--line-2)}
+.cl-q .sw{align-self:flex-start;font-weight:500;font-size:12.5px;white-space:normal}
+.cl-list{list-style:none;margin:0;padding:0;max-height:640px;overflow:auto}
+.cl-list li{min-width:0}
+.cl-row{align-items:flex-start}
+.cl-row.dim{opacity:.7}
+.cl-main{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+.cl-top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;min-width:0}
+.cl-name{overflow-wrap:anywhere}
+.cl-chips{display:flex;gap:6px;flex-wrap:wrap}
+.cl-main .meta{overflow-wrap:anywhere}
+
+/* cabecera y formularios de la ficha */
+.cl-head{display:flex;flex-direction:column;gap:10px;min-width:0}
+.cl-inactive-note{margin:0}
+.cl-fs{border:0;padding:0;margin:0;min-width:0}
+.cl-fs:disabled input,.cl-fs:disabled select{opacity:.75}
+.cl-addrs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:6px 0}
+.cl-addr{display:flex;flex-direction:column;gap:3px;min-width:0;font-size:12.5px}
+.cl-addr b{font-size:12px;color:var(--muted)}
+.cl-addr span{overflow-wrap:anywhere}
+.cl-contract{border-top:1px solid var(--line-2);margin-top:6px;padding-top:12px}
+
+/* teléfonos y correos */
+.cl-points-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.cl-points-cols>*{min-width:0}
+.cl-sub{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+.cl-points{list-style:none;margin:0;padding:0}
+.cl-point-main{display:flex;flex-direction:column;min-width:0;flex:1}
+.cl-point-value{overflow-wrap:anywhere}
+.cl-points .unrow .rowbtn{flex:none}
+
+/* numeración */
+.cl-patterns{align-items:start}
+.cl-pattern{min-width:0}
+.cl-example{margin:-4px 0 8px}
+
+/* contratos */
+.cl-billing{padding-bottom:6px}
+.cl-note{margin:10px 14px 14px}
+
+@media(max-width:720px){
+  .cl-addrs,.cl-points-cols{grid-template-columns:minmax(0,1fr)}
+  .cl-list{max-height:none}
+}

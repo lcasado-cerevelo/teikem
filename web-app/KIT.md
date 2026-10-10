@@ -1253,3 +1253,13 @@ documento no basta: se miden `.stage`/`.main`/`.bar` y cada elemento visible den
 
 ## Antes de devolver una pieza
 `npm run check` en verde (tipos generados, tsc, oxlint, vitest, build). Si tocaste el kit: prueba unitaria y línea en este archivo.
+
+## Clientes (`src/features/clients`, Lote F-A1)
+Catálogo → Clientes (`/catalog/clients`, `clients.read` + CATALOG): maestro-detalle con `SplitPane` (`storageKey="clients"`) y selección en `?client=<publicId>`;
+patrón de referencia para una lista con búsqueda al API y una ficha de paneles apilados.
+- `api.ts`: `useClients(search, includeInactive)`, `useClient(publicId)`, `useNumberPreview(pattern, enabled)`, y escrituras que dejan en caché la ficha devuelta e
+  invalidan `clientKeys.list`: `useCreateClient`, `useUpdateClientProfile`, `useUpdateNumberSettings`, `useTransitionClient`, `useSetClientActive`,
+  `useSaveClientContact` (personas), `useSaveContactPoint` (medios de contacto de `CLIENT`/`CLIENT_CONTACT`).
+- `clientRules.ts` (puro): `patternIssue`/`resolvePattern` (espejo de `NumberFormat`), esquemas zod espejo del servidor y los `build*Request` (vacío → null; PATCH del perfil
+  manda el texto tal cual y `clearDefaultPickup`). Escribir teléfonos/correos exige `contacts.manage` **y** `clients.update`.
+- Contratos, tarifas, COD y servicios especiales NO están (bloque F-A2); el panel de contratos es de solo lectura.

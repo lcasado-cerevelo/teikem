@@ -5817,3 +5817,61 @@ Use el filtro **Posición** (escriba parte del código, por ejemplo `A-01`): sal
 **Instalé la APK y en el menú no sale Transferir (o en Consultar no sale Mover / Ajustar).**
 Los botones dependen de permisos del usuario, no de la versión de la APK: **Transferir y Mover** piden `warehouse.transfer` (lo traen «Operador de almacén» y «Admin de compañía»; `inventory.adjust` lo implica) y **Ajustar** pide `warehouse.adjust` (solo «Admin de compañía»; para un operario se crea un rol propio en Sistema → Roles con ese permiso). **Si el usuario ya tiene el permiso (p. ej. «Admin de compañía» con todos), lo más probable es que el APK instalado sea una compilación vieja:** desde 2026-10-10 Inicio muestra al pie «Versión 1.0.0 (código) · sello» (fecha y commit del APK; en el CI, `ci-<número> <commit>`). Si no sale esa línea, el APK es anterior: instale el nuevo. Revise (1) que el **API ya esté desplegado** con la base actualizada (`db-update`), (2) que el rol del usuario tenga el permiso y (3) abrir la app con señal una vez: el aparato lee los permisos del servidor al abrir la pantalla. La corrección del 2026-10-10 (b) en `Diseño/logistica-db-update.sql` agrega los dos permisos a los roles «Operador de almacén» y «Admin de compañía» que ya existían en cada compañía (antes quedaron fuera porque el sembrado solo propaga los códigos nuevos de su corrida).
 
+
+## Lote F-A1 — Clientes: lista, alta y ficha (2026-10-10)
+
+Mensajes de la pantalla Catálogo → Clientes (los del servidor salen tal cual, debajo del campo o en el diálogo). Capítulo: [fa1-clientes.md](frontend/fa1-clientes.md).
+
+**`Ya existe un cliente con ese código.` (409) al crear.**
+El duplicado es por **código** (no por nombre). Escriba otro código o déjelo vacío para que se genere del nombre (agrega `-2`, `-3`… si hace falta). Revise con **Mostrar inactivos**: un cliente dado de baja conserva su código.
+
+**`El nombre es obligatorio.` / `No puede exceder 200 caracteres.` (400).**
+El nombre es lo único obligatorio del alta. Razón social admite 250 y la identificación fiscal 50.
+
+**`El código no puede exceder 30 caracteres.` (400).**
+Acórtelo o déjelo vacío.
+
+**`El límite de crédito no puede ser negativo.` (400) / `El límite de crédito no se puede dejar vacío; escriba 0 si no aplica.` (en pantalla).**
+Use 0 o más. Una vez que el cliente tiene límite, el campo no puede quedar vacío (el servidor no sabe borrarlo; vacío significaría «no cambiar»).
+
+**`El título no puede exceder 200 caracteres.` (400) / `Ya existe un contrato con ese número.` (409) al crear con contrato inicial.**
+El título del contrato inicial admite 200 caracteres (vacío = «Contrato marco»). Si el 409 del contrato aparece, repita el alta; si sigue, avise a soporte (el número se arma del código del cliente).
+
+**`El registro fue modificado por otro usuario; recargue e intente de nuevo.` (409) al guardar el perfil.**
+Otra persona guardó el mismo cliente antes. La ficha se vuelve a leer sola y lo que usted escribió se conserva: revise y pulse **Guardar** otra vez.
+
+**`El punto de recogido debe ser un almacén activo del cliente (tipo PICKUP o BOTH).` (400).**
+Elija uno de la lista (solo se ofrecen los válidos); si el almacén se desactivó mientras tanto, vuelva a abrir la ficha. «Dirección corporativa» quita el punto propio.
+
+**`Teléfono inválido.` / `Correo inválido.` / `El valor es obligatorio.` (400).**
+El teléfono lleva los dígitos de la máscara de la compañía (p. ej. 10 en Puerto Rico); el correo, `usuario@dominio.com`.
+
+**`El nombre del contacto es obligatorio.` (400), `No puede exceder 150 caracteres.` (nombre) / `No puede exceder 80 caracteres.` (puesto).**
+Escriba el nombre de la persona; el puesto es opcional.
+
+**`Ya existe un contacto principal activo para este cliente.` (409).**
+Dos personas intentaron quedar como principal a la vez. Repita: marcar una persona como principal quita la marca a la anterior.
+
+**`El patrón es obligatorio.` / `El patrón no puede exceder 40 caracteres.` / `El patrón debe incluir al menos un '#' para el consecutivo.` / `Carácter no permitido en el patrón: 'x'. Use letras, dígitos y - _ / . # @.` (400).**
+Un patrón válido tiene de 1 a 40 caracteres, al menos un `#` y solo letras sin acento, dígitos y `- _ / . # @`. Para volver al del sistema deje el campo vacío. El mismo motivo se ve en rojo bajo el patrón mientras escribe.
+
+**`Salto ilegal: de 'X' solo se puede avanzar a 'Y'.` / `El registro ya está en ese estatus.` / `'X' es terminal: no admite más transiciones.` (422) al cambiar el estatus.**
+El estatus sigue el modelo de la compañía (Ajustes → Operación). Use el botón que ofrece la ficha; desde un estatus terminal no se avanza.
+
+**`Cliente no encontrado.` (404).**
+El cliente de la dirección (`?client=`) no existe o es de otra compañía. Elija uno de la lista.
+
+**«El nombre no se cambia desde aquí».**
+Es a propósito: el nombre se muestra pero el perfil no lo edita (el servidor no lo permite en el perfil).
+
+**¿Por qué no veo Nuevo cliente, Guardar, Dar de baja o Agregar teléfono?**
+Faltan permisos: crear pide `clients.create`; editar, estatus y baja piden `clients.update`; teléfonos y correos piden `contacts.manage` **y** `clients.update`. Con solo `clients.read` la ficha es de consulta.
+
+**Di de baja un cliente y ya no está en la lista.**
+La lista muestra solo activos. Encienda **Mostrar inactivos**, ábralo y use **Reactivar**. Un cliente de baja no se puede elegir en órdenes nuevas, pero su historial se conserva.
+
+**¿Dónde cambio la dirección, el SLA o «Cliente desde» de un cliente?**
+Las direcciones se administran en Localizaciones (en el perfil son de solo lectura). El SLA (por tipo de servicio, en horas) y «Cliente desde» (inicio del contrato) pertenecen al contrato y se editarán en el bloque de contratos.
+
+**¿El estado «Activo/Inactivo» de la maqueta es el estatus?**
+Son dos cosas: el **estatus** (etapas configurables, p. ej. Activo → En revisión) y la **baja** (Inactivo). La lista muestra las dos.

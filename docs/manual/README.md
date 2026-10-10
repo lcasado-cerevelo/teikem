@@ -239,6 +239,9 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
    **Devoluciones de renta** (lista con filtros y ficha, enlaces renta ↔ devolución), Almacén → **Proceso de equipos** (cola con Avanzar,
    Completar y Dar de baja con confirmación fuerte), las tarjetas de resumen de la lista de rentas y **Reportes de rentas** (vistas,
    indicadores y gráfico de Análisis). Capturas `f18-*`.
+15. [F-A1 — Clientes: lista, alta y ficha](frontend/fa1-clientes.md): Catálogo → **Clientes**: lista maestra con buscador y «Mostrar inactivos», alta con contrato
+   inicial opcional (código duplicado 409) y la ficha con perfil (409 de `rowVersion`), teléfonos y correos, personas de contacto, numeración con ejemplo en vivo,
+   campos personalizados, contratos (solo lectura), estatus y baja/reactivación; permisos de cada acción. Capturas pendientes.
 
 ## Preguntas frecuentes
 
@@ -282,4 +285,4 @@ y qué hace "Cerrar las demás sesiones". La sección "Lote 19" recoge los mensa
 hexadecimales, tema inexistente, contraste y matiz), los de los logos (ranura, archivo, 413, 415, imagen dañada y cada motivo por el que un SVG se rechaza) y el 409 del
 feriado repetido, y las preguntas sobre cuándo se guardan los logos, qué variante se usa en cada tema y por qué la barra colapsada puede seguir mostrando el símbolo de Teikem. La sección "Lote F12" recoge los mensajes que se ven en la pantalla de revisión del conteo (reservado, conflicto al confirmar,
 conteo ya reconciliado, posición ya confirmada), los que solo se ven en pantalla y las preguntas sobre qué cierra "Cerrar los que
-cuadran", por qué una corrección no mueve inventario y la diferencia entre Varianza y Ajuste. La sección "Productos por posición" recoge los mensajes del informe (más de 200 posiciones por consulta, almacén no encontrado, los avisos del modal) y las preguntas sobre qué código lleva cada producto, cómo imprimir un pasillo, por qué el papel no se desactualiza y por qué Exportar trae todo lo filtrado.
+cuadran", por qué una corrección no mueve inventario y la diferencia entre Varianza y Ajuste. La sección "Productos por posición" recoge los mensajes del informe (más de 200 posiciones por consulta, almacén no encontrado, los avisos del modal) y las preguntas sobre qué código lleva cada producto, cómo imprimir un pasillo, por qué el papel no se desactualiza y por qué Exportar trae todo lo filtrado. La sección "Lote F-A1" recoge los mensajes de Clientes (código duplicado, nombre, límite de crédito, `rowVersion`, punto de recogido, teléfonos y correos, personas de contacto, patrones de numeración y reglas de estatus) y las preguntas sobre permisos, bajas, dirección, SLA y la diferencia entre estatus y baja.

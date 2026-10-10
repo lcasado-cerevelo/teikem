@@ -48,11 +48,11 @@ describe('Placeholder (pantalla pendiente)', () => {
 
   it('la ruta pendiente de routes.tsx pinta el Placeholder de su ítem', () => {
     setLang('es')
-    const route = appRoutes.find((r) => r.path === '/catalog/clients')!
+    const route = appRoutes.find((r) => r.path === '/catalog/consignees')!
     const Screen = route.element
     render(<Screen />)
     expect(screen.getByTestId('placeholder-screen')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 1, name: 'Clientes y contratos' })).toBeInTheDocument()
-    expect(screen.getByText('cuentas, SLA, tarifas')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Consignatarios' })).toBeInTheDocument()
+    expect(screen.getByText('destinatarios de todos los clientes')).toBeInTheDocument()
   })
 })
