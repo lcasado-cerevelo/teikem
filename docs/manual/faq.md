@@ -5812,3 +5812,8 @@ Es a propósito: una posición con más de un producto sale en una línea por pr
 **¿Cómo veo qué productos hay en una posición desde Productos e inventario?**
 Use el filtro **Posición** (escriba parte del código, por ejemplo `A-01`): salen los productos que tienen existencia en alguna posición cuyo código **contiene** ese texto. Con el filtro puesto, **En mano, Reservado y Disponible son SOLO las de las posiciones que coinciden** (si el texto coincide con varias posiciones, la suma de ellas), y el contador del panel dice cuántos productos hay ahí. Sin el filtro, las cantidades son las totales del producto. El filtro también va en «Filtros aplicados» de los reportes y de Exportar; no aplica al Reporte de ajustes.
 
+## Aparato: no veo Transferir ni Ajustar (2026-10-10)
+
+**Instalé la APK y en el menú no sale Transferir (o en Consultar no sale Mover / Ajustar).**
+Los botones dependen de permisos del usuario, no de la versión de la APK: **Transferir y Mover** piden `warehouse.transfer` (lo traen «Operador de almacén» y «Admin de compañía»; `inventory.adjust` lo implica) y **Ajustar** pide `warehouse.adjust` (solo «Admin de compañía»; para un operario se crea un rol propio en Sistema → Roles con ese permiso). Revise (1) que el **API ya esté desplegado** con la base actualizada (`db-update`), (2) que el rol del usuario tenga el permiso y (3) abrir la app con señal una vez: el aparato lee los permisos del servidor al abrir la pantalla. La corrección del 2026-10-10 (b) en `Diseño/logistica-db-update.sql` agrega los dos permisos a los roles «Operador de almacén» y «Admin de compañía» que ya existían en cada compañía (antes quedaron fuera porque el sembrado solo propaga los códigos nuevos de su corrida).
+

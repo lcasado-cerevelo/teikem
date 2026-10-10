@@ -48,3 +48,29 @@ IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'warehouse.adjust')
             (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'WAREHOUSE'),
             N'{"es":"Ajustar la cantidad de una posición (aparato)","en":"Adjust a bin''s quantity (device)"}', 1);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-10 (b) — Corrección: los permisos warehouse.transfer y warehouse.adjust no llegaron a los roles YA
+   CLONADOS de cada compañía. El PermissionSeeder solo propaga a los roles clonados los códigos que son NUEVOS
+   para la plantilla en su corrida, y la sección anterior ya los había puesto en la plantilla (WarehouseOperator)
+   o en la base antes de que corriera, así que "Operador de almacén" y "Admin de compañía" de cada compañía
+   quedaron sin ellos y el aparato no mostraba Transferir ni Ajustar.
+   - warehouse.transfer → roles de compañía "WarehouseOperator" y "TenantAdmin".
+   - warehouse.adjust   → solo "TenantAdmin" (ninguna otra plantilla lo trae; el administrador lo asigna a un rol propio).
+   Solo AGREGA (nunca quita). Idempotente.
+   ---------------------------------------------------------------------------- */
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT r.RoleId, p.PermissionId
+FROM dbo.Role r
+JOIN dbo.Permission p ON p.Code = 'warehouse.transfer'
+WHERE r.TenantId IS NOT NULL AND r.Name IN ('WarehouseOperator', 'TenantAdmin')
+  AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
+GO
+
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT r.RoleId, p.PermissionId
+FROM dbo.Role r
+JOIN dbo.Permission p ON p.Code = 'warehouse.adjust'
+WHERE r.TenantId IS NOT NULL AND r.Name = 'TenantAdmin'
+  AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
+GO
