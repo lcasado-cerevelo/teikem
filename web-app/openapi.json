@@ -42010,6 +42010,9 @@
           },
           "countRevealShowsNumber": {
             "type": "boolean"
+          },
+          "countAutoCloseMatching": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -42143,6 +42146,10 @@
             "nullable": true
           },
           "countRevealShowsNumber": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "countAutoCloseMatching": {
             "type": "boolean",
             "nullable": true
           }

@@ -74,3 +74,15 @@ JOIN dbo.Permission p ON p.Code = 'warehouse.adjust'
 WHERE r.TenantId IS NOT NULL AND r.Name = 'TenantAdmin'
   AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-10 — Conteo cíclico: cierre automático al terminar si el conteo cuadra.
+   Ajuste de compañía Tenant.CountAutoCloseMatching (APAGADO por defecto: las compañías ya en producción no cambian de
+   comportamiento hasta que el administrador lo enciende en Ajustes de la compañía → Operaciones). Encendido, terminar un
+   conteo que cuadra (todo contado y nada que ajustar contra el saldo actual) lo deja en Concordancia sin pasar por la web.
+   Idempotente.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.Tenant', 'CountAutoCloseMatching') IS NULL
+    ALTER TABLE dbo.Tenant ADD CountAutoCloseMatching BIT NOT NULL
+        CONSTRAINT DF_Tenant_CountAutoCloseMatching DEFAULT 0;
+GO

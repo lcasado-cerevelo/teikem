@@ -1733,6 +1733,7 @@ Quién lo configura: `admin.tenant` (la compañía) y `admin.users` (cada person
 | ¿Quién ve lo esperado al contar? (`countExpectedReveal`) | **Nadie** (`NONE`) · **Solo los marcados** (`MARKED`, valor por defecto) · **Todos** (`ALL`) | Nadie: nadie al contar en la app, **tampoco el supervisor** (la reconciliación en la web sigue mostrando lo esperado). Solo los marcados: los contadores con «Sí» en Usuarios. Todos: todos los contadores salvo los marcados con «No». |
 | Margen para no pedir reconteo (%) (`countRecountTolerancePct`) | 0 a 100 (por defecto 0) | 0 = cualquier diferencia pide reconteo. Con 5, una cantidad dentro del 5 % de lo esperado se da por buena. |
 | Mostrar el número esperado (`countRevealShowsNumber`) | Sí (por defecto) / No | Con No solo se dice «Coincide» o «No coincide». |
+| Cerrar solo los conteos que cuadran (`countAutoCloseMatching`, 2026-10-10) | No (por defecto) / Sí | Con Sí, terminar un conteo que cuadra lo deja en Concordancia sin confirmarlo en la web (§6.9). |
 
 **Marca por persona** (Sistema → Usuarios → acciones de la fila → «Ve lo esperado al contar: Sí / No / sin marcar»; `PUT /api/v1/users/{id}/count-see-expected`
 con `{ "value": true | false | null }`): la columna «Ve lo esperado al contar» muestra Sí / No / —. Solo cuenta cuando la compañía está en «Solo los marcados» o «Todos».
@@ -1793,6 +1794,19 @@ Los equipos rentados siguen en el inventario, en la posición **EN-RENTA** (zona
 
 Qué hacer: si el equipo de verdad volvió, registre su **devolución de renta** (capítulo 11 §5) y vuelva a capturar el conteo; si se
 capturó por error, quite la serie de la captura y reconcilie.
+
+### 6.9 Cierre automático al terminar si el conteo cuadra (2026-10-10)
+
+Qué hace: con el ajuste encendido, **terminar** un conteo que **cuadra** lo confirma en el acto y lo deja en **Concordancia**, sin que nadie tenga que confirmarlo en la web. Pensado para el inventario masivo (miles de posiciones, un conteo por posición): solo los que tienen diferencia esperan en «Por revisar».
+
+Quién lo configura: `admin.tenant`; módulo **WMS_LOTSERIAL**. Sistema → Ajustes → **Operación** → «Conteo cíclico: lo esperado al contar» → **Cerrar solo los conteos que cuadran** (`countAutoCloseMatching`, `PUT /api/v1/tenant/settings`). **Apagado por defecto**: las compañías existentes no cambian hasta que se enciende.
+
+Cómo funciona: al terminar (`POST /api/v1/cycle-counts/{id}/finish`, por la app o la web) el conteo pasa a Contado y, enseguida, el servidor hace la misma comprobación y la misma reconciliación que «Cerrar los que cuadran» (con los saldos bloqueados):
+- **Cuadra** (todas las líneas contadas, ninguna con error y, contra la existencia **actual**, no se asentaría ningún movimiento) → Concordancia, con fecha, la tarea COUNT en `DONE` y el comentario del historial `Cierre automático: el conteo cuadra.`. No se asienta ningún movimiento de inventario. «Confirmó» queda a nombre de quien terminó el conteo.
+- **No cuadra** (hay diferencia, una línea quedaría por debajo de lo reservado, o la existencia cambió justo entonces) → queda **Contado**, igual que con el ajuste apagado, en «Por revisar». Terminar **nunca falla** por esto y no se muestra ningún error.
+- El permiso de quien termina sigue siendo `warehouse.count.capture`: el cierre automático no le da poder de ajustar, porque solo cierra lo que no ajusta nada.
+- «Cerrar los que cuadran» sigue disponible para los que quedaron Contados.
+
 
 ## 7. Recolección y empaque ad hoc (Pick & Pack)
 

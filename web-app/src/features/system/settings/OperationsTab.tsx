@@ -115,6 +115,7 @@ interface CountRevealValues {
   countExpectedReveal: string
   countRecountTolerancePct: number | null
   countRevealShowsNumber: boolean
+  countAutoCloseMatching: boolean
 }
 
 /** Quién ve lo esperado al contar (después de capturar cada línea), cuánto margen hay antes de pedir reconteo y si se muestra el número. */
@@ -126,6 +127,7 @@ function CountRevealPanel({ settings, canEdit }: { settings: TenantSettingsDto; 
       countExpectedReveal: settings.countExpectedReveal ?? 'MARKED',
       countRecountTolerancePct: settings.countRecountTolerancePct ?? 0,
       countRevealShowsNumber: settings.countRevealShowsNumber ?? true,
+      countAutoCloseMatching: settings.countAutoCloseMatching ?? false,
     },
   })
   const dirty = form.formState.isDirty
@@ -142,7 +144,7 @@ function CountRevealPanel({ settings, canEdit }: { settings: TenantSettingsDto; 
             form.setError('countRecountTolerancePct', { message: t('system.settings.ops.countTolRange') })
             return
           }
-          await save.mutateAsync({ countExpectedReveal: v.countExpectedReveal, countRecountTolerancePct: pct, countRevealShowsNumber: v.countRevealShowsNumber })
+          await save.mutateAsync({ countExpectedReveal: v.countExpectedReveal, countRecountTolerancePct: pct, countRevealShowsNumber: v.countRevealShowsNumber, countAutoCloseMatching: v.countAutoCloseMatching })
           toast.success(t('system.settings.saved'))
         }}
       >
@@ -158,6 +160,9 @@ function CountRevealPanel({ settings, canEdit }: { settings: TenantSettingsDto; 
               <Toggle text={t('system.settings.ops.countNumberText')} />
             </Field>
           </div>
+          <Field name="countAutoCloseMatching" label={t('system.settings.ops.countAutoCloseLabel')} help={t('system.settings.ops.countAutoCloseHelp')}>
+            <Toggle text={t('system.settings.ops.countAutoCloseText')} />
+          </Field>
           <p className="set-d">{t('system.settings.ops.countRevealHint')}</p>
         </fieldset>
         {canEdit && (

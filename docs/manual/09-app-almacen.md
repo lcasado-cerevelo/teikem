@@ -541,7 +541,7 @@ Cómo se usa:
    (Lote A3): tocar el producto en "Lo que se espera aquí" pone su código (SKU) en el campo del producto; se confirma con
    **Aceptar** y pasa a la cantidad. Tocarlo no cambia lo que se muestra: las cantidades esperadas siguen saliendo solo a quien
    tiene `warehouse.count`.
-3. "Terminar esta posición" encola el lote capturado y el cierre del conteo, y vuelve a Inicio. "Cancelar conteo"
+3. "Terminar esta posición" encola el lote capturado y el cierre del conteo, y **se queda en Conteo** (desde 2026-10-10: ver 7.6) con el cursor en el campo de la siguiente posición. "Cancelar conteo"
    (con confirmación) libera la posición en el servidor sin guardar lo capturado.
 
 Si se cerró y se volvió a abrir la app con un conteo por posición en curso, la lista de líneas esperadas se vuelve a pedir al
@@ -584,7 +584,7 @@ Cómo se usa:
    dueño; **0 vale**, y también cuenta una fila de "Otra posición" con su cantidad): con **todas** en blanco, Confirmar no manda nada y
    sale el aviso rojo grande `Escribe al menos una cantidad. Si no hay nada de este producto, escribe 0 en una posición.`; el aviso se
    quita al escribir cualquier cantidad. Se encola el lote con **todas** las filas (las en blanco como 0, las de "Otra
-   posición" como líneas nuevas con su posición y lote) y el cierre, y vuelve a Inicio. Funciona sin señal. Si el conteo quedó **vacío** (producto
+   posición" como líneas nuevas con su posición y lote) y el cierre, y se queda en Conteo (7.6). Funciona sin señal. Si el conteo quedó **vacío** (producto
    sin existencia y ninguna fila agregada), Confirmar no manda nada y avisa `No se puede terminar un conteo vacío: agrega la posición donde lo encontraste con «Otra posición» o cancela el conteo.`; se sale con **Cancelar conteo** (paso 7).
 6. **Retomar**: lo escrito se guarda en el aparato a cada cambio. Si se cierra la app (o se apaga el aparato), al volver a Conteo
    aparece la misma lista con lo ya escrito, sin necesitar señal. Un conteo a la vez por aparato (de posición o de producto).
@@ -615,7 +615,7 @@ Cómo se usa:
    **Tocar un producto de la lista** (2026-10-07) lo pone en el campo de escaneo (sin enviarlo) y sube la pantalla hasta ese campo: se confirma con **Aceptar** y sigue el camino normal
    (propone las posiciones que aún no has contado). Ayuda en pantalla: `Toca un producto de la lista para contarlo en otra posición.` Lo mismo en «Por posición»: tocar un producto de «Lo que se espera aquí» sube la pantalla al campo.
 4. **Terminar conteo** (se enciende con al menos una línea) encola **un lote** con todas las líneas (posición + producto + cantidad + lote por número) y el cierre;
-   funciona sin señal y vuelve a Inicio. La diferencia se calcula al reconciliar en la web.
+   funciona sin señal y se queda en Conteo (7.6). La diferencia se calcula al reconciliar en la web.
 5. **Retomar**: lo contado se guarda en el aparato; al cerrar y abrir la app el conteo sigue ahí, sin señal. Un conteo a la vez por aparato.
 6. **Cancelar conteo** (con confirmación): `DELETE`, necesita señal y `warehouse.count`.
 
@@ -1077,3 +1077,14 @@ Necesita señal (cambia el inventario en el servidor, sin cola).
 | Sin señal | `Ajustar necesita señal: cambia el inventario en el servidor. Inténtalo con señal.` |
 
 API: `POST /api/v1/inventory/adjustments/quantity` (`warehouse.adjust`); el ajuste de la web (`POST /inventory/adjustments`, `inventory.adjust`) no cambia.
+
+### 7.6 Al terminar un conteo la app se queda en Conteo (2026-10-10)
+
+Antes, **Terminar esta posición** y **Terminar conteo** mandaban a Inicio y había que entrar otra vez a Conteo para la siguiente posición. Ahora, al terminar:
+- La pantalla **se queda en Conteo**, en su pantalla de partida («¿Cómo vas a contar?»), con la **misma forma de contar** que se estaba usando (la app la recuerda) y el **cursor en el campo de escaneo** (la posición, en «Por posición»; el producto, en «Por producto»). Arriba dice `Conteo enviado. Puedes contar otra cosa; «Volver» te lleva a Inicio.`
+- Para salir a Inicio se toca **Volver** (al pie de esa pantalla), como siempre.
+- El cierre sigue yendo a la cola de salida y funciona sin señal; si el servidor lo rechaza, el aviso `El servidor no aceptó terminar el conteo: …` aparece igual.
+- El conteo recién terminado **no bloquea** el siguiente: ya no cuenta como «abierto» (sección 7.5).
+- **Guardar y seguir después** no cambia: guarda, avisa y vuelve a Inicio (el conteo queda abierto y bloquea lo demás hasta retomarlo).
+
+Con el ajuste de compañía **«Cerrar solo los conteos que cuadran»** encendido ([06 §6.9](06-inventario-y-almacen.md#69-cierre-automático-al-terminar-si-el-conteo-cuadra-2026-10-10)), cada posición que cuadra queda en Concordancia en cuanto se envía, y solo las que tienen diferencia esperan en «Por revisar».

@@ -3946,6 +3946,9 @@
         "countNumberLabel": "Mostrar el número esperado",
         "countNumberText": "Mostrar el número (si no, solo «Coincide» o «No coincide»)",
         "countNumberHelp": "Fuera del margen nunca se muestra el esperado: se pide recontar. El número solo se ve al coincidir o tras recontar.",
+        "countAutoCloseLabel": "Cerrar solo los conteos que cuadran",
+        "countAutoCloseText": "Al terminar un conteo que cuadra, confirmarlo automáticamente",
+        "countAutoCloseHelp": "Apagado: todo conteo terminado espera a que alguien lo confirme (o use «Cerrar los que cuadran»). Encendido: si al terminar el conteo todas las líneas están contadas y no hay nada que ajustar contra la existencia actual, queda en Concordancia sin pasar por la web. Los que tienen diferencia siguen esperando revisión.",
         "countRevealHint": "Con «Solo los marcados» o «Todos», quien tiene el permiso «Contar» (supervisor) ve lo esperado desde el inicio. El contador (solo «Capturar conteo») lo ve después de aceptar cada línea; si queda fuera del margen se le pide recontar y la línea se cierra. Con «Nadie» no lo ve nadie al contar en la app."
       },
       "brand": {

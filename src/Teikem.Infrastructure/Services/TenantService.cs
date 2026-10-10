@@ -61,6 +61,7 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
             t.CountRecountTolerancePct = pct;
         }
         if (req.CountRevealShowsNumber.HasValue) t.CountRevealShowsNumber = req.CountRevealShowsNumber.Value;
+        if (req.CountAutoCloseMatching.HasValue) t.CountAutoCloseMatching = req.CountAutoCloseMatching.Value;
         var formatChanges = FormatChanges(req);
         if (!formatChanges.IsEmpty) ApplyFormat(t, TenantFormatRules.Read(t), formatChanges);
         await db.SaveChangesAsync(ct);
@@ -166,5 +167,5 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         t.RegionCode, t.TimeZoneId, t.CurrencyCode, t.CurrencySymbol, t.CurrencySymbolPosition, t.CurrencyDecimals,
         t.DateOrder, t.DateSeparator, t.TimeFormat, t.WeekStartDay, t.ThousandsSeparator, t.DecimalSeparator,
         t.PhoneCountryCode, t.PhoneMask, !TenantFormatRules.MatchesRegionDefaults(TenantFormatRules.Read(t)),
-        CountRevealRules.Normalize(t.CountExpectedReveal), t.CountRecountTolerancePct, t.CountRevealShowsNumber);
+        CountRevealRules.Normalize(t.CountExpectedReveal), t.CountRecountTolerancePct, t.CountRevealShowsNumber, t.CountAutoCloseMatching);
 }

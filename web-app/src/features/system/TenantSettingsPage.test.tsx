@@ -423,7 +423,7 @@ describe('Ajustes de la compañía', () => {
     await user.click(within(panel).getByRole('switch', { name: /Mostrar el número/ }))
     await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
     await waitFor(() => expect(put()).toHaveLength(1))
-    expect(put()[0].body).toEqual({ countExpectedReveal: 'ALL', countRecountTolerancePct: 5, countRevealShowsNumber: false })
+    expect(put()[0].body).toEqual({ countExpectedReveal: 'ALL', countRecountTolerancePct: 5, countRevealShowsNumber: false, countAutoCloseMatching: false })
   })
 
   it('Marca: tema predefinido con validaciones y BrandingJson al guardar', async () => {

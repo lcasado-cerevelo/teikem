@@ -1232,7 +1232,33 @@ public sealed class CycleCountService(
             cc.StatusCodeId = to.StatusCodeId;
             await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
         }, ct);
+        await TryAutoCloseAsync(current.CycleCountId, ct);
         return await GetAsync(id, null, ct);
+    }
+
+    /// <summary>Comentario del historial de estatus cuando el conteo se confirma solo al terminar.</summary>
+    public const string AutoCloseComment = "Cierre automático: el conteo cuadra.";
+
+    /// <summary>
+    /// 2026-10-10 — Cierre automático (ajuste de compañía CountAutoCloseMatching, apagado por defecto): al terminar, si el conteo CUADRA
+    /// (todo contado, sin errores y contra el saldo actual no se asentaría ningún movimiento) se confirma en el acto y queda en
+    /// Concordancia. Es la misma reconciliación (y la misma re-verificación con saldos bloqueados) que "Cerrar los que cuadran"
+    /// (requireMatching); si no cuadra, o cambió entre la revisión y el cierre, queda Contado para revisarlo. Nunca hace fallar el
+    /// terminar: el conteo ya quedó Contado en su propia transacción.
+    /// </summary>
+    private async Task TryAutoCloseAsync(int countId, CancellationToken ct)
+    {
+        var enabled = await db.Set<Teikem.Domain.Tenancy.Tenant>().AsNoTracking().Where(x => x.TenantId == tenant.TenantId)
+            .Select(x => x.CountAutoCloseMatching).SingleAsync(ct);
+        if (!enabled) return;
+        try
+        {
+            await ReconcileCoreAsync(countId, AutoCloseComment, null, requireMatching: true, ct);
+        }
+        catch (Exception ex) when (ex is CountNoLongerMatchesException or StatusRuleException or ConflictException or ValidationException)
+        {
+            // no cuadra (o ya no): queda Contado, en la lista "Por revisar"
+        }
     }
 
     /// <summary>

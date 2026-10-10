@@ -91,6 +91,8 @@ export default function CountScreen() {
   const [hints, setHints] = useState<OpenCountHint[]>(() => getOpenCountHints(warehousePublicId, userId))
   // Número (CC-#####) del conteo abierto ahora, para el aviso de «guardar y seguir después».
   const [countNumber, setCountNumber] = useState<string>('')
+  // 2026-10-10: al terminar un conteo la pantalla se queda en Conteo (lista para contar otra posición u otro producto) y lo dice aquí.
+  const [finishedNote, setFinishedNote] = useState<string | null>(null)
   // Sube la pantalla hasta el campo de escaneo al tocar un producto de «Lo que se espera aquí».
   const prefillSeq = prefill?.seq ?? 0
   useEffect(() => {
@@ -138,6 +140,7 @@ export default function CountScreen() {
 
   async function scanBin(code: string) {
     setBinError(null)
+    setFinishedNote(null)
     setBusy(true)
     try {
       const bin = await resolveBinLocalFirst(warehousePublicId!, code)
@@ -214,6 +217,7 @@ export default function CountScreen() {
   /** Lote 24 — "Por producto": el primer producto escaneado abre UN conteo (vacío, en línea) y de ahí en adelante se van agregando
    *  productos a ese mismo conteo (features/count/OpenCountView.tsx). */
   async function scanProductToCount(code: string) {
+    setFinishedNote(null)
     setProductError(null)
     const product = findProductByCode(code)
     if (!product) {
@@ -381,7 +385,22 @@ export default function CountScreen() {
     discardLocalCount()
     forgetChecks()
     sendAndWatch(countId)
-    router.replace('/home')
+    stayInCount()
+  }
+
+  /** Tras terminar un conteo no se vuelve a Inicio: sin conteo abierto, Conteo muestra su pantalla de partida con el cursor en el campo de escaneo. */
+  function stayInCount() {
+    setDraft(null)
+    setEdit(null)
+    setExpectedLines(null)
+    setReveal(null)
+    setScanError(null)
+    setBinError(null)
+    setProductError(null)
+    setPendingProduct(null)
+    setHints(getOpenCountHints(warehousePublicId, userId))   // el recién terminado ya no cuenta como abierto (no bloquea el siguiente)
+    setFinishedNote(t('count.finishedNote'))
+    refresh()
   }
 
   /** «Guardar y seguir después»: manda lo contado SIN cerrar el conteo; queda abierto (y bloqueando lo demás) hasta retomarlo y terminarlo. */
@@ -419,7 +438,7 @@ export default function CountScreen() {
     forgetChecks()
     vibrateOk()
     sendAndWatch(countId)
-    router.replace('/home')
+    stayInCount()
   }
 
   // Sin conteo abierto: elegir cómo contar y escanear la posición o el producto. Nada que perder aquí, así que "Volver" sale
@@ -428,6 +447,7 @@ export default function CountScreen() {
     return (
       <KeyboardScreen contentContainerStyle={styles.fill}>
         <Text style={styles.title}>{t('count.title')}</Text>
+        {finishedNote ? <Text style={styles.help} testID="count-finished-note">{finishedNote}</Text> : null}
         {hints.length > 0 ? (
           <View style={styles.hintBox} testID="open-counts">
             <Text style={styles.label}>{t('count.openCountsTitle')}</Text>

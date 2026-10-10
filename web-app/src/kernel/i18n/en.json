@@ -3946,6 +3946,9 @@
         "countNumberLabel": "Show the expected number",
         "countNumberText": "Show the number (otherwise just «Matches» or «Does not match»)",
         "countNumberHelp": "Outside the margin the expected quantity is never shown: a recount is requested. The number is only seen on a match or after recounting.",
+        "countAutoCloseLabel": "Close matching counts automatically",
+        "countAutoCloseText": "When a count that matches is finished, confirm it automatically",
+        "countAutoCloseHelp": "Off: every finished count waits for someone to confirm it (or use “Close the ones that match”). On: if, when the count is finished, every line is counted and nothing needs adjusting against the current stock, it ends as Match without going through the web. Counts with a difference still wait for review.",
         "countRevealHint": "With «Only marked users» or «Everybody», whoever has the «Count» permission (supervisor) sees the expected quantity from the start. The counter (only «Capture count») sees it after accepting each line; outside the margin a recount is requested and the line closes. With «Nobody» nobody sees it while counting in the app."
       },
       "brand": {

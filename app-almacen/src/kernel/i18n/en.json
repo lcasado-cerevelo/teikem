@@ -282,6 +282,7 @@
     "saveForLater": "Save and continue later",
     "finishWithZeros": "Leave at 0 and finish",
     "savedForLater": "Saved. Count {number} is still open: resume it from Count.",
+    "finishedNote": "Count sent. You can count something else; “Back” takes you to Home.",
     "finishRejected": "The server did not accept finishing the count: {message}",
     "openAllCounted": "You already counted this product in every position where the system says it is. If you found it in another one, scan that position; to correct a quantity, tap ✎ on its line in the list.",
     "openTapHint": "Tap a product in the list to count it in another position.",

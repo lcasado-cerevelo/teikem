@@ -23968,6 +23968,7 @@ export interface components {
             /** Format: double */
             countRecountTolerancePct?: number;
             countRevealShowsNumber?: boolean;
+            countAutoCloseMatching?: boolean;
         };
         TenantSettingsUpdateRequest: {
             name?: string | null;
@@ -24009,6 +24010,7 @@ export interface components {
             /** Format: double */
             countRecountTolerancePct?: number | null;
             countRevealShowsNumber?: boolean | null;
+            countAutoCloseMatching?: boolean | null;
         };
         TenantSummaryDto: {
             /** Format: int32 */
