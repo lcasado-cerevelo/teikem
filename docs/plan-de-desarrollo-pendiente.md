@@ -329,3 +329,9 @@ Sin SMS ni biometría en MFA (decisión 11 del lote 1); `RentalCharge` y factura
 2. Confirmar con Luis la decisión D-correspondiente y el orden.
 3. Trabajo **secuencial, un bloque probado a la vez**; nunca editar los SQL congelados; nunca recrear la base; no tocar `.env.development`.
 4. Commits en español con los trailers de coautoría, push a `master` y a `claude/company-settings-screen-plan-uajc2i`, sin force-push.
+
+## Decisiones del dueño antes de F-A2 (2026-10-10)
+- **Despacho manual**: documento propio con numeración y ficha consultable, además del Kárdex.
+- **Permiso**: nuevo `warehouse.issue` (propagarlo a los roles ya clonados en `Diseño/logistica-db-update.sql`).
+- **SLA de contratos**: se captura en horas por tipo de servicio (igual que el backend).
+- **Contratos del cliente en la web**: pestañas dentro de la ficha del cliente (contrato, tarifas, SLA, servicios especiales).
