@@ -5,6 +5,10 @@
 > - **Recrear la base (`db-reset`, `scripts/recrear-base*.ps1`) está PROHIBIDO fuera de desarrollo.** En producción solo `db-update` (con simulación y respaldo).
 > - La rama `Depot-Implementation` guarda el estado de la puesta en producción de Advance Depot, para dar soporte a su operación. **No se edita, no se le hace push ni cherry-pick a menos que el dueño lo ordene** (última puesta al día con `master`: 2026-10-10).
 
+> ## RAMAS (orden del dueño, 2026-10-10)
+> - **Todo el trabajo del plan va en `master`** y SOLO en `master`: no se crean ramas nuevas ni se empuja a ramas `claude/*`. La rama `claude/company-settings-screen-plan-uajc2i` ya no recibe push (quedó idéntica a `master` el 2026-10-10); otra sesión puede estar trabajando en una rama propia, y las sesiones no deben mezclar instrucciones: ante duda, preguntar al dueño.
+> - `Depot-Implementation` queda congelada (ver arriba).
+
 Plataforma de logística multi-tenant. Backend .NET 8 (ASP.NET Core + EF Core 8 + SQL Server). La referencia única de
 funcionalidad es `Diseño/logistica-funcionalidades-maestro.md`; el esquema vive en `Diseño/logistica-db-estructura.sql`
 y `Diseño/logistica-db-seed.sql`. Se construye por lotes (ver `docs/lote1-decisiones.md` para el formato de cierre de un lote).
