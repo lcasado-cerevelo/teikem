@@ -3,7 +3,7 @@
 > ## ⛔ EN PRODUCCIÓN DESDE 2026-10-09
 > - **`Diseño/logistica-db-estructura.sql` y `Diseño/logistica-db-seed.sql` están CONGELADOS: no se editan, jamás.** Un cambio de estructura **o de datos** va en el archivo **`Diseño/logistica-db-update.sql`** (UN solo archivo para estructura y datos, **idempotente**; se agrega al final) (ver [Diseño/logistica-db-update.sql](Diseño/logistica-db-update.sql)). `FrozenSqlTests` falla si se tocan.
 > - **Recrear la base (`db-reset`, `scripts/recrear-base*.ps1`) está PROHIBIDO fuera de desarrollo.** En producción solo `db-update` (con simulación y respaldo).
-> - La rama `Depot-Implementation` guarda el estado de la puesta en producción de Advance Depot, para dar soporte a su operación.
+> - La rama `Depot-Implementation` guarda el estado de la puesta en producción de Advance Depot, para dar soporte a su operación. **No se edita, no se le hace push ni cherry-pick a menos que el dueño lo ordene** (última puesta al día con `master`: 2026-10-10).
 
 Plataforma de logística multi-tenant. Backend .NET 8 (ASP.NET Core + EF Core 8 + SQL Server). La referencia única de
 funcionalidad es `Diseño/logistica-funcionalidades-maestro.md`; el esquema vive en `Diseño/logistica-db-estructura.sql`
@@ -29,7 +29,7 @@ y `Diseño/logistica-db-seed.sql`. Se construye por lotes (ver `docs/lote1-decis
   seed. Nada de migraciones EF ni de otros scripts. Las entidades se mapean 1:1 en `src/Teikem.Infrastructure/Persistence/Configurations`.
 - **Recrear la base está PROHIBIDO fuera de desarrollo**: `db-reset` (el API lo rechaza si el ambiente no es Development) y
   `scripts/recrear-base.ps1` / `recrear-base-depot.ps1` solo se corren en la máquina de desarrollo, contra una base local. Jamás en producción.
-- **Rama `Depot-Implementation`**: foto de lo que se puso en producción para Advance Depot (base, API, web y app); se usa para dar soporte a
+- **Rama `Depot-Implementation`** (CONGELADA: solo se toca cuando el dueño lo ordena): foto de lo que se puso en producción para Advance Depot (base, API, web y app); se usa para dar soporte a
   su operación. El trabajo sigue en `master`.
 - **Permisos sembrados desde código** en `PermissionCatalog` (y espejados en el seed). Módulos por tenant: los endpoints
   de un módulo llevan `[RequireModule(ModuleKeys.X)]`.
