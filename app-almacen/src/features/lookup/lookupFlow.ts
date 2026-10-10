@@ -25,6 +25,11 @@ export type OnlineOutcome =
   | { status: 'offline'; result: LookupResult | null }
   | { status: 'error'; message: string }
 
+/** Lo que el aparato sabe de UNA posición, sin red (null = el aparato todavía no ha bajado saldos de este almacén: no se puede afirmar nada). */
+export function localBinRows(warehousePublicId: string, binId: number): BalanceRow[] | null {
+  return balancesSyncedAtUtc(warehousePublicId) ? localBalancesForBin(warehousePublicId, binId) : null
+}
+
 /** Lo que el aparato ya sabe de este código, sin red. null = no hay nada que mostrar todavía (o nunca bajó saldos). */
 export function lookupLocal(warehousePublicId: string, code: string): LookupResult | null {
   const asOfUtc = balancesSyncedAtUtc(warehousePublicId)

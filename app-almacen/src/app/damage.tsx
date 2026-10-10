@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router'
 
 import { ApiError, isNetworkError } from '../kernel/api/client'
 import { useT } from '../kernel/i18n/useT'
-import { findBinByCode } from '../kernel/warehouse/binLookup'
+import { resolveBinLocalFirst } from '../kernel/warehouse/binLookup'
 import { findProductByCode } from '../kernel/warehouse/productLookup'
 import { useActiveWarehouse } from '../kernel/warehouse/activeWarehouse'
 import { BigButton } from '../kernel/ui/BigButton'
@@ -74,7 +74,7 @@ export default function DamageScreen() {
     setBusy(true)
     try {
       if (draft.origin === 'WAREHOUSE') {
-        const bin = await findBinByCode(warehousePublicId!, code)
+        const bin = await resolveBinLocalFirst(warehousePublicId!, code)
         if (!bin) return fail(t('damage.binNotFound'))
         setDraft((d) => ({ ...d, bin: { id: bin.id, code: bin.code } }))
       } else {

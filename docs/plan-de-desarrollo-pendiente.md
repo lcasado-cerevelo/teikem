@@ -81,7 +81,7 @@ P0 Producción y deuda ──► P1 Web de lo que ya tiene backend ──► P2 
 
 ## P0 — Producción y deuda inmediata
 
-### P0.1 Señal débil: el aparato trabaja con sus datos locales (decisión de Luis, 2026-10-10; **pendiente de que Luis dé el arranque**)
+### P0.1 Señal débil: el aparato trabaja con sus datos locales (decisión de Luis, 2026-10-10; **EN CURSO: S1 servidor, S2 base local y S3a Consultar/Transferir/Ajustar/Conteo/Daño hechos; faltan abrir conteo sin señal, capacidad en Acomodar/Recibir y D2b — ver `docs/mobile/senal-debil-decisiones.md`**)
 **Problema:** el cliente del API (`app-almacen/src/kernel/api/client.ts`) no tiene tiempo máximo y las pantallas esperan al servidor antes de
 mostrar (Consultar, Acomodar, Transferir, Ajustar, Daño, conteo, plan de salida del Despacho, `findBinByCode`). Con señal floja la petición
 queda colgada. Los saldos no residen en el aparato (solo `balance_cache` de lo último consultado).

@@ -6,6 +6,7 @@
 // elige la coincidencia EXACTA de código (sin distinguir mayúsculas) dentro de `items`; si no está en la primera página
 // (muchas posiciones contienen ese texto) se siguen leyendo páginas hasta encontrarla o agotar el total (tope MAX_PAGES).
 import { api, unwrap } from '../api/client'
+import { getDb } from '../db/database'
 
 export interface FoundBin {
   id: number
@@ -41,4 +42,20 @@ export async function findBinByCode(warehousePublicId: string, code: string): Pr
     if (items.length === 0 || skip + items.length >= (result.total ?? 0)) return null
   }
   return null
+}
+
+/**
+ * Señal débil (2026-10-10): la posición escaneada se busca PRIMERO entre las que el aparato ya tiene (sincronizadas, activas) y no espera a la red;
+ * solo si no está ahí (p. ej. creada después de la última sincronización) se le pregunta al servidor. No trae el espacio libre (`freeQty`):
+ * quien lo necesita sigue usando `findBinByCode`.
+ */
+export async function resolveBinLocalFirst(warehousePublicId: string, code: string): Promise<FoundBin | null> {
+  const wanted = code.trim()
+  if (!wanted) return null
+  const row = getDb().getFirstSync<{ id: number; code: string }>(
+    'SELECT id, code FROM bin WHERE warehouse_public_id = ? AND code = ? COLLATE NOCASE AND is_active = 1 LIMIT 1',
+    [warehousePublicId, wanted],
+  )
+  if (row) return { id: row.id, code: row.code }
+  return findBinByCode(warehousePublicId, code)
 }

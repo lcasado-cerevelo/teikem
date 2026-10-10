@@ -18,6 +18,8 @@ import { vibrateError, vibrateOk } from '../kernel/ui/feedback'
 import { QuantityField } from '../features/count/QuantityField'
 import { parseQty } from '../features/count/countLogic'
 import { fetchBinContents } from '../features/lookup/lookupApi'
+import { localBinRows } from '../features/lookup/lookupFlow'
+import { RefreshNote, type RefreshState } from '../kernel/ui/RefreshNote'
 import type { BalanceRow } from '../features/lookup/lookupLogic'
 import { isBlockedZone } from '../features/transfer/transferLogic'
 import { adjustQuantity } from '../features/adjust/adjustApi'
@@ -45,6 +47,7 @@ export default function AdjustScreen() {
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [refresh, setRefresh] = useState<RefreshState>('idle')
 
   const binId = Number(params.fromBinId)
   const binCode = params.fromBinCode ?? ''
@@ -58,21 +61,41 @@ export default function AdjustScreen() {
     fail(isNetworkError(err) ? t('adjust.needSignal') : err instanceof ApiError ? err.title : t('errors.generic'))
   }
 
+  // Señal débil: primero lo que el aparato ya sabe de la posición (al instante); el servidor lo pone al día en segundo plano.
   useEffect(() => {
     if (!warehousePublicId || !binId || !productPublicId) return
     let alive = true
-    setBusy(true)
+    function show(all: BalanceRow[], first: boolean): boolean {
+      if (all.some((r) => isBlockedZone(r.zoneTypeCode))) {
+        fail(t('adjust.zoneBlocked', { bin: binCode }))
+        return false
+      }
+      const mine = all.filter((r) => r.productPublicId === productPublicId)
+      setRows(mine)
+      if (first) {
+        const withLot = mine.filter((r) => r.lotId != null)
+        setLotId(withLot.length === 1 ? (withLot[0].lotId ?? null) : null)
+      }
+      setLoaded(true)
+      return true
+    }
+    const localRows = localBinRows(warehousePublicId, binId)
+    const shownLocal = localRows != null && show(localRows, true)
+    if (localRows != null && !shownLocal) return
+    if (shownLocal) setRefresh('syncing')
+    else setBusy(true)
     fetchBinContents(warehousePublicId, { id: binId, code: binCode })
       .then((found) => {
         if (!alive) return
-        if (found.rows.some((r) => isBlockedZone(r.zoneTypeCode))) return fail(t('adjust.zoneBlocked', { bin: binCode }))
-        const mine = found.rows.filter((r) => r.productPublicId === productPublicId)
-        setRows(mine)
-        const withLot = mine.filter((r) => r.lotId != null)
-        setLotId(withLot.length === 1 ? (withLot[0].lotId ?? null) : null)
-        setLoaded(true)
+        if (found.fromCache && shownLocal) return setRefresh('offline')
+        show(found.rows, !shownLocal)
+        setRefresh('done')
       })
-      .catch((err) => alive && failure(err))
+      .catch((err) => {
+        if (!alive) return
+        if (shownLocal) setRefresh('offline')
+        else failure(err)
+      })
       .finally(() => alive && setBusy(false))
     return () => {
       alive = false
@@ -153,6 +176,7 @@ export default function AdjustScreen() {
       {first ? <Text style={styles.product}>{`${first.sku} · ${first.productName}`}</Text> : null}
       <ScanMessage message={error} tone="error" />
       {busy && !loaded ? <ActivityIndicator color={colors.brand} /> : null}
+      <RefreshNote state={refresh} />
 
       {serial ? <Text style={styles.error}>{t('adjust.serialNotSupported', { sku })}</Text> : null}
 

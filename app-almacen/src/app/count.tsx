@@ -7,7 +7,7 @@ import { ApiError, apiErrorMessage, isNetworkError } from '../kernel/api/client'
 import { useSession } from '../kernel/auth/useSession'
 import { useActiveWarehouse } from '../kernel/warehouse/activeWarehouse'
 import { getKv, KvKeys, setKv } from '../kernel/db/kv'
-import { findBinByCode } from '../kernel/warehouse/binLookup'
+import { resolveBinLocalFirst } from '../kernel/warehouse/binLookup'
 import { findProductByCode } from '../kernel/warehouse/productLookup'
 import { useT } from '../kernel/i18n/useT'
 import { runSync } from '../kernel/sync/engine'
@@ -140,7 +140,7 @@ export default function CountScreen() {
     setBinError(null)
     setBusy(true)
     try {
-      const bin = await findBinByCode(warehousePublicId!, code)
+      const bin = await resolveBinLocalFirst(warehousePublicId!, code)
       if (!bin) {
         // Lote A4: si lo escaneado es un producto, se dice cómo contarlo así (en vez de solo "no hay posición")
         setBinError(findProductByCode(code) ? t('count.binLooksLikeProduct') : t('count.binNotFound'))

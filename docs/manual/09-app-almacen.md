@@ -991,6 +991,31 @@ porque el supervisor ya corrigió una línea) y la sección **Lote A8** (lo que 
 
 Al escanear una posición sin existencia en el sistema, la app **ya no rechaza** con *«Los filtros no seleccionan inventario en mano para contar; amplíe los filtros o agregue líneas a mano.»*: abre el conteo vacío de esa posición y usted escanea o elige de la lista lo que encuentre (sección «Lo que se espera aquí» dice que el sistema no espera nada). Se termina con **Terminar esta posición** como siempre; al reconciliar en la web, lo encontrado entra como ajuste de entrada en esa posición. (API: `POST /api/v1/cycle-counts` con `binIds` de una sola posición y `allowEmpty = true`.)
 
+## Señal débil: la pantalla muestra primero lo que el aparato ya tiene (2026-10-10)
+
+**Qué cambió.** Antes, varias pantallas esperaban la respuesta del servidor para mostrar algo, y con señal floja se quedaban colgadas. Ahora el aparato
+guarda también los **saldos por posición del almacén activo** y la pantalla **muestra de inmediato lo que ya sabe**; en paralelo consulta al servidor y,
+cuando llega, **actualiza lo que se ve**. La señal floja solo retrasa la actualización, no el resultado.
+
+**El indicador.** Mientras el aparato se pone al día se ve una rueda con **«Actualizando…»**; al terminar dice **«✓ Al día»**; si el servidor no alcanzó
+(sin conexión o señal débil) dice **«Sin conexión o con señal débil: se muestran los datos del aparato.»** y debajo la hora de esos datos
+(**«Datos del aparato de las {hora} (hace {n} min)»**). En **Inicio** el mismo indicador aparece mientras corre la sincronización general.
+
+**Dónde aplica hoy.**
+- **Consultar:** producto, posición y búsqueda libre salen al instante de lo local y se actualizan solos.
+- **Transferir** y **Ajustar:** la lista de lo que hay en la posición de origen sale de lo local y se pone al día en segundo plano. Si el servidor dice
+  luego que ya no se puede mover (cambió de zona o ya no hay disponible), la pantalla lo avisa y vuelve a empezar. **Mover y ajustar siguen necesitando
+  señal en el momento de confirmar** (siguen sin cola): sin señal, el aviso es `Sin señal. Esto necesita conexión…` y no se pierde nada.
+- **Conteo, Daño, Despacho:** la posición escaneada se reconoce de lo que el aparato ya tiene (sin esperar a la red); si no está ahí (por ejemplo, se
+  creó después de la última sincronización), se le pregunta al servidor. **Abrir un conteo nuevo todavía necesita señal** (el conteo vive en el servidor).
+
+**Cuándo se bajan los saldos.** En la sincronización de cada minuto, junto con productos y posiciones: la primera vez baja todo lo que tiene existencia en
+el almacén activo; después solo lo que cambió (`GET /api/v1/sync/balances`). Si el aparato nunca ha bajado saldos de ese almacén, las pantallas se
+comportan como antes (esperan al servidor). Al actualizar la app, la base local migra sola a la versión 10; no se pierde nada.
+
+**Qué hacer si un dato se ve viejo.** El saldo del aparato puede estar unos minutos atrasado. Toque **Sincronizar ahora** en Inicio, o espere a que el
+indicador diga «Al día». El servidor siempre manda: si lo que se ve ya no coincide, el servidor lo corrige al llegar.
+
 ## Transferir (2026-10-10)
 
 **Qué hace.** Mueve inventario de una posición a otra **del mismo almacén** desde el aparato. Pasos: posición de origen → producto → lote (si el producto lo trae) → cantidad → posición de destino → *Transferir*.

@@ -5776,3 +5776,20 @@ Parte de lo que hay está reservado para un despacho: solo se puede bajar lo dis
 
 **Dice `La posición {bin} es de cuarentena, en renta o de cross-dock: no se ajusta desde aquí…`**
 Esas posiciones tienen su propio flujo (Daño, Rentas, Cross-dock).
+
+## Señal débil (app, 2026-10-10)
+
+**¿Por qué Consultar me muestra datos y dice «Actualizando…»?**
+Porque el aparato muestra primero lo que ya tiene guardado y, en paralelo, le pregunta al servidor. Cuando llega la respuesta, la pantalla se actualiza sola y el indicador pasa a «✓ Al día».
+
+**Dice `Sin conexión o con señal débil: se muestran los datos del aparato.`**
+El servidor no respondió a tiempo. Lo que ve es lo último que el aparato sincronizó (la hora está debajo). Acérquese a una zona con mejor señal o toque **Sincronizar ahora** en Inicio.
+
+**Dice `Datos del aparato de las {hora} (hace {n} min)`.**
+Son saldos guardados en el aparato, no confirmados ahora con el servidor. Para operar con certeza espere el «✓ Al día».
+
+**No me sale nada al escanear, pero el producto existe.**
+Si el aparato nunca ha bajado los saldos de ese almacén, espera al servidor como antes. Sincronice una vez con buena señal (Inicio → **Sincronizar ahora**) y la próxima vez saldrá al instante.
+
+**¿Puedo transferir o ajustar sin señal?**
+No todavía: Transferir, Ajustar y Daño siguen necesitando conexión al confirmar (`Sin señal. Esto necesita conexión…`). Lo que ahora no se queda esperando es la pantalla que muestra lo que hay en la posición.

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 
@@ -15,9 +15,12 @@ import { ScanField } from '../kernel/ui/ScanField'
 import { ScanMessage } from '../kernel/ui/ScanMessage'
 import { colors, fontSize, spacing } from '../kernel/ui/theme'
 import { vibrateError, vibrateOk } from '../kernel/ui/feedback'
+import type { BalanceRow } from '../features/lookup/lookupLogic'
 import { QuantityField } from '../features/count/QuantityField'
 import { parseQty } from '../features/count/countLogic'
 import { fetchBinContents, resolveLookupBin } from '../features/lookup/lookupApi'
+import { localBinRows } from '../features/lookup/lookupFlow'
+import { RefreshNote, type RefreshState } from '../kernel/ui/RefreshNote'
 import { transferInWarehouse } from '../features/transfer/transferApi'
 import {
   isBlockedZone,
@@ -51,6 +54,9 @@ export default function TransferScreen() {
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [refresh, setRefresh] = useState<RefreshState>('idle')
+  // número de la posición de origen que se está leyendo: la respuesta tardía de una anterior no pisa la actual
+  const originSeq = useRef(0)
 
   function fail(message: string) {
     setError(message)
@@ -61,6 +67,8 @@ export default function TransferScreen() {
   }
 
   function reset() {
+    originSeq.current += 1
+    setRefresh('idle')
     setFrom(null)
     setProducts([])
     setProduct(null)
@@ -71,20 +79,57 @@ export default function TransferScreen() {
     setError(null)
   }
 
-  /** Lee lo que hay en la posición de origen y deja listos los productos movibles. */
+  /** Valida lo que hay en la posición de origen y deja listos los productos movibles. false = no se puede (ya avisó el motivo). */
+  function showOrigin(rows: BalanceRow[], bin: TransferBin, preselect?: string | null): boolean {
+    if (rows.some((r) => isBlockedZone(r.zoneTypeCode))) {
+      fail(t('transfer.zoneBlocked', { bin: bin.code }))
+      return false
+    }
+    const list = productsToMove(rows)
+    if (list.length === 0) {
+      fail(t('transfer.nothingToMove', { bin: bin.code }))
+      return false
+    }
+    setFrom(bin)
+    setProducts(list)
+    const pre = preselect ? list.find((p) => p.productPublicId === preselect) : null
+    if (pre) chooseProduct(pre)
+    return true
+  }
+
+  /** Lee lo que hay en la posición de origen. Señal débil: primero lo que el aparato ya sabe (al instante) y el servidor lo pone al día en segundo plano. */
   async function loadOrigin(bin: TransferBin, preselect?: string | null) {
-    setBusy(true)
+    const seq = ++originSeq.current
     setError(null)
+    const localRows = localBinRows(warehousePublicId!, bin.id)
+    if (localRows) {
+      if (!showOrigin(localRows, bin, preselect)) return
+      vibrateOk()
+      setRefresh('syncing')
+      try {
+        const found = await fetchBinContents(warehousePublicId!, bin)
+        if (seq !== originSeq.current) return
+        if (found.fromCache) return setRefresh('offline')
+        const list = productsToMove(found.rows)
+        if (found.rows.some((r) => isBlockedZone(r.zoneTypeCode)) || list.length === 0) {
+          // el servidor manda: lo local estaba desactualizado y ya no se puede mover de aquí
+          reset()
+          fail(found.rows.some((r) => isBlockedZone(r.zoneTypeCode)) ? t('transfer.zoneBlocked', { bin: bin.code }) : t('transfer.nothingToMove', { bin: bin.code }))
+          return setRefresh('done')
+        }
+        setProducts(list)
+        setProduct((cur) => (cur ? (list.find((p) => (p.productPublicId || p.sku) === (cur.productPublicId || cur.sku)) ?? cur) : cur))
+        setRefresh('done')
+      } catch {
+        if (seq === originSeq.current) setRefresh('offline')
+      }
+      return
+    }
+    setBusy(true)
     try {
       const found = await fetchBinContents(warehousePublicId!, bin)
-      if (found.rows.some((r) => isBlockedZone(r.zoneTypeCode))) return fail(t('transfer.zoneBlocked', { bin: bin.code }))
-      const list = productsToMove(found.rows)
-      if (list.length === 0) return fail(t('transfer.nothingToMove', { bin: bin.code }))
-      setFrom(bin)
-      setProducts(list)
-      const pre = preselect ? list.find((p) => p.productPublicId === preselect) : null
-      if (pre) chooseProduct(pre)
-      vibrateOk()
+      if (seq !== originSeq.current) return
+      if (showOrigin(found.rows, bin, preselect)) vibrateOk()
     } catch (err) {
       failure(err)
     } finally {
@@ -180,6 +225,7 @@ export default function TransferScreen() {
       <ScanMessage message={notice} tone="ok" />
 
       {from ? <Text style={styles.summary}>{t('transfer.fromBin', { bin: from.code })}</Text> : null}
+      <RefreshNote state={refresh} />
       {product ? <Text style={styles.product}>{`${product.sku} · ${product.productName}`}</Text> : null}
       {to ? <Text style={styles.summary}>{t('transfer.toBin', { bin: to.code })}</Text> : null}
 

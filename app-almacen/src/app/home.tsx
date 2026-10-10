@@ -17,7 +17,8 @@ import {
   useActiveWarehouse,
   type WarehouseOption,
 } from '../kernel/warehouse/activeWarehouse'
-import { runSync, useAutoSync, useLastSync, usePendingCount } from '../kernel/sync/engine'
+import { runSync, useAutoSync, useIsSyncing, useLastSync, usePendingCount } from '../kernel/sync/engine'
+import { RefreshNote } from '../kernel/ui/RefreshNote'
 import { syncStatusKey } from '../kernel/sync/syncStatus'
 import { BigButton } from '../kernel/ui/BigButton'
 import { WarehousePickerModal } from '../kernel/ui/WarehousePickerModal'
@@ -38,6 +39,7 @@ export default function HomeScreen() {
   const activeWarehouse = useActiveWarehouse()
   const pending = usePendingCount()
   const lastSync = useLastSync()
+  const syncing = useIsSyncing()
   useAutoSync()
   const permissions = useMyPermissions()
   const canReportDamage = permissions?.includes('warehouse.damage') ?? false
@@ -186,6 +188,8 @@ export default function HomeScreen() {
         <Pressable accessibilityRole="button" onPress={() => router.push('/sync')}>
           <Text style={[styles.syncText, lastSync?.error && styles.syncError]}>{syncLabel}</Text>
         </Pressable>
+        {/* Señal débil: mientras el aparato se pone al día con el servidor se ve (y se apaga solo al terminar) */}
+        <RefreshNote state={syncing ? 'syncing' : 'idle'} />
         <BigButton label={t('home.syncNow')} variant="secondary" onPress={() => void runSync()} />
       </View>
 

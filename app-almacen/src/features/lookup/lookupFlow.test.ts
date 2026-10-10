@@ -2,7 +2,7 @@ import { __resetAllForTests } from 'expo-sqlite'
 
 import { api } from '../../kernel/api/client'
 import { __resetDbForTests, getDb } from '../../kernel/db/database'
-import { applyOnline, lookupLocal, lookupOnline, type LookupResult } from './lookupFlow'
+import { applyOnline, localBinRows, lookupLocal, lookupOnline, type LookupResult } from './lookupFlow'
 
 jest.mock('../../kernel/api/client', () => {
   const actual = jest.requireActual('../../kernel/api/client')
@@ -95,5 +95,14 @@ describe('lookupOnline + applyOnline (el servidor manda cuando llega)', () => {
     const shown = { kind: 'rows', titleKey: 'lookup.productResult', titleParams: {}, rows: [], source: 'local', asOfUtc: 'x' } as LookupResult
     expect(applyOnline(shown, { status: 'error', message: 'boom' })).toEqual({ result: shown, refresh: 'offline', error: null })
     expect(applyOnline(null, { status: 'error', message: 'boom' }).error).toEqual({ key: 'generic', message: 'boom' })
+  })
+})
+
+describe('localBinRows', () => {
+  it('devuelve las filas de la posición si el aparato ya bajó saldos del almacén, y null si nunca lo hizo', () => {
+    seed()
+    expect(localBinRows(WH, 10)?.map((r) => r.sku)).toEqual(['SKU-1'])
+    expect(localBinRows(WH, 99)).toEqual([])
+    expect(localBinRows('otro-almacen', 10)).toBeNull()
   })
 })

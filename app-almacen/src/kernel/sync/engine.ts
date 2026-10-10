@@ -34,10 +34,19 @@ export function getLastSync(): SyncSummary | null {
 
 /** Un solo ciclo en vuelo: si ya hay uno corriendo (temporizador y botón a la vez), se espera el mismo. */
 export function runSync(): Promise<SyncSummary> {
-  running ??= runOnce().finally(() => {
-    running = null
-  })
+  if (!running) {
+    running = runOnce().finally(() => {
+      running = null
+      emit()
+    })
+    emit()
+  }
   return running
+}
+
+/** ¿Hay una sincronización corriendo ahora mismo? (para el indicador de las pantallas). */
+export function isSyncing(): boolean {
+  return running !== null
 }
 
 async function runOnce(): Promise<SyncSummary> {
@@ -86,6 +95,11 @@ export function useAutoSync(): void {
 /** Pendientes de enviar en este momento (cuenta viva: cambia al encolar, reintentar, descartar o al vaciarse). */
 export function usePendingCount(): number {
   return useSyncExternalStore(subscribeOutbox, countPending, countPending)
+}
+
+/** Indicador vivo: true mientras el aparato se sincroniza con el servidor (cola de salida y bajada). */
+export function useIsSyncing(): boolean {
+  return useSyncExternalStore(subscribeSync, isSyncing, isSyncing)
 }
 
 /** Resultado de la última pasada (para mostrar "última vez" y errores en Inicio/Sincronización). */

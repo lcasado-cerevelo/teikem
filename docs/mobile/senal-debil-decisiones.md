@@ -31,6 +31,20 @@ Se construye en bloques probados; el sistema está en producción (solo `Diseño
 - **Pruebas:** descarga con páginas y marca de agua, actualización y borrado, 403, lecturas locales y orden de recursos de la pasada
   (jest con SQL real; 577 pruebas verdes, `tsc` limpio).
 
+## Bloque S3 — app: indicador y pantallas que leen lo local (hecho en parte)
+- **Indicador** (`kernel/ui/RefreshNote.tsx`): «Actualizando…» → «✓ Al día» / «Sin conexión o con señal débil…»; en Inicio, `useIsSyncing` (nuevo en `kernel/sync/engine.ts`) lo enciende mientras corre la sincronización.
+- **Consultar** (`features/lookup/lookupFlow.ts`): `lookupLocal` (al instante, sin red) + `lookupOnline` (servidor, con la copia guardada de respaldo) + `applyOnline`
+  (qué hace la pantalla con la respuesta: el servidor manda; sin red se queda lo local). Un escaneo nuevo descarta la respuesta tardía del anterior.
+- **Transferir y Ajustar:** la lista de la posición de origen sale de lo local y se pone al día en segundo plano (si el servidor dice que ya no se puede mover, avisa y reinicia).
+- **Conteo y Daño:** `resolveBinLocalFirst` reconoce la posición de lo sincronizado sin esperar a la red (solo pregunta al servidor si no está).
+- **Pruebas:** `lookupFlow.test.ts`, `binLookup.test.ts` (590 pruebas de la app verdes, `tsc` limpio).
+
+### Lo que todavía depende del servidor (honesto)
+- **Abrir un conteo nuevo** (el conteo se crea en el servidor): pendiente un conteo creado localmente que se concilia después. Es un bloque aparte.
+- **Acomodar y Recibir**: usan el espacio libre de la posición (`freeQty`, capacidad), que no está sincronizado; siguen consultando al servidor para eso.
+- **Transferir/Ajustar/Daño al confirmar**: siguen en línea (decisión **D2b** abierta: pasarlos a la cola de salida con efecto en el saldo local).
+- **Despacho**: el plan de salida ya usaba una copia local (`stock_exit`) desde el lote anterior.
+
 ## Bloques que siguen
 - **S3 (app):** indicador único de sincronización y pantallas leyendo lo local (Consultar, Conteo, Acomodar, Transferir, Ajustar, Daño, Despacho).
 - **Decisión pendiente D2b:** pasar Transferir/Ajustar/Daño a la cola de salida con efecto en el saldo local (recomendado: sí).
