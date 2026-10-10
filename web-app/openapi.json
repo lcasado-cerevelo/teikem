@@ -25487,6 +25487,54 @@
           }
         }
       }
+    },
+    "/api/v1/inventory/transfers/in-warehouse": {
+      "post": {
+        "tags": [
+          "Inventory"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/MovementResultDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MovementResultDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MovementResultDto"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -30875,7 +30923,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "DriverPayPolicyDto": {
         "type": "object",
@@ -30974,7 +31022,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "DriverRatesDto": {
         "type": "object",
@@ -31571,7 +31619,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "FuelVehicleSummaryDto": {
         "type": "object",
@@ -34182,7 +34230,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "OrderDetailDto": {
         "type": "object",
@@ -34675,7 +34723,7 @@
             "type": "boolean"
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "OrderQuotePreviewDto": {
         "type": "object",
@@ -36147,7 +36195,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "ProductSerialConversionRequest": {
         "type": "object",
@@ -36563,7 +36611,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "PurchaseOrderStatusRequest": {
         "type": "object",
@@ -38628,7 +38676,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "RentalProcessAdvanceRequest": {
         "type": "object",
@@ -39297,7 +39345,7 @@
             "type": "array",
             "items": {
               "type": "object",
-              "additionalProperties": { }
+              "additionalProperties": {}
             },
             "nullable": true
           },
@@ -42624,7 +42672,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "TripStartRequest": {
         "type": "object",
@@ -43398,7 +43446,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "WarehouseBinCapacityRequest": {
         "type": "object",
@@ -43629,7 +43677,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "WarehouseBinRequest": {
         "type": "object",
@@ -43792,7 +43840,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "WarehouseDockRequest": {
         "type": "object",
@@ -43964,7 +44012,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "WarehousePulseDayDto": {
         "type": "object",
@@ -44311,7 +44359,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "WarehouseZoneRequest": {
         "type": "object",
@@ -44631,7 +44679,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "WorkOrderStatusRequest": {
         "type": "object",
@@ -44769,7 +44817,7 @@
   },
   "security": [
     {
-      "Bearer": [ ]
+      "Bearer": []
     }
   ]
 }

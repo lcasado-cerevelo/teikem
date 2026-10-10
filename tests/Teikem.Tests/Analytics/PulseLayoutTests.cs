@@ -425,7 +425,7 @@ public class PulseLayoutTests
         Assert.Equal(new[] { "pulse.activity", "pulse.charts", "pulse.indicators" }, Pulse("Dispatcher"));
         Assert.All(t.Where(kv => kv.Value.Contains(PermissionCatalog.PulseAttention)), kv => Assert.Contains(PermissionCatalog.InventoryView, kv.Value));
         Assert.Empty(Pulse("Driver"));
-        Assert.Equal(69, PermissionCatalog.All.Count);   // 2026-10-08: + warehouse.damage;   // Lote 27: + rental.extend, rental.return
+        Assert.Equal(70, PermissionCatalog.All.Count);   // 2026-10-08: + warehouse.damage;   // Lote 27: + rental.extend, rental.return
         Assert.All(PermissionCatalog.All.Where(p => p.Code.StartsWith("pulse.", StringComparison.Ordinal)), p => Assert.Equal("PULSE", p.Category));
 
         // PermissionSeeder real sobre InMemory: plantillas y un rol clonado de un tenant sin los pulse.* (versión anterior).

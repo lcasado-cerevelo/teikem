@@ -78,7 +78,8 @@
     "warehouseLabel": "Almacén: {name}",
     "warehouseNone": "Sin almacén",
     "changeWarehouse": "Cambiar",
-    "damage": "Daño"
+    "damage": "Daño",
+    "transfer": "Transferir"
   },
   "warehousePick": {
     "title": "¿En qué almacén trabajas?",
@@ -411,7 +412,9 @@
     "lots": "Lote {lots}",
     "lotsMore": "Lote {lots} y {count} más",
     "binInactive": "La posición {bin} está desactivada.",
-    "binTruncated": "Se muestran los primeros {max} renglones de esta posición; el resto, en la web."
+    "binTruncated": "Se muestran los primeros {max} renglones de esta posición; el resto, en la web.",
+    "move": "Mover",
+    "moveLabel": "Mover {sku} desde {bin}"
   },
   "scanner": {
     "manualLabel": "O escribe el código",
@@ -547,5 +550,35 @@
     "destReturned": "Devuelto al proveedor",
     "destDonated": "Donado",
     "destSalvage": "Vendido como saldo"
+  },
+  "transfer": {
+    "title": "Transferir",
+    "scanFrom": "Escanea la posición de origen",
+    "scanFromHelp": "De dónde sale la mercancía.",
+    "scanProduct": "Escanea el producto a mover",
+    "pickHint": "O toca un producto de lo que hay en la posición.",
+    "movable": "Se puede mover: {qty}",
+    "useProduct": "Mover {sku}",
+    "chooseLot": "Elige el lote a mover",
+    "useLot": "Mover el lote {lot}",
+    "qtyLabel": "Cantidad a mover",
+    "tooMany": "Solo se pueden mover {qty} (lo reservado no se mueve).",
+    "qtyInvalid": "Escribe una cantidad mayor que 0.",
+    "scanTo": "Escanea la posición de destino",
+    "scanToHelp": "A dónde va la mercancía (del mismo almacén).",
+    "confirmText": "Mover {qty} de {sku} de {from} a {to}",
+    "doIt": "Transferir",
+    "restart": "Empezar de nuevo",
+    "fromBin": "Origen: {bin}",
+    "toBin": "Destino: {bin}",
+    "done": "Listo: se movieron {qty} de {sku} de {from} a {to}.",
+    "needSignal": "Transferir necesita señal: mueve el inventario en el servidor. Inténtalo con señal.",
+    "binNotFound": "No hay una posición con ese código en este almacén.",
+    "binInactive": "La posición {bin} está inactiva.",
+    "sameBin": "El destino es la misma posición de origen.",
+    "nothingToMove": "En {bin} no hay nada que se pueda mover (sin existencia o todo reservado).",
+    "zoneBlocked": "{bin} es una posición de cuarentena, en renta o de cross-dock: no se transfiere desde aquí (usa Daño, Rentas o Cross-dock).",
+    "productNotHere": "Ese producto no está en {bin} (o no se puede mover).",
+    "serialNotSupported": "{sku} lleva número de serie: por ahora se transfiere desde la web."
   }
 }

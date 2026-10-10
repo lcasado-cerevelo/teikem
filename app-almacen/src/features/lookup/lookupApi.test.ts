@@ -29,7 +29,7 @@ describe('searchBalances', () => {
     const result = await searchBalances('wh-1', 'ABC', 'p1')
     expect(getMock.mock.calls[0][1].params.query).toEqual({ warehousePublicIds: ['wh-1'], productPublicIds: ['p1'], take: 50 })
     expect(result.fromCache).toBe(false)
-    expect(result.rows).toEqual([{ id: 1, binCode: 'B-5', productPublicId: 'p1', sku: 'A', productName: 'Uno', lotNumber: null, qtyOnHand: 10, qtyAvailable: 8 }])
+    expect(result.rows).toEqual([{ id: 1, binId: null, lotId: null, zoneTypeCode: null, binCode: 'B-5', productPublicId: 'p1', sku: 'A', productName: 'Uno', lotNumber: null, qtyOnHand: 10, qtyAvailable: 8 }])
   })
 
   it('sin producto local, busca por texto libre (cubre posición)', async () => {

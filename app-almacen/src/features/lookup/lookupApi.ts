@@ -16,9 +16,12 @@ export interface LookupResult {
   fetchedAtUtc: string
 }
 
-function mapRows(items: { id?: number; binCode?: string | null; productPublicId?: string; sku?: string | null; productName?: string | null; lotNumber?: string | null; qtyOnHand?: number; qtyAvailable?: number }[] | null | undefined): BalanceRow[] {
+function mapRows(items: { id?: number; binId?: number | null; lotId?: number | null; zoneTypeCode?: string | null; binCode?: string | null; productPublicId?: string; sku?: string | null; productName?: string | null; lotNumber?: string | null; qtyOnHand?: number; qtyAvailable?: number }[] | null | undefined): BalanceRow[] {
   return (items ?? []).map((r, i) => ({
     id: r.id ?? i,
+    binId: r.binId ?? null,
+    lotId: r.lotId ?? null,
+    zoneTypeCode: r.zoneTypeCode ?? null,
     binCode: r.binCode ?? null,
     productPublicId: r.productPublicId ?? '',
     sku: r.sku ?? '',

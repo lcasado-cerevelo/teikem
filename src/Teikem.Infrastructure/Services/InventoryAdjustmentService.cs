@@ -164,6 +164,33 @@ public sealed class InventoryAdjustmentService(TeikemDbContext db, ILookupCache 
         return new MovementResultDto(await reads.TransactionsByIdsAsync(ids, ct), await reads.BalancesForKeysAsync(keys, ct));
     }
 
+    /// <summary>
+    /// Transferencia desde el aparato del almacén (2026-10-10, permiso warehouse.transfer): SOLO dentro de un almacén (el indicado o el único activo)
+    /// y sin tocar posiciones de cuarentena, en renta ni de cross-dock (esas tienen su propio flujo: daños, rentas, cross-dock). El resto de las reglas es
+    /// la de <see cref="TransferAsync"/> (lo reservado no se mueve → 409 insufficient_stock).
+    /// </summary>
+    public async Task<MovementResultDto> TransferInWarehouseAsync(TransferRequest req, CancellationToken ct)
+    {
+        if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
+        if (req.ToWarehousePublicId is not null && req.ToWarehousePublicId != req.FromWarehousePublicId)
+            throw new ValidationException("toWarehousePublicId", AdjustmentRules.TransferSameWarehouseOnly);
+        if (req.FromBinId is int fromId && req.ToBinId is int toId)
+        {
+            var warehouse = await ResolveWarehouseOrDefaultAsync(req.FromWarehousePublicId, ct);
+            var blocked = new List<int>();
+            foreach (var code in new[] { ZoneTypes.Quarantine, ZoneTypes.Rental, ZoneTypes.CrossDock })
+                if (await lookups.TryGetIdAsync(LookupDomains.ZoneType, code, ct) is int id) blocked.Add(id);
+            var bins = await (from b in db.Set<WarehouseBin>().AsNoTracking()
+                              join z in db.Set<WarehouseZone>().AsNoTracking() on b.WarehouseZoneId equals z.WarehouseZoneId
+                              where b.WarehouseId == warehouse.WarehouseId && (b.WarehouseBinId == fromId || b.WarehouseBinId == toId)
+                              select new { b.Code, ZoneType = z.ZoneTypeLookupId }).ToListAsync(ct);
+            foreach (var b in bins)
+                if (b.ZoneType is int zt && blocked.Contains(zt))
+                    throw new StatusRuleException(AdjustmentRules.TransferZoneNotAllowed(b.Code));
+        }
+        return await TransferAsync(req with { ToWarehousePublicId = null }, ct);
+    }
+
     // ================================================================ ledger
 
     /// <summary>Contabiliza en el ledger y devuelve los ids de los movimientos en el orden de los postings.</summary>

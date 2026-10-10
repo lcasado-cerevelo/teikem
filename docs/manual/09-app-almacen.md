@@ -990,3 +990,30 @@ porque el supervisor ya corrigió una línea) y la sección **Lote A8** (lo que 
 ### Contar una posición que el sistema cree vacía (2026-10-09)
 
 Al escanear una posición sin existencia en el sistema, la app **ya no rechaza** con *«Los filtros no seleccionan inventario en mano para contar; amplíe los filtros o agregue líneas a mano.»*: abre el conteo vacío de esa posición y usted escanea o elige de la lista lo que encuentre (sección «Lo que se espera aquí» dice que el sistema no espera nada). Se termina con **Terminar esta posición** como siempre; al reconciliar en la web, lo encontrado entra como ajuste de entrada en esa posición. (API: `POST /api/v1/cycle-counts` con `binIds` de una sola posición y `allowEmpty = true`.)
+
+## Transferir (2026-10-10)
+
+**Qué hace.** Mueve inventario de una posición a otra **del mismo almacén** desde el aparato. Pasos: posición de origen → producto → lote (si el producto lo trae) → cantidad → posición de destino → *Transferir*.
+
+**Quién puede.** Permiso `warehouse.transfer` (módulo de inventario). Lo trae el rol *Operador de almacén* y quien ya tiene `inventory.adjust` (lo implica). Sin el permiso no aparece el botón.
+
+**Cómo se usa.**
+- **Menú principal → Transferir.** Escanee la posición de origen (o búsquela en la lista); toque el producto de la lista de lo que hay ahí o escanéelo; si el producto tiene varios lotes, elija el lote; escriba la cantidad (la pantalla dice cuánto se puede mover: en mano − reservado) y *Siguiente*; escanee el destino y confirme.
+- **Desde Consultar → «Mover».** Al consultar una posición, cada producto con algo disponible trae *Mover*; al consultar un producto, cada fila con posición y disponible trae *Mover*. Abre Transferir con la posición de origen y el producto ya puestos.
+- Necesita señal (mueve inventario en el servidor, sin cola; como Daño). Con la calculadora de cantidad también cuenta por cajas si el producto tiene empaque.
+
+**Reglas y mensajes.**
+
+| Caso | Mensaje (HTTP) |
+|---|---|
+| Cantidad mayor que lo movible | `Solo se pueden mover {qty} (lo reservado no se mueve).` (pantalla); el servidor: 409 `insufficient_stock` |
+| Origen = destino | `El destino es la misma posición de origen.` (pantalla) / `La posición de origen y la de destino son la misma.` (400) |
+| Otro almacén | `Desde el aparato solo se transfiere dentro del mismo almacén.` (400) |
+| Posición de cuarentena, en renta o de cross-dock | `La posición {bin} es de cuarentena, en renta o de cross-dock: no se transfiere desde aquí (use Daño, Rentas o Cross-dock).` (422) |
+| Posición inexistente / inactiva | `No hay una posición con ese código en este almacén.` / `La posición {bin} está inactiva.` |
+| Producto con número de serie | `{sku} lleva número de serie: por ahora se transfiere desde la web.` |
+| Sin señal | `Transferir necesita señal: mueve el inventario en el servidor. Inténtalo con señal.` |
+
+API: `POST /api/v1/inventory/transfers/in-warehouse` (`warehouse.transfer`); la transferencia de la web (`POST /inventory/transfers`, `inventory.adjust`) no cambia. El Kárdex la registra como TRANSFER.
+
+**Menú principal.** Orden de los botones: Consultar, Transferir, Recibir, Acomodar, Despacho, Conteo y Daño.

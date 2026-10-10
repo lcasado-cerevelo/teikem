@@ -5735,3 +5735,25 @@ Esa unidad no existe en el catálogo *Unidad de medida*. Agréguela en el catál
 
 **No me sale el selector de Caja en la calculadora de la app.**
 El producto no tiene empaque o la app no ha sincronizado desde la actualización: sincronice y reintente.
+
+## Transferir desde el aparato (2026-10-10)
+
+Detalle en [Transferir](09-app-almacen.md#transferir-2026-10-10).
+
+**No me sale el botón Transferir (ni «Mover» en Consultar).**
+Su usuario no tiene el permiso `warehouse.transfer`. El *Operador de almacén* y quien ya puede ajustar inventario lo tienen; si usa un rol propio, pídale al administrador que se lo agregue (Sistema → Roles).
+
+**Dice `Solo se pueden mover {qty} (lo reservado no se mueve).`**
+Parte de lo que hay en esa posición está reservado para un despacho. Mueva solo lo disponible o espere a que se despache.
+
+**Dice `La posición {bin} es de cuarentena, en renta o de cross-dock: no se transfiere desde aquí…`**
+Esas posiciones tienen su propio flujo: lo dañado con *Daño*, lo rentado con Rentas y el cross-dock con su pantalla.
+
+**Dice `Desde el aparato solo se transfiere dentro del mismo almacén.`**
+Para mover entre almacenes use la web (Transferencias y ajustes).
+
+**Dice `{sku} lleva número de serie: por ahora se transfiere desde la web.`**
+Los productos con serie se mueven desde la web (Transferencias y ajustes), eligiendo las series.
+
+**Dice `Transferir necesita señal…`**
+La transferencia se hace en el servidor para poder confirmar la existencia: reintente con señal.

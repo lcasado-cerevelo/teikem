@@ -41,6 +41,7 @@ export default function HomeScreen() {
   useAutoSync()
   const permissions = useMyPermissions()
   const canReportDamage = permissions?.includes('warehouse.damage') ?? false
+  const canTransfer = permissions?.includes('warehouse.transfer') ?? false
 
   const [openKind, setOpenKind] = useState<OpenKind | null>(null)
   const userId = session?.userId
@@ -102,7 +103,7 @@ export default function HomeScreen() {
 
   /** Navega a `path`, salvo que haya un documento distinto abierto (avisa cuál en vez de navegar). `ownKind` es el
    *  tipo de documento que esa pantalla retoma (undefined si no maneja ninguno, como Acomodar o Consultar). */
-  function go(path: '/receive' | '/putaway' | '/dispatch' | '/count' | '/lookup' | '/damage', ownKind?: OpenKind) {
+  function go(path: '/receive' | '/putaway' | '/dispatch' | '/count' | '/lookup' | '/damage' | '/transfer', ownKind?: OpenKind) {
     if (openKind && openKind !== ownKind) {
       Alert.alert(t(`lock.${openKind}InProgress`))
       return
@@ -151,6 +152,16 @@ export default function HomeScreen() {
       ) : null}
 
       <View style={styles.grid} testID="home-grid">
+        {/* Orden del menú (dueño, 2026-10-10): Consultar, Transferir, Recibir, Acomodar, Despacho, Conteo y Daño */}
+        <View style={styles.cell}>
+          <BigButton layout="tile" label={t('home.lookup')} icon="🔎" variant="secondary" onPress={() => go('/lookup')} />
+        </View>
+        {/* 2026-10-10: solo con el permiso warehouse.transfer (el operario) */}
+        {canTransfer ? (
+          <View style={styles.cell}>
+            <BigButton layout="tile" label={t('home.transfer')} icon="🔁" variant="secondary" onPress={() => go('/transfer')} testID="home-transfer" />
+          </View>
+        ) : null}
         <View style={styles.cell}>
           <BigButton layout="tile" label={t('home.receive')} icon="📥" onPress={() => go('/receive', 'receive')} />
         </View>
@@ -162,9 +173,6 @@ export default function HomeScreen() {
         </View>
         <View style={styles.cell}>
           <BigButton layout="tile" label={t('home.count')} icon="🔢" variant="secondary" onPress={() => go('/count', 'count')} />
-        </View>
-        <View style={styles.cell}>
-          <BigButton layout="tile" label={t('home.lookup')} icon="🔎" variant="secondary" onPress={() => go('/lookup')} />
         </View>
         {/* 2026-10-08: solo con el permiso warehouse.damage (sin saberlo, no se ofrece) */}
         {canReportDamage ? (

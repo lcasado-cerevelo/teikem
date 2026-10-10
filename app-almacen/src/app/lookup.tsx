@@ -8,7 +8,6 @@ import { useActiveWarehouse } from '../kernel/warehouse/activeWarehouse'
 import { findProductByCode } from '../kernel/warehouse/productLookup'
 import { useT } from '../kernel/i18n/useT'
 import { BigButton } from '../kernel/ui/BigButton'
-import { LineList } from '../kernel/ui/LineList'
 import { ScanField } from '../kernel/ui/ScanField'
 import { colors, fontSize, spacing } from '../kernel/ui/theme'
 import { useFormat } from '../kernel/format/useFormat'
@@ -17,11 +16,12 @@ import { KeyboardScreen } from '../kernel/ui/KeyboardScreen'
 import { ApiError, BIN_CONTENT_MAX_PAGES, BIN_CONTENT_PAGE, fetchBinContents, resolveLookupBin, searchBalances } from '../features/lookup/lookupApi'
 import { aggregateBinContents, minutesAgo, type BalanceRow, type BinContentItem } from '../features/lookup/lookupLogic'
 import { BinContentsList } from '../features/lookup/BinContentsList'
+import { BalanceRowsList } from '../features/lookup/BalanceRowsList'
 
 /** Producto o búsqueda libre: filas de saldo (como antes). Posición (Lote A8): lo que hay en ella, una fila por producto. */
 type Result =
   | { kind: 'rows'; title: string; rows: BalanceRow[]; fromCache: boolean; fetchedAtUtc: string }
-  | { kind: 'bin'; title: string; items: BinContentItem[]; fromCache: boolean; fetchedAtUtc: string; truncated: boolean }
+  | { kind: 'bin'; bin: { id: number; code: string }; title: string; items: BinContentItem[]; fromCache: boolean; fetchedAtUtc: string; truncated: boolean }
 
 /** Pantalla 7 (docs/mobile/app-almacen-plan.md §2): un solo campo (producto o posición), saldos en línea con
  *  respaldo en caché por si no hay señal (docs/lote8A-app-decisiones.md, segunda entrega).
@@ -39,6 +39,8 @@ export default function LookupScreen() {
   const [result, setResult] = useState<Result | null>(null)
   const permissions = useMyPermissions()
   const showQty = canSeeSystemQty(permissions)
+  // 2026-10-10: «Mover» (abre Transferir con la posición y el producto ya puestos) solo con el permiso warehouse.transfer
+  const canTransfer = permissions?.includes('warehouse.transfer') ?? false
 
   if (!warehousePublicId) {
     return (
@@ -65,6 +67,7 @@ export default function LookupScreen() {
         const found = await fetchBinContents(warehousePublicId!, binMatch.bin)
         setResult({
           kind: 'bin',
+          bin: { id: binMatch.bin.id, code: binMatch.bin.code },
           title: t('lookup.binResult', { bin: binMatch.bin.code }),
           items: aggregateBinContents(found.rows),
           fromCache: found.fromCache,
@@ -106,18 +109,26 @@ export default function LookupScreen() {
           {result.fromCache ? <Text style={styles.help}>{t('lookup.cachedNote', { time: f.when(result.fetchedAtUtc), minutes: minutesAgo(result.fetchedAtUtc, new Date()) })}</Text> : null}
           {result.kind === 'bin' ? (
             <>
-              <BinContentsList key={`${result.title}|${result.fetchedAtUtc}`} items={result.items} showQty={showQty} />
+              <BinContentsList
+                key={`${result.title}|${result.fetchedAtUtc}`}
+                items={result.items}
+                showQty={showQty}
+                onMove={
+                  canTransfer
+                    ? (item) => router.push({ pathname: '/transfer', params: { fromBinId: String(result.bin.id), fromBinCode: result.bin.code, productPublicId: item.productPublicId } })
+                    : undefined
+                }
+              />
               {result.truncated ? <Text style={styles.help}>{t('lookup.binTruncated', { max: BIN_CONTENT_PAGE * BIN_CONTENT_MAX_PAGES })}</Text> : null}
             </>
           ) : (
-            <LineList
-              items={result.rows.map((r) => ({
-                id: r.id,
-                title: `${r.sku} · ${r.productName}`,
-                subtitle: [r.binCode, r.lotNumber, `${t('lookup.onHand')}: ${f.qty(r.qtyOnHand)}`, `${t('lookup.available')}: ${f.qty(r.qtyAvailable)}`].filter(Boolean).join(' · '),
-              }))}
-              removeLabel={t('common.remove')}
-              emptyLabel={t('lookup.empty')}
+            <BalanceRowsList
+              rows={result.rows}
+              onMove={
+                canTransfer
+                  ? (r) => router.push({ pathname: '/transfer', params: { fromBinId: String(r.binId), fromBinCode: r.binCode ?? '', productPublicId: r.productPublicId } })
+                  : undefined
+              }
             />
           )}
         </>

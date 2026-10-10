@@ -18435,6 +18435,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/inventory/transfers/in-warehouse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TransferRequest"];
+                    "text/json": components["schemas"]["TransferRequest"];
+                    "application/*+json": components["schemas"]["TransferRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MovementResultDto"];
+                        "application/json": components["schemas"]["MovementResultDto"];
+                        "text/json": components["schemas"]["MovementResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
