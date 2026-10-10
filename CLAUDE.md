@@ -3,7 +3,7 @@
 > ## ⛔ EN PRODUCCIÓN DESDE 2026-10-09
 > - **`Diseño/logistica-db-estructura.sql` y `Diseño/logistica-db-seed.sql` están CONGELADOS: no se editan, jamás.** Un cambio de estructura **o de datos** va en el archivo **`Diseño/logistica-db-update.sql`** (UN solo archivo para estructura y datos, **idempotente**; se agrega al final) (ver [Diseño/logistica-db-update.sql](Diseño/logistica-db-update.sql)). `FrozenSqlTests` falla si se tocan.
 > - **Recrear la base (`db-reset`, `scripts/recrear-base*.ps1`) está PROHIBIDO fuera de desarrollo.** En producción solo `db-update` (con simulación y respaldo).
-> - La rama `Depot-Implementation` guarda el estado de la puesta en producción de Advance Depot, para dar soporte a su operación. **No se edita, no se le hace push ni cherry-pick a menos que el dueño lo ordene** (última puesta al día con `master`: 2026-10-10).
+> - **REGLA DEL DUEÑO (2026-10-10): se trabaja en la rama `Depot-Implementation`.** Es la rama de trabajo y de despliegue de Advance Depot: ahí se hacen los cambios y los push. **Ningún agente crea otra rama (ni local ni remota) ni abre PR sin que el dueño se lo pida expresamente**; si el entorno asigna una rama distinta, se pregunta al dueño antes de escribir nada.
 
 Plataforma de logística multi-tenant. Backend .NET 8 (ASP.NET Core + EF Core 8 + SQL Server). La referencia única de
 funcionalidad es `Diseño/logistica-funcionalidades-maestro.md`; el esquema vive en `Diseño/logistica-db-estructura.sql`
@@ -29,7 +29,7 @@ y `Diseño/logistica-db-seed.sql`. Se construye por lotes (ver `docs/lote1-decis
   seed. Nada de migraciones EF ni de otros scripts. Las entidades se mapean 1:1 en `src/Teikem.Infrastructure/Persistence/Configurations`.
 - **Recrear la base está PROHIBIDO fuera de desarrollo**: `db-reset` (el API lo rechaza si el ambiente no es Development) y
   `scripts/recrear-base.ps1` / `recrear-base-depot.ps1` solo se corren en la máquina de desarrollo, contra una base local. Jamás en producción.
-- **Rama `Depot-Implementation`** (CONGELADA: solo se toca cuando el dueño lo ordena): foto de lo que se puso en producción para Advance Depot (base, API, web y app); se usa para dar soporte a
+- **Rama `Depot-Implementation`** (rama de trabajo y de despliegue, por orden del dueño del 2026-10-10): es lo que se pone en producción para Advance Depot (base, API, web y app). Los cambios se hacen y se empujan aquí. **Prohibido crear ramas nuevas o abrir PR sin orden expresa del dueño.** Las reglas de SQL congelado de arriba siguen vigentes.
   su operación. El trabajo sigue en `master`.
 - **Permiso nuevo = también propagarlo a los roles YA clonados** en la misma sección de `Diseño/logistica-db-update.sql`: el `PermissionSeeder` solo propaga a los roles de cada compañía los códigos que son nuevos para la plantilla *en su corrida*, y si el SQL ya los puso antes, no llegan (pasó con `warehouse.transfer`/`warehouse.adjust`, 2026-10-10: el aparato no mostraba Transferir ni Ajustar). Solo agregar, nunca quitar.
 - **Permisos sembrados desde código** en `PermissionCatalog` (y espejados en el seed). Módulos por tenant: los endpoints
