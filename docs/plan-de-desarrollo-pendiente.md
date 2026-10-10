@@ -335,3 +335,10 @@ Sin SMS ni biometría en MFA (decisión 11 del lote 1); `RentalCharge` y factura
 - **Permiso**: nuevo `warehouse.issue` (propagarlo a los roles ya clonados en `Diseño/logistica-db-update.sql`).
 - **SLA de contratos**: se captura en horas por tipo de servicio (igual que el backend).
 - **Contratos del cliente en la web**: pestañas dentro de la ficha del cliente (contrato, tarifas, SLA, servicios especiales).
+
+## Decisiones de F-A2 (2026-10-10)
+- Contratos múltiples: la pestaña Contrato edita el vigente, con selector de contrato y botón «Nuevo contrato».
+- Contrato: se muestran todos los campos (título, número, fechas, renovación automática, moneda, disparador de cobro, notas).
+- SLA: un renglón por tipo de servicio con horas máximas, ventana de recogido, meta de puntualidad y penalidad; empieza vacío.
+- **Cotización (`POST /api/v1/billing/contract-rate-quote`): fuera de F-A2. PENDIENTE para cuando se construyan las órdenes de venta (P4): ahí se hace el panel «Simular cotización» / uso en la orden.**
+- Por defecto (sin objeción del dueño): el SLA se captura solo en la pestaña SLA (no en el alta del cliente); tarifas nuevas con modal «Vigente desde» (hoy por omisión); tipos de servicio especial: alta con «+ Nuevo tipo…», sin gestión de baja/reactivación; el recorrido Playwright pendiente de F-A1 se cierra en F-A2.
