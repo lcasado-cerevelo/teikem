@@ -9,7 +9,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AccessProvider } from '../../kernel/access'
 import { setLang } from '../../kernel/i18n/i18n'
-import { downloadBinSheetsPdf } from '../../kernel/ui/binSheetPdf'
+import { downloadBarcodeReportPdf } from '../../kernel/ui/barcodeReportPdf'
 import LocationsScreen from './LocationsScreen'
 
 interface Call {
@@ -29,9 +29,9 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
   return { ...actual, api: actual.createApiClient({ baseUrl: 'http://api.test', fetch }) }
 })
 
-vi.mock('../../kernel/ui/binSheetPdf', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../kernel/ui/binSheetPdf')>()
-  return { ...actual, downloadBinSheetsPdf: vi.fn(async (spec: Parameters<typeof actual.downloadBinSheetsPdf>[0]) => actual.planBinSheets(spec.bins, spec)) }
+vi.mock('../../kernel/ui/barcodeReportPdf', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../kernel/ui/barcodeReportPdf')>()
+  return { ...actual, downloadBarcodeReportPdf: vi.fn(async (spec: Parameters<typeof actual.downloadBarcodeReportPdf>[0]) => actual.planBarcodeReport(spec.groups, 'auto', 612)) }
 })
 
 const WH = '11111111-1111-1111-1111-111111111111'
@@ -95,7 +95,7 @@ beforeAll(() => setLang('es'))
 beforeEach(() => {
   mock.calls = []
   mock.bins = initialBins()
-  vi.mocked(downloadBinSheetsPdf).mockClear()
+  vi.mocked(downloadBarcodeReportPdf).mockClear()
 })
 
 describe('Ubicaciones · productos por posición', () => {
@@ -154,17 +154,18 @@ describe('Ubicaciones · productos por posición', () => {
     await user.click(screen.getByRole('button', { name: 'Productos por posición' }))
     const dialog = await screen.findByRole('dialog', { name: 'Productos por posición' })
     await user.click(within(dialog).getByRole('button', { name: 'Generar PDF' }))
-    await waitFor(() => expect(downloadBinSheetsPdf).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(downloadBarcodeReportPdf).toHaveBeenCalledTimes(1))
     const read = readCalls()[0]
     expect(read.url.searchParams.getAll('binIds')).toEqual(['10', '12'])
     expect(read.url.searchParams.get('take')).toBe('200')
-    const spec = vi.mocked(downloadBinSheetsPdf).mock.calls[0][0]
-    expect(spec.bins.map((b) => [b.code, b.products.map((p) => p.sku)])).toEqual([
+    const spec = vi.mocked(downloadBarcodeReportPdf).mock.calls[0][0]
+    // mismo formato que «Códigos de barras»: un grupo por posición y una celda por producto
+    expect(spec.groups.map((g) => [g.title.split(' ')[1], g.rows.map((r) => r.title)])).toEqual([
       ['A-01', ['TORN-01']],
       ['B-03', ['TUER-01']],
     ])
-    expect(spec.warehouse).toBe('ALM-01 · Almacén principal')
-    expect(await screen.findByText(/Se generaron 2 página\(s\) de 2 posición\(es\)/)).toBeInTheDocument()
+    expect(spec.filters[0]).toEqual({ label: 'Almacén', value: 'ALM-01 · Almacén principal' })
+    expect(await screen.findByText(/PDF generado: 2 producto\(s\) en 2 posición\(es\)/)).toBeInTheDocument()
     expect(screen.queryByRole('dialog', { name: 'Productos por posición' })).toBeNull()
   })
 
@@ -178,14 +179,14 @@ describe('Ubicaciones · productos por posición', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Productos por posición' })
     expect(within(dialog).getByLabelText('Las posiciones del filtro actual (2)')).toBeChecked()
     await user.click(within(dialog).getByRole('button', { name: 'Generar PDF' }))
-    await waitFor(() => expect(downloadBinSheetsPdf).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(downloadBarcodeReportPdf).toHaveBeenCalledTimes(1))
     expect(readCalls()[0].url.searchParams.get('aisle')).toBe('B')
-    expect(vi.mocked(downloadBinSheetsPdf).mock.calls[0][0].bins.map((b) => b.code)).toEqual(['B-03', 'B-04'])
+    expect(vi.mocked(downloadBarcodeReportPdf).mock.calls[0][0].groups.map((g) => g.title.split(' ')[1])).toEqual(['B-03', 'B-04'])
   })
 
   it('si el PDF falla el modal lo dice; sin productos (vacías omitidas) avisa sin generar', async () => {
     const user = userEvent.setup()
-    vi.mocked(downloadBinSheetsPdf).mockRejectedValueOnce(new Error('jsPDF'))
+    vi.mocked(downloadBarcodeReportPdf).mockRejectedValueOnce(new Error('jsPDF'))
     wrap()
     await screen.findByText('A-01')
     await user.click(screen.getByRole('button', { name: 'Productos por posición' }))
@@ -199,15 +200,19 @@ describe('Ubicaciones · productos por posición', () => {
     await user.click(screen.getByRole('checkbox', { name: 'Marcar la posición A-02' }))
     await user.click(screen.getByRole('button', { name: 'Productos por posición' }))
     dialog = await screen.findByRole('dialog', { name: 'Productos por posición' })
-    vi.mocked(downloadBinSheetsPdf).mockClear()
+    vi.mocked(downloadBarcodeReportPdf).mockClear()
     await user.click(within(dialog).getByRole('button', { name: 'Generar PDF' }))
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('No hay nada para imprimir')
-    expect(downloadBinSheetsPdf).not.toHaveBeenCalled()
-    // con el interruptor sí: página "Sin productos"
+    expect(downloadBarcodeReportPdf).not.toHaveBeenCalled()
+    // marcada también una con productos: sale el PDF y, con el interruptor, la vacía se NOMBRA en un aviso (sin él, solo se cuenta)
+    await user.click(within(dialog).getByRole('button', { name: 'Cancelar' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Marcar la posición A-01' }))
+    await user.click(screen.getByRole('button', { name: 'Productos por posición' }))
+    dialog = await screen.findByRole('dialog', { name: 'Productos por posición' })
     await user.click(within(dialog).getByRole('switch', { name: 'Incluir posiciones vacías' }))
     await user.click(within(dialog).getByRole('button', { name: 'Generar PDF' }))
-    await waitFor(() => expect(downloadBinSheetsPdf).toHaveBeenCalledTimes(1))
-    expect(vi.mocked(downloadBinSheetsPdf).mock.calls[0][0].includeEmpty).toBe(true)
+    await waitFor(() => expect(downloadBarcodeReportPdf).toHaveBeenCalledTimes(1))
+    expect(vi.mocked(downloadBarcodeReportPdf).mock.calls[0][0].notices).toEqual(['Posiciones sin productos (1): A-02.'])
   })
 
   it('sin inventory.view no se pinta "Productos por posición"', async () => {

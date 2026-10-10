@@ -254,7 +254,9 @@ Pantalla: ficha del almacén → **Datos** → sección **Recepción** ([F6 — 
 
 ### 1.5 Productos por posición (informe)
 
-Qué es: un listado, **una posición por página**, con los productos que hay en cada posición (SKU, nombre y código de barras), para imprimirlo y
+Qué es: un listado en **hoja carta**, con el **mismo formato del reporte de «Códigos de barras»** (encabezado y pie de marca, rejilla de 3 columnas con varios códigos
+por página; 2026-10-10): cada posición abre un grupo con su título («Posición A-01 · Zona A · Pasillo 01 — 3 producto(s)») y debajo, en celdas, el código de barras de cada
+producto que tiene (SKU en negrita, nombre y, si el producto tiene su propio código de barras, ese; si no, el SKU). Sirve para imprimirlo y
 **escanear los códigos desde el papel** (por ejemplo, en un rack de 20 a 30 pies donde el producto o su etiqueta no se alcanzan a leer). Es un
 listado de lo que hay **en el momento de generarlo**: no guarda ningún estado (no registra cuándo se imprimió ni avisa cuando una lista cambia).
 Reemplaza a las "hojas de posición" del Lote 23 (ver `docs/lote24-decisiones.md`), que se quitaron.
@@ -277,9 +279,19 @@ esquema y del modelo; una base que ya las tenga puede dejarlas (son nulables y n
 SheetPrintedAtUtc, SheetContentChangedAtUtc;`.
 
 Casos frecuentes:
-- *"Una posición no sale en el informe."* Si no tiene productos con existencia no sale (a menos que se pida **Incluir posiciones vacías** en la
-  pantalla). Un producto cuyo total en la posición, sumando lotes, es 0 no cuenta.
+- *"Una posición no sale en el informe."* Si no tiene productos con existencia no lleva códigos: con **Incluir posiciones vacías** se NOMBRA en un aviso del
+  PDF («Posiciones sin productos (N): …») y sin él solo se cuenta. Si todo lo elegido está vacío no se genera nada. Un producto cuyo total en la posición, sumando lotes, es 0 no cuenta.
 - *"Moví mercancía y el papel quedó viejo."* El informe no avisa: vuelva a generarlo cuando lo necesite.
+
+**Sin tope de impresión (2026-10-10):** se imprimen todas las posiciones (o etiquetas, en las etiquetas de posición y de producto) que se pidan. Si son más de 500, la pantalla solo
+avisa «Son N: el PDF será grande y puede tardar un poco. Se imprimen todas; no hay límite.» y no bloquea el botón. La lectura para exportar y para los informes llega hasta 100 000 filas y, si
+alguna vez se cortara, lo dice («Se exportaron las primeras N filas…»).
+
+**«N productos» en la tabla de Posiciones (2026-10-10):** cuando una posición tiene más de un producto, la columna *Producto* dice «N productos» y ese texto es un enlace que abre
+la ventana **Productos en {posición}** con SKU, producto, lote, en mano y disponible (`GET /inventory/balances?binIds=`).
+
+**Exportar Posiciones (2026-10-10):** una posición con varios productos sale en **varias líneas, una por producto** (con una columna *SKU*; la columna *En mano* lleva lo de ese
+producto en esa posición, lotes sumados). Las de 0 o 1 producto salen en una sola línea como siempre.
 
 Pantalla: Almacén → **Posiciones** — botón **Productos por posición**, casillas y filtro **Pasillo**
 ([F15 — Productos por posición](frontend/f15-productos-por-posicion.md)).

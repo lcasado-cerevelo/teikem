@@ -4,7 +4,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { setLang, t } from '../../kernel/i18n/i18n'
 import { planBinLabels, type BinLabelSpec } from '../../kernel/ui/binLabelPdf'
 import type { ProductListItemDto } from './api'
-import { PRODUCT_LABELS_MAX, PRODUCT_LABELS_PERMISSION, printProductLabels, productLabelDetails, toProductLabel } from './productLabels'
+import { PRODUCT_LABELS_NOTICE, PRODUCT_LABELS_PERMISSION, printProductLabels, productLabelDetails, toProductLabel } from './productLabels'
 
 beforeAll(() => setLang('es'))
 
@@ -49,10 +49,10 @@ describe('productLabels', () => {
     expect(d.download).not.toHaveBeenCalled()
   })
 
-  it('pasado el tope avisa sin generar', async () => {
-    const d = flow(Array.from({ length: PRODUCT_LABELS_MAX + 1 }, (_, i) => product(i + 1, `S-${i + 1}`, 'x')))
-    expect(await printProductLabels(d, { spec, t, lang: 'es' })).toEqual({ status: 'tooMany', total: PRODUCT_LABELS_MAX + 1, max: PRODUCT_LABELS_MAX })
-    expect(d.download).not.toHaveBeenCalled()
+  it('sin tope: más de 500 productos también se imprimen todos', async () => {
+    const d = flow(Array.from({ length: PRODUCT_LABELS_NOTICE + 1 }, (_, i) => product(i + 1, `S-${i + 1}`, 'x')))
+    expect(await printProductLabels(d, { spec, t, lang: 'es' })).toMatchObject({ status: 'printed' })
+    expect(d.download).toHaveBeenCalledTimes(1)
   })
 
   it('un SKU con caracteres que Code 128 no admite sale sin código de barras y se avisa', async () => {

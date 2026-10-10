@@ -85,8 +85,7 @@ function ProductLabelsModal({ filters, onClose }: { filters: ProductFilterState;
         { fetchProducts: () => exportProducts(productListQuery(filters)), download: (spec) => downloadBinLabelsPdf(spec) },
         { spec: { title: t(`${S}.pdfTitle`), company: me?.tenantName, locale: lang, size, orientation }, t, lang },
       )
-      if (result.status === 'tooMany') setNotice(t(`${S}.tooMany`, { count: String(result.total), max: String(result.max) }))
-      else if (result.status === 'nothing') setNotice(t(`${S}.nothing`))
+      if (result.status === 'nothing') setNotice(t(`${S}.nothing`))
       else if (result.status === 'printed') {
         const summary = printedLabelsSummary(result, size, t)
         if (result.notices.length > 0) setWarnings({ summary, notices: result.notices })

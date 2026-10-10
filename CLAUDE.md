@@ -3,7 +3,7 @@
 > ## ⛔ EN PRODUCCIÓN DESDE 2026-10-09
 > - **`Diseño/logistica-db-estructura.sql` y `Diseño/logistica-db-seed.sql` están CONGELADOS: no se editan, jamás.** Un cambio de estructura **o de datos** va en el archivo **`Diseño/logistica-db-update.sql`** (UN solo archivo para estructura y datos, **idempotente**; se agrega al final) (ver [Diseño/logistica-db-update.sql](Diseño/logistica-db-update.sql)). `FrozenSqlTests` falla si se tocan.
 > - **Recrear la base (`db-reset`, `scripts/recrear-base*.ps1`) está PROHIBIDO fuera de desarrollo.** En producción solo `db-update` (con simulación y respaldo).
-> - La rama `Depot-Implementation` guarda el estado de la puesta en producción de Advance Depot, para dar soporte a su operación.
+> - La rama `Depot-Implementation` guarda el estado de la puesta en producción de Advance Depot, para dar soporte a su operación. **No se edita, no se le hace push ni cherry-pick a menos que el dueño lo ordene** (última puesta al día con `master`: 2026-10-10).
 
 Plataforma de logística multi-tenant. Backend .NET 8 (ASP.NET Core + EF Core 8 + SQL Server). La referencia única de
 funcionalidad es `Diseño/logistica-funcionalidades-maestro.md`; el esquema vive en `Diseño/logistica-db-estructura.sql`
@@ -29,8 +29,9 @@ y `Diseño/logistica-db-seed.sql`. Se construye por lotes (ver `docs/lote1-decis
   seed. Nada de migraciones EF ni de otros scripts. Las entidades se mapean 1:1 en `src/Teikem.Infrastructure/Persistence/Configurations`.
 - **Recrear la base está PROHIBIDO fuera de desarrollo**: `db-reset` (el API lo rechaza si el ambiente no es Development) y
   `scripts/recrear-base.ps1` / `recrear-base-depot.ps1` solo se corren en la máquina de desarrollo, contra una base local. Jamás en producción.
-- **Rama `Depot-Implementation`**: foto de lo que se puso en producción para Advance Depot (base, API, web y app); se usa para dar soporte a
+- **Rama `Depot-Implementation`** (CONGELADA: solo se toca cuando el dueño lo ordena): foto de lo que se puso en producción para Advance Depot (base, API, web y app); se usa para dar soporte a
   su operación. El trabajo sigue en `master`.
+- **Permiso nuevo = también propagarlo a los roles YA clonados** en la misma sección de `Diseño/logistica-db-update.sql`: el `PermissionSeeder` solo propaga a los roles de cada compañía los códigos que son nuevos para la plantilla *en su corrida*, y si el SQL ya los puso antes, no llegan (pasó con `warehouse.transfer`/`warehouse.adjust`, 2026-10-10: el aparato no mostraba Transferir ni Ajustar). Solo agregar, nunca quitar.
 - **Permisos sembrados desde código** en `PermissionCatalog` (y espejados en el seed). Módulos por tenant: los endpoints
   de un módulo llevan `[RequireModule(ModuleKeys.X)]`.
 - **Fuentes de datos para vistas/indicadores/gráficos**: cada módulo registra sus `IDataSource` en `DependencyInjection`
@@ -57,7 +58,7 @@ y `Diseño/logistica-db-seed.sql`. Se construye por lotes (ver `docs/lote1-decis
 - El contrato del kit y los patrones de pantalla están en `web-app/KIT.md`: quien construye una pantalla lee ese archivo, no el núcleo.
 - Textos de interfaz con `t('clave')` en `src/kernel/i18n/{es,en}.json`; identificadores en inglés; comentarios en español.
 - Permisos y módulos siempre con `<Can perm>` / `<ModuleGate module>` usando los códigos exactos del API.
-- **Ordenar una tabla paginada por el servidor ordena TODO lo que dice el filtro**, no solo la página en pantalla (`DataTable` lee la consulta completa con `exportRows`, hasta 10 000 filas, y ordena y pagina ahí): toda tabla paginada por el servidor debe llevar `exportRows`.
+- **Ordenar una tabla paginada por el servidor ordena TODO lo que dice el filtro**, no solo la página en pantalla (`DataTable` lee la consulta completa con `exportRows`, hasta 100 000 filas, y ordena y pagina ahí): toda tabla paginada por el servidor debe llevar `exportRows`.
 - Full responsive (360 px en adelante), sin scroll horizontal de página; convenciones de interfaz del documento maestro (ordenar columnas, buscador libre `QBox`, chips sin envolver, idioma sin reiniciar).
 - Compuerta antes de cualquier revisión: `npm run check` (tipos generados, tsc, oxlint, vitest, build). Recorridos Playwright en `web-app/e2e` contra el API real.
 - Cierre de un lote de frontend: `docs/frontend/loteFN-decisiones.md` + capítulo del manual de pantallas en `docs/manual/frontend/` con capturas.

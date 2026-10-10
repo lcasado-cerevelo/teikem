@@ -5,8 +5,8 @@
 
 /** Tamaño de página de las lecturas (tope de `take` en el API). */
 export const EXPORT_PAGE_SIZE = 200
-/** Máximo de filas que se leen para una exportación. */
-export const EXPORT_MAX_ROWS = 10_000
+/** Máximo de filas que se leen para una exportación o un informe (2026-10-10, Luis: sin restricciones prácticas; si se llegara a cortar, se AVISA). */
+export const EXPORT_MAX_ROWS = 100_000
 
 /** Forma de una página del API: `items` y el `total` de la consulta (sin paginar). */
 export interface PageLike<T> {

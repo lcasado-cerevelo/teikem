@@ -458,3 +458,7 @@ button.whs-zone-main:focus-visible{outline:2px solid var(--flow);outline-offset:
 .split-list li{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 8px;background:var(--bg-2);border-radius:6px}
 .split-list li .mono{flex:1 1 140px}
 .split-cap{color:var(--warn,#e0a800);font-size:12px;font-weight:600}
+
+/* Ubicaciones: «N productos» es un enlace que abre la ventana con los productos de la posición */
+.loc-link{border:none;background:none;padding:0;color:var(--flow-2);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.loc-link:focus-visible{outline:2px solid var(--flow);outline-offset:2px;border-radius:4px}

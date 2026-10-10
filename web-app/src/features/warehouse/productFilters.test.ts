@@ -20,6 +20,7 @@ const FULL: ProductFilterState = {
   warehouses: [WH],
   products: [{ publicId: P1, sku: 'GLU-100', label: 'GLU-100 · Medidor' }],
   name: '  medidor ',
+  bin: '',
   categoryIds: ['3'],
   brands: ['Abbott'],
   kpi: 'low',
@@ -28,6 +29,18 @@ const FULL: ProductFilterState = {
 
 /** Traductor de prueba: la clave y sus parámetros, para ver qué se pidió. */
 const t = (key: string, params?: Record<string, string | number>) => (params ? `${key}${JSON.stringify(params)}` : key)
+
+describe('productFilters · posición', () => {
+  it('«Posición contiene» va al API como binSearch (sin espacios), cuenta como filtro y sale en «Filtros aplicados»', () => {
+    const f = { ...FULL, kpi: null, name: '', bin: '  A-01 ' }
+    expect(productListQuery(f).binSearch).toBe('A-01')
+    expect(productListQuery({ ...f, bin: '   ' }).binSearch).toBeUndefined()
+    expect(hasProductFilters({ ...EMPTY_PRODUCT_FILTERS, bin: 'A-01' })).toBe(true)
+    expect(hasProductFilters({ ...EMPTY_PRODUCT_FILTERS, bin: '  ' })).toBe(false)
+    const applied = describeProductFilters({ ...EMPTY_PRODUCT_FILTERS, bin: 'A-01' }, { warehouses: new Map(), categories: new Map() }, t, 'inventory')
+    expect(applied).toEqual([{ label: 'warehouse.products.filters.bin', value: 'warehouse.products.reports.filters.contains{"text":"A-01"}' }])
+  })
+})
 
 describe('productFilters', () => {
   it('KPI: ?kpi= válido o nada; clic elige o quita; cada KPI con sus parámetros del API', () => {

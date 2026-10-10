@@ -57,6 +57,8 @@ const config: ExpoConfig = {
   ],
   extra: {
     appVariant: variant,
+    // Identifica esta compilación (fecha y commit); Inicio la muestra al pie para saber qué APK tiene instalado el aparato
+    buildStamp: process.env.TEIKEM_BUILD_STAMP ?? 'local',
   },
 }
 

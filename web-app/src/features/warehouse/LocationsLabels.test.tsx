@@ -160,15 +160,15 @@ describe('Ubicaciones · etiquetas de posición (Lote F16)', () => {
     expect(sheetCalls()).toEqual([])
   })
 
-  it('más de 500 en el filtro: avisa y no deja generar', async () => {
+  it('más de 500 en el filtro: avisa que el PDF es grande pero NO impide generar', async () => {
     const user = userEvent.setup()
     mock.total = 501
     wrap()
     await screen.findByText('A-10')
     await user.click(screen.getByRole('button', { name: 'Etiquetas de posición' }))
     const dialog = await screen.findByRole('dialog', { name: 'Etiquetas de posición' })
-    expect(within(dialog).getByRole('alert')).toHaveTextContent('Son 501 posiciones; el máximo por PDF es 500 etiquetas.')
-    expect(within(dialog).getByRole('button', { name: 'Generar PDF' })).toBeDisabled()
+    expect(within(dialog).getByText(/Son 501: el PDF será grande/)).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Generar PDF' })).toBeEnabled()
   })
 
   it('una posición sin código de barras posible: el PDF sale y el modal se queda con la lista; "Listo"', async () => {

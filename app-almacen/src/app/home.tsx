@@ -19,6 +19,7 @@ import {
 } from '../kernel/warehouse/activeWarehouse'
 import { runSync, useAutoSync, useIsSyncing, useLastSync, usePendingCount } from '../kernel/sync/engine'
 import { RefreshNote } from '../kernel/ui/RefreshNote'
+import { buildLabel } from '../kernel/buildInfo'
 import { syncStatusKey } from '../kernel/sync/syncStatus'
 import { BigButton } from '../kernel/ui/BigButton'
 import { WarehousePickerModal } from '../kernel/ui/WarehousePickerModal'
@@ -203,6 +204,7 @@ export default function HomeScreen() {
       />
 
       <BigButton label={t('home.signOut')} variant="secondary" onPress={() => void clearUserSession().then(() => router.replace('/login'))} />
+      <Text style={styles.build} testID="home-build">{t('home.build', { build: buildLabel() })}</Text>
     </ScrollView>
   )
 }
@@ -222,6 +224,7 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   cell: { flexBasis: '45%', flexGrow: 1 },
   syncBar: { gap: spacing.sm },
+  build: { color: colors.muted, fontSize: 12, textAlign: 'center' },
   syncText: { color: colors.muted, fontSize: fontSize.message, textAlign: 'center' },
   syncError: { color: colors.error },
 })

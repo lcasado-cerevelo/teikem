@@ -20,6 +20,8 @@ export interface ProductFilterState {
   products: readonly ProductFilterItem[]
   /** Nombre contiene (ya sin espacios sobrantes; vacío = sin filtro). */
   name: string
+  /** Posición contiene (código de la posición donde hay existencia del producto; ya sin espacios sobrantes; vacío = sin filtro). */
+  bin: string
   /** ids de categoría como texto (el API incluye las subcategorías). */
   categoryIds: readonly string[]
   brands: readonly string[]
@@ -28,7 +30,7 @@ export interface ProductFilterState {
   hasAvailable: boolean
 }
 
-export const EMPTY_PRODUCT_FILTERS: ProductFilterState = { warehouses: [], products: [], name: '', categoryIds: [], brands: [], kpi: null, hasAvailable: false }
+export const EMPTY_PRODUCT_FILTERS: ProductFilterState = { warehouses: [], products: [], name: '', bin: '', categoryIds: [], brands: [], kpi: null, hasAvailable: false }
 
 /** `?kpi=` de la URL → KPI (valor desconocido = ninguno). */
 export function parseKpiParam(value: string | null | undefined): ProductKpi | null {
@@ -75,6 +77,7 @@ export function productListQuery(f: ProductFilterState): GetQuery<'/api/v1/produ
     categoryIds: nonEmpty(f.categoryIds.map(Number)),
     brands: nonEmpty(f.brands),
     hasAvailable: f.hasAvailable || undefined,
+    binSearch: f.bin.trim() || undefined,
     ...kpiQuery(f.kpi),
   }
 }
@@ -98,7 +101,7 @@ export function adjustmentsKardexQuery(f: ProductFilterState): GetQuery<'/api/v1
 
 /** true si hay algún filtro (incluido el KPI). */
 export function hasProductFilters(f: ProductFilterState): boolean {
-  return f.warehouses.length + f.products.length + f.categoryIds.length + f.brands.length > 0 || f.name.trim() !== '' || f.kpi !== null || f.hasAvailable
+  return f.warehouses.length + f.products.length + f.categoryIds.length + f.brands.length > 0 || f.name.trim() !== '' || f.bin.trim() !== '' || f.kpi !== null || f.hasAvailable
 }
 
 type Translate = (key: string, params?: Record<string, string | number>) => string
@@ -134,6 +137,7 @@ export function describeProductFilters(
   }
   if (f.products.length > 0) out.push({ label: t('warehouse.products.filters.sku'), value: list(f.products.map((p) => p.label || p.sku || p.publicId)) })
   if (f.name.trim()) out.push({ label: t('warehouse.products.filters.name'), value: t('warehouse.products.reports.filters.contains', { text: f.name.trim() }) })
+  if (f.bin.trim()) out.push({ label: t('warehouse.products.filters.bin'), value: t('warehouse.products.reports.filters.contains', { text: f.bin.trim() }) })
   if (f.categoryIds.length > 0) {
     out.push({
       label: t('warehouse.products.filters.category'),

@@ -185,6 +185,7 @@ function ProductsTab() {
   const [warehouses, setWarehouses] = useState<string[]>(() => listParam(params, 'warehousePublicIds'))
   const [products, setProducts] = useState<ProductFilterItem[]>([])
   const [nameText, setNameText] = useState('')
+  const [binText, setBinText] = useState('')
   const [categoryIds, setCategoryIds] = useState<string[]>([])
   const [brands, setBrands] = useState<string[]>([])
   const [hasAvailable, setHasAvailable] = useState(false)
@@ -194,6 +195,7 @@ function ProductsTab() {
   const [editingPublicId, setEditingPublicId] = useState<string | null>(null)
   // Nombre va al API con una pausa (no una consulta por tecla)
   const name = useDebounced(nameText.trim(), 300)
+  const bin = useDebounced(binText.trim(), 300)
 
   // KPI elegido: vive en la URL (?kpi=) para poder enlazarlo; otro clic en el mismo lo quita
   const kpi = parseKpiParam(params.get('kpi'))
@@ -233,8 +235,8 @@ function ProductsTab() {
 
   // Un solo estado de filtros para la tabla, su Exportar y los dos reportes PDF
   const filters = useMemo<ProductFilterState>(
-    () => ({ warehouses, products, name, categoryIds, brands, kpi, hasAvailable }),
-    [warehouses, products, name, categoryIds, brands, kpi, hasAvailable],
+    () => ({ warehouses, products, name, bin, categoryIds, brands, kpi, hasAvailable }),
+    [warehouses, products, name, bin, categoryIds, brands, kpi, hasAvailable],
   )
   const baseQuery = useMemo(() => productListQuery(filters), [filters])
   const query = useMemo(() => ({ ...baseQuery, skip: (page - 1) * pageSize, take: pageSize }), [baseQuery, page, pageSize])
@@ -346,6 +348,7 @@ function ProductsTab() {
           setWarehouses([])
           setProducts([])
           setNameText('')
+          setBinText('')
           setCategoryIds([])
           setBrands([])
           setHasAvailable(false)
@@ -359,6 +362,12 @@ function ProductsTab() {
           value={nameText}
           onChange={withPageReset(setNameText)}
           placeholder={t('warehouse.products.filters.namePlaceholder')}
+        />
+        <TextFilter
+          label={t('warehouse.products.filters.bin')}
+          value={binText}
+          onChange={withPageReset(setBinText)}
+          placeholder={t('warehouse.products.filters.binPlaceholder')}
         />
         <SearchSelect label={t('warehouse.products.filters.category')} options={categoryOptions} value={categoryIds} onChange={withPageReset(setCategoryIds)} />
         <SearchSelect label={t('warehouse.products.filters.brand')} options={brandOptions} value={brands} onChange={withPageReset(setBrands)} />

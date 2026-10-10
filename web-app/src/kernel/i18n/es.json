@@ -1117,10 +1117,10 @@
     },
     "binProducts": {
       "button": "Productos por posición",
-      "hint": "PDF con una posición por página y el código de barras de cada producto que tiene, para escanear desde el papel (por ejemplo, en un rack alto).",
+      "hint": "PDF en hoja carta, igual al de códigos de barras: por cada posición, los códigos de barras de los productos que tiene, para escanear desde el papel.",
       "title": "Productos por posición",
       "pdfTitle": "Productos por posición",
-      "intro": "Una posición por página con sus productos (hasta 10 por página) y el código de barras de cada uno, para escanear desde el papel. Es un listado de lo que hay en el momento de generarlo.",
+      "intro": "Hoja carta con varios códigos por página (como el reporte de «Códigos de barras»): cada posición abre un grupo con sus productos y el código de barras de cada uno. Es un listado de lo que hay en el momento de generarlo.",
       "scope": {
         "legend": "Qué imprimir",
         "filter": "Las posiciones del filtro actual ({count})",
@@ -1128,8 +1128,7 @@
         "selectedNone": "Para imprimir solo algunas, márquelas en la lista con sus casillas."
       },
       "includeEmpty": "Incluir posiciones vacías",
-      "includeEmptyHint": "Sin activarlo, las posiciones sin productos no se imprimen. Activado, salen con la página «Sin productos».",
-      "tooMany": "Son {count} posiciones; el máximo por impresión es {max}. Acote con los filtros o marque menos posiciones.",
+      "includeEmptyHint": "Las posiciones sin productos no llevan códigos. Activado, se nombran en un aviso del PDF; desactivado, solo se cuentan.",
       "noneInScope": "No hay posiciones en lo que eligió.",
       "nothing": "No hay nada para imprimir: las posiciones elegidas no tienen productos. Active «Incluir posiciones vacías» para imprimirlas.",
       "generate": "Generar PDF",
@@ -1137,12 +1136,11 @@
       "cancel": "Cancelar",
       "progress": {
         "read": "Leyendo posiciones… {done} de {total}",
-        "render": "Generando el PDF ({sheets} páginas)…"
+        "render": "Generando el PDF ({products} productos)…"
       },
       "result": {
-        "printed": "Se generaron {sheets} página(s) de {bins} posición(es).",
+        "printed": "PDF generado: {products} producto(s) en {bins} posición(es).",
         "omittedEmpty": "{count} posición(es) sin productos no se imprimieron.",
-        "withoutCode": "{count} producto(s) sin código de barras legible: vea el aviso al pie de su página.",
         "cancelled": "Impresión cancelada.",
         "error": "No se pudo generar el PDF de productos por posición. {error}"
       },
@@ -1161,7 +1159,15 @@
       "selectPage": "Seleccionar todas las de la página",
       "selected": "{count} marcadas",
       "selectedOne": "1 marcada",
-      "clearSelection": "Quitar marcas"
+      "clearSelection": "Quitar marcas",
+      "large": "Son {count}: el PDF será grande y puede tardar un poco. Se imprimen todas; no hay límite.",
+      "pdfSubtitle": "Los productos que hay en cada posición, con su código de barras para escanear con el lector. Es una foto del momento de generarlo.",
+      "warehouseFilter": "Almacén",
+      "group": "Posición {bin}{details} — {count} producto(s)",
+      "emptyOmitted": "{count} posición(es) sin productos no llevan códigos: {bins}.",
+      "emptyListed": "Posiciones sin productos ({count}): {bins}.",
+      "emptyMore": "y {count} más",
+      "nothingInReport": "Las posiciones elegidas no tienen productos."
     },
     "binLabels": {
       "button": "Etiquetas de posición",
@@ -1204,7 +1210,6 @@
       "details": {
         "warehouse": "Almacén"
       },
-      "tooMany": "Son {count} posiciones; el máximo por PDF es {max} etiquetas. Acote con los filtros o marque menos posiciones.",
       "noneInScope": "No hay posiciones en lo que eligió.",
       "nothing": "No hay posiciones para imprimir con lo que eligió.",
       "generate": "Generar PDF",
@@ -1222,7 +1227,8 @@
         "withoutCodeOne": "1 salió sin código de barras (solo con el código en texto):",
         "cancelled": "Se canceló; no se generó el PDF.",
         "error": "No se pudieron generar las etiquetas. {error}"
-      }
+      },
+      "large": "Son {count}: el PDF será grande y puede tardar un poco. Se imprimen todas; no hay límite."
     },
     "locations": {
       "title": "Posiciones",
@@ -1252,7 +1258,8 @@
         "product": "Producto",
         "capacity": "Cupo",
         "occupancy": "Ocupación",
-        "status": "Estatus"
+        "status": "Estatus",
+        "sku": "SKU"
       },
       "filters": {
         "bin": "Posición",
@@ -1269,6 +1276,17 @@
         "PARTIAL": "Parcial",
         "FULL": "Llena",
         "NO_CAPACITY": "Ocupada sin cupo"
+      },
+      "contents": {
+        "title": "Productos en {bin}",
+        "close": "Cerrar",
+        "empty": "Esta posición no tiene existencia ahora.",
+        "sku": "SKU",
+        "product": "Producto",
+        "lot": "Lote",
+        "onHand": "En mano",
+        "available": "Disponible",
+        "open": "Ver los productos de {bin}"
       }
     },
     "detail": {
@@ -1621,7 +1639,9 @@
         "name": "Nombre",
         "namePlaceholder": "Contiene…",
         "brand": "Marca",
-        "excludeUnavailable": "Excluir no disponibles"
+        "excludeUnavailable": "Excluir no disponibles",
+        "bin": "Posición",
+        "binPlaceholder": "Contiene… (p. ej. A-01)"
       },
       "reports": {
         "working": "Generando…",
@@ -3461,7 +3481,6 @@
       "pdfTitle": "Etiquetas de producto",
       "intro": "Una etiqueta por producto de la lista filtrada, con el código de barras de su SKU, el SKU en letra grande y su nombre. Cada etiqueta es una página del PDF del tamaño exacto de la etiqueta (solo la etiqueta, sin hoja). Puede volver a imprimirlas cuando quiera: no cambian nada en el sistema.",
       "working": "Leyendo productos y generando el PDF…",
-      "tooMany": "Son {count} productos; el máximo por PDF es {max} etiquetas. Acote con los filtros.",
       "nothing": "No hay productos para imprimir con los filtros actuales."
     }
   },
