@@ -30,7 +30,6 @@ y `Diseño/logistica-db-seed.sql`. Se construye por lotes (ver `docs/lote1-decis
 - **Recrear la base está PROHIBIDO fuera de desarrollo**: `db-reset` (el API lo rechaza si el ambiente no es Development) y
   `scripts/recrear-base.ps1` / `recrear-base-depot.ps1` solo se corren en la máquina de desarrollo, contra una base local. Jamás en producción.
 - **Rama `Depot-Implementation`** (rama de trabajo y de despliegue, por orden del dueño del 2026-10-10): es lo que se pone en producción para Advance Depot (base, API, web y app). Los cambios se hacen y se empujan aquí. **Prohibido crear ramas nuevas o abrir PR sin orden expresa del dueño.** Las reglas de SQL congelado de arriba siguen vigentes.
-  su operación. El trabajo sigue en `master`.
 - **Permiso nuevo = también propagarlo a los roles YA clonados** en la misma sección de `Diseño/logistica-db-update.sql`: el `PermissionSeeder` solo propaga a los roles de cada compañía los códigos que son nuevos para la plantilla *en su corrida*, y si el SQL ya los puso antes, no llegan (pasó con `warehouse.transfer`/`warehouse.adjust`, 2026-10-10: el aparato no mostraba Transferir ni Ajustar). Solo agregar, nunca quitar.
 - **Permisos sembrados desde código** en `PermissionCatalog` (y espejados en el seed). Módulos por tenant: los endpoints
   de un módulo llevan `[RequireModule(ModuleKeys.X)]`.
