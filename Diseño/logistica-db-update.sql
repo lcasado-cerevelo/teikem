@@ -204,3 +204,24 @@ WHERE t.Name = N'Advance Depot'
   AND t.DefaultProductCategoryId IS NULL
   AND REPLACE(c.Name, N' ', N'') = N'AxisCare';
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-11 (d) — Cerrar una ruta (Lote 33): permiso trips.close.
+   POST /api/v1/trips/{id}/complete (IN_PROGRESS -> COMPLETED) solo si todas las ordenes de la ruta terminaron.
+   - Permiso trips.close -> plantillas Dispatcher y TenantAdmin Y los roles YA CLONADOS de cada compania con esos nombres
+     (el PermissionSeeder no lo propagaria). Solo AGREGA (nunca quita). Idempotente.
+   ---------------------------------------------------------------------------- */
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'trips.close')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('trips.close',
+            (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'TRIPS'),
+            N'{"es":"Cerrar rutas","en":"Close trips"}', 1);
+GO
+
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT r.RoleId, p.PermissionId
+FROM dbo.Role r
+JOIN dbo.Permission p ON p.Code = 'trips.close'
+WHERE r.Name IN ('Dispatcher', 'TenantAdmin')
+  AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
+GO

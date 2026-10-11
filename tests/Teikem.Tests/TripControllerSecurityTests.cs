@@ -44,6 +44,7 @@ public class TripControllerSecurityTests
         [(typeof(TripDispatchController), nameof(TripDispatchController.Dispatch))] = PermissionCatalog.TripsDispatch,
         [(typeof(TripDispatchController), nameof(TripDispatchController.DispatchBatch))] = PermissionCatalog.TripsDispatch,
         [(typeof(TripDispatchController), nameof(TripDispatchController.Start))] = PermissionCatalog.TripsDispatch,
+        [(typeof(TripDispatchController), nameof(TripDispatchController.Complete))] = PermissionCatalog.TripsClose,
 
         [(typeof(TripMonitorController), nameof(TripMonitorController.Get))] = PermissionCatalog.TripsView,
         [(typeof(TripPlanningController), nameof(TripPlanningController.PlanDay))] = PermissionCatalog.TripsPlan,

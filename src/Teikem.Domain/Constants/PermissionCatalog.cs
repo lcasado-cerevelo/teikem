@@ -13,7 +13,7 @@ public sealed record PermissionDef(string Code, string Category, string LabelEs,
 /// SECURITY) y warehouse.count.capture (Lote 8A, categoría WAREHOUSE: contar a ciegas sin reconciliar) y los 5 del Pulso del día
 /// (Lote F8a, categoría PULSE: pulse.indicators, pulse.charts, pulse.warehouse, pulse.activity, pulse.organize_company) y
 /// pulse.attention (Lote 14, "Necesita tu atención"): 66 códigos. Lote 27 (Rentas R1): rental.extend y rental.return → 68.
-/// 2026-10-08/10: warehouse.damage, warehouse.transfer y warehouse.adjust → 71; 2026-10-11: warehouse.issue (despacho manual) → 72.
+/// 2026-10-08/10: warehouse.damage, warehouse.transfer y warehouse.adjust → 71; 2026-10-11: warehouse.issue (despacho manual) → 72; 2026-10-11: trips.close (cerrar ruta) → 73.
 /// Convención: recurso.acción.
 /// </summary>
 public static class PermissionCatalog
@@ -27,6 +27,8 @@ public static class PermissionCatalog
     public const string OrdersCreditOverride = "orders.credit_override";
     public const string TripsPlan = "trips.plan";
     public const string TripsDispatch = "trips.dispatch";
+    /// <summary>2026-10-11: cerrar una ruta en curso (IN_PROGRESS → COMPLETED) cuando todas sus órdenes terminaron.</summary>
+    public const string TripsClose = "trips.close";
     public const string TripsOptimize = "trips.optimize";
     /// <summary>Lote 5: ver rutas, sala de despacho (lectura), 'sin asignar' y monitoreo.</summary>
     public const string TripsView = "trips.view";
@@ -145,6 +147,7 @@ public static class PermissionCatalog
         new(OrdersCancel, "ORDERS", "Cancelar órdenes", "Cancel orders"),
         new(TripsPlan, "TRIPS", "Planificar trips", "Plan trips"),
         new(TripsDispatch, "TRIPS", "Despachar trips", "Dispatch trips"),
+        new(TripsClose, "TRIPS", "Cerrar rutas", "Close trips"),
         new(TripsOptimize, "TRIPS", "Optimizar rutas", "Optimize routes"),
         new(WarehouseReceive, "WAREHOUSE", "Recibir", "Receive"),
         new(WarehousePick, "WAREHOUSE", "Pickear", "Pick"),
@@ -379,7 +382,7 @@ public static class PermissionCatalog
     public static readonly IReadOnlyDictionary<string, string[]> RoleTemplates = new Dictionary<string, string[]>
     {
         ["TenantAdmin"] = All.Select(p => p.Code).ToArray(),
-        ["Dispatcher"] = new[] { OrdersView, OrdersCreate, OrdersEdit, OrdersCancel, TripsPlan, TripsDispatch, TripsOptimize, AnalyticsView, ClientsRead, LocationsRead, LocationsCreate, FleetView, TripsView, TripsScan,
+        ["Dispatcher"] = new[] { OrdersView, OrdersCreate, OrdersEdit, OrdersCancel, TripsPlan, TripsDispatch, TripsClose, TripsOptimize, AnalyticsView, ClientsRead, LocationsRead, LocationsCreate, FleetView, TripsView, TripsScan,
             PulseIndicators, PulseCharts, PulseActivity },   // Lote F8a
         ["Billing"] = new[] { OrdersView, BillingGenerate, BillingApprove, BillingExport, CodView, CodReconcile, CodRemit, RentalBilling, RentalView, PurchasingView, PurchasingManage, AnalyticsView, ClientsRead, ContractsRead, OrdersCreditOverride, DriverPayView, InventoryView,
             PulseIndicators, PulseCharts, PulseActivity,   // Lote F8a

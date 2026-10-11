@@ -43,6 +43,60 @@ public sealed class TripLifecycleService(TeikemDbContext db, StatusService statu
         trip.StatusCodeId = to.StatusCodeId;
     }
 
+    /// <summary>
+    /// Cierre de la ruta (IN_PROGRESS → COMPLETED). Solo una ruta en curso, y solo si TODAS sus órdenes vigentes ya están en una etapa
+    /// terminal (entregada, fallida, devuelta, cancelada…). Si no, 422 con las que faltan. Orden de bloqueo: la ruta (el llamador ya la
+    /// tiene) y luego sus órdenes. La transición y su efecto (ActualEndUtc, TripOrder deja de ser vigente) los hace StatusService.
+    /// </summary>
+    public async Task CompleteTrackedAsync(Trip trip, string? comment, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(trip);
+        var code = await db.StatusCodes.AsNoTracking()
+                       .Where(s => s.StatusCodeId == trip.StatusCodeId)
+                       .Select(s => s.InternalCode)
+                       .FirstOrDefaultAsync(ct) ?? string.Empty;
+        if (string.Equals(code, TripStatuses.Completed, StringComparison.OrdinalIgnoreCase))
+            throw new StatusRuleException(DispatchBatchRules.AlreadyCompleted(trip.Code));
+        if (!trip.IsActive || !string.Equals(code, TripStatuses.InProgress, StringComparison.OrdinalIgnoreCase))
+            throw new StatusRuleException(DispatchBatchRules.NotInProgressForComplete(trip.Code));
+
+        var orderIds = await db.TripOrders.AsNoTracking()
+            .Where(o => o.TripId == trip.TripId && o.IsCurrent)
+            .Select(o => o.TransportOrderId)
+            .ToListAsync(ct);
+        var orders = await db.LockOrdersAsync(orderIds, includeStops: false, ct);
+        var statusIds = orders.Select(o => o.StatusCodeId).Distinct().ToList();
+        var statusRows = await db.StatusCodes.AsNoTracking()
+            .Where(s => statusIds.Contains(s.StatusCodeId))
+            .Select(s => new { s.StatusCodeId, s.InternalCode, Stage = s.StageKind != null ? s.StageKind.InternalCode : string.Empty })
+            .ToListAsync(ct);
+        var finished = statusRows.Where(s => DispatchBatchRules.OrderFinishedForClose(s.Stage, s.InternalCode)).Select(s => s.StatusCodeId).ToHashSet();
+        var open = orders.Where(o => !finished.Contains(o.StatusCodeId)).Select(o => o.OrderNumber).OrderBy(x => x, StringComparer.Ordinal).ToList();
+        if (open.Count > 0) throw new StatusRuleException(DispatchBatchRules.OpenOrdersBlockClose(trip.Code, open));
+
+        var text = string.IsNullOrWhiteSpace(comment) ? DispatchBatchRules.DefaultCompleteComment : comment.Trim();
+        var to = await statuses.TransitionAsync(StatusDomains.TripStatus, EntityTypes.Trip, trip.TripId, trip.StatusCodeId,
+            TripStatuses.Completed, text, ct);
+        trip.StatusCodeId = to.StatusCodeId;
+    }
+
+    /// <summary>POST /trips/{id}/complete (trips.close): transacción propia, bloqueo, RowVersion (409) y ficha.</summary>
+    public async Task<TripDetailDto> CompleteAsync(Guid publicId, TripCompleteRequest? req, CancellationToken ct)
+    {
+        var comment = string.IsNullOrWhiteSpace(req?.Comment) ? null : req!.Comment!.Trim();
+        if (comment is { Length: > StatusService.CommentMaxLength }) throw new ValidationException("comment", StatusService.CommentTooLongMessage);
+
+        await db.RunInTransactionAsync(async ct2 =>
+        {
+            var trip = await db.LockTripAsync(publicId, ct2);                 // 404 'Ruta no encontrada.'
+            TripDispatchRowVersion.Ensure(db, trip, req?.RowVersion);   // 409 si cambió
+            await CompleteTrackedAsync(trip, comment, ct2);
+            await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
+        }, ct);
+
+        return await reader.GetAsync(publicId, ct);
+    }
+
     public async Task<TripDetailDto> StartAsync(Guid publicId, TripStartRequest? req, CancellationToken ct)
     {
         var comment = string.IsNullOrWhiteSpace(req?.Comment) ? null : req!.Comment!.Trim();

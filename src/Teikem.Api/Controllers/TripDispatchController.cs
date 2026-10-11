@@ -39,4 +39,9 @@ public sealed class TripDispatchController(TripDispatchService dispatch, TripLif
     [HttpPost("{publicId:guid}/start"), RequirePermission(PermissionCatalog.TripsDispatch)]
     public Task<TripDetailDto> Start(Guid publicId, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] TripStartRequest? req, CancellationToken ct)
         => lifecycle.StartAsync(publicId, req, ct);
+
+    /// <summary>Cierre de una ruta en curso (→ COMPLETED, trips.close). Solo si todas sus órdenes terminaron (422 con las que faltan). Cuerpo opcional {comment, rowVersion}.</summary>
+    [HttpPost("{publicId:guid}/complete"), RequirePermission(PermissionCatalog.TripsClose)]
+    public Task<TripDetailDto> Complete(Guid publicId, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] TripCompleteRequest? req, CancellationToken ct)
+        => lifecycle.CompleteAsync(publicId, req, ct);
 }

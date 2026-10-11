@@ -1,3 +1,4 @@
+using Teikem.Domain.Constants;
 using System.Globalization;
 
 namespace Teikem.Domain.Trips;
@@ -71,6 +72,36 @@ public static class DispatchBatchRules
 
     /// <summary>'La ruta {código} ya salió.'</summary>
     public static string AlreadyStarted(string tripCode) => $"La ruta {tripCode} ya salió.";
+
+    /// <summary>Comentario por defecto del cierre (TripStatus → COMPLETED).</summary>
+    public const string DefaultCompleteComment = "Ruta cerrada";
+
+    /// <summary>
+    /// ¿La orden ya terminó para efectos de cerrar la ruta? Sí si está en una etapa terminal (entregada, cancelada…) o si su intento en esta
+    /// ruta ya concluyó sin entrega (Fallida o Parcial: pasan a la bandeja para reprogramarse). No cuenta: pipeline en curso ni Retenida.
+    /// </summary>
+    public static bool OrderFinishedForClose(string stageKind, string statusCode)
+        => string.Equals(stageKind, StageKinds.Terminal, StringComparison.OrdinalIgnoreCase)
+           || string.Equals(statusCode, OrderStatuses.Failed, StringComparison.OrdinalIgnoreCase)
+           || string.Equals(statusCode, OrderStatuses.Partial, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Tope de órdenes que se nombran en el mensaje de bloqueo del cierre (el resto va como «y N más»).</summary>
+    public const int OpenOrdersListed = 10;
+
+    /// <summary>'La ruta {código} no está en curso; solo se cierra una ruta que ya salió.'</summary>
+    public static string NotInProgressForComplete(string tripCode)
+        => $"La ruta {tripCode} no está en curso; solo se cierra una ruta que ya salió.";
+
+    /// <summary>'La ruta {código} ya está cerrada.'</summary>
+    public static string AlreadyCompleted(string tripCode) => $"La ruta {tripCode} ya está cerrada.";
+
+    /// <summary>'La ruta {código} no se puede cerrar: hay órdenes sin terminar ({n1}, {n2}… y N más).'</summary>
+    public static string OpenOrdersBlockClose(string tripCode, IReadOnlyList<string> orderNumbers)
+    {
+        var shown = string.Join(", ", orderNumbers.Take(OpenOrdersListed));
+        var more = orderNumbers.Count > OpenOrdersListed ? $" y {orderNumbers.Count - OpenOrdersListed} más" : string.Empty;
+        return $"La ruta {tripCode} no se puede cerrar: hay órdenes sin terminar ({shown}{more}).";
+    }
 
     /// <summary>'El pipeline de rutas de esta compañía no tiene habilitada la etapa {stage}.'</summary>
     public static string PipelineMissing(string stage) => $"El pipeline de rutas de esta compañía no tiene habilitada la etapa {stage}.";

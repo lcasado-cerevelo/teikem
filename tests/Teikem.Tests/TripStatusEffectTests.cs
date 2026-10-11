@@ -232,6 +232,98 @@ public class TripStatusEffectTests
         Assert.False(await f.Db.TripOrders.AnyAsync(x => x.IsCurrent));
     }
 
+    // ================================================================ cierre manual (POST /trips/{id}/complete, trips.close)
+
+    [Fact]
+    public async Task Close_with_every_order_finished_completes_the_trip()
+    {
+        await using var f = await Fixture.CreateAsync();
+        var (trip, orders) = await f.SeedTripAsync(TripStatuses.InProgress, RouteStatuses.Active, OrderStatuses.InTransit, 3);
+        await f.SetOrderStatusAsync(orders[0], OrderStatuses.Delivered);
+        await f.SetOrderStatusAsync(orders[1], OrderStatuses.Failed);     // intento concluido sin entrega: cuenta
+        await f.SetOrderStatusAsync(orders[2], OrderStatuses.Partial);    // entrega parcial: cuenta
+
+        await f.Lifecycle.CompleteTrackedAsync(trip, null, default);
+        await f.Db.SaveChangesAsync();
+
+        var saved = await f.Db.Trips.SingleAsync();
+        Assert.Equal(f.Id(StatusDomains.TripStatus, TripStatuses.Completed), saved.StatusCodeId);
+        Assert.NotNull(saved.ActualEndUtc);
+        Assert.False(await f.Db.TripOrders.AnyAsync(x => x.IsCurrent));
+        Assert.Equal(new[] { "Ruta cerrada" }, await f.CommentsAsync(EntityTypes.Trip, trip.TripId));
+    }
+
+    [Fact]
+    public async Task Close_with_a_comment_keeps_it()
+    {
+        await using var f = await Fixture.CreateAsync();
+        var (trip, orders) = await f.SeedTripAsync(TripStatuses.InProgress, RouteStatuses.Active, OrderStatuses.InTransit, 1);
+        await f.SetOrderStatusAsync(orders[0], OrderStatuses.Delivered);
+
+        await f.Lifecycle.CompleteTrackedAsync(trip, "  Cerrada por el despachador  ", default);
+        await f.Db.SaveChangesAsync();
+
+        Assert.Equal(new[] { "Cerrada por el despachador" }, await f.CommentsAsync(EntityTypes.Trip, trip.TripId));
+    }
+
+    [Theory]
+    [InlineData(OrderStatuses.InTransit)]
+    [InlineData(OrderStatuses.Arrived)]
+    [InlineData(OrderStatuses.OnHold)]
+    public async Task Close_is_blocked_while_an_order_is_not_finished_and_names_it(string pending)
+    {
+        await using var f = await Fixture.CreateAsync();
+        var (trip, orders) = await f.SeedTripAsync(TripStatuses.InProgress, RouteStatuses.Active, OrderStatuses.InTransit, 2);
+        await f.SetOrderStatusAsync(orders[0], OrderStatuses.Delivered);
+        await f.SetOrderStatusAsync(orders[1], pending);
+
+        var ex = await Assert.ThrowsAsync<StatusRuleException>(() => f.Lifecycle.CompleteTrackedAsync(trip, null, default));
+        Assert.Equal($"La ruta {TripCode} no se puede cerrar: hay órdenes sin terminar ({Fixture.OrderNumber(orders[1])}).", ex.Message);
+        Assert.Equal(f.Id(StatusDomains.TripStatus, TripStatuses.InProgress), trip.StatusCodeId);
+    }
+
+    [Fact]
+    public async Task Close_message_lists_ten_orders_and_counts_the_rest()
+    {
+        var numbers = Enumerable.Range(1, 12).Select(i => $"O-{i:00}").ToList();
+        var msg = DispatchBatchRules.OpenOrdersBlockClose(TripCode, numbers);
+        Assert.Equal($"La ruta {TripCode} no se puede cerrar: hay órdenes sin terminar (O-01, O-02, O-03, O-04, O-05, O-06, O-07, O-08, O-09, O-10 y 2 más).", msg);
+        await Task.CompletedTask;
+    }
+
+    [Theory]
+    [InlineData(TripStatuses.Dispatched)]
+    [InlineData(TripStatuses.Planned)]
+    public async Task Close_of_a_trip_that_has_not_started_is_rejected(string status)
+    {
+        await using var f = await Fixture.CreateAsync();
+        var (trip, _) = await f.SeedTripAsync(status, status == TripStatuses.Planned ? RouteStatuses.Optimized : RouteStatuses.Active, OrderStatuses.Planned, 1);
+
+        var ex = await Assert.ThrowsAsync<StatusRuleException>(() => f.Lifecycle.CompleteTrackedAsync(trip, null, default));
+        Assert.Equal($"La ruta {TripCode} no está en curso; solo se cierra una ruta que ya salió.", ex.Message);
+    }
+
+    [Fact]
+    public async Task Close_of_a_completed_trip_is_rejected()
+    {
+        await using var f = await Fixture.CreateAsync();
+        var (trip, _) = await f.SeedTripAsync(TripStatuses.Completed, RouteStatuses.Active, OrderStatuses.Delivered, 1);
+
+        var ex = await Assert.ThrowsAsync<StatusRuleException>(() => f.Lifecycle.CompleteTrackedAsync(trip, null, default));
+        Assert.Equal($"La ruta {TripCode} ya está cerrada.", ex.Message);
+    }
+
+    [Fact]
+    public void A_trip_with_no_orders_can_be_closed_and_only_laterals_other_than_failed_or_partial_block()
+    {
+        Assert.True(DispatchBatchRules.OrderFinishedForClose(StageKinds.Terminal, OrderStatuses.Delivered));
+        Assert.True(DispatchBatchRules.OrderFinishedForClose(StageKinds.Terminal, OrderStatuses.Cancelled));
+        Assert.True(DispatchBatchRules.OrderFinishedForClose(StageKinds.Lateral, OrderStatuses.Failed));
+        Assert.True(DispatchBatchRules.OrderFinishedForClose(StageKinds.Lateral, OrderStatuses.Partial));
+        Assert.False(DispatchBatchRules.OrderFinishedForClose(StageKinds.Lateral, OrderStatuses.OnHold));
+        Assert.False(DispatchBatchRules.OrderFinishedForClose(StageKinds.Pipeline, OrderStatuses.InTransit));
+    }
+
     // ================================================================ 'Eliminar ruta' (→ CANCELLED)
 
     [Fact]

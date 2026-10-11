@@ -299,6 +299,9 @@ public sealed record TripBatchDispatchResultDto(int Requested, int Dispatched, I
 /// <summary>Salida de la ruta (DISPATCHED → IN_PROGRESS).</summary>
 public sealed record TripStartRequest(string? Comment = null, string? RowVersion = null);
 
+/// <summary>Cierre de la ruta (IN_PROGRESS → COMPLETED). Solo si todas sus órdenes ya terminaron.</summary>
+public sealed record TripCompleteRequest(string? Comment = null, string? RowVersion = null);
+
 /// <summary>Monitor: sin fecha = hoy en la zona de la compañía; los totales no cambian con Search.</summary>
 public sealed record MonitorQuery(DateOnly? Date = null, int? DispatchZoneId = null, string? Search = null, bool IncludeCompleted = true);
 
