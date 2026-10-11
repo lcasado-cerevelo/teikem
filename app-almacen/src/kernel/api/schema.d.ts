@@ -5139,6 +5139,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cycle-counts/offline-bin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: {
+                    forCounting?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CountOfflineRequest"];
+                    "text/json": components["schemas"]["CountOfflineRequest"];
+                    "application/*+json": components["schemas"]["CountOfflineRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CountOfflineResultDto"];
+                        "application/json": components["schemas"]["CountOfflineResultDto"];
+                        "text/json": components["schemas"]["CountOfflineResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/cycle-counts/{id}/lines/batch": {
         parameters: {
             query?: never;
@@ -19592,6 +19637,24 @@ export interface components {
             /** Format: double */
             countedQty?: number | null;
         };
+        CountOfflineRequest: {
+            /** Format: uuid */
+            warehousePublicId?: string | null;
+            /** Format: int32 */
+            binId?: number | null;
+            lines?: components["schemas"]["CountBatchItem"][] | null;
+            finish?: boolean;
+            /** Format: date-time */
+            countedAtUtc?: string | null;
+        };
+        CountOfflineResultDto: {
+            count?: components["schemas"]["CycleCountDetailDto"];
+            created?: boolean;
+            joined?: boolean;
+            finished?: boolean;
+            movedSinceCounted?: boolean;
+            finishMessage?: string | null;
+        };
         CountProductBinsDto: {
             /** Format: uuid */
             productPublicId?: string;
@@ -23937,6 +24000,8 @@ export interface components {
             position?: string | null;
             isActive?: boolean;
             isProvisional?: boolean;
+            /** Format: int32 */
+            maxCapacityQty?: number | null;
         };
         SyncBinDtoSyncPage: {
             items?: components["schemas"]["SyncBinDto"][] | null;
