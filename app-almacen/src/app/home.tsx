@@ -44,7 +44,7 @@ export default function HomeScreen() {
   useAutoSync()
   const permissions = useMyPermissions()
   const canReportDamage = permissions?.includes('warehouse.damage') ?? false
-  const canTransfer = permissions?.includes('warehouse.transfer') ?? false
+  const canAdjust = permissions?.includes('warehouse.adjust') ?? false
 
   const [openKind, setOpenKind] = useState<OpenKind | null>(null)
   const userId = session?.userId
@@ -106,7 +106,7 @@ export default function HomeScreen() {
 
   /** Navega a `path`, salvo que haya un documento distinto abierto (avisa cuál en vez de navegar). `ownKind` es el
    *  tipo de documento que esa pantalla retoma (undefined si no maneja ninguno, como Acomodar o Consultar). */
-  function go(path: '/receive' | '/putaway' | '/dispatch' | '/count' | '/lookup' | '/damage' | '/transfer', ownKind?: OpenKind) {
+  function go(path: '/receive' | '/putaway' | '/dispatch' | '/count' | '/lookup' | '/damage' | '/adjust', ownKind?: OpenKind) {
     if (openKind && openKind !== ownKind) {
       Alert.alert(t(`lock.${openKind}InProgress`))
       return
@@ -155,14 +155,14 @@ export default function HomeScreen() {
       ) : null}
 
       <View style={styles.grid} testID="home-grid">
-        {/* Orden del menú (dueño, 2026-10-10): Consultar, Transferir, Recibir, Acomodar, Despacho, Conteo y Daño */}
+        {/* Orden del menú (dueño, 2026-10-11): Consultar, Ajustar, Recibir, Acomodar, Despacho, Conteo y Daño. Transferir ya no está aquí: se hace con «Mover» en Consultar. */}
         <View style={styles.cell}>
           <BigButton layout="tile" label={t('home.lookup')} icon="🔎" variant="secondary" onPress={() => go('/lookup')} />
         </View>
-        {/* 2026-10-10: solo con el permiso warehouse.transfer (el operario) */}
-        {canTransfer ? (
+        {/* 2026-10-11: solo con el permiso warehouse.adjust (lo da el administrador a un rol propio): posición → producto → subir o bajar */}
+        {canAdjust ? (
           <View style={styles.cell}>
-            <BigButton layout="tile" label={t('home.transfer')} icon="🔁" variant="secondary" onPress={() => go('/transfer')} testID="home-transfer" />
+            <BigButton layout="tile" label={t('home.adjust')} icon="⚖️" variant="secondary" onPress={() => go('/adjust')} testID="home-adjust" />
           </View>
         ) : null}
         <View style={styles.cell}>

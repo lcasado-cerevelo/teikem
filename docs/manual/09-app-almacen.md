@@ -1175,8 +1175,8 @@ indicador diga «Al día». El servidor siempre manda: si lo que se ve ya no coi
 **Quién puede.** Permiso `warehouse.transfer` (módulo de inventario). Lo trae el rol *Operador de almacén* y quien ya tiene `inventory.adjust` (lo implica). Sin el permiso no aparece el botón.
 
 **Cómo se usa.**
-- **Menú principal → Transferir.** Escanee la posición de origen (o búsquela en la lista); toque el producto de la lista de lo que hay ahí o escanéelo; si el producto tiene varios lotes, elija el lote; escriba la cantidad (la pantalla dice cuánto se puede mover: en mano − reservado) y *Siguiente*; escanee el destino y confirme.
-- **Desde Consultar → «Mover».** Al consultar una posición, cada producto con algo disponible trae *Mover*; al consultar un producto, cada fila con posición y disponible trae *Mover*. Abre Transferir con la posición de origen y el producto ya puestos.
+- **Ya no hay botón «Transferir» en el menú principal (desde 2026-10-11): se transfiere con «Mover» en Consultar** (hacía exactamente lo mismo, con los mismos pasos y el mismo permiso).
+- **Consultar → «Mover».** Al consultar una posición, cada producto con algo disponible trae *Mover*; al consultar un producto, cada fila con posición y disponible trae *Mover*. Abre Transferir con la posición de origen y el producto ya puestos.
 - Necesita señal (mueve inventario en el servidor, sin cola; como Daño). Con la calculadora de cantidad también cuenta por cajas si el producto tiene empaque.
 
 **Reglas y mensajes.**
@@ -1193,7 +1193,7 @@ indicador diga «Al día». El servidor siempre manda: si lo que se ve ya no coi
 
 API: `POST /api/v1/inventory/transfers/in-warehouse` (`warehouse.transfer`); la transferencia de la web (`POST /inventory/transfers`, `inventory.adjust`) no cambia. El Kárdex la registra como TRANSFER.
 
-**Menú principal.** Orden de los botones: Consultar, Transferir, Recibir, Acomodar, Despacho, Conteo y Daño.
+**Menú principal.** Orden de los botones (2026-10-11): Consultar, **Ajustar** (solo con `warehouse.adjust`), Recibir, Acomodar, Despacho, Conteo y Daño (solo con `warehouse.damage`).
 
 ## Ajustar cantidad (2026-10-10)
 
@@ -1201,13 +1201,30 @@ API: `POST /api/v1/inventory/transfers/in-warehouse` (`warehouse.transfer`); la 
 
 **Quién puede.** Permiso `warehouse.adjust` (inventario). **Ninguna plantilla de rol lo trae**: el administrador lo da a un rol propio (Sistema → Roles) y lo asigna a quien deba ajustar. El Administrador de la compañía lo tiene por "todos". Sin el permiso no aparece el botón.
 
-**Cómo se usa.** Desde **Consultar**: al consultar una posición, cada producto trae *Ajustar*; al consultar un producto, cada fila con posición lo trae. Se abre la pantalla con la posición y el producto ya puestos:
+**Cómo se usa.** Hay dos entradas:
+- **Menú principal → Ajustar** (2026-10-11): se escanea la **posición** (*Escanea la posición donde está*) y luego el **producto** (*Escanea el producto*). Sirve sobre todo cuando el producto **se ve en una posición y el sistema dice que ahí hay 0 (o nunca estuvo)**: Consultar no lo lista y, antes, no había forma de ajustarlo desde el aparato. Aquí se **sube** con el motivo *Encontrado*. Al terminar, la pantalla **se queda en Ajustar** con el aviso *Listo: Subir 4 de TOR-1 en A-01-01.* y pide la siguiente posición; **Empezar de nuevo** vuelve al primer paso y **Volver** sale a Inicio.
+- **Consultar → «Ajustar»**: al consultar una posición, cada producto trae *Ajustar*; al consultar un producto, cada fila con posición lo trae. Se abre la pantalla con la posición y el producto ya puestos, y al terminar vuelve a Consultar.
+
+Desde ahí, igual en las dos entradas:
 1. (si el producto tiene varios lotes) elegir el lote;
 2. **Subir** (hay más) o **Bajar** (hay menos);
 3. cantidad (con la calculadora; también por cajas si el producto tiene empaque);
 4. **motivo**: al subir, *Encontrado* u *Otro*; al bajar, *Daño*, *Pérdida*, *Vencido* u *Otro* (los motivos de recibo, conteo, saldo inicial, etc. los pone solo el sistema);
 5. **nota obligatoria** (hasta 300 caracteres);
 6. *Ajustar* y confirmar. Si tiene permiso de ver cantidades del sistema (`warehouse.count`), la confirmación dice «de X pasa a Y».
+
+**Casos del menú «Ajustar» (2026-10-11):**
+
+| Caso | Qué dice la app |
+|---|---|
+| La posición no existe o no es del almacén | `No hay una posición con ese código.` |
+| La posición está dada de baja | `La posición {bin} está inactiva.` |
+| El producto no existe | `No hay un producto con ese código.` |
+| Producto con número de serie | `{sku} lleva número de serie: por ahora se ajusta desde la web.` |
+| Producto **con lote** que no tiene saldo en esa posición | Ofrece los **lotes que ya tiene registrados** en el almacén (si es uno solo, lo usa); se ajusta por ese lote |
+| Producto con lote que **todavía no tiene ningún lote** | `{sku} lleva lote y todavía no tiene lotes registrados: se ajusta desde la web.` |
+| **Bajar** más de lo que hay (con 0 en la posición, cualquier cantidad) | `Solo se puede bajar hasta {n} (lo reservado no sale).` |
+| Posición de cuarentena, en renta o de cross-dock | `{bin} es una posición de cuarentena, en renta o de cross-dock: no se ajusta desde aquí (usa Daño, Rentas o Cross-dock).` Si la posición está vacía la app no puede saberlo al escanearla y el **servidor** la rechaza al mandar el ajuste (422), que queda «requiere revisión» en Sincronización. |
 
 Necesita señal (cambia el inventario en el servidor, sin cola).
 

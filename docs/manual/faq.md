@@ -5822,7 +5822,7 @@ Use el filtro **Posición** (escriba parte del código, por ejemplo `A-01`): sal
 ## Aparato: no veo Transferir ni Ajustar (2026-10-10)
 
 **Instalé la APK y en el menú no sale Transferir (o en Consultar no sale Mover / Ajustar).**
-Los botones dependen de permisos del usuario, no de la versión de la APK: **Transferir y Mover** piden `warehouse.transfer` (lo traen «Operador de almacén» y «Admin de compañía»; `inventory.adjust` lo implica) y **Ajustar** pide `warehouse.adjust` (solo «Admin de compañía»; para un operario se crea un rol propio en Sistema → Roles con ese permiso). **Si el usuario ya tiene el permiso (p. ej. «Admin de compañía» con todos), lo más probable es que el APK instalado sea una compilación vieja:** desde 2026-10-10 Inicio muestra al pie «Versión 1.0.0 (código) · sello» (fecha y commit del APK; en el CI, `ci-<número> <commit>`). Si no sale esa línea, el APK es anterior: instale el nuevo. Revise (1) que el **API ya esté desplegado** con la base actualizada (`db-update`), (2) que el rol del usuario tenga el permiso y (3) abrir la app con señal una vez: el aparato lee los permisos del servidor al abrir la pantalla. La corrección del 2026-10-10 (b) en `Diseño/logistica-db-update.sql` agrega los dos permisos a los roles «Operador de almacén» y «Admin de compañía» que ya existían en cada compañía (antes quedaron fuera porque el sembrado solo propaga los códigos nuevos de su corrida).
+**Desde 2026-10-11 «Transferir» ya no está en el menú principal: se transfiere con «Mover» en Consultar** (es la misma pantalla y el mismo permiso). **«Ajustar» sí está en el menú** (y también en Consultar). Los botones dependen de permisos del usuario, no de la versión de la APK: **Mover** pide `warehouse.transfer` (lo traen «Operador de almacén» y «Admin de compañía»; `inventory.adjust` lo implica) y **Ajustar** pide `warehouse.adjust` (solo «Admin de compañía»; para un operario se crea un rol propio en Sistema → Roles con ese permiso). **Si el usuario ya tiene el permiso (p. ej. «Admin de compañía» con todos), lo más probable es que el APK instalado sea una compilación vieja:** desde 2026-10-10 Inicio muestra al pie «Versión 1.0.0 (código) · sello» (fecha y commit del APK; en el CI, `ci-<número> <commit>`). Si no sale esa línea, el APK es anterior: instale el nuevo. Revise (1) que el **API ya esté desplegado** con la base actualizada (`db-update`), (2) que el rol del usuario tenga el permiso y (3) abrir la app con señal una vez: el aparato lee los permisos del servidor al abrir la pantalla. La corrección del 2026-10-10 (b) en `Diseño/logistica-db-update.sql` agrega los dos permisos a los roles «Operador de almacén» y «Admin de compañía» que ya existían en cada compañía (antes quedaron fuera porque el sembrado solo propaga los códigos nuevos de su corrida).
 
 
 ## Conteo cíclico: cierre automático y seguir contando (2026-10-10)
@@ -6058,3 +6058,20 @@ Es a propósito: ya no hay tope. Pasando de 500 el modal avisa «Son N: el PDF s
 
 **Un informe dice «solo los primeros N… (el servidor no devolvió más)».**
 Ya **no hay ningún tope de cantidad** (ni los 500 ni los 100 000 de antes): los informes y las exportaciones leen todo el filtro, sea del tamaño que sea. Ese aviso solo sale si el servidor dejó de devolver filas antes de llegar al total (un corte de red, por ejemplo): vuelva a generarlo.
+
+## Ajustar desde el menú del aparato (2026-10-11)
+
+**Veo un producto en una posición pero Consultar no lo muestra (el sistema dice que hay 0). ¿Cómo lo ajusto?**
+Menú principal → **Ajustar** (hace falta `warehouse.adjust`): escanee la posición, luego el producto, elija **Subir**, la cantidad, el motivo **Encontrado** y escriba la nota. Antes esto solo se podía desde la web.
+
+**En el menú ya no está «Transferir».**
+Es a propósito: se transfiere con **«Mover»** en Consultar (consulte la posición o el producto y toque *Mover*). Es la misma pantalla y el mismo permiso (`warehouse.transfer`).
+
+**En Ajustar escaneé un producto con lote y me dice que no tiene lotes registrados.**
+El producto lleva lote y todavía no existe ningún lote suyo en el almacén, y la app no crea lotes. Haga el ajuste desde la web (Productos e inventario → Ajustar), donde sí se puede indicar el lote.
+
+**En Ajustar elegí Bajar y me dice «Solo se puede bajar hasta 0».**
+El sistema no tiene nada de ese producto ahí (o lo que hay está reservado). Bajar solo se puede hasta lo disponible; si lo que encontró es de más, use **Subir**.
+
+**Después de ajustar la app se quedó en Ajustar.**
+Es a propósito cuando se entra desde el menú: queda listo para la siguiente posición (el aviso dice lo que se ajustó). **Volver** sale a Inicio. Si entró desde Consultar con «Ajustar», vuelve a Consultar como antes.
