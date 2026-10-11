@@ -2118,8 +2118,9 @@ propio»). El aviso sale si el producto es de otro cliente, o de un cliente cuan
 Termine el despacho en curso (**Completar despacho** o **Empacar**) o cancélelo, y empiece otro para el otro dueño.
 
 **En Despacho, ¿qué diferencia hay entre "Completar despacho" y "Empacar"?**
-**Completar despacho** saca el inventario y deja una recolección `EMP` en Recolectada, sin orden, consignatario ni empaque (se puede
-empacar después desde la web). **Empacar** además crea la orden: con inventario propio pregunta primero «¿A qué cliente se despacha?»
+(Actualizado el 2026-10-11.) **Completar despacho** es el **despacho manual**: saca el inventario **sin entrega**, con un motivo
+obligatorio y una nota opcional, y genera un documento `DMA-#####` (nunca se empaca después); exige el permiso `warehouse.issue` (ver
+«Despacho manual en la app» más abajo). **Empacar** crea la orden: con inventario propio pregunta primero «¿A qué cliente se despacha?»
 y luego el consignatario; con inventario de un cliente 3PL va directo a sus consignatarios. Las dos funcionan sin señal: se guardan en
 la cola y se mandan al volver la señal.
 
@@ -5889,3 +5890,50 @@ que pierde es poder eliminarse después de la baja.
 **¿Dónde veo los despachos manuales?**
 En la lista de recolecciones (`GET /api/v1/pick-batches`, con `kind=MANUAL` solo ellos), en `GET /api/v1/manual-issues` y en el Kárdex:
 cada salida dice «Despacho manual DMA-00012» con la nota `DMA-00012 · {motivo}`.
+
+### Despacho manual en la app (2026-10-11)
+
+**En Despacho no me sale «Completar despacho»; solo «Empacar».**
+Su usuario no tiene el permiso `warehouse.issue` y la app lo dice: `«Completar despacho» (despacho manual, sin entrega) necesita el permiso
+warehouse.issue y tu usuario no lo tiene: aquí puedes Empacar. Pídelo al administrador si hace falta.` El administrador lo agrega en Sistema →
+Roles («Despacho manual (salida sin entrega)»); lo traen **Operador de almacén** y **Admin de compañía**. Si dice `Todavía no se pudieron leer tus
+permisos (hace falta señal una vez): por ahora solo puedes Empacar.`, el aparato aún no habló con el servidor desde que ese usuario entró: espere a
+tener señal (Inicio sincroniza solo) y vuelva a abrir Despacho.
+
+**`Escoge el motivo del despacho manual.`**
+Toque uno de los motivos (Muestra, Uso interno, Retiro del cliente, Venta, Otro, o los nombres de su compañía) antes de **Despachar**. La nota es
+opcional.
+
+**`La compañía no tiene motivos habilitados para el despacho manual. Pide al administrador que habilite alguno (Sistema → Catálogos).`**
+La compañía deshabilitó todos los motivos de «Motivo del despacho manual». Sin motivo no se puede despachar: el administrador (`admin.catalogs`)
+habilita al menos uno; el aparato lo baja en la siguiente sincronización (como mucho 30 minutos).
+
+**La app dice `Despacho manual en cola: …` y no me muestra el número DMA.**
+No había señal (o era débil) al confirmarlo: quedó guardado en el aparato y se manda solo. El número `DMA-#####` lo pone el servidor al recibirlo;
+se ve en la web (Recolección y empaque, columna Tipo). No lo repita: no puede quedar dos veces.
+
+**Al despachar me salió un mensaje en rojo y el despacho volvió a abrirse.**
+El servidor lo rechazó en ese momento (por ejemplo `Inventario insuficiente de …`) y la app muestra su mensaje exacto: no salió nada, el saldo del
+aparato se dejó como estaba y las líneas, el motivo y la nota siguen ahí. Corrija (baje la cantidad, quite la línea o cambie de posición) y vuelva a
+tocar **Completar despacho**. Si el rechazo llega más tarde (se mandó solo), aparece en **Sincronización → Con error**.
+
+**Al despachar me sale `Ocurrió un error. Intente de nuevo.` aunque tengo el botón.**
+Lo más probable es que a su rol le quitaron `warehouse.issue` y el aparato todavía no se enteró (el servidor responde 403 sin mensaje). Vuelva a
+Inicio con señal para que se actualicen sus permisos; si sigue, revise el rol.
+
+## Despacho manual en la web (pantalla, 2026-10-11)
+
+**No veo cómo hacer un despacho manual.**
+En **Almacén → Recolección y empaque**, en el panel **Recolección**, encienda **Despacho manual (sin entrega)**. Si no aparece el interruptor,
+su rol no tiene `warehouse.issue` (si solo tiene `warehouse.pick`, el panel es la recolección de siempre).
+
+**¿Dónde veo los despachos manuales ya hechos?**
+En la misma lista de Recolección y empaque: columna **Tipo** («Despacho manual · motivo») y filtro **Tipo** → Despachos manuales. Un despacho
+eliminado sale **Cancelado** (marque «Incluir eliminadas»).
+
+**Al despachar la fila se marcó en rojo en la cantidad.**
+El servidor rechazó esa línea (por ejemplo `Inventario insuficiente de …`); su mensaje exacto está bajo la cantidad. No se descontó nada y el número
+DMA no se gastó. Corrija y vuelva a pulsar **Despachar**.
+
+**No me aparece «Eliminar» en un despacho manual.**
+Eliminar un manual exige `warehouse.issue` (no basta `warehouse.pick`) y que el servidor lo permita (`canDelete`); uno ya cancelado no se elimina otra vez.

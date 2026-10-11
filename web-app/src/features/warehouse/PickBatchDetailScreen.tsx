@@ -8,14 +8,13 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ApiError } from '../../kernel/api/problem'
-import { StatusChip } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
 import { Chip, EmptyState, Spinner } from '../../kernel/ui'
 import { usePickBatch, type PickBatchDto } from './api'
 import { DeletePickBatchDialog } from './DeletePickBatchDialog'
 import { PackModal } from './PackModal'
 import { PickBatchDetailActions, PickBatchDetailBody } from './PickBatchDetailBody'
-import { PICK_BATCH_STATUS_DOMAIN } from './pickBatchView'
+import { PickBatchStatusChip } from './PickBatchStatusChip'
 
 export default function PickBatchDetailScreen() {
   const t = useT()
@@ -48,8 +47,8 @@ export default function PickBatchDetailScreen() {
             <span className="ref">{batch.number}</span> · {batch.warehouseCode}
           </h1>
           <p>
-            <StatusChip domain={PICK_BATCH_STATUS_DOMAIN} code={batch.statusCode} label={batch.status} />
-            {batch.isActive === false && (
+            <PickBatchStatusChip batch={batch} />
+            {batch.isActive === false && !batch.isManual && (
               <>
                 {' '}
                 <Chip tone="fail">{t('warehouse.pickBatches.deletedChip')}</Chip>

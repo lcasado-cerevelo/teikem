@@ -2713,7 +2713,8 @@
         "client": "Client",
         "totalQty": "Quantity",
         "collectedAt": "Picked",
-        "products": "Products"
+        "products": "Products",
+        "kind": "Type"
       },
       "filters": {
         "collected": "Picked",
@@ -2721,7 +2722,10 @@
         "product": "Product",
         "orderNumber": "Order no.",
         "invoiceNumber": "Invoice no.",
-        "includeDeleted": "Include deleted"
+        "includeDeleted": "Include deleted",
+        "kind": "Type",
+        "kindPack": "Packs",
+        "kindManual": "Manual issues"
       },
       "fields": {
         "warehouse": "Warehouse",
@@ -2835,7 +2839,40 @@
         "planNeedsQty": "Pick the product and enter the quantity to suggest where to take it from.",
         "planShort": "Not enough stock: {short} short. Lower the quantity.",
         "planApplied": "Suggested: {count} bin(s). You can change each one with its picker."
+      },
+      "kinds": {
+        "pack": "Pack",
+        "manual": "Manual issue"
       }
+    },
+    "manualIssues": {
+      "submit": "Issue (take out of inventory)",
+      "issued": "Manual issue {number} recorded.",
+      "reasonPlaceholder": "Choose the reason",
+      "noteHelp": "Optional. Up to {max} characters.",
+      "linesHelp": "A manual issue accepts products from a single owner and takes inventory out without a delivery. Without a bin or lot, the system picks by FEFO.",
+      "fields": {
+        "reason": "Reason",
+        "note": "Note"
+      },
+      "status": {
+        "dispatched": "Issued",
+        "cancelled": "Cancelled"
+      },
+      "errors": {
+        "reasonRequired": "Enter the reason for the manual issue.",
+        "noteTooLong": "The note can have at most 500 characters.",
+        "singleOwner": "A manual issue can only have products from the same owner."
+      },
+      "detail": {
+        "owner": "Inventory owner",
+        "kardexLink": "See the movements",
+        "deleteTitle": "Delete manual issue",
+        "deleteBody": "Delete manual issue {number}? The inventory goes back to its original bin.",
+        "deleted": "Manual issue {number} deleted."
+      },
+      "mode": "Manual issue (no delivery)",
+      "modeHelp": "Takes inventory out with no delivery or packing: asks for a reason and creates a DMA document."
     },
     "cycleCounts": {
       "title": "Cycle count",

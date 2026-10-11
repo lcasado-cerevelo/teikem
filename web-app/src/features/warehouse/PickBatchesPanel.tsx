@@ -1,13 +1,15 @@
 // Pieza "Recolección y empaque" (Lote 13) — panel derecho "Recolecciones" de `PickBatchListScreen` (maqueta `picking()`).
 // Filtros dentro del panel, todos al API y a la página 1: Recolectada (rango), Estatus, Producto (`ProductMultiFilter` con
 // inactivos), No. de orden (`OrderNumberFilter`: sugiere números existentes), No. de factura, Incluir eliminadas; y el
-// `QBox` de la maqueta (búsqueda libre al API, se aplica después de los filtros). Tabla paginada en el servidor con 5
-// columnas (Número con su estatus, Productos "SKU ×cant", Orden · Factura, Cliente, Recolectada); en tarjetas si el panel
+// `QBox` de la maqueta (búsqueda libre al API, se aplica después de los filtros). Tipo (2026-10-11): Todos / Empaques /
+// Despachos manuales (`kind=ALL|PACK|MANUAL`): la lista trae TODO y los despachos manuales (DMA, sin empaque) llevan su motivo en la
+// columna Tipo y estatus «Despachado». Tabla paginada en el servidor con 6
+// columnas (Número con su estatus, Tipo, Productos "SKU ×cant", Orden · Factura, Cliente, Recolectada); en tarjetas si el panel
 // mide menos de 640 px (`useElementWidth`). Acciones de fila con ícono: Empacar (warehouse.pick + orders.create, con
-// `canPack`) → `PackModal`; Eliminar (warehouse.pick, y orders.cancel si está empacada, con `canDelete`) →
+// `canPack`) → `PackModal`; Eliminar (warehouse.pick, y orders.cancel si está empacada; un manual exige warehouse.issue; con `canDelete`) →
 // `DeletePickBatchDialog`. Clic en la fila → `PickBatchDetailModal`. `highlight` = recién recolectada (fondo de flujo).
 import { useMemo, useRef, useState } from 'react'
-import { StatusChip, useStatuses } from '../../kernel/catalogs'
+import { useStatuses } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n'
 import {
   Chip,
@@ -21,6 +23,7 @@ import {
   Panel,
   QBox,
   SearchSelect,
+  SelectFilter,
   useElementWidth,
   type DataColumn,
   type DateRange,
@@ -32,6 +35,7 @@ import { TextFilter, ToggleFilter } from './filterControls'
 import { formatDateTime, useDebounced } from './lineRules'
 import { OrderNumberFilter } from './OrderNumberFilter'
 import { PackModal } from './PackModal'
+import { PickBatchStatusChip } from './PickBatchStatusChip'
 import { PickBatchDetailModal } from './PickBatchDetailModal'
 import { batchProductsText, PICK_BATCH_STATUS_DOMAIN, usePickBatchCanDelete } from './pickBatchView'
 import { ProductMultiFilter, type ProductFilterItem } from './pickers'
@@ -55,6 +59,8 @@ export function PickBatchesPanel({ highlight }: PickBatchesPanelProps) {
   const width = useElementWidth(boxRef)
   const [range, setRange] = useState<DateRange>(EMPTY_RANGE)
   const [status, setStatus] = useState<string[]>([])
+  // Tipo: '' = todo; PACK = recolecciones de empaque; MANUAL = despachos manuales (DMA). Va al API como `kind`.
+  const [kind, setKind] = useState('')
   const [products, setProducts] = useState<ProductFilterItem[]>([])
   const [orderNumber, setOrderNumber] = useState('')
   const [invoiceNumber, setInvoiceNumber] = useState('')
@@ -97,10 +103,11 @@ export function PickBatchesPanel({ highlight }: PickBatchesPanelProps) {
       invoiceNumber: invoice || undefined,
       search: search || undefined,
       includeDeleted: includeDeleted || undefined,
+      kind: kind || undefined,
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),
-    [range, products, status, order, invoice, search, includeDeleted, page, pageSize],
+    [range, products, status, kind, order, invoice, search, includeDeleted, page, pageSize],
   )
   const { data, isLoading, error } = usePickBatches(query)
 
@@ -113,13 +120,20 @@ export function PickBatchesPanel({ highlight }: PickBatchesPanelProps) {
         cell: (b) => (
           <span className="collect-num">
             <span className="ref">{b.number}</span>
-            <StatusChip domain={PICK_BATCH_STATUS_DOMAIN} code={b.statusCode} label={b.status} />
-            {b.isActive === false && <Chip tone="fail">{t('warehouse.pickBatches.deletedChip')}</Chip>}
+            <PickBatchStatusChip batch={b} />
+            {b.isActive === false && !b.isManual && <Chip tone="fail">{t('warehouse.pickBatches.deletedChip')}</Chip>}
           </span>
         ),
         sortValue: (b) => b.number,
         exportValue: (b) => [b.number, b.status ?? b.statusCode, b.isActive === false ? t('warehouse.pickBatches.deletedChip') : null].filter(Boolean).join(' · '),
         card: 'title',
+      },
+      {
+        id: 'kind',
+        header: t('warehouse.pickBatches.columns.kind'),
+        cell: (b) => (b.isManual ? <span>{t('warehouse.pickBatches.kinds.manual')} · {b.reasonLabel ?? b.reasonCode}</span> : t('warehouse.pickBatches.kinds.pack')),
+        sortValue: (b) => (b.isManual ? `1 ${b.reasonLabel ?? ''}` : '0'),
+        exportValue: (b) => (b.isManual ? `${t('warehouse.pickBatches.kinds.manual')} · ${b.reasonLabel ?? b.reasonCode ?? ''}` : t('warehouse.pickBatches.kinds.pack')),
       },
       {
         id: 'products',
@@ -161,7 +175,7 @@ export function PickBatchesPanel({ highlight }: PickBatchesPanelProps) {
         label: t('warehouse.pickBatches.detail.delete'),
         icon: <IconTrash />,
         tone: 'danger',
-        perm: 'warehouse.pick',
+        // permiso dentro de canDelete: warehouse.pick (empaque) o warehouse.issue (despacho manual)
         visible: (b) => canDelete(b),
         onClick: (b) => setDeleting(b),
       },
@@ -178,6 +192,7 @@ export function PickBatchesPanel({ highlight }: PickBatchesPanelProps) {
               setPage(1)
               setRange(EMPTY_RANGE)
               setStatus([])
+              setKind('')
               setProducts([])
               setOrderNumber('')
               setInvoiceNumber('')
@@ -186,6 +201,15 @@ export function PickBatchesPanel({ highlight }: PickBatchesPanelProps) {
             }}
           >
             <DateRangeFilter label={t('warehouse.pickBatches.filters.collected')} value={range} onChange={reset(setRange)} />
+            <SelectFilter
+              label={t('warehouse.pickBatches.filters.kind')}
+              value={kind}
+              onChange={reset(setKind)}
+              options={[
+                { value: 'PACK', label: t('warehouse.pickBatches.filters.kindPack') },
+                { value: 'MANUAL', label: t('warehouse.pickBatches.filters.kindManual') },
+              ]}
+            />
             <SearchSelect label={t('warehouse.pickBatches.filters.status')} options={statusOptions} value={status} onChange={reset(setStatus)} />
             <ProductMultiFilter label={t('warehouse.pickBatches.filters.product')} value={products} onChange={reset(setProducts)} includeInactive />
             <OrderNumberFilter label={t('warehouse.pickBatches.filters.orderNumber')} value={orderNumber} onChange={reset(setOrderNumber)} />

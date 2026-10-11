@@ -7,9 +7,9 @@ import { useQueryClient } from '@tanstack/react-query'
 import { ApiError } from '../../kernel/api/problem'
 import { useT } from '../../kernel/i18n'
 import { ConfirmDialog, toast } from '../../kernel/ui'
-import { useDeletePickBatch, warehouseKeys, type PickBatchDto } from './api'
+import { useDeleteManualIssue, useDeletePickBatch, warehouseKeys, type PickBatchDto } from './api'
 
-export type DeletableBatch = Pick<PickBatchDto, 'publicId' | 'number' | 'statusCode' | 'orderNumber' | 'rowVersion'>
+export type DeletableBatch = Pick<PickBatchDto, 'publicId' | 'number' | 'statusCode' | 'orderNumber' | 'rowVersion' | 'isManual'>
 
 export interface DeletePickBatchDialogProps {
   /** Recolección a eliminar (null = cerrado). */
@@ -22,16 +22,22 @@ export interface DeletePickBatchDialogProps {
 export function DeletePickBatchDialog({ batch, onClose, onDeleted }: DeletePickBatchDialogProps) {
   const t = useT()
   const qc = useQueryClient()
-  const del = useDeletePickBatch()
+  const delPack = useDeletePickBatch()
+  const delManual = useDeleteManualIssue()
+  // un despacho manual (DMA) se elimina por su propia ruta y con warehouse.issue
+  const manual = batch?.isManual === true
+  const del = manual ? delManual : delPack
   const packed = batch?.statusCode === 'PACKED'
   const number = batch?.number ?? ''
   return (
     <ConfirmDialog
       open={batch !== null}
       tone="danger"
-      title={t('warehouse.pickBatches.detail.deleteTitle')}
+      title={manual ? t('warehouse.manualIssues.detail.deleteTitle') : t('warehouse.pickBatches.detail.deleteTitle')}
       message={
-        packed
+        manual
+          ? t('warehouse.manualIssues.detail.deleteBody', { number })
+          : packed
           ? t('warehouse.pickBatches.detail.deletePackedBody', { number, order: batch?.orderNumber ?? '' })
           : t('warehouse.pickBatches.detail.deleteBody', { number })
       }
@@ -47,7 +53,7 @@ export function DeletePickBatchDialog({ batch, onClose, onDeleted }: DeletePickB
           }
           throw err
         }
-        toast.success(t('warehouse.pickBatches.detail.deleted', { number }))
+        toast.success(t(manual ? 'warehouse.manualIssues.detail.deleted' : 'warehouse.pickBatches.detail.deleted', { number }))
         // ConfirmDialog cierra solo (onClose) al terminar bien
         onDeleted?.()
       }}

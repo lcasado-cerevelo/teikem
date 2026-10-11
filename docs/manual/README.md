@@ -242,6 +242,9 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
    **Devoluciones de renta** (lista con filtros y ficha, enlaces renta ↔ devolución), Almacén → **Proceso de equipos** (cola con Avanzar,
    Completar y Dar de baja con confirmación fuerte), las tarjetas de resumen de la lista de rentas y **Reportes de rentas** (vistas,
    indicadores y gráfico de Análisis). Capturas `f18-*`.
+15. [F19 — Despacho manual en la web](frontend/f19-despacho-manual.md): en **Recolección y empaque**, el interruptor **Despacho manual (sin entrega)** del panel
+   Recolección (motivo obligatorio, nota, líneas como una recolección, `Idempotency-Key`, 409 por existencia), la columna y el filtro **Tipo**, la ficha del
+   DMA (motivo, nota, Kárdex, sin Empacar) y **Eliminar** con reversa (`warehouse.issue`). Capturas `f19-*`.
 
 ## Preguntas frecuentes
 

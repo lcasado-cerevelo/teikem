@@ -14,6 +14,8 @@ export type PickBatchCreateRequest = Schemas['PickBatchCreateRequest']
 
 /** Tope de líneas de una recolección (PickBatchRules.MaxLines). */
 export const MAX_PICK_LINES = 100
+/** Tope de la nota libre de un despacho manual (PickBatchRules.ManualNoteMax). */
+export const MANUAL_NOTE_MAX = 500
 /** Dueño "propio" (producto sin cliente) en la regla de un solo dueño. */
 export const OWN = 'OWN'
 
@@ -37,6 +39,10 @@ export interface CollectLine {
 export interface CollectFormValues {
   warehousePublicId: string | null
   lines: CollectLine[]
+  /** Solo del despacho manual: código del motivo (catálogo ManualIssueReason; '' = sin elegir). */
+  reasonCode?: string
+  /** Solo del despacho manual: nota libre (máx. 500). */
+  note?: string
 }
 
 /** Línea tal como la entrega el formulario o zod (sin `strictNullChecks`, los campos anulables salen opcionales). */
@@ -150,10 +156,15 @@ const lineSchema = z.object({
  * como máximo 100; por línea con datos, producto obligatorio y `pickLineIssues`; series repetidas entre líneas y un solo
  * dueño. Las filas vacías no se validan.
  */
-export function collectSchema(t: Translate, issueText: (issue: LineIssue) => string) {
+export function collectSchema(t: Translate, issueText: (issue: LineIssue) => string, opts: { manual?: boolean } = {}) {
   return z
-    .object({ warehousePublicId: z.string().nullable(), lines: z.array(lineSchema) })
+    .object({ warehousePublicId: z.string().nullable(), lines: z.array(lineSchema), reasonCode: z.string().optional(), note: z.string().optional() })
     .superRefine((v, ctx) => {
+      // Despacho manual (2026-10-11): motivo obligatorio y nota de máx. 500 (mensajes del servidor, PickBatchRules)
+      if (opts.manual) {
+        if (!v.reasonCode?.trim()) ctx.addIssue({ code: 'custom', path: ['reasonCode'], message: t('warehouse.manualIssues.errors.reasonRequired') })
+        if ((v.note ?? '').trim().length > MANUAL_NOTE_MAX) ctx.addIssue({ code: 'custom', path: ['note'], message: t('warehouse.manualIssues.errors.noteTooLong') })
+      }
       if (!v.warehousePublicId) ctx.addIssue({ code: 'custom', path: ['warehousePublicId'], message: t('warehouse.receipts.errors.warehouseRequired') })
       const { lines, indexMap } = compactPickLines(v.lines)
       if (lines.length === 0) {
@@ -181,7 +192,7 @@ export function collectSchema(t: Translate, issueText: (issue: LineIssue) => str
           message: issueText({ field: 'serialNumbers', code: 'pickSerialDuplicated', params: { serial: dup[1] } }),
         })
       const other = firstOtherOwner(lines.map((l) => (!l.owner ? undefined : l.owner === OWN ? null : l.owner)))
-      if (other != null) ctx.addIssue({ code: 'custom', path: ['lines', indexMap[other], 'productPublicId'], message: t('warehouse.lineRules.singleOwner') })
+      if (other != null) ctx.addIssue({ code: 'custom', path: ['lines', indexMap[other], 'productPublicId'], message: t(opts.manual ? 'warehouse.manualIssues.errors.singleOwner' : 'warehouse.lineRules.singleOwner') })
     })
 }
 

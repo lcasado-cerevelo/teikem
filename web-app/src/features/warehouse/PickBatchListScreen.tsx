@@ -25,9 +25,10 @@ const REPLENISH_TYPES = ['REPLENISH'] as const
 
 function BatchesTab() {
   const t = useT()
-  const canPick = useCan('warehouse.pick')
+  // el panel Recolección sirve a quien recolecta (warehouse.pick) y a quien solo hace despachos manuales (warehouse.issue)
+  const canCollect = useCan('warehouse.pick|warehouse.issue')
   const [highlight, setHighlight] = useState<string | null>(null)
-  if (!canPick) return <PickBatchesPanel />
+  if (!canCollect) return <PickBatchesPanel />
   return (
     <SplitPane storageKey="pick-batches" label={t('warehouse.pickBatches.splitLabel')} className="collect-split">
       <CollectPanel onCollected={(b) => setHighlight(b.publicId ?? null)} />

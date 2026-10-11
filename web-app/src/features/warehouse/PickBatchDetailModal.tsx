@@ -4,14 +4,13 @@
 // diálogo encima: mientras están abiertos este modal no se cierra con Escape ni con clic fuera. Eliminar cierra el modal.
 import { useState } from 'react'
 import { ApiError } from '../../kernel/api/problem'
-import { StatusChip } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
 import { Chip, EmptyState, Modal, Spinner } from '../../kernel/ui'
 import { usePickBatch, type PickBatchDto } from './api'
 import { DeletePickBatchDialog } from './DeletePickBatchDialog'
 import { PackModal } from './PackModal'
 import { PickBatchDetailActions, PickBatchDetailBody } from './PickBatchDetailBody'
-import { PICK_BATCH_STATUS_DOMAIN } from './pickBatchView'
+import { PickBatchStatusChip } from './PickBatchStatusChip'
 
 export interface PickBatchDetailModalProps {
   /** publicId de la recolección (null = cerrado). */
@@ -30,8 +29,8 @@ export function PickBatchDetailModal({ publicId, onClose }: PickBatchDetailModal
   const title = batch ? (
     <span className="collect-dtitle">
       <span className="ref">{batch.number}</span> · {batch.warehouseCode}{' '}
-      <StatusChip domain={PICK_BATCH_STATUS_DOMAIN} code={batch.statusCode} label={batch.status} />
-      {batch.isActive === false && <Chip tone="fail">{t('warehouse.pickBatches.deletedChip')}</Chip>}
+      <PickBatchStatusChip batch={batch} />
+      {batch.isActive === false && !batch.isManual && <Chip tone="fail">{t('warehouse.pickBatches.deletedChip')}</Chip>}
     </span>
   ) : (
     t('warehouse.pickBatches.detailTitle')

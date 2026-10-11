@@ -292,13 +292,13 @@ describe('Panel "Recolecciones"', () => {
     expect(screen.getByText('PB-00002')).toBeInTheDocument()
   })
 
-  it('tabla de 5 columnas con productos "SKU ×cant"; Empacar desde la fila abre el empaque de esa recolección', async () => {
+  it('tabla de 6 columnas con productos "SKU ×cant"; Empacar desde la fila abre el empaque de esa recolección', async () => {
     const user = userEvent.setup()
     wrap(['inventory.view', 'warehouse.pick', 'orders.create'])
     await screen.findByText('PB-00001')
     const table = screen.getByRole('table', { name: 'Recolecciones' })
     const headers = within(table).getAllByRole('columnheader').map((h) => h.textContent?.trim())
-    expect(headers.slice(0, 5)).toEqual(['Número', 'Productos', 'Orden y factura', 'Cliente', 'Recolectada'])
+    expect(headers.slice(0, 6)).toEqual(['Número', 'Tipo', 'Productos', 'Orden y factura', 'Cliente', 'Recolectada'])
     expect(within(table).getAllByText('A-1 ×2, B-2 ×1').length).toBeGreaterThan(0)
     // Empacar solo en la que se puede empacar (la empacada no lo ofrece)
     const packs = within(table).getAllByRole('button', { name: 'Empacar' })
