@@ -87,7 +87,7 @@ public sealed class DatabaseInitializer(IServiceProvider services, IConfiguratio
         }
 
         var sync = new SchemaSync(connectionString, logger);
-        var plan = await sync.PlanAsync(structure.Path, ct);
+        var plan = await sync.PlanAsync(structure.Path, [seed, UpdateScript(designDir)], ct);
         Console.WriteLine($"db-update: {plan.Changes.Count} cambio(s) de esquema por aplicar.");
         foreach (var c in plan.Changes) Console.WriteLine($"  + {c.Description}");
         foreach (var w in plan.Warnings) Console.WriteLine($"  ! REVISAR A MANO: {w}");

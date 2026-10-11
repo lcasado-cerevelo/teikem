@@ -12,7 +12,13 @@ namespace Teikem.Infrastructure.Persistence.Scripts;
 public sealed class SchemaSync(string connectionString, ILogger logger)
 {
     /// <summary>Calcula qué falta en la base real (no la modifica; sí crea y borra la base sombra).</summary>
-    public async Task<SchemaDiffResult> PlanAsync(string structureScriptPath, CancellationToken ct = default)
+    /// <summary>
+    /// Compara la base real contra el estado DESEADO: el script de estructura (congelado) MÁS los scripts posteriores (<paramref name="laterScripts"/>:
+    /// seed y logistica-db-update.sql). Sin esto, un cambio de esquema que solo vive en logistica-db-update.sql (p. ej. el CHECK de
+    /// NumberSequence.Kind con MANUALISSUE) se vería como «diferencia» y db-update intentaría devolverlo al texto viejo (y fallaría
+    /// en cuanto hubiera datos con el valor nuevo).
+    /// </summary>
+    public async Task<SchemaDiffResult> PlanAsync(string structureScriptPath, IReadOnlyList<SqlScript>? laterScripts = null, CancellationToken ct = default)
     {
         var csb = new SqlConnectionStringBuilder(connectionString);
         var realName = csb.InitialCatalog;
@@ -24,6 +30,7 @@ public sealed class SchemaSync(string connectionString, ILogger logger)
             logger.LogInformation("Creando la base temporal '{Db}' con el script de estructura actual ...", csb.InitialCatalog);
             await shadowRunner.EnsureDatabaseAsync(ct);
             await shadowRunner.ApplyAsync([new SqlScript("logistica-db-estructura.sql", structureScriptPath)], ct);
+            if (laterScripts is { Count: > 0 }) await shadowRunner.ApplyAsync(laterScripts, ct);
             var desired = await ReadAsync(shadowCs, ct);
             var actual = await ReadAsync(connectionString, ct);
             return SchemaDiffer.Diff(desired, actual);
