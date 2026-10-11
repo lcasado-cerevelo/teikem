@@ -6,7 +6,7 @@ namespace Teikem.Domain.Wms;
 /// <summary>
 /// Lote 6 — Numeración de documentos WMS (pura). Un contador por tenant (ClientId NULL) en dbo.NumberSequence:
 /// REC-##### (RECEIPT), CC-##### (CYCLECOUNT), XD-##### (CROSSDOCK) y PO-##### (PURCHASE); Lote 27 (Rentas): REN-##### (RENTAL) y
-/// DRN-##### (RENTALRETURN). La recolección NO tiene patrón
+/// DRN-##### (RENTALRETURN); 2026-10-11: DMA-##### (MANUALISSUE, despacho manual). La recolección NO tiene patrón
 /// propio: usa NumberingRules.PackBatchPattern con el contador PACKBATCH (D10), así su número ES el PackBatchNumber de la orden.
 /// </summary>
 public static class WmsNumbering
@@ -17,6 +17,8 @@ public static class WmsNumbering
     public const string PurchaseOrderPattern = "PO-#####";
     public const string RentalPattern = "REN-#####";
     public const string RentalReturnPattern = "DRN-#####";
+    /// <summary>2026-10-11: despacho manual (salida de inventario sin entrega) con su propio contador; no consume EMP.</summary>
+    public const string ManualIssuePattern = "DMA-#####";
 
     public static string PatternFor(string kind) => kind switch
     {
@@ -26,7 +28,8 @@ public static class WmsNumbering
         NumberKinds.Purchase => PurchaseOrderPattern,
         NumberKinds.Rental => RentalPattern,
         NumberKinds.RentalReturn => RentalReturnPattern,
-        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Tipo de número WMS desconocido; use RECEIPT, CYCLECOUNT, CROSSDOCK, PURCHASE, RENTAL o RENTALRETURN."),
+        NumberKinds.ManualIssue => ManualIssuePattern,
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Tipo de número WMS desconocido; use RECEIPT, CYCLECOUNT, CROSSDOCK, PURCHASE, RENTAL, RENTALRETURN o MANUALISSUE."),
     };
 
     /// <summary>Dibuja el número del contador con el patrón del tipo (p. ej. RECEIPT, 7 → 'REC-00007').</summary>

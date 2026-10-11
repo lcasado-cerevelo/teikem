@@ -101,6 +101,9 @@ public static class KardexRules
             return refId is null ? Fallback(refEntityCode, id) : (IsEnglish(lang) ? "Process #" : "Proceso #") + id;
         if (string.IsNullOrWhiteSpace(documentNumber)) return Fallback(refEntityCode, id);
 
+        // 2026-10-11: el despacho manual es una PICK_BATCH con número DMA-#####: 'Despacho manual DMA-00012' / 'Manual issue …'.
+        if (string.Equals(refEntityCode, EntityTypes.PickBatch, StringComparison.OrdinalIgnoreCase) && IsManualIssueNumber(documentNumber))
+            return (IsEnglish(lang) ? "Manual issue " : "Despacho manual ") + documentNumber;
         var prefix = RefPrefix(refEntityCode, lang);
         return prefix is null ? documentNumber : prefix + " " + documentNumber;
     }
@@ -133,6 +136,10 @@ public static class KardexRules
             EntityTypes.RentalReturn => "Devolución de renta",
             _ => null,
         };
+
+    /// <summary>2026-10-11: ¿el número es de un despacho manual? (prefijo 'DMA-' de WmsNumbering.ManualIssuePattern).</summary>
+    public static bool IsManualIssueNumber(string? number)
+        => number is not null && number.StartsWith("DMA-", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>¿El idioma pedido es inglés? (mismo criterio que MultilingualText: los dos primeros caracteres).</summary>
     private static bool IsEnglish(string? lang)

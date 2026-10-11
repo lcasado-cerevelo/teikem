@@ -185,11 +185,13 @@ public static class NumberingRules
         // Lote 6: recibos, conteos, planes de cruce de muelle y órdenes de compra (por tenant, ClientId NULL)
         or NumberKinds.Receipt or NumberKinds.CycleCount or NumberKinds.CrossDock or NumberKinds.Purchase
         // Lote 27 (Rentas): rentas REN-##### y devoluciones de renta DRN-##### (por tenant, ClientId NULL)
-        or NumberKinds.Rental or NumberKinds.RentalReturn;
+        or NumberKinds.Rental or NumberKinds.RentalReturn
+        // 2026-10-11: despacho manual DMA-##### (por tenant, ClientId NULL)
+        or NumberKinds.ManualIssue;
 
     private static string Coalesce(string? pattern, string fallback) => string.IsNullOrWhiteSpace(pattern) ? fallback : pattern.Trim();
 
     private static ArgumentOutOfRangeException UnknownKind(string kind)
-        => new(nameof(kind), kind, "Tipo de número desconocido; use ORDER, INVOICE, PACKAGE, PACKBATCH, WORKORDER, TRIP, RECEIPT, CYCLECOUNT, CROSSDOCK, PURCHASE, RENTAL o RENTALRETURN.");
+        => new(nameof(kind), kind, "Tipo de número desconocido; use ORDER, INVOICE, PACKAGE, PACKBATCH, WORKORDER, TRIP, RECEIPT, CYCLECOUNT, CROSSDOCK, PURCHASE, RENTAL, RENTALRETURN o MANUALISSUE.");
 }
 }

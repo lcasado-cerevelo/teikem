@@ -239,6 +239,9 @@ public sealed class PickBatchConfiguration : IEntityTypeConfiguration<PickBatch>
         b.Property(p => p.Number).HasMaxLength(40).IsRequired();
         b.Property(p => p.ClientInvoiceNumber).HasMaxLength(40);
         b.Property(p => p.RowVersion).IsRowVersion();
+        // 2026-10-11 — despacho manual (logistica-db-update.sql): FK_PickBatch_ManualIssueReason → LookupCode; nota ≤ 500.
+        b.Property(p => p.ManualIssueReasonId);
+        b.Property(p => p.Note).HasMaxLength(500);
 
         b.HasIndex(p => new { p.TenantId, p.Number }).IsUnique().HasDatabaseName("UQ_PickBatch_Number");
         // Una orden nace de a lo sumo una recolección activa (última línea contra el doble empaque).

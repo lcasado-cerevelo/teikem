@@ -12,6 +12,7 @@ namespace Teikem.Infrastructure.Services;
 /// (Lote 13: EXPECTED/RECEIVING/DISCREPANCY), tareas PENDING o IN_PROGRESS, recolecciones que aún se pueden eliminar
 /// (COLLECTED, o PACKED con su orden activa en etapa inicial: su reversa es una ENTRADA) y conteos OPEN/COUNTED con líneas
 /// del producto (su reconciliación puede asentar entradas). Las hijas sin TenantId se alcanzan por su encabezado filtrado.
+/// 2026-10-11: los despachos manuales (DMA-#####) no cuentan como documento abierto.
 /// </summary>
 internal static class ProductOpenDocuments
 {
@@ -41,9 +42,11 @@ internal static class ProductOpenDocuments
             return true;
 
         // PickBatchLine no lleva TenantId: se alcanza por su lote filtrado (criterio de PickBatchRules.CanDelete).
+        // 2026-10-11: el despacho manual (DMA, ManualIssueReasonId no nulo) NO cuenta: es una salida definitiva que queda en
+        // COLLECTED para siempre y bloquearía la baja sin remedio; tras la baja su eliminación la rechaza el ledger (422).
         var inRevertiblePick = await (from l in db.Set<PickBatchLine>().AsNoTracking()
                                       join b in db.Set<PickBatch>().AsNoTracking() on l.PickBatchId equals b.PickBatchId
-                                      where l.ProductId == productId && l.ReversalTxnId == null && b.IsActive
+                                      where l.ProductId == productId && l.ReversalTxnId == null && b.IsActive && b.ManualIssueReasonId == null
                                             && (b.StatusCodeId == collectedPickId
                                                 || (b.StatusCodeId == packedPickId
                                                     && db.TransportOrders.Any(o => o.TransportOrderId == b.TransportOrderId && o.IsActive

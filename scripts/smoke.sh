@@ -2992,6 +2992,46 @@ kardex "productPublicIds=$PT&types=TRANSFER" | jq -e '.total==1 and .items[0].qu
 [[ $(onhand "$W6P" "$B_RSV" "$PT") == 1 && $(onhand "$W7P" "$B7" "$PT") == 2 ]] || fail "saldos tras la transferencia W6→W7"
 ok "producto con recolección eliminable 409; doble empaque: una orden (número = EMP); almacén vacío con recolección empacada eliminable 409 (errors.pickBatches); DELETE de la orden 409 (D12); el Operador no empaca (403 orders.create) ni elimina una empacada (403 orders.cancel); factura autogenerada copiada al lote; doble eliminación 204 + 404 con reversa exacta y la orden inactiva; con la orden cancelada la recolección empacada no se elimina (422 con su mensaje, sin reversa, lote y orden intactos); filtros de la lista; baja de producto con inventario 409, en cero 200 (fuera de activeOnly, visible en saldos y Kárdex, recibo y recolección 422) y reactivación; transferencia a la misma posición 400 y W6→W7 en una sola fila TRANSFER"
 
+step "despacho manual (2026-10-11): DMA-#####, motivo obligatorio, Kárdex, 409 sin efecto, no se empaca, warehouse.issue e idempotencia"
+# Salida de inventario SIN entrega sobre la misma recolección (PickBatch con motivo). Producto propio PM en W7/P-01; termina en 0.
+PM=$(prod "{\"sku\":\"PM$TS\",\"name\":\"Despacho manual $TS\",\"purchaseCost\":2}")
+expect 200 "$(adjust "$PM" "$W7P" "$B7" 5 FOUND)" >/dev/null
+mibody() { jq -cn --arg w "$W7P" --arg p "$PM" --argjson q "$1" --arg r "$2" --arg n "${3:-}" '{warehousePublicId:$w,lines:[{productPublicId:$p,quantity:$q}],reasonCode:(if $r=="" then null else $r end),note:(if $n=="" then null else $n end)}'; }
+expect 200 "$(req GET /api/v1/manual-issues/reasons "" "$TWH6")" | jq -e '[.[].code]==["SAMPLE","INTERNAL_USE","CUSTOMER_PICKUP","SALE","OTHER"]' >/dev/null || fail "motivos del despacho manual"
+expect 200 "$(req GET /api/v1/catalogs/ManualIssueReason)" | jq -e 'length==5 and any(.[]; .code=="CUSTOMER_PICKUP" and .label=="Retiro del cliente")' >/dev/null || fail "catálogo ManualIssueReason"
+expect 200 "$(req GET /api/v1/me "" "$TWH6")" | jq -e '.permissions | index("warehouse.issue") != null' >/dev/null || fail "el Operador de almacén sin warehouse.issue"
+expect 403 "$(req POST /api/v1/manual-issues "$(mibody 1 SAMPLE)" "$TREAD6")" >/dev/null   # Solo lectura: sin warehouse.issue
+expect 400 "$(req POST /api/v1/manual-issues "$(mibody 1 '')")" | jq -e --arg m "Indique el motivo del despacho manual." "$HASM" >/dev/null || fail "despacho manual sin motivo → 400"
+expect 400 "$(req POST /api/v1/manual-issues "$(mibody 1 REGALO)")" | jq -e --arg m "El motivo REGALO no existe o está inactivo." "$HASM" >/dev/null || fail "motivo inexistente → 400"
+expect 400 "$(req POST /api/v1/manual-issues "$(mibody 1 SAMPLE "$(printf 'x%.0s' $(seq 1 501))")")" | jq -e --arg m "La nota admite como máximo 500 caracteres." "$HASM" >/dev/null || fail "nota de 501 → 400"
+N0=$(kardex "productPublicIds=$PM" | jq .total)
+expect 409 "$(req POST /api/v1/manual-issues "$(mibody 6 SAMPLE)")" | jq -e '.code=="insufficient_stock"' >/dev/null || fail "despacho manual sin existencia → 409 insufficient_stock"
+[[ $(kardex "productPublicIds=$PM" | jq .total) == "$N0" && $(onhand "$W7P" "$B7" "$PM") == 5 ]] || fail "el 409 dejó efectos"
+IDH=$(mktemp)
+MI=$(curl -sS -X POST "$BASE/api/v1/manual-issues" -H 'Content-Type: application/json' -H 'X-Lang: es' -H "Authorization: Bearer $TWH6" \
+  -H "Idempotency-Key: smoke-$TS-dma" -D "$IDH" --data "$(mibody 2 sample 'Feria de salud')" -w '\n%{http_code}')
+MI=$(expect 200 "$MI"); MIP=$(pid "$MI"); MIN=$(echo "$MI" | jq -r .number)
+echo "$MI" | jq -e '(.number | test("^DMA-[0-9]{5}$")) and .isManual and .reasonCode=="SAMPLE" and .reasonLabel=="Muestra" and .note=="Feria de salud" and .canPack==false and .canDelete and .orderPublicId==null and .statusCode=="COLLECTED"' >/dev/null || fail "despacho manual: $MI"
+MI2=$(curl -sS -X POST "$BASE/api/v1/manual-issues" -H 'Content-Type: application/json' -H 'X-Lang: es' -H "Authorization: Bearer $TWH6" \
+  -H "Idempotency-Key: smoke-$TS-dma" -D "$IDH" --data "$(mibody 2 sample 'Feria de salud')" -w '\n%{http_code}')
+[[ $(expect 200 "$MI2" | jq -r .publicId) == "$MIP" ]] && grep -qi '^idempotent-replayed: *true' "$IDH" || fail "la repetición con la misma Idempotency-Key creó otro despacho"
+rm -f "$IDH"
+[[ $(onhand "$W7P" "$B7" "$PM") == 3 ]] || fail "el despacho manual no sacó 2"
+kardex "productPublicIds=$PM&types=ISSUE" | jq -e --arg n "$MIN · Muestra" --arg l "Despacho manual $MIN" '.total==1 and .items[0].quantity==-2 and .items[0].notes==$n and .items[0].refLabel==$l and .items[0].refEntityCode=="PICK_BATCH"' >/dev/null || fail "Kárdex del despacho manual"
+expect 422 "$(req POST "/api/v1/pick-batches/$MIP/pack" "$(packbody)")" | jq -e --arg m "El despacho manual $MIN no se empaca: es una salida de inventario sin entrega." '.title==$m' >/dev/null || fail "empacar un despacho manual → 422"
+expect 200 "$(req GET "/api/v1/pick-batches?kind=MANUAL&productPublicIds=$PM")" | jq -e --arg n "$MIN" '.total==1 and .items[0].number==$n and .items[0].isManual' >/dev/null || fail "lista kind=MANUAL"
+expect 200 "$(req GET "/api/v1/pick-batches?kind=PACK&productPublicIds=$PM")" | jq -e '.total==0' >/dev/null || fail "lista kind=PACK"
+expect 200 "$(req GET "/api/v1/pick-batches?productPublicIds=$PM&search=feria")" | jq -e '.total==1' >/dev/null || fail "búsqueda por la nota (kind=ALL por omisión)"
+expect 400 "$(req GET "/api/v1/pick-batches?kind=OTRO")" | jq -e --arg m "El tipo debe ser MANUAL, PACK o ALL." "$HASM" >/dev/null || fail "kind inválido → 400"
+expect 200 "$(req GET "/api/v1/manual-issues/$MIP" "" "$TREAD6")" | jq -e --arg n "$MIN" '.number==$n' >/dev/null || fail "ficha del despacho manual con inventory.view"
+expect 404 "$(req GET "/api/v1/manual-issues/$PB7P")" | jq -e '.title=="Despacho manual no encontrado."' >/dev/null || fail "una recolección EMP por /manual-issues → 404"
+expect 403 "$(req DELETE "/api/v1/manual-issues/$MIP" '{}' "$TREAD6")" >/dev/null
+expect 204 "$(req DELETE "/api/v1/manual-issues/$MIP" '{"comment":"humo"}' "$TWH6")" >/dev/null
+[[ $(onhand "$W7P" "$B7" "$PM") == 5 ]] || fail "eliminar el despacho manual no restauró el inventario"
+expect 200 "$(req GET "/api/v1/manual-issues/$MIP")" | jq -e '.statusCode=="CANCELLED" and .isActive==false and (.lines[0].reversalTxnId != null)' >/dev/null || fail "despacho manual eliminado"
+expect 200 "$(adjust "$PM" "$W7P" "$B7" -5 LOSS)" >/dev/null   # W7 sin existencia de PM (pasos siguientes)
+ok "despacho manual $MIN: 5 motivos (reasons y catálogo), Operador con warehouse.issue y Solo lectura 403; sin motivo, motivo inexistente y nota de 501 → 400; sin existencia 409 insufficient_stock sin efecto; Idempotency-Key repite el mismo documento; Kárdex ISSUE '$MIN · Muestra' / 'Despacho manual $MIN'; empacar 422; kind=MANUAL/PACK/OTRO y búsqueda por nota; ficha (EMP → 404); eliminar con reversa (Solo lectura 403)"
+
 step "lotes, series, recolección de varias líneas y baja de posición (Lote 6): EnsureLot, series (OPENJSON) y rango por posición en SQL Server"
 PL=$(prod "{\"sku\":\"PL$TS\",\"name\":\"Lote $TS\",\"trackingType\":\"LOT\",\"purchaseCost\":1}")
 PS=$(prod "{\"sku\":\"PS$TS\",\"name\":\"Serie $TS\",\"trackingType\":\"SERIAL\",\"purchaseCost\":1}")

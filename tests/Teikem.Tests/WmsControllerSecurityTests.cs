@@ -30,6 +30,7 @@ public class WmsControllerSecurityTests
         [typeof(WarehouseTasksController)] = ModuleKeys.WmsLotSerial,
         [typeof(CycleCountsController)] = ModuleKeys.WmsLotSerial,
         [typeof(PickBatchesController)] = ModuleKeys.WmsLotSerial,
+        [typeof(ManualIssuesController)] = ModuleKeys.WmsLotSerial,   // 2026-10-11: despacho manual
         [typeof(SuppliersController)] = ModuleKeys.Purchasing,
         [typeof(PurchaseOrdersController)] = ModuleKeys.Purchasing,
         [typeof(DockAppointmentsController)] = ModuleKeys.CrossDock,
@@ -162,6 +163,12 @@ public class WmsControllerSecurityTests
         [(typeof(PickBatchesController), nameof(PickBatchesController.CollectAndPack))] = PermissionCatalog.WarehousePick,   // Lote 8A
         [(typeof(PickBatchesController), nameof(PickBatchesController.Pack))] = PermissionCatalog.WarehousePick,
         [(typeof(PickBatchesController), nameof(PickBatchesController.Delete))] = PermissionCatalog.WarehousePick,
+        // 2026-10-11 — despacho manual (DMA-#####): lee quien ve inventario; crea, elimina y lee los motivos quien tiene warehouse.issue.
+        [(typeof(ManualIssuesController), nameof(ManualIssuesController.List))] = PermissionCatalog.InventoryView,
+        [(typeof(ManualIssuesController), nameof(ManualIssuesController.Get))] = PermissionCatalog.InventoryView,
+        [(typeof(ManualIssuesController), nameof(ManualIssuesController.Reasons))] = PermissionCatalog.WarehouseIssue,
+        [(typeof(ManualIssuesController), nameof(ManualIssuesController.Create))] = PermissionCatalog.WarehouseIssue,
+        [(typeof(ManualIssuesController), nameof(ManualIssuesController.Delete))] = PermissionCatalog.WarehouseIssue,
 
         [(typeof(SuppliersController), nameof(SuppliersController.List))] = PermissionCatalog.PurchasingView,
         [(typeof(SuppliersController), nameof(SuppliersController.Create))] = PermissionCatalog.PurchasingManage,
@@ -325,7 +332,11 @@ public class WmsControllerSecurityTests
         Assert.Equal(PermissionCatalog.RentalMaintenance, Expected[(typeof(RentalProcessesController), nameof(RentalProcessesController.Scrap))]);
         Assert.Equal(ModuleKeys.RentalEquipment, ModuleOf[typeof(RentalReturnsController)]);
         Assert.Equal(ModuleKeys.RentalEquipment, ModuleOf[typeof(RentalProcessesController)]);
-        Assert.Equal(155, Expected.Count); // 132 de master + 1 de reparto por posición (Distribute) + 1 de verificación de línea (CheckLine) + 12 de RentalsController + 3 de RentalReturnsController + 4 de RentalProcessesController
+        // 2026-10-11 — despacho manual: crear y eliminar con warehouse.issue (no warehouse.pick), en WMS_LOTSERIAL como /pick-batches.
+        Assert.Equal(PermissionCatalog.WarehouseIssue, Expected[(typeof(ManualIssuesController), nameof(ManualIssuesController.Create))]);
+        Assert.Equal(PermissionCatalog.WarehouseIssue, Expected[(typeof(ManualIssuesController), nameof(ManualIssuesController.Delete))]);
+        Assert.Equal(ModuleOf[typeof(PickBatchesController)], ModuleOf[typeof(ManualIssuesController)]);
+        Assert.Equal(160, Expected.Count); // 132 de master + 1 de reparto por posición (Distribute) + 1 de verificación de línea (CheckLine) + 12 de RentalsController + 3 de RentalReturnsController + 4 de RentalProcessesController + 5 de ManualIssuesController
     }
 
     [Fact]

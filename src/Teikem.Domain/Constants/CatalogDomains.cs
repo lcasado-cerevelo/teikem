@@ -110,6 +110,8 @@ public static class LookupDomains
     public const string DamageCause = "DamageCause";
     /// <summary>2026-10-08 — Daños: destino final de lo que sale de cuarentena al desecharlo (tirado, devuelto al proveedor, donado, vendido como saldo).</summary>
     public const string DamageFinalDestination = "DamageFinalDestination";
+    /// <summary>2026-10-11 — Despacho manual (DMA-#####): motivo de la salida de inventario sin entrega (PickBatch.ManualIssueReasonId; editable por compañía).</summary>
+    public const string ManualIssueReason = "ManualIssueReason";
 }
 
 /// <summary>
@@ -663,6 +665,8 @@ public static class NumberKinds
     public const string Rental = "RENTAL";
     /// <summary>Lote 27 (Rentas): número de devolución de renta DRN-##### por tenant (ClientId NULL; bloque R2).</summary>
     public const string RentalReturn = "RENTALRETURN";
+    /// <summary>2026-10-11: número de despacho manual DMA-##### por tenant (ClientId NULL). NO consume PACKBATCH (EMP).</summary>
+    public const string ManualIssue = "MANUALISSUE";
 }
 
 public static class ModuleKeys
@@ -1197,6 +1201,21 @@ public static class DamageFinalDestinations
     public const string Donated = "DONATED";
     public const string SoldAsSalvage = "SOLD_AS_SALVAGE";
     public static readonly string[] All = { Discarded, ReturnedToSupplier, Donated, SoldAsSalvage };
+}
+
+/// <summary>
+/// 2026-10-11 — LookupCode 'ManualIssueReason' (editable por compañía en Sistema → Catálogos): motivo obligatorio de un despacho
+/// manual (salida de inventario sin entrega, DMA-#####). Los cinco de sistema: la compañía los renombra o los deshabilita con su
+/// override (Sistema → Catálogos, admin.catalogs); un valor nuevo lo agrega el administrador de plataforma (dominio global).
+/// </summary>
+public static class ManualIssueReasons
+{
+    public const string Sample = "SAMPLE";
+    public const string InternalUse = "INTERNAL_USE";
+    public const string CustomerPickup = "CUSTOMER_PICKUP";
+    public const string Sale = "SALE";
+    public const string Other = "OTHER";
+    public static readonly string[] All = { Sample, InternalUse, CustomerPickup, Sale, Other };
 }
 
 /// <summary>Qué se hace con lo dañado al reportarlo: mandarlo a una posición de cuarentena o desecharlo de una vez.</summary>
