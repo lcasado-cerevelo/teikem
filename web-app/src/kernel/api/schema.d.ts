@@ -10006,6 +10006,180 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/manual-issues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    from?: string;
+                    to?: string;
+                    productPublicIds?: string[];
+                    status?: string[];
+                    search?: string;
+                    includeDeleted?: boolean;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PickBatchPageDto"];
+                        "application/json": components["schemas"]["PickBatchPageDto"];
+                        "text/json": components["schemas"]["PickBatchPageDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ManualIssueCreateRequest"];
+                    "text/json": components["schemas"]["ManualIssueCreateRequest"];
+                    "application/*+json": components["schemas"]["ManualIssueCreateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PickBatchDto"];
+                        "application/json": components["schemas"]["PickBatchDto"];
+                        "text/json": components["schemas"]["PickBatchDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/manual-issues/reasons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["LookupValueDto"][];
+                        "application/json": components["schemas"]["LookupValueDto"][];
+                        "text/json": components["schemas"]["LookupValueDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/manual-issues/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PickBatchDto"];
+                        "application/json": components["schemas"]["PickBatchDto"];
+                        "text/json": components["schemas"]["PickBatchDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PickBatchDeleteRequest"];
+                    "text/json": components["schemas"]["PickBatchDeleteRequest"];
+                    "application/*+json": components["schemas"]["PickBatchDeleteRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me": {
         parameters: {
             query?: never;
@@ -10856,6 +11030,7 @@ export interface paths {
                     includeDeleted?: boolean;
                     skip?: number;
                     take?: number;
+                    kind?: string;
                 };
                 header?: never;
                 path?: never;
@@ -21187,6 +21362,13 @@ export interface components {
             laborCost?: number | null;
             isCompleted?: boolean | null;
         };
+        ManualIssueCreateRequest: {
+            /** Format: uuid */
+            warehousePublicId?: string | null;
+            lines?: components["schemas"]["PickBatchLineRequest"][] | null;
+            reasonCode?: string | null;
+            note?: string | null;
+        };
         MeDto: {
             /** Format: int32 */
             userId?: number;
@@ -21750,6 +21932,11 @@ export interface components {
             lines?: components["schemas"]["PickBatchLineDto"][] | null;
             isActive?: boolean;
             rowVersion?: string | null;
+            isManual?: boolean;
+            reasonCode?: string | null;
+            reasonLabel?: string | null;
+            note?: string | null;
+            ownerClientName?: string | null;
         };
         PickBatchLineDto: {
             /** Format: int32 */
