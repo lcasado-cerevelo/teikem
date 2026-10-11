@@ -1,0 +1,12 @@
+# Flujo Maestro: lo contado SIN señal (05a) se manda solo al volver la señal. Corre con wifi y datos encendidos otra vez; el aparato manda la cola en su
+# sincronización (aquí se fuerza con «Sincronizar ahora», como 04b) y no debe quedar nada pendiente ni rechazado.
+appId: com.teikem.almacen
+---
+- launchApp
+- runFlow: _desbloquear.yaml
+
+- assertVisible: "Teikem Almacén"
+- tapOn: "Sincronizar ahora"
+- extendedWaitUntil:
+    visible: "Todo enviado"
+    timeout: 60000

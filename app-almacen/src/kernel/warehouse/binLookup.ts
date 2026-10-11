@@ -25,10 +25,39 @@ export const BIN_LOOKUP_PAGE = 200
 /** Páginas como máximo: 1 000 posiciones que contienen el código escaneado ya es un caso anómalo. */
 const MAX_PAGES = 5
 
-/** Busca una posición del almacén por su código exacto (lo que se escaneó). null si no existe o no coincide. */
+/**
+ * Señal débil (2026-10-11): la posición con su espacio libre, calculado EN EL APARATO: cupo de la posición (sincronizado, `bin.max_capacity_qty`) menos
+ * lo que hay según los saldos locales (que ya incluyen lo pendiente de enviar). Sin cupo configurado, `freeQty` es null. Solo posiciones activas cuyo cupo ya
+ * vino del servidor (`capacity_known`; una descargada antes de esta versión no lo sabe todavía: se pregunta al servidor) que el
+ * aparato ya tiene; null si no la tiene (la creada después de la última sincronización: entonces se le pregunta al servidor). Es una ayuda (el servidor
+ * valida y, para el cupo, solo avisa), así que un dato un poco atrasado no bloquea nada.
+ */
+export function findLocalBinWithFree(warehousePublicId: string, code: string): FoundBin | null {
+  const wanted = code.trim()
+  if (!wanted) return null
+  const db = getDb()
+  const row = db.getFirstSync<{ id: number; code: string; max_capacity_qty: number | null }>(
+    'SELECT id, code, max_capacity_qty FROM bin WHERE warehouse_public_id = ? AND code = ? COLLATE NOCASE AND is_active = 1 AND capacity_known = 1 LIMIT 1',
+    [warehousePublicId, wanted],
+  )
+  if (!row) return null
+  const onHand =
+    db.getFirstSync<{ q: number | null }>('SELECT SUM(qty_on_hand) AS q FROM stock_balance WHERE warehouse_public_id = ? AND bin_id = ?', [
+      warehousePublicId,
+      row.id,
+    ])?.q ?? 0
+  return { id: row.id, code: row.code, freeQty: freeQtyOf(row.max_capacity_qty, onHand) }
+}
+
+/**
+ * Busca una posición del almacén por su código exacto (lo que se escaneó), con su espacio libre. Primero entre las que el aparato ya tiene (sin red,
+ * ver findLocalBinWithFree); solo si no está ahí se le pregunta al servidor. null si no existe o no coincide.
+ */
 export async function findBinByCode(warehousePublicId: string, code: string): Promise<FoundBin | null> {
   const wanted = code.trim().toUpperCase()
   if (!wanted) return null
+  const local = findLocalBinWithFree(warehousePublicId, code)
+  if (local) return local
   for (let page = 0; page < MAX_PAGES; page++) {
     const skip = page * BIN_LOOKUP_PAGE
     const result = await unwrap(

@@ -1,6 +1,6 @@
 // Lote 8A-app — esquema de la base local (expo-sqlite). Ver docs/mobile/app-almacen-plan.md §1 "Base local".
 // Migraciones por PRAGMA user_version: cada versión agrega su bloque de SQL; nunca se reescribe uno ya publicado.
-export const SCHEMA_VERSION = 11
+export const SCHEMA_VERSION = 12
 
 export const MIGRATIONS: readonly string[] = [
   // v1: kv, catálogos sincronizados, documentos abiertos, cola de salida y marcas de agua.
@@ -379,5 +379,15 @@ export const MIGRATIONS: readonly string[] = [
   // NULL = el efecto se deriva del cuerpo (Transferir, Ajustar y las filas anteriores a esta versión).
   `
   ALTER TABLE outbox ADD COLUMN projection_json TEXT;
+  `,
+  // v12 (2026-10-11, señal débil: capacidad sin servidor): el cupo de la posición (GET /sync/bins ya lo trae en maxCapacityQty). Con él y los saldos locales,
+  // Acomodar y Recibir calculan el espacio libre en el aparato (cupo − existencia) sin preguntar al servidor. NULL = sin cupo. Como las posiciones ya
+  // descargadas no lo traen, se borra la marca de agua de las posiciones para que la próxima sincronización las baje completas una vez.
+  // `capacity_known` = 1 cuando el cupo (aunque sea NULL = sin cupo) ya vino del servidor: antes de eso, NULL no significa «sin cupo» sino «no se sabe», y
+  // el espacio libre se le pregunta al servidor como siempre.
+  `
+  ALTER TABLE bin ADD COLUMN max_capacity_qty INTEGER;
+  ALTER TABLE bin ADD COLUMN capacity_known INTEGER NOT NULL DEFAULT 0;
+  DELETE FROM sync_watermark WHERE resource LIKE 'bins:%';
   `,
 ]

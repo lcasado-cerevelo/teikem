@@ -31,6 +31,8 @@ export interface OpenCount {
   /** Producto del conteo por producto; null en el conteo por posición. */
   product: CountProduct | null
   isBlind: boolean
+  /** Cuándo se abrió en el aparato (ISO UTC): con un conteo hecho sin señal, la hora de «contado» que se manda al servidor. */
+  createdAtUtc: string
 }
 
 const ALREADY_OPEN = 'Ya hay un conteo en curso; hay que terminarlo o cancelarlo antes de empezar otro.'
@@ -117,6 +119,7 @@ type CountRow = {
   product_name: string | null
   tracking_type_code: string | null
   is_blind: number
+  created_at_utc: string
 }
 
 export function getOpenCount(): OpenCount | null {
@@ -136,6 +139,7 @@ export function getOpenCount(): OpenCount | null {
         ? { publicId: row.product_public_id, sku: row.sku ?? '', name: row.product_name ?? '', trackingTypeCode: tracking }
         : null,
     isBlind: row.is_blind === 1,
+    createdAtUtc: row.created_at_utc,
   }
 }
 
@@ -148,9 +152,10 @@ export function captureExpectedLine(localCountId: number, line: ExpectedLine, co
     return
   }
   db.runSync(
-    `INSERT INTO local_count_line (local_count_id, line_id, product_public_id, sku, product_name, system_qty, counted_qty, is_extra, bin_id, bin_code)
-     SELECT ?, ?, ?, ?, ?, ?, ?, 0, c.bin_id, c.bin_code FROM local_count c WHERE c.id = ?`,
-    [localCountId, line.lineId, line.productPublicId, line.sku, line.productName, line.systemQty, countedQty, localCountId],
+    `INSERT INTO local_count_line (local_count_id, line_id, product_public_id, sku, product_name, system_qty, counted_qty, is_extra, bin_id, bin_code,
+                                   lot_number, lot_expiry_date)
+     SELECT ?, ?, ?, ?, ?, ?, ?, 0, c.bin_id, c.bin_code, ?, ? FROM local_count c WHERE c.id = ?`,
+    [localCountId, line.lineId, line.productPublicId, line.sku, line.productName, line.systemQty, countedQty, line.lotNumber ?? null, line.lotExpiryDate ?? null, localCountId],
   )
 }
 
@@ -204,6 +209,8 @@ export interface LocalCountLineRow {
   isExtra: boolean
   binId: number | null
   binCode: string | null
+  lotNumber: string | null
+  lotExpiryDate: string | null
 }
 
 type LineRow = {
@@ -238,6 +245,8 @@ export function getCapturedLines(localCountId: number): LocalCountLineRow[] {
       isExtra: r.is_extra === 1,
       binId: r.bin_id,
       binCode: r.bin_code,
+      lotNumber: r.lot_number,
+      lotExpiryDate: r.lot_expiry_date,
     }))
 }
 
@@ -250,6 +259,8 @@ export function toCapturedEntries(rows: LocalCountLineRow[]): CapturedEntry[] {
     countedQty: r.countedQty,
     isExtra: r.isExtra,
     binId: r.binId,
+    lotNumber: r.lotNumber,
+    lotExpiryDate: r.lotExpiryDate,
   }))
 }
 

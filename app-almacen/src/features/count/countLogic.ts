@@ -12,6 +12,9 @@ export interface ExpectedLine {
   productName: string
   /** null si el usuario no tiene warehouse.count (conteo a ciegas): el servidor ya lo omite, no hace falta permiso aquí. */
   systemQty: number | null
+  /** Conteo hecho sin señal (2026-10-11): el lote de la línea según los saldos del aparato; el servidor no manda líneas esperadas en ese caso. */
+  lotNumber?: string | null
+  lotExpiryDate?: string | null
 }
 
 /** Línea de un conteo por producto (POST /cycle-counts con productPublicIds): una por posición y lote con existencia. */
@@ -59,6 +62,19 @@ export function buildBatchItems(entries: CapturedEntry[]): CountBatchItem[] {
   return entries.map((e) => {
     if (!e.isExtra) return { lineId: e.lineId ?? undefined, countedQty: e.countedQty }
     const item: CountBatchItem = { binId: e.binId ?? undefined, productPublicId: e.productPublicId, countedQty: e.countedQty }
+    const lot = e.lotNumber?.trim()
+    if (lot) item.lot = e.lotExpiryDate ? { number: lot, expiryDate: e.lotExpiryDate } : { number: lot }
+    return item
+  })
+}
+
+/**
+ * Cuerpo de POST /cycle-counts/offline-bin (conteo de una posición hecho sin señal): el aparato no conocía el conteo del servidor, así que TODAS las
+ * líneas van por posición + producto (+ lote por número), como «lo encontrado»; el servidor las empareja con sus líneas o las agrega.
+ */
+export function buildOfflineItems(entries: CapturedEntry[], binId: number): CountBatchItem[] {
+  return entries.map((e) => {
+    const item: CountBatchItem = { binId, productPublicId: e.productPublicId, countedQty: e.countedQty }
     const lot = e.lotNumber?.trim()
     if (lot) item.lot = e.lotExpiryDate ? { number: lot, expiryDate: e.lotExpiryDate } : { number: lot }
     return item

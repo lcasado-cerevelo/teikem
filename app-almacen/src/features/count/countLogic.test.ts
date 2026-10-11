@@ -3,6 +3,7 @@ import {
   defaultBinOption,
   blankAsZero,
   buildBatchItems,
+  buildOfflineItems,
   canConfirmProductCount,
   hasAnyCountedQty,
   hasNothingToConfirm,
@@ -228,6 +229,21 @@ describe('conteo abierto (Lote 24)', () => {
     ).toEqual([
       { binId: 10, productPublicId: 'p1', countedQty: 4 },
       { binId: 11, productPublicId: 'p2', countedQty: 1, lot: { number: 'L-9' } },
+    ])
+  })
+})
+
+describe('buildOfflineItems (conteo de una posición hecho sin señal)', () => {
+  it('todas las líneas van por posición + producto (+ lote por número), aunque el aparato las tuviera como esperadas; nunca por lineId', () => {
+    const entries: CapturedEntry[] = [
+      { lineId: -1, productPublicId: 'p1', sku: 'A', productName: 'Uno', countedQty: 3, isExtra: false, binId: 5 },
+      { lineId: -2, productPublicId: 'p2', sku: 'B', productName: 'Dos', countedQty: 4, isExtra: false, binId: 5, lotNumber: ' L-9 ', lotExpiryDate: '2027-01-31' },
+      { lineId: null, productPublicId: 'p3', sku: 'C', productName: 'Tres', countedQty: 0, isExtra: true, binId: 5, lotNumber: 'L-1' },
+    ]
+    expect(buildOfflineItems(entries, 5)).toEqual([
+      { binId: 5, productPublicId: 'p1', countedQty: 3 },
+      { binId: 5, productPublicId: 'p2', countedQty: 4, lot: { number: 'L-9', expiryDate: '2027-01-31' } },
+      { binId: 5, productPublicId: 'p3', countedQty: 0, lot: { number: 'L-1' } },
     ])
   })
 })

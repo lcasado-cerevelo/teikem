@@ -178,6 +178,27 @@ describe('downloadBins (Lote 16)', () => {
     expect(getDb().getFirstSync('SELECT is_active FROM bin WHERE id = 1')).toEqual({ is_active: 0 })
   })
 
+  it('copia el cupo de la posición (maxCapacityQty) y lo actualiza o lo quita cuando cambia en el servidor (2026-10-11)', async () => {
+    getMock.mockResolvedValueOnce(
+      page(
+        [
+          { id: 1, code: 'A-01', warehousePublicId: 'wh-1', zoneId: 5, isActive: true, maxCapacityQty: 40 },
+          { id: 2, code: 'A-02', warehousePublicId: 'wh-1', zoneId: 5, isActive: true },
+        ],
+        null,
+        '2026-01-01T00:00:00.000Z',
+      ),
+    )
+    await downloadBins('wh-1')
+    expect(getDb().getAllSync('SELECT code, max_capacity_qty, capacity_known FROM bin ORDER BY id')).toEqual([
+      { code: 'A-01', max_capacity_qty: 40, capacity_known: 1 },
+      { code: 'A-02', max_capacity_qty: null, capacity_known: 1 },   // el servidor dijo «sin cupo»: ya se sabe
+    ])
+    getMock.mockResolvedValueOnce(page([{ id: 1, code: 'A-01', warehousePublicId: 'wh-1', zoneId: 5, isActive: true }], null, '2026-01-01T00:10:00.000Z'))
+    await downloadBins('wh-1')
+    expect(getDb().getFirstSync('SELECT max_capacity_qty FROM bin WHERE id = 1')).toEqual({ max_capacity_qty: null })
+  })
+
   it('copia isProvisional de la posición (y lo apaga si el supervisor la confirma)', async () => {
     getMock.mockResolvedValueOnce(
       page(
