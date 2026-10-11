@@ -107,7 +107,7 @@ la nueva muestra lo que hay y su indicador trabaja de fondo. Ya **no** se usa el
 
 ### P0.3 Deuda técnica del backend (verificar cada punto antes)
 - ~~Filtro real de `UserDataScope` (almacén/cliente)~~ **Hecho (Lote 32, 2026-10-11: `docs/lote32-decisiones.md`)**: filtro global en el servidor; los bordes (filas hijas, transferencias) quedan anotados allí.
-- Cerrar un trip: `TripStatuses.Completed` existe pero ningún endpoint lo mueve (solo `StartAsync`).
+- ~~Cerrar un trip~~ **Hecho (Lote 33, 2026-10-11: `docs/lote33-decisiones.md`)**: `POST /trips/{id}/complete`, permiso `trips.close`; falta el botón en la web y el cierre automático desde la app del chofer (P7).
 - `Contract.CodCommissionPct` en el modelo pero no expuesto; decisiones 39 y 44 del lote 2/3 (baja de cliente, reinvitar).
 - Propagación de `orders.credit_override` a roles clonados (sin prueba).
 - Validar la ventana AAL2 a 15/30/60 (loteF10). Atributo `[SkipIdempotency]` declarativo (hoy lista fija).

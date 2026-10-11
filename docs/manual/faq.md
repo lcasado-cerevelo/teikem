@@ -6234,3 +6234,12 @@ Casi seguro tiene **alcance de datos** (almacenes y/o clientes) en su usuario. C
 
 **¿Un registro sin almacén o sin cliente lo ve alguien con alcance?**
 Sí. Lo que no pertenece a ningún almacén/cliente (campo vacío, como un producto compartido o una plantilla general) lo ven todos los de la compañía; el alcance solo oculta lo que pertenece a un almacén/cliente fuera del suyo.
+
+**¿Qué significa «La ruta {código} no se puede cerrar: hay órdenes sin terminar (…)»? (422)**
+Esa ruta todavía tiene órdenes que no terminaron: siguen en camino, llegaron sin resultado o están Retenidas. El mensaje nombra hasta 10 (y agrega «y N más»). Registra la entrega de cada una, o márcala Fallida/Parcial (esas cuentan como terminadas y vuelven a la bandeja para reprogramarse), o cancélala, y vuelve a cerrar. Las órdenes Entregadas, Canceladas, Fallidas y Parciales no estorban.
+
+**¿Qué significa «La ruta {código} no está en curso; solo se cierra una ruta que ya salió.» y «La ruta {código} ya está cerrada.»? (422)**
+Solo se cierra una ruta que ya salió (`IN_PROGRESS`). Una ruta en borrador, planificada o solo despachada primero debe registrar su salida (`POST /trips/{id}/start`). Si dice «ya está cerrada», alguien la cerró antes; no hay nada más que hacer.
+
+**Un despachador no puede cerrar rutas (403).**
+Cerrar una ruta pide el permiso `trips.close`, distinto de `trips.dispatch`. Lo traen las plantillas Dispatcher y TenantAdmin; un rol personalizado necesita que se lo agreguen en Roles y usuarios.

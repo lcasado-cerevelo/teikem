@@ -370,8 +370,8 @@ Avisos y bloqueantes de una ruta (`code` → `message`; **bloquea** el despacho 
 
 Qué hace: registra la salida de una ruta ya despachada (`DISPATCHED` → `IN_PROGRESS`): fija `actualStartUtc` y
 lleva las órdenes vigentes a `IN_TRANSIT`. Es la misma costura (`TripLifecycleService.StartTrackedAsync`) que
-reutilizará la app del chofer del Lote 7 ("el estado lo mueven eventos: salida, llegada, POD"); el cierre de la
-ruta, los eventos por parada y el POD llegan con ese lote.
+reutilizará la app del chofer del Lote 7 ("el estado lo mueven eventos: salida, llegada, POD"); el cierre manual de la
+ruta está en 6.2b; los eventos por parada y el POD llegan con la app del chofer.
 
 Quién puede: `trips.dispatch`.
 
@@ -384,6 +384,33 @@ Cómo se usa: `POST /api/v1/trips/{publicId}/start` — cuerpo opcional `{ "comm
 | Ruta sin chofer o sin vehículo (defensa; no debería ocurrir tras el despacho) | `La ruta {código} no se puede despachar: La ruta no tiene chofer asignado.; La ruta no tiene vehículo asignado.` | 422 |
 | `comment` de más de 500 caracteres | `El comentario admite como máximo 500 caracteres.` | 400 |
 | `rowVersion` no coincide | `El registro fue modificado por otro usuario; recargue e intente de nuevo.` | 409 |
+
+### 6.2b Cerrar una ruta (2026-10-11, Lote 33)
+
+Qué hace: cierra una ruta en curso (`IN_PROGRESS` → `COMPLETED`): fija `actualEndUtc` y las órdenes dejan de estar vigentes en la
+ruta. Solo se puede cerrar cuando **todas las órdenes vigentes de la ruta ya terminaron**: entregadas, canceladas u otra etapa
+terminal, o con el intento ya concluido sin entrega (**Fallida** o **Parcial**: pasan a la bandeja para reprogramarse). No cuentan
+como terminadas las que siguen en camino, las que llegaron sin resultado ni las **Retenidas**.
+
+Quién puede: `trips.close` (permiso nuevo; lo traen las plantillas Dispatcher y TenantAdmin, y se agregó a los roles ya existentes
+con esos nombres al correr `db-update`). Un rol personalizado necesita que se lo agreguen.
+
+Cómo se usa: `POST /api/v1/trips/{publicId}/complete` — cuerpo opcional `{ "comment": "…", "rowVersion": "…" }`; devuelve la ficha de la ruta.
+El comentario por defecto en el historial es `Ruta cerrada`.
+
+| Caso | Mensaje exacto | HTTP |
+|---|---|---|
+| Ruta que no está `IN_PROGRESS` (`DRAFT`, `PLANNED`, `DISPATCHED`, `CANCELLED`) | `La ruta {código} no está en curso; solo se cierra una ruta que ya salió.` | 422 |
+| Ruta ya `COMPLETED` | `La ruta {código} ya está cerrada.` | 422 |
+| Alguna orden sin terminar | `La ruta {código} no se puede cerrar: hay órdenes sin terminar ({n1}, {n2}…).` (nombra hasta 10 y agrega `y N más`) | 422 |
+| La ruta no existe o es de otra compañía | `Ruta no encontrada.` | 404 |
+| Sin el permiso `trips.close` | respuesta estándar de permiso denegado | 403 |
+| `comment` de más de 500 caracteres | `El comentario admite como máximo 500 caracteres.` | 400 |
+| `rowVersion` no coincide | `El registro fue modificado por otro usuario; recargue e intente de nuevo.` | 409 |
+
+Casos frecuentes: una orden sigue `IN_TRANSIT` porque el chofer no registró la entrega → registrarla (o marcarla Fallida/Parcial) y volver a
+cerrar; una orden está `Retenida` → liberarla o cancelarla antes de cerrar. Un cierre automático al terminar la última orden lo traerá la
+app del chofer (por ahora el cierre es manual).
 
 ### 6.3 Cancelar una orden que va en una ruta
 
@@ -486,7 +513,7 @@ Sin validaciones propias más allá de las compartidas (permiso y módulo). La f
 | `DRAFT`/`PLANNED` | `PLANNED` (solo se llega optimizando, sección 4.1) | `trips.optimize`, automático al aplicar una optimización | — | Ninguno propio | — |
 | `DRAFT`/`PLANNED` | `DISPATCHED` | `trips.dispatch` (`POST .../dispatch`) | Sin bloqueantes (sección 6.1); pipeline con `DISPATCHED` habilitado | `TripStatusEffect`: congela la ruta (etapa por etapa hasta `Route.ACTIVE`) y avanza las órdenes vigentes hasta `PLANNED` | Contenido de la ruta congelado; cabecera solo editable con `EDIT_TRIP` |
 | `DISPATCHED` | `IN_PROGRESS` | `trips.dispatch` (`POST .../start`) | Debe estar `DISPATCHED` | `TripStatusEffect`: `actualStartUtc`, órdenes vigentes en pipeline avanzan hasta `IN_TRANSIT` | — |
-| `IN_PROGRESS` | `COMPLETED` (fuera de este lote) | Cierre de ruta (Lote 7) | — | `TripStatusEffect`: `actualEndUtc`, `TripOrder.IsCurrent = 0` | Ruta cerrada, solo consulta |
+| `IN_PROGRESS` | `COMPLETED` | `trips.close` (`POST .../complete`, sección 6.2b) | Todas las órdenes vigentes terminadas (terminal, Fallida o Parcial) | `TripStatusEffect`: `actualEndUtc`, `TripOrder.IsCurrent = 0` | Ruta cerrada, solo consulta |
 | `DRAFT`/`PLANNED` | `CANCELLED` ("Eliminar ruta", lateral) | `trips.plan` (`DELETE`) | Solo desde `DRAFT`/`PLANNED` | `TripStatusEffect`: libera todas las órdenes vigentes, archiva la versión vigente de la ruta, `Trip.IsActive = 0` | Reintentar `DELETE`, editar, agregar órdenes, optimizar, despachar (422 "cerrada") |
 
 Intentar `CANCELLED` desde `DISPATCHED`/`IN_PROGRESS` responde el 422 del motor de estatus ("No se permite pasar a
