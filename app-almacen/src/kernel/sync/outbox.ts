@@ -10,7 +10,7 @@ import { recordSkippedFromResult } from '../../features/count/countSkipped'
 import { getDb } from '../db/database'
 import { projectRow, type Delta } from '../warehouse/balanceProjection'
 
-export type OutboxKind = 'receipt' | 'pack' | 'collect' | 'countBatch' | 'countFinish' | 'transfer' | 'adjust' | 'damage' | 'manualIssue'
+export type OutboxKind = 'receipt' | 'pack' | 'collect' | 'countBatch' | 'countFinish' | 'countOffline' | 'transfer' | 'adjust' | 'damage' | 'manualIssue'
 type OutboxMethod = 'POST' | 'PUT'
 
 interface EnqueueInput {
@@ -68,6 +68,8 @@ const DEFAULT_PATH: Partial<Record<OutboxKind, string>> = {
   // 2026-10-11: «Completar despacho» = despacho manual (salida sin entrega con motivo, documento DMA-#####). `collect` queda solo para las filas que
   // un aparato ya tenga en la cola de antes de esta versión.
   manualIssue: '/api/v1/manual-issues',
+  // 2026-10-11 (señal débil): el conteo de UNA posición hecho sin señal, entero (abrir o retomar, capturar y terminar) al volver la señal
+  countOffline: '/api/v1/cycle-counts/offline-bin',
 }
 const METHOD: Record<OutboxKind, OutboxMethod> = {
   receipt: 'POST',
@@ -75,6 +77,7 @@ const METHOD: Record<OutboxKind, OutboxMethod> = {
   collect: 'POST',
   countBatch: 'PUT',
   countFinish: 'POST',
+  countOffline: 'POST',
   transfer: 'POST',
   adjust: 'POST',
   damage: 'POST',

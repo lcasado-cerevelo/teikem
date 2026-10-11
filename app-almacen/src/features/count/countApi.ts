@@ -8,7 +8,8 @@
 import { api, ApiError, unwrap } from '../../kernel/api/client'
 import { getDb } from '../../kernel/db/database'
 import { enqueue } from '../../kernel/sync/outbox'
-import { buildBatchItems, type BinOption, type CapturedEntry, type ExpectedLine, type ProductCountLine } from './countLogic'
+import { localBalancesForBin } from '../../kernel/warehouse/localBalances'
+import { buildBatchItems, buildOfflineItems, type BinOption, type CapturedEntry, type ExpectedLine, type ProductCountLine } from './countLogic'
 
 export interface StartedCount {
   countId: number
@@ -97,6 +98,95 @@ export async function startCountOnline(warehousePublicId: string, binId: number)
     api.POST('/api/v1/cycle-counts', { params: { query: { forCounting: true } }, body: { warehousePublicId, binIds: [binId], assignToMe: true, resumeOpen: true, allowEmpty: true } }),
   )
   return toStarted(detail)
+}
+
+// ------------------------------------------------------------------ conteo de una posición SIN señal (2026-10-11)
+
+/** `countId` de un conteo abierto en el aparato sin señal: todavía no existe en el servidor (no hay id). */
+export const OFFLINE_COUNT_ID = 0
+
+/** Cuánto se espera al servidor al abrir el conteo antes de contar en el aparato (señal débil: no se bloquea la pantalla más que esto). */
+export const ONLINE_START_TIMEOUT_MS = 5000
+
+/** Rechaza con `timeout` si la promesa no responde a tiempo (la respuesta tardía se ignora). */
+export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timeout')), ms)
+    promise.then(
+      (v) => {
+        clearTimeout(timer)
+        resolve(v)
+      },
+      (e: unknown) => {
+        clearTimeout(timer)
+        reject(e)
+      },
+    )
+  })
+}
+
+/** Lo que el aparato espera encontrar en la posición (según sus saldos locales, sin cantidades: se cuenta a ciegas). Una línea por producto y lote; los ids
+ *  son negativos y propios del aparato (no son líneas del servidor). */
+export function offlineExpectedLines(warehousePublicId: string, binId: number): ExpectedLine[] {
+  return localBalancesForBin(warehousePublicId, binId).map((r, i) => ({
+    lineId: -(i + 1),
+    productPublicId: r.productPublicId,
+    sku: r.sku,
+    productName: r.productName,
+    systemQty: null,
+    lotNumber: r.lotNumber,
+  }))
+}
+
+/** Abre el conteo de la posición EN EL APARATO (sin señal). Siempre a ciegas; sin número ni líneas del servidor. */
+export function startCountOffline(warehousePublicId: string, bin: { id: number; code: string }): StartedCount {
+  return {
+    countId: OFFLINE_COUNT_ID,
+    number: '',
+    isBlind: true,
+    expectedLines: offlineExpectedLines(warehousePublicId, bin.id),
+    resumed: false,
+    captured: [],
+    checks: [],
+    binId: bin.id,
+    binCode: bin.code,
+  }
+}
+
+/** Encola el conteo hecho sin señal (una fila: abrir o retomar, capturar y, si `finish`, terminar). Devuelve el id de la fila de la cola. */
+export function enqueueOfflineCount(warehousePublicId: string, binId: number, entries: CapturedEntry[], countedAtUtc: string, finish: boolean): number {
+  return enqueue({ kind: 'countOffline', body: { warehousePublicId, binId, lines: buildOfflineItems(entries, binId), finish, countedAtUtc } })
+}
+
+export interface OfflineCountOutcome {
+  state: 'pending' | 'rejected' | 'sent'
+  /** Motivo del rechazo del servidor (state = rejected). */
+  error: string | null
+  /** Se sumó al conteo abierto de otro contador. */
+  joined: boolean
+  /** Por qué no se pudo terminar aunque se pidió (lo contado quedó guardado). */
+  finishMessage: string | null
+  /** Hubo movimientos en la posición entre contar y sincronizar. */
+  moved: boolean
+}
+
+/** Cómo le fue en el servidor a una fila `countOffline` de la cola (se mira justo después de sincronizar). */
+export function offlineCountOutcome(rowId: number): OfflineCountOutcome {
+  const row = getDb().getFirstSync<{ status: string; last_error: string | null; result_json: string | null }>(
+    'SELECT status, last_error, result_json FROM outbox WHERE id = ?',
+    [rowId],
+  )
+  const none: OfflineCountOutcome = { state: 'pending', error: null, joined: false, finishMessage: null, moved: false }
+  if (!row) return { ...none, state: 'sent' }
+  if (row.status === 'rejected') return { ...none, state: 'rejected', error: row.last_error ?? '' }
+  if (row.status !== 'sent') return none
+  let result: { joined?: boolean; finishMessage?: string | null; movedSinceCounted?: boolean } = {}
+  try {
+    result = JSON.parse(row.result_json ?? 'null') ?? {}
+  } catch {
+    result = {}
+  }
+  return { state: 'sent', error: null, joined: result.joined === true, finishMessage: result.finishMessage ?? null, moved: result.movedSinceCounted === true }
 }
 
 /** Retoma un conteo abierto por su id (lista «Conteos abiertos»): sirve también para los duplicados de la misma posición. */

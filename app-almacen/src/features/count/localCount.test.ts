@@ -79,14 +79,23 @@ describe('conteo local', () => {
     expect(getCapturedLines(id)).toHaveLength(0)
   })
 
+  it('una línea esperada con lote (conteo hecho sin señal) guarda el lote y llega a las entradas', () => {
+    const id = startLocalCount('wh-1', BIN, { countId: 0, isBlind: true })
+    captureExpectedLine(id, { lineId: -1, productPublicId: 'p2', sku: 'B', productName: 'Dos', systemQty: null, lotNumber: 'L-9', lotExpiryDate: '2027-01-31' }, 4)
+    expect(toCapturedEntries(getCapturedLines(id))).toEqual([
+      { lineId: -1, productPublicId: 'p2', sku: 'B', productName: 'Dos', countedQty: 4, isExtra: false, binId: 5, lotNumber: 'L-9', lotExpiryDate: '2027-01-31' },
+    ])
+    expect(getOpenCount()).toMatchObject({ countId: 0, isBlind: true })
+  })
+
   it('toCapturedEntries mapea las filas al formato de CapturedEntry', () => {
     const id = startLocalCount('wh-1', BIN, STARTED)
     captureExpectedLine(id, LINE, 3)
     addExtraLine(id, { publicId: 'p9', sku: 'Z', name: 'Extra' }, 1)
     const entries = toCapturedEntries(getCapturedLines(id))
     expect(entries).toEqual([
-      { lineId: 7, productPublicId: 'p1', sku: 'A', productName: 'Uno', countedQty: 3, isExtra: false, binId: 5 },
-      { lineId: null, productPublicId: 'p9', sku: 'Z', productName: 'Extra', countedQty: 1, isExtra: true, binId: 5 },
+      { lineId: 7, productPublicId: 'p1', sku: 'A', productName: 'Uno', countedQty: 3, isExtra: false, binId: 5, lotNumber: null, lotExpiryDate: null },
+      { lineId: null, productPublicId: 'p9', sku: 'Z', productName: 'Extra', countedQty: 1, isExtra: true, binId: 5, lotNumber: null, lotExpiryDate: null },
     ])
   })
 })
@@ -110,6 +119,7 @@ describe('conteo local por producto', () => {
       binCode: null,
       product: PRODUCT,
       isBlind: true,
+      createdAtUtc: expect.any(String),
     })
     const rows = getProductCountRows(id)
     expect(rows.map((r) => [r.lineId, r.binId, r.binCode, r.lotNumber, r.countedQty, r.isProvisionalBin])).toEqual([

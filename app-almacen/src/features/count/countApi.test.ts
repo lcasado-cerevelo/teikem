@@ -10,10 +10,16 @@ import {
   cancelCountOnline,
   createProvisionalBin,
   enqueueFinishCount,
+  enqueueOfflineCount,
   enqueueSaveCount,
   fetchExpectedLines,
   loadOpenCount,
   fetchProductBins,
+  OFFLINE_COUNT_ID,
+  offlineCountOutcome,
+  offlineExpectedLines,
+  startCountOffline,
+  withTimeout,
   fetchZones,
   findLocalBin,
   startCountOnline,
@@ -283,5 +289,80 @@ describe('conteo abierto (Lote 24)', () => {
       { binId: 5, binCode: 'A-01', zoneCode: 'PCK', lotId: 2, lotNumber: 'L-2' },
       { binId: 6, binCode: 'B-02', zoneCode: 'RES', lotId: null, lotNumber: null },
     ])
+  })
+})
+
+describe('conteo de una posición sin señal (2026-10-11)', () => {
+  function seed() {
+    const db = getDb()
+    db.runSync("INSERT INTO product (id, public_id, sku, name, barcode, tracking_type_code, is_active) VALUES (1, 'p1', 'SKU-1', 'Tornillo', '7501', 'NONE', 1), (2, 'p2', 'SKU-2', 'Tuerca', '7502', 'LOT', 1)")
+    db.runSync("INSERT INTO bin (id, code, warehouse_public_id, is_active) VALUES (5, 'A-01', 'wh-1', 1)")
+    db.runSync(
+      `INSERT INTO stock_balance (id, warehouse_public_id, bin_id, product_id, product_public_id, lot_id, lot_number, qty_on_hand, qty_reserved, updated_at_utc) VALUES
+         (1, 'wh-1', 5, 1, 'p1', NULL, NULL, 12, 0, '2026-01-01T00:00:00Z'),
+         (2, 'wh-1', 5, 2, 'p2', 9, 'L-9', 3, 0, '2026-01-01T00:00:00Z'),
+         (3, 'wh-1', 5, 1, 'p1', NULL, NULL, 0, 0, '2026-01-01T00:00:00Z'),
+         (4, 'wh-1', 6, 1, 'p1', NULL, NULL, 8, 0, '2026-01-01T00:00:00Z')`,
+    )
+  }
+
+  it('lo esperado sale de los saldos del aparato en esa posición: sin cantidades, ids negativos propios y con el lote', () => {
+    seed()
+    expect(offlineExpectedLines('wh-1', 5)).toEqual([
+      { lineId: -1, productPublicId: 'p1', sku: 'SKU-1', productName: 'Tornillo', systemQty: null, lotNumber: null },
+      { lineId: -2, productPublicId: 'p2', sku: 'SKU-2', productName: 'Tuerca', systemQty: null, lotNumber: 'L-9' },
+    ])
+    expect(offlineExpectedLines('wh-1', 99)).toEqual([])
+  })
+
+  it('startCountOffline devuelve un conteo a ciegas sin número ni id del servidor, con la posición y lo esperado', () => {
+    seed()
+    const started = startCountOffline('wh-1', { id: 5, code: 'A-01' })
+    expect(started).toMatchObject({ countId: OFFLINE_COUNT_ID, number: '', isBlind: true, resumed: false, captured: [], checks: [], binId: 5, binCode: 'A-01' })
+    expect(started.expectedLines).toHaveLength(2)
+  })
+
+  it('enqueueOfflineCount encola UNA fila con ruta fija, todas las líneas por posición + producto y la hora de contado', () => {
+    const entries: CapturedEntry[] = [
+      { lineId: -1, productPublicId: 'p1', sku: 'SKU-1', productName: 'Tornillo', countedQty: 11, isExtra: false, binId: 5 },
+      { lineId: null, productPublicId: 'p9', sku: 'Z', productName: 'Extra', countedQty: 2, isExtra: true, binId: 5 },
+    ]
+    const id = enqueueOfflineCount('wh-1', 5, entries, '2026-10-11T12:00:00.000Z', true)
+    const rows = listOutbox()
+    expect(rows.map((r) => [r.id, r.kind, r.method, r.path])).toEqual([[id, 'countOffline', 'POST', '/api/v1/cycle-counts/offline-bin']])
+    expect(JSON.parse(rows[0].body)).toEqual({
+      warehousePublicId: 'wh-1',
+      binId: 5,
+      lines: [
+        { binId: 5, productPublicId: 'p1', countedQty: 11 },
+        { binId: 5, productPublicId: 'p9', countedQty: 2 },
+      ],
+      finish: true,
+      countedAtUtc: '2026-10-11T12:00:00.000Z',
+    })
+    const later = enqueueOfflineCount('wh-1', 5, entries, '2026-10-11T12:00:00.000Z', false)
+    expect(JSON.parse(listOutbox().find((r) => r.id === later)!.body).finish).toBe(false)   // «guardar y seguir después»
+  })
+
+  it('offlineCountOutcome lee cómo le fue en el servidor: pendiente, rechazado o enviado (sumado al de otro, no se pudo terminar, movimientos)', () => {
+    const db = getDb()
+    const row = (status: string, error: string | null, result: unknown) =>
+      db.runSync(
+        "INSERT INTO outbox (idempotency_key, kind, method, path, body, created_at_utc, status, attempts, last_error, result_json) VALUES (?, 'countOffline', 'POST', '/x', '{}', '2026-01-01T00:00:00Z', ?, 1, ?, ?)",
+        [`k-${Math.random()}`, status, error, result === undefined ? null : JSON.stringify(result)],
+      ).lastInsertRowId
+    expect(offlineCountOutcome(row('pending', null, undefined)).state).toBe('pending')
+    expect(offlineCountOutcome(row('rejected', 'La posición no existe.', undefined))).toMatchObject({ state: 'rejected', error: 'La posición no existe.' })
+    expect(offlineCountOutcome(row('sent', null, { joined: true, finished: false }))).toMatchObject({ state: 'sent', joined: true, moved: false, finishMessage: null })
+    expect(offlineCountOutcome(row('sent', null, { joined: false, finishMessage: 'Faltan 1 línea(s) por contar.' }))).toMatchObject({ finishMessage: 'Faltan 1 línea(s) por contar.' })
+    expect(offlineCountOutcome(row('sent', null, { movedSinceCounted: true }))).toMatchObject({ state: 'sent', moved: true })
+    expect(offlineCountOutcome(row('sent', null, null)).state).toBe('sent')   // respuesta vacía
+    expect(offlineCountOutcome(9999).state).toBe('sent')                        // la fila ya no está en la cola: se envió y se limpió
+  })
+
+  it('withTimeout: responde lo que llegue a tiempo y rechaza con «timeout» si no llega', async () => {
+    await expect(withTimeout(Promise.resolve(7), 50)).resolves.toBe(7)
+    await expect(withTimeout(new Promise<number>(() => undefined), 20)).rejects.toThrow('timeout')
+    await expect(withTimeout(Promise.reject(new Error('boom')), 50)).rejects.toThrow('boom')
   })
 })

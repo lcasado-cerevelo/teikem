@@ -21,11 +21,18 @@ import { KeyboardScreen } from '../kernel/ui/KeyboardScreen'
 import {
   cancelCountOnline,
   enqueueFinishCount,
+  enqueueOfflineCount,
   enqueueSaveCount,
   fetchExpectedLines,
   loadOpenCount,
+  OFFLINE_COUNT_ID,
+  offlineCountOutcome,
+  offlineExpectedLines,
+  ONLINE_START_TIMEOUT_MS,
+  startCountOffline,
   startCountOnline,
   startOpenCountOnline,
+  withTimeout,
   type StartedCount,
 } from '../features/count/countApi'
 import { addOpenCountHint, getOpenCountHints, refreshOpenCountHints, rejectionOfCount, removeOpenCountHint, type OpenCountHint } from '../features/count/openCountHints'
@@ -116,6 +123,11 @@ export default function CountScreen() {
   useEffect(() => {
     // el conteo por producto guarda todas sus líneas en la base local al abrirse: no se vuelven a pedir
     if (!openCount || openCount.mode !== 'BIN' || expectedLines !== null) return
+    if (openCount.countId === OFFLINE_COUNT_ID) {
+      // contado sin señal (2026-10-11): sus líneas esperadas salen de los saldos del aparato, no del servidor
+      setExpectedLines(offlineExpectedLines(openCount.warehousePublicId, openCount.binId ?? 0))
+      return
+    }
     let cancelled = false
     fetchExpectedLines(openCount.countId)
       .then((lines) => {
@@ -157,7 +169,19 @@ export default function CountScreen() {
         vibrateError()
         return
       }
-      openLocally(await startCountOnline(warehousePublicId!, bin.id), bin)
+      // Señal débil (2026-10-11): se le da un momento al servidor; si no responde (sin señal o muy lenta) se cuenta EN EL APARATO y se manda entero al volver
+      // la señal. Una respuesta del servidor (p. ej. 409 «la está contando X») sí se respeta. Si la petición tardía igual llega, el servidor retomará ese conteo.
+      let started: StartedCount | null = null
+      try {
+        started = await withTimeout(startCountOnline(warehousePublicId!, bin.id), ONLINE_START_TIMEOUT_MS)
+      } catch (err) {
+        if (err instanceof ApiError && !isNetworkError(err)) throw err
+      }
+      if (started) openLocally(started, bin)
+      else {
+        openLocally(startCountOffline(warehousePublicId!, bin), bin)
+        setReveal({ tone: 'ok', text: t('count.offlineStarted') })
+      }
     } catch (err) {
       setBinError(err instanceof ApiError ? err.title : t('count.startError'))
       vibrateError()
@@ -323,7 +347,7 @@ export default function CountScreen() {
           if (!openCount) return
           setBusy(true)
           try {
-            await cancelCountOnline(openCount.countId)
+            if (openCount.countId !== OFFLINE_COUNT_ID) await cancelCountOnline(openCount.countId)   // sin señal no existe en el servidor
             removeOpenCountHint(openCount.countId)
             setHints(getOpenCountHints(warehousePublicId, userId))
             discardLocalCount()
@@ -347,6 +371,19 @@ export default function CountScreen() {
     void runSync().then(() => {
       const message = rejectionOfCount(countId)
       if (message) Alert.alert(t('count.finishRejected', { message }))
+    })
+  }
+
+  /** Conteo hecho sin señal: manda la fila y, en cuanto se sincroniza, avisa lo que pasó (rechazo, sumado al de otro contador, no se pudo terminar, movimientos). */
+  function sendAndWatchOffline(rowId: number) {
+    void runSync().then(() => {
+      const outcome = offlineCountOutcome(rowId)
+      if (outcome.state === 'rejected') Alert.alert(t('count.finishRejected', { message: outcome.error ?? '' }))
+      else if (outcome.state === 'sent') {
+        if (outcome.joined) Alert.alert(t('count.offlineJoined'))
+        else if (outcome.finishMessage) Alert.alert(t('count.offlineNotFinished', { message: outcome.finishMessage }))
+        else if (outcome.moved) Alert.alert(t('count.offlineMoved'))
+      }
     })
   }
 
@@ -380,6 +417,14 @@ export default function CountScreen() {
     const captured = toCapturedEntries(getCapturedLines(openCount.id))
     if (captured.length === 0) return
     const countId = openCount.countId
+    if (countId === OFFLINE_COUNT_ID) {
+      const rowId = enqueueOfflineCount(openCount.warehousePublicId, openCount.binId ?? 0, captured, openCount.createdAtUtc, true)
+      discardLocalCount()
+      forgetChecks()
+      sendAndWatchOffline(rowId)
+      stayInCount()
+      return
+    }
     enqueueFinishCount(countId, captured)
     removeOpenCountHint(countId)
     discardLocalCount()
@@ -408,6 +453,16 @@ export default function CountScreen() {
     if (!openCount || userId == null) return
     const captured = toCapturedEntries(getCapturedLines(openCount.id))
     const countId = openCount.countId
+    if (countId === OFFLINE_COUNT_ID) {
+      // sin señal: se manda lo contado SIN terminar; al sincronizar el conteo existirá abierto en el servidor (y aparecerá en «Conteos abiertos»)
+      const rowId = enqueueOfflineCount(openCount.warehousePublicId, openCount.binId ?? 0, captured, openCount.createdAtUtc, false)
+      discardLocalCount()
+      forgetChecks()
+      sendAndWatchOffline(rowId)
+      Alert.alert(t('count.offlineSavedLater'))
+      router.replace('/home')
+      return
+    }
     enqueueSaveCount(countId, captured)
     addOpenCountHint({
       countId,

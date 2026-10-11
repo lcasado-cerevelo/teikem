@@ -1,0 +1,37 @@
+# Flujo Maestro: contar una posición SIN señal (2026-10-11, señal débil bloque S5).
+# Lo corre scripts/e2e-mobile-maestro.sh con wifi y datos apagados (adb), después de 01 al 03 (el aparato ya bajó los saldos del almacén y tiene en A01-R01-N1-P01
+# el producto E2E-SKU-DISP). Escanear la posición abre el conteo EN EL APARATO (el servidor no responde); se cuenta, se termina y queda en la cola de salida.
+# 05b-conteo-enviado.yaml (con señal otra vez) verifica que se mandó solo.
+appId: com.teikem.almacen
+---
+- launchApp
+- runFlow: _desbloquear.yaml
+
+- assertVisible: "Teikem Almacén"
+- tapOn: "Conteo"
+- assertVisible: "¿Cómo vas a contar?"
+- tapOn: "Por posición"
+
+# El cursor está en el campo de la posición. Sin señal, abre el conteo en el aparato (sin esperar más de unos segundos).
+- inputText: "A01-R01-N1-P01"
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: "Sin señal: estás contando en el aparato. Lo contado se enviará solo al volver la señal."
+    timeout: 20000
+- assertVisible: "Lo que se espera aquí"
+
+# Escanear el producto esperado y escribir lo contado.
+- inputText: "E2E-BARCODE-DISP"
+- pressKey: Enter
+- assertVisible: "Cantidad encontrada"
+- inputText: "48"
+- tapOn: "Agregar"
+
+# Terminar la posición: todo queda en la cola de salida («Conteo hecho sin señal»), sin pedir señal.
+- scrollUntilVisible:
+    element:
+      text: "Terminar esta posición"
+- tapOn: "Terminar esta posición"
+- extendedWaitUntil:
+    visible: "Conteo enviado. Puedes contar otra cosa; «Volver» te lleva a Inicio."
+    timeout: 15000

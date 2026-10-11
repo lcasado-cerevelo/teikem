@@ -10,6 +10,7 @@ const KIND_KEYS: Record<OutboxKind, string> = {
   collect: 'sync.kindCollect',
   countBatch: 'sync.kindCountBatch',
   countFinish: 'sync.kindCountFinish',
+  countOffline: 'sync.kindCountOffline',
   transfer: 'sync.kindTransfer',
   adjust: 'sync.kindAdjust',
   damage: 'sync.kindDamage',

@@ -35,3 +35,11 @@ maestro test "$FLOWS/04a-recibo-sin-senal.yaml" "${ENV_ARGS[@]}"
 adb shell svc wifi enable
 adb shell svc data enable
 maestro test "$FLOWS/04b-verificar-envio.yaml" "${ENV_ARGS[@]}"
+
+# 05: conteo de una posición SIN señal (2026-10-11, señal débil S5): se cuenta en el aparato con la red cortada y, al volver, se manda solo.
+adb shell svc wifi disable
+adb shell svc data disable
+maestro test "$FLOWS/05a-conteo-sin-senal.yaml" "${ENV_ARGS[@]}"
+adb shell svc wifi enable
+adb shell svc data enable
+maestro test "$FLOWS/05b-conteo-enviado.yaml" "${ENV_ARGS[@]}"
