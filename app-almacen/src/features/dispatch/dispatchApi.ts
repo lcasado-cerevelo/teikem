@@ -4,8 +4,13 @@
 // heredada del backend: solo clientes 3PL, cuyo dueño ya viene con el producto sincronizado). Una vez resuelto todo,
 // mandar el despacho es una sola llamada (kernel/sync/outbox.ts, kind 'pack'): se intenta en el momento y, si no hay
 // señal, se encola igual que Recibir.
+// 2026-10-11: «Completar despacho» ya no recolecta sin empacar (POST /pick-batches, kind 'collect'): es el despacho manual (queueManualIssue).
 import { api, ApiError, isNetworkError, unwrap } from '../../kernel/api/client'
+import { getDb } from '../../kernel/db/database'
 import { enqueue } from '../../kernel/sync/outbox'
+import { applyDeltasIn, issueDeltas } from '../../kernel/warehouse/balanceProjection'
+import { buildManualIssueBody } from './manualIssueLogic'
+import { discardLocalPick } from './localPick'
 import { findBinByCode } from '../../kernel/warehouse/binLookup'
 import { findLocalBin } from '../count/countApi'
 import { hasStockExitCopy, mapExitRow, readStockExit, replaceStockExitFor } from './stockExit'
@@ -88,18 +93,22 @@ export async function submitCollectAndPack(
   }
 }
 
-/** Completar el despacho SIN empacar (pedido del dueño 2026-10-05): recolecta (POST /pick-batches) y el inventario sale; no crea orden ni
- *  empaque (eso es opcional y se hace después). Intenta ya mismo; sin red, lo encola (kind 'collect'). */
-export async function submitCollectOnly(warehousePublicId: string, lines: ResolvedPickLine[]): Promise<{ queued: boolean }> {
-  const body = { warehousePublicId, lines: lines.map((l) => ({ productPublicId: l.productPublicId, quantity: l.quantity, binId: l.fromBinId })) }
-  try {
-    await unwrap(api.POST('/api/v1/pick-batches', { body: body as never }))
-    return { queued: false }
-  } catch (err) {
-    if (err instanceof ApiError && isNetworkError(err)) {
-      enqueue({ kind: 'collect', body })
-      return { queued: true }
-    }
-    throw err
-  }
+/**
+ * «Completar despacho» = despacho manual (decisión del dueño 2026-10-11, DMA-#####): salida sin entrega con motivo y nota. Va a la cola de salida
+ * como Transferir/Ajustar (kind 'manualIssue', POST /api/v1/manual-issues con su Idempotency-Key, en orden FIFO): en UNA transacción se encola, se
+ * resta del saldo local lo que sale (el efecto exacto queda guardado con la fila para deshacerlo si el servidor la rechaza) y se cierra el despacho
+ * local, así nunca quedan a la vez el despacho abierto y su envío pendiente (si la app se cierra a la mitad, no se puede mandar dos veces).
+ * Devuelve el id de la cola (para `flushNow`).
+ */
+export function queueManualIssue(warehousePublicId: string, reasonCode: string, note: string, lines: ResolvedPickLine[]): number {
+  const body = buildManualIssueBody(warehousePublicId, reasonCode, note, lines)
+  const db = getDb()
+  let id = 0
+  db.withTransactionSync(() => {
+    const projection = issueDeltas(body, db)
+    id = enqueue({ kind: 'manualIssue', body, projection })
+    applyDeltasIn(db, projection, 1)
+    discardLocalPick()
+  })
+  return id
 }

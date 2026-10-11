@@ -1,6 +1,6 @@
 // Lote 8A-app — esquema de la base local (expo-sqlite). Ver docs/mobile/app-almacen-plan.md §1 "Base local".
 // Migraciones por PRAGMA user_version: cada versión agrega su bloque de SQL; nunca se reescribe uno ya publicado.
-export const SCHEMA_VERSION = 10
+export const SCHEMA_VERSION = 11
 
 export const MIGRATIONS: readonly string[] = [
   // v1: kv, catálogos sincronizados, documentos abiertos, cola de salida y marcas de agua.
@@ -372,5 +372,12 @@ export const MIGRATIONS: readonly string[] = [
   );
   CREATE INDEX IF NOT EXISTS ix_stock_balance_bin ON stock_balance(warehouse_public_id, bin_id);
   CREATE INDEX IF NOT EXISTS ix_stock_balance_product ON stock_balance(warehouse_public_id, product_public_id);
+  `,
+  // v11 (2026-10-11, despacho manual DMA): el efecto exacto que una operación de la cola puso en los saldos locales (JSON de deltas por posición,
+  // producto y lote, kernel/warehouse/balanceProjection.ts). El despacho manual manda la posición SIN lote (el servidor saca por FEFO dentro de ella),
+  // así que el lote que se descontó en el aparato se decide al encolar y se guarda aquí para deshacerlo o volver a sumarlo exactamente igual.
+  // NULL = el efecto se deriva del cuerpo (Transferir, Ajustar y las filas anteriores a esta versión).
+  `
+  ALTER TABLE outbox ADD COLUMN projection_json TEXT;
   `,
 ]

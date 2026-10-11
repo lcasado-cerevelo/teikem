@@ -27,6 +27,8 @@ export interface FetchCall {
   path: string
   search: string
   body: unknown
+  /** Cabecera Idempotency-Key de la petición (las de la cola de salida la llevan). */
+  idempotencyKey: string | null
 }
 
 export type Route = (call: FetchCall) => Response | null
@@ -42,7 +44,7 @@ export function mockFetch(routes: Route[]): FetchCall[] {
     const req = input as Request
     const url = new URL(req.url)
     const text = req.method === 'GET' || req.method === 'HEAD' ? '' : await req.text()
-    const call: FetchCall = { method: req.method, path: url.pathname, search: url.search, body: text ? JSON.parse(text) : null }
+    const call: FetchCall = { method: req.method, path: url.pathname, search: url.search, body: text ? JSON.parse(text) : null, idempotencyKey: req.headers.get('Idempotency-Key') }
     calls.push(call)
     for (const route of routes) {
       const response = route(call)

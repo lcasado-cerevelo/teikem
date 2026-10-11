@@ -61,3 +61,16 @@ export function discardLocalPick(): void {
   db.runSync('DELETE FROM local_pick_line WHERE pick_id IN (SELECT id FROM local_pick)')
   db.runSync('DELETE FROM local_pick')
 }
+
+/** Vuelve a abrir un despacho tal como estaba (mismo almacén, dueño y líneas): el despacho manual se quita del aparato al encolarlo y, si el servidor
+ *  lo rechaza en ese mismo momento, se restaura para corregirlo sin volver a escanear todo. No hace nada si ya hay otro abierto. */
+export function restoreLocalPick(snapshot: OpenPick): void {
+  if (getOpenPick() !== null) return
+  const db = getDb()
+  db.withTransactionSync(() => {
+    const id = startLocalPick(snapshot.warehousePublicId, snapshot.clientPublicId ? { publicId: snapshot.clientPublicId, name: snapshot.clientName ?? '' } : null)
+    for (const l of snapshot.lineRows) {
+      addLocalPickLine(id, { productPublicId: l.productPublicId, sku: l.sku, productName: l.productName, quantity: l.quantity, fromBinCode: l.fromBinCode })
+    }
+  })
+}

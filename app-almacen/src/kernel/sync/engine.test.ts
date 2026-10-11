@@ -38,7 +38,7 @@ describe('runSync', () => {
 
     expect(summary.error).toBeNull()
     expect(summary.outbox).toEqual({ sent: 1, rejected: 0, stoppedForNetwork: false, remaining: 0 })
-    expect(summary.download.map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns'])
+    expect(summary.download.map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'manualIssueReasons'])
     expect(getLastSync()).toBe(summary)
   })
 
@@ -79,7 +79,7 @@ describe('runSync', () => {
 
     expect(postMock).toHaveBeenCalledWith('/api/v1/devices/heartbeat', expect.anything())
     expect(getSessionState().device?.defaultWarehouseReceivingMode).toBe('DIRECT')
-    expect(summary.download.map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins', 'balances', 'stockExit'])
+    expect(summary.download.map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins', 'balances', 'stockExit', 'manualIssueReasons'])
     expect(getMock).toHaveBeenCalledWith('/api/v1/sync/bins', expect.objectContaining({ params: { query: expect.objectContaining({ warehousePublicId: 'wh-1' }) } }))
   })
 })

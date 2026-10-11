@@ -4,22 +4,25 @@ import { useRouter } from 'expo-router'
 
 import { ApiError } from '../kernel/api/client'
 import { useFormat } from '../kernel/format/useFormat'
-import { useSession } from '../kernel/auth/useSession'
+import { useMyPermissions } from '../kernel/auth/permissions'
 import { useActiveWarehouse } from '../kernel/warehouse/activeWarehouse'
 import { findProductByCode } from '../kernel/warehouse/productLookup'
 import { useT } from '../kernel/i18n/useT'
-import { runSync } from '../kernel/sync/engine'
+import { flushNow, runSync } from '../kernel/sync/engine'
+import { discardRow, outboxResult } from '../kernel/sync/outbox'
 import { BigButton } from '../kernel/ui/BigButton'
 import { LineList } from '../kernel/ui/LineList'
 import { ScanField } from '../kernel/ui/ScanField'
 import { KeyboardInput } from '../kernel/ui/KeyboardInput'
-import { colors, fontSize, spacing } from '../kernel/ui/theme'
+import { colors, fontSize, radius, spacing } from '../kernel/ui/theme'
 import { vibrateError, vibrateOk } from '../kernel/ui/feedback'
 import { KeyboardScreen } from '../kernel/ui/KeyboardScreen'
 import { BinMarkList } from '../features/positions/BinMarkList'
 import { capMarks, markRecommended, marksToRows, toggleMark, type MarkOption, type Marks } from '../features/positions/binMarks'
-import { fetchClientsForOwnDispatch, fetchConsigneesForClient, fetchStockOptions, resolveBinCodes, submitCollectOnly, submitCollectAndPack } from '../features/dispatch/dispatchApi'
-import { addLocalPickLine, discardLocalPick, getOpenPick, removeLocalPickLine, startLocalPick } from '../features/dispatch/localPick'
+import { fetchClientsForOwnDispatch, fetchConsigneesForClient, fetchStockOptions, queueManualIssue, resolveBinCodes, submitCollectAndPack } from '../features/dispatch/dispatchApi'
+import { addLocalPickLine, discardLocalPick, getOpenPick, removeLocalPickLine, restoreLocalPick, startLocalPick } from '../features/dispatch/localPick'
+import { issueTotals, MANUAL_ISSUE_NOTE_MAX, manualIssueBlock, manualIssueNumber, reasonOptions, WAREHOUSE_ISSUE } from '../features/dispatch/manualIssueLogic'
+import { readManualIssueReasons } from '../features/dispatch/manualIssueReasons'
 import {
   availableAfterPicked,
   binScanOutcome,
@@ -36,6 +39,7 @@ import {
   sameOwner,
   type PickLine,
   type PickLineDraft,
+  type ResolvedPickLine,
 } from '../features/dispatch/dispatchLogic'
 
 /** De dónde dice el sistema que puede salir el producto escaneado (existencia disponible por posición y lote). `options` null = todavía
@@ -48,16 +52,18 @@ interface StockHint {
   source: 'server' | 'device' | 'none' | null
 }
 
-type Step = { name: 'scan' } | { name: 'client' } | { name: 'consignee' } | { name: 'error'; message: string }
+// 'reason' (2026-10-11): «Completar despacho» = despacho manual; pide el motivo (obligatorio) y la nota (opcional) antes de confirmar.
+type Step = { name: 'scan' } | { name: 'client' } | { name: 'consignee' } | { name: 'error'; message: string } | { name: 'reason'; lines: ResolvedPickLine[] }
 
 /** Pantalla 5 (docs/mobile/app-almacen-plan.md §2): recolectar (producto, cantidad, posición) sin señal; empacar
  *  (elegir consignatario y confirmar) necesita señal un momento y luego se manda por la cola. Solo clientes 3PL por
  *  ahora (docs/lote8A-app-decisiones.md): el dueño del producto ya viene sincronizado. Inventario propio (2026-10-05): se
- *  despacha igual; al empacar se elige primero el cliente a quien se despacha y luego su consignatario. */
+ *  despacha igual; al empacar se elige primero el cliente a quien se despacha y luego su consignatario.
+ *  2026-10-11 (decisión del dueño): «Completar despacho» es el DESPACHO MANUAL (DMA-#####): salida sin entrega con motivo obligatorio y nota
+ *  opcional, solo con el permiso warehouse.issue; va a la cola de salida (kind 'manualIssue') como Transferir y Ajustar. «Empacar» no cambia. */
 export default function DispatchScreen() {
-  const { t } = useT()
+  const { t, lang } = useT()
   const router = useRouter()
-  const { device } = useSession()
   const activeWarehouse = useActiveWarehouse()
   const warehousePublicId = activeWarehouse.publicId
   const [tick, setTick] = useState(0)
@@ -82,6 +88,14 @@ export default function DispatchScreen() {
   const [marks, setMarks] = useState<Marks>({})
   const [showAll, setShowAll] = useState(false)
   const [prefill, setPrefill] = useState<{ value: string; seq: number } | null>(null)
+  // Despacho manual: el motivo escogido, la nota, el aviso rojo del paso del motivo y «enviando» (el despacho local ya se cerró y se espera al servidor
+  // como mucho unos segundos). El motivo y la nota se conservan si el servidor lo rechaza, para corregir y volver a intentar.
+  const permissions = useMyPermissions()
+  const canIssue = permissions?.includes(WAREHOUSE_ISSUE) ?? false
+  const [reasonCode, setReasonCode] = useState<string | null>(null)
+  const [issueNote, setIssueNote] = useState('')
+  const [reasonError, setReasonError] = useState<string | null>(null)
+  const [sending, setSending] = useState(false)
 
   // tick fuerza releer la base local tras cada mutación; getOpenPick() no usa tick.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -292,9 +306,10 @@ export default function DispatchScreen() {
     }
   }
 
-  /** Completar el despacho SIN empacar (pedido del dueño 2026-10-05): el inventario sale (recolección) sin orden ni empaque; empacar es opcional. */
-  async function completeDispatch() {
-    if (!openPick || openPick.lineRows.length === 0) return
+  /** «Completar despacho» = despacho manual (2026-10-11): primero resuelve las posiciones (las del aparato, sin señal; si no está, el servidor) y luego
+   *  pide el motivo y la nota. Una posición que no existe no deja seguir y lo dice aquí mismo. */
+  async function startManualIssue() {
+    if (!openPick || openPick.lineRows.length === 0 || !canIssue) return
     setBusy(true)
     try {
       const resolved = await resolveBinCodes(warehousePublicId!, openPick.lineRows)
@@ -303,17 +318,78 @@ export default function DispatchScreen() {
         vibrateError()
         return
       }
-      await submitCollectOnly(warehousePublicId!, resolved.lines)
-      discardLocalPick()
-      void runSync()
-      vibrateOk()
-      router.replace('/home')
+      setScanError(null)
+      setReasonError(null)
+      setPacking({ name: 'reason', lines: resolved.lines })
     } catch (err) {
       setScanError(err instanceof ApiError ? err.title : t('errors.generic'))
       vibrateError()
     } finally {
       setBusy(false)
     }
+  }
+
+  /** Revisa el motivo y la nota y pide confirmar (mismo patrón que dar salida a lo dañado). */
+  function confirmManualIssue(lines: ResolvedPickLine[], reasonLabel: string) {
+    const block = manualIssueBlock(reasonCode, issueNote)
+    if (block) {
+      setReasonError(t(block === 'reason' ? 'dispatch.reasonRequired' : 'dispatch.noteTooLong', { max: MANUAL_ISSUE_NOTE_MAX }))
+      vibrateError()
+      return
+    }
+    setReasonError(null)
+    const totals = issueTotals(lines)
+    Alert.alert(t('dispatch.issueConfirmTitle'), t('dispatch.issueConfirmBody', { qty: f.qty(totals.qty), lines: totals.lines, reason: reasonLabel }), [
+      { text: t('common.no'), style: 'cancel' },
+      { text: t('dispatch.issueConfirmButton'), onPress: () => void submitManualIssue(lines) },
+    ])
+  }
+
+  /** Encola el despacho manual (cierra el despacho local y resta del saldo local en el mismo paso) y espera al servidor como mucho unos segundos:
+   *  enviado → aviso con el número DMA; sin señal → «en cola»; rechazado → se quita de la cola, el despacho vuelve a abrirse tal cual y se muestra
+   *  el mensaje exacto del servidor. */
+  async function submitManualIssue(lines: ResolvedPickLine[]) {
+    if (!openPick || !reasonCode) return
+    const snapshot = openPick
+    setSending(true)
+    let outboxId = 0
+    try {
+      outboxId = queueManualIssue(warehousePublicId!, reasonCode, issueNote, lines)
+    } catch {
+      setSending(false)
+      setReasonError(t('errors.generic'))
+      vibrateError()
+      return
+    }
+    setDraft(null)
+    setHint(null)
+    setChosenClient(null)
+    refresh()
+    const result = await flushNow(outboxId)
+    setSending(false)
+    if (result.status === 'rejected') {
+      // el servidor ya deshizo el efecto en los saldos locales (runOutbox); la fila no se deja en Sincronización: el despacho vuelve a la pantalla
+      discardRow(outboxId)
+      restoreLocalPick(snapshot)
+      setPacking({ name: 'scan' })
+      setNotice(null)
+      setScanError(result.error || t('errors.generic'))
+      vibrateError()
+      refresh()
+      return
+    }
+    setPacking({ name: 'scan' })
+    setReasonCode(null)
+    setIssueNote('')
+    setScanError(null)
+    if (result.status === 'sent') {
+      const number = manualIssueNumber(outboxResult(outboxId))
+      setNotice(number ? t('dispatch.issueSent', { number }) : t('dispatch.issueSentNoNumber'))
+    } else {
+      setNotice(t('dispatch.issueQueued'))
+    }
+    vibrateOk()
+    refresh()
   }
 
   async function confirmPack(consignee: ConsigneeChoice) {
@@ -337,6 +413,17 @@ export default function DispatchScreen() {
     } finally {
       setBusy(false)
     }
+  }
+
+  // Despacho manual encolado: se espera al servidor unos segundos (el despacho local ya se cerró).
+  if (sending) {
+    return (
+      <KeyboardScreen contentContainerStyle={styles.fill}>
+        <Text style={styles.title}>{t('dispatch.title')}</Text>
+        <ActivityIndicator color={colors.brand} />
+        <Text style={styles.help}>{t('dispatch.issueSending')}</Text>
+      </KeyboardScreen>
+    )
   }
 
   // Sin despacho abierto o capturando líneas.
@@ -432,6 +519,60 @@ export default function DispatchScreen() {
     )
   }
 
+  // Despacho manual: motivo (obligatorio) y nota (opcional), luego se confirma.
+  if (packing.name === 'reason') {
+    const options = reasonOptions(readManualIssueReasons(), lang, t)
+    const chosen = options.find((o) => o.code === reasonCode) ?? null
+    const totals = issueTotals(packing.lines)
+    return (
+      <KeyboardScreen contentContainerStyle={styles.fill}>
+        <Text style={styles.title}>{t('dispatch.reasonTitle')}</Text>
+        <Text style={styles.help}>{t('dispatch.reasonHelp')}</Text>
+        <Text style={styles.label}>
+          {t('dispatch.issueSummary', { owner: openPick.clientName || t('dispatch.ownInventory'), lines: totals.lines, qty: f.qty(totals.qty) })}
+        </Text>
+        {options.length === 0 ? <Text style={styles.error}>{t('dispatch.noReasons')}</Text> : null}
+        <View style={styles.reasons} accessibilityRole="radiogroup" accessibilityLabel={t('dispatch.reasonLabel')}>
+          {options.map((o) => (
+            <Pressable
+              key={o.code}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: reasonCode === o.code }}
+              accessibilityLabel={o.label}
+              onPress={() => {
+                setReasonCode(o.code)
+                setReasonError(null)
+              }}
+              style={[styles.reason, reasonCode === o.code && styles.reasonOn]}
+              testID={`dispatch-reason-${o.code}`}
+            >
+              <Text style={styles.reasonText}>{o.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+        <View style={styles.field}>
+          <Text style={styles.label}>{t('dispatch.noteLabel')}</Text>
+          <KeyboardInput
+            value={issueNote}
+            onChangeText={(v) => {
+              setIssueNote(v)
+              setReasonError(null)
+            }}
+            multiline
+            maxLength={MANUAL_ISSUE_NOTE_MAX}
+            style={[styles.input, styles.noteInput]}
+            accessibilityLabel={t('dispatch.noteLabel')}
+            testID="dispatch-issue-note"
+          />
+          <Text style={styles.help}>{t('dispatch.noteHelp', { count: issueNote.length, max: MANUAL_ISSUE_NOTE_MAX })}</Text>
+        </View>
+        {reasonError ? <Text style={styles.error}>{reasonError}</Text> : null}
+        <BigButton label={t('dispatch.issueConfirmButton')} onPress={() => confirmManualIssue(packing.lines, chosen?.label ?? '')} testID="dispatch-issue-confirm" />
+        <BigButton label={t('common.back')} variant="secondary" onPress={() => setPacking({ name: 'scan' })} />
+      </KeyboardScreen>
+    )
+  }
+
   // Inventario propio: elegir a qué cliente se despacha.
   if (packing.name === 'client') {
     return (
@@ -499,8 +640,17 @@ export default function DispatchScreen() {
         emptyLabel={t('dispatch.linesTitle')}
       />
       {busy ? <ActivityIndicator color={colors.brand} /> : null}
-      <BigButton label={t('dispatch.completeButton')} onPress={() => void completeDispatch()} disabled={openPick.lineRows.length === 0 || busy} />
-      <Text style={styles.help}>{t('dispatch.completeHelp')}</Text>
+      {/* 2026-10-11: «Completar despacho» = despacho manual, solo con warehouse.issue; sin él queda «Empacar» y el aviso */}
+      {canIssue ? (
+        <>
+          <BigButton label={t('dispatch.completeButton')} onPress={() => void startManualIssue()} disabled={openPick.lineRows.length === 0 || busy} testID="dispatch-complete" />
+          <Text style={styles.help}>{t('dispatch.completeHelp')}</Text>
+        </>
+      ) : (
+        <Text style={styles.warnText} testID="dispatch-no-issue">
+          {t(permissions === null ? 'dispatch.issueUnknownPermission' : 'dispatch.issueNoPermission')}
+        </Text>
+      )}
       <BigButton label={t('dispatch.packButton')} variant="secondary" onPress={startPacking} disabled={openPick.lineRows.length === 0 || busy} />
       <Text style={styles.help}>{t('dispatch.packHelp')}</Text>
       <BigButton label={t('dispatch.cancelDispatch')} variant="danger" onPress={cancelDispatch} />
@@ -522,6 +672,12 @@ const styles = StyleSheet.create({
   warnText: { color: colors.warn, fontSize: fontSize.message, fontWeight: '700' },
   suggestTitle: { color: colors.text, fontSize: fontSize.label, fontWeight: '700' },
   planRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  // motivos del despacho manual: botones grandes, uno por renglón (mismo estilo que los motivos de Ajustar y el destino de Daño)
+  reasons: { gap: spacing.sm },
+  reason: { minHeight: 56, justifyContent: 'center', paddingHorizontal: spacing.md, borderRadius: radius.md, borderWidth: 2, borderColor: colors.line, backgroundColor: colors.panelAlt },
+  reasonOn: { borderColor: colors.brand, backgroundColor: colors.brandDark },
+  reasonText: { color: colors.text, fontSize: fontSize.label, fontWeight: '600' },
+  noteInput: { minHeight: 88, paddingVertical: spacing.sm, textAlignVertical: 'top' },
   input: {
     minHeight: 56,
     borderWidth: 2,

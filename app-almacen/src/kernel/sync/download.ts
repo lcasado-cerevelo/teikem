@@ -9,6 +9,7 @@ import { getActiveWarehousePublicId } from '../warehouse/activeWarehouse'
 import { getDb, type SQLiteDatabase } from '../db/database'
 import { deltaKey, pendingDeltas } from '../warehouse/balanceProjection'
 import { mapExitRow, replaceStockExit, type StockExitRow } from '../../features/dispatch/stockExit'
+import { downloadManualIssueReasons } from '../../features/dispatch/manualIssueReasons'
 
 const TAKE = 500
 
@@ -486,5 +487,7 @@ export async function downloadForReceiving(options: { forceStockExit?: boolean }
     results.push(await downloadBalances(warehousePublicId))
     results.push(await downloadStockExit(warehousePublicId, options.forceStockExit === true))
   }
+  // 2026-10-11: motivos del despacho manual (al final: no detiene lo demás; se pide como mucho cada 30 min)
+  results.push(await downloadManualIssueReasons())
   return results
 }

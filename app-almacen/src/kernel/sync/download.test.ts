@@ -220,7 +220,7 @@ describe('órdenes de compra sin permiso (403)', () => {
       path === '/api/v1/sync/purchase-orders' ? forbidden() : Promise.resolve(page([], null, '2026-01-01T00:00:00.000Z')),
     )
     const results = await downloadForReceiving()
-    expect(results.map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins', 'balances', 'stockExit'])
+    expect(results.map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins', 'balances', 'stockExit', 'manualIssueReasons'])
     expect(results[1]).toEqual({ resource: 'purchaseOrders', pages: 0, items: 0 })
   })
 
@@ -243,10 +243,10 @@ describe('órdenes de compra sin permiso (403)', () => {
 describe('downloadForReceiving', () => {
   it('sin almacén por defecto no baja posiciones; con él, las baja al final', async () => {
     getMock.mockImplementation(() => Promise.resolve(page([], null, '2026-01-01T00:00:00.000Z')))
-    expect((await downloadForReceiving()).map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns'])
+    expect((await downloadForReceiving()).map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'manualIssueReasons'])
 
     await saveDeviceIdentity({ devicePublicId: 'dev-1', deviceSecret: 's', tenantName: 'T', defaultWarehousePublicId: 'wh-1', theme: null })
-    expect((await downloadForReceiving()).map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins', 'balances', 'stockExit'])
+    expect((await downloadForReceiving()).map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins', 'balances', 'stockExit', 'manualIssueReasons'])
   })
 })
 

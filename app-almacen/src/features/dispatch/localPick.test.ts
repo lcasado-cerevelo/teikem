@@ -1,7 +1,7 @@
 import { __resetAllForTests } from 'expo-sqlite'
 
 import { __resetDbForTests } from '../../kernel/db/database'
-import { addLocalPickLine, discardLocalPick, getOpenPick, removeLocalPickLine, startLocalPick } from './localPick'
+import { addLocalPickLine, discardLocalPick, getOpenPick, removeLocalPickLine, restoreLocalPick, startLocalPick } from './localPick'
 import type { PickLine } from './dispatchLogic'
 
 beforeEach(() => {
@@ -39,5 +39,19 @@ describe('despacho local', () => {
     discardLocalPick()
     expect(getOpenPick()).toBeNull()
     expect(() => startLocalPick('wh-1', null)).not.toThrow()
+  })
+
+  it('restoreLocalPick vuelve a abrir el despacho tal como estaba (despacho manual rechazado, 2026-10-11); no pisa uno abierto', () => {
+    const id = startLocalPick('wh-1', { publicId: 'c1', name: 'Cliente 1' })
+    addLocalPickLine(id, LINE)
+    addLocalPickLine(id, { ...LINE, quantity: 2, fromBinCode: 'B-6' })
+    const snapshot = getOpenPick()!
+    discardLocalPick()
+    restoreLocalPick(snapshot)
+    const back = getOpenPick()
+    expect([back?.warehousePublicId, back?.clientPublicId, back?.clientName]).toEqual(['wh-1', 'c1', 'Cliente 1'])
+    expect(back?.lineRows.map((l) => [l.sku, l.quantity, l.fromBinCode])).toEqual([['SKU-1', 3, 'B-5'], ['SKU-1', 2, 'B-6']])
+    restoreLocalPick(snapshot)
+    expect(getOpenPick()?.lineRows).toHaveLength(2)
   })
 })

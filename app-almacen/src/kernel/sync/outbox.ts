@@ -8,9 +8,9 @@
 import { api, ApiError, unwrap } from '../api/client'
 import { recordSkippedFromResult } from '../../features/count/countSkipped'
 import { getDb } from '../db/database'
-import { projectOperation } from '../warehouse/balanceProjection'
+import { projectRow, type Delta } from '../warehouse/balanceProjection'
 
-export type OutboxKind = 'receipt' | 'pack' | 'collect' | 'countBatch' | 'countFinish' | 'transfer' | 'adjust' | 'damage'
+export type OutboxKind = 'receipt' | 'pack' | 'collect' | 'countBatch' | 'countFinish' | 'transfer' | 'adjust' | 'damage' | 'manualIssue'
 type OutboxMethod = 'POST' | 'PUT'
 
 interface EnqueueInput {
@@ -18,6 +18,8 @@ interface EnqueueInput {
   body: unknown
   /** Requerido para countBatch/countFinish (la ruta lleva el id del conteo); receipt/pack tienen una ruta fija. */
   path?: string
+  /** Efecto exacto que la operación ya puso en los saldos locales (despacho manual): se guarda para deshacerlo o volver a sumarlo igual. */
+  projection?: readonly Delta[]
 }
 
 // La cuenta de pendientes se lee siempre de la base (nunca queda desincronizada), pero el aviso a quien la muestra
@@ -44,6 +46,8 @@ export interface OutboxRow {
   attempts: number
   last_error: string | null
   result_json: string | null
+  /** schema v11: efecto guardado en los saldos locales (null = se deriva del cuerpo). */
+  projection_json?: string | null
 }
 
 let counter = 0
@@ -61,8 +65,21 @@ const DEFAULT_PATH: Partial<Record<OutboxKind, string>> = {
   transfer: '/api/v1/inventory/transfers/in-warehouse',
   adjust: '/api/v1/inventory/adjustments/quantity',
   damage: '/api/v1/damage-reports',
+  // 2026-10-11: «Completar despacho» = despacho manual (salida sin entrega con motivo, documento DMA-#####). `collect` queda solo para las filas que
+  // un aparato ya tenga en la cola de antes de esta versión.
+  manualIssue: '/api/v1/manual-issues',
 }
-const METHOD: Record<OutboxKind, OutboxMethod> = { receipt: 'POST', pack: 'POST', collect: 'POST', countBatch: 'PUT', countFinish: 'POST', transfer: 'POST', adjust: 'POST', damage: 'POST' }
+const METHOD: Record<OutboxKind, OutboxMethod> = {
+  receipt: 'POST',
+  pack: 'POST',
+  collect: 'POST',
+  countBatch: 'PUT',
+  countFinish: 'POST',
+  transfer: 'POST',
+  adjust: 'POST',
+  damage: 'POST',
+  manualIssue: 'POST',
+}
 
 /** Encola una operación (kind + cuerpo ya armado); devuelve el id local de la fila. */
 export function enqueue(input: EnqueueInput): number {
@@ -70,9 +87,9 @@ export function enqueue(input: EnqueueInput): number {
   if (!path) throw new Error(`enqueue: hace falta 'path' para el tipo '${input.kind}' (no tiene una ruta fija).`)
   const key = newIdempotencyKey()
   const info = getDb().runSync(
-    `INSERT INTO outbox (idempotency_key, kind, method, path, body, created_at_utc, status, attempts)
-     VALUES (?, ?, ?, ?, ?, ?, 'pending', 0)`,
-    [key, input.kind, METHOD[input.kind], path, JSON.stringify(input.body), new Date().toISOString()],
+    `INSERT INTO outbox (idempotency_key, kind, method, path, body, created_at_utc, status, attempts, projection_json)
+     VALUES (?, ?, ?, ?, ?, ?, 'pending', 0, ?)`,
+    [key, input.kind, METHOD[input.kind], path, JSON.stringify(input.body), new Date().toISOString(), input.projection ? JSON.stringify(input.projection) : null],
   )
   notify()
   return info.lastInsertRowId
@@ -82,6 +99,17 @@ export function enqueue(input: EnqueueInput): number {
 export function outboxStatus(id: number): { status: string; error: string | null } | null {
   const row = getDb().getFirstSync<{ status: string; last_error: string | null }>('SELECT status, last_error FROM outbox WHERE id = ?', [id])
   return row ? { status: row.status, error: row.last_error } : null
+}
+
+/** Lo que contestó el servidor a una fila ya enviada (p. ej. el despacho manual con su número DMA); null si no se envió o no se guardó. */
+export function outboxResult(id: number): unknown {
+  const row = getDb().getFirstSync<{ status: string; result_json: string | null }>('SELECT status, result_json FROM outbox WHERE id = ?', [id])
+  if (row?.status !== 'sent' || !row.result_json) return null
+  try {
+    return JSON.parse(row.result_json) as unknown
+  } catch {
+    return null
+  }
 }
 
 export function listOutbox(): OutboxRow[] {
@@ -103,7 +131,7 @@ export function retryRow(id: number): void {
   const row = getDb().getFirstSync<OutboxRow>('SELECT * FROM outbox WHERE id = ?', [id])
   getDb().runSync("UPDATE outbox SET status = 'pending', last_error = NULL WHERE id = ?", [id])
   // una operación rechazada ya había deshecho su efecto en los saldos locales: al reintentarla se vuelve a aplicar
-  if (row && row.status === 'rejected') projectOperation(row.kind, JSON.parse(row.body), 1)
+  if (row && row.status === 'rejected') projectRow(row, 1)
   notify()
 }
 
@@ -126,6 +154,13 @@ async function sendRow(row: OutboxRow): Promise<unknown> {
 
 /** Rechazo de negocio (dato inválido o que ya no aplica): no tiene sentido reintentar tal cual. */
 const REJECTION_CODES = new Set(['bad_request', 'validation', 'forbidden', 'not_found', 'conflict', 'status_rule'])
+/** 2026-10-11: el servidor también rechaza con códigos propios (409 `insufficient_stock` del inventario, 403 `module_disabled`…); por el código
+ *  quedaban pendientes para siempre (se reintentaban cada minuto y el saldo local nunca se deshacía). Lo que decide es el estatus HTTP. */
+const REJECTION_STATUSES = new Set([400, 403, 404, 409, 422])
+
+function isRejection(err: ApiError): boolean {
+  return REJECTION_CODES.has(err.code) || REJECTION_STATUSES.has(err.status)
+}
 
 export interface RunOutboxResult {
   sent: number
@@ -171,13 +206,13 @@ export async function runOutbox(): Promise<RunOutboxResult> {
         db.runSync('UPDATE outbox SET attempts = attempts + 1 WHERE id = ?', [row.id])
         break
       }
-      if (REJECTION_CODES.has(err.code)) {
+      if (isRejection(err)) {
         db.runSync("UPDATE outbox SET status = 'rejected', attempts = attempts + 1, last_error = ? WHERE id = ?", [
           err.title,
           row.id,
         ])
         // el servidor no la aceptó: el efecto que se había puesto en los saldos locales se deshace
-        projectOperation(row.kind, JSON.parse(row.body), -1)
+        projectRow(row, -1)
         rejected += 1
         continue
       }
