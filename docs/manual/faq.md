@@ -5836,6 +5836,156 @@ El cierre automático está **apagado por defecto**. Un administrador (`admin.te
 **¿Un conteo cerrado automáticamente ajustó inventario?**
 No. Solo se cierra solo si no hay nada que ajustar; en el historial dice `Cierre automático: el conteo cuadra.`.
 
+## Lote F-A1 — Clientes: lista, alta y ficha (2026-10-10)
+
+Mensajes de la pantalla Catálogo → Clientes (los del servidor salen tal cual, debajo del campo o en el diálogo). Capítulo: [fa1-clientes.md](frontend/fa1-clientes.md).
+
+**`Ya existe un cliente con ese código.` (409) al crear.**
+El duplicado es por **código** (no por nombre). Escriba otro código o déjelo vacío para que se genere del nombre (agrega `-2`, `-3`… si hace falta). Revise con **Mostrar inactivos**: un cliente dado de baja conserva su código.
+
+**`El nombre es obligatorio.` / `No puede exceder 200 caracteres.` (400).**
+El nombre es lo único obligatorio del alta. Razón social admite 250 y la identificación fiscal 50.
+
+**`El código no puede exceder 30 caracteres.` (400).**
+Acórtelo o déjelo vacío.
+
+**`El límite de crédito no puede ser negativo.` (400) / `El límite de crédito no se puede dejar vacío; escriba 0 si no aplica.` (en pantalla).**
+Use 0 o más. Una vez que el cliente tiene límite, el campo no puede quedar vacío (el servidor no sabe borrarlo; vacío significaría «no cambiar»).
+
+**`El título no puede exceder 200 caracteres.` (400) / `Ya existe un contrato con ese número.` (409) al crear con contrato inicial.**
+El título del contrato inicial admite 200 caracteres (vacío = «Contrato marco»). Si el 409 del contrato aparece, repita el alta; si sigue, avise a soporte (el número se arma del código del cliente).
+
+**`El registro fue modificado por otro usuario; recargue e intente de nuevo.` (409) al guardar el perfil.**
+Otra persona guardó el mismo cliente antes. La ficha se vuelve a leer sola y lo que usted escribió se conserva: revise y pulse **Guardar** otra vez.
+
+**`El punto de recogido debe ser un almacén activo del cliente (tipo PICKUP o BOTH).` (400).**
+Elija uno de la lista (solo se ofrecen los válidos); si el almacén se desactivó mientras tanto, vuelva a abrir la ficha. «Dirección corporativa» quita el punto propio.
+
+**`Teléfono inválido.` / `Correo inválido.` / `El valor es obligatorio.` (400).**
+El teléfono lleva los dígitos de la máscara de la compañía (p. ej. 10 en Puerto Rico); el correo, `usuario@dominio.com`.
+
+**`El nombre del contacto es obligatorio.` (400), `No puede exceder 150 caracteres.` (nombre) / `No puede exceder 80 caracteres.` (puesto).**
+Escriba el nombre de la persona; el puesto es opcional.
+
+**`Ya existe un contacto principal activo para este cliente.` (409).**
+Dos personas intentaron quedar como principal a la vez. Repita: marcar una persona como principal quita la marca a la anterior.
+
+**`El patrón es obligatorio.` / `El patrón no puede exceder 40 caracteres.` / `El patrón debe incluir al menos un '#' para el consecutivo.` / `Carácter no permitido en el patrón: 'x'. Use letras, dígitos y - _ / . # @.` (400).**
+Un patrón válido tiene de 1 a 40 caracteres, al menos un `#` y solo letras sin acento, dígitos y `- _ / . # @`. Para volver al del sistema deje el campo vacío. El mismo motivo se ve en rojo bajo el patrón mientras escribe.
+
+**`Salto ilegal: de 'X' solo se puede avanzar a 'Y'.` / `El registro ya está en ese estatus.` / `'X' es terminal: no admite más transiciones.` (422) al cambiar el estatus.**
+El estatus sigue el modelo de la compañía (Ajustes → Operación). Use el botón que ofrece la ficha; desde un estatus terminal no se avanza.
+
+**`Cliente no encontrado.` (404).**
+El cliente de la dirección (`?client=`) no existe o es de otra compañía. Elija uno de la lista.
+
+**«El nombre no se cambia desde aquí».**
+Es a propósito: el nombre se muestra pero el perfil no lo edita (el servidor no lo permite en el perfil).
+
+**¿Por qué no veo Nuevo cliente, Guardar, Dar de baja o Agregar teléfono?**
+Faltan permisos: crear pide `clients.create`; editar, estatus y baja piden `clients.update`; teléfonos y correos piden `contacts.manage` **y** `clients.update`. Con solo `clients.read` la ficha es de consulta.
+
+**Di de baja un cliente y ya no está en la lista.**
+La lista muestra solo activos. Encienda **Mostrar inactivos**, ábralo y use **Reactivar**. Un cliente de baja no se puede elegir en órdenes nuevas, pero su historial se conserva.
+
+**¿Dónde cambio la dirección, el SLA o «Cliente desde» de un cliente?**
+Las direcciones se administran en Localizaciones (en el perfil son de solo lectura). El SLA (por tipo de servicio, en horas) y «Cliente desde» (inicio del contrato) pertenecen al contrato y se editarán en el bloque de contratos.
+
+**¿El estado «Activo/Inactivo» de la maqueta es el estatus?**
+Son dos cosas: el **estatus** (etapas configurables, p. ej. Activo → En revisión) y la **baja** (Inactivo). La lista muestra las dos.
+
+
+## Lote F-A2 — Contratos del cliente (2026-10-10)
+
+Mensajes de la sección Contratos de la ficha del cliente (Catálogo → Clientes). Los del servidor salen tal cual, debajo del campo o en el diálogo. Capítulo: [fa2-contratos.md](frontend/fa2-contratos.md).
+
+**`El contrato fue modificado por otro usuario; recargue e intente de nuevo.` (409) al guardar los datos del contrato.**
+Otra persona guardó el mismo contrato antes. El contrato se vuelve a leer solo y lo que usted escribió se conserva: revise y pulse **Guardar** otra vez.
+
+**`El estatus actual no permite la acción 'EDIT_CONTRACT'.` (422) / aviso «El estatus actual del contrato no permite editarlo…».**
+Un contrato Vencido o Cancelado ya no se edita (datos, modelo de facturación, SLA, tarifas, tramos ni servicios especiales). Solo se puede mirar y su historial queda. Si necesita seguir trabajando, cree un contrato nuevo (**Nuevo contrato**); el administrador puede cambiar esa regla en Sistema → Estatus.
+
+**`La fecha fin no puede ser anterior a la fecha de inicio.` (400) / `Indique una fecha fin o márquela para borrar, no ambas.` (400).**
+Corrija «Cliente desde» o «Fecha fin». Para quitar la fecha fin deje el campo vacío y guarde.
+
+**`El título del contrato es obligatorio.` / `Máximo 200 caracteres.` (400).**
+Escriba un título de hasta 200 caracteres. El número admite 40.
+
+**`Ya existe un contrato con el número 'X'.` (409) al crear un contrato.**
+Los números de contrato son únicos en la compañía. Escriba otro o deje el número vacío para que lo genere el sistema (`{Código}-C{n}`).
+
+**`El cliente está dado de baja; solo se consulta su historial.` (409) al crear contratos, tarifas o servicios especiales.**
+Reactive el cliente (botón **Reactivar** de la cabecera) y repita.
+
+**`Catálogo Currency 'X' no encontrado.` / `Catálogo BillingModel 'X' no encontrado.` (404).**
+La moneda o el disparador de cobro ya no están en el catálogo de la compañía; elija otro de la lista.
+
+**`El cargo por despacho no puede ser negativo.` / `El cargo fijo por COD no puede ser negativo.` / `El por ciento del cargo por COD debe estar entre 0 y 100.` (400).**
+Use 0 o más; si el tipo es **Porciento (%)** el valor va de 0 a 100 y se calcula sobre el monto COD cobrado, no sobre el total de la orden. En pantalla también se pide el monto cuando se marca el interruptor.
+
+**Desmarqué un interruptor del modelo de facturación y el monto/tarifas siguen ahí.**
+Es a propósito: desmarcar no borra nada (cargo por despacho, COD, tarifas y servicios especiales se conservan y dejan de cobrarse). Al volver a marcarlo reaparecen.
+
+**`No se puede activar el contrato: el cliente está suspendido. Reactive al cliente primero.` (422).**
+Cambie el estatus del cliente (cabecera de la ficha) y repita.
+
+**`El cliente ya tiene un contrato vigente. Cancele o expire el contrato anterior antes de activar este.` (422).**
+Solo un contrato puede estar Vigente a la vez. Elija el anterior en el selector, pase ese a Cancelado o Vencido y active el nuevo.
+
+**`Las horas máximas de tránsito deben ser mayores que cero.` / `La ventana de recogido (minutos) no puede ser negativa.` / `La meta de puntualidad debe estar entre 0 y 100.` / `La penalidad no puede ser negativa.` (400).**
+Salen bajo el campo del renglón del tipo de servicio. Para un tipo sin SLA deje sus cuatro campos vacíos.
+
+**`Tipo de servicio desconocido: 'X'.` (400) / `Solo puede haber un nivel de servicio activo por tipo de servicio.` (409) al guardar el SLA.**
+El tipo ya no está en el catálogo, o dos personas guardaron a la vez: recargue la ficha y repita.
+
+**`Ya existe una tarifa vigente en esa fecha para ese servicio y tipo de paquete en el contrato; edítela o ciérrela antes de crear otra.` (409).**
+Solo puede haber una tarifa vigente por servicio y paquete. Use **Editar** (versión nueva) o **Quitar** (cerrar) la existente.
+
+**`El componente 'Por servicio' está apagado en el modelo de facturación del contrato; enciéndalo antes de trabajar sus tarifas.` (409) (y el de «Pieza extra»).**
+Marque el interruptor en la pestaña Contrato. Mientras esté apagado las filas se ven pero no se pueden crear ni editar.
+
+**`La fecha no puede ser anterior a hoy: el historial de tarifas no se reescribe.` (400).**
+Una versión nueva o un cierre se fechan hoy o después. Solo el alta de una tarifa nueva acepta una fecha pasada.
+
+**`La tarifa ya está cerrada; cree una nueva en lugar de editarla.` / `El componente ya está cerrado.` / `El tramo ya está cerrado.` (409).**
+Otra persona la cerró antes. Vuelva a abrir la pestaña (o active **Ver historial**) y agregue una nueva si hace falta.
+
+**`Rango inválido: 'desde' debe ser al menos 2 …` (400) / `El tramo 4–7 se traslapa con el tramo vigente 2–5.` (400).**
+La pieza 1 va en la tarifa por servicio, así que el primer tramo empieza en 2. «Hasta» vacío significa «en adelante». Dos tramos vigentes del mismo servicio y paquete no pueden compartir piezas: edite o quite el existente.
+
+**`El componente de pieza extra está cerrado; cree uno nuevo para agregar tramos.` (409) / `Los tramos solo aplican a componentes de pieza extra.` (400).**
+Agregue una pieza extra nueva (servicio + paquete) y sus tramos.
+
+**`Solo las tarifas por servicio se editan aquí; los tramos de pieza extra se editan en /tiers.` (400).**
+En pieza extra se editan los tramos (lápiz de cada tramo), no el bloque.
+
+**`El cliente no tiene un contrato vigente; cree o active un contrato antes de configurar servicios especiales.` (409).**
+Los servicios especiales cuelgan del contrato vigente. Cree el contrato (**Nuevo contrato**) o pase uno a Vigente.
+
+**`El componente 'Servicios especiales' está apagado en el contrato vigente; enciéndalo en el modelo de facturación para agregar servicios especiales.` (409).**
+Marque «Servicios especiales» en la pestaña Contrato del contrato vigente.
+
+**`El nombre del tipo de servicio especial es obligatorio.` / `…no puede exceder 120 caracteres.` (400) / `Ya existe un tipo de servicio especial con el nombre 'X'.` (409).**
+Al elegir «+ Nuevo tipo de servicio especial…» escriba un nombre de hasta 120 caracteres. Los nombres se comparan sin mayúsculas, acentos ni espacios dobles: «Vagón del muelle» y «VAGON DEL MUELLE» son el mismo tipo (si ya existe, elíjalo de la lista).
+
+**`El cliente ya tiene una tarifa vigente en esa fecha para el tipo 'X'; edite esa tarifa o ciérrela antes de agregar otra.` (409) / `La tarifa ya está cerrada; agregue un servicio especial nuevo si necesita volver a cobrarlo.` (409).**
+Use **Editar** (versión nueva) o **Quitar** de la fila vigente; si ya estaba cerrada, agregue el servicio otra vez.
+
+**`La tarifa del servicio especial no puede ser negativa.` (400) / `El tipo de servicio especial está inactivo; reactívelo o elija otro.` (400).**
+Use 0 o más. Los tipos inactivos no se ofrecen en la lista; esta pantalla no los reactiva (lo hace soporte con el API).
+
+**¿Por qué solo veo un aviso en Contratos y no las pestañas?**
+Falta el permiso `contracts.read`. El resto de la ficha funciona igual. Guardar pide `contracts.update` y crear contratos `contracts.create`.
+
+**¿Por qué no veo la sección de Tarifas por pieza extra (o por servicio)?**
+Se muestra solo si su interruptor del modelo de facturación está marcado (o si ya tiene filas). Márquelo en la pestaña Contrato.
+
+**¿Dónde se cotiza una orden?**
+No está en esta pantalla; la cotización se hará junto con las órdenes de venta.
+
+**¿Qué pasa con «Cliente desde» del alta?**
+Es la fecha de inicio del contrato; se edita en la pestaña Contrato. El contrato vigente es el activo (o el borrador más reciente si no hay activo) cuyo inicio ya llegó.
+
 ## Despacho manual (DMA-#####, 2026-10-11)
 
 **¿Qué es un despacho manual y cuándo lo uso?**
