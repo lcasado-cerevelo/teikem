@@ -583,7 +583,7 @@ posición sugerida) no se descuenta: se vuelve a bajar en cuanto el despacho lle
 | Motivo deshabilitado o borrado en el servidor | `El motivo {CÓDIGO} no existe o está inactivo.` (400) | API |
 | Inventario insuficiente | `Inventario insuficiente de {sku} en {posición}: disponible {x}, solicitado {y}.` (409; no sale nada ni se consume el número DMA) | API |
 | Productos de dos dueños | `Un despacho manual solo puede tener productos de un mismo dueño.` (400; la app ya lo impide al escanear) | API |
-| Rol sin `warehouse.issue` en el servidor (el permiso se quitó y el aparato aún no lo sabe) | 403 sin cuerpo: la app muestra `Ocurrió un error. Intente de nuevo.` | API |
+| Rol sin `warehouse.issue` en el servidor (el permiso se quitó y el aparato aún no lo sabe) | 403 sin cuerpo: la app muestra `No tienes permiso para esta acción. Pide a tu administrador que te lo asigne.` (antes de 2026-10-11: `Ocurrió un error. Intente de nuevo.`; §9) | API |
 | Cualquier otro rechazo (producto inactivo, lote, series…) | El mensaje exacto del servidor (mismos de la recolección, [06 §7](06-inventario-y-almacen.md#7-recolección-y-empaque-ad-hoc-pick--pack)) | API |
 | Sin señal | `Despacho manual en cola: quedó guardado en el aparato y se envía solo en cuanto haya señal.` | Cola de salida |
 
@@ -946,6 +946,22 @@ en este aparato).
 
 Cómo se usa: cada fila "con error" muestra el tipo de operación y el mensaje que devolvió el servidor; se puede
 "Reintentar" (vuelve a quedar pendiente, se manda en la próxima pasada) o "Descartar" (se borra sin mandar nunca).
+Desde 2026-10-11 el tipo se muestra con su nombre en el idioma de la app (antes salía el nombre técnico de la cola, p. ej.
+`manualIssue`), también en el botón `Reintentar: {tipo}`:
+
+| Nombre técnico (cola) | Español | English |
+|---|---|---|
+| `receipt` | Recibo | Receipt |
+| `pack` | Despacho (recolectar y empacar) | Dispatch (pick and pack) |
+| `collect` (solo filas de versiones anteriores) | Despacho (solo recolectar) | Dispatch (pick only) |
+| `countBatch` | Conteo (líneas capturadas) | Count (captured lines) |
+| `countFinish` | Conteo (cierre) | Count (finish) |
+| `transfer` | Transferencia | Transfer |
+| `adjust` | Ajuste de inventario | Inventory adjustment |
+| `damage` | Reporte de daño | Damage report |
+| `manualIssue` | Despacho manual | Manual issue |
+
+Un tipo que esta versión no conoce (una fila guardada por otra versión de la app) se muestra con su nombre técnico tal cual.
 Las pendientes no tienen esas acciones: se mandan solas cuando haya señal (cada 60 segundos, o al tocar
 "Sincronizar ahora").
 
@@ -973,6 +989,19 @@ las posiciones dadas de baja se conservan marcadas como inactivas (así la app d
 la rechaza con 400, 403, 404, 409 o 422, aunque traiga un código propio: antes un `Inventario insuficiente…` (409 `insufficient_stock`) o un módulo
 apagado (403 `module_disabled`) dejaban la operación **pendiente para siempre** (se reintentaba cada minuto) y su efecto en el saldo del aparato sin
 deshacer; esto valía también para Transferir, Ajustar y Empacar. Un 500 o la falta de señal la siguen dejando pendiente.
+
+**Correcciones tras el despacho manual (2026-10-11).**
+- **409 `La operación con esta clave todavía se está procesando.`** (idempotencia, capítulo 8A §1) **no** es un rechazo: significa que el servidor
+  sigue procesando ese mismo envío con la misma clave (p. ej. el intento anterior se cortó sin respuesta). La operación **queda pendiente**, con ese
+  texto como último error, se cuenta el intento, su efecto en el saldo del aparato **no** se deshace y la cola sigue con las demás; en la siguiente
+  pasada se manda otra vez con la **misma** clave y recibe la respuesta guardada (o se ejecuta si el servidor la dio por abandonada a los 10 minutos),
+  sin duplicarse. Antes de esta versión quedaba "con error" y el saldo se deshacía. Los demás 409 de la idempotencia
+  (`La clave de idempotencia ya se usó con otro contenido.`, `La operación con esta clave ya no puede repetirse con los permisos actuales.`) siguen
+  siendo rechazos.
+- **403 sin mensaje** (lo que responde el API cuando al rol le falta el permiso de la ruta): en toda la app se lee
+  `No tienes permiso para esta acción. Pide a tu administrador que te lo asigne.` (en inglés `You do not have permission for this action. Ask your
+  administrator to grant it.`), también como mensaje de la fila "con error" en Sincronización. Antes se leía `Ocurrió un error. Intente de nuevo.`.
+  Un 403 que trae su propio mensaje (p. ej. un módulo apagado, `module_disabled`) sigue mostrando el mensaje del servidor tal cual.
 
 ### 9.1 Línea ya corregida por el supervisor: aviso de lote parcial (Lote A7) y rechazo (Lote A6)
 

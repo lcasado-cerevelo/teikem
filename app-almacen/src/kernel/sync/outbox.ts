@@ -158,7 +158,18 @@ const REJECTION_CODES = new Set(['bad_request', 'validation', 'forbidden', 'not_
  *  quedaban pendientes para siempre (se reintentaban cada minuto y el saldo local nunca se deshacía). Lo que decide es el estatus HTTP. */
 const REJECTION_STATUSES = new Set([400, 403, 404, 409, 422])
 
+/** 2026-10-11: el 409 de la idempotencia del servidor «todavía se está procesando» (IdempotencyRules.InFlightMessage en
+ *  src/Teikem.Domain/Security/IdempotencyRules.cs; código `conflict`, como cualquier 409) NO es un rechazo: la misma clave
+ *  sigue en curso en el servidor (p. ej. el envío anterior se cortó sin respuesta) y el siguiente intento recibe la respuesta
+ *  guardada o se ejecuta de nuevo si quedó abandonada. Se reconoce por el título exacto (el API no lo traduce). */
+export const IDEMPOTENCY_IN_FLIGHT_TITLE = 'La operación con esta clave todavía se está procesando.'
+
+function isInFlight(err: ApiError): boolean {
+  return err.status === 409 && err.title.trim() === IDEMPOTENCY_IN_FLIGHT_TITLE
+}
+
 function isRejection(err: ApiError): boolean {
+  if (isInFlight(err)) return false
   return REJECTION_CODES.has(err.code) || REJECTION_STATUSES.has(err.status)
 }
 
@@ -216,7 +227,8 @@ export async function runOutbox(): Promise<RunOutboxResult> {
         rejected += 1
         continue
       }
-      // 5xx u otro error transitorio: se cuenta el intento y se sigue con las demás (documentos independientes).
+      // 5xx, 409 «todavía se está procesando» u otro error transitorio: se cuenta el intento, la fila sigue pendiente (el
+      // saldo local no se deshace) y se sigue con las demás (documentos independientes).
       db.runSync('UPDATE outbox SET attempts = attempts + 1, last_error = ? WHERE id = ?', [err.title, row.id])
     }
   }

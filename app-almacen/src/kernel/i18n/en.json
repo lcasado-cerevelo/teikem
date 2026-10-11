@@ -21,7 +21,8 @@
   },
   "errors": {
     "generic": "Something went wrong. Try again.",
-    "network": "No connection to the server. The operation is queued to send."
+    "network": "No connection to the server. The operation is queued to send.",
+    "forbidden": "You do not have permission for this action. Ask your administrator to grant it."
   },
   "lang": {
     "es": "Español",
@@ -472,7 +473,16 @@
     "empty": "No pending operations.",
     "retry": "Retry",
     "retryRow": "Retry: {kind}",
-    "discard": "Discard"
+    "discard": "Discard",
+    "kindReceipt": "Receipt",
+    "kindPack": "Dispatch (pick and pack)",
+    "kindCollect": "Dispatch (pick only)",
+    "kindCountBatch": "Count (captured lines)",
+    "kindCountFinish": "Count (finish)",
+    "kindTransfer": "Transfer",
+    "kindAdjust": "Inventory adjustment",
+    "kindDamage": "Damage report",
+    "kindManualIssue": "Manual issue"
   },
   "countRejection": {
     "headline": "The supervisor already corrected all the lines of this submission.",

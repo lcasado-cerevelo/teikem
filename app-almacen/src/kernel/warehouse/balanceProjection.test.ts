@@ -119,6 +119,23 @@ describe('efecto de las operaciones pendientes en los saldos locales (D2b)', () 
   })
 })
 
+describe('409 «todavía se está procesando» (2026-10-11): la fila sigue pendiente y el saldo local NO se deshace', () => {
+  it('Transferir: el efecto local se mantiene; al enviarse en la siguiente pasada tampoco se toca', async () => {
+    const id = queueTransfer(T)
+    const inFlight = 'La operación con esta clave todavía se está procesando.'
+    postMock.mockResolvedValueOnce({ error: { status: 409, title: inFlight, code: 'conflict' }, response: new Response(null, { status: 409 }) })
+    const res = await runOutbox()
+    expect(res).toMatchObject({ rejected: 0, remaining: 1 })
+    expect(listOutbox().find((r) => r.id === id)?.status).toBe('pending')
+    expect(A()[0].qtyOnHand).toBe(7)
+    expect(B()[0].qtyOnHand).toBe(3)
+
+    postMock.mockResolvedValueOnce({ data: {}, response: new Response(null, { status: 200 }) })
+    expect((await runOutbox()).sent).toBe(1)
+    expect(A()[0].qtyOnHand).toBe(7)
+  })
+})
+
 describe('despacho manual (DMA, 2026-10-11): resta lo que sale y lo deshace exacto', () => {
   const LINE = (quantity: number, binId = 10, productPublicId = 'p1') => ({ productPublicId, sku: 'SKU-1', productName: 'Guantes', quantity, fromBinCode: 'A-01', fromBinId: binId })
 

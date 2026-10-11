@@ -4,6 +4,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text } from 'react-native'
 import { useT } from '../kernel/i18n/useT'
 import { runSync, useLastSync, usePendingCount } from '../kernel/sync/engine'
 import { discardRow, listOutbox, retryRow, type OutboxRow } from '../kernel/sync/outbox'
+import { outboxKindLabel } from '../kernel/sync/outboxKind'
 import { classifyCountBatchRejection, countIdFromFinishPath, type CorrectedLineRejection } from '../features/count/countRejection'
 import { RejectedCountBatch } from '../features/count/RejectedCountBatch'
 import { dismissSkippedNotice, listSkippedNotices } from '../features/count/countSkipped'
@@ -58,6 +59,9 @@ export default function SyncScreen() {
     }
   }
 
+  // 2026-10-11: el tipo de cada operación con su nombre traducido (el `kind` técnico solo si llega uno desconocido)
+  const kindLabel = (kind: string) => outboxKindLabel(kind, t)
+
   // hora en la zona y con el formato (12/24 h) de la compañía; con la fecha si no fue hoy
   const lastSyncLabel = lastSync ? f.when(lastSync.ranAtUtc) : t('sync.never')
 
@@ -95,7 +99,7 @@ export default function SyncScreen() {
 
       <Text style={styles.label}>{t('sync.pendingWithCount', { count: pending })}</Text>
       <LineList
-        items={pendingRows.map((r) => ({ id: r.id, title: r.kind, subtitle: r.path }))}
+        items={pendingRows.map((r) => ({ id: r.id, title: kindLabel(r.kind), subtitle: r.path }))}
         removeLabel={t('common.remove')}
         emptyLabel={t('sync.empty')}
       />
@@ -118,7 +122,7 @@ export default function SyncScreen() {
         />
       ))}
       <LineList
-        items={otherRejectedRows.map((r) => ({ id: r.id, title: r.kind, subtitle: r.last_error ?? undefined }))}
+        items={otherRejectedRows.map((r) => ({ id: r.id, title: kindLabel(r.kind), subtitle: r.last_error ?? undefined }))}
         removeLabel={t('sync.discard')}
         emptyLabel={correctedRejections.length > 0 ? undefined : t('sync.empty')}
         onRemove={(id) => {
@@ -129,7 +133,7 @@ export default function SyncScreen() {
       {otherRejectedRows.map((r) => (
         <BigButton
           key={r.id}
-          label={t('sync.retryRow', { kind: r.kind })}
+          label={t('sync.retryRow', { kind: kindLabel(r.kind) })}
           variant="secondary"
           onPress={() => {
             retryRow(r.id)

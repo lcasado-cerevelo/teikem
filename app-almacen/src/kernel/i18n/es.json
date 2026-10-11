@@ -21,7 +21,8 @@
   },
   "errors": {
     "generic": "Ocurrió un error. Intente de nuevo.",
-    "network": "No hay conexión con el servidor. La operación queda pendiente de enviar."
+    "network": "No hay conexión con el servidor. La operación queda pendiente de enviar.",
+    "forbidden": "No tienes permiso para esta acción. Pide a tu administrador que te lo asigne."
   },
   "lang": {
     "es": "Español",
@@ -472,7 +473,16 @@
     "empty": "No hay operaciones pendientes.",
     "retry": "Reintentar",
     "retryRow": "Reintentar: {kind}",
-    "discard": "Descartar"
+    "discard": "Descartar",
+    "kindReceipt": "Recibo",
+    "kindPack": "Despacho (recolectar y empacar)",
+    "kindCollect": "Despacho (solo recolectar)",
+    "kindCountBatch": "Conteo (líneas capturadas)",
+    "kindCountFinish": "Conteo (cierre)",
+    "kindTransfer": "Transferencia",
+    "kindAdjust": "Ajuste de inventario",
+    "kindDamage": "Reporte de daño",
+    "kindManualIssue": "Despacho manual"
   },
   "countRejection": {
     "headline": "El supervisor ya corrigió todas las líneas de este envío.",
