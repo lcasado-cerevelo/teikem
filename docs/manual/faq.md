@@ -6228,3 +6228,9 @@ Es a propósito cuando se entra desde el menú: queda listo para la siguiente po
 
 **La app abre en «Sesión bloqueada» y no hay señal, ¿cómo entro? ¿Qué significan `PIN incorrecto (sin señal).`, `Demasiados intentos sin señal. Conéctate para desbloquear.` y `Sin señal. Conéctate una vez para poder desbloquear sin señal.`?**
 Sin señal, la app compara el PIN con una huella guardada en el aparato la última vez que ese usuario entró con señal. Si escribes mal el PIN sale el primer mensaje; tras 5 fallos seguidos sin señal sale el segundo y hace falta señal para desbloquear (o «Cerrar sesión»). El tercero significa que ese usuario nunca entró con señal en este aparato: conéctalo una vez y entra con el PIN. Lo capturado no se pierde en ningún caso.
+
+**Un usuario no ve almacenes, clientes u órdenes que otros sí ven, o un enlace a algo le da «no encontrado» (404). ¿Qué pasa?**
+Casi seguro tiene **alcance de datos** (almacenes y/o clientes) en su usuario. Con alcance, solo ve lo de esos almacenes/clientes y lo demás ni aparece ni se puede abrir por id (404, como si no existiera). Revisa `GET /api/v1/users/{id}/data-scopes`; para darle más acceso agrégalos con `PUT` (reemplaza la lista) y, para quitarle la restricción de un tipo, deja sin filas de ese tipo. Los administradores tampoco se exentan. No hace falta que vuelva a entrar.
+
+**¿Un registro sin almacén o sin cliente lo ve alguien con alcance?**
+Sí. Lo que no pertenece a ningún almacén/cliente (campo vacío, como un producto compartido o una plantilla general) lo ven todos los de la compañía; el alcance solo oculta lo que pertenece a un almacén/cliente fuera del suyo.

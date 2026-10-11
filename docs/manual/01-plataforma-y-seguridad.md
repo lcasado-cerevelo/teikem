@@ -367,10 +367,27 @@ el motor genérico de transiciones de estatus (Capítulo 5): es un campo simple,
 
 ### 3.5 Ámbitos de datos (`UserDataScope`)
 
-Qué hace: restringe a un usuario a ver solo ciertos almacenes/clientes/rutas (según el `ScopeEntity`). Se
-guarda y se expone en `/me`, pero **el filtro real todavía no se aplica** porque las entidades de negocio
-(almacenes, clientes) llegan en lotes posteriores (2 y 6). Por ahora es solo dato guardado, sin efecto en
-consultas.
+Qué hace (desde el Lote 32, 2026-10-11): restringe a un usuario a ver solo ciertos **almacenes** (`ScopeEntity` = `WAREHOUSE`) y/o
+**clientes** (`CLIENT`). Quién puede: `admin.users` (`GET`/`PUT /api/v1/users/{id}/data-scopes`; el `PUT` reemplaza la lista completa).
+Se expone en `/me`.
+
+Cómo se aplica (en el servidor, así que vale para la web, la app y la sincronización del aparato):
+
+- **Sin alcance de un tipo = sin restricción de ese tipo.** Un usuario sin ninguna fila ve todo lo de su compañía, como siempre.
+- **Con alcance de almacén**, solo ve los almacenes indicados y lo que depende de ellos: existencias, recibos y ASN, recolecciones y
+  despachos, conteos, daños, discrepancias, citas de muelle, cross-dock, tareas, órdenes de compra, alquileres, y las zonas, posiciones
+  y muelles del almacén. **Con alcance de cliente**, solo ve los clientes indicados y lo que es de ellos: contactos, contratos, servicios
+  especiales, ubicaciones, órdenes de transporte, lotes de importación, plantillas, usuarios de portal, productos del cliente y alquileres.
+- Lo que no pertenece a ningún almacén o cliente (fila con el campo vacío, p. ej. un producto compartido) **se ve siempre**; los
+  catálogos no se filtran.
+- Con **los dos tipos** a la vez se exigen **ambos** en lo que tiene almacén y cliente (p. ej. un ASN).
+- Pedir por id algo fuera del alcance responde **404** con el mensaje de «no encontrado» (no revela que existe), igual que entre compañías.
+- **Nadie se exenta**: un administrador con alcance asignado queda limitado igual; para que vea todo se le quitan las filas de alcance.
+- El alcance se lee en cada petición: un cambio vale desde la siguiente (el usuario no tiene que volver a entrar).
+- Los procesos internos (sembradores, trabajos de fondo) no tienen usuario y no se limitan.
+
+Casos frecuentes: un usuario con alcance ve listas con menos filas de las que espera → revisar sus alcances
+(`GET /api/v1/users/{id}/data-scopes`); un reporte le muestra totales distintos que a otro usuario → es lo esperado.
 
 ---
 

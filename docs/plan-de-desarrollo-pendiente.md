@@ -106,7 +106,7 @@ la nueva muestra lo que hay y su indicador trabaja de fondo. Ya **no** se usa el
 - Decisión vieja sin responder (D4): permiso para cancelar un conteo (opciones 1 vs 2).
 
 ### P0.3 Deuda técnica del backend (verificar cada punto antes)
-- Filtro real de `UserDataScope` (almacén/cliente): hoy se guarda y no filtra (`lote1`, `lote6` D42).
+- ~~Filtro real de `UserDataScope` (almacén/cliente)~~ **Hecho (Lote 32, 2026-10-11: `docs/lote32-decisiones.md`)**: filtro global en el servidor; los bordes (filas hijas, transferencias) quedan anotados allí.
 - Cerrar un trip: `TripStatuses.Completed` existe pero ningún endpoint lo mueve (solo `StartAsync`).
 - `Contract.CodCommissionPct` en el modelo pero no expuesto; decisiones 39 y 44 del lote 2/3 (baja de cliente, reinvitar).
 - Propagación de `orders.credit_override` a roles clonados (sin prueba).
