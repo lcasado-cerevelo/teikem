@@ -74,6 +74,8 @@ public class Tenant : ISoftDeletable
     public bool CountAutoCloseMatching { get; set; }
     /// <summary>2026-10-11: categoría con la que se preselecciona un producto NUEVO (ProductCategory de la misma compañía); NULL = sin categoría por defecto. Solo la usa la pantalla: la API no la aplica sola.</summary>
     public int? DefaultProductCategoryId { get; set; }
+    /// <summary>Lote 34: método de rotación del inventario de la compañía ('FEFO' | 'FIFO'). FEFO para todas las existentes.</summary>
+    public string RotationMethod { get; set; } = "FEFO";
 
     // --- Despacho manual (2026-10-11 b) ---
     /// <summary>

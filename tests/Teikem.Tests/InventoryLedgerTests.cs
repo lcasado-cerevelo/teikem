@@ -95,6 +95,75 @@ public class InventoryLedgerTests
         Assert.Equal(2m, await w.F.OnHandAsync(w.PN.ProductId, w.B2.WarehouseBinId));
     }
 
+    // ---------------------------------------------------------------- Lote 34: fecha de primera entrada del saldo (FIFO)
+
+    private static async Task<DateTime?> FirstReceivedAsync(World w, Product p, WarehouseBin b)
+        => (await w.F.BalanceAsync(p.ProductId, b.WarehouseBinId))?.FirstReceivedAtUtc;
+
+    [Fact]
+    public async Task A_receipt_stamps_the_first_entry_date_and_a_second_receipt_keeps_it()
+    {
+        var w = await SeedAsync();
+        await using var _ = w.F;
+        var before = DateTime.UtcNow.AddSeconds(-2);
+        await w.F.PostAsync(Receipt(w, w.PN, w.B1, 5m));
+        var first = await FirstReceivedAsync(w, w.PN, w.B1);
+        Assert.NotNull(first);
+        Assert.True(first >= before);
+
+        await Task.Delay(30);
+        await w.F.PostAsync(Receipt(w, w.PN, w.B1, 3m));
+        Assert.Equal(first, await FirstReceivedAsync(w, w.PN, w.B1));   // la primera entrada no se pisa
+    }
+
+    [Fact]
+    public async Task A_transfer_hands_the_origin_date_to_the_new_balance()
+    {
+        var w = await SeedAsync();
+        await using var _ = w.F;
+        await w.F.PostAsync(Receipt(w, w.PN, w.B1, 5m));
+        var old = DateTime.UtcNow.AddDays(-40);
+        var origin = await w.F.Db.StockBalances.SingleAsync(b => b.ProductId == w.PN.ProductId && b.WarehouseBinId == w.B1.WarehouseBinId);
+        origin.FirstReceivedAtUtc = old;   // mercancía vieja
+        await w.F.Db.SaveChangesAsync();
+
+        await w.F.PostAsync(new InventoryPosting(InventoryTxnTypes.Transfer, w.PN.ProductId, 2m, FromWarehouseId: w.W.WarehouseId,
+            FromBinId: w.B1.WarehouseBinId, ToWarehouseId: w.W.WarehouseId, ToBinId: w.B2.WarehouseBinId));
+
+        Assert.Equal(old, await FirstReceivedAsync(w, w.PN, w.B2));   // mover de posición no rejuvenece la mercancía
+        Assert.Equal(old, await FirstReceivedAsync(w, w.PN, w.B1));
+    }
+
+    [Fact]
+    public async Task A_balance_emptied_and_filled_again_gets_a_new_entry_date()
+    {
+        var w = await SeedAsync();
+        await using var _ = w.F;
+        await w.F.PostAsync(Receipt(w, w.PN, w.B1, 4m));
+        var old = DateTime.UtcNow.AddDays(-90);
+        var balance = await w.F.Db.StockBalances.SingleAsync(b => b.ProductId == w.PN.ProductId && b.WarehouseBinId == w.B1.WarehouseBinId);
+        balance.FirstReceivedAtUtc = old;
+        await w.F.Db.SaveChangesAsync();
+        await w.F.PostAsync(Issue(w, w.PN, w.B1, 4m));            // queda en cero
+        Assert.Equal(old, await FirstReceivedAsync(w, w.PN, w.B1));
+
+        await w.F.PostAsync(Receipt(w, w.PN, w.B1, 6m));          // vuelve a llenarse: es mercancía nueva
+        var again = await FirstReceivedAsync(w, w.PN, w.B1);
+        Assert.NotNull(again);
+        Assert.True(again > old.AddDays(1));
+    }
+
+    [Fact]
+    public async Task A_partial_issue_does_not_change_the_entry_date()
+    {
+        var w = await SeedAsync();
+        await using var _ = w.F;
+        await w.F.PostAsync(Receipt(w, w.PN, w.B1, 9m));
+        var first = await FirstReceivedAsync(w, w.PN, w.B1);
+        await w.F.PostAsync(Issue(w, w.PN, w.B1, 4m));
+        Assert.Equal(first, await FirstReceivedAsync(w, w.PN, w.B1));
+    }
+
     [Fact]
     public async Task Adjustment_requires_a_reason_and_stores_the_sign_of_its_direction()
     {

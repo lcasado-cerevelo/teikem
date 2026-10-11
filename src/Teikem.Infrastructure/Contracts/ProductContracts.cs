@@ -13,18 +13,19 @@ public sealed record ProductCreateRequest(string? Sku, string? Name, Guid? Owner
     string? BaseUom = null, string? TrackingType = null, decimal? WeightKg = null, decimal? VolumeM3 = null, string? Barcode = null,
     decimal? PurchaseCost = null, decimal? SalePrice = null, Guid? PreferredWarehousePublicId = null, int? PreferredBinId = null,
     decimal? MinQty = null, decimal? MinPickQty = null, decimal? MaxPickQty = null, string? Brand = null, string? Model = null,
-    string? PackUom = null, decimal? PackQty = null);
+    string? PackUom = null, decimal? PackQty = null, string? RotationMethod = null);
 
 /// <summary>
 /// PATCH del producto: el SKU es inmutable ('sku' en Extra → 400). Lote 12: Brand/Model null = sin cambio; "" (o solo
-/// espacios) = quitarlos.
+/// espacios) = quitarlos. Lote 34: RotationMethod = excepción de rotación del producto ('FEFO' | 'FIFO'); null = sin cambio; "" = quitarla
+/// (vuelve al método de la compañía).
 /// </summary>
 public sealed record ProductPatchRequest(string? Name = null, Guid? OwnerClientPublicId = null, bool? ClearOwner = null, int? CategoryId = null,
     bool? ClearCategory = null, string? BaseUom = null, string? TrackingType = null, decimal? WeightKg = null, decimal? VolumeM3 = null,
     string? Barcode = null, bool? ClearBarcode = null, decimal? PurchaseCost = null, decimal? SalePrice = null,
     Guid? PreferredWarehousePublicId = null, int? PreferredBinId = null, bool? ClearPreferred = null, decimal? MinQty = null,
     decimal? MinPickQty = null, decimal? MaxPickQty = null, string? RowVersion = null, string? Brand = null, string? Model = null,
-    string? PackUom = null, decimal? PackQty = null, bool? ClearPack = null)
+    string? PackUom = null, decimal? PackQty = null, bool? ClearPack = null, string? RotationMethod = null)
 {
     [JsonExtensionData]
     public IDictionary<string, JsonElement>? Extra { get; set; }
@@ -63,7 +64,7 @@ public sealed record ProductPageDto(int Total, int Skip, int Take, IReadOnlyList
 
 public sealed record ProductDetailDto(ProductListItemDto Product, decimal? WeightKg, decimal? VolumeM3, Guid? PreferredWarehousePublicId,
     string? PreferredWarehouseCode, int? PreferredBinId, string? PreferredBinCode, decimal? MinPickQty, decimal? MaxPickQty,
-    bool HasMovements, string RowVersion);
+    bool HasMovements, string RowVersion, string? RotationMethod = null);
 
 public sealed record ProductCategoryRequest(string? Name, int? ParentId = null);
 

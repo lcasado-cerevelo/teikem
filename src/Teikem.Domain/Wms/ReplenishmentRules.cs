@@ -6,11 +6,13 @@ namespace Teikem.Domain.Wms;
 /// <param name="PickBinAvailable">DISPONIBLE actual (en mano − reservado) de la posición preferida (todos los lotes; maestro L306).</param>
 /// <param name="HasOpenTask">Ya hay una REPLENISH abierta hacia esa posición (idempotencia por almacén).</param>
 public sealed record ReplenishmentProduct(
-    int ProductId, string Sku, int PickBinId, decimal? MinPickQty, decimal? MaxPickQty, decimal PickBinAvailable, bool HasOpenTask);
+    int ProductId, string Sku, int PickBinId, decimal? MinPickQty, decimal? MaxPickQty, decimal PickBinAvailable, bool HasOpenTask,
+    string? RotationMethod = null);
 
 /// <summary>Saldo de origen posible (una fila de StockBalance del mismo producto y almacén).</summary>
 public sealed record ReplenishmentSource(
-    int BinId, string BinCode, string? ZoneTypeCode, bool BinActive, int? LotId, DateOnly? ExpiryDate, decimal QtyOnHand, decimal QtyReserved);
+    int BinId, string BinCode, string? ZoneTypeCode, bool BinActive, int? LotId, DateOnly? ExpiryDate, decimal QtyOnHand, decimal QtyReserved,
+    DateTime? ReceivedAtUtc = null);
 
 /// <summary>Movimiento planeado RESERVE → PICKING: una tarea REPLENISH por asignación (posición y lote).</summary>
 public sealed record ReplenishmentMove(int FromBinId, int? LotId, decimal Quantity);
@@ -48,18 +50,26 @@ public static class ReplenishmentRules
     /// <summary>Disponible de un saldo (lo reservado no se reabastece).</summary>
     public static decimal Available(decimal onHand, decimal reserved) => Math.Max(0m, onHand - reserved);
 
-    /// <summary>Orden FEFO de las fuentes RESERVE elegibles (activas, con disponible, distintas de la posición de picking).</summary>
-    public static IReadOnlyList<ReplenishmentSource> EligibleSources(IEnumerable<ReplenishmentSource> sources, int pickBinId)
-        => sources
+    /// <summary>Orden de las fuentes RESERVE elegibles (activas, con disponible, distintas de la posición de picking): FEFO por omisión, o FIFO (Lote 34).</summary>
+    public static IReadOnlyList<ReplenishmentSource> EligibleSources(IEnumerable<ReplenishmentSource> sources, int pickBinId, string? method = null)
+    {
+        var q = sources
             .Where(s => s.BinActive && s.BinId != pickBinId
                         && string.Equals(s.ZoneTypeCode, ZoneTypes.Reserve, StringComparison.OrdinalIgnoreCase)
-                        && Available(s.QtyOnHand, s.QtyReserved) > 0m)
-            .OrderBy(s => s.ExpiryDate is null ? 1 : 0)
-            .ThenBy(s => s.ExpiryDate)
+                        && Available(s.QtyOnHand, s.QtyReserved) > 0m);
+        IOrderedEnumerable<ReplenishmentSource> ordered = RotationRules.IsFifo(method)
+            ? q.OrderBy(s => RotationRules.FifoKey(s.ReceivedAtUtc).HasNoDate)
+               .ThenBy(s => RotationRules.FifoKey(s.ReceivedAtUtc).Date)
+               .ThenBy(s => s.ExpiryDate is null ? 1 : 0)
+               .ThenBy(s => s.ExpiryDate)
+            : q.OrderBy(s => s.ExpiryDate is null ? 1 : 0)
+               .ThenBy(s => s.ExpiryDate);
+        return ordered
             .ThenBy(s => s.BinCode, StringComparer.Ordinal)
             .ThenBy(s => s.BinId)
             .ThenBy(s => s.LotId ?? 0)
             .ToList();
+    }
 
     /// <summary>Plan de reabasto de un producto.</summary>
     public static ReplenishmentPlan Plan(ReplenishmentProduct product, IEnumerable<ReplenishmentSource> sources)
@@ -75,7 +85,7 @@ public static class ReplenishmentRules
 
         var moves = new List<ReplenishmentMove>();
         var remaining = needed;
-        foreach (var s in EligibleSources(sources, product.PickBinId))
+        foreach (var s in EligibleSources(sources, product.PickBinId, product.RotationMethod))
         {
             if (remaining <= 0m) break;
             var take = Math.Min(remaining, Available(s.QtyOnHand, s.QtyReserved));

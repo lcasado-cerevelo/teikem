@@ -52,6 +52,7 @@ public sealed class StockBalanceConfiguration : IEntityTypeConfiguration<StockBa
         b.Property(s => s.QtyReserved).HasColumnType("decimal(16,3)");
         b.Property(s => s.QtyAvailable).HasColumnType("decimal(16,3)").HasComputedColumnSql("[QtyOnHand]-[QtyReserved]", stored: true);
         b.Property(s => s.RowVersion).IsRowVersion();
+        b.Property(s => s.FirstReceivedAtUtc).HasColumnType("datetime2");
 
         b.HasIndex(s => new { s.ProductId, s.WarehouseId, s.WarehouseBinId, s.LotId }).IsUnique().HasFilter(null).HasDatabaseName("UQ_StockBalance");
         b.HasIndex(s => new { s.WarehouseId, s.ProductId }).HasDatabaseName("IX_StockBalance_WH");

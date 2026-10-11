@@ -67,7 +67,8 @@ public sealed class PickBatchService(
 
     // ---------------------------------------------------------------- tipos internos
 
-    private sealed record ProductInfo(int ProductId, Guid PublicId, string Sku, bool IsActive, int? ClientId, string TrackingCode, decimal? PurchaseCost);
+    private sealed record ProductInfo(int ProductId, Guid PublicId, string Sku, bool IsActive, int? ClientId, string TrackingCode, decimal? PurchaseCost,
+        string? RotationMethod = null);
 
     private sealed record BinInfo(int BinId, string Code, bool Active, string? ZoneTypeCode);
 
@@ -441,12 +442,15 @@ public sealed class PickBatchService(
                                     && b.WarehouseBinId != null && b.QtyOnHand > 0
                               select new
                               {
-                                  b.ProductId, BinId = b.WarehouseBinId!.Value, b.LotId, b.QtyOnHand, b.QtyReserved,
+                                  b.ProductId, BinId = b.WarehouseBinId!.Value, b.LotId, b.QtyOnHand, b.QtyReserved, b.FirstReceivedAtUtc,
                                   Expiry = lot == null ? (DateOnly?)null : lot.ExpiryDate,
                               }).ToListAsync(ct);
         // Disponible restante por saldo (producto, posición, lote): lo que las líneas anteriores ya tomaron se descuenta.
         var remaining = balances.ToDictionary(b => (b.ProductId, b.BinId, b.LotId), b => Math.Max(0m, b.QtyOnHand - b.QtyReserved));
         var expiries = balances.ToDictionary(b => (b.ProductId, b.BinId, b.LotId), b => b.Expiry);
+        // Lote 34: fecha de primera entrada de cada saldo (para FIFO) y método de rotación de la compañía (el producto puede tener excepción).
+        var received = balances.ToDictionary(b => (b.ProductId, b.BinId, b.LotId), b => b.FirstReceivedAtUtc);
+        var tenantMethod = await db.Tenants.AsNoTracking().Where(t => t.TenantId == db.CurrentTenantId).Select(t => t.RotationMethod).FirstOrDefaultAsync(ct);
 
         var serialStatus = await db.StatusCodes.AsNoTracking()
             .Where(s => s.Entity == StatusDomains.SerialStatus && s.InternalCode == SerialStatuses.Available)
@@ -508,10 +512,10 @@ public sealed class PickBatchService(
                 .Select(kv =>
                 {
                     var bin = bins[kv.Key.BinId];
-                    return new PickCandidate(bin.BinId, bin.Code, bin.ZoneTypeCode, bin.Active, kv.Key.LotId, expiries[kv.Key], kv.Value);
+                    return new PickCandidate(bin.BinId, bin.Code, bin.ZoneTypeCode, bin.Active, kv.Key.LotId, expiries[kv.Key], kv.Value, received.GetValueOrDefault(kv.Key));
                 })
                 .ToList();
-            var allocation = PickBatchRules.Allocate(qty, candidates, line.BinId, line.LotId);
+            var allocation = PickBatchRules.Allocate(qty, candidates, line.BinId, line.LotId, RotationRules.Resolve(product.RotationMethod, tenantMethod));
             if (!allocation.IsComplete)
             {
                 var where = explicitBin?.Code ?? warehouse.Code;
@@ -796,14 +800,14 @@ public sealed class PickBatchService(
     {
         var ids = publicIds.Distinct().ToList();
         var rows = await db.Set<Product>().AsNoTracking().Where(p => ids.Contains(p.PublicId))
-            .Select(p => new { p.ProductId, p.PublicId, p.Sku, p.IsActive, p.ClientId, p.TrackingTypeLookupId, p.PurchaseCost })
+            .Select(p => new { p.ProductId, p.PublicId, p.Sku, p.IsActive, p.ClientId, p.TrackingTypeLookupId, p.PurchaseCost, p.RotationMethod })
             .ToListAsync(ct);
         if (rows.Count != ids.Count) throw new NotFoundException("Producto");
         var result = new Dictionary<Guid, ProductInfo>();
         foreach (var p in rows)
         {
             var tracking = (await lookups.GetAsync(p.TrackingTypeLookupId, ct))?.InternalCode ?? TrackingTypes.None;
-            result[p.PublicId] = new ProductInfo(p.ProductId, p.PublicId, p.Sku, p.IsActive, p.ClientId, tracking, p.PurchaseCost);
+            result[p.PublicId] = new ProductInfo(p.ProductId, p.PublicId, p.Sku, p.IsActive, p.ClientId, tracking, p.PurchaseCost, p.RotationMethod);
         }
         return result;
     }

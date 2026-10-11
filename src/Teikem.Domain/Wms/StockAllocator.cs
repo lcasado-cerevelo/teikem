@@ -3,7 +3,8 @@ using Teikem.Domain.Constants;
 namespace Teikem.Domain.Wms;
 
 /// <summary>Saldo candidato para asignar una salida. Available = en mano − reservado (lo reservado no se asigna).</summary>
-public sealed record StockCandidate(int BinId, string BinCode, string? ZoneTypeCode, int? LotId, DateOnly? ExpiryDate, decimal Available);
+public sealed record StockCandidate(int BinId, string BinCode, string? ZoneTypeCode, int? LotId, DateOnly? ExpiryDate, decimal Available,
+    DateTime? ReceivedAtUtc = null);
 
 /// <summary>Toma de una posición/lote.</summary>
 public sealed record StockAllocation(int BinId, int? LotId, decimal Quantity);
@@ -34,16 +35,23 @@ public static class StockAllocator
         return i < 0 ? ZoneOrder.Length : i;
     }
 
-    public static StockAllocationResult Allocate(decimal quantity, int? lotId, int? binId, IEnumerable<StockCandidate> candidates)
+    public static StockAllocationResult Allocate(decimal quantity, int? lotId, int? binId, IEnumerable<StockCandidate> candidates, string? method = null)
     {
         var remaining = quantity;
         var result = new List<StockAllocation>();
-        var ordered = (candidates ?? Enumerable.Empty<StockCandidate>())
+        var q = (candidates ?? Enumerable.Empty<StockCandidate>())
             .Where(c => c.Available > 0m && !IsExcludedZone(c.ZoneTypeCode))
             .Where(c => lotId is null || c.LotId == lotId)
-            .Where(c => binId is null || c.BinId == binId)
-            .OrderBy(c => c.ExpiryDate.HasValue ? 0 : 1)
-            .ThenBy(c => c.ExpiryDate)
+            .Where(c => binId is null || c.BinId == binId);
+        // Lote 34: FEFO por omisión; FIFO por fecha de primera entrada del saldo (sin fecha al final), luego vencimiento.
+        IOrderedEnumerable<StockCandidate> byRotation = RotationRules.IsFifo(method)
+            ? q.OrderBy(c => RotationRules.FifoKey(c.ReceivedAtUtc).HasNoDate)
+                .ThenBy(c => RotationRules.FifoKey(c.ReceivedAtUtc).Date)
+                .ThenBy(c => c.ExpiryDate.HasValue ? 0 : 1)
+                .ThenBy(c => c.ExpiryDate)
+            : q.OrderBy(c => c.ExpiryDate.HasValue ? 0 : 1)
+                .ThenBy(c => c.ExpiryDate);
+        var ordered = byRotation
             .ThenBy(c => ZoneRank(c.ZoneTypeCode))
             .ThenBy(c => c.BinCode, StringComparer.Ordinal)
             .ThenBy(c => c.BinId)

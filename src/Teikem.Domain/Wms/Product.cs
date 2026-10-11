@@ -48,6 +48,8 @@ public class Product : ITenantScoped, ISoftDeletable
     public int? PreferredBinId { get; set; }
     public decimal? MinQty { get; set; }
     public decimal? MinPickQty { get; set; }
+    /// <summary>Lote 34: excepción de rotación de este producto ('FEFO' | 'FIFO'). NULL = el método de la compañía (Tenant.RotationMethod).</summary>
+    public string? RotationMethod { get; set; }
     public decimal? MaxPickQty { get; set; }
     /// <summary>Lote 12: marca en texto libre (NVARCHAR(100), recortada; vacía = NULL). Se audita como cualquier campo.</summary>
     public string? Brand { get; set; }
