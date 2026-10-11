@@ -6768,6 +6768,64 @@
         }
       }
     },
+    "/api/v1/cycle-counts/offline-bin": {
+      "post": {
+        "tags": [
+          "CycleCounts"
+        ],
+        "parameters": [
+          {
+            "name": "forCounting",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CountOfflineRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CountOfflineRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CountOfflineRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CountOfflineResultDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CountOfflineResultDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CountOfflineResultDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/cycle-counts/{id}/lines/batch": {
       "put": {
         "tags": [
@@ -28451,6 +28509,62 @@
         },
         "additionalProperties": false
       },
+      "CountOfflineRequest": {
+        "type": "object",
+        "properties": {
+          "warehousePublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "binId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CountBatchItem"
+            },
+            "nullable": true
+          },
+          "finish": {
+            "type": "boolean"
+          },
+          "countedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CountOfflineResultDto": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "$ref": "#/components/schemas/CycleCountDetailDto"
+          },
+          "created": {
+            "type": "boolean"
+          },
+          "joined": {
+            "type": "boolean"
+          },
+          "finished": {
+            "type": "boolean"
+          },
+          "movedSinceCounted": {
+            "type": "boolean"
+          },
+          "finishMessage": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "CountProductBinsDto": {
         "type": "object",
         "properties": {
@@ -41469,6 +41583,11 @@
           },
           "isProvisional": {
             "type": "boolean"
+          },
+          "maxCapacityQty": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
           }
         },
         "additionalProperties": false
