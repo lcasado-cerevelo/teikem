@@ -1851,6 +1851,15 @@ Cómo se usa:
 - Lote 16 (selector de Posición de la captura): con un producto elegido, la lista ofrece **solo las posiciones donde ese producto tiene existencia disponible** (y, si se eligió lote, solo
   las de ese lote), cada una con lo disponible (`P-01 · PCK · 9 disp.`), en el mismo orden FEFO que usa el servidor al recolectar; la primera va marcada "Sugerida". Sin producto, el campo está
   apagado. Es una ayuda de pantalla: el API no cambió y sigue aceptando cualquier posición (si no alcanza, responde `Inventario insuficiente…`, 409).
+- Desde la **app de almacén** (pantalla Despacho, [capítulo 9 §6](09-app-almacen.md#6-despacho-recolectar-y-empacar)) se usan los mismos
+  dos endpoints, para inventario **propio** o de un **cliente 3PL** (un solo dueño por despacho):
+  - **Completar despacho** (botón principal) manda `POST /api/v1/pick-batches` con las líneas: el inventario sale y queda una recolección
+    `EMP-#####` en **Recolectada**, **sin orden, consignatario ni empaque** (se puede empacar después desde la web).
+  - **Empacar** (opcional) manda `POST /api/v1/pick-batches/collect-and-pack` con `serviceType` `STANDARD`, un paquete `BOX` con los
+    bultos indicados y `confirmNow: true`. Con inventario de un cliente 3PL la orden es de ese cliente; con inventario **propio** la app
+    pregunta primero «¿A qué cliente se despacha?» (`GET /api/v1/clients`) y luego el consignatario de ese cliente
+    (`GET /api/v1/locations?clientId=`).
+  - Sin señal, cualquiera de las dos se guarda en la cola del aparato y se manda al volver la señal (con `Idempotency-Key`).
 
 ### Validaciones
 
@@ -1909,6 +1918,103 @@ Lote 13 — el mismo ciclo, por transición (Empacar y Eliminar son íconos en l
 Qué bloquea: una recolección Empacada no se vuelve a empacar; una Cancelada solo se consulta (`422` `La recolección {n} fue
 eliminada; solo se consulta.`) y solo aparece en la lista con `includeDeleted`. La lista no ofrece Empacar (`canPack`) ni Eliminar
 (`canDelete`) cuando el servidor los marca como falsos.
+
+---
+
+## 7b. Despacho manual (DMA-#####, 2026-10-11)
+
+Qué hace: saca inventario del almacén **sin entrega** — una muestra, uso interno, un cliente que pasa a recoger, una venta de mostrador,
+etc. — con un **motivo obligatorio** y una **nota libre**. Es un documento propio con numeración `DMA-#####` (contador propio por
+compañía; **no** consume los números `EMP` de la recolección) y ficha consultable. Por dentro es la **misma salida** que la recolección
+(§7): mismo orden de salida FEFO o posición/lote explícitos, mismas series escaneadas, mismo `ISSUE` en el Kárdex, mismo 409 sin efecto
+parcial y la misma reversa al eliminarlo. No pide cliente ni consignatario; sirve para inventario **propio** o de **un cliente** (un solo
+dueño por documento, igual que la recolección). **No es a ciegas**: la existencia se sigue mostrando como siempre. La web y la app usan
+la misma operación.
+
+Quién puede: `warehouse.issue` (nuevo; lo traen las plantillas **Operador de almacén** y **Admin de compañía**, y se agregó a esos dos
+roles en cada compañía existente) para despachar, eliminar y leer los motivos; `inventory.view` para la lista y la ficha. Módulo
+**WMS_LOTSERIAL** (el mismo de Recolección y empaque).
+
+Cómo se usa:
+- `GET /api/v1/manual-issues/reasons` — motivos activos y habilitados para la compañía, en el idioma del usuario (también sirve el
+  catálogo genérico `GET /api/v1/catalogs/ManualIssueReason`). De sistema: `SAMPLE` Muestra, `INTERNAL_USE` Uso interno,
+  `CUSTOMER_PICKUP` Retiro del cliente, `SALE` Venta, `OTHER` Otro.
+- `POST /api/v1/manual-issues` — despacha. Cuerpo: el de la recolección más `reasonCode` (obligatorio) y `note` (opcional, hasta 500):
+
+  ```json
+  {
+    "warehousePublicId": "9c8ff3d1-ea5c-430e-a7b0-2a7319a1c092",
+    "lines": [
+      { "productPublicId": "3b4e80e7-deb7-47e7-9a39-1c7bc0ab492b", "quantity": 2 },
+      { "productPublicId": "…", "quantity": 1, "binId": 1002, "lotId": 77 },
+      { "productPublicId": "…", "quantity": 2, "serialNumbers": ["SN-1", "SN-2"] }
+    ],
+    "reasonCode": "SAMPLE",
+    "note": "Feria de salud"
+  }
+  ```
+
+  Responde 200 con la ficha (`PickBatchDto`, la misma de la recolección): `number` `DMA-00012`, `statusCode` `COLLECTED`,
+  `isManual: true`, `reasonCode`, `reasonLabel` (con el nombre que la compañía le haya puesto), `note`, `ownerClientName` (cliente dueño
+  del inventario; `null` = propio), `canPack: false`, `canDelete`, `lines` (posición, lote, serie, costo congelado y movimiento) y
+  `rowVersion`. `reasonCode` no distingue mayúsculas (`sample` vale). `warehousePublicId` se puede omitir si la compañía tiene un solo
+  almacén activo. Respeta `Idempotency-Key`: el reintento con la misma clave devuelve el mismo documento sin volver a sacar inventario.
+- `GET /api/v1/manual-issues?from=&to=&productPublicIds=&status=&search=&includeDeleted=&skip=&take=` — lista paginada solo de despachos
+  manuales (los mismos filtros que la lista de recolecciones).
+- `GET /api/v1/manual-issues/{publicId}` — ficha (también de uno eliminado).
+- `DELETE /api/v1/manual-issues/{publicId}` — cuerpo opcional `{ "comment": "…", "rowVersion": "…" }`; 204. Devuelve el inventario a su
+  posición original (`ADJUSTMENT PICK_BATCH_REVERSAL`, la serie vuelve a disponible) y pasa a **Cancelada**.
+- Lista de recolecciones: `GET /api/v1/pick-batches` gana `kind` = `MANUAL` (solo despachos manuales), `PACK` (solo recolecciones `EMP`)
+  o `ALL` (**por omisión**: las dos). Cada fila trae `isManual`, `reasonCode`, `reasonLabel` y `note`, y la búsqueda `search` también
+  encuentra el motivo y la nota. Desde `/pick-batches/{publicId}` también se ve la ficha de un despacho manual, y eliminarlo por esa ruta
+  exige además `warehouse.issue`.
+- Kárdex: cada `ISSUE` lleva la nota `DMA-00012 · Muestra` (número · motivo) y la referencia se lee **Despacho manual DMA-00012**; el
+  detalle del movimiento muestra el documento con su motivo y su nota. La nota libre queda en la ficha, no en la nota del movimiento.
+- Análisis: la fuente de datos de recolecciones (`PICK_BATCH`) incluye los despachos manuales con los campos **Despacho manual**
+  (`IsManual`), **Código del motivo**, **Motivo del despacho manual** y **Nota**.
+- Motivos editables: en **Sistema → Catálogos**, lista «Motivo del despacho manual», la compañía (`admin.catalogs`) cambia el nombre de
+  un motivo o lo deshabilita con su override (igual que «Destino final de lo dañado»). Un motivo deshabilitado ya no se acepta al
+  despachar, pero los documentos que ya lo usan lo siguen mostrando. Agregar un motivo nuevo lo hace el administrador de plataforma.
+
+### Validaciones
+
+| Campo / caso | Mensaje exacto | HTTP |
+|---|---|---|
+| Sin motivo (`reasonCode` vacío o ausente) | `Indique el motivo del despacho manual.` (`errors.reasonCode`) | 400 |
+| Motivo que no existe, inactivo o deshabilitado por la compañía | `El motivo {CÓDIGO} no existe o está inactivo.` (`errors.reasonCode`) | 400 |
+| Nota de más de 500 caracteres | `La nota admite como máximo 500 caracteres.` (`errors.note`) | 400 |
+| Productos de más de un dueño | `Un despacho manual solo puede tener productos de un mismo dueño.` (`errors.lines`) | 400 |
+| Inventario insuficiente | `Inventario insuficiente de {sku} en {where}: disponible {x}, solicitado {y}.` (sin efecto parcial; el número DMA no se consume) | 409 (`insufficient_stock`) |
+| Número tomado (concurrencia) | `Ya existe un despacho manual con ese número; intente de nuevo.` | 409 |
+| Empacar un despacho manual (`POST /pick-batches/{id}/pack`) | `El despacho manual {n} no se empaca: es una salida de inventario sin entrega.` | 422 |
+| `kind` distinto de MANUAL, PACK o ALL | `El tipo debe ser MANUAL, PACK o ALL.` (`errors.kind`) | 400 |
+| Ficha o eliminar por `/manual-issues` con el id de una recolección `EMP`, inexistente o ya eliminado | `Despacho manual no encontrado.` | 404 |
+| Despachar, eliminar o leer los motivos por `/manual-issues` sin `warehouse.issue` (o ver la lista o la ficha sin `inventory.view`) | (sin cuerpo de la aplicación: lo rechaza la política del controlador; queda el evento `PERMISSION_DENIED`) | 403 |
+| Eliminar un despacho manual por `DELETE /pick-batches/{id}` con `warehouse.pick` pero sin `warehouse.issue` | `Falta el permiso 'warehouse.issue'.` | 403 |
+| Líneas: sin líneas, más de 100, cantidad, series, lote, posición, almacén o producto inactivo | Los mismos mensajes y códigos de la recolección (§7, Validaciones) | 400 / 404 / 409 / 422 |
+| Eliminar con la posición de origen o el almacén inactivo, o el producto inactivo | `La posición {bin} de la recolección está inactiva; reactívela para eliminar la recolección y restaurar el inventario.` / el mensaje del Kárdex de almacén o producto inactivo | 422 |
+| Eliminar con un `rowVersion` viejo | `El registro fue modificado por otro usuario; recargue e intente de nuevo.` | 409 |
+
+### Estatus y transiciones
+
+Usa el mismo `PickBatchStatus` de la recolección, sin la etapa Empacada:
+
+| De → a | Quién | Qué valida | Efectos |
+|---|---|---|---|
+| (despachar) → Recolectada (`COLLECTED`) | `warehouse.issue` | Motivo y nota primero (antes de tocar inventario); luego todo lo de la recolección: almacén activo, un solo dueño, hasta 100 líneas, existencia (409 sin efecto parcial), lote y series. | Número `DMA-#####`; un `ISSUE` por porción con la nota `DMA-… · {motivo}`; costo congelado por línea. |
+| Recolectada → Cancelada (`CANCELLED`) | `warehouse.issue` (por `/manual-issues`; por `/pick-batches` además `warehouse.pick`) | Posiciones de reversa activas; `rowVersion` si se manda. **No** pide `orders.cancel` ni mira órdenes (no tiene). | Reversa de cada línea a su posición original; la serie vuelve a disponible; queda para consulta con `includeDeleted`. |
+
+Qué bloquea: un despacho manual **nunca** se empaca (`canPack` siempre falso; `collect-and-pack` nunca crea uno). Uno eliminado solo
+se consulta. Un despacho manual **no** cuenta como documento abierto: no impide dar de baja el producto ni el almacén (queda en
+Recolectada para siempre); después de esa baja ya no se puede eliminar (el Kárdex rechaza devolver inventario a un producto o almacén
+inactivo, 422).
+
+### Casos frecuentes
+
+- **¿Por qué no uso «Ajustar»?** Un ajuste corrige una diferencia del inventario; un despacho manual es una salida real (con motivo,
+  número y ficha) y aparece como `ISSUE` en el Kárdex, igual que lo que sale por una recolección.
+- **¿Puedo convertirlo en orden?** No: si la mercancía va a un consignatario, use Recolección y empaque (§7).
+- **Me equivoqué de cantidad.** Elimínelo (devuelve todo a su posición) y vuelva a despacharlo.
 
 ---
 

@@ -418,24 +418,38 @@ la completó primero).
 
 ## 6. Despacho (recolectar y empacar)
 
-Qué hace: recolecta líneas (producto, cantidad, posición de origen) sin señal, y empaca (elige consignatario y
-confirma) en una sola llamada atómica cuando ya hay señal (`POST /api/v1/pick-batches/collect-and-pack`, capítulo
-8A §6 y [06 §7](06-inventario-y-almacen.md#7-recolección-y-empaque-ad-hoc-pick--pack)). Un despacho local a la vez
-por aparato, con el mismo bloqueo real que Recibir (§1).
+Qué hace: recolecta líneas (producto, cantidad, posición de origen) sin señal y, al terminar, se elige una de dos salidas
+(corregido el 2026-10-11 para describir lo que hace la app hoy, `app-almacen/src/app/dispatch.tsx` y
+`features/dispatch/dispatchApi.ts`):
 
-**Alcance de esta entrega: solo clientes 3PL.** El producto escaneado tiene que ser de inventario de un cliente 3PL
-(`ownerClientPublicId` no vacío, ya sincronizado con el producto); despachar inventario propio del tenant no está
-disponible aquí todavía (se completa en la web, decisión 3 de `docs/lote8A-app-decisiones.md`).
+- **Completar despacho** (botón principal): saca el inventario **sin empacar** — `POST /api/v1/pick-batches` con las líneas; queda una
+  recolección `EMP-#####` en Recolectada, **sin orden, consignatario ni empaque** (se puede empacar después desde la web, [06
+  §7](06-inventario-y-almacen.md#7-recolección-y-empaque-ad-hoc-pick--pack)). Debajo se lee `Saca el inventario sin empacar. Se manda
+  cuando haya señal; empacar es opcional.`
+- **Empacar** (opcional): elige el consignatario y los bultos y manda recolección y empaque en **una** llamada atómica
+  (`POST /api/v1/pick-batches/collect-and-pack`, capítulo 8A §6). Debajo se lee `Elige el consignatario y confirma; se manda cuando haya
+  señal.`
 
-Quién puede: `warehouse.pick` para recolectar y empacar. Además, elegir el consignatario (paso "Empacar") pide la
-lista de ubicaciones del cliente (`GET /api/v1/locations?clientId=`), que exige por separado `locations.read`: un
-rol de aparato que tenga `warehouse.pick` pero no `locations.read` puede recolectar todo el despacho, pero
-"Empacar" le fallará con el error de permiso del servidor al buscar consignatarios — conviene que el rol del
-dispositivo tenga ambos permisos.
+Un despacho local a la vez por aparato, con el mismo bloqueo real que Recibir (§1).
+
+**Inventario propio o de un cliente 3PL.** La pantalla despacha las dos cosas; lo que exige es **un solo dueño por despacho**: el dueño
+(el cliente 3PL del producto, o «propio» si el producto no tiene cliente) lo fija el primer producto escaneado, y el título del despacho
+abierto muestra el nombre del cliente o `Inventario propio`. Al **Empacar**:
+- con inventario de un **cliente 3PL**, la orden es de ese cliente: la app pasa directo a `¿A quién se despacha?` (sus consignatarios);
+- con inventario **propio**, la app pregunta primero `¿A qué cliente se despacha?` (los clientes activos, `GET /api/v1/clients`) y luego
+  los consignatarios de ese cliente.
+
+**Completar despacho** no pregunta cliente ni consignatario en ningún caso.
+
+Quién puede: `warehouse.pick` para recolectar, completar y empacar (empacar exige además `orders.create` en el servidor). Elegir el
+consignatario pide la lista de ubicaciones del cliente (`GET /api/v1/locations?clientId=`), que exige por separado `locations.read`; con
+inventario propio, elegir el cliente lee `GET /api/v1/clients`, que exige `clients.read`. Un rol de aparato que tenga
+`warehouse.pick` sin esos permisos puede recolectar y **Completar despacho**, pero «Empacar» le fallará con el error de permiso del
+servidor: conviene que el rol del dispositivo los tenga si va a empacar.
 
 Cómo se usa:
-1. Se escanea un producto (de un cliente 3PL); si ya hay un despacho en curso, el producto tiene que ser del mismo
-   cliente que el despacho abierto.
+1. Se escanea un producto; si ya hay un despacho en curso, el producto tiene que ser del **mismo dueño** que el despacho abierto (del
+   mismo cliente, o propio si el despacho es de inventario propio).
 2. **Primero la cantidad, después la posición** (Lote A5, decisión del dueño). La cantidad viene **vacía** (ya no viene en 1) y
    debajo se lee `Escribe la cantidad y luego escanea la posición: la línea se agrega sola.` Con la cantidad escrita (mayor que 0),
    **la lectura de la posición agrega la línea al instante** (escanear = Aceptar; escribirla con ⌨ y tocar Aceptar hace lo mismo),
@@ -447,11 +461,14 @@ Cómo se usa:
      escanear la posición.`
    - Ya no hay botón "Agregar" (lo agrega la lectura); "Cancelar" deja la línea sin agregar. Una línea agregada por error se quita
      con ✕.
-3. "Empacar" resuelve todas las posiciones de origen escaneadas a su id real (una sola llamada por código distinto),
-   busca los consignatarios del cliente, y pide la cantidad de bultos.
-4. Elegir un consignatario y confirmar manda la recolección y el empaque juntos; si no hay señal en ese instante, se
-   encola (misma cola de salida, mismas garantías de FIFO e idempotencia).
-5. "Cancelar despacho" (con confirmación) descarta todo lo recolectado.
+3. **Completar despacho**: resuelve las posiciones escaneadas a su id real (primero las del aparato, sin señal; si no está, pregunta al
+   servidor) y manda la recolección. Si no hay red en ese instante, se encola (`collect`) y se manda al volver la señal. Al terminar
+   vuelve a Inicio.
+4. **Empacar**: resuelve las posiciones igual, pide el cliente (solo inventario propio) y busca sus consignatarios; se escriben los
+   **Bultos** (1 por omisión) y se toca el consignatario. Eso manda la recolección y el empaque juntos, con servicio `STANDARD`, paquete
+   `BOX` y la orden confirmada; sin señal en ese instante, se encola (`pack`). Al terminar vuelve a Inicio.
+5. "Cancelar despacho" (con confirmación `¿Cancelar este despacho?` / `Se pierde todo lo recolectado. No se puede deshacer.`) descarta
+   todo lo recolectado.
 
 ### Plan de salida con varias posiciones (tarea 24d)
 
@@ -474,12 +491,15 @@ Escanear una posición sin tocar nada sigue agregando una sola línea con toda l
 | Campo / caso | Mensaje exacto | Origen |
 |---|---|---|
 | Código de producto no coincide con ninguno sincronizado | `No hay un producto con ese código.` | Local |
-| Producto de inventario propio (no 3PL), o de un cliente distinto al del despacho en curso | `Esta pantalla solo despacha inventario de clientes 3PL por ahora; para inventario propio se completa en la web.` | Local |
+| Producto de otro dueño que el del despacho en curso (otro cliente, o propio con uno de cliente y al revés) | `Un despacho lleva productos de un solo dueño. Termina o cancela este despacho para despachar productos de otro dueño.` | Local |
 | Escanear la posición sin cantidad escrita | `Escribe la cantidad primero y luego escanea la posición.` (no se agrega nada; el cursor pasa a la cantidad) | Local |
 | Escanear la posición con cantidad 0, negativa o que no es un número | `La cantidad debe ser un número mayor que 0. Corrígela y vuelve a escanear la posición.` (no se agrega nada) | Local |
 | Ya hay un despacho en curso (intento de empezar otro) | `Ya hay un despacho en curso; hay que confirmarlo o cancelarlo antes de empezar otro.` | Local (la pantalla siempre retoma el abierto) |
 | Una posición escaneada al recolectar no existe al resolverla en "Empacar" | `No hay una posición con ese código.` + los códigos que no se encontraron | API, al empacar |
 | No se pudieron buscar los consignatarios del cliente (sin señal, falta `locations.read`, etc.) | `No se pudo consultar los consignatarios (necesita señal).`, o el título del error del servidor | API |
+| Inventario propio: no hay clientes activos a quienes despachar | `No hay clientes activos en el sistema.` | API, lista vacía |
+| Completar despacho con una posición escaneada que no existe | `No hay una posición con ese código.` + los códigos que no se encontraron (no se manda nada) | API, al completar |
+| El servidor rechaza **Completar despacho** en línea (inventario insuficiente, producto inactivo, etc.) | El mensaje exacto del servidor, en rojo bajo el campo del producto; el despacho sigue abierto | API |
 | El cliente no tiene consignatarios en el sistema | `Este cliente no tiene consignatarios en el sistema.` | API, lista vacía |
 | Confirmar sin señal | Se guarda igual, se manda cuando haya conexión | Cola de salida |
 | El servidor rechaza el despacho al confirmarlo (crédito excedido, etc.) | El mensaje exacto del servidor, ver [06 §7](06-inventario-y-almacen.md#7-recolección-y-empaque-ad-hoc-pick--pack) | API, vía cola |
@@ -962,8 +982,9 @@ posición ya no tiene ese producto"), reintentar va a fallar otra vez con el mis
 |---|---|
 | `inventory.view` | Entrar con PIN (capítulo 8A §3.3), Recibir (incluida la pista "Sugerida" del recibo directo y la descarga de posiciones), Acomodar (listar/completar tareas), Conteo (ver, no reconciliar; zonas de "Otra posición"), Consultar (incluida la lista de lo que hay en una posición, sin cantidades) |
 | `purchasing.receive` + módulo **PURCHASING** | Recibir contra una orden de compra (sin esto, solo recibo ciego funciona) |
-| `warehouse.pick` | Recolectar y empacar en Despacho |
+| `warehouse.pick` | Recolectar, **Completar despacho** y empacar en Despacho (empacar exige además `orders.create` en el servidor) |
 | `locations.read` | Buscar los consignatarios de un cliente al empacar un despacho |
+| `clients.read` | Elegir el cliente al empacar un despacho de inventario propio (2026-10-05) |
 | `warehouse.count.capture` (implícito en `warehouse.count`) | Abrir, capturar y terminar un conteo, por posición o por producto (a ciegas si falta `warehouse.count`), y crear una posición provisional en "Otra posición" |
 | `warehouse.count` | Ver las cantidades esperadas de un conteo (no a ciegas) y **cancelarlo**; en Consultar, ver `En mano` y `Disponible` en la lista de una posición (Lote A8) |
 

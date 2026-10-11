@@ -2111,11 +2111,17 @@ que ya no existe, un permiso que cambió) — nunca por falta de señal, eso la 
 sola. Lea el mensaje de la fila: si el problema ya no aplica, toque "Reintentar"; si ya no corresponde (por ejemplo,
 se canceló esa operación desde la web), toque "Descartar" para que deje de intentarse.
 
-**Escaneo un producto en Despacho y me dice que solo despacha inventario de clientes 3PL.**
-Esta entrega de Despacho solo recolecta y empaca inventario de clientes 3PL (el dueño del producto ya viene
-sincronizado con él). Inventario propio del tenant todavía no se despacha desde el aparato: se completa desde la
-web. El mismo aviso sale si se escanea un producto de un cliente distinto al del despacho que ya está en curso (un
-despacho es de un solo cliente).
+**Escaneo un producto en Despacho y me dice "Un despacho lleva productos de un solo dueño. Termina o cancela este despacho para despachar productos de otro dueño."**
+(Corregido el 2026-10-11: antes decía que la app solo despachaba inventario de clientes 3PL; ya no es así.) Despacho acepta inventario
+propio y de clientes 3PL, pero cada despacho es de **un solo dueño**: el primer producto escaneado lo fija (un cliente, o «Inventario
+propio»). El aviso sale si el producto es de otro cliente, o de un cliente cuando el despacho es de inventario propio (y al revés).
+Termine el despacho en curso (**Completar despacho** o **Empacar**) o cancélelo, y empiece otro para el otro dueño.
+
+**En Despacho, ¿qué diferencia hay entre "Completar despacho" y "Empacar"?**
+**Completar despacho** saca el inventario y deja una recolección `EMP` en Recolectada, sin orden, consignatario ni empaque (se puede
+empacar después desde la web). **Empacar** además crea la orden: con inventario propio pregunta primero «¿A qué cliente se despacha?»
+y luego el consignatario; con inventario de un cliente 3PL va directo a sus consignatarios. Las dos funcionan sin señal: se guardan en
+la cola y se mandan al volver la señal.
 
 **Toco "Cancelar conteo" y me sale un error de permiso.**
 Cancelar un conteo (`DELETE /api/v1/cycle-counts/{id}`) exige el permiso completo `warehouse.count`, no solo
@@ -5828,3 +5834,58 @@ El cierre automático está **apagado por defecto**. Un administrador (`admin.te
 
 **¿Un conteo cerrado automáticamente ajustó inventario?**
 No. Solo se cierra solo si no hay nada que ajustar; en el historial dice `Cierre automático: el conteo cuadra.`.
+
+## Despacho manual (DMA-#####, 2026-10-11)
+
+**¿Qué es un despacho manual y cuándo lo uso?**
+Es la salida de inventario **sin entrega**: una muestra, uso interno, un cliente que pasa a recoger, una venta de mostrador. Lleva motivo
+obligatorio, nota libre, número `DMA-#####` y ficha consultable (capítulo 06 §7b). Si la mercancía va a un consignatario con una orden,
+use Recolección y empaque (§7). No use «Ajustar»: un ajuste corrige el inventario; esto es una salida real.
+
+**`Indique el motivo del despacho manual.` (400).**
+Elija un motivo (`reasonCode`): Muestra, Uso interno, Retiro del cliente, Venta u Otro (o el nombre que su compañía les haya puesto).
+
+**`El motivo {CÓDIGO} no existe o está inactivo.` (400).**
+El código no está en el catálogo, o su compañía deshabilitó ese motivo en Sistema → Catálogos («Motivo del despacho manual»). Use uno de
+`GET /api/v1/manual-issues/reasons`, o pida al administrador que lo vuelva a habilitar.
+
+**`La nota admite como máximo 500 caracteres.` (400).**
+Acorte la nota.
+
+**`Un despacho manual solo puede tener productos de un mismo dueño.` (400).**
+Un despacho es de inventario propio **o** de un solo cliente. Haga un despacho por dueño.
+
+**`Inventario insuficiente de {sku} en {almacén}: disponible {x}, solicitado {y}.` (409).**
+No había existencia disponible para todo lo pedido. No salió nada ni se consumió el número `DMA`: baje la cantidad o elija otra
+posición y vuelva a intentarlo.
+
+**`Ya existe un despacho manual con ese número; intente de nuevo.` (409).**
+Dos despachos tomaron el número a la vez (muy raro). Repita la operación.
+
+**`El despacho manual {n} no se empaca: es una salida de inventario sin entrega.` (422).**
+Un despacho manual nunca se convierte en orden. Si había que entregarlo, elimínelo (devuelve el inventario) y haga una recolección
+(§7) con su empaque.
+
+**`Despacho manual no encontrado.` (404).**
+El identificador no es de un despacho manual (por ejemplo, es una recolección `EMP`), no existe, es de otra compañía o ya fue
+eliminado (para eliminar una recolección `EMP` use Recolección y empaque).
+
+**Despachar me responde 403 (sin mensaje), o `Falta el permiso 'warehouse.issue'.` (403) al eliminar desde Recolección y empaque.**
+Despachar, eliminar un despacho manual o leer sus motivos exige `warehouse.issue` (por `/manual-issues` el 403 llega sin cuerpo, lo
+rechaza la política; por `DELETE /pick-batches/{id}` llega con ese mensaje). Lo traen **Operador de almacén** y **Admin de compañía**; en
+un rol propio, el administrador lo agrega en Sistema → Roles («Despacho manual (salida sin entrega)»).
+
+**`El tipo debe ser MANUAL, PACK o ALL.` (400).**
+El filtro `kind` de `GET /api/v1/pick-batches` solo acepta esos tres valores (sin él, la lista trae los dos tipos).
+
+**Quiero eliminar un despacho manual y me dice que la posición, el producto o el almacén está inactivo (422).**
+Eliminar devuelve la mercancía a su posición original: reactive la posición (o el producto) y vuelva a intentarlo. Si el almacén ya se
+dio de baja (definitiva), el despacho ya no se puede eliminar; haga un ajuste de entrada donde corresponda.
+
+**Di de baja un producto que tenía despachos manuales: ¿por qué no me lo impidió?**
+Un despacho manual es una salida definitiva y no cuenta como documento abierto (no bloquea la baja del producto ni del almacén). Lo único
+que pierde es poder eliminarse después de la baja.
+
+**¿Dónde veo los despachos manuales?**
+En la lista de recolecciones (`GET /api/v1/pick-batches`, con `kind=MANUAL` solo ellos), en `GET /api/v1/manual-issues` y en el Kárdex:
+cada salida dice «Despacho manual DMA-00012» con la nota `DMA-00012 · {motivo}`.
