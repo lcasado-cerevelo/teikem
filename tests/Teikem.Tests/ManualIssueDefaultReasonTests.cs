@@ -240,16 +240,17 @@ public sealed class ManualIssueDefaultReasonTests
     }
 
     [Fact]
-    public void Settings_contract_adds_the_default_reason_as_the_last_optional_field()
+    public void Settings_contract_keeps_the_default_reason_as_an_optional_field_followed_only_by_the_default_category()
     {
+        // 2026-10-11 (c): después del motivo por default solo se agregó, también opcional y al final, la categoría por defecto de los productos nuevos
         var dto = typeof(TenantSettingsDto).GetConstructors().Single().GetParameters();
-        Assert.Equal(("DefaultManualIssueReason", typeof(string)), (dto[^1].Name, dto[^1].ParameterType));
-        Assert.True(dto[^1].HasDefaultValue);
-        Assert.Null(dto[^1].DefaultValue);
+        Assert.Equal(("DefaultManualIssueReason", typeof(string)), (dto[^2].Name, dto[^2].ParameterType));
+        Assert.Equal(("DefaultProductCategoryId", typeof(int?)), (dto[^1].Name, dto[^1].ParameterType));
+        foreach (var p in new[] { dto[^2], dto[^1] }) { Assert.True(p.HasDefaultValue); Assert.Null(p.DefaultValue); }
         var req = typeof(TenantSettingsUpdateRequest).GetConstructors().Single().GetParameters();
-        Assert.Equal(("DefaultManualIssueReason", typeof(string)), (req[^1].Name, req[^1].ParameterType));
-        Assert.True(req[^1].HasDefaultValue);
-        Assert.Null(req[^1].DefaultValue);
+        Assert.Equal(("DefaultManualIssueReason", typeof(string)), (req[^2].Name, req[^2].ParameterType));
+        Assert.Equal(("DefaultProductCategoryId", typeof(int?)), (req[^1].Name, req[^1].ParameterType));
+        foreach (var p in new[] { req[^2], req[^1] }) { Assert.True(p.HasDefaultValue); Assert.Null(p.DefaultValue); }
     }
 
     // ================================================================ espejo SQL
