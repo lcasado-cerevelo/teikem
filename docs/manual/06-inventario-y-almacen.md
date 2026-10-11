@@ -2016,6 +2016,42 @@ inactivo, 422).
 - **¿Puedo convertirlo en orden?** No: si la mercancía va a un consignatario, use Recolección y empaque (§7).
 - **Me equivoqué de cantidad.** Elimínelo (devuelve todo a su posición) y vuelva a despacharlo.
 
+## 7c. Motivo por default del despacho manual (2026-10-11 b)
+
+Qué hace: para no complicar el despacho en el aparato, la compañía elige **un motivo que la app y la web preseleccionan** al hacer un
+despacho manual (§7b). El usuario lo puede cambiar antes de despachar. **El servidor sigue exigiendo motivo** en cada despacho: el default
+solo preselecciona, no se aplica solo si el motivo llega vacío. La nota sigue siendo opcional y **sin texto** por omisión. Por omisión
+ninguna compañía tiene motivo por default (nada preseleccionado, como hasta ahora).
+
+Quién puede: cambiarlo, `admin.tenant` (Ajustes de la compañía); verlo, cualquier usuario de la compañía en los ajustes y quien tenga
+`warehouse.issue` en la lista de motivos. El cambio queda en la **bitácora de auditoría** de la compañía (campo
+`DefaultManualIssueReasonLookupId`, de → a).
+
+Cómo se usa:
+- `PUT /api/v1/tenant/settings` con `{ "defaultManualIssueReason": "SALE" }` — guarda el código del catálogo «Motivo del despacho manual»
+  (no distingue mayúsculas). `""` lo quita; sin el campo (o `null`) no cambia. `GET /api/v1/tenant/settings` lo devuelve en
+  `defaultManualIssueReason` (código o `null`).
+- `GET /api/v1/manual-issues/reasons` — cada motivo trae ahora `isDefault`; a lo sumo uno sale en `true`. La respuesta sigue siendo la
+  misma lista (solo se agregó el campo):
+
+  ```json
+  [
+    { "id": 1446, "entity": "ManualIssueReason", "code": "SAMPLE", "label": "Muestra", "sortOrder": 1, "isEnabled": true, "isActive": true, "isDefault": false },
+    { "id": 1449, "entity": "ManualIssueReason", "code": "SALE", "label": "Venta", "sortOrder": 4, "isEnabled": true, "isActive": true, "isDefault": true }
+  ]
+  ```
+
+**Si la compañía deshabilita el motivo después** (Sistema → Catálogos) o se inactiva: el default **se ignora** — ningún motivo sale con
+`isDefault`, los ajustes muestran `defaultManualIssueReason: null` y el aparato no preselecciona nada — sin error y sin borrar lo guardado:
+si se vuelve a habilitar, vuelve a ser el default. Guardar el resto de los ajustes (aunque la pantalla reenvíe el mismo código guardado)
+no falla por eso.
+
+| Campo / caso | Mensaje exacto | HTTP |
+|---|---|---|
+| `defaultManualIssueReason` con un código que no existe, inactivo o deshabilitado por la compañía | `El motivo {CÓDIGO} no existe o está inactivo.` (`errors.defaultManualIssueReason`; no se guarda ningún ajuste del envío) | 400 |
+| Cambiar los ajustes sin `admin.tenant` | (sin cuerpo de la aplicación: lo rechaza la política; evento `PERMISSION_DENIED`) | 403 |
+| Despachar sin motivo aunque haya default | `Indique el motivo del despacho manual.` (`errors.reasonCode`) | 400 |
+
 ---
 
 ## 8. Compras: proveedores, órdenes de compra y faltantes
