@@ -90,6 +90,9 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    (posición destino por línea, sugerencias con cupo, "Usar posiciones sugeridas", cuarentena en devoluciones, cupo que solo avisa, Completado → Acomodado en el mismo momento, sin tareas) con sus
    validaciones, estatus y lo que bloquea; el acomodo pendiente en almacenes directos; el selector de posiciones de Recolección (solo donde hay existencia); el cruce de muelle que no aplica a
    recibos directos ya confirmados; y el formato de los números (coma de miles y `$`).
+   2026-10-11 (sección 7b): **Despacho manual** `DMA-#####` — salida de inventario sin entrega con motivo obligatorio (catálogo editable
+   «Motivo del despacho manual») y nota libre, permiso nuevo `warehouse.issue`, ficha consultable, filtro `kind` de la lista de
+   recolecciones, Kárdex `DMA-… · motivo`, y sus mensajes 400/403/404/409/422.
 7. [07 — Pulso del día y Actividad reciente (Lote 7A: Almacén)](07-pulso-y-actividad.md): panel de eventos
    recientes de Almacén (catálogo de 23 eventos, obligatorio/opcional, ventana 24h/48h/hoy, filtro por módulo),
    filtro "bajo mínimo" de productos, e indicadores y gráfico nuevos de Almacén en el Pulso del día (Unidades
@@ -110,7 +113,7 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    lote y a ciegas). Es solo el backend: la app instalable no se construye en este lote.
 9. [9 — App de almacén](09-app-almacen.md): la app instalable en sí (`app-almacen/`, Android/Expo) — registrar el
    aparato y entrar con PIN, cómo funciona sin señal (documentos propios del aparato vs. recursos compartidos, un
-   documento a la vez), Inicio, Recibir, Acomodar, Despacho (solo clientes 3PL por ahora), Conteo (a ciegas según
+   documento a la vez), Inicio, Recibir, Acomodar, Despacho (inventario propio o de un cliente 3PL; «Completar despacho» sin empacar o «Empacar»), Conteo (a ciegas según
    permiso), Consultar (con caché para responder sin señal) y Sincronización (pendientes, con error, reintentar).
    Lote 16: Recibir en un almacén **directo a posición** (paso "Escanea la posición destino", validación sin señal, bloqueo por dos destinos del mismo producto), descarga de las posiciones del
    almacén y heartbeat en cada pasada de sincronización.

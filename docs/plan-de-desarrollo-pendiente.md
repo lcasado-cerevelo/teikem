@@ -116,7 +116,7 @@ la nueva muestra lo que hay y su indicador trabaja de fondo. Ya **no** se usa el
 - Actualizar `docs/frontend/diseno-frontend.md` (obsoleto).
 
 ### P0.4 Pendientes de almacén ya decididos
-- **Despacho manual** como operación propia (salida sin documento; Luis rechazó usar «Ajustar»): `docs/frontend/loteF8a-decisiones.md` §3. Servidor + web + app.
+- **Despacho manual** como operación propia (salida sin documento; Luis rechazó usar «Ajustar»): `docs/frontend/loteF8a-decisiones.md` §3. Servidor + web + app. **Servidor hecho (Lote 31, 2026-10-11: `docs/lote31-decisiones.md`)**; faltan web y app.
 - Rotación FIFO/FEFO configurable (hoy FEFO fijo): `docs/lote15`, `lote16`.
 - Sin probar en Zebra físico: hojas/etiquetas de posición y producto (lotes 23/24, F14–F16).
 - `sync/clients` y `sync/consignee-locations` (`lote8A-decisiones`); resumen de recibos por almacén en una llamada (`lote19`).
