@@ -21,8 +21,17 @@ import { BinMarkList } from '../features/positions/BinMarkList'
 import { capMarks, markRecommended, marksToRows, toggleMark, type MarkOption, type Marks } from '../features/positions/binMarks'
 import { fetchClientsForOwnDispatch, fetchConsigneesForClient, fetchStockOptions, queueManualIssue, resolveBinCodes, submitCollectAndPack } from '../features/dispatch/dispatchApi'
 import { addLocalPickLine, discardLocalPick, getOpenPick, removeLocalPickLine, restoreLocalPick, startLocalPick } from '../features/dispatch/localPick'
-import { issueTotals, MANUAL_ISSUE_NOTE_MAX, manualIssueBlock, manualIssueNumber, reasonOptions, WAREHOUSE_ISSUE } from '../features/dispatch/manualIssueLogic'
-import { readManualIssueReasons } from '../features/dispatch/manualIssueReasons'
+import {
+  initialReason,
+  issueTotals,
+  MANUAL_ISSUE_NOTE_MAX,
+  manualIssueBlock,
+  manualIssueNumber,
+  reasonOptions,
+  WAREHOUSE_ISSUE,
+  type ReasonSource,
+} from '../features/dispatch/manualIssueLogic'
+import { readLastReason, readManualIssueReasons, saveLastReason } from '../features/dispatch/manualIssueReasons'
 import {
   availableAfterPicked,
   binScanOutcome,
@@ -52,7 +61,8 @@ interface StockHint {
   source: 'server' | 'device' | 'none' | null
 }
 
-// 'reason' (2026-10-11): «Completar despacho» = despacho manual; pide el motivo (obligatorio) y la nota (opcional) antes de confirmar.
+// 'reason' (2026-10-11): «Completar despacho» = despacho manual. Desde 2026-10-11 (b) abre directo la confirmación con el motivo ya puesto (el que ya
+// estaba, el último usado en el aparato o el default de la compañía) y solo muestra la lista si no hay ninguno o se toca «Cambiar».
 type Step = { name: 'scan' } | { name: 'client' } | { name: 'consignee' } | { name: 'error'; message: string } | { name: 'reason'; lines: ResolvedPickLine[] }
 
 /** Pantalla 5 (docs/mobile/app-almacen-plan.md §2): recolectar (producto, cantidad, posición) sin señal; empacar
@@ -60,7 +70,9 @@ type Step = { name: 'scan' } | { name: 'client' } | { name: 'consignee' } | { na
  *  ahora (docs/lote8A-app-decisiones.md): el dueño del producto ya viene sincronizado. Inventario propio (2026-10-05): se
  *  despacha igual; al empacar se elige primero el cliente a quien se despacha y luego su consignatario.
  *  2026-10-11 (decisión del dueño): «Completar despacho» es el DESPACHO MANUAL (DMA-#####): salida sin entrega con motivo obligatorio y nota
- *  opcional, solo con el permiso warehouse.issue; va a la cola de salida (kind 'manualIssue') como Transferir y Ajustar. «Empacar» no cambia. */
+ *  opcional, solo con el permiso warehouse.issue; va a la cola de salida (kind 'manualIssue') como Transferir y Ajustar. «Empacar» no cambia.
+ *  2026-10-11 (b) (decisión del dueño: no complicar el aparato): con motivo por default o último usado, completar = 2 toques (Completar → Despachar),
+ *  sin teclado; la nota queda detrás de «Agregar nota». */
 export default function DispatchScreen() {
   const { t, lang } = useT()
   const router = useRouter()
@@ -88,14 +100,20 @@ export default function DispatchScreen() {
   const [marks, setMarks] = useState<Marks>({})
   const [showAll, setShowAll] = useState(false)
   const [prefill, setPrefill] = useState<{ value: string; seq: number } | null>(null)
-  // Despacho manual: el motivo escogido, la nota, el aviso rojo del paso del motivo y «enviando» (el despacho local ya se cerró y se espera al servidor
-  // como mucho unos segundos). El motivo y la nota se conservan si el servidor lo rechaza, para corregir y volver a intentar.
+  // Despacho manual: el motivo escogido (y de dónde salió), la nota (escondida tras «Agregar nota»), si se está viendo la lista de motivos, el aviso rojo
+  // del paso y «enviando» (el despacho local ya se cerró y se espera al servidor como mucho unos segundos). El motivo y la nota se conservan si el
+  // servidor lo rechaza, para corregir y volver a intentar.
   const permissions = useMyPermissions()
   const canIssue = permissions?.includes(WAREHOUSE_ISSUE) ?? false
   const [reasonCode, setReasonCode] = useState<string | null>(null)
   const [issueNote, setIssueNote] = useState('')
   const [reasonError, setReasonError] = useState<string | null>(null)
+  const [reasonSource, setReasonSource] = useState<ReasonSource | 'picked' | null>(null)
+  const [pickingReason, setPickingReason] = useState(false)
+  const [showNote, setShowNote] = useState(false)
   const [sending, setSending] = useState(false)
+  // 2026-10-11 (b): sin el Alert, «Despachar» encola al primer toque; este candado evita que un doble toque encole dos despachos (dos DMA)
+  const submitLock = useRef(false)
 
   // tick fuerza releer la base local tras cada mutación; getOpenPick() no usa tick.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -307,7 +325,8 @@ export default function DispatchScreen() {
   }
 
   /** «Completar despacho» = despacho manual (2026-10-11): primero resuelve las posiciones (las del aparato, sin señal; si no está, el servidor) y luego
-   *  pide el motivo y la nota. Una posición que no existe no deja seguir y lo dice aquí mismo. */
+   *  abre la confirmación con el motivo ya puesto (2026-10-11 (b): initialReason); sin ninguno, la lista para escogerlo. Una posición que no existe no
+   *  deja seguir y lo dice aquí mismo. */
   async function startManualIssue() {
     if (!openPick || openPick.lineRows.length === 0 || !canIssue) return
     setBusy(true)
@@ -320,6 +339,11 @@ export default function DispatchScreen() {
       }
       setScanError(null)
       setReasonError(null)
+      const init = initialReason(readManualIssueReasons(), reasonCode, readLastReason())
+      setReasonCode(init?.code ?? null)
+      setReasonSource(init?.source ?? null)
+      setPickingReason(init === null)
+      setShowNote(issueNote.length > 0)
       setPacking({ name: 'reason', lines: resolved.lines })
     } catch (err) {
       setScanError(err instanceof ApiError ? err.title : t('errors.generic'))
@@ -329,26 +353,41 @@ export default function DispatchScreen() {
     }
   }
 
-  /** Revisa el motivo y la nota y pide confirmar (mismo patrón que dar salida a lo dañado). */
-  function confirmManualIssue(lines: ResolvedPickLine[], reasonLabel: string) {
+  /** «Despachar» de la confirmación: revisa el motivo y la nota y encola (2026-10-11 (b): esta pantalla ya es la confirmación, no hay otro aviso). */
+  function confirmManualIssue(lines: ResolvedPickLine[]) {
     const block = manualIssueBlock(reasonCode, issueNote)
     if (block) {
       setReasonError(t(block === 'reason' ? 'dispatch.reasonRequired' : 'dispatch.noteTooLong', { max: MANUAL_ISSUE_NOTE_MAX }))
+      if (block === 'reason') setPickingReason(true)
       vibrateError()
       return
     }
     setReasonError(null)
-    const totals = issueTotals(lines)
-    Alert.alert(t('dispatch.issueConfirmTitle'), t('dispatch.issueConfirmBody', { qty: f.qty(totals.qty), lines: totals.lines, reason: reasonLabel }), [
-      { text: t('common.no'), style: 'cancel' },
-      { text: t('dispatch.issueConfirmButton'), onPress: () => void submitManualIssue(lines) },
-    ])
+    void submitManualIssue(lines)
+  }
+
+  /** Toca un motivo de la lista: queda escogido y se vuelve a la confirmación. */
+  function pickReason(code: string) {
+    setReasonCode(code)
+    setReasonSource('picked')
+    setReasonError(null)
+    setPickingReason(false)
   }
 
   /** Encola el despacho manual (cierra el despacho local y resta del saldo local en el mismo paso) y espera al servidor como mucho unos segundos:
    *  enviado → aviso con el número DMA; sin señal → «en cola»; rechazado → se quita de la cola, el despacho vuelve a abrirse tal cual y se muestra
    *  el mensaje exacto del servidor. */
   async function submitManualIssue(lines: ResolvedPickLine[]) {
+    if (submitLock.current) return
+    submitLock.current = true
+    try {
+      await sendManualIssue(lines)
+    } finally {
+      submitLock.current = false
+    }
+  }
+
+  async function sendManualIssue(lines: ResolvedPickLine[]) {
     if (!openPick || !reasonCode) return
     const snapshot = openPick
     setSending(true)
@@ -378,9 +417,13 @@ export default function DispatchScreen() {
       refresh()
       return
     }
+    // el próximo despacho abre con este motivo (si la compañía no lo deshabilita antes)
+    saveLastReason(reasonCode)
     setPacking({ name: 'scan' })
     setReasonCode(null)
+    setReasonSource(null)
     setIssueNote('')
+    setShowNote(false)
     setScanError(null)
     if (result.status === 'sent') {
       const number = manualIssueNumber(outboxResult(outboxId))
@@ -519,55 +562,102 @@ export default function DispatchScreen() {
     )
   }
 
-  // Despacho manual: motivo (obligatorio) y nota (opcional), luego se confirma.
+  // Despacho manual (2026-10-11 (b)): la confirmación con el motivo ya puesto; la lista de motivos solo si no hay ninguno o se toca «Cambiar».
   if (packing.name === 'reason') {
     const options = reasonOptions(readManualIssueReasons(), lang, t)
     const chosen = options.find((o) => o.code === reasonCode) ?? null
     const totals = issueTotals(packing.lines)
+    const summary = (
+      <Text style={styles.label}>
+        {t('dispatch.issueSummary', { owner: openPick.clientName || t('dispatch.ownInventory'), lines: totals.lines, qty: f.qty(totals.qty) })}
+      </Text>
+    )
+    if (pickingReason || !chosen) {
+      return (
+        <KeyboardScreen contentContainerStyle={styles.fill}>
+          <Text style={styles.title}>{t('dispatch.reasonTitle')}</Text>
+          <Text style={styles.help}>{t('dispatch.reasonHelp')}</Text>
+          {summary}
+          {options.length === 0 ? <Text style={styles.error}>{t('dispatch.noReasons')}</Text> : null}
+          <View style={styles.reasons} accessibilityRole="radiogroup" accessibilityLabel={t('dispatch.reasonLabel')}>
+            {options.map((o) => (
+              <Pressable
+                key={o.code}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: reasonCode === o.code }}
+                accessibilityLabel={o.label}
+                onPress={() => pickReason(o.code)}
+                style={[styles.reason, reasonCode === o.code && styles.reasonOn]}
+                testID={`dispatch-reason-${o.code}`}
+              >
+                <Text style={styles.reasonText}>{o.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+          {reasonError ? <Text style={styles.error}>{reasonError}</Text> : null}
+          {/* «Volver» desde «Cambiar» regresa a la confirmación con el motivo que había; sin motivo, al despacho */}
+          <BigButton label={t('common.back')} variant="secondary" onPress={() => (chosen ? setPickingReason(false) : setPacking({ name: 'scan' }))} />
+        </KeyboardScreen>
+      )
+    }
     return (
       <KeyboardScreen contentContainerStyle={styles.fill}>
-        <Text style={styles.title}>{t('dispatch.reasonTitle')}</Text>
-        <Text style={styles.help}>{t('dispatch.reasonHelp')}</Text>
-        <Text style={styles.label}>
-          {t('dispatch.issueSummary', { owner: openPick.clientName || t('dispatch.ownInventory'), lines: totals.lines, qty: f.qty(totals.qty) })}
-        </Text>
-        {options.length === 0 ? <Text style={styles.error}>{t('dispatch.noReasons')}</Text> : null}
-        <View style={styles.reasons} accessibilityRole="radiogroup" accessibilityLabel={t('dispatch.reasonLabel')}>
-          {options.map((o) => (
-            <Pressable
-              key={o.code}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: reasonCode === o.code }}
-              accessibilityLabel={o.label}
-              onPress={() => {
-                setReasonCode(o.code)
+        <Text style={styles.title}>{t('dispatch.issueConfirmTitle')}</Text>
+        <Text style={styles.help}>{t('dispatch.issueConfirmHelp')}</Text>
+        {summary}
+        <View style={styles.chosen}>
+          <View style={styles.chosenText}>
+            <Text style={styles.chosenLabel} testID="dispatch-issue-reason">
+              {t('dispatch.issueReasonLine', { reason: chosen.label })}
+            </Text>
+            {reasonSource === 'last' || reasonSource === 'default' ? (
+              <Text style={styles.help}>{t(reasonSource === 'last' ? 'dispatch.reasonFromLast' : 'dispatch.reasonFromDefault')}</Text>
+            ) : null}
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('dispatch.changeReasonA11y')}
+            onPress={() => {
+              setReasonError(null)
+              setPickingReason(true)
+            }}
+            style={({ pressed }) => [styles.smallBtn, pressed && styles.smallBtnPressed]}
+            testID="dispatch-issue-change"
+          >
+            <Text style={styles.smallBtnText}>{t('dispatch.changeReason')}</Text>
+          </Pressable>
+        </View>
+        {showNote ? (
+          <View style={styles.field}>
+            <Text style={styles.label}>{t('dispatch.noteLabel')}</Text>
+            <KeyboardInput
+              autoFocus
+              value={issueNote}
+              onChangeText={(v) => {
+                setIssueNote(v)
                 setReasonError(null)
               }}
-              style={[styles.reason, reasonCode === o.code && styles.reasonOn]}
-              testID={`dispatch-reason-${o.code}`}
-            >
-              <Text style={styles.reasonText}>{o.label}</Text>
-            </Pressable>
-          ))}
-        </View>
-        <View style={styles.field}>
-          <Text style={styles.label}>{t('dispatch.noteLabel')}</Text>
-          <KeyboardInput
-            value={issueNote}
-            onChangeText={(v) => {
-              setIssueNote(v)
-              setReasonError(null)
-            }}
-            multiline
-            maxLength={MANUAL_ISSUE_NOTE_MAX}
-            style={[styles.input, styles.noteInput]}
-            accessibilityLabel={t('dispatch.noteLabel')}
-            testID="dispatch-issue-note"
-          />
-          <Text style={styles.help}>{t('dispatch.noteHelp', { count: issueNote.length, max: MANUAL_ISSUE_NOTE_MAX })}</Text>
-        </View>
+              multiline
+              maxLength={MANUAL_ISSUE_NOTE_MAX}
+              style={[styles.input, styles.noteInput]}
+              accessibilityLabel={t('dispatch.noteLabel')}
+              testID="dispatch-issue-note"
+            />
+            <Text style={styles.help}>{t('dispatch.noteHelp', { count: issueNote.length, max: MANUAL_ISSUE_NOTE_MAX })}</Text>
+          </View>
+        ) : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('dispatch.addNote')}
+            onPress={() => setShowNote(true)}
+            style={({ pressed }) => [styles.smallBtn, styles.smallBtnStart, pressed && styles.smallBtnPressed]}
+            testID="dispatch-issue-add-note"
+          >
+            <Text style={styles.smallBtnText}>{t('dispatch.addNote')}</Text>
+          </Pressable>
+        )}
         {reasonError ? <Text style={styles.error}>{reasonError}</Text> : null}
-        <BigButton label={t('dispatch.issueConfirmButton')} onPress={() => confirmManualIssue(packing.lines, chosen?.label ?? '')} testID="dispatch-issue-confirm" />
+        <BigButton label={t('dispatch.issueConfirmButton')} onPress={() => confirmManualIssue(packing.lines)} testID="dispatch-issue-confirm" />
         <BigButton label={t('common.back')} variant="secondary" onPress={() => setPacking({ name: 'scan' })} />
       </KeyboardScreen>
     )
@@ -678,6 +768,25 @@ const styles = StyleSheet.create({
   reasonOn: { borderColor: colors.brand, backgroundColor: colors.brandDark },
   reasonText: { color: colors.text, fontSize: fontSize.label, fontWeight: '600' },
   noteInput: { minHeight: 88, paddingVertical: spacing.sm, textAlignVertical: 'top' },
+  // confirmación del despacho manual: el motivo puesto, grande, con «Cambiar» al lado (pasa abajo si no cabe a 360 px)
+  chosen: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 2,
+    borderColor: colors.brand,
+    backgroundColor: colors.panelAlt,
+  },
+  chosenText: { flexGrow: 1, flexShrink: 1, flexBasis: 180, gap: 2 },
+  chosenLabel: { color: colors.text, fontSize: fontSize.label, fontWeight: '700' },
+  // botón chico (Cambiar, Agregar nota): menos llamativo que los grandes, con área táctil cómoda
+  smallBtn: { minHeight: 48, justifyContent: 'center', paddingHorizontal: spacing.md, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.line },
+  smallBtnStart: { alignSelf: 'flex-start' },
+  smallBtnPressed: { backgroundColor: colors.panel },
+  smallBtnText: { color: colors.text, fontSize: fontSize.message, fontWeight: '600' },
   input: {
     minHeight: 56,
     borderWidth: 2,

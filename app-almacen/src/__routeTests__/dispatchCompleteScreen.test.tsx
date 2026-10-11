@@ -1,17 +1,19 @@
 // Despacho manual (decisión del dueño 2026-10-11): «Completar despacho» saca el inventario SIN entrega con un motivo obligatorio (catálogo
 // ManualIssueReason) y una nota opcional, y genera el documento DMA-##### (POST /api/v1/manual-issues, permiso warehouse.issue). Va a la cola de
 // salida (kind manualIssue, con Idempotency-Key) y resta del saldo local; el aviso muestra el número DMA si se envió en el momento o «en cola» si no.
+// 2026-10-11 (b): abre directo la confirmación «Se despacha por: {motivo}» con el último motivo usado o el default de la compañía (2 toques, sin
+// teclado); la lista solo si no hay ninguno o se toca «Cambiar»; la nota, detrás de «Agregar nota».
 // Sin warehouse.issue solo queda «Empacar» con un aviso. En archivo propio: renderRouter() no aísla del todo su estado global de navegación (ver
 // homeLock.test.tsx).
 import { Alert } from 'react-native'
 import { __resetAllForTests } from 'expo-sqlite'
 import { __resetSecureStoreForTests } from 'expo-secure-store'
-import { cleanup, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library'
+import { act, cleanup, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library'
 
 import { addLocalPickLine, getOpenPick, startLocalPick } from '../features/dispatch/localPick'
 import { __resetSessionForTests } from '../kernel/auth/session'
 import { __resetDbForTests, getDb } from '../kernel/db/database'
-import { KvKeys, setKv } from '../kernel/db/kv'
+import { getKv, KvKeys, setKv } from '../kernel/db/kv'
 import { __resetSyncEngineForTests } from '../kernel/sync/engine'
 import { listOutbox } from '../kernel/sync/outbox'
 import { json, mockFetch, setupDevice, type Route } from './countKit'
@@ -49,48 +51,103 @@ function withPermissions(perms: string[]): Route {
 
 const onHand = () => getDb().getFirstSync<{ q: number }>('SELECT qty_on_hand AS q FROM stock_balance WHERE id = 1')?.q
 
-/** Confirma el Alert «¿Despachar sin entrega?» tocando «Despachar». */
-function autoConfirm() {
-  return jest.spyOn(Alert, 'alert').mockImplementation((_t, _m, buttons) => {
-    buttons?.find((b) => b.text === 'Despachar')?.onPress?.()
-  })
+/** 2026-10-11 (b): ya no hay un Alert de confirmación (la pantalla ES la confirmación); se espía para comprobar que no aparece. */
+function spyAlert() {
+  return jest.spyOn(Alert, 'alert').mockImplementation(() => {})
 }
 
-async function openReasonStep() {
+/** Copia de motivos bajada de la compañía (con isDefault, 2026-10-11 b). */
+function companyReasons(defaultCode: string | null, disabled: string[] = []) {
+  const all = [
+    { code: 'SAMPLE', label: 'Muestra gratis', labels: { es: 'Muestra gratis', en: 'Free sample' }, sortOrder: 1 },
+    { code: 'INTERNAL_USE', label: 'Uso interno', labels: { es: 'Uso interno', en: 'Internal use' }, sortOrder: 2 },
+    { code: 'SALE', label: 'Venta', labels: { es: 'Venta', en: 'Sale' }, sortOrder: 4 },
+    { code: 'OTHER', label: 'Otro', labels: { es: 'Otro', en: 'Other' }, sortOrder: 5 },
+  ]
+  setKv(
+    KvKeys.manualIssueReasons,
+    JSON.stringify({
+      fetchedAtUtc: new Date().toISOString(),
+      withDefault: true,
+      reasons: all.filter((r) => !disabled.includes(r.code)).map((r) => ({ ...r, isDefault: r.code === defaultCode })),
+    }),
+  )
+}
+
+const lastReasons = () => JSON.parse(getKv(KvKeys.manualIssueLastReason) ?? '{}') as Record<string, string>
+
+/** Ningún campo de texto en pantalla: completar no abre el teclado. */
+function expectNoKeyboard() {
+  expect(screen.queryByTestId('dispatch-issue-note')).toBeNull()
+  expect(screen.queryByLabelText('Nota (opcional)')).toBeNull()
+}
+
+async function pressComplete() {
   await renderRouter('src/app', { initialUrl: '/dispatch' })
   await waitFor(() => expect(screen.getByRole('button', { name: 'Completar despacho' })).toBeTruthy())
   expect(screen.getByRole('button', { name: 'Empacar' })).toBeTruthy()
   await fireEvent.press(screen.getByRole('button', { name: 'Completar despacho' }))
+}
+
+/** Sin motivo puesto: se abre la lista para escogerlo. */
+async function openReasonStep() {
+  await pressComplete()
   await waitFor(() => expect(screen.getByText('¿Por qué sale sin entrega?')).toBeTruthy())
 }
 
+/** Con motivo puesto: se abre directo la confirmación. */
+async function openConfirm(reasonLabel: string) {
+  await pressComplete()
+  await waitFor(() => expect(screen.getByTestId('dispatch-issue-reason').props.children).toBe(`Se despacha por: ${reasonLabel}`))
+  expect(screen.getByText('¿Despachar sin entrega?')).toBeTruthy()
+  expect(screen.queryByText('¿Por qué sale sin entrega?')).toBeNull()
+}
+
+/** El onPress del Pressable (el host no lo trae: está en el componente de arriba), para tocar dos veces sin esperar a que la pantalla cambie. */
+function pressHandler(host: { unstable_fiber?: unknown }): () => void {
+  type Fiber = { memoizedProps?: { onPress?: () => void } | null; return: Fiber | null }
+  let fiber = host.unstable_fiber as Fiber | null | undefined
+  while (fiber && !fiber.memoizedProps?.onPress) fiber = fiber.return
+  const handler = fiber?.memoizedProps?.onPress
+  if (!handler) throw new Error('sin onPress')
+  return handler
+}
+
+const postOf = (calls: { method: string; path: string; body: unknown }[]) => calls.find((c) => c.method === 'POST' && c.path === '/api/v1/manual-issues')
+
 describe('Despacho — Completar despacho = despacho manual', () => {
-  it('pide el motivo (obligatorio) y la nota, confirma y manda POST /manual-issues con Idempotency-Key; el aviso trae el número DMA', async () => {
+  it('sin default ni último usado pide escoger; tras escoger, confirmación con «Agregar nota»; manda POST /manual-issues y recuerda el motivo', async () => {
     await setupDevice()
     seedPick()
-    const alert = autoConfirm()
+    const alert = spyAlert()
     const calls = mockFetch([
       withPermissions(ISSUER),
       (c) => (c.method === 'POST' && c.path === '/api/v1/manual-issues' ? json(200, { id: 9, number: 'DMA-00012', isManual: true }) : null),
     ])
     await openReasonStep()
-    expect(screen.getByText(/Despacho manual: el inventario sale sin orden ni empaque/)).toBeTruthy()
+    expect(screen.getByText('Despacho manual: el inventario sale sin orden ni empaque. Escoge el motivo.')).toBeTruthy()
     expect(screen.getByText('Inventario propio · líneas: 1 · unidades: 3')).toBeTruthy()
-    // los cinco de fábrica (el aparato todavía no bajó los de la compañía)
-    for (const label of ['Muestra', 'Uso interno', 'Retiro del cliente', 'Venta', 'Otro']) expect(screen.getByRole('radio', { name: label })).toBeTruthy()
-
-    // sin motivo no se manda nada
-    await fireEvent.press(screen.getByTestId('dispatch-issue-confirm'))
-    await waitFor(() => expect(screen.getByText('Escoge el motivo del despacho manual.')).toBeTruthy())
-    expect(alert).not.toHaveBeenCalled()
+    // los cinco de fábrica (el aparato todavía no bajó los de la compañía), ninguno escogido y sin teclado
+    for (const label of ['Muestra', 'Uso interno', 'Retiro del cliente', 'Venta', 'Otro']) {
+      expect(screen.getByRole('radio', { name: label }).props.accessibilityState).toEqual({ selected: false })
+    }
+    expectNoKeyboard()
+    expect(screen.queryByTestId('dispatch-issue-confirm')).toBeNull()
 
     await fireEvent.press(screen.getByRole('radio', { name: 'Muestra' }))
+    await waitFor(() => expect(screen.getByTestId('dispatch-issue-reason').props.children).toBe('Se despacha por: Muestra'))
+    // escogido a mano: sin la ayuda de «último» ni «default»
+    expect(screen.queryByText(/último motivo|por default/)).toBeNull()
+    expectNoKeyboard()
+    // la nota está escondida: «Agregar nota» la abre
+    await fireEvent.press(screen.getByRole('button', { name: 'Agregar nota' }))
     await fireEvent.changeText(screen.getByLabelText('Nota (opcional)'), 'Feria de salud')
-    await fireEvent.press(screen.getByTestId('dispatch-issue-confirm'))
+    expect(screen.getByText('14/500 caracteres.')).toBeTruthy()
+    await fireEvent.press(screen.getByRole('button', { name: 'Despachar' }))
 
     await waitFor(() => expect(screen.getByText('Listo: despacho manual DMA-00012.')).toBeTruthy())
-    expect(alert).toHaveBeenCalledWith('¿Despachar sin entrega?', 'Salen 3 unidades (líneas: 1) con el motivo «Muestra». El inventario sale sin orden ni empaque.', expect.any(Array))
-    const post = calls.find((c) => c.method === 'POST' && c.path === '/api/v1/manual-issues')
+    expect(alert).not.toHaveBeenCalled()
+    const post = postOf(calls) as { body: unknown; idempotencyKey: string | null } | undefined
     // la posición se resolvió con la del aparato (no hizo falta pedirla al servidor)
     expect(post?.body).toEqual({ warehousePublicId: 'wh-1', lines: [{ productPublicId: 'p1', quantity: 3, binId: 55 }], reasonCode: 'SAMPLE', note: 'Feria de salud' })
     expect(post?.idempotencyKey).toMatch(/^app-/)
@@ -98,12 +155,109 @@ describe('Despacho — Completar despacho = despacho manual', () => {
     expect(getOpenPick()).toBeNull()
     expect(listOutbox().map((r) => [r.kind, r.status])).toEqual([['manualIssue', 'sent']])
     expect(onHand()).toBe(7)
+    expect(lastReasons()).toEqual({ '7': 'SAMPLE' })
+  })
+
+  it('con motivo por default de la compañía: Completar → Despachar (2 toques, sin teclado), nota null', async () => {
+    await setupDevice()
+    seedPick()
+    companyReasons('SALE')
+    const alert = spyAlert()
+    const calls = mockFetch([
+      withPermissions(ISSUER),
+      (c) => (c.method === 'POST' && c.path === '/api/v1/manual-issues' ? json(200, { id: 9, number: 'DMA-00013', isManual: true }) : null),
+    ])
+    await openConfirm('Venta')
+    expect(screen.getByText('Es el motivo por default de la compañía.')).toBeTruthy()
+    expect(screen.queryByRole('radio', { name: 'Venta' })).toBeNull()
+    expectNoKeyboard()
+    await fireEvent.press(screen.getByRole('button', { name: 'Despachar' }))
+    await waitFor(() => expect(screen.getByText('Listo: despacho manual DMA-00013.')).toBeTruthy())
+    expect(alert).not.toHaveBeenCalled()
+    expect(postOf(calls)?.body).toEqual({ warehousePublicId: 'wh-1', lines: [{ productPublicId: 'p1', quantity: 3, binId: 55 }], reasonCode: 'SALE', note: null })
+    expect(lastReasons()).toEqual({ '7': 'SALE' })
+  })
+
+  it('un doble toque en «Despachar» encola un solo despacho (sin el Alert, el primer toque ya despacha)', async () => {
+    await setupDevice()
+    seedPick()
+    companyReasons('SALE')
+    mockFetch([withPermissions(ISSUER)])
+    await openConfirm('Venta')
+    // los dos toques en el mismo turno, antes de que la pantalla cambie a «Enviando…» (como un doble toque real)
+    const onPress = pressHandler(screen.getByRole('button', { name: 'Despachar' }))
+    await act(async () => {
+      onPress()
+      onPress()
+    })
+    await waitFor(() => expect(screen.getByText(/Despacho manual en cola/)).toBeTruthy(), { timeout: 10000 })
+    expect(listOutbox().map((r) => r.kind)).toEqual(['manualIssue'])
+    expect(onHand()).toBe(7)
+  })
+
+  it('el último motivo que el operario usó en el aparato gana al default', async () => {
+    await setupDevice()
+    seedPick()
+    companyReasons('SALE')
+    setKv(KvKeys.manualIssueLastReason, JSON.stringify({ '7': 'SAMPLE', '8': 'OTHER' }))
+    const calls = mockFetch([withPermissions(ISSUER), (c) => (c.method === 'POST' && c.path === '/api/v1/manual-issues' ? json(200, { id: 9, number: 'DMA-00014' }) : null)])
+    await openConfirm('Muestra gratis')
+    expect(screen.getByText('Es el último motivo que usaste en este aparato.')).toBeTruthy()
+    expectNoKeyboard()
+    await fireEvent.press(screen.getByRole('button', { name: 'Despachar' }))
+    await waitFor(() => expect(screen.getByText('Listo: despacho manual DMA-00014.')).toBeTruthy())
+    expect(postOf(calls)?.body).toMatchObject({ reasonCode: 'SAMPLE' })
+  })
+
+  it('un último motivo que la compañía deshabilitó se ignora: queda el default', async () => {
+    await setupDevice()
+    seedPick()
+    companyReasons('SALE', ['SAMPLE'])
+    setKv(KvKeys.manualIssueLastReason, JSON.stringify({ '7': 'SAMPLE' }))
+    mockFetch([withPermissions(ISSUER)])
+    await openConfirm('Venta')
+    expect(screen.getByText('Es el motivo por default de la compañía.')).toBeTruthy()
+  })
+
+  it('último motivo deshabilitado y sin default: hay que escoger, como antes', async () => {
+    await setupDevice()
+    seedPick()
+    companyReasons(null, ['SAMPLE'])
+    setKv(KvKeys.manualIssueLastReason, JSON.stringify({ '7': 'SAMPLE' }))
+    mockFetch([withPermissions(ISSUER)])
+    await openReasonStep()
+    expect(screen.queryByRole('radio', { name: 'Muestra gratis' })).toBeNull()
+    expect(screen.getByRole('radio', { name: 'Venta' }).props.accessibilityState).toEqual({ selected: false })
+    // «Volver» sin motivo regresa al despacho
+    await fireEvent.press(screen.getByRole('button', { name: 'Volver' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Completar despacho' })).toBeTruthy())
+  })
+
+  it('«Cambiar» abre la lista con el puesto marcado; «Volver» regresa sin cambiarlo; escoger otro vuelve a la confirmación con ese', async () => {
+    await setupDevice()
+    seedPick()
+    companyReasons('SALE')
+    const calls = mockFetch([withPermissions(ISSUER), (c) => (c.method === 'POST' && c.path === '/api/v1/manual-issues' ? json(200, { id: 9, number: 'DMA-00015' }) : null)])
+    await openConfirm('Venta')
+    await fireEvent.press(screen.getByRole('button', { name: 'Cambiar el motivo' }))
+    await waitFor(() => expect(screen.getByText('¿Por qué sale sin entrega?')).toBeTruthy())
+    expect(screen.getByRole('radio', { name: 'Venta' }).props.accessibilityState).toEqual({ selected: true })
+    await fireEvent.press(screen.getByRole('button', { name: 'Volver' }))
+    await waitFor(() => expect(screen.getByTestId('dispatch-issue-reason').props.children).toBe('Se despacha por: Venta'))
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Cambiar el motivo' }))
+    await fireEvent.press(screen.getByRole('radio', { name: 'Otro' }))
+    await waitFor(() => expect(screen.getByTestId('dispatch-issue-reason').props.children).toBe('Se despacha por: Otro'))
+    expect(screen.queryByText(/por default/)).toBeNull()
+    await fireEvent.press(screen.getByRole('button', { name: 'Despachar' }))
+    await waitFor(() => expect(screen.getByText('Listo: despacho manual DMA-00015.')).toBeTruthy())
+    expect(postOf(calls)?.body).toMatchObject({ reasonCode: 'OTHER' })
+    expect(lastReasons()).toEqual({ '7': 'OTHER' })
   })
 
   it('sin señal queda en la cola (manualIssue): aviso «en cola», el despacho local se cierra y el saldo local ya refleja la salida', async () => {
     await setupDevice()
     seedPick()
-    autoConfirm()
     mockFetch([withPermissions(ISSUER)])
     await openReasonStep()
     await fireEvent.press(screen.getByRole('radio', { name: 'Uso interno' }))
@@ -114,12 +268,13 @@ describe('Despacho — Completar despacho = despacho manual', () => {
     expect([row.kind, row.path, row.status]).toEqual(['manualIssue', '/api/v1/manual-issues', 'pending'])
     expect(JSON.parse(row.body)).toEqual({ warehousePublicId: 'wh-1', lines: [{ productPublicId: 'p1', quantity: 3, binId: 55 }], reasonCode: 'INTERNAL_USE', note: null })
     expect(onHand()).toBe(7)
+    // en cola también cuenta como usado
+    expect(lastReasons()).toEqual({ '7': 'INTERNAL_USE' })
   })
 
   it('el rechazo del servidor muestra su mensaje exacto, deja el despacho abierto como estaba, no queda en la cola y deshace el saldo local', async () => {
     await setupDevice()
     seedPick()
-    autoConfirm()
     const message = 'Inventario insuficiente de SKU-1 en A-01: disponible 2, solicitado 3.'
     mockFetch([
       withPermissions(ISSUER),
@@ -127,14 +282,19 @@ describe('Despacho — Completar despacho = despacho manual', () => {
     ])
     await openReasonStep()
     await fireEvent.press(screen.getByRole('radio', { name: 'Venta' }))
+    await fireEvent.press(screen.getByRole('button', { name: 'Agregar nota' }))
+    await fireEvent.changeText(screen.getByLabelText('Nota (opcional)'), 'Mostrador')
     await fireEvent.press(screen.getByTestId('dispatch-issue-confirm'))
     await waitFor(() => expect(screen.getByText(message)).toBeTruthy())
     expect(getOpenPick()?.lineRows.map((l) => [l.sku, l.quantity, l.fromBinCode])).toEqual([['SKU-1', 3, 'A-01']])
     expect(listOutbox()).toEqual([])
     expect(onHand()).toBe(10)
-    // el motivo se conserva para corregir y volver a intentar
+    // un rechazo no cuenta como «último usado»
+    expect(getKv(KvKeys.manualIssueLastReason)).toBeNull()
+    // el motivo y la nota se conservan para corregir y volver a intentar: directo a la confirmación, con la nota a la vista
     await fireEvent.press(screen.getByRole('button', { name: 'Completar despacho' }))
-    await waitFor(() => expect(screen.getByRole('radio', { name: 'Venta' }).props.accessibilityState).toEqual({ selected: true }))
+    await waitFor(() => expect(screen.getByTestId('dispatch-issue-reason').props.children).toBe('Se despacha por: Venta'))
+    expect(screen.getByLabelText('Nota (opcional)').props.value).toBe('Mostrador')
   })
 
   it('ofrece los motivos que bajó la compañía (con su nombre y sin los deshabilitados)', async () => {

@@ -28,6 +28,8 @@ export interface StoredReason {
   /** Etiquetas por idioma ({"es": .., "en": ..}), con el nombre que la compañía le haya puesto. */
   labels: Record<string, string>
   sortOrder: number
+  /** 2026-10-11 (b): el motivo por default de la compañía (isDefault de GET /manual-issues/reasons). Las copias anteriores no lo traen (= no). */
+  isDefault?: boolean
 }
 
 export interface ReasonOption {
@@ -49,6 +51,27 @@ export function reasonOptions(stored: readonly StoredReason[] | null, lang: stri
 function factoryLabel(code: string, t: (key: string) => string): string | null {
   const f = FACTORY_MANUAL_ISSUE_REASONS.find((r) => r.code === code)
   return f ? t(f.key) : null
+}
+
+/** De dónde sale el motivo con que se abre la confirmación: el que ya estaba escogido en esta pantalla (p. ej. tras un rechazo), el último que el
+ *  operario usó en este aparato o el default de la compañía. */
+export type ReasonSource = 'current' | 'last' | 'default'
+
+/**
+ * El motivo con que se abre «Completar despacho» (decisión del dueño 2026-10-11 (b): sin pedir escoger). En orden: el que ya estaba escogido, el
+ * último que el operario usó en este aparato y el default de la compañía, cada uno SOLO si sigue entre los motivos que se ofrecen (un motivo
+ * deshabilitado o borrado ya no viene en la copia bajada y se salta sin error). Sin ninguno: null (entonces sí hay que escoger).
+ */
+export function initialReason(
+  stored: readonly StoredReason[] | null,
+  current: string | null,
+  lastUsed: string | null,
+): { code: string; source: ReasonSource } | null {
+  const offered = new Set(stored === null ? FACTORY_MANUAL_ISSUE_REASONS.map((r) => r.code) : stored.map((r) => r.code))
+  if (current && offered.has(current)) return { code: current, source: 'current' }
+  if (lastUsed && offered.has(lastUsed)) return { code: lastUsed, source: 'last' }
+  const def = stored?.find((r) => r.isDefault === true)
+  return def ? { code: def.code, source: 'default' } : null
 }
 
 /** La nota pasa el tope del servidor. */

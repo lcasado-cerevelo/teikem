@@ -43,4 +43,6 @@ export const KvKeys = {
   myPermissions: 'myPermissions',
   /** 2026-10-11: motivos del despacho manual de la compañía (JSON de features/dispatch/manualIssueReasons.ts), para escogerlos sin señal. */
   manualIssueReasons: 'manualIssueReasons',
+  /** 2026-10-11 (b): último motivo del despacho manual que usó cada operario en este aparato (JSON {userId: código}, features/dispatch/manualIssueReasons.ts). */
+  manualIssueLastReason: 'manualIssueLastReason',
 } as const
