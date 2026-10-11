@@ -3,9 +3,9 @@ import { __resetSecureStoreForTests } from 'expo-secure-store'
 
 import { setApiBaseUrl } from '../api/client'
 import { __resetDbForTests } from '../db/database'
-import { enrollDevice, fetchDeviceUsers, loginWithPin, sendHeartbeat } from './deviceAuth'
+import { enrollDevice, fetchDeviceUsers, loginWithPin, OfflineUnlockFailure, sendHeartbeat, unlockWithPin } from './deviceAuth'
 import * as SecureStore from 'expo-secure-store'
-import { __resetSessionForTests, clearUserSession, getSessionState, hydrateSession, selectDevice } from './session'
+import { __resetSessionForTests, clearUserSession, getSessionState, hydrateSession, lockSession, selectDevice } from './session'
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -119,6 +119,37 @@ describe('auth del aparato', () => {
       })
     await loginWithPin('dev-1', 'secret-1', 7, '4821', 'Ana Ruiz')
     expect(getSessionState().session).toMatchObject({ accessToken: 'access-1', userId: 7, fullName: 'Ana Ruiz', tenantId: 3 })
+  })
+
+  it('sin señal, la sesión bloqueada se desbloquea con el PIN con el que se entró con señal; con otro PIN no, y se agotan los intentos', async () => {
+    handlers['/api/v1/auth/device/login'] = () =>
+      jsonResponse(200, { accessToken: 'a', accessExpiresAtUtc: '2026-01-01T00:10:00Z', refreshToken: 'r', refreshExpiresAtUtc: '2026-02-01T00:00:00Z', tenantId: 3 })
+    await loginWithPin('dev-1', 'secret-1', 7, '2846', 'Ana Ruiz')
+    lockSession()
+    expect(getSessionState().locked).toBe(true)
+
+    handlers['/api/v1/auth/device/login'] = () => {
+      throw new Error('sin red')
+    }
+    await expect(unlockWithPin('dev-1', 'secret-1', 7, '0000', 'Ana Ruiz')).rejects.toMatchObject({ reason: 'wrongPin' })
+    expect(getSessionState().locked).toBe(true)
+    await expect(unlockWithPin('dev-1', 'secret-1', 7, '2846', 'Ana Ruiz')).resolves.toBe('offline')
+    expect(getSessionState().locked).toBe(false)
+    expect(getSessionState().session?.userId).toBe(7)
+
+    lockSession()
+    for (let i = 0; i < 5; i++) await unlockWithPin('dev-1', 'secret-1', 7, '0000', 'Ana Ruiz').catch(() => undefined)
+    await expect(unlockWithPin('dev-1', 'secret-1', 7, '2846', 'Ana Ruiz')).rejects.toBeInstanceOf(OfflineUnlockFailure)
+    expect(getSessionState().locked).toBe(true)
+  })
+
+  it('sin señal y sin haber entrado nunca con señal en este aparato, no hay forma de desbloquear (needsSignal)', async () => {
+    await expect(unlockWithPin('dev-1', 'secret-1', 7, '2846', 'Ana Ruiz')).rejects.toMatchObject({ reason: 'needsSignal' })
+  })
+
+  it('con señal, un PIN incorrecto lo rechaza el servidor (no se usa la huella local)', async () => {
+    handlers['/api/v1/auth/device/login'] = () => jsonResponse(401, { title: 'PIN incorrecto.', status: 401, code: 'unauthorized' })
+    await expect(unlockWithPin('dev-1', 'secret-1', 7, '2846', 'Ana Ruiz')).rejects.not.toBeInstanceOf(OfflineUnlockFailure)
   })
 
   it('sendHeartbeat sin aparato registrado no llama al API', async () => {

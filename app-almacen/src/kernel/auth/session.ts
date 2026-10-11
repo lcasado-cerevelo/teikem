@@ -6,6 +6,8 @@
 // (`dbName`). `device` es el registro con el que se trabaja ahora; con más de uno, al salir el usuario se vuelve a elegir.
 import * as SecureStore from 'expo-secure-store'
 
+import { clearOfflinePinVerifier } from './pinVerifier'
+
 export interface DeviceIdentity {
   devicePublicId: string
   deviceSecret: string
@@ -174,9 +176,17 @@ export function lockSession(): void {
   emit()
 }
 
+/** Desbloqueo sin señal (el PIN ya se comprobó contra la huella local): la sesión guardada sigue siendo la misma. */
+export function unlockSessionLocal(): void {
+  if (!state.session || !state.locked) return
+  state = { ...state, locked: false }
+  emit()
+}
+
 /** Cerrar sesión: el aparato sigue registrado, solo se pide PIN de nuevo. Con varias compañías, el siguiente usuario
  *  vuelve a elegir la suya. */
 export async function clearUserSession(): Promise<void> {
+  if (state.device && state.session) await clearOfflinePinVerifier(state.device.devicePublicId, state.session.userId)
   await SecureStore.deleteItemAsync(KEYS.session)
   if (state.devices.length > 1) {
     await persist(state.devices, null)

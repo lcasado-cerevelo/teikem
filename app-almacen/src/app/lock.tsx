@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router'
 
 import { ApiError } from '../kernel/api/client'
 import { clearUserSession } from '../kernel/auth/session'
-import { loginWithPin } from '../kernel/auth/deviceAuth'
+import { OfflineUnlockFailure, unlockWithPin } from '../kernel/auth/deviceAuth'
 import { PIN_MAX_LENGTH, PIN_MIN_LENGTH } from '../kernel/auth/pinRules'
 import { useSession } from '../kernel/auth/useSession'
 import { useT } from '../kernel/i18n/useT'
@@ -14,6 +14,8 @@ import { colors, spacing } from '../kernel/ui/theme'
 
 /** Sesión bloqueada (botón Bloquear de Inicio, o app recién abierta con la sesión guardada): pide el PIN del mismo usuario.
  *  No se pierde nada de lo capturado. «Cerrar sesión» sale por completo (otro usuario). */
+const OFFLINE_TEXT = { wrongPin: 'login.offlineWrongPin', tooManyTries: 'login.offlineTooManyTries', needsSignal: 'login.offlineNeedsSignal' } as const
+
 export default function LockScreen() {
   const { t } = useT()
   const router = useRouter()
@@ -29,10 +31,10 @@ export default function LockScreen() {
     setError(null)
     setBusy(true)
     try {
-      await loginWithPin(device.devicePublicId, device.deviceSecret, session.userId, pin, session.fullName)
+      await unlockWithPin(device.devicePublicId, device.deviceSecret, session.userId, pin, session.fullName)
       router.replace('/home')
     } catch (err) {
-      setError(err instanceof ApiError ? err.title : t('errors.generic'))
+      setError(err instanceof OfflineUnlockFailure ? t(OFFLINE_TEXT[err.reason]) : err instanceof ApiError ? err.title : t('errors.generic'))
       setPin('')
     } finally {
       setBusy(false)
