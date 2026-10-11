@@ -81,7 +81,7 @@ P0 Producción y deuda ──► P1 Web de lo que ya tiene backend ──► P2 
 
 ## P0 — Producción y deuda inmediata
 
-### P0.1 Señal débil: el aparato trabaja con sus datos locales (decisión de Luis, 2026-10-10; **EN CURSO: S1 servidor, S2 base local y S3 Consultar/Transferir/Ajustar/Conteo/Daño y S4 (cola de Transferir/Ajustar/Daño) hechos; faltan abrir conteo sin señal y capacidad en Acomodar/Recibir — ver `docs/mobile/senal-debil-decisiones.md`**)
+### P0.1 Señal débil: el aparato trabaja con sus datos locales (decisión de Luis, 2026-10-10; **HECHO: S1 servidor, S2 base local, S3 pantallas, S4 (cola de Transferir/Ajustar/Daño) y S5 (conteo por posición sin señal y espacio libre sin servidor, Lote 35, 2026-10-11) — ver `docs/mobile/senal-debil-decisiones.md` y `docs/lote35-decisiones.md`; falta probar en el Zebra físico**)
 **Problema:** el cliente del API (`app-almacen/src/kernel/api/client.ts`) no tiene tiempo máximo y las pantallas esperan al servidor antes de
 mostrar (Consultar, Acomodar, Transferir, Ajustar, Daño, conteo, plan de salida del Despacho, `findBinByCode`). Con señal floja la petición
 queda colgada. Los saldos no residen en el aparato (solo `balance_cache` de lo último consultado).
