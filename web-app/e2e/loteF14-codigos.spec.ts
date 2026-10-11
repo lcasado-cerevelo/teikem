@@ -157,12 +157,15 @@ async function productsFlow(page: Page, request: APIRequestContext, s: Seed, sho
 
   // lo mismo que filtra la pantalla, según el API
   const headers = { Authorization: `Bearer ${await apiToken(request)}` }
-  const list = (await (await request.get(`${API_URL}/api/v1/products`, { headers, params: { name: `Etiqueta ${s.suffix}`, take: 200 } })).json()) as { total: number }
+  const list = (await (await request.get(`${API_URL}/api/v1/products`, { headers, params: { name: `Etiqueta ${s.suffix}`, take: 200 } })).json()) as {
+    total: number
+    items: { sku: string }[]
+  }
   const values = valuesInPdf(text, s.suffix)
   expect(values).toHaveLength(list.total)
-  expect(values).toEqual([`${s.suffix}-1`, `${s.suffix}-2`, `${s.suffix}-10`])
-  expect(text).toContain('Sin categor')
-  expect(text).toContain('(3\\))')
+  // desde 2026-10-09 el informe de productos va sin grupos ni franjas y en el orden en que el filtro devuelve la lista (sin clic en un encabezado)
+  expect(values).toEqual(list.items.map((i) => i.sku))
+  expect(new Set(values)).toEqual(new Set([`${s.suffix}-1`, `${s.suffix}-2`, `${s.suffix}-10`]))
   expect(text).toContain('FILTROS APLICADOS')
   expect(text).toContain(`Etiqueta ${s.suffix}`)
 }
@@ -202,7 +205,7 @@ test.describe('Lote F14 — escritorio', () => {
     s = await seed(request, 'D')
   })
 
-  test('productos: el PDF de códigos tiene exactamente lo filtrado, agrupado y en orden natural', async ({ page, request }) => {
+  test('productos: el PDF de códigos tiene exactamente lo filtrado, sin grupos y en el orden del filtro', async ({ page, request }) => {
     await login(page)
     await productsFlow(page, request, s, true)
   })
