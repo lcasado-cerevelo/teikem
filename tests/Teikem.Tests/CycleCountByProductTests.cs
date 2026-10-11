@@ -607,6 +607,58 @@ public sealed class CycleCountByProductTests
         Assert.Empty(none.Closed);
     }
 
+    // ================================================================ cierre automático al terminar (2026-10-10)
+
+    private static async Task SetAutoCloseAsync(CycleCountFixture f, bool on)
+    {
+        var t = await f.Db.Tenants.SingleAsync();
+        t.CountAutoCloseMatching = on;
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+    }
+
+    [Fact]
+    public async Task Finishing_a_matching_count_closes_it_on_its_own_when_the_company_setting_is_on_and_leaves_the_rest_for_review()
+    {
+        await using var f = await NewAsync();
+        await SetAutoCloseAsync(f, true);
+        await f.ReceiveAsync(f.ProductNoneId, f.PickBin1, 8m);
+        await f.ReceiveAsync(f.ProductNoneId, f.PickBin2, 5m);
+        var svc = f.Get<CycleCountService>();
+
+        async Task<CycleCountDetailDto> FinishAsync(int binId, decimal qty)
+        {
+            var c = await svc.CreateAsync(new CycleCountCreateRequest(BinIds: new[] { binId }, ProductPublicIds: new[] { f.ProductNonePublicId }), default);
+            await svc.CaptureAsync(c.Count.Id, new CountCaptureRequest(new[] { Cap(c.Lines.Single(), qty) }), default);
+            return await svc.FinishAsync(c.Count.Id, null, default);
+        }
+
+        var txnsBefore = await f.TxnCountAsync();
+        var matches = await FinishAsync(f.PickBin1, 8m);
+        var differs = await FinishAsync(f.PickBin2, 4m);
+
+        Assert.Equal(CycleCountStatuses.Reconciled, matches.Count.StatusCode);               // Concordancia, sin pasar por la web
+        Assert.Equal(CycleCountStatuses.Counted, differs.Count.StatusCode);                  // la diferencia espera a quien reconcilia
+        Assert.Equal(txnsBefore, await f.TxnCountAsync());                                   // el que cuadra no asienta nada; el otro tampoco hasta confirmarse
+        Assert.Equal(new[] { CycleCountStatuses.Open, CycleCountStatuses.Counted, CycleCountStatuses.Reconciled }, await f.HistoryAsync(matches.Count.Id));
+        Assert.Equal(WarehouseTaskStatuses.Done, await f.CountTaskStatusAsync(matches.Count.Id));
+        Assert.Equal(WarehouseTaskStatuses.Pending, await f.CountTaskStatusAsync(differs.Count.Id));
+    }
+
+    [Fact]
+    public async Task Finishing_a_matching_count_leaves_it_counted_when_the_company_setting_is_off()
+    {
+        await using var f = await NewAsync();
+        await f.ReceiveAsync(f.ProductNoneId, f.PickBin1, 8m);
+        var svc = f.Get<CycleCountService>();
+        var c = await svc.CreateAsync(new CycleCountCreateRequest(BinIds: new[] { f.PickBin1 }, ProductPublicIds: new[] { f.ProductNonePublicId }), default);
+        await svc.CaptureAsync(c.Count.Id, new CountCaptureRequest(new[] { Cap(c.Lines.Single(), 8m) }), default);
+
+        var finished = await svc.FinishAsync(c.Count.Id, null, default);
+
+        Assert.Equal(CycleCountStatuses.Counted, finished.Count.StatusCode);
+    }
+
     [Fact]
     public async Task Bulk_close_never_touches_another_companys_counts()
     {

@@ -81,7 +81,7 @@ public class WmsContractsTests
         { typeof(ProductSerialConversionResultDto), "ProductDetailDto Product, int SerialCount, MovementResultDto Movements" },
         { typeof(ProductCategoryRequest), "string? Name, int? ParentId" },
         { typeof(ProductCategoryPatchRequest), "string? Name, int? ParentId, bool? ClearParent" },
-        { typeof(ProductCategoryDto), "int Id, string Name, int? ParentId, string Path, bool IsActive, int ProductCount" },
+        { typeof(ProductCategoryDto), "int Id, string Name, int? ParentId, string Path, bool IsActive, int ProductCount, bool IsDefault" },   // 2026-10-11 (c): IsDefault al final, opcional
         { typeof(LotDto), "int Id, string LotNumber, DateOnly? ManufactureDate, DateOnly? ExpiryDate, int? DaysToExpiry, decimal QtyOnHand, bool IsActive" },
         { typeof(SerialDto), "int Id, string SerialNumber, int? LotId, string? LotNumber, string? StatusCode, string? Status, Guid? WarehousePublicId, string? WarehouseCode, int? BinId, string? BinCode" },
         { typeof(BalanceQuery), "Guid[]? WarehousePublicIds, int[]? BinIds, Guid[]? ProductPublicIds, int[]? CategoryIds, string? LotNumber, bool IncludeZero, bool OnlyAvailable, string? Search, int Skip, int Take, bool ActiveProductsOnly" },

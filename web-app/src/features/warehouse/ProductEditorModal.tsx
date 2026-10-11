@@ -141,6 +141,8 @@ function ProductEditorDialog({ product: detail, onClose, onCreated }: ProductEdi
       categoryOptions={(categories.data ?? [])
         .filter((c) => c.isActive || c.id === detail?.product?.categoryId)
         .map((c) => ({ value: String(c.id), label: c.path || c.name || '' }))}
+      // 2026-10-11: un producto NUEVO llega con la categoría por defecto de la compañía (Ajustes → Operación); al editar no se toca
+      defaultCategoryId={isEdit ? undefined : (categories.data ?? []).find((c) => c.isDefault && c.isActive)?.id}
       busy={busy}
       setBusy={setBusy}
       onClose={onClose}
@@ -162,6 +164,8 @@ interface ProductEditorFormProps {
   trackingCodes: Option[]
   uomCodes: Option[]
   categoryOptions: Option[]
+  /** Categoría con la que arranca un producto nuevo (la de los ajustes de la compañía, si está activa). */
+  defaultCategoryId?: number
   busy: boolean
   setBusy: (v: boolean) => void
   onClose: () => void
@@ -176,6 +180,7 @@ function ProductEditorForm({
   trackingCodes,
   uomCodes,
   categoryOptions,
+  defaultCategoryId,
   busy,
   setBusy,
   onClose,
@@ -266,7 +271,7 @@ function ProductEditorForm({
       model: product?.model ?? '',
       packUom: product?.packUomCode ?? '',
       packQty: product?.packQty ?? null,
-      categoryId: product?.categoryId != null ? String(product.categoryId) : '',
+      categoryId: product?.categoryId != null ? String(product.categoryId) : defaultCategoryId != null ? String(defaultCategoryId) : '',
       trackingType: product?.trackingTypeCode ?? (hasTrackingOption(DEFAULT_TRACKING) ? DEFAULT_TRACKING : ''),
       ownerClientPublicId: product?.ownerClientPublicId ?? null,
       purchaseCost: product?.purchaseCost ?? null,

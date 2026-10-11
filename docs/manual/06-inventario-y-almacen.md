@@ -284,7 +284,7 @@ Casos frecuentes:
 - *"Moví mercancía y el papel quedó viejo."* El informe no avisa: vuelva a generarlo cuando lo necesite.
 
 **Sin tope de impresión (2026-10-10):** se imprimen todas las posiciones (o etiquetas, en las etiquetas de posición y de producto) que se pidan. Si son más de 500, la pantalla solo
-avisa «Son N: el PDF será grande y puede tardar un poco. Se imprimen todas; no hay límite.» y no bloquea el botón. La lectura para exportar y para los informes llega hasta 100 000 filas y, si
+avisa «Son N: el PDF será grande y puede tardar un poco. Se imprimen todas; no hay límite.» y no bloquea el botón. La lectura para exportar y para los informes **no tiene tope de cantidad**: lee todas las filas del filtro y, si
 alguna vez se cortara, lo dice («Se exportaron las primeras N filas…»).
 
 **«N productos» en la tabla de Posiciones (2026-10-10):** cuando una posición tiene más de un producto, la columna *Producto* dice «N productos» y ese texto es un enlace que abre
@@ -1733,6 +1733,7 @@ Quién lo configura: `admin.tenant` (la compañía) y `admin.users` (cada person
 | ¿Quién ve lo esperado al contar? (`countExpectedReveal`) | **Nadie** (`NONE`) · **Solo los marcados** (`MARKED`, valor por defecto) · **Todos** (`ALL`) | Nadie: nadie al contar en la app, **tampoco el supervisor** (la reconciliación en la web sigue mostrando lo esperado). Solo los marcados: los contadores con «Sí» en Usuarios. Todos: todos los contadores salvo los marcados con «No». |
 | Margen para no pedir reconteo (%) (`countRecountTolerancePct`) | 0 a 100 (por defecto 0) | 0 = cualquier diferencia pide reconteo. Con 5, una cantidad dentro del 5 % de lo esperado se da por buena. |
 | Mostrar el número esperado (`countRevealShowsNumber`) | Sí (por defecto) / No | Con No solo se dice «Coincide» o «No coincide». |
+| Cerrar solo los conteos que cuadran (`countAutoCloseMatching`, 2026-10-10) | No (por defecto) / Sí | Con Sí, terminar un conteo que cuadra lo deja en Concordancia sin confirmarlo en la web (§6.9). |
 
 **Marca por persona** (Sistema → Usuarios → acciones de la fila → «Ve lo esperado al contar: Sí / No / sin marcar»; `PUT /api/v1/users/{id}/count-see-expected`
 con `{ "value": true | false | null }`): la columna «Ve lo esperado al contar» muestra Sí / No / —. Solo cuenta cuando la compañía está en «Solo los marcados» o «Todos».
@@ -1793,6 +1794,19 @@ Los equipos rentados siguen en el inventario, en la posición **EN-RENTA** (zona
 
 Qué hacer: si el equipo de verdad volvió, registre su **devolución de renta** (capítulo 11 §5) y vuelva a capturar el conteo; si se
 capturó por error, quite la serie de la captura y reconcilie.
+
+### 6.9 Cierre automático al terminar si el conteo cuadra (2026-10-10)
+
+Qué hace: con el ajuste encendido, **terminar** un conteo que **cuadra** lo confirma en el acto y lo deja en **Concordancia**, sin que nadie tenga que confirmarlo en la web. Pensado para el inventario masivo (miles de posiciones, un conteo por posición): solo los que tienen diferencia esperan en «Por revisar».
+
+Quién lo configura: `admin.tenant`; módulo **WMS_LOTSERIAL**. Sistema → Ajustes → **Operación** → «Conteo cíclico: lo esperado al contar» → **Cerrar solo los conteos que cuadran** (`countAutoCloseMatching`, `PUT /api/v1/tenant/settings`). **Apagado por defecto**: las compañías existentes no cambian hasta que se enciende.
+
+Cómo funciona: al terminar (`POST /api/v1/cycle-counts/{id}/finish`, por la app o la web) el conteo pasa a Contado y, enseguida, el servidor hace la misma comprobación y la misma reconciliación que «Cerrar los que cuadran» (con los saldos bloqueados):
+- **Cuadra** (todas las líneas contadas, ninguna con error y, contra la existencia **actual**, no se asentaría ningún movimiento) → Concordancia, con fecha, la tarea COUNT en `DONE` y el comentario del historial `Cierre automático: el conteo cuadra.`. No se asienta ningún movimiento de inventario. «Confirmó» queda a nombre de quien terminó el conteo.
+- **No cuadra** (hay diferencia, una línea quedaría por debajo de lo reservado, o la existencia cambió justo entonces) → queda **Contado**, igual que con el ajuste apagado, en «Por revisar». Terminar **nunca falla** por esto y no se muestra ningún error.
+- El permiso de quien termina sigue siendo `warehouse.count.capture`: el cierre automático no le da poder de ajustar, porque solo cierra lo que no ajusta nada.
+- «Cerrar los que cuadran» sigue disponible para los que quedaron Contados.
+
 
 ## 7. Recolección y empaque ad hoc (Pick & Pack)
 
@@ -2037,6 +2051,39 @@ no falla por eso.
 | `defaultManualIssueReason` con un código que no existe, inactivo o deshabilitado por la compañía | `El motivo {CÓDIGO} no existe o está inactivo.` (`errors.defaultManualIssueReason`; no se guarda ningún ajuste del envío) | 400 |
 | Cambiar los ajustes sin `admin.tenant` | (sin cuerpo de la aplicación: lo rechaza la política; evento `PERMISSION_DENIED`) | 403 |
 | Despachar sin motivo aunque haya default | `Indique el motivo del despacho manual.` (`errors.reasonCode`) | 400 |
+
+---
+
+## 7d. Categoría por defecto de los productos nuevos (2026-10-11 c)
+
+Qué hace: la compañía elige **una categoría de producto que la pantalla de Productos preselecciona al crear un producto nuevo** (en Advance
+Depot, **AxisCare**). El usuario la puede cambiar o quitar en el mismo formulario antes de guardar. **Solo preselecciona**: no se aplica
+sola a un producto que se crea sin categoría por la API o por una importación, ni cambia productos que ya existen. Por omisión ninguna
+compañía tiene categoría por defecto (el formulario arranca vacío, como hasta ahora).
+
+Quién puede: cambiarla, `admin.tenant` (Ajustes de la compañía → Operación → «Productos nuevos: categoría por defecto», módulo
+**WMS_LOTSERIAL**); verla, cualquier usuario con `inventory.view` (llega en la lista de categorías como `isDefault`). El cambio queda en la
+**bitácora de auditoría** de la compañía (campo `DefaultProductCategoryId`, de → a).
+
+Cómo se usa:
+- `PUT /api/v1/tenant/settings` con `{ "defaultProductCategoryId": 12 }` — el id de una categoría **activa de la compañía**. `0` la quita;
+  sin el campo (o `null`) no cambia. `GET /api/v1/tenant/settings` la devuelve en `defaultProductCategoryId` (id o `null`).
+- `GET /api/v1/product-categories` (y la ficha de una categoría) trae ahora `isDefault`; a lo sumo una sale en `true`.
+- En la pantalla de Productos, **Nuevo producto** llega con esa categoría elegida; **editar** un producto no la toca.
+
+**Si la categoría por defecto se da de baja después:** el default **se ignora** (los ajustes muestran `defaultProductCategoryId: null` y la
+pantalla no preselecciona nada), sin error y sin borrar lo guardado. Guardar el resto de los ajustes, aunque la pantalla reenvíe el mismo
+id guardado, no falla por eso.
+
+**Advance Depot.** La sección `2026-10-11 (c)` de `Diseño/logistica-db-update.sql` agrega la columna `Tenant.DefaultProductCategoryId` (con su FK
+a `ProductCategory`) y, **solo para la compañía «Advance Depot» y solo si todavía está vacía**, la deja en la categoría **AxisCare**. La migración
+de Depot creó esa categoría como `AxisCare` (junto); el SQL la busca ignorando espacios y mayúsculas (`Axis Care` también sirve). Si la
+categoría no existe o está inactiva, **no hace nada**: se elige en Ajustes → Operación. Nunca pisa lo que el administrador ya eligió.
+
+| Campo / caso | Mensaje exacto | HTTP |
+|---|---|---|
+| `defaultProductCategoryId` con un id que no existe, está inactivo o es de otra compañía | `La categoría por defecto no existe o está inactiva.` (`errors.defaultProductCategoryId`; no se guarda nada del resto) | 400 |
+| Cambiar los ajustes sin `admin.tenant` | (sin cuerpo de la aplicación: lo rechaza la política; evento `PERMISSION_DENIED`) | 403 |
 
 ---
 

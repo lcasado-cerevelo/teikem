@@ -70,6 +70,10 @@ public class Tenant : ISoftDeletable
     public decimal CountRecountTolerancePct { get; set; }
     /// <summary>true = muestra el número esperado; false = solo "Coincide" / "No coincide".</summary>
     public bool CountRevealShowsNumber { get; set; } = true;
+    /// <summary>2026-10-10: true = al terminar un conteo que CUADRA (todo contado, nada que ajustar) se confirma solo (Concordancia); apagado por defecto.</summary>
+    public bool CountAutoCloseMatching { get; set; }
+    /// <summary>2026-10-11: categoría con la que se preselecciona un producto NUEVO (ProductCategory de la misma compañía); NULL = sin categoría por defecto. Solo la usa la pantalla: la API no la aplica sola.</summary>
+    public int? DefaultProductCategoryId { get; set; }
 
     // --- Despacho manual (2026-10-11 b) ---
     /// <summary>

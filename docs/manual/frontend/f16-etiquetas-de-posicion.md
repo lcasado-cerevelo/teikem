@@ -50,8 +50,8 @@ filtro actual**.
 
 El tamaño y la orientación elegidos **se recuerdan en ese navegador** para la próxima vez (reimprimir igual).
 
-**Tope**: como mucho **500 etiquetas por PDF**. Con más, el modal dice *Son N posiciones; el máximo por PDF es 500 etiquetas. Acote con
-los filtros o marque menos posiciones.* y **Generar PDF** queda deshabilitado.
+**Sin tope** (desde 2026-10-10): se imprimen **todas** las etiquetas del alcance. Pasando de **500**, el modal solo **avisa** (*Son {N}: el PDF será grande y puede tardar un poco. Se imprimen todas; no hay límite.*) y
+**Generar PDF** sigue habilitado.
 
 En el celular (360 px) el modal ocupa el ancho de la pantalla, sin desplazamiento horizontal:
 
@@ -112,7 +112,7 @@ código en texto y el modal los lista al terminar.
 
 | Mensaje | Dónde | Qué hacer |
 |---|---|---|
-| *Son N posiciones; el máximo por PDF es 500 etiquetas. Acote con los filtros o marque menos posiciones.* | Modal (rojo); Generar PDF deshabilitado | Filtre por zona o por el código (Posición), o marque menos |
+| *Son {N}: el PDF será grande y puede tardar un poco. Se imprimen todas; no hay límite.* (desde 500) | Aviso en el modal; Generar PDF sigue habilitado | Filtre por zona o por el código (Posición), o marque menos |
 | *No hay posiciones en lo que eligió.* | Modal | El alcance no tiene posiciones; cambie los filtros o elija otro |
 | *No hay posiciones para imprimir con lo que eligió.* | Modal (rojo), sin PDF | Las posiciones dejaron de existir mientras tanto; recargue la lista |
 | *Se canceló; no se generó el PDF.* | Aviso abajo | Nada |

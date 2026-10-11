@@ -83,7 +83,7 @@
     "warehouseNone": "No warehouse",
     "changeWarehouse": "Change",
     "damage": "Damage",
-    "transfer": "Transfer",
+    "adjust": "Adjust",
     "build": "Version {build}"
   },
   "warehousePick": {
@@ -312,6 +312,7 @@
     "saveForLater": "Save and continue later",
     "finishWithZeros": "Leave at 0 and finish",
     "savedForLater": "Saved. Count {number} is still open: resume it from Count.",
+    "finishedNote": "Count sent. You can count something else; “Back” takes you to Home.",
     "finishRejected": "The server did not accept finishing the count: {message}",
     "openAllCounted": "You already counted this product in every position where the system says it is. If you found it in another one, scan that position; to correct a quantity, tap ✎ on its line in the list.",
     "openTapHint": "Tap a product in the list to count it in another position.",
@@ -666,6 +667,14 @@
     "issueTooMany": "Can only be lowered by up to {qty} (reserved stock does not leave).",
     "issueReason": "Choose the reason.",
     "issueNote": "Write a note explaining the adjustment.",
+    "scanBin": "Scan the bin where it is",
+    "scanBinHelp": "The bin of the product you are going to adjust.",
+    "scanProduct": "Scan the product",
+    "binNotFound": "There is no bin with that code.",
+    "binInactive": "Bin {bin} is inactive.",
+    "productNotFound": "There is no product with that code.",
+    "lotNone": "{sku} is lot-tracked and has no lots registered yet: adjust it from the web.",
+    "restart": "Start over",
     "issueNoteTooLong": "The note allows at most {max} characters."
   }
 }

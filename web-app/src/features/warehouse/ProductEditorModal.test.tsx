@@ -18,7 +18,7 @@ interface Call {
   url: URL
   body: unknown
 }
-const mock = vi.hoisted(() => ({ calls: [] as Call[], onHand: 12, adjustFails: false, balances: false }))
+const mock = vi.hoisted(() => ({ calls: [] as Call[], onHand: 12, adjustFails: false, balances: false, defaultCategory: false }))
 vi.mock('../../kernel/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../kernel/api/client')>()
   const fetch = async (req: Request) => {
@@ -56,7 +56,13 @@ const BINS = [{ id: 10, code: 'A-01', zoneId: 1, zoneCode: 'A', zoneTypeCode: 'S
 function route(method: string, url: URL): unknown {
   const p = url.pathname
   if (p.startsWith('/api/v1/catalogs/')) return LOOKUPS[p.slice('/api/v1/catalogs/'.length)] ?? []
-  if (p === '/api/v1/product-categories') return [{ id: 3, name: 'Médico', path: 'Médico', isActive: true, productCount: 1 }]
+  if (p === '/api/v1/product-categories') {
+    // isDefault = la categoría por defecto de los productos nuevos (Ajustes de la compañía → Operación)
+    return [
+      { id: 3, name: 'Médico', path: 'Médico', isActive: true, productCount: 1, isDefault: false },
+      { id: 7, name: 'AxisCare', path: 'AxisCare', isActive: true, productCount: 20, isDefault: mock.defaultCategory },
+    ]
+  }
   if (p === '/api/v1/warehouses') return [{ id: 1, publicId: WH, code: 'ALM-01', name: 'Almacén principal', isActive: true }]
   if (p === `/api/v1/warehouses/${WH}/bins`) {
     // listado paginado (Lote 1); el modal pide la posición por defecto por id (binIds)
@@ -149,6 +155,7 @@ beforeEach(() => {
   mock.onHand = 12
   mock.adjustFails = false
   mock.balances = false
+  mock.defaultCategory = false
 })
 
 /** Abre el bloque de ajuste, elige "Bajar" (Lote 14, D11) y llena Cantidad (positiva) y Motivo (Daño, con el buscador). */
@@ -192,6 +199,38 @@ describe('ProductEditorModal', () => {
     expect(within(dialog).queryByRole('button', { name: /Añadir ajuste/ })).toBeNull()
     expect(within(dialog).getByRole('button', { name: 'Cancelar' })).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'Guardar' })).toBeInTheDocument()
+  })
+
+  it('alta con categoría por defecto en los ajustes: llega con esa categoría y se manda al guardar; sin default, vacía', async () => {
+    const user = userEvent.setup()
+    mock.defaultCategory = true
+    const { unmount } = wrap(<ProductEditorModal open product={null} onClose={() => {}} />, ['inventory.view', 'inventory.manage'])
+    const dialog = await findDialog('Nuevo producto')
+    expect(await within(dialog).findByRole('combobox', { name: 'Categoría' })).toHaveValue('AxisCare')
+    await user.type(within(dialog).getByLabelText(/^SKU/), 'NEW-2')
+    await user.type(within(dialog).getByLabelText(/^Nombre/), 'Producto con default')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(mock.calls.some((c) => c.method === 'POST')).toBe(true))
+    expect(mock.calls.find((c) => c.method === 'POST')!.body).toMatchObject({ sku: 'NEW-2', categoryId: 7 })
+    unmount()
+
+    // sin default en los ajustes: ninguna categoría preseleccionada
+    mock.defaultCategory = false
+    wrap(<ProductEditorModal open product={null} onClose={() => {}} />, ['inventory.view', 'inventory.manage'])
+    const again = await findDialog('Nuevo producto')
+    expect(await within(again).findByRole('combobox', { name: 'Categoría' })).toHaveValue('')
+  })
+
+  it('edición: la categoría por defecto NO se aplica a un producto que ya existe (conserva la suya o queda sin categoría)', async () => {
+    mock.defaultCategory = true
+    const { unmount } = wrap(<ProductEditorModal open product={detail()} onClose={() => {}} />, ['inventory.view', 'inventory.manage'])
+    const dialog = await findDialog('Editar producto')
+    expect(await within(dialog).findByRole('combobox', { name: 'Categoría' })).toHaveValue('Médico')
+    unmount()
+
+    wrap(<ProductEditorModal open product={detail({ categoryId: null })} onClose={() => {}} />, ['inventory.view', 'inventory.manage'])
+    const noCategory = await findDialog('Editar producto')
+    expect(await within(noCategory).findByRole('combobox', { name: 'Categoría' })).toHaveValue('')
   })
 
   it('alta: sin SKU no llama al API y muestra el mensaje del manual', async () => {

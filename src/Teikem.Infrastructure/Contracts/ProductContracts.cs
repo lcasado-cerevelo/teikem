@@ -69,7 +69,8 @@ public sealed record ProductCategoryRequest(string? Name, int? ParentId = null);
 
 public sealed record ProductCategoryPatchRequest(string? Name = null, int? ParentId = null, bool? ClearParent = null);
 
-public sealed record ProductCategoryDto(int Id, string Name, int? ParentId, string Path, bool IsActive, int ProductCount);
+/// <summary>IsDefault (2026-10-11 c): es la categoría que los ajustes de la compañía preseleccionan en un producto nuevo (la lista y la ficha lo informan).</summary>
+public sealed record ProductCategoryDto(int Id, string Name, int? ParentId, string Path, bool IsActive, int ProductCount, bool IsDefault = false);
 
 public sealed record LotDto(int Id, string LotNumber, DateOnly? ManufactureDate, DateOnly? ExpiryDate, int? DaysToExpiry, decimal QtyOnHand,
     bool IsActive);

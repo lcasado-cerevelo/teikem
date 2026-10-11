@@ -79,6 +79,8 @@ public static class ProductRules
     public const string CategoryHasChildren = "La categoría tiene subcategorías activas; desactívelas primero.";
     public const string CategoryParentInactive = "La categoría ascendente está inactiva.";
     public const string CategoryInactive = "La categoría está inactiva.";
+    /// <summary>2026-10-11: la categoría por defecto de los productos nuevos (ajustes de la compañía) no existe o está inactiva.</summary>
+    public const string DefaultCategoryUnusable = "La categoría por defecto no existe o está inactiva.";
 
     // ---------------------------------------------------------------- normalización
 

@@ -445,7 +445,7 @@ lleva «Marca · Modelo».
 
 **El modal de producto** (alta y edición). Campos en este orden: **SKU** (obligatorio al crear; al editar no se puede cambiar) y
 **Unidad** (desplegable con buscador); **Nombre**; **Marca** y **Modelo**; **Categoría** (desplegable con buscador; se busca
-por cualquier nivel de la ruta «Raíz / Hija») y **Rastreo** (desplegable con buscador); **Dueño del inventario**; **Costo de
+por cualquier nivel de la ruta «Raíz / Hija»; **en un producto nuevo llega con la categoría por defecto de la compañía**, si Ajustes → Operación tiene una; al editar no se toca) y **Rastreo** (desplegable con buscador); **Dueño del inventario**; **Costo de
 compra** y **Precio de venta**; **Almacén por defecto** y **Posición por defecto**; **Total** (solo lectura: se cambia con un
 ajuste) y **Punto de reorden**; al editar, el interruptor **Producto activo** (bloqueado mientras el producto tenga
 inventario) y, plegado en «Más datos del producto», código de barras, peso, volumen, mínimo y máximo de picking y los campos

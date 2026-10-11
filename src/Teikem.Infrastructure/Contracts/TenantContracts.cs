@@ -18,14 +18,17 @@ public sealed record TenantSettingsDto(
     string DateOrder, string DateSeparator, byte TimeFormat, byte WeekStartDay, string ThousandsSeparator, string DecimalSeparator,
     string PhoneCountryCode, string PhoneMask, bool IsRegionCustomized,
     string CountExpectedReveal = "MARKED", decimal CountRecountTolerancePct = 0m, bool CountRevealShowsNumber = true,
-    string? DefaultManualIssueReason = null);
+    bool CountAutoCloseMatching = false, string? DefaultManualIssueReason = null, int? DefaultProductCategoryId = null);
 
 /// <summary>
 /// Cambio parcial de los ajustes: null = sin cambio. Región y formatos: si RegionCode es distinto del actual se cargan los valores
 /// por defecto de esa región y los campos de formato que vengan mandan sobre ellos (sin campos = la región completa).
 /// Conteo informado al capturar (tarea 25): CountExpectedReveal ('NONE' | 'MARKED' | 'ALL'), CountRecountTolerancePct (0 a 100) y CountRevealShowsNumber.
+/// CountAutoCloseMatching (2026-10-10): terminar un conteo que cuadra lo confirma solo.
 /// DefaultManualIssueReason (2026-10-11 b): código del catálogo ManualIssueReason activo y habilitado para la compañía; "" = quitar
 /// el default; null = sin cambio.
+/// DefaultProductCategoryId (2026-10-11 c): categoría de producto que se preselecciona en un producto nuevo; null = sin cambio; 0 = quitar;
+/// un id = debe existir y estar activa en la compañía.
 /// </summary>
 public sealed record TenantSettingsUpdateRequest(
     string? Name, string? LegalName, string? TaxId, string? DefaultLangCode, byte? WorkDaysMask, int? MaxStopsPerRouteDefault,
@@ -34,7 +37,7 @@ public sealed record TenantSettingsUpdateRequest(
     byte? CurrencyDecimals = null, string? DateOrder = null, string? DateSeparator = null, byte? TimeFormat = null, byte? WeekStartDay = null,
     string? ThousandsSeparator = null, string? DecimalSeparator = null, string? PhoneCountryCode = null, string? PhoneMask = null,
     string? CountExpectedReveal = null, decimal? CountRecountTolerancePct = null, bool? CountRevealShowsNumber = null,
-    string? DefaultManualIssueReason = null);
+    bool? CountAutoCloseMatching = null, string? DefaultManualIssueReason = null, int? DefaultProductCategoryId = null);
 
 /// <summary>Juego de valores de región y formatos (los de una región en <see cref="TenantFormatOptionsDto"/>).</summary>
 public sealed record TenantFormatDto(

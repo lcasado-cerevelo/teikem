@@ -13,7 +13,7 @@ La app del lector ya reconoce lo escaneado: busca el producto por código de bar
 
 **Quién puede.** Módulo **WMS_LOTSERIAL** y permiso **`inventory.view`** (el mismo de las pantallas y de sus otros reportes y Exportar). Sin el
 permiso el botón no se ve. Los reportes se arman en el navegador (no hay endpoint propio): leen el listado con
-`GET /api/v1/products` o `GET /api/v1/warehouses/{almacén}/bins`, de a 200 hasta 10 000.
+`GET /api/v1/products` o `GET /api/v1/warehouses/{almacén}/bins`, de a 200, sin tope de cantidad.
 
 ## 1. Generar el reporte
 
@@ -70,7 +70,7 @@ reducir la hoja las barras quedan más finas que el mínimo y el lector puede no
 
 | Aviso | Cuándo | Qué hacer |
 |---|---|---|
-| *El reporte incluye solo los primeros {n} productos (límite de lectura). Afine los filtros para ver el resto.* (o *las primeras {n} posiciones*) | El filtro devuelve más de 10 000 | Filtre por categoría, zona o texto e imprima por partes |
+| *El reporte incluye solo los primeros {n} productos (el servidor no devolvió más). Vuelva a generarlo.* (o *las primeras {n} posiciones*) | El servidor dejó de devolver filas antes del total (no es un tope de cantidad) | Vuelva a generarlo; si se repite, avise a soporte |
 | *Se usaron {n} columnas porque hay códigos largos que no caben más angostos.* / *Se usó una sola columna…* | Algún código no cabe en 3 (o 2) columnas a 0.25 mm | Nada: es informativo. Para volver a 3 columnas, saque los códigos largos con los filtros |
 | *Hay valores sin código de barras (no caben u omitidos): vea los avisos al final del reporte.* | Hay elementos de las dos filas siguientes | Revise la última página |
 | *No caben como código de barras legible en el ancho de la hoja ({n}); salen en la lista sin código: …* + recuadro **No cabe: demasiado largo para un código legible** | El valor es tan largo que ni en una columna cabe a 0.25 mm (más de ~62 letras, o menos si mezcla) | Teclee ese SKU o código a mano en el lector; o acorte el código |

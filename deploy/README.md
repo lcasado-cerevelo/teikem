@@ -153,4 +153,4 @@ powershell -ExecutionPolicy Bypass -File "F:\Visual Studio 2022\Projects\teikem\
 - Al terminar devuelve la carpeta `app-almacen\android` a la variante de desarrollo (para seguir probando en el emulador con HTTP);
   use `-SinRestaurar` para dejarla en producción.
 - Instalar en un aparato: copie el APK al teléfono y ábralo (permita "instalar apps desconocidas"), o `adb install -r archivo.apk`.
-- Para subir una versión nueva, aumente `version` (`package.json`/`app.config.ts`) y `android.versionCode` (`app.config.ts`) antes de compilar.
+- El código de versión (`versionCode`) **no se edita a mano**: el script lo sube solo (último compilado + 1, guardado en `%USERPROFILE%\.teikem\apk-versioncode.txt`). Para ver cuál saldrá sin compilar: `construir-apk.ps1 -VerCodigo`. Para otra versión visible: `-Version 1.1.0`. Para fijar un código: `-CodigoVersion <n>` (debe ser mayor que el último; `-PermitirBajar` solo si de verdad lo necesita).

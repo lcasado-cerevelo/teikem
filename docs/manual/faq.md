@@ -4013,7 +4013,7 @@ campo. La duración debe ser un número entero de días de 1 a 365.
 
 **"Entre 1 y 365 días."** bajo una duración — vacía, decimal, menor que 1 o mayor que 365; no se manda nada hasta corregirla.
 
-**"Se descargaron las primeras 10000 filas; acote la fecha para exportar el resto."** — la exportación tiene un tope de 10 000
+**"Se descargaron las primeras 10000 filas; acote la fecha para exportar el resto."** — (mensaje de una versión anterior: hoy la exportación **no tiene tope**; si lo ve, el servidor dejó de devolver filas y basta volver a exportar) antes tenía un tope de 100 000
 filas; ponga una Fecha más corta y exporte por partes.
 
 **"No hay actividad con estos filtros."** — ninguna fila cumple el tipo, la fecha y la búsqueda; use **Limpiar**.
@@ -4986,7 +4986,7 @@ mensajes nuevos del servidor (los de lectura de productos y posiciones son los d
 Falló la lectura del listado o el armado del PDF. Intente de nuevo; si se repite, avise a soporte con la hora y los filtros usados.
 
 **"El reporte incluye solo los primeros {n} productos (límite de lectura). Afine los filtros para ver el resto."** / **"…las primeras {n} posiciones…"**
-El filtro devuelve más de 10 000 elementos (el mismo tope que Exportar y el Reporte de inventario). Imprima por partes: por categoría,
+Ya no hay tope de cantidad: se leen todos los elementos del filtro. El mensaje solo sale si el servidor dejó de devolver filas antes del total; vuelva a generarlo. Si el PDF es enorme, puede imprimir por partes: por categoría,
 zona, pasillo o texto.
 
 **"Se usaron {n} columnas porque hay códigos largos que no caben más angostos."** / **"Se usó una sola columna…"**
@@ -5095,7 +5095,7 @@ La posición sale en varias páginas de 10 (11 productos = 10 + 1), cada una con
 No: se conservan al cambiar de página o de filtro mientras no cambie de almacén. **Quitar marcas** las borra.
 
 **¿Por qué la exportación de la tabla trae más filas que la página?**
-**Exportar** saca **todo lo filtrado** (hasta 10 000 filas), no solo la página que se ve.
+**Exportar** saca **todo lo filtrado** (sin tope de cantidad), no solo la página que se ve.
 
 ## Lote F16 — Web: etiquetas de posición en Posiciones
 
@@ -5822,8 +5822,19 @@ Use el filtro **Posición** (escriba parte del código, por ejemplo `A-01`): sal
 ## Aparato: no veo Transferir ni Ajustar (2026-10-10)
 
 **Instalé la APK y en el menú no sale Transferir (o en Consultar no sale Mover / Ajustar).**
-Los botones dependen de permisos del usuario, no de la versión de la APK: **Transferir y Mover** piden `warehouse.transfer` (lo traen «Operador de almacén» y «Admin de compañía»; `inventory.adjust` lo implica) y **Ajustar** pide `warehouse.adjust` (solo «Admin de compañía»; para un operario se crea un rol propio en Sistema → Roles con ese permiso). **Si el usuario ya tiene el permiso (p. ej. «Admin de compañía» con todos), lo más probable es que el APK instalado sea una compilación vieja:** desde 2026-10-10 Inicio muestra al pie «Versión 1.0.0 (código) · sello» (fecha y commit del APK; en el CI, `ci-<número> <commit>`). Si no sale esa línea, el APK es anterior: instale el nuevo. Revise (1) que el **API ya esté desplegado** con la base actualizada (`db-update`), (2) que el rol del usuario tenga el permiso y (3) abrir la app con señal una vez: el aparato lee los permisos del servidor al abrir la pantalla. La corrección del 2026-10-10 (b) en `Diseño/logistica-db-update.sql` agrega los dos permisos a los roles «Operador de almacén» y «Admin de compañía» que ya existían en cada compañía (antes quedaron fuera porque el sembrado solo propaga los códigos nuevos de su corrida).
+**Desde 2026-10-11 «Transferir» ya no está en el menú principal: se transfiere con «Mover» en Consultar** (es la misma pantalla y el mismo permiso). **«Ajustar» sí está en el menú** (y también en Consultar). Los botones dependen de permisos del usuario, no de la versión de la APK: **Mover** pide `warehouse.transfer` (lo traen «Operador de almacén» y «Admin de compañía»; `inventory.adjust` lo implica) y **Ajustar** pide `warehouse.adjust` (solo «Admin de compañía»; para un operario se crea un rol propio en Sistema → Roles con ese permiso). **Si el usuario ya tiene el permiso (p. ej. «Admin de compañía» con todos), lo más probable es que el APK instalado sea una compilación vieja:** desde 2026-10-10 Inicio muestra al pie «Versión 1.0.0 (código) · sello» (fecha y commit del APK; en el CI, `ci-<número> <commit>`). Si no sale esa línea, el APK es anterior: instale el nuevo. Revise (1) que el **API ya esté desplegado** con la base actualizada (`db-update`), (2) que el rol del usuario tenga el permiso y (3) abrir la app con señal una vez: el aparato lee los permisos del servidor al abrir la pantalla. La corrección del 2026-10-10 (b) en `Diseño/logistica-db-update.sql` agrega los dos permisos a los roles «Operador de almacén» y «Admin de compañía» que ya existían en cada compañía (antes quedaron fuera porque el sembrado solo propaga los códigos nuevos de su corrida).
 
+
+## Conteo cíclico: cierre automático y seguir contando (2026-10-10)
+
+**Terminé un conteo en el aparato y sigo en la pantalla de Conteo, no en Inicio. ¿Es un error?**
+No. Desde 2026-10-10 la app se queda en Conteo para contar la siguiente posición (o producto) con el cursor ya en el campo de escaneo. Para salir toque **Volver**. «Guardar y seguir después» sí vuelve a Inicio.
+
+**Terminé un conteo que cuadra y sigue en «Por revisar» (Contado), no en Concordancia.**
+El cierre automático está **apagado por defecto**. Un administrador (`admin.tenant`) lo enciende en Sistema → Ajustes → Operación → «Cerrar solo los conteos que cuadran». Mientras tanto use «Cerrar los que cuadran». Si el ajuste está encendido y aun así quedó Contado, es que **no cuadraba** al terminar: tenía diferencia, una línea por debajo de lo reservado, o la existencia cambió justo en ese momento; ábralo con la vista previa de la reconciliación para ver el motivo.
+
+**¿Un conteo cerrado automáticamente ajustó inventario?**
+No. Solo se cierra solo si no hay nada que ajustar; en el historial dice `Cierre automático: el conteo cuadra.`.
 
 ## Lote F-A1 — Clientes: lista, alta y ficha (2026-10-10)
 
@@ -6172,3 +6183,45 @@ La pantalla de confirmación lo reemplaza: **Despachar** manda el despacho de in
 
 **`Escoge el motivo del despacho manual.`**
 Ya no debería verse: sin motivo puesto, **Despachar** no aparece hasta escoger uno en la lista. Si lo ve, escoja un motivo y avise a soporte.
+
+## Categoría por defecto de los productos nuevos (2026-10-11)
+
+**Creo un producto nuevo y la categoría ya viene puesta. ¿De dónde sale?**
+De Ajustes de la compañía → Operación → «Productos nuevos: categoría por defecto» (en Advance Depot, AxisCare). Es solo una preselección: puede cambiarla o dejarla vacía en el mismo formulario antes de guardar.
+
+**Un producto nuevo sale sin categoría aunque la compañía tiene una por defecto.**
+Casi siempre es una de tres cosas: (1) el producto se creó por la **API o por una importación**, que no aplican el default (solo lo hace la pantalla de Productos); (2) la categoría por defecto se **dio de baja**, y entonces se ignora; (3) usted la quitó en el formulario. Revise en Ajustes → Operación que siga eligiendo una categoría activa.
+
+**`La categoría por defecto no existe o está inactiva.` (400) al guardar los ajustes.**
+La categoría elegida ya no existe, está dada de baja o es de otra compañía. Elija otra de la lista (solo salen las activas) o «Sin categoría por defecto». No se guardó nada del resto de los ajustes en ese intento.
+
+**El default de Depot no quedó en AxisCare tras `db-update`.**
+La sección `2026-10-11 (c)` lo llena solo si la compañía se llama «Advance Depot», todavía no tenía uno y existe una categoría activa llamada `AxisCare` o `Axis Care`. Si la categoría tiene otro nombre o aún no existe, no hace nada: créela (Productos e inventario → Categorías) y elíjala en Ajustes → Operación.
+
+**¿Cambia las categorías de los productos que ya existen?**
+No. Solo preselecciona la categoría al crear un producto nuevo desde la pantalla.
+
+## Informes de posiciones e inventario: sin tope de cantidad (2026-10-10)
+
+**Imprimo más de 500 posiciones, etiquetas o productos y solo sale un aviso.**
+Es a propósito: ya no hay tope. Pasando de 500 el modal avisa «Son N: el PDF será grande y puede tardar un poco. Se imprimen todas; no hay límite.» y **Generar PDF sigue habilitado**. Si ve un texto que todavía habla de «máximo por impresión es 500», es de un manual o una versión vieja.
+
+**Un informe dice «solo los primeros N… (el servidor no devolvió más)».**
+Ya **no hay ningún tope de cantidad** (ni los 500 ni los 100 000 de antes): los informes y las exportaciones leen todo el filtro, sea del tamaño que sea. Ese aviso solo sale si el servidor dejó de devolver filas antes de llegar al total (un corte de red, por ejemplo): vuelva a generarlo.
+
+## Ajustar desde el menú del aparato (2026-10-11)
+
+**Veo un producto en una posición pero Consultar no lo muestra (el sistema dice que hay 0). ¿Cómo lo ajusto?**
+Menú principal → **Ajustar** (hace falta `warehouse.adjust`): escanee la posición, luego el producto, elija **Subir**, la cantidad, el motivo **Encontrado** y escriba la nota. Antes esto solo se podía desde la web.
+
+**En el menú ya no está «Transferir».**
+Es a propósito: se transfiere con **«Mover»** en Consultar (consulte la posición o el producto y toque *Mover*). Es la misma pantalla y el mismo permiso (`warehouse.transfer`).
+
+**En Ajustar escaneé un producto con lote y me dice que no tiene lotes registrados.**
+El producto lleva lote y todavía no existe ningún lote suyo en el almacén, y la app no crea lotes. Haga el ajuste desde la web (Productos e inventario → Ajustar), donde sí se puede indicar el lote.
+
+**En Ajustar elegí Bajar y me dice «Solo se puede bajar hasta 0».**
+El sistema no tiene nada de ese producto ahí (o lo que hay está reservado). Bajar solo se puede hasta lo disponible; si lo que encontró es de más, use **Subir**.
+
+**Después de ajustar la app se quedó en Ajustar.**
+Es a propósito cuando se entra desde el menú: queda listo para la siguiente posición (el aviso dice lo que se ajustó). **Volver** sale a Inicio. Si entró desde Consultar con «Ajustar», vuelve a Consultar como antes.

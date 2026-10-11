@@ -1543,7 +1543,7 @@ export function useOrderLookup(code: string | null | undefined, options?: Wareho
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Exportación de las listas paginadas por el servidor (`DataTable.exportRows`): todas las filas con los filtros de la
-// pantalla (su mismo `query`, reemplazando `skip`/`take`), de a 200 hasta 10 000 (`fetchAllPages`).
+// pantalla (su mismo `query`, reemplazando `skip`/`take`), de a 200, sin tope (`fetchAllPages`).
 // ---------------------------------------------------------------------------------------------------------------------
 export const exportProducts = (query: GetQuery<'/api/v1/products'>) =>
   fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/products', { params: { query: { ...query, skip, take } } })))

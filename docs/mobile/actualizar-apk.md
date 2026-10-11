@@ -6,7 +6,7 @@ Android conserva la configuración de la app (servidor, registro del aparato, PI
 3. tenga un **código de versión mayor** que el instalado.
 
 ## Pasos
-1. `scripts\construir-apk.ps1` — el mismo que crea el APK. Sube solo el código de versión (el primero que sale es el 2; los aparatos instalados traen el 1; se recuerda en `%USERPROFILE%\.teikem\apk-versioncode.txt`) y usa la misma llave. Deja `TeikemAlmacen-<versión>-c<código>.apk` en `F:\Download\TeikemApp`.
+1. `scripts\construir-apk.ps1` — el mismo que crea el APK. Sube solo el código de versión (el primero que sale es el 2; los aparatos instalados traen el 1; se recuerda en `%USERPROFILE%\.teikem\apk-versioncode.txt`) y usa la misma llave. Deja `TeikemAlmacen-<versión>-c<código>.apk` en `F:\Download\TeikemApp`. Opciones: `-VerCodigo` (solo muestra versión y código que saldrían, sin compilar), `-Version 1.1.0` (versión visible; por defecto la de `package.json`), `-CodigoVersion <n>` (fija el código; debe ser mayor que el último, salvo `-PermitirBajar`).
 2. Instalar encima, de cualquiera de las dos formas:
    - **Por USB, varios aparatos:** `scripts\actualizar-aparatos.ps1` (depuración USB activada). Hace `adb install -r` a cada aparato conectado.
    - **A mano:** copiar el APK al aparato, abrirlo y aceptar «Actualizar».

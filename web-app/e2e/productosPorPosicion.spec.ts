@@ -172,7 +172,8 @@ async function flow(page: Page, s: Seed, mobile: boolean) {
   const download = await generate(page)
   expect(download.suggestedFilename()).toMatch(/^productos-por-posicion-advance-logistics-\d{4}-\d{2}-\d{2}\.pdf$/)
   const text = await readPdf(download, `productos-${s.suffix}`)
-  expect(text).toContain(`(${s.binA.code}) Tj`)
+  // desde 2026-10-10 el PDF usa el formato de Códigos de barras: cada posición abre con su encabezado «Posición {código} · Zona … — N producto(s)»
+  expect(text).toContain(`Posición ${s.binA.code}`)
   expect(text).toContain(`(${s.sku}) Tj`)
   expect(text).toContain(`(${s.barcode}) Tj`)
   expect(text).toContain('Zona RSV')
@@ -208,7 +209,7 @@ test.describe('Productos por posición — escritorio', () => {
     await page.getByRole('button', { name: 'Productos por posición' }).click()
     await expect(page.getByRole('dialog', { name: 'Productos por posición' }).getByLabel('Las posiciones marcadas (1)')).toBeChecked()
     const text = await readPdf(await generate(page), `marcadas-${m.suffix}`)
-    expect(text).toContain(`(${m.binA.code}) Tj`)
+    expect(text).toContain(`Posición ${m.binA.code}`)
   })
 })
 

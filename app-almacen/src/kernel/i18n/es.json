@@ -83,7 +83,7 @@
     "warehouseNone": "Sin almacén",
     "changeWarehouse": "Cambiar",
     "damage": "Daño",
-    "transfer": "Transferir",
+    "adjust": "Ajustar",
     "build": "Versión {build}"
   },
   "warehousePick": {
@@ -312,6 +312,7 @@
     "saveForLater": "Guardar y seguir después",
     "finishWithZeros": "Dejar en 0 y terminar",
     "savedForLater": "Guardado. El conteo {number} sigue abierto: retómalo desde Conteo.",
+    "finishedNote": "Conteo enviado. Puedes contar otra cosa; «Volver» te lleva a Inicio.",
     "finishRejected": "El servidor no aceptó terminar el conteo: {message}",
     "openAllCounted": "Ya contaste este producto en todas las posiciones donde el sistema dice que está. Si lo encontraste en otra, escanea esa posición; para corregir una cantidad, toca ✎ en su línea de la lista.",
     "openTapHint": "Toca un producto de la lista para contarlo en otra posición.",
@@ -666,6 +667,14 @@
     "issueTooMany": "Solo se puede bajar hasta {qty} (lo reservado no sale).",
     "issueReason": "Elige el motivo.",
     "issueNote": "Escribe una nota que explique el ajuste.",
+    "scanBin": "Escanea la posición donde está",
+    "scanBinHelp": "La posición del producto que vas a ajustar.",
+    "scanProduct": "Escanea el producto",
+    "binNotFound": "No hay una posición con ese código.",
+    "binInactive": "La posición {bin} está inactiva.",
+    "productNotFound": "No hay un producto con ese código.",
+    "lotNone": "{sku} lleva lote y todavía no tiene lotes registrados: se ajusta desde la web.",
+    "restart": "Empezar de nuevo",
     "issueNoteTooLong": "La nota admite como máximo {max} caracteres."
   }
 }

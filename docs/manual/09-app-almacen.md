@@ -650,7 +650,7 @@ Cómo se usa:
    (Lote A3): tocar el producto en "Lo que se espera aquí" pone su código (SKU) en el campo del producto; se confirma con
    **Aceptar** y pasa a la cantidad. Tocarlo no cambia lo que se muestra: las cantidades esperadas siguen saliendo solo a quien
    tiene `warehouse.count`.
-3. "Terminar esta posición" encola el lote capturado y el cierre del conteo, y vuelve a Inicio. "Cancelar conteo"
+3. "Terminar esta posición" encola el lote capturado y el cierre del conteo, y **se queda en Conteo** (desde 2026-10-10: ver 7.6) con el cursor en el campo de la siguiente posición. "Cancelar conteo"
    (con confirmación) libera la posición en el servidor sin guardar lo capturado.
 
 Si se cerró y se volvió a abrir la app con un conteo por posición en curso, la lista de líneas esperadas se vuelve a pedir al
@@ -693,7 +693,7 @@ Cómo se usa:
    dueño; **0 vale**, y también cuenta una fila de "Otra posición" con su cantidad): con **todas** en blanco, Confirmar no manda nada y
    sale el aviso rojo grande `Escribe al menos una cantidad. Si no hay nada de este producto, escribe 0 en una posición.`; el aviso se
    quita al escribir cualquier cantidad. Se encola el lote con **todas** las filas (las en blanco como 0, las de "Otra
-   posición" como líneas nuevas con su posición y lote) y el cierre, y vuelve a Inicio. Funciona sin señal. Si el conteo quedó **vacío** (producto
+   posición" como líneas nuevas con su posición y lote) y el cierre, y se queda en Conteo (7.6). Funciona sin señal. Si el conteo quedó **vacío** (producto
    sin existencia y ninguna fila agregada), Confirmar no manda nada y avisa `No se puede terminar un conteo vacío: agrega la posición donde lo encontraste con «Otra posición» o cancela el conteo.`; se sale con **Cancelar conteo** (paso 7).
 6. **Retomar**: lo escrito se guarda en el aparato a cada cambio. Si se cierra la app (o se apaga el aparato), al volver a Conteo
    aparece la misma lista con lo ya escrito, sin necesitar señal. Un conteo a la vez por aparato (de posición o de producto).
@@ -724,7 +724,7 @@ Cómo se usa:
    **Tocar un producto de la lista** (2026-10-07) lo pone en el campo de escaneo (sin enviarlo) y sube la pantalla hasta ese campo: se confirma con **Aceptar** y sigue el camino normal
    (propone las posiciones que aún no has contado). Ayuda en pantalla: `Toca un producto de la lista para contarlo en otra posición.` Lo mismo en «Por posición»: tocar un producto de «Lo que se espera aquí» sube la pantalla al campo.
 4. **Terminar conteo** (se enciende con al menos una línea) encola **un lote** con todas las líneas (posición + producto + cantidad + lote por número) y el cierre;
-   funciona sin señal y vuelve a Inicio. La diferencia se calcula al reconciliar en la web.
+   funciona sin señal y se queda en Conteo (7.6). La diferencia se calcula al reconciliar en la web.
 5. **Retomar**: lo contado se guarda en el aparato; al cerrar y abrir la app el conteo sigue ahí, sin señal. Un conteo a la vez por aparato.
 6. **Cancelar conteo** (con confirmación): `DELETE`, necesita señal y `warehouse.count`.
 
@@ -1175,8 +1175,8 @@ indicador diga «Al día». El servidor siempre manda: si lo que se ve ya no coi
 **Quién puede.** Permiso `warehouse.transfer` (módulo de inventario). Lo trae el rol *Operador de almacén* y quien ya tiene `inventory.adjust` (lo implica). Sin el permiso no aparece el botón.
 
 **Cómo se usa.**
-- **Menú principal → Transferir.** Escanee la posición de origen (o búsquela en la lista); toque el producto de la lista de lo que hay ahí o escanéelo; si el producto tiene varios lotes, elija el lote; escriba la cantidad (la pantalla dice cuánto se puede mover: en mano − reservado) y *Siguiente*; escanee el destino y confirme.
-- **Desde Consultar → «Mover».** Al consultar una posición, cada producto con algo disponible trae *Mover*; al consultar un producto, cada fila con posición y disponible trae *Mover*. Abre Transferir con la posición de origen y el producto ya puestos.
+- **Ya no hay botón «Transferir» en el menú principal (desde 2026-10-11): se transfiere con «Mover» en Consultar** (hacía exactamente lo mismo, con los mismos pasos y el mismo permiso).
+- **Consultar → «Mover».** Al consultar una posición, cada producto con algo disponible trae *Mover*; al consultar un producto, cada fila con posición y disponible trae *Mover*. Abre Transferir con la posición de origen y el producto ya puestos.
 - Necesita señal (mueve inventario en el servidor, sin cola; como Daño). Con la calculadora de cantidad también cuenta por cajas si el producto tiene empaque.
 
 **Reglas y mensajes.**
@@ -1193,7 +1193,7 @@ indicador diga «Al día». El servidor siempre manda: si lo que se ve ya no coi
 
 API: `POST /api/v1/inventory/transfers/in-warehouse` (`warehouse.transfer`); la transferencia de la web (`POST /inventory/transfers`, `inventory.adjust`) no cambia. El Kárdex la registra como TRANSFER.
 
-**Menú principal.** Orden de los botones: Consultar, Transferir, Recibir, Acomodar, Despacho, Conteo y Daño.
+**Menú principal.** Orden de los botones (2026-10-11): Consultar, **Ajustar** (solo con `warehouse.adjust`), Recibir, Acomodar, Despacho, Conteo y Daño (solo con `warehouse.damage`).
 
 ## Ajustar cantidad (2026-10-10)
 
@@ -1201,13 +1201,30 @@ API: `POST /api/v1/inventory/transfers/in-warehouse` (`warehouse.transfer`); la 
 
 **Quién puede.** Permiso `warehouse.adjust` (inventario). **Ninguna plantilla de rol lo trae**: el administrador lo da a un rol propio (Sistema → Roles) y lo asigna a quien deba ajustar. El Administrador de la compañía lo tiene por "todos". Sin el permiso no aparece el botón.
 
-**Cómo se usa.** Desde **Consultar**: al consultar una posición, cada producto trae *Ajustar*; al consultar un producto, cada fila con posición lo trae. Se abre la pantalla con la posición y el producto ya puestos:
+**Cómo se usa.** Hay dos entradas:
+- **Menú principal → Ajustar** (2026-10-11): se escanea la **posición** (*Escanea la posición donde está*) y luego el **producto** (*Escanea el producto*). Sirve sobre todo cuando el producto **se ve en una posición y el sistema dice que ahí hay 0 (o nunca estuvo)**: Consultar no lo lista y, antes, no había forma de ajustarlo desde el aparato. Aquí se **sube** con el motivo *Encontrado*. Al terminar, la pantalla **se queda en Ajustar** con el aviso *Listo: Subir 4 de TOR-1 en A-01-01.* y pide la siguiente posición; **Empezar de nuevo** vuelve al primer paso y **Volver** sale a Inicio.
+- **Consultar → «Ajustar»**: al consultar una posición, cada producto trae *Ajustar*; al consultar un producto, cada fila con posición lo trae. Se abre la pantalla con la posición y el producto ya puestos, y al terminar vuelve a Consultar.
+
+Desde ahí, igual en las dos entradas:
 1. (si el producto tiene varios lotes) elegir el lote;
 2. **Subir** (hay más) o **Bajar** (hay menos);
 3. cantidad (con la calculadora; también por cajas si el producto tiene empaque);
 4. **motivo**: al subir, *Encontrado* u *Otro*; al bajar, *Daño*, *Pérdida*, *Vencido* u *Otro* (los motivos de recibo, conteo, saldo inicial, etc. los pone solo el sistema);
 5. **nota obligatoria** (hasta 300 caracteres);
 6. *Ajustar* y confirmar. Si tiene permiso de ver cantidades del sistema (`warehouse.count`), la confirmación dice «de X pasa a Y».
+
+**Casos del menú «Ajustar» (2026-10-11):**
+
+| Caso | Qué dice la app |
+|---|---|
+| La posición no existe o no es del almacén | `No hay una posición con ese código.` |
+| La posición está dada de baja | `La posición {bin} está inactiva.` |
+| El producto no existe | `No hay un producto con ese código.` |
+| Producto con número de serie | `{sku} lleva número de serie: por ahora se ajusta desde la web.` |
+| Producto **con lote** que no tiene saldo en esa posición | Ofrece los **lotes que ya tiene registrados** en el almacén (si es uno solo, lo usa); se ajusta por ese lote |
+| Producto con lote que **todavía no tiene ningún lote** | `{sku} lleva lote y todavía no tiene lotes registrados: se ajusta desde la web.` |
+| **Bajar** más de lo que hay (con 0 en la posición, cualquier cantidad) | `Solo se puede bajar hasta {n} (lo reservado no sale).` |
+| Posición de cuarentena, en renta o de cross-dock | `{bin} es una posición de cuarentena, en renta o de cross-dock: no se ajusta desde aquí (usa Daño, Rentas o Cross-dock).` Si la posición está vacía la app no puede saberlo al escanearla y el **servidor** la rechaza al mandar el ajuste (422), que queda «requiere revisión» en Sincronización. |
 
 Necesita señal (cambia el inventario en el servidor, sin cola).
 
@@ -1224,3 +1241,14 @@ Necesita señal (cambia el inventario en el servidor, sin cola).
 | Sin señal | `Ajustar necesita señal: cambia el inventario en el servidor. Inténtalo con señal.` |
 
 API: `POST /api/v1/inventory/adjustments/quantity` (`warehouse.adjust`); el ajuste de la web (`POST /inventory/adjustments`, `inventory.adjust`) no cambia.
+
+### 7.6 Al terminar un conteo la app se queda en Conteo (2026-10-10)
+
+Antes, **Terminar esta posición** y **Terminar conteo** mandaban a Inicio y había que entrar otra vez a Conteo para la siguiente posición. Ahora, al terminar:
+- La pantalla **se queda en Conteo**, en su pantalla de partida («¿Cómo vas a contar?»), con la **misma forma de contar** que se estaba usando (la app la recuerda) y el **cursor en el campo de escaneo** (la posición, en «Por posición»; el producto, en «Por producto»). Arriba dice `Conteo enviado. Puedes contar otra cosa; «Volver» te lleva a Inicio.`
+- Para salir a Inicio se toca **Volver** (al pie de esa pantalla), como siempre.
+- El cierre sigue yendo a la cola de salida y funciona sin señal; si el servidor lo rechaza, el aviso `El servidor no aceptó terminar el conteo: …` aparece igual.
+- El conteo recién terminado **no bloquea** el siguiente: ya no cuenta como «abierto» (sección 7.5).
+- **Guardar y seguir después** no cambia: guarda, avisa y vuelve a Inicio (el conteo queda abierto y bloquea lo demás hasta retomarlo).
+
+Con el ajuste de compañía **«Cerrar solo los conteos que cuadran»** encendido ([06 §6.9](06-inventario-y-almacen.md#69-cierre-automático-al-terminar-si-el-conteo-cuadra-2026-10-10)), cada posición que cuadra queda en Concordancia en cuanto se envía, y solo las que tienen diferencia esperan en «Por revisar».
