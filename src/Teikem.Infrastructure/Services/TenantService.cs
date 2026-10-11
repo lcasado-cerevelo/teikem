@@ -63,6 +63,8 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         if (req.CountRevealShowsNumber.HasValue) t.CountRevealShowsNumber = req.CountRevealShowsNumber.Value;
         if (req.CountAutoCloseMatching.HasValue) t.CountAutoCloseMatching = req.CountAutoCloseMatching.Value;
         await ApplyDefaultManualIssueReasonAsync(t, req.DefaultManualIssueReason, ct);
+        if (req.RotationMethod is not null)
+            t.RotationMethod = RotationRules.Parse(req.RotationMethod) ?? throw new ValidationException("rotationMethod", RotationRules.InvalidMethod);
         if (req.DefaultProductCategoryId.HasValue) await ApplyDefaultProductCategoryAsync(t, req.DefaultProductCategoryId.Value, ct);
         var formatChanges = FormatChanges(req);
         if (!formatChanges.IsEmpty) ApplyFormat(t, TenantFormatRules.Read(t), formatChanges);
@@ -206,5 +208,6 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         t.PhoneCountryCode, t.PhoneMask, !TenantFormatRules.MatchesRegionDefaults(TenantFormatRules.Read(t)),
         CountRevealRules.Normalize(t.CountExpectedReveal), t.CountRecountTolerancePct, t.CountRevealShowsNumber, t.CountAutoCloseMatching,
         await ManualIssueReasonLookup.UsableCodeAsync(db, t.DefaultManualIssueReasonLookupId, ct),
-        await UsableDefaultCategoryAsync(t.DefaultProductCategoryId, ct));
+        await UsableDefaultCategoryAsync(t.DefaultProductCategoryId, ct),   // 2026-10-11 c
+        RotationRules.Parse(t.RotationMethod) ?? RotationMethods.Fefo);        // 2026-10-11 Lote 34
 }

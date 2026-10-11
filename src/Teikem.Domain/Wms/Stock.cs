@@ -20,6 +20,11 @@ public class StockBalance : ITenantScoped
     public decimal QtyReserved { get; set; }
     /// <summary>Computada en SQL (QtyOnHand − QtyReserved). No usar en lógica: InventoryRules.Available.</summary>
     public decimal QtyAvailable { get; private set; }
+    /// <summary>
+    /// Lote 34 (FIFO): fecha de PRIMERA ENTRADA de lo que hay en este saldo. La fija el ledger al crearse el saldo o al volver a llenarse desde cero
+    /// (en una transferencia hereda la del origen). NULL = no se conoce (va al final del orden FIFO).
+    /// </summary>
+    [NotAudited] public DateTime? FirstReceivedAtUtc { get; set; }
     [NotAudited] public DateTime UpdatedAtUtc { get; set; }
     [NotAudited] public byte[]? RowVersion { get; set; }
 }

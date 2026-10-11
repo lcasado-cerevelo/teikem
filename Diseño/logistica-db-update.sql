@@ -204,3 +204,40 @@ WHERE t.Name = N'Advance Depot'
   AND t.DefaultProductCategoryId IS NULL
   AND REPLACE(c.Name, N' ', N'') = N'AxisCare';
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-11 (e) — Rotacion del inventario FEFO / FIFO configurable (Lote 34).
+   - dbo.Tenant.RotationMethod VARCHAR(10) NOT NULL DEFAULT 'FEFO' (CHECK FEFO|FIFO): metodo de la compania; FEFO para todas las existentes
+     (asi era siempre).
+   - dbo.Product.RotationMethod VARCHAR(10) NULL (CHECK FEFO|FIFO): excepcion del producto; NULL = el de la compania.
+   - dbo.StockBalance.FirstReceivedAtUtc DATETIME2 NULL: fecha de PRIMERA ENTRADA del saldo (la usa FIFO; la fija el ledger). Se rellena
+     una sola vez con la primera entrada que registra el Kardex en esa posicion/lote (si no hay, con UpdatedAtUtc); un saldo sin fecha
+     queda al final del orden FIFO.
+   Solo AGREGA (nunca quita). Idempotente.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.Tenant', 'RotationMethod') IS NULL
+    ALTER TABLE dbo.Tenant ADD RotationMethod VARCHAR(10) NOT NULL CONSTRAINT DF_Tenant_RotationMethod DEFAULT 'FEFO';
+GO
+IF OBJECT_ID('dbo.CK_Tenant_RotationMethod', 'C') IS NULL
+    ALTER TABLE dbo.Tenant ADD CONSTRAINT CK_Tenant_RotationMethod CHECK (RotationMethod IN ('FEFO', 'FIFO'));
+GO
+IF COL_LENGTH('dbo.Product', 'RotationMethod') IS NULL
+    ALTER TABLE dbo.Product ADD RotationMethod VARCHAR(10) NULL;
+GO
+IF OBJECT_ID('dbo.CK_Product_RotationMethod', 'C') IS NULL
+    ALTER TABLE dbo.Product ADD CONSTRAINT CK_Product_RotationMethod CHECK (RotationMethod IS NULL OR RotationMethod IN ('FEFO', 'FIFO'));
+GO
+IF COL_LENGTH('dbo.StockBalance', 'FirstReceivedAtUtc') IS NULL
+    ALTER TABLE dbo.StockBalance ADD FirstReceivedAtUtc DATETIME2 NULL;
+GO
+
+UPDATE sb
+SET sb.FirstReceivedAtUtc = COALESCE(
+        (SELECT MIN(t.CreatedAtUtc)
+         FROM dbo.InventoryTransaction t
+         WHERE t.ProductId = sb.ProductId AND t.ToWarehouseId = sb.WarehouseId
+           AND ISNULL(t.ToBinId, -1) = ISNULL(sb.WarehouseBinId, -1) AND ISNULL(t.LotId, -1) = ISNULL(sb.LotId, -1)),
+        sb.UpdatedAtUtc)
+FROM dbo.StockBalance sb
+WHERE sb.FirstReceivedAtUtc IS NULL AND sb.QtyOnHand > 0;
+GO

@@ -405,6 +405,10 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
         int? categoryId = req.CategoryId is int cid ? (await ResolveActiveCategoryAsync(cid, ct)).ProductCategoryId : null;
         var preferred = await ResolvePreferredAsync(req.PreferredWarehousePublicId, req.PreferredBinId, ct);
 
+        // Lote 34: excepción de rotación del producto (vacío o ausente = la de la compañía).
+        var rotation = string.IsNullOrWhiteSpace(req.RotationMethod) ? null
+            : RotationRules.Parse(req.RotationMethod) ?? throw new ValidationException("rotationMethod", RotationRules.InvalidMethod);
+
         var minQty = ZeroAsNull(req.MinQty);
         var minPick = ZeroAsNull(req.MinPickQty);
         var maxPick = ZeroAsNull(req.MaxPickQty);
@@ -438,6 +442,7 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
             MinQty = minQty,
             MinPickQty = minPick,
             MaxPickQty = maxPick,
+            RotationMethod = rotation,
             Brand = brand,
             Model = model,
             IsActive = true,
@@ -563,6 +568,12 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
             }
             var binIsPicking = prefBin is int pb && await IsPickingBinAsync(pb, ct2);
 
+            // 3b. Lote 34: excepción de rotación (null = sin cambio; vacío = quitarla).
+            string? rotationTarget = product.RotationMethod;
+            if (req.RotationMethod is not null)
+                rotationTarget = string.IsNullOrWhiteSpace(req.RotationMethod) ? null
+                    : RotationRules.Parse(req.RotationMethod) ?? throw new ValidationException("rotationMethod", RotationRules.InvalidMethod);
+
             // 4. Mínimos sobre el estado final (lo actual combinado con lo pedido; 0 = sin mínimo).
             var minQty = req.MinQty.HasValue ? ZeroAsNull(req.MinQty) : product.MinQty;
             var minPick = req.MinPickQty.HasValue ? ZeroAsNull(req.MinPickQty) : product.MinPickQty;
@@ -614,6 +625,7 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
             product.MinQty = minQty;
             product.MinPickQty = minPick;
             product.MaxPickQty = maxPick;
+            product.RotationMethod = rotationTarget;
             await SaveProductAsync(ct2);
         }, ct);
 
@@ -690,7 +702,7 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
 
         var hasMovements = await HasMovementsAsync(p.ProductId, ct);
         return new ProductDetailDto(item, p.WeightKg, p.VolumeM3, whPublicId, whCode, p.PreferredBinId, binCode,
-            p.MinPickQty, p.MaxPickQty, hasMovements, Convert.ToBase64String(p.RowVersion ?? Array.Empty<byte>()));
+            p.MinPickQty, p.MaxPickQty, hasMovements, Convert.ToBase64String(p.RowVersion ?? Array.Empty<byte>()), p.RotationMethod);
     }
 
     /// <summary>Filas de la lista con totales agrupados en UNA consulta (sin N+1); en esos almacenes si warehouseIds.</summary>

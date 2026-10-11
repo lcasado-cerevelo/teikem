@@ -5,7 +5,8 @@ namespace Teikem.Domain.Wms;
 
 /// <summary>Saldo candidato para recolectar (una fila de StockBalance del producto en el almacén), con su posición y zona.</summary>
 /// <param name="Available">Disponible = en mano − reservado, calculado en código (nunca la columna computada QtyAvailable).</param>
-public sealed record PickCandidate(int BinId, string BinCode, string? ZoneTypeCode, bool BinActive, int? LotId, DateOnly? ExpiryDate, decimal Available);
+public sealed record PickCandidate(int BinId, string BinCode, string? ZoneTypeCode, bool BinActive, int? LotId, DateOnly? ExpiryDate, decimal Available,
+    DateTime? ReceivedAtUtc = null);
 
 /// <summary>Porción asignada de una línea de recolección: posición, lote y cantidad (magnitud; el ledger pone el signo).</summary>
 public sealed record PickAllocation(int BinId, int? LotId, decimal Quantity);
@@ -274,29 +275,41 @@ public static class PickBatchRules
         _ => 4,
     };
 
-    /// <summary>Candidatos elegibles en orden FEFO determinista, opcionalmente restringidos a una posición y/o un lote.</summary>
-    public static IReadOnlyList<PickCandidate> Eligible(IEnumerable<PickCandidate> candidates, int? binId = null, int? lotId = null)
-        => (candidates ?? Array.Empty<PickCandidate>())
+    /// <summary>
+    /// Candidatos elegibles en orden determinista, opcionalmente restringidos a una posición y/o un lote. method = FEFO (por omisión: vencimiento
+    /// ascendente, sin vencimiento al final) o FIFO (fecha de primera entrada ascendente, sin fecha al final, luego vencimiento); en los dos, el
+    /// desempate es tipo de zona, código de posición, posición y lote (Lote 34: rotación configurable).
+    /// </summary>
+    public static IReadOnlyList<PickCandidate> Eligible(IEnumerable<PickCandidate> candidates, int? binId = null, int? lotId = null, string? method = null)
+    {
+        var q = (candidates ?? Array.Empty<PickCandidate>())
             .Where(c => c.BinActive && IsPickableZone(c.ZoneTypeCode) && c.Available > 0m)
             .Where(c => binId is null || c.BinId == binId)
-            .Where(c => lotId is null || c.LotId == lotId)
-            .OrderBy(c => c.ExpiryDate is null ? 1 : 0)
-            .ThenBy(c => c.ExpiryDate)
+            .Where(c => lotId is null || c.LotId == lotId);
+        IOrderedEnumerable<PickCandidate> ordered = RotationRules.IsFifo(method)
+            ? q.OrderBy(c => RotationRules.FifoKey(c.ReceivedAtUtc).HasNoDate)
+               .ThenBy(c => RotationRules.FifoKey(c.ReceivedAtUtc).Date)
+               .ThenBy(c => c.ExpiryDate is null ? 1 : 0)
+               .ThenBy(c => c.ExpiryDate)
+            : q.OrderBy(c => c.ExpiryDate is null ? 1 : 0)
+               .ThenBy(c => c.ExpiryDate);
+        return ordered
             .ThenBy(c => ZoneRank(c.ZoneTypeCode))
             .ThenBy(c => c.BinCode, StringComparer.Ordinal)
             .ThenBy(c => c.BinId)
             .ThenBy(c => c.LotId ?? 0)
             .ToList();
+    }
 
     /// <summary>
     /// Asigna qty sobre los candidatos (FEFO, D14): toma de cada saldo elegible hasta cubrir. Si no alcanza, devuelve lo
     /// asignado y el faltante (el servicio responde 409 insufficient_stock sin escribir nada).
     /// </summary>
-    public static PickAllocationResult Allocate(decimal qty, IEnumerable<PickCandidate> candidates, int? binId = null, int? lotId = null)
+    public static PickAllocationResult Allocate(decimal qty, IEnumerable<PickCandidate> candidates, int? binId = null, int? lotId = null, string? method = null)
     {
         var result = new List<PickAllocation>();
         var remaining = qty;
-        foreach (var c in Eligible(candidates, binId, lotId))
+        foreach (var c in Eligible(candidates, binId, lotId, method))
         {
             if (remaining <= 0m) break;
             var take = Math.Min(remaining, c.Available);

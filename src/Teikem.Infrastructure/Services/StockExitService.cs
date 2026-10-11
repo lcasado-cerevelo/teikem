@@ -40,7 +40,7 @@ public sealed class StockExitService(TeikemDbContext db, ILookupCache lookups)
                          && b.QtyOnHand - b.QtyReserved > 0m
                    select new
                    {
-                       p.ProductId, ProductPublicId = p.PublicId, bin.WarehouseBinId, BinCode = bin.Code, ZoneCode = z.Code, z.ZoneTypeLookupId,
+                       p.ProductId, ProductPublicId = p.PublicId, p.RotationMethod, b.FirstReceivedAtUtc, bin.WarehouseBinId, BinCode = bin.Code, ZoneCode = z.Code, z.ZoneTypeLookupId,
                        b.LotId, LotNumber = lot != null ? lot.LotNumber : null, Expiry = lot != null ? lot.ExpiryDate : null,
                        Available = b.QtyOnHand - b.QtyReserved,
                    };
@@ -55,14 +55,16 @@ public sealed class StockExitService(TeikemDbContext db, ILookupCache lookups)
         foreach (var id in list.Where(r => r.ZoneTypeLookupId != null).Select(r => r.ZoneTypeLookupId!.Value).Distinct())
             zoneTypes[id] = (await lookups.GetAsync(id, ct))?.InternalCode;
 
+        var tenantMethod = await db.Tenants.AsNoTracking().Where(t => t.TenantId == db.CurrentTenantId).Select(t => t.RotationMethod).FirstOrDefaultAsync(ct);   // Lote 34: rotación de la compañía; el producto puede tener excepción
         var ranked = new List<StockExitOptionDto>();
         foreach (var g in list.GroupBy(r => (r.ProductId, r.ProductPublicId)).OrderBy(g => g.Key.ProductId))
         {
             var byKey = g.ToDictionary(r => (r.WarehouseBinId, r.LotId));
             var candidates = g.Select(r => new PickCandidate(r.WarehouseBinId, r.BinCode, r.ZoneTypeLookupId is int zt ? zoneTypes.GetValueOrDefault(zt) : null,
-                BinActive: true, r.LotId, r.Expiry, r.Available));
+                BinActive: true, r.LotId, r.Expiry, r.Available, r.FirstReceivedAtUtc));
             var rank = 0;
-            foreach (var c in PickBatchRules.Eligible(candidates))
+            var method = RotationRules.Resolve(g.First().RotationMethod, tenantMethod);
+            foreach (var c in PickBatchRules.Eligible(candidates, null, null, method))
             {
                 var r = byKey[(c.BinId, c.LotId)];
                 ranked.Add(new StockExitOptionDto(g.Key.ProductPublicId, c.BinId, c.BinCode, r.ZoneCode, c.ZoneTypeCode, c.LotId, r.LotNumber, c.ExpiryDate,

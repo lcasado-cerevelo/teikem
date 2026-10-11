@@ -124,6 +124,7 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         b.Property(p => p.SalePrice).HasColumnType("decimal(18,4)");
         b.Property(p => p.MinQty).HasColumnType("decimal(16,3)");
         b.Property(p => p.MinPickQty).HasColumnType("decimal(16,3)");
+        b.Property(p => p.RotationMethod).HasColumnType("varchar(10)");
         b.Property(p => p.MaxPickQty).HasColumnType("decimal(16,3)");
         b.Property(p => p.PackQty).HasColumnType("decimal(16,3)");   // 2026-10-09: empaque
         b.Property(p => p.Brand).HasMaxLength(100);   // Lote 12

@@ -178,6 +178,20 @@ public sealed class InventoryLedger(TeikemDbContext db, ITenantContext tenant, I
 
         // Aplicación de los saldos (proyección bloqueada del ledger).
         var now = DateTime.UtcNow;
+        // Lote 34 (FIFO): fecha de primera entrada del saldo. Una transferencia hereda la del origen (la edad de la mercancía no se reinicia al
+        // moverla de posición); cualquier otra entrada, ahora. Se fija al crearse el saldo y cuando un saldo vacío vuelve a llenarse.
+        DateTime EntryDate(BalanceKey to)
+        {
+            DateTime? carried = null;
+            foreach (var p in postings)
+            {
+                if (p.ToWarehouseId != to.WarehouseId || p.ToBinId != to.BinId || p.ProductId != to.ProductId || p.LotId != to.LotId) continue;
+                if (p.FromWarehouseId is not int fw) continue;
+                var from = balances.GetValueOrDefault(new BalanceKey(p.ProductId, fw, p.FromBinId, p.LotId));
+                if (from?.FirstReceivedAtUtc is DateTime d && (carried is null || d < carried)) carried = d;
+            }
+            return carried ?? now;
+        }
         foreach (var (key, value) in running)
         {
             var balance = balances[key];
@@ -187,9 +201,12 @@ public sealed class InventoryLedger(TeikemDbContext db, ITenantContext tenant, I
                 balance = new StockBalance
                 {
                     TenantId = tenantId, ProductId = key.ProductId, WarehouseId = key.WarehouseId, WarehouseBinId = key.BinId, LotId = key.LotId,
+                    FirstReceivedAtUtc = EntryDate(key),
                 };
                 db.StockBalances.Add(balance);
             }
+            else if (balance.QtyOnHand <= 0m && value.OnHand > 0m)
+                balance.FirstReceivedAtUtc = EntryDate(key);
             if (balance.QtyOnHand == value.OnHand && balance.QtyReserved == value.Reserved) continue;
             balance.QtyOnHand = value.OnHand;
             balance.QtyReserved = value.Reserved;
@@ -366,6 +383,11 @@ public sealed class InventoryLedger(TeikemDbContext db, ITenantContext tenant, I
         balance.QtyOnHand = ledgerQty;
         var now = DateTime.UtcNow;
         balance.UpdatedAtUtc = now;
+        // Lote 34: si el saldo no tenía fecha de primera entrada, la primera entrada que registra el Kárdex en esta posición.
+        if (balance.FirstReceivedAtUtc is null && ledgerQty > 0m)
+            balance.FirstReceivedAtUtc = await db.InventoryTransactions.AsNoTracking()
+                .Where(t => t.ProductId == p && t.ToWarehouseId == w && t.ToBinId == b && t.LotId == l)
+                .Select(t => (DateTime?)t.CreatedAtUtc).MinAsync(ct);
         await SaveAsync(ct);
         return new BalanceRebuildResult(before, ledgerQty, reserved);
     }
