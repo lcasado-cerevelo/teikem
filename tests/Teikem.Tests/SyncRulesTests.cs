@@ -243,6 +243,21 @@ public sealed class SyncRulesTests
     }
 
     [Fact]
+    public async Task Bins_carry_their_capacity_so_the_device_can_work_out_free_space_offline()
+    {
+        await using var f = await SyncFixtureAsync();
+        var w1 = await f.AddWarehouseAsync("W1");
+        var z1 = await f.AddZoneAsync(w1, "PCK", ZoneTypes.Picking);
+        var withCap = await f.AddBinAsync(z1, "P-01", maxCapacityQty: 40);
+        var noCap = await f.AddBinAsync(z1, "P-02");
+
+        var page = await f.Get<SyncService>().BinsAsync(new SyncQuery(WarehousePublicId: w1.PublicId), default);
+
+        Assert.Equal(40, page.Items.Single(i => i.Id == withCap.WarehouseBinId).MaxCapacityQty);
+        Assert.Null(page.Items.Single(i => i.Id == noCap.WarehouseBinId).MaxCapacityQty);
+    }
+
+    [Fact]
     public async Task Bins_difference_includes_deactivated_bins_and_bins_of_a_deactivated_zone_as_inactive()
     {
         await using var f = await SyncFixtureAsync();

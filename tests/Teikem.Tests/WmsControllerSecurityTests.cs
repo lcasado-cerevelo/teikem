@@ -141,6 +141,7 @@ public class WmsControllerSecurityTests
         [(typeof(CycleCountsController), nameof(CycleCountsController.Create))] = PermissionCatalog.WarehouseCountCapture,   // Lote 8A: a ciegas
         [(typeof(CycleCountsController), nameof(CycleCountsController.Capture))] = PermissionCatalog.WarehouseCountCapture,   // Lote 8A: a ciegas
         [(typeof(CycleCountsController), nameof(CycleCountsController.CaptureBatch))] = PermissionCatalog.WarehouseCountCapture,   // Lote 8A
+        [(typeof(CycleCountsController), nameof(CycleCountsController.CaptureOffline))] = PermissionCatalog.WarehouseCountCapture,   // 2026-10-11 (conteo sin señal)
         [(typeof(CycleCountsController), nameof(CycleCountsController.AddLine))] = PermissionCatalog.WarehouseCountCapture,   // Lote 8A: a ciegas
         [(typeof(CycleCountsController), nameof(CycleCountsController.Finish))] = PermissionCatalog.WarehouseCountCapture,   // Lote 8A: a ciegas
         [(typeof(CycleCountsController), nameof(CycleCountsController.Refresh))] = PermissionCatalog.WarehouseCount,
@@ -336,7 +337,7 @@ public class WmsControllerSecurityTests
         Assert.Equal(PermissionCatalog.WarehouseIssue, Expected[(typeof(ManualIssuesController), nameof(ManualIssuesController.Create))]);
         Assert.Equal(PermissionCatalog.WarehouseIssue, Expected[(typeof(ManualIssuesController), nameof(ManualIssuesController.Delete))]);
         Assert.Equal(ModuleOf[typeof(PickBatchesController)], ModuleOf[typeof(ManualIssuesController)]);
-        Assert.Equal(160, Expected.Count); // 132 de master + 1 de reparto por posición (Distribute) + 1 de verificación de línea (CheckLine) + 12 de RentalsController + 3 de RentalReturnsController + 4 de RentalProcessesController + 5 de ManualIssuesController
+        Assert.Equal(161, Expected.Count); // 2026-10-11: + 1 (CaptureOffline, conteo sin señal) = 161; // 132 de master + 1 de reparto por posición (Distribute) + 1 de verificación de línea (CheckLine) + 12 de RentalsController + 3 de RentalReturnsController + 4 de RentalProcessesController + 5 de ManualIssuesController
     }
 
     [Fact]
