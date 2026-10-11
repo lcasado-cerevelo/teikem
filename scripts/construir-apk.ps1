@@ -10,13 +10,26 @@
   %USERPROFILE%\.teikem\apk-versioncode.txt; el primero que sale es el 2, porque los aparatos instalados traen el 1) y firma con la MISMA llave, que
   es lo que Android exige para instalar encima y conservar la configuración del aparato (servidor, registro, PIN y datos). Instale el APK nuevo
   con  scripts\actualizar-aparatos.ps1  (aparatos conectados por USB) o copiándolo al aparato y abriéndolo. NUNCA desinstale antes.
-  Opciones: -ApiUrl <https://...>  -Salida <carpeta>  -SinRestaurar (deja android\ en producción)  -CodigoVersion <n> (fuerza el código)
+  VERSIÓN Y CÓDIGO (2026-10-11):
+    -Version <x.y.z>     nombre de la versión que muestra la app (p. ej. 1.1.0) y lleva el nombre del APK. Sin él, la de package.json.
+    -CodigoVersion <n>   fuerza el código de versión. Sin él, es el último que compiló + 1. Si es menor o igual al último, el script se detiene
+                         (Android no dejaría instalar encima) salvo que agregue -PermitirBajar.
+    -VerCodigo           SOLO muestra la versión y el código que usaría (y cuál fue el último); no compila, no pide contraseña y no toca nada.
+  Ejemplos:
+    construir-apk.ps1 -VerCodigo                                   (ver qué saldría)
+    construir-apk.ps1                                              (versión de package.json y código = último + 1)
+    construir-apk.ps1 -Version 1.1.0                               (cambia el nombre de la versión; el código sube solo)
+    construir-apk.ps1 -Version 1.1.0 -CodigoVersion 12             (fuerza también el código)
+  Otras opciones: -ApiUrl <https://...>  -Salida <carpeta>  -SinRestaurar (deja android\ en producción)
 #>
 param(
     [string]$ApiUrl = 'https://teikem.advancelogisticspr.com',
     [string]$Salida = 'F:\Download\TeikemApp',
     [switch]$SinRestaurar,
-    [int]$CodigoVersion = 0
+    [int]$CodigoVersion = 0,
+    [string]$Version = '',
+    [switch]$VerCodigo,
+    [switch]$PermitirBajar
 )
 
 $ErrorActionPreference = 'Stop'
@@ -26,6 +39,28 @@ function Paso([string]$m) { Write-Host ''; Write-Host "== $m" -ForegroundColor C
 function Fallar([string]$m) { Write-Host ''; Write-Host $m -ForegroundColor Red; exit 1 }
 
 if ($ApiUrl -notmatch '^https://') { Fallar 'La dirección del servidor debe empezar con https:// (la app de producción no admite HTTP sin cifrar).' }
+
+# --- Versión y código de versión (siempre mayor que el anterior: si no, Android no deja instalar encima) ---
+$dirLlave = Join-Path $env:USERPROFILE '.teikem'
+$archivoCodigo = Join-Path $dirLlave 'apk-versioncode.txt'
+$anterior = 1   # los aparatos ya instalados traen el código 1
+$hayArchivo = Test-Path $archivoCodigo
+if ($hayArchivo) { $leido = 0; if ([int]::TryParse((Get-Content $archivoCodigo -Raw).Trim(), [ref]$leido) -and $leido -ge 1) { $anterior = $leido } }
+if ($CodigoVersion -le 0) {
+    $CodigoVersion = $anterior + 1
+} elseif ($CodigoVersion -le $anterior -and -not $PermitirBajar) {
+    Fallar "El código de versión $CodigoVersion no es mayor que el último que compiló ($anterior): Android no dejaría instalar este APK encima del anterior. Use uno mayor (o quite -CodigoVersion para que suba solo). Si de verdad lo quiere igual o menor, agregue -PermitirBajar."
+}
+if (-not $Version) { $Version = (Get-Content (Join-Path $app 'package.json') -Raw | ConvertFrom-Json).version }
+if ($Version -notmatch '^\d+\.\d+\.\d+$') { Fallar "La versión debe verse como 1.2.3 (tres números separados por puntos); recibí '$Version'." }
+Write-Host "Versión de este APK:           $Version" -ForegroundColor Cyan
+Write-Host "Código de versión de este APK: $CodigoVersion (el último que compiló fue el $anterior; tiene que ser mayor que el de los aparatos; no lo baje)" -ForegroundColor Cyan
+if (-not $hayArchivo) { Write-Host "Aviso: no encontré $archivoCodigo; se asume que el último fue el 1. Si en esta computadora (o con este usuario) ya hizo APK con códigos mayores, use -CodigoVersion <n>." -ForegroundColor Yellow }
+if ($VerCodigo) {
+    Write-Host ''
+    Write-Host "Solo revisión (-VerCodigo): no se compiló nada ni se cambió nada. El archivo del último código es: $archivoCodigo" -ForegroundColor Green
+    exit 0
+}
 
 # --- Herramientas de Android ---
 Paso 'Revisando Android SDK y Java'
@@ -39,7 +74,6 @@ if (-not (Test-Path $keytool)) { Fallar "No encuentro keytool en $keytool." }
 Write-Host "ANDROID_HOME = $env:ANDROID_HOME"; Write-Host "JAVA_HOME    = $env:JAVA_HOME"
 
 # --- Llave de firma ---
-$dirLlave = Join-Path $env:USERPROFILE '.teikem'
 $llave = Join-Path $dirLlave 'teikem-release.jks'
 $alias = 'teikem'
 if (-not (Test-Path $llave)) {
@@ -58,18 +92,12 @@ $env:TEIKEM_RELEASE_KEYSTORE_PASSWORD = $clave
 $env:TEIKEM_RELEASE_KEY_ALIAS = $alias
 $env:TEIKEM_RELEASE_KEY_PASSWORD = $clave
 
-# --- Código de versión: siempre mayor que el anterior (si no, Android no deja instalar encima) ---
-$archivoCodigo = Join-Path $dirLlave 'apk-versioncode.txt'
-if ($CodigoVersion -le 0) {
-    $anterior = 1   # los aparatos ya instalados traen el código 1
-    if (Test-Path $archivoCodigo) { $leido = 0; if ([int]::TryParse((Get-Content $archivoCodigo -Raw).Trim(), [ref]$leido) -and $leido -ge 1) { $anterior = $leido } }
-    $CodigoVersion = $anterior + 1
-}
+# --- Versión y código (calculados arriba) para la compilación ---
 $env:TEIKEM_VERSION_CODE = "$CodigoVersion"
+$env:TEIKEM_APP_VERSION = $Version
 # Sello de esta compilación (fecha y commit): Inicio de la app lo muestra al pie para saber qué APK tiene cada aparato
 $commit = (& git -C $repo rev-parse --short HEAD 2>$null)
 $env:TEIKEM_BUILD_STAMP = "$(Get-Date -Format 'yyyy-MM-dd HH:mm') $commit"
-Write-Host "Código de versión de este APK: $CodigoVersion (tiene que ser mayor que el de los aparatos; no lo baje)" -ForegroundColor Cyan
 
 # --- Compilar ---
 Set-Location $app
@@ -110,9 +138,9 @@ Pop-Location
 
 $apkOrigen = Join-Path $app 'android\app\build\outputs\apk\release\app-release.apk'
 if ($ok -and (Test-Path $apkOrigen)) {
-    $version = (Get-Content (Join-Path $app 'package.json') -Raw | ConvertFrom-Json).version
     New-Item -ItemType Directory -Force $Salida | Out-Null
-    $apk = Join-Path $Salida ("TeikemAlmacen-$version-c$CodigoVersion.apk")
+    New-Item -ItemType Directory -Force $dirLlave | Out-Null
+    $apk = Join-Path $Salida ("TeikemAlmacen-$Version-c$CodigoVersion.apk")
     Set-Content -Path $archivoCodigo -Value "$CodigoVersion" -Encoding ASCII   # solo si compiló: el próximo APK sube de aquí
     Copy-Item $apkOrigen $apk -Force
     $firmador = Get-ChildItem (Join-Path $env:ANDROID_HOME 'build-tools') -Recurse -Filter apksigner.bat -ErrorAction SilentlyContinue | Sort-Object FullName | Select-Object -Last 1
@@ -132,6 +160,7 @@ if (-not $SinRestaurar) {
     Paso 'Devolviendo android\ a la variante de desarrollo (emulador con HTTP)'
     Remove-Item Env:APP_VARIANT -ErrorAction SilentlyContinue
     Remove-Item Env:TEIKEM_VERSION_CODE -ErrorAction SilentlyContinue
+    Remove-Item Env:TEIKEM_APP_VERSION -ErrorAction SilentlyContinue
     Remove-Item Env:TEIKEM_BUILD_STAMP -ErrorAction SilentlyContinue
     Remove-Item Env:EXPO_PUBLIC_API_URL -ErrorAction SilentlyContinue
     npx expo prebuild --platform android --clean

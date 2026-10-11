@@ -25,7 +25,7 @@ const splash = { image: './assets/splash-icon.png', backgroundColor: brandBlue, 
 const config: ExpoConfig = {
   name: variant === 'production' ? 'Teikem Almacén' : 'Teikem Almacén (dev)',
   slug: 'teikem-almacen',
-  version: '1.0.0',
+  version: process.env.TEIKEM_APP_VERSION || '1.0.0',
   orientation: 'portrait',
   userInterfaceStyle: 'automatic',
   scheme: 'teikem-almacen',
