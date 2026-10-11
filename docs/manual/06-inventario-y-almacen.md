@@ -299,7 +299,7 @@ Pantalla: Almacén → **Posiciones** — botón **Productos por posición**, ca
 ### 1.6 Orden de salida del inventario (2026-10-05)
 
 `GET /api/v1/inventory/exit-options?warehousePublicId=…&productPublicIds=…&skip=&take=` (`inventory.view`, módulo WMS_LOTSERIAL) devuelve, **por producto**, de dónde debe salir en el MISMO orden en que lo asigna la recolección
-(`PickBatchRules.Eligible`, FEFO D14: vence primero —los sin vencimiento al final—, luego tipo de zona picking < reserva < refrigerada < preparación y código de posición). Cada fila: `productPublicId`, `binId`, `binCode`, `zoneCode`,
+(`PickBatchRules.Eligible`, FEFO D14 por omisión —o FIFO si la compañía o el producto lo configuran, §2.2—: vence primero —los sin vencimiento al final—, luego tipo de zona picking < reserva < refrigerada < preparación y código de posición). Cada fila: `productPublicId`, `binId`, `binCode`, `zoneCode`,
 `zoneTypeCode`, `lotId`, `lotNumber`, `expiryDate`, `available` (en mano − reservado) y `rank` (1 = sale primero, reinicia por producto). Solo posiciones **activas** y recolectables (sin cuarentena ni cruce de muelle) con disponible mayor que
 cero, de productos activos. `warehousePublicId` es obligatorio (400 `Indique el almacén.`; 404 `Almacén no encontrado.` si no existe o es de otra compañía); `productPublicIds` vacío = todos; página `{ total, skip, take, serverTimeUtc, items }`,
 `take` ≤ 500 (por defecto 500). **Es la única implementación de esa regla**: la app de almacén la baja al aparato y la consulta en línea; ninguna pantalla vuelve a ordenar.
@@ -582,6 +582,45 @@ reservas, documentos abiertos y existencias no convertibles (tabla de arriba).
   (salida y entradas por el mismo total, neto 0).
 
 ---
+
+### 2.2 Rotación del inventario: FEFO o FIFO (2026-10-11, Lote 34)
+
+Qué hace: define **de qué saldo sale primero la mercancía** cuando el sistema asigna una salida (recolección, despacho manual, reabasto de
+la posición de picking y el orden de salida que baja al aparato). Hay dos métodos:
+
+- **FEFO** (el de siempre y el de **todas las compañías existentes**): vence primero, sale primero; lo que no vence va al final.
+- **FIFO**: **entra primero, sale primero**: sale antes el saldo cuya **primera entrada** es más vieja; un saldo sin fecha conocida va al final.
+
+En los dos, el desempate es el mismo de antes: tipo de zona (picking, reserva, refrigerada, preparación), código de posición y lote. Cuarentena, cruce
+de muelle y la zona En renta nunca se asignan, con cualquiera de los dos métodos. Una posición o lote **explícitos** en la salida siguen mandando.
+
+Dónde se configura (decisión del dueño, 2026-10-11):
+
+- **Por compañía:** `PUT /api/v1/tenant/settings` con `{ "rotationMethod": "FIFO" }` (`admin.tenant`; sin el campo no cambia; `GET` la devuelve en
+  `rotationMethod`, siempre con valor, `FEFO` por omisión).
+- **Excepción por producto:** `rotationMethod` en el alta (`POST /api/v1/products`) y en `PATCH /api/v1/products/{publicId}`; en el `PATCH`, el campo
+  vacío (`""`) **quita** la excepción (el producto vuelve al método de la compañía) y sin el campo no cambia. La ficha del producto lo devuelve en
+  `rotationMethod` (`null` = sigue a la compañía). Manda **la excepción del producto**; si no hay, la de la compañía; si no, FEFO.
+- Se escribe sin distinguir mayúsculas (`fifo` = `FIFO`). Cambiarlo queda en la bitácora de auditoría (compañía y producto) y vale **desde la siguiente
+  asignación**; no mueve nada de lo ya recolectado ni de las tareas de reabasto ya creadas.
+
+**La fecha de primera entrada de un saldo** (la que usa FIFO) la fija el sistema, no se captura: es el momento en que el saldo (producto, posición, lote)
+recibió su primera existencia, o en que **volvió a llenarse desde cero**. Si llegan más unidades a un saldo que ya tiene existencia, **conserva la fecha más
+vieja** (un saldo es una fila: se rota por saldo, no unidad por unidad). Una **transferencia entre posiciones hereda la fecha del origen**: cambiar
+mercancía de lugar no la rejuvenece. Para el inventario que ya existía, la fecha se calculó una vez con la primera entrada que registra el Kárdex en esa posición
+y lote (si no la hay, con la última actualización del saldo); un saldo sin ninguna fecha queda **al final** del orden FIFO.
+
+Con FIFO, para un producto con lote y vencimiento, **la fecha de entrada manda sobre el vencimiento** (el vencimiento solo desempata). Si esa mezcla no
+conviene para un producto que vence, déjalo como FEFO con su excepción.
+
+| Caso | Mensaje exacto | HTTP |
+|---|---|---|
+| `rotationMethod` distinto de FEFO o FIFO (compañía, alta o edición de producto) | `El método de rotación debe ser FEFO o FIFO.` | 400 (campo `rotationMethod`) |
+| Cambiar el de la compañía sin `admin.tenant` | respuesta estándar de permiso denegado | 403 |
+
+Qué cambia en las pantallas: nada visible todavía. La web y la app **no** tienen aún el selector (Ajustes de la compañía → Operación y la ficha del producto);
+por ahora se configura por la API. Las pantallas que muestran el orden de salida (selector de posiciones de Recolección, «Despachar» de la app) ya usan el orden
+que calcula el servidor, así que **respetan el método** sin cambios.
 
 ## 3. Inventario: saldos, Kárdex, ajustes, transferencias, conciliación y descuadres, genealogía y rastro de serie
 
