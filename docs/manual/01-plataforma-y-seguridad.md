@@ -819,6 +819,7 @@ Validaciones:
 | `sessionDays` | 1-365 | `Entre 1 y 365 días.` | 400 |
 | `deviceSessionDays` (Lote 8A: vida en días de la sesión de los aparatos de almacén; 30 por defecto; se lee en `GET /api/v1/tenant/settings` y se cambia en `PUT /api/v1/tenant/settings` con `admin.tenant`) | 1-365 | `Entre 1 y 365 días.` | 400 |
 | `brandingJson` | las reglas de la marca (sección 11.2: tamaño, JSON, campos, colores, contraste, matiz) | los de la tabla de la sección 11.2 | 400 |
+| `defaultManualIssueReason` (2026-10-11 b: «Motivo por default del despacho manual»; `""` = sin default; ver [06 §7c](06-inventario-y-almacen.md#7c-motivo-por-default-del-despacho-manual-2026-10-11-b)) | código del catálogo `ManualIssueReason` activo y habilitado para la compañía | `El motivo {CÓDIGO} no existe o está inactivo.` (`errors.defaultManualIssueReason`) | 400 |
 | Nombre de feriado vacío | — | `El nombre es obligatorio.` | 400 |
 | Fecha de feriado ya registrada | — | `Ya hay un feriado en esa fecha.` | 409 |
 | Feriado inexistente | — | `Feriado '<id>' no encontrado.` | 404 |

@@ -96,3 +96,53 @@ Mensajes y códigos: capítulo 06 §7b del manual (tabla de validaciones) y `doc
 6. **Actividad reciente**: la creación de un DMA se ve como el evento de recolección (`PICK_COLLECTED`) con su número `DMA-…`; no se agregó
    un evento propio.
 7. `GET /api/v1/manual-issues/reasons` exige `warehouse.issue` (quien despacha); el catálogo genérico sigue disponible.
+
+## Adenda 2026-10-11 (b) — Motivo por default del despacho manual (servidor)
+
+Decisión del dueño: el despacho manual no debe complicar el aparato → **motivo por default por compañía, preseleccionado** en la app y la
+web; el servidor **sigue exigiendo** motivo; la nota sigue opcional y vacía por omisión.
+
+| Pieza | Qué hace | Dónde |
+|---|---|---|
+| Modelo | `Tenant.DefaultManualIssueReasonLookupId` (INT NULL, FK a `LookupCode`); auditado por el interceptor (`Tenant` es `[AuditEntity]`) | `Domain/Tenancy/Tenant.cs`, `Persistence/Configurations/TenancyConfigurations.cs` |
+| Reglas puras | `NormalizeDefaultReason` (null = sin cambio, vacío = quitar, código en mayúsculas) e `IsDefaultReason` (solo si sigue activo y habilitado) | `Domain/Wms/PickBatchRules.cs` |
+| Validación | `ManualIssueReasonLookup`: activo, visible para la compañía y no deshabilitado por su override (la misma regla del POST); se lee de la base, no de la caché global | `Infrastructure/Services/ManualIssueReasonLookup.cs` |
+| Ajustes | `PUT /api/v1/tenant/settings` acepta `defaultManualIssueReason` (`admin.tenant`); 400 `El motivo {CÓDIGO} no existe o está inactivo.` en `errors.defaultManualIssueReason` sin guardar nada; reenviar el código ya guardado no se revalida. `GET` lo devuelve (código efectivo o `null`) | `Services/TenantService.cs`, `Contracts/TenantContracts.cs` |
+| Motivos | `GET /api/v1/manual-issues/reasons` devuelve `ManualIssueReasonDto` = los campos de `LookupValueDto` **más** `isDefault` (sigue siendo un arreglo: compatible) | `Api/Controllers/ManualIssuesController.cs`, `Services/PickBatchService.cs` (`WithDefaultReasonAsync`), `Contracts/PickBatchContracts.cs` |
+| SQL | Sección **2026-10-11 (b)** de `Diseño/logistica-db-update.sql`: columna con `COL_LENGTH` y `FK_Tenant_DefaultManualIssueReason` con `OBJECT_ID`; sin datos (nadie nace con default) | `Diseño/logistica-db-update.sql` |
+| Contrato | `web-app/openapi.json` (solo agregados: `ManualIssueReasonDto`, `defaultManualIssueReason` en `TenantSettingsDto` y `TenantSettingsUpdateRequest`) y `schema.d.ts` de la web **y** de la app (`npm run api:types` en las dos); `tsc` de las dos sin errores | `web-app/`, `app-almacen/src/kernel/api/schema.d.ts` |
+
+Contrato:
+
+```json
+// PUT /api/v1/tenant/settings  (null o ausente = sin cambio; "" = quitar)
+{ "defaultManualIssueReason": "SALE" }
+// → 200 TenantSettingsDto: { …, "defaultManualIssueReason": "SALE" }
+
+// GET /api/v1/manual-issues/reasons → 200
+[
+  { "id": 1446, "entity": "ManualIssueReason", "code": "SAMPLE", "label": "Muestra", "labels": {"es":"Muestra","en":"Sample"}, "description": "",
+    "sortOrder": 1, "isSystem": true, "isEnabled": true, "isOverridden": false, "isActive": true, "isDefault": false },
+  { "id": 1449, "entity": "ManualIssueReason", "code": "SALE", "label": "Venta", "labels": {"es":"Venta","en":"Sale"}, "description": "",
+    "sortOrder": 4, "isSystem": true, "isEnabled": true, "isOverridden": false, "isActive": true, "isDefault": true }
+]
+```
+
+Cómo se probó: `dotnet build` sin errores y `dotnet test`: **3344 pruebas, 0 fallas** (antes 3333; +11 en
+`ManualIssueDefaultReasonTests`: reglas, servicio sobre InMemory —guardar, quitar, null sin cambio, 400 sin guardar nada (inexistente, de
+otro dominio, inactivo, deshabilitado), default deshabilitado después se ignora y vuelve al rehabilitarlo, override de otra compañía no
+afecta, el POST sigue exigiendo motivo—, permisos de los endpoints, auditoría, contrato compatible y espejo SQL). Base de desarrollo
+`Teikem`: `db-init` aplicó la sección (16 lotes), columna y FK verificadas con `sqlcmd` y el script corrido otra vez directo
+(`sqlcmd -I -b`) sin cambios; prueba real: 400 con `regalo`, guardar `sale` → `SALE`, `isDefault` solo en Venta, deshabilitar Venta →
+ninguno marcado y ajustes en `null`, reenviar `SALE` → 200, quitar el override → vuelve, POST sin motivo → 400, `""` → `null`; la bitácora
+dejó `{"DefaultManualIssueReasonLookupId":{"from":null,"to":1449}}` y su vuelta. `scripts/smoke.sh` completo sobre una base **nueva** de
+desarrollo (`TeikemDMC`, con `SMOKE_SQL` y `SMOKE_MIGRATION_RUN`): **SMOKE OK**, con las líneas nuevas en el paso «despacho manual».
+
+Decisiones a revisar:
+
+8. **Ajustes devuelven el default efectivo**: si el motivo guardado ya no se puede usar, `GET /tenant/settings` devuelve `null` (lo que la
+   pantalla verá preseleccionado) aunque la columna conserve el valor; al rehabilitarlo vuelve solo. Si se prefiere mostrar «guardado pero
+   deshabilitado», hace falta un campo más.
+9. **Faltan la app y la web** (otra fase): la app guarda los motivos con `mapReason` y hoy descarta `isDefault`; debe guardarlo y
+   preseleccionar ese motivo en «Completar despacho»; la web debe preseleccionarlo en el panel de Recolección y agregar el selector en
+   Ajustes de la compañía.

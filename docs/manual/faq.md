@@ -6100,3 +6100,27 @@ así que no puede quedar dos veces. No la descarte ni la repita a mano. Si sigue
 Es el tipo de cada operación guardada en el aparato (antes salía el nombre técnico, como `manualIssue` o `adjust`). La lista completa está en el
 [capítulo 09 §9](09-app-almacen.md#9-sincronización). Si ve un nombre técnico en inglés que no está en la lista, la operación la guardó otra versión
 de la app: se manda igual; avise a soporte si queda con error.
+
+## Motivo por default del despacho manual (2026-10-11 b)
+
+Capítulo: [06 §7c](06-inventario-y-almacen.md#7c-motivo-por-default-del-despacho-manual-2026-10-11-b).
+
+**¿Cómo hago para que el aparato ya traiga el motivo escogido?**
+En **Ajustes de la compañía**, elija el **Motivo por default del despacho manual** (hace falta `admin.tenant`). La app y la web lo preseleccionan;
+quien despacha lo puede cambiar. La nota sigue vacía por omisión. El aparato lo toma la próxima vez que baje los motivos con señal (la lista de
+motivos marca cuál es el default con `isDefault`).
+
+**`El motivo {CÓDIGO} no existe o está inactivo.`** (400, al guardar los ajustes, en `defaultManualIssueReason`)
+El código no está en el catálogo «Motivo del despacho manual», está inactivo o su compañía lo deshabilitó. No se guardó ningún ajuste de ese envío.
+Escoja uno de la lista (`GET /api/v1/manual-issues/reasons`) o habilítelo primero en **Sistema → Catálogos**.
+
+**Puse un motivo por default y ya no se preselecciona.**
+La compañía deshabilitó ese motivo (o se inactivó): el default se ignora sin error y los ajustes lo muestran vacío. Al volver a habilitarlo vuelve a
+preseleccionarse solo; o escoja otro default.
+
+**Con motivo por default, ¿puedo despachar sin motivo?**
+No: el default solo preselecciona en la pantalla. Si el despacho llega al servidor sin motivo responde 400 `Indique el motivo del despacho manual.`.
+
+**¿Cómo quito el motivo por default?**
+En Ajustes de la compañía déjelo en «Sin motivo por default» (por API, `PUT /api/v1/tenant/settings` con `"defaultManualIssueReason": ""`).
+Queda registrado en la auditoría de la compañía.

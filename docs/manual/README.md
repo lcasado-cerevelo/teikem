@@ -93,6 +93,9 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    2026-10-11 (sección 7b): **Despacho manual** `DMA-#####` — salida de inventario sin entrega con motivo obligatorio (catálogo editable
    «Motivo del despacho manual») y nota libre, permiso nuevo `warehouse.issue`, ficha consultable, filtro `kind` de la lista de
    recolecciones, Kárdex `DMA-… · motivo`, y sus mensajes 400/403/404/409/422.
+   2026-10-11 (sección 7c): **Motivo por default del despacho manual** — ajuste de la compañía (`defaultManualIssueReason`,
+   `admin.tenant`) que la app y la web preseleccionan (`isDefault` en `/manual-issues/reasons`); el servidor sigue exigiendo motivo; un
+   default deshabilitado se ignora.
 7. [07 — Pulso del día y Actividad reciente (Lote 7A: Almacén)](07-pulso-y-actividad.md): panel de eventos
    recientes de Almacén (catálogo de 23 eventos, obligatorio/opcional, ventana 24h/48h/hoy, filtro por módulo),
    filtro "bajo mínimo" de productos, e indicadores y gráfico nuevos de Almacén en el Pulso del día (Unidades
