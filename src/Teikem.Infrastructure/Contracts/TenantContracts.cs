@@ -8,6 +8,8 @@ public sealed record TenantModuleRequest(bool IsEnabled);
 /// Región y formatos (2026-10): RegionCode ('PR' | 'US') y los valores con que se muestran fechas, horas, dinero, números y
 /// teléfonos (TenantFormatRules); TimeZoneId es la zona de "hoy". IsRegionCustomized = algún valor difiere del juego de su región
 /// (la pantalla la muestra como "Personalizada").
+/// DefaultManualIssueReason (2026-10-11 b): código del motivo por default del despacho manual (catálogo ManualIssueReason) que la
+/// app y la web preseleccionan; null = sin default, o el guardado ya no está activo y habilitado para la compañía (se ignora).
 /// </summary>
 public sealed record TenantSettingsDto(
     int Id, Guid PublicId, string Name, string? LegalName, string? TaxId, string DefaultLangCode, byte WorkDaysMask, int MaxStopsPerRouteDefault,
@@ -16,13 +18,15 @@ public sealed record TenantSettingsDto(
     string DateOrder, string DateSeparator, byte TimeFormat, byte WeekStartDay, string ThousandsSeparator, string DecimalSeparator,
     string PhoneCountryCode, string PhoneMask, bool IsRegionCustomized,
     string CountExpectedReveal = "MARKED", decimal CountRecountTolerancePct = 0m, bool CountRevealShowsNumber = true,
-    bool CountAutoCloseMatching = false);
+    bool CountAutoCloseMatching = false, string? DefaultManualIssueReason = null);
 
 /// <summary>
 /// Cambio parcial de los ajustes: null = sin cambio. Región y formatos: si RegionCode es distinto del actual se cargan los valores
 /// por defecto de esa región y los campos de formato que vengan mandan sobre ellos (sin campos = la región completa).
 /// Conteo informado al capturar (tarea 25): CountExpectedReveal ('NONE' | 'MARKED' | 'ALL'), CountRecountTolerancePct (0 a 100) y CountRevealShowsNumber.
 /// CountAutoCloseMatching (2026-10-10): terminar un conteo que cuadra lo confirma solo.
+/// DefaultManualIssueReason (2026-10-11 b): código del catálogo ManualIssueReason activo y habilitado para la compañía; "" = quitar
+/// el default; null = sin cambio.
 /// </summary>
 public sealed record TenantSettingsUpdateRequest(
     string? Name, string? LegalName, string? TaxId, string? DefaultLangCode, byte? WorkDaysMask, int? MaxStopsPerRouteDefault,
@@ -31,7 +35,7 @@ public sealed record TenantSettingsUpdateRequest(
     byte? CurrencyDecimals = null, string? DateOrder = null, string? DateSeparator = null, byte? TimeFormat = null, byte? WeekStartDay = null,
     string? ThousandsSeparator = null, string? DecimalSeparator = null, string? PhoneCountryCode = null, string? PhoneMask = null,
     string? CountExpectedReveal = null, decimal? CountRecountTolerancePct = null, bool? CountRevealShowsNumber = null,
-    bool? CountAutoCloseMatching = null);
+    bool? CountAutoCloseMatching = null, string? DefaultManualIssueReason = null);
 
 /// <summary>Juego de valores de región y formatos (los de una región en <see cref="TenantFormatOptionsDto"/>).</summary>
 public sealed record TenantFormatDto(

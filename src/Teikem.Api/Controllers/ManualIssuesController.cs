@@ -30,10 +30,14 @@ public sealed class ManualIssuesController(PickBatchService batches, LookupServi
         => batches.ListAsync(new PickBatchQuery(from, to, productPublicIds is { Length: > 0 } ? productPublicIds : null,
             status is { Length: > 0 } ? status : null, null, null, search, includeDeleted, skip, take, "MANUAL"), ct);
 
-    /// <summary>Motivos activos y habilitados para la compañía (etiqueta en el idioma del usuario, override aplicado).</summary>
+    /// <summary>
+    /// Motivos activos y habilitados para la compañía (etiqueta en el idioma del usuario, override aplicado). 2026-10-11 (b):
+    /// isDefault = true en el «Motivo por default del despacho manual» de Ajustes de la compañía (a lo sumo uno; ninguno si no hay
+    /// o si ya no está habilitado). Solo preselecciona: POST sigue exigiendo reasonCode.
+    /// </summary>
     [HttpGet("reasons"), RequirePermission(PermissionCatalog.WarehouseIssue)]
-    public Task<IReadOnlyList<LookupValueDto>> Reasons(CancellationToken ct)
-        => catalogs.GetValuesAsync(LookupDomains.ManualIssueReason, false, ct);
+    public async Task<IReadOnlyList<ManualIssueReasonDto>> Reasons(CancellationToken ct)
+        => await batches.WithDefaultReasonAsync(await catalogs.GetValuesAsync(LookupDomains.ManualIssueReason, false, ct), ct);
 
     /// <summary>Ficha (también de uno eliminado). Un PublicId de una recolección EMP → 404 'Despacho manual no encontrado.'.</summary>
     [HttpGet("{publicId:guid}"), RequirePermission(PermissionCatalog.InventoryView)]
