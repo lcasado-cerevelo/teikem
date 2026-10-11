@@ -22,10 +22,16 @@ describe('orderNumberSuggestions', () => {
 })
 
 describe('canDeletePickBatch', () => {
-  it('canDelete del servidor; si está empacada, además orders.cancel', () => {
-    expect(canDeletePickBatch({ canDelete: true, statusCode: 'COLLECTED' }, false)).toBe(true)
-    expect(canDeletePickBatch({ canDelete: true, statusCode: 'PACKED' }, false)).toBe(false)
-    expect(canDeletePickBatch({ canDelete: true, statusCode: 'PACKED' }, true)).toBe(true)
-    expect(canDeletePickBatch({ canDelete: false, statusCode: 'COLLECTED' }, true)).toBe(false)
+  const pick = { canCancelOrder: false, canPick: true, canIssue: false }
+  it('la empacada exige orders.cancel; sin warehouse.pick no se elimina', () => {
+    expect(canDeletePickBatch({ canDelete: true, statusCode: 'COLLECTED' }, pick)).toBe(true)
+    expect(canDeletePickBatch({ canDelete: true, statusCode: 'PACKED' }, pick)).toBe(false)
+    expect(canDeletePickBatch({ canDelete: true, statusCode: 'PACKED' }, { ...pick, canCancelOrder: true })).toBe(true)
+    expect(canDeletePickBatch({ canDelete: false, statusCode: 'COLLECTED' }, { ...pick, canCancelOrder: true })).toBe(false)
+    expect(canDeletePickBatch({ canDelete: true, statusCode: 'COLLECTED' }, { ...pick, canPick: false })).toBe(false)
+  })
+  it('un despacho manual exige warehouse.issue (no warehouse.pick)', () => {
+    expect(canDeletePickBatch({ canDelete: true, statusCode: 'COLLECTED', isManual: true }, pick)).toBe(false)
+    expect(canDeletePickBatch({ canDelete: true, statusCode: 'COLLECTED', isManual: true }, { ...pick, canPick: false, canIssue: true })).toBe(true)
   })
 })

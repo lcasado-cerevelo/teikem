@@ -150,6 +150,9 @@ export const warehouseKeys = {
   reconcilePreview: ['/api/v1/cycle-counts/{id}/reconcile-preview'],
   pickBatches: ['/api/v1/pick-batches'],
   pickBatch: ['/api/v1/pick-batches/{publicId}'],
+  manualIssues: ['/api/v1/manual-issues'],
+  manualIssue: ['/api/v1/manual-issues/{publicId}'],
+  manualIssueReasons: ['/api/v1/manual-issues/reasons'],
   suppliers: ['/api/v1/suppliers'],
   purchaseOrders: ['/api/v1/purchase-orders'],
   purchaseOrder: ['/api/v1/purchase-orders/{publicId}'],
@@ -1227,6 +1230,43 @@ export function useDeletePickBatch() {
       await unwrap(api.DELETE('/api/v1/pick-batches/{publicId}', { params: { path: { publicId } }, body }))
     },
     onSuccess: () => invalidate(qc, 'pickBatches', 'pickBatch', 'orders', 'order', ...STOCK),
+  })
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Despacho manual (2026-10-11): salida de inventario sin entrega, con motivo (DMA-#####). Es una recolección con motivo:
+// también aparece en /pick-batches, por eso se invalidan las dos listas.
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** `GET /api/v1/manual-issues/reasons` (warehouse.issue): motivos activos y habilitados para la compañía, ya traducidos. */
+export function useManualIssueReasons(options?: WarehouseQueryOptions) {
+  return useQuery({
+    queryKey: [warehouseKeys.manualIssueReasons[0]],
+    queryFn: () => unwrap(api.GET('/api/v1/manual-issues/reasons')),
+    enabled: options?.enabled ?? true,
+    staleTime: 5 * 60 * 1000,
+    meta: { handleAccessDenied: false },
+  })
+}
+
+/** `POST /api/v1/manual-issues` (`warehouse.issue`) con `Idempotency-Key`: baja el inventario sin entrega. */
+export function useCreateManualIssue() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ body, idempotencyKey }: { body: Schemas['ManualIssueCreateRequest']; idempotencyKey: string }) =>
+      unwrap(api.POST('/api/v1/manual-issues', { body, headers: { 'Idempotency-Key': idempotencyKey } })),
+    onSuccess: () => invalidate(qc, 'manualIssues', 'pickBatches', ...STOCK),
+  })
+}
+
+/** `DELETE /api/v1/manual-issues/{publicId}` (`warehouse.issue`): restaura el inventario y pasa a CANCELLED. */
+export function useDeleteManualIssue() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ publicId, body = {} }: { publicId: string; body?: Schemas['PickBatchDeleteRequest'] }) => {
+      await unwrap(api.DELETE('/api/v1/manual-issues/{publicId}', { params: { path: { publicId } }, body }))
+    },
+    onSuccess: () => invalidate(qc, 'manualIssues', 'manualIssue', 'pickBatches', 'pickBatch', ...STOCK),
   })
 }
 

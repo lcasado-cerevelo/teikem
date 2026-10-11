@@ -13,6 +13,7 @@ import { useLang, useT } from '../../kernel/i18n'
 import { Chip, DataTable, Panel, type DataColumn } from '../../kernel/ui'
 import { IconBasket } from '../../kernel/ui/screenIcons'
 import { productLabel, type PickBatchDto } from './api'
+import { manualIssueKardexLink } from './manualIssueView'
 import { formatDateTime, formatMoneyValue, formatNumber } from './lineRules'
 import { PICK_BATCH_STATUS_DOMAIN, usePickBatchCanDelete } from './pickBatchView'
 import './warehouse.css'
@@ -33,13 +34,12 @@ export function PickBatchDetailActions({ batch, onPack, onDelete }: PickBatchDet
   const canDelete = usePickBatchCanDelete()
   return (
     <>
-      <Can perm="warehouse.pick">
-        {canDelete(batch) && (
-          <button type="button" className="btn" onClick={onDelete}>
-            {t('warehouse.pickBatches.detail.delete')}
-          </button>
-        )}
-      </Can>
+      {/* la guarda de permiso va dentro de canDelete: warehouse.pick (empaque) o warehouse.issue (despacho manual) */}
+      {canDelete(batch) && (
+        <button type="button" className="btn" onClick={onDelete}>
+          {t('warehouse.pickBatches.detail.delete')}
+        </button>
+      )}
       <Can perm={['warehouse.pick', 'orders.create']}>
         {batch.canPack && (
           <button type="button" className="btn flow" onClick={onPack}>
@@ -100,10 +100,13 @@ export function PickBatchDetailBody({ batch, variant = 'screen' }: PickBatchDeta
 
   return (
     <div className={variant === 'modal' ? 'collect-detail modal' : 'collect-detail'}>
-      <div className="collect-detail-pipe">
-        {/* Sin transición manual: PACKED y CANCELLED se disparan desde Empacar y Eliminar. */}
-        <StatusPipeline domain={PICK_BATCH_STATUS_DOMAIN} entityType={ENTITY_TYPE} entityId={batch.id} currentCode={batch.statusCode} />
-      </div>
+      {/* un despacho manual no se empaca: su estatus es «Despachado» / «Cancelado» (chip del encabezado), sin etapas */}
+      {!batch.isManual && (
+        <div className="collect-detail-pipe">
+          {/* Sin transición manual: PACKED y CANCELLED se disparan desde Empacar y Eliminar. */}
+          <StatusPipeline domain={PICK_BATCH_STATUS_DOMAIN} entityType={ENTITY_TYPE} entityId={batch.id} currentCode={batch.statusCode} />
+        </div>
+      )}
 
       <Section variant={variant} title={t('warehouse.pickBatches.detail.summary')}>
         <div className="r3">
@@ -114,6 +117,19 @@ export function PickBatchDetailBody({ batch, variant = 'screen' }: PickBatchDeta
               {batch.collectedBy ? ` · ${batch.collectedBy}` : ''}
             </p>
           </div>
+          {batch.isManual ? (
+          <>
+            <div className="f">
+              <span className="collect-lbl">{t('warehouse.manualIssues.fields.reason')}</span>
+              <p data-testid="mi-reason">{batch.reasonLabel ?? batch.reasonCode ?? '—'}</p>
+            </div>
+            <div className="f">
+              <span className="collect-lbl">{t('warehouse.manualIssues.detail.owner')}</span>
+              <p>{batch.ownerClientName ?? t('warehouse.pickBatches.own')}</p>
+            </div>
+          </>
+          ) : (
+            <>
           <div className="f">
             <span className="collect-lbl">{t('warehouse.pickBatches.detail.packedAt')}</span>
             <p>{formatDateTime(batch.packedAtUtc, lang) || '—'}</p>
@@ -137,6 +153,8 @@ export function PickBatchDetailBody({ batch, variant = 'screen' }: PickBatchDeta
             <span className="collect-lbl">{t('warehouse.pickBatches.detail.invoice')}</span>
             <p>{batch.clientInvoiceNumber ?? '—'}</p>
           </div>
+            </>
+          )}
           <div className="f">
             <span className="collect-lbl">{t('warehouse.pickBatches.columns.totalQty')}</span>
             <p>{formatNumber(batch.totalQty, lang)}</p>
@@ -146,6 +164,17 @@ export function PickBatchDetailBody({ batch, variant = 'screen' }: PickBatchDeta
             <p>{batch.totalCost != null ? formatMoneyValue(batch.totalCost, lang) : '—'}</p>
           </div>
         </div>
+        {batch.isManual && (
+          <div className="f mi-note">
+            <span className="collect-lbl">{t('warehouse.manualIssues.fields.note')}</span>
+            <p data-testid="mi-note">{batch.note?.trim() ? batch.note : '—'}</p>
+            <Can perm="inventory.view">
+              <p>
+                <Link to={manualIssueKardexLink(batch)}>{t('warehouse.manualIssues.detail.kardexLink')}</Link>
+              </p>
+            </Can>
+          </div>
+        )}
       </Section>
 
       <Section variant={variant} title={t('warehouse.pickBatches.detail.lines')} badge={lines.length} flush>

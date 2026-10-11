@@ -462,3 +462,9 @@ button.whs-zone-main:focus-visible{outline:2px solid var(--flow);outline-offset:
 /* Ubicaciones: «N productos» es un enlace que abre la ventana con los productos de la posición */
 .loc-link{border:none;background:none;padding:0;color:var(--flow-2);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .loc-link:focus-visible{outline:2px solid var(--flow);outline-offset:2px;border-radius:4px}
+
+/* Despacho manual (2026-10-11): la nota libre de la ficha ocupa el ancho y se parte en palabras largas */
+.collect-detail .mi-note{margin-top:12px}
+.collect-detail .mi-note p{white-space:pre-wrap}
+/* El formulario «Nuevo despacho manual» vive en un modal: sin los bordes del panel, y motivo/nota a todo el ancho */
+.collect-panel .collect-top .f{margin-bottom:10px}

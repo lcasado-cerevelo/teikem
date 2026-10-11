@@ -3020,7 +3020,8 @@
         "client": "Cliente",
         "totalQty": "Cantidad",
         "collectedAt": "Recolectada",
-        "products": "Productos"
+        "products": "Productos",
+        "kind": "Tipo"
       },
       "filters": {
         "collected": "Recolectada",
@@ -3028,7 +3029,10 @@
         "product": "Producto",
         "orderNumber": "No. de orden",
         "invoiceNumber": "No. de factura",
-        "includeDeleted": "Incluir eliminadas"
+        "includeDeleted": "Incluir eliminadas",
+        "kind": "Tipo",
+        "kindPack": "Empaques",
+        "kindManual": "Despachos manuales"
       },
       "fields": {
         "warehouse": "Almacén",
@@ -3142,7 +3146,40 @@
         "planNeedsQty": "Elija el producto y escriba la cantidad para sugerir de dónde sacarla.",
         "planShort": "No alcanza la existencia: faltan {short}. Baje la cantidad.",
         "planApplied": "Sugerido: {count} posición(es). Puede cambiar cada una con su selector."
+      },
+      "kinds": {
+        "pack": "Empaque",
+        "manual": "Despacho manual"
       }
+    },
+    "manualIssues": {
+      "submit": "Despachar (bajar de inventario)",
+      "issued": "Despacho manual {number} registrado.",
+      "reasonPlaceholder": "Elija el motivo",
+      "noteHelp": "Opcional. Máximo {max} caracteres.",
+      "linesHelp": "Un despacho manual admite productos de un solo dueño y baja el inventario sin entrega. Sin posición ni lote, el sistema elige por FEFO.",
+      "fields": {
+        "reason": "Motivo",
+        "note": "Nota"
+      },
+      "status": {
+        "dispatched": "Despachado",
+        "cancelled": "Cancelado"
+      },
+      "errors": {
+        "reasonRequired": "Indique el motivo del despacho manual.",
+        "noteTooLong": "La nota admite como máximo 500 caracteres.",
+        "singleOwner": "Un despacho manual solo puede tener productos de un mismo dueño."
+      },
+      "detail": {
+        "owner": "Dueño del inventario",
+        "kardexLink": "Ver los movimientos",
+        "deleteTitle": "Eliminar despacho manual",
+        "deleteBody": "¿Eliminar el despacho manual {number}? El inventario vuelve a su posición original.",
+        "deleted": "Despacho manual {number} eliminado."
+      },
+      "mode": "Despacho manual (sin entrega)",
+      "modeHelp": "Baja el inventario sin entrega ni empaque: pide un motivo y genera un documento DMA."
     },
     "cycleCounts": {
       "title": "Conteo cíclico",

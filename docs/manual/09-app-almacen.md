@@ -556,7 +556,7 @@ Cómo se usa:
    muestra). La app espera al servidor como mucho unos segundos (`Enviando el despacho manual…`):
    - **enviado**: aviso verde `Listo: despacho manual DMA-00012.` (con el número que dio el servidor) y la pantalla queda lista para el siguiente despacho;
    - **sin señal** (o señal débil): aviso verde `Despacho manual en cola: quedó guardado en el aparato y se envía solo en cuanto haya señal.`; el número
-     DMA se ve después en la web (lista de recolecciones o despachos manuales);
+     DMA se ve después en la web (Recolección y empaque, columna Tipo);
    - **rechazado por el servidor**: el **mensaje exacto del servidor** en rojo bajo el campo del producto (por ejemplo `Inventario insuficiente de SKU-1 en
      A-01: disponible 2, solicitado 3.`), el despacho **vuelve a abrirse tal como estaba** (mismas líneas; el motivo y la nota quedan escogidos), la salida
      se deshace en el saldo local y **no** queda nada en Sincronización: se corrige y se vuelve a tocar **Completar despacho**.

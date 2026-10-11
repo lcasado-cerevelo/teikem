@@ -14,6 +14,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useController, useFieldArray, useForm, useFormContext, useWatch } from 'react-hook-form'
+import { useCan } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useLang, useT } from '../../kernel/i18n'
 import {
@@ -27,6 +28,8 @@ import {
   Modal,
   NumberInput,
   Panel,
+  Select,
+  TextArea,
   toast,
   useElementWidth,
   type DataColumn,
@@ -34,7 +37,16 @@ import {
 } from '../../kernel/ui'
 import { useFieldInfo } from '../../kernel/ui/formContext'
 import { api, unwrap } from '../../kernel/api/client'
-import { useCreatePickBatch, useInventoryBalances, useProductLots, useWarehouses, type PickBatchDto, type ProductListItemDto } from './api'
+import {
+  useCreateManualIssue,
+  useCreatePickBatch,
+  useInventoryBalances,
+  useManualIssueReasons,
+  useProductLots,
+  useWarehouses,
+  type PickBatchDto,
+  type ProductListItemDto,
+} from './api'
 import {
   buildCollectBody,
   collectSchema,
@@ -43,6 +55,7 @@ import {
   fefoBinOptions,
   fefoCandidates,
   isBlankLine,
+  MANUAL_NOTE_MAX,
   MAX_PICK_LINES,
   needsTrailingBlank,
   OWN,
@@ -53,6 +66,7 @@ import {
   type CollectLine,
 } from './collectForm'
 import { formatNumber, parseSerials, type LineIssue } from './lineRules'
+import { buildManualIssueBody, nextIdempotencyKey } from './manualIssueView'
 import { BinPickerInput, ProductPickerInput, WarehousePickerInput, type BinPickerOption } from './pickers'
 import './warehouse.css'
 
@@ -275,14 +289,24 @@ export interface CollectPanelProps {
 export function CollectPanel({ onCollected }: CollectPanelProps) {
   const t = useT()
   const lang = useLang()
+  // Modo «Despacho manual (sin entrega)» (2026-10-11): con warehouse.issue; agrega motivo (obligatorio) y nota y graba en
+  // POST /api/v1/manual-issues con Idempotency-Key (documento DMA-#####). Apagado: «Recolectar (bajar de inventario)» como siempre.
+  const canIssue = useCan('warehouse.issue')
+  const canPick = useCan('warehouse.pick')
+  const [manualOn, setManualOn] = useState(false)
+  // quien solo tiene warehouse.issue (sin warehouse.pick) despacha siempre en modo manual
+  const manual = canIssue && (manualOn || !canPick)
   const create = useCreatePickBatch()
+  const createManual = useCreateManualIssue()
+  const reasons = useManualIssueReasons({ enabled: canIssue })
+  const attempt = useRef<{ key: string; bodyJson: string } | null>(null)
   const boxRef = useRef<HTMLDivElement>(null)
   const width = useElementWidth(boxRef)
   const issueText = useCallback((i: LineIssue) => t(`warehouse.lineRules.${i.code}`, i.params), [t])
-  const schema = useMemo(() => collectSchema(t, issueText), [t, issueText])
+  const schema = useMemo(() => collectSchema(t, issueText, { manual }), [t, issueText, manual])
   const form = useForm({
     resolver: zodResolver(schema),
-    defaultValues: { warehousePublicId: null, lines: [EMPTY_COLLECT_LINE] } as CollectFormValues,
+    defaultValues: { warehousePublicId: null, lines: [EMPTY_COLLECT_LINE], reasonCode: '', note: '' } as CollectFormValues,
   })
   const { fields, append, remove, insert } = useFieldArray({ control: form.control, name: 'lines' })
   const warehousePublicId = useWatch({ control: form.control, name: 'warehousePublicId' })
@@ -368,7 +392,7 @@ export function CollectPanel({ onCollected }: CollectPanelProps) {
   )
 
   const clearAll = () => {
-    form.reset({ warehousePublicId: form.getValues('warehousePublicId'), lines: [{ ...EMPTY_COLLECT_LINE }] })
+    form.reset({ warehousePublicId: form.getValues('warehousePublicId'), lines: [{ ...EMPTY_COLLECT_LINE }], reasonCode: manual ? '' : undefined, note: manual ? '' : undefined })
   }
 
   const showLot = (lines ?? []).some((l) => isLotTracked(l?.trackingTypeCode))
@@ -420,63 +444,105 @@ export function CollectPanel({ onCollected }: CollectPanelProps) {
 
   const submitting = form.formState.isSubmitting
 
+  const reasonOptions = (reasons.data ?? []).map((r) => ({ value: r.code ?? '', label: r.label ?? r.code ?? '' }))
+
+  const formEl = (
+    <Form
+      id={FORM_ID}
+      form={form}
+      onSubmit={async (v) => {
+        if (manual) {
+          const { body, indexMap } = buildManualIssueBody(v)
+          // mismo cuerpo = misma llave (reintento tras un corte); otro cuerpo o ya grabado = llave nueva
+          attempt.current = nextIdempotencyKey(attempt.current, body, () => crypto.randomUUID())
+          let issued: PickBatchDto
+          try {
+            issued = await createManual.mutateAsync({ body, idempotencyKey: attempt.current.key })
+          } catch (err) {
+            throw remapCollectErrors(err, indexMap)
+          }
+          attempt.current = null
+          toast.success(t('warehouse.manualIssues.issued', { number: issued.number ?? '' }))
+          form.reset({ warehousePublicId: v.warehousePublicId, lines: [{ ...EMPTY_COLLECT_LINE }], reasonCode: '', note: '' })
+          onCollected?.(issued)
+          return
+        }
+        const { body, indexMap } = buildCollectBody(v)
+        let created: PickBatchDto
+        try {
+          created = await create.mutateAsync(body)
+        } catch (err) {
+          throw remapCollectErrors(err, indexMap)
+        }
+        toast.success(t('warehouse.pickBatches.collected', { number: created.number ?? '' }))
+        form.reset({ warehousePublicId: v.warehousePublicId, lines: [{ ...EMPTY_COLLECT_LINE }] })
+        onCollected?.(created)
+      }}
+    >
+      <div className="collect-top">
+        <Field name="warehousePublicId" label={t('warehouse.pickBatches.fields.warehouse')} required>
+          <WarehousePickerInput />
+        </Field>
+        {canIssue && canPick && (
+          <div className="f">
+            <label className="sw">
+              <input type="checkbox" role="switch" checked={manualOn} onChange={(e) => setManualOn(e.target.checked)} />
+              <span className="tk" aria-hidden="true" />
+              <span>{t('warehouse.manualIssues.mode')}</span>
+            </label>
+            <p className="help">{t('warehouse.manualIssues.modeHelp')}</p>
+          </div>
+        )}
+        {manual && (
+          <>
+            <Field name="reasonCode" label={t('warehouse.manualIssues.fields.reason')} required>
+              <Select options={reasonOptions} placeholder={t('warehouse.manualIssues.reasonPlaceholder')} />
+            </Field>
+            <Field name="note" label={t('warehouse.manualIssues.fields.note')} help={t('warehouse.manualIssues.noteHelp', { max: MANUAL_NOTE_MAX })}>
+              <TextArea rows={2} />
+            </Field>
+          </>
+        )}
+        <p className="note collect-note">{manual ? t('warehouse.manualIssues.linesHelp') : t('warehouse.pickBatches.linesHelp')}</p>
+      </div>
+      <div className="collect-grid">
+        <DataTable
+          label={t('warehouse.pickBatches.collectPanel.linesLabel')}
+          columns={columns}
+          rows={rows}
+          rowKey={(r) => r.key}
+          pagination={false}
+          exportable={false}
+          forceCards={width > 0 && width < CARDS_BELOW_PX}
+          rowActions={rowActions}
+        />
+      </div>
+      <div className="collect-foot">
+        <button
+          type="button"
+          className="btn sm"
+          disabled={fields.length >= MAX_PICK_LINES || submitting}
+          onClick={() => append({ ...EMPTY_COLLECT_LINE })}
+        >
+          {t('warehouse.pickBatches.collectPanel.addLine')}
+        </button>
+        {fields.length >= MAX_PICK_LINES && <span className="help">{t('warehouse.pickBatches.collectPanel.maxLines')}</span>}
+        <span className="collect-foot-act">
+          <button type="button" className="btn" onClick={clearAll} disabled={submitting}>
+            {t('warehouse.pickBatches.collectPanel.clear')}
+          </button>
+          <button type="submit" className="btn flow" disabled={submitting}>
+            {submitting ? t('common.loading') : manual ? t('warehouse.manualIssues.submit') : t('warehouse.pickBatches.collectPanel.submit')}
+          </button>
+        </span>
+      </div>
+    </Form>
+  )
+
   return (
     <div ref={boxRef} className="collect-panel">
       <Panel flush icon={<IconBasket />} title={t('warehouse.pickBatches.collectPanel.title')}>
-        <Form
-          id={FORM_ID}
-          form={form}
-          onSubmit={async (v) => {
-            const { body, indexMap } = buildCollectBody(v)
-            let created: PickBatchDto
-            try {
-              created = await create.mutateAsync(body)
-            } catch (err) {
-              throw remapCollectErrors(err, indexMap)
-            }
-            toast.success(t('warehouse.pickBatches.collected', { number: created.number ?? '' }))
-            form.reset({ warehousePublicId: v.warehousePublicId, lines: [{ ...EMPTY_COLLECT_LINE }] })
-            onCollected?.(created)
-          }}
-        >
-          <div className="collect-top">
-            <Field name="warehousePublicId" label={t('warehouse.pickBatches.fields.warehouse')} required>
-              <WarehousePickerInput />
-            </Field>
-            <p className="note collect-note">{t('warehouse.pickBatches.linesHelp')}</p>
-          </div>
-          <div className="collect-grid">
-            <DataTable
-              label={t('warehouse.pickBatches.collectPanel.linesLabel')}
-              columns={columns}
-              rows={rows}
-              rowKey={(r) => r.key}
-              pagination={false}
-              exportable={false}
-              forceCards={width > 0 && width < CARDS_BELOW_PX}
-              rowActions={rowActions}
-            />
-          </div>
-          <div className="collect-foot">
-            <button
-              type="button"
-              className="btn sm"
-              disabled={fields.length >= MAX_PICK_LINES || submitting}
-              onClick={() => append({ ...EMPTY_COLLECT_LINE })}
-            >
-              {t('warehouse.pickBatches.collectPanel.addLine')}
-            </button>
-            {fields.length >= MAX_PICK_LINES && <span className="help">{t('warehouse.pickBatches.collectPanel.maxLines')}</span>}
-            <span className="collect-foot-act">
-              <button type="button" className="btn" onClick={clearAll} disabled={submitting}>
-                {t('warehouse.pickBatches.collectPanel.clear')}
-              </button>
-              <button type="submit" className="btn flow" disabled={submitting}>
-                {submitting ? t('common.loading') : t('warehouse.pickBatches.collectPanel.submit')}
-              </button>
-            </span>
-          </div>
-        </Form>
+        {formEl}
       </Panel>
     </div>
   )

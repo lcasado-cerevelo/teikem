@@ -249,6 +249,9 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
    modelo de facturación, cargo por despacho y por COD, selector de contrato y **Nuevo contrato**), **Tarifas** (por servicio y pieza extra por tramos, versión nueva y cierre, historial),
    **SLA** (por tipo de servicio, borrador y guardado) y **Servicios especiales** (tipos nuevos, tarifa, versión nueva, cierre); permisos `contracts.*` y todos los mensajes del servidor.
    Capturas `fa2-*`.
+17. [F19 — Despacho manual en la web](frontend/f19-despacho-manual.md): en **Recolección y empaque**, el interruptor **Despacho manual (sin entrega)** del panel
+   Recolección (motivo obligatorio, nota, líneas como una recolección, `Idempotency-Key`, 409 por existencia), la columna y el filtro **Tipo**, la ficha del
+   DMA (motivo, nota, Kárdex, sin Empacar) y **Eliminar** con reversa (`warehouse.issue`). Capturas `f19-*`.
 
 ## Preguntas frecuentes
 
