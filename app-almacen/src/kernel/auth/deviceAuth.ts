@@ -2,10 +2,11 @@
 import Constants from 'expo-constants'
 import { Platform } from 'react-native'
 
-import { api, unwrap } from '../api/client'
+import { api, isNetworkError, unwrap } from '../api/client'
 import { refreshTenantFormat } from '../format/tenantFormatApi'
 import { removeCompany } from './companies'
-import { addDeviceIdentity, dbNameFor, getSessionState, saveUserSession, updateDeviceIdentity } from './session'
+import { checkOfflinePin, saveOfflinePinVerifier } from './pinVerifier'
+import { addDeviceIdentity, dbNameFor, getSessionState, saveUserSession, unlockSessionLocal, updateDeviceIdentity } from './session'
 
 const APP_VERSION = String(Constants.expoConfig?.version ?? '1.0.0')
 
@@ -60,9 +61,37 @@ export async function loginWithPin(devicePublicId: string, deviceSecret: string,
     userId,
     fullName,
   })
+  // Huella del PIN para poder desbloquear sin señal (ver pinVerifier.ts); si no se puede guardar, la entrada igual sigue.
+  await saveOfflinePinVerifier(devicePublicId, userId, pin).catch(() => undefined)
   // Región y formatos de la compañía para esta sesión (se guardan en la base local); sin esperar: la entrada no se
   // detiene por esto y, si falla, se usan los guardados o los de Puerto Rico.
   void refreshTenantFormat()
+}
+
+/** Por qué no se pudo desbloquear sin señal (la pantalla de bloqueo lo traduce a texto). */
+export type OfflineUnlockError = 'wrongPin' | 'tooManyTries' | 'needsSignal'
+
+export class OfflineUnlockFailure extends Error {
+  constructor(readonly reason: OfflineUnlockError) {
+    super(reason)
+  }
+}
+
+/** Desbloquea la sesión guardada: con señal, el servidor valida el PIN (como siempre); sin señal, se valida contra la huella
+ *  guardada la última vez que se entró con señal (máx. 5 fallos). Devuelve 'online' u 'offline' según cómo se desbloqueó. */
+export async function unlockWithPin(devicePublicId: string, deviceSecret: string, userId: number, pin: string, fullName: string): Promise<'online' | 'offline'> {
+  try {
+    await loginWithPin(devicePublicId, deviceSecret, userId, pin, fullName)
+    return 'online'
+  } catch (err) {
+    if (!isNetworkError(err)) throw err
+    const result = await checkOfflinePin(devicePublicId, userId, pin)
+    if (result === 'ok') {
+      unlockSessionLocal()
+      return 'offline'
+    }
+    throw new OfflineUnlockFailure(result === 'wrong' ? 'wrongPin' : result === 'blocked' ? 'tooManyTries' : 'needsSignal')
+  }
 }
 
 /** Aviso periódico de vida (docs/mobile/app-almacen-plan.md §1): actualiza el almacén, el tema y (Lote 16) el modo de
