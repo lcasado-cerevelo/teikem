@@ -1,7 +1,7 @@
 name: ci
 on:
   push:
-    branches: [ master, main, "claude/**" ]
+    branches: [ master, main, Depot-Implementation, "claude/**" ]
   pull_request:
 jobs:
   build-test:
