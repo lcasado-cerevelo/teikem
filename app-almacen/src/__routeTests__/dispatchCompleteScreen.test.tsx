@@ -1,6 +1,9 @@
-// Pedido del dueño 2026-10-05 — Despacho: «Completar despacho» saca el inventario SIN empacar (POST /pick-batches con las líneas, sin orden ni
-// consignatario); empacar queda como opción aparte. Las posiciones se resuelven primero con las del aparato (sin señal) y, sin red, el despacho
-// se encola (kind collect). En archivo propio: renderRouter() no aísla del todo su estado global de navegación (ver homeLock.test.tsx).
+// Despacho manual (decisión del dueño 2026-10-11): «Completar despacho» saca el inventario SIN entrega con un motivo obligatorio (catálogo
+// ManualIssueReason) y una nota opcional, y genera el documento DMA-##### (POST /api/v1/manual-issues, permiso warehouse.issue). Va a la cola de
+// salida (kind manualIssue, con Idempotency-Key) y resta del saldo local; el aviso muestra el número DMA si se envió en el momento o «en cola» si no.
+// Sin warehouse.issue solo queda «Empacar» con un aviso. En archivo propio: renderRouter() no aísla del todo su estado global de navegación (ver
+// homeLock.test.tsx).
+import { Alert } from 'react-native'
 import { __resetAllForTests } from 'expo-sqlite'
 import { __resetSecureStoreForTests } from 'expo-secure-store'
 import { cleanup, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library'
@@ -8,14 +11,17 @@ import { cleanup, fireEvent, renderRouter, screen, waitFor } from 'expo-router/t
 import { addLocalPickLine, getOpenPick, startLocalPick } from '../features/dispatch/localPick'
 import { __resetSessionForTests } from '../kernel/auth/session'
 import { __resetDbForTests, getDb } from '../kernel/db/database'
+import { KvKeys, setKv } from '../kernel/db/kv'
+import { __resetSyncEngineForTests } from '../kernel/sync/engine'
 import { listOutbox } from '../kernel/sync/outbox'
-import { json, mockFetch, setupDevice } from './countKit'
+import { json, mockFetch, setupDevice, type Route } from './countKit'
 
 beforeEach(() => {
   __resetAllForTests()
   __resetDbForTests()
   __resetSecureStoreForTests()
   __resetSessionForTests()
+  __resetSyncEngineForTests()
 })
 
 afterEach(() => {
@@ -23,53 +29,157 @@ afterEach(() => {
   jest.restoreAllMocks()
 })
 
+const ISSUER = ['inventory.view', 'warehouse.pick', 'warehouse.issue']
+
 function seedPick() {
-  getDb().runSync("INSERT INTO bin (id, code, warehouse_public_id, zone_id, is_active) VALUES (55, 'A-01', 'wh-1', 1, 1)")
+  const db = getDb()
+  db.runSync("INSERT INTO bin (id, code, warehouse_public_id, zone_id, is_active) VALUES (55, 'A-01', 'wh-1', 1, 1)")
+  db.runSync(
+    `INSERT INTO stock_balance (id, warehouse_public_id, bin_id, product_id, product_public_id, qty_on_hand, qty_reserved, updated_at_utc)
+     VALUES (1, 'wh-1', 55, 1, 'p1', 10, 0, '2026-10-11T10:00:00.000Z')`,
+  )
   const id = startLocalPick('wh-1', null)
   addLocalPickLine(id, { productPublicId: 'p1', sku: 'SKU-1', productName: 'Tornillo', quantity: 3, fromBinCode: 'A-01' })
 }
 
-describe('Despacho — completar sin empacar', () => {
-  it('ofrece «Completar despacho» antes de «Empacar»; completar recolecta sin orden y vuelve a Inicio', async () => {
+function withPermissions(perms: string[]): Route {
+  setKv(KvKeys.myPermissions, JSON.stringify({ '7': { permissions: perms, fetchedAtUtc: '2026-10-11T00:00:00Z' } }))
+  return (c) => (c.path === '/api/v1/me' ? json(200, { permissions: perms }) : null)
+}
+
+const onHand = () => getDb().getFirstSync<{ q: number }>('SELECT qty_on_hand AS q FROM stock_balance WHERE id = 1')?.q
+
+/** Confirma el Alert «¿Despachar sin entrega?» tocando «Despachar». */
+function autoConfirm() {
+  return jest.spyOn(Alert, 'alert').mockImplementation((_t, _m, buttons) => {
+    buttons?.find((b) => b.text === 'Despachar')?.onPress?.()
+  })
+}
+
+async function openReasonStep() {
+  await renderRouter('src/app', { initialUrl: '/dispatch' })
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Completar despacho' })).toBeTruthy())
+  expect(screen.getByRole('button', { name: 'Empacar' })).toBeTruthy()
+  await fireEvent.press(screen.getByRole('button', { name: 'Completar despacho' }))
+  await waitFor(() => expect(screen.getByText('¿Por qué sale sin entrega?')).toBeTruthy())
+}
+
+describe('Despacho — Completar despacho = despacho manual', () => {
+  it('pide el motivo (obligatorio) y la nota, confirma y manda POST /manual-issues con Idempotency-Key; el aviso trae el número DMA', async () => {
     await setupDevice()
     seedPick()
-    const calls = mockFetch([(c) => (c.method === 'POST' && c.path === '/api/v1/pick-batches' ? json(200, { id: 1 }) : null)])
-    await renderRouter('src/app', { initialUrl: '/dispatch' })
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Completar despacho' })).toBeTruthy())
-    expect(screen.getByRole('button', { name: 'Empacar' })).toBeTruthy()
-    expect(screen.getByText('Saca el inventario sin empacar. Se manda cuando haya señal; empacar es opcional.')).toBeTruthy()
+    const alert = autoConfirm()
+    const calls = mockFetch([
+      withPermissions(ISSUER),
+      (c) => (c.method === 'POST' && c.path === '/api/v1/manual-issues' ? json(200, { id: 9, number: 'DMA-00012', isManual: true }) : null),
+    ])
+    await openReasonStep()
+    expect(screen.getByText(/Despacho manual: el inventario sale sin orden ni empaque/)).toBeTruthy()
+    expect(screen.getByText('Inventario propio · líneas: 1 · unidades: 3')).toBeTruthy()
+    // los cinco de fábrica (el aparato todavía no bajó los de la compañía)
+    for (const label of ['Muestra', 'Uso interno', 'Retiro del cliente', 'Venta', 'Otro']) expect(screen.getByRole('radio', { name: label })).toBeTruthy()
 
-    await fireEvent.press(screen.getByRole('button', { name: 'Completar despacho' }))
-    await waitFor(() => expect(getOpenPick()).toBeNull())
-    const post = calls.find((c) => c.method === 'POST' && c.path === '/api/v1/pick-batches')
-    // la posición se resolvió con la del aparato (no hizo falta pedirla al servidor) y no lleva orden ni consignatario
-    expect(post?.body).toEqual({ warehousePublicId: 'wh-1', lines: [{ productPublicId: 'p1', quantity: 3, binId: 55 }] })
-    expect(calls.some((c) => c.path.includes('/bins'))).toBe(false)
-    expect(calls.some((c) => c.path.includes('collect-and-pack'))).toBe(false)
+    // sin motivo no se manda nada
+    await fireEvent.press(screen.getByTestId('dispatch-issue-confirm'))
+    await waitFor(() => expect(screen.getByText('Escoge el motivo del despacho manual.')).toBeTruthy())
+    expect(alert).not.toHaveBeenCalled()
+
+    await fireEvent.press(screen.getByRole('radio', { name: 'Muestra' }))
+    await fireEvent.changeText(screen.getByLabelText('Nota (opcional)'), 'Feria de salud')
+    await fireEvent.press(screen.getByTestId('dispatch-issue-confirm'))
+
+    await waitFor(() => expect(screen.getByText('Listo: despacho manual DMA-00012.')).toBeTruthy())
+    expect(alert).toHaveBeenCalledWith('¿Despachar sin entrega?', 'Salen 3 unidades (líneas: 1) con el motivo «Muestra». El inventario sale sin orden ni empaque.', expect.any(Array))
+    const post = calls.find((c) => c.method === 'POST' && c.path === '/api/v1/manual-issues')
+    // la posición se resolvió con la del aparato (no hizo falta pedirla al servidor)
+    expect(post?.body).toEqual({ warehousePublicId: 'wh-1', lines: [{ productPublicId: 'p1', quantity: 3, binId: 55 }], reasonCode: 'SAMPLE', note: 'Feria de salud' })
+    expect(post?.idempotencyKey).toMatch(/^app-/)
+    expect(calls.some((c) => c.path.includes('/bins') || c.path.startsWith('/api/v1/pick-batches'))).toBe(false)
+    expect(getOpenPick()).toBeNull()
+    expect(listOutbox().map((r) => [r.kind, r.status])).toEqual([['manualIssue', 'sent']])
+    expect(onHand()).toBe(7)
   })
 
-  it('sin señal queda en la cola (collect) y el despacho local se cierra', async () => {
+  it('sin señal queda en la cola (manualIssue): aviso «en cola», el despacho local se cierra y el saldo local ya refleja la salida', async () => {
     await setupDevice()
     seedPick()
-    mockFetch([])
-    await renderRouter('src/app', { initialUrl: '/dispatch' })
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Completar despacho' })).toBeTruthy())
-    await fireEvent.press(screen.getByRole('button', { name: 'Completar despacho' }))
-    await waitFor(() => expect(getOpenPick()).toBeNull())
+    autoConfirm()
+    mockFetch([withPermissions(ISSUER)])
+    await openReasonStep()
+    await fireEvent.press(screen.getByRole('radio', { name: 'Uso interno' }))
+    await fireEvent.press(screen.getByTestId('dispatch-issue-confirm'))
+    await waitFor(() => expect(screen.getByText(/Despacho manual en cola/)).toBeTruthy(), { timeout: 10000 })
+    expect(getOpenPick()).toBeNull()
     const row = listOutbox()[0]
-    expect([row.kind, row.path]).toEqual(['collect', '/api/v1/pick-batches'])
-    expect(JSON.parse(row.body)).toEqual({ warehousePublicId: 'wh-1', lines: [{ productPublicId: 'p1', quantity: 3, binId: 55 }] })
+    expect([row.kind, row.path, row.status]).toEqual(['manualIssue', '/api/v1/manual-issues', 'pending'])
+    expect(JSON.parse(row.body)).toEqual({ warehousePublicId: 'wh-1', lines: [{ productPublicId: 'p1', quantity: 3, binId: 55 }], reasonCode: 'INTERNAL_USE', note: null })
+    expect(onHand()).toBe(7)
+  })
+
+  it('el rechazo del servidor muestra su mensaje exacto, deja el despacho abierto como estaba, no queda en la cola y deshace el saldo local', async () => {
+    await setupDevice()
+    seedPick()
+    autoConfirm()
+    const message = 'Inventario insuficiente de SKU-1 en A-01: disponible 2, solicitado 3.'
+    mockFetch([
+      withPermissions(ISSUER),
+      (c) => (c.method === 'POST' && c.path === '/api/v1/manual-issues' ? json(409, { title: message, status: 409, code: 'insufficient_stock' }) : null),
+    ])
+    await openReasonStep()
+    await fireEvent.press(screen.getByRole('radio', { name: 'Venta' }))
+    await fireEvent.press(screen.getByTestId('dispatch-issue-confirm'))
+    await waitFor(() => expect(screen.getByText(message)).toBeTruthy())
+    expect(getOpenPick()?.lineRows.map((l) => [l.sku, l.quantity, l.fromBinCode])).toEqual([['SKU-1', 3, 'A-01']])
+    expect(listOutbox()).toEqual([])
+    expect(onHand()).toBe(10)
+    // el motivo se conserva para corregir y volver a intentar
+    await fireEvent.press(screen.getByRole('button', { name: 'Completar despacho' }))
+    await waitFor(() => expect(screen.getByRole('radio', { name: 'Venta' }).props.accessibilityState).toEqual({ selected: true }))
+  })
+
+  it('ofrece los motivos que bajó la compañía (con su nombre y sin los deshabilitados)', async () => {
+    await setupDevice()
+    seedPick()
+    setKv(
+      KvKeys.manualIssueReasons,
+      JSON.stringify({
+        fetchedAtUtc: '2026-10-11T00:00:00Z',
+        reasons: [
+          { code: 'OTHER', label: 'Otro', labels: { es: 'Otro', en: 'Other' }, sortOrder: 5 },
+          { code: 'SAMPLE', label: 'Muestra gratis', labels: { es: 'Muestra gratis', en: 'Free sample' }, sortOrder: 1 },
+        ],
+      }),
+    )
+    mockFetch([withPermissions(ISSUER)])
+    await openReasonStep()
+    expect(screen.getByRole('radio', { name: 'Muestra gratis' })).toBeTruthy()
+    expect(screen.getByRole('radio', { name: 'Otro' })).toBeTruthy()
+    expect(screen.queryByRole('radio', { name: 'Venta' })).toBeNull()
+  })
+
+  it('sin warehouse.issue no ofrece «Completar despacho»: queda «Empacar» y un aviso claro', async () => {
+    await setupDevice()
+    seedPick()
+    mockFetch([withPermissions(['inventory.view', 'warehouse.pick'])])
+    await renderRouter('src/app', { initialUrl: '/dispatch' })
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Empacar' })).toBeTruthy())
+    expect(screen.queryByRole('button', { name: 'Completar despacho' })).toBeNull()
+    expect(screen.getByTestId('dispatch-no-issue').props.children).toMatch(/necesita el permiso warehouse\.issue/)
   })
 
   it('una posición que no existe no completa nada y lo dice', async () => {
     await setupDevice()
     const id = startLocalPick('wh-1', null)
     addLocalPickLine(id, { productPublicId: 'p1', sku: 'SKU-1', productName: 'Tornillo', quantity: 1, fromBinCode: 'NO-EXISTE' })
-    mockFetch([(c) => (c.method === 'GET' && c.path === '/api/v1/warehouses/wh-1/bins' ? json(200, { total: 0, skip: 0, take: 200, items: [] }) : null)])
+    mockFetch([
+      withPermissions(ISSUER),
+      (c) => (c.method === 'GET' && c.path === '/api/v1/warehouses/wh-1/bins' ? json(200, { total: 0, skip: 0, take: 200, items: [] }) : null),
+    ])
     await renderRouter('src/app', { initialUrl: '/dispatch' })
     await waitFor(() => expect(screen.getByRole('button', { name: 'Completar despacho' })).toBeTruthy())
     await fireEvent.press(screen.getByRole('button', { name: 'Completar despacho' }))
     await waitFor(() => expect(screen.getByText(/No hay una posición con ese código\. NO-EXISTE/)).toBeTruthy())
+    expect(screen.queryByText('¿Por qué sale sin entrega?')).toBeNull()
     expect(getOpenPick()).not.toBeNull()
     expect(listOutbox()).toEqual([])
   })

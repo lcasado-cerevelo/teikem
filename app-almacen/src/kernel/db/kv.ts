@@ -41,4 +41,6 @@ export const KvKeys = {
   countSkippedNotices: 'countSkippedNotices',
   /** Lote A8: permisos efectivos de cada usuario que entró en el aparato (JSON de kernel/auth/permissions.ts, por userId). */
   myPermissions: 'myPermissions',
+  /** 2026-10-11: motivos del despacho manual de la compañía (JSON de features/dispatch/manualIssueReasons.ts), para escogerlos sin señal. */
+  manualIssueReasons: 'manualIssueReasons',
 } as const

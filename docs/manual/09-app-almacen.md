@@ -419,13 +419,15 @@ la completó primero).
 ## 6. Despacho (recolectar y empacar)
 
 Qué hace: recolecta líneas (producto, cantidad, posición de origen) sin señal y, al terminar, se elige una de dos salidas
-(corregido el 2026-10-11 para describir lo que hace la app hoy, `app-almacen/src/app/dispatch.tsx` y
-`features/dispatch/dispatchApi.ts`):
+(`app-almacen/src/app/dispatch.tsx` y `features/dispatch/dispatchApi.ts`):
 
-- **Completar despacho** (botón principal): saca el inventario **sin empacar** — `POST /api/v1/pick-batches` con las líneas; queda una
-  recolección `EMP-#####` en Recolectada, **sin orden, consignatario ni empaque** (se puede empacar después desde la web, [06
-  §7](06-inventario-y-almacen.md#7-recolección-y-empaque-ad-hoc-pick--pack)). Debajo se lee `Saca el inventario sin empacar. Se manda
-  cuando haya señal; empacar es opcional.`
+- **Completar despacho** (botón principal) = **despacho manual** desde el 2026-10-11 (decisión del dueño): saca el inventario **sin
+  entrega** con un **motivo obligatorio** y una **nota opcional**, y genera el documento propio `DMA-#####` (`POST /api/v1/manual-issues`,
+  [06 §7b](06-inventario-y-almacen.md#7b-despacho-manual-dma--2026-10-11)); **sin orden, consignatario ni empaque**, y un despacho manual
+  **nunca** se empaca después. Solo se ofrece con el permiso `warehouse.issue`. Debajo se lee `Despacho manual: el inventario sale sin
+  entrega (sin orden ni empaque) y con un motivo. Se manda cuando haya señal.` El detalle está en
+  [6.y](#6y-completar-despacho--despacho-manual-dma-2026-10-11). (Antes de esta versión, «Completar despacho» dejaba una recolección
+  `EMP-#####` sin empacar con `POST /api/v1/pick-batches`; un aparato con una de esas aún en la cola la manda igual.)
 - **Empacar** (opcional): elige el consignatario y los bultos y manda recolección y empaque en **una** llamada atómica
   (`POST /api/v1/pick-batches/collect-and-pack`, capítulo 8A §6). Debajo se lee `Elige el consignatario y confirma; se manda cuando haya
   señal.`
@@ -439,13 +441,17 @@ abierto muestra el nombre del cliente o `Inventario propio`. Al **Empacar**:
 - con inventario **propio**, la app pregunta primero `¿A qué cliente se despacha?` (los clientes activos, `GET /api/v1/clients`) y luego
   los consignatarios de ese cliente.
 
-**Completar despacho** no pregunta cliente ni consignatario en ningún caso.
+**Completar despacho** no pregunta cliente ni consignatario en ningún caso: pregunta el **motivo** y la **nota**.
 
-Quién puede: `warehouse.pick` para recolectar, completar y empacar (empacar exige además `orders.create` en el servidor). Elegir el
+Quién puede: `warehouse.pick` para recolectar y empacar (empacar exige además `orders.create` en el servidor); **Completar despacho**
+(despacho manual) exige `warehouse.issue` —lo traen las plantillas **Operador de almacén** y **Admin de compañía**—. Sin `warehouse.issue`
+la app no muestra el botón y en su lugar se lee `«Completar despacho» (despacho manual, sin entrega) necesita el permiso warehouse.issue y
+tu usuario no lo tiene: aquí puedes Empacar. Pídelo al administrador si hace falta.` (si el aparato todavía no pudo leer los permisos del
+usuario: `Todavía no se pudieron leer tus permisos (hace falta señal una vez): por ahora solo puedes Empacar.`). Elegir el
 consignatario pide la lista de ubicaciones del cliente (`GET /api/v1/locations?clientId=`), que exige por separado `locations.read`; con
 inventario propio, elegir el cliente lee `GET /api/v1/clients`, que exige `clients.read`. Un rol de aparato que tenga
-`warehouse.pick` sin esos permisos puede recolectar y **Completar despacho**, pero «Empacar» le fallará con el error de permiso del
-servidor: conviene que el rol del dispositivo los tenga si va a empacar.
+`warehouse.pick` sin esos permisos puede recolectar, pero «Empacar» le fallará con el error de permiso del servidor: conviene que el rol
+del dispositivo los tenga si va a empacar.
 
 Cómo se usa:
 1. Se escanea un producto; si ya hay un despacho en curso, el producto tiene que ser del **mismo dueño** que el despacho abierto (del
@@ -461,9 +467,9 @@ Cómo se usa:
      escanear la posición.`
    - Ya no hay botón "Agregar" (lo agrega la lectura); "Cancelar" deja la línea sin agregar. Una línea agregada por error se quita
      con ✕.
-3. **Completar despacho**: resuelve las posiciones escaneadas a su id real (primero las del aparato, sin señal; si no está, pregunta al
-   servidor) y manda la recolección. Si no hay red en ese instante, se encola (`collect`) y se manda al volver la señal. Al terminar
-   vuelve a Inicio.
+3. **Completar despacho** (despacho manual, con `warehouse.issue`): resuelve las posiciones escaneadas a su id real (primero las del
+   aparato, sin señal; si no está, pregunta al servidor), pide el **motivo** y la **nota**, confirma y lo manda por la cola de salida
+   (`manualIssue`). Ver [6.y](#6y-completar-despacho--despacho-manual-dma-2026-10-11).
 4. **Empacar**: resuelve las posiciones igual, pide el cliente (solo inventario propio) y busca sus consignatarios; se escriben los
    **Bultos** (1 por omisión) y se toca el consignatario. Eso manda la recolección y el empaque juntos, con servicio `STANDARD`, paquete
    `BOX` y la orden confirmada; sin señal en ese instante, se encola (`pack`). Al terminar vuelve a Inicio.
@@ -498,8 +504,8 @@ Escanear una posición sin tocar nada sigue agregando una sola línea con toda l
 | Una posición escaneada al recolectar no existe al resolverla en "Empacar" | `No hay una posición con ese código.` + los códigos que no se encontraron | API, al empacar |
 | No se pudieron buscar los consignatarios del cliente (sin señal, falta `locations.read`, etc.) | `No se pudo consultar los consignatarios (necesita señal).`, o el título del error del servidor | API |
 | Inventario propio: no hay clientes activos a quienes despachar | `No hay clientes activos en el sistema.` | API, lista vacía |
-| Completar despacho con una posición escaneada que no existe | `No hay una posición con ese código.` + los códigos que no se encontraron (no se manda nada) | API, al completar |
-| El servidor rechaza **Completar despacho** en línea (inventario insuficiente, producto inactivo, etc.) | El mensaje exacto del servidor, en rojo bajo el campo del producto; el despacho sigue abierto | API |
+| Completar despacho con una posición escaneada que no existe | `No hay una posición con ese código.` + los códigos que no se encontraron (no se pide el motivo ni se manda nada) | API, al completar |
+| **Completar despacho** (despacho manual): motivo, nota, permiso y rechazos | Ver la tabla de [6.y](#6y-completar-despacho--despacho-manual-dma-2026-10-11) | Local / API |
 | El cliente no tiene consignatarios en el sistema | `Este cliente no tiene consignatarios en el sistema.` | API, lista vacía |
 | Confirmar sin señal | Se guarda igual, se manda cuando haya conexión | Cola de salida |
 | El servidor rechaza el despacho al confirmarlo (crédito excedido, etc.) | El mensaje exacto del servidor, ver [06 §7](06-inventario-y-almacen.md#7-recolección-y-empaque-ad-hoc-pick--pack) | API, vía cola |
@@ -525,9 +531,67 @@ preparación— y código de posición; nunca cuarentena, cruce de muelle ni pos
   Solo si **nunca** se ha bajado la copia: `Sin señal: no se pudo buscar de dónde sale el producto. Escanea la posición.` (sin sugerencia ni exigencia). La copia puede tener unos minutos de atraso: es una guía, el servidor
   re-verifica el inventario al recolectar.
 
-**Completar el despacho sin empacar.** Con líneas, la pantalla ofrece **Completar despacho** (principal) y, aparte, **Empacar** (opcional). **Completar despacho** recolecta (`POST /api/v1/pick-batches`): el inventario sale, **sin orden,
-consignatario ni empaque**; las posiciones se resuelven primero con las del aparato (sin señal) y si no hay red queda en la cola de salida (`collect`) y se manda al volver la señal. Una posición que no existe no completa nada y lo avisa
-(`No hay una posición con ese código. {códigos}`). Empacar sigue igual (cliente → consignatario → `collect-and-pack`). En la web la recolección y el empaque ya eran pasos separados (**Recolectar** / **Empacar y crear orden**).
+**Completar el despacho sin empacar** (2026-10-05; **reemplazado el 2026-10-11** por el despacho manual, [6.y](#6y-completar-despacho--despacho-manual-dma-2026-10-11)). Con líneas, la pantalla ofrecía **Completar despacho** (principal) y, aparte, **Empacar** (opcional). **Completar despacho** recolectaba (`POST /api/v1/pick-batches`): el inventario salía, **sin orden,
+consignatario ni empaque**; si no había red quedaba en la cola de salida (`collect`). Las filas `collect` que un aparato tenga todavía en la cola se siguen mandando igual. Empacar sigue igual (cliente → consignatario → `collect-and-pack`).
+
+### 6.y Completar despacho = despacho manual (DMA, 2026-10-11)
+
+Decisión del dueño: el botón **Completar despacho** es el **despacho manual** del servidor ([06 §7b](06-inventario-y-almacen.md#7b-despacho-manual-dma--2026-10-11)):
+la salida de inventario **sin entrega** (una muestra, uso interno, un cliente que pasa a recoger, una venta de mostrador…) con **motivo obligatorio**,
+**nota libre opcional** (hasta 500 caracteres) y su documento `DMA-#####`. **Empacar no cambia.** **No es a ciegas**: la pantalla sigue mostrando la
+existencia y la posición sugerida igual que antes. Un despacho es de **un solo dueño** (propio o de un cliente), como siempre.
+
+Quién puede: `warehouse.issue` (además de lo que ya pedía recolectar). Módulo **WMS_LOTSERIAL**.
+
+Cómo se usa:
+1. Con líneas recolectadas, tocar **Completar despacho**. La app resuelve las posiciones (como antes); si alguna no existe lo dice y no sigue.
+2. Pantalla `¿Por qué sale sin entrega?`: debajo, `Despacho manual: el inventario sale sin orden ni empaque. Escoge el motivo; la nota es opcional.` y el
+   resumen `{dueño} · líneas: {n} · unidades: {cantidad}` (el dueño es el cliente o `Inventario propio`). Los **motivos** son botones grandes, uno por
+   renglón (como los motivos de Ajustar y el destino de Daño): **Muestra**, **Uso interno**, **Retiro del cliente**, **Venta**, **Otro** — o los que tenga
+   la compañía (ver «Motivos» abajo). Debajo, **Nota (opcional)** con el contador `{n}/500 caracteres.` (no deja escribir más de 500).
+3. **Despachar** pide confirmar: `¿Despachar sin entrega?` / `Salen {cantidad} unidades (líneas: {n}) con el motivo «{motivo}». El inventario sale sin orden
+   ni empaque.` → **No** (vuelve) o **Despachar**.
+4. Al confirmar, el despacho se **guarda en la cola de salida** (`manualIssue`, `POST /api/v1/manual-issues` con su `Idempotency-Key`, en el orden en que se
+   hizo, igual que Transferir y Ajustar), el despacho del aparato se cierra en ese mismo paso y el **saldo local ya refleja la salida** (Consultar lo
+   muestra). La app espera al servidor como mucho unos segundos (`Enviando el despacho manual…`):
+   - **enviado**: aviso verde `Listo: despacho manual DMA-00012.` (con el número que dio el servidor) y la pantalla queda lista para el siguiente despacho;
+   - **sin señal** (o señal débil): aviso verde `Despacho manual en cola: quedó guardado en el aparato y se envía solo en cuanto haya señal.`; el número
+     DMA se ve después en la web (lista de recolecciones o despachos manuales);
+   - **rechazado por el servidor**: el **mensaje exacto del servidor** en rojo bajo el campo del producto (por ejemplo `Inventario insuficiente de SKU-1 en
+     A-01: disponible 2, solicitado 3.`), el despacho **vuelve a abrirse tal como estaba** (mismas líneas; el motivo y la nota quedan escogidos), la salida
+     se deshace en el saldo local y **no** queda nada en Sincronización: se corrige y se vuelve a tocar **Completar despacho**.
+   - Si el rechazo llega **después** (se mandó solo, más tarde): queda en **Sincronización → Con error** con el mensaje del servidor (Reintentar o
+     Descartar, §9), y la salida ya se deshizo en el saldo local.
+
+**Motivos.** La app usa los motivos **de la compañía** (`GET /api/v1/manual-issues/reasons`: los activos y habilitados, con el nombre que la compañía les
+haya puesto en Sistema → Catálogos, en el idioma de la app). La sincronización los baja y los guarda en el aparato, como mucho cada 30 minutos y **solo si
+el usuario tiene `warehouse.issue`** (sin el permiso el servidor responde 403 y dejaría un evento de seguridad en cada pasada). Sin señal se usan los guardados;
+si el aparato **nunca** los bajó, ofrece los cinco de fábrica (`SAMPLE` Muestra, `INTERNAL_USE` Uso interno, `CUSTOMER_PICKUP` Retiro del cliente, `SALE`
+Venta, `OTHER` Otro). Si la compañía deshabilitó un motivo después de la última bajada, el servidor rechaza el despacho con su mensaje (ver la tabla).
+
+**Saldo local.** Al encolar, el aparato resta de cada posición lo que sale: en productos por lote, del lote que vence primero dentro de la posición (como
+hace el servidor), y guarda ese efecto con la operación para deshacerlo exacto si el servidor la rechaza. La copia del **orden de salida** (`stock_exit`, la
+posición sugerida) no se descuenta: se vuelve a bajar en cuanto el despacho llega al servidor (igual que con Empacar).
+
+| Campo / caso | Mensaje exacto | Origen |
+|---|---|---|
+| Usuario sin `warehouse.issue` | No se muestra **Completar despacho**; se lee `«Completar despacho» (despacho manual, sin entrega) necesita el permiso warehouse.issue y tu usuario no lo tiene: aquí puedes Empacar. Pídelo al administrador si hace falta.` | Local (permisos guardados del usuario, `GET /api/v1/me`) |
+| El aparato aún no leyó los permisos del usuario | `Todavía no se pudieron leer tus permisos (hace falta señal una vez): por ahora solo puedes Empacar.` | Local |
+| Despachar sin escoger motivo | `Escoge el motivo del despacho manual.` (no se manda nada) | Local |
+| La compañía no tiene motivos habilitados (la copia bajada está vacía) | `La compañía no tiene motivos habilitados para el despacho manual. Pide al administrador que habilite alguno (Sistema → Catálogos).` | Local |
+| Nota de más de 500 caracteres | No deja escribir más de 500; si llegara a pasar: `La nota admite como máximo 500 caracteres.` | Local |
+| Motivo deshabilitado o borrado en el servidor | `El motivo {CÓDIGO} no existe o está inactivo.` (400) | API |
+| Inventario insuficiente | `Inventario insuficiente de {sku} en {posición}: disponible {x}, solicitado {y}.` (409; no sale nada ni se consume el número DMA) | API |
+| Productos de dos dueños | `Un despacho manual solo puede tener productos de un mismo dueño.` (400; la app ya lo impide al escanear) | API |
+| Rol sin `warehouse.issue` en el servidor (el permiso se quitó y el aparato aún no lo sabe) | 403 sin cuerpo: la app muestra `Ocurrió un error. Intente de nuevo.` | API |
+| Cualquier otro rechazo (producto inactivo, lote, series…) | El mensaje exacto del servidor (mismos de la recolección, [06 §7](06-inventario-y-almacen.md#7-recolección-y-empaque-ad-hoc-pick--pack)) | API |
+| Sin señal | `Despacho manual en cola: quedó guardado en el aparato y se envía solo en cuanto haya señal.` | Cola de salida |
+
+Casos frecuentes:
+- **Me equivoqué de cantidad y ya se envió.** Desde la web, elimine el despacho manual (devuelve todo a su posición, [06 §7b](06-inventario-y-almacen.md#7b-despacho-manual-dma--2026-10-11)) y vuelva a hacerlo.
+- **Iba a un consignatario.** Use **Empacar**, no **Completar despacho**: un despacho manual nunca se convierte en orden.
+- **Cerré la app mientras decía «Enviando…».** El despacho ya está en la cola: se manda solo; no lo repita (no puede quedar dos veces: el despacho del
+  aparato se cerró al encolarlo y la cola usa `Idempotency-Key`).
 
 ## 7. Conteo
 
@@ -904,6 +968,12 @@ almacén por defecto, el tema y el **modo de recepción** del almacén del apara
 Las posiciones sirven para validar sin señal la posición destino del recibo directo: la primera vez baja la lista completa (en Advance Depot, unas 3.886 posiciones, en 8 páginas) y después solo los cambios;
 las posiciones dadas de baja se conservan marcadas como inactivas (así la app distingue "no existe" de "está desactivada"). Si el almacén por defecto del aparato cambia, el nuevo baja completo la primera vez.
 
+**Despacho manual (2026-10-11).** Al final de cada pasada con señal se bajan también los **motivos del despacho manual** (§6.y), como mucho cada
+30 minutos y solo si el usuario tiene `warehouse.issue`. Además, desde esta versión una operación de la cola queda **con error** cuando el servidor
+la rechaza con 400, 403, 404, 409 o 422, aunque traiga un código propio: antes un `Inventario insuficiente…` (409 `insufficient_stock`) o un módulo
+apagado (403 `module_disabled`) dejaban la operación **pendiente para siempre** (se reintentaba cada minuto) y su efecto en el saldo del aparato sin
+deshacer; esto valía también para Transferir, Ajustar y Empacar. Un 500 o la falta de señal la siguen dejando pendiente.
+
 ### 9.1 Línea ya corregida por el supervisor: aviso de lote parcial (Lote A7) y rechazo (Lote A6)
 
 Qué pasa: al terminar un conteo, la app encola **el lote capturado** (`countBatch`, `PUT /api/v1/cycle-counts/{id}/lines/batch`) y
@@ -982,7 +1052,8 @@ posición ya no tiene ese producto"), reintentar va a fallar otra vez con el mis
 |---|---|
 | `inventory.view` | Entrar con PIN (capítulo 8A §3.3), Recibir (incluida la pista "Sugerida" del recibo directo y la descarga de posiciones), Acomodar (listar/completar tareas), Conteo (ver, no reconciliar; zonas de "Otra posición"), Consultar (incluida la lista de lo que hay en una posición, sin cantidades) |
 | `purchasing.receive` + módulo **PURCHASING** | Recibir contra una orden de compra (sin esto, solo recibo ciego funciona) |
-| `warehouse.pick` | Recolectar, **Completar despacho** y empacar en Despacho (empacar exige además `orders.create` en el servidor) |
+| `warehouse.pick` | Recolectar y empacar en Despacho (empacar exige además `orders.create` en el servidor) |
+| `warehouse.issue` | **Completar despacho** en Despacho = despacho manual `DMA-#####` (salida sin entrega con motivo) y bajar sus motivos (2026-10-11) |
 | `locations.read` | Buscar los consignatarios de un cliente al empacar un despacho |
 | `clients.read` | Elegir el cliente al empacar un despacho de inventario propio (2026-10-05) |
 | `warehouse.count.capture` (implícito en `warehouse.count`) | Abrir, capturar y terminar un conteo, por posición o por producto (a ciegas si falta `warehouse.count`), y crear una posición provisional en "Otra posición" |

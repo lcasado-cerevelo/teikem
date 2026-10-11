@@ -3,7 +3,8 @@ import { __resetAllForTests } from 'expo-sqlite'
 import { api } from '../../kernel/api/client'
 import { __resetDbForTests, getDb } from '../../kernel/db/database'
 import { countPending, listOutbox } from '../../kernel/sync/outbox'
-import { fetchStockOptions, submitCollectOnly, fetchClientsForOwnDispatch, fetchConsigneesForClient, resolveBinCodes, submitCollectAndPack } from './dispatchApi'
+import { fetchStockOptions, queueManualIssue, fetchClientsForOwnDispatch, fetchConsigneesForClient, resolveBinCodes, submitCollectAndPack } from './dispatchApi'
+import { addLocalPickLine, getOpenPick, startLocalPick } from './localPick'
 import type { PickLine } from './dispatchLogic'
 import { mapExitRow, readStockExit, replaceStockExit } from './stockExit'
 
@@ -134,21 +135,34 @@ describe('fetchStockOptions', () => {
   })
 })
 
-describe('submitCollectOnly', () => {
+describe('queueManualIssue (despacho manual, 2026-10-11)', () => {
   const LINES = [{ productPublicId: 'p1', sku: 'A', productName: 'A', quantity: 2, fromBinCode: 'A-01', fromBinId: 5 }]
 
-  it('recolecta sin empacar: POST /pick-batches con las líneas (producto, cantidad, posición) y sin orden', async () => {
-    postMock.mockResolvedValueOnce(ok({}))
-    expect(await submitCollectOnly('wh-1', LINES)).toEqual({ queued: false })
-    expect(postMock.mock.calls[0][0]).toBe('/api/v1/pick-batches')
-    expect(postMock.mock.calls[0][1].body).toEqual({ warehousePublicId: 'wh-1', lines: [{ productPublicId: 'p1', quantity: 2, binId: 5 }] })
+  function seedOpenPick() {
+    const id = startLocalPick('wh-1', null)
+    addLocalPickLine(id, { productPublicId: 'p1', sku: 'A', productName: 'A', quantity: 2, fromBinCode: 'A-01' })
+  }
+
+  it('encola POST /manual-issues con motivo, nota recortada y las líneas, sin llamar al servidor, y cierra el despacho local en el mismo paso', () => {
+    seedOpenPick()
+    const id = queueManualIssue('wh-1', 'SAMPLE', '  Feria de salud  ', LINES)
+    expect(postMock).not.toHaveBeenCalled()
+    const row = listOutbox()[0]
+    expect(row.id).toBe(id)
+    expect([row.kind, row.method, row.path, row.status]).toEqual(['manualIssue', 'POST', '/api/v1/manual-issues', 'pending'])
+    expect(JSON.parse(row.body)).toEqual({
+      warehousePublicId: 'wh-1',
+      lines: [{ productPublicId: 'p1', quantity: 2, binId: 5 }],
+      reasonCode: 'SAMPLE',
+      note: 'Feria de salud',
+    })
+    expect(row.idempotency_key).toMatch(/^app-/)
+    expect(getOpenPick()).toBeNull()
+    expect(countPending()).toBe(1)
   })
 
-  it('sin señal lo encola (kind collect)', async () => {
-    postMock.mockResolvedValueOnce({ response: Response.error() })
-    expect(await submitCollectOnly('wh-1', LINES)).toEqual({ queued: true })
-    const row = listOutbox()[0]
-    expect([row.kind, row.method, row.path]).toEqual(['collect', 'POST', '/api/v1/pick-batches'])
-    expect(JSON.parse(row.body).lines).toEqual([{ productPublicId: 'p1', quantity: 2, binId: 5 }])
+  it('una nota en blanco viaja como null', () => {
+    queueManualIssue('wh-1', 'OTHER', '   ', LINES)
+    expect(JSON.parse(listOutbox()[0].body).note).toBeNull()
   })
 })

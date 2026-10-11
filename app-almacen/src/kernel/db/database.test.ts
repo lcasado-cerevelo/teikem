@@ -206,3 +206,18 @@ describe('migración v5 (Lote A4, adenda: posición provisional sincronizada)', 
     expect(db.getFirstSync('SELECT bin_code, counted_qty, is_provisional_bin FROM local_count_line')).toEqual({ bin_code: 'Z-09', counted_qty: 3, is_provisional_bin: 1 })
   })
 })
+
+describe('migración v11 (despacho manual, 2026-10-11)', () => {
+  it('un aparato en v10 con operaciones en la cola migra sin perderlas: la cola gana projection_json (vacía en las de antes)', () => {
+    const raw = openDatabaseSync('teikem_almacen.db')
+    for (let v = 0; v < 10; v++) raw.execSync(MIGRATIONS[v])
+    raw.execSync('PRAGMA user_version = 10;')
+    raw.runSync(
+      "INSERT INTO outbox (idempotency_key, kind, method, path, body, created_at_utc) VALUES ('k1', 'collect', 'POST', '/api/v1/pick-batches', '{}', '2026-10-10T10:00:00Z')",
+    )
+    const db = getDb()
+    expect(SCHEMA_VERSION).toBeGreaterThanOrEqual(11)
+    expect(db.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version).toBe(SCHEMA_VERSION)
+    expect(db.getFirstSync('SELECT kind, status, projection_json FROM outbox')).toEqual({ kind: 'collect', status: 'pending', projection_json: null })
+  })
+})

@@ -9,7 +9,9 @@ import { buildTransferRequest } from '../../features/transfer/transferLogic'
 import { queueAdjustment } from '../../features/adjust/adjustApi'
 import { queueTransfer } from '../../features/transfer/transferApi'
 import { localBalancesForBin } from './localBalances'
-import { deltasOf, projectOperation } from './balanceProjection'
+import { deltasOf, issueDeltas, projectOperation } from './balanceProjection'
+import { queueManualIssue } from '../../features/dispatch/dispatchApi'
+import { listOutbox } from '../sync/outbox'
 
 jest.mock('../api/client', () => {
   const actual = jest.requireActual('../api/client')
@@ -114,5 +116,69 @@ describe('efecto de las operaciones pendientes en los saldos locales (D2b)', () 
     const id = enqueue({ kind: 'damage', body: { origin: 'WAREHOUSE' } })
     expect(getDb().getFirstSync<{ path: string; method: string }>('SELECT path, method FROM outbox WHERE id = ?', [id])).toEqual({ path: '/api/v1/damage-reports', method: 'POST' })
     expect(A()[0].qtyOnHand).toBe(10)
+  })
+})
+
+describe('despacho manual (DMA, 2026-10-11): resta lo que sale y lo deshace exacto', () => {
+  const LINE = (quantity: number, binId = 10, productPublicId = 'p1') => ({ productPublicId, sku: 'SKU-1', productName: 'Guantes', quantity, fromBinCode: 'A-01', fromBinId: binId })
+
+  function seedLots() {
+    // p2 por lote en A-01: L-2 vence antes que L-1; sin lote no hay
+    const db = getDb()
+    db.runSync(`INSERT INTO product (id, public_id, sku, name, tracking_type_code, is_active) VALUES (2, 'p2', 'LOT-1', 'Cable', 'LOT', 1)`)
+    db.runSync(
+      `INSERT INTO stock_balance (id, warehouse_public_id, bin_id, product_id, product_public_id, lot_id, lot_number, lot_expiry_date, qty_on_hand, qty_reserved, updated_at_utc)
+       VALUES (20, '${WH}', 10, 2, 'p2', 1, 'L-1', '2027-06-30', 5, 0, '2026-10-10T10:00:00.000Z'),
+              (21, '${WH}', 10, 2, 'p2', 2, 'L-2', '2026-12-31', 4, 1, '2026-10-10T10:00:00.000Z')`,
+    )
+  }
+  const lotQty = (id: number) => getDb().getFirstSync<{ q: number }>('SELECT qty_on_hand AS q FROM stock_balance WHERE id = ?', [id])?.q
+
+  it('sin lote: resta lo disponible de la posición; lo que el aparato no tiene no se resta', () => {
+    expect(issueDeltas({ warehousePublicId: WH, lines: [{ productPublicId: 'p1', quantity: 3, binId: 10 }] })).toEqual([
+      { warehousePublicId: WH, binId: 10, productPublicId: 'p1', lotId: null, delta: -3 },
+    ])
+    // disponible 8 (10 en mano − 2 reservados): de 12 solo se proyectan 8
+    expect(issueDeltas({ warehousePublicId: WH, lines: [{ productPublicId: 'p1', quantity: 12, binId: 10 }] })[0].delta).toBe(-8)
+    expect(issueDeltas({ warehousePublicId: WH, lines: [{ productPublicId: 'p1', quantity: 1, binId: 11 }] })).toEqual([])
+  })
+
+  it('con lote: reparte por vencimiento (FEFO) contra lo disponible, también entre dos líneas de la misma posición', () => {
+    seedLots()
+    const body = { warehousePublicId: WH, lines: [{ productPublicId: 'p2', quantity: 2, binId: 10 }, { productPublicId: 'p2', quantity: 3, binId: 10 }] }
+    expect(issueDeltas(body)).toEqual([
+      { warehousePublicId: WH, binId: 10, productPublicId: 'p2', lotId: 2, delta: -2 },
+      { warehousePublicId: WH, binId: 10, productPublicId: 'p2', lotId: 2, delta: -1 },
+      { warehousePublicId: WH, binId: 10, productPublicId: 'p2', lotId: 1, delta: -2 },
+    ])
+  })
+
+  it('al encolar resta, guarda el efecto con la fila; el rechazo lo deshace exacto y reintentar lo vuelve a aplicar', async () => {
+    seedLots()
+    const id = queueManualIssue(WH, 'SAMPLE', '', [LINE(2), { ...LINE(5), productPublicId: 'p2' }])
+    expect(A().find((r) => r.productPublicId === 'p1')?.qtyOnHand).toBe(8)
+    expect([lotQty(21), lotQty(20)]).toEqual([1, 3])
+    expect(JSON.parse(listOutbox()[0].projection_json ?? '[]')).toHaveLength(3)
+
+    postMock.mockResolvedValueOnce({ error: { status: 409, title: 'Inventario insuficiente.', code: 'insufficient_stock' }, response: new Response(null, { status: 409 }) })
+    expect((await runOutbox()).rejected).toBe(1)
+    expect(A().find((r) => r.productPublicId === 'p1')?.qtyOnHand).toBe(10)
+    expect([lotQty(21), lotQty(20)]).toEqual([4, 5])
+
+    retryRow(id)
+    expect([lotQty(21), lotQty(20)]).toEqual([1, 3])
+  })
+
+  it('la bajada de saldos vuelve a restar lo pendiente, también en los lotes', async () => {
+    seedLots()
+    queueManualIssue(WH, 'SAMPLE', '', [{ ...LINE(4), productPublicId: 'p2' }])
+    const server = (id: number, lotId: number, qty: number) => ({
+      id, warehousePublicId: WH, binId: 10, productId: 2, productPublicId: 'p2', lotId, lotNumber: `L-${lotId}`, lotExpiryDate: null,
+      qtyOnHand: qty, qtyReserved: lotId === 2 ? 1 : 0, updatedAtUtc: '2026-10-11T10:20:00.000Z', isActive: true,
+    })
+    getMock.mockResolvedValueOnce({ data: { items: [server(20, 1, 5), server(21, 2, 4)], nextCursor: null, serverTimeUtc: '2026-10-11T10:20:00.000Z' }, response: new Response(null, { status: 200 }) })
+    await downloadBalances(WH)
+    // L-2 tenía 3 disponibles (4 − 1 reservado) → −3; el resto (1) sale de L-1
+    expect([lotQty(21), lotQty(20)]).toEqual([1, 4])
   })
 })

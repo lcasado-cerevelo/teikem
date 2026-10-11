@@ -3,7 +3,7 @@ import { __resetAllForTests } from 'expo-sqlite'
 import { api } from '../api/client'
 import { __resetDbForTests, getDb } from '../db/database'
 import { listSkippedNotices } from '../../features/count/countSkipped'
-import { countPending, discardRow, enqueue, listOutbox, retryRow, runOutbox } from './outbox'
+import { countPending, discardRow, enqueue, listOutbox, outboxResult, outboxStatus, retryRow, runOutbox } from './outbox'
 
 jest.mock('../api/client', () => {
   const actual = jest.requireActual('../api/client')
@@ -212,5 +212,43 @@ describe('enqueue', () => {
       expect(listOutbox()[0].status).toBe('rejected')
       expect(listSkippedNotices()).toEqual([])
     })
+  })
+})
+
+describe('cola de salida — despacho manual (2026-10-11)', () => {
+  it('manualIssue va por POST /api/v1/manual-issues con su Idempotency-Key, en orden con lo demás, y guarda la respuesta (número DMA)', async () => {
+    enqueue({ kind: 'receipt', body: { a: 1 } })
+    const id = enqueue({ kind: 'manualIssue', body: { reasonCode: 'SAMPLE' }, projection: [] })
+    const seen: Array<[string, string]> = []
+    postMock.mockImplementation((path, opts) => {
+      seen.push([path, opts.headers['Idempotency-Key']])
+      return ok(path === '/api/v1/manual-issues' ? { number: 'DMA-00012' } : {})
+    })
+    expect(outboxResult(id)).toBeNull()
+    await runOutbox()
+    expect(seen.map((x) => x[0])).toEqual(['/api/v1/receipts', '/api/v1/manual-issues'])
+    expect(seen[1][1]).toBe(listOutbox()[1].idempotency_key)
+    expect(outboxStatus(id)).toEqual({ status: 'sent', error: null })
+    expect(outboxResult(id)).toEqual({ number: 'DMA-00012' })
+    expect(listOutbox()[1].projection_json).toBe('[]')
+  })
+
+  it('un 409 con código propio del servidor (insufficient_stock) es un rechazo: no se queda pendiente para siempre', async () => {
+    const id = enqueue({ kind: 'manualIssue', body: {} })
+    postMock.mockImplementationOnce(() => problem(409, { title: 'Inventario insuficiente de A en A-01: disponible 1, solicitado 2.', code: 'insufficient_stock' }))
+    const result = await runOutbox()
+    expect(result).toMatchObject({ rejected: 1, remaining: 0 })
+    expect(outboxStatus(id)).toEqual({ status: 'rejected', error: 'Inventario insuficiente de A en A-01: disponible 1, solicitado 2.' })
+  })
+
+  it('un 403 de módulo apagado (module_disabled) también es un rechazo; un 500 sigue pendiente', async () => {
+    const a = enqueue({ kind: 'manualIssue', body: {} })
+    const b = enqueue({ kind: 'manualIssue', body: {} })
+    postMock
+      .mockImplementationOnce(() => problem(403, { title: "El módulo 'WMS_LOTSERIAL' no está habilitado para esta compañía.", code: 'module_disabled' }))
+      .mockImplementationOnce(() => problem(500, { title: 'Error interno.' }))
+    await runOutbox()
+    expect(outboxStatus(a)?.status).toBe('rejected')
+    expect(outboxStatus(b)?.status).toBe('pending')
   })
 })
