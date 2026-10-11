@@ -6,6 +6,7 @@
 appId: com.teikem.almacen
 ---
 - launchApp
+- runFlow: _desbloquear.yaml
 
 - assertVisible: "Teikem Almacén"
 - tapOn: "Recibir"
