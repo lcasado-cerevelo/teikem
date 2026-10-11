@@ -38,6 +38,13 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public int CurrentTenantId => _tenant.TenantId ?? -1;
     public bool TenantFilterDisabled => _tenant.TenantFilterDisabled;
 
+    // Alcance de datos del usuario (UserDataScope, 2026-10-11): además del tenant, un usuario con alcance de almacén y/o cliente
+    // solo ve lo de esos almacenes/clientes. Sin alcance de ese tipo = sin restricción. Lo lee el filtro global (ver BuildScopeFilter).
+    public bool WarehouseScoped => _tenant.ScopedWarehouseIds is not null && !_tenant.TenantFilterDisabled;
+    public bool ClientScoped => _tenant.ScopedClientIds is not null && !_tenant.TenantFilterDisabled;
+    public int[] ScopedWarehouseIdList => _tenant.ScopedWarehouseIds?.ToArray() ?? Array.Empty<int>();
+    public int[] ScopedClientIdList => _tenant.ScopedClientIds?.ToArray() ?? Array.Empty<int>();
+
     /// <summary>Bandera interna del interceptor de auditoría para no auditar la escritura del propio AuditLog.</summary>
     internal bool SuppressAudit { get; set; }
     internal List<Interceptors.PendingAudit> PendingAudits { get; } = new();
@@ -190,11 +197,15 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
             foreach (var fk in entityType.GetForeignKeys())
                 fk.DeleteBehavior = DeleteBehavior.Restrict;
 
-            // Filtro global de tenant
+            // Filtro global de tenant + alcance de datos del usuario (almacén/cliente)
+            LambdaExpression? filter = null;
             if (typeof(ITenantScoped).IsAssignableFrom(clr))
-                entityType.SetQueryFilter(BuildTenantFilter(clr, optional: false));
+                filter = BuildTenantFilter(clr, optional: false);
             else if (typeof(IOptionallyTenantScoped).IsAssignableFrom(clr))
-                entityType.SetQueryFilter(BuildTenantFilter(clr, optional: true));
+                filter = BuildTenantFilter(clr, optional: true);
+            filter = AddScopeFilter(clr, filter, "WarehouseId", nameof(WarehouseScoped), nameof(ScopedWarehouseIdList));
+            filter = AddScopeFilter(clr, filter, "ClientId", nameof(ClientScoped), nameof(ScopedClientIdList));
+            if (filter is not null) entityType.SetQueryFilter(filter);
         }
     }
 
@@ -217,6 +228,29 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
             var eq = Expression.Equal(tenantProp, Expression.Convert(current, typeof(int?)));
             body = Expression.OrElse(disabled, Expression.OrElse(isNull, eq));
         }
+        return Expression.Lambda(body, e);
+    }
+
+    /// <summary>
+    /// Agrega al filtro (si la entidad tiene la columna) el alcance de datos:  e => !Scoped || ids.Contains(e.Col)  (|| e.Col == null si es int?).
+    /// Una fila sin almacén/cliente (NULL) no pertenece a ninguno y se ve siempre. Los catálogos y lo demás sin la columna no se tocan.
+    /// </summary>
+    private LambdaExpression? AddScopeFilter(Type clr, LambdaExpression? existing, string column, string scopedFlag, string idList)
+    {
+        var prop = clr.GetProperty(column);
+        if (prop is null || (prop.PropertyType != typeof(int) && prop.PropertyType != typeof(int?))) return existing;
+        var e = existing?.Parameters[0] ?? Expression.Parameter(clr, "e");
+        var ctx = Expression.Constant(this);
+        var notScoped = Expression.Not(Expression.Property(ctx, scopedFlag));
+        var ids = Expression.Property(ctx, idList);
+        var col = Expression.Property(e, prop);
+        Expression inList = prop.PropertyType == typeof(int?)
+            ? Expression.Call(typeof(Enumerable), nameof(Enumerable.Contains), new[] { typeof(int) }, ids, Expression.Property(col, "Value"))
+            : Expression.Call(typeof(Enumerable), nameof(Enumerable.Contains), new[] { typeof(int) }, ids, col);
+        if (prop.PropertyType == typeof(int?))
+            inList = Expression.OrElse(Expression.Equal(col, Expression.Constant(null, typeof(int?))), inList);
+        var scope = Expression.OrElse(notScoped, inList);
+        var body = existing is null ? scope : Expression.AndAlso(existing.Body, scope);
         return Expression.Lambda(body, e);
     }
 }

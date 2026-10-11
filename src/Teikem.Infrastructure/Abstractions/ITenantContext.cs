@@ -18,6 +18,10 @@ public interface ITenantContext
     string? UserAgent { get; }
     /// <summary>Instante de la última verificación AAL2 (step-up) que trae el access token, si alguna.</summary>
     DateTime? Aal2VerifiedAtUtc { get; }
+    /// <summary>Alcance de datos del usuario (UserDataScope): almacenes que puede ver. null = sin restricción (todos).</summary>
+    IReadOnlyCollection<int>? ScopedWarehouseIds => null;
+    /// <summary>Alcance de datos del usuario (UserDataScope): clientes que puede ver. null = sin restricción (todos).</summary>
+    IReadOnlyCollection<int>? ScopedClientIds => null;
 }
 
 /// <summary>Implementación mutable (scoped). El middleware y los seeders la configuran.</summary>
@@ -33,6 +37,8 @@ public sealed class TenantContext : ITenantContext
     public string? IpAddress { get; set; }
     public string? UserAgent { get; set; }
     public DateTime? Aal2VerifiedAtUtc { get; set; }
+    public IReadOnlyCollection<int>? ScopedWarehouseIds { get; set; }
+    public IReadOnlyCollection<int>? ScopedClientIds { get; set; }
 
     public int RequireTenantId() => TenantId ?? throw new Exceptions.ForbiddenException("No hay tenant activo en la sesión.");
     public int RequireUserId() => UserId ?? throw new Exceptions.UnauthorizedException();

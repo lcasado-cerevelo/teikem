@@ -1,5 +1,7 @@
 using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
 using Teikem.Infrastructure.Abstractions;
+using Teikem.Infrastructure.Persistence;
 using Teikem.Infrastructure.Services;
 
 namespace Teikem.Api.Middleware;
@@ -12,7 +14,7 @@ public sealed class TenantContextMiddleware(RequestDelegate next)
 {
     public const string CorrelationHeader = "X-Correlation-Id";
 
-    public async Task InvokeAsync(HttpContext http, TenantContext tenant)
+    public async Task InvokeAsync(HttpContext http, TenantContext tenant, TeikemDbContext db)
     {
         var correlation = http.Request.Headers.TryGetValue(CorrelationHeader, out var h) && Guid.TryParse(h.FirstOrDefault(), out var g) ? g : Guid.NewGuid();
         tenant.CorrelationId = correlation;
@@ -29,8 +31,26 @@ public sealed class TenantContextMiddleware(RequestDelegate next)
             if (int.TryParse(user.FindFirst(TeikemClaims.TenantId)?.Value, out var tid)) tenant.TenantId = tid;
             tenant.IsPlatformAdmin = user.FindFirst(TeikemClaims.PlatformAdmin)?.Value == "1";
             if (long.TryParse(user.FindFirst(TeikemClaims.Aal2At)?.Value, out var aal2)) tenant.Aal2VerifiedAtUtc = DateTimeOffset.FromUnixTimeSeconds(aal2).UtcDateTime;
+            await LoadDataScopeAsync(tenant, db, http.RequestAborted);
         }
         await next(http);
+    }
+
+    /// <summary>
+    /// Alcance de datos (UserDataScope): lee del usuario sus almacenes y clientes permitidos y los deja en el contexto, para que el filtro
+    /// global de TeikemDbContext los aplique. Sin filas de un tipo = sin restricción de ese tipo. Nadie se exenta (ni administradores).
+    /// </summary>
+    private static async Task LoadDataScopeAsync(TenantContext tenant, TeikemDbContext db, CancellationToken ct)
+    {
+        if (tenant.TenantId is null || tenant.UserId is null || tenant.IsPlatformAdmin) return;
+        var uid = tenant.UserId.Value;
+        var rows = await db.UserDataScopes.AsNoTracking().Where(s => s.UserId == uid)
+            .Select(s => new { Entity = s.ScopeEntity!.InternalCode, s.ScopeId }).ToListAsync(ct);
+        if (rows.Count == 0) return;
+        var warehouses = rows.Where(r => r.Entity == Teikem.Domain.Constants.EntityTypes.Warehouse).Select(r => r.ScopeId).ToList();
+        var clients = rows.Where(r => r.Entity == Teikem.Domain.Constants.EntityTypes.Client).Select(r => r.ScopeId).ToList();
+        if (warehouses.Count > 0) tenant.ScopedWarehouseIds = warehouses;
+        if (clients.Count > 0) tenant.ScopedClientIds = clients;
     }
 
     private static string ResolveLang(HttpContext http)
