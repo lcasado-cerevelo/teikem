@@ -2,6 +2,7 @@
 // - Valores por defecto: tipo de servicio y de paquete (catálogo; '' = sin valor) y máximo de paradas por ruta (≥ 1).
 // - Pipeline de estatus de órdenes: matriz estatus × acción (`StatusCapability` de TRANSPORT_ORDER / OrderStatus); se lee
 //   con sesión y se cambia con `admin.statusconfig` (una celda por clic). Solo con el módulo de órdenes (LTL_GROUND).
+// - Despacho manual (módulo WMS_LOTSERIAL, 2026-10-11 b): motivo por default (preseleccionado al despachar; sigue obligatorio).
 // - Conteo cíclico (módulo WMS_LOTSERIAL, tarea 25): quién ve lo esperado al contar, margen de reconteo y si se muestra el número.
 // - Recepción por almacén (solo lectura, módulo WMS_LOTSERIAL): modo, posición de recepción, recibos abiertos y acomodos
 //   pendientes, aviso rojo si es con acomodo y no tiene posición de recepción, y "Abrir almacén" (ficha del almacén).
@@ -92,6 +93,56 @@ function DefaultsPanel({ settings, canEdit }: { settings: TenantSettingsDto; can
           </p>
           <Field name="maxStopsPerRouteDefault" label={t('system.settings.ops.maxStopsLabel')} help={t('system.settings.ops.maxStopsHint')}>
             <NumberInput min={1} step={1} className="mono" />
+          </Field>
+        </fieldset>
+        {canEdit && (
+          <div className="set-actions">
+            <button type="button" className="btn" disabled={!dirty || form.formState.isSubmitting} onClick={() => form.reset()}>
+              {t('system.settings.discard')}
+            </button>
+            <button type="submit" className="btn flow" disabled={!dirty || form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? t('system.settings.saving') : t('system.settings.save')}
+            </button>
+          </div>
+        )}
+      </Form>
+    </Panel>
+  )
+}
+
+// ------------------------------------------------------------------ despacho manual: motivo por default (2026-10-11 b)
+
+/**
+ * «Motivo por default del despacho manual» (`defaultManualIssueReason`, admin.tenant): llega preseleccionado al despachar en
+ * Recolección y empaque y en la app; el motivo sigue siendo obligatorio. '' = sin default. Los motivos son los activos del
+ * catálogo `ManualIssueReason`; el 400 del servidor ("El motivo X no existe o está inactivo.") sale bajo el selector.
+ */
+function ManualReasonPanel({ settings, canEdit }: { settings: TenantSettingsDto; canEdit: boolean }) {
+  const t = useT()
+  const save = useSaveTenantSettings()
+  const { data: reasons = [] } = useLookups('ManualIssueReason')
+  const current = settings.defaultManualIssueReason ?? ''
+  const form = useForm<{ defaultManualIssueReason: string }>({ values: { defaultManualIssueReason: current } })
+  const dirty = form.formState.isDirty
+  // un default guardado que ya no está entre los activos se sigue mostrando (con su código) para poder cambiarlo o quitarlo
+  const options = (current && !reasons.some((r) => r.code.toUpperCase() === current.toUpperCase()) ? [...reasons, { code: current, label: current }] : reasons).map((r) => ({
+    value: r.code,
+    label: r.label,
+  }))
+
+  return (
+    <Panel className="set-gap" icon={<IconGear />} title={t('system.settings.ops.manualReasonTitle')}>
+      <Form
+        form={form}
+        onSubmit={async (v) => {
+          // '' = quitar el default (el API lo entiende así)
+          await save.mutateAsync({ defaultManualIssueReason: v.defaultManualIssueReason })
+          toast.success(t('system.settings.saved'))
+        }}
+      >
+        <fieldset className="set-fs" disabled={!canEdit}>
+          <Field name="defaultManualIssueReason" label={t('system.settings.ops.manualReasonLabel')} help={t('system.settings.ops.manualReasonHelp')}>
+            <Select options={options} placeholder={t('system.settings.ops.manualReasonNone')} />
           </Field>
         </fieldset>
         {canEdit && (
@@ -373,6 +424,7 @@ export function OperationsTab({ settings, canEdit }: { settings: TenantSettingsD
         <DefaultsPanel settings={settings} canEdit={canEdit} />
         {orders && <PipelinePanel />}
       </div>
+      {wms && <ManualReasonPanel settings={settings} canEdit={canEdit} />}
       {wms && <CountRevealPanel settings={settings} canEdit={canEdit} />}
       {wms && <RecvSummaryPanel />}
     </>

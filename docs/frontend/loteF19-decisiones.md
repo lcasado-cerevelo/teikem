@@ -26,3 +26,16 @@ Playwright `e2e/loteF19-despacho-manual.spec.ts` (proyectos `escritorio-f19` y `
 1. **Filtro por motivo**: el servidor no lo trae (`kind` y `search` solamente). No se agregó; la búsqueda libre ya encuentra por motivo y nota.
 2. **Nota fuera del Kárdex** y estatus «Despachado» (solo etiqueta; el código sigue `COLLECTED`).
 3. El orden de campos del panel es Almacén, interruptor, Motivo, Nota (el modal ya no existe).
+
+## Adenda 2026-10-11 (b) — Motivo por default (decisión del dueño: no complicar la operación)
+Consume `defaultManualIssueReason` / `isDefault` del [Lote 31, adenda (b)](../lote31-decisiones.md).
+- **Ajustes → Operación** (`OperationsTab`, panel «Despacho manual», módulo `WMS_LOTSERIAL`): selector «Motivo por default del despacho manual» con los
+  motivos activos del catálogo (`useLookups('ManualIssueReason')`, no `/manual-issues/reasons`, que exige `warehouse.issue` y quien tiene `admin.tenant` puede no tenerlo)
+  + «Sin motivo por default» (`""`); guarda con `useSaveTenantSettings`; los 400 salen bajo el campo vía `Form`. Solo lectura sin `admin.tenant`.
+- **CollectPanel**: el motivo llega preseleccionado = último usado (localStorage `teikem.manualIssue.lastReason.<compañía>.<usuario>`, con try/catch y tolerando
+  que ya no exista) o el `isDefault`; tras despachar queda el recién usado. La nota queda detrás de «Agregar nota». Lógica pura en `manualIssueView.ts`
+  (`initialReasonCode`, `readLastReason`, `writeLastReason`).
+- Pruebas: `npm run check` verde (152 archivos, **1533** pruebas; +8): preselección por default, último usado gana, último inexistente, almacenamiento roto, nota
+  colapsada, ajuste guardado/quitado/error del servidor/solo lectura, lógica pura. Playwright F19: el escritorio fija el default en Ajustes, ve el motivo
+  preseleccionado, despacha y deja la compañía sin default; el móvil elige el motivo explícito (los dos proyectos corren en paralelo sobre la misma compañía).
+- A revisar: el «último usado» gana al default (igual que la app); el default solo se ve en Operación si el módulo de almacén está encendido.

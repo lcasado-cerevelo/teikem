@@ -12,7 +12,7 @@
 // vacías; los errores del servidor vuelven a su fila) y "Limpiar" deja una fila vacía. Al grabar: toast, líneas limpias
 // (se queda el almacén) y `onCollected` (la lista la resalta); no navega a la ficha. Lógica pura en `collectForm.ts`.
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useController, useFieldArray, useForm, useFormContext, useWatch } from 'react-hook-form'
 import { useCan } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
@@ -66,7 +66,8 @@ import {
   type CollectLine,
 } from './collectForm'
 import { formatNumber, parseSerials, type LineIssue } from './lineRules'
-import { buildManualIssueBody, nextIdempotencyKey } from './manualIssueView'
+import { SessionContext } from '../../app/session'
+import { buildManualIssueBody, initialReasonCode, lastReasonStorageKey, nextIdempotencyKey, readLastReason, writeLastReason } from './manualIssueView'
 import { BinPickerInput, ProductPickerInput, WarehousePickerInput, type BinPickerOption } from './pickers'
 import './warehouse.css'
 
@@ -308,6 +309,18 @@ export function CollectPanel({ onCollected }: CollectPanelProps) {
     resolver: zodResolver(schema),
     defaultValues: { warehousePublicId: null, lines: [EMPTY_COLLECT_LINE], reasonCode: '', note: '' } as CollectFormValues,
   })
+  // Motivo preseleccionado (2026-10-11 b): el último que este usuario usó aquí (si aún existe) o el default de la compañía
+  // (`isDefault`); el motivo sigue siendo obligatorio. La nota queda opcional, vacía y colapsada detrás de «Agregar nota».
+  const session = useContext(SessionContext)
+  const reasonKey = lastReasonStorageKey(session?.tenantId, session?.me?.userId)
+  const preselectedReason = useCallback(() => initialReasonCode(reasons.data, readLastReason(reasonKey)), [reasons.data, reasonKey])
+  const [noteOpen, setNoteOpen] = useState(false)
+  useEffect(() => {
+    if (manual && reasons.data && !form.getValues('reasonCode')) {
+      const code = preselectedReason()
+      if (code) form.setValue('reasonCode', code)
+    }
+  }, [manual, reasons.data, form, preselectedReason])
   const { fields, append, remove, insert } = useFieldArray({ control: form.control, name: 'lines' })
   const warehousePublicId = useWatch({ control: form.control, name: 'warehousePublicId' })
   const lines = useWatch({ control: form.control, name: 'lines' })
@@ -392,7 +405,8 @@ export function CollectPanel({ onCollected }: CollectPanelProps) {
   )
 
   const clearAll = () => {
-    form.reset({ warehousePublicId: form.getValues('warehousePublicId'), lines: [{ ...EMPTY_COLLECT_LINE }], reasonCode: manual ? '' : undefined, note: manual ? '' : undefined })
+    form.reset({ warehousePublicId: form.getValues('warehousePublicId'), lines: [{ ...EMPTY_COLLECT_LINE }], reasonCode: manual ? preselectedReason() : undefined, note: manual ? '' : undefined })
+    setNoteOpen(false)
   }
 
   const showLot = (lines ?? []).some((l) => isLotTracked(l?.trackingTypeCode))
@@ -463,7 +477,11 @@ export function CollectPanel({ onCollected }: CollectPanelProps) {
           }
           attempt.current = null
           toast.success(t('warehouse.manualIssues.issued', { number: issued.number ?? '' }))
-          form.reset({ warehousePublicId: v.warehousePublicId, lines: [{ ...EMPTY_COLLECT_LINE }], reasonCode: '', note: '' })
+          // el motivo recién usado es el que llega la próxima vez
+          const usedReason = (v.reasonCode ?? '').trim()
+          writeLastReason(reasonKey, usedReason)
+          form.reset({ warehousePublicId: v.warehousePublicId, lines: [{ ...EMPTY_COLLECT_LINE }], reasonCode: initialReasonCode(reasons.data, usedReason), note: '' })
+          setNoteOpen(false)
           onCollected?.(issued)
           return
         }
@@ -498,9 +516,17 @@ export function CollectPanel({ onCollected }: CollectPanelProps) {
             <Field name="reasonCode" label={t('warehouse.manualIssues.fields.reason')} required>
               <Select options={reasonOptions} placeholder={t('warehouse.manualIssues.reasonPlaceholder')} />
             </Field>
-            <Field name="note" label={t('warehouse.manualIssues.fields.note')} help={t('warehouse.manualIssues.noteHelp', { max: MANUAL_NOTE_MAX })}>
-              <TextArea rows={2} />
-            </Field>
+            {noteOpen || Boolean(form.getValues('note')) || form.formState.errors.note ? (
+              <Field name="note" label={t('warehouse.manualIssues.fields.note')} help={t('warehouse.manualIssues.noteHelp', { max: MANUAL_NOTE_MAX })}>
+                <TextArea rows={2} />
+              </Field>
+            ) : (
+              <div className="f">
+                <button type="button" className="btn sm" onClick={() => setNoteOpen(true)}>
+                  {t('warehouse.manualIssues.addNote')}
+                </button>
+              </div>
+            )}
           </>
         )}
         <p className="note collect-note">{manual ? t('warehouse.manualIssues.linesHelp') : t('warehouse.pickBatches.linesHelp')}</p>

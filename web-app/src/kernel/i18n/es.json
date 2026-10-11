@@ -3157,6 +3157,7 @@
       "issued": "Despacho manual {number} registrado.",
       "reasonPlaceholder": "Elija el motivo",
       "noteHelp": "Opcional. Máximo {max} caracteres.",
+      "addNote": "Agregar nota",
       "linesHelp": "Un despacho manual admite productos de un solo dueño y baja el inventario sin entrega. Sin posición ni lote, el sistema elige por FEFO.",
       "fields": {
         "reason": "Motivo",
@@ -4272,6 +4273,10 @@
         "recvSumHint": "Solo lectura. El modo se cambia en cada almacén (Almacenes → Recepción), porque la zona de recepción es física. Con acomodo: la mercancía entra a la posición de recepción y luego se acomoda. Directo: quien recibe escoge la posición final y no hay acomodo. Un almacén con acomodo necesita una posición de recepción para poder recibir.",
         "recvNoAccess": "Su usuario no puede consultar los almacenes.",
         "recvEmpty": "No hay almacenes.",
+        "manualReasonTitle": "Despacho manual",
+        "manualReasonLabel": "Motivo por default del despacho manual",
+        "manualReasonNone": "Sin motivo por default",
+        "manualReasonHelp": "Llega preseleccionado al despachar; el motivo sigue siendo obligatorio.",
         "countRevealTitle": "Conteo cíclico: lo esperado al contar",
         "countRevealLabel": "¿Quién ve lo esperado al contar?",
         "countReveal": {

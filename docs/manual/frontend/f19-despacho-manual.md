@@ -25,8 +25,8 @@ manual (sin interruptor). Quien solo tiene `warehouse.pick` no ve nada nuevo: el
 ![Panel Recolección con el modo manual: motivo, nota, líneas y el 409 de existencia](img/f19-d-409-sin-existencia.png)
 
 1. Elija el **Almacén** (si la compañía tiene uno solo, ya viene elegido) y encienda **Despacho manual (sin entrega)**.
-2. Aparecen **Motivo** (obligatorio: Muestra, Uso interno, Retiro del cliente, Venta u Otro; la compañía puede renombrarlos o deshabilitarlos) y
-   **Nota** (opcional, máximo 500 caracteres).
+2. Aparece **Motivo** (obligatorio: Muestra, Uso interno, Retiro del cliente, Venta u Otro; la compañía puede renombrarlos o deshabilitarlos), **ya
+   preseleccionado** (ver §2b), y el botón **Agregar nota** (la nota es opcional, máximo 500 caracteres, vacía y oculta por omisión).
 3. Llene las líneas **igual que una recolección**: producto (con su existencia disponible), cantidad, posición (vacía = el sistema elige por
    FEFO), lote, series (productos con serie) y **Sugerir posiciones** (reparte la cantidad entre posiciones en orden FEFO).
    Un despacho admite productos de **un solo dueño**.
@@ -40,6 +40,26 @@ muestran **tal cual** junto a lo que corrigen; por ejemplo, sin existencia sufic
 
 Si se corta la red al enviar, vuelva a pulsar **Despachar** sin cambiar nada: se manda con la misma llave de idempotencia y el servidor devuelve el
 mismo documento, no uno nuevo.
+
+## 2b. Motivo por default (2026-10-11 b)
+
+El despacho manual no debe complicar la operación: el **Motivo llega preseleccionado**, con prioridad así:
+
+1. el **último motivo que usted usó** en este navegador (se guarda al despachar, por compañía y usuario) si todavía existe y está habilitado;
+2. si no, el **motivo por default de la compañía** (`isDefault` en `GET /api/v1/manual-issues/reasons`);
+3. si no hay ninguno, queda vacío y hay que elegirlo (el motivo **sigue siendo obligatorio**: el servidor lo exige igual).
+
+Después de despachar el panel queda listo para el siguiente con el motivo recién usado. Un último motivo que ya no existe se ignora sin error.
+Si el navegador no deja guardar datos, simplemente no se recuerda.
+
+**Dónde se fija el default.** Ajustes de la compañía → **Operación** → panel **Despacho manual** → **Motivo por default del despacho manual** (los motivos activos
+del catálogo + «Sin motivo por default»; ayuda: *«Llega preseleccionado al despachar; el motivo sigue siendo obligatorio.»*). Exige `admin.tenant` (sin él se ve
+y no se cambia) y el módulo Lotes y series. Guarda con `PUT /api/v1/tenant/settings` (`defaultManualIssueReason`, `""` = sin default); el error 400
+*«El motivo {CÓDIGO} no existe o está inactivo.»* sale bajo el selector y no se guarda nada.
+
+![Ajustes: motivo por default del despacho manual](img/f19-d-ajuste-default.png)
+
+**Nota.** El campo queda detrás de **Agregar nota** para no ocupar lugar; sin texto por default. Se vuelve a ocultar tras despachar o **Limpiar**.
 
 ## 3. Lista de Recolección y empaque
 

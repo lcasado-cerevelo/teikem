@@ -18,7 +18,7 @@ interface Call {
   body: unknown
   headers: Headers
 }
-const mock = vi.hoisted(() => ({ calls: [] as Call[], postResponse: null as null | { status: number; body: unknown }, deleteResponse: null as null | { status: number; body: unknown } }))
+const mock = vi.hoisted(() => ({ reasons: [] as unknown[], calls: [] as Call[], postResponse: null as null | { status: number; body: unknown }, deleteResponse: null as null | { status: number; body: unknown } }))
 vi.mock('../../kernel/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../kernel/api/client')>()
   const fetch = async (req: Request) => {
@@ -78,7 +78,7 @@ const BALANCES = [{ binId: 10, binCode: 'A-01', zoneCode: 'A', zoneTypeCode: 'PI
 function route(method: string, url: URL): [number, unknown] {
   const p = url.pathname
   if (p === '/api/v1/manual-issues' && method === 'POST') return mock.postResponse ? [mock.postResponse.status, mock.postResponse.body] : [200, issue({ id: 9, publicId: NEW, number: 'DMA-00009' })]
-  if (p === '/api/v1/manual-issues/reasons') return [200, REASONS]
+  if (p === '/api/v1/manual-issues/reasons') return [200, mock.reasons]
   if (p.startsWith('/api/v1/manual-issues/') && method === 'DELETE') return mock.deleteResponse ? [mock.deleteResponse.status, mock.deleteResponse.body] : [204, null]
   if (p === '/api/v1/catalogs/ManualIssueReason') return [200, REASONS]
   if (p === '/api/v1/pick-batches') {
@@ -119,6 +119,7 @@ const posts = () => mock.calls.filter((c) => c.method === 'POST' && c.url.pathna
 beforeAll(() => setLang('es'))
 beforeEach(() => {
   mock.calls = []
+  mock.reasons = REASONS
   mock.postResponse = null
   mock.deleteResponse = null
   window.localStorage.clear()
@@ -182,6 +183,9 @@ describe('Modo «Despacho manual (sin entrega)» del panel Recolección', () => 
     expect(posts()).toHaveLength(0)
 
     await user.selectOptions(screen.getByLabelText(/^Motivo/), 'SAMPLE')
+    // la nota es opcional y está colapsada detrás de «Agregar nota»
+    expect(screen.queryByLabelText('Nota')).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Agregar nota' }))
     await user.type(screen.getByLabelText('Nota'), 'Feria de salud')
     await user.click(screen.getByRole('button', { name: 'Despachar (bajar de inventario)' }))
     await waitFor(() => expect(posts()).toHaveLength(1))
@@ -193,6 +197,59 @@ describe('Modo «Despacho manual (sin entrega)» del panel Recolección', () => 
     })
     expect(posts()[0].headers.get('Idempotency-Key')).toMatch(/^[0-9a-f-]{36}$/)
     expect(mock.calls.some((c) => c.method === 'POST' && c.url.pathname === '/api/v1/pick-batches')).toBe(false)
+  })
+
+  it('el motivo llega preseleccionado con el default de la compañía (isDefault), sin nota, y se despacha sin tocarlo', async () => {
+    const user = userEvent.setup()
+    mock.reasons = REASONS.map((r) => ({ ...r, isDefault: r.code === 'SALE' }))
+    wrap(['inventory.view', 'warehouse.issue'])
+    await openManualMode(user)
+    await waitFor(() => expect(screen.getByLabelText(/^Motivo/)).toHaveValue('SALE'))
+    await user.click(screen.getByRole('button', { name: 'Despachar (bajar de inventario)' }))
+    await waitFor(() => expect(posts()).toHaveLength(1))
+    expect(posts()[0].body).toMatchObject({ reasonCode: 'SALE', note: null })
+  })
+
+  it('el último motivo usado (si todavía existe) gana al default, y se recuerda al despachar', async () => {
+    const user = userEvent.setup()
+    mock.reasons = REASONS.map((r) => ({ ...r, isDefault: r.code === 'SALE' }))
+    window.localStorage.setItem('teikem.manualIssue.lastReason.0.0', 'SAMPLE')
+    wrap(['inventory.view', 'warehouse.issue'])
+    await openManualMode(user)
+    await waitFor(() => expect(screen.getByLabelText(/^Motivo/)).toHaveValue('SAMPLE'))
+    await user.selectOptions(screen.getByLabelText(/^Motivo/), 'SALE')
+    await user.click(screen.getByRole('button', { name: 'Despachar (bajar de inventario)' }))
+    await waitFor(() => expect(posts()).toHaveLength(1))
+    expect(window.localStorage.getItem('teikem.manualIssue.lastReason.0.0')).toBe('SALE')
+  })
+
+  it('un último motivo que ya no existe se ignora: llega el default; sin default, el motivo queda vacío', async () => {
+    const user = userEvent.setup()
+    mock.reasons = REASONS.map((r) => ({ ...r, isDefault: r.code === 'SALE' }))
+    window.localStorage.setItem('teikem.manualIssue.lastReason.0.0', 'GONE')
+    const first = wrap(['inventory.view', 'warehouse.issue'])
+    await openManualMode(user)
+    await waitFor(() => expect(screen.getByLabelText(/^Motivo/)).toHaveValue('SALE'))
+    first.unmount()
+    mock.reasons = REASONS
+    wrap(['inventory.view', 'warehouse.issue'])
+    await openManualMode(user)
+    expect(screen.getByLabelText(/^Motivo/)).toHaveValue('')
+  })
+
+  it('el almacenamiento roto no impide despachar (try/catch)', async () => {
+    const user = userEvent.setup()
+    mock.reasons = REASONS.map((r) => ({ ...r, isDefault: r.code === 'SALE' }))
+    const spy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('denegado')
+    })
+    try {
+      wrap(['inventory.view', 'warehouse.issue'])
+      await openManualMode(user)
+      await waitFor(() => expect(screen.getByLabelText(/^Motivo/)).toHaveValue('SALE'))
+    } finally {
+      spy.mockRestore()
+    }
   })
 
   it('el 409 de inventario insuficiente vuelve a la cantidad de su fila con el mensaje exacto del servidor', async () => {
