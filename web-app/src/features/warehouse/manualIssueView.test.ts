@@ -1,8 +1,8 @@
 // Despacho manual (2026-10-11) — lógica pura: cuerpo del POST, llave de idempotencia, estatus «Despachado», filtro por motivo.
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import { collectSchema, EMPTY_COLLECT_LINE, MANUAL_NOTE_MAX, type CollectFormValues } from './collectForm'
-import { buildManualIssueBody, filterByReason, isManualCancelled, manualIssueKardexLink, manualStatusLabel, nextIdempotencyKey, reasonSearchTerm, shortNote } from './manualIssueView'
+import { buildManualIssueBody, filterByReason, isManualCancelled, manualIssueKardexLink, manualStatusLabel, nextIdempotencyKey, reasonSearchTerm, shortNote, initialReasonCode, lastReasonStorageKey, readLastReason, writeLastReason } from './manualIssueView'
 
 const line = { ...EMPTY_COLLECT_LINE, productPublicId: 'p1', sku: 'A', trackingTypeCode: 'NONE', owner: 'OWN', quantity: 2 }
 
@@ -82,5 +82,34 @@ describe('collectSchema en modo manual', () => {
   it('la recolección normal no pide motivo', () => {
     const plain = collectSchema(t, (i) => i.code)
     expect(plain.safeParse(values({ reasonCode: '' })).success).toBe(true)
+  })
+})
+
+describe('motivo preseleccionado (2026-10-11 b)', () => {
+  const reasons = [
+    { code: 'SAMPLE', isDefault: false },
+    { code: 'SALE', isDefault: true },
+  ]
+  it('el último usado gana si existe (sin distinguir mayúsculas); si no, el default; si no hay, vacío', () => {
+    expect(initialReasonCode(reasons, 'sample')).toBe('SAMPLE')
+    expect(initialReasonCode(reasons, 'GONE')).toBe('SALE')
+    expect(initialReasonCode(reasons, null)).toBe('SALE')
+    expect(initialReasonCode([{ code: 'SAMPLE' }], null)).toBe('')
+    expect(initialReasonCode(undefined, 'SALE')).toBe('')
+  })
+  it('lectura y escritura del almacenamiento toleran fallos', () => {
+    expect(lastReasonStorageKey(3, 7)).toBe('teikem.manualIssue.lastReason.3.7')
+    writeLastReason('k', 'SALE')
+    expect(readLastReason('k')).toBe('SALE')
+    const get = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('x')
+    })
+    const set = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('x')
+    })
+    expect(readLastReason('k')).toBeNull()
+    expect(() => writeLastReason('k', 'A')).not.toThrow()
+    get.mockRestore()
+    set.mockRestore()
   })
 })

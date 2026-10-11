@@ -2850,6 +2850,7 @@
       "issued": "Manual issue {number} recorded.",
       "reasonPlaceholder": "Choose the reason",
       "noteHelp": "Optional. Up to {max} characters.",
+      "addNote": "Add a note",
       "linesHelp": "A manual issue accepts products from a single owner and takes inventory out without a delivery. Without a bin or lot, the system picks by FEFO.",
       "fields": {
         "reason": "Reason",
@@ -3965,6 +3966,10 @@
         "recvSumHint": "Read-only. The mode is changed in each warehouse (Warehouses → Receiving), because the receiving area is physical. With putaway: goods enter the receiving location and are put away afterwards. Direct: the receiver picks the final location and there is no putaway. A warehouse with putaway needs a receiving location in order to receive.",
         "recvNoAccess": "Your user cannot read the warehouses.",
         "recvEmpty": "There are no warehouses.",
+        "manualReasonTitle": "Manual issue",
+        "manualReasonLabel": "Default reason for manual issues",
+        "manualReasonNone": "No default reason",
+        "manualReasonHelp": "It comes preselected when issuing; the reason is still required.",
         "countRevealTitle": "Cycle count: expected quantity while counting",
         "countRevealLabel": "Who sees the expected quantity while counting?",
         "countReveal": {

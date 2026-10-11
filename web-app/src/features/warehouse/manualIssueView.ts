@@ -31,6 +31,45 @@ export function nextIdempotencyKey(
   return prev && prev.bodyJson === bodyJson ? prev : { key: newId(), bodyJson }
 }
 
+// ---- Motivo preseleccionado (2026-10-11 b): el último que este usuario usó en este navegador, o el default de la compañía ----
+
+/** Clave de localStorage del último motivo usado (por compañía y usuario; sin sesión conocida, una clave común). */
+export const lastReasonStorageKey = (tenantId: number | null | undefined, userId: number | null | undefined) =>
+  `teikem.manualIssue.lastReason.${tenantId ?? 0}.${userId ?? 0}`
+
+/** Último motivo guardado; sin almacenamiento, sin valor o ilegible = null (nunca lanza). */
+export function readLastReason(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key)?.trim() || null
+  } catch {
+    return null
+  }
+}
+
+/** Guarda el último motivo usado; si el almacenamiento falla (modo privado, lleno) se ignora. */
+export function writeLastReason(key: string, code: string): void {
+  try {
+    if (code) window.localStorage.setItem(key, code)
+  } catch {
+    /* sin almacenamiento: no se recuerda, sin error */
+  }
+}
+
+/**
+ * Motivo con el que llega el formulario: el último usado si todavía existe entre los motivos activos; si no, el
+ * `isDefault` de la compañía; si no, vacío (el motivo sigue siendo obligatorio). Devuelve el código tal como viene del catálogo.
+ */
+export function initialReasonCode(
+  reasons: readonly { code?: string | null; isDefault?: boolean }[] | undefined,
+  last: string | null,
+): string {
+  const list = reasons ?? []
+  const lastUpper = (last ?? '').toUpperCase()
+  const used = lastUpper ? list.find((r) => (r.code ?? '').toUpperCase() === lastUpper) : undefined
+  if (used?.code) return used.code
+  return list.find((r) => r.isDefault)?.code ?? ''
+}
+
 /** Código del estatus que se pinta: un despacho manual en COLLECTED se muestra «Despachado»; CANCELLED sigue «Cancelado». */
 export const DISPATCHED_CODE = 'DISPATCHED'
 

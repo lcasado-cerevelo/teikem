@@ -135,6 +135,30 @@ async function journey(page: Page, request: APIRequestContext, variant: 'D' | 'M
   const s = await seed(request, variant)
   const noScroll = () => expectNoHorizontalScroll(page)
   await login(page)
+  try {
+    await runJourney(page, request, variant, prefix, s, noScroll)
+  } finally {
+    // la compañía queda sin motivo por default (el escritorio lo fijó en Ajustes)
+    if (variant === 'D') await request.put(`${API_URL}/api/v1/tenant/settings`, { headers: s.headers, data: { defaultManualIssueReason: '' } })
+  }
+}
+
+async function runJourney(page: Page, request: APIRequestContext, variant: 'D' | 'M', prefix: string, s: Seed, noScroll: () => Promise<void>) {
+  // Ajustes → Operación → Despacho manual: «Motivo por default» (solo el escritorio; el móvil elige el motivo explícitamente
+  // porque los dos proyectos corren en paralelo sobre la misma compañía)
+  if (variant === 'D') {
+    await page.goto('/system/settings?tab=ops')
+    const settingsPanel = page.locator('.panel', { has: page.getByRole('heading', { name: 'Despacho manual' }) })
+    const select = settingsPanel.getByLabel('Motivo por default del despacho manual')
+    await expect(select).toBeVisible()
+    await expect(settingsPanel).toContainText('Llega preseleccionado al despachar; el motivo sigue siendo obligatorio.')
+    await expect(select.locator('option', { hasText: 'Sin motivo por default' })).toHaveCount(1)
+    await select.selectOption({ label: 'Muestra' })
+    await settingsPanel.getByRole('button', { name: 'Guardar cambios' }).click()
+    await expect(settingsPanel.getByRole('button', { name: 'Guardar cambios' })).toBeDisabled()
+    await expect(select).toHaveValue('SAMPLE')
+    await shot(page, 'd-ajuste-default')
+  }
 
   // Todo vive en «Recolección y empaque» (menú de Almacén): el panel Recolección gana el modo «Despacho manual (sin entrega)»
   await page.goto('/warehouse/pick-batches')
@@ -151,7 +175,15 @@ async function journey(page: Page, request: APIRequestContext, variant: 'D' | 'M
   await product.fill(s.sku)
   await panel.getByRole('option', { name: new RegExp(`^${s.sku} · `) }).click()
   await panel.getByLabel('Cantidad de la línea 1').fill('99')
-  await panel.getByLabel(/^Motivo/).selectOption({ label: 'Muestra' })
+  if (variant === 'D') {
+    // llega PRESELECCIONADO con el default de la compañía: no se toca el selector
+    await expect(panel.getByLabel(/^Motivo/)).toHaveValue('SAMPLE')
+  } else {
+    await panel.getByLabel(/^Motivo/).selectOption({ label: 'Muestra' })
+  }
+  // la nota es opcional y está colapsada detrás de «Agregar nota»
+  await expect(panel.getByLabel('Nota')).toHaveCount(0)
+  await panel.getByRole('button', { name: 'Agregar nota' }).click()
   await panel.getByLabel('Nota').fill('Feria de salud')
   await panel.getByRole('button', { name: 'Despachar (bajar de inventario)' }).click()
   await expect(panel.getByLabel('Cantidad de la línea 1')).toHaveAttribute('aria-invalid', 'true')
@@ -172,6 +204,9 @@ async function journey(page: Page, request: APIRequestContext, variant: 'D' | 'M
   expect(issue.reasonCode).toBe('SAMPLE')
   await expect(page.locator('.toast').filter({ hasText: `Despacho manual ${issue.number} registrado.` }).first()).toBeVisible()
   expect(await available(request, s)).toBe(3)
+  // el panel queda listo para el siguiente: el último motivo usado sigue elegido y la nota vuelve a su botón
+  await expect(panel.getByLabel(/^Motivo/)).toHaveValue('SAMPLE')
+  await expect(panel.getByRole('button', { name: 'Agregar nota' })).toBeVisible()
 
   // La lista muestra el DMA con su tipo, el motivo y «Despachado»; el filtro Tipo y la búsqueda libre
   // la lista del panel derecho pasa a tarjetas cuando mide menos de 640 px (también en escritorio)

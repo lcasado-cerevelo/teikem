@@ -88,6 +88,7 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
     if (p === '/api/v1/status/OrderStatus') return json(STATUSES)
     if (p === '/api/v1/status/capabilities/TRANSPORT_ORDER' && req.method === 'GET') return json([{ statusCode: 'DELIVERED', capability: 'CANCEL', isAllowed: false, isTenantRule: false }])
     if (p === '/api/v1/status/capabilities/TRANSPORT_ORDER' && req.method === 'PUT') return json(body)
+    if (p === '/api/v1/catalogs/ManualIssueReason') return json([{ code: 'SAMPLE', label: 'Muestra', sortOrder: 1, isEnabled: true }, { code: 'SALE', label: 'Venta', sortOrder: 4, isEnabled: true }])
     if (p.startsWith('/api/v1/catalogs/')) return json([{ code: 'STANDARD', label: 'Estándar', sortOrder: 1, isEnabled: true }])
     if (p === '/api/v1/warehouses') return json(WAREHOUSES)
     if (p === '/api/v1/receipts') {
@@ -424,6 +425,42 @@ describe('Ajustes de la compañía', () => {
     await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
     await waitFor(() => expect(put()).toHaveLength(1))
     expect(put()[0].body).toEqual({ countExpectedReveal: 'ALL', countRecountTolerancePct: 5, countRevealShowsNumber: false, countAutoCloseMatching: false })
+  })
+
+  it('Operación → despacho manual: motivo por default (guardar, quitar con "" y error del servidor tal cual)', async () => {
+    const user = userEvent.setup()
+    wrap('/system/settings?tab=ops')
+    const panel = (await screen.findByRole('heading', { name: 'Despacho manual' })).closest('.panel') as HTMLElement
+    const select = within(panel).getByLabelText('Motivo por default del despacho manual')
+    expect(select).toHaveValue('')
+    expect(within(panel).getByText('Llega preseleccionado al despachar; el motivo sigue siendo obligatorio.')).toBeInTheDocument()
+    expect(within(panel).getByRole('option', { name: 'Sin motivo por default' })).toBeInTheDocument()
+    await waitFor(() => expect(within(panel).getByRole('option', { name: 'Venta' })).toBeInTheDocument())
+
+    await user.selectOptions(select, 'SALE')
+    await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
+    await waitFor(() => expect(put()).toHaveLength(1))
+    expect(put()[0].body).toEqual({ defaultManualIssueReason: 'SALE' })
+    await waitFor(() => expect(within(panel).getByLabelText('Motivo por default del despacho manual')).toHaveValue('SALE'))
+
+    // quitar: '' = sin default
+    await user.selectOptions(within(panel).getByLabelText('Motivo por default del despacho manual'), '')
+    await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
+    await waitFor(() => expect(put()).toHaveLength(2))
+    expect(put()[1].body).toEqual({ defaultManualIssueReason: '' })
+
+    // error del servidor: título y error por campo, sin guardar
+    mock.settingsFail = { status: 400, title: 'El motivo REGALO no existe o está inactivo.', field: 'defaultManualIssueReason' }
+    await user.selectOptions(within(panel).getByLabelText('Motivo por default del despacho manual'), 'SAMPLE')
+    await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
+    expect((await within(panel).findAllByText('El motivo REGALO no existe o está inactivo.')).length).toBeGreaterThan(0)
+  })
+
+  it('Operación → despacho manual: sin admin.tenant el selector es de solo lectura', async () => {
+    wrap('/system/settings?tab=ops', ['inventory.view'])
+    const panel = (await screen.findByRole('heading', { name: 'Despacho manual' })).closest('.panel') as HTMLElement
+    expect(within(panel).getByLabelText('Motivo por default del despacho manual')).toBeDisabled()
+    expect(within(panel).queryByRole('button', { name: 'Guardar cambios' })).toBeNull()
   })
 
   it('Marca: tema predefinido con validaciones y BrandingJson al guardar', async () => {

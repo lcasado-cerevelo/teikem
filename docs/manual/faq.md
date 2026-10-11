@@ -5985,3 +5985,51 @@ No: el default solo preselecciona en la pantalla. Si el despacho llega al servid
 **¿Cómo quito el motivo por default?**
 En Ajustes de la compañía déjelo en «Sin motivo por default» (por API, `PUT /api/v1/tenant/settings` con `"defaultManualIssueReason": ""`).
 Queda registrado en la auditoría de la compañía.
+
+## Despacho manual en la web: el motivo ya viene puesto (2026-10-11 b)
+
+Capítulo: [F19 §2 y §2b](frontend/f19-despacho-manual.md). Sin códigos HTTP nuevos: los errores del servidor salen tal cual.
+
+**Enciendo «Despacho manual (sin entrega)» y el Motivo ya está elegido.**
+Es lo esperado: llega el **último motivo que usted usó en este navegador** (si todavía existe y está habilitado) o, si no hay, el **motivo por default de la
+compañía** (Ajustes → Operación → Despacho manual). Cámbielo en el selector si no es el correcto; el que despache pasa a ser su «último usado».
+
+**Siempre me sale el mismo motivo aunque el administrador cambió el default.**
+El último usado gana al default. Elija otro motivo una vez y desde ese despacho será el nuevo «último usado». Cada navegador y cada usuario recuerdan el suyo.
+
+**¿Dónde está la nota?**
+Pulse **Agregar nota** (debajo del Motivo): aparece el campo (opcional, hasta 500 caracteres). Sin pulsarlo, el despacho va sin nota. Tras despachar vuelve a quedar oculto.
+
+**¿Dónde cambio el default?** (Ajustes → Operación → «Despacho manual»; hace falta `admin.tenant`; con el módulo Lotes y series encendido)
+Elija el **Motivo por default del despacho manual** (o «Sin motivo por default») y **Guardar cambios**. La ayuda dice: *«Llega preseleccionado al despachar; el
+motivo sigue siendo obligatorio.»*. Si el servidor responde **`El motivo {CÓDIGO} no existe o está inactivo.`** (400) sale bajo el selector y no se guarda nada.
+Sin `admin.tenant` el selector se ve pero no se puede cambiar.
+
+## Despacho manual en la app: el motivo ya viene puesto (2026-10-11 b)
+
+Capítulo: [09 §6.y](09-app-almacen.md#6y-completar-despacho--despacho-manual-dma-2026-10-11). Ninguno de estos casos tiene código HTTP: son de la app.
+
+**Toco «Completar despacho» y ya no me pregunta el motivo: dice `Se despacha por: Venta`.**
+Es lo esperado: la app abre directo la confirmación con el **último motivo que usted usó en este aparato** o, si no hay, con el **motivo por default de la
+compañía** (lo dice debajo: `Es el último motivo que usaste en este aparato.` o `Es el motivo por default de la compañía.`). Si es el correcto, toque
+**Despachar** y listo. Si no, toque **Cambiar** y escoja otro.
+
+**Cambié el motivo una vez y ahora siempre me sale ese.**
+El que escoge pasa a ser su «último usado» y gana al default de la compañía. Toque **Cambiar** y escoja el de siempre: desde ese despacho vuelve a salir.
+
+**Me sigue pidiendo escoger el motivo cada vez.**
+La compañía no tiene motivo por default y usted todavía no ha despachado con este aparato (o el que usó la última vez ya está deshabilitado). Después del
+primer despacho, el siguiente ya abre con ese motivo. El administrador puede poner un default en **Ajustes de la compañía** (el aparato lo toma la
+próxima vez que baje los motivos con señal, como mucho 30 minutos).
+
+**El motivo que usé la última vez ya no aparece.**
+La compañía lo deshabilitó: la app lo salta sin aviso y abre con el default de la compañía o, si no hay, con la lista para escoger.
+
+**¿Dónde pongo la nota?**
+Toque **Agregar nota** antes de **Despachar**: aparece el campo **Nota (opcional)** (hasta 500 caracteres). Si no lo toca, el despacho va sin nota.
+
+**Ya no sale el aviso «¿Despachar sin entrega?» con No / Despachar.**
+La pantalla de confirmación lo reemplaza: **Despachar** manda el despacho de inmediato. Para no mandarlo, toque **Volver**.
+
+**`Escoge el motivo del despacho manual.`**
+Ya no debería verse: sin motivo puesto, **Despachar** no aparece hasta escoger uno en la lista. Si lo ve, escoja un motivo y avise a soporte.
