@@ -6243,3 +6243,15 @@ Solo se cierra una ruta que ya salió (`IN_PROGRESS`). Una ruta en borrador, pla
 
 **Un despachador no puede cerrar rutas (403).**
 Cerrar una ruta pide el permiso `trips.close`, distinto de `trips.dispatch`. Lo traen las plantillas Dispatcher y TenantAdmin; un rol personalizado necesita que se lo agreguen en Roles y usuarios.
+
+**¿Cómo cambio de FEFO a FIFO? ¿Qué diferencia hay?**
+FEFO saca primero lo que vence antes; FIFO saca primero lo que entró primero (su primera entrada más vieja). Se cambia por compañía con `PUT /api/v1/tenant/settings` `{ "rotationMethod": "FIFO" }` (permiso `admin.tenant`) y, si un producto necesita el otro método, con `rotationMethod` en su alta o edición (vacío = quitar la excepción). Todas las compañías existentes siguen en FEFO. Vale desde la siguiente asignación; no cambia lo ya recolectado. Todavía no hay selector en la web ni en la app: se hace por la API.
+
+**¿Qué significa «El método de rotación debe ser FEFO o FIFO.» (400)?**
+Mandaste un valor distinto de `FEFO` o `FIFO` (por ejemplo `LIFO`) en los ajustes de la compañía o en un producto. No distingue mayúsculas. No hay otros métodos.
+
+**Con FIFO el sistema sacó un lote que vence después, ¿está mal?**
+No: con FIFO manda la fecha de primera entrada del saldo y el vencimiento solo desempata. Si para ese producto conviene sacar primero lo que vence antes, ponle `rotationMethod` = `FEFO` en su ficha (excepción) y seguirá así aunque la compañía sea FIFO.
+
+**Pasé mercancía de una posición a otra y con FIFO sigue saliendo primero, ¿por qué?**
+Porque una transferencia hereda la fecha de primera entrada del origen: mover la mercancía de lugar no la rejuvenece.
