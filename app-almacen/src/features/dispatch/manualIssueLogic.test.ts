@@ -1,6 +1,7 @@
 import {
   buildManualIssueBody,
   FACTORY_MANUAL_ISSUE_REASONS,
+  initialReason,
   issueTotals,
   MANUAL_ISSUE_NOTE_MAX,
   manualIssueBlock,
@@ -78,5 +79,36 @@ describe('despacho manual — reglas puras (2026-10-11)', () => {
     expect(manualIssueNumber({ number: '' })).toBeNull()
     expect(manualIssueNumber(null)).toBeNull()
     expect(issueTotals([{ quantity: 0.1 }, { quantity: 0.2 }])).toEqual({ lines: 2, qty: 0.3 })
+  })
+})
+
+describe('despacho manual — motivo con que abre la confirmación (2026-10-11 b)', () => {
+  const company: StoredReason[] = [
+    { code: 'SAMPLE', label: 'Muestra', labels: {}, sortOrder: 1, isDefault: false },
+    { code: 'SALE', label: 'Venta', labels: {}, sortOrder: 4, isDefault: true },
+    { code: 'OTHER', label: 'Otro', labels: {}, sortOrder: 5 },
+  ]
+
+  it('el que ya estaba escogido (tras un rechazo) gana; luego el último usado; luego el default de la compañía', () => {
+    expect(initialReason(company, 'OTHER', 'SAMPLE')).toEqual({ code: 'OTHER', source: 'current' })
+    expect(initialReason(company, null, 'SAMPLE')).toEqual({ code: 'SAMPLE', source: 'last' })
+    expect(initialReason(company, null, null)).toEqual({ code: 'SALE', source: 'default' })
+  })
+
+  it('un motivo que la compañía deshabilitó (ya no viene en la copia) se salta sin error', () => {
+    expect(initialReason(company, 'INTERNAL_USE', 'CUSTOMER_PICKUP')).toEqual({ code: 'SALE', source: 'default' })
+    const sinDefault = company.map((r) => ({ ...r, isDefault: false }))
+    expect(initialReason(sinDefault, null, 'CUSTOMER_PICKUP')).toBeNull()
+  })
+
+  it('sin default ni último usado → null (hay que escoger); copias viejas sin isDefault no tienen default', () => {
+    expect(initialReason([{ code: 'SALE', label: 'Venta', labels: {}, sortOrder: 4 }], null, null)).toBeNull()
+    expect(initialReason([], null, 'SALE')).toBeNull()
+  })
+
+  it('sin copia bajada (los cinco de fábrica): vale el último usado si es de fábrica; no hay default', () => {
+    expect(initialReason(null, null, 'INTERNAL_USE')).toEqual({ code: 'INTERNAL_USE', source: 'last' })
+    expect(initialReason(null, null, 'REGALO')).toBeNull()
+    expect(initialReason(null, null, null)).toBeNull()
   })
 })

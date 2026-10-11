@@ -39,3 +39,33 @@ sin permiso, posición inexistente). No se probó en el Zebra ni contra el API r
    para «sin permiso» en `kernel/api/problem.ts`.
 4. La copia del orden de salida (`stock_exit`, la posición sugerida) no se descuenta al encolar (igual que con Empacar); se vuelve a bajar en cuanto
    el despacho llega al servidor.
+
+## Adenda 2026-10-11 (b) — Motivo ya puesto: Completar → Despachar
+
+Decisión del dueño: **el despacho manual no debe complicar el aparato.** El servidor ya marca el motivo por default de la compañía (`isDefault` en
+`GET /api/v1/manual-issues/reasons`, `docs/lote31-decisiones.md` adenda (b)) y el POST sigue exigiendo motivo. En la app (solo `app-almacen/`):
+
+- **Copia de motivos** (`features/dispatch/manualIssueReasons.ts`): `mapReason` guarda `isDefault`; la copia lleva la marca `withDefault` y una copia de una
+  versión anterior (sin la marca) se vuelve a bajar en la siguiente pasada sin esperar los 30 min.
+- **Último usado** (`readLastReason` / `saveLastReason`, kv `manualIssueLastReason` en la base de la compañía, JSON `{userId: código}`): se guarda al
+  despachar (enviado o en cola), **no** con un rechazo inmediato; sin sesión ni lee ni guarda; un valor dañado o un código que ya no existe se ignoran.
+- **Regla pura** `initialReason` (`features/dispatch/manualIssueLogic.ts`): el que ya estaba escogido (tras un rechazo) → el último usado por el operario
+  → el default de la compañía → ninguno; cada uno solo si sigue entre los motivos que se ofrecen (los de fábrica si nunca se bajaron, que no tienen default).
+- **Pantalla** (`src/app/dispatch.tsx`): «Completar despacho» resuelve las posiciones y, con motivo puesto, abre **directo la confirmación**
+  `¿Despachar sin entrega?` con `Se despacha por: {motivo}`, de dónde salió (último usado / default), **Cambiar** (chico: abre la lista, tocar uno vuelve
+  a la confirmación), **Agregar nota** (chico: la nota está escondida y vacía), **Despachar** (grande) y **Volver**. Sin motivo puesto se abre primero la
+  lista, como antes. Se quitó el `Alert` de confirmación: la pantalla es la confirmación. Con default o último usado: **2 toques, sin teclado**.
+- Sin cambios: el `POST /api/v1/manual-issues` (mismo cuerpo), la cola `manualIssue`, el rechazo inmediato (el despacho vuelve abierto con su motivo y
+  su nota) y el aviso con el número DMA. «Empacar» y las demás pantallas no se tocaron.
+
+Cómo se probó: `npm run check` de la app: **650 pruebas** (antes 639; +4 de `initialReason`, +2 de la copia y del último usado, +5 de pantalla:
+preselección por default en 2 toques sin teclado, último usado gana al default, último deshabilitado → default, sin default → lista, Cambiar/Volver,
+y las de envío, cola y rechazo ajustadas al flujo nuevo). No se probó en el Zebra ni contra el API real.
+
+Decisiones a revisar:
+5. **El último usado gana al default** (orden pedido por el dueño). Consecuencia: si un operario cambia el motivo una vez, los siguientes despachos abren
+   con ese hasta que vuelva a cambiarlo; un cambio del default en Ajustes no se nota en un aparato donde el operario ya despachó.
+6. **«Último usado» por operario** (no por aparato): dos usuarios en el mismo aparato no se pisan.
+7. **Un rechazo inmediato no cuenta como usado** (el motivo igual queda puesto en la pantalla para reintentar).
+8. **Sin Alert de confirmación**: el riesgo de un toque accidental en Despachar se acepta a cambio de los 2 toques (la pantalla de confirmación
+   muestra motivo, líneas y unidades antes del toque).

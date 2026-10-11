@@ -543,15 +543,24 @@ existencia y la posición sugerida igual que antes. Un despacho es de **un solo 
 
 Quién puede: `warehouse.issue` (además de lo que ya pedía recolectar). Módulo **WMS_LOTSERIAL**.
 
-Cómo se usa:
+Cómo se usa (desde la versión **2026-10-11 (b)**, decisión del dueño: «el despacho manual no debe complicar el aparato»; con motivo por default o con
+uno ya usado, completar son **2 toques — Completar despacho → Despachar — y sin teclado**):
 1. Con líneas recolectadas, tocar **Completar despacho**. La app resuelve las posiciones (como antes); si alguna no existe lo dice y no sigue.
-2. Pantalla `¿Por qué sale sin entrega?`: debajo, `Despacho manual: el inventario sale sin orden ni empaque. Escoge el motivo; la nota es opcional.` y el
-   resumen `{dueño} · líneas: {n} · unidades: {cantidad}` (el dueño es el cliente o `Inventario propio`). Los **motivos** son botones grandes, uno por
-   renglón (como los motivos de Ajustar y el destino de Daño): **Muestra**, **Uso interno**, **Retiro del cliente**, **Venta**, **Otro** — o los que tenga
-   la compañía (ver «Motivos» abajo). Debajo, **Nota (opcional)** con el contador `{n}/500 caracteres.` (no deja escribir más de 500).
-3. **Despachar** pide confirmar: `¿Despachar sin entrega?` / `Salen {cantidad} unidades (líneas: {n}) con el motivo «{motivo}». El inventario sale sin orden
-   ni empaque.` → **No** (vuelve) o **Despachar**.
-4. Al confirmar, el despacho se **guarda en la cola de salida** (`manualIssue`, `POST /api/v1/manual-issues` con su `Idempotency-Key`, en el orden en que se
+2. **Con motivo puesto** (ver «Motivo con que se abre» abajo) la app pasa **directo a la confirmación** `¿Despachar sin entrega?`, sin pedir escoger:
+   debajo, `Despacho manual: el inventario sale sin orden ni empaque.`, el resumen `{dueño} · líneas: {n} · unidades: {cantidad}` (el dueño es el
+   cliente o `Inventario propio`) y, en un recuadro, **`Se despacha por: {motivo}`** con una línea que dice de dónde salió (`Es el último motivo que usaste en
+   este aparato.` o `Es el motivo por default de la compañía.`) y un botón chico **Cambiar**. Más abajo, un botón chico **Agregar nota** (la nota está
+   escondida y vacía por omisión), el botón grande **Despachar** y **Volver** (regresa al despacho sin mandar nada). Ningún campo de texto: no se abre el
+   teclado.
+   - **Cambiar** abre la lista `¿Por qué sale sin entrega?` (`Despacho manual: el inventario sale sin orden ni empaque. Escoge el motivo.`) con el motivo
+     puesto marcado. Los **motivos** son botones grandes, uno por renglón (como los motivos de Ajustar y el destino de Daño): **Muestra**, **Uso interno**,
+     **Retiro del cliente**, **Venta**, **Otro** — o los que tenga la compañía (ver «Motivos» abajo). Tocar uno lo deja puesto y vuelve a la confirmación;
+     **Volver** regresa a la confirmación sin cambiarlo.
+   - **Agregar nota** muestra **Nota (opcional)** (con el teclado) y el contador `{n}/500 caracteres.` (no deja escribir más de 500).
+   - **Sin motivo puesto** (ni último usado ni default de la compañía): la app abre primero la lista para escoger, como antes; al tocar uno pasa a la
+     confirmación (Completar → motivo → Despachar). **Volver** en la lista regresa al despacho.
+3. **Despachar** manda el despacho (la confirmación es esta pantalla: ya no sale un segundo aviso «¿Despachar sin entrega?» con No/Despachar).
+4. Al despachar, el despacho se **guarda en la cola de salida** (`manualIssue`, `POST /api/v1/manual-issues` con su `Idempotency-Key`, en el orden en que se
    hizo, igual que Transferir y Ajustar), el despacho del aparato se cierra en ese mismo paso y el **saldo local ya refleja la salida** (Consultar lo
    muestra). La app espera al servidor como mucho unos segundos (`Enviando el despacho manual…`):
    - **enviado**: aviso verde `Listo: despacho manual DMA-00012.` (con el número que dio el servidor) y la pantalla queda lista para el siguiente despacho;
@@ -559,15 +568,28 @@ Cómo se usa:
      DMA se ve después en la web (Recolección y empaque, columna Tipo);
    - **rechazado por el servidor**: el **mensaje exacto del servidor** en rojo bajo el campo del producto (por ejemplo `Inventario insuficiente de SKU-1 en
      A-01: disponible 2, solicitado 3.`), el despacho **vuelve a abrirse tal como estaba** (mismas líneas; el motivo y la nota quedan escogidos), la salida
-     se deshace en el saldo local y **no** queda nada en Sincronización: se corrige y se vuelve a tocar **Completar despacho**.
+     se deshace en el saldo local y **no** queda nada en Sincronización: se corrige y se vuelve a tocar **Completar despacho** (abre directo la
+     confirmación con ese motivo, y con la nota a la vista si se había escrito).
    - Si el rechazo llega **después** (se mandó solo, más tarde): queda en **Sincronización → Con error** con el mensaje del servidor (Reintentar o
      Descartar, §9), y la salida ya se deshizo en el saldo local.
 
 **Motivos.** La app usa los motivos **de la compañía** (`GET /api/v1/manual-issues/reasons`: los activos y habilitados, con el nombre que la compañía les
 haya puesto en Sistema → Catálogos, en el idioma de la app). La sincronización los baja y los guarda en el aparato, como mucho cada 30 minutos y **solo si
 el usuario tiene `warehouse.issue`** (sin el permiso el servidor responde 403 y dejaría un evento de seguridad en cada pasada). Sin señal se usan los guardados;
-si el aparato **nunca** los bajó, ofrece los cinco de fábrica (`SAMPLE` Muestra, `INTERNAL_USE` Uso interno, `CUSTOMER_PICKUP` Retiro del cliente, `SALE`
+cada motivo trae `isDefault` (el default de la compañía) y una copia guardada por una versión anterior, sin esa marca, se vuelve a bajar en la siguiente
+pasada con señal sin esperar los 30 minutos. Si el aparato **nunca** los bajó, ofrece los cinco de fábrica (`SAMPLE` Muestra, `INTERNAL_USE` Uso interno, `CUSTOMER_PICKUP` Retiro del cliente, `SALE`
 Venta, `OTHER` Otro). Si la compañía deshabilitó un motivo después de la última bajada, el servidor rechaza el despacho con su mensaje (ver la tabla).
+
+**Motivo con que se abre (2026-10-11 b).** Al tocar **Completar despacho** la app pone, en este orden, el primero que **siga entre los motivos que se
+ofrecen** (un motivo que la compañía deshabilitó ya no viene en la copia bajada y se salta sin aviso):
+1. el que ya estaba escogido en la pantalla (después de un rechazo del servidor);
+2. el **último motivo que ese operario usó en este aparato** (se recuerda por usuario y por compañía en el aparato, al despachar —enviado o en cola—;
+   un rechazo no cuenta);
+3. el **motivo por default de la compañía** (Ajustes de la compañía, [06 §7c](06-inventario-y-almacen.md#7c-motivo-por-default-del-despacho-manual-2026-10-11-b));
+   la lista de motivos lo marca con `isDefault` y el aparato lo guarda con la copia;
+4. ninguno: hay que escoger en la lista.
+Con los cinco de fábrica (el aparato nunca bajó los de la compañía) no hay default; el último usado vale si es uno de ellos. El servidor **sigue exigiendo
+motivo**: lo que cambia es que la app ya lo trae puesto.
 
 **Saldo local.** Al encolar, el aparato resta de cada posición lo que sale: en productos por lote, del lote que vence primero dentro de la posición (como
 hace el servidor), y guarda ese efecto con la operación para deshacerlo exacto si el servidor la rechaza. La copia del **orden de salida** (`stock_exit`, la
@@ -577,7 +599,7 @@ posición sugerida) no se descuenta: se vuelve a bajar en cuanto el despacho lle
 |---|---|---|
 | Usuario sin `warehouse.issue` | No se muestra **Completar despacho**; se lee `«Completar despacho» (despacho manual, sin entrega) necesita el permiso warehouse.issue y tu usuario no lo tiene: aquí puedes Empacar. Pídelo al administrador si hace falta.` | Local (permisos guardados del usuario, `GET /api/v1/me`) |
 | El aparato aún no leyó los permisos del usuario | `Todavía no se pudieron leer tus permisos (hace falta señal una vez): por ahora solo puedes Empacar.` | Local |
-| Despachar sin escoger motivo | `Escoge el motivo del despacho manual.` (no se manda nada) | Local |
+| Sin motivo puesto (ni último usado ni default) | Se abre la lista `¿Por qué sale sin entrega?`; **Despachar** no aparece hasta escoger uno. (El aviso `Escoge el motivo del despacho manual.` queda solo como resguardo y ya no debería verse.) | Local |
 | La compañía no tiene motivos habilitados (la copia bajada está vacía) | `La compañía no tiene motivos habilitados para el despacho manual. Pide al administrador que habilite alguno (Sistema → Catálogos).` | Local |
 | Nota de más de 500 caracteres | No deja escribir más de 500; si llegara a pasar: `La nota admite como máximo 500 caracteres.` | Local |
 | Motivo deshabilitado o borrado en el servidor | `El motivo {CÓDIGO} no existe o está inactivo.` (400) | API |
@@ -590,6 +612,9 @@ posición sugerida) no se descuenta: se vuelve a bajar en cuanto el despacho lle
 Casos frecuentes:
 - **Me equivoqué de cantidad y ya se envió.** Desde la web, elimine el despacho manual (devuelve todo a su posición, [06 §7b](06-inventario-y-almacen.md#7b-despacho-manual-dma--2026-10-11)) y vuelva a hacerlo.
 - **Iba a un consignatario.** Use **Empacar**, no **Completar despacho**: un despacho manual nunca se convierte en orden.
+- **Hoy es otro motivo.** Toque **Cambiar** y escoja el que corresponde. Ojo: ese pasa a ser su «último usado» y el próximo despacho abre con él (no
+  con el default de la compañía); para volver al de siempre, **Cambiar** otra vez.
+- **Quiero dejar una nota.** Toque **Agregar nota** antes de **Despachar**; si no la toca, el despacho va sin nota.
 - **Cerré la app mientras decía «Enviando…».** El despacho ya está en la cola: se manda solo; no lo repita (no puede quedar dos veces: el despacho del
   aparato se cerró al encolarlo y la cola usa `Idempotency-Key`).
 
@@ -985,7 +1010,8 @@ Las posiciones sirven para validar sin señal la posición destino del recibo di
 las posiciones dadas de baja se conservan marcadas como inactivas (así la app distingue "no existe" de "está desactivada"). Si el almacén por defecto del aparato cambia, el nuevo baja completo la primera vez.
 
 **Despacho manual (2026-10-11).** Al final de cada pasada con señal se bajan también los **motivos del despacho manual** (§6.y), como mucho cada
-30 minutos y solo si el usuario tiene `warehouse.issue`. Además, desde esta versión una operación de la cola queda **con error** cuando el servidor
+30 minutos y solo si el usuario tiene `warehouse.issue` (desde 2026-10-11 (b) con la marca del motivo por default; una copia vieja sin ella se baja
+otra vez en la siguiente pasada). Además, desde esta versión una operación de la cola queda **con error** cuando el servidor
 la rechaza con 400, 403, 404, 409 o 422, aunque traiga un código propio: antes un `Inventario insuficiente…` (409 `insufficient_stock`) o un módulo
 apagado (403 `module_disabled`) dejaban la operación **pendiente para siempre** (se reintentaba cada minuto) y su efecto en el saldo del aparato sin
 deshacer; esto valía también para Transferir, Ajustar y Empacar. Un 500 o la falta de señal la siguen dejando pendiente.
