@@ -10101,9 +10101,9 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "text/plain": components["schemas"]["LookupValueDto"][];
-                        "application/json": components["schemas"]["LookupValueDto"][];
-                        "text/json": components["schemas"]["LookupValueDto"][];
+                        "text/plain": components["schemas"]["ManualIssueReasonDto"][];
+                        "application/json": components["schemas"]["ManualIssueReasonDto"][];
+                        "text/json": components["schemas"]["ManualIssueReasonDto"][];
                     };
                 };
             };
@@ -21369,6 +21369,27 @@ export interface components {
             reasonCode?: string | null;
             note?: string | null;
         };
+        ManualIssueReasonDto: {
+            /** Format: int32 */
+            id?: number;
+            entity?: string | null;
+            code?: string | null;
+            label?: string | null;
+            labels?: {
+                [key: string]: string;
+            } | null;
+            description?: string | null;
+            extraJson?: string | null;
+            /** Format: int32 */
+            sortOrder?: number;
+            isSystem?: boolean;
+            isEnabled?: boolean;
+            isOverridden?: boolean;
+            /** Format: int32 */
+            tenantId?: number | null;
+            isActive?: boolean;
+            isDefault?: boolean;
+        };
         MeDto: {
             /** Format: int32 */
             userId?: number;
@@ -24156,6 +24177,7 @@ export interface components {
             countRecountTolerancePct?: number;
             countRevealShowsNumber?: boolean;
             countAutoCloseMatching?: boolean;
+            defaultManualIssueReason?: string | null;
         };
         TenantSettingsUpdateRequest: {
             name?: string | null;
@@ -24198,6 +24220,7 @@ export interface components {
             countRecountTolerancePct?: number | null;
             countRevealShowsNumber?: boolean | null;
             countAutoCloseMatching?: boolean | null;
+            defaultManualIssueReason?: string | null;
         };
         TenantSummaryDto: {
             /** Format: int32 */
