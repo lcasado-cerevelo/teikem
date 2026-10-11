@@ -22243,6 +22243,7 @@ export interface components {
             packUom?: string | null;
             /** Format: double */
             packQty?: number | null;
+            rotationMethod?: string | null;
         };
         ProductDetailDto: {
             product?: components["schemas"]["ProductListItemDto"];
@@ -22262,6 +22263,7 @@ export interface components {
             maxPickQty?: number | null;
             hasMovements?: boolean;
             rowVersion?: string | null;
+            rotationMethod?: string | null;
         };
         ProductListItemDto: {
             /** Format: int32 */
@@ -22348,6 +22350,7 @@ export interface components {
             /** Format: double */
             packQty?: number | null;
             clearPack?: boolean | null;
+            rotationMethod?: string | null;
         } & {
             [key: string]: unknown;
         };
@@ -24246,6 +24249,7 @@ export interface components {
             defaultManualIssueReason?: string | null;
             /** Format: int32 */
             defaultProductCategoryId?: number | null;
+            rotationMethod?: string | null;
         };
         TenantSettingsUpdateRequest: {
             name?: string | null;
@@ -24291,6 +24295,7 @@ export interface components {
             defaultManualIssueReason?: string | null;
             /** Format: int32 */
             defaultProductCategoryId?: number | null;
+            rotationMethod?: string | null;
         };
         TenantSummaryDto: {
             /** Format: int32 */

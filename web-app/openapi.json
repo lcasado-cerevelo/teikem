@@ -36500,6 +36500,10 @@
             "type": "number",
             "format": "double",
             "nullable": true
+          },
+          "rotationMethod": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -36552,6 +36556,10 @@
             "type": "boolean"
           },
           "rowVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "rotationMethod": {
             "type": "string",
             "nullable": true
           }
@@ -36805,6 +36813,10 @@
           },
           "clearPack": {
             "type": "boolean",
+            "nullable": true
+          },
+          "rotationMethod": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -42522,6 +42534,10 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          },
+          "rotationMethod": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -42669,6 +42685,10 @@
           "defaultProductCategoryId": {
             "type": "integer",
             "format": "int32",
+            "nullable": true
+          },
+          "rotationMethod": {
+            "type": "string",
             "nullable": true
           }
         },
