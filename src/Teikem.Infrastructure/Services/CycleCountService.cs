@@ -474,7 +474,7 @@ public sealed class CycleCountService(
     /// llama); si lo tiene otro → 409 con su nombre. Con varios (duplicados anteriores), primero los del propio usuario, el de más líneas contadas.
     /// null = no hay nada que retomar y se abre uno nuevo.
     /// </summary>
-    private async Task<int?> FindOpenCountOfBinAsync(int warehouseId, int binId, CancellationToken ct)
+    private async Task<int?> FindOpenCountOfBinAsync(int warehouseId, int binId, CancellationToken ct, bool joinOthers = false)
     {
         var openId = await db.StatusCodes.AsNoTracking()
             .Where(s => s.Entity == StatusDomains.CycleCountStatus && s.InternalCode == CycleCountStatuses.Open)
@@ -508,6 +508,7 @@ public sealed class CycleCountService(
             return free.CycleCountId;
         }
         var other = candidates.OrderBy(c => c.CycleCountId).First();
+        if (joinOthers) return other.CycleCountId;   // 2026-10-11: el conteo hecho sin señal se SUMA al abierto de otro contador
         var otherId = Assignee(other.CycleCountId);
         var name = otherId is int oid
             ? await db.Users.AsNoTracking().Where(u => u.Id == oid).Select(u => u.FullName ?? u.Email).FirstOrDefaultAsync(ct)
@@ -1212,6 +1213,67 @@ public sealed class CycleCountService(
     }
 
     /// <summary>Terminar de contar: OPEN → COUNTED con todas las líneas capturadas (si no, 422 'Faltan {n} línea(s) por contar.').</summary>
+    /// <summary>
+    /// 2026-10-11 (señal débil) — POST /cycle-counts/offline-bin: el conteo de UNA posición que se hizo en el aparato sin señal, aplicado entero al volver la señal.
+    /// 1. Abre el conteo de la posición, o RETOMA el que ya esté abierto (también si es de OTRO contador: las líneas se SUMAN a ese conteo, a nombre de quien las contó).
+    /// 2. Captura las líneas (la misma regla de PUT /lines/batch: las que ya existen se capturan, las demás se agregan como «lo encontrado»).
+    /// 3. Lo termina si se pidió Y es suyo (lo abrió esta petición o ya estaba a su nombre); si era de otro, queda abierto para su dueño. Si no se puede terminar
+    ///    (p. ej. faltan líneas por contar porque la existencia cambió mientras estaba sin señal) NO falla: lo contado queda guardado y se explica en FinishMessage.
+    /// 4. Avisa (MovedSinceCounted y el comentario del historial) si hubo movimientos en la posición entre contar (CountedAtUtc, hora del aparato) y ahora.
+    /// La existencia contra la que se compara es la del servidor al reconciliar, como siempre (D22). Idempotente por la clave de idempotencia de la petición.
+    /// </summary>
+    public async Task<CountOfflineResultDto> CaptureOfflineAsync(CountOfflineRequest? req, CancellationToken ct)
+    {
+        if (req?.BinId is not int binId) throw new ValidationException("binId", CycleCountRules.BinRequired);
+        if (req.Lines is not { Count: > 0 }) throw new ValidationException("lines", CycleCountRules.CaptureRequired);
+        for (var i = 0; i < req.Lines.Count; i++)
+            if (req.Lines[i] is { LineId: not null } || req.Lines[i] is { BinId: int b } && b != binId)
+                throw new ValidationException($"lines[{i}].binId", CycleCountRules.OfflineLineWrongBin);
+        var warehouse = await ResolveWarehouseOrDefaultAsync(req.WarehousePublicId, ct);
+        if (!warehouse.IsActive) throw new StatusRuleException(WarehouseInactive);
+        var items = req.Lines.Select(l => l with { BinId = binId }).ToList();
+
+        var created = false;
+        var existing = await FindOpenCountOfBinAsync(warehouse.WarehouseId, binId, ct, joinOthers: true);
+        int countId;
+        if (existing is int found) countId = found;
+        else
+        {
+            var opened = await CreateAsync(new CycleCountCreateRequest(warehouse.PublicId, BinIds: new[] { binId }, AllowEmpty: true, AssignToMe: true), ct);
+            countId = opened.Count.Id;
+            created = true;
+        }
+        var assignee = (await CountTasksAsync(new List<int> { countId }, ct)).GetValueOrDefault(countId)?.AssignedToUserId;
+        var joined = !created && assignee is int owner && owner != tenant.UserId;
+
+        var detail = await CaptureBatchAsync(countId, new CountBatchRequest(items), ct);
+
+        var moved = false;
+        if (req.CountedAtUtc is DateTime countedAt)
+        {
+            var at = countedAt.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(countedAt, DateTimeKind.Utc) : countedAt.ToUniversalTime();
+            if (at > DateTime.UtcNow) at = DateTime.UtcNow;   // la hora del aparato puede estar adelantada
+            moved = await db.InventoryTransactions.AsNoTracking()
+                .AnyAsync(t => (t.FromBinId == binId || t.ToBinId == binId) && t.CreatedAtUtc > at, ct);
+        }
+
+        var finished = false;
+        string? finishMessage = null;
+        if (req.Finish && !joined)
+        {
+            try
+            {
+                detail = await FinishAsync(countId, new CountReconcileRequest(moved ? CycleCountRules.OfflineFinishMovedComment : CycleCountRules.OfflineFinishComment), ct);
+                finished = true;
+            }
+            catch (StatusRuleException ex)
+            {
+                finishMessage = ex.Message;   // lo contado ya quedó guardado; el conteo sigue abierto
+            }
+        }
+        return new CountOfflineResultDto(detail, created, joined, finished, moved, finishMessage);
+    }
+
     public async Task<CycleCountDetailDto> FinishAsync(int id, CountReconcileRequest? req, CancellationToken ct)
     {
         var comment = TrimComment(req?.Comment);

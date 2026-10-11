@@ -129,6 +129,22 @@ public sealed record CountBatchItem(int? LineId = null, int? BinId = null, Guid?
 
 public sealed record CountBatchRequest(IReadOnlyList<CountBatchItem>? Lines, string? RowVersion = null);
 
+/// <summary>
+/// 2026-10-11 (señal débil) — conteo de UNA posición hecho en el aparato SIN señal, que se manda entero al volver la señal (POST /cycle-counts/offline-bin).
+/// Lines = lo contado (cada renglón con BinId = la posición y su producto, y el lote por número si lo hay; los renglones con LineId no aplican: el aparato no
+/// conocía el conteo). Finish = terminarlo (por omisión sí). CountedAtUtc = cuándo se contó, hora del aparato: solo sirve para avisar si hubo movimientos
+/// en la posición desde entonces.
+/// </summary>
+public sealed record CountOfflineRequest(Guid? WarehousePublicId = null, int? BinId = null, IReadOnlyList<CountBatchItem>? Lines = null, bool Finish = true,
+    DateTime? CountedAtUtc = null);
+
+/// <summary>
+/// Resultado del conteo hecho sin señal. Created = se abrió un conteo nuevo; Joined = ya había uno abierto de esa posición a nombre de OTRO contador y las líneas se
+/// sumaron a él (no se termina: lo sigue su dueño); Finished = quedó Contado; FinishMessage = por qué NO se pudo terminar aunque se pidió (lo contado quedó guardado y
+/// el conteo abierto); MovedSinceCounted = hubo movimientos en la posición entre el momento de contar y el de sincronizar (el supervisor debe tenerlo en cuenta).
+/// </summary>
+public sealed record CountOfflineResultDto(CycleCountDetailDto Count, bool Created, bool Joined, bool Finished, bool MovedSinceCounted, string? FinishMessage = null);
+
 public sealed record CountAddLineRequest(int? BinId, Guid? ProductPublicId, int? LotId = null, LotInput? Lot = null, decimal? CountedQty = null,
     IReadOnlyList<string>? SerialNumbers = null);
 

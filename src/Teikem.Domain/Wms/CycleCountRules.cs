@@ -50,6 +50,15 @@ public static class CycleCountRules
     public const string CountNotOpen = "El conteo ya fue reconciliado; solo se consulta.";
     /// <summary>2026-10-07 (app, retomar): la posición ya la tiene abierta otro contador (POST /cycle-counts con resumeOpen).</summary>
     public static string BinBeingCounted(string countedBy, string number) => $"Esa posición la está contando {countedBy} ({number}).";
+
+    /// <summary>2026-10-11: conteo hecho sin señal; cada renglón debe ser de la posición indicada.</summary>
+    public const string OfflineLineWrongBin = "Cada renglón del conteo debe ser de la posición indicada.";
+
+    /// <summary>Comentario del historial al terminar un conteo hecho sin señal.</summary>
+    public const string OfflineFinishComment = "Contado sin señal.";
+
+    /// <summary>Comentario del historial si, además, hubo movimientos en la posición desde que se contó.</summary>
+    public const string OfflineFinishMovedComment = "Contado sin señal; hubo movimientos en la posición desde que se contó.";
     public const string CountAlreadyFinished = "El conteo ya se terminó; puede corregir la captura o reconciliarlo.";
     public const string DeleteOnlyOpen = "Solo se elimina un conteo abierto; este ya se terminó de contar.";
     public const string NoLines = "El conteo no tiene líneas.";

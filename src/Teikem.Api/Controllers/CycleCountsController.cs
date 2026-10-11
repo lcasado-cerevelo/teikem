@@ -131,6 +131,18 @@ public sealed class CycleCountsController(CycleCountService counts, PermissionSe
     /// errores por renglón → 400 ('lines[i].campo'); renglón repetido → 400 'La línea se repite en la solicitud.';
     /// reconciliado → 422. Respeta Idempotency-Key.
     /// </summary>
+    /// <summary>
+    /// 2026-10-11 (señal débil): el conteo de UNA posición hecho en el aparato sin señal, aplicado entero (abrir o retomar, capturar y, si es suyo, terminar).
+    /// Si la posición ya tiene un conteo abierto de OTRO contador, las líneas se suman a ese conteo y no se termina. Con forCounting = true y la compañía en «Nadie»
+    /// ver lo esperado, la respuesta llega a ciegas. 422 solo si el almacén está inactivo; que no se pueda terminar NO falla (FinishMessage).
+    /// </summary>
+    [HttpPost("offline-bin"), RequirePermission(PermissionCatalog.WarehouseCountCapture)]
+    public async Task<CountOfflineResultDto> CaptureOffline([FromBody] CountOfflineRequest req, [FromQuery] bool forCounting = false, CancellationToken ct = default)
+    {
+        var result = await counts.CaptureOfflineAsync(req, ct);
+        return result with { Count = await ForCallerAsync(result.Count, ct, forCounting) };
+    }
+
     [HttpPut("{id:int}/lines/batch"), RequirePermission(PermissionCatalog.WarehouseCountCapture)]
     public async Task<CycleCountDetailDto> CaptureBatch(int id, [FromBody] CountBatchRequest req, CancellationToken ct)
         => await ForCallerAsync(await counts.CaptureBatchAsync(id, req, ct), ct);
