@@ -15695,6 +15695,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/trips/{publicId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TripCompleteRequest"];
+                    "text/json": components["schemas"]["TripCompleteRequest"];
+                    "application/*+json": components["schemas"]["TripCompleteRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TripDetailDto"];
+                        "application/json": components["schemas"]["TripDetailDto"];
+                        "text/json": components["schemas"]["TripDetailDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/trips/monitor": {
         parameters: {
             query?: never;
@@ -24314,6 +24359,10 @@ export interface components {
             items?: components["schemas"]["TripDispatchResultItemDto"][] | null;
         };
         TripCancelRequest: {
+            comment?: string | null;
+            rowVersion?: string | null;
+        };
+        TripCompleteRequest: {
             comment?: string | null;
             rowVersion?: string | null;
         };
