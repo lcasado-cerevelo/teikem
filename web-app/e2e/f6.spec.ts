@@ -217,8 +217,8 @@ test.describe('Lote F6 — escritorio', () => {
     await page.getByRole('searchbox', { name: 'Nombre' }).fill(PRODUCT_NAME)
     const row = page.getByRole('row').filter({ hasText: SKU })
     await expect(row).toHaveCount(1)
-    // columnas: SKU, Producto, Categoría, Marca, Dueño, Disponible, Reservado, Total, Rastreo, Estado
-    await expect(row.getByRole('cell').nth(7)).toHaveText('0')
+    // columnas: SKU, Producto, Categoría, Empaque, Marca, Dueño, Disponible, Reservado, Total, Rastreo, Estado
+    await expect(row.getByRole('cell').nth(8)).toHaveText('0')
     await shot(page, 'productos')
     // clic en la fila = "Editar producto" (SKU bloqueado, Total en solo lectura)
     await row.click()
