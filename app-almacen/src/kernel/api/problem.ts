@@ -21,7 +21,7 @@ export class ApiError extends Error {
   readonly correlationId?: string
 
   constructor(status: number, problem: ProblemDetails | null) {
-    const title = problem?.title || t('errors.generic')
+    const title = problem?.title || fallbackTitle(status)
     super(title)
     this.name = 'ApiError'
     this.status = status
@@ -30,6 +30,14 @@ export class ApiError extends Error {
     this.code = problem?.code || codeFromStatus(status, this.errors)
     this.correlationId = problem?.correlationId
   }
+}
+
+/** Texto cuando el servidor no mandó título. 2026-10-11: las políticas de permiso del API ([RequirePermission]) responden
+ *  403 SIN cuerpo; antes se leía «Ocurrió un error. Intente de nuevo.», que invita a reintentar algo que no va a pasar.
+ *  Un 403 con título (ProblemDetails: módulo apagado, regla del servicio…) conserva el mensaje del servidor. */
+function fallbackTitle(status: number): string {
+  if (status === 403) return t('errors.forbidden')
+  return t('errors.generic')
 }
 
 function codeFromStatus(status: number, errors: Record<string, string[]>): string {

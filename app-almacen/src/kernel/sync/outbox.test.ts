@@ -252,3 +252,66 @@ describe('cola de salida — despacho manual (2026-10-11)', () => {
     expect(outboxStatus(b)?.status).toBe('pending')
   })
 })
+
+describe('cola de salida — 409 «todavía se está procesando» y 403 sin cuerpo (2026-10-11)', () => {
+  const IN_FLIGHT = 'La operación con esta clave todavía se está procesando.'
+
+  it('el 409 de idempotencia en curso NO es un rechazo: la fila queda pendiente, se cuenta el intento y se sigue con las demás', async () => {
+    const a = enqueue({ kind: 'manualIssue', body: { a: 1 } })
+    const b = enqueue({ kind: 'receipt', body: { a: 2 } })
+    postMock
+      .mockImplementationOnce(() => problem(409, { title: IN_FLIGHT, code: 'conflict' }))
+      .mockImplementationOnce(() => ok({ publicId: 'r-2' }))
+
+    const result = await runOutbox()
+
+    expect(result).toEqual({ sent: 1, rejected: 0, stoppedForNetwork: false, remaining: 1 })
+    expect(outboxStatus(a)).toEqual({ status: 'pending', error: IN_FLIGHT })
+    expect(listOutbox()[0].attempts).toBe(1)
+    expect(outboxStatus(b)?.status).toBe('sent')
+  })
+
+  it('la siguiente pasada la reintenta con la MISMA Idempotency-Key y queda enviada con la respuesta guardada', async () => {
+    const id = enqueue({ kind: 'manualIssue', body: { a: 1 } })
+    const keys: string[] = []
+    postMock
+      .mockImplementationOnce((_p, opts) => {
+        keys.push(opts.headers['Idempotency-Key'])
+        return problem(409, { title: IN_FLIGHT, code: 'conflict' })
+      })
+      .mockImplementationOnce((_p, opts) => {
+        keys.push(opts.headers['Idempotency-Key'])
+        return ok({ number: 'DMA-00031' })
+      })
+    await runOutbox()
+    const second = await runOutbox()
+    expect(second).toMatchObject({ sent: 1, rejected: 0, remaining: 0 })
+    expect(keys).toHaveLength(2)
+    expect(keys[0]).toBe(keys[1])
+    expect(outboxStatus(id)?.status).toBe('sent')
+    expect(outboxResult(id)).toEqual({ number: 'DMA-00031' })
+  })
+
+  it('los demás 409 de idempotencia (otro contenido, permisos cambiados) siguen siendo rechazo', async () => {
+    const a = enqueue({ kind: 'receipt', body: { a: 1 } })
+    const b = enqueue({ kind: 'receipt', body: { a: 2 } })
+    postMock
+      .mockImplementationOnce(() => problem(409, { title: 'La clave de idempotencia ya se usó con otro contenido.', code: 'conflict' }))
+      .mockImplementationOnce(() => problem(409, { title: 'La operación con esta clave ya no puede repetirse con los permisos actuales.', code: 'conflict' }))
+    const result = await runOutbox()
+    expect(result.rejected).toBe(2)
+    expect(outboxStatus(a)?.status).toBe('rejected')
+    expect(outboxStatus(b)?.status).toBe('rejected')
+  })
+
+  it('un 403 sin cuerpo (política de permiso) es un rechazo y guarda el mensaje de «sin permiso»', async () => {
+    const id = enqueue({ kind: 'damage', body: {} })
+    postMock.mockImplementationOnce(() => Promise.resolve({ error: undefined, response: new Response(null, { status: 403 }) }))
+    const result = await runOutbox()
+    expect(result.rejected).toBe(1)
+    expect(outboxStatus(id)).toEqual({
+      status: 'rejected',
+      error: 'No tienes permiso para esta acción. Pide a tu administrador que te lo asigne.',
+    })
+  })
+})

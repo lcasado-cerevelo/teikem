@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 
 import { useT } from '../../kernel/i18n/useT'
+import { outboxKindLabel } from '../../kernel/sync/outboxKind'
 import { BigButton } from '../../kernel/ui/BigButton'
 import { ScanMessage } from '../../kernel/ui/ScanMessage'
 import { colors, fontSize, radius, spacing } from '../../kernel/ui/theme'
@@ -80,7 +81,7 @@ export function RejectedCountBatch({ rowId, rejection, finishAlsoRejected, onDis
       )}
       {result ? <RefreshResult result={result} /> : null}
 
-      <BigButton label={t('sync.retryRow', { kind: 'countBatch' })} variant="secondary" onPress={onRetry} disabled={busy} />
+      <BigButton label={t('sync.retryRow', { kind: outboxKindLabel('countBatch', t) })} variant="secondary" onPress={onRetry} disabled={busy} />
       <BigButton label={t('countRejection.discard')} variant="danger" onPress={onDiscard} disabled={busy} />
     </View>
   )

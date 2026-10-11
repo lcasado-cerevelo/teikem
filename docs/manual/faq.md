@@ -5920,6 +5920,8 @@ tocar **Completar despacho**. Si el rechazo llega más tarde (se mandó solo), a
 **Al despachar me sale `Ocurrió un error. Intente de nuevo.` aunque tengo el botón.**
 Lo más probable es que a su rol le quitaron `warehouse.issue` y el aparato todavía no se enteró (el servidor responde 403 sin mensaje). Vuelva a
 Inicio con señal para que se actualicen sus permisos; si sigue, revise el rol.
+Desde la corrección del 2026-10-11 ese caso ya no se lee así sino `No tienes permiso para esta acción. Pide a tu administrador que te lo asigne.`
+(ver [App de almacén: correcciones tras el despacho manual](#app-de-almacén-correcciones-tras-el-despacho-manual-2026-10-11)).
 
 ## Despacho manual en la web (pantalla, 2026-10-11)
 
@@ -5937,3 +5939,25 @@ DMA no se gastó. Corrija y vuelva a pulsar **Despachar**.
 
 **No me aparece «Eliminar» en un despacho manual.**
 Eliminar un manual exige `warehouse.issue` (no basta `warehouse.pick`) y que el servidor lo permita (`canDelete`); uno ya cancelado no se elimina otra vez.
+
+## App de almacén: correcciones tras el despacho manual (2026-10-11)
+
+Capítulo: [09 §9 Sincronización](09-app-almacen.md#9-sincronización).
+
+**`No tienes permiso para esta acción. Pide a tu administrador que te lo asigne.`** (en inglés `You do not have permission for this action. Ask
+your administrator to grant it.`)
+El servidor respondió 403 sin mensaje: a su rol le falta el permiso de lo que intentó (por ejemplo `warehouse.issue` para **Completar despacho**,
+o el permiso se quitó y el aparato todavía no se enteró). Reintentar no sirve: pida al administrador que lo agregue a su rol (Sistema → Roles), vuelva
+a Inicio con señal para que se actualicen sus permisos e inténtelo otra vez. Si la operación ya estaba en la cola, queda en **Sincronización → Con
+error** con este mensaje: cuando ya tenga el permiso toque **Reintentar**; si no lo va a tener, **Descartar**. Antes de esta versión el mismo caso se
+leía `Ocurrió un error. Intente de nuevo.`. Un 403 que trae su propio mensaje (p. ej. un módulo apagado) sigue mostrándolo tal cual.
+
+**En Sincronización una operación pendiente dice `La operación con esta clave todavía se está procesando.`**
+No es un error suyo ni un rechazo: el servidor todavía está procesando ese mismo envío (el intento anterior se cortó sin respuesta). La operación sigue
+**pendiente**, el saldo del aparato no se toca y se vuelve a mandar sola en la siguiente pasada (o al tocar **Sincronizar ahora**) con la misma clave,
+así que no puede quedar dos veces. No la descarte ni la repita a mano. Si sigue así más de 10 minutos, avise a soporte.
+
+**En Sincronización, ¿qué es «Despacho manual», «Transferencia», «Ajuste de inventario»…?**
+Es el tipo de cada operación guardada en el aparato (antes salía el nombre técnico, como `manualIssue` o `adjust`). La lista completa está en el
+[capítulo 09 §9](09-app-almacen.md#9-sincronización). Si ve un nombre técnico en inglés que no está en la lista, la operación la guardó otra versión
+de la app: se manda igual; avise a soporte si queda con error.

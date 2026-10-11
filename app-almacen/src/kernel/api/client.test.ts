@@ -106,3 +106,26 @@ describe('cliente del API', () => {
     expect(lost).toBe(true)
   })
 })
+
+describe('cliente del API — 403 sin cuerpo (2026-10-11)', () => {
+  it('un 403 vacío de la política de permiso llega como «sin permiso»; uno con ProblemDetails conserva su mensaje', async () => {
+    await saveUserSession(SESSION)
+    const client = createApiClient({
+      fetch: async (req) => {
+        const path = new URL(req.url).pathname
+        if (path === '/api/v1/warehouses') return new Response(null, { status: 403 })
+        return jsonResponse(403, { title: "El módulo 'WMS' no está habilitado para esta compañía.", status: 403, code: 'module_disabled' })
+      },
+    })
+    await expect(unwrap(client.GET('/api/v1/warehouses', { params: { query: {} } }))).rejects.toMatchObject({
+      status: 403,
+      code: 'forbidden',
+      title: 'No tienes permiso para esta acción. Pide a tu administrador que te lo asigne.',
+    })
+    await expect(unwrap(client.GET('/api/v1/products', { params: { query: {} } }))).rejects.toMatchObject({
+      status: 403,
+      code: 'module_disabled',
+      title: "El módulo 'WMS' no está habilitado para esta compañía.",
+    })
+  })
+})

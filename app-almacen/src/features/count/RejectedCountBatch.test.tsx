@@ -136,7 +136,7 @@ describe('RejectedCountBatch', () => {
     const { getByRole, onDiscard, onRetry } = await renderCard(PARSED, jest.fn())
     await fireEvent.press(getByRole('button', { name: 'Descartar este envío' }))
     expect(onDiscard).toHaveBeenCalledTimes(1)
-    await fireEvent.press(getByRole('button', { name: 'Reintentar: countBatch' }))
+    await fireEvent.press(getByRole('button', { name: 'Reintentar: Conteo (líneas capturadas)' }))
     expect(onRetry).toHaveBeenCalledTimes(1)
   })
 })
