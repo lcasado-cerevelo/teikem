@@ -1,0 +1,14 @@
+# Subflujo Maestro: la app abre en «Sesión bloqueada» (bloqueo con PIN también al abrir). Si está bloqueada, escribe el PIN
+# 2846 (el que deja scripts/e2e-mobile-fixtures.sh) y desbloquea; si no, no hace nada. Lo llaman los flujos 02 al 04b
+# justo después de launchApp. No es un flujo por sí solo (el guion bajo lo deja fuera de los que se corren).
+appId: com.teikem.almacen
+---
+- runFlow:
+    when:
+      visible: "Sesión bloqueada"
+    commands:
+      - tapOn: "2"
+      - tapOn: "8"
+      - tapOn: "4"
+      - tapOn: "6"
+      - tapOn: "Desbloquear"
