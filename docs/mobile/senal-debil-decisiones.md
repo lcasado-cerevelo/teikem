@@ -56,6 +56,15 @@ Se construye en bloques probados; el sistema está en producción (solo `Diseño
   evita duplicarla) y durante ese rato un saldo bajado puede contarla dos veces; dos aparatos moviendo lo mismo sin señal: el segundo en llegar queda «requiere revisión». La validación de
   «no mover más de lo disponible» ahora se hace contra el saldo local (puede estar atrasado); el servidor es quien decide.
 
+## Bloque S5 — conteo sin señal y espacio libre sin servidor (2026-10-11, hecho)
+- **Capacidad en Acomodar/Recibir:** `GET /sync/bins` trae `maxCapacityQty`; el aparato lo guarda (`bin.max_capacity_qty`, migración local v12 con `capacity_known`: un NULL anterior a la
+  actualización no se confunde con «sin cupo»; esas posiciones se bajan completas una vez) y `findBinByCode` calcula `freeQty` en el aparato: cupo − suma de los saldos locales de la posición (que ya incluyen
+  lo pendiente). Solo si la posición no está en el aparato (o aún no trae el cupo) se pregunta al servidor, como antes. Límite: no descuenta lo reservado por otras líneas del mismo recibo (es un aviso).
+- **Abrir un conteo por posición sin señal** (decisiones del dueño: se suma al conteo abierto de otro contador; se compara con la existencia del servidor al sincronizar avisando de movimientos; solo por posición):
+  al escanear la posición, la app espera 5 s al servidor y, si no responde, abre el conteo EN EL APARATO (`countId` 0, a ciegas, lo esperado = saldos locales sin cantidades). Terminar o «guardar y seguir después» encola UNA fila
+  `countOffline` → `POST /api/v1/cycle-counts/offline-bin` (servidor: abre/retoma, captura, termina si es suyo; ver manual 06 §6.s). La app avisa el resultado (sumado a otro, no se pudo terminar, movimientos, rechazo).
+- **Pruebas:** servidor (`CountOfflineTests`, 9; `SyncRulesTests`; mapa de seguridad), app (`countOfflineScreen`, 4; `countApi`, `countLogic`, `localCount`, `binLookup`, `download`).
+
 ## Bloques que siguen
 - **S3 (app):** indicador único de sincronización y pantallas leyendo lo local (Consultar, Conteo, Acomodar, Transferir, Ajustar, Daño, Despacho).
 

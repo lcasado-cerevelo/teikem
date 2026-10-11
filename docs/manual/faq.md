@@ -6228,3 +6228,15 @@ Es a propósito cuando se entra desde el menú: queda listo para la siguiente po
 
 **La app abre en «Sesión bloqueada» y no hay señal, ¿cómo entro? ¿Qué significan `PIN incorrecto (sin señal).`, `Demasiados intentos sin señal. Conéctate para desbloquear.` y `Sin señal. Conéctate una vez para poder desbloquear sin señal.`?**
 Sin señal, la app compara el PIN con una huella guardada en el aparato la última vez que ese usuario entró con señal. Si escribes mal el PIN sale el primer mensaje; tras 5 fallos seguidos sin señal sale el segundo y hace falta señal para desbloquear (o «Cerrar sesión»). El tercero significa que ese usuario nunca entró con señal en este aparato: conéctalo una vez y entra con el PIN. Lo capturado no se pierde en ningún caso.
+
+**Escaneé la posición y la app dijo «Sin señal: estás contando en el aparato…», ¿se pierde lo que cuente?**
+No. Se guarda en el aparato y se manda **entero y solo** en cuanto haya señal (cola de salida, «Conteo hecho sin señal»). Si el servidor lo rechaza, queda en Sincronización con el motivo para reintentar o descartar. Solo el conteo por posición se abre sin señal.
+
+**Conté sin señal y la app avisó «Esa posición ya tenía un conteo abierto de otro contador…» (o el conteo quedó abierto), ¿qué pasó?**
+Otro contador ya tenía abierto el conteo de esa posición: lo que contaste se **sumó a ese conteo** y no se terminó (lo sigue su dueño). Si el aviso dice «el conteo no se pudo terminar: Faltan N línea(s) por contar», el servidor tenía líneas que el aparato no contó: lo contado se guardó y el conteo quedó abierto para retomarlo desde «Conteos abiertos».
+
+**La app avisó «Hubo movimientos en esa posición desde que contaste sin señal», ¿es un error?**
+No: alguien movió mercancía de esa posición entre que contaste y se sincronizó. El conteo se compara con la existencia del servidor al reconciliar (la de siempre); el aviso, y el comentario «Contado sin señal; hubo movimientos…» en el historial, son para que el supervisor lo tenga en cuenta al revisar.
+
+**¿Por qué el aparato dice que sí cabe en la posición y el servidor avisó que no?**
+El espacio libre del aparato es el cupo de la posición menos lo que el aparato sabe que hay. No conoce lo que otras líneas del mismo recibo ya reservaron en esa posición (el servidor sí). Es solo un aviso: el servidor decide y no bloquea por cupo.

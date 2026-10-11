@@ -866,6 +866,39 @@ Con todas las líneas contadas, **Terminar esta posición** cierra directo (sin 
 | Cierre rechazado por el servidor | `El servidor no aceptó terminar el conteo: {mensaje}` | App |
 | Cierre con líneas sin contar (si se mandara igual) | `Faltan {n} línea(s) por contar.` (422) | API |
 
+### 7.7 Contar una posición sin señal (2026-10-11)
+
+Qué cambió: antes, abrir un conteo necesitaba señal (el conteo vive en el servidor). Ahora, al **escanear la posición**, la app le da al servidor **5 segundos**; si no
+responde (sin señal o señal muy débil) **abre el conteo en el aparato** y el operario cuenta igual. Solo el conteo **por posición**; el conteo por producto y el «conteo
+abierto» siguen necesitando señal para abrirse.
+
+Cómo se ve:
+- Aparece el aviso **«Sin señal: estás contando en el aparato. Lo contado se enviará solo al volver la señal.»** El conteo **no tiene número** todavía (lo da el servidor al recibirlo).
+- «Lo que se espera aquí» sale de **los saldos del aparato** (productos y lotes que el aparato cree que hay en esa posición, **sin cantidades**: siempre es a ciegas). Se cuenta igual:
+  escanear el producto, escribir la cantidad, **Agregar**; lo que no estaba en la lista se agrega como «lo encontrado».
+- **Terminar esta posición** (o **Guardar y seguir después**) guarda todo **en el aparato** y lo pone en la **cola de salida** como **«Conteo hecho sin señal»**; el aparato lo manda **entero y solo**
+  en cuanto haya señal (con su clave de idempotencia: un reintento no duplica el conteo). **Cancelar** un conteo hecho sin señal solo lo descarta en el aparato.
+- Con **«Guardar y seguir después»** se manda lo contado **sin terminar**: al llegar, el conteo queda abierto en el servidor y aparece en «Conteos abiertos» para retomarlo.
+
+Qué hace el servidor al recibirlo (decisiones del dueño, 2026-10-11): abre el conteo de esa posición o **retoma el que ya esté abierto**; si ese conteo es **de otro contador**, lo contado
+se **suma a ese conteo** (el conteo no se termina: lo sigue su dueño) y la app avisa **«Esa posición ya tenía un conteo abierto de otro contador: lo que contaste se sumó a ese conteo y lo sigue su dueño.»**
+Lo contado se compara con la **existencia del servidor al reconciliar** (la de siempre). Si entre contar y sincronizar **hubo movimientos en la posición**, la app avisa **«Hubo movimientos en esa posición desde que contaste sin
+señal; el supervisor lo tendrá en cuenta.»** y el historial del conteo queda con el comentario **«Contado sin señal; hubo movimientos en la posición desde que se contó.»** (sin movimientos: «Contado sin señal.»).
+Si no se puede terminar (por ejemplo, el servidor tiene en esa posición un producto que el aparato no sabía y quedó sin contar), **lo contado se guarda** y el conteo queda **abierto**; la app avisa
+**«Lo contado se guardó, pero el conteo no se pudo terminar: Faltan N línea(s) por contar. Quedó abierto.»**
+
+Casos frecuentes:
+- **Escaneé la posición con señal lenta y abrió «sin señal»:** es normal tras 5 segundos; el servidor puede haber creado el conteo igual, y al enviar se **retoma ese mismo conteo** (no se duplica).
+- **«El servidor no aceptó terminar el conteo: …»:** el servidor rechazó el envío (p. ej. almacén inactivo, posición que ya no existe); queda en Sincronización para reintentar o descartar, como los demás.
+- Los productos y las posiciones que el aparato no conozca (creados después de su última sincronización) no se pueden contar sin señal: se les pide señal como antes.
+
+### 5.x Espacio libre de la posición, sin servidor (2026-10-11)
+
+Al acomodar o recibir directo a posición, la app avisa si lo que se pone **no cabe** (cupo de la posición). Antes lo preguntaba al servidor; ahora lo **calcula en el aparato**: **cupo** de la posición
+(se descarga con las posiciones) **menos lo que hay** según los saldos del aparato (que ya incluyen lo pendiente de enviar). Sin cupo configurado no avisa nada. Es solo un aviso (el servidor valida y no bloquea).
+Detalle: el aparato **no sabe lo que otras líneas del mismo recibo ya reservaron** en esa posición (el servidor sí lo descuenta); por eso el espacio libre del aparato puede ser un poco mayor y el
+servidor es quien manda. Al actualizar la app, la base local migra sola a la versión 12 y **baja las posiciones completas una vez**; hasta que lo haga, una posición sin el cupo todavía se consulta al servidor como antes.
+
 ## 8. Consultar
 
 Qué hace: un solo campo para buscar saldos, por producto (código de barras o SKU, ya sincronizado), por **posición** o por texto
@@ -1160,7 +1193,7 @@ cuando llega, **actualiza lo que se ve**. La señal floja solo retrasa la actual
   proyecta el efecto en los saldos del aparato (el servidor decide la posición de cuarentena y las reservas): el saldo se corrige en la siguiente sincronización.
   La lista de lo que hay en la posición de origen sale de lo local y se pone al día en segundo plano.
 - **Conteo, Daño, Despacho:** la posición escaneada se reconoce de lo que el aparato ya tiene (sin esperar a la red); si no está ahí (por ejemplo, se
-  creó después de la última sincronización), se le pregunta al servidor. **Abrir un conteo nuevo todavía necesita señal** (el conteo vive en el servidor). **Daño que llegó dañado en un recibo** necesita señal solo para buscar el recibo por su número.
+  creó después de la última sincronización), se le pregunta al servidor. **Abrir un conteo por posición ya funciona sin señal** (sección 7.7); el conteo por producto y el «conteo abierto» todavía necesitan señal para abrirse. **Daño que llegó dañado en un recibo** necesita señal solo para buscar el recibo por su número.
 
 **Cuándo se bajan los saldos.** En la sincronización de cada minuto, junto con productos y posiciones: la primera vez baja todo lo que tiene existencia en
 el almacén activo; después solo lo que cambió (`GET /api/v1/sync/balances`). Si el aparato nunca ha bajado saldos de ese almacén, las pantallas se

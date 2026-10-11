@@ -1775,6 +1775,31 @@ La web ofrece lo mismo que la app de almacén para repartir cantidades grandes e
 - **Recibo directo** → en la línea del recibo abierto, acción **Repartir** (icono de cuadrícula): la primera línea conserva lo recibido y su posición; las demás se agregan como líneas nuevas. Solo recibos ciegos o de devolución, productos sin serie. Se hace con llamadas seguidas (no es una sola transacción): si una falla, el mensaje lo indica y las anteriores quedan guardadas.
 - **Despacho / recolección** → en una línea con producto y cantidad y sin posición, acción **Sugerir posiciones**: propone de qué posiciones sacar (por el orden de salida del almacén, respetando el lote si se indicó y lo ya asignado en otras líneas) y deja una línea por posición. Errores: `Elija el producto y escriba la cantidad para sugerir de dónde sacarla.`; `No alcanza la existencia: faltan {short}. Baje la cantidad.` No aplica a productos con serie.
 
+### 6.s Conteo de una posición hecho sin señal, aplicado al volver la señal (2026-10-11)
+
+Qué hace: `POST /api/v1/cycle-counts/offline-bin` (`warehouse.count.capture`, módulo WMS_LOTSERIAL) aplica de una vez el conteo de UNA posición que el aparato hizo sin señal: **abre el conteo de la posición o retoma el que ya esté abierto,
+captura lo contado y, si es suyo, lo termina**. Lo manda la app (cola de salida, con `Idempotency-Key`); con la misma clave devuelve la respuesta guardada y no duplica nada.
+
+Cuerpo: `{ "warehousePublicId": "…", "binId": 7, "lines": [ { "binId": 7, "productPublicId": "…", "countedQty": 4, "lot": { "number": "L-9" } } ], "finish": true, "countedAtUtc": "2026-10-11T14:05:00Z" }`.
+`lines` = lo contado (cada renglón con la posición y el producto, y el lote por número si lo hay; no se admite `lineId`: el aparato no conocía el conteo); `finish` por omisión es `true`; `countedAtUtc` = cuándo se contó (hora del aparato, solo para avisar de movimientos).
+`?forCounting=true` deja la respuesta a ciegas si la compañía está en «Nadie» ver lo esperado (como el resto del conteo de la app).
+
+Reglas (decisiones del dueño):
+- Si la posición ya tiene un conteo abierto **de otro contador**, las líneas se **suman a ese conteo** y **no se termina** (`joined: true`, `finished: false`): lo sigue su dueño. Si es suyo o está libre, se retoma; si no hay, se abre uno nuevo (`created: true`).
+- Lo contado se compara con la existencia **del servidor al reconciliar**, como siempre. Si hubo movimientos en la posición entre `countedAtUtc` y ahora, `movedSinceCounted: true` y, al terminarlo, el historial del conteo lleva el comentario `Contado sin señal; hubo movimientos en la posición desde que se contó.` (sin movimientos: `Contado sin señal.`). Una hora del aparato adelantada se limita a la del servidor.
+- Que no se pueda terminar (p. ej. el servidor tiene líneas que el aparato no contó) **no falla**: lo contado queda guardado, el conteo queda abierto y la respuesta trae `finishMessage` (p. ej. `Faltan 1 línea(s) por contar.`).
+- Respuesta: `{ count, created, joined, finished, movedSinceCounted, finishMessage }`.
+
+| Caso | Mensaje exacto | HTTP |
+|---|---|---|
+| Sin `binId` | `Indique la posición.` (campo `binId`) | 400 |
+| Sin líneas | `Indique las líneas a capturar.` (campo `lines`) | 400 |
+| Un renglón de otra posición o con `lineId` | `Cada renglón del conteo debe ser de la posición indicada.` (campo `lines[i].binId`) | 400 |
+| Almacén inactivo | `El almacén está inactivo.` | 422 |
+| Posición, producto o almacén que no existen (o de otra compañía) | `Posición no encontrada.` / `Producto no encontrado.` / `Almacén no encontrado.` | 404 |
+| Sin el permiso de capturar | respuesta estándar de permiso denegado | 403 |
+| Las reglas de captura del lote (lote obligatorio, serie, cantidad inválida…) | las mismas de `PUT /cycle-counts/{id}/lines/batch` | 400 / 422 |
+
 ### 6.v Cancelar un conteo: permiso de capturar (2026-10-08)
 
 Cancelar un conteo abierto (app: Cancelar en la pantalla del conteo; `DELETE /api/v1/cycle-counts/{id}`, 204) pide el mismo permiso que capturar y terminar: **Capturar conteo (a ciegas)** (`warehouse.count.capture`, que `warehouse.count` incluye). Un contador sin `warehouse.count` —que por eso no ve lo esperado— puede cancelar el conteo igual que lo captura y lo termina. Sin importar quién lo abrió.
