@@ -50,3 +50,18 @@ public sealed record PickBatchDeleteRequest(string? Comment = null, string? RowV
 /// </summary>
 public sealed record ManualIssueCreateRequest(Guid? WarehousePublicId = null, IReadOnlyList<PickBatchLineRequest>? Lines = null,
     string? ReasonCode = null, string? Note = null);
+
+/// <summary>
+/// 2026-10-11 (b) — Un motivo del despacho manual en GET /api/v1/manual-issues/reasons: los mismos campos que LookupValueDto (la
+/// respuesta sigue siendo un arreglo, compatible con la app y la web) más IsDefault = es el «Motivo por default del despacho
+/// manual» de la compañía (Ajustes de la compañía). A lo sumo uno sale en true; ninguno si no hay default o si el guardado ya no
+/// está activo y habilitado. Solo sirve para preseleccionar: POST /manual-issues sigue exigiendo reasonCode.
+/// </summary>
+public sealed record ManualIssueReasonDto(
+    int Id, string Entity, string Code, string Label, IDictionary<string, string> Labels, string? Description,
+    string? ExtraJson, int SortOrder, bool IsSystem, bool IsEnabled, bool IsOverridden, int? TenantId, bool IsActive, bool IsDefault)
+{
+    public static ManualIssueReasonDto From(LookupValueDto v, bool isDefault) => new(
+        v.Id, v.Entity, v.Code, v.Label, v.Labels, v.Description, v.ExtraJson, v.SortOrder, v.IsSystem, v.IsEnabled, v.IsOverridden,
+        v.TenantId, v.IsActive, isDefault);
+}

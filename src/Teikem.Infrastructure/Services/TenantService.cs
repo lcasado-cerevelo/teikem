@@ -61,11 +61,29 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
             t.CountRecountTolerancePct = pct;
         }
         if (req.CountRevealShowsNumber.HasValue) t.CountRevealShowsNumber = req.CountRevealShowsNumber.Value;
+        await ApplyDefaultManualIssueReasonAsync(t, req.DefaultManualIssueReason, ct);
         var formatChanges = FormatChanges(req);
         if (!formatChanges.IsEmpty) ApplyFormat(t, TenantFormatRules.Read(t), formatChanges);
         await db.SaveChangesAsync(ct);
         if (!formatChanges.IsEmpty) zones?.Invalidate(t.TenantId);
         return await ToDtoAsync(t, ct);
+    }
+
+    /// <summary>
+    /// «Motivo por default del despacho manual» (2026-10-11 b): null = sin cambio; vacío = quitar; un código = debe existir, estar
+    /// activo y habilitado para la compañía (400 'El motivo {CÓDIGO} no existe o está inactivo.' en defaultManualIssueReason).
+    /// Volver a mandar el código ya guardado no se revalida (guardar el resto de los ajustes nunca falla por un motivo que la
+    /// compañía deshabilitó después). El cambio lo audita el interceptor (Tenant es [AuditEntity]).
+    /// </summary>
+    private async Task ApplyDefaultManualIssueReasonAsync(Tenant t, string? value, CancellationToken ct)
+    {
+        var (change, code) = PickBatchRules.NormalizeDefaultReason(value);
+        if (!change) return;
+        if (code is null) { t.DefaultManualIssueReasonLookupId = null; return; }
+        if (t.DefaultManualIssueReasonLookupId is int current
+            && string.Equals((await lookups.GetAsync(current, ct))?.InternalCode, code, StringComparison.OrdinalIgnoreCase)) return;
+        t.DefaultManualIssueReasonLookupId = await ManualIssueReasonLookup.FindUsableIdAsync(db, code, ct)
+            ?? throw new ValidationException("defaultManualIssueReason", PickBatchRules.ManualReasonUnknown(code));
     }
 
     /// <summary>Regiones con sus valores por defecto y valores permitidos de cada campo (pantalla Región y formatos).</summary>
@@ -166,5 +184,6 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         t.RegionCode, t.TimeZoneId, t.CurrencyCode, t.CurrencySymbol, t.CurrencySymbolPosition, t.CurrencyDecimals,
         t.DateOrder, t.DateSeparator, t.TimeFormat, t.WeekStartDay, t.ThousandsSeparator, t.DecimalSeparator,
         t.PhoneCountryCode, t.PhoneMask, !TenantFormatRules.MatchesRegionDefaults(TenantFormatRules.Read(t)),
-        CountRevealRules.Normalize(t.CountExpectedReveal), t.CountRecountTolerancePct, t.CountRevealShowsNumber);
+        CountRevealRules.Normalize(t.CountExpectedReveal), t.CountRecountTolerancePct, t.CountRevealShowsNumber,
+        await ManualIssueReasonLookup.UsableCodeAsync(db, t.DefaultManualIssueReasonLookupId, ct));
 }

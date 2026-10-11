@@ -3000,6 +3000,17 @@ mibody() { jq -cn --arg w "$W7P" --arg p "$PM" --argjson q "$1" --arg r "$2" --a
 expect 200 "$(req GET /api/v1/manual-issues/reasons "" "$TWH6")" | jq -e '[.[].code]==["SAMPLE","INTERNAL_USE","CUSTOMER_PICKUP","SALE","OTHER"]' >/dev/null || fail "motivos del despacho manual"
 expect 200 "$(req GET /api/v1/catalogs/ManualIssueReason)" | jq -e 'length==5 and any(.[]; .code=="CUSTOMER_PICKUP" and .label=="Retiro del cliente")' >/dev/null || fail "catálogo ManualIssueReason"
 expect 200 "$(req GET /api/v1/me "" "$TWH6")" | jq -e '.permissions | index("warehouse.issue") != null' >/dev/null || fail "el Operador de almacén sin warehouse.issue"
+# Motivo por default (2026-10-11 b): Ajustes de la compañía lo guarda (admin.tenant) y /reasons lo marca isDefault; deshabilitado se ignora.
+expect 400 "$(req PUT /api/v1/tenant/settings '{"defaultManualIssueReason":"regalo"}')" | jq -e --arg m "El motivo REGALO no existe o está inactivo." '.title==$m and (.errors.defaultManualIssueReason|index($m)!=null)' >/dev/null || fail "motivo por default inexistente → 400"
+expect 403 "$(req PUT /api/v1/tenant/settings '{"defaultManualIssueReason":"SALE"}' "$TWH6")" >/dev/null   # el Operador no tiene admin.tenant
+expect 200 "$(req PUT /api/v1/tenant/settings '{"defaultManualIssueReason":"sale"}')" | jq -e '.defaultManualIssueReason=="SALE"' >/dev/null || fail "guardar el motivo por default"
+expect 200 "$(req GET /api/v1/manual-issues/reasons "" "$TWH6")" | jq -e '[.[] | select(.isDefault) | .code]==["SALE"]' >/dev/null || fail "isDefault en /manual-issues/reasons"
+expect 200 "$(req PUT /api/v1/catalogs/ManualIssueReason/SALE/override '{"isEnabled":false}')" >/dev/null
+expect 200 "$(req GET /api/v1/manual-issues/reasons "" "$TWH6")" | jq -e 'length==4 and all(.[]; .isDefault==false)' >/dev/null || fail "el default deshabilitado debe ignorarse"
+expect 200 "$(req GET /api/v1/tenant/settings)" | jq -e '.defaultManualIssueReason==null' >/dev/null || fail "ajustes con el default deshabilitado"
+expect 200 "$(req PUT /api/v1/tenant/settings '{"defaultManualIssueReason":"SALE","maxStopsPerRouteDefault":30}')" >/dev/null   # reenviar el guardado no falla
+expect 204 "$(req DELETE /api/v1/catalogs/ManualIssueReason/SALE/override)" >/dev/null
+expect 200 "$(req PUT /api/v1/tenant/settings '{"defaultManualIssueReason":""}')" | jq -e '.defaultManualIssueReason==null' >/dev/null || fail "quitar el motivo por default"
 expect 403 "$(req POST /api/v1/manual-issues "$(mibody 1 SAMPLE)" "$TREAD6")" >/dev/null   # Solo lectura: sin warehouse.issue
 expect 400 "$(req POST /api/v1/manual-issues "$(mibody 1 '')")" | jq -e --arg m "Indique el motivo del despacho manual." "$HASM" >/dev/null || fail "despacho manual sin motivo → 400"
 expect 400 "$(req POST /api/v1/manual-issues "$(mibody 1 REGALO)")" | jq -e --arg m "El motivo REGALO no existe o está inactivo." "$HASM" >/dev/null || fail "motivo inexistente → 400"
@@ -3030,7 +3041,7 @@ expect 204 "$(req DELETE "/api/v1/manual-issues/$MIP" '{"comment":"humo"}' "$TWH
 [[ $(onhand "$W7P" "$B7" "$PM") == 5 ]] || fail "eliminar el despacho manual no restauró el inventario"
 expect 200 "$(req GET "/api/v1/manual-issues/$MIP")" | jq -e '.statusCode=="CANCELLED" and .isActive==false and (.lines[0].reversalTxnId != null)' >/dev/null || fail "despacho manual eliminado"
 expect 200 "$(adjust "$PM" "$W7P" "$B7" -5 LOSS)" >/dev/null   # W7 sin existencia de PM (pasos siguientes)
-ok "despacho manual $MIN: 5 motivos (reasons y catálogo), Operador con warehouse.issue y Solo lectura 403; sin motivo, motivo inexistente y nota de 501 → 400; sin existencia 409 insufficient_stock sin efecto; Idempotency-Key repite el mismo documento; Kárdex ISSUE '$MIN · Muestra' / 'Despacho manual $MIN'; empacar 422; kind=MANUAL/PACK/OTRO y búsqueda por nota; ficha (EMP → 404); eliminar con reversa (Solo lectura 403)"
+ok "despacho manual $MIN: 5 motivos (reasons y catálogo), motivo por default (400 inexistente, 403 sin admin.tenant, isDefault, deshabilitado se ignora, quitar), Operador con warehouse.issue y Solo lectura 403; sin motivo, motivo inexistente y nota de 501 → 400; sin existencia 409 insufficient_stock sin efecto; Idempotency-Key repite el mismo documento; Kárdex ISSUE '$MIN · Muestra' / 'Despacho manual $MIN'; empacar 422; kind=MANUAL/PACK/OTRO y búsqueda por nota; ficha (EMP → 404); eliminar con reversa (Solo lectura 403)"
 
 step "lotes, series, recolección de varias líneas y baja de posición (Lote 6): EnsureLot, series (OPENJSON) y rango por posición en SQL Server"
 PL=$(prod "{\"sku\":\"PL$TS\",\"name\":\"Lote $TS\",\"trackingType\":\"LOT\",\"purchaseCost\":1}")

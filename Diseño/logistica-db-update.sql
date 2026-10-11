@@ -148,3 +148,20 @@ JOIN dbo.Permission p ON p.Code = 'warehouse.issue'
 WHERE r.Name IN ('WarehouseOperator', 'TenantAdmin')
   AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-11 (b) — Motivo por default del despacho manual, por compañía (Ajustes de la compañía).
+   Para no complicar el despacho en el aparato: la app y la web PRESELECCIONAN este motivo; el servidor
+   sigue exigiendo motivo en cada despacho. NULL = sin default (así quedan todas las compañías: no se
+   siembra ningún valor). Si la compañía luego deshabilita o se inactiva ese motivo, el API lo ignora
+   (no preselecciona) sin borrarlo.
+   - dbo.Tenant.DefaultManualIssueReasonLookupId INT NULL, FK a LookupCode (Entity='ManualIssueReason').
+   Solo AGREGA (nunca quita). Idempotente.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.Tenant', 'DefaultManualIssueReasonLookupId') IS NULL
+    ALTER TABLE dbo.Tenant ADD DefaultManualIssueReasonLookupId INT NULL;
+GO
+IF OBJECT_ID('dbo.FK_Tenant_DefaultManualIssueReason', 'F') IS NULL
+    ALTER TABLE dbo.Tenant ADD CONSTRAINT FK_Tenant_DefaultManualIssueReason
+        FOREIGN KEY (DefaultManualIssueReasonLookupId) REFERENCES dbo.LookupCode(LookupCodeId);
+GO

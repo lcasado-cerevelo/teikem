@@ -105,6 +105,21 @@ public static class PickBatchRules
     public static (string? Code, string? Error) NormalizeReason(string? reasonCode)
         => string.IsNullOrWhiteSpace(reasonCode) ? (null, ManualReasonRequired) : (reasonCode.Trim().ToUpperInvariant(), null);
 
+    /// <summary>
+    /// Ajuste de compañía «Motivo por default del despacho manual» (2026-10-11 b) en PUT /tenant/settings: null = sin cambio;
+    /// vacío o solo espacios = quitar el default; otro valor = código del catálogo (trim, mayúsculas) que el servicio valida
+    /// (activo y habilitado para la compañía; si no, 400 con <see cref="ManualReasonUnknown"/>).
+    /// </summary>
+    public static (bool Change, string? Code) NormalizeDefaultReason(string? value)
+        => value is null ? (false, null) : string.IsNullOrWhiteSpace(value) ? (true, null) : (true, value.Trim().ToUpperInvariant());
+
+    /// <summary>
+    /// ¿Este motivo sale marcado como default (isDefault) en GET /manual-issues/reasons? Solo si es el guardado por la compañía y
+    /// sigue activo y habilitado: un default deshabilitado o inactivo se ignora (no se preselecciona nada).
+    /// </summary>
+    public static bool IsDefaultReason(int reasonId, bool isEnabled, bool isActive, int? defaultReasonId)
+        => defaultReasonId == reasonId && isEnabled && isActive;
+
     /// <summary>Nota libre opcional: trim, vacía = NULL, máximo 500 caracteres. Devuelve la nota o el error.</summary>
     public static (string? Note, string? Error) NormalizeNote(string? note)
     {

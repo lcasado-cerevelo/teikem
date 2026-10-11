@@ -71,6 +71,14 @@ public class Tenant : ISoftDeletable
     /// <summary>true = muestra el número esperado; false = solo "Coincide" / "No coincide".</summary>
     public bool CountRevealShowsNumber { get; set; } = true;
 
+    // --- Despacho manual (2026-10-11 b) ---
+    /// <summary>
+    /// Motivo por default del despacho manual (FK a LookupCode, Entity='ManualIssueReason'); NULL = sin default. Solo
+    /// preselecciona el motivo en la app y la web: el servidor sigue exigiendo motivo. Si la compañía luego deshabilita o se
+    /// inactiva ese motivo, el default se ignora (no se preselecciona) sin borrarlo.
+    /// </summary>
+    public int? DefaultManualIssueReasonLookupId { get; set; }
+
     public ICollection<TenantHoliday> Holidays { get; set; } = new List<TenantHoliday>();
     public ICollection<TenantModule> Modules { get; set; } = new List<TenantModule>();
 }

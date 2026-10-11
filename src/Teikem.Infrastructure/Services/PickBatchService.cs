@@ -264,6 +264,18 @@ public sealed class PickBatchService(
     }
 
     /// <summary>
+    /// GET /manual-issues/reasons (2026-10-11 b): los motivos activos y habilitados de la compañía (los de LookupService, en el
+    /// mismo orden) con IsDefault en el «Motivo por default del despacho manual» de sus ajustes. Un default que ya no está en la
+    /// lista (deshabilitado o inactivo) no marca ninguno: se ignora sin error.
+    /// </summary>
+    public async Task<IReadOnlyList<ManualIssueReasonDto>> WithDefaultReasonAsync(IReadOnlyList<LookupValueDto> reasons, CancellationToken ct)
+    {
+        var defaultId = await db.Tenants.AsNoTracking().Where(t => t.TenantId == tenant.TenantId)
+            .Select(t => t.DefaultManualIssueReasonLookupId).FirstOrDefaultAsync(ct);
+        return reasons.Select(r => ManualIssueReasonDto.From(r, PickBatchRules.IsDefaultReason(r.Id, r.IsEnabled, r.IsActive, defaultId))).ToList();
+    }
+
+    /// <summary>
     /// Motivo por código: activo, visible para la compañía (global o propio, filtro de tenant) y no deshabilitado por su
     /// override; etiqueta en el idioma del usuario con el override aplicado. NULL = no existe o está inactivo.
     /// </summary>
