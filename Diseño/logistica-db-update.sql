@@ -74,3 +74,77 @@ JOIN dbo.Permission p ON p.Code = 'warehouse.adjust'
 WHERE r.TenantId IS NOT NULL AND r.Name = 'TenantAdmin'
   AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-11 — Despacho manual (DMA-#####): salida de inventario SIN entrega, con motivo obligatorio,
+   nota libre, numeración propia y permiso propio. Reutiliza la recolección (dbo.PickBatch): una fila con
+   ManualIssueReasonId NO NULO es un despacho manual (nunca se empaca).
+   - Contador MANUALISSUE (DMA-#####, por tenant, ClientId NULL): se amplía CK_NumberSequence_Kind. La fila
+     del contador la crea el API (NumberSequenceService.EnsureAsync); no consume PACKBATCH (EMP).
+   - dbo.PickBatch: ManualIssueReasonId (FK a LookupCode, Entity='ManualIssueReason') y Note NVARCHAR(500);
+     índice filtrado para el filtro kind=MANUAL de la lista.
+   - Catálogo ManualIssueReason (editable por compañía en Sistema → Catálogos, como DamageFinalDestination):
+     SAMPLE Muestra, INTERNAL_USE Uso interno, CUSTOMER_PICKUP Retiro del cliente, SALE Venta, OTHER Otro.
+   - Permiso warehouse.issue → plantillas WarehouseOperator y TenantAdmin Y los roles YA CLONADOS de cada
+     compañía con esos nombres (el PermissionSeeder no lo propagaría: esta sección ya lo pone en la plantilla).
+   Solo AGREGA (nunca quita). Idempotente.
+   ---------------------------------------------------------------------------- */
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_NumberSequence_Kind' AND parent_object_id = OBJECT_ID('dbo.NumberSequence')
+           AND definition NOT LIKE '%MANUALISSUE%')
+BEGIN
+    ALTER TABLE dbo.NumberSequence DROP CONSTRAINT CK_NumberSequence_Kind;
+    ALTER TABLE dbo.NumberSequence ADD CONSTRAINT CK_NumberSequence_Kind CHECK (Kind IN ('ORDER','INVOICE','PACKAGE','PACKBATCH','WORKORDER','TRIP','RECEIPT','CYCLECOUNT','CROSSDOCK','PURCHASE','RENTAL','RENTALRETURN','MANUALISSUE'));
+END
+GO
+
+IF COL_LENGTH('dbo.PickBatch', 'ManualIssueReasonId') IS NULL
+    ALTER TABLE dbo.PickBatch ADD ManualIssueReasonId INT NULL;
+GO
+IF COL_LENGTH('dbo.PickBatch', 'Note') IS NULL
+    ALTER TABLE dbo.PickBatch ADD Note NVARCHAR(500) NULL;
+GO
+IF OBJECT_ID('dbo.FK_PickBatch_ManualIssueReason', 'F') IS NULL
+    ALTER TABLE dbo.PickBatch ADD CONSTRAINT FK_PickBatch_ManualIssueReason FOREIGN KEY (ManualIssueReasonId) REFERENCES dbo.LookupCode(LookupCodeId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_PickBatch_Tenant_Manual' AND object_id = OBJECT_ID('dbo.PickBatch'))
+    CREATE INDEX IX_PickBatch_Tenant_Manual ON dbo.PickBatch(TenantId, CollectedAtUtc) INCLUDE (ManualIssueReasonId) WHERE ManualIssueReasonId IS NOT NULL;
+GO
+
+-- Catálogo ManualIssueReason (dominio global de sistema; la compañía renombra o deshabilita con su override)
+MERGE dbo.CatalogDomain AS t
+USING (SELECT N'ManualIssueReason' AS DomainKey) AS s ON t.DomainKey = s.DomainKey
+WHEN NOT MATCHED THEN
+    INSERT (DomainKey, Scope, LabelJson, IsSystem, IsActive)
+    VALUES (N'ManualIssueReason', 1, N'{"es":"Motivo del despacho manual","en":"Manual issue reason"}', 1, 1);
+GO
+
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'SAMPLE',          N'{"es":"Muestra","en":"Sample"}',                 1),
+    (N'INTERNAL_USE',    N'{"es":"Uso interno","en":"Internal use"}',        2),
+    (N'CUSTOMER_PICKUP', N'{"es":"Retiro del cliente","en":"Customer pickup"}', 3),
+    (N'SALE',            N'{"es":"Venta","en":"Sale"}',                     4),
+    (N'OTHER',           N'{"es":"Otro","en":"Other"}',                     9)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'ManualIssueReason' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'ManualIssueReason', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+
+-- Permiso warehouse.issue
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'warehouse.issue')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('warehouse.issue',
+            (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'WAREHOUSE'),
+            N'{"es":"Despacho manual (salida sin entrega)","en":"Manual issue (stock out without delivery)"}', 1);
+GO
+
+-- Plantillas de sistema (TenantId NULL) y roles ya clonados de cada compañía: WarehouseOperator y TenantAdmin
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT r.RoleId, p.PermissionId
+FROM dbo.Role r
+JOIN dbo.Permission p ON p.Code = 'warehouse.issue'
+WHERE r.Name IN ('WarehouseOperator', 'TenantAdmin')
+  AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
+GO

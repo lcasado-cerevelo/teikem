@@ -485,9 +485,18 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
             case EntityTypes.PickBatch:
             {
                 var b = await db.Set<PickBatch>().AsNoTracking().Where(x => x.PickBatchId == id)
-                    .Select(x => new { x.PublicId, x.Number, x.StatusCodeId, x.CollectedAtUtc, x.TransportOrderId, x.ClientInvoiceNumber })
+                    .Select(x => new { x.PublicId, x.Number, x.StatusCodeId, x.CollectedAtUtc, x.TransportOrderId, x.ClientInvoiceNumber, x.ManualIssueReasonId, x.Note })
                     .FirstOrDefaultAsync(ct);
                 if (b is null) return Missing();
+                if (b.ManualIssueReasonId is int reasonId)
+                {
+                    // 2026-10-11 — despacho manual (DMA-#####): sin orden ni cliente; la referencia es el motivo (y la nota).
+                    var reasonLabel = await ManualIssueReasonLabelAsync(reasonId, ct);
+                    var (msc, msl) = await StatusOfAsync(b.StatusCodeId, ct);
+                    var manualLabel = tenant.Lang?.StartsWith("en", StringComparison.OrdinalIgnoreCase) == true ? "Manual issue" : PickBatchRules.ManualIssueLabel;
+                    return new KardexDocumentDto(entity, manualLabel, id, b.PublicId, b.Number, msc, msl, b.CollectedAtUtc, null,
+                        string.IsNullOrWhiteSpace(b.Note) ? reasonLabel : $"{reasonLabel} · {b.Note}");
+                }
                 string? party = null, orderNumber = null;
                 if (b.TransportOrderId is int oid)
                 {
@@ -618,6 +627,18 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
             default:
                 return Missing();
         }
+    }
+
+    /// <summary>
+    /// 2026-10-11: etiqueta del motivo de un despacho manual (override de la compañía aplicado; también de un motivo ya inactivo).
+    /// Se lee de la base, no de la caché: un motivo recién agregado en Sistema → Catálogos se ve de inmediato.
+    /// </summary>
+    private async Task<string> ManualIssueReasonLabelAsync(int reasonId, CancellationToken ct)
+    {
+        var labelJson = await db.LookupCodes.AsNoTracking().Where(l => l.LookupCodeId == reasonId).Select(l => l.LabelJson).FirstOrDefaultAsync(ct);
+        if (labelJson is null) return string.Empty;
+        var custom = await db.LookupCodeOverrides.AsNoTracking().Where(o => o.LookupCodeId == reasonId).Select(o => o.CustomLabelJson).FirstOrDefaultAsync(ct);
+        return MultilingualText.Resolve(MultilingualText.Merge(labelJson, custom), tenant.Lang);
     }
 
     /// <summary>Etiqueta del EntityType en el idioma del usuario (respaldo: el código).</summary>

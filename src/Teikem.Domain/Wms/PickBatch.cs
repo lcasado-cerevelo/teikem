@@ -7,6 +7,9 @@ namespace Teikem.Domain.Wms;
 /// Lote 6 — Recolección y empaque ad hoc (D43): COLLECTED → PACKED; CANCELLED (eliminar con reversa, IsActive = 0). Number =
 /// EMP-##### del contador PACKBATCH (D10): al empacar es el PackBatchNumber de la orden. Una recolección empacada solo se
 /// elimina si su orden sigue en la etapa inicial.
+/// 2026-10-11 — Despacho manual: la MISMA salida (ISSUE, FEFO, series, reversa) sin entrega. ManualIssueReasonId no nulo = es un
+/// despacho manual: número DMA-##### de su propio contador (MANUALISSUE, no consume EMP), motivo obligatorio (LookupCode
+/// 'ManualIssueReason') y nota libre opcional (≤ 500). Nunca se empaca: vive COLLECTED → CANCELLED (eliminar con reversa).
 /// </summary>
 [AuditEntity(Constants.EntityTypes.PickBatch)]
 public class PickBatch : ITenantScoped, ISoftDeletable, IHasStatus
@@ -27,6 +30,10 @@ public class PickBatch : ITenantScoped, ISoftDeletable, IHasStatus
     public int? CancelledBy { get; set; }
     public bool IsActive { get; set; } = true;
     [NotAudited] public byte[]? RowVersion { get; set; }
+    /// <summary>2026-10-11: motivo del despacho manual (LookupCode 'ManualIssueReason'); NULL = recolección normal (EMP).</summary>
+    public int? ManualIssueReasonId { get; set; }
+    /// <summary>2026-10-11: nota libre del despacho manual (≤ 500 caracteres).</summary>
+    public string? Note { get; set; }
 
     public StatusCode? Status { get; set; }
     public ICollection<PickBatchLine> Lines { get; set; } = new List<PickBatchLine>();

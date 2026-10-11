@@ -38,6 +38,12 @@ namespace Teikem.Infrastructure.Services;
 /// (PICK_BATCH); revierte cada línea con un ADJUSTMENT de entrada PICK_BATCH_REVERSAL a su posición original (422 si está
 /// inactiva; la serie vuelve a AVAILABLE; el ISSUE original no se toca) y pasa a CANCELLED con IsActive = 0.
 ///
+/// Despacho manual (ManualIssueAsync, 2026-10-11): la MISMA recolección (mismo CollectCoreAsync: FEFO, series, un solo dueño,
+/// ISSUE con Ref PICK_BATCH, 409 insufficient_stock sin efecto parcial) con motivo obligatorio del catálogo ManualIssueReason,
+/// nota libre (≤ 500) y número DMA-##### de su propio contador (MANUALISSUE; no consume PACKBATCH). La nota de cada ISSUE del
+/// Kárdex es 'DMA-00012 · {motivo}[ · {nota}]'. Nunca se empaca (422) y collect-and-pack nunca lo crea. Eliminar: como una
+/// recolección COLLECTED (reversa a la posición original), con warehouse.issue en lugar de orders.cancel y sin orden.
+///
 /// El TenantId sale del principal; la recolección se expone por PublicId; posiciones y lotes (hijas sin TenantId) se
 /// resuelven SIEMPRE por su almacén o producto filtrados (otra posición → 404 sin oráculo).
 /// </summary>
@@ -53,6 +59,9 @@ public sealed class PickBatchService(
 {
     public const string PickBatchLabel = "Recolección";
 
+    /// <summary>Etiqueta del 404 de las rutas de despacho manual ('Despacho manual no encontrado.').</summary>
+    public const string ManualIssueLabel = PickBatchRules.ManualIssueLabel;
+
     /// <summary>El contador PACKBATCH es uno por tenant (ClientId NULL, NumberingRules.ScopeClientId) y lo comparten las órdenes (D10).</summary>
     private static readonly int? PackBatchCounterClientId = null;
 
@@ -67,15 +76,22 @@ public sealed class PickBatchService(
 
     private sealed record SerialRow(int SerialId, string SerialNumber, int? LotId, int? StatusCodeId, int? CurrentWarehouseId, int? CurrentBinId);
 
+    /// <summary>Datos del despacho manual que viajan a CollectCoreAsync: motivo (id y etiqueta resuelta) y nota normalizada.</summary>
+    private sealed record ManualIssueSpec(int ReasonId, string ReasonLabel, string? Note);
+
     // ================================================================ lista
 
     public async Task<PickBatchPageDto> ListAsync(PickBatchQuery? q, CancellationToken ct)
     {
         q ??= new PickBatchQuery();
         var (skip, take) = PickBatchRules.NormalizePaging(q.Skip, q.Take);
+        var (kind, kindError) = PickBatchRules.NormalizeKind(q.Kind);
+        if (kindError is not null) throw new ValidationException("kind", kindError);
 
-        // (1) filtros estructurales en SQL: fechas (UTC, 'hasta' inclusive), estatus, eliminadas y productos.
+        // (1) filtros estructurales en SQL: tipo (2026-10-11), fechas (UTC, 'hasta' inclusive), estatus, eliminadas y productos.
         var query = db.Set<PickBatch>().AsNoTracking();
+        if (kind == PickBatchRules.KindManual) query = query.Where(b => b.ManualIssueReasonId != null);
+        else if (kind == PickBatchRules.KindPack) query = query.Where(b => b.ManualIssueReasonId == null);
         if (!q.IncludeDeleted) query = query.Where(b => b.IsActive);
         if (q.From is DateOnly from)
         {
@@ -112,7 +128,7 @@ public sealed class PickBatchService(
                            from c in cj.DefaultIfEmpty()
                            select new
                            {
-                               b.PickBatchId, b.Number, b.CollectedAtUtc, b.ClientInvoiceNumber,
+                               b.PickBatchId, b.Number, b.CollectedAtUtc, b.ClientInvoiceNumber, b.ManualIssueReasonId, b.Note,
                                OrderNumber = o == null ? null : o.OrderNumber,
                                PackBatchNumber = o == null ? null : o.PackBatchNumber,
                                OrderInvoice = o == null ? null : o.ClientInvoiceNumber,
@@ -131,9 +147,13 @@ public sealed class PickBatchService(
                 .ToDictionary(g => g.Key, g => g.Select(x => x.Sku).Distinct().ToList());
         }
 
+        var reasons = string.IsNullOrWhiteSpace(q.Search)
+            ? new Dictionary<int, (string Code, string Label)>()
+            : await ReasonsAsync(light.Where(x => x.ManualIssueReasonId != null).Select(x => x.ManualIssueReasonId!.Value), ct);
         var rows = light.Select(x => new PickBatchListRow(x.PickBatchId, x.Number, x.OrderNumber, x.PackBatchNumber,
                 x.ClientInvoiceNumber ?? x.OrderInvoice, x.ClientName,
-                (IReadOnlyCollection<string>?)skus.GetValueOrDefault(x.PickBatchId) ?? Array.Empty<string>()))
+                (IReadOnlyCollection<string>?)skus.GetValueOrDefault(x.PickBatchId) ?? Array.Empty<string>(),
+                x.ManualIssueReasonId is int rid && reasons.TryGetValue(rid, out var r) ? r.Label : null, x.Note))
             .ToList();
         var matched = PickBatchRules.FilterThenSearch(rows, q.OrderNumber, q.InvoiceNumber, q.Search)
             .Select(r => r.PickBatchId).ToHashSet();
@@ -191,7 +211,97 @@ public sealed class PickBatchService(
         return new PickBatchPackResultDto(await GetAsync(publicId, ct), order);
     }
 
-    private async Task<Guid> CollectCoreAsync(PickBatchCreateRequest req, CancellationToken ct)
+    // ================================================================ despacho manual (2026-10-11)
+
+    /// <summary>
+    /// Despacho manual: valida motivo (obligatorio, del catálogo ManualIssueReason activo y habilitado para la compañía) y nota
+    /// (≤ 500) ANTES de tocar inventario, y sale por el mismo CollectCoreAsync con número DMA-#####.
+    /// </summary>
+    public async Task<PickBatchDto> ManualIssueAsync(ManualIssueCreateRequest req, CancellationToken ct)
+    {
+        if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
+        var errors = new Dictionary<string, string[]>();
+        var (reasonCode, reasonError) = PickBatchRules.NormalizeReason(req.ReasonCode);
+        if (reasonError is not null) errors["reasonCode"] = new[] { reasonError };
+        var (note, noteError) = PickBatchRules.NormalizeNote(req.Note);
+        if (noteError is not null) errors["note"] = new[] { noteError };
+        if (errors.Count == 1) { var e = errors.First(); throw new ValidationException(e.Key, e.Value[0]); }
+        if (errors.Count > 1) throw new ValidationException(errors);
+
+        var reason = await ResolveManualReasonAsync(reasonCode!, ct)
+                     ?? throw new ValidationException("reasonCode", PickBatchRules.ManualReasonUnknown(reasonCode!));
+        var publicId = await CollectCoreAsync(new PickBatchCreateRequest(req.WarehousePublicId, req.Lines), ct,
+            new ManualIssueSpec(reason.Id, reason.Label, note));
+        return await GetAsync(publicId, ct);
+    }
+
+    /// <summary>Ficha de un despacho manual (404 'Despacho manual no encontrado.' si el PublicId es de una recolección EMP).</summary>
+    public async Task<PickBatchDto> GetManualIssueAsync(Guid publicId, CancellationToken ct)
+    {
+        var current = await db.Set<PickBatch>().AsNoTracking().Where(b => b.PublicId == publicId)
+            .Select(b => new { b.PickBatchId, b.ManualIssueReasonId }).FirstOrDefaultAsync(ct);
+        if (current is null || !PickBatchRules.IsManual(current.ManualIssueReasonId)) throw ManualNotFound();
+        return (await BuildDtosAsync(new[] { current.PickBatchId }, ct))[current.PickBatchId];
+    }
+
+    /// <summary>
+    /// Elimina un despacho manual: mismo DeleteAsync con reversa. 404 'Despacho manual no encontrado.' si el PublicId es de una
+    /// recolección EMP, no existe o ya fue eliminado (también el segundo de dos DELETE simultáneos).
+    /// </summary>
+    public async Task DeleteManualIssueAsync(Guid publicId, PickBatchDeleteRequest? req, CancellationToken ct)
+    {
+        var current = await db.Set<PickBatch>().AsNoTracking().Where(b => b.PublicId == publicId)
+            .Select(b => new { b.ManualIssueReasonId }).FirstOrDefaultAsync(ct);
+        if (current is null || !PickBatchRules.IsManual(current.ManualIssueReasonId)) throw ManualNotFound();
+        try
+        {
+            await DeleteAsync(publicId, req, ct);
+        }
+        catch (NotFoundException)
+        {
+            throw ManualNotFound();
+        }
+    }
+
+    /// <summary>
+    /// Motivo por código: activo, visible para la compañía (global o propio, filtro de tenant) y no deshabilitado por su
+    /// override; etiqueta en el idioma del usuario con el override aplicado. NULL = no existe o está inactivo.
+    /// </summary>
+    private async Task<(int Id, string Label)?> ResolveManualReasonAsync(string code, CancellationToken ct)
+    {
+        var row = await db.LookupCodes.AsNoTracking()
+            .Where(l => l.Entity == LookupDomains.ManualIssueReason && l.InternalCode == code && l.IsActive)
+            .Select(l => new { l.LookupCodeId, l.LabelJson }).FirstOrDefaultAsync(ct);
+        if (row is null) return null;
+        var ov = await db.LookupCodeOverrides.AsNoTracking().Where(o => o.LookupCodeId == row.LookupCodeId)
+            .Select(o => new { o.IsEnabled, o.CustomLabelJson }).FirstOrDefaultAsync(ct);
+        if (ov is { IsEnabled: false }) return null;
+        return (row.LookupCodeId, MultilingualText.Resolve(MultilingualText.Merge(row.LabelJson, ov?.CustomLabelJson), tenant.Lang));
+    }
+
+    /// <summary>
+    /// Código y etiqueta (override de la compañía aplicado) de los motivos dados; también los ya inactivos o deshabilitados
+    /// (historial). Se lee de la base (no de la caché): un motivo recién agregado en Sistema → Catálogos se ve de inmediato.
+    /// </summary>
+    private async Task<Dictionary<int, (string Code, string Label)>> ReasonsAsync(IEnumerable<int> reasonIds, CancellationToken ct)
+    {
+        var ids = reasonIds.Distinct().ToList();
+        if (ids.Count == 0) return new Dictionary<int, (string Code, string Label)>();
+        var rows = await db.LookupCodes.AsNoTracking().Where(l => ids.Contains(l.LookupCodeId))
+            .Select(l => new { l.LookupCodeId, l.InternalCode, l.LabelJson }).ToListAsync(ct);
+        var overrides = await db.LookupCodeOverrides.AsNoTracking().Where(o => ids.Contains(o.LookupCodeId))
+            .Select(o => new { o.LookupCodeId, o.CustomLabelJson }).ToDictionaryAsync(o => o.LookupCodeId, o => o.CustomLabelJson, ct);
+        return rows.ToDictionary(l => l.LookupCodeId, l => (l.InternalCode,
+            MultilingualText.Resolve(MultilingualText.Merge(l.LabelJson, overrides.GetValueOrDefault(l.LookupCodeId)), tenant.Lang)));
+    }
+
+    private static NotFoundException ManualNotFound() => new(ManualIssueLabel);
+
+    /// <summary>
+    /// Núcleo de la salida (recolección o despacho manual). manual != null = despacho manual: contador MANUALISSUE (DMA-#####),
+    /// motivo y nota en la cabecera y nota 'DMA-… · motivo' en cada ISSUE; todo lo demás es idéntico.
+    /// </summary>
+    private async Task<Guid> CollectCoreAsync(PickBatchCreateRequest req, CancellationToken ct, ManualIssueSpec? manual = null)
     {
         var tenantId = ((TenantContext)tenant).RequireTenantId();
         if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
@@ -219,8 +329,11 @@ public sealed class PickBatchService(
         }
         if (errors.Count > 0) throw new ValidationException(errors);
 
-        // (1) fila del contador PACKBATCH en autocommit (idempotente); el valor se consume dentro de la transacción.
-        await numbers.EnsureAsync(NumberKinds.PackBatch, PackBatchCounterClientId, ct);
+        // (1) fila del contador (PACKBATCH, o MANUALISSUE en un despacho manual) en autocommit (idempotente); el valor se consume
+        //     dentro de la transacción.
+        var counterKind = manual is null ? NumberKinds.PackBatch : NumberKinds.ManualIssue;
+        var numberTaken = manual is null ? PickBatchRules.NumberTaken : PickBatchRules.ManualNumberTaken;
+        await numbers.EnsureAsync(counterKind, PackBatchCounterClientId, ct);
 
         var publicId = await db.RunInTransactionAsync(async ct2 =>
         {
@@ -231,13 +344,15 @@ public sealed class PickBatchService(
             foreach (var p in products.Values)
                 if (!p.IsActive) throw new StatusRuleException(PickBatchRules.ProductInactive(p.Sku));
             if (!PickBatchRules.IsSingleOwner(products.Values.Select(p => p.ClientId)))
-                throw new ValidationException("lines", PickBatchRules.SingleOwner);
+                throw new ValidationException("lines", manual is null ? PickBatchRules.SingleOwner : PickBatchRules.ManualSingleOwner);
 
             var plan = await PlanAsync(warehouse, lines, serialsByLine, products, ct2);
 
-            // (2b) número EMP: PRIMER bloqueo de la transacción (excepción D48 al orden del lote)
-            var seq = await numbers.NextAsync(NumberKinds.PackBatch, PackBatchCounterClientId, ct2);
-            var number = NumberingRules.Resolve(NumberingRules.PackBatchPattern, seq);
+            // (2b) número EMP (o DMA): PRIMER bloqueo de la transacción (excepción D48 al orden del lote)
+            var seq = await numbers.NextAsync(counterKind, PackBatchCounterClientId, ct2);
+            var number = manual is null
+                ? NumberingRules.Resolve(NumberingRules.PackBatchPattern, seq)
+                : WmsNumbering.Format(NumberKinds.ManualIssue, seq);
 
             // (2c) cabecera COLLECTED ANTES de los ISSUE: el Ref PICK_BATCH + id va en el INSERT del ledger
             var initial = await statuses.GetInitialAsync(StatusDomains.PickBatchStatus, ct2);
@@ -251,18 +366,22 @@ public sealed class PickBatchService(
                 CollectedAtUtc = DateTime.UtcNow,
                 CollectedBy = tenant.UserId,
                 IsActive = true,
+                ManualIssueReasonId = manual?.ReasonId,
+                Note = manual?.Note,
             };
             db.Set<PickBatch>().Add(batch);
-            await db.SaveGuardedAsync(PickBatchRules.NumberTaken, ct2);
+            await db.SaveGuardedAsync(numberTaken, ct2);
             var born = await statuses.TransitionAsync(StatusDomains.PickBatchStatus, EntityTypes.PickBatch, batch.PickBatchId, null,
                 initial.InternalCode, null, ct2);
             batch.StatusCodeId = born.StatusCodeId;
 
-            // (2d) ISSUE por porción, desde la posición, con Ref PICK_BATCH + id desde el INSERT (D3: el ledger pone el signo −)
+            // (2d) ISSUE por porción, desde la posición, con Ref PICK_BATCH + id desde el INSERT (D3: el ledger pone el signo −).
+            //      Despacho manual: la nota del Kárdex lleva 'DMA-00012 · {motivo}'.
+            var movementNote = manual is null ? null : PickBatchRules.ManualIssueMovementNote(number, manual.ReasonLabel);
             var postings = plan.Select(x => new InventoryPosting(InventoryTxnTypes.Issue, x.Product.ProductId, x.Quantity,
                     LotId: x.LotId, SerialId: x.SerialId, SerialNumber: x.SerialNumber,
                     FromWarehouseId: warehouse.WarehouseId, FromBinId: x.BinId,
-                    RefEntityType: EntityTypes.PickBatch, RefId: batch.PickBatchId))
+                    RefEntityType: EntityTypes.PickBatch, RefId: batch.PickBatchId, Notes: movementNote))
                 .ToList();
             var txnIds = await ledger.PostAsync(postings, ct2);
 
@@ -282,7 +401,7 @@ public sealed class PickBatchService(
                     IssueTxnId = txnIds[i],
                 });
             }
-            await db.SaveGuardedAsync(PickBatchRules.NumberTaken, ct2);
+            await db.SaveGuardedAsync(numberTaken, ct2);
             return batch.PublicId;
         }, ct);
 
@@ -403,6 +522,12 @@ public sealed class PickBatchService(
 
     public async Task<PickBatchPackResultDto> PackAsync(Guid publicId, PickBatchPackRequest req, CancellationToken ct)
     {
+        // 2026-10-11: un despacho manual no se empaca (422 antes de pedir orders.create o los datos de la orden). Si no existe, el
+        // orden de siempre (403 sin orders.create, luego 404) no cambia.
+        var target = await db.Set<PickBatch>().AsNoTracking().Where(b => b.PublicId == publicId && b.IsActive)
+            .Select(b => new { b.Number, b.ManualIssueReasonId }).FirstOrDefaultAsync(ct);
+        if (target is not null && PickBatchRules.IsManual(target.ManualIssueReasonId))
+            throw new StatusRuleException(PickBatchRules.ManualNotPackable(target.Number));
         await ValidatePackRequestAsync(req, ct);
         var orderDetail = await PackCoreAsync(publicId, req, ct);
         return new PickBatchPackResultDto(await GetAsync(publicId, ct), orderDetail);
@@ -425,6 +550,7 @@ public sealed class PickBatchService(
         {
             var batch = await LockAsync(current.PickBatchId, ct2);
             if (!batch.IsActive) throw NotFound();
+            if (PickBatchRules.IsManual(batch.ManualIssueReasonId)) throw new StatusRuleException(PickBatchRules.ManualNotPackable(batch.Number));
             var code = await StatusCodeOfAsync(batch.StatusCodeId, ct2);
             if (!PickBatchRules.CanPack(code, batch.IsActive)) throw new StatusRuleException(PickBatchRules.NotCollected(batch.Number));
             db.ApplyRowVersion(batch, req.RowVersion);
@@ -466,6 +592,9 @@ public sealed class PickBatchService(
     {
         var current = await ResolveAsync(publicId, ct);
         if (!current.IsActive) throw NotFound();
+        // 2026-10-11: eliminar un despacho manual exige warehouse.issue (403 PERMISSION_DENIED), también desde /pick-batches.
+        if (PickBatchRules.IsManual(current.ManualIssueReasonId))
+            await permissions.EnsureAsync(PermissionCatalog.WarehouseIssue, ct);
 
         await db.RunInTransactionAsync(async ct2 =>
         {
@@ -561,7 +690,7 @@ public sealed class PickBatchService(
                            orderby l.PickBatchLineId
                            select new
                            {
-                               Line = l, p.PublicId, p.Sku, p.Name,
+                               Line = l, p.PublicId, p.Sku, p.Name, OwnerClientId = p.ClientId,
                                LotNumber = lot == null ? null : lot.LotNumber,
                                SerialNumber = s == null ? null : s.SerialNumber,
                            }).ToListAsync(ct);
@@ -589,6 +718,13 @@ public sealed class PickBatchService(
         var users = await db.Users.AsNoTracking().Where(u => userIds.Contains(u.Id))
             .Select(u => new { u.Id, u.FullName, u.UserName }).ToDictionaryAsync(u => u.Id, ct);
 
+        // 2026-10-11: motivo del despacho manual y cliente dueño del inventario (un solo dueño por documento, D15).
+        var reasons = await ReasonsAsync(batches.Where(b => b.ManualIssueReasonId != null).Select(b => b.ManualIssueReasonId!.Value), ct);
+        var ownerIds = lines.Where(x => x.OwnerClientId != null).Select(x => x.OwnerClientId!.Value).Distinct().ToList();
+        var owners = ownerIds.Count == 0
+            ? new Dictionary<int, string>()
+            : await db.Clients.AsNoTracking().Where(c => ownerIds.Contains(c.ClientId)).ToDictionaryAsync(c => c.ClientId, c => c.Name, ct);
+
         var lang = tenant.Lang;
         var linesByBatch = lines.GroupBy(x => x.Line.PickBatchId).ToDictionary(g => g.Key, g => g.ToList());
         foreach (var b in batches)
@@ -605,6 +741,9 @@ public sealed class PickBatchService(
                 : null;
 
             var canDelete = b.IsActive && PickBatchRules.CanDelete(statusCode, order?.IsActive == true, orderStatus?.IsInitial == true);
+            var isManual = PickBatchRules.IsManual(b.ManualIssueReasonId);
+            var reason = b.ManualIssueReasonId is int mrid && reasons.TryGetValue(mrid, out var rr) ? rr : ((string Code, string Label)?)null;
+            var ownerName = own.Select(x => x.OwnerClientId).FirstOrDefault(x => x != null) is int ownerId ? owners.GetValueOrDefault(ownerId) : null;
             var lineDtos = own.Select(x => new PickBatchLineDto(x.Line.PickBatchLineId, x.PublicId, x.Sku, x.Name, x.Line.Quantity,
                     x.Line.FromBinId, binCodes.GetValueOrDefault(x.Line.FromBinId) ?? string.Empty, x.Line.LotId, x.LotNumber, x.SerialNumber,
                     x.Line.UnitCost, x.Line.IssueTxnId, x.Line.ReversalTxnId))
@@ -619,11 +758,12 @@ public sealed class PickBatchService(
                 orderStatus?.InternalCode, orderStatus is null ? null : MultilingualText.Resolve(orderStatus.LabelJson, lang),
                 order?.ClientName,
                 order is null ? null : PickBatchRules.DisplayNumbers(order.OrderNumber, invoice),
-                PickBatchRules.CanPack(statusCode, b.IsActive), canDelete,
+                PickBatchRules.CanPack(statusCode, b.IsActive, isManual), canDelete,
                 own.Sum(x => x.Line.Quantity),
                 PickBatchRules.TotalCost(own.Select(x => (x.Line.Quantity, x.Line.UnitCost))),
                 lineDtos, b.IsActive,
-                Convert.ToBase64String(b.RowVersion ?? Array.Empty<byte>()));
+                Convert.ToBase64String(b.RowVersion ?? Array.Empty<byte>()),
+                isManual, reason?.Code, reason?.Label, b.Note, ownerName);
         }
         return result;
     }

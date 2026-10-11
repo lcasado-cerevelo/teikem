@@ -196,6 +196,8 @@ internal sealed class WmsFixture : IAsyncDisposable
         foreach (var c in DamageOrigins.All) L(LookupDomains.DamageOrigin, c);
         foreach (var c in DamageCauses.All) L(LookupDomains.DamageCause, c);
         foreach (var c in DamageFinalDestinations.All) L(LookupDomains.DamageFinalDestination, c);
+        // 2026-10-11 (despacho manual): motivos (al final: ids previos intactos).
+        foreach (var c in ManualIssueReasons.All) L(LookupDomains.ManualIssueReason, c);
         Db.LookupCodes.AddRange(all);
         Lookups.Load(all);
 

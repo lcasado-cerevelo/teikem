@@ -40,7 +40,7 @@ public sealed class WmsDeactivationGuardTests
     }
 
     /// <summary>Recolección de TODO el producto (queda en mano 0), con su orden opcional.</summary>
-    private static async Task<PickBatch> PickAllAsync(World x, decimal qty, string status, int? orderId = null)
+    private static async Task<PickBatch> PickAllAsync(World x, decimal qty, string status, int? orderId = null, bool manual = false)
     {
         await x.F.PostAsync(new InventoryPosting(InventoryTxnTypes.Receipt, x.P.ProductId, qty, ToWarehouseId: x.W.WarehouseId, ToBinId: x.Bin.WarehouseBinId));
         var ids = await x.F.PostAsync(new InventoryPosting(InventoryTxnTypes.Issue, x.P.ProductId, qty, FromWarehouseId: x.W.WarehouseId, FromBinId: x.Bin.WarehouseBinId));
@@ -48,6 +48,7 @@ public sealed class WmsDeactivationGuardTests
         {
             PublicId = Guid.NewGuid(), TenantId = WmsFixture.TenantId, WarehouseId = x.W.WarehouseId, Number = "EMP-" + Guid.NewGuid().ToString("N")[..5],
             StatusCodeId = x.F.StatusId(StatusDomains.PickBatchStatus, status), TransportOrderId = orderId, CollectedAtUtc = DateTime.UtcNow, IsActive = true,
+            ManualIssueReasonId = manual ? x.F.LookupId(LookupDomains.ManualIssueReason, ManualIssueReasons.Sample) : null,   // 2026-10-11
         };
         x.F.Db.Set<PickBatch>().Add(b);
         await x.F.Db.SaveChangesAsync();
@@ -73,6 +74,20 @@ public sealed class WmsDeactivationGuardTests
         var ex = await Assert.ThrowsAsync<ConflictException>(() => x.F.Get<ProductService>().DeactivateAsync(x.P.PublicId, default));
         Assert.Equal(ProductRules.DeactivateOpenDocs("PN"), ex.Message);
         Assert.True(await ProductActiveAsync(x));
+    }
+
+    [Fact]
+    public async Task A_manual_issue_does_not_block_deactivating_the_product_or_the_warehouse()
+    {
+        // 2026-10-11: el despacho manual (DMA) queda en COLLECTED para siempre; no es un documento abierto.
+        var x = await SeedAsync();
+        await using var _ = x.F;
+        await PickAllAsync(x, 5m, PickBatchStatuses.Collected, manual: true);
+
+        await x.F.Get<ProductService>().DeactivateAsync(x.P.PublicId, default);
+        Assert.False(await ProductActiveAsync(x));
+        var done = await x.F.Get<WarehouseService>().DeactivateAsync(x.W.PublicId, null, default);
+        Assert.Equal(WarehouseStatuses.Inactive, done.Warehouse.StatusCode);
     }
 
     [Fact]

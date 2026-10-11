@@ -17,7 +17,10 @@ public sealed record PickAllocationResult(IReadOnlyList<PickAllocation> Allocati
     public decimal Allocated => Allocations.Sum(a => a.Quantity);
 }
 
-/// <summary>Fila ligera del listado de recolecciones: lo necesario para los filtros de texto y la búsqueda final.</summary>
+/// <summary>
+/// Fila ligera del listado de recolecciones: lo necesario para los filtros de texto y la búsqueda final. 2026-10-11 (al final, con
+/// valor por defecto): motivo y nota del despacho manual, que la búsqueda también encuentra.
+/// </summary>
 public sealed record PickBatchListRow(
     int PickBatchId,
     string Number,
@@ -25,7 +28,9 @@ public sealed record PickBatchListRow(
     string? PackBatchNumber,
     string? ClientInvoiceNumber,
     string? ClientName,
-    IReadOnlyCollection<string> Skus);
+    IReadOnlyCollection<string> Skus,
+    string? Reason = null,
+    string? Note = null);
 
 /// <summary>
 /// Lote 6 (P7) — reglas puras de Recolección y empaque ad hoc (R13, R34-R43; D10-D15, D37-D39, D48). Sin EF ni servicios:
@@ -69,6 +74,63 @@ public static class PickBatchRules
     public const string WarehouseInactive = "El almacén está inactivo; no se puede recolectar.";
     public const string NumberTaken = "Ya existe una recolección con ese número; intente de nuevo.";
     public const string OrderTaken = "La orden ya está ligada a otra recolección.";
+
+    // ---------------------------------------------------------------- 2026-10-11 — Despacho manual (DMA-#####)
+
+    /// <summary>Máximo de la nota libre del despacho manual (columna PickBatch.Note NVARCHAR(500)).</summary>
+    public const int MaxNoteLength = 500;
+    /// <summary>Máximo de InventoryTransaction.Notes (NVARCHAR(300)): la nota del Kárdex se recorta a este largo.</summary>
+    public const int MaxMovementNoteLength = 300;
+    public const string ManualIssueLabel = "Despacho manual";
+    public const string ManualReasonRequired = "Indique el motivo del despacho manual.";
+    public const string ManualNoteTooLong = "La nota admite como máximo 500 caracteres.";
+    public const string ManualSingleOwner = "Un despacho manual solo puede tener productos de un mismo dueño.";
+    public const string ManualNumberTaken = "Ya existe un despacho manual con ese número; intente de nuevo.";
+    public const string KindInvalid = "El tipo debe ser MANUAL, PACK o ALL.";
+
+    /// <summary>Filtro 'kind' de la lista: MANUAL = solo despachos manuales, PACK = solo recolecciones (EMP), ALL = todo (por omisión).</summary>
+    public const string KindManual = "MANUAL";
+    public const string KindPack = "PACK";
+    public const string KindAll = "ALL";
+
+    public static string ManualReasonUnknown(string code) => $"El motivo {code} no existe o está inactivo.";
+
+    public static string ManualNotPackable(string number)
+        => $"El despacho manual {number} no se empaca: es una salida de inventario sin entrega.";
+
+    /// <summary>¿Es un despacho manual? (tiene motivo).</summary>
+    public static bool IsManual(int? manualIssueReasonId) => manualIssueReasonId is not null;
+
+    /// <summary>Motivo obligatorio: código del catálogo, sin espacios y en mayúsculas. Devuelve el código o el error.</summary>
+    public static (string? Code, string? Error) NormalizeReason(string? reasonCode)
+        => string.IsNullOrWhiteSpace(reasonCode) ? (null, ManualReasonRequired) : (reasonCode.Trim().ToUpperInvariant(), null);
+
+    /// <summary>Nota libre opcional: trim, vacía = NULL, máximo 500 caracteres. Devuelve la nota o el error.</summary>
+    public static (string? Note, string? Error) NormalizeNote(string? note)
+    {
+        if (string.IsNullOrWhiteSpace(note)) return (null, null);
+        var n = note.Trim();
+        return n.Length > MaxNoteLength ? (null, ManualNoteTooLong) : (n, null);
+    }
+
+    /// <summary>
+    /// Nota del movimiento del Kárdex de un despacho manual (decisión del dueño): 'DMA-00012 · Muestra' (número · motivo en el
+    /// idioma de quien despacha, con el override de la compañía), recortada a 300 caracteres (InventoryTransaction.Notes). La
+    /// nota libre NO va al Kárdex: queda en la ficha del documento (y en la referencia del documento del Kárdex).
+    /// </summary>
+    public static string ManualIssueMovementNote(string number, string reasonLabel)
+    {
+        var text = string.IsNullOrWhiteSpace(reasonLabel) ? number : $"{number} · {reasonLabel.Trim()}";
+        return text.Length <= MaxMovementNoteLength ? text : text[..MaxMovementNoteLength];
+    }
+
+    /// <summary>Filtro 'kind' de la lista: vacío = ALL; MANUAL, PACK o ALL sin distinguir mayúsculas; otro valor = error.</summary>
+    public static (string Kind, string? Error) NormalizeKind(string? kind)
+    {
+        if (string.IsNullOrWhiteSpace(kind)) return (KindAll, null);
+        var k = kind.Trim().ToUpperInvariant();
+        return k is KindManual or KindPack or KindAll ? (k, null) : (KindAll, KindInvalid);
+    }
 
     public static string OrderClientMustBeOwner(string clientName)
         => $"La orden debe ser del cliente dueño del inventario ({clientName}).";
@@ -161,9 +223,12 @@ public static class PickBatchRules
     /// <summary>Un empaque crea una orden normal: sin entrega especial y sin chofer.</summary>
     public static bool PackRequestAllowed(bool isSpecialDelivery, bool hasDriver) => !isSpecialDelivery && !hasDriver;
 
-    /// <summary>¿Se puede empacar? Solo una recolección activa en COLLECTED.</summary>
+    /// <summary>¿Se puede empacar? Solo una recolección activa en COLLECTED (un despacho manual nunca: ver la sobrecarga).</summary>
     public static bool CanPack(string? statusCode, bool isActive)
         => isActive && string.Equals(statusCode, PickBatchStatuses.Collected, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>2026-10-11: ¿se puede empacar? Igual que CanPack, salvo que un despacho manual no se empaca nunca.</summary>
+    public static bool CanPack(string? statusCode, bool isActive, bool isManual) => !isManual && CanPack(statusCode, isActive);
 
     /// <summary>
     /// ¿Se puede eliminar? COLLECTED siempre; PACKED solo si su orden sigue activa y en la etapa inicial (se elimina con ella);
@@ -242,8 +307,8 @@ public static class PickBatchRules
     }
 
     /// <summary>
-    /// Búsqueda final sobre el resultado ya filtrado: número de la recolección, número de empaque, orden, factura, cliente o
-    /// SKU de sus líneas (contenido, sin distinguir mayúsculas). Vacía = todo.
+    /// Búsqueda final sobre el resultado ya filtrado: número de la recolección, número de empaque, orden, factura, cliente,
+    /// motivo o nota del despacho manual o SKU de sus líneas (contenido, sin distinguir mayúsculas). Vacía = todo.
     /// </summary>
     public static bool MatchesSearch(PickBatchListRow row, string? search)
     {
@@ -252,6 +317,7 @@ public static class PickBatchRules
         var s = search.Trim();
         return Contains(row.Number, s) || Contains(row.PackBatchNumber, s) || Contains(row.OrderNumber, s)
                || Contains(row.ClientInvoiceNumber, s) || Contains(row.ClientName, s)
+               || Contains(row.Reason, s) || Contains(row.Note, s)
                || (row.Skus ?? Array.Empty<string>()).Any(sku => Contains(sku, s));
     }
 

@@ -482,7 +482,8 @@ public class AnalyticsSeedFieldsTests
             [EntityTypes.WarehouseTask] = ("CreatedAtUtc", new[] { "Id", "CreatedAtUtc", "Type", "TypeCode", "Status", "StatusCode", "Priority", "WarehouseCode", "Sku",
                 "Quantity", "FromBin", "ToBin", "AssignedTo", "CompletedAtUtc", "AgeHours", "RefLabel" }, Array.Empty<string>()),
             [EntityTypes.PickBatch] = ("CollectedAtUtc", new[] { "Id", "PublicId", "Number", "CollectedAtUtc", "Status", "StatusCode", "WarehouseCode", "LineCount", "TotalQty",
-                "TotalCost", "PackBatchNumber", "OrderNumber", "ClientInvoiceNumber", "ClientName", "PackedAtUtc", "IsActive" }, new[] { "TotalCost" }),
+                "TotalCost", "PackBatchNumber", "OrderNumber", "ClientInvoiceNumber", "ClientName", "PackedAtUtc", "IsActive",
+                "IsManual", "ReasonCode", "Reason", "Note" }, new[] { "TotalCost" }),   // 2026-10-11: despacho manual
             [EntityTypes.CycleCount] = ("ReconciledAtUtc", new[] { "Id", "Number", "WarehouseId", "WarehouseCode", "Status", "StatusCode", "LineCount", "CountedLines",
                 "VarianceLines", "NetVariance", "HasVariance", "CreatedAtUtc", "ReconciledAtUtc" }, Array.Empty<string>()),
         };

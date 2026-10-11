@@ -24,14 +24,16 @@ public sealed class PickBatchesController(PickBatchService batches) : Controller
     /// Lista paginada (take ≤ 200), de la más reciente a la más antigua. Filtros: from/to (fecha de recolección en UTC,
     /// 'hasta' inclusive), productPublicIds, status (COLLECTED, PACKED, CANCELLED), orderNumber, invoiceNumber e
     /// includeDeleted (las eliminadas se excluyen por defecto, D39). La búsqueda (search: número, empaque, orden, factura,
-    /// cliente o SKU) se aplica al final, sobre lo ya filtrado.
+    /// cliente, motivo o nota del despacho manual o SKU) se aplica al final, sobre lo ya filtrado. 2026-10-11: kind = MANUAL
+    /// (solo despachos manuales DMA), PACK (solo recolecciones EMP) o ALL (por omisión); otro valor → 400.
     /// </summary>
     [HttpGet, RequirePermission(PermissionCatalog.InventoryView)]
     public Task<PickBatchPageDto> List([FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] Guid[]? productPublicIds,
         [FromQuery] string[]? status, [FromQuery] string? orderNumber, [FromQuery] string? invoiceNumber, [FromQuery] string? search,
-        [FromQuery] bool includeDeleted = false, [FromQuery] int skip = 0, [FromQuery] int take = 100, CancellationToken ct = default)
+        [FromQuery] bool includeDeleted = false, [FromQuery] int skip = 0, [FromQuery] int take = 100, [FromQuery] string? kind = null,
+        CancellationToken ct = default)
         => batches.ListAsync(new PickBatchQuery(from, to, productPublicIds is { Length: > 0 } ? productPublicIds : null,
-            status is { Length: > 0 } ? status : null, orderNumber, invoiceNumber, search, includeDeleted, skip, take), ct);
+            status is { Length: > 0 } ? status : null, orderNumber, invoiceNumber, search, includeDeleted, skip, take, kind), ct);
 
     /// <summary>Ficha: líneas (posición, lote, serie, costo congelado, movimiento y reversa), orden del empaque y acciones posibles.</summary>
     [HttpGet("{publicId:guid}"), RequirePermission(PermissionCatalog.InventoryView)]
@@ -58,7 +60,8 @@ public sealed class PickBatchesController(PickBatchService batches) : Controller
 
     /// <summary>
     /// Empaca: crea la orden real (número de empaque = número de la recolección; + orders.create) y pasa a PACKED. Sin entrega
-    /// especial ni chofer; con inventario de un cliente 3PL la orden debe ser de ese cliente. Ya empacada → 422.
+    /// especial ni chofer; con inventario de un cliente 3PL la orden debe ser de ese cliente. Ya empacada → 422. Un despacho
+    /// manual (DMA) → 422 (no se empaca).
     /// </summary>
     [HttpPost("{publicId:guid}/pack"), RequirePermission(PermissionCatalog.WarehousePick)]
     public Task<PickBatchPackResultDto> Pack(Guid publicId, [FromBody] PickBatchPackRequest req, CancellationToken ct)
@@ -66,7 +69,8 @@ public sealed class PickBatchesController(PickBatchService batches) : Controller
 
     /// <summary>
     /// Elimina (204): restaura el inventario a la posición original (ADJUSTMENT PICK_BATCH_REVERSAL) y pasa a CANCELLED. Si
-    /// está empacada (+ orders.cancel) elimina también su orden, solo si sigue en la etapa inicial (si no, 422).
+    /// está empacada (+ orders.cancel) elimina también su orden, solo si sigue en la etapa inicial (si no, 422). Un despacho
+    /// manual exige además warehouse.issue (lo verifica el servicio).
     /// </summary>
     [HttpDelete("{publicId:guid}"), RequirePermission(PermissionCatalog.WarehousePick)]
     public async Task<IActionResult> Delete(Guid publicId, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] PickBatchDeleteRequest? req,

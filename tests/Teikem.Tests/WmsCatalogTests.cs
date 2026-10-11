@@ -194,7 +194,7 @@ public class WmsCatalogTests
     [Fact]
     public void Permissions_are_69_with_the_four_warehouse_ones_and_templates()
     {
-        Assert.Equal(71, PermissionCatalog.All.Count);   // 2026-10-08: + warehouse.damage; Lote 14: + pulse.attention; Lote 27: + rental.extend, rental.return
+        Assert.Equal(72, PermissionCatalog.All.Count);   // 2026-10-08: + warehouse.damage; Lote 14: + pulse.attention; Lote 27: + rental.extend, rental.return; 2026-10-11: + warehouse.issue
         foreach (var (code, es) in new[] { ("inventory.view", "Ver inventario y almacén"), ("inventory.manage", "Gestionar productos"),
                      ("inventory.adjust", "Ajustar y transferir inventario"), ("warehouse.manage", "Gestionar almacenes y tareas") })
         {

@@ -253,13 +253,14 @@ public sealed class WarehouseService(TeikemDbContext db, ITenantContext tenant, 
     /// <summary>
     /// Recolecciones que todavía se pueden eliminar (maestro L780, criterio de PickBatchRules.CanDelete): COLLECTED, o PACKED
     /// con su orden activa y en etapa inicial. Su reversa entra al almacén, y el ledger rechaza entradas a un almacén INACTIVE
-    /// (terminal): darlo de baja las dejaría sin poder eliminarse para siempre.
+    /// (terminal): darlo de baja las dejaría sin poder eliminarse para siempre. 2026-10-11: los despachos manuales (DMA-#####)
+    /// no cuentan: son salidas definitivas que quedan en COLLECTED para siempre y bloquearían la baja sin remedio.
     /// </summary>
     private async Task<int> CollectedPickBatchesAsync(int warehouseId, CancellationToken ct)
     {
         var collected = await StatusIdsAsync(StatusDomains.PickBatchStatus, ct, PickBatchStatuses.Collected);
         var packed = await StatusIdsAsync(StatusDomains.PickBatchStatus, ct, PickBatchStatuses.Packed);
-        return await db.PickBatches.CountAsync(p => p.WarehouseId == warehouseId && p.IsActive &&
+        return await db.PickBatches.CountAsync(p => p.WarehouseId == warehouseId && p.IsActive && p.ManualIssueReasonId == null &&
             (collected.Contains(p.StatusCodeId) ||
              (packed.Contains(p.StatusCodeId) && db.TransportOrders.Any(o => o.TransportOrderId == p.TransportOrderId && o.IsActive
                  && db.StatusCodes.Any(s => s.StatusCodeId == o.StatusCodeId && s.IsInitial)))), ct);
