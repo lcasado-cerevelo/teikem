@@ -1,12 +1,11 @@
 // Lee todas las páginas de una lista paginada por el servidor (`skip`/`take`) para exportarla completa con los filtros
-// de la pantalla. Páginas de 200 (tope del API) hasta `EXPORT_MAX_ROWS` filas; `truncated` avisa si quedaron filas sin leer.
+// de la pantalla. Páginas de 200 (tope del API) hasta leer TODAS las filas: sin tope de cantidad (2026-10-11, Luis: un informe o una exportación
+// se generan completos sin importar cuántas filas haya). `truncated` solo avisa si el servidor dejó de devolver filas antes de llegar al total.
 // Uso típico (pantalla con `useProducts(query)`):
 //   exportRows={() => fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/products', { params: { query: { ...query, skip, take } } })))}
 
 /** Tamaño de página de las lecturas (tope de `take` en el API). */
 export const EXPORT_PAGE_SIZE = 200
-/** Máximo de filas que se leen para una exportación o un informe (2026-10-10, Luis: sin restricciones prácticas; si se llegara a cortar, se AVISA). */
-export const EXPORT_MAX_ROWS = 100_000
 
 /** Forma de una página del API: `items` y el `total` de la consulta (sin paginar). */
 export interface PageLike<T> {
@@ -34,7 +33,8 @@ export async function fetchAllPages<T>(
   options: FetchAllOptions = {},
 ): Promise<FetchAllResult<T>> {
   const pageSize = Math.max(1, options.pageSize ?? EXPORT_PAGE_SIZE)
-  const max = Math.max(1, options.max ?? EXPORT_MAX_ROWS)
+  // sin `max` propio no hay tope: se lee todo (solo quien lo pide explícitamente, p. ej. una vista previa, limita la lectura)
+  const max = Math.max(1, options.max ?? Number.POSITIVE_INFINITY)
   const items: T[] = []
   let total: number | null = null
   let lastFull = false

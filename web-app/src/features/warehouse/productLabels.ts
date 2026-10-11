@@ -2,7 +2,7 @@
 // (4 × 2, 4 × 4 y 4 × 6 pulgadas): UNA etiqueta por producto y cada etiqueta es UNA página del tamaño exacto de la etiqueta, para imprimir SOLO la
 // etiqueta en una impresora térmica (no la hoja de "Códigos de barras", que lleva muchos por hoja). Reutiliza el generador de etiquetas de
 // `kernel/ui/binLabelPdf` (código de barras Code 128 a todo lo ancho, código en letra grande y hasta dos renglones de datos).
-// - Qué se imprime: EXACTAMENTE los productos que filtra la tabla de Productos e inventario (`productListQuery`, de a 200 hasta 10 000 como Exportar),
+// - Qué se imprime: EXACTAMENTE los productos que filtra la tabla de Productos e inventario (`productListQuery`, de a 200 sin tope, como Exportar),
 //   en orden natural de SKU, sin tope de etiquetas (si pasa de `PRODUCT_LABELS_NOTICE` la pantalla solo AVISA que el PDF es grande).
 // - Cada etiqueta: el código de barras lleva el SKU exacto (la app del lector busca el producto por código de barras o por SKU: el código de
 //   barras propio del producto NO se usa, igual que en el reporte de códigos de barras); debajo el SKU en grande y, en letra pequeña, el nombre del

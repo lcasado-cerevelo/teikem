@@ -36251,6 +36251,9 @@
           "productCount": {
             "type": "integer",
             "format": "int32"
+          },
+          "isDefault": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -42395,6 +42398,11 @@
           "defaultManualIssueReason": {
             "type": "string",
             "nullable": true
+          },
+          "defaultProductCategoryId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -42537,6 +42545,11 @@
           },
           "defaultManualIssueReason": {
             "type": "string",
+            "nullable": true
+          },
+          "defaultProductCategoryId": {
+            "type": "integer",
+            "format": "int32",
             "nullable": true
           }
         },

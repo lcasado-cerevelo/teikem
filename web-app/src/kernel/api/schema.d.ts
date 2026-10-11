@@ -22134,6 +22134,7 @@ export interface components {
             isActive?: boolean;
             /** Format: int32 */
             productCount?: number;
+            isDefault?: boolean;
         };
         ProductCategoryPatchRequest: {
             name?: string | null;
@@ -24178,6 +24179,8 @@ export interface components {
             countRevealShowsNumber?: boolean;
             countAutoCloseMatching?: boolean;
             defaultManualIssueReason?: string | null;
+            /** Format: int32 */
+            defaultProductCategoryId?: number | null;
         };
         TenantSettingsUpdateRequest: {
             name?: string | null;
@@ -24221,6 +24224,8 @@ export interface components {
             countRevealShowsNumber?: boolean | null;
             countAutoCloseMatching?: boolean | null;
             defaultManualIssueReason?: string | null;
+            /** Format: int32 */
+            defaultProductCategoryId?: number | null;
         };
         TenantSummaryDto: {
             /** Format: int32 */

@@ -2,6 +2,7 @@
 // - Valores por defecto: tipo de servicio y de paquete (catálogo; '' = sin valor) y máximo de paradas por ruta (≥ 1).
 // - Pipeline de estatus de órdenes: matriz estatus × acción (`StatusCapability` de TRANSPORT_ORDER / OrderStatus); se lee
 //   con sesión y se cambia con `admin.statusconfig` (una celda por clic). Solo con el módulo de órdenes (LTL_GROUND).
+// - Productos nuevos (módulo WMS_LOTSERIAL, 2026-10-11 c): categoría por defecto que la pantalla de Productos preselecciona al crear.
 // - Despacho manual (módulo WMS_LOTSERIAL, 2026-10-11 b): motivo por default (preseleccionado al despachar; sigue obligatorio).
 // - Conteo cíclico (módulo WMS_LOTSERIAL, tarea 25): quién ve lo esperado al contar, margen de reconteo y si se muestra el número.
 // - Recepción por almacén (solo lectura, módulo WMS_LOTSERIAL): modo, posición de recepción, recibos abiertos y acomodos
@@ -32,7 +33,7 @@ import {
   type DataColumn,
   type RowAction,
 } from '../../../kernel/ui'
-import { useWarehouses, warehouseKeys } from '../../warehouse/api'
+import { useProductCategories, useWarehouses, warehouseKeys } from '../../warehouse/api'
 import { problemText } from '../../warehouse/problemText'
 import { useCapabilities, useSaveTenantSettings, useSetCapabilities, type TenantSettingsDto } from '../tenantSettingsApi'
 import { capabilityAllowed, ORDER_CAPABILITIES, recvSummaryRows, type RecvRow } from './operations'
@@ -143,6 +144,52 @@ function ManualReasonPanel({ settings, canEdit }: { settings: TenantSettingsDto;
         <fieldset className="set-fs" disabled={!canEdit}>
           <Field name="defaultManualIssueReason" label={t('system.settings.ops.manualReasonLabel')} help={t('system.settings.ops.manualReasonHelp')}>
             <Select options={options} placeholder={t('system.settings.ops.manualReasonNone')} />
+          </Field>
+        </fieldset>
+        {canEdit && (
+          <div className="set-actions">
+            <button type="button" className="btn" disabled={!dirty || form.formState.isSubmitting} onClick={() => form.reset()}>
+              {t('system.settings.discard')}
+            </button>
+            <button type="submit" className="btn flow" disabled={!dirty || form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? t('system.settings.saving') : t('system.settings.save')}
+            </button>
+          </div>
+        )}
+      </Form>
+    </Panel>
+  )
+}
+
+// ------------------------------------------------------------------ productos nuevos: categoría por defecto (2026-10-11 c)
+
+/**
+ * «Categoría por defecto de los productos nuevos» (`defaultProductCategoryId`, admin.tenant): la pantalla de Productos la preselecciona
+ * al crear un producto (se puede cambiar o quitar ahí); la API no la aplica sola. '' = sin default (se manda 0 = quitar). Solo salen las
+ * categorías activas; el 400 del servidor ("La categoría por defecto no existe o está inactiva.") sale bajo el selector.
+ */
+function ProductCategoryPanel({ settings, canEdit }: { settings: TenantSettingsDto; canEdit: boolean }) {
+  const t = useT()
+  const save = useSaveTenantSettings()
+  const { data: categories = [] } = useProductCategories()
+  const current = settings.defaultProductCategoryId != null ? String(settings.defaultProductCategoryId) : ''
+  const form = useForm<{ defaultProductCategoryId: string }>({ values: { defaultProductCategoryId: current } })
+  const dirty = form.formState.isDirty
+  // la ruta completa ("Raíz / Hija") como etiqueta, igual que en la ficha del producto
+  const options = categories.filter((c) => c.isActive).map((c) => ({ value: String(c.id), label: c.path || c.name || '' }))
+
+  return (
+    <Panel className="set-gap" icon={<IconGear />} title={t('system.settings.ops.productCategoryTitle')}>
+      <Form
+        form={form}
+        onSubmit={async (v) => {
+          await save.mutateAsync({ defaultProductCategoryId: v.defaultProductCategoryId === '' ? 0 : Number(v.defaultProductCategoryId) })
+          toast.success(t('system.settings.saved'))
+        }}
+      >
+        <fieldset className="set-fs" disabled={!canEdit}>
+          <Field name="defaultProductCategoryId" label={t('system.settings.ops.productCategoryLabel')} help={t('system.settings.ops.productCategoryHelp')}>
+            <Select options={options} placeholder={t('system.settings.ops.productCategoryNone')} />
           </Field>
         </fieldset>
         {canEdit && (
@@ -429,6 +476,7 @@ export function OperationsTab({ settings, canEdit }: { settings: TenantSettingsD
         <DefaultsPanel settings={settings} canEdit={canEdit} />
         {orders && <PipelinePanel />}
       </div>
+      {wms && <ProductCategoryPanel settings={settings} canEdit={canEdit} />}
       {wms && <ManualReasonPanel settings={settings} canEdit={canEdit} />}
       {wms && <CountRevealPanel settings={settings} canEdit={canEdit} />}
       {wms && <RecvSummaryPanel />}

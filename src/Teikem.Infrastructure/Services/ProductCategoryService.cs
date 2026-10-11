@@ -27,9 +27,10 @@ public sealed class ProductCategoryService(TeikemDbContext db, ITenantContext te
     {
         var tree = await LoadTreeAsync(ct);
         var counts = await ProductCountsAsync(null, ct);
+        var defaultId = await DefaultCategoryIdAsync(ct);
         return tree.Parents.Keys
             .Where(id => includeInactive || tree.Active[id])
-            .Select(id => ToDto(id, tree, counts))
+            .Select(id => ToDto(id, tree, counts, defaultId))
             .OrderBy(d => d.Path, StringComparer.CurrentCultureIgnoreCase).ThenBy(d => d.Id)
             .ToList();
     }
@@ -38,7 +39,7 @@ public sealed class ProductCategoryService(TeikemDbContext db, ITenantContext te
     {
         var tree = await LoadTreeAsync(ct);
         if (!tree.Parents.ContainsKey(id)) throw NotFound();
-        return ToDto(id, tree, await ProductCountsAsync(id, ct));
+        return ToDto(id, tree, await ProductCountsAsync(id, ct), await DefaultCategoryIdAsync(ct));
     }
 
     // ---------------------------------------------------------------- alta
@@ -163,7 +164,12 @@ public sealed class ProductCategoryService(TeikemDbContext db, ITenantContext te
             .Select(g => new { CategoryId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.CategoryId, x => x.Count, ct);
 
-    private static ProductCategoryDto ToDto(int id, Tree tree, IReadOnlyDictionary<int, int> counts)
+    /// <summary>La categoría que los ajustes de la compañía preseleccionan en un producto nuevo (null = ninguna).</summary>
+    private async Task<int?> DefaultCategoryIdAsync(CancellationToken ct)
+        => await db.Set<Teikem.Domain.Tenancy.Tenant>().AsNoTracking().Where(x => x.TenantId == tenant.TenantId)
+            .Select(x => x.DefaultProductCategoryId).SingleAsync(ct);
+
+    private static ProductCategoryDto ToDto(int id, Tree tree, IReadOnlyDictionary<int, int> counts, int? defaultId)
         => new(id, tree.Names[id], tree.Parents[id], ProductRules.CategoryPath(id, tree.Parents, tree.Names), tree.Active[id],
-            counts.GetValueOrDefault(id));
+            counts.GetValueOrDefault(id), IsDefault: defaultId == id);
 }

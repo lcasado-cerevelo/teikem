@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { EXPORT_MAX_ROWS, EXPORT_PAGE_SIZE, fetchAllPages } from './fetchAllPages'
+import { EXPORT_PAGE_SIZE, fetchAllPages } from './fetchAllPages'
 
 /** Servidor falso con `total` filas (0…total-1) que respeta skip/take (y un tope propio de take). */
 function server(total: number, withTotal = true, cap = 200) {
@@ -39,12 +39,13 @@ describe('fetchAllPages', () => {
     expect(truncated).toBe(false)
   })
 
-  it('corta en el tope de lectura (100 000) y marca truncated', async () => {
-    const fetchPage = server(EXPORT_MAX_ROWS + 345)
+  it('sin tope: lee TODAS las filas aunque pasen de 100 000 y no marca truncated', async () => {
+    const total = 250_345
+    const fetchPage = server(total)
     const { items, truncated } = await fetchAllPages(fetchPage)
-    expect(items).toHaveLength(EXPORT_MAX_ROWS)
-    expect(truncated).toBe(true)
-    expect(fetchPage).toHaveBeenCalledTimes(EXPORT_MAX_ROWS / EXPORT_PAGE_SIZE)
+    expect(items).toHaveLength(total)
+    expect(truncated).toBe(false)
+    expect(fetchPage).toHaveBeenCalledTimes(Math.ceil(total / EXPORT_PAGE_SIZE))
   })
 
   it('respeta pageSize y max propios; la última página pide solo lo que falta', async () => {

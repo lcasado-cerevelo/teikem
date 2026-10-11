@@ -138,6 +138,10 @@ repite sola. Al terminar, el menú y el buscador muestran u ocultan las pantalla
   permite la acción (sin regla, se permite). Cada casilla se guarda al hacer clic (`PUT …/capabilities/TRANSPORT_ORDER?statusDomain=OrderStatus`;
   "Acción del estatus guardada") y exige el permiso **`admin.statusconfig`** (sin él, de solo lectura). El servidor aplica la
   matriz en cada operación de la orden.
+- **Productos nuevos: categoría por defecto** (módulo WMS, 2026-10-11). Un selector con las categorías **activas** (ruta «Raíz / Hija») y
+  «Sin categoría por defecto». Al crear un producto en Productos e inventario llega con esa categoría elegida (se puede cambiar o quitar ahí);
+  no afecta a productos que ya existen. Guardar manda `defaultProductCategoryId` (id; `0` = quitar) y exige `admin.tenant` (sin él, de solo lectura).
+  Mensaje del servidor bajo el selector: *La categoría por defecto no existe o está inactiva.* (400).
 - **Recepción por almacén** (solo lectura; módulo WMS). Por almacén: modo (**Con acomodo** / **Directo a posición**), posición
   de recepción por defecto, recibos abiertos y acomodos pendientes. Un almacén con acomodo **sin** posición de recepción
   muestra en rojo **"Sin posición de recepción"**: no podría recibir. El ícono de almacén (o clic en la fila) abre la ficha del

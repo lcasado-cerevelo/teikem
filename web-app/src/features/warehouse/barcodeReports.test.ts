@@ -63,7 +63,7 @@ describe('productos · agrupación y orden', () => {
       { label: 'Almacén', value: 'ALM-01 · Principal' },
       { label: 'Nombre', value: 'contiene «tor»' },
     ])
-    expect(spec.notices).toEqual(['El reporte incluye solo los primeros 2 productos (límite de lectura). Afine los filtros para ver el resto.'])
+    expect(spec.notices).toEqual(['El reporte incluye solo los primeros 2 productos (el servidor no devolvió más). Vuelva a generarlo.'])
     expect(productBarcodeRow({ sku: null, name: null, isActive: true }, t).value).toBe('')
   })
 })
@@ -113,6 +113,6 @@ describe('posiciones · agrupación y orden', () => {
     expect(spec.notices).toEqual([])
     expect(binBarcodeRow(bin('X', { zoneId: 99, zoneCode: 'PCK' }), { ...ctx, warehouse: {} }).meta).toBe('Zona PCK')
     const truncated = buildBinBarcodeReport([bin('A1')], true, ctx)
-    expect(truncated.notices).toEqual(['El reporte incluye solo las primeras 1 posiciones (límite de lectura). Afine los filtros para ver el resto.'])
+    expect(truncated.notices).toEqual(['El reporte incluye solo las primeras 1 posiciones (el servidor no devolvió más). Vuelva a generarlo.'])
   })
 })

@@ -177,3 +177,30 @@ IF OBJECT_ID('dbo.FK_Tenant_DefaultManualIssueReason', 'F') IS NULL
     ALTER TABLE dbo.Tenant ADD CONSTRAINT FK_Tenant_DefaultManualIssueReason
         FOREIGN KEY (DefaultManualIssueReasonLookupId) REFERENCES dbo.LookupCode(LookupCodeId);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-11 (c) — Categoría por defecto de los productos NUEVOS, por compañía (Ajustes de la compañía → Operación).
+   Tenant.DefaultProductCategoryId (NULL = ninguna): la pantalla de Productos la preselecciona al crear un producto; la API no
+   la aplica sola. FK a ProductCategory (para quitarla se pone NULL; las categorías se dan de baja con IsActive = 0).
+   Idempotente.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.Tenant', 'DefaultProductCategoryId') IS NULL
+    ALTER TABLE dbo.Tenant ADD DefaultProductCategoryId INT NULL;
+GO
+
+IF OBJECT_ID('dbo.FK_Tenant_DefaultProductCategory', 'F') IS NULL
+    ALTER TABLE dbo.Tenant ADD CONSTRAINT FK_Tenant_DefaultProductCategory
+        FOREIGN KEY (DefaultProductCategoryId) REFERENCES dbo.ProductCategory(ProductCategoryId);
+GO
+
+/* Advance Depot: la categoría por defecto es AxisCare. La migración de Depot la creó como «AxisCare» (junto); se busca ignorando
+   espacios y mayúsculas («Axis Care» también sirve). Solo se llena si todavía está vacía (nunca pisa lo que el administrador ya eligió)
+   y si la categoría existe y está activa: si no existe, no hace nada y se elige en Ajustes → Operación. */
+UPDATE t
+SET t.DefaultProductCategoryId = c.ProductCategoryId
+FROM dbo.Tenant t
+JOIN dbo.ProductCategory c ON c.TenantId = t.TenantId AND c.IsActive = 1
+WHERE t.Name = N'Advance Depot'
+  AND t.DefaultProductCategoryId IS NULL
+  AND REPLACE(c.Name, N' ', N'') = N'AxisCare';
+GO

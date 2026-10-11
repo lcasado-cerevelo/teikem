@@ -29,8 +29,8 @@ Pulse **Productos por posición**: el modal abre con *marcadas* si hay marcas, s
 
 - **Incluir posiciones vacías** (apagado por defecto): apagado, las posiciones sin productos no se imprimen; encendido, salen con una página
   **Sin productos**.
-- **Tope**: como mucho **500 posiciones** por impresión; con más, el modal dice *Son N posiciones; el máximo por impresión es 500. Acote con los
-  filtros o marque menos posiciones.* y **Generar PDF** queda deshabilitado.
+- **Sin tope** (desde 2026-10-10): se imprimen **todas** las posiciones del alcance. Pasando de **500** el modal solo **avisa** que el PDF es grande
+  (*Son {N}: el PDF será grande y puede tardar un poco. Se imprimen todas; no hay límite.*); **Generar PDF** sigue habilitado.
 
 ## 2. Generar el PDF
 
@@ -73,7 +73,7 @@ Imprima el PDF **al 100 %** ("Tamaño real", sin "Ajustar a la página"), en neg
 
 | Mensaje | Dónde | Qué hacer |
 |---|---|---|
-| *Son N posiciones; el máximo por impresión es 500. Acote con los filtros o marque menos posiciones.* | Modal (rojo) | Filtre por zona, pasillo o texto, o marque menos posiciones |
+| *Son {N}: el PDF será grande y puede tardar un poco. Se imprimen todas; no hay límite.* (desde 500) | Modal (aviso, no error) | Nada que hacer: se imprimen todas. Si el PDF le parece demasiado grande, filtre por zona, pasillo o texto, o marque menos posiciones |
 | *No hay posiciones en lo que eligió.* | Modal | El alcance elegido no tiene posiciones; elija otro o cambie los filtros |
 | *No hay nada para imprimir: las posiciones elegidas no tienen productos. Active «Incluir posiciones vacías» para imprimirlas.* | Modal (rojo); no se genera PDF | Encienda el interruptor si quiere páginas *Sin productos* |
 | *Impresión cancelada.* | Aviso abajo | Nada: no se descargó |
@@ -84,7 +84,7 @@ Los mensajes del servidor (con su código HTTP) están en el [FAQ, sección Prod
 
 ## 5. Exportar la tabla
 
-El botón **Exportar** de la tabla saca **todo lo filtrado** (todas las páginas, hasta 10 000 filas) con los mismos filtros, incluido **Pasillo**; no solo
+El botón **Exportar** de la tabla saca **todo lo filtrado** (todas las páginas, sin tope de cantidad) con los mismos filtros, incluido **Pasillo**; no solo
 la página que se ve.
 
 ## 6. Casos frecuentes

@@ -88,6 +88,11 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
     if (p === '/api/v1/status/OrderStatus') return json(STATUSES)
     if (p === '/api/v1/status/capabilities/TRANSPORT_ORDER' && req.method === 'GET') return json([{ statusCode: 'DELIVERED', capability: 'CANCEL', isAllowed: false, isTenantRule: false }])
     if (p === '/api/v1/status/capabilities/TRANSPORT_ORDER' && req.method === 'PUT') return json(body)
+    if (p === '/api/v1/product-categories') return json([
+      { id: 3, name: 'AxisCare', parentId: null, path: 'AxisCare', isActive: true, productCount: 12, isDefault: false },
+      { id: 5, name: 'CARTONES', parentId: null, path: 'CARTONES', isActive: true, productCount: 4, isDefault: false },
+      { id: 9, name: 'Vieja', parentId: null, path: 'Vieja', isActive: false, productCount: 0, isDefault: false },
+    ])
     if (p === '/api/v1/catalogs/ManualIssueReason') return json([{ code: 'SAMPLE', label: 'Muestra', sortOrder: 1, isEnabled: true }, { code: 'SALE', label: 'Venta', sortOrder: 4, isEnabled: true }])
     if (p.startsWith('/api/v1/catalogs/')) return json([{ code: 'STANDARD', label: 'Estándar', sortOrder: 1, isEnabled: true }])
     if (p === '/api/v1/warehouses') return json(WAREHOUSES)
@@ -460,6 +465,43 @@ describe('Ajustes de la compañía', () => {
     wrap('/system/settings?tab=ops', ['inventory.view'])
     const panel = (await screen.findByRole('heading', { name: 'Despacho manual' })).closest('.panel') as HTMLElement
     expect(within(panel).getByLabelText('Motivo por default del despacho manual')).toBeDisabled()
+    expect(within(panel).queryByRole('button', { name: 'Guardar cambios' })).toBeNull()
+  })
+
+  it('Operación → productos nuevos: categoría por defecto (solo activas, guardar, quitar con 0 y error del servidor tal cual)', async () => {
+    const user = userEvent.setup()
+    wrap('/system/settings?tab=ops')
+    const panel = (await screen.findByRole('heading', { name: 'Productos nuevos: categoría por defecto' })).closest('.panel') as HTMLElement
+    const select = within(panel).getByLabelText('Categoría por defecto')
+    expect(select).toHaveValue('')
+    expect(within(panel).getByRole('option', { name: 'Sin categoría por defecto' })).toBeInTheDocument()
+    await waitFor(() => expect(within(panel).getByRole('option', { name: 'AxisCare' })).toBeInTheDocument())
+    expect(within(panel).getByRole('option', { name: 'CARTONES' })).toBeInTheDocument()
+    expect(within(panel).queryByRole('option', { name: 'Vieja' })).toBeNull() // una categoría dada de baja no se ofrece
+
+    await user.selectOptions(select, 'AxisCare')
+    await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
+    await waitFor(() => expect(put()).toHaveLength(1))
+    expect(put()[0].body).toEqual({ defaultProductCategoryId: 3 })
+    await waitFor(() => expect(within(panel).getByLabelText('Categoría por defecto')).toHaveValue('3'))
+
+    // quitar: 0 = sin default (el API lo entiende así)
+    await user.selectOptions(within(panel).getByLabelText('Categoría por defecto'), '')
+    await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
+    await waitFor(() => expect(put()).toHaveLength(2))
+    expect(put()[1].body).toEqual({ defaultProductCategoryId: 0 })
+
+    // error del servidor: el mensaje exacto bajo el selector, sin guardar
+    mock.settingsFail = { status: 400, title: 'La categoría por defecto no existe o está inactiva.', field: 'defaultProductCategoryId' }
+    await user.selectOptions(within(panel).getByLabelText('Categoría por defecto'), 'CARTONES')
+    await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
+    expect((await within(panel).findAllByText('La categoría por defecto no existe o está inactiva.')).length).toBeGreaterThan(0)
+  })
+
+  it('Operación → productos nuevos: sin admin.tenant el selector es de solo lectura', async () => {
+    wrap('/system/settings?tab=ops', ['inventory.view'])
+    const panel = (await screen.findByRole('heading', { name: 'Productos nuevos: categoría por defecto' })).closest('.panel') as HTMLElement
+    expect(within(panel).getByLabelText('Categoría por defecto')).toBeDisabled()
     expect(within(panel).queryByRole('button', { name: 'Guardar cambios' })).toBeNull()
   })
 

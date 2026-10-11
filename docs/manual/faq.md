@@ -4013,7 +4013,7 @@ campo. La duración debe ser un número entero de días de 1 a 365.
 
 **"Entre 1 y 365 días."** bajo una duración — vacía, decimal, menor que 1 o mayor que 365; no se manda nada hasta corregirla.
 
-**"Se descargaron las primeras 10000 filas; acote la fecha para exportar el resto."** — la exportación tiene un tope de 10 000
+**"Se descargaron las primeras 10000 filas; acote la fecha para exportar el resto."** — (mensaje de una versión anterior: hoy la exportación **no tiene tope**; si lo ve, el servidor dejó de devolver filas y basta volver a exportar) antes tenía un tope de 100 000
 filas; ponga una Fecha más corta y exporte por partes.
 
 **"No hay actividad con estos filtros."** — ninguna fila cumple el tipo, la fecha y la búsqueda; use **Limpiar**.
@@ -4986,7 +4986,7 @@ mensajes nuevos del servidor (los de lectura de productos y posiciones son los d
 Falló la lectura del listado o el armado del PDF. Intente de nuevo; si se repite, avise a soporte con la hora y los filtros usados.
 
 **"El reporte incluye solo los primeros {n} productos (límite de lectura). Afine los filtros para ver el resto."** / **"…las primeras {n} posiciones…"**
-El filtro devuelve más de 10 000 elementos (el mismo tope que Exportar y el Reporte de inventario). Imprima por partes: por categoría,
+Ya no hay tope de cantidad: se leen todos los elementos del filtro. El mensaje solo sale si el servidor dejó de devolver filas antes del total; vuelva a generarlo. Si el PDF es enorme, puede imprimir por partes: por categoría,
 zona, pasillo o texto.
 
 **"Se usaron {n} columnas porque hay códigos largos que no caben más angostos."** / **"Se usó una sola columna…"**
@@ -5095,7 +5095,7 @@ La posición sale en varias páginas de 10 (11 productos = 10 + 1), cada una con
 No: se conservan al cambiar de página o de filtro mientras no cambie de almacén. **Quitar marcas** las borra.
 
 **¿Por qué la exportación de la tabla trae más filas que la página?**
-**Exportar** saca **todo lo filtrado** (hasta 10 000 filas), no solo la página que se ve.
+**Exportar** saca **todo lo filtrado** (sin tope de cantidad), no solo la página que se ve.
 
 ## Lote F16 — Web: etiquetas de posición en Posiciones
 
@@ -6033,3 +6033,28 @@ La pantalla de confirmación lo reemplaza: **Despachar** manda el despacho de in
 
 **`Escoge el motivo del despacho manual.`**
 Ya no debería verse: sin motivo puesto, **Despachar** no aparece hasta escoger uno en la lista. Si lo ve, escoja un motivo y avise a soporte.
+
+## Categoría por defecto de los productos nuevos (2026-10-11)
+
+**Creo un producto nuevo y la categoría ya viene puesta. ¿De dónde sale?**
+De Ajustes de la compañía → Operación → «Productos nuevos: categoría por defecto» (en Advance Depot, AxisCare). Es solo una preselección: puede cambiarla o dejarla vacía en el mismo formulario antes de guardar.
+
+**Un producto nuevo sale sin categoría aunque la compañía tiene una por defecto.**
+Casi siempre es una de tres cosas: (1) el producto se creó por la **API o por una importación**, que no aplican el default (solo lo hace la pantalla de Productos); (2) la categoría por defecto se **dio de baja**, y entonces se ignora; (3) usted la quitó en el formulario. Revise en Ajustes → Operación que siga eligiendo una categoría activa.
+
+**`La categoría por defecto no existe o está inactiva.` (400) al guardar los ajustes.**
+La categoría elegida ya no existe, está dada de baja o es de otra compañía. Elija otra de la lista (solo salen las activas) o «Sin categoría por defecto». No se guardó nada del resto de los ajustes en ese intento.
+
+**El default de Depot no quedó en AxisCare tras `db-update`.**
+La sección `2026-10-11 (c)` lo llena solo si la compañía se llama «Advance Depot», todavía no tenía uno y existe una categoría activa llamada `AxisCare` o `Axis Care`. Si la categoría tiene otro nombre o aún no existe, no hace nada: créela (Productos e inventario → Categorías) y elíjala en Ajustes → Operación.
+
+**¿Cambia las categorías de los productos que ya existen?**
+No. Solo preselecciona la categoría al crear un producto nuevo desde la pantalla.
+
+## Informes de posiciones e inventario: sin tope de cantidad (2026-10-10)
+
+**Imprimo más de 500 posiciones, etiquetas o productos y solo sale un aviso.**
+Es a propósito: ya no hay tope. Pasando de 500 el modal avisa «Son N: el PDF será grande y puede tardar un poco. Se imprimen todas; no hay límite.» y **Generar PDF sigue habilitado**. Si ve un texto que todavía habla de «máximo por impresión es 500», es de un manual o una versión vieja.
+
+**Un informe dice «solo los primeros N… (el servidor no devolvió más)».**
+Ya **no hay ningún tope de cantidad** (ni los 500 ni los 100 000 de antes): los informes y las exportaciones leen todo el filtro, sea del tamaño que sea. Ese aviso solo sale si el servidor dejó de devolver filas antes de llegar al total (un corte de red, por ejemplo): vuelva a generarlo.

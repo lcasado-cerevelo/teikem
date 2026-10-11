@@ -1,7 +1,7 @@
 // Lote F14 — reportes de códigos de barras para el conteo (PDF en el cliente con `kernel/ui/barcodeReportPdf`): una fila por
 // producto o por posición con su código Code 128, para imprimir la hoja y escanear el papel con el lector del almacén.
-// - Productos (desde 'Productos e inventario'): EXACTAMENTE lo que filtra la tabla (`productListQuery`, de a 200 hasta
-//   10 000, como Exportar y el Reporte de inventario), AGRUPADOS POR CATEGORÍA [ya no: 2026-10-09 salen corridos en el orden del filtro] (título = ruta de la categoría con su
+// - Productos (desde 'Productos e inventario'): EXACTAMENTE lo que filtra la tabla (`productListQuery`, de a 200 sin
+//   tope, como Exportar y el Reporte de inventario), AGRUPADOS POR CATEGORÍA [ya no: 2026-10-09 salen corridos en el orden del filtro] (título = ruta de la categoría con su
 //   cantidad, por orden natural; "Sin categoría" al final) y dentro de cada grupo por SKU en orden natural (los números en
 //   su orden numérico). Cada celda: SKU en negrita y la descripción (nombre del producto); debajo el código con el SKU
 //   exacto (la app del lector busca el producto por código de barras o por SKU: el código de barras propio del producto

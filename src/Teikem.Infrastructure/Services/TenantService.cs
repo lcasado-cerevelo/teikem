@@ -63,6 +63,7 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         if (req.CountRevealShowsNumber.HasValue) t.CountRevealShowsNumber = req.CountRevealShowsNumber.Value;
         if (req.CountAutoCloseMatching.HasValue) t.CountAutoCloseMatching = req.CountAutoCloseMatching.Value;
         await ApplyDefaultManualIssueReasonAsync(t, req.DefaultManualIssueReason, ct);
+        if (req.DefaultProductCategoryId.HasValue) await ApplyDefaultProductCategoryAsync(t, req.DefaultProductCategoryId.Value, ct);
         var formatChanges = FormatChanges(req);
         if (!formatChanges.IsEmpty) ApplyFormat(t, TenantFormatRules.Read(t), formatChanges);
         await db.SaveChangesAsync(ct);
@@ -177,6 +178,24 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         return result;
     }
 
+    /// <summary>
+    /// «Categoría por defecto de los productos nuevos» (2026-10-11 c): 0 o menos = quitar; un id = debe existir (bajo el filtro de la
+    /// compañía) y estar activa (400 en defaultProductCategoryId). Volver a mandar la ya guardada no se revalida: guardar el resto de los
+    /// ajustes nunca falla por una categoría que se dio de baja después.
+    /// </summary>
+    private async Task ApplyDefaultProductCategoryAsync(Tenant t, int categoryId, CancellationToken ct)
+    {
+        if (categoryId <= 0) { t.DefaultProductCategoryId = null; return; }
+        if (t.DefaultProductCategoryId == categoryId) return;
+        var usable = await db.Set<ProductCategory>().AsNoTracking().AnyAsync(c => c.ProductCategoryId == categoryId && c.IsActive, ct);
+        if (!usable) throw new ValidationException("defaultProductCategoryId", ProductRules.DefaultCategoryUnusable);
+        t.DefaultProductCategoryId = categoryId;
+    }
+
+    /// <summary>La categoría por defecto guardada solo si sigue existiendo y activa (si no, null: la pantalla no preselecciona nada).</summary>
+    private async Task<int?> UsableDefaultCategoryAsync(int? categoryId, CancellationToken ct)
+        => categoryId is int id && await db.Set<ProductCategory>().AsNoTracking().AnyAsync(c => c.ProductCategoryId == id && c.IsActive, ct) ? id : null;
+
     private async Task<TenantSettingsDto> ToDtoAsync(Tenant t, CancellationToken ct) => new(
         t.TenantId, t.PublicId, t.Name, t.LegalName, t.TaxId, t.DefaultLangCode, t.WorkDaysMask, t.MaxStopsPerRouteDefault,
         t.DefaultServiceTypeLookupId is null ? null : (await lookups.GetAsync(t.DefaultServiceTypeLookupId.Value, ct))?.InternalCode,
@@ -186,5 +205,6 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         t.DateOrder, t.DateSeparator, t.TimeFormat, t.WeekStartDay, t.ThousandsSeparator, t.DecimalSeparator,
         t.PhoneCountryCode, t.PhoneMask, !TenantFormatRules.MatchesRegionDefaults(TenantFormatRules.Read(t)),
         CountRevealRules.Normalize(t.CountExpectedReveal), t.CountRecountTolerancePct, t.CountRevealShowsNumber, t.CountAutoCloseMatching,
-        await ManualIssueReasonLookup.UsableCodeAsync(db, t.DefaultManualIssueReasonLookupId, ct));
+        await ManualIssueReasonLookup.UsableCodeAsync(db, t.DefaultManualIssueReasonLookupId, ct),
+        await UsableDefaultCategoryAsync(t.DefaultProductCategoryId, ct));
 }

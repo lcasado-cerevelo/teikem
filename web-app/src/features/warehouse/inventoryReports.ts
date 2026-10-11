@@ -1,8 +1,8 @@
 // Lote 12 — Reporte de inventario y Reporte de ajustes (PDF en el cliente con `kernel/ui/reportPdf`), con los filtros de
 // 'Productos e inventario' (`ProductFilterState`). Se reusan tal cual desde otra pantalla (el botón de Reporte de ajustes
 // vuelve en la pantalla de Ajustes del Lote 4): `generateInventoryReport(ctx)` / `generateAdjustmentsReport(ctx)`.
-// - Inventario: "inventario al momento" = todos los productos de GET /products con la consulta de la tabla (de a 200 hasta
-//   10 000, `exportProducts`), agrupados por categoría con subtotal de unidades y valor, y total general. Valor = Total ×
+// - Inventario: "inventario al momento" = todos los productos de GET /products con la consulta de la tabla (de a 200 sin
+//   tope, `exportProducts`), agrupados por categoría con subtotal de unidades y valor, y total general. Valor = Total ×
 //   costo de compra del producto (el sistema no guarda costo promedio ni por lote: se dice en el reporte); sin costo = '—'.
 // - Ajustes: todos los movimientos ADJUSTMENT del Kárdex con los mismos filtros trasladados (`adjustmentsKardexQuery`),
 //   del más reciente al más antiguo, con entradas, salidas y neto.

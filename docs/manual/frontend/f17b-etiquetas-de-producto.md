@@ -6,7 +6,7 @@ La **etiqueta de producto** es una etiqueta adhesiva para impresora de etiquetas
 
 **Quién puede.** Módulo **WMS_LOTSERIAL** y permiso **`inventory.view`** (el de la pantalla y el de su reporte de códigos de barras). Sin el permiso el botón no se ve.
 
-**Servidor.** No cambió: se lee el listado de productos de siempre (`GET /api/v1/products`, de a 200 hasta 10 000) y el PDF se arma en el navegador.
+**Servidor.** No cambió: se lee el listado de productos de siempre (`GET /api/v1/products`, de a 200, sin tope de cantidad) y el PDF se arma en el navegador.
 
 ## Qué imprime
 EXACTAMENTE los productos que filtra la tabla (almacén, producto, nombre, categoría, marca y KPI), en orden natural de SKU (SKU-2 antes que SKU-10). **Una etiqueta = una página del PDF del tamaño exacto de la etiqueta** (sin hoja carta ni márgenes que recortar). Máximo **500 etiquetas por PDF**.
@@ -28,7 +28,7 @@ Las etiquetas **no tienen estado**: imprimirlas no marca nada y se pueden reimpr
 ## Mensajes
 | Situación | Mensaje |
 |---|---|
-| Más de 500 productos en el filtro | `Son {n} productos; el máximo por PDF es 500 etiquetas. Acote con los filtros.` |
+| Más de 500 productos en el filtro | Solo un aviso: `Son {n}: el PDF será grande y puede tardar un poco. Se imprimen todas; no hay límite.` (se imprimen todos) |
 | El filtro no trae productos | `No hay productos para imprimir con los filtros actuales.` |
 | SKU con caracteres que Code 128 no admite, o demasiado largo | Se imprime la etiqueta solo con el SKU en texto y, al terminar: `{n} salieron sin código de barras (solo con el código en texto):` + la lista |
 | Éxito | `Se generaron {n} etiquetas de 4 × 2 pulgadas.` |
