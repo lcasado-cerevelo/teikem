@@ -138,7 +138,7 @@ internal sealed class WmsFixture : IAsyncDisposable
                      EntityTypes.Warehouse, EntityTypes.WarehouseDock, EntityTypes.Product, EntityTypes.Receipt, EntityTypes.Asn,
                      EntityTypes.InventorySerial, EntityTypes.WarehouseTask, EntityTypes.InventoryTransaction, EntityTypes.StockBalance,
                      EntityTypes.CycleCount, EntityTypes.PickBatch, EntityTypes.PurchaseOrder, EntityTypes.Supplier, EntityTypes.CrossDockPlan,
-                     EntityTypes.CrossDockAllocation, EntityTypes.DockAppointment, EntityTypes.TransportOrder,
+                     EntityTypes.CrossDockAllocation, EntityTypes.DockAppointment, EntityTypes.TransportOrder, EntityTypes.Client, EntityTypes.Location,
                  })
             L(LookupDomains.EntityType, e);
         foreach (var c in new[] { TrackingTypes.None, TrackingTypes.Lot, TrackingTypes.Serial }) L(LookupDomains.TrackingType, c);

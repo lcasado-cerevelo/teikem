@@ -110,6 +110,7 @@ public class WmsControllerSecurityTests
         [(typeof(InventoryDiscrepanciesController), nameof(InventoryDiscrepanciesController.Resolve))] = PermissionCatalog.InventoryAdjust,
 
         [(typeof(ReceiptsController), nameof(ReceiptsController.List))] = PermissionCatalog.InventoryView,
+        [(typeof(ReceiptsController), nameof(ReceiptsController.SummaryByWarehouse))] = PermissionCatalog.InventoryView,   // 2026-10-11
         [(typeof(ReceiptsController), nameof(ReceiptsController.Get))] = PermissionCatalog.InventoryView,
         [(typeof(ReceiptsController), nameof(ReceiptsController.Create))] = PermissionCatalog.WarehouseReceive,
         [(typeof(ReceiptsController), nameof(ReceiptsController.UpdateHeader))] = PermissionCatalog.WarehouseReceive,   // Lote 13
@@ -337,7 +338,7 @@ public class WmsControllerSecurityTests
         Assert.Equal(PermissionCatalog.WarehouseIssue, Expected[(typeof(ManualIssuesController), nameof(ManualIssuesController.Create))]);
         Assert.Equal(PermissionCatalog.WarehouseIssue, Expected[(typeof(ManualIssuesController), nameof(ManualIssuesController.Delete))]);
         Assert.Equal(ModuleOf[typeof(PickBatchesController)], ModuleOf[typeof(ManualIssuesController)]);
-        Assert.Equal(161, Expected.Count); // 2026-10-11: + 1 (CaptureOffline, conteo sin señal) = 161; // 132 de master + 1 de reparto por posición (Distribute) + 1 de verificación de línea (CheckLine) + 12 de RentalsController + 3 de RentalReturnsController + 4 de RentalProcessesController + 5 de ManualIssuesController
+        Assert.Equal(162, Expected.Count); // 2026-10-11: + 1 (CaptureOffline, conteo sin señal) = 161; + 1 (ReceiptsController.SummaryByWarehouse) = 162; // 132 de master + 1 de reparto por posición (Distribute) + 1 de verificación de línea (CheckLine) + 12 de RentalsController + 3 de RentalReturnsController + 4 de RentalProcessesController + 5 de ManualIssuesController
     }
 
     [Fact]

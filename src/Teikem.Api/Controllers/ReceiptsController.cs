@@ -38,6 +38,13 @@ public sealed class ReceiptsController(ReceiptService receipts) : ControllerBase
             from, to, productPublicIds is { Length: > 0 } ? productPublicIds : null, hasVariance, search, skip, take,
             variance is { Length: > 0 } ? variance : null, phase, includeLines), ct);
 
+    /// <summary>
+    /// Resumen por almacén (2026-10-11): recibos abiertos (`openCount`) y por acomodar (`pendingPutawayCount`) de TODOS los almacenes de la compañía, también los inactivos, en una sola llamada
+    /// (los mismos totales que `GET /receipts?phase=OPEN` y `?phase=PENDING_PUTAWAY` con `take=1`, almacén por almacén). Un almacén sin recibos sale con 0 y 0.
+    /// </summary>
+    [HttpGet("summary-by-warehouse"), RequirePermission(PermissionCatalog.InventoryView)]
+    public Task<IReadOnlyList<ReceiptWarehouseSummaryDto>> SummaryByWarehouse(CancellationToken ct) => receipts.SummaryByWarehouseAsync(ct);
+
     /// <summary>Ficha del recibo: encabezado, líneas (esperado, recibido, diferencia, lote, series, costo de PO, cruce de muelle) y sus PUTAWAY.</summary>
     [HttpGet("{publicId:guid}"), RequirePermission(PermissionCatalog.InventoryView)]
     public Task<ReceiptDetailDto> Get(Guid publicId, CancellationToken ct) => receipts.GetAsync(publicId, ct);

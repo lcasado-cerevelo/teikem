@@ -99,4 +99,22 @@ public sealed class SyncController(SyncService sync) : ControllerBase
     public Task<SyncPage<SyncProductCategoryDto>> ProductCategories([FromQuery] DateTime? since, [FromQuery] string? cursor,
         [FromQuery] int take = SyncRules.DefaultTake, CancellationToken ct = default)
         => sync.ProductCategoriesAsync(new SyncQuery(since, cursor, take, null), ct);
+
+    /// <summary>
+    /// Clientes para el despacho del aparato (2026-10-11, señal débil): id, publicId, nombre, código, isActive. Sin since: los activos; con since: los cambiados, también los dados de baja
+    /// (isActive = false). `warehouse.pick`: quien despacha desde el aparato no necesita `clients.read` solo para elegir a quién.
+    /// </summary>
+    [HttpGet("clients"), RequirePermission(PermissionCatalog.WarehousePick)]
+    public Task<SyncPage<SyncClientDto>> Clients([FromQuery] DateTime? since, [FromQuery] string? cursor,
+        [FromQuery] int take = SyncRules.DefaultTake, CancellationToken ct = default)
+        => sync.ClientsAsync(new SyncQuery(since, cursor, take, null), ct);
+
+    /// <summary>
+    /// Consignatarios / localizaciones que el despacho puede elegir (2026-10-11, señal débil): las de cada cliente y las compartidas del operador (`clientPublicId` null), activas sin since o cambiadas con since
+    /// (isActive = false las dadas de baja). `warehouse.pick`, sin `locations.read`.
+    /// </summary>
+    [HttpGet("consignee-locations"), RequirePermission(PermissionCatalog.WarehousePick)]
+    public Task<SyncPage<SyncConsigneeLocationDto>> ConsigneeLocations([FromQuery] DateTime? since, [FromQuery] string? cursor,
+        [FromQuery] int take = SyncRules.DefaultTake, CancellationToken ct = default)
+        => sync.ConsigneeLocationsAsync(new SyncQuery(since, cursor, take, null), ct);
 }

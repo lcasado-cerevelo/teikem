@@ -23,6 +23,17 @@ namespace Teikem.Infrastructure.Contracts
 
     public sealed record SyncProductCategoryDto(int Id, string Name, int? ParentId, bool IsActive);
 
+    /// <summary>
+    /// 2026-10-11 (señal débil) — cliente al que se puede despachar desde el aparato (el despacho de inventario PROPIO elige cliente). IsActive = false → el aparato lo borra.
+    /// </summary>
+    public sealed record SyncClientDto(int Id, Guid PublicId, string Name, string? Code, bool IsActive);
+
+    /// <summary>
+    /// 2026-10-11 (señal débil) — consignatario / localización que el despacho puede elegir: la del cliente (ClientPublicId) o una compartida del operador (ClientPublicId = null). Las mismas
+    /// que acepta la orden (ResolveClientLocationAsync: del cliente o compartida, activa). IsActive = false → el aparato la borra.
+    /// </summary>
+    public sealed record SyncConsigneeLocationDto(int Id, Guid PublicId, Guid? ClientPublicId, string Name, string? Code, string City, bool IsActive);
+
     /// <summary>Posición con su zona. IsActive = posición, zona y almacén activos (si no, el aparato la borra). Lote 21: IsProvisional = creada desde un conteo, pendiente de revisión.
     /// 2026-10-11 (señal débil): MaxCapacityQty = cupo de la posición en unidades (null = sin cupo); con él el aparato calcula el espacio libre sin red.</summary>
     public sealed record SyncBinDto(int Id, string Code, Guid WarehousePublicId, int ZoneId, string ZoneCode, string ZoneName,
@@ -206,6 +217,58 @@ namespace Teikem.Infrastructure.Services
                 .Select(x => new SyncProductCategoryDto(x.ProductCategoryId, x.Name, x.ParentId, x.IsActive)).ToListAsync(ct);
             var (items, next) = SyncRules.Cut(rows, w.Take, x => x.Id);
             return new SyncPage<SyncProductCategoryDto>(items, next, w.Now);
+        }
+
+        // ================================================================ clientes y consignatarios (señal débil)
+
+        /// <summary>
+        /// Clientes (id, publicId, nombre, código, isActive) para el despacho del aparato. Sin since: carga completa de los ACTIVOS; con since: los cambiados (también los dados de baja, isActive = false,
+        /// para que el aparato los borre). Cambios por AuditLog del cliente o historial de estatus. Todo bajo el filtro de tenant (y el alcance de datos del usuario, si lo tiene).
+        /// </summary>
+        public async Task<SyncPage<SyncClientDto>> ClientsAsync(SyncQuery q, CancellationToken ct)
+        {
+            var w = Prepare(q);
+            var query = db.Set<Client>().AsNoTracking();
+            if (w.Since is DateTime since)
+            {
+                var c = await ChangedAsync(EntityTypes.Client, since, ct);
+                query = query.Where(x => c.Audit.Contains(x.ClientId) || c.History.Contains(x.ClientId));
+            }
+            else query = query.Where(x => x.IsActive);
+            if (w.AfterId is int after) query = query.Where(x => x.ClientId > after);
+
+            var rows = await query.OrderBy(x => x.ClientId).Take(w.Take + 1)
+                .Select(x => new SyncClientDto(x.ClientId, x.PublicId, x.Name, x.Code, x.IsActive)).ToListAsync(ct);
+            var (items, next) = SyncRules.Cut(rows, w.Take, x => x.Id);
+            return new SyncPage<SyncClientDto>(items, next, w.Now);
+        }
+
+        /// <summary>
+        /// Consignatarios / localizaciones elegibles para despachar: las de un cliente y las compartidas del operador (ClientId NULL), de cualquier tipo, igual que lo que acepta la orden. Sin since: carga completa
+        /// de las ACTIVAS; con since: las cambiadas (también las dadas de baja, isActive = false). Cambios por AuditLog de la localización.
+        /// </summary>
+        public async Task<SyncPage<SyncConsigneeLocationDto>> ConsigneeLocationsAsync(SyncQuery q, CancellationToken ct)
+        {
+            var w = Prepare(q);
+            var query = from l in db.Set<Location>().AsNoTracking()
+                        join c in db.Set<Client>().AsNoTracking() on l.ClientId equals (int?)c.ClientId into cs
+                        from client in cs.DefaultIfEmpty()
+                        select new { Location = l, ClientPublicId = client == null ? (Guid?)null : client.PublicId, HasClient = l.ClientId != null && client != null };
+            // las de un cliente que el usuario no ve (otro tenant o fuera de su alcance) no salen; las compartidas sí
+            query = query.Where(x => x.Location.ClientId == null || x.HasClient);
+            if (w.Since is DateTime since)
+            {
+                var c = await ChangedAsync(EntityTypes.Location, since, ct);
+                query = query.Where(x => c.Audit.Contains(x.Location.LocationId) || c.History.Contains(x.Location.LocationId));
+            }
+            else query = query.Where(x => x.Location.IsActive);
+            if (w.AfterId is int after) query = query.Where(x => x.Location.LocationId > after);
+
+            var rows = await query.OrderBy(x => x.Location.LocationId).Take(w.Take + 1).ToListAsync(ct);
+            var (page, next) = SyncRules.Cut(rows, w.Take, x => x.Location.LocationId);
+            var items = page.Select(x => new SyncConsigneeLocationDto(x.Location.LocationId, x.Location.PublicId, x.ClientPublicId, x.Location.Name, x.Location.Code,
+                x.Location.City, x.Location.IsActive)).ToList();
+            return new SyncPage<SyncConsigneeLocationDto>(items, next, w.Now);
         }
 
         // ================================================================ saldos (señal débil)
