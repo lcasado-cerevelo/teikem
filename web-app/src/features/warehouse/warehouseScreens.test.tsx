@@ -58,6 +58,10 @@ function route(url: URL): unknown {
     const items = zoneIds.length > 0 ? BINS.filter((b) => zoneIds.includes(b.zoneId)) : BINS
     return { total: items.length, skip: Number(url.searchParams.get('skip') ?? 0), take: Number(url.searchParams.get('take') ?? 100), items }
   }
+  if (p === '/api/v1/warehouses/bins/search') {
+    const search = (url.searchParams.get('search') ?? '').toLowerCase()
+    return BINS.filter((b) => b.code.toLowerCase().includes(search)).map((b) => ({ id: b.id, code: b.code, zoneCode: b.zoneCode, warehousePublicId: WH, warehouseCode: 'ALM-01', isActive: true }))
+  }
   if (p === '/api/v1/inventory/balances') return { total: 0, skip: 0, take: 200, items: [] }
   if (p === '/api/v1/receipts') return { total: 0, skip: 0, take: 25, items: [] }
   if (p === '/api/v1/dock-appointments') return []
@@ -137,16 +141,21 @@ describe('Posiciones (antes Ubicaciones; maqueta ubicaciones())', () => {
     expect(screen.getByText('Tornillo')).toBeInTheDocument()
     expect(screen.getByText('Ocupada sin cupo')).toBeInTheDocument()
     expect(screen.getByText('Vacía')).toBeInTheDocument()
-    // sin buscador dentro de la tabla: los únicos campos de texto son los filtros "Posición" y "Pasillo" de arriba
-    expect(screen.getAllByRole('searchbox')).toEqual([screen.getByRole('searchbox', { name: 'Posición' }), screen.getByRole('searchbox', { name: 'Pasillo' })])
+    // sin buscador dentro de la tabla: el único campo de texto es el filtro "Pasillo" (Posición es un desplegable con búsqueda)
+    expect(screen.getAllByRole('searchbox')).toEqual([screen.getByRole('searchbox', { name: 'Pasillo' })])
   })
 
-  it('el filtro "Posición" manda el texto al servidor (search) y vuelve a la página 1', async () => {
+  it('el filtro "Posición" es un desplegable con búsqueda y selección múltiple: va como binIds y vuelve a la página 1', async () => {
     const user = userEvent.setup()
     wrap(<LocationsScreen />, ['inventory.view'], ['WMS_LOTSERIAL'], path, '/warehouse/locations')
     await screen.findByText('A-01')
-    await user.type(screen.getByRole('searchbox', { name: 'Posición' }), 'B-0')
-    await waitFor(() => expect(binRequests().at(-1)?.searchParams.get('search')).toBe('B-0'))
+    await user.click(screen.getByLabelText('Posición'))
+    await screen.findByLabelText(/B-01 ·/)   // lista inicial
+    await user.keyboard('A-0')   // el buscador del desplegable abierto toma el foco
+    await waitFor(() => expect(screen.queryByLabelText(/B-01 ·/)).toBeNull())   // llegó la búsqueda (con pausa)
+    await user.click(await screen.findByRole('button', { name: 'Todos' }))
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(binRequests().at(-1)?.searchParams.getAll('binIds').sort()).toEqual(['10', '11']))
     expect(binRequests().at(-1)?.searchParams.get('skip')).toBe('0')
   })
 
