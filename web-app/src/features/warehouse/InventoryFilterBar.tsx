@@ -22,7 +22,7 @@ import {
   type InventoryTab,
   type KardexDirection,
 } from './kardexView'
-import { BinMultiFilter, OwnerFilter, ProductMultiFilter, type ProductFilterItem } from './pickers'
+import { BinMultiFilter, OwnerFilter, ProductMultiFilter, UserFilter, type ProductFilterItem } from './pickers'
 import './warehouse.css'
 
 export interface InventoryFilterBarProps {
@@ -100,6 +100,7 @@ export function InventoryFilterBar({ tab, value, onChange, shownProducts }: Inve
           <SearchSelect label={t(`${F}.category`)} options={categoryOptions} value={value.categoryIds} onChange={(categoryIds) => onChange({ categoryIds })} />,
         )}
         {wrap('owners', <OwnerFilter label={t(`${F}.owner`)} value={value.owners} onChange={(owners) => onChange({ owners })} />)}
+        {wrap('users', <UserFilter label={t(`${F}.user`)} value={value.users} onChange={(users) => onChange({ users })} />)}
         {wrap('reasons', <SearchSelect label={t(`${F}.reason`)} options={reasonOptions} value={value.reasons} onChange={(reasons) => onChange({ reasons })} />)}
         {wrap(
           'direction',

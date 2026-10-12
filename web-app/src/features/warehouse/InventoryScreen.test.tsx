@@ -102,6 +102,12 @@ function route(url: URL, method = 'GET'): unknown {
       related: [movement(1), { ...movement(2), id: 2 }],
       relatedTruncated: false,
     }
+  if (p === '/api/v1/inventory/transactions/users')
+    return [
+      { name: 'Sistema (sin usuario)', isActive: true, isSystem: true },
+      { userId: 2, name: 'María R.', isActive: true, isSystem: false },
+      { userId: 3, name: 'Carla Baja', isActive: false, isSystem: false },
+    ]
   if (p === '/api/v1/inventory/owners') return [{ name: 'Propio', isOwn: true }, { clientPublicId: 'cccccccc-0000-0000-0000-000000000001', name: 'Cliente A', isOwn: false }]
   if (p === '/api/v1/inventory/discrepancies') return { total: 1, skip: 0, take: 25, openCount: mock.discStatus === 'OPEN' ? 1 : 0, items: [discrepancy()] }
   if (p === `/api/v1/inventory/discrepancies/${DISC}`) return { discrepancy: discrepancy(), currentReserved: 0, recentMovements: [movement(1)], history: [] }
@@ -406,6 +412,19 @@ describe('InventoryScreen · Lote 14 (resumen, filtros nuevos, detalle y descuad
     await user.click(screen.getByRole('switch', { name: 'Solo manuales' }))
     await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.get('direction') === 'OUT' && u.searchParams.get('manualOnly') === 'true')
     await waitLast('/api/v1/inventory/transactions/summary', (u) => u.searchParams.get('manualOnly') === 'true' && u.searchParams.getAll('binIds').includes('10'))
+  })
+
+  it('filtro Usuario: varios usuarios (userIds), el inactivo marcado y «Sistema (sin usuario)» (includeSystem); el resumen lleva lo mismo', async () => {
+    const user = userEvent.setup()
+    wrap(<InventoryScreen />)
+    await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.get('skip') === '0')
+    await user.click(within(screen.getByRole('group', { name: 'Filtros del Kárdex' })).getByRole('button', { name: /^Usuario/ }))
+    await user.click(await screen.findByRole('option', { name: 'María R.' }))
+    await user.click(await screen.findByRole('option', { name: 'Carla Baja (inactivo)' }))
+    await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.getAll('userIds').join(',') === '2,3' && !u.searchParams.has('includeSystem'))
+    await user.click(await screen.findByRole('option', { name: 'Sistema (sin usuario)' }))
+    await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.get('includeSystem') === 'true' && u.searchParams.getAll('userIds').length === 2)
+    await waitLast('/api/v1/inventory/transactions/summary', (u) => u.searchParams.get('includeSystem') === 'true' && u.searchParams.getAll('userIds').join(',') === '2,3')
   })
 
   it('?refEntity=CYCLE_COUNT&refId=3 filtra el Kárdex por su documento (píldora que se puede quitar)', async () => {

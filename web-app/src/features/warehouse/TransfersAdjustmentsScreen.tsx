@@ -21,6 +21,7 @@ import { IconPencil } from '../../kernel/ui/screenIcons'
 import {
   exportInventoryTransactions,
   useInventoryOwners,
+  useKardexUsers,
   useInventoryTransactions,
   useKardexSummary,
   useWarehouses,
@@ -32,7 +33,7 @@ import { AdjustmentsReportButton } from './InventoryReportButtons'
 import { InventoryTransferModal } from './InventoryTransferModal'
 import { KardexTransactionModal } from './KardexTransactionModal'
 import { useKardexColumns, type KardexColumnId } from './kardexColumns'
-import { OWN_OWNER, rangeInverted, summaryItems, type KardexDirection } from './kardexView'
+import { OWN_OWNER, rangeInverted, summaryItems, SYSTEM_USER, type KardexDirection } from './kardexView'
 import {
   adjustmentsQuery,
   describeMovementFilters,
@@ -42,7 +43,7 @@ import {
   type MovementFilterState,
   type MovementTab,
 } from './movementFilters'
-import { OwnerFilter, ProductMultiFilter } from './pickers'
+import { OwnerFilter, ProductMultiFilter, UserFilter } from './pickers'
 
 const PAGE_SIZE = 25
 
@@ -114,6 +115,7 @@ function MovementsTab({
         )}
         <ProductMultiFilter label={t(`${T}.filters.product`)} value={filters.products} onChange={(products) => set({ products })} includeInactive />
         <OwnerFilter label={t(`${T}.filters.owner`)} value={filters.owners} onChange={(owners) => set({ owners })} />
+        <UserFilter label={t(`${T}.filters.user`)} value={filters.users} onChange={(users) => set({ users })} />
         {kind === 'adjustments' && (
           <>
             <SelectFilter
@@ -172,6 +174,7 @@ function AdjustmentsReport({ filters }: { filters: MovementFilterState }) {
   const t = useT()
   const { data: warehouses = [] } = useWarehouses({ includeInactive: false }, { handleAccessDenied: false })
   const { data: owners = [] } = useInventoryOwners({ handleAccessDenied: false })
+  const { data: users = [] } = useKardexUsers({ handleAccessDenied: false })
   const { data: reasons = [] } = useLookups('AdjustmentReason', { includeDisabled: true })
   const query = useMemo(
     () => ({
@@ -182,11 +185,12 @@ function AdjustmentsReport({ filters }: { filters: MovementFilterState }) {
           warehouses: new Map(warehouses.map((w) => [w.publicId ?? '', warehouseLabel(w)])),
           owners: new Map(owners.map((o) => [o.isOwn ? OWN_OWNER : (o.clientPublicId ?? ''), o.name ?? ''])),
           reasons: new Map(reasons.map((r) => [r.code, r.label])),
+          users: new Map(users.map((u) => [u.isSystem ? SYSTEM_USER : String(u.userId ?? ''), u.name ?? ''])),
         },
         t,
       ),
     }),
-    [filters, warehouses, owners, reasons, t],
+    [filters, warehouses, owners, users, reasons, t],
   )
   return <AdjustmentsReportButton query={query} />
 }

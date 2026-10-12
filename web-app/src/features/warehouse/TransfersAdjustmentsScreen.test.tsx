@@ -43,6 +43,11 @@ function route(url: URL): unknown {
       { id: 7, publicId: W7, code: 'ALM-07', name: 'Siete', isActive: true },
     ]
   if (p === '/api/v1/inventory/owners') return [{ name: 'Propio', isOwn: true }]
+  if (p === '/api/v1/inventory/transactions/users')
+    return [
+      { name: 'Sistema (sin usuario)', isActive: true, isSystem: true },
+      { userId: 2, name: 'María R.', isActive: true, isSystem: false },
+    ]
   if (p === '/api/v1/catalogs/AdjustmentReason') return [{ code: 'DAMAGE', label: 'Daño', sortOrder: 1 }]
   return []
 }
@@ -103,6 +108,23 @@ describe('TransfersAdjustmentsScreen', () => {
       (u) => u.searchParams.get('direction') === 'OUT' && u.searchParams.getAll('reasons').includes('DAMAGE') && u.searchParams.get('manualOnly') === 'true',
     )
     await waitLast('/api/v1/inventory/transactions/summary', (u) => u.searchParams.get('manualOnly') === 'true')
+  })
+
+  it('filtro Usuario en Ajustes y en Transferencias: userIds / includeSystem al API y al resumen', async () => {
+    const user = userEvent.setup()
+    wrap()
+    await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.get('skip') === '0')
+    await user.click(within(screen.getByRole('group', { name: 'Filtros de movimientos' })).getByRole('button', { name: /^Usuario/ }))
+    await user.click(await screen.findByRole('option', { name: 'María R.' }))
+    await user.click(await screen.findByRole('option', { name: 'Sistema (sin usuario)' }))
+    await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.getAll('userIds').join() === '2' && u.searchParams.get('includeSystem') === 'true')
+    await waitLast('/api/v1/inventory/transactions/summary', (u) => u.searchParams.getAll('userIds').join() === '2' && u.searchParams.get('includeSystem') === 'true')
+  })
+
+  it('el filtro Usuario también está en Transferencias', async () => {
+    wrap('/warehouse/transfers-adjustments?tab=transfers')
+    await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.getAll('types').join() === 'TRANSFER')
+    expect(within(screen.getByRole('group', { name: 'Filtros de movimientos' })).getByRole('button', { name: /^Usuario/ })).toBeInTheDocument()
   })
 
   it('?tab=transfers: Transferencias con origen y destino; filtro por almacén de destino', async () => {

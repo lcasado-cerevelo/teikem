@@ -4,7 +4,7 @@
 // (`manualOnly`) y filtro por motivo. `describeMovementFilters` arma los "Filtros aplicados" del Reporte de ajustes.
 import type { DateRange } from '../../kernel/ui/dateRange'
 import type { GetQuery } from './api'
-import { ownerQuery, type KardexDirection } from './kardexView'
+import { ownerQuery, userQuery, type KardexDirection } from './kardexView'
 import type { ProductFilterItem } from './pickers'
 import { ADJUSTMENT_TXN_TYPE } from './productFilters'
 
@@ -28,6 +28,8 @@ export interface MovementFilterState {
   products: ProductFilterItem[]
   /** `OWN_OWNER` y/o clientPublicId. */
   owners: string[]
+  /** `SYSTEM_USER` y/o ids de usuario: quién hizo el movimiento. */
+  users: string[]
   /** Ajustes: motivos (AdjustmentReason). */
   reasons: string[]
   /** Ajustes: Subir (IN) / Bajar (OUT). */
@@ -42,6 +44,7 @@ export const EMPTY_MOVEMENT_FILTERS: MovementFilterState = {
   toWarehousePublicIds: [],
   products: [],
   owners: [],
+  users: [],
   reasons: [],
   direction: '',
   manualOnly: false,
@@ -55,6 +58,7 @@ function common(f: MovementFilterState) {
     to: f.range.to || undefined,
     productPublicIds: nonEmpty(f.products.map((p) => p.publicId)),
     ...ownerQuery(f.owners),
+    ...userQuery(f.users),
     manualOnly: f.manualOnly || undefined,
   }
 }
@@ -87,6 +91,8 @@ export interface MovementFilterNames {
   warehouses: ReadonlyMap<string, string>
   owners: ReadonlyMap<string, string>
   reasons: ReadonlyMap<string, string>
+  /** Usuario (`SYSTEM_USER` o id → nombre); sin él se muestra el id. */
+  users?: ReadonlyMap<string, string>
 }
 
 /**
@@ -105,6 +111,7 @@ export function describeMovementFilters(f: MovementFilterState, names: MovementF
   if (f.warehousePublicIds.length > 0) out.push({ label: t(`${T}.warehouse`), value: list(f.warehousePublicIds.map((id) => names.warehouses.get(id) ?? id)) })
   if (f.products.length > 0) out.push({ label: t(`${T}.product`), value: list(f.products.map((p) => p.label || p.sku || p.publicId)) })
   if (f.owners.length > 0) out.push({ label: t(`${T}.owner`), value: list(f.owners.map((o) => names.owners.get(o) ?? o)) })
+  if (f.users.length > 0) out.push({ label: t(`${T}.user`), value: list(f.users.map((u) => names.users?.get(u) ?? u)) })
   if (f.direction) out.push({ label: t(`${T}.direction`), value: t(f.direction === 'IN' ? `${T}.up` : `${T}.down`) })
   if (f.reasons.length > 0) out.push({ label: t(`${T}.reason`), value: list(f.reasons.map((r) => names.reasons.get(r) ?? r)) })
   if (f.manualOnly) out.push({ label: t(`${T}.manualOnly`), value: t(`${T}.yes`) })
