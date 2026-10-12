@@ -11122,6 +11122,12 @@ export interface paths {
                     search?: string;
                     from?: string;
                     to?: string;
+                    serviceTypes?: string[];
+                    packageTypes?: string[];
+                    cities?: string[];
+                    postalCodePrefix?: string;
+                    clientIds?: string[];
+                    statuses?: string[];
                     includeInactive?: boolean;
                     skip?: number;
                     take?: number;
@@ -12342,6 +12348,8 @@ export interface paths {
                     unavailable?: boolean;
                     hasAvailable?: boolean;
                     binSearch?: string;
+                    ownerClientPublicIds?: string[];
+                    includeOwn?: boolean;
                 };
                 header?: never;
                 path?: never;
