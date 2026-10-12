@@ -342,3 +342,21 @@ Sin SMS ni biometría en MFA (decisión 11 del lote 1); `RentalCharge` y factura
 - SLA: un renglón por tipo de servicio con horas máximas, ventana de recogido, meta de puntualidad y penalidad; empieza vacío.
 - **Cotización (`POST /api/v1/billing/contract-rate-quote`): fuera de F-A2. PENDIENTE para cuando se construyan las órdenes de venta (P4): ahí se hace el panel «Simular cotización» / uso en la orden.**
 - Por defecto (sin objeción del dueño): el SLA se captura solo en la pestaña SLA (no en el alta del cliente); tarifas nuevas con modal «Vigente desde» (hoy por omisión); tipos de servicio especial: alta con «+ Nuevo tipo…», sin gestión de baja/reactivación; el recorrido Playwright pendiente de F-A1 se cierra en F-A2.
+
+## IA en Teikem (análisis 2026-10-12; para trabajar más adelante)
+La maqueta llama **Kemi** al asistente (hoy solo demo). Dónde aporta una IA real, de mayor a menor valor/riesgo:
+1. **Kemi de solo lectura**: la pregunta se traduce a las consultas que ya existen (vistas, indicadores, `IDataSource`) con los permisos del usuario; nunca cifras de memoria.
+2. **Soporte sobre el manual y la FAQ** (mensajes de error exactos ya documentados).
+3. **Captura desde documentos** (correo, factura de proveedor, ASN, foto de etiqueta): la IA propone, el usuario confirma.
+4. **Excepciones explicadas**: resumen del día, varianzas de conteo, cuadre COD, ajustes raros.
+5. Exportación contable (QuickBooks) y avisos redactados (capa J). 6. Voz en la app.
+No usar un LLM para rutas, posiciones ni reabasto (algoritmos clásicos).
+**Reglas**: la IA no escribe sola a Kárdex ni saldos; propone → el usuario confirma → acción por el API normal (permiso + `TenantId` del principal) con auditoría; un asistente por compañía; los datos de correos/documentos son entrada NO confiable (inyección de instrucciones).
+
+### Procesos manuales de Advance a automatizar (pedido del dueño, 2026-10-12)
+- **A. COD por lotes**: hoy escanean el código de barras (= número de orden) de cada factura/hoja y la app marca la orden como procesada. Meta: subir de una vez todos los documentos escaneados (PDF/imágenes); el sistema lee los códigos (técnica determinista; IA solo para lo ilegible/manuscrito), busca cada orden y la marca; al final del día un **reporte**: procesadas, no encontradas, duplicadas, ya procesadas, ilegibles, diferencias de monto, y por qué.
+- **B. Órdenes de Trust por correo**: el vendedor de Trust manda la orden por email; el personal la entra al QuickBooks de Trust y luego crea la orden en Teikem. Meta: Teikem tiene el inventario de Trust; el sistema lee el correo/documento, deduce los productos y cantidades (con alias del catálogo), **sugiere** la orden al usuario (con confianza y lo que no encontró) y, al final del día, **genera un archivo para crear las facturas en QuickBooks** (el QuickBooks de Trust no es controlable: se sube a mano).
+- **C. Entregas marcadas por documento** (Yesenia): le mandan documentos de órdenes y ella marca las órdenes como entregadas. Meta: mismo motor que A (leer documento → ubicar la orden → proponer o marcar entregada vía `StatusService.TransitionAsync`) con reporte.
+- **D. Integraciones configurables desde la sección Integraciones (sin programar cada vez)**: un «conector de entrada» = fuente (buzón de correo, carpeta, subida manual, API) + tipo de documento + plantilla de extracción (el usuario sube un ejemplo, la IA propone qué campo es cuál y dice qué no encontró; el usuario corrige y se guarda) + reglas de cruce (orden, producto/alias, cliente) + acción (marcar COD, crear orden, marcar entregada) + modo (sugerir o automático) + reporte diario. Viable: las FUENTES y las ACCIONES son un catálogo que se programa una vez; los formatos y campos los configura el usuario con ayuda de la IA.
+- **Orden sugerido**: A (casi sin IA, mucho valor) → C (mismo motor) → B (necesita catálogo con alias del inventario de Trust y la exportación genérica de facturas, P5) → D (generalizar). Modo «sugerir» por defecto; «automático» solo cuando la exactitud esté medida.
+- **Decisiones del dueño pendientes**: proveedor de IA y dónde viven los datos; quién paga el consumo; cómo llegan los correos (buzón dedicado/reenvío vs conexión a Microsoft 365/Google); formato de importación de facturas que acepte ese QuickBooks (Desktop IIF/CSV u Online CSV).
