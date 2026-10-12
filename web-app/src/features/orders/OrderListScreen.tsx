@@ -204,7 +204,7 @@ export default function OrderListScreen() {
         <div className="act">
           {!formOpen && (
             <Can perm="orders.create">
-              <button type="button" className="btn flow" onClick={() => setFormOpen(true)}>
+              <button type="button" className="btn flow" onClick={() => { setCreated(null); setFormOpen(true) }}>
                 <IconPlus /> {t('orders.list.newOrder')}
               </button>
             </Can>
