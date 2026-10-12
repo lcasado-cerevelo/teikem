@@ -128,3 +128,9 @@ public sealed record ReceiptDetailDto(ReceiptListItemDto Header, IReadOnlyList<R
     string RowVersion, bool CanDelete);
 
 public sealed record ReceiptPageDto(int Total, int Skip, int Take, IReadOnlyList<ReceiptListItemDto> Items);
+
+/// <summary>
+/// Resumen de recibos de UN almacén (GET /receipts/summary-by-warehouse): OpenCount = recibos abiertos (EXPECTED, RECEIVING, DISCREPANCY) y PendingPutawayCount = recibos confirmados
+/// que esperan acomodo (RECEIVED, RECEIVED_VARIANCE): los mismos conteos de GET /receipts con phase=OPEN y phase=PENDING_PUTAWAY, de todos los almacenes en una sola llamada.
+/// </summary>
+public sealed record ReceiptWarehouseSummaryDto(Guid WarehousePublicId, int OpenCount, int PendingPutawayCount);

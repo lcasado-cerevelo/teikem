@@ -59,6 +59,26 @@ public sealed class ReceiptService(
 
     // ================================================================ lista
 
+    /// <summary>
+    /// 2026-10-11 — recibos abiertos y por acomodar de TODOS los almacenes de la compañía (también los inactivos) en una sola llamada. Antes la pantalla de Ajustes de la compañía hacía
+    /// dos consultas de lista por almacén. Mismas fases que ListAsync (OPEN y PENDING_PUTAWAY) y mismo filtro de recibos activos; un almacén sin recibos sale con 0 y 0.
+    /// </summary>
+    public async Task<IReadOnlyList<ReceiptWarehouseSummaryDto>> SummaryByWarehouseAsync(CancellationToken ct)
+    {
+        var openIds = await db.StatusIdsAsync(StatusDomains.ReceiptStatus, ReceiptStatuses.OpenCodes, ct);
+        var pendingIds = await db.StatusIdsAsync(StatusDomains.ReceiptStatus, ReceiptStatuses.ConfirmedCodes, ct);
+        var counts = await db.Set<ReceiptHeader>().AsNoTracking().Where(r => r.IsActive)
+            .GroupBy(r => r.WarehouseId)
+            .Select(g => new { WarehouseId = g.Key, Open = g.Count(r => openIds.Contains(r.StatusCodeId)), Pending = g.Count(r => pendingIds.Contains(r.StatusCodeId)) })
+            .ToListAsync(ct);
+        var warehouses = await db.Set<Warehouse>().AsNoTracking().OrderBy(w => w.Code).ThenBy(w => w.WarehouseId)
+            .Select(w => new { w.WarehouseId, w.PublicId }).ToListAsync(ct);
+        var byId = counts.ToDictionary(c => c.WarehouseId);
+        return warehouses.Select(w => byId.TryGetValue(w.WarehouseId, out var c)
+            ? new ReceiptWarehouseSummaryDto(w.PublicId, c.Open, c.Pending)
+            : new ReceiptWarehouseSummaryDto(w.PublicId, 0, 0)).ToList();
+    }
+
     public async Task<ReceiptPageDto> ListAsync(ReceiptQuery q, CancellationToken ct)
     {
         q ??= new ReceiptQuery();

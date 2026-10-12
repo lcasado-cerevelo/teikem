@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Teikem.Api.Auth;
 using Teikem.Api.Controllers;
 using Teikem.Domain.Audit;
+using Teikem.Domain.Clients;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Wms;
 using Teikem.Infrastructure.Abstractions;
@@ -143,14 +144,17 @@ public sealed class SyncRulesTests
         var actions = typeof(SyncController).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
             .Where(m => m.GetCustomAttributes<HttpMethodAttribute>().Any()).ToList();
         var routes = actions.Select(a => a.GetCustomAttribute<HttpGetAttribute>()!.Template).OrderBy(x => x).ToArray();
-        Assert.Equal(new[] { "asns", "balances", "bins", "product-categories", "products", "purchase-orders", "warehouse-tasks" }, routes);
+        Assert.Equal(new[] { "asns", "balances", "bins", "clients", "consignee-locations", "product-categories", "products", "purchase-orders", "warehouse-tasks" }, routes);
         foreach (var action in actions)
         {
             var policies = action.GetCustomAttributes<RequirePermissionAttribute>().Select(a => a.Policy).ToList();
             var actionModules = action.GetCustomAttributes<RequireModuleAttribute>().Select(a => a.ModuleKey).ToList();
             // Las órdenes de compra conservan la defensa del recurso nativo: módulo PURCHASING y purchasing.view.
             var isPurchaseOrders = action.GetCustomAttribute<HttpGetAttribute>()!.Template == "purchase-orders";
-            Assert.Equal(new[] { RequirePermissionAttribute.Prefix + (isPurchaseOrders ? PermissionCatalog.PurchasingView : PermissionCatalog.InventoryView) }, policies);
+            // 2026-10-11: clientes y consignatarios para el despacho del aparato van detrás de warehouse.pick (quien despacha no necesita clients.read / locations.read solo para elegir a quién).
+            var template = action.GetCustomAttribute<HttpGetAttribute>()!.Template;
+            var isDispatchLists = template is "clients" or "consignee-locations";
+            Assert.Equal(new[] { RequirePermissionAttribute.Prefix + (isPurchaseOrders ? PermissionCatalog.PurchasingView : isDispatchLists ? PermissionCatalog.WarehousePick : PermissionCatalog.InventoryView) }, policies);
             Assert.Equal(isPurchaseOrders ? new[] { ModuleKeys.Purchasing } : Array.Empty<string>(), actionModules);
             Assert.DoesNotContain(action.GetParameters(), p => string.Equals(p.Name, "tenantId", StringComparison.OrdinalIgnoreCase));
         }
@@ -240,6 +244,103 @@ public sealed class SyncRulesTests
         Assert.Equal(ZoneTypes.Picking, item.ZoneTypeCode);
         Assert.Equal(w1.PublicId, item.WarehousePublicId);
         await Assert.ThrowsAsync<NotFoundException>(() => sync.BinsAsync(new SyncQuery(WarehousePublicId: Guid.NewGuid()), default));
+    }
+
+    // ================================================================ clientes y consignatarios para el despacho (señal débil, 2026-10-11)
+
+    private static async Task<Client> AddClientAsync(WmsFixture f, string name, bool active = true, string? code = null)
+    {
+        var c = new Client { PublicId = Guid.NewGuid(), TenantId = f.Tenant.TenantId!.Value, Name = name, Code = code ?? name.ToUpperInvariant().Replace(' ', '-'), StatusCodeId = 1, IsActive = active, CreatedAtUtc = DateTime.UtcNow };
+        f.Db.Set<Client>().Add(c);
+        await f.Db.SaveChangesAsync();
+        return c;
+    }
+
+    private static async Task<Location> AddLocationAsync(WmsFixture f, string name, int? clientId, bool active = true, int tenantId = 0)
+    {
+        var l = new Location { PublicId = Guid.NewGuid(), TenantId = tenantId == 0 ? f.Tenant.TenantId!.Value : tenantId, ClientId = clientId, Name = name, City = "San Juan", Line1 = "Calle 1", IsActive = active, CreatedAtUtc = DateTime.UtcNow };
+        f.Db.Set<Location>().Add(l);
+        await f.Db.SaveChangesAsync();
+        return l;
+    }
+
+    [Fact]
+    public async Task Clients_full_load_brings_only_active_clients_of_the_tenant_and_the_difference_also_brings_the_deactivated_ones()
+    {
+        await using var f = await SyncFixtureAsync();
+        var a = await AddClientAsync(f, "Farmacia A");
+        var off = await AddClientAsync(f, "Farmacia Baja", active: false);
+        var sync = f.Get<SyncService>();
+
+        var full = await sync.ClientsAsync(new SyncQuery(), default);
+        var item = Assert.Single(full.Items);
+        Assert.Equal((a.ClientId, a.PublicId, "Farmacia A", true), (item.Id, item.PublicId, item.Name, item.IsActive));
+
+        // diferencia: lo que tiene bitácora desde since (el cliente de baja llega con isActive = false para que el aparato lo borre)
+        var now = DateTime.UtcNow;
+        var type = f.LookupId(LookupDomains.EntityType, EntityTypes.Client);
+        f.Db.AuditLogs.Add(new AuditLog { TenantId = f.Tenant.TenantId!.Value, EntityTypeLookupId = type, EntityId = off.ClientId, CreatedAtUtc = now });
+        await f.Db.SaveChangesAsync();
+        var diff = await sync.ClientsAsync(new SyncQuery(Since: now.AddMinutes(-5)), default);
+        var row = Assert.Single(diff.Items);
+        Assert.Equal((off.PublicId, false), (row.PublicId, row.IsActive));
+    }
+
+    [Fact]
+    public async Task Clients_are_paged_by_cursor_and_another_tenants_clients_never_appear()
+    {
+        await using var f = await SyncFixtureAsync();
+        for (var i = 0; i < 5; i++) await AddClientAsync(f, $"Cliente {i}");
+        f.Db.Set<Client>().Add(new Client { PublicId = Guid.NewGuid(), TenantId = WmsFixture.OtherTenantId, Name = "De otra compañía", Code = "OTRA", StatusCodeId = 1, IsActive = true, CreatedAtUtc = DateTime.UtcNow });
+        await f.Db.SaveChangesAsync();
+        var sync = f.Get<SyncService>();
+
+        var first = await sync.ClientsAsync(new SyncQuery(Take: 2), default);
+        Assert.Equal(2, first.Items.Count);
+        Assert.NotNull(first.NextCursor);
+        var rest = new List<SyncClientDto>(first.Items);
+        var cursor = first.NextCursor;
+        while (cursor is not null)
+        {
+            var page = await sync.ClientsAsync(new SyncQuery(Cursor: cursor, Take: 2), default);
+            rest.AddRange(page.Items);
+            cursor = page.NextCursor;
+        }
+        Assert.Equal(5, rest.Count);
+        Assert.DoesNotContain(rest, c => c.Name == "De otra compañía");
+    }
+
+    [Fact]
+    public async Task Consignee_locations_bring_the_clients_own_and_the_shared_ones_active_only_on_full_load()
+    {
+        await using var f = await SyncFixtureAsync();
+        var c1 = await AddClientAsync(f, "Cliente 1");
+        var mine = await AddLocationAsync(f, "Sucursal 1", c1.ClientId);
+        var shared = await AddLocationAsync(f, "Compartida", null);
+        await AddLocationAsync(f, "Inactiva", c1.ClientId, active: false);
+        await AddLocationAsync(f, "De otra compañía", null, tenantId: WmsFixture.OtherTenantId);
+        var sync = f.Get<SyncService>();
+
+        var page = await sync.ConsigneeLocationsAsync(new SyncQuery(), default);
+
+        Assert.Equal(new[] { "Compartida", "Sucursal 1" }, page.Items.Select(i => i.Name).OrderBy(x => x, StringComparer.Ordinal).ToArray());
+        Assert.Equal(c1.PublicId, page.Items.Single(i => i.Id == mine.LocationId).ClientPublicId);
+        Assert.Null(page.Items.Single(i => i.Id == shared.LocationId).ClientPublicId);
+        Assert.All(page.Items, i => Assert.Equal("San Juan", i.City));
+    }
+
+    [Fact]
+    public async Task Consignee_locations_difference_brings_the_deactivated_ones_with_isActive_false()
+    {
+        await using var f = await SyncFixtureAsync();
+        var c1 = await AddClientAsync(f, "Cliente 1");
+        var off = await AddLocationAsync(f, "Cerrada", c1.ClientId, active: false);
+        var now = DateTime.UtcNow;
+        f.Db.AuditLogs.Add(new AuditLog { TenantId = f.Tenant.TenantId!.Value, EntityTypeLookupId = f.LookupId(LookupDomains.EntityType, EntityTypes.Location), EntityId = off.LocationId, CreatedAtUtc = now });
+        await f.Db.SaveChangesAsync();
+
+        var row = Assert.Single((await f.Get<SyncService>().ConsigneeLocationsAsync(new SyncQuery(Since: now.AddMinutes(-5)), default)).Items);
+        Assert.Equal((off.PublicId, false), (row.PublicId, row.IsActive));
     }
 
     [Fact]
