@@ -140,6 +140,7 @@ public sealed class BrandLogosController(BrandLogoService logos) : ControllerBas
 
 /// <summary>Plataforma (solo administradores de Teikem): listar y aprovisionar compañías.</summary>
 [ApiController]
+[SkipIdempotency("alta de compañía: contraseña del administrador inicial")]
 [Route("api/v1/platform/tenants")]
 [Authorize(Policy = Policies.PlatformAdmin)]
 public sealed class PlatformController(ProvisioningService provisioning) : ControllerBase

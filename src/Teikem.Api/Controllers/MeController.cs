@@ -12,6 +12,7 @@ namespace Teikem.Api.Controllers;
 /// por compañía activa y solo existe con el módulo WMS_LOTSERIAL encendido.
 /// </summary>
 [ApiController]
+[SkipIdempotency("PIN, códigos de recuperación y datos de la sesión")]
 [Route("api/v1/me")]
 [Authorize]
 public sealed class MeController(UserAdminService users, PinService pins) : ControllerBase

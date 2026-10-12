@@ -16,6 +16,7 @@ namespace Teikem.Api.Controllers;
 /// usuarios expone hasPin.
 /// </summary>
 [ApiController]
+[SkipIdempotency("PIN de otro usuario")]
 [Route("api/v1/users")]
 [Authorize]
 [RequireModule(ModuleKeys.WmsLotSerial)]

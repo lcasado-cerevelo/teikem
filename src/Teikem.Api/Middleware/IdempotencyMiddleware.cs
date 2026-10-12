@@ -55,7 +55,7 @@ public sealed class IdempotencyMiddleware(RequestDelegate next, ILogger<Idempote
         if (!request.Headers.TryGetValue(IdempotencyRules.HeaderName, out var values)
             || !IdempotencyRules.AppliesToMethod(request.Method)
             || tenant.TenantId is not int tenantId || tenant.UserId is not int userId
-            || IdempotencyRules.IsExcludedPath(request.Path.Value))
+            || http.GetEndpoint()?.Metadata.GetMetadata<SkipIdempotencyAttribute>() is not null)   // el endpoint declara que no usa idempotencia
         {
             await next(http);
             return;

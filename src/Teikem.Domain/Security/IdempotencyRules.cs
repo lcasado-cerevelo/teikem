@@ -69,42 +69,9 @@ public static class IdempotencyRules
     private static readonly string[] Methods = { "POST", "PUT", "PATCH", "DELETE" };
     private static readonly int[] NotStoredBelow500 = { 401, 403, 408, 423, 429 };
 
-    /// <summary>Prefijos de ruta excluidos (respuestas con credenciales en claro). Comparación sin distinguir mayúsculas.</summary>
-    public static readonly IReadOnlyList<string> ExcludedPathPrefixes = new[] { "/api/v1/auth", "/api/v1/me", "/api/v1/devices", "/api/v1/platform", "/api/v1/users" };
-
     /// <summary>¿El método es una escritura a la que aplica la idempotencia?</summary>
     public static bool AppliesToMethod(string? method)
         => method is not null && Methods.Contains(method, StringComparer.OrdinalIgnoreCase);
-
-    /// <summary>Prefijo de las rutas de clientes bajo las que cuelgan las invitaciones de portal.</summary>
-    public const string ClientsPathPrefix = "/api/v1/clients/";
-
-    /// <summary>
-    /// Sufijos excluidos bajo /api/v1/clients/: invitar y reenviar invitación de portal devuelven el token de invitación
-    /// (sirve para fijar la contraseña de la cuenta de portal).
-    /// </summary>
-    public static readonly IReadOnlyList<string> ExcludedClientPathSuffixes = new[] { "/portal-users/invite", "/resend-invite" };
-
-    /// <summary>
-    /// ¿La ruta está excluida? (segmento completo: /api/v1/devices y /api/v1/devices/x sí; /api/v1/devicesx no). También las
-    /// invitaciones de portal bajo /api/v1/clients/ (ExcludedClientPathSuffixes).
-    /// </summary>
-    public static bool IsExcludedPath(string? path)
-    {
-        if (string.IsNullOrEmpty(path)) return false;
-        foreach (var prefix in ExcludedPathPrefixes)
-        {
-            if (!path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
-            if (path.Length == prefix.Length || path[prefix.Length] == '/') return true;
-        }
-        if (path.StartsWith(ClientsPathPrefix, StringComparison.OrdinalIgnoreCase))
-        {
-            var trimmed = path.TrimEnd('/');
-            foreach (var suffix in ExcludedClientPathSuffixes)
-                if (trimmed.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)) return true;
-        }
-        return false;
-    }
 
     /// <summary>
     /// Clave normalizada (sin espacios al inicio y al final) o error. Los valores vienen de la cabecera: más de uno (cabecera

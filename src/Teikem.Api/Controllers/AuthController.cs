@@ -9,6 +9,7 @@ using Teikem.Infrastructure.Services;
 namespace Teikem.Api.Controllers;
 
 [ApiController]
+[SkipIdempotency("login, refresco y MFA: tokens en claro")]
 [Route("api/v1/auth")]
 public sealed class AuthController(AuthService auth, DeviceService devices) : ControllerBase
 {

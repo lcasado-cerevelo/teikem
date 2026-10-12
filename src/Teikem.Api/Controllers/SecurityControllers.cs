@@ -32,6 +32,7 @@ public sealed class RolesController(PermissionService permissions) : ControllerB
 
 /// <summary>Pantalla "Roles y usuarios": usuarios del tenant.</summary>
 [ApiController]
+[SkipIdempotency("contraseñas temporales y restablecimientos")]
 [Route("api/v1/users")]
 [Authorize]
 public sealed class UsersController(UserAdminService users, AuthService auth) : ControllerBase

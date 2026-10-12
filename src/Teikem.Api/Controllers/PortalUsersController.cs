@@ -21,10 +21,12 @@ public sealed class PortalUsersController(PortalUserService portalUsers) : Contr
     public Task<IReadOnlyList<PortalUserDto>> List(Guid publicId, CancellationToken ct) => portalUsers.GetForClientAsync(publicId, ct);
 
     /// <summary>Invita por correo: crea la cuenta sin contraseña y emite el enlace (token solo en Development).</summary>
+    [SkipIdempotency("devuelve el enlace de invitación (token que fija la contraseña)")]
     [HttpPost("clients/{publicId:guid}/portal-users/invite"), RequireModule(ModuleKeys.ClientPortal), RequirePermission(PermissionCatalog.PortalUsersManage)]
     public Task<PortalInviteResultDto> Invite(Guid publicId, [FromBody] PortalInviteRequest req, CancellationToken ct) => portalUsers.InviteAsync(publicId, req, ct);
 
     /// <summary>Nuevo enlace de invitación; solo mientras el usuario siga en INVITED (409 si no).</summary>
+    [SkipIdempotency("devuelve un enlace de invitación nuevo (token)")]
     [HttpPost("clients/{publicId:guid}/portal-users/{id:int}/resend-invite"), RequireModule(ModuleKeys.ClientPortal), RequirePermission(PermissionCatalog.PortalUsersManage)]
     public Task<PortalInviteResultDto> ResendInvite(Guid publicId, int id, CancellationToken ct) => portalUsers.ResendInviteAsync(publicId, id, ct);
 

@@ -15,6 +15,7 @@ namespace Teikem.Api.Controllers;
 /// Registro en el aparato y heartbeat son anónimos: ver DeviceEnrollmentController.
 /// </summary>
 [ApiController]
+[SkipIdempotency("secreto del aparato y códigos de registro")]
 [Route("api/v1/devices")]
 [Authorize]
 [RequireModule(ModuleKeys.WmsLotSerial)]
@@ -56,6 +57,7 @@ public sealed class DevicesController(DeviceService devices) : ControllerBase
 /// El módulo WMS_LOTSERIAL se verifica en el servicio contra la compañía del aparato (no hay tenant en el principal).
 /// </summary>
 [ApiController]
+[SkipIdempotency("secreto del aparato al registrarlo")]
 [Route("api/v1/devices")]
 public sealed class DeviceEnrollmentController(DeviceService devices) : ControllerBase
 {

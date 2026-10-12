@@ -289,6 +289,7 @@ public sealed class RateService(TeikemDbContext db, ITenantContext tenant, ILook
             throw new ValidationException($"lines[{dup}]", RepeatedLine);
 
         var client = await db.ResolveClientAsync(req.ClientPublicId, ct);
+        ClientQueries.EnsureClientActive(client);   // D39 (2026-10-11): un cliente dado de baja tampoco admite cotizar (409, solo se consulta su historial)
         var contract = await db.CurrentContractAsync(client.ClientId, asOf, ct);
         var contractId = contract?.ContractId;
 

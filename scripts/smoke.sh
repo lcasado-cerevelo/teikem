@@ -232,7 +232,7 @@ ok "permiso denegado registrado"
 # demo con la que el servidor decide "hoy": en UTC, entre las 00:00 y las 04:00 "ayer" sería "hoy" para el API (y el paso
 # de tarifas fallaba). Los instantes (+%FT%T) siguen en UTC.
 # ============================================================================================================
-PRDAY() { TZ=America/Puerto_Rico date "$@" +%F; }   # día de calendario de la compañía (Puerto Rico, UTC−4 sin horario de verano)
+PRDAY() { TZ=AST4 date "$@" +%F; }   # día de calendario de la compañía (Puerto Rico, UTC−4 sin horario de verano). «AST4» (zona POSIX) y no «America/Puerto_Rico»: el bash de Windows no trae la base de zonas y devolvía la fecha UTC (de 8 p. m. a medianoche en PR ya era «mañana»)
 TS=$(date +%s); TODAY=$(PRDAY)
 anon() { TOKEN= req "$@"; }   # petición sin Authorization (accept-invite y logins)
 PLATFORM_EMAIL="${TEIKEM_PLATFORM_EMAIL:-teikem+support@cerevelo.com}"
@@ -534,6 +534,10 @@ expect 204 "$(req POST "/api/v1/clients/$CLIENT2_PID/deactivate")" >/dev/null
 expect 200 "$(req GET /api/v1/clients)" | jq -e --arg p "$CLIENT2_PID" '(map(select(.publicId==$p)) | length)==0' >/dev/null || fail "inactivo oculto"
 expect 200 "$(req GET '/api/v1/clients?includeInactive=true')" | jq -e --arg p "$CLIENT2_PID" '.[] | select(.publicId==$p) | .isActive==false' >/dev/null || fail "includeInactive"
 expect 200 "$(req GET "/api/v1/clients/$CLIENT2_PID")" | jq -e '.isActive==false' >/dev/null || fail "ficha accesible"
+# D39 (2026-10-11): un cliente dado de baja no admite nada NUEVO: cotizar, invitar al portal ni servicios especiales (409, solo se consulta su historial)
+expect 409 "$(req POST /api/v1/billing/contract-rate-quote "{\"clientPublicId\":\"$CLIENT2_PID\",\"lines\":[{\"serviceType\":\"STANDARD\",\"packageType\":\"BOX\",\"pieces\":1}]}")" | jq -e '.title == "El cliente está dado de baja; solo se consulta su historial."' >/dev/null || fail "cotizar con cliente de baja"
+expect 409 "$(req POST "/api/v1/clients/$CLIENT2_PID/portal-users/invite" "{\"email\":\"baja$TS@lasmarias.pr\",\"fullName\":\"Baja\",\"role\":\"CLIENT_ADMIN\"}")" | jq -e '.title | contains("dado de baja")' >/dev/null || fail "invitar con cliente de baja"
+expect 409 "$(req POST "/api/v1/clients/$CLIENT2_PID/special-services" "{\"newTypeName\":\"Baja $TS\",\"rate\":1}")" | jq -e '.title | contains("dado de baja")' >/dev/null || fail "servicio especial con cliente de baja"
 expect 204 "$(req POST "/api/v1/clients/$CLIENT2_PID/deactivate")" >/dev/null   # idempotente
 expect 204 "$(req POST "/api/v1/clients/$CLIENT2_PID/reactivate")" >/dev/null
 expect 200 "$(req GET /api/v1/clients)" | jq -e --arg p "$CLIENT2_PID" '.[] | select(.publicId==$p) | .isActive==true' >/dev/null || fail "reactivado"
