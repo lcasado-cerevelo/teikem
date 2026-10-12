@@ -412,6 +412,82 @@ export async function downloadBalances(warehousePublicId: string): Promise<Downl
   }
 }
 
+// ------------------------------------------------------------------ clientes y consignatarios (señal débil, 2026-10-11)
+
+function applyClients(db: SQLiteDatabase, items: Array<{ id?: number; publicId?: string; name?: string | null; code?: string | null; isActive?: boolean }>): void {
+  for (const c of items) {
+    if (!c.publicId) continue
+    // un cliente dado de baja ya no se ofrece para despachar: se borra del aparato
+    if (c.isActive === false) {
+      db.runSync('DELETE FROM client WHERE public_id = ?', [c.publicId])
+      continue
+    }
+    db.runSync(
+      `INSERT INTO client (public_id, id, name, code) VALUES (?, ?, ?, ?)
+       ON CONFLICT(public_id) DO UPDATE SET id = excluded.id, name = excluded.name, code = excluded.code`,
+      [c.publicId, c.id ?? 0, c.name ?? '', c.code ?? null],
+    )
+  }
+}
+
+function applyConsigneeLocations(
+  db: SQLiteDatabase,
+  items: Array<{ id?: number; publicId?: string; clientPublicId?: string | null; name?: string | null; code?: string | null; city?: string | null; isActive?: boolean }>,
+): void {
+  for (const l of items) {
+    if (!l.publicId) continue
+    if (l.isActive === false) {
+      db.runSync('DELETE FROM consignee_location WHERE public_id = ?', [l.publicId])
+      continue
+    }
+    db.runSync(
+      `INSERT INTO consignee_location (public_id, id, client_public_id, name, code, city) VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(public_id) DO UPDATE SET id = excluded.id, client_public_id = excluded.client_public_id, name = excluded.name,
+         code = excluded.code, city = excluded.city`,
+      [l.publicId, l.id ?? 0, l.clientPublicId ?? null, l.name ?? '', l.code ?? null, l.city ?? null],
+    )
+  }
+}
+
+/**
+ * Clientes a quienes se puede despachar (GET /sync/clients), por diferencia. Un 403 (sin warehouse.pick) se salta como las demás bajadas opcionales: el aparato sigue
+ * pidiéndolos en línea, como antes (GET /clients, con clients.read).
+ */
+export async function downloadClients(): Promise<DownloadResult> {
+  try {
+    const result = await runDiffDownload(
+      'clients',
+      async (since, cursor) => {
+        const page = await unwrap(api.GET('/api/v1/sync/clients', { params: { query: { since, cursor, take: TAKE } } }))
+        return { items: page.items ?? [], nextCursor: page.nextCursor ?? null, serverTimeUtc: page.serverTimeUtc ?? new Date().toISOString() }
+      },
+      applyClients,
+    )
+    return { ...result, resource: 'clients' }
+  } catch (err) {
+    if (!(err instanceof ApiError) || err.status !== 403) throw err
+    return { resource: 'clients', pages: 0, items: 0 }
+  }
+}
+
+/** Consignatarios / localizaciones elegibles (GET /sync/consignee-locations), por diferencia; el 403 se salta como en los clientes. */
+export async function downloadConsigneeLocations(): Promise<DownloadResult> {
+  try {
+    const result = await runDiffDownload(
+      'consignee_locations',
+      async (since, cursor) => {
+        const page = await unwrap(api.GET('/api/v1/sync/consignee-locations', { params: { query: { since, cursor, take: TAKE } } }))
+        return { items: page.items ?? [], nextCursor: page.nextCursor ?? null, serverTimeUtc: page.serverTimeUtc ?? new Date().toISOString() }
+      },
+      applyConsigneeLocations,
+    )
+    return { ...result, resource: 'consigneeLocations' }
+  } catch (err) {
+    if (!(err instanceof ApiError) || err.status !== 403) throw err
+    return { resource: 'consigneeLocations', pages: 0, items: 0 }
+  }
+}
+
 /**
  * 2026-10-01: las órdenes de compra exigen `purchasing.view` y el módulo Compras. Un usuario sin ellos (p. ej. el Operador de
  * almacén desde que Luis le quitó los permisos de compras) recibe 403: eso NO es una falla de sincronización, solo no recibe
@@ -490,6 +566,9 @@ export async function downloadForReceiving(options: { forceStockExit?: boolean }
     results.push(await downloadBalances(warehousePublicId))
     results.push(await downloadStockExit(warehousePublicId, options.forceStockExit === true))
   }
+  // 2026-10-11 (señal débil): clientes y consignatarios para despachar sin señal (un 403 se salta)
+  results.push(await downloadClients())
+  results.push(await downloadConsigneeLocations())
   // 2026-10-11: motivos del despacho manual (al final: no detiene lo demás; se pide como mucho cada 30 min)
   results.push(await downloadManualIssueReasons())
   return results

@@ -6,7 +6,7 @@ import { __resetSecureStoreForTests } from 'expo-secure-store'
 
 import { __resetSessionForTests, saveDeviceIdentity } from '../auth/session'
 import { localBalancesForBin, localBalancesForProduct, localBalancesSearch, balancesSyncedAtUtc } from '../warehouse/localBalances'
-import { downloadAsns, downloadBalances, downloadBins, downloadForReceiving, downloadStockExit, downloadProducts, downloadPurchaseOrders, downloadPurchaseOrdersIfAllowed } from './download'
+import { downloadAsns, downloadBalances, downloadBins, downloadClients, downloadConsigneeLocations, downloadForReceiving, downloadStockExit, downloadProducts, downloadPurchaseOrders, downloadPurchaseOrdersIfAllowed } from './download'
 
 jest.mock('../api/client', () => {
   const actual = jest.requireActual('../api/client')
@@ -241,7 +241,7 @@ describe('órdenes de compra sin permiso (403)', () => {
       path === '/api/v1/sync/purchase-orders' ? forbidden() : Promise.resolve(page([], null, '2026-01-01T00:00:00.000Z')),
     )
     const results = await downloadForReceiving()
-    expect(results.map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins', 'balances', 'stockExit', 'manualIssueReasons'])
+    expect(results.map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins', 'balances', 'stockExit', 'clients', 'consigneeLocations', 'manualIssueReasons'])
     expect(results[1]).toEqual({ resource: 'purchaseOrders', pages: 0, items: 0 })
   })
 
@@ -264,10 +264,10 @@ describe('órdenes de compra sin permiso (403)', () => {
 describe('downloadForReceiving', () => {
   it('sin almacén por defecto no baja posiciones; con él, las baja al final', async () => {
     getMock.mockImplementation(() => Promise.resolve(page([], null, '2026-01-01T00:00:00.000Z')))
-    expect((await downloadForReceiving()).map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'manualIssueReasons'])
+    expect((await downloadForReceiving()).map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'clients', 'consigneeLocations', 'manualIssueReasons'])
 
     await saveDeviceIdentity({ devicePublicId: 'dev-1', deviceSecret: 's', tenantName: 'T', defaultWarehousePublicId: 'wh-1', theme: null })
-    expect((await downloadForReceiving()).map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins', 'balances', 'stockExit', 'manualIssueReasons'])
+    expect((await downloadForReceiving()).map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins', 'balances', 'stockExit', 'clients', 'consigneeLocations', 'manualIssueReasons'])
   })
 })
 
@@ -384,5 +384,71 @@ describe('downloadBalances (señal débil)', () => {
     expect(localBalancesForBin('otro-almacen', 10)).toEqual([])
     expect(balancesSyncedAtUtc(WH)).not.toBeNull()
     expect(balancesSyncedAtUtc('otro')).toBeNull()
+  })
+})
+
+describe('clientes y consignatarios para despachar sin señal (2026-10-11)', () => {
+  it('downloadClients guarda los activos, actualiza el nombre y borra al que el servidor da de baja (isActive = false)', async () => {
+    getMock.mockResolvedValueOnce(
+      page(
+        [
+          { id: 1, publicId: 'c-1', name: 'Farmacia A', code: 'FARM-A', isActive: true },
+          { id: 2, publicId: 'c-2', name: 'Farmacia B', code: null, isActive: true },
+        ],
+        null,
+        '2026-01-01T00:00:00.000Z',
+      ),
+    )
+    const result = await downloadClients()
+    expect(result).toEqual({ resource: 'clients', pages: 1, items: 2 })
+    expect(getMock.mock.calls[0][0]).toBe('/api/v1/sync/clients')
+    expect(getMock.mock.calls[0][1].params.query).toMatchObject({ take: 500 })
+    expect(getDb().getAllSync('SELECT public_id, name, code FROM client ORDER BY id')).toEqual([
+      { public_id: 'c-1', name: 'Farmacia A', code: 'FARM-A' },
+      { public_id: 'c-2', name: 'Farmacia B', code: null },
+    ])
+
+    getMock.mockResolvedValueOnce(
+      page(
+        [
+          { id: 1, publicId: 'c-1', name: 'Farmacia A SA', code: 'FARM-A', isActive: true },
+          { id: 2, publicId: 'c-2', name: 'Farmacia B', code: null, isActive: false },
+        ],
+        null,
+        '2026-01-01T00:10:00.000Z',
+      ),
+    )
+    await downloadClients()
+    expect(getDb().getAllSync('SELECT public_id, name FROM client')).toEqual([{ public_id: 'c-1', name: 'Farmacia A SA' }])
+    // la segunda pasada pide por diferencia (marca de agua con 5 minutos de margen)
+    expect(getMock.mock.calls[1][1].params.query.since).toBe('2025-12-31T23:55:00.000Z')
+  })
+
+  it('downloadConsigneeLocations guarda las del cliente y las compartidas (clientPublicId null) y borra las dadas de baja', async () => {
+    getMock.mockResolvedValueOnce(
+      page(
+        [
+          { id: 1, publicId: 'l-1', clientPublicId: 'c-1', name: 'Sucursal 1', code: null, city: 'San Juan', isActive: true },
+          { id: 2, publicId: 'l-2', clientPublicId: null, name: 'Compartida', code: 'CMP', city: 'Bayamón', isActive: true },
+          { id: 3, publicId: 'l-3', clientPublicId: 'c-1', name: 'Cerrada', code: null, city: 'Ponce', isActive: false },
+        ],
+        null,
+        '2026-01-01T00:00:00.000Z',
+      ),
+    )
+    const result = await downloadConsigneeLocations()
+    expect(result).toEqual({ resource: 'consigneeLocations', pages: 1, items: 3 })
+    expect(getMock.mock.calls[0][0]).toBe('/api/v1/sync/consignee-locations')
+    expect(getDb().getAllSync('SELECT public_id, client_public_id, name, city FROM consignee_location ORDER BY id')).toEqual([
+      { public_id: 'l-1', client_public_id: 'c-1', name: 'Sucursal 1', city: 'San Juan' },
+      { public_id: 'l-2', client_public_id: null, name: 'Compartida', city: 'Bayamón' },
+    ])
+  })
+
+  it('un 403 (sin warehouse.pick) no es una falla: se salta y el aparato sigue pidiéndolos en línea', async () => {
+    getMock.mockRejectedValue(new ApiError(403, null))
+    expect(await downloadClients()).toEqual({ resource: 'clients', pages: 0, items: 0 })
+    expect(await downloadConsigneeLocations()).toEqual({ resource: 'consigneeLocations', pages: 0, items: 0 })
+    expect(getDb().getFirstSync('SELECT since_utc FROM sync_watermark WHERE resource = ?', ['clients'])).toBeNull()
   })
 })
