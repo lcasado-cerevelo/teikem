@@ -1,6 +1,6 @@
 # IP preferida: entrar sin código MFA desde la red de la localidad (diseño, 2026-10-12)
 
-> **Estado: SOLO DISEÑO. No hay código.** Pedido de Luis (2026-10-12). Nada de esto está implementado. Decisiones de Luis incorporadas (2026-10-12); lo que sigue abierto está en la sección 10.
+> **Estado: CONSTRUIDO (2026-10-12) en `Depot-Implementation`**, con las decisiones de Luis de la sección 10 (commits `[ip-preferida]`: restablecer contraseña con MFA, lógica de IPs, base de datos, API y pantalla). **Apagado por defecto en el servidor** (`Auth:TrustedNetworks:Enabled`). Resumen de lo construido en la sección 13.
 
 ## 1. Qué se quiere
 Una compañía tiene una o más **localidades** (almacén, oficina). Cada una sale a internet por la IP pública de su firewall. Quien se conecte desde la red de esa localidad (Wi-Fi o cable) **no debe escribir el código MFA al iniciar sesión**. Las acciones sensibles de administración (asignar permisos, etc.) **siguen pidiendo MFA**. Una lista **por compañía**, administrada solo por administración.
@@ -163,3 +163,14 @@ El sistema solo ve la **IP pública** con la que sale la conexión: no distingue
 Para un cliente que **no pueda** separar la red de invitados. El código solo se salta si la IP coincide **y** el navegador/equipo es uno que ya validó MFA antes (marca firmada, por usuario y por equipo, que el usuario o la administración pueden revocar). Un portátil de invitados no cumple la segunda condición aunque comparta la IP.
 - Costo: el primer ingreso de cada equipo nuevo siempre pide el código; hace falta el registro de equipos conocidos, su pantalla de revocación y expiración, y pruebas.
 - Se activaría como **opción por compañía**, solo para quien la necesite. Se decide más adelante, con un cliente real que la requiera.
+
+## 13. Lo construido
+- **Restablecer la contraseña con MFA (§3.1):** `ResetPasswordRequest.MfaCode`; sin código 400 `mfa_required` y con uno malo error en `mfaCode`, en ambos casos el enlace no se gasta; los fallos cuentan para el bloqueo; bitácora con `mfa: verified | not_enrolled` y `reason: mfa_failed`. La página muestra «Código de verificación» cuando el servidor lo pide.
+- **Lógica de IPs (`TrustedNetworkRules`, dominio; espejo `trustedNetworkCidr.ts` en la web):** lectura estricta (nada de «127.1»), normalización (IPv6 mapeada a IPv4, dirección de red, aviso de ajuste), rechazo de rangos más anchos que IPv4 /16 e IPv6 /48 y de direcciones inservibles, coincidencia por familia.
+- **Base de datos** (sección nueva e idempotente al final de `logistica-db-update.sql`): `dbo.TenantTrustedNetwork`, `dbo.Tenant.TrustedNetworkMaxEntries` (NULL = sin tope) y el tipo de evento `TRUSTED_NETWORK`.
+- **API:** `TrustedNetworkService` (alta, cambio, baja, máximo; validaciones; confirmación «solo red interna»; bitácora; auditoría; correo es/en a los administradores, que nunca revierte el cambio) y `TrustedNetworksController` (`GET`, `POST`, `PUT {id}`, `DELETE {id}`, `PUT limit`; `admin.tenant`; escrituras con `[RequireAal2]`).
+- **Login (`AuthService`):** las cinco reglas de la sección 3 en un solo punto; la sesión nace con `aal2At = null`; la decisión se anota **antes** de emitir la sesión (`mfa: skipped_trusted_network`, red y rango). Interruptor `Auth:TrustedNetworks:Enabled`, apagado por defecto.
+- **Web:** panel «IPs preferidas (red de confianza)» en Seguridad y auditoría → Sesiones y MFA (solo `admin.tenant`): IP actual y «Agregar esta IP», máximo, «Probar una IP», tabla con estado y «Usted está aquí», y el diálogo con la ayuda de CIDR (una sola IP / rango, tamaños y atajos, vista previa, avisos, recuadro de confirmación). Textos es/en.
+- **Pruebas:** 52 de las reglas de IP, 17 del servicio y del login, 5 de restablecer la contraseña, 9 y 10 de la lógica y del panel en la web.
+- **Manual:** `f10-seguridad-y-auditoria.md` §2.3, FAQ y `deploy/windows/README.md` (cómo encenderlo).
+- **Pendiente / no incluido:** la fase 2 («IP + equipo conocido», §12) y probar con una IP real en staging.

@@ -107,3 +107,16 @@ correr el mismo comando para activar la redirección a https. Para actualizar st
 - Las variables de sistema de Brevo son las mismas: staging **sí envía correos reales**. Si no quiere eso, déjelas vacías al pedirlas y use otra llave solo para staging.
 - **APK de staging:** `scripts\construir-apk.ps1 -Staging` (paquete `com.teikem.almacen.staging`, icono morado con cinta STAGING, servidor
   `https://teikem.isaxpr.com`); se instala junto a la de producción. Ver `docs/mobile/actualizar-apk.md`.
+
+## IP preferida: encenderla en el servidor
+
+La lista de IPs preferidas (Seguridad y auditoría → Sesiones y MFA) está **apagada por defecto** en cada servidor. Para que de verdad se salte el código MFA al iniciar sesión, agregue a `appsettings.Production.local.json` del sitio (el de producción y/o el de staging) y reinicie el grupo de aplicaciones:
+
+```json
+"Auth": { "TrustedNetworks": { "Enabled": true } }
+```
+
+- Es un interruptor **por servidor** (no por compañía): con él apagado la lista se puede preparar pero no salta el código, y el panel lo avisa. Cada compañía decide qué IPs carga.
+- La IP del cliente se toma de la conexión real. Si algún día se pone un proxy o CDN delante del sitio, configure primero los proxies de confianza (si no, todas las conexiones se verían con la IP del proxy) **antes** de encenderlo.
+- La base se actualiza con el instalador (`db-update`: la tabla `TenantTrustedNetwork`, la columna `Tenant.TrustedNetworkMaxEntries` y el tipo de evento `TRUSTED_NETWORK`).
+- Los avisos por correo a los administradores usan el mismo proveedor (Brevo) que el resto de los correos.
