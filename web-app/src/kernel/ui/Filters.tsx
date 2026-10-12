@@ -1,7 +1,6 @@
 import { useId, useRef, type ReactNode } from 'react'
-import { useLang, useT } from '../i18n/useT'
-import type { DateRange } from './dateRange'
-import { dateRangeFilterText, joinFilterValues } from './filterRegistry'
+import { useT } from '../i18n/useT'
+import { joinFilterValues } from './filterRegistry'
 import { useRegisterFilter } from './filterScopeContext'
 import './ui.css'
 
@@ -70,42 +69,7 @@ export function SelectFilter({ label, value, onChange, options, allLabel }: Sele
 
 export type { DateRange } from './dateRange'
 
-export interface DateRangeFilterProps {
-  label: string
-  value: DateRange
-  onChange: (value: DateRange) => void
-}
-
-/** Rango de fechas (desde/hasta, inclusivo). Ocupa el doble que un filtro normal (`.span2`; todo el renglón a 480 px). */
-export function DateRangeFilter({ label, value, onChange }: DateRangeFilterProps) {
-  const t = useT()
-  const lang = useLang()
-  const id = useId()
-  const ref = useRef<HTMLDivElement>(null)
-  // en el ámbito: "del 01/09/2026 al 30/09/2026" / "desde …" / "hasta …"
-  useRegisterFilter(label, dateRangeFilterText(value, lang, t), ref)
-  return (
-    <div className="f span2" role="group" aria-labelledby={`${id}-l`} ref={ref}>
-      <label id={`${id}-l`} htmlFor={`${id}-from`}>
-        {label}
-      </label>
-      <div className="drange">
-        <input
-          id={`${id}-from`}
-          type="date"
-          aria-label={t('ui.filters.from')}
-          value={value.from}
-          max={value.to || undefined}
-          onChange={(e) => onChange({ ...value, from: e.target.value })}
-        />
-        <input
-          type="date"
-          aria-label={t('ui.filters.to')}
-          value={value.to}
-          min={value.from || undefined}
-          onChange={(e) => onChange({ ...value, to: e.target.value })}
-        />
-      </div>
-    </div>
-  )
-}
+// El filtro de fecha (desplegable de rangos + campos «Personalizado») vive en su propio archivo (2026-10-12); se re-exporta aquí para
+// que quien lo importe de './Filters' siga igual.
+export { DateRangeFilter } from './DateRangeFilter'
+export type { DateRangeFilterProps } from './DateRangeFilter'

@@ -706,6 +706,23 @@
       "all": "Todos",
       "from": "Desde",
       "to": "Hasta",
+      "range": {
+        "all": "Todas las fechas",
+        "today": "Hoy",
+        "yesterday": "Ayer",
+        "tomorrow": "Mañana",
+        "last7": "Últimos 7 días",
+        "next7": "Próximos 7 días",
+        "thisWeek": "Esta semana",
+        "lastWeek": "Semana pasada",
+        "nextWeek": "Próxima semana",
+        "last30": "Últimos 30 días",
+        "thisMonth": "Este mes",
+        "lastMonth": "Mes pasado",
+        "nextMonth": "Próximo mes",
+        "thisYear": "Este año",
+        "custom": "Personalizado"
+      },
       "applied": {
         "prefix": "Filtros:",
         "none": "Sin filtros",

@@ -365,7 +365,9 @@ describe('Recibo: pestañas', () => {
     await user.type(screen.getByRole('searchbox', { name: 'Referencia' }), 'AX-1')
     await waitFor(() => expect(calls('GET', '/api/v1/asns').some((c) => c.url.searchParams.get('reference') === 'AX-1')).toBe(true))
     const range = screen.getByRole('group', { name: 'Llegada esperada' })
-    fireEvent.change(range.querySelectorAll('input')[0], { target: { value: '2026-09-01' } })
+    // el filtro de fecha es un desplegable de rangos: con «Personalizado» aparecen los campos Desde / Hasta
+    await user.selectOptions(within(range).getByRole('combobox'), 'custom')
+    fireEvent.change(within(range).getByLabelText('Desde'), { target: { value: '2026-09-01' } })
     await waitFor(() => expect(calls('GET', '/api/v1/asns').some((c) => c.url.searchParams.get('expectedFrom') === '2026-09-01')).toBe(true))
     expect(calls('GET', '/api/v1/asns').every((c) => !c.url.searchParams.has('search'))).toBe(true)
   })

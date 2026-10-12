@@ -1,0 +1,11 @@
+/* Filtro de fecha compacto (DateRangeFilter): una celda de filtro normal (140 px). Con «Personalizado» la celda se ensancha y los dos campos
+   de fecha van EN LA MISMA LÍNEA del desplegable, cada uno con su rótulo arriba (como «Fecha»): todo queda alineado con los demás filtros. */
+.filters>.f.drf.drf-open{flex:2.7 1 400px}
+.drf-row{display:grid;grid-template-columns:minmax(0,1fr);gap:6px}
+.drf-open .drf-row{grid-template-columns:minmax(96px,1.05fr) minmax(0,1fr) minmax(0,1fr)}
+.drf-col{min-width:0}
+/* a 480 px o menos la celda ocupa el renglón: el desplegable arriba (todo el ancho) y los dos campos debajo, uno junto al otro */
+@media(max-width:480px){
+  .drf-open .drf-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .drf-open .drf-col:first-child{grid-column:1/-1}
+}
