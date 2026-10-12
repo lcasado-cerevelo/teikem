@@ -116,10 +116,10 @@ la nueva muestra lo que hay y su indicador trabaja de fondo. Ya **no** se usa el
 - ~~Actualizar `docs/frontend/diseno-frontend.md`~~ **Hecho (Lote 36)**: sección «Estado real» al principio.
 
 ### P0.4 Pendientes de almacén ya decididos
-- **Despacho manual** como operación propia (salida sin documento; Luis rechazó usar «Ajustar»): `docs/frontend/loteF8a-decisiones.md` §3. Servidor + web + app. **Servidor hecho (Lote 31, 2026-10-11: `docs/lote31-decisiones.md`)**; faltan web y app.
-- ~~Rotación FIFO/FEFO configurable~~ **Servidor hecho (Lote 34, 2026-10-11: `docs/lote34-decisiones.md`)**: por compañía + excepción por producto, fecha de primera entrada por saldo; **falta el selector en la web y en la app** (Ajustes de la compañía y ficha del producto).
-- Sin probar en Zebra físico: hojas/etiquetas de posición y producto (lotes 23/24, F14–F16).
-- `sync/clients` y `sync/consignee-locations` (`lote8A-decisiones`); resumen de recibos por almacén en una llamada (`lote19`).
+- ~~**Despacho manual** como operación propia~~ **Hecho** (servidor Lote 31; app y web: `docs/manual/09-app-almacen.md` §6.y, `docs/manual/frontend/f19-despacho-manual.md`).
+- ~~Rotación FIFO/FEFO configurable~~ **Hecho (Lotes 34 y 37, 2026-10-11)**: servidor (por compañía + excepción por producto, fecha de primera entrada por saldo) y selector en la web (Ajustes de la compañía → Operación y ficha del producto); la app del almacén no tiene pantallas de ajustes ni de edición de productos y ya respeta el método.
+- **Sin probar en Zebra físico** (queda para Luis): hojas/etiquetas de posición y producto (lotes 23/24, F14–F16) y todo lo de señal débil (lector, batería, señal real).
+- ~~`sync/clients` y `sync/consignee-locations`~~ **Hecho (Lote 37)**: el aparato baja clientes y consignatarios y despacha/empaca sin señal. ~~Resumen de recibos por almacén en una llamada~~ **Hecho (Lote 37)**: `GET /receipts/summary-by-warehouse`.
 
 ---
 

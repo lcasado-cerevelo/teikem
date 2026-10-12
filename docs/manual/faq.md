@@ -6267,3 +6267,9 @@ No: alguien movió mercancía de esa posición entre que contaste y se sincroniz
 
 **¿Por qué el aparato dice que sí cabe en la posición y el servidor avisó que no?**
 El espacio libre del aparato es el cupo de la posición menos lo que el aparato sabe que hay. No conoce lo que otras líneas del mismo recibo ya reservaron en esa posición (el servidor sí). Es solo un aviso: el servidor decide y no bloquea por cupo.
+
+**No me aparece un cliente o un consignatario al empacar un despacho sin señal.**
+El aparato baja los clientes activos y los consignatarios (los del cliente y los compartidos) con la sincronización de cada minuto. Si se creó hace menos de un minuto, toque «Sincronizar ahora» en Inicio. Si sigue sin salir, está dado de baja o el usuario no lo ve (alcance de datos). Los bajan quienes tienen el permiso `warehouse.pick`; sin él, la app los pide al servidor con `clients.read` y `locations.read`.
+
+**¿Dónde cambio la rotación FEFO/FIFO?**
+En la web: Ajustes de la compañía → Operación → «Rotación del inventario» (para toda la compañía; permiso `admin.tenant`) y, si un producto necesita el otro método, en su ficha → «Rotación». La app del almacén no tiene ese selector pero ya respeta el método.

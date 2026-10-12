@@ -149,6 +149,11 @@ repite sola. Al terminar, el menú y el buscador muestran u ocultan las pantalla
   almacenes.". Nota: el servidor usa la primera zona `STAGING` del almacén cuando no tiene posición por defecto, así que el aviso
   también sale en un almacén que recibiría con esa zona (en la captura, ALM-01); fije la posición por defecto para quitarlo.
 
+- **Rotación del inventario** (módulo WMS, 2026-10-11). Un selector **FEFO — vence primero, sale primero** (el de siempre y el de todas las compañías existentes) / **FIFO — entra primero, sale primero**. Define de qué saldo sale primero la mercancía
+  cuando el sistema asigna una salida (recolección, despacho manual, reabasto y el orden de salida del aparato); cada producto puede tener su excepción en su ficha. Guardar manda `rotationMethod` y exige `admin.tenant` (sin él, de solo lectura).
+  Vale desde la siguiente asignación; no cambia lo ya recolectado. Mensaje del servidor bajo el selector: *El método de rotación debe ser FEFO o FIFO.* (400). Detalle funcional en el capítulo 06 §2.2.
+- **«Recepción por almacén» en una sola llamada** (2026-10-11): los recibos abiertos y los acomodos pendientes de todos los almacenes se leen con `GET /api/v1/receipts/summary-by-warehouse` (antes, dos consultas por almacén).
+
 ![Recepción por almacén](img/f9-operacion-recepcion.png)
 
 ## 7. Marca

@@ -899,6 +899,22 @@ Al acomodar o recibir directo a posición, la app avisa si lo que se pone **no c
 Detalle: el aparato **no sabe lo que otras líneas del mismo recibo ya reservaron** en esa posición (el servidor sí lo descuenta); por eso el espacio libre del aparato puede ser un poco mayor y el
 servidor es quien manda. Al actualizar la app, la base local migra sola a la versión 12 y **baja las posiciones completas una vez**; hasta que lo haga, una posición sin el cupo todavía se consulta al servidor como antes.
 
+### 6.z Despachar y empacar sin señal: clientes y consignatarios en el aparato (2026-10-11)
+
+Antes, al **Empacar** un despacho de inventario **propio** (sin dueño 3PL) la app pedía al servidor la lista de clientes y de consignatarios, así que ese paso necesitaba señal. Ahora el aparato **baja
+esas listas con la sincronización** y las lee de sí mismo:
+
+- **Clientes:** los activos (`GET /api/v1/sync/clients`). **Consignatarios:** los del cliente elegido **más los compartidos del operador** (`GET /api/v1/sync/consignee-locations`).
+- Ordenados por nombre. Si un consignatario no tiene nombre ni ciudad, se muestra su código.
+- Se bajan con la sincronización de cada minuto (por diferencia). Un cliente o consignatario que el servidor da de baja **se borra del aparato**.
+- **Permiso:** bajarlos exige **`warehouse.pick`** (ya no hace falta `clients.read` ni `locations.read` solo para elegir a quién). Si el aparato **todavía no los ha bajado** (primer uso) o el usuario no tiene `warehouse.pick`,
+  la app los pide al servidor **como antes** (con `clients.read` / `locations.read`). Al actualizar la app, la base local migra sola a la versión 13; no se pierde nada.
+- Al confirmar el despacho sin señal queda en la **cola de salida** («Despacho») y se manda solo al volver la señal, como siempre.
+
+Casos frecuentes:
+- **No aparece un cliente o un consignatario nuevo:** se creó hace menos de un minuto; toque **Sincronizar ahora** en Inicio. Si sigue sin aparecer, está dado de baja o el usuario no ve a ese cliente (alcance de datos).
+- **El consignatario que elegí lo rechazó el servidor al mandarlo** (por ejemplo, se dio de baja después de la última sincronización): el despacho queda en Sincronización como «requiere revisión» con el motivo del servidor.
+
 ## 8. Consultar
 
 Qué hace: un solo campo para buscar saldos, por producto (código de barras o SKU, ya sincronizado), por **posición** o por texto

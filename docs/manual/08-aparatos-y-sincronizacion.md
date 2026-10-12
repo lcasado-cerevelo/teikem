@@ -318,6 +318,12 @@ Quién puede: `inventory.view` en todos los recursos; el de órdenes de compra e
 
 Cómo se usa: `GET /api/v1/sync/products`, `/sync/bins?warehousePublicId=`, `/sync/purchase-orders`, `/sync/asns`,
 `/sync/warehouse-tasks?warehousePublicId=`, `/sync/product-categories`, todos con `since`, `cursor` y `take`.
+
+**Clientes y consignatarios para despachar sin señal (2026-10-11): `GET /api/v1/sync/clients` y `GET /api/v1/sync/consignee-locations`** (mismo protocolo `since` / `cursor` / `take`;
+módulo **WMS_LOTSERIAL**, permiso **`warehouse.pick`**: quien despacha desde el aparato no necesita `clients.read` ni `locations.read` solo para elegir a quién). `sync/clients` trae
+`{ id, publicId, name, code, isActive }`: sin `since`, los clientes **activos**; con `since`, los cambiados, también los dados de baja (`isActive: false`, que el aparato borra). `sync/consignee-locations`
+trae `{ id, publicId, clientPublicId, name, code, city, isActive }`: las localizaciones de cada cliente **y las compartidas del operador** (`clientPublicId` = null), de cualquier tipo, que son las mismas que acepta
+la orden (del cliente o compartida, y activa); las de otra compañía nunca salen y, si el usuario tiene alcance de datos por cliente (manual 01 §3.5), solo las de sus clientes y las compartidas.
 Protocolo:
 1. Primera vez: sin `since`, trae todo lo vigente.
 2. Mientras la respuesta traiga `nextCursor`, pedir la siguiente página con ese cursor tal cual (sin cambiar

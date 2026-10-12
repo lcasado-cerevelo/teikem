@@ -618,9 +618,9 @@ conviene para un producto que vence, déjalo como FEFO con su excepción.
 | `rotationMethod` distinto de FEFO o FIFO (compañía, alta o edición de producto) | `El método de rotación debe ser FEFO o FIFO.` | 400 (campo `rotationMethod`) |
 | Cambiar el de la compañía sin `admin.tenant` | respuesta estándar de permiso denegado | 403 |
 
-Qué cambia en las pantallas: nada visible todavía. La web y la app **no** tienen aún el selector (Ajustes de la compañía → Operación y la ficha del producto);
-por ahora se configura por la API. Las pantallas que muestran el orden de salida (selector de posiciones de Recolección, «Despachar» de la app) ya usan el orden
-que calcula el servidor, así que **respetan el método** sin cambios.
+Dónde se cambia en las pantallas (2026-10-11): **web, Ajustes de la compañía → Operación → «Rotación del inventario»** (selector FEFO / FIFO; exige `admin.tenant`, sin él es de solo lectura) y, para la excepción de un producto,
+**Productos e inventario → ficha del producto → «Rotación»** (opciones «Igual que la compañía», FEFO y FIFO; al volver a «Igual que la compañía» se quita la excepción). La app del almacén **no** tiene pantallas de ajustes ni de edición de
+productos, así que ahí no hay selector: sus pantallas de salida (selector de posiciones de Recolección, «Despachar») ya usan el orden que calcula el servidor y **respetan el método** sin cambios.
 
 ## 3. Inventario: saldos, Kárdex, ajustes, transferencias, conciliación y descuadres, genealogía y rastro de serie
 
@@ -915,6 +915,9 @@ el módulo **PURCHASING** encendido. Módulo **WMS_LOTSERIAL**.
 Cómo se usa:
 - `GET/POST /api/v1/asns`, `POST /api/v1/asns/{id}/cancel`.
 - `GET /api/v1/receipts?warehousePublicId=&status=&types=&from=&to=&productPublicIds=&hasVariance=&search=&variance=&phase=`.
+- `GET /api/v1/receipts/summary-by-warehouse` (2026-10-11, `inventory.view`): **recibos abiertos y por acomodar de TODOS los almacenes en una sola llamada** (también los inactivos): `[ { warehousePublicId, openCount, pendingPutawayCount } ]`.
+  `openCount` = recibos en Esperado, Recibiendo o Discrepancia; `pendingPutawayCount` = Completado o Completado con diferencia; son los mismos totales que `GET /receipts?phase=OPEN` y `?phase=PENDING_PUTAWAY` con `take=1`,
+  almacén por almacén (solo recibos activos de la compañía). Un almacén sin recibos sale con 0 y 0. Lo usa la pantalla de Ajustes de la compañía → Operación → «Recepción por almacén» (antes hacía dos consultas por almacén).
   Lote 13:
   - `phase` = fase del recibo: `OPEN` (Esperado, Recibiendo o Discrepancia), `PENDING_PUTAWAY` (Completado o
     Completado con diferencia: confirmados con acomodo por cerrar) o `DONE` (Acomodado). Es la base de la pestaña
