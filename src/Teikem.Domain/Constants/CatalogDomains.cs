@@ -409,6 +409,8 @@ public static class SecurityEventTypes
     public const string Lockout = "LOCKOUT";
     public const string ApiCredential = "API_CREDENTIAL";
     public const string TenantSwitch = "TENANT_SWITCH";
+    /// <summary>2026-10-12: alta, cambio o baja de una entrada de «IP preferida» (red de confianza) y cambio de su máximo.</summary>
+    public const string TrustedNetwork = "TRUSTED_NETWORK";
 }
 
 public static class SecurityOutcomes

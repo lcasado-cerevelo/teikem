@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Teikem.Domain.Identity;
+using Teikem.Domain.Security;
 using Teikem.Domain.Tenancy;
 
 namespace Teikem.Infrastructure.Persistence.Configurations;
@@ -64,6 +65,21 @@ public sealed class TenantHolidayConfiguration : IEntityTypeConfiguration<Tenant
         b.Property(h => h.Name).HasMaxLength(120).IsRequired();
         b.Property(h => h.HolidayDate).HasColumnType("date");
         b.HasIndex(h => new { h.TenantId, h.HolidayDate }).IsUnique();
+    }
+}
+
+/// <summary>IP preferida / red de confianza de la compañía (dbo.TenantTrustedNetwork, 2026-10-12): una IP o rango por fila; el rango normalizado es único por compañía.</summary>
+public sealed class TenantTrustedNetworkConfiguration : IEntityTypeConfiguration<TenantTrustedNetwork>
+{
+    public void Configure(EntityTypeBuilder<TenantTrustedNetwork> b)
+    {
+        b.ToTable("TenantTrustedNetwork");
+        b.HasKey(n => n.TenantTrustedNetworkId);
+        b.Property(n => n.Name).HasMaxLength(100).IsRequired();
+        b.Property(n => n.Cidr).HasColumnType("varchar(50)").IsRequired();
+        b.Property(n => n.Note).HasMaxLength(300);
+        b.HasIndex(n => n.PublicId).IsUnique().HasDatabaseName("UX_TenantTrustedNetwork_PublicId");
+        b.HasIndex(n => new { n.TenantId, n.Cidr }).IsUnique().HasDatabaseName("UQ_TenantTrustedNetwork");
     }
 }
 

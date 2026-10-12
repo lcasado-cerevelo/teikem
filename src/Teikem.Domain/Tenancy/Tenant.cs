@@ -76,6 +76,8 @@ public class Tenant : ISoftDeletable
     public int? DefaultProductCategoryId { get; set; }
     /// <summary>Lote 34: método de rotación del inventario de la compañía ('FEFO' | 'FIFO'). FEFO para todas las existentes.</summary>
     public string RotationMethod { get; set; } = "FEFO";
+    /// <summary>2026-10-12: máximo de entradas de «IP preferida» (TenantTrustedNetwork) de la compañía; NULL = sin tope. Lo cambia la administración de la compañía.</summary>
+    public int? TrustedNetworkMaxEntries { get; set; }
 
     // --- Despacho manual (2026-10-11 b) ---
     /// <summary>
