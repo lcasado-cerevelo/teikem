@@ -38,7 +38,11 @@ async function shot(page: Page, isMobile: boolean, name: string) {
   await page.waitForLoadState('networkidle')
   await expect(page.locator('.toast.on')).toHaveCount(0, { timeout: 15_000 })
   mkdirSync(IMG_DIR, { recursive: true })
+  // ventana más alta solo para la captura: los formularios y modales largos salen completos
+  const size = page.viewportSize()
+  if (size) await page.setViewportSize({ width: size.width, height: 1000 })
   await page.screenshot({ path: `${IMG_DIR}${name}.png`, animations: 'disabled', caret: 'hide' })
+  if (size) await page.setViewportSize(size)
 }
 
 async function apiToken(request: APIRequestContext): Promise<string> {
@@ -91,6 +95,14 @@ async function ok<T>(p: Promise<import('@playwright/test').APIResponse>, what: s
   const res = await p
   expect(res.ok(), `${what}: ${res.status()} ${await res.text()}`).toBeTruthy()
   return (await res.json()) as T
+}
+
+/** "Hoy" de la compañía demo (America/Puerto_Rico) y días después, 'YYYY-MM-DD'. */
+function tenantDay(plus = 0): string {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Puerto_Rico', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+  const d = new Date(`${today}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + plus)
+  return d.toISOString().slice(0, 10)
 }
 
 /** Aviso (toast) con ese texto. */
@@ -147,12 +159,15 @@ test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
     await expect(page.getByLabel(/N\.º de factura/)).toBeDisabled()
     await pickConsignee(page, consigneeName)
     await expect(page.getByLabel('Dirección')).toHaveValue('Calle Sol 123')
-    await expect(page.getByLabel('Pueblo')).toHaveValue('Ponce')
+    await expect(page.getByRole('textbox', { name: 'Pueblo' })).toHaveValue('Ponce')
     // servicio y tipos de paquete: el primero del catálogo si la compañía no tiene predeterminado
     const service = page.getByRole('combobox', { name: /^Servicio/ })
     if ((await service.inputValue()) === '') await service.selectOption({ index: 1 })
     const types = page.getByRole('combobox', { name: /^Tipo de paquete/ })
     if ((await types.first().inputValue()) === '') await types.first().selectOption({ index: 1 })
+    // captura del arranque del formulario (cliente, servicio y consignatario), con la página arriba
+    await page.getByRole('heading', { level: 1, name: 'Órdenes' }).scrollIntoViewIfNeeded()
+    await shot(page, isMobile, 'fc1-alta-inicio')
     await page.getByLabel(/^Piezas/).first().fill('2')
     await page.getByLabel('Descripción').first().fill('Ropa')
     await page.getByRole('button', { name: /Añadir paquete/ }).click()
@@ -185,10 +200,17 @@ test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
     await page.getByLabel(new RegExp(clientName)).check()
     await page.keyboard.press('Escape')
     const orderNumber = created?.orderNumber ?? ''
-    const rows = page.getByRole('table', { name: 'Órdenes' }).getByRole('row').filter({ hasText: /\S/ })
-    await expect(rows).toHaveCount(3) // encabezado + 2 filas de la misma orden
-    await expect(rows.nth(1)).toContainText(orderNumber)
-    await expect(rows.nth(2)).toContainText('↳')
+    if (isMobile) {
+      // en móvil la tabla pasa a tarjetas: una por orden, con el resumen de sus paquetes (sin fila «↳»)
+      const cards = page.locator('ul.dt-cards li.dt-card')
+      await expect(cards).toHaveCount(1)
+      await expect(cards.first()).toContainText(orderNumber)
+    } else {
+      const rows = page.getByRole('table', { name: 'Órdenes' }).getByRole('row').filter({ hasText: /\S/ })
+      await expect(rows).toHaveCount(3) // encabezado + 2 filas de la misma orden
+      await expect(rows.nth(1)).toContainText(orderNumber)
+      await expect(rows.nth(2)).toContainText('↳')
+    }
     await expect(page.getByText('1–1 de 1', { exact: true })).toBeVisible()
     await shot(page, isMobile, 'fc1-lista-filas')
 
@@ -216,13 +238,18 @@ test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
     // ---- Entrega especial: el cliente no tiene servicios especiales ----
     await page.getByRole('switch', { name: 'Es una entrega especial' }).check()
     await expect(page.getByLabel('Monto COD')).toHaveCount(0)
-    await expect(page.getByLabel(/N\.º de orden/)).toBeVisible()
-    await expect(page.getByText('Este cliente no tiene servicios especiales configurados')).toBeVisible()
+    await expect(page.getByRole('textbox', { name: /N\.º de orden/ })).toBeVisible()
+    // el aviso es la única opción del selector «Servicio especial»
+    await expect(page.getByRole('combobox', { name: /^Servicio especial/ })).toContainText('Este cliente no tiene servicios especiales configurados')
     await shot(page, isMobile, 'fc1-alta-especial')
     await page.getByRole('button', { name: 'Ocultar formulario' }).click()
     await expect(page.getByText('Ticket de la orden')).toHaveCount(0)
 
-    // ---- Papelera ----
+    // ---- Papelera (la lista vuelve a filtrarse por el cliente: «Limpiar» la dejó con todas las órdenes) ----
+    await clientFilter.click()
+    await page.getByLabel(new RegExp(clientName)).check()
+    await page.keyboard.press('Escape')
+    await expect(page.getByText('1–1 de 1', { exact: true })).toBeVisible()
     await page.getByRole('button', { name: 'Eliminar la orden' }).click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toContainText(orderNumber)
@@ -232,5 +259,69 @@ test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
     await expect(page.getByText('Sin resultados')).toBeVisible()
     const gone = await ok<OrderPageDto>(request.get(`${API_URL}/api/v1/orders?clientId=${client.publicId}`, { headers }), 'órdenes tras eliminar')
     expect(gone.total).toBe(0)
+  })
+
+  test('factura repetida y crédito excedido: avisos al guardar y confirmar, con autorización', async ({ page, request }, testInfo) => {
+    const isMobile = testInfo.project.name.startsWith('movil')
+    const suffix = `${isMobile ? 'M' : 'D'}${LETTERS}`
+    const clientName = `Cliente Cred FC1 ${suffix}`
+    const consigneeName = `Consignatario Cred FC1 ${suffix}`
+    const headers = { Authorization: `Bearer ${await apiToken(request)}` }
+    // cliente con límite de crédito bajo, contrato activo con una tarifa y número de factura capturado por el cliente
+    const client = await ok<ClientDetailDto>(
+      request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: clientName, creditLimit: 10, contract: { startDate: tenantDay(-30), title: 'Contrato crédito' } } }),
+      'cliente',
+    )
+    await ok(request.patch(`${API_URL}/api/v1/clients/${client.publicId}/number-settings`, { headers, data: { clientAssignsInvoiceNumber: true } }), 'numeración')
+    const contractId = client.currentContract?.publicId ?? ''
+    await ok(request.post(`${API_URL}/api/v1/contracts/${contractId}/rate-components`, { headers, data: { kind: 'PER_SERVICE', serviceType: 'STANDARD', packageType: 'BOX', rate: 100, effectiveFrom: tenantDay(-30) } }), 'tarifa')
+    await ok(request.post(`${API_URL}/api/v1/contracts/${contractId}/status`, { headers, data: { toCode: 'ACTIVE' } }), 'contrato activo')
+    await ok(
+      request.post(`${API_URL}/api/v1/locations`, {
+        headers,
+        data: { clientPublicId: client.publicId, locationType: 'DELIVERY', name: consigneeName, line1: 'Calle Luna 45', city: 'Ponce', postalCode: '00716', country: 'PR', allowDupInvoice: true },
+      }),
+      'consignatario',
+    )
+    const invoice = `FAC-${suffix}`
+
+    async function fillOrder() {
+      await page.getByRole('button', { name: /Nueva orden/ }).click()
+      await pickClient(page, clientName)
+      await pickConsignee(page, consigneeName)
+      await page.getByRole('combobox', { name: /^Servicio/ }).selectOption('STANDARD')
+      await page.getByRole('combobox', { name: /^Tipo de paquete/ }).first().selectOption('BOX')
+      await page.getByLabel(/N\.º de factura/).fill(invoice)
+    }
+
+    await login(page)
+    await page.goto('/orders')
+    await expect(page.getByRole('heading', { level: 1, name: 'Órdenes' })).toBeVisible()
+
+    // primera orden: borrador con la factura
+    await fillOrder()
+    await page.getByRole('button', { name: 'Guardar borrador' }).click()
+    await expect(toast(page, /^Orden .+ guardada\.$/)).toBeVisible()
+    await expect(page.getByText('Ticket de la orden')).toHaveCount(0)
+
+    // segunda con la misma factura: el consignatario la admite repetida, avisa y deja decidir
+    await fillOrder()
+    await page.getByRole('button', { name: 'Guardar y confirmar' }).click()
+    const dup = page.getByRole('dialog', { name: 'Factura repetida para este consignatario' })
+    await expect(dup).toContainText(invoice)
+    await shot(page, isMobile, 'fc1-factura-repetida')
+    await dup.getByRole('button', { name: 'Crear de todos modos' }).click()
+
+    // al confirmar, el cliente excede su límite: aviso con la opción de autorizar
+    const credit = page.getByRole('dialog', { name: 'El cliente excede su límite de crédito' })
+    await expect(credit).toBeVisible()
+    await shot(page, isMobile, 'fc1-credito')
+    const before = await ok<OrderPageDto>(request.get(`${API_URL}/api/v1/orders?clientId=${client.publicId}`, { headers }), 'órdenes antes de autorizar')
+    expect(before.total).toBe(1)
+    await credit.getByRole('button', { name: 'Autorizar y confirmar' }).click()
+    await expect(credit).toBeHidden()
+    const after = await ok<OrderPageDto>(request.get(`${API_URL}/api/v1/orders?clientId=${client.publicId}`, { headers }), 'órdenes tras autorizar')
+    expect(after.total).toBe(2)
+    expect(after.items?.some((o) => o.isInitialStatus === false)).toBe(true)
   })
 })

@@ -3,7 +3,7 @@
 // agregar y quitar columnas y valores por defecto (solo de los campos que los admiten). POST o PATCH (`locations.create`);
 // las plantillas se desactivan y reactivan en lugar de «eliminarse» (el servidor no tiene DELETE).
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { useT } from '../../kernel/i18n'
 import { Field, Form, IconPlus, IconTrash, Modal, Select, TextInput, Toggle, toast } from '../../kernel/ui'
@@ -58,6 +58,17 @@ export function ImportTemplateEditorModal({ template, fields, fieldLabel, onClos
   const form = useForm({ resolver: zodResolver(schema), values: templateValuesOf(template) })
   const columns = useFieldArray({ control: form.control, name: 'columns' })
   const defaults = useFieldArray({ control: form.control, name: 'defaults' })
+
+  // tras un intento de guardar, el error de la lista completa («Indique al menos una columna», name y line1, ciudad…) se
+  // vuelve a evaluar con cada cambio de columnas o valores por defecto; si no, se queda en pantalla aunque ya esté corregido
+  const submitted = form.formState.isSubmitted
+  useEffect(() => {
+    if (!submitted) return
+    const sub = form.watch((_, info) => {
+      if (info.name?.startsWith('columns') || info.name?.startsWith('defaults')) void form.trigger('columns')
+    })
+    return () => sub.unsubscribe()
+  }, [form, submitted])
 
   // el error de la lista completa («name y line1», ciudad…) no es de una fila: se ve bajo la tabla
   const columnsErrors = form.formState.errors.columns as { message?: string; root?: { message?: string } } | undefined

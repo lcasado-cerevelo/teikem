@@ -348,6 +348,8 @@ describe('Importar consignatarios — editor de plantillas', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Guardar plantilla' }))
     expect(await within(dialog).findByText('Indique al menos una columna.')).toBeInTheDocument()
     await user.selectOptions(within(dialog).getByLabelText('Columna 1'), 'Número')
+    // el aviso ya corregido desaparece al cambiar la columna (sin volver a guardar)
+    await waitFor(() => expect(within(dialog).queryByText('Indique al menos una columna.')).toBeNull())
     await user.click(within(dialog).getByRole('button', { name: 'Guardar plantilla' }))
     expect(await within(dialog).findByText('La plantilla debe incluir las columnas name y line1.')).toBeInTheDocument()
     await user.selectOptions(within(dialog).getByLabelText('Columna 2'), 'Nombre *')
