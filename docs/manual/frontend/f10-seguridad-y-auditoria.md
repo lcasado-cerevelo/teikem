@@ -95,7 +95,7 @@ Los cuatro valores de seguridad de la compañía (`GET`/`PUT /api/v1/tenant/sett
 | Campo | Regla | Mensaje | Dónde |
 |---|---|---|---|
 | Duración de la sesión / del aparato | entero de 1 a 365 | "Entre 1 y 365 días." | Pantalla (bajo el campo, no se manda) y servidor, 400 bajo el campo |
-| Ventana de reautenticación | 5 a 240 minutos | "Entre 5 y 240 minutos." | Servidor, 400 bajo el campo (la pantalla solo ofrece valores válidos) |
+| Ventana de reautenticación | 15, 30 o 60 minutos | "La ventana de reautenticación debe ser de 15, 30 o 60 minutos." | Servidor, 400 bajo el campo (la pantalla solo ofrece esos valores, más el guardado si era otro) |
 
 ## 3. En el celular (360 px)
 

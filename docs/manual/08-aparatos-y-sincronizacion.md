@@ -58,6 +58,8 @@ No aplica (la cabecera se ignora, aunque venga) en rutas que devuelven un secret
 días en la bitácora de idempotencia: `/api/v1/auth`, `/api/v1/me`, `/api/v1/devices`, `/api/v1/platform`,
 `/api/v1/users` (el alta de usuario devuelve la contraseña temporal) y las invitaciones de portal
 (`/api/v1/clients/{id}/portal-users/invite` y `.../portal-users/{id}/resend-invite`).
+Desde 2026-10-11 esa exclusión no es una lista de rutas sino el atributo **`[SkipIdempotency("motivo")]`** que declara cada controlador o acción (los de arriba son los únicos marcados);
+una prueba fija el conjunto exacto, así que un endpoint nuevo que devuelva credenciales debe marcarse a propósito.
 
 ### Qué decide el API según lo que ya exista con esa clave
 

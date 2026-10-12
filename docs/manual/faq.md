@@ -301,7 +301,7 @@ cabecera `X-Correlation-Id` de la petición que originó el cambio.
 
 ### Configuración de la compañía
 
-**¿Qué significa "Código de idioma de 2 letras."? / "Máscara inválida (1-127)."? / "Debe ser ≥ 1."? / "Entre 5 y 240 minutos."? / "Entre 1 y 365 días."?**
+**¿Qué significa "Código de idioma de 2 letras."? / "Máscara inválida (1-127)."? / "Debe ser ≥ 1."? / "La ventana de reautenticación debe ser de 15, 30 o 60 minutos."? / "Entre 1 y 365 días."?**
 El valor que enviaste para ese ajuste está fuera del rango permitido. Revisa el límite indicado en el mensaje.
 
 **¿Qué significa "BrandingJson no es JSON válido."? / "BrandingJson demasiado grande (los logos van a blob storage)."?**
@@ -1893,7 +1893,7 @@ Las rutas que devuelven credenciales en claro (`/api/v1/auth`, `/api/v1/me`, `/a
 `/api/v1/users`, cuyo alta devuelve la contraseña temporal) quedan fuera de la idempotencia para no guardar secretos en
 la bitácora. Son operaciones de administración, no de la cola del aparato. Lo mismo vale para invitar y reenviar la
 invitación de un usuario de portal (`/api/v1/clients/{id}/portal-users/invite` y `.../resend-invite`), que devuelven el
-token de invitación.
+token de invitación. Desde 2026-10-11 cada una de esas rutas lleva el atributo `[SkipIdempotency("motivo")]` en su controlador (ya no es una lista fija de prefijos).
 
 **¿La misma `Idempotency-Key` sirve para dos usuarios distintos?**
 Sí: la clave es por compañía y usuario. Si otro usuario usa la misma clave, su operación se ejecuta como nueva (no
@@ -4005,9 +4005,9 @@ lo verá si llama al API a mano: haga `POST /api/v1/auth/reauth` y repita.
 Su usuario no tiene `admin.users` (revocar exige `admin.audit` y `admin.users`). En la pantalla los botones no aparecen sin
 ese permiso. Queda un evento `PERMISSION_DENIED`.
 
-**"Entre 1 y 365 días." / "Entre 5 y 240 minutos." en la política (400)**
+**"Entre 1 y 365 días." / "La ventana de reautenticación debe ser de 15, 30 o 60 minutos." en la política (400)**
 Son los mensajes de siempre de `PUT /api/v1/tenant/settings` (capítulo 01, sección 11); ahora la pantalla los pone bajo el
-campo. La duración debe ser un número entero de días de 1 a 365.
+campo. La duración debe ser un número entero de días de 1 a 365. La ventana de reautenticación solo puede ser de 15, 30 o 60 minutos (una compañía que ya tenía otro valor lo conserva mientras no lo cambie).
 
 ### Mensajes que solo ve en la pantalla (sin código HTTP)
 

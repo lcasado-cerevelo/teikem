@@ -1,13 +1,32 @@
 # Frontend web de operación — diseño y modelo de agentes
 
-Fecha: 2026-09-27. Estado: **propuesta para aprobación de Luis**. Nada de esto está construido.
+Fecha del diseño: 2026-09-27. **Actualizado: 2026-10-11 — ya está construido en gran parte** (ver «Estado real» abajo). Lo que sigue de la sección 1 en adelante es el
+diseño original y se conserva como registro de por qué se eligió cada cosa; donde difiera de lo construido, manda lo construido y la sección «Estado real».
 
-El backend (Lotes 1 a 6) expone 371 endpoints en 47 controladores, con JWT, permisos `recurso.accion`, módulos por
+El backend (hoy 35 lotes) expone 485 operaciones en 388 rutas (60 archivos de controladores; en el diseño original eran 371 endpoints en 47 controladores), con JWT, permisos `recurso.accion`, módulos por
 tenant, catálogos multilingües, estatus con etapas, campos personalizados, vistas, indicadores y gráficos. El frontend
 web consume ese API tal cual: no se agrega lógica de negocio en el navegador salvo la que el propio API ya define como
 compartida (el evaluador de reglas del DSL, opción A aprobada). La maqueta `Diseño/teikem-mockups.html` es la
 especificación visual y de flujo pantalla por pantalla; el manual funcional `docs/manual/` es la especificación de
 comportamiento (validaciones, mensajes, transiciones).
+
+---
+
+## Estado real (2026-10-11)
+
+- **Existe `web-app/`** (React 18 + TypeScript + Vite) con el cliente del API **generado** desde `web-app/openapi.json` (`npm run api:types`), el kit y los patrones de pantalla en `web-app/KIT.md`
+  (quien construye una pantalla lee ese archivo, no el núcleo), i18n es/en y pruebas Vitest (**1539** verdes) más recorridos Playwright contra el API real. La compuerta de cada lote es
+  `npm run check` (tipos generados, tsc, oxlint, vitest, build).
+- **La numeración de lotes cambió** respecto a la sección 3 (F1…F7): se hizo por lotes más chicos, uno por tema, cada uno con `docs/frontend/loteFN-decisiones.md` y un capítulo
+  del manual de pantallas en `docs/manual/frontend/`. Hecho: F1 núcleo y Mi cuenta, F6 almacén e inventario, F7A Pulso del almacén y actividad, F8a menú/Sistema/análisis/marca,
+  F9 ajustes de la compañía, F10 seguridad y auditoría, F11 marca por compañía, F12–F13 conteo por producto, F14 códigos de barras, F15 productos por posición, F16 etiquetas de posición,
+  F17 y F17b rentas y etiquetas de producto, F18 devoluciones y proceso de rentas, F19 despacho manual, FA1 y FA2 clientes y contratos.
+- **Pendiente de la web** (el orden vigente está en `docs/plan-de-desarrollo-pendiente.md`, P1): clientes F-A3 (usuarios de portal), F-B consignatarios y localizaciones, F-C órdenes (alta y edición),
+  F-D choferes y flota, F-E despacho/rutas/monitoreo/escaneo, F-F vistas y campos personalizados, F-G impresoras (sin backend).
+- **Reglas del frontend que no se rompen** (también en `CLAUDE.md`): el `TenantId` sale del principal y nunca del request; permisos y módulos con `<Can perm>` / `<ModuleGate module>` y los códigos exactos del API;
+  textos con `t('clave')`; toda tabla paginada por el servidor lleva `exportRows` (ordenar ordena TODO lo que dice el filtro); full responsive desde 360 px sin scroll horizontal de página.
+- **Las decisiones de la sección 6 ya se tomaron:** se portó el CSS de la maqueta, el frontend vive en `web-app/` en el mismo repo y la misma rama, y se sirve también desde el API.
+- Quedan fuera hasta que exista su backend: Facturación, Liquidación, Procesar entregas (COD), Portal de clientes, Integraciones, Contabilización de compras y despachos. (Equipos en alquiler ya están: F17/F18.)
 
 ---
 
@@ -142,7 +161,7 @@ Proyección: **4 a 6 M de tokens por lote de frontend** frente a 11 a 17 M en el
 3. CI: un job nuevo `frontend` en `.github/workflows/ci.yml` que corre 1 y 2.
 4. Documentación: `docs/manual/frontend/0N-<pantalla>.md` con capturas, FAQ, y `docs/frontend/loteFN-decisiones.md`.
 
-## 6. Decisiones que necesita Luis antes de F1
+## 6. Decisiones que necesitaba Luis antes de F1 (resueltas; ver «Estado real»)
 
 1. **Estilo visual**: portar el CSS de la maqueta tal cual (misma apariencia que ya conoces) o rediseñar. Recomendación:
    portar tal cual; el rediseño se puede hacer después cambiando variables.

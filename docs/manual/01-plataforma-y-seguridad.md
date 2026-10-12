@@ -139,7 +139,7 @@ Validaciones:
 Qué hace: algunas acciones sensibles (cambiar permisos de un rol, encender/apagar módulos, aprovisionar un
 tenant, etc.) exigen haberse reautenticado hace poco. Este endpoint confirma la contraseña (y el MFA si el
 usuario lo tiene) y marca la sesión como "verificada AAL2" por la ventana configurada del tenant
-(`Aal2WindowMinutes`, entre 5 y 240 minutos, 30 por defecto).
+(`Aal2WindowMinutes`: 15, 30 o 60 minutos, 30 por defecto; una compañía que ya tenía otro valor lo conserva hasta que lo cambie).
 
 Cómo se usa: `POST /api/v1/auth/reauth` `{ "password": "...", "mfaCode": "123456" }` (autenticado). Devuelve
 un access token nuevo con el sello AAL2.
@@ -832,7 +832,7 @@ Validaciones:
 | `defaultLangCode` | 2 letras | `Código de idioma de 2 letras.` | 400 |
 | `workDaysMask` | 1-127 | `Máscara inválida (1-127).` | 400 |
 | `maxStopsPerRouteDefault` | ≥ 1 | `Debe ser ≥ 1.` | 400 |
-| `aal2WindowMinutes` | 5-240 | `Entre 5 y 240 minutos.` | 400 |
+| `aal2WindowMinutes` | 15, 30 o 60 (un valor ya guardado distinto se conserva si se reenvía igual) | `La ventana de reautenticación debe ser de 15, 30 o 60 minutos.` | 400 |
 | `sessionDays` | 1-365 | `Entre 1 y 365 días.` | 400 |
 | `deviceSessionDays` (Lote 8A: vida en días de la sesión de los aparatos de almacén; 30 por defecto; se lee en `GET /api/v1/tenant/settings` y se cambia en `PUT /api/v1/tenant/settings` con `admin.tenant`) | 1-365 | `Entre 1 y 365 días.` | 400 |
 | `brandingJson` | las reglas de la marca (sección 11.2: tamaño, JSON, campos, colores, contraste, matiz) | los de la tabla de la sección 11.2 | 400 |

@@ -102,18 +102,18 @@ la nueva muestra lo que hay y su indicador trabaja de fondo. Ya **no** se usa el
 - Redeploy de API + web + APK con lo último (Transferir, Ajustar, orden del menú, `update.sql`).
 - Crear el rol con `warehouse.adjust` (el permiso no tiene plantilla de rol a propósito).
 - Probar `scripts/recrear-base-depot.ps1` **solo en desarrollo**.
-- **Decisión D3:** ¿llevar a `Depot-Implementation` lo de Transferir/Ajustar/`update.sql`? Hoy esa rama no los tiene ni tiene el congelamiento.
-- Decisión vieja sin responder (D4): permiso para cancelar un conteo (opciones 1 vs 2).
+- ~~**Decisión D3**~~ **Resuelta (2026-10-11):** `Depot-Implementation` ya tenía Transferir, Ajustar y `update.sql`; se le pasó además lo de almacén que le faltaba (corrección de `db-update`, rotación FIFO/FEFO, conteo sin señal, PIN sin señal).
+- ~~Decisión D4~~ **Resuelta** (2026-10-08): cancelar un conteo pide el permiso de capturar (`docs/manual/06-inventario-y-almacen.md` §6.v).
 
 ### P0.3 Deuda técnica del backend (verificar cada punto antes)
 - ~~Filtro real de `UserDataScope` (almacén/cliente)~~ **Hecho (Lote 32, 2026-10-11: `docs/lote32-decisiones.md`)**: filtro global en el servidor; los bordes (filas hijas, transferencias) quedan anotados allí.
 - ~~Cerrar un trip~~ **Hecho (Lote 33, 2026-10-11: `docs/lote33-decisiones.md`)**: `POST /trips/{id}/complete`, permiso `trips.close`; falta el botón en la web y el cierre automático desde la app del chofer (P7).
-- `Contract.CodCommissionPct` en el modelo pero no expuesto; decisiones 39 y 44 del lote 2/3 (baja de cliente, reinvitar).
-- Propagación de `orders.credit_override` a roles clonados (sin prueba).
-- Validar la ventana AAL2 a 15/30/60 (loteF10). Atributo `[SkipIdempotency]` declarativo (hoy lista fija).
-- Tablas obsoletas de Rentas (`RentalAsset`, `RentalContract`…) siguen en la base; confirmar vacías y decidir (nunca borrar sin mirar).
-- Resolver contradicción de zona horaria (lote18/19 vs 20) con una búsqueda de `DateTime.UtcNow.Date` en servicios.
-- Actualizar `docs/frontend/diseno-frontend.md` (obsoleto).
+- ~~`Contract.CodCommissionPct` sin exponer; decisiones 39 y 44 del lote 2/3~~ **Cerrado (Lote 36)**: D39 = un cliente de baja tampoco admite cotizar (409); D44 = se queda en 409 (una persona no cambia de cliente por invitación); `CodCommissionPct` se expone junto con la remesa COD en **P8** (ya está en su alcance).
+- ~~Propagación de `orders.credit_override` a roles clonados (sin prueba)~~ **Cerrado (Lote 36)**: prueba con el `PermissionSeeder` real (`CreditOverridePropagationTests`).
+- ~~Validar la ventana AAL2 a 15/30/60; atributo `[SkipIdempotency]` declarativo~~ **Cerrado (Lote 36)**: el servidor solo admite 15, 30 o 60 (un valor viejo ya guardado se conserva) y la exclusión de idempotencia es un atributo con prueba del conjunto exacto.
+- ~~Tablas obsoletas de Rentas~~ **Listo para que Luis lo revise (Lote 36)**: `scripts/revisar-tablas-viejas-de-rentas.sql` (solo lectura) para correr en producción; en las bases locales no existen. Si salen vacías, se retiran con una sección nueva de `update.sql`; si tienen filas, no se tocan.
+- ~~Contradicción de zona horaria (lote18/19 vs 20)~~ **Cerrado (Lote 36)**: el Lote 20 ya la resolvió; se verificó que no queda `DateTime.UtcNow.Date` ni `DateOnly.FromDateTime(DateTime.UtcNow)` en `src/` (solo un comentario y la hora de un informe de migración).
+- ~~Actualizar `docs/frontend/diseno-frontend.md`~~ **Hecho (Lote 36)**: sección «Estado real» al principio.
 
 ### P0.4 Pendientes de almacén ya decididos
 - **Despacho manual** como operación propia (salida sin documento; Luis rechazó usar «Ajustar»): `docs/frontend/loteF8a-decisiones.md` §3. Servidor + web + app. **Servidor hecho (Lote 31, 2026-10-11: `docs/lote31-decisiones.md`)**; faltan web y app.

@@ -161,7 +161,8 @@ su ficha sigue accesible y se puede reactivar. Es idempotente (204 aunque ya est
 Quién puede: `clients.update`. Cómo se usa: `POST /api/v1/clients/{publicId}/deactivate` / `.../reactivate` → 204.
 
 > **Actualizado por el Lote 3**: un cliente dado de baja bloquea la creación de lo nuevo (órdenes, contratos, tarifas,
-> servicios especiales, invitaciones de portal) con `409` `El cliente está dado de baja; solo se consulta su historial.`;
+> servicios especiales, invitaciones de portal) con `409` `El cliente está dado de baja; solo se consulta su historial.`; **desde 2026-10-11 (D39) también la
+> cotización** (`POST /api/v1/billing/contract-rate-quote`) responde ese mismo 409;
 > las lecturas y los cierres/cancelaciones siguen permitidos. Ver [capítulo 03, sección 5](03-ordenes-de-transporte.md#5-cliente-dado-de-baja-se-bloquea-solo-lo-nuevo).
 
 ---
