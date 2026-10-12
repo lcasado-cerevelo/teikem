@@ -517,3 +517,44 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_InvTxn_Tenant_CreatedBy' AND object_id = OBJECT_ID('dbo.InventoryTransaction'))
     CREATE INDEX IX_InvTxn_Tenant_CreatedBy ON dbo.InventoryTransaction(TenantId, CreatedBy);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-12 — IP preferida / red de confianza (docs/ip-preferida-mfa-diseno.md). Una compañía carga las IPs o rangos de sus localidades; quien
+   inicia sesión desde una de ellas no recibe el pedido del código MFA al entrar (la contraseña sí; las acciones sensibles siguen pidiendo MFA).
+   - dbo.TenantTrustedNetwork: la lista por compañía (IP o rango normalizado, activa, vencimiento opcional, nota y quién confirmó que es solo red interna).
+   - dbo.Tenant.TrustedNetworkMaxEntries: máximo de entradas por compañía (NULL = sin tope).
+   - SecurityEventType TRUSTED_NETWORK: alta, cambio y baja de entradas en la bitácora de seguridad.
+   Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF OBJECT_ID('dbo.TenantTrustedNetwork', 'U') IS NULL CREATE TABLE dbo.TenantTrustedNetwork (
+    TenantTrustedNetworkId INT IDENTITY(1,1) CONSTRAINT PK_TenantTrustedNetwork PRIMARY KEY,
+    PublicId UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_TenantTrustedNetwork_PublicId DEFAULT NEWID(),
+    TenantId INT NOT NULL CONSTRAINT FK_TenantTrustedNetwork_Tenant REFERENCES dbo.Tenant(TenantId),
+    Name NVARCHAR(100) NOT NULL,
+    Cidr VARCHAR(50) NOT NULL,
+    IsActive BIT NOT NULL CONSTRAINT DF_TenantTrustedNetwork_IsActive DEFAULT 1,
+    ExpiresAtUtc DATETIME2 NULL,
+    Note NVARCHAR(300) NULL,
+    InternalOnlyConfirmedByUserId INT NULL,
+    InternalOnlyConfirmedAtUtc DATETIME2 NULL,
+    CreatedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_TenantTrustedNetwork_CreatedAtUtc DEFAULT SYSUTCDATETIME(),
+    CreatedBy INT NULL,
+    CONSTRAINT UQ_TenantTrustedNetwork UNIQUE (TenantId, Cidr),
+    CONSTRAINT UX_TenantTrustedNetwork_PublicId UNIQUE (PublicId)
+);
+GO
+
+IF COL_LENGTH('dbo.Tenant', 'TrustedNetworkMaxEntries') IS NULL
+    ALTER TABLE dbo.Tenant ADD TrustedNetworkMaxEntries INT NULL;
+GO
+IF OBJECT_ID('dbo.CK_Tenant_TrustedNetworkMaxEntries', 'C') IS NULL
+    ALTER TABLE dbo.Tenant ADD CONSTRAINT CK_Tenant_TrustedNetworkMaxEntries CHECK (TrustedNetworkMaxEntries IS NULL OR TrustedNetworkMaxEntries >= 0);
+GO
+
+MERGE dbo.LookupCode AS t
+USING (VALUES (N'TRUSTED_NETWORK', N'{"es":"Red de confianza","en":"Trusted network"}', 12)) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'SecurityEventType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'SecurityEventType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO

@@ -82,6 +82,8 @@ public class Tenant : ISoftDeletable
     /// Lo cambia quien tiene printers.manage (PUT /api/v1/printing/settings).
     /// </summary>
     public bool PrintLabelsDirect { get; set; }
+    /// <summary>2026-10-12: máximo de entradas de «IP preferida» (TenantTrustedNetwork) de la compañía; NULL = sin tope. Lo cambia la administración de la compañía.</summary>
+    public int? TrustedNetworkMaxEntries { get; set; }
 
     // --- Despacho manual (2026-10-11 b) ---
     /// <summary>

@@ -70,6 +70,7 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     // Tenancy / módulos
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<TenantHoliday> TenantHolidays => Set<TenantHoliday>();
+    public DbSet<TenantTrustedNetwork> TenantTrustedNetworks => Set<TenantTrustedNetwork>();   // 2026-10-12: IP preferida
     public DbSet<TenantBrandLogo> TenantBrandLogos => Set<TenantBrandLogo>();
     public DbSet<ModuleDefinition> ModuleDefinitions => Set<ModuleDefinition>();
     public DbSet<TenantModule> TenantModules => Set<TenantModule>();
