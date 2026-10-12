@@ -2384,6 +2384,195 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/inventory/multi-adjustments/stock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    warehouse?: string;
+                    products?: string[];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MultiAdjustmentProductDto"][];
+                        "application/json": components["schemas"]["MultiAdjustmentProductDto"][];
+                        "text/json": components["schemas"]["MultiAdjustmentProductDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/multi-adjustments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    warehouses?: string[];
+                    from?: string;
+                    to?: string;
+                    userIds?: number[];
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MultiAdjustmentPageDto"];
+                        "application/json": components["schemas"]["MultiAdjustmentPageDto"];
+                        "text/json": components["schemas"]["MultiAdjustmentPageDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["MultiAdjustmentRequest"];
+                    "text/json": components["schemas"]["MultiAdjustmentRequest"];
+                    "application/*+json": components["schemas"]["MultiAdjustmentRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MultiAdjustmentDetailDto"];
+                        "application/json": components["schemas"]["MultiAdjustmentDetailDto"];
+                        "text/json": components["schemas"]["MultiAdjustmentDetailDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/multi-adjustments/by-id/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MultiAdjustmentDetailDto"];
+                        "application/json": components["schemas"]["MultiAdjustmentDetailDto"];
+                        "text/json": components["schemas"]["MultiAdjustmentDetailDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/multi-adjustments/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MultiAdjustmentDetailDto"];
+                        "application/json": components["schemas"]["MultiAdjustmentDetailDto"];
+                        "text/json": components["schemas"]["MultiAdjustmentDetailDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tenant/brand/logos": {
         parameters: {
             query?: never;
@@ -23244,6 +23433,104 @@ export interface components {
         MovementResultDto: {
             transactions?: components["schemas"]["KardexRowDto"][] | null;
             balances?: components["schemas"]["BalanceDto"][] | null;
+        };
+        MultiAdjustmentLineInput: {
+            /** Format: uuid */
+            productPublicId?: string | null;
+            /** Format: int32 */
+            binId?: number | null;
+            /** Format: int32 */
+            lotId?: number | null;
+            /** Format: double */
+            systemQty?: number | null;
+            /** Format: double */
+            countedQty?: number | null;
+        };
+        MultiAdjustmentRequest: {
+            /** Format: uuid */
+            warehousePublicId?: string | null;
+            notes?: string | null;
+            lines?: components["schemas"]["MultiAdjustmentLineInput"][] | null;
+        };
+        MultiAdjustmentPositionDto: {
+            /** Format: int32 */
+            binId?: number;
+            binCode?: string;
+            zoneCode?: string;
+            /** Format: int32 */
+            lotId?: number | null;
+            lotNumber?: string | null;
+            /** Format: double */
+            qtyOnHand?: number;
+            /** Format: double */
+            qtyReserved?: number;
+        };
+        MultiAdjustmentProductDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string;
+            name?: string;
+            trackingTypeCode?: string;
+            isActive?: boolean;
+            positions?: components["schemas"]["MultiAdjustmentPositionDto"][];
+        };
+        MultiAdjustmentDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            publicId?: string;
+            number?: string;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            warehouseCode?: string;
+            notes?: string;
+            /** Format: int32 */
+            lineCount?: number;
+            /** Format: int32 */
+            productCount?: number;
+            /** Format: double */
+            unitsUp?: number;
+            /** Format: double */
+            unitsDown?: number;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            /** Format: int32 */
+            createdByUserId?: number | null;
+            createdByName?: string | null;
+        };
+        MultiAdjustmentLineDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string;
+            productName?: string;
+            /** Format: int32 */
+            binId?: number;
+            binCode?: string;
+            zoneCode?: string;
+            /** Format: int32 */
+            lotId?: number | null;
+            lotNumber?: string | null;
+            /** Format: double */
+            systemQty?: number;
+            /** Format: double */
+            countedQty?: number;
+            /** Format: double */
+            difference?: number;
+            /** Format: int64 */
+            inventoryTransactionId?: number | null;
+        };
+        MultiAdjustmentDetailDto: {
+            header?: components["schemas"]["MultiAdjustmentDto"];
+            lines?: components["schemas"]["MultiAdjustmentLineDto"][];
+        };
+        MultiAdjustmentPageDto: {
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+            items?: components["schemas"]["MultiAdjustmentDto"][];
         };
         NumberPreviewDto: {
             pattern?: string | null;

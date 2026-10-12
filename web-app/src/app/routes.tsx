@@ -271,6 +271,14 @@ export const appRoutes: readonly AppRoute[] = [
     module: ModuleKeys.WmsLotSerial,
     nav: { group: 'warehouse', key: 'transfersAdjustments', order: 80 },
   },
+  // 2026-10-12: Ajuste múltiple (poner al día el inventario por producto y posición, varias a la vez). Sin entrada de menú: se abre con el botón «Ajuste múltiple» de
+  // Transferencias y ajustes. `inventory.adjust.multi` no viene en ningún rol; el administrador lo da desde Roles.
+  {
+    path: '/warehouse/multi-adjustment',
+    element: lazy(() => import('../features/warehouse/MultiAdjustScreen')),
+    perm: 'inventory.adjust.multi',
+    module: ModuleKeys.WmsLotSerial,
+  },
   // Lote 14 (D1-C): la pantalla de faltantes de compra salió del menú; los faltantes se resuelven desde la ficha de cada orden
   // de compra (pestaña Faltantes). Su dirección lleva a Compras.
   { path: '/warehouse/inventory-adjustments', element: redirectTo('/warehouse/purchase-orders') },

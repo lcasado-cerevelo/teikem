@@ -12,7 +12,7 @@
 // modales del Lote 14 (Subir/Bajar; origen → ítem → destino con lote y series). Clic en una fila = `KardexTransactionModal`.
 // Los filtros de cada pestaña son suyos y se conservan al cambiar de pestaña.
 import { useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Can } from '../../kernel/access'
 import { useLookups } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n'
@@ -223,6 +223,14 @@ export default function TransfersAdjustmentsScreen() {
             <button type="button" className="btn" onClick={() => setAdjusting(true)}>
               {t(`${T}.newAdjustment`)}
             </button>
+          </Can>
+          {/* 2026-10-12: Ajuste múltiple (inventory.adjust.multi: no viene en ningún rol; el administrador lo da desde Roles) */}
+          <Can perm="inventory.adjust.multi">
+            <Link className="btn" to="/warehouse/multi-adjustment">
+              {t('warehouse.multiAdjust.title')}
+            </Link>
+          </Can>
+          <Can perm="inventory.adjust">
             <button type="button" className="btn flow" onClick={() => setTransferring(true)}>
               {t(`${T}.newTransfer`)}
             </button>
