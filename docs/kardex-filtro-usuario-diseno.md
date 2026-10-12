@@ -1,6 +1,6 @@
 # Kárdex: filtro por usuario (diseño, 2026-10-12)
 
-> **Estado: SOLO DISEÑO. No hay código.** Pedido de Luis (2026-10-12). Decisiones de Luis incorporadas (2026-10-12); ver sección 8.
+> **Estado: CONSTRUIDO (2026-10-12) en `Depot-Implementation`**, con las decisiones de Luis de la sección 8. Pedido de Luis (2026-10-12). Commits `[kardex-usuario]`: API, web y manual. Ver la sección 9.
 
 ## 1. Qué se quiere
 En el Kárdex de movimientos, poder **saber qué usuario movió o ajustó** algo: un filtro **Usuario**, como la mayoría de los filtros de la pantalla: un desplegable **con búsqueda y selección múltiple**.
@@ -56,3 +56,9 @@ Un ajuste múltiple (`AJM-######`) deja a cada movimiento con el usuario que lo 
 3. Se ofrece la opción **«Sistema (sin usuario)»**, solo si existen movimientos sin usuario.
 
 **Abiertas:** ninguna por ahora.
+
+## 9. Lo construido
+- **API:** `KardexQuery` con `UserIds` e `IncludeSystem` (al final, con valor por defecto); `userIds` e `includeSystem` en `GET /inventory/transactions` y `/transactions/summary`; `GET /inventory/transactions/users` (`inventory.view`, registrado en el mapa de seguridad de controladores: 163 acciones). Índice `IX_InvTxn_Tenant_CreatedBy (TenantId, CreatedBy)` en una sección nueva e idempotente al final de `logistica-db-update.sql`. Pruebas: 9 nuevas (`KardexUserFilterTests`), la firma de `KardexQuery` y `KardexUserDto` en `WmsContractsTests`.
+- **Web:** `UserFilter` (en `pickers.tsx`, sobre `SearchSelect`), `useKardexUsers`, `userQuery` y el valor `SYSTEM_USER` en `kardexView.ts`; el filtro entra al Kárdex (no a Saldos ni Conciliación; si tiene valor se atenúa como Dueño) y a Transferencias y ajustes (ambas pestañas); el Reporte de ajustes nombra a los usuarios en «Filtros aplicados». Textos es/en. Pruebas nuevas en `kardexUserFilter.test.ts`, `InventoryScreen.test.tsx` y `TransfersAdjustmentsScreen.test.tsx`.
+- **Manual:** fila «Usuario» en la tabla de filtros del Kárdex (`f6-almacen-e-inventario.md`).
+- **Al pasar a master:** los dos puntos de contacto son `WmsContractsTests.cs` (la línea de `KardexQuery`), `WmsControllerSecurityTests.cs` (el conteo de acciones, 162 → 163; si master también agregó acciones, sumar) y `openapi.json` / `schema.d.ts` (regenerar con `npm run api:types` en lugar de resolver choques a mano).
