@@ -194,6 +194,65 @@ propagados a los roles de los tenants existentes (revisar cómo lo hizo `Permiss
 `SalesBackorderMode` MANUAL (AUTO después) y `SalesBillingTrigger` ON_DISPATCH/ON_DELIVERY son ajustes del tenant (decidir dónde viven: Ajustes de la compañía).
 **Cierre:** `docs/loteN-decisiones.md`, capítulo nuevo `docs/manual/12-ordenes-de-venta.md` (o el número que toque), FAQ con cada mensaje de error, README del manual.
 
+### P4-T — Caso real que arma P4: órdenes de Truss por correo (diseño aprobado por el dueño, 2026-10-12)
+
+**Por qué aquí.** Advance Logistics maneja el almacén de Truss (cliente 3PL). Hoy: el representante de Truss llena un formulario
+(Formsite) → llega un correo a `drivera@`, `yquintana@` y `almacen@advancelogisticspr.com` (reenviado por el representante) → el personal
+lo entra al QuickBooks **Desktop** de Truss y luego crea la orden en Teikem a mano. Meta: Teikem lee ese correo, propone la orden, el usuario
+la confirma, se despacha (entrega o recogida) y al final se exporta la factura a QuickBooks sin duplicar. Es el primer caso real de P4: se
+construye P4 alrededor de él. Correo de muestra analizado: notificación de Formsite con bloque fijo «Order Summary» (descripción, cantidad,
+monto), `Reference #` único, nombre, teléfono, correo, salón, dirección, pueblo, ZIP, «Entrega o Recogida», opción COD (ATH), IVU 11.5 %,
+representante, más una nota libre del representante en el reenvío.
+
+**Decisiones del dueño (2026-10-12)**
+- **Entrada:** NO leer buzones personales ni grupos (un grupo de distribución no es buzón). Se usa un **buzón compartido** de Microsoft 365
+  (p. ej. `ordenes@advancelogisticspr.com`, sin licencia extra) que Teikem lee con permiso limitado a ese buzón; lo llenan Truss (agregándolo
+  al «EMAIL TO» del formulario) o una regla de Outlook de Dalyshamel («asunto contiene “PR Orden” → reenviar»). El filtro corre **en el servidor
+  de correo** (asunto / bloque «Reference #»), nunca se bajan todos los correos. Ojo: lo que llega viene reenviado por el representante, no «de
+  Formsite»: filtrar por asunto/contenido, no por remitente. Respaldo desde el día uno: subir el .eml/PDF a mano desde Integraciones. Mejor
+  opción si Truss lo permite: Formsite «Server Post» directo a una URL de Teikem (confirmar plan de Formsite).
+- **Lectura determinista** del bloque de Formsite (no hace falta IA para la tabla). IA solo para: la nota libre (urgente / recoge hoy / paga
+  allí), sugerir candidatos para líneas no encontradas, y resistir un cambio de formato (con aviso para revisar). El contenido del correo es
+  entrada NO confiable: nunca se ejecuta lo que diga.
+- **Cruce exacto** contra una tabla de **alias por cliente** (texto de Truss → producto de Truss en Teikem). Todo encontrado → «Lista»;
+  algo sin encontrar → «Por revisar» + aviso al usuario de Teikem (capa J, canal APP/EMAIL); en la pantalla la IA sugiere candidatos y, al
+  escoger, el alias se aprende. `Reference #` = clave de idempotencia (repetido → se ignora y se avisa). Los datos del salón crean o reusan el
+  consignatario de Truss («Nuevo cliente?»).
+- **Confirmación:** al confirmar el usuario de Teikem nace la **orden de venta** (S1: pedido/disponible/faltante). Desde ella: «Recolectar»
+  abre Recolección con el detalle puesto; **entrega o recogida se decide en el proceso** (el formulario trae lo que pidió el cliente, el usuario
+  lo puede cambiar): entrega → empacar y a las rutas; recogida → despacho manual «Retiro del cliente» (`CUSTOMER_PICKUP`) **enlazado a la
+  orden**. Aviso en la app/web «orden lista para despachar».
+- **Acuse al representante solo cuando todo cuadró** (al confirmar), correo «Orden #<Reference> confirmada» a quien envió (Reply-To), con
+  copia a `admin@trusspuertorico.com` si ese buzón sirve. Mientras está «por revisar» no sale nada.
+- **Montos e IVU tal cual vienen** del formulario: Teikem no pone precios al catálogo de Truss; las «ofertas» (p. ej. `Y-OFFER01`: 6
+  decolorantes a $148.50 repartidos por línea) son precio, no composición. El IVU va como una línea más del archivo; se da por hecho que
+  QuickBooks Desktop no lo recalcula al importar (confirmar en la prueba).
+- **Exportación a QuickBooks Desktop (IIF), sin duplicar:** Teikem asigna el número de factura según la numeración del cliente (ficha F-A1:
+  «¿Quién asigna el número de factura?»): recomendado = el `Reference #` de Formsite. «Exportar a QuickBooks» (en Recolección y empaque /
+  órdenes) toma solo las **despachadas y no exportadas**, genera un **lote** con su archivo y las pasa a «Exportada, por confirmar»; la misma
+  pantalla lista las pendientes; el usuario marca «Importadas» (o «Fallidas» → vuelven a exportable); un lote se puede volver a bajar sin
+  cambiar estado. Es un estado + una lista, no un job; opcional: recordatorio diario (capa J) «N facturas exportadas sin confirmar». El
+  archivo puede crear el cliente (salón) y los ítems si no existen. **Obligatorio probar contra una copia del QuickBooks de Truss** antes
+  de usarlo.
+- **Kits (los arman al pedir, nunca de antemano):** tipo de producto «Kit» (catálogo, no string) + tabla `ProductKitComponent`
+  (kit → componente → cantidad). El kit **no tiene existencia ni movimientos propios**: todo pasa en los componentes. Al recolectar la línea
+  «kit × n» se **explota** en una línea por componente (cantidad × n) con su posición por FEFO; Kárdex con una salida por componente y nota
+  «<kit> × n · EMP-…»; costo del kit = suma de los costos congelados de los componentes; disponibilidad del kit = mín(disponible del
+  componente ÷ cantidad) («se pueden armar N»). Ficha del producto: al marcar Kit se ocultan posiciones/lote/serie/mínimo/existencia y aparece
+  el panel «Componentes» (misma tabla que tarifas); lista con chip «Kit». Orden de venta: la línea es el kit con su precio y debajo, desplegable,
+  los componentes con pedido/disponible/faltante. Factura: una sola línea (QuickBooks Desktop «Group item»). Conteo: los kits no se cuentan.
+  Definición del catálogo = default; al confirmar la orden se guarda una **foto** de los componentes de esa línea; kit «ajustable al pedir» permite
+  cambiar piezas en esa orden sin tocar el catálogo. La app puede ofrecer kits después (se escogen de la lista y se explotan igual).
+
+**Orden de construcción propuesto:** (1) kits en el catálogo (entidad, tabla, ficha, disponibilidad, explosión al recolectar) → (2) S1
+orden de venta → (3) bandeja de órdenes entrantes + alias + lectura del correo (buzón compartido / subida manual) + acuse → (4) despacho
+contra orden (S2) con entrega o recogida → (5) exportación IIF por lotes con confirmación → (6) S3/S4. Pantallas en Integraciones
+(conector de correo) y en Clientes (alias de productos del cliente).
+
+**Pendiente de averiguar (dueño):** si ese QuickBooks Desktop acepta el número de factura que mande Teikem o pone el suyo (si pone el
+suyo: exportar sin número y capturar el de QuickBooks al confirmar el lote); si Truss agrega el buzón compartido o se usa la regla de
+Outlook; si el plan de Formsite permite «Server Post»; obtener una copia del QuickBooks de Truss para la prueba del IIF.
+
 ---
 
 ## P5 — Facturación (módulo 11)
