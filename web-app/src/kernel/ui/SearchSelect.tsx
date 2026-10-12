@@ -1,4 +1,4 @@
-import { useCallback, useId, useMemo, useRef, useState, type Ref } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type Ref } from 'react'
 import { useT } from '../i18n/useT'
 import type { FilterOption } from './Filters'
 import { joinFilterValues } from './filterRegistry'
@@ -22,10 +22,12 @@ export interface SearchSelectProps {
   chosen?: readonly FilterOption[]
   loading?: boolean
   capped?: boolean
+  /** Avisa cuando el desplegable se abre o se cierra (los selectores remotos solo consultan abiertos). */
+  onOpenChange?: (open: boolean) => void
 }
 
 /** Selección múltiple con buscador (`.msel`), para filtros con muchas opciones (clientes, bodegas, estatus). */
-export function SearchSelect({ label, options, value, onChange, placeholder, disabled, onSearch, chosen, loading, capped }: SearchSelectProps) {
+export function SearchSelect({ label, options, value, onChange, placeholder, disabled, onSearch, chosen, loading, capped, onOpenChange }: SearchSelectProps) {
   const t = useT()
   const id = useId()
   const ref = useRef<HTMLDivElement>(null)
@@ -48,6 +50,7 @@ export function SearchSelect({ label, options, value, onChange, placeholder, dis
         chosen={chosen}
         loading={loading}
         capped={capped}
+        onOpenChange={onOpenChange}
       />
     </div>
   )
@@ -80,6 +83,7 @@ export interface SearchMultiSelectProps {
   loading?: boolean
   /** Con `onSearch`: la búsqueda llegó a su tope (hay más coincidencias que las mostradas): se avisa para que se acote. */
   capped?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 /**
@@ -102,6 +106,7 @@ export function SearchMultiSelect({
   chosen,
   loading,
   capped,
+  onOpenChange,
 }: SearchMultiSelectProps) {
   const t = useT()
   const ref = useRef<HTMLDivElement>(null)
@@ -112,6 +117,7 @@ export function SearchMultiSelect({
     onBlur?.()
   }, [onBlur])
   useDismiss(ref, open, close)
+  useEffect(() => onOpenChange?.(open), [open, onOpenChange])
 
   const selected = useMemo(() => new Set(value), [value])
   const remote = onSearch !== undefined

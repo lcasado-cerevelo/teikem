@@ -304,10 +304,11 @@ describe('ProductListScreen · Productos e inventario', () => {
     // SKU o nombre: desplegable con búsqueda (en el servidor) y selección múltiple, como Almacén
     await user.click(screen.getByLabelText('SKU o nombre'))
     await user.type(screen.getAllByRole('searchbox').at(-1)!, 'glu')
+    // la búsqueda sale al servidor (con pausa) y solo con el desplegable abierto
+    await waitFor(() => expect(mock.requests.some((u) => u.pathname === '/api/v1/products' && u.searchParams.get('search') === 'glu')).toBe(true))
     await user.click(await screen.findByLabelText(/GLU-100 · Medidor de glucosa/))
     await user.keyboard('{Escape}')
     await waitFor(() => expect(lastListQuery().getAll('productPublicIds')).toEqual([P1]))
-    await waitFor(() => expect(mock.requests.some((u) => u.pathname === '/api/v1/products' && u.searchParams.get('search') === 'glu')).toBe(true))
 
     // Posición: igual, por las posiciones elegidas (binIds)
     await pickOptions(user, 'Posición', ['A-01 · PCK · ALM-01'])
