@@ -46616,6 +46616,16 @@
             "type": "string",
             "nullable": true
           },
+          "laborCost": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "partsCost": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
           "totalCost": {
             "type": "number",
             "format": "double"

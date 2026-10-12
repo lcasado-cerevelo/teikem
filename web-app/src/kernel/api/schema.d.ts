@@ -25979,6 +25979,10 @@ export interface components {
             odometerKm?: number | null;
             vendor?: string | null;
             /** Format: double */
+            laborCost?: number | null;
+            /** Format: double */
+            partsCost?: number | null;
+            /** Format: double */
             totalCost?: number;
             isActive?: boolean;
         };
