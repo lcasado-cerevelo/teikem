@@ -17963,6 +17963,17 @@
             }
           },
           {
+            "name": "binIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          },
+          {
             "name": "ownerClientPublicIds",
             "in": "query",
             "schema": {

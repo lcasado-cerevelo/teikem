@@ -109,6 +109,7 @@ function route(url: URL): unknown {
       { code: 'SERIAL', label: 'Serie', sortOrder: 3 },
     ]
   if (p === '/api/v1/products/brands') return ['Abbott', 'Roche']
+  if (p === '/api/v1/warehouses/bins/search') return [{ id: 7, code: 'A-01', zoneCode: 'PCK', warehousePublicId: WH, warehouseCode: 'ALM-01', isActive: true }]
   if (p === '/api/v1/inventory/owners') return [{ clientPublicId: null, name: 'Propio', isOwn: true }, { clientPublicId: CLIENT_A, name: 'Cliente A', isOwn: false }]
   if (p === '/api/v1/products') {
     if (q.get('take') === '1') {
@@ -300,9 +301,18 @@ describe('ProductListScreen · Productos e inventario', () => {
     expect(lastListQuery().get('skip')).toBe('0')
     expect(lastListQuery().has('warehousePublicId')).toBe(false)
 
-    await user.type(screen.getByRole('combobox', { name: 'SKU o nombre' }), 'glu')
-    await user.click(await screen.findByRole('option', { name: /GLU-100 · Medidor de glucosa/ }))
+    // SKU o nombre: desplegable con búsqueda (en el servidor) y selección múltiple, como Almacén
+    await user.click(screen.getByLabelText('SKU o nombre'))
+    await user.type(screen.getAllByRole('searchbox').at(-1)!, 'glu')
+    await user.click(await screen.findByLabelText(/GLU-100 · Medidor de glucosa/))
+    await user.keyboard('{Escape}')
     await waitFor(() => expect(lastListQuery().getAll('productPublicIds')).toEqual([P1]))
+    await waitFor(() => expect(mock.requests.some((u) => u.pathname === '/api/v1/products' && u.searchParams.get('search') === 'glu')).toBe(true))
+
+    // Posición: igual, por las posiciones elegidas (binIds)
+    await pickOptions(user, 'Posición', ['A-01 · PCK · ALM-01'])
+    await waitFor(() => expect(lastListQuery().getAll('binIds')).toEqual(['7']))
+    expect(lastListQuery().has('binSearch')).toBe(false)
 
     // ya no hay filtro «Nombre»: el de SKU busca por SKU o por nombre
     expect(screen.queryByRole('searchbox', { name: 'Nombre' })).not.toBeInTheDocument()

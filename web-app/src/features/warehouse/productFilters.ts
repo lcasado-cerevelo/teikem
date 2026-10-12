@@ -5,6 +5,7 @@
 // inventario por `productListQuery` (mismo filtro que la tabla); al de ajustes no (solo un aviso).
 import type { GetQuery } from './api'
 import { ownerQuery } from './kardexView'
+import type { BinFilterItem } from './kardexView'
 import type { ProductFilterItem } from './pickers'
 
 /** KPI elegido en el río (filtra la tabla): SKU activos, Unidades totales, Bajo mínimo, Con número de serie. */
@@ -21,8 +22,8 @@ export interface ProductFilterState {
   products: readonly ProductFilterItem[]
   /** Nombre contiene (ya sin espacios sobrantes; vacío = sin filtro). */
   name: string
-  /** Posición contiene (código de la posición donde hay existencia del producto; ya sin espacios sobrantes; vacío = sin filtro). */
-  bin: string
+  /** Posiciones elegidas (2026-10-12: desplegable con búsqueda y selección múltiple): productos con existencia en alguna de ellas; vacío = sin filtro. */
+  bins: readonly BinFilterItem[]
   /** ids de categoría como texto (el API incluye las subcategorías). */
   categoryIds: readonly string[]
   brands: readonly string[]
@@ -33,7 +34,7 @@ export interface ProductFilterState {
   hasAvailable: boolean
 }
 
-export const EMPTY_PRODUCT_FILTERS: ProductFilterState = { warehouses: [], products: [], name: '', bin: '', categoryIds: [], brands: [], owners: [], kpi: null, hasAvailable: false }
+export const EMPTY_PRODUCT_FILTERS: ProductFilterState = { warehouses: [], products: [], name: '', bins: [], categoryIds: [], brands: [], owners: [], kpi: null, hasAvailable: false }
 
 /** `?kpi=` de la URL → KPI (valor desconocido = ninguno). */
 export function parseKpiParam(value: string | null | undefined): ProductKpi | null {
@@ -81,7 +82,7 @@ export function productListQuery(f: ProductFilterState): GetQuery<'/api/v1/produ
     brands: nonEmpty(f.brands),
     ...ownerQuery(f.owners),
     hasAvailable: f.hasAvailable || undefined,
-    binSearch: f.bin.trim() || undefined,
+    binIds: nonEmpty(f.bins.map((b) => b.id)),
     ...kpiQuery(f.kpi),
   }
 }
@@ -106,7 +107,7 @@ export function adjustmentsKardexQuery(f: ProductFilterState): GetQuery<'/api/v1
 
 /** true si hay algún filtro (incluido el KPI). */
 export function hasProductFilters(f: ProductFilterState): boolean {
-  return f.warehouses.length + f.products.length + f.categoryIds.length + f.brands.length + f.owners.length > 0 || f.name.trim() !== '' || f.bin.trim() !== '' || f.kpi !== null || f.hasAvailable
+  return f.warehouses.length + f.products.length + f.categoryIds.length + f.brands.length + f.owners.length > 0 || f.name.trim() !== '' || f.bins.length > 0 || f.kpi !== null || f.hasAvailable
 }
 
 type Translate = (key: string, params?: Record<string, string | number>) => string
@@ -144,7 +145,7 @@ export function describeProductFilters(
   }
   if (f.products.length > 0) out.push({ label: t('warehouse.products.filters.sku'), value: list(f.products.map((p) => p.label || p.sku || p.publicId)) })
   if (f.name.trim()) out.push({ label: t('warehouse.products.filters.name'), value: t('warehouse.products.reports.filters.contains', { text: f.name.trim() }) })
-  if (f.bin.trim()) out.push({ label: t('warehouse.products.filters.bin'), value: t('warehouse.products.reports.filters.contains', { text: f.bin.trim() }) })
+  if (f.bins.length > 0) out.push({ label: t('warehouse.products.filters.bin'), value: list(f.bins.map((b) => b.label)) })
   if (f.categoryIds.length > 0) {
     out.push({
       label: t('warehouse.products.filters.category'),

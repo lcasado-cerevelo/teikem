@@ -13261,6 +13261,7 @@ export interface paths {
                     unavailable?: boolean;
                     hasAvailable?: boolean;
                     binSearch?: string;
+                    binIds?: number[];
                     ownerClientPublicIds?: string[];
                     includeOwn?: boolean;
                 };

@@ -35,11 +35,12 @@ import {
 } from './api'
 import { sortRows, type SortState } from '../../kernel/ui/DataTable'
 import { ProductBarcodeReportButton } from './BarcodeReportButtons'
-import { TextFilter, ToggleFilter } from './filterControls'
+import { ToggleFilter } from './filterControls'
 import { AdjustmentsReportButton, InventoryReportButton } from './InventoryReportButtons'
 import { listParam } from './kardexView'
-import { formatNumber, useDebounced } from './lineRules'
-import { OwnerFilter, ProductMultiFilter, type ProductFilterItem } from './pickers'
+import { formatNumber } from './lineRules'
+import { BinSearchSelect, OwnerFilter, ProductSearchSelect, type ProductFilterItem } from './pickers'
+import type { BinFilterItem } from './kardexView'
 import { DamagePanel } from './DamageListScreen'
 import { ProductCategoriesPanel } from './ProductCategoriesPanel'
 import { ProductEditorByIdModal, ProductEditorModal } from './ProductEditorModal'
@@ -185,7 +186,7 @@ function ProductsTab() {
   // Lote 15: almacenes iniciales de la URL (`?warehousePublicIds=`, una vez al montar; la franja "Almacén hoy" del Pulso)
   const [warehouses, setWarehouses] = useState<string[]>(() => listParam(params, 'warehousePublicIds'))
   const [products, setProducts] = useState<ProductFilterItem[]>([])
-  const [binText, setBinText] = useState('')
+  const [bins, setBins] = useState<BinFilterItem[]>([])
   const [categoryIds, setCategoryIds] = useState<string[]>([])
   const [brands, setBrands] = useState<string[]>([])
   const [owners, setOwners] = useState<string[]>([])
@@ -194,8 +195,6 @@ function ProductsTab() {
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [creating, setCreating] = useState(false)
   const [editingPublicId, setEditingPublicId] = useState<string | null>(null)
-  // Posición va al API con una pausa (no una consulta por tecla)
-  const bin = useDebounced(binText.trim(), 300)
 
   // KPI elegido: vive en la URL (?kpi=) para poder enlazarlo; otro clic en el mismo lo quita
   const kpi = parseKpiParam(params.get('kpi'))
@@ -235,8 +234,8 @@ function ProductsTab() {
 
   // Un solo estado de filtros para la tabla, su Exportar y los dos reportes PDF
   const filters = useMemo<ProductFilterState>(
-    () => ({ warehouses, products, name: '', bin, categoryIds, brands, owners, kpi, hasAvailable }),
-    [warehouses, products, bin, categoryIds, brands, owners, kpi, hasAvailable],
+    () => ({ warehouses, products, name: '', bins, categoryIds, brands, owners, kpi, hasAvailable }),
+    [warehouses, products, bins, categoryIds, brands, owners, kpi, hasAvailable],
   )
   const baseQuery = useMemo(() => productListQuery(filters), [filters])
   const query = useMemo(() => ({ ...baseQuery, skip: (page - 1) * pageSize, take: pageSize }), [baseQuery, page, pageSize])
@@ -347,7 +346,7 @@ function ProductsTab() {
         onClear={() => {
           setWarehouses([])
           setProducts([])
-          setBinText('')
+          setBins([])
           setCategoryIds([])
           setBrands([])
           setOwners([])
@@ -356,13 +355,9 @@ function ProductsTab() {
         }}
       >
         <SearchSelect label={t('warehouse.products.filters.warehouse')} options={warehouseOptions} value={warehouses} onChange={withPageReset(setWarehouses)} />
-        <ProductMultiFilter label={t('warehouse.products.filters.sku')} value={products} onChange={withPageReset(setProducts)} includeInactive />
-        <TextFilter
-          label={t('warehouse.products.filters.bin')}
-          value={binText}
-          onChange={withPageReset(setBinText)}
-          placeholder={t('warehouse.products.filters.binPlaceholder')}
-        />
+        {/* 2026-10-12: SKU o nombre y Posición son desplegables con búsqueda y selección múltiple, como Almacén, Categoría y Marca */}
+        <ProductSearchSelect label={t('warehouse.products.filters.sku')} value={products} onChange={withPageReset(setProducts)} includeInactive />
+        <BinSearchSelect label={t('warehouse.products.filters.bin')} value={bins} onChange={withPageReset(setBins)} warehousePublicIds={warehouses} />
         <SearchSelect label={t('warehouse.products.filters.category')} options={categoryOptions} value={categoryIds} onChange={withPageReset(setCategoryIds)} />
         <SearchSelect label={t('warehouse.products.filters.brand')} options={brandOptions} value={brands} onChange={withPageReset(setBrands)} />
         <OwnerFilter label={t('warehouse.products.filters.owner')} value={owners} onChange={withPageReset(setOwners)} />
