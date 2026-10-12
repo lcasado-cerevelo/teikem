@@ -1627,7 +1627,7 @@
       "saveDraft": "Guardar borrador",
       "saveConfirm": "Guardar y confirmar",
       "saving": "Guardando…",
-      "ticketNote": "El borrador nace en Entrada y se puede editar. «Guardar y confirmar» cotiza, revisa el crédito del cliente y confirma la orden de una vez.",
+      "ticketNote": "La orden queda en Borrador y se puede editar. «Guardar y confirmar» cotiza, revisa el crédito del cliente y confirma la orden de una vez.",
       "created": "Orden {number} guardada.",
       "errors": {
         "clientRequired": "El cliente es obligatorio.",

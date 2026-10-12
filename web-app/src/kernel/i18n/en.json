@@ -1627,7 +1627,7 @@
       "saveDraft": "Save draft",
       "saveConfirm": "Save and confirm",
       "saving": "Saving…",
-      "ticketNote": "The draft starts in Entry and can be edited. “Save and confirm” prices the order, checks the client's credit and confirms it in one step.",
+      "ticketNote": "The order is saved as a Draft and can be edited. “Save and confirm” prices the order, checks the client's credit and confirms it in one step.",
       "created": "Order {number} saved.",
       "errors": {
         "clientRequired": "The client is required.",
