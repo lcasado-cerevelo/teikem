@@ -109,7 +109,8 @@ describe('menú completo (routes.tsx)', () => {
   })
 
   it('los ítems sin pantalla usan la pantalla pendiente; los que ya existen no', () => {
-    expect(byPath('/ops/monitor').pending).toBe(true)
+    expect(byPath('/ops/monitor').pending).toBeUndefined() // Lote F-E3
+    expect(byPath('/ops/monitor')).toMatchObject({ perm: 'trips.view', module: 'LTL_GROUND', nav: { group: 'ops', key: 'monitor', order: 50 } })
     expect(byPath('/ops/dispatch').pending).toBeUndefined() // Lote F-E2a
     expect(byPath('/ops/dispatch')).toMatchObject({ perm: 'trips.dispatch', module: 'LTL_GROUND', nav: { group: 'ops', key: 'dispatch', order: 40 } })
     expect(byPath('/ops/scan').pending).toBeUndefined() // Lote F-E1
@@ -238,7 +239,7 @@ describe('menú completo (routes.tsx)', () => {
     expect(old.pending).toBeUndefined()
   })
 
-  it('un ítem pendiente sin su permiso o sin su módulo no aparece; con los dos, sí', () => {
+  it('un ítem sin su permiso o sin su módulo no aparece; con los dos, sí', () => {
     const monitor = byPath('/ops/monitor')
     expect(monitor).toMatchObject({ perm: 'trips.view', module: 'LTL_GROUND' })
     const has = (perms: string[], modules: string[]) =>

@@ -15,9 +15,9 @@ describe('Placeholder (pantalla pendiente)', () => {
   it('muestra el título y el subtítulo del ítem, el aviso y "Abrir otra pantalla" abre la paleta', async () => {
     setLang('es')
     const user = userEvent.setup()
-    render(<Placeholder navKey="monitor" />)
-    expect(screen.getByRole('heading', { level: 1, name: 'Monitoreo de ruta' })).toBeInTheDocument()
-    expect(screen.getByText('mapa en vivo, telemetría y progreso')).toBeInTheDocument()
+    render(<Placeholder navKey="portalProfile" />)
+    expect(screen.getByRole('heading', { level: 1, name: 'Perfil' })).toBeInTheDocument()
+    expect(screen.getByText('información de tu cuenta')).toBeInTheDocument()
     expect(screen.getByText('Esta pantalla llega en un lote posterior.')).toBeInTheDocument()
     expect(isCommandPaletteOpen()).toBe(false)
     await user.click(screen.getByRole('button', { name: 'Abrir otra pantalla' }))
@@ -49,12 +49,13 @@ describe('Placeholder (pantalla pendiente)', () => {
   it('la ruta pendiente de routes.tsx pinta el Placeholder de su ítem', () => {
     setLang('es')
     expect(appRoutes.find((r) => r.path === '/ops/dispatch')!.pending).toBeUndefined() // Lote F-E2a: ya es pantalla
-    const route = appRoutes.find((r) => r.path === '/ops/monitor')!
+    expect(appRoutes.find((r) => r.path === '/ops/monitor')!.pending).toBeUndefined() // Lote F-E3: ya es pantalla
+    const route = appRoutes.find((r) => r.path === '/portal/profile')!
     expect(route.pending).toBe(true)
     const Screen = route.element
     render(<Screen />)
     expect(screen.getByTestId('placeholder-screen')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 1, name: 'Monitoreo de ruta' })).toBeInTheDocument()
-    expect(screen.getByText('mapa en vivo, telemetría y progreso')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Perfil' })).toBeInTheDocument()
+    expect(screen.getByText('información de tu cuenta')).toBeInTheDocument()
   })
 })

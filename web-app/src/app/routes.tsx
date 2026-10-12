@@ -163,7 +163,14 @@ export const appRoutes: readonly AppRoute[] = [
     module: ModuleKeys.LtlGround,
     nav: { group: 'ops', key: 'dispatch', order: 40 },
   },
-  pending({ path: '/ops/monitor', perm: 'trips.view', module: ModuleKeys.LtlGround, nav: { group: 'ops', key: 'monitor', order: 50 } }),
+  // Lote F-E3 — Monitoreo de ruta (solo lectura; reutiliza el plano `RouteMap` de F-E2b).
+  {
+    path: '/ops/monitor',
+    element: lazy(() => import('../features/monitor/MonitorScreen')),
+    perm: 'trips.view',
+    module: ModuleKeys.LtlGround,
+    nav: { group: 'ops', key: 'monitor', order: 50 },
+  },
 
   // ===== Almacén =====
   // Lote F6 — Almacén e inventario (manual 06). Lecturas con inventory.view + WMS_LOTSERIAL; compras con

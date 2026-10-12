@@ -1,0 +1,100 @@
+/* Lote F-E3 — Monitoreo de ruta. Estilos de la maqueta (`.livebadge`, `.telemrow`, `.tlstop`, `.routecard`) bajo `.mon` para no chocar con otras
+   pantallas. El «río» de nodos usa .river/.node/.pipe de pulse.css (bajo `.pulse`). Sin scroll horizontal a 360 px: el texto largo parte la palabra. */
+.mon{min-width:0}
+.mon .panel{margin-bottom:0;min-width:0}
+.mon-head-title{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.mon-head-title h1{margin:0}
+
+/* insignia EN VIVO (roja, con punto que late) o neutra «Sin señal de choferes» */
+.mon .livebadge{display:inline-flex;align-items:center;gap:6px;background:var(--dangerbg);color:var(--danger);border-radius:20px;padding:4px 11px 4px 8px;font-size:11px;font-weight:700;letter-spacing:.03em;vertical-align:middle;white-space:nowrap}
+.mon .livebadge .dot{width:7px;height:7px;border-radius:50%;background:var(--danger);animation:monpulse 1.6s infinite;flex:none}
+@keyframes monpulse{0%{box-shadow:0 0 0 0 rgba(242,106,96,.5)}70%{box-shadow:0 0 0 7px rgba(242,106,96,0)}100%{box-shadow:0 0 0 0 rgba(242,106,96,0)}}
+@media(prefers-reduced-motion:reduce){.mon .livebadge .dot{animation:none}}
+.mon .livebadge.idle{background:var(--bg-2);color:var(--muted);font-weight:600}
+.mon .livebadge.idle .dot{background:var(--faint);animation:none}
+
+/* cabecera: fecha, Actualizar y «Actualizado hace N s» */
+.mon-date{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.mon-date input[type=date]{width:auto;max-width:100%;text-transform:none;letter-spacing:0;font-weight:400}
+.mon-updated{font-size:11.5px;color:var(--faint);align-self:center;overflow-wrap:anywhere}
+.mon .btn svg{width:14px;height:14px}
+.mon-banner{display:flex;align-items:flex-start;gap:10px;background:var(--warnbg);border:1px solid var(--warn);color:var(--text);border-radius:11px;padding:10px 14px;margin-bottom:14px;font-size:12.5px;overflow-wrap:anywhere}
+.mon-banner svg{color:var(--warn);flex:none;width:16px;height:16px;margin-top:1px}
+
+/* río de totales */
+.mon .pulse{margin-bottom:16px}
+.mon .river .node .sub{overflow-wrap:anywhere}
+.mon .river .node.mon-alert{border-color:var(--warn)}
+.mon .river .node.mon-alert .big{color:var(--warn)}
+.mon .river .node.mon-minor{flex:0 1 150px}
+.mon .river .node.mon-minor .big{font-size:20px}
+.mon .river .river-fork{margin:4px 12px}
+.mon .river .node.mon-eta .big{font-size:19px}
+.mon .river .node.mon-minor+.node.mon-minor{margin-left:10px}
+@media(max-width:980px){.mon .river .node.mon-minor+.node.mon-minor{margin-left:0}}
+
+/* dos columnas: 300 px + el resto; una columna bajo 900 px */
+.mon-cols{display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px;align-items:start;min-width:0}
+@media(max-width:899.98px){.mon-cols{grid-template-columns:minmax(0,1fr)}}
+
+/* lista «Rutas activas» */
+.mon-tools{display:flex;flex-direction:column;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line-2);min-width:0}
+.mon-tools .qbox{max-width:none;flex:none;width:100%}
+.mon-tools .f{margin:0;min-width:0}
+.mon-tools select{width:100%;max-width:100%}
+.mon-tools .sw{font-size:12px;font-weight:500;color:var(--muted);white-space:normal}
+.mon-tools .disp-note{margin:0;font-size:11.5px;color:var(--faint)}
+.mon-list{list-style:none;margin:0;padding:0;max-height:620px;overflow:auto;min-width:0}
+.mon .routecard{display:flex;align-items:center;gap:10px;padding:11px 14px;border:0;border-bottom:1px solid var(--line-2);background:transparent;color:inherit;font:inherit;text-align:left;width:100%;cursor:pointer;min-width:0}
+.mon-list li:last-child .routecard{border-bottom:none}
+.mon .routecard:hover{background:var(--panel-2)}
+.mon .routecard.on{background:var(--flow-bg)}
+.mon .routecard:focus-visible{outline:2px solid var(--flow);outline-offset:-2px}
+.mon .routecard .rt{flex:1;min-width:0}
+.mon .routecard .rr{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;flex-wrap:wrap}
+.mon .routecard .pct{margin-left:auto;font-family:var(--mono);font-size:12px}
+.mon .routecard .bar{height:6px;border-radius:4px;background:var(--bg-2);margin-top:6px;overflow:hidden}
+.mon .routecard .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--flow),var(--flow-2));border-radius:4px}
+.mon .routecard .meta{margin-top:5px;font-size:11.5px;color:var(--faint);overflow-wrap:anywhere}
+.mon .routecard .meta .stale{color:var(--warn)}
+.mon .routecard .warn{color:var(--danger);flex:none;display:inline-flex}
+.mon .routecard .warn svg{width:16px;height:16px}
+
+/* panel de la ruta */
+.mon-route-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.mon-map{min-width:0}
+.mon .telemrow{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-top:1px solid var(--line-2)}
+.mon .telemcell{padding:12px 16px;border-right:1px solid var(--line-2);display:flex;flex-direction:column;gap:4px;min-width:0}
+.mon .telemcell:last-child{border-right:none}
+.mon .telemcell .tl{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);display:flex;align-items:center;gap:5px}
+.mon .telemcell .tl svg{width:12px;height:12px;flex:none}
+.mon .telemcell .tv{font-size:15px;font-weight:700;font-family:var(--mono);overflow-wrap:anywhere}
+.mon .telemcell .tv.none{color:var(--faint);font-weight:500}
+.mon-pingrow{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;padding:10px 16px;border-top:1px solid var(--line-2);min-width:0}
+.mon-pingrow .ping{font-size:11.5px;color:var(--faint);overflow-wrap:anywhere}
+.mon-pingrow .sw{margin-left:auto;margin-bottom:0}
+.mon-notes{display:flex;flex-direction:column;gap:6px;padding:10px 16px;border-top:1px solid var(--line-2);font-size:12.5px;min-width:0}
+.mon-notes p{margin:0;display:flex;gap:8px;align-items:flex-start;overflow-wrap:anywhere}
+.mon-notes .chip{flex:none}
+.mon-notes .hint{color:var(--muted)}
+.mon-stops-t{padding:10px 16px 4px;font-size:11px;font-weight:600;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;border-top:1px solid var(--line-2);margin:0}
+.mon-stops{list-style:none;margin:0;padding:0;max-height:520px;overflow:auto}
+.mon .tlstop{display:flex;align-items:center;gap:11px;padding:9px 16px;border-bottom:1px solid var(--line-2);min-width:0;flex-wrap:wrap}
+.mon .tlstop:last-child{border-bottom:none}
+.mon .tlstop.on{background:var(--flow-bg);box-shadow:inset 3px 0 0 var(--flow)}
+.mon .tlseq{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:10.5px;font-weight:700;flex:none;background:var(--bg-2);color:var(--faint)}
+.mon .tlseq.current{background:var(--flow-2);color:#fff}
+.mon .tlseq.done{background:var(--ok);color:#fff}
+.mon .tlseq.failed{background:var(--danger);color:#fff}
+.mon button.tl-pick{flex:1 1 150px;min-width:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;padding:0;cursor:pointer;display:block}
+.mon button.tl-pick:focus-visible{outline:2px solid var(--flow);outline-offset:2px;border-radius:4px}
+.mon .tl-name{display:block;font-size:12.5px;font-weight:600;overflow-wrap:anywhere}
+.mon .tl-meta{display:block;font-size:11.5px;color:var(--muted);overflow-wrap:anywhere}
+.mon .tlstop .chip{flex:none}
+
+@media (max-width:480px){
+  .mon .river .node,.mon .river .node.mon-minor{flex:1 1 calc(50% - 5px)}
+  .mon .telemcell{padding:10px 12px}
+  .mon-pingrow,.mon-notes,.mon .tlstop,.mon-stops-t{padding-left:12px;padding-right:12px}
+  .mon-pingrow .sw{margin-left:0}
+}
