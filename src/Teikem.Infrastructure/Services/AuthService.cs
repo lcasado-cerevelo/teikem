@@ -71,7 +71,7 @@ public sealed partial class AuthService(
     ISecurityEventWriter security, IDataProtectionProvider dataProtection, IPasswordBreachChecker breachChecker, PermissionService permissions,
     DeviceService devices, PinService pins, Microsoft.Extensions.Options.IOptions<OnboardingOptions> onboarding, ITransactionalEmailSender email,
     Microsoft.Extensions.Caching.Memory.IMemoryCache cache,
-    Microsoft.Extensions.Options.IOptions<PasswordResetOptions>? passwordReset = null)
+    Microsoft.Extensions.Options.IOptions<PasswordResetOptions>? passwordReset = null, TrustedNetworkService? trustedNetworks = null)
 {
     private const string InvalidCredentials = "Credenciales inválidas.";
 
@@ -138,9 +138,24 @@ public sealed partial class AuthService(
             .AnyAsync(m => m.UserId == user.Id && m.TenantId == tenantId && m.MfaRequired, ct);
         if (totp is not null || t.MfaRequired || membershipMfaRequired)
         {
-            var (challenge, _) = jwt.CreateMfaChallengeToken(user, tenantId, req.DeviceInfo);
-            await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Success, user.Id, tenantId, new { stage = "password", mfa = totp is not null ? "required" : "enrollment_required" }, ct);
-            return new AuthResultDto("mfa_required", null, challenge, totp is null, null);
+            // IP preferida (2026-10-12; docs/ip-preferida-mfa-diseno.md §3): desde la red de confianza de la compañía NO se pide el CÓDIGO (la contraseña ya se
+            // verificó arriba). Nunca se salta si: es administrador de plataforma, la membresía tiene la marca individual «siempre MFA», o la persona aún no
+            // inscribió su MFA (se le exige inscribirlo: la IP salta el código, no la inscripción). La sesión nace SIN verificación AAL2 (aal2At = null), así que
+            // las acciones sensibles ([RequireAal2]) siguen pidiendo MFA. Con el interruptor global apagado (por defecto) esto no hace nada.
+            TrustedNetworkMatch? trusted = null;
+            if (trustedNetworks is not null && totp is not null && !user.IsPlatformAdmin && !membershipMfaRequired)
+                trusted = await trustedNetworks.MatchAsync(tenantId, tenant.IpAddress, ct);
+            if (trusted is null)
+            {
+                var (challenge, _) = jwt.CreateMfaChallengeToken(user, tenantId, req.DeviceInfo);
+                await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Success, user.Id, tenantId, new { stage = "password", mfa = totp is not null ? "required" : "enrollment_required" }, ct);
+                return new AuthResultDto("mfa_required", null, challenge, totp is null, null);
+            }
+            // se anota la decisión ANTES de emitir la sesión (igual que el evento de «mfa_required»): quedó claro por qué no se pidió el código
+            await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Success, user.Id, tenantId,
+                new { stage = "password", mfa = "skipped_trusted_network", network = trusted.Name, cidr = trusted.Cidr, device = req.DeviceInfo }, ct);
+            var trustedPair = await IssueAsync(user, tenantId, kind, req.DeviceInfo, aal2At: null, ct);
+            return new AuthResultDto("ok", trustedPair, null, false, null);
         }
 
         var pair = await IssueAsync(user, tenantId, kind, req.DeviceInfo, aal2At: null, ct);
