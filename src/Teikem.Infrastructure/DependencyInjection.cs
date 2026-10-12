@@ -189,6 +189,7 @@ public static class DependencyInjection
         services.AddScoped<InventoryReadService>();
         services.AddScoped<StockExitService>();   // orden de salida (FEFO) de lo disponible, una sola regla para la app y las pantallas
         services.AddScoped<InventoryAdjustmentService>();
+        services.AddScoped<MultiAdjustmentService>();   // 2026-10-12: ajuste múltiple AJM-######
         services.AddScoped<TraceabilityService>();
         services.AddScoped<AsnService>();
         services.AddScoped<ReceiptService>();
