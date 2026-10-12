@@ -111,7 +111,7 @@ la nueva muestra lo que hay y su indicador trabaja de fondo. Ya **no** se usa el
 - `Contract.CodCommissionPct` en el modelo pero no expuesto; decisiones 39 y 44 del lote 2/3 (baja de cliente, reinvitar).
 - Propagación de `orders.credit_override` a roles clonados (sin prueba).
 - Validar la ventana AAL2 a 15/30/60 (loteF10). Atributo `[SkipIdempotency]` declarativo (hoy lista fija).
-- Tablas obsoletas de Rentas (`RentalAsset`, `RentalContract`…) siguen en la base; confirmar vacías y decidir (nunca borrar sin mirar).
+- ~~Tablas obsoletas de Rentas~~ **Resuelto**: el retiro (solo si están vacías; con filas avisa por PRINT) ya está en el bloque del Lote 27 de `Diseño/logistica-db-estructura.sql` y `db-update` lo aplica solo; no hay script aparte.
 - Resolver contradicción de zona horaria (lote18/19 vs 20) con una búsqueda de `DateTime.UtcNow.Date` en servicios.
 - Actualizar `docs/frontend/diseno-frontend.md` (obsoleto).
 

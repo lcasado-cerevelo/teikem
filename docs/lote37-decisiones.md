@@ -27,7 +27,6 @@ Cierra lo que quedaba del almacén en P0.4 de `docs/plan-de-desarrollo-pendiente
 
 ## Qué quedó fuera (es de Luis)
 
-- Correr `scripts/revisar-tablas-viejas-de-rentas.sql` en producción (solo lectura).
 - Probar en un Zebra físico.
 - Volver a desplegar lo de P0.2.
 
