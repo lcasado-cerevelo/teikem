@@ -123,6 +123,7 @@ public static class KardexRules
             EntityTypes.CrossDockPlan => "Cross-dock",
             EntityTypes.Rental => "Rental",
             EntityTypes.RentalReturn => "Rental return",
+            EntityTypes.MultiAdjustment => "Multi-adjustment",
             _ => null,
         }
         : refEntityCode.ToUpperInvariant() switch
@@ -136,6 +137,7 @@ public static class KardexRules
             EntityTypes.CrossDockPlan => "Cruce de muelle",
             EntityTypes.Rental => "Renta",
             EntityTypes.RentalReturn => "Devolución de renta",
+            EntityTypes.MultiAdjustment => "Ajuste múltiple",
             _ => null,
         };
 

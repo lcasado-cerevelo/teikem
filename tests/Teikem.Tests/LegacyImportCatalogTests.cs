@@ -70,7 +70,7 @@ public class LegacyImportCatalogTests
         Assert.Contains("opening_balance", AdjustmentRules.SystemReasons); // sin distinguir mayúsculas
         // Los tres motivos de sistema anteriores no cambian (Lote 26 agrega TRACKING_CONVERSION al final).
         Assert.Equal(new[] { AdjustmentReasons.ReceiptVariance, AdjustmentReasons.CountVariance, AdjustmentReasons.PickBatchReversal, AdjustmentReasons.OpeningBalance,
-                AdjustmentReasons.TrackingConversion },
+                AdjustmentReasons.TrackingConversion, AdjustmentReasons.PhysicalCount },
             AdjustmentReasons.SystemAssigned);
     }
 
