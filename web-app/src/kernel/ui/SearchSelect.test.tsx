@@ -68,4 +68,31 @@ describe('SearchMultiSelect / SearchSelect', () => {
     )
     expect(screen.getByRole('button', { name: 'Limpiar' })).toHaveClass('btn', 'sm', 'filters-clear')
   })
+
+  it('modo remoto: el texto sale por onSearch, no filtra aquí, «Todos» marca lo que muestra la búsqueda y conserva lo ya elegido', async () => {
+    const user = userEvent.setup()
+    const onSearch = vi.fn()
+    const onChange = vi.fn()
+    // lo ya elegido ('X') no está en los resultados actuales: se muestra arriba con su etiqueta
+    render(
+      <SearchSelect
+        label="Posición"
+        options={[{ value: 'A', label: '01-A-02' }, { value: 'B', label: '01-A-04' }]}
+        chosen={[{ value: 'X', label: '09-Z-01' }]}
+        value={['X']}
+        onSearch={onSearch}
+        onChange={onChange}
+        capped
+      />,
+    )
+    await user.click(screen.getByLabelText('Posición'))
+    expect(screen.getByLabelText('09-Z-01')).toBeChecked()
+    await user.type(screen.getByRole('searchbox'), '01-')
+    expect(onSearch).toHaveBeenLastCalledWith('01-')
+    // las opciones las entrega el servidor: no se filtran localmente
+    expect(screen.getByLabelText('01-A-02')).not.toBeChecked()
+    expect(screen.getByText(/Hay más coincidencias que las mostradas/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Todos' }))
+    expect(onChange).toHaveBeenLastCalledWith(['X', 'A', 'B'])
+  })
 })

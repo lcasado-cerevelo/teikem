@@ -12,6 +12,7 @@ import {
   rowDifference,
   rowErrors,
   summarize,
+  withAddedPositions,
   type ProductBlock,
 } from './multiAdjust'
 
@@ -135,5 +136,20 @@ describe('actualizar y agregar posiciones', () => {
     expect(isDirty(b, 'nota')).toBe(true)
     b[0].rows[0].counted = '1'
     expect(isDirty(b, '')).toBe(true)
+  })
+})
+
+describe('posiciones agregadas como conjunto', () => {
+  it('agrega las marcadas, quita las desmarcadas, nunca las del sistema y conserva lo escrito', () => {
+    let b = blocks()[0]
+    b = withAddedPositions(b, [{ id: 7, label: 'A-07 · PCK · ALM-01' }, { id: 8, label: 'A-08 · PCK · ALM-01' }, { id: 1, label: 'A-01 · PCK · ALM-01' }])
+    expect(b.rows.map((r) => r.binCode)).toEqual(['A-01', 'A-02', 'A-07', 'A-08'])   // A-01 ya traía existencia: no se duplica
+    expect(b.rows[2]).toMatchObject({ added: true, systemQty: 0, zoneCode: 'PCK' })
+    b.rows[2].counted = '3'
+    b = withAddedPositions(b, [{ id: 7, label: 'A-07 · PCK · ALM-01' }])   // se desmarca A-08
+    expect(b.rows.map((r) => r.binCode)).toEqual(['A-01', 'A-02', 'A-07'])
+    expect(b.rows[2].counted).toBe('3')
+    b = withAddedPositions(b, [])
+    expect(b.rows.map((r) => r.binCode)).toEqual(['A-01', 'A-02'])   // las del sistema se quedan
   })
 })

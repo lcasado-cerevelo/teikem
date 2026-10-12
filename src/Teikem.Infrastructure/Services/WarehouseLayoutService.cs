@@ -176,12 +176,12 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
     }
 
     /// <summary>Tope de resultados de la búsqueda de posiciones entre almacenes (Lote 14).</summary>
-    public const int MaxBinSearch = 50;
+    public const int MaxBinSearch = 200;   // 2026-10-12: antes 50; los filtros desplegables marcan «Todos» lo que muestra la búsqueda
 
     /// <summary>
     /// Lote 14 — búsqueda de posiciones ENTRE almacenes para los filtros Posición del Kárdex y del Conteo: el código de la
     /// posición o de su zona contiene el texto (vacío = las primeras por almacén y código), acotada opcionalmente a almacenes;
-    /// solo activas salvo includeInactive (el Kárdex puede filtrar posiciones ya dadas de baja). take en 1..50 (por defecto 20).
+    /// solo activas salvo includeInactive (el Kárdex puede filtrar posiciones ya dadas de baja). take en 1..200 (por defecto 20).
     /// La posición y la zona (sin TenantId) se alcanzan por su almacén filtrado por tenant; un almacén de otro tenant no aporta nada.
     /// </summary>
     public async Task<IReadOnlyList<BinSearchItemDto>> SearchBinsAsync(string? search, Guid[]? warehousePublicIds, bool includeInactive,

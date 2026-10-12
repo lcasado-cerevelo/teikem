@@ -209,7 +209,7 @@ public class KardexDetailTests
         Assert.Equal("ALM-02", Assert.Single(await layout.SearchBinsAsync("RES", null, false, 10, default)).WarehouseCode);   // por código de zona
         Assert.Single(await layout.SearchBinsAsync(null, new[] { w2.PublicId }, false, 10, default));
         Assert.Single(await layout.SearchBinsAsync("A", null, false, 1, default));
-        Assert.Equal(50, WarehouseLayoutService.MaxBinSearch);
+        Assert.Equal(200, WarehouseLayoutService.MaxBinSearch);
 
         // Otro tenant no aporta posiciones.
         using (w.F.AsTenant(WmsFixture.OtherTenantId))

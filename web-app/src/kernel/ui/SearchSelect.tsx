@@ -16,14 +16,16 @@ export interface SearchSelectProps {
   onChange: (value: string[]) => void
   /** Texto del botón cuando no hay nada elegido (por defecto "Todos"). */
   placeholder?: string
+  disabled?: boolean
   /** Búsqueda en el servidor (catálogos grandes: productos, posiciones). Ver `SearchMultiSelectProps.onSearch`. */
   onSearch?: (q: string) => void
   chosen?: readonly FilterOption[]
   loading?: boolean
+  capped?: boolean
 }
 
 /** Selección múltiple con buscador (`.msel`), para filtros con muchas opciones (clientes, bodegas, estatus). */
-export function SearchSelect({ label, options, value, onChange, placeholder, onSearch, chosen, loading }: SearchSelectProps) {
+export function SearchSelect({ label, options, value, onChange, placeholder, disabled, onSearch, chosen, loading, capped }: SearchSelectProps) {
   const t = useT()
   const id = useId()
   const ref = useRef<HTMLDivElement>(null)
@@ -41,9 +43,11 @@ export function SearchSelect({ label, options, value, onChange, placeholder, onS
         value={value}
         onChange={onChange}
         placeholder={placeholder}
+        disabled={disabled}
         onSearch={onSearch}
         chosen={chosen}
         loading={loading}
+        capped={capped}
       />
     </div>
   )
@@ -74,6 +78,8 @@ export interface SearchMultiSelectProps {
   chosen?: readonly FilterOption[]
   /** Con `onSearch`: la búsqueda está en curso. */
   loading?: boolean
+  /** Con `onSearch`: la búsqueda llegó a su tope (hay más coincidencias que las mostradas): se avisa para que se acote. */
+  capped?: boolean
 }
 
 /**
@@ -95,6 +101,7 @@ export function SearchMultiSelect({
   onSearch,
   chosen,
   loading,
+  capped,
 }: SearchMultiSelectProps) {
   const t = useT()
   const ref = useRef<HTMLDivElement>(null)
@@ -159,6 +166,7 @@ export function SearchMultiSelect({
             />
           </div>
           <div className="milist" role="listbox" aria-multiselectable="true" aria-labelledby={labelledBy}>
+            {capped && <div className="mnone">{t('ui.searchSelect.capped')}</div>}
             {shown.length === 0 && <div className="mnone">{loading ? t('common.loading') : t('ui.searchSelect.none')}</div>}
             {shown.map((o) => (
               <label key={o.value} className="mi" role="option" aria-selected={selected.has(o.value)}>
@@ -168,11 +176,13 @@ export function SearchMultiSelect({
             ))}
           </div>
           <div className="mf">
-            {!remote && (
-              <button type="button" onClick={() => onChange(options.map((o) => o.value))}>
-                {t('ui.searchSelect.all')}
-              </button>
-            )}
+            {/* en modo remoto «Todos» marca lo que la búsqueda muestra (p. ej. todas las posiciones que empiezan con «01-») sin perder lo ya elegido */}
+            <button
+              type="button"
+              onClick={() => onChange(remote ? [...value, ...options.filter((o) => !selected.has(o.value)).map((o) => o.value)] : options.map((o) => o.value))}
+            >
+              {t('ui.searchSelect.all')}
+            </button>
             <button type="button" onClick={() => onChange([])}>
               {t('ui.searchSelect.clear')}
             </button>
