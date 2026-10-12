@@ -55,6 +55,8 @@
 .cs-hint{margin:0 0 10px}
 .cs-tablewrap{overflow:auto;max-width:100%;max-height:340px;border:1px solid var(--line-2);border-radius:8px}
 .cs-tablewrap table{margin:0}
+/* editor de plantilla: la tabla de columnas crece con el modal (que ya hace scroll), no con scroll propio */
+.cs-tablewrap.cs-tplwrap{max-height:none}
 .cs-tablewrap .f{margin:0}
 .cs-tablewrap td.cs-rm{width:34px}
 .cs-badrow td{background:var(--danger-bg, transparent)}

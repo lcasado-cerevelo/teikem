@@ -1313,3 +1313,7 @@ Operación → Órdenes (`/orders`, `orders.view`, módulo `LTL_GROUND`). Decisi
 - `api.ts`: `useUpdateOrder` (PATCH), `useOrderQuote(id, enabled)`, `useConfirmOrder`, `useRepriceOrder`, `useCancelOrder`, `useOrderStatusChange`, `useAssignOrderDriver`, `useDrivers`; los POST llevan `Idempotency-Key` por intento y todo invalida ficha, listas, cotización e historial.
 - `orderRules.ts`: `orderActionVisibility(order, abilities, assignable)` (permiso Y capacidad), `isAssignableOrder` (hasta IN_TRANSIT inclusive), `orderEditValues`/`orderEditSchema`/`orderPatchChanges`/`buildOrderPatch` (solo lo cambiado; `clearCod`; paquetes como reemplazo), `isConcurrencyConflict`.
 - Kit nuevo: `ContactPointsPanel` (`features/contacts`; props `ownerEntity`, `ownerId`, `points`, `perms`, `onChanged`, claves de texto opcionales) que usan Clientes y Órdenes, y `useContactPoints`/`useContactPointActions`.
+
+## Entrada rápida e importación de órdenes (Lote F-C3)
+- `features/orders/OrderQuickEntry` (rejilla `.qg`/`.qk`), `OrderImportModal` y las reglas puras `orderQuickRules.ts` / `orderImportRules.ts`. El editor de plantillas `features/consignees/ImportTemplateEditorModal` acepta `kind="ORDER"` (textos `orders.import.*`, endpoint `/import-templates`).
+- `IconBolt` e `IconForm` (`kernel/ui/screenIcons`); `ConsigneePicker` acepta `aria-label` y `clearable={false}`.

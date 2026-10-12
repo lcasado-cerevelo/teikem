@@ -352,7 +352,22 @@ export function templateIssues(
   return issues
 }
 
-export function templateSchema(m: TemplateMessages, fields: readonly ImportField[]) {
+/** Un problema de la definición de una plantilla: ruta del campo (`columns`, `columns.2.field`, `defaults.0.value`) y mensaje. */
+export interface TemplateIssue {
+  path: string
+  message: string
+}
+
+/**
+ * Esquema del editor de plantillas. `issues` son las reglas de la definición (por defecto las de consignatarios; el editor de
+ * ÓRDENES de F-C3 pasa las suyas, `orderTemplateIssues`): el nombre se valida aquí y lo demás lo decide quien llama.
+ */
+export function templateSchema(
+  m: Pick<TemplateMessages, 'nameRequired' | 'nameMax'> & Partial<TemplateMessages>,
+  fields: readonly ImportField[],
+  issues?: (v: Pick<TemplateValues, 'columns' | 'defaults'>) => TemplateIssue[],
+) {
+  const rules = issues ?? ((v: Pick<TemplateValues, 'columns' | 'defaults'>) => templateIssues(v, fields, m as TemplateMessages))
   return z
     .object({
       name: z.string().trim().min(1, m.nameRequired).max(TEMPLATE_NAME_MAX, m.nameMax),
@@ -362,7 +377,7 @@ export function templateSchema(m: TemplateMessages, fields: readonly ImportField
       defaults: z.array(z.object({ field: z.string(), value: z.string() })),
     })
     .superRefine((v, ctx) => {
-      for (const issue of templateIssues(v, fields, m)) ctx.addIssue({ code: 'custom', path: issue.path.split('.').map((p) => (/^\d+$/.test(p) ? Number(p) : p)), message: issue.message })
+      for (const issue of rules(v)) ctx.addIssue({ code: 'custom', path: issue.path.split('.').map((p) => (/^\d+$/.test(p) ? Number(p) : p)), message: issue.message })
     })
 }
 
@@ -426,14 +441,14 @@ export function templateSummary(t: ImportTemplate | undefined, label: (field: st
 // ---------------------------------------------------------------- importación: vista previa y resultado
 
 /** Problemas de una fila: errores por campo («Campo: mensaje»), el error de la confirmación y los avisos. */
-export function rowProblems(row: ImportRow, label: (field: string) => string): { errors: string[]; warnings: string[] } {
+export function rowProblems<R extends Pick<ImportRow, 'errors' | 'warnings' | 'error'>>(row: R, label: (field: string) => string): { errors: string[]; warnings: string[] } {
   const errors = Object.entries(row.errors ?? {}).map(([field, message]) => `${label(field)}: ${message}`)
   if (row.error) errors.push(row.error)
   return { errors, warnings: [...(row.warnings ?? [])] }
 }
 
 /** ¿La fila tiene algo que mostrar en «solo con problemas»? */
-export function rowHasProblems(row: ImportRow): boolean {
+export function rowHasProblems<R extends Pick<ImportRow, 'isValid' | 'warnings' | 'error'>>(row: R): boolean {
   return row.isValid === false || (row.warnings?.length ?? 0) > 0 || Boolean(row.error)
 }
 

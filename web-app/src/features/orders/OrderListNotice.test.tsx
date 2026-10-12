@@ -32,6 +32,7 @@ beforeAll(() => setLang('es'))
 describe('Órdenes — aviso de la última alta', () => {
   it('se muestra tras crear y desaparece al abrir «Nueva orden» otra vez', async () => {
     const user = userEvent.setup()
+    window.localStorage.setItem('teikem.orders.entryMode', 'detail') // el aviso es del alta Detallada; la Rápida es la predeterminada (F-C3)
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(
       <MemoryRouter initialEntries={['/orders']}>

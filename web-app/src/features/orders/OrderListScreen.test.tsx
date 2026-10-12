@@ -99,6 +99,7 @@ beforeEach(() => {
   mock.calls = []
   mock.override = null
   orders = [O1, O2]
+  window.localStorage.clear()
 })
 
 describe('Órdenes — lista', () => {
@@ -288,6 +289,7 @@ describe('Órdenes — papelera, abrir y precio', () => {
 describe('Órdenes — Nueva orden', () => {
   it('el botón solo existe con orders.create; abre el formulario y «Ocultar formulario» lo cierra', async () => {
     const user = userEvent.setup()
+    window.localStorage.setItem('teikem.orders.entryMode', 'detail') // la Rápida es la predeterminada (F-C3); aquí se prueba el desplegable
     const { unmount } = wrap(VIEW)
     await screen.findByText('Farmacia Central')
     expect(screen.queryByRole('button', { name: /Nueva orden/ })).toBeNull()
@@ -300,5 +302,69 @@ describe('Órdenes — Nueva orden', () => {
     await user.click(screen.getByRole('button', { name: 'Ocultar formulario' }))
     expect(screen.queryByText('Ticket de la orden')).toBeNull()
     expect(screen.getByRole('button', { name: /Nueva orden/ })).toBeInTheDocument()
+  })
+})
+
+describe('Órdenes — Rápida / Detallada e Importar (F-C3)', () => {
+  it('«Nueva orden» abre la entrada Rápida por omisión y el segmentado cambia a Detallada', async () => {
+    const user = userEvent.setup()
+    wrap([...VIEW, 'orders.create'])
+    await screen.findByText('Farmacia Central')
+    await user.click(screen.getByRole('button', { name: /Nueva orden/ }))
+    const rapida = screen.getByRole('button', { name: /Rápida/ })
+    expect(rapida).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: /Guardar fila/ })).toBeInTheDocument()
+    expect(screen.queryByText('Ticket de la orden')).toBeNull()
+    await user.click(screen.getByRole('button', { name: /Detallada/ }))
+    expect(await screen.findByText('Ticket de la orden')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Guardar fila/ })).toBeNull()
+    expect(screen.getByRole('button', { name: /Detallada/ })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('recuerda la última elección en localStorage', async () => {
+    const user = userEvent.setup()
+    const first = wrap([...VIEW, 'orders.create'])
+    await screen.findByText('Farmacia Central')
+    await user.click(screen.getByRole('button', { name: /Nueva orden/ }))
+    await user.click(screen.getByRole('button', { name: /Detallada/ }))
+    expect(window.localStorage.getItem('teikem.orders.entryMode')).toBe('detail')
+    first.unmount()
+    wrap([...VIEW, 'orders.create'])
+    await screen.findByText('Farmacia Central')
+    await user.click(screen.getByRole('button', { name: /Nueva orden/ }))
+    expect(await screen.findByText('Ticket de la orden')).toBeInTheDocument()
+  })
+
+  it('un localStorage que falla no rompe la pantalla (queda en Rápida)', async () => {
+    const user = userEvent.setup()
+    const get = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('bloqueado')
+    })
+    const set = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('bloqueado')
+    })
+    try {
+      wrap([...VIEW, 'orders.create'])
+      await screen.findByText('Farmacia Central')
+      await user.click(screen.getByRole('button', { name: /Nueva orden/ }))
+      expect(screen.getByRole('button', { name: /Guardar fila/ })).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: /Detallada/ }))
+      expect(await screen.findByText('Ticket de la orden')).toBeInTheDocument()
+    } finally {
+      get.mockRestore()
+      set.mockRestore()
+    }
+  })
+
+  it('«Importar» solo existe con orders.create y abre el modal de importación', async () => {
+    const user = userEvent.setup()
+    const { unmount } = wrap(VIEW)
+    await screen.findByText('Farmacia Central')
+    expect(screen.queryByRole('button', { name: 'Importar' })).toBeNull()
+    unmount()
+    wrap([...VIEW, 'orders.create'])
+    await screen.findByText('Farmacia Central')
+    await user.click(screen.getByRole('button', { name: 'Importar' }))
+    expect(await screen.findByText('Importar órdenes desde CSV')).toBeInTheDocument()
   })
 })

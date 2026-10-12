@@ -103,3 +103,64 @@
 .od-sect{margin:12px 0 4px;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .od-quote{margin-top:8px;border-top:1px dashed var(--line);padding-top:4px}
 .od-side .cl-points-cols{grid-template-columns:minmax(0,1fr)}
+
+/* Lote F-C3 — Entrada rápida (maqueta `.burst`, `.qg`): barra con cliente, líneas y COD acumulado + rejilla de captura de una orden por fila */
+.qk{margin-bottom:16px;min-width:0}
+.qk .burst{align-items:center}
+.qk .burst .t.qk-client{min-width:260px;flex:1 1 260px;max-width:360px}
+.qk .burst .t.qk-client small{margin-bottom:4px}
+.qk .burst .t.qk-client .f{margin:0}
+.qk .burst .leg{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:0 14px}
+.qk .k{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted)}
+.qk .k kbd{font-family:var(--mono);font-size:11px;background:var(--bg-2);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:2px 6px}
+.qk-panel{margin-bottom:8px;min-width:0}
+.qg{width:100%;border-collapse:collapse;table-layout:fixed}
+.qg th{text-align:left;padding:10px 8px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);font-weight:600}
+.qg td{padding:3px 4px;border-bottom:1px solid var(--line-2);vertical-align:top}
+.qg input,.qg select{background:transparent;border:1px solid transparent;border-radius:6px;padding:8px 9px;width:100%;font-family:var(--mono);font-size:13px;color:var(--text);outline:none}
+.qg select{font-family:var(--ui)}
+.qg input:focus,.qg select:focus{background:var(--bg-2);border-color:var(--flow);box-shadow:0 0 0 3px var(--flow-bg)}
+.qg input::placeholder{color:var(--faint);font-family:var(--ui)}
+.qg input:disabled,.qg select:disabled{opacity:.6}
+.qg input[aria-invalid="true"],.qg select[aria-invalid="true"]{border-color:var(--danger)}
+.qg tr.saved td{color:var(--muted)}
+.qg .qk-r{text-align:right}
+.qg td.qk-r{padding-right:12px}
+.qg .qk-addr{display:block;color:var(--faint);font-size:11.5px;line-height:1.3;padding:9px 4px;overflow-wrap:anywhere}
+.qg .qk-err{margin:2px 4px 4px;font-size:11.5px}
+.qg .qk-c-ord{width:11%}.qg .qk-c-cons{width:23%}.qg .qk-c-addr{width:14%}.qg .qk-c-pkg{width:10%}.qg .qk-c-cod{width:8%;text-align:right}.qg .qk-c-svc{width:11%}.qg .qk-c-act{width:118px}
+.qg .qk-act{white-space:nowrap;padding:6px 6px}
+.qg tr.saved .qk-act{padding-top:9px}
+.qg .qk-rowerr td{border-bottom:none;padding:6px 4px}
+.qg .qk-rowerr .form-alert{margin:0}
+.qk-foot{padding:11px 16px;border-top:1px solid var(--line-2);color:var(--muted);font-size:12.5px}
+.qk-help{margin:0 0 4px}
+.qk .cpick{min-width:0}
+.qk .oe-consrow .oe-consbox input{font-family:var(--ui)}
+
+/* sin sitio para siete columnas: cada fila pasa a una tarjeta con la etiqueta de cada campo (sin scroll horizontal) */
+@media(max-width:1200px){
+  .qg,.qg tbody{display:block}
+  .qg thead{display:none}
+  .qg tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 10px;padding:10px 12px;border-bottom:1px solid var(--line-2)}
+  .qg td{display:block;border:none;padding:2px 0;min-width:0}
+  .qg td[data-label]::before{content:attr(data-label);display:block;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);padding:4px 0 2px}
+  .qg td.qk-r{text-align:left;padding-right:0}
+  .qg .qk-addr{padding:6px 0}
+  .qg td:nth-child(2),.qg td:nth-child(3),.qg td:nth-child(7),.qg td.qk-act,.qg tr.qk-rowerr td{grid-column:1 / -1}
+  .qg .qk-act{width:auto;padding:8px 0 2px}
+  .qg .qk-act .btn{width:100%;justify-content:center}
+  .qg tr.qk-rowerr{display:block;padding:0 12px 8px}
+}
+@media(max-width:480px){
+  .qg tr{grid-template-columns:minmax(0,1fr)}
+  .qg td{grid-column:1 / -1}
+  .qk .burst .t.qk-client{min-width:0;max-width:none;flex-basis:100%}
+  .qk .burst .leg{display:none}
+}
+
+/* Lote F-C3 — Importación de órdenes: casillas de la confirmación */
+.oi-options{border:1px solid var(--line-2);border-radius:10px;padding:10px 14px 12px;margin:12px 0 0;min-width:0}
+.oi-options legend{font-size:12px;font-weight:600;color:var(--muted);padding:0 6px}
+.oi-options .sw{margin-top:6px;white-space:normal}
+.oi-options .help{margin:2px 0 4px 0}

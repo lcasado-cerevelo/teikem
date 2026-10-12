@@ -2,11 +2,15 @@
 // delimitador, ¿tiene encabezado?, tabla «Columna N → Campo destino» (campos de GET /locations/import/fields; «— no importar —»),
 // agregar y quitar columnas y valores por defecto (solo de los campos que los admiten). POST o PATCH (`locations.create`);
 // las plantillas se desactivan y reactivan en lugar de «eliminarse» (el servidor no tiene DELETE).
+// Lote F-C3: el MISMO editor sirve a las plantillas de ÓRDENES (`kind="ORDER"`, `/import-templates`, `orders.edit`): cambian las reglas de la
+// definición (consignatario + paquete), los textos (`orders.import.*`) y el endpoint.
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect, useMemo } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { useT } from '../../kernel/i18n'
 import { Field, Form, IconPlus, IconTrash, Modal, Select, TextInput, Toggle, toast } from '../../kernel/ui'
+import { useSaveOrderImportTemplate } from '../orders/importApi'
+import { orderTemplateIssues } from '../orders/orderImportRules'
 import { useSaveImportTemplate } from './api'
 import {
   buildTemplateCreate,
@@ -20,6 +24,8 @@ import {
 } from './consigneeRules'
 
 export interface ImportTemplateEditorModalProps {
+  /** Tipo de plantilla: consignatarios (por omisión) u órdenes (Lote F-C3). */
+  kind?: 'CONSIGNEE' | 'ORDER'
   /** null = plantilla nueva. */
   template: ImportTemplate | null
   fields: readonly ImportField[]
@@ -31,29 +37,50 @@ export interface ImportTemplateEditorModalProps {
 
 const DELIMITER_KEYS: Record<string, string> = { ',': 'comma', ';': 'semicolon', '\t': 'tab', '|': 'pipe' }
 
-export function ImportTemplateEditorModal({ template, fields, fieldLabel, onClose, onSaved }: ImportTemplateEditorModalProps) {
-  const t = useT()
-  const save = useSaveImportTemplate()
-  const formId = 'consignee-template'
+export function ImportTemplateEditorModal({ kind = 'CONSIGNEE', template, fields, fieldLabel, onClose, onSaved }: ImportTemplateEditorModalProps) {
+  const tr = useT()
+  const isOrder = kind === 'ORDER'
+  // los textos de las plantillas de órdenes viven en `orders.import.*`; los comunes (cancelar, cargando, tope de nombre) no cambian
+  const ns = isOrder ? 'orders.import' : 'consignees.import'
+  // el editor se escribió con las claves `consignees.import.*`: con órdenes se leen de `orders.import.*` (mismas subclaves, mismos textos comunes)
+  const t = (key: string, params?: Record<string, string | number>) => (key.startsWith('consignees.import.') ? tr(`${ns}.${key.slice('consignees.import.'.length)}`, params) : tr(key, params))
+  const saveConsignee = useSaveImportTemplate()
+  const saveOrder = useSaveOrderImportTemplate()
+  const save = isOrder ? saveOrder : saveConsignee
+  const formId = isOrder ? 'order-template' : 'consignee-template'
   const isNew = template === null
 
   const schema = useMemo(
     () =>
-      templateSchema(
-        {
-          nameRequired: t('consignees.import.errors.nameRequired'),
-          nameMax: t('consignees.errors.max', { max: TEMPLATE_NAME_MAX }),
-          columnsRequired: t('consignees.import.errors.columnsRequired'),
-          nameLine1: t('consignees.import.errors.nameLine1'),
-          city: t('consignees.import.errors.city'),
-          clientBoth: t('consignees.import.errors.clientBoth'),
-          repeated: (field) => t('consignees.import.errors.repeated', { field }),
-          noDefault: (field) => t('consignees.import.errors.noDefault', { field }),
-          defaultValueRequired: (field) => t('consignees.import.errors.defaultValueRequired', { field: fieldLabel(field) }),
-        },
-        fields,
-      ),
-    [t, fields, fieldLabel],
+      isOrder
+        ? templateSchema(
+            { nameRequired: tr('orders.import.errors.nameRequired'), nameMax: tr('consignees.errors.max', { max: TEMPLATE_NAME_MAX }) },
+            fields,
+            (v) =>
+              orderTemplateIssues(v, fields, {
+                columnsRequired: tr('orders.import.errors.columnsRequired'),
+                consignee: tr('orders.import.errors.consignee'),
+                packages: tr('orders.import.errors.packages'),
+                repeated: (field) => tr('orders.import.errors.repeated', { field }),
+                noDefault: (field) => tr('orders.import.errors.noDefault', { field }),
+                defaultValueRequired: (field) => tr('orders.import.errors.defaultValueRequired', { field: fieldLabel(field) }),
+              }),
+          )
+        : templateSchema(
+            {
+              nameRequired: tr('consignees.import.errors.nameRequired'),
+              nameMax: tr('consignees.errors.max', { max: TEMPLATE_NAME_MAX }),
+              columnsRequired: tr('consignees.import.errors.columnsRequired'),
+              nameLine1: tr('consignees.import.errors.nameLine1'),
+              city: tr('consignees.import.errors.city'),
+              clientBoth: tr('consignees.import.errors.clientBoth'),
+              repeated: (field) => tr('consignees.import.errors.repeated', { field }),
+              noDefault: (field) => tr('consignees.import.errors.noDefault', { field }),
+              defaultValueRequired: (field) => tr('consignees.import.errors.defaultValueRequired', { field: fieldLabel(field) }),
+            },
+            fields,
+          ),
+    [tr, isOrder, fields, fieldLabel],
   )
   const form = useForm({ resolver: zodResolver(schema), values: templateValuesOf(template) })
   const columns = useFieldArray({ control: form.control, name: 'columns' })
@@ -128,7 +155,7 @@ export function ImportTemplateEditorModal({ template, fields, fieldLabel, onClos
         </div>
         <p className="help cs-hint">{t('consignees.import.tplEditorHint')}</p>
 
-        <div className="cs-tablewrap">
+        <div className="cs-tablewrap cs-tplwrap">
           <table className="lst densetbl">
             <thead>
               <tr>

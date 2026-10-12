@@ -166,6 +166,25 @@ export function IconTag() {
   )
 }
 
+/** Rayo ('bolt'): modo «Rápida» de la entrada de órdenes (Lote F-C3). */
+export function IconBolt() {
+  return (
+    <Svg>
+      <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z" />
+    </Svg>
+  )
+}
+
+/** Formulario ('form'): modo «Detallada» de la entrada de órdenes (Lote F-C3). */
+export function IconForm() {
+  return (
+    <Svg>
+      <rect x="4" y="3" width="16" height="18" rx="2" />
+      <path d="M8 8h8M8 12h8M8 16h4" />
+    </Svg>
+  )
+}
+
 /** Ajustes de inventario ('pencil'): nota de la pantalla y estado vacío "Selecciona una compra". Mismo trazo que `IconEdit`. */
 export function IconPencil() {
   return (

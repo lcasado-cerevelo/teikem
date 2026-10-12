@@ -145,9 +145,11 @@ test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
 
     // ---- Formulario desplegable ----
     await page.getByRole('button', { name: /Nueva orden/ }).click()
+    // desde F-C3 la entrada abre en Rápida (segmentado Rápida/Detallada); este recorrido es el de la Detallada
+    await expect(page.getByRole('button', { name: /Rápida/ })).toHaveCount(1)
+    await page.getByRole('button', { name: /Detallada/ }).click()
     await expect(page.getByText('Ticket de la orden')).toBeVisible()
-    // el segmentado Rápida/Detallada y los botones de labels no existen todavía (F-C3 / F-G)
-    await expect(page.getByRole('button', { name: /Rápida/ })).toHaveCount(0)
+    // los botones de labels no existen todavía (F-G)
     await expect(page.getByRole('button', { name: /label/i })).toHaveCount(0)
     // validaciones: sin cliente ni consignatario el servidor no se llama
     await page.getByRole('button', { name: 'Guardar borrador' }).click()
@@ -222,6 +224,7 @@ test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
 
     // ---- Guardar y confirmar sin tarifa: el mensaje del servidor y el formulario sigue abierto ----
     await page.getByRole('button', { name: /Nueva orden/ }).click()
+    await page.getByRole('button', { name: /Detallada/ }).click()
     await pickClient(page, clientName)
     await pickConsignee(page, consigneeName)
     const service2 = page.getByRole('combobox', { name: /^Servicio/ })
@@ -287,6 +290,7 @@ test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
 
     async function fillOrder() {
       await page.getByRole('button', { name: /Nueva orden/ }).click()
+      await page.getByRole('button', { name: /Detallada/ }).click()
       await pickClient(page, clientName)
       await pickConsignee(page, consigneeName)
       await page.getByRole('combobox', { name: /^Servicio/ }).selectOption('STANDARD')

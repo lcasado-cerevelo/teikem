@@ -22,10 +22,14 @@ export interface ConsigneePickerProps {
   invalid?: boolean
   required?: boolean
   'aria-describedby'?: string
+  /** Etiqueta accesible cuando no hay un <label htmlFor> (la rejilla de la entrada rápida). */
+  'aria-label'?: string
+  /** false = sin la ✕ para quitar el consignatario (una parada menos al recorrer con Tab la rejilla de la entrada rápida). Por defecto true. */
+  clearable?: boolean
   onBlur?: () => void
 }
 
-export function ConsigneePicker({ clientPublicId, value, onChange, id, invalid, required, onBlur, ...aria }: ConsigneePickerProps) {
+export function ConsigneePicker({ clientPublicId, value, onChange, id, invalid, required, onBlur, clearable, ...aria }: ConsigneePickerProps) {
   const t = useT()
   const canCreate = useCan('locations.create')
   const [creating, setCreating] = useState(false)
@@ -58,6 +62,7 @@ export function ConsigneePicker({ clientPublicId, value, onChange, id, invalid, 
           id={id}
           options={options}
           value={value}
+          clearable={clearable}
           onChange={(v) => onChange(v)}
           loading={list.isLoading && !!clientPublicId}
           disabled={!clientPublicId}

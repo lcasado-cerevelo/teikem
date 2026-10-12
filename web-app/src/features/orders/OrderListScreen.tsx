@@ -1,5 +1,6 @@
 // Órdenes (Lote F-C1; maqueta `ordenes()`). `/orders`, grupo Operación. Lectura: orders.view + LTL_GROUND (lo aplica la ruta).
-// Arriba, el formulario de alta DETALLADA desplegable («Nueva orden» / «Ocultar formulario», `orders.create`); debajo los filtros de la
+// Arriba, el formulario de alta desplegable («Nueva orden» / «Ocultar formulario», `orders.create`) con el segmentado Rápida / Detallada
+// (Lote F-C3: por omisión Rápida; recuerda la última elección) y el botón «Importar» (CSV de órdenes, `orders.create`); debajo los filtros de la
 // maqueta (más Estatus) y la tabla paginada por el servidor con UNA FILA POR TIPO DE PAQUETE (la paginación cuenta órdenes). La
 // papelera (`orders.cancel`) solo en el estatus inicial; la flecha abre la orden. `Cotizado` solo con `orders.view_price`.
 // Ordenar una columna ordena TODO lo filtrado (`exportRows`, regla del CLAUDE.md).
@@ -18,6 +19,7 @@ import {
   IconChevronRight,
   IconPlus,
   IconTrash,
+  IconUpload,
   Panel,
   QBox,
   SearchSelect,
@@ -27,12 +29,15 @@ import {
   type DateRange,
   type RowAction,
 } from '../../kernel/ui'
-import { IconLayers } from '../../kernel/ui/screenIcons'
+import { IconBolt, IconForm, IconLayers } from '../../kernel/ui/screenIcons'
 import { useClientOptions, useConsignees } from '../consignees/api'
 import { TextFilter } from '../warehouse/filterControls'
 import { useDebounced } from '../warehouse/lineRules'
 import { exportOrders, useDeleteOrder, useOrders, type OrderDetailDto, type OrderListItemDto } from './api'
 import { OrderEntryForm } from './OrderEntryForm'
+import { OrderImportModal } from './OrderImportModal'
+import { OrderQuickEntry } from './OrderQuickEntry'
+import { readEntryMode, saveEntryMode, type EntryMode } from './orderQuickRules'
 import { buildOrderQuery, canDeleteOrder, EMPTY_ORDER_FILTERS, packageGroups, packageSummaryText, type OrderFilters } from './orderRules'
 import './orders.css'
 
@@ -56,6 +61,8 @@ export default function OrderListScreen() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [formOpen, setFormOpen] = useState(false)
+  const [entryMode, setEntryMode] = useState<EntryMode>(readEntryMode)
+  const [importing, setImporting] = useState(false)
   const [created, setCreated] = useState<Created | null>(null)
   const [deleting, setDeleting] = useState<OrderListItemDto | null>(null)
   const remove = useDeleteOrder()
@@ -189,6 +196,11 @@ export default function OrderListScreen() {
     [t, navigate],
   )
 
+  function chooseMode(mode: EntryMode) {
+    setEntryMode(mode)
+    saveEntryMode(mode)
+  }
+
   function onCreated(order: OrderDetailDto, confirmed: boolean) {
     setFormOpen(false)
     setCreated({ publicId: order.publicId ?? '', number: order.orderNumber ?? '', confirmed })
@@ -202,13 +214,16 @@ export default function OrderListScreen() {
           <p>{t('orders.list.subtitle')}</p>
         </div>
         <div className="act">
-          {!formOpen && (
-            <Can perm="orders.create">
+          <Can perm="orders.create">
+            <button type="button" className="btn" onClick={() => setImporting(true)}>
+              <IconUpload /> {t('orders.list.import')}
+            </button>
+            {!formOpen && (
               <button type="button" className="btn flow" onClick={() => { setCreated(null); setFormOpen(true) }}>
                 <IconPlus /> {t('orders.list.newOrder')}
               </button>
-            </Can>
-          )}
+            )}
+          </Can>
         </div>
       </div>
 
@@ -219,11 +234,19 @@ export default function OrderListScreen() {
               <b>
                 <IconPlus /> {t('orders.entry.title')}
               </b>
+              <div className="seg" role="group" aria-label={t('orders.entry.mode')}>
+                <button type="button" className={entryMode === 'quick' ? 'on' : ''} aria-pressed={entryMode === 'quick'} onClick={() => chooseMode('quick')}>
+                  <IconBolt /> {t('orders.entry.quick')}
+                </button>
+                <button type="button" className={entryMode === 'detail' ? 'on' : ''} aria-pressed={entryMode === 'detail'} onClick={() => chooseMode('detail')}>
+                  <IconForm /> {t('orders.entry.detailed')}
+                </button>
+              </div>
               <button type="button" className="btn sm oe-hide" onClick={() => setFormOpen(false)}>
                 {t('orders.list.hideForm')}
               </button>
             </div>
-            <OrderEntryForm onCreated={onCreated} />
+            {entryMode === 'quick' ? <OrderQuickEntry /> : <OrderEntryForm onCreated={onCreated} />}
           </section>
         </Can>
       )}
@@ -290,6 +313,12 @@ export default function OrderListScreen() {
           />
         )}
       </Panel>
+
+      {importing && (
+        <Can perm="orders.create">
+          <OrderImportModal onClose={() => setImporting(false)} />
+        </Can>
+      )}
 
       <ConfirmDialog
         open={deleting !== null}
