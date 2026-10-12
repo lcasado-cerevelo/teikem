@@ -21,6 +21,9 @@ const require = createRequire(path.join(root, 'app-almacen', 'package.json'))
 const sharp = require('sharp')
 
 const BRAND_BLUE = '#0B2C66'
+// Staging (2026-10-12): fondo morado y cinta roja «STAGING», para no confundir el APK de pruebas con el de producción.
+const STAGING_PURPLE = '#6D28D9'
+const STAGING_RED = '#DC2626'
 const logos = path.join(root, 'Logos')
 const out = path.join(root, 'app-almacen', 'assets')
 
@@ -85,7 +88,47 @@ async function lockup(sourceFile, lang, baseWidth) {
   }
 }
 
+/** Cinta «STAGING» (píldora roja con texto blanco) de w×h px centrada en x, con su borde superior en y, dentro de un lienzo `size`. */
+function stagingBand(size, w, h, y, knockout) {
+  const x = Math.round((size - w) / 2)
+  const font = Math.round(h * 0.56)
+  const text = `<text x="${size / 2}" y="${y + h / 2}" text-anchor="middle" dominant-baseline="central" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-weight="800" font-size="${font}" letter-spacing="${Math.round(font * 0.06)}">STAGING</text>`
+  if (knockout) {
+    // monocroma: píldora blanca con el texto recortado (transparente), porque ese icono solo usa el canal alfa
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><defs><mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="${size}" height="${size}"><rect width="${size}" height="${size}" fill="#fff"/><g fill="#000">${text}</g></mask></defs><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${h / 2}" fill="#fff" mask="url(#m)"/></svg>`
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${h / 2}" fill="${STAGING_RED}" stroke="#fff" stroke-width="${Math.round(h * 0.06)}"/><g fill="#fff">${text}</g></svg>`
+}
+
+/** Iconos de la variante staging (app-almacen/assets/staging): los mismos de producción con fondo morado y la cinta STAGING. */
+async function stagingIcons() {
+  const dir = path.join(out, 'staging')
+  await mkdir(dir, { recursive: true })
+  const symbol = await readFile(path.join(logos, 'teikem-symbol.svg'), 'utf8')
+  const size = 1024
+  const compose = async (file, symbolSvg, ratio, background, band) => {
+    const inner = Math.round(size * ratio)
+    const sym = await sharp(Buffer.from(symbolSvg(inner))).png().toBuffer()
+    const bg = background ?? { r: 0, g: 0, b: 0, alpha: 0 }
+    await sharp({ create: { width: size, height: size, channels: 4, background: bg } })
+      .composite([{ input: sym, gravity: 'center' }, { input: Buffer.from(band) }])
+      .png({ compressionLevel: 9 })
+      .toFile(path.join(dir, file))
+    console.log(`  staging/${file} (${size}x${size})`)
+  }
+  // Icono general (a sangre): cinta más ancha. Adaptativo: la cinta cabe en el círculo seguro de 66/108.
+  await compose('icon.png', (px) => sizedSymbol(symbol, px), 0.72, STAGING_PURPLE, stagingBand(size, 640, 150, 760, false))
+  await compose('android-icon-foreground.png', (px) => sizedSymbol(symbol, px), 0.6, null, stagingBand(size, 400, 100, 690, false))
+  await compose('android-icon-monochrome.png', (px) => monochromeSymbol(symbol, px), 0.6, null, stagingBand(size, 400, 100, 690, true))
+  await sharp({ create: { width: size, height: size, channels: 4, background: STAGING_PURPLE } }).png({ compressionLevel: 9 }).toFile(path.join(dir, 'android-icon-background.png'))
+  console.log('  staging/android-icon-background.png (1024x1024)')
+}
+
 async function main() {
+  if (process.argv[2] === 'staging') {
+    console.log('Generando los iconos de staging en app-almacen/assets/staging:')
+    return stagingIcons()
+  }
   await mkdir(out, { recursive: true })
   const symbol = await readFile(path.join(logos, 'teikem-symbol.svg'), 'utf8')
   const color = (px) => sizedSymbol(symbol, px)

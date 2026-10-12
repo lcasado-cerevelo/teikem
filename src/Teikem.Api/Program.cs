@@ -230,7 +230,9 @@ app.UseAuthorization();
 // Lote 8A: Idempotency-Key en escrituras autenticadas (después de autenticación, TenantContext y autorización).
 app.UseMiddleware<IdempotencyMiddleware>();
 app.MapControllers();
-app.MapGet("/health", () => Results.Ok(new { status = "ok", utc = DateTime.UtcNow })).AllowAnonymous();
+// environment (2026-10-12): etiqueta del ambiente (Hosting:EnvironmentLabel, p. ej. "STAGING"; null en producción). La web la lee para mostrar su cinta.
+var environmentLabel = app.Configuration["Hosting:EnvironmentLabel"];
+app.MapGet("/health", () => Results.Ok(new { status = "ok", utc = DateTime.UtcNow, environment = string.IsNullOrWhiteSpace(environmentLabel) ? null : environmentLabel.Trim() })).AllowAnonymous();
 // La web es una aplicación de una sola página: cualquier ruta que no sea del API cae en index.html.
 if (hasWeb) app.MapFallbackToFile("{*path:regex(^(?!api/|health).*$)}", "index.html", staticOptions);
 

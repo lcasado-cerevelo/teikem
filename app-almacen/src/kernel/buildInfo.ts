@@ -6,5 +6,7 @@ export function buildLabel(): string {
   const cfg = Constants.expoConfig
   const stamp = String((cfg?.extra as { buildStamp?: string } | undefined)?.buildStamp ?? 'local')
   const code = cfg?.android?.versionCode
-  return `${cfg?.version ?? '?'}${code != null ? ` (${code})` : ''} · ${stamp}`
+  const variant = String((cfg?.extra as { appVariant?: string } | undefined)?.appVariant ?? '')
+  // el APK de pruebas lo dice al pie de Inicio, para no confundirlo con el de producción
+  return `${cfg?.version ?? '?'}${code != null ? ` (${code})` : ''} · ${stamp}${variant === 'staging' ? ' · STAGING' : ''}`
 }

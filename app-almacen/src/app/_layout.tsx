@@ -7,6 +7,7 @@ import { StatusBar } from 'expo-status-bar'
 
 import { setAuthLostHandler } from '../kernel/api/client'
 import { hydrateSession } from '../kernel/auth/session'
+import { EnvironmentBanner } from '../kernel/ui/EnvironmentBanner'
 import { bottomPadding } from '../kernel/ui/insets'
 import { colors } from '../kernel/ui/theme'
 
@@ -20,6 +21,7 @@ function AppContent({ ready }: { ready: boolean }) {
   return (
     <View testID="app-root" style={[styles.fill, { paddingTop: insets.top, paddingBottom: bottomPadding(insets.bottom) }]}>
       <StatusBar style="light" />
+      <EnvironmentBanner />
       {ready ? (
         <Slot />
       ) : (

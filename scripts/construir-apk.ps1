@@ -21,6 +21,10 @@
     construir-apk.ps1 -Version 1.1.0                               (cambia el nombre de la versión; el código sube solo)
     construir-apk.ps1 -Version 1.1.0 -CodigoVersion 12             (fuerza también el código)
   Otras opciones: -ApiUrl <https://...>  -Salida <carpeta>  -SinRestaurar (deja android\ en producción)
+  STAGING (2026-10-12): con  -Staging  construye la app del ambiente de pruebas: paquete com.teikem.almacen.staging (se instala AL LADO de la de
+    producción en el mismo aparato), nombre «Teikem Almacén STAGING», icono morado con cinta STAGING, y el servidor de fábrica
+    https://teikem.isaxpr.com (cámbielo con -ApiUrl). Lleva su propio contador de código de versión (%USERPROFILE%\.teikem\apk-versioncode-staging.txt)
+    y se llama TeikemStaging-<versión>-c<código>.apk. Firma con la misma llave. Ejemplo:  construir-apk.ps1 -Staging
 #>
 param(
     [string]$ApiUrl = 'https://teikem.advancelogisticspr.com',
@@ -29,7 +33,8 @@ param(
     [int]$CodigoVersion = 0,
     [string]$Version = '',
     [switch]$VerCodigo,
-    [switch]$PermitirBajar
+    [switch]$PermitirBajar,
+    [switch]$Staging
 )
 
 $ErrorActionPreference = 'Stop'
@@ -38,11 +43,12 @@ $app = Join-Path $repo 'app-almacen'
 function Paso([string]$m) { Write-Host ''; Write-Host "== $m" -ForegroundColor Cyan }
 function Fallar([string]$m) { Write-Host ''; Write-Host $m -ForegroundColor Red; exit 1 }
 
+if ($Staging -and -not $PSBoundParameters.ContainsKey('ApiUrl')) { $ApiUrl = 'https://teikem.isaxpr.com' }
 if ($ApiUrl -notmatch '^https://') { Fallar 'La dirección del servidor debe empezar con https:// (la app de producción no admite HTTP sin cifrar).' }
 
 # --- Versión y código de versión (siempre mayor que el anterior: si no, Android no deja instalar encima) ---
 $dirLlave = Join-Path $env:USERPROFILE '.teikem'
-$archivoCodigo = Join-Path $dirLlave 'apk-versioncode.txt'
+$archivoCodigo = Join-Path $dirLlave $(if ($Staging) { 'apk-versioncode-staging.txt' } else { 'apk-versioncode.txt' })
 $anterior = 1   # los aparatos ya instalados traen el código 1
 $hayArchivo = Test-Path $archivoCodigo
 if ($hayArchivo) { $leido = 0; if ([int]::TryParse((Get-Content $archivoCodigo -Raw).Trim(), [ref]$leido) -and $leido -ge 1) { $anterior = $leido } }
@@ -102,10 +108,10 @@ $env:TEIKEM_BUILD_STAMP = "$(Get-Date -Format 'yyyy-MM-dd HH:mm') $commit"
 # --- Compilar ---
 Set-Location $app
 if (-not (Test-Path 'node_modules')) { Paso 'Instalando dependencias'; npm ci --legacy-peer-deps; if ($LASTEXITCODE -ne 0) { Fallar 'npm ci falló.' } }
-$env:APP_VARIANT = 'production'
+$env:APP_VARIANT = $(if ($Staging) { 'staging' } else { 'production' })
 $env:EXPO_PUBLIC_API_URL = $ApiUrl
 $env:CI = '1'
-Paso 'Generando el proyecto Android (variante production)'
+Paso "Generando el proyecto Android (variante $env:APP_VARIANT)"
 npx expo prebuild --platform android --clean
 if ($LASTEXITCODE -ne 0) { Fallar 'expo prebuild falló.' }
 
@@ -140,7 +146,7 @@ $apkOrigen = Join-Path $app 'android\app\build\outputs\apk\release\app-release.a
 if ($ok -and (Test-Path $apkOrigen)) {
     New-Item -ItemType Directory -Force $Salida | Out-Null
     New-Item -ItemType Directory -Force $dirLlave | Out-Null
-    $apk = Join-Path $Salida ("TeikemAlmacen-$Version-c$CodigoVersion.apk")
+    $apk = Join-Path $Salida ($(if ($Staging) { "TeikemStaging" } else { "TeikemAlmacen" }) + "-$Version-c$CodigoVersion.apk")
     Set-Content -Path $archivoCodigo -Value "$CodigoVersion" -Encoding ASCII   # solo si compiló: el próximo APK sube de aquí
     Copy-Item $apkOrigen $apk -Force
     $firmador = Get-ChildItem (Join-Path $env:ANDROID_HOME 'build-tools') -Recurse -Filter apksigner.bat -ErrorAction SilentlyContinue | Sort-Object FullName | Select-Object -Last 1
@@ -168,4 +174,4 @@ if (-not $SinRestaurar) {
 Remove-Item Env:TEIKEM_RELEASE_KEYSTORE_PASSWORD, Env:TEIKEM_RELEASE_KEY_PASSWORD -ErrorAction SilentlyContinue
 if (-not $ok) { exit 1 }
 Write-Host ''
-Write-Host 'Para ACTUALIZAR los aparatos (sin desinstalar, conservan su configuración): scripts\actualizar-aparatos.ps1  o copie el APK al aparato y ábralo (diga «Actualizar»/«Instalar»).'
+Write-Host "Para ACTUALIZAR los aparatos (sin desinstalar, conservan su configuración): scripts\actualizar-aparatos.ps1$(if ($Staging) { ' -Staging' })  o copie el APK al aparato y ábralo (diga «Actualizar»/«Instalar»)."

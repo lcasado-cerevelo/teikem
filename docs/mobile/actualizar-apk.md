@@ -16,3 +16,12 @@ Android conserva la configuración de la app (servidor, registro del aparato, PI
 - **No desinstalar** antes: se pierde la configuración y lo que no se haya enviado.
 - No firmar con otra llave (Android lo rechaza; la única salida sería desinstalar).
 - Si el APK instalado se hizo con otra llave o no se conserva esa llave, la única vía es desinstalar e instalar de nuevo.
+
+## APK de staging (2026-10-12)
+`scripts\construir-apk.ps1 -Staging` hace la app del ambiente de pruebas: paquete **`com.teikem.almacen.staging`** (Android la trata como otra app, así que
+queda **instalada al lado** de la de producción), nombre «Teikem Almacén STAGING», icono morado con cinta STAGING, servidor de fábrica
+`https://teikem.isaxpr.com` y la palabra STAGING al pie de Inicio. Misma llave de firma; contador de código propio
+(`%USERPROFILE%\.teikempk-versioncode-staging.txt`); sale como `TeikemStaging-<versión>-c<código>.apk`. Para subirle la versión: igual que
+producción (cada compilación sube el código; `-Version` cambia el nombre visible). Instalar encima por USB: `scriptsctualizar-aparatos.ps1 -Staging`.
+En los Zebra, cada app crea su propio perfil de DataWedge (`TeikemAlmacen` y `TeikemAlmacenStaging`), así que no se pisan.
+Los iconos salen de `npm run brand:icons:staging` (en `app-almacen`).
