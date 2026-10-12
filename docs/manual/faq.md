@@ -7047,3 +7047,55 @@ La lectura de odómetro de la carga sube el odómetro del vehículo, y el vencim
 
 **No veo los botones «Nuevo programa», «Nueva orden de trabajo», «Registrar carga» ni las acciones de la ficha.**
 Necesita el permiso `fleet.maintenance`. Con `fleet.view` todo se consulta pero nada se cambia.
+
+## Lote F-E1 — Estación de escaneo (2026-10-12)
+
+Pantalla: Operación → **Estación de escaneo** (necesita `trips.scan`). Manual: [fe1-escaneo.md](frontend/fe1-escaneo.md).
+
+**Escaneé una orden y dice «Asignada a la ruta …». ¿Qué cambió?**
+Solo quedó dentro de esa ruta. El escaneo no cambia el estatus de la orden, ni el chofer ni el vehículo de la ruta.
+
+**«Ya estaba en la ruta …».**
+La orden ya tenía ruta (la escaneó antes o la asignó otra persona). No hace falta hacer nada.
+
+**«No se encontró la orden.»**
+Ningún número de orden, de empaque ni de factura del cliente coincide con lo escaneado. Revise el código o escanee el número del empaque.
+
+**«Hay varias órdenes con ese código; escanee el empaque.»**
+Dos clientes pueden tener el mismo número de orden. Escanee el número del empaque, que es único.
+
+**«No hay ruta abierta para la zona … en la fecha …; queda sin asignar.»**
+Ese día no hay una ruta abierta (borrador o planificada) para la zona de la orden. Planifique el día o cree la ruta en **Sala de despacho** y escanee otra vez. Si trabaja las rutas de otro día, cambie **Ruta del día**. El escaneo nunca crea rutas.
+
+**«No se pudo resolver la zona de despacho por código postal ni pueblo; queda sin asignar.»**
+La dirección de entrega no está en ninguna zona. Agregue su código postal o pueblo a una zona (Catálogo → Flota y mantenimiento → Zonas) o asigne la orden a mano.
+
+**«El código postal o pueblo pertenece a varias zonas (…); queda sin asignar.»**
+La dirección cae en más de una zona. Déjela en una sola o asigne la orden a mano.
+
+**Sale «No elegible» con un motivo.**
+La orden no puede ir en una ruta todavía. Los motivos y qué hacer están en el manual de la pantalla (por ejemplo, «La orden está en Entrada; confírmela antes de asignarla a una ruta.»: confirme la orden en **Órdenes**).
+
+**«Escanee o escriba un código.» / «El código no puede exceder 40 caracteres.»**
+La casilla estaba vacía o el código es demasiado largo. No se registró nada.
+
+**«No se registró» con un mensaje del servidor o de conexión.**
+La lectura no llegó al servidor. Revise la conexión y escanee de nuevo; no quedó en la lista.
+
+**Escaneé lo mismo dos veces y el medidor no subió.**
+El medidor cuenta órdenes distintas asignadas. La segunda lectura aparece en la lista como «Ya estaba».
+
+**Recargué la página y desapareció la lista de escaneados.**
+Es normal: la lista vive solo en el navegador. Las órdenes ya asignadas siguen en su ruta. Abrir una orden y volver con «Atrás» no la borra.
+
+**No veo «Pendientes por escanear», los filtros ni «N de M».**
+Necesita el permiso `trips.view`. Sin él puede escanear igual. El filtro **Zona** pide `fleet.view` y el de **Cliente**, `clients.read`.
+
+**No veo el botón «Abrir» en la ventana de la orden.**
+Necesita `orders.view`.
+
+**No oigo «Sí», «No» ni «Ya».**
+Revise que el botón diga **Voz activada**, el volumen del equipo y que el navegador tenga voces instaladas. Si dice **Voz no disponible**, ese navegador no puede hablar: los resultados se ven en pantalla.
+
+**¿Dónde están los modos de entrada y de cuadre de cobros, y el informe de faltantes?**
+Todavía no existen: la estación solo escanea la salida.

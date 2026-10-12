@@ -432,7 +432,7 @@ la estación (`found`/`dup`/`notfound`). Nunca crea rutas, ni cambia chofer, veh
 
 Quién puede: `trips.scan`.
 
-Cómo se usa: `POST /api/v1/scan/outbound` — `{ "code": "PKG-000123", "planDate": null }` (sin fecha = hoy UTC)
+Cómo se usa: `POST /api/v1/scan/outbound` — `{ "code": "PKG-000123", "planDate": null }` (sin fecha = hoy en la zona horaria de la compañía; la pantalla siempre manda la fecha elegida, por omisión hoy)
 
 | Caso | Mensaje exacto | HTTP |
 |---|---|---|
