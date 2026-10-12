@@ -668,6 +668,7 @@ aplica se ven **atenuados** y una nota bajo la barra los nombra ("No aplican a S
 | **Tipo** | Sí | Solo el resumen | No |
 | **Almacén**, **Posición** (busca en todos los almacenes por código, zona o almacén), **Producto**, **Categoría** | Sí | Sí | Sí |
 | **Dueño** ("Propio" o un cliente), **Motivo**, **Dirección** (Entradas o Salidas), **Solo manuales** | Sí | Solo el resumen | No |
+| **Usuario** (quién hizo el movimiento; varios a la vez, con buscador): las personas con movimientos (las dadas de baja con historial salen marcadas «(inactivo)») y «Sistema (sin usuario)» para lo que no hizo una persona (cierres automáticos, cargas heredadas), esta última solo si existen movimientos así. También está en **Transferencias y ajustes** | Sí | No | No |
 | **Lote** | Sí | Sí | No |
 | **Serie** | Sí | Solo el resumen | No |
 | **Incluir en cero**, **Solo con disponible** | — | Sí | — |
