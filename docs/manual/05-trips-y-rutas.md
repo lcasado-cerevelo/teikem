@@ -499,7 +499,7 @@ Quién puede: `trips.view`.
 Cómo se usa: `GET /api/v1/trips/monitor?date=&dispatchZoneId=&search=&includeCompleted=true` (sin `date` = hoy de la compañía)
 
 Sin validaciones propias más allá de las compartidas (permiso y módulo). La ficha de cada ruta
-(`GET /api/v1/trips/{publicId}`) trae las coordenadas y la precisión de cada parada; el mapa lo dibuja el front.
+(`GET /api/v1/trips/{publicId}`) trae las coordenadas (`point`, ausente si la parada no tiene) y la precisión de cada parada; el front dibuja con ellas un plano esquemático (sin calles) en la Sala de despacho (manual de pantallas: `frontend/fe2a-despacho.md`).
 
 ---
 

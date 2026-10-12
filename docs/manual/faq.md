@@ -7164,5 +7164,76 @@ No había rutas abiertas (Borrador o Planificado) en esas zonas y fecha. No es u
 **«Planificar el día» dejó órdenes sin asignar.**
 Las órdenes sin zona o con zona ambigua no se tocan (**Órdenes sin zona**), y las que no son elegibles quedan en **Órdenes omitidas** con su motivo en el aviso de la zona. Arregle la zona o la orden y repita: no duplica nada.
 
-**¿Dónde está el mapa, el arrastre de paradas y el COD de cada orden?**
-Todavía no existen en esta pantalla: el orden se cambia con ▲ y ▼, y el sistema de rutas no maneja montos.
+**¿Dónde está el COD de cada orden?**
+No aparece en esta pantalla: el sistema de rutas no maneja montos. El plano de la ruta, el arrastre de paradas y el pin manual se explican en la sección «Lote F-E2b» de más abajo.
+
+## Lote F-E2b — Plano de ruta, arrastrar y pin manual (2026-10-12)
+
+Manual de la pantalla: [fe2a-despacho.md](frontend/fe2a-despacho.md) (secciones «El plano de la ruta», «Ordenar y quitar órdenes» y «Poner un pin manual»). Los mensajes de las rutas están en el capítulo [05](05-trips-y-rutas.md).
+
+**¿El plano es un mapa con calles?**
+No. Es un plano esquemático: muestra dónde queda cada parada con respecto a las demás (con su escala y el norte), sin calles, sin nombres de lugares y sin imagen de satélite, y no tiene el conmutador 2D / Satélite. La línea punteada une las paradas en orden en línea recta; no es el camino por las calles. Para ver calles reales haría falta un servicio de mapas externo, que esta pantalla no usa.
+
+**El plano dice «Ninguna parada tiene coordenadas todavía».**
+Ninguna parada de la ruta tiene ubicación (las direcciones no se pudieron ubicar). Ponga un pin manual a cada parada con **Poner pin** (botón del pin en cada orden de **Órdenes en esta ruta**). Si no ve el botón, a su usuario le falta el permiso `trips.plan` o la ruta ya no está en Borrador ni Planificado: pídaselo a quien planifica la ruta.
+
+**Una parada no aparece en el plano.**
+No tiene ubicación. Está en la línea **Sin ubicación: N** debajo del plano y también en **Órdenes en esta ruta** con la marca **Sin pin**. Pulse su número de orden para elegirla y use **Poner pin**.
+
+**¿Qué diferencia hay entre pin exacto, aproximado y manual?**
+**Exacto** (círculo lleno): la dirección se ubicó con precisión. **Aproximado** (círculo punteado con halo): solo se conoce el centro del código postal o del pueblo, así que la parada puede estar en otro lugar de ese pueblo. **Manual** (rombo): alguien puso la ubicación a mano con **Poner pin**. Si le importa la hora de llegada o el orden de una parada aproximada, póngale un pin manual.
+
+**Dos pines están uno encima del otro.**
+Varias órdenes van a la misma dirección. El plano los abre en abanico alrededor de ese punto para que se vean y se puedan elegir; cada uno lleva su número.
+
+**Pulsé un pin y se resaltó una orden de la lista.**
+Es lo esperado: el pin y la orden están unidos. Al pulsar una orden de la lista se resalta su pin, y debajo del plano aparece el resumen de la parada elegida.
+
+**No veo el asa de arrastre, ni ▲ ▼, ni el botón del pin.**
+Solo aparecen con el permiso `trips.plan` y mientras la ruta esté en **Borrador** o **Planificado**. En una ruta despachada, en curso o cerrada el plano y la lista son solo de consulta.
+
+**¿Cómo reordeno las paradas?**
+Sostenga el asa (los seis puntos a la izquierda de la orden), arrastre hasta la posición que quiere y suelte. También puede usar ▲ y ▼, o llevar el foco al asa con Tab y pulsar ↑ o ↓. El cambio se ve al instante en la lista y en el plano.
+
+**Arrastré una orden y volvió a su lugar.**
+El sistema no aceptó el cambio; el mensaje dice por qué (aparece arriba de la ruta). Casi siempre es porque otra persona cambió la ruta mientras usted la ordenaba. La pantalla ya se actualizó: vuelva a arrastrar.
+
+**«La secuencia debe incluir exactamente las paradas de la ruta vigente, sin repetir.»**
+Alguien añadió, quitó u optimizó la ruta mientras usted ordenaba, y la lista que usted movió ya no coincide con la ruta. La lista vuelve a su orden anterior y se actualiza; vuelva a ordenar.
+
+**«El registro fue modificado por otro usuario; recargue e intente de nuevo.» (al arrastrar o poner un pin)**
+Otra persona cambió la ruta. La pantalla se actualiza sola; revise y repita.
+
+**¿Se puede arrastrar con el dedo?**
+Sí: el asa responde al toque. Si le resulta difícil en un celular, use ▲ y ▼.
+
+**«Indique la latitud y la longitud.»**
+Falta uno de los dos números del pin (o los dos). Escríbalos en **Latitud** y **Longitud**.
+
+**«La latitud debe estar entre -90 y 90.» / «La longitud debe estar entre -180 y 180.»**
+El número está fuera del rango posible. Es frecuente poner la longitud en el campo de latitud: en Puerto Rico la latitud es cerca de 18 y la longitud cerca de -66.
+
+**«La latitud debe ser un número, por ejemplo 18.4655.» / «La longitud debe ser un número, por ejemplo -66.1057.»**
+Escribió algo que no es un número (letras, «18°», dos puntos). Use solo cifras, el signo menos y un punto o una coma para los decimales (18.4655 o 18,4655).
+
+**¿De dónde saco la latitud y la longitud?**
+De cualquier aplicación de mapas o de ubicación: al marcar un lugar, muestra sus coordenadas (la latitud va primero). Si ya hay otras paradas con ubicación, también puede tocar el plano de referencia de la ventana para tomar una posición aproximada.
+
+**Toqué el plano de referencia y la posición quedó rara.**
+El plano no tiene calles, así que esa posición es solo aproximada (el aviso lo dice). Revise la latitud y la longitud antes de guardar, o escriba los números exactos.
+
+**«Parada no encontrada en esta ruta.»**
+La parada ya no está en la ruta (la quitaron o la ruta se optimizó mientras tenía abierta la ventana). Cierre la ventana: la pantalla se actualizó con las paradas actuales.
+
+**«La ruta {código} ya fue despachada; no se puede editar ni eliminar.» (al poner un pin o reordenar)**
+Alguien despachó la ruta mientras usted trabajaba: ya no se puede cambiar el orden ni la ubicación de sus paradas.
+
+**Puse un pin y cambió la hora de llegada.**
+Es lo esperado: el sistema recalcula las llegadas con la nueva ubicación.
+
+**Puse un pin pero el orden de la ruta no cambió.**
+Poner un pin no reordena la ruta. Si ya estaba optimizada, pulse **Optimizar** otra vez para que el orden aproveche la nueva ubicación.
+
+**La parada con pin manual sigue diciendo «Ubicación aproximada».**
+No debería: al guardar el pin la marca pasa a **Pin manual**. Si la ve, actualice la pantalla; si sigue, avise a soporte.
+

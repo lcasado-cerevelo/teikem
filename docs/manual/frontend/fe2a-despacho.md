@@ -2,15 +2,15 @@
 
 La **Sala de despacho** (menú Operación → **Sala de despacho**) sirve para armar las rutas del día: decidir qué órdenes van en cada ruta, quién las lleva y en qué vehículo, ordenar las paradas, optimizar, despachar, dar la salida y cerrar la ruta cuando todo terminó.
 
-En esta versión la pantalla **no tiene mapa**: trabaja con listas. El mapa, arrastrar las paradas y fijar una ubicación a mano llegan después; mientras tanto el orden de las paradas se cambia con los botones ▲ y ▼. El seguimiento en vivo de las rutas en camino llegará con el Monitoreo.
+La ruta activa muestra un **plano esquemático** con sus paradas numeradas, y el orden de las paradas se cambia **arrastrando** o con los botones ▲ y ▼. Cuando a una parada le falta la ubicación (o está mal), se le puede **poner un pin manual**. El plano no es un mapa con calles: muestra dónde queda cada parada con respecto a las demás. El seguimiento en vivo de las rutas en camino llegará con el Monitoreo.
 
 ## Quién puede usarla
 
 | Para… | Permiso | Módulo |
 |---|---|---|
 | Entrar a la pantalla y **Despachar ruta**, **Iniciar ruta** | `trips.dispatch` | Operación de carga (LTL) |
-| Ver rutas, órdenes sin asignar y el avance | `trips.view` | Operación de carga (LTL) |
-| **Planificar el día**, **Nueva ruta**, **Reasignar por zona**, añadir, quitar y reordenar órdenes, cambiar chofer o vehículo, **Eliminar ruta** | `trips.plan` | Operación de carga (LTL) |
+| Ver rutas, el plano de la ruta, órdenes sin asignar y el avance | `trips.view` | Operación de carga (LTL) |
+| **Planificar el día**, **Nueva ruta**, **Reasignar por zona**, añadir, quitar y reordenar órdenes (arrastrando o con ▲ ▼), **Poner pin** y **Mover pin**, cambiar chofer o vehículo, **Eliminar ruta** | `trips.plan` | Operación de carga (LTL) |
 | **Optimizar** | `trips.optimize` | Operación de carga (LTL) |
 | **Cerrar ruta** | `trips.close` | Operación de carga (LTL) |
 | Elegir chofer, vehículo y zona; ver el panel **Choferes** | `fleet.view` | Catálogo |
@@ -83,14 +83,92 @@ Si alguna orden no se puede asignar, no se añade ninguna y verá cada número c
 | `Agregue como máximo 200 órdenes por solicitud.` | Marcó más de 200. Añada en dos tandas. |
 | `La ruta {código} ya fue despachada; no se puede editar ni eliminar.` | La ruta ya salió del borrador: su contenido está congelado. |
 
+## El plano de la ruta
+
+Arriba de la ruta activa, debajo del título, está el **plano de la ruta**.
+
+![Plano de la ruta con cuatro paradas, la cuarta elegida](img/fe2b-plano-pines.png)
+
+- Cada parada que tiene ubicación es un **pin numerado** con su lugar en la secuencia (1, 2, 3…). Una línea punteada une los pines en el orden de la ruta.
+- El **tipo de pin** dice qué tan segura es la ubicación:
+  - **Pin exacto**: círculo lleno. La dirección se ubicó con precisión.
+  - **Aproximado**: círculo punteado con halo. Se usó el centro del código postal o del pueblo, así que la parada puede estar en otro lugar de ese pueblo.
+  - **Pin manual**: rombo. Alguien puso la ubicación a mano.
+- Abajo a la izquierda está la **escala** (por ejemplo, 5 km) y arriba a la derecha el **norte**.
+- Las paradas que **no tienen ubicación** no se dibujan; se listan debajo del plano como **Sin ubicación: N**, y siguen apareciendo en la lista de órdenes.
+- Cuando una ruta ya está en camino, los pines cambian de color según la parada: **Entregada** (verde), **Fallida** (rojo) y **En curso** (azul oscuro con aro). La leyenda solo nombra los que aparecen.
+- Es un plano **esquemático**: no tiene calles ni imagen de satélite. Sirve para ver cómo quedan las paradas unas respecto a otras, no para saber cómo llegar.
+
+Si **ninguna** parada tiene ubicación todavía, el plano lo dice:
+
+![Plano sin ninguna parada ubicada](img/fe2b-plano-vacio.png)
+
+> **Ninguna parada tiene coordenadas todavía.** Ponga un pin manual a cada parada con «Poner pin» para verlas aquí.
+
+Si usted no puede poner pines (le falta el permiso `trips.plan`), el mensaje le pide que se lo pida a quien planifica la ruta.
+
+### Elegir una parada
+
+Pulse un pin (o pulse **Tab** hasta llegar a él y **Enter** o la barra espaciadora) para elegir esa parada: el pin se rodea con un aro, su orden se resalta en **Órdenes en esta ruta** y debajo del plano aparece un resumen («Parada 4 · número de orden · consignatario · pueblo · tipo de pin»). También funciona al revés: al pulsar una orden de la lista se resalta su pin. Las paradas de **Sin ubicación** también se pueden elegir pulsando su número de orden.
+
+Si varias órdenes van a la misma dirección, sus pines se abren en abanico para que todos se vean.
+
 ## Ordenar y quitar órdenes
 
-En **Órdenes en esta ruta** cada orden tiene ▲, ▼ y una papelera:
+En **Órdenes en esta ruta** cada orden tiene un **asa** (seis puntos) a la izquierda y, a la derecha, un pin, ▲, ▼ y una papelera:
 
-- **▲ Subir** y **▼ Bajar** mueven la orden una posición; las horas estimadas de llegada se recalculan.
+- **Arrastrar**: sostenga el asa, mueva la orden hasta la posición que quiere y suéltela. Mientras arrastra, la orden de origen se atenúa y una línea azul marca dónde caerá. Funciona con el ratón y con el dedo.
+- **Con el teclado**: lleve el foco al asa con **Tab** y pulse **↑** o **↓**.
+- **▲ Subir** y **▼ Bajar** mueven la orden una posición.
 - La papelera **Quitar la orden … de la ruta** la saca de la ruta y vuelve a **Órdenes sin asignar** (su estatus no cambia).
 
-La orden marcada «Ubicación aproximada» no tiene dirección exacta (se usó el código postal); «Llega tarde» indica que la hora estimada pasa del fin de su ventana.
+![Ruta con las órdenes reordenadas: el plano sigue la nueva secuencia](img/fe2b-arrastrar.png)
+
+El cambio se ve de inmediato en la lista y en el plano (los pines se renumeran y la línea sigue el nuevo orden) y se guarda en el sistema; las horas estimadas de llegada se recalculan. Si el sistema no acepta el cambio, la lista **vuelve al orden anterior** y aparece el mensaje del sistema arriba de la ruta.
+
+Solo se puede reordenar mientras la ruta está en **Borrador** o **Planificado** y si usted tiene `trips.plan`. En una ruta despachada, en curso o cerrada no hay asa, ▲, ▼ ni papelera.
+
+| Mensaje | Qué significa y qué hacer |
+|---|---|
+| `La secuencia debe incluir exactamente las paradas de la ruta vigente, sin repetir.` | La ruta cambió mientras la ordenaba (por ejemplo, alguien quitó o añadió una orden). La lista vuelve a su orden anterior y se actualiza; vuelva a ordenar. |
+| `El registro fue modificado por otro usuario; recargue e intente de nuevo.` | Otra persona cambió la ruta. La pantalla se actualiza sola; vuelva a ordenar. |
+| `La ruta {código} ya fue despachada; no se puede editar ni eliminar.` | Alguien despachó la ruta mientras trabajaba. Ya no se puede ordenar. |
+
+Cada orden lleva marcas: **Llega tarde** indica que la hora estimada pasa del fin de su ventana; **Ubicación aproximada** que su pin es el centro del código postal o del pueblo; **Pin manual** que su ubicación se puso a mano; **Sin pin** que todavía no tiene ubicación.
+
+## Poner un pin manual
+
+Use el pin manual cuando una parada **no tiene ubicación** (**Sin pin**) o cuando la que tiene está mal o es solo aproximada. Se puede hacer solo mientras la ruta está en **Borrador** o **Planificado** y con el permiso `trips.plan`.
+
+1. Pulse el botón del pin de la orden (**Poner pin a la orden …**, o **Mover el pin de la orden …** si ya tenía), o elija la parada en el plano y pulse **Poner pin** / **Mover pin** en el resumen de debajo del plano. Si la ruta tiene el aviso de pines aproximados, ese aviso trae el botón **Poner pin manual**, que abre la primera parada aproximada.
+2. Escriba la **Latitud** (entre -90 y 90, por ejemplo 18.4655) y la **Longitud** (entre -180 y 180, por ejemplo -66.1057). Puede usar punto o coma para los decimales.
+3. Pulse **Guardar pin**.
+
+![Ventana del pin manual con un error de rango](img/fe2b-pin-error.png)
+
+**Atajo: tomar la posición del plano.** Si ya hay otras paradas con ubicación, la ventana muestra un plano de referencia con ellas. Toque el lugar donde cree que está la parada: se llenan la latitud y la longitud y aparece el aviso **Posición aproximada tomada del plano: revise la latitud y la longitud antes de guardar.** El plano no tiene calles, así que esa posición es solo una aproximación: revise los números antes de guardar. Una marca roja muestra dónde quedará el pin.
+
+![Posición tomada del plano de referencia](img/fe2b-pin-dialogo.png)
+
+Al guardar, la parada queda con **Pin manual**, el plano la dibuja como rombo y el sistema recalcula las horas de llegada. Si la ruta ya estaba optimizada, vuelva a pulsar **Optimizar** para que el orden aproveche la nueva ubicación.
+
+| Mensaje | Qué significa y qué hacer |
+|---|---|
+| `Indique la latitud y la longitud.` | Falta uno de los dos números (o los dos). Escríbalos. |
+| `La latitud debe estar entre -90 y 90.` | La latitud está fuera del rango. Revise el número (¿puso la longitud en el campo de latitud?). |
+| `La longitud debe estar entre -180 y 180.` | La longitud está fuera del rango. Revise el número. |
+| `La latitud debe ser un número, por ejemplo 18.4655.` / `La longitud debe ser un número, por ejemplo -66.1057.` | Escribió letras o símbolos (como «18°»). Use solo cifras, el signo menos y un punto o una coma. |
+| `Parada no encontrada en esta ruta.` | La parada ya no está en la ruta (la quitaron o la ruta se optimizó). Cierre la ventana; la pantalla se actualiza. |
+| `La ruta {código} ya fue despachada; no se puede editar ni eliminar.` | La ruta ya salió: no se puede cambiar la ubicación. |
+| `El registro fue modificado por otro usuario; recargue e intente de nuevo.` | Otra persona cambió la ruta. Cierre la ventana, revise y vuelva a intentarlo. |
+
+Los errores se muestran dentro de la ventana, que no se cierra, para que corrija y pruebe otra vez.
+
+### Una ruta despachada
+
+Cuando la ruta ya está despachada, en curso o cerrada, el plano se sigue viendo y se pueden elegir paradas, pero no hay asa, pin, ▲, ▼ ni papelera.
+
+![Ruta despachada: el plano se ve, sin acciones de edición](img/fe2b-ruta-despachada.png)
 
 ## Chofer y vehículo
 
@@ -185,10 +263,11 @@ La papelera junto al nombre de la ruta (**Eliminar ruta**) solo aparece en rutas
 
 ## Qué no hace esta pantalla (todavía)
 
-- No hay mapa, ni arrastrar paradas, ni fijar una ubicación exacta a mano.
+- El plano es **esquemático**: no tiene calles, nombres de lugares ni imagen de satélite, y no hay conmutador 2D / Satélite. Para ver calles reales haría falta un servicio de mapas externo, que esta pantalla no usa.
+- La línea del plano une las paradas en orden en línea recta; no sigue las calles.
 - No muestra el último punto GPS del chofer ni el seguimiento en vivo.
 - No muestra el cobro contra entrega (COD) de las órdenes: el sistema de rutas no maneja montos.
 
 ## Preguntas frecuentes
 
-Las preguntas y respuestas están en la sección «Lote F-E2a — Sala de despacho» del [archivo de preguntas frecuentes](../faq.md).
+Las preguntas y respuestas están en las secciones «Lote F-E2a — Sala de despacho» y «Lote F-E2b — Plano de ruta, arrastrar y pin manual» del [archivo de preguntas frecuentes](../faq.md).
