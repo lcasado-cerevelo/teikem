@@ -19,6 +19,9 @@ public sealed record PendingDeliveryStop(int TransportOrderId, int OrderStopId, 
 /// <summary>Coordenada de una parada (GEOGRAPHY) y su precisión de geocodificación.</summary>
 public sealed record StopPointRow(double Lat, double Lng, int? GeocodeAccuracyLookupId);
 
+/// <summary>Lote 41 — ventana y minutos de servicio de una parada (para recalcular las ETAs).</summary>
+public sealed record StopTimingRow(int OrderStopId, DateTime? WindowStartUtc, DateTime? WindowEndUtc, int ServiceMinutes);
+
 /// <summary>Llave para buscar el último ping de una ruta: su chofer y su salida real (para el ping de respaldo).</summary>
 public sealed record TripPingKey(int TripId, int? DriverId, DateTime? ActualStartUtc);
 
@@ -31,10 +34,16 @@ public sealed record DriverPingRow(double Lat, double Lng, decimal? SpeedKmh, in
 /// cuando se compone sobre un DbSet (RawSqlConfinementTests lo verifica).
 ///
 /// ORDEN DE BLOQUEO ÚNICO del lote (evita interbloqueos entre planificar, agregar, escanear, optimizar y despachar):
-///   1. la fila Tenant (LockTenantPlanningAsync; solo 'Planificar el día');
+///   1. la fila Tenant (LockTenantPlanningAsync). Lote 41: la toma TODA transacción que escribe rutas, porque LockTripAsync
+///      la pide antes que el Trip (y el alta de rutas antes del número); 'Planificar el día' la toma primero, como siempre;
 ///   2. los Trips, por TripId ascendente (LockTripAsync / LockTripsAsync);
 ///   3. las órdenes, por TransportOrderId, en UNA sola sentencia (LockOrdersAsync);
 ///   4. después se escribe.
+/// Lote 41 (interbloqueos con varios despachadores): con READ COMMITTED de bloqueo, las lecturas que una escritura de rutas
+/// hace DESPUÉS de escribir (paradas de la versión, ventanas y coordenadas para recalcular las ETAs) recorrían el índice
+/// clúster completo de RouteStop/OrderStop y se topaban con las filas X de otra ruta que hacía lo mismo al revés. Ahora las
+/// escrituras de rutas de una compañía van en fila (paso 1) y esas lecturas buscan solo sus filas (WITH (FORCESEEK)), así que
+/// tampoco chocan con las rutas de otra compañía.
 /// Los bloqueos exigen una transacción abierta (RunInTransactionAsync) con proveedor relacional; con InMemory (pruebas) se
 /// carga tracked sin bloqueo y las consultas de GEOGRAPHY/pings devuelven vacío.
 /// </summary>
@@ -55,6 +64,8 @@ public static class TripQueries
     /// <summary>
     /// Carga la ruta del tenant con bloqueo de fila (UPDLOCK, ROWLOCK) hasta el fin de la transacción, tracked (paso 2 del
     /// orden de bloqueo). 404 'Ruta no encontrada.' si no es del tenant. Exige transacción con proveedor relacional.
+    /// Lote 41: antes toma la fila Tenant (paso 1, LockTenantPlanningAsync; en la misma transacción no vuelve a esperar), de
+    /// modo que dos escrituras de rutas de la misma compañía nunca se cruzan: la segunda espera a que la primera confirme.
     /// </summary>
     public static async Task<Trip> LockTripAsync(this TeikemDbContext db, int tripId, CancellationToken ct)
     {
@@ -62,6 +73,7 @@ public static class TripQueries
             return await db.Trips.AsTracking().FirstOrDefaultAsync(t => t.TripId == tripId, ct) ?? throw TripNotFound();
 
         RequireTransaction(db, nameof(LockTripAsync));
+        await db.LockTenantPlanningAsync(ct);
         var tenantId = db.CurrentTenantId;
         return await db.Trips
                    .FromSqlInterpolated($"SELECT * FROM dbo.Trip WITH (UPDLOCK, ROWLOCK) WHERE TripId = {tripId} AND TenantId = {tenantId}")
@@ -122,8 +134,10 @@ public static class TripQueries
     }
 
     /// <summary>
-    /// Serializa 'Planificar el día' por tenant (paso 1 del orden de bloqueo): U lock sobre la fila Tenant hasta el fin de la
-    /// transacción. El U lock es compatible con las lecturas S del resto de la aplicación. No-op con InMemory.
+    /// Serializa por tenant 'Planificar el día' y, desde el Lote 41, TODA escritura de rutas (LockTripAsync y el alta la piden
+    /// primero) — paso 1 del orden de bloqueo: U lock sobre la fila Tenant hasta el fin de la transacción. Pedirlo otra vez en
+    /// la misma transacción no espera. El U lock es compatible con las lecturas S del resto de la aplicación (la importación de
+    /// consignatarios también lo usa, fila por fila). No-op con InMemory.
     /// </summary>
     public static async Task LockTenantPlanningAsync(this TeikemDbContext db, CancellationToken ct)
     {
@@ -156,6 +170,50 @@ public static class TripQueries
             .OrderByDescending(r => r.Version).FirstOrDefaultAsync(ct);
         // Una versión cargada que el tracker ya tenía desactivada (sin guardar) no es la vigente.
         return loaded is { IsActive: true } ? loaded : null;
+    }
+
+    /// <summary>
+    /// Lote 41 — carga TRACKED las paradas de una versión de ruta del tenant buscando SOLO sus filas (WITH (FORCESEEK) sobre
+    /// RouteStop, Route y Trip): con pocas filas el optimizador prefería recorrer el índice clúster completo de RouteStop, y dentro
+    /// de una escritura de rutas eso esperaba por las filas X de otra ruta (interbloqueo). Con InMemory, LINQ normal.
+    /// </summary>
+    public static async Task LoadRouteStopsAsync(this TeikemDbContext db, int routeId, CancellationToken ct)
+    {
+        if (!db.Database.IsRelational())
+        {
+            await db.RouteStops.AsTracking().Where(s => s.RouteId == routeId).LoadAsync(ct);
+            return;
+        }
+        var tenantId = db.CurrentTenantId;
+        await db.RouteStops
+            .FromSqlInterpolated($"SELECT rs.* FROM dbo.RouteStop rs WITH (FORCESEEK) JOIN dbo.Route r WITH (FORCESEEK) ON r.RouteId = rs.RouteId JOIN dbo.Trip t WITH (FORCESEEK) ON t.TripId = r.TripId WHERE rs.RouteId = {routeId} AND t.TenantId = {tenantId}")
+            .AsTracking()
+            .LoadAsync(ct);
+    }
+
+    /// <summary>
+    /// Lote 41 — ventana y minutos de servicio de las paradas del tenant (JOIN a TransportOrder por TenantId), por OrderStopId,
+    /// para recalcular las ETAs. Busca solo las filas pedidas (WITH (FORCESEEK)), igual que StopPointsAsync. Con InMemory, LINQ
+    /// normal.
+    /// </summary>
+    public static async Task<Dictionary<int, StopTimingRow>> StopTimingsAsync(this TeikemDbContext db, IReadOnlyCollection<int> orderStopIds, CancellationToken ct)
+    {
+        var ids = (orderStopIds ?? Array.Empty<int>()).Distinct().ToList();
+        if (ids.Count == 0) return new Dictionary<int, StopTimingRow>();
+        if (!db.Database.IsRelational())
+            return (await (from os in db.OrderStops.AsNoTracking()
+                           join o in db.TransportOrders.AsNoTracking() on os.TransportOrderId equals o.TransportOrderId
+                           where ids.Contains(os.OrderStopId)
+                           select new StopTimingRow(os.OrderStopId, os.WindowStartUtc, os.WindowEndUtc, os.ServiceMinutes)).ToListAsync(ct))
+                .GroupBy(r => r.OrderStopId).ToDictionary(g => g.Key, g => g.First());
+
+        var tenantId = db.CurrentTenantId;
+        var json = JsonSerializer.Serialize(ids);
+        var rows = await db.Database.SqlQuery<TimingSqlRow>(
+                $"SELECT os.OrderStopId AS OrderStopId, os.WindowStartUtc AS WindowStartUtc, os.WindowEndUtc AS WindowEndUtc, os.ServiceMinutes AS ServiceMinutes FROM dbo.OrderStop os WITH (FORCESEEK) JOIN dbo.TransportOrder o WITH (FORCESEEK) ON o.TransportOrderId = os.TransportOrderId WHERE o.TenantId = {tenantId} AND os.OrderStopId IN (SELECT CAST(value AS INT) FROM OPENJSON({json}))")
+            .ToListAsync(ct);
+        return rows.GroupBy(r => r.OrderStopId)
+            .ToDictionary(g => g.Key, g => new StopTimingRow(g.Key, g.First().WindowStartUtc, g.First().WindowEndUtc, g.First().ServiceMinutes));
     }
 
     /// <summary>Ruta vigente de cada orden (TripOrder IsCurrent → Trip, ambos bajo el filtro de tenant), por TransportOrderId.</summary>
@@ -229,6 +287,8 @@ public static class TripQueries
     /// <summary>
     /// Coordenadas (GeoPoint.Lat/.Long) y precisión de las paradas del tenant (JOIN a TransportOrder por TenantId), por
     /// OrderStopId. Las paradas sin coordenada no aparecen. Vacío con InMemory.
+    /// Lote 41: WITH (FORCESEEK) — al leer GEOGRAPHY, SQL Server conserva los bloqueos S de las filas leídas hasta el fin de la
+    /// sentencia; recorriendo toda la tabla, la ficha o el monitoreo retenían las paradas de otras rutas mientras esperaban.
     /// </summary>
     public static async Task<Dictionary<int, StopPointRow>> StopPointsAsync(this TeikemDbContext db, IReadOnlyCollection<int> orderStopIds, CancellationToken ct)
     {
@@ -237,7 +297,7 @@ public static class TripQueries
         var tenantId = db.CurrentTenantId;
         var json = JsonSerializer.Serialize(ids);
         var rows = await db.Database.SqlQuery<PointSqlRow>(
-                $"SELECT os.OrderStopId AS OrderStopId, os.GeoPoint.Lat AS Lat, os.GeoPoint.Long AS Lng, os.GeocodeAccuracyLookupId AS GeocodeAccuracyLookupId FROM dbo.OrderStop os JOIN dbo.TransportOrder o ON o.TransportOrderId = os.TransportOrderId WHERE o.TenantId = {tenantId} AND os.GeoPoint IS NOT NULL AND os.OrderStopId IN (SELECT CAST(value AS INT) FROM OPENJSON({json}))")
+                $"SELECT os.OrderStopId AS OrderStopId, os.GeoPoint.Lat AS Lat, os.GeoPoint.Long AS Lng, os.GeocodeAccuracyLookupId AS GeocodeAccuracyLookupId FROM dbo.OrderStop os WITH (FORCESEEK) JOIN dbo.TransportOrder o WITH (FORCESEEK) ON o.TransportOrderId = os.TransportOrderId WHERE o.TenantId = {tenantId} AND os.GeoPoint IS NOT NULL AND os.OrderStopId IN (SELECT CAST(value AS INT) FROM OPENJSON({json}))")
             .ToListAsync(ct);
         return rows.GroupBy(r => r.OrderStopId)
             .ToDictionary(g => g.Key, g => new StopPointRow(g.First().Lat, g.First().Lng, g.First().GeocodeAccuracyLookupId));
@@ -252,7 +312,7 @@ public static class TripQueries
         if (!db.Database.IsRelational()) return;
         var tenantId = db.CurrentTenantId;
         var affected = await db.Database.ExecuteSqlInterpolatedAsync(
-            $"UPDATE os SET GeoPoint = geography::Point({lat}, {lng}, 4326) FROM dbo.OrderStop os JOIN dbo.TransportOrder o ON o.TransportOrderId = os.TransportOrderId WHERE os.OrderStopId = {orderStopId} AND o.TenantId = {tenantId}", ct);
+            $"UPDATE os SET GeoPoint = geography::Point({lat}, {lng}, 4326) FROM dbo.OrderStop os WITH (FORCESEEK) JOIN dbo.TransportOrder o WITH (FORCESEEK) ON o.TransportOrderId = os.TransportOrderId WHERE os.OrderStopId = {orderStopId} AND o.TenantId = {tenantId}", ct);
         if (affected != 1) throw new NotFoundException("Parada", null, true);
     }
 
@@ -312,6 +372,15 @@ public static class TripQueries
         public double Lat { get; set; }
         public double Lng { get; set; }
         public int? GeocodeAccuracyLookupId { get; set; }
+    }
+
+    /// <summary>Fila de SqlQuery para ventanas y servicio (tipo sin mapear: propiedades con setter).</summary>
+    private sealed class TimingSqlRow
+    {
+        public int OrderStopId { get; set; }
+        public DateTime? WindowStartUtc { get; set; }
+        public DateTime? WindowEndUtc { get; set; }
+        public int ServiceMinutes { get; set; }
     }
 
     /// <summary>Fila de SqlQuery para pings (tipo sin mapear: propiedades con setter).</summary>

@@ -60,6 +60,10 @@ public sealed class TripService(
         if (db.Database.IsRelational() && db.Database.CurrentTransaction is null)
             throw new InvalidOperationException("CreateTrackedAsync requiere una transacción abierta (RunInTransactionAsync).");
 
+        // Lote 41: el alta también escribe rutas → paso 1 del orden de bloqueo (fila Tenant) antes que el número y el INSERT.
+        // En 'Planificar el día' ya está tomado (no vuelve a esperar).
+        await db.LockTenantPlanningAsync(ct);
+
         if (spec.DispatchZoneId is int zoneId) await EnsureZoneUsableAsync(zoneId, ct);
 
         var plannedStart = spec.PlannedStartUtc is DateTime s ? TripPlanningRules.AsUtc(s) : TripPlanningRules.DefaultPlannedStart(spec.PlanDate);

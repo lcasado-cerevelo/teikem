@@ -82,6 +82,16 @@ public sealed class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Ex
             http.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
             await http.Response.WriteAsJsonAsync(new { type = "https://teikem.app/errors/payload_too_large", title = "El archivo supera el tamaño máximo permitido.", status = 413, code = "payload_too_large", correlationId = tenant.CorrelationId });
         }
+        catch (Exception ex) when (ex is not OperationCanceledException && DeadlockRules.IsDeadlock(ex))
+        {
+            // Lote 41: interbloqueo de SQL Server que sobrevivió a los reintentos de EF → 409 'concurrent_edit' (no 500): la
+            // operación no se aplicó y basta con volver a intentarla. IdempotencyMiddleware ya liberó la clave (no es de dominio).
+            logger.LogWarning(ex, "Interbloqueo de SQL Server tras los reintentos; se responde 409 {Code}. Correlation {Correlation}",
+                DeadlockRules.Code, tenant.CorrelationId);
+            if (http.Response.HasStarted) throw;
+            http.Response.StatusCode = StatusCodes.Status409Conflict;
+            await http.Response.WriteAsJsonAsync(ConcurrentEditBody(http.Request.Path.Value, tenant.CorrelationId));
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Error no controlado. Correlation {Correlation}", tenant.CorrelationId);
@@ -90,6 +100,13 @@ public sealed class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Ex
             await http.Response.WriteAsJsonAsync(new { type = "https://teikem.app/errors/internal", title = "Error interno.", status = 500, code = "internal", correlationId = tenant.CorrelationId });
         }
     }
+
+    /// <summary>Lote 41 — cuerpo del 409 por interbloqueo (mismo formato ProblemDetails; mensaje de rutas en /api/v1/trips…).</summary>
+    public static object ConcurrentEditBody(string? requestPath, Guid correlationId) => new
+    {
+        type = "https://teikem.app/errors/" + DeadlockRules.Code, title = DeadlockRules.MessageFor(requestPath), status = StatusCodes.Status409Conflict,
+        code = DeadlockRules.Code, correlationId,
+    };
 
     /// <summary>Cuerpo ProblemDetails de una excepción de dominio (lo reutiliza IdempotencyMiddleware para guardar la respuesta).</summary>
     public static object ProblemBody(Teikem.Infrastructure.Exceptions.TeikemException ex, Guid correlationId) => new

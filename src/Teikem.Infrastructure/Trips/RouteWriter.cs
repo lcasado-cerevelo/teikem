@@ -19,7 +19,8 @@ public sealed class TripMemberNotFoundException(string message) : TeikemExceptio
 /// Contrato con el llamador:
 /// - recibe el Trip TRACKED obtenido con TripQueries.LockTripAsync (UPDLOCK con TenantId) y, con proveedor relacional, una
 ///   transacción abierta (RunInTransactionAsync); si no, InvalidOperationException;
-/// - ORDEN DE BLOQUEO ÚNICO del lote: (1) fila Tenant solo en 'Planificar el día'; (2) los Trips por TripId ascendente;
+/// - ORDEN DE BLOQUEO ÚNICO del lote: (1) fila Tenant (Lote 41: siempre; LockTripAsync la toma antes que el Trip, así las
+///   escrituras de rutas de una compañía van en fila); (2) los Trips por TripId ascendente;
 ///   (3) las órdenes por TransportOrderId ascendente en UNA sentencia (TripQueries.LockOrdersAsync, lo hace AddOrdersAsync);
 ///   (4) después se escribe. Los efectos de OrderStatus respetan el orden porque la orden solo se escribe al guardar;
 /// - toda mutación toca el Trip (UpdatedAtUtc): su RowVersion cambia y SaveGuardedAsync traduce los choques a 409.
@@ -361,13 +362,9 @@ public sealed class RouteWriter(TeikemDbContext db, StatusService statuses, ILoo
 
         var stops = await LoadStopsAsync(route.RouteId, ct);
         var orderStopIds = stops.Select(s => s.OrderStopId).Distinct().ToList();
-        var facts = orderStopIds.Count == 0
-            ? new Dictionary<int, StopFact>()
-            : (await (from os in db.OrderStops.AsNoTracking()
-                      join o in db.TransportOrders.AsNoTracking() on os.TransportOrderId equals o.TransportOrderId
-                      where orderStopIds.Contains(os.OrderStopId)
-                      select new StopFact(os.OrderStopId, os.WindowStartUtc, os.WindowEndUtc, os.ServiceMinutes)).ToListAsync(ct))
-                .GroupBy(f => f.OrderStopId).ToDictionary(g => g.Key, g => g.First());
+        // Lote 41: ventanas y coordenadas por búsqueda puntual (TripQueries, WITH (FORCESEEK)): esta lectura ocurre DESPUÉS de
+        // escribir y, recorriendo toda la tabla, esperaba por las paradas bloqueadas de otra ruta (interbloqueo).
+        var facts = await db.StopTimingsAsync(orderStopIds, ct);
         var points = await db.StopPointsAsync(orderStopIds, ct);
 
         var inputs = stops.Select(s =>
@@ -396,8 +393,6 @@ public sealed class RouteWriter(TeikemDbContext db, StatusService statuses, ILoo
 
     // ================================================================ helpers
 
-    private sealed record StopFact(int OrderStopId, DateTime? WindowStartUtc, DateTime? WindowEndUtc, int ServiceMinutes);
-
     /// <summary>El Trip debe venir tracked (LockTripAsync) y, con proveedor relacional, dentro de una transacción.</summary>
     private void EnsureTracked(Trip trip)
     {
@@ -411,10 +406,13 @@ public sealed class RouteWriter(TeikemDbContext db, StatusService statuses, ILoo
     /// <summary>Marca el Trip como modificado: el interceptor estampa UpdatedAtUtc/UpdatedBy y SQL Server cambia su RowVersion.</summary>
     private static void Touch(Trip trip) => trip.UpdatedAtUtc = DateTime.UtcNow;
 
-    /// <summary>Paradas de una versión, tracked, sin las marcadas para borrar e incluidas las agregadas sin guardar, en secuencia.</summary>
+    /// <summary>
+    /// Paradas de una versión, tracked, sin las marcadas para borrar e incluidas las agregadas sin guardar, en secuencia. Lote 41:
+    /// se cargan con TripQueries.LoadRouteStopsAsync (solo las filas de esta versión, sin recorrer las de otras rutas).
+    /// </summary>
     private async Task<List<RouteStop>> LoadStopsAsync(int routeId, CancellationToken ct)
     {
-        await db.RouteStops.AsTracking().Where(s => s.RouteId == routeId).LoadAsync(ct);
+        await db.LoadRouteStopsAsync(routeId, ct);
         return db.RouteStops.Local.Where(s => s.RouteId == routeId)
             .OrderBy(s => s.Sequence).ThenBy(s => s.RouteStopId).ToList();
     }
