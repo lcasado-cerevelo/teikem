@@ -407,7 +407,7 @@ export function DockAppointmentsTab() {
           value={statusFilter}
           onChange={setStatusFilter}
         />
-        <DateRangeFilter label={t('warehouse.dockAppointments.filters.range')} value={range} onChange={setRange} />
+        <DateRangeFilter label={t('warehouse.dockAppointments.filters.range')} value={range} onChange={setRange} mode="both" />
       </Filters>
 
       <Panel

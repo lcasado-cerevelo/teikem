@@ -159,7 +159,7 @@ export function AsnsTab({ onReceive }: { onReceive: (asn: AsnDto) => void }) {
           />
         </div>
         <TextFilter label={t('warehouse.asns.filters.reference')} value={reference} onChange={setReference} />
-        <DateRangeFilter label={t('warehouse.asns.filters.expected')} value={expected} onChange={setExpected} />
+        <DateRangeFilter label={t('warehouse.asns.filters.expected')} value={expected} onChange={setExpected} mode="future" />
       </Filters>
       <Panel
         flush
