@@ -15691,6 +15691,177 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tenant/trusted-networks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TrustedNetworksDto"];
+                        "application/json": components["schemas"]["TrustedNetworksDto"];
+                        "text/json": components["schemas"]["TrustedNetworksDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TrustedNetworkRequest"];
+                    "text/json": components["schemas"]["TrustedNetworkRequest"];
+                    "application/*+json": components["schemas"]["TrustedNetworkRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TrustedNetworkDto"];
+                        "application/json": components["schemas"]["TrustedNetworkDto"];
+                        "text/json": components["schemas"]["TrustedNetworkDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tenant/trusted-networks/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TrustedNetworkRequest"];
+                    "text/json": components["schemas"]["TrustedNetworkRequest"];
+                    "application/*+json": components["schemas"]["TrustedNetworkRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TrustedNetworkDto"];
+                        "application/json": components["schemas"]["TrustedNetworkDto"];
+                        "text/json": components["schemas"]["TrustedNetworkDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tenant/trusted-networks/limit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TrustedNetworkLimitRequest"];
+                    "text/json": components["schemas"]["TrustedNetworkLimitRequest"];
+                    "application/*+json": components["schemas"]["TrustedNetworkLimitRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TrustedNetworksDto"];
+                        "application/json": components["schemas"]["TrustedNetworksDto"];
+                        "text/json": components["schemas"]["TrustedNetworksDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tenant/work-days": {
         parameters: {
             query?: never;
@@ -24760,6 +24931,46 @@ export interface components {
         TripStartRequest: {
             comment?: string | null;
             rowVersion?: string | null;
+        };
+        TrustedNetworkDto: {
+            /** Format: uuid */
+            publicId?: string;
+            name?: string | null;
+            cidr?: string | null;
+            isActive?: boolean;
+            /** Format: date-time */
+            expiresAtUtc?: string | null;
+            isExpired?: boolean;
+            note?: string | null;
+            /** Format: date-time */
+            internalOnlyConfirmedAtUtc?: string | null;
+            internalOnlyConfirmedByName?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            addressCount?: string | null;
+            containsCurrentIp?: boolean;
+        };
+        TrustedNetworkLimitRequest: {
+            /** Format: int32 */
+            maxEntries?: number | null;
+        };
+        TrustedNetworkRequest: {
+            name?: string | null;
+            cidr?: string | null;
+            isActive?: boolean | null;
+            /** Format: date-time */
+            expiresAtUtc?: string | null;
+            clearExpiry?: boolean;
+            note?: string | null;
+            confirmInternalOnly?: boolean | null;
+        };
+        TrustedNetworksDto: {
+            items?: components["schemas"]["TrustedNetworkDto"][] | null;
+            /** Format: int32 */
+            maxEntries?: number | null;
+            featureEnabled?: boolean;
+            currentIp?: string | null;
+            currentIpNetworkName?: string | null;
         };
         UnassignedOrderDto: {
             /** Format: int32 */

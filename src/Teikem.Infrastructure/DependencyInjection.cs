@@ -80,6 +80,7 @@ public static class DependencyInjection
         services.Configure<JwtOptions>(config.GetSection("Jwt"));
         services.Configure<OnboardingOptions>(config.GetSection("Auth:Onboarding"));
         services.Configure<PasswordResetOptions>(config.GetSection("Auth:PasswordReset"));
+        services.Configure<TrustedNetworkOptions>(config.GetSection("Auth:TrustedNetworks"));   // 2026-10-12: IP preferida (apagada por defecto)
         services.AddSingleton<JwtTokenService>();
 
         // Servicios transversales
@@ -97,6 +98,7 @@ public static class DependencyInjection
         services.AddScoped<ModuleService>();
         services.AddScoped<TenantService>();
         services.AddScoped<BrandLogoService>(); // Lote 19: logos de la marca por compañía
+        services.AddScoped<TrustedNetworkService>();
         services.AddScoped<AuthService>();
         services.AddScoped<UserAdminService>();
         services.AddScoped<ProvisioningService>();
