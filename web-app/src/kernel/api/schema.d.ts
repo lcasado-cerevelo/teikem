@@ -8793,6 +8793,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/import-templates/fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ImportFieldDto"][];
+                        "application/json": components["schemas"]["ImportFieldDto"][];
+                        "text/json": components["schemas"]["ImportFieldDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/import-templates/{publicId}": {
         parameters: {
             query?: never;
