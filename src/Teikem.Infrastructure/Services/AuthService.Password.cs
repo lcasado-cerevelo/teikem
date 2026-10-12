@@ -30,6 +30,8 @@ public sealed partial class AuthService
     public const string ResetLinkInvalidMessage = "El enlace no es válido o venció. Pida uno nuevo.";
     public const string TempPasswordSelfMessage = "No puede ponerse una contraseña temporal a sí mismo.";
     public const string BreachedPasswordMessage = "Esta contraseña aparece en brechas conocidas; elija otra.";
+    public const string ResetMfaRequiredMessage = "Escriba el código de verificación en dos pasos para cambiar la contraseña.";
+    public const string ResetMfaInvalidMessage = "Código MFA inválido.";
 
     private ITimeLimitedDataProtector ResetLinkProtector => dataProtection.CreateProtector("Teikem.PasswordReset").ToTimeLimitedDataProtector();
 
@@ -159,6 +161,25 @@ public sealed partial class AuthService
 
         var pwd = req.NewPassword ?? string.Empty;
         if (await breachChecker.IsBreachedAsync(pwd, ct)) throw new ValidationException("newPassword", BreachedPasswordMessage);
+
+        // MFA al restablecer (2026-10-12; docs/ip-preferida-mfa-diseno.md §3.1): quien tiene su MFA inscrito debe dar también el código (TOTP o de
+        // recuperación), SIEMPRE, sin excepción por IP preferida: este flujo es anónimo (se llega con el enlace del correo). Se revisa ANTES de usar el
+        // enlace: sin código o con uno malo el enlace sigue vigente. Los códigos malos cuentan para el bloqueo de la cuenta (como en el login). Quien
+        // nunca inscribió su MFA no tiene código que dar: el enlace es su único factor (límite conocido; el siguiente ingreso le exige inscribirlo).
+        var mfaVerified = false;
+        if (await ConfirmedTotpAsync(user.Id, ct) is not null)
+        {
+            if (string.IsNullOrWhiteSpace(req.MfaCode)) throw new MfaCodeRequiredException();
+            var locked = await users.IsLockedOutAsync(user);
+            if (locked || !await VerifyCodeAsync(user, req.MfaCode, ct))
+            {
+                if (!locked) await users.AccessFailedAsync(user);
+                await security.WriteAsync(SecurityEventTypes.PasswordChange, SecurityOutcomes.Failure, user.Id, null, new { stage = "reset_link", reason = "mfa_failed" }, ct);
+                throw new ValidationException("mfaCode", ResetMfaInvalidMessage);
+            }
+            mfaVerified = true;
+        }
+
         var result = await users.ResetPasswordAsync(user, raw, pwd);
         if (!result.Succeeded)
         {
@@ -175,6 +196,9 @@ public sealed partial class AuthService
         await users.ResetAccessFailedCountAsync(user);
         await users.SetLockoutEndDateAsync(user, null);
         await RevokeSessionsAsync(user, ct);
-        await security.WriteAsync(SecurityEventTypes.PasswordChange, SecurityOutcomes.Success, user.Id, null, new { stage = "reset_link" }, ct);
+        await security.WriteAsync(SecurityEventTypes.PasswordChange, SecurityOutcomes.Success, user.Id, null, new { stage = "reset_link", mfa = mfaVerified ? "verified" : "not_enrolled" }, ct);
     }
 }
+
+/// <summary>400 <c>mfa_required</c>: restablecer la contraseña exige el código MFA de quien lo tiene inscrito. El enlace del correo no se gasta.</summary>
+public sealed class MfaCodeRequiredException() : Teikem.Infrastructure.Exceptions.TeikemException(AuthService.ResetMfaRequiredMessage, 400, "mfa_required");

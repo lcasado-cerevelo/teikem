@@ -96,6 +96,35 @@ describe('Recuperar la contraseña', () => {
     expect(screen.getByRole('link', { name: 'Pedir otro enlace' })).toBeInTheDocument()
   })
 
+  it('con MFA inscrito: el servidor pide el código (mfa_required), la página muestra el campo y reenvía con mfaCode; el enlace no cambia', async () => {
+    resetReply = () => {
+      const body = calls.at(-1)?.body as { mfaCode?: string }
+      if (!body.mfaCode) return json({ title: 'Escriba el código de verificación en dos pasos para cambiar la contraseña.', status: 400, code: 'mfa_required' }, 400)
+      if (body.mfaCode !== '123456') return json({ title: 'Datos inválidos.', status: 400, code: 'validation', errors: { mfaCode: ['Código MFA inválido.'] } }, 400)
+      return new Response(null, { status: 204 })
+    }
+    await renderAppAt('/reset-password?email=ana%40empresa.com&token=abc123')
+    const user = userEvent.setup()
+    expect(screen.queryByLabelText('Código de verificación')).not.toBeInTheDocument()
+    await user.type(await screen.findByLabelText('Contraseña nueva'), 'Mi-Clave-Propia-2026')
+    await user.type(screen.getByLabelText('Repita la contraseña nueva'), 'Mi-Clave-Propia-2026')
+    await user.click(screen.getByRole('button', { name: 'Guardar contraseña' }))
+    // sin código: el servidor lo pide y aparece el campo
+    const mfa = await screen.findByLabelText('Código de verificación')
+    expect(screen.getByRole('alert')).toHaveTextContent('Escriba el código de verificación en dos pasos')
+    // código malo: el error sale en la página y se puede corregir
+    await user.type(mfa, '000000')
+    await user.click(screen.getByRole('button', { name: 'Guardar contraseña' }))
+    expect(await screen.findByText('Código MFA inválido.')).toBeInTheDocument()
+    await user.clear(screen.getByLabelText('Código de verificación'))
+    await user.type(screen.getByLabelText('Código de verificación'), '123456')
+    await user.click(screen.getByRole('button', { name: 'Guardar contraseña' }))
+    expect(await screen.findByText('Contraseña cambiada')).toBeInTheDocument()
+    const sent = calls.filter((c) => c.path === '/api/v1/auth/reset-password').map((c) => c.body)
+    expect(sent.at(-1)).toEqual({ email: 'ana@empresa.com', token: 'abc123', newPassword: 'Mi-Clave-Propia-2026', mfaCode: '123456' })
+    expect(sent.every((b) => (b as { token: string }).token === 'abc123')).toBe(true)
+  })
+
   it('sin correo o sin token en el enlace avisa y ofrece pedir otro', async () => {
     await renderAppAt('/reset-password')
     expect(await screen.findByRole('alert')).toHaveTextContent('El enlace no es válido o venció.')

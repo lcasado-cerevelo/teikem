@@ -17,6 +17,9 @@ export default function ResetPasswordPage() {
   const token = params.get('token') ?? ''
   const [pwd, setPwd] = useState('')
   const [pwd2, setPwd2] = useState('')
+  // el servidor pide el código MFA (400 `mfa_required`) a quien tiene su verificación en dos pasos; el enlace no se gasta, así que se reenvía
+  const [needMfa, setNeedMfa] = useState(false)
+  const [mfaCode, setMfaCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
@@ -28,10 +31,12 @@ export default function ResetPasswordPage() {
     setBusy(true)
     setError(null)
     try {
-      await resetPassword(email, token, pwd)
+      await resetPassword(email, token, pwd, needMfa ? mfaCode.trim() : undefined)
       setDone(true)
     } catch (err) {
-      setError(applyProblemDetails(err).title)
+      const problem = applyProblemDetails(err)
+      if (problem.code === 'mfa_required') setNeedMfa(true)
+      setError(problem.errors.mfaCode?.join(' ') || problem.title)
     } finally {
       setBusy(false)
     }
@@ -77,6 +82,23 @@ export default function ResetPasswordPage() {
           <label htmlFor="reset-pwd2">{t('auth.onboarding.confirmPassword')}</label>
           <PasswordInput id="reset-pwd2" value={pwd2} onChange={setPwd2} />
         </div>
+        {needMfa && (
+          <div className="f">
+            <label htmlFor="reset-mfa">{t('auth.reset.mfaCode')}</label>
+            <input
+              id="reset-mfa"
+              autoFocus
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              value={mfaCode}
+              onChange={(e) => setMfaCode(e.target.value)}
+              aria-describedby="reset-mfa-help"
+            />
+            <p id="reset-mfa-help" className="hint">
+              {t('auth.reset.mfaHelp')}
+            </p>
+          </div>
+        )}
         <button type="submit" className="btn flow block" disabled={busy}>
           {busy ? t('common.loading') : t('auth.reset.submit')}
         </button>
