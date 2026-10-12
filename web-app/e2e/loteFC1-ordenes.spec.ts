@@ -1,0 +1,236 @@
+// Recorrido de Órdenes (Lote F-C1) contra el API real (db-init hecho, API en API_URL, por defecto http://localhost:5000; compañía demo,
+// admin con todos los permisos, módulos LTL_GROUND y CATALOG encendidos).
+//
+// 1) Alta detallada desplegable: «Nueva orden» → cliente → consignatario del directorio (campos de solo lectura) → dos tipos de paquete
+//    y COD → validaciones sin llamar al servidor → «Guardar borrador» (nace en Entrada) → el formulario se cierra, aviso con
+//    «Abrir la orden» y la lista muestra UNA FILA POR TIPO DE PAQUETE con «↳».
+// 2) Filtros de la lista (Cliente múltiple, Factura, ZIP) y Limpiar.
+// 3) «Guardar y confirmar» de un cliente sin tarifa vigente: el mensaje del servidor se muestra y el formulario sigue abierto con lo
+//    capturado (la orden no se crea).
+// 4) Entrega especial: el interruptor cambia la sección 03; un cliente sin servicios especiales lo avisa.
+// 5) Papelera: eliminar una orden en Entrada con confirmación.
+//
+// Escritorio y móvil (Pixel 7 a 360 px, sin scroll horizontal de página), cada uno con sus propios datos.
+// Capturas: docs/manual/frontend/img/fc1-<paso>.png (solo en escritorio).
+import { mkdirSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
+import type { components } from '../src/kernel/api/schema'
+
+type AuthResultDto = components['schemas']['AuthResultDto']
+type ClientDetailDto = components['schemas']['ClientDetailDto']
+type OrderPageDto = components['schemas']['OrderPageDto']
+
+const API_URL = process.env.API_URL ?? 'http://localhost:5000'
+const ADMIN = { email: process.env.TEIKEM_ADMIN_EMAIL ?? 'teikem+admin@cerevelo.com', password: process.env.TEIKEM_ADMIN_PASSWORD ?? 'Teikem_Admin_2026!' }
+const IMG_DIR = fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url))
+/** Sufijo solo de letras (los dígitos del sello pasan a letras). */
+const LETTERS = String(Date.now())
+  .slice(-6)
+  .replace(/\d/g, (d) => 'ABCDEFGHJK'[Number(d)])
+
+test.use({ locale: 'es-PR' })
+test.setTimeout(150_000)
+
+/** Captura de documentación (solo escritorio, para no pisarla con la móvil). */
+async function shot(page: Page, isMobile: boolean, name: string) {
+  if (isMobile) return
+  await page.waitForLoadState('networkidle')
+  await expect(page.locator('.toast.on')).toHaveCount(0, { timeout: 15_000 })
+  mkdirSync(IMG_DIR, { recursive: true })
+  await page.screenshot({ path: `${IMG_DIR}${name}.png`, animations: 'disabled', caret: 'hide' })
+}
+
+async function apiToken(request: APIRequestContext): Promise<string> {
+  let res = await request.post(`${API_URL}/api/v1/auth/login`, { data: { email: ADMIN.email, password: ADMIN.password } })
+  expect(res.ok()).toBeTruthy()
+  let body = (await res.json()) as AuthResultDto
+  if (body.status === 'tenant_selection') {
+    const tenant = body.tenants?.find((t) => t.isDefault) ?? body.tenants?.[0]
+    res = await request.post(`${API_URL}/api/v1/auth/login`, { data: { email: ADMIN.email, password: ADMIN.password, tenantId: tenant?.tenantId } })
+    body = (await res.json()) as AuthResultDto
+  }
+  expect(body.status).toBe('ok')
+  return body.tokens?.accessToken ?? ''
+}
+
+async function login(page: Page) {
+  await page.goto('/login')
+  await page.getByLabel('Correo electrónico').fill(ADMIN.email)
+  await page.getByLabel('Contraseña', { exact: true }).fill(ADMIN.password)
+  await page.getByRole('button', { name: 'Entrar' }).click()
+  await page.waitForURL((url) => url.pathname !== '/login')
+  if (new URL(page.url()).pathname === '/select-tenant') {
+    const def = page.locator('.tenant-list button', { hasText: 'Predeterminada' })
+    await ((await def.count()) > 0 ? def.first() : page.locator('.tenant-list button').first()).click()
+  }
+  await page.waitForURL((url) => url.pathname === '/')
+}
+
+/** Sin scroll horizontal de página y sin elementos visibles fuera del ancho de la ventana (mismo criterio que F14–F18). */
+async function expectNoHorizontalScroll(page: Page) {
+  const { scrollWidth, innerWidth, offenders } = await page.evaluate(() => {
+    const vw = document.documentElement.clientWidth
+    const out: string[] = []
+    document.querySelectorAll('.stage *, .bar *, .scrim *').forEach((el) => {
+      if (el.parentElement?.closest('.seg')) return
+      if (el.parentElement?.closest('.dt-scroll')) return
+      const style = getComputedStyle(el)
+      if (style.visibility === 'hidden' || style.display === 'none') return
+      if (el.matches('.sw input')) return
+      const r = el.getBoundingClientRect()
+      if (r.width > 0 && (r.right > vw + 1 || r.left < -1)) out.push(`${el.tagName.toLowerCase()}.${String(el.getAttribute('class') ?? '').trim().replace(/\s+/g, '.')} [${Math.round(r.left)}, ${Math.round(r.right)}]`)
+    })
+    return { scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth, offenders: out }
+  })
+  expect(scrollWidth).toBeLessThanOrEqual(innerWidth)
+  expect(offenders).toEqual([])
+}
+
+async function ok<T>(p: Promise<import('@playwright/test').APIResponse>, what: string): Promise<T> {
+  const res = await p
+  expect(res.ok(), `${what}: ${res.status()} ${await res.text()}`).toBeTruthy()
+  return (await res.json()) as T
+}
+
+/** Aviso (toast) con ese texto. */
+const toast = (page: Page, text: string | RegExp): Locator => page.locator('.toast.on', { hasText: text })
+
+/** Elige un cliente en el combobox «Cliente» del formulario por su nombre. */
+async function pickClient(page: Page, name: string) {
+  const box = page.getByRole('combobox', { name: /^Cliente/ }).first()
+  await box.click()
+  await box.fill(name)
+  await page.getByRole('option', { name: new RegExp(name) }).first().click()
+}
+
+async function pickConsignee(page: Page, name: string) {
+  const box = page.getByRole('combobox', { name: /^Nombre/ })
+  await box.click()
+  await page.getByRole('option', { name: new RegExp(name) }).first().click()
+}
+
+test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
+  test('alta de un borrador con dos tipos de paquete, fila por paquete, filtros, entrega especial y papelera', async ({ page, request }, testInfo) => {
+    const isMobile = testInfo.project.name.startsWith('movil')
+    const suffix = `${isMobile ? 'M' : 'D'}${LETTERS}`
+    const clientName = `Cliente FC1 ${suffix}`
+    const consigneeName = `Consignatario FC1 ${suffix}`
+    const headers = { Authorization: `Bearer ${await apiToken(request)}` }
+    const client = await ok<ClientDetailDto>(request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: clientName } }), 'cliente')
+    await ok(
+      request.post(`${API_URL}/api/v1/locations`, {
+        headers,
+        data: { clientPublicId: client.publicId, locationType: 'DELIVERY', name: consigneeName, line1: 'Calle Sol 123', city: 'Ponce', postalCode: '00716', country: 'PR' },
+      }),
+      'consignatario',
+    )
+
+    await login(page)
+    await page.goto('/orders')
+    await expect(page.getByRole('heading', { level: 1, name: 'Órdenes' })).toBeVisible()
+    await shot(page, isMobile, 'fc1-lista')
+
+    // ---- Formulario desplegable ----
+    await page.getByRole('button', { name: /Nueva orden/ }).click()
+    await expect(page.getByText('Ticket de la orden')).toBeVisible()
+    // el segmentado Rápida/Detallada y los botones de labels no existen todavía (F-C3 / F-G)
+    await expect(page.getByRole('button', { name: /Rápida/ })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /label/i })).toHaveCount(0)
+    // validaciones: sin cliente ni consignatario el servidor no se llama
+    await page.getByRole('button', { name: 'Guardar borrador' }).click()
+    await expect(page.getByText('El cliente es obligatorio.')).toBeVisible()
+    await expect(page.getByText('El consignatario es obligatorio: elija uno del directorio o capture uno nuevo.')).toBeVisible()
+
+    await pickClient(page, clientName)
+    // la factura la asigna Teikem: deshabilitada y marcada «(automático)»
+    await expect(page.getByLabel(/N\.º de factura/)).toBeDisabled()
+    await pickConsignee(page, consigneeName)
+    await expect(page.getByLabel('Dirección')).toHaveValue('Calle Sol 123')
+    await expect(page.getByLabel('Pueblo')).toHaveValue('Ponce')
+    // servicio y tipos de paquete: el primero del catálogo si la compañía no tiene predeterminado
+    const service = page.getByRole('combobox', { name: /^Servicio/ })
+    if ((await service.inputValue()) === '') await service.selectOption({ index: 1 })
+    const types = page.getByRole('combobox', { name: /^Tipo de paquete/ })
+    if ((await types.first().inputValue()) === '') await types.first().selectOption({ index: 1 })
+    await page.getByLabel(/^Piezas/).first().fill('2')
+    await page.getByLabel('Descripción').first().fill('Ropa')
+    await page.getByRole('button', { name: /Añadir paquete/ }).click()
+    await types.nth(1).selectOption({ index: 2 })
+    await page.getByLabel(/^Piezas/).nth(1).fill('1')
+    await page.getByLabel('Monto COD').fill('50')
+    // el ticket no muestra precio: solo el COD capturado
+    const ticket = page.getByRole('complementary', { name: 'Ticket de la orden' })
+    await expect(ticket).toContainText(clientName)
+    await expect(ticket).toContainText('$50.00')
+    await shot(page, isMobile, 'fc1-alta')
+    if (isMobile) await expectNoHorizontalScroll(page)
+
+    // ---- Guardar borrador ----
+    await page.getByRole('button', { name: 'Guardar borrador' }).click()
+    await expect(toast(page, /^Orden .+ guardada\.$/)).toBeVisible()
+    await expect(page.getByText('Ticket de la orden')).toHaveCount(0)
+    const banner = page.locator('.oe-created')
+    await expect(banner).toContainText('guardada como borrador')
+    const page1 = await ok<OrderPageDto>(request.get(`${API_URL}/api/v1/orders?clientId=${client.publicId}`, { headers }), 'órdenes del cliente')
+    expect(page1.total).toBe(1)
+    const created = page1.items?.[0]
+    expect(created?.status).toBe('DRAFT')
+    expect(created?.isInitialStatus).toBe(true)
+    expect(created?.packages).toHaveLength(2)
+
+    // ---- Lista: una fila por tipo de paquete ----
+    const clientFilter = page.getByLabel('Cliente', { exact: true })
+    await clientFilter.click()
+    await page.getByLabel(new RegExp(clientName)).check()
+    await page.keyboard.press('Escape')
+    const orderNumber = created?.orderNumber ?? ''
+    const rows = page.getByRole('table', { name: 'Órdenes' }).getByRole('row').filter({ hasText: /\S/ })
+    await expect(rows).toHaveCount(3) // encabezado + 2 filas de la misma orden
+    await expect(rows.nth(1)).toContainText(orderNumber)
+    await expect(rows.nth(2)).toContainText('↳')
+    await expect(page.getByText('1–1 de 1', { exact: true })).toBeVisible()
+    await shot(page, isMobile, 'fc1-lista-filas')
+
+    // ---- Otros filtros y Limpiar ----
+    await page.getByLabel('ZIP', { exact: true }).fill('999')
+    await expect(page.getByText('Sin resultados')).toBeVisible()
+    await page.getByRole('button', { name: 'Limpiar' }).click()
+    await expect(page.getByLabel('ZIP', { exact: true })).toHaveValue('')
+
+    // ---- Guardar y confirmar sin tarifa: el mensaje del servidor y el formulario sigue abierto ----
+    await page.getByRole('button', { name: /Nueva orden/ }).click()
+    await pickClient(page, clientName)
+    await pickConsignee(page, consigneeName)
+    const service2 = page.getByRole('combobox', { name: /^Servicio/ })
+    if ((await service2.inputValue()) === '') await service2.selectOption({ index: 1 })
+    const types2 = page.getByRole('combobox', { name: /^Tipo de paquete/ })
+    if ((await types2.first().inputValue()) === '') await types2.first().selectOption({ index: 1 })
+    await page.getByRole('button', { name: 'Guardar y confirmar' }).click()
+    await expect(page.locator('.form-alert')).toContainText(/tarifa|contrato/i)
+    await expect(page.getByText('Ticket de la orden')).toBeVisible()
+    await expect(page.getByLabel(/^Piezas/).first()).toHaveValue('1')
+    const after = await ok<OrderPageDto>(request.get(`${API_URL}/api/v1/orders?clientId=${client.publicId}`, { headers }), 'órdenes tras confirmar')
+    expect(after.total).toBe(1)
+
+    // ---- Entrega especial: el cliente no tiene servicios especiales ----
+    await page.getByRole('switch', { name: 'Es una entrega especial' }).check()
+    await expect(page.getByLabel('Monto COD')).toHaveCount(0)
+    await expect(page.getByLabel(/N\.º de orden/)).toBeVisible()
+    await expect(page.getByText('Este cliente no tiene servicios especiales configurados')).toBeVisible()
+    await shot(page, isMobile, 'fc1-alta-especial')
+    await page.getByRole('button', { name: 'Ocultar formulario' }).click()
+    await expect(page.getByText('Ticket de la orden')).toHaveCount(0)
+
+    // ---- Papelera ----
+    await page.getByRole('button', { name: 'Eliminar la orden' }).click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toContainText(orderNumber)
+    await shot(page, isMobile, 'fc1-eliminar')
+    await dialog.getByRole('button', { name: 'Eliminar' }).click()
+    await expect(toast(page, `Orden ${orderNumber} eliminada.`)).toBeVisible()
+    await expect(page.getByText('Sin resultados')).toBeVisible()
+    const gone = await ok<OrderPageDto>(request.get(`${API_URL}/api/v1/orders?clientId=${client.publicId}`, { headers }), 'órdenes tras eliminar')
+    expect(gone.total).toBe(0)
+  })
+})

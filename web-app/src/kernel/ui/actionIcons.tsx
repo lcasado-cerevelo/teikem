@@ -31,6 +31,15 @@ export function IconTrash() {
   )
 }
 
+/** Abrir el expediente (flecha `chev` de la maqueta). */
+export function IconChevronRight() {
+  return (
+    <Svg>
+      <path d="m9 18 6-6-6-6" />
+    </Svg>
+  )
+}
+
 /** PIN / clave (llave). */
 export function IconKey() {
   return (

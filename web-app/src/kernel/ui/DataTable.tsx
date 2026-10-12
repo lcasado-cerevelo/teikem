@@ -17,7 +17,7 @@ import {
   type SortingState,
   type Updater,
 } from '@tanstack/react-table'
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import type { FetchAllResult } from '../api/fetchAllPages'
 import { useAccess } from '../access/accessContext'
 import { formatQuantity } from '../i18n/numberFormat'
@@ -65,6 +65,9 @@ export interface DataColumn<T> {
   exportable?: boolean
   /** true = número con signo (+5 / -3) en el PDF agrupado (`exportChildren`). */
   signed?: boolean
+  /** Contenido de esta columna en la fila de continuación `index` (1…n) de un registro (`continuationRows` de la tabla). Sin él,
+   *  la celda de continuación queda vacía. Solo la vista de tabla; las tarjetas muestran `cell`. */
+  continuation?: (row: T, index: number) => ReactNode
 }
 
 export interface SortState {
@@ -142,6 +145,10 @@ export interface DataTableProps<T extends RowData> {
   /** true = tarjetas aunque la ventana sea ancha (p. ej. la tabla vive en un panel angosto de `SplitPane`: decídelo con
    *  `useElementWidth`). Sin él (o false), tarjetas solo bajo 720 px de ventana. El pie no cambia. */
   forceCards?: boolean
+  /** Filas de CONTINUACIÓN de cada registro en la vista de tabla (un registro con varias líneas, p. ej. una orden con un renglón
+   *  por tipo de paquete): cuántas filas extra pinta tras la fila del registro; su contenido sale de `DataColumn.continuation`.
+   *  Siguen siendo UN registro (paginación, orden, clic en la fila y acciones solo en la primera). */
+  continuationRows?: (row: T) => number
 }
 
 /** A partir de cuántas columnas la tabla pasa sola a la variante compacta. */
@@ -537,25 +544,43 @@ export function DataTable<T extends RowData>(props: DataTableProps<T>) {
             ))}
           </thead>
           <tbody>
-            {visibleRows.map((row) => (
-              <tr
-                key={row.id}
-                className={joinClass(onRowClick ? 'click' : undefined, rowClassName?.(row.original))}
-                tabIndex={onRowClick ? 0 : undefined}
-                onClick={onRowClick ? () => onRowClick(row.original) : undefined}
-                onKeyDown={rowKeyDown(row.original)}
-              >
-                {row.getAllCells().map((cell) => {
-                  const col = columns.find((c) => c.id === cell.column.id)
-                  return (
-                    <td key={cell.id} className={col?.align === 'end' ? 'n' : undefined}>
-                      <table.FlexRender cell={cell} />
-                    </td>
-                  )
-                })}
-                {hasActions && <td className="acts">{renderActions(row.original)}</td>}
-              </tr>
-            ))}
+            {visibleRows.map((row) => {
+              const extra = props.continuationRows ? Math.max(0, props.continuationRows(row.original)) : 0
+              return (
+                <Fragment key={row.id}>
+                  <tr
+                    className={joinClass(onRowClick ? 'click' : undefined, props.continuationRows ? 'grp' : undefined, rowClassName?.(row.original))}
+                    tabIndex={onRowClick ? 0 : undefined}
+                    onClick={onRowClick ? () => onRowClick(row.original) : undefined}
+                    onKeyDown={rowKeyDown(row.original)}
+                  >
+                    {row.getAllCells().map((cell) => {
+                      const col = columns.find((c) => c.id === cell.column.id)
+                      return (
+                        <td key={cell.id} className={col?.align === 'end' ? 'n' : undefined}>
+                          <table.FlexRender cell={cell} />
+                        </td>
+                      )
+                    })}
+                    {hasActions && <td className="acts">{renderActions(row.original)}</td>}
+                  </tr>
+                  {Array.from({ length: extra }, (_, i) => (
+                    <tr
+                      key={`${row.id}-cont-${i + 1}`}
+                      className={joinClass(onRowClick ? 'click' : undefined, 'cont', rowClassName?.(row.original))}
+                      onClick={onRowClick ? () => onRowClick(row.original) : undefined}
+                    >
+                      {columns.map((col) => (
+                        <td key={col.id} className={col.align === 'end' ? 'n' : undefined}>
+                          {col.continuation ? displayCell(col.continuation(row.original, i + 1), lang) : null}
+                        </td>
+                      ))}
+                      {hasActions && <td className="acts" />}
+                    </tr>
+                  ))}
+                </Fragment>
+              )
+            })}
           </tbody>
         </table>
       </div>

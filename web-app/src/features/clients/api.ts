@@ -27,11 +27,13 @@ export function useClients(search: string, includeInactive: boolean) {
   })
 }
 
-export function useClient(publicId: string | null) {
+/** `quiet` = consulta secundaria (p. ej. la numeración del cliente en una orden): un 403 no saca de la pantalla. */
+export function useClient(publicId: string | null, quiet = false) {
   return useQuery({
     queryKey: clientKeys.detail(publicId ?? ''),
     queryFn: () => unwrap(api.GET('/api/v1/clients/{publicId}', { params: { path: { publicId: publicId ?? '' } } })),
     enabled: !!publicId,
+    meta: quiet ? { handleAccessDenied: false } : undefined,
   })
 }
 

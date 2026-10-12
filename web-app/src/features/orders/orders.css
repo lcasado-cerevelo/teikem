@@ -1,0 +1,72 @@
+/* Lote F-C1 — Órdenes: alta detallada (maqueta `.detail`, `.stepper`, `.docsec`, `.ticket`) y avisos de la lista. */
+.oe-wrap{margin-bottom:16px;min-width:0}
+.oe-bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.oe-bar b{font-size:15px;display:flex;align-items:center;gap:8px}
+.oe-bar .oe-hide{margin-left:auto}
+
+/* rejilla de la maqueta: 52 px de pasos + secciones + ticket de 300 px */
+.oe-detail{display:grid;grid-template-columns:52px minmax(0,1fr) 300px;gap:16px;margin-bottom:16px;min-width:0}
+.oe-detail>.form-alert{grid-column:1 / -1;margin:0}
+.oe-stepper{display:flex;flex-direction:column;align-items:center;padding-top:8px}
+.oe-stepper .st{width:32px;height:32px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-family:var(--mono);font-size:12.5px;font-weight:700;color:var(--faint);background:var(--panel)}
+.oe-stepper .st.on{border-color:var(--flow);color:var(--flow-2);box-shadow:0 0 0 3px var(--flow-bg)}
+.oe-stepper .ln{width:2px;flex:1;min-height:34px;background:var(--line);margin:6px 0}
+.oe-main{min-width:0}
+.docsec{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:18px 20px;margin-bottom:14px;min-width:0}
+.oe-main>.docsec:last-child{margin-bottom:0}
+.docsec h3{margin:0 0 4px;font-size:14.5px;display:flex;align-items:center;gap:9px}
+.docsec h3 .num{font-family:var(--mono);color:var(--flow-2);font-size:12px}
+.docsec p.d{margin:0 0 14px;color:var(--faint);font-size:12px}
+.docsec .r2,.docsec .r3{margin-bottom:0}
+.docsec .r2+.f,.docsec .r3+.f,.docsec .f+.r2,.docsec .f+.r3,.docsec .r2+.r3,.docsec .r3+.r2{margin-top:12px}
+.oe-special{padding-top:12px;padding-bottom:12px}
+.oe-special p.d{margin:6px 0 0}
+.oe-auto{color:var(--faint);font-weight:400}
+
+/* consignatario: combobox + botón + */
+.oe-consrow{display:flex;gap:8px;align-items:flex-start;min-width:0}
+.oe-consbox{flex:1 1 auto;min-width:0}
+.oe-consadd{flex:none;width:36px;height:36px;padding:0;display:inline-grid;place-items:center}
+.oe-consadd svg{width:16px;height:16px}
+
+/* paquetes */
+.oe-pkg{align-items:start;margin-bottom:8px}
+.oe-pcs{display:flex;gap:6px;align-items:flex-start;min-width:0}
+.oe-pcs>.f{flex:1;min-width:0}
+.oe-pcs .rowbtn{margin-top:22px;flex:none}
+.oe-addpkg{margin-bottom:16px;display:inline-flex;align-items:center;gap:6px}
+.oe-addpkg svg{width:14px;height:14px}
+.oe-cod{max-width:230px}
+.oe-codnote{margin:8px 0 0!important}
+
+/* ticket */
+.ticket{background:var(--bg-2);border:1px dashed var(--line);border-radius:13px;padding:16px;font-family:var(--mono);font-size:12.5px;position:sticky;top:0;align-self:start;min-width:0}
+.ticket h4{margin:0 0 3px;font-family:var(--ui);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.ticket h4 svg{width:14px;height:14px}
+.ticket .zig{height:6px;margin:10px -16px;background:linear-gradient(-45deg,transparent 4px,var(--line) 0) 0 0/12px 6px repeat-x;opacity:.5}
+.ticket .row{display:flex;justify-content:space-between;gap:10px;padding:3px 0;color:var(--muted)}
+.ticket .row span{flex:none}
+.ticket .row b{color:var(--text);font-weight:600;text-align:right;min-width:0;overflow-wrap:anywhere}
+.ticket .tot{border-top:1px solid var(--line);margin-top:8px;padding-top:8px}
+.ticket .tot b{color:var(--money-2);font-size:15px}
+.oe-save{display:flex;flex-direction:column;gap:8px}
+.oe-save .btn{width:100%;justify-content:center}
+.oe-ticketnote{margin-top:10px;font-family:var(--ui)}
+.oe-denied{margin-top:10px;font-family:var(--ui)}
+
+@media(max-width:980px){
+  .oe-detail{grid-template-columns:minmax(0,1fr)}
+  .oe-stepper{display:none}
+  .ticket{position:static}
+}
+
+/* aviso de «orden guardada» sobre la lista */
+.oe-created{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.oe-created .btn{flex:none}
+.oe-created .oe-x{margin-left:auto}
+
+/* lista: una fila por tipo de paquete */
+.oe-small{font-size:11px}
+.oe-cont{color:var(--faint);font-size:11px}
+.oe-pkgcell{min-width:0}
+.oe-desc{font-size:11px;color:var(--faint);overflow-wrap:anywhere}

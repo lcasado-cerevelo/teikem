@@ -1519,29 +1519,8 @@ export function useCrossDockAction() {
 }
 
 // =====================================================================================================================
-// Consulta de órdenes (solo lectura)
+// Búsqueda de órdenes por código (la lista y la ficha de órdenes viven en features/orders/api.ts)
 // =====================================================================================================================
-
-/** `GET /api/v1/orders` (paginado, `orders.view` + LTL_GROUND). Solo lectura: este lote no da de alta ni edita órdenes. */
-export function useOrdersReadonly(query: GetQuery<'/api/v1/orders'> = {}, options?: WarehouseQueryOptions) {
-  return useQuery({
-    queryKey: [warehouseKeys.orders[0], query],
-    queryFn: () => unwrap(api.GET('/api/v1/orders', { params: { query } })),
-    enabled: options?.enabled ?? true,
-    placeholderData: keepPreviousData,
-    meta: meta(options),
-  })
-}
-
-/** `GET /api/v1/orders/{publicId}` (`OrderDetailDto`). */
-export function useOrderReadonly(publicId: string | null | undefined, options?: WarehouseQueryOptions) {
-  return useQuery({
-    queryKey: [warehouseKeys.order[0], publicId],
-    queryFn: () => unwrap(api.GET('/api/v1/orders/{publicId}', { params: { path: { publicId: publicId ?? '' } } })),
-    enabled: Boolean(publicId) && (options?.enabled ?? true),
-    meta: meta(options),
-  })
-}
 
 /** `GET /api/v1/orders/lookup?code=` (número de orden, factura o lote de empaque → coincidencias). */
 export function useOrderLookup(code: string | null | undefined, options?: WarehouseQueryOptions) {
@@ -1583,9 +1562,6 @@ export const exportPickBatches = (query: GetQuery<'/api/v1/pick-batches'>) =>
 
 export const exportPurchaseOrders = (query: GetQuery<'/api/v1/purchase-orders'>) =>
   fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/purchase-orders', { params: { query: { ...query, skip, take } } })))
-
-export const exportOrders = (query: GetQuery<'/api/v1/orders'>) =>
-  fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/orders', { params: { query: { ...query, skip, take } } })))
 
 // =====================================================================================================================
 // Lote 1 (cambios de Almacén): localidades postales (Ciudad/ZIP del almacén) y exportación de posiciones

@@ -1,6 +1,7 @@
 // Kit de componentes (src/kernel/ui). Contrato y props en web-app/KIT.md; patrones completos en ./templates.
 export {
   IconCheckCircle,
+  IconChevronRight,
   IconEdit,
   IconKey,
   IconLogOut,

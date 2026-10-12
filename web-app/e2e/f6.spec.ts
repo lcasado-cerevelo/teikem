@@ -474,10 +474,12 @@ test.describe('Lote F6 — escritorio', () => {
     // el conteo va en el pie de la tabla ("1–1 de 1") y la tabla trae el encabezado + una sola fila
     await expect(page.getByText('1–1 de 1', { exact: true })).toBeVisible()
     await expect(page.getByRole('table', { name: 'Órdenes' }).getByRole('row')).toHaveCount(2)
-    const row = page.getByRole('row').filter({ hasText: CLIENT }).filter({ hasText: orderNumber })
+    // la tabla sigue la maqueta (sin columna de cliente, que sí sale en la exportación): se ubica por el número de orden
+    const row = page.getByRole('row').filter({ hasText: orderNumber })
     await expect(row).toHaveCount(1)
-    // solo lectura: sin 'Nuevo'
-    await expect(page.getByRole('button', { name: /^Nuev/ })).toHaveCount(0)
+    // Lote F-C1: la lista ya da de alta (el admin tiene orders.create); el formulario va desplegable y cerrado
+    await expect(page.getByRole('button', { name: /^Nueva orden/ })).toBeVisible()
+    await expect(page.getByText('Ticket de la orden')).toHaveCount(0)
     await shot(page, 'ordenes')
     await row.getByText(orderNumber, { exact: true }).click()
     await expect(page).toHaveURL(/\/orders\/[0-9a-f-]+$/)

@@ -41,9 +41,10 @@ export function useRateComponents(publicId: string | null, includeHistory: boole
   })
 }
 
-export function useSpecialServices(clientPublicId: string, includeHistory: boolean) {
+export function useSpecialServices(clientPublicId: string, includeHistory: boolean, enabled = true) {
   return useQuery({
     queryKey: contractKeys.specialsOf(clientPublicId, includeHistory),
+    enabled,
     queryFn: () => unwrap(api.GET('/api/v1/clients/{publicId}/special-services', { params: { path: { publicId: clientPublicId }, query: { includeHistory } } })),
     meta: { handleAccessDenied: false },
   })

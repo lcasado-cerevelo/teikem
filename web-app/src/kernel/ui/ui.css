@@ -55,6 +55,12 @@
 /* fila atenuada (rowClassName 'dim'): registro inactivo, como la maqueta (opacity .55) */
 .lst tr.dim,.dt-card.dim{opacity:.55}
 .lst td.acts{width:1%;white-space:nowrap}
+/* registro con filas de continuación (`continuationRows`): línea divisoria arriba de cada registro; las continuaciones se leen como
+   parte del mismo y el pasar el ratón ilumina el registro completo (maqueta de Órdenes: una fila por tipo de paquete) */
+.lst tr.grp:not(:first-child) td{border-top:1px solid var(--line-2)}
+.lst tr.grp:has(+ tr.cont) td{border-bottom-color:transparent}
+.lst tr.cont:has(+ tr.cont) td{border-bottom-color:transparent}
+.lst tr.cont td{padding-top:2px}
 /* nowrap: con flex-wrap:wrap, una tabla table-layout:auto a veces subestima el ancho mínimo del contenedor flex y
    deja caer el segundo ícono a otra fila (se ve apilado en vez de uno al lado del otro) */
 .rowacts{display:flex;gap:6px;justify-content:flex-end;flex-wrap:nowrap}

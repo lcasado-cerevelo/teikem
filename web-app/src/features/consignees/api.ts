@@ -20,6 +20,7 @@ export const consigneeKeys = {
   /** Prefijo de todas las listas (se invalida entero). */
   list: ['/api/v1/locations'] as const,
   listOf: (clientId: string | null, includeInactive: boolean) => ['/api/v1/locations', { clientId, includeInactive, locationType: DELIVERY_TYPE }] as const,
+  forClient: (clientId: string) => ['/api/v1/locations', { forOrder: clientId, includeShared: true, locationType: DELIVERY_TYPE }] as const,
   detail: (publicId: string) => ['/api/v1/locations/{publicId}', publicId] as const,
   phones: (locationId: number) => ['/api/v1/contacts/{ownerEntity}/{ownerId}', 'LOCATION', locationId] as const,
   clients: (includeInactive: boolean) => ['/api/v1/clients', 'consignees', { includeInactive }] as const,
@@ -43,11 +44,39 @@ export function useConsignees(clientId: string | null, includeInactive: boolean)
   })
 }
 
-export function useConsignee(publicId: string | null) {
+/**
+ * Consignatarios para elegir en una orden (Lote F-C1): activos DELIVERY del cliente MÁS los compartidos
+ * (`includeShared=true`). Es una consulta secundaria de la pantalla de órdenes: un 403 (sin `locations.read`) no la saca de ahí.
+ */
+export function useClientConsignees(clientId: string | null) {
+  return useQuery({
+    queryKey: consigneeKeys.forClient(clientId ?? ''),
+    queryFn: () =>
+      unwrap(api.GET('/api/v1/locations', { params: { query: { locationType: DELIVERY_TYPE, includeInactive: false, clientId: clientId ?? undefined, includeShared: true } } })),
+    enabled: !!clientId,
+    placeholderData: keepPreviousData,
+    meta: { handleAccessDenied: false },
+  })
+}
+
+/**
+ * El consignatario elegido en una orden: sale de la lista del cliente (propios y compartidos) y, si no está ahí (recién creado, de otro
+ * cliente o una lista que no se pudo leer), de su ficha. null = ninguno.
+ */
+export function useSelectedConsignee(clientPublicId: string | null, value: string | null | undefined): Consignee | null {
+  const list = useClientConsignees(clientPublicId)
+  const fromList = value ? list.data?.find((l) => l.publicId === value) : undefined
+  const detail = useConsignee(fromList || !value ? null : value, true)
+  return fromList ?? detail.data ?? null
+}
+
+/** `quiet` = consulta secundaria (p. ej. el consignatario elegido en una orden): un 403 no saca de la pantalla. */
+export function useConsignee(publicId: string | null, quiet = false) {
   return useQuery({
     queryKey: consigneeKeys.detail(publicId ?? ''),
     queryFn: () => unwrap(api.GET('/api/v1/locations/{publicId}', { params: { path: { publicId: publicId ?? '' } } })),
     enabled: !!publicId,
+    meta: quiet ? { handleAccessDenied: false } : undefined,
   })
 }
 

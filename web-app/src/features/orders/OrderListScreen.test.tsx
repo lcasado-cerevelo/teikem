@@ -1,0 +1,304 @@
+// Lote F-C1 — Órdenes: lista (filas por tipo de paquete, paginación por órdenes, filtros de la maqueta con arreglos repetidos,
+// Limpiar, ordenar sobre todo lo filtrado), papelera y abrir, columna Cotizado según orders.view_price y el botón «Nueva orden».
+// Sobre un fetch simulado.
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { AccessProvider } from '../../kernel/access'
+import { setLang } from '../../kernel/i18n/i18n'
+import OrderListScreen from './OrderListScreen'
+
+interface Call {
+  method: string
+  url: URL
+  body: Record<string, unknown> | undefined
+}
+const mock = vi.hoisted(() => ({ calls: [] as Call[], override: null as null | ((call: Call) => unknown) }))
+vi.mock('../../kernel/api/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../kernel/api/client')>()
+  const fetch = async (req: Request) => {
+    const text = req.method === 'GET' ? '' : await req.text()
+    let body: Record<string, unknown> | undefined
+    try {
+      body = text ? (JSON.parse(text) as Record<string, unknown>) : undefined
+    } catch {
+      body = undefined
+    }
+    const call = { method: req.method, url: new URL(req.url), body }
+    mock.calls.push(call)
+    const out = mock.override?.(call) ?? route(call)
+    return out instanceof Response ? out : new Response(JSON.stringify(out), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  }
+  return { ...actual, api: actual.createApiClient({ baseUrl: 'http://api.test', fetch }) }
+})
+
+const problem = (status: number, title: string, code: string) =>
+  new Response(JSON.stringify({ title, code, status }), { status, headers: { 'Content-Type': 'application/problem+json' } })
+
+const O1 = {
+  id: 1, publicId: 'o-1', packBatchNumber: 'EMP-00001', orderNumber: 'ORD-00001', clientInvoiceNumber: 'FAC-1', clientPublicId: 'c-1', clientName: 'Acme Corp',
+  consigneeName: 'Farmacia Central', consigneeCity: 'San Juan', consigneePostalCode: '00901', serviceType: 'STANDARD', serviceTypeLabel: 'Estándar',
+  totalPieces: 3, codAmount: 50, quotedAmount: 120, status: 'DRAFT', statusLabel: 'Entrada', isInitialStatus: true, isActive: true, createdAtUtc: '2026-10-10T15:00:00',
+  packages: [
+    { id: 1, packageType: 'BOX', packageTypeLabel: 'Caja', description: 'Ropa', pieces: 2 },
+    { id: 2, packageType: 'ENV', packageTypeLabel: 'Sobre', description: '', pieces: 1 },
+  ],
+}
+const O2 = {
+  id: 2, publicId: 'o-2', packBatchNumber: 'EMP-00002', orderNumber: 'ORD-00002', clientInvoiceNumber: 'FAC-2', clientPublicId: 'c-2', clientName: 'Beta SA',
+  consigneeName: 'Colmado Boricua', consigneeCity: 'Ponce', consigneePostalCode: '00716', serviceType: 'EXPRESS', serviceTypeLabel: 'Express',
+  totalPieces: 1, codAmount: null, quotedAmount: 80, status: 'CONFIRMED', statusLabel: 'Confirmada', isInitialStatus: false, isActive: true, createdAtUtc: '2026-10-11T15:00:00',
+  packages: [{ id: 3, packageType: 'BOX', packageTypeLabel: 'Caja', description: '', pieces: 1 }],
+}
+let orders = [O1, O2]
+
+function route({ method, url }: Call): unknown {
+  const p = url.pathname
+  if (p === '/api/v1/orders' && method === 'GET') return { total: orders.length, items: orders }
+  if (p === '/api/v1/orders/o-1' && method === 'DELETE') return new Response(null, { status: 204 })
+  if (p === '/api/v1/clients') return [{ id: 1, publicId: 'c-1', code: 'ACME', name: 'Acme Corp', isActive: true }, { id: 2, publicId: 'c-2', code: 'BETA', name: 'Beta SA', isActive: true }]
+  if (p === '/api/v1/catalogs/ServiceType') return [{ code: 'STANDARD', label: 'Estándar', isEnabled: true }, { code: 'EXPRESS', label: 'Express', isEnabled: true }]
+  if (p === '/api/v1/catalogs/PackageType') return [{ code: 'BOX', label: 'Caja', isEnabled: true }, { code: 'ENV', label: 'Sobre', isEnabled: true }]
+  if (p === '/api/v1/status/OrderStatus')
+    return [
+      { code: 'DRAFT', label: 'Entrada', stageKind: 'PIPELINE', isInitial: true, isEnabled: true, sortOrder: 1 },
+      { code: 'CONFIRMED', label: 'Confirmada', stageKind: 'PIPELINE', isInitial: false, isEnabled: true, sortOrder: 2 },
+    ]
+  if (p === '/api/v1/locations') return [{ id: 10, publicId: 'l-1', name: 'Farmacia', city: 'San Juan', isActive: true }, { id: 11, publicId: 'l-2', name: 'Colmado', city: 'Ponce', isActive: true }]
+  if (p === '/api/v1/tenant/settings') return {}
+  if (p.startsWith('/api/v1/catalogs/') || p.startsWith('/api/v1/custom-fields/')) return []
+  return problem(404, 'No encontrado', 'not_found')
+}
+
+function wrap(permissions: string[]) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <MemoryRouter initialEntries={['/orders']}>
+      <QueryClientProvider client={queryClient}>
+        <AccessProvider permissions={permissions} modules={['LTL_GROUND', 'CATALOG']}>
+          <Routes>
+            <Route path="/orders" element={<OrderListScreen />} />
+            <Route path="/orders/:publicId" element={<p>Ficha abierta</p>} />
+          </Routes>
+        </AccessProvider>
+      </QueryClientProvider>
+    </MemoryRouter>,
+  )
+}
+
+const VIEW = ['orders.view']
+const callsTo = (method: string, path: string) => mock.calls.filter((c) => c.method === method && c.url.pathname === path)
+const lastOrdersQuery = () => callsTo('GET', '/api/v1/orders').at(-1)!.url.searchParams
+/** Filas del cuerpo de la tabla. */
+const bodyRows = () => within(screen.getAllByRole('rowgroup')[1]).getAllByRole('row')
+
+beforeAll(() => setLang('es'))
+beforeEach(() => {
+  mock.calls = []
+  mock.override = null
+  orders = [O1, O2]
+})
+
+describe('Órdenes — lista', () => {
+  it('una fila por tipo de paquete: «↳» en las continuaciones, el resto de celdas solo en la primera, y el contador cuenta órdenes', async () => {
+    wrap(VIEW)
+    await screen.findByText('Farmacia Central')
+    const rows = bodyRows()
+    expect(rows).toHaveLength(3) // O1 = 2 filas (Caja, Sobre) + O2 = 1
+    const [first, cont, second] = rows
+    expect(within(first).getByText('EMP-00001')).toBeInTheDocument()
+    expect(within(first).getByText('ORD-00001')).toBeInTheDocument()
+    expect(within(first).getByText('Caja')).toBeInTheDocument()
+    expect(within(first).getByText('Ropa')).toBeInTheDocument()
+    expect(within(first).getByText('$50.00')).toBeInTheDocument()
+    expect(within(first).getByText('Entrada')).toBeInTheDocument()
+    expect(within(cont).getByText('↳')).toBeInTheDocument()
+    expect(within(cont).getByText('Sobre')).toBeInTheDocument()
+    expect(within(cont).queryByText('ORD-00001')).toBeNull()
+    expect(within(cont).queryByText('Farmacia Central')).toBeNull()
+    expect(within(cont).queryByText('Entrada')).toBeNull()
+    expect(within(second).getByText('ORD-00002')).toBeInTheDocument()
+    expect(within(second).getByText('—')).toBeInTheDocument() // sin COD
+    // la paginación cuenta órdenes (2), no filas (3)
+    expect(screen.getByText('1–2 de 2')).toBeInTheDocument()
+  })
+
+  it('muestra las columnas de la maqueta en su orden', async () => {
+    wrap(VIEW)
+    await screen.findByText('Farmacia Central')
+    const heads = within(screen.getAllByRole('rowgroup')[0]).getAllByRole('columnheader').map((h) => h.textContent?.trim())
+    expect(heads.slice(0, 11)).toEqual(['Empaque', 'N.º orden', 'Fecha', 'Consignatario', 'Pueblo', 'ZIP', 'Servicio', 'Paquete', 'Piezas', 'COD', 'Estatus'])
+  })
+
+  it('pide la primera página con skip/take', async () => {
+    wrap(VIEW)
+    await screen.findByText('Farmacia Central')
+    const q = lastOrdersQuery()
+    expect(q.get('skip')).toBe('0')
+    expect(q.get('take')).toBe('25')
+  })
+
+  it('los filtros se mandan como arreglos repetidos y como texto, con la página en 1', async () => {
+    const user = userEvent.setup()
+    wrap(VIEW)
+    await screen.findByText('Farmacia Central')
+    // Servicio (múltiple)
+    await user.click(screen.getByLabelText('Servicio'))
+    await user.click(await screen.findByLabelText('Estándar'))
+    await user.click(screen.getByLabelText('Express'))
+    await waitFor(() => expect(lastOrdersQuery().getAll('serviceTypes')).toEqual(['STANDARD', 'EXPRESS']))
+    // Cliente (múltiple): se suma a clientIds
+    await user.click(screen.getByLabelText('Cliente'))
+    await user.click(await screen.findByLabelText('ACME · Acme Corp'))
+    await waitFor(() => expect(lastOrdersQuery().getAll('clientIds')).toEqual(['c-1']))
+    // Estatus (múltiple)
+    await user.click(screen.getByLabelText('Estatus'))
+    await user.click(await screen.findByLabelText('Entrada'))
+    await waitFor(() => expect(lastOrdersQuery().getAll('statuses')).toEqual(['DRAFT']))
+    // Texto: ZIP (prefijo), factura, empaque, N.º de orden y consignatario
+    await user.type(screen.getByLabelText('ZIP'), '009')
+    await user.type(screen.getByLabelText('Factura'), 'FAC-1')
+    await user.type(screen.getByLabelText('Empaque'), 'EMP-1')
+    await user.type(screen.getByLabelText('N.º de orden'), 'ORD-1')
+    await user.type(screen.getByLabelText('Consignatario'), 'Farm')
+    await waitFor(() => {
+      const q = lastOrdersQuery()
+      expect(q.get('postalCodePrefix')).toBe('009')
+      expect(q.get('invoice')).toBe('FAC-1')
+      expect(q.get('packBatch')).toBe('EMP-1')
+      expect(q.get('orderNumber')).toBe('ORD-1')
+      expect(q.get('consignee')).toBe('Farm')
+      expect(q.getAll('serviceTypes')).toEqual(['STANDARD', 'EXPRESS'])
+      expect(q.get('skip')).toBe('0')
+    })
+  })
+
+  it('los pueblos del filtro salen de los consignatarios y se mandan como cities repetido', async () => {
+    const user = userEvent.setup()
+    wrap(VIEW)
+    await screen.findByText('Farmacia Central')
+    await user.click(screen.getByLabelText('Pueblo'))
+    await user.click(await screen.findByLabelText('Ponce'))
+    await user.click(screen.getByLabelText('San Juan'))
+    await waitFor(() => expect(lastOrdersQuery().getAll('cities')).toEqual(['Ponce', 'San Juan']))
+  })
+
+  it('«Hasta» incluye el día elegido (el servidor lo toma exclusivo)', async () => {
+    const user = userEvent.setup()
+    wrap(VIEW)
+    await screen.findByText('Farmacia Central')
+    const dates = document.querySelectorAll<HTMLInputElement>('.filters input[type="date"]')
+    await user.type(dates[0], '2026-10-01')
+    await user.type(dates[1], '2026-10-31')
+    await waitFor(() => {
+      const q = lastOrdersQuery()
+      expect(q.get('from')).toBe('2026-10-01')
+      expect(q.get('to')).toBe('2026-11-01')
+    })
+  })
+
+  it('Limpiar quita todos los filtros', async () => {
+    const user = userEvent.setup()
+    wrap(VIEW)
+    await screen.findByText('Farmacia Central')
+    await user.type(screen.getByLabelText('Factura'), 'FAC-1')
+    await waitFor(() => expect(lastOrdersQuery().get('invoice')).toBe('FAC-1'))
+    await user.click(screen.getByRole('button', { name: 'Limpiar' }))
+    await waitFor(() => expect(lastOrdersQuery().get('invoice')).toBeNull())
+    expect(screen.getByLabelText('Factura')).toHaveValue('')
+  })
+
+  it('ordenar lee TODO lo filtrado (exportRows, de a 200) y no solo la página en pantalla', async () => {
+    const user = userEvent.setup()
+    wrap(VIEW)
+    await screen.findByText('Farmacia Central')
+    await user.click(screen.getByRole('button', { name: /^Consignatario/ }))
+    await waitFor(() => expect(mock.calls.some((c) => c.url.pathname === '/api/v1/orders' && c.url.searchParams.get('take') === '200')).toBe(true))
+  })
+
+  it('un error del servidor se muestra en lugar de la tabla', async () => {
+    mock.override = (c) => (c.url.pathname === '/api/v1/orders' ? problem(400, 'Estatus desconocido: X.', 'validation') : undefined)
+    wrap(VIEW)
+    expect(await screen.findByText('Estatus desconocido: X.')).toBeInTheDocument()
+  })
+})
+
+describe('Órdenes — papelera, abrir y precio', () => {
+  it('la papelera solo sale en el estatus inicial y con orders.cancel; la flecha abre la orden (una vez por orden)', async () => {
+    const user = userEvent.setup()
+    wrap([...VIEW, 'orders.cancel'])
+    await screen.findByText('Farmacia Central')
+    expect(screen.getAllByRole('button', { name: 'Eliminar la orden' })).toHaveLength(1)
+    const opens = screen.getAllByRole('button', { name: 'Abrir la orden' })
+    expect(opens).toHaveLength(2)
+    // la primera fila de la orden con dos tipos de paquete tiene los botones; la continuación no
+    expect(within(bodyRows()[1]).queryByRole('button')).toBeNull()
+    await user.click(opens[1])
+    expect(await screen.findByText('Ficha abierta')).toBeInTheDocument()
+  })
+
+  it('sin orders.cancel no hay papelera', async () => {
+    wrap(VIEW)
+    await screen.findByText('Farmacia Central')
+    expect(screen.queryByRole('button', { name: 'Eliminar la orden' })).toBeNull()
+  })
+
+  it('eliminar pide confirmación, llama DELETE y refresca la lista', async () => {
+    const user = userEvent.setup()
+    wrap([...VIEW, 'orders.cancel'])
+    await screen.findByText('Farmacia Central')
+    await user.click(screen.getByRole('button', { name: 'Eliminar la orden' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('Eliminar la orden ORD-00001')).toBeInTheDocument()
+    const before = callsTo('GET', '/api/v1/orders').length
+    await user.click(within(dialog).getByRole('button', { name: 'Eliminar' }))
+    await waitFor(() => expect(callsTo('DELETE', '/api/v1/orders/o-1')).toHaveLength(1))
+    await waitFor(() => expect(callsTo('GET', '/api/v1/orders').length).toBeGreaterThan(before))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  })
+
+  it('si el servidor rechaza la eliminación (422), muestra su mensaje y no cierra', async () => {
+    const user = userEvent.setup()
+    mock.override = (c) =>
+      c.method === 'DELETE' ? problem(422, 'Solo se puede eliminar una orden en su estatus inicial; use la cancelación.', 'status_rule') : undefined
+    wrap([...VIEW, 'orders.cancel'])
+    await screen.findByText('Farmacia Central')
+    await user.click(screen.getByRole('button', { name: 'Eliminar la orden' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: 'Eliminar' }))
+    expect(await within(dialog).findByText('Solo se puede eliminar una orden en su estatus inicial; use la cancelación.')).toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('la columna Cotizado solo con orders.view_price (sin él se omite)', async () => {
+    const { unmount } = wrap([...VIEW, 'orders.view_price'])
+    await screen.findByText('Farmacia Central')
+    expect(screen.getByRole('columnheader', { name: /Cotizado/ })).toBeInTheDocument()
+    expect(within(bodyRows()[0]).getByText('$120.00')).toBeInTheDocument()
+    unmount()
+    wrap(VIEW)
+    await screen.findByText('Farmacia Central')
+    expect(screen.queryByRole('columnheader', { name: /Cotizado/ })).toBeNull()
+    expect(screen.queryByText('$120.00')).toBeNull()
+  })
+})
+
+describe('Órdenes — Nueva orden', () => {
+  it('el botón solo existe con orders.create; abre el formulario y «Ocultar formulario» lo cierra', async () => {
+    const user = userEvent.setup()
+    const { unmount } = wrap(VIEW)
+    await screen.findByText('Farmacia Central')
+    expect(screen.queryByRole('button', { name: /Nueva orden/ })).toBeNull()
+    unmount()
+    wrap([...VIEW, 'orders.create'])
+    await screen.findByText('Farmacia Central')
+    await user.click(screen.getByRole('button', { name: /Nueva orden/ }))
+    expect(await screen.findByText('Ticket de la orden')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Nueva orden/ })).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Ocultar formulario' }))
+    expect(screen.queryByText('Ticket de la orden')).toBeNull()
+    expect(screen.getByRole('button', { name: /Nueva orden/ })).toBeInTheDocument()
+  })
+})

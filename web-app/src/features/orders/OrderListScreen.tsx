@@ -1,120 +1,198 @@
-// Pantalla E (Lote F6) — Consulta de órdenes (solo lectura). `/orders`, grupo Operación. Lectura: orders.view + LTL_GROUND
-// (aplicado por la ruta). Este lote no da de alta ni edita órdenes: sin botón 'Nuevo' ni acciones de fila.
-import { useEffect, useId, useMemo, useState } from 'react'
+// Órdenes (Lote F-C1; maqueta `ordenes()`). `/orders`, grupo Operación. Lectura: orders.view + LTL_GROUND (lo aplica la ruta).
+// Arriba, el formulario de alta DETALLADA desplegable («Nueva orden» / «Ocultar formulario», `orders.create`); debajo los filtros de la
+// maqueta (más Estatus) y la tabla paginada por el servidor con UNA FILA POR TIPO DE PAQUETE (la paginación cuenta órdenes). La
+// papelera (`orders.cancel`) solo en el estatus inicial; la flecha abre la orden. `Cotizado` solo con `orders.view_price`.
+// Ordenar una columna ordena TODO lo filtrado (`exportRows`, regla del CLAUDE.md).
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { StatusChip, useStatuses } from '../../kernel/catalogs'
-import { formatMoney, useLang, useT } from '../../kernel/i18n'
+import { Can, useCan } from '../../kernel/access'
+import { StatusChip, useLookups, useStatuses } from '../../kernel/catalogs'
+import { useFormat } from '../../kernel/format'
+import { useT } from '../../kernel/i18n'
 import {
-  ClientPicker,
+  CARDS_QUERY,
+  ConfirmDialog,
   DataTable,
   DateRangeFilter,
-  EMPTY_RANGE,
   Filters,
+  IconChevronRight,
+  IconPlus,
+  IconTrash,
   Panel,
   QBox,
-  SelectFilter,
+  SearchSelect,
+  toast,
+  useMediaQuery,
   type DataColumn,
   type DateRange,
+  type RowAction,
 } from '../../kernel/ui'
-import { exportOrders, useOrdersReadonly, type OrderListItemDto } from '../warehouse/api'
 import { IconLayers } from '../../kernel/ui/screenIcons'
-import { formatDateTime as formatCompanyDateTime } from '../../kernel/format'
+import { useClientOptions, useConsignees } from '../consignees/api'
+import { TextFilter } from '../warehouse/filterControls'
+import { useDebounced } from '../warehouse/lineRules'
+import { exportOrders, useDeleteOrder, useOrders, type OrderDetailDto, type OrderListItemDto } from './api'
+import { OrderEntryForm } from './OrderEntryForm'
+import { buildOrderQuery, canDeleteOrder, EMPTY_ORDER_FILTERS, packageGroups, packageSummaryText, type OrderFilters } from './orderRules'
+import './orders.css'
 
 const PAGE_SIZE = 25
 const STATUS_DOMAIN = 'OrderStatus'
+const NO_ROWS: OrderListItemDto[] = []
 
-function formatDateTime(iso: string | null | undefined, lang: string): string {
-  // fecha corta y hora de la compañía (Región y formatos), en su zona
-  return formatCompanyDateTime(iso, lang)
-}
-
-/** `to` del filtro es exclusivo sobre CreatedAtUtc en el servidor: se manda el día siguiente para incluir el día elegido. */
-function exclusiveTo(day: string): string | undefined {
-  if (!day) return undefined
-  const d = new Date(`${day}T00:00:00Z`)
-  if (Number.isNaN(d.getTime())) return undefined
-  d.setUTCDate(d.getUTCDate() + 1)
-  return d.toISOString().slice(0, 10)
+interface Created {
+  publicId: string
+  number: string
+  confirmed: boolean
 }
 
 export default function OrderListScreen() {
   const t = useT()
-  const clientFieldId = useId()
-  const lang = useLang()
+  const f = useFormat()
   const navigate = useNavigate()
-  const [clientId, setClientId] = useState<string | null>(null)
-  const [status, setStatus] = useState('')
-  const [range, setRange] = useState<DateRange>(EMPTY_RANGE)
-  const [text, setText] = useState('')
-  const [search, setSearch] = useState('')
+  const canViewPrice = useCan('orders.view_price')
+  const cards = useMediaQuery(CARDS_QUERY)
+  const [filters, setFilters] = useState<OrderFilters>(EMPTY_ORDER_FILTERS)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
+  const [formOpen, setFormOpen] = useState(false)
+  const [created, setCreated] = useState<Created | null>(null)
+  const [deleting, setDeleting] = useState<OrderListItemDto | null>(null)
+  const remove = useDeleteOrder()
 
-  useEffect(() => {
-    const h = setTimeout(() => {
-      setSearch(text.trim())
-      setPage(1)
-    }, 250)
-    return () => clearTimeout(h)
-  }, [text])
-
-  const { data: statusOptions = [] } = useStatuses(STATUS_DOMAIN)
-  const statusSelectOptions = useMemo(() => statusOptions.map((s) => ({ value: s.code, label: s.label })), [statusOptions])
-
-  function withPageReset<T>(setter: (v: T) => void) {
-    return (v: T) => {
-      setPage(1)
-      setter(v)
-    }
+  function patch(next: Partial<OrderFilters>) {
+    setFilters((cur) => ({ ...cur, ...next }))
+    setPage(1)
   }
-  const changeClient = withPageReset(setClientId)
-  const changeStatus = withPageReset(setStatus)
-  const changeRange = withPageReset(setRange)
+  const range: DateRange = { from: filters.from, to: filters.to }
 
-  const query = useMemo(
-    () => ({
-      clientId: clientId || undefined,
-      status: status || undefined,
-      from: range.from || undefined,
-      to: exclusiveTo(range.to),
-      search: search || undefined,
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    }),
-    [clientId, status, range, search, page, pageSize],
-  )
-  const { data, isLoading, error } = useOrdersReadonly(query)
+  // ---- Opciones de los filtros ----
+  const { data: clients = [] } = useClientOptions(true)
+  const { data: serviceTypes = [] } = useLookups('ServiceType')
+  const { data: packageTypes = [] } = useLookups('PackageType')
+  const { data: statuses = [] } = useStatuses(STATUS_DOMAIN)
+  // pueblos: los de los consignatarios del directorio (una orden siempre entrega a uno de ellos)
+  const { data: consignees = [] } = useConsignees(null, false)
+  const clientOptions = useMemo(() => clients.map((c) => ({ value: c.publicId ?? '', label: [c.code, c.name].filter(Boolean).join(' · ') })), [clients])
+  const serviceOptions = useMemo(() => serviceTypes.map((s) => ({ value: s.code, label: s.label })), [serviceTypes])
+  const packageOptions = useMemo(() => packageTypes.map((p) => ({ value: p.code, label: p.label })), [packageTypes])
+  const statusOptions = useMemo(() => statuses.map((s) => ({ value: s.code, label: s.label })), [statuses])
+  const townOptions = useMemo(() => {
+    const names = new Set<string>(filters.cities)
+    for (const c of consignees) if (c.city?.trim()) names.add(c.city.trim())
+    return [...names].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })).map((n) => ({ value: n, label: n }))
+  }, [consignees, filters.cities])
 
-  const columns = useMemo<DataColumn<OrderListItemDto>[]>(
-    () => [
-      // Orden en el cliente: la lista es paginada por el servidor (sin parámetro de orden), así que solo reacomoda la página visible.
-      { id: 'orderNumber', header: t('orders.list.columns.orderNumber'), cell: (o) => <span className="ref">{o.orderNumber}</span>, sortValue: (o) => o.orderNumber, card: 'title' },
-      { id: 'client', header: t('orders.list.columns.client'), cell: (o) => o.clientName, sortValue: (o) => o.clientName },
+  // ---- Consulta (los textos esperan 300 ms para no pedir por cada tecla) ----
+  const applied = useDebounced(filters, 300)
+  const query = useMemo(() => buildOrderQuery(applied, page, pageSize), [applied, page, pageSize])
+  const { data, isLoading, error } = useOrders(query)
+  const rows = data?.items ?? NO_ROWS
+
+  // ---- Columnas: una fila por tipo de paquete (continuaciones) en tabla; todo junto en tarjetas ----
+  const columns = useMemo<DataColumn<OrderListItemDto>[]>(() => {
+    const cols: DataColumn<OrderListItemDto>[] = [
       {
-        id: 'consignee',
-        header: t('orders.list.columns.consignee'),
-        cell: (o) => [o.consigneeName, o.consigneeCity].filter(Boolean).join(' · '),
-        sortValue: (o) => o.consigneeName,
-      },
-      { id: 'serviceType', header: t('orders.list.columns.serviceType'), cell: (o) => o.serviceTypeLabel, sortValue: (o) => o.serviceTypeLabel ?? o.serviceType },
-      {
-        id: 'status',
-        header: t('orders.list.columns.status'),
-        cell: (o) => <StatusChip domain={STATUS_DOMAIN} code={o.status} label={o.statusLabel} />,
-        sortValue: (o) => o.statusLabel ?? o.status,
-      },
-      { id: 'pieces', header: t('orders.list.columns.pieces'), cell: (o) => o.totalPieces, sortValue: (o) => o.totalPieces, align: 'end' },
-      { id: 'cod', header: t('orders.list.columns.cod'), cell: (o) => (o.codAmount != null ? formatMoney(o.codAmount, lang) : '—'), exportValue: (o) => o.codAmount, sortValue: (o) => o.codAmount, align: 'end' },
-      {
-        id: 'createdAt',
-        header: t('orders.list.columns.createdAt'),
-        cell: (o) => formatDateTime(o.createdAtUtc, lang),
-        sortValue: (o) => o.createdAtUtc,
+        id: 'packBatch',
+        header: t('orders.list.columns.packBatch'),
+        cell: (o) => <span className="ref oe-small">{o.packBatchNumber || '—'}</span>,
+        sortValue: (o) => o.packBatchNumber,
+        exportValue: (o) => o.packBatchNumber,
         card: 'hidden',
       },
+      {
+        id: 'orderNumber',
+        header: t('orders.list.columns.orderNumber'),
+        cell: (o) => <span className="ref">{o.orderNumber}</span>,
+        continuation: () => (
+          <span className="oe-cont" title={t('orders.list.columns.continued')}>
+            ↳
+          </span>
+        ),
+        sortValue: (o) => o.orderNumber,
+        card: 'title',
+      },
+      { id: 'date', header: t('orders.list.columns.date'), cell: (o) => <span className="mono">{f.date(o.createdAtUtc)}</span>, sortValue: (o) => o.createdAtUtc, exportValue: (o) => f.date(o.createdAtUtc) },
+      { id: 'consignee', header: t('orders.list.columns.consignee'), cell: (o) => o.consigneeName, sortValue: (o) => o.consigneeName },
+      { id: 'town', header: t('orders.list.columns.town'), cell: (o) => o.consigneeCity, sortValue: (o) => o.consigneeCity },
+      { id: 'zip', header: t('orders.list.columns.zip'), cell: (o) => <span className="mono">{o.consigneePostalCode}</span>, sortValue: (o) => o.consigneePostalCode, exportValue: (o) => o.consigneePostalCode },
+      { id: 'service', header: t('orders.list.columns.serviceType'), cell: (o) => o.serviceTypeLabel ?? o.serviceType, sortValue: (o) => o.serviceTypeLabel ?? o.serviceType },
+      {
+        id: 'package',
+        header: t('orders.list.columns.package'),
+        // tabla: el primer tipo en la fila de la orden y los demás en continuaciones; tarjeta: todos
+        cell: (o) => {
+          const groups = packageGroups(o)
+          return cards ? groups.map((g, i) => <PackageCell key={i} label={g.label} descriptions={g.descriptions} pieces={g.pieces} showPieces />) : <PackageCell label={groups[0].label} descriptions={groups[0].descriptions} />
+        },
+        continuation: (o, i) => {
+          const g = packageGroups(o)[i]
+          return g ? <PackageCell label={g.label} descriptions={g.descriptions} /> : null
+        },
+        sortValue: (o) => packageSummaryText(packageGroups(o)),
+        exportValue: (o) => {
+          const groups = packageGroups(o)
+          return `${packageSummaryText(groups)}${groups.some((g) => g.descriptions.length) ? ` (${groups.flatMap((g) => g.descriptions).join(' · ')})` : ''}`
+        },
+      },
+      {
+        id: 'pieces',
+        header: t('orders.list.columns.pieces'),
+        cell: (o) => (cards ? o.totalPieces : packageGroups(o)[0].pieces),
+        continuation: (o, i) => packageGroups(o)[i]?.pieces,
+        sortValue: (o) => o.totalPieces,
+        exportValue: (o) => o.totalPieces,
+        align: 'end',
+      },
+      {
+        id: 'cod',
+        header: t('orders.list.columns.cod'),
+        cell: (o) => <span className={o.codAmount ? 'cash' : 'cash z'}>{o.codAmount ? f.money(o.codAmount) : '—'}</span>,
+        sortValue: (o) => o.codAmount,
+        exportValue: (o) => o.codAmount,
+        align: 'end',
+      },
+    ]
+    if (canViewPrice)
+      cols.push({
+        id: 'quoted',
+        header: t('orders.list.columns.quoted'),
+        cell: (o) => (o.quotedAmount != null ? f.money(o.quotedAmount) : '—'),
+        sortValue: (o) => o.quotedAmount,
+        exportValue: (o) => o.quotedAmount,
+        align: 'end',
+      })
+    cols.push({
+      id: 'status',
+      header: t('orders.list.columns.status'),
+      cell: (o) => <StatusChip domain={STATUS_DOMAIN} code={o.status} label={o.statusLabel} />,
+      sortValue: (o) => o.statusLabel ?? o.status,
+      exportValue: (o) => o.statusLabel ?? o.status,
+    })
+    return cols
+  }, [t, f, canViewPrice, cards])
+
+  // la exportación lleva además el cliente y la factura, que la maqueta no muestra en la tabla
+  const exportColumns = useMemo<DataColumn<OrderListItemDto>[]>(() => {
+    const extra: DataColumn<OrderListItemDto>[] = [
+      { id: 'client', header: t('orders.list.columns.client'), cell: (o) => o.clientName, sortValue: (o) => o.clientName },
+      { id: 'invoice', header: t('orders.list.filters.invoice'), cell: (o) => o.clientInvoiceNumber, sortValue: (o) => o.clientInvoiceNumber },
+    ]
+    return [columns[0], columns[1], extra[1], extra[0], ...columns.slice(2)]
+  }, [columns, t])
+
+  const actions = useMemo<RowAction<OrderListItemDto>[]>(
+    () => [
+      { key: 'delete', label: t('orders.list.delete'), icon: <IconTrash />, tone: 'danger', perm: 'orders.cancel', visible: canDeleteOrder, onClick: (o) => setDeleting(o) },
+      { key: 'open', label: t('orders.list.open'), icon: <IconChevronRight />, onClick: (o) => navigate(`/orders/${o.publicId}`) },
     ],
-    [t, lang],
+    [t, navigate],
   )
+
+  function onCreated(order: OrderDetailDto, confirmed: boolean) {
+    setFormOpen(false)
+    setCreated({ publicId: order.publicId ?? '', number: order.orderNumber ?? '', confirmed })
+  }
 
   return (
     <div className="wrap">
@@ -123,33 +201,67 @@ export default function OrderListScreen() {
           <h1>{t('orders.list.title')}</h1>
           <p>{t('orders.list.subtitle')}</p>
         </div>
+        <div className="act">
+          {!formOpen && (
+            <Can perm="orders.create">
+              <button type="button" className="btn flow" onClick={() => setFormOpen(true)}>
+                <IconPlus /> {t('orders.list.newOrder')}
+              </button>
+            </Can>
+          )}
+        </div>
       </div>
+
+      {formOpen && (
+        <Can perm="orders.create">
+          <section className="oe-wrap" aria-label={t('orders.entry.title')}>
+            <div className="oe-bar">
+              <b>
+                <IconPlus /> {t('orders.entry.title')}
+              </b>
+              <button type="button" className="btn sm oe-hide" onClick={() => setFormOpen(false)}>
+                {t('orders.list.hideForm')}
+              </button>
+            </div>
+            <OrderEntryForm onCreated={onCreated} />
+          </section>
+        </Can>
+      )}
+
+      {created && (
+        <div className="note oe-created" role="status">
+          <span>{t(created.confirmed ? 'orders.list.createdConfirmed' : 'orders.list.createdDraft', { number: created.number })}</span>
+          <button type="button" className="btn sm" onClick={() => navigate(`/orders/${created.publicId}`)}>
+            {t('orders.list.open')}
+          </button>
+          <button type="button" className="btn sm oe-x" onClick={() => setCreated(null)} aria-label={t('orders.list.dismiss')}>
+            ✕
+          </button>
+        </div>
+      )}
 
       <Filters
         onClear={() => {
-          setClientId(null)
-          setStatus('')
-          setRange(EMPTY_RANGE)
-          setText('')
+          setFilters(EMPTY_ORDER_FILTERS)
+          setPage(1)
         }}
       >
-        <div className="f">
-          <label htmlFor={clientFieldId}>{t('orders.list.filters.client')}</label>
-          <ClientPicker id={clientFieldId} value={clientId} onChange={changeClient} includeInactive filterLabel={t('orders.list.filters.client')} />
-        </div>
-        <SelectFilter
-          label={t('orders.list.filters.status')}
-          value={status}
-          onChange={changeStatus}
-          options={statusSelectOptions}
-          allLabel={t('orders.list.filters.anyStatus')}
-        />
-        <DateRangeFilter label={t('orders.list.filters.range')} value={range} onChange={changeRange} />
+        <DateRangeFilter label={t('orders.list.filters.range')} value={range} onChange={(r) => patch({ from: r.from, to: r.to })} />
+        <TextFilter label={t('orders.list.filters.orderNumber')} value={filters.orderNumber} onChange={(v) => patch({ orderNumber: v })} />
+        <TextFilter label={t('orders.list.filters.consignee')} value={filters.consignee} onChange={(v) => patch({ consignee: v })} />
+        <SearchSelect label={t('orders.list.filters.client')} options={clientOptions} value={filters.clientIds} onChange={(v) => patch({ clientIds: v })} placeholder={t('orders.list.filters.all')} />
+        <SearchSelect label={t('orders.list.filters.service')} options={serviceOptions} value={filters.serviceTypes} onChange={(v) => patch({ serviceTypes: v })} placeholder={t('orders.list.filters.all')} />
+        <SearchSelect label={t('orders.list.filters.package')} options={packageOptions} value={filters.packageTypes} onChange={(v) => patch({ packageTypes: v })} placeholder={t('orders.list.filters.all')} />
+        <SearchSelect label={t('orders.list.filters.town')} options={townOptions} value={filters.cities} onChange={(v) => patch({ cities: v })} placeholder={t('orders.list.filters.all')} />
+        <TextFilter label={t('orders.list.filters.zip')} value={filters.postalCodePrefix} onChange={(v) => patch({ postalCodePrefix: v })} placeholder={t('orders.list.filters.zipPlaceholder')} />
+        <TextFilter label={t('orders.list.filters.invoice')} value={filters.invoice} onChange={(v) => patch({ invoice: v })} placeholder={t('orders.list.filters.invoicePlaceholder')} />
+        <TextFilter label={t('orders.list.filters.pack')} value={filters.packBatch} onChange={(v) => patch({ packBatch: v })} placeholder={t('orders.list.filters.packPlaceholder')} />
+        <SearchSelect label={t('orders.list.filters.status')} options={statusOptions} value={filters.statuses} onChange={(v) => patch({ statuses: v })} placeholder={t('orders.list.filters.all')} />
       </Filters>
 
       <Panel flush icon={<IconLayers />} title={t('orders.list.title')} badge={data ? (data.total ?? 0) : undefined}>
         <div className="qrow">
-          <QBox value={text} onChange={setText} />
+          <QBox value={filters.search} onChange={(v) => patch({ search: v })} />
         </div>
         {error ? (
           <p className="pb ferr" role="alert">
@@ -159,7 +271,8 @@ export default function OrderListScreen() {
           <DataTable
             label={t('orders.list.title')}
             columns={columns}
-            rows={data?.items ?? []}
+            exportColumns={exportColumns}
+            rows={rows}
             rowKey={(o) => o.publicId ?? String(o.id)}
             loading={isLoading}
             page={page}
@@ -171,10 +284,37 @@ export default function OrderListScreen() {
               setPage(1)
             }}
             exportRows={() => exportOrders(query)}
+            continuationRows={cards ? undefined : (o) => Math.max(0, packageGroups(o).length - 1)}
+            rowActions={actions}
             onRowClick={(o) => navigate(`/orders/${o.publicId}`)}
           />
         )}
       </Panel>
+
+      <ConfirmDialog
+        open={deleting !== null}
+        tone="danger"
+        title={t('orders.list.deleteTitle', { number: deleting?.orderNumber ?? '' })}
+        message={t('orders.list.deleteMessage', { number: deleting?.orderNumber ?? '' })}
+        confirmLabel={t('orders.list.deleteConfirm')}
+        onConfirm={async () => {
+          if (!deleting?.publicId) return
+          await remove.mutateAsync(deleting.publicId)
+          toast.success(t('orders.list.deleted', { number: deleting.orderNumber ?? '' }))
+        }}
+        onClose={() => setDeleting(null)}
+      />
+    </div>
+  )
+}
+
+/** Un tipo de paquete con sus descripciones (y, en tarjeta, sus piezas). */
+function PackageCell({ label, descriptions, pieces, showPieces = false }: { label: string; descriptions: string[]; pieces?: number; showPieces?: boolean }) {
+  return (
+    <div className="oe-pkgcell">
+      {label}
+      {showPieces && pieces != null ? ` ×${pieces}` : ''}
+      {descriptions.length > 0 && <div className="meta oe-desc">{descriptions.join(' · ')}</div>}
     </div>
   )
 }

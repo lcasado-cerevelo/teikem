@@ -441,3 +441,15 @@ export function rowHasProblems(row: ImportRow): boolean {
 export function exceedsImportSize(size: number): boolean {
   return size > MAX_IMPORT_BYTES
 }
+
+// ---------------------------------------------------------------- selector de consignatario (órdenes, Lote F-C1)
+
+/** Etiqueta «Número · Nombre» (o lo que haya). */
+export function consigneeOptionLabel(c: Pick<Consignee, 'code' | 'name'>): string {
+  return [c.code, c.name].filter(Boolean).join(' · ')
+}
+
+/** «Calle 1 · San Juan», sin partes vacías. */
+export function consigneeAddress(c: Pick<Consignee, 'line1' | 'city'>): string {
+  return [c.line1, c.city].filter(Boolean).join(' · ')
+}

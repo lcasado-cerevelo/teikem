@@ -6,7 +6,7 @@ import { ApiError } from '../../kernel/api/problem'
 import { StatusChip, StatusHistory } from '../../kernel/catalogs'
 import { formatMoney, useLang, useT } from '../../kernel/i18n'
 import { DataTable, EmptyState, Panel, Spinner, type DataColumn } from '../../kernel/ui'
-import { useOrderReadonly, type OrderDetailDto } from '../warehouse/api'
+import { useOrder, type OrderDetailDto } from './api'
 import { IconLayers } from '../../kernel/ui/screenIcons'
 import { formatDateTime as formatCompanyDateTime } from '../../kernel/format'
 
@@ -52,7 +52,7 @@ export default function OrderDetailScreen() {
   const t = useT()
   const lang = useLang()
   const { publicId = '' } = useParams()
-  const { data: order, isLoading, error } = useOrderReadonly(publicId)
+  const { data: order, isLoading, error } = useOrder(publicId)
 
   const packageColumns = useMemo<DataColumn<Package>[]>(
     () => [

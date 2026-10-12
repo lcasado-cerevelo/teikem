@@ -496,3 +496,35 @@ describe('DataTable · ordenar todo lo filtrado (paginación del servidor)', () 
     expect(exportRows).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('DataTable · filas de continuación', () => {
+  it('pinta filas extra por registro con DataColumn.continuation; la paginación sigue contando registros y el clic abre el registro', async () => {
+    const user = userEvent.setup()
+    const onRowClick = vi.fn()
+    const cols: DataColumn<Row>[] = [
+      { id: 'code', header: 'Código', cell: (r) => r.code, continuation: () => '↳', sortValue: (r) => r.code },
+      { id: 'qty', header: 'Cantidad', cell: (r) => r.qty ?? '—', continuation: (r, i) => `${r.code}-${i}`, align: 'end' },
+    ]
+    render(
+      <DataTable
+        columns={cols}
+        rows={ROWS.slice(0, 2)}
+        rowKey={(r) => r.id}
+        continuationRows={(r) => (r.id === 1 ? 2 : 0)}
+        onRowClick={onRowClick}
+        pageSize={25}
+      />,
+    )
+    const body = screen.getAllByRole('rowgroup')[1]
+    const rows = within(body).getAllByRole('row')
+    // 2 registros = 4 filas (el primero con 2 de continuación)
+    expect(rows).toHaveLength(4)
+    expect(within(rows[1]).getByText('↳')).toBeInTheDocument()
+    expect(within(rows[1]).getByText('B-02-1')).toBeInTheDocument()
+    expect(within(rows[2]).getByText('B-02-2')).toBeInTheDocument()
+    expect(rows[1]).toHaveClass('cont')
+    expect(screen.getByText('1–2 de 2')).toBeInTheDocument()
+    await user.click(rows[2])
+    expect(onRowClick).toHaveBeenCalledWith(ROWS[0])
+  })
+})
