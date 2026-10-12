@@ -1,4 +1,5 @@
 using Teikem.Domain.Orders;
+using Teikem.Infrastructure.Services;
 using Xunit;
 
 namespace Teikem.Tests;
@@ -104,6 +105,15 @@ public class ImportMappingTests
     }
 
     [Fact]
+    public void Validate_accepts_the_consignee_from_a_default_as_the_manual_says()
+    {
+        // Lote 40 (F-C3): «Sin consigneeName ni consigneeCode (columna o default)» — con el código fijo en defaults basta
+        var cols = new[] { new ImportColumn(1, "pieces"), new ImportColumn(2, "packageType") };
+        Assert.Empty(ImportMapping.ValidateColumns(cols, new Dictionary<string, string> { ["consigneeCode"] = "C-001" }));
+        Assert.Equal(ImportMapping.ConsigneeColumnMessage, ImportMapping.ValidateColumns(cols, new Dictionary<string, string> { ["city"] = "Ponce" })["columns"]);
+    }
+
+    [Fact]
     public void Validate_requires_consignee_name_or_code()
     {
         var errors = ImportMapping.ValidateColumns(new[] { new ImportColumn(1, "line1"), new ImportColumn(2, "pieces") }, null);
@@ -152,5 +162,26 @@ public class ImportMappingTests
         Assert.True(ImportMapping.TryParseDate("10/05/2026", out var us) && us == new DateTime(2026, 10, 5));
         Assert.False(ImportMapping.TryParseDate("no-date", out _));
         Assert.False(ImportMapping.TryParseDate("", out _));
+    }
+
+    // ---------------------------------------------------------------- Lote 40 (F-C3): catálogo de campos para el editor de plantillas
+
+    [Fact]
+    public void Order_template_fields_catalog_lists_every_field_in_order_with_defaults_flags()
+    {
+        var fields = ImportTemplateService.GetOrderFields();
+        Assert.Equal(ImportFields.All, fields.Select(f => f.Field).ToArray());
+        Assert.Equal(21, fields.Count);
+        Assert.All(fields, f => Assert.False(f.Required)); // las reglas son de grupo, no de campo
+        var noDefault = fields.Where(f => !f.DefaultAllowed).Select(f => f.Field).OrderBy(x => x, StringComparer.Ordinal).ToArray();
+        Assert.Equal(new[] { "clientInvoiceNumber", "consigneeName", "orderNumber" }, noDefault);
+    }
+
+    [Fact]
+    public void Order_fields_are_all_known_to_the_template_validator()
+    {
+        // lo que el editor ofrece como columna, el servidor lo acepta (junto con consignatario y paquete)
+        foreach (var f in ImportTemplateService.GetOrderFields())
+            Assert.True(ImportFields.IsKnown(f.Field), f.Field);
     }
 }

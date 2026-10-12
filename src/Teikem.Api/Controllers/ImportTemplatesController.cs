@@ -25,6 +25,13 @@ public sealed class ImportTemplatesController(ImportTemplateService templates) :
     public Task<IReadOnlyList<ImportTemplateDto>> List([FromQuery] string? kind, [FromQuery] Guid? clientId, [FromQuery] bool includeInactive, CancellationToken ct)
         => templates.GetListAsync(ImportKinds.Order, kind, clientId, includeInactive, ct);
 
+    /// <summary>
+    /// Lote 40 (F-C3): campos del catálogo que una plantilla de órdenes puede mapear (<c>field</c>, <c>required</c>,
+    /// <c>defaultAllowed</c>), para el editor de plantillas de la web.
+    /// </summary>
+    [HttpGet("fields"), RequirePermission(PermissionCatalog.OrdersEdit)]
+    public IReadOnlyList<ImportFieldDto> Fields() => ImportTemplateService.GetOrderFields();
+
     /// <summary>Alta: columnas por posición (únicas, &gt;= 1) y campos del catálogo; defaults por campo (p. ej. serviceType STANDARD). 400 con errores por columna.</summary>
     [HttpPost, RequirePermission(PermissionCatalog.OrdersEdit)]
     public Task<ImportTemplateDto> Create([FromBody] ImportTemplateCreateRequest req, CancellationToken ct)

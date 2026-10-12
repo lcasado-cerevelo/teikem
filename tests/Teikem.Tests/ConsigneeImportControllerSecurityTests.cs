@@ -50,6 +50,16 @@ public class ConsigneeImportControllerSecurityTests
     }
 
     [Fact]
+    public void Order_template_routes_include_the_fields_catalog_under_orders_edit()
+    {
+        var routes = typeof(ImportTemplatesController).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            .SelectMany(m => m.GetCustomAttributes<HttpMethodAttribute>().Select(h => $"{h.HttpMethods.Single()} {h.Template}"))
+            .OrderBy(x => x, StringComparer.Ordinal).ToArray();
+        Assert.Contains("GET fields", routes);
+        Assert.Equal("api/v1/import-templates", typeof(ImportTemplatesController).GetCustomAttribute<RouteAttribute>()!.Template);
+    }
+
+    [Fact]
     public void Consignee_import_routes_hang_from_locations()
     {
         Assert.Equal("api/v1/locations/import-templates", typeof(ConsigneeImportTemplatesController).GetCustomAttribute<RouteAttribute>()!.Template);

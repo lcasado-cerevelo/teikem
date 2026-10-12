@@ -203,6 +203,14 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
     public static string SerializeDefaults(IReadOnlyDictionary<string, string> defaults, string kind = ImportKinds.Order)
         => JsonSerializer.Serialize(IsConsignee(kind) ? ConsigneeImportMapping.NormalizeDefaults(defaults) : ImportMapping.NormalizeDefaults(defaults), JsonOptions);
 
+    /// <summary>
+    /// Lote 40 (F-C3): catálogo de campos que una plantilla de ÓRDENES puede mapear, para el editor de plantillas (equivale a
+    /// GET /locations/import/fields). Ningún campo es obligatorio por sí solo: las reglas son de grupo (consigneeName o
+    /// consigneeCode; packageType o pieces, en columna o en defaults) y las valida ValidateColumns al guardar.
+    /// </summary>
+    public static IReadOnlyList<ImportFieldDto> GetOrderFields()
+        => ImportFields.All.Select(f => new ImportFieldDto(f, Required: false, DefaultAllowed: !ImportFields.NoDefault.Contains(f))).ToList();
+
     /// <summary>Delimitador efectivo de la plantilla (un carácter; ',' si la fila no lo trae).</summary>
     public static char DelimiterOf(ImportTemplate template)
     {

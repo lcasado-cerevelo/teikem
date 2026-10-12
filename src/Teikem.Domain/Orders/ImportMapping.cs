@@ -60,6 +60,13 @@ public static class ImportFields
         Country, ContactPhone, PackageType, Pieces, WeightKg, VolumeM3, Description, CodAmount, RequestedDate, Notes, Reference,
     ];
 
+    /// <summary>
+    /// Lote 40 (F-C3): campos que identifican a CADA fila (número de orden, factura, nombre del consignatario): el editor de
+    /// plantillas no los ofrece como valor por defecto, porque repetirían el mismo valor en todas las filas del archivo.
+    /// Es una guía para la pantalla (GET /import-templates/fields); el servidor de plantillas no los rechaza.
+    /// </summary>
+    public static readonly IReadOnlySet<string> NoDefault = new HashSet<string>(StringComparer.Ordinal) { OrderNumber, ClientInvoiceNumber, ConsigneeName };
+
     /// <summary>Nombre canónico (camelCase del catálogo) o null si el campo no existe.</summary>
     public static string? Canonical(string? field)
     {
@@ -147,7 +154,10 @@ public static class ImportMapping
 
         if (columns is { Count: > 0 } && !errors.ContainsKey("columns"))
         {
-            if (!fields.Contains(ImportFields.ConsigneeName) && !fields.Contains(ImportFields.ConsigneeCode))
+            // Lote 40 (F-C3): el consignatario puede venir en una columna O como valor por defecto (el manual 03 §7.1 siempre lo dijo;
+            // antes solo se miraban las columnas y una plantilla "todo va a este consignatario" se rechazaba).
+            if (!fields.Contains(ImportFields.ConsigneeName) && !fields.Contains(ImportFields.ConsigneeCode)
+                && !defaultFields.Contains(ImportFields.ConsigneeName) && !defaultFields.Contains(ImportFields.ConsigneeCode))
                 errors["columns"] = ConsigneeColumnMessage;
             else if (!fields.Contains(ImportFields.PackageType) && !fields.Contains(ImportFields.Pieces)
                      && !defaultFields.Contains(ImportFields.PackageType) && !defaultFields.Contains(ImportFields.Pieces))
