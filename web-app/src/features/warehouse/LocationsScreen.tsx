@@ -68,7 +68,8 @@ import {
   type ZoneCapacity,
 } from './locations'
 import { TextFilter } from './filterControls'
-import { ProductSearchSelect, WarehousePicker, type ProductFilterItem } from './pickers'
+import { BinSearchSelect, ProductSearchSelect, WarehousePicker, type ProductFilterItem } from './pickers'
+import type { BinFilterItem } from './kardexView'
 import '../analytics/pulse.css'
 import './warehouse.css'
 
@@ -182,9 +183,8 @@ function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zone
   // clic en la fila = editar la posición (mismo BinModal que la pestaña Posiciones de la ficha); solo con warehouse.manage
   const canManage = useCan('warehouse.manage')
   const [editing, setEditing] = useState<WarehouseBinDto | null>(null)
-  // Posición: texto al servidor (`search`: código, pasillo, rack, nivel o posición), con retardo para no consultar por tecla
-  const [code, setCode] = useState('')
-  const search = useDebounced(code.trim(), 300)
+  // Posición (2026-10-12): desplegable con búsqueda y selección múltiple («Todos» marca lo que muestra la búsqueda); va al API como `binIds`
+  const [bins, setBins] = useState<BinFilterItem[]>([])
   // Pasillo: texto al servidor (`aisle`), con el mismo retardo
   const [aisleText, setAisleText] = useState('')
   const aisle = useDebounced(aisleText.trim(), 300)
@@ -222,12 +222,15 @@ function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zone
     () => buildBinListQuery({ zoneIds, zoneTypes, productPublicIds: products.map((p) => p.publicId), occupancy }, zones),
     [zoneIds, zoneTypes, products, occupancy, zones],
   )
-  const searchQuery = useMemo(() => ({ ...baseQuery, search: search || undefined, aisle: aisle || undefined }), [baseQuery, search, aisle])
+  const searchQuery = useMemo(
+    () => ({ ...baseQuery, binIds: bins.length > 0 ? bins.map((b) => b.id) : undefined, aisle: aisle || undefined }),
+    [baseQuery, bins, aisle],
+  )
   const query = useMemo(() => ({ ...searchQuery, skip: (page - 1) * pageSize, take: pageSize }), [searchQuery, page, pageSize])
   const binsQ = useWarehouseBins(warehousePublicId, query, { enabled: !impossible })
   const rows = impossible ? NO_BINS : (binsQ.data?.items ?? NO_BINS)
   const total = impossible ? 0 : (binsQ.data?.total ?? 0)
-  const filtered = zoneIds.length + zoneTypes.length + products.length + occupancy.length > 0 || search !== '' || aisle !== ''
+  const filtered = zoneIds.length + zoneTypes.length + products.length + occupancy.length + bins.length > 0 || aisle !== ''
 
   // casillas: la página visible y su estado (todas / algunas / ninguna marcadas)
   const pageIds = rows.map((b) => b.id).filter((id): id is number => id != null)
@@ -266,7 +269,7 @@ function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zone
   const statusOptions = useMemo(() => BIN_OCCUPANCIES.map((s) => ({ value: s, label: t(`warehouse.locations.occupancy.${s}`) })), [t])
 
   const clearAll = () => {
-    setCode('')
+    setBins([])
     setAisleText('')
     setZoneTypes([])
     setProducts([])
@@ -460,14 +463,12 @@ function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zone
       </div>
 
       <Filters onClear={clearAll}>
-        <TextFilter
+        <BinSearchSelect
           label={t('warehouse.locations.filters.bin')}
-          value={code}
-          placeholder={t('warehouse.locations.filters.binPlaceholder')}
-          onChange={(v) => {
-            setCode(v)
-            setPage(1)
-          }}
+          value={bins}
+          onChange={withPageReset(setBins)}
+          warehousePublicIds={warehousePublicId ? [warehousePublicId] : undefined}
+          includeInactive
         />
         <TextFilter
           label={t('warehouse.locations.filters.aisle')}

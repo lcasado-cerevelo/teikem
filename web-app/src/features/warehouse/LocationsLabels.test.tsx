@@ -55,6 +55,12 @@ function route(url: URL): unknown {
     const take = Number(url.searchParams.get('take') ?? 100)
     return { total: mock.total ?? items.length, skip, take, items: items.slice(skip, skip + take) }
   }
+  if (p === '/api/v1/warehouses/bins/search') {
+    const search = (url.searchParams.get('search') ?? '').toLowerCase()
+    return mock.bins
+      .filter((b) => String(b.code).toLowerCase().includes(search))
+      .map((b) => ({ id: b.id, code: b.code, zoneCode: b.zoneCode, warehousePublicId: WH, warehouseCode: 'ALM-01', isActive: true }))
+  }
   if (p.startsWith('/api/v1/catalogs/') || p.startsWith('/api/v1/status/')) return []
   return new Response(JSON.stringify({ title: 'Sin acceso', code: 'forbidden' }), { status: 403 })
 }
@@ -106,11 +112,17 @@ describe('Ubicaciones · etiquetas de posición (Lote F16)', () => {
     expect(within(dialog).getByRole('button', { name: 'Generar PDF' })).toBeEnabled()
   })
 
-  it('filtro actual (con el buscador): lee de a 200 con los filtros, ordena natural, descarga 4×6 girada; no marca nada', async () => {
+  it('filtro actual (Posición con «Todos»): lee de a 200 con los filtros, ordena natural, descarga 4×6 girada; no marca nada', async () => {
     const user = userEvent.setup()
     wrap()
     await screen.findByText('A-10')
-    await user.type(screen.getByLabelText('Posición'), 'a-')
+    // Posición: desplegable con búsqueda; «Todos» marca lo que muestra la búsqueda («a-»: A-10, A-2 y A-1)
+    await user.click(screen.getByLabelText('Posición'))
+    await screen.findByLabelText(/B-01 ·/)   // lista inicial
+    await user.keyboard('a-')   // el buscador del desplegable abierto toma el foco
+    await waitFor(() => expect(screen.queryByLabelText(/B-01 ·/)).toBeNull())   // llegó la búsqueda (con pausa)
+    await user.click(await screen.findByRole('button', { name: 'Todos' }))
+    await user.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByText('B-01')).toBeNull())
     await user.click(screen.getByRole('button', { name: 'Etiquetas de posición' }))
     const dialog = await screen.findByRole('dialog', { name: 'Etiquetas de posición' })
@@ -121,7 +133,7 @@ describe('Ubicaciones · etiquetas de posición (Lote F16)', () => {
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Etiquetas de posición' })).toBeNull())
     const reads = labelReads()
     expect(reads).toHaveLength(1)
-    expect(reads[0].url.searchParams.get('search')).toBe('a-')
+    expect(reads[0].url.searchParams.getAll('binIds').sort()).toEqual(['10', '11', '13'])
     expect(reads[0].url.searchParams.get('skip')).toBe('0')
     expect(reads[0].url.searchParams.get('includeInactive')).toBe('false')
     const spec = vi.mocked(downloadBinLabelsPdf).mock.calls[0][0]
