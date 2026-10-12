@@ -41,6 +41,7 @@ public sealed class MaintenanceWorkOrderService(
 
     public const string NumberTakenMessage = "Ya existe una orden de trabajo con ese número; intente de nuevo.";
     public const string TypeRequiredMessage = "El tipo de mantenimiento es obligatorio.";
+    public const string VehicleRequiredMessage = "El vehículo de la orden de trabajo es obligatorio.";
     public const string ScheduleNotApplicableMessage = "El programa de mantenimiento no aplica a este vehículo.";
     public const string ScheduleInactiveMessage = "El programa de mantenimiento está inactivo.";
     public const string CorrectiveWithScheduleMessage = "Una orden correctiva no se asocia a un programa preventivo.";
@@ -131,7 +132,7 @@ public sealed class MaintenanceWorkOrderService(
                 type?.InternalCode ?? string.Empty, Label(type) ?? string.Empty,
                 w.MaintenanceScheduleId, w.MaintenanceScheduleId is int s ? schedules.GetValueOrDefault(s) : null,
                 status?.Code ?? string.Empty, status?.Label ?? string.Empty, status?.Color,
-                w.ScheduledDate, w.CompletedDate, w.OdometerKm, w.Vendor, Total(w.LaborCost, w.PartsCost), w.IsActive));
+                w.ScheduledDate, w.CompletedDate, w.OdometerKm, w.Vendor, w.LaborCost, w.PartsCost, Total(w.LaborCost, w.PartsCost), w.IsActive));
         }
         return items;
     }
@@ -180,6 +181,8 @@ public sealed class MaintenanceWorkOrderService(
         var tenantId = ((TenantContext)tenant).RequireTenantId();
         var errors = new Dictionary<string, string[]>();
 
+        // Sin vehículo (Guid vacío) la búsqueda respondía 404 «Vehículo no encontrado»: ahora es un 400 en el campo.
+        if (req.VehiclePublicId == Guid.Empty) errors["vehiclePublicId"] = new[] { VehicleRequiredMessage };
         var vendor = Text(req.Vendor, "vendor", VendorMaxLength, VendorTooLongMessage, errors);
         ValidateCost(req.LaborCost, "laborCost", errors);
         ValidateCost(req.PartsCost, "partsCost", errors);

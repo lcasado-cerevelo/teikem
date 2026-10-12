@@ -87,6 +87,8 @@ public sealed record WorkOrderListItemDto(
     DateOnly? CompletedDate,
     decimal? OdometerKm,
     string? Vendor,
+    decimal? LaborCost,
+    decimal? PartsCost,
     decimal TotalCost,
     bool IsActive);
 
