@@ -558,3 +558,79 @@ WHEN NOT MATCHED THEN
     INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
     VALUES (N'SecurityEventType', s.Code, s.LabelJson, s.Srt, 1, 1);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-12 — Ajuste múltiple AJM-###### (docs/ajuste-multiple-diseno.md): poner al día el inventario de un almacén por producto y posición,
+   varias a la vez, en UNA operación (todo o nada). Cada línea con diferencia genera un movimiento de tipo Ajuste como el ajuste normal, con motivo
+   PHYSICAL_COUNT («Inventario físico», lo asigna el sistema) y este documento como origen (RefEntityType MULTI_ADJUSTMENT).
+   - dbo.MultiAdjustment (cabecera) y dbo.MultiAdjustmentLine (producto, posición, lote, cantidad del sistema al guardar, contada, diferencia y el movimiento).
+   - Contador MULTIADJUST (AJM-######, por tenant, ClientId NULL): se amplía CK_NumberSequence_Kind. La fila del contador la crea el API.
+   - Catálogos: AdjustmentReason PHYSICAL_COUNT y EntityType MULTI_ADJUSTMENT.
+   - Permiso inventory.adjust.multi: NO se agrega a ningún rol (el administrador lo da a un rol propio desde Roles).
+   Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF OBJECT_ID('dbo.MultiAdjustment', 'U') IS NULL CREATE TABLE dbo.MultiAdjustment (
+    MultiAdjustmentId INT IDENTITY(1,1) CONSTRAINT PK_MultiAdjustment PRIMARY KEY,
+    PublicId UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_MultiAdjustment_PublicId DEFAULT NEWID(),
+    TenantId INT NOT NULL CONSTRAINT FK_MultiAdjustment_Tenant REFERENCES dbo.Tenant(TenantId),
+    WarehouseId INT NOT NULL CONSTRAINT FK_MultiAdjustment_Warehouse REFERENCES dbo.Warehouse(WarehouseId),
+    Number NVARCHAR(40) NOT NULL,
+    Notes NVARCHAR(300) NOT NULL,
+    LineCount INT NOT NULL CONSTRAINT DF_MultiAdjustment_LineCount DEFAULT 0,
+    ProductCount INT NOT NULL CONSTRAINT DF_MultiAdjustment_ProductCount DEFAULT 0,
+    UnitsUp DECIMAL(16,3) NOT NULL CONSTRAINT DF_MultiAdjustment_UnitsUp DEFAULT 0,
+    UnitsDown DECIMAL(16,3) NOT NULL CONSTRAINT DF_MultiAdjustment_UnitsDown DEFAULT 0,
+    CreatedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_MultiAdjustment_CreatedAtUtc DEFAULT SYSUTCDATETIME(),
+    CreatedBy INT NULL,
+    CONSTRAINT UX_MultiAdjustment_PublicId UNIQUE (PublicId),
+    CONSTRAINT UQ_MultiAdjustment_Number UNIQUE (TenantId, Number)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_MultiAdjustment_Tenant_Date' AND object_id = OBJECT_ID('dbo.MultiAdjustment'))
+    CREATE INDEX IX_MultiAdjustment_Tenant_Date ON dbo.MultiAdjustment(TenantId, CreatedAtUtc);
+GO
+IF OBJECT_ID('dbo.MultiAdjustmentLine', 'U') IS NULL CREATE TABLE dbo.MultiAdjustmentLine (
+    MultiAdjustmentLineId BIGINT IDENTITY(1,1) CONSTRAINT PK_MultiAdjustmentLine PRIMARY KEY,
+    MultiAdjustmentId INT NOT NULL CONSTRAINT FK_MultiAdjustmentLine_Doc REFERENCES dbo.MultiAdjustment(MultiAdjustmentId),
+    ProductId INT NOT NULL CONSTRAINT FK_MultiAdjustmentLine_Product REFERENCES dbo.Product(ProductId),
+    WarehouseBinId INT NOT NULL CONSTRAINT FK_MultiAdjustmentLine_Bin REFERENCES dbo.WarehouseBin(WarehouseBinId),
+    LotId INT NULL CONSTRAINT FK_MultiAdjustmentLine_Lot REFERENCES dbo.InventoryLot(LotId),
+    SystemQty DECIMAL(16,3) NOT NULL,
+    CountedQty DECIMAL(16,3) NOT NULL,
+    Difference DECIMAL(17,3) NOT NULL,
+    InventoryTransactionId BIGINT NULL
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_MultiAdjustmentLine_Doc' AND object_id = OBJECT_ID('dbo.MultiAdjustmentLine'))
+    CREATE INDEX IX_MultiAdjustmentLine_Doc ON dbo.MultiAdjustmentLine(MultiAdjustmentId);
+GO
+
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_NumberSequence_Kind' AND parent_object_id = OBJECT_ID('dbo.NumberSequence')
+           AND definition NOT LIKE '%MULTIADJUST%')
+BEGIN
+    ALTER TABLE dbo.NumberSequence DROP CONSTRAINT CK_NumberSequence_Kind;
+    ALTER TABLE dbo.NumberSequence ADD CONSTRAINT CK_NumberSequence_Kind CHECK (Kind IN ('ORDER','INVOICE','PACKAGE','PACKBATCH','WORKORDER','TRIP','RECEIPT','CYCLECOUNT','CROSSDOCK','PURCHASE','RENTAL','RENTALRETURN','MANUALISSUE','MULTIADJUST'));
+END
+GO
+
+MERGE dbo.LookupCode AS t
+USING (VALUES (N'PHYSICAL_COUNT', N'{"es":"Inventario físico","en":"Physical inventory"}', 12)) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'AdjustmentReason' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'AdjustmentReason', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES (N'MULTI_ADJUSTMENT', N'{"es":"Ajuste múltiple","en":"Multi-adjustment"}', 90)) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'inventory.adjust.multi')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('inventory.adjust.multi',
+            (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'WAREHOUSE'),
+            N'{"es":"Ajuste múltiple de inventario","en":"Multi-position inventory adjustment"}', 1);
+GO

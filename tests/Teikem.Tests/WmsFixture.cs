@@ -181,6 +181,9 @@ internal sealed class WmsFixture : IAsyncDisposable
         foreach (var c in ReceivingModes.All) L(LookupDomains.ReceivingMode, c);
         // Lote 26 (Rentas R0): motivo de sistema de la conversión a serie (al final: ids previos intactos).
         L(LookupDomains.AdjustmentReason, AdjustmentReasons.TrackingConversion);
+        // 2026-10-12: ajuste múltiple (motivo de sistema y entidad de origen).
+        L(LookupDomains.AdjustmentReason, AdjustmentReasons.PhysicalCount);
+        L(LookupDomains.EntityType, EntityTypes.MultiAdjustment);
         // Lote 27 (Rentas R1): entidades, zona En renta, frecuencias de cobro, moneda y tipo de localidad (al final: ids previos intactos).
         foreach (var e in new[] { EntityTypes.Rental, EntityTypes.RentalReturn, EntityTypes.RentalProcess }) L(LookupDomains.EntityType, e);
         L(LookupDomains.ZoneType, ZoneTypes.Rental);

@@ -344,6 +344,7 @@ public static class DependencyInjection
         services.AddScoped<IOwnedEntityResolver>(_ => new ClosedOwnedEntityResolver(Domain.Constants.EntityTypes.ReceiptLine));
         // Lote 7A: PRODUCT_CATEGORY existe solo para auditoría; la ruta polimórfica siempre responde 404.
         services.AddScoped<IOwnedEntityResolver>(_ => new ClosedOwnedEntityResolver(Domain.Constants.EntityTypes.ProductCategory));
+        services.AddScoped<IOwnedEntityResolver>(_ => new ClosedOwnedEntityResolver(Domain.Constants.EntityTypes.MultiAdjustment));   // 2026-10-12: ajuste múltiple (solo auditoría)
         // Lote 8A: USER_DEVICE (aparato de almacén) existe solo para auditoría; sin campos personalizados → siempre 404.
         services.AddScoped<IOwnedEntityResolver>(_ => new ClosedOwnedEntityResolver(Domain.Constants.EntityTypes.UserDevice));
         // Lote 14: descuadres Kárdex ↔ saldo (fuente con DateField DetectedAtUtc); sin escritura de dueño → resolver cerrado.

@@ -62,6 +62,8 @@ public static class PermissionCatalog
     public const string InventoryManage = "inventory.manage";
     /// <summary>Lote 6: ajustes manuales, transferencias, conciliación y resolución de faltantes de compras.</summary>
     public const string InventoryAdjust = "inventory.adjust";
+    /// <summary>2026-10-12: «Ajuste múltiple» (poner al día el inventario por producto y posición, varias a la vez). NO lo trae ningún rol por defecto: el administrador lo da a un rol propio (docs/ajuste-multiple-diseno.md).</summary>
+    public const string InventoryAdjustMulti = "inventory.adjust.multi";
     /// <summary>2026-10-10: transferir inventario entre posiciones del mismo almacén desde el aparato (el operario). inventory.adjust lo implica (<see cref="Implied"/>).</summary>
     public const string WarehouseTransfer = "warehouse.transfer";
     /// <summary>2026-10-10: ajustar la CANTIDAD de una posición desde el aparato (sube o baja; nunca mueve). NO lo trae ninguna plantilla de rol: el administrador lo da a un rol propio.</summary>
@@ -219,6 +221,7 @@ public static class PermissionCatalog
         new(InventoryView, "WAREHOUSE", "Ver inventario y almacén", "View inventory & warehouse"),
         new(InventoryManage, "WAREHOUSE", "Gestionar productos", "Manage products"),
         new(InventoryAdjust, "WAREHOUSE", "Ajustar y transferir inventario", "Adjust & transfer inventory"),
+        new(InventoryAdjustMulti, "WAREHOUSE", "Ajuste múltiple de inventario", "Multi-position inventory adjustment"),
         new(WarehouseManage, "WAREHOUSE", "Gestionar almacenes y tareas", "Manage warehouses & tasks"),
         // Lote 8A — App de almacén: aparatos de confianza y PIN
         new(DevicesManage, "SECURITY", "Gestionar aparatos y PIN", "Manage devices & PINs"),
@@ -304,6 +307,7 @@ public static class PermissionCatalog
         [EntityTypes.Asn] = InventoryView,
         [EntityTypes.WarehouseTask] = InventoryView,
         [EntityTypes.CycleCount] = InventoryView,
+        [EntityTypes.MultiAdjustment] = InventoryView,
         [EntityTypes.PickBatch] = InventoryView,
         [EntityTypes.DockAppointment] = InventoryView,
         [EntityTypes.CrossDockPlan] = InventoryView,

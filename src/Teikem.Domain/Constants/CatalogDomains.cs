@@ -563,6 +563,8 @@ public static class EntityTypes
     public const string InventorySerial = "INVENTORY_SERIAL";
     public const string WarehouseTask = "WAREHOUSE_TASK";
     public const string PickBatch = "PICK_BATCH";
+    /// <summary>2026-10-12: ajuste múltiple (AJM-######): origen de los movimientos de un ajuste de inventario físico por producto y posición.</summary>
+    public const string MultiAdjustment = "MULTI_ADJUSTMENT";
     public const string DockAppointment = "DOCK_APPOINTMENT";
     public const string CrossDockAllocation = "CROSSDOCK_ALLOCATION";
     /// <summary>Movimiento del ledger (fuente de datos; solo inserción, sin AuditLog).</summary>
@@ -706,6 +708,8 @@ public static class NumberKinds
     public const string RentalReturn = "RENTALRETURN";
     /// <summary>2026-10-11: número de despacho manual DMA-##### por tenant (ClientId NULL). NO consume PACKBATCH (EMP).</summary>
     public const string ManualIssue = "MANUALISSUE";
+    /// <summary>2026-10-12: número de ajuste múltiple AJM-###### por tenant (ClientId NULL).</summary>
+    public const string MultiAdjust = "MULTIADJUST";
 }
 
 public static class ModuleKeys
@@ -1180,9 +1184,11 @@ public static class AdjustmentReasons
     public const string OpeningBalance = "OPENING_BALANCE";
     /// <summary>Lote 26 (Rentas R0): salida del saldo sin serie y entrada de cada serie al convertir un producto a serie.</summary>
     public const string TrackingConversion = "TRACKING_CONVERSION";
+    /// <summary>2026-10-12: «Inventario físico»: lo asigna el sistema a los movimientos de un ajuste múltiple (docs/ajuste-multiple-diseno.md); el ajuste normal no puede usarlo.</summary>
+    public const string PhysicalCount = "PHYSICAL_COUNT";
 
     /// <summary>Motivos que solo asigna el sistema (un ajuste manual no puede usarlos).</summary>
-    public static readonly IReadOnlyList<string> SystemAssigned = new[] { ReceiptVariance, CountVariance, PickBatchReversal, OpeningBalance, TrackingConversion };
+    public static readonly IReadOnlyList<string> SystemAssigned = new[] { ReceiptVariance, CountVariance, PickBatchReversal, OpeningBalance, TrackingConversion, PhysicalCount };
 }
 
 /// <summary>LookupDomains.ShortageAction (D8).</summary>

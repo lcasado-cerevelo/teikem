@@ -63,6 +63,7 @@ public static class AdjustmentRules
         AdjustmentReasons.ReceiptVariance, AdjustmentReasons.CountVariance, AdjustmentReasons.PickBatchReversal,
         AdjustmentReasons.OpeningBalance,   // Lote 10: solo el importador de datos heredados
         AdjustmentReasons.TrackingConversion,   // Lote 26: solo la conversión de un producto a serie
+        AdjustmentReasons.PhysicalCount,   // 2026-10-12: solo el ajuste múltiple («Inventario físico»)
     };
 
     public static string SystemReason(string code) => $"El motivo {code} lo asigna el sistema.";

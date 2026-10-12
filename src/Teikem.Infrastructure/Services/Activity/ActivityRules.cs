@@ -195,6 +195,8 @@ public static class ActivityRules
         var reason = reasonCode.Trim().ToUpperInvariant();
         if (reason == AdjustmentReasons.ReceiptVariance) return ActivityEvents.ReceiptVariance;
         if (reason == AdjustmentReasons.CountVariance) return ActivityEvents.CountVariance;
+        // 2026-10-12: «Inventario físico» (ajuste múltiple) lo asigna el sistema pero es un ajuste de inventario como cualquier otro para el Pulso y la Actividad
+        if (reason == AdjustmentReasons.PhysicalCount) return ActivityEvents.InventoryAdjusted;
         if (Teikem.Domain.Wms.AdjustmentRules.SystemReasons.Contains(reason)) return null;
         return ManualAdjustmentReasons.Contains(reason) || !hasOperationRef ? ActivityEvents.InventoryAdjusted : null;
     }

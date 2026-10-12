@@ -19,6 +19,8 @@ public static class WmsNumbering
     public const string RentalReturnPattern = "DRN-#####";
     /// <summary>2026-10-11: despacho manual (salida de inventario sin entrega) con su propio contador; no consume EMP.</summary>
     public const string ManualIssuePattern = "DMA-#####";
+    /// <summary>2026-10-12: ajuste múltiple (AJM-######, seis dígitos) con su propio contador.</summary>
+    public const string MultiAdjustPattern = "AJM-######";
 
     public static string PatternFor(string kind) => kind switch
     {
@@ -29,6 +31,7 @@ public static class WmsNumbering
         NumberKinds.Rental => RentalPattern,
         NumberKinds.RentalReturn => RentalReturnPattern,
         NumberKinds.ManualIssue => ManualIssuePattern,
+        NumberKinds.MultiAdjust => MultiAdjustPattern,
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Tipo de número WMS desconocido; use RECEIPT, CYCLECOUNT, CROSSDOCK, PURCHASE, RENTAL, RENTALRETURN o MANUALISSUE."),
     };
 

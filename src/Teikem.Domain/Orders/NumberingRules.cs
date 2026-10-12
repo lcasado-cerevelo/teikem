@@ -187,7 +187,9 @@ public static class NumberingRules
         // Lote 27 (Rentas): rentas REN-##### y devoluciones de renta DRN-##### (por tenant, ClientId NULL)
         or NumberKinds.Rental or NumberKinds.RentalReturn
         // 2026-10-11: despacho manual DMA-##### (por tenant, ClientId NULL)
-        or NumberKinds.ManualIssue;
+        or NumberKinds.ManualIssue
+        // 2026-10-12: ajuste múltiple AJM-###### (por tenant, ClientId NULL)
+        or NumberKinds.MultiAdjust;
 
     private static string Coalesce(string? pattern, string fallback) => string.IsNullOrWhiteSpace(pattern) ? fallback : pattern.Trim();
 

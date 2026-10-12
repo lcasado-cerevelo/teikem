@@ -88,8 +88,8 @@ public class TripCatalogTests
     [Fact]
     public void Permission_catalog_has_69_codes_with_trips_view_and_scan()
     {
-        Assert.Equal(75, PermissionCatalog.All.Count);   // Lote 14: + pulse.attention; Lote 27: + rental.extend, rental.return; 2026-10-11: + warehouse.issue; 2026-10-12: + orders.view_price; 2026-10-12 (Lote 43): + printers.manage
-        Assert.Equal(75, PermissionCatalog.All.Select(p => p.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        Assert.Equal(76, PermissionCatalog.All.Count);   // Lote 14: + pulse.attention; Lote 27: + rental.extend, rental.return; 2026-10-11: + warehouse.issue; 2026-10-12: + orders.view_price; 2026-10-12 (Lote 43): + printers.manage; 2026-10-12: + inventory.adjust.multi
+        Assert.Equal(76, PermissionCatalog.All.Select(p => p.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count());
 
         var view = Assert.Single(PermissionCatalog.All, p => p.Code == "trips.view");
         Assert.Equal(("TRIPS", "Ver rutas y despacho", "View trips & dispatch"), (view.Category, view.LabelEs, view.LabelEn));

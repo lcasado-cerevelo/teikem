@@ -343,6 +343,8 @@ public class WmsContractsTests
         new object?[] { typeof(ReceiptLine), EntityTypes.Receipt },
         new object?[] { typeof(CycleCount), EntityTypes.CycleCount },
         new object?[] { typeof(CycleCountLine), EntityTypes.CycleCount },
+        new object?[] { typeof(MultiAdjustment), EntityTypes.MultiAdjustment },   // 2026-10-12: ajuste múltiple
+        new object?[] { typeof(MultiAdjustmentLine), EntityTypes.MultiAdjustment },
         new object?[] { typeof(DamageReport), EntityTypes.DamageReport },   // 2026-10-08
         new object?[] { typeof(PickBatch), EntityTypes.PickBatch },
         new object?[] { typeof(PickBatchLine), EntityTypes.PickBatch },

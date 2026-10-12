@@ -29,6 +29,8 @@ public class OwnedEntityResolverCoverageTests
         EntityTypes.StockBalance, EntityTypes.InventoryTransaction, EntityTypes.ReceiptLine,
         // Lote 7A: categoría de producto (solo auditoría).
         EntityTypes.ProductCategory,
+        // 2026-10-12: ajuste múltiple (solo se consulta y se audita; sin escritura de dueño).
+        EntityTypes.MultiAdjustment,
         // Lote 8A: aparato de almacén (solo auditoría).
         EntityTypes.UserDevice,
         // Lote 14: descuadre Kárdex ↔ saldo (sin campos personalizados ni contactos).
