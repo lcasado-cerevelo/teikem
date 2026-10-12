@@ -1197,6 +1197,7 @@ const FILTER_TAKE = 200
  * arriba con casilla y el botón dice el SKU (uno) o «N elegidos».
  */
 export function ProductSearchSelect({ label, value, onChange, includeInactive, placeholder, disabled }: ProductMultiFilterProps) {
+  const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
   const [search, setSearch] = useState('')
   useEffect(() => {
@@ -1207,6 +1208,7 @@ export function ProductSearchSelect({ label, value, onChange, includeInactive, p
   const list = useQuery({
     queryKey: ['/api/v1/products', query],
     queryFn: () => unwrap(api.GET('/api/v1/products', { params: { query } })),
+    enabled: open,   // solo consulta con el desplegable abierto
     placeholderData: keepPreviousData,
     meta: { handleAccessDenied: false },
   })
@@ -1219,6 +1221,7 @@ export function ProductSearchSelect({ label, value, onChange, includeInactive, p
       options={options}
       chosen={chosen}
       value={value.map((v) => v.publicId)}
+      onOpenChange={setOpen}
       placeholder={placeholder}
       disabled={disabled}
       loading={list.isFetching}
@@ -1243,6 +1246,7 @@ export function ProductSearchSelect({ label, value, onChange, includeInactive, p
  * (entre almacenes, 250 ms entre teclas; opciones «Código · Zona · Almacén»). Con almacenes elegidos en el filtro Almacén, solo sus posiciones.
  */
 export function BinSearchSelect({ label, value, onChange, warehousePublicIds, includeInactive, placeholder, disabled }: BinMultiFilterProps) {
+  const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
   const [search, setSearch] = useState('')
   useEffect(() => {
@@ -1258,6 +1262,7 @@ export function BinSearchSelect({ label, value, onChange, warehousePublicIds, in
   const list = useQuery({
     queryKey: [warehouseKeys.binSearch[0], query],
     queryFn: () => unwrap(api.GET('/api/v1/warehouses/bins/search', { params: { query } })),
+    enabled: open,   // solo consulta con el desplegable abierto
     placeholderData: keepPreviousData,
     meta: { handleAccessDenied: false },
   })
@@ -1270,6 +1275,7 @@ export function BinSearchSelect({ label, value, onChange, warehousePublicIds, in
       options={options}
       chosen={chosen}
       value={value.map((v) => String(v.id))}
+      onOpenChange={setOpen}
       placeholder={placeholder}
       disabled={disabled}
       loading={list.isFetching}
