@@ -195,12 +195,13 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
             query = query.Where(p => (stockH.Where(b => b.ProductId == p.ProductId).Sum(b => (decimal?)(b.QtyOnHand - b.QtyReserved)) ?? 0m) > 0m);
         }
 
-        if (!string.IsNullOrWhiteSpace(q.BinSearch))
+        var binFilter = MatchingBins(q);
+        if (binFilter is not null)
         {
             // 2026-10-10 (filtro «Posición» de Productos e inventario): productos con existencia en una posición cuyo código CONTIENE el texto,
             // en los almacenes indicados si los hay. Las cantidades de la lista son las de ESAS posiciones (ver ToItemsAsync).
-            var binText = q.BinSearch.Trim().ToLowerInvariant();
-            var matchingBins = db.Set<WarehouseBin>().AsNoTracking().Where(b => b.Code.ToLower().Contains(binText));
+            // 2026-10-12: también por las posiciones elegidas (BinIds, filtro desplegable con búsqueda); con ambos, deben cumplir los dos.
+            var matchingBins = binFilter;
             var inBins = StockIn(warehouseIds).Where(b => b.QtyOnHand > 0 && b.WarehouseBinId != null);
             query = query.Where(p => inBins.Any(b => b.ProductId == p.ProductId && matchingBins.Any(x => x.WarehouseBinId == b.WarehouseBinId)));
         }
@@ -232,7 +233,7 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
         }
         var page = await ordered.ThenBy(p => p.ProductId).Skip(skip).Take(take).ToListAsync(ct);
 
-        var items = await ToItemsAsync(page, warehouseIds, ct, string.IsNullOrWhiteSpace(q.BinSearch) ? null : q.BinSearch.Trim().ToLowerInvariant());
+        var items = await ToItemsAsync(page, warehouseIds, ct, binFilter);
         return new ProductPageDto(total, skip, take, items);
     }
 
@@ -718,17 +719,29 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
             p.MinPickQty, p.MaxPickQty, hasMovements, Convert.ToBase64String(p.RowVersion ?? Array.Empty<byte>()), p.RotationMethod);
     }
 
+    /// <summary>Posiciones que cumplen el filtro Posición (texto contenido en el código y/o ids elegidos); null = sin filtro de posición.</summary>
+    private IQueryable<WarehouseBin>? MatchingBins(ProductListQuery q)
+    {
+        var text = string.IsNullOrWhiteSpace(q.BinSearch) ? null : q.BinSearch.Trim().ToLowerInvariant();
+        var ids = q.BinIds is { Length: > 0 } ? q.BinIds : null;
+        if (text is null && ids is null) return null;
+        var bins = db.Set<WarehouseBin>().AsNoTracking().AsQueryable();
+        if (text is not null) bins = bins.Where(b => b.Code.ToLower().Contains(text));
+        if (ids is not null) bins = bins.Where(b => ids.Contains(b.WarehouseBinId));
+        return bins;
+    }
+
     /// <summary>Filas de la lista con totales agrupados en UNA consulta (sin N+1); en esos almacenes si warehouseIds.</summary>
-    /// <param name="binText">Con filtro de posición (minúsculas), las cantidades son SOLO las de las posiciones cuyo código contiene el texto.</param>
-    private async Task<IReadOnlyList<ProductListItemDto>> ToItemsAsync(IReadOnlyList<Product> products, IReadOnlyList<int>? warehouseIds, CancellationToken ct, string? binText = null)
+    /// <param name="binFilter">Con filtro de posición, las cantidades son SOLO las de esas posiciones.</param>
+    private async Task<IReadOnlyList<ProductListItemDto>> ToItemsAsync(IReadOnlyList<Product> products, IReadOnlyList<int>? warehouseIds, CancellationToken ct, IQueryable<WarehouseBin>? binFilter = null)
     {
         if (products.Count == 0) return Array.Empty<ProductListItemDto>();
         var ids = products.Select(p => p.ProductId).ToList();
 
         var stockForTotals = StockIn(warehouseIds);
-        if (binText is not null)
+        if (binFilter is not null)
         {
-            var matchingBins = db.Set<WarehouseBin>().AsNoTracking().Where(x => x.Code.ToLower().Contains(binText));
+            var matchingBins = binFilter;
             stockForTotals = stockForTotals.Where(b => b.WarehouseBinId != null && matchingBins.Any(x => x.WarehouseBinId == b.WarehouseBinId));
         }
         var totals = (await stockForTotals

@@ -1176,3 +1176,101 @@ export function UserFilter({ label, value, onChange }: UserFilterProps) {
   )
   return <SearchSelect label={label} options={options} value={value} onChange={onChange} />
 }
+
+// =====================================================================================================================
+// 2026-10-12 — Filtros desplegables con búsqueda y selección múltiple (SKU o nombre, Posición) de Productos e inventario
+// =====================================================================================================================
+
+const NO_PRODUCTS: ProductListItemDto[] = []
+
+/**
+ * Filtro «SKU o nombre»: el mismo desplegable con búsqueda y casillas que Almacén o Categoría (`SearchSelect` en modo remoto). Busca en el
+ * servidor (`GET /api/v1/products?search=`, 250 ms entre teclas, por SKU o por nombre) porque el catálogo puede ser grande; lo elegido queda
+ * arriba con casilla y el botón dice el SKU (uno) o «N elegidos».
+ */
+export function ProductSearchSelect({ label, value, onChange, includeInactive }: ProductMultiFilterProps) {
+  const [text, setText] = useState('')
+  const [search, setSearch] = useState('')
+  useEffect(() => {
+    const h = setTimeout(() => setSearch(text.trim()), 250)
+    return () => clearTimeout(h)
+  }, [text])
+  const query = { search: search || undefined, activeOnly: !includeInactive, take: MAX_SHOWN }
+  const list = useQuery({
+    queryKey: ['/api/v1/products', query],
+    queryFn: () => unwrap(api.GET('/api/v1/products', { params: { query } })),
+    placeholderData: keepPreviousData,
+    meta: { handleAccessDenied: false },
+  })
+  const found = list.data?.items ?? NO_PRODUCTS
+  const options = useMemo(() => found.filter((p) => p.publicId).map((p) => ({ value: p.publicId!, label: productLabel(p) })), [found])
+  const chosen = useMemo(() => value.map((v) => ({ value: v.publicId, label: v.label })), [value])
+  return (
+    <SearchSelect
+      label={label}
+      options={options}
+      chosen={chosen}
+      value={value.map((v) => v.publicId)}
+      loading={list.isFetching}
+      onSearch={setText}
+      onChange={(ids) =>
+        onChange(
+          ids.map((id) => {
+            const known = value.find((v) => v.publicId === id)
+            if (known) return known
+            const p = found.find((x) => x.publicId === id)
+            return { publicId: id, sku: p?.sku ?? '', label: productLabel(p) }
+          }),
+        )
+      }
+    />
+  )
+}
+
+/**
+ * Filtro «Posición»: el mismo desplegable con búsqueda y casillas (`SearchSelect` remoto) sobre `GET /api/v1/warehouses/bins/search`
+ * (entre almacenes, 250 ms entre teclas; opciones «Código · Zona · Almacén»). Con almacenes elegidos en el filtro Almacén, solo sus posiciones.
+ */
+export function BinSearchSelect({ label, value, onChange, warehousePublicIds, includeInactive }: BinMultiFilterProps) {
+  const [text, setText] = useState('')
+  const [search, setSearch] = useState('')
+  useEffect(() => {
+    const h = setTimeout(() => setSearch(text.trim()), 250)
+    return () => clearTimeout(h)
+  }, [text])
+  const query: GetQuery<'/api/v1/warehouses/bins/search'> = {
+    search: search || undefined,
+    warehousePublicIds: warehousePublicIds && warehousePublicIds.length > 0 ? [...warehousePublicIds] : undefined,
+    includeInactive: includeInactive || undefined,
+    take: MAX_SHOWN,
+  }
+  const list = useQuery({
+    queryKey: [warehouseKeys.binSearch[0], query],
+    queryFn: () => unwrap(api.GET('/api/v1/warehouses/bins/search', { params: { query } })),
+    placeholderData: keepPreviousData,
+    meta: { handleAccessDenied: false },
+  })
+  const found = list.data ?? NO_BINS
+  const options = useMemo(() => found.filter((b) => b.id != null).map((b) => ({ value: String(b.id), label: binFilterLabel(b) })), [found])
+  const chosen = useMemo(() => value.map((v) => ({ value: String(v.id), label: v.label })), [value])
+  return (
+    <SearchSelect
+      label={label}
+      options={options}
+      chosen={chosen}
+      value={value.map((v) => String(v.id))}
+      loading={list.isFetching}
+      onSearch={setText}
+      onChange={(ids) =>
+        onChange(
+          ids.map((id) => {
+            const known = value.find((v) => String(v.id) === id)
+            if (known) return known
+            const b = found.find((x) => String(x.id) === id)
+            return { id: Number(id), label: b ? binFilterLabel(b) : id }
+          }),
+        )
+      }
+    />
+  )
+}

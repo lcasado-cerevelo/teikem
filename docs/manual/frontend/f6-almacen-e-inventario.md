@@ -424,8 +424,8 @@ totales** nunca son naranja.
 **Filtros** (van al servidor; **Limpiar** los quita todos, incluido el indicador elegido):
 - **Almacén** (varios, con buscador): limita las **cantidades** de cada fila (Disponible, Reservado, Total) a esos almacenes.
   No quita productos de la lista: un producto sin existencia en ese almacén sigue apareciendo con ceros.
-- **SKU** (varios, con buscador; incluye productos inactivos).
-- **Nombre** (texto: el nombre **contiene** lo escrito, sin distinguir mayúsculas; espera un instante tras la última tecla).
+- **SKU o nombre** (desplegable con buscador y selección múltiple, igual que Almacén; busca en el servidor por SKU o por nombre; incluye productos inactivos). Lo elegido queda arriba con su casilla y el botón dice el SKU (uno) o «N elegidos».
+- **Posición** (el mismo desplegable con buscador y selección múltiple; busca entre almacenes, o solo en los almacenes elegidos arriba): deja los productos con existencia en alguna de las posiciones elegidas, y las cantidades de cada fila son las de esas posiciones. Va al API como `binIds`.
 - **Categoría** (varias; incluye las subcategorías).
 - **Marca** (varias, con buscador; ofrece las marcas que ya usan los productos de la compañía).
 

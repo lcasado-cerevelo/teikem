@@ -42,11 +42,12 @@ public sealed class ProductsController(ProductService products, ProductSerialCon
         [FromQuery] int skip = 0, [FromQuery] int take = 100, [FromQuery] bool selectorOrder = false, [FromQuery] bool belowMin = false,
         [FromQuery] bool serialOnly = false, [FromQuery] bool serialMissing = false, [FromQuery] bool onlyOnHand = false,
         [FromQuery] bool unavailable = false, [FromQuery] bool hasAvailable = false, [FromQuery] string? binSearch = null,
-        [FromQuery] Guid[]? ownerClientPublicIds = null, [FromQuery] bool includeOwn = false, CancellationToken ct = default)
+        [FromQuery] Guid[]? ownerClientPublicIds = null, [FromQuery] bool includeOwn = false, [FromQuery] int[]? binIds = null,
+        CancellationToken ct = default)
         => products.ListAsync(new ProductListQuery(search, NullIfEmpty(categoryIds), ownerClientPublicId, ownOnly,
             activeOnly, warehousePublicId, onlyAvailable, skip, take, selectorOrder, belowMin, NullIfEmpty(warehousePublicIds),
             NullIfEmpty(productPublicIds), name, NullIfEmpty(brands), serialOnly, serialMissing, onlyOnHand, unavailable, hasAvailable, binSearch,
-            NullIfEmpty(ownerClientPublicIds), includeOwn), InventoryScope.Any, ct);
+            NullIfEmpty(ownerClientPublicIds), includeOwn, NullIfEmpty(binIds)), InventoryScope.Any, ct);
 
     /// <summary>
     /// Lote 12 — marcas distintas de los productos del tenant (para el filtro Marca), ordenadas y sin repetir sin distinguir

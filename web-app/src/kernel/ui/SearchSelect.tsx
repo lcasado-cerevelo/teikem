@@ -16,15 +16,19 @@ export interface SearchSelectProps {
   onChange: (value: string[]) => void
   /** Texto del botón cuando no hay nada elegido (por defecto "Todos"). */
   placeholder?: string
+  /** Búsqueda en el servidor (catálogos grandes: productos, posiciones). Ver `SearchMultiSelectProps.onSearch`. */
+  onSearch?: (q: string) => void
+  chosen?: readonly FilterOption[]
+  loading?: boolean
 }
 
 /** Selección múltiple con buscador (`.msel`), para filtros con muchas opciones (clientes, bodegas, estatus). */
-export function SearchSelect({ label, options, value, onChange, placeholder }: SearchSelectProps) {
+export function SearchSelect({ label, options, value, onChange, placeholder, onSearch, chosen, loading }: SearchSelectProps) {
   const t = useT()
   const id = useId()
   const ref = useRef<HTMLDivElement>(null)
   // en el ámbito (línea de filtros de las exportaciones): las etiquetas de lo elegido
-  useRegisterFilter(label, joinFilterValues(value.map((v) => options.find((o) => o.value === v)?.label ?? v), t), ref)
+  useRegisterFilter(label, joinFilterValues(value.map((v) => chosen?.find((o) => o.value === v)?.label ?? options.find((o) => o.value === v)?.label ?? v), t), ref)
   return (
     <div className="f" ref={ref}>
       <label id={`${id}-l`} htmlFor={`${id}-b`}>
@@ -37,6 +41,9 @@ export function SearchSelect({ label, options, value, onChange, placeholder }: S
         value={value}
         onChange={onChange}
         placeholder={placeholder}
+        onSearch={onSearch}
+        chosen={chosen}
+        loading={loading}
       />
     </div>
   )
@@ -58,6 +65,15 @@ export interface SearchMultiSelectProps {
   onBlur?: () => void
   /** Ref del botón (p. ej. `field.ref` de react-hook-form para enfocar el campo con error). */
   buttonRef?: Ref<HTMLButtonElement>
+  /**
+   * Modo remoto (2026-10-12; catálogos grandes como productos o posiciones): lo que se escribe en el buscador sale por `onSearch` (el
+   * padre pausa, consulta y entrega `options` ya filtradas por el servidor) y aquí no se filtra. Lo elegido se muestra siempre arriba con
+   * su etiqueta (`chosen`, porque puede no estar en los resultados actuales). Sin "Todos": no se puede elegir un catálogo entero.
+   */
+  onSearch?: (q: string) => void
+  chosen?: readonly FilterOption[]
+  /** Con `onSearch`: la búsqueda está en curso. */
+  loading?: boolean
 }
 
 /**
@@ -76,6 +92,9 @@ export function SearchMultiSelect({
   describedBy,
   onBlur,
   buttonRef,
+  onSearch,
+  chosen,
+  loading,
 }: SearchMultiSelectProps) {
   const t = useT()
   const ref = useRef<HTMLDivElement>(null)
@@ -88,12 +107,16 @@ export function SearchMultiSelect({
   useDismiss(ref, open, close)
 
   const selected = useMemo(() => new Set(value), [value])
-  const shown = options.filter((o) => matchesQ(q, o.label, o.value))
+  const remote = onSearch !== undefined
+  const labelOf = (v: string) => chosen?.find((o) => o.value === v)?.label ?? options.find((o) => o.value === v)?.label ?? v
+  const shown = remote
+    ? [...(chosen ?? []).filter((o) => selected.has(o.value) && matchesQ(q, o.label, o.value)), ...options.filter((o) => !selected.has(o.value))]
+    : options.filter((o) => matchesQ(q, o.label, o.value))
   const summary =
     value.length === 0
       ? (placeholder ?? t('ui.filters.all'))
       : value.length === 1
-        ? (options.find((o) => o.value === value[0])?.label ?? value[0])
+        ? labelOf(value[0])
         : t('ui.searchSelect.selected', { count: value.length })
 
   const toggle = (v: string) => {
@@ -129,11 +152,14 @@ export function SearchMultiSelect({
               value={q}
               placeholder={t('ui.qbox.placeholder')}
               aria-label={t('ui.qbox.placeholder')}
-              onChange={(e) => setQ(e.target.value)}
+              onChange={(e) => {
+                setQ(e.target.value)
+                onSearch?.(e.target.value)
+              }}
             />
           </div>
           <div className="milist" role="listbox" aria-multiselectable="true" aria-labelledby={labelledBy}>
-            {shown.length === 0 && <div className="mnone">{t('ui.searchSelect.none')}</div>}
+            {shown.length === 0 && <div className="mnone">{loading ? t('common.loading') : t('ui.searchSelect.none')}</div>}
             {shown.map((o) => (
               <label key={o.value} className="mi" role="option" aria-selected={selected.has(o.value)}>
                 <input type="checkbox" checked={selected.has(o.value)} onChange={() => toggle(o.value)} />
@@ -142,9 +168,11 @@ export function SearchMultiSelect({
             ))}
           </div>
           <div className="mf">
-            <button type="button" onClick={() => onChange(options.map((o) => o.value))}>
-              {t('ui.searchSelect.all')}
-            </button>
+            {!remote && (
+              <button type="button" onClick={() => onChange(options.map((o) => o.value))}>
+                {t('ui.searchSelect.all')}
+              </button>
+            )}
             <button type="button" onClick={() => onChange([])}>
               {t('ui.searchSelect.clear')}
             </button>
