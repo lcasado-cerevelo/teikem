@@ -124,7 +124,7 @@ En **Órdenes en esta ruta** cada orden tiene un **asa** (seis puntos) a la izqu
 
 ![Ruta con las órdenes reordenadas: el plano sigue la nueva secuencia](img/fe2b-arrastrar.png)
 
-El cambio se ve de inmediato en la lista y en el plano (los pines se renumeran y la línea sigue el nuevo orden) y se guarda en el sistema; las horas estimadas de llegada se recalculan. Si el sistema no acepta el cambio, la lista **vuelve al orden anterior** y aparece el mensaje del sistema arriba de la ruta.
+Puede mover varias órdenes seguidas sin esperar: los cambios se ven al instante y el sistema los guarda en orden, de uno en uno. El cambio se ve de inmediato en la lista y en el plano (los pines se renumeran y la línea sigue el nuevo orden) y se guarda en el sistema; las horas estimadas de llegada se recalculan. Si el sistema no acepta el cambio, la lista **vuelve al orden anterior** y aparece el mensaje del sistema arriba de la ruta.
 
 Solo se puede reordenar mientras la ruta está en **Borrador** o **Planificado** y si usted tiene `trips.plan`. En una ruta despachada, en curso o cerrada no hay asa, ▲, ▼ ni papelera.
 
