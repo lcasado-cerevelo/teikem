@@ -6281,3 +6281,23 @@ Los invitados deben salir a internet por **otra IP pública** (otra salida o VLA
 
 **Olvidé mi contraseña y me pide un código.**
 Es a propósito: si tiene su verificación en dos pasos, restablecer la contraseña por correo exige también el código de su app (o uno de recuperación), esté donde esté, incluso en la red preferida. Si el código es malo o falta, el enlace del correo **no se gasta**; los intentos fallidos cuentan para el bloqueo de la cuenta.
+
+## Ajuste múltiple (2026-10-12)
+
+**No veo el botón «Ajuste múltiple».**
+Hace falta el permiso `inventory.adjust.multi`, que no viene en ningún rol: el administrador lo da a un rol desde Roles. El botón está en *Transferencias y ajustes*, después de «Ajustar».
+
+**«La existencia de … cambió mientras contaba».**
+Entró o salió mercancía de esa posición después de abrir la pantalla. No se aplicó nada. «En sistema» ya se actualizó y lo escrito se conservó: revise las líneas marcadas y pulse «Aplicar ajuste» otra vez.
+
+**Dejé «Hay ahora» vacío en una posición. ¿Qué pasa?**
+Esa línea no se toca. Si el valor es igual al del sistema, tampoco genera movimiento. Solo las líneas con diferencia crean movimientos.
+
+**Mi producto lleva serie y no entra.**
+Los productos con serie se ajustan con el ajuste normal (contar series por cantidad no tiene sentido).
+
+**«… tiene N reservado: la existencia no puede quedar por debajo».**
+Esa posición tiene mercancía apartada para pedidos; no se puede dejar menos que lo reservado. Libere la reserva o cuente al menos esa cantidad.
+
+**¿Cómo veo lo que se movió por ajuste múltiple?**
+En *Transferencias y ajustes* → Ajustes, filtre por el motivo «Inventario físico» (la columna Origen dice «Ajuste múltiple AJM-…»), o abra el Historial de la pantalla del ajuste múltiple.

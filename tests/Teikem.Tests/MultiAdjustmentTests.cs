@@ -102,6 +102,18 @@ public class MultiAdjustmentTests
     }
 
     [Fact]
+    public async Task The_kardex_detail_shows_the_multi_adjustment_as_the_source_document()
+    {
+        var x = await WorldAsync();
+        var doc = await x.F.Get<MultiAdjustmentService>().CreateAsync(Req(x, Line(x.P1, x.B1, 10m, 6m)), default);
+        var txnId = doc.Lines.Single().InventoryTransactionId!.Value;
+        var detail = await x.F.Get<InventoryReadService>().TransactionDetailAsync(txnId, InventoryScope.Any, default);
+        Assert.Equal("AJM-000001", detail.Document?.Number);
+        Assert.Equal(EntityTypes.MultiAdjustment, detail.Document?.EntityCode);
+        Assert.Equal(doc.Header.PublicId, detail.Document?.PublicId);
+    }
+
+    [Fact]
     public async Task A_second_document_takes_the_next_number()
     {
         var x = await WorldAsync();
