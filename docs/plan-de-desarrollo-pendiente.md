@@ -30,7 +30,7 @@ Fuentes: `Diseño/logistica-funcionalidades-maestro.md` (diseño), `Diseño/teik
 | G informes | Parcial: `ScheduleCron`/`DeliveryEmails` se guardan, no hay job que los envíe |
 | J reglas de aviso | **Solo diseño** (solo existe el correo transaccional de seguridad) |
 | 0B módulos | Parcial: faltan las claves `SALES_ORDERS`, `TAX`, `BILLING`, `NOTIFICATIONS` |
-| 1 Clientes y contratos | Backend casi completo; **web: sin pantalla** |
+| 1 Clientes y contratos | Backend casi completo; web: **clientes y contratos hechos (F-A1 y F-A2)**, falta el portal (F-A3) |
 | 2 Órdenes de transporte | Backend parcial; web: solo lectura (sin alta/edición/importación) |
 | 3 Trips y rutas | Backend parcial (falta cerrar trip, eventos por parada, pings, motores reales); **web sin pantallas** (Despacho, Monitoreo, Escaneo) |
 | 4 Flota y choferes | Backend construido; **web sin pantalla** |
@@ -131,8 +131,8 @@ Bajo riesgo (no hay lógica nueva) y habilitan a Advance Logistics a operar desd
 
 | Lote | Pantalla (maqueta) | Backend existente | Notas |
 |---|---|---|---|
-| F-A | Clientes y contratos (expediente, contratos, tarifas, servicios especiales, usuarios de portal, cotización) | `ClientsController`, `ContractsController`, `ContractRatesController`, `SpecialServicesController`, `PortalUsersController`, `BillingQuoteController` | Es la más grande; separarla en F-A1 expediente y perfil, F-A2 contratos y tarifas, F-A3 portal |
-| F-B | Consignatarios y localizaciones (incl. importación CSV por plantilla) | `LocationsController`, `ImportTemplatesController` | |
+| F-A | Clientes y contratos (expediente, contratos, tarifas, servicios especiales, usuarios de portal, cotización) | `ClientsController`, `ContractsController`, `ContractRatesController`, `SpecialServicesController`, `PortalUsersController`, `BillingQuoteController` | **F-A1 y F-A2 hechos** (`docs/frontend/loteFA1-decisiones.md`, `loteFA2-decisiones.md`); falta F-A3 portal |
+| F-B | Consignatarios y localizaciones (incl. importación CSV por plantilla) | `LocationsController`, `ConsigneeImport*Controller` | **Hecho (Lotes 38 y F-B, 2026-10-11)**: importación CSV de consignatarios con backend propio (`docs/lote38-decisiones.md`, `docs/frontend/loteFB-decisiones.md`) |
 | F-C | Órdenes: **alta** (entrada rápida, detallada, entrega especial), edición, cotizar/confirmar/cancelar, importación, Expediente | `OrdersController`, `OrderStatusController`, `OrderImportController`, `SpecialDeliveryController` | Hoy solo lectura |
 | F-D | Choferes y Flota (vehículos, documentos, mantenimiento, combustible, tarifas del chofer y política de pago) | `DriversController`, `FleetController`, `VehiclesController`, `Maintenance*`, `FuelLogs`, `DriverRates`, `DriverPayPolicy`, `DriverTrips` | |
 | F-E | Despacho (planificar el día, rutas, optimizar, asignar), Monitoreo, Escaneo (salida) | `Trip*Controller`, `ScanController` | Falta backend de cierre de trip y eventos por parada (ver P7) |

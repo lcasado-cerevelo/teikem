@@ -208,6 +208,178 @@ cambia de dueño o de tipo a algo que no sea PICKUP/BOTH), el recogido del clien
 Casos frecuentes: reactivar una CORPORATE/BILLING cuando ya hay otra activa responde el mismo 409; cambiar el tipo de un
 consignatario a CORPORATE cuando ya existe una activa también.
 
+### 2.1 Importación de consignatarios (Lote 38)
+
+Qué hace: da de alta **muchos consignatarios a la vez** desde un archivo CSV, en dos pasos: **validar** (lee el archivo,
+revisa cada fila y muestra una vista previa **sin crear nada**) y **confirmar** (crea las filas válidas) o **descartar**. El
+archivo se lee con una **plantilla**: a cada **posición de columna** se le asigna un campo (no importa el texto de la
+cabecera). Todo consignatario importado es tipo **DELIVERY**. Solo crea: un código que ya existe es un error, nunca se
+actualiza un consignatario existente (para eso, su ficha). Usa las mismas reglas que el alta manual (`POST /locations`) y
+deja la misma auditoría.
+
+Quién puede: módulo **Catálogo** (`CATALOG`). Ver plantillas, el catálogo de campos y un lote: `locations.read`. Crear y editar
+plantillas, validar, confirmar y descartar: `locations.create`. No hay permisos nuevos.
+
+#### Plantillas
+
+Cómo se usa:
+- `GET /api/v1/locations/import-templates?clientId=&includeInactive=false` — con `clientId`, las generales y las de ese cliente.
+- `POST /api/v1/locations/import-templates` `{ "name": "Consignatarios Farmacias", "columns": [ {"position":1,"field":"code"}, {"position":2,"field":"name"}, {"position":3,"field":"line1"}, {"position":4,"field":"city"}, {"position":5,"field":"clientCode"}, {"position":6,"field":"contactPhone"} ], "defaults": {"country":"PR","defaultServiceMinutes":"10"}, "clientPublicId"?: guid, "delimiter": ",", "hasHeader": true }`
+- `GET` / `PATCH /api/v1/locations/import-templates/{publicId}` · `POST .../{publicId}/deactivate` · `POST .../{publicId}/reactivate`
+- `GET /api/v1/locations/import/fields` — los 17 campos con `required` (obligatorio en la fila) y `defaultAllowed` (admite
+  valor por defecto en la plantilla).
+
+Una plantilla es **general** (sin cliente, sirve para cualquier lote) o **de un cliente** (solo sirve para lotes de ese
+cliente). Los `defaults` llenan un campo cuando la celda está vacía o la columna no existe; la celda con valor siempre gana.
+Las plantillas de consignatarios no se ven por `/api/v1/import-templates` (esa ruta es la de órdenes) ni al revés.
+
+| Campo | Obligatorio en la fila | Admite default | Va a |
+|---|---|---|---|
+| `code` | no | no | código del consignatario (máx. 40) |
+| `name` | **sí** (columna) | no | nombre (máx. 200) |
+| `line1` | **sí** (columna) | no | dirección línea 1 (máx. 200) |
+| `line2` | no | sí | línea 2 (máx. 200) |
+| `city` | **sí** (columna o default) | sí | ciudad (máx. 100) |
+| `state` | no | sí | estado (máx. 100) |
+| `postalCode` | no | sí | código postal (máx. 20) |
+| `country` | no (PR si falta) | sí | país ISO de 2 letras, activo y no deshabilitado por la compañía |
+| `clientCode` | no | no | dueño: código del cliente |
+| `clientName` | no | no | dueño: nombre del cliente |
+| `defaultServiceMinutes` | no (0) | sí | minutos de servicio, entero ≥ 0 |
+| `defaultWindowStart` / `defaultWindowEnd` | no (las dos o ninguna) | sí | ventana horaria, `HH:mm` de 24 horas (también `H:mm` y `HH:mm:ss`) |
+| `accessNotes` / `deliveryNotes` | no | sí | notas (máx. 500) |
+| `allowDupInvoice` | no (no) | sí | permitir facturas repetidas: `sí/si/s/yes/y/true/1` o `no/n/false/0` (sin distinguir mayúsculas) |
+| `contactPhone` | no | sí | teléfono, se guarda como contacto **PHONE principal** (etiqueta «Teléfono») |
+
+| Caso (plantilla) | Mensaje exacto | HTTP |
+|---|---|---|
+| Sin columnas | `Indique al menos una columna.` (campo `columns`) | 400 |
+| Más de 100 columnas | `Máximo 100 columnas.` | 400 |
+| Posición &lt; 1 / &gt; 500 / repetida | `La posición debe ser 1 o mayor.` / `La posición no puede exceder 500.` / `La posición N está repetida.` (campo `columns[i].position`) | 400 |
+| Campo desconocido / repetido | `Campo desconocido: X.` / `El campo X está repetido.` (campo `columns[i].field`; en defaults, `defaults.X`) | 400 |
+| Falta la columna `name` o `line1` | `La plantilla debe incluir las columnas name y line1.` (campo `columns`) | 400 |
+| Sin `city` en columna ni en defaults | `La plantilla debe indicar la ciudad (city) en una columna o en defaults.` | 400 |
+| `clientCode` y `clientName` a la vez | `Use clientCode o clientName, no ambos.` | 400 |
+| Default de `code`, `name`, `line1`, `clientCode` o `clientName` | `El campo X no admite valor por defecto.` (campo `defaults.X`) | 400 |
+| Default con valor inválido (minutos, horas, `allowDupInvoice`, formato de país, largo, teléfono) | el mismo mensaje que daría la fila (tabla de abajo), en `defaults.X` | 400 |
+| Nombre vacío / largo | `El nombre de la plantilla es obligatorio.` / `Máximo 120 caracteres.` | 400 |
+| Delimitador inválido | `El delimitador debe ser un solo carácter (p. ej. ',' o ';'), distinto de comilla y salto de línea.` | 400 |
+| Nombre repetido (en plantillas de consignatarios) | `Ya existe una plantilla de importación con ese nombre.` | 409 |
+| `clientPublicId` y `makeGeneral` a la vez (PATCH) | `Indique un cliente o marque la plantilla como general, no ambos.` | 400 |
+| `defaults` y `clearDefaults` a la vez (PATCH) | `Indique defaults nuevos o clearDefaults, no ambos.` | 400 |
+| Desactivar una inactiva / reactivar una activa | `La plantilla ya está inactiva.` / `La plantilla ya está activa.` | 409 |
+| Plantilla inexistente, de otra compañía o de órdenes | `Plantilla de importación no encontrado.` | 404 |
+| `kind` distinto de `CONSIGNEE` en el cuerpo | `Tipo de plantilla desconocido: X.` | 400 |
+
+#### Validar (paso 1 de 2)
+
+Cómo se usa:
+- `POST /api/v1/locations/import/validate` (JSON) `{ "templatePublicId": guid, "clientPublicId"?: guid, "content": "<CSV>", "fileName"?: "archivo.csv" }`
+- `POST /api/v1/locations/import/validate-file` (`multipart/form-data`): `templatePublicId`, `clientPublicId` (opcional) y el
+  archivo en `file`.
+- `GET /api/v1/locations/import/{batchPublicId}` — vuelve a mostrar la vista previa (y, tras confirmar, el resultado).
+
+Límites: **5.000 filas y 2 MB** por archivo (la petición multipart completa, hasta 4 MB). El archivo debe estar en **UTF-8**.
+
+**Cliente del lote** (`clientPublicId`) es opcional. **Dueño de cada fila**, en este orden: la columna `clientCode`; si no, la
+columna `clientName`; si no, el cliente del lote; si tampoco hay, la fila queda **compartida** (sin dueño, la ven todos los
+clientes). Un cliente **suspendido** sí admite consignatarios; uno **dado de baja**, no.
+
+La respuesta (200) trae `batchPublicId`, `status` (`VALIDATED`), `rowCount`, `validRows` y `rows[]` con, por fila: `values`
+(lo leído, ya normalizado: hora `HH:mm`, `allowDupInvoice` `true/false`, país en mayúsculas, teléfono con formato),
+`owner` (`clientPublicId`/`clientName`, o `isShared: true`; `null` si no se pudo resolver), `errors` por campo (la fila **no**
+se creará), `warnings` (avisos: la fila **sí** se creará) e `isValid`.
+
+| Caso (petición) | Mensaje exacto | HTTP |
+|---|---|---|
+| Sin contenido o archivo vacío | `Indique el contenido del archivo CSV.` (campo `content` o `file`) | 400 |
+| Más de 5.000 filas o 2 MB | `El archivo supera el límite de 5.000 filas o 2 MB.` (campo `content` o `file`) | 400 |
+| Petición multipart de más de 4 MB | (lo corta el servidor) | 413 |
+| Archivo sin filas de datos | `El archivo no tiene filas de datos.` | 400 |
+| Plantilla inexistente, de órdenes o de otro cliente | `Plantilla de importación no encontrado.` | 404 |
+| Plantilla inactiva | `La plantilla está inactiva; reactívela o elija otra.` (campo `templatePublicId`) | 400 |
+| Cliente del lote inexistente o de otra compañía | `Cliente no encontrado.` | 404 |
+| Cliente del lote dado de baja | `El cliente está dado de baja; solo se consulta su historial.` | 409 |
+| `validate` sin `Content-Type: application/json` | — | 415 |
+| Sin el permiso / módulo Catálogo apagado | `Falta el permiso 'locations.create'.` / `module_disabled` | 403 |
+
+| Caso (fila; la vista previa responde 200 y la fila queda inválida) | Mensaje exacto (campo) |
+|---|---|
+| Sin nombre / línea 1 / ciudad | `El nombre es obligatorio.` (`name`) / `La dirección (línea 1) es obligatoria.` (`line1`) / `La ciudad es obligatoria.` (`city`) |
+| Texto largo | `Máximo N caracteres.` |
+| País con formato inválido | `El código de país debe ser ISO 3166-1 alfa-2 (2 letras).` (`country`) |
+| País desconocido o deshabilitado por la compañía | `País desconocido: XX.` (`country`) |
+| Minutos no enteros / negativos | `Los minutos de servicio deben ser un número entero.` / `Los minutos de servicio no pueden ser negativos.` (`defaultServiceMinutes`) |
+| Hora ilegible | `La hora debe tener el formato HH:mm (24 horas).` (`defaultWindowStart` o `defaultWindowEnd`) |
+| Solo una hora de la ventana | `La ventana horaria requiere hora de inicio y hora de fin.` (la que falta) |
+| Fin no posterior al inicio | `La hora de fin de la ventana debe ser posterior a la de inicio.` (`defaultWindowEnd`) |
+| `allowDupInvoice` ilegible | `El valor de allowDupInvoice debe ser sí o no (también 1/0 o true/false).` |
+| Teléfono inválido | `Teléfono inválido.` (`contactPhone`) |
+| `clientCode` sin coincidencia | `No existe un cliente con el código 'X'.` (`clientCode`) |
+| `clientName` sin coincidencia / con varias | `No existe un cliente con el nombre 'X'.` / `Hay más de un cliente con el nombre 'X'; use clientCode.` (`clientName`) |
+| Cliente de la fila dado de baja | `El cliente está dado de baja; solo se consulta su historial.` (`clientCode` o `clientName`) |
+| La fila nombra un cliente distinto al del lote | `La fila indica el cliente 'A', pero el lote es del cliente 'B'.` |
+
+#### Duplicados
+
+Se comparan por **dueño** (el mismo cliente, o las dos compartidas). El código no distingue mayúsculas; nombre y línea 1 se
+comparan sin tildes, sin mayúsculas y sin espacios dobles. Una fila del cliente choca con los consignatarios de ese cliente
+**y** con los compartidos; una fila compartida, solo con los compartidos.
+
+| Caso | Mensaje exacto | Tipo |
+|---|---|---|
+| Código repetido en el archivo (mismo dueño) | `El código X se repite en la fila N del archivo.` (`code`, en la fila posterior) | error |
+| Nombre + línea 1 repetidos en el archivo | `El consignatario 'X' con esa dirección se repite en la fila N del archivo.` (`name`) | error |
+| Código que ya usa un consignatario activo | `Ya existe un consignatario con el código 'X' ('Nombre').` (`code`) | error |
+| Código que usa un consignatario inactivo | `Ya existe un consignatario inactivo con el código 'X' ('Nombre'); reactívelo en vez de importarlo.` (`code`) | error |
+| Nombre + línea 1 de un consignatario activo | `Ya existe un consignatario activo con el mismo nombre y dirección (línea 1).` (`name`) | error |
+| Nombre + línea 1 de uno inactivo | `Hay un consignatario inactivo con el mismo nombre y dirección; considere reactivarlo.` | aviso |
+| Mismo nombre con otra línea 1 | `El nombre 'X' ya lo usa otro consignatario de este dueño; se creará como sucursal distinta.` | aviso |
+| Fila compartida con un código que usa un consignatario de un cliente | `El código X también lo usa un consignatario de un cliente; para ese cliente seguirá resolviendo al suyo.` | aviso |
+
+#### Confirmar (paso 2 de 2) y descartar
+
+Cómo se usa: `POST /api/v1/locations/import/{batchPublicId}/confirm` con cuerpo vacío, `{}` (todas las filas válidas) o
+`{ "rows": [1, 3] }` (solo esas filas; las demás quedan `skipped`). `POST /api/v1/locations/import/{batchPublicId}/discard`
+descarta un lote pendiente.
+
+Qué hace al confirmar: cada fila elegida se crea **en su propia transacción** (una que falla no tumba las demás). Antes de
+crear, se vuelve a revisar contra lo que exista **en ese momento** (el cliente sigue activo; el código y el nombre + línea 1
+no los ocupó nadie desde que se validó): las importaciones de una misma compañía se confirman **de a una fila a la vez**,
+así que dos lotes con el mismo código nuevo nunca crean dos consignatarios. El lote pasa a **CONFIRMED** con el comentario
+«Consignatarios creados: C; fallidos: F; omitidos: O.». La respuesta trae `created`, `failed`, `skipped` y `rows[]` con
+`locationPublicId` (creado) o `error` (falló). Las filas fallidas no se reintentan: valide un archivo nuevo con ellas.
+
+| Caso | Mensaje exacto | HTTP |
+|---|---|---|
+| `rows` con una fila que no existe | `La fila N no existe en el lote.` (campo `rows[N]`) | 400 |
+| `rows` con una fila con errores | `La fila N tiene errores y no se puede confirmar.` (campo `rows[N]`) | 400 |
+| Ninguna fila válida que crear | `El lote no tiene filas válidas para crear.` (campo `rows`) | 400 |
+| Lote ya confirmado | `El lote ya fue confirmado; valide un archivo nuevo para importar más consignatarios.` | 409 |
+| Lote descartado | `El lote fue descartado; valide el archivo de nuevo.` | 409 |
+| Dos confirmaciones a la vez, o descartar mientras se confirma | `El lote ya se está confirmando o fue confirmado; consulte su resultado.` | 409 |
+| Cliente del lote dado de baja después de validar | `El cliente está dado de baja; solo se consulta su historial.` | 409 |
+| Descartar un lote que no está pendiente | `Solo se descarta un lote pendiente de confirmar.` | 422 |
+| Lote inexistente, de otra compañía o de órdenes | `Lote de importación no encontrado.` | 404 |
+| Fila que choca al confirmar (alguien creó el código entretanto) | el mensaje de duplicado de la tabla anterior, en `rows[i].error` | 200 (fila fallida) |
+| Error inesperado en una fila | `Error inesperado al crear el consignatario; revise la fila e intente de nuevo.` en `rows[i].error` | 200 (fila fallida) |
+
+Estatus del lote (`ImportBatchStatus`): `VALIDATED` → `CONFIRMED` (confirmar) o → `DISCARDED` (descartar). El historial
+(`GET /api/v1/status/history/IMPORT_BATCH/{id}`) pide el permiso `orders.view` (el del importador de órdenes): un usuario que
+solo tiene permisos de consignatarios recibe 403 ahí, aunque sí ve el lote por `GET /api/v1/locations/import/{id}`.
+
+Casos frecuentes:
+- **Excel**: guarde el archivo como **«CSV UTF-8 (delimitado por comas)»**. Con «CSV (delimitado por comas)» Excel lo guarda en
+  Windows-1252 y las tildes llegan dañadas («Mar�a»). Si su Excel usa `;`, cree la plantilla con `"delimiter": ";"`.
+- **Consignatarios compartidos** (de todos los clientes): no indique cliente del lote ni columna de cliente.
+- **Un cliente con muchos consignatarios**: indique el cliente del lote; no hace falta la columna de cliente.
+- **«…reactívelo en vez de importarlo»**: el consignatario ya existía y está inactivo; reactívelo desde su ficha
+  (`POST /locations/{id}/reactivate`) y quite esa fila del archivo.
+- **Archivos grandes**: confirmar 5.000 filas toma alrededor de medio minuto; no cierre la pantalla. Si la conexión se corta a
+  mitad, lo creado hasta ese momento queda creado, pero el lote puede quedar `VALIDATED` y reservado (confirmar o descartar
+  responden 409 «El lote ya se está confirmando o fue confirmado…»). En ese caso valide **el mismo archivo otra vez**: las
+  filas que ya se crearon salen con «Ya existe un consignatario con el código…» y se confirma solo el resto.
+
 ---
 
 ## 3. Direcciones y punto de recogido del cliente (resumen)

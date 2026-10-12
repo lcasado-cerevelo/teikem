@@ -6273,3 +6273,232 @@ El aparato baja los clientes activos y los consignatarios (los del cliente y los
 
 **¿Dónde cambio la rotación FEFO/FIFO?**
 En la web: Ajustes de la compañía → Operación → «Rotación del inventario» (para toda la compañía; permiso `admin.tenant`) y, si un producto necesita el otro método, en su ficha → «Rotación». La app del almacén no tiene ese selector pero ya respeta el método.
+
+## Lote 38 — Importación de consignatarios (2026-10-11)
+
+Ver [capítulo 02, §2.1](02-clientes-y-contratos.md#21-importación-de-consignatarios-lote-38). Permisos: `locations.read` (ver) y `locations.create` (plantillas e importar); módulo Catálogo.
+
+**¿Cómo importo muchos consignatarios a la vez?**
+Cree una plantilla (`POST /api/v1/locations/import-templates`) que diga qué campo va en cada posición de columna (al menos `name`, `line1` y `city`, esta última puede ir como default). Luego valide el archivo (`POST /api/v1/locations/import/validate` o `/validate-file`), revise la vista previa y confirme (`POST /api/v1/locations/import/{lote}/confirm`). Nada se crea hasta confirmar.
+
+**¿Los consignatarios importados de quién son?**
+De la columna `clientCode` (o `clientName`) de cada fila; si la fila no la trae, del cliente del lote; si tampoco hay cliente del lote, quedan **compartidos** (los ven todos los clientes).
+
+**Las tildes salen dañadas («Mar�a») en la vista previa.**
+El archivo no está en UTF-8. En Excel use «Guardar como» → **«CSV UTF-8 (delimitado por comas)»**, no «CSV (delimitado por comas)», y valide de nuevo.
+
+**«La plantilla debe incluir las columnas name y line1.» (400)**
+A la plantilla le falta la columna del nombre o la de la dirección (línea 1). Esos dos campos van siempre en una columna (no admiten default). Agréguelos en `columns`.
+
+**«La plantilla debe indicar la ciudad (city) en una columna o en defaults.» (400)**
+Agregue una columna `city` o, si todos los consignatarios son del mismo pueblo, un default: `"defaults": {"city": "Ponce"}`.
+
+**«Use clientCode o clientName, no ambos.» (400)**
+La plantilla tiene las dos columnas de cliente. Deje una: `clientCode` es más segura (el nombre puede repetirse).
+
+**«El campo X no admite valor por defecto.» (400)**
+`code`, `name`, `line1`, `clientCode` y `clientName` identifican a cada consignatario o a su dueño, así que deben venir en cada fila. Quítelo de `defaults`. Para poner el mismo cliente a todo el archivo, use el cliente del lote.
+
+**«Indique al menos una columna.», «Máximo 100 columnas.», «La posición N está repetida.», «La posición debe ser 1 o mayor.», «La posición no puede exceder 500.», «Campo desconocido: X.», «El campo X está repetido.» (400)**
+Corrija la lista de columnas de la plantilla: cada posición una sola vez (de 1 a 500), cada campo una sola vez y solo campos del catálogo (`GET /api/v1/locations/import/fields`). Los campos de órdenes (p. ej. `consigneeName`) no existen aquí.
+
+**«Ya existe una plantilla de importación con ese nombre.» (409)**
+Ya hay una plantilla de consignatarios con ese nombre (activa o inactiva). Use otro nombre o reactive y edite la existente. Las plantillas de órdenes no cuentan.
+
+**«La plantilla ya está inactiva.» / «La plantilla ya está activa.» (409)**
+Ya estaba en ese estado; no hay nada que hacer.
+
+**«La plantilla está inactiva; reactívela o elija otra.» (400)**
+La plantilla elegida se dio de baja. Reactívela (`POST /api/v1/locations/import-templates/{id}/reactivate`) o use otra.
+
+**«Plantilla de importación no encontrado.» (404) al validar**
+La plantilla no existe, es de órdenes (esas viven en `/api/v1/import-templates`) o es de otro cliente distinto al del lote. Use una plantilla general o la del mismo cliente.
+
+**«Tipo de plantilla desconocido: CONSIGNEE.» (400)**
+Pidió plantillas de consignatarios por la ruta de órdenes (`/api/v1/import-templates?kind=CONSIGNEE`). Use `/api/v1/locations/import-templates`.
+
+**«Indique el contenido del archivo CSV.» / «El archivo no tiene filas de datos.» (400)**
+El archivo llegó vacío o solo trae la cabecera. Revise que eligió el archivo correcto; si su archivo no tiene cabecera, cree la plantilla con `"hasHeader": false`.
+
+**«El archivo supera el límite de 5.000 filas o 2 MB.» (400)**
+Divida el archivo en partes de hasta 5.000 filas y 2 MB y valide cada una.
+
+**«El cliente está dado de baja; solo se consulta su historial.» (409 al validar o confirmar, o error de una fila)**
+El cliente del lote (o el de esa fila) está dado de baja: no se le crean consignatarios. Reactive el cliente si corresponde, o quite esas filas. Un cliente **suspendido** sí admite consignatarios.
+
+**«Cliente no encontrado.» (404)**
+El cliente del lote no existe o es de otra compañía. Elíjalo de nuevo.
+
+**«No existe un cliente con el código 'X'.» / «No existe un cliente con el nombre 'X'.»**
+La fila nombra un cliente que no está en la compañía. Corrija el código (o el nombre exacto, sin distinguir mayúsculas) y valide de nuevo.
+
+**«Hay más de un cliente con el nombre 'X'; use clientCode.»**
+Hay dos o más clientes con ese nombre. Cambie la columna a `clientCode` en la plantilla y use el código del cliente.
+
+**«La fila indica el cliente 'A', pero el lote es del cliente 'B'.»**
+Validó con un cliente de lote y esa fila nombra a otro. Quite el cliente de la fila, corríjalo, o valide sin cliente de lote para que cada fila use el suyo.
+
+**«El nombre es obligatorio.» / «La dirección (línea 1) es obligatoria.» / «La ciudad es obligatoria.»**
+La celda está vacía (y no hay default para la ciudad). Llénela en el archivo.
+
+**«Máximo N caracteres.»**
+El texto es más largo de lo permitido (nombre 200, código 40, líneas 200, ciudad/estado 100, código postal 20, notas 500). Acórtelo.
+
+**«El código de país debe ser ISO 3166-1 alfa-2 (2 letras).» / «País desconocido: XX.»**
+Use el código de 2 letras (`PR`, `US`, `DO`…). «Desconocido» quiere decir que el país no está en el catálogo o la compañía lo deshabilitó. Si la celda va vacía se usa `PR`.
+
+**«Los minutos de servicio deben ser un número entero.» / «Los minutos de servicio no pueden ser negativos.»**
+`defaultServiceMinutes` va como número entero de 0 en adelante (`10`, no `10 min`).
+
+**«La hora debe tener el formato HH:mm (24 horas).»**
+Escriba la hora como `08:00` o `17:30` (también `8:00` o `08:00:00`). No use «8am» ni «5 PM».
+
+**«La ventana horaria requiere hora de inicio y hora de fin.» / «La hora de fin de la ventana debe ser posterior a la de inicio.»**
+La ventana lleva las dos horas o ninguna, y el fin después del inicio (`08:00`–`17:00`).
+
+**«El valor de allowDupInvoice debe ser sí o no (también 1/0 o true/false).»**
+Use `sí`/`no` (también `si`, `s`, `n`, `1`, `0`, `true`, `false`, `yes`, `y`). Vacío = no.
+
+**«Teléfono inválido.»**
+El teléfono de la fila (o el default de la plantilla) no tiene formato de teléfono. Corríjalo (p. ej. `787-555-0101`) o déjelo vacío.
+
+**Puse un default con un valor malo y la plantilla no se guarda (400 en `defaults.X`).**
+Los defaults se revisan al guardar la plantilla con el mismo mensaje que daría la fila (minutos, horas, `allowDupInvoice`, formato del país, largos y teléfono). Corrija el valor del default.
+
+**«El código X se repite en la fila N del archivo.» / «El consignatario 'X' con esa dirección se repite en la fila N del archivo.»**
+Dos filas del mismo dueño traen el mismo código, o el mismo nombre con la misma línea 1. La primera se crea; corrija o quite la repetida.
+
+**«Ya existe un consignatario con el código 'X' ('Nombre').»**
+Ese código ya lo usa un consignatario activo del mismo cliente o uno compartido. La importación solo crea: si es el mismo consignatario, quite la fila; si es otro, cámbiele el código.
+
+**«Ya existe un consignatario inactivo con el código 'X' ('Nombre'); reactívelo en vez de importarlo.»**
+El consignatario existe pero está dado de baja. Reactívelo desde su ficha (`POST /api/v1/locations/{id}/reactivate`) y quite la fila del archivo.
+
+**«Ya existe un consignatario activo con el mismo nombre y dirección (línea 1).»**
+Ese consignatario ya está en el directorio de ese dueño (sin importar tildes, mayúsculas ni espacios dobles). Quite la fila.
+
+**Aviso: «Hay un consignatario inactivo con el mismo nombre y dirección; considere reactivarlo.»**
+No impide crear la fila, pero quedaría repetido con uno dado de baja. Lo normal es reactivar el existente y quitar la fila.
+
+**Aviso: «El nombre 'X' ya lo usa otro consignatario de este dueño; se creará como sucursal distinta.»**
+Hay otro con el mismo nombre en otra dirección. Si es otra sucursal, está bien; si es la misma con la dirección cambiada, edite el existente en vez de importarlo.
+
+**Aviso: «El código X también lo usa un consignatario de un cliente; para ese cliente seguirá resolviendo al suyo.»**
+La fila es compartida y su código ya lo tiene un consignatario de un cliente. Se crea igual; cuando ese cliente use el código (por ejemplo, en el importador de órdenes) se tomará el suyo, no el compartido.
+
+**«La fila N tiene errores y no se puede confirmar.» / «La fila N no existe en el lote.» (400)**
+En `rows` eligió una fila inválida o un número que no está en el lote. Elija solo filas con `isValid: true` (o mande `{}` para todas las válidas).
+
+**«El lote no tiene filas válidas para crear.» (400)**
+Ninguna fila del lote está libre de errores. Corrija el archivo y valídelo de nuevo.
+
+**«El lote ya fue confirmado; valide un archivo nuevo para importar más consignatarios.» (409)**
+Ese lote ya se confirmó; el resultado está en `GET /api/v1/locations/import/{lote}`. Para importar más, valide otro archivo.
+
+**«El lote fue descartado; valide el archivo de nuevo.» (409)**
+El lote se descartó y no se puede confirmar. Valide el archivo otra vez.
+
+**«El lote ya se está confirmando o fue confirmado; consulte su resultado.» (409)**
+Otra persona (u otra pestaña) está confirmando o descartando el mismo lote. Espere y consulte el lote. Si se cortó la conexión a mitad de una confirmación y el lote sigue así, valide el mismo archivo otra vez: lo que ya se creó saldrá como duplicado y se confirma el resto.
+
+**«Solo se descarta un lote pendiente de confirmar.» (422)**
+El lote ya está confirmado o descartado; no hay nada que descartar.
+
+**«Lote de importación no encontrado.» (404)**
+El lote no existe, es de otra compañía o es un lote de órdenes (esos se consultan en `/api/v1/orders/import/{id}`).
+
+**Una fila salió con error al confirmar aunque en la vista previa estaba bien.**
+Entre validar y confirmar alguien creó un consignatario con ese código o con ese nombre y dirección (o se dio de baja el cliente): al confirmar se vuelve a revisar cada fila. La fila queda con el mensaje en `rows[i].error` y las demás se crean igual. Si dice «Error inesperado al crear el consignatario; revise la fila e intente de nuevo.», valide un archivo con esa fila de nuevo y, si se repite, avise a soporte.
+
+**¿Dos personas pueden importar consignatarios a la vez?**
+Sí. Las confirmaciones de una misma compañía se crean fila por fila de a una, así que un mismo código nuevo en dos archivos confirmados a la vez se crea una sola vez; la fila del otro archivo sale como fallida con «Ya existe un consignatario con el código…». Mientras tanto, «Planificar el día» de esa compañía espera su turno (usa el mismo candado).
+
+**Veo el lote pero el historial de estatus del lote me da 403.**
+`GET /api/v1/status/history/IMPORT_BATCH/{id}` pide `orders.view` (el permiso del importador de órdenes). El estado y el resultado del lote se ven igual en `GET /api/v1/locations/import/{id}` con `locations.read`.
+
+**Confirmar tarda mucho con un archivo grande.**
+Cada fila se crea por separado (con su revisión, auditoría y teléfono): 5.000 filas toman alrededor de medio minuto. Espere la respuesta; no confirme de nuevo.
+
+## Lote F-B — Consignatarios: lista, ficha, alta/edición e importación por CSV (2026-10-11)
+
+Mensajes de la pantalla Catálogo → Consignatarios (los del servidor salen tal cual, debajo del campo, en la tabla de la vista previa o en el diálogo). Capítulo: [fb-consignatarios.md](frontend/fb-consignatarios.md).
+
+**`El nombre es obligatorio.` / `La dirección (línea 1) es obligatoria.` / `La ciudad es obligatoria.` (400) al guardar.**
+Son los tres datos obligatorios del consignatario. La ciudad se elige en **Pueblo** (busque por pueblo o por código postal). Hasta que los tres tengan valor, el modal no llama al servidor.
+
+**`Máximo N caracteres.` (400).**
+Nombre 200, número 40, líneas 200, pueblo y estado 100, ZIP 20, notas 500. Acorte el texto.
+
+**`El país es obligatorio.` / `Catálogo Country 'X' no encontrado.` (400/404).**
+El país está en **Opciones de entrega** (por omisión Puerto Rico). Escoja uno de la lista; si el catálogo `Country` de la compañía no tiene el código, pídale al administrador que lo agregue.
+
+**`La ventana horaria requiere hora de inicio y hora de fin.` / `La hora de fin de la ventana debe ser posterior a la de inicio.` (400).**
+En **Opciones de entrega**: llene «Ventana: desde» y «Ventana: hasta» (o deje las dos vacías), y que el fin sea después del inicio.
+
+**`Los minutos de servicio no pueden ser negativos.` / `Los minutos de servicio deben ser un número entero.` (400).**
+Use 0 o un entero positivo.
+
+**`Teléfono inválido.` (400).**
+El teléfono debe tener los dígitos de la máscara de la compañía (por omisión 10 dígitos). Déjelo vacío si no hay.
+
+**`Indique un cliente o marque la localización como compartida, no ambos.` (400) / `Cliente no encontrado.` (404).**
+En **Cliente dueño** elija un cliente o «Compartido (todos los clientes)». Si el cliente ya no existe en la compañía, recargue la pantalla.
+
+**`La localización fue modificada por otro usuario; recargue e intente de nuevo.` (409) al editar.**
+Otra persona guardó este consignatario antes que usted. Cierre el modal, espere a que la ficha se actualice (o recargue) y repita su cambio.
+
+**«El consignatario se guardó, pero el teléfono no: …».**
+El consignatario sí quedó guardado; solo falló el teléfono (por ejemplo `Teléfono inválido.` o falta de permiso). Ábralo con **Editar** y corrija el teléfono. Para escribir el teléfono hacen falta `contacts.manage` y `locations.update`.
+
+**No puedo dar de baja / reactivar o los interruptores están apagados.**
+Falta `locations.update`. La baja es lógica: el consignatario deja de salir en los combos de captura de órdenes y conserva su historial; **Mostrar inactivos** lo deja ver para reactivarlo.
+
+**El archivo CSV: `El archivo supera el límite de 5.000 filas o 2 MB.` (400).**
+Divida el archivo en partes de hasta 5.000 filas y 2 MB cada una.
+
+**`Indique el contenido del archivo CSV.` / `El archivo no tiene filas de datos.` (400).**
+El archivo está vacío, o solo trae el encabezado (con «La primera fila es el encabezado» encendido en la plantilla, esa fila no cuenta). Revise el archivo y la plantilla.
+
+**`La plantilla está inactiva; reactívela o elija otra.` (400) / «Plantilla no encontrada» (404) al validar.**
+La plantilla se desactivó o es de otro cliente. Elija otra, o en el modal encienda **Mostrar plantillas inactivas** y use **Reactivar esta plantilla**. Con un cliente dueño elegido sirven las plantillas generales y las de ese cliente; sin dueño (compartidos), solo las generales.
+
+**Vista previa: errores por fila (la fila no se importa).**
+`El nombre es obligatorio.` / `La dirección (línea 1) es obligatoria.` / `La ciudad es obligatoria.`: falta el dato en esa fila o la columna no está en la plantilla (revise el mapeo).
+`País desconocido: X.` o el mensaje de país inválido: use el código de país del catálogo (PR, US…). `Los minutos de servicio deben ser un número entero.` / `…no pueden ser negativos.`.
+`La hora debe tener el formato HH:mm (24 horas).` y las dos de la ventana horaria (`La ventana horaria requiere hora de inicio y hora de fin.` / `La hora de fin de la ventana debe ser posterior a la de inicio.`).
+`El valor de allowDupInvoice debe ser sí o no (también 1/0 o true/false).`
+Duplicados: `Ya existe un consignatario activo con el mismo nombre y dirección (línea 1).`, `Ya existe un consignatario con el código 'X' ('Nombre').`, `Ya existe un consignatario inactivo con el código 'X' ('Nombre'); reactívelo en vez de importarlo.`,
+`El código X se repite en la fila N del archivo.` y `El consignatario 'X' con esa dirección se repite en la fila N del archivo.`: quite el duplicado del archivo o reactive el consignatario existente (**Mostrar inactivos**).
+
+**Vista previa: avisos (la fila sí se importa).**
+`El nombre 'X' ya lo usa otro consignatario de este dueño; se creará como sucursal distinta.`, `Hay un consignatario inactivo con el mismo nombre y dirección; considere reactivarlo.` y `El código X también lo usa un consignatario de un cliente; para ese cliente seguirá resolviendo al suyo.` Son informativos; si no quiere la fila, quítela del archivo y valide otra vez.
+
+**Los acentos y la ñ salen dañados.**
+El CSV no está en UTF-8 (Excel en Windows guarda en Windows-1252). Guárdelo como «CSV UTF-8» y vuelva a elegirlo; la vista previa lo muestra antes de importar.
+
+**El botón Importar está apagado.**
+El lote no tiene filas válidas, todavía se está validando, o falta `locations.create`. Corrija las filas con error y vuelva a elegir el archivo.
+
+**`El lote ya fue confirmado; valide un archivo nuevo para importar más consignatarios.` (409) / `El lote ya fue descartado…` / «hay una confirmación en curso» (409).**
+El lote ya se importó (o se descartó, o alguien lo está confirmando). Cierre el modal, revise la lista y, si necesita importar más, elija el archivo otra vez.
+
+**`El lote no tiene filas válidas para crear.` / `La fila N tiene errores y no se puede confirmar.` (400).**
+No había nada válido que crear. Corrija el archivo y valide de nuevo.
+
+**Resultado con «fallidos» (`Ya existe un consignatario con el código …`, `Error inesperado al crear el consignatario; revise la fila e intente de nuevo.`).**
+Entre la vista previa y el Importar alguien creó un consignatario igual, o la fila falló al guardarse. Las demás filas sí se crearon. Corrija solo las fallidas en un archivo nuevo.
+
+**Plantilla: `El nombre de la plantilla es obligatorio.` / `Indique al menos una columna.` (400).**
+Escriba un nombre y asigne un campo destino a al menos una columna.
+
+**Plantilla: `La plantilla debe incluir las columnas name y line1.` / `La plantilla debe indicar la ciudad (city) en una columna o en defaults.` (400).**
+Asigne «Nombre» y «Dirección» a columnas; el «Pueblo» puede ir en una columna o como **Valor por defecto** (por ejemplo «Ponce»).
+
+**Plantilla: `Use clientCode o clientName, no ambos.` / `El campo X está repetido.` / `El campo X no admite valor por defecto.` / `Campo desconocido: X.` (400).**
+Deje solo una columna de cliente; cada campo solo puede ir en una columna; número, nombre, dirección y cliente no admiten valor por defecto.
+
+**Plantilla: `Ya existe una plantilla de importación con ese nombre.` (409).**
+Use otro nombre o edite la existente (puede estar inactiva: **Mostrar plantillas inactivas**).
+
+**¿Cómo «elimino» una plantilla?**
+No se eliminan: **Desactivar esta plantilla** la saca del selector (los lotes ya validados la conservan). Para volver a usarla, **Mostrar plantillas inactivas** y **Reactivar esta plantilla**. Si la desactiva y ya estaba desactivada, `La plantilla ya está inactiva.` (409).
