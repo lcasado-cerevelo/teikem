@@ -12852,6 +12852,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/receipts/summary-by-warehouse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ReceiptWarehouseSummaryDto"][];
+                        "application/json": components["schemas"]["ReceiptWarehouseSummaryDto"][];
+                        "text/json": components["schemas"]["ReceiptWarehouseSummaryDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/receipts/{publicId}": {
         parameters: {
             query?: never;
@@ -15282,6 +15319,88 @@ export interface paths {
                         "text/plain": components["schemas"]["SyncProductCategoryDtoSyncPage"];
                         "application/json": components["schemas"]["SyncProductCategoryDtoSyncPage"];
                         "text/json": components["schemas"]["SyncProductCategoryDtoSyncPage"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sync/clients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    since?: string;
+                    cursor?: string;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SyncClientDtoSyncPage"];
+                        "application/json": components["schemas"]["SyncClientDtoSyncPage"];
+                        "text/json": components["schemas"]["SyncClientDtoSyncPage"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sync/consignee-locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    since?: string;
+                    cursor?: string;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SyncConsigneeLocationDtoSyncPage"];
+                        "application/json": components["schemas"]["SyncConsigneeLocationDtoSyncPage"];
+                        "text/json": components["schemas"]["SyncConsigneeLocationDtoSyncPage"];
                     };
                 };
             };
@@ -22852,6 +22971,14 @@ export interface components {
             freeQty?: number | null;
             fits?: boolean;
         };
+        ReceiptWarehouseSummaryDto: {
+            /** Format: uuid */
+            warehousePublicId?: string;
+            /** Format: int32 */
+            openCount?: number;
+            /** Format: int32 */
+            pendingPutawayCount?: number;
+        };
         ReconcilePreviewDto: {
             count?: components["schemas"]["CycleCountDto"];
             lines?: components["schemas"]["ReconcilePreviewLineDto"][] | null;
@@ -23960,6 +24087,39 @@ export interface components {
         };
         SyncBinDtoSyncPage: {
             items?: components["schemas"]["SyncBinDto"][] | null;
+            nextCursor?: string | null;
+            /** Format: date-time */
+            serverTimeUtc?: string;
+        };
+        SyncClientDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            publicId?: string;
+            name?: string | null;
+            code?: string | null;
+            isActive?: boolean;
+        };
+        SyncClientDtoSyncPage: {
+            items?: components["schemas"]["SyncClientDto"][] | null;
+            nextCursor?: string | null;
+            /** Format: date-time */
+            serverTimeUtc?: string;
+        };
+        SyncConsigneeLocationDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            publicId?: string;
+            /** Format: uuid */
+            clientPublicId?: string | null;
+            name?: string | null;
+            code?: string | null;
+            city?: string | null;
+            isActive?: boolean;
+        };
+        SyncConsigneeLocationDtoSyncPage: {
+            items?: components["schemas"]["SyncConsigneeLocationDto"][] | null;
             nextCursor?: string | null;
             /** Format: date-time */
             serverTimeUtc?: string;
