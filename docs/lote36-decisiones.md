@@ -5,7 +5,7 @@ Cierra los puntos de P0.3 de `docs/plan-de-desarrollo-pendiente.md` que quedaban
 ## Decisiones del dueño que se aplicaron (2026-10-11)
 
 - **D39** — un cliente dado de baja **no admite nada nuevo, tampoco cotizar** (409 `El cliente está dado de baja; solo se consulta su historial.`).
-- **D44** — invitar al portal el correo de alguien que es usuario de portal de **otro cliente** de la misma compañía **se queda en 409** (una persona no cambia de cliente por invitación).
+- **D44** — **corregido el 2026-10-12 (decisión de Luis):** invitar al portal el correo de alguien que ya es usuario de portal de **otro cliente** de la misma compañía responde **200** (portal multi-cliente del Lote 3: una sola persona entra con un solo enlace y ve todos sus clientes). Aquí se había escrito «se queda en 409» y no era cierto; Luis aceptó el 200 multi-cliente.
 
 ## Qué se hizo, punto por punto
 
@@ -16,7 +16,7 @@ Cierra los puntos de P0.3 de `docs/plan-de-desarrollo-pendiente.md` que quedaban
 | `orders.credit_override` en roles clonados (sin prueba) | Prueba con el `PermissionSeeder` **real**: roles `TenantAdmin` y `Billing` ya clonados por dos compañías lo reciben; `Dispatcher`, un rol propio y los demás no; segunda corrida sin duplicar | `CreditOverridePropagationTests` (10) |
 | Tablas obsoletas de Rentas | **Ya estaba resuelto, sin script aparte** (corregido 2026-10-11): el retiro de la capa vieja (RentalAsset, RentalContract, RentalAssetMaintenance, RentalBillingRule y el RentalCharge viejo) vive en `Diseño/logistica-db-estructura.sql` (bloque del Lote 27), idempotente, y `db-init`/`db-update` lo aplican solos: borra esas tablas **solo si todas están vacías**; si alguna tiene filas no toca nada y avisa por `PRINT`. Se quitó el script suelto `scripts/revisar-tablas-viejas-de-rentas.sql` | `Diseño/logistica-db-estructura.sql` |
 | D39 (cliente de baja) | `RateService.QuoteAsync` ahora exige cliente activo (el resto de lo nuevo ya lo exigía desde el Lote 3, ajuste A). Pasos nuevos en `smoke.sh`: cotizar, invitar y servicio especial con un cliente de baja → 409 | `RateService.cs`, `scripts/smoke.sh`, manual 02 |
-| D44 (reinvitar desde otro cliente) | Sin cambio de código: se queda en 409 como está | — |
+| D44 (reinvitar desde otro cliente) | Sin cambio de código. **Corrección 2026-10-12:** responde 200 (multi-cliente), no 409; Luis lo aceptó | — |
 | Zona horaria (contradicción lote18/19 vs 20) | **Ya estaba resuelta** (Lote 20). Se buscó en `src/` y no queda `DateTime.UtcNow.Date` ni `DateOnly.FromDateTime(DateTime.UtcNow)`; solo un comentario y `LegacyImportReport.GeneratedAt = DateTime.Now` (hora de un informe de migración, no una regla de negocio) | — |
 | `Contract.CodCommissionPct` sin exponer | **Se expone con la remesa COD (P8)**, que ya lo trae en su alcance; exponerlo antes no tiene dónde usarse | plan P8 |
 | `docs/frontend/diseno-frontend.md` obsoleto | Sección «Estado real (2026-10-11)» al principio: qué existe, qué lotes se hicieron, qué falta, reglas que no se rompen | `docs/frontend/diseno-frontend.md` |

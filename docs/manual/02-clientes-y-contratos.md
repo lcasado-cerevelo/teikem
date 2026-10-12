@@ -603,6 +603,10 @@ Quién puede: `contracts.read`. Cómo se usa: `POST /api/v1/billing/contract-rat
 | `pieces` < 1 | `La cantidad de piezas debe ser al menos 1.` (campo `lines[i].pieces`) | 400 |
 | Dos líneas con el mismo servicio y tipo de paquete | `El par servicio/tipo de paquete está repetido; envíe una sola línea por (servicio, tipo de paquete) con el total de piezas.` (campo `lines[i]`) | 400 |
 | `codAmount` negativo | `El monto COD no puede ser negativo.` | 400 |
+| Cliente dado de baja | `El cliente está dado de baja; solo se consulta su historial.` | 409 |
+| Cliente inexistente | `Cliente no encontrado.` | 404 |
+
+Una línea sin tarifa base (ni de contrato ni genérica) **no es un error**: sale con `baseSource: NONE` y `lineTotal` 0; en la web el Cotizador la avisa con «No hay tarifa vigente para X / Y: esa línea se cotiza en 0.». El servidor no oculta estos precios por `orders.view_price`: son precios del **contrato**, no de una orden, y se ven con `contracts.read`. Pantallas: [capítulo del Cotizador y usuarios de portal](frontend/fa3-portal-cotizador.md).
 | Servicio/paquete vacíos o desconocidos | `El tipo de servicio es obligatorio.` / `Código 'X' desconocido en el catálogo PackageType.` | 400 |
 
 ---
@@ -688,8 +692,9 @@ Cómo se usa:
 |---|---|---|
 | `email` vacío / inválido | `El correo es obligatorio.` / `Correo inválido.` | 400 |
 | `role` vacío / desconocido | `El rol de portal es obligatorio.` / `Catálogo PortalRole 'X' no encontrado.` | 400 / 404 |
-| El correo ya está registrado (usuario de portal de esta compañía en cualquier estatus no terminal, de otra compañía, o usuario interno) | `Ese correo no está disponible para el portal de esta compañía.` (mismo mensaje en todos los casos, a propósito; queda `SecurityEvent` ROLE_CHANGE/FAILURE `portal_invite_conflict`) | 409 |
-| Reinvitar un DISABLED desde **otro** cliente de la compañía | mismo 409 (mover una persona de cliente es decisión de negocio; se reinvita desde su cliente original) | 409 |
+| El correo no está disponible (ya invitado, activo o suspendido **en este mismo cliente**; cuenta de portal de otra compañía; o usuario interno) | `Ese correo no está disponible para el portal de esta compañía.` (mismo mensaje en todos los casos, a propósito; queda `SecurityEvent` ROLE_CHANGE/FAILURE `portal_invite_conflict`) | 409 |
+| Invitar desde **otro** cliente de la compañía un correo que ya es cuenta de portal (aunque en el primer cliente esté dada de baja) | **No** responde 409 (corregido 2026-10-12: antes decía lo contrario): agrega una fila nueva a esa cuenta, activa de inmediato si la cuenta ya tiene contraseña (sin `expiresAtUtc`) o `INVITED` con enlace si no (ver el recuadro del Lote 3 y el capítulo 03, sección 6). El 409 neutro queda para el mismo cliente, un usuario interno y una cuenta de otra compañía | 200 |
+| Cliente dado de baja: invitar o reenviar | `El cliente está dado de baja; solo se consulta su historial.` (la lista, suspender, reactivar y dar de baja sí se permiten) | 409 |
 | Reenviar cuando ya no está INVITED | `Solo se puede reenviar la invitación a un usuario que todavía no la ha aceptado (estatus INVITED).` | 409 |
 | Suspender sin estar ACTIVE | `Solo se puede suspender un usuario de portal en estatus ACTIVE.` | 409 |
 | Reactivar sin estar SUSPENDED | `Solo se puede reactivar un usuario de portal en estatus SUSPENDED.` | 409 |

@@ -7347,3 +7347,91 @@ Usted y otra persona (u otro proceso, como el escaneo de salida) cambiaron rutas
 
 **¿Puede salir «Otra persona está modificando estos datos al mismo tiempo» al crear o confirmar una orden aunque nadie más toque mis datos?**
 Antes del 2026-10-12 sí: cuando varias compañías creaban órdenes a la vez, la revisión del saldo de crédito de una chocaba con las altas de las otras. Con los índices de la sección «2026-10-12 (b)» de la base (los aplica `db-update`) ese choque ya no ocurre. Si el mensaje aparece al crear órdenes en una base actualizada, repita la acción (no se guardó nada) y avise a soporte con el número de correlación.
+
+## Lote F-A3 — Usuarios de portal y cotizador del cliente (2026-10-12)
+
+**No veo el panel «Usuarios de portal» en la ficha del cliente.**
+Su usuario no tiene el permiso `portalusers.manage` o su compañía no tiene encendido el módulo **Portal de clientes**. Pídaselo al administrador de su compañía. Sin esos dos requisitos el panel no aparece.
+
+**«Ese correo no está disponible para el portal de esta compañía.» (409)**
+Al invitar, ese correo ya está invitado, activo o suspendido **en este mismo cliente**, o pertenece a un usuario interno de su compañía o a una cuenta de otra compañía. El mensaje es el mismo en todos los casos, a propósito, para no revelar dónde está registrado. Use otro correo; si la persona ya está en este cliente, búsquela en la lista y use **Reenviar invitación**, **Reactivar** o **Volver a invitar** según su estatus.
+
+**Invité a una persona que ya está en otro cliente y no dio error. ¿Es normal?**
+Sí. Una misma persona puede pertenecer a varios clientes de su compañía: queda **Activa** al instante en este cliente (si ya tenía contraseña) y la lista muestra «También en N cliente(s) más». No se le envía correo.
+
+**«El cliente está dado de baja; solo se consulta su historial.» (409) al invitar, reenviar o cotizar.**
+Un cliente dado de baja no admite nada nuevo: ni invitaciones, ni reenvíos, ni cotizaciones. Reactívelo desde la cabecera de la ficha. Todavía puede **Suspender**, **Reactivar** y **Dar de baja** a sus usuarios de portal y consultar la lista.
+
+**La persona dice que el enlace de la invitación no funciona.**
+Pulse **Reenviar invitación** en su fila (solo aparece mientras está **Invitado**). El enlace nuevo vale hasta la fecha del aviso y solo sirve una vez; el anterior deja de valer. Si ya aceptó, no se reenvía: use **Dar de baja** y **Volver a invitar** si necesita que fije una contraseña nueva.
+
+**«Solo se puede reenviar la invitación a un usuario que todavía no la ha aceptado (estatus INVITED).» (409)**
+La persona ya aceptó la invitación (o cambió de estatus) mientras usted tenía la lista abierta. Vuelva a abrir la ficha y mire su estatus actual.
+
+**«Solo se puede suspender un usuario de portal en estatus ACTIVE.» / «Solo se puede reactivar un usuario de portal en estatus SUSPENDED.» (409)**
+Otra persona cambió el estatus antes que usted. Vuelva a abrir la ficha y use el botón que corresponde al estatus actual.
+
+**«El usuario de portal ya está dado de baja.» (409)**
+Ya estaba **Inhabilitado**. Si necesita que vuelva, pulse **Volver a invitar** en su fila.
+
+**¿Puedo ver o cambiar la contraseña de un usuario de portal?**
+No. Cada persona fija la suya con el enlace del correo. Si la perdió, **Dar de baja** y luego **Volver a invitar**.
+
+**¿Por qué no veo el enlace de invitación en pantalla?**
+Es un secreto de un solo uso: solo lo recibe la persona invitada por correo. La pantalla solo le dice a quién se envió y hasta cuándo vale.
+
+**El Cotizador da 0 en una línea.**
+No hay tarifa vigente para ese servicio y paquete, ni de contrato ni genérica (la pantalla avisa «No hay tarifa vigente para X / Y: esa línea se cotiza en 0.»). No es un error: agregue la tarifa en la pestaña **Tarifas** del contrato.
+
+**El total del Cotizador no es la suma de los subtotales.**
+Al total se suman además el **Cargo por despacho** y el **Cargo por COD**, que se cobran una sola vez por orden.
+
+**«El par servicio/tipo de paquete está repetido; envíe una sola línea por (servicio, tipo de paquete) con el total de piezas.» (400)**
+Dos líneas del Cotizador tienen el mismo servicio y paquete. Junte las piezas en una sola línea.
+
+**«La cantidad de piezas debe ser al menos 1.» / «El monto COD no puede ser negativo.» (400)**
+Corrija el campo marcado: piezas de 1 en adelante (enteras) y COD de 0 en adelante (o vacío).
+
+**El Cotizador dice que no hay contrato vigente.**
+En la fecha elegida el cliente no tenía contrato vigente: se cotiza con las tarifas genéricas de la compañía y sin cargo de despacho ni de COD. Para usar un contrato, actívelo en la pestaña **Contrato**.
+
+**¿Qué precios muestra el Cotizador y quién los ve?**
+Precios del **contrato** del cliente; los ve quien tiene `contracts.read`. El permiso de ver precios de las órdenes no cambia esto.
+
+
+## Lote F-F2 — Vistas e informes (2026-10-12)
+
+Pantalla: Análisis → **Vistas e informes**. Capítulo: [ff2-vistas.md](frontend/ff2-vistas.md). Servidor: [capítulo 01 §8](01-plataforma-y-seguridad.md).
+
+**«Ponle un nombre a la vista» / «Escoge al menos una columna»**
+Falta el nombre, o la vista no tiene ni columnas ni campo de agrupación. Complete lo que falta y vuelva a pulsar **Guardar vista**.
+
+**«La función Suma requiere un campo.» (también Promedio, Mínimo y Máximo)**
+Un agregado que no es **Cantidad** necesita un campo numérico. Elíjalo en esa fila de **Agregados**.
+
+**«Ya existe una vista '…' para ….» (409)**
+Otra vista de la misma fuente ya se llama así (puede ser una privada de otra persona que usted no ve). Use otro nombre. Desde el 2026-10-12 el nombre de una vista **eliminada** vuelve a quedar libre y renombrar a un nombre repetido da este mismo mensaje (antes daba «Error interno.»).
+
+**«Una vista necesita al menos una columna o una agrupación.» (400) / «El nombre es obligatorio.» (400) / «FilterJson no es JSON válido.» (400) / «La fuente … no se combina con '…'.» (400)**
+El servidor rechazó lo enviado. En la pantalla normal no deberían salir (la pantalla ya valida y solo ofrece combinaciones válidas); si salen, revise la sección indicada y guarde de nuevo.
+
+**«Los elementos por default de la plataforma no se editan ni se eliminan.» (403) / «Solo el dueño puede editar o eliminar este elemento.» (403)**
+Las vistas **Por defecto** no se tocan; para cambiarlas cree una vista propia. Las de otra persona solo las cambia quien las creó o quien recibió permiso de editar.
+
+**«Vista '…' no encontrado.» (404)**
+La vista se eliminó o dejó de estar compartida con usted. Vuelva a **Vistas**.
+
+**«Desde no puede ser mayor que Hasta.» / «El rango personalizado necesita Desde y Hasta.»**
+Complete o corrija las fechas del **Rango de fechas** de la vista abierta.
+
+**¿Por qué no veo el botón + ni Editar ni Eliminar?**
+Hace falta el permiso `analytics.manage`. Sin él puede abrir, buscar, ordenar y exportar.
+
+**¿Por qué no puedo elegir personas al compartir una vista?**
+Para listar a las personas hace falta el permiso `admin.users`; sin él puede compartir con **roles**.
+
+**¿Por qué el resultado se corta en 5000 filas?**
+Es el máximo que carga la pantalla. Acote la vista con filtros o con un rango de fechas; la exportación incluye solo lo cargado.
+
+**¿Se puede programar el envío de una vista por correo?**
+Todavía no (queda para una fase posterior). Hoy se abre y se exporta a mano.

@@ -610,8 +610,9 @@ controlador lo declara a nivel de clase); crear o editar exige `analytics.manage
 
 ### 8.1 Cómo funciona el motor
 
-Las fuentes de datos (`IDataSource`) se registran por módulo con una clave de `EntityType` (en el Lote 1:
-`AUDIT_LOG`, `SECURITY_EVENT`, `USER`). Cada fuente puede declarar un `DateField` (para poder filtrar por
+Las fuentes de datos (`IDataSource`) se registran por módulo con una clave de `EntityType` (hoy unas 26: `AUDIT_LOG`,
+`SECURITY_EVENT`, `USER`, `CLIENT`, `TRANSPORT_ORDER`, `TRIP`, `PRODUCT`, `STOCK_BALANCE`, `RENTAL`…; `GET /data-sources` devuelve solo las
+que el usuario puede leer: módulo encendido y permiso de ver ese módulo). Cada fuente puede declarar un `DateField` (para poder filtrar por
 rango de fechas) y relaciones hacia otras fuentes ("secundarias", para combinar muchos-a-uno, ej. traer
 `User.FullName` en una vista de `AUDIT_LOG`). Los filtros usan un **DSL propio** (no SQL) con operadores
 `eq, ne, gt, gte, lt, lte, contains, startsWith, endsWith, in, notIn, between, isNull, notNull, isTrue, isFalse`
@@ -652,6 +653,27 @@ Validaciones:
 | Editar/eliminar un elemento de sistema (`IsSystem`) | `Los elementos por default de la plataforma no se editan ni se eliminan.` | 403 |
 | Editar/eliminar sin ser dueño ni comparta con edición | `Solo el dueño puede editar o eliminar este elemento.` | 403 |
 | Compartir con usuario/rol que no es del tenant | `El usuario <id> no pertenece a esta compañía.` / `El rol <id> no pertenece a esta compañía.` | 400 |
+
+Formato de lo que guarda una vista (lo arma la pantalla **Vistas e informes**, manual de pantallas `frontend/ff2-vistas.md`):
+
+| Campo | Formato |
+|---|---|
+| `columns` | claves `"Campo"` (fuente principal), `"REL.Campo"` (fuente combinada; `REL` es la clave de la relación, p. ej. `Client.Name`) o `"cf.<clave>"` (campo personalizado de la fuente principal). Con agrupación puede ir vacío |
+| `secondary` | claves de relación de la fuente (`["Client"]`); solo las que `GET /data-sources` lista en `relations` |
+| `groupJson` | `{"by":["Campo",…],"aggregates":[{"fn":"COUNT"|"SUM"|"AVG"|"MIN"|"MAX","field":"Campo"}],"totals":true}`. `COUNT` puede ir sin `field`; las demás exigen un campo numérico (`La función SUM requiere un campo.` al correr la vista, no al guardarla). La columna de cada agregado se llama `<fn en minúsculas>_<campo>` (`count_rows` sin campo) |
+| `sortJson` | `[{"field":"Campo","dir":"asc"|"desc"}]`; con agrupación, el campo es de grupo o de agregado (`sum_TotalPieces`) |
+| `filterJson` | DSL de 16 operadores (el servidor no distingue mayúsculas en el operador: las vistas de sistema traen `notnull`) |
+| `/run` | cuerpo `{dateRangeMode,dateFrom,dateTo,skip,take}` (`take` 500 por omisión, máximo 5000); responde `{columns,rows,totals,total}`; `rows` trae además las demás columnas de la fuente (la pantalla solo usa las de `columns`) |
+
+Cambios del lote F-F2 (2026-10-12), hallados al construir la pantalla:
+
+| Caso | Antes | Ahora | HTTP |
+|---|---|---|---|
+| Crear una vista con el nombre de una **eliminada** (la baja es lógica y `UQ_ReportDefinition` también cuenta las dadas de baja) | `Error interno.` | se crea; la eliminada queda como `nombre (eliminada #id)` | 200 |
+| **Renombrar** una vista al nombre de otra activa de la misma fuente | `Error interno.` | `Ya existe una vista '<name>' para <source>.` | 409 |
+| `chartType` de una vista | se ignoraba (siempre null) | se guarda y se devuelve; uno desconocido da `Tipo de gráfico: BAR, DONUT o LINE.` | 200 / 400 |
+
+Precisiones: `ScheduleCron` y `DeliveryEmails` se guardan pero no hay ningún proceso que programe ni envíe (queda para la fase de entrega programada); el `PUT` reemplaza esos dos campos, así que quien edita por API debe reenviarlos. Las únicas rutas de exportación son las del navegador: no hay endpoint de exportación de vistas.
 
 ### 8.3 Indicadores
 
