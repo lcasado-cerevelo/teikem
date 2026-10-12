@@ -498,6 +498,9 @@ Quién puede: `trips.view`.
 
 Cómo se usa: `GET /api/v1/trips/monitor?date=&dispatchZoneId=&search=&includeCompleted=true` (sin `date` = hoy de la compañía)
 
+La pantalla de la web (Operación → **Monitoreo de ruta**, manual `frontend/fe3-monitoreo.md`) usa este endpoint con `includeCompleted=false` por omisión y lo refresca cada 30 segundos.
+Aclaraciones: `includeCompleted` es `true` por omisión en el API; los totales incluyen las rutas completadas solo si se piden; `approximateStops` cuenta las paradas **sin coordenada** además de las de pin aproximado; **hoy no existe un endpoint que escriba pings** (los envía la app del chofer, Lote 7), así que `lastPing` normalmente viene vacío y `tripsWithoutPing` es igual al total de rutas.
+
 Sin validaciones propias más allá de las compartidas (permiso y módulo). La ficha de cada ruta
 (`GET /api/v1/trips/{publicId}`) trae las coordenadas (`point`, ausente si la parada no tiene) y la precisión de cada parada; el front dibuja con ellas un plano esquemático (sin calles) en la Sala de despacho (manual de pantallas: `frontend/fe2a-despacho.md`).
 

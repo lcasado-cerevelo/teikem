@@ -7237,3 +7237,52 @@ Poner un pin no reordena la ruta. Si ya estaba optimizada, pulse **Optimizar** o
 **La parada con pin manual sigue diciendo «Ubicación aproximada».**
 No debería: al guardar el pin la marca pasa a **Pin manual**. Si la ve, actualice la pantalla; si sigue, avise a soporte.
 
+
+## Lote F-E3 — Monitoreo de ruta (2026-10-12)
+
+Manual de la pantalla: [fe3-monitoreo.md](frontend/fe3-monitoreo.md). Los datos vienen del monitor del capítulo [05](05-trips-y-rutas.md) (sección 9).
+
+**Todas las rutas dicen «Sin ping» y la insignia dice «Sin señal de choferes». ¿Está roto?**
+No. Todavía no hay app del chofer que envíe su ubicación, así que no hay pings que mostrar. Cuando esa app esté en uso, aparecerán solos el último ping, la insignia **EN VIVO**, el punto del chofer en el plano, la velocidad y el rumbo.
+
+**Las paradas siempre dicen «Pendiente» y el avance está en 0 %.**
+Es lo esperado hoy: quien marca una parada como en camino, entregada o fallida es la app del chofer, que todavía no está en uso. El avance sube solo cuando eso ocurra.
+
+**¿Por qué no se ve la señal GPS ni la batería del teléfono?**
+Porque el sistema todavía no recibe esos datos. Cuando los reciba se agregarán; por ahora la pantalla solo muestra lo que existe (velocidad, rumbo y último ping).
+
+**¿Qué significa EN VIVO?**
+Que al menos una de las rutas mostradas tiene un ping de hace menos de 2 minutos. Si ninguna lo tiene, la insignia dice **Sin señal de choferes**. Un ping de hace más de 2 minutos aparece como **Sin señal reciente**.
+
+**«No se pudo actualizar. Se muestra lo último que se recibió, a las {hora}; se volverá a intentar.»**
+Falló la consulta al servidor (conexión caída, servidor ocupado). Lo que ve es lo último que se recibió, con su hora; no se perdió nada. La pantalla reintenta sola cada 30 segundos; también puede pulsar **Actualizar**.
+
+**«No se pudieron cargar las rutas.»**
+La primera consulta falló y no hay nada que mostrar todavía. Pulse **Reintentar**; si sigue, revise la conexión o avise a soporte.
+
+**«No hay rutas para esta fecha».**
+Esa fecha no tiene rutas despachadas o en curso (las rutas en borrador o planificadas no se monitorean todavía). Cambie la fecha, active **Incluir completadas** si busca una ruta ya cerrada, o despache la ruta desde la **Sala de despacho**.
+
+**«Ninguna ruta coincide con la búsqueda.»**
+La búsqueda mira código de ruta, chofer, zona, vehículo y estatus. Borre el texto para ver todas.
+
+**Busqué y los números de arriba no cambiaron.**
+Es a propósito: los totales cuentan todas las rutas de la fecha y la zona; la búsqueda solo acorta la lista. (La tarjeta **Próxima en completar** sí usa las rutas que se están mostrando.)
+
+**¿Cada cuánto se actualiza? ¿Puedo detenerlo?**
+Cada 30 segundos mientras la pestaña esté a la vista y **Siguiendo en vivo** esté encendido. Apague ese interruptor para detenerlo (la pantalla lo recuerda en este navegador) y use **Actualizar** cuando quiera. Con la pestaña oculta no se consulta nada.
+
+**Una ruta con un ⚠ rojo.**
+La ruta tiene más paradas de las que admite su chofer. Cambie al chofer o reparta paradas desde la **Sala de despacho** (el enlace **Abrir en Sala de despacho** lo lleva a esa ruta).
+
+**«Sin pin exacto: N».**
+N paradas tienen un pin aproximado (centro del código postal o del pueblo) o todavía no tienen ubicación. En la Sala de despacho se les puede poner un pin manual mientras la ruta no se despache.
+
+**No veo el enlace «Abrir en Sala de despacho» ni el filtro de zona.**
+El enlace exige el permiso `trips.dispatch` y el filtro de zona exige `fleet.view` (con el módulo Catálogo). Pídalos a su administrador; sin ellos la pantalla sigue funcionando.
+
+**¿Puedo llamar al chofer desde aquí?**
+No: la pantalla no muestra teléfonos ni datos de contacto del chofer.
+
+**¿El plano es un mapa con calles?**
+No, es esquemático (igual que el de la Sala de despacho): muestra la posición relativa de las paradas y el punto del chofer, sin calles ni satélite.
