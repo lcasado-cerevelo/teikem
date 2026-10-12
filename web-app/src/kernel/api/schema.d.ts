@@ -3395,6 +3395,470 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/locations/import/fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ImportFieldDto"][];
+                        "application/json": components["schemas"]["ImportFieldDto"][];
+                        "text/json": components["schemas"]["ImportFieldDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/locations/import/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ConsigneeImportValidateRequest"];
+                    "text/json": components["schemas"]["ConsigneeImportValidateRequest"];
+                    "application/*+json": components["schemas"]["ConsigneeImportValidateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsigneeImportPreviewDto"];
+                        "application/json": components["schemas"]["ConsigneeImportPreviewDto"];
+                        "text/json": components["schemas"]["ConsigneeImportPreviewDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/locations/import/validate-file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: uuid */
+                        templatePublicId?: string;
+                        /** Format: uuid */
+                        clientPublicId?: string;
+                        /** Format: binary */
+                        file?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsigneeImportPreviewDto"];
+                        "application/json": components["schemas"]["ConsigneeImportPreviewDto"];
+                        "text/json": components["schemas"]["ConsigneeImportPreviewDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/locations/import/{batchPublicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    batchPublicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsigneeImportPreviewDto"];
+                        "application/json": components["schemas"]["ConsigneeImportPreviewDto"];
+                        "text/json": components["schemas"]["ConsigneeImportPreviewDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/locations/import/{batchPublicId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    batchPublicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ConsigneeImportConfirmRequest"];
+                    "text/json": components["schemas"]["ConsigneeImportConfirmRequest"];
+                    "application/*+json": components["schemas"]["ConsigneeImportConfirmRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsigneeImportResultDto"];
+                        "application/json": components["schemas"]["ConsigneeImportResultDto"];
+                        "text/json": components["schemas"]["ConsigneeImportResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/locations/import/{batchPublicId}/discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    batchPublicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsigneeImportPreviewDto"];
+                        "application/json": components["schemas"]["ConsigneeImportPreviewDto"];
+                        "text/json": components["schemas"]["ConsigneeImportPreviewDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/locations/import-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    clientId?: string;
+                    includeInactive?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ImportTemplateDto"][];
+                        "application/json": components["schemas"]["ImportTemplateDto"][];
+                        "text/json": components["schemas"]["ImportTemplateDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ImportTemplateCreateRequest"];
+                    "text/json": components["schemas"]["ImportTemplateCreateRequest"];
+                    "application/*+json": components["schemas"]["ImportTemplateCreateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ImportTemplateDto"];
+                        "application/json": components["schemas"]["ImportTemplateDto"];
+                        "text/json": components["schemas"]["ImportTemplateDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/locations/import-templates/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ImportTemplateDto"];
+                        "application/json": components["schemas"]["ImportTemplateDto"];
+                        "text/json": components["schemas"]["ImportTemplateDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ImportTemplatePatchRequest"];
+                    "text/json": components["schemas"]["ImportTemplatePatchRequest"];
+                    "application/*+json": components["schemas"]["ImportTemplatePatchRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ImportTemplateDto"];
+                        "application/json": components["schemas"]["ImportTemplateDto"];
+                        "text/json": components["schemas"]["ImportTemplateDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/locations/import-templates/{publicId}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ImportTemplateDto"];
+                        "application/json": components["schemas"]["ImportTemplateDto"];
+                        "text/json": components["schemas"]["ImportTemplateDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/locations/import-templates/{publicId}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ImportTemplateDto"];
+                        "application/json": components["schemas"]["ImportTemplateDto"];
+                        "text/json": components["schemas"]["ImportTemplateDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/contacts/{ownerEntity}/{ownerId}": {
         parameters: {
             query?: never;
@@ -19584,6 +20048,79 @@ export interface components {
             expiresAtUtc?: string;
             isCurrent?: boolean;
         };
+        ConsigneeImportConfirmRequest: {
+            rows?: number[] | null;
+        };
+        ConsigneeImportOwnerDto: {
+            /** Format: uuid */
+            clientPublicId?: string | null;
+            clientName?: string | null;
+            isShared?: boolean;
+        };
+        ConsigneeImportPreviewDto: {
+            /** Format: uuid */
+            batchPublicId?: string;
+            status?: string | null;
+            /** Format: uuid */
+            templatePublicId?: string;
+            templateName?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string | null;
+            clientName?: string | null;
+            fileName?: string | null;
+            /** Format: int32 */
+            rowCount?: number;
+            /** Format: int32 */
+            validRows?: number;
+            rows?: components["schemas"]["ConsigneeImportRowDto"][] | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            /** Format: date-time */
+            confirmedAtUtc?: string | null;
+            /** Format: int32 */
+            created?: number | null;
+            /** Format: int32 */
+            failed?: number | null;
+        };
+        ConsigneeImportResultDto: {
+            /** Format: uuid */
+            batchPublicId?: string;
+            status?: string | null;
+            /** Format: int32 */
+            created?: number;
+            /** Format: int32 */
+            failed?: number;
+            /** Format: int32 */
+            skipped?: number;
+            rows?: components["schemas"]["ConsigneeImportRowDto"][] | null;
+        };
+        ConsigneeImportRowDto: {
+            /** Format: int32 */
+            row?: number;
+            /** Format: int32 */
+            line?: number;
+            values?: {
+                [key: string]: string;
+            } | null;
+            owner?: components["schemas"]["ConsigneeImportOwnerDto"];
+            errors?: {
+                [key: string]: string;
+            } | null;
+            warnings?: string[] | null;
+            isValid?: boolean;
+            /** Format: uuid */
+            locationPublicId?: string | null;
+            error?: string | null;
+            skipped?: boolean;
+        };
+        ConsigneeImportValidateRequest: {
+            /** Format: uuid */
+            templatePublicId?: string;
+            /** Format: uuid */
+            clientPublicId?: string | null;
+            content?: string | null;
+            fileName?: string | null;
+        };
         ContactPointDto: {
             /** Format: int32 */
             id?: number;
@@ -21038,6 +21575,11 @@ export interface components {
             name?: string | null;
             /** Format: uuid */
             locationPublicId?: string | null;
+        };
+        ImportFieldDto: {
+            field?: string | null;
+            required?: boolean;
+            defaultAllowed?: boolean;
         };
         ImportPreviewDto: {
             /** Format: uuid */
