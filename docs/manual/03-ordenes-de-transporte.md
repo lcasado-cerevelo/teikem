@@ -482,6 +482,7 @@ Quién puede: `orders.edit`.
 
 Cómo se usa:
 - `GET /api/v1/import-templates?kind=ORDER&clientId=&includeInactive=false`
+- `GET /api/v1/import-templates/fields` (Lote 40): catálogo de campos para el editor de plantillas, `[{ field, required, defaultAllowed }]`; `required` es siempre `false` (las reglas son de grupo: consignatario y paquete) y `defaultAllowed` es `false` para `orderNumber`, `clientInvoiceNumber` y `consigneeName` (identifican cada fila; es una guía para la pantalla, el servidor no los rechaza). Mismo permiso y módulo que el resto de las plantillas.
 - `POST /api/v1/import-templates` `{ "name": "Plantilla estándar", "columns": [ {"position":1,"field":"consigneeName"}, {"position":2,"field":"line1"}, {"position":3,"field":"city"}, {"position":4,"field":"pieces"} ], "defaults": {"serviceType":"STANDARD","packageType":"BOX"}, "delimiter": ",", "hasHeader": true }`
 - `GET /api/v1/import-templates/{publicId}` · `PATCH /api/v1/import-templates/{publicId}`
 - `POST /api/v1/import-templates/{publicId}/deactivate` / `.../reactivate`
@@ -493,7 +494,7 @@ Cómo se usa:
 | Posición repetida | `La posición N está repetida.` | 400 |
 | Campo desconocido | `Campo desconocido: X.` | 400 |
 | Campo repetido | `El campo X está repetido.` | 400 |
-| Sin `consigneeName` ni `consigneeCode` (columna o default) | `La plantilla debe incluir consigneeName o consigneeCode.` (campo `columns`) | 400 |
+| Sin `consigneeName` ni `consigneeCode` (columna o default; desde el Lote 40 un default cuenta, como siempre dijo este manual) | `La plantilla debe incluir consigneeName o consigneeCode.` (campo `columns`) | 400 |
 | Sin `packageType`/`pieces` (columna o default) | `La plantilla debe indicar el paquete: packageType o pieces, en una columna o en defaults.` (campo `columns`) | 400 |
 | Nombre repetido (tenant + tipo) | `Ya existe una plantilla de importación con ese nombre.` | 409 |
 | Delimitador inválido | `El delimitador debe ser un solo carácter (p. ej. ',' o ';'), distinto de comilla y salto de línea.` | 400 |

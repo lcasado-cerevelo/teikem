@@ -263,6 +263,9 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
 20. [F-C2 — Órdenes: el expediente de la orden](frontend/fc2-ordenes-expediente.md): al abrir una orden: **Detalle** que se edita ahí mismo, **Confirmar** (con crédito excedido), **Re-cotizar**,
    **Cancelar la orden**, **Eliminar la orden**, estatus laterales (En espera, Parcial, Fallida) y su regreso, **Asignar chofer** a una entrega especial, **Cotizar** (vista previa), COD, campos
    personalizados y contactos. Capturas `fc2-*`.
+21. [F-C3 — Órdenes: entrada rápida e importación desde CSV](frontend/fc3-ordenes-rapida-importacion.md): el interruptor **Rápida / Detallada** de **Nueva orden**, la rejilla de captura
+   (Enter guarda una orden por fila) y **Importar**: plantillas, vista previa del archivo, casillas **Confirmar las órdenes al importar**, **Autorizar crédito excedido** y **Aceptar facturas repetidas**,
+   **Descartar archivo** y resultado. Capturas `fc3-*`.
 
 ## Preguntas frecuentes
 

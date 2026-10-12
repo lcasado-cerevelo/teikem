@@ -6720,3 +6720,68 @@ La compañía no definió campos personalizados para las órdenes (o el módulo 
 
 **¿Por qué no hay botones de etiqueta ni de comprobante de entrega (POD)?**
 Todavía no están en la web; llegarán en otra entrega.
+
+## Lote F-C3 — Entrada rápida e importación de órdenes (2026-10-12)
+
+**¿Qué diferencia hay entre «Rápida» y «Detallada»?**
+La **Rápida** es una rejilla donde cada fila es una orden de 1 paquete y 1 pieza, para capturar muchas seguidas con Tab y Enter. La **Detallada** es un formulario para una orden con varios paquetes, fechas, factura o entrega especial. La pantalla recuerda la última que usó.
+
+**Guardé una orden en la Rápida y quedó en Borrador. ¿Cómo la confirmo?**
+La Rápida solo guarda borradores, sin cotizar. Ábrala desde la lista (flecha **Abrir la orden**) y pulse **Confirmar**; o use **Guardar y confirmar** en la entrada Detallada.
+
+**¿Por qué el N.º de orden dice «(automático)» y no puedo escribir?**
+Porque Teikem asigna ese número para ese cliente. Solo se puede escribir si en la ficha del cliente se activó que el cliente asigna sus propios números de orden.
+
+**Pulsé Enter y no se guardó la fila.**
+Si la lista de consignatarios estaba abierta, ese Enter eligió el consignatario. Pulse Enter otra vez. Si hay un mensaje en rojo debajo de un campo, corríjalo: lo que escribió no se pierde.
+
+**«El tipo de paquete es obligatorio.» / «El tipo de servicio es obligatorio.» en la entrada rápida.**
+La compañía no tiene un paquete o un servicio predeterminado. Elíjalos en la fila; el servicio se conserva en las filas siguientes.
+
+**«El cliente está suspendido; no se pueden crear ni confirmar órdenes.»**
+Ese cliente no puede recibir órdenes por ahora. Lo capturado queda en la fila; elija otro cliente o espere a que lo reactiven.
+
+**Se cortó la conexión mientras guardaba. ¿Se duplicó la orden?**
+No. Pulse Enter de nuevo: se reintenta con la misma clave y el servidor no crea una segunda orden. Revise la lista si tiene dudas.
+
+**No veo el botón «Importar».**
+Necesita el permiso `orders.create`. Para elegir o crear plantillas necesita además `orders.edit`.
+
+**No puedo escoger el archivo CSV.**
+El selector de archivo se habilita cuando hay una plantilla activa **y** un cliente elegido. Cree la plantilla (por ejemplo **Crear «Formato estándar»**) y elija el cliente.
+
+**Los acentos y la ñ salen dañados en la vista previa.**
+El archivo no está en UTF-8. En Excel use «Guardar como → CSV UTF-8».
+
+**«El archivo supera el límite de 5.000 filas o 2 MB.»**
+Divida el archivo en partes más pequeñas.
+
+**«La plantilla debe incluir consigneeName o consigneeCode.» / «La plantilla debe indicar el paquete: packageType o pieces, en una columna o en defaults.»**
+La plantilla necesita decir dónde está el consignatario (nombre o número) y el paquete (tipo o piezas), en una columna o como valor por defecto.
+
+**«Ya existe una plantilla de importación con ese nombre.»**
+Use otro nombre, o edite la que ya existe con **Editar**.
+
+**¿Cómo borro una plantilla?**
+No se borran: use **Desactivar esta plantilla**. Con **Mostrar plantillas inactivas** puede **Reactivar** una.
+
+**En la vista previa dice «Se creará: …» en el consignatario. ¿Qué significa?**
+Que ese consignatario no está en el directorio del cliente ni entre los compartidos; al importar se crea con los datos del archivo. Si ya existía con otro nombre o dirección, corríjalo en el archivo.
+
+**Una fila dice «Con errores». ¿Se importa?**
+No. Las filas con errores se omiten y las demás sí se importan. Corrija el archivo y vuelva a importar solo esas filas.
+
+**¿Para qué sirve «Confirmar las órdenes al importar»?**
+Para que cada orden se cotice, revise el crédito del cliente y quede confirmada. Sin marcarla, quedan en Borrador.
+
+**No veo «Autorizar crédito excedido».**
+Necesita el permiso `orders.credit_override`, y solo se puede marcar junto con **Confirmar las órdenes al importar**.
+
+**En el resultado una fila dice «El cliente excede su límite de crédito.»**
+Esa orden no se creó; las demás sí. Pida a quien tenga `orders.credit_override` que importe con **Autorizar crédito excedido**, o importe sin confirmar.
+
+**«El lote ya fue confirmado; valide un archivo nuevo para importar más órdenes.»**
+Ese archivo ya se importó (por ejemplo, desde otra ventana). Vea la lista de Órdenes antes de volver a importarlo.
+
+**¿Qué hace «Descartar archivo»?**
+Borra la revisión sin crear ninguna orden y le deja escoger otro archivo.
