@@ -10,6 +10,7 @@ Una compañía tiene una o más **localidades** (almacén, oficina). Cada una sa
 - **Acciones sensibles**: el filtro `[RequireAal2]` ([Policies.cs:95](../src/Teikem.Api/Auth/Policies.cs)) exige una reautenticación (contraseña **+ código MFA** si el usuario tiene TOTP) dentro de `Tenant.Aal2WindowMinutes`. Lo usan roles, permisos de usuario, MFA de otros usuarios, contraseñas temporales, módulos de la compañía, etc.
 - La IP del cliente ya se toma de `HttpContext.Connection.RemoteIpAddress` (`TenantContextMiddleware`); **no** se usan cabeceras `X-Forwarded-For` ni hay proxy delante (IIS en proceso).
 - Bitácora: `SecurityEvent` (tipos `LOGIN`, `MFA`, `REAUTH`, …; guarda IP y User-Agent).
+- **Recuperar la contraseña por correo** (`POST /auth/forgot-password` y `POST /auth/reset-password`, `AuthService.Password.cs`): hoy el enlace del correo (un solo uso, vence en minutos) **basta** para poner la contraseña nueva; **no pide código MFA** en ese paso (el código se pide después, al iniciar sesión). Al terminar cierra todas las sesiones y levanta el bloqueo por intentos.
 - La app del aparato (Zebra) no usa MFA (registro del aparato + PIN) y el portal de clientes tiene su propio ingreso: **no cambian**.
 
 **Consecuencia clave:** como una sesión sin MFA nace con `aal2At = null`, **las acciones `[RequireAal2]` ya piden el código solas**. El requisito «un admin que asigne permisos sí debe dar MFA» se cumple sin tocar esos endpoints.
@@ -38,6 +39,24 @@ En orden; la primera que aplica gana:
 Es decir: para que alguien entre sin código desde la localidad, **la compañía puede seguir exigiendo MFA** y a esa persona simplemente **no** se le pone la marca individual. Quien tenga la marca individual la tiene «siempre», incluso en la red preferida (la regla 2). La regla 3 es otra cosa: si la persona **nunca inscribió** su MFA, primero tiene que inscribirlo (una sola vez); desde ahí ya aplican las filas de la tabla.
 - La regla 3 evita que alguien entre siempre desde la oficina sin haber inscrito nunca su MFA: sin TOTP no podría pasar luego una acción sensible.
 - Efecto fuera de la localidad: igual que hoy, pide el código.
+
+### 3.1 Recuperar la contraseña por correo: siempre exige MFA, sin excepción por IP preferida (decidido por Luis, 2026-10-12)
+La IP preferida **solo** relaja el segundo paso del **inicio de sesión**. **Nunca** aplica al restablecimiento de contraseña por correo: ese flujo es anónimo (se llega con el enlace del correo) y, sin esta regla, quien tuviera acceso al correo de alguien y estuviera dentro de la red preferida podría cambiar la contraseña y entrar sin código.
+
+**Regla:** al **poner la contraseña nueva con el enlace** (`reset-password`) se pide además un **código MFA** (TOTP o código de recuperación) cuando **cualquiera** de estas es cierta:
+- la persona **tiene un TOTP confirmado**, o
+- la **compañía exige MFA** (`Tenant.MfaRequired`) en alguna de sus membresías activas, o
+- alguna de sus membresías tiene la marca individual «siempre MFA».
+
+(La recuperación no está atada a una compañía; si la persona pertenece a varias, basta que una lo exija.) Un administrador de plataforma siempre lo cumple si tiene TOTP.
+
+**Cómo funciona:**
+1. `forgot-password` no cambia: sigue sin pedir nada y responde igual exista o no el correo (sin enumerar usuarios).
+2. En `reset-password`, si hace falta el código y no viene (o es inválido), el servidor responde un error específico (`mfa_required` / «Código MFA inválido») **sin gastar el enlace**: el enlace sigue siendo de un solo uso y solo se consume cuando todo es correcto. La página de restablecimiento muestra entonces el campo «Código MFA» y reenvía.
+3. Los códigos MFA fallidos **cuentan para el bloqueo de la cuenta** (5 fallos → 15 min, igual que en el login), están limitados por el mismo límite de tasa que ya protege estos endpoints y quedan en la bitácora de seguridad (`PASSWORD_CHANGE`, etapa `reset_link`, con `mfa: verified` o `mfa_failed`).
+4. Al terminar sigue igual: se cierran todas las sesiones y se levanta el bloqueo. Después, el inicio de sesión aplica las reglas normales de la sección 3 (aquí sí puede aplicar la IP preferida, porque ya se demostró el MFA en el restablecimiento).
+
+**Caso sin MFA inscrito:** si la persona **nunca inscribió** su MFA (no hay TOTP que verificar), el código no se puede pedir; el enlace del correo sigue siendo el único factor, igual que en el primer ingreso (invitación por correo), y en el siguiente inicio de sesión se le exige inscribirlo (regla 3). Es un límite conocido: para cuentas todavía sin MFA la seguridad descansa en el correo.
 
 ## 4. Datos
 Tabla nueva **`TenantTrustedNetwork`** (por compañía, `ITenantScoped`, con auditoría como el resto de las entidades):
@@ -90,17 +109,19 @@ El archivo de estructura/seed están congelados: la tabla va como sección nueva
 | Se roba una sesión sin MFA | La sesión sin MFA no pasa las acciones `[RequireAal2]`; fuera de la localidad el código sigue pidiéndose en un login nuevo |
 | Entrar sin haber inscrito nunca el MFA | Regla 3 (inscripción obligatoria) |
 | Cuentas privilegiadas | Regla 1 (admin de plataforma siempre MFA) y regla 2 (marca individual «siempre MFA») |
+| Cambiar la contraseña con solo el correo (sobre todo estando en la red preferida) | La recuperación por correo exige el código MFA cuando la persona o la compañía lo requieren, **sin excepción por IP preferida** (sección 3.1) |
 
 ## 8. Piezas a construir (cuando se apruebe)
 1. **Base de datos:** sección nueva en `logistica-db-update.sql` (tabla + índice por compañía + columna `Tenant.TrustedNetworkMaxEntries`, nula).
 2. **Dominio/infraestructura:** entidad, configuración EF, `TrustedNetworkService` (CRUD con validaciones y auditoría) y el **método único** `IsTrustedNetwork(tenantId, ip)` (lógica de CIDR pura, con pruebas).
 3. **Login:** una sola llamada a ese método en `AuthService.LoginAsync`, en el punto de la sección 3; el resto de `AuthService` no se toca (minimiza choques con `master`).
+3b. **Recuperación de contraseña con MFA (sección 3.1):** en `AuthService.Password.cs` (`ResetPasswordWithLinkAsync`): decidir si hace falta el código, verificarlo sin consumir el enlace, contar los fallos para el bloqueo, bitácora; el contrato de `reset-password` agrega un campo opcional `mfaCode`; en la web, el campo «Código MFA» en la página de restablecimiento. **Es independiente del resto**: no depende del interruptor global ni de la lista de IPs, y puede ir en su propio commit y entregarse primero.
 4. **API:** controlador de la lista (`admin.tenant` + `[RequireAal2]`) y `GET` de «mi IP»; contrato en `openapi.json` + `schema.d.ts`.
 5. **Web:** panel «Seguridad» con la lista y la ayuda de la sección 5 (IP actual, tipo de entrada, vista previa de CIDR, avisos, «Probar una IP»); lógica de CIDR compartida y probada; textos es/en.
 5a. **Recuadro de confirmación** «solo red interna» (campo obligatorio en el alta, constancia en la entrada y en el evento de bitácora).
 5b. **Correo:** plantilla es/en del aviso de cambio de la lista y su envío por el servicio de correo existente.
 6. **Tipos de evento** de seguridad y filtro en la bitácora.
-7. **Pruebas:** CIDR (IPv4/IPv6/mapeada/rangos prohibidos y normalización), matriz de login (las 5 reglas y la tabla de combinaciones de la sección 3), que `[RequireAal2]` siga exigiendo MFA tras un ingreso por IP, bloqueo de cuenta intacto, tope por compañía (con valor, vacío = sin tope, bajarlo por debajo de lo que ya hay), vencimiento en blanco vs. con fecha, correo de aviso, y que con el interruptor apagado nada cambia.
+7. **Pruebas:** recuperación de contraseña (con TOTP / compañía que exige MFA / marca individual: sin código no cambia y el enlace sigue vigente; con código correcto cambia; código incorrecto suma al bloqueo; código de recuperación vale; sin MFA inscrito pasa solo con el enlace; desde la IP preferida **no** se exime); CIDR (IPv4/IPv6/mapeada/rangos prohibidos y normalización), matriz de login (las 5 reglas y la tabla de combinaciones de la sección 3), que `[RequireAal2]` siga exigiendo MFA tras un ingreso por IP, bloqueo de cuenta intacto, tope por compañía (con valor, vacío = sin tope, bajarlo por debajo de lo que ya hay), vencimiento en blanco vs. con fecha, correo de aviso, y que con el interruptor apagado nada cambia.
 8. **Manual y decisiones:** capítulo de seguridad + FAQ + este documento pasa a «decisiones».
 
 ## 9. Ramas (para no dañar `master`)
@@ -117,6 +138,7 @@ Plan: hacerlo en **`Depot-Implementation`** (producción corre de ahí) como **c
 5. La IP de la localidad es **fija** (ya la usan para otro servicio, un IPsec en AWS que expone una impresora a una localidad externa).
 6. **Máximo de entradas por compañía: un ajuste de cada compañía** (no fijo en el código ni en el servidor); vacío = sin tope.
 7. **Sin IPsec / VPN:** queda descartado para esto; el diseño es solo «red preferida» por IP o rango público.
+8. **Recuperar la contraseña por correo exige MFA** cuando la compañía (o la persona) lo requiere, **indistintamente de la IP preferida** (sección 3.1).
 
 **Cerrada:** la localidad **no tiene red Wi-Fi de invitados**, así que todo equipo que salga por el firewall de la localidad (cable o Wi-Fi) entra sin código; la contraseña sigue siendo obligatoria. Si algún día se agrega una red de invitados que salga por el mismo firewall, habría que separarla **a nivel de red** (otra salida o IP): el sistema solo ve la IP pública y no puede distinguir una red Wi-Fi de otra.
 
