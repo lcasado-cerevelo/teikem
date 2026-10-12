@@ -109,6 +109,8 @@ describe('menú completo (routes.tsx)', () => {
   })
 
   it('los ítems sin pantalla usan la pantalla pendiente; los que ya existen no', () => {
+    expect(byPath('/analytics/reports').pending).toBeUndefined() // Lote F-F2
+    expect(byPath('/analytics/reports')).toMatchObject({ perm: 'analytics.view', module: 'ANALYTICS', nav: { group: 'analytics', key: 'reports', order: 10 } })
     expect(byPath('/analytics/custom-fields').pending).toBeUndefined() // Lote F-F1
     expect(byPath('/analytics/custom-fields')).toMatchObject({ perm: 'admin.customfields', module: 'CUSTOM_FIELDS', nav: { group: 'analytics', key: 'customFields', order: 20 } })
     expect(byPath('/ops/monitor').pending).toBeUndefined() // Lote F-E3

@@ -11,15 +11,16 @@ import { useContract } from './contractApi'
 import { ContractCreateModal } from './ContractCreateModal'
 import { ContractRatesTab } from './ContractRatesTab'
 import { ContractSlaTab } from './ContractSlaTab'
+import { ContractQuoteTab } from './ContractQuoteTab'
 import { ContractSpecialTab } from './ContractSpecialTab'
 import { ContractTab } from './ContractTab'
 import { contractLabel, defaultContractId } from './contractRules'
 import type { ClientDetail } from './clientRules'
 
-type TabKey = 'contract' | 'rates' | 'sla' | 'special'
+type TabKey = 'contract' | 'rates' | 'sla' | 'special' | 'quote'
 
 /** Lo que muestra cada pestaña que trabaja sobre UN contrato (Contrato, Tarifas, SLA): carga su ficha y la pasa. */
-function ContractBody({ tab, contractId, clientPublicId }: { tab: Exclude<TabKey, 'special'>; contractId: string; clientPublicId: string }) {
+function ContractBody({ tab, contractId, clientPublicId }: { tab: Exclude<TabKey, 'special' | 'quote'>; contractId: string; clientPublicId: string }) {
   const { data: contract, isPending, error } = useContract(contractId)
   if (isPending) return <Spinner block />
   if (error || !contract) return <EmptyState icon={<IconDoc />} title={applyProblemDetails(error).title} />
@@ -56,6 +57,7 @@ export function ClientContractsSection({ client }: { client: ClientDetail }) {
     { key: 'rates', label: t('clients.contracts.tabs.rates') },
     { key: 'sla', label: t('clients.contracts.tabs.sla') },
     { key: 'special', label: t('clients.contracts.tabs.special') },
+    { key: 'quote', label: t('clients.contracts.tabs.quote') },
   ]
 
   return (
@@ -76,7 +78,9 @@ export function ClientContractsSection({ client }: { client: ClientDetail }) {
       </p>
       <Tabs tabs={tabs} value={tab} onChange={(k: TabKey) => setTab(k)} label={t('clients.contracts.tabsLabel')} />
 
-      {tab === 'special' ? (
+      {tab === 'quote' ? (
+        <ContractQuoteTab client={client} />
+      ) : tab === 'special' ? (
         <ContractSpecialTab client={client} />
       ) : !contractId ? (
         <EmptyState icon={<IconDoc />} title={t('clients.contracts.empty')} />

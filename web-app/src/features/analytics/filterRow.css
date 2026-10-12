@@ -1,0 +1,11 @@
+/* Fila de filtro «campo · operador · valor · quitar» (Indicadores, Gráficos y Vistas): cuatro columnas en escritorio, el botón
+   de quitar al final del renglón; una columna bajo 720 px con el botón a la derecha del último control. */
+.fr-row{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1.3fr) auto;gap:11px;align-items:end}
+.fr-row .f{margin-bottom:13px}
+.fr-row>.btn{margin-bottom:13px}
+@media (max-width:720px){
+  .fr-row{grid-template-columns:minmax(0,1fr) auto}
+  .fr-row>.f:nth-child(1),.fr-row>.f:nth-child(2){grid-column:1 / -1}
+  .fr-row>.f:nth-child(3){grid-column:1}
+  .fr-row>.btn{grid-column:2}
+}

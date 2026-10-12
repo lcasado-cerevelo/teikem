@@ -183,7 +183,9 @@ test.describe('Monitoreo de ruta (Lote F-E3)', () => {
     }
     const beforeOpt = await detailOf(idA)
     await ok(request.post(`${API_URL}/api/v1/trips/${idA}/optimize`, { headers, data: { rowVersion: beforeOpt.rowVersion } }), 'optimizar')
-    await ok(request.post(`${API_URL}/api/v1/trips/dispatch`, { headers, data: { tripPublicIds: [idA, idB] } }), 'despachar')
+    // el lote responde 200 aunque una ruta no se despache: se comprueba cada una y, si falla, se muestra el motivo del servidor
+    const batch = await ok<{ items?: Array<{ code?: string | null; dispatched?: boolean; error?: string | null }> }>(request.post(`${API_URL}/api/v1/trips/dispatch`, { headers, data: { tripPublicIds: [idA, idB] } }), 'despachar')
+    expect(batch.items?.every((i) => i.dispatched), `despacho en lote: ${JSON.stringify(batch.items)}`).toBeTruthy()
     const beforeStart = await detailOf(idA)
     await ok(request.post(`${API_URL}/api/v1/trips/${idA}/start`, { headers, data: { rowVersion: beforeStart.rowVersion } }), 'iniciar la ruta A')
     const stopsA = (await detailOf(idA)).stops ?? []

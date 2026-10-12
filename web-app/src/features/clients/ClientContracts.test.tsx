@@ -173,10 +173,10 @@ beforeEach(() => {
 })
 
 describe('Contratos — sección y permisos', () => {
-  it('muestra las cuatro pestañas y el selector con el contrato vigente elegido', async () => {
+  it('muestra las cinco pestañas y el selector con el contrato vigente elegido', async () => {
     wrap(READ)
     const tabs = await screen.findAllByRole('tab')
-    expect(tabs.map((t) => t.textContent)).toEqual(['Contrato', 'Tarifas', 'SLA', 'Servicios especiales'])
+    expect(tabs.map((t) => t.textContent)).toEqual(['Contrato', 'Tarifas', 'SLA', 'Servicios especiales', 'Cotizador'])
     const select = screen.getByLabelText('Contrato') as HTMLSelectElement
     expect(select.value).toBe('k-1')
     expect(within(select).getByRole('option', { name: /ACME-C1 · Contrato marco — Activo \(contrato vigente\)/ })).toBeInTheDocument()

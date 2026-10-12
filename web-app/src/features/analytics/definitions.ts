@@ -133,6 +133,15 @@ export function serializeFilterRows(rows: readonly FilterRow[]): string | null {
   return conditions.length === 0 ? null : JSON.stringify({ and: conditions })
 }
 
+/**
+ * Operador con la forma canónica del editor: el DSL del servidor no distingue mayúsculas (las vistas de sistema traen
+ * `notnull`), pero el selector del editor solo conoce `notNull`, `startsWith`…; sin esto la fila se vería sin operador.
+ */
+export function normalizeFilterOp(op: string): FilterOp {
+  const found = FILTER_OPS.find((o) => o.toLowerCase() === op.toLowerCase())
+  return (found ?? op) as FilterOp
+}
+
 function isPlainAnd(v: unknown): v is { and: unknown[] } {
   return !!v && typeof v === 'object' && Array.isArray((v as Record<string, unknown>).and)
 }
@@ -157,7 +166,7 @@ function tryParseFilterRows(json: string | null | undefined): FilterRow[] | null
     if (!node || typeof node !== 'object') return null
     const n = node as Record<string, unknown>
     if (typeof n.field !== 'string') return null
-    const op = (typeof n.op === 'string' ? n.op : 'eq') as FilterOp
+    const op = normalizeFilterOp(typeof n.op === 'string' ? n.op : 'eq')
     if (NO_VALUE_OPS.has(op)) {
       rows.push({ field: n.field, op, value: '', value2: '' })
     } else if (RANGE_OPS.has(op) && Array.isArray(n.value) && n.value.length === 2) {

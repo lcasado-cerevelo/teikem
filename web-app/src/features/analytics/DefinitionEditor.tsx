@@ -20,6 +20,7 @@ import { SearchMultiSelect } from '../../kernel/ui/SearchSelect'
 import { toast } from '../../kernel/ui/toast'
 import { useRoles } from '../system/api'
 import { ChartPreview } from './ChartPreviewPanel'
+import { FilterRowEditor } from './FilterRowEditor'
 import {
   useAnalyticsShareUsers,
   useDataSources,
@@ -32,17 +33,12 @@ import {
   buildIndicatorRequest,
   CUSTOM_RANGE,
   definitionToFormValues,
-  FILTER_OPS,
-  LIST_OPS,
-  NO_VALUE_OPS,
-  RANGE_OPS,
   blankFilterRow,
   filterIsUnrepresentable,
   parseFilterRows,
   serializeFilterRows,
   sourceFieldOptions,
   type DataSource,
-  type FilterOp,
   type FilterRow,
   type ShareDto,
 } from './definitions'
@@ -358,62 +354,5 @@ export function DefinitionEditor({ kind, definition, onClose }: DefinitionEditor
         )}
       </Form>
     </Modal>
-  )
-}
-
-function FilterRowEditor({
-  row,
-  fields,
-  onChange,
-  onRemove,
-}: {
-  row: FilterRow
-  fields: { key?: string | null; label?: string | null }[]
-  onChange: (patch: Partial<FilterRow>) => void
-  onRemove: () => void
-}) {
-  const t = useT()
-  const showValue = !NO_VALUE_OPS.has(row.op)
-  const showSecondValue = RANGE_OPS.has(row.op)
-  return (
-    <div className="r3" style={{ alignItems: 'end' }}>
-      <div className="f">
-        <label>{t('analytics.editor.filterField')}</label>
-        <select value={row.field} onChange={(e) => onChange({ field: e.target.value })}>
-          {fields.map((f) => (
-            <option key={f.key} value={f.key ?? ''}>
-              {f.label ?? f.key}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="f">
-        <label>{t('analytics.editor.filterOp')}</label>
-        <select value={row.op} onChange={(e) => onChange({ op: e.target.value as FilterOp })}>
-          {FILTER_OPS.map((op) => (
-            <option key={op} value={op}>
-              {t(`analytics.editor.filterOps.${op}`)}
-            </option>
-          ))}
-        </select>
-      </div>
-      {showValue && (
-        <div className="f">
-          <label>{t('analytics.editor.filterValue')}</label>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <input
-              style={{ minWidth: 0, flex: 1 }}
-              value={row.value}
-              onChange={(e) => onChange({ value: e.target.value })}
-              placeholder={LIST_OPS.has(row.op) ? t('analytics.editor.filterValueListPh') : undefined}
-            />
-            {showSecondValue && <input style={{ minWidth: 0, flex: 1 }} value={row.value2} onChange={(e) => onChange({ value2: e.target.value })} />}
-          </div>
-        </div>
-      )}
-      <button type="button" className="btn sm" onClick={onRemove} aria-label={t('analytics.editor.removeFilter')}>
-        ✕
-      </button>
-    </div>
   )
 }

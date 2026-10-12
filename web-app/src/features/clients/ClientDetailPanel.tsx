@@ -13,6 +13,7 @@ import { ClientContactPointsPanel } from './ClientContactPointsPanel'
 import { ClientContractsSection } from './ClientContractsSection'
 import { ClientCustomFieldsPanel } from './ClientCustomFieldsPanel'
 import { ClientNumberingPanel } from './ClientNumberingPanel'
+import { ClientPortalPanel } from './ClientPortalPanel'
 import { ClientPeoplePanel } from './ClientPeoplePanel'
 import { ClientProfilePanel } from './ClientProfilePanel'
 import { CLIENT_ENTITY_TYPE, CLIENT_STATUS_DOMAIN, type ClientDetail } from './clientRules'
@@ -109,6 +110,7 @@ export function ClientDetailPanel({ publicId }: { publicId: string }) {
       <ClientNumberingPanel client={client} />
       <ClientCustomFieldsPanel client={client} />
       <ClientContractsSection key={client.publicId} client={client} />
+      <ClientPortalPanel key={`portal-${client.publicId}`} client={client} />
       <Panel icon={<IconClock />} title={t('status.history')}>
         <StatusHistory entityType={CLIENT_ENTITY_TYPE} entityId={client.id} domain={CLIENT_STATUS_DOMAIN} />
       </Panel>

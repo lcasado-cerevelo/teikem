@@ -374,7 +374,7 @@ export const appRoutes: readonly AppRoute[] = [
   { path: '/catalog/fleet', element: lazy(() => import('../features/fleet/FleetScreen')), perm: 'fleet.view', module: ModuleKeys.Catalog, nav: { group: 'catalog', key: 'fleet', order: 40 } },
 
   // ===== Análisis (F8b; Indicadores y Gráficos: F8a P3) =====
-  pending({ path: '/analytics/reports', perm: 'analytics.view', module: ModuleKeys.Analytics, nav: { group: 'analytics', key: 'reports', order: 10 } }),
+  { path: '/analytics/reports', element: lazy(() => import('../features/analytics/ReportsScreen')), perm: 'analytics.view', module: ModuleKeys.Analytics, nav: { group: 'analytics', key: 'reports', order: 10 } },
   { path: '/analytics/custom-fields', element: lazy(() => import('../features/customfields/CustomFieldsAdminScreen')), perm: 'admin.customfields', module: ModuleKeys.CustomFields, nav: { group: 'analytics', key: 'customFields', order: 20 } },
   { path: '/analytics/indicators', element: lazy(() => import('../features/analytics/IndicatorsPage')), perm: 'analytics.view', module: ModuleKeys.Analytics, nav: { group: 'analytics', key: 'indicators', order: 30 } },
   { path: '/analytics/charts', element: lazy(() => import('../features/analytics/ChartsPage')), perm: 'analytics.view', module: ModuleKeys.Analytics, nav: { group: 'analytics', key: 'charts', order: 40 } },

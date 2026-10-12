@@ -207,7 +207,7 @@ test.describe('Clientes y contratos (F-A1 + F-A2)', () => {
     await page.goto(`/catalog/clients?client=${clientId}`)
     const section = panel(page, 'Contratos')
     await expect(section).toBeVisible()
-    await expect(section.getByRole('tab')).toHaveText(['Contrato', 'Tarifas', 'SLA', 'Servicios especiales'])
+    await expect(section.getByRole('tab')).toHaveText(['Contrato', 'Tarifas', 'SLA', 'Servicios especiales', 'Cotizador'])
     await expect(section.getByLabel('Contrato', { exact: true })).toHaveValue(contractId)
 
     // ================= Pestaña Contrato =================

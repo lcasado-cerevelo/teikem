@@ -2,10 +2,10 @@
 // `POST /analytics/reports/{id}/run`; los totales de una vista agrupada van en una franja `SummaryBar` bajo la tabla). Ordenable
 // por columna en el cliente, paginada, tarjetas bajo 720 px y Exportar como toda tabla del kit. No recalcula nada.
 import { useMemo } from 'react'
-import { useFormat } from '../../kernel/format/useFormat'
 import { useT } from '../../kernel/i18n'
 import { DataTable, EmptyState, SummaryBar, type DataColumn } from '../../kernel/ui'
-import { reportCellText, reportSortValue, reportTotalsItems, type ReportFormatters, type ReportRow, type ReportRunResult } from './reportResult'
+import { useReportFormatters } from './useReportFormatters'
+import { reportCellText, reportSortValue, reportTotalsItems, type ReportRow, type ReportRunResult } from './reportResult'
 
 export interface ReportResultTableProps {
   result: ReportRunResult | null | undefined
@@ -13,15 +13,13 @@ export interface ReportResultTableProps {
   name: string
   loading?: boolean
   emptyText?: string
+  /** Vista previa dentro de un modal (F-F2): todas las filas recibidas, sin pie de paginación ni Exportar. */
+  compact?: boolean
 }
 
-export function ReportResultTable({ result, name, loading, emptyText }: ReportResultTableProps) {
+export function ReportResultTable({ result, name, loading, emptyText, compact }: ReportResultTableProps) {
   const t = useT()
-  const f = useFormat()
-  const fmt = useMemo<ReportFormatters>(
-    () => ({ number: (n) => f.number(n), money: (n) => f.money(n), dateTime: (v) => f.dateTime(v), yes: t('analytics.reportRun.yes'), no: t('analytics.reportRun.no') }),
-    [f, t],
-  )
+  const fmt = useReportFormatters()
   const columns = useMemo<DataColumn<ReportRow>[]>(
     () =>
       (result?.columns ?? []).map((c, i) => ({
@@ -45,6 +43,8 @@ export function ReportResultTable({ result, name, loading, emptyText }: ReportRe
         rowKey={(row) => index.get(row) ?? 0}
         loading={loading}
         exportFileName={name}
+        pagination={!compact}
+        exportable={!compact}
         empty={<EmptyState title={emptyText ?? t('analytics.reportRun.empty')} />}
       />
       {totals.length > 0 && (

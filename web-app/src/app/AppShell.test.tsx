@@ -8,6 +8,7 @@ import { setLang } from '../kernel/i18n/i18n'
 import { closeCommandPalette } from '../kernel/ui/commandPaletteStore'
 import { setTheme, THEME_STORAGE_KEY } from '../kernel/ui/theme'
 import { AppShell } from './AppShell'
+import Placeholder from './Placeholder'
 import { RouteGate } from './RouteGate'
 import { appRoutes } from './routes'
 import { SessionContext, type Session } from './session'
@@ -50,6 +51,8 @@ function renderShell(access: { permissions: string[]; modules: string[] } = { pe
           <Routes>
             <Route element={<AppShell />}>
               <Route path="/test" element={<input aria-label="campo de prueba" />} />
+              {/* Lote F-F2: 'Vistas e informes' ya es pantalla real; aquí se registra la pantalla pendiente de su ítem para probar la paleta */}
+              <Route path="/analytics/reports" element={<Placeholder navKey="reports" />} />
               {appRoutes
                 .filter((r) => r.pending)
                 .map((r) => (

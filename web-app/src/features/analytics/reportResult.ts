@@ -3,6 +3,7 @@
 // agrupó, agregó y ordenó: aquí solo se convierte cada valor a texto según el tipo de su columna (Number, Date, Bool, Text) con
 // los formatos de la compañía, sin volver a calcular nada (no hay un segundo motor en la web).
 import type { components } from '../../kernel/api/schema'
+import { matchesQ } from '../../kernel/ui/matchesQ'
 
 export type ReportRunResult = components['schemas']['ReportRunResultDto']
 export type ReportResultColumn = components['schemas']['ReportColumn']
@@ -55,4 +56,15 @@ export function reportTotalsItems(result: ReportRunResult | null | undefined, fm
   return (result?.columns ?? [])
     .filter((c) => c.key && totals[c.key] !== null && totals[c.key] !== undefined && totals[c.key] !== '')
     .map((c) => ({ key: c.key ?? '', label: c.label ?? c.key ?? '', value: reportCellText(totals[c.key ?? ''], c, fmt) }))
+}
+
+/**
+ * Búsqueda libre (QBox) sobre las filas YA cargadas de una vista: cada palabra debe aparecer en el texto de alguna columna tal como
+ * se ve en pantalla (fechas, números y sí/no con los formatos de la compañía). Sin texto devuelve el mismo resultado.
+ */
+export function filterReportRows(result: ReportRunResult | null | undefined, q: string, fmt: ReportFormatters): ReportRunResult | null | undefined {
+  if (!result || !q.trim()) return result
+  const columns = result.columns ?? []
+  const rows = (result.rows ?? []).filter((row) => matchesQ(q, ...columns.map((c) => reportCellText(row[c.key ?? ''], c, fmt))))
+  return { ...result, rows }
 }
