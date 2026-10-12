@@ -269,6 +269,7 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
 22. [F-D1 — Choferes y tarifas](frontend/fd1-choferes.md): Catálogo → **Choferes y tarifas**: lista y ficha, **Nuevo chofer**, **Activo** / **Disponibilidad** / **Eliminar chofer**, licencias y certificaciones con su
    chip de vencimiento, tarifas por entrega, intento y viaje (con vigencia, **Cerrar tarifa** e historial), fórmula de pago con vista previa, **Viajes pagados**, dispositivos y contactos; permisos
    `fleet.*` y `driverpay.*`. Capturas `fd1-*`.
+23. [F-D2 — Flota y mantenimiento](frontend/fd2-flota.md): Catálogo → **Flota y mantenimiento**: vehículos (lista y ficha, **Nuevo vehículo**, **Activo** / **Disponibilidad** / **Dar de baja definitiva**, documentos con su chip de vencimiento), **Documentos por vencer**, **Zonas de despacho** y **Disponibilidad** para despacho con sus motivos. Capturas `fd2-*`.
 
 ## Preguntas frecuentes
 

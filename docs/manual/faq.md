@@ -6879,3 +6879,77 @@ Necesita el permiso `driverpay.view`. Para cambiarlos, `driverpay.manage`.
 
 **¿Por qué no veo ningún dispositivo?**
 Los registra la app del chofer cuando entra por primera vez. Desde aquí solo se pueden ver y desactivar.
+
+
+## Lote F-D2 — Flota: vehículos, documentos y disponibilidad (2026-10-12)
+
+Preguntas de la pantalla **Catálogo → Flota y mantenimiento**. Los mensajes aparecen tal cual los muestra la pantalla. El capítulo completo es «Flota y mantenimiento» (manual de pantallas).
+
+**¿Cuál es la diferencia entre «Activo», «Disponibilidad» y «Dar de baja definitiva»?**
+**Activo** apagado saca al vehículo de despacho sin perder nada y se puede volver a encender. **En mantenimiento** lo saca de despacho por un tiempo y se revierte con **Disponible**. **Dar de baja definitiva** no se deshace.
+
+**Desactivé un vehículo y desapareció de la lista. ¿Se perdió?**
+No. La lista solo muestra los activos: active **Mostrar inactivos** para verlo con el chip **Inactivo**. Su ficha sigue abierta a la derecha.
+
+**¿Qué pasa cuando doy de baja un vehículo?**
+Queda inactivo, sale de la disponibilidad para despacho y deja de contar en «Documentos por vencer». Su historial y sus documentos se conservan, pero ya no se edita ni se reactiva: aparece «El vehículo está dado de baja definitiva; solo se consulta su historial.»
+
+**¿Por qué no puedo cambiar el código del vehículo?**
+Se fija al crearlo. Si se equivocó, cree uno nuevo y dé de baja el que quedó mal.
+
+**«Ya existe un vehículo con ese código.»**
+Otro vehículo usa ese código (aunque esté dado de baja). Use otro.
+
+**«Ya existe un vehículo activo con ese VIN.»**
+Dos vehículos activos no pueden tener el mismo VIN. Revise el VIN. También aparece al reactivar un vehículo cuyo VIN ya usa otro activo.
+
+**«El registro fue modificado por otro usuario; recargue e intente de nuevo.»**
+Otra persona guardó el vehículo antes que usted. La pantalla conserva lo que escribió: revise los datos nuevos y pulse **Guardar cambios** otra vez.
+
+**¿Por qué no puedo dejar vacío el año, el peso o el tope de paradas?**
+Un número que ya se guardó no se puede quitar: aparece «Este valor no se puede dejar vacío una vez guardado; escriba otro.» Los textos (placa, marca, modelo, VIN) sí se pueden borrar.
+
+**«El odómetro no puede ser menor que la última lectura registrada (… km el …).»**
+Ya hay una carga de combustible u orden de trabajo cerrada con más kilómetros. Puede corregir un error de captura, pero no por debajo de esa lectura.
+
+**¿Por qué el seguro dice «Reemplazada»?**
+Porque hay otro seguro del mismo vehículo que vence después. El viejo no bloquea, no cuenta para «Documentos por vencer» y se queda en la lista como historial. No hace falta quitarlo.
+
+**¿Puedo adjuntar el PDF del seguro?**
+No: por ahora los documentos solo llevan tipo, número y fechas.
+
+**«La fecha de vencimiento no puede ser anterior a la de emisión.»**
+Las fechas están al revés. Corríjalas, o deje el vencimiento vacío si no vence.
+
+**¿Qué muestra «Documentos por vencer»?**
+Los documentos de vehículos activos y las licencias y certificaciones de choferes activos que ya vencieron o vencen dentro de la ventana (30 días por omisión). Un documento ya renovado no aparece. Use **Dentro de (días)** para ampliarla (hasta 365) e **Incluir vencidos** para ocultar los que ya vencieron.
+
+**«Escriba un número entero entre 0 y 365.»**
+La ventana de «Dentro de (días)» solo admite de 0 a 365. Mientras el valor sea inválido, la lista sigue con la última ventana válida.
+
+**Un documento vencido no aparece en «Documentos por vencer».**
+Revise que el vehículo o el chofer esté activo y no dado de baja, que **Incluir vencidos** esté encendido y que no exista otro documento más nuevo del mismo tipo (el viejo queda reemplazado).
+
+**«La zona tiene choferes asignados; reasígnelos antes de inactivarla.»**
+La zona es la zona primaria de algún chofer. Cámbiele la zona a esos choferes en **Choferes y tarifas** y vuelva a inactivarla.
+
+**«La zona tiene rutas abiertas; ciérrelas o cámbielas de zona antes de inactivarla.»**
+Hay rutas sin cerrar en esa zona. Ciérrelas o cámbielas de zona.
+
+**¿Dónde se arman los municipios y códigos postales de una zona?**
+En Despacho (lote posterior). Aquí solo se llevan el código, el nombre y si la zona está activa.
+
+**¿Qué significa «Bloquea» y «Aviso» en Disponibilidad?**
+**Bloquea** impide despachar al chofer o vehículo (queda «No disponible»). **Aviso** conviene revisarlo pero no impide despachar (por ejemplo, una licencia que vence en 12 días).
+
+**Mi chofer sale «No disponible» con «Sin licencia vigente.»**
+No tiene ninguna licencia registrada, o todas están vencidas en la fecha elegida. Agregue o renueve la licencia en **Choferes y tarifas**.
+
+**Mi vehículo sale «No disponible» con «… vencido el …».**
+Tiene un documento vencido (que no esté reemplazado por uno más nuevo). Renuévelo en la ficha del vehículo.
+
+**Mi vehículo no sale en Disponibilidad.**
+Los vehículos y choferes dados de baja definitiva no se muestran. Revise también el buscador y **Solo disponibles**.
+
+**No veo «Nuevo vehículo» ni los botones de la ficha.**
+Necesita el permiso `fleet.manage`. Con `fleet.view` todo se consulta pero nada se cambia.

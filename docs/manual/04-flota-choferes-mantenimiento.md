@@ -4,7 +4,7 @@ Este capítulo describe los cinco paneles del módulo de Flota (Vehículos, Docu
 preventivo, Órdenes de trabajo y Bitácora de combustible) y el maestro-detalle **Choferes y tarifas** del grupo
 Catálogo (identidad del chofer, licencias, certificaciones, dispositivos, zonas de despacho y las tres tarifas de
 pago). Cierra también el pendiente del [capítulo 03](03-ordenes-de-transporte.md): la entrega especial con chofer.
-La pantalla web de **Choferes y tarifas** (Catálogo → Choferes y tarifas) se explica paso a paso en [Choferes y tarifas](frontend/fd1-choferes.md); este capítulo es la referencia del servidor.
+La pantalla web de **Choferes y tarifas** (Catálogo → Choferes y tarifas) se explica paso a paso en [Choferes y tarifas](frontend/fd1-choferes.md); este capítulo es la referencia del servidor. La pantalla **Flota y mantenimiento** (vehículos, documentos por vencer, zonas de despacho y disponibilidad) se explica en [Flota y mantenimiento](frontend/fd2-flota.md).
 Cada sección indica **qué hace**, **quién puede**, **cómo se usa**, las **validaciones** con el mensaje exacto y el
 código HTTP, y los **estatus** con sus transiciones y efectos. Los mensajes están verificados contra el código
 (`src/Teikem.Domain/Fleet/*`, `src/Teikem.Infrastructure/Fleet/*`, `src/Teikem.Infrastructure/Services/{Vehicle,Driver,
@@ -116,6 +116,7 @@ Cómo se usa: `PATCH /api/v1/vehicles/{publicId}`
 | `vin` repetido entre activos (excluyendo el propio) | `Ya existe un vehículo activo con ese VIN.` | 409 |
 | `currentOdometerKm` menor que la última lectura registrada | `El odómetro no puede ser menor que la última lectura registrada ({km} km el yyyy-MM-dd).` (campo `currentOdometerKm`) | 400 |
 | `rowVersion` no coincide (alguien más lo editó) | `El registro fue modificado por otro usuario; recargue e intente de nuevo.` | 409 |
+| Vehículo dado de baja definitiva (estatus terminal): solo se consulta (2026-10-12) | `El vehículo está dado de baja definitiva; solo se consulta su historial.` | 409 |
 | Mismas validaciones de capacidades, año, VIN y precisión que el alta | (igual que 1.2) | 400 |
 
 ### 1.4 Estatus y baja lógica
@@ -160,6 +161,7 @@ Cómo se usa:
 | `docNumber` de más de 80 caracteres | `No puede exceder 80 caracteres.` (campo `docNumber`) | 400 |
 | `expiryDate` anterior a `issuedDate` | `La fecha de vencimiento no puede ser anterior a la de emisión.` (campo `expiryDate`) | 400 |
 | `id` de un documento de otro vehículo o de otro tenant | `Documento no encontrado.` | 404 |
+| Alta, edición o baja de un documento de un vehículo dado de baja definitiva (2026-10-12) | `El vehículo está dado de baja definitiva; solo se consulta su historial.` | 409 |
 
 ---
 
