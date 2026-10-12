@@ -1907,7 +1907,12 @@
         "whereTotal": "Total",
         "packUom": "Empaque (opcional)",
         "packQty": "Unidades por empaque",
-        "packHelp": "Ej.: Caja de 12 o Barril de 50 (galones). El inventario siempre se lleva en la unidad base; el empaque solo ayuda a contar y a leer cantidades."
+        "packHelp": "Ej.: Caja de 12 o Barril de 50 (galones). El inventario siempre se lleva en la unidad base; el empaque solo ayuda a contar y a leer cantidades.",
+        "rotation": "Rotación",
+        "rotationHelp": "De qué saldo de este producto sale primero la mercancía. «Igual que la compañía» sigue el método de Ajustes de la compañía; elija FEFO o FIFO solo si este producto necesita el otro.",
+        "rotationCompany": "Igual que la compañía",
+        "rotationFefo": "FEFO — vence primero",
+        "rotationFifo": "FIFO — entra primero"
       },
       "fields": {
         "sku": "SKU",
@@ -4277,6 +4282,11 @@
         "productCategoryLabel": "Categoría por defecto",
         "productCategoryHelp": "Al crear un producto desde la pantalla de Productos llega con esta categoría ya elegida; se puede cambiar o quitar ahí mismo. No afecta a los productos que ya existen ni a los que entran por importación o por la API.",
         "productCategoryNone": "Sin categoría por defecto",
+        "rotationTitle": "Rotación del inventario",
+        "rotationLabel": "Método de rotación de la compañía",
+        "rotationHelp": "De qué saldo sale primero la mercancía cuando el sistema asigna una salida (recolección, despacho manual, reabasto y el orden de salida del aparato). FEFO: vence primero, sale primero (el de siempre). FIFO: entra primero, sale primero, según la fecha de primera entrada del saldo. Un producto puede tener su propia excepción en su ficha. Vale desde la siguiente asignación; no cambia lo ya recolectado.",
+        "rotationFefo": "FEFO — vence primero, sale primero",
+        "rotationFifo": "FIFO — entra primero, sale primero",
         "manualReasonTitle": "Despacho manual",
         "manualReasonLabel": "Motivo por default del despacho manual",
         "manualReasonNone": "Sin motivo por default",

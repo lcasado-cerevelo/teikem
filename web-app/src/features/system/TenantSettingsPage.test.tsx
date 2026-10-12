@@ -96,10 +96,9 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
     if (p === '/api/v1/catalogs/ManualIssueReason') return json([{ code: 'SAMPLE', label: 'Muestra', sortOrder: 1, isEnabled: true }, { code: 'SALE', label: 'Venta', sortOrder: 4, isEnabled: true }])
     if (p.startsWith('/api/v1/catalogs/')) return json([{ code: 'STANDARD', label: 'Estándar', sortOrder: 1, isEnabled: true }])
     if (p === '/api/v1/warehouses') return json(WAREHOUSES)
-    if (p === '/api/v1/receipts') {
-      const wh = url.searchParams.get('warehousePublicId')
-      const phase = url.searchParams.get('phase')
-      return json({ total: wh === 'w1' ? (phase === 'OPEN' ? 4 : 2) : 0, skip: 0, take: 1, items: [] })
+    if (p === '/api/v1/receipts/summary-by-warehouse') {
+      // una sola llamada con los conteos de TODOS los almacenes (antes: dos consultas de lista por almacén)
+      return json(WAREHOUSES.map((w: { publicId: string }) => ({ warehousePublicId: w.publicId, openCount: w.publicId === 'w1' ? 4 : 0, pendingPutawayCount: w.publicId === 'w1' ? 2 : 0 })))
     }
     return problem(404, { title: 'no encontrado' })
   }
@@ -496,6 +495,31 @@ describe('Ajustes de la compañía', () => {
     await user.selectOptions(within(panel).getByLabelText('Categoría por defecto'), 'CARTONES')
     await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
     expect((await within(panel).findAllByText('La categoría por defecto no existe o está inactiva.')).length).toBeGreaterThan(0)
+  })
+
+  it('Operación → rotación del inventario (Lote 34): FEFO por omisión, cambiar a FIFO guarda rotationMethod y el error del servidor sale bajo el selector', async () => {
+    const user = userEvent.setup()
+    wrap('/system/settings?tab=ops')
+    const panel = (await screen.findByRole('heading', { name: 'Rotación del inventario' })).closest('.panel') as HTMLElement
+    const select = within(panel).getByLabelText('Método de rotación de la compañía')
+    expect(select).toHaveValue('FEFO')
+    expect(within(panel).getByRole('option', { name: 'FIFO — entra primero, sale primero' })).toBeInTheDocument()
+    await user.selectOptions(select, 'FIFO')
+    await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
+    await waitFor(() => expect(put()).toHaveLength(1))
+    expect(put()[0].body).toEqual({ rotationMethod: 'FIFO' })
+
+    mock.settingsFail = { status: 400, title: 'El método de rotación debe ser FEFO o FIFO.', field: 'rotationMethod' }
+    await user.selectOptions(within(panel).getByLabelText('Método de rotación de la compañía'), 'FEFO')
+    await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
+    expect((await within(panel).findAllByText('El método de rotación debe ser FEFO o FIFO.')).length).toBeGreaterThan(0)
+  })
+
+  it('Operación → rotación: sin admin.tenant el selector es de solo lectura', async () => {
+    wrap('/system/settings?tab=ops', ['inventory.view'])
+    const panel = (await screen.findByRole('heading', { name: 'Rotación del inventario' })).closest('.panel') as HTMLElement
+    expect(within(panel).getByLabelText('Método de rotación de la compañía')).toBeDisabled()
+    expect(within(panel).queryByRole('button', { name: 'Guardar cambios' })).toBeNull()
   })
 
   it('Operación → productos nuevos: sin admin.tenant el selector es de solo lectura', async () => {

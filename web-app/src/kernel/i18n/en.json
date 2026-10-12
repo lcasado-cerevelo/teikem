@@ -1907,7 +1907,12 @@
         "whereTotal": "Total",
         "packUom": "Packaging (optional)",
         "packQty": "Units per pack",
-        "packHelp": "E.g. Box of 12 or Barrel of 50 (gallons). Inventory is always kept in the base unit; packaging only helps counting and reading quantities."
+        "packHelp": "E.g. Box of 12 or Barrel of 50 (gallons). Inventory is always kept in the base unit; packaging only helps counting and reading quantities.",
+        "rotation": "Rotation",
+        "rotationHelp": "Which stock of this product leaves first. «Same as the company» follows the method in Company settings; choose FEFO or FIFO only if this product needs the other one.",
+        "rotationCompany": "Same as the company",
+        "rotationFefo": "FEFO — first expired",
+        "rotationFifo": "FIFO — first in"
       },
       "fields": {
         "sku": "SKU",
@@ -4277,6 +4282,11 @@
         "productCategoryLabel": "Default category",
         "productCategoryHelp": "When a product is created from the Products screen it arrives with this category already chosen; it can be changed or cleared there. It does not affect existing products or those that come in through an import or the API.",
         "productCategoryNone": "No default category",
+        "rotationTitle": "Inventory rotation",
+        "rotationLabel": "Company rotation method",
+        "rotationHelp": "Which stock leaves first when the system assigns an issue (picking, manual issue, replenishment and the device exit order). FEFO: first expired, first out (as always). FIFO: first in, first out, by the stock balance first-entry date. A product can have its own exception on its record. It applies from the next assignment; it does not change what was already picked.",
+        "rotationFefo": "FEFO — first expired, first out",
+        "rotationFifo": "FIFO — first in, first out",
         "manualReasonTitle": "Manual issue",
         "manualReasonLabel": "Default reason for manual issues",
         "manualReasonNone": "No default reason",
