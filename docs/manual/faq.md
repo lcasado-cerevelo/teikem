@@ -6251,3 +6251,10 @@ No: con FIFO manda la fecha de primera entrada del saldo y el vencimiento solo d
 
 **Pasé mercancía de una posición a otra y con FIFO sigue saliendo primero, ¿por qué?**
 Porque una transferencia hereda la fecha de primera entrada del origen: mover la mercancía de lugar no la rejuvenece.
+
+
+**No me aparece un cliente o un consignatario al empacar un despacho sin señal.**
+El aparato baja los clientes activos y los consignatarios (los del cliente y los compartidos) con la sincronización de cada minuto. Si se creó hace menos de un minuto, toque «Sincronizar ahora» en Inicio. Si sigue sin salir, está dado de baja o el usuario no lo ve (alcance de datos). Los bajan quienes tienen el permiso `warehouse.pick`; sin él, la app los pide al servidor con `clients.read` y `locations.read`.
+
+**¿Dónde cambio la rotación FEFO/FIFO?**
+En la web: Ajustes de la compañía → Operación → «Rotación del inventario» (para toda la compañía; permiso `admin.tenant`) y, si un producto necesita el otro método, en su ficha → «Rotación». La app del almacén no tiene ese selector pero ya respeta el método.
