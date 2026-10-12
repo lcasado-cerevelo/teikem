@@ -556,6 +556,17 @@ trae una capacidad propia en este lote, `EDIT_TRIP`, denegada por defecto en `DI
 
 ---
 
+### 10.5 Dos personas editando rutas al mismo tiempo
+
+Varias personas de la misma compañía pueden trabajar rutas a la vez (poner pines, reordenar, agregar órdenes, optimizar, despachar). El sistema las atiende **una detrás de otra** para que ninguna pise el trabajo de la otra; casi siempre ni se nota. Hay dos avisos que conviene reconocer:
+
+| Situación | Mensaje | Código | Qué hacer |
+|---|---|---|---|
+| Otra persona guardó la misma ruta mientras usted la tenía abierta | `El registro fue modificado por otro usuario; recargue e intente de nuevo.` | 409 | Recargue la ruta, revise qué cambió y repita su cambio. |
+| Dos cambios coincidieron en el mismo instante y el sistema no pudo atender el suyo | `Otra persona está modificando esta ruta al mismo tiempo; vuelva a intentarlo.` (código `concurrent_edit`) | 409 | No se perdió nada. Espere unos segundos y repita la acción. Si pasa seguido, avise a soporte. |
+
+Este segundo aviso es raro: aparece solo cuando coinciden varias personas modificando rutas en el mismo segundo. Fuera de las rutas, el sistema usa el mismo aviso con el texto `Otra persona está modificando estos datos al mismo tiempo; vuelva a intentarlo.`
+
 ## 11. Permisos y módulos
 
 | Permiso | Qué habilita |

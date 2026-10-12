@@ -7339,3 +7339,8 @@ Es el caso de entidades como Factura: no hay registros donde guardar valores. No
 
 **¿Por qué no están Almacén ni Contrato en la lista de entidades?**
 Todavía no tienen una ficha donde escribir los valores. Se agregarán cuando la tengan.
+
+## Lote 41 — Rutas editadas por varias personas a la vez (2026-10-12)
+
+**«Otra persona está modificando esta ruta al mismo tiempo; vuelva a intentarlo.» (409)**
+Usted y otra persona (u otro proceso, como el escaneo de salida) cambiaron rutas de la compañía en el mismo instante y el sistema no pudo aplicar su cambio. **No se guardó nada** de esa acción: espere un momento y repítala (fijar el pin, reordenar, optimizar, agregar o quitar órdenes, despachar…). Si reaparece seguido, avise a soporte con el número de correlación del mensaje. En otras pantallas el mismo caso dice «Otra persona está modificando estos datos al mismo tiempo; vuelva a intentarlo.» y se resuelve igual.
