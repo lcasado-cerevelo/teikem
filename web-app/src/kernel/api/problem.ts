@@ -56,10 +56,18 @@ export function toApiError(error: unknown, response?: Response): ApiError {
   return new ApiError(status, null)
 }
 
-/** Nombre de campo del servidor → nombre del formulario: quita "$." y pasa la primera letra a minúscula. */
+/**
+ * Nombre de campo del servidor → nombre del formulario: quita "$." y pasa la primera letra a minúscula (`ClientPublicId` →
+ * `clientPublicId`). Una clave que NO es un nombre de campo en PascalCase —un número de orden (`OT-0001`) o un código de aviso
+ * (`NO_DRIVER`), que algunos errores 422 usan como clave— se deja tal cual: antes salía mutilada (`oT-0001`).
+ */
 export function normalizeField(field: string): string {
   const f = field.startsWith('$.') ? field.slice(2) : field
-  return f ? f.charAt(0).toLowerCase() + f.slice(1) : f
+  const m = /^([A-Z][A-Za-z0-9]*)(.*)$/.exec(f)
+  if (!m) return f
+  const isPath = m[2] === '' || /^[.[]/.test(m[2])
+  const isShouting = /^[A-Z0-9]+$/.test(m[1])
+  return isPath && !isShouting ? m[1].charAt(0).toLowerCase() + m[1].slice(1) + m[2] : f
 }
 
 export interface AppliedProblem {

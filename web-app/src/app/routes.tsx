@@ -155,7 +155,14 @@ export const appRoutes: readonly AppRoute[] = [
     module: ModuleKeys.LtlGround,
     nav: { group: 'ops', key: 'scan', order: 30 },
   },
-  pending({ path: '/ops/dispatch', perm: 'trips.dispatch', module: ModuleKeys.LtlGround, nav: { group: 'ops', key: 'dispatch', order: 40 } }),
+  // Lote F-E2a — Sala de despacho (sin mapa: el mapa esquemático y el arrastre llegan en F-E2b).
+  {
+    path: '/ops/dispatch',
+    element: lazy(() => import('../features/dispatch/DispatchScreen')),
+    perm: 'trips.dispatch',
+    module: ModuleKeys.LtlGround,
+    nav: { group: 'ops', key: 'dispatch', order: 40 },
+  },
   pending({ path: '/ops/monitor', perm: 'trips.view', module: ModuleKeys.LtlGround, nav: { group: 'ops', key: 'monitor', order: 50 } }),
 
   // ===== Almacén =====

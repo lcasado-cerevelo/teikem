@@ -43,5 +43,17 @@ describe('applyProblemDetails', () => {
   it('normaliza nombres de campo del servidor', () => {
     expect(normalizeField('$.ClientPublicId')).toBe('clientPublicId')
     expect(normalizeField('lines[0].qty')).toBe('lines[0].qty')
+    expect(normalizeField('Lines[0].Qty')).toBe('lines[0].Qty')
+    expect(normalizeField('$.Email')).toBe('email')
+  })
+
+  it('no mutila las claves que no son nombres de campo (número de orden, código de aviso)', () => {
+    expect(normalizeField('OT-0001')).toBe('OT-0001')
+    expect(normalizeField('Ot-0001')).toBe('Ot-0001')
+    expect(normalizeField('NO_DRIVER')).toBe('NO_DRIVER')
+    expect(normalizeField('OT0001')).toBe('OT0001')
+    expect(normalizeField('2026-000123')).toBe('2026-000123')
+    const applied = applyProblemDetails(new ApiError(422, { title: 'Hay órdenes que no se pueden asignar a la ruta.', errors: { 'OT-0001': ['motivo'], NO_DRIVER: ['x'], PlanDate: ['y'] } }))
+    expect(Object.keys(applied.errors)).toEqual(['OT-0001', 'NO_DRIVER', 'planDate'])
   })
 })

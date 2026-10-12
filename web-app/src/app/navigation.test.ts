@@ -109,7 +109,9 @@ describe('menú completo (routes.tsx)', () => {
   })
 
   it('los ítems sin pantalla usan la pantalla pendiente; los que ya existen no', () => {
-    expect(byPath('/ops/dispatch').pending).toBe(true)
+    expect(byPath('/ops/monitor').pending).toBe(true)
+    expect(byPath('/ops/dispatch').pending).toBeUndefined() // Lote F-E2a
+    expect(byPath('/ops/dispatch')).toMatchObject({ perm: 'trips.dispatch', module: 'LTL_GROUND', nav: { group: 'ops', key: 'dispatch', order: 40 } })
     expect(byPath('/ops/scan').pending).toBeUndefined() // Lote F-E1
     expect(byPath('/ops/scan')).toMatchObject({ perm: 'trips.scan', module: 'LTL_GROUND', nav: { group: 'ops', key: 'scan', order: 30 } })
     expect(byPath('/catalog/fleet').pending).toBeUndefined()
@@ -237,13 +239,13 @@ describe('menú completo (routes.tsx)', () => {
   })
 
   it('un ítem pendiente sin su permiso o sin su módulo no aparece; con los dos, sí', () => {
-    const dispatch = byPath('/ops/dispatch')
-    expect(dispatch).toMatchObject({ perm: 'trips.dispatch', module: 'LTL_GROUND' })
+    const monitor = byPath('/ops/monitor')
+    expect(monitor).toMatchObject({ perm: 'trips.view', module: 'LTL_GROUND' })
     const has = (perms: string[], modules: string[]) =>
-      visibleNav(appRoutes, new Set(perms), new Set(modules)).some((g) => g.items.includes(dispatch))
+      visibleNav(appRoutes, new Set(perms), new Set(modules)).some((g) => g.items.includes(monitor))
     expect(has([], ['LTL_GROUND'])).toBe(false)
-    expect(has(['trips.dispatch'], [])).toBe(false)
-    expect(has(['trips.dispatch'], ['LTL_GROUND'])).toBe(true)
+    expect(has(['trips.view'], [])).toBe(false)
+    expect(has(['trips.view'], ['LTL_GROUND'])).toBe(true)
   })
 
   it('un grupo cuyos ítems no se pueden ver no se pinta (usuario solo de almacén)', () => {

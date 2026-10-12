@@ -1,0 +1,129 @@
+/* Lote F-E2a — Sala de despacho. Estilos de la maqueta (`.zonebar`, `.alertbanner`, `.unrow`, `.routecard`) bajo `.disp` para no chocar con
+   otras pantallas. Sin scroll horizontal a 360 px: todo lo que lleva texto largo parte la palabra. */
+.disp{min-width:0}
+.disp .panel{margin-bottom:0;min-width:0}
+.disp-cols{min-width:0}
+.disp-col{min-width:0;display:flex;flex-direction:column;gap:16px}
+
+/* cabecera: fecha de las rutas */
+.disp-date{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.disp-date input[type=date]{width:auto;max-width:100%;text-transform:none;letter-spacing:0;font-weight:400}
+
+/* barra de filtros de «Órdenes sin asignar» */
+.disp .zonebar{display:block;background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:11px 14px;margin-bottom:14px;min-width:0}
+.disp .zonebar .filters{margin:0;padding:0;border:0;background:transparent}
+.disp .zonebar .f{margin:0;min-width:0}
+
+/* aviso rojo de «sobrepasa el máximo de paradas» */
+.disp .alertbanner{display:flex;align-items:center;gap:10px;background:var(--dangerbg);border:1px solid var(--danger);color:var(--danger);border-radius:11px;padding:10px 14px;margin-bottom:14px;font-size:12.5px;font-weight:600;overflow-wrap:anywhere}
+.disp .alertbanner svg{color:var(--danger);flex:none;width:16px;height:16px}
+
+/* órdenes sin asignar */
+.disp-un-tools{display:flex;align-items:center;gap:8px;padding:8px 13px;border-bottom:1px solid var(--line-2);flex-wrap:wrap}
+.disp-un-tools label{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);cursor:pointer}
+.disp-un-add{padding:11px 13px;border-bottom:1px solid var(--line-2)}
+.disp-un-add .btn{width:100%;justify-content:center}
+.disp-un-note{padding:8px 13px;font-size:11.5px;color:var(--faint);border-bottom:1px solid var(--line-2);margin:0}
+.disp-un-list{max-height:620px;overflow:auto;min-width:0}
+.disp .unrow{align-items:flex-start;cursor:pointer;min-width:0}
+.disp .unrow input{margin-top:3px;flex:none}
+.disp .unrow .ref{font-family:var(--mono);font-weight:600;font-size:12px;overflow-wrap:anywhere;flex:none;max-width:42%}
+.disp .unrow .un-body{min-width:0;flex:1;overflow-wrap:anywhere}
+.disp .unrow .un-name{font-size:12.5px}
+.disp .unrow .meta{display:block}
+.disp .unrow .cash{font-family:var(--mono);font-size:11px;color:var(--money-2)}
+.disp .unrow.err{background:var(--dangerbg)}
+.disp-problems{margin:0;padding:10px 13px;border-bottom:1px solid var(--line-2);background:var(--dangerbg);color:var(--danger);font-size:12px}
+.disp-problems b{display:block;margin-bottom:4px}
+.disp-problems ul{margin:0;padding-left:16px}
+.disp-problems li{overflow-wrap:anywhere}
+
+/* ruta activa */
+.disp-route-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.disp-route-meta{font-family:var(--mono);font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.disp-sec{border-top:1px solid var(--line-2);padding:12px 16px;min-width:0}
+.disp-sec:first-child{border-top:none}
+.disp-sec h3{margin:0 0 8px;font-size:11px;font-weight:600;color:var(--faint);text-transform:uppercase;letter-spacing:.05em}
+.disp-assign{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:flex-end}
+.disp-assign .f{margin:0;min-width:0;flex:1 1 180px}
+.disp-assign select{width:100%;max-width:100%}
+.disp-progress{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px;font-size:12px}
+.disp-progress .bar{flex:1 1 60px;min-width:60px;height:6px;border-radius:4px;background:var(--bg-2);overflow:hidden}
+.disp-progress .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--flow),var(--flow-2))}
+.disp-progress .mono{color:var(--muted)}
+.disp-facts{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:8px;font-size:12px;color:var(--muted)}
+.disp-facts b{color:var(--text);font-weight:600}
+.disp-note{margin:0 0 8px;font-size:11.5px;color:var(--faint)}
+.disp-alert{margin:0 0 10px}
+.disp-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+
+/* avisos y bloqueantes de la ruta */
+.disp-issues{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.disp-issues li{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;min-width:0}
+.disp-issues li span:last-child{min-width:0;overflow-wrap:anywhere}
+.disp-issues .chip{flex:none}
+
+/* «no cupieron» de la última optimización */
+.disp-unfit{list-style:none;margin:0;padding:0;font-size:12px;display:flex;flex-direction:column;gap:4px}
+.disp-unfit li{overflow-wrap:anywhere}
+.disp-unfit .ref{font-family:var(--mono);font-weight:600}
+
+/* órdenes de la ruta */
+.disp-stops{list-style:none;margin:0;padding:0;max-height:520px;overflow:auto}
+.disp-stop{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--line-2);min-width:0}
+.disp-stop:last-child{border-bottom:none}
+.disp-stop .seq{font-family:var(--mono);font-size:11px;color:var(--faint);width:22px;flex:none;text-align:right;padding-top:2px}
+.disp-stop .body{min-width:0;flex:1}
+.disp-stop .ref{font-family:var(--mono);font-weight:600;font-size:12.5px;overflow-wrap:anywhere}
+.disp-stop .meta{display:block;color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.disp-stop .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:3px}
+.disp-stop .btns{display:flex;gap:4px;flex:none}
+.disp-stop .eta{font-family:var(--mono);font-size:11.5px;color:var(--faint);flex:none;padding-top:2px}
+
+/* choferes */
+.disp-drivers{display:flex;flex-direction:column}
+.disp-driver{display:flex;align-items:center;gap:11px;padding:10px;border-radius:9px;min-width:0}
+.disp-driver.nozone{opacity:.55}
+.disp-driver .body{flex:1;min-width:0}
+.disp-driver .body b{font-size:13px;overflow-wrap:anywhere}
+.disp-driver .body div{color:var(--muted);font-size:11.5px;overflow-wrap:anywhere}
+.disp-driver .max{font-family:var(--mono);font-size:10.5px;color:var(--faint);flex:none}
+
+/* rutas de hoy */
+.disp .routecard{display:flex;align-items:center;gap:10px;padding:11px 14px;border:0;border-bottom:1px solid var(--line-2);background:transparent;color:inherit;font:inherit;text-align:left;width:100%;cursor:pointer;min-width:0}
+.disp .routecard:last-child{border-bottom:none}
+.disp .routecard:hover{background:var(--panel-2)}
+.disp .routecard.on{background:var(--flow-bg)}
+.disp .routecard:focus-visible{outline:2px solid var(--flow);outline-offset:-2px}
+.disp .routecard .rt{flex:1;min-width:0}
+.disp .routecard .rr{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;flex-wrap:wrap}
+.disp .routecard .bar{height:6px;border-radius:4px;background:var(--bg-2);margin-top:6px;overflow:hidden}
+.disp .routecard .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--flow),var(--flow-2));border-radius:4px}
+.disp .routecard .warn{color:var(--danger);flex:none;display:inline-flex}
+.disp .routecard .warn svg{width:16px;height:16px}
+
+/* ventanas */
+.disp-modal-list{display:flex;flex-direction:column;min-width:0}
+.disp-pick{display:flex;align-items:flex-start;gap:10px;padding:9px 4px;border-bottom:1px solid var(--line-2);font-size:12.5px;min-width:0}
+.disp-pick:last-child{border-bottom:none}
+.disp-pick input{margin-top:3px;flex:none}
+.disp-pick.off{opacity:.75}
+.disp-pick .body{flex:1;min-width:0}
+.disp-pick .ref{font-family:var(--mono);font-weight:600}
+.disp-pick .meta{color:var(--muted);font-size:12px;margin-left:8px;overflow-wrap:anywhere}
+.disp-pick .disp-issues{margin-top:6px}
+.disp-results{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.disp-results li{font-size:12.5px;overflow-wrap:anywhere}
+.disp-results .ok-line{color:var(--ok)}
+.disp-results .err-line{color:var(--danger)}
+.disp-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:0 0 12px}
+.disp-summary div{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.disp-summary b{display:block;font-family:var(--mono);font-size:18px}
+.disp-summary span{font-size:11.5px;color:var(--faint)}
+.disp-zone-res{margin:8px 0 0;padding:8px 0;border-top:1px solid var(--line-2);font-size:12.5px}
+.disp-zone-res b{font-family:var(--mono)}
+
+@media (max-width:480px){
+  .disp .unrow .ref{max-width:45%}
+  .disp-sec{padding:12px}
+}
