@@ -256,6 +256,10 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
 17. [F19 — Despacho manual en la web](frontend/f19-despacho-manual.md): en **Recolección y empaque**, el interruptor **Despacho manual (sin entrega)** del panel
    Recolección (motivo obligatorio, nota, líneas como una recolección, `Idempotency-Key`, 409 por existencia), la columna y el filtro **Tipo**, la ficha del
    DMA (motivo, nota, Kárdex, sin Empacar) y **Eliminar** con reversa (`warehouse.issue`). Capturas `f19-*`.
+18. [F-B — Consignatarios](frontend/fb-consignatarios.md): Catálogo → **Consignatarios**: lista y ficha, alta y edición, teléfono, baja y reactivación, e **Importar** consignatarios desde un archivo CSV con plantillas
+   (vista previa fila por fila, errores y avisos, confirmar o descartar); permisos `locations.*`.
+19. [F-C1 — Órdenes: lista y alta](frontend/fc1-ordenes-alta.md): Operación → **Órdenes**: la lista con sus filtros, **Nueva orden** (guardar como borrador o confirmar, crédito excedido, factura repetida,
+   entrega especial) y eliminar un borrador; permisos `orders.*` y quién ve los precios (`orders.view_price`).
 
 ## Preguntas frecuentes
 

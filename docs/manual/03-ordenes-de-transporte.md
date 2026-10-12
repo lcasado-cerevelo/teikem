@@ -119,8 +119,9 @@ aplica, el origen (`sourceEntityType`/`sourceEntityId`, para lotes de otros mód
 según el estatus actual (`canEditCargo`, `canReprice`, `canCancel`, `canDelete`, `canConfirm`). Incluye `rowVersion` para
 la edición concurrente.
 
-Quién puede: `orders.view`. El **monto cotizado** (`quotedAmount`) solo sale con `orders.view_price`; sin ese permiso viene
-en `null` (el resto de la ficha, incluido el COD, no cambia). Ver la sección 3.5.
+Quién puede: `orders.view`. El **precio de la orden** (`quotedAmount`, «Monto cotizado») solo se ve con el permiso
+`orders.view_price`. Sin ese permiso el campo viene vacío (`null`; la pantalla muestra «—») y el resto de la ficha, incluido
+el COD, no cambia. Ver la sección 3.5.
 
 Cómo se usa: `GET /api/v1/orders/{publicId}`.
 
@@ -131,28 +132,35 @@ negocio es siempre el **número de empaque** (`packBatchNumber`, único por tena
 exacta** (`lookup`) es para el escaneo: compara el código tal cual contra los tres identificadores, sin coincidencias
 parciales.
 
-Quién puede: `orders.view` (el monto cotizado de cada fila solo con `orders.view_price`; sin él va en `null`, sección 3.5).
+Quién puede: `orders.view`. El precio de cada fila (`quotedAmount`) solo se ve con `orders.view_price`; sin ese permiso va vacío
+(`null`). Ver la sección 3.5.
 
 Cómo se usa:
 - `GET /api/v1/orders?clientId=&status=&orderNumber=&invoice=&packBatch=&consignee=&search=&from=&to=&includeInactive=false&skip=0&take=100`
   — `orderNumber`/`invoice`/`packBatch`/`consignee`/`search` son parciales (`LIKE`); `from` inclusivo y `to` exclusivo
   sobre la fecha de creación; `take` se acota entre 1 y 500 (por defecto 100).
-- **Filtros de lista (Lote 39).** Se repiten en la URL para pedir varios valores
-  (`?serviceTypes=STANDARD&serviceTypes=EXPRESS`); dentro de un mismo filtro basta con que coincida **uno** de los valores, y
-  los filtros se combinan entre sí (todos deben cumplirse). El total (`total`) y la paginación cuentan todo lo que cumple
-  los filtros, no solo la página.
+- **Filtros con varios valores (Lote 39).** Para pedir varios valores de un mismo filtro, repita el parámetro en la dirección
+  (por ejemplo, `?serviceTypes=STANDARD&serviceTypes=EXPRESS` trae las órdenes de servicio STANDARD **o** EXPRESS). Las reglas son
+  dos:
+  1. **Dentro de un filtro** basta con que la orden cumpla **uno** de los valores.
+  2. **Entre filtros distintos** la orden debe cumplir **todos** (por ejemplo, tipo de servicio STANDARD **y** pueblo Bayamón).
 
-  | Parámetro | Qué filtra |
-  |---|---|
-  | `serviceTypes` | tipo de servicio de la orden (códigos del catálogo `ServiceType`, sin distinguir mayúsculas) |
-  | `packageTypes` | tipo de paquete: la orden entra si **alguna** de sus líneas de paquete activas es de ese tipo (códigos `PackageType`) |
-  | `cities` | pueblo del consignatario (parada de entrega), igual al pedido **sin distinguir mayúsculas ni tildes** y con espacios de más ignorados (`bayamon` = `Bayamón`) |
-  | `postalCodePrefix` | el ZIP del consignatario empieza con este texto (`009` trae `00901`, `00961`…) |
-  | `clientIds` | clientes (por `publicId`); se **suma** a `clientId` si también viene |
-  | `statuses` | estatus de la orden (códigos `OrderStatus`); se **suma** a `status` si también viene |
+  El total (`total`) y la paginación cuentan todo lo que cumple los filtros, no solo la página que se ve.
 
-  Todo queda dentro de la compañía activa y del **alcance de datos** del usuario: quien solo puede ver ciertos clientes no
-  ve órdenes de otros con ningún filtro, y pedir un cliente fuera de su alcance responde 404.
+  | Parámetro | Qué filtra | Ejemplo |
+  |---|---|---|
+  | `serviceTypes` | Tipo de servicio de la orden (códigos del catálogo `ServiceType`; no importan las mayúsculas). | `serviceTypes=STANDARD&serviceTypes=EXPRESS` |
+  | `packageTypes` | Tipo de paquete. Entra la orden que tenga **alguna** línea de paquete activa de ese tipo (códigos `PackageType`). | `packageTypes=BOX` |
+  | `cities` | Pueblo del consignatario (la parada de entrega). Debe ser igual al pueblo pedido; no importan las mayúsculas, las tildes ni los espacios de más. | `cities=bayamon` encuentra «Bayamón» |
+  | `postalCodePrefix` | El código postal (ZIP) del consignatario **empieza con** este texto. | `postalCodePrefix=009` trae `00901`, `00961`… |
+  | `clientIds` | Clientes (por su `publicId`). Se **suma** a `clientId` si también viene. | `clientIds=…&clientIds=…` |
+  | `statuses` | Estatus de la orden (códigos `OrderStatus`). Se **suma** a `status` si también viene. | `statuses=CONFIRMED&statuses=ON_HOLD` |
+
+  **Ejemplo.** Quiero las órdenes de Bayamón con ZIP que empiece con `009` y que estén en estatus `CONFIRMED`:
+  `GET /api/v1/orders?cities=Bayamón&postalCodePrefix=009&statuses=CONFIRMED`.
+
+  Todo queda dentro de la compañía activa y de los clientes que el usuario puede ver (su «alcance de datos»): quien solo puede
+  ver ciertos clientes no ve órdenes de otros con ningún filtro, y pedir un cliente fuera de su alcance responde 404.
 - `GET /api/v1/orders/lookup?code=T$TS-00001` — coincidencia **exacta** (sin distinguir mayúsculas), primero por número de
   orden, si no hay por número de empaque, si no hay por factura; devuelve todas las coincidencias de ese grupo
   (`matchedBy`: `ORDER_NUMBER` | `PACK_BATCH` | `INVOICE`, o `null` sin coincidencias) — el número de orden puede
@@ -161,13 +169,19 @@ Cómo se usa:
 | Caso | Mensaje exacto | HTTP |
 |---|---|---|
 | `status` desconocido | `Estatus desconocido: X.` (campo `status`) | 400 |
-| Un valor de `statuses` desconocido | `Estatus desconocido: X.` (campo `statuses`; X en mayúsculas) | 400 |
-| Un valor de `serviceTypes` desconocido | `Tipo de servicio desconocido: X.` (campo `serviceTypes`) | 400 |
-| Un valor de `packageTypes` desconocido | `Tipo de paquete desconocido: X.` (campo `packageTypes`) | 400 |
+| Algún valor de `statuses` no existe | `Estatus desconocido: X.` (campo `statuses`; X sale en mayúsculas) | 400 |
+| Algún valor de `serviceTypes` no existe | `Tipo de servicio desconocido: X.` (campo `serviceTypes`) | 400 |
+| Algún valor de `packageTypes` no existe | `Tipo de paquete desconocido: X.` (campo `packageTypes`) | 400 |
 | `code` vacío en `lookup` | `Indique el código a buscar.` (campo `code`) | 400 |
-| `clientId` o algún `clientIds` de otra compañía o fuera del alcance de datos del usuario | `Cliente no encontrado.` | 404 |
+| `clientId` o algún `clientIds` es de otra compañía o está fuera de los clientes que el usuario puede ver | `Cliente no encontrado.` | 404 |
 
-Un pueblo o un prefijo de ZIP sin coincidencias no es un error: responde `200` con `total: 0`.
+Qué hacer con los 400 de los filtros: la `X` del mensaje es el valor que no existe; revise cómo está escrito (código del
+catálogo, por ejemplo `STANDARD`, `BOX`, `CONFIRMED`) y quítelo o cámbielo. Un código que está inactivo en el catálogo **sí** se
+acepta (sirve para buscar órdenes viejas); solo se rechaza un código que no existe.
+Qué hacer con el 404: quite ese cliente del filtro; si debería poder verlo, pida al administrador que revise el alcance de datos
+de su usuario.
+
+Un pueblo o un prefijo de ZIP sin coincidencias no es un error: responde `200` con `total: 0` (lista vacía).
 
 ### 1.4 Edición
 
@@ -251,13 +265,14 @@ total, el contrato usado, y el chequeo de crédito (`creditLimit`, `pendingBalan
 órdenes del cliente que están en curso, sin contar DRAFT, DELIVERED ni CANCELLED —, `orderTotal`, `available` y
 `exceeds`). Los mismos errores que daría confirmar (tarifa faltante, servicio especial cerrado) se ven aquí antes.
 
-Quién puede: `orders.view` **y** `orders.view_price` (Lote 39: la cotización completa es un precio).
+Quién puede: `orders.view` **y** `orders.view_price`. Desde el Lote 39 la cotización completa (total, líneas, cargos y crédito)
+cuenta como información de precios, así que sin `orders.view_price` no se puede abrir.
 
 Cómo se usa: `GET /api/v1/orders/{publicId}/quote`.
 
 | Caso | Mensaje exacto | HTTP |
 |---|---|---|
-| Sin el permiso `orders.view_price` (queda un evento `PERMISSION_DENIED`) | `Falta el permiso 'orders.view_price'.` | 403 |
+| Falta el permiso `orders.view_price` (queda registrado un evento de seguridad `PERMISSION_DENIED`); pida el permiso al administrador o a Facturación | `Falta el permiso 'orders.view_price'.` | 403 |
 | Falta tarifa vigente para alguna línea (servicio/tipo de paquete) | `No hay tarifa vigente para X/Y; configure la tarifa en el contrato del cliente antes de confirmar.` | 422 |
 | Servicio especial ya no vigente (se cerró) | `El servicio especial ya no está vigente; elija otro antes de confirmar.` | 409 |
 | Componente "Servicios especiales" apagado en el contrato vigente | `El componente 'Servicios especiales' está apagado en el contrato vigente del cliente; enciéndalo en el modelo de facturación o capture una orden normal.` | 409 |
@@ -301,10 +316,13 @@ autorización no sirve para confirmar órdenes normales). Esto permite que la pl
 
 | Caso | Mensaje exacto | HTTP |
 |---|---|---|
-| Crédito excedido, sin `overrideCredit`, quien confirma tiene `orders.view_price` | `El cliente excede su límite de crédito: límite X.XX, en curso Y.YY, esta orden Z.ZZ.` | 422 |
-| Crédito excedido, sin `overrideCredit`, quien confirma **no** tiene `orders.view_price` (Lote 39) | `El cliente excede su límite de crédito.` (mismo `code: "credit_exceeded"`, `errors` vacío) | 422 |
+| Crédito excedido, sin `overrideCredit`; quien confirma **tiene** `orders.view_price` | `El cliente excede su límite de crédito: límite X.XX, en curso Y.YY, esta orden Z.ZZ.` | 422 |
+| Crédito excedido, sin `overrideCredit`; quien confirma **no** tiene `orders.view_price` (Lote 39) | `El cliente excede su límite de crédito.` (sin cifras; mismo `code: "credit_exceeded"` y `errors` vacío) | 422 |
 | `overrideCredit: true` sin el permiso `orders.credit_override` | `Falta el permiso 'orders.credit_override'.` | 403 |
 | `overrideCredit: true` con el permiso, pero el crédito no se excedía (o sin `orders.edit`) | `Falta el permiso 'orders.edit'.` | 403 |
+
+Qué hacer ante un 422 de crédito: si usted tiene `orders.credit_override`, repita la confirmación con `overrideCredit: true`; si
+no, pida a Facturación o a un administrador que autorice el exceso, o que suban el límite de crédito del cliente.
 
 El comentario del historial (`Crédito excedido autorizado por {usuario} (límite X, en curso Y, esta orden Z)`) se guarda
 completo, pero quien lo lee sin `orders.view_price` lo ve sin el paréntesis de cifras:
@@ -326,25 +344,39 @@ Cómo se usa: `POST /api/v1/orders/{publicId}/reprice`.
 
 ### 3.5 Quién ve los precios (permiso `orders.view_price`, Lote 39)
 
-Qué hace: separa **ver órdenes** de **ver lo que cuestan**. Sin el permiso `orders.view_price` («Ver precios de las órdenes»,
-categoría Órdenes) el usuario sigue viendo y trabajando las órdenes, pero el servidor le oculta los precios sin romper
-nada: los campos siguen en la respuesta, en `null` o sin cifras. El **monto COD** (`codAmount`) **no** es un precio: siempre
-se ve.
+Qué hace: separa **ver órdenes** de **ver lo que cuestan**. Una persona puede trabajar con las órdenes (verlas, capturarlas,
+confirmarlas) sin ver ningún precio. Sin el permiso `orders.view_price` («Ver precios de las órdenes», categoría Órdenes), el
+sistema deja el precio en blanco (`null`) o sin cifras; nada se rompe y los campos siguen existiendo. El **monto COD**
+(`codAmount`, lo que se cobra al entregar) **no** es un precio y siempre se ve.
+
+Quién puede: el permiso `orders.view_price` se asigna a un rol en Sistema → Roles. De fábrica lo traen:
+
+| Rol | Ve los precios |
+|---|---|
+| Admin de compañía (TenantAdmin) | Sí |
+| Facturación (Billing) | Sí |
+| Despachador (Dispatcher), Operador de almacén (WarehouseOperator), Chofer (Driver), Solo lectura (ReadOnly) | No. El administrador puede agregar el permiso a un rol propio si alguien más debe verlos. |
+
+Los roles llamados TenantAdmin o Billing que su compañía ya tenía también lo reciben con la actualización de la base (solo se
+agrega, no se quita nada). El administrador de plataforma lo tiene siempre.
+
+Qué cambia en cada lugar:
 
 | Dónde | Con `orders.view_price` | Sin `orders.view_price` |
 |---|---|---|
-| Ficha `GET /orders/{id}` y las respuestas de crear, editar, confirmar, reprecio, cancelar y estatus | `quotedAmount` con el monto | `quotedAmount: null` |
-| Listado `GET /orders` y `GET /orders/lookup` (también la estación de escaneo) | `quotedAmount` por fila | `quotedAmount: null` en cada fila |
-| Cotización `GET /orders/{id}/quote` | total, líneas, despacho, COD y crédito | **403** `Falta el permiso 'orders.view_price'.` |
-| Crédito excedido al confirmar (también `confirmNow`, entrega especial e importación) | `422` con cifras y `errors` `limit`/`exposure`/`newAmount`/`available` | `422` `El cliente excede su límite de crédito.` con `errors` vacío (mismo `code`) |
-| Historial de estatus de la orden (comentario del override de crédito) | comentario completo | sin el paréntesis de cifras |
-| Lote de importación de órdenes (error de una fila por crédito) | error con cifras | `El cliente excede su límite de crédito.` |
-| Análisis: campo **Monto cotizado** (`QuotedAmount`) de la fuente «Órdenes» (vistas, exportaciones, indicadores, gráficos) | con valor | vacío (`null`); un indicador que suma ese campo da 0 |
+| Ficha de la orden (`GET /orders/{id}`) y las respuestas de crear, editar, confirmar, reprecio, cancelar y estatus | El campo `quotedAmount` trae el monto. | `quotedAmount` va vacío (`null`); en la pantalla se ve «—». |
+| Lista de órdenes (`GET /orders`) y búsqueda por código (`GET /orders/lookup`, también la estación de escaneo) | Cada fila trae el precio (columna **Cotizado**). | Cada fila va sin precio; la columna **Cotizado** no se muestra. |
+| Cotización completa (`GET /orders/{id}/quote`) | Total, líneas, cargo de despacho, cargo de COD y crédito. | Error 403 `Falta el permiso 'orders.view_price'.` |
+| Crédito excedido al confirmar (también al crear con `confirmNow`, en la entrega especial con chofer y en la importación) | Error 422 con cifras: `El cliente excede su límite de crédito: límite X, en curso Y, esta orden Z.` | Error 422 sin cifras: `El cliente excede su límite de crédito.` (mismo código `credit_exceeded`). |
+| Historial de estatus de la orden (comentario de la autorización de crédito) | `Crédito excedido autorizado por {usuario} (límite X, en curso Y, esta orden Z)` | `Crédito excedido autorizado por {usuario}` |
+| Importación de órdenes (fila que falló por crédito) | El error con cifras. | `El cliente excede su límite de crédito.` |
+| Análisis: campo **Monto cotizado** de la fuente «Órdenes» (vistas, exportaciones, indicadores y gráficos) | Con el valor. | Vacío; un indicador que suma ese campo da 0. |
 
-Quién lo tiene de fábrica: las plantillas **TenantAdmin** (Admin de compañía) y **Billing** (Facturación), y los roles con
-esos nombres que cada compañía ya tenía (la actualización de la base se los agrega; no quita nada). **Dispatcher**,
-**WarehouseOperator**, **Driver** y **ReadOnly** no lo traen: el administrador lo agrega a un rol propio en
-Sistema → Roles si alguien más debe ver precios. El administrador de plataforma lo tiene siempre.
+**Ejemplo.** Un despachador (sin `orders.view_price`) confirma una orden de un cliente que ya pasó su límite. Recibe
+`El cliente excede su límite de crédito.` (422), sin cifras. No puede autorizarlo (no tiene `orders.credit_override`), así que avisa a
+Facturación; ellos ven las cifras, autorizan el exceso y la orden se confirma.
+
+Preguntas frecuentes de esta sección: en [faq.md](faq.md), «Lote 39 — Precios de las órdenes y filtros de la lista».
 
 ---
 

@@ -2,8 +2,7 @@
 
 Pantalla **Operación → Órdenes** (`/orders`). F-C se parte en tres sub-lotes (decisión del dueño, 2026-10-12): **F-C1** (este) = lista mejorada + alta DETALLADA + entrega especial;
 **F-C2** = expediente (edición y acciones); **F-C3** = entrada rápida e importación CSV. Solo se tocó `web-app/` y `docs/`: el servidor y el contrato (`openapi.json`, `schema.d.ts`) ya traían el
-lote 39 (`orders.view_price`, filtros nuevos de `GET /orders`) y **no se editaron**. Manual de pantallas: [fc1-ordenes-alta.md](../manual/frontend/fc1-ordenes-alta.md); preguntas del FAQ pendientes de
-integrar: [_faq-fc1.md](_faq-fc1.md). Referencia de la maqueta: `Diseño/teikem-mockups.html` (`ordenes()`, `filtersHtml`, `tableHtml`, `detailEditor`, `renderSec3`). Lotes hermanos:
+lote 39 (`orders.view_price`, filtros nuevos de `GET /orders`) y **no se editaron**. Manual de pantallas: [fc1-ordenes-alta.md](../manual/frontend/fc1-ordenes-alta.md); preguntas del FAQ: sección «Lote F-C1» de [faq.md](../manual/faq.md). Referencia de la maqueta: `Diseño/teikem-mockups.html` (`ordenes()`, `filtersHtml`, `tableHtml`, `detailEditor`, `renderSec3`). Lotes hermanos:
 [loteFB-decisiones.md](loteFB-decisiones.md), [loteFA1-decisiones.md](loteFA1-decisiones.md).
 
 ## Qué se construyó

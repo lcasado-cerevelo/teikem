@@ -6505,124 +6505,127 @@ No se eliminan: **Desactivar esta plantilla** la saca del selector (los lotes ya
 
 ## Lote 39 — Precios de las órdenes y filtros de la lista (2026-10-12)
 
-**¿Por qué veo la orden pero el «Monto cotizado» sale vacío?**
-Su rol no tiene el permiso `orders.view_price` («Ver precios de las órdenes»). Sin él, el servidor deja `quotedAmount` en `null` en la ficha, la lista, la búsqueda/escaneo y en las respuestas de confirmar o repreciar; la orden sí quedó cotizada. Si su trabajo exige ver precios, pida al administrador que agregue el permiso a su rol (Sistema → Roles). El monto COD sí se ve siempre.
+Preguntas sobre quién ve los precios de las órdenes y sobre los filtros de la lista de órdenes. Los capítulos relacionados son «03 — Órdenes de transporte» (secciones «Listado y búsqueda» y «Quién ve los precios») y «Órdenes: buscar órdenes y crear una nueva» (manual de pantallas).
 
-**`Falta el permiso 'orders.view_price'.` (403) al abrir la cotización de una orden.**
-La cotización completa (`GET /api/v1/orders/{id}/quote`: total, líneas, despacho, COD y crédito) exige `orders.view` y `orders.view_price`. Pida el permiso al administrador o a Facturación, que lo trae de fábrica.
+**¿Por qué no veo el precio de las órdenes?**
+Su rol no tiene el permiso `orders.view_price` («Ver precios de las órdenes»). Sin él, el precio sale vacío o no aparece: la columna **Cotizado** de la lista no se muestra y en la ficha de la orden el monto cotizado aparece como «—». La orden sí está cotizada; usted solo no tiene permiso para ver cuánto. El monto **COD** (lo que se cobra al entregar) se ve siempre. Si su trabajo exige ver precios, pídale al administrador que agregue el permiso a su rol (Sistema → Roles).
 
-**`El cliente excede su límite de crédito.` (422, sin cifras).**
-El crédito del cliente no alcanza para confirmar la orden y usted no tiene `orders.view_price`, así que el aviso no muestra el límite, lo en curso ni el monto. Es el mismo caso que `El cliente excede su límite de crédito: límite X, en curso Y, esta orden Z.`: avise a Facturación (o a quien tenga `orders.credit_override`) para que autorice el exceso, o suba el límite del cliente.
+**¿Quién ve los precios sin tener que pedir nada?**
+De fábrica, el rol Admin de compañía (TenantAdmin) y el de Facturación (Billing), y los roles con esos mismos nombres que su compañía ya tenía. Despachador, Operador de almacén, Chofer y Solo lectura no lo traen. El administrador puede agregar el permiso a cualquier rol propio.
 
-**En el historial de la orden dice «Crédito excedido autorizado por …» sin los montos.**
-Es el mismo comentario del override de crédito; las cifras solo las ve quien tiene `orders.view_price`.
+**¿Qué significa «Falta el permiso 'orders.view_price'.» (403) al abrir la cotización de una orden?**
+La cotización completa (total, líneas, cargo de despacho, cargo de COD y crédito del cliente) es información de precios. Para verla hacen falta los permisos `orders.view` y `orders.view_price`. Pídale el segundo al administrador o a Facturación.
 
-**En un lote de importación de órdenes una fila dice `El cliente excede su límite de crédito.`**
-Esa fila no se creó por falta de crédito al confirmarla (`confirmNow`). Quien tiene `orders.view_price` ve el aviso con cifras. Autorice con `overrideCredit` (exige `orders.credit_override`) o importe esa fila sin confirmar.
+**¿Qué hago si dice «El cliente excede su límite de crédito.» y no me muestra cifras?**
+Quiere decir que el crédito del cliente no alcanza para confirmar la orden. No ve el límite, lo que el cliente ya debe en órdenes en curso ni el monto de esta orden porque no tiene `orders.view_price`. Avise a Facturación (o a quien tenga el permiso `orders.credit_override`) para que autorice el exceso, o para que suban el límite del cliente. Si usted tiene `orders.view_price`, el mensaje trae las cifras: «El cliente excede su límite de crédito: límite X, en curso Y, esta orden Z.» (ver el Lote F-C1, más abajo).
 
-**Mi indicador o vista de Análisis con «Monto cotizado» sale en 0 o vacío.**
-El campo `QuotedAmount` de la fuente «Órdenes» sale vacío para quien no tiene `orders.view_price`. Pida el permiso o use otra columna.
+**En el historial de la orden dice «Crédito excedido autorizado por …» pero sin montos. ¿Por qué?**
+Es el registro de que alguien autorizó un exceso de crédito. Las cifras (límite, en curso, monto de la orden) solo las ve quien tiene `orders.view_price`.
 
-**¿Quién trae `orders.view_price` de fábrica?**
-Las plantillas Admin de compañía (TenantAdmin) y Facturación (Billing), y los roles con esos nombres que su compañía ya tenía (la actualización de la base se los agrega). Despachador, Operador de almacén, Chofer y Solo lectura no lo traen.
+**Importé órdenes desde un archivo y una fila dice «El cliente excede su límite de crédito.». ¿Qué pasó?**
+Esa orden no se creó porque, al confirmarla, el crédito del cliente no alcanzaba. Quien tiene `orders.view_price` ve el mismo aviso con cifras. Puede volver a importar esa fila autorizando el exceso (hace falta `orders.credit_override`) o importarla sin confirmar.
+
+**Mi indicador o vista de Análisis con «Monto cotizado» sale vacío o en 0. ¿Por qué?**
+El campo «Monto cotizado» de la fuente «Órdenes» sale vacío para quien no tiene `orders.view_price`, y un indicador que suma ese campo da 0. Pida el permiso o use otra columna.
 
 **`Tipo de servicio desconocido: X.` / `Tipo de paquete desconocido: X.` / `Estatus desconocido: X.` (400) al filtrar la lista de órdenes.**
-Uno de los valores de `serviceTypes`, `packageTypes` o `statuses` no existe en el catálogo (revise la ortografía del código: `STANDARD`, `BOX`, `CONFIRMED`…; no importan las mayúsculas). Quite ese valor o elíjalo de la lista.
+Uno de los valores del filtro no existe en los catálogos. En la pantalla Órdenes normalmente no lo verá, porque ahí los valores se eligen de una lista; sale a quien consulta el API directamente (por ejemplo, una integración). Revise la ortografía del código (como `STANDARD`, `BOX` o `CONFIRMED`; las mayúsculas no importan) y quite el valor o cámbielo por uno válido.
 
-**`Cliente no encontrado.` (404) al filtrar por varios clientes.**
-Alguno de los `clientIds` (o el `clientId`) no es de su compañía o está fuera del alcance de datos de su usuario. Quítelo del filtro; si debería verlo, pida al administrador que revise el alcance de su usuario.
+**`Cliente no encontrado.` (404) al filtrar la lista por varios clientes.**
+Alguno de los clientes del filtro no es de su compañía o está fuera de los clientes que su usuario puede ver. Quítelo del filtro. Si debería poder verlo, pídale al administrador que revise el alcance de datos de su usuario.
 
-**Filtré por pueblo y no salió nada.**
-El pueblo se compara completo, sin mayúsculas ni tildes («bayamon» = «Bayamón»), contra el pueblo del consignatario guardado en la orden. Si el consignatario se escribió distinto (otro nombre o abreviado), la orden no entra; pruebe con el prefijo del ZIP (`postalCodePrefix`). Sin coincidencias la lista responde vacía, no es un error.
+**Filtré por pueblo y no salió ninguna orden.**
+El filtro compara el pueblo completo del consignatario de la orden. No importan las mayúsculas ni las tildes («bayamon» encuentra «Bayamón»), pero si el consignatario tiene el pueblo escrito distinto (otro nombre o abreviado), la orden no entra. Pruebe con el filtro **ZIP** (por ejemplo `009`). Que no salgan órdenes no es un error: simplemente no hay coincidencias.
 
-**¿Varios valores en un filtro se suman o se restan?**
-Dentro de un filtro se suman (cualquiera de los tipos, pueblos, clientes o estatus elegidos); entre filtros distintos se restan (deben cumplirse todos). `clientId` y `status`, si también vienen, se suman a `clientIds` y `statuses`.
+**Marqué varios valores en un filtro. ¿Se suman o se restan?**
+Dentro de un mismo filtro se suman: la orden entra si cumple **cualquiera** de los valores marcados (por ejemplo, Pueblo = Bayamón y Ponce trae las de los dos pueblos). Entre filtros distintos se restan: la orden debe cumplir **todos** los filtros que usted llenó.
 
-# Preguntas del FAQ — Lote F-C1 (Órdenes: lista y alta detallada) — pendientes de integrar en docs/manual/faq.md
+## Lote F-C1 — Pantalla de Órdenes: lista y nueva orden (2026-10-12)
 
-Sección sugerida: «Lote F-C1 — Pantalla de Órdenes (web)». Cada mensaje es el texto exacto que muestra la pantalla (el del servidor, manual 03 §1.1/§3, o el de la validación de pantalla).
+Preguntas de la pantalla **Operación → Órdenes**. Los mensajes aparecen tal cual los muestra la pantalla. El capítulo completo es «Órdenes: buscar órdenes y crear una nueva» (manual de pantallas).
 
 **¿Por qué no veo el botón «Nueva orden»?**
-Falta el permiso `orders.create`. Pídelo a un administrador (Sistema → Roles). Sin él tampoco aparecen «Guardar borrador» ni «Guardar y confirmar».
+Falta el permiso `orders.create`. Pídalo al administrador de su compañía (Sistema → Roles). Sin ese permiso tampoco aparecen **Guardar borrador** ni **Guardar y confirmar**.
 
 **¿Por qué no veo la columna «Cotizado» (el precio)?**
-Falta el permiso `orders.view_price` («Ver precios de las órdenes»). Con o sin él el COD se ve igual: no es un precio. Lo traen de fábrica los roles Admin de compañía y Facturación.
+Falta el permiso `orders.view_price` («Ver precios de las órdenes»). El COD se ve igual, con o sin el permiso, porque no es un precio. Lo traen de fábrica los roles Admin de compañía y Facturación.
 
 **¿Por qué una orden ocupa varias filas en la lista?**
-Se muestra una fila por tipo de paquete: la primera lleva los datos de la orden y las siguientes solo «↳», el otro tipo de paquete y sus piezas. Es una sola orden (el contador y las páginas cuentan órdenes) y las
-acciones (abrir, eliminar) están en la primera fila.
+Se muestra una fila por cada tipo de paquete. La primera fila lleva los datos de la orden y las siguientes solo «↳», el otro tipo de paquete y sus piezas. Es una sola orden: el contador y las páginas cuentan órdenes, y las acciones (abrir y eliminar) están en la primera fila.
 
 **¿Por qué no veo la papelera en una orden?**
-La papelera solo sale si la orden sigue en su estatus inicial (Entrada) y tienes el permiso `orders.cancel`. Después de confirmada se cancela desde su expediente, no se elimina.
+La papelera solo aparece si la orden sigue en su estatus inicial (Borrador) y usted tiene el permiso `orders.cancel`. Una orden confirmada ya no se elimina: se cancela.
 
-**¿Qué significa «Solo se puede eliminar una orden en su estatus inicial; use la cancelación.» (HTTP 422)?**
-Alguien confirmó la orden mientras tenías la lista abierta. Ya no se puede eliminar: cancélala desde su expediente. Recarga la lista.
+**¿Qué significa «Solo se puede eliminar una orden en su estatus inicial; use la cancelación.» (422)?**
+Alguien confirmó la orden mientras usted tenía la lista abierta, y ya no se puede eliminar. Recargue la lista. Si la orden debe anularse, hay que cancelarla.
 
 **¿Qué significa «El cliente es obligatorio.»?**
-No elegiste el cliente. Búscalo en el campo «Cliente» (código o nombre) y elígelo de la lista.
+No eligió el cliente. Búsquelo en el campo **Cliente** (por código o nombre) y elíjalo de la lista.
 
 **¿Qué significa «El tipo de servicio es obligatorio.»?**
-El campo «Servicio» está vacío y la compañía no tiene un servicio predeterminado. Elige uno.
+El campo **Servicio** está vacío y la compañía no tiene un servicio predeterminado. Elija uno.
 
 **¿Qué significa «El consignatario es obligatorio: elija uno del directorio o capture uno nuevo.»?**
-Falta el consignatario. Búscalo en «Nombre» (salen los del cliente y los compartidos) o créalo con el botón «+» (necesita `locations.create`). No se puede teclear un nombre suelto.
+Falta el consignatario. Búsquelo en **Nombre** (salen los del cliente y los compartidos) o créelo con el botón **+** (necesita `locations.create`). No se puede escribir un nombre suelto.
 
-**El selector de consignatario no me deja elegir nada: dice «Elija primero un cliente» o «No se pudo leer el directorio de consignatarios».**
-Los consignatarios dependen del cliente: elígelo primero. Si dice que no se pudo leer el directorio, tu usuario no tiene `locations.read` (Catálogo); pídelo.
+**El campo del consignatario dice «Elija primero un cliente» o «No se pudo leer el directorio de consignatarios». ¿Qué hago?**
+Los consignatarios dependen del cliente: elija primero el **Cliente**. Si dice que no se pudo leer el directorio, su usuario no tiene el permiso `locations.read` (Catálogo); pídalo.
 
-**¿Por qué no aparece el «+» junto al consignatario?**
-Falta el permiso `locations.create` (o aún no elegiste el cliente: el botón está deshabilitado hasta entonces). El consignatario que creas ahí nace con el cliente de la orden como dueño.
+**¿Por qué no aparece el botón «+» junto al consignatario?**
+Falta el permiso `locations.create`, o todavía no eligió el cliente (el botón está deshabilitado hasta entonces). El consignatario que cree ahí queda con el cliente de la orden como dueño.
 
-**¿Por qué los datos del consignatario (dirección, pueblo, ZIP, teléfono) no se pueden editar en la orden?**
-Son los del directorio. Para cambiarlos edita el consignatario en Catálogo → Consignatarios. El teléfono solo aparece si tienes permiso para leer sus datos de contacto.
+**¿Por qué no puedo cambiar la dirección, el pueblo, el ZIP o el teléfono del consignatario dentro de la orden?**
+Esos datos son los del directorio. Para cambiarlos, edite el consignatario en Catálogo → Consignatarios. El teléfono solo aparece si usted tiene permiso para ver los datos de contacto.
 
 **¿Qué significa «Indique al menos una línea de paquete.»?**
-Una orden normal necesita al menos una línea de paquete. «Añadir paquete» agrega una; la última línea no se puede quitar.
+Una orden normal necesita al menos una línea de paquete. Pulse **Añadir paquete** para agregar una. La última línea no se puede quitar.
 
 **¿Qué significa «El tipo de paquete es obligatorio.»?**
-La línea no tiene tipo y la compañía no tiene un tipo de paquete predeterminado. Elígelo en esa línea.
+Una línea no tiene tipo de paquete y la compañía no tiene un tipo predeterminado. Elíjalo en esa línea.
 
 **¿Qué significa «La cantidad de piezas debe ser al menos 1.»?**
-Las piezas deben ser un número entero de 1 en adelante. Corrígelo en la línea marcada.
+Las **Piezas** deben ser un número entero de 1 en adelante. Corríjalo en la línea marcada.
 
 **¿Qué significa «El monto COD no puede ser negativo.»?**
-El COD es lo que se cobra al entregar y no admite negativos. Déjalo vacío o en 0 si no hay cobro.
+El **Monto COD** es lo que se cobra al entregar y no admite números negativos. Déjelo vacío o en 0 si no hay cobro.
 
-**¿Por qué no puedo teclear el número de factura? Dice «(automático)».**
-Teikem asigna la numeración de ese cliente. El campo solo se habilita si en la ficha del cliente (Numeración) el cliente asigna sus propias facturas. Si lo tecleas por otra vía, el servidor responde «El número de factura lo asigna Teikem para este cliente; déjelo en blanco.» (400).
+**¿Por qué no puedo escribir el número de factura? Dice «(automático)».**
+Teikem asigna la numeración de ese cliente. El campo solo se habilita si el cliente asigna sus propias facturas (se configura en la ficha del cliente, en Numeración). Si de todos modos se envía un número, el servidor responde «El número de factura lo asigna Teikem para este cliente; déjelo en blanco.» (400): deje la factura en «(automático)».
 
 **¿Qué significa «El número no puede exceder 40 caracteres.»?**
-El número de factura (o de orden en una entrega especial) tiene un tope de 40 caracteres.
+El número de factura (o de orden, en una entrega especial) admite como máximo 40 caracteres. Acórtelo.
 
 **¿Qué significa «La fecha límite no puede ser anterior a la fecha lista.»?**
-Es una validación de la pantalla: «Límite» no puede ir antes que «Lista». Corrige alguna de las dos.
+En el formulario, **Límite** no puede ser una fecha anterior a **Lista**. Corrija una de las dos.
 
 **¿Qué significa «Factura repetida para este consignatario»?**
-Ese consignatario ya tiene otra orden activa con el mismo número de factura que tecleaste y su ficha admite repetirlo (409, `duplicate_invoice_confirmable`). Elige «No crear la orden» para revisar el número (el enlace abre la orden
-que ya lo usa) o «Crear de todos modos» para crearla repetida. Si el consignatario **no** admite repetidas, el mensaje del servidor aparece bajo el N.º de factura («El consignatario 'X' no permite facturas repetidas: la orden N ya usa el número F.», 409, `duplicate_invoice`) y la orden no se crea.
+Escribió un número de factura que otra orden activa de ese consignatario ya usa, y la ficha del consignatario admite repetirlo (409). Elija **No crear la orden** para revisar el número (el enlace **Ver la orden …** abre la que ya lo usa) o **Crear de todos modos** para crearla con el número repetido.
 
-**¿Qué significa «El cliente excede su límite de crédito…» (HTTP 422, `credit_exceeded`)?**
-Solo ocurre con «Guardar y confirmar»: el monto de la orden pasa el límite de crédito del cliente. Si tienes el permiso `orders.credit_override` se abre una ventana con las cifras del servidor y el botón «Autorizar y confirmar»
-(la orden se crea y se confirma de todos modos y queda registrado quién la autorizó). Sin ese permiso la orden no se crea y la pantalla lo dice: guarda como borrador o pide a alguien con el permiso que la confirme.
-Si no tienes `orders.view_price`, el mensaje sale sin cifras («El cliente excede su límite de crédito.»).
+**¿Qué significa «El consignatario 'X' no permite facturas repetidas: la orden N ya usa el número F.» (409)?**
+Ese consignatario no admite facturas repetidas y el número ya está en la orden N. El mensaje sale bajo **N.º de factura** y la orden no se crea. Cambie el número de factura o elija otro consignatario.
 
-**¿Qué significa «No hay tarifa vigente para X/Y; configure la tarifa en el contrato del cliente antes de confirmar.» (HTTP 422)?**
-Falta la tarifa del servicio y tipo de paquete en el contrato del cliente. La orden **no** se crea y el formulario conserva lo capturado. Configura la tarifa (Clientes → Contrato → Tarifas) o usa «Guardar borrador» y confirma después.
+**¿Qué hago si dice que el cliente excede su límite de crédito?**
+Pasa solo con **Guardar y confirmar**: el crédito del cliente no alcanza para esta orden (422). El mensaje es «El cliente excede su límite de crédito: límite X, en curso Y, esta orden Z.»; si usted no tiene `orders.view_price`, dice solo «El cliente excede su límite de crédito.», sin cifras.
+- Si tiene el permiso `orders.credit_override`: se abre una ventana con el aviso y el botón **Autorizar y confirmar**. Al pulsarlo, la orden se crea y se confirma de todos modos, y queda registrado quién la autorizó.
+- Si no lo tiene: la orden no se crea y la pantalla dice «La orden no se creó. Pida a alguien con el permiso de autorizar crédito excedido (orders.credit_override) que la capture o la confirme.» Pídaselo a Facturación o a un administrador, o use **Guardar borrador** (el borrador no revisa el crédito) y confirme después.
 
-**¿Qué significa «El cliente está suspendido; no se pueden crear ni confirmar órdenes.» (HTTP 422) o «El cliente está dado de baja; solo se consulta su historial.» (HTTP 409)?**
-El estatus del cliente bloquea órdenes nuevas. Reactiva al cliente desde su ficha o elige otro.
+**¿Qué significa «No hay tarifa vigente para X/Y; configure la tarifa en el contrato del cliente antes de confirmar.» (422)?**
+El contrato del cliente no tiene tarifa para ese servicio y tipo de paquete. La orden no se creó y el formulario conserva lo que escribió. Configure la tarifa (Clientes → Contrato → Tarifas) o use **Guardar borrador** y confirme cuando la tarifa exista.
+
+**¿Qué significa «El cliente está suspendido; no se pueden crear ni confirmar órdenes.» (422) o «El cliente está dado de baja; solo se consulta su historial.» (409)?**
+El estatus del cliente impide crear órdenes nuevas. Reactive al cliente desde su ficha o elija otro.
 
 **¿Qué significa «Este cliente no tiene servicios especiales configurados»?**
-Al marcar «Es una entrega especial», el cliente no tiene servicios en su catálogo de servicios especiales vigente. Agrégalos en Clientes → Contrato → Servicios especiales. Si dice que el componente «Servicios especiales» está apagado, enciéndelo en el modelo de facturación del contrato.
+Marcó **Es una entrega especial**, pero el cliente no tiene servicios en su catálogo de servicios especiales vigente. Agréguelos en Clientes → Contrato → Servicios especiales. Si el aviso dice que el componente «Servicios especiales» está apagado, enciéndalo en el modelo de facturación del contrato.
 
 **¿Por qué el interruptor «Es una entrega especial» está deshabilitado?**
-Para leer los servicios especiales del cliente hace falta el permiso `contracts.read` (módulo Catálogo). Pídelo o captura una orden normal.
+Para leer los servicios especiales del cliente hace falta el permiso `contracts.read` (módulo Catálogo). Pídalo, o capture una orden normal.
 
 **¿Qué significa «El servicio especial es obligatorio en una entrega especial.»?**
-Con la entrega especial activada hay que elegir el servicio del catálogo. Si el servidor responde «El servicio especial no está vigente para este cliente.» (400), el servicio se cerró: elige otro.
+Con la entrega especial activada hay que elegir el servicio en **Servicio especial**. Si el servidor responde «El servicio especial no está vigente para este cliente.» (400), ese servicio ya se cerró: elija otro.
 
 **¿Por qué una entrega especial no pide chofer?**
-En la web el chofer se asigna después, en el expediente de la orden; la orden nace sin paquetes, sin COD y sin chofer.
+En la web el chofer se asigna después, en el expediente de la orden. La orden nace sin paquetes, sin COD y sin chofer.
 
-**¿Se guardó la orden si el formulario sigue abierto y muestra un error?**
-No. Cualquier error del servidor al crear revierte todo (también con «Guardar y confirmar»): la orden no existe y se puede corregir y reintentar sin duplicar.
+**El formulario sigue abierto y muestra un error. ¿Se guardó la orden?**
+No. Cuando el servidor devuelve un error al crear, la orden no se crea (tampoco con **Guardar y confirmar**). Corrija lo que dice el mensaje y vuelva a guardar: no se duplica.
