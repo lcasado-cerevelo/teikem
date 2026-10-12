@@ -29,6 +29,7 @@ import {
   rowDifference,
   rowErrors,
   summarize,
+  type PositionRow,
   type ProductBlock,
 } from './multiAdjust'
 import {
@@ -40,6 +41,7 @@ import {
   type MultiAdjustmentDto,
 } from './multiAdjustApi'
 import { BinPicker, ProductPicker, WarehousePicker } from './pickers'
+import { matchesQ } from '../../kernel/ui/matchesQ'
 
 const T = 'warehouse.multiAdjust'
 const BLOCKED_ZONES = ['QUARANTINE', 'RENTAL', 'CROSSDOCK'] as const
@@ -207,6 +209,13 @@ function NewAdjustment({ onDone }: { onDone: (publicId: string) => void }) {
           />
         </div>
       </div>
+      {/* 2026-10-12 (Luis): la nota va arriba, debajo de Almacén y Agregar producto; el pie solo lleva el resumen y Aplicar */}
+      <div className="f mja-notes">
+        <label htmlFor="mja-notes">
+          {t(`${T}.notes`)} <small>({t(`${T}.reasonFixed`)})</small>
+        </label>
+        <textarea id="mja-notes" value={notes} maxLength={MULTI_NOTES_MAX} placeholder={t(`${T}.notesPlaceholder`)} onChange={(e) => setNotes(e.target.value)} />
+      </div>
       <p className="mja-hint">{t(`${T}.hint`)}</p>
       {loadingProduct && <Spinner label={t(`${T}.loadingProduct`)} />}
       {skipped && (
@@ -238,12 +247,6 @@ function NewAdjustment({ onDone }: { onDone: (publicId: string) => void }) {
       ))}
 
       <div className="mja-foot">
-        <div className="f" style={{ margin: 0 }}>
-          <label htmlFor="mja-notes">
-            {t(`${T}.notes`)} <small>({t(`${T}.reasonFixed`)})</small>
-          </label>
-          <textarea id="mja-notes" value={notes} maxLength={MULTI_NOTES_MAX} placeholder={t(`${T}.notesPlaceholder`)} onChange={(e) => setNotes(e.target.value)} />
-        </div>
         <div className="mja-foot-row">
           <div>
             <div className="mja-summary" aria-live="polite">
@@ -293,6 +296,42 @@ function ProductBlockView({
 }) {
   const t = useT()
   const hasLot = block.trackingTypeCode === 'LOT'
+  const [filter, setFilter] = useState('')
+  const shownRows = useMemo(() => block.rows.filter((r) => matchesQ(filter, r.binCode, r.lotNumber ?? '')), [block.rows, filter])
+  // dos bloques uno al lado del otro (la primera mitad a la izquierda); con pocas posiciones, uno solo
+  const half = shownRows.length > 6 ? Math.ceil(shownRows.length / 2) : shownRows.length
+  const columns = [shownRows.slice(0, half), shownRows.slice(half)].filter((c) => c.length > 0)
+  const renderRow = (r: PositionRow) => {
+    const err = errors[errorKey(block.productPublicId, r.key)]
+    const parsed = parseCounted(r.counted)
+    const diff = rowDifference(r)
+    return (
+      <tr key={r.key} className={err ? 'mja-row-bad' : undefined}>
+        <td className="ref">
+          {r.binCode}
+          {r.added && <span className="mja-new">{t(`${T}.added`)}</span>}
+        </td>
+        {hasLot && <td>{r.lotNumber ?? '—'}</td>}
+        <td className="num mono">{fmt(r.systemQty)}</td>
+        <td className="num">
+          <input
+            className="mja-count mono"
+            inputMode="decimal"
+            value={r.counted}
+            aria-label={t(`${T}.countedFor`, { bin: r.binCode })}
+            aria-invalid={parsed === 'invalid' || Boolean(err)}
+            placeholder="—"
+            onChange={(e) => onCounted(r.key, e.target.value)}
+          />
+          {parsed === 'invalid' && <span className="mja-rowerr">{t(`${T}.invalidCount`)}</span>}
+          {err && <span className="mja-rowerr">{err}</span>}
+        </td>
+        <td className="num mono">
+          <Difference value={diff} fmt={fmt} />
+        </td>
+      </tr>
+    )
+  }
   return (
     <section className="mja-block" aria-label={`${block.sku} ${block.name}`}>
       <div className="mja-block-head">
@@ -300,63 +339,46 @@ function ProductBlockView({
           {block.sku}
           <small>{block.name}</small>
         </div>
-        <button type="button" className="btn" onClick={onRemove} aria-label={t(`${T}.removeProduct`, { sku: block.sku })}>
-          {t(`${T}.remove`)}
-        </button>
+        <div className="mja-tools">
+          {block.rows.length > 6 && (
+            <input
+              type="search"
+              className="mja-find"
+              value={filter}
+              placeholder={t(`${T}.findPosition`)}
+              aria-label={t(`${T}.findPosition`)}
+              onChange={(e) => setFilter(e.target.value)}
+            />
+          )}
+          <button type="button" className="btn" onClick={onRemove} aria-label={t(`${T}.removeProduct`, { sku: block.sku })}>
+            {t(`${T}.remove`)}
+          </button>
+        </div>
       </div>
-      <div className="tbl-wrap">
-        <table className="tbl" aria-label={`${block.sku} ${block.name}`}>
-          <thead>
-            <tr>
-              <th>{t(`${T}.cols.position`)}</th>
-              {hasLot && <th>{t(`${T}.cols.lot`)}</th>}
-              <th className="num">{t(`${T}.cols.system`)}</th>
-              <th className="num">{t(`${T}.cols.counted`)}</th>
-              <th className="num">{t(`${T}.cols.difference`)}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {block.rows.length === 0 && (
-              <tr>
-                <td colSpan={hasLot ? 5 : 4} className="note">
-                  {t(`${T}.noPositions`)}
-                </td>
-              </tr>
-            )}
-            {block.rows.map((r) => {
-              const err = errors[errorKey(block.productPublicId, r.key)]
-              const parsed = parseCounted(r.counted)
-              const diff = rowDifference(r)
-              return (
-                <tr key={r.key} className={err ? 'mja-row-bad' : undefined}>
-                  <td className="ref">
-                    {r.binCode}
-                    {r.added && <span className="mja-new">{t(`${T}.added`)}</span>}
-                  </td>
-                  {hasLot && <td>{r.lotNumber ?? '—'}</td>}
-                  <td className="num mono">{fmt(r.systemQty)}</td>
-                  <td className="num">
-                    <input
-                      className="mja-count mono"
-                      inputMode="decimal"
-                      value={r.counted}
-                      aria-label={t(`${T}.countedFor`, { bin: r.binCode })}
-                      aria-invalid={parsed === 'invalid' || Boolean(err)}
-                      placeholder="—"
-                      onChange={(e) => onCounted(r.key, e.target.value)}
-                    />
-                    {parsed === 'invalid' && <span className="mja-rowerr">{t(`${T}.invalidCount`)}</span>}
-                    {err && <span className="mja-rowerr">{err}</span>}
-                  </td>
-                  <td className="num mono">
-                    <Difference value={diff} fmt={fmt} />
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+      {block.rows.length === 0 ? (
+        <p className="note mja-empty">{t(`${T}.noPositions`)}</p>
+      ) : shownRows.length === 0 ? (
+        <p className="note mja-empty">{t('ui.searchSelect.none')}</p>
+      ) : (
+        <div className="mja-cols">
+          {columns.map((rows, i) => (
+            <div className="tbl-wrap" key={i}>
+              <table className="tbl mja-tbl" aria-label={`${block.sku} ${block.name}`}>
+                <thead>
+                  <tr>
+                    <th>{t(`${T}.cols.position`)}</th>
+                    {hasLot && <th>{t(`${T}.cols.lot`)}</th>}
+                    <th className="num">{t(`${T}.cols.system`)}</th>
+                    <th className="num">{t(`${T}.cols.counted`)}</th>
+                    <th className="num">{t(`${T}.cols.difference`)}</th>
+                  </tr>
+                </thead>
+                <tbody>{rows.map(renderRow)}</tbody>
+              </table>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="mja-add">
         <span className="note">{t(`${T}.addPosition`)}</span>
         <div className="mja-bin">

@@ -5784,6 +5784,7 @@
       }
     },
     "multiAdjust": {
+      "findPosition": "Find position…",
       "title": "Multi-adjustment",
       "subtitle": "bring a warehouse's inventory up to date by product and position, several at once",
       "tabNew": "New adjustment",

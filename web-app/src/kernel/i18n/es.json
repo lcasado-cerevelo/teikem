@@ -5784,6 +5784,7 @@
       }
     },
     "multiAdjust": {
+      "findPosition": "Buscar posición…",
       "title": "Ajuste múltiple",
       "subtitle": "pone al día el inventario de un almacén por producto y posición, varias a la vez",
       "tabNew": "Nuevo ajuste",
