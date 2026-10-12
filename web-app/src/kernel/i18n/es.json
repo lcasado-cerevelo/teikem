@@ -6,6 +6,9 @@
     "copy": "Copiar",
     "done": "Listo"
   },
+  "environment": {
+    "notProduction": "Ambiente de pruebas: no es producción"
+  },
   "errors": {
     "generic": "Ocurrió un error. Intente de nuevo.",
     "network": "No se pudo conectar con el servidor. Revise su conexión e intente de nuevo."

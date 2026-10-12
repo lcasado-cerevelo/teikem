@@ -88,3 +88,22 @@ solo se ensancha (texto más largo) o pasa a aceptar nulos se ajusta sola; cualq
 - **Si el API no arranca:** Visor de eventos > Registros de Windows > Aplicación (origen *IIS AspNetCore Module V2*), o ponga
   `stdoutLogEnabled="true"` en `web.config` y mire `logs\`.
 - Los primeros usuarios que entren pasan por el **primer ingreso** (correo, contraseña propia y MFA).
+
+## Staging en el mismo servidor (`teikem.isaxpr.com`)
+
+Mismo paquete, otro sitio: cada ambiente tiene su sitio y grupo de aplicaciones de IIS, su carpeta, su `appsettings.Production.local.json`
+(con **su** cadena de conexión y **su** llave de sesiones), su carpeta de llaves de Data Protection y su base de datos. Nada se comparte con producción.
+
+```powershell
+cd C:\Temp	eikem      # el paquete descomprimido (el mismo .zip que producción, o uno más nuevo para probarlo primero)
+powershell -ExecutionPolicy Bypass -File .\instalar.ps1 -Sitio TeikemStaging -Carpeta C:\inetpub	eikem-staging
+```
+
+Responda: dominio `teikem.isaxpr.com`, nombre de la base `Teikem_Staging` (con su servidor, usuario y contraseña). Antes: el DNS de
+`teikem.isaxpr.com` debe apuntar a este servidor; después, que el proceso de Let's Encrypt agregue el sitio `TeikemStaging` y se vuelve a
+correr el mismo comando para activar la redirección a https. Para actualizar staging: el mismo comando con el .zip nuevo (conserve la configuración).
+
+- La base `Teikem_Staging` se deja al día con `db-update` (igual que producción: simula, pide respaldo y aplica). Si está vacía, crea todo.
+- Las variables de sistema de Brevo son las mismas: staging **sí envía correos reales**. Si no quiere eso, déjelas vacías al pedirlas y use otra llave solo para staging.
+- **APK de staging:** `scripts\construir-apk.ps1 -Staging` (paquete `com.teikem.almacen.staging`, icono morado con cinta STAGING, servidor
+  `https://teikem.isaxpr.com`); se instala junto a la de producción. Ver `docs/mobile/actualizar-apk.md`.

@@ -46,6 +46,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "brand:icons": "node ../scripts/brand-icons.mjs",
+    "brand:icons:staging": "node ../scripts/brand-icons.mjs staging",
     "api:types": "openapi-typescript ../web-app/openapi.json -o src/kernel/api/schema.d.ts",
     "typecheck": "tsc -b",
     "lint": "oxlint src modules/datawedge/src plugins",

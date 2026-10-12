@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom'
 import { ReauthProvider } from '../kernel/auth/ReauthProvider'
+import { EnvironmentRibbon } from '../kernel/ui/EnvironmentRibbon'
 import { useSession } from './session'
 import { SessionProvider } from './SessionProvider'
 
@@ -16,6 +17,7 @@ function WithReauth() {
 export default function Root() {
   return (
     <SessionProvider>
+      <EnvironmentRibbon />
       <WithReauth />
     </SessionProvider>
   )

@@ -4,10 +4,12 @@
   Requisitos: depuración USB activada en los aparatos y el APK nuevo hecho con scripts\construir-apk.ps1 (misma llave de firma y código de versión mayor).
   Uso:   powershell -ExecutionPolicy Bypass -File "F:\Visual Studio 2022\Projects\teikem\scripts\actualizar-aparatos.ps1"
   Opciones: -Apk <archivo.apk>  (sin él se usa el más reciente de F:\Download\TeikemApp)
+            -Staging  (usa el TeikemStaging-*.apk más reciente, el de la app de pruebas; sin él, solo los TeikemAlmacen-*.apk de producción)
 #>
 param(
     [string]$Apk,
-    [string]$Carpeta = 'F:\Download\TeikemApp'
+    [string]$Carpeta = 'F:\Download\TeikemApp',
+    [switch]$Staging
 )
 
 $ErrorActionPreference = 'Continue'
@@ -16,8 +18,8 @@ function Fallar([string]$m) { Write-Host ''; Write-Host $m -ForegroundColor Red;
 
 # --- APK ---
 if (-not $Apk) {
-    $ultimo = Get-ChildItem $Carpeta -Filter 'TeikemAlmacen-*.apk' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime | Select-Object -Last 1
-    if (-not $ultimo) { Fallar "No encuentro ningún TeikemAlmacen-*.apk en $Carpeta. Primero corra scripts\construir-apk.ps1 (o use -Apk <archivo>)." }
+    $ultimo = Get-ChildItem $Carpeta -Filter $(if ($Staging) { 'TeikemStaging-*.apk' } else { 'TeikemAlmacen-*.apk' }) -ErrorAction SilentlyContinue | Sort-Object LastWriteTime | Select-Object -Last 1
+    if (-not $ultimo) { Fallar "No encuentro ningún $(if ($Staging) { 'TeikemStaging' } else { 'TeikemAlmacen' })-*.apk en $Carpeta. Primero corra scripts\construir-apk.ps1$(if ($Staging) { ' -Staging' }) (o use -Apk <archivo>)." }
     $Apk = $ultimo.FullName
 }
 if (-not (Test-Path $Apk)) { Fallar "No existe el archivo: $Apk" }

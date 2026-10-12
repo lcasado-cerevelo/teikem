@@ -40,12 +40,18 @@ private const val EXTRA_GET_ACTIVE_PROFILE = "com.symbol.datawedge.api.GET_ACTIV
 private const val EXTRA_RESULT_GET_ACTIVE_PROFILE = "com.symbol.datawedge.api.RESULT_GET_ACTIVE_PROFILE"
 private const val CMD_ID_CREATE = "teikem-create-profile"
 private const val CMD_ID_ACTIVE = "teikem-active-profile"
-private const val SCAN_ACTION = "com.teikem.almacen.SCAN"
-private const val PROFILE_NAME = "TeikemAlmacen"
+// Perfil y acción de escaneo salen del paquete (2026-10-12): producción (com.teikem.almacen) conserva "TeikemAlmacen" y
+// "com.teikem.almacen.SCAN"; la variante staging (com.teikem.almacen.staging) usa los suyos, para que las dos apps convivan
+// en el mismo Zebra sin pisarse el perfil de DataWedge.
+private const val PRODUCTION_PACKAGE = "com.teikem.almacen"
 
 class DatawedgeModule : Module() {
   private var scanReceiver: BroadcastReceiver? = null
   private var resultReceiver: BroadcastReceiver? = null
+
+  private val packageId: String get() = appContext.reactContext?.packageName ?: PRODUCTION_PACKAGE
+  private val scanAction: String get() = "$packageId.SCAN"
+  private val profileName: String get() = if (packageId == PRODUCTION_PACKAGE) "TeikemAlmacen" else "TeikemAlmacen${packageId.substringAfterLast('.').replaceFirstChar { it.uppercase() }}"
 
   // Último estado conocido del perfil: unconfirmed hasta que DataWedge conteste.
   @Volatile private var profileState: String = "unconfirmed"
@@ -61,7 +67,7 @@ class DatawedgeModule : Module() {
       isDataWedgeInstalled()
     }
 
-    // Crea (o actualiza) el perfil "TeikemAlmacen": escáner encendido, salida por Intent (broadcast) a SCAN_ACTION y salida
+    // Crea (o actualiza) el perfil de la app ("TeikemAlmacen" en producción): escáner encendido, salida por Intent (broadcast) a la acción <paquete>.SCAN y salida
     // por teclas apagada. Pide el resultado (llega a resultReceiver).
     Function("createProfile") {
       if (isDataWedgeInstalled()) sendCreateProfileBroadcast()
@@ -93,7 +99,7 @@ class DatawedgeModule : Module() {
         }
       }
       scanReceiver = scan
-      register(ctx, scan, IntentFilter(SCAN_ACTION).apply { addCategory(Intent.CATEGORY_DEFAULT) })
+      register(ctx, scan, IntentFilter(scanAction).apply { addCategory(Intent.CATEGORY_DEFAULT) })
 
       val result = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) = onDataWedgeResult(intent)
@@ -139,7 +145,7 @@ class DatawedgeModule : Module() {
   private fun setStatus(state: String, detail: String) {
     profileState = state
     profileDetail = detail
-    Log.i(TAG, "perfil $PROFILE_NAME: $state ${if (detail.isNotEmpty()) "($detail)" else ""}")
+    Log.i(TAG, "perfil $profileName: $state ${if (detail.isNotEmpty()) "($detail)" else ""}")
     try {
       sendEvent("onProfileStatus", mapOf("state" to state, "detail" to detail))
     } catch (e: Exception) {
@@ -165,7 +171,7 @@ class DatawedgeModule : Module() {
     // Respuesta a GET_ACTIVE_PROFILE: el nombre del perfil que DataWedge aplica a la app en primer plano.
     if (intent.hasExtra(EXTRA_RESULT_GET_ACTIVE_PROFILE)) {
       val active = intent.getStringExtra(EXTRA_RESULT_GET_ACTIVE_PROFILE) ?: ""
-      if (active == PROFILE_NAME) setStatus("ready", active) else setStatus("noProfile", "activo: $active")
+      if (active == profileName) setStatus("ready", active) else setStatus("noProfile", "activo: $active")
       return
     }
     // Respuesta a SET_CONFIG (creación del perfil): SUCCESS / FAILURE con RESULT_INFO.
@@ -175,7 +181,7 @@ class DatawedgeModule : Module() {
     val result = intent.getStringExtra("RESULT") ?: ""
     @Suppress("DEPRECATION")
     val info = describe(intent.getBundleExtra("RESULT_INFO"))
-    Log.i(TAG, "SET_CONFIG $PROFILE_NAME: $result $info")
+    Log.i(TAG, "SET_CONFIG $profileName: $result $info")
     if (result.equals("SUCCESS", ignoreCase = true)) {
       // Creado o actualizado: falta confirmar que es el perfil activo de la app.
       sendGetActiveProfile()
@@ -200,7 +206,7 @@ class DatawedgeModule : Module() {
     val packageName = ctx.packageName
 
     val profileConfig = Bundle().apply {
-      putString("PROFILE_NAME", PROFILE_NAME)
+      putString("PROFILE_NAME", profileName)
       putString("PROFILE_ENABLED", "true")
       // Crea el perfil si no existe y, si ya existe, le aplica igual los plugins de abajo (corrige un perfil viejo con
       // las teclas encendidas).
@@ -229,7 +235,7 @@ class DatawedgeModule : Module() {
         "PARAM_LIST",
         Bundle().apply {
           putString("intent_output_enabled", "true")
-          putString("intent_action", SCAN_ACTION)
+          putString("intent_action", scanAction)
           putString("intent_category", Intent.CATEGORY_DEFAULT)
           putString("intent_delivery", "2") // 2 = broadcast intent
         },
@@ -251,7 +257,7 @@ class DatawedgeModule : Module() {
       putExtra("SEND_RESULT", "true")
       putExtra("COMMAND_IDENTIFIER", CMD_ID_CREATE)
     }
-    Log.i(TAG, "SET_CONFIG $PROFILE_NAME enviado (paquete $packageName)")
+    Log.i(TAG, "SET_CONFIG $profileName enviado (paquete $packageName)")
     ctx.sendBroadcast(bIntent)
   }
 }

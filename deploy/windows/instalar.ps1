@@ -12,6 +12,8 @@
   - BASE DE DATOS: antes de copiar los archivos nuevos, lleva la base a la versión del paquete (db-update: agrega las tablas, columnas,
     índices y datos de referencia que falten; nunca borra datos). Primero simula y muestra qué cambiaría; pide confirmar que ya hay un
     respaldo de la base. Si la base falla, el sitio sigue con la versión anterior (no se copia nada).
+  STAGING en el mismo servidor: corra el instalador con otro nombre de sitio y otra carpeta (cada uno con su grupo de aplicaciones, su configuración,
+  su base de datos y su dominio), p. ej.:  .\instalar.ps1 -Sitio TeikemStaging -Carpeta C:\inetpub\teikem-staging
   Opciones: -Sitio <nombre> (por defecto Teikem)  -Carpeta <ruta> (por defecto C:\inetpub\teikem)
             -SinBase (no toca la base de datos)  -RespaldoHecho (no pregunta por el respaldo; para correrlo sin teclado)
 #>
@@ -195,16 +197,25 @@ if ($escribirCfg) {
 }
 # Llaves de Data Protection (cifran el secreto del MFA y las invitaciones). Sin una carpeta fija se pierden cada vez que IIS reinicia el
 # sitio y el MFA deja de poder verificarse ("Error interno"). Se protegen con DPAPI de la máquina; solo este sitio y los administradores las leen.
-$llaves = 'C:\ProgramData\Teikem\keys'
+# Una carpeta por sitio (2026-10-12): el sitio «Teikem» (producción) conserva la de siempre; otro sitio (p. ej. «TeikemStaging») usa la suya, para no compartir llaves.
+$llaves = if ($Sitio -eq 'Teikem') { 'C:\ProgramData\Teikem\keys' } else { "C:\ProgramData\Teikem\keys-$Sitio" }
 New-Item -ItemType Directory -Force $llaves | Out-Null
 if (-not (Permisos @($llaves, '/inheritance:r', '/grant:r', '*S-1-5-32-544:(OI)(CI)F', '/grant:r', '*S-1-5-18:(OI)(CI)F', '/grant:r', "IIS AppPool\${Sitio}:(OI)(CI)M"))) {
     Fallar "No pude dar permiso sobre la carpeta de llaves $llaves al grupo de aplicaciones '$Sitio'."
 }
 $jc = [IO.File]::ReadAllText($cfgArchivo, [Text.Encoding]::UTF8) | ConvertFrom-Json
+$cambiado = $false
 if (-not $jc.DataProtection) {
     $jc | Add-Member -NotePropertyName DataProtection -NotePropertyValue ([pscustomobject]@{ KeysPath = $llaves })
-    [IO.File]::WriteAllText($cfgArchivo, ($jc | ConvertTo-Json -Depth 6), (New-Object Text.UTF8Encoding $false))
+    $cambiado = $true
 }
+# Cinta de ambiente (2026-10-12): un sitio que no es «Teikem» (producción) se identifica como STAGING en la web (cinta roja en todas las pantallas;
+# la lee de /health). Se puede cambiar el texto editando Hosting:EnvironmentLabel en appsettings.Production.local.json.
+if ($Sitio -ne 'Teikem') {
+    if (-not $jc.Hosting) { $jc | Add-Member -NotePropertyName Hosting -NotePropertyValue ([pscustomobject]@{}) }
+    if (-not $jc.Hosting.EnvironmentLabel) { $jc.Hosting | Add-Member -NotePropertyName EnvironmentLabel -NotePropertyValue 'STAGING' -Force; $cambiado = $true }
+}
+if ($cambiado) { [IO.File]::WriteAllText($cfgArchivo, ($jc | ConvertTo-Json -Depth 6), (New-Object Text.UTF8Encoding $false)) }
 
 # Registro de lo que escribe el sitio (errores internos): se activa en web.config (que cada actualización reemplaza) y su carpeta logs\.
 $wc = Join-Path $Carpeta 'web.config'
