@@ -4,7 +4,7 @@ Este capítulo describe los cinco paneles del módulo de Flota (Vehículos, Docu
 preventivo, Órdenes de trabajo y Bitácora de combustible) y el maestro-detalle **Choferes y tarifas** del grupo
 Catálogo (identidad del chofer, licencias, certificaciones, dispositivos, zonas de despacho y las tres tarifas de
 pago). Cierra también el pendiente del [capítulo 03](03-ordenes-de-transporte.md): la entrega especial con chofer.
-La pantalla web de **Choferes y tarifas** (Catálogo → Choferes y tarifas) se explica paso a paso en [Choferes y tarifas](frontend/fd1-choferes.md); este capítulo es la referencia del servidor. La pantalla **Flota y mantenimiento** (vehículos, documentos por vencer, zonas de despacho y disponibilidad) se explica en [Flota y mantenimiento](frontend/fd2-flota.md).
+La pantalla web de **Choferes y tarifas** (Catálogo → Choferes y tarifas) se explica paso a paso en [Choferes y tarifas](frontend/fd1-choferes.md); este capítulo es la referencia del servidor. La pantalla **Flota y mantenimiento** (vehículos, documentos por vencer, zonas de despacho y disponibilidad) se explica en [Flota y mantenimiento](frontend/fd2-flota.md), y su mantenimiento preventivo, órdenes de trabajo y combustible en [Mantenimiento, órdenes de trabajo y combustible](frontend/fd3-mantenimiento-combustible.md).
 Cada sección indica **qué hace**, **quién puede**, **cómo se usa**, las **validaciones** con el mensaje exacto y el
 código HTTP, y los **estatus** con sus transiciones y efectos. Los mensajes están verificados contra el código
 (`src/Teikem.Domain/Fleet/*`, `src/Teikem.Infrastructure/Fleet/*`, `src/Teikem.Infrastructure/Services/{Vehicle,Driver,
@@ -411,7 +411,7 @@ Cómo se usa:
 | `lastServiceKm`/`lastServiceDate` en un programa **por tipo** | `El último servicio solo se captura en programas de un vehículo; en los de tipo se toma de sus órdenes de trabajo cerradas.` (campo `lastServiceKm`) | 400 |
 | `lastServiceKm` negativo | `La lectura del último servicio no puede ser negativa.` | 400 |
 | `lastServiceDate` futura | `La fecha del último servicio no puede ser futura.` | 400 |
-| `intervalKm`/`lastServiceKm` con demasiados decimales o fuera de rango DECIMAL(12,1) | `El valor admite como máximo 1 decimal y debe ser menor que {límite}.` | 400 |
+| `intervalKm`/`lastServiceKm` con demasiados decimales o fuera de rango DECIMAL(12,1) | `El valor admite como máximo 1 decimales y debe ser menor que {límite}.` (el servidor siempre escribe «decimales», también con 1) | 400 |
 | `id` de programa inexistente en el tenant | `Programa de mantenimiento no encontrado.` | 404 |
 | Filtro `status` desconocido en `due` | `Estatus desconocido: 'X'.` (campo `status`) | 400 |
 
@@ -428,7 +428,7 @@ asigna el sistema, consecutivo por compañía; nunca se teclea. Si se indica un 
 
 Quién puede: `fleet.maintenance`.
 
-Cómo se usa: `POST /api/v1/maintenance-work-orders`
+Cómo se usa: `POST /api/v1/maintenance-work-orders`. La lista `GET /api/v1/maintenance-work-orders` (filtros `vehiclePublicId`, `status`, `maintenanceType`, `scheduleId`, `from`, `to`, `includeInactive`, `skip`, `take` de 1 a 500) devuelve un **arreglo sin total**, de la más reciente a la más antigua; cada renglón trae `laborCost`, `partsCost` y `totalCost` (F-D3 agregó labor y partes). Para leer todas, pida de a 200 hasta recibir una página incompleta.
 
 ```json
 { "vehiclePublicId": "...", "maintenanceType": "PREVENTIVE", "scheduleId": 3, "scheduledDate": "2026-10-01" }
@@ -437,6 +437,7 @@ Cómo se usa: `POST /api/v1/maintenance-work-orders`
 | Campo / caso | Mensaje exacto | HTTP |
 |---|---|---|
 | Vehículo inactivo o dado de baja definitiva | `El vehículo está inactivo; reactívelo para registrar órdenes de trabajo o cargas de combustible.` | 409 |
+| `vehiclePublicId` vacío o todo ceros (F-D3: antes respondía 404 «Vehículo no encontrado.») | `El vehículo de la orden de trabajo es obligatorio.` (campo `vehiclePublicId`) | 400 |
 | Sin `maintenanceType` ni `scheduleId` | `El tipo de mantenimiento es obligatorio.` (campo `maintenanceType`) | 400 |
 | `maintenanceType` desconocido | `Tipo de mantenimiento desconocido: 'X'.` (campo `maintenanceType`) | 400 |
 | `scheduleId` inexistente en el tenant | `Programa de mantenimiento no encontrado.` | 404 |

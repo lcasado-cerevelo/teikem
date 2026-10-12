@@ -1,13 +1,13 @@
 # Flota y mantenimiento: vehículos, documentos y disponibilidad
 
-La pantalla **Catálogo → Flota y mantenimiento** es el registro de sus vehículos. Tiene cuatro pestañas:
+La pantalla **Catálogo → Flota y mantenimiento** es el registro de sus vehículos. Tiene siete pestañas (las de mantenimiento, órdenes de trabajo y combustible se explican en [Mantenimiento, órdenes de trabajo y combustible](fd3-mantenimiento-combustible.md)); las de este capítulo son:
 
 - **Vehículos**: crear, corregir, marcar en mantenimiento, desactivar o dar de baja un vehículo, y llevar sus documentos (registro, seguro, inspección y permiso).
 - **Documentos por vencer**: una sola lista con los documentos de vehículos y las licencias y certificaciones de choferes que ya vencieron o vencen pronto.
 - **Zonas de despacho**: las zonas donde trabajan sus choferes.
 - **Disponibilidad**: para una fecha, qué choferes y vehículos pueden salir a ruta y por qué no.
 
-Arriba hay dos tarjetas: **Vehículos activos** y **Documentos por vencer (≤ 30 d)**. Al pulsar una, se abre su pestaña. El mantenimiento preventivo, las órdenes de trabajo y el combustible llegarán en un lote posterior.
+Arriba hay cuatro tarjetas: **Vehículos activos**, **Documentos por vencer (≤ 30 d)**, **Mantenimiento preventivo (vencidos)** y **Órdenes de trabajo (abiertas)**. Al pulsar una, se abre su pestaña.
 
 ![Pantalla Flota y mantenimiento: lista de vehículos a la izquierda y la ficha a la derecha](img/fd2-lista.png)
 

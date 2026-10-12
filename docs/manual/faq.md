@@ -6953,3 +6953,97 @@ Los vehículos y choferes dados de baja definitiva no se muestran. Revise tambi�
 
 **No veo «Nuevo vehículo» ni los botones de la ficha.**
 Necesita el permiso `fleet.manage`. Con `fleet.view` todo se consulta pero nada se cambia.
+
+## Lote F-D3 — Mantenimiento y combustible (2026-10-12)
+
+Pantalla: [Mantenimiento, órdenes de trabajo y combustible](frontend/fd3-mantenimiento-combustible.md) (Catálogo → Flota y mantenimiento). Referencia del servidor: [capítulo 04](04-flota-choferes-mantenimiento.md), secciones 5 a 7.
+
+**¿Qué significa «Sin historial» en Mantenimiento?**
+Falta el último servicio del programa o la lectura del odómetro del vehículo, así que no hay con qué calcular. En un programa de un vehículo escriba el **Último servicio**; en uno por tipo, cierre una orden de trabajo de ese programa para ese vehículo. Revise también que el vehículo tenga odómetro.
+
+**¿Cuándo sale «Por vencer»?**
+Cuando queda el 10 % o menos del intervalo (por ejemplo, 500 km en un programa de 5,000 km). Con base **Ambos** manda el peor de los dos conteos.
+
+**Mi programa por tipo muestra una fila por cada vehículo de ese tipo. ¿Es normal?**
+Sí: un programa por tipo se evalúa vehículo por vehículo. Use el filtro **Vehículo** o **Buscar…** para ver uno.
+
+**«Indique el vehículo o el tipo de vehículo del programa, no ambos.»**
+Un programa aplica a un vehículo o a un tipo, nunca a los dos ni a ninguno. En **Aplica a** elija una opción y complete el campo que aparece.
+
+**«Un programa por kilometraje exige un intervalo en km mayor que 0.» / «Un programa por tiempo exige un intervalo en días mayor que 0.»**
+El disparador pide su intervalo: escriba **Cada (km)** con Kilometraje o Ambos y **Cada (días)** con Tiempo o Ambos.
+
+**«El intervalo en días admite como máximo 36500.» / «El intervalo en días debe ser un número entero.»**
+Escriba días completos, de 1 a 36500.
+
+**«La fecha del último servicio no puede ser futura.» / «La lectura del último servicio no puede ser negativa.»**
+El último servicio ya ocurrió: use una fecha de hoy o anterior y una lectura de 0 o más.
+
+**«El valor admite como máximo 1 decimales y debe ser menor que 100,000,000,000.»**
+Los kilómetros admiten un solo decimal (el mensaje dice «1 decimales»; así lo escribe el servidor). Los costos admiten hasta 4 decimales y los litros hasta 3.
+
+**«Este valor no se puede dejar vacío una vez guardado; escriba otro.»**
+Una fecha, una lectura o un costo que ya tiene valor no se puede borrar, solo cambiar. Los textos (proveedor, notas, estación) sí se pueden dejar vacíos.
+
+**¿Cómo creo la orden de trabajo de un programa vencido?**
+En el panel **Mantenimiento preventivo** pulse el ícono **Crear orden de trabajo** de su fila. La orden sale preventiva, con el vehículo y el programa elegidos.
+
+**«Una orden correctiva no se asocia a un programa preventivo.»**
+Si elige un **Programa preventivo**, el **Tipo de mantenimiento** debe ser Preventivo. Cambie el tipo o quite el programa.
+
+**«El programa de mantenimiento no aplica a este vehículo.» / «El programa de mantenimiento está inactivo.»**
+El programa es de otro vehículo u otro tipo, o fue desactivado. Elija otro o reactívelo en **Programas de mantenimiento**.
+
+**No puedo crear una orden ni registrar una carga: «El vehículo está inactivo; reactívelo para registrar órdenes de trabajo o cargas de combustible.»**
+El vehículo está inactivo o dado de baja definitiva. Reactívelo en su ficha (si está de baja definitiva no se puede).
+
+**Agregué una tarea y los costos de la orden cambiaron.**
+Con tareas, **Labor** y **Partes** de la orden son la suma de las tareas; los costos que había escrito a mano se reemplazan. Sin tareas se capturan en la orden.
+
+**«La orden tiene tareas: los costos de labor y partes se calculan con la suma de sus tareas.»**
+No escriba Labor ni Partes en la orden mientras tenga tareas: cámbielos en las tareas.
+
+**«El estatus actual no permite la acción 'EDIT_WORK_ORDER'.»**
+La orden está **Cerrada** o **Cancelada** y ya no se edita (ni sus tareas). Si hace falta otro trabajo, cree una orden nueva.
+
+**«La orden tiene N tarea(s) sin completar; márquelas como completadas o quítelas antes de cerrarla.»**
+Marque **Completada** o **Quitar** las tareas pendientes y vuelva a pulsar **Cerrar orden**.
+
+**«Indique la lectura de odómetro para cerrar una orden de un programa por kilometraje.»**
+Cuando el programa de la orden es por kilometraje (o Ambos), escriba el **Odómetro al cerrar (km)**.
+
+**«La fecha de cierre no puede ser futura.»**
+Use hoy o una fecha anterior.
+
+**Inicié una orden y mi vehículo ya no sale en Disponibilidad.**
+Es lo esperado: al iniciar, el vehículo pasa a **En mantenimiento** y en Disponibilidad dice «Tiene la orden de trabajo OT-… en proceso.» Vuelve a **Disponible** al cerrar o cancelar la orden (si no tiene otra en proceso).
+
+**¿Puedo reabrir una orden cerrada o cancelada?**
+No. Son definitivas y de solo lectura.
+
+**«El registro fue modificado por otro usuario; recargue e intente de nuevo.»**
+Otra persona guardó la orden antes que usted. La pantalla la vuelve a leer y conserva lo que usted escribió: revise y guarde otra vez.
+
+**Km recorridos, Km/L y Costo/km salen «—».**
+La primera carga de un vehículo no tiene carga anterior con odómetro para compararse, y una carga sin odómetro no se mide. Registre el **Odómetro** en las cargas.
+
+**«La lectura de odómetro (… km) es menor que la de una carga anterior del mismo vehículo (… km el …).»**
+El odómetro debe ir creciendo con la fecha. Revise la lectura o la fecha de la carga: no puede ser menor que la de una carga anterior ni mayor que la de una posterior.
+
+**«Los litros deben ser mayores que 0.» / «Indique el costo total de la carga.» / «El costo total no puede ser negativo.»**
+Escriba los litros cargados y el costo (0 si fue gratis).
+
+**«La fecha de la carga no puede ser futura.»**
+Se admiten hasta 5 minutos de adelanto del reloj; más allá, corrija la fecha o la hora.
+
+**Quité una carga por error.**
+Registre la carga de nuevo. Quitarla no borra el historial ni baja el odómetro del vehículo.
+
+**El Resumen por vehículo no coincide con lo que veo en la tabla.**
+El resumen suma **todo el filtro**, no solo la página que está viendo. Su Km/L usa los kilómetros y los litros de las cargas que se pudieron medir.
+
+**Cargué combustible y mi mantenimiento pasó a «Vencido».**
+La lectura de odómetro de la carga sube el odómetro del vehículo, y el vencimiento por kilómetros se calcula con ese odómetro.
+
+**No veo los botones «Nuevo programa», «Nueva orden de trabajo», «Registrar carga» ni las acciones de la ficha.**
+Necesita el permiso `fleet.maintenance`. Con `fleet.view` todo se consulta pero nada se cambia.

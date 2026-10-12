@@ -270,6 +270,7 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
    chip de vencimiento, tarifas por entrega, intento y viaje (con vigencia, **Cerrar tarifa** e historial), fórmula de pago con vista previa, **Viajes pagados**, dispositivos y contactos; permisos
    `fleet.*` y `driverpay.*`. Capturas `fd1-*`.
 23. [F-D2 — Flota y mantenimiento](frontend/fd2-flota.md): Catálogo → **Flota y mantenimiento**: vehículos (lista y ficha, **Nuevo vehículo**, **Activo** / **Disponibilidad** / **Dar de baja definitiva**, documentos con su chip de vencimiento), **Documentos por vencer**, **Zonas de despacho** y **Disponibilidad** para despacho con sus motivos. Capturas `fd2-*`.
+24. [F-D3 — Mantenimiento, órdenes de trabajo y combustible](frontend/fd3-mantenimiento-combustible.md): pestañas **Mantenimiento** (estado de cada programa por vehículo: Al día, Por vencer, Vencido, Sin historial; alta, edición, **Desactivar** y **Reactivar** programas), **Órdenes de trabajo** (lista, **Nueva orden de trabajo**, ficha con tareas y costos, **Iniciar**, **Cerrar orden** con odómetro y **Cancelar orden**) y **Combustible** (bitácora con Km/L y Costo/km, **Registrar carga**, resumen por vehículo, odómetro coherente). Capturas `fd3-*`.
 
 ## Preguntas frecuentes
 
