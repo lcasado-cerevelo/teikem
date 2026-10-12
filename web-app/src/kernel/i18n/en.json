@@ -2273,6 +2273,23 @@
       "all": "All",
       "from": "From",
       "to": "To",
+      "range": {
+        "all": "All dates",
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "tomorrow": "Tomorrow",
+        "last7": "Last 7 days",
+        "next7": "Next 7 days",
+        "thisWeek": "This week",
+        "lastWeek": "Last week",
+        "nextWeek": "Next week",
+        "last30": "Last 30 days",
+        "thisMonth": "This month",
+        "lastMonth": "Last month",
+        "nextMonth": "Next month",
+        "thisYear": "This year",
+        "custom": "Custom"
+      },
       "applied": {
         "prefix": "Filters:",
         "none": "No filters",
