@@ -1,0 +1,92 @@
+/* Lote F-D1 — Choferes y tarifas: fórmula de pago arriba, lista maestra de 260 px (como la maqueta, `cols 260px 1fr`) + ficha. */
+.drv{min-width:0}
+.drv-formula{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:18px;align-items:start}
+.drv-formula .f{margin:0}
+.drv-preview{background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:10px 14px;min-width:0}
+.drv-preview-h{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-bottom:6px;overflow-wrap:anywhere}
+.drv-pline{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:2px 0}
+.drv-pline>span:first-child{color:var(--muted);min-width:0;overflow-wrap:anywhere}
+.drv-pline .mono{white-space:nowrap}
+.drv-ptotal{display:flex;justify-content:space-between;padding-top:6px;margin-top:4px;border-top:1px solid var(--line);font-size:12.5px}
+.drv-ptotal .mono{color:var(--money-2)}
+.drv-note{margin-bottom:14px}
+
+.drv-md{display:grid;grid-template-columns:260px minmax(0,1fr);gap:14px;align-items:start;min-width:0}
+.drv-md>*{min-width:0}
+.drv-detail{min-width:0}
+.drv-stack{display:flex;flex-direction:column;gap:14px;min-width:0}
+.drv-stack>.panel{margin-bottom:0}
+
+/* lista maestra */
+.drv-q{display:flex;flex-direction:column;gap:8px;align-items:stretch;padding:10px 12px;border-bottom:1px solid var(--line-2)}
+.drv-q .qbox{flex:0 0 auto;max-width:none}
+.drv-q .sw{align-self:flex-start;font-weight:500;font-size:12.5px;white-space:normal}
+.drv-q select{width:100%;min-width:0}
+.drv-qf{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.drv-qf .f{margin:0}
+.drv-list{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
+.drv-list li{min-width:0}
+.drv-row{align-items:flex-start}
+.drv-row.dim{opacity:.7}
+.drv-main{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.drv-top{display:flex;align-items:center;gap:8px;min-width:0}
+.drv-top .chips{margin-left:auto;display:flex;gap:4px;flex:none}
+.drv-name{font-weight:600;overflow-wrap:anywhere;min-width:0}
+.drv-main .meta{overflow-wrap:anywhere}
+
+/* ficha */
+.drv-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.drv-grid .f{margin:0;min-width:0}
+.drv-grid .wide{grid-column:1/-1}
+.drv-grid input.mono{font-family:var(--mono)}
+.drv-readonly{padding:8px 0;font-size:13px;overflow-wrap:anywhere}
+.drv-state{border-top:1px solid var(--line-2);margin-top:16px;padding-top:14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.drv-state .f{margin:0;min-width:0}
+.drv-state .seg{max-width:100%}
+.drv-danger{color:var(--danger)}
+.drv-retired{margin:0 0 12px}
+.drv-acts{margin-top:14px}
+.drv-effects{margin:6px 0 10px;padding-left:20px;font-size:12.5px;display:flex;flex-direction:column;gap:3px}
+
+/* tablas y secciones de tarifas */
+.drv-sec{margin-bottom:6px}
+.drv-sec-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 8px}
+.drv-sec-h h3{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin:0}
+.drv-sec+.drv-sec{margin-top:18px}
+.drv-bar{display:flex;justify-content:flex-end;margin-bottom:8px}
+.drv-filters{margin-bottom:12px}
+.drv-addrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) auto;gap:10px;margin:12px 0 0;align-items:end}
+.drv-addrow.trip{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto}
+.drv-addrow .f{margin:0;min-width:0}
+.drv-addrow .btn{margin-bottom:0;align-self:end}
+.drv-empty{color:var(--faint);font-size:12.5px;margin:0 0 8px}
+.drv-none{font-style:italic;color:var(--faint)}
+
+/* tarifas por intento: una celda por nivel, en renglón que envuelve */
+.drv-atts{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:10px}
+.drv-att{flex:1 1 150px;max-width:230px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--bg-2);display:flex;flex-direction:column;gap:3px;min-width:0}
+.drv-att.closed{opacity:.6}
+.drv-att b{font-size:11.5px;color:var(--muted)}
+.drv-att .val{font-size:15px}
+.drv-att .when{font-size:11px;color:var(--faint)}
+.drv-att .acts{display:flex;gap:6px;margin-top:4px;flex-wrap:wrap}
+
+/* documentos, dispositivos y viajes */
+.drv-doc-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 8px}
+.drv-doc-h h3{font-size:13px;margin:0;font-weight:700}
+.drv-doc-h .btn{margin-left:auto}
+.drv-doc+.drv-doc{margin-top:18px}
+.drv-tripfilters{margin-bottom:12px}
+.drv-tripfilters .f{margin:0}
+
+@media(max-width:900px){
+  .drv-formula{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:720px){
+  .drv-md{grid-template-columns:minmax(0,1fr)}
+  .drv-list{max-height:none}
+  .drv-grid,.drv-state{grid-template-columns:minmax(0,1fr)}
+  .drv-addrow,.drv-addrow.trip{grid-template-columns:minmax(0,1fr)}
+  .drv-addrow .btn{width:100%}
+  .drv-att{max-width:none}
+}

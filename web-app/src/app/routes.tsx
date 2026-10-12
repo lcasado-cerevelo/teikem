@@ -349,7 +349,7 @@ export const appRoutes: readonly AppRoute[] = [
   // ===== Catálogo (F2, F4) =====
   { path: '/catalog/clients', element: lazy(() => import('../features/clients/ClientListScreen')), perm: 'clients.read', module: ModuleKeys.Catalog, nav: { group: 'catalog', key: 'clients', order: 10 } },
   { path: '/catalog/consignees', element: lazy(() => import('../features/consignees/ConsigneeListScreen')), perm: 'locations.read', module: ModuleKeys.Catalog, nav: { group: 'catalog', key: 'consignees', order: 20 } },
-  pending({ path: '/catalog/drivers', perm: 'fleet.view', module: ModuleKeys.Catalog, nav: { group: 'catalog', key: 'drivers', order: 30 } }),
+  { path: '/catalog/drivers', element: lazy(() => import('../features/drivers/DriverListScreen')), perm: 'fleet.view', module: ModuleKeys.Catalog, nav: { group: 'catalog', key: 'drivers', order: 30 } },
   pending({ path: '/catalog/fleet', perm: 'fleet.view', module: ModuleKeys.Catalog, nav: { group: 'catalog', key: 'fleet', order: 40 } }),
 
   // ===== Análisis (F8b; Indicadores y Gráficos: F8a P3) =====

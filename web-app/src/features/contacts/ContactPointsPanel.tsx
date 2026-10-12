@@ -31,6 +31,8 @@ export interface ContactPointsPanelProps {
   /** Claves de los textos que nombran al dueño (por defecto los del cliente). */
   emptyKey?: string
   removeBodyKey?: string
+  /** Solo lectura aunque el usuario tenga los permisos (el dueño ya no admite cambios: un chofer eliminado). */
+  readOnly?: boolean
 }
 
 interface PointModalProps {
@@ -120,13 +122,15 @@ function PointModal({ owner, editing, onClose, onChanged, idPrefix }: PointModal
   )
 }
 
-export function ContactPointsPanel({ ownerEntity, ownerId, points: rows, perms, onChanged, idPrefix = 'owner', emptyKey = 'clients.points.empty', removeBodyKey = 'clients.points.removeBody' }: ContactPointsPanelProps) {
+export function ContactPointsPanel({ ownerEntity, ownerId, points: rows, perms, onChanged, idPrefix = 'owner', emptyKey = 'clients.points.empty', removeBodyKey = 'clients.points.removeBody', readOnly = false }: ContactPointsPanelProps) {
   const t = useT()
   const f = useFormat()
   const save = useContactPointActions(onChanged)
   const [editing, setEditing] = useState<Editing | null>(null)
   const [removing, setRemoving] = useState<ContactPoint | null>(null)
   const points = useMemo(() => sortContactPoints(rows), [rows])
+  // solo lectura: ningún botón de escritura
+  const writePerms = readOnly ? null : perms
   const phones = points.filter((p) => !isEmailType(p.contactType))
   const emails = points.filter((p) => isEmailType(p.contactType))
 
@@ -145,7 +149,8 @@ export function ContactPointsPanel({ ownerEntity, ownerId, points: rows, perms, 
               <span className="meta">{[p.contactTypeLabel, p.label].filter(Boolean).join(' · ')}</span>
             </span>
             {p.isPrimary && <Chip tone="deliv">{t('clients.points.primaryChip')}</Chip>}
-            <Can perm={perms}>
+            {writePerms && (
+            <Can perm={writePerms}>
               <button type="button" className="rowbtn" aria-label={t('clients.points.edit', { value: p.value ?? '' })} title={t('clients.edit')} onClick={() => setEditing({ point: p, email: isEmailType(p.contactType) })}>
                 <IconEdit />
               </button>
@@ -153,6 +158,7 @@ export function ContactPointsPanel({ ownerEntity, ownerId, points: rows, perms, 
                 <IconTrash />
               </button>
             </Can>
+            )}
           </li>
         ))}
       </ul>
@@ -163,14 +169,16 @@ export function ContactPointsPanel({ ownerEntity, ownerId, points: rows, perms, 
       icon={<IconPhoneFormat />}
       title={t('clients.points.title')}
       actions={
-        <Can perm={perms}>
-          <button type="button" className="btn sm" onClick={() => setEditing({ point: null, email: false })}>
-            {t('clients.points.addPhone')}
-          </button>
-          <button type="button" className="btn sm" onClick={() => setEditing({ point: null, email: true })}>
-            {t('clients.points.addEmail')}
-          </button>
-        </Can>
+        writePerms ? (
+          <Can perm={writePerms}>
+            <button type="button" className="btn sm" onClick={() => setEditing({ point: null, email: false })}>
+              {t('clients.points.addPhone')}
+            </button>
+            <button type="button" className="btn sm" onClick={() => setEditing({ point: null, email: true })}>
+              {t('clients.points.addEmail')}
+            </button>
+          </Can>
+        ) : undefined
       }
     >
       {points.length === 0 ? (

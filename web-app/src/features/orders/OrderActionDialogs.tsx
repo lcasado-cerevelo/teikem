@@ -6,7 +6,8 @@ import { useCan } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useT } from '../../kernel/i18n'
 import { ComboSelect, Modal, toast, type ComboOption } from '../../kernel/ui'
-import { useAssignOrderDriver, useCancelOrder, useDrivers, type OrderDetailDto } from './api'
+import { useDrivers } from '../drivers/api'
+import { useAssignOrderDriver, useCancelOrder, type OrderDetailDto } from './api'
 import { COMMENT_MAX, isCreditExceeded } from './orderRules'
 
 interface DialogProps {

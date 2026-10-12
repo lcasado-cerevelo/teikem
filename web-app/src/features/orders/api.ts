@@ -17,7 +17,6 @@ export type OrderPackageLineDto = Schemas['OrderPackageLineDto']
 export type OrderPatchRequest = Schemas['OrderPatchRequest']
 export type OrderQuotePreviewDto = Schemas['OrderQuotePreviewDto']
 export type OrderPackageLineRequest = Schemas['OrderPackageLineRequest']
-export type DriverListItemDto = Schemas['DriverListItemDto']
 export type OrderListQuery = NonNullable<paths['/api/v1/orders']['get']['parameters']['query']>
 
 /** Prefijos de consulta (los mismos que usa Almacén para sus órdenes: así una invalida a la otra). */
@@ -26,7 +25,6 @@ export const orderKeys = {
   detail: ['/api/v1/orders/{publicId}'] as const,
   lookup: ['/api/v1/orders/lookup'] as const,
   quote: ['/api/v1/orders/{publicId}/quote'] as const,
-  drivers: ['/api/v1/drivers'] as const,
 }
 
 export interface OrderQueryOptions {
@@ -192,19 +190,5 @@ export function useAssignOrderDriver() {
         }),
       ),
     onSuccess: (order) => invalidateOrder(qc, order.id),
-  })
-}
-
-/**
- * `GET /api/v1/drivers` (activos; `fleet.view`): para elegir el chofer de una entrega especial. Consulta secundaria: un 403 no saca de la
- * pantalla (el diálogo avisa que no puede cargar la lista).
- */
-export function useDrivers(enabled: boolean) {
-  return useQuery({
-    queryKey: [orderKeys.drivers[0], { includeInactive: false }],
-    queryFn: () => unwrap(api.GET('/api/v1/drivers', { params: { query: { includeInactive: false } } })),
-    enabled,
-    retry: false,
-    meta: { handleAccessDenied: false },
   })
 }
