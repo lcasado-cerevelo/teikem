@@ -30,6 +30,8 @@ public sealed class VehicleService(TeikemDbContext db, ITenantContext tenant, IL
     public const string DuplicateVinMessage = "Ya existe un vehículo activo con ese VIN.";
     public const string CodeImmutableMessage = "El código del vehículo se fija al crearlo; no se puede cambiar.";
     public const string RetiredCannotReactivateMessage = "El vehículo está dado de baja definitiva; no se puede reactivar.";
+    /// <summary>409: un vehículo dado de baja definitiva (estatus terminal) solo se consulta; sus datos y documentos no se editan.</summary>
+    public const string RetiredReadOnlyMessage = "El vehículo está dado de baja definitiva; solo se consulta su historial.";
     public const string ToCodeRequiredMessage = "El estatus destino es obligatorio.";
 
     /// <summary>Campos que el PATCH rechaza aunque lleguen en el cuerpo (van a Extra por no estar en el contrato).</summary>
@@ -196,6 +198,8 @@ public sealed class VehicleService(TeikemDbContext db, ITenantContext tenant, IL
         await db.RunInTransactionAsync(async ct2 =>
         {
             var current = await db.ResolveVehicleAsync(publicId, false, ct2);
+            // Baja definitiva (terminal): solo se consulta, igual que el chofer eliminado (409).
+            if (await db.IsTerminalAsync(current.StatusCodeId, ct2)) throw new ConflictException(RetiredReadOnlyMessage);
             // Con odómetro: la fila se bloquea (UPDLOCK, ROWLOCK) para no competir con cargas de combustible ni cierres de OT.
             var vehicle = req.CurrentOdometerKm.HasValue
                 ? await db.LockVehicleAsync(current.VehicleId, ct2) ?? throw new NotFoundException("Vehículo")

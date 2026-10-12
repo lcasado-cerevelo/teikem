@@ -46,7 +46,7 @@ public sealed class VehicleDocumentService(TeikemDbContext db, ITenantContext te
         if (FleetRules.ValidateDocumentDates(issued, expiry) is string dateError) errors["expiryDate"] = new[] { dateError };
         if (errors.Count > 0) throw new ValidationException(errors);
 
-        var vehicle = await db.ResolveVehicleAsync(vehiclePublicId, false, ct);
+        var vehicle = await WritableVehicleAsync(vehiclePublicId, ct);
         var doc = new VehicleDocument
         {
             VehicleId = vehicle.VehicleId, DocTypeLookupId = docTypeId!.Value, DocNumber = number,
@@ -69,7 +69,7 @@ public sealed class VehicleDocumentService(TeikemDbContext db, ITenantContext te
         var number = DocNumber(req.DocNumber, errors);
         if (errors.Count > 0) throw new ValidationException(errors);
 
-        var vehicle = await db.ResolveVehicleAsync(vehiclePublicId, false, ct);
+        var vehicle = await WritableVehicleAsync(vehiclePublicId, ct);
         var doc = await LoadTrackedAsync(vehicle.VehicleId, id, ct);
 
         if (docTypeId is int typeId) doc.DocTypeLookupId = typeId;
@@ -86,7 +86,7 @@ public sealed class VehicleDocumentService(TeikemDbContext db, ITenantContext te
     /// <summary>Quitar el documento = IsActive 0 (idempotente). Deja de contar para vencimientos y disponibilidad.</summary>
     public async Task<VehicleDocumentDto> DeactivateAsync(Guid vehiclePublicId, int id, CancellationToken ct)
     {
-        var vehicle = await db.ResolveVehicleAsync(vehiclePublicId, false, ct);
+        var vehicle = await WritableVehicleAsync(vehiclePublicId, ct);
         var doc = await LoadTrackedAsync(vehicle.VehicleId, id, ct);
         if (doc.IsActive)
         {
@@ -133,6 +133,14 @@ public sealed class VehicleDocumentService(TeikemDbContext db, ITenantContext te
     // ---------------------------------------------------------------- helpers
 
     private static string RowKey(int id) => $"VD-{id}";
+
+    /// <summary>Vehículo del tenant que admite cambios en sus documentos: 404 si no existe; 409 si está dado de baja definitiva (terminal).</summary>
+    private async Task<Vehicle> WritableVehicleAsync(Guid vehiclePublicId, CancellationToken ct)
+    {
+        var vehicle = await db.ResolveVehicleAsync(vehiclePublicId, false, ct);
+        if (await db.IsTerminalAsync(vehicle.StatusCodeId, ct)) throw new ConflictException(VehicleService.RetiredReadOnlyMessage);
+        return vehicle;
+    }
 
     /// <summary>Documentos del vehículo partiendo de db.Vehicles (filtro de tenant): VehicleDocument no lleva TenantId.</summary>
     private Task<List<VehicleDocument>> DocumentsOfAsync(int vehicleId, bool includeInactive, CancellationToken ct)
