@@ -97,6 +97,39 @@ Los cuatro valores de seguridad de la compañía (`GET`/`PUT /api/v1/tenant/sett
 | Duración de la sesión / del aparato | entero de 1 a 365 | "Entre 1 y 365 días." | Pantalla (bajo el campo, no se manda) y servidor, 400 bajo el campo |
 | Ventana de reautenticación | 5 a 240 minutos | "Entre 5 y 240 minutos." | Servidor, 400 bajo el campo (la pantalla solo ofrece valores válidos) |
 
+### 2.3 IPs preferidas (red de confianza)
+
+Debajo de la política de MFA hay un panel **IPs preferidas (red de confianza)** (solo con `admin.tenant`). Es la lista de IPs o rangos de la compañía desde los que **no se pide el código de verificación al iniciar sesión**. Sirve para una localidad (almacén, oficina) que sale a internet por una IP pública fija: quien se conecta por cable o Wi-Fi desde esa red entra con su contraseña, sin el código.
+
+**Qué cambia y qué no**
+- Se salta **solo el código del inicio de sesión**. La **contraseña se pide siempre** (con el bloqueo por intentos de siempre).
+- Las acciones sensibles (permisos, roles, contraseñas temporales, módulos…) **siguen pidiendo el código** (reautenticación reciente): una sesión que entró sin código no las pasa.
+- **Nunca se salta** para: administradores de plataforma, personas con la marca individual «siempre MFA» y personas que **todavía no inscribieron** su MFA (primero lo inscriben; la IP salta el código, no la inscripción).
+- **Recuperar la contraseña por correo siempre pide el código** a quien tiene su MFA inscrito, aunque esté en la red preferida.
+- Toda persona y equipo que salga por esa IP entra sin código (cable, Wi-Fi, visitas si comparten la salida). Cargue **solo la red interna**; si hay una red de invitados, debe salir por otra IP.
+- La función está **apagada por defecto en el servidor** (`Auth:TrustedNetworks:Enabled`). Apagada, la lista se puede preparar pero no se salta el código, y el panel lo avisa.
+
+**El panel**
+- **Su IP actual es X** — con «Agregar esta IP» (si no está cubierta) o «la cubre «Nombre»».
+- **Máximo de entradas** (por compañía; vacío = sin límite) y cuántas usa. Bajarlo por debajo de lo que ya hay no borra nada: solo se bloquean las altas nuevas.
+- **Probar una IP**: dice si la cubre alguna entrada activa y vigente.
+- La tabla: **Red**, **IP / rango**, **Direcciones** que cubre, **Estado** (Activa, Inactiva, Vencida), **Vence**, **Confirmó** (quién y cuándo confirmó que es solo red interna); «Usted está aquí» marca la que cubre su IP. Acciones: **Cambiar**, **Activar / Desactivar**, **Eliminar**.
+
+**Agregar una IP o un rango**
+- **Una sola IP (recomendado)** o **Un rango de IPs** (escoja el tamaño: /32 = una sola, /29 = 8, /24 = 256…; hay atajos). Debajo sale la vista previa («Se guardará como 192.168.10.0/24 — 256 direcciones») y los avisos: se ajustó a la dirección de la red, es una IP privada (solo sirve si la conexión llega por una red interna), rango muy ancho, o **no incluye su IP actual**.
+- No se aceptan rangos demasiado anchos (IPv4 más ancho que /16, IPv6 más ancho que /48), direcciones inservibles (vacía, loopback, multidifusión) ni formas sueltas como «127.1».
+- **Vence (opcional)**: en blanco no vence; vale mientras esté activa.
+- Hay que marcar **«Confirmo que esta IP corresponde solo a la red interna de la empresa, no a una red de invitados ni a una red pública»** (también al cambiar la IP o el rango); queda registrado quién y cuándo.
+- Crear, cambiar, activar, desactivar, eliminar y cambiar el máximo **piden MFA reciente** y quedan en la bitácora de seguridad (tipo «Red de confianza»); además se manda un **correo a los administradores** de la compañía con qué cambió, quién lo hizo y desde qué IP.
+
+| Campo | Regla | Mensaje |
+|---|---|---|
+| Nombre | obligatorio, máx. 100 | "Escriba un nombre para la red…" |
+| IP o rango | válido, no demasiado ancho; sin duplicados | 400 bajo el campo; 409 "Esa IP o rango ya está en la lista." |
+| Máximo de entradas | entero ≥ 0 o vacío | 409 "Esta compañía llegó a su máximo de N entradas." al agregar |
+| Confirmación «solo red interna» | obligatoria al crear y al cambiar la IP | "Confirme que esta IP corresponde solo a la red interna…" |
+| Vence | fecha futura | "La fecha de vencimiento debe ser futura." |
+
 ## 3. En el celular (360 px)
 
 ![Actividad en el celular](img/f10-actividad-movil.png) ![Sesiones y MFA en el celular](img/f10-sesiones-movil.png)

@@ -33,6 +33,7 @@ import {
 import { describeDevice } from '../../account/format'
 import { useCompanySessions, useRevokeCompanySession, useRevokeOtherSessions } from '../auditApi'
 import { useSaveTenantSettings, type TenantSettingsDto } from '../tenantSettingsApi'
+import { TrustedNetworksPanel } from './TrustedNetworksPanel'
 import {
   policyErrors,
   policyRequestBody,
@@ -50,10 +51,14 @@ const userText = (s: CompanySessionDto) => s.userName ?? s.userEmail ?? `#${s.us
 
 export function CompanySessionsTab() {
   return (
-    <div className="aud-cols">
-      <SessionsPanel />
-      <PolicyPanel />
-    </div>
+    <>
+      <div className="aud-cols">
+        <SessionsPanel />
+        <PolicyPanel />
+      </div>
+      {/* IP preferida (2026-10-12): redes desde las que no se pide el código MFA al entrar; solo admin.tenant */}
+      <TrustedNetworksPanel />
+    </>
   )
 }
 

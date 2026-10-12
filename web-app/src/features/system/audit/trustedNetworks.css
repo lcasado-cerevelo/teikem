@@ -1,0 +1,25 @@
+/* IP preferida / red de confianza (TrustedNetworksPanel y TrustedNetworkModal). Reusa .panel, .f, .set-d, .seg, .alert y .ferr del kit. */
+.trn { display: grid; gap: 12px; }
+.trn-warn { margin: 0; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--warn, #d97706) 14%, transparent); border: 1px solid color-mix(in srgb, var(--warn, #d97706) 45%, transparent); font-size: 12.5px; }
+.trn-ok { margin: 0; color: var(--ok, #16a34a); font-weight: 600; font-size: 12.5px; }
+.trn-tools { display: grid; gap: 16px; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; }
+@media (max-width: 1100px) { .trn-tools { grid-template-columns: minmax(0, 1fr); } }
+.trn-ip p { margin: 0 0 8px; }
+.trn-tools .f { margin: 0; }
+.trn-limit-row { display: flex; gap: 8px; align-items: center; }
+.trn-limit-row input { flex: 1 1 auto; min-width: 0; width: auto; }
+.trn-name { display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* diálogo */
+.trn-form { display: grid; gap: 10px; }
+.trn-form .f { margin: 0; }
+.trn-kind { border: 0; margin: 0; padding: 0; min-width: 0; }
+.trn-addr { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
+.trn-addr:has(select) { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+@media (max-width: 520px) { .trn-addr:has(select) { grid-template-columns: minmax(0, 1fr); } }
+.trn-shortcuts { display: flex; flex-wrap: wrap; gap: 6px; }
+.trn-preview { margin: 0; padding: 8px 10px; border-radius: 8px; background: var(--panel-2, rgba(127, 127, 127, .12)); font-size: 12.5px; }
+.trn-form .trn-check { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; font-weight: 500; color: var(--text); margin: 0; }
+.trn-form .trn-check input { margin-top: 3px; width: auto; flex: none; }
+.trn-form .set-d { margin: 4px 0 0; }
+.trn-confirm { padding: 8px 10px; border-radius: 8px; border: 1px dashed var(--line); }

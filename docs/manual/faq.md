@@ -6258,3 +6258,26 @@ El aparato baja los clientes activos y los consignatarios (los del cliente y los
 
 **¿Dónde cambio la rotación FEFO/FIFO?**
 En la web: Ajustes de la compañía → Operación → «Rotación del inventario» (para toda la compañía; permiso `admin.tenant`) y, si un producto necesita el otro método, en su ficha → «Rotación». La app del almacén no tiene ese selector pero ya respeta el método.
+
+## IP preferida: entrar sin código desde la red de la empresa (2026-10-12)
+
+**Estoy en la oficina y no me pide el código. ¿Es normal?**
+Sí, si la IP de la oficina está en Seguridad y auditoría → Sesiones y MFA → «IPs preferidas» (y la función está encendida en el servidor). Se salta solo el código del inicio de sesión; la contraseña se pide siempre, y las acciones sensibles (permisos, roles…) piden el código igual.
+
+**Estoy en la oficina y me sigue pidiendo el código.**
+Puede ser por cualquiera de estas razones: su IP no está en la lista (el panel dice «Su IP actual es…» y si está cubierta), la entrada está **desactivada o vencida**, la función está apagada en el servidor, a su usuario le pusieron la marca individual «siempre MFA», es administrador de plataforma, o todavía no inscribió su MFA (primero tiene que inscribirlo). Use «Probar una IP» con la IP de la oficina.
+
+**¿Qué es el «/24» al agregar un rango?**
+Cuántas direcciones cubre: /32 es una sola, /29 son 8, /24 son 256. Para la IP pública del firewall de una localidad basta **una sola IP** (la opción recomendada).
+
+**«El rango es demasiado ancho».**
+Por seguridad no se aceptan rangos que cubran más de 65,536 direcciones (IPv4 /16) o, en IPv6, más ancho que /48. Use uno más estrecho.
+
+**«Esa IP o rango ya está en la lista» / «Esta compañía llegó a su máximo de N entradas».**
+La IP ya está cargada (aunque la escriba distinto) o la compañía llegó al máximo; el máximo se cambia en el mismo panel (vacío = sin límite).
+
+**Mi compañía tiene Wi-Fi de invitados. ¿Qué hago?**
+Los invitados deben salir a internet por **otra IP pública** (otra salida o VLAN con otra IP) y cargar en la lista solo la IP de la red interna. El sistema solo ve la IP pública: no distingue una red Wi-Fi de otra detrás del mismo firewall.
+
+**Olvidé mi contraseña y me pide un código.**
+Es a propósito: si tiene su verificación en dos pasos, restablecer la contraseña por correo exige también el código de su app (o uno de recuperación), esté donde esté, incluso en la red preferida. Si el código es malo o falta, el enlace del correo **no se gasta**; los intentos fallidos cuentan para el bloqueo de la cuenta.
