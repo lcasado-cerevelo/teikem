@@ -123,9 +123,50 @@ async function waitPulse(page: Page) {
   await expect(page.locator('.pulse-charts .pulse-chartbox').first()).toBeVisible()
 }
 
+/**
+ * Siembra por API lo que el recorrido necesita para no depender de otros recorridos ni de la base: un producto CON costo y con
+ * existencia (valor de inventario) y un conteo cíclico terminado con diferencia (estatus Diferencia). Nombres únicos por corrida.
+ */
+async function seedPulseData(request: APIRequestContext): Promise<void> {
+  const headers = { Authorization: `Bearer ${await apiToken(request)}` }
+  const ok = async <T>(p: Promise<import('@playwright/test').APIResponse>, what: string): Promise<T> => {
+    const res = await p
+    expect(res.ok(), `${what}: ${res.status()} ${await res.text()}`).toBeTruthy()
+    return (await res.json()) as T
+  }
+  const warehouses = await ok<WarehouseDto[]>(request.get(`${API_URL}/api/v1/warehouses`, { headers }), 'almacenes')
+  const wh = (warehouses.find((w) => w.code === 'ALM-01') ?? warehouses[0]).publicId
+  const zones = await ok<{ id: number; code: string }[]>(request.get(`${API_URL}/api/v1/warehouses/${wh}/zones`, { headers }), 'zonas')
+  const zone = (zones.find((z) => z.code === 'RSV') ?? zones[0]).id
+  const bin = await ok<{ id: number }>(request.post(`${API_URL}/api/v1/warehouses/${wh}/bins`, { headers, data: { zoneId: zone, code: `P15-${STAMP}-B` } }), 'posición')
+  const product = (
+    await ok<{ product: { publicId: string } }>(
+      request.post(`${API_URL}/api/v1/products`, { headers, data: { sku: `${SKU}-V`, name: `Producto valorado pulso ${STAMP}`, trackingType: 'NONE', purchaseCost: 10 } }),
+      'producto',
+    )
+  ).product.publicId
+  await ok(
+    request.post(`${API_URL}/api/v1/inventory/adjustments`, {
+      headers,
+      data: { productPublicId: product, warehousePublicId: wh, binId: bin.id, quantity: 8, reason: 'FOUND', notes: 'e2e lote 15' },
+    }),
+    'ajuste',
+  )
+  const count = await ok<{ count: { id: number }; lines: { id: number }[] }>(
+    request.post(`${API_URL}/api/v1/cycle-counts`, { headers, data: { warehousePublicId: wh, productPublicIds: [product] } }),
+    'conteo',
+  )
+  await ok(request.put(`${API_URL}/api/v1/cycle-counts/${count.count.id}/lines/batch`, { headers, data: { lines: [{ lineId: count.lines[0].id, countedQty: 9 }] } }), 'captura')
+  await ok(request.post(`${API_URL}/api/v1/cycle-counts/${count.count.id}/finish`, { headers, data: {} }), 'terminar conteo')
+}
+
 test.describe('Lote 15 — escritorio', () => {
   test.skip(({ isMobile }) => isMobile, 'recorrido de escritorio')
   test.describe.configure({ mode: 'serial' })
+
+  test.beforeAll(async ({ request }) => {
+    await seedPulseData(request)
+  })
 
   test('1. franja "Almacén hoy": 4 tarjetas, 7 barritas en las tres primeras y ninguna en "Productos bajo mínimo"', async ({ page }) => {
     await login(page)

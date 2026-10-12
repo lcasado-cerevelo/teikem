@@ -85,6 +85,14 @@ async function pickProduct(scope: Page | Locator, label: string | RegExp, sku: s
   await scope.getByRole('option', { name: new RegExp(`^${sku} · `) }).click()
 }
 
+/** Escribe `text` en un buscador de producto y elige la opción cuyo SKU es `sku`. */
+async function pickProductByText(scope: Page | Locator, label: string | RegExp, text: string, sku: string) {
+  const box = scope.getByRole('combobox', { name: label })
+  await box.click()
+  await box.fill(text)
+  await scope.getByRole('option', { name: new RegExp(`^${sku} · `) }).click()
+}
+
 /** Elige ALM-01 en un WarehousePicker (combobox que filtra en el cliente por código o nombre). */
 async function pickWarehouse(scope: Page | Locator, box: Locator) {
   await box.click()
@@ -213,8 +221,8 @@ test.describe('Lote F6 — escritorio', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await expect(page).toHaveURL(/\/warehouse\/products$/)
 
-    // Lote 12: sin buscador en la tabla; el filtro Nombre (contiene) va al API
-    await page.getByRole('searchbox', { name: 'Nombre' }).fill(PRODUCT_NAME)
+    // filtro «SKU o nombre» (varios): busca en el API por nombre y agrega el producto como píldora
+    await pickProductByText(page, 'SKU o nombre', PRODUCT_NAME, SKU)
     const row = page.getByRole('row').filter({ hasText: SKU })
     await expect(row).toHaveCount(1)
     // columnas: SKU, Producto, Categoría, Empaque, Marca, Dueño, Disponible, Reservado, Total, Rastreo, Estado
@@ -228,7 +236,11 @@ test.describe('Lote F6 — escritorio', () => {
     await shot(page, 'producto-ficha')
     await edit.getByRole('button', { name: 'Cancelar' }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
-    await page.getByRole('searchbox', { name: 'Nombre' }).fill('')
+    await page.getByRole('button', { name: `Quitar ${SKU}` }).click()
+    // por SKU también filtra
+    await pickProductByText(page, 'SKU o nombre', SKU, SKU)
+    await expect(page.getByRole('row').filter({ hasText: SKU })).toHaveCount(1)
+    await page.getByRole('button', { name: `Quitar ${SKU}` }).click()
     await page.getByRole('tab', { name: 'Categorías' }).click()
     await shot(page, 'categorias')
   })
@@ -470,7 +482,7 @@ test.describe('Lote F6 — escritorio', () => {
     await page.goto('/orders')
     // la búsqueda libre cubre número, factura, lote de empaque y consignatario: se busca por la recolección (EMP-#####),
     // que queda como lote de empaque de la orden; se espera a que la lista ya venga filtrada (una sola orden)
-    await page.getByRole('searchbox').fill(batchNumber)
+    await page.getByRole('searchbox', { name: 'Buscar…' }).fill(batchNumber)
     // el conteo va en el pie de la tabla ("1–1 de 1") y la tabla trae el encabezado + una sola fila
     await expect(page.getByText('1–1 de 1', { exact: true })).toBeVisible()
     await expect(page.getByRole('table', { name: 'Órdenes' }).getByRole('row')).toHaveCount(2)
@@ -483,9 +495,10 @@ test.describe('Lote F6 — escritorio', () => {
     await shot(page, 'ordenes')
     await row.getByText(orderNumber, { exact: true }).click()
     await expect(page).toHaveURL(/\/orders\/[0-9a-f-]+$/)
-    // ficha básica de solo lectura: número y cliente, datos generales con el lote de empaque de origen
-    await expect(page.getByRole('heading', { level: 1, name: `${orderNumber} · ${CLIENT}` })).toBeVisible()
-    await expect(page.getByRole('heading', { level: 2, name: 'Datos generales' })).toBeVisible()
+    // expediente de la orden (F-C2): título con número y consignatario, el cliente en el subtítulo, Detalle con el lote de empaque de origen
+    await expect(page.getByRole('heading', { level: 1, name: new RegExp(`^${orderNumber} · `) })).toBeVisible()
+    await expect(page.getByText(CLIENT).first()).toBeVisible()
+    await expect(page.getByRole('heading', { level: 2, name: 'Detalle' })).toBeVisible()
     await expect(page.getByText(batchNumber, { exact: true })).toBeVisible()
     await shot(page, 'orden-ficha')
   })
