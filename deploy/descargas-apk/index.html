@@ -36,6 +36,9 @@
   .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   .btn.outline { background: #fff; color: var(--brand); border: 1.5px solid var(--brand); }
   .card.featured { border: 2px solid var(--brand); }
+  .card.staging { border: 2px dashed #DC2626; }
+  .badge.red { background: #DC2626; color: #fff; }
+  .btn.red { background: #fff; color: #DC2626; border: 1.5px solid #DC2626; }
   .badge {
     display: inline-block; background: var(--accent); color: #1c1c1e;
     font-size: .7rem; font-weight: 700; border-radius: 999px;
@@ -66,16 +69,15 @@
       <a class="btn" href="apk/teikem-almacen.apk">Descargar</a>
     </div>
 
-    <!-- Descomentar cuando haya una versión de prueba (QA):
-    <div class="card">
+    <div class="card staging">
       <div class="info">
-        <div class="name">Prueba</div>
-        <div class="desc">Versión interna de pruebas (QA)</div>
-        <div class="ver" id="v-prueba"></div>
+        <span class="badge red">SOLO PRUEBAS</span>
+        <div class="name">Teikem Almacén STAGING</div>
+        <div class="desc">Ambiente de pruebas (teikem.isaxpr.com), no es producción. Se instala <strong>junto</strong> a la app normal, con otro icono (morado, cinta STAGING).</div>
+        <div class="ver" id="v-staging"></div>
       </div>
-      <a class="btn outline" href="apk/teikem-almacen-prueba.apk">Descargar</a>
+      <a class="btn red" href="apk/teikem-staging.apk">Descargar</a>
     </div>
-    -->
   </div>
 
   <div class="help">
@@ -105,11 +107,11 @@
 
 <script>
   // versions.json (junto a este archivo) controla los números mostrados:
-  // { "ultima": "1.0.0", "prueba": "1.0.0" }
+  // { "ultima": "1.0.0", "staging": "1.0.0" }
   fetch('versions.json', { cache: 'no-store' })
     .then(function (r) { return r.json(); })
     .then(function (v) {
-      ['ultima', 'prueba'].forEach(function (k) {
+      ['ultima', 'staging'].forEach(function (k) {
         var el = document.getElementById('v-' + k);
         if (v[k] && el) el.textContent = 'Versión ' + v[k];
       });
