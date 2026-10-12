@@ -6,6 +6,7 @@ import { useModule } from '../access/accessContext'
 import { ModuleKeys } from '../access/modules'
 import { api, unwrap } from '../api/client'
 import { applyProblemDetails, type AppliedProblem } from '../api/problem'
+import type { CustomFieldDefinitionUpsert } from './definitionRules'
 import { dataTypeOf, fromFormValue, toFormValue, type CustomFieldDefinitionDto, type CustomFieldFormValue } from './values'
 
 /** Nombre del objeto dentro del formulario donde viven los campos personalizados: `customFields.<fieldKey>`. */
@@ -13,6 +14,8 @@ export const CUSTOM_FIELDS_NAME = 'customFields'
 
 export const customFieldKeys = {
   definitions: (entityType: string) => ['/api/v1/custom-fields/definitions', { entityType }] as const,
+  /** Administración: todas las definiciones (de un tipo de entidad o de todos), con o sin las inactivas. */
+  admin: (entityType: string | null, includeInactive: boolean) => ['/api/v1/custom-fields/definitions', { admin: true, entityType, includeInactive }] as const,
   values: (entityType: string, entityId: number) => ['/api/v1/custom-fields/values/{entityType}/{entityId}', { entityType, entityId }] as const,
 }
 
@@ -131,4 +134,56 @@ export function useSaveCustomFields(entityType: string) {
   )
 
   return { save, isPending: mutation.isPending }
+}
+
+// ---- Administración de definiciones (lote F-F1; permiso admin.customfields para escribir) ----
+
+/**
+ * `GET /api/v1/custom-fields/definitions` para administrar: sin `entityType` trae las de todas las entidades. Con
+ * `includeInactive` también las desactivadas. Ordenadas por entidad, orden y clave (como el servidor).
+ */
+export function useCustomFieldDefinitionsAdmin(entityType: string | null, includeInactive: boolean) {
+  const on = useCustomFieldsEnabled()
+  return useQuery({
+    queryKey: customFieldKeys.admin(entityType, includeInactive),
+    queryFn: () =>
+      unwrap(api.GET('/api/v1/custom-fields/definitions', { params: { query: { ...(entityType ? { entityType } : {}), includeInactive } } })),
+    enabled: on,
+    meta: { handleAccessDenied: false },
+  })
+}
+
+/** Cada intento lleva su propia `Idempotency-Key`. */
+const idempotencyHeaders = () => ({ 'Idempotency-Key': crypto.randomUUID() })
+
+/** Que las fichas (formularios de valores) y la administración vean el cambio al instante. */
+function invalidateCustomFields(queryClient: ReturnType<typeof useQueryClient>) {
+  return queryClient.invalidateQueries({ predicate: (q) => typeof q.queryKey[0] === 'string' && q.queryKey[0].startsWith('/api/v1/custom-fields') })
+}
+
+/**
+ * Alta (`POST /definitions/{entityType}`, sin `id`) o edición (`PUT /definitions/{id}`) de una definición. Los errores del servidor
+ * llegan como `ApiError` (400 por campo, 409 clave repetida o cambio de tipo con valores).
+ */
+export function useSaveCustomFieldDefinition() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, entityType, body }: { id?: number; entityType: string; body: CustomFieldDefinitionUpsert }): Promise<CustomFieldDefinitionDto> =>
+      id === undefined
+        ? unwrap(api.POST('/api/v1/custom-fields/definitions/{entityType}', { params: { path: { entityType } }, body, headers: idempotencyHeaders() }))
+        : unwrap(api.PUT('/api/v1/custom-fields/definitions/{id}', { params: { path: { id } }, body, headers: idempotencyHeaders() })),
+    onSuccess: () => invalidateCustomFields(queryClient),
+  })
+}
+
+/** Desactivar (`DELETE /definitions/{id}`, 204: los valores se conservan) o reactivar (`POST /definitions/{id}/restore`). */
+export function useSetCustomFieldDefinitionActive() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, active }: { id: number; active: boolean }) =>
+      active
+        ? unwrap(api.POST('/api/v1/custom-fields/definitions/{id}/restore', { params: { path: { id } }, headers: idempotencyHeaders() }))
+        : unwrap(api.DELETE('/api/v1/custom-fields/definitions/{id}', { params: { path: { id } }, headers: idempotencyHeaders() })),
+    onSuccess: () => invalidateCustomFields(queryClient),
+  })
 }

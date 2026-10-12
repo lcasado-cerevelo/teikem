@@ -2003,6 +2003,129 @@
       "maxDate": "Fecha posterior a la máxima permitida."
     }
   },
+  "customFieldsAdmin": {
+    "title": "Campos personalizados",
+    "subtitle": "Agrega campos propios a las entidades principales, sin tocar el esquema",
+    "entities": "Entidades",
+    "entityNames": {
+      "CLIENT": "Cliente",
+      "TRANSPORT_ORDER": "Orden",
+      "DRIVER": "Chofer",
+      "VEHICLE": "Vehículo",
+      "PRODUCT": "Producto",
+      "LOCATION": "Ubicación (consignatario)"
+    },
+    "entityPicker": "Entidad",
+    "newField": "Nuevo campo",
+    "noFields": "Todavía no hay campos personalizados para esta entidad.",
+    "includeInactive": "Incluir inactivos",
+    "note": "Cada campo se define una vez por entidad y aparece disponible para todos los registros de esa entidad — mismo principio que un campo nativo, sin deploy.",
+    "loadError": "No se pudieron cargar los campos personalizados.",
+    "columns": {
+      "label": "Etiqueta",
+      "key": "Clave",
+      "type": "Tipo",
+      "required": "Requerido",
+      "unique": "Único",
+      "showInList": "Mostrar en listados",
+      "status": "Estado",
+      "active": "Activo",
+      "inactive": "Inactivo"
+    },
+    "types": {
+      "TEXT": "Texto",
+      "NUMBER": "Número",
+      "DATE": "Fecha",
+      "DATETIME": "Fecha y hora",
+      "BOOL": "Sí/No",
+      "SELECT": "Selección",
+      "MULTISELECT": "Selección múltiple",
+      "LOOKUP_REF": "Referencia a catálogo"
+    },
+    "listInfo": "Lista: {name} · {n} opciones",
+    "ownOptionsInfo": "Opciones propias · {n}",
+    "actions": {
+      "edit": "Editar",
+      "deactivate": "Desactivar",
+      "reactivate": "Reactivar"
+    },
+    "deactivateTitle": "Desactivar campo",
+    "deactivateBody": "«{label}» dejará de pedirse y de mostrarse en las fichas. Los valores ya guardados se conservan y vuelven a verse si reactivas el campo.",
+    "toast": {
+      "created": "Campo creado: {label}",
+      "updated": "Campo actualizado: {label}",
+      "deactivated": "Campo desactivado: {label}",
+      "reactivated": "Campo reactivado: {label}"
+    },
+    "modal": {
+      "newTitle": "Nuevo campo personalizado",
+      "editTitle": "Editar campo personalizado",
+      "save": "Guardar campo"
+    },
+    "form": {
+      "entity": "Entidad",
+      "key": "Clave",
+      "keyPlaceholder": "ej. cost_center",
+      "keyHelp": "Minúsculas, dígitos y «_». No se puede cambiar después.",
+      "type": "Tipo",
+      "labelEs": "Etiqueta (español)",
+      "labelEn": "Etiqueta (inglés)",
+      "labelEnHelp": "Si la dejas vacía se usa la española.",
+      "description": "Descripción",
+      "required": "Requerido",
+      "unique": "Único",
+      "showInList": "Mostrar en listados",
+      "order": "Orden",
+      "orderHelp": "Menor número = aparece antes en la ficha.",
+      "default": "Valor por defecto",
+      "defaultNone": "Sin valor por defecto",
+      "defaultBool": "Marcado por defecto",
+      "validation": "Validación",
+      "validationHelp": "Opcional. Se aplica al guardar el valor de un registro.",
+      "regex": "Formato (expresión regular)",
+      "regexPlaceholder": "ej. ^CC-\\d{3}$",
+      "minLength": "Longitud mínima",
+      "maxLength": "Longitud máxima",
+      "min": "Valor mínimo",
+      "max": "Valor máximo",
+      "minDays": "Mínimo (días desde hoy)",
+      "maxDays": "Máximo (días desde hoy)",
+      "daysHelp": "Negativo = en el pasado. Ejemplo: 0 es hoy."
+    },
+    "list": {
+      "label": "Lista de valores",
+      "pick": "Escoge una lista…",
+      "hint": "Las opciones salen de una lista del catálogo: renombrar una opción actualiza todos los registros que ya la usan, y la lista se puede reutilizar en otros campos.",
+      "optionsOf": "Opciones: {items}",
+      "empty": "Esta lista no tiene opciones.",
+      "own": "Propia",
+      "system": "Sistema",
+      "ownOptionsNote": "Este campo usa opciones propias ({n}: {items}). Si escoges una lista del catálogo, la reemplaza.",
+      "newList": "Nueva lista…",
+      "newListTitle": "Nueva lista de valores",
+      "name": "Nombre de la lista",
+      "options": "Opciones separadas por coma",
+      "optionsPlaceholder": "ej. Alto, Medio, Bajo",
+      "create": "Crear lista",
+      "creating": "Creando…",
+      "need": "Ponle nombre a la lista y al menos una opción",
+      "invalid": "No se puede armar un código con: {items}",
+      "created": "Lista creada: {name}",
+      "noPermission": "Para crear una lista nueva hace falta el permiso de catálogos. Pide a un administrador que la cree y vuelve a escogerla aquí."
+    },
+    "errors": {
+      "labelRequired": "La etiqueta es obligatoria.",
+      "keyInvalid": "Clave inválida: minúsculas, dígitos y '_' (2-60), empezando por letra.",
+      "listRequired": "Escoge o crea una lista de valores",
+      "defaultNumber": "Escribe un número.",
+      "defaultDate": "Escribe una fecha válida.",
+      "regexInvalid": "La expresión regular no es válida.",
+      "lengthInvalid": "Escribe un número entero de 0 o más.",
+      "lengthOrder": "La longitud máxima no puede ser menor que la mínima.",
+      "rangeOrder": "El máximo no puede ser menor que el mínimo.",
+      "sortOrder": "Escribe un número entero de 0 a 100000."
+    }
+  },
   "ui": {
     "qbox": {
       "placeholder": "Buscar…"

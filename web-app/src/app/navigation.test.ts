@@ -109,6 +109,8 @@ describe('menú completo (routes.tsx)', () => {
   })
 
   it('los ítems sin pantalla usan la pantalla pendiente; los que ya existen no', () => {
+    expect(byPath('/analytics/custom-fields').pending).toBeUndefined() // Lote F-F1
+    expect(byPath('/analytics/custom-fields')).toMatchObject({ perm: 'admin.customfields', module: 'CUSTOM_FIELDS', nav: { group: 'analytics', key: 'customFields', order: 20 } })
     expect(byPath('/ops/monitor').pending).toBeUndefined() // Lote F-E3
     expect(byPath('/ops/monitor')).toMatchObject({ perm: 'trips.view', module: 'LTL_GROUND', nav: { group: 'ops', key: 'monitor', order: 50 } })
     expect(byPath('/ops/dispatch').pending).toBeUndefined() // Lote F-E2a

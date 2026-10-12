@@ -375,7 +375,7 @@ export const appRoutes: readonly AppRoute[] = [
 
   // ===== Análisis (F8b; Indicadores y Gráficos: F8a P3) =====
   pending({ path: '/analytics/reports', perm: 'analytics.view', module: ModuleKeys.Analytics, nav: { group: 'analytics', key: 'reports', order: 10 } }),
-  pending({ path: '/analytics/custom-fields', perm: 'admin.customfields', module: ModuleKeys.CustomFields, nav: { group: 'analytics', key: 'customFields', order: 20 } }),
+  { path: '/analytics/custom-fields', element: lazy(() => import('../features/customfields/CustomFieldsAdminScreen')), perm: 'admin.customfields', module: ModuleKeys.CustomFields, nav: { group: 'analytics', key: 'customFields', order: 20 } },
   { path: '/analytics/indicators', element: lazy(() => import('../features/analytics/IndicatorsPage')), perm: 'analytics.view', module: ModuleKeys.Analytics, nav: { group: 'analytics', key: 'indicators', order: 30 } },
   { path: '/analytics/charts', element: lazy(() => import('../features/analytics/ChartsPage')), perm: 'analytics.view', module: ModuleKeys.Analytics, nav: { group: 'analytics', key: 'charts', order: 40 } },
 

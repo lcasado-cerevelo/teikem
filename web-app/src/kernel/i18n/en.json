@@ -2003,6 +2003,129 @@
       "maxDate": "Date is later than the maximum allowed."
     }
   },
+  "customFieldsAdmin": {
+    "title": "Custom fields",
+    "subtitle": "Add your own fields to the main entities, without touching the schema",
+    "entities": "Entities",
+    "entityNames": {
+      "CLIENT": "Client",
+      "TRANSPORT_ORDER": "Order",
+      "DRIVER": "Driver",
+      "VEHICLE": "Vehicle",
+      "PRODUCT": "Product",
+      "LOCATION": "Location (consignee)"
+    },
+    "entityPicker": "Entity",
+    "newField": "New field",
+    "noFields": "There are no custom fields for this entity yet.",
+    "includeInactive": "Include inactive",
+    "note": "Each field is defined once per entity and is available for every record of that entity — same principle as a native field, no deploy.",
+    "loadError": "The custom fields could not be loaded.",
+    "columns": {
+      "label": "Label",
+      "key": "Key",
+      "type": "Type",
+      "required": "Required",
+      "unique": "Unique",
+      "showInList": "Show in lists",
+      "status": "Status",
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "types": {
+      "TEXT": "Text",
+      "NUMBER": "Number",
+      "DATE": "Date",
+      "DATETIME": "Date and time",
+      "BOOL": "Yes/No",
+      "SELECT": "Select",
+      "MULTISELECT": "Multi-select",
+      "LOOKUP_REF": "Catalog reference"
+    },
+    "listInfo": "List: {name} · {n} options",
+    "ownOptionsInfo": "Own options · {n}",
+    "actions": {
+      "edit": "Edit",
+      "deactivate": "Deactivate",
+      "reactivate": "Reactivate"
+    },
+    "deactivateTitle": "Deactivate field",
+    "deactivateBody": "\"{label}\" will no longer be asked for or shown on the records. Values already saved are kept and show again if you reactivate the field.",
+    "toast": {
+      "created": "Field created: {label}",
+      "updated": "Field updated: {label}",
+      "deactivated": "Field deactivated: {label}",
+      "reactivated": "Field reactivated: {label}"
+    },
+    "modal": {
+      "newTitle": "New custom field",
+      "editTitle": "Edit custom field",
+      "save": "Save field"
+    },
+    "form": {
+      "entity": "Entity",
+      "key": "Key",
+      "keyPlaceholder": "e.g. cost_center",
+      "keyHelp": "Lowercase letters, digits and \"_\". It cannot be changed later.",
+      "type": "Type",
+      "labelEs": "Label (Spanish)",
+      "labelEn": "Label (English)",
+      "labelEnHelp": "If you leave it empty the Spanish one is used.",
+      "description": "Description",
+      "required": "Required",
+      "unique": "Unique",
+      "showInList": "Show in lists",
+      "order": "Order",
+      "orderHelp": "Lower number = shown earlier on the record.",
+      "default": "Default value",
+      "defaultNone": "No default value",
+      "defaultBool": "Checked by default",
+      "validation": "Validation",
+      "validationHelp": "Optional. Applied when the value of a record is saved.",
+      "regex": "Format (regular expression)",
+      "regexPlaceholder": "e.g. ^CC-\\d{3}$",
+      "minLength": "Minimum length",
+      "maxLength": "Maximum length",
+      "min": "Minimum value",
+      "max": "Maximum value",
+      "minDays": "Minimum (days from today)",
+      "maxDays": "Maximum (days from today)",
+      "daysHelp": "Negative = in the past. Example: 0 is today."
+    },
+    "list": {
+      "label": "Value list",
+      "pick": "Choose a list…",
+      "hint": "The options come from a catalog list: renaming an option updates every record that already uses it, and the list can be reused by other fields.",
+      "optionsOf": "Options: {items}",
+      "empty": "This list has no options.",
+      "own": "Own",
+      "system": "System",
+      "ownOptionsNote": "This field uses its own options ({n}: {items}). Choosing a catalog list replaces them.",
+      "newList": "New list…",
+      "newListTitle": "New value list",
+      "name": "List name",
+      "options": "Options separated by commas",
+      "optionsPlaceholder": "e.g. High, Medium, Low",
+      "create": "Create list",
+      "creating": "Creating…",
+      "need": "Give the list a name and at least one option",
+      "invalid": "A code cannot be built from: {items}",
+      "created": "List created: {name}",
+      "noPermission": "Creating a new list needs the catalogs permission. Ask an administrator to create it and then choose it here."
+    },
+    "errors": {
+      "labelRequired": "The label is required.",
+      "keyInvalid": "Invalid key: lowercase letters, digits and '_' (2-60), starting with a letter.",
+      "listRequired": "Choose or create a value list",
+      "defaultNumber": "Enter a number.",
+      "defaultDate": "Enter a valid date.",
+      "regexInvalid": "The regular expression is not valid.",
+      "lengthInvalid": "Enter a whole number, 0 or more.",
+      "lengthOrder": "The maximum length cannot be smaller than the minimum.",
+      "rangeOrder": "The maximum cannot be smaller than the minimum.",
+      "sortOrder": "Enter a whole number from 0 to 100000."
+    }
+  },
   "ui": {
     "qbox": {
       "placeholder": "Search…"
