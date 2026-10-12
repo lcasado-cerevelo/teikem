@@ -112,7 +112,10 @@ function tenantDay(plus = 0): string {
 test.describe('Plano de ruta, arrastrar y pin manual (Lote F-E2b)', () => {
   test('plano vacío, pines, selección pin↔fila, pin manual con error, arrastrar y ▲ ▼, y ruta despachada sin edición', async ({ page, request }, testInfo) => {
     const isMobile = testInfo.project.name.startsWith('movil')
-    const suffix = `${isMobile ? 'M' : 'D'}${LETTERS}`
+    // letras al azar por corrida: con --repeat-each y varios workers el sello de tiempo puede repetirse y chocar con los códigos de otra corrida
+    const rnd = Array.from({ length: 4 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.floor(Math.random() * 24)]).join('')
+    // el azar va primero: el servidor recorta los códigos (cliente, zona…) y el sello de tiempo queda al final
+    const suffix = `${isMobile ? 'M' : 'D'}${rnd}${LETTERS}`
     const clientName = `Cliente FE2B ${suffix}`
     const headers = { Authorization: `Bearer ${await apiToken(request)}` }
     const day = tenantDay(32 + (Math.floor(Date.now() / 1000) % 27)) // rango propio (32..58); el de F-E2a es 2..29
@@ -123,7 +126,7 @@ test.describe('Plano de ruta, arrastrar y pin manual (Lote F-E2b)', () => {
     const contractId = client.currentContract?.publicId ?? ''
     await ok(request.post(`${API_URL}/api/v1/contracts/${contractId}/rate-components`, { headers, data: { kind: 'PER_SERVICE', serviceType: 'STANDARD', packageType: 'BOX', rate: 100, effectiveFrom: tenantDay(-30) } }), 'tarifa')
     await ok(request.post(`${API_URL}/api/v1/contracts/${contractId}/status`, { headers, data: { toCode: 'ACTIVE' } }), 'contrato activo')
-    await ok(request.patch(`${API_URL}/api/v1/clients/${client.publicId}/number-settings`, { headers, data: { orderNumberFormat: `E3${LETTERS}${isMobile ? 'M' : 'D'}-#####` } }), 'formato de número')
+    await ok(request.patch(`${API_URL}/api/v1/clients/${client.publicId}/number-settings`, { headers, data: { orderNumberFormat: `E3${LETTERS}${rnd}${isMobile ? 'M' : 'D'}-#####` } }), 'formato de número')
 
     const town = `Pueblo E2B ${suffix}`
     const zone = await ok<DispatchZoneDto>(request.post(`${API_URL}/api/v1/dispatch-zones`, { headers, data: { code: `EZ${suffix}`, name: `Zona E2B ${suffix}` } }), 'zona')
@@ -300,6 +303,14 @@ test.describe('Plano de ruta, arrastrar y pin manual (Lote F-E2b)', () => {
     await grip(numberOf(2)).focus()
     await page.keyboard.press('ArrowUp')
     await expect.poll(sequenceNow).toEqual([numberOf(1), numberOf(3), numberOf(2), numberOf(0)])
+    // ráfaga: tres flechas seguidas sin esperar (el asa no se bloquea; salen en cola, sin 409)
+    await grip(numberOf(0)).focus()
+    await page.keyboard.press('ArrowUp')
+    await page.keyboard.press('ArrowUp')
+    await page.keyboard.press('ArrowUp')
+    await expect.poll(sequenceNow).toEqual([numberOf(0), numberOf(1), numberOf(3), numberOf(2)])
+    await expect(stopsList.getByRole('listitem').first()).toContainText(numberOf(0))
+    await expect(page.getByRole('alert')).toHaveCount(0)
     if (isMobile) await expectNoHorizontalScroll(page)
     await shot(page, isMobile, 'fe2b-arrastrar', 1500, panel, 1900)
 

@@ -28,6 +28,15 @@ export function invalidateDispatch(qc: QueryClient) {
   void qc.invalidateQueries({ queryKey: fleetKeys.availability })
 }
 
+/**
+ * Pone la ficha devuelta por una escritura en la caché. Antes se cancela cualquier lectura de esa ficha que ya viaja: si llegara DESPUÉS, pisaría la
+ * ficha nueva con una anterior (orden y `rowVersion` viejos) y el siguiente movimiento rápido saldría con la versión vieja (409 espurio).
+ */
+async function putDetail(qc: QueryClient, trip: TripDetail) {
+  await qc.cancelQueries({ queryKey: [dispatchKeys.detail[0], trip.publicId] })
+  qc.setQueryData([dispatchKeys.detail[0], trip.publicId], trip)
+}
+
 // ---------------------------------------------------------------- lecturas
 
 /** `GET /trips?date=`: las rutas activas del día (arreglo, sin total ni paginación). */
@@ -89,8 +98,8 @@ export function useCreateTrip() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (body: TripCreateRequest) => unwrap(api.POST('/api/v1/trips', { body, headers: idempotency() })),
-    onSuccess: (trip) => {
-      qc.setQueryData([dispatchKeys.detail[0], trip.publicId], trip)
+    onSuccess: async (trip) => {
+      await putDetail(qc, trip)
       invalidateDispatch(qc)
     },
   })
@@ -101,8 +110,8 @@ export function usePatchTrip() {
   return useMutation({
     mutationFn: ({ publicId, body }: { publicId: string; body: TripPatchRequest }) =>
       unwrap(api.PATCH('/api/v1/trips/{publicId}', { params: { path: { publicId } }, body, headers: idempotency() })),
-    onSuccess: (trip) => {
-      qc.setQueryData([dispatchKeys.detail[0], trip.publicId], trip)
+    onSuccess: async (trip) => {
+      await putDetail(qc, trip)
       invalidateDispatch(qc)
     },
     // un 409 (otro usuario cambió la ruta) también recarga: la pantalla muestra el texto del servidor y los datos nuevos
@@ -125,8 +134,8 @@ export function useAddOrders() {
   return useMutation({
     mutationFn: ({ publicId, orderPublicIds, rowVersion }: { publicId: string; orderPublicIds: string[]; rowVersion?: string | null }) =>
       unwrap(api.POST('/api/v1/trips/{publicId}/orders', { params: { path: { publicId } }, body: { orderPublicIds, rowVersion: rowVersion ?? null }, headers: idempotency() })),
-    onSuccess: (trip) => {
-      qc.setQueryData([dispatchKeys.detail[0], trip.publicId], trip)
+    onSuccess: async (trip) => {
+      await putDetail(qc, trip)
       invalidateDispatch(qc)
     },
     onError: () => invalidateDispatch(qc),
@@ -144,8 +153,8 @@ export function useRemoveOrder() {
           headers: idempotency(),
         }),
       ),
-    onSuccess: (trip) => {
-      qc.setQueryData([dispatchKeys.detail[0], trip.publicId], trip)
+    onSuccess: async (trip) => {
+      await putDetail(qc, trip)
       invalidateDispatch(qc)
     },
     onError: () => invalidateDispatch(qc),
@@ -157,8 +166,8 @@ export function useSetSequence() {
   return useMutation({
     mutationFn: ({ publicId, routeStopIds, rowVersion }: { publicId: string; routeStopIds: number[]; rowVersion?: string | null }) =>
       unwrap(api.PUT('/api/v1/trips/{publicId}/route/sequence', { params: { path: { publicId } }, body: { routeStopIds, rowVersion: rowVersion ?? null }, headers: idempotency() })),
-    onSuccess: (trip) => {
-      qc.setQueryData([dispatchKeys.detail[0], trip.publicId], trip)
+    onSuccess: async (trip) => {
+      await putDetail(qc, trip)
       invalidateDispatch(qc)
     },
     onError: () => invalidateDispatch(qc),
@@ -177,8 +186,8 @@ export function useSetStopLocation() {
           headers: idempotency(),
         }),
       ),
-    onSuccess: (trip) => {
-      qc.setQueryData([dispatchKeys.detail[0], trip.publicId], trip)
+    onSuccess: async (trip) => {
+      await putDetail(qc, trip)
       invalidateDispatch(qc)
     },
     onError: () => invalidateDispatch(qc),
@@ -199,8 +208,8 @@ export function useOptimizeTrip() {
       }
       return { result, runs }
     },
-    onSuccess: ({ result }) => {
-      if (result.trip?.publicId) qc.setQueryData([dispatchKeys.detail[0], result.trip.publicId], result.trip)
+    onSuccess: async ({ result }) => {
+      if (result.trip?.publicId) await putDetail(qc, result.trip)
       invalidateDispatch(qc)
     },
     onError: () => invalidateDispatch(qc),

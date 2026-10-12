@@ -149,10 +149,53 @@ describe('reordenar arrastrando', () => {
     // mientras viaja la petición ya se ve el orden nuevo, también en el plano (los pines siguen la secuencia mostrada)
     expect(order()).toEqual(['OT-0102', 'OT-0103', 'OT-0101'])
     expect(within(plane()).getByRole('button', { name: 'Parada 3 · Consignatario OT-0101 · Bayamón' })).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: 'Arrastrar la orden OT-0101 para reordenar (o use las flechas ↑ ↓)' })[0]).toBeDisabled()
     release(undefined) // responde el simulador
-    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Arrastrar la orden OT-0101 para reordenar (o use las flechas ↑ ↓)' })[0]).toBeEnabled())
+    await waitFor(() => expect(mock.trips[0].rowVersion).not.toBe('rv-1'))
     expect(order()).toEqual(['OT-0102', 'OT-0103', 'OT-0101'])
+  })
+
+  it('ráfaga: varios movimientos antes de que conteste el primero salen en cola, el segundo con la versión devuelta por el primero y sin 409 espurio', async () => {
+    const user = userEvent.setup()
+    wrap()
+    await ready()
+    let release: (r: undefined) => void = () => undefined
+    let first = true
+    mock.override = (c: Call) => {
+      if (c.method !== 'PUT' || !first) return undefined
+      first = false
+      return new Promise((resolve) => { release = resolve as (r: undefined) => void })
+    }
+    await user.click(screen.getByRole('button', { name: 'Bajar la orden OT-0101' })) // [2,1,3]
+    await waitFor(() => expect(callsTo('PUT', '/api/v1/trips/t-1/route/sequence')).toHaveLength(1))
+    await user.click(screen.getByRole('button', { name: 'Bajar la orden OT-0101' })) // [2,3,1]
+    grip('OT-0102').focus()
+    await user.keyboard('{ArrowDown}') // [3,2,1]
+    // todo se ve al instante y todavía no salió ninguna otra petición
+    expect(order()).toEqual(['OT-0103', 'OT-0102', 'OT-0101'])
+    expect(callsTo('PUT', '/api/v1/trips/t-1/route/sequence')).toHaveLength(1)
+    release(undefined)
+    await waitFor(() => expect(callsTo('PUT', '/api/v1/trips/t-1/route/sequence')).toHaveLength(2))
+    const puts = callsTo('PUT', '/api/v1/trips/t-1/route/sequence')
+    expect(puts[0].body).toEqual({ routeStopIds: [2, 1, 3], rowVersion: 'rv-1' })
+    // los movimientos acumulados salen en UNA petición con la última secuencia y la versión que devolvió la primera
+    expect(puts[1].body?.routeStopIds).toEqual([3, 2, 1])
+    expect(puts[1].body?.rowVersion).toBe('rv-100') // la que devolvió la primera respuesta, no la vieja 'rv-1'
+    await waitFor(() => expect(order()).toEqual(['OT-0103', 'OT-0102', 'OT-0101']))
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('un error real en la cola vuelve al orden del servidor y no deja una petición colgada', async () => {
+    const user = userEvent.setup()
+    wrap()
+    await ready()
+    let release: (r: Response | undefined) => void = () => undefined
+    mock.override = (c: Call) => (c.method === 'PUT' ? new Promise((resolve) => { release = resolve as (r: Response | undefined) => void }) : undefined)
+    await user.click(screen.getByRole('button', { name: 'Bajar la orden OT-0101' }))
+    await user.click(screen.getByRole('button', { name: 'Bajar la orden OT-0101' }))
+    release(problem(409, 'El registro fue modificado por otro usuario; recargue e intente de nuevo.', 'conflict'))
+    expect(await screen.findByRole('alert')).toHaveTextContent('El registro fue modificado por otro usuario')
+    expect(callsTo('PUT', '/api/v1/trips/t-1/route/sequence')).toHaveLength(1)
+    expect(order()).toEqual(['OT-0101', 'OT-0102', 'OT-0103'])
   })
 
   it('arrastrar hacia arriba: la última al principio', async () => {

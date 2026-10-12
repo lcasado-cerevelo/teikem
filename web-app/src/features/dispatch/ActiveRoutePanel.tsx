@@ -1,7 +1,7 @@
 // Lote F-E2a — «Ruta activa» (maqueta `dispatch()`, sin el mapa: llega en F-E2b): código y estatus REAL, zona y paradas, chofer y vehículo con su
 // disponibilidad, avance, avisos y bloqueantes de la ruta, resumen de la última optimización con lo que «no cupo», y «Órdenes en esta ruta»
 // con ▲ ▼ y quitar. Cada acción se pinta solo con su permiso Y con el estatus que el servidor permite (`isEditable`, `canEditHeader`).
-import { useId, useMemo, useState } from 'react'
+import { useId, useMemo, useRef, useState } from 'react'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { zonedInputFromUtc } from '../../kernel/api/tenantZone'
 import { StatusChip } from '../../kernel/catalogs'
@@ -56,6 +56,8 @@ interface PendingOrder {
   tripId: string
   base: string
   ids: number[]
+  /** Hay una cadena de peticiones en curso: el orden pedido manda aunque la versión ya haya cambiado con la primera respuesta. */
+  active: boolean
 }
 
 export function ActiveRoutePanel({
@@ -102,10 +104,14 @@ export function ActiveRoutePanel({
   const [selectedStop, setSelectedStop] = useState<number | null>(null)
   const [pinStop, setPinStop] = useState<number | null>(null)
   const [pending, setPending] = useState<PendingOrder | null>(null)
+  // reordenaciones en cola: una petición a la vez; lo pedido mientras viaja una se junta en UNA sola (la última secuencia) que sale con la versión devuelta
+  const chain = useRef<{ running: boolean; queued: number[] | null }>({ running: false, queued: null })
+  // última versión que devolvió el servidor al reordenar: la pantalla tarda un instante en recibirla en `detail`, y un movimiento en ese instante no debe salir con la versión vieja
+  const known = useRef<{ tripId: string; base: string; version: string | null | undefined } | null>(null)
   // paradas en el orden mostrado: el pedido (optimista) mientras viaja la petición, si no el del servidor
   const shownStops = useMemo(() => {
     const server = orderedStops(detail?.stops)
-    if (!detail || !pending || pending.tripId !== (detail.publicId ?? '') || pending.base !== (detail.rowVersion ?? '')) return server
+    if (!detail || !pending || pending.tripId !== (detail.publicId ?? '') || (!pending.active && pending.base !== (detail.rowVersion ?? ''))) return server
     const byId = new Map(server.map((s) => [s.id, s]))
     const next = pending.ids.map((id) => byId.get(id)).filter((s): s is RouteStop => !!s)
     return next.length === server.length ? next : server
@@ -128,7 +134,7 @@ export function ActiveRoutePanel({
 
   const tripId = detail.publicId ?? ''
   const actions = tripActionsOf(detail, perms)
-  const busy = patch.isPending || sequence.isPending || remove.isPending || setLocation.isPending
+  const busy = patch.isPending || remove.isPending || setLocation.isPending // reordenar no bloquea: se encola
   const canPin = actions.edit
   const selected = shownStops.find((s) => s.id === selectedStop) ?? null
   const selectedIndex = selected ? shownStops.indexOf(selected) : -1
@@ -158,12 +164,31 @@ export function ActiveRoutePanel({
   // ▲ ▼, teclado en el asa o arrastre: la lista y el plano cambian al instante; si el servidor niega, vuelven al orden anterior con su texto exacto
   const applyOrder = async (next: number[]) => {
     onMessage(null)
-    setPending({ tripId, base: detail.rowVersion ?? '', ids: next })
+    setPending({ tripId, base: detail.rowVersion ?? '', ids: next, active: true })
+    if (chain.current.running) {
+      chain.current.queued = next // el segundo movimiento espera a la respuesta del primero y usa su versión
+      return
+    }
+    chain.current = { running: true, queued: null }
+    const k = known.current
+    let version = k && k.tripId === tripId && k.base === (detail.rowVersion ?? '') ? k.version : detail.rowVersion
+    const base = detail.rowVersion ?? ''
+    let ids: number[] | null = next
     try {
-      await sequence.mutateAsync({ publicId: tripId, routeStopIds: next, rowVersion: detail.rowVersion })
+      while (ids) {
+        const trip = await sequence.mutateAsync({ publicId: tripId, routeStopIds: ids, rowVersion: version })
+        version = trip.rowVersion
+        known.current = { tripId, base, version }
+        ids = chain.current.queued
+        chain.current.queued = null
+      }
+      setPending((p) => (p ? { ...p, active: false } : p))
     } catch (err) {
+      chain.current.queued = null
       setPending(null)
       fail(err)
+    } finally {
+      chain.current.running = false
     }
   }
   const move = (index: number, delta: -1 | 1) => {
