@@ -44,7 +44,7 @@ Quién puede: `trips.view` (listar y ver la ficha), `trips.plan` (crear).
 
 Cómo se usa:
 - `GET /api/v1/trips?date=&from=&to=&status=&dispatchZoneId=&driverPublicId=&search=&includeCancelled=false`
-  (sin `date`/`from`/`to` = hoy UTC; `status` acepta varios; la búsqueda libre corre después de los filtros)
+  (sin `date`/`from`/`to` = hoy de la compañía; `status` acepta varios; la búsqueda libre corre después de los filtros)
 - `POST /api/v1/trips`
 - `GET /api/v1/trips/{publicId}` — ficha completa: paradas de la versión vigente con ETA y zona, avisos y
   bloqueantes, "no cupieron" de la última optimización y último ping del chofer.
@@ -327,7 +327,7 @@ Qué hace: lista las rutas activas en `DRAFT`/`PLANNED` de un día con sus aviso
 Quién puede: `trips.dispatch`.
 
 Cómo se usa:
-- `GET /api/v1/trips/dispatchable?date=` — sin fecha = hoy UTC
+- `GET /api/v1/trips/dispatchable?date=` — sin fecha = hoy de la compañía
 - `POST /api/v1/trips/{publicId}/dispatch` — cuerpo opcional `{ "comment": "…", "rowVersion": "…" }`
 - `POST /api/v1/trips/dispatch` — lote: `{ "tripPublicIds": ["…", "…"], "comment": "…" }` (máximo 50; cada ruta en
   su propia transacción; la respuesta siempre es `200`, con el resultado de cada una)
@@ -496,7 +496,7 @@ cambia los contadores, solo filtra la lista visible.
 
 Quién puede: `trips.view`.
 
-Cómo se usa: `GET /api/v1/trips/monitor?date=&dispatchZoneId=&search=&includeCompleted=true` (sin `date` = hoy UTC)
+Cómo se usa: `GET /api/v1/trips/monitor?date=&dispatchZoneId=&search=&includeCompleted=true` (sin `date` = hoy de la compañía)
 
 Sin validaciones propias más allá de las compartidas (permiso y módulo). La ficha de cada ruta
 (`GET /api/v1/trips/{publicId}`) trae las coordenadas y la precisión de cada parada; el mapa lo dibuja el front.

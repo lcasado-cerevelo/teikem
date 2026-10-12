@@ -7099,3 +7099,70 @@ Revise que el botón diga **Voz activada**, el volumen del equipo y que el naveg
 
 **¿Dónde están los modos de entrada y de cuadre de cobros, y el informe de faltantes?**
 Todavía no existen: la estación solo escanea la salida.
+
+## Lote F-E2a — Sala de despacho (2026-10-12)
+
+Manual de la pantalla: [fe2a-despacho.md](frontend/fe2a-despacho.md). Los mensajes de las rutas están en el capítulo [05](05-trips-y-rutas.md).
+
+**No veo el menú «Sala de despacho».**
+Necesita el permiso `trips.dispatch`. Cada botón pide el suyo: `trips.plan` (Planificar el día, Nueva ruta, Reasignar por zona, añadir/quitar/ordenar órdenes, cambiar chofer o vehículo, Eliminar ruta), `trips.optimize` (Optimizar) y `trips.close` (Cerrar ruta).
+
+**«Su usuario no tiene acceso para consultar las rutas.»**
+Le falta `trips.view`. Sin él la pantalla no puede mostrar rutas ni órdenes sin asignar.
+
+**El chofer y el vehículo se ven como texto y dice que no puedo cambiarlos.**
+Le falta `fleet.view` (o el módulo Catálogo está apagado). Pida el acceso; mientras tanto, otra persona puede asignarlos.
+
+**«Hay órdenes que no se pueden asignar a la ruta.»**
+Al menos una orden marcada no es elegible; debajo aparece cada número con su motivo (por ejemplo `La orden está en Entrada; confírmela antes de asignarla a una ruta.` o `El estatus actual no permite la acción 'ASSIGN_TRIP'.`). No se añadió ninguna. Corrija la orden o desmárquela y pulse otra vez.
+
+**«La orden ya está asignada a la ruta {código}.»**
+Otra persona la puso en esa ruta antes. La lista se actualiza sola; elija otra orden.
+
+**«Agregue como máximo 200 órdenes por solicitud.» / «Una ruta admite como máximo 300 paradas.»**
+Añada en tandas de hasta 200 y use otra ruta si la actual llegó a 300.
+
+**El botón «Añadir a la ruta» está apagado.**
+No hay órdenes marcadas, o la ruta activa no está en Borrador o Planificado (una ruta despachada no recibe órdenes). La pantalla lo explica bajo el botón.
+
+**No veo ▲, ▼, la papelera ni «Optimizar» activo.**
+La ruta ya se despachó (su contenido está congelado) o le falta `trips.plan`/`trips.optimize`. «Optimizar» también se apaga si la ruta no tiene paradas: `La ruta no tiene paradas que optimizar.`
+
+**«El chofer no está disponible para despacho: …» / «El vehículo no está disponible para despacho: …»**
+El elegido tiene un impedimento en esa fecha (licencia vencida, vehículo en mantenimiento…). Elija otro o resuélvalo en Choferes o Flota. En las listas aparecen como «no disponible».
+
+**«El registro fue modificado por otro usuario; recargue e intente de nuevo.»**
+Otra persona cambió la ruta mientras usted la editaba. La pantalla ya se actualizó: revise y repita la acción.
+
+**«La ruta {código} ya fue despachada; no se puede editar ni eliminar.»**
+Después de despachar, la ruta no se edita ni se elimina (salvo chofer y vehículo si su compañía lo permite).
+
+**«La ruta {código} no se puede despachar: …»**
+La ruta tiene un **Bloquea** (sin chofer, sin vehículo, sin paradas, chofer o vehículo no disponible, una orden que dejó de ser elegible). Corríjalo en la ruta; en **Rutas por despachar** esas rutas no se pueden marcar.
+
+**Despaché y apareció «Despachar con avisos».**
+Las rutas con **Aviso** (ámbar) se pueden despachar, pero el sistema pide confirmar una vez: revise los avisos y pulse el botón otra vez. Despachar no se deshace.
+
+**En el lote una ruta salió «despachada» y otra con un error.**
+Cada ruta se despacha por separado: la que falla no impide las demás. Corrija la que falló y despáchela de nuevo.
+
+**«La ruta {código} no se puede cerrar: hay órdenes sin terminar (…).»**
+Quedan órdenes en camino, retenidas o sin resultado. Registre su entrega o su intento fallido (o libérelas) y cierre de nuevo.
+
+**«La ruta {código} no está despachada; despáchela antes de registrar su salida.»**
+«Iniciar ruta» solo funciona con la ruta en Despachado.
+
+**Optimicé y salió «No cupieron (N)».**
+Esas órdenes no cupieron por paradas, peso o volumen del vehículo y volvieron a **Órdenes sin asignar**. Cambie de vehículo o asígnelas a otra ruta.
+
+**La optimización no muestra «-12 %» de distancia.**
+Solo se compara con una optimización anterior de la misma ruta, y la distancia solo existe si las direcciones tienen coordenadas; si no, solo se compara la duración. La primera vez dice que no hay con qué comparar.
+
+**«Reasignar por zona» dijo que no cambió nada.**
+No había rutas abiertas (Borrador o Planificado) en esas zonas y fecha. No es un error; las rutas despachadas no se tocan.
+
+**«Planificar el día» dejó órdenes sin asignar.**
+Las órdenes sin zona o con zona ambigua no se tocan (**Órdenes sin zona**), y las que no son elegibles quedan en **Órdenes omitidas** con su motivo en el aviso de la zona. Arregle la zona o la orden y repita: no duplica nada.
+
+**¿Dónde está el mapa, el arrastre de paradas y el COD de cada orden?**
+Todavía no existen en esta pantalla: el orden se cambia con ▲ y ▼, y el sistema de rutas no maneja montos.
