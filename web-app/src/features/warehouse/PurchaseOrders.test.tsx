@@ -51,6 +51,7 @@ const ORDER = {
 function route({ method, url }: Call): unknown {
   const p = url.pathname
   if (method === 'GET' && p === '/api/v1/purchase-orders') return { total: 1, skip: 0, take: 25, items: [ORDER] }
+  if (method === 'GET' && p === '/api/v1/products') return { total: 1, skip: 0, take: 50, items: [{ id: 1, publicId: P1, sku: 'TORN-01', name: 'Tornillo', isActive: true }] }
   if (method === 'GET' && p === `/api/v1/purchase-orders/${PO}`) return mock.order ?? ORDER
   if (method === 'PATCH' && mock.patch) return mock.patch()
   if (method === 'GET' && p === '/api/v1/suppliers')
@@ -119,6 +120,20 @@ describe('Compras: lista', () => {
     expect(last.get('supplierId')).toBeNull()
     expect(last.get('warehousePublicId')).toBeNull()
     expect(last.get('skip')).toBe('0')
+  })
+
+  it('Producto: desplegable con búsqueda y selección múltiple; viaja como productPublicIds y Limpiar lo quita', async () => {
+    const user = userEvent.setup()
+    wrap(<PurchaseOrderListScreen />, MANAGE)
+    await screen.findAllByText('PO-00001')
+    await user.click(screen.getByLabelText('Producto'))
+    await user.type(screen.getByRole('searchbox'), 'torn')
+    await user.click(await screen.findByLabelText(/TORN-01/))
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(listGets().at(-1)!.url.searchParams.getAll('productPublicIds')).toEqual([P1]))
+    expect(listGets().at(-1)!.url.searchParams.get('skip')).toBe('0')
+    await user.click(screen.getByRole('button', { name: 'Limpiar' }))
+    await waitFor(() => expect(listGets().at(-1)!.url.searchParams.has('productPublicIds')).toBe(false))
   })
 
   it('alta: exige proveedor, almacén y una línea con producto y cantidad mayor que cero', async () => {

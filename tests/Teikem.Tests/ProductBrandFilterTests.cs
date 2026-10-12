@@ -337,6 +337,35 @@ public sealed class ProductBrandFilterTests
     }
 
     [Fact]
+    public async Task Purchase_orders_filter_by_several_products_on_their_lines()
+    {
+        await using var f = await CreateAsync();
+        var w = await f.AddWarehouseAsync("W1");
+        var p1 = await f.AddProductAsync("PA");
+        var p2 = await f.AddProductAsync("PB");
+        var p3 = await f.AddProductAsync("PC");
+        var supplier = new Supplier { TenantId = WmsFixture.TenantId, Name = "Uno", IsActive = true };
+        f.Db.Set<Supplier>().Add(supplier);
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+
+        var orders = f.Get<PurchaseOrderService>();
+        async Task<PurchaseOrderDto> Po(params Product[] products)
+            => await orders.CreateAsync(new PurchaseOrderCreateRequest(supplier.SupplierId, w.PublicId,
+                Lines: products.Select(p => new PurchaseOrderLineRequest(p.PublicId, 1m, 1m)).ToArray()), default);
+        var a = await Po(p1);
+        var b = await Po(p2, p3);
+        var c = await Po(p3);
+
+        async Task<string[]> Numbers(PurchaseOrderQuery q) => (await orders.ListAsync(q, default)).Items.Select(i => i.Number).OrderBy(n => n).ToArray();
+        Assert.Equal(new[] { a.Number }, await Numbers(new PurchaseOrderQuery(ProductPublicIds: new[] { p1.PublicId })));
+        Assert.Equal(new[] { b.Number, c.Number }.OrderBy(n => n).ToArray(), await Numbers(new PurchaseOrderQuery(ProductPublicIds: new[] { p3.PublicId })));
+        Assert.Equal(new[] { a.Number, b.Number, c.Number }.OrderBy(n => n).ToArray(),
+            await Numbers(new PurchaseOrderQuery(ProductPublicIds: new[] { p1.PublicId, p2.PublicId, p3.PublicId })));
+        Assert.Equal(3, (await orders.ListAsync(new PurchaseOrderQuery(), default)).Total);
+    }
+
+    [Fact]
     public async Task Purchase_order_requires_lines_with_positive_quantity()
     {
         // Ya lo exigía el dominio (Lote 6): sin líneas → 400 LinesRequired; cantidad 0 → 400 QtyRequired.

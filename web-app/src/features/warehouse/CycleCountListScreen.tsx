@@ -29,7 +29,6 @@ import { CountTaskList } from './CountTaskList'
 import { countFilterQuery, countFiltersFromUrl, countListQuery, countParam, selectedCountId, type CountFilterState } from './countView'
 import { CreateCountModal } from './CreateCountModal'
 import { CycleCountFilterBar } from './CycleCountFilterBar'
-import { useDebounced } from './lineRules'
 import './warehouse.css'
 
 const NO_ITEMS: CycleCountDto[] = []
@@ -46,13 +45,11 @@ export default function CycleCountListScreen() {
   const setTab = (key: TabKey) => setParams(key === 'counts' ? {} : { tab: key }, { replace: true })
   // Lote 15: filtros iniciales de la URL (una vez al montar; la franja "Almacén hoy" del Pulso manda estatus y almacén)
   const [filters, setFiltersState] = useState<CountFilterState>(() => countFiltersFromUrl(params))
-  const [q, setQState] = useState('')
-  const search = useDebounced(q.trim())
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
   const [creating, setCreating] = useState<null | 'manual' | 'changes'>(null)
 
-  const effective = useMemo(() => ({ ...filters, search }), [filters, search])
+  const effective = filters   // 2026-10-12: sin buscador de texto en Conteo cíclico
   const query = useMemo(() => countListQuery(effective, page, pageSize), [effective, page, pageSize])
   // la lista de siempre solo se pide en su pestaña
   const list = useCycleCountsPage(query, { enabled: tab === 'counts' })
@@ -66,10 +63,6 @@ export default function CycleCountListScreen() {
     },
     [setFiltersState, setPage],
   )
-  const setQ = (v: string) => {
-    setQState(v)
-    setPage(1)
-  }
   const select = (id: number) => {
     const next = new URLSearchParams(params)
     next.set('count', String(id))
@@ -133,8 +126,6 @@ export default function CycleCountListScreen() {
         <CountsTab
           filters={filters}
           setFilters={setFilters}
-          q={q}
-          setQ={setQ}
           list={list}
           items={items}
           selected={selected}
@@ -159,8 +150,6 @@ export default function CycleCountListScreen() {
 interface CountsTabProps {
   filters: CountFilterState
   setFilters: (f: CountFilterState) => void
-  q: string
-  setQ: (v: string) => void
   list: ReturnType<typeof useCycleCountsPage>
   items: readonly CycleCountDto[]
   selected: number | null
@@ -174,11 +163,11 @@ interface CountsTabProps {
 }
 
 /** Pestaña de siempre: filtros arriba, la lista de conteos y el elegido (Lote 14). */
-function CountsTab({ filters, setFilters, q, setQ, list, items, selected, select, clearSelection, page, setPage, pageSize, setPageSize, effective }: CountsTabProps) {
+function CountsTab({ filters, setFilters, list, items, selected, select, clearSelection, page, setPage, pageSize, setPageSize, effective }: CountsTabProps) {
   const t = useT()
   return (
     <>
-      <CycleCountFilterBar value={filters} onChange={setFilters} q={q} onQ={setQ} />
+      <CycleCountFilterBar value={filters} onChange={setFilters} />
 
       <SplitPane
         storageKey="cycle-counts"

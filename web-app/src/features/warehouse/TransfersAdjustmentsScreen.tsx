@@ -43,7 +43,7 @@ import {
   type MovementFilterState,
   type MovementTab,
 } from './movementFilters'
-import { OwnerFilter, ProductMultiFilter, UserFilter } from './pickers'
+import { OwnerFilter, ProductSearchSelect, UserFilter } from './pickers'
 
 const PAGE_SIZE = 25
 
@@ -113,7 +113,7 @@ function MovementsTab({
             />
           </>
         )}
-        <ProductMultiFilter label={t(`${T}.filters.product`)} value={filters.products} onChange={(products) => set({ products })} includeInactive />
+        <ProductSearchSelect label={t(`${T}.filters.product`)} value={filters.products} onChange={(products) => set({ products })} includeInactive />
         <OwnerFilter label={t(`${T}.filters.owner`)} value={filters.owners} onChange={(owners) => set({ owners })} />
         <UserFilter label={t(`${T}.filters.user`)} value={filters.users} onChange={(users) => set({ users })} />
         {kind === 'adjustments' && (

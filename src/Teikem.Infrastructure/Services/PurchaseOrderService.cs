@@ -72,6 +72,12 @@ public sealed class PurchaseOrderService(
             .Distinct().ToList();
         if (warehousePublicIds.Count > 0)
             query = query.Where(p => db.Set<Warehouse>().Any(w => w.WarehouseId == p.WarehouseId && warehousePublicIds.Contains(w.PublicId)));
+        // 2026-10-12: filtro Producto (varios): órdenes con alguna línea de esos productos.
+        if (q.ProductPublicIds is { Length: > 0 } productIds)
+            query = query.Where(p => (from l in db.Set<PurchaseOrderLine>()
+                                      join pr in db.Set<Product>() on l.ProductId equals pr.ProductId
+                                      where l.PurchaseOrderId == p.PurchaseOrderId && productIds.Contains(pr.PublicId)
+                                      select l.PurchaseOrderLineId).Any());
         if (q.From is DateOnly from) query = query.Where(p => p.OrderDate >= from);
         if (q.To is DateOnly to) query = query.Where(p => p.OrderDate <= to);
         if (!string.IsNullOrWhiteSpace(q.Search))

@@ -29,7 +29,7 @@ import {
   type DateRange,
 } from '../../kernel/ui'
 import { exportPurchaseOrders, useCreatePurchaseOrder, usePurchaseOrders, useSuppliers, useWarehouses, warehouseLabel, type PurchaseOrderDto } from './api'
-import { ProductPickerInput, WarehousePickerInput } from './pickers'
+import { ProductPickerInput, ProductSearchSelect, WarehousePickerInput, type ProductFilterItem } from './pickers'
 import { IconCart } from '../../kernel/ui/screenIcons'
 import { formatDate as formatCompanyDate } from '../../kernel/format'
 
@@ -217,6 +217,7 @@ export default function PurchaseOrderListScreen() {
   const [statusFilter, setStatusFilter] = useState<string[]>([])
   const [supplierIds, setSupplierIds] = useState<string[]>([])
   const [warehouseIds, setWarehouseIds] = useState<string[]>([])
+  const [products, setProducts] = useState<ProductFilterItem[]>([])
   const [range, setRange] = useState<DateRange>(EMPTY_RANGE)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
@@ -238,6 +239,7 @@ export default function PurchaseOrderListScreen() {
   const changeStatus = withPageReset(setStatusFilter)
   const changeSupplier = withPageReset(setSupplierIds)
   const changeWarehouse = withPageReset(setWarehouseIds)
+  const changeProducts = withPageReset(setProducts)
   const changeRange = withPageReset(setRange)
 
   const query = useMemo(
@@ -245,12 +247,13 @@ export default function PurchaseOrderListScreen() {
       status: statusFilter.length > 0 ? statusFilter : undefined,
       supplierIds: supplierIds.length > 0 ? supplierIds.map(Number) : undefined,
       warehousePublicIds: warehouseIds.length > 0 ? warehouseIds : undefined,
+      productPublicIds: products.length > 0 ? products.map((p) => p.publicId) : undefined,
       from: range.from || undefined,
       to: range.to || undefined,
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),
-    [statusFilter, supplierIds, warehouseIds, range, page, pageSize],
+    [statusFilter, supplierIds, warehouseIds, products, range, page, pageSize],
   )
   const { data, isLoading, error } = usePurchaseOrders(query)
 
@@ -304,12 +307,15 @@ export default function PurchaseOrderListScreen() {
           setStatusFilter([])
           setSupplierIds([])
           setWarehouseIds([])
+          setProducts([])
           setRange(EMPTY_RANGE)
         }}
       >
         <SearchSelect label={t('warehouse.purchaseOrders.filters.status')} options={statusOptions} value={statusFilter} onChange={changeStatus} />
         <SearchSelect label={t('warehouse.purchaseOrders.filters.supplier')} options={supplierOptions} value={supplierIds} onChange={changeSupplier} />
         <SearchSelect label={t('warehouse.purchaseOrders.filters.warehouse')} options={warehouseOptions} value={warehouseIds} onChange={changeWarehouse} />
+        {/* 2026-10-12: Producto (varios): órdenes con alguna línea de esos productos; mismo desplegable con búsqueda que en Productos y Kárdex */}
+        <ProductSearchSelect label={t('warehouse.purchaseOrders.filters.product')} value={products} onChange={changeProducts} includeInactive />
         <DateRangeFilter label={t('warehouse.purchaseOrders.filters.range')} value={range} onChange={changeRange} />
       </Filters>
 

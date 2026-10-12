@@ -1,6 +1,6 @@
 // Lote 14 (P7, hallazgo 6) — barra de filtros COMPARTIDA por las tres pestañas de 'Kárdex de movimientos' (Kárdex, Saldos y
 // Conciliación). El estado (`InventoryFilterState`, `kardexView.ts`) vive en la pantalla: cambiar de pestaña no descarta
-// nada. Filtros: Fecha, Tipo, Almacén, Posición (`BinMultiFilter`, entre almacenes), Producto (con dados de baja), Categoría
+// nada. Filtros: Fecha, Tipo, Almacén, Posición (`BinSearchSelect`, entre almacenes), Producto (con dados de baja), Categoría
 // (con subcategorías), Dueño (`OwnerFilter`), Motivo, Dirección (entradas/salidas), Lote, Serie y "Solo manuales"; además
 // "Incluir en cero" y "Solo con disponible" en Saldos y Estatus en Conciliación. Un filtro que la pestaña no aplica
 // (`TAB_FILTERS`) se atenúa y, si tiene valor, se nombra en la ayuda bajo la barra. El documento de origen que llega en la
@@ -22,7 +22,7 @@ import {
   type InventoryTab,
   type KardexDirection,
 } from './kardexView'
-import { BinMultiFilter, OwnerFilter, ProductMultiFilter, UserFilter, type ProductFilterItem } from './pickers'
+import { BinSearchSelect, OwnerFilter, ProductSearchSelect, UserFilter, type ProductFilterItem } from './pickers'
 import './warehouse.css'
 
 export interface InventoryFilterBarProps {
@@ -86,7 +86,7 @@ export function InventoryFilterBar({ tab, value, onChange, shownProducts }: Inve
         )}
         {wrap(
           'bins',
-          <BinMultiFilter
+          <BinSearchSelect
             label={t(`${F}.bin`)}
             value={value.bins}
             onChange={(bins) => onChange({ bins })}
@@ -94,7 +94,7 @@ export function InventoryFilterBar({ tab, value, onChange, shownProducts }: Inve
             includeInactive
           />,
         )}
-        {wrap('products', <ProductMultiFilter label={t(`${F}.product`)} value={shownProducts} onChange={(products) => onChange({ products })} includeInactive />)}
+        {wrap('products', <ProductSearchSelect label={t(`${F}.product`)} value={shownProducts} onChange={(products) => onChange({ products })} includeInactive />)}
         {wrap(
           'categories',
           <SearchSelect label={t(`${F}.category`)} options={categoryOptions} value={value.categoryIds} onChange={(categoryIds) => onChange({ categoryIds })} />,

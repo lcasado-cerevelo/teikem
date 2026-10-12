@@ -32,10 +32,11 @@ public sealed class PurchaseOrdersController(PurchaseOrderService purchaseOrders
     [HttpGet, RequirePermission(PermissionCatalog.PurchasingView)]
     public Task<PurchaseOrderPageDto> List([FromQuery] string[]? status, [FromQuery] int? supplierId, [FromQuery] Guid? warehousePublicId,
         [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] string? search, [FromQuery] int[]? supplierIds,
-        [FromQuery] Guid[]? warehousePublicIds, [FromQuery] int skip = 0, [FromQuery] int take = 100, CancellationToken ct = default)
+        [FromQuery] Guid[]? warehousePublicIds, [FromQuery] Guid[]? productPublicIds, [FromQuery] int skip = 0, [FromQuery] int take = 100,
+        CancellationToken ct = default)
         => purchaseOrders.ListAsync(new PurchaseOrderQuery(status is { Length: > 0 } ? status : null, supplierId, warehousePublicId, from, to,
             search, skip, take, supplierIds is { Length: > 0 } ? supplierIds : null,
-            warehousePublicIds is { Length: > 0 } ? warehousePublicIds : null), ct);
+            warehousePublicIds is { Length: > 0 } ? warehousePublicIds : null, productPublicIds is { Length: > 0 } ? productPublicIds : null), ct);
 
     /// <summary>
     /// Órdenes activas no canceladas con recibo confirmado y cantidades pendientes (faltante y su costo) y el almacén de la

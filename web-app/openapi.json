@@ -18682,6 +18682,17 @@
             }
           },
           {
+            "name": "productPublicIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
             "name": "skip",
             "in": "query",
             "schema": {
