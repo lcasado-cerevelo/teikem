@@ -6,10 +6,11 @@ Página estática, igual en estilo a la de Advance App. Súbala a cualquier serv
 index.html
 logo.png
 favicon.ico
-versions.json          { "ultima": "1.0.0" }  → el número que se muestra
-apk/teikem-almacen.apk El APK que deja scripts\construir-apk.ps1 (renómbrelo a este nombre)
+versions.json          { "ultima": "1.0.0", "staging": "1.0.0" }  → los números que se muestran
+apk/teikem-almacen.apk El APK de producción que deja scripts\construir-apk.ps1 (renómbrelo a este nombre)
+apk/teikem-staging.apk El APK de staging que deja scripts\construir-apk.ps1 -Staging (renómbrelo a este nombre)
 ```
 
 - Cada versión nueva: copie el APK a `apk/teikem-almacen.apk` (el mismo nombre) y cambie el número en `versions.json`. Los aparatos que ya la tienen se actualizan **encima**, sin perder su configuración (misma llave de firma y código de versión mayor: ver `docs/mobile/actualizar-apk.md`).
-- Para una versión de prueba, descomente la tarjeta «Prueba» en `index.html` y ponga `apk/teikem-almacen-prueba.apk`.
+- Staging (2026-10-12): la tarjeta «Teikem Almacén STAGING» (borde rojo punteado) descarga `apk/teikem-staging.apk`; cada versión nueva: copie el APK con ese nombre y cambie `staging` en `versions.json`. Es otra app (paquete `com.teikem.almacen.staging`): se instala junto a la de producción y se actualiza sola encima, sin tocarla.
 - El servidor debe servir `.apk` como `application/vnd.android.package-archive`.
