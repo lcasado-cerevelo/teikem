@@ -7,7 +7,7 @@ Pantalla **Operación → Órdenes**. Aquí usted puede:
 - **Crear una entrega especial** (un servicio del catálogo del cliente en vez de paquetes).
 - **Eliminar** una orden que todavía no se ha confirmado.
 
-Por ahora esta pantalla **no** permite editar una orden, confirmarla después, cancelarla, asignarle chofer, usar la entrada rápida ni importar órdenes desde un archivo CSV. Eso llegará en las próximas entregas. Lo que ocurre con el precio, el crédito y los estatus en el servidor está explicado en el capítulo «03 — Órdenes de transporte» de este manual.
+Editar una orden, confirmarla después, cancelarla, re-cotizarla y asignarle chofer se hace en su expediente (al abrirla), explicado en [Órdenes: el expediente de la orden](fc2-ordenes-expediente.md). Por ahora esta pantalla **no** tiene la entrada rápida ni la importación de órdenes desde un archivo CSV; eso llegará en la próxima entrega. Lo que ocurre con el precio, el crédito y los estatus en el servidor está explicado en el capítulo «03 — Órdenes de transporte» de este manual.
 
 ## Permisos necesarios
 
@@ -186,7 +186,7 @@ Qué se puede hacer según el estatus:
 
 | Estatus | Eliminar con la papelera | Qué más |
 |---|---|---|
-| **Borrador** | Sí (con `orders.cancel`) | Todavía se puede editar y confirmar (esas acciones llegarán a esta pantalla más adelante). |
+| **Borrador** | Sí (con `orders.cancel`) | Todavía se puede editar y confirmar, desde el expediente de la orden (ver [el expediente](fc2-ordenes-expediente.md)). |
 | **Confirmada** y siguientes | No. Aparece «Solo se puede eliminar una orden en su estatus inicial; use la cancelación.» | Una orden confirmada no se elimina: se cancela. La cancelación todavía no está en esta pantalla. |
 
 ---

@@ -193,7 +193,8 @@ referencias. El **cliente, el número de orden, el número de factura y el núme
 editan. Si la orden ya estaba cotizada, editarla la **re-cotiza** (exige además la capacidad `REPRICE`) para no dejar un
 monto viejo.
 
-Quién puede: `orders.edit`.
+Quién puede: `orders.edit`. En la web se hace dentro del panel **Detalle** del expediente de la orden, con un solo botón **Guardar cambios**
+(ver [el expediente](frontend/fc2-ordenes-expediente.md)); la pantalla solo manda lo que usted cambió y el `rowVersion` de la ficha.
 
 Cómo se usa: `PATCH /api/v1/orders/{publicId}` con solo los campos que cambian; `rowVersion` opcional (el de la ficha)
 para detectar edición concurrente.

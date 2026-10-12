@@ -260,6 +260,9 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
    (vista previa fila por fila, errores y avisos, confirmar o descartar); permisos `locations.*`.
 19. [F-C1 — Órdenes: lista y alta](frontend/fc1-ordenes-alta.md): Operación → **Órdenes**: la lista con sus filtros, **Nueva orden** (guardar como borrador o confirmar, crédito excedido, factura repetida,
    entrega especial) y eliminar un borrador; permisos `orders.*` y quién ve los precios (`orders.view_price`).
+20. [F-C2 — Órdenes: el expediente de la orden](frontend/fc2-ordenes-expediente.md): al abrir una orden: **Detalle** que se edita ahí mismo, **Confirmar** (con crédito excedido), **Re-cotizar**,
+   **Cancelar la orden**, **Eliminar la orden**, estatus laterales (En espera, Parcial, Fallida) y su regreso, **Asignar chofer** a una entrega especial, **Cotizar** (vista previa), COD, campos
+   personalizados y contactos. Capturas `fc2-*`.
 
 ## Preguntas frecuentes
 

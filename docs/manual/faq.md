@@ -6625,7 +6625,98 @@ Para leer los servicios especiales del cliente hace falta el permiso `contracts.
 Con la entrega especial activada hay que elegir el servicio en **Servicio especial**. Si el servidor responde «El servicio especial no está vigente para este cliente.» (400), ese servicio ya se cerró: elija otro.
 
 **¿Por qué una entrega especial no pide chofer?**
-En la web el chofer se asigna después, en el expediente de la orden. La orden nace sin paquetes, sin COD y sin chofer.
+En la web el chofer se asigna después, en el expediente de la orden con el botón **Asignar chofer** (ver el Lote F-C2). La orden nace sin paquetes, sin COD y sin chofer.
 
 **El formulario sigue abierto y muestra un error. ¿Se guardó la orden?**
 No. Cuando el servidor devuelve un error al crear, la orden no se crea (tampoco con **Guardar y confirmar**). Corrija lo que dice el mensaje y vuelva a guardar: no se duplica.
+
+## Lote F-C2 — Expediente de la orden (2026-10-12)
+
+Preguntas de la pantalla que se abre al pulsar una orden en **Operación → Órdenes**. Los mensajes aparecen tal cual los muestra la pantalla. El capítulo completo es «Órdenes: el expediente de la orden» (manual de pantallas).
+
+**¿Por qué no puedo editar los datos de una orden?**
+Solo se editan mientras la orden es borrador (el estatus inicial) y con el permiso `orders.edit`. Después de confirmarla, el panel **Detalle** dice «Esta orden ya avanzó de Borrador: sus datos se muestran como referencia, ya no se editan aquí.» y no hay botón **Guardar cambios**. Si su usuario no tiene `orders.edit`, dice «Su usuario no tiene permiso para editar órdenes: los datos se muestran como referencia.»
+
+**¿Por qué no puedo cambiar el cliente, el número de orden, la factura o el empaque?**
+Esos datos se fijan al crear la orden y no se editan. Si la orden está mal creada, cancélela (o elimínela si todavía es borrador) y cree otra.
+
+**El botón «Guardar cambios» está apagado. ¿Qué pasa?**
+Se enciende solo cuando usted cambia algo. Si no cambió nada, no hay nada que guardar.
+
+**¿Por qué no puedo quitar una fecha (Lista o Límite)?**
+Aparece «La fecha no se puede quitar; elija otra.» El sistema no permite dejar vacía una fecha que ya tenía. Elija otra fecha.
+
+**¿Qué significa «El registro fue modificado por otro usuario; recargue e intente de nuevo.»?**
+Otra persona guardó cambios en la misma orden mientras usted la editaba. La pantalla vuelve a leer la orden y **conserva lo que usted había escrito**. Revise los datos nuevos y pulse **Guardar cambios** otra vez.
+
+**¿Qué significa «Una entrega especial no lleva líneas de paquete ni COD.»?**
+Una entrega especial es un servicio del catálogo del cliente, no lleva paquetes ni COD. En su expediente esos campos no aparecen; los demás datos (consignatario, fechas, comentario…) sí se editan.
+
+**¿Qué significa «El estatus actual no permite la acción 'EDIT_CARGO'.»?**
+La orden ya salió del estatus en que se edita (alguien la confirmó mientras usted la tenía abierta). Recargue la pantalla.
+
+**Cambié de consignatario y salió «Factura repetida para este consignatario». ¿Qué hago?**
+La orden tiene un número de factura que usted tecleó y el nuevo consignatario ya tiene otra orden con el mismo número. Si ese consignatario admite facturas repetidas, pulse **Guardar de todos modos**; si no, elija otro consignatario.
+
+**¿Por qué no veo el botón «Confirmar»?**
+La orden ya no está en su estatus inicial, o su usuario no tiene `orders.edit` (ni `orders.credit_override`). Una orden se confirma una sola vez.
+
+**Al confirmar sale «El cliente excede su límite de crédito». ¿Qué hago?**
+El crédito del cliente no alcanza para esta orden. Si usted tiene `orders.credit_override`, pulse **Autorizar y confirmar**: la orden se confirma y queda registrado quién lo autorizó. Si no lo tiene, avise a Facturación o a un administrador, o pida que suban el límite del cliente. Sin `orders.view_price` el mensaje no trae las cifras.
+
+**Soy de Facturación y el botón me dice «Autorizar y confirmar». ¿Por qué?**
+Su rol tiene `orders.credit_override` pero no `orders.edit`. Ese permiso solo sirve para autorizar un exceso de crédito; si el crédito no se excede, el servidor responde «Falta el permiso 'orders.edit'.»
+
+**¿Qué significa «No hay tarifa vigente para X/Y; configure la tarifa en el contrato del cliente antes de confirmar.»?**
+El contrato del cliente no tiene tarifa para ese servicio y tipo de paquete (X/Y). Configúrela en Clientes → Contrato → Tarifas y vuelva a confirmar.
+
+**¿Por qué no veo el panel «Cotización»?**
+Falta el permiso `orders.view_price` («Ver precios de las órdenes»). Sin él tampoco se ve el monto cotizado. Lo traen de fábrica los roles Admin de compañía y Facturación.
+
+**¿Para qué sirve el botón «Cotizar»? ¿Cambia la orden?**
+Muestra una vista previa de cuánto costaría la orden con las tarifas vigentes y cómo queda el crédito del cliente. **No guarda nada.** Para guardar el monto nuevo use **Re-cotizar** (en una orden confirmada).
+
+**¿Cuándo sale el botón «Re-cotizar»?**
+En una orden ya cotizada y en un estatus que lo permite (de fábrica, solo **Confirmada**), con `orders.edit`. Si sale «El estatus actual no permite la acción 'REPRICE'.», la orden ya no está en un estatus que permita re-cotizar.
+
+**¿Cómo cancelo una orden? ¿Se puede deshacer?**
+Pulse **Cancelar la orden**, escriba un comentario si quiere (máximo 500 caracteres) y confirme. No se puede deshacer. Si era una entrega especial con chofer, su viaje también se cancela. Necesita `orders.cancel`. Una orden Entregada o Cancelada ya no se cancela.
+
+**¿Por qué el comentario no me deja guardar? Dice «El comentario admite como máximo 500 caracteres.»**
+El comentario de cancelar, de cambiar de estatus o de asignar chofer admite hasta 500 caracteres. Acórtelo.
+
+**¿Cuál es la diferencia entre cancelar y eliminar?**
+**Eliminar la orden** solo se puede en un borrador: libera el número de orden y de empaque. Una orden confirmada solo se cancela. Si intenta eliminar una ya confirmada sale «Solo se puede eliminar una orden en su estatus inicial; use la cancelación.»
+
+**¿Para qué sirven En espera, Parcial y Fallida? ¿Por qué no hay botón para avanzar la orden?**
+Son desvíos que se registran a mano. El avance normal de la orden (recogido, en tránsito, entregada…) lo hacen las pantallas de despacho, rutas y entregas, no el expediente. Para confirmar o cancelar use los botones de arriba.
+
+**La orden está En espera. ¿Cómo la regreso?**
+Pulse **Volver a** y el nombre de la etapa de la que salió (por ejemplo «Volver a Confirmada»). Es el único regreso: no se puede saltar a otra etapa.
+
+**¿Por qué no veo el botón «Asignar chofer»?**
+Solo aparece en una **entrega especial** que está en el recorrido hasta **En tránsito**, y si usted tiene `trips.dispatch` y el módulo Catálogo está encendido. En una orden normal el chofer se asigna en Sala de despacho. Cuando la orden ya tiene chofer el botón dice **Reasignar chofer**.
+
+**Al asignar chofer no puedo elegir ninguno / dice que no puedo consultar los choferes.**
+Su usuario no tiene el permiso `fleet.view`. Pídalo al administrador. Si la lista dice «No hay choferes activos», cree o reactive un chofer en Flota → Choferes.
+
+**¿Qué significa «El chofer no está disponible para despacho: …»?**
+Después de los dos puntos el mensaje dice el motivo (licencia vencida, chofer inactivo, certificación vencida…). Elija otro chofer o resuelva el motivo en Flota → Choferes.
+
+**¿Qué significa «La orden ya está asignada a ese chofer.»?**
+Eligió el mismo chofer que ya tiene la orden. Elija otro, o pulse **Volver**.
+
+**¿Qué significa «La entrega especial ya llegó a destino o terminó; no se puede asignar ni reasignar el chofer.»?**
+La orden ya pasó de **En tránsito**, está en un desvío o terminó. Ya no se puede cambiar el chofer.
+
+**¿Qué pasa con el chofer anterior si reasigno?**
+Su viaje se cancela y se crea uno nuevo para el chofer elegido.
+
+**¿Dónde pongo quién recibe y su teléfono?**
+En el panel **Teléfonos y correos** de la derecha: **Agregar teléfono** o **Agregar correo**. El rótulo (por ejemplo «Recibe: Carmen Ortiz») va en **Etiqueta**. Necesita `contacts.manage` y `orders.edit`; sin ellos solo se consulta.
+
+**No veo el panel «Campos personalizados».**
+La compañía no definió campos personalizados para las órdenes (o el módulo está apagado). El administrador los define en Sistema. Para llenarlos hace falta `orders.edit`.
+
+**¿Por qué no hay botones de etiqueta ni de comprobante de entrega (POD)?**
+Todavía no están en la web; llegarán en otra entrega.
