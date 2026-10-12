@@ -587,6 +587,16 @@ Validaciones:
 | Valor MULTISELECT que no es lista | — | `Se esperaba una lista de valores.` (por campo) | 400 |
 | Regla de validación incumplida (regex/min/max/etc.), requerido faltante, duplicado en campo único | — | mensaje generado por campo, agrupado en `errors` | 400 |
 
+Cambios del lote F-F1 (2026-10-12) y precisiones sobre lo anterior:
+
+| Caso | Regla | Mensaje exacto | HTTP |
+|---|---|---|---|
+| Definir campos para una entidad sin resolver de pertenencia (p. ej. `INVOICE`) | no hay dónde guardar valores | `La entidad '<entityType>' aún no admite campos personalizados (su módulo no está construido).` | 400 |
+| Poner valores en una entidad sin resolver | antes se aceptaban para cualquier id, existiera o no; ahora se rechaza | el mismo mensaje | 400 |
+| `refEntity` que es un dominio de estatus (Scope=Status) | solo sirven listas de valores (Scope=Lookup) | `La lista '<refEntity>' no existe.` | 400 |
+
+Precisiones: la clave se recorta y se pasa a minúsculas antes de validarse; **una clave de un campo desactivado sigue ocupada** (el 409 `Ya existe el campo…` también aplica); `defaultValue` es texto (MULTISELECT: códigos separados por coma; BOOL: `true`; DATETIME: instante ISO UTC) y no se valida contra la lista; `validationJson` solo evalúa `regex`/`pattern`, `minLength`/`maxLength` (texto) y `min`/`max` (número; en fechas, días respecto a hoy); `DELETE` desactiva (204) y los valores se conservan; la pantalla de administración es Análisis → Campos personalizados (manual de pantallas `frontend/ff1-campos-personalizados.md`).
+
 FAQ:
 - **Guardé un valor y me devolvió 400 con varios campos.** El cuerpo `errors` trae, por cada `fieldKey` que
   falló, el mensaje puntual (regla de validación, requerido, o duplicado si el campo es único).

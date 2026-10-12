@@ -7286,3 +7286,56 @@ No: la pantalla no muestra teléfonos ni datos de contacto del chofer.
 
 **¿El plano es un mapa con calles?**
 No, es esquemático (igual que el de la Sala de despacho): muestra la posición relativa de las paradas y el punto del chofer, sin calles ni satélite.
+
+
+## Lote F-F1 — Campos personalizados (2026-10-12)
+
+Pantalla Análisis → **Campos personalizados**. Capítulo: [ff1-campos-personalizados.md](frontend/ff1-campos-personalizados.md).
+
+**No veo «Campos personalizados» en el menú.**
+Necesita el permiso `admin.customfields` y el módulo Campos personalizados encendido para su compañía. Pídalo a su administrador.
+
+**Creé un campo y no aparece en la ficha del cliente.**
+Revise que el campo esté **Activo** (active **Incluir inactivos** para ver los desactivados) y que lo creó en la entidad correcta. Si todo está bien, recargue la ficha.
+
+**«Ya existe el campo '…' en …» y no lo veo en la tabla.**
+Probablemente está **desactivado**: active **Incluir inactivos** y pulse **Reactivar**, o use otra clave.
+
+**¿Puedo cambiar la clave de un campo?**
+No. La clave es el nombre interno. Cambie la **Etiqueta**, que es lo que se ve; si necesita otra clave, desactive el campo y cree uno nuevo.
+
+**«No se puede cambiar el tipo de un campo que ya tiene valores guardados.»**
+Algún registro ya tiene un valor en ese campo. Deje el tipo, o desactive el campo y cree uno nuevo con otra clave (los valores del viejo se conservan pero no pasan al nuevo).
+
+**¿Se pierden los valores si desactivo un campo?**
+No. El campo deja de pedirse y de mostrarse, pero sus valores se conservan y vuelven a verse al **Reactivar**.
+
+**¿Puedo borrar un campo para siempre?**
+No: solo se desactiva.
+
+**No me aparece el botón «Nueva lista…».**
+Crear listas exige el permiso `admin.catalogs`. Puede escoger una lista que ya exista o pedir a un administrador que cree la que necesita.
+
+**Renombré una opción de la lista y los registros cambiaron.**
+Es lo esperado: los campos de selección apuntan a la lista del catálogo, no guardan copias del texto.
+
+**«Escoge o crea una lista de valores».**
+Los campos Selección, Selección múltiple y Referencia a catálogo necesitan una lista. Escoja una o pulse **Nueva lista…**.
+
+**«La lista '…' no existe.»**
+La lista fue eliminada o no es una lista de valores (las listas de estatus no sirven para campos). Escoja otra.
+
+**«Ponle nombre a la lista y al menos una opción» / «No se puede armar un código con: …».**
+Al crear la lista escriba un nombre y opciones con letras o números separadas por coma, de 40 caracteres como máximo cada una. Las repetidas se ignoran.
+
+**¿Qué escribo en «Formato (expresión regular)»?**
+Es opcional. Por ejemplo `^CC-\d{3}$` acepta «CC-» seguido de tres dígitos. Si no sabe usarla, déjela vacía y use solo las longitudes.
+
+**¿Qué significan el mínimo y el máximo de una Fecha?**
+Son **días respecto a hoy**: −30 es hace 30 días, 0 es hoy, 90 es dentro de 90 días.
+
+**«La entidad '…' aún no admite campos personalizados (su módulo no está construido).»**
+Es el caso de entidades como Factura: no hay registros donde guardar valores. No se pueden definir campos para ellas.
+
+**¿Por qué no están Almacén ni Contrato en la lista de entidades?**
+Todavía no tienen una ficha donde escribir los valores. Se agregarán cuando la tengan.
