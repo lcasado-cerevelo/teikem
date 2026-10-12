@@ -1205,17 +1205,18 @@ public static class DamageFinalDestinations
 
 /// <summary>
 /// 2026-10-11 — LookupCode 'ManualIssueReason' (editable por compañía en Sistema → Catálogos): motivo obligatorio de un despacho
-/// manual (salida de inventario sin entrega, DMA-#####). Los cinco de sistema: la compañía los renombra o los deshabilita con su
+/// manual (salida de inventario sin entrega, DMA-#####). Los seis de sistema: la compañía los renombra o los deshabilita con su
 /// override (Sistema → Catálogos, admin.catalogs); un valor nuevo lo agrega el administrador de plataforma (dominio global).
 /// </summary>
 public static class ManualIssueReasons
 {
     public const string Sample = "SAMPLE";
     public const string InternalUse = "INTERNAL_USE";
+    public const string OwnerPickup = "OWNER_PICKUP";
     public const string CustomerPickup = "CUSTOMER_PICKUP";
     public const string Sale = "SALE";
     public const string Other = "OTHER";
-    public static readonly string[] All = { Sample, InternalUse, CustomerPickup, Sale, Other };
+    public static readonly string[] All = { Sample, InternalUse, OwnerPickup, CustomerPickup, Sale, Other };
 }
 
 /// <summary>Qué se hace con lo dañado al reportarlo: mandarlo a una posición de cuarentena o desecharlo de una vez.</summary>

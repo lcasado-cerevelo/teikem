@@ -134,9 +134,8 @@ MERGE dbo.LookupCode AS t
 USING (VALUES
     (N'SAMPLE',          N'{"es":"Muestra","en":"Sample"}',                 1),
     (N'INTERNAL_USE',    N'{"es":"Uso interno","en":"Internal use"}',        2),
-    (N'OWNER_PICKUP', N'{"es":"Retiro del dueño","en":"Owner pickup"}', 3),
-    (N'CUSTOMER_PICKUP', N'{"es":"Retiro del cliente","en":"Customer pickup"}', 4),
-    (N'SALE',            N'{"es":"Venta","en":"Sale"}',                     5),
+    (N'CUSTOMER_PICKUP', N'{"es":"Retiro del cliente","en":"Customer pickup"}', 3),
+    (N'SALE',            N'{"es":"Venta","en":"Sale"}',                     4),
     (N'OTHER',           N'{"es":"Otro","en":"Other"}',                     9)
 ) AS s (Code, LabelJson, Srt)
 ON t.Entity = N'ManualIssueReason' AND t.InternalCode = s.Code
@@ -282,4 +281,27 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ImportBatch_Client' AN
 GO
 IF OBJECT_ID('dbo.CK_ImportBatch_OrderClient', 'C') IS NULL
     ALTER TABLE dbo.ImportBatch ADD CONSTRAINT CK_ImportBatch_OrderClient CHECK (Kind <> 'ORDER' OR ClientId IS NOT NULL);
+GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-11 (g) — Motivo de despacho manual «Retiro del dueño» (OWNER_PICKUP). Va aquí y no dentro de la sección publicada del
+   despacho manual porque el MERGE de aquella solo INSERTA lo que falta: en una base que ya la corrió no habría reordenado nada.
+   - Agrega OWNER_PICKUP (sistema, activo) y deja el orden SAMPLE 1, INTERNAL_USE 2, OWNER_PICKUP 3, CUSTOMER_PICKUP 4, SALE 5, OTHER 9.
+   Solo toca el orden de los motivos de sistema (no el nombre ni el estado que una compañía haya puesto con su override). Idempotente.
+   ---------------------------------------------------------------------------- */
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'SAMPLE',          N'{"es":"Muestra","en":"Sample"}',                 1),
+    (N'INTERNAL_USE',    N'{"es":"Uso interno","en":"Internal use"}',        2),
+    (N'OWNER_PICKUP',    N'{"es":"Retiro del dueño","en":"Owner pickup"}',   3),
+    (N'CUSTOMER_PICKUP', N'{"es":"Retiro del cliente","en":"Customer pickup"}', 4),
+    (N'SALE',            N'{"es":"Venta","en":"Sale"}',                     5),
+    (N'OTHER',           N'{"es":"Otro","en":"Other"}',                     9)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'ManualIssueReason' AND t.InternalCode = s.Code
+WHEN MATCHED AND t.SortOrder <> s.Srt THEN
+    UPDATE SET SortOrder = s.Srt
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'ManualIssueReason', s.Code, s.LabelJson, s.Srt, 1, 1);
 GO

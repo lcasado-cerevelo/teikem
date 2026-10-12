@@ -10,11 +10,12 @@ export const WAREHOUSE_ISSUE = 'warehouse.issue'
 /** Máximo de la nota (PickBatchRules: «La nota admite como máximo 500 caracteres.»). */
 export const MANUAL_ISSUE_NOTE_MAX = 500
 
-/** Los cinco motivos de fábrica (sección 2026-10-11 de Diseño/logistica-db-update.sql): respaldo mientras el aparato no haya bajado los de la
+/** Los seis motivos de fábrica (sección 2026-10-11 de Diseño/logistica-db-update.sql): respaldo mientras el aparato no haya bajado los de la
  *  compañía (que puede renombrarlos o deshabilitarlos). */
 export const FACTORY_MANUAL_ISSUE_REASONS = [
   { code: 'SAMPLE', key: 'dispatch.reasonSample' },
   { code: 'INTERNAL_USE', key: 'dispatch.reasonInternalUse' },
+  { code: 'OWNER_PICKUP', key: 'dispatch.reasonOwnerPickup' },
   { code: 'CUSTOMER_PICKUP', key: 'dispatch.reasonCustomerPickup' },
   { code: 'SALE', key: 'dispatch.reasonSale' },
   { code: 'OTHER', key: 'dispatch.reasonOther' },

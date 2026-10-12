@@ -45,7 +45,7 @@ public sealed record PickBatchDeleteRequest(string? Comment = null, string? RowV
 /// <summary>
 /// 2026-10-11 — Despacho manual (POST /api/v1/manual-issues): salida de inventario SIN entrega, con el mismo formato de líneas
 /// que la recolección (FEFO, posición/lote explícitos, series escaneadas). ReasonCode obligatorio (código del catálogo
-/// ManualIssueReason: SAMPLE, INTERNAL_USE, CUSTOMER_PICKUP, SALE, OTHER u otro que agregue la compañía); Note opcional (≤ 500).
+/// ManualIssueReason: SAMPLE, INTERNAL_USE, OWNER_PICKUP, CUSTOMER_PICKUP, SALE, OTHER u otro que agregue la compañía); Note opcional (≤ 500).
 /// Sin cliente ni consignatario: el dueño es el de los productos (uno solo por documento).
 /// </summary>
 public sealed record ManualIssueCreateRequest(Guid? WarehousePublicId = null, IReadOnlyList<PickBatchLineRequest>? Lines = null,

@@ -263,6 +263,7 @@
     "reasonLabel": "Manual issue reason",
     "reasonSample": "Sample",
     "reasonInternalUse": "Internal use",
+    "reasonOwnerPickup": "Owner pickup",
     "reasonCustomerPickup": "Customer pickup",
     "reasonSale": "Sale",
     "reasonOther": "Other",

@@ -2005,7 +2005,7 @@ roles en cada compañía existente) para despachar, eliminar y leer los motivos;
 Cómo se usa:
 - `GET /api/v1/manual-issues/reasons` — motivos activos y habilitados para la compañía, en el idioma del usuario (también sirve el
   catálogo genérico `GET /api/v1/catalogs/ManualIssueReason`). De sistema: `SAMPLE` Muestra, `INTERNAL_USE` Uso interno,
-  `CUSTOMER_PICKUP` Retiro del cliente, `SALE` Venta, `OTHER` Otro.
+  `OWNER_PICKUP` Retiro del dueño, `CUSTOMER_PICKUP` Retiro del cliente, `SALE` Venta, `OTHER` Otro.
 - `POST /api/v1/manual-issues` — despacha. Cuerpo: el de la recolección más `reasonCode` (obligatorio) y `note` (opcional, hasta 500):
 
   ```json

@@ -107,7 +107,7 @@ public sealed class ManualIssueTests
     public void Reason_catalog_has_the_five_system_codes()
     {
         Assert.Equal("ManualIssueReason", LookupDomains.ManualIssueReason);
-        Assert.Equal(new[] { "SAMPLE", "INTERNAL_USE", "CUSTOMER_PICKUP", "SALE", "OTHER" }, ManualIssueReasons.All);
+        Assert.Equal(new[] { "SAMPLE", "INTERNAL_USE", "OWNER_PICKUP", "CUSTOMER_PICKUP", "SALE", "OTHER" }, ManualIssueReasons.All);
     }
 
     // ================================================================ permiso y espejo SQL

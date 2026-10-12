@@ -263,6 +263,7 @@
     "reasonLabel": "Motivo del despacho manual",
     "reasonSample": "Muestra",
     "reasonInternalUse": "Uso interno",
+    "reasonOwnerPickup": "Retiro del dueño",
     "reasonCustomerPickup": "Retiro del cliente",
     "reasonSale": "Venta",
     "reasonOther": "Otro",

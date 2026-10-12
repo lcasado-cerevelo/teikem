@@ -577,7 +577,7 @@ uno ya usado, completar son **2 toques — Completar despacho → Despachar — 
 haya puesto en Sistema → Catálogos, en el idioma de la app). La sincronización los baja y los guarda en el aparato, como mucho cada 30 minutos y **solo si
 el usuario tiene `warehouse.issue`** (sin el permiso el servidor responde 403 y dejaría un evento de seguridad en cada pasada). Sin señal se usan los guardados;
 cada motivo trae `isDefault` (el default de la compañía) y una copia guardada por una versión anterior, sin esa marca, se vuelve a bajar en la siguiente
-pasada con señal sin esperar los 30 minutos. Si el aparato **nunca** los bajó, ofrece los cinco de fábrica (`SAMPLE` Muestra, `INTERNAL_USE` Uso interno, `CUSTOMER_PICKUP` Retiro del cliente, `SALE`
+pasada con señal sin esperar los 30 minutos. Si el aparato **nunca** los bajó, ofrece los seis de fábrica (`SAMPLE` Muestra, `INTERNAL_USE` Uso interno, `OWNER_PICKUP` Retiro del dueño, `CUSTOMER_PICKUP` Retiro del cliente, `SALE`
 Venta, `OTHER` Otro). Si la compañía deshabilitó un motivo después de la última bajada, el servidor rechaza el despacho con su mensaje (ver la tabla).
 
 **Motivo con que se abre (2026-10-11 b).** Al tocar **Completar despacho** la app pone, en este orden, el primero que **siga entre los motivos que se

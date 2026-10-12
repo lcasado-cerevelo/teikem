@@ -17,13 +17,14 @@ const t = (key: string) => `t:${key}`
 describe('despacho manual — reglas puras (2026-10-11)', () => {
   it('el permiso y los cinco motivos de fábrica son los códigos exactos del servidor', () => {
     expect(WAREHOUSE_ISSUE).toBe('warehouse.issue')
-    expect(FACTORY_MANUAL_ISSUE_REASONS.map((r) => r.code)).toEqual(['SAMPLE', 'INTERNAL_USE', 'CUSTOMER_PICKUP', 'SALE', 'OTHER'])
+    expect(FACTORY_MANUAL_ISSUE_REASONS.map((r) => r.code)).toEqual(['SAMPLE', 'INTERNAL_USE', 'OWNER_PICKUP', 'CUSTOMER_PICKUP', 'SALE', 'OTHER'])
   })
 
   it('sin copia del servidor (null) ofrece los de fábrica traducidos', () => {
     expect(reasonOptions(null, 'es', t)).toEqual([
       { code: 'SAMPLE', label: 't:dispatch.reasonSample' },
       { code: 'INTERNAL_USE', label: 't:dispatch.reasonInternalUse' },
+      { code: 'OWNER_PICKUP', label: 't:dispatch.reasonOwnerPickup' },
       { code: 'CUSTOMER_PICKUP', label: 't:dispatch.reasonCustomerPickup' },
       { code: 'SALE', label: 't:dispatch.reasonSale' },
       { code: 'OTHER', label: 't:dispatch.reasonOther' },
