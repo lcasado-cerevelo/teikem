@@ -459,13 +459,16 @@ function ProductEditorForm({
             <TextInput maxLength={200} />
           </Field>
           <div className="r2">
-            <Field name="brand" label={t('warehouse.products.editor.brand')}>
-              <TextInput maxLength={BRAND_MAX} list={brandListId} autoComplete="off" placeholder={t('warehouse.products.editor.brandPlaceholder')} />
+            <Field name="categoryId" label={t('warehouse.products.editor.category')}>
+              <ComboSelectInput options={categoryOptions} placeholder={nonePlaceholder} />
             </Field>
-            <Field name="model" label={t('warehouse.products.editor.model')}>
-              <TextInput maxLength={MODEL_MAX} autoComplete="off" />
+            <Field name="trackingType" label={t('warehouse.products.editor.tracking')}>
+              <ComboSelectInput options={trackingCodes} placeholder={nonePlaceholder} disabled={isEdit && hasMovements} />
             </Field>
           </div>
+          <Field name="ownerClientPublicId" label={t('warehouse.products.editor.owner')} help={lockHelp}>
+            <ClientPickerInput placeholder={ownLabel} disabled={isEdit && hasMovements} />
+          </Field>
           <div className="r2">
             <Field name="packUom" label={t('warehouse.products.editor.packUom')}>
               <ComboSelectInput options={uomCodes.filter((o) => o.value !== form.watch('baseUom'))} placeholder={nonePlaceholder} />
@@ -475,20 +478,20 @@ function ProductEditorForm({
             </Field>
           </div>
           <p className="help">{t('warehouse.products.editor.packHelp')}</p>
+          <div className="r2">
+            <Field name="brand" label={t('warehouse.products.editor.brand')}>
+              <TextInput maxLength={BRAND_MAX} list={brandListId} autoComplete="off" placeholder={t('warehouse.products.editor.brandPlaceholder')} />
+            </Field>
+            <Field name="model" label={t('warehouse.products.editor.model')}>
+              <TextInput maxLength={MODEL_MAX} autoComplete="off" />
+            </Field>
+          </div>
           {/* sugerencias de las marcas ya usadas en la compañía; se puede escribir una nueva */}
           <datalist id={brandListId}>
             {brands.map((b) => (
               <option key={b} value={b} />
             ))}
           </datalist>
-          <div className="r2">
-            <Field name="categoryId" label={t('warehouse.products.editor.category')}>
-              <ComboSelectInput options={categoryOptions} placeholder={nonePlaceholder} />
-            </Field>
-            <Field name="trackingType" label={t('warehouse.products.editor.tracking')}>
-              <ComboSelectInput options={trackingCodes} placeholder={nonePlaceholder} disabled={isEdit && hasMovements} />
-            </Field>
-          </div>
           <Field name="rotationMethod" label={t('warehouse.products.editor.rotation')} help={t('warehouse.products.editor.rotationHelp')}>
             <Select
               options={[
@@ -497,9 +500,6 @@ function ProductEditorForm({
                 { value: 'FIFO', label: t('warehouse.products.editor.rotationFifo') },
               ]}
             />
-          </Field>
-          <Field name="ownerClientPublicId" label={t('warehouse.products.editor.owner')} help={lockHelp}>
-            <ClientPickerInput placeholder={ownLabel} disabled={isEdit && hasMovements} />
           </Field>
           <div className="r2">
             <Field name="purchaseCost" label={t('warehouse.products.editor.purchaseCost')}>
