@@ -1,5 +1,7 @@
 // API simulado de las pruebas de Flota (F-D2), con estado (vehículos, documentos, zonas) y los datos de ejemplo. No importa la
 // pantalla: cada archivo de prueba lo carga dentro de `vi.mock('../../kernel/api/client', ...)` con `stubFetch`.
+import { resetMaintenance, routeMaintenance } from './maintenanceMock'
+
 export interface Call {
   method: string
   url: URL
@@ -153,6 +155,7 @@ export function resetKit() {
   mock.override = null
   state.vehicles = Object.fromEntries(ALL_VEHICLES.map((v) => [String(v.publicId), { ...v, documents: (v.documents as Rec[]).map((d) => ({ ...d })) }]))
   state.zones = ZONES.map((z) => ({ ...z }))
+  resetMaintenance()
 }
 
 const listItem = (v: Rec) => ({
@@ -176,6 +179,10 @@ const listItem = (v: Rec) => ({
 export function route({ method, url, body }: Call): unknown {
   const p = url.pathname
   const q = url.searchParams
+
+  // ---- mantenimiento, órdenes de trabajo y combustible (F-D3) ----
+  const maintenance = routeMaintenance({ method, url, body })
+  if (maintenance !== undefined) return maintenance
 
   // ---- vehículos ----
   if (p === '/api/v1/vehicles' && method === 'GET') {

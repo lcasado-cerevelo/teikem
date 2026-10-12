@@ -75,7 +75,7 @@ export function useFleetAvailability(date: string, onlyAvailable: boolean) {
 
 // ---- Escrituras del vehículo ----
 /** Lo que cambia cuando se toca un vehículo o sus documentos: listas, tarjetas, documentos por vencer y disponibilidad. */
-function invalidateFleet(qc: QueryClient) {
+export function invalidateFleet(qc: QueryClient) {
   void qc.invalidateQueries({ queryKey: fleetKeys.vehicles })
   void qc.invalidateQueries({ queryKey: fleetKeys.expiring })
   void qc.invalidateQueries({ queryKey: fleetKeys.availability })

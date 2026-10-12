@@ -1,21 +1,30 @@
-// Lote F-D2 — Catálogo → Flota y mantenimiento (maqueta `flota()`; manual 04 §1–§4): cabecera con «Nuevo vehículo», nota de la maqueta, las
-// tarjetas resumen («Vehículos» activos y «Documentos por vencer» a 30 días) y las pestañas Vehículos, Documentos por vencer, Zonas de
-// despacho y Disponibilidad. Pestaña en `?tab=` (la primera = sin parámetro); vehículo elegido en `?vehicle=`. El mantenimiento
-// preventivo, las órdenes de trabajo y el combustible (F-D3) se agregarán como pestañas y tarjetas de esta misma pantalla.
+// Lotes F-D2 y F-D3 — Catálogo → Flota y mantenimiento (maqueta `flota()`; manual 04 §1–§7): cabecera con «Nuevo vehículo», nota de la maqueta,
+// las cuatro tarjetas resumen de la maqueta («Vehículos» activos, «Documentos por vencer» a 30 días, «Mantenimiento preventivo» vencidos y
+// «Órdenes de trabajo» abiertas; cada una lleva a su pestaña) y las pestañas Vehículos, Mantenimiento, Órdenes de trabajo, Combustible,
+// Documentos por vencer, Zonas de despacho y Disponibilidad. Pestaña en `?tab=` (la primera = sin parámetro); vehículo elegido en
+// `?vehicle=`; orden de trabajo abierta en `?workOrder=`.
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Can } from '../../kernel/access'
 import { useT } from '../../kernel/i18n'
-import { IconDoc, IconPlus, IconTruck, Tabs } from '../../kernel/ui'
+import { IconClip, IconDoc, IconGear, IconPlus, IconTruck, Tabs } from '../../kernel/ui'
 import { IconAlert } from '../../kernel/ui/icons'
 import { useExpiringDocuments, useVehicleList } from './api'
 import { AvailabilityTab } from './AvailabilityTab'
 import { DispatchZonesTab } from './DispatchZonesTab'
 import { ExpiringDocumentsTab } from './ExpiringDocumentsTab'
 import { DEFAULT_WITHIN_DAYS, tabOf, type FleetTab } from './fleetRules'
+import { FuelTab } from './FuelTab'
+import { MaintenanceTab } from './MaintenanceTab'
+import { useDue, useWorkOrderList } from './maintenanceApi'
+import { DueStates, OPEN_WORK_ORDER_STATUSES } from './maintenanceRules'
 import { VehicleCreateModal } from './VehicleCreateModal'
 import { VehiclesTab } from './VehiclesTab'
+import { WorkOrdersTab } from './WorkOrdersTab'
 import './fleet.css'
+
+const OVERDUE_QUERY = { status: [DueStates.Overdue] }
+const OPEN_ORDERS_QUERY = { status: [...OPEN_WORK_ORDER_STATUSES] }
 
 export default function FleetScreen() {
   const t = useT()
@@ -25,19 +34,26 @@ export default function FleetScreen() {
   const [created, setCreated] = useState(0)
   const tab = tabOf(params.get('tab'))
 
-  // tarjetas: solo lo de este lote (F-D3 suma las de mantenimiento y órdenes de trabajo)
+  // tarjetas resumen (cada una lleva a su pestaña)
   const vehicles = useVehicleList({ includeInactive: false })
   const due = useExpiringDocuments({ withinDays: DEFAULT_WITHIN_DAYS, includeExpired: true })
+  const overdue = useDue(OVERDUE_QUERY)
+  const openOrders = useWorkOrderList(OPEN_ORDERS_QUERY)
 
   const goTab = (key: FleetTab) => {
     const next = new URLSearchParams(params)
     if (key === 'vehicles') next.delete('tab')
     else next.set('tab', key)
+    // la orden abierta es de la pestaña «Órdenes de trabajo»
+    if (key !== 'workOrders') next.delete('workOrder')
     setParams(next, { replace: true })
   }
 
   const tabs = [
     { key: 'vehicles' as const, label: t('fleet.tabs.vehicles') },
+    { key: 'maintenance' as const, label: t('fleet.tabs.maintenance') },
+    { key: 'workOrders' as const, label: t('fleet.tabs.workOrders') },
+    { key: 'fuel' as const, label: t('fleet.tabs.fuel') },
     { key: 'expiring' as const, label: t('fleet.tabs.expiring') },
     { key: 'zones' as const, label: t('fleet.tabs.zones') },
     { key: 'availability' as const, label: t('fleet.tabs.availability') },
@@ -75,6 +91,18 @@ export default function FleetScreen() {
           </span>
           <span className="big">{due.data ? due.data.length : '—'}</span>
         </button>
+        <button type="button" className={`flt-node${overdue.data && overdue.data.length > 0 ? ' warn' : ''}`} onClick={() => goTab('maintenance')}>
+          <span className="ph">
+            <IconGear /> {t('fleet.cards.maintOverdue')}
+          </span>
+          <span className="big">{overdue.data ? overdue.data.length : '—'}</span>
+        </button>
+        <button type="button" className="flt-node" onClick={() => goTab('workOrders')}>
+          <span className="ph">
+            <IconClip /> {t('fleet.cards.openOrders')}
+          </span>
+          <span className="big">{openOrders.data ? openOrders.data.length : '—'}</span>
+        </button>
       </div>
 
       <div className="flt-tabs">
@@ -82,6 +110,9 @@ export default function FleetScreen() {
       </div>
 
       {tab === 'vehicles' && <VehiclesTab key={created} />}
+      {tab === 'maintenance' && <MaintenanceTab />}
+      {tab === 'workOrders' && <WorkOrdersTab />}
+      {tab === 'fuel' && <FuelTab />}
       {tab === 'expiring' && <ExpiringDocumentsTab />}
       {tab === 'zones' && <DispatchZonesTab />}
       {tab === 'availability' && <AvailabilityTab />}

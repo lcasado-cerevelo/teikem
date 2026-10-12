@@ -10,7 +10,8 @@ export * from './fleetMock'
 
 export const VIEW = ['fleet.view']
 export const MANAGE = ['fleet.view', 'fleet.manage']
-export const ALL = [...MANAGE, 'contacts.manage']
+export const MAINTAIN = ['fleet.view', 'fleet.maintenance']
+export const ALL = [...MANAGE, 'contacts.manage', 'fleet.maintenance']
 
 function DriversProbe() {
   const loc = useLocation()

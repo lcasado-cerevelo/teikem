@@ -1,7 +1,7 @@
 // Recorrido de Flota y mantenimiento (Lote F-D2) contra el API real (db-init hecho, API en API_URL, por defecto http://localhost:5000;
 // compañía demo, admin con todos los permisos, módulo CATALOG encendido).
 //
-// 1) Pantalla: cabecera, tarjetas resumen y las cuatro pestañas.
+// 1) Pantalla: cabecera, tarjetas resumen y las pestañas (F-D3 agregó Mantenimiento, Órdenes de trabajo y Combustible).
 // 2) Alta de un vehículo (validaciones, código repetido = 409), ficha con «Guardar cambios», 409 de rowVersion y VIN repetido.
 // 3) Estatus (Disponible / En mantenimiento), casilla Activo y filtros de la lista.
 // 4) Documentos del vehículo: vencimientos (Vigente / Por vencer / Vencido), reemplazado, editar y quitar.
@@ -148,7 +148,15 @@ test.describe('Flota y mantenimiento (Lote F-D2)', () => {
     // ---- 1. Pantalla: tarjetas y pestañas ----
     await expect(page.getByRole('button', { name: /Vehículos activos/ })).toBeVisible()
     await expect(page.getByRole('button', { name: /Documentos por vencer \(≤ 30 d\)/ })).toBeVisible()
-    await expect(page.getByRole('tablist', { name: 'Secciones de flota' }).getByRole('tab')).toHaveText(['Vehículos', 'Documentos por vencer', 'Zonas de despacho', 'Disponibilidad'])
+    await expect(page.getByRole('tablist', { name: 'Secciones de flota' }).getByRole('tab')).toHaveText([
+      'Vehículos',
+      'Mantenimiento',
+      'Órdenes de trabajo',
+      'Combustible',
+      'Documentos por vencer',
+      'Zonas de despacho',
+      'Disponibilidad',
+    ])
     await expect(page.getByRole('button', { name: /Nuevo vehículo/ })).toBeVisible()
     if (isMobile) await expectNoHorizontalScroll(page)
 

@@ -22,7 +22,7 @@ const list = () => screen.findByRole('list', { name: 'Vehículos' })
 const ficha = async () => within(await screen.findByRole('heading', { level: 2, name: 'Ficha del vehículo' }).then((h) => h.closest('section') as HTMLElement))
 
 describe('Flota — pantalla', () => {
-  it('cabecera, nota, tarjetas resumen solo de este lote y las cuatro pestañas', async () => {
+  it('cabecera, nota, las cuatro tarjetas resumen de la maqueta y las siete pestañas', async () => {
     wrap(ALL)
     expect(screen.getByRole('heading', { level: 1, name: 'Flota y mantenimiento' })).toBeInTheDocument()
     expect(screen.getByText(/Este módulo es identidad y flota, no compensación/)).toBeInTheDocument()
@@ -30,8 +30,11 @@ describe('Flota — pantalla', () => {
     await waitFor(() => expect(vehicles).toHaveTextContent('2'))
     const due = screen.getByRole('button', { name: /Documentos por vencer \(≤ 30 d\)/ })
     await waitFor(() => expect(due).toHaveTextContent('3'))
-    expect(screen.queryByText(/Mantenimiento preventivo|Órdenes de trabajo|Bitácora de combustible/)).toBeNull()
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Vehículos', 'Documentos por vencer', 'Zonas de despacho', 'Disponibilidad'])
+    const overdue = screen.getByRole('button', { name: /Mantenimiento preventivo \(vencidos\)/ })
+    await waitFor(() => expect(overdue).toHaveTextContent('1'))
+    const open = screen.getByRole('button', { name: /Órdenes de trabajo \(abiertas\)/ })
+    await waitFor(() => expect(open).toHaveTextContent('2'))
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Vehículos', 'Mantenimiento', 'Órdenes de trabajo', 'Combustible', 'Documentos por vencer', 'Zonas de despacho', 'Disponibilidad'])
     expect(screen.getByRole('tab', { name: 'Vehículos' })).toHaveAttribute('aria-selected', 'true')
     expect(callsTo('GET', '/api/v1/fleet/expiring-documents')[0].url.searchParams.get('withinDays')).toBe('30')
   })
@@ -48,7 +51,7 @@ describe('Flota — pantalla', () => {
   })
 
   it('una pestaña desconocida abre la primera', async () => {
-    wrap(ALL, '/catalog/fleet?tab=maintenance')
+    wrap(ALL, '/catalog/fleet?tab=payroll')
     expect(await list()).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Vehículos' })).toHaveAttribute('aria-selected', 'true')
   })

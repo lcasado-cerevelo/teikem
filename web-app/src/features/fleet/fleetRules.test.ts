@@ -269,7 +269,11 @@ describe('documentos por vencer (manual 04 §3)', () => {
     expect(tabOf(null)).toBe('vehicles')
     expect(tabOf('zones')).toBe('zones')
     expect(tabOf('availability')).toBe('availability')
-    expect(tabOf('maintenance')).toBe('vehicles')
+    expect(tabOf('payroll')).toBe('vehicles')
+    // F-D3: las pestañas de mantenimiento, órdenes de trabajo y combustible
+    expect(tabOf('maintenance')).toBe('maintenance')
+    expect(tabOf('workOrders')).toBe('workOrders')
+    expect(tabOf('fuel')).toBe('fuel')
   })
 })
 

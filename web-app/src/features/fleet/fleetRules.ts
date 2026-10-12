@@ -32,7 +32,7 @@ export const MAX_WITHIN_DAYS = 365
 
 // ---------------------------------------------------------------- pestañas
 
-export const FLEET_TABS = ['vehicles', 'expiring', 'zones', 'availability'] as const
+export const FLEET_TABS = ['vehicles', 'maintenance', 'workOrders', 'fuel', 'expiring', 'zones', 'availability'] as const
 export type FleetTab = (typeof FLEET_TABS)[number]
 
 /** La pestaña de `?tab=`: sin parámetro o con un valor desconocido, la primera. */
