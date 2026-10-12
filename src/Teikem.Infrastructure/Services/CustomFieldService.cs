@@ -39,6 +39,8 @@ public sealed class CustomFieldService(TeikemDbContext db, ITenantContext tenant
     {
         var tenantId = ((TenantContext)tenant).RequireTenantId();
         var entityTypeId = await lookups.GetIdAsync(LookupDomains.EntityType, entityType, ct);
+        // Una entidad sin resolver de pertenencia (p. ej. INVOICE, cuyo módulo no existe) no puede recibir valores: no se le definen campos.
+        if (FindResolver(entityType) is null) throw new ValidationException("entityType", EntityNotSupportedMessage(entityType));
         var key = (req.FieldKey ?? "").Trim().ToLowerInvariant();
         if (!KeyRegex.IsMatch(key)) throw new ValidationException("fieldKey", "Clave inválida: minúsculas, dígitos y '_' (2-60), empezando por letra.");
         if (await db.CustomFieldDefinitions.AnyAsync(d => d.EntityTypeLookupId == entityTypeId && d.FieldKey == key, ct))
@@ -90,7 +92,8 @@ public sealed class CustomFieldService(TeikemDbContext db, ITenantContext tenant
         var dt = req.DataType.ToUpperInvariant();
         if (dt == CustomFieldDataTypes.LookupRef && string.IsNullOrWhiteSpace(req.RefEntity))
             throw new ValidationException("refEntity", "LOOKUP_REF requiere el dominio de catálogo referenciado.");
-        if (!string.IsNullOrWhiteSpace(req.RefEntity) && !await db.CatalogDomains.AnyAsync(d => d.DomainKey == req.RefEntity && d.IsActive, ct))
+        // Solo una lista de valores (Scope=Lookup): los dominios de estatus (Scope=Status) viven en StatusCode y sus códigos nunca validarían.
+        if (!string.IsNullOrWhiteSpace(req.RefEntity) && !await db.CatalogDomains.AnyAsync(d => d.DomainKey == req.RefEntity && d.IsActive && d.Scope == CatalogScope.Lookup, ct))
             throw new ValidationException("refEntity", $"La lista '{req.RefEntity}' no existe.");
         if (dt is CustomFieldDataTypes.Select or CustomFieldDataTypes.MultiSelect && string.IsNullOrWhiteSpace(req.RefEntity) && (req.Options is null || req.Options.Count == 0))
             throw new ValidationException("options", "Un campo de selección necesita opciones o una lista del catálogo (refEntity).");
@@ -195,10 +198,16 @@ public sealed class CustomFieldService(TeikemDbContext db, ITenantContext tenant
 
     private async Task EnsureEntityExistsAsync(string entityType, int entityId, CancellationToken ct)
     {
-        var resolver = resolvers.FirstOrDefault(r => r.EntityTypeCode.Equals(entityType, StringComparison.OrdinalIgnoreCase));
-        if (resolver is null) return; // módulo dueño aún no construido: no se puede verificar (se documenta)
+        // Sin resolver no se puede verificar que el registro exista en el tenant: se rechaza (antes se aceptaban valores de ids inexistentes).
+        var resolver = FindResolver(entityType) ?? throw new ValidationException("entityType", EntityNotSupportedMessage(entityType));
         if (!await resolver.ExistsInTenantAsync(entityId, ct)) throw new NotFoundException(entityType, entityId);
     }
+
+    private IOwnedEntityResolver? FindResolver(string entityType)
+        => resolvers.FirstOrDefault(r => r.EntityTypeCode.Equals(entityType, StringComparison.OrdinalIgnoreCase));
+
+    private static string EntityNotSupportedMessage(string entityType)
+        => $"La entidad '{entityType}' aún no admite campos personalizados (su módulo no está construido).";
 
     private async Task<List<CustomFieldDefinition>> ActiveDefinitionsAsync(string entityType, CancellationToken ct)
     {
