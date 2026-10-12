@@ -125,6 +125,8 @@ export const warehouseKeys = {
   transactionSummary: ['/api/v1/inventory/transactions/summary'],
   transaction: ['/api/v1/inventory/transactions/{id}'],
   owners: ['/api/v1/inventory/owners'],
+  // 2026-10-12: opciones del filtro Usuario del Kárdex
+  kardexUsers: ['/api/v1/inventory/transactions/users'],
   binSearch: ['/api/v1/warehouses/bins/search'],
   discrepancies: ['/api/v1/inventory/discrepancies'],
   discrepancy: ['/api/v1/inventory/discrepancies/{publicId}'],
@@ -648,6 +650,7 @@ export type KardexSummaryDto = Schemas['KardexSummaryDto']
 export type KardexDetailDto = Schemas['KardexDetailDto']
 export type KardexDocumentDto = Schemas['KardexDocumentDto']
 export type InventoryOwnerDto = Schemas['InventoryOwnerDto']
+export type KardexUserDto = Schemas['KardexUserDto']
 export type BinSearchItemDto = Schemas['BinSearchItemDto']
 export type InventoryDiscrepancyDto = Schemas['InventoryDiscrepancyDto']
 export type InventoryDiscrepancyDetailDto = Schemas['InventoryDiscrepancyDetailDto']
@@ -680,6 +683,20 @@ export function useInventoryOwners(options?: WarehouseQueryOptions) {
   return useQuery({
     queryKey: [warehouseKeys.owners[0]],
     queryFn: () => unwrap(api.GET('/api/v1/inventory/owners')),
+    enabled: options?.enabled ?? true,
+    staleTime: 60_000,
+    meta: meta(options),
+  })
+}
+
+/**
+ * `GET /api/v1/inventory/transactions/users` (2026-10-12): opciones del filtro Usuario del Kárdex — «Sistema (sin usuario)» primero (`isSystem`, solo si
+ * hay movimientos sin usuario) y los usuarios que tienen movimientos (`isActive: false` = dado de baja con historial).
+ */
+export function useKardexUsers(options?: WarehouseQueryOptions) {
+  return useQuery({
+    queryKey: [warehouseKeys.kardexUsers[0]],
+    queryFn: () => unwrap(api.GET('/api/v1/inventory/transactions/users')),
     enabled: options?.enabled ?? true,
     staleTime: 60_000,
     meta: meta(options),

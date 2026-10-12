@@ -29,6 +29,9 @@ export interface BinFilterItem {
 /** Valor del filtro Dueño para "Propio" (inventario de la compañía); el resto son `clientPublicId`. */
 export const OWN_OWNER = 'OWN'
 
+/** Valor del filtro Usuario para «Sistema (sin usuario)»; el resto son ids de usuario como texto. */
+export const SYSTEM_USER = 'SYSTEM'
+
 export type KardexDirection = '' | 'IN' | 'OUT'
 
 export interface InventoryFilterState {
@@ -42,6 +45,8 @@ export interface InventoryFilterState {
   categoryIds: string[]
   /** `OWN_OWNER` y/o clientPublicId de los dueños. */
   owners: string[]
+  /** `SYSTEM_USER` y/o ids de usuario (como texto): quién hizo el movimiento. */
+  users: string[]
   /** InternalCode de AdjustmentReason. */
   reasons: string[]
   direction: KardexDirection
@@ -68,6 +73,7 @@ export const EMPTY_INVENTORY_FILTERS: InventoryFilterState = {
   products: [],
   categoryIds: [],
   owners: [],
+  users: [],
   reasons: [],
   direction: '',
   manualOnly: false,
@@ -89,6 +95,7 @@ export type InventoryFilterKey =
   | 'products'
   | 'categories'
   | 'owners'
+  | 'users'
   | 'reasons'
   | 'direction'
   | 'manualOnly'
@@ -106,6 +113,7 @@ const KARDEX_FILTERS: readonly InventoryFilterKey[] = [
   'products',
   'categories',
   'owners',
+  'users',
   'reasons',
   'direction',
   'manualOnly',
@@ -138,6 +146,7 @@ export function inactiveFilters(tab: InventoryTab, f: InventoryFilterState): Inv
     ['products', f.products.length > 0],
     ['categories', f.categoryIds.length > 0],
     ['owners', f.owners.length > 0],
+    ['users', f.users.length > 0],
     ['reasons', f.reasons.length > 0],
     ['direction', f.direction !== ''],
     ['manualOnly', f.manualOnly],
@@ -160,6 +169,15 @@ export function ownerQuery(owners: readonly string[]): { ownerClientPublicIds?: 
   }
 }
 
+/** Usuario → `userIds` + `includeSystem` del API («Sistema (sin usuario)» = `includeSystem`). */
+export function userQuery(users: readonly string[]): { userIds?: number[]; includeSystem?: boolean } {
+  const ids = users.filter((u) => u !== SYSTEM_USER).map(Number).filter((n) => Number.isInteger(n))
+  return {
+    userIds: nonEmpty(ids),
+    includeSystem: users.includes(SYSTEM_USER) ? true : undefined,
+  }
+}
+
 /** true si las fechas están al revés (el API respondería 400; la pantalla avisa sin consultar). */
 export function rangeInverted(range: DateRange): boolean {
   return Boolean(range.from && range.to && range.from > range.to)
@@ -176,6 +194,7 @@ export function kardexQuery(f: InventoryFilterState): GetQuery<'/api/v1/inventor
     productPublicIds: nonEmpty(f.products.map((p) => p.publicId)),
     categoryIds: nonEmpty(f.categoryIds.map(Number)),
     ...ownerQuery(f.owners),
+    ...userQuery(f.users),
     reasons: nonEmpty(f.reasons),
     direction: f.direction || undefined,
     manualOnly: f.manualOnly || undefined,

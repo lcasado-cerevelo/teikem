@@ -32,6 +32,7 @@ import {
   binLabel,
   productLabel,
   useInventoryOwners,
+  useKardexUsers,
   useWarehouse,
   useWarehouseZones,
   useWarehouses,
@@ -40,15 +41,17 @@ import {
   type BinSearchItemDto,
   type GetQuery,
   type InventoryOwnerDto,
+  type KardexUserDto,
   type ProductListItemDto,
   type WarehouseBinDto,
   type WarehouseDto,
 } from './api'
-import { binFilterLabel, OWN_OWNER, type BinFilterItem } from './kardexView'
+import { binFilterLabel, OWN_OWNER, SYSTEM_USER, type BinFilterItem } from './kardexView'
 import { exactCodeMatch, filterBinOptions, filterWarehouses, orderBins } from './pickerMatch'
 
 const NO_WAREHOUSES: WarehouseDto[] = []
 const NO_OWNERS: InventoryOwnerDto[] = []
+const NO_USERS: KardexUserDto[] = []
 const NO_BINS: BinSearchItemDto[] = []
 
 // =====================================================================================================================
@@ -1142,6 +1145,34 @@ export function OwnerFilter({ label, value, onChange }: OwnerFilterProps) {
   const options = useMemo(
     () => data.map((o) => ({ value: o.isOwn ? OWN_OWNER : (o.clientPublicId ?? ''), label: o.name ?? '' })).filter((o) => o.value),
     [data],
+  )
+  return <SearchSelect label={label} options={options} value={value} onChange={onChange} />
+}
+
+export interface UserFilterProps {
+  label: string
+  /** `SYSTEM_USER` ('SYSTEM') = «Sistema (sin usuario)»; el resto, el id del usuario como texto. Vacío = todos. */
+  value: string[]
+  onChange: (value: string[]) => void
+}
+
+/**
+ * `SearchSelect` sobre `useKardexUsers` (2026-10-12): quién hizo el movimiento. «Sistema (sin usuario)» primero (solo si hay movimientos sin
+ * usuario), luego las personas con movimientos; los dados de baja con historial salen marcados «(inactivo)». La consulta la arma `userQuery`
+ * de `kardexView.ts`.
+ */
+export function UserFilter({ label, value, onChange }: UserFilterProps) {
+  const t = useT()
+  const { data = NO_USERS } = useKardexUsers({ handleAccessDenied: false })
+  const options = useMemo(
+    () =>
+      data
+        .map((u) => ({
+          value: u.isSystem ? SYSTEM_USER : u.userId != null ? String(u.userId) : '',
+          label: `${u.name ?? ''}${!u.isSystem && u.isActive === false ? ` (${t('warehouse.inventory.filters.inactiveUser')})` : ''}`,
+        }))
+        .filter((o) => o.value),
+    [data, t],
   )
   return <SearchSelect label={label} options={options} value={value} onChange={onChange} />
 }
