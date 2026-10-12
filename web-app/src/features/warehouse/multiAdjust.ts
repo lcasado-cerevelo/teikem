@@ -197,5 +197,19 @@ export function addPosition(
   }
 }
 
+/**
+ * Posiciones agregadas a mano como un conjunto (desplegable de selección múltiple): las marcadas que el bloque aún no tiene se agregan sin existencia
+ * (el label es «Código · Zona · Almacén»); las agregadas que se desmarcan se quitan; las que traen existencia del sistema nunca se quitan; conserva lo escrito.
+ */
+export function withAddedPositions(block: ProductBlock, items: readonly { id: number; label: string }[]): ProductBlock {
+  const wanted = new Set(items.map((i) => i.id))
+  let next: ProductBlock = { ...block, rows: block.rows.filter((r) => !r.added || wanted.has(r.binId)) }
+  for (const i of items) {
+    const [code, zone] = i.label.split(' · ')
+    next = addPosition(next, { binId: i.id, binCode: code, zoneCode: zone ?? '' })
+  }
+  return next
+}
+
 /** ¿Hay algo escrito que se perdería al salir? */
 export const isDirty = (blocks: readonly ProductBlock[], notes: string): boolean => notes.trim() !== '' || blocks.some((b) => b.rows.some((r) => r.counted.trim() !== ''))

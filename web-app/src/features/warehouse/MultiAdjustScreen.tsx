@@ -15,7 +15,6 @@ import './multiAdjust.css'
 import { useWarehouses } from './api'
 import { formatNumber } from './lineRules'
 import {
-  addPosition,
   applyBlocker,
   blockFromStock,
   buildRequest,
@@ -31,6 +30,7 @@ import {
   summarize,
   type PositionRow,
   type ProductBlock,
+  withAddedPositions,
 } from './multiAdjust'
 import {
   fetchMultiAdjustStock,
@@ -40,11 +40,11 @@ import {
   type MultiAdjustmentDetailDto,
   type MultiAdjustmentDto,
 } from './multiAdjustApi'
-import { BinPicker, ProductPicker, WarehousePicker } from './pickers'
+import { BinSearchSelect, ProductSearchSelect, WarehousePicker, type ProductFilterItem } from './pickers'
+import type { BinFilterItem } from './kardexView'
 import { matchesQ } from '../../kernel/ui/matchesQ'
 
 const T = 'warehouse.multiAdjust'
-const BLOCKED_ZONES = ['QUARANTINE', 'RENTAL', 'CROSSDOCK'] as const
 
 type Tab = 'new' | 'history'
 
@@ -128,18 +128,27 @@ function NewAdjustment({ onDone }: { onDone: (publicId: string) => void }) {
     setTopErrors([])
   }
 
-  const addProduct = async (publicId: string | null) => {
-    if (!publicId || !warehouse || blocks.some((b) => b.productPublicId === publicId)) return
+  /**
+   * «Agregar producto» es un desplegable con búsqueda y selección múltiple (marcar «Todos» lo que muestra la búsqueda): lo marcado es lo que
+   * está en el documento; marcar agrega el bloque con sus posiciones y desmarcar lo quita.
+   */
+  const inDocument = useMemo<ProductFilterItem[]>(
+    () => blocks.map((b) => ({ publicId: b.productPublicId, sku: b.sku, label: `${b.sku} · ${b.name}` })),
+    [blocks],
+  )
+  const setProducts = async (items: ProductFilterItem[]) => {
+    if (!warehouse) return
+    const wanted = new Set(items.map((i) => i.publicId))
+    const added = items.map((i) => i.publicId).filter((id) => !blocks.some((b) => b.productPublicId === id))
+    setBlocks((prev) => prev.filter((b) => wanted.has(b.productPublicId)))
+    if (added.length === 0) return
     setLoadingProduct(true)
     setSkipped(null)
     try {
-      const [p] = await fetchMultiAdjustStock(warehouse, [publicId])
-      if (!p) return
-      if (isSerial({ trackingTypeCode: p.trackingTypeCode ?? '' })) {
-        setSkipped(p.sku ?? '')
-        return
-      }
-      setBlocks((prev) => [...prev, blockFromStock(p)])
+      const stock = await fetchMultiAdjustStock(warehouse, added)
+      const serial = stock.filter((p) => isSerial({ trackingTypeCode: p.trackingTypeCode ?? '' }))
+      if (serial.length > 0) setSkipped(serial.map((p) => p.sku ?? '').join(', '))
+      setBlocks((prev) => [...prev, ...stock.filter((p) => !serial.includes(p)).map(blockFromStock)])
     } catch (err) {
       setTopErrors([applyProblemDetails(err).title])
     } finally {
@@ -198,16 +207,14 @@ function NewAdjustment({ onDone }: { onDone: (publicId: string) => void }) {
           <label htmlFor="mja-wh">{t(`${T}.warehouse`)}</label>
           <WarehousePicker id="mja-wh" value={warehouse} onChange={(id) => changeWarehouse(id)} placeholder={t(`${T}.warehousePlaceholder`)} />
         </div>
-        <div className="f">
-          <label htmlFor="mja-prod">{t(`${T}.addProduct`)}</label>
-          <ProductPicker
-            id="mja-prod"
-            value={null}
-            disabled={!warehouse || loadingProduct}
-            placeholder={warehouse ? t(`${T}.productPlaceholder`) : t(`${T}.chooseWarehouse`)}
-            onChange={(id) => void addProduct(id)}
-          />
-        </div>
+        <ProductSearchSelect
+          label={t(`${T}.addProduct`)}
+          value={inDocument}
+          onChange={(items) => void setProducts(items)}
+          includeInactive
+          disabled={!warehouse || loadingProduct}
+          placeholder={warehouse ? t(`${T}.productPlaceholder`) : t(`${T}.chooseWarehouse`)}
+        />
       </div>
       {/* 2026-10-12 (Luis): la nota va arriba, debajo de Almacén y Agregar producto; el pie solo lleva el resumen y Aplicar */}
       <div className="f mja-notes">
@@ -242,7 +249,9 @@ function NewAdjustment({ onDone }: { onDone: (publicId: string) => void }) {
           fmt={fmt}
           onCounted={(key, v) => setCounted(b.productPublicId, key, v)}
           onRemove={() => setBlocks((prev) => prev.filter((x) => x.productPublicId !== b.productPublicId))}
-          onAddPosition={(pos) => setBlocks((prev) => prev.map((x) => (x.productPublicId === b.productPublicId ? addPosition(x, pos) : x)))}
+          onAddedPositions={(items) =>
+            setBlocks((prev) => prev.map((x) => (x.productPublicId === b.productPublicId ? withAddedPositions(x, items) : x)))
+          }
         />
       ))}
 
@@ -284,7 +293,7 @@ function ProductBlockView({
   fmt,
   onCounted,
   onRemove,
-  onAddPosition,
+  onAddedPositions,
 }: {
   block: ProductBlock
   warehouse: string | null
@@ -292,7 +301,7 @@ function ProductBlockView({
   fmt: (n: number) => string
   onCounted: (key: string, value: string) => void
   onRemove: () => void
-  onAddPosition: (pos: { binId: number; binCode: string; zoneCode: string }) => void
+  onAddedPositions: (items: BinFilterItem[]) => void
 }) {
   const t = useT()
   const hasLot = block.trackingTypeCode === 'LOT'
@@ -380,17 +389,14 @@ function ProductBlockView({
         </div>
       )}
       <div className="mja-add">
-        <span className="note">{t(`${T}.addPosition`)}</span>
+        {/* «Agregar posición»: desplegable con búsqueda y selección múltiple («Todos» marca lo que muestra la búsqueda, p. ej. todas las 01-) */}
         <div className="mja-bin">
-          <BinPicker
-            warehousePublicId={warehouse}
-            value={null}
-            excludeZoneTypeCodes={BLOCKED_ZONES}
+          <BinSearchSelect
+            label={t(`${T}.addPosition`)}
+            value={block.rows.filter((r) => r.added).map((r) => ({ id: r.binId, label: r.binCode }))}
+            onChange={onAddedPositions}
+            warehousePublicIds={warehouse ? [warehouse] : undefined}
             placeholder={t(`${T}.addPositionPlaceholder`)}
-            aria-label={t(`${T}.addPositionFor`, { sku: block.sku })}
-            onChange={(binId, bin) => {
-              if (binId != null && bin) onAddPosition({ binId, binCode: bin.code ?? '', zoneCode: bin.zoneCode ?? '' })
-            }}
           />
         </div>
       </div>

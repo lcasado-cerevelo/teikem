@@ -736,6 +736,7 @@
       }
     },
     "searchSelect": {
+      "capped": "Hay más coincidencias que las mostradas: escriba más para acotar.",
       "selected": "{count} elegidos",
       "none": "Sin coincidencias",
       "all": "Todos",
@@ -3707,8 +3708,8 @@
       "added": "agregada",
       "countedFor": "Hay ahora en {bin}",
       "invalidCount": "Escriba un número de 0 o más.",
-      "addPosition": "Agregar posición:",
-      "addPositionPlaceholder": "Código de la posición…",
+      "addPosition": "Agregar posiciones",
+      "addPositionPlaceholder": "Busque y marque posiciones…",
       "addPositionFor": "Agregar posición a {sku}",
       "reasonFixed": "motivo: Inventario físico",
       "notes": "Nota del ajuste",

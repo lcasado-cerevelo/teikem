@@ -736,6 +736,7 @@
       }
     },
     "searchSelect": {
+      "capped": "There are more matches than shown: type more to narrow down.",
       "selected": "{count} selected",
       "none": "No matches",
       "all": "All",
@@ -3707,8 +3708,8 @@
       "added": "added",
       "countedFor": "On hand now in {bin}",
       "invalidCount": "Type a number of 0 or more.",
-      "addPosition": "Add position:",
-      "addPositionPlaceholder": "Position code…",
+      "addPosition": "Add positions",
+      "addPositionPlaceholder": "Search and check positions…",
       "addPositionFor": "Add a position to {sku}",
       "reasonFixed": "reason: Physical inventory",
       "notes": "Adjustment note",

@@ -858,6 +858,9 @@ export interface ProductMultiFilterProps {
   onChange: (value: ProductFilterItem[]) => void
   /** Deja elegir productos dados de baja (Kárdex: su historial sigue en el ledger). */
   includeInactive?: boolean
+  /** Texto del botón sin nada elegido (por defecto «Todos»). */
+  placeholder?: string
+  disabled?: boolean
 }
 
 /**
@@ -951,6 +954,9 @@ export interface BinMultiFilterProps {
   warehousePublicIds?: readonly string[]
   /** Deja elegir posiciones dadas de baja (historial del Kárdex). */
   includeInactive?: boolean
+  /** Texto del botón sin nada elegido (por defecto «Todos»). */
+  placeholder?: string
+  disabled?: boolean
 }
 
 /**
@@ -1182,20 +1188,22 @@ export function UserFilter({ label, value, onChange }: UserFilterProps) {
 // =====================================================================================================================
 
 const NO_PRODUCTS: ProductListItemDto[] = []
+/** Tope de coincidencias de los filtros desplegables (para «Todos»): si se llega, se avisa que acote la búsqueda. */
+const FILTER_TAKE = 200
 
 /**
  * Filtro «SKU o nombre»: el mismo desplegable con búsqueda y casillas que Almacén o Categoría (`SearchSelect` en modo remoto). Busca en el
  * servidor (`GET /api/v1/products?search=`, 250 ms entre teclas, por SKU o por nombre) porque el catálogo puede ser grande; lo elegido queda
  * arriba con casilla y el botón dice el SKU (uno) o «N elegidos».
  */
-export function ProductSearchSelect({ label, value, onChange, includeInactive }: ProductMultiFilterProps) {
+export function ProductSearchSelect({ label, value, onChange, includeInactive, placeholder, disabled }: ProductMultiFilterProps) {
   const [text, setText] = useState('')
   const [search, setSearch] = useState('')
   useEffect(() => {
     const h = setTimeout(() => setSearch(text.trim()), 250)
     return () => clearTimeout(h)
   }, [text])
-  const query = { search: search || undefined, activeOnly: !includeInactive, take: MAX_SHOWN }
+  const query = { search: search || undefined, activeOnly: !includeInactive, take: FILTER_TAKE }
   const list = useQuery({
     queryKey: ['/api/v1/products', query],
     queryFn: () => unwrap(api.GET('/api/v1/products', { params: { query } })),
@@ -1211,7 +1219,10 @@ export function ProductSearchSelect({ label, value, onChange, includeInactive }:
       options={options}
       chosen={chosen}
       value={value.map((v) => v.publicId)}
+      placeholder={placeholder}
+      disabled={disabled}
       loading={list.isFetching}
+      capped={found.length >= FILTER_TAKE}
       onSearch={setText}
       onChange={(ids) =>
         onChange(
@@ -1231,7 +1242,7 @@ export function ProductSearchSelect({ label, value, onChange, includeInactive }:
  * Filtro «Posición»: el mismo desplegable con búsqueda y casillas (`SearchSelect` remoto) sobre `GET /api/v1/warehouses/bins/search`
  * (entre almacenes, 250 ms entre teclas; opciones «Código · Zona · Almacén»). Con almacenes elegidos en el filtro Almacén, solo sus posiciones.
  */
-export function BinSearchSelect({ label, value, onChange, warehousePublicIds, includeInactive }: BinMultiFilterProps) {
+export function BinSearchSelect({ label, value, onChange, warehousePublicIds, includeInactive, placeholder, disabled }: BinMultiFilterProps) {
   const [text, setText] = useState('')
   const [search, setSearch] = useState('')
   useEffect(() => {
@@ -1242,7 +1253,7 @@ export function BinSearchSelect({ label, value, onChange, warehousePublicIds, in
     search: search || undefined,
     warehousePublicIds: warehousePublicIds && warehousePublicIds.length > 0 ? [...warehousePublicIds] : undefined,
     includeInactive: includeInactive || undefined,
-    take: MAX_SHOWN,
+    take: FILTER_TAKE,
   }
   const list = useQuery({
     queryKey: [warehouseKeys.binSearch[0], query],
@@ -1259,7 +1270,10 @@ export function BinSearchSelect({ label, value, onChange, warehousePublicIds, in
       options={options}
       chosen={chosen}
       value={value.map((v) => String(v.id))}
+      placeholder={placeholder}
+      disabled={disabled}
       loading={list.isFetching}
+      capped={found.length >= FILTER_TAKE}
       onSearch={setText}
       onChange={(ids) =>
         onChange(

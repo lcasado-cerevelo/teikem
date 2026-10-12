@@ -246,6 +246,12 @@ if (-not (Get-Website -Name $Sitio -ErrorAction SilentlyContinue)) {
     Set-ItemProperty "IIS:\Sites\$Sitio" physicalPath $Carpeta
     Set-ItemProperty "IIS:\Sites\$Sitio" applicationPool $Sitio
 }
+# 2026-10-12: los filtros con selección múltiple («Todos» sobre una búsqueda) mandan muchos ids en la URL; IIS acepta por defecto solo 2048 caracteres de
+# cadena de consulta. Se sube a 32 KB (y la URL completa a 64 KB) solo para este sitio.
+try {
+    Set-WebConfigurationProperty -PSPath "MACHINE/WEBROOT/APPHOST/$Sitio" -Filter 'system.webServer/security/requestFiltering/requestLimits' -Name maxQueryString -Value 32768
+    Set-WebConfigurationProperty -PSPath "MACHINE/WEBROOT/APPHOST/$Sitio" -Filter 'system.webServer/security/requestFiltering/requestLimits' -Name maxUrl -Value 65536
+} catch { Write-Host "Aviso: no pude subir el límite de la cadena de consulta de IIS: $($_.Exception.Message)" }
 if (-not (Get-WebBinding -Name $Sitio -Protocol http | Where-Object { $_.bindingInformation -like "*:80:$dominio" })) {
     New-WebBinding -Name $Sitio -Protocol http -Port 80 -HostHeader $dominio | Out-Null
 }
