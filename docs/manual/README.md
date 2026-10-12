@@ -266,6 +266,9 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
 21. [F-C3 — Órdenes: entrada rápida e importación desde CSV](frontend/fc3-ordenes-rapida-importacion.md): el interruptor **Rápida / Detallada** de **Nueva orden**, la rejilla de captura
    (Enter guarda una orden por fila) y **Importar**: plantillas, vista previa del archivo, casillas **Confirmar las órdenes al importar**, **Autorizar crédito excedido** y **Aceptar facturas repetidas**,
    **Descartar archivo** y resultado. Capturas `fc3-*`.
+22. [F-D1 — Choferes y tarifas](frontend/fd1-choferes.md): Catálogo → **Choferes y tarifas**: lista y ficha, **Nuevo chofer**, **Activo** / **Disponibilidad** / **Eliminar chofer**, licencias y certificaciones con su
+   chip de vencimiento, tarifas por entrega, intento y viaje (con vigencia, **Cerrar tarifa** e historial), fórmula de pago con vista previa, **Viajes pagados**, dispositivos y contactos; permisos
+   `fleet.*` y `driverpay.*`. Capturas `fd1-*`.
 
 ## Preguntas frecuentes
 

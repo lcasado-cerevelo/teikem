@@ -6785,3 +6785,97 @@ Ese archivo ya se importó (por ejemplo, desde otra ventana). Vea la lista de Ó
 
 **¿Qué hace «Descartar archivo»?**
 Borra la revisión sin crear ninguna orden y le deja escoger otro archivo.
+
+## Lote F-D1 — Choferes y tarifas (2026-10-12)
+
+Preguntas de la pantalla **Catálogo → Choferes y tarifas**. Los mensajes aparecen tal cual los muestra la pantalla. El capítulo completo es «Choferes y tarifas» (manual de pantallas).
+
+**¿Cuál es la diferencia entre «Activo», «Disponibilidad» y «Eliminar chofer»?**
+**Activo** apagado saca al chofer de despacho sin perder nada y se puede volver a encender. **No disponible** lo saca de despacho por un tiempo (vacaciones, permiso) y se revierte con **Disponible**. **Eliminar chofer** es una baja definitiva que no se deshace.
+
+**Desactivé a un chofer y desapareció de la lista. ¿Se perdió?**
+No. La lista solo muestra los activos: active **Mostrar inactivos** para verlo con el chip **Inactivo**. Su ficha sigue abierta a la derecha.
+
+**¿Qué pasa cuando elimino a un chofer?**
+Se desvincula su usuario, sus dispositivos quedan inactivos, pierde su zona, sus tarifas abiertas se cierran hoy y sus viajes pagados se conservan para pagarle lo pendiente. Ya no se edita ni se reactiva: aparece «El chofer fue eliminado; solo se consulta su historial.»
+
+**«Ya existe un chofer con ese código.»**
+Otro chofer usa ese código (aunque esté eliminado). Use otro; el código no se puede cambiar después.
+
+**¿Por qué no puedo cambiar el código del chofer?**
+Se fija al crearlo. Si se equivocó, cree uno nuevo y elimine el que quedó mal.
+
+**¿Qué es el «Área»?**
+Es el nombre de la zona de despacho que eligió; no se escribe aparte. Para cambiarla, elija otra **Zona**.
+
+**¿Por qué no puedo quitar la Fecha de alta?**
+Un chofer que ya tiene fecha de alta no puede dejarla vacía: aparece «La fecha de alta no se puede quitar; elija otra.» Elija otra fecha.
+
+**No veo el campo «Usuario vinculado» para cambiarlo.**
+Necesita el permiso `admin.users` además de `fleet.manage`. Sin él, el usuario se ve pero no se cambia.
+
+**«El usuario ya está vinculado a otro chofer.»**
+Un usuario solo puede ser de un chofer. Elija otro usuario o quite el vínculo del otro chofer.
+
+**«El registro fue modificado por otro usuario; recargue e intente de nuevo.»**
+Otra persona guardó al chofer antes que usted. La pantalla conserva lo que escribió: revise los datos nuevos y pulse **Guardar cambios** otra vez.
+
+**¿Qué significa «Vence en N días» y «Reemplazada» en las licencias?**
+**Vence en N días** avisa que faltan 30 días o menos. **Reemplazada** quiere decir que hay otra licencia o certificación del mismo tipo que vence después: la vieja ya no cuenta.
+
+**«La fecha de vencimiento no puede ser anterior a la de emisión.»**
+Las fechas están al revés. Corríjalas, o deje el vencimiento vacío si no vence.
+
+**¿Qué diferencia hay entre «sin tarifa» y $0.00?**
+**Sin tarifa** quiere decir que todavía no se configuró nada para ese caso. **$0.00** es una tarifa que usted puso a propósito (por ejemplo, el primer intento no se paga aparte).
+
+**¿Cómo cambio una tarifa sin perder la anterior?**
+Pulse el lápiz de la fila, escriba la tarifa nueva y **Vigente desde** (hoy por omisión). La tarifa anterior se cierra ese día y queda en el **historial**.
+
+**«La fecha no puede ser anterior a hoy: el historial de tarifas no se reescribe.»**
+Eligió una vigencia que ya pasó. Elija hoy o una fecha futura.
+
+**Edité una tarifa con fecha futura y la fila ya no tiene botones. ¿Por qué?**
+Esa tarifa ya tiene fecha de cierre (cuando empiece la nueva). Solo se editan o cierran las tarifas abiertas. La nueva aparece con **Ver historial** y tiene sus propios botones.
+
+**¿Cómo quito una tarifa?**
+Con **Cerrar tarifa**. Nunca se borra: queda en el historial (**Ver historial**).
+
+**«El chofer ya tiene una tarifa vigente para … ; edite esa tarifa o ciérrela antes de agregar otra.»**
+Ya existe una tarifa abierta para ese servicio y paquete (o intento, o tipo de viaje). Edítela o ciérrela primero.
+
+**«La tarifa ya está cerrada; agregue una nueva si necesita volver a pagarla.»**
+Intentó cambiar una tarifa que ya tiene fecha de cierre. Agregue una tarifa nueva.
+
+**«El valor admite como máximo 4 decimales y debe ser menor que 100,000,000,000,000.»**
+La tarifa tiene demasiados decimales o es demasiado grande. Use hasta 4 decimales.
+
+**¿Qué hace «+ Agregar intento»?**
+Agrega un nivel de intento (Intento 3, 4…) para **toda la compañía**, no solo para este chofer. No crea tarifas: el nivel queda «sin tarifa» hasta que lo fije. No se puede quitar un nivel.
+
+**«Se alcanzó el máximo de 20 niveles de intento.»**
+Ya no caben más niveles. Use los que hay.
+
+**El selector de «Tipo de viaje» dice «Sin servicios especiales — agréguelos en Clientes y contratos».**
+Los tipos de viaje salen de los servicios especiales de la compañía. Cree uno en Clientes y contratos y vuelva.
+
+**¿La fórmula de pago es por chofer?**
+No: es una sola para toda la compañía. Cambiarla afecta cómo se calculan los pagos de todos los choferes.
+
+**¿La vista previa cambia mis tarifas?**
+No. Solo calcula un ejemplo (2 intentos: 1 fallido y 1 entregado) con las tarifas del chofer elegido. «(sin tarifa configurada)» marca lo que falta y suma $0.
+
+**«La fecha del viaje no puede ser futura.»**
+Un viaje se registra el día que ocurrió o después. Elija hoy o una fecha pasada.
+
+**¿Por qué un viaje salió en $0.00 con «Sin tarifa»?**
+El chofer no tenía tarifa para ese tipo de viaje ese día. El monto se congela al registrar: si agrega la tarifa después, ese viaje no cambia. Cancélelo y regístrelo otra vez si hace falta.
+
+**«El viaje nace de una entrega especial; cancele la orden o reasigne el chofer.»**
+Ese viaje lo creó una orden. Cancélelo cancelando la orden, o reasignando el chofer desde la orden.
+
+**No veo los paneles de tarifas, viajes ni la fórmula.**
+Necesita el permiso `driverpay.view`. Para cambiarlos, `driverpay.manage`.
+
+**¿Por qué no veo ningún dispositivo?**
+Los registra la app del chofer cuando entra por primera vez. Desde aquí solo se pueden ver y desactivar.

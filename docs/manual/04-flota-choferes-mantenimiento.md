@@ -4,6 +4,7 @@ Este capítulo describe los cinco paneles del módulo de Flota (Vehículos, Docu
 preventivo, Órdenes de trabajo y Bitácora de combustible) y el maestro-detalle **Choferes y tarifas** del grupo
 Catálogo (identidad del chofer, licencias, certificaciones, dispositivos, zonas de despacho y las tres tarifas de
 pago). Cierra también el pendiente del [capítulo 03](03-ordenes-de-transporte.md): la entrega especial con chofer.
+La pantalla web de **Choferes y tarifas** (Catálogo → Choferes y tarifas) se explica paso a paso en [Choferes y tarifas](frontend/fd1-choferes.md); este capítulo es la referencia del servidor.
 Cada sección indica **qué hace**, **quién puede**, **cómo se usa**, las **validaciones** con el mensaje exacto y el
 código HTTP, y los **estatus** con sus transiciones y efectos. Los mensajes están verificados contra el código
 (`src/Teikem.Domain/Fleet/*`, `src/Teikem.Infrastructure/Fleet/*`, `src/Teikem.Infrastructure/Services/{Vehicle,Driver,
