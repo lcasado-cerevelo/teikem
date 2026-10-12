@@ -43,3 +43,11 @@ maestro test "$FLOWS/05a-conteo-sin-senal.yaml" "${ENV_ARGS[@]}"
 adb shell svc wifi enable
 adb shell svc data enable
 maestro test "$FLOWS/05b-conteo-enviado.yaml" "${ENV_ARGS[@]}"
+
+# 03b: despachar y empacar SIN señal (clientes y consignatarios del aparato); 03c: con señal otra vez, se manda solo.
+adb shell svc wifi disable
+adb shell svc data disable
+maestro test "$FLOWS/03b-despacho-sin-senal.yaml" "${ENV_ARGS[@]}"
+adb shell svc wifi enable
+adb shell svc data enable
+maestro test "$FLOWS/03c-despacho-enviado.yaml" "${ENV_ARGS[@]}"

@@ -166,3 +166,52 @@ describe('queueManualIssue (despacho manual, 2026-10-11)', () => {
     expect(JSON.parse(listOutbox()[0].body).note).toBeNull()
   })
 })
+
+describe('clientes y consignatarios del aparato (2026-10-11, señal débil: se elige sin red)', () => {
+  function markSynced(resource: string) {
+    getDb().runSync('INSERT INTO sync_watermark (resource, since_utc, last_run_utc) VALUES (?, ?, ?)', [resource, '2026-01-01T00:00:00.000Z', '2026-01-01T00:05:00.000Z'])
+  }
+
+  it('con los clientes ya bajados se leen DEL APARATO, ordenados, sin tocar la red', async () => {
+    markSynced('clients')
+    getDb().runSync("INSERT INTO client (public_id, id, name, code) VALUES ('c-2', 2, 'zeta Ltd', NULL), ('c-1', 1, 'Farmacia Central', 'CLI-001')")
+    const rows = await fetchClientsForOwnDispatch()
+    expect(rows).toEqual([{ publicId: 'c-1', label: 'Farmacia Central · CLI-001' }, { publicId: 'c-2', label: 'zeta Ltd' }])
+    expect(getMock).not.toHaveBeenCalled()
+  })
+
+  it('si el aparato aún no bajó los clientes (o el usuario no tiene warehouse.pick) se piden al servidor como antes, aunque la tabla local tenga algo', async () => {
+    getDb().runSync("INSERT INTO client (public_id, id, name, code) VALUES ('c-old', 9, 'Vieja', NULL)")   // sin marca de agua: no se confía en ella
+    getMock.mockResolvedValueOnce(ok([{ publicId: 'c-1', name: 'Farmacia Central', code: 'CLI-001' }]))
+    const rows = await fetchClientsForOwnDispatch()
+    expect(getMock.mock.calls[0][0]).toBe('/api/v1/clients')
+    expect(rows).toEqual([{ publicId: 'c-1', label: 'Farmacia Central · CLI-001' }])
+  })
+
+  it('con las localizaciones ya bajadas, los consignatarios de un cliente son los suyos MÁS los compartidos (no los de otro cliente), del aparato', async () => {
+    markSynced('consignee_locations')
+    getDb().runSync(
+      `INSERT INTO consignee_location (public_id, id, client_public_id, name, code, city) VALUES
+        ('l-1', 1, 'c-1', 'Tienda Centro', NULL, 'San Juan'),
+        ('l-2', 2, NULL, 'Compartida', 'CMP', NULL),
+        ('l-3', 3, 'c-2', 'De otro cliente', NULL, 'Ponce'),
+        ('l-4', 4, 'c-1', '', 'SIN-NOMBRE', NULL)`,
+    )
+    const rows = await fetchConsigneesForClient('c-1')
+    // ordenados por nombre (sin distinguir mayúsculas); el de nombre vacío va primero y se muestra con su código
+    expect(rows).toEqual([
+      { publicId: 'l-4', label: 'SIN-NOMBRE' },
+      { publicId: 'l-2', label: 'Compartida' },
+      { publicId: 'l-1', label: 'Tienda Centro · San Juan' },
+    ])
+    expect(rows).toHaveLength(3)
+    expect(rows.map((r) => r.publicId)).not.toContain('l-3')
+    expect(getMock).not.toHaveBeenCalled()
+  })
+
+  it('sin localizaciones bajadas, los consignatarios se piden al servidor como antes', async () => {
+    getMock.mockResolvedValueOnce(ok([{ publicId: 'loc-1', name: 'Tienda Centro', city: 'San Juan' }]))
+    expect(await fetchConsigneesForClient('client-1')).toEqual([{ publicId: 'loc-1', label: 'Tienda Centro · San Juan' }])
+    expect(getMock.mock.calls[0][0]).toBe('/api/v1/locations')
+  })
+})

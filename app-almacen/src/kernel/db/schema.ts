@@ -1,6 +1,6 @@
 // Lote 8A-app — esquema de la base local (expo-sqlite). Ver docs/mobile/app-almacen-plan.md §1 "Base local".
 // Migraciones por PRAGMA user_version: cada versión agrega su bloque de SQL; nunca se reescribe uno ya publicado.
-export const SCHEMA_VERSION = 12
+export const SCHEMA_VERSION = 13
 
 export const MIGRATIONS: readonly string[] = [
   // v1: kv, catálogos sincronizados, documentos abiertos, cola de salida y marcas de agua.
@@ -389,5 +389,25 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE bin ADD COLUMN max_capacity_qty INTEGER;
   ALTER TABLE bin ADD COLUMN capacity_known INTEGER NOT NULL DEFAULT 0;
   DELETE FROM sync_watermark WHERE resource LIKE 'bins:%';
+  `,
+  // v13 (2026-10-11, señal débil: despachar sin señal): los clientes a quienes se puede despachar y los consignatarios / localizaciones que la orden acepta
+  // (GET /sync/clients y /sync/consignee-locations, por diferencia con marcas de agua `clients` y `consignee_locations`). Con ellos, «Empacar» en un despacho de
+  // inventario PROPIO elige cliente y consignatario sin red. Es una copia: lo que el servidor da de baja (isActive = false) se borra del aparato.
+  `
+  CREATE TABLE IF NOT EXISTS client (
+    public_id TEXT PRIMARY KEY NOT NULL,
+    id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    code TEXT
+  );
+  CREATE TABLE IF NOT EXISTS consignee_location (
+    public_id TEXT PRIMARY KEY NOT NULL,
+    id INTEGER NOT NULL,
+    client_public_id TEXT,
+    name TEXT NOT NULL,
+    code TEXT,
+    city TEXT
+  );
+  CREATE INDEX IF NOT EXISTS ix_consignee_location_client ON consignee_location(client_public_id);
   `,
 ]

@@ -39,13 +39,38 @@ export async function fetchStockOptions(warehousePublicId: string, productPublic
   }
 }
 
-/** Clientes activos a quienes se puede despachar inventario PROPIO (con inventario de un cliente 3PL no hace falta: es ese). */
+/** ¿El aparato ya bajó este recurso al menos una vez? (marca de agua guardada; sin ella la tabla local podría estar vacía por no haberse sincronizado, no porque no haya nada). */
+function hasSynced(resource: string): boolean {
+  return getDb().getFirstSync<{ since_utc: string | null }>('SELECT since_utc FROM sync_watermark WHERE resource = ?', [resource]) != null
+}
+
+/**
+ * Clientes activos a quienes se puede despachar inventario PROPIO (con inventario de un cliente 3PL no hace falta: es ese). Señal débil (2026-10-11): si el aparato ya bajó los
+ * clientes (GET /sync/clients) se leen DEL APARATO, sin red; si no (primer uso, o el usuario no tiene `warehouse.pick` y baja 403), se piden al servidor como antes (clients.read).
+ */
 export async function fetchClientsForOwnDispatch(): Promise<ClientChoice[]> {
+  if (hasSynced('clients')) {
+    return getDb()
+      .getAllSync<{ public_id: string; name: string; code: string | null }>('SELECT public_id, name, code FROM client ORDER BY name COLLATE NOCASE, code')
+      .map((r) => ({ publicId: r.public_id, label: [r.name, r.code].filter(Boolean).join(' · ') }))
+  }
   const rows = await unwrap(api.GET('/api/v1/clients', { params: { query: { includeInactive: false } } }))
   return rows.map((r) => ({ publicId: r.publicId ?? '', label: [r.name, r.code].filter(Boolean).join(' · ') }))
 }
 
+/**
+ * Consignatarios que acepta la orden de ese cliente: los suyos y los compartidos del operador. Del aparato si ya bajó las localizaciones (GET /sync/consignee-locations);
+ * si no, del servidor como antes (locations.read).
+ */
 export async function fetchConsigneesForClient(clientPublicId: string): Promise<ConsigneeChoice[]> {
+  if (hasSynced('consignee_locations')) {
+    return getDb()
+      .getAllSync<{ public_id: string; name: string; code: string | null; city: string | null }>(
+        'SELECT public_id, name, code, city FROM consignee_location WHERE client_public_id = ? OR client_public_id IS NULL ORDER BY name COLLATE NOCASE, code',
+        [clientPublicId],
+      )
+      .map((r) => ({ publicId: r.public_id, label: [r.name, r.city].filter(Boolean).join(' · ') || (r.code ?? '') }))
+  }
   const rows = await unwrap(api.GET('/api/v1/locations', { params: { query: { clientId: clientPublicId } } }))
   return rows.map((r) => ({ publicId: r.publicId ?? '', label: [r.name, r.city].filter(Boolean).join(' · ') || (r.code ?? '') }))
 }

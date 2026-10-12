@@ -1,0 +1,12 @@
+# Flujo Maestro: lo despachado SIN señal (03b) se manda solo al volver la señal. Corre con wifi y datos encendidos otra vez; se fuerza la sincronización con «Sincronizar ahora» y no
+# debe quedar nada pendiente ni rechazado.
+appId: com.teikem.almacen
+---
+- launchApp
+- runFlow: _desbloquear.yaml
+
+- assertVisible: "Teikem Almacén"
+- tapOn: "Sincronizar ahora"
+- extendedWaitUntil:
+    visible: "Todo enviado"
+    timeout: 60000
