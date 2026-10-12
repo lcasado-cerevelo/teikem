@@ -147,7 +147,14 @@ export const appRoutes: readonly AppRoute[] = [
     module: ModuleKeys.LtlGround,
   },
   // F5
-  pending({ path: '/ops/scan', perm: 'trips.scan', module: ModuleKeys.LtlGround, nav: { group: 'ops', key: 'scan', order: 30 } }),
+  // Lote F-E1 — Estación de escaneo (salida).
+  {
+    path: '/ops/scan',
+    element: lazy(() => import('../features/scan/ScanScreen')),
+    perm: 'trips.scan',
+    module: ModuleKeys.LtlGround,
+    nav: { group: 'ops', key: 'scan', order: 30 },
+  },
   pending({ path: '/ops/dispatch', perm: 'trips.dispatch', module: ModuleKeys.LtlGround, nav: { group: 'ops', key: 'dispatch', order: 40 } }),
   pending({ path: '/ops/monitor', perm: 'trips.view', module: ModuleKeys.LtlGround, nav: { group: 'ops', key: 'monitor', order: 50 } }),
 

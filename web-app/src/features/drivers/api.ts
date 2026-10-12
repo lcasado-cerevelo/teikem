@@ -85,10 +85,11 @@ export function useDriver(publicId: string | null) {
 }
 
 /** Zonas de despacho para el select de la ficha y el filtro de la lista (consulta secundaria). */
-export function useDispatchZones(includeInactive = false) {
+export function useDispatchZones(includeInactive = false, enabled = true) {
   return useQuery({
     queryKey: [driverKeys.zones[0], { includeInactive }],
     queryFn: () => unwrap(api.GET('/api/v1/dispatch-zones', { params: { query: { includeInactive } } })),
+    enabled,
     meta: { handleAccessDenied: false },
   })
 }

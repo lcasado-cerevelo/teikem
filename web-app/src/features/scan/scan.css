@@ -1,0 +1,103 @@
+/* Lote F-E1 — Estación de escaneo. Estilos de la maqueta (`.scanwrap`, `.scanhero`, `.scaninput`, `.scanmeter`, `.feed`, `.chipsgrid`) bajo
+   `.scn` para no chocar con otras pantallas. Sin scroll horizontal a 360 px. */
+.scn{max-width:1060px;margin:0 auto;min-width:0}
+.scn .panel{margin-bottom:16px}
+
+.scn .scanhero{background:linear-gradient(160deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:16px;padding:26px 26px 22px;text-align:center;margin-bottom:16px;min-width:0}
+.scn .modes{display:inline-flex;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:3px;margin-bottom:18px}
+.scn .modes span{border-radius:8px;padding:7px 14px;font-size:12.5px;font-weight:600;color:var(--muted)}
+.scn .modes span.on{background:var(--flow);color:#fff}
+.scn .scaninput{display:flex;align-items:center;gap:12px;background:var(--bg-2);border:2px solid var(--flow);border-radius:14px;padding:4px 6px 4px 18px;box-shadow:0 0 0 5px var(--flow-bg);max-width:520px;margin:0 auto;min-width:0}
+.scn .scaninput svg{width:22px;height:22px;color:var(--flow-2);flex:none}
+.scn .scaninput input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-family:var(--mono);font-size:17px;padding:12px 0;min-width:0;width:100%}
+.scn .scaninput .go{background:var(--flow);color:#fff;border:none;border-radius:10px;padding:11px 16px;font-weight:700;font-size:13px;flex:none;cursor:pointer}
+.scn .scaninput .go:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+.scn .hint{margin-top:12px;color:var(--faint);font-size:12px}
+
+/* resultado grande del último escaneo */
+.scn-res{display:flex;align-items:flex-start;gap:14px;text-align:left;margin:16px auto 0;max-width:620px;padding:14px 16px;border-radius:13px;border:1px solid var(--line);background:var(--bg-2);min-width:0;position:relative}
+.scn-res-ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex:none;background:var(--panel-2);color:var(--faint)}
+.scn-res-ic svg{width:20px;height:20px}
+.scn-res-main{min-width:0;flex:1}
+.scn-res-kind{margin:0 0 4px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12.5px}
+.scn-res-kind .ref{font-family:var(--mono);font-weight:700;overflow-wrap:anywhere}
+.scn-res-msg{margin:0;font-size:17px;font-weight:700;line-height:1.3;overflow-wrap:anywhere}
+.scn-res-sub{margin:4px 0 0;font-size:11.5px;color:var(--faint)}
+.scn-res-hint{margin:8px 0 0;font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.scn-res-busy{position:absolute;top:8px;right:12px;font-size:11px;color:var(--faint)}
+.scn-res.idle .scn-res-msg{font-size:13.5px;font-weight:500;color:var(--faint)}
+.scn-res.ok{border-color:var(--ok);background:var(--okbg)}
+.scn-res.ok .scn-res-ic{background:var(--ok);color:#fff}
+.scn-res.dup{border-color:var(--info);background:var(--infobg)}
+.scn-res.dup .scn-res-ic{background:var(--info);color:#fff}
+.scn-res.unassigned{border-color:var(--warn);background:var(--warnbg)}
+.scn-res.unassigned .scn-res-ic{background:var(--warn);color:#fff}
+.scn-res.ineligible{border-color:var(--violet);background:var(--violetbg)}
+.scn-res.ineligible .scn-res-ic{background:var(--violet);color:#fff}
+.scn-res.notfound{border-color:var(--danger);background:var(--dangerbg)}
+.scn-res.notfound .scn-res-ic{background:var(--danger);color:#fff}
+
+/* fecha de la ruta */
+.scn-date{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 10px;margin-top:14px;font-size:12.5px;color:var(--muted)}
+.scn-date label{font-weight:600}
+.scn-date input[type=date]{width:auto;max-width:100%}
+.scn-date-help{flex:1 1 100%;font-size:11.5px;color:var(--faint)}
+
+/* filtros */
+.scn-filters{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:12px 14px;margin-bottom:16px;min-width:0}
+.scn-filters .filters{margin:0;padding:0;border:0;background:transparent}
+.scn-filters .f{margin:0;min-width:0}
+
+/* medidor */
+.scn .scanmeter{display:flex;align-items:center;gap:16px;background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:14px 18px;margin-bottom:16px;min-width:0;flex-wrap:wrap}
+.scn .scanmeter .nums{font-family:var(--mono)}
+.scn .scanmeter .nums b{font-size:22px}
+.scn .scanmeter .nums .of{color:var(--faint)}
+.scn .scanmeter .nums .cap{margin-left:8px;color:var(--faint);font-family:var(--ui);font-size:11.5px}
+.scn .scanmeter .track{flex:1 1 160px;height:10px;border-radius:6px;background:var(--bg-2);overflow:hidden}
+.scn .scanmeter .fill{height:100%;background:linear-gradient(90deg,var(--flow),var(--flow-2));border-radius:6px;transition:width .25s}
+
+/* escaneados en esta sesión */
+.scn .qrow{padding:0 0 10px}
+.scn-note{margin:0 0 10px;font-size:11.5px;color:var(--faint)}
+.scn-feed{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
+.scn-feed li{min-width:0}
+.scn .fi{display:flex;align-items:center;gap:12px;padding:11px 4px;border:0;border-bottom:1px solid var(--line-2);background:transparent;color:inherit;font:inherit;text-align:left;width:100%;min-width:0;cursor:pointer}
+.scn .fi.static{cursor:default}
+.scn button.fi:hover{background:var(--panel-2)}
+.scn button.fi:focus-visible{outline:2px solid var(--flow);outline-offset:-2px}
+.scn-feed li:last-child .fi{border-bottom:none}
+.scn .ok{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;flex:none;background:var(--okbg);color:var(--ok)}
+.scn .ok svg{width:15px;height:15px}
+.scn .ok.dup{background:var(--infobg);color:var(--info)}
+.scn .ok.unassigned{background:var(--warnbg);color:var(--warn)}
+.scn .ok.ineligible{background:var(--violetbg);color:var(--violet)}
+.scn .ok.notfound{background:var(--dangerbg);color:var(--danger)}
+.scn-fi-main{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.scn-fi-top{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
+.scn .fi .ref{font-family:var(--mono);font-weight:600;overflow-wrap:anywhere}
+.scn .fi .meta{color:var(--faint);font-size:11.5px;overflow-wrap:anywhere}
+.scn .fi .tm{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--faint);flex:none}
+
+/* pendientes por escanear */
+.scn .chipsgrid{list-style:none;margin:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:7px;padding:0;max-height:300px;overflow:auto}
+.scn .chipsgrid li{min-width:0}
+.scn .chipsgrid .cg{display:block;width:100%;text-align:left;font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--bg-2);border:1px solid var(--line-2);border-radius:7px;padding:6px 9px;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.scn .chipsgrid .cg:hover{border-color:var(--flow-line)}
+.scn .chipsgrid .cg:focus-visible{outline:2px solid var(--flow);outline-offset:1px}
+.scn .chipsgrid .cg small{display:block;color:var(--faint);font-family:var(--ui);font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ventana de la orden */
+.scn-peek{min-width:0}
+.scn-kv{display:flex;justify-content:space-between;gap:12px;padding:4px 0;min-width:0}
+.scn-kv>span{color:var(--muted);flex:none}
+.scn-kv>b{text-align:right;overflow-wrap:anywhere;min-width:0}
+
+@media (max-width:720px){
+  .scn .scanhero{padding:18px 14px 16px}
+  .scn .scaninput{padding-left:12px;gap:8px}
+  .scn .scaninput input{font-size:16px}
+  .scn-res{padding:12px}
+  .scn-res-msg{font-size:15px}
+  .scn .scanmeter{padding:12px 14px}
+}

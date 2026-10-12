@@ -1510,6 +1510,114 @@
       "zoneNameMax": "The zone name allows at most {max} characters."
     }
   },
+  "scan": {
+    "title": "Scan station",
+    "sub": "One lane: scan, confirm, next. Each order is assigned to the open route of its zone.",
+    "voice": {
+      "on": "Voice on",
+      "off": "Voice muted",
+      "unsupported": "Voice unavailable",
+      "unsupportedTitle": "This browser cannot speak. Results are shown on screen.",
+      "found": "Yes",
+      "notfound": "No",
+      "dup": "Already"
+    },
+    "mode": { "label": "Scan mode", "out": "Outbound" },
+    "input": {
+      "label": "Code to scan",
+      "placeholder": "Scan or type the reference…",
+      "go": "Register",
+      "hint": "The scanner types here and presses Enter by itself. You can scan the order number, the pack number or the client's invoice number."
+    },
+    "planDate": {
+      "label": "Route day",
+      "today": "Today",
+      "helpToday": "Orders are assigned to the open route of their zone for today.",
+      "helpOther": "Orders are assigned to the open route of their zone for {date}."
+    },
+    "result": {
+      "label": "Result of the last scan",
+      "ready": "Ready to scan. The result of each read shows up here.",
+      "busy": "Registering…",
+      "error": "Not registered",
+      "zone": "Zone {zone}",
+      "trip": "Route {trip}",
+      "matchedBy": "Found by {by}."
+    },
+    "matchedBy": {
+      "ORDER_NUMBER": "order number",
+      "PACK_BATCH": "pack number",
+      "INVOICE": "client invoice"
+    },
+    "outcome": {
+      "FOUND_ASSIGNED": "Assigned",
+      "FOUND_UNASSIGNED": "Unassigned",
+      "ALREADY_ASSIGNED": "Already there",
+      "NOT_ELIGIBLE": "Not eligible",
+      "NOT_FOUND": "Not found",
+      "UNKNOWN": "Unknown result"
+    },
+    "hint": {
+      "NO_MATCH": "Check the code, scan the pack number or type the client's invoice number.",
+      "MULTIPLE_MATCHES": "Scan the pack number, which is unique per order.",
+      "IN_TRIP": "Nothing to do: the order is already on that route.",
+      "NOT_ELIGIBLE": "Fix the order's status in Orders (for example, confirm it) and scan it again.",
+      "NO_ZONE": "Add the postal code or town to a zone (Catalog → Fleet and maintenance → Zones) or assign the order by hand in Dispatch room.",
+      "AMBIGUOUS_ZONE": "The postal code or town is in more than one zone. Leave it in a single zone (Catalog → Fleet and maintenance → Zones) or assign the order by hand in Dispatch room.",
+      "NO_OPEN_ROUTE": "Plan the day or create that zone's route in Dispatch room and scan again. The order stays in \"Pending to scan\"."
+    },
+    "errors": {
+      "empty": "Scan or type a code.",
+      "tooLong": "The code cannot exceed 40 characters."
+    },
+    "filters": {
+      "label": "Scan filters",
+      "all": "All",
+      "client": "Client",
+      "zone": "Zone",
+      "noZone": "No zone",
+      "postal": "Postal code",
+      "city": "Town"
+    },
+    "meter": {
+      "label": "Session progress",
+      "of": "of {total}",
+      "caption": "orders assigned in this session"
+    },
+    "feed": {
+      "title": "Scanned in this session",
+      "search": "Search what was scanned…",
+      "note": "This list lives only in this browser: it is lost when the page reloads.",
+      "empty": "Nothing under this filter yet — scan the first one",
+      "open": "View order {ref}"
+    },
+    "pending": {
+      "title": "Pending to scan",
+      "search": "Search the pending orders…",
+      "empty": "There are no orders waiting to be assigned",
+      "emptyFiltered": "No pending order matches that search or those filters",
+      "error": "The pending orders could not be loaded.",
+      "more": "Showing the first {shown} of {total}; use the filters to see the rest.",
+      "noZone": "No zone",
+      "zoneAmbiguous": "Ambiguous zone"
+    },
+    "order": {
+      "open": "Open",
+      "close": "Close",
+      "loading": "Loading the order…",
+      "unavailable": "The order record could not be read; showing what was already known.",
+      "client": "Client",
+      "consignee": "Consignee",
+      "town": "Town · ZIP",
+      "zone": "Zone",
+      "service": "Service",
+      "packages": "Packages",
+      "pieces": "{n} pieces",
+      "cod": "COD",
+      "status": "Status",
+      "trip": "Current route"
+    }
+  },
   "status": {
     "none": "No status",
     "pipeline": "Status stages",

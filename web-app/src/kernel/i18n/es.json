@@ -1510,6 +1510,114 @@
       "zoneNameMax": "El nombre de la zona admite como máximo {max} caracteres."
     }
   },
+  "scan": {
+    "title": "Estación de escaneo",
+    "sub": "Un solo carril: escanee, confirme y siga. Cada orden queda asignada a la ruta abierta de su zona.",
+    "voice": {
+      "on": "Voz activada",
+      "off": "Voz silenciada",
+      "unsupported": "Voz no disponible",
+      "unsupportedTitle": "Este navegador no sabe hablar. Los resultados se ven en pantalla.",
+      "found": "Sí",
+      "notfound": "No",
+      "dup": "Ya"
+    },
+    "mode": { "label": "Modo de escaneo", "out": "Salida" },
+    "input": {
+      "label": "Código a escanear",
+      "placeholder": "Escanea o teclea la referencia…",
+      "go": "Registrar",
+      "hint": "El lector escribe aquí y dispara Enter solo. Puede escanear el número de orden, el de empaque o el de factura del cliente."
+    },
+    "planDate": {
+      "label": "Ruta del día",
+      "today": "Hoy",
+      "helpToday": "Las órdenes se asignan a la ruta abierta de su zona para hoy.",
+      "helpOther": "Las órdenes se asignan a la ruta abierta de su zona para el {date}."
+    },
+    "result": {
+      "label": "Resultado del último escaneo",
+      "ready": "Listo para escanear. El resultado de cada lectura aparece aquí.",
+      "busy": "Registrando…",
+      "error": "No se registró",
+      "zone": "Zona {zone}",
+      "trip": "Ruta {trip}",
+      "matchedBy": "Encontrada por {by}."
+    },
+    "matchedBy": {
+      "ORDER_NUMBER": "número de orden",
+      "PACK_BATCH": "número de empaque",
+      "INVOICE": "factura del cliente"
+    },
+    "outcome": {
+      "FOUND_ASSIGNED": "Asignada",
+      "FOUND_UNASSIGNED": "Sin asignar",
+      "ALREADY_ASSIGNED": "Ya estaba",
+      "NOT_ELIGIBLE": "No elegible",
+      "NOT_FOUND": "No encontrada",
+      "UNKNOWN": "Resultado desconocido"
+    },
+    "hint": {
+      "NO_MATCH": "Revise el código, escanee el número del empaque o escriba la factura del cliente.",
+      "MULTIPLE_MATCHES": "Escanee el número del empaque, que es único por orden.",
+      "IN_TRIP": "No hace falta hacer nada: la orden ya está en esa ruta.",
+      "NOT_ELIGIBLE": "Arregle el estatus de la orden en Órdenes (por ejemplo, confírmela) y vuelva a escanearla.",
+      "NO_ZONE": "Agregue el código postal o el pueblo a una zona (Catálogo → Flota y mantenimiento → Zonas) o asigne la orden a mano en Sala de despacho.",
+      "AMBIGUOUS_ZONE": "El código postal o el pueblo está en más de una zona. Déjelo en una sola zona (Catálogo → Flota y mantenimiento → Zonas) o asigne la orden a mano en Sala de despacho.",
+      "NO_OPEN_ROUTE": "Planifique el día o cree la ruta de esa zona en Sala de despacho y vuelva a escanear. La orden sigue en «Pendientes por escanear»."
+    },
+    "errors": {
+      "empty": "Escanee o escriba un código.",
+      "tooLong": "El código no puede exceder 40 caracteres."
+    },
+    "filters": {
+      "label": "Filtros del escaneo",
+      "all": "Todos",
+      "client": "Cliente",
+      "zone": "Zona",
+      "noZone": "Sin zona",
+      "postal": "Código postal",
+      "city": "Pueblo"
+    },
+    "meter": {
+      "label": "Avance de la sesión",
+      "of": "de {total}",
+      "caption": "órdenes asignadas en esta sesión"
+    },
+    "feed": {
+      "title": "Escaneados en esta sesión",
+      "search": "Buscar en lo escaneado…",
+      "note": "Esta lista vive solo en este navegador: se pierde al recargar la página.",
+      "empty": "Todavía nada bajo este filtro — escanee el primero",
+      "open": "Ver la orden {ref}"
+    },
+    "pending": {
+      "title": "Pendientes por escanear",
+      "search": "Buscar en los pendientes…",
+      "empty": "No hay órdenes pendientes de asignar",
+      "emptyFiltered": "Ninguna orden pendiente con esa búsqueda o esos filtros",
+      "error": "No se pudieron cargar las órdenes pendientes.",
+      "more": "Se muestran las primeras {shown} de {total}; use los filtros para ver las demás.",
+      "noZone": "Sin zona",
+      "zoneAmbiguous": "Zona ambigua"
+    },
+    "order": {
+      "open": "Abrir",
+      "close": "Cerrar",
+      "loading": "Cargando la orden…",
+      "unavailable": "No se pudo leer la ficha de la orden; se muestra lo que ya se sabía.",
+      "client": "Cliente",
+      "consignee": "Consignatario",
+      "town": "Pueblo · CP",
+      "zone": "Zona",
+      "service": "Servicio",
+      "packages": "Paquetes",
+      "pieces": "{n} piezas",
+      "cod": "COD",
+      "status": "Estatus",
+      "trip": "Ruta actual"
+    }
+  },
   "status": {
     "none": "Sin estatus",
     "pipeline": "Etapas del estatus",

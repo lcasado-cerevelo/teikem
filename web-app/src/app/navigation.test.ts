@@ -110,6 +110,8 @@ describe('menú completo (routes.tsx)', () => {
 
   it('los ítems sin pantalla usan la pantalla pendiente; los que ya existen no', () => {
     expect(byPath('/ops/dispatch').pending).toBe(true)
+    expect(byPath('/ops/scan').pending).toBeUndefined() // Lote F-E1
+    expect(byPath('/ops/scan')).toMatchObject({ perm: 'trips.scan', module: 'LTL_GROUND', nav: { group: 'ops', key: 'scan', order: 30 } })
     expect(byPath('/catalog/fleet').pending).toBeUndefined()
     expect(byPath('/catalog/drivers').pending).toBeUndefined()
     expect(byPath('/catalog/consignees').pending).toBeUndefined()

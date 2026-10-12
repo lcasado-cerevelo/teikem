@@ -247,6 +247,35 @@ export function IconPhoneFormat() {
   )
 }
 
+/** 'scan' de la maqueta: Estación de escaneo (recuadro con barras). */
+export function IconScan() {
+  return (
+    <Svg>
+      <path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2M7 8v8M11 8v8M14 8v8M17 8v8" />
+    </Svg>
+  )
+}
+
+/** 'volume' de la maqueta: voz activada. */
+export function IconVolume() {
+  return (
+    <Svg>
+      <path d="M4 9v6h4l5 4V5L8 9H4Z" />
+      <path d="M16 8a5 5 0 0 1 0 8" />
+    </Svg>
+  )
+}
+
+/** 'volumeOff' de la maqueta: voz silenciada. */
+export function IconVolumeOff() {
+  return (
+    <Svg>
+      <path d="M4 9v6h4l5 4V5L8 9H4Z" />
+      <path d="m17 8 5 8M22 8l-5 8" />
+    </Svg>
+  )
+}
+
 /** 'truck' de la maqueta: Flota y mantenimiento (pantalla, vehículos, cuando se agregue Despacho también). */
 export function IconTruck() {
   return (

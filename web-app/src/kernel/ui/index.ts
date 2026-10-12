@@ -106,10 +106,13 @@ export {
   IconPhoneFormat,
   IconPin,
   IconRoute,
+  IconScan,
   IconSwap,
   IconTag,
   IconTruck,
   IconUsers,
+  IconVolume,
+  IconVolumeOff,
   IconWarehouse,
 } from './screenIcons'
 export type { QBoxProps } from './QBox'
