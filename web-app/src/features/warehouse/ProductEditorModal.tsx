@@ -26,7 +26,7 @@ import { useCan } from '../../kernel/access'
 import { useLookups } from '../../kernel/catalogs'
 import { CustomFieldsForm, useSaveCustomFields } from '../../kernel/custom-fields'
 import { useLang, useT } from '../../kernel/i18n'
-import { ClientPickerInput, ComboSelectInput, Field, Form, Modal, NumberInput, Spinner, TextInput, toast } from '../../kernel/ui'
+import { ClientPickerInput, ComboSelectInput, Field, Form, Modal, NumberInput, Select, Spinner, TextInput, toast } from '../../kernel/ui'
 import { IconCheck } from '../../kernel/ui/icons'
 import { IconLayers } from '../../kernel/ui/screenIcons'
 import { SessionContext } from '../../app/session'
@@ -229,6 +229,7 @@ function ProductEditorForm({
           baseUom: z.string(),
           name: z.string().trim().min(1, t('warehouse.products.errors.nameRequired')).max(200, t('warehouse.products.errors.nameMax')),
           brand: brandModelSchema(t, 'brand'),
+          rotationMethod: z.string(),
           model: brandModelSchema(t, 'model'),
           packUom: z.string(),
           packQty: z.number(t('warehouse.products.errors.numberInvalid')).nullable(),
@@ -268,6 +269,7 @@ function ProductEditorForm({
       baseUom: product?.baseUomCode ?? (hasUomOption(DEFAULT_UOM) ? DEFAULT_UOM : ''),
       name: product?.name ?? '',
       brand: product?.brand ?? '',
+      rotationMethod: detail?.rotationMethod ?? '',
       model: product?.model ?? '',
       packUom: product?.packUomCode ?? '',
       packQty: product?.packQty ?? null,
@@ -340,6 +342,7 @@ function ProductEditorForm({
         maxPickQty: v.maxPickQty,
         brand: v.brand || null,
         model: v.model || null,
+        rotationMethod: v.rotationMethod || null,   // vacío = la de la compañía
         packUom: v.packUom || null,
         packQty: v.packUom ? v.packQty : null,
       })
@@ -387,6 +390,7 @@ function ProductEditorForm({
           // PATCH: null = sin cambio, '' = quitar (solo se mandan si cambiaron)
           brand: dirty.brand ? v.brand : null,
           model: dirty.model ? v.model : null,
+          rotationMethod: dirty.rotationMethod ? v.rotationMethod : null,   // PATCH: null = sin cambio, '' = quitar la excepción (vuelve a la de la compañía)
           // empaque: se manda completo si cambió algo; quitarlo = clearPack
           packUom: (dirty.packUom || dirty.packQty) && v.packUom ? v.packUom : null,
           packQty: (dirty.packUom || dirty.packQty) && v.packUom ? v.packQty : null,
@@ -485,6 +489,15 @@ function ProductEditorForm({
               <ComboSelectInput options={trackingCodes} placeholder={nonePlaceholder} disabled={isEdit && hasMovements} />
             </Field>
           </div>
+          <Field name="rotationMethod" label={t('warehouse.products.editor.rotation')} help={t('warehouse.products.editor.rotationHelp')}>
+            <Select
+              options={[
+                { value: '', label: t('warehouse.products.editor.rotationCompany') },
+                { value: 'FEFO', label: t('warehouse.products.editor.rotationFefo') },
+                { value: 'FIFO', label: t('warehouse.products.editor.rotationFifo') },
+              ]}
+            />
+          </Field>
           <Field name="ownerClientPublicId" label={t('warehouse.products.editor.owner')} help={lockHelp}>
             <ClientPickerInput placeholder={ownLabel} disabled={isEdit && hasMovements} />
           </Field>

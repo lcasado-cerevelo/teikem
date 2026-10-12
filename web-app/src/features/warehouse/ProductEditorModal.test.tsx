@@ -182,6 +182,7 @@ describe('ProductEditorModal', () => {
       'Unidades por empaque',
       'Categoría',
       'Rastreo',
+      'Rotación',
       'Dueño del inventario',
       'Costo de compra',
       'Precio de venta',
@@ -399,6 +400,42 @@ describe('ProductEditorModal', () => {
     const patch = mock.calls.find((c) => c.method === 'PATCH')!.body as Record<string, unknown>
     expect(patch.brand).toBe('')
     expect(patch.model).toBeNull()
+  })
+
+  it('rotación (Lote 34): alta con FIFO manda rotationMethod; edición: sin tocarla va null, y volver a «Igual que la compañía» manda "" (quita la excepción)', async () => {
+    const user = userEvent.setup()
+    const { unmount } = wrap(<ProductEditorModal open product={null} onClose={() => {}} />, ['inventory.view', 'inventory.manage'])
+    let dialog = await findDialog('Nuevo producto')
+    await user.type(await within(dialog).findByLabelText(/^SKU/), 'ROT-1')
+    await user.type(within(dialog).getByLabelText(/^Nombre/), 'Producto con rotación')
+    const rotation = within(dialog).getByLabelText('Rotación')
+    expect(rotation).toHaveValue('') // por omisión: igual que la compañía
+    expect(within(dialog).getByRole('option', { name: 'Igual que la compañía' })).toBeInTheDocument()
+    await user.selectOptions(rotation, 'FIFO')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(mock.calls.some((c) => c.method === 'POST')).toBe(true))
+    expect(mock.calls.find((c) => c.method === 'POST')!.body).toMatchObject({ sku: 'ROT-1', rotationMethod: 'FIFO' })
+    unmount()
+
+    // edición de un producto con excepción FIFO: tocar otro campo no manda la rotación (null = sin cambio)
+    mock.calls = []
+    const { unmount: unmount2 } = wrap(<ProductEditorModal open product={{ ...detail({ brand: 'Abbott' }), rotationMethod: 'FIFO' }} onClose={() => {}} />, ['inventory.view', 'inventory.manage'])
+    dialog = await findDialog('Editar producto')
+    expect(await within(dialog).findByLabelText('Rotación')).toHaveValue('FIFO')
+    await user.type(within(dialog).getByLabelText('Modelo'), 'M-1')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(mock.calls.some((c) => c.method === 'PATCH')).toBe(true))
+    expect((mock.calls.find((c) => c.method === 'PATCH')!.body as Record<string, unknown>).rotationMethod).toBeNull()
+    unmount2()
+
+    // quitar la excepción: '' (el servidor la deja en NULL = la de la compañía)
+    mock.calls = []
+    wrap(<ProductEditorModal open product={{ ...detail({ brand: 'Abbott' }), rotationMethod: 'FIFO' }} onClose={() => {}} />, ['inventory.view', 'inventory.manage'])
+    dialog = await findDialog('Editar producto')
+    await user.selectOptions(await within(dialog).findByLabelText('Rotación'), '')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(mock.calls.some((c) => c.method === 'PATCH')).toBe(true))
+    expect((mock.calls.find((c) => c.method === 'PATCH')!.body as Record<string, unknown>).rotationMethod).toBe('')
   })
 
   it('mínimo de picking con la posición por defecto fuera de una zona PICKING: aviso bajo Posición y sin guardar', async () => {

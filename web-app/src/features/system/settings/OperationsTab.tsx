@@ -7,12 +7,10 @@
 // - Conteo cíclico (módulo WMS_LOTSERIAL, tarea 25): quién ve lo esperado al contar, margen de reconteo y si se muestra el número.
 // - Recepción por almacén (solo lectura, módulo WMS_LOTSERIAL): modo, posición de recepción, recibos abiertos y acomodos
 //   pendientes, aviso rojo si es con acomodo y no tiene posición de recepción, y "Abrir almacén" (ficha del almacén).
-import { useQueries } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { ModuleKeys, useCan, useModule } from '../../../kernel/access'
-import { api, unwrap } from '../../../kernel/api/client'
 import { isAccessDenied } from '../../warehouse/accessDenied'
 import { useLookups, useStatuses, type StatusOption } from '../../../kernel/catalogs'
 import { useT } from '../../../kernel/i18n'
@@ -33,7 +31,7 @@ import {
   type DataColumn,
   type RowAction,
 } from '../../../kernel/ui'
-import { useProductCategories, useWarehouses, warehouseKeys } from '../../warehouse/api'
+import { useProductCategories, useReceiptSummaryByWarehouse, useWarehouses } from '../../warehouse/api'
 import { problemText } from '../../warehouse/problemText'
 import { useCapabilities, useSaveTenantSettings, useSetCapabilities, type TenantSettingsDto } from '../tenantSettingsApi'
 import { capabilityAllowed, ORDER_CAPABILITIES, recvSummaryRows, type RecvRow } from './operations'
@@ -190,6 +188,52 @@ function ProductCategoryPanel({ settings, canEdit }: { settings: TenantSettingsD
         <fieldset className="set-fs" disabled={!canEdit}>
           <Field name="defaultProductCategoryId" label={t('system.settings.ops.productCategoryLabel')} help={t('system.settings.ops.productCategoryHelp')}>
             <Select options={options} placeholder={t('system.settings.ops.productCategoryNone')} />
+          </Field>
+        </fieldset>
+        {canEdit && (
+          <div className="set-actions">
+            <button type="button" className="btn" disabled={!dirty || form.formState.isSubmitting} onClick={() => form.reset()}>
+              {t('system.settings.discard')}
+            </button>
+            <button type="submit" className="btn flow" disabled={!dirty || form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? t('system.settings.saving') : t('system.settings.save')}
+            </button>
+          </div>
+        )}
+      </Form>
+    </Panel>
+  )
+}
+
+// ------------------------------------------------------------------ rotación del inventario: FEFO / FIFO (2026-10-11, Lote 34)
+
+/**
+ * «Método de rotación de la compañía» (`rotationMethod`, admin.tenant): FEFO (vence primero, el de siempre; todas las compañías existentes) o FIFO (entra primero). Cada producto puede
+ * tener su propia excepción en su ficha. El 400 del servidor («El método de rotación debe ser FEFO o FIFO.») sale bajo el selector.
+ */
+function RotationPanel({ settings, canEdit }: { settings: TenantSettingsDto; canEdit: boolean }) {
+  const t = useT()
+  const save = useSaveTenantSettings()
+  const current = settings.rotationMethod ?? 'FEFO'
+  const form = useForm<{ rotationMethod: string }>({ values: { rotationMethod: current } })
+  const dirty = form.formState.isDirty
+  const options = [
+    { value: 'FEFO', label: t('system.settings.ops.rotationFefo') },
+    { value: 'FIFO', label: t('system.settings.ops.rotationFifo') },
+  ]
+
+  return (
+    <Panel className="set-gap" icon={<IconGear />} title={t('system.settings.ops.rotationTitle')}>
+      <Form
+        form={form}
+        onSubmit={async (v) => {
+          await save.mutateAsync({ rotationMethod: v.rotationMethod })
+          toast.success(t('system.settings.saved'))
+        }}
+      >
+        <fieldset className="set-fs" disabled={!canEdit}>
+          <Field name="rotationMethod" label={t('system.settings.ops.rotationLabel')} help={t('system.settings.ops.rotationHelp')}>
+            <Select options={options} />
           </Field>
         </fieldset>
         {canEdit && (
@@ -365,28 +409,17 @@ function RecvSummaryPanel() {
   const navigate = useNavigate()
   const warehouses = useWarehouses({ includeInactive: true }, { handleAccessDenied: false })
   const list = useMemo(() => warehouses.data ?? [], [warehouses.data])
-  const phases = ['OPEN', 'PENDING_PUTAWAY'] as const
-  const countQueries = useQueries({
-    queries: list.flatMap((w) =>
-      phases.map((phase) => {
-        const query = { warehousePublicId: w.publicId, phase, take: 1 }
-        return {
-          queryKey: [warehouseKeys.receipts[0], query],
-          queryFn: () => unwrap(api.GET('/api/v1/receipts', { params: { query } })),
-          meta: { handleAccessDenied: false },
-        }
-      }),
-    ),
-  })
+  // Una sola llamada para todos los almacenes (antes: dos consultas de lista por almacén). Sin permiso o con error, los conteos quedan en null (se muestran como «—»).
+  const summary = useReceiptSummaryByWarehouse({ handleAccessDenied: false })
   const counts = useMemo(() => {
     const m = new Map<string, { open: number | null; pending: number | null }>()
-    list.forEach((w, i) => {
-      const open = countQueries[i * 2]?.data?.total
-      const pending = countQueries[i * 2 + 1]?.data?.total
-      m.set(w.publicId ?? '', { open: open ?? null, pending: pending ?? null })
+    const byWarehouse = new Map((summary.data ?? []).map((s) => [s.warehousePublicId, s] as const))
+    list.forEach((w) => {
+      const s = byWarehouse.get(w.publicId ?? '')
+      m.set(w.publicId ?? '', { open: s?.openCount ?? null, pending: s?.pendingPutawayCount ?? null })
     })
     return m
-  }, [list, countQueries])
+  }, [list, summary.data])
   const rows = useMemo(() => recvSummaryRows(list, counts), [list, counts])
 
   const columns = useMemo<DataColumn<RecvRow>[]>(
@@ -477,6 +510,7 @@ export function OperationsTab({ settings, canEdit }: { settings: TenantSettingsD
         {orders && <PipelinePanel />}
       </div>
       {wms && <ProductCategoryPanel settings={settings} canEdit={canEdit} />}
+      {wms && <RotationPanel settings={settings} canEdit={canEdit} />}
       {wms && <ManualReasonPanel settings={settings} canEdit={canEdit} />}
       {wms && <CountRevealPanel settings={settings} canEdit={canEdit} />}
       {wms && <RecvSummaryPanel />}

@@ -791,6 +791,19 @@ export function useReceipts(query: GetQuery<'/api/v1/receipts'> = {}, options?: 
   })
 }
 
+/**
+ * `GET /api/v1/receipts/summary-by-warehouse` (2026-10-11): recibos abiertos y por acomodar de TODOS los almacenes en una sola llamada (antes, dos consultas de lista por almacén).
+ * Su clave cuelga de la de la lista de recibos, así que cualquier cambio de recibos la refresca.
+ */
+export function useReceiptSummaryByWarehouse(options?: WarehouseQueryOptions) {
+  return useQuery({
+    queryKey: [warehouseKeys.receipts[0], 'summary-by-warehouse'],
+    queryFn: () => unwrap(api.GET('/api/v1/receipts/summary-by-warehouse')),
+    enabled: options?.enabled ?? true,
+    meta: meta(options),
+  })
+}
+
 /** `GET /api/v1/receipts/{publicId}` (ficha con líneas). */
 export function useReceipt(publicId: string | null | undefined, options?: WarehouseQueryOptions) {
   return useQuery({
