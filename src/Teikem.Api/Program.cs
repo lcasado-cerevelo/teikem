@@ -231,8 +231,20 @@ app.UseAuthorization();
 app.UseMiddleware<IdempotencyMiddleware>();
 app.MapControllers();
 // environment (2026-10-12): etiqueta del ambiente (Hosting:EnvironmentLabel, p. ej. "STAGING"; null en producción). La web la lee para mostrar su cinta.
-var environmentLabel = app.Configuration["Hosting:EnvironmentLabel"];
-app.MapGet("/health", () => Results.Ok(new { status = "ok", utc = DateTime.UtcNow, environment = string.IsNullOrWhiteSpace(environmentLabel) ? null : environmentLabel.Trim() })).AllowAnonymous();
+var environmentLabel = string.IsNullOrWhiteSpace(app.Configuration["Hosting:EnvironmentLabel"]) ? null : app.Configuration["Hosting:EnvironmentLabel"]!.Trim();
+// database: nombre (solo el nombre, sin servidor ni credenciales) de la base a la que está conectado este sitio; SOLO en ambientes con etiqueta
+// (staging), para que la cinta de la web muestre contra qué base se trabaja. En producción es null: /health es anónimo y no la expone.
+string? environmentDatabase = null;
+if (environmentLabel is not null)
+{
+    try
+    {
+        var catalog = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(app.Configuration.GetConnectionString("Teikem")).InitialCatalog;
+        environmentDatabase = string.IsNullOrWhiteSpace(catalog) ? null : catalog;
+    }
+    catch { /* cadena de conexión ilegible: sin nombre */ }
+}
+app.MapGet("/health", () => Results.Ok(new { status = "ok", utc = DateTime.UtcNow, environment = environmentLabel, database = environmentDatabase })).AllowAnonymous();
 // La web es una aplicación de una sola página: cualquier ruta que no sea del API cae en index.html.
 if (hasWeb) app.MapFallbackToFile("{*path:regex(^(?!api/|health).*$)}", "index.html", staticOptions);
 

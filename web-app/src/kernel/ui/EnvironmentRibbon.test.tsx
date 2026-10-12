@@ -14,10 +14,19 @@ describe('EnvironmentRibbon', () => {
     return render(<EnvironmentRibbon />)
   }
 
-  it('con environment = STAGING muestra la cinta y antepone la etiqueta al título', async () => {
-    await mount({ status: 'ok', environment: 'STAGING' })
-    expect(await screen.findByRole('status')).toHaveTextContent('STAGING')
+  it('con environment = STAGING muestra la cinta con el nombre de la base y antepone la etiqueta al título', async () => {
+    await mount({ status: 'ok', environment: 'STAGING', database: 'Teikem_Staging' })
+    const ribbon = await screen.findByRole('status')
+    expect(ribbon).toHaveTextContent('STAGING')
+    expect(ribbon).toHaveTextContent('Teikem_Staging')
     await waitFor(() => expect(document.title).toBe('[STAGING] Teikem'))
+  })
+
+  it('sin nombre de base (database null) muestra la cinta sin él', async () => {
+    await mount({ status: 'ok', environment: 'STAGING', database: null })
+    const ribbon = await screen.findByRole('status')
+    expect(ribbon).toHaveTextContent(/^STAGING · \S/)
+    expect(ribbon.querySelector('.env-db')).toBeNull()
   })
 
   it('en producción (environment null) no pinta nada ni toca el título', async () => {
