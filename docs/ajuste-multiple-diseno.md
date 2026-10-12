@@ -1,13 +1,13 @@
 # Ajuste múltiple: poner al día el inventario por producto y posición (diseño, 2026-10-12)
 
-> **Estado: SOLO DISEÑO. No hay código.** Pedido de Luis (2026-10-12), a partir de lo que pidió el supervisor del almacén de Advance Depot. Todo lo de abajo es lo conversado y acordado con Luis; lo que sigue abierto está en la sección 12.
+> **Estado: SOLO DISEÑO. No hay código.** Pedido de Luis (2026-10-12), a partir de lo que pidió el supervisor del almacén de Advance Depot. Todo lo de abajo es lo conversado y acordado con Luis; las decisiones tomadas están en la sección 12.
 
 ## 1. Por qué
 En el almacén de Depot hoy todo se trabaja por **ajuste**: no se registra cuándo entró ni cuándo salió algo. Luis quiere cambiar eso y que se usen recibo y despacho, pero mientras se ponen al día, el supervisor pidió que el ajuste permita **varias posiciones a la vez**. Dani hace el inventario **semanal** y ajusta para sacar el reporte de inventario.
 
 Dos intenciones que hay que sostener a la vez:
 - **Facilitar** la puesta al día de Dani (muchos productos, muchas posiciones).
-- **No** facilitar el ajuste para todo el mundo ni para siempre: el objetivo sigue siendo que dejen de usar ajustes y pasen a recibo y despacho. Por eso es una pantalla aparte, con permiso y con un interruptor que solo Luis enciende y apaga. **El ajuste normal no se toca.**
+- **No** facilitar el ajuste para todo el mundo ni para siempre: el objetivo sigue siendo que dejen de usar ajustes y pasen a recibo y despacho. Por eso es una pantalla aparte y con un **permiso propio** que el administrador asigna (y quita) a quien quiera desde la pantalla de Roles. **El ajuste normal no se toca.**
 
 Descartado (y por qué): el desplegable de posición del ajuste normal con selección múltiple y «la misma cantidad a cada posición». Las posiciones casi nunca tienen la misma cantidad (se llegaría a negativos o a ajustes falsos) y haría más cómodo el ajuste para todos para siempre. La alternativa que sigue vigente para el inventario masivo es el **conteo cíclico** (cada posición con su cantidad real, con cierre automático de los que cuadran), que es el camino formal.
 
@@ -19,7 +19,7 @@ Descartado (y por qué): el desplegable de posición del ajuste normal con selec
 - Hay `Idempotency-Key` en escrituras (el doble clic no duplica) y auditoría de entidades.
 
 ## 3. Qué se construye (resumen)
-Un botón **«Ajuste múltiple»** en *Productos e inventario*, con **permiso propio** y un **interruptor por compañía** que solo Luis maneja, que abre una pantalla donde se:
+Un botón **«Ajuste múltiple»** en *Productos e inventario*, con **permiso propio** (el botón solo lo ve quien tenga ese permiso), que abre una pantalla donde se:
 1. escoge el **almacén**,
 2. se agregan **varios productos**; de cada uno aparecen **todas las posiciones donde hay existencia**, con la cantidad del sistema,
 3. se escribe, por posición, **lo que hay ahora mismo**; el sistema calcula si sube o baja,
@@ -61,33 +61,37 @@ Cada línea se registra **como hoy**: un movimiento de tipo Ajuste por producto 
 - **Pestaña «Historial»** de la pantalla: pasadas anteriores (fecha, usuario, almacén, líneas, unidades) con filtros; el detalle muestra cada línea con *En sistema / Hay ahora / Diferencia*. Se puede exportar.
 - El **Reporte de ajustes** que ya existe en *Productos e inventario* incluye estos movimientos (son ajustes), separables por motivo «Inventario físico» y por origen.
 
-## 8. Permisos e interruptor
-- **Permiso nuevo** para ver y aplicar el ajuste múltiple (propuesto: `inventory.adjust.multi`, grupo WAREHOUSE, «Ajuste múltiple de inventario»). **No** va en ningún rol por defecto: se asigna a mano (supervisor, Dani).
-- **Interruptor por compañía, apagado por defecto, que solo Luis enciende y apaga** (administrador de plataforma, no el administrador de la compañía). Apagado: el botón no aparece, la ruta responde 404/403 y el API rechaza la escritura aunque alguien tenga el permiso. Se evalúa implementarlo con el mecanismo de **módulos de la compañía** (el que ya controla `WMS_LOTSERIAL`) si su alta/baja ya es solo de plataforma; si no, un campo de la compañía editable solo por administrador de plataforma. (Verificar al implementar.)
-- Cada alta y baja del interruptor y de la asignación del permiso queda en la bitácora de seguridad (la asignación de permisos ya exige MFA reciente).
+## 8. Permiso (sin interruptor aparte)
+- **Un permiso nuevo** para ver y aplicar el ajuste múltiple (propuesto: `inventory.adjust.multi`, grupo WAREHOUSE, «Ajuste múltiple de inventario»). Se registra en el catálogo de permisos y **no** va en ningún rol por defecto.
+- **El permiso es el encendido y el apagado.** El administrador de la compañía (o el de plataforma) entra a la aplicación, a **Roles**, y le asigna el permiso al rol que quiera; para apagarlo para alguien, se lo quita. Sin el permiso el botón no aparece y el API rechaza la escritura (403). **No hay un interruptor aparte**: no se agrega ninguna columna a la compañía ni un endpoint de plataforma. (En una versión anterior de este diseño había un interruptor por compañía que solo cambiaba el administrador de plataforma; se descartó por innecesario.)
+- Asignar o quitar el permiso ya exige MFA reciente y queda en la bitácora de seguridad (cambio de rol/permisos), como cualquier otro permiso.
+- No se crea un rol nuevo en esta entrega: Luis asigna el permiso al rol que corresponda.
 
 ## 9. Qué queda fuera de esta fase
 - Productos con **serie**.
 - **Reversa** de un ajuste múltiple (se corrige con otro ajuste múltiple; el historial lo deja a la vista).
 - **App del aparato** (solo web).
-- **Pegar desde Excel** / carga por archivo (producto, posición, cantidad): útil para el inventario semanal grande; se decide después de ver el uso real.
-- **Reporte de uso** («ajustes por usuario y por día») para medir cuánto se sigue ajustando y decidir cuándo apagar el interruptor: recomendado, no incluido aquí.
+- **Pegar desde Excel** / carga por archivo: **descartado por Luis** (2026-10-12).
+- **Reporte de uso** («ajustes por usuario y por día»): **descartado por Luis** (2026-10-12).
 - Varios almacenes en un mismo documento.
 
 ## 10. Piezas a construir (cuando se apruebe)
-1. **Base de datos** (sección nueva y idempotente al final de `Diseño/logistica-db-update.sql`; estructura y seed están congelados): tablas `MultiAdjustment` y `MultiAdjustmentLine`; clase `MULTIADJUST` en `NumberSequence` (y su CHECK); motivo `PHYSICAL_COUNT` en el catálogo; permiso nuevo y su registro en el catálogo de permisos; el interruptor.
+1. **Base de datos** (sección nueva y idempotente al final de `Diseño/logistica-db-update.sql`; estructura y seed están congelados): tablas `MultiAdjustment` y `MultiAdjustmentLine`; clase `MULTIADJUST` en `NumberSequence` (y su CHECK); motivo `PHYSICAL_COUNT` en el catálogo; permiso nuevo y su registro en el catálogo de permisos.
 2. **Dominio e infraestructura:** entidades y configuración, `MultiAdjustmentService` (armar el documento, recalcular diferencias contra el saldo actual bloqueado, validar cada línea con las reglas del ajuste normal, aplicar los movimientos en una transacción y numerar), tipo de origen `MULTI_ADJUSTMENT` y su resolución en el Kárdex, motivo `PHYSICAL_COUNT` en las reglas de actividad y como motivo de sistema.
-3. **API:** `GET` de posiciones con existencia por producto y almacén (para llenar la pantalla), `POST` del documento (409 con las líneas cambiadas), `GET` historial y detalle; permiso `inventory.adjust.multi`; el interruptor; contratos en `openapi.json` y `schema.d.ts`.
+3. **API:** `GET` de posiciones con existencia por producto y almacén (para llenar la pantalla), `POST` del documento (409 con las líneas cambiadas), `GET` historial y detalle; permiso `inventory.adjust.multi` (en todos los endpoints); contratos en `openapi.json` y `schema.d.ts`.
 4. **Web:** botón y pantalla (agregar productos, bloques con posiciones, «Hay ahora», diferencia, agregar posición, pie con motivo/nota/resumen, confirmación), pestaña Historial, filtro de origen y columna «Origen» en Kárdex y reporte de ajustes; textos es/en.
-5. **Pruebas:** servicio (todo o nada, saldo que cambió → 409, no bajar de lo reservado ni negativo, líneas sin diferencia, lote, serie excluida, idempotencia, numeración), permisos e interruptor apagado, que el ajuste normal rechace el motivo `PHYSICAL_COUNT`, que siga contando en el Pulso, Kárdex con el origen, y pantalla (cálculo de diferencias, resumen, errores por línea).
+5. **Pruebas:** servicio (todo o nada, saldo que cambió → 409, no bajar de lo reservado ni negativo, líneas sin diferencia, lote, serie excluida, idempotencia, numeración), permisos (sin el permiso: 403 y el botón no aparece), que el ajuste normal rechace el motivo `PHYSICAL_COUNT`, que siga contando en el Pulso, Kárdex con el origen, y pantalla (cálculo de diferencias, resumen, errores por línea).
 6. **Manual, FAQ y decisiones:** capítulo de inventario, y este documento pasa a «decisiones».
 
 ## 11. Ramas y entrega
-Igual que la IP preferida: en **`Depot-Implementation`** (producción corre de ahí) como **commits pequeños y aislados** (base de datos, servicio, API, web, pruebas), con el interruptor **apagado**; se prueba en **staging** (con la base restaurada de producción) y luego se pasan a `master` con `cherry-pick`, corriendo la suite de master encima. Los puntos donde master también se mueve y puede haber choques: `logistica-db-update.sql` (sección nueva al final), `InventoryController`, `ActivityRules`, `es.json`/`en.json`, `openapi.json`/`schema.d.ts`. No se crean ramas nuevas sin que Luis lo pida.
+Igual que la IP preferida: en **`Depot-Implementation`** (producción corre de ahí) como **commits pequeños y aislados** (base de datos, servicio, API, web, pruebas), sin el permiso asignado a ningún rol (nadie lo ve hasta que Luis lo asigne); se prueba en **staging** (con la base restaurada de producción) y luego se pasan a `master` con `cherry-pick`, corriendo la suite de master encima. Los puntos donde master también se mueve y puede haber choques: `logistica-db-update.sql` (sección nueva al final), `InventoryController`, `ActivityRules`, `es.json`/`en.json`, `openapi.json`/`schema.d.ts`. No se crean ramas nuevas sin que Luis lo pida.
 
-## 12. Decisiones abiertas
-1. ¿El interruptor usa el mecanismo de módulos de la compañía o un campo propio? (depende de quién puede hoy prender y apagar módulos; se verifica al implementar).
-2. ¿Hace falta un tope de líneas por documento? Propuesta: **sin tope fijo**; si en pruebas un documento muy grande resulta lento, se agrega como ajuste de la compañía (no fijo en el código).
-3. ¿Se agrega «pegar desde Excel» desde el principio o después de ver el uso real?
-4. ¿Se incluye el reporte de uso («ajustes por usuario y por día») en esta entrega?
-5. ¿Los roles que reciban el permiso: solo supervisor y Dani, o también un rol nuevo «Ajuste múltiple»?
+## 12. Decisiones
+**Tomadas (Luis, 2026-10-12):**
+1. **Sin interruptor aparte.** El permiso es el encendido y el apagado: lo asigna el administrador de la compañía (o de plataforma) a los roles desde la pantalla de Roles de la aplicación (sección 8). No se usa el mecanismo de módulos ni se agrega campo ni endpoint de plataforma.
+2. **Sin tope de líneas por documento.** Si en las pruebas un documento muy grande resulta lento, se vuelve a ver entonces.
+3. **Sin «pegar desde Excel».** Descartado.
+4. **Sin reporte de uso.** Descartado.
+5. **El permiso lo asigna Luis**, desde Roles, al rol que corresponda; no se crea un rol nuevo.
+
+**Abiertas:** ninguna por ahora.
