@@ -9140,6 +9140,8 @@ export interface paths {
                     fromWarehousePublicIds?: string[];
                     toWarehousePublicIds?: string[];
                     manualOnly?: boolean;
+                    userIds?: number[];
+                    includeSystem?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -9199,6 +9201,8 @@ export interface paths {
                     toWarehousePublicIds?: string[];
                     includeOwn?: boolean;
                     manualOnly?: boolean;
+                    userIds?: number[];
+                    includeSystem?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -20140,6 +20144,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/inventory/transactions/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["KardexUserDto"][];
+                        "application/json": components["schemas"]["KardexUserDto"][];
+                        "text/json": components["schemas"]["KardexUserDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -26817,6 +26858,13 @@ export interface components {
             matchedBy?: string | null;
             ambiguous?: boolean;
             candidates?: string[] | null;
+        };
+        KardexUserDto: {
+            /** Format: int32 */
+            userId?: number | null;
+            name?: string | null;
+            isActive?: boolean;
+            isSystem?: boolean;
         };
     };
     responses: never;

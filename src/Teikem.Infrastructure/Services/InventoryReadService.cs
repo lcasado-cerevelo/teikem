@@ -240,6 +240,13 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
             var ownerProducts = await OwnerProductIdsAsync(q.OwnerClientPublicIds, q.IncludeOwn, ct);
             query = query.Where(t => ownerProducts.Contains(t.ProductId));
         }
+        if (q.UserIds is { Length: > 0 } || q.IncludeSystem)
+        {
+            // Filtro Usuario (2026-10-12): quien hizo el movimiento (CreatedBy); «Sistema» = sin usuario. Varios se combinan con O.
+            var userIds = (q.UserIds ?? Array.Empty<int>()).Distinct().ToList();
+            var includeSystem = q.IncludeSystem;
+            query = query.Where(t => (includeSystem && t.CreatedBy == null) || (t.CreatedBy != null && userIds.Contains(t.CreatedBy.Value)));
+        }
         if (fromUtc is DateTime f) query = query.Where(t => t.CreatedAtUtc >= f);
         if (toUtc is DateTime to) query = query.Where(t => t.CreatedAtUtc < to);
 
@@ -401,6 +408,31 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
         var result = new List<InventoryOwnerDto>(clients.Count + 1);
         if (scope.OwnerClientId is null) result.Add(new InventoryOwnerDto(null, KardexRules.OwnLabel, true));
         result.AddRange(clients);
+        return result;
+    }
+
+    /// <summary>
+    /// 2026-10-12 — opciones del filtro Usuario del Kárdex: los usuarios que tienen al menos un movimiento (dentro del scope), por nombre, con los
+    /// dados de baja marcados (IsActive = false: su historial sigue siendo consultable), y «Sistema (sin usuario)» primero solo si existen
+    /// movimientos sin usuario.
+    /// </summary>
+    public async Task<IReadOnlyList<KardexUserDto>> KardexUsersAsync(InventoryScope scope, CancellationToken ct)
+    {
+        scope ??= InventoryScope.Any;
+        var query = db.Set<InventoryTransaction>().AsNoTracking().AsQueryable();
+        var productIds = await FilteredProductIdsAsync(scope, null, null, ct);
+        if (productIds is not null) query = query.Where(t => productIds.Contains(t.ProductId));
+        var userIds = await query.Where(t => t.CreatedBy != null).Select(t => t.CreatedBy!.Value).Distinct().ToListAsync(ct);
+        var hasSystem = await query.AnyAsync(t => t.CreatedBy == null, ct);
+        var users = userIds.Count == 0
+            ? new List<KardexUserDto>()
+            : (await db.Users.AsNoTracking().Where(u => userIds.Contains(u.Id))
+                .Select(u => new { u.Id, Name = u.FullName ?? u.Email ?? u.UserName ?? "", u.IsActive }).ToListAsync(ct))
+                .OrderBy(u => u.Name, StringComparer.CurrentCultureIgnoreCase).ThenBy(u => u.Id)
+                .Select(u => new KardexUserDto(u.Id, u.Name, u.IsActive, false)).ToList();
+        var result = new List<KardexUserDto>(users.Count + 1);
+        if (hasSystem) result.Add(new KardexUserDto(null, KardexRules.SystemUserLabel(tenant.Lang), true, true));
+        result.AddRange(users);
         return result;
     }
 

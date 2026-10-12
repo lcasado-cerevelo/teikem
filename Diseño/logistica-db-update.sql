@@ -508,3 +508,12 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_CargoLine_PackageNumbe
     CREATE INDEX IX_CargoLine_PackageNumber ON dbo.CargoLine(PackageNumber) INCLUDE (TransportOrderId)
         WHERE IsActive = 1 AND PackageNumber IS NOT NULL;
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-12 — Filtro Usuario del Kárdex (docs/kardex-filtro-usuario-diseno.md). Las opciones del filtro leen los usuarios distintos de los
+   movimientos de la compañía (InventoryTransaction.CreatedBy) y el filtro es una condición más sobre esa columna; este índice evita recorrer
+   todo el libro de movimientos. Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_InvTxn_Tenant_CreatedBy' AND object_id = OBJECT_ID('dbo.InventoryTransaction'))
+    CREATE INDEX IX_InvTxn_Tenant_CreatedBy ON dbo.InventoryTransaction(TenantId, CreatedBy);
+GO

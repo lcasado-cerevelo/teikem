@@ -100,6 +100,7 @@ public class WmsControllerSecurityTests
         [(typeof(InventoryController), nameof(InventoryController.TransactionsSummary))] = PermissionCatalog.InventoryView,
         [(typeof(InventoryController), nameof(InventoryController.Transaction))] = PermissionCatalog.InventoryView,
         [(typeof(InventoryController), nameof(InventoryController.Owners))] = PermissionCatalog.InventoryView,
+        [(typeof(InventoryController), nameof(InventoryController.TransactionUsers))] = PermissionCatalog.InventoryView,
         [(typeof(InventoryController), nameof(InventoryController.RunReconciliation))] = PermissionCatalog.InventoryAdjust,
         // Lote 14 (P2, D14): estado de la revisión en segundo plano, con inventory.adjust como la conciliación.
         [(typeof(InventoryController), nameof(InventoryController.ReconciliationStatus))] = PermissionCatalog.InventoryAdjust,
@@ -338,7 +339,7 @@ public class WmsControllerSecurityTests
         Assert.Equal(PermissionCatalog.WarehouseIssue, Expected[(typeof(ManualIssuesController), nameof(ManualIssuesController.Create))]);
         Assert.Equal(PermissionCatalog.WarehouseIssue, Expected[(typeof(ManualIssuesController), nameof(ManualIssuesController.Delete))]);
         Assert.Equal(ModuleOf[typeof(PickBatchesController)], ModuleOf[typeof(ManualIssuesController)]);
-        Assert.Equal(162, Expected.Count); // 2026-10-11: + 1 (CaptureOffline, conteo sin señal) = 161; + 1 (ReceiptsController.SummaryByWarehouse) = 162; // 132 de master + 1 de reparto por posición (Distribute) + 1 de verificación de línea (CheckLine) + 12 de RentalsController + 3 de RentalReturnsController + 4 de RentalProcessesController + 5 de ManualIssuesController
+        Assert.Equal(163, Expected.Count); // 2026-10-12: + 1 (InventoryController.TransactionUsers, filtro Usuario del Kárdex) = 163; 2026-10-11: + 1 (CaptureOffline, conteo sin señal) = 161; + 1 (ReceiptsController.SummaryByWarehouse) = 162; // 132 de master + 1 de reparto por posición (Distribute) + 1 de verificación de línea (CheckLine) + 12 de RentalsController + 3 de RentalReturnsController + 4 de RentalProcessesController + 5 de ManualIssuesController
     }
 
     [Fact]
