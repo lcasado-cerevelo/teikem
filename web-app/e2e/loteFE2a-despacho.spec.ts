@@ -136,8 +136,9 @@ test.describe('Sala de despacho (Lote F-E2a)', () => {
     const headers = { Authorization: `Bearer ${await apiToken(request)}` }
     // un día futuro SIN rutas (las corridas anteriores dejaron las suyas en otros días): «Rutas de hoy» solo trae lo de esta corrida
     const busy = new Set((await ok<TripListItemDto[]>(request.get(`${API_URL}/api/v1/trips?from=${tenantDay(2)}&to=${tenantDay(59)}`, { headers }), 'rutas ya existentes')).map((t) => t.planDate))
-    let offset = 2 + (Math.floor(Date.now() / 1000) % 50)
-    while (busy.has(tenantDay(offset)) && offset < 59) offset++
+    // rango propio (2..29): el recorrido de F-E2b usa 32..58 y ambos corren en paralelo
+    let offset = 2 + (Math.floor(Date.now() / 1000) % 28)
+    while (busy.has(tenantDay(offset)) && offset < 29) offset++
     const day = tenantDay(offset)
     const license = tenantDay(300)
 
@@ -215,7 +216,6 @@ test.describe('Sala de despacho (Lote F-E2a)', () => {
     for (const name of ['Planificar el día', 'Nueva ruta', 'Reasignar por zona', 'Optimizar', 'Despachar ruta']) await expect(header.getByRole('button', { name })).toBeVisible()
     for (const title of ['Órdenes sin asignar', 'Ruta activa', 'Choferes', 'Rutas de hoy']) await expect(page.getByRole('heading', { name: title })).toBeVisible()
     await expect(page.getByText('No hay rutas para esta fecha. Use «Planificar el día» o «Nueva ruta».')).toBeVisible()
-    await expect(page.getByText(/mapa/i)).toHaveCount(0)
     const filterByClient = async () => {
       await page.getByRole('group', { name: 'Filtros de las órdenes sin asignar' }).getByRole('combobox', { name: 'Cliente' }).fill(clientName)
       await page.getByRole('option', { name: new RegExp(clientName) }).click()
@@ -315,7 +315,8 @@ test.describe('Sala de despacho (Lote F-E2a)', () => {
     await expect(page.getByRole('button', { name: `Subir la orden ${b1.orderNumber}` })).toBeDisabled()
     await page.getByRole('button', { name: `Subir la orden ${b2.orderNumber}` }).click()
     await expect(first()).toContainText(b2.orderNumber ?? '')
-    expect((await detailOf(routeB.publicId ?? '')).stops?.map((s) => s.orderNumber)).toEqual([b2.orderNumber, b1.orderNumber])
+    // el orden se ve en pantalla al instante (optimista, F-E2b) y el servidor termina de guardar un momento después: se espera, no se lee de inmediato
+    await expect.poll(async () => (await detailOf(routeB.publicId ?? '')).stops?.map((s) => s.orderNumber)).toEqual([b2.orderNumber, b1.orderNumber])
     await page.getByRole('button', { name: `Quitar la orden ${b1.orderNumber} de la ruta` }).click()
     await expect(stopsList.getByRole('listitem')).toHaveCount(1)
     await expect(row(b1)).toHaveCount(1) // vuelve a «sin asignar»

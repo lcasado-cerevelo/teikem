@@ -225,6 +225,17 @@ function route(call: Call): unknown {
       return touch(d)
     }
   }
+  const loc = /^\/api\/v1\/trips\/([^/]+)\/stops\/(\d+)\/location$/.exec(p)
+  if (loc && method === 'PUT') {
+    const d = find(loc[1])
+    if (!d) return problem(404, 'Ruta no encontrada.', 'not_found')
+    const target = (d.stops as Rec[]).find((s) => s.id === Number(loc[2]))
+    if (!target) return problem(404, 'Parada no encontrada en esta ruta.', 'not_found')
+    target.point = { lat: body?.lat, lng: body?.lng }
+    target.geocodeAccuracyCode = 'MANUAL'
+    target.isApproximate = false
+    return touch(d)
+  }
   if (orderOf && method === 'DELETE') {
     const d = find(orderOf[1])
     if (!d) return problem(404, 'Ruta no encontrada.', 'not_found')
@@ -269,6 +280,9 @@ export async function stubFetch(req: Request): Promise<Response> {
   }
   const call: Call = { method: req.method, url: new URL(req.url), body, headers: req.headers }
   mock.calls.push(call)
-  const out = mock.override?.(call) ?? route(call)
+  // el override puede devolver una promesa (para sostener una respuesta y ver el estado optimista) o undefined (= responde el simulador)
+  const raw = mock.override?.(call)
+  const held = raw === undefined || raw === null ? undefined : await raw
+  const out = held ?? route(call)
   return out instanceof Response ? out : new Response(JSON.stringify(out), { status: 200, headers: { 'Content-Type': 'application/json' } })
 }

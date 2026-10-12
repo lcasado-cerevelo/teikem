@@ -1,24 +1,27 @@
 // Lote F-E2a — «Ruta activa» (maqueta `dispatch()`, sin el mapa: llega en F-E2b): código y estatus REAL, zona y paradas, chofer y vehículo con su
 // disponibilidad, avance, avisos y bloqueantes de la ruta, resumen de la última optimización con lo que «no cupo», y «Órdenes en esta ruta»
 // con ▲ ▼ y quitar. Cada acción se pinta solo con su permiso Y con el estatus que el servidor permite (`isEditable`, `canEditHeader`).
-import { useId, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { zonedInputFromUtc } from '../../kernel/api/tenantZone'
 import { StatusChip } from '../../kernel/catalogs'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
-import { EmptyState, IconPin, IconRoute, IconTrash, Panel, Spinner, toast } from '../../kernel/ui'
+import { EmptyState, IconPin, IconRoute, IconTrash, Panel, RouteMap, Spinner, toast } from '../../kernel/ui'
 import { CommentDialog } from '../drivers/CommentDialog'
-import { useCancelTrip, useCompleteTrip, usePatchTrip, useRemoveOrder, useSetSequence, useStartTrip } from './dispatchApi'
+import { useCancelTrip, useCompleteTrip, usePatchTrip, useRemoveOrder, useSetSequence, useSetStopLocation, useStartTrip } from './dispatchApi'
 import {
   attendedStops,
   buildHeaderPatch,
   durationText,
+  firstApproximateStop,
+  mapStops,
   moveStop,
+  orderedStops,
   percent,
   problemMessage,
   round1,
-  stopIds,
+  stopHasPoint,
   stopsLabel,
   tripActionsOf,
   type DispatchPerms,
@@ -27,6 +30,7 @@ import {
   type TripDetail,
 } from './dispatchRules'
 import { withCurrent, type Choice } from './fleetChoices'
+import { PinModal } from './PinModal'
 import { RouteStopsList } from './RouteStopsList'
 import { TripIssues } from './TripIssues'
 
@@ -46,6 +50,13 @@ export interface OptimizeNote {
 }
 
 type Dialog = 'start' | 'close' | 'delete' | null
+
+/** Orden pedido y aún sin confirmar (arrastre o ▲ ▼): vale mientras la ruta siga en la versión (`rowVersion`) con la que se pidió. */
+interface PendingOrder {
+  tripId: string
+  base: string
+  ids: number[]
+}
 
 export function ActiveRoutePanel({
   detail,
@@ -86,7 +97,20 @@ export function ActiveRoutePanel({
   const start = useStartTrip()
   const complete = useCompleteTrip()
   const cancel = useCancelTrip()
+  const setLocation = useSetStopLocation()
   const [dialog, setDialog] = useState<Dialog>(null)
+  const [selectedStop, setSelectedStop] = useState<number | null>(null)
+  const [pinStop, setPinStop] = useState<number | null>(null)
+  const [pending, setPending] = useState<PendingOrder | null>(null)
+  // paradas en el orden mostrado: el pedido (optimista) mientras viaja la petición, si no el del servidor
+  const shownStops = useMemo(() => {
+    const server = orderedStops(detail?.stops)
+    if (!detail || !pending || pending.tripId !== (detail.publicId ?? '') || pending.base !== (detail.rowVersion ?? '')) return server
+    const byId = new Map(server.map((s) => [s.id, s]))
+    const next = pending.ids.map((id) => byId.get(id)).filter((s): s is RouteStop => !!s)
+    return next.length === server.length ? next : server
+  }, [detail, pending])
+  const mapData = useMemo(() => mapStops(shownStops, t), [shownStops, t])
   // lo pedido en un select mientras viaja la petición (el clic no debe parecer ignorado)
   const [asked, setAsked] = useState<{ driver?: string; vehicle?: string }>({})
 
@@ -104,7 +128,12 @@ export function ActiveRoutePanel({
 
   const tripId = detail.publicId ?? ''
   const actions = tripActionsOf(detail, perms)
-  const busy = patch.isPending || sequence.isPending || remove.isPending
+  const busy = patch.isPending || sequence.isPending || remove.isPending || setLocation.isPending
+  const canPin = actions.edit
+  const selected = shownStops.find((s) => s.id === selectedStop) ?? null
+  const selectedIndex = selected ? shownStops.indexOf(selected) : -1
+  const pinTarget = shownStops.find((s) => s.id === pinStop) ?? null
+  const firstApprox = canPin ? firstApproximateStop(shownStops) : undefined
   const mine = message && message.tripId === tripId ? message : null
   const total = detail.stopCount ?? 0
   const done = attendedStops(detail.stops)
@@ -126,15 +155,20 @@ export function ActiveRoutePanel({
     }
   }
 
-  const move = async (index: number, delta: -1 | 1) => {
-    const next = moveStop(stopIds(detail.stops), index, delta)
-    if (!next) return
+  // ▲ ▼, teclado en el asa o arrastre: la lista y el plano cambian al instante; si el servidor niega, vuelven al orden anterior con su texto exacto
+  const applyOrder = async (next: number[]) => {
     onMessage(null)
+    setPending({ tripId, base: detail.rowVersion ?? '', ids: next })
     try {
       await sequence.mutateAsync({ publicId: tripId, routeStopIds: next, rowVersion: detail.rowVersion })
     } catch (err) {
+      setPending(null)
       fail(err)
     }
+  }
+  const move = (index: number, delta: -1 | 1) => {
+    const next = moveStop(shownStops.map((s) => s.id ?? 0), index, delta)
+    if (next) void applyOrder(next)
   }
 
   const removeStop = async (stop: RouteStop) => {
@@ -187,6 +221,30 @@ export function ActiveRoutePanel({
           {mine.text}
         </div>
       )}
+
+      <div className="disp-sec disp-map-sec">
+        <RouteMap
+          stops={mapData}
+          selectedId={selected?.id ?? null}
+          onSelect={(id) => setSelectedStop(Number(id))}
+          label={t('dispatch.map.label', { code: detail.code ?? '' })}
+          emptyHint={t(canPin ? 'dispatch.map.emptyCanPin' : 'dispatch.map.emptyHint')}
+        />
+        {selected && (
+          <div className="disp-map-sel" role="status">
+            <span>
+              {t('dispatch.map.selected', { number: selectedIndex + 1, order: selected.orderNumber ?? '' })} ·{' '}
+              {[selected.consigneeName, selected.city].filter(Boolean).join(' · ')} ·{' '}
+              {t(!stopHasPoint(selected) ? 'dispatch.stops.noPin' : `routeMap.accuracy.${accuracyKey(selected)}`)}
+            </span>
+            {canPin && (
+              <button type="button" className="btn sm" onClick={() => setPinStop(selected.id ?? null)}>
+                <IconPin /> {t(stopHasPoint(selected) ? 'dispatch.pin.move' : 'dispatch.pin.set')}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="disp-sec">
         <h3>{t('dispatch.active.assign')}</h3>
@@ -269,7 +327,7 @@ export function ActiveRoutePanel({
       {(detail.issues ?? []).length > 0 && (
         <div className="disp-sec">
           <h3>{t('dispatch.issues.title')}</h3>
-          <TripIssues issues={detail.issues} />
+          <TripIssues issues={detail.issues} onApproximate={firstApprox ? () => { setSelectedStop(firstApprox.id ?? null); setPinStop(firstApprox.id ?? null) } : undefined} />
         </div>
       )}
 
@@ -302,8 +360,32 @@ export function ActiveRoutePanel({
 
       <div className="disp-sec">
         <h3>{t('dispatch.stops.title')}</h3>
-        <RouteStopsList stops={detail.stops} editable={actions.edit} busy={busy} onMove={(i, d) => void move(i, d)} onRemove={(s) => void removeStop(s)} />
+        <RouteStopsList
+          stops={shownStops}
+          editable={actions.edit}
+          canPin={canPin}
+          busy={busy}
+          selectedId={selected?.id ?? null}
+          onSelect={setSelectedStop}
+          onMove={move}
+          onReorder={(ids) => void applyOrder(ids)}
+          onPin={(s) => setPinStop(s.id ?? null)}
+          onRemove={(s) => void removeStop(s)}
+        />
       </div>
+
+      {pinTarget && (
+        <PinModal
+          key={pinTarget.id}
+          stop={pinTarget}
+          reference={mapData}
+          onClose={() => setPinStop(null)}
+          onSave={async ({ lat, lng }) => {
+            await setLocation.mutateAsync({ publicId: tripId, routeStopId: pinTarget.id ?? 0, lat, lng, rowVersion: detail.rowVersion })
+            toast.success(t('dispatch.pin.done', { number: pinTarget.orderNumber ?? '' }))
+          }}
+        />
+      )}
 
       <CommentDialog
         open={dialog === 'start'}
@@ -346,6 +428,11 @@ export function ActiveRoutePanel({
       </CommentDialog>
     </Panel>
   )
+}
+
+/** manual | approximate | exact de una parada con punto (mismas claves de `routeMap.accuracy.*`). */
+function accuracyKey(s: RouteStop): 'manual' | 'approximate' | 'exact' {
+  return (s.geocodeAccuracyCode ?? '').toUpperCase() === 'MANUAL' ? 'manual' : s.isApproximate ? 'approximate' : 'exact'
 }
 
 /** «+3» / «-12» / «0». */

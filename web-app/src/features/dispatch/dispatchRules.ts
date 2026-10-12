@@ -7,6 +7,8 @@ import { TRANSITION_COMMENT_MAX } from '../../kernel/catalogs'
 import type { components } from '../../kernel/api/schema'
 import type { TParams } from '../../kernel/i18n'
 import { matchesQ } from '../../kernel/ui/matchesQ'
+import { accuracyOf, isGeoPoint, stateOf } from '../../kernel/ui/routeMapRules'
+import type { RouteMapStop } from '../../kernel/ui/RouteMap'
 
 type Schemas = components['schemas']
 export type TripListItem = Schemas['TripListItemDto']
@@ -106,6 +108,90 @@ export function moveStop(ids: readonly number[], index: number, delta: -1 | 1): 
 
 export function orderedStops(stops: readonly RouteStop[] | null | undefined): RouteStop[] {
   return [...(stops ?? [])].sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0))
+}
+
+// ---------------------------------------------------------------- arrastrar para reordenar (F-E2b)
+
+/** Mueve el elemento de la posición `from` a la posición `to` (las demás se corren). Posiciones fuera de rango → null. */
+export function reorderIds(ids: readonly number[], from: number, to: number): number[] | null {
+  if (from === to || from < 0 || to < 0 || from >= ids.length || to >= ids.length) return null
+  const next = [...ids]
+  const [moved] = next.splice(from, 1)
+  next.splice(to, 0, moved)
+  return next
+}
+
+/** Fila sobre la que está el puntero: la primera cuyo borde de abajo (`bottoms`, en px de pantalla) queda por debajo de `y`; pasado el final, la última. */
+export function rowIndexAt(bottoms: readonly number[], y: number): number {
+  if (bottoms.length === 0) return -1
+  const i = bottoms.findIndex((b) => y <= b)
+  return i === -1 ? bottoms.length - 1 : i
+}
+
+// ---------------------------------------------------------------- plano y pin manual (F-E2b)
+
+/** ¿La parada tiene coordenadas dibujables? (el detalle trae `point` solo si el servidor la geocodificó o se puso a mano). */
+export function stopHasPoint(s: Pick<RouteStop, 'point'>): boolean {
+  return isGeoPoint(s.point)
+}
+
+/** Paradas (ya en el orden mostrado) como las pide el plano: la secuencia mostrada, el nombre accesible «Parada 3 · Consignatario · pueblo», precisión y estado. */
+export function mapStops(stops: readonly RouteStop[], t: TFn): RouteMapStop[] {
+  return stops.map((s, i) => ({
+    id: s.id ?? 0,
+    seq: i + 1,
+    label: [t('dispatch.map.stop', { number: i + 1 }), s.consigneeName || s.orderNumber, s.city].filter(Boolean).join(' · '),
+    short: s.orderNumber ?? undefined,
+    point: s.point ?? null,
+    accuracy: accuracyOf(s.geocodeAccuracyCode),
+    state: stateOf(s.statusCode),
+  }))
+}
+
+/** La primera parada con pin aproximado o sin pin (la misma definición del aviso APPROXIMATE_PINS del servidor: `isApproximate`). */
+export function firstApproximateStop(stops: readonly RouteStop[]): RouteStop | undefined {
+  return stops.find((s) => s.isApproximate === true)
+}
+
+/** «18,4655» o «18.4655» → 18.4655; lo que no es un número decimal escrito con cifras → null. */
+export function parseCoordinate(text: string): number | null {
+  const v = text.trim().replace(',', '.')
+  if (!/^[+-]?(\d+(\.\d*)?|\.\d+)$/.test(v)) return null
+  const n = Number(v)
+  return Number.isFinite(n) ? n : null
+}
+
+export interface PinValues {
+  lat: string
+  lng: string
+}
+
+export const pinValuesOf = (s: Pick<RouteStop, 'point'> | null | undefined): PinValues =>
+  s && isGeoPoint(s.point) ? { lat: String(s.point.lat), lng: String(s.point.lng) } : { lat: '', lng: '' }
+
+/** Latitud y longitud con los mismos textos y rangos del servidor (`RouteEditRules.ValidateLocation`); acepta coma o punto decimal. */
+export function pinSchema(t: TFn) {
+  return z.object({ lat: z.string(), lng: z.string() }).superRefine((v, ctx) => {
+    for (const [field, max, range] of [['lat', 90, 'dispatch.pin.latRange'] as const, ['lng', 180, 'dispatch.pin.lngRange'] as const]) {
+      const raw = v[field].trim()
+      if (raw === '') {
+        ctx.addIssue({ code: 'custom', path: [field], message: t('dispatch.pin.required') })
+        continue
+      }
+      const n = parseCoordinate(raw)
+      if (n === null) ctx.addIssue({ code: 'custom', path: [field], message: t(field === 'lat' ? 'dispatch.pin.latNumber' : 'dispatch.pin.lngNumber') })
+      else if (Math.abs(n) > max) ctx.addIssue({ code: 'custom', path: [field], message: t(range) })
+    }
+  })
+}
+
+export function buildPinRequest(v: PinValues, rowVersion: string | null | undefined) {
+  return { lat: parseCoordinate(v.lat) ?? 0, lng: parseCoordinate(v.lng) ?? 0, rowVersion: rowVersion ?? null }
+}
+
+/** Las coordenadas tomadas del plano a 5 decimales (≈ 1 m): lo que se escribe en el diálogo. */
+export function coordText(n: number): string {
+  return String(Math.round(n * 1e5) / 1e5)
 }
 
 // ---------------------------------------------------------------- avisos y bloqueantes

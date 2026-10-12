@@ -165,6 +165,26 @@ export function useSetSequence() {
   })
 }
 
+/** Pin manual de una parada (`PUT /trips/{id}/stops/{routeStopId}/location`, `trips.plan`, ruta abierta): la precisión pasa a MANUAL y el servidor recalcula las ETAs. */
+export function useSetStopLocation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ publicId, routeStopId, lat, lng, rowVersion }: { publicId: string; routeStopId: number; lat: number; lng: number; rowVersion?: string | null }) =>
+      unwrap(
+        api.PUT('/api/v1/trips/{publicId}/stops/{routeStopId}/location', {
+          params: { path: { publicId, routeStopId } },
+          body: { lat, lng, rowVersion: rowVersion ?? null },
+          headers: idempotency(),
+        }),
+      ),
+    onSuccess: (trip) => {
+      qc.setQueryData([dispatchKeys.detail[0], trip.publicId], trip)
+      invalidateDispatch(qc)
+    },
+    onError: () => invalidateDispatch(qc),
+  })
+}
+
 /** `POST /trips/{id}/optimize`; después pide las corridas para comparar con la anterior (solo si existe). */
 export function useOptimizeTrip() {
   const qc = useQueryClient()

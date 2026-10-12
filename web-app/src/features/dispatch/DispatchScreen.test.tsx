@@ -52,7 +52,7 @@ beforeAll(() => setLang('es'))
 beforeEach(() => resetMock([T1()]))
 
 describe('Sala de despacho — pantalla', () => {
-  it('título, las tres columnas de la maqueta, la ruta activa con su estatus y sin mapa ni botones falsos', async () => {
+  it('título, las tres columnas de la maqueta, la ruta activa con su estatus y su plano, sin botones falsos', async () => {
     wrap()
     expect(screen.getByRole('heading', { level: 1, name: 'Sala de despacho' })).toBeInTheDocument()
     await screen.findByRole('list', { name: 'Órdenes en esta ruta' })
@@ -60,8 +60,9 @@ describe('Sala de despacho — pantalla', () => {
     expect(screen.getByRole('heading', { name: /Ruta activa/ })).toHaveTextContent('2026-0001')
     expect(screen.getByRole('heading', { name: /Ruta activa/ })).toHaveTextContent('Borrador')
     expect(screen.getByRole('heading', { name: /Ruta activa/ }).closest('.panel')).toHaveTextContent('R-01 · 2 paradas')
-    // sin mapa de F-E2b, sin tracking de F-E3
-    for (const fake of [/mapa/i, /^2D$/, /Sat/, /Tracking/i, /Pin manual/i]) expect(screen.queryByText(fake)).toBeNull()
+    // el plano esquemático (F-E2b) está; el conmutador 2D/Sat y el tracking en vivo (F-E3) no existen
+    expect(screen.getByRole('group', { name: 'Plano de la ruta 2026-0001' })).toBeInTheDocument()
+    for (const fake of [/^2D$/, /^Sat$/, /Tracking/i]) expect(screen.queryByText(fake)).toBeNull()
     for (const name of ['Planificar el día', 'Nueva ruta', 'Reasignar por zona', 'Optimizar', 'Despachar ruta']) expect(btn(name)).toBeInTheDocument()
   })
 

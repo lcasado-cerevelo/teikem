@@ -123,7 +123,35 @@
 .disp-zone-res{margin:8px 0 0;padding:8px 0;border-top:1px solid var(--line-2);font-size:12.5px}
 .disp-zone-res b{font-family:var(--mono)}
 
+/* F-E2b — plano de la ruta, selección pin↔fila, asa de arrastre */
+.disp-sec.disp-map-sec{padding:0}
+.disp-map-sel{display:flex;align-items:center;justify-content:space-between;gap:8px 12px;flex-wrap:wrap;padding:8px 16px;border-top:1px solid var(--line-2);font-size:12px;color:var(--muted);min-width:0}
+.disp-map-sel span{min-width:0;overflow-wrap:anywhere;flex:1 1 200px}
+.disp-map-sel .btn svg{width:14px;height:14px}
+.disp-stops{position:relative}
+.disp-stop{position:relative;flex-wrap:wrap}
+.disp-stop .body{flex:1 1 150px}
+.disp-stop .eta{margin-left:auto}
+.disp-stop .btns{margin-left:auto}
+.disp-stop.on{background:var(--flow-bg);box-shadow:inset 3px 0 0 var(--flow)}
+.disp-stop.drag{opacity:.55}
+.disp-stop.over-up{box-shadow:inset 0 3px 0 var(--flow)}
+.disp-stop.over-down{box-shadow:inset 0 -3px 0 var(--flow)}
+.disp-stops.dragging{user-select:none;cursor:grabbing}
+.disp-grip{flex:none;width:24px;height:28px;padding:0;border:0;border-radius:6px;background:transparent;color:var(--faint);display:inline-flex;align-items:center;justify-content:center;cursor:grab;touch-action:none}
+.disp-grip:hover{color:var(--text);background:var(--panel-2)}
+.disp-grip:focus-visible{outline:2px solid var(--flow);outline-offset:1px}
+.disp-grip:disabled{opacity:.4;cursor:default}
+.disp-grip svg{width:16px;height:16px}
+button.disp-stop-pick{border:0;background:transparent;color:inherit;font:inherit;text-align:left;padding:0;cursor:pointer;display:block}
+button.disp-stop-pick:focus-visible{outline:2px solid var(--flow);outline-offset:2px;border-radius:4px}
+.disp-pin-map{margin:4px 0 8px;min-width:0}
+.disp-pin-map h4{margin:8px 0 6px;font-size:11px;font-weight:600;color:var(--faint);text-transform:uppercase;letter-spacing:.05em}
+.disp-pin-map .rmap-plane{border:1px solid var(--line);border-radius:10px}
+
 @media (max-width:480px){
   .disp .unrow .ref{max-width:45%}
   .disp-sec{padding:12px}
+  .disp-sec.disp-map-sec{padding:0}
+  .disp-map-sel{padding:8px 12px}
 }

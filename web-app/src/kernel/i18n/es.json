@@ -1618,6 +1618,17 @@
       "trip": "Ruta actual"
     }
   },
+  "routeMap": {
+    "noStops": "La ruta no tiene paradas.",
+    "empty": "Ninguna parada tiene coordenadas todavía",
+    "emptyHint": "Cuando las paradas tengan pin aparecen aquí.",
+    "unlocated": "Sin ubicación: {count}",
+    "schematic": "Plano esquemático: muestra la posición relativa de las paradas, no las calles.",
+    "pickHint": "Toque el plano para tomar una posición aproximada.",
+    "accuracy": { "exact": "Pin exacto", "approximate": "Pin aproximado", "manual": "Pin manual" },
+    "state": { "pending": "Pendiente", "current": "En curso", "done": "Entregada", "failed": "Fallida" },
+    "legend": { "exact": "Pin exacto", "approximate": "Aproximado (centro del CP o del pueblo)", "manual": "Pin manual", "live": "Posición del chofer" }
+  },
   "dispatch": {
     "title": "Sala de despacho",
     "sub": "Arma rutas: selecciona órdenes, asígnalas a un chofer, optimiza y despacha",
@@ -1702,7 +1713,42 @@
       "moveUp": "Subir la orden {number}",
       "moveDown": "Bajar la orden {number}",
       "remove": "Quitar la orden {number} de la ruta",
-      "removed": "La orden {number} salió de la ruta."
+      "removed": "La orden {number} salió de la ruta.",
+      "handle": "Arrastrar la orden {number} para reordenar (o use las flechas ↑ ↓)",
+      "select": "Elegir la orden {number}",
+      "setPin": "Poner pin a la orden {number}",
+      "movePin": "Mover el pin de la orden {number}",
+      "noPin": "Sin pin",
+      "manual": "Pin manual"
+    },
+    "map": {
+      "label": "Plano de la ruta {code}",
+      "stop": "Parada {number}",
+      "emptyCanPin": "Ponga un pin manual a cada parada con «Poner pin» para verlas aquí.",
+      "emptyHint": "Pida a quien planifica la ruta que ponga el pin manual de cada parada.",
+      "selected": "Parada {number} · {order}"
+    },
+    "pin": {
+      "set": "Poner pin",
+      "move": "Mover pin",
+      "title": "Pin manual · {number}",
+      "hint": "Escriba la ubicación de {name}. Se guarda como pin manual.",
+      "lat": "Latitud",
+      "lng": "Longitud",
+      "latHelp": "Entre -90 y 90, por ejemplo 18.4655",
+      "lngHelp": "Entre -180 y 180, por ejemplo -66.1057",
+      "required": "Indique la latitud y la longitud.",
+      "latRange": "La latitud debe estar entre -90 y 90.",
+      "lngRange": "La longitud debe estar entre -180 y 180.",
+      "latNumber": "La latitud debe ser un número, por ejemplo 18.4655.",
+      "lngNumber": "La longitud debe ser un número, por ejemplo -66.1057.",
+      "save": "Guardar pin",
+      "pickTitle": "O toque el plano",
+      "pickMap": "Plano de referencia para tomar una posición",
+      "pickedApprox": "Posición aproximada tomada del plano: revise la latitud y la longitud antes de guardar.",
+      "after": "Al guardar, la parada queda con precisión «manual» y se recalculan las llegadas. Si la ruta ya estaba optimizada, vuelva a optimizarla.",
+      "done": "Pin de la orden {number} guardado.",
+      "fromIssue": "Poner pin manual"
     },
     "optimize": {
       "action": "Optimizar",

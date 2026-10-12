@@ -1618,8 +1618,19 @@
       "trip": "Current route"
     }
   },
+  "routeMap": {
+    "noStops": "The route has no stops.",
+    "empty": "No stop has coordinates yet",
+    "emptyHint": "Stops appear here once they have a pin.",
+    "unlocated": "Without location: {count}",
+    "schematic": "Schematic plan: it shows the relative position of the stops, not streets.",
+    "pickHint": "Tap the plan to take an approximate position.",
+    "accuracy": { "exact": "Exact pin", "approximate": "Approximate pin", "manual": "Manual pin" },
+    "state": { "pending": "Pending", "current": "In progress", "done": "Delivered", "failed": "Failed" },
+    "legend": { "exact": "Exact pin", "approximate": "Approximate (center of the ZIP or town)", "manual": "Manual pin", "live": "Driver position" }
+  },
   "dispatch": {
-    "title": "Dispatch room",
+    "title":"Dispatch room",
     "sub": "Build routes: pick orders, assign them to a driver, optimize and dispatch",
     "date": "Route date",
     "todayButton": "Today",
@@ -1702,7 +1713,42 @@
       "moveUp": "Move order {number} up",
       "moveDown": "Move order {number} down",
       "remove": "Remove order {number} from the route",
-      "removed": "Order {number} left the route."
+      "removed": "Order {number} left the route.",
+      "handle": "Drag order {number} to reorder (or use the ↑ ↓ keys)",
+      "select": "Select order {number}",
+      "setPin": "Set a pin for order {number}",
+      "movePin": "Move the pin of order {number}",
+      "noPin": "No pin",
+      "manual": "Manual pin"
+    },
+    "map": {
+      "label": "Plan of route {code}",
+      "stop": "Stop {number}",
+      "emptyCanPin": "Set a manual pin on each stop with “Set pin” to see them here.",
+      "emptyHint": "Ask whoever plans the route to set the manual pin of each stop.",
+      "selected": "Stop {number} · {order}"
+    },
+    "pin": {
+      "set": "Set pin",
+      "move": "Move pin",
+      "title": "Manual pin · {number}",
+      "hint": "Enter the location of {name}. It is saved as a manual pin.",
+      "lat": "Latitude",
+      "lng": "Longitude",
+      "latHelp": "Between -90 and 90, e.g. 18.4655",
+      "lngHelp": "Between -180 and 180, e.g. -66.1057",
+      "required": "Enter the latitude and the longitude.",
+      "latRange": "The latitude must be between -90 and 90.",
+      "lngRange": "The longitude must be between -180 and 180.",
+      "latNumber": "The latitude must be a number, e.g. 18.4655.",
+      "lngNumber": "The longitude must be a number, e.g. -66.1057.",
+      "save": "Save pin",
+      "pickTitle": "Or tap the plan",
+      "pickMap": "Reference plan to take a position",
+      "pickedApprox": "Approximate position taken from the plan: check the latitude and longitude before saving.",
+      "after": "When saved, the stop gets “manual” precision and arrivals are recalculated. If the route was already optimized, optimize it again.",
+      "done": "Pin of order {number} saved.",
+      "fromIssue": "Set manual pin"
     },
     "optimize": {
       "action": "Optimize",
