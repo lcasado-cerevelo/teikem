@@ -136,4 +136,26 @@ describe('Form + Field', () => {
     const input = screen.getByLabelText('Código')
     expect(document.querySelector(`label[for="${input.id}"]`)).not.toHaveClass('sr-only')
   })
+
+  it("TextInput type='time' guarda 'HH:mm' en el formulario", async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn(async () => undefined)
+    function TimeForm() {
+      const form = useForm({ defaultValues: { start: '' } })
+      return (
+        <Form form={form} onSubmit={onSubmit}>
+          <Field name="start" label="Inicio">
+            <TextInput type="time" />
+          </Field>
+          <button type="submit">Guardar</button>
+        </Form>
+      )
+    }
+    render(<TimeForm />)
+    const input = screen.getByLabelText('Inicio')
+    expect(input).toHaveAttribute('type', 'time')
+    await user.type(input, '0830')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+    expect(onSubmit).toHaveBeenCalledWith({ start: '08:30' })
+  })
 })

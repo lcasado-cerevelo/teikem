@@ -164,10 +164,10 @@ function useControlProps(component: string) {
 type NativeInput = Omit<InputHTMLAttributes<HTMLInputElement>, 'name' | 'id' | 'type' | 'value' | 'defaultValue' | 'onChange'>
 
 export interface TextInputProps extends NativeInput {
-  type?: 'text' | 'email' | 'tel' | 'url' | 'password' | 'search'
+  type?: 'text' | 'email' | 'tel' | 'url' | 'password' | 'search' | 'time'
 }
 
-/** Texto. Valor: string. */
+/** Texto. Valor: string (`type="time"`: 'HH:mm' o '' = vacío). */
 export function TextInput({ type = 'text', ...rest }: TextInputProps) {
   const { info, aria } = useControlProps('TextInput')
   const { register } = useFormContext()

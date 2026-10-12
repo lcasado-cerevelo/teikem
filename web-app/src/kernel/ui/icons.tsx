@@ -71,6 +71,26 @@ export function IconDownload() {
   )
 }
 
+/** 'plus' de la maqueta: botones «Nuevo …». */
+export function IconPlus() {
+  return (
+    <Svg>
+      <path d="M12 5v14M5 12h14" />
+    </Svg>
+  )
+}
+
+/** 'upload' de la maqueta: botones «Importar» y selector de archivo. */
+export function IconUpload() {
+  return (
+    <Svg>
+      <path d="M12 15V3" />
+      <path d="m7 8 5-5 5 5" />
+      <path d="M5 21h14" />
+    </Svg>
+  )
+}
+
 export function IconEye() {
   return (
     <Svg>

@@ -1,0 +1,76 @@
+/* Lote F-B — Consignatarios: lista maestra (280 px, como la maqueta) + ficha, y el modal de importación. */
+.cs-filter{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.cs-filter select{background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px;color:var(--text);max-width:220px;min-width:0}
+.cs-md{min-width:0}
+.cs-md>*{min-width:0}
+.cs-detail{min-width:0}
+.cs-stack{display:flex;flex-direction:column;gap:14px;min-width:0}
+.cs-stack>.panel{margin-bottom:0}
+
+/* lista maestra */
+.cs-q{display:flex;flex-direction:column;gap:8px;align-items:stretch;padding:10px 12px;border-bottom:1px solid var(--line-2)}
+.cs-q .sw{align-self:flex-start;font-weight:500;font-size:12.5px;white-space:normal}
+.cs-q .qbox{flex:0 0 auto;max-width:none}
+.cs-list{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
+.cs-list li{min-width:0}
+.cs-row{align-items:flex-start}
+.cs-row.dim{opacity:.7}
+.cs-main{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.cs-top{display:flex;align-items:center;gap:8px;min-width:0}
+.cs-top .chip{margin-left:auto;flex:none;white-space:nowrap}
+.cs-name{font-weight:600;overflow-wrap:anywhere;min-width:0}
+.cs-main .meta{overflow-wrap:anywhere}
+
+/* ficha (rejilla de dos columnas de la maqueta) */
+.cs-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.cs-fact{margin:0;min-width:0;overflow-wrap:anywhere}
+.cs-fact.wide{grid-column:1/-1}
+.cs-lbl{display:block;font-size:11.5px;color:var(--muted);font-weight:600;margin-bottom:5px}
+.cs-more{border-top:1px solid var(--line-2);margin-top:14px;padding-top:10px}
+.cs-more>summary{cursor:pointer;font-size:12.5px;font-weight:600;color:var(--muted);padding:4px 0;margin-bottom:8px}
+.cs-more[open]>summary{color:var(--text)}
+.cs-more .cs-grid{margin-top:6px}
+
+/* importación */
+.cs-importsub{font-size:12.5px;color:var(--faint);margin:0 0 12px}
+.cs-tplrow{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:6px}
+.cs-tplrow .f{flex:1 1 200px;margin:0}
+.cs-inactive-tpl{font-weight:500;font-size:12.5px;white-space:normal;margin:0 0 12px}
+.cs-tplnote{margin:0 0 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cs-tplnote>span{flex:1 1 220px;min-width:0;overflow-wrap:anywhere}
+.cs-filerow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.cs-pick{cursor:pointer}
+.cs-pick.off{pointer-events:none;opacity:.5}
+.cs-fileinput{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;padding:0;border:0}
+.cs-filemeta{font-size:12.5px;color:var(--faint);overflow-wrap:anywhere;min-width:0}
+.cs-preview,.cs-result{display:flex;flex-direction:column;gap:8px;min-width:0;margin-top:10px}
+.cs-prevhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.cs-counts,.cs-stats{display:flex;gap:12px;flex-wrap:wrap}
+.cs-stat{font-size:12.5px;color:var(--muted)}
+.cs-stat b{font-size:14px;color:var(--text)}
+.cs-stat.ok b{color:var(--ok)}
+.cs-stat.bad b{color:var(--danger)}
+.cs-onlyprob{font-weight:500;font-size:12.5px;white-space:normal;margin-left:auto}
+.cs-sub{font-size:13px;font-weight:600;margin:14px 0 4px}
+.cs-hint{margin:0 0 10px}
+.cs-tablewrap{overflow:auto;max-width:100%;max-height:340px;border:1px solid var(--line-2);border-radius:8px}
+.cs-tablewrap table{margin:0}
+.cs-tablewrap .f{margin:0}
+.cs-tablewrap td.cs-rm{width:34px}
+.cs-badrow td{background:var(--danger-bg, transparent)}
+.cs-remarks{min-width:180px}
+.cs-remarks span{display:block;overflow-wrap:anywhere}
+.cs-err{color:var(--danger)}
+.cs-warn{color:var(--warn, var(--muted))}
+.cs-noFile{min-height:100px;margin-top:10px}
+.cs-default{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:start;margin-bottom:6px}
+.cs-default .f{margin:0}
+
+@media(max-width:720px){
+  .cs-list{max-height:none}
+  .cs-grid{grid-template-columns:minmax(0,1fr)}
+  .cs-filter{width:100%}
+  .cs-filter select{flex:1;max-width:none}
+  .cs-default{grid-template-columns:minmax(0,1fr) auto}
+  .cs-default>.f:nth-child(2){grid-column:1}
+}
