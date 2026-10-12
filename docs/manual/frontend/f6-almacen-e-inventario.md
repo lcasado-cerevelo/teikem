@@ -646,6 +646,39 @@ no pueden ser la misma posición.", y la nota obligatoria del ajuste ("Escriba u
 "Inventario insuficiente de {sku} en {bin}: disponible {x}, solicitado {y}." y demás) aparecen arriba del formulario. Todos están en el
 manual 06, sección 3, y en el [FAQ](../faq.md#lote-14--transferencias-y-ajustes-conteo-cíclico-kárdex-conciliación-y-necesita-tu-atención-lote-4-del-plan-de-cambios).
 
+### Ajuste múltiple (2026-10-12)
+
+Botón **Ajuste múltiple**, justo después de «Ajustar» en *Transferencias y ajustes*. **Solo lo ve quien tiene el permiso `inventory.adjust.multi`** (módulo WMS_LOTSERIAL); el permiso **no viene en ningún rol**: el administrador de la compañía (o el de plataforma) lo da, o lo quita, desde **Roles**. Sin el permiso el API responde 403. Sirve para poner al día el inventario de **un almacén** por producto y posición, varias a la vez (el inventario semanal), en una sola operación; el ajuste normal no cambia.
+
+**Pestaña Nuevo ajuste**
+1. Elija el **almacén** (con uno solo activo se elige solo).
+2. **Agregue productos** (buscador por SKU o nombre). Cada uno trae un bloque con **todas las posiciones donde hay existencia** y la cantidad **En sistema**.
+3. Escriba, por posición, **Hay ahora**. La columna **Diferencia** sale sola: `+4` (verde), `−3` (rojo) o `=`. **Vacío = esa línea no se toca**; igual al sistema = tampoco genera movimiento. «Agregar posición» suma un lugar donde el sistema no tenía nada (se encontró mercancía ahí); «Quitar» saca el producto del documento. Los productos de **lote** llevan una fila por posición y lote.
+4. Escriba la **nota** (obligatoria, máx. 300; el motivo es fijo: «Inventario físico») y pulse **Aplicar ajuste**: la confirmación muestra el resumen («12 líneas · +40 · −65 unidades · 5 productos»).
+
+**Qué pasa al aplicar**
+- Se crea el documento **AJM-######** y **un movimiento de tipo Ajuste por cada línea con diferencia** (motivo «Inventario físico»). Saldos, Kárdex y reportes lo ven como cualquier ajuste; en el Kárdex el origen se lee «**Ajuste múltiple AJM-000123**» y el detalle del movimiento muestra el documento. El motivo «Inventario físico» también sirve de filtro en la lista de ajustes.
+- **Todo o nada**: si una línea falla, no se aplica ninguna y la pantalla marca las líneas.
+- La diferencia se calcula en el servidor contra el saldo de ese momento. Si lo que vio la pantalla ya no es lo que hay (entró o salió mercancía mientras contaba), responde **409** con las líneas cambiadas: la pantalla actualiza «En sistema», conserva lo escrito y hay que aplicar de nuevo. Nunca se aplica sobre un saldo distinto.
+- Sin líneas con diferencia no se crea documento. Reenviar la misma petición no lo duplica (`Idempotency-Key`).
+
+**Pestaña Historial**: pasadas anteriores (número, fecha, almacén, líneas, productos, suben, bajan, usuario). Clic en una fila abre el detalle con cada línea: **En sistema / Hay ahora / Diferencia**.
+
+| Caso | Código | Mensaje |
+|---|---|---|
+| Nota vacía | 400 | "Escriba una nota que explique el ajuste." |
+| Ninguna cantidad escrita | 400 | "Escriba la cantidad que hay ahora en al menos una posición." |
+| Nada con diferencia | 400 | "Ninguna línea tiene diferencia con el sistema: no hay nada que ajustar." |
+| Hay ahora negativo | 400 | "Lo que hay ahora no puede ser negativo." |
+| Combinación repetida | 400 | "Esa combinación de producto, posición y lote está repetida." |
+| Producto con serie | 400 | "Los productos con serie no se ajustan aquí: use el ajuste normal." |
+| Producto con lote sin lote / sin lote con lote | 400 | "Este producto lleva lote: indique el lote de la línea." / "Este producto no lleva lote." |
+| Posición de cuarentena, en renta o cross-dock | 422 | "La posición {bin} es de cuarentena, en renta o de cross-dock: …" |
+| El sistema cambió mientras contaba | 409 `stale_system_qty` | "La existencia de {sku} en {bin} cambió mientras contaba: el sistema tiene {n}. Revise y confirme de nuevo." |
+| Quedaría por debajo de lo reservado | 409 `insufficient_stock` | "{sku} en {bin} tiene {n} reservado: la existencia no puede quedar por debajo." |
+
+No incluye: productos con serie, reversa (se corrige con otro ajuste múltiple), el aparato, ni cargar desde Excel.
+
 ## Kárdex de movimientos: Kárdex, Saldos y Conciliación
 
 **Para qué sirve.** Consulta el inventario disponible en cada posición (**Saldos**), su historial de movimientos (**Kárdex**) y compara el Kárdex

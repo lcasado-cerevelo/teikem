@@ -1,6 +1,6 @@
 # Ajuste múltiple: poner al día el inventario por producto y posición (diseño, 2026-10-12)
 
-> **Estado: SOLO DISEÑO. No hay código.** Pedido de Luis (2026-10-12), a partir de lo que pidió el supervisor del almacén de Advance Depot. Todo lo de abajo es lo conversado y acordado con Luis; las decisiones tomadas están en la sección 12.
+> **Estado: CONSTRUIDO (2026-10-12) en `Depot-Implementation`** (commits `[ajuste-multiple]`). Pedido de Luis, a partir de lo que pidió el supervisor del almacén de Advance Depot. Decisiones en la sección 12; lo construido y lo que quedó distinto en la sección 13.
 
 ## 1. Por qué
 En el almacén de Depot hoy todo se trabaja por **ajuste**: no se registra cuándo entró ni cuándo salió algo. Luis quiere cambiar eso y que se usen recibo y despacho, pero mientras se ponen al día, el supervisor pidió que el ajuste permita **varias posiciones a la vez**. Dani hace el inventario **semanal** y ajusta para sacar el reporte de inventario.
@@ -95,3 +95,10 @@ Igual que la IP preferida: en **`Depot-Implementation`** (producción corre de a
 5. **El permiso lo asigna Luis**, desde Roles, al rol que corresponda; no se crea un rol nuevo.
 
 **Abiertas:** ninguna por ahora.
+
+## 13. Lo construido
+- **Base de datos** (sección al final de `logistica-db-update.sql`): `MultiAdjustment`, `MultiAdjustmentLine`, contador `MULTIADJUST` (CHECK ampliado), motivo `PHYSICAL_COUNT`, tipo de origen `MULTI_ADJUSTMENT` y el permiso `inventory.adjust.multi` (sin asignar a ningún rol).
+- **API** (`MultiAdjustmentsController`, `api/v1/inventory/multi-adjustments`, todo con `inventory.adjust.multi`): `GET stock`, `POST` (todo o nada; 409 `stale_system_qty` con `lines[i]`; por debajo de lo reservado 409 `insufficient_stock`), `GET` historial, `GET {publicId}` y `GET by-id/{id}`. `MultiAdjustmentService` bloquea los saldos en el orden del ledger, recalcula con el saldo bloqueado y registra un movimiento Ajuste por línea con diferencia, con el documento como origen. Kárdex: el origen se lee «Ajuste múltiple AJM-…» y el detalle del movimiento muestra el documento.
+- **Web** (`MultiAdjustScreen`, ruta `/warehouse/multi-adjustment`): botón **Ajuste múltiple** en *Transferencias y ajustes*, después de «Ajustar» (decisión de Luis; no va en Productos e inventario). Nuevo ajuste (bloques por producto, «Hay ahora», diferencia, agregar posición, pie con nota y resumen, confirmación) e Historial con detalle.
+- **Diferencias con el diseño:** el filtro por motivo «Inventario físico» (que ya existe en la lista de ajustes) hace de filtro de origen y la columna «Origen» ya existía; no se agregó un filtro nuevo por tipo de origen. El historial no tiene filtros propios todavía ni exportación.
+- **Pruebas:** 16 del servicio y las reglas (InMemory con el ledger real) y 9 de la lógica de la pantalla; se actualizaron los conteos fijos de permisos, auditoría y aislamiento por tenant.

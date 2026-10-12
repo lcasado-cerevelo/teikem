@@ -552,6 +552,15 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
                 var wh = (await WarehouseInfoAsync(new[] { c.WarehouseId }, ct)).GetValueOrDefault(c.WarehouseId)?.Code;
                 return new KardexDocumentDto(entity, label, id, null, c.Number, sc, sl, c.ReconciledAtUtc ?? c.CreatedAtUtc, null, wh);
             }
+            case EntityTypes.MultiAdjustment:
+            {
+                // 2026-10-12: ajuste múltiple AJM-###### (sin estatus; el documento es de una sola pasada)
+                var m = await db.Set<MultiAdjustment>().AsNoTracking().Where(x => x.MultiAdjustmentId == id)
+                    .Select(x => new { x.PublicId, x.Number, x.CreatedAtUtc, x.WarehouseId }).FirstOrDefaultAsync(ct);
+                if (m is null) return Missing();
+                var wh = (await WarehouseInfoAsync(new[] { m.WarehouseId }, ct)).GetValueOrDefault(m.WarehouseId)?.Code;
+                return new KardexDocumentDto(entity, label, id, m.PublicId, m.Number, null, null, m.CreatedAtUtc, null, wh);
+            }
             case EntityTypes.PurchaseOrder:
             {
                 var po = await (from x in db.Set<PurchaseOrder>().AsNoTracking()
