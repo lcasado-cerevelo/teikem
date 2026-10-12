@@ -111,7 +111,7 @@ la nueva muestra lo que hay y su indicador trabaja de fondo. Ya **no** se usa el
 - ~~`Contract.CodCommissionPct` sin exponer; decisiones 39 y 44 del lote 2/3~~ **Cerrado (Lote 36)**: D39 = un cliente de baja tampoco admite cotizar (409); D44 = se queda en 409 (una persona no cambia de cliente por invitación); `CodCommissionPct` se expone junto con la remesa COD en **P8** (ya está en su alcance).
 - ~~Propagación de `orders.credit_override` a roles clonados (sin prueba)~~ **Cerrado (Lote 36)**: prueba con el `PermissionSeeder` real (`CreditOverridePropagationTests`).
 - ~~Validar la ventana AAL2 a 15/30/60; atributo `[SkipIdempotency]` declarativo~~ **Cerrado (Lote 36)**: el servidor solo admite 15, 30 o 60 (un valor viejo ya guardado se conserva) y la exclusión de idempotencia es un atributo con prueba del conjunto exacto.
-- ~~Tablas obsoletas de Rentas~~ **Listo para que Luis lo revise (Lote 36)**: `scripts/revisar-tablas-viejas-de-rentas.sql` (solo lectura) para correr en producción; en las bases locales no existen. Si salen vacías, se retiran con una sección nueva de `update.sql`; si tienen filas, no se tocan.
+- ~~Tablas obsoletas de Rentas~~ **Resuelto**: el retiro (solo si están vacías; con filas avisa por PRINT) ya está en el bloque del Lote 27 de `Diseño/logistica-db-estructura.sql` y `db-update` lo aplica solo; no hay script aparte.
 - ~~Contradicción de zona horaria (lote18/19 vs 20)~~ **Cerrado (Lote 36)**: el Lote 20 ya la resolvió; se verificó que no queda `DateTime.UtcNow.Date` ni `DateOnly.FromDateTime(DateTime.UtcNow)` en `src/` (solo un comentario y la hora de un informe de migración).
 - ~~Actualizar `docs/frontend/diseno-frontend.md`~~ **Hecho (Lote 36)**: sección «Estado real» al principio.
 
