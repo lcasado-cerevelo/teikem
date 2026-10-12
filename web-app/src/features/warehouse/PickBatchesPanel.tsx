@@ -1,5 +1,5 @@
 // Pieza "Recolección y empaque" (Lote 13) — panel derecho "Recolecciones" de `PickBatchListScreen` (maqueta `picking()`).
-// Filtros dentro del panel, todos al API y a la página 1: Recolectada (rango), Estatus, Producto (`ProductMultiFilter` con
+// Filtros dentro del panel, todos al API y a la página 1: Recolectada (rango), Estatus, Producto (`ProductSearchSelect` con
 // inactivos), No. de orden (`OrderNumberFilter`: sugiere números existentes), No. de factura, Incluir eliminadas; y el
 // `QBox` de la maqueta (búsqueda libre al API, se aplica después de los filtros). Tipo (2026-10-11): Todos / Empaques /
 // Despachos manuales (`kind=ALL|PACK|MANUAL`): la lista trae TODO y los despachos manuales (DMA, sin empaque) llevan su motivo en la
@@ -38,7 +38,7 @@ import { PackModal } from './PackModal'
 import { PickBatchStatusChip } from './PickBatchStatusChip'
 import { PickBatchDetailModal } from './PickBatchDetailModal'
 import { batchProductsText, PICK_BATCH_STATUS_DOMAIN, usePickBatchCanDelete } from './pickBatchView'
-import { ProductMultiFilter, type ProductFilterItem } from './pickers'
+import { ProductSearchSelect, type ProductFilterItem } from './pickers'
 import './warehouse.css'
 
 const PAGE_SIZE = 25
@@ -211,7 +211,7 @@ export function PickBatchesPanel({ highlight }: PickBatchesPanelProps) {
               ]}
             />
             <SearchSelect label={t('warehouse.pickBatches.filters.status')} options={statusOptions} value={status} onChange={reset(setStatus)} />
-            <ProductMultiFilter label={t('warehouse.pickBatches.filters.product')} value={products} onChange={reset(setProducts)} includeInactive />
+            <ProductSearchSelect label={t('warehouse.pickBatches.filters.product')} value={products} onChange={reset(setProducts)} includeInactive />
             <OrderNumberFilter label={t('warehouse.pickBatches.filters.orderNumber')} value={orderNumber} onChange={reset(setOrderNumber)} />
             <TextFilter label={t('warehouse.pickBatches.filters.invoiceNumber')} value={invoiceNumber} onChange={reset(setInvoiceNumber)} />
             <ToggleFilter label={t('warehouse.pickBatches.filters.includeDeleted')} checked={includeDeleted} onChange={reset(setIncludeDeleted)} />

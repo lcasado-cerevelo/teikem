@@ -170,7 +170,7 @@ public class WmsContractsTests
         { typeof(PurchaseOrderCreateRequest), "int? SupplierId, Guid? WarehousePublicId, DateOnly? OrderDate, DateOnly? ExpectedDate, string? Currency, string? Notes, IReadOnlyList<PurchaseOrderLineRequest>? Lines" },
         { typeof(PurchaseOrderPatchRequest), "DateOnly? ExpectedDate, string? Notes, IReadOnlyList<PurchaseOrderLineRequest>? Lines, string? RowVersion, int? SupplierId, Guid? WarehousePublicId" },
         { typeof(PurchaseOrderStatusRequest), "string? Comment, string? RowVersion" },
-        { typeof(PurchaseOrderQuery), "string[]? Status, int? SupplierId, Guid? WarehousePublicId, DateOnly? From, DateOnly? To, string? Search, int Skip, int Take, int[]? SupplierIds, Guid[]? WarehousePublicIds" },
+        { typeof(PurchaseOrderQuery), "string[]? Status, int? SupplierId, Guid? WarehousePublicId, DateOnly? From, DateOnly? To, string? Search, int Skip, int Take, int[]? SupplierIds, Guid[]? WarehousePublicIds, Guid[]? ProductPublicIds" },
         { typeof(PurchaseOrderLineDto), "int Id, Guid ProductPublicId, string Sku, string ProductName, decimal QtyOrdered, decimal QtyReceived, decimal QtyResolved, decimal QtyPending, decimal UnitCost, decimal LineTotal" },
         { typeof(PurchaseOrderDto), "int Id, Guid PublicId, string Number, int SupplierId, string SupplierName, Guid WarehousePublicId, string WarehouseCode, DateOnly OrderDate, DateOnly? ExpectedDate, string StatusCode, string Status, string? CurrencyCode, string? Notes, decimal Total, bool HasShortage, bool CanEdit, bool CanCancel, bool CanDelete, bool IsActive, IReadOnlyList<PurchaseOrderLineDto> Lines, string RowVersion" },
         { typeof(PurchaseOrderPageDto), "int Total, int Skip, int Take, IReadOnlyList<PurchaseOrderDto> Items" },

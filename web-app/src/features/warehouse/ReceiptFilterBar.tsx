@@ -1,14 +1,14 @@
 // Lote 13 — filtros de la lista de recibos (maestro-detalle de Recibo), compartidos por las pestañas Recibos y 'Acomodo
 // pendiente'. El archivo no se llama ReceiptFilters.tsx: en Windows './ReceiptFilters' se resolvería a receiptFilters.ts
 // (la lógica pura), que solo difiere en mayúsculas. Almacén (buscador de un almacén: el API filtra por uno), Estatus y Tipo (`SearchSelect`), Creado
-// (`DateRangeFilter`), Producto (`ProductMultiFilter` con inactivos: es historial) y Diferencia (`SearchSelect`
+// (`DateRangeFilter`), Producto (`ProductSearchSelect` con inactivos: es historial) y Diferencia (`SearchSelect`
 // Faltante/Sobrante/Sin diferencia → `variance[]`). Todos van al API (`receiptListQuery` de receiptFilters.ts). En 'Acomodo
 // pendiente' el Estatus se limita a Completado y Completado con diferencia (`statusCodes`).
 import { useId, useMemo } from 'react'
 import { useLookups, useStatuses } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
 import { DateRangeFilter, Filters, SearchSelect } from '../../kernel/ui'
-import { ProductMultiFilter, WarehousePicker } from './pickers'
+import { ProductSearchSelect, WarehousePicker } from './pickers'
 import { EMPTY_RECEIPT_FILTERS, RECEIPT_STATUS_DOMAIN, VARIANCE_CODES, type ReceiptFilterState } from './receiptFilters'
 
 const TYPE_DOMAIN = 'ReceiptType'
@@ -51,7 +51,7 @@ export function ReceiptFilterBar({ value, onChange, statusCodes }: ReceiptFilter
       <SearchSelect label={t('warehouse.receipts.filters.status')} options={statusOptions} value={value.status} onChange={(v) => set('status', v)} />
       <SearchSelect label={t('warehouse.receipts.filters.types')} options={typeOptions} value={value.types} onChange={(v) => set('types', v)} />
       <DateRangeFilter label={t('warehouse.receipts.filters.created')} value={value.created} onChange={(v) => set('created', v)} />
-      <ProductMultiFilter label={t('warehouse.receipts.filters.product')} value={value.products} onChange={(v) => set('products', v)} includeInactive />
+      <ProductSearchSelect label={t('warehouse.receipts.filters.product')} value={value.products} onChange={(v) => set('products', v)} includeInactive />
       <SearchSelect label={t('warehouse.receipts.filters.variance')} options={varianceOptions} value={value.variance} onChange={(v) => set('variance', v)} />
     </Filters>
   )

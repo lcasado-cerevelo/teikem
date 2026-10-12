@@ -12651,6 +12651,7 @@ export interface paths {
                     search?: string;
                     supplierIds?: number[];
                     warehousePublicIds?: string[];
+                    productPublicIds?: string[];
                     skip?: number;
                     take?: number;
                 };

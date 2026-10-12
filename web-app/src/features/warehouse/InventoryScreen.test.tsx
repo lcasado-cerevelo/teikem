@@ -169,9 +169,18 @@ async function goToPage2(user: ReturnType<typeof userEvent.setup>, path: string)
   await waitLast(path, (u) => u.searchParams.get('skip') === '25')
 }
 
+/** Filtro desplegable con búsqueda y selección múltiple (2026-10-12): el botón del filtro, dentro del grupo de filtros. */
+const filterButton = (name: RegExp) => within(screen.getByRole('group', { name: /^Filtros/ })).getByRole('button', { name })
+
+async function pickFromFilter(user: ReturnType<typeof userEvent.setup>, label: RegExp, text: string, option: RegExp) {
+  await user.click(filterButton(label))
+  await user.type(screen.getAllByRole('searchbox').at(-1)!, text)
+  await user.click(await screen.findByLabelText(option, undefined, { timeout: 4000 }))
+  await user.keyboard('{Escape}')
+}
+
 async function pickProduct(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByRole('combobox', { name: 'Producto' }), 'torn')
-  await user.click(await screen.findByRole('option', { name: /TORN-01 · Tornillo/ }, { timeout: 4000 }))
+  await pickFromFilter(user, /^Producto/, 'torn', /TORN-01 · Tornillo/)
 }
 
 beforeAll(() => setLang('es'))
@@ -286,7 +295,7 @@ describe('InventoryScreen · parámetros de URL (enlaces de Pulso, Lote F7A)', (
     // Saldos no se consulta: la pestaña inicial es el Kárdex
     expect(mock.requests.some((u) => u.pathname === '/api/v1/inventory/balances')).toBe(false)
     // el SKU sale de la ficha del producto
-    expect(await screen.findByRole('button', { name: 'Quitar TORN-01' }, { timeout: 4000 })).toBeInTheDocument()
+    await waitFor(() => expect(filterButton(/^Producto/)).toHaveTextContent('TORN-01'), { timeout: 4000 })
   })
 
   it('?tab=balances&categoryIds=7 abre Saldos filtrado por la categoría', async () => {
@@ -322,9 +331,11 @@ describe('InventoryScreen · parámetros de URL (enlaces de Pulso, Lote F7A)', (
     }
     wrap(<InventoryScreen />, `/warehouse/kardex?product=${PRODUCT.publicId},${other.publicId}&product=${missing}`)
     await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.getAll('productPublicIds').length === 3)
-    expect(await screen.findByRole('button', { name: 'Quitar TORN-01' }, { timeout: 4000 })).toBeInTheDocument()
-    expect(await screen.findByRole('button', { name: 'Quitar TUER-02' }, { timeout: 4000 })).toBeInTheDocument()
-    expect(await screen.findByRole('button', { name: 'Quitar Producto no disponible' }, { timeout: 4000 })).toBeInTheDocument()
+    await waitFor(() => expect(filterButton(/^Producto/)).toHaveTextContent('3 elegidos'), { timeout: 4000 })
+    await userEvent.setup().click(filterButton(/^Producto/))
+    expect(await screen.findByLabelText(/TORN-01/, undefined, { timeout: 4000 })).toBeChecked()
+    expect(await screen.findByLabelText(/TUER-02/, undefined, { timeout: 4000 })).toBeChecked()
+    expect(await screen.findByLabelText('Producto no disponible', undefined, { timeout: 4000 })).toBeChecked()
     expect(screen.queryByText('…')).toBeNull()
   })
 
@@ -339,7 +350,7 @@ describe('InventoryScreen · parámetros de URL (enlaces de Pulso, Lote F7A)', (
     )
     // la URL queda solo con la pestaña; los filtros siguen en pantalla
     expect(screen.getByTestId('location')).toHaveTextContent(/^\/warehouse\/kardex\?tab=balances$/)
-    expect(await screen.findByRole('button', { name: 'Quitar TORN-01' }, { timeout: 4000 })).toBeInTheDocument()
+    await waitFor(() => expect(filterButton(/^Producto/)).toHaveTextContent('TORN-01'), { timeout: 4000 })
     await user.click(screen.getByRole('tab', { name: 'Conciliación' }))
     await waitLast('/api/v1/inventory/discrepancies', (u) => u.searchParams.getAll('productPublicIds').includes(PRODUCT.publicId))
     expect(last('/api/v1/inventory/discrepancies').searchParams.getAll('status')).toEqual(['OPEN'])
@@ -402,8 +413,7 @@ describe('InventoryScreen · Lote 14 (resumen, filtros nuevos, detalle y descuad
     const user = userEvent.setup()
     wrap(<InventoryScreen />)
     await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.get('skip') === '0')
-    await user.type(screen.getByRole('combobox', { name: 'Posición' }), 'A-0')
-    await user.click(await screen.findByRole('option', { name: /A-01 · PCK · ALM-01/ }, { timeout: 4000 }))
+    await pickFromFilter(user, /^Posición/, 'A-0', /A-01 · PCK · ALM-01/)
     await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.getAll('binIds').includes('10'))
     await user.click(within(screen.getByRole('group', { name: 'Filtros del Kárdex' })).getByRole('button', { name: /^Dueño/ }))
     await user.click(await screen.findByRole('option', { name: /Propio/ }))

@@ -27,6 +27,10 @@ Posición destino, posiciones sugeridas, aviso de cupo), el aviso de **Acomodo p
 existencia) y, en "Todas las tablas", el **encabezado y los filtros de las exportaciones**, las **fechas como fecha** y el **formato de los números** (coma de miles). Sus capturas son las
 `l16-*.png` (las genera el recorrido `lote16.spec.ts`).
 
+## Filtros de Producto y Posición (2026-10-12)
+
+En Productos e inventario, Kárdex, Saldos, Conciliación, Transferencias y ajustes, Recibos, Recolección, Ubicaciones, Conteo cíclico y Compras (solo Producto), los filtros **Producto** (o «SKU o nombre») y **Posición** son un **desplegable con buscador y selección múltiple**, como Almacén o Categoría: se abre, se escribe para buscar (la búsqueda es en el servidor, por SKU o nombre, o por código de posición entre almacenes), se marcan las casillas y lo elegido queda arriba; el botón dice el nombre (si es uno) o «N elegidos». En Conteo cíclico ya no hay el filtro de texto «Buscar».
+
 ## Todas las tablas: pie, filas por página y Exportar (Lote 11)
 
 Aplica a todas las tablas de la aplicación que usan el componente estándar, no solo a Almacén.
@@ -1397,7 +1401,7 @@ resuelve lo que quedó faltante.
 
 Columnas: número, proveedor, almacén, estatus, fecha esperada y fecha. Filtros (Lote 12): **Estatus**, **Proveedor** y
 **Almacén**, los tres de selección **múltiple con buscador** (la orden aparece si su proveedor o almacén es cualquiera de los
-elegidos), y **Fecha** (rango). **Limpiar** los quita. Ya no hay buscador dentro de la tabla.
+elegidos), **Producto** (2026-10-12; el mismo desplegable con búsqueda y selección múltiple de Productos e inventario: la orden aparece si tiene una línea de alguno de los productos elegidos) y **Fecha** (rango). **Limpiar** los quita. Ya no hay buscador dentro de la tabla.
 
 **Qué hace cada botón.**
 - **Nueva orden de compra**: **Proveedor** (desplegable con buscador, «Buscar proveedor…»; obligatorio), **Almacén**

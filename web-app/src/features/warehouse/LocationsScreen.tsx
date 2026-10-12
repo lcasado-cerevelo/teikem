@@ -68,7 +68,7 @@ import {
   type ZoneCapacity,
 } from './locations'
 import { TextFilter } from './filterControls'
-import { ProductMultiFilter, WarehousePicker, type ProductFilterItem } from './pickers'
+import { ProductSearchSelect, WarehousePicker, type ProductFilterItem } from './pickers'
 import '../analytics/pulse.css'
 import './warehouse.css'
 
@@ -480,7 +480,7 @@ function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zone
         />
         <SearchSelect label={t('warehouse.locations.filters.zone')} options={zoneOptions} value={zoneIds} onChange={setZoneIds} />
         <SearchSelect label={t('warehouse.locations.filters.type')} options={typeOptions} value={zoneTypes} onChange={withPageReset(setZoneTypes)} />
-        <ProductMultiFilter label={t('warehouse.locations.filters.product')} value={products} onChange={withPageReset(setProducts)} />
+        <ProductSearchSelect label={t('warehouse.locations.filters.product')} value={products} onChange={withPageReset(setProducts)} />
         <SearchSelect label={t('warehouse.locations.filters.status')} options={statusOptions} value={occupancy} onChange={withPageReset(setOccupancy)} />
       </Filters>
 

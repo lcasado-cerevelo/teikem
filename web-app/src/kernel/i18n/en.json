@@ -2417,6 +2417,7 @@
         "expectedDate": "Expected date"
       },
       "filters": {
+        "product": "Product",
         "status": "Status",
         "supplier": "Supplier",
         "anySupplier": "Any supplier",

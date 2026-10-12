@@ -1,8 +1,8 @@
 // Lote 14 (P8) — filtros de 'Conteo cíclico' (Cambios.pdf p. 15: almacén, zona, posición, fecha de creación desde/hasta,
 // producto y estatus, todos desplegables con buscador; más el origen del conteo y un buscador de texto). Van arriba de los
 // dos paneles y TODOS al API (`countFilterQuery` de countView.ts): Almacén (`SearchSelect`), Zona (zonas activas de los
-// almacenes elegidos —o de todos—, "Código · Almacén"), Posición (`BinMultiFilter`, entre almacenes), Producto
-// (`ProductMultiFilter` con inactivos: es historial), Estatus (Pendiente/Contado/Concordancia/Diferencia del catálogo),
+// almacenes elegidos —o de todos—, "Código · Almacén"), Posición (`BinSearchSelect`, entre almacenes), Producto
+// (`ProductSearchSelect` con inactivos: es historial), Estatus (Pendiente/Contado/Concordancia/Diferencia del catálogo),
 // Origen (Selección / Lo cambiado), Creado (días locales de la compañía) y Buscar (número, SKU o producto; con pausa).
 import { useQueries } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
@@ -12,8 +12,7 @@ import { useT } from '../../kernel/i18n'
 import { DateRangeFilter, Filters, SearchSelect } from '../../kernel/ui'
 import { useWarehouses, warehouseKeys, warehouseLabel, type WarehouseZoneDto } from './api'
 import { COUNT_ORIGIN_DOMAIN, COUNT_STATUS_DOMAIN, EMPTY_COUNT_FILTERS, keepZones, type CountFilterState } from './countView'
-import { TextFilter } from './filterControls'
-import { BinMultiFilter, ProductMultiFilter } from './pickers'
+import { BinSearchSelect, ProductSearchSelect } from './pickers'
 
 type ZoneResult = { data?: WarehouseZoneDto[]; isLoading: boolean }
 
@@ -25,12 +24,9 @@ function combineZones(results: ZoneResult[]) {
 export interface CycleCountFilterBarProps {
   value: CountFilterState
   onChange: (next: CountFilterState) => void
-  /** Texto del buscador tal como se teclea (la pantalla lo aplica con pausa en `value.search`). */
-  q: string
-  onQ: (q: string) => void
 }
 
-export function CycleCountFilterBar({ value, onChange, q, onQ }: CycleCountFilterBarProps) {
+export function CycleCountFilterBar({ value, onChange }: CycleCountFilterBarProps) {
   const t = useT()
   const { data: warehouses = [] } = useWarehouses({ includeInactive: false }, { handleAccessDenied: false })
   const { data: statuses = [] } = useStatuses(COUNT_STATUS_DOMAIN)
@@ -76,25 +72,21 @@ export function CycleCountFilterBar({ value, onChange, q, onQ }: CycleCountFilte
   return (
     <Filters
       label={t('warehouse.cycleCounts.filters.aria')}
-      onClear={() => {
-        onQ('')
-        onChange(EMPTY_COUNT_FILTERS)
-      }}
+      onClear={() => onChange(EMPTY_COUNT_FILTERS)}
     >
       <SearchSelect label={t('warehouse.cycleCounts.filters.warehouses')} options={warehouseOptions} value={value.warehousePublicIds} onChange={(v) => set('warehousePublicIds', v)} />
       <SearchSelect label={t('warehouse.cycleCounts.filters.zones')} options={zoneOptions} value={value.zoneIds} onChange={(v) => set('zoneIds', v)} />
-      <BinMultiFilter
+      <BinSearchSelect
         label={t('warehouse.cycleCounts.filters.bins')}
         value={value.bins}
         onChange={(v) => set('bins', v)}
         warehousePublicIds={value.warehousePublicIds}
         includeInactive
       />
-      <ProductMultiFilter label={t('warehouse.cycleCounts.filters.product')} value={value.products} onChange={(v) => set('products', v)} includeInactive />
+      <ProductSearchSelect label={t('warehouse.cycleCounts.filters.product')} value={value.products} onChange={(v) => set('products', v)} includeInactive />
       <SearchSelect label={t('warehouse.cycleCounts.filters.status')} options={statusOptions} value={value.status} onChange={(v) => set('status', v)} />
       <SearchSelect label={t('warehouse.cycleCounts.filters.origin')} options={originOptions} value={value.origins} onChange={(v) => set('origins', v)} />
       <DateRangeFilter label={t('warehouse.cycleCounts.filters.created')} value={value.created} onChange={(v) => set('created', v)} />
-      <TextFilter label={t('warehouse.cycleCounts.filters.search')} value={q} onChange={onQ} placeholder={t('warehouse.cycleCounts.searchPlaceholder')} />
     </Filters>
   )
 }
