@@ -1,6 +1,6 @@
 # Filtro de fecha compacto con rangos predefinidos (diseño, 2026-10-12)
 
-> **Estado: SOLO DISEÑO. No hay código.** Pedido de Luis (2026-10-12). Decisiones de Luis incorporadas (2026-10-12); ver sección 9.
+> **Estado: CONSTRUIDO (2026-10-12) en `Depot-Implementation`**, con las decisiones de Luis de la sección 9. Pedido de Luis (2026-10-12). Commits `[filtro-fecha]`: cálculo de rangos, control compacto y juegos «futuro»/«ambos». Resumen de lo construido y de lo que cambió respecto al diseño en la sección 10.
 
 ## 1. Qué se quiere
 Hoy los filtros de fecha de las listas del almacén son **dos campos de fecha grandes** (Desde / Hasta) que ocupan el doble de un filtro normal. Se quiere:
@@ -113,3 +113,9 @@ Se hace en `Depot-Implementation`, se prueba en staging y se pasa a `master` con
 5. **No** se recuerda el último rango usado entre visitas.
 
 **Abiertas:** ninguna por ahora.
+
+## 10. Lo construido y cambios respecto al diseño
+- **Archivos:** `kernel/ui/datePresets.ts` (+ pruebas), `kernel/ui/DateRangeFilter.tsx` y `dateRangeFilter.css` (+ pruebas); `Filters.tsx` solo lo re-exporta; textos `ui.filters.range.*` en es/en; `mode="future"` en `AsnsTab` y `mode="both"` en `DockAppointmentsTab`. El backend no cambió. Las once pantallas lo usan sin cambiar su lógica.
+- **Cambio de diseño al construir:** en «Personalizado» los dos campos **no** van apilados debajo del desplegable sino **en la misma línea** (la celda se ensancha a ≈ 400 px con los rótulos Desde / Hasta arriba, como «Fecha»): así el desplegable queda alineado con los demás filtros de la barra (la barra alinea por abajo y una celda más alta lo desalineaba). A 480 px o menos, el desplegable arriba a todo el ancho y los dos campos debajo, uno junto al otro.
+- **Texto en reportes:** la línea de filtros de las exportaciones lleva solo las **fechas concretas** («del 01/10/2026 al 31/10/2026»), nunca el nombre del rango (decidido al construir: así un reporte dice de qué días es y no depende de cuándo se genera).
+- **Pruebas:** 13 del cálculo de rangos y 10 del control (incluida la zona horaria de la compañía y el primer día de semana domingo/lunes); se ajustó la prueba de `ReceiptScreen` que escribía en el campo viejo. Revisión visual hecha en escritorio y en celular (375 px).
