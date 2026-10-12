@@ -11878,6 +11878,8 @@ export interface paths {
                     unavailable?: boolean;
                     hasAvailable?: boolean;
                     binSearch?: string;
+                    ownerClientPublicIds?: string[];
+                    includeOwn?: boolean;
                 };
                 header?: never;
                 path?: never;

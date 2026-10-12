@@ -1947,7 +1947,7 @@
         "state": "Estado",
         "stateActive": "Activos",
         "stateLow": "Bajo mínimo",
-        "sku": "SKU",
+        "sku": "SKU o nombre",
         "name": "Nombre",
         "namePlaceholder": "Contiene…",
         "brand": "Marca",

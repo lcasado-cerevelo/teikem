@@ -1947,7 +1947,7 @@
         "state": "Status",
         "stateActive": "Active",
         "stateLow": "Low stock",
-        "sku": "SKU",
+        "sku": "SKU or name",
         "name": "Name",
         "namePlaceholder": "Contains…",
         "brand": "Brand",

@@ -4,8 +4,9 @@
 import { useContext, useMemo } from 'react'
 import { SessionContext } from '../../app/session'
 import { useLang, useT } from '../../kernel/i18n'
-import { useProductCategories, useWarehouses, warehouseLabel } from './api'
+import { useInventoryOwners, useProductCategories, useWarehouses, warehouseLabel } from './api'
 import type { ProductReportContext } from './inventoryReports'
+import { OWN_OWNER } from './kardexView'
 import type { ProductFilterNames, ProductFilterState } from './productFilters'
 
 /** Contexto del reporte para los filtros dados. */
@@ -15,12 +16,14 @@ export function useProductReportContext(filters: ProductFilterState): ProductRep
   const me = useContext(SessionContext)?.me
   const { data: warehouses = [] } = useWarehouses({ includeInactive: false }, { handleAccessDenied: false })
   const { data: categories = [] } = useProductCategories({}, { handleAccessDenied: false })
+  const { data: owners = [] } = useInventoryOwners({ handleAccessDenied: false })
   const names = useMemo<ProductFilterNames>(
     () => ({
       warehouses: new Map(warehouses.map((w) => [w.publicId ?? '', warehouseLabel(w)])),
       categories: new Map(categories.map((c) => [String(c.id), c.path || c.name || String(c.id)])),
+      owners: new Map(owners.map((o) => [o.isOwn ? OWN_OWNER : (o.clientPublicId ?? ''), o.name ?? ''])),
     }),
-    [warehouses, categories],
+    [warehouses, categories, owners],
   )
   return { t, lang, company: me?.tenantName, user: me?.fullName || me?.email, filters, names }
 }

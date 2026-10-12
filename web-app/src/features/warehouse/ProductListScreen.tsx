@@ -9,7 +9,8 @@
 //   activos, `activeProductsOnly`); bajo mínimo; rastreo SERIAL o con series. Bajo mínimo va en naranja solo si es > 0;
 //   Con número de serie, si hay productos SERIAL con series incompletas (`serialMissing`), con "N sin series completas".
 // - Filtros encima del panel, todos al API: Almacén (varios: acotan las cantidades de cada fila a esos almacenes, no quitan
-//   productos), SKU (`ProductMultiFilter` → productPublicIds), Nombre (contiene), Categoría y Marca (GET /products/brands).
+//   productos), SKU o nombre (`ProductMultiFilter` → productPublicIds; busca por SKU o por nombre), Categoría, Marca (GET /products/brands) y Dueño
+//   (varios: «Propio» y los clientes dueños de algún producto, GET /inventory/owners; vacío = todos).
 //   Sin buscador dentro de la tabla. Lógica pura de los filtros en productFilters.ts.
 // - Tabla paginada en el servidor: SKU, Producto, Categoría, Marca (con el modelo debajo), Dueño, Disponible, Reservado,
 //   Total, Rastreo, Estado. Exportar = todo lo filtrado. Clic en una fila = "Editar producto" (ProductEditorModal).
@@ -38,7 +39,7 @@ import { TextFilter, ToggleFilter } from './filterControls'
 import { AdjustmentsReportButton, InventoryReportButton } from './InventoryReportButtons'
 import { listParam } from './kardexView'
 import { formatNumber, useDebounced } from './lineRules'
-import { ProductMultiFilter, type ProductFilterItem } from './pickers'
+import { OwnerFilter, ProductMultiFilter, type ProductFilterItem } from './pickers'
 import { DamagePanel } from './DamageListScreen'
 import { ProductCategoriesPanel } from './ProductCategoriesPanel'
 import { ProductEditorByIdModal, ProductEditorModal } from './ProductEditorModal'
@@ -184,17 +185,16 @@ function ProductsTab() {
   // Lote 15: almacenes iniciales de la URL (`?warehousePublicIds=`, una vez al montar; la franja "Almacén hoy" del Pulso)
   const [warehouses, setWarehouses] = useState<string[]>(() => listParam(params, 'warehousePublicIds'))
   const [products, setProducts] = useState<ProductFilterItem[]>([])
-  const [nameText, setNameText] = useState('')
   const [binText, setBinText] = useState('')
   const [categoryIds, setCategoryIds] = useState<string[]>([])
   const [brands, setBrands] = useState<string[]>([])
+  const [owners, setOwners] = useState<string[]>([])
   const [hasAvailable, setHasAvailable] = useState(false)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [creating, setCreating] = useState(false)
   const [editingPublicId, setEditingPublicId] = useState<string | null>(null)
-  // Nombre va al API con una pausa (no una consulta por tecla)
-  const name = useDebounced(nameText.trim(), 300)
+  // Posición va al API con una pausa (no una consulta por tecla)
   const bin = useDebounced(binText.trim(), 300)
 
   // KPI elegido: vive en la URL (?kpi=) para poder enlazarlo; otro clic en el mismo lo quita
@@ -235,8 +235,8 @@ function ProductsTab() {
 
   // Un solo estado de filtros para la tabla, su Exportar y los dos reportes PDF
   const filters = useMemo<ProductFilterState>(
-    () => ({ warehouses, products, name, bin, categoryIds, brands, kpi, hasAvailable }),
-    [warehouses, products, name, bin, categoryIds, brands, kpi, hasAvailable],
+    () => ({ warehouses, products, name: '', bin, categoryIds, brands, owners, kpi, hasAvailable }),
+    [warehouses, products, bin, categoryIds, brands, owners, kpi, hasAvailable],
   )
   const baseQuery = useMemo(() => productListQuery(filters), [filters])
   const query = useMemo(() => ({ ...baseQuery, skip: (page - 1) * pageSize, take: pageSize }), [baseQuery, page, pageSize])
@@ -347,22 +347,16 @@ function ProductsTab() {
         onClear={() => {
           setWarehouses([])
           setProducts([])
-          setNameText('')
           setBinText('')
           setCategoryIds([])
           setBrands([])
+          setOwners([])
           setHasAvailable(false)
           setKpi(null)
         }}
       >
         <SearchSelect label={t('warehouse.products.filters.warehouse')} options={warehouseOptions} value={warehouses} onChange={withPageReset(setWarehouses)} />
         <ProductMultiFilter label={t('warehouse.products.filters.sku')} value={products} onChange={withPageReset(setProducts)} includeInactive />
-        <TextFilter
-          label={t('warehouse.products.filters.name')}
-          value={nameText}
-          onChange={withPageReset(setNameText)}
-          placeholder={t('warehouse.products.filters.namePlaceholder')}
-        />
         <TextFilter
           label={t('warehouse.products.filters.bin')}
           value={binText}
@@ -371,6 +365,7 @@ function ProductsTab() {
         />
         <SearchSelect label={t('warehouse.products.filters.category')} options={categoryOptions} value={categoryIds} onChange={withPageReset(setCategoryIds)} />
         <SearchSelect label={t('warehouse.products.filters.brand')} options={brandOptions} value={brands} onChange={withPageReset(setBrands)} />
+        <OwnerFilter label={t('warehouse.products.filters.owner')} value={owners} onChange={withPageReset(setOwners)} />
         <ToggleFilter label={t('warehouse.products.filters.excludeUnavailable')} checked={hasAvailable} onChange={withPageReset(setHasAvailable)} />
       </Filters>
 

@@ -67,6 +67,19 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
             var owner = await db.ResolveClientAsync(ownerPublicId, ct);
             query = query.Where(p => p.ClientId == owner.ClientId);
         }
+        if (q.OwnerClientPublicIds is { Length: > 0 } || q.IncludeOwn)
+        {
+            // Filtro «Dueño» (varios): clientes elegidos y/o "Propio" (sin cliente). Un cliente inexistente → 404, como en el Kárdex.
+            var pubs = (q.OwnerClientPublicIds ?? Array.Empty<Guid>()).Distinct().ToList();
+            var ownerIds = new List<int?>();
+            if (pubs.Count > 0)
+            {
+                ownerIds = await db.Set<Client>().AsNoTracking().Where(c => pubs.Contains(c.PublicId)).Select(c => (int?)c.ClientId).ToListAsync(ct);
+                if (ownerIds.Count != pubs.Count) throw new NotFoundException("Cliente");
+            }
+            var includeOwn = q.IncludeOwn;
+            query = query.Where(p => (includeOwn && p.ClientId == null) || ownerIds.Contains(p.ClientId));
+        }
         if (q.CategoryIds is { Length: > 0 })
         {
             // Categoría con sus subcategorías.
