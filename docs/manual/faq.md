@@ -6502,3 +6502,38 @@ Use otro nombre o edite la existente (puede estar inactiva: **Mostrar plantillas
 
 **¿Cómo «elimino» una plantilla?**
 No se eliminan: **Desactivar esta plantilla** la saca del selector (los lotes ya validados la conservan). Para volver a usarla, **Mostrar plantillas inactivas** y **Reactivar esta plantilla**. Si la desactiva y ya estaba desactivada, `La plantilla ya está inactiva.` (409).
+
+## Lote 39 — Precios de las órdenes y filtros de la lista (2026-10-12)
+
+**¿Por qué veo la orden pero el «Monto cotizado» sale vacío?**
+Su rol no tiene el permiso `orders.view_price` («Ver precios de las órdenes»). Sin él, el servidor deja `quotedAmount` en `null` en la ficha, la lista, la búsqueda/escaneo y en las respuestas de confirmar o repreciar; la orden sí quedó cotizada. Si su trabajo exige ver precios, pida al administrador que agregue el permiso a su rol (Sistema → Roles). El monto COD sí se ve siempre.
+
+**`Falta el permiso 'orders.view_price'.` (403) al abrir la cotización de una orden.**
+La cotización completa (`GET /api/v1/orders/{id}/quote`: total, líneas, despacho, COD y crédito) exige `orders.view` y `orders.view_price`. Pida el permiso al administrador o a Facturación, que lo trae de fábrica.
+
+**`El cliente excede su límite de crédito.` (422, sin cifras).**
+El crédito del cliente no alcanza para confirmar la orden y usted no tiene `orders.view_price`, así que el aviso no muestra el límite, lo en curso ni el monto. Es el mismo caso que `El cliente excede su límite de crédito: límite X, en curso Y, esta orden Z.`: avise a Facturación (o a quien tenga `orders.credit_override`) para que autorice el exceso, o suba el límite del cliente.
+
+**En el historial de la orden dice «Crédito excedido autorizado por …» sin los montos.**
+Es el mismo comentario del override de crédito; las cifras solo las ve quien tiene `orders.view_price`.
+
+**En un lote de importación de órdenes una fila dice `El cliente excede su límite de crédito.`**
+Esa fila no se creó por falta de crédito al confirmarla (`confirmNow`). Quien tiene `orders.view_price` ve el aviso con cifras. Autorice con `overrideCredit` (exige `orders.credit_override`) o importe esa fila sin confirmar.
+
+**Mi indicador o vista de Análisis con «Monto cotizado» sale en 0 o vacío.**
+El campo `QuotedAmount` de la fuente «Órdenes» sale vacío para quien no tiene `orders.view_price`. Pida el permiso o use otra columna.
+
+**¿Quién trae `orders.view_price` de fábrica?**
+Las plantillas Admin de compañía (TenantAdmin) y Facturación (Billing), y los roles con esos nombres que su compañía ya tenía (la actualización de la base se los agrega). Despachador, Operador de almacén, Chofer y Solo lectura no lo traen.
+
+**`Tipo de servicio desconocido: X.` / `Tipo de paquete desconocido: X.` / `Estatus desconocido: X.` (400) al filtrar la lista de órdenes.**
+Uno de los valores de `serviceTypes`, `packageTypes` o `statuses` no existe en el catálogo (revise la ortografía del código: `STANDARD`, `BOX`, `CONFIRMED`…; no importan las mayúsculas). Quite ese valor o elíjalo de la lista.
+
+**`Cliente no encontrado.` (404) al filtrar por varios clientes.**
+Alguno de los `clientIds` (o el `clientId`) no es de su compañía o está fuera del alcance de datos de su usuario. Quítelo del filtro; si debería verlo, pida al administrador que revise el alcance de su usuario.
+
+**Filtré por pueblo y no salió nada.**
+El pueblo se compara completo, sin mayúsculas ni tildes («bayamon» = «Bayamón»), contra el pueblo del consignatario guardado en la orden. Si el consignatario se escribió distinto (otro nombre o abreviado), la orden no entra; pruebe con el prefijo del ZIP (`postalCodePrefix`). Sin coincidencias la lista responde vacía, no es un error.
+
+**¿Varios valores en un filtro se suman o se restan?**
+Dentro de un filtro se suman (cualquiera de los tipos, pueblos, clientes o estatus elegidos); entre filtros distintos se restan (deben cumplirse todos). `clientId` y `status`, si también vienen, se suman a `clientIds` y `statuses`.
