@@ -328,3 +328,45 @@ JOIN dbo.Permission p ON p.Code = 'orders.view_price'
 WHERE r.Name IN ('TenantAdmin', 'Billing')
   AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-12 (b) — Índices para buscar sin recorrer TransportOrder ni Trip (verificación del Lote 41 con varias compañías
+   y volumen sintético: docs/lote41-decisiones.md). El filtro global de tenant de EF llega a SQL como
+   "(@bypass = 1 OR TenantId = @tid)" y con ese OR SQL Server no puede buscar por los índices que empiezan por TenantId:
+   estas búsquedas recorrían la tabla completa con las filas de TODAS las compañías (y, con READ COMMITTED de bloqueo,
+   chocaban con las escrituras de otras compañías). Cada índice empieza por una columna que ya identifica la fila:
+   - IX_TransportOrder_PublicId / IX_Trip_PublicId: orden o ruta por PublicId (ficha, agregar/quitar de ruta, bloqueo de la
+     ruta por PublicId). Medido a 508 mil órdenes / 10 mil rutas: 17.291 -> 6 lecturas y 202 -> 4.
+   - IX_Order_Client_Balance: saldo de crédito del cliente al crear o confirmar una orden (Σ QuotedAmount de las órdenes en
+     curso del cliente), dentro de la transacción del alta. Filtrado igual que la consulta para que nada más lo use. Medido:
+     17.291 -> 156 lecturas; con 4 compañías creando órdenes a la vez, de 175-202 interbloqueos a 0.
+   - IX_Order_OrderNumber / IX_Order_PackBatchNumber / IX_Order_ClientInvoiceNumber: búsqueda exacta del escaneo
+     (número de orden, empaque o factura) y revisión de factura repetida. Medido: 17.506 -> 12 lecturas.
+   - IX_Trip_PlanDate: rutas de un día (otras rutas del mismo chofer o vehículo en la ficha, rutas abiertas de la zona en el
+     escaneo, lista del día). Medido: 204 -> 18 lecturas; sin él, «Planificar el día» de una compañía hacía esperar hasta
+     1,3 s a las escrituras de rutas de OTRA compañía (bloqueo de página sobre Trip).
+   No son únicos a propósito (los únicos por compañía ya existen): solo AGREGAN. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_TransportOrder_PublicId' AND object_id = OBJECT_ID('dbo.TransportOrder'))
+    CREATE INDEX IX_TransportOrder_PublicId ON dbo.TransportOrder(PublicId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Trip_PublicId' AND object_id = OBJECT_ID('dbo.Trip'))
+    CREATE INDEX IX_Trip_PublicId ON dbo.Trip(PublicId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Order_Client_Balance' AND object_id = OBJECT_ID('dbo.TransportOrder'))
+    CREATE INDEX IX_Order_Client_Balance ON dbo.TransportOrder(ClientId, StatusCodeId) INCLUDE (TenantId, QuotedAmount)
+        WHERE IsActive = 1 AND QuotedAmount IS NOT NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Order_OrderNumber' AND object_id = OBJECT_ID('dbo.TransportOrder'))
+    CREATE INDEX IX_Order_OrderNumber ON dbo.TransportOrder(OrderNumber) WHERE IsActive = 1;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Order_PackBatchNumber' AND object_id = OBJECT_ID('dbo.TransportOrder'))
+    CREATE INDEX IX_Order_PackBatchNumber ON dbo.TransportOrder(PackBatchNumber) WHERE IsActive = 1;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Order_ClientInvoiceNumber' AND object_id = OBJECT_ID('dbo.TransportOrder'))
+    CREATE INDEX IX_Order_ClientInvoiceNumber ON dbo.TransportOrder(ClientInvoiceNumber) WHERE IsActive = 1;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Trip_PlanDate' AND object_id = OBJECT_ID('dbo.Trip'))
+    CREATE INDEX IX_Trip_PlanDate ON dbo.Trip(PlanDate) INCLUDE (TenantId, DriverId, VehicleId, DispatchZoneId, StatusCodeId)
+        WHERE IsActive = 1;
+GO

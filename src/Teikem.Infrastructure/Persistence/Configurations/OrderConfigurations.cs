@@ -33,7 +33,14 @@ public sealed class TransportOrderConfiguration : IEntityTypeConfiguration<Trans
         b.HasIndex(o => new { o.TenantId, o.StatusCodeId }).HasFilter("[IsActive] = 1").HasDatabaseName("IX_Order_Tenant_Status");
         b.HasIndex(o => new { o.TenantId, o.CodStatusCodeId }).HasFilter("[CodStatusCodeId] IS NOT NULL").HasDatabaseName("IX_Order_Cod");
         b.HasIndex(o => new { o.TenantId, o.ClientId, o.CreatedAtUtc }).HasFilter("[IsActive] = 1").HasDatabaseName("IX_Order_Client");
-        b.HasIndex(o => o.PublicId);
+        // 2026-10-12 (b), logistica-db-update.sql: búsquedas que no dependen de TenantId (el filtro global con su OR no deja
+        // buscar por los índices que empiezan por TenantId): orden por PublicId, saldo de crédito del cliente y búsqueda exacta.
+        b.HasIndex(o => o.PublicId).HasDatabaseName("IX_TransportOrder_PublicId");
+        b.HasIndex(o => new { o.ClientId, o.StatusCodeId }).IncludeProperties(o => new { o.TenantId, o.QuotedAmount })
+            .HasFilter("[IsActive] = 1 AND [QuotedAmount] IS NOT NULL").HasDatabaseName("IX_Order_Client_Balance");
+        b.HasIndex(o => o.OrderNumber).HasFilter("[IsActive] = 1").HasDatabaseName("IX_Order_OrderNumber");
+        b.HasIndex(o => o.PackBatchNumber).HasFilter("[IsActive] = 1").HasDatabaseName("IX_Order_PackBatchNumber");
+        b.HasIndex(o => o.ClientInvoiceNumber).HasFilter("[IsActive] = 1").HasDatabaseName("IX_Order_ClientInvoiceNumber");
 
         b.HasOne(o => o.Client).WithMany().HasForeignKey(o => o.ClientId);
         b.HasOne(o => o.Contract).WithMany().HasForeignKey(o => o.ContractId);

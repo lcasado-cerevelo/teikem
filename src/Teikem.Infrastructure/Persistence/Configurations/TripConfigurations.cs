@@ -30,6 +30,11 @@ public sealed class TripConfiguration : IEntityTypeConfiguration<Trip>
         b.HasIndex(t => new { t.TenantId, t.PlanDate }).HasFilter("[IsActive] = 1").HasDatabaseName("IX_Trip_Tenant_Date");
         b.HasIndex(t => new { t.TenantId, t.PlanDate, t.DispatchZoneId }).HasFilter("[IsActive] = 1").HasDatabaseName("IX_Trip_Zone_Date");
         b.HasIndex(t => new { t.TenantId, t.DriverId, t.PlanDate }).HasFilter("[IsActive] = 1 AND [DriverId] IS NOT NULL").HasDatabaseName("IX_Trip_Driver_Date");
+        // 2026-10-12 (b), logistica-db-update.sql: ruta por PublicId (LockTripAsync(Guid), ficha) y rutas de un día (otras rutas
+        // del mismo chofer/vehículo, rutas abiertas de la zona) sin recorrer la tabla con las rutas de todas las compañías.
+        b.HasIndex(t => t.PublicId).HasDatabaseName("IX_Trip_PublicId");
+        b.HasIndex(t => t.PlanDate).IncludeProperties(t => new { t.TenantId, t.DriverId, t.VehicleId, t.DispatchZoneId, t.StatusCodeId })
+            .HasFilter("[IsActive] = 1").HasDatabaseName("IX_Trip_PlanDate");
 
         b.HasOne(t => t.Status).WithMany().HasForeignKey(t => t.StatusCodeId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne(t => t.DispatchZone).WithMany().HasForeignKey(t => t.DispatchZoneId).OnDelete(DeleteBehavior.NoAction);
