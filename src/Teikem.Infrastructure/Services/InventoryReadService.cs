@@ -836,6 +836,9 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
                     .ToDictionaryAsync(x => x.RentalId, x => x.Number, ct),
                 EntityTypes.RentalReturn => await db.Set<RentalReturn>().AsNoTracking().Where(x => ids.Contains(x.RentalReturnId))
                     .ToDictionaryAsync(x => x.RentalReturnId, x => x.Number, ct),
+                // 2026-10-12: ajuste múltiple por su número AJM-######.
+                EntityTypes.MultiAdjustment => await db.Set<MultiAdjustment>().AsNoTracking().Where(x => ids.Contains(x.MultiAdjustmentId))
+                    .ToDictionaryAsync(x => x.MultiAdjustmentId, x => x.Number, ct),
                 _ => null,
             };
             if (map is not null) result[group.Key] = map;
