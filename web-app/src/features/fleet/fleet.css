@@ -1,0 +1,76 @@
+/* Lote F-D2 — Flota: tarjetas resumen (los «nodos» de la maqueta), pestañas, lista de vehículos con su ficha, documentos por vencer,
+   zonas y disponibilidad. Todo bajo .flt para no chocar con otras pantallas. */
+.flt{min-width:0}
+.flt-note{margin-bottom:14px}
+
+/* tarjetas resumen: `river` de la maqueta (un nodo por indicador) */
+.flt-river{display:flex;align-items:stretch;flex-wrap:wrap;gap:12px;margin-bottom:16px}
+.flt-node{flex:1 1 200px;max-width:320px;background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:13px 15px;min-width:0;text-align:left;color:inherit;font:inherit;cursor:pointer;display:flex;flex-direction:column;transition:border-color .14s,transform .14s}
+.flt-node:hover{border-color:var(--flow-line);transform:translateY(-2px)}
+.flt-node:focus-visible{outline:2px solid var(--flow);outline-offset:2px}
+.flt-node .ph{font-size:11.5px;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:6px;min-width:0}
+.flt-node .ph svg{width:13px;height:13px;flex:none}
+.flt-node .big{font-family:var(--mono);font-size:26px;font-weight:700;letter-spacing:-.02em;margin-top:7px;line-height:1.1}
+.flt-node.flow .big{color:var(--flow-2)}
+.flt-node.warn .big{color:var(--warn, #f59e0b)}
+.flt-tabs{margin-bottom:14px}
+
+/* vehículos: lista maestra + ficha */
+.flt-q{display:flex;flex-direction:column;gap:8px;align-items:stretch;padding:10px 12px;border-bottom:1px solid var(--line-2)}
+.flt-q .qbox{flex:0 0 auto;max-width:none}
+.flt-q .sw{align-self:flex-start;font-weight:500;font-size:12.5px;white-space:normal}
+.flt-q select{width:100%;min-width:0}
+.flt-qf{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.flt-qf .f{margin:0;min-width:0}
+.flt-list{list-style:none;margin:0;padding:0;max-height:640px;overflow:auto}
+.flt-list li{min-width:0}
+.flt-row{align-items:flex-start}
+.flt-row.dim{opacity:.7}
+.flt-main{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.flt-top{display:flex;align-items:center;gap:8px;min-width:0}
+.flt-top .chips{margin-left:auto;display:flex;gap:4px;flex:none}
+.flt-plate{font-weight:600;overflow-wrap:anywhere;min-width:0}
+.flt-main .meta{overflow-wrap:anywhere}
+.flt-detail{min-width:0}
+.flt-stack{display:flex;flex-direction:column;gap:14px;min-width:0}
+.flt-stack>.panel{margin-bottom:0}
+
+.flt-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.flt-grid .f{margin:0;min-width:0}
+.flt-grid .wide{grid-column:1/-1}
+.flt-grid input.mono{font-family:var(--mono)}
+.flt-state{border-top:1px solid var(--line-2);margin-top:16px;padding-top:14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.flt-state .f{margin:0;min-width:0}
+.flt-state .seg{max-width:100%}
+.flt-danger{color:var(--danger)}
+.flt-retired{margin:0 0 12px}
+.flt-acts{margin-top:14px}
+.flt-effects{margin:6px 0 10px;padding-left:20px;font-size:12.5px;display:flex;flex-direction:column;gap:3px}
+
+/* documentos del vehículo */
+.flt-doc-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 8px}
+.flt-doc-h .btn{margin-left:auto}
+.flt-empty{color:var(--faint);font-size:12.5px;margin:0 0 8px}
+
+/* documentos por vencer, zonas, disponibilidad */
+.flt-bar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:12px}
+.flt-bar .f{margin:0;min-width:150px;flex:1 1 150px}
+.flt-bar .flt-days{flex:0 1 150px}
+.flt-bar .sw{align-self:flex-end;font-weight:500;font-size:12.5px;white-space:normal;padding-bottom:6px}
+.flt-tag{margin-left:6px}
+.flt-link{background:none;border:0;padding:0;color:var(--flow-2);font:inherit;cursor:pointer;text-align:left;overflow-wrap:anywhere}
+.flt-link:hover{text-decoration:underline}
+.flt-av-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+.flt-issues{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px;font-size:12.5px}
+.flt-issues li{display:flex;gap:6px;align-items:flex-start;overflow-wrap:anywhere}
+.flt-issues li .chip{flex:none}
+.flt-issues-none{color:var(--faint)}
+
+@media(max-width:1100px){
+  .flt-av-grid{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:720px){
+  .flt-list{max-height:none}
+  .flt-grid,.flt-state{grid-template-columns:minmax(0,1fr)}
+  .flt-node{max-width:none}
+}

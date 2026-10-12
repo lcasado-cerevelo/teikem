@@ -350,7 +350,7 @@ export const appRoutes: readonly AppRoute[] = [
   { path: '/catalog/clients', element: lazy(() => import('../features/clients/ClientListScreen')), perm: 'clients.read', module: ModuleKeys.Catalog, nav: { group: 'catalog', key: 'clients', order: 10 } },
   { path: '/catalog/consignees', element: lazy(() => import('../features/consignees/ConsigneeListScreen')), perm: 'locations.read', module: ModuleKeys.Catalog, nav: { group: 'catalog', key: 'consignees', order: 20 } },
   { path: '/catalog/drivers', element: lazy(() => import('../features/drivers/DriverListScreen')), perm: 'fleet.view', module: ModuleKeys.Catalog, nav: { group: 'catalog', key: 'drivers', order: 30 } },
-  pending({ path: '/catalog/fleet', perm: 'fleet.view', module: ModuleKeys.Catalog, nav: { group: 'catalog', key: 'fleet', order: 40 } }),
+  { path: '/catalog/fleet', element: lazy(() => import('../features/fleet/FleetScreen')), perm: 'fleet.view', module: ModuleKeys.Catalog, nav: { group: 'catalog', key: 'fleet', order: 40 } },
 
   // ===== Análisis (F8b; Indicadores y Gráficos: F8a P3) =====
   pending({ path: '/analytics/reports', perm: 'analytics.view', module: ModuleKeys.Analytics, nav: { group: 'analytics', key: 'reports', order: 10 } }),

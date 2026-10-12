@@ -98,6 +98,22 @@ describe('Form + Field', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Otro usuario modificó el registro.')
   })
 
+  it('el aviso de arriba (error sin campo) desaparece cuando el usuario edita un campo', async () => {
+    const user = userEvent.setup()
+    render(
+      <ClientForm
+        onSubmit={async () => {
+          throw new ApiError(409, { title: 'Otro usuario modificó el registro.', code: 'conflict' })
+        }}
+      />,
+    )
+    await user.type(screen.getByLabelText(/Nombre/), 'X')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Otro usuario modificó el registro.')
+    await user.type(screen.getByLabelText('Código'), 'A')
+    expect(screen.queryByText('Otro usuario modificó el registro.')).toBeNull()
+  })
+
   it('NumberInput vacío envía null', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn(async () => undefined)

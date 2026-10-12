@@ -48,11 +48,11 @@ describe('Placeholder (pantalla pendiente)', () => {
 
   it('la ruta pendiente de routes.tsx pinta el Placeholder de su ítem', () => {
     setLang('es')
-    const route = appRoutes.find((r) => r.path === '/catalog/fleet')!
+    const route = appRoutes.find((r) => r.path === '/ops/dispatch')!
     const Screen = route.element
     render(<Screen />)
     expect(screen.getByTestId('placeholder-screen')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 1, name: 'Flota y mantenimiento' })).toBeInTheDocument()
-    expect(screen.getByText('vehículos y documentos')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Sala de despacho' })).toBeInTheDocument()
+    expect(screen.getByText('armar y despachar rutas')).toBeInTheDocument()
   })
 })

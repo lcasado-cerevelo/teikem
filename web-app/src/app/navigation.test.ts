@@ -110,7 +110,7 @@ describe('menú completo (routes.tsx)', () => {
 
   it('los ítems sin pantalla usan la pantalla pendiente; los que ya existen no', () => {
     expect(byPath('/ops/dispatch').pending).toBe(true)
-    expect(byPath('/catalog/fleet').pending).toBe(true)
+    expect(byPath('/catalog/fleet').pending).toBeUndefined()
     expect(byPath('/catalog/drivers').pending).toBeUndefined()
     expect(byPath('/catalog/consignees').pending).toBeUndefined()
     expect(byPath('/catalog/clients').pending).toBeUndefined()

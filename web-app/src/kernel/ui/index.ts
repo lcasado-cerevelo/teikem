@@ -108,6 +108,7 @@ export {
   IconRoute,
   IconSwap,
   IconTag,
+  IconTruck,
   IconUsers,
   IconWarehouse,
 } from './screenIcons'

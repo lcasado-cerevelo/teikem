@@ -43,6 +43,16 @@ export function Form<TFieldValues extends FieldValues, TContext, TTransformed>({
     [names],
   )
 
+  // el aviso de un error del servidor vale para lo que se envió: al editar un campo (evento `change` del usuario) desaparece. Un
+  // `reset` (p. ej. la ficha recargada tras un 409) no es una edición y lo deja a la vista.
+  const { watch } = form
+  useEffect(() => {
+    const subscription = watch((_values, info) => {
+      if (info.type === 'change') setAlert(null)
+    })
+    return () => subscription.unsubscribe()
+  }, [watch])
+
   const submit = form.handleSubmit(async (values) => {
     setAlert(null)
     try {

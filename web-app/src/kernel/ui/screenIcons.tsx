@@ -246,3 +246,14 @@ export function IconPhoneFormat() {
     </Svg>
   )
 }
+
+/** 'truck' de la maqueta: Flota y mantenimiento (pantalla, vehículos, cuando se agregue Despacho también). */
+export function IconTruck() {
+  return (
+    <Svg>
+      <path d="M1 5h12v11H1zM13 9h4l3 3v4h-7" />
+      <circle cx="5" cy="19" r="2" />
+      <circle cx="16.5" cy="19" r="2" />
+    </Svg>
+  )
+}

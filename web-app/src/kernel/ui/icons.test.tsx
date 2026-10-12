@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { IconPlus, IconUpload } from './icons'
-import { IconBolt, IconForm } from './screenIcons'
+import { IconBolt, IconForm, IconTruck } from './screenIcons'
 
 describe('íconos del kit', () => {
   it('IconPlus e IconUpload pintan un SVG decorativo', () => {
@@ -23,5 +23,10 @@ describe('íconos del kit', () => {
       </>,
     )
     expect(container.querySelectorAll('svg[aria-hidden="true"]')).toHaveLength(2)
+  })
+
+  it('IconTruck (Flota y mantenimiento) pinta un SVG decorativo', () => {
+    const { container } = render(<IconTruck />)
+    expect(container.querySelectorAll('svg[aria-hidden="true"]')).toHaveLength(1)
   })
 })
