@@ -4,7 +4,7 @@ import { applyProblemDetails } from '../api/problem'
 import { useT } from '../i18n'
 import { catalogKeys, useLateralEntries, usePipelineValidation, useStatuses, useStatusHistory } from './api'
 import { statusChipStyle } from './chipStyle'
-import { allowedTransitions, stepStates } from './transitions'
+import { allowedTransitions, lateralMoves, stepStates } from './transitions'
 import { StageKinds, sameCode, type StatusOption } from './types'
 import './catalogs.css'
 
@@ -32,13 +32,19 @@ export interface StatusPipelineProps {
    * recepción de una orden de compra). Sin la prop se ofrecen todas las transiciones válidas.
    */
   manualTargets?: readonly string[]
+  /**
+   * Solo los movimientos laterales: entrar a un lateral que las reglas del tenant permiten y, desde un lateral, volver EXACTAMENTE a la
+   * etapa de la que salió. Sin avances hacia adelante, cierres ni confirmación (son acciones propias de la pantalla). Se combina con
+   * `manualTargets`.
+   */
+  lateralOnly?: boolean
 }
 
 /**
  * Pipeline de estatus: etapas del pipeline en orden (hechas / actual / pendientes), laterales y terminales como píldoras,
  * y botones con las transiciones que el servidor aceptaría desde el estatus actual (con comentario opcional).
  */
-export function StatusPipeline({ domain, entityType, entityId, currentCode, onTransition, disabled, manualTargets }: StatusPipelineProps) {
+export function StatusPipeline({ domain, entityType, entityId, currentCode, onTransition, disabled, manualTargets, lateralOnly }: StatusPipelineProps) {
   const t = useT()
   const queryClient = useQueryClient()
   const actionable = !!onTransition && !disabled
@@ -59,11 +65,10 @@ export function StatusPipeline({ domain, entityType, entityId, currentCode, onTr
 
   // Las reglas y el historial deben estar resueltos (o haber fallado) antes de ofrecer transiciones.
   const rulesReady = !lateral.isPending && (!entityId || !history.isPending)
-  const targets = (actionable && rulesReady
-    ? allowedTransitions({ statuses, currentCode, lateralEntries: lateral.data ?? [], historyToCodes: historyCodes })
-    : []
-  ).filter((s) => !manualTargets || manualTargets.some((c) => sameCode(c, s.code)))
-  const next = current?.stageKind === StageKinds.Pipeline ? targets.find((s) => s.stageKind !== StageKinds.Lateral && s.sortOrder > current.sortOrder) : undefined
+  const transitionInput = { statuses, currentCode, lateralEntries: lateral.data ?? [], historyToCodes: historyCodes }
+  const targets = (actionable && rulesReady ? (lateralOnly ? lateralMoves(transitionInput) : allowedTransitions(transitionInput)) : []).filter((s) => !manualTargets || manualTargets.some((c) => sameCode(c, s.code)))
+  const next = !lateralOnly && current?.stageKind === StageKinds.Pipeline ? targets.find((s) => s.stageKind !== StageKinds.Lateral && s.sortOrder > current.sortOrder) : undefined
+  const comingBack = lateralOnly && current?.stageKind === StageKinds.Lateral
 
   if (statusesQuery.isPending) return <div className="spin" role="status" aria-label={t('common.loading')} />
   if (statusesQuery.isError) return <p className="note">{applyProblemDetails(statusesQuery.error).title}</p>
@@ -109,7 +114,11 @@ export function StatusPipeline({ domain, entityType, entityId, currentCode, onTr
               className={s === next ? 'btn flow sm' : 'btn sm'}
               onClick={() => setTarget(s)}
             >
-              {s === next ? t('status.advanceTo', { status: s.label }) : t('status.moveTo', { status: s.label })}
+              {s === next
+                ? t('status.advanceTo', { status: s.label })
+                : comingBack && s.stageKind === StageKinds.Pipeline
+                  ? t('status.returnTo', { status: s.label })
+                  : t('status.moveTo', { status: s.label })}
             </button>
           ))}
         </div>

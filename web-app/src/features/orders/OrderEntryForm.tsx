@@ -14,7 +14,7 @@ import { applyProblemDetails } from '../../kernel/api/problem'
 import { lookupLabelOrCode, useLookups, useTenantSettings } from '../../kernel/catalogs'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
-import { ClientPickerInput, ConfirmDialog, DateInput, Field, Form, IconPlus, IconTrash, Modal, NumberInput, Select, TextInput, toast } from '../../kernel/ui'
+import { ClientPickerInput, DateInput, Field, Form, IconPlus, IconTrash, Modal, NumberInput, Select, TextInput, toast } from '../../kernel/ui'
 import { IconTag } from '../../kernel/ui/screenIcons'
 import { useClient } from '../clients/api'
 import { useSpecialServices } from '../clients/contractApi'
@@ -22,6 +22,7 @@ import { useConsigneeContacts, useSelectedConsignee } from '../consignees/api'
 import { ConsigneePickerInput } from '../consignees/ConsigneePicker'
 import { pickPhone } from '../consignees/consigneeRules'
 import { useCreateOrder, type OrderDetailDto } from './api'
+import { CreditOverrideDialog } from './CreditOverrideDialog'
 import {
   buildOrderRequest,
   duplicateInvoiceOf,
@@ -524,19 +525,11 @@ export function OrderEntryForm({ onCreated }: OrderEntryFormProps) {
         )}
       </Modal>
 
-      <ConfirmDialog
+      <CreditOverrideDialog
         open={credit !== null}
-        title={t('orders.entry.credit.title')}
-        message={
-          credit && (
-            <>
-              <p>{credit.message}</p>
-              <p className="help">{t('orders.entry.credit.note')}</p>
-            </>
-          )
-        }
-        confirmLabel={t('orders.entry.credit.authorize')}
-        onConfirm={async () => {
+        message={credit?.message}
+        note={t('orders.entry.credit.note')}
+        onAuthorize={async () => {
           if (credit) await send({ ...credit.pending, confirmNow: true }, { overrideCredit: true })
         }}
         onClose={() => setCredit(null)}

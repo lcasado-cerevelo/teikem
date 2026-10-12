@@ -101,6 +101,29 @@ describe('StatusPipeline', () => {
     expect(screen.queryByRole('button', { name: 'Avanzar a En ruta' })).toBeNull()
   })
 
+  it('con lateralOnly ofrece solo los laterales (sin avance ni cierres) y, desde uno, el regreso exacto', async () => {
+    mock.handler = (path) => {
+      if (path === '/api/v1/status/history/TRANSPORT_ORDER/7') return [...HISTORY, { id: 3, fromCode: 'CONFIRMED', toCode: 'ON_HOLD', toLabel: 'En espera', changedAtUtc: '2026-07-21T10:00:00Z' }]
+      return route(path)
+    }
+    const onTransition = vi.fn(async () => undefined)
+    const user = userEvent.setup()
+    const { unmount } = wrap(
+      <StatusPipeline domain="OrderStatus" entityType="TRANSPORT_ORDER" entityId={7} currentCode="CONFIRMED" onTransition={onTransition} lateralOnly />,
+    )
+    expect(await screen.findByRole('button', { name: 'Pasar a En espera' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /En ruta/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Cancelada|Entregada/ })).toBeNull()
+    unmount()
+
+    wrap(<StatusPipeline domain="OrderStatus" entityType="TRANSPORT_ORDER" entityId={7} currentCode="ON_HOLD" onTransition={onTransition} lateralOnly />)
+    const back = await screen.findByRole('button', { name: 'Volver a Confirmada' })
+    expect(screen.queryByRole('button', { name: /En ruta|Cancelada|Entregada/ })).toBeNull()
+    await user.click(back)
+    await user.click(screen.getByRole('button', { name: 'Cambiar estatus' }))
+    await waitFor(() => expect(onTransition).toHaveBeenCalledWith('CONFIRMED', undefined))
+  })
+
   it('sin onTransition es solo lectura', async () => {
     mock.handler = route
     wrap(<StatusPipeline domain="OrderStatus" entityType="TRANSPORT_ORDER" currentCode="CONFIRMED" />)

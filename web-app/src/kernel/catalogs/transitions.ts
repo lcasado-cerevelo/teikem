@@ -63,6 +63,30 @@ export function allowedTransitions(input: TransitionInput): StatusOption[] {
   })
 }
 
+/**
+ * Última etapa del pipeline que registra el historial: a la que regresa un lateral (el servidor solo permite volver a ESA etapa).
+ * `undefined` si el registro nunca pasó por el pipeline.
+ */
+export function lastPipelineStage(statuses: readonly StatusOption[], historyToCodes: readonly (string | null | undefined)[] = []): StatusOption | undefined {
+  const pipeline = statuses.filter((s) => s.isEnabled && s.stageKind === StageKinds.Pipeline)
+  const lastCode = [...historyToCodes].reverse().find((c) => !!c && pipeline.some((p) => sameCode(p.code, c)))
+  return pipeline.find((p) => sameCode(p.code, lastCode))
+}
+
+/**
+ * Solo los movimientos «laterales»: entrar a un lateral permitido por las reglas del tenant y, estando en un lateral, el regreso
+ * EXACTO a la etapa de la que salió. Nunca avances hacia adelante, ni cierres (cancelar), ni la confirmación: son acciones propias.
+ */
+export function lateralMoves(input: TransitionInput): StatusOption[] {
+  const all = allowedTransitions(input)
+  const from = input.statuses.find((s) => sameCode(s.code, input.currentCode))
+  if (!from) return []
+  if (from.stageKind === StageKinds.Pipeline) return all.filter((s) => s.stageKind === StageKinds.Lateral)
+  if (from.stageKind !== StageKinds.Lateral) return []
+  const last = lastPipelineStage(input.statuses, input.historyToCodes)
+  return all.filter((s) => s.stageKind === StageKinds.Lateral || (s.stageKind === StageKinds.Pipeline && (last ? s.code === last.code : s.isInitial)))
+}
+
 /** Posición visual de cada etapa del pipeline respecto del estatus actual. */
 export type StepState = 'done' | 'current' | 'upcoming'
 

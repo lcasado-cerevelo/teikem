@@ -308,7 +308,7 @@ título), `<Splash full />` (lockup centrado sobre el indicador) y `Placeholder`
   si `onTransition` lanza, muestra el error del servidor sin cerrar. Pasa `entityId` para que el regreso desde un lateral
   sea exacto. `manualTargets={['SENT', 'CANCELLED']}` limita los botones a esos códigos cuando las demás transiciones las
   dispara el sistema (p. ej. PARTIAL/RECEIVED de una orden de compra al confirmar el recibo). `/status/{entity}/validate` se consulta para avisar si la configuración del tenant tiene errores (no da
-  transiciones). Sin `onTransition` (o con `disabled`) es solo lectura. Lógica pura: `allowedTransitions`, `stepStates`.
+  transiciones). `lateralOnly` (Lote F-C2): solo los desvíos que permiten las reglas del tenant y, desde un lateral, el regreso EXACTO a la etapa de la que salió ("Volver a X"); nunca avance, cierres ni confirmación. Sin `onTransition` (o con `disabled`) es solo lectura. Lógica pura: `allowedTransitions`, `lateralMoves`, `lastPipelineStage`, `stepStates`.
 - `<StatusHistory entityType entityId domain? />`: historial (más reciente arriba) con quién, cuándo y comentario.
 - `<CustomFieldsForm entityType="CLIENT" entityId={id} form={form} name?="customFields" disabled? />`: pinta dentro del formulario
   de la pantalla los campos de `GET /api/v1/custom-fields/definitions?entityType=` por tipo (TEXT, NUMBER, DATE, DATETIME,
@@ -1306,3 +1306,10 @@ Operación → Órdenes (`/orders`, `orders.view`, módulo `LTL_GROUND`). Decisi
 - Guardar: `Guardar borrador` (`confirmNow=false`) / `Guardar y confirmar` (`confirmNow=true`). 422 `credit_exceeded` + `orders.credit_override` → `ConfirmDialog` y reenvío con `overrideCredit`; 409 `duplicate_invoice_confirmable` →
   modal y reenvío con `confirmDuplicateInvoice`. Cada intento lleva su propia `Idempotency-Key`.
 - Kit nuevo: `DataTable.continuationRows` / `DataColumn.continuation` (prueba en `DataTable.test.tsx`) e `IconChevronRight` (`actionIcons.tsx`, en el barril: «abrir» del renglón de la maqueta).
+
+## Expediente de la orden (`src/features/orders`, Lote F-C2)
+`/orders/:publicId`. Decisiones: `docs/frontend/loteFC2-decisiones.md`; manual: `docs/manual/frontend/fc2-ordenes-expediente.md`. Patrón de ficha con acciones, edición en el propio panel y paneles laterales.
+- `OrderDetailScreen` (cabecera con acciones + `StatusPipeline lateralOnly` + `.od-cols` 1fr/320 px), `OrderDetailPanel` (lectura o edición con un solo «Guardar cambios»), `OrderActionDialogs` (`CancelOrderDialog`, `AssignDriverModal`), `CreditOverrideDialog` (compartido con el alta), `OrderSidePanels` (COD, Cotización, Chofer, Campos personalizados, Contactos).
+- `api.ts`: `useUpdateOrder` (PATCH), `useOrderQuote(id, enabled)`, `useConfirmOrder`, `useRepriceOrder`, `useCancelOrder`, `useOrderStatusChange`, `useAssignOrderDriver`, `useDrivers`; los POST llevan `Idempotency-Key` por intento y todo invalida ficha, listas, cotización e historial.
+- `orderRules.ts`: `orderActionVisibility(order, abilities, assignable)` (permiso Y capacidad), `isAssignableOrder` (hasta IN_TRANSIT inclusive), `orderEditValues`/`orderEditSchema`/`orderPatchChanges`/`buildOrderPatch` (solo lo cambiado; `clearCod`; paquetes como reemplazo), `isConcurrencyConflict`.
+- Kit nuevo: `ContactPointsPanel` (`features/contacts`; props `ownerEntity`, `ownerId`, `points`, `perms`, `onChanged`, claves de texto opcionales) que usan Clientes y Órdenes, y `useContactPoints`/`useContactPointActions`.

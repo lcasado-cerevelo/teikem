@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { allowedTransitions, lateralEntryAllowed, stepStates } from './transitions'
+import { allowedTransitions, lastPipelineStage, lateralEntryAllowed, lateralMoves, stepStates } from './transitions'
 import type { StatusLateralEntryDto, StatusOption } from './types'
 
 function st(code: string, stageKind: string, sortOrder: number, extra: Partial<StatusOption> = {}): StatusOption {
@@ -75,6 +75,36 @@ describe('allowedTransitions (réplica de StatusService)', () => {
   it('un terminal no admite más transiciones; un estatus desconocido tampoco ofrece', () => {
     expect(allowedTransitions({ statuses: STATUSES, currentCode: 'DELIVERED' })).toEqual([])
     expect(allowedTransitions({ statuses: STATUSES, currentCode: 'NOPE' })).toEqual([])
+  })
+})
+
+describe('lateralMoves (solo laterales y el regreso exacto)', () => {
+  it('desde el pipeline: solo los laterales permitidos; nunca avance, cierre ni confirmación', () => {
+    expect(codes(lateralMoves({ statuses: STATUSES, currentCode: 'CONFIRMED' }))).toEqual(['ON_HOLD', 'FAILED'])
+    // la regla del tenant sustituye a la global: CANCELLED/FAILED según desde dónde
+    const rules: StatusLateralEntryDto[] = [{ lateralStatusCode: 'FAILED', fromStatusCode: 'IN_ROUTE', isAllowed: true, isTenantRule: true }]
+    expect(codes(lateralMoves({ statuses: STATUSES, currentCode: 'CONFIRMED', lateralEntries: rules }))).toEqual(['ON_HOLD'])
+    expect(codes(lateralMoves({ statuses: STATUSES, currentCode: 'IN_ROUTE', lateralEntries: rules }))).toEqual(['ON_HOLD', 'FAILED'])
+  })
+
+  it('desde un lateral: el regreso es SOLO a la etapa de la que salió (no a la siguiente)', () => {
+    const result = codes(lateralMoves({ statuses: STATUSES, currentCode: 'ON_HOLD', historyToCodes: ['CAPTURED', 'CONFIRMED', 'ON_HOLD'] }))
+    expect(result).toEqual(['CONFIRMED', 'FAILED'])
+    expect(result).not.toContain('IN_ROUTE')
+    expect(result).not.toContain('CANCELLED')
+    expect(result).not.toContain('DELIVERED')
+  })
+
+  it('un lateral que nunca pasó por el pipeline vuelve a la etapa inicial; terminales y desconocidos, nada', () => {
+    expect(codes(lateralMoves({ statuses: STATUSES, currentCode: 'ON_HOLD', historyToCodes: ['ON_HOLD'] }))).toEqual(['CAPTURED', 'FAILED'])
+    expect(lateralMoves({ statuses: STATUSES, currentCode: 'DELIVERED' })).toEqual([])
+    expect(lateralMoves({ statuses: STATUSES, currentCode: 'NOPE' })).toEqual([])
+  })
+
+  it('lastPipelineStage ignora laterales y etapas deshabilitadas', () => {
+    expect(lastPipelineStage(STATUSES, ['CAPTURED', 'CONFIRMED', 'ON_HOLD'])?.code).toBe('CONFIRMED')
+    expect(lastPipelineStage(STATUSES, ['ON_HOLD'])).toBeUndefined()
+    expect(lastPipelineStage(STATUSES)).toBeUndefined()
   })
 })
 

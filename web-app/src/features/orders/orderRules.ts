@@ -3,7 +3,7 @@
 // Sin React: se prueba en `orderRules.test.ts`.
 import { z } from 'zod'
 import { ApiError } from '../../kernel/api/problem'
-import type { OrderCreateRequest, OrderListItemDto, OrderListQuery, OrderPackageLineDto } from './api'
+import type { OrderCreateRequest, OrderDetailDto, OrderListItemDto, OrderListQuery, OrderPackageLineDto, OrderPatchRequest } from './api'
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Lista: filtros → consulta
@@ -309,4 +309,198 @@ export function duplicateInvoiceOf(err: unknown): DuplicateInvoice | null {
     existingOrderNumber: err.errors.existingOrderNumber?.[0] ?? '',
     existingOrderPublicId: err.errors.existingOrderPublicId?.[0] ?? '',
   }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Expediente (Lote F-C2): qué acciones se ven, derivación de «asignable», edición dentro del Detalle y su PATCH
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** Máximo del comentario de cancelar / cambiar de estatus / asignar chofer (EntityStatusHistory.Comment, NVARCHAR(500)). */
+export const COMMENT_MAX = 500
+
+/** Etapa hasta la que el servidor deja asignar o reasignar el chofer de una entrega especial (pasada esta, responde 422). */
+export const IN_TRANSIT_CODE = 'IN_TRANSIT'
+
+/** Lo que el usuario puede hacer (permisos y módulos del API) para decidir qué acciones pintar. */
+export interface OrderAbilities {
+  edit: boolean
+  cancel: boolean
+  creditOverride: boolean
+  dispatch: boolean
+  viewPrice: boolean
+  /** Módulo CATALOG encendido (choferes y tarifas); sin él el servidor rechaza la asignación. */
+  catalogOn: boolean
+}
+
+/** `normal` = confirma quien tiene `orders.edit`; `overrideOnly` = solo `orders.credit_override` (Facturación): únicamente autoriza el exceso. */
+export type ConfirmMode = 'normal' | 'overrideOnly'
+
+export interface OrderActionVisibility {
+  /** null = no se ofrece «Confirmar». */
+  confirm: ConfirmMode | null
+  reprice: boolean
+  cancel: boolean
+  delete: boolean
+  assignDriver: boolean
+  /** Edición en el Detalle (`capabilities.canEditCargo` con `orders.edit`). */
+  edit: boolean
+  /** Cotizar (panel «Cotización»): solo con `orders.view_price`. */
+  quote: boolean
+  /** Estatus laterales y regreso (`orders.edit`). */
+  lateral: boolean
+}
+
+type ActionOrder = Pick<OrderDetailDto, 'isActive' | 'capabilities'>
+
+/** Cada acción necesita el permiso Y la capacidad que trae el DTO (el servidor las vuelve a exigir). */
+export function orderActionVisibility(order: ActionOrder, can: OrderAbilities, assignable: boolean): OrderActionVisibility {
+  const cap = order.capabilities ?? {}
+  const active = order.isActive !== false
+  return {
+    confirm: cap.canConfirm && active ? (can.edit ? 'normal' : can.creditOverride ? 'overrideOnly' : null) : null,
+    reprice: !!cap.canReprice && can.edit && active,
+    cancel: !!cap.canCancel && can.cancel && active,
+    delete: !!cap.canDelete && can.cancel && active,
+    assignDriver: assignable && can.dispatch && can.catalogOn && active,
+    edit: !!cap.canEditCargo && can.edit && active,
+    quote: can.viewPrice && active,
+    lateral: can.edit && active,
+  }
+}
+
+interface StatusLike {
+  code: string
+  stageKind: string
+  sortOrder: number
+}
+
+/**
+ * ¿Se puede asignar o reasignar chofer? Solo una entrega especial cuyo estatus sigue en el pipeline hasta `IN_TRANSIT` INCLUSIVE (en
+ * tránsito todavía se reasigna; no en un lateral, un terminal ni después de IN_TRANSIT: `SpecialDeliveryDispatchService`). Es una
+ * derivación para ofrecer el botón: el servidor decide con 422 si algo cambió.
+ */
+export function isAssignableOrder(order: Pick<OrderDetailDto, 'isSpecialDelivery' | 'isActive' | 'status'>, statuses: readonly StatusLike[]): boolean {
+  if (!order.isSpecialDelivery || order.isActive === false) return false
+  const current = statuses.find((s) => s.code.toLowerCase() === (order.status ?? '').toLowerCase())
+  if (!current || current.stageKind.toUpperCase() !== 'PIPELINE') return false
+  const inTransit = statuses.find((s) => s.code.toLowerCase() === IN_TRANSIT_CODE.toLowerCase())
+  return !inTransit || current.sortOrder <= inTransit.sortOrder
+}
+
+/** «YYYY-MM-DD» de una fecha de la orden (se guardan como «YYYY-MM-DDT00:00:00» sin zona: el día no se corre de zona). */
+export function orderDay(iso: string | null | undefined): string {
+  return iso ? iso.slice(0, 10) : ''
+}
+
+export interface OrderEditValues {
+  serviceType: string
+  /** Código de `OrderPriority` ('' = sin prioridad). */
+  priority: string
+  readyDate: string
+  dueDate: string
+  consigneeLocationPublicId: string
+  packages: PackageValues[]
+  codAmount: number | null
+  notes: string
+}
+
+/** Valores del formulario de edición a partir de la ficha. */
+export function orderEditValues(o: OrderDetailDto): OrderEditValues {
+  return {
+    serviceType: o.serviceType ?? '',
+    priority: (o.priority ?? '').toUpperCase(),
+    readyDate: orderDay(o.requestedDate),
+    dueDate: orderDay(o.promisedDate),
+    consigneeLocationPublicId: o.delivery?.locationPublicId ?? '',
+    packages: (o.packages ?? []).map((p) => ({ packageType: p.packageType ?? '', description: p.description ?? '', pieces: p.pieces ?? 1 })),
+    codAmount: o.codAmount != null && o.codAmount > 0 ? o.codAmount : null,
+    notes: o.notes ?? '',
+  }
+}
+
+/** Mensajes de validación de la edición (ya traducidos). */
+export interface OrderEditMessages extends OrderMessages {
+  dateRequired: string
+}
+
+/** Esquema de la edición en el Detalle: las mismas reglas del alta, salvo cliente, números y servicio especial (no se editan). */
+export function orderEditSchema(m: OrderEditMessages, original: { hadReady: boolean; hadDue: boolean; isSpecial: boolean }) {
+  return z
+    .object({
+      serviceType: z.string(),
+      priority: z.string(),
+      readyDate: z.string(),
+      dueDate: z.string(),
+      consigneeLocationPublicId: z.string(),
+      packages: z.array(z.object({ packageType: z.string(), description: z.string().max(DESCRIPTION_MAX, m.descriptionMax), pieces: z.number().nullable() })),
+      codAmount: z.number().nullable(),
+      notes: z.string(),
+    })
+    .superRefine((v, ctx) => {
+      const issue = (path: (string | number)[], message: string) => ctx.addIssue({ code: 'custom', path, message })
+      if (!v.serviceType) issue(['serviceType'], m.serviceRequired)
+      if (!v.consigneeLocationPublicId) issue(['consigneeLocationPublicId'], m.consigneeRequired)
+      // el servidor lee una fecha vacía como «no cambiar»: quitarla no es posible, y callarlo confundiría
+      if (!v.readyDate && original.hadReady) issue(['readyDate'], m.dateRequired)
+      if (!v.dueDate && original.hadDue) issue(['dueDate'], m.dateRequired)
+      if (v.readyDate && v.dueDate && v.dueDate < v.readyDate) issue(['dueDate'], m.dueBeforeReady)
+      if (original.isSpecial) return
+      if (v.packages.length === 0) issue(['packages'], m.packagesRequired)
+      v.packages.forEach((p, i) => {
+        if (!p.packageType) issue(['packages', i, 'packageType'], m.packageTypeRequired)
+        if (p.pieces == null || !Number.isInteger(p.pieces) || p.pieces < 1) issue(['packages', i, 'pieces'], m.pieces)
+      })
+      if (v.codAmount != null && v.codAmount < 0) issue(['codAmount'], m.codNegative)
+    })
+}
+
+const sameText = (a: string | null | undefined, b: string | null | undefined) => (a ?? '').trim().toUpperCase() === (b ?? '').trim().toUpperCase()
+
+/** Una línea de paquete en la forma en que se compara la guardada con la editada. */
+function lineKey(p: { packageType: string | null | undefined; description: string | null | undefined; pieces: number | null | undefined }): string {
+  return `${(p.packageType ?? '').toUpperCase()}|${(p.description ?? '').trim()}|${p.pieces ?? 0}`
+}
+
+/**
+ * Solo lo que cambió respecto de la ficha (el servidor lee `null` como «no cambiar»): texto tal cual (`''` borra), paquetes como
+ * reemplazo completo, COD con `codAmount` o `clearCod` (excluyentes). Una entrega especial no edita paquetes ni COD.
+ */
+export function orderPatchChanges(o: OrderDetailDto, v: OrderEditValues): OrderPatchRequest {
+  const patch: OrderPatchRequest = {}
+  if (v.serviceType && !sameText(v.serviceType, o.serviceType)) patch.serviceType = v.serviceType
+  if (!sameText(v.priority, o.priority)) patch.priority = v.priority
+  if (v.readyDate && v.readyDate !== orderDay(o.requestedDate)) patch.requestedDate = dayStart(v.readyDate)
+  if (v.dueDate && v.dueDate !== orderDay(o.promisedDate)) patch.promisedDate = dayStart(v.dueDate)
+  if (v.consigneeLocationPublicId && v.consigneeLocationPublicId !== (o.delivery?.locationPublicId ?? '')) patch.consigneeLocationPublicId = v.consigneeLocationPublicId
+  if (v.notes !== (o.notes ?? '')) patch.notes = v.notes
+  if (!o.isSpecialDelivery) {
+    const before = (o.packages ?? []).map(lineKey)
+    const after = v.packages.map((p) => lineKey({ packageType: p.packageType, description: p.description, pieces: p.pieces }))
+    if (before.length !== after.length || before.some((k, i) => k !== after[i]))
+      patch.packages = v.packages.map((p) => ({ packageType: p.packageType || null, description: p.description.trim() || null, pieces: p.pieces ?? 1 }))
+    const oldCod = o.codAmount != null && o.codAmount > 0 ? o.codAmount : 0
+    const newCod = v.codAmount != null && v.codAmount > 0 ? v.codAmount : 0
+    if (newCod !== oldCod) {
+      if (newCod > 0) patch.codAmount = newCod
+      else patch.clearCod = true
+    }
+  }
+  return patch
+}
+
+export function hasOrderChanges(patch: OrderPatchRequest): boolean {
+  return Object.keys(patch).some((k) => k !== 'rowVersion' && k !== 'confirmDuplicateInvoice')
+}
+
+/** Cuerpo del `PATCH /orders/{id}`: lo que cambió más el `rowVersion` de la ficha (409 si otro usuario la modificó). */
+export function buildOrderPatch(o: OrderDetailDto, v: OrderEditValues, opts: { confirmDuplicateInvoice?: boolean } = {}): OrderPatchRequest {
+  const patch = orderPatchChanges(o, v)
+  patch.rowVersion = o.rowVersion ?? null
+  if (opts.confirmDuplicateInvoice) patch.confirmDuplicateInvoice = true
+  return patch
+}
+
+/** 409 de edición concurrente (`El registro fue modificado por otro usuario…`): distinto de la factura repetida, que también es 409. */
+export function isConcurrencyConflict(err: unknown): err is ApiError {
+  return err instanceof ApiError && err.status === 409 && err.code === 'conflict'
 }

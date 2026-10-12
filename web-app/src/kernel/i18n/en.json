@@ -838,6 +838,7 @@
     "terminal": "Closures",
     "advanceTo": "Advance to {status}",
     "moveTo": "Move to {status}",
+    "returnTo": "Return to {status}",
     "confirmTitle": "Change status to “{status}”",
     "comment": "Comment (optional)",
     "commentTooLong": "The comment allows at most {max} characters.",
@@ -1547,31 +1548,119 @@
     "detail": {
       "notFound": "The order does not exist or does not belong to your company.",
       "back": "Back to orders",
-      "tabGeneral": "General",
-      "tabPickup": "Pickup",
-      "tabDelivery": "Delivery",
-      "tabPackages": "Packages",
-      "tabHistory": "Status history",
+      "panel": "Details",
+      "saveChanges": "Save changes",
+      "saved": "Changes saved.",
+      "editableHint": "This order is in {status}: you can correct its data and its packages.",
+      "lockedHint": "This order has moved past {status}: its data is shown for reference and is no longer edited here.",
+      "lockedPermissionHint": "Your user cannot edit orders: the data is shown for reference.",
+      "initialFallback": "Draft",
+      "consigneeHelp": "The town and ZIP come from the address of the chosen consignee.",
+      "priority": "Priority",
+      "noPriority": "No priority",
+      "pickup": "Pickup",
+      "packBatch": "Pack batch",
+      "references": "References",
+      "packagesTitle": "Packages",
+      "piecesCount": "{count} pieces",
+      "noPackages": "This order has no packages registered.",
+      "comment": "Comment",
       "window": "Window",
-      "fields": {
-        "invoice": "Client invoice",
-        "packBatch": "Pack batch",
-        "priority": "Priority",
-        "quotedAmount": "Quoted",
-        "codAmount": "COD",
-        "pieces": "Pieces",
-        "piecesUnit": "pieces",
-        "trip": "Assigned trip",
-        "notes": "Notes"
+      "stops": "Stops",
+      "pickupStop": "Pickup",
+      "deliveryStop": "Delivery",
+      "history": "History",
+      "dupSave": "Save anyway",
+      "pipelineNote": "Only detours (on hold, partial, failed) and the return to the stage the order left are recorded here. Confirm, cancel and assign driver are the buttons above.",
+      "errors": {
+        "dateRequired": "The date cannot be removed; choose another one."
       },
-      "packages": {
-        "number": "Package",
+      "cod": {
+        "title": "COD",
+        "amount": "Amount",
         "type": "Type",
-        "description": "Description",
-        "pieces": "Pieces",
-        "weight": "Weight (kg)",
-        "volume": "Volume (m³)",
-        "empty": "This order has no packages recorded."
+        "typePending": "Recorded on delivery",
+        "state": "Status",
+        "note": "The payment type (cash, check…) is recorded at delivery, not when the order is entered."
+      },
+      "quote": {
+        "title": "Quote",
+        "run": "Quote",
+        "quoted": "Quoted amount",
+        "quotedAt": "Quoted on {date}",
+        "notQuoted": "Not quoted yet: the quote is frozen when the order is confirmed.",
+        "preview": "Preview with current rates",
+        "dispatch": "Dispatch",
+        "codFee": "COD fee",
+        "total": "Total",
+        "credit": "Client credit",
+        "creditLimit": "Limit",
+        "noLimit": "No limit",
+        "pending": "In progress",
+        "thisOrder": "This order",
+        "available": "Available",
+        "exceeds": "Exceeds credit",
+        "withinLimit": "Within the limit",
+        "note": "This is only a preview: nothing is saved."
+      },
+      "driver": {
+        "title": "Assigned driver",
+        "driver": "Driver",
+        "trip": "Trip",
+        "none": "No driver assigned yet."
+      },
+      "custom": {
+        "title": "Custom fields",
+        "saved": "Custom fields saved."
+      },
+      "contacts": {
+        "empty": "This order has no contacts (who receives it, phone, email).",
+        "removeBody": "{value} will be removed from the contacts of this order."
+      }
+    },
+    "actions": {
+      "back": "Back",
+      "statusChanged": "Order {number} moved to {status}.",
+      "confirm": {
+        "button": "Confirm",
+        "title": "Confirm order {number}",
+        "body": "The order is quoted with the contract rates, the client credit is checked and the order leaves its initial status. Afterwards its data can no longer be edited here.",
+        "bodyOverrideOnly": "This order is confirmed by quoting it with the contract rates. Your user can only confirm by authorizing the client credit excess.",
+        "creditNote": "If you authorize, the order is confirmed anyway and who authorized it is recorded.",
+        "done": "Order {number} confirmed."
+      },
+      "reprice": {
+        "button": "Re-quote",
+        "title": "Re-quote order {number}",
+        "body": "The amount is calculated again with the current contract rates. The order status does not change.",
+        "done": "Order {number} re-quoted."
+      },
+      "cancel": {
+        "button": "Cancel the order",
+        "title": "Cancel order {number}",
+        "body": "The order becomes Cancelled and its special-delivery trip, if any, is cancelled too. This cannot be undone.",
+        "confirm": "Cancel the order",
+        "done": "Order {number} cancelled."
+      },
+      "delete": {
+        "button": "Delete the order"
+      },
+      "assign": {
+        "button": "Assign driver",
+        "reassign": "Reassign driver",
+        "title": "Assign a driver to order {number}",
+        "reassignTitle": "Reassign the driver of order {number}",
+        "hint": "If the order is still in its initial status it is confirmed (quoted and credit-checked), advances to In transit and the driver trip is created. Reassigning cancels the previous driver trip.",
+        "driver": "Driver",
+        "chooseDriver": "Choose the driver…",
+        "noDrivers": "There are no active drivers",
+        "loadFailed": "The driver list could not be read",
+        "noFleetAccess": "Your user cannot view drivers (fleet.view permission); ask the administrator for it to assign one.",
+        "driverRequired": "Choose the driver.",
+        "confirm": "Assign driver",
+        "authorize": "Authorize and assign",
+        "creditNote": "If you authorize, the assignment is made anyway and who authorized it is recorded.",
+        "done": "Driver assigned to order {number}."
       }
     },
     "entry": {

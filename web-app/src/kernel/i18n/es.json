@@ -838,6 +838,7 @@
     "terminal": "Cierres",
     "advanceTo": "Avanzar a {status}",
     "moveTo": "Pasar a {status}",
+    "returnTo": "Volver a {status}",
     "confirmTitle": "Cambiar el estatus a «{status}»",
     "comment": "Comentario (opcional)",
     "commentTooLong": "El comentario admite como máximo {max} caracteres.",
@@ -1547,31 +1548,119 @@
     "detail": {
       "notFound": "La orden no existe o no pertenece a su compañía.",
       "back": "Volver a órdenes",
-      "tabGeneral": "Datos generales",
-      "tabPickup": "Recogida",
-      "tabDelivery": "Entrega",
-      "tabPackages": "Bultos",
-      "tabHistory": "Historial de estatus",
+      "panel": "Detalle",
+      "saveChanges": "Guardar cambios",
+      "saved": "Cambios guardados.",
+      "editableHint": "Esta orden está en {status}: puede corregir sus datos y sus paquetes.",
+      "lockedHint": "Esta orden ya avanzó de {status}: sus datos se muestran como referencia, ya no se editan aquí.",
+      "lockedPermissionHint": "Su usuario no tiene permiso para editar órdenes: los datos se muestran como referencia.",
+      "initialFallback": "Borrador",
+      "consigneeHelp": "El pueblo y el ZIP salen de la dirección del consignatario elegido.",
+      "priority": "Prioridad",
+      "noPriority": "Sin prioridad",
+      "pickup": "Recogido",
+      "packBatch": "Empaque",
+      "references": "Referencias",
+      "packagesTitle": "Paquetes",
+      "piecesCount": "{count} piezas",
+      "noPackages": "Esta orden no tiene paquetes registrados.",
+      "comment": "Comentario",
       "window": "Ventana",
-      "fields": {
-        "invoice": "Factura del cliente",
-        "packBatch": "Lote de empaque",
-        "priority": "Prioridad",
-        "quotedAmount": "Cotizado",
-        "codAmount": "COD",
-        "pieces": "Piezas",
-        "piecesUnit": "piezas",
-        "trip": "Viaje asignado",
-        "notes": "Notas"
+      "stops": "Paradas",
+      "pickupStop": "Recogida",
+      "deliveryStop": "Entrega",
+      "history": "Historial",
+      "dupSave": "Guardar de todos modos",
+      "pipelineNote": "Aquí solo se registran desvíos (en espera, parcial, fallida) y el regreso a la etapa de la que salió la orden. Confirmar, cancelar y asignar chofer son los botones de arriba.",
+      "errors": {
+        "dateRequired": "La fecha no se puede quitar; elija otra."
       },
-      "packages": {
-        "number": "Bulto",
+      "cod": {
+        "title": "COD",
+        "amount": "Monto",
         "type": "Tipo",
-        "description": "Descripción",
-        "pieces": "Piezas",
-        "weight": "Peso (kg)",
-        "volume": "Volumen (m³)",
-        "empty": "Esta orden no tiene bultos registrados."
+        "typePending": "Se registra al entregar",
+        "state": "Estado",
+        "note": "El tipo de cobro (efectivo, cheque…) se registra al momento de entregar, no al capturar la orden."
+      },
+      "quote": {
+        "title": "Cotización",
+        "run": "Cotizar",
+        "quoted": "Monto cotizado",
+        "quotedAt": "Cotizada el {date}",
+        "notQuoted": "Todavía no se ha cotizado: la cotización se congela al confirmar la orden.",
+        "preview": "Vista previa con las tarifas vigentes",
+        "dispatch": "Despacho",
+        "codFee": "Cargo por COD",
+        "total": "Total",
+        "credit": "Crédito del cliente",
+        "creditLimit": "Límite",
+        "noLimit": "Sin límite",
+        "pending": "En curso",
+        "thisOrder": "Esta orden",
+        "available": "Disponible",
+        "exceeds": "Excede el crédito",
+        "withinLimit": "Dentro del límite",
+        "note": "Es solo una vista previa: no guarda nada."
+      },
+      "driver": {
+        "title": "Chofer asignado",
+        "driver": "Chofer",
+        "trip": "Viaje",
+        "none": "Todavía no tiene chofer asignado."
+      },
+      "custom": {
+        "title": "Campos personalizados",
+        "saved": "Campos personalizados guardados."
+      },
+      "contacts": {
+        "empty": "Esta orden no tiene contactos (quién recibe, teléfono, correo).",
+        "removeBody": "Se quitará {value} de los contactos de esta orden."
+      }
+    },
+    "actions": {
+      "back": "Volver",
+      "statusChanged": "La orden {number} pasó a {status}.",
+      "confirm": {
+        "button": "Confirmar",
+        "title": "Confirmar la orden {number}",
+        "body": "Se cotiza la orden con las tarifas del contrato, se revisa el crédito del cliente y la orden sale de su estatus inicial. Después ya no se podrán editar sus datos aquí.",
+        "bodyOverrideOnly": "Esta orden se confirma cotizando con las tarifas del contrato. Su usuario solo puede confirmar autorizando el exceso del crédito del cliente.",
+        "creditNote": "Si autoriza, la orden se confirma de todos modos y queda registrado quién lo autorizó.",
+        "done": "Orden {number} confirmada."
+      },
+      "reprice": {
+        "button": "Re-cotizar",
+        "title": "Re-cotizar la orden {number}",
+        "body": "Se vuelve a calcular el monto con las tarifas vigentes del contrato. El estatus de la orden no cambia.",
+        "done": "Orden {number} re-cotizada."
+      },
+      "cancel": {
+        "button": "Cancelar la orden",
+        "title": "Cancelar la orden {number}",
+        "body": "La orden pasa a Cancelada y su viaje de entrega especial, si lo tiene, también se cancela. Esto no se puede deshacer.",
+        "confirm": "Cancelar la orden",
+        "done": "Orden {number} cancelada."
+      },
+      "delete": {
+        "button": "Eliminar la orden"
+      },
+      "assign": {
+        "button": "Asignar chofer",
+        "reassign": "Reasignar chofer",
+        "title": "Asignar chofer a la orden {number}",
+        "reassignTitle": "Reasignar chofer de la orden {number}",
+        "hint": "Si la orden sigue en su estatus inicial se confirma (cotiza y revisa el crédito), avanza hasta En tránsito y se crea el viaje del chofer. Reasignar cancela el viaje del chofer anterior.",
+        "driver": "Chofer",
+        "chooseDriver": "Elija el chofer…",
+        "noDrivers": "No hay choferes activos",
+        "loadFailed": "No se pudo leer la lista de choferes",
+        "noFleetAccess": "Su usuario no puede consultar los choferes (permiso fleet.view); pida el permiso al administrador para poder asignar uno.",
+        "driverRequired": "Elija el chofer.",
+        "confirm": "Asignar chofer",
+        "authorize": "Autorizar y asignar",
+        "creditNote": "Si autoriza, la asignación se hace de todos modos y queda registrado quién lo autorizó.",
+        "done": "Chofer asignado a la orden {number}."
       }
     },
     "entry": {

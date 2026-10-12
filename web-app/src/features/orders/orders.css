@@ -70,3 +70,36 @@
 .oe-cont{color:var(--faint);font-size:11px}
 .oe-pkgcell{min-width:0}
 .oe-desc{font-size:11px;color:var(--faint);overflow-wrap:anywhere}
+
+/* Lote F-C2 — Expediente de la orden (maqueta `record()`): columna principal + columna de 320 px (COD, Cotización, Chofer, Campos, Contactos) */
+.od-pipe{margin-bottom:14px;min-width:0}
+.od-pipenote{margin:8px 0 0}
+.od-cols{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:start;min-width:0}
+.od-main,.od-side{display:flex;flex-direction:column;gap:16px;min-width:0}
+.od-main>.panel,.od-side>.panel{margin:0}
+@media(max-width:720px){.od-cols{grid-template-columns:minmax(0,1fr)}}
+.od-back{display:inline-grid;transform:rotate(180deg);margin-right:4px}
+.od-back svg{width:14px;height:14px}
+.od-hint{margin:0 0 12px;color:var(--faint);font-size:12px}
+.od-ro{margin:0;padding:7px 0;font-size:13.5px;overflow-wrap:anywhere}
+.od-muted{color:var(--muted);font-size:12.5px;overflow-wrap:anywhere}
+.od-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;min-width:0}
+@media(max-width:480px){.od-facts{grid-template-columns:minmax(0,1fr)}}
+.od-sub{display:flex;align-items:center;gap:8px;margin:14px 0 8px}
+.od-subt{font-size:13px;font-weight:600}
+.od-subr{margin-left:auto;font-size:12px;color:var(--muted)}
+.od-tbl{min-width:0}
+.od-sum{margin:8px 0 0}
+.od-last{margin-top:14px;margin-bottom:0}
+.od-stops{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;min-width:0}
+@media(max-width:560px){.od-stops{grid-template-columns:minmax(0,1fr)}}
+.od-stop{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:3px;min-width:0;font-size:13px}
+.od-stopt{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.od-kv{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:4px 0;min-width:0}
+.od-kv .od-k{color:var(--muted);min-width:0;overflow-wrap:anywhere}
+.od-kv b{text-align:right;min-width:0;overflow-wrap:anywhere}
+.od-tot{border-top:1px solid var(--line);margin-top:6px;padding-top:8px}
+.od-note{margin:8px 0 0}
+.od-sect{margin:12px 0 4px;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.od-quote{margin-top:8px;border-top:1px dashed var(--line);padding-top:4px}
+.od-side .cl-points-cols{grid-template-columns:minmax(0,1fr)}
