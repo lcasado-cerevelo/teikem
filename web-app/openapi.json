@@ -16754,6 +16754,25 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "ownerClientPublicIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "includeOwn",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
           }
         ],
         "responses": {

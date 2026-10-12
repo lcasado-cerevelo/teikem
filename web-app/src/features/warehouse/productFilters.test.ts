@@ -12,6 +12,7 @@ import {
   toggleKpi,
   type ProductFilterState,
 } from './productFilters'
+import { OWN_OWNER } from './kardexView'
 
 const WH = '11111111-1111-1111-1111-111111111111'
 const P1 = 'aaaaaaaa-0000-0000-0000-000000000001'
@@ -23,6 +24,7 @@ const FULL: ProductFilterState = {
   bin: '',
   categoryIds: ['3'],
   brands: ['Abbott'],
+  owners: [],
   kpi: 'low',
   hasAvailable: false,
 }
@@ -85,6 +87,21 @@ describe('productFilters', () => {
       name: 'medidor',
     })
     expect(JSON.parse(JSON.stringify(adjustmentsKardexQuery(EMPTY_PRODUCT_FILTERS)))).toEqual({ types: ['ADJUSTMENT'] })
+  })
+
+  it('Dueño (varios): Propio va como includeOwn y los clientes como ownerClientPublicIds, a la tabla y al Kárdex de ajustes; vacío = todos', () => {
+    const C = 'cccccccc-0000-0000-0000-000000000001'
+    const f = { ...FULL, kpi: null, owners: [OWN_OWNER, C] }
+    expect(productListQuery(f)).toMatchObject({ ownerClientPublicIds: [C], includeOwn: true })
+    expect(adjustmentsKardexQuery(f)).toMatchObject({ ownerClientPublicIds: [C], includeOwn: true })
+    expect(productListQuery({ ...f, owners: [C] })).toMatchObject({ ownerClientPublicIds: [C], includeOwn: undefined })
+    expect(productListQuery({ ...f, owners: [OWN_OWNER] })).toMatchObject({ ownerClientPublicIds: undefined, includeOwn: true })
+    expect(JSON.parse(JSON.stringify(productListQuery(EMPTY_PRODUCT_FILTERS)))).toEqual({})
+    expect(hasProductFilters({ ...EMPTY_PRODUCT_FILTERS, owners: [C] })).toBe(true)
+    const names = { warehouses: new Map(), categories: new Map(), owners: new Map([[OWN_OWNER, 'Propio'], [C, 'Cliente C']]) }
+    expect(describeProductFilters({ ...EMPTY_PRODUCT_FILTERS, owners: [OWN_OWNER, C] }, names, t, 'inventory')).toEqual([
+      { label: 'warehouse.products.filters.owner', value: 'Propio, Cliente C' },
+    ])
   })
 
   it('hasProductFilters', () => {

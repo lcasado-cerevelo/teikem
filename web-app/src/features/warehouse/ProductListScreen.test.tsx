@@ -30,6 +30,7 @@ vi.mock('../../kernel/ui/reportPdf', async (importOriginal) => {
 
 const WH = '11111111-1111-1111-1111-111111111111'
 const WH2 = '11111111-1111-1111-1111-111111111112'
+const CLIENT_A = 'cccccccc-0000-0000-0000-00000000000a'
 const P1 = 'aaaaaaaa-0000-0000-0000-000000000001'
 
 const ROWS = [
@@ -108,6 +109,7 @@ function route(url: URL): unknown {
       { code: 'SERIAL', label: 'Serie', sortOrder: 3 },
     ]
   if (p === '/api/v1/products/brands') return ['Abbott', 'Roche']
+  if (p === '/api/v1/inventory/owners') return [{ clientPublicId: null, name: 'Propio', isOwn: true }, { clientPublicId: CLIENT_A, name: 'Cliente A', isOwn: false }]
   if (p === '/api/v1/products') {
     if (q.get('take') === '1') {
       if (q.get('belowMin') === 'true') return { total: mock.belowMin, skip: 0, take: 1, items: [] }
@@ -287,7 +289,7 @@ describe('ProductListScreen · Productos e inventario', () => {
     expect(lastListQuery().getAll('warehousePublicIds')).toEqual([WH])
   })
 
-  it('filtros al API y a la página 1: Almacén (varios), SKU, Nombre, Categoría y Marca', async () => {
+  it('filtros al API y a la página 1: Almacén (varios), SKU o nombre, Categoría, Marca y Dueño', async () => {
     const user = userEvent.setup()
     wrap()
     await user.click(await screen.findByRole('button', { name: 'Página siguiente' }))
@@ -298,13 +300,13 @@ describe('ProductListScreen · Productos e inventario', () => {
     expect(lastListQuery().get('skip')).toBe('0')
     expect(lastListQuery().has('warehousePublicId')).toBe(false)
 
-    await user.type(screen.getByRole('combobox', { name: 'SKU' }), 'glu')
+    await user.type(screen.getByRole('combobox', { name: 'SKU o nombre' }), 'glu')
     await user.click(await screen.findByRole('option', { name: /GLU-100 · Medidor de glucosa/ }))
     await waitFor(() => expect(lastListQuery().getAll('productPublicIds')).toEqual([P1]))
 
-    await user.type(screen.getByRole('searchbox', { name: 'Nombre' }), 'medidor')
-    await waitFor(() => expect(lastListQuery().get('name')).toBe('medidor'))
-    expect(lastListQuery().has('search')).toBe(false)
+    // ya no hay filtro «Nombre»: el de SKU busca por SKU o por nombre
+    expect(screen.queryByRole('searchbox', { name: 'Nombre' })).not.toBeInTheDocument()
+    expect(lastListQuery().has('name')).toBe(false)
 
     await pickOptions(user, 'Categoría', ['Médico'])
     await waitFor(() => expect(lastListQuery().getAll('categoryIds')).toEqual(['3']))
@@ -312,11 +314,15 @@ describe('ProductListScreen · Productos e inventario', () => {
     await pickOptions(user, 'Marca', ['Roche'])
     await waitFor(() => expect(lastListQuery().getAll('brands')).toEqual(['Roche']))
 
+    await pickOptions(user, 'Dueño', ['Propio', 'Cliente A'])
+    await waitFor(() => expect(lastListQuery().getAll('ownerClientPublicIds')).toEqual([CLIENT_A]))
+    expect(lastListQuery().get('includeOwn')).toBe('true')
+
     await user.click(screen.getByRole('button', { name: 'Limpiar' }))
     await waitFor(() => expect(lastListQuery().has('brands')).toBe(false))
     expect(lastListQuery().has('warehousePublicIds')).toBe(false)
-    // el nombre se aplica con la misma pausa que al escribir
-    await waitFor(() => expect(lastListQuery().has('name')).toBe(false))
+    expect(lastListQuery().has('ownerClientPublicIds')).toBe(false)
+    expect(lastListQuery().has('includeOwn')).toBe(false)
   })
 
   it('Reporte de inventario: lee todo lo filtrado (de a 200) y arma el PDF con filtros por nombre, grupos y valor', async () => {

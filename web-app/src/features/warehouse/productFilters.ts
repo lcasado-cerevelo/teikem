@@ -4,6 +4,7 @@
 // `describeProductFilters` arma el bloque "Filtros aplicados" del PDF con nombres, no ids. El KPI viaja al Reporte de
 // inventario por `productListQuery` (mismo filtro que la tabla); al de ajustes no (solo un aviso).
 import type { GetQuery } from './api'
+import { ownerQuery } from './kardexView'
 import type { ProductFilterItem } from './pickers'
 
 /** KPI elegido en el río (filtra la tabla): SKU activos, Unidades totales, Bajo mínimo, Con número de serie. */
@@ -25,12 +26,14 @@ export interface ProductFilterState {
   /** ids de categoría como texto (el API incluye las subcategorías). */
   categoryIds: readonly string[]
   brands: readonly string[]
+  /** Dueño del inventario (varios): `OWN_OWNER` ('OWN') = Propio y/o clientPublicId. Vacío = todos. */
+  owners: readonly string[]
   kpi: ProductKpi | null
   /** Switch «Excluir no disponibles»: solo productos con disponible (en mano − reservado) mayor que 0, como la columna Disponible. */
   hasAvailable: boolean
 }
 
-export const EMPTY_PRODUCT_FILTERS: ProductFilterState = { warehouses: [], products: [], name: '', bin: '', categoryIds: [], brands: [], kpi: null, hasAvailable: false }
+export const EMPTY_PRODUCT_FILTERS: ProductFilterState = { warehouses: [], products: [], name: '', bin: '', categoryIds: [], brands: [], owners: [], kpi: null, hasAvailable: false }
 
 /** `?kpi=` de la URL → KPI (valor desconocido = ninguno). */
 export function parseKpiParam(value: string | null | undefined): ProductKpi | null {
@@ -76,6 +79,7 @@ export function productListQuery(f: ProductFilterState): GetQuery<'/api/v1/produ
     name: name || undefined,
     categoryIds: nonEmpty(f.categoryIds.map(Number)),
     brands: nonEmpty(f.brands),
+    ...ownerQuery(f.owners),
     hasAvailable: f.hasAvailable || undefined,
     binSearch: f.bin.trim() || undefined,
     ...kpiQuery(f.kpi),
@@ -95,13 +99,14 @@ export function adjustmentsKardexQuery(f: ProductFilterState): GetQuery<'/api/v1
     productPublicIds: nonEmpty(f.products.map((p) => p.publicId)),
     categoryIds: nonEmpty(f.categoryIds.map(Number)),
     brands: nonEmpty(f.brands),
+    ...ownerQuery(f.owners),
     name: name || undefined,
   }
 }
 
 /** true si hay algún filtro (incluido el KPI). */
 export function hasProductFilters(f: ProductFilterState): boolean {
-  return f.warehouses.length + f.products.length + f.categoryIds.length + f.brands.length > 0 || f.name.trim() !== '' || f.bin.trim() !== '' || f.kpi !== null || f.hasAvailable
+  return f.warehouses.length + f.products.length + f.categoryIds.length + f.brands.length + f.owners.length > 0 || f.name.trim() !== '' || f.bin.trim() !== '' || f.kpi !== null || f.hasAvailable
 }
 
 type Translate = (key: string, params?: Record<string, string | number>) => string
@@ -110,10 +115,12 @@ type Translate = (key: string, params?: Record<string, string | number>) => stri
 export interface ProductFilterNames {
   warehouses: ReadonlyMap<string, string>
   categories: ReadonlyMap<string, string>
+  /** Dueño (`OWN_OWNER` o clientPublicId → nombre); sin él se muestra el id. */
+  owners?: ReadonlyMap<string, string>
 }
 
 /**
- * "Filtros aplicados" legibles para un reporte (en el orden de la pantalla): Almacén, SKU, Nombre, Categoría, Marca y
+ * "Filtros aplicados" legibles para un reporte (en el orden de la pantalla): Almacén, SKU, Nombre, Categoría, Marca, Dueño y
  * la vista del KPI. `report = 'adjustments'` agrega el tipo de movimiento y omite el KPI (no aplica a movimientos).
  * `report = 'barcodes'` (Lote F14, códigos de barras): como el de inventario pero el almacén sin la nota de cantidades (el
  * reporte no tiene cantidades y el almacén no quita productos de la lista).
@@ -145,6 +152,7 @@ export function describeProductFilters(
     })
   }
   if (f.brands.length > 0) out.push({ label: t('warehouse.products.filters.brand'), value: list([...f.brands]) })
+  if (f.owners.length > 0) out.push({ label: t('warehouse.products.filters.owner'), value: list(f.owners.map((id) => names.owners?.get(id) ?? id)) })
   if (f.hasAvailable && report !== 'adjustments') out.push({ label: t('warehouse.products.filters.excludeUnavailable'), value: t('warehouse.products.reports.filters.yes') })
   if (f.kpi && report !== 'adjustments') out.push({ label: t('warehouse.products.reports.filters.view'), value: t(`warehouse.products.kpis.view.${f.kpi}`) })
   return out

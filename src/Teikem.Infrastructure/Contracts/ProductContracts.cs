@@ -48,12 +48,15 @@ public sealed record ProductPatchRequest(string? Name = null, Guid? OwnerClientP
 /// o de los almacenes indicados; sin saldo = 0): sin existencia o con todo reservado. Misma suma que BelowMin.
 /// HasAvailable (2026-10-09, switch «Con disponible» de Productos e inventario) = productos con disponible &gt; 0 con la MISMA suma de la columna
 /// «Disponible» de la tabla (en mano − reservado de todas las posiciones, o de los almacenes indicados); es el complemento exacto de Unavailable.
+/// OwnerClientPublicIds + IncludeOwn (2026-10-11, filtro «Dueño» de Productos e inventario, varios a la vez) = productos de esos clientes dueños
+/// y, con IncludeOwn, también los propios (sin cliente); sin ninguno de los dos no se filtra por dueño (todos). Se combinan con OwnOnly y
+/// OwnerClientPublicId (que siguen para los selectores) como una condición más.
 /// </summary>
 public sealed record ProductListQuery(string? Search = null, int[]? CategoryIds = null, Guid? OwnerClientPublicId = null, bool? OwnOnly = null,
     bool ActiveOnly = false, Guid? WarehousePublicId = null, bool OnlyAvailable = false, int Skip = 0, int Take = 100, bool SelectorOrder = false,
     bool BelowMin = false, Guid[]? WarehousePublicIds = null, Guid[]? ProductPublicIds = null, string? Name = null, string[]? Brands = null,
     bool SerialOnly = false, bool SerialMissing = false, bool OnlyOnHand = false, bool Unavailable = false,
-    bool HasAvailable = false, string? BinSearch = null);
+    bool HasAvailable = false, string? BinSearch = null, Guid[]? OwnerClientPublicIds = null, bool IncludeOwn = false);
 
 public sealed record ProductListItemDto(int Id, Guid PublicId, string Sku, string Name, int? CategoryId, string? CategoryName,
     Guid? OwnerClientPublicId, string? OwnerName, bool IsOwn, string BaseUomCode, string TrackingTypeCode, string? Barcode,
