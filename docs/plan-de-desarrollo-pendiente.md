@@ -133,7 +133,7 @@ Bajo riesgo (no hay lógica nueva) y habilitan a Advance Logistics a operar desd
 |---|---|---|---|
 | F-A | Clientes y contratos (expediente, contratos, tarifas, servicios especiales, usuarios de portal, cotización) | `ClientsController`, `ContractsController`, `ContractRatesController`, `SpecialServicesController`, `PortalUsersController`, `BillingQuoteController` | **F-A1 y F-A2 hechos** (`docs/frontend/loteFA1-decisiones.md`, `loteFA2-decisiones.md`); falta F-A3 portal |
 | F-B | Consignatarios y localizaciones (incl. importación CSV por plantilla) | `LocationsController`, `ConsigneeImport*Controller` | **Hecho (Lotes 38 y F-B, 2026-10-11)**: importación CSV de consignatarios con backend propio (`docs/lote38-decisiones.md`, `docs/frontend/loteFB-decisiones.md`) |
-| F-C | Órdenes: **alta** (entrada rápida, detallada, entrega especial), edición, cotizar/confirmar/cancelar, importación, Expediente | `OrdersController`, `OrderStatusController`, `OrderImportController`, `SpecialDeliveryController` | **F-C1 hecho (Lotes 39 y F-C1, 2026-10-12)**: lista con filtros y filas por paquete, alta detallada (borrador o confirmar), entrega especial sin chofer, eliminación y permiso `orders.view_price`. **Falta F-C2** (expediente: edición, cotizar, confirmar, crédito, cancelar, estatus, asignar chofer) y **F-C3** (entrada rápida e importación CSV) |
+| F-C | Órdenes: **alta** (entrada rápida, detallada, entrega especial), edición, cotizar/confirmar/cancelar, importación, Expediente | `OrdersController`, `OrderStatusController`, `OrderImportController`, `SpecialDeliveryController` | **F-C1 hecho (Lotes 39 y F-C1, 2026-10-12)**: lista con filtros y filas por paquete, alta detallada (borrador o confirmar), entrega especial sin chofer, eliminación y permiso `orders.view_price`. **F-C2 hecho (2026-10-12)**: expediente de la orden (edición en el Detalle, cotizar, confirmar con crédito, re-cotizar, cancelar, eliminar, laterales y regreso, asignar chofer, COD, campos personalizados, contactos). **Falta F-C3** (entrada rápida e importación CSV) y los siguientes (etiquetas, POD y documentos: F-G) |
 | F-D | Choferes y Flota (vehículos, documentos, mantenimiento, combustible, tarifas del chofer y política de pago) | `DriversController`, `FleetController`, `VehiclesController`, `Maintenance*`, `FuelLogs`, `DriverRates`, `DriverPayPolicy`, `DriverTrips` | |
 | F-E | Despacho (planificar el día, rutas, optimizar, asignar), Monitoreo, Escaneo (salida) | `Trip*Controller`, `ScanController` | Falta backend de cierre de trip y eventos por parada (ver P7) |
 | F-F | Vistas y Campos personalizados | `/analytics/*` (vistas, informes), `ExtensibilityControllers` | Confirmar qué falta en backend de vistas |
@@ -195,6 +195,14 @@ propagados a los roles de los tenants existentes (revisar cómo lo hizo `Permiss
 **Cierre:** `docs/loteN-decisiones.md`, capítulo nuevo `docs/manual/12-ordenes-de-venta.md` (o el número que toque), FAQ con cada mensaje de error, README del manual.
 
 ### P4-T — Caso real que arma P4: órdenes de Truss por correo (diseño aprobado por el dueño, 2026-10-12)
+
+> **Corrección de rumbo (Luis, 2026-10-12): la entrada de Truss es una INTEGRACIÓN, no una función de órdenes de venta.** La lectura del correo, los alias, el acuse y la
+> exportación a QuickBooks que describe esta sección **se definen en el módulo de Integraciones** (P11), con Truss como la **primera integración** que lo usa. Cuando lleguemos a ese
+> punto hay que **definir primero una estructura general para integraciones por documento**, con un **tipo de entrada** por integración: **subida manual** (archivo .eml/PDF/CSV),
+> **lectura de un buzón de correo** (buzón compartido), **Server Post / webhook** directo, y los que se agreguen después; cada tipo con su configuración, su bandeja de
+> «entrantes» (Lista / Por revisar), su regla de idempotencia (p. ej. `Reference #`) y su acuse. P4 aporta solo lo suyo (kits, orden de venta S1, despacho contra orden y
+> exportación); la capa de integración alimenta a la orden de venta, no al revés. El resto de esta sección sigue siendo el diseño del caso, a reubicar al definir esa estructura.
+
 
 **Por qué aquí.** Advance Logistics maneja el almacén de Truss (cliente 3PL). Hoy: el representante de Truss llena un formulario
 (Formsite) → llega un correo a `drivera@`, `yquintana@` y `almacen@advancelogisticspr.com` (reenviado por el representante) → el personal
@@ -310,6 +318,9 @@ Corrida `DriverSettlementRun`/`DriverSettlementLine` (el DDL trae `CarrierSettle
 ## P11 — API de integraciones (13)
 `ApiCredential` (client_id/secret → token con scopes y rate limit por credencial), `WebhookSubscription` y `WebhookDelivery` (HMAC, reintentos con backoff), conectores ERP/e-commerce/transportistas, pantalla Integraciones (registro de plantillas + crear API key; hoy sin backend). Reutiliza el outbox de P2.1.
 **Verificar:** el secreto se muestra una sola vez y se guarda hasheado; scopes; idempotencia; entregas reintentadas; rate limit.
+
+**Integraciones por documento (primer caso: Truss, ver P4-T).** Estructura general: una integración = cliente/tenant + **tipo de entrada** (subida manual, buzón de correo, Server Post/webhook, …) +
+reglas de lectura + alias/mapeos + bandeja de entrantes + acuse; las órdenes de venta (P4) son quien recibe lo que la integración confirma. Definir en el diseño de P11 antes de construir P4-T.
 
 ## P12 — Dashboards y Pulso completos (12)
 `KpiDailySnapshot` + job nocturno (P2.2); ríos de «paquetes en la calle» y «dinero COD»; Radar de órdenes abiertas; avisos sin chofer/COD/SLA; indicadores de COD, facturación, ventas y SLA (necesita POD); Actividad para Operación y Contabilidad (hoy solo Almacén); alertas operacionales fuera de almacén; programación de informes por correo. Kemi AI: **no verificado**, decidir si sigue en alcance.
