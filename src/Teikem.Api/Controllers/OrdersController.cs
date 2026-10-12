@@ -18,7 +18,13 @@ namespace Teikem.Api.Controllers;
 [RequireModule(ModuleKeys.LtlGround)]
 public sealed class OrdersController(OrderService orders, OrderReadService reader) : ControllerBase
 {
-    /// <summary>Listado paginado (Empaque primera columna). Filtros parciales por orden/factura/empaque/consignatario; from inclusivo, to exclusivo sobre CreatedAtUtc.</summary>
+    /// <summary>
+    /// Listado paginado (Empaque primera columna). Filtros parciales por orden/factura/empaque/consignatario; from inclusivo, to
+    /// exclusivo sobre CreatedAtUtc. Lote 39 (repetibles, ?serviceTypes=A&amp;serviceTypes=B; cada lista = cualquiera de):
+    /// serviceTypes, packageTypes (alguna línea de ese tipo), cities (pueblo del consignatario, sin mayúsculas ni tildes),
+    /// postalCodePrefix (prefijo del ZIP), clientIds (se une con clientId) y statuses (se une con status). Código desconocido → 400.
+    /// Sin orders.view_price, quotedAmount va en null.
+    /// </summary>
     [HttpGet, RequirePermission(PermissionCatalog.OrdersView)]
     public Task<OrderPageDto> List(
         [FromQuery] Guid? clientId,
@@ -30,17 +36,26 @@ public sealed class OrdersController(OrderService orders, OrderReadService reade
         [FromQuery] string? search,
         [FromQuery] DateTime? from,
         [FromQuery] DateTime? to,
+        [FromQuery] string[]? serviceTypes,
+        [FromQuery] string[]? packageTypes,
+        [FromQuery] string[]? cities,
+        [FromQuery] string? postalCodePrefix,
+        [FromQuery] Guid[]? clientIds,
+        [FromQuery] string[]? statuses,
         [FromQuery] bool includeInactive = false,
         [FromQuery] int skip = 0,
         [FromQuery] int take = 100,
         CancellationToken ct = default)
-        => reader.GetListAsync(new OrderListQuery(clientId, status, orderNumber, invoice, packBatch, consignee, search, from, to, includeInactive, skip, take), OrderScope.Any, ct);
+        => reader.GetListAsync(new OrderListQuery(clientId, status, orderNumber, invoice, packBatch, consignee, search, from, to, includeInactive, skip, take,
+            ServiceTypes: serviceTypes, PackageTypes: packageTypes, Cities: cities, PostalCodePrefix: postalCodePrefix,
+            ClientPublicIds: clientIds, Statuses: statuses), OrderScope.Any, ct);
 
     /// <summary>Buscar o escanear: coincidencia EXACTA por número de orden, empaque o factura (todas las coincidencias).</summary>
     [HttpGet("lookup"), RequirePermission(PermissionCatalog.OrdersView)]
     public Task<OrderLookupDto> Lookup([FromQuery] string? code, CancellationToken ct)
         => reader.LookupAsync(code ?? string.Empty, OrderScope.Any, ct);
 
+    /// <summary>Ficha. Sin orders.view_price, quotedAmount va en null (igual en las respuestas de crear, editar, confirmar y reprecio).</summary>
     [HttpGet("{publicId:guid}"), RequirePermission(PermissionCatalog.OrdersView)]
     public Task<OrderDetailDto> Get(Guid publicId, CancellationToken ct) => reader.GetAsync(publicId, OrderScope.Any, ct);
 

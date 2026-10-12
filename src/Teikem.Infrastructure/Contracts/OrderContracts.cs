@@ -240,7 +240,12 @@ public sealed record OrderListItemDto(
     DateTime CreatedAtUtc,
     IReadOnlyList<OrderPackageLineDto> Packages);
 
-/// <summary>Filtros del listado (LIKE parcial en orden/factura/empaque/consignatario; FromUtc inclusivo, ToUtc exclusivo sobre CreatedAtUtc; Take 1..500).</summary>
+/// <summary>
+/// Filtros del listado (LIKE parcial en orden/factura/empaque/consignatario; FromUtc inclusivo, ToUtc exclusivo sobre CreatedAtUtc; Take 1..500).
+/// Lote 39 (listas, cada una = "cualquiera de"): ServiceTypes (códigos ServiceType), PackageTypes (códigos PackageType: alguna línea
+/// activa de ese tipo), Cities (pueblo del consignatario, igualdad sin mayúsculas ni tildes), PostalCodePrefix (prefijo del ZIP del
+/// consignatario), ClientPublicIds (se une con ClientPublicId) y Statuses (se une con Status). Códigos desconocidos → 400.
+/// </summary>
 public sealed record OrderListQuery(
     Guid? ClientPublicId,
     string? Status,
@@ -253,7 +258,13 @@ public sealed record OrderListQuery(
     DateTime? ToUtc,
     bool IncludeInactive = false,
     int Skip = 0,
-    int Take = 100);
+    int Take = 100,
+    IReadOnlyList<string>? ServiceTypes = null,
+    IReadOnlyList<string>? PackageTypes = null,
+    IReadOnlyList<string>? Cities = null,
+    string? PostalCodePrefix = null,
+    IReadOnlyList<Guid>? ClientPublicIds = null,
+    IReadOnlyList<string>? Statuses = null);
 
 public sealed record OrderPageDto(int Total, IReadOnlyList<OrderListItemDto> Items);
 

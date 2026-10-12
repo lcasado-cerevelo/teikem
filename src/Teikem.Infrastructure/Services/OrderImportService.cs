@@ -30,6 +30,8 @@ namespace Teikem.Infrastructure.Services;
 ///   (orders.credit_override) autoriza el exceso. Registra orderPublicId o el error por fila, pasa el lote a CONFIRMED
 ///   (StatusService) y devuelve el resultado. Un lote ya CONFIRMED responde 409; DiscardAsync → DISCARDED solo desde VALIDATED.
 /// Todo bajo OrderScope (el portal fija el cliente; lotes de otro cliente responden 404, sin oráculo).
+/// Lote 39: el error de crédito excedido de una fila se guarda tal cual en el lote, pero al leerlo (vista previa, consulta y
+/// resultado de confirmar) pierde las cifras para quien no tiene orders.view_price (OrderPriceRules).
 /// </summary>
 public sealed class OrderImportService(
     TeikemDbContext db,
@@ -41,7 +43,8 @@ public sealed class OrderImportService(
     OrderService orders,
     OrderStatusService orderStatuses,
     INumberSequenceService sequences,
-    ContactPointService contactPoints)
+    ContactPointService contactPoints,
+    OrderPriceVisibility? prices = null)
 {
     public const string BatchNotFoundLabel = "Lote de importación";
     public const string ContentRequiredMessage = "Indique el contenido del archivo CSV.";
@@ -240,7 +243,9 @@ public sealed class OrderImportService(
             await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
         }, ct);
 
-        return new ImportResultDto(batch.PublicId, ImportBatchStatuses.Confirmed, created, failed, skipped, records.Select(r => r.ToDto()).ToList());
+        var canViewPrice = await OrderPriceVisibility.CanViewAsync(prices, ct);
+        return new ImportResultDto(batch.PublicId, ImportBatchStatuses.Confirmed, created, failed, skipped,
+            records.Select(r => OrderPriceRules.Apply(r.ToDto(), canViewPrice)).ToList());
     }
 
     // ================================================================ DESCARTAR
@@ -653,12 +658,13 @@ public sealed class OrderImportService(
             .Select(c => new { c.PublicId, c.Name }).FirstOrDefaultAsync(ct);
         var rows = DeserializeRows(batch.RowsJson);
         var confirmed = batch.ConfirmedAtUtc is not null;
+        var canViewPrice = await OrderPriceVisibility.CanViewAsync(prices, ct);
         return new ImportPreviewDto(
             batch.PublicId, status,
             template?.PublicId ?? Guid.Empty, template?.Name ?? string.Empty,
             client?.PublicId ?? Guid.Empty, client?.Name ?? string.Empty,
             batch.FileName, batch.RowCount, batch.ValidRows,
-            rows.Select(r => r.ToDto()).ToList(),
+            rows.Select(r => OrderPriceRules.Apply(r.ToDto(), canViewPrice)).ToList(),
             batch.CreatedAtUtc, batch.ConfirmedAtUtc,
             confirmed ? rows.Count(r => r.OrderPublicId is not null) : null,
             confirmed ? rows.Count(r => r.Error is not null) : null);

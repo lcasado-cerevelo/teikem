@@ -4,6 +4,7 @@ using Teikem.Domain.Constants;
 using Teikem.Domain.Orders;
 using Teikem.Domain.Trips;
 using Teikem.Infrastructure.Abstractions;
+using Teikem.Infrastructure.Orders;
 using Teikem.Infrastructure.Persistence;
 using Teikem.Infrastructure.Trips;
 
@@ -23,8 +24,10 @@ namespace Teikem.Infrastructure.Analytics;
 ///   e IsException (ON_HOLD, PARTIAL, FAILED). Los usan los indicadores "Órdenes sin chofer asignado" y "Órdenes en
 ///   excepción". Se calculan con dos consultas por lote (TripOrder vigente → Trip → Driver; DriverTrip activo → Driver),
 ///   solo identidad: nunca montos de chofer.
+/// - Lote 39: el campo QuotedAmount (monto cotizado) sale en null para quien no tiene orders.view_price (OrderPriceVisibility):
+///   vistas, exportaciones, indicadores y gráficos sobre él no muestran precios. CodAmount sigue visible.
 /// </summary>
-public sealed class TransportOrderDataSource(TeikemDbContext db, ILookupCache lookups, ITenantContext tenant) : IDataSource
+public sealed class TransportOrderDataSource(TeikemDbContext db, ILookupCache lookups, ITenantContext tenant, OrderPriceVisibility? prices = null) : IDataSource
 {
     public string Key => EntityTypes.TransportOrder;
     public string LabelEs => "Órdenes";
@@ -142,6 +145,8 @@ public sealed class TransportOrderDataSource(TeikemDbContext db, ILookupCache lo
         // Lote 5: ruta vigente y chofer asignado (dos consultas por lote) y zona de despacho (miembros cargados una vez).
         var assignments = await AssignmentsAsync(ids, ct);
         var zoneMembers = await db.ActiveZoneMembersAsync(ct);
+        // Lote 39: el monto cotizado solo para quien ve precios (una consulta del permiso por carga).
+        var canViewPrice = await OrderPriceVisibility.CanViewAsync(prices, ct);
 
         var rows = new List<DataRow>(orders.Count);
         foreach (var o in orders)
@@ -185,7 +190,7 @@ public sealed class TransportOrderDataSource(TeikemDbContext db, ILookupCache lo
                 ["CodAmount"] = o.CodAmount,
                 ["CodStatus"] = o.CodStatusCodeId is int cs ? ClientDataSourceHelpers.StatusLabel(codStatus, cs, lang) : null,
                 ["CodStatusCode"] = o.CodStatusCodeId is int csc ? ClientDataSourceHelpers.StatusCodeOf(codStatus, csc) : null,
-                ["QuotedAmount"] = o.QuotedAmount,
+                ["QuotedAmount"] = canViewPrice ? o.QuotedAmount : null,
                 ["ConfirmedAtUtc"] = o.ConfirmedAtUtc,
                 ["CreatedAtUtc"] = o.CreatedAtUtc,
                 ["IsActive"] = o.IsActive,

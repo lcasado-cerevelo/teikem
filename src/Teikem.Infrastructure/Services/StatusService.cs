@@ -5,6 +5,7 @@ using Teikem.Domain.Constants;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
+using Teikem.Infrastructure.Orders;
 using Teikem.Infrastructure.Persistence;
 
 namespace Teikem.Infrastructure.Services;
@@ -293,10 +294,14 @@ public sealed class StatusService(TeikemDbContext db, ITenantContext tenant, ILo
             .OrderBy(h => h.EntityStatusHistoryId).ToListAsync(ct);
         var userIds = rows.Where(r => r.ChangedBy.HasValue).Select(r => r.ChangedBy!.Value).Distinct().ToList();
         var users = await db.Users.AsNoTracking().Where(u => userIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.FullName ?? u.Email, ct);
+        // Lote 39: en una orden, el comentario del override de crédito pierde sus cifras para quien no tiene orders.view_price.
+        var canViewPrice = !string.Equals(entityTypeCode, EntityTypes.TransportOrder, StringComparison.OrdinalIgnoreCase)
+                           || await new OrderPriceVisibility(permissions).CanViewAsync(ct);
         return rows.Select(h => new StatusHistoryDto(h.EntityStatusHistoryId,
             h.FromStatus?.InternalCode, h.FromStatus is null ? null : MultilingualText.Resolve(h.FromStatus.LabelJson, tenant.Lang),
             h.ToStatus!.InternalCode, MultilingualText.Resolve(h.ToStatus.LabelJson, tenant.Lang),
-            h.Comment, h.ChangedAtUtc, h.ChangedBy, h.ChangedBy.HasValue ? users.GetValueOrDefault(h.ChangedBy.Value) : null)).ToList();
+            OrderPriceRules.RedactHistoryComment(h.Comment, canViewPrice), h.ChangedAtUtc, h.ChangedBy,
+            h.ChangedBy.HasValue ? users.GetValueOrDefault(h.ChangedBy.Value) : null)).ToList();
     }
 
     private StatusDto ToDto(StatusCode s, StatusCodeOverride? o)

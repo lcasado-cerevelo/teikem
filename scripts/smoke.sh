@@ -996,7 +996,8 @@ expect 200 "$(req POST /api/v1/roles "{\"name\":\"Solo crear $TS\",\"permissions
 expect 200 "$(req POST /api/v1/users "{\"email\":\"solocrear$TS@teikem.local\",\"fullName\":\"Solo Crear\",\"password\":\"$PASS\",\"roles\":[\"Solo crear $TS\"]}")" >/dev/null
 T6=$(login "solocrear$TS@teikem.local" "$PASS")
 OSC=$(expect 200 "$(req POST /api/v1/orders "$(ob)" "$T6")" | jq -r .publicId)
-expect 200 "$(req POST /api/v1/orders "$(ob '{"confirmNow":true}')" "$T6")" | jq -e '.status=="CONFIRMED" and .quotedAmount > 0' >/dev/null || fail "confirmNow con solo orders.create (DECISIÓN 26)"
+# Lote 39: sin orders.view_price la respuesta trae el monto cotizado en null (la orden sí quedó cotizada: quotedAtUtc)
+expect 200 "$(req POST /api/v1/orders "$(ob '{"confirmNow":true}')" "$T6")" | jq -e '.status=="CONFIRMED" and .quotedAmount==null and .quotedAtUtc!=null' >/dev/null || fail "confirmNow con solo orders.create (DECISIÓN 26)"
 expect 403 "$(req POST "/api/v1/orders/$OSC/cancel" '{}' "$T6")" >/dev/null
 expect 403 "$(req DELETE "/api/v1/orders/$OSC" '' "$T6")" >/dev/null
 ok "cancelación con bitácora y terminal, eliminar solo en la etapa inicial (baja lógica que libera el número; la eliminada responde 404 a toda acción), 403 sin orders.cancel, confirmNow con solo orders.create"
@@ -1022,6 +1023,77 @@ expect 200 "$(req GET "/api/v1/orders?take=0")" | jq -e '.total as $t | (.items 
 # from/to de órdenes son instantes UTC sobre CreatedAtUtc (to exclusivo): aquí van días UTC, no los de Puerto Rico
 expect 200 "$(req GET "/api/v1/orders?clientId=$CLIENT_O_PID&from=$(date -u +%F)&to=$(date -u -d tomorrow +%F)")" | jq -e '.total >= 1 and all(.items[]; (.packBatchNumber | length) > 0 and (.clientInvoiceNumber | length) > 0)' >/dev/null || fail "rango de fechas / columnas siempre pobladas"
 ok "lookup exacto por orden/empaque/factura (CI, sin parciales), filtros y buscador parciales (factura, consignatario, empaque, número de orden), estatus validado, paginación y rango"
+
+step "órdenes (Lote 39): ver precios (orders.view_price) — lista, ficha, lookup, /quote, 422 de crédito e historial"
+VPERM="Falta el permiso 'orders.view_price'."
+# Solo orders.view (T4) o Despacho (T2): el monto cotizado va en null (el COD sigue); /quote 403 con PERMISSION_DENIED
+expect 200 "$(req GET "/api/v1/orders/$OQ_PID")" | jq -e --argjson t "$QT" '.quotedAmount==$t and .codAmount==200' >/dev/null || fail "admin ve el precio"
+expect 200 "$(req GET "/api/v1/orders/$OQ_PID" '' "$T4")" | jq -e '.quotedAmount==null and .codAmount==200' >/dev/null || fail "sin orders.view_price: quotedAmount null y COD visible"
+expect 200 "$(req GET "/api/v1/orders/$OC2" '' "$T2")" | jq -e '.quotedAmount==null and .status=="CONFIRMED"' >/dev/null || fail "Despacho no ve el precio en la ficha"
+expect 200 "$(req GET "/api/v1/orders?clientId=$CLIENT_O_PID&statuses=CONFIRMED&take=500")" | jq -e 'any(.items[]; .quotedAmount > 0)' >/dev/null || fail "admin ve precios en la lista"
+expect 200 "$(req GET "/api/v1/orders?clientId=$CLIENT_O_PID&statuses=CONFIRMED&take=500" '' "$T4")" | jq -e '.total >= 1 and all(.items[]; .quotedAmount==null)' >/dev/null || fail "sin orders.view_price: lista sin precios"
+OC2_PB=$(expect 200 "$(req GET "/api/v1/orders/$OC2")" | jq -r .packBatchNumber)
+expect 200 "$(req GET "/api/v1/orders/lookup?code=$OC2_PB" '' "$T4")" | jq -e '(.matches | length)==1 and .matches[0].quotedAmount==null' >/dev/null || fail "sin orders.view_price: lookup sin precio"
+PD0=$(pdtotal)
+expect 403 "$(req GET "/api/v1/orders/$OQ_PID/quote" '' "$T4")" | jq -e --arg m "$VPERM" '.title==$m' >/dev/null || fail "/quote sin orders.view_price"
+expect 403 "$(req GET "/api/v1/orders/$OQ_PID/quote" '' "$T2")" | jq -e --arg m "$VPERM" '.title==$m' >/dev/null || fail "/quote de Despacho"
+[[ $(pdtotal) -gt $PD0 ]] || fail "PERMISSION_DENIED de /quote sin orders.view_price"
+# Facturación (plantilla Billing) y un rol propio con orders.view + orders.view_price sí ven precios y cotización
+expect 200 "$(req GET "/api/v1/orders/$OQ_PID/quote" '' "$TBILL")" | jq -e --argjson t "$QT" '.total==$t' >/dev/null || fail "Facturación ve la cotización"
+expect 200 "$(req POST /api/v1/roles "{\"name\":\"Precios $TS\",\"permissions\":[\"orders.view\",\"orders.view_price\"]}")" >/dev/null
+expect 200 "$(req POST /api/v1/users "{\"email\":\"precios$TS@teikem.local\",\"fullName\":\"Precios $TS\",\"password\":\"$PASS\",\"roles\":[\"Precios $TS\"]}")" >/dev/null
+TVP=$(login "precios$TS@teikem.local" "$PASS")
+expect 200 "$(req GET "/api/v1/orders/$OQ_PID" '' "$TVP")" | jq -e --argjson t "$QT" '.quotedAmount==$t' >/dev/null || fail "con orders.view_price ve el precio"
+expect 200 "$(req GET "/api/v1/orders/$OQ_PID/quote" '' "$TVP")" | jq -e --argjson t "$QT" '.total==$t and (.lines | length)==2' >/dev/null || fail "con orders.view_price ve la cotización"
+# 422 credit_exceeded: el mismo código; sin orders.view_price el aviso va sin cifras y errors vacío
+expect 200 "$(req PATCH "/api/v1/clients/$CLIENT_O_PID/profile" '{"creditLimit":10}')" >/dev/null
+OVP=$(expect 200 "$(req POST /api/v1/orders "$(ob)" "$T2")" | jq -r .publicId)
+expect 422 "$(req POST "/api/v1/orders/$OVP/confirm" '{}' "$T2")" | jq -e '.code=="credit_exceeded" and .title=="El cliente excede su límite de crédito." and (.errors | length)==0' >/dev/null || fail "422 sin cifras para Despacho"
+expect 422 "$(req POST "/api/v1/orders/$OVP/confirm" '{}')" | jq -e '.code=="credit_exceeded" and (.title | contains("límite 10.00")) and .errors.limit[0]=="10.00"' >/dev/null || fail "422 con cifras para quien ve precios"
+expect 200 "$(req PATCH "/api/v1/clients/$CLIENT_O_PID/profile" '{"creditLimit":100000}')" >/dev/null
+# Historial: el comentario del override de crédito pierde el paréntesis de cifras sin orders.view_price
+expect 200 "$(req GET "/api/v1/status/history/TRANSPORT_ORDER/$OC2_ID")" | jq -e 'any(.[]; (.comment // "") | startswith("Crédito excedido autorizado por") and contains("(límite"))' >/dev/null || fail "historial con cifras para el admin"
+expect 200 "$(req GET "/api/v1/status/history/TRANSPORT_ORDER/$OC2_ID" '' "$T2")" | jq -e 'any(.[]; (.comment // "") | startswith("Crédito excedido autorizado por")) and all(.[]; (.comment // "") | contains("(límite") | not)' >/dev/null || fail "historial sin cifras para Despacho"
+ok "sin orders.view_price: quotedAmount null en ficha/lista/lookup (COD visible), /quote 403 + PERMISSION_DENIED, 422 credit_exceeded sin cifras, historial del override sin cifras; Facturación y un rol con el permiso los ven"
+
+step "órdenes (Lote 39): filtros de lista (serviceTypes, packageTypes, cities, postalCodePrefix, clientIds, statuses)"
+LO="/api/v1/orders?clientId=$CLIENT_O_PID&take=500"
+tot() { expect 200 "$(req GET "$1" '' "${2:-$TOKEN}")" | jq .total; }
+TALL=$(tot "$LO"); TSTD=$(tot "$LO&serviceTypes=STANDARD"); TEXP=$(tot "$LO&serviceTypes=EXPRESS")
+expect 200 "$(req GET "$LO&serviceTypes=EXPRESS")" | jq -e '.total >= 1 and all(.items[]; .serviceType=="EXPRESS")' >/dev/null || fail "serviceTypes=EXPRESS"
+expect 200 "$(req GET "$LO&serviceTypes=standard&serviceTypes=EXPRESS")" | jq -e --argjson n $((TSTD + TEXP)) '.total==$n and all(.items[]; .serviceType=="STANDARD" or .serviceType=="EXPRESS")' >/dev/null || fail "serviceTypes repetible (cualquiera de)"
+expect 200 "$(req GET "$LO&packageTypes=ENVELOPE")" | jq -e '.total >= 1 and all(.items[]; any(.packages[]; .packageType=="ENVELOPE"))' >/dev/null || fail "packageTypes=ENVELOPE (alguna línea)"
+TPON=$(tot "$LO&cities=ponce"); TJUA=$(tot "$LO&cities=juana%20diaz")
+expect 200 "$(req GET "$LO&cities=ponce")" | jq -e '.total >= 1 and all(.items[]; .consigneeCity=="Ponce")' >/dev/null || fail "cities sin mayúsculas"
+expect 200 "$(req GET "$LO&cities=juana%20diaz")" | jq -e '.total >= 1 and all(.items[]; .consigneeCity=="Juana Díaz")' >/dev/null || fail "cities sin tildes"
+expect 200 "$(req GET "$LO&cities=PONCE&cities=JUANA%20D%C3%8DAZ")" | jq -e --argjson n $((TPON + TJUA)) '.total==$n' >/dev/null || fail "cities repetible"
+expect 200 "$(req GET "$LO&postalCodePrefix=0071")" | jq -e '.total >= 1 and all(.items[]; (.consigneePostalCode // "") | startswith("0071"))' >/dev/null || fail "postalCodePrefix"
+expect 200 "$(req GET "$LO&postalCodePrefix=99999")" | jq -e '.total==0' >/dev/null || fail "postalCodePrefix sin coincidencias"
+TOB=$(tot "/api/v1/orders?clientId=$CLIENT_OB_PID&take=1")
+expect 200 "$(req GET "/api/v1/orders?clientIds=$CLIENT_O_PID&clientIds=$CLIENT_OB_PID&take=1")" | jq -e --argjson n $((TALL + TOB)) '.total==$n' >/dev/null || fail "clientIds repetible"
+expect 200 "$(req GET "/api/v1/orders?clientId=$CLIENT_O_PID&clientIds=$CLIENT_OB_PID&take=1")" | jq -e --argjson n $((TALL + TOB)) '.total==$n' >/dev/null || fail "clientId + clientIds se unen"
+expect 404 "$(req GET "/api/v1/orders?clientIds=$(randuuid)")" >/dev/null
+TCON=$(tot "$LO&status=CONFIRMED"); TCAN=$(tot "$LO&status=CANCELLED")
+expect 200 "$(req GET "$LO&statuses=CONFIRMED&statuses=cancelled")" | jq -e --argjson n $((TCON + TCAN)) '.total==$n and all(.items[]; .status=="CONFIRMED" or .status=="CANCELLED")' >/dev/null || fail "statuses repetible"
+expect 200 "$(req GET "$LO&status=CONFIRMED&statuses=CANCELLED")" | jq -e --argjson n $((TCON + TCAN)) '.total==$n' >/dev/null || fail "status + statuses se unen"
+# Combinación (AND entre filtros) y paginación: el total no depende de take
+TCMB=$(tot "$LO&serviceTypes=STANDARD&cities=ponce&statuses=CONFIRMED&statuses=CANCELLED")
+expect 200 "$(req GET "$LO&serviceTypes=STANDARD&cities=ponce&statuses=CONFIRMED&statuses=CANCELLED")" | jq -e '.total >= 1 and all(.items[]; .serviceType=="STANDARD" and .consigneeCity=="Ponce" and (.status=="CONFIRMED" or .status=="CANCELLED"))' >/dev/null || fail "filtros combinados"
+expect 200 "$(req GET "/api/v1/orders?clientId=$CLIENT_O_PID&serviceTypes=STANDARD&cities=ponce&statuses=CONFIRMED&statuses=CANCELLED&take=1")" | jq -e --argjson n "$TCMB" '.total==$n and (.items | length)==1' >/dev/null || fail "paginación con filtros combinados"
+# Códigos desconocidos → 400 con el campo y el mensaje de siempre
+expect 400 "$(req GET "/api/v1/orders?serviceTypes=STANDARD&serviceTypes=nope")" | jq -e '.title=="Tipo de servicio desconocido: NOPE." and .errors.serviceTypes' >/dev/null || fail "serviceTypes desconocido"
+expect 400 "$(req GET "/api/v1/orders?packageTypes=nope")" | jq -e '.title=="Tipo de paquete desconocido: NOPE." and .errors.packageTypes' >/dev/null || fail "packageTypes desconocido"
+expect 400 "$(req GET "/api/v1/orders?statuses=NOPE")" | jq -e '.title=="Estatus desconocido: NOPE." and .errors.statuses' >/dev/null || fail "statuses desconocido"
+# Otro tenant no ve nada; un usuario con alcance de datos (cliente OB) solo ve lo de su cliente y no puede pedir otro
+expect 200 "$(req GET "/api/v1/orders?cities=Ponce&postalCodePrefix=007&serviceTypes=STANDARD" '' "$T3")" | jq -e '.total==0' >/dev/null || fail "filtros nuevos en otro tenant"
+CLIENT_OB_ID=$(echo "$COB" | jq -r .id)
+UAL=$(expect 200 "$(req POST /api/v1/users "{\"email\":\"alcance$TS@teikem.local\",\"fullName\":\"Alcance $TS\",\"password\":\"$PASS\",\"roles\":[\"Solo órdenes $TS\"]}")" | jq -r .user.id)
+expect 200 "$(req PUT "/api/v1/users/$UAL/data-scopes" "{\"scopes\":[{\"scopeEntity\":\"CLIENT\",\"scopeId\":$CLIENT_OB_ID}]}")" >/dev/null
+TAL=$(login "alcance$TS@teikem.local" "$PASS")
+expect 200 "$(req GET "/api/v1/orders?cities=ponce&take=500" '' "$TAL")" | jq -e --arg c "$CLIENT_OB_PID" 'all(.items[]; .clientPublicId==$c)' >/dev/null || fail "alcance de datos con cities"
+expect 200 "$(req GET "/api/v1/orders?clientIds=$CLIENT_OB_PID&take=1" '' "$TAL")" | jq -e --argjson n "$TOB" '.total==$n' >/dev/null || fail "alcance de datos con su cliente"
+expect 404 "$(req GET "/api/v1/orders?clientIds=$CLIENT_OB_PID&clientIds=$CLIENT_O_PID" '' "$TAL")" >/dev/null
+ok "serviceTypes/packageTypes/cities/statuses repetibles (cualquiera de), cities sin mayúsculas ni tildes, prefijo de ZIP, clientIds ∪ clientId, statuses ∪ status, AND entre filtros con total y paginación, 400 por código desconocido, 404 por cliente ajeno, aislamiento y alcance de datos"
 
 step "órdenes (Lote 3): entrega especial"
 SP=$(expect 200 "$(req POST /api/v1/orders "$(ob "{\"packages\":null,\"isSpecialDelivery\":true,\"specialServiceId\":$SS_O_ID}")")")
@@ -1070,7 +1142,7 @@ ok "otro tenant: 404 por PublicId, 404 por consignatario ajeno, listas y lookup 
 step "órdenes (Lote 3): RBAC (orders.*) y rutas polimórficas de TRANSPORT_ORDER"
 expect 200 "$(req GET /api/v1/orders '' "$T4")" >/dev/null
 expect 200 "$(req GET "/api/v1/orders/$O1_PID" '' "$T4")" >/dev/null
-expect 200 "$(req GET "/api/v1/orders/$O1_PID/quote" '' "$T4")" >/dev/null
+expect 403 "$(req GET "/api/v1/orders/$O1_PID/quote" '' "$T4")" | jq -e '.title=="Falta el permiso '"'"'orders.view_price'"'"'."' >/dev/null || fail "quote sin orders.view_price (Lote 39)"
 expect 403 "$(req POST /api/v1/orders "$(ob)" "$T4")" >/dev/null
 expect 403 "$(req PATCH "/api/v1/orders/$O1_PID" '{"notes":"x"}' "$T4")" >/dev/null
 expect 403 "$(req PUT "/api/v1/custom-fields/values/TRANSPORT_ORDER/$O1_ID" '{"values":{}}' "$T4")" | jq -e '.title=="Falta el permiso '"'"'orders.edit'"'"'."' >/dev/null || fail "campos personalizados de la orden sin orders.edit"
@@ -3152,8 +3224,8 @@ step "despacho manual (2026-10-11): DMA-#####, motivo obligatorio, Kárdex, 409 
 PM=$(prod "{\"sku\":\"PM$TS\",\"name\":\"Despacho manual $TS\",\"purchaseCost\":2}")
 expect 200 "$(adjust "$PM" "$W7P" "$B7" 5 FOUND)" >/dev/null
 mibody() { jq -cn --arg w "$W7P" --arg p "$PM" --argjson q "$1" --arg r "$2" --arg n "${3:-}" '{warehousePublicId:$w,lines:[{productPublicId:$p,quantity:$q}],reasonCode:(if $r=="" then null else $r end),note:(if $n=="" then null else $n end)}'; }
-expect 200 "$(req GET /api/v1/manual-issues/reasons "" "$TWH6")" | jq -e '[.[].code]==["SAMPLE","INTERNAL_USE","CUSTOMER_PICKUP","SALE","OTHER"]' >/dev/null || fail "motivos del despacho manual"
-expect 200 "$(req GET /api/v1/catalogs/ManualIssueReason)" | jq -e 'length==5 and any(.[]; .code=="CUSTOMER_PICKUP" and .label=="Retiro del cliente")' >/dev/null || fail "catálogo ManualIssueReason"
+expect 200 "$(req GET /api/v1/manual-issues/reasons "" "$TWH6")" | jq -e '[.[].code]==["SAMPLE","INTERNAL_USE","OWNER_PICKUP","CUSTOMER_PICKUP","SALE","OTHER"]' >/dev/null || fail "motivos del despacho manual"
+expect 200 "$(req GET /api/v1/catalogs/ManualIssueReason)" | jq -e 'length==6 and any(.[]; .code=="CUSTOMER_PICKUP" and .label=="Retiro del cliente") and any(.[]; .code=="OWNER_PICKUP" and .label=="Retiro del dueño")' >/dev/null || fail "catálogo ManualIssueReason"
 expect 200 "$(req GET /api/v1/me "" "$TWH6")" | jq -e '.permissions | index("warehouse.issue") != null' >/dev/null || fail "el Operador de almacén sin warehouse.issue"
 # Motivo por default (2026-10-11 b): Ajustes de la compañía lo guarda (admin.tenant) y /reasons lo marca isDefault; deshabilitado se ignora.
 expect 400 "$(req PUT /api/v1/tenant/settings '{"defaultManualIssueReason":"regalo"}')" | jq -e --arg m "El motivo REGALO no existe o está inactivo." '.title==$m and (.errors.defaultManualIssueReason|index($m)!=null)' >/dev/null || fail "motivo por default inexistente → 400"
@@ -3161,7 +3233,7 @@ expect 403 "$(req PUT /api/v1/tenant/settings '{"defaultManualIssueReason":"SALE
 expect 200 "$(req PUT /api/v1/tenant/settings '{"defaultManualIssueReason":"sale"}')" | jq -e '.defaultManualIssueReason=="SALE"' >/dev/null || fail "guardar el motivo por default"
 expect 200 "$(req GET /api/v1/manual-issues/reasons "" "$TWH6")" | jq -e '[.[] | select(.isDefault) | .code]==["SALE"]' >/dev/null || fail "isDefault en /manual-issues/reasons"
 expect 200 "$(req PUT /api/v1/catalogs/ManualIssueReason/SALE/override '{"isEnabled":false}')" >/dev/null
-expect 200 "$(req GET /api/v1/manual-issues/reasons "" "$TWH6")" | jq -e 'length==4 and all(.[]; .isDefault==false)' >/dev/null || fail "el default deshabilitado debe ignorarse"
+expect 200 "$(req GET /api/v1/manual-issues/reasons "" "$TWH6")" | jq -e 'length==5 and all(.[]; .isDefault==false)' >/dev/null || fail "el default deshabilitado debe ignorarse"
 expect 200 "$(req GET /api/v1/tenant/settings)" | jq -e '.defaultManualIssueReason==null' >/dev/null || fail "ajustes con el default deshabilitado"
 expect 200 "$(req PUT /api/v1/tenant/settings '{"defaultManualIssueReason":"SALE","maxStopsPerRouteDefault":30}')" >/dev/null   # reenviar el guardado no falla
 expect 204 "$(req DELETE /api/v1/catalogs/ManualIssueReason/SALE/override)" >/dev/null

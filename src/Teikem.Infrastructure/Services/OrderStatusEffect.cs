@@ -11,28 +11,41 @@ using Teikem.Infrastructure.Abstractions;
 namespace Teikem.Infrastructure.Services;
 
 /// <summary>
-/// 422 con code 'credit_exceeded' y errors {limit, exposure, newAmount, available} (ajuste C): el front muestra el aviso
+/// 422 con code 'credit_exceeded' y errors {limit, exposure, newAmount, available} (ajuste C; sin orders.view_price, Lote 39:
+/// mensaje sin cifras y errors vacío): el front muestra el aviso
 /// y el botón "Autorizar" (overrideCredit=true, exige orders.credit_override). StatusRuleException tiene el code fijo
 /// 'status_rule', por eso esta excepción propia; el middleware ya serializa code y errors.
 /// </summary>
 public sealed class CreditExceededException : TeikemException
 {
-    public CreditExceededException(CreditCheck check, decimal? available)
-        : base(CreditRules.Message(check), 422, "credit_exceeded")
+    public CreditExceededException(CreditCheck check, decimal? available) : this(check, available, showAmounts: true) { }
+
+    /// <summary>
+    /// Lote 39: con <paramref name="showAmounts"/> = false (quien confirma no tiene orders.view_price) el aviso va SIN cifras:
+    /// mensaje <see cref="CreditRules.RedactedMessage"/> y errors vacío; el código credit_exceeded y el 422 no cambian. Check y
+    /// Available quedan solo del lado del servidor (no se serializan).
+    /// </summary>
+    public CreditExceededException(CreditCheck check, decimal? available, bool showAmounts)
+        : base(showAmounts ? CreditRules.Message(check) : CreditRules.RedactedMessage, 422, "credit_exceeded")
     {
         Check = check;
         Available = available;
-        Errors = new Dictionary<string, string[]>
-        {
-            ["limit"] = [check.Limit is decimal l ? CreditRules.Format(l) : string.Empty],
-            ["exposure"] = [CreditRules.Format(CreditRules.Exposure(check))],
-            ["newAmount"] = [CreditRules.Format(check.NewAmount)],
-            ["available"] = [available is decimal a ? CreditRules.Format(a) : string.Empty],
-        };
+        ShowsAmounts = showAmounts;
+        Errors = showAmounts
+            ? new Dictionary<string, string[]>
+            {
+                ["limit"] = [check.Limit is decimal l ? CreditRules.Format(l) : string.Empty],
+                ["exposure"] = [CreditRules.Format(CreditRules.Exposure(check))],
+                ["newAmount"] = [CreditRules.Format(check.NewAmount)],
+                ["available"] = [available is decimal a ? CreditRules.Format(a) : string.Empty],
+            }
+            : new Dictionary<string, string[]>();
     }
 
     public CreditCheck Check { get; }
     public decimal? Available { get; }
+    /// <summary>Lote 39: false = aviso sin cifras (quien confirma no tiene orders.view_price).</summary>
+    public bool ShowsAmounts { get; }
 }
 
 /// <summary>
@@ -87,6 +100,13 @@ public sealed class OrderStatusEffect(TeikemDbContext db, IServiceProvider servi
         LastCreditCheck = check;
         var (ok, available) = CreditRules.Evaluate(check);
         if (ok || _creditOverrides.Contains(order.TransportOrderId)) return;
-        throw new CreditExceededException(check, available);
+        throw await CreditExceededAsync(services, check, available, ct);
     }
+
+    /// <summary>
+    /// Lote 39: el 422 credit_exceeded con cifras solo para quien ve precios (orders.view_price, OrderPriceVisibility del scope);
+    /// sin el permiso, o sin el servicio de la decisión, el aviso va sin cifras.
+    /// </summary>
+    public static async Task<CreditExceededException> CreditExceededAsync(IServiceProvider services, CreditCheck check, decimal? available, CancellationToken ct)
+        => new(check, available, await OrderPriceVisibility.CanViewAsync(services.GetService<OrderPriceVisibility>(), ct));
 }

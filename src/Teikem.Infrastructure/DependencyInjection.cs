@@ -122,6 +122,8 @@ public static class DependencyInjection
         services.AddScoped<OrderReadService>();
         services.AddScoped<OrderStatusService>();
         services.AddScoped<OrderQuoteService>();
+        // Lote 39: única decisión de "ver precios de las órdenes" (orders.view_price)
+        services.AddScoped<OrderPriceVisibility>();
         services.AddScoped<INumberSequenceService, NumberSequenceService>();
         // Costura del "saldo pendiente" de crédito (R18): hoy Σ QuotedAmount de órdenes en curso; Facturación registrará otra implementación.
         services.AddScoped<IClientBalanceProvider, QuotedOrdersBalanceProvider>();

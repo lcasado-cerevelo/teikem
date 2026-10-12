@@ -31,6 +31,16 @@ public static class CreditRules
     public static string Message(CreditCheck check)
         => $"El cliente excede su límite de crédito: límite {Format(check.Limit ?? 0m)}, en curso {Format(Exposure(check))}, esta orden {Format(check.NewAmount)}.";
 
+    /// <summary>
+    /// Lote 39 (2026-10-12): aviso SIN cifras para quien no tiene orders.view_price (el código credit_exceeded se conserva). Es el
+    /// mismo texto que <see cref="Message"/> hasta los dos puntos, cerrado con punto.
+    /// </summary>
+    public const string RedactedMessage = "El cliente excede su límite de crédito.";
+
+    /// <summary>¿El texto es un aviso de crédito excedido (con o sin cifras)? Lo usa la importación para ocultar las cifras al leer el lote.</summary>
+    public static bool IsCreditMessage(string? text)
+        => text is not null && text.StartsWith("El cliente excede su límite de crédito", StringComparison.Ordinal);
+
     /// <summary>Exposición efectiva: nunca negativa.</summary>
     public static decimal Exposure(CreditCheck check) => check.Exposure < 0m ? 0m : check.Exposure;
 

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Teikem.Api.Auth;
 using Teikem.Domain.Constants;
 using Teikem.Infrastructure.Contracts;
+using Teikem.Infrastructure.Orders;
 using Teikem.Infrastructure.Services;
 
 namespace Teikem.Api.Controllers;
@@ -20,12 +21,18 @@ public sealed record OrderConfirmBody(string? RowVersion = null, bool OverrideCr
 [Route("api/v1/orders/{publicId:guid}")]
 [Authorize]
 [RequireModule(ModuleKeys.LtlGround)]
-public sealed class OrderStatusController(OrderStatusService service, PermissionService permissions) : ControllerBase
+public sealed class OrderStatusController(OrderStatusService service, PermissionService permissions, OrderPriceVisibility prices) : ControllerBase
 {
-    /// <summary>Cotización y chequeo de crédito sin persistir (líneas, despacho, COD, total, contrato, límite/pendiente/disponible/excede).</summary>
+    /// <summary>
+    /// Cotización y chequeo de crédito sin persistir (líneas, despacho, COD, total, contrato, límite/pendiente/disponible/excede).
+    /// Lote 39: además de orders.view exige orders.view_price (403 'Falta el permiso 'orders.view_price'.' + PERMISSION_DENIED).
+    /// </summary>
     [HttpGet("quote"), RequirePermission(PermissionCatalog.OrdersView)]
-    public Task<OrderQuotePreviewDto> PreviewQuote(Guid publicId, CancellationToken ct)
-        => service.PreviewQuoteAsync(publicId, OrderScope.Any, ct);
+    public async Task<OrderQuotePreviewDto> PreviewQuote(Guid publicId, CancellationToken ct)
+    {
+        await prices.EnsureAsync(ct);
+        return await service.PreviewQuoteAsync(publicId, OrderScope.Any, ct);
+    }
 
     /// <summary>
     /// Confirmar: cotiza, congela y verifica crédito al salir de la etapa inicial. 422 credit_exceeded.

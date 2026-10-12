@@ -13,7 +13,8 @@ public sealed record PermissionDef(string Code, string Category, string LabelEs,
 /// SECURITY) y warehouse.count.capture (Lote 8A, categoría WAREHOUSE: contar a ciegas sin reconciliar) y los 5 del Pulso del día
 /// (Lote F8a, categoría PULSE: pulse.indicators, pulse.charts, pulse.warehouse, pulse.activity, pulse.organize_company) y
 /// pulse.attention (Lote 14, "Necesita tu atención"): 66 códigos. Lote 27 (Rentas R1): rental.extend y rental.return → 68.
-/// 2026-10-08/10: warehouse.damage, warehouse.transfer y warehouse.adjust → 71; 2026-10-11: warehouse.issue (despacho manual) → 72; 2026-10-11: trips.close (cerrar ruta) → 73.
+/// 2026-10-08/10: warehouse.damage, warehouse.transfer y warehouse.adjust → 71; 2026-10-11: warehouse.issue (despacho manual) → 72; 2026-10-11: trips.close (cerrar ruta) → 73;
+/// 2026-10-12 (Lote 39): orders.view_price (ver precios de las órdenes) → 74.
 /// Convención: recurso.acción.
 /// </summary>
 public static class PermissionCatalog
@@ -25,6 +26,13 @@ public static class PermissionCatalog
     public const string OrdersCancel = "orders.cancel";
     /// <summary>Lote 3 (ajuste C): autorizar la confirmación de una orden que excede el límite de crédito del cliente (overrideCredit=true).</summary>
     public const string OrdersCreditOverride = "orders.credit_override";
+    /// <summary>
+    /// 2026-10-12 (Lote 39): ver los precios de las órdenes: monto cotizado (lista, ficha, respuestas de confirmar/reprecio, fuente
+    /// de datos de Análisis), la cotización completa (GET /orders/{id}/quote) y las cifras del crédito (422 credit_exceeded, historial
+    /// del override, errores de importación). Sin él se ocultan (null / sin cifras); el COD sigue visible. Lo traen TenantAdmin y Billing.
+    /// La decisión vive en OrderPriceVisibility.
+    /// </summary>
+    public const string OrdersViewPrice = "orders.view_price";
     public const string TripsPlan = "trips.plan";
     public const string TripsDispatch = "trips.dispatch";
     /// <summary>2026-10-11: cerrar una ruta en curso (IN_PROGRESS → COMPLETED) cuando todas sus órdenes terminaron.</summary>
@@ -223,6 +231,8 @@ public static class PermissionCatalog
         // Lote 27 — Rentas (R1)
         new(RentalExtend, "RENTAL", "Extender rentas", "Extend rentals"),
         new(RentalReturn, "RENTAL", "Registrar devoluciones de renta", "Register rental returns"),
+        // Lote 39 — ver precios de las órdenes (2026-10-12)
+        new(OrdersViewPrice, "ORDERS", "Ver precios de las órdenes", "View order prices"),
     };
 
     /// <summary>
@@ -386,7 +396,8 @@ public static class PermissionCatalog
             PulseIndicators, PulseCharts, PulseActivity },   // Lote F8a
         ["Billing"] = new[] { OrdersView, BillingGenerate, BillingApprove, BillingExport, CodView, CodReconcile, CodRemit, RentalBilling, RentalView, PurchasingView, PurchasingManage, AnalyticsView, ClientsRead, ContractsRead, OrdersCreditOverride, DriverPayView, InventoryView,
             PulseIndicators, PulseCharts, PulseActivity,   // Lote F8a
-            PulseAttention },   // Lote 14 (D6): la ve quien ve inventario
+            PulseAttention,   // Lote 14 (D6): la ve quien ve inventario
+            OrdersViewPrice },   // Lote 39: Facturación ve los precios de las órdenes
         // 2026-10-01 (Luis), como lo dejó en Advance Logistics: sin cod.reconcile, sin rutas (trips.*) ni compras (purchasing.*;
         // no recibe contra órdenes de compra) y con ajustar/administrar inventario y administrar almacenes.
         ["WarehouseOperator"] = new[] { WarehouseReceive, WarehousePick, WarehouseCount, WarehouseCountCapture, WarehouseDamage, WarehouseTransfer, WarehouseIssue, WarehouseCrossdock, RentalView, RentalManage, RentalMaintenance, InventoryView,

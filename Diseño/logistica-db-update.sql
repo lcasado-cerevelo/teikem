@@ -305,3 +305,26 @@ WHEN NOT MATCHED THEN
     INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
     VALUES (N'ManualIssueReason', s.Code, s.LabelJson, s.Srt, 1, 1);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-12 (a) — Ver precios de las órdenes (Lote 39): permiso orders.view_price.
+   Sin él, el API oculta el monto cotizado de las órdenes (lista, ficha, confirmar/reprecio, Análisis), responde 403 en
+   GET /orders/{id}/quote y quita las cifras del crédito del 422 credit_exceeded. El monto COD sigue visible.
+   - Permiso orders.view_price (categoría ORDERS) -> plantillas TenantAdmin y Billing Y los roles YA CLONADOS de cada
+     compañía con esos nombres (el PermissionSeeder no lo propagaría: esta sección ya lo pone en la plantilla).
+   Solo AGREGA (nunca quita). Idempotente.
+   ---------------------------------------------------------------------------- */
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'orders.view_price')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('orders.view_price',
+            (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'ORDERS'),
+            N'{"es":"Ver precios de las órdenes","en":"View order prices"}', 1);
+GO
+
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT r.RoleId, p.PermissionId
+FROM dbo.Role r
+JOIN dbo.Permission p ON p.Code = 'orders.view_price'
+WHERE r.Name IN ('TenantAdmin', 'Billing')
+  AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
+GO

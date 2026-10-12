@@ -25,8 +25,12 @@ namespace Teikem.Infrastructure.Services;
 /// - CodType siempre es null en este lote: se define al entregar (11B/POD).
 /// - Lote 5 (P7): la ficha interna (OrderScope.Any) de una orden no especial muestra su ruta vigente y el chofer de esa ruta;
 ///   LookupAsync no cambia (lo reutiliza el escaneo Outbound).
+/// - Lote 39: sin orders.view_price (OrderPriceVisibility) el monto cotizado sale en null en ficha, lista y lookup (y en las
+///   respuestas de crear/editar/confirmar/reprecio/cancelar/estatus, que salen de GetAsync). Filtros de lista nuevos: serviceTypes,
+///   packageTypes, cities, postalCodePrefix, clientIds y statuses (OrderListFilterRules).
 /// </summary>
-public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, StatusService statuses)
+public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, StatusService statuses,
+    OrderPriceVisibility? prices = null)
 {
     public const string MatchedByOrderNumber = "ORDER_NUMBER";
     public const string MatchedByPackBatch = "PACK_BATCH";
@@ -143,7 +147,7 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
             }
         }
 
-        return new OrderDetailDto(
+        var detail = new OrderDetailDto(
             order.TransportOrderId, order.PublicId, order.OrderNumber, order.ClientInvoiceNumber, order.PackBatchNumber,
             client.PublicId, client.Name, contractPublicId,
             serviceType?.InternalCode ?? "", Label(serviceType),
@@ -167,6 +171,8 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
             AssignedDriverName: assigned?.FullName,
             AssignedTripPublicId: assignedTripPublicId,
             AssignedTripCode: assignedTripCode);
+        // Lote 39: el monto cotizado solo para quien ve precios (orders.view_price).
+        return OrderPriceRules.Apply(detail, await OrderPriceVisibility.CanViewAsync(prices, ct));
     }
 
     // ---------------------------------------------------------------- listado paginado
@@ -178,23 +184,72 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
         var query = db.ScopedOrders(scope).AsNoTracking();
         if (!q.IncludeInactive) query = query.Where(o => o.IsActive);
 
-        if (q.ClientPublicId is Guid clientPublicId)
+        // Clientes: clientId (uno) ∪ clientIds (Lote 39, repetible). Cada uno se resuelve bajo el filtro global (tenant y alcance de
+        // datos del usuario): 404 'Cliente' si no es visible; el scope que fija otro cliente también da 404 sin revelar que existe.
+        var clientPublicIds = new List<Guid>();
+        if (q.ClientPublicId is Guid clientPublicId) clientPublicIds.Add(clientPublicId);
+        if (q.ClientPublicIds is { Count: > 0 } manyClients) clientPublicIds.AddRange(manyClients);
+        if (clientPublicIds.Count > 0)
         {
-            var client = await db.ResolveClientAsync(clientPublicId, ct); // 404 si no es del tenant
-            // El scope ya fija otro cliente: 404 'Cliente' sin revelar que existe.
-            if (scope.ClientId is int scopedClientId && scopedClientId != client.ClientId) throw new NotFoundException("Cliente");
-            var clientId = client.ClientId;
-            query = query.Where(o => o.ClientId == clientId);
+            var clientIds = new List<int>();
+            foreach (var pid in clientPublicIds.Distinct())
+            {
+                var client = await db.ResolveClientAsync(pid, ct); // 404 si no es del tenant
+                if (scope.ClientId is int scopedClientId && scopedClientId != client.ClientId) throw new NotFoundException("Cliente");
+                clientIds.Add(client.ClientId);
+            }
+            var firstClientId = clientIds[0];
+            query = clientIds.Count == 1
+                ? query.Where(o => o.ClientId == firstClientId)
+                : query.Where(o => clientIds.Contains(o.ClientId));
         }
 
+        // Estatus: status (uno) ∪ statuses (Lote 39). Código desconocido → 400 'Estatus desconocido: X.' en su campo.
+        var statusIds = new List<int>();
         if (!string.IsNullOrWhiteSpace(q.Status))
         {
             var code = q.Status.Trim().ToUpperInvariant();
-            var statusId = await db.StatusCodes.AsNoTracking()
+            statusIds.Add(await db.StatusCodes.AsNoTracking()
                 .Where(s => s.Entity == StatusDomains.OrderStatus && s.InternalCode == code)
                 .Select(s => (int?)s.StatusCodeId).FirstOrDefaultAsync(ct)
-                ?? throw new ValidationException("status", $"Estatus desconocido: {q.Status.Trim()}.");
-            query = query.Where(o => o.StatusCodeId == statusId);
+                ?? throw new ValidationException("status", OrderListFilterRules.UnknownStatus(q.Status.Trim())));
+        }
+        var statusCodes = OrderListFilterRules.NormalizeCodes(q.Statuses);
+        if (statusCodes.Count > 0)
+        {
+            var known = await db.StatusCodes.AsNoTracking()
+                .Where(s => s.Entity == StatusDomains.OrderStatus && statusCodes.Contains(s.InternalCode))
+                .Select(s => new { s.InternalCode, s.StatusCodeId }).ToListAsync(ct);
+            foreach (var code in statusCodes)
+            {
+                var hit = known.FirstOrDefault(k => string.Equals(k.InternalCode, code, StringComparison.OrdinalIgnoreCase))
+                          ?? throw new ValidationException("statuses", OrderListFilterRules.UnknownStatus(code));
+                statusIds.Add(hit.StatusCodeId);
+            }
+        }
+        if (statusIds.Count == 1) { var only = statusIds[0]; query = query.Where(o => o.StatusCodeId == only); }
+        else if (statusIds.Count > 1) { var many = statusIds.Distinct().ToList(); query = query.Where(o => many.Contains(o.StatusCodeId)); }
+
+        // Lote 39: tipo de servicio de la orden (cualquiera de los códigos).
+        var serviceTypeCodes = OrderListFilterRules.NormalizeCodes(q.ServiceTypes);
+        if (serviceTypeCodes.Count > 0)
+        {
+            var serviceTypeIds = new List<int>();
+            foreach (var code in serviceTypeCodes)
+                serviceTypeIds.Add(await lookups.TryGetIdAsync(LookupDomains.ServiceType, code, ct)
+                                   ?? throw new ValidationException("serviceTypes", OrderListFilterRules.UnknownServiceType(code)));
+            query = query.Where(o => serviceTypeIds.Contains(o.ServiceTypeLookupId));
+        }
+
+        // Lote 39: tipo de paquete: la orden coincide si ALGUNA de sus líneas activas es de uno de los tipos.
+        var packageTypeCodes = OrderListFilterRules.NormalizeCodes(q.PackageTypes);
+        if (packageTypeCodes.Count > 0)
+        {
+            var packageTypeIds = new List<int>();
+            foreach (var code in packageTypeCodes)
+                packageTypeIds.Add(await lookups.TryGetIdAsync(LookupDomains.PackageType, code, ct)
+                                   ?? throw new ValidationException("packageTypes", OrderListFilterRules.UnknownPackageType(code)));
+            query = query.Where(o => o.CargoLines.Any(l => l.IsActive && l.PackageTypeLookupId != null && packageTypeIds.Contains(l.PackageTypeLookupId.Value)));
         }
 
         // Búsqueda parcial (LIKE) sobre los identificadores, documento L806.
@@ -208,6 +263,25 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
             var v = q.Consignee.Trim();
             query = query.Where(o => o.Stops.Any(s => s.StopTypeLookupId == deliveryTypeId && s.SnapName != null && s.SnapName.Contains(v)));
         }
+
+        // Lote 39: pueblo del consignatario (parada DELIVERY), igualdad sin mayúsculas ni tildes. Se resuelven primero los pueblos tal
+        // como están guardados en las paradas del scope (pocos valores distintos) y luego se filtra por igualdad (traducible a SQL).
+        var wantedCities = OrderListFilterRules.NormalizeTexts(q.Cities);
+        if (wantedCities.Count > 0)
+        {
+            var storedCities = await db.ScopedOrders(scope).AsNoTracking()
+                .SelectMany(o => o.Stops)
+                .Where(s => s.StopTypeLookupId == deliveryTypeId)
+                .Select(s => s.SnapCity)
+                .Distinct()
+                .ToListAsync(ct);
+            var cities = OrderListFilterRules.MatchingCities(storedCities, wantedCities).ToList();
+            query = query.Where(o => o.Stops.Any(s => s.StopTypeLookupId == deliveryTypeId && cities.Contains(s.SnapCity)));
+        }
+
+        // Lote 39: prefijo del ZIP del consignatario (LIKE 'prefijo%').
+        if (OrderListFilterRules.NormalizePostalPrefix(q.PostalCodePrefix) is string zipPrefix)
+            query = query.Where(o => o.Stops.Any(s => s.StopTypeLookupId == deliveryTypeId && s.SnapPostalCode != null && s.SnapPostalCode.StartsWith(zipPrefix)));
 
         if (!string.IsNullOrWhiteSpace(q.Search))
         {
@@ -299,6 +373,8 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
                 .Select(s => new { s.SpecialServiceId, Name = s.Type!.Name }).ToDictionaryAsync(s => s.SpecialServiceId, s => s.Name, ct);
 
         var orderStatuses = await LoadStatusesAsync(StatusDomains.OrderStatus, ct);
+        // Lote 39: una sola consulta del permiso por página; sin orders.view_price el monto cotizado va en null.
+        var canViewPrice = await OrderPriceVisibility.CanViewAsync(prices, ct);
 
         var items = new List<OrderListItemDto>(orders.Count);
         foreach (var o in orders)
@@ -310,7 +386,7 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
             var status = orderStatuses.GetValueOrDefault(o.StatusCodeId) ?? new StatusInfo("", "", false, "");
             var specialName = o.SpecialServiceId is int ssId ? specialNames.GetValueOrDefault(ssId) : null;
 
-            items.Add(new OrderListItemDto(
+            items.Add(OrderPriceRules.Apply(new OrderListItemDto(
                 o.TransportOrderId, o.PublicId,
                 o.PackBatchNumber, o.OrderNumber, o.ClientInvoiceNumber,
                 client?.PublicId ?? Guid.Empty, client?.Name ?? "",
@@ -321,7 +397,7 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
                 o.CodAmount, o.QuotedAmount,
                 status.Code, status.Label, status.IsInitial,
                 o.IsSpecialDelivery, o.IsActive, o.CreatedAtUtc,
-                packages));
+                packages), canViewPrice));
         }
         return items;
     }
