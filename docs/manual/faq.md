@@ -7344,3 +7344,6 @@ Todavía no tienen una ficha donde escribir los valores. Se agregarán cuando la
 
 **«Otra persona está modificando esta ruta al mismo tiempo; vuelva a intentarlo.» (409)**
 Usted y otra persona (u otro proceso, como el escaneo de salida) cambiaron rutas de la compañía en el mismo instante y el sistema no pudo aplicar su cambio. **No se guardó nada** de esa acción: espere un momento y repítala (fijar el pin, reordenar, optimizar, agregar o quitar órdenes, despachar…). Si reaparece seguido, avise a soporte con el número de correlación del mensaje. En otras pantallas el mismo caso dice «Otra persona está modificando estos datos al mismo tiempo; vuelva a intentarlo.» y se resuelve igual.
+
+**¿Puede salir «Otra persona está modificando estos datos al mismo tiempo» al crear o confirmar una orden aunque nadie más toque mis datos?**
+Antes del 2026-10-12 sí: cuando varias compañías creaban órdenes a la vez, la revisión del saldo de crédito de una chocaba con las altas de las otras. Con los índices de la sección «2026-10-12 (b)» de la base (los aplica `db-update`) ese choque ya no ocurre. Si el mensaje aparece al crear órdenes en una base actualizada, repita la acción (no se guardó nada) y avise a soporte con el número de correlación.
