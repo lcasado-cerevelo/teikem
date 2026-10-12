@@ -1,0 +1,93 @@
+# Ajuste múltiple: poner al día el inventario por producto y posición (diseño, 2026-10-12)
+
+> **Estado: SOLO DISEÑO. No hay código.** Pedido de Luis (2026-10-12), a partir de lo que pidió el supervisor del almacén de Advance Depot. Todo lo de abajo es lo conversado y acordado con Luis; lo que sigue abierto está en la sección 12.
+
+## 1. Por qué
+En el almacén de Depot hoy todo se trabaja por **ajuste**: no se registra cuándo entró ni cuándo salió algo. Luis quiere cambiar eso y que se usen recibo y despacho, pero mientras se ponen al día, el supervisor pidió que el ajuste permita **varias posiciones a la vez**. Dani hace el inventario **semanal** y ajusta para sacar el reporte de inventario.
+
+Dos intenciones que hay que sostener a la vez:
+- **Facilitar** la puesta al día de Dani (muchos productos, muchas posiciones).
+- **No** facilitar el ajuste para todo el mundo ni para siempre: el objetivo sigue siendo que dejen de usar ajustes y pasen a recibo y despacho. Por eso es una pantalla aparte, con permiso y con un interruptor que solo Luis enciende y apaga. **El ajuste normal no se toca.**
+
+Descartado (y por qué): el desplegable de posición del ajuste normal con selección múltiple y «la misma cantidad a cada posición». Las posiciones casi nunca tienen la misma cantidad (se llegaría a negativos o a ajustes falsos) y haría más cómodo el ajuste para todos para siempre. La alternativa que sigue vigente para el inventario masivo es el **conteo cíclico** (cada posición con su cantidad real, con cierre automático de los que cuadran), que es el camino formal.
+
+## 2. Cómo es hoy (lo que se reutiliza)
+- El ajuste normal (`POST /inventory/adjustments`, permiso `inventory.adjust`, `InventoryAdjustmentService.AdjustAsync`) registra **un movimiento tipo Ajuste por producto y posición** (y lote si aplica), con cantidad **con signo**, **motivo** del catálogo `AdjustmentReason` y **nota obligatoria** (máx. 300). Los motivos manuales son Dañado, Pérdida, Encontrado, Vencido y Otro; RECEIPT_VARIANCE, COUNT_VARIANCE, PICK_BATCH_REVERSAL, OPENING_BALANCE y TRACKING_CONVERSION los asigna el sistema (el ajuste normal los rechaza con 400).
+- Los movimientos pueden llevar un **documento de origen** (`RefEntityType` + `RefId`); el Kárdex lo muestra como «origen legible» (`RefLabel`, p. ej. «Pick batch EMP-00777») y abre el documento. Los ajustes de un **conteo cíclico** ya apuntan al conteo como origen.
+- Precedente directo para el diseño: el **Despacho manual (DMA-#####)** — documento con cabecera, numeración por `NumberSequence` (Kind `MANUALISSUE`), motivo de catálogo y salida de inventario por el libro (`PickBatchService`).
+- El Pulso/Actividad cuenta un ajuste como `INVENTORY_ADJUSTED` si su motivo está en `ActivityRules.ManualAdjustmentReasons` o si no lleva documento de origen.
+- Hay `Idempotency-Key` en escrituras (el doble clic no duplica) y auditoría de entidades.
+
+## 3. Qué se construye (resumen)
+Un botón **«Ajuste múltiple»** en *Productos e inventario*, con **permiso propio** y un **interruptor por compañía** que solo Luis maneja, que abre una pantalla donde se:
+1. escoge el **almacén**,
+2. se agregan **varios productos**; de cada uno aparecen **todas las posiciones donde hay existencia**, con la cantidad del sistema,
+3. se escribe, por posición, **lo que hay ahora mismo**; el sistema calcula si sube o baja,
+4. se aplica **todo junto** con **un motivo («Inventario físico») y una nota**.
+
+Cada línea se registra **como hoy**: un movimiento de tipo Ajuste por producto y posición (y lote), con la misma validación del ajuste normal. Lo nuevo es que todos llevan el **mismo documento de origen «Ajuste múltiple AJM-######»**.
+
+## 4. La pantalla
+- **Almacén** (obligatorio, uno por documento: las posiciones pertenecen a un almacén; el inventario semanal se hace almacén por almacén).
+- **Agregar producto**: buscador por SKU o nombre, con selección de **varios** (como los filtros). Cada producto agrega un bloque con sus posiciones con existencia (en ese almacén):
+
+| Posición | Lote (si aplica) | En sistema | **Hay ahora** | Diferencia |
+|---|---|---|---|---|
+| A-01-03 | | 12 | *(editable)* | −3 (rojo) / +4 (verde) / «=» |
+
+- **«Hay ahora» vacío = no se toca esa línea.** Si el valor coincide con el sistema, tampoco genera movimiento. Solo las líneas con diferencia crean movimientos.
+- **Agregar posición**: botón por producto para sumar una posición donde el sistema no tiene nada (se encontró mercancía en un lugar vacío); selector de posiciones del almacén.
+- **Quitar producto** del documento; recorrer con Tab/Enter de una cantidad a la siguiente.
+- **Pie fijo:** motivo (fijo: «Inventario físico»), **nota obligatoria** (máx. 300) para todo el documento, y un resumen vivo («12 líneas · +40 · −65 unidades · 5 productos»). Botón **«Aplicar ajuste»** con confirmación que muestra ese resumen.
+- Productos con **serie**: no entran (contar series por cantidad no tiene sentido); se ajustan con el ajuste normal. Productos con **lote**: una fila por posición y lote.
+
+## 5. Reglas al aplicar (todo o nada)
+- **Una sola transacción**: si una línea falla, **no se aplica ninguna**; la respuesta indica qué líneas fallaron y la pantalla las marca.
+- **La diferencia se calcula en el servidor, al guardar**, contra el saldo de ese momento (con los saldos bloqueados), no con el número que se vio al abrir. Cada línea manda la cantidad del sistema que vio la pantalla; si cambió (entró o salió mercancía mientras se contaba), se **rechaza con 409** listando las líneas cambiadas; la pantalla actualiza «En sistema» y la diferencia y pide confirmar de nuevo. Nunca se aplica en silencio sobre un saldo distinto.
+- Cada línea pasa por **las mismas validaciones del ajuste normal**: producto y posición válidos del tenant y del almacén, cantidad dentro de la unidad de medida, la existencia final no puede quedar **negativa ni por debajo de lo reservado** en esa posición, reglas de tipo de zona/posición.
+- Sin líneas con diferencia → no se crea documento.
+- Idempotente (`Idempotency-Key`): reenviar la misma petición no duplica el documento.
+
+## 6. Cómo se registra y se identifica
+- **Movimientos:** exactamente como hoy (tipo `ADJUSTMENT`, uno por producto/posición/lote, con cantidad con signo, nota y usuario). Se sigue viendo todo en saldos, Kárdex, reportes y analítica sin tocarlos. **No se crea un tipo de movimiento nuevo.**
+- **Origen:** `RefEntityType = MULTI_ADJUSTMENT`, `RefId = id del documento`. En el Kárdex el origen se lee «**Ajuste múltiple AJM-000123**» y abre el documento. Se registra el tipo de origen en la resolución de números de documento del Kárdex (`RefLabel`/`RefNumbers`), como el resto de los encabezados.
+- **Motivo nuevo:** `PHYSICAL_COUNT`, «Inventario físico» / «Physical inventory», en el catálogo `AdjustmentReason`. Lo **asigna el sistema** desde esta pantalla: el ajuste normal lo rechaza con 400 (igual que COUNT_VARIANCE). Va en `ActivityRules.ManualAdjustmentReasons` (o la regla equivalente) para que **siga contando como ajuste en el Pulso y la Actividad** aunque lleve documento de origen.
+- **Documento (cabecera)** `MultiAdjustment`: número `AJM-######` (nueva clase de `NumberSequence`: `MULTIADJUST`; requiere ajustar el CHECK de `NumberSequence.Kind`, como se hizo con `MANUALISSUE`), almacén, usuario, fecha, nota, cantidad de líneas, unidades que suben y que bajan.
+- **Líneas del documento** `MultiAdjustmentLine`: producto, posición, lote, **cantidad en sistema al guardar**, **cantidad contada («hay ahora»)**, diferencia y el id del movimiento generado. Así queda lo que Dani contó, no solo el resultado, y el detalle no depende de reconstruir saldos.
+- **Auditoría** normal de ambas entidades.
+
+## 7. Dónde se ve
+- **Kárdex:** el origen «Ajuste múltiple AJM-…» (clic abre el documento); **filtro nuevo por tipo de origen** y, en el reporte de ajustes, columna **«Origen»**. Así se ve cuánto se movió por ajuste múltiple y cuánto por ajuste normal.
+- **Pestaña «Historial»** de la pantalla: pasadas anteriores (fecha, usuario, almacén, líneas, unidades) con filtros; el detalle muestra cada línea con *En sistema / Hay ahora / Diferencia*. Se puede exportar.
+- El **Reporte de ajustes** que ya existe en *Productos e inventario* incluye estos movimientos (son ajustes), separables por motivo «Inventario físico» y por origen.
+
+## 8. Permisos e interruptor
+- **Permiso nuevo** para ver y aplicar el ajuste múltiple (propuesto: `inventory.adjust.multi`, grupo WAREHOUSE, «Ajuste múltiple de inventario»). **No** va en ningún rol por defecto: se asigna a mano (supervisor, Dani).
+- **Interruptor por compañía, apagado por defecto, que solo Luis enciende y apaga** (administrador de plataforma, no el administrador de la compañía). Apagado: el botón no aparece, la ruta responde 404/403 y el API rechaza la escritura aunque alguien tenga el permiso. Se evalúa implementarlo con el mecanismo de **módulos de la compañía** (el que ya controla `WMS_LOTSERIAL`) si su alta/baja ya es solo de plataforma; si no, un campo de la compañía editable solo por administrador de plataforma. (Verificar al implementar.)
+- Cada alta y baja del interruptor y de la asignación del permiso queda en la bitácora de seguridad (la asignación de permisos ya exige MFA reciente).
+
+## 9. Qué queda fuera de esta fase
+- Productos con **serie**.
+- **Reversa** de un ajuste múltiple (se corrige con otro ajuste múltiple; el historial lo deja a la vista).
+- **App del aparato** (solo web).
+- **Pegar desde Excel** / carga por archivo (producto, posición, cantidad): útil para el inventario semanal grande; se decide después de ver el uso real.
+- **Reporte de uso** («ajustes por usuario y por día») para medir cuánto se sigue ajustando y decidir cuándo apagar el interruptor: recomendado, no incluido aquí.
+- Varios almacenes en un mismo documento.
+
+## 10. Piezas a construir (cuando se apruebe)
+1. **Base de datos** (sección nueva y idempotente al final de `Diseño/logistica-db-update.sql`; estructura y seed están congelados): tablas `MultiAdjustment` y `MultiAdjustmentLine`; clase `MULTIADJUST` en `NumberSequence` (y su CHECK); motivo `PHYSICAL_COUNT` en el catálogo; permiso nuevo y su registro en el catálogo de permisos; el interruptor.
+2. **Dominio e infraestructura:** entidades y configuración, `MultiAdjustmentService` (armar el documento, recalcular diferencias contra el saldo actual bloqueado, validar cada línea con las reglas del ajuste normal, aplicar los movimientos en una transacción y numerar), tipo de origen `MULTI_ADJUSTMENT` y su resolución en el Kárdex, motivo `PHYSICAL_COUNT` en las reglas de actividad y como motivo de sistema.
+3. **API:** `GET` de posiciones con existencia por producto y almacén (para llenar la pantalla), `POST` del documento (409 con las líneas cambiadas), `GET` historial y detalle; permiso `inventory.adjust.multi`; el interruptor; contratos en `openapi.json` y `schema.d.ts`.
+4. **Web:** botón y pantalla (agregar productos, bloques con posiciones, «Hay ahora», diferencia, agregar posición, pie con motivo/nota/resumen, confirmación), pestaña Historial, filtro de origen y columna «Origen» en Kárdex y reporte de ajustes; textos es/en.
+5. **Pruebas:** servicio (todo o nada, saldo que cambió → 409, no bajar de lo reservado ni negativo, líneas sin diferencia, lote, serie excluida, idempotencia, numeración), permisos e interruptor apagado, que el ajuste normal rechace el motivo `PHYSICAL_COUNT`, que siga contando en el Pulso, Kárdex con el origen, y pantalla (cálculo de diferencias, resumen, errores por línea).
+6. **Manual, FAQ y decisiones:** capítulo de inventario, y este documento pasa a «decisiones».
+
+## 11. Ramas y entrega
+Igual que la IP preferida: en **`Depot-Implementation`** (producción corre de ahí) como **commits pequeños y aislados** (base de datos, servicio, API, web, pruebas), con el interruptor **apagado**; se prueba en **staging** (con la base restaurada de producción) y luego se pasan a `master` con `cherry-pick`, corriendo la suite de master encima. Los puntos donde master también se mueve y puede haber choques: `logistica-db-update.sql` (sección nueva al final), `InventoryController`, `ActivityRules`, `es.json`/`en.json`, `openapi.json`/`schema.d.ts`. No se crean ramas nuevas sin que Luis lo pida.
+
+## 12. Decisiones abiertas
+1. ¿El interruptor usa el mecanismo de módulos de la compañía o un campo propio? (depende de quién puede hoy prender y apagar módulos; se verifica al implementar).
+2. ¿Hace falta un tope de líneas por documento? Propuesta: **sin tope fijo**; si en pruebas un documento muy grande resulta lento, se agrega como ajuste de la compañía (no fijo en el código).
+3. ¿Se agrega «pegar desde Excel» desde el principio o después de ver el uso real?
+4. ¿Se incluye el reporte de uso («ajustes por usuario y por día») en esta entrega?
+5. ¿Los roles que reciban el permiso: solo supervisor y Dani, o también un rol nuevo «Ajuste múltiple»?
