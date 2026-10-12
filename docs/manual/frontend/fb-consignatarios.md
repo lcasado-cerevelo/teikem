@@ -4,10 +4,6 @@ Pantalla **Catálogo → Consignatarios** (`/catalog/consignees`). Los consignat
 (sin dueño, lo pueden usar todos los clientes). Backend: capítulo 02 del manual, §2 (Consignatarios y localizaciones) y la importación del lote 38. Decisiones del frontend:
 `docs/frontend/loteFB-decisiones.md`.
 
-> **Capturas.** El recorrido `web-app/e2e/loteFB-consignatarios.spec.ts` genera `img/fb-lista.png`, `img/fb-alta.png`, `img/fb-ficha.png`, `img/fb-importar.png`,
-> `img/fb-plantilla.png`, `img/fb-importar-previa.png` e `img/fb-importar-resultado.png`. **Todavía no se han generado** (el recorrido está escrito y no se ejecutó en esta
-> sesión): las referencias de imagen de abajo quedan pendientes hasta correrlo.
-
 **Quién puede.** Ver la pantalla: permiso **`locations.read`** con el módulo **Catálogo** (`CATALOG`) encendido (sin el permiso el menú no la muestra; con el módulo apagado, «Módulo apagado»).
 Cada acción pide su permiso y, sin él, el botón no se pinta y los interruptores quedan deshabilitados:
 
@@ -19,7 +15,7 @@ Cada acción pide su permiso y, sin él, el botón no se pinta y los interruptor
 | Escribir el teléfono (en el modal) | `contacts.manage` **y** `locations.update` |
 | Elegir cliente en el filtro y en el dueño | `clients.read` (sin él solo se ofrece «Compartido») |
 
-![Lista de consignatarios](img/fb-lista.png)
+![Pantalla Consignatarios: la lista a la izquierda, la ficha del consignatario elegido a la derecha y el filtro de cliente arriba](img/fb-lista.png)
 
 ## 1. La lista (izquierda) y el filtro
 
@@ -32,7 +28,7 @@ Cada acción pide su permiso y, sin él, el botón no se pinta y los interruptor
 
 ## 2. La ficha (derecha)
 
-![Ficha del consignatario](img/fb-ficha.png)
+![Ficha de un consignatario recién creado, con el interruptor «Número de factura repetido» y las opciones de entrega plegadas](img/fb-ficha.png)
 
 **Ficha del consignatario**: número, nombre, dirección, pueblo, teléfono, cliente dueño, **Estado** y **Número de factura repetido**. La sección plegada **Opciones de entrega** muestra
 la línea 2, estado/región, ZIP, país, ventana horaria, minutos de servicio y las notas de acceso y de entrega. Debajo, los **campos personalizados** de la compañía para consignatarios
@@ -47,7 +43,9 @@ la línea 2, estado/región, ZIP, país, ventana horaria, minutos de servicio y 
 
 ## 3. Nuevo consignatario / Editar
 
-![Nuevo consignatario](img/fb-alta.png)
+![Ventana «Nuevo consignatario» con nombre, dirección, pueblo elegido del buscador, teléfono y cliente dueño](img/fb-alta.png)
+
+![Las «Opciones de entrega» abiertas: dirección 2, ZIP, país, ventana de entrega, minutos de servicio y notas](img/fb-alta-entrega.png)
 
 Botón **Nuevo consignatario** (`locations.create`). Campos y reglas (los mensajes salen tal cual debajo del campo; los de pantalla se repiten en el servidor):
 
@@ -79,7 +77,7 @@ consignatario se guarda y el teléfono falla, el aviso lo dice y el consignatari
 
 ## 4. Importar consignatarios desde CSV
 
-![Importar consignatarios](img/fb-importar.png)
+![Ventana «Importar consignatarios desde CSV»: plantilla, cliente dueño y selector de archivo](img/fb-importar.png)
 
 Botón **Importar** (`locations.create`). La importación es de dos pasos: el servidor **valida** el archivo fila por fila sin crear nada, y solo al pulsar **Importar** crea las filas válidas.
 
@@ -94,15 +92,15 @@ Botón **Importar** (`locations.create`). La importación es de dos pasos: el se
 5. **Importar** crea las filas válidas (una a una) y muestra el **resultado**: creados, fallidos y omitidos, con el motivo de cada fallida. La lista se actualiza sola. **Cancelar** (o ✕) descarta
    el lote ya validado y no crea nada.
 
-![Vista previa de la importación](img/fb-importar-previa.png)
-![Resultado de la importación](img/fb-importar-resultado.png)
+![Vista previa del archivo: una fila válida y otra con el error «Nombre: El nombre es obligatorio.»](img/fb-importar-previa.png)
+![Resultado de la importación: creados, fallidos y omitidos](img/fb-importar-resultado.png)
 
 Avisos que no bloquean la fila (se importa): `El nombre 'X' ya lo usa otro consignatario de este dueño; se creará como sucursal distinta.`, `Hay un consignatario inactivo con el mismo nombre y dirección; considere reactivarlo.`
 y `El código X también lo usa un consignatario de un cliente; para ese cliente seguirá resolviendo al suyo.` Errores que bloquean la fila: ver el FAQ.
 
 ### El editor de plantillas
 
-![Editor de plantilla](img/fb-plantilla.png)
+![Editor de plantilla: cada columna del archivo se asocia a un campo del consignatario](img/fb-plantilla.png)
 
 - **Nombre de la plantilla** (obligatorio, máx. 120, único), **Delimitador** (coma, punto y coma, tabulador o barra vertical) y **La primera fila es el encabezado**.
 - Tabla **Columna N → Campo destino**: elija el campo de cada columna del archivo en el mismo orden en que aparecen; **— no importar —** ignora la columna. **Agregar columna** / el bote de basura quitan filas.

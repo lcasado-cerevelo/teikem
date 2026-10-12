@@ -29,6 +29,8 @@ Para ver la pantalla hace falta el permiso `orders.view`. El módulo «Última m
 
 ## 1. Buscar órdenes en la lista
 
+![Pantalla Órdenes con los filtros arriba y la lista de órdenes debajo](img/fc1-lista.png)
+
 **Ejemplo.** Quiero ver las órdenes de Bayamón que están en el estatus inicial y que son de un cliente en particular.
 
 1. Entre a **Operación → Órdenes**.
@@ -60,6 +62,8 @@ Los filtros de texto (N.º de orden, Consignatario, ZIP, Factura y Empaque) se a
 
 ### Qué muestra la tabla
 
+![Lista filtrada por un cliente: la orden con dos tipos de paquete ocupa dos filas, la segunda marcada con ↳](img/fc1-lista-filas.png)
+
 Columnas: **Empaque**, **N.º orden**, **Fecha**, **Consignatario**, **Pueblo**, **ZIP**, **Servicio**, **Paquete** (con la descripción debajo), **Piezas**, **COD** y **Estatus**. Si usted tiene `orders.view_price`, también sale **Cotizado** (el precio de la orden). Sin ese permiso la columna no aparece; el COD se ve siempre porque es lo que se cobra al entregar, no un precio.
 
 - **Ordenar.** Pulse el encabezado de una columna. El orden vale para **todas** las órdenes que cumplen el filtro, no solo para las que se ven en la página.
@@ -72,6 +76,8 @@ Columnas: **Empaque**, **N.º orden**, **Fecha**, **Consignatario**, **Pueblo**,
 Pulse la flecha de la primera fila de la orden (**Abrir la orden**), o pulse la fila.
 
 ### Eliminar una orden
+
+![Ventana de confirmación para eliminar la orden](img/fc1-eliminar.png)
 
 **Ejemplo.** Capturé una orden por error y todavía no la confirmé.
 
@@ -99,6 +105,8 @@ Los pasos 01, 02 y 03 aparecen a la izquierda; el **Ticket de la orden** a la de
 
 ### 01 Cliente y servicio
 
+![Inicio del formulario: cliente, servicio y consignatario elegido del directorio, con el ticket de la orden a la derecha](img/fc1-alta-inicio.png)
+
 | Campo | Qué escribir | Reglas |
 |---|---|---|
 | **Cliente** | Busque por código o nombre y elija. | Obligatorio. Al cambiarlo se borran el consignatario, el servicio especial y la factura. |
@@ -118,6 +126,8 @@ Los pasos 01, 02 y 03 aparecen a la izquierda; el **Ticket de la orden** a la de
 **Crear un consignatario desde la orden.** Si no existe, pulse **+** (necesita `locations.create` y haber elegido el cliente). Se abre el mismo formulario de «Nuevo consignatario» del Catálogo (ver el capítulo «F-B — Consignatarios»). El nuevo consignatario queda con el cliente de la orden como dueño y **queda elegido** en la orden. Ojo: crear el consignatario **no guarda la orden**; todavía debe pulsar uno de los botones de guardar.
 
 ### 03 Paquetes y COD
+
+![Sección 03 con dos tipos de paquete, el monto COD y el ticket que resume la orden](img/fc1-alta.png)
 
 | Campo | Qué escribir | Reglas |
 |---|---|---|
@@ -143,6 +153,8 @@ Cuando se guarda bien:
 Cuando algo falla, el formulario **sigue abierto con todo lo que usted había capturado**; lea el mensaje, corríjalo y vuelva a guardar. Si el formulario sigue abierto con un error, la orden **no** se creó (tampoco con **Guardar y confirmar**); puede reintentar sin miedo a duplicarla.
 
 ### Entrega especial
+
+![Formulario con «Es una entrega especial» encendido: la sección 03 pasa a ser «Servicio especial»](img/fc1-alta-especial.png)
 
 Una entrega especial es un servicio del catálogo del cliente (por ejemplo, traer un vagón del muelle) en vez de paquetes.
 
@@ -202,6 +214,10 @@ La pantalla revisa estos datos antes de enviar y los marca bajo el campo. Si el 
 ### Al guardar (los dice el servidor)
 
 El texto aparece tal cual sobre el formulario (o bajo el campo, cuando se indica). Qué hacer en cada caso:
+
+![Aviso de factura repetida para este consignatario, con las opciones «No crear la orden» y «Crear de todos modos»](img/fc1-factura-repetida.png)
+
+![Aviso de que el cliente excede su límite de crédito, con la opción «Autorizar y confirmar»](img/fc1-credito.png)
 
 | Mensaje | Código | Qué significa | Qué hacer |
 |---|---|---|---|
