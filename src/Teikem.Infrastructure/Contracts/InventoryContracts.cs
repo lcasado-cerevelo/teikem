@@ -30,12 +30,15 @@ public sealed record BalancePageDto(int Total, int Skip, int Take, decimal Total
 /// Lote 14 (al final, con valor por defecto): From/To son días LOCALES de la compañía (hora de Puerto Rico); dueño
 /// (OwnerClientPublicIds + IncludeOwn = productos propios), motivos de ajuste (Reasons), dirección IN/OUT con la perspectiva
 /// de SignedQuantity, almacén de origen y de destino (cada uno contra su lado) y ManualOnly (movimientos sin documento).
+/// 2026-10-12: UserIds (movimientos hechos por alguno de esos usuarios, InventoryTransaction.CreatedBy) e IncludeSystem (también los que
+/// no hizo una persona: CreatedBy nulo); sin ninguno de los dos no se filtra por usuario.
 /// </summary>
 public sealed record KardexQuery(DateOnly? From = null, DateOnly? To = null, string[]? Types = null, Guid[]? WarehousePublicIds = null,
     int[]? BinIds = null, Guid[]? ProductPublicIds = null, int[]? CategoryIds = null, string? LotNumber = null, string? SerialNumber = null,
     string? RefEntity = null, int? RefId = null, string? Search = null, int Skip = 0, int Take = 200, string[]? Brands = null,
     string? Name = null, Guid[]? OwnerClientPublicIds = null, bool IncludeOwn = false, string[]? Reasons = null, string? Direction = null,
-    Guid[]? FromWarehousePublicIds = null, Guid[]? ToWarehousePublicIds = null, bool ManualOnly = false);
+    Guid[]? FromWarehousePublicIds = null, Guid[]? ToWarehousePublicIds = null, bool ManualOnly = false, int[]? UserIds = null,
+    bool IncludeSystem = false);
 
 /// <summary>
 /// Fila del Kárdex. Quantity = valor del ledger CON signo; SignedQuantity = según la perspectiva del filtro. Lote 14:
@@ -73,6 +76,10 @@ public sealed record KardexDetailDto(KardexRowDto Transaction, string? OwnerName
 
 /// <summary>Lote 14 — dueño del inventario para el filtro: cliente (PublicId y nombre) o "Propio" (IsOwn, sin cliente).</summary>
 public sealed record InventoryOwnerDto(Guid? ClientPublicId, string Name, bool IsOwn);
+
+/// <summary>2026-10-12 — opción del filtro Usuario del Kárdex: un usuario que hizo movimientos (IsActive = false si está dado de baja) o, con
+/// IsSystem, los movimientos que no hizo una persona (UserId nulo; el nombre sale en el idioma de la compañía).</summary>
+public sealed record KardexUserDto(int? UserId, string Name, bool IsActive, bool IsSystem);
 
 /// <summary>Lote 14 — "Ejecutar conciliación": productos elegidos (≤ 200) o, vacío, todo el tenant.</summary>
 public sealed record ReconciliationRunRequest(Guid[]? ProductPublicIds = null);

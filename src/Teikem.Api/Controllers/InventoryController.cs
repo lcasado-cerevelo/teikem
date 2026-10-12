@@ -85,11 +85,11 @@ public sealed class InventoryController(InventoryReadService reads, InventoryAdj
         [FromQuery] string? name, CancellationToken ct, [FromQuery] int skip = 0, [FromQuery] int take = 200,
         [FromQuery] Guid[]? ownerClientPublicIds = null, [FromQuery] bool includeOwn = false, [FromQuery] string[]? reasons = null,
         [FromQuery] string? direction = null, [FromQuery] Guid[]? fromWarehousePublicIds = null, [FromQuery] Guid[]? toWarehousePublicIds = null,
-        [FromQuery] bool manualOnly = false)
+        [FromQuery] bool manualOnly = false, [FromQuery] int[]? userIds = null, [FromQuery] bool includeSystem = false)
         => reads.KardexAsync(new KardexQuery(from, to, NullIfEmpty(types), NullIfEmpty(warehousePublicIds), NullIfEmpty(binIds),
             NullIfEmpty(productPublicIds), NullIfEmpty(categoryIds), lotNumber, serialNumber, refEntity, refId, search, skip, take,
             NullIfEmpty(brands), name, NullIfEmpty(ownerClientPublicIds), includeOwn, NullIfEmpty(reasons), direction,
-            NullIfEmpty(fromWarehousePublicIds), NullIfEmpty(toWarehousePublicIds), manualOnly), InventoryScope.Any, ct);
+            NullIfEmpty(fromWarehousePublicIds), NullIfEmpty(toWarehousePublicIds), manualOnly, NullIfEmpty(userIds), includeSystem), InventoryScope.Any, ct);
 
     /// <summary>
     /// Lote 14 (D13) — resumen del Kárdex con LOS MISMOS filtros de la lista (sin skip/take): movimientos, entradas (número y
@@ -103,11 +103,11 @@ public sealed class InventoryController(InventoryReadService reads, InventoryAdj
         [FromQuery] string? refEntity, [FromQuery] int? refId, [FromQuery] string? search, [FromQuery] string[]? brands,
         [FromQuery] string? name, [FromQuery] Guid[]? ownerClientPublicIds, [FromQuery] string[]? reasons, [FromQuery] string? direction,
         [FromQuery] Guid[]? fromWarehousePublicIds, [FromQuery] Guid[]? toWarehousePublicIds, CancellationToken ct,
-        [FromQuery] bool includeOwn = false, [FromQuery] bool manualOnly = false)
+        [FromQuery] bool includeOwn = false, [FromQuery] bool manualOnly = false, [FromQuery] int[]? userIds = null, [FromQuery] bool includeSystem = false)
         => reads.KardexSummaryAsync(new KardexQuery(from, to, NullIfEmpty(types), NullIfEmpty(warehousePublicIds), NullIfEmpty(binIds),
             NullIfEmpty(productPublicIds), NullIfEmpty(categoryIds), lotNumber, serialNumber, refEntity, refId, search, 0, 0,
             NullIfEmpty(brands), name, NullIfEmpty(ownerClientPublicIds), includeOwn, NullIfEmpty(reasons), direction,
-            NullIfEmpty(fromWarehousePublicIds), NullIfEmpty(toWarehousePublicIds), manualOnly), InventoryScope.Any, ct);
+            NullIfEmpty(fromWarehousePublicIds), NullIfEmpty(toWarehousePublicIds), manualOnly, NullIfEmpty(userIds), includeSystem), InventoryScope.Any, ct);
 
     /// <summary>
     /// Lote 14 — detalle de un movimiento: la fila con dueño y categoría, vencimiento del lote, documento de origen (con su
@@ -116,6 +116,13 @@ public sealed class InventoryController(InventoryReadService reads, InventoryAdj
     /// </summary>
     [HttpGet("transactions/{id:long}"), RequirePermission(PermissionCatalog.InventoryView)]
     public Task<KardexDetailDto> Transaction(long id, CancellationToken ct) => reads.TransactionDetailAsync(id, InventoryScope.Any, ct);
+
+    /// <summary>
+    /// 2026-10-12 — usuarios para el filtro Usuario del Kárdex: los que tienen al menos un movimiento (los dados de baja con historial, marcados
+    /// isActive = false) y, primero, «Sistema (sin usuario)» (isSystem) solo si hay movimientos sin usuario. Se filtra con userIds / includeSystem.
+    /// </summary>
+    [HttpGet("transactions/users"), RequirePermission(PermissionCatalog.InventoryView)]
+    public Task<IReadOnlyList<KardexUserDto>> TransactionUsers(CancellationToken ct) => reads.KardexUsersAsync(InventoryScope.Any, ct);
 
     /// <summary>Lote 14 — dueños del inventario para el filtro: "Propio" (isOwn) y los clientes dueños de algún producto.</summary>
     [HttpGet("owners"), RequirePermission(PermissionCatalog.InventoryView)]

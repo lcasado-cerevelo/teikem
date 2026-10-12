@@ -41,6 +41,8 @@ public static class KardexRules
     public const string Arrow = " → ";
     /// <summary>Etiqueta del dueño cuando el producto es propio del tenant (Product.ClientId NULL).</summary>
     public const string OwnLabel = "Propio";
+    /// <summary>Etiqueta de «movimientos sin usuario» en el filtro Usuario (cierres automáticos, procesos del sistema, cargas heredadas).</summary>
+    public static string SystemUserLabel(string? lang) => string.Equals(lang, "en", StringComparison.OrdinalIgnoreCase) ? "System (no user)" : "Sistema (sin usuario)";
 
     public static string UnknownTypeMessage(string code) => $"Tipo de movimiento desconocido: '{code}'.";
     public static string UnknownRefEntityMessage(string code) => $"Tipo de documento de referencia desconocido: '{code}'.";
