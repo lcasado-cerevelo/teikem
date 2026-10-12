@@ -82,6 +82,14 @@ public sealed class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Ex
             http.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
             await http.Response.WriteAsJsonAsync(new { type = "https://teikem.app/errors/payload_too_large", title = "El archivo supera el tamaño máximo permitido.", status = 413, code = "payload_too_large", correlationId = tenant.CorrelationId });
         }
+        catch (Exception ex) when (ex is not OperationCanceledException && ex is not Teikem.Infrastructure.Exceptions.TeikemException && http.RequestAborted.IsCancellationRequested)
+        {
+            // El cliente ya cerró la conexión (cambió de pantalla, recargó, cortó la red): SQL Server aborta la consulta en vuelo y SqlClient lo
+            // reporta como «severe error / Operation cancelled by user». No es un fallo del servidor: nadie recibirá la respuesta, así que se
+            // registra como aviso suave (sin «Error no controlado») y se marca 499 (cliente cerró la petición) en lugar de 500.
+            logger.LogDebug(ex, "Petición cancelada por el cliente. Correlation {Correlation}", tenant.CorrelationId);
+            if (!http.Response.HasStarted) http.Response.StatusCode = 499;
+        }
         catch (Exception ex) when (ex is not OperationCanceledException && DeadlockRules.IsDeadlock(ex))
         {
             // Lote 41: interbloqueo de SQL Server que sobrevivió a los reintentos de EF → 409 'concurrent_edit' (no 500): la

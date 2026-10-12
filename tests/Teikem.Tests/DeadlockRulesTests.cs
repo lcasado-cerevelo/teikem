@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Teikem.Api.Middleware;
 using Teikem.Infrastructure.Abstractions;
@@ -227,5 +228,57 @@ public class DeadlockRulesTests
         Assert.Contains("FROM dbo.RouteStop rs WITH (FORCESEEK) JOIN dbo.Route r WITH (FORCESEEK) ON r.RouteId = rs.RouteId JOIN dbo.Trip t WITH (FORCESEEK)", queries);
         Assert.Equal(4, Regex.Matches(queries, Regex.Escape("FROM dbo.OrderStop os WITH (FORCESEEK) JOIN dbo.TransportOrder o WITH (FORCESEEK)")).Count
                         + Regex.Matches(queries, Regex.Escape("FROM dbo.RouteStop rs WITH (FORCESEEK)")).Count);
+    }
+
+    // ---- Petición cancelada por el cliente (2026-10-12): no es un error del servidor ----
+
+    [Fact]
+    public async Task A_failure_after_the_client_aborted_the_request_is_not_an_unhandled_error_and_does_not_answer_500()
+    {
+        using var cts = new CancellationTokenSource();
+        var http = new DefaultHttpContext { RequestAborted = cts.Token };
+        var log = new CapturingLogger();
+        // SQL Server aborta la consulta cuando el cliente se va: llega como una excepción cualquiera (SqlException «severe error»)
+        var middleware = new ExceptionHandlingMiddleware(_ => { cts.Cancel(); throw new InvalidOperationException("A severe error occurred on the current command. Operation cancelled by user."); }, log);
+
+        await middleware.InvokeAsync(http, new TenantContext());
+
+        Assert.Equal(499, http.Response.StatusCode);
+        Assert.DoesNotContain(log.Entries, e => e.Level >= LogLevel.Error);
+    }
+
+    [Fact]
+    public async Task The_same_failure_with_the_client_still_connected_is_still_a_500_and_an_error_in_the_log()
+    {
+        var http = new DefaultHttpContext();
+        http.Response.Body = new MemoryStream();
+        var log = new CapturingLogger();
+        var middleware = new ExceptionHandlingMiddleware(_ => throw new InvalidOperationException("fallo real"), log);
+
+        await middleware.InvokeAsync(http, new TenantContext());
+
+        Assert.Equal(500, http.Response.StatusCode);
+        Assert.Contains(log.Entries, e => e.Level == LogLevel.Error);
+    }
+
+    [Fact]
+    public async Task A_domain_exception_keeps_its_status_even_if_the_client_aborted()
+    {
+        using var cts = new CancellationTokenSource();
+        var http = new DefaultHttpContext { RequestAborted = cts.Token };
+        http.Response.Body = new MemoryStream();
+        var middleware = new ExceptionHandlingMiddleware(_ => { cts.Cancel(); throw new Teikem.Infrastructure.Exceptions.NotFoundException("Cliente", "x"); }, NullLogger<ExceptionHandlingMiddleware>.Instance);
+
+        await middleware.InvokeAsync(http, new TenantContext());
+
+        Assert.Equal(404, http.Response.StatusCode);
+    }
+
+    private sealed class CapturingLogger : ILogger<ExceptionHandlingMiddleware>
+    {
+        public List<(LogLevel Level, string Text)> Entries { get; } = new();
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) => Entries.Add((logLevel, formatter(state, exception)));
     }
 }

@@ -206,6 +206,7 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
         if (await db.ReportDefinitions.AnyAsync(r => r.BaseEntityTypeLookupId == baseId && r.Name == req.Name.Trim() && r.IsActive, ct))
             throw new ConflictException($"Ya existe una vista '{req.Name}' para {source.Key}.");
         ValidateReportSpec(source, req);
+        await FreeDeletedReportNameAsync(baseId, req.Name.Trim(), null, ct);
 
         var r = new ReportDefinition
         {
@@ -214,6 +215,7 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
             VisibilityLookupId = await lookups.GetIdAsync(LookupDomains.ReportVisibility, req.Visibility ?? ReportVisibilities.Private, ct),
         };
         Apply(r, req);
+        r.ChartTypeLookupId = await ResolveReportChartTypeAsync(req.ChartType, ct);
         await ApplySharesAsync(r.Shares, req.Shares, (u, ro, e) => new ReportShare { UserId = u, RoleId = ro, CanEdit = e }, ct);
         db.ReportDefinitions.Add(r);
         await db.SaveChangesAsync(ct);
@@ -226,9 +228,17 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
         EnsureEditable(r.IsSystem, r.OwnerUserId, r.Shares.Any(s => s.CanEdit && s.UserId == tenant.UserId));
         var source = registry.Get(r.BaseEntityType!.InternalCode);
         ValidateReportSpec(source, req);
-        if (!string.IsNullOrWhiteSpace(req.Name)) r.Name = req.Name.Trim();
+        if (!string.IsNullOrWhiteSpace(req.Name) && req.Name.Trim() != r.Name)
+        {
+            var newName = req.Name.Trim();
+            if (await db.ReportDefinitions.AnyAsync(x => x.ReportDefinitionId != id && x.BaseEntityTypeLookupId == r.BaseEntityTypeLookupId && x.Name == newName && x.IsActive, ct))
+                throw new ConflictException($"Ya existe una vista '{newName}' para {source.Key}.");
+            await FreeDeletedReportNameAsync(r.BaseEntityTypeLookupId, newName, id, ct);
+            r.Name = newName;
+        }
         if (req.Visibility is not null) r.VisibilityLookupId = await lookups.GetIdAsync(LookupDomains.ReportVisibility, req.Visibility, ct);
         Apply(r, req);
+        r.ChartTypeLookupId = await ResolveReportChartTypeAsync(req.ChartType, ct);
         if (req.Shares is not null)
         {
             db.ReportShares.RemoveRange(r.Shares);
@@ -277,6 +287,30 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
             GroupBy = by, Aggregates = aggs, ShowTotals = totals, Sort = AnalyticsEngine.ParseSort(req.SortJson), FromUtc = from, ToUtc = to, Skip = 0, Take = run.Take ?? 50,
         }, ct);
         return new ReportRunResultDto(res.Columns, res.Rows.Select(x => (IDictionary<string, object?>)x).ToList(), res.Totals, res.TotalCount);
+    }
+
+    /// <summary>
+    /// Lote F-F2: la baja de una vista es lógica y la restricción UQ_ReportDefinition (tenant, fuente, nombre) también cuenta las dadas de baja:
+    /// crear o renombrar una vista con el nombre de una eliminada daba 500. Se libera el nombre de la eliminada (queda "nombre (eliminada #id)").
+    /// </summary>
+    private async Task FreeDeletedReportNameAsync(int baseEntityTypeLookupId, string name, int? exceptId, CancellationToken ct)
+    {
+        var dead = await db.ReportDefinitions.Where(x => x.BaseEntityTypeLookupId == baseEntityTypeLookupId && x.Name == name && !x.IsActive && x.ReportDefinitionId != exceptId).ToListAsync(ct);
+        foreach (var d in dead)
+        {
+            var suffix = $" (eliminada #{d.ReportDefinitionId})";
+            d.Name = (name.Length + suffix.Length > 150 ? name[..(150 - suffix.Length)] : name) + suffix;
+        }
+        if (dead.Count > 0) await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Lote F-F2: el tipo de gráfico de la vista no se copiaba al guardar (siempre null).</summary>
+    private async Task<int?> ResolveReportChartTypeAsync(string? chartType, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(chartType)) return null;
+        var code = chartType.Trim().ToUpperInvariant();
+        return await lookups.TryGetIdAsync(LookupDomains.ReportChartType, code, ct)
+               ?? throw new ValidationException("chartType", "Tipo de gráfico: BAR, DONUT o LINE.");
     }
 
     private static void ValidateReportSpec(IDataSource source, ReportUpsertRequest req)
