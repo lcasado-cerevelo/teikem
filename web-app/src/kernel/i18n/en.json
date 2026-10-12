@@ -90,6 +90,8 @@
       "submit": "Save password",
       "badLink": "The link is not valid or has expired. Ask for a new one.",
       "askAgain": "Ask for another link",
+      "mfaCode": "Verification code",
+      "mfaHelp": "The one from your authenticator app, or a recovery code.",
       "doneTitle": "Password changed",
       "done": "Done. You can now sign in with your new password.",
       "goLogin": "Go to sign in"

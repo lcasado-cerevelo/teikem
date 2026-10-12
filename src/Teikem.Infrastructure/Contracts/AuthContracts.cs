@@ -36,8 +36,9 @@ public sealed record ChangePasswordRequest(string CurrentPassword, string NewPas
 public sealed record ForgotPasswordRequest(string? Email);
 /// <summary>Respuesta siempre igual exista o no el correo; <c>Link</c> solo en desarrollo (sin proveedor de correo).</summary>
 public sealed record ForgotPasswordResultDto(string Message, string? Link);
-/// <summary>Poner la contraseña nueva con el enlace del correo.</summary>
-public sealed record ResetPasswordRequest(string? Email, string? Token, string? NewPassword);
+/// <summary>Poner la contraseña nueva con el enlace del correo. MfaCode (2026-10-12): código de la app de autenticación o de recuperación; se exige si la
+/// persona tiene su MFA inscrito (sin él, 400 <c>mfa_required</c> y el enlace sigue vigente).</summary>
+public sealed record ResetPasswordRequest(string? Email, string? Token, string? NewPassword, string? MfaCode = null);
 /// <summary>Administración de usuarios: contraseña temporal (vacía = el servidor genera una).</summary>
 public sealed record TemporaryPasswordRequest(string? Password);
 public sealed record TemporaryPasswordDto(string Password, DateTime ExpiresAtUtc, int ValidMinutes);

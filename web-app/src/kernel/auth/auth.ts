@@ -133,7 +133,10 @@ export function requestPasswordReset(email: string) {
   return unwrap(api.POST('/api/v1/auth/forgot-password', { body: { email } }))
 }
 
-/** `POST /api/v1/auth/reset-password` (anónimo): pone la contraseña nueva con el enlace del correo. */
-export async function resetPassword(email: string, token: string, newPassword: string): Promise<void> {
-  await unwrap(api.POST('/api/v1/auth/reset-password', { body: { email, token, newPassword } }))
+/**
+ * `POST /api/v1/auth/reset-password` (anónimo): pone la contraseña nueva con el enlace del correo. `mfaCode` (2026-10-12): código de la app de
+ * autenticación o de recuperación; quien tiene su MFA inscrito lo debe dar (sin él responde 400 `mfa_required` y el enlace sigue vigente).
+ */
+export async function resetPassword(email: string, token: string, newPassword: string, mfaCode?: string): Promise<void> {
+  await unwrap(api.POST('/api/v1/auth/reset-password', { body: { email, token, newPassword, mfaCode: mfaCode || undefined } }))
 }

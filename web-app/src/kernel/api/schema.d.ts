@@ -25018,6 +25018,7 @@ export interface components {
             email?: string | null;
             token?: string | null;
             newPassword?: string | null;
+            mfaCode?: string | null;
         };
         RevokeSessionsResultDto: {
             /** Format: int32 */

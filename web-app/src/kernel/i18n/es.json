@@ -90,6 +90,8 @@
       "submit": "Guardar contraseña",
       "badLink": "El enlace no es válido o venció. Pida uno nuevo.",
       "askAgain": "Pedir otro enlace",
+      "mfaCode": "Código de verificación",
+      "mfaHelp": "El de su app de autenticación, o un código de recuperación.",
       "doneTitle": "Contraseña cambiada",
       "done": "Listo. Ya puede entrar con su contraseña nueva.",
       "goLogin": "Ir a iniciar sesión"

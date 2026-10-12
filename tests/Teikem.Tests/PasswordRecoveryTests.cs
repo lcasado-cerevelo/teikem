@@ -232,4 +232,105 @@ public class PasswordRecoveryTests
         await auth.ResetPasswordWithLinkAsync(new ResetPasswordRequest("ana@t.local", token, NewPassword), default);
         AssertEntered(await Login(f, NewPassword));
     }
+
+    // ---------------------------------------------------------------- 2026-10-12: restablecer la contraseña exige el código MFA (docs/ip-preferida-mfa-diseno.md §3.1)
+
+    /// <summary>Inscribe y confirma el TOTP de Ana (usuario 2) con el flujo real; devuelve su secreto y sus códigos de recuperación.</summary>
+    private static async Task<(byte[] Secret, IReadOnlyList<string> Recovery)> EnrollAnaAsync(AuthService auth)
+    {
+        var enrolled = await auth.EnrollTotpAsync(2, default);
+        var secret = TotpService.Base32Decode(enrolled.Secret);
+        var confirmed = await auth.ConfirmTotpAsync(2, new MfaConfirmRequest(CurrentCode(secret)), default);
+        return (secret, confirmed.RecoveryCodes);
+    }
+
+    private static string CurrentCode(byte[] secret) => TotpService.ComputeCode(secret, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+
+    private static async Task<string> LinkTokenAsync(AuthService auth)
+    {
+        var link = (await auth.RequestPasswordResetAsync(new ForgotPasswordRequest("ana@t.local"), default)).Link!;
+        return Uri.UnescapeDataString(link[(link.IndexOf("token=", StringComparison.Ordinal) + 6)..]);
+    }
+
+    [Fact]
+    public async Task With_MFA_enrolled_the_link_alone_is_not_enough_and_the_link_is_not_spent()
+    {
+        await using var f = await FixtureAsync();
+        var auth = f.Get<AuthService>();
+        var (secret, _) = await EnrollAnaAsync(auth);
+        var token = await LinkTokenAsync(auth);
+
+        // sin código: error específico (mfa_required) y la contraseña no cambia
+        var missing = await Assert.ThrowsAsync<MfaCodeRequiredException>(() => auth.ResetPasswordWithLinkAsync(new ResetPasswordRequest("ana@t.local", token, NewPassword), default));
+        Assert.Equal("mfa_required", missing.Code);
+        Assert.Equal(400, missing.StatusCode);
+        Assert.Equal(AuthService.ResetMfaRequiredMessage, missing.Message);
+        AssertEntered(await Login(f, OldPassword));
+
+        // el mismo enlace sigue vigente: con el código correcto sí cambia la contraseña y se cierra el enlace
+        await auth.ResetPasswordWithLinkAsync(new ResetPasswordRequest("ana@t.local", token, NewPassword, CurrentCode(secret)), default);
+        AssertEntered(await Login(f, NewPassword));
+        await Assert.ThrowsAsync<ValidationException>(() => auth.ResetPasswordWithLinkAsync(new ResetPasswordRequest("ana@t.local", token, "Otra-Clave-Distinta-1", CurrentCode(secret)), default));
+    }
+
+    [Fact]
+    public async Task A_wrong_MFA_code_is_rejected_on_the_mfaCode_field_and_the_link_stays_usable()
+    {
+        await using var f = await FixtureAsync();
+        var auth = f.Get<AuthService>();
+        var (secret, _) = await EnrollAnaAsync(auth);
+        var token = await LinkTokenAsync(auth);
+
+        var bad = await Assert.ThrowsAsync<ValidationException>(() => auth.ResetPasswordWithLinkAsync(new ResetPasswordRequest("ana@t.local", token, NewPassword, "000000"), default));
+        Assert.Equal(AuthService.ResetMfaInvalidMessage, bad.Message);
+        Assert.Contains("mfaCode", bad.Errors!.Keys);
+        AssertEntered(await Login(f, OldPassword)); // no cambió nada
+        await auth.ResetPasswordWithLinkAsync(new ResetPasswordRequest("ana@t.local", token, NewPassword, CurrentCode(secret)), default);
+        AssertEntered(await Login(f, NewPassword));
+    }
+
+    [Fact]
+    public async Task Wrong_MFA_codes_count_toward_the_account_lockout_like_the_login()
+    {
+        await using var f = await FixtureAsync();
+        var auth = f.Get<AuthService>();
+        var (secret, _) = await EnrollAnaAsync(auth);
+        var token = await LinkTokenAsync(auth);
+        // el fixture crea a las personas sin «bloqueo habilitado» (Identity lo enciende al crear un usuario de verdad)
+        var ana = await f.Db.Users.AsTracking().SingleAsync(u => u.Id == 2);
+        ana.LockoutEnabled = true;
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        for (var i = 0; i < 5; i++)
+            await Assert.ThrowsAsync<ValidationException>(() => auth.ResetPasswordWithLinkAsync(new ResetPasswordRequest("ana@t.local", token, NewPassword, "000000"), default));
+        // bloqueada: ni el código correcto sirve (mismo mensaje, sin revelar el bloqueo) y el login también queda bloqueado
+        var locked = await Assert.ThrowsAsync<ValidationException>(() => auth.ResetPasswordWithLinkAsync(new ResetPasswordRequest("ana@t.local", token, NewPassword, CurrentCode(secret)), default));
+        Assert.Equal(AuthService.ResetMfaInvalidMessage, locked.Message);
+        await Assert.ThrowsAsync<UnauthorizedException>(() => Login(f, OldPassword));
+    }
+
+    [Fact]
+    public async Task A_recovery_code_is_accepted_once_in_place_of_the_authenticator_code()
+    {
+        await using var f = await FixtureAsync();
+        var auth = f.Get<AuthService>();
+        var (_, recovery) = await EnrollAnaAsync(auth);
+        var token = await LinkTokenAsync(auth);
+        await auth.ResetPasswordWithLinkAsync(new ResetPasswordRequest("ana@t.local", token, NewPassword, recovery[0]), default);
+        AssertEntered(await Login(f, NewPassword));
+
+        // el mismo código de recuperación no vuelve a servir
+        var token2 = await LinkTokenAsync(auth);
+        await Assert.ThrowsAsync<ValidationException>(() => auth.ResetPasswordWithLinkAsync(new ResetPasswordRequest("ana@t.local", token2, "Otra-Clave-Distinta-1", recovery[0]), default));
+    }
+
+    [Fact]
+    public async Task Without_MFA_enrolled_the_link_is_the_only_factor_even_if_a_code_is_sent()
+    {
+        await using var f = await FixtureAsync();
+        var auth = f.Get<AuthService>();
+        var token = await LinkTokenAsync(auth);
+        await auth.ResetPasswordWithLinkAsync(new ResetPasswordRequest("ana@t.local", token, NewPassword, "123456"), default);
+        AssertEntered(await Login(f, NewPassword));
+    }
 }

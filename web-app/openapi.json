@@ -42408,6 +42408,10 @@
           "newPassword": {
             "type": "string",
             "nullable": true
+          },
+          "mfaCode": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
