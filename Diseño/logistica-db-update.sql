@@ -134,8 +134,9 @@ MERGE dbo.LookupCode AS t
 USING (VALUES
     (N'SAMPLE',          N'{"es":"Muestra","en":"Sample"}',                 1),
     (N'INTERNAL_USE',    N'{"es":"Uso interno","en":"Internal use"}',        2),
-    (N'CUSTOMER_PICKUP', N'{"es":"Retiro del cliente","en":"Customer pickup"}', 3),
-    (N'SALE',            N'{"es":"Venta","en":"Sale"}',                     4),
+    (N'OWNER_PICKUP', N'{"es":"Retiro del dueño","en":"Owner pickup"}', 3),
+    (N'CUSTOMER_PICKUP', N'{"es":"Retiro del cliente","en":"Customer pickup"}', 4),
+    (N'SALE',            N'{"es":"Venta","en":"Sale"}',                     5),
     (N'OTHER',           N'{"es":"Otro","en":"Other"}',                     9)
 ) AS s (Code, LabelJson, Srt)
 ON t.Entity = N'ManualIssueReason' AND t.InternalCode = s.Code
@@ -261,4 +262,24 @@ SET sb.FirstReceivedAtUtc = COALESCE(
         sb.UpdatedAtUtc)
 FROM dbo.StockBalance sb
 WHERE sb.FirstReceivedAtUtc IS NULL AND sb.QtyOnHand > 0;
+GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-11 (f) — Importación CSV de consignatarios (Lote 38, F-B). Reutiliza dbo.ImportTemplate/dbo.ImportBatch con
+   Kind='CONSIGNEE'. ImportBatch.ClientId pasa a NULL (lote de compartidos o con cliente por fila); los lotes ORDER siguen
+   exigiendo cliente (CK_ImportBatch_OrderClient). Se quita y se recrea IX_ImportBatch_Client (depende de la columna).
+   Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.ImportBatch') AND name = 'ClientId' AND is_nullable = 0)
+BEGIN
+    IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ImportBatch_Client' AND object_id = OBJECT_ID('dbo.ImportBatch'))
+        DROP INDEX IX_ImportBatch_Client ON dbo.ImportBatch;
+    ALTER TABLE dbo.ImportBatch ALTER COLUMN ClientId INT NULL;
+END
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ImportBatch_Client' AND object_id = OBJECT_ID('dbo.ImportBatch'))
+    CREATE INDEX IX_ImportBatch_Client ON dbo.ImportBatch(TenantId, ClientId);
+GO
+IF OBJECT_ID('dbo.CK_ImportBatch_OrderClient', 'C') IS NULL
+    ALTER TABLE dbo.ImportBatch ADD CONSTRAINT CK_ImportBatch_OrderClient CHECK (Kind <> 'ORDER' OR ClientId IS NOT NULL);
 GO

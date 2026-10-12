@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Teikem.Domain.Clients;
 using Teikem.Domain.Orders;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Clients;
@@ -16,6 +17,10 @@ namespace Teikem.Infrastructure.Services;
 /// - Nombre único por (tenant, kind) (UQ_ImportTemplate → 409). Baja lógica IsActive=0, nunca DELETE.
 /// - ColumnsJson = [{position, field}], DefaultsJson = {campo: valor} (camelCase). Los helpers de (de)serialización
 ///   los comparte OrderImportService.
+/// Lote 38 (F-B): el mismo servicio atiende las plantillas de consignatarios (Kind CONSIGNEE). Cada controlador pasa el tipo
+/// que atiende (expectedKind): una plantilla de otro tipo responde 404 (sin oráculo) y un kind distinto en el cuerpo o la
+/// consulta responde 400 'Tipo de plantilla desconocido'. La validación y la normalización de columnas y defaults siguen el
+/// catálogo del tipo (ImportMapping para ORDER, ConsigneeImportMapping para CONSIGNEE).
 /// </summary>
 public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext tenant)
 {
@@ -30,10 +35,13 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
 
     // ---------------------------------------------------------------- consulta
 
-    /// <summary>Plantillas del tenant por tipo (ORDER por defecto). Con clientPublicId: las generales y las de ese cliente.</summary>
-    public async Task<IReadOnlyList<ImportTemplateDto>> GetListAsync(string? kind, Guid? clientPublicId, bool includeInactive, CancellationToken ct)
+    /// <summary>
+    /// Plantillas del tenant del tipo que atiende el llamador (expectedKind; kind de la consulta, si viene, debe coincidir:
+    /// si no, 400). Con clientPublicId: las generales y las de ese cliente.
+    /// </summary>
+    public async Task<IReadOnlyList<ImportTemplateDto>> GetListAsync(string expectedKind, string? kind, Guid? clientPublicId, bool includeInactive, CancellationToken ct)
     {
-        var k = NormalizeKind(kind);
+        var k = NormalizeKind(kind, expectedKind);
         var q = db.ImportTemplates.AsNoTracking().Where(t => t.Kind == k);
         if (!includeInactive) q = q.Where(t => t.IsActive);
         if (clientPublicId is Guid cpid)
@@ -46,9 +54,11 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
         return rows.Select(r => ToDto(r, clients)).ToList();
     }
 
-    public async Task<ImportTemplateDto> GetAsync(Guid publicId, CancellationToken ct)
+    /// <summary>Plantilla del tipo esperado; una de otro tipo responde 404 (la ruta de órdenes no ve las de consignatarios y viceversa).</summary>
+    public async Task<ImportTemplateDto> GetAsync(Guid publicId, string expectedKind, CancellationToken ct)
     {
-        var row = await db.ImportTemplates.AsNoTracking().FirstOrDefaultAsync(t => t.PublicId == publicId, ct)
+        var k = NormalizeKind(expectedKind, expectedKind);
+        var row = await db.ImportTemplates.AsNoTracking().FirstOrDefaultAsync(t => t.PublicId == publicId && t.Kind == k, ct)
                   ?? throw new NotFoundException(NotFoundLabel);
         var clients = await ClientNamesAsync(row.ClientId.HasValue ? new[] { row.ClientId.Value } : Array.Empty<int>(), ct);
         return ToDto(row, clients);
@@ -56,11 +66,12 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
 
     /// <summary>
     /// Plantilla utilizable para importar al cliente dado: activa, del tipo pedido y general o de ese mismo cliente.
-    /// Una plantilla de otro cliente responde 404 (sin oráculo).
+    /// Sin cliente (clientId null, lote CONSIGNEE sin cliente) solo sirven las generales. Una plantilla de otro cliente o de
+    /// otro tipo responde 404 (sin oráculo).
     /// </summary>
-    public async Task<ImportTemplate> ResolveForImportAsync(Guid templatePublicId, int clientId, string kind, CancellationToken ct)
+    public async Task<ImportTemplate> ResolveForImportAsync(Guid templatePublicId, int? clientId, string kind, CancellationToken ct)
     {
-        var k = NormalizeKind(kind);
+        var k = NormalizeKind(kind, kind);
         var row = await db.ImportTemplates.AsNoTracking()
             .FirstOrDefaultAsync(t => t.PublicId == templatePublicId && t.Kind == k && (t.ClientId == null || t.ClientId == clientId), ct)
             ?? throw new NotFoundException(NotFoundLabel);
@@ -70,15 +81,15 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
 
     // ---------------------------------------------------------------- alta / edición
 
-    public async Task<ImportTemplateDto> CreateAsync(ImportTemplateCreateRequest req, CancellationToken ct)
+    public async Task<ImportTemplateDto> CreateAsync(ImportTemplateCreateRequest req, string expectedKind, CancellationToken ct)
     {
         var tenantId = ((TenantContext)tenant).RequireTenantId();
         var name = RequireName(req.Name);
-        var kind = NormalizeKind(req.Kind);
+        var kind = NormalizeKind(req.Kind, expectedKind);
         var delimiter = NormalizeDelimiter(req.Delimiter);
         var columns = ToColumns(req.Columns);
         var defaults = ToDefaults(req.Defaults);
-        ThrowIfErrors(ImportMapping.ValidateColumns(columns, defaults));
+        ThrowIfErrors(ValidateColumns(kind, columns, defaults));
 
         int? clientId = null;
         if (req.ClientPublicId is Guid cpid) clientId = (await db.ResolveClientAsync(cpid, ct)).ClientId;
@@ -91,18 +102,19 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
             ClientId = clientId,
             Delimiter = delimiter.ToString(),
             HasHeader = req.HasHeader,
-            ColumnsJson = SerializeColumns(columns),
-            DefaultsJson = defaults.Count == 0 ? null : SerializeDefaults(defaults),
+            ColumnsJson = SerializeColumns(columns, kind),
+            DefaultsJson = defaults.Count == 0 ? null : SerializeDefaults(defaults, kind),
             IsActive = true,
             CreatedAtUtc = DateTime.UtcNow,
         };
         db.ImportTemplates.Add(row);
         await db.SaveGuardedAsync(NameTakenMessage, ct);
-        return await GetAsync(row.PublicId, ct);
+        return await GetAsync(row.PublicId, kind, ct);
     }
 
-    public async Task<ImportTemplateDto> UpdateAsync(Guid publicId, ImportTemplatePatchRequest req, CancellationToken ct)
+    public async Task<ImportTemplateDto> UpdateAsync(Guid publicId, ImportTemplatePatchRequest req, string expectedKind, CancellationToken ct)
     {
+        var kind = NormalizeKind(expectedKind, expectedKind);
         if (req.MakeGeneral == true && req.ClientPublicId.HasValue)
             throw new ValidationException("clientPublicId", "Indique un cliente o marque la plantilla como general, no ambos.");
         if (req.ClearDefaults == true && req.Defaults is { Count: > 0 })
@@ -113,53 +125,55 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
 
         await db.RunInTransactionAsync(async ct2 =>
         {
-            var row = await db.ImportTemplates.FirstOrDefaultAsync(t => t.PublicId == publicId, ct2)
+            var row = await db.ImportTemplates.FirstOrDefaultAsync(t => t.PublicId == publicId && t.Kind == kind, ct2)
                       ?? throw new NotFoundException(NotFoundLabel);
 
             var columns = req.Columns is null ? ParseColumns(row.ColumnsJson) : ToColumns(req.Columns);
             var defaults = req.ClearDefaults == true
                 ? new Dictionary<string, string>(StringComparer.Ordinal)
                 : req.Defaults is null ? ParseDefaults(row.DefaultsJson) : ToDefaults(req.Defaults);
-            ThrowIfErrors(ImportMapping.ValidateColumns(columns, defaults));
+            ThrowIfErrors(ValidateColumns(kind, columns, defaults));
 
             if (req.Name is not null) row.Name = RequireName(req.Name);
             if (req.Delimiter is not null) row.Delimiter = NormalizeDelimiter(req.Delimiter).ToString();
             if (req.HasHeader is bool hasHeader) row.HasHeader = hasHeader;
             if (req.MakeGeneral == true) row.ClientId = null;
             else if (newClientId is int c) row.ClientId = c;
-            if (req.Columns is not null) row.ColumnsJson = SerializeColumns(columns);
-            if (req.ClearDefaults == true || req.Defaults is not null) row.DefaultsJson = defaults.Count == 0 ? null : SerializeDefaults(defaults);
+            if (req.Columns is not null) row.ColumnsJson = SerializeColumns(columns, kind);
+            if (req.ClearDefaults == true || req.Defaults is not null) row.DefaultsJson = defaults.Count == 0 ? null : SerializeDefaults(defaults, kind);
             row.UpdatedAtUtc = DateTime.UtcNow;
             await db.SaveGuardedAsync(NameTakenMessage, ct2);
         }, ct);
-        return await GetAsync(publicId, ct);
+        return await GetAsync(publicId, kind, ct);
     }
 
     /// <summary>Baja lógica (nunca DELETE): deja de aparecer en el selector; los lotes que la usaron conservan la referencia.</summary>
-    public async Task<ImportTemplateDto> DeactivateAsync(Guid publicId, CancellationToken ct)
+    public async Task<ImportTemplateDto> DeactivateAsync(Guid publicId, string expectedKind, CancellationToken ct)
     {
+        var kind = NormalizeKind(expectedKind, expectedKind);
         await db.RunInTransactionAsync(async ct2 =>
         {
-            var row = await db.ImportTemplates.FirstOrDefaultAsync(t => t.PublicId == publicId, ct2) ?? throw new NotFoundException(NotFoundLabel);
+            var row = await db.ImportTemplates.FirstOrDefaultAsync(t => t.PublicId == publicId && t.Kind == kind, ct2) ?? throw new NotFoundException(NotFoundLabel);
             if (!row.IsActive) throw new ConflictException("La plantilla ya está inactiva.");
             row.IsActive = false;
             row.UpdatedAtUtc = DateTime.UtcNow;
             await db.SaveChangesAsync(ct2);
         }, ct);
-        return await GetAsync(publicId, ct);
+        return await GetAsync(publicId, kind, ct);
     }
 
-    public async Task<ImportTemplateDto> ReactivateAsync(Guid publicId, CancellationToken ct)
+    public async Task<ImportTemplateDto> ReactivateAsync(Guid publicId, string expectedKind, CancellationToken ct)
     {
+        var kind = NormalizeKind(expectedKind, expectedKind);
         await db.RunInTransactionAsync(async ct2 =>
         {
-            var row = await db.ImportTemplates.FirstOrDefaultAsync(t => t.PublicId == publicId, ct2) ?? throw new NotFoundException(NotFoundLabel);
+            var row = await db.ImportTemplates.FirstOrDefaultAsync(t => t.PublicId == publicId && t.Kind == kind, ct2) ?? throw new NotFoundException(NotFoundLabel);
             if (row.IsActive) throw new ConflictException("La plantilla ya está activa.");
             row.IsActive = true;
             row.UpdatedAtUtc = DateTime.UtcNow;
             await db.SaveChangesAsync(ct2);
         }, ct);
-        return await GetAsync(publicId, ct);
+        return await GetAsync(publicId, kind, ct);
     }
 
     // ---------------------------------------------------------------- JSON de columnas y defaults (compartido con el importador)
@@ -178,11 +192,16 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
         return items.Where(i => i.Value is not null).ToDictionary(i => i.Key, i => i.Value!, StringComparer.Ordinal);
     }
 
-    public static string SerializeColumns(IReadOnlyList<ImportColumn> columns)
-        => JsonSerializer.Serialize(columns.OrderBy(c => c.Position).Select(c => new ImportTemplateColumnDto(c.Position, ImportFields.Canonical(c.Field) ?? c.Field)).ToList(), JsonOptions);
+    /// <summary>Columnas ordenadas por posición con el nombre canónico del catálogo del tipo (ORDER por defecto).</summary>
+    public static string SerializeColumns(IReadOnlyList<ImportColumn> columns, string kind = ImportKinds.Order)
+        => JsonSerializer.Serialize(columns.OrderBy(c => c.Position).Select(c => new ImportTemplateColumnDto(c.Position, CanonicalField(kind, c.Field) ?? c.Field)).ToList(), JsonOptions);
 
-    public static string SerializeDefaults(IReadOnlyDictionary<string, string> defaults)
-        => JsonSerializer.Serialize(ImportMapping.NormalizeDefaults(defaults), JsonOptions);
+    /// <summary>
+    /// Defaults normalizados con el catálogo del tipo (ORDER por defecto). Lote 38: con CONSIGNEE se conservan sus campos
+    /// (allowDupInvoice, defaultServiceMinutes, ventana, notas…), que el catálogo de órdenes descartaría.
+    /// </summary>
+    public static string SerializeDefaults(IReadOnlyDictionary<string, string> defaults, string kind = ImportKinds.Order)
+        => JsonSerializer.Serialize(IsConsignee(kind) ? ConsigneeImportMapping.NormalizeDefaults(defaults) : ImportMapping.NormalizeDefaults(defaults), JsonOptions);
 
     /// <summary>Delimitador efectivo de la plantilla (un carácter; ',' si la fila no lo trae).</summary>
     public static char DelimiterOf(ImportTemplate template)
@@ -193,12 +212,42 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
 
     // ---------------------------------------------------------------- helpers
 
-    private static string NormalizeKind(string? kind)
+    public static string UnknownKindMessage(string kind) => $"Tipo de plantilla desconocido: {kind}.";
+
+    /// <summary>
+    /// Tipo efectivo: vacío → el que atiende el llamador; distinto del esperado → 400 'Tipo de plantilla desconocido: X.'
+    /// (la ruta de órdenes no acepta CONSIGNEE ni la de consignatarios ORDER).
+    /// </summary>
+    private static string NormalizeKind(string? kind, string expectedKind)
     {
-        if (string.IsNullOrWhiteSpace(kind)) return ImportKinds.Order;
+        var expected = expectedKind.Trim().ToUpperInvariant();
+        if (expected is not (ImportKinds.Order or ImportKinds.Consignee)) throw new ValidationException("kind", UnknownKindMessage(expected));
+        if (string.IsNullOrWhiteSpace(kind)) return expected;
         var k = kind.Trim().ToUpperInvariant();
-        if (k != ImportKinds.Order) throw new ValidationException("kind", $"Tipo de plantilla desconocido: {k}.");
+        if (k != expected) throw new ValidationException("kind", UnknownKindMessage(k));
         return k;
+    }
+
+    private static bool IsConsignee(string? kind) => string.Equals(kind?.Trim(), ImportKinds.Consignee, StringComparison.OrdinalIgnoreCase);
+
+    private static string? CanonicalField(string kind, string? field)
+        => IsConsignee(kind) ? ConsigneeImportFields.Canonical(field) : ImportFields.Canonical(field);
+
+    /// <summary>
+    /// Validación de la definición según el catálogo del tipo. CONSIGNEE: además, el teléfono por defecto con la misma regla
+    /// que la fila (ContactPointService, 'defaults.contactPhone').
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> ValidateColumns(string kind, IReadOnlyList<ImportColumn> columns, IReadOnlyDictionary<string, string> defaults)
+    {
+        if (!IsConsignee(kind)) return ImportMapping.ValidateColumns(columns, defaults);
+        var errors = new Dictionary<string, string>(ConsigneeImportMapping.ValidateColumns(columns, defaults), StringComparer.Ordinal);
+        foreach (var (key, value) in defaults)
+        {
+            if (ConsigneeImportFields.Canonical(key) != ConsigneeImportFields.ContactPhone || string.IsNullOrWhiteSpace(value)) continue;
+            try { ContactPointService.ValidateValue("PHONE", value); }
+            catch (ValidationException ex) { errors[$"defaults.{key}"] = ex.Message; }
+        }
+        return errors;
     }
 
     private static string RequireName(string? name)

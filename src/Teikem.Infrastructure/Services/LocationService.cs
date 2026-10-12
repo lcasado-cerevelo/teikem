@@ -19,8 +19,10 @@ namespace Teikem.Infrastructure.Services;
 /// </summary>
 public sealed class LocationService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups)
 {
-    private const string DefaultCountry = "PR";
-    private const int NameMax = 200, CodeMax = 40, LineMax = 200, CityMax = 100, StateMax = 100, PostalMax = 20, NotesMax = 500;
+    /// <summary>País por defecto de una localización sin país (lo usa también la importación de consignatarios, Lote 38).</summary>
+    public const string DefaultCountry = "PR";
+    /// <summary>Topes de los textos (= columnas de dbo.Location); la importación de consignatarios valida con los mismos.</summary>
+    public const int NameMax = 200, CodeMax = 40, LineMax = 200, CityMax = 100, StateMax = 100, PostalMax = 20, NotesMax = 500;
 
     // ---------------------------------------------------------------- consultas
 
@@ -68,11 +70,22 @@ public sealed class LocationService(TeikemDbContext db, ITenantContext tenant, I
 
     public async Task<LocationDto> CreateAsync(LocationUpsertRequest req, CancellationToken ct)
     {
-        var tenantId = ((TenantContext)tenant).RequireTenantId();
-
         int? clientId = null;
         if (req.ClientPublicId is Guid clientPublicId)
             clientId = (await db.ResolveClientAsync(clientPublicId, ct)).ClientId;
+
+        var (locationId, _) = await CreateCoreAsync(req, clientId, ct);
+        return await GetByIdAsync(locationId, ct);
+    }
+
+    /// <summary>
+    /// Alta con el dueño ya resuelto (clientId null = compartida; req.ClientPublicId se ignora): mismas validaciones y el mismo
+    /// guardado que CreateAsync, sin releer la ficha (devuelve Id y PublicId). La usa la importación de consignatarios
+    /// (Lote 38), que crea miles de filas y no necesita el DTO.
+    /// </summary>
+    public async Task<(int LocationId, Guid PublicId)> CreateCoreAsync(LocationUpsertRequest req, int? clientId, CancellationToken ct)
+    {
+        var tenantId = ((TenantContext)tenant).RequireTenantId();
 
         var typeCode = RequireText(req.LocationType, "locationType", "El tipo de localización es obligatorio.", 40).ToUpperInvariant();
         var typeId = await lookups.GetIdAsync(LookupDomains.LocationType, typeCode, ct);
@@ -109,7 +122,7 @@ public sealed class LocationService(TeikemDbContext db, ITenantContext tenant, I
         };
         db.Locations.Add(loc);
         await db.SaveGuardedAsync("Ya existe una localización equivalente.", ct);
-        return await GetByIdAsync(loc.LocationId, ct);
+        return (loc.LocationId, loc.PublicId);
     }
 
     public async Task<LocationDto> UpdateAsync(Guid publicId, LocationPatchRequest req, CancellationToken ct)

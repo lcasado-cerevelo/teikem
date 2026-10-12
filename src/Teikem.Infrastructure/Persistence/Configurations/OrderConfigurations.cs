@@ -143,7 +143,8 @@ public sealed class ImportBatchConfiguration : IEntityTypeConfiguration<ImportBa
         b.HasIndex(x => x.PublicId);
         b.HasIndex(x => new { x.TenantId, x.ClientId }).HasDatabaseName("IX_ImportBatch_Client");
         b.HasOne(x => x.Template).WithMany().HasForeignKey(x => x.ImportTemplateId);
-        b.HasOne(x => x.Client).WithMany().HasForeignKey(x => x.ClientId);
+        // Lote 38: ClientId NULL (lote CONSIGNEE de compartidos o con cliente por fila); los ORDER lo exigen (CK_ImportBatch_OrderClient en SQL).
+        b.HasOne(x => x.Client).WithMany().HasForeignKey(x => x.ClientId).IsRequired(false);
         b.HasOne(x => x.Status).WithMany().HasForeignKey(x => x.StatusCodeId);
         b.HasOne(x => x.Creator).WithMany().HasForeignKey(x => x.CreatedBy);
     }

@@ -1368,6 +1368,157 @@ expect 409 "$(req POST "/api/v1/import-templates/$TPL_PID/reactivate")" >/dev/nu
 ok "plantilla por posición (repetida 400), 415 sin Content-Type, validar sin guardar órdenes, confirmar crea las válidas (salta el número tecleado), 409 al reconfirmar (también en paralelo), descartar (200/409/422 y en carrera con confirmar), consignatario por código/coincidencia, R36 como aviso (bloqueada no elegible, sin confirmDuplicateInvoice falla la fila), baja/suspensión del cliente (409/422), multipart, 5.000 filas/2 MB (400), delimitador y cabecera de la plantilla, teléfono como contacto, número tecleado indebido, subconjunto de filas, crédito por fila (400/403/422 por fila/override), aislamiento y RBAC del importador, CRUD de plantillas"
 
 # ============================================================================================================
+# Lote 38 (F-B) — Importación CSV de consignatarios: mismas tablas que el importador de órdenes (ImportTemplate/ImportBatch con
+# Kind CONSIGNEE), rutas propias bajo /api/v1/locations, módulo CATALOG, locations.read / locations.create. Va DESPUÉS del
+# importador de órdenes: ese bloque toma el último IMPORT_BATCH de la auditoría (take=1) y un lote de consignatarios anterior
+# lo rompería. Los mensajes viajan en .title (409/422) o en .errors (400); los de fila, en .rows[i].errors / .warnings.
+# ============================================================================================================
+step "importador de consignatarios (Lote 38): plantilla, validar → confirmar"
+RE=$(expect 200 "$(req POST /api/v1/auth/reauth "{\"password\":\"$PASS\"}")"); TOKEN=$(echo "$RE" | jq -r .accessToken)
+T3=$(login "admin$TS@smoke.local" "Smoke_Admin_2026!"); T4=$(login "soloordenes$TS@teikem.local" "$PASS"); T5=$(login "sinordenes$TS@teikem.local" "$PASS")
+CO_JSON=$(expect 200 "$(req GET "/api/v1/clients/$CLIENT_O_PID")"); CLIENT_O_CODE=$(echo "$CO_JSON" | jq -r .code); CLIENT_O_NAME=$(echo "$CO_JSON" | jq -r .name)
+C2_JSON=$(expect 200 "$(req GET "/api/v1/clients/$CLIENT2_PID")"); CLIENT2_CODE=$(echo "$C2_JSON" | jq -r .code); CLIENT2_NAME=$(echo "$C2_JSON" | jq -r .name)
+# Directorio previo: un consignatario del cliente (CEX) y uno compartido (CSH)
+expect 200 "$(req POST /api/v1/locations "{\"clientPublicId\":\"$CLIENT_O_PID\",\"code\":\"CEX-$TS\",\"name\":\"Existente cli $TS\",\"locationType\":\"DELIVERY\",\"line1\":\"Calle 20\",\"city\":\"Ponce\",\"country\":\"PR\"}")" >/dev/null
+expect 200 "$(req POST /api/v1/locations "{\"code\":\"CSH-$TS\",\"name\":\"Existente comp $TS\",\"locationType\":\"DELIVERY\",\"line1\":\"Calle 21\",\"city\":\"Ponce\",\"country\":\"PR\"}")" >/dev/null
+# Plantilla: 10 columnas por posición; defaults country y defaultServiceMinutes (el catálogo de órdenes los descartaría)
+CCOLS='[{"position":1,"field":"code"},{"position":2,"field":"name"},{"position":3,"field":"line1"},{"position":4,"field":"city"},{"position":5,"field":"postalCode"},{"position":6,"field":"clientCode"},{"position":7,"field":"contactPhone"},{"position":8,"field":"allowDupInvoice"},{"position":9,"field":"defaultWindowStart"},{"position":10,"field":"defaultWindowEnd"}]'
+ctpl() { jq -cn --arg n "$1" --argjson c "$2" --argjson d "${3:-null}" '{name:$n,columns:$c} + (if $d == null then {} else {defaults:$d} end)'; }
+CT=$(expect 200 "$(req POST /api/v1/locations/import-templates "$(ctpl "Consignatarios $TS" "$CCOLS" '{"country":"PR","defaultServiceMinutes":"10"}')")")
+echo "$CT" | jq -e '.kind=="CONSIGNEE" and .defaults.defaultServiceMinutes=="10" and .defaults.country=="PR" and (.columns|length)==10' >/dev/null || fail "plantilla de consignatarios: $CT"
+CTPL_PID=$(echo "$CT" | jq -r .publicId)
+# Cruces de tipo: la ruta de órdenes no acepta CONSIGNEE ni ve sus plantillas, y viceversa
+expect 400 "$(req GET '/api/v1/import-templates?kind=CONSIGNEE')" | jq -e '.errors.kind[0]=="Tipo de plantilla desconocido: CONSIGNEE."' >/dev/null || fail "kind=CONSIGNEE en la ruta de órdenes"
+expect 404 "$(req GET "/api/v1/import-templates/$CTPL_PID")" >/dev/null
+expect 404 "$(req GET "/api/v1/locations/import-templates/$TPL_PID")" >/dev/null
+expect 200 "$(req GET /api/v1/locations/import-templates)" | jq -e --arg p "$CTPL_PID" 'any(.[]; .publicId==$p) and all(.[]; .kind=="CONSIGNEE")' >/dev/null || fail "lista de plantillas de consignatarios"
+expect 200 "$(req GET "/api/v1/locations/import-templates/$CTPL_PID")" | jq -e '.isActive==true' >/dev/null || fail "GET plantilla de consignatarios"
+# Reglas de la plantilla: sin default para name, name y line1 en columna, nombre repetido 409, baja/reactivación
+expect 400 "$(req POST /api/v1/locations/import-templates "$(ctpl "Default nombre $TS" "$CCOLS" '{"name":"x"}')")" | jq -e '.errors["defaults.name"][0]=="El campo name no admite valor por defecto."' >/dev/null || fail "default de name"
+expect 400 "$(req POST /api/v1/locations/import-templates "$(ctpl "Sin linea $TS" '[{"position":1,"field":"name"},{"position":2,"field":"city"}]')")" | jq -e '.errors.columns[0]=="La plantilla debe incluir las columnas name y line1."' >/dev/null || fail "plantilla sin line1"
+expect 400 "$(req POST /api/v1/locations/import-templates "$(ctpl "Sin ciudad $TS" '[{"position":1,"field":"name"},{"position":2,"field":"line1"}]')")" | jq -e '.errors.columns[0]=="La plantilla debe indicar la ciudad (city) en una columna o en defaults."' >/dev/null || fail "plantilla sin city"
+expect 400 "$(req POST /api/v1/locations/import-templates "$(ctpl "Dos clientes $TS" '[{"position":1,"field":"name"},{"position":2,"field":"line1"},{"position":3,"field":"city"},{"position":4,"field":"clientCode"},{"position":5,"field":"clientName"}]')")" | jq -e '.errors.columns[0]=="Use clientCode o clientName, no ambos."' >/dev/null || fail "clientCode y clientName a la vez"
+expect 400 "$(req POST /api/v1/locations/import-templates "$(ctpl "Minutos malos $TS" "$CCOLS" '{"defaultServiceMinutes":"diez"}')")" | jq -e '.errors["defaults.defaultServiceMinutes"][0]=="Los minutos de servicio deben ser un número entero."' >/dev/null || fail "default tipado de minutos"
+expect 409 "$(req POST /api/v1/locations/import-templates "$(ctpl "Consignatarios $TS" "$CCOLS")")" | jq -e '.title=="Ya existe una plantilla de importación con ese nombre."' >/dev/null || fail "nombre de plantilla repetido"
+CTPL2_PID=$(expect 200 "$(req POST /api/v1/locations/import-templates "$(ctpl "Consignatarios baja $TS" "$CCOLS")")" | jq -r .publicId)
+expect 200 "$(req POST "/api/v1/locations/import-templates/$CTPL2_PID/deactivate")" | jq -e '.isActive==false' >/dev/null || fail "desactivar plantilla de consignatarios"
+expect 409 "$(req POST "/api/v1/locations/import-templates/$CTPL2_PID/deactivate")" | jq -e '.title=="La plantilla ya está inactiva."' >/dev/null || fail "desactivar dos veces"
+expect 400 "$(req POST /api/v1/locations/import/validate "$(jq -cn --arg t "$CTPL2_PID" '{templatePublicId:$t,content:"a,b,c,d\nx,y,Ponce,1\n"}')")" | jq -e '.errors.templatePublicId[0]=="La plantilla está inactiva; reactívela o elija otra."' >/dev/null || fail "validar con plantilla inactiva"
+expect 200 "$(req POST "/api/v1/locations/import-templates/$CTPL2_PID/reactivate")" | jq -e '.isActive==true' >/dev/null || fail "reactivar plantilla de consignatarios"
+# Catálogo de campos y 415 sin Content-Type
+expect 200 "$(req GET /api/v1/locations/import/fields)" | jq -e 'length==17 and ([.[] | select(.required) | .field] | sort)==["city","line1","name"] and (.[] | select(.field=="code") | .defaultAllowed==false) and (.[] | select(.field=="allowDupInvoice") | .defaultAllowed)' >/dev/null || fail "catálogo de campos"
+expect 415 "$(curl -sS -X POST "$BASE/api/v1/locations/import/validate" -H "Authorization: Bearer $TOKEN" -w '\n%{http_code}')" >/dev/null   # sin Content-Type: 415, no 500
+# CSV mixto SIN cliente de lote: (1) compartida válida, (2) del cliente por clientCode válida con teléfono/sí/ventana,
+# (3) código repetido de (2), (4) código existente del cliente, (5) teléfono inválido, (6) ventana al revés,
+# (7) cliente inexistente, (8) compartida con el código de un consignatario del cliente → solo aviso (D8)
+CSVC=$(printf 'codigo,nombre,linea1,pueblo,zip,cliente,tel,dupfact,desde,hasta\nCIA-%s,Imp comp %s,Calle 30,Ponce,00716,,,,,\nCIB-%s,Imp cli %s,Calle 31,Ponce,00716,%s,787-555-0101,sí,08:00,17:00\nCIB-%s,Imp repetido %s,Calle 32,Ponce,00716,%s,,,,\nCEX-%s,Imp existente %s,Calle 33,Ponce,00716,%s,,,,\n,Imp tel %s,Calle 34,Ponce,00716,,abc,,,\n,Imp ventana %s,Calle 35,Ponce,00716,,,,10:00,09:00\n,Imp noexiste %s,Calle 36,Ponce,00716,NOEXISTE-%s,,,,\nCEX-%s,Imp D8 %s,Calle 37,Ponce,00716,,,,,\n' \
+  "$TS" "$TS" "$TS" "$TS" "$CLIENT_O_CODE" "$TS" "$TS" "$CLIENT_O_CODE" "$TS" "$TS" "$CLIENT_O_CODE" "$TS" "$TS" "$TS" "$TS" "$TS" "$TS")
+cbody() { jq -cn --arg t "${2:-$CTPL_PID}" --arg s "$1" --arg c "${3:-}" '{templatePublicId:$t,content:$s,fileName:"consignatarios.csv"} + (if $c == "" then {} else {clientPublicId:$c} end)'; }
+VC=$(expect 200 "$(req POST /api/v1/locations/import/validate "$(cbody "$CSVC")")")
+echo "$VC" | jq -e --arg ts "$TS" --arg cpid "$CLIENT_O_PID" \
+  --arg mrep "El código CIB-$TS se repite en la fila 2 del archivo." \
+  --arg mcex "Ya existe un consignatario con el código 'CEX-$TS' ('Existente cli $TS')." \
+  --arg mnoex "No existe un cliente con el código 'NOEXISTE-$TS'." \
+  --arg md8 "El código CEX-$TS también lo usa un consignatario de un cliente; para ese cliente seguirá resolviendo al suyo." '
+  .status=="VALIDATED" and .rowCount==8 and .validRows==3 and .clientPublicId==null and .fileName=="consignatarios.csv"
+  and .rows[0].isValid and .rows[0].owner.isShared
+  and .rows[1].isValid and .rows[1].owner.clientPublicId==$cpid and (.rows[1].owner.isShared|not) and .rows[1].values.allowDupInvoice=="true" and .rows[1].values.defaultServiceMinutes=="10"
+  and .rows[2].errors.code==$mrep
+  and .rows[3].errors.code==$mcex
+  and .rows[4].errors.contactPhone=="Teléfono inválido."
+  and .rows[5].errors.defaultWindowEnd=="La hora de fin de la ventana debe ser posterior a la de inicio."
+  and .rows[6].errors.clientCode==$mnoex and .rows[6].owner==null
+  and .rows[7].isValid and .rows[7].owner.isShared and .rows[7].warnings==[$md8]' >/dev/null || fail "validar CSV mixto: $VC"
+BC=$(echo "$VC" | jq -r .batchPublicId)
+# Archivo por multipart con cliente de lote: filas sin clientCode toman el cliente del lote; clientCode de OTRO cliente → error
+FUPC=$(mktemp)
+printf 'codigo,nombre,linea1,pueblo,zip,cliente,tel,dupfact,desde,hasta\nCIF1-%s,Imp archivo 1 %s,Calle 40,Ponce,00716,,,,,\nCIF2-%s,Imp archivo 2 %s,Calle 41,Ponce,00716,,,,,\nCIF3-%s,Imp archivo 3 %s,Calle 42,Ponce,00716,%s,,,,\n' "$TS" "$TS" "$TS" "$TS" "$TS" "$TS" "$CLIENT2_CODE" > "$FUPC"
+VF=$(expect 200 "$(curl -sS -X POST "$BASE/api/v1/locations/import/validate-file" -H "Authorization: Bearer $TOKEN" -F "templatePublicId=$CTPL_PID" -F "clientPublicId=$CLIENT_O_PID" -F "file=@$FUPC" -w '\n%{http_code}')")
+echo "$VF" | jq -e --arg cpid "$CLIENT_O_PID" --arg m "La fila indica el cliente '$CLIENT2_NAME', pero el lote es del cliente '$CLIENT_O_NAME'." '
+  .rowCount==3 and .validRows==2 and .clientPublicId==$cpid and all(.rows[0,1]; .owner.clientPublicId==$cpid) and .rows[2].errors.clientCode==$m' >/dev/null || fail "validar por multipart con cliente de lote: $VF"
+BF=$(echo "$VF" | jq -r .batchPublicId)
+# Cliente de baja: el lote con ese cliente 409; la fila que lo nombra, error de fila
+expect 204 "$(req POST "/api/v1/clients/$CLIENT2_PID/deactivate")" >/dev/null
+expect 409 "$(req POST /api/v1/locations/import/validate "$(cbody "$(printf 'c,n,l,p\n,Baja cons %s,Calle 43,Ponce\n' "$TS")" "$CTPL_PID" "$CLIENT2_PID")")" | jq -e --arg m "$BAJA" '.title==$m' >/dev/null || fail "validar con cliente de lote de baja"
+expect 200 "$(req POST /api/v1/locations/import/validate "$(cbody "$(printf 'c,n,l,p,z,cli\n,Baja cons %s,Calle 43,Ponce,00716,%s\n' "$TS" "$CLIENT2_CODE")")")" | jq -e --arg m "$BAJA" '.validRows==0 and .rows[0].errors.clientCode==$m' >/dev/null || fail "fila con cliente de baja"
+expect 204 "$(req POST "/api/v1/clients/$CLIENT2_PID/reactivate")" >/dev/null
+# Lectura del lote: admin 200; sin locations.read 403; otro tenant 404; solo orders.view no valida
+expect 200 "$(req GET "/api/v1/locations/import/$BC")" | jq -e '.validRows==3 and .created==null' >/dev/null || fail "GET del lote de consignatarios"
+expect 403 "$(req GET "/api/v1/locations/import/$BC" '' "$T5")" >/dev/null
+expect 404 "$(req GET "/api/v1/locations/import/$BC" '' "$T3")" >/dev/null
+expect 404 "$(req GET "/api/v1/locations/import-templates/$CTPL_PID" '' "$T3")" >/dev/null
+expect 403 "$(req POST /api/v1/locations/import/validate "$(cbody "$CSVC")" "$T4")" >/dev/null
+# Confirmar: elegir una fila con errores o inexistente 400; {} crea las 3 válidas
+expect 400 "$(req POST "/api/v1/locations/import/$BC/confirm" '{"rows":[3]}')" | jq -e '.errors["rows[3]"][0]=="La fila 3 tiene errores y no se puede confirmar."' >/dev/null || fail "confirmar una fila con errores"
+expect 400 "$(req POST "/api/v1/locations/import/$BC/confirm" '{"rows":[99]}')" | jq -e '.errors["rows[99]"][0]=="La fila 99 no existe en el lote."' >/dev/null || fail "confirmar una fila inexistente"
+CC=$(expect 200 "$(req POST "/api/v1/locations/import/$BC/confirm" '{}')")
+echo "$CC" | jq -e '.status=="CONFIRMED" and .created==3 and .failed==0 and .skipped==5 and .rows[0].locationPublicId!=null and .rows[2].skipped==true' >/dev/null || fail "confirmar el lote de consignatarios: $CC"
+CB_ID=$(expect 200 "$(req GET "/api/v1/audit/changes?entityType=IMPORT_BATCH&take=1")" | jq -r '.items[0].entityId')
+expect 200 "$(req GET "/api/v1/locations?search=Imp%20comp%20$TS")" | jq -e --arg n "Imp comp $TS" '[.[] | select(.name==$n)] | length==1 and .[0].isShared and .[0].locationType=="DELIVERY" and .[0].defaultServiceMinutes==10 and .[0].country=="PR"' >/dev/null || fail "consignatario compartido importado"
+LCLI=$(expect 200 "$(req GET "/api/v1/locations?clientId=$CLIENT_O_PID&includeShared=false&search=Imp%20cli%20$TS")")
+echo "$LCLI" | jq -e 'length==1 and .[0].allowDupInvoice==true and .[0].defaultServiceMinutes==10 and (.[0].defaultWindowStart|startswith("08:00")) and (.[0].defaultWindowEnd|startswith("17:00"))' >/dev/null || fail "consignatario del cliente importado: $LCLI"
+expect 200 "$(req GET "/api/v1/contacts/LOCATION/$(echo "$LCLI" | jq -r '.[0].id')")" | jq -e 'length==1 and .[0].contactType=="PHONE" and .[0].isPrimary and (.[0].value|test("555.?0101"))' >/dev/null || fail "teléfono del consignatario importado"
+expect 200 "$(req GET "/api/v1/locations?search=Imp%20D8%20$TS")" | jq -e --arg c "CEX-$TS" 'length==1 and .[0].isShared and .[0].code==$c' >/dev/null || fail "fila con aviso D8 creada como compartida"
+expect 200 "$(req GET "/api/v1/status/history/IMPORT_BATCH/$CB_ID")" | jq -e 'any(.[]; .fromCode=="VALIDATED" and .toCode=="CONFIRMED")' >/dev/null || fail "historial del lote de consignatarios"
+expect 403 "$(req GET "/api/v1/status/history/IMPORT_BATCH/$CB_ID" '' "$T5")" >/dev/null   # D14: el historial sigue exigiendo orders.view
+# Reconfirmar 409; descartar un confirmado 422
+expect 409 "$(req POST "/api/v1/locations/import/$BC/confirm" '{}')" | jq -e '.title=="El lote ya fue confirmado; valide un archivo nuevo para importar más consignatarios."' >/dev/null || fail "reconfirmar lote de consignatarios"
+expect 422 "$(req POST "/api/v1/locations/import/$BC/discard")" | jq -e '.title=="Solo se descarta un lote pendiente de confirmar."' >/dev/null || fail "descartar un lote confirmado"
+# Validar otra vez el mismo archivo: lo creado ya es duplicado; sin filas válidas, confirmar 400
+VC2=$(expect 200 "$(req POST /api/v1/locations/import/validate "$(cbody "$CSVC")")")
+echo "$VC2" | jq -e --arg a "Ya existe un consignatario con el código 'CIA-$TS' ('Imp comp $TS')." --arg b "Ya existe un consignatario con el código 'CIB-$TS' ('Imp cli $TS')." '
+  .validRows==0 and .rows[0].errors.code==$a and .rows[1].errors.code==$b
+  and .rows[0].errors.name=="Ya existe un consignatario activo con el mismo nombre y dirección (línea 1)."' >/dev/null || fail "revalidar lo ya importado: $VC2"
+expect 400 "$(req POST "/api/v1/locations/import/$(echo "$VC2" | jq -r .batchPublicId)/confirm" '{}')" | jq -e '.errors.rows[0]=="El lote no tiene filas válidas para crear."' >/dev/null || fail "confirmar sin filas válidas"
+# Descartar un lote VALIDATED: 200 DISCARDED; confirmarlo 409
+expect 200 "$(req POST "/api/v1/locations/import/$BF/discard")" | jq -e '.status=="DISCARDED"' >/dev/null || fail "descartar lote de consignatarios"
+expect 409 "$(req POST "/api/v1/locations/import/$BF/confirm" '{}')" | jq -e '.title=="El lote fue descartado; valide el archivo de nuevo."' >/dev/null || fail "confirmar lote descartado"
+expect 200 "$(req GET "/api/v1/locations?search=Imp%20archivo%201%20$TS")" | jq -e 'length==0' >/dev/null || fail "un lote descartado no crea consignatarios"
+# Carrera 1: dos confirmaciones del mismo lote → un 200 y un 409, sin duplicados
+cpar() { printf 'c,n,l,p\n,%s A %s,Calle 50,Ponce\n,%s B %s,Calle 51,Ponce\n' "$1" "$TS" "$1" "$TS"; }
+BCP=$(expect 200 "$(req POST /api/v1/locations/import/validate "$(cbody "$(cpar Paralelo)")")" | jq -r .batchPublicId)
+TMPC=$(mktemp -d)
+for i in 1 2; do req POST "/api/v1/locations/import/$BCP/confirm" '{}' > "$TMPC/$i" & done
+wait
+CODES=$(for i in 1 2; do echo "$(tail -n1 "$TMPC/$i")"; done | sort | tr "\n" " "); rm -rf "$TMPC"
+[[ "$CODES" == "200 409 " ]] || fail "confirmaciones simultáneas de consignatarios: $CODES"
+expect 200 "$(req GET "/api/v1/locations?search=$TS")" | jq -e --arg ts "$TS" '[.[] | select(.name | test("^Paralelo [AB] " + $ts + "$"))] | length==2' >/dev/null || fail "confirmación doble creó consignatarios repetidos"
+# Carrera 2: confirmar y descartar a la vez → CONFIRMED con sus 2 o DISCARDED sin ninguno
+BCR=$(expect 200 "$(req POST /api/v1/locations/import/validate "$(cbody "$(cpar Carrera)")")" | jq -r .batchPublicId)
+TMPC=$(mktemp -d)
+req POST "/api/v1/locations/import/$BCR/confirm" '{}' > "$TMPC/c" & req POST "/api/v1/locations/import/$BCR/discard" > "$TMPC/d" &
+wait
+RC=$(tail -n1 "$TMPC/c"); RD=$(tail -n1 "$TMPC/d"); rm -rf "$TMPC"
+BCRS=$(expect 200 "$(req GET "/api/v1/locations/import/$BCR")" | jq -r .status)
+NCR=$(expect 200 "$(req GET "/api/v1/locations?search=$TS")" | jq --arg ts "$TS" '[.[] | select(.name | test("^Carrera [AB] " + $ts + "$"))] | length')
+if [[ "$RC" == "200" && ( "$RD" == "409" || "$RD" == "422" ) ]]; then [[ "$BCRS" == "CONFIRMED" && "$NCR" == "2" ]] || fail "confirmación ganó pero el lote quedó $BCRS con $NCR consignatarios"
+elif [[ "$RD" == "200" && "$RC" == "409" ]]; then [[ "$BCRS" == "DISCARDED" && "$NCR" == "0" ]] || fail "descarte ganó pero el lote quedó $BCRS con $NCR consignatarios"
+else fail "confirmar/descartar consignatarios a la vez: confirm $RC, discard $RD"; fi
+# Carrera 3 (candado por tenant + re-chequeo): dos lotes con el MISMO código nuevo confirmados a la vez → un solo consignatario
+B1C=$(expect 200 "$(req POST /api/v1/locations/import/validate "$(cbody "$(printf 'c,n,l,p\nCDUP-%s,Mismo codigo A %s,Calle 60,Ponce\n' "$TS" "$TS")")")" | jq -r .batchPublicId)
+B2C=$(expect 200 "$(req POST /api/v1/locations/import/validate "$(cbody "$(printf 'c,n,l,p\nCDUP-%s,Mismo codigo B %s,Calle 61,Ponce\n' "$TS" "$TS")")")" | jq -r .batchPublicId)
+TMPC=$(mktemp -d)
+req POST "/api/v1/locations/import/$B1C/confirm" '{}' > "$TMPC/1" & req POST "/api/v1/locations/import/$B2C/confirm" '{}' > "$TMPC/2" &
+wait
+R1=$(expect 200 "$(cat "$TMPC/1")"); R2=$(expect 200 "$(cat "$TMPC/2")"); rm -rf "$TMPC"
+jq -e -n --argjson a "$R1" --argjson b "$R2" --arg p "Ya existe un consignatario con el código 'CDUP-$TS' ('Mismo codigo " '
+  ($a.created + $b.created)==1 and ($a.failed + $b.failed)==1
+  and ([$a, $b] | map(select(.failed==1)) | .[0].rows[0].error | startswith($p))' >/dev/null || fail "mismo código en dos lotes a la vez: $R1 / $R2"
+expect 200 "$(req GET "/api/v1/locations?search=CDUP-$TS")" | jq -e 'length==1' >/dev/null || fail "el mismo código quedó dos veces"
+# Límite de 5.000 filas, y lotes de un tipo pedidos por la ruta del otro → 404
+FUPL=$(mktemp); { echo h; for i in $(seq 5001); do echo "a,b,c,d"; done; } > "$FUPL"
+expect 400 "$(req POST /api/v1/locations/import/validate "$(jq -cn --arg t "$CTPL_PID" --rawfile s "$FUPL" '{templatePublicId:$t,content:$s}')")" | jq -e --arg m "$LIMMSG" '.errors.content[0]==$m' >/dev/null || fail "5.001 filas de consignatarios → 400"
+rm -f "$FUPL" "$FUPC"
+expect 404 "$(req GET "/api/v1/locations/import/$B_PID")" >/dev/null
+expect 404 "$(req GET "/api/v1/orders/import/$BC")" >/dev/null
+expect 404 "$(req POST /api/v1/locations/import/validate "$(cbody "$CSVC" "$TPL_PID")")" >/dev/null   # plantilla de órdenes en la ruta de consignatarios
+# Módulo CATALOG apagado → 403 module_disabled; se vuelve a encender
+expect 200 "$(req PUT /api/v1/modules/CATALOG '{"isEnabled":false}')" >/dev/null
+expect 403 "$(req POST /api/v1/locations/import/validate "$(cbody "$CSVC")")" | jq -e '.code=="module_disabled"' >/dev/null || fail "importar consignatarios con CATALOG apagado"
+expect 200 "$(req PUT /api/v1/modules/CATALOG '{"isEnabled":true}')" >/dev/null
+ok "plantillas por tipo (kind cruzado 400/404, defaults tipados, reglas de columnas, 409 por nombre, baja/reactivación), 17 campos, 415, validar JSON y multipart (dueño por fila o del lote, cliente de otro lote, de baja o inexistente, duplicados en el archivo y en el directorio, aviso D8), confirmar (400 por fila elegida, 3 creados con teléfono, ventana y minutos), reconfirmar 409, descartar 200/409/422, sin filas válidas 400, carreras (mismo lote, confirmar/descartar, mismo código en dos lotes), 5.000 filas, RBAC/tenant/módulo"
+
+# ============================================================================================================
 # Lote 4 — Flota, choferes y mantenimiento. Re-ejecutable: TS en códigos de vehículos, choferes y zonas; las fechas se
 # calculan desde TODAY (día de Puerto Rico). Reutiliza del Lote 3: T2 (despachador), T3 (otro tenant, recién creado en cada corrida:
 # ahí se prueban niveles de intento y fórmula sin arrastrar estado), T7 (contacts.manage sin fleet.*), CLIENT_O_PID +

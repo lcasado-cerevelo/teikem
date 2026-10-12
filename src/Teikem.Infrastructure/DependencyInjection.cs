@@ -129,6 +129,8 @@ public static class DependencyInjection
         // Importador de órdenes (ajuste D)
         services.AddScoped<ImportTemplateService>();
         services.AddScoped<OrderImportService>();
+        // Lote 38 (F-B): importación CSV de consignatarios (mismas plantillas y lotes, Kind CONSIGNEE)
+        services.AddScoped<ConsigneeImportService>();
 
         // Lote 4 — Flota, choferes y mantenimiento
         services.AddScoped<VehicleService>();

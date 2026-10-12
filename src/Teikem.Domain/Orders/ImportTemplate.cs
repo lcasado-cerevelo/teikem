@@ -15,7 +15,7 @@ public class ImportTemplate : ITenantScoped, ISoftDeletable
     public int ImportTemplateId { get; set; }
     [NotAudited] public Guid PublicId { get; set; }
     public int TenantId { get; set; }
-    /// <summary>ImportKinds: ORDER.</summary>
+    /// <summary>ImportKinds: ORDER o CONSIGNEE (Lote 38; mismo nombre permitido en tipos distintos por UQ_ImportTemplate).</summary>
     public string Kind { get; set; } = ImportKinds.Order;
     public string Name { get; set; } = string.Empty;
     public int? ClientId { get; set; }

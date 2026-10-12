@@ -17,10 +17,14 @@ public class ImportBatch : ITenantScoped, IHasStatus
     public int ImportBatchId { get; set; }
     [NotAudited] public Guid PublicId { get; set; }
     public int TenantId { get; set; }
-    /// <summary>ImportKinds: ORDER.</summary>
+    /// <summary>ImportKinds: ORDER o CONSIGNEE (Lote 38).</summary>
     public string Kind { get; set; } = ImportKinds.Order;
     public int ImportTemplateId { get; set; }
-    public int ClientId { get; set; }
+    /// <summary>
+    /// Cliente del lote. Los lotes ORDER siempre lo traen (CK_ImportBatch_OrderClient); un lote CONSIGNEE puede no tenerlo
+    /// (consignatarios compartidos o con el cliente indicado fila por fila). Lote 38: pasó a NULL.
+    /// </summary>
+    public int? ClientId { get; set; }
     public string? FileName { get; set; }
     public int RowCount { get; set; }
     public int ValidRows { get; set; }
