@@ -6,6 +6,7 @@ using Teikem.Domain.Common;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Entities;
 using Teikem.Domain.Security;
+using Teikem.Domain.Tenancy;
 using Teikem.Domain.Wms;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
@@ -365,12 +366,15 @@ public sealed class DeviceService(
     internal Task<UserDevice?> FindByIdAsync(int userDeviceId, CancellationToken ct)
         => db.Set<UserDevice>().IgnoreQueryFilters().AsNoTracking().FirstOrDefaultAsync(d => d.UserDeviceId == userDeviceId, ct);
 
-    /// <summary>Días de sesión de aparato de la compañía (Tenant.DeviceSessionDays; 30 si no es positivo).</summary>
-    internal async Task<int> SessionDaysAsync(int tenantId, CancellationToken ct)
+    /// <summary>
+    /// Minutos de sesión de aparato de la compañía (2026-10-12: Tenant.DeviceSessionMinutes; si no está configurado, Tenant.DeviceSessionDays × 1440; 30 días si no es positivo).
+    /// </summary>
+    internal async Task<int> SessionMinutesAsync(int tenantId, CancellationToken ct)
     {
-        var days = await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(t => t.TenantId == tenantId)
-            .Select(t => t.DeviceSessionDays).FirstOrDefaultAsync(ct);
-        return days > 0 ? days : DefaultDeviceSessionDays;
+        var t = await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(x => x.TenantId == tenantId)
+            .Select(x => new { x.DeviceSessionMinutes, x.DeviceSessionDays }).FirstOrDefaultAsync(ct);
+        if (t is null) return DefaultDeviceSessionDays * 1440;
+        return SessionRules.Minutes(t.DeviceSessionMinutes, t.DeviceSessionDays > 0 ? t.DeviceSessionDays : DefaultDeviceSessionDays);
     }
 
     /// <summary>

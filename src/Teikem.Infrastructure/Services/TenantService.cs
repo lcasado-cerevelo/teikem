@@ -46,6 +46,19 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         }
         if (req.SessionDays.HasValue) { if (req.SessionDays.Value is < 1 or > 365) throw new ValidationException("sessionDays", "Entre 1 y 365 días."); t.SessionDays = req.SessionDays.Value; }
         if (req.DeviceSessionDays.HasValue) { if (req.DeviceSessionDays.Value is < 1 or > 365) throw new ValidationException("deviceSessionDays", "Entre 1 y 365 días."); t.DeviceSessionDays = req.DeviceSessionDays.Value; }
+        // 2026-10-12: la duración de la sesión se configura en MINUTOS (la pantalla pide horas con decimales); manda sobre los días y los deja equivalentes
+        if (req.SessionMinutes.HasValue)
+        {
+            if (!SessionRules.IsValid(req.SessionMinutes.Value)) throw new ValidationException("sessionMinutes", SessionRules.MinutesRange);
+            t.SessionMinutes = req.SessionMinutes.Value;
+            t.SessionDays = SessionRules.DaysFor(req.SessionMinutes.Value);
+        }
+        if (req.DeviceSessionMinutes.HasValue)
+        {
+            if (!SessionRules.IsValid(req.DeviceSessionMinutes.Value)) throw new ValidationException("deviceSessionMinutes", SessionRules.MinutesRange);
+            t.DeviceSessionMinutes = req.DeviceSessionMinutes.Value;
+            t.DeviceSessionDays = SessionRules.DaysFor(req.DeviceSessionMinutes.Value);
+        }
         if (req.BrandingJson is not null)
         {
             // Marca por compañía: las mismas reglas que la pantalla (BrandingRules, vectores compartidos con la web); vacío = quitarla.
@@ -214,5 +227,6 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         CountRevealRules.Normalize(t.CountExpectedReveal), t.CountRecountTolerancePct, t.CountRevealShowsNumber, t.CountAutoCloseMatching,
         await ManualIssueReasonLookup.UsableCodeAsync(db, t.DefaultManualIssueReasonLookupId, ct),
         await UsableDefaultCategoryAsync(t.DefaultProductCategoryId, ct),   // 2026-10-11 c
-        RotationRules.Parse(t.RotationMethod) ?? RotationMethods.Fefo);        // 2026-10-11 Lote 34
+        RotationRules.Parse(t.RotationMethod) ?? RotationMethods.Fefo,        // 2026-10-11 Lote 34
+        SessionRules.Minutes(t.SessionMinutes, t.SessionDays), SessionRules.Minutes(t.DeviceSessionMinutes, t.DeviceSessionDays));   // 2026-10-12
 }

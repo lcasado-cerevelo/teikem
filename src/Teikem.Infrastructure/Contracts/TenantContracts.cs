@@ -18,7 +18,8 @@ public sealed record TenantSettingsDto(
     string DateOrder, string DateSeparator, byte TimeFormat, byte WeekStartDay, string ThousandsSeparator, string DecimalSeparator,
     string PhoneCountryCode, string PhoneMask, bool IsRegionCustomized,
     string CountExpectedReveal = "MARKED", decimal CountRecountTolerancePct = 0m, bool CountRevealShowsNumber = true,
-    bool CountAutoCloseMatching = false, string? DefaultManualIssueReason = null, int? DefaultProductCategoryId = null, string RotationMethod = "FEFO");
+    bool CountAutoCloseMatching = false, string? DefaultManualIssueReason = null, int? DefaultProductCategoryId = null, string RotationMethod = "FEFO",
+    int SessionMinutes = 43200, int DeviceSessionMinutes = 43200);
 
 /// <summary>
 /// Cambio parcial de los ajustes: null = sin cambio. Región y formatos: si RegionCode es distinto del actual se cargan los valores
@@ -38,7 +39,8 @@ public sealed record TenantSettingsUpdateRequest(
     byte? CurrencyDecimals = null, string? DateOrder = null, string? DateSeparator = null, byte? TimeFormat = null, byte? WeekStartDay = null,
     string? ThousandsSeparator = null, string? DecimalSeparator = null, string? PhoneCountryCode = null, string? PhoneMask = null,
     string? CountExpectedReveal = null, decimal? CountRecountTolerancePct = null, bool? CountRevealShowsNumber = null,
-    bool? CountAutoCloseMatching = null, string? DefaultManualIssueReason = null, int? DefaultProductCategoryId = null, string? RotationMethod = null);
+    bool? CountAutoCloseMatching = null, string? DefaultManualIssueReason = null, int? DefaultProductCategoryId = null, string? RotationMethod = null,
+    int? SessionMinutes = null, int? DeviceSessionMinutes = null);
 
 /// <summary>Juego de valores de región y formatos (los de una región en <see cref="TenantFormatOptionsDto"/>).</summary>
 public sealed record TenantFormatDto(

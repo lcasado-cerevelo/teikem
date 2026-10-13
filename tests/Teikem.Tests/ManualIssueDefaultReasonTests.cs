@@ -244,18 +244,23 @@ public sealed class ManualIssueDefaultReasonTests
     {
         // 2026-10-11 (c): después del motivo por default solo se agregó, también opcional y al final, la categoría por defecto de los productos nuevos;
         // 2026-10-11 (Lote 34): y después de esa, el método de rotación (en el DTO siempre trae valor, FEFO por omisión; en el cambio parcial, null = sin cambio).
+        // 2026-10-12: al final se agregaron SessionMinutes y DeviceSessionMinutes (duración de la sesión en minutos); lo anterior conserva su orden relativo.
         var dto = typeof(TenantSettingsDto).GetConstructors().Single().GetParameters();
-        Assert.Equal(("DefaultManualIssueReason", typeof(string)), (dto[^3].Name, dto[^3].ParameterType));
-        Assert.Equal(("DefaultProductCategoryId", typeof(int?)), (dto[^2].Name, dto[^2].ParameterType));
-        Assert.Equal(("RotationMethod", typeof(string)), (dto[^1].Name, dto[^1].ParameterType));
-        foreach (var p in new[] { dto[^3], dto[^2] }) { Assert.True(p.HasDefaultValue); Assert.Null(p.DefaultValue); }
-        Assert.True(dto[^1].HasDefaultValue);
-        Assert.Equal("FEFO", dto[^1].DefaultValue);
+        Assert.Equal(("DefaultManualIssueReason", typeof(string)), (dto[^5].Name, dto[^5].ParameterType));
+        Assert.Equal(("DefaultProductCategoryId", typeof(int?)), (dto[^4].Name, dto[^4].ParameterType));
+        Assert.Equal(("RotationMethod", typeof(string)), (dto[^3].Name, dto[^3].ParameterType));
+        foreach (var p in new[] { dto[^5], dto[^4] }) { Assert.True(p.HasDefaultValue); Assert.Null(p.DefaultValue); }
+        Assert.True(dto[^3].HasDefaultValue);
+        Assert.Equal("FEFO", dto[^3].DefaultValue);
+        Assert.Equal(("SessionMinutes", typeof(int)), (dto[^2].Name, dto[^2].ParameterType));
+        Assert.Equal(("DeviceSessionMinutes", typeof(int)), (dto[^1].Name, dto[^1].ParameterType));
         var req = typeof(TenantSettingsUpdateRequest).GetConstructors().Single().GetParameters();
-        Assert.Equal(("DefaultManualIssueReason", typeof(string)), (req[^3].Name, req[^3].ParameterType));
-        Assert.Equal(("DefaultProductCategoryId", typeof(int?)), (req[^2].Name, req[^2].ParameterType));
-        Assert.Equal(("RotationMethod", typeof(string)), (req[^1].Name, req[^1].ParameterType));
-        foreach (var p in new[] { req[^3], req[^2], req[^1] }) { Assert.True(p.HasDefaultValue); Assert.Null(p.DefaultValue); }
+        Assert.Equal(("DefaultManualIssueReason", typeof(string)), (req[^5].Name, req[^5].ParameterType));
+        Assert.Equal(("DefaultProductCategoryId", typeof(int?)), (req[^4].Name, req[^4].ParameterType));
+        Assert.Equal(("RotationMethod", typeof(string)), (req[^3].Name, req[^3].ParameterType));
+        Assert.Equal(("SessionMinutes", typeof(int?)), (req[^2].Name, req[^2].ParameterType));
+        Assert.Equal(("DeviceSessionMinutes", typeof(int?)), (req[^1].Name, req[^1].ParameterType));
+        foreach (var p in new[] { req[^5], req[^4], req[^3], req[^2], req[^1] }) { Assert.True(p.HasDefaultValue); Assert.Null(p.DefaultValue); }
     }
 
     // ================================================================ espejo SQL

@@ -68,8 +68,8 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
     if (p === '/api/v1/tenant/settings' && req.method === 'GET') return json(mock.settings)
     if (p === '/api/v1/tenant/settings' && req.method === 'PUT') {
       const b = body as Record<string, unknown>
-      if (b.deviceSessionDays === 200) {
-        return problem(400, { title: 'Entre 1 y 365 días.', code: 'validation', errors: { deviceSessionDays: ['Entre 1 y 365 días.'] } })
+      if (b.deviceSessionMinutes === 12000) {
+        return problem(400, { title: 'La duración debe estar entre 1 minuto y 365 días (8760 horas).', code: 'validation', errors: { deviceSessionMinutes: ['La duración debe estar entre 1 minuto y 365 días (8760 horas).'] } })
       }
       mock.settings = { ...mock.settings, ...b }
       return json(mock.settings)
@@ -105,7 +105,7 @@ const SESSIONS = [
   { id: 102, userId: 2, userName: 'Ana Pérez', userEmail: 'ana@t.local', deviceInfo: 'Mozilla/5.0 (iPhone) Safari/604', deviceName: null, isDevice: false, ipAddress: '10.0.0.2', lastActivityUtc: '2026-10-02T11:00:00', expiresAtUtc: '2026-11-01T00:00:00', isCurrent: false },
   { id: 103, userId: 3, userName: 'Carlos Rivera', userEmail: 'c@t.local', deviceInfo: 'okhttp', deviceName: 'ZEBRA-01 · Muelle 1', isDevice: true, ipAddress: null, lastActivityUtc: '2026-10-01T09:00:00', expiresAtUtc: '2026-11-01T00:00:00', isCurrent: false },
 ]
-const SETTINGS = { id: 1, name: 'Advance Logistics', mfaRequired: false, aal2WindowMinutes: 30, sessionDays: 30, deviceSessionDays: 30 }
+const SETTINGS = { id: 1, name: 'Advance Logistics', mfaRequired: false, aal2WindowMinutes: 30, sessionDays: 30, deviceSessionDays: 30, sessionMinutes: 43200, deviceSessionMinutes: 43200 }
 
 const ALL = ['admin.audit', 'admin.tenant', 'admin.users']
 
@@ -239,33 +239,35 @@ describe('Seguridad y auditoría', () => {
     const reauth = screen.getByLabelText('Ventana de reautenticación (AAL2)')
     expect(Array.from((reauth as HTMLSelectElement).options).map((o) => o.textContent)).toEqual(['15 minutos', '30 minutos', '60 minutos'])
     expect(reauth).toHaveValue('30')
-    const days = screen.getByLabelText('Duración de la sesión (días)')
-    const deviceDays = screen.getByLabelText('Duración de la sesión del aparato (días)')
+    // 2026-10-12: la duración se escribe en HORAS, con decimales (30 días de siempre = 720 horas)
+    const days = screen.getByLabelText('Duración de la sesión (horas)')
+    const deviceDays = screen.getByLabelText('Duración de la sesión del aparato (horas)')
+    expect(days).toHaveValue(720)
 
-    // validación en pantalla: 0 días no se manda
+    // validación en pantalla: 0 horas no se manda
     await user.clear(days)
     await user.type(days, '0')
     await user.click(screen.getByRole('button', { name: 'Guardar política' }))
-    expect(await screen.findByText('Entre 1 y 365 días.')).toBeInTheDocument()
+    expect(await screen.findAllByText('Entre 0.02 horas (1 minuto) y 8760 horas (365 días).')).not.toHaveLength(0)
     expect(putReqs()).toHaveLength(0)
 
     await user.clear(days)
-    await user.type(days, '15')
+    await user.type(days, '0.25')   // 15 minutos
     await user.click(mfa)
     await user.selectOptions(reauth, '60')
     await user.click(screen.getByRole('button', { name: 'Guardar política' }))
     await waitFor(() => expect(putReqs()).toHaveLength(1))
-    expect(putReqs()[0].body).toEqual({ mfaRequired: true, aal2WindowMinutes: 60, sessionDays: 15 })
+    expect(putReqs()[0].body).toEqual({ mfaRequired: true, aal2WindowMinutes: 60, sessionMinutes: 15 })   // 0.25 h = 15 minutos
     expect(await screen.findByText('Política guardada')).toBeInTheDocument()
 
     // 400 del servidor bajo su campo
     await user.clear(deviceDays)
-    await user.type(deviceDays, '200')
+    await user.type(deviceDays, '200')   // 200 horas = 12000 minutos (el mock del servidor lo rechaza)
     await user.click(screen.getByRole('button', { name: 'Guardar política' }))
     await waitFor(() => expect(putReqs()).toHaveLength(2))
-    expect(putReqs()[1].body).toEqual({ deviceSessionDays: 200 })
+    expect(putReqs()[1].body).toEqual({ deviceSessionMinutes: 12000 })
     await waitFor(() => expect(deviceDays).toHaveAttribute('aria-invalid', 'true'))
-    const errId = deviceDays.getAttribute('aria-describedby')!.split(' ').find((id) => document.getElementById(id)?.textContent === 'Entre 1 y 365 días.')
+    const errId = deviceDays.getAttribute('aria-describedby')!.split(' ').find((id) => document.getElementById(id)?.textContent === 'La duración debe estar entre 1 minuto y 365 días (8760 horas).')
     expect(errId).toBeTruthy()
   })
 
@@ -273,7 +275,7 @@ describe('Seguridad y auditoría', () => {
     wrap('/system/audit?tab=sessions', ['admin.audit'])
     expect(await screen.findByText(/Solo lectura: cambiar la política exige/)).toBeInTheDocument()
     expect(await screen.findByRole('switch', { name: 'Requerir MFA a todos los usuarios' })).toBeDisabled()
-    expect(screen.getByLabelText('Duración de la sesión (días)')).toBeDisabled()
+    expect(screen.getByLabelText('Duración de la sesión (horas)')).toBeDisabled()
     expect(screen.queryByRole('button', { name: 'Guardar política' })).toBeNull()
     await screen.findByRole('table', { name: 'Sesiones activas' })
     expect(screen.queryByRole('button', { name: 'Revocar' })).toBeNull()

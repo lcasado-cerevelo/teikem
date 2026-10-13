@@ -26393,6 +26393,10 @@ export interface components {
             /** Format: int32 */
             defaultProductCategoryId?: number | null;
             rotationMethod?: string | null;
+            /** Format: int32 */
+            sessionMinutes?: number;
+            /** Format: int32 */
+            deviceSessionMinutes?: number;
         };
         TenantSettingsUpdateRequest: {
             name?: string | null;
@@ -26439,6 +26443,10 @@ export interface components {
             /** Format: int32 */
             defaultProductCategoryId?: number | null;
             rotationMethod?: string | null;
+            /** Format: int32 */
+            sessionMinutes?: number | null;
+            /** Format: int32 */
+            deviceSessionMinutes?: number | null;
         };
         TenantSummaryDto: {
             /** Format: int32 */

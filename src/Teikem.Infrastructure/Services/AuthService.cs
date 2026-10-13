@@ -8,6 +8,7 @@ using Teikem.Domain.Constants;
 using Teikem.Domain.Entities;
 using Teikem.Domain.Identity;
 using Teikem.Domain.Security;
+using Teikem.Domain.Tenancy;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
@@ -220,7 +221,7 @@ public sealed partial class AuthService(
     }
 
     /// <summary>Aparato al que queda ligada una sesión (Lote 8A): Id para RefreshToken.UserDeviceId, PublicId para `did`.</summary>
-    private sealed record DeviceBinding(int UserDeviceId, Guid PublicId, int SessionDays);
+    private sealed record DeviceBinding(int UserDeviceId, Guid PublicId, int SessionMinutes);
 
     private async Task<TokenPairDto> IssueAsync(ApplicationUser user, int tenantId, string? kind, string? deviceInfo, DateTime? aal2At, CancellationToken ct, DeviceBinding? device = null)
     {
@@ -229,7 +230,7 @@ public sealed partial class AuthService(
         var rt = new RefreshToken
         {
             UserId = user.Id, TenantId = tenantId, TokenHash = JwtTokenService.HashToken(raw), DeviceInfo = deviceInfo is { Length: > 200 } d ? d[..200] : deviceInfo,
-            IssuedAtUtc = DateTime.UtcNow, ExpiresAtUtc = DateTime.UtcNow.AddDays(device?.SessionDays ?? t.SessionDays), Aal2VerifiedAtUtc = aal2At,
+            IssuedAtUtc = DateTime.UtcNow, ExpiresAtUtc = DateTime.UtcNow.AddMinutes(device?.SessionMinutes ?? SessionRules.Minutes(t.SessionMinutes, t.SessionDays)), Aal2VerifiedAtUtc = aal2At,   // 2026-10-12: la duración es en minutos
             IpAddress = RequestIp(),
         };
         // Si UserManager dejó al usuario marcado como modificado (ResetAccessFailedCount que perdió la carrera con un intento
@@ -300,7 +301,7 @@ public sealed partial class AuthService(
 
         // El aparato se toca ANTES de emitir: si el touch fallara no quedaría un refresh token emitido que nadie recibió.
         await devices.TouchAsync(device, user.Id, null, ct);
-        var binding = new DeviceBinding(device.UserDeviceId, device.PublicId, await devices.SessionDaysAsync(tenantId, ct));
+        var binding = new DeviceBinding(device.UserDeviceId, device.PublicId, await devices.SessionMinutesAsync(tenantId, ct));
         var pair = await IssueAsync(user, tenantId, kind, DeviceInfoOf(device), aal2At: null, ct, binding);
         await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Success, user.Id, tenantId, new { stage = "device", device = device.Code }, ct);
         return pair;
@@ -377,7 +378,7 @@ public sealed partial class AuthService(
                 new { reason = "pin_assigner_lower_privileges", device = device.Code }, ct);
             throw new UnauthorizedException(PinService.AssignerLowerPrivilegesMessage);
         }
-        var expires = device is null ? rt.ExpiresAtUtc : DateTime.UtcNow.AddDays(await devices.SessionDaysAsync(rt.TenantId, ct));
+        var expires = device is null ? rt.ExpiresAtUtc : DateTime.UtcNow.AddMinutes(await devices.SessionMinutesAsync(rt.TenantId, ct));
 
         // Rotación: el token usado se revoca y apunta al nuevo
         var raw = JwtTokenService.NewRefreshToken();

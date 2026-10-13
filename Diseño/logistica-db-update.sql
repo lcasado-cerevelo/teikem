@@ -695,3 +695,18 @@ UPDATE dbo.StatusCode
 SET LabelJson = REPLACE(LabelJson, N'"es":"Ocupado"', N'"es":"Ocupada"')
 WHERE Entity = 'DockStatus' AND InternalCode = 'OCCUPIED' AND LabelJson LIKE N'%"es":"Ocupado"%';
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-12 — Duración de la sesión en MINUTOS (la pantalla la pide en horas con decimales: 24 = 1 día, 0.25 = 15 minutos).
+   dbo.Tenant: SessionMinutes y DeviceSessionMinutes (NULL = sin configurar: vale SessionDays / DeviceSessionDays × 1440, lo de siempre) y su CHECK
+   (1 minuto a 365 días). Los días no se tocan: al guardar minutos el sistema también deja los días equivalentes. Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.Tenant', 'SessionMinutes') IS NULL
+    ALTER TABLE dbo.Tenant ADD SessionMinutes INT NULL;
+GO
+IF COL_LENGTH('dbo.Tenant', 'DeviceSessionMinutes') IS NULL
+    ALTER TABLE dbo.Tenant ADD DeviceSessionMinutes INT NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_Tenant_SessionMinutes' AND parent_object_id = OBJECT_ID('dbo.Tenant'))
+    ALTER TABLE dbo.Tenant ADD CONSTRAINT CK_Tenant_SessionMinutes CHECK ((SessionMinutes IS NULL OR SessionMinutes BETWEEN 1 AND 525600) AND (DeviceSessionMinutes IS NULL OR DeviceSessionMinutes BETWEEN 1 AND 525600));
+GO
