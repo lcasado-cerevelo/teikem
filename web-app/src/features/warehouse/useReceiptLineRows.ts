@@ -12,7 +12,10 @@ import type { components } from '../../kernel/api/schema'
 import { useT } from '../../kernel/i18n'
 import { useSaveReceiptLine, type ReceiptDetailDto } from './api'
 import {
+  canDuplicateRow,
+  duplicateRow,
   ensureTrailingEmpty,
+  insertRowAfter,
   linePayload,
   mergeSaved,
   newLineFrom,
@@ -49,6 +52,8 @@ export interface ReceiptLineRowsState {
   pickTarget: (key: string, bin: PickedBin) => void
   /** Guarda la fila si tiene algo que guardar (en la fila única de guardados). */
   save: (key: string) => Promise<void>
+  /** Duplicar (2026-10-12): fila nueva debajo con el mismo producto y cantidades y la posición SIN escoger; no se guarda hasta que se elija la posición. */
+  duplicate: (key: string) => void
   /** Quita una fila: la nueva sin guardar, en el cliente; la guardada, con `DELETE` (lanza el error del servidor). */
   remove: (key: string) => Promise<void>
   /** La línea que devolvió otra escritura (Lote y series): la fila queda como en el servidor. */
@@ -178,6 +183,16 @@ export function useReceiptLineRows(receipt: ReceiptDetailDto, mode: RowsMode): R
     [commit, mutateAsync, publicId, trailing],
   )
 
+  const duplicate = useCallback(
+    (key: string) => {
+      const row = rowsRef.current.find((r) => r.key === key)
+      if (!row || !canDuplicateRow(row, rowsRef.current.length)) return
+      commit((prev) => insertRowAfter(prev, key, duplicateRow(row, newKey())))
+      trailing()
+    },
+    [commit, trailing],
+  )
+
   const applyLine = useCallback(
     (line: LineDto) => commit((prev) => prev.map((r) => (r.lineId === line.id ? rowFromLine(line, r.key) : r))),
     [commit],
@@ -195,7 +210,7 @@ export function useReceiptLineRows(receipt: ReceiptDetailDto, mode: RowsMode): R
   )
 
   return useMemo(
-    () => ({ rows, mode: { manual, editable, direct }, input, pickProduct, pickTarget, save, remove, applyLine, setLineErrors }),
-    [rows, manual, editable, direct, input, pickProduct, pickTarget, save, remove, applyLine, setLineErrors],
+    () => ({ rows, mode: { manual, editable, direct }, input, pickProduct, pickTarget, save, duplicate, remove, applyLine, setLineErrors }),
+    [rows, manual, editable, direct, input, pickProduct, pickTarget, save, duplicate, remove, applyLine, setLineErrors],
   )
 }

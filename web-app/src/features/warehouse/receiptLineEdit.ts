@@ -149,6 +149,39 @@ export function isEmptyRow(row: LineRow): boolean {
   return row.lineId === null && !row.productPublicId && row.expected.trim() === '' && row.received.trim() === ''
 }
 
+/**
+ * Duplicar una línea (recibo directo a posición sin documento): ¿se puede? Solo con producto elegido, sin ser la fila vacía del final, sin series (la cantidad de un
+ * producto por serie sale de las series capturadas) y sin pasar del tope de filas.
+ */
+export function canDuplicateRow(row: LineRow, rowCount: number): boolean {
+  return Boolean(row.productPublicId) && !isEmptyRow(row) && row.trackingTypeCode !== 'SERIAL' && rowCount < MAX_RECEIPT_LINES
+}
+
+/**
+ * Fila nueva con lo mismo que `source` (producto y cantidades) y la POSICIÓN SIN ESCOGER (2026-10-12, pedido de Luis): sin id de línea ni de documento, sin lote ni
+ * series, sin posición ni cupo y sin errores. Queda sin guardar hasta que se elija la posición (elegirla la guarda).
+ */
+export function duplicateRow(source: LineRow, key: string): LineRow {
+  return {
+    ...emptyRow(key),
+    productPublicId: source.productPublicId,
+    sku: source.sku,
+    productName: source.productName,
+    trackingTypeCode: source.trackingTypeCode,
+    expected: source.expected,
+    received: source.received,
+    mirror: source.mirror,
+  }
+}
+
+/** Inserta `row` justo debajo de la fila `afterKey` (al final si no existe). */
+export function insertRowAfter(rows: readonly LineRow[], afterKey: string, row: LineRow): LineRow[] {
+  const i = rows.findIndex((r) => r.key === afterKey)
+  const out = [...rows]
+  out.splice(i < 0 ? out.length : i + 1, 0, row)
+  return out
+}
+
 /** Siempre una fila vacía al final (sin pasar de 200 filas). */
 export function ensureTrailingEmpty(rows: readonly LineRow[], newKey: () => string): LineRow[] {
   const out = [...rows]

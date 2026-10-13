@@ -23,6 +23,7 @@ import {
   Field,
   Form,
   IconBasket,
+  IconCopy,
   IconGrid,
   IconTrash,
   Modal,
@@ -360,6 +361,16 @@ export function CollectPanel({ onCollected }: CollectPanelProps) {
     [form, remove, addTrailingBlank],
   )
 
+  /** Duplicar (2026-10-12, pedido del dueño): copia producto y cantidad justo debajo y deja la posición (y el lote y las series, que dependen de ella) sin escoger. */
+  const duplicateLine = useCallback(
+    (index: number) => {
+      const line = form.getValues('lines')[index]
+      if (!line) return
+      insert(index + 1, { ...line, binId: '', lotId: '', serialNumbers: '' })
+    },
+    [form, insert],
+  )
+
   /**
    * Plan de salida de una línea (pedido del dueño 2026-10-07): dada la cantidad, sugiere de qué posiciones (y lotes) sacarla en el orden FEFO, p. ej. 20 de A-01 y
    * 30 de B-03: la línea toma la primera parte y las demás entran como líneas nuevas justo debajo (cada una se puede cambiar con su selector de posición).
@@ -444,6 +455,17 @@ export function CollectPanel({ onCollected }: CollectPanelProps) {
         onClick: (r) => void suggestPositions(r.index),
       },
       {
+        key: 'duplicate',
+        label: t('warehouse.pickBatches.collectPanel.duplicateLine'),
+        icon: <IconCopy />,
+        // con producto elegido y sin series (las series se escogen una por una)
+        visible: (r) => {
+          const l = lines?.[r.index]
+          return Boolean(l?.productPublicId && l.trackingTypeCode !== 'SERIAL')
+        },
+        onClick: (r) => duplicateLine(r.index),
+      },
+      {
         key: 'remove',
         label: t('warehouse.pickBatches.collectPanel.removeLine'),
         icon: <IconTrash />,
@@ -453,7 +475,7 @@ export function CollectPanel({ onCollected }: CollectPanelProps) {
         onClick: (r) => removeLine(r.index),
       },
     ],
-    [t, rows.length, lines, removeLine, suggestPositions],
+    [t, rows.length, lines, removeLine, suggestPositions, duplicateLine],
   )
 
   const submitting = form.formState.isSubmitting
