@@ -954,10 +954,12 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
     {
         var list = ids.Distinct().ToList();
         if (list.Count == 0) return new Dictionary<int, BinInfo>();
+        // 2026-10-12: una posición ELIMINADA se ve en el historial con su código y la marca «(eliminada)».
+        var mark = tenant.Lang == "en" ? " (deleted)" : " (eliminada)";
         return await (from b in db.Set<WarehouseBin>().AsNoTracking()
                       join w in db.Set<Warehouse>().AsNoTracking() on b.WarehouseId equals w.WarehouseId
                       where list.Contains(b.WarehouseBinId)
-                      select new BinInfo(b.WarehouseBinId, b.WarehouseId, b.WarehouseZoneId, b.Code))
+                      select new BinInfo(b.WarehouseBinId, b.WarehouseId, b.WarehouseZoneId, b.IsRemoved ? b.Code + mark : b.Code))
             .ToDictionaryAsync(b => b.Id, ct);
     }
 

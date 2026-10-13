@@ -81,6 +81,20 @@ public static class WarehouseRules
     /// <summary>409 'El almacén {code} tiene inventario o documentos abiertos; no se puede dar de baja.' (Errors por tipo).</summary>
     public static string WarehouseNotEmpty(string code) => $"El almacén {code} tiene inventario o documentos abiertos; no se puede dar de baja.";
 
+    // ---- 2026-10-12: eliminar posiciones (docs/posiciones-eliminar-diseno.md). Desactivar es temporal; Eliminar es definitivo y libera el código.
+    public const string BinDeletedMessage = "La posición fue eliminada y no se puede reactivar.";
+    public const string BinInactiveCodeExists = "Ya existe una posición inactiva con ese código: reactívela o elimínela.";
+    public const int MaxBinsPerDelete = 500;
+    public const string DeleteBinsRequired = "Elija al menos una posición para eliminar.";
+    public static string DeleteBinsTooMany() => $"Se pueden eliminar como máximo {MaxBinsPerDelete} posiciones a la vez.";
+    public const string BinNotFoundToDelete = "La posición no existe en este almacén.";
+    public const string BinAlreadyDeleted = "La posición ya estaba eliminada.";
+    public static string BinDeleteHasStock(string code) => $"La posición {code} tiene inventario; no se puede eliminar.";
+    public static string BinDeleteHasOpenTasks(string code) => $"La posición {code} tiene tareas de almacén abiertas; complételas o cancélelas antes de eliminarla.";
+    public static string BinIsDefaultReceiving(string code, string warehouse) => $"La posición {code} es la posición de recepción por defecto de {warehouse}; cámbiela primero.";
+    public static string BinIsPreferredOf(string code, string sku) => $"La posición {code} es la posición preferida del producto {sku}; cámbiela primero.";
+    public static string BinInOpenCount(string code) => $"La posición {code} está en un conteo cíclico abierto; ciérrelo primero.";
+
     /// <summary>409 'La posición {code} tiene inventario; no se puede desactivar.'</summary>
     public static string BinNotEmpty(string code) => $"La posición {code} tiene inventario; no se puede desactivar.";
 

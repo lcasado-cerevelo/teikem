@@ -634,3 +634,37 @@ IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'inventory.adjust.multi
             (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'WAREHOUSE'),
             N'{"es":"Ajuste múltiple de inventario","en":"Multi-position inventory adjustment"}', 1);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-12 — Eliminar posiciones (docs/posiciones-eliminar-diseno.md): «Desactivar» es temporal (IsActive = 0, se reactiva) y «Eliminar» es
+   definitivo (IsRemoved = 1, siempre inactiva, no se reactiva y su código queda libre). La fila se conserva: la posición la referencian saldos,
+   movimientos, series, tareas, conteos, recibos, daños, rentas y descuadres.
+   - dbo.WarehouseBin: IsRemoved, RemovedAtUtc, RemovedBy y CHECK (IsRemoved = 0 OR IsActive = 0).
+   - La unicidad del código (por zona y por almacén) pasa a ser SOLO entre las no eliminadas: UQ_WarehouseBin y UQ_WarehouseBin_WhCode dejan de ser
+     restricciones y son índices únicos filtrados con el mismo nombre (las llaves foráneas apuntan a UQ_WarehouseBin_IdWh, que no cambia).
+   Solo AGREGA / reemplaza esos dos índices. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.WarehouseBin', 'IsRemoved') IS NULL
+    ALTER TABLE dbo.WarehouseBin ADD IsRemoved BIT NOT NULL CONSTRAINT DF_WarehouseBin_IsRemoved DEFAULT 0;
+GO
+IF COL_LENGTH('dbo.WarehouseBin', 'RemovedAtUtc') IS NULL
+    ALTER TABLE dbo.WarehouseBin ADD RemovedAtUtc DATETIME2 NULL;
+GO
+IF COL_LENGTH('dbo.WarehouseBin', 'RemovedBy') IS NULL
+    ALTER TABLE dbo.WarehouseBin ADD RemovedBy INT NULL CONSTRAINT FK_WarehouseBin_RemovedBy REFERENCES dbo.AspNetUsers(Id);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_WarehouseBin_Removed' AND parent_object_id = OBJECT_ID('dbo.WarehouseBin'))
+    ALTER TABLE dbo.WarehouseBin ADD CONSTRAINT CK_WarehouseBin_Removed CHECK (IsRemoved = 0 OR IsActive = 0);
+GO
+IF EXISTS (SELECT 1 FROM sys.key_constraints WHERE name = 'UQ_WarehouseBin' AND parent_object_id = OBJECT_ID('dbo.WarehouseBin'))
+    ALTER TABLE dbo.WarehouseBin DROP CONSTRAINT UQ_WarehouseBin;
+GO
+IF EXISTS (SELECT 1 FROM sys.key_constraints WHERE name = 'UQ_WarehouseBin_WhCode' AND parent_object_id = OBJECT_ID('dbo.WarehouseBin'))
+    ALTER TABLE dbo.WarehouseBin DROP CONSTRAINT UQ_WarehouseBin_WhCode;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_WarehouseBin' AND object_id = OBJECT_ID('dbo.WarehouseBin'))
+    CREATE UNIQUE INDEX UQ_WarehouseBin ON dbo.WarehouseBin (WarehouseZoneId, Code) WHERE IsRemoved = 0;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_WarehouseBin_WhCode' AND object_id = OBJECT_ID('dbo.WarehouseBin'))
+    CREATE UNIQUE INDEX UQ_WarehouseBin_WhCode ON dbo.WarehouseBin (WarehouseId, Code) WHERE IsRemoved = 0;
+GO

@@ -192,6 +192,7 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
                 join w in db.Warehouses.AsNoTracking() on b.WarehouseId equals w.WarehouseId
                 join z in db.WarehouseZones.AsNoTracking() on b.WarehouseZoneId equals z.WarehouseZoneId
                 select new { Bin = b, WarehousePublicId = w.PublicId, WarehouseCode = w.Code, ZoneCode = z.Code };
+        q = q.Where(x => !x.Bin.IsRemoved);   // 2026-10-12: una posición eliminada no se busca nunca
         if (!includeInactive) q = q.Where(x => x.Bin.IsActive);
         if (warehousePublicIds is { Length: > 0 })
         {
@@ -245,7 +246,7 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
                 join z in db.WarehouseZones.AsNoTracking() on b.WarehouseZoneId equals z.WarehouseZoneId
                 join st in binStock on (int?)b.WarehouseBinId equals st.BinId into sj
                 from st in sj.DefaultIfEmpty()
-                where b.WarehouseId == warehouseId
+                where b.WarehouseId == warehouseId && !b.IsRemoved   // 2026-10-12: las eliminadas no salen en ninguna lista (ni con «incluir inactivas»)
                 select new BinRow
                 {
                     Bin = b,
@@ -347,8 +348,11 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
         EnsureWarehouseActive(w);
         var zone = await ResolveZoneAsync(w, req.ZoneId!.Value, track: false, ct);
         if (!zone.IsActive) throw new StatusRuleException(WarehouseRules.ZoneInactiveMessage);
-        if (await db.WarehouseBins.AnyAsync(b => b.WarehouseId == w.WarehouseId && b.Code == code, ct))
-            throw new ConflictException(WarehouseRules.DuplicateBinMessage);
+        // 2026-10-12: el código de una posición ELIMINADA queda libre; el de una inactiva sigue ocupado (se reactiva o se elimina)
+        var sameCode = await db.WarehouseBins.AsNoTracking().Where(b => b.WarehouseId == w.WarehouseId && b.Code == code && !b.IsRemoved)
+            .Select(b => (bool?)b.IsActive).FirstOrDefaultAsync(ct);
+        if (sameCode is not null)
+            throw new ConflictException(sameCode == false ? WarehouseRules.BinInactiveCodeExists : WarehouseRules.DuplicateBinMessage);
 
         var bin = new WarehouseBin
         {
@@ -399,6 +403,7 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
     {
         var w = await ResolveWarehouseAsync(warehousePublicId, ct);
         var bin = await ResolveBinAsync(w, binId, track: true, ct);
+        if (bin.IsRemoved) throw new ConflictException(WarehouseRules.BinDeletedMessage);
         if (!bin.IsProvisional) throw new ConflictException(WarehouseRules.BinNotProvisional);
         bin.IsProvisional = false;
         await db.SaveGuardedAsync(WarehouseRules.DuplicateBinMessage, ct);
@@ -425,6 +430,7 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
         var w = await ResolveWarehouseAsync(warehousePublicId, ct);
         EnsureWarehouseActive(w);
         var bin = await ResolveBinAsync(w, binId, track: true, ct);
+        if (bin.IsRemoved) throw new ConflictException(WarehouseRules.BinDeletedMessage);
         if (req.Aisle is not null) bin.Aisle = aisle;
         if (req.Rack is not null) bin.Rack = rack;
         if (req.Level is not null) bin.Level = level;
@@ -503,6 +509,7 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
         {
             await LockWarehouseAsync(w.WarehouseId, ct2);
             var bin = await db.WarehouseBins.FirstAsync(b => b.WarehouseBinId == binRef.WarehouseBinId, ct2);
+            if (bin.IsRemoved) throw new ConflictException(WarehouseRules.BinDeletedMessage);   // 2026-10-12: eliminar es definitivo
             if (bin.IsActive == active) return;
             if (active)
             {
@@ -523,6 +530,87 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
         }, ct);
 
         return await BinDtoAsync(w.WarehouseId, binRef.WarehouseBinId, ct);
+    }
+
+    // ================================================================ eliminar posiciones (2026-10-12)
+
+    /// <summary>
+    /// Eliminar una posición (definitivo; docs/posiciones-eliminar-diseno.md): <c>IsRemoved = 1</c> (y <c>IsActive = 0</c>), no se reactiva, no sale en ninguna lista y su
+    /// código queda libre. La fila se conserva (historial). 409 con el motivo exacto si: tiene inventario en mano o reservado, tareas abiertas, es la posición de recepción
+    /// por defecto del almacén o la preferida de un producto, o está en un conteo abierto. Una activa vacía se puede eliminar directamente.
+    /// </summary>
+    public async Task DeleteBinAsync(Guid warehousePublicId, int binId, CancellationToken ct)
+    {
+        var w = await ResolveWarehouseAsync(warehousePublicId, ct);
+        var binRef = await ResolveBinAsync(w, binId, track: false, ct);
+        string? reason = null;
+        await db.RunInTransactionAsync(async ct2 => { reason = await TryDeleteBinAsync(w, binRef.WarehouseBinId, ct2); }, ct);
+        if (reason is not null) throw new ConflictException(reason);
+    }
+
+    /// <summary>
+    /// Eliminar varias posiciones (se reorganiza una fila del rack): PARCIAL. Cada una se revisa y se elimina en su propia transacción; las que no cumplen se omiten con su
+    /// motivo (el mismo texto del 409 individual). Hasta 500; ids repetidos cuentan una vez; una que no es de este almacén se omite («no existe»).
+    /// </summary>
+    public async Task<WarehouseBinsDeleteResultDto> DeleteBinsAsync(Guid warehousePublicId, WarehouseBinsDeleteRequest req, CancellationToken ct)
+    {
+        var ids = (req?.BinIds ?? Array.Empty<int>()).Distinct().ToList();
+        if (ids.Count == 0) throw new ValidationException("binIds", WarehouseRules.DeleteBinsRequired);
+        if (ids.Count > WarehouseRules.MaxBinsPerDelete) throw new ValidationException("binIds", WarehouseRules.DeleteBinsTooMany());
+        var w = await ResolveWarehouseAsync(warehousePublicId, ct);
+
+        var deleted = new List<WarehouseBinDeletedDto>();
+        var skipped = new List<WarehouseBinSkippedDto>();
+        foreach (var id in ids.OrderBy(i => i))
+        {
+            var info = await db.WarehouseBins.AsNoTracking().Where(b => b.WarehouseId == w.WarehouseId && b.WarehouseBinId == id)
+                .Select(b => new { b.Code, b.IsRemoved }).FirstOrDefaultAsync(ct);
+            if (info is null) { skipped.Add(new WarehouseBinSkippedDto(id, "", WarehouseRules.BinNotFoundToDelete)); continue; }
+            string? reason = null;
+            try
+            {
+                await db.RunInTransactionAsync(async ct2 => { reason = await TryDeleteBinAsync(w, id, ct2); }, ct);
+            }
+            catch (ConflictException ex) { reason = ex.Message; }
+            if (reason is null) deleted.Add(new WarehouseBinDeletedDto(id, info.Code));
+            else skipped.Add(new WarehouseBinSkippedDto(id, info.Code, reason));
+            db.ChangeTracker.Clear();
+        }
+        return new WarehouseBinsDeleteResultDto(deleted, skipped);
+    }
+
+    /// <summary>Dentro de la transacción: revisa y elimina. null = eliminada; texto = por qué no (409). Orden de bloqueo: almacén, saldos de la posición.</summary>
+    private async Task<string?> TryDeleteBinAsync(Warehouse w, int binId, CancellationToken ct2)
+    {
+        var wh = await LockWarehouseAsync(w.WarehouseId, ct2);
+        var bin = await db.WarehouseBins.FirstAsync(b => b.WarehouseBinId == binId && b.WarehouseId == w.WarehouseId, ct2);
+        if (bin.IsRemoved) return WarehouseRules.BinAlreadyDeleted;
+
+        var balances = await LockBinBalancesAsync(bin.WarehouseBinId, ct2);
+        if (balances.Any(b => b.QtyOnHand != 0 || b.QtyReserved != 0)) return WarehouseRules.BinDeleteHasStock(bin.Code);
+
+        var openTaskIds = await StatusIdsAsync(StatusDomains.WarehouseTaskStatus, ct2, WarehouseTaskStatuses.Pending, WarehouseTaskStatuses.InProgress);
+        if (await db.WarehouseTasks.AnyAsync(t => t.WarehouseId == w.WarehouseId && openTaskIds.Contains(t.StatusCodeId)
+                                                  && (t.FromBinId == bin.WarehouseBinId || t.ToBinId == bin.WarehouseBinId), ct2))
+            return WarehouseRules.BinDeleteHasOpenTasks(bin.Code);
+
+        if (wh.DefaultReceivingBinId == bin.WarehouseBinId) return WarehouseRules.BinIsDefaultReceiving(bin.Code, wh.Code);
+        var preferredBy = await db.Set<Product>().AsNoTracking().Where(p => p.PreferredBinId == bin.WarehouseBinId).Select(p => p.Sku).FirstOrDefaultAsync(ct2);
+        if (preferredBy is not null) return WarehouseRules.BinIsPreferredOf(bin.Code, preferredBy);
+
+        var openCountIds = await StatusIdsAsync(StatusDomains.CycleCountStatus, ct2, CycleCountStatuses.Open, CycleCountStatuses.Counted);
+        if (await (from l in db.Set<CycleCountLine>().AsNoTracking()
+                   join c in db.Set<CycleCount>().AsNoTracking() on l.CycleCountId equals c.CycleCountId
+                   where l.WarehouseBinId == bin.WarehouseBinId && c.IsActive && openCountIds.Contains(c.StatusCodeId)
+                   select l.CycleCountLineId).AnyAsync(ct2))
+            return WarehouseRules.BinInOpenCount(bin.Code);
+
+        bin.IsRemoved = true;
+        bin.IsActive = false;
+        bin.RemovedAtUtc = DateTime.UtcNow;
+        bin.RemovedBy = tenant.UserId;
+        await db.SaveGuardedAsync(WarehouseRules.DuplicateBinMessage, ct2);
+        return null;
     }
 
     // ================================================================ muelles

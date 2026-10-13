@@ -78,6 +78,14 @@ public class WarehouseBin
     public int? MaxCapacityQty { get; set; }
     public bool IsActive { get; set; } = true;
     /// <summary>
+    /// 2026-10-12: posición ELIMINADA (definitivo): siempre inactiva (CK_WarehouseBin_Removed), no se reactiva, no sale en ninguna lista ni selector y su código
+    /// queda libre para otra posición (los índices únicos del código son filtrados por IsRemoved = 0). La fila se conserva por el historial (saldos, Kárdex…),
+    /// donde se ve con la marca «(eliminada)». «Desactivar» (IsActive = 0) es temporal y reversible.
+    /// </summary>
+    public bool IsRemoved { get; set; }
+    [NotAudited] public DateTime? RemovedAtUtc { get; set; }
+    public int? RemovedBy { get; set; }
+    /// <summary>
     /// Lote 21: posición provisional = creada por quien cuenta (warehouse.count.capture) desde un conteo, pendiente de revisión
     /// del supervisor (warehouse.manage), que la confirma, la corrige o la desactiva. Se puede usar ya en el conteo y en el
     /// inventario. Confirmar quita la marca (los datos de quién/cuándo/conteo que la creó se conservan).

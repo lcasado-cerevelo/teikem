@@ -132,6 +132,17 @@ public sealed record WarehouseBinCapacityRequest(int[]? ZoneIds = null, string? 
 /// <summary>Resultado de la asignación en bloque: posiciones que cumplen los filtros y cuántas cambiaron de cupo.</summary>
 public sealed record WarehouseBinCapacityResultDto(int Matched, int Changed);
 
+/// <summary>2026-10-12: eliminar varias posiciones a la vez (BinIds, hasta 500).</summary>
+public sealed record WarehouseBinsDeleteRequest(int[]? BinIds);
+
+public sealed record WarehouseBinDeletedDto(int BinId, string Code);
+
+/// <summary>Una posición que no se eliminó y por qué (el mismo texto del 409 de la eliminación individual).</summary>
+public sealed record WarehouseBinSkippedDto(int BinId, string Code, string Reason);
+
+/// <summary>Resultado parcial: las que cumplieron se eliminaron; las demás se omiten con su motivo.</summary>
+public sealed record WarehouseBinsDeleteResultDto(IReadOnlyList<WarehouseBinDeletedDto> Deleted, IReadOnlyList<WarehouseBinSkippedDto> Skipped);
+
 public sealed record WarehouseDockRequest(string? Code, string? DockType);
 
 public sealed record WarehouseDockPatchRequest(string? DockType = null)
