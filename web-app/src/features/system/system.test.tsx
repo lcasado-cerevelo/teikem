@@ -280,7 +280,7 @@ describe('UsersTab — estado, columna PIN y permisos', () => {
   // 2026-10-12 — «Exigir siempre MFA» por persona: el botón lee el indicador propio de la persona (no la columna «MFA: Sí», que es si ya tiene MFA inscrito) y lo graba con
   // PUT /users/{id}/mfa. Es la marca «siempre MFA» de la IP preferida: con ella a esa persona se le pide el código también desde una red de confianza; se ve y se cambia
   // aunque la compañía exija MFA a todos.
-  it('Exigir siempre MFA: pide confirmación y graba (PUT /users/2/mfa); después el botón pasa a «Ya no exigir siempre MFA»', async () => {
+  it('Poner «siempre MFA»: pide confirmación, graba (PUT /users/2/mfa), la columna «Siempre MFA» pasa a Sí y el botón a «Quitar «siempre MFA»»', async () => {
     const user = userEvent.setup()
     let required = false
     mock.handler = ((method: string, url: URL) => {
@@ -296,14 +296,15 @@ describe('UsersTab — estado, columna PIN y permisos', () => {
     wrap(<UsersTab />, { permissions: ['admin.users'] })
     await screen.findByText('Carlos Rivera')
     // tiene MFA inscrito (columna Sí) pero NO se le exige por persona: el botón dice «Exigir MFA»
-    await user.click(await screen.findByRole('button', { name: 'Exigir siempre MFA' }))
+    await user.click(await screen.findByRole('button', { name: 'Poner «siempre MFA»' }))
     const dialog = await screen.findByRole('dialog')
-    await user.click(within(dialog).getByRole('button', { name: 'Exigir siempre MFA' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Poner «siempre MFA»' }))
     await waitFor(() => expect(mock.calls.some((c) => c.method === 'PUT' && c.path === '/api/v1/users/2/mfa')).toBe(true))
     expect(mock.calls.find((c) => c.method === 'PUT' && c.path === '/api/v1/users/2/mfa')?.body).toEqual({ required: true })
     // ya grabado: la lista se vuelve a leer y el botón ahora es el contrario
-    expect(await screen.findByRole('button', { name: 'Ya no exigir siempre MFA' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Exigir siempre MFA' })).toBeNull()
+    expect(await screen.findByRole('button', { name: 'Quitar «siempre MFA»' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Poner «siempre MFA»' })).toBeNull()
+    expect(within(screen.getByRole('row', { name: /Carlos Rivera/ })).getAllByText('Sí').length).toBeGreaterThanOrEqual(2)   // columna MFA (inscrito) y columna Siempre MFA (marca)
   })
 
   it('la columna PIN solo aparece con módulo WMS_LOTSERIAL y permiso devices.manage|admin.users', async () => {

@@ -91,6 +91,16 @@ export function IconShield() {
   )
 }
 
+/** Quitar la marca «siempre MFA» (escudo tachado). */
+export function IconShieldOff() {
+  return (
+    <Svg>
+      <path d="M12 2 4 5v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V5Z" />
+      <path d="m4 4 16 16" />
+    </Svg>
+  )
+}
+
 /** Asignar a un usuario (persona con +). */
 export function IconUserPlus() {
   return (

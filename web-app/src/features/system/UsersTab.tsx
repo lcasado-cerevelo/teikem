@@ -25,6 +25,7 @@ import {
   IconLogOut,
   IconRotateCcw,
   IconShield,
+  IconShieldOff,
   IconUsers,
   IconXCircle,
   Modal,
@@ -568,6 +569,13 @@ export function UsersTab({ creating = false, onCreateClose }: UsersTabProps) {
           </span>
         ),
       },
+      {
+        // 2026-10-12: la marca individual «siempre MFA» (a esta persona se le pide el código aun desde una IP preferida); es distinta de la columna MFA (ya lo tiene inscrito)
+        id: 'alwaysMfa',
+        header: t('system.users.users.colAlwaysMfa'),
+        sortValue: (u) => Boolean(u.mfaRequired),
+        cell: (u) => (u.mfaRequired ? <Chip tone="deliv">{t('system.users.users.yes')}</Chip> : <span className="muted">—</span>),
+      },
       ...(wmsOn
         ? [
             {
@@ -661,7 +669,7 @@ export function UsersTab({ creating = false, onCreateClose }: UsersTabProps) {
         label: t('system.users.users.unrequireMfa'),
         perm: 'admin.users',
         visible: (u) => Boolean(u.mfaRequired),
-        icon: <IconShield />,
+        icon: <IconShieldOff />,
         onClick: (u) => setMfaRequiredFor(u),
       },
       {

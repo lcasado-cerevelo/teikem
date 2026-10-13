@@ -10,6 +10,7 @@ export {
   IconRefreshCw,
   IconRotateCcw,
   IconShield,
+  IconShieldOff,
   IconTrash,
   IconUserPlus,
   IconXCircle,
