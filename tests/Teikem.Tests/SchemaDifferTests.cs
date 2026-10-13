@@ -182,4 +182,20 @@ public class SchemaDifferTests
     [InlineData("uniqueidentifier", 16, 0, 0, "UNIQUEIDENTIFIER")]
     public void El_tipo_se_escribe_como_en_el_ddl(string type, int maxLength, int precision, int scale, string expected) =>
         Assert.Equal(expected, SchemaReader.FormatType(type, maxLength, precision, scale));
+
+    [Fact]
+    public void Indice_con_el_nombre_de_una_restriccion_unica_retira_primero_la_restriccion()
+    {
+        // UQ_WarehouseBin pasó de restricción única a índice único filtrado con el mismo nombre: sin retirar la restricción, el CREATE INDEX choca.
+        var cols = new[] { Col("BinId", identity: true), Col("ZoneId"), Col("Code", "NVARCHAR(20)") };
+        var want = Table("Bin", cols);
+        want.Indexes.Add(new IndexDef("UQ_Bin", true, "NONCLUSTERED", [new IndexColumn("ZoneId", false), new IndexColumn("Code", false)], [], "([Code] IS NOT NULL)"));
+        var have = Table("Bin", cols);
+        have.Uniques.Add(new KeyDef("UQ_Bin", false, false, "NONCLUSTERED", ["ZoneId", "Code"]));
+        var r = SchemaDiffer.Diff(Model(want), Model(have));
+
+        Assert.Contains(r.Changes, c => c.Phase == 3 && c.Sql == "ALTER TABLE [dbo].[Bin] DROP CONSTRAINT [UQ_Bin]");
+        Assert.Contains(r.Changes, c => c.Phase == 5 && c.Sql.StartsWith("CREATE UNIQUE NONCLUSTERED INDEX [UQ_Bin]"));
+        Assert.True(r.Changes.ToList().FindIndex(c => c.Phase == 3) < r.Changes.ToList().FindIndex(c => c.Phase == 5));
+    }
 }

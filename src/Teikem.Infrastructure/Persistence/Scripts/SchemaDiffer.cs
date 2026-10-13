@@ -172,6 +172,11 @@ public static partial class SchemaDiffer
             var have = a.Indexes.FirstOrDefault(x => string.Equals(x.Name, i.Name, StringComparison.OrdinalIgnoreCase));
             if (have is null)
             {
+                // Una restricción única de la base con el mismo nombre ocuparía el nombre del índice (p. ej. UQ_WarehouseBin pasó de restricción a
+                // índice único filtrado): se retira antes de crearlo, como hace la sección correspondiente de logistica-db-update.sql.
+                var sameName = a.Uniques.FirstOrDefault(x => string.Equals(x.Name, i.Name, StringComparison.OrdinalIgnoreCase));
+                if (sameName is not null)
+                    result.Changes.Add(new SchemaChange(3, $"Retirar restricción única {sameName.Name} de {d.Key} (pasa a índice)", $"ALTER TABLE {QT(d)} DROP CONSTRAINT {Q(sameName.Name)}"));
                 result.Changes.Add(new SchemaChange(5, $"Crear índice {i.Name} en {d.Key}", IndexSql(d, i)));
                 continue;
             }
