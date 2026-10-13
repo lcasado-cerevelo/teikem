@@ -135,12 +135,53 @@ public class AuthMfaTests
 
         var afterOn = await users.SetMfaRequiredAsync(1, true, default);
         Assert.True(afterOn.MfaRequired);
+        f.Db.ChangeTracker.Clear();
+        Assert.True((await f.Db.UserTenants.AsNoTracking().SingleAsync(x => x.UserId == 1 && x.TenantId == WmsFixture.TenantId)).MfaRequired);   // quedó GRABADO en la base
         var blocked = await auth.LoginAsync(new LoginRequest("yo@t.local", Password, WmsFixture.TenantId, null), default);
         Assert.Equal("mfa_required", blocked.Status);
 
         var afterOff = await users.SetMfaRequiredAsync(1, false, default);
         Assert.False(afterOff.MfaRequired);
         Assert.False((await f.Db.UserTenants.AsNoTracking().SingleAsync(x => x.UserId == 1 && x.TenantId == WmsFixture.TenantId)).MfaRequired);
+    }
+
+    [Fact]
+    public async Task The_company_policy_switch_is_saved_in_the_database_both_ways()
+    {
+        await using var f = await WmsFixture.CreateAsync(s => { s.AddSingleton<TenantZoneCache>(); s.AddSingleton<TenantService>(); });
+        var svc = f.Get<TenantService>();
+        TenantSettingsUpdateRequest Req(bool on) => new(null, null, null, null, null, null, null, null, MfaRequired: on, Aal2WindowMinutes: null, SessionDays: null, DeviceSessionDays: null, BrandingJson: null);
+
+        Assert.True((await svc.UpdateSettingsAsync(Req(true), default)).MfaRequired);
+        f.Db.ChangeTracker.Clear();
+        Assert.True((await f.Db.Tenants.AsNoTracking().SingleAsync(x => x.TenantId == WmsFixture.TenantId)).MfaRequired);
+        Assert.True((await svc.GetSettingsAsync(default)).MfaRequired);
+
+        Assert.False((await svc.UpdateSettingsAsync(Req(false), default)).MfaRequired);
+        f.Db.ChangeTracker.Clear();
+        Assert.False((await f.Db.Tenants.AsNoTracking().SingleAsync(x => x.TenantId == WmsFixture.TenantId)).MfaRequired);
+    }
+
+    [Fact]
+    public async Task The_user_list_says_when_the_company_policy_already_requires_mfa_for_everyone()
+    {
+        await using var f = await FixtureAsync();
+        var t = await f.Db.Tenants.SingleAsync(x => x.TenantId == WmsFixture.TenantId);
+        t.MfaRequired = true;
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        var users = f.Get<UserAdminService>();
+
+        // con la política de la compañía encendida, MFA se exige a todos aunque el indicador propio de la persona esté apagado
+        var on = (await users.GetUsersAsync(default)).Single(u => u.Id == 1);
+        Assert.True(on.MfaRequiredByCompany);
+        Assert.False(on.MfaRequired);
+
+        t = await f.Db.Tenants.SingleAsync(x => x.TenantId == WmsFixture.TenantId);
+        t.MfaRequired = false;
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        Assert.False((await users.GetUsersAsync(default)).Single(u => u.Id == 1).MfaRequiredByCompany);
     }
 
     [Fact]

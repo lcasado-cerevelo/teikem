@@ -25424,6 +25424,7 @@ export interface components {
             hasPin?: boolean;
             mfaRequired?: boolean;
             countSeeExpected?: boolean | null;
+            mfaRequiredByCompany?: boolean;
         };
         UserUpdateRequest: {
             fullName?: string | null;
