@@ -7435,3 +7435,19 @@ Es el máximo que carga la pantalla. Acote la vista con filtros o con un rango d
 
 **¿Se puede programar el envío de una vista por correo?**
 Todavía no (queda para una fase posterior). Hoy se abre y se exporta a mano.
+
+## Lote 42 — Aislamiento entre compañías y listas más rápidas (2026-10-12)
+
+Capítulo: [01 §3.6](01-plataforma-y-seguridad.md).
+
+**¿Puede una compañía ver o cambiar datos de otra?**
+No. Cada consulta lleva automáticamente la condición de la compañía de la sesión (sale del token, nunca de la petición). Pedir por id algo de otra compañía responde 404 «no encontrado», sin revelar que existe. Desde el 2026-10-12 esa condición se resuelve con índices (más rápido) y las pruebas automáticas recorren todas las tablas de compañía para comprobar que ninguna consulta sale sin ella.
+
+**Después de actualizar, ¿cambió lo que veo en las listas?**
+No: mismas filas, mismo orden y mismos totales. Cambió la velocidad (lista de órdenes, filtros, «Ordenar todo lo filtrado», Kárdex, saldos) y que el trabajo de una compañía ya no hace esperar a otra.
+
+**La lista de órdenes sigue lenta después de actualizar.**
+Falta aplicar `db-update` en esa base (crea el índice `IX_Order_Tenant_Created` de la sección «2026-10-12 (c)»). Verifique con la simulación (`db-update --dry-run`): si lista «+ Crear índice IX_Order_Tenant_Created», aplíquelo (en una base grande tarda unos segundos y bloquea la tabla de órdenes mientras se crea: hágalo fuera del horario de mayor uso).
+
+**La búsqueda libre de órdenes tarda en la compañía con más órdenes.**
+Es esperado: busca el texto dentro del número de orden, la factura, el empaque y el nombre del consignatario de todas sus órdenes. Para una orden concreta use la búsqueda exacta por código (escanear el empaque o escribir el número completo: `GET /api/v1/orders/lookup`, inmediata) o acote la lista por fechas.

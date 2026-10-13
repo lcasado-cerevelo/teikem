@@ -79,7 +79,7 @@ servidor las rechaza). Sin ninguna de las dos: «Marque «Por servicio» o «Pie
 **Historial.** Las tarifas son efectivo-fechadas: **Editar** crea una *versión nueva* (cierra la vigente en «Vigente desde» y abre otra; nunca se sobrescribe un monto),
 **Quitar** *cierra* (nunca se borra). El interruptor **Ver historial** trae también las filas cerradas (atenuadas, sin acciones).
 
-**«Vigente desde».** Por omisión es hoy (el más reciente entre el día de la compañía y el día del servidor, que usa UTC). En el *alta* de una tarifa puede ser una fecha pasada (para cargar
+**«Vigente desde».** Por omisión es hoy, contado en el día de la compañía (Puerto Rico por omisión), que es el mismo que usa el servidor; por eso, aunque sean más de las 8 p. m., «hoy» sigue siendo hoy. En el *alta* de una tarifa puede ser una fecha pasada (para cargar
 historial); en una *versión nueva* no puede ser anterior a hoy.
 
 ### Tarifas por servicio

@@ -26,6 +26,8 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    pantalla (temas, contraste WCAG, separación de matiz, campos y tamaño) y los **cuatro logos** (lockup y marca cuadrada, cada uno
    con su variante para fondo oscuro; SVG, PNG, JPG o WebP de hasta 512 KB) se guardan en la base y se validan por su contenido real
    (SVG sin contenido activo ni referencias externas), con sus mensajes 400/413/415; y el **409 al repetir un feriado**.
+   Lote 42 (sección 3.6): **aislamiento entre compañías** — cómo se garantiza que cada compañía vea solo lo suyo, por qué desde el
+   2026-10-12 las listas grandes son más rápidas sin cambiar lo que se ve, y qué hacer si la lista de órdenes sigue lenta (`db-update`).
 2. [02 — Clientes y contratos](02-clientes-y-contratos.md): expediente del cliente (alta compuesta, perfil, numeración,
    contactos, estatus, baja), consignatarios y localizaciones (direcciones física/postal, almacenes, compartidas; importación
   de consignatarios por CSV con plantilla, validar → confirmar, Lote 38), contratos

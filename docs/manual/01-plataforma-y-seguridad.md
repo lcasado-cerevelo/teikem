@@ -395,6 +395,27 @@ Cómo se aplica (en el servidor, así que vale para la web, la app y la sincroni
 Casos frecuentes: un usuario con alcance ve listas con menos filas de las que espera → revisar sus alcances
 (`GET /api/v1/users/{id}/data-scopes`); un reporte le muestra totales distintos que a otro usuario → es lo esperado.
 
+### 3.6 Aislamiento entre compañías (cómo se garantiza; Lote 42, 2026-10-12)
+
+Para soporte. Cada consulta del servidor sobre datos de una compañía lleva, de forma automática, la condición «solo filas de la
+compañía de la sesión» (la compañía sale del token de acceso, nunca de la petición); un usuario con alcance de datos (§3.5) lleva además
+la de sus almacenes o clientes. Nadie la escribe a mano en cada pantalla, así que no se puede olvidar.
+
+- Desde el **2026-10-12** esa condición llega a la base de datos en una forma que se resuelve con los índices de la propia compañía:
+  las listas grandes (órdenes, Kárdex, saldos, búsquedas) ya no leen las filas de las demás compañías para descartarlas. **Lo que
+  cada usuario ve no cambió**: mismas filas, mismo orden, mismos totales. Solo cambió la velocidad y que una compañía ya no hace
+  esperar a otra.
+- Pedir por id algo de otra compañía responde **404** («no encontrado»), igual que siempre: no revela que existe.
+- Solo los procesos de plataforma (aprovisionar una compañía, sembradores, migración, inicio de sesión) leen sin esa condición, y
+  únicamente dentro de su paso.
+- Si alguna vez una actualización del servidor no pudiera aplicar la forma rápida, la condición se sigue aplicando completa (más
+  lenta, igual de segura). Las pruebas automáticas recorren todas las tablas de datos de compañía y fallan si una consulta saliera sin ella.
+
+Casos frecuentes: «la lista de órdenes ahora carga mucho más rápido» → esperado tras aplicar `db-update` (índice
+`IX_Order_Tenant_Created`); «la búsqueda libre de órdenes sigue tardando en la compañía grande» → esperado (busca texto dentro de
+números, facturas, empaques y nombres de consignatario de todas sus órdenes); para encontrar una orden concreta es más rápida la búsqueda
+exacta por código (escanear el empaque o escribir el número completo: `GET /api/v1/orders/lookup`).
+
 ---
 
 ## 4. Catálogos (LookupCode / CatalogDomain)
