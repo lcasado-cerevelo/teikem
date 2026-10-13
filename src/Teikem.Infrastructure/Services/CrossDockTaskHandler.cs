@@ -21,7 +21,7 @@ namespace Teikem.Infrastructure.Services;
 /// </summary>
 public sealed class CrossDockTaskHandler(ILookupCache lookups, CrossDockService crossDock, ModuleService modules) : IWarehouseTaskHandler
 {
-    public const string AllocationMissing = "La tarea de cruce de muelle no tiene asignación; no se puede completar.";
+    public const string AllocationMissing = "La tarea de cruce de plataforma no tiene asignación; no se puede completar.";
 
     public string TaskType => WarehouseTaskTypes.CrossDock;
     public string RequiredPermission => PermissionCatalog.WarehouseCrossdock;

@@ -194,7 +194,7 @@
     },
     "receipts": {
       "title": "Recibo",
-      "subtitle": "ASN, muelle y verificación de lo que entra"
+      "subtitle": "ASN, plataforma y verificación de lo que entra"
     },
     "cycleCounts": {
       "title": "Conteo cíclico",
@@ -213,8 +213,8 @@
       "subtitle": "órdenes de compra a proveedores: líneas, estatus y faltantes"
     },
     "crossDockPlans": {
-      "title": "Cruce de muelle",
-      "subtitle": "de muelle a muelle sin guardar"
+      "title": "Cruce de plataforma",
+      "subtitle": "de plataforma a plataforma sin guardar"
     },
     "purchaseAccounting": {
       "title": "Contabilización de compras",
@@ -625,7 +625,7 @@
       "editTitle": "Nueva versión de la tarifa",
       "newType": "+ Nuevo tipo de servicio especial…",
       "newTypeName": "Nombre del nuevo servicio especial",
-      "newTypePh": "ej. Vagón del muelle",
+      "newTypePh": "ej. Vagón de la plataforma",
       "newTypeHelp": "El tipo queda disponible para todos los clientes de la compañía.",
       "empty": "Este cliente no tiene servicios especiales todavía.",
       "removeTitle": "Quitar el servicio especial",
@@ -3477,7 +3477,7 @@
       "city": "Ciudad",
       "zones": "Zonas",
       "bins": "Posiciones",
-      "docks": "Muelles",
+      "docks": "Plataformas",
       "onHand": "En mano",
       "status": "Estatus",
       "show": "Mostrar",
@@ -3723,7 +3723,7 @@
       "tabProfile": "Datos",
       "tabZones": "Zonas",
       "tabBins": "Posiciones",
-      "tabDocks": "Muelles",
+      "tabDocks": "Plataformas",
       "code": "Código",
       "codeHelp": "El código del almacén no se puede cambiar.",
       "name": "Nombre",
@@ -3741,7 +3741,7 @@
       "receivingChangeBody": "Los recibos nuevos de {code} entrarán {mode}. Los {open} recibos abiertos conservan su modo y los {pending} recibos con acomodo pendiente siguen igual.",
       "receivingChangeConfirm": "Cambiar el modo",
       "defaultReceivingBin": "Posición de recepción por defecto",
-      "defaultReceivingBinHelp": "Zona STAGING o CROSSDOCK de este almacén. Vacío: la primera posición de recepción. Se usa en los recibos con acomodo y en las líneas con cruce de muelle.",
+      "defaultReceivingBinHelp": "Zona STAGING o CROSSDOCK de este almacén. Vacío: la primera posición de recepción. Se usa en los recibos con acomodo y en las líneas con cruce de plataforma.",
       "defaultReceivingBinNone": "La primera de recepción"
     },
     "zones": {
@@ -3900,28 +3900,28 @@
       }
     },
     "docks": {
-      "title": "Muelles",
-      "count": "{count} muelles",
-      "new": "Nuevo muelle",
+      "title": "Plataformas",
+      "count": "{count} plataformas",
+      "new": "Nueva plataforma",
       "code": "Código",
       "type": "Tipo",
       "status": "Estatus",
       "active": "Activo",
       "inactive": "Inactivo",
       "includeInactive": "Incluir inactivos",
-      "codeHelp": "El código del muelle no se puede cambiar.",
+      "codeHelp": "El código de la plataforma no se puede cambiar.",
       "edit": "Editar",
       "changeStatus": "Cambiar estatus",
       "deactivate": "Dar de baja",
       "reactivate": "Reactivar",
-      "deactivateTitle": "Dar de baja el muelle",
-      "deactivateBody": "El muelle {code} quedará inactivo.",
-      "reactivateTitle": "Reactivar el muelle",
-      "reactivateBody": "El muelle {code} volverá a estar disponible.",
-      "created": "Muelle creado.",
+      "deactivateTitle": "Dar de baja la plataforma",
+      "deactivateBody": "La plataforma {code} quedará inactiva.",
+      "reactivateTitle": "Reactivar la plataforma",
+      "reactivateBody": "La plataforma {code} volverá a estar disponible.",
+      "created": "Plataforma creada.",
       "saved": "Cambios guardados.",
-      "deactivated": "Muelle dado de baja.",
-      "reactivated": "Muelle reactivado.",
+      "deactivated": "Plataforma dada de baja.",
+      "reactivated": "Plataforma reactivada.",
       "errors": {
         "codeRequired": "El código es obligatorio."
       }
@@ -4221,7 +4221,7 @@
     },
     "inventory": {
       "title": "Kárdex de movimientos",
-      "subtitle": "El ledger: fuente de verdad del stock (cada recepción, despacho, transferencia, ajuste y cruce de muelle escribe aquí)",
+      "subtitle": "El ledger: fuente de verdad del stock (cada recepción, despacho, transferencia, ajuste y cruce de plataforma escribe aquí)",
       "tabBalances": "Saldos",
       "tabKardex": "Kárdex",
       "tabReconciliation": "Conciliación",
@@ -4675,8 +4675,8 @@
       }
     },
     "dockAppointments": {
-      "title": "Citas de muelle",
-      "subtitle": "Agenda de citas de muelle del almacén (demo de cruce de muelle).",
+      "title": "Citas de plataforma",
+      "subtitle": "Agenda de citas de plataforma del almacén (demo de cruce de plataforma).",
       "count": "{count} citas",
       "new": "Nueva cita",
       "created": "Cita agendada.",
@@ -4684,7 +4684,7 @@
       "reprogram": "Reprogramar",
       "changeStatus": "Cambiar estatus",
       "columns": {
-        "dock": "Muelle",
+        "dock": "Plataforma",
         "direction": "Dirección",
         "start": "Inicio",
         "end": "Fin",
@@ -4694,15 +4694,15 @@
       "filters": {
         "warehouse": "Almacén",
         "anyWarehouse": "Cualquier almacén",
-        "dock": "Muelle",
-        "anyDock": "Cualquier muelle",
+        "dock": "Plataforma",
+        "anyDock": "Cualquier plataforma",
         "status": "Estatus",
         "range": "Fecha"
       },
       "fields": {
         "warehouse": "Almacén",
-        "dock": "Muelle",
-        "selectDock": "Seleccione un muelle…",
+        "dock": "Plataforma",
+        "selectDock": "Seleccione una plataforma…",
         "direction": "Dirección",
         "start": "Inicio programado",
         "end": "Fin programado",
@@ -4718,21 +4718,21 @@
         "selectDirection": "Seleccione la dirección…"
       },
       "errors": {
-        "dockRequired": "Indique el muelle.",
+        "dockRequired": "Indique la plataforma.",
         "startRequired": "Indique el inicio programado.",
         "directionRequired": "Indique la dirección de la cita (entrada o salida).",
         "asnInboundOnly": "Una cita de un aviso de llegada debe ser de entrada (INBOUND)."
       }
     },
     "crossDockPlans": {
-      "title": "Cruce de muelle",
-      "subtitle": "Planes de cruce de muelle: asignan líneas de recibo a órdenes sin pasar por posiciones de reserva.",
+      "title": "Cruce de plataforma",
+      "subtitle": "Planes de cruce de plataforma: asignan líneas de recibo a órdenes sin pasar por posiciones de reserva.",
       "tabs": {
         "plans": "Planes",
-        "appointments": "Citas de muelle",
+        "appointments": "Citas de plataforma",
         "tasks": "Tareas de cruce"
       },
-      "tasksTitle": "Tareas de cruce de muelle",
+      "tasksTitle": "Tareas de cruce de plataforma",
       "count": "{count} planes",
       "new": "Nuevo plan",
       "created": "Plan creado.",
@@ -4741,7 +4741,7 @@
       "completeBody": "Si quedan asignaciones pendientes de mover, el servidor rechazará la acción.",
       "completed": "Plan completado.",
       "notFound": "El plan no existe o no pertenece a su compañía.",
-      "back": "Volver a cruce de muelle",
+      "back": "Volver a cruce de plataforma",
       "columns": {
         "number": "Plan",
         "warehouse": "Almacén",
@@ -4944,7 +4944,7 @@
         "meta": {
           "warehouse": "Almacén",
           "staging": "Recepción",
-          "dock": "Muelle",
+          "dock": "Plataforma",
           "carrier": "Transporte",
           "reference": "Referencia",
           "expectedDate": "Llegada esperada",
@@ -5029,8 +5029,8 @@
         "source": "Origen",
         "carrier": "Transporte",
         "reference": "Referencia",
-        "dock": "Muelle",
-        "noDock": "Sin muelle",
+        "dock": "Plataforma",
+        "noDock": "Sin plataforma",
         "readOnlyNote": "El recibo ya está confirmado: su encabezado no se puede cambiar.",
         "documentNote": "Con aviso de llegada u orden de compra, el origen, el almacén y lo esperado vienen del documento.",
         "warehouseFixedNote": "El almacén solo se cambia en un recibo sin documento y sin líneas.",
@@ -5055,7 +5055,7 @@
         "tasksTitle": "Tareas de acomodo",
         "select": "Selecciona un recibo para ver sus tareas de acomodo",
         "noTasks": "Este recibo no tiene tareas de acomodo.",
-        "directInfo": "{code} recibe directo a posición: aquí solo aparecen recibos anteriores al cambio o con cruce de muelle."
+        "directInfo": "{code} recibe directo a posición: aquí solo aparecen recibos anteriores al cambio o con cruce de plataforma."
       },
       "chip": {
         "direct": "Directo a posición"
@@ -5693,7 +5693,7 @@
         "receipt": "Recibo",
         "pick": "Recolección",
         "purchase": "Compra",
-        "crossdock": "Cruce de muelle",
+        "crossdock": "Cruce de plataforma",
         "order": "Orden",
         "other": "Otro documento"
       }
@@ -5973,7 +5973,7 @@
       "recoverBody": "Se sacan {qty} de {sku} de {bin} y vuelven a una posición de guardado.",
       "discarded": "{code}: salida registrada.",
       "recovered": "{code} recuperado.",
-      "toBinHelp": "Una posición de guardado (no de cuarentena, recepción, cruce de muelle ni renta).",
+      "toBinHelp": "Una posición de guardado (no de cuarentena, recepción, cruce de plataforma ni renta).",
       "fields": {
         "origin": "¿Dónde se detectó?",
         "warehouse": "Almacén",
@@ -6837,7 +6837,7 @@
       "clear": "Quitar selección",
       "selected": "{count} elegida(s)",
       "more": "y {count} más: use el buscador.",
-      "hidden": "{count} serie(s) en zonas que no se rentan (cuarentena o cruce de muelle) no se muestran.",
+      "hidden": "{count} serie(s) en zonas que no se rentan (cuarentena o cruce de plataforma) no se muestran.",
       "rate": "Tarifa para estos equipos (opcional)",
       "add": "Agregar {count} equipo(s)",
       "remove": "Quitar equipo",

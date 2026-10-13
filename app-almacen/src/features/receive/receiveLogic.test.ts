@@ -237,7 +237,7 @@ describe('validateTargetBin', () => {
     expect(validateTargetBin('QUA-01', BINS)).toEqual({ ok: true, code: 'QUA-01' })
   })
 
-  it('rechaza recepción (STAGING) y cruce de muelle (CROSSDOCK)', () => {
+  it('rechaza recepción (STAGING) y cruce de plataforma (CROSSDOCK)', () => {
     expect(validateTargetBin('STG-01', BINS)).toEqual({ ok: false, reason: 'notStorage' })
     expect(validateTargetBin('XD-01', BINS)).toEqual({ ok: false, reason: 'notStorage' })
   })

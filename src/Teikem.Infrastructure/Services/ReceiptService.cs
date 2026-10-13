@@ -1087,7 +1087,7 @@ public sealed class ReceiptService(
                             join w in db.Set<Warehouse>().AsNoTracking() on d.WarehouseId equals w.WarehouseId
                             where d.WarehouseDockId == dockId && d.WarehouseId == warehouseId
                             select d.WarehouseDockId).AnyAsync(ct);
-        if (!dockOk) throw new NotFoundException("Muelle");
+        if (!dockOk) throw new NotFoundException("Plataforma");
     }
 
     /// <summary>Regla de dueño de las líneas extra: aviso de cliente → productos de ese cliente; orden de compra → propios; sin documento → cualquiera.</summary>

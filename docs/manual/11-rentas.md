@@ -86,7 +86,7 @@ serie**: cada equipo es **una serie**. Si los equipos llegaron sin serie (Advanc
 - `lines` es opcional: los equipos se pueden agregar después. Cada renglón es un producto y sus números de serie (una línea por serie);
   `rate` es opcional (la tarifa no es obligatoria para programar).
 - La renta nace en **Borrador** y **no reserva** nada: el equipo sigue disponible hasta programarla.
-- Cada serie debe estar **Disponible** en una posición **recolectable** del almacén de origen (no en cuarentena, cruce de muelle ni
+- Cada serie debe estar **Disponible** en una posición **recolectable** del almacén de origen (no en cuarentena, cruce de plataforma ni
   En renta) y **no** puede estar en otra renta abierta (Borrador, Programada o En renta).
 - Respuesta 200: la ficha (sección 2.6).
 

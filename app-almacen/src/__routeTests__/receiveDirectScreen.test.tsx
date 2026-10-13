@@ -83,7 +83,7 @@ describe('Recibir — directo a posición', () => {
     // Posición de recepción: rechazada, la línea no se agrega.
     await fireEvent(screen.getByLabelText('Escanea la posición destino'), 'submitEditing', { nativeEvent: { text: 'STG-01' } })
     await waitFor(() =>
-      expect(screen.getByText('Esa posición es de recepción o de cruce de muelle; escanea dónde se guarda.')).toBeTruthy(),
+      expect(screen.getByText('Esa posición es de recepción o de cruce de plataforma; escanea dónde se guarda.')).toBeTruthy(),
     )
     // Una que no existe en el almacén.
     await fireEvent(screen.getByLabelText('Escanea la posición destino'), 'submitEditing', { nativeEvent: { text: 'ZZ-99' } })

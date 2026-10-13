@@ -41,7 +41,7 @@ de las capturas son los de la demo del día en que se tomaron (por eso cambian d
 
   ![Kárdex abierto desde Unidades recibidas: tipo Recepción, del 24/09/2026 al 30/09/2026 y el resumen de entradas](img/l15-franja-kardex-recibidas.png)
 
-- **Unidades de salida** → Kárdex con los tipos **Despacho** y **Cruce de muelle** y los 7 días.
+- **Unidades de salida** → Kárdex con los tipos **Despacho** y **Cruce de plataforma** y los 7 días.
 - **Conteos con diferencia** → Conteo cíclico con el estatus **Diferencia** ya elegido (sin fechas). La lista trae los conteos en Diferencia y
   el primero abierto a la derecha.
 
@@ -130,7 +130,7 @@ un producto puntual está bajo su mínimo, sin ir a la pantalla de Inventario.
 
 Una fila de filtros y, debajo, seis tarjetas: **En mano**, **Disponible** (con "Reservado: en mano − disponible"),
 **Bajo mínimo**, **Recibos abiertos**, **Tareas pendientes** (con el desglose por tipo: Putaway, Reabasto, Conteo,
-Cruce de muelle) y **Conteos abiertos** (Pendientes y Contados; ver "Conteos abiertos" más abajo). Las tres últimas llevan la marca **almacén**: solo reciben el filtro de
+Cruce de plataforma) y **Conteos abiertos** (Pendientes y Contados; ver "Conteos abiertos" más abajo). Las tres últimas llevan la marca **almacén**: solo reciben el filtro de
 almacén, nunca el de categoría o producto (el texto de la cabecera del panel lo aclara, y pasar el mouse o el foco
 sobre la marca muestra "Solo aplica el filtro de almacén (no el de categoría o producto)."). Estas tarjetas no
 tienen el botón "Rango" de las demás: son saldo actual, no de un período.
@@ -316,7 +316,7 @@ solo revisa lo que ya está cargado en pantalla (según la ventana de tiempo y l
 fuera de esa ventana, cambie a "48 h" o cargue más con "Ver más" antes de buscar.
 
 **¿Por qué el Kárdex que abro desde "Unidades de salida" suma distinto que la tarjeta?** Porque la tarjeta es un neto y el Kárdex filtra por
-tipo: las recolecciones eliminadas restan en la tarjeta, pero en el Kárdex son un ajuste que el filtro (Despacho y Cruce de muelle) no incluye.
+tipo: las recolecciones eliminadas restan en la tarjeta, pero en el Kárdex son un ajuste que el filtro (Despacho y Cruce de plataforma) no incluye.
 Igual con "Unidades recibidas": las diferencias de recibo suman en la tarjeta y salen aparte en el Kárdex. Ver la [FAQ del Lote 15](../faq.md).
 
 **Toco "Conteos con diferencia" y veo más conteos que el número, ¿por qué?** El enlace abre el Conteo cíclico con el estatus Diferencia y sin

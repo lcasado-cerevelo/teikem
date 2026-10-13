@@ -150,9 +150,9 @@ public static class InventoryQueries
             RequireTransaction(db, nameof(LockCrossDockPlanAsync));
             var tenantId = db.CurrentTenantId;
             await RequireLockedAsync(db.Database.SqlQuery<int>($"SELECT CrossDockPlanId AS Value FROM dbo.CrossDockPlan WITH (UPDLOCK, ROWLOCK) WHERE CrossDockPlanId = {crossDockPlanId} AND TenantId = {tenantId}"),
-                () => new NotFoundException("Plan de cruce de muelle"), ct);
+                () => new NotFoundException("Plan de cruce de plataforma"), ct);
         }
-        return await LoadTrackedAsync(db, db.CrossDockPlans.Where(x => x.CrossDockPlanId == crossDockPlanId), () => new NotFoundException("Plan de cruce de muelle"), ct);
+        return await LoadTrackedAsync(db, db.CrossDockPlans.Where(x => x.CrossDockPlanId == crossDockPlanId), () => new NotFoundException("Plan de cruce de plataforma"), ct);
     }
 
     /// <summary>(8) Conteo cíclico con UPDLOCK, tracked. 404 'Conteo no encontrado.'</summary>
@@ -285,13 +285,13 @@ public static class InventoryQueries
             RequireTransaction(db, nameof(LockDockAsync));
             var tenantId = db.CurrentTenantId;
             await RequireLockedAsync(db.Database.SqlQuery<int>($"SELECT d.WarehouseDockId AS Value FROM dbo.WarehouseDock d WITH (UPDLOCK, ROWLOCK) JOIN dbo.Warehouse w ON w.WarehouseId = d.WarehouseId WHERE d.WarehouseDockId = {dockId} AND d.WarehouseId = {warehouseId} AND w.TenantId = {tenantId}"),
-                () => new NotFoundException("Muelle"), ct);
+                () => new NotFoundException("Plataforma"), ct);
         }
         var q = from d in db.WarehouseDocks
                 join w in db.Warehouses on d.WarehouseId equals w.WarehouseId
                 where d.WarehouseDockId == dockId && d.WarehouseId == warehouseId
                 select d;
-        return await LoadTrackedAsync(db, q, () => new NotFoundException("Muelle"), ct);
+        return await LoadTrackedAsync(db, q, () => new NotFoundException("Plataforma"), ct);
     }
 
     // ================================================================ (16) series

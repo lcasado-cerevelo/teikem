@@ -308,7 +308,7 @@ Cómo se usa (en un almacén directo):
 2. Aparece el paso **Escanea la posición destino**, con el nombre del producto y la cantidad. Se escanea (o se escribe) la posición donde se deja la mercancía.
 3. Si hay señal, arriba del campo aparece la pista **Sugerida: {posición}** (la primera sugerida por el servidor para ese producto y esa cantidad). **Nada se llena solo**: hay que escanear la
    posición, sea la sugerida o no. Sin señal, la pista no aparece y la captura sigue igual.
-4. La app **valida sin señal** la posición contra las posiciones que tiene guardadas del almacén: que exista, que esté activa y que no sea de recepción (`STAGING`) ni de cruce de muelle
+4. La app **valida sin señal** la posición contra las posiciones que tiene guardadas del almacén: que exista, que esté activa y que no sea de recepción (`STAGING`) ni de cruce de plataforma
    (`CROSSDOCK`). La **cuarentena sí** vale. Si es válida, la línea se agrega y se ve con **→ {posición}** (por ejemplo, `8 SKU-1` con `LOTE-A · → R-02`).
 5. **Volver** regresa a la cantidad; **Cancelar** descarta la línea que se estaba capturando.
 6. **Confirmar recibo** se apaga mientras alguna línea no tenga posición destino. Bajo el botón dice: "Cierra el recibo y deja cada línea en su posición destino, sin tareas de acomodo."
@@ -325,7 +325,7 @@ Campos y validaciones (recibo directo):
 | Pista con señal | `Sugerida: {bin}` | API (`GET /api/v1/warehouse-tasks/putaway-suggestions`, una sola sugerencia) |
 | Línea ya agregada | `→ {bin}` | Local |
 | La posición no existe en el almacén del aparato | `La posición no existe en este almacén.` | Local (posiciones descargadas) |
-| La posición es de recepción o de cruce de muelle | `Esa posición es de recepción o de cruce de muelle; escanea dónde se guarda.` | Local |
+| La posición es de recepción o de cruce de plataforma | `Esa posición es de recepción o de cruce de plataforma; escanea dónde se guarda.` | Local |
 | La posición está desactivada | `Esa posición está desactivada; escanea otra.` | Local |
 | El aparato no tiene ninguna posición de este almacén guardada | `El aparato todavía no tiene las posiciones de este almacén. Sincroniza con señal e intenta de nuevo.` | Local |
 | Mismo producto con dos destinos en un recibo con aviso u orden de compra (título del aviso al confirmar: `No se puede enviar así`) | `Ya se capturó {sku} con destino {bin}; en un recibo con aviso u orden de compra cada línea entra a una sola posición.` | Local (repite la regla del servidor) |
@@ -522,7 +522,7 @@ recolectadas (la posición de origen sigue guardada como texto, se vuelve a reso
 
 **Posición sugerida.** Al elegir el producto, el cursor cae en la **Cantidad**. La app usa el **orden de salida del servidor** (`GET /api/v1/inventory/exit-options`, `inventory.view`): por producto, lo
 **disponible** (en mano − reservado) por posición y lote, con su `rank` (1 = sale primero). Es la **misma regla de la recolección** (vence primero, luego tipo de zona —picking, reserva, refrigerada,
-preparación— y código de posición; nunca cuarentena, cruce de muelle ni posiciones inactivas): **vive solo en el servidor**, la app no ordena nada, solo sigue el `rank` y descuenta lo que este despacho ya sacó.
+preparación— y código de posición; nunca cuarentena, cruce de plataforma ni posiciones inactivas): **vive solo en el servidor**, la app no ordena nada, solo sigue el `rank` y descuenta lo que este despacho ya sacó.
 - **Producto sin lote:** recuadro **Sugerida: P-01** (con disponible) y el botón **Usar P-01**; es una ayuda: se puede escanear **cualquier otra** posición.
 - **Producto con lote:** la posición **no es opcional**: **Debe salir de A-01** (lote, vencimiento y disponible). Escanear otra da `Este producto lleva lote y sale primero el que vence antes: debe salir de {bin} ({detalle}).`;
   pedir más de lo que hay ahí da `En {bin} solo hay {n} disponible. Escribe {n} (o menos) y luego escanea la posición; para el resto, la siguiente.`

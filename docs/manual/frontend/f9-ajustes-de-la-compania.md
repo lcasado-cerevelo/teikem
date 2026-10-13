@@ -33,7 +33,7 @@ vuelve a lo guardado; cambiar de pestaña sin guardar descarta el borrador de es
 - Las listas, fichas, historiales de estatus, Kárdex, Pulso, la oración de filtros de las exportaciones ("del 09/01/2026 al
   09/30/2026"), los PDF y el nombre de los archivos exportados usan estos formatos. El Excel sigue guardando las fechas como
   fecha (`aaaa-mm-dd`), para que el programa las lea como tales.
-- Las citas de muelle, "Conteo de lo cambiado" y los campos personalizados de fecha y hora se escriben en la hora de la
+- Las citas de plataforma, "Conteo de lo cambiado" y los campos personalizados de fecha y hora se escriben en la hora de la
   compañía (antes, las citas y los campos personalizados usaban la hora de la computadora).
 - **Al guardar** Región y formatos, toda la aplicación cambia **en el momento, sin recargar** (para todos los usuarios de la
   compañía cuando su pantalla vuelve a leer los ajustes: se consideran vigentes 10 minutos y después se piden de nuevo al

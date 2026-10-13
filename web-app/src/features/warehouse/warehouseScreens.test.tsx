@@ -267,10 +267,10 @@ describe('Tareas y citas dentro de las pantallas de la maqueta (Fase 3)', () => 
 
   // Recolección → 'Reabasto': en PickBatchScreen.test.tsx (Lote 13).
 
-  it("Cruce de muelle tiene la pestaña 'Citas de muelle'; 'Tareas de cruce' solo con WMS_LOTSERIAL", async () => {
+  it("Cruce de plataforma tiene la pestaña 'Citas de plataforma'; 'Tareas de cruce' solo con WMS_LOTSERIAL", async () => {
     const user = userEvent.setup()
     wrap(<CrossDockPlanListScreen />, ['inventory.view', 'warehouse.crossdock'], ['CROSSDOCK'], '/warehouse/cross-dock-plans', '/warehouse/cross-dock-plans')
-    await user.click(await screen.findByRole('tab', { name: 'Citas de muelle' }))
+    await user.click(await screen.findByRole('tab', { name: 'Citas de plataforma' }))
     await waitFor(() => expect(mock.requests.some((u) => u.pathname === '/api/v1/dock-appointments')).toBe(true))
     expect(screen.queryByRole('tab', { name: 'Tareas de cruce' })).toBeNull()
   })

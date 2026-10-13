@@ -56,26 +56,26 @@ public static class WarehouseRules
     /// </summary>
     public const string ZoneWarehouseImmutableMessage = "La zona no se puede mover a otro almacén.";
     public const string BinCodeImmutableMessage = "El código y la zona de la posición no se pueden cambiar.";
-    public const string DockCodeImmutableMessage = "El código del muelle no se puede cambiar.";
+    public const string DockCodeImmutableMessage = "El código de la plataforma no se puede cambiar.";
     public const string ZoneRequiredMessage = "Indique la zona de la posición.";
-    public const string DockTypeRequiredMessage = "Indique el tipo de muelle (INBOUND, OUTBOUND o BOTH).";
-    public const string DockStatusRequiredMessage = "Indique el estatus del muelle (FREE, OCCUPIED o MAINTENANCE).";
+    public const string DockTypeRequiredMessage = "Indique el tipo de plataforma (INBOUND, OUTBOUND o BOTH).";
+    public const string DockStatusRequiredMessage = "Indique el estatus de la plataforma (FREE, OCCUPIED o MAINTENANCE).";
 
     public const string DuplicateWarehouseMessage = "Ya existe un almacén con ese código.";
     public const string DuplicateZoneMessage = "Ya existe una zona con ese código en el almacén.";
     public const string DuplicateBinMessage = "Ya existe una posición con ese código en el almacén.";
     /// <summary>Lote 21: confirmar una posición que no es provisional.</summary>
     public const string BinNotProvisional = "La posición no está pendiente de revisión.";
-    public const string DuplicateDockMessage = "Ya existe un muelle con ese código en el almacén.";
+    public const string DuplicateDockMessage = "Ya existe una plataforma con ese código en el almacén.";
 
     public const string ZoneHasActiveBins = "La zona tiene posiciones activas; desactívelas primero.";
-    public const string DockHasAppointments = "El muelle tiene citas agendadas o en curso.";
+    public const string DockHasAppointments = "La plataforma tiene citas agendadas o en curso.";
     public const string MaxWeight = "La capacidad de peso debe ser mayor que cero.";
     public const string MaxWeightPrecision = "La capacidad de peso admite como máximo 9 enteros y 3 decimales.";
     public const string MaxCapacityQtyMessage = "El cupo máximo de la posición debe ser mayor que cero.";
     public const string WarehouseInactiveMessage = "El almacén está dado de baja; solo se consulta.";
     public const string ZoneInactiveMessage = "La zona está inactiva; reactívela primero.";
-    public const string DockInactiveMessage = "El muelle está inactivo; reactívelo primero.";
+    public const string DockInactiveMessage = "La plataforma está inactiva; reactívela primero.";
     public const string BinHasOpenTasks = "La posición tiene tareas de almacén abiertas; complételas o cancélelas antes de desactivarla.";
 
     /// <summary>409 'El almacén {code} tiene inventario o documentos abiertos; no se puede dar de baja.' (Errors por tipo).</summary>
@@ -102,13 +102,13 @@ public static class WarehouseRules
     public static string UnknownZoneType(string? zoneType) => $"Tipo de zona desconocido: '{zoneType}'.";
 
     /// <summary>400 'Tipo de muelle desconocido: '{x}'.'</summary>
-    public static string UnknownDockType(string? dockType) => $"Tipo de muelle desconocido: '{dockType}'.";
+    public static string UnknownDockType(string? dockType) => $"Tipo de plataforma desconocido: '{dockType}'.";
 
     /// <summary>400 'País desconocido: '{x}'.'</summary>
     public static string UnknownCountry(string? country) => $"País desconocido: '{country}'.";
 
     /// <summary>400 'Estatus de muelle no permitido: '{x}'. Use FREE, OCCUPIED o MAINTENANCE.'</summary>
-    public static string DockStatusNotManual(string? status) => $"Estatus de muelle no permitido: '{status}'. Use FREE, OCCUPIED o MAINTENANCE.";
+    public static string DockStatusNotManual(string? status) => $"Estatus de plataforma no permitido: '{status}'. Use FREE, OCCUPIED o MAINTENANCE.";
 
     /// <summary>400 '{campo} admite como máximo {n} caracteres.'</summary>
     public static string TooLong(string field, int max) => $"{field} admite como máximo {max.ToString(CultureInfo.InvariantCulture)} caracteres.";
@@ -288,8 +288,8 @@ public static class WarehouseRules
         if (u.OpenCycleCounts > 0) errors["cycleCounts"] = new[] { $"Conteos cíclicos sin reconciliar: {u.OpenCycleCounts}." };
         if (u.OpenTasks > 0) errors["tasks"] = new[] { $"Tareas de almacén abiertas: {u.OpenTasks}." };
         if (u.CollectedPickBatches > 0) errors["pickBatches"] = new[] { $"Recolecciones sin empacar o con orden en etapa inicial: {u.CollectedPickBatches}." };
-        if (u.OpenCrossDockPlans > 0) errors["crossDockPlans"] = new[] { $"Planes de cruce de muelle abiertos: {u.OpenCrossDockPlans}." };
-        if (u.ActiveAppointments > 0) errors["appointments"] = new[] { $"Citas de muelle agendadas o en curso: {u.ActiveAppointments}." };
+        if (u.OpenCrossDockPlans > 0) errors["crossDockPlans"] = new[] { $"Planes de cruce de plataforma abiertos: {u.OpenCrossDockPlans}." };
+        if (u.ActiveAppointments > 0) errors["appointments"] = new[] { $"Citas de plataforma agendadas o en curso: {u.ActiveAppointments}." };
         return errors;
     }
 

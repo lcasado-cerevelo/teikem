@@ -3,7 +3,7 @@
 Este capítulo describe Almacenes y ubicaciones, Productos y categorías, Inventario (saldos, Kárdex con resumen y detalle, ajustes,
 transferencias, conciliación automática con descuadres, genealogía y rastro de serie), Recepción (avisos de llegada y recibos, incluida la
 recepción contra una orden de compra), la cola de Tareas de almacén (putaway dirigido y reabasto), Conteo cíclico,
-Recolección y empaque ad hoc, Compras mínimas (proveedores, órdenes de compra y faltantes) y Cruce de muelle (citas
+Recolección y empaque ad hoc, Compras mínimas (proveedores, órdenes de compra y faltantes) y Cruce de plataforma (citas
 y planes, en modo demo). Cada sección indica **qué hace**, **quién puede**, **cómo se usa**, las **validaciones**
 con el mensaje exacto y el código HTTP, y los **estatus** con sus transiciones y efectos. Los mensajes están
 verificados contra el código (`src/Teikem.Domain/Wms/*.cs`, `src/Teikem.Infrastructure/Wms/*.cs`,
@@ -34,7 +34,7 @@ Convenciones del capítulo:
   del Lote 8.
 - `InventoryLedger` es la **única** vía de escritura de `StockBalance`, `InventoryTransaction` y del estatus/
   ubicación de `InventorySerial`. `InventoryTransaction.Quantity` se guarda **con signo**: una recepción entra en
-  positivo, un despacho o un cruce de muelle salen en negativo, un ajuste entra o sale según lo capturado, y una
+  positivo, un despacho o un cruce de plataforma salen en negativo, un ajuste entra o sale según lo capturado, y una
   transferencia es una sola fila con origen y destino distintos. Los servicios siempre pasan la **magnitud**
   (mayor que cero); el ledger decide el signo.
 - Un error de validación responde `400` con `title` y, cuando aplica, `errors` (`{ campo: [mensaje] }`); un
@@ -44,7 +44,7 @@ Convenciones del capítulo:
   módulo apagado `403` `module_disabled` (`El módulo '{clave}' no está habilitado para esta compañía.`).
 - Módulos: **WMS_LOTSERIAL** (encendido por defecto) cubre almacenes, productos, inventario, recepción, tareas,
   conteo y recolección. **PURCHASING** (encendido por defecto) cubre proveedores, órdenes de compra y faltantes.
-  **CROSSDOCK** (apagado por defecto, demo) cubre citas de muelle y planes de cruce de muelle; el tenant lo
+  **CROSSDOCK** (apagado por defecto, demo) cubre citas de plataforma y planes de cruce de plataforma; el tenant lo
   enciende desde Configuración de la compañía (acción sensible, exige reautenticación reciente).
 - "Dueño del producto" (`Product.ClientId`, un cliente 3PL o `NULL` = propio del tenant) es un concepto distinto
   del tenant (`TenantId`, quién es dueño de los **datos**). "Recibo" es `ReceiptHeader`/`ReceiptLine`; "Ubicación" o
@@ -59,7 +59,7 @@ Convenciones del capítulo:
 ## 1. Almacenes y ubicaciones
 
 Qué hace: mantiene el almacén y su jerarquía física — zonas tipadas, posiciones (pasillo-rack-nivel-posición) y
-muelles. El almacén nace **ACTIVE** y su baja es **definitiva** (estatus terminal): solo procede vacío y sin
+plataformas. El almacén nace **ACTIVE** y su baja es **definitiva** (estatus terminal): solo procede vacío y sin
 documentos abiertos. Con un único almacén activo, las demás pantallas lo usan por defecto; con más de uno, hay que
 indicarlo. Desde el Lote 11 (cambios de Almacén, tanda 1) además: cada posición puede tener un **cupo máximo** en
 unidades y, con él, un estado de **ocupación**; cada zona muestra su ocupación (calculada, no guardada); el **código de
@@ -68,14 +68,14 @@ posición; y hay un **catálogo de localidades postales** para llenar la ciudad,
 del almacén. Desde el Lote 16, cada almacén tiene además un **modo de recepción** (con acomodo o directo a posición) y una **posición de recepción
 por defecto** (sección 1.4); el recibo directo se describe en la sección 4.1.
 
-Quién puede: `inventory.view` (listar y consultar almacenes, zonas, posiciones y muelles); `warehouse.manage`
-(alta, edición, baja/reactivación de almacén, zonas, posiciones y muelles, y el estatus manual del muelle). Módulo
+Quién puede: `inventory.view` (listar y consultar almacenes, zonas, posiciones y plataformas); `warehouse.manage`
+(alta, edición, baja/reactivación de almacén, zonas, posiciones y plataformas, y el estatus manual de la plataforma). Módulo
 **WMS_LOTSERIAL**. El catálogo de localidades postales (`GET /api/v1/postal-localities`) solo pide una sesión
 iniciada: no exige permiso ni módulo.
 
 Cómo se usa:
 - `GET /api/v1/warehouses?includeInactive=` — por defecto solo los activos, con conteos de zonas/posiciones/
-  muelles, existencia y `zoneTypeCodes` (códigos de tipo de zona **distintos** de sus zonas activas, ordenados; una zona
+  plataformas, existencia y `zoneTypeCodes` (códigos de tipo de zona **distintos** de sus zonas activas, ordenados; una zona
   sin tipo no aporta código).
 - `POST /api/v1/warehouses` — `{ "code": "ALM-02", "name": "Almacén secundario", "line1": "...", "city": "Toa Baja",
   "state": "PR", "postalCode": "00949", "country": "PR" }`. El país por defecto es `PR`. La ciudad, el estado y el
@@ -90,7 +90,7 @@ Cómo se usa:
 - Posiciones: `GET/POST /api/v1/warehouses/{publicId}/bins` (filtros en la sección 1.2),
   `PATCH .../bins/{binId}` (`{ "aisle": "A9", "maxCapacityQty": 40 }`; `"clearMaxCapacity": true` quita el cupo),
   `POST .../bins/{binId}/deactivate|reactivate`.
-- Muelles: `GET/POST /api/v1/warehouses/{publicId}/docks`, `PATCH .../docks/{dockId}`, `POST .../docks/{dockId}/
+- Plataformas: `GET/POST /api/v1/warehouses/{publicId}/docks`, `PATCH .../docks/{dockId}`, `POST .../docks/{dockId}/
   status` (estatus manual), `POST .../docks/{dockId}/deactivate|reactivate`.
 - Localidades postales: `GET /api/v1/postal-localities?search=&take=` (sección 1.3).
 
@@ -232,7 +232,7 @@ recibos **nuevos**: cada recibo guarda el modo con que se abrió (sección 4.1).
 recibos que ya estaban abiertos siguen como se abrieron y las tareas de acomodo siguen su curso.
 
 **Posición de recepción por defecto.** Una posición de una zona `STAGING` o `CROSSDOCK` del almacén. La usan los recibos **con acomodo** (cuando el
-encabezado no indica otra) y las líneas con cruce de muelle de un recibo directo (sección 4.1). Si el almacén no tiene una, o la que tiene dejó de ser válida
+encabezado no indica otra) y las líneas con cruce de plataforma de un recibo directo (sección 4.1). Si el almacén no tiene una, o la que tiene dejó de ser válida
 (se dio de baja la posición o su zona), vale **la primera posición activa de una zona `STAGING`**, ordenando por código de zona y de posición. Se fija
 después de crear el almacén (al crearlo aún no hay posiciones) y se puede quitar. En Advance Depot es `R1` (zona `STG`), no la primera por código de zona
 (`S1` de "Embarque", que era lo que elegía el sistema antes del Lote 16).
@@ -300,7 +300,7 @@ Pantalla: Almacén → **Posiciones** — botón **Productos por posición**, ca
 
 `GET /api/v1/inventory/exit-options?warehousePublicId=…&productPublicIds=…&skip=&take=` (`inventory.view`, módulo WMS_LOTSERIAL) devuelve, **por producto**, de dónde debe salir en el MISMO orden en que lo asigna la recolección
 (`PickBatchRules.Eligible`, FEFO D14 por omisión —o FIFO si la compañía o el producto lo configuran, §2.2—: vence primero —los sin vencimiento al final—, luego tipo de zona picking < reserva < refrigerada < preparación y código de posición). Cada fila: `productPublicId`, `binId`, `binCode`, `zoneCode`,
-`zoneTypeCode`, `lotId`, `lotNumber`, `expiryDate`, `available` (en mano − reservado) y `rank` (1 = sale primero, reinicia por producto). Solo posiciones **activas** y recolectables (sin cuarentena ni cruce de muelle) con disponible mayor que
+`zoneTypeCode`, `lotId`, `lotNumber`, `expiryDate`, `available` (en mano − reservado) y `rank` (1 = sale primero, reinicia por producto). Solo posiciones **activas** y recolectables (sin cuarentena ni cruce de plataforma) con disponible mayor que
 cero, de productos activos. `warehousePublicId` es obligatorio (400 `Indique el almacén.`; 404 `Almacén no encontrado.` si no existe o es de otra compañía); `productPublicIds` vacío = todos; página `{ total, skip, take, serverTimeUtc, items }`,
 `take` ≤ 500 (por defecto 500). **Es la única implementación de esa regla**: la app de almacén la baja al aparato y la consulta en línea; ninguna pantalla vuelve a ordenar.
 
@@ -308,15 +308,15 @@ cero, de productos activos. `warehousePublicId` es obligatorio (400 `Indique el 
 
 | Campo / caso | Mensaje exacto | HTTP |
 |---|---|---|
-| `code` vacío (alta de almacén, zona o muelle; también `PATCH` de zona con `"code": ""`) | `El código es obligatorio.` | 400 |
+| `code` vacío (alta de almacén, zona o plataforma; también `PATCH` de zona con `"code": ""`) | `El código es obligatorio.` | 400 |
 | `code` inválido o > 30 | `El código solo admite letras, números, guion y guion bajo (máximo 30).` | 400 |
 | `name` vacío | `El nombre es obligatorio.` | 400 |
 | Código de almacén repetido | `Ya existe un almacén con ese código.` | 409 |
 | Código de zona repetido en el almacén (al crear **o al editar el código**) | `Ya existe una zona con ese código en el almacén.` | 409 |
 | Código de posición repetido en el almacén | `Ya existe una posición con ese código en el almacén.` | 409 |
-| Código de muelle repetido en el almacén | `Ya existe un muelle con ese código en el almacén.` | 409 |
+| Código de plataforma repetido en el almacén | `Ya existe una plataforma con ese código en el almacén.` | 409 |
 | `PATCH` de almacén con `code` | `El código del almacén no se puede cambiar.` | 400 |
-| `PATCH` de muelle con `code` | `El código del muelle no se puede cambiar.` | 400 |
+| `PATCH` de plataforma con `code` | `El código de la plataforma no se puede cambiar.` | 400 |
 | `PATCH` de zona con `warehouseId` | `La zona no se puede mover a otro almacén.` | 400 |
 | `PATCH` de posición con `code` o `zoneId` | `El código y la zona de la posición no se pueden cambiar.` | 400 |
 | Posición sin código ni partes | `Indique el código de la posición o su pasillo/rack/nivel/posición.` | 400 |
@@ -330,8 +330,8 @@ cero, de productos activos. `warehousePublicId` es obligatorio (400 `Indique el 
 | `occupancy` desconocido en el listado de posiciones (el error va en `errors.occupancy`) | `Estado de ocupación desconocido: 'X'. Use EMPTY, PARTIAL, FULL o NO_CAPACITY.` | 400 |
 | `zoneId` del listado que no es de este almacén | `Zona no encontrada.` | 404 |
 | `zoneType` desconocido | `Tipo de zona desconocido: 'X'.` | 400 |
-| `dockType` vacío/desconocido | `Indique el tipo de muelle (INBOUND, OUTBOUND o BOTH).` / `Tipo de muelle desconocido: 'X'.` | 400 |
-| Estatus de muelle no manual | `Estatus de muelle no permitido: 'X'. Use FREE, OCCUPIED o MAINTENANCE.` | 400 |
+| `dockType` vacío/desconocido | `Indique el tipo de plataforma (INBOUND, OUTBOUND o BOTH).` / `Tipo de plataforma desconocido: 'X'.` | 400 |
+| Estatus de plataforma no manual | `Estatus de plataforma no permitido: 'X'. Use FREE, OCCUPIED o MAINTENANCE.` | 400 |
 | `maxWeightKg` ≤ 0 | `La capacidad de peso debe ser mayor que cero.` | 400 |
 | `maxWeightKg` con más de 3 decimales o ≥ 10⁹ | `La capacidad de peso admite como máximo 9 enteros y 3 decimales.` | 400 |
 | País desconocido | `País desconocido: 'X'.` | 400 |
@@ -340,10 +340,10 @@ cero, de productos activos. `warehousePublicId` es obligatorio (400 `Indique el 
 | Baja de posición con inventario | `La posición {code} tiene inventario; no se puede desactivar.` | 409 |
 | Baja de posición con tareas abiertas | `La posición tiene tareas de almacén abiertas; complételas o cancélelas antes de desactivarla.` | 409 |
 | Baja de zona con posiciones activas | `La zona tiene posiciones activas; desactívelas primero.` | 409 |
-| Baja de muelle con citas vigentes | `El muelle tiene citas agendadas o en curso.` | 409 |
-| Zona/muelle inactivo al usarlo | `La zona está inactiva; reactívela primero.` / `El muelle está inactivo; reactívelo primero.` | 422 |
+| Baja de plataforma con citas vigentes | `La plataforma tiene citas agendadas o en curso.` | 409 |
+| Zona/plataforma inactiva al usarla | `La zona está inactiva; reactívela primero.` / `La plataforma está inactiva; reactívela primero.` | 422 |
 | Almacén de otro tenant o inexistente | `Almacén no encontrado.` | 404 |
-| Zona/posición/muelle de otro almacén (o de otro tenant) | `Zona no encontrada.` / `Posición no encontrada.` / `Muelle no encontrado.` | 404 |
+| Zona/posición/plataforma de otro almacén (o de otro tenant) | `Zona no encontrada.` / `Posición no encontrada.` / `Plataforma no encontrado.` | 404 |
 | Operación sin `warehousePublicId` con más de un almacén activo | `Indique el almacén: la compañía tiene más de uno.` | 400 |
 | Sin ningún almacén activo | `La compañía no tiene almacenes activos.` | 422 |
 | `receivingMode` desconocido (alta o `PATCH` de almacén; el error va en `errors.receivingMode`) | `Modo de recepción desconocido: 'X'. Use PUTAWAY o DIRECT.` | 400 |
@@ -362,9 +362,9 @@ directo al API no se probó qué respuesta da.
 almacén inactivo solo se consulta.
 
 `DockStatus`: **FREE** (inicial) ↔ **OCCUPIED** ↔ **MAINTENANCE** (todos laterales entre sí; `warehouse.manage`
-los fija a mano). La llegada de una cita de muelle (estatus `ARRIVED`) también ocupa el muelle (`FREE→OCCUPIED`,
+los fija a mano). La llegada de una cita de plataforma (estatus `ARRIVED`) también ocupa la plataforma (`FREE→OCCUPIED`,
 efecto `DockAppointmentStatusEffect`, sección 9); cerrarla (`COMPLETED`, `NO_SHOW` o `CANCELLED`) lo libera
-(`OCCUPIED→FREE`) solo si no queda otra cita `ARRIVED` en ese muelle. `MAINTENANCE` nunca lo toca el efecto
+(`OCCUPIED→FREE`) solo si no queda otra cita `ARRIVED` en esa plataforma. `MAINTENANCE` nunca lo toca el efecto
 automático: solo el jefe de almacén a mano.
 
 Zonas y posiciones: activa ↔ inactiva (`IsActive`, sin dominio de estatus propio). Se dan de baja con `warehouse.manage`;
@@ -452,9 +452,9 @@ contienen el texto. Cada fila de la lista y la ficha traen `brand` y `model`.
 | `categoryIds` | Sin cambio: incluye las subcategorías |
 | `serialOnly=true` | Productos con rastreo por serie **o** que ya tienen números de serie registrados |
 | `serialMissing=true` | Productos **activos** con rastreo por serie cuya existencia en mano es **mayor** que la cantidad de sus series `AVAILABLE` o `RESERVED` (les faltan series por capturar). Con almacenes indicados, ambas cantidades se miden en esos almacenes. La pantalla lo cuenta con `take=1` y lee `total` |
-| `onlyOnHand=true` (ajuste del 2026-09-30) | Solo productos con **existencia en mano mayor que cero**: la suma de `QtyOnHand` de todas sus posiciones, **incluidas** cuarentena, cruce de muelle y lo reservado. Con almacenes indicados, la existencia se mide en esos almacenes y, como `onlyAvailable`, **sí quita** de la lista a los productos sin existencia allí. Con `activeOnly=true` da "productos activos con existencia en mano": es lo que muestra la tabla al tocar el indicador "Unidades totales" |
+| `onlyOnHand=true` (ajuste del 2026-09-30) | Solo productos con **existencia en mano mayor que cero**: la suma de `QtyOnHand` de todas sus posiciones, **incluidas** cuarentena, cruce de plataforma y lo reservado. Con almacenes indicados, la existencia se mide en esos almacenes y, como `onlyAvailable`, **sí quita** de la lista a los productos sin existencia allí. Con `activeOnly=true` da "productos activos con existencia en mano": es lo que muestra la tabla al tocar el indicador "Unidades totales" |
 | `unavailable=true` (2026-10-05, tableta *No disponibles*) | Solo productos **activos** cuyo disponible (en mano − reservado de todas sus posiciones, o de los almacenes indicados; sin saldo = 0) **no es mayor que cero**. Se lee con `take=1` y `total` |
-| `activeOnly`, `onlyAvailable`, `belowMin` | Sin cambio. `onlyAvailable` no cuenta la existencia en zonas de cuarentena ni de cruce de muelle y resta lo reservado; por eso un producto puede aparecer con `onlyOnHand` y no con `onlyAvailable` |
+| `activeOnly`, `onlyAvailable`, `belowMin` | Sin cambio. `onlyAvailable` no cuenta la existencia en zonas de cuarentena ni de cruce de plataforma y resta lo reservado; por eso un producto puede aparecer con `onlyOnHand` y no con `onlyAvailable` |
 
 `GET /api/v1/inventory/transactions` (Kárdex) acepta además `brands` y `name` con el mismo significado; se combinan con
 `productPublicIds` y `categoryIds`. El Reporte de ajustes de la pantalla Productos e inventario los usa para respetar los
@@ -556,7 +556,7 @@ asigna el sistema.`) y la pantalla de ajuste no lo ofrece.
 | Producto de otra compañía o inexistente | `Producto no encontrado.` | 404 |
 | `binId` de otra compañía o inexistente | `Posición no encontrada.` | 404 |
 | Sin `inventory.adjust` (con `inventory.manage`) | `Falta el permiso 'inventory.adjust'.` | 403 |
-| Alguna posición del producto tiene unidades reservadas (recolección, cruce de muelle u otra reserva) | `El producto {sku} tiene unidades reservadas; libérelas antes de convertirlo.` | 409 |
+| Alguna posición del producto tiene unidades reservadas (recolección, cruce de plataforma u otra reserva) | `El producto {sku} tiene unidades reservadas; libérelas antes de convertirlo.` | 409 |
 | El producto está en un recibo abierto, una tarea pendiente o en curso, una recolección que aún se puede eliminar o un conteo abierto (el mismo criterio que la baja del producto) | `El producto {sku} tiene recibos, tareas, recolecciones o conteos abiertos; termínelos antes de convertirlo.` | 409 |
 | Otro usuario cambió el producto (con `rowVersion`) | `El registro fue modificado por otro usuario; recargue e intente de nuevo.` | 409 |
 | Una serie capturada ya está en inventario / fue dada de baja (series que el producto ya tenía registradas) | `La serie {s} ya está en inventario.` / `La serie {s} fue dada de baja; no vuelve al inventario.` | 409 |
@@ -592,7 +592,7 @@ la posición de picking y el orden de salida que baja al aparato). Hay dos méto
 - **FIFO**: **entra primero, sale primero**: sale antes el saldo cuya **primera entrada** es más vieja; un saldo sin fecha conocida va al final.
 
 En los dos, el desempate es el mismo de antes: tipo de zona (picking, reserva, refrigerada, preparación), código de posición y lote. Cuarentena, cruce
-de muelle y la zona En renta nunca se asignan, con cualquiera de los dos métodos. Una posición o lote **explícitos** en la salida siguen mandando.
+de plataforma y la zona En renta nunca se asignan, con cualquiera de los dos métodos. Una posición o lote **explícitos** en la salida siguen mandando.
 
 Dónde se configura (decisión del dueño, 2026-10-11):
 
@@ -700,7 +700,7 @@ número, estatus, fecha y parte (cliente o proveedor) y, para abrirlo, su `publi
 transporte y producto) o su id (conteo); y los **movimientos relacionados**: los del mismo documento o, si el movimiento no tiene
 documento, los del mismo asiento (mismo instante, usuario y producto). Tope de 200 (`relatedTruncated`). Documentos que resuelve:
 recibo (`RECEIPT`), recolección (`PICK_BATCH`), conteo (`CYCLE_COUNT`), orden de compra (`PURCHASE_ORDER`), orden de transporte
-(`TRANSPORT_ORDER`), tarea de almacén (`WAREHOUSE_TASK`, con su documento padre), producto (`PRODUCT`, el reabasto) y cruce de muelle.
+(`TRANSPORT_ORDER`), tarea de almacén (`WAREHOUSE_TASK`, con su documento padre), producto (`PRODUCT`, el reabasto) y cruce de plataforma.
 
 ```
 GET /api/v1/inventory/transactions/1658
@@ -713,7 +713,7 @@ GET /api/v1/inventory/transactions/1658
 
 Cómo se usa:
 - `POST /api/v1/inventory/adjustments` — `{ "productPublicId": "...", "warehousePublicId": "...", "binId": 5,
-  "quantity": -2, "reason": "DAMAGE", "notes": "Caja aplastada en el muelle" }` (positivo entra, negativo sale).
+  "quantity": -2, "reason": "DAMAGE", "notes": "Caja aplastada en la plataforma" }` (positivo entra, negativo sale).
   **La nota es obligatoria** (ajuste del 2026-09-30): el API exige `notes` no vacía (después de quitar espacios), de hasta
   300 caracteres, para todo motivo que captura una persona (`DAMAGE`, `LOSS`, `FOUND`, `EXPIRED`, `PO_SHORTAGE`, `OTHER` y
   cualquier motivo que agregue la compañía). Aplica a las pantallas, a la app móvil y a las integraciones. **No la exigen**
@@ -895,7 +895,7 @@ Qué queda bloqueado en cada estatus:
 Qué hace: recibe mercancía contra un aviso de llegada de un cliente 3PL, contra una orden de compra propia, en
 modo ciego o como devolución. La cantidad recibida arranca igual a la esperada (se puede corregir antes de
 confirmar). Al confirmar, se asienta el ledger (`RECEIPT` por lo esperado + `ADJUSTMENT RECEIPT_VARIANCE` por la
-diferencia), la orden de compra avanza a `PARTIAL`/`RECEIVED`, el cruce de muelle asignado se reparte y se crean
+diferencia), la orden de compra avanza a `PARTIAL`/`RECEIVED`, el cruce de plataforma asignado se reparte y se crean
 las tareas `PUTAWAY` del remanente con una posición sugerida.
 
 Lote 13 (Lote 3 del plan de cambios): el recibo tiene un ciclo de seis estatus que muestra en qué va (Esperado,
@@ -930,7 +930,7 @@ Cómo se usa:
   - `search` busca además en el transporte y la referencia del recibo.
   - Cada fila trae además `carrier`, `reference`, `expectedDate` (la llegada esperada del aviso; si no tiene, la de la
     orden de compra), `defaultStagingBinId`/`defaultStagingBinCode`, `dockId`, `isOpen` y `pendingPutawayCount` (tareas
-    de acomodo abiertas). La ficha trae `canDelete` (abierto y sin cruce de muelle asignado).
+    de acomodo abiertas). La ficha trae `canDelete` (abierto y sin cruce de plataforma asignado).
 - `POST /api/v1/receipts` — contra ASN (`asnId`), contra PO (`purchaseOrderPublicId`), ciego (`type: "BLIND"`,
   por defecto) o de devolución (`type: "RETURN"`), con `stagingBinId` opcional (si no, la primera posición activa
   de una zona `STAGING` del almacén). Lote 13: `stagingBinId` queda como **posición de recepción por defecto** del
@@ -942,9 +942,9 @@ Cómo se usa:
   (Esperado, Recibiendo o Discrepancia). `null` o ausente = no cambiar:
   - `type`: `BLIND` ↔ `RETURN`, solo en recibos sin aviso ni orden de compra;
   - `warehousePublicId`: solo sin aviso ni orden de compra y **sin líneas**; al cambiarlo se limpian la posición por
-    defecto y el muelle (el almacén nuevo debe estar activo y tener zona `STAGING`, igual que en el alta);
+    defecto y la plataforma (el almacén nuevo debe estar activo y tener zona `STAGING`, igual que en el alta);
   - `stagingBinId` (posición `STAGING` o `CROSSDOCK` del almacén del recibo) o `clearStagingBin: true`;
-  - `dockId` (muelle del almacén del recibo) o `clearDock: true`;
+  - `dockId` (plataforma del almacén del recibo) o `clearDock: true`;
   - `carrier` y `reference`: texto de hasta 80; `""` los borra;
   - `rowVersion`: el de la ficha; si el recibo cambió desde que se leyó → 409.
 - `PUT /api/v1/receipts/{publicId}/lines/{lineId}` — captura cantidad recibida, lote y series. Lote 13: `expectedQty`
@@ -965,7 +965,7 @@ Cómo se usa:
   del documento que la solicitud no menciona queda recibida en 0 (faltante visible) y un producto que no está en el
   documento entra como línea extra (no cuenta contra la orden de compra). Sin `lines` se recibe lo esperado, como en el
   alta por pasos. Mismas validaciones y mensajes que la captura por pasos, con la clave `lines[i]`.
-- `DELETE /api/v1/receipts/{publicId}` — solo abiertos (Esperado, Recibiendo o Discrepancia) y sin cruce de muelle
+- `DELETE /api/v1/receipts/{publicId}` — solo abiertos (Esperado, Recibiendo o Discrepancia) y sin cruce de plataforma
   asignado; es una baja lógica (el recibo deja de listarse, sus líneas se conservan).
 - `GET /api/v1/asns` (Lote 13) — además de `warehousePublicId`, `status`, `clientPublicId` y `search`: `reference` (la
   referencia contiene el texto, sin distinguir mayúsculas) y `expectedFrom`/`expectedTo` (llegada esperada, ambos
@@ -994,8 +994,8 @@ Cómo se usa:
 | PO con producto de un cliente | `La orden de compra solo admite productos propios; {sku} pertenece a un cliente.` | 400 |
 | Recibo ya confirmado (editar) | `El recibo {n} ya fue confirmado; no se puede modificar.` | 422 |
 | Línea del aviso eliminada | `Las líneas del aviso de llegada no se eliminan; capture 0 como recibido.` | 400 |
-| Línea con cruce de muelle asignado | `La línea tiene asignaciones de cruce de muelle; cancélelas antes de eliminarla.` | 409 |
-| Recibo con cruce de muelle asignado (eliminar) | `El recibo tiene asignaciones de cruce de muelle; cancélelas antes de eliminarlo.` | 409 |
+| Línea con cruce de plataforma asignado | `La línea tiene asignaciones de cruce de plataforma; cancélelas antes de eliminarla.` | 409 |
+| Recibo con cruce de plataforma asignado (eliminar) | `El recibo tiene asignaciones de cruce de plataforma; cancélelas antes de eliminarlo.` | 409 |
 | Más de 200 líneas | `El recibo admite como máximo 200 líneas.` (aviso: `El aviso de llegada admite como máximo 200 líneas.`) | 400 |
 | Sin líneas al confirmar | `El recibo no tiene líneas; agregue al menos una antes de confirmar.` | 422 |
 | `receivedQty` ausente / negativo | `Indique la cantidad recibida.` / `La cantidad recibida no puede ser negativa.` | 400 |
@@ -1011,13 +1011,13 @@ Cómo se usa:
 | `expectedQty` en un recibo con aviso u orden de compra (Lote 13) | `La cantidad esperada solo se captura en recibos ciegos o de devolución; en uno con aviso de llegada u orden de compra viene del documento.` (clave `expectedQty`, `line.expectedQty` al agregar una línea o `lines[i].expectedQty` en el alta) | 400 |
 | `expectedQty` negativo (Lote 13) | `La cantidad esperada no puede ser negativa.` (más de 3 decimales: `La cantidad admite como máximo 3 decimales.`; demasiado grande: `La cantidad excede el máximo permitido.`; producto por serie: `El producto {sku} se controla por serie: la cantidad debe ser entera.`) | 400 |
 | Cambiar el producto de una línea del aviso u orden de compra (Lote 13) | `El producto de una línea del aviso de llegada o de la orden de compra no se puede cambiar.` | 400 |
-| Cambiar el producto de una línea con cruce de muelle asignado (Lote 13) | `La línea tiene asignaciones de cruce de muelle; cancélelas antes de cambiar el producto.` | 409 |
+| Cambiar el producto de una línea con cruce de plataforma asignado (Lote 13) | `La línea tiene asignaciones de cruce de plataforma; cancélelas antes de cambiar el producto.` | 409 |
 | `PATCH` del tipo de un recibo con aviso u orden de compra (Lote 13) | `El tipo de un recibo con aviso de llegada u orden de compra no se puede cambiar.` | 400 |
 | `PATCH` del almacén con documento o con líneas (Lote 13) | `El almacén solo se puede cambiar en un recibo sin aviso de llegada ni orden de compra y sin líneas.` | 400 |
 | Transporte o referencia de más de 80 caracteres (Lote 13) | `El transporte admite como máximo 80 caracteres.` / `La referencia admite como máximo 80 caracteres.` | 400 |
 | `PATCH` de un recibo confirmado (Lote 13) | `El recibo {n} ya fue confirmado; no se puede modificar.` | 422 |
 | `PATCH` con un `rowVersion` viejo (Lote 13) | `El registro fue modificado por otro usuario; recargue e intente de nuevo.` | 409 |
-| Muelle de otro almacén (alta o `PATCH`) | `Muelle no encontrado.` | 404 |
+| Plataforma de otro almacén (alta o `PATCH`) | `Plataforma no encontrado.` | 404 |
 | Filtro `variance` desconocido (Lote 13) | `Diferencia desconocida: 'X'. Use SHORT, OVER o NONE.` | 400 |
 | Filtro `phase` desconocido (Lote 13) | `Fase desconocida: 'X'. Use OPEN, PENDING_PUTAWAY o DONE.` | 400 |
 | Número de lote vacío / de más de 60 caracteres | `Indique el número de lote.` / `El número de lote admite como máximo 60 caracteres.` | 400 |
@@ -1075,15 +1075,15 @@ Transiciones (todas por el motor de estatus, con historial en `/api/v1/status/hi
 | Discrepancia → **Completado con diferencia** | igual | igual | Ver "Efectos de confirmar". |
 | Completado → **Acomodado** | el sistema (efecto de las tareas) | La última `PUTAWAY` del recibo llega a `DONE` o `CANCELLED` y no queda otra abierta. Iniciar y completar exigen `warehouse.receive`; asignar y cancelar, `warehouse.manage`. | — |
 | Completado con diferencia → **Acomodado** | el sistema | igual | — |
-| Completado o Completado con diferencia → **Acomodado** (directo) | el sistema, al confirmar | Ninguna `PUTAWAY` se creó: todo fue a cruce de muelle, se recibió 0 o el recibo es **directo a posición** (sección 4.1). | — |
-| Esperado, Recibiendo o Discrepancia → baja (`DELETE`) | `warehouse.receive` | Recibo abierto (si no, 422) y sin cruce de muelle asignado (409). | Baja lógica (el recibo deja de listarse, las líneas se conservan). Un aviso nacido de una orden de compra se cancela; el de un cliente vuelve a quedar pendiente. |
+| Completado o Completado con diferencia → **Acomodado** (directo) | el sistema, al confirmar | Ninguna `PUTAWAY` se creó: todo fue a cruce de plataforma, se recibió 0 o el recibo es **directo a posición** (sección 4.1). | — |
+| Esperado, Recibiendo o Discrepancia → baja (`DELETE`) | `warehouse.receive` | Recibo abierto (si no, 422) y sin cruce de plataforma asignado (409). | Baja lógica (el recibo deja de listarse, las líneas se conservan). Un aviso nacido de una orden de compra se cancela; el de un cliente vuelve a quedar pendiente. |
 
 **Efectos de confirmar** (una sola transacción):
 - Kárdex: con aviso u orden de compra, `RECEIPT` por lo esperado más `ADJUSTMENT RECEIPT_VARIANCE` por la diferencia (D4; el
   ajuste del sistema no pide nota). En ciegos y devoluciones, un solo `RECEIPT` por lo **recibido**: la diferencia solo marca el
   estatus y `adjustmentTxnId` queda vacío.
 - La orden de compra avanza a `PARTIAL` o `RECEIVED`; el aviso pasa a `RECEIVED`.
-- Se reparte el cruce de muelle asignado y se crean las `PUTAWAY` del remanente con una posición sugerida. En un recibo **directo** no hay `PUTAWAY`: la
+- Se reparte el cruce de plataforma asignado y se crean las `PUTAWAY` del remanente con una posición sugerida. En un recibo **directo** no hay `PUTAWAY`: la
   mercancía entra a la posición destino de cada línea (sección 4.1).
 - El recibo guarda la fecha y el usuario de confirmación (`receivedAtUtc`, `receivedBy`) y Actividad reciente registra
   `RECEIPT_CONFIRMED` (tanto para Completado como para Completado con diferencia).
@@ -1095,9 +1095,9 @@ Transiciones (todas por el motor de estatus, con historial en `/api/v1/status/hi
 | Estatus | Se puede | Queda bloqueado |
 |---|---|---|
 | Esperado | Editar el encabezado (`PATCH`), agregar líneas y borrar el recibo. | Confirmar: sin líneas responde `422` `El recibo no tiene líneas; agregue al menos una antes de confirmar.` |
-| Recibiendo | Todo lo anterior, cambiar o quitar líneas, confirmar y asignar cruce de muelle contra lo recibido de una línea. | — |
+| Recibiendo | Todo lo anterior, cambiar o quitar líneas, confirmar y asignar cruce de plataforma contra lo recibido de una línea. | — |
 | Discrepancia | Igual que Recibiendo. La diferencia se corrige guardando las líneas o se confirma tal cual. | — |
-| Completado | Consultar, trabajar sus tareas de acomodo y asignar cruce de muelle contra el remanente con acomodo pendiente. | `PATCH`, alta, cambio y baja de líneas, confirmar y `DELETE`: `422` `El recibo {n} ya fue confirmado; no se puede modificar.` |
+| Completado | Consultar, trabajar sus tareas de acomodo y asignar cruce de plataforma contra el remanente con acomodo pendiente. | `PATCH`, alta, cambio y baja de líneas, confirmar y `DELETE`: `422` `El recibo {n} ya fue confirmado; no se puede modificar.` |
 | Completado con diferencia | Igual que Completado. | Igual que Completado. |
 | Acomodado | Consultar. | Igual que Completado. |
 
@@ -1115,7 +1115,7 @@ Por compañía y en bases existentes:
 - Bases existentes: el seed pasa los recibos que estaban en `OPEN` a Recibiendo (con líneas) o Esperado (sin líneas),
   con la línea de historial "Lote 13: nuevo ciclo de estatus del recibo.", y retira `OPEN`.
 
-Eliminar un recibo abierto (sin cruce de muelle asignado): si nació de una PO, su ASN se **cancela**; si es de
+Eliminar un recibo abierto (sin cruce de plataforma asignado): si nació de una PO, su ASN se **cancela**; si es de
 cliente, el ASN vuelve a quedar `EXPECTED` (pendiente de recibir de nuevo). Un recibo en Esperado se borra igual.
 
 Casos frecuentes (Lote 13):
@@ -1177,7 +1177,7 @@ Campos y reglas:
 | `receivingMode` (alta y `PATCH` del recibo) | `PUTAWAY` o `DIRECT`. Vacío o ausente = el del almacén (en el `PATCH`, sin cambio) |
 | `targetBinId` / `targetBinCode` (línea) | Posición **del almacén del recibo**, **de guardado** (no `STAGING` ni `CROSSDOCK`; la **cuarentena sí**), activa y con su zona activa |
 | `clearTargetBin` (`PUT` de la línea) | `true` quita el destino |
-| Destino obligatorio | Al confirmar, en cada línea que recibe algo (recibido mayor que 0). No lo pide un producto **por lote sin lote** (no mueve inventario) ni una línea con cruce de muelle asignado |
+| Destino obligatorio | Al confirmar, en cada línea que recibe algo (recibido mayor que 0). No lo pide un producto **por lote sin lote** (no mueve inventario) ni una línea con cruce de plataforma asignado |
 | Cantidad de la línea | Una línea entra **entera a una sola posición**. Para repartirla, se transfiere después (sección 3.2) |
 
 **Sugerencias y cupo.**
@@ -1197,7 +1197,7 @@ Campos y reglas:
 **Devoluciones y cuarentena.** En un recibo de **devolución**, la primera sugerida es una posición de **cuarentena** si existe (`QUARANTINE_RETURN`, "Cuarentena (devolución)").
 En los demás recibos la cuarentena no se sugiere, pero se puede elegir a mano.
 
-**Cruce de muelle.** Una línea con cruce de muelle asignado **entra a la posición de recepción** como siempre y no exige destino; su remanente genera una tarea de
+**Cruce de plataforma.** Una línea con cruce de plataforma asignado **entra a la posición de recepción** como siempre y no exige destino; su remanente genera una tarea de
 acomodo hacia su posición destino (o la sugerida). El recibo queda **Completado** hasta cerrar esa tarea (sección 9).
 
 **Recibos de la app anterior.** La app nueva escanea la posición destino de cada línea (capítulo 9, sección 4). Un recibo de una app anterior, enviado de una vez (`confirm: true`)
@@ -1209,7 +1209,7 @@ sin `receivingMode` y sin ninguna posición destino en un almacén **directo**, 
 |---|---|---|
 | `receivingMode` desconocido (alta o `PATCH` del recibo; `errors.receivingMode`) | `Modo de recepción desconocido: 'X'. Use PUTAWAY o DIRECT.` | 400 |
 | Confirmar un recibo directo con una línea que recibe algo y no tiene destino (`errors["lines[i].targetBinId"]`; `i` es la posición de la línea, desde 0) | `Indique la posición destino de {sku}: el recibo entra directo a posición.` | 400 |
-| Posición destino en una zona de recepción o de cruce de muelle (al guardar la línea o al confirmar) | `La posición {code} está en una zona {zoneType}; la posición destino debe ser de guardado.` | 400 |
+| Posición destino en una zona de recepción o de cruce de plataforma (al guardar la línea o al confirmar) | `La posición {code} está en una zona {zoneType}; la posición destino debe ser de guardado.` | 400 |
 | `targetBinCode` que no existe en el almacén del recibo (`errors.targetBinCode`; en el alta, `errors["lines[i].targetBinCode"]`) | `La posición {code} no existe en el almacén del recibo.` | 400 |
 | `targetBinId` y `targetBinCode` a la vez (`errors.targetBinId`) | `Indique la posición destino por id o por código, no ambos.` | 400 |
 | `targetBinId` de otro almacén, de otra compañía o inexistente | `Posición no encontrada.` | 404 |
@@ -1234,14 +1234,14 @@ Los estatus son los seis de la sección 4: **no hay estatus nuevos**. Lo que cam
 | Esperado → **Recibiendo** ↔ **Discrepancia** | `warehouse.receive` | Cada línea guardada (el destino no cambia el estatus) | — |
 | Recibiendo → **Completado** → **Acomodado** (un solo `confirm`) | `warehouse.receive` | Destino en cada línea que recibe algo (400 por línea); destino y zona activos (422); seguimiento de lote y serie | `RECEIPT` a cada destino; ninguna tarea; el historial deja **Recibiendo → Completado → Acomodado** (D7); Actividad reciente registra un solo "Recibo … confirmado" (D13) |
 | Discrepancia → **Completado con diferencia** → **Acomodado** | `warehouse.receive` | Igual | Igual, más el ajuste `RECEIPT_VARIANCE` en el destino si hay aviso u orden de compra. Usa la entrada lateral sembrada `RECEIVED_VARIANCE → PUTAWAY`; si la compañía la quitó, el motor de estatus rechaza el paso (no se probó) |
-| Recibiendo o Discrepancia → **Completado** o **Completado con diferencia** (**se queda ahí**) | el sistema | Alguna línea tiene cruce de muelle asignado | Esa línea entra a la posición de recepción. Si queda remanente (lo recibido menos lo asignado al cruce), se crea una tarea de acomodo hacia su destino y el recibo **se queda** ahí hasta cerrarla; si todo fue al cruce, pasa a Acomodado en el mismo momento |
+| Recibiendo o Discrepancia → **Completado** o **Completado con diferencia** (**se queda ahí**) | el sistema | Alguna línea tiene cruce de plataforma asignado | Esa línea entra a la posición de recepción. Si queda remanente (lo recibido menos lo asignado al cruce), se crea una tarea de acomodo hacia su destino y el recibo **se queda** ahí hasta cerrarla; si todo fue al cruce, pasa a Acomodado en el mismo momento |
 
 Qué queda bloqueado en cada estatus (recibo directo):
 
 | Estatus | Se puede | Queda bloqueado |
 |---|---|---|
 | Esperado, Recibiendo, Discrepancia | Fijar, cambiar o quitar el destino de cada línea; "Usar posiciones sugeridas"; cambiar el modo **de este recibo**; confirmar | Confirmar sin destino en una línea que recibe algo: `400` con el mensaje de la tabla |
-| Completado, Completado con diferencia (solo si hubo cruce de muelle) | Consultar y trabajar las tareas del remanente | Destino, modo, "Usar posiciones sugeridas", alta y baja de líneas: `422` `El recibo {n} ya fue confirmado; no se puede modificar.` |
+| Completado, Completado con diferencia (solo si hubo cruce de plataforma) | Consultar y trabajar las tareas del remanente | Destino, modo, "Usar posiciones sugeridas", alta y baja de líneas: `422` `El recibo {n} ya fue confirmado; no se puede modificar.` |
 | Acomodado | Consultar | Igual que el anterior |
 
 Casos frecuentes (Lote 16):
@@ -1251,7 +1251,7 @@ Casos frecuentes (Lote 16):
 - *Llegó más de lo que cabe en la posición*: elija la posición igual (la pantalla avisa, no bloquea) y transfiera lo que sobre después (sección 3.2), o reparta la mercancía en dos líneas del
   mismo producto si el recibo es ciego o de devolución.
 - *Una línea no tiene posición sugerida*: ninguna posición de guardado tiene espacio. Elija una a mano.
-- *Un recibo directo no aparece en "Acomodo pendiente"*: es lo esperado; ahí solo aparecen los recibos anteriores al cambio de modo y los que tuvieron cruce de muelle (sección 5).
+- *Un recibo directo no aparece en "Acomodo pendiente"*: es lo esperado; ahí solo aparecen los recibos anteriores al cambio de modo y los que tuvieron cruce de plataforma (sección 5).
 
 ---
 
@@ -1266,7 +1266,7 @@ Casos frecuentes (Lote 16):
 - **Llegó dañado en un recibo** (esas unidades **no entran como buenas**): se indica el **recibo**. *Cuarentena* = esas unidades entran directo a la posición de cuarentena (ajuste positivo, motivo Daño). *Dar salida de una vez* = no entran al inventario; solo queda el reporte. Al confirmar el recibo, reciba solo lo bueno; lo dañado se reporta aparte (la diferencia contra lo esperado la ve como siempre). **Mejor: declare el daño en la propia línea del recibo** (ver «Daño declarado en la línea del recibo», abajo): así no hay que reportar nada aparte.
 
 **Lo dañado no se vende, pero se cuenta.** Lo dañado que queda EN CUARENTENA sigue siendo existencia de esa posición: **se ve y se cuenta** en el conteo cíclico (el contador ve las cajas y el sistema las espera; no hay diferencia falsa). Lo que no puede pasar es que se despache:
-- En una posición de una zona de **Cuarentena** (también *cruce de muelle* o *renta*) ya está fuera de la asignación: el despacho, las sugerencias de salida y el reabasto no lo toman.
+- En una posición de una zona de **Cuarentena** (también *cruce de plataforma* o *renta*) ya está fuera de la asignación: el despacho, las sugerencias de salida y el reabasto no lo toman.
 - En **cualquier otra posición** (guardado, recepción…), donde queda mezclado con lo bueno, el sistema **reserva** esas unidades (`QtyReserved`): la existencia no cambia, pero el **disponible** baja y no se asignan ni se despachan. La lista de Daños lo marca con «reservado (no se despacha)». La reserva se libera sola al **desechar** o **recuperar**.
 
 **Causa:** *Vino así*, *Accidente en el camino*, *Accidente en el almacén*, *Otra* (catálogo `DamageCause`). Por defecto, un daño de recibo propone *Vino así* y uno del almacén *Accidente en el almacén*.
@@ -1275,7 +1275,7 @@ Casos frecuentes (Lote 16):
 
 **Cómo se usa.**
 1. *Reportar:* web (Productos e inventario → pestaña **Daños** → **Reportar daño**, o desde la ficha del recibo) o app (Inicio → **Daño**). Se elige origen, producto (y lote si el producto lleva lote), cantidad, causa y **Mandar a cuarentena / Dar salida de una vez** (esta última admite un destino final opcional). Al mandar a cuarentena la web pregunta **«Posición donde queda»** (opcional): vacía, es la primera posición de cuarentena activa del almacén por código; puede ser cualquier posición activa.
-2. *Dar salida o recuperar lo que está en cuarentena:* en la lista de la pestaña Daños, íconos **Dar salida** (**destino final obligatorio** y nota opcional) y **Recuperar** (hay que elegir la posición de guardado; nunca de cuarentena, recepción, cruce de muelle ni renta). La app solo reporta; resolver se hace en la web.
+2. *Dar salida o recuperar lo que está en cuarentena:* en la lista de la pestaña Daños, íconos **Dar salida** (**destino final obligatorio** y nota opcional) y **Recuperar** (hay que elegir la posición de guardado; nunca de cuarentena, recepción, cruce de plataforma ni renta). La app solo reporta; resolver se hace en la web.
 3. *Consultar:* la lista filtra por estatus, origen y búsqueda libre (SKU, producto o `DAN-00012`). La fuente de datos `DAMAGE_REPORT` queda disponible para vistas, indicadores y gráficos (por causa, origen, producto o estatus).
 
 **Validaciones (mensaje exacto y código).**
@@ -1346,7 +1346,7 @@ Cómo se usa:
 
 Lote 13 (pantalla): en la aplicación web ya no hay una cola única de tareas. Cada tipo se trabaja en la pantalla a la que
 pertenece: `PUTAWAY` en Recibo (pestaña "Acomodo pendiente" y el detalle del recibo), `REPLENISH` en Recolección y empaque
-(pestaña "Reabasto"), `COUNT` en Conteo cíclico y `CROSSDOCK` en Cruce de muelle. En todas, las acciones de cada fila son íconos
+(pestaña "Reabasto"), `COUNT` en Conteo cíclico y `CROSSDOCK` en Cruce de plataforma. En todas, las acciones de cada fila son íconos
 con tooltip: Asignar, Iniciar, Completar y Cancelar. Los permisos y endpoints de arriba no cambian. Ver
 [F6 — Tareas de almacén](frontend/f6-almacen-e-inventario.md#tareas-de-almacén).
 
@@ -1354,7 +1354,7 @@ con tooltip: Asignar, Iniciar, Completar y Cancelar. Los permisos y endpoints de
 
 **Acomodo pendiente en los almacenes directos (Lote 16).** Un recibo **directo a posición** (sección 4.1) no genera tareas `PUTAWAY`: la mercancía entra a su posición destino al
 confirmar y el recibo pasa a Acomodado. Por eso, en un almacén directo, la pestaña "Acomodo pendiente" solo muestra (a) los recibos **anteriores al cambio de modo** que seguían con tareas,
-(b) los recibos abiertos que se pasaron a "Con acomodo" y (c) los que tuvieron **cruce de muelle**. Las tareas que ya existían **siguen** su curso. `GET /api/v1/warehouse-tasks/putaway-suggestions`
+(b) los recibos abiertos que se pasaron a "Con acomodo" y (c) los que tuvieron **cruce de plataforma**. Las tareas que ya existían **siguen** su curso. `GET /api/v1/warehouse-tasks/putaway-suggestions`
 respeta ahora el **cupo en unidades** de la posición (salta donde no cabe) y trae `maxCapacityQty` y `freeQty` (`cupo − existencia`; `null` sin cupo). La pantalla avisa cuando el almacén filtrado es
 directo.
 
@@ -2261,9 +2261,9 @@ recepciones sigue protegida (no se elimina, no baja de lo recibido, no cambia de
 
 ---
 
-## 9. Cruce de muelle (demo): citas y planes
+## 9. Cruce de plataforma (demo): citas y planes
 
-Qué hace: agenda citas de muelle (llegada/salida) y arma planes de cruce de muelle que asignan líneas de recibos
+Qué hace: agenda citas de plataforma (llegada/salida) y arma planes de cruce de plataforma que asignan líneas de recibos
 **abiertos** (se reparten al confirmar el recibo, con el faltante outbound visible por asignación) o **confirmados**
 (reduce directamente el putaway pendiente). Lo asignado en la zona de staging queda **reservado** en el ledger
 (no lo toma ninguna recolección, putaway ni transferencia) hasta que se mueve o se cancela.
@@ -2271,8 +2271,8 @@ Qué hace: agenda citas de muelle (llegada/salida) y arma planes de cruce de mue
 Este módulo es una **demostración funcional**: viene **apagado** por defecto para el tenant.
 
 **Recibos directos (Lote 16).** La asignación contra un recibo **ya confirmado** (el modo "b" de las asignaciones) depende del acomodo pendiente: reduce la tarea `PUTAWAY` que queda por hacer. Un recibo
-**directo** confirmado no tiene tareas de acomodo (la mercancía ya está en su posición destino), así que **no admite** asignaciones de cruce de muelle después de confirmar. Por el código, el servidor
-responde 422 `El recibo de la línea no admite asignaciones (eliminado o sin putaway pendiente).` si la línea no tiene posición de recepción, o 409 `La cantidad excede lo disponible para cruce de muelle (0).`
+**directo** confirmado no tiene tareas de acomodo (la mercancía ya está en su posición destino), así que **no admite** asignaciones de cruce de plataforma después de confirmar. Por el código, el servidor
+responde 422 `El recibo de la línea no admite asignaciones (eliminado o sin putaway pendiente).` si la línea no tiene posición de recepción, o 409 `La cantidad excede lo disponible para cruce de plataforma (0).`
 (no se probó en un recibo real). Para cruzar mercancía en un almacén directo, asigne el cruce **mientras el recibo está abierto** (el modo "a" de las asignaciones): la línea con cruce entra a la posición de recepción, no exige destino y su remanente genera la
 tarea de acomodo hacia su destino (sección 4.1).
 
@@ -2297,30 +2297,30 @@ Cómo se usa:
 | Campo / caso | Mensaje exacto | HTTP |
 |---|---|---|
 | Módulo apagado | `El módulo 'CROSSDOCK' no está habilitado para esta compañía.` | 403 |
-| Solapamiento en el muelle | `El muelle ya tiene una cita que se solapa con ese horario.` | 409 |
+| Solapamiento en la plataforma | `La plataforma ya tiene una cita que se solapa con ese horario.` | 409 |
 | Fin no posterior al inicio | `El fin de la cita debe ser posterior a su inicio.` | 400 |
 | Fuera del horizonte (ayer a +90 días) | `La cita debe agendarse entre ayer y los próximos 90 días.` | 400 |
-| Dirección incompatible con el tipo de muelle | `El muelle es de tipo {tipo}; no admite citas de {dirección}.` | 400 |
+| Dirección incompatible con el tipo de plataforma | `La plataforma es de tipo {tipo}; no admite citas de {dirección}.` | 400 |
 | Aviso de llegada y viaje a la vez | `Una cita se enlaza a un aviso de llegada o a un viaje, no a ambos.` | 400 |
 | Aviso de llegada con dirección de salida | `Una cita de un aviso de llegada debe ser de entrada (INBOUND).` | 400 |
 | Reprogramar una cita que no está agendada | `La cita solo se reprograma mientras está agendada.` | 422 |
 | Cantidad de asignación ≤ 0 / > 3 decimales / no entera con serie | `La cantidad debe ser mayor que cero.` / `La cantidad admite como máximo 3 decimales.` / `En productos con serie la cantidad debe ser entera.` | 400 |
-| Asignación por encima de lo disponible | `La cantidad excede lo disponible para cruce de muelle ({disponible}).` | 409 |
+| Asignación por encima de lo disponible | `La cantidad excede lo disponible para cruce de plataforma ({disponible}).` | 409 |
 | Orden no apta para asignación (cancelada, entregada, de baja) | `La orden no admite asignaciones (cancelada, entregada o dada de baja).` | 400 |
 | Zona de staging fuera de tipo CROSSDOCK/STAGING | `La zona de staging del plan debe ser de tipo CROSSDOCK o STAGING.` | 400 |
 | Mover con el recibo todavía abierto | `La recepción de la línea todavía no se confirma; la mercancía se mueve después de confirmar.` | 422 |
 | Mover una asignación sin nada confirmado | `La asignación no recibió mercancía al confirmar; cancélela.` | 422 |
-| Completar la tarea `CROSSDOCK` con una cantidad distinta de la confirmada | `La tarea de cruce de muelle se completa por la cantidad confirmada ({qty}).` | 400 |
+| Completar la tarea `CROSSDOCK` con una cantidad distinta de la confirmada | `La tarea de cruce de plataforma se completa por la cantidad confirmada ({qty}).` | 400 |
 | Completar el plan con asignaciones pendientes | `Mueva o cancele las asignaciones pendientes antes de completar el plan.` | 422 |
 | Plan ya completado | `El plan ya fue completado.` | 422 |
-| Muelle inactivo | `El muelle está inactivo; reactívelo o elija otro.` | 422 |
-| Cita/plan/asignación de otro tenant o inexistente | `Cita no encontrada.` / `Plan de cruce de muelle no encontrado.` / `Asignación no encontrada.` | 404 |
+| Plataforma inactiva | `La plataforma está inactiva; reactívela o elija otra.` | 422 |
+| Cita/plan/asignación de otro tenant o inexistente | `Cita no encontrada.` / `Plan de cruce de plataforma no encontrado.` / `Asignación no encontrada.` | 404 |
 
 ### Estatus y transiciones
 
 `AppointmentStatus`: **SCHEDULED** (inicial) → **ARRIVED** → **COMPLETED** (terminal); **NO_SHOW** (lateral,
 motivo en el comentario del historial) y **CANCELLED** (terminal) desde `SCHEDULED`. Efecto
-`DockAppointmentStatusEffect`: `ARRIVED` ocupa el muelle (`FREE→OCCUPIED`); `COMPLETED`/`NO_SHOW`/`CANCELLED` lo
+`DockAppointmentStatusEffect`: `ARRIVED` ocupa la plataforma (`FREE→OCCUPIED`); `COMPLETED`/`NO_SHOW`/`CANCELLED` lo
 liberan (`OCCUPIED→FREE`) si no queda otra cita `ARRIVED` en él.
 
 `CrossDockStatus`: **OPEN** (inicial) → **ALLOCATED** (con la primera asignación) → **COMPLETED** (terminal, solo
@@ -2336,15 +2336,15 @@ inventario) o **CANCELLED** (terminal, libera la reserva; si ya tenía algo conf
 
 | Permiso | Categoría | Qué habilita |
 |---|---|---|
-| `inventory.view` | WAREHOUSE | Ver almacenes, productos, inventario, recibos, tareas, conteos, recolecciones, citas y planes de cruce de muelle |
+| `inventory.view` | WAREHOUSE | Ver almacenes, productos, inventario, recibos, tareas, conteos, recolecciones, citas y planes de cruce de plataforma |
 | `inventory.manage` | WAREHOUSE | Gestionar productos y categorías |
 | `inventory.adjust` | WAREHOUSE | Ajustar/transferir inventario, conciliar ("Ejecutar conciliación", estado de la revisión automática), resolver descuadres, resolver faltantes de compra |
-| `warehouse.manage` | WAREHOUSE | Gestionar almacenes, zonas, posiciones, muelles; asignar/cancelar tareas |
+| `warehouse.manage` | WAREHOUSE | Gestionar almacenes, zonas, posiciones, plataformas; asignar/cancelar tareas |
 | `warehouse.receive` | WAREHOUSE | Recibir mercancía (ASN y recibos); completar tareas `PUTAWAY` |
 | `warehouse.pick` | WAREHOUSE | Recolectar y empacar; completar tareas `REPLENISH`; correr el reabasto |
 | `warehouse.count` | WAREHOUSE | Conteo cíclico completo, incluidas la confirmación ("Confirmar conteo y ajustar"), "Conteo de lo cambiado" y, desde el Lote 21, la vista previa de la reconciliación, "Por revisar" y "Cerrar los que cuadran" |
 | `warehouse.count.capture` | WAREHOUSE | Lote 8A: contar a ciegas (alta, captura, lo encontrado y terminar) sin ver lo esperado ni reconciliar; implícito en `warehouse.count`. Lote 21: también crear una posición provisional desde el conteo |
-| `warehouse.crossdock` | WAREHOUSE | Citas y planes de cruce de muelle; completar tareas `CROSSDOCK` |
+| `warehouse.crossdock` | WAREHOUSE | Citas y planes de cruce de plataforma; completar tareas `CROSSDOCK` |
 | `purchasing.view` | PURCHASING | Ver proveedores y órdenes de compra |
 | `purchasing.manage` | PURCHASING | Gestionar proveedores y órdenes de compra |
 | `purchasing.receive` | PURCHASING | Recibir mercancía contra una orden de compra (existía desde antes de este lote) |

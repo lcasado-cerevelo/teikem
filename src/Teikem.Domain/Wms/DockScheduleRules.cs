@@ -20,18 +20,18 @@ public static class DockScheduleRules
     /// <summary>Días hacia adelante en que se admite agendar.</summary>
     public const int HorizonDays = 90;
 
-    public const string Overlap = "El muelle ya tiene una cita que se solapa con ese horario.";
+    public const string Overlap = "La plataforma ya tiene una cita que se solapa con ese horario.";
     public const string Window = "El fin de la cita debe ser posterior a su inicio.";
     public const string Horizon = "La cita debe agendarse entre ayer y los próximos 90 días.";
     public const string StartRequired = "Indique el inicio de la cita.";
     public const string AsnOrTrip = "Una cita se enlaza a un aviso de llegada o a un viaje, no a ambos.";
     public const string AsnInboundOnly = "Una cita de un aviso de llegada debe ser de entrada (INBOUND).";
-    public const string DockInactive = "El muelle está inactivo; reactívelo o elija otro.";
+    public const string DockInactive = "La plataforma está inactiva; reactívela o elija otra.";
     public const string NotReschedulable = "La cita solo se reprograma mientras está agendada.";
     public const string AsnNotActive = "El aviso de llegada está cancelado o dado de baja.";
 
     public static string Incompatible(string dockType, string direction)
-        => $"El muelle es de tipo {dockType}; no admite citas de {direction}.";
+        => $"La plataforma es de tipo {dockType}; no admite citas de {direction}.";
 
     public static string UnknownDirection(string? value)
         => $"Dirección desconocida: '{value}'. Use INBOUND u OUTBOUND.";

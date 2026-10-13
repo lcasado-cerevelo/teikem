@@ -510,7 +510,7 @@ describe('Lote 16: recibo directo a posición', () => {
     await user.click(screen.getByRole('combobox', { name: /^Almacén/ }))
     await user.click(await screen.findByRole('option', { name: /ALM-DIR/ }))
     expect(
-      await screen.findByText('ALM-DIR recibe directo a posición: aquí solo aparecen recibos anteriores al cambio o con cruce de muelle.'),
+      await screen.findByText('ALM-DIR recibe directo a posición: aquí solo aparecen recibos anteriores al cambio o con cruce de plataforma.'),
     ).toBeInTheDocument()
   })
 })

@@ -42,7 +42,7 @@ public sealed class WarehouseDataSource(TeikemDbContext db, ITenantContext tenan
         new DataField("ZoneCount", "Zonas", "Zones", DataFieldType.Number),
         new DataField("BinCount", "Posiciones", "Bins", DataFieldType.Number),
         new DataField("ActiveBinCount", "Posiciones activas", "Active bins", DataFieldType.Number),
-        new DataField("DockCount", "Muelles", "Docks", DataFieldType.Number),
+        new DataField("DockCount", "Plataformas", "Docks", DataFieldType.Number),
         new DataField("QtyOnHand", "Existencia en mano", "Quantity on hand", DataFieldType.Number),
         new DataField("ReceivingMode", "Modo de recepción", "Receiving mode", DataFieldType.Text),              // Lote 16
         new DataField("ReceivingModeCode", "Código de modo de recepción", "Receiving mode code", DataFieldType.Text),   // Lote 16

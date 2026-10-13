@@ -10,11 +10,11 @@ public class CrossDockRulesTests
     [Fact]
     public void Messages_are_exact()
     {
-        Assert.Equal("La cantidad excede lo disponible para cruce de muelle (6).", CrossDockRules.Exceeds(6m));
-        Assert.Equal("La cantidad excede lo disponible para cruce de muelle (2.5).", CrossDockRules.Exceeds(2.5m));
+        Assert.Equal("La cantidad excede lo disponible para cruce de plataforma (6).", CrossDockRules.Exceeds(6m));
+        Assert.Equal("La cantidad excede lo disponible para cruce de plataforma (2.5).", CrossDockRules.Exceeds(2.5m));
         Assert.Equal("La recepción de la línea todavía no se confirma; la mercancía se mueve después de confirmar.", CrossDockRules.ReceiptNotConfirmed);
         Assert.Equal("La asignación no recibió mercancía al confirmar; cancélela.", CrossDockRules.NothingConfirmed);
-        Assert.Equal("La tarea de cruce de muelle se completa por la cantidad confirmada (4).", CrossDockRules.ExactQty(4m));
+        Assert.Equal("La tarea de cruce de plataforma se completa por la cantidad confirmada (4).", CrossDockRules.ExactQty(4m));
         Assert.Equal("La mercancía debe estar en la zona de staging del plan.", CrossDockRules.StagingZone);
         Assert.Equal("La orden no admite asignaciones (cancelada, entregada o dada de baja).", CrossDockRules.OrderNotShippable);
         Assert.Equal("El plan ya fue completado.", CrossDockRules.PlanNotOpen);

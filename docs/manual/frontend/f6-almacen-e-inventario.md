@@ -109,10 +109,10 @@ pantalla de inicio donde ya se ven los indicadores y gráficos del Lote F1.
 **Permiso.** Se pinta solo si tiene `inventory.view` **y** el módulo **Almacén y lote/serie** (`WMS_LOTSERIAL`)
 encendido; sin alguno de los dos, Pulso se ve igual que en F1 (sin este panel, sin pedir nada al servidor).
 
-## Almacenes: zonas, posiciones y muelles
+## Almacenes: zonas, posiciones y plataformas
 
 **Para qué sirve.** Administra los almacenes de la compañía y, dentro de cada uno, sus zonas, posiciones (bins) y
-muelles. (Reescrito en el Lote 11: lista en maestro-detalle, ficha con filtros y ocupación, ciudad y código postal desde
+plataformas. (Reescrito en el Lote 11: lista en maestro-detalle, ficha con filtros y ocupación, ciudad y código postal desde
 un catálogo. Las reglas y los mensajes del servidor están en el
 [capítulo 06, sección 1](../06-inventario-y-almacen.md#1-almacenes-y-ubicaciones).)
 
@@ -171,7 +171,7 @@ Al guardar aparece "Almacén creado.".
 ### Ficha del almacén
 
 Encabezado con código, nombre y ciudad, la barra de estatus (Activo → Inactivo, con **Avanzar a Inactivo**, definitivo)
-y cuatro pestañas: **Datos**, **Zonas**, **Posiciones**, **Muelles**.
+y cuatro pestañas: **Datos**, **Zonas**, **Posiciones**, **Plataformas**.
 
 ![Ficha del almacén, pestaña Datos](img/f6-almacen-ficha.png)
 
@@ -185,7 +185,7 @@ del catálogo), y Estado y País de solo lectura. **Guardar** solo se activa si 
 | Campo | Cómo funciona |
 |---|---|
 | **Modo de recepción** | **Con acomodo** o **Directo a posición**. Ayuda: "Con acomodo: entra a la posición de recepción y se crean tareas de acomodo. Directo a posición: cada línea lleva su posición y entra ahí al confirmar, sin tareas." |
-| **Posición de recepción por defecto** | Selector de las posiciones de zonas `STAGING` o `CROSSDOCK` del almacén. Vacío dice "La primera de recepción" (la primera posición de una zona `STAGING`). Ayuda: "Zona STAGING o CROSSDOCK de este almacén. Vacío: la primera posición de recepción. Se usa en los recibos con acomodo y en las líneas con cruce de muelle." Vaciarla la quita |
+| **Posición de recepción por defecto** | Selector de las posiciones de zonas `STAGING` o `CROSSDOCK` del almacén. Vacío dice "La primera de recepción" (la primera posición de una zona `STAGING`). Ayuda: "Zona STAGING o CROSSDOCK de este almacén. Vacío: la primera posición de recepción. Se usa en los recibos con acomodo y en las líneas con cruce de plataforma." Vaciarla la quita |
 
 Al guardar con **otro modo** aparece la confirmación **«¿Cambiar el modo de recepción?»**: "Los recibos nuevos de {código} entrarán {con acomodo | directo a posición}. Los {n} recibos abiertos conservan su modo y los
 {m} recibos con acomodo pendiente siguen igual." (botón **Cambiar el modo**; mientras se cuentan los recibos aparece "…"). Cambiar el modo **no toca** los recibos abiertos ni los acomodos pendientes. Las reglas y los
@@ -241,10 +241,10 @@ Avisos: "Zona creada." / "Cambios guardados.".
 - **Cupo máximo**: unidades de producto que caben ("Unidades que caben; vacío = sin cupo."). Entero mayor que cero. Al editar,
   dejarlo vacío quita el cupo.
 
-**Muelles.** Sin cambios respecto al Lote F6: código, tipo (Inbound/Outbound/Both), estatus y activo; **Nuevo muelle**,
+**Plataformas.** Sin cambios respecto al Lote F6: código, tipo (Inbound/Outbound/Both), estatus y activo; **Nueva plataforma**,
 **Editar**, **Cambiar estatus** (Libre ↔ Ocupado ↔ Mantenimiento) y **Dar de baja**/**Reactivar**.
 
-![Ficha de almacén, pestaña Muelles con Cambiar estatus](img/f6-almacen-muelles.png)
+![Ficha de almacén, pestaña Plataformas con Cambiar estatus](img/f6-almacen-plataformas.png)
 
 ### Posiciones (antes «Ubicaciones»)
 
@@ -343,7 +343,7 @@ etiquetas; no cambia nada en el sistema. Ver [F16 — Etiquetas de posición](f1
 ### Permisos y módulo
 
 `inventory.view` (ver Almacenes, la ficha, Posiciones y el catálogo de ciudades); **`warehouse.manage`** para crear y
-editar el almacén, sus zonas, posiciones y muelles, asignar cupo en bloque, dar de baja y reactivar, y el estatus manual del muelle. Módulo
+editar el almacén, sus zonas, posiciones y plataformas, asignar cupo en bloque, dar de baja y reactivar, y el estatus manual de la plataforma. Módulo
 **Almacén y lote/serie** (`WMS_LOTSERIAL`).
 
 ### Estatus y transiciones
@@ -354,8 +354,8 @@ editar el almacén, sus zonas, posiciones y muelles, asignar cupo en bloque, dar
 | Zona | Activa → Inactiva | `warehouse.manage` (ícono Dar de baja en la ficha o papelera en el panel de la lista) | Posiciones activas | 409 "La zona tiene posiciones activas; desactívelas primero." (la papelera de la lista ya viene deshabilitada) |
 | Zona | Inactiva → Activa | `warehouse.manage` (ícono Reactivar) | — | — |
 | Posición | Activa → Inactiva / Inactiva → Activa | `warehouse.manage` (íconos de la pestaña Posiciones) | Inventario y tareas abiertas | 409 "La posición {code} tiene inventario; no se puede desactivar." / 409 "La posición tiene tareas de almacén abiertas; complételas o cancélelas antes de desactivarla." |
-| Muelle (estatus operativo) | Libre ↔ Ocupado ↔ Mantenimiento (laterales) | `warehouse.manage` | — | — |
-| Muelle (activo) | Activo → Inactivo | `warehouse.manage` | Citas vigentes | 409 "El muelle tiene citas agendadas o en curso." |
+| Plataforma (estatus operativo) | Libre ↔ Ocupado ↔ Mantenimiento (laterales) | `warehouse.manage` | — | — |
+| Plataforma (activo) | Activo → Inactivo | `warehouse.manage` | Citas vigentes | 409 "La plataforma tiene citas agendadas o en curso." |
 
 La **ocupación** de una posición (Vacía, Parcial, Llena, Ocupada sin cupo) y la de una zona no son estatus: se calculan
 solas comparando la existencia en mano con el cupo, no tienen transiciones y no bloquean ninguna acción.
@@ -377,7 +377,7 @@ solas comparando la existencia en mano con el cupo, no tienen transiciones y no 
 | Cupo máximo | hasta 2.147.483.647 | "El cupo máximo es demasiado grande." | Pantalla |
 | Peso máximo (posición) | > 0 | "El peso máximo debe ser mayor que cero." | Pantalla |
 | Peso máximo (posición) | ≤ 3 decimales | "El peso máximo admite hasta 3 decimales." | Pantalla |
-| Código (muelle) | obligatorio | "El código es obligatorio." | Pantalla |
+| Código (plataforma) | obligatorio | "El código es obligatorio." | Pantalla |
 | Ciudad o código postal | el servidor niega la consulta del catálogo | "Su usuario no puede consultar el catálogo de ciudades." | Lista del combobox |
 | Ciudad o código postal | sin coincidencias | "No hay ciudades ni códigos postales que coincidan." | Lista del combobox |
 | Filtros de Posiciones | combinación sin resultados | "Ninguna posición coincide con los filtros." | Tabla |
@@ -415,7 +415,7 @@ elegido queda en la dirección (`?kpi=`), así que se puede copiar el enlace o v
 | Tarjeta | Qué cuenta | Filtro que aplica a la tabla | `?kpi=` |
 |---|---|---|---|
 | SKUs activos | Productos activos | Solo activos | `active` |
-| Unidades totales | Existencia en mano de todos los saldos **de productos activos** (los inactivos no suman) | Activos con existencia en mano mayor que cero (cuenta también la cuarentena y el cruce de muelle, y no resta lo reservado) | `available` |
+| Unidades totales | Existencia en mano de todos los saldos **de productos activos** (los inactivos no suman) | Activos con existencia en mano mayor que cero (cuenta también la cuarentena y el cruce de plataforma, y no resta lo reservado) | `available` |
 | Bajo mínimo | Productos activos con mínimo cuyo disponible es menor | Bajo mínimo | `low` |
 | No disponibles | Productos activos **sin unidades disponibles** (en mano menos reservado = 0): sin existencia o con todo reservado. Cuenta productos, no unidades | Activos con disponible = 0 | `unavailable` |
 | Con número de serie | Productos activos con rastreo por serie o con series registradas | Rastreo por serie o con series registradas (incluye los inactivos que las tengan) | `serial` |
@@ -736,7 +736,7 @@ una píldora "Documento: … #…" con una ✕ para quitarla.
 
 ### Kárdex
 
-Columnas: **Fecha**, **Hora**, **Tipo** (chip de color: Recibo, Despacho, Transferencia, Ajuste, Cruce de muelle), **SKU**, **Producto**, **Dueño**,
+Columnas: **Fecha**, **Hora**, **Tipo** (chip de color: Recibo, Despacho, Transferencia, Ajuste, Cruce de plataforma), **SKU**, **Producto**, **Dueño**,
 **Categoría**, **Cantidad** (con signo y color), **Almacén/Posición** (las transferencias muestran origen → destino), **Lote/Serie**, **Motivo**,
 **Origen** (Manual, Conteo, Recibo…) y **Usuario**; más un buscador libre. Un clic en una fila abre el **detalle del movimiento**
 (`?txn=<id>`).
@@ -853,7 +853,7 @@ mismo del lápiz del detalle). Un recibo **directo a posición** lleva la etique
 - **Título:** "Detalle del recibo · REC-…" con su estatus; a la derecha, el origen ("Origen · Orden de compra: PO-…",
   "Origen · Cliente: …" u "Origen · Ciego"), el **lápiz** (Editar el encabezado del recibo; si está confirmado, Ver el encabezado del
   recibo) y el **reloj** (Historial: los cambios de estatus del recibo).
-- **Datos del recibo:** almacén, recepción (la posición por defecto), muelle, transporte, referencia, llegada esperada, creado y
+- **Datos del recibo:** almacén, recepción (la posición por defecto), plataforma, transporte, referencia, llegada esperada, creado y
   confirmado (solo los que tienen dato).
 - **Líneas del recibo:** SKU, Producto, Esperado, Recibido y Diferencia (0 en gris; distinto de 0 en rojo, con signo: `−2`, `+3`).
 - **Confirmar recibo** (botón ancho, `warehouse.receive`) y, si el recibo está confirmado, el panel **Tareas de acomodo**.
@@ -875,7 +875,7 @@ la fila dice "Guardando…". Cada guardado puede cambiar el estatus del recibo (
 - **Productos por lote o por serie.** En la fila aparece el ícono **Lote y series**, que abre "Lote y series · {producto}": lote con
   fabricación y vencimiento, números de serie (uno por renglón) y la posición de recepción de esa línea. En un producto por serie **lo
   recibido es el número de series capturadas** ("En un producto por serie lo recibido es el número de series capturadas: N.").
-- **Quitar una línea** (papelera, solo líneas que no vienen del documento ni tienen cruce de muelle): pide confirmación ("¿Quitar la
+- **Quitar una línea** (papelera, solo líneas que no vienen del documento ni tienen cruce de plataforma): pide confirmación ("¿Quitar la
   línea de {producto} del recibo?") y avisa "Línea quitada.".
 
 Debajo de la tabla, mientras el recibo está abierto, aparecen las notas:
@@ -909,7 +909,7 @@ mercancía entra ahí, **sin tareas de acomodo**. Las reglas, los mensajes y los
 - **Modo del recibo.** El encabezado lleva **Modo de recepción** ("Por defecto, el del almacén; solo se cambia mientras el recibo está abierto."). Al crear un recibo sigue al del almacén elegido mientras usted no elija otro (el
   campo dice "El del almacén"). En un recibo directo **se oculta la Posición de recepción** del encabezado y del modal **Lote y series**: la mercancía no pasa por ahí.
 - **Chips.** El detalle lleva el chip **Directo a posición** junto al estatus; la lista, la etiqueta **Directo**.
-- **Columna "Posición destino".** La rejilla de líneas agrega una columna con un selector ("Elija dónde se guarda…"). **No ofrece posiciones de recepción ni de cruce de muelle** (la cuarentena sí) y pone primero las
+- **Columna "Posición destino".** La rejilla de líneas agrega una columna con un selector ("Elija dónde se guarda…"). **No ofrece posiciones de recepción ni de cruce de plataforma** (la cuarentena sí) y pone primero las
   **sugeridas**. **Se guarda al elegir**, como el resto de la fila. Bajo el selector, si la posición elegida no es la sugerida, aparece la pista **«Sugerida: {posición} · {motivo}»** (por ejemplo, "Sugerida: R-02 · Reserva vacía").
   En un panel angosto (bajo 760 px) cada línea se ve como tarjeta.
 - **Aviso de cupo.** Si lo recibido es más que el espacio libre de la posición elegida aparece un chip naranja **«Excede el cupo de {posición}: caben {n}»**. **No bloquea**: se puede guardar y confirmar. El espacio libre es
@@ -918,7 +918,7 @@ mercancía entra ahí, **sin tareas de acomodo**. Las reglas, los mensajes y los
   **«Se asignó posición a {n} línea(s); {m} sin sugerencia.»**: elija a mano las {m}. **Nada se llena solo**: solo al pulsarlo.
 - **Confirmar.** El botón se apaga con el motivo **«Falta la posición destino en {n} línea(s).»** mientras alguna línea que recibe algo no tenga destino. La confirmación dice: "Se confirma el recibo {número} completo: cada línea
   entra a su posición destino, sin tareas de acomodo. Ya no se podrá modificar." Después el recibo queda **Acomodado** (pasa por Completado en el mismo momento, y el historial deja los dos pasos) y no hay tareas de acomodo que trabajar.
-  No pide destino un producto por lote sin lote ni una línea con cruce de muelle asignado.
+  No pide destino un producto por lote sin lote ni una línea con cruce de plataforma asignado.
 - **Devoluciones.** En un recibo de devolución, la primera sugerida es una posición de **cuarentena** ("Cuarentena (devolución)") si el almacén tiene una.
 
 ![Recibo REC-00034, Recibiendo y Directo a posición: dos líneas (5 y 3 unidades) con la columna Posición destino vacía ("Elija dónde se guarda…") y la pista "Sugerida: B01-R01-N1-P04 · Reserva vacía", el botón Usar posiciones sugeridas y Confirmar recibo apagado con "Falta la posición destino en 2 línea(s)."](img/l16-recibo-directo.png)
@@ -937,7 +937,7 @@ mercancía entra ahí, **sin tareas de acomodo**. Las reglas, los mensajes y los
 
 **Nuevo recibo** (cabecera de la pantalla, `warehouse.receive`) y el **doble clic** o el **lápiz** de un recibo abren el mismo modal.
 
-![Modal Nuevo recibo con Origen Ciego, Almacén ALM-01, Posición de recepción vacía (primera posición de una zona STAGING), Muelle sin asignar, Transporte y Referencia llenos y el botón Crear recibo](img/f6-recibo-nuevo.png)
+![Modal Nuevo recibo con Origen Ciego, Almacén ALM-01, Posición de recepción vacía (primera posición de una zona STAGING), Plataforma sin asignar, Transporte y Referencia llenos y el botón Crear recibo](img/f6-recibo-nuevo.png)
 
 | Campo | Regla |
 |---|---|
@@ -946,7 +946,7 @@ mercancía entra ahí, **sin tareas de acomodo**. Las reglas, los mensajes y los
 | **Aviso de llegada** / **Orden de compra** | Solo al crear con ese origen: avisos pendientes (sin recibo) u órdenes Enviadas o Recibidas parcial **del almacén elegido**. Con **Recibir** desde un aviso, el origen, el almacén y el aviso ya vienen elegidos. |
 | **Modo de recepción** (Lote 16) | **Con acomodo** o **Directo a posición**. Al crear, sigue al del almacén elegido ("El del almacén"); al editar, muestra el del recibo y se cambia solo mientras está abierto. |
 | **Posición de recepción** | Zona STAGING o CROSSDOCK. Vacío: la posición por defecto del almacén o, si no tiene, la primera posición de una zona STAGING. Queda como la posición por defecto de las líneas. **No se pide en un recibo directo.** |
-| **Muelle** | Opcional; los muelles del almacén. |
+| **Plataforma** | Opcional; los plataformas del almacén. |
 | **Transporte** y **Referencia** | Texto libre, hasta 80 caracteres. |
 
 - **Crear recibo:** avisa "Recibo REC-… creado." y el recibo queda **primero en la lista, elegido y con su detalle listo**, aunque los
@@ -956,7 +956,7 @@ mercancía entra ahí, **sin tareas de acomodo**. Las reglas, los mensajes y los
   llamar al servidor. En un recibo con documento aparece el aviso "Con aviso de llegada u orden de compra, el origen, el almacén y lo
   esperado vienen del documento."; si el almacén no se puede cambiar, "El almacén solo se cambia en un recibo sin documento y sin
   líneas.".
-- **Borrar recibo** (rojo; solo abierto y sin cruce de muelle asignado): "¿Borrar el recibo {número}? Si nació de un aviso de cliente,
+- **Borrar recibo** (rojo; solo abierto y sin cruce de plataforma asignado): "¿Borrar el recibo {número}? Si nació de un aviso de cliente,
   el aviso vuelve a quedar pendiente; si nació de una orden de compra, la orden podrá recibirse de nuevo." Avisa "Recibo {número}
   borrado.".
 - **Solo lectura:** si el recibo ya está confirmado o usted no tiene `warehouse.receive`, el modal muestra los datos como texto y solo
@@ -986,9 +986,9 @@ acomodo del recibo elegido**, con las acciones de cada fila (ver la captura y la
 a **Acomodado** y sale de esta lista. Doble clic en un recibo abre su encabezado (solo lectura: ya está confirmado).
 
 **Acomodo pendiente en un almacén directo (Lote 16).** Si el filtro **Almacén** es un almacén **directo a posición**, aparece el aviso **«{código} recibe directo a posición: aquí solo aparecen recibos anteriores al cambio o
-con cruce de muelle.»** Los recibos directos no generan tareas de acomodo, así que no figuran aquí; quedan Acomodados al confirmar. Siguen apareciendo los recibos que ya tenían tareas cuando cambió el modo.
+con cruce de plataforma.»** Los recibos directos no generan tareas de acomodo, así que no figuran aquí; quedan Acomodados al confirmar. Siguen apareciendo los recibos que ya tenían tareas cuando cambió el modo.
 
-![Acomodo pendiente filtrado por ALM-01: el aviso "ALM-01 recibe directo a posición: aquí solo aparecen recibos anteriores al cambio o con cruce de muelle." sobre la lista de recibos con acomodo pendiente y las tareas del recibo elegido](img/l16-acomodo-pendiente-aviso.png)
+![Acomodo pendiente filtrado por ALM-01: el aviso "ALM-01 recibe directo a posición: aquí solo aparecen recibos anteriores al cambio o con cruce de plataforma." sobre la lista de recibos con acomodo pendiente y las tareas del recibo elegido](img/l16-acomodo-pendiente-aviso.png)
 
 **Permiso.** `inventory.view` (todo el módulo en solo lectura); **`warehouse.receive`** para crear, editar el encabezado, capturar
 líneas, confirmar, borrar y administrar avisos, e iniciar y completar las tareas de acomodo; **`warehouse.manage`** para asignarlas y
@@ -1008,7 +1008,7 @@ cancelarlas. Recibir contra orden de compra exige además `purchasing.receive` +
 
 Contra aviso u orden de compra el recibo **nace en Recibiendo**. Un recibo **nunca vuelve a Esperado**: si se borran todas sus
 líneas queda en Recibiendo, y para deshacerlo se borra el recibo. El detalle técnico (efectos en el Kárdex, orden de compra y cruce de
-muelle) está en el manual 06, sección 4.
+plataforma) está en el manual 06, sección 4.
 
 **Validaciones y mensajes.**
 
@@ -1036,13 +1036,13 @@ muelle) está en el manual 06, sección 4.
 | Recibo directo: posición o zona desactivada | el servidor lo rechaza (422) | "La posición destino {code} está desactivada." / "La zona de la posición destino {code} está inactiva." |
 
 Los demás mensajes del servidor (cambio de tipo con documento, almacén con líneas, esperado en un recibo con documento, cruce de
-muelle asignado, etc.) salen tal cual en el formulario o bajo el campo de la fila; están todos en el manual 06, sección 4, y en el
+plataforma asignado, etc.) salen tal cual en el formulario o bajo el campo de la fila; están todos en el manual 06, sección 4, y en el
 [FAQ](../faq.md#lote-13--recibo-lote-3-del-plan-de-cambios-ciclo-de-estatus-encabezado-editable-esperado-en-ciegos-y-filtros).
 
 ## Tareas de almacén
 
 **Para qué sirve.** Todo el trabajo físico del almacén que el sistema genera: acomodo (putaway) tras un recibo, reabasto de
-posiciones de picking, conteo cíclico y cruce de muelle. **Ya no existe una pantalla ni un ítem de menú "Tareas de almacén"** con
+posiciones de picking, conteo cíclico y cruce de plataforma. **Ya no existe una pantalla ni un ítem de menú "Tareas de almacén"** con
 todas las tareas juntas: cada tipo se trabaja en la pantalla a la que pertenece.
 
 **Cómo se llega.**
@@ -1052,7 +1052,7 @@ todas las tareas juntas: cada tipo se trabaja en la pantalla a la que pertenece.
 | **Acomodo** (Putaway) | **Recibo › Acomodo pendiente**, y el panel "Tareas de acomodo" del detalle de un recibo confirmado | Asignar, iniciar, completar y cancelar |
 | **Reabasto** | **Recolección y empaque › Reabasto** (`?tab=replenish`), con el botón **Correr reabasto** | Asignar, iniciar, completar y cancelar |
 | **Conteo** | **Conteo cíclico › lista de conteos** (la pestaña "Tareas de conteo" se quitó en el Lote 14) | Asignar con el ícono de la fila; la tarea se completa al **confirmar** el conteo |
-| **Cruce de muelle** | **Cruce de muelle › Tareas de cruce** | Asignar e iniciar; se completan moviendo la asignación desde el plan |
+| **Cruce de plataforma** | **Cruce de plataforma › Tareas de cruce** | Asignar e iniciar; se completan moviendo la asignación desde el plan |
 
 La dirección antigua `/warehouse/tasks` lleva a **Recibo › Acomodo pendiente** (por ahí no se llega a las tareas de reabasto).
 
@@ -1062,7 +1062,7 @@ La dirección antigua `/warehouse/tasks` lleva a **Recibo › Acomodo pendiente*
 
 La tabla de tareas de acomodo del recibo es compacta: columnas **Producto**, **Estatus**, **Cantidad**, **De → a** (posición de
 recepción → posición destino) y **Asignada a**, más la columna de acciones. Los encabezados solo se parten entre palabras, nunca
-dentro de una. En las colas de Reabasto, Conteo y Cruce de muelle la tabla trae además **Tipo** (si la cola mezcla tipos),
+dentro de una. En las colas de Reabasto, Conteo y Cruce de plataforma la tabla trae además **Tipo** (si la cola mezcla tipos),
 **Prioridad**, **Almacén**, **Referencia** y **Creada**, y estos filtros: **Almacén**, **Estatus**, **Asignadas a mí** e **Incluir
 cerradas**.
 
@@ -1092,7 +1092,7 @@ pestaña Acomodo pendiente.
 
 **Permiso.** `inventory.view` (ver las tareas); **`warehouse.manage`** (asignar, cancelar); **Iniciar** y **Completar** exigen el
 permiso del tipo de tarea: `warehouse.receive` (Acomodo), `warehouse.pick` (Reabasto y el botón Correr reabasto), `warehouse.count`
-(Conteo: desde el Lote 14 la web solo asigna la tarea, con `warehouse.manage`, y la completa al confirmar el conteo) o `warehouse.crossdock` (Cruce de muelle). Módulo `WMS_LOTSERIAL`.
+(Conteo: desde el Lote 14 la web solo asigna la tarea, con `warehouse.manage`, y la completa al confirmar el conteo) o `warehouse.crossdock` (Cruce de plataforma). Módulo `WMS_LOTSERIAL`.
 
 **Estatus y transiciones.** Pendiente → En curso (**Iniciar**) → Terminada (**Completar**); Cancelada es lateral desde
 Pendiente o En curso, solo para Acomodo y Reabasto. Sin transición manual de pipeline.
@@ -1477,42 +1477,42 @@ eliminar la orden, y proveedores); **`inventory.adjust`** para resolver un falta
 Fuera de Borrador, editar la orden (sin la capacidad habilitada por el estatus del tenant) responde 422 "El estatus
 actual no permite la acción 'EDIT_PURCHASE_ORDER'."
 
-## Citas de muelle
+## Citas de plataforma
 
-**Para qué sirve.** Agenda del uso de los muelles del almacén, enlazada opcionalmente a un aviso de llegada o a un
-viaje (demo de cruce de muelle).
+**Para qué sirve.** Agenda del uso de los plataformas del almacén, enlazada opcionalmente a un aviso de llegada o a un
+viaje (demo de cruce de plataforma).
 
-**Cómo se llega.** Menú **Almacén › Citas de muelle**, dirección `/warehouse/dock-appointments`.
+**Cómo se llega.** Menú **Almacén › Citas de plataforma**, dirección `/warehouse/dock-appointments`.
 
-**Qué se ve.** Columnas: muelle, dirección (entrada/salida), inicio, fin, estatus y referencia. Filtros: almacén,
-muelle, estatus y rango de fecha.
+**Qué se ve.** Columnas: plataforma, dirección (entrada/salida), inicio, fin, estatus y referencia. Filtros: almacén,
+plataforma, estatus y rango de fecha.
 
 **Qué hace cada botón.**
-- **Nueva cita**: almacén, muelle, dirección, inicio/fin programados y, opcionalmente, a qué se enlaza (ninguno,
+- **Nueva cita**: almacén, plataforma, dirección, inicio/fin programados y, opcionalmente, a qué se enlaza (ninguno,
   aviso de llegada o viaje).
 - **Reprogramar** (por fila): cambia inicio/fin.
 - **Cambiar estatus** (por fila): abre el control de pipeline (Programada → Llegó → Completada; No presentado/
   Cancelada laterales).
 
 **Permiso.** `inventory.view` (ver la agenda); **`warehouse.crossdock`** para agendar, reprogramar y cambiar estatus.
-Módulo **Cruce de muelle** (`CROSSDOCK`, apagado por defecto).
+Módulo **Cruce de plataforma** (`CROSSDOCK`, apagado por defecto).
 
 **Validaciones y mensajes.**
 
 | Campo | Regla | Mensaje |
 |---|---|---|
-| Muelle | obligatorio | "Indique el muelle." |
+| Plataforma | obligatorio | "Indique la plataforma." |
 | Inicio programado | obligatorio | "Indique el inicio programado." |
 | Dirección | obligatoria | "Indique la dirección de la cita (entrada o salida)." |
 | Enlace a aviso de llegada | debe ser de entrada | "Una cita de un aviso de llegada debe ser de entrada (INBOUND)." |
 | Enlace | a lo sumo uno | "Una cita se enlaza a un aviso de llegada o a un viaje, no a ambos." |
 
-## Cruce de muelle: planes
+## Cruce de plataforma: planes
 
 **Para qué sirve.** Asigna líneas de un recibo directamente a órdenes de salida, sin pasar por una posición de
-reserva (demo del flujo de cruce de muelle).
+reserva (demo del flujo de cruce de plataforma).
 
-**Cómo se llega.** Menú **Almacén › Cruce de muelle**, dirección `/warehouse/cross-dock-plans`; ficha en
+**Cómo se llega.** Menú **Almacén › Cruce de plataforma**, dirección `/warehouse/cross-dock-plans`; ficha en
 `/warehouse/cross-dock-plans/:id`.
 
 **Qué se ve (lista).** Columnas: plan, almacén, estatus, asignaciones, cantidad asignada/movida/faltante y creado.
@@ -1588,7 +1588,7 @@ se completa (o se cancela) la última tarea de acomodo que generó el recibo. Va
 Igual, "Discrepancia", "Recibiendo" y "Completado" los mueve el sistema según lo que captura y confirma.
 
 **¿Dónde quedó "Tareas de almacén"?** Ya no hay una cola con todas las tareas: el acomodo está en Recibo › Acomodo pendiente, el
-reabasto en Recolección y empaque › Reabasto, el conteo en Conteo cíclico y el cruce en Cruce de muelle.
+reabasto en Recolección y empaque › Reabasto, el conteo en Conteo cíclico y el cruce en Cruce de plataforma.
 
 **¿Cómo abro el encabezado de un recibo?** Con doble clic en el recibo de la lista o con el lápiz del detalle (Editar el encabezado
 del recibo). Si el recibo ya está confirmado se abre en solo lectura.
@@ -1603,7 +1603,7 @@ sugeridas**.
 
 **¿Puedo pasarme del cupo de una posición?** Sí: el chip naranja **«Excede el cupo de {posición}: caben {n}»** solo avisa. Guarde y confirme igual, y transfiera el sobrante después.
 
-**¿Por qué no veo las posiciones de recepción en "Posición destino"?** Porque en un recibo directo la mercancía se guarda, no se recibe en recepción: el selector no ofrece posiciones de recepción (`STAGING`) ni de cruce de muelle
+**¿Por qué no veo las posiciones de recepción en "Posición destino"?** Porque en un recibo directo la mercancía se guarda, no se recibe en recepción: el selector no ofrece posiciones de recepción (`STAGING`) ni de cruce de plataforma
 (`CROSSDOCK`). La cuarentena sí se ofrece.
 
 **¿Por qué el selector de Posición en Recolección y empaque solo muestra algunas posiciones?** Porque solo ofrece las posiciones donde el producto elegido tiene existencia disponible (con su cantidad), en el orden en que el sistema
@@ -1611,7 +1611,7 @@ las usaría. Sin producto, el campo está apagado.
 
 **¿Por qué los números tienen coma?** Formato de Puerto Rico: coma para los miles y punto para los decimales (`61,023`). Ver "Exportar: compañía, filtros, fechas y números".
 
-**¿Por qué "Cruce de muelle" no aparece en mi menú?** El módulo `CROSSDOCK` viene apagado por defecto; pida a un
+**¿Por qué "Cruce de plataforma" no aparece en mi menú?** El módulo `CROSSDOCK` viene apagado por defecto; pida a un
 administrador que lo encienda en Configuración si su compañía lo necesita.
 
 **¿Qué significa el chip "Bajo mínimo" en Productos?** Que el disponible de ese producto está por debajo del "Mínimo

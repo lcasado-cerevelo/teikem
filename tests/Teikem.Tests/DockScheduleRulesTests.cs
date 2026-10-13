@@ -12,11 +12,11 @@ public class DockScheduleRulesTests
     [Fact]
     public void Messages_are_exact()
     {
-        Assert.Equal("El muelle ya tiene una cita que se solapa con ese horario.", DockScheduleRules.Overlap);
+        Assert.Equal("La plataforma ya tiene una cita que se solapa con ese horario.", DockScheduleRules.Overlap);
         Assert.Equal("El fin de la cita debe ser posterior a su inicio.", DockScheduleRules.Window);
         Assert.Equal("La cita debe agendarse entre ayer y los próximos 90 días.", DockScheduleRules.Horizon);
         Assert.Equal("Una cita se enlaza a un aviso de llegada o a un viaje, no a ambos.", DockScheduleRules.AsnOrTrip);
-        Assert.Equal("El muelle es de tipo INBOUND; no admite citas de OUTBOUND.", DockScheduleRules.Incompatible("INBOUND", "OUTBOUND"));
+        Assert.Equal("La plataforma es de tipo INBOUND; no admite citas de OUTBOUND.", DockScheduleRules.Incompatible("INBOUND", "OUTBOUND"));
     }
 
     [Fact]

@@ -123,7 +123,7 @@ describe('Reporte de ajustes', () => {
 
   it('buildAdjustmentsReport: columnas, lote/serie bajo el producto, totales, resumen y aviso del KPI', () => {
     const rows = [
-      K({ createdAtUtc: '2026-09-28T14:00:00', signedQuantity: 3, toWarehouseCode: 'ALM-01', toBinCode: 'A-01', reason: 'Encontrado', notes: 'En muelle', userName: 'Ana', lotNumber: 'L-7' }),
+      K({ createdAtUtc: '2026-09-28T14:00:00', signedQuantity: 3, toWarehouseCode: 'ALM-01', toBinCode: 'A-01', reason: 'Encontrado', notes: 'En plataforma', userName: 'Ana', lotNumber: 'L-7' }),
       K({ createdAtUtc: '2026-09-27T10:00:00', signedQuantity: -1, fromWarehouseCode: 'ALM-01', fromBinCode: 'A-02', reasonCode: 'DAMAGED', serialNumber: 'S-1' }),
     ]
     const spec = buildAdjustmentsReport(rows, false, ctx({ filters: { ...EMPTY_PRODUCT_FILTERS, kpi: 'serial' } }))
@@ -132,7 +132,7 @@ describe('Reporte de ajustes', () => {
     expect(spec.columns[4].format).toBe('signed')
     const [first, second] = spec.sections[0].rows
     expect(first[0]).toMatch(/2026|26/)
-    expect(first.slice(1)).toEqual(['GLU-100', 'Medidor\nLote L-7', 'ALM-01 / A-01', 3, 'Encontrado', 'En muelle', 'Ana'])
+    expect(first.slice(1)).toEqual(['GLU-100', 'Medidor\nLote L-7', 'ALM-01 / A-01', 3, 'Encontrado', 'En plataforma', 'Ana'])
     // sin etiqueta del motivo, su código; sin nota ni usuario, vacío
     expect(second.slice(2)).toEqual(['Medidor\nSerie S-1', 'ALM-01 / A-02', -1, 'DAMAGED', '', ''])
     expect(spec.totals?.map((r) => [r[0], r[4]])).toEqual([

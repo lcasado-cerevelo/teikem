@@ -113,7 +113,7 @@ public sealed class ReceiptStatusRulesTests
             ReceiptRules.ExpectedOnlyWithoutDocument);
         Assert.Equal("La cantidad esperada no puede ser negativa.", ReceiptRules.ExpectedQtyNegative);
         Assert.Equal("El producto de una línea del aviso de llegada o de la orden de compra no se puede cambiar.", ReceiptRules.DocumentLineProductFixed);
-        Assert.Equal("La línea tiene asignaciones de cruce de muelle; cancélelas antes de cambiar el producto.", ReceiptRules.LineHasCrossDockProductChange);
+        Assert.Equal("La línea tiene asignaciones de cruce de plataforma; cancélelas antes de cambiar el producto.", ReceiptRules.LineHasCrossDockProductChange);
         Assert.Equal("El tipo de un recibo con aviso de llegada u orden de compra no se puede cambiar.", ReceiptRules.TypeFixedWithDocument);
         Assert.Equal("El almacén solo se puede cambiar en un recibo sin aviso de llegada ni orden de compra y sin líneas.", ReceiptRules.WarehouseFixed);
         Assert.Equal("El transporte admite como máximo 80 caracteres.", ReceiptRules.CarrierTooLong);

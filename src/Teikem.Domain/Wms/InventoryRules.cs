@@ -57,7 +57,7 @@ public static class InventoryRules
     {
         InventoryTxnTypes.Receipt => "Una recepción entra a una posición (solo destino).",
         InventoryTxnTypes.Issue => "Un despacho sale de una posición (solo origen).",
-        InventoryTxnTypes.CrossDock => "Un cruce de muelle sale de una posición (solo origen).",
+        InventoryTxnTypes.CrossDock => "Un cruce de plataforma sale de una posición (solo origen).",
         InventoryTxnTypes.Adjustment => "Un ajuste entra a una posición o sale de ella, no ambas.",
         InventoryTxnTypes.Transfer => "Una transferencia necesita origen y destino.",
         _ => UnknownTxnType(type),

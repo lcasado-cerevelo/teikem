@@ -18,7 +18,7 @@ public sealed class ReceiptRulesTests
         Assert.Equal("El producto SKU-1 no pertenece al cliente del aviso de llegada.", ReceiptRules.OwnerMismatch("SKU-1"));
         Assert.Equal("La orden de compra solo admite productos propios; SKU-2 pertenece a un cliente.", ReceiptRules.OwnProductsOnly("SKU-2"));
         Assert.Equal("Las líneas del aviso de llegada no se eliminan; capture 0 como recibido.", ReceiptRules.AsnLineNotRemovable);
-        Assert.Equal("La línea tiene asignaciones de cruce de muelle; cancélelas antes de eliminarla.", ReceiptRules.LineHasCrossDock);
+        Assert.Equal("La línea tiene asignaciones de cruce de plataforma; cancélelas antes de eliminarla.", ReceiptRules.LineHasCrossDock);
         Assert.Equal("El lote L1 ya existe con otras fechas; corrija las fechas o use otro número de lote.", ReceiptRules.LotExistsWithOtherDates("L1"));
     }
 

@@ -137,7 +137,7 @@ describe('FEFO sugerido (PickBatchRules.Eligible)', () => {
     bal({ binId: 3, binCode: 'P-01', zoneTypeCode: 'PICKING', expiryDate: '2026-12-01', lotId: 23 }),
   ]
 
-  it('excluye cuarentena, cruce de muelle, disponible ≤ 0 y saldos sin posición; ordena por vencimiento, zona y código', () => {
+  it('excluye cuarentena, cruce de plataforma, disponible ≤ 0 y saldos sin posición; ordena por vencimiento, zona y código', () => {
     expect(fefoCandidates(balances).map((b) => `${b.binId}/${b.lotId ?? '-'}`)).toEqual(['3/22', '3/23', '2/21', '8/-', '1/-', '7/-'])
   })
 
@@ -205,7 +205,7 @@ describe('collectSchema', () => {
 })
 
 describe('isPickableZone (espejo de PickBatchRules.IsPickableZone)', () => {
-  it('no se recolecta ni se renta de cuarentena, cruce de muelle ni En renta (Lote 27)', () => {
+  it('no se recolecta ni se renta de cuarentena, cruce de plataforma ni En renta (Lote 27)', () => {
     expect(isPickableZone('QUARANTINE')).toBe(false)
     expect(isPickableZone('crossdock')).toBe(false)
     expect(isPickableZone('RENTAL')).toBe(false)

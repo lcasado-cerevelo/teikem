@@ -668,3 +668,30 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_WarehouseBin_WhCode' AND object_id = OBJECT_ID('dbo.WarehouseBin'))
     CREATE UNIQUE INDEX UQ_WarehouseBin_WhCode ON dbo.WarehouseBin (WarehouseId, Code) WHERE IsRemoved = 0;
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-12 — «Muelle» pasa a «Plataforma» en el módulo de almacén (decisión de Luis): etiquetas en español de la base de datos.
+   Cambia SOLO el texto en español del JSON de etiquetas (el inglés conserva «dock»): descripción del módulo CROSSDOCK, nombres de los dominios
+   DockType / DockDirection / DockStatus, los tipos de entidad Muelle / Cita de muelle / Asignación de cruce de muelle, el tipo de movimiento
+   Cruce de muelle, el evento de actividad «Cruce de muelle completado» y el estatus de plataforma «Ocupado» → «Ocupada».
+   Idempotente: solo toca filas que todavía dicen «muelle».
+   ---------------------------------------------------------------------------- */
+UPDATE dbo.ModuleDefinition
+SET Description = REPLACE(REPLACE(Description, N'Muelle', N'Plataforma'), N'muelle', N'plataforma')
+WHERE ModuleKey = 'CROSSDOCK' AND Description LIKE N'%uelle%';
+GO
+UPDATE dbo.CatalogDomain
+SET LabelJson = REPLACE(REPLACE(LabelJson, N'Muelle', N'Plataforma'), N'muelle', N'plataforma')
+WHERE DomainKey IN ('DockType', 'DockDirection', 'DockStatus') AND LabelJson LIKE N'%uelle%';
+GO
+UPDATE dbo.LookupCode
+SET LabelJson = REPLACE(REPLACE(LabelJson, N'Muelle', N'Plataforma'), N'muelle', N'plataforma')
+WHERE LabelJson LIKE N'%uelle%'
+  AND ((Entity = 'EntityType' AND InternalCode IN ('WAREHOUSE_DOCK', 'DOCK_APPOINTMENT', 'CROSSDOCK_ALLOCATION', 'CROSSDOCK_PLAN'))
+       OR (Entity = 'InventoryTxnType' AND InternalCode = 'CROSSDOCK')
+       OR (Entity = 'ActivityEventType' AND InternalCode = 'CROSSDOCK_COMPLETED'));
+GO
+UPDATE dbo.StatusCode
+SET LabelJson = REPLACE(LabelJson, N'"es":"Ocupado"', N'"es":"Ocupada"')
+WHERE Entity = 'DockStatus' AND InternalCode = 'OCCUPIED' AND LabelJson LIKE N'%"es":"Ocupado"%';
+GO

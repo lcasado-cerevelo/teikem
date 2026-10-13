@@ -99,7 +99,7 @@ public class KardexRulesTests
         Assert.Equal("Recolección EMP-00007", KardexRules.RefLabel(EntityTypes.PickBatch, 9, "EMP-00007"));
         Assert.Equal("Conteo CC-00002", KardexRules.RefLabel(EntityTypes.CycleCount, 2, "CC-00002"));
         Assert.Equal("Orden de compra PO-00003", KardexRules.RefLabel(EntityTypes.PurchaseOrder, 3, "PO-00003"));
-        Assert.Equal("Cruce de muelle XD-00001", KardexRules.RefLabel(EntityTypes.CrossDockAllocation, 4, "XD-00001"));
+        Assert.Equal("Cruce de plataforma XD-00001", KardexRules.RefLabel(EntityTypes.CrossDockAllocation, 4, "XD-00001"));
         Assert.Equal("Tarea #12", KardexRules.RefLabel(EntityTypes.WarehouseTask, 12));
         // Sin número conocido: 'TIPO·id'.
         Assert.Equal("RECEIPT·5", KardexRules.RefLabel(EntityTypes.Receipt, 5));
@@ -126,7 +126,7 @@ public class KardexRulesTests
 
         Assert.Equal("Cross-dock", KardexRules.TypeChip(InventoryTxnTypes.CrossDock, "en"));
         Assert.Equal("Issue", KardexRules.TypeChip(InventoryTxnTypes.Issue, "en"));
-        Assert.Equal("Cruce de muelle", KardexRules.TypeChip(InventoryTxnTypes.CrossDock, "es"));
+        Assert.Equal("Cruce de plataforma", KardexRules.TypeChip(InventoryTxnTypes.CrossDock, "es"));
     }
 
     [Theory]
@@ -134,7 +134,7 @@ public class KardexRulesTests
     [InlineData(InventoryTxnTypes.Issue, "Despacho")]
     [InlineData(InventoryTxnTypes.Transfer, "Transferencia")]
     [InlineData(InventoryTxnTypes.Adjustment, "Ajuste")]
-    [InlineData(InventoryTxnTypes.CrossDock, "Cruce de muelle")]
+    [InlineData(InventoryTxnTypes.CrossDock, "Cruce de plataforma")]
     [InlineData("receipt", "Recepción")]
     [InlineData("OTHER", "OTHER")]
     public void TypeChip_labels(string code, string label) => Assert.Equal(label, KardexRules.TypeChip(code));
