@@ -495,3 +495,16 @@ JOIN dbo.Permission p ON p.Code = 'printers.manage'
 WHERE r.Name IN ('TenantAdmin')
   AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-12 (e) — Escaneo por número de paquete (Lote 44, F-G2). El label de cada paquete lleva en el código de barras el número
+   de su paquete (dbo.CargoLine.PackageNumber); la estación de escaneo y GET /orders/lookup lo buscan como cuarta precedencia
+   (después de número de orden, empaque y factura) y solo cuando los tres primeros no coinciden. Este índice hace esa búsqueda
+   exacta sin recorrer las líneas de carga de todas las compañías. Filtrado como la consulta (líneas activas con número).
+   No es único a propósito: el contador de paquetes es por cliente y un número tecleado puede repetirse (el escaneo lo trata
+   como ambiguo con su mensaje). Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_CargoLine_PackageNumber' AND object_id = OBJECT_ID('dbo.CargoLine'))
+    CREATE INDEX IX_CargoLine_PackageNumber ON dbo.CargoLine(PackageNumber) INCLUDE (TransportOrderId)
+        WHERE IsActive = 1 AND PackageNumber IS NOT NULL;
+GO

@@ -1007,6 +1007,8 @@ expect 200 "$(req GET "/api/v1/orders/lookup?code=$O1_NUM")" | jq -e '.matchedBy
 expect 200 "$(req GET "/api/v1/orders/lookup?code=$O1_PB")" | jq -e '.matchedBy=="PACK_BATCH" and (.matches | length)==1' >/dev/null || fail "lookup por empaque"
 expect 200 "$(req GET "/api/v1/orders/lookup?code=DUP-$TS")" | jq -e '.matchedBy=="INVOICE" and (.matches | length) >= 3' >/dev/null || fail "lookup por factura"
 expect 200 "$(req GET "/api/v1/orders/lookup?code=DUP")" | jq -e '(.matches | length)==0 and .matchedBy==null' >/dev/null || fail "lookup parcial no cuenta"
+# Lote 44 (F-G2): el número de paquete es la cuarta precedencia del lookup (el código de barras del label de cada pieza)
+expect 200 "$(req GET "/api/v1/orders/lookup?code=PK-$TS")" | jq -e --arg id "$O1_PID" '.matchedBy=="PACKAGE" and (.matches | length)==1 and .matches[0].publicId==$id and (.matches[0].consigneeLine1 | length) > 0' >/dev/null || fail "lookup por número de paquete"
 expect 200 "$(req GET "/api/v1/orders/lookup?code=$(echo "$O1_NUM" | tr 'A-Z' 'a-z')")" | jq -e '(.matches | length)==1' >/dev/null || fail "lookup sin distinguir mayúsculas"
 expect 400 "$(req GET "/api/v1/orders/lookup?code=")" | jq -e '.errors.code' >/dev/null || fail "lookup vacío"
 expect 200 "$(req GET "/api/v1/orders?invoice=UP-$TS")" | jq -e '.total >= 3 and all(.items[]; .clientInvoiceNumber | contains("UP-"))' >/dev/null || fail "filtro factura parcial"

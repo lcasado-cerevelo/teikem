@@ -24,7 +24,7 @@ namespace Teikem.Infrastructure.Services;
 ///   StopStatus, CodStatus) con la etiqueta personalizada del tenant si existe.
 /// - CodType siempre es null en este lote: se define al entregar (11B/POD).
 /// - Lote 5 (P7): la ficha interna (OrderScope.Any) de una orden no especial muestra su ruta vigente y el chofer de esa ruta;
-///   LookupAsync no cambia (lo reutiliza el escaneo Outbound).
+///   LookupAsync no cambia (lo reutiliza el escaneo Outbound). Lote 44: cuarta precedencia, el número de paquete (MatchedByPackage).
 /// - Lote 39: sin orders.view_price (OrderPriceVisibility) el monto cotizado sale en null en ficha, lista y lookup (y en las
 ///   respuestas de crear/editar/confirmar/reprecio/cancelar/estatus, que salen de GetAsync). Filtros de lista nuevos: serviceTypes,
 ///   packageTypes, cities, postalCodePrefix, clientIds y statuses (OrderListFilterRules).
@@ -35,6 +35,8 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
     public const string MatchedByOrderNumber = "ORDER_NUMBER";
     public const string MatchedByPackBatch = "PACK_BATCH";
     public const string MatchedByInvoice = "INVOICE";
+    /// <summary>Lote 44 (F-G2): número de paquete (CargoLine.PackageNumber activa), el código de barras de cada label.</summary>
+    public const string MatchedByPackage = Domain.Trips.OutboundScanRules.MatchedByPackage;
 
     private sealed record StatusInfo(string Code, string Label, bool IsInitial, string StageKind);
 
@@ -337,6 +339,16 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
         if (byOrder.Count > 0) { matchedBy = MatchedByOrderNumber; matches = byOrder; }
         else if (byPackBatch.Count > 0) { matchedBy = MatchedByPackBatch; matches = byPackBatch; }
         else if (byInvoice.Count > 0) { matchedBy = MatchedByInvoice; matches = byInvoice; }
+        else
+        {
+            // Lote 44: cuarta precedencia, el número de paquete (el label de cada paquete lo lleva en el código de barras). Solo se
+            // consulta si los tres primeros no coinciden (IX_CargoLine_PackageNumber); varias órdenes = ambiguo, igual que los demás.
+            var byPackage = await db.ScopedOrders(scope).AsNoTracking()
+                .Where(o => o.IsActive && o.CargoLines.Any(l => l.IsActive && l.PackageNumber == c))
+                .OrderByDescending(o => o.CreatedAtUtc).ThenByDescending(o => o.TransportOrderId)
+                .ToListAsync(ct);
+            if (byPackage.Count > 0) { matchedBy = MatchedByPackage; matches = byPackage; }
+        }
 
         return new OrderLookupDto(c, matchedBy, await ToListItemsAsync(matches, ct));
     }
@@ -405,7 +417,8 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
                 o.CodAmount, o.QuotedAmount,
                 status.Code, status.Label, status.IsInitial,
                 o.IsSpecialDelivery, o.IsActive, o.CreatedAtUtc,
-                packages), canViewPrice));
+                packages,
+                delivery?.SnapLine1, delivery?.SnapLine2, delivery?.SnapState), canViewPrice));   // Lote 44: dirección para labels y documentos
         }
         return items;
     }

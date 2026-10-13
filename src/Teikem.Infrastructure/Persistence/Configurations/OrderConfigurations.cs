@@ -93,6 +93,9 @@ public sealed class CargoLineConfiguration : IEntityTypeConfiguration<CargoLine>
         b.Property(l => l.WeightKg).HasColumnType("decimal(12,3)");
         b.Property(l => l.VolumeM3).HasColumnType("decimal(12,4)");
         b.HasIndex(l => l.TransportOrderId).HasDatabaseName("IX_CargoLine_Order");
+        // Lote 44 (update.sql 2026-10-12 (e)): búsqueda exacta por número de paquete (escaneo del label de cada paquete).
+        b.HasIndex(l => l.PackageNumber).HasFilter("[IsActive] = 1 AND [PackageNumber] IS NOT NULL").HasDatabaseName("IX_CargoLine_PackageNumber")
+            .IncludeProperties(l => l.TransportOrderId);
         // Dos FKs a OrderStop sin navegación (R9: siempre paradas de la misma orden por construcción)
         b.HasOne<OrderStop>().WithMany().HasForeignKey(l => l.PickupStopId);
         b.HasOne<OrderStop>().WithMany().HasForeignKey(l => l.DeliveryStopId);

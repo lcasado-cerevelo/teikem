@@ -214,7 +214,10 @@ public sealed record OrderDetailDto(
     Guid? AssignedTripPublicId = null,
     string? AssignedTripCode = null);
 
-/// <summary>Fila del listado: Empaque es la primera columna de negocio (siempre con valor).</summary>
+/// <summary>
+/// Fila del listado: Empaque es la primera columna de negocio (siempre con valor). Lote 44 (F-G2): ConsigneeLine1/2 y ConsigneeState
+/// (dirección de la parada de entrega, para los labels, el waybill summary y la lista de empaque sin pedir la ficha de cada orden).
+/// </summary>
 public sealed record OrderListItemDto(
     int Id,
     Guid PublicId,
@@ -238,7 +241,10 @@ public sealed record OrderListItemDto(
     bool IsSpecialDelivery,
     bool IsActive,
     DateTime CreatedAtUtc,
-    IReadOnlyList<OrderPackageLineDto> Packages);
+    IReadOnlyList<OrderPackageLineDto> Packages,
+    string? ConsigneeLine1 = null,
+    string? ConsigneeLine2 = null,
+    string? ConsigneeState = null);
 
 /// <summary>
 /// Filtros del listado (LIKE parcial en orden/factura/empaque/consignatario; FromUtc inclusivo, ToUtc exclusivo sobre CreatedAtUtc; Take 1..500).
