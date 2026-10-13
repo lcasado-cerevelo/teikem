@@ -18,7 +18,7 @@ import { createContext, useContext, useMemo, useRef, useState } from 'react'
 import type { components } from '../../kernel/api/schema'
 import { useLang, useT } from '../../kernel/i18n'
 import { formatQuantity } from '../../kernel/i18n/numberFormat'
-import { ConfirmDialog, DataTable, EmptyState, IconGrid, IconTag, IconTrash, toast, useElementWidth, type DataColumn, type RowAction } from '../../kernel/ui'
+import { ConfirmDialog, DataTable, EmptyState, IconCopy, IconGrid, IconTag, IconTrash, toast, useElementWidth, type DataColumn, type RowAction } from '../../kernel/ui'
 import { IconAlert } from '../../kernel/ui/icons'
 import { productLabel, useReceiptTargetSuggestions, type ReceiptDetailDto } from './api'
 import { formatNumber } from './lineRules'
@@ -26,7 +26,7 @@ import { BinPicker, ProductPicker } from './pickers'
 import { ReceiptLineCaptureModal } from './ReceiptLineCaptureModal'
 import { ReceiptLineDamageModal } from './ReceiptLineDamageModal'
 import { ReceiptSplitModal } from './ReceiptSplitModal'
-import { isEmptyRow, parseQtyText, rowNeedsTarget, rowVariance, type LineRow } from './receiptLineEdit'
+import { canDuplicateRow, isEmptyRow, parseQtyText, rowNeedsTarget, rowVariance, type LineRow } from './receiptLineEdit'
 import { exceedsCapacity, TARGET_EXCLUDED_ZONE_TYPES, topSuggestion } from './receivingMode'
 import type { ReceiptLineRowsState } from './useReceiptLineRows'
 
@@ -320,6 +320,16 @@ export function ReceiptLinesEditor({ receipt, state }: ReceiptLinesEditorProps) 
         visible: (r) => editable && direct && manual && r.lineId !== null && r.trackingTypeCode === 'NONE' && r.allocatedToCrossDock <= 0 && (parseQtyText(r.received) ?? 0) > 0,
         disabled: (r) => r.saving,
         onClick: (r) => setSplitting(r),
+      },
+      {
+        key: 'duplicate',
+        label: t('warehouse.receipts.lines.duplicate'),
+        icon: <IconCopy />,
+        perm: 'warehouse.receive',
+        // 2026-10-12: solo en un recibo directo sin documento (cada línea con su posición): copia producto y cantidades y deja la posición SIN escoger
+        visible: (r) => editable && direct && manual && canDuplicateRow(r, state.rows.length),
+        disabled: (r) => r.saving,
+        onClick: (r) => state.duplicate(r.key),
       },
       {
         key: 'remove',

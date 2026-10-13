@@ -4,10 +4,13 @@
 import { describe, expect, it } from 'vitest'
 import type { components } from '../../kernel/api/schema'
 import {
+  canDuplicateRow,
   confirmBlockers,
+  duplicateRow,
   emptyRow,
   ensureTrailingEmpty,
   isDirty,
+  insertRowAfter,
   isEmptyRow,
   linePayload,
   mergeSaved,
@@ -299,5 +302,44 @@ describe('Lote 16: posición destino (recibo directo a posición)', () => {
     expect(confirmBlockers([{ ...noTarget, errors: { row: 'x' } }], true, true, true)).toBe('errors')
     expect(confirmBlockers([rowFromLine(line({ targetBinId: 40 }))], true, true, true)).toBeNull()
     expect(confirmBlockers([noTarget], false, true, true)).toBe('confirmed')
+  })
+})
+
+describe('duplicar línea (recibo directo)', () => {
+  const src = () => ({
+    ...rowFromLine(line({ id: 7, productPublicId: 'P9', sku: 'Z-9', productName: 'Tuerca', expected: 5, receivedQty: 5, lotNumber: 'L1', targetBinId: 3, targetBinCode: 'A-01' } as Partial<LineDto>)),
+  })
+
+  it('copia producto y cantidades y deja la posición, lote, ids y errores sin nada', () => {
+    const s = src()
+    const d = duplicateRow(s, 'nuevo')
+    expect(d.key).toBe('nuevo')
+    expect(d.productPublicId).toBe('P9')
+    expect(d.sku).toBe('Z-9')
+    expect(d.expected).toBe(s.expected)
+    expect(d.received).toBe(s.received)
+    expect(d.lineId).toBeNull()
+    expect(d.asnLineId).toBeNull()
+    expect(d.targetBinId).toBeNull()
+    expect(d.targetBinCode).toBeNull()
+    expect(d.lotNumber).toBeNull()
+    expect(d.serialCount).toBe(0)
+    expect(d.original).toBeNull()
+  })
+
+  it('canDuplicateRow: no la vacía, no series, no pasado el tope', () => {
+    const s = src()
+    expect(canDuplicateRow(s, 1)).toBe(true)
+    expect(canDuplicateRow(emptyRow('e'), 1)).toBe(false)
+    expect(canDuplicateRow({ ...s, trackingTypeCode: 'SERIAL' }, 1)).toBe(false)
+    expect(canDuplicateRow(s, MAX_RECEIPT_LINES)).toBe(false)
+  })
+
+  it('insertRowAfter pone la copia justo debajo', () => {
+    const a = emptyRow('a')
+    const b = emptyRow('b')
+    const c = emptyRow('c')
+    expect(insertRowAfter([a, b], 'a', c).map((r) => r.key)).toEqual(['a', 'c', 'b'])
+    expect(insertRowAfter([a, b], 'zz', c).map((r) => r.key)).toEqual(['a', 'b', 'c'])
   })
 })

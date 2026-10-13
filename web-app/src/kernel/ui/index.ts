@@ -6,6 +6,7 @@ export {
   IconKey,
   IconLogOut,
   IconPlay,
+  IconCopy,
   IconPower,
   IconRefreshCw,
   IconRotateCcw,
