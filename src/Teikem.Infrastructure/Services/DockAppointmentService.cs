@@ -33,7 +33,7 @@ public sealed class DockAppointmentService(
     StatusService statuses)
 {
     public const int MaxRows = 500;
-    public const string DockRequired = "Indique el muelle.";
+    public const string DockRequired = "Indique la plataforma.";
     public const string NoActiveWarehouse = "La compañía no tiene almacenes activos.";
     public const string WarehouseRequired = "Indique el almacén: la compañía tiene más de uno.";
 
@@ -266,7 +266,7 @@ public sealed class DockAppointmentService(
                   join w in db.Set<Warehouse>().AsNoTracking() on d.WarehouseId equals w.WarehouseId
                   where d.WarehouseDockId == dockId && d.WarehouseId == warehouseId
                   select d).FirstOrDefaultAsync(ct)
-           ?? throw new NotFoundException("Muelle");
+           ?? throw new NotFoundException("Plataforma");
 
     /// <summary>ASN del tenant y del mismo almacén (404); cancelado o dado de baja → 422.</summary>
     private async Task<int> ResolveAsnAsync(int warehouseId, int asnId, CancellationToken ct)

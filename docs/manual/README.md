@@ -47,12 +47,12 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    parada, despacho y salida (extiende la costura del futuro Lote 7), zonas de despacho por código postal/rango/
    municipio (extiende el Lote 4), estación de escaneo Outbound, "Planificar el día", monitor de rutas, estatus y
    transiciones, permisos y módulos, fuentes de análisis y auditoría.
-6. [06 — Inventario y almacén](06-inventario-y-almacen.md): almacenes, zonas, posiciones y muelles; productos,
+6. [06 — Inventario y almacén](06-inventario-y-almacen.md): almacenes, zonas, posiciones y plataformas; productos,
    categorías, lotes y series; inventario (saldos, Kárdex con cantidad con signo, ajustes, transferencias,
    genealogía, rastro de serie y conciliación ledger↔saldo); recepción (avisos de llegada y recibos, incluida la
    recepción contra orden de compra); cola de tareas de almacén (putaway dirigido y reabasto); conteo cíclico en
    modo informado; recolección y empaque ad hoc (Pick & Pack); compras mínimas (proveedores, órdenes de compra y
-   resolución de faltantes); cruce de muelle en modo demo (citas y planes), estatus y transiciones, permisos y
+   resolución de faltantes); cruce de plataforma en modo demo (citas y planes), estatus y transiciones, permisos y
    módulos.
    Lote 21 (sección 6, Conteo cíclico): **conteo por producto**, captura original y **corrección del supervisor** con evidencia,
    **vista previa** de la reconciliación, lista **Por revisar**, **cierre en bloque** de los conteos que cuadran y **posiciones
@@ -88,7 +88,7 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    de compra) salió del menú: los faltantes se resuelven en la ficha de la orden de compra.
    Lote 16 (secciones 1.4, 4.1, 5, 7 y 9): **modo de recepción del almacén** (con acomodo o directo a posición) y **posición de recepción por defecto**; **recibo directo a posición**
    (posición destino por línea, sugerencias con cupo, "Usar posiciones sugeridas", cuarentena en devoluciones, cupo que solo avisa, Completado → Acomodado en el mismo momento, sin tareas) con sus
-   validaciones, estatus y lo que bloquea; el acomodo pendiente en almacenes directos; el selector de posiciones de Recolección (solo donde hay existencia); el cruce de muelle que no aplica a
+   validaciones, estatus y lo que bloquea; el acomodo pendiente en almacenes directos; el selector de posiciones de Recolección (solo donde hay existencia); el cruce de plataforma que no aplica a
    recibos directos ya confirmados; y el formato de los números (coma de miles y `$`).
    2026-10-11 (sección 7b): **Despacho manual** `DMA-#####` — salida de inventario sin entrega con motivo obligatorio (catálogo editable
    «Motivo del despacho manual») y nota libre, permiso nuevo `warehouse.issue`, ficha consultable, filtro `kind` de la lista de
@@ -168,9 +168,9 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
    (indicadores, gráficos, mi rango de fecha), Mi cuenta (perfil, contraseña, verificación en dos pasos, sesiones
    activas), reautenticación (AAL2), pantallas "Sin permiso" y "Módulo apagado".
 2. [F6 — Almacén e inventario (mínimo) + consulta de órdenes](frontend/f6-almacen-e-inventario.md): panel "Almacén" en
-   Pulso del día, almacenes (zonas, posiciones y muelles), productos y categorías, inventario (saldos, Kárdex, ajustes,
+   Pulso del día, almacenes (zonas, posiciones y plataformas), productos y categorías, inventario (saldos, Kárdex, ajustes,
    transferencias, genealogía, rastro de serie y conciliación), recepción (recibos y avisos de llegada), tareas de
-   almacén, conteo cíclico, recolección y empaque, proveedores, órdenes de compra, citas de muelle, cruce de muelle
+   almacén, conteo cíclico, recolección y empaque, proveedores, órdenes de compra, citas de plataforma, cruce de plataforma
    (planes) y consulta de órdenes de transporte de solo lectura.
    Lote 11: pie común de todas las tablas (rango, "Filas por página" y **Exportar** a Excel, CSV y PDF), lista de
    Almacenes en maestro-detalle con "Zonas de este almacén", ficha con Zonas y Posiciones filtrables (cupo y

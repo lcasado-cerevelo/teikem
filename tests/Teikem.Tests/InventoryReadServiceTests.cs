@@ -498,7 +498,7 @@ internal sealed class InventoryServiceFixture
         foreach (var (c, es, en) in new[]
                  {
                      ("RECEIPT", "Recepción", "Receipt"), ("ISSUE", "Despacho", "Issue"), ("TRANSFER", "Transferencia", "Transfer"),
-                     ("ADJUSTMENT", "Ajuste", "Adjustment"), ("CROSSDOCK", "Cruce de muelle", "Cross-dock"),
+                     ("ADJUSTMENT", "Ajuste", "Adjustment"), ("CROSSDOCK", "Cruce de plataforma", "Cross-dock"),
                  })
         {
             var t = L("InventoryTxnType", c);

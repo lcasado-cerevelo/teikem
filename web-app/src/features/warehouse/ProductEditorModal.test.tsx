@@ -343,12 +343,12 @@ describe('ProductEditorModal', () => {
     ])
     const dialog = await findDialog('Editar producto')
     await fillAdjust(user, dialog, '2')
-    await user.type(within(dialog).getByLabelText(/^Nota/), 'Caja dañada en muelle')
+    await user.type(within(dialog).getByLabelText(/^Nota/), 'Caja dañada en plataforma')
     await user.click(within(dialog).getByRole('button', { name: /Aplicar ajuste/ }))
     await waitFor(() => expect(mock.calls.some((c) => c.method === 'POST')).toBe(true))
     const post = mock.calls.find((c) => c.method === 'POST')!
     expect(post.url.pathname).toBe('/api/v1/inventory/adjustments')
-    expect(post.body).toEqual({ productPublicId: PID, warehousePublicId: WH, binId: 10, quantity: -2, reason: 'DAMAGE', notes: 'Caja dañada en muelle' })
+    expect(post.body).toEqual({ productPublicId: PID, warehousePublicId: WH, binId: 10, quantity: -2, reason: 'DAMAGE', notes: 'Caja dañada en plataforma' })
     // el Total del modal pasa a lo que dice la ficha refrescada y el bloque vuelve a quedar oculto
     await waitFor(() => expect(within(dialog).getByLabelText('Total (usa Ajustar abajo)')).toHaveValue('10'))
     expect(await within(dialog).findByRole('button', { name: /Añadir ajuste/ })).toBeInTheDocument()

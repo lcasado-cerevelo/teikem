@@ -63,7 +63,7 @@ describe('menú completo (routes.tsx)', () => {
       'Recolección y empaque',
       'Transferencias y ajustes',
       'Conteo cíclico',
-      'Cruce de muelle',
+      'Cruce de plataforma',
       'Rentas',
       'Kárdex de movimientos',
       'Contabilización de compras',

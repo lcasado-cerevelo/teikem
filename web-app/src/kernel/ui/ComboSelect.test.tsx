@@ -12,7 +12,7 @@ import { Field, Form } from './Form'
 const OPTIONS = [
   { value: 'STORAGE', label: 'Almacenaje', hint: 'Racks' },
   { value: 'STAGING', label: 'Preparación' },
-  { value: 'CROSSDOCK', label: 'Cruce de muelle' },
+  { value: 'CROSSDOCK', label: 'Cruce de plataforma' },
 ]
 
 beforeAll(() => setLang('es'))
@@ -94,7 +94,7 @@ describe('ComboSelectInput', () => {
     expect(await screen.findByText('Elija el tipo.')).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: /Tipo/ })).toHaveAttribute('aria-invalid', 'true')
     await user.click(screen.getByRole('combobox', { name: /Tipo/ }))
-    await user.click(screen.getByRole('option', { name: 'Cruce de muelle' }))
+    await user.click(screen.getByRole('option', { name: 'Cruce de plataforma' }))
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
     expect(onSubmit).toHaveBeenCalledWith({ zoneType: 'CROSSDOCK' })
   })

@@ -50,12 +50,12 @@ public sealed class CrossDockService(
     ModuleService modules)
 {
     public const string NumberPattern = "XD-#####";
-    public const string NumberTakenMessage = "Ya existe un plan de cruce de muelle con ese número; intente de nuevo.";
+    public const string NumberTakenMessage = "Ya existe un plan de cruce de plataforma con ese número; intente de nuevo.";
     public const string WarehouseInactive = "El almacén está inactivo.";
     public const int MaxRows = 200;
     public const int MaxCandidates = 500;
 
-    private const string PlanLabel = "Plan de cruce de muelle";
+    private const string PlanLabel = "Plan de cruce de plataforma";
     private const string AllocationLabel = "Asignación";
     private const string LineLabel = "Línea de recibo";
 
@@ -606,7 +606,7 @@ public sealed class CrossDockService(
         {
             var task = putaways[index];
             var current = task.Quantity ?? 0m;
-            if (reduce >= current) await CancelTaskIfOpenAsync(task, $"Asignada a cruce de muelle {planNumber}.", ct);
+            if (reduce >= current) await CancelTaskIfOpenAsync(task, $"Asignada a cruce de plataforma {planNumber}.", ct);
             else task.Quantity = current - reduce;
         }
     }

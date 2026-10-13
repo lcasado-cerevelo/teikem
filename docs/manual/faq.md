@@ -593,7 +593,7 @@ El checkbox "Especiales" del contrato vigente está desmarcado. Las filas existe
 **¿Qué significa "Indique el tipo de servicio especial: un tipo existente (typeId) o el nombre de uno nuevo (newTypeName), no ambos."?**
 Envía solo `typeId` (tipo de la lista `GET /api/v1/special-service-types`) o solo `newTypeName`.
 
-**Escribí "VAGON DEL MUELLE" y me dice "El cliente ya tiene una tarifa vigente en esa fecha para el tipo 'Vagón del muelle'…"**
+**Escribí "VAGON DEL MUELLE" y me dice "El cliente ya tiene una tarifa vigente en esa fecha para el tipo 'Vagón de la plataforma'…"**
 Los nombres se comparan sin mayúsculas, acentos ni espacios dobles: es el mismo tipo, y el cliente ya tiene una tarifa
 vigente de ese tipo. Edítala (`PATCH`) o ciérrala.
 
@@ -1496,7 +1496,7 @@ personalizados con el permiso `trips.plan`.
 ### Almacenes y ubicaciones
 
 **¿Qué significa "El código solo admite letras, números, guion y guion bajo (máximo 30)."? (400)**
-El código de un almacén, zona o muelle solo acepta `A-Z`, `0-9`, `-` y `_`, hasta 30 caracteres (se guarda en
+El código de un almacén, zona o plataforma solo acepta `A-Z`, `0-9`, `-` y `_`, hasta 30 caracteres (se guarda en
 mayúsculas). Corrige el código en la solicitud.
 
 **¿Qué significa "Indique el código de la posición o su pasillo/rack/nivel/posición."? (400)**
@@ -1508,13 +1508,13 @@ El código de almacén es único por compañía. Elige otro código; el existent
 dado de baja.
 
 **¿Qué significa "El código del almacén no se puede cambiar."? (400)**
-El código de un almacén (o de un muelle: `El código del muelle no se puede cambiar.`) es inmutable una vez creado. Si lo
+El código de un almacén (o de una plataforma: `El código de la plataforma no se puede cambiar.`) es inmutable una vez creado. Si lo
 escribiste mal, da de baja el almacén y crea uno nuevo con el código correcto (solo si sigue vacío). El código de una
 **zona** sí se puede editar desde el Lote 11 (ver la sección "Lote 11" al final).
 
 **¿Qué significa "El almacén {code} tiene inventario o documentos abiertos; no se puede dar de baja."? (409)**
 La baja de un almacén es **definitiva**: solo procede si no tiene saldo (en mano ni reservado) y no tiene recibos,
-conteos, tareas, recolecciones, planes de cruce de muelle o citas abiertas. La respuesta trae `errors` con el
+conteos, tareas, recolecciones, planes de cruce de plataforma o citas abiertas. La respuesta trae `errors` con el
 detalle por tipo (`inventory`, `receipts`, `cycleCounts`, `tasks`, `pickBatches`, `crossDockPlans`,
 `appointments`): cierra o vacía lo que aparezca ahí antes de reintentar.
 
@@ -1526,7 +1526,7 @@ operar en él, da de alta un almacén nuevo.
 Mueve o retira el inventario de esa posición (transferencia o ajuste de salida) antes de desactivarla.
 
 **¿Qué significa "Indique el almacén: la compañía tiene más de uno."? (400)**
-Varias acciones (recibir, recolectar, contar, crear una orden de compra o un plan de cruce de muelle) usan el
+Varias acciones (recibir, recolectar, contar, crear una orden de compra o un plan de cruce de plataforma) usan el
 único almacén activo del tenant si no se indica ninguno. Con más de un almacén activo hay que enviar
 `warehousePublicId` explícitamente.
 
@@ -1575,7 +1575,7 @@ capturaste. El sistema nunca sobrescribe las fechas de un lote existente: usa el
 
 **¿Qué significa "La reserva a liberar excede lo reservado."? (409)**
 Se intentó liberar más cantidad reservada de la que realmente hay reservada en esa posición/lote (por ejemplo,
-al cancelar una asignación de cruce de muelle dos veces). Es una guarda interna; si la ves como usuario, revisa
+al cancelar una asignación de cruce de plataforma dos veces). Es una guarda interna; si la ves como usuario, revisa
 si la operación ya se hizo antes.
 
 ### Recepción (ASN y recibos)
@@ -1629,7 +1629,7 @@ tarea nueva automáticamente.
 **¿Qué significa "El conteo de {sku} en {bin} ({contado}) es menor que lo reservado ({reservado}); libere la
 reserva antes de reconciliar."? (409)**
 Al reconciliar, lo contado no puede quedar por debajo de lo que ya está reservado en esa posición (por ejemplo,
-para un cruce de muelle): el ajuste dejaría el saldo reservado por encima del saldo en mano, lo que el sistema
+para un cruce de plataforma): el ajuste dejaría el saldo reservado por encima del saldo en mano, lo que el sistema
 nunca permite. Libera esa reserva (o espera a que se mueva) antes de reconciliar esa línea.
 
 **¿Qué significa "Faltan {n} línea(s) por contar."? (422)**
@@ -1700,17 +1700,17 @@ manual."? (400)**
 Las acciones `CLOSE` y `REORDER` siempre resuelven **todo** el pendiente de la línea; no aceptan una cantidad
 parcial. Si solo quieres resolver una parte del faltante, usa `MANUAL_ADJUSTMENT` con la cantidad exacta.
 
-### Cruce de muelle
+### Cruce de plataforma
 
 **¿Qué significa "El módulo 'CROSSDOCK' no está habilitado para esta compañía."? (403, `module_disabled`)**
-El cruce de muelle es una demostración funcional, apagada por defecto. Un administrador la enciende desde
+El cruce de plataforma es una demostración funcional, apagada por defecto. Un administrador la enciende desde
 Configuración de la compañía (acción sensible: exige reautenticación reciente, `POST /api/v1/auth/reauth`).
 
-**¿Qué significa "El muelle ya tiene una cita que se solapa con ese horario."? (409)**
-Dos citas no pueden ocupar el mismo muelle al mismo tiempo (ventana semiabierta: una cita que termina a las 10:00
-no choca con otra que empieza a las 10:00). Elige otro horario o otro muelle.
+**¿Qué significa "La plataforma ya tiene una cita que se solapa con ese horario."? (409)**
+Dos citas no pueden ocupar el mismo plataforma al mismo tiempo (ventana semiabierta: una cita que termina a las 10:00
+no choca con otra que empieza a las 10:00). Elige otro horario o otro plataforma.
 
-**¿Qué significa "La cantidad excede lo disponible para cruce de muelle ({disponible})."? (409)**
+**¿Qué significa "La cantidad excede lo disponible para cruce de plataforma ({disponible})."? (409)**
 La cantidad que intentas asignar a una orden supera lo que todavía se puede asignar de esa línea de recibo (lo
 recibido/esperado menos lo ya asignado a otras órdenes, o el putaway pendiente si el recibo ya está confirmado).
 Revisa `GET /api/v1/cross-dock-plans/{id}/candidates` para ver lo asignable real.
@@ -1721,12 +1721,12 @@ Cuando la asignación es sobre un recibo todavía **abierto**, la mercancía fí
 hasta que ese recibo se confirme: al confirmarlo, el sistema reparte lo realmente recibido entre las asignaciones
 y ahí sí queda lista para moverse.
 
-**¿Qué significa "La tarea de cruce de muelle se completa por la cantidad confirmada ({qty})."? (400)**
+**¿Qué significa "La tarea de cruce de plataforma se completa por la cantidad confirmada ({qty})."? (400)**
 Al completar la tarea `CROSSDOCK` desde la cola, la cantidad tiene que ser exactamente la que quedó **confirmada**
 en la asignación (no la que se había planeado originalmente, si hubo un faltante al confirmar el recibo).
 
 **¿Qué significa "Mueva o cancele las asignaciones pendientes antes de completar el plan."? (422)**
-Un plan de cruce de muelle solo se completa (estatus terminal) cuando ninguna de sus asignaciones sigue
+Un plan de cruce de plataforma solo se completa (estatus terminal) cuando ninguna de sus asignaciones sigue
 `PLANNED`: muévelas (para que salgan del inventario) o cancélalas primero.
 
 ## Lote 7A — Pulso de almacén y Actividad reciente
@@ -2285,10 +2285,10 @@ Capítulo: `docs/manual/frontend/f6-almacen-e-inventario.md`. Los mensajes que *
 de negocio) ya están documentados con más detalle en "Lote 6 — Inventario y almacén" arriba; aquí solo se listan los
 que agrega la pantalla (validación antes de llamar al API) o que la pantalla muestra literalmente bajo un campo.
 
-### Almacenes, zonas, posiciones y muelles
+### Almacenes, zonas, posiciones y plataformas
 
 **¿Qué significa "El código es obligatorio."?**
-Dejaste vacío el campo "Código" al dar de alta un almacén, una zona o un muelle. Escribe un código.
+Dejaste vacío el campo "Código" al dar de alta un almacén, una zona o una plataforma. Escribe un código.
 
 **¿Qué significa "El código solo admite letras, números, guion y guion bajo (máximo 30)."?**
 El código de un almacén no acepta espacios ni otros símbolos. Usa solo `A-Z`, `0-9`, `-` o `_`, hasta 30 caracteres.
@@ -2497,11 +2497,11 @@ en esa línea (columna "Pendiente" de la tabla de faltantes).
 **¿Qué significa "Indique la posición donde entra la mercancía."?**
 Al resolver un faltante con "Ajuste manual", hay que indicar en qué posición entra el inventario.
 
-### Citas de muelle y cruce de muelle
+### Citas de plataforma y cruce de plataforma
 
-**¿Qué significa "Indique el muelle." / "Indique el inicio programado." / "Indique la dirección de la cita (entrada
+**¿Qué significa "Indique la plataforma." / "Indique el inicio programado." / "Indique la dirección de la cita (entrada
 o salida)."?**
-Campos obligatorios al agendar una cita de muelle.
+Campos obligatorios al agendar una cita de plataforma.
 
 **¿Qué significa "Una cita de un aviso de llegada debe ser de entrada (INBOUND)."?**
 Si enlazas la cita a un aviso de llegada, la dirección tiene que ser "Entrada"; un aviso de llegada no se asocia a
@@ -2511,12 +2511,12 @@ una cita de salida.
 El campo "Se enlaza a" de una cita admite ninguno, un aviso de llegada o un viaje, pero no los dos a la vez.
 
 **¿Qué significa "Elija una orden." / "Sin coincidencias exactas."?**
-Al **Asignar** una línea de recibo a una orden en un plan de cruce de muelle, hay que escribir el número completo
+Al **Asignar** una línea de recibo a una orden en un plan de cruce de plataforma, hay que escribir el número completo
 de la orden, factura o lote de empaque (la búsqueda es por coincidencia exacta) y elegirla de la lista.
 
 **¿Qué significa "Para buscar órdenes necesita el permiso orders.view y el módulo LTL_GROUND."?**
 Sin ese permiso y ese módulo activos, la pantalla no puede buscar órdenes para asignarlas en el plan de cruce de
-muelle; pida a un administrador que se lo asigne o que encienda el módulo, si corresponde a su función.
+plataforma; pida a un administrador que se lo asigne o que encienda el módulo, si corresponde a su función.
 
 ### Consulta de órdenes
 
@@ -3017,9 +3017,9 @@ manual" (es un ajuste manual de inventario): sin nota, 400 en `errors.notes`. Ce
 dejan opcional.
 
 **¿Qué productos muestra el indicador "Unidades totales"?** Los productos **activos con existencia en mano mayor que cero**,
-contando todas sus posiciones (también cuarentena, cruce de muelle y lo reservado). Por el API es `GET /api/v1/products?
+contando todas sus posiciones (también cuarentena, cruce de plataforma y lo reservado). Por el API es `GET /api/v1/products?
 activeOnly=true&onlyOnHand=true`; con almacenes en el filtro, la existencia se mide en esos almacenes. No es lo mismo que
-`onlyAvailable` (disponible para recolectar: sin cuarentena ni cruce de muelle y restando lo reservado).
+`onlyAvailable` (disponible para recolectar: sin cuarentena ni cruce de plataforma y restando lo reservado).
 
 **¿Por qué al empacar a veces no aparece "Predeterminado de la compañía"?** Porque su compañía no tiene tipo de servicio (o
 tipo de paquete) predeterminado. Entonces hay que elegirlo en el formulario; si se envía vacío, el API responde 400 "El tipo
@@ -3059,8 +3059,8 @@ positivo; con más de 3 decimales sale "La cantidad admite como máximo 3 decima
 Intentó cambiar el producto (`productPublicId`) de una línea que viene del documento. Si llegó otra cosa, capture 0 en esa
 línea y agregue una línea extra con el producto que llegó.
 
-**¿Qué significa "La línea tiene asignaciones de cruce de muelle; cancélelas antes de cambiar el producto."? (409)**
-La línea ya está asignada a una orden en un plan de cruce de muelle. Cancele esas asignaciones en el plan y vuelva a cambiar el
+**¿Qué significa "La línea tiene asignaciones de cruce de plataforma; cancélelas antes de cambiar el producto."? (409)**
+La línea ya está asignada a una orden en un plan de cruce de plataforma. Cancele esas asignaciones en el plan y vuelva a cambiar el
 producto.
 
 **¿Qué significa "El tipo de un recibo con aviso de llegada u orden de compra no se puede cambiar."? (400)**
@@ -3083,8 +3083,8 @@ Acomodado ya está en el Kárdex y queda congelado.
 El `rowVersion` que mandó es de una lectura vieja: alguien (o usted mismo, al guardar una línea) cambió el recibo después.
 Vuelva a leer la ficha y mande el `rowVersion` nuevo.
 
-**¿Qué significa "Muelle no encontrado."? (404)**
-El muelle del alta o del `PATCH` no es del almacén del recibo (o no existe). Elija un muelle de ese almacén.
+**¿Qué significa "Plataforma no encontrado."? (404)**
+La plataforma del alta o del `PATCH` no es del almacén del recibo (o no existe). Elija una plataforma de ese almacén.
 
 **¿Qué significa "Diferencia desconocida: 'X'. Use SHORT, OVER o NONE."? (400)**
 El filtro `variance` de `GET /api/v1/receipts` trae un valor que no existe. Use `SHORT` (faltante), `OVER` (sobrante) o
@@ -3222,7 +3222,7 @@ recepción por lo esperado y un ajuste (`RECEIPT_VARIANCE`) por la diferencia, a
 se resuelve después en Compras. En un ciego o devolución entra directamente lo recibido, sin ajuste; la diferencia solo queda marcada
 en el estatus "Completado con diferencia".
 
-**¿Cómo edito el encabezado de un recibo (transporte, referencia, posición, muelle)?** Con doble clic en el recibo de la lista o con el
+**¿Cómo edito el encabezado de un recibo (transporte, referencia, posición, plataforma)?** Con doble clic en el recibo de la lista o con el
 lápiz del detalle. Se puede mientras el recibo esté abierto (Esperado, Recibiendo o Discrepancia); confirmado, se abre en solo lectura.
 El tipo (Ciego ↔ Devolución) solo cambia si no tiene aviso ni orden de compra, y el almacén solo si además no tiene líneas.
 
@@ -3327,7 +3327,7 @@ descuadrada) o descarte este con una nota que explique la causa.
 
 **¿Qué significa "El Kárdex da {ledger} para {sku} en {bin}, menos que lo reservado ({reserved}); libere la reserva antes de corregir el saldo."? (409)**
 Para corregir, el saldo tomaría lo que suman los movimientos, pero ese número es menor que lo que ya está **reservado** en la posición
-(por ejemplo, para una recolección o un cruce de muelle): el saldo no puede quedar por debajo de lo reservado. Libere esa reserva
+(por ejemplo, para una recolección o un cruce de plataforma): el saldo no puede quedar por debajo de lo reservado. Libere esa reserva
 (cancele o complete lo que la usa) y vuelva a intentar. No se cambió nada.
 
 **¿Qué significa "El Kárdex da un saldo negativo ({ledger}) para {sku} en {bin}; revise los movimientos antes de corregir el saldo."? (409)**
@@ -3612,9 +3612,9 @@ conteo en Diferencia, "Productos bajo mínimo" si hay algún producto bajo su m�
 
 **¿Por qué el Kárdex de "Salida" (o de "Recibidas") suma distinto que la tarjeta?**
 La tarjeta es un **neto** y el Kárdex filtra por **tipo de movimiento**:
-- **Unidades de salida:** la tarjeta suma recolección y cruce de muelle y **resta las recolecciones que se eliminaron** ese día. En el Kárdex una
+- **Unidades de salida:** la tarjeta suma recolección y cruce de plataforma y **resta las recolecciones que se eliminaron** ese día. En el Kárdex una
   recolección eliminada es un ajuste de entrada (motivo "Reversa de recolección") y el enlace filtra solo los tipos Despacho y Cruce de
-  muelle, así que el Kárdex puede sumar **más** que la tarjeta.
+  plataforma, así que el Kárdex puede sumar **más** que la tarjeta.
 - **Unidades recibidas:** la tarjeta suma las recepciones **más los ajustes por diferencia de recibo** (lo que de verdad llegó: si se esperaban
   10 y llegaron 8, cuenta 8). El enlace filtra solo el tipo Recepción; las diferencias salen en el Kárdex como ajustes aparte, así que puede
   sumar más o menos que la tarjeta. Para ver todo, quite el filtro de tipo y agregue el de Ajuste.
@@ -3720,11 +3720,11 @@ Se mandó un `receivingMode` que no es `PUTAWAY` (Con acomodo) ni `DIRECT` (Dire
 
 **¿Qué significa "Indique la posición destino de {sku}: el recibo entra directo a posición."? (400)**
 Se intentó **confirmar** un recibo directo y la línea de ese producto recibió algo (mayor que 0) pero no tiene posición destino. Indique dónde se guarda: elija la posición en la columna
-"Posición destino" (o use "Usar posiciones sugeridas") y confirme de nuevo. No lo pide un producto por lote sin lote, ni una línea con cruce de muelle. En una solicitud, el error viene en
+"Posición destino" (o use "Usar posiciones sugeridas") y confirme de nuevo. No lo pide un producto por lote sin lote, ni una línea con cruce de plataforma. En una solicitud, el error viene en
 `errors["lines[i].targetBinId"]`, donde `i` es la posición de la línea (desde 0).
 
 **¿Qué significa "La posición {code} está en una zona {zoneType}; la posición destino debe ser de guardado."? (400)**
-La posición elegida como destino está en una zona de **recepción** (`STAGING`) o de **cruce de muelle** (`CROSSDOCK`). La mercancía de un recibo directo debe quedar donde se guarda: elija una
+La posición elegida como destino está en una zona de **recepción** (`STAGING`) o de **cruce de plataforma** (`CROSSDOCK`). La mercancía de un recibo directo debe quedar donde se guarda: elija una
 posición de otra zona (picking, reserva, refrigerado o cuarentena). El selector de la pantalla ya no las ofrece. Si una posición de guardado se movió después a una zona así, el mismo mensaje sale
 al confirmar.
 
@@ -3754,7 +3754,7 @@ encabezado no indica una. Cree una zona de recepción con una posición, fije la
 
 **¿Qué significa "La posición de recepción debe estar en una zona STAGING o CROSSDOCK." o "La posición de recepción está desactivada." al guardar un almacén? (400 / 422)**
 Son los mismos mensajes de la posición de recepción de un recibo, ahora también para la **Posición de recepción por defecto** del almacén (Almacenes → Datos → Recepción). Elija una posición activa de una zona de
-recepción o de cruce de muelle del mismo almacén. El error viene en `errors.defaultReceivingBinId`.
+recepción o de cruce de plataforma del mismo almacén. El error viene en `errors.defaultReceivingBinId`.
 
 **¿Qué significa "El recibo {n} ya fue confirmado; no se puede modificar." al usar "Usar posiciones sugeridas" o cambiar el modo? (422)**
 Es el mensaje de siempre (recibo ya confirmado), ahora también para el destino de las líneas, el modo del recibo y "Usar posiciones sugeridas": solo se hacen con el recibo abierto (Esperado, Recibiendo o Discrepancia).
@@ -3762,8 +3762,8 @@ Es el mensaje de siempre (recibo ya confirmado), ahora también para el destino 
 **¿Qué significa "El registro fue modificado por otro usuario; recargue e intente de nuevo." al usar "Usar posiciones sugeridas"? (409)**
 Alguien guardó el recibo mientras usted tenía la pantalla abierta. La pantalla vuelve a cargar el recibo: revise lo que cambió y pulse el botón otra vez.
 
-**¿Qué significa "La cantidad excede lo disponible para cruce de muelle (0)." (409) o "El recibo de la línea no admite asignaciones (eliminado o sin putaway pendiente)." (422) en un recibo directo ya confirmado?**
-Un recibo directo confirmado no tiene acomodo pendiente (la mercancía ya está en su posición destino), y el cruce de muelle sobre un recibo confirmado se hace contra el acomodo pendiente. Asigne el cruce
+**¿Qué significa "La cantidad excede lo disponible para cruce de plataforma (0)." (409) o "El recibo de la línea no admite asignaciones (eliminado o sin putaway pendiente)." (422) en un recibo directo ya confirmado?**
+Un recibo directo confirmado no tiene acomodo pendiente (la mercancía ya está en su posición destino), y el cruce de plataforma sobre un recibo confirmado se hace contra el acomodo pendiente. Asigne el cruce
 **mientras el recibo está abierto**. (Por el código; no se probó en un recibo real.)
 
 **¿Qué significa "warehouse.receivingMode debe ser PUTAWAY o DIRECT." (código de salida 1) o "La posición de recepción por defecto {code} no existe en el almacén." (rechazo del almacén en el reporte) en `import-legacy`?**
@@ -3789,13 +3789,13 @@ Es el aviso de **Usar posiciones sugeridas**: {n} líneas recibieron su posició
 **¿Qué significa "Elija primero un producto" en la posición de Recolección y empaque?**
 El selector de Posición solo ofrece las posiciones donde el producto tiene existencia disponible, así que necesita saber el producto. Elíjalo y aparecerán.
 
-**¿Qué significa "{code} recibe directo a posición: aquí solo aparecen recibos anteriores al cambio o con cruce de muelle."?**
+**¿Qué significa "{code} recibe directo a posición: aquí solo aparecen recibos anteriores al cambio o con cruce de plataforma."?**
 Es un aviso en **Recibo → Acomodo pendiente** cuando filtra por un almacén directo. Los recibos directos no generan tareas de acomodo, así que no aparecen aquí. Ver "¿Por qué un recibo directo no aparece en Acomodo pendiente?".
 
 **¿Qué significa "¿Cambiar el modo de recepción?"?**
 Es la confirmación al guardar un cambio de modo en la ficha del almacén. Dice cuántos recibos abiertos y cuántos con acomodo pendiente hay: **conservan su modo**; solo los recibos **nuevos** siguen el modo nuevo.
 
-**En la app: "La posición no existe en este almacén.", "Esa posición es de recepción o de cruce de muelle; escanea dónde se guarda.", "Esa posición está desactivada; escanea otra."**
+**En la app: "La posición no existe en este almacén.", "Esa posición es de recepción o de cruce de plataforma; escanea dónde se guarda.", "Esa posición está desactivada; escanea otra."**
 La app validó la posición escaneada **sin señal**, contra las posiciones que tiene guardadas del almacén. Escanee la posición donde de verdad se deja la mercancía. Si acaba de crearse una posición y la app aún no
 la tiene, sincronice con señal ("Sincronizar ahora") y escanee de nuevo.
 
@@ -3822,28 +3822,28 @@ el sobrante a otra después (Transferencias y ajustes). Los recibos abiertos a l
 
 **¿Por qué mi recibo directo no pide la posición de recepción?**
 Porque la mercancía no pasa por ahí: entra directo a la posición destino de cada línea. Un almacén sin zona `STAGING` puede recibir así. La posición de recepción por defecto del almacén solo la usan los recibos con
-acomodo y las líneas con cruce de muelle.
+acomodo y las líneas con cruce de plataforma.
 
 **¿Por qué un recibo directo no aparece en Acomodo pendiente?**
 Porque no genera tareas: al confirmar, cada línea queda en su posición y el recibo pasa a **Acomodado** en el mismo momento (el historial deja Recibiendo → Completado → Acomodado). En un almacén directo, Acomodo
-pendiente solo muestra recibos anteriores al cambio de modo, los que se pasaron a "Con acomodo" y los que tuvieron cruce de muelle.
+pendiente solo muestra recibos anteriores al cambio de modo, los que se pasaron a "Con acomodo" y los que tuvieron cruce de plataforma.
 
 **¿Por qué el Kárdex no muestra un movimiento de acomodo después de un recibo directo?**
 Porque no hubo: la entrada (`RECEIPT`) ya se asentó en la posición final. En un recibo con acomodo hay una entrada a la posición de recepción y luego una transferencia a la posición final.
 
 **¿Por qué Actividad reciente muestra un solo evento en un recibo directo?**
-Porque el recibo se confirma y queda Acomodado en el mismo instante. Solo se muestra "Recibo … confirmado" (el evento de "acomodado" se omite si no hubo tareas). Con cruce de muelle o con acomodo, salen los dos.
+Porque el recibo se confirma y queda Acomodado en el mismo instante. Solo se muestra "Recibo … confirmado" (el evento de "acomodado" se omite si no hubo tareas). Con cruce de plataforma o con acomodo, salen los dos.
 
 **¿Por qué no me sugiere ninguna posición?**
 Ninguna posición de guardado activa tiene espacio para esa cantidad (cupo en unidades), o el producto no tiene dónde consolidar y el almacén no tiene reservas ni picking. El sistema **nunca** sugiere recepción ni
-cruce de muelle, y sugiere la **cuarentena** solo en devoluciones. Elija una a mano; se le avisa si no cabe. Desde este lote el cupo en unidades también se respeta en las **tareas de acomodo** de siempre: una
+cruce de plataforma, y sugiere la **cuarentena** solo en devoluciones. Elija una a mano; se le avisa si no cabe. Desde este lote el cupo en unidades también se respeta en las **tareas de acomodo** de siempre: una
 posición llena ya no se sugiere para acomodar.
 
 **¿Por qué en una devolución la primera sugerida es la cuarentena?**
 Es una decisión del dueño (D6): la mercancía devuelta se revisa antes de volver a vender. La primera sugerida es una posición de cuarentena, si el almacén tiene una. Puede elegir otra.
 
 **¿Qué es la "Posición de recepción por defecto" y por qué Depot usa R1?**
-Es la posición de recepción que usan los recibos con acomodo (y las líneas con cruce de muelle) cuando el encabezado no indica otra. Sin ella, el sistema toma la primera posición de una zona `STAGING` por código de zona;
+Es la posición de recepción que usan los recibos con acomodo (y las líneas con cruce de plataforma) cuando el encabezado no indica otra. Sin ella, el sistema toma la primera posición de una zona `STAGING` por código de zona;
 en Advance Depot eso daba `S1` de "Embarque". Por decisión del dueño, en Depot es `R1` (zona `STG`). Se cambia en Almacenes → Datos → Recepción (con "La primera de recepción" se vuelve a la regla automática).
 
 **¿Puedo repartir una línea en varias posiciones?**
@@ -4314,7 +4314,7 @@ exactamente una serie por unidad en cada posición con existencia; vea las posic
 Si `{n}` es 0, quitó de la posición una serie que no corresponde: esa posición no tiene existencia del producto.
 
 **409 — "El producto {sku} tiene unidades reservadas; libérelas antes de convertirlo."**
-Alguna unidad está apartada (recolección sin empacar, cruce de muelle u otra reserva). Termine o elimine esa recolección (o espere a
+Alguna unidad está apartada (recolección sin empacar, cruce de plataforma u otra reserva). Termine o elimine esa recolección (o espere a
 que se despache) y vuelva a convertir.
 
 **409 — "El producto {sku} tiene recibos, tareas, recolecciones o conteos abiertos; termínelos antes de convertirlo."**
@@ -5313,7 +5313,7 @@ Almacén → **Rentas** (antes del Kárdex), con el módulo Rentas encendido y `
 
 **¿Por qué no me deja elegir un equipo?**
 El selector ofrece solo productos **propios con serie** que tengan disponible en el **almacén de origen**, y de ellos las series
-**disponibles** en zonas que se rentan (no cuarentena ni cruce de muelle) que no estén ya en la renta. Si el producto no tiene serie,
+**disponibles** en zonas que se rentan (no cuarentena ni cruce de plataforma) que no estén ya en la renta. Si el producto no tiene serie,
 conviértalo primero.
 
 **¿"Vencida" es un estatus?**
@@ -5966,7 +5966,7 @@ Los servicios especiales cuelgan del contrato vigente. Cree el contrato (**Nuevo
 Marque «Servicios especiales» en la pestaña Contrato del contrato vigente.
 
 **`El nombre del tipo de servicio especial es obligatorio.` / `…no puede exceder 120 caracteres.` (400) / `Ya existe un tipo de servicio especial con el nombre 'X'.` (409).**
-Al elegir «+ Nuevo tipo de servicio especial…» escriba un nombre de hasta 120 caracteres. Los nombres se comparan sin mayúsculas, acentos ni espacios dobles: «Vagón del muelle» y «VAGON DEL MUELLE» son el mismo tipo (si ya existe, elíjalo de la lista).
+Al elegir «+ Nuevo tipo de servicio especial…» escriba un nombre de hasta 120 caracteres. Los nombres se comparan sin mayúsculas, acentos ni espacios dobles: «Vagón de la plataforma» y «VAGON DEL MUELLE» son el mismo tipo (si ya existe, elíjalo de la lista).
 
 **`El cliente ya tiene una tarifa vigente en esa fecha para el tipo 'X'; edite esa tarifa o ciérrela antes de agregar otra.` (409) / `La tarifa ya está cerrada; agregue un servicio especial nuevo si necesita volver a cobrarlo.` (409).**
 Use **Editar** (versión nueva) o **Quitar** de la fila vigente; si ya estaba cerrada, agregue el servicio otra vez.

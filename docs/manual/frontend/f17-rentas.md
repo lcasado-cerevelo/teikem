@@ -81,7 +81,7 @@ En el celular la tabla pasa a tarjetas:
   1. **Equipo (SKU o nombre)**: productos propios con disponible en el almacén de origen. Si no se controla por serie: *"El producto … no se
      controla por serie; solo se rentan equipos con número de serie."* y la pista de **Convertir a serie**.
   2. **Series disponibles en ALM-01 (N)**: casillas con la posición de cada serie. Solo las **disponibles** del almacén de origen en zonas
-     que se rentan (no cuarentena, cruce de muelle ni En renta; las que se ocultan por eso se cuentan en una nota) y que **no** están ya en
+     que se rentan (no cuarentena, cruce de plataforma ni En renta; las que se ocultan por eso se cuentan en una nota) y que **no** están ya en
      la renta. **Buscar o escanear serie** filtra la lista; **Enter** con la serie exacta la elige (lector de código de barras). Una serie
      ya elegida avisa *"La serie … ya está en esta renta."* y una que no está disponible *"La serie … no está disponible en ALM-01."*.
   3. **Tarifa para estos equipos (opcional)**: frecuencia (Diaria, Semanal, Mensual o **Fija**), monto y moneda (la de la compañía si no
@@ -180,7 +180,7 @@ que el usuario vea exactamente el mismo texto: ver la FAQ, sección "Lote F17".
 - **No aparece "Convertir a serie"**: el producto ya es por serie o por lote, no tiene existencia, o le falta `inventory.manage` o
   `inventory.adjust`.
 - **El equipo no aparece en el selector**: no es propio, no tiene disponible en el almacén de origen, está en cuarentena o cruce de
-  muelle, o ya está en esta renta; si es otro almacén, cambie el almacén de origen (sin equipos agregados).
+  plataforma, o ya está en esta renta; si es otro almacén, cambie el almacén de origen (sin equipos agregados).
 - **Programé y el producto sale "No disponible"**: es lo esperado: las series quedan reservadas.
 - **Despaché y el en mano no bajó**: correcto: el equipo sigue siendo de la compañía, en la posición EN-RENTA.
 - **La renta sale "Vencida"**: extiéndala (si el cliente lo sigue usando) o registre su devolución ([F18](f18-devoluciones-y-proceso-de-rentas.md)).

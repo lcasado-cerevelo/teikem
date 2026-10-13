@@ -150,14 +150,14 @@ public class WarehouseRulesTests
         Assert.Equal("Ya existe un almacén con ese código.", WarehouseRules.DuplicateWarehouseMessage);
         Assert.Equal("Ya existe una zona con ese código en el almacén.", WarehouseRules.DuplicateZoneMessage);
         Assert.Equal("Ya existe una posición con ese código en el almacén.", WarehouseRules.DuplicateBinMessage);
-        Assert.Equal("Ya existe un muelle con ese código en el almacén.", WarehouseRules.DuplicateDockMessage);
+        Assert.Equal("Ya existe una plataforma con ese código en el almacén.", WarehouseRules.DuplicateDockMessage);
         Assert.Equal("El almacén ALM-01 tiene inventario o documentos abiertos; no se puede dar de baja.", WarehouseRules.WarehouseNotEmpty("ALM-01"));
         Assert.Equal("La posición STG-01 tiene inventario; no se puede desactivar.", WarehouseRules.BinNotEmpty("STG-01"));
         Assert.Equal("La zona tiene posiciones activas; desactívelas primero.", WarehouseRules.ZoneHasActiveBins);
-        Assert.Equal("El muelle tiene citas agendadas o en curso.", WarehouseRules.DockHasAppointments);
+        Assert.Equal("La plataforma tiene citas agendadas o en curso.", WarehouseRules.DockHasAppointments);
         Assert.Equal("El código del almacén no se puede cambiar.", WarehouseRules.WarehouseCodeImmutableMessage);
         Assert.Equal("Tipo de zona desconocido: 'FOO'.", WarehouseRules.UnknownZoneType("FOO"));
-        Assert.Equal("Tipo de muelle desconocido: 'X'.", WarehouseRules.UnknownDockType("X"));
+        Assert.Equal("Tipo de plataforma desconocido: 'X'.", WarehouseRules.UnknownDockType("X"));
         Assert.Equal("PR", WarehouseRules.DefaultCountry);
     }
 }

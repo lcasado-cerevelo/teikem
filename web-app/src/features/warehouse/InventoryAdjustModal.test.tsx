@@ -136,10 +136,10 @@ describe('InventoryAdjustModal · Subir/Bajar (D11)', () => {
     expect(await screen.findByText('Sin coincidencias')).toBeInTheDocument()
     await pickReason(user, dialog, 'encon', 'Encontrado')
     await user.type(within(dialog).getByLabelText(/^Cantidad/), '2')
-    await user.type(within(dialog).getByLabelText(/^Notas/), '  Caja encontrada en muelle ')
+    await user.type(within(dialog).getByLabelText(/^Notas/), '  Caja encontrada en plataforma ')
     await user.click(within(dialog).getByRole('button', { name: 'Aplicar ajuste' }))
     await waitFor(() => expect(posts()).toHaveLength(1))
-    expect(posts()[0].body).toEqual({ productPublicId: PID, warehousePublicId: WH, binId: 10, quantity: 2, reason: 'FOUND', notes: 'Caja encontrada en muelle' })
+    expect(posts()[0].body).toEqual({ productPublicId: PID, warehousePublicId: WH, binId: 10, quantity: 2, reason: 'FOUND', notes: 'Caja encontrada en plataforma' })
   })
 
   it('Bajar: Daño sí, Encontrado no; POST con la cantidad en negativo', async () => {

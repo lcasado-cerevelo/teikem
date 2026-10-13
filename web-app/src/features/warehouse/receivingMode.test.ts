@@ -69,7 +69,7 @@ describe('cupo, necesidad de destino y sugerida', () => {
     expect(exceedsCapacity(0, null)).toBe(false)
   })
 
-  it('necesita destino: recibido > 0, salvo lote sin lote o con cruce de muelle (D11)', () => {
+  it('necesita destino: recibido > 0, salvo lote sin lote o con cruce de plataforma (D11)', () => {
     expect(needsTarget({ received: 3 })).toBe(true)
     expect(needsTarget({ received: 0 })).toBe(false)
     expect(needsTarget({ received: null })).toBe(false)

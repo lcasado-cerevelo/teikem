@@ -281,7 +281,7 @@ describe('Lote 16: posición destino (recibo directo a posición)', () => {
     })
   })
 
-  it('qué líneas necesitan destino: recibido > 0, salvo lote sin lote o con cruce de muelle; las nuevas no cuentan', () => {
+  it('qué líneas necesitan destino: recibido > 0, salvo lote sin lote o con cruce de plataforma; las nuevas no cuentan', () => {
     expect(rowNeedsTarget(rowFromLine(line({ receivedQty: 5 })))).toBe(true)
     expect(rowNeedsTarget(rowFromLine(line({ receivedQty: 0 })))).toBe(false)
     expect(rowNeedsTarget(rowFromLine(line({ trackingTypeCode: 'LOT', lotNumber: null })))).toBe(false)

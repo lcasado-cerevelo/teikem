@@ -49,7 +49,7 @@ public class CompanySessionsTests
         });
         f.Db.Users.Add(new ApplicationUser { Id = 1, UserName = "yo@t.local", Email = "yo@t.local", FullName = "Yo Mismo", IsActive = true });
         f.Db.Users.Add(new ApplicationUser { Id = 2, UserName = "ana@t.local", Email = "ana@t.local", FullName = null, IsActive = true });
-        f.Db.UserDevices.Add(new UserDevice { UserDeviceId = 7, TenantId = WmsFixture.TenantId, Code = "ZEBRA-01", Name = "Muelle 1", IsActive = true });
+        f.Db.UserDevices.Add(new UserDevice { UserDeviceId = 7, TenantId = WmsFixture.TenantId, Code = "ZEBRA-01", Name = "Plataforma 1", IsActive = true });
         var now = DateTime.UtcNow;
         RefreshToken Token(int user, int tenant, DateTime issued, DateTime? revoked = null, DateTime? expires = null, int? device = null, string? ip = null) => new()
         {
@@ -98,7 +98,7 @@ public class CompanySessionsTests
         Assert.Equal("ana@t.local", list[1].UserName);
         Assert.False(list[1].IsDevice);
         Assert.True(list[2].IsDevice);
-        Assert.Equal("ZEBRA-01 · Muelle 1", list[2].DeviceName);
+        Assert.Equal("ZEBRA-01 · Plataforma 1", list[2].DeviceName);
     }
 
     [Fact]

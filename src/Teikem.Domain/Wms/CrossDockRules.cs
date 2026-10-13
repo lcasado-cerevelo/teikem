@@ -34,13 +34,13 @@ public static class CrossDockRules
     public const int QuantityDecimals = 3;
 
     public static string Exceeds(decimal allocatable)
-        => $"La cantidad excede lo disponible para cruce de muelle ({FormatQty(allocatable)}).";
+        => $"La cantidad excede lo disponible para cruce de plataforma ({FormatQty(allocatable)}).";
 
     public const string ReceiptNotConfirmed = "La recepción de la línea todavía no se confirma; la mercancía se mueve después de confirmar.";
     public const string NothingConfirmed = "La asignación no recibió mercancía al confirmar; cancélela.";
 
     public static string ExactQty(decimal confirmedQty)
-        => $"La tarea de cruce de muelle se completa por la cantidad confirmada ({FormatQty(confirmedQty)}).";
+        => $"La tarea de cruce de plataforma se completa por la cantidad confirmada ({FormatQty(confirmedQty)}).";
 
     public const string StagingZone = "La mercancía debe estar en la zona de staging del plan.";
     public const string OrderNotShippable = "La orden no admite asignaciones (cancelada, entregada o dada de baja).";

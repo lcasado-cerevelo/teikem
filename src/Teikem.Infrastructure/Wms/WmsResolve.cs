@@ -20,7 +20,7 @@ public static class WmsResolve
     public static NotFoundException WarehouseNotFound() => new("Almacén");
     public static NotFoundException ZoneNotFound() => new("Zona", null, true);
     public static NotFoundException BinNotFound() => new("Posición", null, true);
-    public static NotFoundException DockNotFound() => new("Muelle");
+    public static NotFoundException DockNotFound() => new("Plataforma");
     public static NotFoundException ProductNotFound() => new("Producto");
     public static NotFoundException LotNotFound() => new("Lote");
 

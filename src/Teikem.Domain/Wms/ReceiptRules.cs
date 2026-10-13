@@ -44,11 +44,11 @@ public static class ReceiptRules
     public static string OwnerMismatch(string sku) => $"El producto {sku} no pertenece al cliente del aviso de llegada.";
     public static string OwnProductsOnly(string sku) => $"La orden de compra solo admite productos propios; {sku} pertenece a un cliente.";
     public const string AsnLineNotRemovable = "Las líneas del aviso de llegada no se eliminan; capture 0 como recibido.";
-    public const string LineHasCrossDock = "La línea tiene asignaciones de cruce de muelle; cancélelas antes de eliminarla.";
+    public const string LineHasCrossDock = "La línea tiene asignaciones de cruce de plataforma; cancélelas antes de eliminarla.";
 
     // ---------------------------------------------------------------- mensajes propios de la pieza
 
-    public const string ReceiptHasCrossDock = "El recibo tiene asignaciones de cruce de muelle; cancélelas antes de eliminarlo.";
+    public const string ReceiptHasCrossDock = "El recibo tiene asignaciones de cruce de plataforma; cancélelas antes de eliminarlo.";
     public const string TooManyLines = "El recibo admite como máximo 200 líneas.";
     public const string AsnTooManyLines = "El aviso de llegada admite como máximo 200 líneas.";
     public const string LinesRequired = "Indique al menos una línea.";
@@ -74,7 +74,7 @@ public static class ReceiptRules
         "La cantidad esperada solo se captura en recibos ciegos o de devolución; en uno con aviso de llegada u orden de compra viene del documento.";
     public const string ExpectedQtyNegative = "La cantidad esperada no puede ser negativa.";
     public const string DocumentLineProductFixed = "El producto de una línea del aviso de llegada o de la orden de compra no se puede cambiar.";
-    public const string LineHasCrossDockProductChange = "La línea tiene asignaciones de cruce de muelle; cancélelas antes de cambiar el producto.";
+    public const string LineHasCrossDockProductChange = "La línea tiene asignaciones de cruce de plataforma; cancélelas antes de cambiar el producto.";
     public const string TypeFixedWithDocument = "El tipo de un recibo con aviso de llegada u orden de compra no se puede cambiar.";
     public const string WarehouseFixed = "El almacén solo se puede cambiar en un recibo sin aviso de llegada ni orden de compra y sin líneas.";
     public const string CarrierTooLong = "El transporte admite como máximo 80 caracteres.";

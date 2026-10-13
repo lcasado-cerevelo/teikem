@@ -18,7 +18,7 @@ sí (indicadores, gráficos, mi rango de fecha) se describe en el capítulo
 ## 1. Actividad reciente (Almacén)
 
 Qué hace: muestra, en una ventana corta, los eventos de negocio de Almacén que acaban de pasar — recepciones,
-tareas de almacén, conteos cíclicos, recolecciones, órdenes de compra, cruce de muelle, ajustes y transferencias de
+tareas de almacén, conteos cíclicos, recolecciones, órdenes de compra, cruce de plataforma, ajustes y transferencias de
 inventario, baja de producto o de almacén — sin ser la auditoría técnica (`AuditLog`, que exige `admin.audit`). No
 hay una tabla de eventos: cada consulta calcula los eventos al leer, desde el historial de estatus, el ledger de
 inventario y la bitácora, en la ventana pedida. Cada evento tiene un código fijo (catálogo `ActivityEventType`), una
@@ -73,7 +73,7 @@ Cómo se usa:
 | `PO_RECEIVED` | Orden de compra recibida completa | No | Sí | Orden de compra pasa a `RECEIVED` |
 | `PO_CANCELLED` | Orden de compra cancelada | Sí | Sí | Orden de compra pasa a `CANCELLED` |
 | `PO_SHORTAGE_RESOLVED` | Faltante resuelto | No | Sí | Se registra una resolución de faltante (CLOSE, REORDER o MANUAL_ADJUSTMENT) |
-| `CROSSDOCK_COMPLETED` | Cruce de muelle completado | No | Sí | Plan de cruce de muelle pasa a `COMPLETED` (solo con el módulo `CROSSDOCK` encendido) |
+| `CROSSDOCK_COMPLETED` | Cruce de plataforma completado | No | Sí | Plan de cruce de plataforma pasa a `COMPLETED` (solo con el módulo `CROSSDOCK` encendido) |
 | `PRODUCT_DEACTIVATED` | Producto dado de baja | No | Sí | Se audita la baja (`IsActive` 1→0) de un producto |
 | `WAREHOUSE_DEACTIVATED` | Almacén dado de baja | Sí | Sí | Almacén pasa a `INACTIVE` |
 
@@ -115,7 +115,7 @@ la organización (`ShowInPulse = true`), en el módulo `WAREHOUSE`:
   "Inventario bajo mínimo"); no se duplican en este lote.
 - **Movimientos de inventario por tipo** (gráfico de barras) — desde el Lote 15 mide **unidades movidas en positivo** (campo
   `Units`, el valor absoluto de la cantidad; antes sumaba la cantidad con signo y el despacho salía negativo) de los
-  últimos 7 días, agrupada por tipo de movimiento (recepción, despacho, ajuste, transferencia, cruce de muelle). Ya no es de
+  últimos 7 días, agrupada por tipo de movimiento (recepción, despacho, ajuste, transferencia, cruce de plataforma). Ya no es de
   sistema: es un **gráfico de la compañía** que se edita (sección 5.5).
 
 Quién puede: se ven en el Pulso del día con la misma regla que cualquier indicador/gráfico (sección 3): el permiso del
@@ -362,7 +362,7 @@ Siempre vienen tantas filas como `days`: un día sin movimiento trae ceros.
 | Tarjeta | Número grande | Texto pequeño | Barritas | Qué cuenta | Naranja |
 |---|---|---|---|---|---|
 | Unidades recibidas | Lo de hoy | "7 días: N" | 7 | Recepciones (`RECEIPT`) más los ajustes por diferencia de recibo (`RECEIPT_VARIANCE`): lo que **de verdad llegó**. Si se esperaban 10 y llegaron 8, cuenta 8 | Nunca |
-| Unidades de salida | Lo de hoy | "7 días: N" | 7 | Recolección (`ISSUE`) más cruce de muelle (`CROSSDOCK`). **Eliminar una recolección resta** esas unidades el día en que se elimina. No cuenta daños, pérdidas, vencidos, conteos ni transferencias | Nunca |
+| Unidades de salida | Lo de hoy | "7 días: N" | 7 | Recolección (`ISSUE`) más cruce de plataforma (`CROSSDOCK`). **Eliminar una recolección resta** esas unidades el día en que se elimina. No cuenta daños, pérdidas, vencidos, conteos ni transferencias | Nunca |
 | Conteos con diferencia | Los conteos cíclicos cerrados hoy en estatus **Diferencia** | "7 días: N" | 7 | Conteos activos en `RECONCILED_VARIANCE`, por el día en que se cerraron | Si hoy hubo alguno |
 | Productos bajo mínimo | Los que están bajo su mínimo **ahora** | "en este momento" | Ninguna | La misma consulta que el panel Almacén (`GET /products?belowMin=true`): la cifra es idéntica | Si hay alguno |
 
@@ -384,7 +384,7 @@ Siempre vienen tantas filas como `days`: un día sin movimiento trae ceros.
 | Tarjeta | Pantalla | Filtros que lleva |
 |---|---|---|
 | Unidades recibidas | Kárdex de movimientos (`/warehouse/kardex`) | Tipo Recepción, y Desde y Hasta = los 7 días (de hace 6 días a hoy) |
-| Unidades de salida | Kárdex de movimientos | Tipos Despacho y Cruce de muelle, y los 7 días |
+| Unidades de salida | Kárdex de movimientos | Tipos Despacho y Cruce de plataforma, y los 7 días |
 | Conteos con diferencia | Conteo cíclico (`/warehouse/cycle-counts`) | Estatus Diferencia (sin fechas: ver FAQ) |
 | Productos bajo mínimo | Productos e inventario (`/warehouse/products`) | Recuadro "Bajo mínimo" marcado |
 
@@ -409,7 +409,7 @@ ese navegador. Las cuatro tarjetas se calculan con él.
 | Tarjeta | Lo que la mueve | Quién | Qué valida | Efecto | Qué bloquea |
 |---|---|---|---|---|---|
 | Unidades recibidas | Confirmar un recibo (capítulo 06, sección 4) | Quien confirma el recibo | Lo del recibo | Un movimiento `RECEIPT` (y un ajuste `RECEIPT_VARIANCE` si hay diferencia) | Nada |
-| Unidades de salida | Crear una recolección o un cruce de muelle; eliminar una recolección resta | Quien recolecta o elimina | Lo de la recolección | Un movimiento `ISSUE` o `CROSSDOCK`; al eliminar, un ajuste `PICK_BATCH_REVERSAL` | Nada |
+| Unidades de salida | Crear una recolección o un cruce de plataforma; eliminar una recolección resta | Quien recolecta o elimina | Lo de la recolección | Un movimiento `ISSUE` o `CROSSDOCK`; al eliminar, un ajuste `PICK_BATCH_REVERSAL` | Nada |
 | Conteos con diferencia | Confirmar un conteo cíclico que asienta algún movimiento: Pendiente o Contado → **Diferencia** (capítulo 06, sección 6) | Quien tenga `warehouse.count` | Lo del conteo | Estatus `RECONCILED_VARIANCE` con su fecha de cierre | Un conteo Diferencia ya no se edita |
 | Productos bajo mínimo | Cualquier movimiento que cambie lo disponible, o cambiar el mínimo de un producto | Según la acción | — | — | Nada |
 
@@ -464,7 +464,7 @@ ser de sistema y pasan a ser **gráficos de la compañía**: sin dueño, editabl
 | Tipo | Dona con el total en el centro | Barras verticales |
 | Fuente | `STOCK_BALANCE` | `INVENTORY_TRANSACTION` |
 | Medida | Suma de `CostValue` ("Valor a costo": existencia en mano por costo de compra), en dinero | Suma de **`Units`** (unidades movidas, siempre positivas) |
-| Agrupa por | Categoría del producto: 7 mayores más "Otras" | Tipo de movimiento (Recepción, Despacho, Transferencia, Ajuste, Cruce de muelle) |
+| Agrupa por | Categoría del producto: 7 mayores más "Otras" | Tipo de movimiento (Recepción, Despacho, Transferencia, Ajuste, Cruce de plataforma) |
 | Período | Ninguno: es la foto de ahora (sin botón "Rango") | Últimos 7 días; cada usuario lo cambia con **Rango** (no hay opción de 5 días) |
 | Módulo y visibilidad | Almacén, toda la compañía | Almacén, toda la compañía |
 | Posición en "Tus gráficos" | Primera fila, a la izquierda (orden 1) | Primera fila, a la derecha (orden 2) |
