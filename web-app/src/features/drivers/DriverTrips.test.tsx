@@ -53,6 +53,7 @@ describe('Viajes pagados — lista', () => {
     expect(await within(p).findByText('No hay viajes pagados con estos filtros.')).toBeInTheDocument()
     await user.click(within(p).getByRole('button', { name: 'Limpiar' }))
     await within(p).findByRole('row', { name: /Vagón del muelle/ })
+    await userEvent.setup().selectOptions(within(p).getByRole('group', { name: /Fechas|Fecha/ }).querySelector('select[id$="-preset"]') as HTMLSelectElement, 'custom')   // «Personalizado» muestra Desde / Hasta
     fireEvent.change(within(p).getByLabelText('Desde'), { target: { value: '2026-10-10' } })
     await waitFor(() => expect(callsTo('GET', '/api/v1/drivers/d-1/trips').some((c) => c.url.searchParams.get('from') === '2026-10-10')).toBe(true))
     await waitFor(() => expect(within(p).queryByRole('row', { name: /Traslado especial/ })).toBeNull())
@@ -66,6 +67,7 @@ describe('Viajes pagados — lista', () => {
     wrap(ALL)
     const p = await panel()
     await within(p).findByRole('row', { name: /Vagón del muelle/ })
+    await userEvent.setup().selectOptions(within(p).getByRole('group', { name: 'Fechas' }).querySelector('select[id$="-preset"]') as HTMLSelectElement, 'custom')
     fireEvent.change(within(p).getByLabelText('Desde'), { target: { value: '2026-10-10' } })
     expect(await within(p).findByText('La fecha inicial no puede ser posterior a la final.')).toBeInTheDocument()
   })

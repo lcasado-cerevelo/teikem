@@ -18,11 +18,13 @@ export interface DateRangeFilterProps {
   onChange: (value: DateRange) => void
   /** Juego de rangos: 'past' (por omisión: movimientos, documentos creados), 'future' (fechas esperadas) o 'both' (pasado reciente y futuro). */
   mode?: DatePresetMode
+  /** Arranca con «Personalizado» abierto (los dos campos a la vista): para pantallas que ya eligieron «fechas» en otro control. */
+  startCustom?: boolean
 }
 
 const sameRange = (a: DateRange | null, b: DateRange): boolean => a !== null && a.from === b.from && a.to === b.to
 
-export function DateRangeFilter({ label, value, onChange, mode = 'past' }: DateRangeFilterProps) {
+export function DateRangeFilter({ label, value, onChange, mode = 'past', startCustom = false }: DateRangeFilterProps) {
   const t = useT()
   const lang = useLang()
   const id = useId()
@@ -32,7 +34,7 @@ export function DateRangeFilter({ label, value, onChange, mode = 'past' }: DateR
   // «Personalizado» se recuerda con las fechas que tenía al escogerlo o al editarlas: mientras el valor siga siendo ese se muestran los
   // dos campos (aunque las fechas coincidan con un rango: no se cambia el desplegable mientras se escribe); si el valor cambia desde
   // afuera («Limpiar», un enlace) vuelve a deducirse.
-  const [customFor, setCustomFor] = useState<DateRange | null>(null)
+  const [customFor, setCustomFor] = useState<DateRange | null>(startCustom ? value : null)
   const selected: DatePresetId = sameRange(customFor, value) ? 'custom' : matchPreset(value, ctx, mode)
 
   const choose = (next: DatePresetId) => {

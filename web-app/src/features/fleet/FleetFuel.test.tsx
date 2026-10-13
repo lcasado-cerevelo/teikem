@@ -127,6 +127,7 @@ describe('Combustible — bitácora', () => {
     await waitFor(() => expect(callsTo('GET', '/api/v1/fuel-logs').some((c) => c.url.searchParams.get('driverPublicId') === 'd-1')).toBe(true))
     await waitFor(() => expect(panelMain.getAllByRole('row')).toHaveLength(2))
     await user.click(panelMain.getByRole('button', { name: 'Limpiar' }))
+    await user.selectOptions(panelMain.getByRole('group', { name: 'Fechas' }).querySelector('select[id$="-preset"]') as HTMLSelectElement, 'custom')   // el filtro de fecha es un desplegable de rangos: con «Personalizado» aparecen Desde / Hasta
     await user.type(panelMain.getByLabelText('Desde'), '2026-10-01')
     await user.type(panelMain.getByLabelText('Hasta'), '2026-10-05')
     // «hasta» es exclusivo en el servidor: se manda la medianoche local del día SIGUIENTE (Puerto Rico = UTC-4)

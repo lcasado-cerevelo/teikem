@@ -116,6 +116,7 @@ describe('Órdenes de trabajo — lista', () => {
     await waitFor(() => expect(callsTo('GET', '/api/v1/maintenance-work-orders').some((c) => c.url.searchParams.get('vehiclePublicId') === 'v-1')).toBe(true))
     await waitFor(() => expect(panel.queryByText('OT-00001')).toBeNull())
     await user.click(panel.getByRole('button', { name: 'Limpiar' }))
+    await user.selectOptions(panel.getByRole('group', { name: 'Fechas' }).querySelector('select[id$="-preset"]') as HTMLSelectElement, 'custom')   // el filtro de fecha es un desplegable de rangos: con «Personalizado» aparecen Desde / Hasta
     await user.type(panel.getByLabelText('Desde'), '2026-10-01')
     await user.type(panel.getByLabelText('Hasta'), '2026-10-31')
     await waitFor(() => expect(callsTo('GET', '/api/v1/maintenance-work-orders').some((c) => c.url.searchParams.get('from') === '2026-10-01' && c.url.searchParams.get('to') === '2026-10-31')).toBe(true))

@@ -136,7 +136,7 @@ export function ReportResultScreen({ id }: { id: number }) {
               options={dateModes.map((m) => ({ value: m.code, label: m.label }))}
               allLabel={null}
             />
-            {mode === 'CUSTOM' && <DateRangeFilter label={t('analytics.reports.rangeCustom')} value={range} onChange={setRange} />}
+            {mode === 'CUSTOM' && <DateRangeFilter label={t('analytics.reports.rangeCustom')} value={range} onChange={setRange} startCustom />}
           </>
         </Filters>
       )}

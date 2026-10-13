@@ -191,6 +191,8 @@ describe('Órdenes — lista', () => {
     const user = userEvent.setup()
     wrap(VIEW)
     await screen.findByText('Farmacia Central')
+    // el filtro de fecha es un desplegable de rangos: con «Personalizado» aparecen los dos campos de fecha
+    await user.selectOptions(document.querySelector('.filters select[id$="-preset"]') as HTMLSelectElement, 'custom')
     const dates = document.querySelectorAll<HTMLInputElement>('.filters input[type="date"]')
     await user.type(dates[0], '2026-10-01')
     await user.type(dates[1], '2026-10-31')
