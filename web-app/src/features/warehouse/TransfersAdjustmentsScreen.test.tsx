@@ -42,6 +42,7 @@ function route(url: URL): unknown {
       { id: 6, publicId: W6, code: 'ALM-06', name: 'Seis', isActive: true },
       { id: 7, publicId: W7, code: 'ALM-07', name: 'Siete', isActive: true },
     ]
+  if (p === '/api/v1/warehouses/bins/search') return [{ id: 70, code: 'B-01', zoneCode: 'Z', warehousePublicId: W7, warehouseCode: 'ALM-07', isActive: true }]
   if (p === '/api/v1/inventory/owners') return [{ name: 'Propio', isOwn: true }]
   if (p === '/api/v1/inventory/transactions/users')
     return [
@@ -127,7 +128,19 @@ describe('TransfersAdjustmentsScreen', () => {
     expect(within(screen.getByRole('group', { name: 'Filtros de movimientos' })).getByRole('button', { name: /^Usuario/ })).toBeInTheDocument()
   })
 
-  it('?tab=transfers: Transferencias con origen y destino; filtro por almacén de destino', async () => {
+  it('Ajustes: el filtro Posición reemplaza al de Almacén y va como binIds', async () => {
+    const user = userEvent.setup()
+    wrap()
+    await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.get('skip') === '0')
+    const group = within(screen.getByRole('group', { name: 'Filtros de movimientos' }))
+    expect(group.queryByRole('button', { name: /^Almacén/ })).toBeNull()
+    await user.click(group.getByRole('button', { name: /^Posición/ }))
+    await user.click(await screen.findByLabelText(/B-01 · Z · ALM-07/))   // la opción muestra posición, zona y almacén
+    await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.getAll('binIds').join() === '70' && !u.searchParams.has('warehousePublicIds'))
+    await waitLast('/api/v1/inventory/transactions/summary', (u) => u.searchParams.getAll('binIds').join() === '70')
+  })
+
+  it('?tab=transfers: Transferencias con origen y destino; filtros Posición de origen y de destino (desplegable con búsqueda)', async () => {
     const user = userEvent.setup()
     wrap('/warehouse/transfers-adjustments?tab=transfers')
     expect(await screen.findByRole('tab', { name: 'Transferencias' })).toHaveAttribute('aria-selected', 'true')
@@ -137,9 +150,15 @@ describe('TransfersAdjustmentsScreen', () => {
     expect(screen.getByText(/Acomodo o reabasto/)).toBeInTheDocument()
     // sin Reporte de ajustes en Transferencias
     expect(screen.queryByRole('button', { name: /Reporte de ajustes/ })).toBeNull()
-    await user.click(screen.getByRole('button', { name: /^Almacén de destino/ }))
-    await user.click(await screen.findByRole('option', { name: /ALM-07/ }))
-    await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.getAll('toWarehousePublicIds').includes(W7))
+    // ya no hay filtros de almacén de origen/destino: son de posición
+    expect(screen.queryByRole('button', { name: /^Almacén de destino/ })).toBeNull()
+    await user.click(screen.getByRole('button', { name: /^Posición de destino/ }))
+    await user.click(await screen.findByLabelText(/B-01 · Z · ALM-07/))
+    await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.getAll('toBinIds').join() === '70')
+    await user.keyboard('{Escape}')
+    await user.click(screen.getByRole('button', { name: /^Posición de origen/ }))
+    await user.click(await screen.findByLabelText(/B-01 · Z · ALM-07/))
+    await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.getAll('fromBinIds').join() === '70')
   })
 
   it('la pestaña va en la URL y cada pestaña conserva sus filtros', async () => {

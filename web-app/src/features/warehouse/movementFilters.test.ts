@@ -27,9 +27,9 @@ import {
 const f: MovementFilterState = {
   ...EMPTY_MOVEMENT_FILTERS,
   range: { from: '2026-09-01', to: '' },
-  warehousePublicIds: ['W1'],
-  fromWarehousePublicIds: ['W6'],
-  toWarehousePublicIds: ['W7'],
+  bins: [{ id: 10, label: 'A-01 · PCK · ALM-01' }],
+  fromBins: [{ id: 60, label: 'F-01 · PCK · ALM-06' }],
+  toBins: [{ id: 70, label: 'T-01 · PCK · ALM-07' }],
   products: [{ publicId: 'P1', sku: 'TORN-01', label: 'TORN-01 · Tornillo' }],
   owners: [OWN_OWNER],
   reasons: ['DAMAGE'],
@@ -44,7 +44,7 @@ describe('movementFilters', () => {
     expect(movementTabFromParam('x')).toBe('adjustments')
   })
 
-  it('Ajustes: tipo ADJUSTMENT + fechas, almacén, producto, dueño, motivo, dirección y solo manuales (sin origen/destino)', () => {
+  it('Ajustes: tipo ADJUSTMENT + fechas, posición, producto, dueño, motivo, dirección y solo manuales (sin origen/destino)', () => {
     expect(adjustmentsQuery(f)).toEqual({
       types: ['ADJUSTMENT'],
       from: '2026-09-01',
@@ -53,17 +53,18 @@ describe('movementFilters', () => {
       ownerClientPublicIds: undefined,
       includeOwn: true,
       manualOnly: true,
-      warehousePublicIds: ['W1'],
+      binIds: [10],
       reasons: ['DAMAGE'],
       direction: 'OUT',
     })
   })
 
-  it('Transferencias: tipo TRANSFER + almacén de origen y de destino (sin motivo ni dirección); por defecto TODAS (D12)', () => {
+  it('Transferencias: tipo TRANSFER + posición de origen y de destino (sin motivo ni dirección); por defecto TODAS (D12)', () => {
     const q = transfersQuery(f)
     expect(q.types).toEqual(['TRANSFER'])
-    expect(q.fromWarehousePublicIds).toEqual(['W6'])
-    expect(q.toWarehousePublicIds).toEqual(['W7'])
+    expect(q.fromBinIds).toEqual([60])
+    expect(q.toBinIds).toEqual([70])
+    expect(q).not.toHaveProperty('fromWarehousePublicIds')
     expect(q).not.toHaveProperty('reasons')
     expect(q).not.toHaveProperty('direction')
     expect(transfersQuery(EMPTY_MOVEMENT_FILTERS).manualOnly).toBeUndefined()
@@ -76,7 +77,7 @@ describe('movementFilters', () => {
       { warehouses: new Map([['W1', 'ALM-01 · Principal']]), owners: new Map([[OWN_OWNER, 'Propio']]), reasons: new Map() },
       t,
     )
-    expect(out.map((o) => o.value)).toEqual(['typeAdjustment', '2026-09-01 – …', 'ALM-01 · Principal', 'TORN-01 · Tornillo', 'Propio', 'Bajar', 'DAMAGE', 'Sí'])
+    expect(out.map((o) => o.value)).toEqual(['typeAdjustment', '2026-09-01 – …', 'A-01 · PCK · ALM-01', 'TORN-01 · Tornillo', 'Propio', 'Bajar', 'DAMAGE', 'Sí'])
   })
 })
 

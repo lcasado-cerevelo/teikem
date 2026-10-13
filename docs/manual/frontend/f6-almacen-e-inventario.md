@@ -588,7 +588,7 @@ la pantalla que reemplazó a "Ajustes de inventario" en el menú.
 ![Transferencias y ajustes, pestaña Ajustes: filtros, resumen de movimientos y la lista de ajustes con Fecha, Hora, SKU, Producto, Dueño, Almacén/Posición, Cantidad con signo, Motivo, Nota, Origen del movimiento y Usuario](img/l14-ajustes-lista.png)
 
 - **Cabecera:** **Reporte de ajustes** (PDF con los filtros de la pestaña), **Ajustar** y **Transferir** (estos dos, solo con `inventory.adjust`).
-- **Filtros** (todos van al servidor y regresan a la página 1): **Fecha** (desde y hasta), **Almacén**, **Producto** (buscador por SKU o nombre;
+- **Filtros** (todos van al servidor y regresan a la página 1): **Fecha** (desde y hasta), **Posición** (2026-10-12; antes Almacén: desplegable con búsqueda y selección múltiple, opciones «Código · Zona · Almacén»), **Producto** (buscador por SKU o nombre;
   la selección queda como una píldora que se quita con ✕), **Dueño** ("Propio" o un cliente), **Tipo de ajuste** (Todos, Subir o Bajar),
   **Motivo**, **Solo manuales** y **Limpiar**.
 - **Resumen** (franja de números, con los mismos filtros): **Movimientos**, **Entradas (mov.)**, **Entradas (uds)**, **Salidas (mov.)** y
@@ -601,7 +601,7 @@ la pantalla que reemplazó a "Ajustes de inventario" en el menú.
 
 ![Transferencias y ajustes, pestaña Transferencias: filtros con Almacén de origen y Almacén de destino, resumen con Internos y la lista con Origen, Destino, Lote/Serie y Cantidad](img/l14-transferencias-lista.png)
 
-Filtros: **Fecha**, **Almacén de origen**, **Almacén de destino**, **Producto**, **Dueño** y **Solo manuales**. El resumen agrega **Internos**
+Filtros: **Fecha**, **Posición de origen**, **Posición de destino** (2026-10-12; antes almacén de origen y de destino: desplegables con búsqueda y selección múltiple, opciones «Código · Zona · Almacén»; el API recibe `fromBinIds` y `toBinIds`), **Producto**, **Dueño**, **Usuario** y **Solo manuales**. El resumen agrega **Internos**
 (transferencias que no salen de los almacenes o posiciones filtrados; sin filtro de almacén, toda transferencia es interna). Tabla:
 Fecha, Hora, SKU, Producto, **Origen** y **Destino** (almacén/posición), Lote/Serie, Cantidad (sin signo: una transferencia no suma ni
 resta), Origen del movimiento (Manual, Acomodo o reabasto, Conteo…), Nota y Usuario. No hay filtro de Motivo: las transferencias no llevan
