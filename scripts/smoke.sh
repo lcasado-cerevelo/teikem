@@ -5352,6 +5352,45 @@ expect 200 "$(req PUT /api/v1/modules/RENTAL_EQUIPMENT '{"isEnabled":true}')" >/
 expect 200 "$(req GET "/api/v1/analytics/indicators/$IND29/value")" | jq -e '.value==1' >/dev/null || fail "indicador de rentas al volver a encender el módulo"
 ok "fuentes RENTAL/RENTAL_RETURN/RENTAL_PROCESS con su campo de fecha; una renta vencida (Programada) y una que vence en 3 días (En renta): 'Necesita tu atención' con el grupo RENTAL_DUE (2, 'Ver todos' con dueWithinDays=7&overdue=true) y la vencida en 'danger'; Solo lectura sin rental.view no lo ve; indicadores 'Rentas por vencer (7 días)' 1 y 'Rentas vencidas' 1; vistas 'Rentas vencidas', 'Rentas por vencer (7 días)', 'Equipos en renta por cliente' (1 cliente, 1 equipo), 'Devoluciones de renta por motivo' (3) y 'Equipos en proceso' (0); gráfico por motivo (3); otra compañía sin aviso ni filas; módulo apagado: sin fuentes, sin indicadores (404) y sin aviso, y al encenderlo vuelve"
 
+step "Impresoras y plantillas de label (Lote 43, F-G1)"
+TOKEN=$(login "$EMAIL" "$PASS")
+PR43=$(expect 200 "$(req POST /api/v1/printers "{\"name\":\"Zebra ZD420 smoke $TS\",\"purpose\":\"label\",\"mediaSize\":\"4x4\",\"connectionType\":\"QZ_TRAY\",\"systemName\":\"ZDesigner ZD420-203dpi ZPL\"}")")
+PR43_ID=$(echo "$PR43" | jq -r .publicId)
+echo "$PR43" | jq -e '.purpose=="LABEL" and .mediaSize=="4X4" and .connectionType=="QZ_TRAY" and .systemName=="ZDesigner ZD420-203dpi ZPL" and .isActive==true' >/dev/null || fail "alta de impresora: $PR43"
+expect 409 "$(req POST /api/v1/printers "{\"name\":\"zebra zd420 smoke $TS\",\"purpose\":\"LABEL\"}")" | jq -e '.title=="Ya existe una impresora activa con ese nombre."' >/dev/null || fail "impresora repetida"
+expect 400 "$(req POST /api/v1/printers "{\"name\":\"Red $TS\",\"purpose\":\"LABEL\",\"connectionType\":\"NETWORK\"}")" | jq -e ".title==\"Conexión de impresora desconocida: 'NETWORK'. Use BROWSER (PDF del navegador) o QZ_TRAY (directo con QZ Tray).\"" >/dev/null || fail "conexión desconocida"
+expect 400 "$(req POST /api/v1/printers "{\"name\":\"Carta $TS\",\"purpose\":\"DOCUMENT\",\"mediaSize\":\"4X6\"}")" | jq -e '.title=="Una impresora de documentos usa papel carta (LETTER)."' >/dev/null || fail "tamaño de documento"
+expect 400 "$(req POST /api/v1/printers "{\"name\":\"Sin uso $TS\"}")" | jq -e '.errors.purpose' >/dev/null || fail "uso obligatorio"
+expect 400 "$(req PATCH "/api/v1/printers/$PR43_ID" '{"purpose":"DOCUMENT"}')" | jq -e '.title=="El uso de la impresora no se puede cambiar; cree otra impresora."' >/dev/null || fail "uso inmutable"
+expect 200 "$(req POST "/api/v1/printers/$PR43_ID/make-default")" | jq -e '.isDefault==true' >/dev/null || fail "hacer predeterminada"
+expect 200 "$(req GET /api/v1/printers)" | jq -e '[.[] | select(.purpose=="LABEL" and .isDefault)] | length==1' >/dev/null || fail "una sola predeterminada de labels"
+expect 200 "$(req GET /api/v1/printing/station-options)" | jq -e --arg id "$PR43_ID" 'any(.printers[]; .publicId==$id and .isDefault) and (.builtInLayout.barcode.on==true) and (.qzSigningConfigured|type=="boolean")' >/dev/null || fail "opciones de la estación"
+TP43=$(expect 200 "$(req POST /api/v1/label-templates "{\"name\":\"4x6 COD smoke $TS\",\"layout\":{\"sender\":{\"on\":false,\"pos\":\"tc\",\"size\":\"sm\"},\"cod\":{\"on\":true,\"pos\":\"br\",\"size\":\"lg\"}}}")")
+TP43_ID=$(echo "$TP43" | jq -r .publicId)
+echo "$TP43" | jq -e '.layout.cod.size=="lg" and .layout.barcode.pos=="mc" and .layout.invoice.on==true' >/dev/null || fail "alta de plantilla: $TP43"
+expect 400 "$(req PATCH "/api/v1/label-templates/$TP43_ID" '{"layout":{"cod":{"on":true,"pos":"zz","size":"md"}}}')" | jq -e ".title==\"Posición desconocida en «Monto COD»: 'zz'. Use tl, tc, tr, ml, mc, mr, bl, bc o br.\"" >/dev/null || fail "posición desconocida"
+expect 400 "$(req PATCH "/api/v1/label-templates/$TP43_ID" '{"layout":{"barcode":{"on":false,"pos":"mc","size":"md"}}}')" | jq -e '.title=="El label necesita al menos un código de barras para poder escanearlo."' >/dev/null || fail "sin código de barras"
+expect 200 "$(req POST "/api/v1/label-templates/$TP43_ID/deactivate")" | jq -e '.isActive==false and .isDefault==false' >/dev/null || fail "desactivar plantilla"
+expect 409 "$(req POST "/api/v1/label-templates/$TP43_ID/make-default")" | jq -e '.title=="La plantilla está inactiva; reactívela antes de hacerla predeterminada."' >/dev/null || fail "predeterminada inactiva"
+expect 200 "$(req POST "/api/v1/label-templates/$TP43_ID/reactivate")" | jq -e '.isActive==true' >/dev/null || fail "reactivar plantilla"
+expect 200 "$(req PUT /api/v1/printing/settings '{"printLabelsDirect":true}')" | jq -e '.printLabelsDirect==true' >/dev/null || fail "encender imprimir directo"
+expect 200 "$(req GET /api/v1/printing/station-options)" | jq -e '.printLabelsDirect==true' >/dev/null || fail "station-options con imprimir directo"
+expect 200 "$(req PUT /api/v1/printing/settings '{"printLabelsDirect":false}')" | jq -e '.printLabelsDirect==false' >/dev/null || fail "apagar imprimir directo"
+# Sin certificado de QZ Tray configurado en el servidor del smoke: 409 claro (nunca 500) y la firma igual
+expect 409 "$(req GET /api/v1/printing/qz/certificate)" | jq -e '.title | startswith("La impresión directa con QZ Tray no tiene certificado configurado")' >/dev/null || fail "certificado de QZ sin configurar"
+expect 400 "$(req POST /api/v1/printing/qz/sign '{"request":""}')" | jq -e '.title=="Falta el texto a firmar."' >/dev/null || fail "firma sin texto"
+# Cliente: «Imprimir la factura automáticamente» (solo la bandera)
+C43=$(expect 200 "$(req POST /api/v1/clients "{\"name\":\"Cliente impresión $TS\"}")" | jq -r .publicId)
+expect 200 "$(req GET "/api/v1/clients/$C43")" | jq -e '.autoPrintInvoice==false' >/dev/null || fail "factura automática apagada por defecto"
+expect 200 "$(req PATCH "/api/v1/clients/$C43/profile" '{"clearDefaultPickup":false,"autoPrintInvoice":true}')" | jq -e '.autoPrintInvoice==true' >/dev/null || fail "encender factura automática"
+# El despachador (sin printers.manage) no administra impresoras pero sí lee las opciones de su estación
+TD43=$(login "$DISPATCH_EMAIL" "$PASS")
+expect 403 "$(req POST /api/v1/printers "{\"name\":\"No $TS\",\"purpose\":\"LABEL\"}" "$TD43")" >/dev/null
+expect 403 "$(req GET /api/v1/printing/settings '' "$TD43")" >/dev/null
+expect 200 "$(req GET /api/v1/printing/station-options '' "$TD43")" | jq -e --arg id "$PR43_ID" 'any(.printers[]; .publicId==$id)' >/dev/null || fail "station-options del despachador"
+expect 200 "$(req POST "/api/v1/printers/$PR43_ID/deactivate")" | jq -e '.isActive==false and .isDefault==false' >/dev/null || fail "desactivar la predeterminada la deja sin predeterminada"
+ok "impresora (QZ Tray, 4X4, nombre en el sistema), repetida 409, conexión/tamaño/uso 400 exactos, predeterminada única, station-options; plantilla con construcción parcial, posición y sin código de barras 400, desactivar/reactivar; imprimir directo de la compañía; QZ sin certificado 409; factura automática del cliente; despachador 403 al administrar y 200 en station-options"
+
 step "db-reset (Lote 10): sin --yes rehúsa borrar la base"
 set +e
 DBRESET_LOG=$(cd "$ROOT" && "${MIG_CMD[@]}" -- db-reset 2>&1); DBRESET_RC=$?

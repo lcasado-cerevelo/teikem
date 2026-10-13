@@ -76,6 +76,12 @@ public class Tenant : ISoftDeletable
     public int? DefaultProductCategoryId { get; set; }
     /// <summary>Lote 34: método de rotación del inventario de la compañía ('FEFO' | 'FIFO'). FEFO para todas las existentes.</summary>
     public string RotationMethod { get; set; } = "FEFO";
+    /// <summary>
+    /// Lote 43 (F-G1): «Imprimir labels directo a la impresora». Encendido, el label de cada paquete de una orden nueva (entrada rápida y
+    /// detallada) sale solo a la impresora de labels de la estación (QZ Tray; sin QZ Tray, el PDF del navegador). Apagado por defecto.
+    /// Lo cambia quien tiene printers.manage (PUT /api/v1/printing/settings).
+    /// </summary>
+    public bool PrintLabelsDirect { get; set; }
 
     // --- Despacho manual (2026-10-11 b) ---
     /// <summary>

@@ -200,7 +200,7 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
             ToNumberSettings(client),
             contactDtos, clientPoints,
             contractDtos, currentDto, currentDto?.BillingSummary ?? "",
-            client.CreatedAtUtc, client.UpdatedAtUtc, RowVersionOf(client.RowVersion));
+            client.CreatedAtUtc, client.UpdatedAtUtc, RowVersionOf(client.RowVersion), client.AutoPrintInvoice);
     }
 
     // ---------------- Perfil ----------------
@@ -219,6 +219,7 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
         }
         if (req.PaymentTerm is not null) client.PaymentTermLookupId = await OptionalLookupAsync(LookupDomains.PaymentTerm, req.PaymentTerm, ct);
         if (req.Currency is not null) client.CurrencyLookupId = await OptionalLookupAsync(LookupDomains.Currency, req.Currency, ct);
+        if (req.AutoPrintInvoice is { } autoPrint) client.AutoPrintInvoice = autoPrint;   // Lote 43: solo la bandera
 
         if (req.ClearDefaultPickup) client.DefaultPickupLocationId = null; // vuelve a 'se recoge en la corporativa'
         else if (req.DefaultPickupLocationPublicId.HasValue)

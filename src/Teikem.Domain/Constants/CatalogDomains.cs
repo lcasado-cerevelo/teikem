@@ -589,6 +589,43 @@ public static class EntityTypes
     public const string RentalProcess = "RENTAL_PROCESS";
     /// <summary>2026-10-08: reporte de daño (llegó dañado en un recibo o se dañó en el almacén).</summary>
     public const string DamageReport = "DAMAGE_REPORT";
+    // Lote 43 (F-G1, 2026-10-12): impresoras (perfil de impresión de la compañía) y plantillas de label.
+    public const string Printer = "PRINTER";
+    public const string LabelTemplate = "LABEL_TEMPLATE";
+}
+
+// ---------------- Lote 43 — Impresoras y labels (F-G1) ----------------
+// Enums técnicos que el código ramifica: VARCHAR + CHECK en dbo.Printer (D-FG3), no LookupCode (no se renombran ni se apagan
+// en Catálogos).
+
+/// <summary>Uso de una impresora (dbo.Printer.Purpose, CK_Printer_Purpose). No se cambia después de crearla.</summary>
+public static class PrinterPurposes
+{
+    public const string Label = "LABEL";
+    public const string Document = "DOCUMENT";
+    public static readonly IReadOnlyList<string> All = new[] { Label, Document };
+}
+
+/// <summary>
+/// Conexión de una impresora (dbo.Printer.ConnectionType, CK_Printer_Connection). BROWSER = PDF y el diálogo de impresión del navegador;
+/// QZ_TRAY = directo a la impresora del sistema de esa computadora con QZ Tray (websocket a localhost desde la página; si QZ Tray no está
+/// conectado se cae a BROWSER con aviso). El servidor nunca se conecta a una impresora (D-FG1, revisada por Luis el 2026-10-12).
+/// </summary>
+public static class PrinterConnections
+{
+    public const string Browser = "BROWSER";
+    public const string QzTray = "QZ_TRAY";
+    public static readonly IReadOnlyList<string> All = new[] { Browser, QzTray };
+}
+
+/// <summary>Tamaño del papel o etiqueta de una impresora (dbo.Printer.MediaSize, CK_Printer_Media): 4X6/4X4/4X2 para labels, LETTER para documentos.</summary>
+public static class PrintMediaSizes
+{
+    public const string Label4x6 = "4X6";
+    public const string Label4x4 = "4X4";
+    public const string Label4x2 = "4X2";
+    public const string Letter = "LETTER";
+    public static readonly IReadOnlyList<string> LabelSizes = new[] { Label4x6, Label4x4, Label4x2 };
 }
 
 // ---------------- Lote 3 — Órdenes de transporte ----------------

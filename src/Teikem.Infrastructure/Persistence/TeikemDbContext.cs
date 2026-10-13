@@ -12,6 +12,7 @@ using Teikem.Domain.Entities;
 using Teikem.Domain.Fleet;
 using Teikem.Domain.Identity;
 using Teikem.Domain.Orders;
+using Teikem.Domain.Printing;
 using Teikem.Domain.Security;
 using Teikem.Domain.Tenancy;
 using Teikem.Domain.Trips;
@@ -199,6 +200,9 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<RentalReturn> RentalReturns => Set<RentalReturn>();
     public DbSet<RentalReturnLine> RentalReturnLines => Set<RentalReturnLine>();
     public DbSet<RentalProcess> RentalProcesses => Set<RentalProcess>();
+    // Lote 43 (F-G1) — impresoras y plantillas de label
+    public DbSet<Printer> Printers => Set<Printer>();
+    public DbSet<LabelTemplate> LabelTemplates => Set<LabelTemplate>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

@@ -39,6 +39,13 @@ public class Client : ITenantScoped, ISoftDeletable, IHasStatus, IAuditStamped
     public string? InvoiceNumberFormat { get; set; }
     public string? PackageNumberFormat { get; set; }
 
+    // --- Lote 43 (F-G1, 2026-10-12) ---
+    /// <summary>
+    /// «Imprimir la factura automáticamente»: bandera por cliente (el que manda, sender). Solo se guarda por ahora: la impresión de la
+    /// factura todavía no existe (llega con facturación); apagada por defecto.
+    /// </summary>
+    public bool AutoPrintInvoice { get; set; }
+
     public StatusCode? Status { get; set; }
     public LookupCode? PaymentTerm { get; set; }
     public LookupCode? Currency { get; set; }

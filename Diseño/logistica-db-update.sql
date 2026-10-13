@@ -385,3 +385,113 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Order_Tenant_Created' 
     CREATE INDEX IX_Order_Tenant_Created ON dbo.TransportOrder(TenantId, CreatedAtUtc DESC, TransportOrderId DESC)
         INCLUDE (ClientId, StatusCodeId, ServiceTypeLookupId, OrderNumber, ClientInvoiceNumber, PackBatchNumber) WHERE IsActive = 1;
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-12 (d) — Impresoras y plantillas de label (Lote 43, F-G1).
+   La impresora es un PERFIL de impresión de la compañía. El servidor nunca abre conexiones a impresoras: imprime el navegador,
+   DIRECTO a la impresora de la computadora con QZ Tray (QZ_TRAY, instalado en cada PC) o, de respaldo, con el PDF y el diálogo
+   del navegador (BROWSER).
+   - dbo.Printer: nombre (único entre las activas), nombre en el sistema (el exacto de Windows/macOS que usa QZ Tray; NULL = el
+     nombre), modelo, nota, uso LABEL | DOCUMENT (fijo después del alta), conexión BROWSER | QZ_TRAY, tamaño 4X6 | 4X4 | 4X2
+     (labels) o LETTER (documentos), «Girar 90°», predeterminada por uso (una entre las activas) y activa.
+   - dbo.LabelTemplate: nombre (único entre las activas), construcción del label en JSON canónico (la valida el API) y
+     predeterminada (una por compañía entre las activas).
+   - dbo.Tenant.PrintLabelsDirect BIT NOT NULL DEFAULT 0: ajuste de la compañía «Imprimir labels directo a la impresora» (apagado:
+     ninguna compañía cambia de comportamiento hasta que lo enciende).
+   - dbo.Client.AutoPrintInvoice BIT NOT NULL DEFAULT 0: bandera por cliente «Imprimir la factura automáticamente» (solo la
+     bandera; la impresión de la factura llega con facturación).
+   - EntityType PRINTER y LABEL_TEMPLATE (bitácora).
+   - Permiso printers.manage (categoría ADMIN) -> plantilla TenantAdmin Y los roles YA CLONADOS de cada compañía con ese nombre
+     (el PermissionSeeder no lo propagaría: esta sección ya lo pone en la plantilla).
+   Primera tabla creada en este archivo: el IF y el CREATE TABLE van en la MISMA línea. Solo AGREGA (nunca quita). Idempotente.
+   ---------------------------------------------------------------------------- */
+IF OBJECT_ID(N'dbo.Printer', N'U') IS NULL CREATE TABLE dbo.Printer (
+    PrinterId      INT IDENTITY(1,1) CONSTRAINT PK_Printer PRIMARY KEY,
+    PublicId       UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_Printer_PublicId DEFAULT NEWID(),
+    TenantId       INT NOT NULL CONSTRAINT FK_Printer_Tenant REFERENCES dbo.Tenant(TenantId),
+    Name           NVARCHAR(80) NOT NULL,
+    SystemName     NVARCHAR(200) NULL,
+    Model          NVARCHAR(80) NULL,
+    Notes          NVARCHAR(300) NULL,
+    Purpose        VARCHAR(10) NOT NULL,
+    ConnectionType VARCHAR(12) NOT NULL CONSTRAINT DF_Printer_ConnectionType DEFAULT 'BROWSER',
+    MediaSize      VARCHAR(10) NOT NULL,
+    RotateMedia    BIT NOT NULL CONSTRAINT DF_Printer_RotateMedia DEFAULT 0,
+    IsDefault      BIT NOT NULL CONSTRAINT DF_Printer_IsDefault DEFAULT 0,
+    IsActive       BIT NOT NULL CONSTRAINT DF_Printer_IsActive DEFAULT 1,
+    CreatedAtUtc   DATETIME2 NOT NULL CONSTRAINT DF_Printer_CreatedAtUtc DEFAULT SYSUTCDATETIME(),
+    CreatedBy      INT NULL CONSTRAINT FK_Printer_CreatedBy REFERENCES dbo.AspNetUsers(Id),
+    UpdatedAtUtc   DATETIME2 NULL,
+    UpdatedBy      INT NULL CONSTRAINT FK_Printer_UpdatedBy REFERENCES dbo.AspNetUsers(Id),
+    RowVersion     ROWVERSION,
+    CONSTRAINT UQ_Printer_PublicId UNIQUE (PublicId),
+    CONSTRAINT CK_Printer_Purpose CHECK (Purpose IN ('LABEL', 'DOCUMENT')),
+    CONSTRAINT CK_Printer_Connection CHECK (ConnectionType IN ('BROWSER', 'QZ_TRAY')),
+    CONSTRAINT CK_Printer_Media CHECK ((Purpose = 'LABEL' AND MediaSize IN ('4X6', '4X4', '4X2')) OR (Purpose = 'DOCUMENT' AND MediaSize = 'LETTER'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_Printer_Name' AND object_id = OBJECT_ID('dbo.Printer'))
+    CREATE UNIQUE INDEX UX_Printer_Name ON dbo.Printer(TenantId, Name) WHERE IsActive = 1;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_Printer_Default' AND object_id = OBJECT_ID('dbo.Printer'))
+    CREATE UNIQUE INDEX UX_Printer_Default ON dbo.Printer(TenantId, Purpose) WHERE IsDefault = 1 AND IsActive = 1;
+GO
+
+IF OBJECT_ID(N'dbo.LabelTemplate', N'U') IS NULL CREATE TABLE dbo.LabelTemplate (
+    LabelTemplateId INT IDENTITY(1,1) CONSTRAINT PK_LabelTemplate PRIMARY KEY,
+    PublicId        UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_LabelTemplate_PublicId DEFAULT NEWID(),
+    TenantId        INT NOT NULL CONSTRAINT FK_LabelTemplate_Tenant REFERENCES dbo.Tenant(TenantId),
+    Name            NVARCHAR(80) NOT NULL,
+    LayoutJson      NVARCHAR(2000) NOT NULL,
+    IsDefault       BIT NOT NULL CONSTRAINT DF_LabelTemplate_IsDefault DEFAULT 0,
+    IsActive        BIT NOT NULL CONSTRAINT DF_LabelTemplate_IsActive DEFAULT 1,
+    CreatedAtUtc    DATETIME2 NOT NULL CONSTRAINT DF_LabelTemplate_CreatedAtUtc DEFAULT SYSUTCDATETIME(),
+    CreatedBy       INT NULL CONSTRAINT FK_LabelTemplate_CreatedBy REFERENCES dbo.AspNetUsers(Id),
+    UpdatedAtUtc    DATETIME2 NULL,
+    UpdatedBy       INT NULL CONSTRAINT FK_LabelTemplate_UpdatedBy REFERENCES dbo.AspNetUsers(Id),
+    RowVersion      ROWVERSION,
+    CONSTRAINT UQ_LabelTemplate_PublicId UNIQUE (PublicId)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_LabelTemplate_Name' AND object_id = OBJECT_ID('dbo.LabelTemplate'))
+    CREATE UNIQUE INDEX UX_LabelTemplate_Name ON dbo.LabelTemplate(TenantId, Name) WHERE IsActive = 1;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_LabelTemplate_Default' AND object_id = OBJECT_ID('dbo.LabelTemplate'))
+    CREATE UNIQUE INDEX UX_LabelTemplate_Default ON dbo.LabelTemplate(TenantId) WHERE IsDefault = 1 AND IsActive = 1;
+GO
+
+IF COL_LENGTH('dbo.Tenant', 'PrintLabelsDirect') IS NULL
+    ALTER TABLE dbo.Tenant ADD PrintLabelsDirect BIT NOT NULL CONSTRAINT DF_Tenant_PrintLabelsDirect DEFAULT 0;
+GO
+IF COL_LENGTH('dbo.Client', 'AutoPrintInvoice') IS NULL
+    ALTER TABLE dbo.Client ADD AutoPrintInvoice BIT NOT NULL CONSTRAINT DF_Client_AutoPrintInvoice DEFAULT 0;
+GO
+
+-- EntityType de la bitácora (el último sembrado es DAMAGE_REPORT, orden 87)
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'PRINTER',        N'{"es":"Impresora","en":"Printer"}',                 88),
+    (N'LABEL_TEMPLATE', N'{"es":"Plantilla de label","en":"Label template"}', 89)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+
+-- Permiso printers.manage
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'printers.manage')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('printers.manage',
+            (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'ADMIN'),
+            N'{"es":"Gestionar impresoras y plantillas de label","en":"Manage printers & label templates"}', 1);
+GO
+
+-- Plantilla de sistema (TenantId NULL) y roles ya clonados de cada compañía: TenantAdmin
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT r.RoleId, p.PermissionId
+FROM dbo.Role r
+JOIN dbo.Permission p ON p.Code = 'printers.manage'
+WHERE r.Name IN ('TenantAdmin')
+  AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
+GO

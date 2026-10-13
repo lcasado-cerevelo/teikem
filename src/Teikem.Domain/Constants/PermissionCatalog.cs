@@ -14,7 +14,8 @@ public sealed record PermissionDef(string Code, string Category, string LabelEs,
 /// (Lote F8a, categoría PULSE: pulse.indicators, pulse.charts, pulse.warehouse, pulse.activity, pulse.organize_company) y
 /// pulse.attention (Lote 14, "Necesita tu atención"): 66 códigos. Lote 27 (Rentas R1): rental.extend y rental.return → 68.
 /// 2026-10-08/10: warehouse.damage, warehouse.transfer y warehouse.adjust → 71; 2026-10-11: warehouse.issue (despacho manual) → 72; 2026-10-11: trips.close (cerrar ruta) → 73;
-/// 2026-10-12 (Lote 39): orders.view_price (ver precios de las órdenes) → 74.
+/// 2026-10-12 (Lote 39): orders.view_price (ver precios de las órdenes) → 74; 2026-10-12 (Lote 43, F-G1): printers.manage (impresoras y
+/// plantillas de label, categoría ADMIN) → 75.
 /// Convención: recurso.acción.
 /// </summary>
 public static class PermissionCatalog
@@ -146,6 +147,12 @@ public static class PermissionCatalog
     /// el panel: cada fila decide el suyo (descuadres de inventario: inventory.view + WMS_LOTSERIAL). Lo ve quien ve inventario.
     /// </summary>
     public const string PulseAttention = "pulse.attention";
+    /// <summary>
+    /// 2026-10-12 (Lote 43, F-G1): administrar las impresoras de la compañía y las plantillas de label (Sistema → Impresoras y labels).
+    /// Solo lo trae TenantAdmin (D-FG4). Las opciones de impresión de una estación (GET /printing/station-options) las lee también quien
+    /// imprime (orders.view, trips.scan, trips.view, inventory.view).
+    /// </summary>
+    public const string PrintersManage = "printers.manage";
 
     public static readonly IReadOnlyList<PermissionDef> All = new List<PermissionDef>
     {
@@ -233,6 +240,8 @@ public static class PermissionCatalog
         new(RentalReturn, "RENTAL", "Registrar devoluciones de renta", "Register rental returns"),
         // Lote 39 — ver precios de las órdenes (2026-10-12)
         new(OrdersViewPrice, "ORDERS", "Ver precios de las órdenes", "View order prices"),
+        // Lote 43 — impresoras y plantillas de label (2026-10-12, F-G1)
+        new(PrintersManage, "ADMIN", "Gestionar impresoras y plantillas de label", "Manage printers & label templates"),
     };
 
     /// <summary>

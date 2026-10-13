@@ -58,14 +58,18 @@ public sealed record ClientDetailDto(
     ClientNumberSettingsDto NumberSettings,
     IReadOnlyList<ClientContactDto> Contacts, IReadOnlyList<ContactPointDto> ContactPoints,
     IReadOnlyList<ClientContractSummaryDto> Contracts, ClientContractSummaryDto? CurrentContract, string BillingSummary,
-    DateTime CreatedAtUtc, DateTime? UpdatedAtUtc, string? RowVersion);
+    DateTime CreatedAtUtc, DateTime? UpdatedAtUtc, string? RowVersion,
+    bool AutoPrintInvoice = false);
 
 // ---------------- Edición ----------------
 
-/// <summary>Perfil editable. NO incluye Name (identidad del cliente, R1) ni Code.</summary>
+/// <summary>
+/// Perfil editable. NO incluye Name (identidad del cliente, R1) ni Code. AutoPrintInvoice (Lote 43): «Imprimir la factura
+/// automáticamente» (null = sin cambio; solo se guarda: la impresión de la factura todavía no existe).
+/// </summary>
 public sealed record ClientProfileUpdateRequest(
     string? LegalName, string? TaxId, decimal? CreditLimit, string? PaymentTerm, string? Currency,
-    Guid? DefaultPickupLocationPublicId, bool ClearDefaultPickup, string? RowVersion);
+    Guid? DefaultPickupLocationPublicId, bool ClearDefaultPickup, string? RowVersion, bool? AutoPrintInvoice = null);
 
 /// <summary>Cadena vacía en un patrón = NULL = patrón por defecto del sistema.</summary>
 public sealed record ClientNumberSettingsRequest(

@@ -134,6 +134,11 @@ public static class DependencyInjection
         // Lote 38 (F-B): importación CSV de consignatarios (mismas plantillas y lotes, Kind CONSIGNEE)
         services.AddScoped<ConsigneeImportService>();
 
+        // Lote 43 (F-G1) — impresoras y plantillas de label (sin IDataSource ni StatusService: solo IsActive, D-FG5)
+        services.AddScoped<PrinterService>();
+        services.AddScoped<LabelTemplateService>();
+        services.AddScoped<PrintingOptionsService>();
+        services.AddSingleton(new QzSigningService(config));   // certificado y clave de QZ Tray (Printing:Qz); nunca salen en una respuesta
         // Lote 4 — Flota, choferes y mantenimiento
         services.AddScoped<VehicleService>();
         services.AddScoped<VehicleDocumentService>();
