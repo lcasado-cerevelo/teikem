@@ -180,7 +180,7 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
 
     /// <summary>
     /// Lote 14 — búsqueda de posiciones ENTRE almacenes para los filtros Posición del Kárdex y del Conteo: el código de la
-    /// posición o de su zona contiene el texto (vacío = las primeras por almacén y código), acotada opcionalmente a almacenes;
+    /// posición, de su zona o el código/nombre de su almacén contiene el texto (varias palabras = todas; vacío = las primeras por almacén y código), acotada opcionalmente a almacenes;
     /// solo activas salvo includeInactive (el Kárdex puede filtrar posiciones ya dadas de baja). take en 1..200 (por defecto 20).
     /// La posición y la zona (sin TenantId) se alcanzan por su almacén filtrado por tenant; un almacén de otro tenant no aporta nada.
     /// </summary>
@@ -191,7 +191,7 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
         var q = from b in db.WarehouseBins.AsNoTracking()
                 join w in db.Warehouses.AsNoTracking() on b.WarehouseId equals w.WarehouseId
                 join z in db.WarehouseZones.AsNoTracking() on b.WarehouseZoneId equals z.WarehouseZoneId
-                select new { Bin = b, WarehousePublicId = w.PublicId, WarehouseCode = w.Code, ZoneCode = z.Code };
+                select new { Bin = b, WarehousePublicId = w.PublicId, WarehouseCode = w.Code, WarehouseName = w.Name, ZoneCode = z.Code };
         q = q.Where(x => !x.Bin.IsRemoved);   // 2026-10-12: una posición eliminada no se busca nunca
         if (!includeInactive) q = q.Where(x => x.Bin.IsActive);
         if (warehousePublicIds is { Length: > 0 })
@@ -201,8 +201,13 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
         }
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var s = search.Trim();
-            q = q.Where(x => x.Bin.Code.Contains(s) || x.ZoneCode.Contains(s));
+            // 2026-10-12: se busca en TODO lo que muestra la opción («Código · Zona · Almacén»): código de la posición, zona, código y nombre del almacén. Varias palabras
+            // (o el «·» de lo que se ve) se combinan con Y: «ALM- 01», «ALM-DEPOT A-01»…
+            foreach (var token in search.Split(new[] { ' ', '	', '·' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                var tk = token;
+                q = q.Where(x => x.Bin.Code.Contains(tk) || x.ZoneCode.Contains(tk) || x.WarehouseCode.Contains(tk) || x.WarehouseName.Contains(tk));
+            }
         }
         var rows = await q.OrderBy(x => x.WarehouseCode).ThenBy(x => x.Bin.Code).ThenBy(x => x.Bin.WarehouseBinId).Take(take).ToListAsync(ct);
         return rows.Select(x => new BinSearchItemDto(x.Bin.WarehouseBinId, x.Bin.Code, x.ZoneCode, x.WarehousePublicId, x.WarehouseCode, x.Bin.IsActive, x.Bin.IsProvisional))
