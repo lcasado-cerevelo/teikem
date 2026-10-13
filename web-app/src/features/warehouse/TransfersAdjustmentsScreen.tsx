@@ -43,7 +43,7 @@ import {
   type MovementFilterState,
   type MovementTab,
 } from './movementFilters'
-import { OwnerFilter, ProductSearchSelect, UserFilter } from './pickers'
+import { BinSearchSelect, OwnerFilter, ProductSearchSelect, UserFilter } from './pickers'
 
 const PAGE_SIZE = 25
 
@@ -69,8 +69,6 @@ function MovementsTab({
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const columns = useKardexColumns(kind === 'adjustments' ? ADJUSTMENT_COLUMNS : TRANSFER_COLUMNS)
-  const { data: warehouses = [] } = useWarehouses({ includeInactive: false }, { handleAccessDenied: false })
-  const warehouseOptions = useMemo(() => warehouses.map((w) => ({ value: w.publicId ?? '', label: warehouseLabel(w) })), [warehouses])
   const { data: reasons = [] } = useLookups('AdjustmentReason', { includeDisabled: true })
   const reasonOptions = useMemo(() => reasons.map((r) => ({ value: r.code, label: r.label })), [reasons])
 
@@ -91,26 +89,13 @@ function MovementsTab({
       <Filters label={t(`${T}.filters.label`)} onClear={() => set(EMPTY_MOVEMENT_FILTERS)}>
         <DateRangeFilter label={t(`${T}.filters.range`)} value={filters.range} onChange={(range) => set({ range })} />
         {kind === 'adjustments' ? (
-          <SearchSelect
-            label={t(`${T}.filters.warehouse`)}
-            options={warehouseOptions}
-            value={filters.warehousePublicIds}
-            onChange={(warehousePublicIds) => set({ warehousePublicIds })}
-          />
+          // 2026-10-12: Posición (antes Almacén): desplegable con búsqueda y selección múltiple; «Código · Zona · Almacén»
+          <BinSearchSelect label={t(`${T}.filters.bin`)} value={filters.bins} onChange={(bins) => set({ bins })} includeInactive />
         ) : (
           <>
-            <SearchSelect
-              label={t(`${T}.filters.fromWarehouse`)}
-              options={warehouseOptions}
-              value={filters.fromWarehousePublicIds}
-              onChange={(fromWarehousePublicIds) => set({ fromWarehousePublicIds })}
-            />
-            <SearchSelect
-              label={t(`${T}.filters.toWarehouse`)}
-              options={warehouseOptions}
-              value={filters.toWarehousePublicIds}
-              onChange={(toWarehousePublicIds) => set({ toWarehousePublicIds })}
-            />
+            {/* 2026-10-12: Posición de origen y de destino (antes almacén de origen y de destino) */}
+            <BinSearchSelect label={t(`${T}.filters.fromBin`)} value={filters.fromBins} onChange={(fromBins) => set({ fromBins })} includeInactive />
+            <BinSearchSelect label={t(`${T}.filters.toBin`)} value={filters.toBins} onChange={(toBins) => set({ toBins })} includeInactive />
           </>
         )}
         <ProductSearchSelect label={t(`${T}.filters.product`)} value={filters.products} onChange={(products) => set({ products })} includeInactive />

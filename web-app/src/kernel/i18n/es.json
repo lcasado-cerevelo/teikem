@@ -3781,6 +3781,9 @@
       "emptyAdjustments": "No hay ajustes con estos filtros.",
       "emptyTransfers": "No hay transferencias con estos filtros.",
       "filters": {
+        "bin": "Posición",
+        "fromBin": "Posición de origen",
+        "toBin": "Posición de destino",
         "label": "Filtros de movimientos",
         "range": "Fecha",
         "warehouse": "Almacén",

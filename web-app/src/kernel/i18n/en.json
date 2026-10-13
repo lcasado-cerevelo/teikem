@@ -3781,6 +3781,9 @@
       "emptyAdjustments": "No adjustments with these filters.",
       "emptyTransfers": "No transfers with these filters.",
       "filters": {
+        "bin": "Position",
+        "fromBin": "From position",
+        "toBin": "To position",
         "label": "Movement filters",
         "range": "Date",
         "warehouse": "Warehouse",

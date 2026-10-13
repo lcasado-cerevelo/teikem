@@ -196,6 +196,13 @@ public class KardexSummaryTests
             InventoryScope.Any, default);
         Assert.Equal("ALM-01/A-02 → ALM-02/B-01", Assert.Single(w1ToW2.Items).Position);
 
+        // 2026-10-12 — Transferencias: posición de ORIGEN y de DESTINO (cada una contra su lado), en la lista y en el resumen
+        var b01 = (await w.F.Db.WarehouseBins.AsNoTracking().SingleAsync(b => b.Code == "B-01")).WarehouseBinId;
+        var byBins = await reads.KardexAsync(new KardexQuery(FromBinIds: new[] { w.A2.WarehouseBinId }, ToBinIds: new[] { b01 }), InventoryScope.Any, default);
+        Assert.Equal("ALM-01/A-02 → ALM-02/B-01", Assert.Single(byBins.Items).Position);
+        Assert.Equal(byBins.Total, (await BothAsync(reads, new KardexQuery(FromBinIds: new[] { w.A2.WarehouseBinId }, ToBinIds: new[] { b01 }))).Total);   // el resumen usa el mismo filtro
+        Assert.Equal(0, (await BothAsync(reads, new KardexQuery(ToBinIds: new[] { -1 }))).Total);
+
         var manual = await reads.KardexAsync(new KardexQuery(ManualOnly: true), InventoryScope.Any, default);
         Assert.Equal(5, manual.Total);
         Assert.All(manual.Items, i => Assert.Null(i.RefEntityCode));

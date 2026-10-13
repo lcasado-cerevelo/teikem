@@ -4,7 +4,7 @@
 // (`manualOnly`) y filtro por motivo. `describeMovementFilters` arma los "Filtros aplicados" del Reporte de ajustes.
 import type { DateRange } from '../../kernel/ui/dateRange'
 import type { GetQuery } from './api'
-import { ownerQuery, userQuery, type KardexDirection } from './kardexView'
+import { ownerQuery, userQuery, type BinFilterItem, type KardexDirection } from './kardexView'
 import type { ProductFilterItem } from './pickers'
 import { ADJUSTMENT_TXN_TYPE } from './productFilters'
 
@@ -20,11 +20,11 @@ export function movementTabFromParam(value: string | null): MovementTab {
 
 export interface MovementFilterState {
   range: DateRange
-  /** Ajustes: almacén (cualquiera de los dos lados). */
-  warehousePublicIds: string[]
-  /** Transferencias: almacén de origen y de destino. */
-  fromWarehousePublicIds: string[]
-  toWarehousePublicIds: string[]
+  /** Ajustes (2026-10-12: antes Almacén): posiciones elegidas («Código · Zona · Almacén»). */
+  bins: BinFilterItem[]
+  /** Transferencias (2026-10-12: antes almacén de origen y de destino): posición de origen y de destino. */
+  fromBins: BinFilterItem[]
+  toBins: BinFilterItem[]
   products: ProductFilterItem[]
   /** `OWN_OWNER` y/o clientPublicId. */
   owners: string[]
@@ -39,9 +39,9 @@ export interface MovementFilterState {
 
 export const EMPTY_MOVEMENT_FILTERS: MovementFilterState = {
   range: { from: '', to: '' },
-  warehousePublicIds: [],
-  fromWarehousePublicIds: [],
-  toWarehousePublicIds: [],
+  bins: [],
+  fromBins: [],
+  toBins: [],
   products: [],
   owners: [],
   users: [],
@@ -63,24 +63,24 @@ function common(f: MovementFilterState) {
   }
 }
 
-/** Ajustes: tipo ADJUSTMENT + fechas, almacén, producto, dueño, motivo, dirección y "Solo manuales" (sin skip/take). */
+/** Ajustes: tipo ADJUSTMENT + fechas, posición, producto, dueño, motivo, dirección y "Solo manuales" (sin skip/take). */
 export function adjustmentsQuery(f: MovementFilterState): GetQuery<'/api/v1/inventory/transactions'> {
   return {
     types: [ADJUSTMENT_TXN_TYPE],
     ...common(f),
-    warehousePublicIds: nonEmpty(f.warehousePublicIds),
+    binIds: nonEmpty(f.bins.map((b) => b.id)),
     reasons: nonEmpty(f.reasons),
     direction: f.direction || undefined,
   }
 }
 
-/** Transferencias: tipo TRANSFER + fechas, almacén de origen y de destino, producto, dueño y "Solo manuales". */
+/** Transferencias: tipo TRANSFER + fechas, posición de origen y de destino, producto, dueño, usuario y "Solo manuales". */
 export function transfersQuery(f: MovementFilterState): GetQuery<'/api/v1/inventory/transactions'> {
   return {
     types: [TRANSFER_TXN_TYPE],
     ...common(f),
-    fromWarehousePublicIds: nonEmpty(f.fromWarehousePublicIds),
-    toWarehousePublicIds: nonEmpty(f.toWarehousePublicIds),
+    fromBinIds: nonEmpty(f.fromBins.map((b) => b.id)),
+    toBinIds: nonEmpty(f.toBins.map((b) => b.id)),
   }
 }
 
@@ -108,7 +108,7 @@ export function describeMovementFilters(f: MovementFilterState, names: MovementF
   if (f.range.from || f.range.to) {
     out.push({ label: t(`${T}.range`), value: `${f.range.from || '…'} – ${f.range.to || '…'}` })
   }
-  if (f.warehousePublicIds.length > 0) out.push({ label: t(`${T}.warehouse`), value: list(f.warehousePublicIds.map((id) => names.warehouses.get(id) ?? id)) })
+  if (f.bins.length > 0) out.push({ label: t(`${T}.bin`), value: list(f.bins.map((b) => b.label)) })
   if (f.products.length > 0) out.push({ label: t(`${T}.product`), value: list(f.products.map((p) => p.label || p.sku || p.publicId)) })
   if (f.owners.length > 0) out.push({ label: t(`${T}.owner`), value: list(f.owners.map((o) => names.owners.get(o) ?? o)) })
   if (f.users.length > 0) out.push({ label: t(`${T}.user`), value: list(f.users.map((u) => names.users?.get(u) ?? u)) })

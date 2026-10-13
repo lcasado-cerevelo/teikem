@@ -340,6 +340,17 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
             var toWh = (await WarehouseIdsAsync(q.ToWarehousePublicIds, ct)).Select(i => (int?)i).ToList();
             query = query.Where(t => toWh.Contains(t.ToWarehouseId));
         }
+        // 2026-10-12: Transferencias — posición de ORIGEN y de DESTINO (cada una contra su lado)
+        if (q.FromBinIds is { Length: > 0 })
+        {
+            var fromBins = q.FromBinIds.Select(i => (int?)i).Distinct().ToList();
+            query = query.Where(t => fromBins.Contains(t.FromBinId));
+        }
+        if (q.ToBinIds is { Length: > 0 })
+        {
+            var toBins = q.ToBinIds.Select(i => (int?)i).Distinct().ToList();
+            query = query.Where(t => toBins.Contains(t.ToBinId));
+        }
         if (q.ManualOnly) query = query.Where(t => t.RefEntityLookupId == null);
 
         if (!string.IsNullOrWhiteSpace(q.LotNumber))

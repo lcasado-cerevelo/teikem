@@ -8830,6 +8830,8 @@ export interface paths {
                     manualOnly?: boolean;
                     userIds?: number[];
                     includeSystem?: boolean;
+                    fromBinIds?: number[];
+                    toBinIds?: number[];
                 };
                 header?: never;
                 path?: never;
@@ -8891,6 +8893,8 @@ export interface paths {
                     manualOnly?: boolean;
                     userIds?: number[];
                     includeSystem?: boolean;
+                    fromBinIds?: number[];
+                    toBinIds?: number[];
                 };
                 header?: never;
                 path?: never;

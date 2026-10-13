@@ -38,7 +38,7 @@ public sealed record KardexQuery(DateOnly? From = null, DateOnly? To = null, str
     string? RefEntity = null, int? RefId = null, string? Search = null, int Skip = 0, int Take = 200, string[]? Brands = null,
     string? Name = null, Guid[]? OwnerClientPublicIds = null, bool IncludeOwn = false, string[]? Reasons = null, string? Direction = null,
     Guid[]? FromWarehousePublicIds = null, Guid[]? ToWarehousePublicIds = null, bool ManualOnly = false, int[]? UserIds = null,
-    bool IncludeSystem = false);
+    bool IncludeSystem = false, int[]? FromBinIds = null, int[]? ToBinIds = null);
 
 /// <summary>
 /// Fila del Kárdex. Quantity = valor del ledger CON signo; SignedQuantity = según la perspectiva del filtro. Lote 14:
