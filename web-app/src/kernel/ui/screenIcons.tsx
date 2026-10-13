@@ -247,6 +247,9 @@ export function IconPhoneFormat() {
   )
 }
 
+/** 'print' de la maqueta (Lote F-G1): Impresoras y labels, Prueba e Imprimir. Mismo trazo que el del panel Teléfono. */
+export const IconPrint = IconPhoneFormat
+
 /** 'scan' de la maqueta: Estación de escaneo (recuadro con barras). */
 export function IconScan() {
   return (

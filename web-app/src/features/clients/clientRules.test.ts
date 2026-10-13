@@ -142,6 +142,14 @@ describe('perfil', () => {
     expect(other.clearDefaultPickup).toBeUndefined()
   })
 
+  it('Lote 43: «Imprimir la factura automáticamente» se lee de la ficha y solo viaja si cambió', () => {
+    const original = profileValuesOf(detail)
+    expect(original.autoPrintInvoice).toBe(false)
+    expect(profileValuesOf({ ...detail, autoPrintInvoice: true } as ClientDetail).autoPrintInvoice).toBe(true)
+    expect(buildProfileRequest(original, original, 'AAA=').autoPrintInvoice).toBeUndefined()
+    expect(buildProfileRequest({ ...original, autoPrintInvoice: true }, original, 'AAA=').autoPrintInvoice).toBe(true)
+  })
+
   it('dirección en una línea sin partes vacías', () => {
     expect(addressLine(null)).toBe('')
     expect(addressLine({ line1: 'Calle 1', city: 'San Juan', state: 'PR', postalCode: '00901', countryLabel: 'Puerto Rico' } as never)).toBe('Calle 1 · San Juan, PR 00901 · Puerto Rico')

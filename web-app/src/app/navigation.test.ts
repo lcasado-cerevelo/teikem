@@ -127,6 +127,8 @@ describe('menú completo (routes.tsx)', () => {
     expect(byPath('/orders').pending).toBeUndefined()
     expect(byPath('/warehouse/receipts').pending).toBeUndefined()
     expect(byPath('/system/users').pending).toBeUndefined()
+    expect(byPath('/system/printers').pending).toBeUndefined() // Lote F-G1
+    expect(byPath('/system/printers')).toMatchObject({ perm: 'printers.manage', module: 'SYSTEM', nav: { group: 'system', key: 'printers', order: 10 } })
     expect(byPath('/').pending).toBeUndefined()
   })
 

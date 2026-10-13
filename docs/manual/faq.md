@@ -7451,3 +7451,82 @@ Falta aplicar `db-update` en esa base (crea el índice `IX_Order_Tenant_Created`
 
 **La búsqueda libre de órdenes tarda en la compañía con más órdenes.**
 Es esperado: busca el texto dentro del número de orden, la factura, el empaque y el nombre del consignatario de todas sus órdenes. Para una orden concreta use la búsqueda exacta por código (escanear el empaque o escribir el número completo: `GET /api/v1/orders/lookup`, inmediata) o acote la lista por fechas.
+
+## Lote 43 / F-G1 — Impresoras y labels (2026-10-12)
+
+Capítulos: [12 — Impresoras y labels](12-impresoras-y-labels.md) y [FG1 — pantalla](frontend/fg1-impresoras.md).
+
+**¿El servidor de Teikem se conecta a mis impresoras?**
+No, nunca. Imprime la computadora del usuario: directo con QZ Tray (programa gratuito que se instala en cada computadora) o, de respaldo, con el PDF y el diálogo del navegador. El servidor solo firma, con el certificado de Teikem, lo que pide QZ Tray.
+
+**¿Qué significa «QZ Tray no detectado»?**
+En esta computadora QZ Tray no está instalado, no está abierto o falta su librería en el sitio (`/vendor/qz-tray.js`, la pone soporte). Todo se imprime igual, con el PDF del navegador. Instale QZ Tray (enlace «Instalar QZ Tray»), ábralo y pulse «Detectar impresoras de esta computadora».
+
+**Pulsé Prueba y se abrió el diálogo del navegador en vez de imprimir directo.**
+La impresora elegida es de conexión «PDF del navegador», o QZ Tray no está conectado en esta computadora (el aviso dice el motivo: «QZ Tray no está abierto en esta computadora.», «La impresión directa no está disponible en esta computadora (falta QZ Tray o su librería).» o «QZ Tray no pudo imprimir (…).»). Cambie la impresora a «Directo (QZ Tray)» con su «Nombre en el sistema», o abra QZ Tray.
+
+**QZ Tray pregunta «Allow / Permitir» cada vez que imprimo.**
+El servidor no tiene configurado el certificado de Teikem (la pantalla lo dice: «El servidor no tiene certificado de QZ Tray…») o esa computadora no tiene el `override.crt`. Soporte: capítulo 12 §9 (generar el certificado, configurar `Printing:Qz` en el servidor e instalar `override.crt` en cada computadora).
+
+**¿Qué significa «La impresión directa con QZ Tray no tiene certificado configurado en este servidor; …»? (409)**
+Lo responde `GET /printing/qz/certificate` (o `/qz/sign`) cuando el servidor no tiene el certificado o la clave (o la clave está dañada). No impide imprimir: QZ Tray pregunta «Permitir» o se usa el PDF del navegador. Soporte lo configura (capítulo 12 §9.3).
+
+**«Escriba el nombre de la impresora.» / «El nombre no puede exceder 80 caracteres.» (400)**
+El nombre es obligatorio y de hasta 80 caracteres. Use el mismo nombre que tiene la impresora en Windows.
+
+**«Ya existe una impresora activa con ese nombre.» (409)**
+Otra impresora activa ya usa ese nombre (sin distinguir mayúsculas). Cambie el nombre, o desactive la otra. Al reactivar una impresora pasa lo mismo si su nombre ya lo usa otra activa.
+
+**«Indique el uso de la impresora: LABEL (labels) o DOCUMENT (documentos).» / «Uso de impresora desconocido: 'X'.» (400)**
+Al crear una impresora hay que decir si es para labels o para documentos.
+
+**«El uso de la impresora no se puede cambiar; cree otra impresora.» (400)**
+El uso se fija al crearla. Para una impresora con otro uso, cree otra (y desactive la vieja si ya no sirve).
+
+**«Conexión de impresora desconocida: 'X'. Use BROWSER (PDF del navegador) o QZ_TRAY (directo con QZ Tray).» (400)**
+Solo hay dos conexiones. La impresión por red desde el servidor no existe a propósito (el servidor nunca se conecta a impresoras).
+
+**«Una impresora de labels usa etiquetas de 4X6, 4X4 o 4X2.» / «Una impresora de documentos usa papel carta (LETTER).» (400)**
+El tamaño tiene que corresponder al uso. Para etiquetas de 2×4 «tipo sobre» use 4×2 con «Girar 90°» si la impresora la alimenta de lado.
+
+**«El modelo no puede exceder 80 caracteres.» / «La nota no puede exceder 300 caracteres.» / «El nombre en el sistema no puede exceder 200 caracteres.» (400)**
+Acorte el texto.
+
+**«La impresora está inactiva; reactívela antes de hacerla predeterminada.» / «La plantilla está inactiva; reactívela antes de hacerla predeterminada.» (409)**
+Reactívela primero (o elija otra activa).
+
+**«Impresora no encontrada.» / «Plantilla de label no encontrada.» (404)**
+No existe o es de otra compañía. Vuelva a la lista y recargue.
+
+**Desactivé la impresora predeterminada y ahora las estaciones imprimen con el PDF.**
+Es lo esperado: su uso queda sin predeterminada. Marque otra como predeterminada (o elija una en cada estación). Reactivar la vieja no la vuelve predeterminada sola.
+
+**«Escriba el nombre de la plantilla.» / «Falta la construcción del label.» (400)**
+Una plantilla necesita nombre y su construcción (los 9 elementos; desde la pantalla siempre va completa).
+
+**«Posición desconocida en «…»: 'X'. Use tl, tc, tr, ml, mc, mr, bl, bc o br.» / «Tamaño desconocido en «…»: 'X'. Use sm, md o lg.» (400)**
+Llegó por API una posición o un tamaño que no existe para ese elemento. Use uno de los listados.
+
+**«Solo el número de waybill y la factura se pueden mostrar como código de barras.» (400)**
+«Como código de barras» solo vale para el número de waybill y la factura (el «Código de barras» ya lo es).
+
+**«El label necesita al menos un código de barras para poder escanearlo.» (400)**
+Deje visible el «Código de barras» (número del paquete) o muestre el waybill o la factura como código de barras.
+
+**«Ya existe una plantilla de label activa con ese nombre.» (409)**
+Otra plantilla activa ya usa ese nombre. Cámbielo o desactive la otra.
+
+**«El label no cabe en 4×2: quite elementos o use una etiqueta más grande.»**
+Con tantos elementos grandes no entra ni achicando la letra. Apague elementos, use tamaño Pequeño o una impresora con etiqueta más grande.
+
+**¿Por qué el código de barras del label es el número del paquete y no el de la orden?**
+Cada paquete de la orden tiene su propio número y lleva su propio label (uno por paquete). Un paquete sin número no lleva label y se avisa. *Pendiente (F-G2): que la estación de escaneo también busque por número de paquete; hoy busca por número de orden, empaque o factura.*
+
+**Configuré la estación y en otra computadora no aparece.**
+La configuración de impresión es por estación (este navegador en esta computadora). Configúrela y pulse Guardar en cada una.
+
+**¿Qué hace «Imprimir labels directo a la impresora»?**
+Es un ajuste de la compañía (apagado por defecto, permiso `printers.manage`). Encendido, al guardar una orden sale un label por paquete a la impresora de labels de la estación; una estación puede no imprimir apagando su «Imprimir al guardar». La impresión al guardar llega con las pantallas de Órdenes (F-G2).
+
+**Encendí «Imprimir la factura automáticamente» en un cliente y no sale ninguna factura.**
+Por ahora solo se guarda la preferencia del cliente: Teikem todavía no imprime facturas (llega con facturación).

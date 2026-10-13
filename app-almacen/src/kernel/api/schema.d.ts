@@ -9805,6 +9805,257 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/label-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    includeInactive?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["LabelTemplateDto"][];
+                        "application/json": components["schemas"]["LabelTemplateDto"][];
+                        "text/json": components["schemas"]["LabelTemplateDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["LabelTemplateRequest"];
+                    "text/json": components["schemas"]["LabelTemplateRequest"];
+                    "application/*+json": components["schemas"]["LabelTemplateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["LabelTemplateDto"];
+                        "application/json": components["schemas"]["LabelTemplateDto"];
+                        "text/json": components["schemas"]["LabelTemplateDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/label-templates/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["LabelTemplateDto"];
+                        "application/json": components["schemas"]["LabelTemplateDto"];
+                        "text/json": components["schemas"]["LabelTemplateDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["LabelTemplateRequest"];
+                    "text/json": components["schemas"]["LabelTemplateRequest"];
+                    "application/*+json": components["schemas"]["LabelTemplateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["LabelTemplateDto"];
+                        "application/json": components["schemas"]["LabelTemplateDto"];
+                        "text/json": components["schemas"]["LabelTemplateDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/label-templates/{publicId}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["LabelTemplateDto"];
+                        "application/json": components["schemas"]["LabelTemplateDto"];
+                        "text/json": components["schemas"]["LabelTemplateDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/label-templates/{publicId}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["LabelTemplateDto"];
+                        "application/json": components["schemas"]["LabelTemplateDto"];
+                        "text/json": components["schemas"]["LabelTemplateDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/label-templates/{publicId}/make-default": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["LabelTemplateDto"];
+                        "application/json": components["schemas"]["LabelTemplateDto"];
+                        "text/json": components["schemas"]["LabelTemplateDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/locations": {
         parameters: {
             query?: never;
@@ -12159,6 +12410,438 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/printers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    includeInactive?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PrinterDto"][];
+                        "application/json": components["schemas"]["PrinterDto"][];
+                        "text/json": components["schemas"]["PrinterDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PrinterRequest"];
+                    "text/json": components["schemas"]["PrinterRequest"];
+                    "application/*+json": components["schemas"]["PrinterRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PrinterDto"];
+                        "application/json": components["schemas"]["PrinterDto"];
+                        "text/json": components["schemas"]["PrinterDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/printers/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PrinterDto"];
+                        "application/json": components["schemas"]["PrinterDto"];
+                        "text/json": components["schemas"]["PrinterDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PrinterRequest"];
+                    "text/json": components["schemas"]["PrinterRequest"];
+                    "application/*+json": components["schemas"]["PrinterRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PrinterDto"];
+                        "application/json": components["schemas"]["PrinterDto"];
+                        "text/json": components["schemas"]["PrinterDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/printers/{publicId}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PrinterDto"];
+                        "application/json": components["schemas"]["PrinterDto"];
+                        "text/json": components["schemas"]["PrinterDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/printers/{publicId}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PrinterDto"];
+                        "application/json": components["schemas"]["PrinterDto"];
+                        "text/json": components["schemas"]["PrinterDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/printers/{publicId}/make-default": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PrinterDto"];
+                        "application/json": components["schemas"]["PrinterDto"];
+                        "text/json": components["schemas"]["PrinterDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/printing/station-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PrintStationOptionsDto"];
+                        "application/json": components["schemas"]["PrintStationOptionsDto"];
+                        "text/json": components["schemas"]["PrintStationOptionsDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/printing/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PrintingSettingsDto"];
+                        "application/json": components["schemas"]["PrintingSettingsDto"];
+                        "text/json": components["schemas"]["PrintingSettingsDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PrintingSettingsRequest"];
+                    "text/json": components["schemas"]["PrintingSettingsRequest"];
+                    "application/*+json": components["schemas"]["PrintingSettingsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PrintingSettingsDto"];
+                        "application/json": components["schemas"]["PrintingSettingsDto"];
+                        "text/json": components["schemas"]["PrintingSettingsDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/printing/qz/certificate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["QzCertificateDto"];
+                        "application/json": components["schemas"]["QzCertificateDto"];
+                        "text/json": components["schemas"]["QzCertificateDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/printing/qz/sign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["QzSignRequest"];
+                    "text/json": components["schemas"]["QzSignRequest"];
+                    "application/*+json": components["schemas"]["QzSignRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["QzSignatureDto"];
+                        "application/json": components["schemas"]["QzSignatureDto"];
+                        "text/json": components["schemas"]["QzSignatureDto"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -19991,6 +20674,7 @@ export interface components {
             /** Format: date-time */
             updatedAtUtc?: string | null;
             rowVersion?: string | null;
+            autoPrintInvoice?: boolean;
         };
         ClientInitialContractRequest: {
             /** Format: date */
@@ -20065,6 +20749,7 @@ export interface components {
             defaultPickupLocationPublicId?: string | null;
             clearDefaultPickup?: boolean;
             rowVersion?: string | null;
+            autoPrintInvoice?: boolean | null;
         };
         CodFeeDto: {
             type?: string | null;
@@ -21938,6 +22623,37 @@ export interface components {
             /** Format: int32 */
             internalCount?: number;
         };
+        LabelElementDto: {
+            on?: boolean;
+            pos?: string | null;
+            size?: string | null;
+            asBarcode?: boolean;
+        };
+        LabelLayoutDto: {
+            logo?: components["schemas"]["LabelElementDto"];
+            service?: components["schemas"]["LabelElementDto"];
+            sender?: components["schemas"]["LabelElementDto"];
+            consignee?: components["schemas"]["LabelElementDto"];
+            address?: components["schemas"]["LabelElementDto"];
+            barcode?: components["schemas"]["LabelElementDto"];
+            waybill?: components["schemas"]["LabelElementDto"];
+            invoice?: components["schemas"]["LabelElementDto"];
+            cod?: components["schemas"]["LabelElementDto"];
+        };
+        LabelTemplateDto: {
+            /** Format: uuid */
+            publicId?: string;
+            name?: string | null;
+            layout?: components["schemas"]["LabelLayoutDto"];
+            isDefault?: boolean;
+            isActive?: boolean;
+            rowVersion?: string | null;
+        };
+        LabelTemplateRequest: {
+            name?: string | null;
+            layout?: components["schemas"]["LabelLayoutDto"];
+            rowVersion?: string | null;
+        };
         LocationDto: {
             /** Format: int32 */
             id?: number;
@@ -22938,6 +23654,57 @@ export interface components {
             country?: string | null;
             municipality?: string | null;
         };
+        PrintStationOptionsDto: {
+            printers?: components["schemas"]["PrinterOptionDto"][] | null;
+            templates?: components["schemas"]["LabelTemplateDto"][] | null;
+            builtInLayout?: components["schemas"]["LabelLayoutDto"];
+            printLabelsDirect?: boolean;
+            qzSigningConfigured?: boolean;
+        };
+        PrinterDto: {
+            /** Format: uuid */
+            publicId?: string;
+            name?: string | null;
+            model?: string | null;
+            purpose?: string | null;
+            connectionType?: string | null;
+            mediaSize?: string | null;
+            rotateMedia?: boolean;
+            notes?: string | null;
+            isDefault?: boolean;
+            isActive?: boolean;
+            rowVersion?: string | null;
+            systemName?: string | null;
+        };
+        PrinterOptionDto: {
+            /** Format: uuid */
+            publicId?: string;
+            name?: string | null;
+            model?: string | null;
+            purpose?: string | null;
+            connectionType?: string | null;
+            mediaSize?: string | null;
+            rotateMedia?: boolean;
+            isDefault?: boolean;
+            systemName?: string | null;
+        };
+        PrinterRequest: {
+            name?: string | null;
+            model?: string | null;
+            purpose?: string | null;
+            connectionType?: string | null;
+            mediaSize?: string | null;
+            rotateMedia?: boolean | null;
+            notes?: string | null;
+            rowVersion?: string | null;
+            systemName?: string | null;
+        };
+        PrintingSettingsDto: {
+            printLabelsDirect?: boolean;
+        };
+        PrintingSettingsRequest: {
+            printLabelsDirect?: boolean | null;
+        };
         ProductCategoryDto: {
             /** Format: int32 */
             id?: number;
@@ -23275,6 +24042,16 @@ export interface components {
             extraSource?: string | null;
             /** Format: double */
             lineTotal?: number;
+        };
+        QzCertificateDto: {
+            certificate?: string | null;
+        };
+        QzSignRequest: {
+            request?: string | null;
+        };
+        QzSignatureDto: {
+            signature?: string | null;
+            algorithm?: string | null;
         };
         RateCloseRequest: {
             /** Format: date */

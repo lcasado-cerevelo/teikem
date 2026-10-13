@@ -160,6 +160,13 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
     "Rentas vencidas", "Devoluciones de renta por motivo" y "Equipos en proceso", indicadores "Rentas por vencer (7 días)" y "Rentas
     vencidas", gráfico "Devoluciones de renta por motivo" y el aviso de rentas vencidas o por vencer en "Necesita tu atención"; todo con
     `rental.view` y oculto con el módulo Rentas apagado.
+12. [12 — Impresoras y labels](12-impresoras-y-labels.md): Lote 43 (F-G1, 2026-10-12) — **impresoras de la compañía** (perfil: uso labels o
+    documentos fijo, tamaño 4×6/4×4/4×2 o carta, conexión **directo con QZ Tray** o PDF del navegador, nombre en el sistema, girar 90°,
+    predeterminada por uso), **plantillas de label** (los 9 elementos del constructor con posición y tamaño; el código de barras es el
+    **número de cada paquete**, un label por paquete), opciones de impresión de la **estación**, ajuste de la compañía **«Imprimir labels
+    directo a la impresora»**, bandera del cliente **«Imprimir la factura automáticamente»** (solo la preferencia), permiso
+    `printers.manage`, mensajes 400/404/409 y, para soporte, **QZ Tray y el certificado de Teikem** (generar, configurar `Printing:Qz` e
+    instalar `override.crt`). El servidor nunca se conecta a una impresora.
 
 ## Manual de pantallas (frontend web)
 
@@ -282,6 +289,11 @@ F-A3. [F-A3 — Usuarios de portal y cotizador del cliente](frontend/fa3-portal-
    **Reactivar**, **Dar de baja** y **Volver a invitar**, con estatus Invitado, Activo, Suspendido e Inhabilitado; permiso `portalusers.manage` y módulo Portal de clientes) y la pestaña **Cotizador** de
    Contratos (líneas de servicio, paquete y piezas, monto COD y fecha; desglose con tarifa base, piezas extra, despacho, COD y total, y de dónde salió cada monto; `contracts.read`). Todos los mensajes del
    servidor con qué hacer. Capturas `fa3-*`.
+F-G1. [F-G1 — Impresoras y labels](frontend/fg1-impresoras.md): Sistema → **Impresoras y labels** (`printers.manage`): **Esta computadora** (QZ Tray conectado o no
+   detectado, **Detectar impresoras de esta computadora**, **Instalar QZ Tray**), **Esta estación — labels / documentos** (impresora, impresora de esta computadora,
+   template o formato Carta, **Imprimir al guardar**, **Confirmar antes**, **Prueba** con vista y **Descargar PDF**, **Guardar** en este navegador), **Construir el label**
+   (9 elementos, posición, tamaño, como código de barras, vista previa en vivo, plantillas nueva/duplicar/predeterminada/desactivar, **Actualizar construcción del label**),
+   **Imprimir labels directo a la impresora** de la compañía e **Impresoras de la compañía** (alta y edición, predeterminada, desactivar y reactivar). Capturas `fg1-*`.
 
 ## Preguntas frecuentes
 

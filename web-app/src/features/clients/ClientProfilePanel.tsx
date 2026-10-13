@@ -1,5 +1,5 @@
 // Panel «Perfil del cliente»: nombre (solo lectura), razón social, identificación fiscal, límite de crédito, término de pago,
-// moneda y punto de recogido por defecto. PATCH /profile con rowVersion (409 = otro usuario guardó antes: se muestra el
+// moneda, punto de recogido por defecto e «Imprimir la factura automáticamente» (Lote 43: solo la bandera). PATCH /profile con rowVersion (409 = otro usuario guardó antes: se muestra el
 // mensaje del servidor y se relee la ficha). Las direcciones son de solo lectura hasta el bloque de Consignatarios/localizaciones.
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
@@ -8,7 +8,7 @@ import { useForm } from 'react-hook-form'
 import { Can, useCan } from '../../kernel/access'
 import { useLookups, type LookupOption } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
-import { Field, Form, NumberInput, Panel, Select, TextInput, toast } from '../../kernel/ui'
+import { Field, Form, NumberInput, Panel, Select, TextInput, Toggle, toast } from '../../kernel/ui'
 import { IconUsers } from '../../kernel/ui/screenIcons'
 import { clientKeys, useUpdateClientProfile } from './api'
 import {
@@ -116,6 +116,9 @@ export function ClientProfilePanel({ client }: { client: ClientDetail }) {
           </div>
           <Field name="pickup" label={t('clients.profile.pickup')} help={t('clients.profile.pickupHelp')}>
             <Select options={pickupOptions} placeholder={t('clients.profile.pickupNone')} />
+          </Field>
+          <Field name="autoPrintInvoice" label={t('clients.profile.autoPrintInvoice')} help={t('clients.profile.autoPrintInvoiceHelp')}>
+            <Toggle text={t('clients.profile.autoPrintInvoiceText')} />
           </Field>
         </fieldset>
 

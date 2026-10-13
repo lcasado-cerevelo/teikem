@@ -162,6 +162,8 @@ export interface ProfileValues {
   currency: string
   /** publicId del punto de recogido por defecto; '' = ninguno (se recoge en la dirección corporativa). */
   pickup: string
+  /** Lote 43: «Imprimir la factura automáticamente» (solo la bandera; la impresión de la factura llega con facturación). */
+  autoPrintInvoice: boolean
 }
 
 export function profileValuesOf(c: ClientDetail): ProfileValues {
@@ -172,6 +174,7 @@ export function profileValuesOf(c: ClientDetail): ProfileValues {
     paymentTerm: c.paymentTerm ?? '',
     currency: c.currency ?? '',
     pickup: c.pickupAddress?.publicId && !c.pickupAddress.isDefaultFromCorporate ? c.pickupAddress.publicId : NO_PICKUP,
+    autoPrintInvoice: c.autoPrintInvoice ?? false,
   }
 }
 
@@ -188,12 +191,14 @@ export function profileSchema(m: Pick<CreateMessages, 'legalNameMax' | 'taxIdMax
     paymentTerm: z.string(),
     currency: z.string(),
     pickup: z.string(),
+    autoPrintInvoice: z.boolean(),
   })
 }
 
 /**
  * PATCH /profile: texto null = no cambiar, '' = borrar; por eso se envía tal cual. Término y moneda '' los borran.
  * Punto de recogido: '' → `clearDefaultPickup` (solo si había uno propio), un id → ese; sin cambio no se manda.
+ * «Imprimir la factura automáticamente» (Lote 43): solo si cambió.
  */
 export type ProfileInput = Omit<ProfileValues, 'creditLimit'> & { creditLimit?: number | null }
 
@@ -210,6 +215,7 @@ export function buildProfileRequest(v: ProfileInput, original: ProfileValues, ro
     if (v.pickup === NO_PICKUP) req.clearDefaultPickup = true
     else req.defaultPickupLocationPublicId = v.pickup
   }
+  if (v.autoPrintInvoice !== original.autoPrintInvoice) req.autoPrintInvoice = v.autoPrintInvoice
   return req
 }
 

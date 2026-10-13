@@ -1,0 +1,59 @@
+/* Lote F-G1 — Impresoras y labels (maqueta printers(): dos paneles de estación lado a lado, constructor con vista previa). */
+.prn-screen { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.prn-screen > .head { margin-bottom: 0; }
+.prn-note { display: flex; gap: 8px; align-items: flex-start; }
+.prn-note svg { flex: none; margin-top: 1px; }
+.prn-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 900px) { .prn-cols { grid-template-columns: minmax(0, 1fr); } }
+.prn-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.prn-acts .btn svg { margin-right: 4px; }
+.prn-via { margin: 10px 0 0; }
+.prn-bar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.prn-bar .qrow { flex: 1 1 220px; min-width: 0; }
+.prn-qz { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
+.prn-tplbar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: flex-end; margin-bottom: 12px; }
+.prn-tplbar .f { flex: 1 1 220px; min-width: 0; margin-bottom: 0; }
+.prn-tplbar .prn-acts { margin-top: 0; }
+.prn-screen select { max-width: 100%; }
+.btn.danger { color: var(--danger, #d64545); }
+
+/* Constructor: tabla de la maqueta; bajo 560 px cada elemento es una tarjeta (sin scroll horizontal). */
+.lbl-build { width: 100%; margin-bottom: 16px; }
+.lbl-build select { min-width: 0; width: 100%; }
+.lbl-build td:nth-child(3) { min-width: 112px; }
+.lbl-build td:nth-child(4) { min-width: 88px; }
+.lbl-na { color: var(--faint); }
+@media (max-width: 560px) {
+  .lbl-build thead { display: none; }
+  .lbl-build, .lbl-build tbody { display: block; }
+  .lbl-build tr { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: 'on name name' 'pos pos size' 'bc bc bc'; gap: 6px 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .lbl-build td { display: block; padding: 0; border: 0; min-width: 0 !important; }
+  .lbl-build td:nth-child(1) { grid-area: on; }
+  .lbl-build td:nth-child(2) { grid-area: name; font-weight: 600; }
+  .lbl-build td:nth-child(3) { grid-area: pos; }
+  .lbl-build td:nth-child(4) { grid-area: size; }
+  .lbl-build td:nth-child(5) { grid-area: bc; }
+  .lbl-build td:nth-child(5):has(.lbl-na) { display: none; }
+}
+
+/* Vista previa: blanco y negro como la impresora térmica, con la proporción de la etiqueta. */
+.prn-preview-wrap { display: flex; justify-content: center; }
+.lbl-canvas {
+  background: var(--label-paper); color: #000; border: 1px solid var(--line); border-radius: 8px; padding: 10px;
+  font-family: var(--mono); width: 100%; max-width: 300px; display: flex; flex-direction: column; justify-content: space-between; gap: 6px;
+  box-sizing: border-box; overflow: hidden;
+}
+.lbl-row { display: flex; flex-direction: column; gap: 4px; }
+.lbl-row-m { flex: 1; justify-content: center; }
+.lbl-cells { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+.lbl-cell { display: flex; flex-direction: column; gap: 3px; min-width: 0; overflow-wrap: anywhere; }
+.lbl-cell-l { align-items: flex-start; text-align: left; }
+.lbl-cell-c { align-items: center; text-align: center; }
+.lbl-cell-r { align-items: flex-end; text-align: right; }
+.lbl-text { display: flex; flex-direction: column; line-height: 1.2; }
+.lbl-bold { font-weight: 700; }
+.lbl-inverse { background: #000; color: #fff; padding: 1px 6px; border-radius: 2px; }
+.lbl-barcode { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+svg.lbl-bars { width: 100%; height: 100%; min-height: 16px; display: block; flex: 1; }
+.lbl-caption { font-size: 10px; line-height: 1.1; }
+.lbl-nobars { font-size: 14px; flex: 1; display: flex; align-items: center; }

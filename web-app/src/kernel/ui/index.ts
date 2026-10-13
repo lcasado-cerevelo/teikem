@@ -109,6 +109,7 @@ export {
   IconPencil,
   IconPhoneFormat,
   IconPin,
+  IconPrint,
   IconRoute,
   IconScan,
   IconSwap,
