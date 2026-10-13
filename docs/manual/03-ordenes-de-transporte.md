@@ -165,6 +165,11 @@ Cómo se usa:
   orden, si no hay por número de empaque, si no hay por factura; devuelve todas las coincidencias de ese grupo
   (`matchedBy`: `ORDER_NUMBER` | `PACK_BATCH` | `INVOICE`, o `null` sin coincidencias) — el número de orden puede
   repetirse entre clientes y la factura entre órdenes, el empaque es único.
+  Lote 44 (F-G2, 2026-10-12): si ninguno de los tres coincide, busca el **número de paquete** de las líneas activas
+  (`matchedBy`: `PACKAGE`; es el código de barras del label de cada pieza). El contador de paquetes es por cliente y un número
+  tecleado puede repetirse: con dos o más órdenes vuelven todas (ambiguo).
+- Lote 44: cada fila de la lista y del lookup trae además `consigneeLine1`, `consigneeLine2` y `consigneeState` (la dirección de la
+  parada de entrega) para los labels, el waybill summary y la packing list.
 
 | Caso | Mensaje exacto | HTTP |
 |---|---|---|

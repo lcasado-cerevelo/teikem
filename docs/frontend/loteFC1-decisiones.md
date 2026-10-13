@@ -35,7 +35,9 @@ lote 39 (`orders.view_price`, filtros nuevos de `GET /orders`) y **no se editaro
 Decididas por el dueño (2026-10-12):
 
 1. **Sin el segmentado Rápida/Detallada.** La entrada rápida llega en F-C3, que agrega el segmentado; mientras tanto el formulario es siempre el detallado.
-2. **Sin «Waybill summary», «Packing list», «Imprimir label» ni «Todos los labels»** (pie de la tabla de la maqueta), ni POD ni documentos: se difieren a F-G. El botón de la maqueta «Guardar e imprimir label» es aquí
+2. **Sin «Waybill summary», «Packing list», «Imprimir label» ni «Todos los labels»** (pie de la tabla de la maqueta), ni POD ni documentos: se difieren a F-G.
+   *Actualización F-G2 (2026-10-12): ya existen los cuatro botones en el pie de la tabla, la columna «Elegir» y «Label al guardar» junto a los
+   botones de guardar (`docs/frontend/loteFG2-decisiones.md`). POD sigue pendiente (P7).* El botón de la maqueta «Guardar e imprimir label» es aquí
    **Guardar borrador / Guardar y confirmar**, y la nota «El label sale automático…» se reemplazó por la explicación de esos dos botones.
 3. **El ticket no muestra precio** (cliente, servicio, consignatario, pueblo, paquetes ×piezas y COD). El precio solo se ve después y únicamente con `orders.view_price`: columna **Cotizado** de la lista
    (omitida sin el permiso) y campo de la ficha («—» si viene null).

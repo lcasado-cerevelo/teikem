@@ -130,7 +130,8 @@ describe('Órdenes — lista', () => {
     wrap(VIEW)
     await screen.findByText('Farmacia Central')
     const heads = within(screen.getAllByRole('rowgroup')[0]).getAllByRole('columnheader').map((h) => h.textContent?.trim())
-    expect(heads.slice(0, 11)).toEqual(['Empaque', 'N.º orden', 'Fecha', 'Consignatario', 'Pueblo', 'ZIP', 'Servicio', 'Paquete', 'Piezas', 'COD', 'Estatus'])
+    // Lote F-G2: la casilla «Elegir» primero (para Imprimir label)
+    expect(heads.slice(0, 12)).toEqual(['Elegir', 'Empaque', 'N.º orden', 'Fecha', 'Consignatario', 'Pueblo', 'ZIP', 'Servicio', 'Paquete', 'Piezas', 'COD', 'Estatus'])
   })
 
   it('pide la primera página con skip/take', async () => {
@@ -366,5 +367,63 @@ describe('Órdenes — Rápida / Detallada e Importar (F-C3)', () => {
     await screen.findByText('Farmacia Central')
     await user.click(screen.getByRole('button', { name: 'Importar' }))
     expect(await screen.findByText('Importar órdenes desde CSV')).toBeInTheDocument()
+  })
+})
+
+describe('Órdenes — labels y documentos (Lote F-G2)', () => {
+  const withNumbers = () => [
+    { ...O1, packages: [{ ...O1.packages[0], packageNumber: 'PQT-00001' }, { ...O1.packages[1], packageNumber: 'PQT-00002' }] },
+    { ...O2, packages: [{ ...O2.packages[0], packageNumber: 'PQT-00003' }] },
+  ]
+  const confirmStation = () =>
+    window.localStorage.setItem('teikem.print.station.v1.none', JSON.stringify({ label: { confirm: true }, doc: { confirm: true } }))
+
+  it('«Imprimir label» necesita marcas; con las dos marcadas abre la vista con un label por pieza', async () => {
+    orders = withNumbers()
+    confirmStation()
+    const user = userEvent.setup()
+    wrap(VIEW)
+    await screen.findByText('Farmacia Central')
+    const print = screen.getByRole('button', { name: 'Imprimir label' })
+    expect(print).toBeDisabled()
+    expect(print).toHaveAttribute('title', 'Para imprimir solo algunas, márquelas en la lista con sus casillas.')
+    await user.click(screen.getByRole('checkbox', { name: 'Elegir la orden ORD-00001' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Elegir la orden ORD-00002' }))
+    expect(screen.getByText('2 marcadas')).toBeInTheDocument()
+    expect(screen.queryByText('Ficha abierta')).toBeNull() // marcar no abre la orden
+    await user.click(print)
+    const dialog = await screen.findByRole('dialog', { name: 'Imprimir 4 labels' })
+    expect(within(dialog).getByTestId('print-count')).toHaveTextContent('Labels: 4 · órdenes: 2 (uno por pieza).')
+    expect(within(dialog).getByTestId('label-preview')).toHaveTextContent('PQT-00001 · Paquete 1 de 3')
+    expect(within(dialog).getByRole('button', { name: 'Descargar PDF' })).toBeInTheDocument()
+  })
+
+  it('«Todos los labels» lee todo lo filtrado; avisa las piezas sin número de paquete y las órdenes canceladas', async () => {
+    const [a, b] = withNumbers()
+    orders = [{ ...a, packages: [a.packages[0], { ...a.packages[1], packageNumber: null }] }, { ...b, status: 'CANCELLED' }]
+    confirmStation()
+    const user = userEvent.setup()
+    wrap(VIEW)
+    await screen.findByText('Farmacia Central')
+    const before = callsTo('GET', '/api/v1/orders').length
+    await user.click(screen.getByRole('button', { name: 'Todos los labels' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Imprimir 2 labels' })
+    expect(within(dialog).getByTestId('print-count')).toHaveTextContent('Labels: 2 · órdenes: 1')
+    const all = callsTo('GET', '/api/v1/orders').slice(before)
+    expect(all.at(-1)!.url.searchParams.get('take')).toBe('200')
+    expect(await screen.findByTestId('toast')).toHaveTextContent(/no se imprimieron/)
+  })
+
+  it('Waybill summary y Packing list sin marcas usan todo lo filtrado (vista del documento)', async () => {
+    orders = withNumbers()
+    confirmStation()
+    const user = userEvent.setup()
+    wrap(VIEW)
+    await screen.findByText('Farmacia Central')
+    await user.click(screen.getByRole('button', { name: 'Waybill summary' }))
+    expect(await screen.findByRole('dialog', { name: 'Waybill summary' })).toHaveTextContent('El documento está listo para imprimir.')
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }))
+    await user.click(screen.getByRole('button', { name: 'Packing list' }))
+    expect(await screen.findByRole('dialog', { name: 'Packing list' })).toBeInTheDocument()
   })
 })

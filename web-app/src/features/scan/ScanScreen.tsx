@@ -3,13 +3,19 @@
 // vez, para que los resultados salgan en el orden en que se escanearon) y el resultado se ve grande, se dice con voz y queda en la
 // lista de la sesión. «Pendientes por escanear» (trips.view) y los filtros Zona (fleet.view) / Cliente (clients.read) se degradan solos.
 import { useQueryClient } from '@tanstack/react-query'
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { SessionContext } from '../../app/session'
 import { useCan, useModule } from '../../kernel/access'
+import { api, unwrap } from '../../kernel/api/client'
+import { fetchAllPages } from '../../kernel/api/fetchAllPages'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { tenantToday } from '../../kernel/api/tenantZone'
 import { useFormat } from '../../kernel/format'
 import { useLang, useT } from '../../kernel/i18n'
-import { ClientPicker, Filters, IconScan, IconVolume, IconVolumeOff, SelectFilter } from '../../kernel/ui'
+import { ClientPicker, Filters, IconScan, IconVolume, IconVolumeOff, SelectFilter, toast, useAppliedFilters } from '../../kernel/ui'
+import { IconDoc } from '../../kernel/ui/screenIcons'
+import { usePrinting } from '../printing/usePrinting'
+import { missingReportSpec } from './missingReport'
 import { useDispatchZones } from '../drivers/api'
 import { useDebounced } from '../warehouse/lineRules'
 import { fetchOrderKnown, useOutboundScan, useUnassignedOrders } from './scanApi'
@@ -18,6 +24,7 @@ import { ScanFeedPanel, ScanPendingPanel } from './ScanPanels'
 import { ScanResultBox, type LastScan } from './ScanResultBox'
 import {
   assignedOrderIds,
+  PENDING_TAKE,
   buildPendingQuery,
   codeProblemKey,
   entryMatchesFilters,
@@ -51,6 +58,11 @@ export default function ScanScreen() {
   const canClients = useCan('clients.read')
   const catalogOn = useModule('CATALOG')
   const voice = useScanVoice()
+  // Lote F-G2: «Informe de faltantes» (los pendientes con los mismos filtros, todas las páginas) por la impresora de documentos
+  const printing = usePrinting()
+  const appliedFilters = useAppliedFilters()
+  const me = useContext(SessionContext)?.me
+  const [missingBusy, setMissingBusy] = useState(false)
 
   const inputRef = useRef<HTMLInputElement>(null)
   const [text, setText] = useState('')
@@ -161,6 +173,32 @@ export default function ScanScreen() {
   const today = tenantToday()
   const shownDate = planDate ?? today
 
+  async function missingReport() {
+    if (missingBusy) return
+    setMissingBusy(true)
+    try {
+      const all = await fetchAllPages(
+        (skip, take) => unwrap(api.GET('/api/v1/trips/unassigned-orders', { params: { query: { ...query, Skip: skip, Take: take } } })),
+        { pageSize: PENDING_TAKE },
+      )
+      const filters = appliedFilters()   // el cliente (ClientPicker con filterLabel) ya se anota solo
+      const spec = missingReportSpec(all.items, {
+        t,
+        locale: lang,
+        company: me?.tenantName,
+        user: me?.fullName ?? me?.email,
+        filters,
+        scanned: assignedOrderIds(inFilter).size,
+        date: (iso) => (iso ? f.date(iso) : ''),
+      })
+      await printing.printDocument(spec, t('scan.missing.file'))
+    } catch (e) {
+      toast.error(applyProblemDetails(e).title)
+    } finally {
+      setMissingBusy(false)
+    }
+  }
+
   return (
     <div className="wrap scn">
       <div className="head">
@@ -180,8 +218,15 @@ export default function ScanScreen() {
             {voice.on ? <IconVolume /> : <IconVolumeOff />}{' '}
             {!voice.supported ? t('scan.voice.unsupported') : voice.on ? t('scan.voice.on') : t('scan.voice.off')}
           </button>
+          {canTrips && (
+            <button type="button" className="btn sm" disabled={missingBusy} onClick={() => void missingReport()}>
+              <IconDoc /> {t('scan.missing.button')}
+            </button>
+          )}
         </div>
       </div>
+
+      {printing.dialog}
 
       <div className="scanhero">
         <div className="modes" role="group" aria-label={t('scan.mode.label')}>

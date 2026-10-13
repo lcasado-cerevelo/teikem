@@ -4,8 +4,8 @@ Este capítulo cubre el **Lote 43 (F-G1, 2026-10-12)**: las **impresoras de la c
 del label de envío), las **opciones de impresión de cada estación**, el ajuste de la compañía **«Imprimir labels directo a la
 impresora»**, la bandera del cliente **«Imprimir la factura automáticamente»** y la **impresión directa con QZ Tray** (con la
 sección de soporte para el certificado). La pantalla está en el capítulo [FG1 — Impresoras y labels](frontend/fg1-impresoras.md).
-Los labels que salen de las órdenes (uno por paquete), el resumen de waybills, la lista de empaque y el informe de faltantes son
-del bloque siguiente (F-G2).
+El **Lote 44 (F-G2)** agrega la sección 10: los labels que salen de las órdenes (uno por pieza), el waybill summary, la packing list,
+el informe de faltantes y la búsqueda por número de paquete en el escaneo.
 
 ## 1. Cómo se imprime en Teikem
 
@@ -17,8 +17,9 @@ del bloque siguiente (F-G2).
     abre el diálogo de impresión del navegador con el PDF (y en un teléfono o tableta se descarga el PDF). Nunca se rompe: la
     pantalla avisa por qué no salió directo.
 - El **label** es un PDF vectorial en blanco y negro, **una página del tamaño exacto de la etiqueta** (4×6, 4×4 o 4×2 pulgadas) por
-  paquete. El **código de barras es el número de cada paquete** (cada paquete de la orden tiene su propio número); debajo va el
-  número legible y «Paquete i de N». Un paquete sin número no lleva label (se avisa).
+  **pieza**: la cantidad de cada línea de carga (de la unidad que sea) es el número de labels de la línea. El **código de barras es
+  el número del paquete de la línea** (el mismo en sus piezas); debajo va el número legible y «Paquete i de N». Una línea sin número
+  de paquete no lleva labels (se avisa).
 - El **diseño** (qué se ve, dónde y de qué tamaño) sale de la **plantilla**; el **tamaño** sale de la **impresora**. Por eso una
   plantilla sirve para cualquier tamaño de etiqueta.
 - Cada **estación** (este navegador en esta computadora) guarda su propia configuración: impresora de labels, plantilla, impresora de
@@ -107,9 +108,10 @@ Plantillas:
 
 - **Apagado por defecto** (ninguna compañía cambia de comportamiento hasta encenderlo). `PUT /api/v1/printing/settings`
   `{ "printLabelsDirect": true }` con `printers.manage`; también en la pantalla.
-- Encendido, al **guardar una orden** en la entrada rápida o detallada sale **un label por paquete** a la impresora de labels de la
+- Encendido, al **guardar una orden** en la entrada rápida o detallada sale **un label por pieza** a la impresora de labels de la
   estación (sin diálogo si la estación imprime con QZ Tray). La estación puede no imprimir apagando su «Imprimir al guardar».
-  *La impresión al guardar la orden llega con F-G2; en F-G1 se guarda el ajuste y se ve en las opciones de la estación.*
+  Desde F-G2 el interruptor «Label al guardar» de la entrada rápida y detallada viene encendido cuando el ajuste está encendido y la
+  estación no se excluyó (sección 10).
 
 ## 6. Bandera del cliente: «Imprimir la factura automáticamente»
 
@@ -199,3 +201,39 @@ Para que QZ Tray confíe en Teikem sin preguntar:
 2. Reinicie QZ Tray. Al imprimir ya no aparece «Allow / Permitir».
 La firma que pide QZ Tray (un resumen corto de cada petición) la hace el servidor con SHA512withRSA en `POST /printing/qz/sign`, con el
 permiso de las opciones de la estación; solo sirve en las computadoras que instalaron ese `override.crt`.
+
+## 10. Labels y documentos de las órdenes (Lote 44, F-G2)
+
+La pantalla está en [F-G2 — Labels y documentos](frontend/fg2-labels-y-documentos.md). Todo se imprime con la configuración de la
+estación (secciones 1 y 3) y nunca lleva el precio de la orden.
+
+### 10.1 Labels de las órdenes
+- **Uno por pieza**: la cantidad de cada línea de carga (de la unidad que sea) es el número de labels de esa línea. Cada label lleva en
+  el código de barras el **número del paquete de su línea** (el mismo en las piezas de la línea) y «Paquete i de N» (i corrido sobre
+  todas las piezas de la orden; N = sus piezas).
+- Contenido: logo = nombre de la compañía; nivel de servicio; «De:» el cliente; «A:» el consignatario; la dirección de entrega; número de
+  waybill = número de la orden; factura = factura del cliente; COD solo si la orden lo tiene.
+- No se imprimen: las órdenes **canceladas o dadas de baja** («{N} órdenes canceladas no se imprimieron.») ni las piezas de una línea **sin
+  número de paquete** («{N} piezas sin número de paquete no se imprimieron.»).
+- **Sin tope**: desde 500 labels se avisa «Son {N} labels: el PDF será grande y puede tardar un poco. Se imprimen todos; no hay límite.».
+- Dónde: lista de Órdenes («Imprimir label» de las marcadas y «Todos los labels» de todo lo filtrado), ficha de la orden («Imprimir label») y
+  **«Label al guardar»** en la entrada rápida y detallada (viene encendido si la compañía tiene «Imprimir labels directo a la impresora» y la
+  estación no apagó su «Imprimir al guardar»). Permiso: `orders.view` para imprimir; `orders.create` para capturar.
+- **Un fallo de impresión nunca deshace la orden**: «La orden se guardó, pero no se pudo imprimir el label: {motivo}. Use «Imprimir label» en la ficha.».
+
+### 10.2 Documentos (impresora de documentos de la estación, papel carta)
+- **Waybill summary**: una fila por orden (Empaque, N.º de orden, Factura, Cliente, Consignatario, Pueblo, ZIP, Servicio, Paquetes, Piezas,
+  COD), agrupado por cliente con subtotal de órdenes, piezas y COD, y total general. Carta apaisada.
+- **Packing list**: una sección por orden (empaque, orden, factura, consignatario y dirección) con sus paquetes (tipo, n.º de paquete,
+  descripción, piezas y peso) y subtotal; total general de piezas y peso. Carta vertical.
+- De las órdenes **marcadas** o, sin marcas, de **todo lo filtrado** (todas las páginas). Las canceladas no entran (se avisa en el documento).
+- **Informe de faltantes** (estación de escaneo, `trips.view`): las órdenes que siguen pendientes por escanear con los mismos filtros de
+  «Pendientes» (todas las páginas, sin tope), agrupadas por zona («Sin zona» y «Zona ambigua» al final), con Empaque, Orden, Factura, Cliente,
+  Consignatario, Pueblo, ZIP, Piezas y Fecha pedida, y el resumen de pendientes y escaneadas en esta sesión. Carta apaisada.
+
+### 10.3 Escanear el número de paquete
+- El escaneo de salida y `GET /api/v1/orders/lookup` buscan el **número de paquete** como cuarta precedencia (después de número de orden,
+  empaque y factura): el resultado dice «Encontrada por número de paquete.».
+- El número de paquete es por cliente (PQT-##### de cada cliente) o tecleado, así que puede repetirse: con dos o más órdenes el escaneo
+  responde «El número de paquete está en {n} órdenes (de clientes distintos o repetido); escanee el empaque o el número de orden.» y no asigna.
+- La búsqueda usa el índice `IX_CargoLine_PackageNumber` (sección «2026-10-12 (e)» de `logistica-db-update.sql`; se crea con `db-update`).

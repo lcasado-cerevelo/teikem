@@ -149,8 +149,9 @@ test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
     await expect(page.getByRole('button', { name: /Rápida/ })).toHaveCount(1)
     await page.getByRole('button', { name: /Detallada/ }).click()
     await expect(page.getByText('Ticket de la orden')).toBeVisible()
-    // los botones de labels no existen todavía (F-G)
-    await expect(page.getByRole('button', { name: /label/i })).toHaveCount(0)
+    // F-G2: «Label al guardar» junto a los botones de guardar, y los labels en el pie de la lista
+    await expect(page.getByRole('switch', { name: 'Label al guardar' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Todos los labels' })).toBeVisible()
     // validaciones: sin cliente ni consignatario el servidor no se llama
     await page.getByRole('button', { name: 'Guardar borrador' }).click()
     await expect(page.getByText('El cliente es obligatorio.')).toBeVisible()

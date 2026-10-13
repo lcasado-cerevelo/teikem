@@ -10,7 +10,9 @@ import { ApiError } from '../../kernel/api/problem'
 import { StatusChip, StatusHistory, StatusPipeline, useStatuses } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
 import { ConfirmDialog, EmptyState, IconChevronRight, Panel, Spinner, toast } from '../../kernel/ui'
-import { IconClock } from '../../kernel/ui/screenIcons'
+import { IconClock, IconPrint } from '../../kernel/ui/screenIcons'
+import { labelOrderFromDetail } from '../printing/orderLabels'
+import { usePrinting } from '../printing/usePrinting'
 import { useConfirmOrder, useDeleteOrder, useOrder, useOrderStatusChange, useRepriceOrder } from './api'
 import { AssignDriverModal, CancelOrderDialog } from './OrderActionDialogs'
 import { CreditOverrideDialog } from './CreditOverrideDialog'
@@ -40,6 +42,8 @@ export default function OrderDetailScreen() {
   const viewPrice = useCan('orders.view_price')
   const catalogOn = useModule('CATALOG')
   const [dialog, setDialog] = useState<Dialog>(null)
+  // Lote F-G2: «Imprimir label» (un label por pieza con el número de su paquete), por la impresora de labels de esta estación
+  const printing = usePrinting()
   /** Texto del servidor cuando el crédito se excede al confirmar y el usuario puede autorizarlo. */
   const [credit, setCredit] = useState<string | null>(null)
 
@@ -86,6 +90,11 @@ export default function OrderDetailScreen() {
             </span>
             {t('orders.detail.back')}
           </Link>
+          {order.isActive && order.status?.toUpperCase() !== 'CANCELLED' && (
+            <button type="button" className="btn" disabled={printing.busy} onClick={() => void printing.printLabels([labelOrderFromDetail(order)])}>
+              <IconPrint /> {t('orders.actions.printLabel')}
+            </button>
+          )}
           {vis.confirm && (
             <button type="button" className="btn flow" onClick={() => setDialog('confirm')}>
               {t('orders.actions.confirm.button')}
@@ -113,6 +122,8 @@ export default function OrderDetailScreen() {
           )}
         </div>
       </div>
+
+      {printing.dialog}
 
       <div className="od-pipe">
         <StatusPipeline

@@ -4,12 +4,17 @@
 // maqueta (más Estatus) y la tabla paginada por el servidor con UNA FILA POR TIPO DE PAQUETE (la paginación cuenta órdenes). La
 // papelera (`orders.cancel`) solo en el estatus inicial; la flecha abre la orden. `Cotizado` solo con `orders.view_price`.
 // Ordenar una columna ordena TODO lo filtrado (`exportRows`, regla del CLAUDE.md).
-import { useMemo, useState } from 'react'
+// Lote F-G2: columna «Elegir» (casillas que se recuerdan al cambiar de página) y, en el pie de la tabla como en la maqueta, «Waybill
+// summary» y «Packing list» (las marcadas o, sin marcas, TODO lo filtrado) e «Imprimir label» (las marcadas) / «Todos los labels» (todo lo
+// filtrado, sin tope): un label por pieza con el número de su paquete, por la impresora de labels de esta estación. «Label al guardar» de la
+// entrada rápida y detallada imprime aquí la orden recién creada (este componente sigue montado aunque el formulario se cierre).
+import { useContext, useMemo, useState } from 'react'
+import { SessionContext } from '../../app/session'
 import { useNavigate } from 'react-router-dom'
 import { Can, useCan } from '../../kernel/access'
 import { StatusChip, useLookups, useStatuses } from '../../kernel/catalogs'
 import { useFormat } from '../../kernel/format'
-import { useT } from '../../kernel/i18n'
+import { useLang, useT } from '../../kernel/i18n'
 import {
   CARDS_QUERY,
   ConfirmDialog,
@@ -25,15 +30,19 @@ import {
   SearchSelect,
   toast,
   useMediaQuery,
+  useAppliedFilters,
   type DataColumn,
   type DateRange,
   type RowAction,
 } from '../../kernel/ui'
-import { IconBolt, IconForm, IconLayers } from '../../kernel/ui/screenIcons'
+import { IconBolt, IconDoc, IconForm, IconLayers, IconPrint } from '../../kernel/ui/screenIcons'
+import { labelOrderFromDetail, labelOrderFromList } from '../printing/orderLabels'
+import { usePrinting } from '../printing/usePrinting'
 import { useClientOptions, useConsignees } from '../consignees/api'
 import { TextFilter } from '../warehouse/filterControls'
 import { useDebounced } from '../warehouse/lineRules'
 import { exportOrders, useDeleteOrder, useOrders, type OrderDetailDto, type OrderListItemDto } from './api'
+import { packingListSpec, waybillSummarySpec } from './orderDocuments'
 import { OrderEntryForm } from './OrderEntryForm'
 import { OrderImportModal } from './OrderImportModal'
 import { OrderQuickEntry } from './OrderQuickEntry'
@@ -66,6 +75,16 @@ export default function OrderListScreen() {
   const [created, setCreated] = useState<Created | null>(null)
   const [deleting, setDeleting] = useState<OrderListItemDto | null>(null)
   const remove = useDeleteOrder()
+  const me = useContext(SessionContext)?.me
+  const lang = useLang()
+  const printing = usePrinting()
+  const appliedFilters = useAppliedFilters()
+  // casillas «Elegir»: se recuerdan entre páginas (la fila completa, para imprimir sin volver a pedirla)
+  const [marked, setMarked] = useState<ReadonlyMap<string, OrderListItemDto>>(() => new Map())
+  const [docBusy, setDocBusy] = useState(false)
+  // «Label al guardar»: null = el de la compañía y la estación; el usuario lo cambia para esta sesión de captura
+  const [labelOnSaveChoice, setLabelOnSave] = useState<boolean | null>(null)
+  const labelOnSave = labelOnSaveChoice ?? printing.labelOnSaveDefault
 
   function patch(next: Partial<OrderFilters>) {
     setFilters((cur) => ({ ...cur, ...next }))
@@ -95,6 +114,15 @@ export default function OrderListScreen() {
   const query = useMemo(() => buildOrderQuery(applied, page, pageSize), [applied, page, pageSize])
   const { data, isLoading, error } = useOrders(query)
   const rows = data?.items ?? NO_ROWS
+
+  const toggleMark = (o: OrderListItemDto, on: boolean) =>
+    setMarked((prev) => {
+      const next = new Map(prev)
+      const key = o.publicId ?? String(o.id)
+      if (on) next.set(key, o)
+      else next.delete(key)
+      return next
+    })
 
   // ---- Columnas: una fila por tipo de paquete (continuaciones) en tabla; todo junto en tarjetas ----
   const columns = useMemo<DataColumn<OrderListItemDto>[]>(() => {
@@ -188,6 +216,63 @@ export default function OrderListScreen() {
     return [columns[0], columns[1], extra[1], extra[0], ...columns.slice(2)]
   }, [columns, t])
 
+  // la casilla «Elegir» va solo en pantalla (no se exporta ni ordena)
+  const displayColumns = useMemo<DataColumn<OrderListItemDto>[]>(
+    () => [
+      {
+        id: 'pick',
+        header: t('orders.list.pick'),
+        exportable: false,
+        cell: (o) => (
+          <input
+            type="checkbox"
+            className="oe-pick"
+            checked={marked.has(o.publicId ?? String(o.id))}
+            aria-label={t('orders.list.pickRow', { number: o.orderNumber ?? '' })}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+            onChange={(e) => toggleMark(o, e.target.checked)}
+          />
+        ),
+      },
+      ...columns,
+    ],
+    [columns, marked, t],
+  )
+
+  // ---- Imprimir: labels (marcadas o todo lo filtrado) y documentos (marcadas o, sin marcas, todo lo filtrado) ----
+  const markedRows = useMemo(() => [...marked.values()], [marked])
+  async function filteredRows(): Promise<OrderListItemDto[]> {
+    return (await exportOrders(query)).items
+  }
+  async function runDoc(kind: 'waybill' | 'packing') {
+    if (docBusy) return
+    setDocBusy(true)
+    try {
+      const rows = markedRows.length > 0 ? markedRows : await filteredRows()
+      const filters = markedRows.length > 0 ? [{ label: t('orders.docs.selection'), value: t('orders.docs.markedCount', { n: markedRows.length }) }] : appliedFilters()
+      const ctx = { t, locale: lang, company: me?.tenantName, user: me?.fullName ?? me?.email, filters }
+      const spec = kind === 'waybill' ? waybillSummarySpec(rows, ctx) : packingListSpec(rows, ctx, (kg) => `${f.number(kg)} kg`)
+      await printing.printDocument(spec, kind === 'waybill' ? t('orders.docs.waybillFile') : t('orders.docs.packingFile'))
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e))
+    } finally {
+      setDocBusy(false)
+    }
+  }
+  async function runLabels(scope: 'marked' | 'all') {
+    if (docBusy) return
+    setDocBusy(true)
+    try {
+      const rows = scope === 'marked' ? markedRows : await filteredRows()
+      await printing.printLabels(rows.map(labelOrderFromList))
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e))
+    } finally {
+      setDocBusy(false)
+    }
+  }
+
   const actions = useMemo<RowAction<OrderListItemDto>[]>(
     () => [
       { key: 'delete', label: t('orders.list.delete'), icon: <IconTrash />, tone: 'danger', perm: 'orders.cancel', visible: canDeleteOrder, onClick: (o) => setDeleting(o) },
@@ -204,7 +289,14 @@ export default function OrderListScreen() {
   function onCreated(order: OrderDetailDto, confirmed: boolean) {
     setFormOpen(false)
     setCreated({ publicId: order.publicId ?? '', number: order.orderNumber ?? '', confirmed })
+    if (labelOnSave) void printing.printLabels([labelOrderFromDetail(order)], { afterSave: true })
   }
+
+  /** «Label al guardar» de la entrada rápida: la orden ya se guardó; un fallo de impresión solo avisa. */
+  function onQuickSaved(order: OrderDetailDto) {
+    if (labelOnSave) void printing.printLabels([labelOrderFromDetail(order)], { afterSave: true })
+  }
+  const labelSwitch = { value: labelOnSave, onChange: setLabelOnSave }
 
   return (
     <div className="wrap">
@@ -246,7 +338,7 @@ export default function OrderListScreen() {
                 {t('orders.list.hideForm')}
               </button>
             </div>
-            {entryMode === 'quick' ? <OrderQuickEntry /> : <OrderEntryForm onCreated={onCreated} />}
+            {entryMode === 'quick' ? <OrderQuickEntry onSaved={onQuickSaved} labelOnSave={labelSwitch} /> : <OrderEntryForm onCreated={onCreated} labelOnSave={labelSwitch} />}
           </section>
         </Can>
       )}
@@ -282,7 +374,44 @@ export default function OrderListScreen() {
         <SearchSelect label={t('orders.list.filters.status')} options={statusOptions} value={filters.statuses} onChange={(v) => patch({ statuses: v })} placeholder={t('orders.list.filters.all')} />
       </Filters>
 
-      <Panel flush icon={<IconLayers />} title={t('orders.list.title')} badge={data ? (data.total ?? 0) : undefined}>
+      <Panel
+        flush
+        icon={<IconLayers />}
+        title={t('orders.list.title')}
+        badge={data ? (data.total ?? 0) : undefined}
+        footer={
+          <div className="oe-printbar">
+            <button type="button" className="btn sm" disabled={docBusy} onClick={() => void runDoc('waybill')}>
+              <IconDoc /> {t('orders.list.waybill')}
+            </button>
+            <button type="button" className="btn sm" disabled={docBusy} onClick={() => void runDoc('packing')}>
+              <IconDoc /> {t('orders.list.packing')}
+            </button>
+            <span className="oe-marked" aria-live="polite">
+              {marked.size > 0 && (
+                <>
+                  {t('orders.list.marked', { n: marked.size })}{' '}
+                  <button type="button" className="btn sm" onClick={() => setMarked(new Map())}>
+                    {t('orders.list.clearMarks')}
+                  </button>
+                </>
+              )}
+            </span>
+            <button
+              type="button"
+              className="btn sm"
+              disabled={docBusy || marked.size === 0}
+              title={marked.size === 0 ? t('orders.list.printLabelHint') : undefined}
+              onClick={() => void runLabels('marked')}
+            >
+              <IconPrint /> {t('orders.list.printLabel')}
+            </button>
+            <button type="button" className="btn sm flow" disabled={docBusy} onClick={() => void runLabels('all')}>
+              <IconPrint /> {t('orders.list.allLabels')}
+            </button>
+          </div>
+        }
+      >
         <div className="qrow">
           <QBox value={filters.search} onChange={(v) => patch({ search: v })} />
         </div>
@@ -293,7 +422,7 @@ export default function OrderListScreen() {
         ) : (
           <DataTable
             label={t('orders.list.title')}
-            columns={columns}
+            columns={displayColumns}
             exportColumns={exportColumns}
             rows={rows}
             rowKey={(o) => o.publicId ?? String(o.id)}
@@ -319,6 +448,8 @@ export default function OrderListScreen() {
           <OrderImportModal onClose={() => setImporting(false)} />
         </Can>
       )}
+
+      {printing.dialog}
 
       <ConfirmDialog
         open={deleting !== null}

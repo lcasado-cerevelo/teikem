@@ -37,7 +37,8 @@ Pantalla **Operación → Órdenes → (abrir una orden)** (`/orders/:publicId`)
 
 Decididas por el dueño:
 
-1. **Sin «Label» ni «POD»** (no hay endpoint): no hay botones falsos. Se difiere a F-G.
+1. **Sin «Label» ni «POD»** (no hay endpoint): no hay botones falsos. Se difiere a F-G. *Actualización F-G2 (2026-10-12): la ficha ya tiene
+   «Imprimir label» (un label por pieza); POD sigue pendiente (P7).*
 2. **Línea de tiempo = Historial real** (`StatusHistory`), no los eventos ilustrativos.
 3. **Consignatario por selector** (directorio del cliente + compartidos), no texto libre; pueblo y ZIP salen de la dirección elegida (en la maqueta eran campos editables).
 4. **Textos de ayuda**: «Esta orden está en {estatus}: puede corregir sus datos y sus paquetes.» y «Esta orden ya avanzó de {estatus inicial}: sus datos se muestran como referencia, ya no se editan aquí.» La maqueta decía «Entrada»; aquí el nombre sale del catálogo de estatus (hoy «Borrador», como se ve en la lista). Tratamiento de «usted» como el resto de la web.

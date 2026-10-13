@@ -38,7 +38,7 @@ Del servidor (precedencia de resultados, mensajes, búsqueda por orden/empaque/f
 ## Diferencias con la maqueta (todas con su razón)
 
 1. **Solo el modo «Salida»**: los modos Inbound y Procesamiento (cuadre COD) no existen en el servidor; se muestra la etiqueta «Salida» (no es un botón).
-2. **Sin «Informe de faltantes»** (no existe el informe) y sin filtros «¿Con COD?» y «Ruta» (`unassigned-orders` no trae COD ni ruta; las órdenes ya asignadas salen de la lista).
+2. **Sin «Informe de faltantes»** (no existe el informe; *actualización F-G2, 2026-10-12: ya existe, junto a la voz*) y sin filtros «¿Con COD?» y «Ruta» (`unassigned-orders` no trae COD ni ruta; las órdenes ya asignadas salen de la lista).
 3. **«Registrar» con la casilla vacía** no escanea «el primer pendiente» (era un atajo de la maqueta): avisa `Escanee o escriba un código.`
 4. **Resultado grande** bajo la casilla (la maqueta solo daba luz verde y voz): muestra el mensaje exacto del servidor, el tipo de resultado y qué hacer.
 5. **Feed con todos los resultados** (no solo los exitosos), con chip por tipo, mensaje y ruta; solo se filtra lo que se sabe de la orden.

@@ -77,6 +77,8 @@ export interface ReportSpec {
   emptyText?: string
   /** Por defecto: horizontal con más de 6 columnas. */
   orientation?: 'portrait' | 'landscape'
+  /** Papel: A4 por omisión (los reportes de siempre); 'letter' = carta (documentos de la impresora de la estación, Lote F-G2). */
+  paper?: 'a4' | 'letter'
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -266,7 +268,7 @@ export interface RenderReportOptions {
 export async function renderReportPdf(spec: ReportSpec, options: RenderReportOptions = {}): Promise<jsPDF> {
   const [{ jsPDF: JsPdf }, { autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')])
   const safe = (s: string) => pdfSafeText(s)
-  const doc = new JsPdf({ orientation: reportOrientation(spec), unit: 'pt', format: 'a4', compress: options.compress ?? true })
+  const doc = new JsPdf({ orientation: reportOrientation(spec), unit: 'pt', format: spec.paper ?? 'a4', compress: options.compress ?? true })
   const y = drawReportHeader(doc, spec, options.logo)
 
   // ---- tabla ----

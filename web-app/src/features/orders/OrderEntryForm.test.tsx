@@ -68,13 +68,13 @@ function route({ method, url, body }: Call): unknown {
 }
 
 const onCreated = vi.fn()
-function wrap(permissions: string[] = ['orders.create', 'locations.read', 'clients.read']) {
+function wrap(permissions: string[] = ['orders.create', 'locations.read', 'clients.read'], labelOnSave?: { value: boolean; onChange: (on: boolean) => void }) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <MemoryRouter>
       <QueryClientProvider client={queryClient}>
         <AccessProvider permissions={permissions} modules={['LTL_GROUND', 'CATALOG']}>
-          <OrderEntryForm onCreated={onCreated} />
+          <OrderEntryForm onCreated={onCreated} labelOnSave={labelOnSave} />
         </AccessProvider>
       </QueryClientProvider>
     </MemoryRouter>,
@@ -521,5 +521,20 @@ describe('Alta detallada — consignatario nuevo y permisos', () => {
     wrap(ALL)
     expect(screen.getByRole('combobox', { name: /^Nombre/ })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Nuevo consignatario' })).toBeDisabled()
+  })
+})
+
+describe('Alta detallada — «Label al guardar» (Lote F-G2)', () => {
+  it('sin el interruptor no se pinta; con él, junto a los botones de guardar y con la nota de la maqueta', async () => {
+    const first = wrap()
+    expect(screen.queryByRole('switch', { name: 'Label al guardar' })).toBeNull()
+    first.unmount()
+    const onChange = vi.fn()
+    wrap(undefined, { value: true, onChange })
+    const sw = screen.getByRole('switch', { name: 'Label al guardar' })
+    expect(sw).toBeChecked()
+    expect(screen.getByText(/El label sale automático en la impresora de esta estación al guardar/)).toBeInTheDocument()
+    await userEvent.setup().click(sw)
+    expect(onChange).toHaveBeenCalledWith(false)
   })
 })

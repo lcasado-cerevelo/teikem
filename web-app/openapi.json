@@ -37150,6 +37150,18 @@
               "$ref": "#/components/schemas/OrderPackageLineDto"
             },
             "nullable": true
+          },
+          "consigneeLine1": {
+            "type": "string",
+            "nullable": true
+          },
+          "consigneeLine2": {
+            "type": "string",
+            "nullable": true
+          },
+          "consigneeState": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

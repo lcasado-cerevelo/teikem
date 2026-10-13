@@ -67,13 +67,13 @@ function route({ method, url, body }: Call): unknown {
   return problem(404, 'No encontrado', 'not_found')
 }
 
-function wrap(permissions: string[] = ['orders.create', 'locations.read', 'clients.read']) {
+function wrap(permissions: string[] = ['orders.create', 'locations.read', 'clients.read'], props: Parameters<typeof OrderQuickEntry>[0] = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <MemoryRouter>
       <QueryClientProvider client={queryClient}>
         <AccessProvider permissions={permissions} modules={['LTL_GROUND', 'CATALOG']}>
-          <OrderQuickEntry />
+          <OrderQuickEntry {...props} />
         </AccessProvider>
       </QueryClientProvider>
     </MemoryRouter>,
@@ -377,5 +377,22 @@ describe('Entrada rápida — consignatario nuevo con «+»', () => {
     const name = within(dialog).getByLabelText(/^Nombre/)
     await user.type(name, 'Tienda Nueva{Enter}')
     expect(posts()).toHaveLength(0)
+  })
+})
+
+describe('Entrada rápida — «Label al guardar» (Lote F-G2)', () => {
+  it('el interruptor está en la leyenda y cada fila guardada se entrega a quien imprime', async () => {
+    const user = userEvent.setup()
+    const onSaved = vi.fn()
+    const onChange = vi.fn()
+    wrap(undefined, { onSaved, labelOnSave: { value: true, onChange } })
+    const sw = screen.getByRole('switch', { name: 'Label al guardar' })
+    expect(sw).toBeChecked()
+    await user.click(sw)
+    expect(onChange).toHaveBeenCalledWith(false)
+    await fillValid(user)
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
+    expect(onSaved.mock.calls[0][0]).toMatchObject({ orderNumber: expect.any(String) })
   })
 })

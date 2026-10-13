@@ -170,7 +170,8 @@ test.describe('Órdenes — expediente (Lote F-C2)', () => {
     for (const name of ['Confirmar', 'Cancelar la orden', 'Eliminar la orden']) await expect(headBtn(page, name)).toBeVisible()
     await expect(headBtn(page, 'Re-cotizar')).toHaveCount(0)
     await expect(headBtn(page, /chofer/i)).toHaveCount(0)
-    await expect(headBtn(page, /label|pod/i)).toHaveCount(0)
+    await expect(headBtn(page, 'Imprimir label')).toBeVisible() // F-G2
+    await expect(headBtn(page, /pod/i)).toHaveCount(0)
     await expect(page.getByText('Esta orden está en Borrador: puede corregir sus datos y sus paquetes.')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Guardar cambios' })).toBeDisabled()
     for (const title of ['Detalle', 'Historial', 'COD', 'Cotización']) await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible()

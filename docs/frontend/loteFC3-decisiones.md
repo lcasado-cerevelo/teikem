@@ -34,7 +34,7 @@
 
 ## Diferencias con la maqueta (todas con su razón)
 
-1. **Sin «Label al guardar»** (los labels son de F-G).
+1. **Sin «Label al guardar»** (los labels son de F-G). *Actualización F-G2 (2026-10-12): el interruptor ya está en la leyenda de la rejilla.*
 2. **Cliente como selector** en la barra (la maqueta lo fija a un texto) y **Guardar fila** como botón (para táctil; la maqueta solo tenía Enter).
 3. **Columna N.º de orden** «(automático)» deshabilitada salvo que el cliente asigne sus números (la maqueta siempre la dejaba escribir).
 4. **Consignatario por selector** del directorio del cliente + compartidos (no texto libre con modal al teclear un nombre nuevo); «+» abre el alta de F-B.

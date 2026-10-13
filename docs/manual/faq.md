@@ -7098,7 +7098,8 @@ Necesita `orders.view`.
 Revise que el botón diga **Voz activada**, el volumen del equipo y que el navegador tenga voces instaladas. Si dice **Voz no disponible**, ese navegador no puede hablar: los resultados se ven en pantalla.
 
 **¿Dónde están los modos de entrada y de cuadre de cobros, y el informe de faltantes?**
-Todavía no existen: la estación solo escanea la salida.
+Los modos todavía no existen: la estación solo escanea la salida. El **Informe de faltantes** sí existe desde F-G2 (2026-10-12): botón junto a
+la voz; lee todos los pendientes con los filtros de la pantalla, agrupados por zona, y sale por la impresora de documentos de la estación.
 
 ## Lote F-E2a — Sala de despacho (2026-10-12)
 
@@ -7520,13 +7521,53 @@ Otra plantilla activa ya usa ese nombre. Cámbielo o desactive la otra.
 Con tantos elementos grandes no entra ni achicando la letra. Apague elementos, use tamaño Pequeño o una impresora con etiqueta más grande.
 
 **¿Por qué el código de barras del label es el número del paquete y no el de la orden?**
-Cada paquete de la orden tiene su propio número y lleva su propio label (uno por paquete). Un paquete sin número no lleva label y se avisa. *Pendiente (F-G2): que la estación de escaneo también busque por número de paquete; hoy busca por número de orden, empaque o factura.*
+Cada paquete (línea) de la orden tiene su propio número; sale un label por PIEZA de la línea con ese número (repetido en las piezas de la misma línea) y «Paquete i de N». Una línea sin número no lleva labels y se avisa. Desde F-G2 la estación de escaneo y la búsqueda exacta de órdenes también encuentran la orden por el número de paquete.
 
 **Configuré la estación y en otra computadora no aparece.**
 La configuración de impresión es por estación (este navegador en esta computadora). Configúrela y pulse Guardar en cada una.
 
 **¿Qué hace «Imprimir labels directo a la impresora»?**
-Es un ajuste de la compañía (apagado por defecto, permiso `printers.manage`). Encendido, al guardar una orden sale un label por paquete a la impresora de labels de la estación; una estación puede no imprimir apagando su «Imprimir al guardar». La impresión al guardar llega con las pantallas de Órdenes (F-G2).
+Es un ajuste de la compañía (apagado por defecto, permiso `printers.manage`). Encendido, al guardar una orden (entrada rápida o detallada) el interruptor «Label al guardar» viene encendido y sale un label por pieza a la impresora de labels de la estación; una estación puede no imprimir apagando su «Imprimir al guardar» (desde F-G2).
 
 **Encendí «Imprimir la factura automáticamente» en un cliente y no sale ninguna factura.**
 Por ahora solo se guarda la preferencia del cliente: Teikem todavía no imprime facturas (llega con facturación).
+
+## Lote 44 / F-G2 — Labels y documentos de las órdenes (2026-10-12)
+
+Capítulos: [12 §10](12-impresoras-y-labels.md) y [F-G2 — pantalla](frontend/fg2-labels-y-documentos.md).
+
+**¿Cuántos labels salen de una orden?**
+Uno por pieza: la cantidad de cada línea (de la unidad que sea) es el número de labels de esa línea. Cada uno lleva el número del paquete de su línea (el mismo en sus piezas) y «Paquete i de N».
+
+**«{N} piezas sin número de paquete no se imprimieron.»**
+Esas líneas de la orden no tienen número de paquete (una entrega especial, por ejemplo). Póngale número a la línea en la ficha de la orden (o deje que Teikem lo genere al editar los paquetes) y vuelva a imprimir.
+
+**«{N} órdenes canceladas no se imprimieron.»**
+Las órdenes canceladas o eliminadas no llevan labels. Quítelas de las marcadas o del filtro si no quiere ver el aviso.
+
+**«No hay labels que imprimir.»**
+Lo elegido no tiene ninguna pieza con número de paquete (o todo está cancelado).
+
+**«Son {N} labels: el PDF será grande y puede tardar un poco. Se imprimen todos; no hay límite.»**
+Solo es un aviso desde 500 labels: espere a que termine de armar el PDF.
+
+**«Imprimir label» está gris.**
+Imprime solo las órdenes marcadas: «Para imprimir solo algunas, márquelas en la lista con sus casillas.». Para todas las de la búsqueda use «Todos los labels».
+
+**«La orden se guardó, pero no se pudo imprimir el label: {motivo}. Use «Imprimir label» en la ficha.»**
+La orden quedó guardada; solo falló la impresión (impresora apagada, QZ Tray cerrado, navegador sin permiso). Revise la impresora de la estación (Sistema → Impresoras y labels) y use «Imprimir label» en la ficha de la orden.
+
+**«No se pudo imprimir: {motivo}»**
+Falló al armar o mandar el PDF. Pruebe «Confirmar antes» → «Descargar PDF» y avise a soporte con el motivo.
+
+**¿Por qué «Label al guardar» viene encendido (o apagado)?**
+Viene encendido si la compañía tiene «Imprimir labels directo a la impresora» y la estación no apagó su «Imprimir al guardar»; se puede cambiar mientras se captura (vale para esa sesión de captura).
+
+**¿Qué órdenes entran en el Waybill summary y la Packing list?**
+Las marcadas; sin marcas, todas las de la búsqueda y filtros actuales (todas las páginas). Las canceladas no entran (el documento lo avisa). Nunca muestran el precio.
+
+**«El número de paquete está en {n} órdenes (de clientes distintos o repetido); escanee el empaque o el número de orden.»**
+El número de paquete escaneado lo tienen varias órdenes (cada cliente numera sus paquetes desde PQT-00001, y un número tecleado puede repetirse). La estación no adivina cuál es: escanee el empaque (EMP-…) o el número de orden.
+
+**¿Qué trae el Informe de faltantes?**
+Las órdenes que siguen pendientes por escanear con los filtros de «Pendientes» (todas, sin tope), agrupadas por zona, y cuántas lleva escaneadas esta sesión. Sale por la impresora de documentos de la estación.

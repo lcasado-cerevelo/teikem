@@ -184,8 +184,9 @@ describe('Expediente — cabecera, paneles y capacidades', () => {
     for (const name of ['Confirmar', 'Cancelar la orden', 'Eliminar la orden']) expect(headerBtn(name)).toBeInTheDocument()
     expect(headerBtn('Re-cotizar')).toBeNull()
     expect(headerBtn(/chofer/i)).toBeNull()
-    // los botones de la maqueta sin endpoint (Label, POD) no existen
-    expect(headerBtn(/label|pod/i)).toBeNull()
+    // Lote F-G2: «Imprimir label» ya existe; POD (sin endpoint) no
+    expect(headerBtn('Imprimir label')).toBeInTheDocument()
+    expect(headerBtn(/pod/i)).toBeNull()
     // paneles de la columna derecha
     expect(screen.getByRole('heading', { name: 'COD' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Cotización' })).toBeInTheDocument()

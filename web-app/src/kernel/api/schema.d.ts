@@ -23263,6 +23263,9 @@ export interface components {
             /** Format: date-time */
             createdAtUtc?: string;
             packages?: components["schemas"]["OrderPackageLineDto"][] | null;
+            consigneeLine1?: string | null;
+            consigneeLine2?: string | null;
+            consigneeState?: string | null;
         };
         OrderLookupDto: {
             code?: string | null;

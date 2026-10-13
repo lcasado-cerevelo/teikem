@@ -50,6 +50,8 @@ interface Pending {
 export interface OrderEntryFormProps {
   /** La orden se creó (ficha devuelta por el servidor); `confirmed` = se guardó con «Guardar y confirmar». */
   onCreated: (order: OrderDetailDto, confirmed: boolean) => void
+  /** Lote F-G2: interruptor «Label al guardar» (la lista imprime el label de la orden creada; sin él no se pinta). */
+  labelOnSave?: { value: boolean; onChange: (on: boolean) => void }
 }
 
 /** Campo de solo lectura (datos del consignatario elegido). */
@@ -63,7 +65,7 @@ function ReadOnlyField({ label, value, mono = false }: { label: string; value: s
   )
 }
 
-export function OrderEntryForm({ onCreated }: OrderEntryFormProps) {
+export function OrderEntryForm({ onCreated, labelOnSave }: OrderEntryFormProps) {
   const t = useT()
   const f = useFormat()
   const canOverride = useCan('orders.credit_override')
@@ -447,6 +449,13 @@ export function OrderEntryForm({ onCreated }: OrderEntryFormProps) {
             </>
           )}
           <div className="zig" />
+          {labelOnSave && (
+            <label className="sw oe-autolabel">
+              <input type="checkbox" role="switch" checked={labelOnSave.value} onChange={(e) => labelOnSave.onChange(e.target.checked)} />
+              <span className="tk" aria-hidden="true" />
+              <span>{t('orders.entry.labelOnSave')}</span>
+            </label>
+          )}
           <Can perm="orders.create">
             <div className="oe-save">
               <button type="submit" className="btn" disabled={busy} onClick={() => {
@@ -469,6 +478,7 @@ export function OrderEntryForm({ onCreated }: OrderEntryFormProps) {
             </p>
           )}
           <div className="note oe-ticketnote">{t('orders.entry.ticketNote')}</div>
+          {labelOnSave?.value && <div className="note oe-ticketnote">{t('orders.entry.labelOnSaveNote')}</div>}
         </aside>
       </Form>
 

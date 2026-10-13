@@ -156,7 +156,10 @@
   .qg tr{grid-template-columns:minmax(0,1fr)}
   .qg td{grid-column:1 / -1}
   .qk .burst .t.qk-client{min-width:0;max-width:none;flex-basis:100%}
-  .qk .burst .leg{display:none}
+  /* F-G2: las teclas no sirven en un teléfono, pero «Label al guardar» sí se queda */
+  .qk .burst .leg{margin-left:0;padding:0}
+  .qk .burst .leg .k{display:none}
+  .qk-autolabel{margin-left:0}
 }
 
 /* Lote F-C3 — Importación de órdenes: casillas de la confirmación */
@@ -164,3 +167,12 @@
 .oi-options legend{font-size:12px;font-weight:600;color:var(--muted);padding:0 6px}
 .oi-options .sw{margin-top:6px;white-space:normal}
 .oi-options .help{margin:2px 0 4px 0}
+
+/* Lote F-G2 — pie de la tabla con los documentos y los labels (maqueta: Waybill summary y Packing list a la izquierda; Imprimir label y
+   Todos los labels a la derecha); a 360 px envuelve en renglones. */
+.oe-printbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: 100%; }
+.oe-printbar .btn svg { margin-right: 4px; }
+.oe-marked { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); }
+.oe-pick { width: 16px; height: 16px; }
+.qk-autolabel { margin-left: 8px; }
+.oe-autolabel { margin: 10px 0 4px; }

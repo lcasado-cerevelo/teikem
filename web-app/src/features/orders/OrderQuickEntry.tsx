@@ -3,7 +3,8 @@
 // La fila guardada queda de solo lectura con su número y arriba aparece una fila nueva con el cliente y el servicio conservados. Barra:
 // Cliente (obligatorio), Líneas guardadas y COD acumulado. Columnas: N.º de orden (solo si el cliente asigna sus números), Consignatario
 // (directorio del cliente + compartidos, «+» con `locations.create`), Dirección · Pueblo, Paquete, COD, Servicio y Comentario.
-// Los errores del servidor se muestran en la fila sin perder lo capturado. «Label al guardar» no está: los labels son de F-G.
+// Los errores del servidor se muestran en la fila sin perder lo capturado. Lote F-G2: «Label al guardar» en la leyenda (como la maqueta):
+// encendido, al guardar cada fila sale el label de cada pieza por la impresora de labels de la estación (lo imprime la lista: `onSaved`).
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { tenantToday } from '../../kernel/api/tenantZone'
@@ -15,7 +16,7 @@ import { useClient } from '../clients/api'
 import { useSelectedConsignee } from '../consignees/api'
 import { ConsigneePicker } from '../consignees/ConsigneePicker'
 import { consigneeAddress } from '../consignees/consigneeRules'
-import { useCreateOrder } from './api'
+import { useCreateOrder, type OrderDetailDto } from './api'
 import {
   buildQuickRequest,
   emptyQuickRow,
@@ -57,7 +58,19 @@ const FIELD_IDS: Record<QuickField, string> = {
   notes: 'qk-note',
 }
 
-export function OrderQuickEntry() {
+export interface LabelOnSaveSwitch {
+  value: boolean
+  onChange: (on: boolean) => void
+}
+
+export interface OrderQuickEntryProps {
+  /** Cada orden guardada (para imprimir su label si «Label al guardar» está encendido). */
+  onSaved?: (order: OrderDetailDto) => void
+  /** Interruptor «Label al guardar» (sin él no se pinta). */
+  labelOnSave?: LabelOnSaveSwitch
+}
+
+export function OrderQuickEntry({ onSaved, labelOnSave }: OrderQuickEntryProps = {}) {
   const t = useT()
   const f = useFormat()
   const create = useCreateOrder()
@@ -159,6 +172,7 @@ export function OrderQuickEntry() {
         },
         ...rows,
       ])
+      onSaved?.(order)
       setDraft((d) => nextQuickRow(d, { packageType: defaultPackage }))
       setRowSeq((n) => n + 1)
       focusRef.current = orderNumberEditable ? 'orderNumber' : 'consigneeId'
@@ -228,6 +242,13 @@ export function OrderQuickEntry() {
           <span className="k">
             <kbd>Enter</kbd> {t('orders.quick.keySave')}
           </span>
+          {labelOnSave && (
+            <label className="sw qk-autolabel" title={t('orders.entry.labelOnSaveNote')}>
+              <input type="checkbox" role="switch" checked={labelOnSave.value} onChange={(e) => labelOnSave.onChange(e.target.checked)} />
+              <span className="tk" aria-hidden="true" />
+              <span>{t('orders.entry.labelOnSave')}</span>
+            </label>
+          )}
         </div>
       </div>
 

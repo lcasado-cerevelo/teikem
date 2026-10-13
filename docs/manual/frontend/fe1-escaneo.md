@@ -111,7 +111,9 @@ El botón **Voz activada / Voz silenciada** (arriba a la derecha) enciende o apa
 
 ## Qué no incluye
 
-Esta pantalla solo tiene el modo **Salida**. Los modos de entrada y de cuadre de cobros, el informe de faltantes y los filtros «¿Con COD?» y «Ruta» de la maqueta no existen todavía.
+Esta pantalla solo tiene el modo **Salida**. Los modos de entrada y de cuadre de cobros y los filtros «¿Con COD?» y «Ruta» de la maqueta no
+existen todavía. El **Informe de faltantes** sí (botón junto a la voz, desde F-G2): ver [F-G2 — Labels y documentos](fg2-labels-y-documentos.md).
+Desde F-G2 también se puede escanear el **número de paquete** que trae el label de cada pieza.
 
 ## Preguntas frecuentes
 

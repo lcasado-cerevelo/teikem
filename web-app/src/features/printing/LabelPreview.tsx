@@ -7,6 +7,7 @@ import { CODE128_QUIET_ZONE, encodeCode128 } from '../../kernel/ui/code128'
 import { planLabel, type LabelLayout, type OrderLabelData } from '../../kernel/ui/orderLabelLayout'
 import { useLabelTexts } from './labelTexts'
 import { mediaInches } from './stationConfig'
+import './printing.css'
 
 const TEXT_PX = { sm: 10.5, md: 12.5, lg: 15.5 } as const
 const BAR_PX = { sm: 22, md: 32, lg: 44 } as const

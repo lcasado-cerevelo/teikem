@@ -1596,6 +1596,29 @@
     }
   },
   "scan": {
+    "missing": {
+      "button": "Informe de faltantes",
+      "title": "Informe de faltantes",
+      "file": "informe-de-faltantes",
+      "noZone": "Sin zona",
+      "ambiguous": "Zona ambigua",
+      "subtotal": "Subtotal ({n} órdenes)",
+      "total": "Total ({n} órdenes)",
+      "sumPending": "Pendientes",
+      "sumScanned": "Escaneadas en esta sesión",
+      "empty": "No queda nada pendiente con este filtro.",
+      "cols": {
+        "pack": "Empaque",
+        "order": "Orden",
+        "invoice": "Factura",
+        "client": "Cliente",
+        "consignee": "Consignatario",
+        "town": "Pueblo",
+        "zip": "ZIP",
+        "pieces": "Piezas",
+        "requested": "Fecha pedida"
+      }
+    },
     "title": "Estación de escaneo",
     "sub": "Un solo carril: escanee, confirme y siga. Cada orden queda asignada a la ruta abierta de su zona.",
     "voice": {
@@ -1630,6 +1653,7 @@
       "matchedBy": "Encontrada por {by}."
     },
     "matchedBy": {
+      "PACKAGE": "número de paquete",
       "ORDER_NUMBER": "número de orden",
       "PACK_BATCH": "número de empaque",
       "INVOICE": "factura del cliente"
@@ -2948,7 +2972,50 @@
     }
   },
   "orders": {
+    "docs": {
+      "waybillTitle": "Waybill summary",
+      "packingTitle": "Packing list",
+      "waybillFile": "waybill-summary",
+      "packingFile": "packing-list",
+      "selection": "Selección",
+      "markedCount": "{n} órdenes marcadas",
+      "subtotal": "Subtotal ({n} órdenes)",
+      "total": "Total ({n} órdenes)",
+      "packageCount": "{n} paquetes",
+      "sumOrders": "Órdenes",
+      "sumPieces": "Piezas",
+      "sumPackages": "Paquetes",
+      "sumWeight": "Peso",
+      "cancelledSkipped": "{n} órdenes canceladas no se incluyeron.",
+      "empty": "No hay órdenes que incluir.",
+      "cols": {
+        "pack": "Empaque",
+        "order": "N.º de orden",
+        "invoice": "Factura",
+        "client": "Cliente",
+        "consignee": "Consignatario",
+        "town": "Pueblo",
+        "zip": "ZIP",
+        "service": "Servicio",
+        "packages": "Paquetes",
+        "pieces": "Piezas",
+        "cod": "COD",
+        "packageType": "Tipo",
+        "packageNumber": "N.º de paquete",
+        "description": "Descripción",
+        "weight": "Peso (kg)"
+      }
+    },
     "list": {
+      "pick": "Elegir",
+      "pickRow": "Elegir la orden {number}",
+      "marked": "{n} marcadas",
+      "clearMarks": "Quitar marcas",
+      "printLabel": "Imprimir label",
+      "printLabelHint": "Para imprimir solo algunas, márquelas en la lista con sus casillas.",
+      "allLabels": "Todos los labels",
+      "waybill": "Waybill summary",
+      "packing": "Packing list",
       "title": "Órdenes",
       "subtitle": "La lista maestra: todo lo que se mueve, con filtros y orden por columna",
       "count": "{count} órdenes",
@@ -3073,6 +3140,7 @@
       }
     },
     "actions": {
+      "printLabel": "Imprimir label",
       "back": "Volver",
       "statusChanged": "La orden {number} pasó a {status}.",
       "confirm": {
@@ -3118,6 +3186,8 @@
       }
     },
     "entry": {
+      "labelOnSave": "Label al guardar",
+      "labelOnSaveNote": "El label sale automático en la impresora de esta estación al guardar (uno por pieza). Configúrelo en Sistema → Impresoras y labels.",
       "title": "Entrada de órdenes",
       "steps": "Pasos de la orden",
       "s1": "Cliente y servicio",
@@ -6919,6 +6989,19 @@
     "emptyView": "La vista no tiene filas hoy."
   },
   "printing": {
+    "jobs": {
+      "labelsTitle": "Labels",
+      "previewLabels": "Imprimir {n} labels",
+      "summary": "Labels: {labels} · órdenes: {orders} (uno por pieza).",
+      "previewLabel": "Imprimir 1 label",
+      "docReady": "El documento está listo para imprimir.",
+      "cancelled": "{n} órdenes canceladas no se imprimieron.",
+      "withoutNumber": "{n} piezas sin número de paquete no se imprimieron.",
+      "none": "No hay labels que imprimir.",
+      "large": "Son {n} labels: el PDF será grande y puede tardar un poco. Se imprimen todos; no hay límite.",
+      "failed": "No se pudo imprimir: {reason}",
+      "afterSaveFailed": "La orden se guardó, pero no se pudo imprimir el label: {reason}. Use «Imprimir label» en la ficha."
+    },
     "title": "Impresoras y labels",
     "subtitle": "Impresora y template por estación",
     "perStationNote": "La impresora de labels y la de documentos se configuran por separado, y cada estación de trabajo guarda su propia configuración.",

@@ -68,7 +68,9 @@ describe('Estación de escaneo — pantalla', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Estación de escaneo' })).toBeInTheDocument()
     expect(input()).toHaveFocus()
     expect(within(screen.getByRole('group', { name: 'Modo de escaneo' })).getByText('Salida')).toBeInTheDocument()
-    for (const fake of [/Inbound|Entrada/, /Procesamiento/, /faltantes/i, /COD/]) expect(screen.queryByRole('button', { name: fake })).toBeNull()
+    for (const fake of [/Inbound|Entrada/, /Procesamiento/, /COD/]) expect(screen.queryByRole('button', { name: fake })).toBeNull()
+    // Lote F-G2: el «Informe de faltantes» ya existe (con trips.view)
+    expect(screen.getByRole('button', { name: 'Informe de faltantes' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Registrar' })).toBeInTheDocument()
     expect(result()).toHaveTextContent('Listo para escanear')
     expect(screen.getByText(/se pierde al recargar la página/)).toBeInTheDocument()
@@ -420,6 +422,18 @@ describe('Estación de escaneo — pendientes y filtros', () => {
       c.url.pathname === '/api/v1/trips/unassigned-orders' ? { total: 731, skip: 0, take: 500, items: [P1, P2] } : undefined
     wrap(ALL)
     expect(await screen.findByText('Se muestran las primeras 2 de 731; use los filtros para ver las demás.')).toBeInTheDocument()
+  })
+
+  it('Lote F-G2: «Informe de faltantes» lee TODOS los pendientes con el filtro y abre la vista del documento', async () => {
+    const user = userEvent.setup()
+    wrap(ALL)
+    await screen.findByText('Pendientes por escanear')
+    const before = callsTo('GET', '/api/v1/trips/unassigned-orders').length
+    await user.click(screen.getByRole('button', { name: 'Informe de faltantes' }))
+    expect(await screen.findByRole('dialog', { name: 'Informe de faltantes' })).toHaveTextContent('El documento está listo para imprimir.')
+    const read = callsTo('GET', '/api/v1/trips/unassigned-orders').slice(before)
+    expect(read.at(-1)!.url.searchParams.get('Skip')).toBe('0')
+    expect(read.at(-1)!.url.searchParams.get('Take')).toBe('500')
   })
 })
 

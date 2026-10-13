@@ -1596,6 +1596,29 @@
     }
   },
   "scan": {
+    "missing": {
+      "button": "Missing report",
+      "title": "Missing report",
+      "file": "missing-report",
+      "noZone": "No zone",
+      "ambiguous": "Ambiguous zone",
+      "subtotal": "Subtotal ({n} orders)",
+      "total": "Total ({n} orders)",
+      "sumPending": "Pending",
+      "sumScanned": "Scanned this session",
+      "empty": "Nothing pending under this filter.",
+      "cols": {
+        "pack": "Pack",
+        "order": "Order",
+        "invoice": "Invoice",
+        "client": "Client",
+        "consignee": "Consignee",
+        "town": "Town",
+        "zip": "ZIP",
+        "pieces": "Pieces",
+        "requested": "Requested date"
+      }
+    },
     "title": "Scan station",
     "sub": "One lane: scan, confirm, next. Each order is assigned to the open route of its zone.",
     "voice": {
@@ -1630,6 +1653,7 @@
       "matchedBy": "Found by {by}."
     },
     "matchedBy": {
+      "PACKAGE": "package number",
       "ORDER_NUMBER": "order number",
       "PACK_BATCH": "pack number",
       "INVOICE": "client invoice"
@@ -2948,7 +2972,50 @@
     }
   },
   "orders": {
+    "docs": {
+      "waybillTitle": "Waybill summary",
+      "packingTitle": "Packing list",
+      "waybillFile": "waybill-summary",
+      "packingFile": "packing-list",
+      "selection": "Selection",
+      "markedCount": "{n} marked orders",
+      "subtotal": "Subtotal ({n} orders)",
+      "total": "Total ({n} orders)",
+      "packageCount": "{n} packages",
+      "sumOrders": "Orders",
+      "sumPieces": "Pieces",
+      "sumPackages": "Packages",
+      "sumWeight": "Weight",
+      "cancelledSkipped": "{n} cancelled orders were not included.",
+      "empty": "No orders to include.",
+      "cols": {
+        "pack": "Pack",
+        "order": "Order no.",
+        "invoice": "Invoice",
+        "client": "Client",
+        "consignee": "Consignee",
+        "town": "Town",
+        "zip": "ZIP",
+        "service": "Service",
+        "packages": "Packages",
+        "pieces": "Pieces",
+        "cod": "COD",
+        "packageType": "Type",
+        "packageNumber": "Package no.",
+        "description": "Description",
+        "weight": "Weight (kg)"
+      }
+    },
     "list": {
+      "pick": "Pick",
+      "pickRow": "Pick order {number}",
+      "marked": "{n} marked",
+      "clearMarks": "Clear marks",
+      "printLabel": "Print label",
+      "printLabelHint": "To print only some, mark them in the list with their checkboxes.",
+      "allLabels": "All labels",
+      "waybill": "Waybill summary",
+      "packing": "Packing list",
       "title": "Orders",
       "subtitle": "The master list: everything moving, with filters and column sorting",
       "count": "{count} orders",
@@ -3073,6 +3140,7 @@
       }
     },
     "actions": {
+      "printLabel": "Print label",
       "back": "Back",
       "statusChanged": "Order {number} moved to {status}.",
       "confirm": {
@@ -3118,6 +3186,8 @@
       }
     },
     "entry": {
+      "labelOnSave": "Print label on save",
+      "labelOnSaveNote": "The label prints automatically on this station’s printer when saving (one per piece). Set it up in System → Printers & labels.",
       "title": "Order entry",
       "steps": "Order steps",
       "s1": "Client and service",
@@ -6919,6 +6989,19 @@
     "emptyView": "The view has no rows today."
   },
   "printing": {
+    "jobs": {
+      "labelsTitle": "Labels",
+      "previewLabels": "Print {n} labels",
+      "summary": "Labels: {labels} · orders: {orders} (one per piece).",
+      "previewLabel": "Print 1 label",
+      "docReady": "The document is ready to print.",
+      "cancelled": "{n} cancelled orders were not printed.",
+      "withoutNumber": "{n} pieces without a package number were not printed.",
+      "none": "There are no labels to print.",
+      "large": "That is {n} labels: the PDF will be large and may take a moment. All are printed; there is no limit.",
+      "failed": "Could not print: {reason}",
+      "afterSaveFailed": "The order was saved, but its label could not be printed: {reason}. Use “Print label” on the order."
+    },
     "title": "Printers & labels",
     "subtitle": "Printer and template per station",
     "perStationNote": "The label printer and the document printer are configured separately, and each workstation keeps its own configuration.",

@@ -144,7 +144,7 @@ test.describe('Órdenes — entrada rápida e importación (Lote F-C3)', () => {
     const qk = page.locator('.qk')
     await expect(page.getByRole('button', { name: /Rápida/ })).toHaveAttribute('aria-pressed', 'true')
     await expect(qk.getByRole('button', { name: 'Guardar fila' })).toBeVisible()
-    await expect(page.getByRole('button', { name: /label/i })).toHaveCount(0)
+    await expect(qk.getByRole('switch', { name: 'Label al guardar' })).toBeVisible() // F-G2
     await expect(qk.getByLabel('N.º de orden')).toBeDisabled()
     await expect(qk.getByLabel('N.º de orden')).toHaveAttribute('placeholder', '(automático)')
     await expect(qk.getByRole('combobox', { name: 'Consignatario' })).toBeDisabled()

@@ -426,7 +426,8 @@ app del chofer (por ahora el cierre es manual).
 ## 7. Estación de escaneo Outbound
 
 Qué hace: escanea el número de orden, el número de empaque o el número de factura del cliente (mismo criterio y
-precedencia que `/orders/lookup`: número de orden primero, luego empaque, luego factura) y asigna la orden a la
+precedencia que `/orders/lookup`: número de orden primero, luego empaque, luego factura y, desde el Lote 44, el número de paquete
+del label de cada pieza) y asigna la orden a la
 ruta abierta del día de su zona. Responde siempre `200` con un resultado tipado y la palabra que debe pronunciar
 la estación (`found`/`dup`/`notfound`). Nunca crea rutas, ni cambia chofer, vehículo o el estatus de la orden.
 
@@ -445,6 +446,7 @@ Resultados (`outcome` / `voice` / mensaje), en orden de precedencia:
 |---|---|---|---|
 | `NOT_FOUND` | `NO_MATCH` | `notfound` | `No se encontró la orden.` |
 | `NOT_FOUND` | `MULTIPLE_MATCHES` | `notfound` | `Hay varias órdenes con ese código; escanee el empaque.` |
+| `NOT_FOUND` | `MULTIPLE_MATCHES` (por número de paquete, Lote 44) | `notfound` | `El número de paquete está en {n} órdenes (de clientes distintos o repetido); escanee el empaque o el número de orden.` |
 | `ALREADY_ASSIGNED` | `IN_TRIP` | `dup` | `Ya estaba en la ruta {código}.` (gana a "no elegible": una orden ya despachada dice "ya") |
 | `NOT_ELIGIBLE` | `NOT_ELIGIBLE` | `notfound` | el motivo de la sección 3.1 (p. ej. "El estatus actual no permite la acción 'ASSIGN_TRIP'.") |
 | `FOUND_UNASSIGNED` | `NO_ZONE` | `found` | `No se pudo resolver la zona de despacho por código postal ni pueblo; queda sin asignar.` |

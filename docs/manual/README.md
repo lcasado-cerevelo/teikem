@@ -167,6 +167,9 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
     directo a la impresora»**, bandera del cliente **«Imprimir la factura automáticamente»** (solo la preferencia), permiso
     `printers.manage`, mensajes 400/404/409 y, para soporte, **QZ Tray y el certificado de Teikem** (generar, configurar `Printing:Qz` e
     instalar `override.crt`). El servidor nunca se conecta a una impresora.
+    Lote 44 (F-G2, sección 10): **labels de las órdenes** (uno por pieza con el número del paquete de su línea; canceladas y piezas sin número
+    avisadas; sin tope), **waybill summary**, **packing list** e **informe de faltantes** en carta, y el **escaneo y la búsqueda por número de
+    paquete** (cuarta precedencia, mensaje propio si se repite; índice nuevo).
 
 ## Manual de pantallas (frontend web)
 
@@ -289,6 +292,9 @@ F-A3. [F-A3 — Usuarios de portal y cotizador del cliente](frontend/fa3-portal-
    **Reactivar**, **Dar de baja** y **Volver a invitar**, con estatus Invitado, Activo, Suspendido e Inhabilitado; permiso `portalusers.manage` y módulo Portal de clientes) y la pestaña **Cotizador** de
    Contratos (líneas de servicio, paquete y piezas, monto COD y fecha; desglose con tarifa base, piezas extra, despacho, COD y total, y de dónde salió cada monto; `contracts.read`). Todos los mensajes del
    servidor con qué hacer. Capturas `fa3-*`.
+F-G2. [F-G2 — Labels y documentos](frontend/fg2-labels-y-documentos.md): en **Órdenes** la columna **Elegir**, **Imprimir label** (marcadas), **Todos los labels**
+   (todo lo filtrado), **Waybill summary** y **Packing list**; **Imprimir label** en la ficha; **Label al guardar** en la entrada rápida y detallada (un label por pieza con el
+   número de su paquete); en **Escaneo** el **Informe de faltantes** y el escaneo del número de paquete. Capturas `fg2-*`.
 F-G1. [F-G1 — Impresoras y labels](frontend/fg1-impresoras.md): Sistema → **Impresoras y labels** (`printers.manage`): **Esta computadora** (QZ Tray conectado o no
    detectado, **Detectar impresoras de esta computadora**, **Instalar QZ Tray**), **Esta estación — labels / documentos** (impresora, impresora de esta computadora,
    template o formato Carta, **Imprimir al guardar**, **Confirmar antes**, **Prueba** con vista y **Descargar PDF**, **Guardar** en este navegador), **Construir el label**

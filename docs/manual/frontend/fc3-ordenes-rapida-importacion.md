@@ -4,7 +4,9 @@ En **Operación → Órdenes**, el botón **Nueva orden** abre la entrada de ór
 
 La pantalla recuerda su última elección: si la dejó en **Detallada**, la próxima vez abre en **Detallada**. La primera vez abre en **Rápida**.
 
-Esta pantalla **no** tiene el interruptor «Label al guardar» ni botones de etiquetas: eso llegará en otra entrega.
+El interruptor **«Label al guardar»** (en la leyenda, junto a «Enter guardar») imprime el label de cada pieza de la orden que se acaba de
+guardar por la impresora de labels de esta estación (ver [F-G2 — Labels y documentos](fg2-labels-y-documentos.md)). Viene encendido si la
+compañía tiene «Imprimir labels directo a la impresora» y la estación no se excluyó; se puede cambiar mientras se captura.
 
 ## Permisos necesarios
 

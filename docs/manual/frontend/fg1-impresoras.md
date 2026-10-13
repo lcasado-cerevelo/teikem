@@ -16,8 +16,8 @@ QZ Tray (soporte) están en el capítulo [12 — Impresoras y labels](../12-impr
   el documento sale **directo a la impresora, sin diálogo**.
 - **Respaldo**: si no (impresora «PDF del navegador», QZ Tray no instalado o cerrado, o falla), se abre el **diálogo de impresión del
   navegador** con el PDF; en un teléfono o tableta se **descarga** el PDF. Siempre se avisa por qué no salió directo.
-- El label es **blanco y negro**, del **tamaño exacto** de la etiqueta (4×6, 4×4 o 4×2), **uno por paquete**; su **código de barras es
-  el número del paquete**, con «Paquete i de N» debajo.
+- El label es **blanco y negro**, del **tamaño exacto** de la etiqueta (4×6, 4×4 o 4×2), **uno por pieza**; su **código de barras es
+  el número del paquete de la línea**, con «Paquete i de N» debajo.
 
 ## 2. Esta computadora — impresión directa
 
@@ -75,8 +75,8 @@ Dos paneles iguales, como en la maqueta. Lo que se elige aquí queda **en este n
 ## 5. Ajustes de la compañía — Imprimir labels directo a la impresora
 
 Interruptor de la compañía (apagado por defecto). Encendido, al guardar una orden de envío (entrada rápida o detallada) sale **un label
-por cada paquete** a la impresora de labels de la estación, sin diálogo si la estación imprime con QZ Tray. La impresión al guardar
-llega con las pantallas de Órdenes del bloque siguiente (F-G2); el ajuste ya se guarda.
+por cada pieza** a la impresora de labels de la estación, sin diálogo si la estación imprime con QZ Tray: el interruptor «Label al
+guardar» de la entrada rápida y detallada viene encendido (ver [F-G2 — Labels y documentos](fg2-labels-y-documentos.md)).
 
 ## 6. Impresoras de la compañía
 

@@ -1429,5 +1429,10 @@ Sistema → Impresoras y labels (`/system/printers`, `printers.manage`, SYSTEM).
   `resolvePrinter(kind, config, options)` y `resolveTemplate(config, options)` (estación → compañía → integrado, con aviso si lo elegido ya no está activo), `mediaInches`.
 - `printActions.ts`: `labelPdfFactory`, `testDocumentPdf`, `printWith(resolved, make, fileName)`, `outcomeMessage(outcome, t)` — **F-G2 imprime los labels de las órdenes
   con esto**. `printerRules.ts` (puro): `printerSchema`, `printerValuesOf`, `buildPrinterRequest`, `initialTemplateId`. `labelTexts.ts`: `useLabelTexts()`.
+- **F-G2 (labels y documentos)**: `orderLabels.ts` (puro): `labelOrderFromList`/`labelOrderFromDetail`, `orderLabelsOf` (uno por PIEZA con el número de su
+  paquete y «i de N»), `buildLabelJob` (`cancelled`, `withoutNumber`, `large` ≥ `LARGE_LABEL_JOB` = 500, sin tope), `cityLine`. `usePrinting()` (`usePrinting.tsx`; funciona sin
+  sesión): `printLabels(orders, { afterSave? })`, `printDocument(spec, fileBase)`, `dialog` (vista previa con Imprimir / Descargar PDF cuando la estación tiene «Confirmar antes»;
+  renderícelo en la pantalla), `busy`, `labelOnSaveDefault`. Documentos: `features/orders/orderDocuments.ts` (`waybillSummarySpec`, `packingListSpec`) y
+  `features/scan/missingReport.ts` (`missingReportSpec`, `zoneGroupOf`); `ReportSpec.paper: 'a4' | 'letter'` (A4 por omisión) en `reportPdf.ts`.
 - QZ Tray: la librería oficial se sirve de `web-app/public/vendor/qz-tray.js` (no se descarga de internet; sin ella todo cae al PDF del navegador con aviso).
 
