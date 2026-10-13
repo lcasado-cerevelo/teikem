@@ -6335,3 +6335,11 @@ No: lo que estaba en días se muestra en horas (30 días = 720 horas). Mientras 
 
 **La columna «MFA» dice «Sí» pero el botón dice «Exigir siempre MFA». ¿Está mal?**
 No. La columna «MFA» dice si la persona **ya tiene** MFA inscrito. El botón es otra cosa: la marca individual **«siempre MFA»** (2026-10-12). La compañía puede exigir MFA a todos (interruptor de Seguridad y auditoría → Sesiones y MFA) y las **IPs preferidas** quitan el código a quien entra desde ellas; la marca «siempre MFA» hace una excepción por persona: a esa persona se le pide el código también desde una IP preferida. Sin la marca, desde una IP preferida entra sin código (con su contraseña).
+
+## Sesiones activas: una por persona y navegador (2026-10-12)
+
+**Veo muchas sesiones de la misma persona en «Sesiones activas».**
+Antes, cada inicio de sesión dejaba la anterior viva hasta que vencía (30 días por defecto). Desde esta versión, **al iniciar sesión se cierran las sesiones anteriores de esa misma persona con el mismo navegador/sistema y la misma IP** (y el mismo aparato, si es un aparato de almacén): queda una sola. No se tocan las de otras personas, las de otro navegador (p. ej. Chrome · Android), las de la misma persona desde otra IP, ni las que no traen dato del navegador. Las anteriores quedan **revocadas** (no se borran) y la bitácora de seguridad lo anota (`TOKEN_REVOKED`, motivo `session_replaced`). Las que ya estaban acumuladas se limpian cuando esa persona vuelve a entrar, o con **«Cerrar las demás sesiones»**.
+
+**Cambié la duración de la sesión y las viejas siguen ahí.**
+La duración se fija **al iniciar sesión**: las sesiones ya abiertas conservan su vencimiento original; las nuevas usan la duración nueva.

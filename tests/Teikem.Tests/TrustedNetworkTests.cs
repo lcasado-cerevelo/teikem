@@ -429,4 +429,62 @@ public class TrustedNetworkTests
         f.Tenant.IpAddress = OfficeIp; // un cliente IPv4 no coincide con una entrada solo IPv6
         Assert.Equal("mfa_required", await OutcomeAsync(f));
     }
+
+    // ================================================================ una sola sesión por persona y navegador (2026-10-12)
+
+    private static async Task<WmsFixture> SessionFixtureAsync()
+    {
+        var f = await CreateAsync(enabled: false);
+        var t = await f.Db.Tenants.SingleAsync(x => x.TenantId == WmsFixture.TenantId);
+        t.MfaRequired = false;   // el inicio de sesión llega a emitir la sesión sin pedir MFA
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        return f;
+    }
+
+    private static async Task LoginDeviceAsync(WmsFixture f, string email, string? deviceInfo)
+    {
+        try { await f.Get<AuthService>().LoginAsync(new LoginRequest(email, Password, null, deviceInfo), default); }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("ExecuteUpdate", StringComparison.Ordinal)) { /* la sesión ya quedó guardada */ }
+    }
+
+    private static async Task<int> ActiveSessionsAsync(WmsFixture f, int userId)
+    {
+        f.Db.ChangeTracker.Clear();
+        var now = DateTime.UtcNow;
+        return await f.Db.RefreshTokens.IgnoreQueryFilters().AsNoTracking().CountAsync(t => t.UserId == userId && t.RevokedAtUtc == null && t.ExpiresAtUtc > now);
+    }
+
+    [Fact]
+    public async Task Signing_in_again_from_the_same_browser_closes_the_previous_session_of_that_person_only()
+    {
+        await using var f = await SessionFixtureAsync();
+        f.Tenant.IpAddress = "198.51.100.7";
+        await LoginDeviceAsync(f, "ana@t.local", "Chrome · Windows");
+        await LoginDeviceAsync(f, "beto@t.local", "Chrome · Windows");   // otra persona, mismo navegador: no se toca
+        Assert.Equal(1, await ActiveSessionsAsync(f, 2));
+
+        await LoginDeviceAsync(f, "ana@t.local", "Chrome · Windows");     // otra vez Ana, mismo navegador y misma IP
+        await LoginDeviceAsync(f, "ana@t.local", "Chrome · Windows");
+        Assert.Equal(1, await ActiveSessionsAsync(f, 2));                 // siempre una sola
+        Assert.Equal(1, await ActiveSessionsAsync(f, 3));                 // la de Beto sigue viva
+        f.Db.ChangeTracker.Clear();
+        Assert.Equal(2, await f.Db.RefreshTokens.IgnoreQueryFilters().AsNoTracking().CountAsync(t => t.UserId == 2 && t.RevokedAtUtc != null));   // las anteriores quedaron REVOCADAS (historial)
+    }
+
+    [Fact]
+    public async Task Another_browser_another_ip_or_no_browser_info_keeps_the_other_sessions()
+    {
+        await using var f = await SessionFixtureAsync();
+        f.Tenant.IpAddress = "198.51.100.7";
+        await LoginDeviceAsync(f, "ana@t.local", "Chrome · Windows");
+        await LoginDeviceAsync(f, "ana@t.local", "Chrome · Android");                // otro navegador/sistema
+        Assert.Equal(2, await ActiveSessionsAsync(f, 2));
+        f.Tenant.IpAddress = "203.0.113.99";
+        await LoginDeviceAsync(f, "ana@t.local", "Chrome · Windows");                // mismo navegador desde otra IP (otra red)
+        Assert.Equal(3, await ActiveSessionsAsync(f, 2));
+        await LoginDeviceAsync(f, "ana@t.local", null);                               // sin dato del navegador: no se adivina cuál sería la misma
+        await LoginDeviceAsync(f, "ana@t.local", null);
+        Assert.Equal(5, await ActiveSessionsAsync(f, 2));
+    }
 }
