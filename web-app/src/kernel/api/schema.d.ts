@@ -18548,6 +18548,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/warehouses/{publicId}/bins/delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["WarehouseBinsDeleteRequest"];
+                    "text/json": components["schemas"]["WarehouseBinsDeleteRequest"];
+                    "application/*+json": components["schemas"]["WarehouseBinsDeleteRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["WarehouseBinsDeleteResultDto"];
+                        "application/json": components["schemas"]["WarehouseBinsDeleteResultDto"];
+                        "text/json": components["schemas"]["WarehouseBinsDeleteResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/warehouses/{publicId}/bins/{binId}": {
         parameters: {
             query?: never;
@@ -18558,7 +18603,27 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    binId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch: {
@@ -25583,6 +25648,24 @@ export interface components {
             maxWeightKg?: number | null;
             /** Format: int32 */
             maxCapacityQty?: number | null;
+        };
+        WarehouseBinsDeleteRequest: {
+            binIds?: number[] | null;
+        };
+        WarehouseBinDeletedDto: {
+            /** Format: int32 */
+            binId?: number;
+            code?: string;
+        };
+        WarehouseBinSkippedDto: {
+            /** Format: int32 */
+            binId?: number;
+            code?: string;
+            reason?: string;
+        };
+        WarehouseBinsDeleteResultDto: {
+            deleted?: components["schemas"]["WarehouseBinDeletedDto"][];
+            skipped?: components["schemas"]["WarehouseBinSkippedDto"][];
         };
         WarehouseCreateRequest: {
             code?: string | null;

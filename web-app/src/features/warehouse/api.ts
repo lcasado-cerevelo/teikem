@@ -351,6 +351,26 @@ export function useSaveWarehouseBin() {
   })
 }
 
+/** `DELETE /api/v1/warehouses/{publicId}/bins/{binId}` (`warehouse.manage`): eliminar una posición (definitivo; 409 con el motivo exacto). */
+export function useDeleteWarehouseBin() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { publicId: string; binId: number }) =>
+      unwrap(api.DELETE('/api/v1/warehouses/{publicId}/bins/{binId}', { params: { path: { publicId: v.publicId, binId: v.binId } } })),
+    onSuccess: () => invalidate(qc, 'bins', 'zones', 'warehouse', 'warehouses'),
+  })
+}
+
+/** `POST /api/v1/warehouses/{publicId}/bins/delete` (`warehouse.manage`): eliminar varias (hasta 500), parcial: `deleted` y `skipped` con su motivo. */
+export function useDeleteWarehouseBins() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { publicId: string; binIds: number[] }) =>
+      unwrap(api.POST('/api/v1/warehouses/{publicId}/bins/delete', { params: { path: { publicId: v.publicId } }, body: { binIds: v.binIds } })),
+    onSuccess: () => invalidate(qc, 'bins', 'zones', 'warehouse', 'warehouses', ...STOCK),
+  })
+}
+
 /** Alta/edición/estatus manual/baja/reactivación de muelles (`warehouse.manage`). */
 export function useSaveWarehouseDock() {
   const qc = useQueryClient()

@@ -49,11 +49,13 @@ import {
   toast,
   type ChipTone,
 } from '../../kernel/ui'
+import { IconTrash } from '../../kernel/ui/actionIcons'
 import {
   exportWarehouseBins,
   useConfirmProvisionalBin,
   useDeactivateWarehouse,
   useReceipts,
+  useDeleteWarehouseBin,
   useSaveWarehouseBin,
   useSaveWarehouseDock,
   useSaveWarehouseZone,
@@ -408,9 +410,10 @@ function BinsTab({ publicId, zones, warehouse }: { publicId: string; zones: read
   const { data, isLoading, isFetching } = useWarehouseBins(publicId, query)
   const rows = data?.items ?? NO_BINS
   const save = useSaveWarehouseBin()
+  const deleteBin = useDeleteWarehouseBin()
   const confirmProvisional = useConfirmProvisionalBin()
   const [editing, setEditing] = useState<WarehouseBinDto | null | 'new'>(null)
-  const [confirmAction, setConfirmAction] = useState<{ bin: WarehouseBinDto; action: 'deactivate' | 'reactivate' } | null>(null)
+  const [confirmAction, setConfirmAction] = useState<{ bin: WarehouseBinDto; action: 'deactivate' | 'reactivate' | 'delete' } | null>(null)
   const [settingCapacity, setSettingCapacity] = useState(false)
 
   const zoneOptions = useMemo(() => zones.map((z) => ({ value: String(z.id), label: [z.code, z.name].filter(Boolean).join(' · ') })), [zones])
@@ -532,6 +535,15 @@ function BinsTab({ publicId, zones, warehouse }: { publicId: string; zones: read
         onClick: (b) => setConfirmAction({ bin: b, action: 'reactivate' }),
         icon: <IconRotateCcw />,
       },
+      // 2026-10-12: Eliminar es DEFINITIVO (no se reactiva; su código queda libre); Desactivar es temporal
+      {
+        key: 'delete',
+        label: t('warehouse.bins.delete'),
+        perm: 'warehouse.manage',
+        onClick: (b) => setConfirmAction({ bin: b, action: 'delete' }),
+        tone: 'danger',
+        icon: <IconTrash />,
+      },
     ],
     [t, confirmProvisional, publicId],
   )
@@ -647,14 +659,17 @@ function BinsTab({ publicId, zones, warehouse }: { publicId: string; zones: read
 
       <ConfirmDialog
         open={confirmAction !== null}
-        tone={confirmAction?.action === 'deactivate' ? 'danger' : 'flow'}
-        title={confirmAction?.action === 'deactivate' ? t('warehouse.bins.deactivateTitle') : t('warehouse.bins.reactivateTitle')}
-        message={t(confirmAction?.action === 'deactivate' ? 'warehouse.bins.deactivateBody' : 'warehouse.bins.reactivateBody', {
-          code: confirmAction?.bin.code ?? '',
-        })}
-        confirmLabel={confirmAction?.action === 'deactivate' ? t('warehouse.bins.deactivate') : t('warehouse.bins.reactivate')}
+        tone={confirmAction?.action === 'reactivate' ? 'flow' : 'danger'}
+        title={t(`warehouse.bins.${confirmAction?.action ?? 'reactivate'}Title`)}
+        message={t(`warehouse.bins.${confirmAction?.action ?? 'reactivate'}Body`, { code: confirmAction?.bin.code ?? '' })}
+        confirmLabel={t(`warehouse.bins.${confirmAction?.action ?? 'reactivate'}`)}
         onConfirm={async () => {
           if (!confirmAction) return
+          if (confirmAction.action === 'delete') {
+            await deleteBin.mutateAsync({ publicId, binId: confirmAction.bin.id ?? 0 })   // 409: el motivo exacto sale en el diálogo
+            toast.success(t('warehouse.bins.deleted'))
+            return
+          }
           await save.mutateAsync({ publicId, action: confirmAction.action, binId: confirmAction.bin.id ?? 0 })
           toast.success(confirmAction.action === 'deactivate' ? t('warehouse.bins.deactivated') : t('warehouse.bins.reactivated'))
         }}

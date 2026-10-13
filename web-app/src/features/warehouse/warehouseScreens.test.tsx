@@ -16,12 +16,16 @@ import ReceiptListScreen from './ReceiptListScreen'
 import { TaskQueue } from './taskQueue'
 
 type Handler = (url: URL) => unknown
-const mock = vi.hoisted(() => ({ requests: [] as URL[], handler: null as unknown }))
+const mock = vi.hoisted(() => ({ requests: [] as URL[], posts: [] as { path: string; method: string; body: unknown }[], handler: null as unknown }))
 vi.mock('../../kernel/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../kernel/api/client')>()
   const fetch = async (req: Request) => {
     const url = new URL(req.url)
     mock.requests.push(url)
+    if (req.method !== 'GET') {
+      const text = await req.text()
+      mock.posts.push({ path: url.pathname, method: req.method, body: text ? JSON.parse(text) : undefined })
+    }
     const body = (mock.handler as Handler)(url)
     return body instanceof Response ? body : new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } })
   }
@@ -58,6 +62,8 @@ function route(url: URL): unknown {
     const items = zoneIds.length > 0 ? BINS.filter((b) => zoneIds.includes(b.zoneId)) : BINS
     return { total: items.length, skip: Number(url.searchParams.get('skip') ?? 0), take: Number(url.searchParams.get('take') ?? 100), items }
   }
+  if (p === `/api/v1/warehouses/${WH}/bins/delete`)
+    return { deleted: [{ binId: 10, code: 'A-01' }], skipped: [{ binId: 11, code: 'A-02', reason: 'La posición A-02 tiene inventario; no se puede eliminar.' }] }
   if (p === '/api/v1/warehouses/bins/search') {
     const search = (url.searchParams.get('search') ?? '').toLowerCase()
     return BINS.filter((b) => b.code.toLowerCase().includes(search)).map((b) => ({ id: b.id, code: b.code, zoneCode: b.zoneCode, warehousePublicId: WH, warehouseCode: 'ALM-01', isActive: true }))
@@ -157,6 +163,36 @@ describe('Posiciones (antes Ubicaciones; maqueta ubicaciones())', () => {
     await user.keyboard('{Escape}')
     await waitFor(() => expect(binRequests().at(-1)?.searchParams.getAll('binIds').sort()).toEqual(['10', '11']))
     expect(binRequests().at(-1)?.searchParams.get('skip')).toBe('0')
+  })
+
+  it('Eliminar seleccionadas (warehouse.manage): confirma, manda binIds y muestra las omitidas con su motivo', async () => {
+    const user = userEvent.setup()
+    mock.posts = []
+    wrap(<LocationsScreen />, ['inventory.view', 'warehouse.manage'], ['WMS_LOTSERIAL'], path, '/warehouse/locations')
+    await screen.findByText('A-01')
+    expect(screen.queryByRole('button', { name: /Eliminar seleccionadas/ })).toBeNull()   // sin marcar no hay botón
+    await user.click(screen.getByRole('checkbox', { name: 'Marcar la posición A-01' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Marcar la posición A-02' }))
+    await user.click(screen.getByRole('button', { name: 'Eliminar seleccionadas (2)' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText(/Se eliminarán 2 posiciones\. No se podrán volver a usar\./)).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Eliminar' }))
+    await waitFor(() => expect(mock.posts.some((x) => x.path === `/api/v1/warehouses/${WH}/bins/delete`)).toBe(true))
+    expect(mock.posts.find((x) => x.path.endsWith('/bins/delete'))?.body).toEqual({ binIds: [10, 11] })
+    // resumen parcial: la omitida con su motivo exacto
+    const summary = await screen.findByRole('dialog', { name: 'Posiciones que no se eliminaron' })
+    expect(within(summary).getByText(/La posición A-02 tiene inventario; no se puede eliminar\./)).toBeInTheDocument()
+    // la eliminada sale de la selección; la omitida sigue marcada
+    await user.click(within(summary).getByRole('button', { name: 'Listo' }))
+    expect(await screen.findByRole('button', { name: 'Eliminar seleccionadas (1)' })).toBeInTheDocument()
+  })
+
+  it('sin warehouse.manage no hay botón de eliminar', async () => {
+    const user = userEvent.setup()
+    wrap(<LocationsScreen />, ['inventory.view'], ['WMS_LOTSERIAL'], path, '/warehouse/locations')
+    await screen.findByText('A-01')
+    await user.click(screen.getByRole('checkbox', { name: 'Marcar la posición A-01' }))
+    expect(screen.queryByRole('button', { name: /Eliminar seleccionadas/ })).toBeNull()
   })
 
   it('posición con cupo: barra con el % real y estatus Parcial; varios productos = "N productos"', async () => {
