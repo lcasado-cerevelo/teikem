@@ -179,15 +179,33 @@ export interface PolicyValues {
   mfaRequired: boolean
   /** Minutos como texto (valor del `<select>`). */
   aal2WindowMinutes: string
-  sessionDays: number | null
-  deviceSessionDays: number | null
+  /** 2026-10-12: duración de la sesión en HORAS, con decimales (0.25 = 15 minutos; 24 = 1 día). */
+  sessionHours: number | null
+  deviceSessionHours: number | null
 }
 
 export interface PolicySettings {
   mfaRequired?: boolean
   aal2WindowMinutes?: number
-  sessionDays?: number
-  deviceSessionDays?: number
+  /** Duración efectiva en minutos (el servidor la calcula con los días si no está configurada). */
+  sessionMinutes?: number
+  deviceSessionMinutes?: number
+}
+
+/** Mínimo y máximo de la duración de la sesión en minutos (1 minuto a 365 días), como `SessionRules` del servidor. */
+export const SESSION_MINUTES_MIN = 1
+export const SESSION_MINUTES_MAX = 525_600
+
+/** Minutos → horas para mostrar (hasta 2 decimales: 90 → 1.5; 15 → 0.25; 20 → 0.33, que vuelve a 20 minutos). */
+export function minutesToHours(minutes: number | null | undefined): number | null {
+  if (minutes == null || !Number.isFinite(minutes)) return null
+  return Math.round((minutes / 60) * 100) / 100
+}
+
+/** Horas (con decimales) → minutos enteros; null si no es un número. */
+export function hoursToMinutes(hours: number | null | undefined): number | null {
+  if (hours == null || !Number.isFinite(hours)) return null
+  return Math.round(hours * 60)
 }
 
 /** Valores del formulario a partir de los ajustes de la compañía. */
@@ -195,33 +213,36 @@ export function toPolicyValues(s: PolicySettings): PolicyValues {
   return {
     mfaRequired: s.mfaRequired ?? false,
     aal2WindowMinutes: String(s.aal2WindowMinutes ?? 30),
-    sessionDays: s.sessionDays ?? 30,
-    deviceSessionDays: s.deviceSessionDays ?? 30,
+    sessionHours: minutesToHours(s.sessionMinutes ?? 30 * 1440),
+    deviceSessionHours: minutesToHours(s.deviceSessionMinutes ?? 30 * 1440),
   }
 }
 
-/** true si es un número entero de días válido (1 a 365, como `TenantService`). */
-export function validSessionDays(n: number | null | undefined): n is number {
-  return n != null && Number.isInteger(n) && n >= SESSION_DAYS_MIN && n <= SESSION_DAYS_MAX
+/** true si las horas dan un número entero de minutos entre 1 minuto y 365 días. */
+export function validSessionHours(hours: number | null | undefined): hours is number {
+  const m = hoursToMinutes(hours)
+  return m != null && m >= SESSION_MINUTES_MIN && m <= SESSION_MINUTES_MAX
 }
 
 /** Campos con error (nombre → clave i18n) antes de mandar; vacío = válido. */
-export function policyErrors(v: PolicyValues): Partial<Record<keyof PolicyValues, 'daysRange' | 'reauthInvalid'>> {
-  const errors: Partial<Record<keyof PolicyValues, 'daysRange' | 'reauthInvalid'>> = {}
+export function policyErrors(v: PolicyValues): Partial<Record<keyof PolicyValues, 'hoursRange' | 'reauthInvalid'>> {
+  const errors: Partial<Record<keyof PolicyValues, 'hoursRange' | 'reauthInvalid'>> = {}
   const minutes = Number(v.aal2WindowMinutes)
   if (!Number.isInteger(minutes) || minutes < 5 || minutes > 240) errors.aal2WindowMinutes = 'reauthInvalid'
-  if (!validSessionDays(v.sessionDays)) errors.sessionDays = 'daysRange'
-  if (!validSessionDays(v.deviceSessionDays)) errors.deviceSessionDays = 'daysRange'
+  if (!validSessionHours(v.sessionHours)) errors.sessionHours = 'hoursRange'
+  if (!validSessionHours(v.deviceSessionHours)) errors.deviceSessionHours = 'hoursRange'
   return errors
 }
 
-/** Cuerpo del `PUT /tenant/settings` parcial: solo lo que cambió (null = sin cambio en el API). */
+/** Cuerpo del `PUT /tenant/settings` parcial: solo lo que cambió (la duración viaja en minutos; null = sin cambio en el API). */
 export function policyRequestBody(saved: PolicySettings, v: PolicyValues) {
-  const body: { mfaRequired?: boolean; aal2WindowMinutes?: number; sessionDays?: number; deviceSessionDays?: number } = {}
+  const body: { mfaRequired?: boolean; aal2WindowMinutes?: number; sessionMinutes?: number; deviceSessionMinutes?: number } = {}
   if (v.mfaRequired !== (saved.mfaRequired ?? false)) body.mfaRequired = v.mfaRequired
   const minutes = Number(v.aal2WindowMinutes)
   if (minutes !== saved.aal2WindowMinutes) body.aal2WindowMinutes = minutes
-  if (v.sessionDays !== saved.sessionDays && v.sessionDays != null) body.sessionDays = v.sessionDays
-  if (v.deviceSessionDays !== saved.deviceSessionDays && v.deviceSessionDays != null) body.deviceSessionDays = v.deviceSessionDays
+  const session = hoursToMinutes(v.sessionHours)
+  if (session != null && session !== (saved.sessionMinutes ?? 30 * 1440)) body.sessionMinutes = session
+  const device = hoursToMinutes(v.deviceSessionHours)
+  if (device != null && device !== (saved.deviceSessionMinutes ?? 30 * 1440)) body.deviceSessionMinutes = device
   return body
 }

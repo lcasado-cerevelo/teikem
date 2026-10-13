@@ -7,7 +7,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Can, useCan } from '../../../kernel/access'
-import { applyProblemDetails } from '../../../kernel/api/client'
+import { ApiError, applyProblemDetails } from '../../../kernel/api/client'
 import { useTenantSettings } from '../../../kernel/catalogs'
 import { useFormat } from '../../../kernel/format'
 import { useT } from '../../../kernel/i18n'
@@ -251,7 +251,17 @@ function PolicyForm({ settings }: { settings: TenantSettingsDto }) {
         const body = policyRequestBody(settings, v)
         if (Object.keys(body).length === 0) return
         // los 400 del servidor ('Entre 1 y 365 días.', …) los pone el Form bajo su campo
-        await save.mutateAsync(body)
+        try {
+          await save.mutateAsync(body)
+        } catch (err) {
+          // el servidor valida en MINUTOS (sessionMinutes / deviceSessionMinutes): el error se pone bajo el campo en HORAS que lo causó
+          if (err instanceof ApiError && (err.errors.sessionMinutes || err.errors.deviceSessionMinutes)) {
+            if (err.errors.sessionMinutes) form.setError('sessionHours', { message: err.errors.sessionMinutes[0] })
+            if (err.errors.deviceSessionMinutes) form.setError('deviceSessionHours', { message: err.errors.deviceSessionMinutes[0] })
+            return
+          }
+          throw err
+        }
         toast.success(t('system.audit.policy.saved'))
       }}
     >
@@ -274,14 +284,15 @@ function PolicyForm({ settings }: { settings: TenantSettingsDto }) {
           <Select options={minutes} />
         </Field>
         <div className="r2" style={{ marginTop: 16 }}>
-          <Field name="sessionDays" label={t('system.audit.policy.sessionDaysLabel')}>
-            <NumberInput className="mono" min={1} max={365} step={1} inputMode="numeric" />
+          {/* 2026-10-12: en HORAS, con decimales (0.25 = 15 minutos; 24 = 1 día) */}
+          <Field name="sessionHours" label={t('system.audit.policy.sessionHoursLabel')}>
+            <NumberInput className="mono" min={0.02} max={8760} step={0.25} inputMode="decimal" />
           </Field>
-          <Field name="deviceSessionDays" label={t('system.audit.policy.deviceDaysLabel')}>
-            <NumberInput className="mono" min={1} max={365} step={1} inputMode="numeric" />
+          <Field name="deviceSessionHours" label={t('system.audit.policy.deviceHoursLabel')}>
+            <NumberInput className="mono" min={0.02} max={8760} step={0.25} inputMode="decimal" />
           </Field>
         </div>
-        <p className="set-d">{t('system.audit.policy.sessionDaysHint')}</p>
+        <p className="set-d">{t('system.audit.policy.sessionHoursHint')}</p>
       </fieldset>
       {canEdit && (
         <div className="set-actions">

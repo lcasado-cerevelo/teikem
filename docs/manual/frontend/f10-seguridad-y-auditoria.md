@@ -84,8 +84,8 @@ Los cuatro valores de seguridad de la compañía (`GET`/`PUT /api/v1/tenant/sett
 |---|---|---|
 | **Requerir MFA a todos los usuarios** | todo usuario debe activar la verificación en dos pasos antes de poder entrar | sí / no |
 | **Ventana de reautenticación (AAL2)** | las acciones sensibles piden la contraseña de nuevo si la última verificación es más vieja | 15, 30 o 60 minutos (si el valor guardado es otro, también aparece) |
-| **Duración de la sesión (días)** | cuánto dura una sesión sin volver a pedir la contraseña; se renueva mientras se use | 1 a 365 |
-| **Duración de la sesión del aparato (días)** | lo mismo para los aparatos de almacén (aparato + PIN) | 1 a 365 |
+| **Duración de la sesión (horas)** | cuánto dura una sesión sin volver a pedir la contraseña; se renueva mientras se use. **Se escribe en horas y admite decimales** (2026-10-12): `0.25` = 15 minutos, `0.5` = 30 minutos, `24` = 1 día | 0.02 (1 minuto) a 8760 (365 días) |
+| **Duración de la sesión del aparato (horas)** | lo mismo para los aparatos de almacén (aparato + PIN), también en horas con decimales | 0.02 a 8760 |
 
 - **Guardar política** / **Descartar** (solo con cambios; "Hay cambios sin guardar."). Al guardar: aviso "Política guardada".
 - La duración nueva vale para las sesiones que se abran o renueven desde ese momento; las abiertas siguen con la que tenían.
@@ -94,7 +94,7 @@ Los cuatro valores de seguridad de la compañía (`GET`/`PUT /api/v1/tenant/sett
 
 | Campo | Regla | Mensaje | Dónde |
 |---|---|---|---|
-| Duración de la sesión / del aparato | entero de 1 a 365 | "Entre 1 y 365 días." | Pantalla (bajo el campo, no se manda) y servidor, 400 bajo el campo |
+| Duración de la sesión / del aparato | de 1 minuto a 365 días (en horas: 0.02 a 8760) | "Entre 0.02 horas (1 minuto) y 8760 horas (365 días)." (pantalla) / "La duración debe estar entre 1 minuto y 365 días (8760 horas)." (servidor) | Pantalla (bajo el campo, no se manda) y servidor, 400 bajo el campo |
 | Ventana de reautenticación | 5 a 240 minutos | "Entre 5 y 240 minutos." | Servidor, 400 bajo el campo (la pantalla solo ofrece valores válidos) |
 
 ### 2.3 IPs preferidas (red de confianza)

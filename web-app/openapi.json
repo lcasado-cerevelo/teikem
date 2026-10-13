@@ -43816,6 +43816,14 @@
           "rotationMethod": {
             "type": "string",
             "nullable": true
+          },
+          "sessionMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "deviceSessionMinutes": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -43967,6 +43975,16 @@
           },
           "rotationMethod": {
             "type": "string",
+            "nullable": true
+          },
+          "sessionMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "deviceSessionMinutes": {
+            "type": "integer",
+            "format": "int32",
             "nullable": true
           }
         },

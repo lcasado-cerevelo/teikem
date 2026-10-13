@@ -6324,3 +6324,11 @@ Eliminar es definitivo. Cree una posición nueva (puede usar el mismo código).
 
 **«Ya existe una posición inactiva con ese código: reactívela o elimínela».**
 Una posición desactivada sigue ocupando su código. Reactívela, o elimínela para liberar el código.
+
+## Duración de la sesión en horas (2026-10-12)
+
+**¿Cómo pongo que la sesión dure 15 minutos?**
+En Seguridad y auditoría → Sesiones y MFA → «Duración de la sesión (horas)» escriba `0.25` (15 minutos); `0.5` son 30 minutos, `1.5` una hora y media y `24` un día. Lo mismo para «Duración de la sesión del aparato (horas)». Por dentro se guarda en minutos; el mínimo es 1 minuto (`0.02`) y el máximo 365 días (`8760`).
+
+**Antes decía «días». ¿Se perdió lo que tenía?**
+No: lo que estaba en días se muestra en horas (30 días = 720 horas). Mientras no se cambie, vale lo de siempre.

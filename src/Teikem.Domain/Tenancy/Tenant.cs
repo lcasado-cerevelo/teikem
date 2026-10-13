@@ -32,6 +32,10 @@ public class Tenant : ISoftDeletable
     public int SessionDays { get; set; } = 30;
     /// <summary>Lote 8A: vida en días de la sesión de un aparato de almacén (login por aparato + PIN); se renueva al refrescar.</summary>
     public int DeviceSessionDays { get; set; } = 30;
+    /// <summary>2026-10-12: vida de la sesión en MINUTOS (NULL = sin configurar: vale SessionDays × 1440). Ver SessionRules.</summary>
+    public int? SessionMinutes { get; set; }
+    /// <summary>2026-10-12: vida de la sesión de un aparato de almacén en MINUTOS (NULL = vale DeviceSessionDays × 1440).</summary>
+    public int? DeviceSessionMinutes { get; set; }
     /// <summary>Marca por compañía: tema de color y logos (JSON libre, validado en servicio).</summary>
     public string? BrandingJson { get; set; }
 

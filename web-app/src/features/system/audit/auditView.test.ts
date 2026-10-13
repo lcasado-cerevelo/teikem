@@ -15,7 +15,9 @@ import {
   sessionLocation,
   sortRows,
   toPolicyValues,
-  validSessionDays,
+  hoursToMinutes,
+  minutesToHours,
+  validSessionHours,
   type ActivityRowDto,
 } from './auditView'
 
@@ -154,26 +156,39 @@ describe('política de la compañía', () => {
     expect(reauthOptions(45)).toEqual([15, 30, 45, 60])
     expect(reauthOptions(null)).toEqual([15, 30, 60])
   })
-  it('días de 1 a 365, enteros', () => {
-    expect([1, 365, 30].every(validSessionDays)).toBe(true)
-    expect([0, 366, 1.5, null].some((n) => validSessionDays(n))).toBe(false)
+  it('horas con decimales: de 1 minuto (0.02 h) a 365 días (8760 h)', () => {
+    expect([0.02, 0.25, 0.5, 1.5, 24, 720, 8760].every(validSessionHours)).toBe(true)
+    expect([0, 0.001, 8761, -1, null].some((n) => validSessionHours(n))).toBe(false)
+  })
+  it('horas ↔ minutos: 0.25 h = 15 min, 1.5 h = 90 min, 24 h = 1 día; y vuelve a lo mismo', () => {
+    expect([0.25, 0.5, 1.5, 24, 0.02].map(hoursToMinutes)).toEqual([15, 30, 90, 1440, 1])
+    expect([15, 90, 1440, 20, 1, 43200].map(minutesToHours)).toEqual([0.25, 1.5, 24, 0.33, 0.02, 720])
+    // ida y vuelta sin perder un solo minuto (2 decimales de hora alcanzan)
+    for (const m of [1, 7, 19, 20, 31, 59, 61, 125, 1439, 100000]) expect(hoursToMinutes(minutesToHours(m))).toBe(m)
+    expect(hoursToMinutes(null)).toBeNull()
   })
   it('errores por campo con los mismos límites que el servidor', () => {
-    const ok = toPolicyValues({ mfaRequired: true, aal2WindowMinutes: 15, sessionDays: 30, deviceSessionDays: 7 })
+    const ok = toPolicyValues({ mfaRequired: true, aal2WindowMinutes: 15, sessionMinutes: 43200, deviceSessionMinutes: 7 * 1440 })
     expect(policyErrors(ok)).toEqual({})
-    expect(policyErrors({ ...ok, sessionDays: 0, deviceSessionDays: null, aal2WindowMinutes: '4' })).toEqual({
-      sessionDays: 'daysRange',
-      deviceSessionDays: 'daysRange',
+    expect(policyErrors({ ...ok, sessionHours: 0, deviceSessionHours: null, aal2WindowMinutes: '4' })).toEqual({
+      sessionHours: 'hoursRange',
+      deviceSessionHours: 'hoursRange',
       aal2WindowMinutes: 'reauthInvalid',
     })
   })
   it('el PUT lleva solo lo que cambió', () => {
-    const saved = { mfaRequired: false, aal2WindowMinutes: 30, sessionDays: 30, deviceSessionDays: 30 }
+    const saved = { mfaRequired: false, aal2WindowMinutes: 30, sessionMinutes: 43200, deviceSessionMinutes: 43200 }
     expect(policyRequestBody(saved, toPolicyValues(saved))).toEqual({})
-    expect(policyRequestBody(saved, { ...toPolicyValues(saved), mfaRequired: true, aal2WindowMinutes: '60', deviceSessionDays: 7 })).toEqual({
+    expect(toPolicyValues(saved).sessionHours).toBe(720)   // 30 días de siempre = 720 horas
+    // 168 h = 7 días y 0.25 h = 15 minutos: la duración viaja en minutos
+    expect(policyRequestBody(saved, { ...toPolicyValues(saved), mfaRequired: true, aal2WindowMinutes: '60', deviceSessionHours: 168, sessionHours: 0.25 })).toEqual({
       mfaRequired: true,
       aal2WindowMinutes: 60,
-      deviceSessionDays: 7,
+      sessionMinutes: 15,
+      deviceSessionMinutes: 10080,
     })
+    // un valor con decimales de más que da los mismos minutos no cuenta como cambio (20 min = 0.33 h)
+    const s20 = { ...saved, sessionMinutes: 20 }
+    expect(policyRequestBody(s20, toPolicyValues(s20))).toEqual({})
   })
 })
