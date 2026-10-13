@@ -7613,3 +7613,26 @@ Esa posición tiene mercancía apartada para pedidos; no se puede dejar menos qu
 
 **¿Cómo veo lo que se movió por ajuste múltiple?**
 En *Transferencias y ajustes* → Ajustes, filtre por el motivo «Inventario físico» (la columna Origen dice «Ajuste múltiple AJM-…»), o abra el Historial de la pantalla del ajuste múltiple.
+
+## Eliminar posiciones (2026-10-12)
+
+**¿Cuál es la diferencia entre Desactivar y Eliminar una posición?**
+Desactivar es temporal: la posición sigue existiendo, ocupa su código y se puede reactivar. Eliminar es definitivo: no vuelve, no sale en ninguna lista y su código queda libre para una posición nueva. En los dos casos el historial (Kárdex, saldos, documentos viejos) se conserva; una eliminada se ve con la marca «(eliminada)».
+
+**«La posición {código} tiene inventario; no se puede eliminar».**
+Tiene existencia en mano o reservada. Muévala o ajústela a cero primero.
+
+**«…es la posición de recepción por defecto de {almacén}; cámbiela primero» / «…es la posición preferida del producto {SKU}…».**
+Cambie primero la posición por defecto del almacén o la preferida del producto, y vuelva a eliminar.
+
+**«La posición {código} está en un conteo cíclico abierto».**
+Cierre el conteo (concilie o cancele) y vuelva a eliminar.
+
+**Marqué varias y no se eliminaron todas.**
+Es a propósito: la eliminación de varias es parcial. El resumen dice por qué se omitió cada una; las omitidas siguen marcadas para que las corrija y repita.
+
+**«La posición fue eliminada y no se puede reactivar».**
+Eliminar es definitivo. Cree una posición nueva (puede usar el mismo código).
+
+**«Ya existe una posición inactiva con ese código: reactívela o elimínela».**
+Una posición desactivada sigue ocupando su código. Reactívela, o elimínela para liberar el código.

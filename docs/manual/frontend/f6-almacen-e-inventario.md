@@ -683,6 +683,22 @@ Botón **Ajuste múltiple**, justo después de «Ajustar» en *Transferencias y 
 
 No incluye: productos con serie, reversa (se corrige con otro ajuste múltiple), el aparato, ni cargar desde Excel.
 
+### Desactivar y Eliminar posiciones (2026-10-12)
+
+Una posición tiene tres estados: **Activa**, **Inactiva** (temporal) y **Eliminada** (definitiva). Ambas acciones exigen `warehouse.manage`.
+
+| Acción | Efecto | ¿Se deshace? | ¿El código? |
+|---|---|---|---|
+| **Desactivar** (antes «Dar de baja») | Queda inactiva: sale de los selectores y de las listas normales; aparece con «Incluir inactivas». | Sí: **Reactivar**. | Sigue reservado (es la misma posición). |
+| **Eliminar** | Queda eliminada (y siempre inactiva): no sale en **ninguna** lista ni selector, ni con «Incluir inactivas». | **No** (reactivarla da 409 «La posición fue eliminada y no se puede reactivar.»). | **Queda libre**: una posición nueva puede usar ese código. |
+
+- **Una posición:** ícono **Eliminar** (papelera roja) en la fila de la pestaña Posiciones de la ficha del almacén; confirmación «La posición {código} se elimina de forma definitiva…». Se puede eliminar una activa (vacía) o una inactiva.
+- **Varias a la vez** (se reorganiza un rack): en **Posiciones**, marque las casillas y use **Eliminar seleccionadas (N)**. Es **parcial**: elimina las que cumplen y, al terminar, un resumen dice cuáles se omitieron y por qué; las omitidas siguen marcadas. Hasta 500 a la vez.
+- **Se omite o se rechaza (409) con el motivo exacto** si la posición: tiene inventario en mano o reservado («La posición {código} tiene inventario; no se puede eliminar.»); tiene tareas de almacén abiertas; es la **posición de recepción por defecto** del almacén («…cámbiela primero.»); es la **posición preferida de un producto** («…cámbiela primero.»); o está en un **conteo cíclico abierto** (Pendiente o Contado).
+- **El historial se conserva:** una posición con movimientos pasados sí se puede eliminar; en el Kárdex, los saldos y los documentos viejos se ve con su código y la marca **«(eliminada)»**.
+- **Código reutilizable:** crear una posición con el código de una **eliminada** funciona. Con el de una **inactiva** da 409 «Ya existe una posición inactiva con ese código: reactívela o elimínela.»; con el de una activa, «Ya existe una posición con ese código en el almacén.».
+- API: `DELETE /api/v1/warehouses/{id}/bins/{binId}` (204) y `POST /api/v1/warehouses/{id}/bins/delete` con `{ binIds: [...] }` → `{ deleted: [{ binId, code }], skipped: [{ binId, code, reason }] }`.
+
 ## Kárdex de movimientos: Kárdex, Saldos y Conciliación
 
 **Para qué sirve.** Consulta el inventario disponible en cada posición (**Saldos**), su historial de movimientos (**Kárdex**) y compara el Kárdex

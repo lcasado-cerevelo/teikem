@@ -31,17 +31,21 @@ import { fetchAllPages, type FetchAllResult } from '../../kernel/api/fetchAllPag
 import { useLang, useT } from '../../kernel/i18n'
 import {
   Chip,
+  ConfirmDialog,
   DataTable,
   EmptyState,
+  Modal,
   Filters,
   IconGrid,
   IconWarehouse,
   Panel,
   SearchSelect,
   Spinner,
+  toast,
   type DataColumn,
 } from '../../kernel/ui'
-import { useWarehouseBins, useWarehouseZones, useWarehouses, type WarehouseBinDto, type WarehouseZoneDto } from './api'
+import { useDeleteWarehouseBins, useWarehouseBins, useWarehouseZones, useWarehouses, type WarehouseBinDto, type WarehouseZoneDto } from './api'
+import type { components } from '../../kernel/api/schema'
 import { BinBarcodeReportButton } from './BarcodeReportButtons'
 import { BinLabelsButton, BinLabelsModal } from './BinLabelsPanel'
 import type { BinLabelsScope } from './binLabels'
@@ -175,6 +179,10 @@ function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zone
   const [occupancy, setOccupancy] = useState<string[]>([])
   // posiciones marcadas (id → código) y el modal de productos por posición (alcance con que se abrió)
   const [selected, setSelected] = useState<ReadonlyMap<number, string>>(() => new Map())
+  // 2026-10-12: eliminar las posiciones marcadas (definitivo, parcial): confirmación y resumen de las omitidas con su motivo
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [skipped, setSkipped] = useState<readonly components['schemas']['WarehouseBinSkippedDto'][] | null>(null)
+  const deleteBins = useDeleteWarehouseBins()
   const [products4Bin, setProducts4Bin] = useState<BinProductsScope | null>(null)
   // «N productos» de una posición con varios: abre la ventana con lo que hay en ella
   const [contentsBin, setContentsBin] = useState<{ id: number; code: string } | null>(null)
@@ -537,6 +545,13 @@ function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zone
                 {t('warehouse.binProducts.clearSelection')}
               </button>
             )}
+            {selected.size > 0 && (
+              <Can perm="warehouse.manage">
+                <button type="button" className="btn sm danger" onClick={() => setConfirmDelete(true)}>
+                  {t('warehouse.bins.deleteSelected', { count: formatNumber(selected.size, lang) || '0' })}
+                </button>
+              </Can>
+            )}
           </div>
         </div>
         <DataTable
@@ -571,6 +586,44 @@ function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zone
           counts={{ filter: impossible ? 0 : binsQ.isLoading ? null : total, selected: selected.size }}
           selectedIds={[...selected.keys()]}
         />
+      )}
+      <ConfirmDialog
+        open={confirmDelete}
+        tone="danger"
+        title={t('warehouse.bins.deleteManyTitle', { count: selected.size })}
+        message={t('warehouse.bins.deleteManyBody', { count: selected.size })}
+        confirmLabel={t('warehouse.bins.delete')}
+        onConfirm={async () => {
+          const res = await deleteBins.mutateAsync({ publicId: warehousePublicId ?? '', binIds: [...selected.keys()] })
+          const gone = new Set((res.deleted ?? []).map((d) => d.binId))
+          // las eliminadas salen de la selección; las omitidas se quedan marcadas
+          setSelected((prev) => new Map([...prev].filter(([id]) => !gone.has(id))))
+          const n = gone.size
+          toast.success(n === 1 ? t('warehouse.bins.deleteManyDoneOne') : t('warehouse.bins.deleteManyDone', { count: n }))
+          if ((res.skipped ?? []).length > 0) setSkipped(res.skipped ?? [])
+        }}
+        onClose={() => setConfirmDelete(false)}
+      />
+      {skipped && (
+        <Modal
+          open
+          title={t('warehouse.bins.skippedTitle')}
+          onClose={() => setSkipped(null)}
+          footer={
+            <button type="button" className="btn flow" onClick={() => setSkipped(null)}>
+              {t('common.done')}
+            </button>
+          }
+        >
+          <p>{t('warehouse.bins.skippedIntro')}</p>
+          <ul className="loc-skipped">
+            {skipped.map((x) => (
+              <li key={x.binId}>
+                <strong>{x.code || `#${x.binId}`}</strong>: {x.reason}
+              </li>
+            ))}
+          </ul>
+        </Modal>
       )}
       {contentsBin && <BinContentsModal warehousePublicId={warehousePublicId} bin={contentsBin} onClose={() => setContentsBin(null)} />}
       {labels && (

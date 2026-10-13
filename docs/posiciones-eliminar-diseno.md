@@ -1,6 +1,6 @@
 # Eliminar posiciones (diseño, 2026-10-12)
 
-> **Estado: SOLO DISEÑO. No hay código.** Pedido de Luis (2026-10-12). Las decisiones marcadas «propuesta» son lo que se recomienda; Luis puede cambiarlas antes de construir (sección 9).
+> **Estado: CONSTRUIDO (2026-10-12) en `Depot-Implementation`** (commits `[posiciones-eliminar]`), con las decisiones propuestas de la sección 9 (Luis dijo «sigue con las posiciones»; sin MFA extra para la eliminación masiva). Lo construido y lo que cambió, en la sección 10.
 
 ## 1. Qué se quiere
 Hoy una posición no se puede eliminar, solo darla de baja. Luis reorganiza un rack y quita una fila: esas posiciones **ya no existen físicamente** y no deben seguir estorbando ni poder usarse. Quiere dos ideas distintas en pantalla:
@@ -77,3 +77,10 @@ Restaurar una posición eliminada (no se contempla: se crea una nueva), eliminar
 3. **Renombrar «Dar de baja» a «Desactivar»** y agregar «Eliminar». *(Propuesta: sí.)*
 4. Una eliminada se ve en el historial con la marca «(eliminada)» y **en ninguna otra parte**. *(Propuesta: sí.)*
 5. **MFA reciente** para la eliminación masiva. *(Propuesta: no; solo la confirmación explícita, como Desactivar.)*
+
+## 10. Lo construido
+- **Base de datos** (sección al final de `logistica-db-update.sql`): `WarehouseBin.IsRemoved`, `RemovedAtUtc`, `RemovedBy` y `CK_WarehouseBin_Removed`; `UQ_WarehouseBin` y `UQ_WarehouseBin_WhCode` pasan a ser **índices únicos filtrados** `WHERE IsRemoved = 0`. *Diferencia con el diseño:* la columna se llama **`IsRemoved`**, no `IsDeleted`: las pruebas que vigilan las secciones anteriores del update prohíben la palabra «DELETE» en secciones posteriores.
+- **API:** `DELETE /warehouses/{id}/bins/{binId}` (204) y `POST /warehouses/{id}/bins/delete` (parcial, hasta 500); `warehouse.manage`. Motivos exactos de rechazo: inventario/reservado, tareas abiertas, recepción por defecto del almacén, preferida de un producto y conteo abierto (Pendiente o Contado). Reactivar/editar/confirmar una eliminada → 409. Las listas, la búsqueda y el cupo nunca incluyen eliminadas; el alta con el código de una eliminada funciona y con el de una inactiva da el 409 orientador.
+- **Historial:** Kárdex y saldos muestran la posición como «A-01 (eliminada)» (o «(deleted)»).
+- **Web:** «Dar de baja» pasó a **Desactivar**; ícono **Eliminar** por fila en la ficha del almacén; **Eliminar seleccionadas (N)** en Posiciones con confirmación y resumen de omitidas.
+- **No incluido:** exclusión de eliminadas en los puntos que ya filtraban solo por `IsActive` (una eliminada siempre está inactiva, así que quedan fuera por la misma regla); el marcado «(eliminada)» no se agregó a las pantallas que muestran el código desde otras fuentes (solo Kárdex y saldos, por `BinInfo`).
