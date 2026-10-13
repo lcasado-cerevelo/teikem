@@ -364,7 +364,7 @@ Siempre vienen tantas filas como `days`: un día sin movimiento trae ceros.
 | Unidades recibidas | Lo de hoy | "7 días: N" | 7 | Recepciones (`RECEIPT`) más los ajustes por diferencia de recibo (`RECEIPT_VARIANCE`): lo que **de verdad llegó**. Si se esperaban 10 y llegaron 8, cuenta 8 | Nunca |
 | Unidades de salida | Lo de hoy | "7 días: N" | 7 | Recolección (`ISSUE`) más cruce de plataforma (`CROSSDOCK`). **Eliminar una recolección resta** esas unidades el día en que se elimina. No cuenta daños, pérdidas, vencidos, conteos ni transferencias | Nunca |
 | Conteos con diferencia | Los conteos cíclicos cerrados hoy en estatus **Diferencia** | "7 días: N" | 7 | Conteos activos en `RECONCILED_VARIANCE`, por el día en que se cerraron | Si hoy hubo alguno |
-| Transferencias y ajustes | Movimientos de hoy: transferencias + ajustes | "Transferencias N · Ajustes N" (7 días) | 7 parejas (una barra de cada tipo por día) | Movimientos `TRANSFER` y `ADJUSTMENT` del Kárdex por día local, todos (también los del sistema), por el almacén del movimiento | Nunca |
+| Transferencias y ajustes | Movimientos de hoy: transferencias + ajustes | "Transferencias N · Ajustes N" (7 días) | 7 barras apiladas (un tramo por tipo) | Movimientos `TRANSFER` y `ADJUSTMENT` del Kárdex por día local, todos (también los del sistema), por el almacén del movimiento | Nunca |
 | Productos bajo mínimo | Los que están bajo su mínimo **ahora** | "en este momento" | Ninguna | La misma consulta que el panel Almacén (`GET /products?belowMin=true`): la cifra es idéntica | Si hay alguno |
 
 - El inventario baja al **recolectar**, no al despachar el camión: por eso "salida" cuenta recolecciones (capítulo 06, sección 7).

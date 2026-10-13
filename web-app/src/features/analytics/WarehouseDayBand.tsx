@@ -30,35 +30,37 @@ const CARD_ICON: Record<WarehouseDayCardKey, () => ReactNode> = {
 /** Color de las barritas: violeta; la de hoy en naranja si la tarjeta está en alerta. */
 const BAR_COLOR = 'var(--violet)'
 const BAR_ALERT = 'var(--money)'
-/** «Transferencias y ajustes»: una barra de cada color por día (transferencias violeta, ajustes azul). */
+/** «Transferencias y ajustes»: una barra por día con dos tramos de color (transferencias violeta abajo, ajustes azul arriba). */
 const TRANSFER_COLOR = 'var(--violet)'
 const ADJUST_COLOR = 'var(--flow)'
 
 /**
- * Barritas de dos en dos (2026-10-12): por cada día una barra de transferencias y una de ajustes, a la misma escala (la mayor de las dos series = la altura
- * completa). SVG propio con `<title>` en cada barra (fecha, tipo y cantidad); la última pareja es hoy.
+ * Barritas APILADAS (2026-10-12, pedido de Luis): una sola barra por día con dos tramos de color, uno por cada tipo (transferencias abajo, ajustes arriba); la altura
+ * es el total del día, a la misma escala para los 7 días. SVG propio con `<title>` en cada tramo (fecha, tipo y cantidad); la última barra es hoy.
  */
 function PairBars({ pairs, label }: { pairs: readonly WarehouseDayPair[]; label: string }) {
   const t = useT()
   const lang = useLang()
-  const max = Math.max(1, ...pairs.flatMap((p) => [p.transfers, p.adjustments]))
+  const max = Math.max(1, ...pairs.map((p) => p.transfers + p.adjustments))
   const H = 28
-  const BW = 6
-  const GAP = 2
-  const GROUP = BW * 2 + GAP + 6
+  const BW = 12
+  const GROUP = BW + 6
   const W = pairs.length * GROUP
-  const bar = (v: number) => (v <= 0 ? 1 : Math.max(2, Math.round((v / max) * H)))
+  const px = (v: number) => (v <= 0 ? 0 : Math.max(2, Math.round((v / max) * H)))
   return (
     <svg className="wh-pairs" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label} preserveAspectRatio="none">
       {pairs.map((p, i) => {
         const x = i * GROUP + 3
         const day = i === pairs.length - 1 ? t('analytics.pulse.day.tooltipToday', { date: longDay(p.date, lang) }) : longDay(p.date, lang)
+        const th = px(p.transfers)
+        const ah = px(p.adjustments)
         return (
           <g key={p.date || i}>
-            <rect x={x} y={H - bar(p.transfers)} width={BW} height={bar(p.transfers)} rx="1.5" fill={TRANSFER_COLOR} opacity={p.transfers > 0 ? 1 : 0.25}>
+            {th + ah === 0 && <rect x={x} y={H - 1} width={BW} height={1} rx="0.5" fill="currentColor" opacity={0.25} />}
+            <rect x={x} y={H - th} width={BW} height={th} rx="1.5" fill={TRANSFER_COLOR}>
               <title>{`${day} · ${t('analytics.pulse.day.transfers')}: ${p.transfers}`}</title>
             </rect>
-            <rect x={x + BW + GAP} y={H - bar(p.adjustments)} width={BW} height={bar(p.adjustments)} rx="1.5" fill={ADJUST_COLOR} opacity={p.adjustments > 0 ? 1 : 0.25}>
+            <rect x={x} y={H - th - ah} width={BW} height={ah} rx="1.5" fill={ADJUST_COLOR}>
               <title>{`${day} · ${t('analytics.pulse.day.adjustments')}: ${p.adjustments}`}</title>
             </rect>
           </g>

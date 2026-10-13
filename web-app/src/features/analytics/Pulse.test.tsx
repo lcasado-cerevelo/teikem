@@ -603,9 +603,15 @@ describe('Pulse — franja "Almacén hoy" (Lote 15)', () => {
     expect(within(moves).getByText('Ajustes 2')).toBeInTheDocument()
     const pairs = within(moves).getByRole('img')
     expect(pairs).toHaveAccessibleName(/una barra de transferencias y otra de ajustes por día/)
-    expect(pairs.querySelectorAll('rect')).toHaveLength(14)   // 7 días × 2 barras
-    expect(pairs.querySelectorAll('title')[12]).toHaveTextContent(/Hoy, .*Transferencias: 4/)
-    expect(pairs.querySelectorAll('title')[13]).toHaveTextContent(/Hoy, .*Ajustes: 2/)
+    expect(pairs.querySelectorAll('rect[fill="var(--violet)"]')).toHaveLength(7)   // 7 barras apiladas: un tramo de transferencias por día…
+    expect(pairs.querySelectorAll('rect[fill="var(--flow)"]')).toHaveLength(7)   // …y uno de ajustes encima
+    const titles = Array.from(pairs.querySelectorAll('title'))
+    expect(titles.at(-2)).toHaveTextContent(/Hoy, .*Transferencias: 4/)
+    expect(titles.at(-1)).toHaveTextContent(/Hoy, .*Ajustes: 2/)
+    // apiladas: el tramo de ajustes de hoy empieza donde termina el de transferencias (misma x, una encima de la otra)
+    const today = Array.from(pairs.querySelectorAll('rect')).slice(-2)
+    expect(today[0].getAttribute('x')).toBe(today[1].getAttribute('x'))
+    expect(Number(today[1].getAttribute('y')) + Number(today[1].getAttribute('height'))).toBe(Number(today[0].getAttribute('y')))
     // naranja (D3): conteos con diferencia hoy y productos bajo mínimo; recibido y salida, violeta
     expect(card(container, 'countsVariance')).toHaveClass('node', 'wh', 'alert')
     expect(card(container, 'belowMin')).toHaveClass('alert')
