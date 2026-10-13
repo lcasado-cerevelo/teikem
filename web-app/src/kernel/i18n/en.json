@@ -6152,6 +6152,7 @@
         "requireMfa": "Require MFA",
         "unrequireMfa": "Stop requiring MFA",
         "resetMfa": "Reset MFA",
+        "mfaByCompany": "Required by the company",
         "mfaPending": "Pending",
         "requireMfaTitle": "Require MFA",
         "requireMfaBody": "{name} will have to set up two-step verification before they can sign in.",

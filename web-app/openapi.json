@@ -47219,6 +47219,9 @@
           "countSeeExpected": {
             "type": "boolean",
             "nullable": true
+          },
+          "mfaRequiredByCompany": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false

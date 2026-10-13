@@ -6152,6 +6152,7 @@
         "requireMfa": "Exigir MFA",
         "unrequireMfa": "Ya no exigir MFA",
         "resetMfa": "Restablecer MFA",
+        "mfaByCompany": "Exigido por la compañía",
         "mfaPending": "Pendiente",
         "requireMfaTitle": "Exigir MFA",
         "requireMfaBody": "{name} tendrá que activar la verificación en dos pasos antes de poder entrar.",
