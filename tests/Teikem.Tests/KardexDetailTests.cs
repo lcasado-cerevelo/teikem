@@ -209,6 +209,13 @@ public class KardexDetailTests
         Assert.Equal("ALM-02", Assert.Single(await layout.SearchBinsAsync("RES", null, false, 10, default)).WarehouseCode);   // por código de zona
         Assert.Single(await layout.SearchBinsAsync(null, new[] { w2.PublicId }, false, 10, default));
         Assert.Single(await layout.SearchBinsAsync("A", null, false, 1, default));
+
+        // 2026-10-12 — se busca en todo lo que muestra la opción: también por el almacén (código o nombre) y con varias palabras
+        Assert.Single(await layout.SearchBinsAsync("ALM-02", null, false, 50, default));   // solo por el código del almacén
+        Assert.Equal(3, (await layout.SearchBinsAsync("ALM-", null, false, 50, default)).Count);   // la raya sola ya no hace desaparecer todo: ALM-01 (A-01, A-02) y ALM-02 (A-01)
+        Assert.Equal(new[] { ("ALM-02", "A-01") }, (await layout.SearchBinsAsync("ALM-02 A-01", null, false, 50, default)).Select(b => (b.WarehouseCode, b.Code)).ToArray());   // varias palabras: todas
+        Assert.Equal(new[] { ("ALM-02", "A-01") }, (await layout.SearchBinsAsync("A-01 · RES · ALM-02", null, false, 50, default)).Select(b => (b.WarehouseCode, b.Code)).ToArray());   // lo que se ve en la opción
+        Assert.Empty(await layout.SearchBinsAsync("ALM-02 A-02", null, false, 50, default));
         Assert.Equal(200, WarehouseLayoutService.MaxBinSearch);
 
         // Otro tenant no aporta posiciones.
