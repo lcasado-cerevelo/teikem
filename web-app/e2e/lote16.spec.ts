@@ -22,7 +22,8 @@ type ReceiptDetailDto = components['schemas']['ReceiptDetailDto']
 const API_URL = process.env.API_URL ?? 'http://localhost:5000'
 const ADMIN = { email: process.env.TEIKEM_ADMIN_EMAIL ?? 'teikem+admin@cerevelo.com', password: process.env.TEIKEM_ADMIN_PASSWORD ?? 'Teikem_Admin_2026!' }
 const WAREHOUSE = 'ALM-01 · Almacén principal'
-const STAMP = Date.now()
+// único por proceso y por proyecto (escritorio y móvil corren a la vez): sufijo aleatorio para no repetir SKU ni código de posición
+const STAMP = `${Date.now()}${Math.floor(Math.random() * 1000)}`
 const SKU_A = `P16A-${STAMP}`
 const SKU_B = `P16B-${STAMP}`
 const SKU_MA = `P16MA-${STAMP}`

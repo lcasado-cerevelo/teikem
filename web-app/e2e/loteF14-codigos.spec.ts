@@ -137,6 +137,14 @@ function valuesInPdf(text: string, suffix: string): string[] {
   return seen
 }
 
+/** Elige un producto en el filtro «SKU o nombre» (combobox de varios productos que busca en el API). */
+async function pickProductByText(scope: Page, label: string, text: string, sku: string) {
+  const box = scope.getByRole('combobox', { name: label })
+  await box.click()
+  await box.fill(text)
+  await scope.getByRole('option', { name: new RegExp(`^${sku} · `) }).click()
+}
+
 async function downloadReport(page: Page, scope: Page | ReturnType<Page['locator']>): Promise<Download> {
   // 2026-10-05: "Códigos de barras" es un menú; al elegir "Automático" se genera el PDF
   await scope.getByRole('button', { name: 'Códigos de barras' }).click()
@@ -147,7 +155,9 @@ async function downloadReport(page: Page, scope: Page | ReturnType<Page['locator
 async function productsFlow(page: Page, request: APIRequestContext, s: Seed, shots: boolean) {
   await page.goto('/warehouse/products')
   await expect(page.getByRole('heading', { level: 1, name: 'Productos e inventario' })).toBeVisible()
-  await page.getByLabel('Nombre', { exact: true }).fill(`Etiqueta ${s.suffix}`)
+  // el filtro «SKU o nombre» elige productos uno a uno (píldora «Quitar <SKU>»): los tres sembrados
+  for (const sku of s.skus) await pickProductByText(page, 'SKU o nombre', `Etiqueta ${s.suffix}`, sku)
+  for (const sku of s.skus) await expect(page.getByRole('button', { name: `Quitar ${sku}`, exact: true })).toBeVisible()
   await expect(page.getByText(`${s.suffix}-10`).first()).toBeVisible()
   await expect(page.getByText(`${s.suffix}-1`, { exact: true }).first()).toBeVisible()
   if (shots) await shot(page, 'productos-boton')
@@ -167,7 +177,6 @@ async function productsFlow(page: Page, request: APIRequestContext, s: Seed, sho
   expect(values).toEqual(list.items.map((i) => i.sku))
   expect(new Set(values)).toEqual(new Set([`${s.suffix}-1`, `${s.suffix}-2`, `${s.suffix}-10`]))
   expect(text).toContain('FILTROS APLICADOS')
-  expect(text).toContain(`Etiqueta ${s.suffix}`)
 }
 
 async function locationsFlow(page: Page, request: APIRequestContext, s: Seed, shots: boolean) {

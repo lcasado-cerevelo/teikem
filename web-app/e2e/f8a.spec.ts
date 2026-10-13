@@ -232,9 +232,15 @@ test.describe('Lote F8a — escritorio', () => {
     }
     await shot(page, 'menu-completo')
 
+    // Sala de despacho ya es una pantalla real (F-E2a): no muestra el aviso de pantalla pendiente
     await page.goto('/ops/dispatch')
     await expect(page.getByRole('heading', { level: 1, name: 'Sala de despacho' })).toBeVisible()
-    await expect(page.getByText('armar y despachar rutas')).toBeVisible()
+    await expect(page.getByText('Esta pantalla llega en un lote posterior.')).toHaveCount(0)
+
+    // una pantalla que sigue pendiente (Perfil del portal) sí muestra el aviso
+    await page.goto('/portal/profile')
+    await expect(page.getByRole('heading', { level: 1, name: 'Perfil' })).toBeVisible()
+    await expect(page.getByText('información de tu cuenta')).toBeVisible()
     await expect(page.getByText('Esta pantalla llega en un lote posterior.')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Abrir otra pantalla' })).toBeVisible()
     await shot(page, 'pendiente-sala-despacho')

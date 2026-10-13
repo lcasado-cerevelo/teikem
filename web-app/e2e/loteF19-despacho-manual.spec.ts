@@ -249,7 +249,12 @@ async function runJourney(page: Page, request: APIRequestContext, variant: 'D' |
   await shot(page, `${prefix}eliminar`)
   await confirm.getByRole('button', { name: 'Eliminar', exact: true }).click()
   await expect(page.locator('.toast').filter({ hasText: `Despacho manual ${issue.number} eliminado.` }).first()).toBeVisible()
-  await expect(page.locator('.chip', { hasText: 'Cancelado' }).first()).toBeVisible()
+  // al eliminar vuelve a la lista, que por omisión no muestra lo eliminado: el DMA aparece Cancelado con «Incluir eliminadas»
+  await expect(page).toHaveURL(/\/warehouse\/pick-batches$/)
+  await expect(page.locator('.collect-list tr, .collect-list .dt-card').filter({ hasText: issue.number })).toHaveCount(0)
+  await page.getByRole('switch', { name: 'Incluir eliminadas' }).check()
+  await expect(row.first()).toBeVisible()
+  await expect(row.first()).toContainText('Cancelado')
   expect(await available(request, s)).toBe(5)
   await noScroll()
   await shot(page, `${prefix}cancelado`)
