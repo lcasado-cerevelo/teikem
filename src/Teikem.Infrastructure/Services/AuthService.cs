@@ -243,6 +243,7 @@ public sealed partial class AuthService(
         if (device is not null) SetTokenDevice(rt, device.UserDeviceId);
         await db.SaveChangesAsync(ct);
         db.SuppressAudit = false;
+        await RevokeSupersededSessionsAsync(rt, ct);
         // LastLoginUtc se escribe con un UPDATE dirigido a la columna, sin pasar por el ConcurrencyStamp de Identity: guardar
         // el usuario completo fallaba con 500 (DbUpdateConcurrencyException) cuando otra petición cambiaba la fila en el mismo
         // instante (un intento con contraseña incorrecta del mismo usuario, activar MFA, cambiar la contraseña), y además
@@ -252,6 +253,28 @@ public sealed partial class AuthService(
         user.LastLoginUtc = now;
         var (access, exp) = CreateAccess(user, tenantId, rt.RefreshTokenId, kind, aal2At, device?.PublicId);
         return new TokenPairDto(access, exp, raw, rt.ExpiresAtUtc, tenantId);
+    }
+
+    /// <summary>
+    /// 2026-10-12 — una sola sesión por persona y navegador: al iniciar sesión se cierran las sesiones anteriores de la MISMA persona, en la misma compañía, con el mismo navegador/sistema
+    /// (<c>DeviceInfo</c>), la misma IP y el mismo aparato (o ninguno). Antes cada inicio de sesión dejaba la anterior viva hasta que vencía (y «Sesiones activas» se llenaba). No toca las
+    /// sesiones de otras personas, de otro navegador, de otra IP ni las de aparato de otro aparato; la renovación (refresh) no pasa por aquí.
+    /// </summary>
+    private async Task RevokeSupersededSessionsAsync(RefreshToken current, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(current.DeviceInfo)) return;   // sin navegador identificado no se adivina cuál es «la misma»
+        var now = DateTime.UtcNow;
+        var old = await db.RefreshTokens.IgnoreQueryFilters()
+            .Where(x => x.UserId == current.UserId && x.TenantId == current.TenantId && x.RefreshTokenId != current.RefreshTokenId
+                        && x.RevokedAtUtc == null && x.ExpiresAtUtc > now && x.DeviceInfo == current.DeviceInfo
+                        && x.IpAddress == current.IpAddress && x.UserDeviceId == current.UserDeviceId)
+            .ToListAsync(ct);
+        if (old.Count == 0) return;
+        foreach (var t in old) t.RevokedAtUtc = now;
+        db.SuppressAudit = true;
+        await db.SaveChangesAsync(ct);
+        db.SuppressAudit = false;
+        await security.WriteAsync(SecurityEventTypes.TokenRevoked, SecurityOutcomes.Success, current.UserId, current.TenantId, new { reason = "session_replaced", count = old.Count }, ct);
     }
 
     // ---------------- Login por aparato (Lote 8A) ----------------
