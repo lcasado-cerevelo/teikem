@@ -46202,6 +46202,14 @@
           "countsWithVariance": {
             "type": "integer",
             "format": "int32"
+          },
+          "transferMovements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "adjustmentMovements": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -46265,6 +46273,22 @@
           },
           "belowMinAlert": {
             "type": "boolean"
+          },
+          "transferToday": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "transferTotal": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "adjustmentToday": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "adjustmentTotal": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false

@@ -126,6 +126,23 @@ public class WarehousePulseServiceTests
         Assert.Equal(1, r.BelowMinProducts);
         Assert.True(r.CountsAlert);
         Assert.True(r.BelowMinAlert);
+
+        // 2026-10-12 — tarjeta «Transferencias y ajustes»: TODOS los movimientos de esos dos tipos por día local: hoy 1 transferencia (W1 → W2) y 3 ajustes
+        // (diferencia de recibo, reversa y daño; también los del sistema).
+        Assert.Equal(new[] { 0, 0, 0, 0, 0, 0, 1 }, r.Days.Select(d => d.TransferMovements));
+        Assert.Equal(new[] { 0, 0, 0, 0, 0, 0, 3 }, r.Days.Select(d => d.AdjustmentMovements));
+        Assert.Equal((1, 1, 3, 3), (r.TransferToday, r.TransferTotal, r.AdjustmentToday, r.AdjustmentTotal));
+    }
+
+    [Fact]
+    public async Task Transfers_and_adjustments_follow_the_single_side_of_the_movement()
+    {
+        var w = await SeedAsync();
+        await using var _ = w.F;
+        var w1 = await w.DaysAsync(w.W1.PublicId);   // la transferencia entra a W2: no es de W1; los 3 ajustes sí
+        Assert.Equal((0, 0, 3, 3), (w1.TransferToday, w1.TransferTotal, w1.AdjustmentToday, w1.AdjustmentTotal));
+        var w2 = await w.DaysAsync(w.W2.PublicId);
+        Assert.Equal((1, 1, 0, 0), (w2.TransferToday, w2.TransferTotal, w2.AdjustmentToday, w2.AdjustmentTotal));
     }
 
     [Fact]

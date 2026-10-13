@@ -4,7 +4,7 @@
 import type { WarehousePulseDays } from './api'
 
 /** Tarjetas de la franja, en el orden de la pantalla (D1: "Productos bajo mínimo" al final y sin gráfico). */
-export const WAREHOUSE_DAY_CARDS = ['received', 'outbound', 'countsVariance', 'belowMin'] as const
+export const WAREHOUSE_DAY_CARDS = ['received', 'outbound', 'countsVariance', 'moves', 'belowMin'] as const
 export type WarehouseDayCardKey = (typeof WAREHOUSE_DAY_CARDS)[number]
 
 /** Tipos de movimiento del Kárdex de cada tarjeta de unidades (D2: salida = recolección + cruce de muelle). */
@@ -19,8 +19,18 @@ export interface WarehouseDayPoint {
   value: number
 }
 
+/** 2026-10-12 — un día de la tarjeta «Transferencias y ajustes»: dos barras por día, una por cada tipo de movimiento. */
+export interface WarehouseDayPair {
+  date: string
+  transfers: number
+  adjustments: number
+}
+
 export interface WarehouseDayCard {
   key: WarehouseDayCardKey
+  /** Solo en «Transferencias y ajustes» (`moves`): las dos series por día y sus cifras (hoy y 7 días); en las demás, null. */
+  pairs: WarehouseDayPair[] | null
+  split: { transfersToday: number; adjustmentsToday: number; transfersTotal: number; adjustmentsTotal: number } | null
   /** Número grande: lo de HOY (bajo mínimo: ahora). null = aún no hay datos. */
   today: number | null
   /** Total de los 7 días (texto pequeño); null en "Productos bajo mínimo". */
@@ -64,6 +74,9 @@ export function warehouseDayHref(key: WarehouseDayCardKey, range: { from: string
       path = '/warehouse/cycle-counts'
       q.set('status', COUNT_VARIANCE_STATUS)
       break
+    case 'moves':
+      // Transferencias y ajustes: la pantalla no toma fechas ni almacén por la URL (sus filtros son de la pantalla)
+      return '/warehouse/transfers-adjustments'
     default:
       path = '/warehouse/products'
       q.set('kpi', 'low')
@@ -86,6 +99,8 @@ export function warehouseDayCards(dto: WarehousePulseDays | undefined, warehouse
       total: has ? (dto.receivedTotal ?? 0) : null,
       points: series((d) => d.receivedUnits),
       alert: false,
+      pairs: null,
+      split: null,
       href: warehouseDayHref('received', range, warehousePublicId),
     },
     {
@@ -94,6 +109,8 @@ export function warehouseDayCards(dto: WarehousePulseDays | undefined, warehouse
       total: has ? (dto.outboundTotal ?? 0) : null,
       points: series((d) => d.outboundUnits),
       alert: false,
+      pairs: null,
+      split: null,
       href: warehouseDayHref('outbound', range, warehousePublicId),
     },
     {
@@ -102,13 +119,35 @@ export function warehouseDayCards(dto: WarehousePulseDays | undefined, warehouse
       total: has ? (dto.countsWithVarianceTotal ?? 0) : null,
       points: series((d) => d.countsWithVariance),
       alert: has && dto.countsAlert === true,
+      pairs: null,
+      split: null,
       href: warehouseDayHref('countsVariance', range, warehousePublicId),
+    },
+    {
+      // 2026-10-12: «Transferencias y ajustes» en un solo cuadro: el número grande es lo de HOY (transferencias + ajustes) y las barras van de dos en dos
+      key: 'moves',
+      today: has ? (dto.transferToday ?? 0) + (dto.adjustmentToday ?? 0) : null,
+      total: has ? (dto.transferTotal ?? 0) + (dto.adjustmentTotal ?? 0) : null,
+      points: null,
+      pairs: has ? days.map((d) => ({ date: d.date ?? '', transfers: d.transferMovements ?? 0, adjustments: d.adjustmentMovements ?? 0 })) : null,
+      split: has
+        ? {
+            transfersToday: dto.transferToday ?? 0,
+            adjustmentsToday: dto.adjustmentToday ?? 0,
+            transfersTotal: dto.transferTotal ?? 0,
+            adjustmentsTotal: dto.adjustmentTotal ?? 0,
+          }
+        : null,
+      alert: false,
+      href: warehouseDayHref('moves', range, warehousePublicId),
     },
     {
       key: 'belowMin',
       today: has ? (dto.belowMinProducts ?? 0) : null,
       total: null,
       points: null,
+      pairs: null,
+      split: null,
       alert: has && dto.belowMinAlert === true,
       href: warehouseDayHref('belowMin', range, warehousePublicId),
     },

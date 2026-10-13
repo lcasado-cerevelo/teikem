@@ -11,24 +11,62 @@ import { Fragment, useId, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useLang, useT } from '../../kernel/i18n/useT'
 import { IconAlert } from '../../kernel/ui/icons'
-import { IconBasket, IconCheckin, IconClip, IconWarehouse } from '../../kernel/ui/screenIcons'
+import { IconBasket, IconCheckin, IconClip, IconPencil, IconWarehouse } from '../../kernel/ui/screenIcons'
 import { useWarehouseFilter, useWarehousePulseDays, WAREHOUSE_DAY_DAYS } from './api'
 import { ChartVisual } from './ChartVisual'
 import { formatValue, longDay } from './format'
 import { StreamLabel } from './PulseSections'
-import { warehouseDayCards, type WarehouseDayCard, type WarehouseDayCardKey } from './warehouseDay'
+import { warehouseDayCards, type WarehouseDayCard, type WarehouseDayCardKey, type WarehouseDayPair } from './warehouseDay'
 import './pulse.css'
 
 const CARD_ICON: Record<WarehouseDayCardKey, () => ReactNode> = {
   received: IconCheckin,
   outbound: IconBasket,
   countsVariance: IconClip,
+  moves: IconPencil,
   belowMin: IconAlert,
 }
 
 /** Color de las barritas: violeta; la de hoy en naranja si la tarjeta está en alerta. */
 const BAR_COLOR = 'var(--violet)'
 const BAR_ALERT = 'var(--money)'
+/** «Transferencias y ajustes»: una barra de cada color por día (transferencias violeta, ajustes azul). */
+const TRANSFER_COLOR = 'var(--violet)'
+const ADJUST_COLOR = 'var(--flow)'
+
+/**
+ * Barritas de dos en dos (2026-10-12): por cada día una barra de transferencias y una de ajustes, a la misma escala (la mayor de las dos series = la altura
+ * completa). SVG propio con `<title>` en cada barra (fecha, tipo y cantidad); la última pareja es hoy.
+ */
+function PairBars({ pairs, label }: { pairs: readonly WarehouseDayPair[]; label: string }) {
+  const t = useT()
+  const lang = useLang()
+  const max = Math.max(1, ...pairs.flatMap((p) => [p.transfers, p.adjustments]))
+  const H = 28
+  const BW = 6
+  const GAP = 2
+  const GROUP = BW * 2 + GAP + 6
+  const W = pairs.length * GROUP
+  const bar = (v: number) => (v <= 0 ? 1 : Math.max(2, Math.round((v / max) * H)))
+  return (
+    <svg className="wh-pairs" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label} preserveAspectRatio="none">
+      {pairs.map((p, i) => {
+        const x = i * GROUP + 3
+        const day = i === pairs.length - 1 ? t('analytics.pulse.day.tooltipToday', { date: longDay(p.date, lang) }) : longDay(p.date, lang)
+        return (
+          <g key={p.date || i}>
+            <rect x={x} y={H - bar(p.transfers)} width={BW} height={bar(p.transfers)} rx="1.5" fill={TRANSFER_COLOR} opacity={p.transfers > 0 ? 1 : 0.25}>
+              <title>{`${day} · ${t('analytics.pulse.day.transfers')}: ${p.transfers}`}</title>
+            </rect>
+            <rect x={x + BW + GAP} y={H - bar(p.adjustments)} width={BW} height={bar(p.adjustments)} rx="1.5" fill={ADJUST_COLOR} opacity={p.adjustments > 0 ? 1 : 0.25}>
+              <title>{`${day} · ${t('analytics.pulse.day.adjustments')}: ${p.adjustments}`}</title>
+            </rect>
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
 
 function DayNode({ card, value, loading }: { card: WarehouseDayCard; value: string; loading: boolean }) {
   const t = useT()
@@ -38,7 +76,9 @@ function DayNode({ card, value, loading }: { card: WarehouseDayCard; value: stri
   const sub =
     card.key === 'belowMin'
       ? t('analytics.pulse.day.nowSub')
-      : card.total != null
+      : card.split
+        ? null   // «Transferencias y ajustes» lleva su propia leyenda con los dos colores (abajo)
+        : card.total != null
         ? t('analytics.pulse.day.totalSub', { days: WAREHOUSE_DAY_DAYS, total: formatValue(card.total, false) })
         : null
   const last = (card.points?.length ?? 0) - 1
@@ -54,8 +94,23 @@ function DayNode({ card, value, loading }: { card: WarehouseDayCard; value: stri
           {value}
         </div>
         {sub && <div className="sub">{sub}</div>}
+        {card.split && (
+          <div className="sub wh-legend">
+            <span className="wh-key" style={{ ['--k' as string]: TRANSFER_COLOR }}>
+              {t('analytics.pulse.day.transfers')} {formatValue(card.split.transfersTotal, false)}
+            </span>
+            <span className="wh-key" style={{ ['--k' as string]: ADJUST_COLOR }}>
+              {t('analytics.pulse.day.adjustments')} {formatValue(card.split.adjustmentsTotal, false)}
+            </span>
+          </div>
+        )}
         {alertText && <span className="sr-only">{alertText}</span>}
       </Link>
+      {card.pairs && (
+        <div className="wh-mini">
+          <PairBars pairs={card.pairs} label={t('analytics.pulse.day.movesChart', { days: WAREHOUSE_DAY_DAYS })} />
+        </div>
+      )}
       {card.points && (
         <div className="wh-mini">
           <ChartVisual

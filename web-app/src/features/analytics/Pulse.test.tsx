@@ -532,7 +532,7 @@ const DAYS_DTO = {
   today: '2026-09-30',
   fromUtc: '2026-09-24T04:00:00Z',
   toUtc: '2026-10-01T04:00:00Z',
-  days: DAY_DATES.map((date, i) => ({ date, receivedUnits: i === 6 ? 12 : i, outboundUnits: i === 6 ? 5 : 0, countsWithVariance: i === 6 ? 1 : 0 })),
+  days: DAY_DATES.map((date, i) => ({ date, receivedUnits: i === 6 ? 12 : i, outboundUnits: i === 6 ? 5 : 0, countsWithVariance: i === 6 ? 1 : 0, transferMovements: i === 6 ? 4 : 1, adjustmentMovements: i === 6 ? 2 : 0 })),
   receivedToday: 12,
   receivedTotal: 1234,
   outboundToday: 5,
@@ -542,6 +542,10 @@ const DAYS_DTO = {
   belowMinProducts: 3,
   countsAlert: true,
   belowMinAlert: true,
+  transferToday: 4,
+  transferTotal: 10,
+  adjustmentToday: 2,
+  adjustmentTotal: 2,
 }
 let dayPulse: PulseDto = pulse()
 
@@ -560,7 +564,7 @@ describe('Pulse — franja "Almacén hoy" (Lote 15)', () => {
     dayPulse = withIndicator([panel('WAREHOUSE_DAY', -10), panel('INDICATORS', 20)])
   })
 
-  it('4 tarjetas: número de HOY, total de 7 días, 7 barritas (bajo mínimo sin gráfico), naranja y enlaces al detalle', async () => {
+  it('5 tarjetas: número de HOY, total de 7 días, 7 barritas (bajo mínimo sin gráfico), naranja y enlaces al detalle', async () => {
     mock.handler = dayHandler
     const { container } = renderPulse(WAREHOUSE_ACCESS)
     // título que no es "Almacén" a secas (los recorridos buscan ese h2 del panel Almacén)
@@ -574,6 +578,7 @@ describe('Pulse — franja "Almacén hoy" (Lote 15)', () => {
       'received',
       'outbound',
       'countsVariance',
+      'moves',
       'belowMin',
     ])
     expect(within(card(container, 'received')).getByText('Unidades recibidas')).toBeInTheDocument()
@@ -590,6 +595,17 @@ describe('Pulse — franja "Almacén hoy" (Lote 15)', () => {
     }
     expect(within(card(container, 'received')).getByRole('img')).toHaveAccessibleName(/^Unidades recibidas\. .*miércoles, 30 de septiembre de 2026: 12$/)
     expect(within(card(container, 'belowMin')).queryByRole('img')).toBeNull()
+    // 2026-10-12 — «Transferencias y ajustes»: un solo cuadro; número = hoy (4 + 2), leyenda con los dos colores y sus totales de 7 días, y 7 parejas de barras
+    const moves = card(container, 'moves')
+    expect(within(moves).getByText('Transferencias y ajustes')).toBeInTheDocument()
+    expect(within(moves).getByText('6', { selector: '.big' })).toBeInTheDocument()
+    expect(within(moves).getByText('Transferencias 10')).toBeInTheDocument()
+    expect(within(moves).getByText('Ajustes 2')).toBeInTheDocument()
+    const pairs = within(moves).getByRole('img')
+    expect(pairs).toHaveAccessibleName(/una barra de transferencias y otra de ajustes por día/)
+    expect(pairs.querySelectorAll('rect')).toHaveLength(14)   // 7 días × 2 barras
+    expect(pairs.querySelectorAll('title')[12]).toHaveTextContent(/Hoy, .*Transferencias: 4/)
+    expect(pairs.querySelectorAll('title')[13]).toHaveTextContent(/Hoy, .*Ajustes: 2/)
     // naranja (D3): conteos con diferencia hoy y productos bajo mínimo; recibido y salida, violeta
     expect(card(container, 'countsVariance')).toHaveClass('node', 'wh', 'alert')
     expect(card(container, 'belowMin')).toHaveClass('alert')
@@ -601,6 +617,7 @@ describe('Pulse — franja "Almacén hoy" (Lote 15)', () => {
       '/warehouse/kardex?types=RECEIPT&from=2026-09-24&to=2026-09-30',
       '/warehouse/kardex?types=ISSUE&types=CROSSDOCK&from=2026-09-24&to=2026-09-30',
       '/warehouse/cycle-counts?status=RECONCILED_VARIANCE',
+      '/warehouse/transfers-adjustments',
       '/warehouse/products?kpi=low',
     ])
     expect(mock.urls).toContain('/api/v1/inventory/pulse/days?days=7')
