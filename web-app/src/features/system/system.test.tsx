@@ -277,13 +277,14 @@ describe('UsersTab — estado, columna PIN y permisos', () => {
     expect((statusSwitch as HTMLInputElement).checked).toBe(true)
   })
 
-  // 2026-10-12 — «Exigir MFA» por persona: el botón lee el indicador propio de la persona (no la columna «MFA: Sí», que es si ya tiene MFA inscrito); lo graba con
-  // PUT /users/{id}/mfa y, con la política de la compañía encendida (exige MFA a todos), no hay botón: la fila dice «Exigido por la compañía».
-  it('Exigir MFA: pide confirmación y graba (PUT /users/2/mfa); después el botón pasa a «Ya no exigir MFA»', async () => {
+  // 2026-10-12 — «Exigir siempre MFA» por persona: el botón lee el indicador propio de la persona (no la columna «MFA: Sí», que es si ya tiene MFA inscrito) y lo graba con
+  // PUT /users/{id}/mfa. Es la marca «siempre MFA» de la IP preferida: con ella a esa persona se le pide el código también desde una red de confianza; se ve y se cambia
+  // aunque la compañía exija MFA a todos.
+  it('Exigir siempre MFA: pide confirmación y graba (PUT /users/2/mfa); después el botón pasa a «Ya no exigir siempre MFA»', async () => {
     const user = userEvent.setup()
     let required = false
     mock.handler = ((method: string, url: URL) => {
-      if (method === 'GET' && url.pathname === '/api/v1/users') return [{ ...USERS[0], mfaEnabled: true, mfaRequired: required, mfaRequiredByCompany: false }]
+      if (method === 'GET' && url.pathname === '/api/v1/users') return [{ ...USERS[0], mfaEnabled: true, mfaRequired: required }]
       if (method === 'GET' && url.pathname === '/api/v1/roles') return [ROLE]
       if (method === 'GET' && url.pathname === '/api/v1/permissions') return PERMISSIONS
       if (method === 'PUT' && url.pathname === '/api/v1/users/2/mfa') {
@@ -295,28 +296,14 @@ describe('UsersTab — estado, columna PIN y permisos', () => {
     wrap(<UsersTab />, { permissions: ['admin.users'] })
     await screen.findByText('Carlos Rivera')
     // tiene MFA inscrito (columna Sí) pero NO se le exige por persona: el botón dice «Exigir MFA»
-    await user.click(await screen.findByRole('button', { name: 'Exigir MFA' }))
+    await user.click(await screen.findByRole('button', { name: 'Exigir siempre MFA' }))
     const dialog = await screen.findByRole('dialog')
-    await user.click(within(dialog).getByRole('button', { name: 'Exigir MFA' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Exigir siempre MFA' }))
     await waitFor(() => expect(mock.calls.some((c) => c.method === 'PUT' && c.path === '/api/v1/users/2/mfa')).toBe(true))
     expect(mock.calls.find((c) => c.method === 'PUT' && c.path === '/api/v1/users/2/mfa')?.body).toEqual({ required: true })
     // ya grabado: la lista se vuelve a leer y el botón ahora es el contrario
-    expect(await screen.findByRole('button', { name: 'Ya no exigir MFA' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Exigir MFA' })).toBeNull()
-  })
-
-  it('con la política de la compañía encendida no hay botón de exigir por persona y la fila dice «Exigido por la compañía»', async () => {
-    mock.handler = ((method: string, url: URL) => {
-      if (method === 'GET' && url.pathname === '/api/v1/users') return [{ ...USERS[0], mfaEnabled: true, mfaRequired: false, mfaRequiredByCompany: true }]
-      if (url.pathname === '/api/v1/roles') return [ROLE]
-      if (url.pathname === '/api/v1/permissions') return PERMISSIONS
-      return undefined
-    }) satisfies Handler
-    wrap(<UsersTab />, { permissions: ['admin.users'] })
-    await screen.findByText('Carlos Rivera')
-    expect(await screen.findByText('Exigido por la compañía')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Exigir MFA' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Ya no exigir MFA' })).toBeNull()
+    expect(await screen.findByRole('button', { name: 'Ya no exigir siempre MFA' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Exigir siempre MFA' })).toBeNull()
   })
 
   it('la columna PIN solo aparece con módulo WMS_LOTSERIAL y permiso devices.manage|admin.users', async () => {

@@ -182,11 +182,12 @@ perdió el teléfono donde tenía la verificación en dos pasos.
 En la columna **MFA** de la tabla de usuarios: chip **Sí**/**No** (si ya lo tiene activo) y, si se le exige pero
 todavía no lo activó, un chip adicional **"Pendiente"**.
 
-- **"Exigir MFA"** (icono de escudo): pide confirmar — "{nombre} tendrá que activar la verificación en dos pasos
-  antes de poder entrar." — y AAL2 al guardar. Su próximo intento de iniciar sesión responde `mfa_required` y le
+- **"Exigir siempre MFA"** (icono de escudo; 2026-10-12, antes «Exigir MFA»): es la marca individual **«siempre MFA»**. Pide confirmar — "{nombre} tendrá que activar la verificación en dos pasos
+  y se le pedirá el código SIEMPRE al entrar, también desde una IP preferida…" — y AAL2 al guardar. Se ve y se cambia **aunque la compañía exija MFA a todos**: la política de la compañía
+  pide el código a todos, y las **IPs preferidas** (red de confianza) lo quitan a quien entra desde ellas, **salvo** a quien tenga esta marca. Su próximo intento de iniciar sesión responde `mfa_required` y le
   pide enrolar el segundo factor antes de dejarlo entrar (no lo activa el administrador por ella: cada quien
   enrola el suyo).
-- **"Ya no exigir MFA"** (mismo icono, aparece cuando ya se le exige): quita la exigencia puntual; si esa persona
+- **"Ya no exigir siempre MFA"** (mismo icono, aparece cuando la marca está puesta): quita la marca individual; con la política de la compañía se le sigue pidiendo el código, pero desde una IP preferida ya podrá entrar sin él; si esa persona
   ya lo tenía activo por su cuenta, lo conserva — dejar de exigirlo no se lo quita.
 - **"Restablecer MFA"** (icono de restaurar, solo si ya tiene uno activo): le quita la verificación en dos pasos
   confirmada y sus códigos de recuperación — para cuando perdió el dispositivo y quedó bloqueado sin poder

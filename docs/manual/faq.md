@@ -7644,3 +7644,6 @@ En Seguridad y auditoría → Sesiones y MFA → «Duración de la sesión (hora
 
 **Antes decía «días». ¿Se perdió lo que tenía?**
 No: lo que estaba en días se muestra en horas (30 días = 720 horas). Mientras no se cambie, vale lo de siempre.
+
+**La columna «MFA» dice «Sí» pero el botón dice «Exigir siempre MFA». ¿Está mal?**
+No. La columna «MFA» dice si la persona **ya tiene** MFA inscrito. El botón es otra cosa: la marca individual **«siempre MFA»** (2026-10-12). La compañía puede exigir MFA a todos (interruptor de Seguridad y auditoría → Sesiones y MFA) y las **IPs preferidas** quitan el código a quien entra desde ellas; la marca «siempre MFA» hace una excepción por persona: a esa persona se le pide el código también desde una IP preferida. Sin la marca, desde una IP preferida entra sin código (con su contraseña).
