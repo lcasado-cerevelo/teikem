@@ -56,7 +56,8 @@ public sealed class WarehousePulseService(TeikemDbContext db, ILookupCache looku
             await LookupIdAsync(LookupDomains.InventoryTxnType, InventoryTxnTypes.CrossDock, ct),
             await LookupIdAsync(LookupDomains.InventoryTxnType, InventoryTxnTypes.Adjustment, ct),
             await LookupIdAsync(LookupDomains.AdjustmentReason, AdjustmentReasons.ReceiptVariance, ct),
-            await LookupIdAsync(LookupDomains.AdjustmentReason, AdjustmentReasons.PickBatchReversal, ct));
+            await LookupIdAsync(LookupDomains.AdjustmentReason, AdjustmentReasons.PickBatchReversal, ct),
+            await LookupIdAsync(LookupDomains.InventoryTxnType, InventoryTxnTypes.Transfer, ct));
         var groups = warehouseIds is { Count: 0 }
             ? new List<WarehousePulseGroupRow>()
             : await MovementGroupsQuery(db.Set<InventoryTransaction>().AsNoTracking(), days, ids, warehouseIds).ToListAsync(ct);
@@ -74,6 +75,12 @@ public sealed class WarehousePulseService(TeikemDbContext db, ILookupCache looku
             (g.Day, WarehousePulseRules.OutboundUnits(Code(g.TxnTypeLookupId), Code(g.ReasonLookupId), g.Quantity))));
         var outboundMoves = WarehousePulseRules.Series(days.Count, groups
             .Where(g => WarehousePulseRules.IsOutbound(Code(g.TxnTypeLookupId), Code(g.ReasonLookupId))).Select(g => (g.Day, (decimal)g.Count)));
+
+        // 2026-10-12: tarjeta «Transferencias y ajustes»: movimientos TRANSFER y ADJUSTMENT por día (todos, también los del sistema: es lo que lista esa pantalla).
+        var transferMoves = WarehousePulseRules.Series(days.Count, groups
+            .Where(g => WarehousePulseRules.IsTransfer(Code(g.TxnTypeLookupId))).Select(g => (g.Day, (decimal)g.Count)));
+        var adjustMoves = WarehousePulseRules.Series(days.Count, groups
+            .Where(g => WarehousePulseRules.IsAdjustment(Code(g.TxnTypeLookupId))).Select(g => (g.Day, (decimal)g.Count)));
 
         // Conteos cerrados en Diferencia (solo las fechas; se reparten por día local).
         var varianceId = await db.StatusCodes.AsNoTracking()
@@ -95,13 +102,14 @@ public sealed class WarehousePulseService(TeikemDbContext db, ILookupCache looku
             : (await products.ListAsync(new ProductListQuery(BelowMin: true, Take: 1, WarehousePublicIds: warehousePublicIds), InventoryScope.Any, ct)).Total;
 
         var dayDtos = days.Select((d, i) => new WarehousePulseDayDto(d.Date, InventoryRules.Round4(received[i]), (int)receivedMoves[i],
-            InventoryRules.Round4(outbound[i]), (int)outboundMoves[i], (int)variance[i])).ToList();
+            InventoryRules.Round4(outbound[i]), (int)outboundMoves[i], (int)variance[i], (int)transferMoves[i], (int)adjustMoves[i])).ToList();
         var today = dayDtos[^1];
         return new WarehousePulseDaysDto(ZoneName(clock.Zone), days[^1].Date, fromUtc, toUtc, dayDtos,
             today.ReceivedUnits, InventoryRules.Round4(dayDtos.Sum(d => d.ReceivedUnits)),
             today.OutboundUnits, InventoryRules.Round4(dayDtos.Sum(d => d.OutboundUnits)),
             today.CountsWithVariance, dayDtos.Sum(d => d.CountsWithVariance), belowMin,
-            WarehousePulseRules.CountsAlert(today.CountsWithVariance), WarehousePulseRules.BelowMinAlert(belowMin));
+            WarehousePulseRules.CountsAlert(today.CountsWithVariance), WarehousePulseRules.BelowMinAlert(belowMin),
+            today.TransferMovements, dayDtos.Sum(d => d.TransferMovements), today.AdjustmentMovements, dayDtos.Sum(d => d.AdjustmentMovements));
     }
 
     private async Task<int> LookupIdAsync(string domain, string code, CancellationToken ct)
@@ -118,7 +126,7 @@ public sealed class WarehousePulseService(TeikemDbContext db, ILookupCache looku
     // ================================================================ consulta agrupada (pública para probar su traducción)
 
     /// <summary>Ids de catálogo de los movimientos que cuentan (−1 = el código no existe: no coincide con nada).</summary>
-    public sealed record PulseTxnIds(int Receipt, int Issue, int CrossDock, int Adjustment, int ReceiptVariance, int PickBatchReversal);
+    public sealed record PulseTxnIds(int Receipt, int Issue, int CrossDock, int Adjustment, int ReceiptVariance, int PickBatchReversal, int Transfer = -1);
 
     /// <summary>
     /// Movimientos del rango de <paramref name="days"/> que cuentan para la franja, agrupados por (índice de día local, tipo,
@@ -130,11 +138,12 @@ public sealed class WarehousePulseService(TeikemDbContext db, ILookupCache looku
     {
         var from = days[0].StartUtc;
         var to = days[^1].EndUtc;
-        var (receipt, issue, crossDock, adjustment, receiptVariance, reversal) = (ids.Receipt, ids.Issue, ids.CrossDock, ids.Adjustment,
-            ids.ReceiptVariance, ids.PickBatchReversal);
+        var (receipt, issue, crossDock, adjustment, receiptVariance, reversal, transfer) = (ids.Receipt, ids.Issue, ids.CrossDock, ids.Adjustment,
+            ids.ReceiptVariance, ids.PickBatchReversal, ids.Transfer);
         var q = source.Where(t => t.CreatedAtUtc >= from && t.CreatedAtUtc < to
                                   && (t.TxnTypeLookupId == receipt || t.TxnTypeLookupId == issue || t.TxnTypeLookupId == crossDock
-                                      || (t.TxnTypeLookupId == adjustment && (t.ReasonLookupId == receiptVariance || t.ReasonLookupId == reversal))));
+                                      || t.TxnTypeLookupId == transfer       // 2026-10-12: tarjeta «Transferencias y ajustes» (todos los movimientos de esos dos tipos)
+                                      || t.TxnTypeLookupId == adjustment));   // los ajustes sin motivo de recibo/recolección valen 0 en las otras tarjetas
         if (warehouseIds is not null)
         {
             var list = warehouseIds.Select(i => (int?)i).ToList();

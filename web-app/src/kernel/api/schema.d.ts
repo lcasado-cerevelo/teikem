@@ -27176,6 +27176,10 @@ export interface components {
             outboundMovements?: number;
             /** Format: int32 */
             countsWithVariance?: number;
+            /** Format: int32 */
+            transferMovements?: number;
+            /** Format: int32 */
+            adjustmentMovements?: number;
         };
         WarehousePulseDaysDto: {
             timeZone?: string | null;
@@ -27202,6 +27206,14 @@ export interface components {
             belowMinProducts?: number;
             countsAlert?: boolean;
             belowMinAlert?: boolean;
+            /** Format: int32 */
+            transferToday?: number;
+            /** Format: int32 */
+            transferTotal?: number;
+            /** Format: int32 */
+            adjustmentToday?: number;
+            /** Format: int32 */
+            adjustmentTotal?: number;
         };
         WarehouseTaskDto: {
             /** Format: int32 */

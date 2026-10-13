@@ -78,6 +78,12 @@ public static class WarehousePulseRules
         return 0m;
     }
 
+    /// <summary>2026-10-12 — tarjeta «Transferencias y ajustes»: ¿es una transferencia (incluye acomodos y reabastos, igual que la lista)?</summary>
+    public static bool IsTransfer(string? txnType) => Is(txnType, InventoryTxnTypes.Transfer);
+
+    /// <summary>2026-10-12 — tarjeta «Transferencias y ajustes»: ¿es un ajuste (manual o del sistema, igual que la lista)?</summary>
+    public static bool IsAdjustment(string? txnType) => Is(txnType, InventoryTxnTypes.Adjustment);
+
     /// <summary>¿Cuenta el movimiento en "Unidades recibidas"?</summary>
     public static bool IsReceived(string? txnType, string? reasonCode)
         => Is(txnType, InventoryTxnTypes.Receipt) || (Is(txnType, InventoryTxnTypes.Adjustment) && Is(reasonCode, AdjustmentReasons.ReceiptVariance));

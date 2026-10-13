@@ -2610,6 +2610,10 @@
         "received": "Unidades recibidas",
         "outbound": "Unidades de salida",
         "countsVariance": "Conteos con diferencia",
+        "moves": "Transferencias y ajustes",
+        "transfers": "Transferencias",
+        "adjustments": "Ajustes",
+        "movesChart": "Movimientos de los últimos {days} días: una barra de transferencias y otra de ajustes por día",
         "belowMin": "Productos bajo mínimo",
         "totalSub": "{days} días: {total}",
         "nowSub": "en este momento",
@@ -2620,7 +2624,7 @@
         "alertBelowMin": "Hay productos bajo su mínimo.",
         "warehouse": "Almacén de la franja Almacén hoy",
         "allWarehouses": "Todos los almacenes",
-        "cards": "Almacén hoy: recibido, salida, conteos con diferencia y bajo mínimo"
+        "cards": "Almacén hoy: recibido, salida, conteos con diferencia, transferencias y ajustes y bajo mínimo"
       },
       "organizeMine": "Organizar mi Pulso",
       "organizeCompany": "Organizar el de la compañía",

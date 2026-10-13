@@ -21,8 +21,9 @@ de las capturas son los de la demo del día en que se tomaron (por eso cambian d
 
 - **Título:** "ALMACÉN HOY · ÚLTIMOS 7 DÍAS", con el ícono de almacén, en violeta. A la derecha, un selector de almacén ("Todos los
   almacenes" o el código del almacén).
-- **Cuatro tarjetas unidas por una tubería punteada violeta:** **Unidades recibidas**, **Unidades de salida**, **Conteos con diferencia** y
-  **Productos bajo mínimo**.
+- **Cinco tarjetas unidas por una tubería punteada violeta:** **Unidades recibidas**, **Unidades de salida**, **Conteos con diferencia**,
+  **Transferencias y ajustes** (2026-10-12) y **Productos bajo mínimo**.
+- **Transferencias y ajustes** es un solo cuadro para los dos tipos de movimiento: el **número grande** es lo de **hoy** (transferencias + ajustes), la leyenda dice el total de **7 días** de cada uno (cuadrito violeta = Transferencias, azul = Ajustes) y las barritas van **de dos en dos por día**: una de cada color (pase el cursor para ver la fecha, el tipo y la cantidad; la última pareja es hoy). Cuenta **movimientos** (no unidades) y **todos** los de esos dos tipos, también los del sistema (acomodos, reabastos, diferencias de recibo, conteos…), igual que la lista de *Transferencias y ajustes*, a la que lleva al hacer clic. Respeta el almacén elegido en la franja; nunca va en naranja.
 - **En cada una de las tres primeras:** el **número grande de hoy** (violeta), el texto pequeño **"7 días: N"** con el total de la semana y
   **7 barritas**, una por día. La de la derecha es **hoy** y es la que crece durante el día; un día sin movimiento es una línea (barrita
   vacía). En la captura, los seis días anteriores están vacíos y solo hoy tiene barra.

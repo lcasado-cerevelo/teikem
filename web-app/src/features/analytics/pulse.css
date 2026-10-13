@@ -172,6 +172,10 @@
 .pulse .node.wh.alert{border-color:var(--money);box-shadow:0 0 0 1px var(--money-line)}
 .pulse .node.wh.alert .big,.pulse .node.wh.alert .ph svg{color:var(--money-2)}
 .pulse .node .wh-mini{position:relative;z-index:1;margin-top:auto;padding-top:8px}
+.pulse .wh-pairs{display:block;width:100%;height:34px}
+.pulse .wh-legend{display:flex;flex-wrap:wrap;gap:2px 10px}
+.pulse .wh-key{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.pulse .wh-key::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--k)}
 .pulse .pipe.wh::after{background:repeating-linear-gradient(90deg,var(--violet) 0 8px,transparent 8px 16px)}
 /* bajo 980 px, 2×2 sin tuberías (también a 480 px: nunca una columna) */
 @media(max-width:980px){.pulse .wh-river{flex-wrap:wrap}.pulse .wh-river .node{flex:1 1 calc(50% - 5px)}}

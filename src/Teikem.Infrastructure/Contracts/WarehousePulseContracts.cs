@@ -15,7 +15,7 @@ public sealed record WarehousePulseQuery(Guid[]? WarehousePublicIds = null, int 
 /// negativa si ese día solo se eliminaron recolecciones) y sus movimientos; conteos cerrados ese día en Diferencia.
 /// </summary>
 public sealed record WarehousePulseDayDto(DateOnly Date, decimal ReceivedUnits, int ReceivedMovements, decimal OutboundUnits,
-    int OutboundMovements, int CountsWithVariance);
+    int OutboundMovements, int CountsWithVariance, int TransferMovements = 0, int AdjustmentMovements = 0);
 
 /// <summary>
 /// Franja "Almacén hoy" (D1–D3): zona horaria (IANA), hoy local, rango UTC cubierto [FromUtc, ToUtc), la serie por día (de la
@@ -25,4 +25,5 @@ public sealed record WarehousePulseDayDto(DateOnly Date, decimal ReceivedUnits, 
 public sealed record WarehousePulseDaysDto(string TimeZone, DateOnly Today, DateTime FromUtc, DateTime ToUtc,
     IReadOnlyList<WarehousePulseDayDto> Days,
     decimal ReceivedToday, decimal ReceivedTotal, decimal OutboundToday, decimal OutboundTotal,
-    int CountsWithVarianceToday, int CountsWithVarianceTotal, int BelowMinProducts, bool CountsAlert, bool BelowMinAlert);
+    int CountsWithVarianceToday, int CountsWithVarianceTotal, int BelowMinProducts, bool CountsAlert, bool BelowMinAlert,
+    int TransferToday = 0, int TransferTotal = 0, int AdjustmentToday = 0, int AdjustmentTotal = 0);
