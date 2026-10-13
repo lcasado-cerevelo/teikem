@@ -296,8 +296,16 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
         if (q.ToUtc is DateTime to) query = query.Where(o => o.CreatedAtUtc < to);           // hasta exclusivo
 
         var total = await query.CountAsync(ct);
-        var page = await query.OrderByDescending(o => o.CreatedAtUtc).ThenByDescending(o => o.TransportOrderId)
-            .Skip(skip).Take(take).ToListAsync(ct);
+        // Lote 42: con texto libre sobre las paradas (búsqueda o consignatario: LIKE '%…%', que SQL Server no sabe estimar) se ordena
+        // por una expresión EQUIVALENTE (misma fecha, mismo orden, mismos resultados) que el índice IX_Order_Tenant_Created no entrega
+        // ya ordenada: así SQL Server filtra primero, en paralelo, y ordena solo las coincidencias, en vez de recorrer toda la compañía
+        // en orden probando orden por orden. Medido a 508 mil órdenes (compañía grande, término raro): 1,4 s sin el índice, 5,5 s con
+        // el índice y el orden directo, 1,0 s con este orden. Ver docs/lote42-decisiones.md.
+        var freeTextOnStops = !string.IsNullOrWhiteSpace(q.Search) || !string.IsNullOrWhiteSpace(q.Consignee);
+        var ordered = freeTextOnStops
+            ? query.OrderByDescending(o => o.CreatedAtUtc.AddMilliseconds(0)).ThenByDescending(o => o.TransportOrderId)
+            : query.OrderByDescending(o => o.CreatedAtUtc).ThenByDescending(o => o.TransportOrderId);
+        var page = await ordered.Skip(skip).Take(take).ToListAsync(ct);
 
         return new OrderPageDto(total, await ToListItemsAsync(page, ct));
     }

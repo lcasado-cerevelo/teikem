@@ -25,6 +25,10 @@ jobs:
       - name: Restore & build
         run: dotnet build Teikem.sln -c Release
       - name: Unit tests
+        # Lote 42: TenantIsolationSqlServerTests (no filtración entre compañías contra SQL Server real) crean y borran su propia
+        # base desechable Teikem_isotest_<guid> en este servidor; sin la variable se omiten.
+        env:
+          TEIKEM_TEST_SQLSERVER: "Server=localhost,1433;User Id=sa;Password=Teikem_Dev_2026!;TrustServerCertificate=True;Encrypt=False"
         run: dotnet test Teikem.sln -c Release --no-build --logger "trx;LogFileName=tests.trx"
       - name: db-init (Identity → estructura → seed → extensiones → seeders)
         run: dotnet run --project src/Teikem.Api -c Release --no-build -- db-init

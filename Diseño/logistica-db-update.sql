@@ -370,3 +370,18 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Trip_PlanDate' AND obj
     CREATE INDEX IX_Trip_PlanDate ON dbo.Trip(PlanDate) INCLUDE (TenantId, DriverId, VehicleId, DispatchZoneId, StatusCodeId)
         WHERE IsActive = 1;
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-12 (c) — Índice de la lista de órdenes por compañía (Lote 42: filtro de tenant buscable; docs/lote42-decisiones.md).
+   Desde el Lote 42 el filtro global de tenant de EF llega a SQL como "[t].[TenantId] = @tid" (sin el OR del bypass), así que
+   SQL Server ya puede buscar por los índices que empiezan por TenantId. La lista de órdenes (más recientes primero: ORDER BY
+   CreatedAtUtc DESC, TransportOrderId DESC), sus COUNT y sus filtros por estatus, servicio, cliente, fechas y códigos seguían
+   recorriendo TransportOrder completo (17.255 páginas a 508 mil órdenes) y ordenándolo en cada página: con este índice leen
+   solo las filas de la compañía, ya ordenadas. Medido (508 mil órdenes, 4 compañías): página 1 17.255 -> 318 lecturas;
+   COUNT por estatus 17.255 -> 133/895; COUNT de búsqueda de la compañía chica 264.039 -> 14.994; «Ordenar todo lo filtrado»
+   (10.000 filas) 16,4 s -> 2,5 s. Filtrado por IsActive = 1 como la lista. No es único: solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Order_Tenant_Created' AND object_id = OBJECT_ID('dbo.TransportOrder'))
+    CREATE INDEX IX_Order_Tenant_Created ON dbo.TransportOrder(TenantId, CreatedAtUtc DESC, TransportOrderId DESC)
+        INCLUDE (ClientId, StatusCodeId, ServiceTypeLookupId, OrderNumber, ClientInvoiceNumber, PackBatchNumber) WHERE IsActive = 1;
+GO

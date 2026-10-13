@@ -28,7 +28,9 @@ public sealed class VolumeIndexesTests
         var start = sql.IndexOf(SectionTitle, StringComparison.Ordinal);
         Assert.True(start > 0, "Falta la sección 2026-10-12 (b) en logistica-db-update.sql.");
         Assert.True(start > sql.IndexOf("2026-10-12 (a) — Ver precios de las órdenes", StringComparison.Ordinal), "La sección debe ir después de la (a).");
-        var section = sql[start..];
+        // Lote 42: la sección termina donde empieza la siguiente («2026-10-12 (c)»), que agrega su propio índice.
+        var next = sql.IndexOf("2026-10-12 (c)", start, StringComparison.Ordinal);
+        var section = next > 0 ? sql[start..next] : sql[start..];
 
         Assert.Contains("IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_TransportOrder_PublicId' AND object_id = OBJECT_ID('dbo.TransportOrder'))\n    CREATE INDEX IX_TransportOrder_PublicId ON dbo.TransportOrder(PublicId);", section);
         Assert.Contains("IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Trip_PublicId' AND object_id = OBJECT_ID('dbo.Trip'))\n    CREATE INDEX IX_Trip_PublicId ON dbo.Trip(PublicId);", section);

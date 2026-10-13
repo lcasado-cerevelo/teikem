@@ -41,6 +41,11 @@ public sealed class TransportOrderConfiguration : IEntityTypeConfiguration<Trans
         b.HasIndex(o => o.OrderNumber).HasFilter("[IsActive] = 1").HasDatabaseName("IX_Order_OrderNumber");
         b.HasIndex(o => o.PackBatchNumber).HasFilter("[IsActive] = 1").HasDatabaseName("IX_Order_PackBatchNumber");
         b.HasIndex(o => o.ClientInvoiceNumber).HasFilter("[IsActive] = 1").HasDatabaseName("IX_Order_ClientInvoiceNumber");
+        // 2026-10-12 (c), logistica-db-update.sql (Lote 42): con el filtro de tenant ya buscable, la lista de órdenes (más recientes
+        // primero) y sus filtros por estatus, servicio, cliente, fechas y códigos leen solo las filas de la compañía, ya ordenadas.
+        b.HasIndex(o => new { o.TenantId, o.CreatedAtUtc, o.TransportOrderId }).IsDescending(false, true, true)
+            .IncludeProperties(o => new { o.ClientId, o.StatusCodeId, o.ServiceTypeLookupId, o.OrderNumber, o.ClientInvoiceNumber, o.PackBatchNumber })
+            .HasFilter("[IsActive] = 1").HasDatabaseName("IX_Order_Tenant_Created");
 
         b.HasOne(o => o.Client).WithMany().HasForeignKey(o => o.ClientId);
         b.HasOne(o => o.Contract).WithMany().HasForeignKey(o => o.ContractId);

@@ -38,12 +38,29 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public int CurrentTenantId => _tenant.TenantId ?? -1;
     public bool TenantFilterDisabled => _tenant.TenantFilterDisabled;
 
+    /// <summary>
+    /// Lote 42: lo que lee el filtro global de tenant. <c>null</c> SOLO con el bypass encendido (plataforma, seeders); si no, la
+    /// compañía activa, o -1 si no hay ninguna (falla cerrado: no se ve ninguna fila con TenantId). Ver <see cref="TenantFilterEvaluatablePlugin"/>.
+    /// </summary>
+    public int? QueryFilterTenantId => _tenant.TenantFilterDisabled ? null : (_tenant.TenantId ?? -1);
+
+    /// <summary>
+    /// Lote 42: registra el plugin que deja el filtro de tenant buscable por índice (<c>[t].[TenantId] = @p</c> sin el OR del bypass).
+    /// Va aquí y no en DependencyInjection para que TODO contexto lo tenga (API, seeders, migración, pruebas), con cualquier proveedor.
+    /// </summary>
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        base.OnConfiguring(optionsBuilder);
+        if (optionsBuilder.Options.FindExtension<TenantFilterOptionsExtension>() is null)
+            ((Microsoft.EntityFrameworkCore.Infrastructure.IDbContextOptionsBuilderInfrastructure)optionsBuilder).AddOrUpdateExtension(new TenantFilterOptionsExtension());
+    }
+
     // Alcance de datos del usuario (UserDataScope, 2026-10-11): además del tenant, un usuario con alcance de almacén y/o cliente
-    // solo ve lo de esos almacenes/clientes. Sin alcance de ese tipo = sin restricción. Lo lee el filtro global (ver BuildScopeFilter).
-    public bool WarehouseScoped => _tenant.ScopedWarehouseIds is not null && !_tenant.TenantFilterDisabled;
-    public bool ClientScoped => _tenant.ScopedClientIds is not null && !_tenant.TenantFilterDisabled;
-    public int[] ScopedWarehouseIdList => _tenant.ScopedWarehouseIds?.ToArray() ?? Array.Empty<int>();
-    public int[] ScopedClientIdList => _tenant.ScopedClientIds?.ToArray() ?? Array.Empty<int>();
+    // solo ve lo de esos almacenes/clientes. Sin alcance de ese tipo = sin restricción. Lo lee el filtro global (ver AddScopeFilter).
+    // Lote 42: null = sin alcance de ese tipo (o filtro apagado); si no, la lista (vacía = no ve ninguno). Misma técnica que el tenant:
+    // sin alcance, el SQL no lleva el término (antes «@p = 1 OR [x].[ClientId] IN (OPENJSON…)» en TODA consulta, que confundía al optimizador).
+    public int[]? QueryFilterWarehouseIds => _tenant.TenantFilterDisabled ? null : _tenant.ScopedWarehouseIds?.ToArray();
+    public int[]? QueryFilterClientIds => _tenant.TenantFilterDisabled ? null : _tenant.ScopedClientIds?.ToArray();
 
     /// <summary>Bandera interna del interceptor de auditoría para no auditar la escritura del propio AuditLog.</summary>
     internal bool SuppressAudit { get; set; }
@@ -203,46 +220,45 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
                 filter = BuildTenantFilter(clr, optional: false);
             else if (typeof(IOptionallyTenantScoped).IsAssignableFrom(clr))
                 filter = BuildTenantFilter(clr, optional: true);
-            filter = AddScopeFilter(clr, filter, "WarehouseId", nameof(WarehouseScoped), nameof(ScopedWarehouseIdList));
-            filter = AddScopeFilter(clr, filter, "ClientId", nameof(ClientScoped), nameof(ScopedClientIdList));
+            filter = AddScopeFilter(clr, filter, "WarehouseId", nameof(QueryFilterWarehouseIds));
+            filter = AddScopeFilter(clr, filter, "ClientId", nameof(QueryFilterClientIds));
             if (filter is not null) entityType.SetQueryFilter(filter);
         }
     }
 
-    /// <summary>e => TenantFilterDisabled || e.TenantId == CurrentTenantId  (|| e.TenantId == null si es opcional).</summary>
+    /// <summary>
+    /// e => QueryFilterTenantId == null || e.TenantId == QueryFilterTenantId  (|| e.TenantId == null si es opcional).
+    /// Lote 42: equivale al filtro anterior (TenantFilterDisabled || e.TenantId == CurrentTenantId) fila por fila, pero con el
+    /// plugin <see cref="TenantFilterEvaluatablePlugin"/> EF lo traduce SIN el OR del bypass: <c>[e].[TenantId] = @p</c> (buscable).
+    /// </summary>
     private LambdaExpression BuildTenantFilter(Type clr, bool optional)
     {
         var e = Expression.Parameter(clr, "e");
         var ctx = Expression.Constant(this);
-        var disabled = Expression.Property(ctx, nameof(TenantFilterDisabled));
-        var current = Expression.Property(ctx, nameof(CurrentTenantId));
+        var filterTenant = Expression.Property(ctx, nameof(QueryFilterTenantId));                       // int?
+        var bypass = Expression.Equal(filterTenant, Expression.Constant(null, typeof(int?)));          // la forma exacta que reconoce el plugin
         var tenantProp = Expression.Property(e, "TenantId");
-        Expression body;
-        if (!optional)
-        {
-            body = Expression.OrElse(disabled, Expression.Equal(tenantProp, current));
-        }
-        else
-        {
-            var isNull = Expression.Equal(tenantProp, Expression.Constant(null, typeof(int?)));
-            var eq = Expression.Equal(tenantProp, Expression.Convert(current, typeof(int?)));
-            body = Expression.OrElse(disabled, Expression.OrElse(isNull, eq));
-        }
+        var tenantAsNullable = tenantProp.Type == typeof(int?) ? (Expression)tenantProp : Expression.Convert(tenantProp, typeof(int?));
+        var sameTenant = Expression.Equal(tenantAsNullable, filterTenant);
+        Expression body = !optional
+            ? Expression.OrElse(bypass, sameTenant)
+            : Expression.OrElse(bypass, Expression.OrElse(Expression.Equal(tenantProp, Expression.Constant(null, typeof(int?))), sameTenant));
         return Expression.Lambda(body, e);
     }
 
     /// <summary>
-    /// Agrega al filtro (si la entidad tiene la columna) el alcance de datos:  e => !Scoped || ids.Contains(e.Col)  (|| e.Col == null si es int?).
+    /// Agrega al filtro (si la entidad tiene la columna) el alcance de datos:  e => ids == null || ids.Contains(e.Col)  (|| e.Col == null si es int?).
     /// Una fila sin almacén/cliente (NULL) no pertenece a ninguno y se ve siempre. Los catálogos y lo demás sin la columna no se tocan.
+    /// Lote 42: «ids == null» es la forma exacta que reconoce <see cref="TenantFilterEvaluatablePlugin"/> (sin alcance, el término desaparece).
     /// </summary>
-    private LambdaExpression? AddScopeFilter(Type clr, LambdaExpression? existing, string column, string scopedFlag, string idList)
+    private LambdaExpression? AddScopeFilter(Type clr, LambdaExpression? existing, string column, string idList)
     {
         var prop = clr.GetProperty(column);
         if (prop is null || (prop.PropertyType != typeof(int) && prop.PropertyType != typeof(int?))) return existing;
         var e = existing?.Parameters[0] ?? Expression.Parameter(clr, "e");
         var ctx = Expression.Constant(this);
-        var notScoped = Expression.Not(Expression.Property(ctx, scopedFlag));
-        var ids = Expression.Property(ctx, idList);
+        var ids = Expression.Property(ctx, idList);                                                   // int[]?
+        var notScoped = Expression.Equal(ids, Expression.Constant(null, typeof(int[])));
         var col = Expression.Property(e, prop);
         Expression inList = prop.PropertyType == typeof(int?)
             ? Expression.Call(typeof(Enumerable), nameof(Enumerable.Contains), new[] { typeof(int) }, ids, Expression.Property(col, "Value"))
