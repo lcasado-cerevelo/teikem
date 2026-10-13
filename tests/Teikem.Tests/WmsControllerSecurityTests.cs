@@ -59,6 +59,8 @@ public class WmsControllerSecurityTests
         [(typeof(WarehousesController), nameof(WarehousesController.UpdateBin))] = PermissionCatalog.WarehouseManage,
         [(typeof(WarehousesController), nameof(WarehousesController.SetBinsCapacity))] = PermissionCatalog.WarehouseManage,   // Lote 11: cupo en bloque
         [(typeof(WarehousesController), nameof(WarehousesController.DeactivateBin))] = PermissionCatalog.WarehouseManage,
+        [(typeof(WarehousesController), nameof(WarehousesController.DeleteBin))] = PermissionCatalog.WarehouseManage,   // 2026-10-12: eliminar posiciones
+        [(typeof(WarehousesController), nameof(WarehousesController.DeleteBins))] = PermissionCatalog.WarehouseManage,
         [(typeof(WarehousesController), nameof(WarehousesController.ConfirmProvisionalBin))] = PermissionCatalog.WarehouseManage,   // Lote 21
         [(typeof(WarehousesController), nameof(WarehousesController.ReactivateBin))] = PermissionCatalog.WarehouseManage,
         [(typeof(WarehousesController), nameof(WarehousesController.BinProducts))] = PermissionCatalog.InventoryView,   // informe "Productos por posición"
@@ -339,7 +341,7 @@ public class WmsControllerSecurityTests
         Assert.Equal(PermissionCatalog.WarehouseIssue, Expected[(typeof(ManualIssuesController), nameof(ManualIssuesController.Create))]);
         Assert.Equal(PermissionCatalog.WarehouseIssue, Expected[(typeof(ManualIssuesController), nameof(ManualIssuesController.Delete))]);
         Assert.Equal(ModuleOf[typeof(PickBatchesController)], ModuleOf[typeof(ManualIssuesController)]);
-        Assert.Equal(163, Expected.Count); // 2026-10-12: + 1 (InventoryController.TransactionUsers, filtro Usuario del Kárdex) = 163; 2026-10-11: + 1 (CaptureOffline, conteo sin señal) = 161; + 1 (ReceiptsController.SummaryByWarehouse) = 162; // 132 de master + 1 de reparto por posición (Distribute) + 1 de verificación de línea (CheckLine) + 12 de RentalsController + 3 de RentalReturnsController + 4 de RentalProcessesController + 5 de ManualIssuesController
+        Assert.Equal(165, Expected.Count); // 2026-10-12: + 2 (WarehousesController.DeleteBin/DeleteBins, eliminar posiciones) = 165; + 1 (InventoryController.TransactionUsers, filtro Usuario del Kárdex) = 163; 2026-10-11: + 1 (CaptureOffline, conteo sin señal) = 161; + 1 (ReceiptsController.SummaryByWarehouse) = 162; // 132 de master + 1 de reparto por posición (Distribute) + 1 de verificación de línea (CheckLine) + 12 de RentalsController + 3 de RentalReturnsController + 4 de RentalProcessesController + 5 de ManualIssuesController
     }
 
     [Fact]

@@ -68,9 +68,11 @@ public sealed class WarehouseBinConfiguration : IEntityTypeConfiguration<Warehou
         b.Property(x => x.MaxWeightKg).HasColumnType("decimal(12,3)");
         b.Property(x => x.MaxCapacityQty).HasColumnType("int");
 
-        b.HasIndex(x => new { x.WarehouseZoneId, x.Code }).IsUnique().HasDatabaseName("UQ_WarehouseBin");
+        // 2026-10-12: el código es único solo entre las posiciones NO eliminadas (índices filtrados): el de una eliminada queda libre.
+        b.Property(x => x.IsRemoved).HasDefaultValue(false);
+        b.HasIndex(x => new { x.WarehouseZoneId, x.Code }).IsUnique().HasFilter("[IsRemoved] = 0").HasDatabaseName("UQ_WarehouseBin");
         // Código de posición único por almacén (D18).
-        b.HasIndex(x => new { x.WarehouseId, x.Code }).IsUnique().HasDatabaseName("UQ_WarehouseBin_WhCode");
+        b.HasIndex(x => new { x.WarehouseId, x.Code }).IsUnique().HasFilter("[IsRemoved] = 0").HasDatabaseName("UQ_WarehouseBin_WhCode");
         // Lote 21: posiciones provisionales pendientes de revisión.
         b.Property(x => x.IsProvisional).HasDefaultValue(false);
         b.HasIndex(x => new { x.WarehouseId, x.IsProvisional }).HasFilter("[IsProvisional] = 1").HasDatabaseName("IX_WarehouseBin_Provisional");

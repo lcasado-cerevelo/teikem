@@ -155,6 +155,24 @@ public sealed class WarehousesController(WarehouseService warehouses, WarehouseL
     public Task<WarehouseBinDto> DeactivateBin(Guid publicId, int binId, CancellationToken ct)
         => layout.SetBinActiveAsync(publicId, binId, false, ct);
 
+    /// <summary>
+    /// 2026-10-12 — ELIMINAR una posición (definitivo, a diferencia de <c>deactivate</c>, que es temporal): no se reactiva, no sale en ninguna lista y su código queda libre.
+    /// 409 con el motivo exacto si tiene inventario, tareas abiertas, es la posición de recepción por defecto o la preferida de un producto, o está en un conteo abierto.
+    /// </summary>
+    [HttpDelete("{publicId:guid}/bins/{binId:int}"), RequirePermission(PermissionCatalog.WarehouseManage)]
+    public async Task<IActionResult> DeleteBin(Guid publicId, int binId, CancellationToken ct)
+    {
+        await layout.DeleteBinAsync(publicId, binId, ct);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// 2026-10-12 — eliminar VARIAS posiciones (hasta 500), parcial: <c>{ deleted: [...], skipped: [{ binId, code, reason }] }</c>. Cada una se revisa por separado.
+    /// </summary>
+    [HttpPost("{publicId:guid}/bins/delete"), RequirePermission(PermissionCatalog.WarehouseManage)]
+    public Task<WarehouseBinsDeleteResultDto> DeleteBins(Guid publicId, [FromBody] WarehouseBinsDeleteRequest req, CancellationToken ct)
+        => layout.DeleteBinsAsync(publicId, req, ct);
+
     [HttpPost("{publicId:guid}/bins/{binId:int}/reactivate"), RequirePermission(PermissionCatalog.WarehouseManage)]
     public Task<WarehouseBinDto> ReactivateBin(Guid publicId, int binId, CancellationToken ct)
         => layout.SetBinActiveAsync(publicId, binId, true, ct);
