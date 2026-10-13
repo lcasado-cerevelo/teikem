@@ -163,28 +163,6 @@ public class AuthMfaTests
     }
 
     [Fact]
-    public async Task The_user_list_says_when_the_company_policy_already_requires_mfa_for_everyone()
-    {
-        await using var f = await FixtureAsync();
-        var t = await f.Db.Tenants.SingleAsync(x => x.TenantId == WmsFixture.TenantId);
-        t.MfaRequired = true;
-        await f.Db.SaveChangesAsync();
-        f.Db.ChangeTracker.Clear();
-        var users = f.Get<UserAdminService>();
-
-        // con la política de la compañía encendida, MFA se exige a todos aunque el indicador propio de la persona esté apagado
-        var on = (await users.GetUsersAsync(default)).Single(u => u.Id == 1);
-        Assert.True(on.MfaRequiredByCompany);
-        Assert.False(on.MfaRequired);
-
-        t = await f.Db.Tenants.SingleAsync(x => x.TenantId == WmsFixture.TenantId);
-        t.MfaRequired = false;
-        await f.Db.SaveChangesAsync();
-        f.Db.ChangeTracker.Clear();
-        Assert.False((await users.GetUsersAsync(default)).Single(u => u.Id == 1).MfaRequiredByCompany);
-    }
-
-    [Fact]
     public async Task AdminResetMfaAsync_disables_the_confirmed_totp_and_the_user_can_enroll_again()
     {
         await using var f = await FixtureAsync();

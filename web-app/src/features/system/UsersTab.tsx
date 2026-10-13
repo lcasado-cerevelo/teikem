@@ -564,9 +564,7 @@ export function UsersTab({ creating = false, onCreateClose }: UsersTabProps) {
         cell: (u) => (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <Chip tone={u.mfaEnabled ? 'deliv' : 'fail'}>{u.mfaEnabled ? t('system.users.users.yes') : t('system.users.users.no')}</Chip>
-            {(u.mfaRequired || u.mfaRequiredByCompany) && !u.mfaEnabled && <Chip tone="cap">{t('system.users.users.mfaPending')}</Chip>}
-            {/* 2026-10-12: la política de la compañía lo exige a todos; el indicador de cada persona no cambia nada mientras esté encendida */}
-            {u.mfaRequiredByCompany && <Chip tone="cap">{t('system.users.users.mfaByCompany')}</Chip>}
+            {u.mfaRequired && !u.mfaEnabled && <Chip tone="cap">{t('system.users.users.mfaPending')}</Chip>}
           </span>
         ),
       },
@@ -654,7 +652,7 @@ export function UsersTab({ creating = false, onCreateClose }: UsersTabProps) {
         key: 'requireMfa',
         label: t('system.users.users.requireMfa'),
         perm: 'admin.users',
-        visible: (u) => !u.mfaRequired && !u.mfaRequiredByCompany,
+        visible: (u) => !u.mfaRequired,
         icon: <IconShield />,
         onClick: (u) => setMfaRequiredFor(u),
       },
@@ -662,7 +660,7 @@ export function UsersTab({ creating = false, onCreateClose }: UsersTabProps) {
         key: 'unrequireMfa',
         label: t('system.users.users.unrequireMfa'),
         perm: 'admin.users',
-        visible: (u) => Boolean(u.mfaRequired) && !u.mfaRequiredByCompany,
+        visible: (u) => Boolean(u.mfaRequired),
         icon: <IconShield />,
         onClick: (u) => setMfaRequiredFor(u),
       },
