@@ -93,7 +93,9 @@ public sealed class PackageLookupTests
         var sql = File.ReadAllText(Path.Combine(DatabaseInitializer.ResolveRepoRoot(null), "Diseño", "logistica-db-update.sql")).Replace("\r\n", "\n");
         var start = sql.IndexOf("2026-10-12 (e) — Escaneo por número de paquete (Lote 44, F-G2).", StringComparison.Ordinal);
         Assert.True(start > sql.IndexOf("2026-10-12 (d) — Impresoras y plantillas de label", StringComparison.Ordinal), "La sección (e) debe ir después de la (d).");
-        var section = sql[start..];
+        // solo esta sección: otras posteriores (de cualquier rama) pueden llevar UNIQUE
+        var next = sql.IndexOf("\n/* ----", start, StringComparison.Ordinal);
+        var section = next < 0 ? sql[start..] : sql[start..next];
         Assert.Contains("IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_CargoLine_PackageNumber' AND object_id = OBJECT_ID('dbo.CargoLine'))\n"
                         + "    CREATE INDEX IX_CargoLine_PackageNumber ON dbo.CargoLine(PackageNumber) INCLUDE (TransportOrderId)\n"
                         + "        WHERE IsActive = 1 AND PackageNumber IS NOT NULL;\nGO", section);

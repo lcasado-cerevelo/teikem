@@ -35,7 +35,9 @@ public class PrintingSqlTests
         var start = sql.IndexOf(SectionTitle, StringComparison.Ordinal);
         Assert.True(start > 0, "Falta la sección 2026-10-12 (d) en logistica-db-update.sql.");
         Assert.True(start > sql.IndexOf("2026-10-12 (c) — Índice de la lista de órdenes por compañía", StringComparison.Ordinal), "La sección debe ir después de la (c).");
-        return sql[start..];
+        // la sección llega hasta la siguiente (otras secciones posteriores —de cualquier rama— pueden llevar DROP o UNIQUE y no son de esta prueba)
+        var next = sql.IndexOf("\n/* ----", start, StringComparison.Ordinal);
+        return next < 0 ? sql[start..] : sql[start..next].TrimEnd('\n') + "\n";
     }
 
     [Fact]
