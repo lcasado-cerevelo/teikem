@@ -71,8 +71,8 @@
 @media(max-width:720px){
   .cs-list{max-height:none}
   .cs-grid{grid-template-columns:minmax(0,1fr)}
-  .cs-filter{width:100%}
-  .cs-filter select{flex:1;max-width:none}
+  .cs-filter{width:100%;min-width:0;max-width:100%;box-sizing:border-box}
+  .cs-filter select{flex:1 1 0;min-width:0;width:0;max-width:none;box-sizing:border-box;text-overflow:ellipsis}
   .cs-default{grid-template-columns:minmax(0,1fr) auto}
   .cs-default>.f:nth-child(2){grid-column:1}
 }

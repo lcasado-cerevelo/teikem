@@ -260,7 +260,7 @@ test.describe('Órdenes — expediente (Lote F-C2)', () => {
     if (isMobile) await expectNoHorizontalScroll(page)
 
     // ---- Re-cotizar con una tarifa nueva ----
-    const utcToday = new Date().toISOString().slice(0, 10)
+    const utcToday = tenantDay(0) // el día de la compañía (no el UTC: pasadas las 8 p. m. en Puerto Rico el UTC ya es mañana y la tarifa quedaría programada)
     await ok(request.patch(`${API_URL}/api/v1/contracts/${contractId}/rate-components/${rate.id}`, { headers, data: { rate: 120, effectiveFrom: utcToday } }), 'tarifa nueva')
     await headBtn(page, 'Re-cotizar').click()
     dialog = page.getByRole('dialog')

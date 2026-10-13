@@ -1,6 +1,7 @@
 // Lógica pura de los contratos del cliente (F-A2): validaciones espejo del servidor (ContractRules, RateService,
 // SpecialServiceService), borrador del SLA, plan de guardado del modelo de facturación y armado de los requests.
 // Sin React ni red, para probarla sola (contractRules.test.ts).
+import { tenantToday } from '../../kernel/api/tenantZone'
 import { z } from 'zod'
 import { ApiError } from '../../kernel/api/problem'
 import type { components } from '../../kernel/api/schema'
@@ -38,17 +39,17 @@ export type CodType = (typeof COD_TYPES)[number]
 export const MIN_EXTRA_PIECE = 2
 
 /**
- * «Hoy» por omisión de «Vigente desde»: el servidor valida con su fecha UTC («no anterior a hoy»); si la compañía va
- * detrás de UTC (p. ej. Puerto Rico de noche) su «hoy» ya sería ayer para el servidor. Se usa el día más reciente.
+ * «Hoy» por omisión de «Vigente desde»: el día de la COMPAÑÍA (America/Puerto_Rico por omisión), el mismo que usa el servidor (`TenantClock`)
+ * para validar «no anterior a hoy». Antes se tomaba el más reciente entre ese día y el día UTC, y de noche (en Puerto Rico, desde las 8 p. m.)
+ * la tarifa nueva quedaba programada para mañana y «desaparecía» de la lista (2026-10-12).
  */
-export function defaultEffectiveDate(tenantToday: string, now: Date = new Date()): string {
-  const utc = serverToday(now)
-  return utc > tenantToday ? utc : tenantToday
+export function defaultEffectiveDate(tenantToday: string): string {
+  return tenantToday
 }
 
-/** «Hoy» del servidor (fecha UTC): la vigencia de una nueva versión o de un cierre no puede ser anterior. */
+/** «Hoy» del servidor = el día de la compañía: la vigencia de una nueva versión o de un cierre no puede ser anterior. */
 export function serverToday(now: Date = new Date()): string {
-  return now.toISOString().slice(0, 10)
+  return tenantToday(now)
 }
 
 /** Nombre corto de un contrato para el selector y los títulos: «Número · Título». */

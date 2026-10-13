@@ -14,6 +14,7 @@ import {
   contractValuesOf,
   defaultContractId,
   defaultEffectiveDate,
+  serverToday,
   isFilledRow,
   NEW_SPECIAL_TYPE,
   planBillingSave,
@@ -59,12 +60,11 @@ const msg = {
 }
 
 describe('fechas', () => {
-  it('«hoy» por omisión es el día más reciente entre la compañía y el servidor (UTC)', () => {
-    // 21:30 en Puerto Rico del 9-oct = 01:30 UTC del 10-oct: el servidor ya está en el día 10
-    expect(defaultEffectiveDate('2026-10-09', new Date('2026-10-10T01:30:00Z'))).toBe('2026-10-10')
-    expect(defaultEffectiveDate('2026-10-10', new Date('2026-10-10T15:00:00Z'))).toBe('2026-10-10')
-    // compañía por delante de UTC
-    expect(defaultEffectiveDate('2026-10-11', new Date('2026-10-10T20:00:00Z'))).toBe('2026-10-11')
+  it('«hoy» por omisión es el día de la compañía (no el día UTC): de noche en Puerto Rico sigue siendo hoy', () => {
+    // 21:30 en Puerto Rico del 9-oct = 01:30 UTC del 10-oct: para el servidor y la pantalla todavía es el día 9
+    expect(defaultEffectiveDate('2026-10-09')).toBe('2026-10-09')
+    expect(serverToday(new Date('2026-10-10T01:30:00Z'))).toBe('2026-10-09')
+    expect(serverToday(new Date('2026-10-10T15:00:00Z'))).toBe('2026-10-10')
   })
 
   it('contrato por omisión: el vigente, si no el marcado, si no el primero', () => {
