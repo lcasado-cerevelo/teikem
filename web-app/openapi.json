@@ -17073,6 +17073,13 @@
               "format": "int32",
               "default": 20
             }
+          },
+          {
+            "name": "zipClass",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -30634,6 +30641,33 @@
           },
           "skipped": {
             "type": "boolean"
+          },
+          "inferred": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "originalPostalCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "variant": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "variantName": {
+            "type": "string",
+            "nullable": true
+          },
+          "cells": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -35271,6 +35305,13 @@
             "type": "string",
             "format": "uuid",
             "nullable": true
+          },
+          "variants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportTemplateVariantDto"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -35344,6 +35385,13 @@
           "defaultClientName": {
             "type": "string",
             "nullable": true
+          },
+          "variants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportTemplateVariantDto"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -35397,6 +35445,13 @@
           },
           "clearDefaultClient": {
             "type": "boolean",
+            "nullable": true
+          },
+          "variants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportTemplateVariantDto"
+            },
             "nullable": true
           }
         },
@@ -39466,6 +39521,10 @@
             "nullable": true
           },
           "municipality": {
+            "type": "string",
+            "nullable": true
+          },
+          "zipClass": {
             "type": "string",
             "nullable": true
           }
@@ -49355,6 +49414,48 @@
                 "type": "string"
               }
             },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ImportTemplateVariantDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "conditions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportVariantConditionDto"
+            },
+            "nullable": true
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportTemplateColumnDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ImportVariantConditionDto": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "operator": {
+            "type": "string",
+            "nullable": true
+          },
+          "value": {
+            "type": "string",
             "nullable": true
           }
         },

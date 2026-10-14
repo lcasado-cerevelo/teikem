@@ -14,6 +14,19 @@ namespace Teikem.Infrastructure.Contracts;
 public sealed record ImportTemplateColumnDto(int Position, string Field, int? Part = null, string? Separator = null);
 
 /// <summary>
+/// Lote 46 (F-B3, solo consignatarios): condición de una variante sobre la columna Position del archivo. Operator: EMPTY (vacía),
+/// NOT_EMPTY (trae algo), EQUALS (igual a Value) o CONTAINS (contiene Value); el texto se compara sin acentos ni mayúsculas.
+/// </summary>
+public sealed record ImportVariantConditionDto(int Position, string Operator, string? Value = null);
+
+/// <summary>
+/// Lote 46 (F-B3, solo consignatarios): variante de mapeo. A cada fila se le aplica la PRIMERA variante cuyas condiciones (todas)
+/// se cumplen; sin condiciones aplica siempre (solo puede ir al final). Columns: el mapeo de esa variante (mismas reglas que las
+/// columnas de la plantilla). Los defaults son los de la plantilla.
+/// </summary>
+public sealed record ImportTemplateVariantDto(string? Name, IReadOnlyList<ImportVariantConditionDto>? Conditions, IReadOnlyList<ImportTemplateColumnDto> Columns);
+
+/// <summary>
 /// Plantilla reutilizable. ClientPublicId null = plantilla general del tenant (sirve para cualquier cliente). DefaultClientPublicId
 /// (Lote 45): cliente que la importación propone por defecto («todo el archivo es de X»); no limita el uso de la plantilla.
 /// </summary>
@@ -32,7 +45,8 @@ public sealed record ImportTemplateDto(
     DateTime CreatedAtUtc,
     DateTime? UpdatedAtUtc,
     Guid? DefaultClientPublicId = null,
-    string? DefaultClientName = null);
+    string? DefaultClientName = null,
+    IReadOnlyList<ImportTemplateVariantDto>? Variants = null);
 
 /// <summary>
 /// Alta de plantilla. Columns: posiciones únicas &gt;= 1 y campos del catálogo (al menos consigneeName o consigneeCode y
@@ -46,11 +60,14 @@ public sealed record ImportTemplateCreateRequest(
     string? Delimiter = null,
     bool HasHeader = true,
     string? Kind = null,
-    Guid? DefaultClientPublicId = null);
+    Guid? DefaultClientPublicId = null,
+    IList<ImportTemplateVariantDto>? Variants = null);
 
 /// <summary>
 /// Edición parcial: null = sin cambio. Columns/Defaults reemplazan la lista completa; ClearDefaults borra los defaults; MakeGeneral quita el cliente.
 /// DefaultClientPublicId cambia el cliente por defecto y ClearDefaultClient lo quita (Lote 45; excluyentes).
+/// Variants (Lote 46, consignatarios): null = sin cambio; lista = reemplaza las variantes; [] = vuelve a una sola variante (con Columns
+/// o, si no viene, las columnas de la primera variante). Con variantes, Columns no se envía.
 /// </summary>
 public sealed record ImportTemplatePatchRequest(
     string? Name = null,
@@ -62,7 +79,8 @@ public sealed record ImportTemplatePatchRequest(
     string? Delimiter = null,
     bool? HasHeader = null,
     Guid? DefaultClientPublicId = null,
-    bool? ClearDefaultClient = null);
+    bool? ClearDefaultClient = null,
+    IList<ImportTemplateVariantDto>? Variants = null);
 
 // ---------------------------------------------------------------- lotes (validar → confirmar)
 

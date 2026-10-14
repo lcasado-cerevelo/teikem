@@ -59,6 +59,7 @@ const FIELDS = [
   { field: 'name', required: true, defaultAllowed: false },
   { field: 'line1', required: true, defaultAllowed: false },
   { field: 'city', required: true, defaultAllowed: true },
+  { field: 'postalCode', required: false, defaultAllowed: true },
   { field: 'country', required: false, defaultAllowed: true },
   { field: 'defaultServiceMinutes', required: false, defaultAllowed: true },
   { field: 'contactPhone', required: false, defaultAllowed: true },
@@ -132,7 +133,7 @@ function route({ method, url, body }: Call): unknown {
     return templates.filter((x) => inactive || x.isActive !== false)
   }
   if (p === '/api/v1/locations/import-templates' && method === 'POST') {
-    const created = { ...T1, id: 9, publicId: 't-new', name: body?.name, columns: body?.columns, defaults: body?.defaults ?? {} }
+    const created = { ...T1, id: 9, publicId: 't-new', name: body?.name, columns: body?.columns, defaults: body?.defaults ?? {}, variants: body?.variants ?? null }
     templates = [...templates, created]
     return created
   }
@@ -382,7 +383,7 @@ describe('Importar consignatarios — editor de plantillas', () => {
     await user.selectOptions(within(dialog).getByLabelText('Columna 2'), 'Nombre *')
     await user.selectOptions(within(dialog).getByLabelText('Columna 3'), 'Dirección *')
     await user.click(within(dialog).getByRole('button', { name: 'Guardar plantilla' }))
-    expect(await within(dialog).findByText('La plantilla debe indicar la ciudad (city) en una columna o en defaults.')).toBeInTheDocument()
+    expect(await within(dialog).findByText('La plantilla debe indicar la ciudad (city) o el código postal (postalCode), en una columna o en defaults.')).toBeInTheDocument()
     expect(callsTo('POST', '/api/v1/locations/import-templates')).toHaveLength(0)
   })
 
@@ -666,6 +667,221 @@ describe('Importar consignatarios — Excel, cliente por defecto y mapeo (Lote F
       ],
       clearDefaultClient: true,
     })
+  })
+})
+
+// Lote F-B3: variantes de mapeo con condición por fila y lo que la vista previa dice del catálogo de códigos postales (datos sintéticos).
+const MIXED = {
+  ...T1,
+  publicId: 't-mix',
+  name: 'Mixta',
+  columns: [
+    { position: 1, field: 'code' },
+    { position: 2, field: 'name' },
+    { position: 6, field: 'line1' },
+    { position: 8, field: 'city' },
+    { position: 9, field: 'ignore' },
+  ],
+  variants: [
+    {
+      name: 'Formato B',
+      conditions: [{ position: 9, operator: 'EQUALS', value: 'PUERTO RICO' }],
+      columns: [
+        { position: 1, field: 'code' },
+        { position: 2, field: 'name' },
+        { position: 6, field: 'line1' },
+        { position: 8, field: 'city' },
+        { position: 9, field: 'ignore' },
+      ],
+    },
+    {
+      name: null,
+      conditions: [],
+      columns: [
+        { position: 1, field: 'code' },
+        { position: 2, field: 'name' },
+        { position: 3, field: 'line1' },
+        { position: 5, field: 'postalCode' },
+      ],
+    },
+  ],
+}
+const MIXED_PREVIEW = {
+  ...PREVIEW,
+  templatePublicId: 't-mix',
+  templateName: 'Mixta',
+  rowCount: 3,
+  validRows: 2,
+  rows: [
+    {
+      row: 1, line: 2, isValid: true, variant: 2, variantName: 'Variante 2', inferred: ['city', 'state'],
+      values: { code: 'A-1', name: 'Colmado Uno', line1: 'Calle 1', postalCode: '00716', city: 'Ponce', state: 'PR' },
+      errors: {}, warnings: ['Pueblo tomado del código postal 00716: Ponce.'],
+    },
+    {
+      row: 2, line: 3, isValid: true, variant: 2, variantName: 'Variante 2', inferred: ['postalCode', 'city', 'state'], originalPostalCode: '00734',
+      values: { code: 'A-2', name: 'Ferretería Tres', line1: 'Calle 3', postalCode: '00716', city: 'Ponce', state: 'PR' },
+      errors: {}, warnings: ['Código postal ajustado: 00734 es de apartados postales (P.O. Box); se usó 00716, de entrega en Ponce.'],
+    },
+    {
+      row: 3, line: 4, isValid: false, cells: ['X-1', 'Fila rara', '', 'USA'],
+      values: {}, errors: { variant: 'Ninguna variante de la plantilla aplica a esta fila; revise las condiciones de las variantes.' }, warnings: [],
+    },
+  ],
+}
+
+describe('Importar consignatarios — variantes y catálogo de códigos postales (Lote F-B3)', () => {
+  it('Nueva plantilla con dos variantes: condición, mapeo propio, la variante sin condición va al final y viaja como variants', async () => {
+    const user = userEvent.setup()
+    renderModal()
+    await screen.findByText(/1\. Nombre/)
+    await user.click(screen.getByRole('button', { name: 'Nueva plantilla' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Nueva plantilla de importación' })
+    expect(within(dialog).queryByRole('tablist')).toBeNull() // una sola variante: el editor de siempre
+    await user.type(within(dialog).getByLabelText(/Nombre de la plantilla/), 'Mixta')
+    await user.selectOptions(within(dialog).getByLabelText('Columna 1'), 'Número')
+    await user.selectOptions(within(dialog).getByLabelText('Columna 2'), 'Nombre *')
+    await user.selectOptions(within(dialog).getByLabelText('Columna 3'), 'Dirección *')
+    await user.selectOptions(within(dialog).getByLabelText('Columna 4'), 'Pueblo *')
+
+    await user.click(within(dialog).getByRole('button', { name: /Agregar variante/ }))
+    const tabs = within(dialog).getByRole('tablist', { name: 'Variantes de mapeo' })
+    expect(within(tabs).getByRole('tab', { name: 'Variante 2' })).toHaveAttribute('aria-selected', 'true')
+    // la variante nueva copia el mapeo de la actual y trae una condición por llenar
+    expect(within(dialog).getByLabelText('Columna 4')).toHaveValue('city')
+    await user.type(within(dialog).getByLabelText('Nombre de la variante 2'), 'Formato B')
+    await user.selectOptions(within(dialog).getByLabelText('Columna de la condición 1'), 'Columna 5')
+    expect(within(dialog).getByLabelText('Condición 1')).toHaveValue('EQUALS')
+    await user.type(within(dialog).getByLabelText('Valor de la condición 1'), 'PUERTO RICO')
+    await user.selectOptions(within(dialog).getByLabelText('Columna 3'), 'Pueblo *')
+    await user.selectOptions(within(dialog).getByLabelText('Columna 4'), 'Dirección *')
+
+    // la 1 no tiene condición y no es la última: no se guarda y su pestaña lo dice
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar plantilla' }))
+    await waitFor(() => expect(within(tabs).getAllByRole('tab')[0]).toHaveTextContent('Variante 1 · con errores'))
+    expect(callsTo('POST', '/api/v1/locations/import-templates')).toHaveLength(0)
+    await user.click(within(dialog).getByRole('button', { name: 'Mover la variante 2 antes' }))
+    expect(within(tabs).getByRole('tab', { name: 'Variante 1: Formato B' })).toHaveAttribute('aria-selected', 'true')
+    expect(within(dialog).getByLabelText('Columna 3')).toHaveValue('city')
+    await user.click(within(tabs).getByRole('tab', { name: /Variante 2/ }))
+    expect(within(dialog).getByText('Sin condición: aplica a todas las filas')).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Columna 3')).toHaveValue('line1')
+
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar plantilla' }))
+    await waitFor(() => expect(callsTo('POST', '/api/v1/locations/import-templates')).toHaveLength(1))
+    expect(callsTo('POST', '/api/v1/locations/import-templates')[0].body).toEqual({
+      name: 'Mixta',
+      delimiter: ',',
+      hasHeader: true,
+      variants: [
+        {
+          name: 'Formato B',
+          conditions: [{ position: 5, operator: 'EQUALS', value: 'PUERTO RICO' }],
+          columns: [
+            { position: 1, field: 'code' },
+            { position: 2, field: 'name' },
+            { position: 3, field: 'city' },
+            { position: 4, field: 'line1' },
+            { position: 5, field: 'ignore' },
+          ],
+        },
+        {
+          name: null,
+          conditions: [],
+          columns: [
+            { position: 1, field: 'code' },
+            { position: 2, field: 'name' },
+            { position: 3, field: 'line1' },
+            { position: 4, field: 'city' },
+            { position: 5, field: 'ignore' },
+          ],
+        },
+      ],
+      defaults: null,
+    })
+  })
+
+  it('una condición «igual a» sin valor no se guarda; «no está vacía» no pide valor', async () => {
+    const user = userEvent.setup()
+    renderModal()
+    await screen.findByText(/1\. Nombre/)
+    await user.click(screen.getByRole('button', { name: 'Nueva plantilla' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Nueva plantilla de importación' })
+    await user.type(within(dialog).getByLabelText(/Nombre de la plantilla/), 'Dos')
+    await user.selectOptions(within(dialog).getByLabelText('Columna 1'), 'Nombre *')
+    await user.selectOptions(within(dialog).getByLabelText('Columna 2'), 'Dirección *')
+    await user.selectOptions(within(dialog).getByLabelText('Columna 3'), 'Pueblo *')
+    await user.click(within(dialog).getByRole('button', { name: /Agregar variante/ }))
+    await user.click(within(dialog).getByRole('button', { name: 'Mover la variante 2 antes' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar plantilla' }))
+    expect(await within(dialog).findByText('Escoja la columna de la condición.')).toBeInTheDocument()
+    expect(within(dialog).getByText('La condición «igual a» o «contiene» necesita un valor.')).toBeInTheDocument()
+    await user.selectOptions(within(dialog).getByLabelText('Columna de la condición 1'), 'Columna 4')
+    await user.selectOptions(within(dialog).getByLabelText('Condición 1'), 'no está vacía')
+    expect(within(dialog).queryByLabelText('Valor de la condición 1')).toBeNull()
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar plantilla' }))
+    await waitFor(() => expect(callsTo('POST', '/api/v1/locations/import-templates')).toHaveLength(1))
+    const body = callsTo('POST', '/api/v1/locations/import-templates')[0].body as { variants: { conditions: unknown[] }[] }
+    expect(body.variants[0].conditions).toEqual([{ position: 4, operator: 'NOT_EMPTY', value: null }])
+    expect(body).not.toHaveProperty('columns')
+  })
+
+  it('editar una plantilla con variantes las muestra y quitar la segunda vuelve a una sola (PATCH con columns y variants vacío)', async () => {
+    templates = [{ ...MIXED }]
+    const user = userEvent.setup()
+    renderModal()
+    expect(await screen.findByText('Mapeo en 2 variantes (se usa la primera que se cumpla):')).toBeInTheDocument()
+    expect(screen.getByText(/Columna 9 es igual a «PUERTO RICO»/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Editar' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Editar plantilla de importación' })
+    const tabs = within(dialog).getByRole('tablist', { name: 'Variantes de mapeo' })
+    expect(within(tabs).getAllByRole('tab').map((x) => x.textContent)).toEqual(['Variante 1: Formato B', 'Variante 2'])
+    expect(within(dialog).getByLabelText('Columna de la condición 1')).toHaveValue('9')
+    expect(within(dialog).getByLabelText('Valor de la condición 1')).toHaveValue('PUERTO RICO')
+    expect(within(dialog).getByLabelText('Columna 8')).toHaveValue('city')
+    await user.click(within(tabs).getByRole('tab', { name: 'Variante 2' }))
+    expect(within(dialog).getByLabelText('Columna 5')).toHaveValue('postalCode')
+    await user.click(within(dialog).getByRole('button', { name: 'Quitar la variante 2' }))
+    expect(within(dialog).queryByRole('tablist')).toBeNull()
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar plantilla' }))
+    await waitFor(() => expect(callsTo('PATCH', '/api/v1/locations/import-templates/t-mix')).toHaveLength(1))
+    const body = callsTo('PATCH', '/api/v1/locations/import-templates/t-mix')[0].body
+    expect(body).toMatchObject({ variants: [] })
+    expect((body?.columns as { field: string }[]).filter((c) => c.field !== 'ignore')).toEqual([
+      { position: 1, field: 'code' },
+      { position: 2, field: 'name' },
+      { position: 6, field: 'line1' },
+      { position: 8, field: 'city' },
+    ])
+  })
+
+  it('la vista previa dice qué variante usó cada fila, marca lo deducido del catálogo y el código postal ajustado; el resultado lo repite', async () => {
+    templates = [{ ...MIXED }]
+    mock.override = ({ method, url }) => {
+      if (method === 'POST' && url.pathname === '/api/v1/locations/import/validate-file') return MIXED_PREVIEW
+      if (method === 'POST' && url.pathname === '/api/v1/locations/import/b-1/confirm')
+        return { ...RESULT, created: 2, failed: 0, skipped: 1, rows: [{ ...MIXED_PREVIEW.rows[0], locationPublicId: 'l-1' }, { ...MIXED_PREVIEW.rows[1], locationPublicId: 'l-2' }, { ...MIXED_PREVIEW.rows[2], skipped: true }] }
+      return undefined
+    }
+    const user = userEvent.setup()
+    renderModal()
+    await screen.findByText(/Mapeo en 2 variantes/)
+    await user.upload(fileInput(), csv())
+    await screen.findByText(/3 filas detectadas/)
+    expect(screen.getByRole('columnheader', { name: 'Variante' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Estado o región' })).toBeInTheDocument() // deducido aunque la plantilla no lo trae
+    expect(screen.getAllByText('Variante 2').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getAllByText('del catálogo').length).toBeGreaterThanOrEqual(4)
+    expect(screen.getByText('00734').tagName).toBe('S')
+    expect(screen.getByText('Código postal ajustado')).toBeInTheDocument()
+    expect(screen.getByText('Variante: Ninguna variante de la plantilla aplica a esta fila; revise las condiciones de las variantes.')).toBeInTheDocument()
+    expect(screen.getByText('Celdas de la fila: X-1 | Fila rara | ∅ | USA')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Importar' }))
+    const result = (await screen.findByText('Resultado de la importación')).closest('.cs-result') as HTMLElement
+    const adjusted = within(result).getByRole('table', { name: /completados o ajustados con el catálogo de códigos postales: 2/ })
+    expect(within(adjusted).getByText('Ferretería Tres')).toBeInTheDocument()
+    expect(within(adjusted).getByText(/se usó 00716, de entrega en Ponce/)).toBeInTheDocument()
   })
 })
 

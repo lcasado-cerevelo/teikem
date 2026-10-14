@@ -12586,6 +12586,7 @@ export interface paths {
                 query?: {
                     search?: string;
                     take?: number;
+                    zipClass?: string;
                 };
                 header?: never;
                 path?: never;
@@ -21363,6 +21364,12 @@ export interface components {
             locationPublicId?: string | null;
             error?: string | null;
             skipped?: boolean;
+            inferred?: string[] | null;
+            originalPostalCode?: string | null;
+            /** Format: int32 */
+            variant?: number | null;
+            variantName?: string | null;
+            cells?: string[] | null;
         };
         ConsigneeImportValidateRequest: {
             /** Format: uuid */
@@ -22911,6 +22918,7 @@ export interface components {
             kind?: string | null;
             /** Format: uuid */
             defaultClientPublicId?: string | null;
+            variants?: components["schemas"]["ImportTemplateVariantDto"][] | null;
         };
         ImportTemplateDto: {
             /** Format: int32 */
@@ -22936,6 +22944,7 @@ export interface components {
             /** Format: uuid */
             defaultClientPublicId?: string | null;
             defaultClientName?: string | null;
+            variants?: components["schemas"]["ImportTemplateVariantDto"][] | null;
         };
         ImportTemplatePatchRequest: {
             name?: string | null;
@@ -22952,6 +22961,7 @@ export interface components {
             /** Format: uuid */
             defaultClientPublicId?: string | null;
             clearDefaultClient?: boolean | null;
+            variants?: components["schemas"]["ImportTemplateVariantDto"][] | null;
         };
         ImportValidateRequest: {
             /** Format: uuid */
@@ -24289,6 +24299,7 @@ export interface components {
             countryCode?: string | null;
             country?: string | null;
             municipality?: string | null;
+            zipClass?: string | null;
         };
         PrintStationOptionsDto: {
             printers?: components["schemas"]["PrinterOptionDto"][] | null;
@@ -27551,6 +27562,17 @@ export interface components {
             rowCount?: number;
             columns?: components["schemas"]["ImportFileColumnDto"][] | null;
             sampleRows?: string[][] | null;
+        };
+        ImportTemplateVariantDto: {
+            name?: string | null;
+            conditions?: components["schemas"]["ImportVariantConditionDto"][] | null;
+            columns?: components["schemas"]["ImportTemplateColumnDto"][] | null;
+        };
+        ImportVariantConditionDto: {
+            /** Format: int32 */
+            position?: number;
+            operator?: string | null;
+            value?: string | null;
         };
     };
     responses: never;

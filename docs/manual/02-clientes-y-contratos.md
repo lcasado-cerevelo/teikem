@@ -448,6 +448,74 @@ Casos frecuentes:
   responden 409 «El lote ya se está confirmando o fue confirmado…»). En ese caso valide **el mismo archivo otra vez**: las
   filas que ya se crearon salen con «Ya existe un consignatario con el código…» y se confirma solo el resto.
 
+### 2.3 Importación de consignatarios: pueblo, estado y ZIP con el catálogo de códigos postales, y variantes de mapeo (Lote 46, F-B3)
+
+Mismos permisos y módulo que §2.1 (no hay permisos nuevos). Pantalla: [frontend/fb3-variantes-y-codigos-postales.md](frontend/fb3-variantes-y-codigos-postales.md).
+
+**Catálogo de códigos postales.** `dbo.PostalLocality` (global) gana `ZipClass` (`STANDARD` normal, `PO_BOX` apartados, `UNIQUE` único de una entidad, `MILITARY`
+APO/FPO; NULL = sin clasificar), `LocaleType`, `DistrictName`, `DistrictNo`, `Latitude`, `Longitude` y `GeoAccuracy` (sección 2026-10-14 de
+`Diseño/logistica-db-update.sql`, con `CK_PostalLocality_ZipClass` e `IX_PostalLocality_PostalCode`). Los llena el script de **datos** aparte
+`Diseño/logistica-db-zip-catalog.sql` (41.486 ZIP; USPS «Zip Locale Detail» y **GeoNames**, licencia CC BY 4.0: hay que darle crédito), que se corre a mano con
+`sqlcmd … -I -f 65001 -i "Diseño/logistica-db-zip-catalog.sql"` **después** de `db-update`; es idempotente y, si faltan las columnas, se detiene sin tocar nada
+(«logistica-db-zip-catalog.sql: faltan las columnas nuevas de dbo.PostalLocality; aplique primero logistica-db-update.sql (db-update). No se cambió nada.»). El API lee
+el catálogo en memoria por una hora: después de correr el script, reinicie el API (o espere).
+
+**GET /api/v1/postal-localities** (usuario autenticado) devuelve `zipClass` en cada fila y acepta `?zipClass=` (lista separada por comas de `STANDARD`, `PO_BOX`,
+`UNIQUE`, `MILITARY`, o `DELIVERY` = los de entrega: normal, único y los sin clasificar). Sin filtro salen todos (direcciones postales). El alta y la edición de
+consignatarios usan `DELIVERY`.
+
+**Inferencia en la importación** (filas de país cubierto por el catálogo: Puerto Rico y Estados Unidos; antes de exigir los obligatorios):
+
+- Solo ZIP → `city` (en Puerto Rico el municipio, con acentos) y `state` del catálogo, si faltan.
+- Solo pueblo → `postalCode` = el PRIMER ZIP de entrega del pueblo (ciudad postal; si no hay, municipio), en orden fijo: `STANDARD`, luego `UNIQUE`, luego sin
+  clasificar; a igual tipo, el menor código. Con el estado de la fila se escoge entre pueblos homónimos de varios estados.
+- ZIP y pueblo → se guardan los dos; si no coinciden, aviso. El estado de la fila nunca se cambia (si difiere del ZIP, aviso).
+- ZIP `PO_BOX` o `MILITARY` → se sustituye por el primer ZIP de entrega de la MISMA ciudad (ciudad postal del ZIP; si no tiene, su municipio); la fila lleva
+  `originalPostalCode` y el aviso «Código postal ajustado…». Sin uno compatible, la fila se rechaza.
+- Los ZIP se comparan como texto de 5 dígitos (ZIP+4 vale por sus 5); los pueblos, sin acentos ni mayúsculas.
+- Cada fila trae `inferred` (campos completados: `city`, `state`, `postalCode`) y `originalPostalCode` en la vista previa (`validate`, `GET` del lote) y en el
+  resultado de `confirm`.
+- La plantilla ya no exige `city`: basta `city` **o** `postalCode` (en columna o en defaults). En el catálogo de campos (`/locations/import/fields`), `city` deja de ser
+  `required`.
+
+**Variantes de mapeo** (solo plantillas de consignatarios): `variants: [{ name, conditions: [{ position, operator, value }], columns: [...] }]` en el alta y el PATCH
+(`ImportTemplate.VariantsJson`; `ColumnsJson` queda con las columnas de la primera). `operator`: `EMPTY`, `NOT_EMPTY`, `EQUALS`, `CONTAINS` (texto sin acentos ni
+mayúsculas). A cada fila se le aplica la PRIMERA variante cuyas condiciones se cumplen todas; sin condiciones aplica siempre (solo puede ir al final). Cada variante se
+valida con las reglas de las columnas; los defaults son comunes. PATCH: `variants` ausente = sin cambio; `[]` = vuelve a una sola variante (con `columns` o las de la
+primera). Las filas traen `variant` (1..n) y `variantName`; la que no encaja trae `cells` (sus celdas). Una plantilla sin variantes funciona igual que antes.
+
+| Caso | Mensaje exacto | HTTP / tipo |
+|---|---|---|
+| ZIP con otro formato | `El código postal X no es válido: use 5 dígitos (o ZIP+4, como 00901-1234).` (`postalCode`) | error de fila |
+| ZIP que no está en el catálogo | `El código postal X no está en el catálogo de códigos postales; corríjalo, o déjelo vacío e indique el pueblo.` (`postalCode`) | error de fila |
+| Pueblo que no está en el catálogo | `El pueblo 'X' no está en el catálogo de códigos postales; corríjalo o indique el código postal.` (`city`) | error de fila |
+| Pueblo sin ZIP de entrega | `El pueblo 'X' no tiene un código postal de entrega (solo de apartados postales o militares); indique el código postal de la dirección física.` (`city`) | error de fila |
+| Pueblo en varios estados (EE. UU.) | `El pueblo 'X' existe en varios estados (IL, MA); indique el estado o el código postal.` (`city`) | error de fila |
+| ZIP de apartados / militar sin sustituto | `El código postal X es de apartados postales (P.O. Box) y Y no tiene un código postal de entrega con que sustituirlo; indique el código postal de la dirección física.` (o `…es de correo militar (APO/FPO)…`) (`postalCode`) | error de fila |
+| Ninguna variante aplica | `Ninguna variante de la plantilla aplica a esta fila; revise las condiciones de las variantes.` (`variant`) | error de fila |
+| ZIP de apartados sustituido | `Código postal ajustado: 00734 es de apartados postales (P.O. Box); se usó 00715, de entrega en Ponce.` | aviso |
+| Pueblo / estado / ZIP completados | `Pueblo tomado del código postal 00952: Toa Baja.` · `Estado tomado del catálogo de códigos postales: PR.` · `Código postal asignado: 00956, el primero de entrega de Bayamón.` | aviso |
+| ZIP y pueblo no coinciden | `El código postal 00716 es de Ponce, no de Caguas; se guardan los dos como vienen.` | aviso |
+| Estado distinto del del ZIP | `El estado NY no coincide con el del código postal (PR); se guarda como viene.` | aviso |
+| Plantilla sin pueblo ni ZIP | `La plantilla debe indicar la ciudad (city) o el código postal (postalCode), en una columna o en defaults.` (`columns`; antes «…la ciudad (city) en una columna o en defaults.») | 400 |
+| Variante sin condición que no es la última | `La variante N no tiene condición y deja sin uso a las que le siguen; póngala al final o agréguele una condición.` (`variants[i].conditions`) | 400 |
+| «igual a» / «contiene» sin valor | `La condición «igual a» o «contiene» necesita un valor.` (`variants[i].conditions[j].value`) | 400 |
+| Operador desconocido | `Condición desconocida: X. Use EMPTY, NOT_EMPTY, EQUALS o CONTAINS.` (`…operator`) | 400 |
+| Columna de la condición fuera de rango | `La posición debe ser 1 o mayor.` / `La posición no puede exceder 500.` (`…position`) | 400 |
+| Más de 10 variantes / más de 5 condiciones | `Una plantilla admite a lo sumo 10 variantes.` / `Una variante admite a lo sumo 5 condiciones.` | 400 |
+| Nombre de variante largo / valor largo | `Máximo 60 caracteres.` / `Máximo 100 caracteres.` | 400 |
+| Mapeo de una variante inválido | el mensaje de siempre con la llave de la variante (p. ej. `variants[1].columns`: `La plantilla debe incluir las columnas name y line1.`) | 400 |
+| `columns` y `variants` a la vez (o `columns` en el PATCH de una plantilla con variantes) | `Esta plantilla usa variantes: las columnas van dentro de cada variante (variants), no en columns.` (`columns`) | 400 |
+| Variantes en una plantilla de órdenes | `Las variantes de mapeo solo existen en las plantillas de consignatarios.` (`variants`) | 400 |
+| `zipClass` desconocido en `/postal-localities` | `Tipo de código postal desconocido: X. Use STANDARD, PO_BOX, UNIQUE, MILITARY o DELIVERY.` (`zipClass`) | 400 |
+
+Casos frecuentes:
+- **Archivo con dos disposiciones de columnas**: una variante por disposición; la condición suele ser una columna que solo una de las dos trae (p. ej. la 9 = «PUERTO
+  RICO» en una y vacía en la otra).
+- **El pueblo trae el barrio**: si el archivo trae «Bo. Pueblo» en una columna y el municipio en otra, mapee el municipio a **Pueblo** y el barrio a **Dirección (línea 2)**.
+- **Todos los ZIP salen «sin clasificar» / no hay «Código postal ajustado»**: falta correr `logistica-db-zip-catalog.sql` (o el API aún tiene el catálogo viejo en
+  memoria: reinícielo).
+
 ---
 
 ## 3. Direcciones y punto de recogido del cliente (resumen)

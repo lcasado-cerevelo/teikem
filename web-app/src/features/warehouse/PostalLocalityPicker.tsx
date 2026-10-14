@@ -43,9 +43,14 @@ export interface PostalLocalityPickerProps {
   'aria-label'?: string
   'aria-describedby'?: string
   onBlur?: () => void
+  /**
+   * Lote F-B3: tipos de ZIP que se ofrecen (`?zipClass=` del API). 'DELIVERY' = los de entrega (normal, único y sin clasificar),
+   * para direcciones de entrega como la del consignatario; sin él, todos (direcciones postales, como la del almacén).
+   */
+  zipClass?: string
 }
 
-export function PostalLocalityPicker({ city, postalCode, onChange, id, placeholder, disabled, invalid, required, onBlur, ...aria }: PostalLocalityPickerProps) {
+export function PostalLocalityPicker({ city, postalCode, onChange, id, placeholder, disabled, invalid, required, onBlur, zipClass, ...aria }: PostalLocalityPickerProps) {
   const t = useT()
   const autoId = useId()
   const inputId = id ?? autoId
@@ -64,7 +69,7 @@ export function PostalLocalityPicker({ city, postalCode, onChange, id, placehold
     return () => clearTimeout(h)
   }, [text])
 
-  const list = usePostalLocalities(search, { enabled: open && !disabled })
+  const list = usePostalLocalities(search, { enabled: open && !disabled }, zipClass)
   const options = list.data ?? []
   const selectedLabel = localityLabel({ city, postalCode })
 
@@ -187,6 +192,8 @@ export interface PostalLocalityPickerInputProps {
   fields?: LocalityFieldNames
   placeholder?: string
   disabled?: boolean
+  /** Lote F-B3: tipos de ZIP que se ofrecen (ver PostalLocalityPicker). */
+  zipClass?: string
 }
 
 /**
@@ -194,7 +201,7 @@ export interface PostalLocalityPickerInputProps {
  * (marcando el formulario como modificado), el código postal, el estado y el país (código del lookup Country). Quitar el
  * valor vacía ciudad, código postal y estado (el país se queda: sin localidad el backend usa PR).
  */
-export function PostalLocalityPickerInput({ fields, placeholder, disabled }: PostalLocalityPickerInputProps) {
+export function PostalLocalityPickerInput({ fields, placeholder, disabled, zipClass }: PostalLocalityPickerInputProps) {
   const info = useFieldInfo('PostalLocalityPickerInput')
   const { control, setValue } = useFormContext()
   const { field } = useController({ name: info.name, control })
@@ -210,6 +217,7 @@ export function PostalLocalityPickerInput({ fields, placeholder, disabled }: Pos
       postalCode={postalCode ?? ''}
       placeholder={placeholder}
       disabled={disabled}
+      zipClass={zipClass}
       invalid={info.invalid}
       required={info.required}
       aria-describedby={info.describedBy}

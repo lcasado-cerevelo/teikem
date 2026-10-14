@@ -3,6 +3,7 @@
 // ZIP, ventana horaria, minutos de servicio y notas) va en la sección plegada «Opciones de entrega». POST (tipo fijo DELIVERY,
 // país PR por omisión) o PATCH solo de lo cambiado con `rowVersion`; el teléfono es un ContactPoint de la localización
 // (`contacts.manage` más `locations.update`). Errores del servidor por campo con `applyProblemDetails`.
+// Lote F-B3: el selector de pueblo/ZIP ofrece solo ZIP de entrega (`zipClass=DELIVERY`: sin apartados postales ni militares).
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -181,7 +182,7 @@ export function ConsigneeFormModal({ open, consignee, phone, defaultOwner, onClo
         </Field>
         <div className="r2">
           <Field name="city" label={t('consignees.town')} required help={t('consignees.townHelp')}>
-            <PostalLocalityPickerInput />
+            <PostalLocalityPickerInput zipClass="DELIVERY" />
           </Field>
           {canPhone ? (
             <Field name="phone" label={t('consignees.phone')}>

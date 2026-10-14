@@ -23,6 +23,8 @@ namespace Teikem.Infrastructure.Services;
 /// catálogo del tipo (ImportMapping para ORDER, ConsigneeImportMapping para CONSIGNEE).
 /// Lote 45 (F-B2): las columnas de CONSIGNEE pueden ser «No usar» (ignore), unir varias columnas en un campo (Part/Separator)
 /// y la plantilla guarda un cliente por defecto (DefaultClientId: activo y, si la plantilla es de un cliente, ese mismo).
+/// Lote 46 (F-B3): una plantilla CONSIGNEE puede tener VARIANTES de mapeo (VariantsJson) con condición por fila; ColumnsJson queda
+/// con las columnas de la primera. Sin variantes (NULL) todo sigue igual. Los defaults son comunes a todas las variantes.
 /// </summary>
 public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext tenant)
 {
@@ -91,9 +93,12 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
         var name = RequireName(req.Name);
         var kind = NormalizeKind(req.Kind, expectedKind);
         var delimiter = NormalizeDelimiter(req.Delimiter);
-        var columns = ToColumns(req.Columns);
         var defaults = ToDefaults(req.Defaults);
-        ThrowIfErrors(ValidateColumns(kind, columns, defaults));
+        var variants = ToVariants(req.Variants);
+        if (variants.Count > 0 && !IsConsignee(kind)) throw new ValidationException("variants", ConsigneeImportVariants.OnlyConsigneeMessage);
+        if (variants.Count > 0 && req.Columns is { Count: > 0 }) throw new ValidationException("columns", ConsigneeImportVariants.ColumnsInsideVariantsMessage);
+        var columns = variants.Count > 0 ? variants[0].Columns : ToColumns(req.Columns);
+        ThrowIfErrors(variants.Count > 0 ? ValidateVariants(variants, defaults) : ValidateColumns(kind, columns, defaults));
 
         int? clientId = null;
         if (req.ClientPublicId is Guid cpid) clientId = (await db.ResolveClientAsync(cpid, ct)).ClientId;
@@ -111,6 +116,7 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
             HasHeader = req.HasHeader,
             ColumnsJson = SerializeColumns(columns, kind),
             DefaultsJson = defaults.Count == 0 ? null : SerializeDefaults(defaults, kind),
+            VariantsJson = variants.Count > 0 ? SerializeVariants(variants) : null,
             IsActive = true,
             CreatedAtUtc = DateTime.UtcNow,
         };
@@ -128,6 +134,8 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
             throw new ValidationException("defaults", "Indique defaults nuevos o clearDefaults, no ambos.");
         if (req.ClearDefaultClient == true && req.DefaultClientPublicId.HasValue)
             throw new ValidationException("defaultClientPublicId", DefaultClientBothMessage);
+        if (req.Variants is { Count: > 0 } && !IsConsignee(kind)) throw new ValidationException("variants", ConsigneeImportVariants.OnlyConsigneeMessage);
+        if (req.Variants is { Count: > 0 } && req.Columns is not null) throw new ValidationException("columns", ConsigneeImportVariants.ColumnsInsideVariantsMessage);
 
         int? newClientId = null;
         if (req.ClientPublicId is Guid cpid) newClientId = (await db.ResolveClientAsync(cpid, ct)).ClientId;
@@ -138,11 +146,20 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
             var row = await db.ImportTemplates.FirstOrDefaultAsync(t => t.PublicId == publicId && t.Kind == kind, ct2)
                       ?? throw new NotFoundException(NotFoundLabel);
 
-            var columns = req.Columns is null ? ParseColumns(row.ColumnsJson) : ToColumns(req.Columns);
+            // Variantes (Lote 46): null = las que tenga; [] = vuelve a una sola variante; lista = las reemplaza.
+            var current = ParseVariants(row.VariantsJson);
+            var variants = req.Variants is null ? current : ToVariants(req.Variants);
+            if (req.Variants is null && current.Count > 0 && req.Columns is not null)
+                throw new ValidationException("columns", ConsigneeImportVariants.ColumnsInsideVariantsMessage);
+            var columns = variants.Count > 0
+                ? variants[0].Columns
+                : req.Columns is not null ? ToColumns(req.Columns)
+                : current.Count > 0 ? current[0].Columns
+                : ParseColumns(row.ColumnsJson);
             var defaults = req.ClearDefaults == true
                 ? new Dictionary<string, string>(StringComparer.Ordinal)
                 : req.Defaults is null ? ParseDefaults(row.DefaultsJson) : ToDefaults(req.Defaults);
-            ThrowIfErrors(ValidateColumns(kind, columns, defaults));
+            ThrowIfErrors(variants.Count > 0 ? ValidateVariants(variants, defaults) : ValidateColumns(kind, columns, defaults));
 
             if (req.Name is not null) row.Name = RequireName(req.Name);
             if (req.Delimiter is not null) row.Delimiter = NormalizeDelimiter(req.Delimiter).ToString();
@@ -152,7 +169,8 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
             if (req.ClearDefaultClient == true) row.DefaultClientId = null;
             else if (newDefaultClientId is int dc) row.DefaultClientId = dc;
             EnsureDefaultClientMatches(row.ClientId, row.DefaultClientId);
-            if (req.Columns is not null) row.ColumnsJson = SerializeColumns(columns, kind);
+            if (req.Columns is not null || req.Variants is not null) row.ColumnsJson = SerializeColumns(columns, kind);
+            if (req.Variants is not null) row.VariantsJson = variants.Count > 0 ? SerializeVariants(variants) : null;
             if (req.ClearDefaults == true || req.Defaults is not null) row.DefaultsJson = defaults.Count == 0 ? null : SerializeDefaults(defaults, kind);
             row.UpdatedAtUtc = DateTime.UtcNow;
             await db.SaveGuardedAsync(NameTakenMessage, ct2);
@@ -197,6 +215,31 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
         var items = JsonSerializer.Deserialize<List<ImportTemplateColumnDto>>(json, JsonOptions) ?? new List<ImportTemplateColumnDto>();
         return items.Select(i => new ImportColumn(i.Position, i.Field, i.Part, i.Separator)).ToList();
     }
+
+    /// <summary>Lote 46 (F-B3): variantes guardadas (vacío si la plantilla no tiene: una sola variante, ColumnsJson).</summary>
+    public static IReadOnlyList<ImportVariant> ParseVariants(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return Array.Empty<ImportVariant>();
+        var items = JsonSerializer.Deserialize<List<ImportTemplateVariantDto>>(json, JsonOptions) ?? new List<ImportTemplateVariantDto>();
+        return items.Select(ToVariant).ToList();
+    }
+
+    /// <summary>Lote 46 (F-B3): variantes normalizadas (ConsigneeImportVariants.Normalize) en JSON camelCase.</summary>
+    public static string SerializeVariants(IReadOnlyList<ImportVariant> variants)
+        => JsonSerializer.Serialize(variants.Select(ConsigneeImportVariants.Normalize).Select(ToVariantDto).ToList(), JsonOptions);
+
+    private static ImportVariant ToVariant(ImportTemplateVariantDto v)
+        => new(v.Name,
+            (v.Conditions ?? Array.Empty<ImportVariantConditionDto>()).Select(c => new ImportVariantCondition(c.Position, c.Operator ?? string.Empty, c.Value)).ToList(),
+            (v.Columns ?? Array.Empty<ImportTemplateColumnDto>()).Select(c => new ImportColumn(c.Position, c.Field ?? string.Empty, c.Part, c.Separator)).ToList());
+
+    private static ImportTemplateVariantDto ToVariantDto(ImportVariant v)
+        => new(v.Name,
+            v.Conditions.Select(c => new ImportVariantConditionDto(c.Position, c.Operator, c.Value)).ToList(),
+            v.Columns.OrderBy(c => c.Position).ThenBy(c => c.Part ?? 0).Select(c => new ImportTemplateColumnDto(c.Position, c.Field, c.Part, c.Separator)).ToList());
+
+    private static List<ImportVariant> ToVariants(IList<ImportTemplateVariantDto>? variants)
+        => variants is null ? new List<ImportVariant>() : variants.Where(v => v is not null).Select(ToVariant).ToList();
 
     public static IReadOnlyDictionary<string, string> ParseDefaults(string? json)
     {
@@ -273,6 +316,18 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
             try { ContactPointService.ValidateValue("PHONE", value); }
             catch (ValidationException ex) { errors[$"defaults.{key}"] = ex.Message; }
         }
+        return errors;
+    }
+
+    /// <summary>
+    /// Lote 46 (F-B3): validación de las variantes (ConsigneeImportVariants.Validate: condiciones, orden y el mapeo de cada una) y el
+    /// teléfono por defecto con la misma regla que la fila.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> ValidateVariants(IReadOnlyList<ImportVariant> variants, IReadOnlyDictionary<string, string> defaults)
+    {
+        var errors = new Dictionary<string, string>(ConsigneeImportVariants.Validate(variants, defaults), StringComparer.Ordinal);
+        foreach (var (key, value) in ValidateColumns(ImportKinds.Consignee, Array.Empty<ImportColumn>(), defaults))
+            if (key.StartsWith("defaults.", StringComparison.Ordinal)) errors.TryAdd(key, value);
         return errors;
     }
 
@@ -370,6 +425,7 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
                 .Select(c => new ImportTemplateColumnDto(c.Position, c.Field, c.Part, c.Separator)).ToList(),
             defaults.Count == 0 ? null : defaults,
             t.IsActive, t.CreatedAtUtc, t.UpdatedAtUtc,
-            defaultClient?.PublicId, defaultClient?.Name);
+            defaultClient?.PublicId, defaultClient?.Name,
+            string.IsNullOrWhiteSpace(t.VariantsJson) ? null : ParseVariants(t.VariantsJson).Select(ToVariantDto).ToList());
     }
 }

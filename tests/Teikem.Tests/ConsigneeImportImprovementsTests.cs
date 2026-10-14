@@ -282,7 +282,8 @@ public sealed class ConsigneeImportImprovementsTests
         Assert.True(r1.IsValid, string.Join(" | ", r1.Errors.Values));
         Assert.Equal("Farmacia Peñuelas", r1.Values["name"]);       // la ñ llega bien
         Assert.Equal("7875550101", r1.Values["contactPhone"]);
-        Assert.False(r1.Values.ContainsKey("postalCode"));          // ZIP vacío: la fila sigue siendo válida
+        Assert.Equal("00624", r1.Values["postalCode"]);             // ZIP vacío: Lote 46, el primero de entrega del pueblo
+        Assert.Contains("postalCode", r1.Inferred!);
         var r2 = preview.Rows[1];
         Assert.True(r2.IsValid);
         Assert.Equal("7875550202", r2.Values["contactPhone"]);

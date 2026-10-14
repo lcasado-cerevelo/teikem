@@ -1470,7 +1470,7 @@ expect 200 "$(req GET "/api/v1/locations/import-templates/$CTPL_PID")" | jq -e '
 # Reglas de la plantilla: sin default para name, name y line1 en columna, nombre repetido 409, baja/reactivación
 expect 400 "$(req POST /api/v1/locations/import-templates "$(ctpl "Default nombre $TS" "$CCOLS" '{"name":"x"}')")" | jq -e '.errors["defaults.name"][0]=="El campo name no admite valor por defecto."' >/dev/null || fail "default de name"
 expect 400 "$(req POST /api/v1/locations/import-templates "$(ctpl "Sin linea $TS" '[{"position":1,"field":"name"},{"position":2,"field":"city"}]')")" | jq -e '.errors.columns[0]=="La plantilla debe incluir las columnas name y line1."' >/dev/null || fail "plantilla sin line1"
-expect 400 "$(req POST /api/v1/locations/import-templates "$(ctpl "Sin ciudad $TS" '[{"position":1,"field":"name"},{"position":2,"field":"line1"}]')")" | jq -e '.errors.columns[0]=="La plantilla debe indicar la ciudad (city) en una columna o en defaults."' >/dev/null || fail "plantilla sin city"
+expect 400 "$(req POST /api/v1/locations/import-templates "$(ctpl "Sin ciudad $TS" '[{"position":1,"field":"name"},{"position":2,"field":"line1"}]')")" | jq -e '.errors.columns[0]=="La plantilla debe indicar la ciudad (city) o el código postal (postalCode), en una columna o en defaults."' >/dev/null || fail "plantilla sin city"
 expect 400 "$(req POST /api/v1/locations/import-templates "$(ctpl "Dos clientes $TS" '[{"position":1,"field":"name"},{"position":2,"field":"line1"},{"position":3,"field":"city"},{"position":4,"field":"clientCode"},{"position":5,"field":"clientName"}]')")" | jq -e '.errors.columns[0]=="Use clientCode o clientName, no ambos."' >/dev/null || fail "clientCode y clientName a la vez"
 expect 400 "$(req POST /api/v1/locations/import-templates "$(ctpl "Minutos malos $TS" "$CCOLS" '{"defaultServiceMinutes":"diez"}')")" | jq -e '.errors["defaults.defaultServiceMinutes"][0]=="Los minutos de servicio deben ser un número entero."' >/dev/null || fail "default tipado de minutos"
 expect 409 "$(req POST /api/v1/locations/import-templates "$(ctpl "Consignatarios $TS" "$CCOLS")")" | jq -e '.title=="Ya existe una plantilla de importación con ese nombre."' >/dev/null || fail "nombre de plantilla repetido"
@@ -1480,7 +1480,7 @@ expect 409 "$(req POST "/api/v1/locations/import-templates/$CTPL2_PID/deactivate
 expect 400 "$(req POST /api/v1/locations/import/validate "$(jq -cn --arg t "$CTPL2_PID" '{templatePublicId:$t,content:"a,b,c,d\nx,y,Ponce,1\n"}')")" | jq -e '.errors.templatePublicId[0]=="La plantilla está inactiva; reactívela o elija otra."' >/dev/null || fail "validar con plantilla inactiva"
 expect 200 "$(req POST "/api/v1/locations/import-templates/$CTPL2_PID/reactivate")" | jq -e '.isActive==true' >/dev/null || fail "reactivar plantilla de consignatarios"
 # Catálogo de campos y 415 sin Content-Type
-expect 200 "$(req GET /api/v1/locations/import/fields)" | jq -e 'length==18 and ([.[] | select(.required) | .field] | sort)==["city","line1","name"] and (.[] | select(.field=="code") | .defaultAllowed==false) and (.[] | select(.field=="allowDupInvoice") | .defaultAllowed)' >/dev/null || fail "catálogo de campos"
+expect 200 "$(req GET /api/v1/locations/import/fields)" | jq -e 'length==18 and ([.[] | select(.required) | .field] | sort)==["line1","name"] and (.[] | select(.field=="code") | .defaultAllowed==false) and (.[] | select(.field=="allowDupInvoice") | .defaultAllowed)' >/dev/null || fail "catálogo de campos"
 expect 415 "$(curl -sS -X POST "$BASE/api/v1/locations/import/validate" -H "Authorization: Bearer $TOKEN" -w '\n%{http_code}')" >/dev/null   # sin Content-Type: 415, no 500
 # CSV mixto SIN cliente de lote: (1) compartida válida, (2) del cliente por clientCode válida con teléfono/sí/ventana,
 # (3) código repetido de (2), (4) código existente del cliente, (5) teléfono inválido, (6) ventana al revés,
@@ -1502,7 +1502,8 @@ echo "$VC" | jq -e --arg ts "$TS" --arg cpid "$CLIENT_O_PID" \
   and .rows[4].errors.contactPhone=="Teléfono inválido."
   and .rows[5].errors.defaultWindowEnd=="La hora de fin de la ventana debe ser posterior a la de inicio."
   and .rows[6].errors.clientCode==$mnoex and .rows[6].owner==null
-  and .rows[7].isValid and .rows[7].owner.isShared and .rows[7].warnings==[$md8]' >/dev/null || fail "validar CSV mixto: $VC"
+  and .rows[7].isValid and .rows[7].owner.isShared and any(.rows[7].warnings[]; .==$md8)
+  and .rows[0].values.state=="PR" and .rows[0].inferred==["state"]' >/dev/null || fail "validar CSV mixto: $VC"
 BC=$(echo "$VC" | jq -r .batchPublicId)
 # Archivo por multipart con cliente de lote (cliente POR DEFECTO, Lote 45): filas sin clientCode toman el cliente del lote; la fila
 # con clientCode de OTRO cliente queda con ESE cliente (antes era error 'La fila indica el cliente…')
@@ -1526,6 +1527,28 @@ echo "$CJV" | jq -e --arg n "UN-$TS - Unida $TS" '.validRows==1 and .rows[0].val
 CJR=$(expect 200 "$(req POST "/api/v1/locations/import/$(echo "$CJV" | jq -r .batchPublicId)/confirm" '{"rememberClient":true}')")
 echo "$CJR" | jq -e '.created==1' >/dev/null || fail "confirmar con columnas unidas: $CJR"
 expect 200 "$(req GET "/api/v1/locations?search=UN-$TS")" | jq -e '.[0].contactName=="Ana Rivera" and .[0].postalCode=="00901"' >/dev/null || fail "persona de contacto importada"
+# Lote 46 (F-B3): pueblo/estado/ZIP con el catálogo de códigos postales y variantes de mapeo con condición por fila. db-init no corre
+# logistica-db-zip-catalog.sql: los ZIP quedan sin clasificar (se admiten como de entrega), así que aquí no hay «código postal ajustado».
+expect 400 "$(req GET '/api/v1/postal-localities?zipClass=BOX')" | jq -e '.errors.zipClass[0]=="Tipo de código postal desconocido: BOX. Use STANDARD, PO_BOX, UNIQUE, MILITARY o DELIVERY."' >/dev/null || fail "zipClass desconocido"
+expect 200 "$(req GET '/api/v1/postal-localities?search=00949&zipClass=DELIVERY')" | jq -e 'length==1 and .[0].postalCode=="00949"' >/dev/null || fail "zipClass DELIVERY"
+VCOLS_B='[{"position":1,"field":"code"},{"position":2,"field":"name"},{"position":3,"field":"line1"},{"position":4,"field":"city"},{"position":5,"field":"ignore"}]'
+VCOLS_A='[{"position":1,"field":"code"},{"position":2,"field":"name"},{"position":3,"field":"line1"},{"position":4,"field":"postalCode"}]'
+VT=$(expect 200 "$(req POST /api/v1/locations/import-templates "$(jq -cn --arg n "Variantes $TS" --argjson b "$VCOLS_B" --argjson a "$VCOLS_A" '{name:$n,variants:[{name:"Formato B",conditions:[{position:5,operator:"EQUALS",value:"puerto rico"}],columns:$b},{name:"Formato A",conditions:[],columns:$a}]}')")")
+echo "$VT" | jq -e '(.variants|length)==2 and .variants[0].conditions[0].operator=="EQUALS" and (.columns|length)==5' >/dev/null || fail "plantilla con variantes: $VT"
+VT_PID=$(echo "$VT" | jq -r .publicId)
+expect 400 "$(req POST /api/v1/locations/import-templates "$(jq -cn --arg n "Variantes mal $TS" --argjson a "$VCOLS_A" '{name:$n,variants:[{name:null,conditions:[],columns:$a},{name:"B",conditions:[{position:5,operator:"EQUALS"}],columns:$a}]}')")" \
+  | jq -e '.errors["variants[0].conditions"][0]=="La variante 1 no tiene condición y deja sin uso a las que le siguen; póngala al final o agréguele una condición." and .errors["variants[1].conditions[0].value"][0]=="La condición «igual a» o «contiene» necesita un valor."' >/dev/null || fail "variantes inválidas"
+expect 400 "$(req POST /api/v1/locations/import-templates "$(jq -cn --arg n "Variantes y columnas $TS" --argjson a "$VCOLS_A" '{name:$n,columns:$a,variants:[{name:null,conditions:[],columns:$a}]}')")" | jq -e '.errors.columns[0]=="Esta plantilla usa variantes: las columnas van dentro de cada variante (variants), no en columns."' >/dev/null || fail "variantes y columns a la vez"
+VV=$(expect 200 "$(req POST /api/v1/locations/import/validate "$(jq -cn --arg t "$VT_PID" --arg s "$(printf 'n,nom,l,x,y\nVA-%s,Var A %s,Calle 70,00952,\nVB-%s,Var B %s,Calle 71,Bayamón,PUERTO RICO\nVC-%s,Var C %s,Calle 72,Ciudad Gótica,Puerto Rico\nVD-%s,Var D %s,Calle 73,99999,\n' "$TS" "$TS" "$TS" "$TS" "$TS" "$TS" "$TS" "$TS")" '{templatePublicId:$t,content:$s}')")")
+echo "$VV" | jq -e '.rowCount==4 and .validRows==2
+  and .rows[0].variantName=="Formato A" and .rows[0].values.city=="Toa Baja" and .rows[0].values.state=="PR" and .rows[0].inferred==["city","state"]
+  and .rows[1].variantName=="Formato B" and .rows[1].values.postalCode=="00956" and (.rows[1].inferred|index("postalCode"))!=null
+  and .rows[2].errors.city=="El pueblo '"'"'Ciudad Gótica'"'"' no está en el catálogo de códigos postales; corríjalo o indique el código postal."
+  and .rows[3].errors.postalCode=="El código postal 99999 no está en el catálogo de códigos postales; corríjalo, o déjelo vacío e indique el pueblo."' >/dev/null || fail "validar con variantes y catálogo de ZIP: $VV"
+VVR=$(expect 200 "$(req POST "/api/v1/locations/import/$(echo "$VV" | jq -r .batchPublicId)/confirm" '{}')")
+echo "$VVR" | jq -e '.created==2 and .rows[0].variant==2' >/dev/null || fail "confirmar con variantes: $VVR"
+expect 200 "$(req GET "/api/v1/locations?search=VB-$TS")" | jq -e '.[0].city=="Bayamón" and .[0].postalCode=="00956" and .[0].state=="PR"' >/dev/null || fail "consignatario con ZIP asignado por el pueblo"
+expect 200 "$(req PATCH "/api/v1/locations/import-templates/$VT_PID" '{"variants":[]}')" | jq -e '.variants==null and (.columns|length)==5' >/dev/null || fail "volver a una sola variante"
 # Cliente de baja: el lote con ese cliente 409; la fila que lo nombra, error de fila
 expect 204 "$(req POST "/api/v1/clients/$CLIENT2_PID/deactivate")" >/dev/null
 expect 409 "$(req POST /api/v1/locations/import/validate "$(cbody "$(printf 'c,n,l,p\n,Baja cons %s,Calle 43,Ponce\n' "$TS")" "$CTPL_PID" "$CLIENT2_PID")")" | jq -e --arg m "$BAJA" '.title==$m' >/dev/null || fail "validar con cliente de lote de baja"

@@ -29,5 +29,6 @@ public sealed record PipelineValidationResult(bool IsValid, IReadOnlyList<string
 /// Lote 1 (cambios de Almacén) — localidad postal del catálogo global (GET /api/v1/postal-localities): ciudad, código postal,
 /// estado y país (código y nombre en el idioma del usuario). City es el nombre postal USPS (mayúsculas); en Puerto Rico,
 /// Municipality es el municipio (con acentos). El formulario de almacén llena City (municipio si lo hay), State, PostalCode y Country.
+/// Lote 46 (F-B3): ZipClass = tipo del ZIP (STANDARD, PO_BOX, UNIQUE, MILITARY; null = sin clasificar).
 /// </summary>
-public sealed record PostalLocalityDto(int Id, string City, string PostalCode, string? State, string CountryCode, string Country, string? Municipality);
+public sealed record PostalLocalityDto(int Id, string City, string PostalCode, string? State, string CountryCode, string Country, string? Municipality, string? ZipClass = null);

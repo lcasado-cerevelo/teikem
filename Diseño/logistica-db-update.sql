@@ -725,3 +725,49 @@ GO
 IF COL_LENGTH('dbo.ImportTemplate', 'DefaultClientId') IS NULL
     ALTER TABLE dbo.ImportTemplate ADD DefaultClientId INT NULL CONSTRAINT FK_ImportTemplate_DefaultClient REFERENCES dbo.Client(ClientId);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-14 — Catálogo de códigos postales con tipo, distrito y geolocalización; variantes de mapeo en las plantillas de
+   importación de consignatarios (Lote 46, F-B3; docs/lote46-decisiones.md).
+   - dbo.PostalLocality: columnas que llena el script de DATOS aparte Diseño/logistica-db-zip-catalog.sql (se corre a mano,
+     después de esta sección; fuentes USPS «Zip Locale Detail» y GeoNames, CC BY 4.0):
+       ZipClass     tipo del ZIP: STANDARD (normal, de entrega), PO_BOX (apartados), UNIQUE (único de una entidad, de entrega)
+                    o MILITARY (APO/FPO); NULL = sin clasificar (el script de datos no se ha corrido o el ZIP no está en la fuente).
+       LocaleType   tipo de oficina USPS (una letra); DistrictName / DistrictNo: distrito postal.
+       Latitude / Longitude (grados, 6 decimales) y GeoAccuracy (precisión GeoNames); NULL si la fuente no las trae.
+     Índice IX_PostalLocality_PostalCode (el script de datos cruza por ZIP; la importación lee el catálogo en memoria).
+     Una dirección de ENTREGA (consignatario) usa solo STANDARD y UNIQUE; una dirección POSTAL puede usar todos.
+   - dbo.ImportTemplate.VariantsJson: variantes de mapeo de una plantilla CONSIGNEE (condición por fila y columnas propias);
+     NULL = una sola variante (ColumnsJson), lo de siempre.
+   Solo AGREGA. Idempotente. Sin permisos nuevos (nada que propagar).
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.PostalLocality', 'ZipClass') IS NULL
+    ALTER TABLE dbo.PostalLocality ADD ZipClass VARCHAR(10) NULL;
+GO
+IF COL_LENGTH('dbo.PostalLocality', 'LocaleType') IS NULL
+    ALTER TABLE dbo.PostalLocality ADD LocaleType CHAR(1) NULL;
+GO
+IF COL_LENGTH('dbo.PostalLocality', 'DistrictName') IS NULL
+    ALTER TABLE dbo.PostalLocality ADD DistrictName NVARCHAR(40) NULL;
+GO
+IF COL_LENGTH('dbo.PostalLocality', 'DistrictNo') IS NULL
+    ALTER TABLE dbo.PostalLocality ADD DistrictNo VARCHAR(3) NULL;
+GO
+IF COL_LENGTH('dbo.PostalLocality', 'Latitude') IS NULL
+    ALTER TABLE dbo.PostalLocality ADD Latitude DECIMAL(9,6) NULL;
+GO
+IF COL_LENGTH('dbo.PostalLocality', 'Longitude') IS NULL
+    ALTER TABLE dbo.PostalLocality ADD Longitude DECIMAL(9,6) NULL;
+GO
+IF COL_LENGTH('dbo.PostalLocality', 'GeoAccuracy') IS NULL
+    ALTER TABLE dbo.PostalLocality ADD GeoAccuracy TINYINT NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_PostalLocality_ZipClass' AND parent_object_id = OBJECT_ID('dbo.PostalLocality'))
+    ALTER TABLE dbo.PostalLocality ADD CONSTRAINT CK_PostalLocality_ZipClass CHECK (ZipClass IS NULL OR ZipClass IN ('STANDARD','PO_BOX','UNIQUE','MILITARY'));
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_PostalLocality_PostalCode' AND object_id = OBJECT_ID('dbo.PostalLocality'))
+    CREATE INDEX IX_PostalLocality_PostalCode ON dbo.PostalLocality (PostalCode);
+GO
+IF COL_LENGTH('dbo.ImportTemplate', 'VariantsJson') IS NULL
+    ALTER TABLE dbo.ImportTemplate ADD VariantsJson NVARCHAR(MAX) NULL;
+GO

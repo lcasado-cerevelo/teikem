@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
+using Teikem.Domain.Catalogs;
 using Teikem.Domain.Clients;
 using Teikem.Domain.Common;
 using Teikem.Domain.Constants;
@@ -32,6 +33,10 @@ namespace Teikem.Infrastructure.Services;
 /// Lote 45 (F-B2): el archivo puede ser CSV o Excel .xlsx (ImportFileReader; hoja elegible), las columnas «No usar» se ignoran,
 /// un campo puede unir varias columnas (ConsigneeImportMapping.Map), el cliente del lote es el cliente POR DEFECTO (la fila con su
 /// propio cliente manda) y se importa la persona de contacto (Location.ContactName). InspectFile revisa el archivo sin guardar.
+/// Lote 46 (F-B3): en Puerto Rico y Estados Unidos el pueblo, el estado y el ZIP se completan con el catálogo de códigos postales
+/// (PostalInference: solo ZIP de ENTREGA; un ZIP de apartados o militar se sustituye por uno de entrega de la misma ciudad, con
+/// aviso; ZIP o pueblo desconocidos rechazan la fila) y la plantilla puede tener variantes de mapeo con condición por fila
+/// (ConsigneeImportVariants: la primera que se cumpla; ninguna → la fila se rechaza).
 /// </summary>
 public sealed class ConsigneeImportService(
     TeikemDbContext db,
@@ -40,7 +45,8 @@ public sealed class ConsigneeImportService(
     StatusService statuses,
     ImportTemplateService templates,
     LocationService locations,
-    ContactPointService contactPoints)
+    ContactPointService contactPoints,
+    PostalLocalityService postalLocalities)
 {
     public const string BatchNotFoundLabel = OrderImportService.BatchNotFoundLabel;
     public const string ContentRequiredMessage = OrderImportService.ContentRequiredMessage;
@@ -69,6 +75,8 @@ public sealed class ConsigneeImportService(
         public ClientRow? BatchClient { get; init; }
         public required IReadOnlyList<ClientRow> Clients { get; init; }
         public required IReadOnlySet<string> Countries { get; init; }
+        /// <summary>Lote 46 (F-B3): catálogo de códigos postales en memoria para deducir pueblo, estado y ZIP.</summary>
+        public required PostalIndex Postal { get; init; }
     }
 
     // ================================================================ CATÁLOGO
@@ -135,6 +143,7 @@ public sealed class ConsigneeImportService(
         var template = await templates.ResolveForImportAsync(templatePublicId, batchClient?.ClientId, ImportKinds.Consignee, ct);
         var columns = ImportTemplateService.ParseColumns(template.ColumnsJson);
         var defaults = ImportTemplateService.ParseDefaults(template.DefaultsJson);
+        var variants = ImportTemplateService.ParseVariants(template.VariantsJson);
 
         IReadOnlyList<CsvRow> csvRows;
         try { csvRows = parse(template); }
@@ -150,9 +159,10 @@ public sealed class ConsigneeImportService(
             BatchClient = batchClient is null ? null : clients.FirstOrDefault(c => c.ClientId == batchClient.ClientId),
             Clients = clients,
             Countries = await ActiveCountriesAsync(ct),
+            Postal = await postalLocalities.IndexAsync(ct),
         };
 
-        var records = csvRows.Select(r => ValidateRow(r, columns, defaults, ctx)).ToList();
+        var records = csvRows.Select(r => variants.Count == 0 ? ValidateRow(r, columns, defaults, ctx) : ValidateVariantRow(r, variants, defaults, ctx)).ToList();
         ApplyFileDuplicates(records);
         var directory = ConsigneeImportMapping.BuildDirectory(await LoadDirectoryAsync(records, afterLocationId: 0, ct));
         foreach (var r in records.Where(r => r.OwnerResolved))
@@ -333,6 +343,25 @@ public sealed class ConsigneeImportService(
 
     // ================================================================ validación fila a fila (sin guardar)
 
+    /// <summary>
+    /// Lote 46 (F-B3): fila de una plantilla con variantes: la primera variante cuyas condiciones se cumplen da el mapeo (la fila
+    /// lleva su número y nombre); si ninguna aplica, la fila se rechaza con sus celdas a la vista.
+    /// </summary>
+    private static ConsigneeImportRowRecord ValidateVariantRow(CsvRow row, IReadOnlyList<ImportVariant> variants, IReadOnlyDictionary<string, string> defaults, RowContext ctx)
+    {
+        var index = ConsigneeImportVariants.Select(row.Cells, variants);
+        if (index < 0)
+        {
+            var rejected = new ConsigneeImportRowRecord { Row = row.RowNumber, Line = row.Line, Cells = row.Cells.Select(c => c.Trim()).ToList() };
+            rejected.Errors[ConsigneeImportVariants.RowField] = ConsigneeImportVariants.NoVariantMatchesMessage;
+            return rejected;
+        }
+        var rec = ValidateRow(row, variants[index].Columns, defaults, ctx);
+        rec.Variant = index + 1;
+        rec.VariantName = ConsigneeImportVariants.DisplayName(variants[index], index);
+        return rec;
+    }
+
     private static ConsigneeImportRowRecord ValidateRow(CsvRow row, IReadOnlyList<ImportColumn> columns, IReadOnlyDictionary<string, string> defaults, RowContext ctx)
     {
         var values = ConsigneeImportMapping.Map(row.Cells, columns, defaults);
@@ -351,8 +380,23 @@ public sealed class ConsigneeImportService(
         if (Get(ConsigneeImportFields.PostalCode) is string zip)
             rec.Values[ConsigneeImportFields.PostalCode] = ConsigneeImportMapping.NormalizePostalCode(zip, country);
 
-        // Aquí se completarán los datos que se deducen de otros ANTES de exigir los obligatorios (lote siguiente: pueblo y estado
-        // a partir del ZIP con el catálogo de códigos postales; la ciudad dejará de ser obligatoria en la plantilla si viene el ZIP).
+        // Lote 46 (F-B3): pueblo, estado y ZIP con el catálogo de códigos postales ANTES de exigir los obligatorios (solo países que
+        // el catálogo cubre y con un país válido). Cada dato completado o ajustado queda en Inferred / OriginalPostalCode y en un aviso.
+        if (!rec.Errors.ContainsKey(ConsigneeImportFields.Country))
+        {
+            var inference = PostalInference.Infer(ctx.Postal, country, Get(ConsigneeImportFields.City), Get(ConsigneeImportFields.State), Get(ConsigneeImportFields.PostalCode));
+            if (inference.IsRejected) Error(inference.ErrorField!, inference.Error!);
+            else
+            {
+                void Set(string field, string? value) { if (value is null) rec.Values.Remove(field); else rec.Values[field] = value; }
+                Set(ConsigneeImportFields.City, inference.City);
+                Set(ConsigneeImportFields.State, inference.State);
+                Set(ConsigneeImportFields.PostalCode, inference.PostalCode);
+                if (inference.Inferred.Count > 0) rec.Inferred = inference.Inferred.ToList();
+                rec.OriginalPostalCode = inference.OriginalPostalCode;
+                rec.Warnings.AddRange(inference.Warnings);
+            }
+        }
 
         // Textos obligatorios y topes (los de la ficha del consignatario)
         if (Get(ConsigneeImportFields.Name) is null) Error(ConsigneeImportFields.Name, ConsigneeImportMapping.NameRequiredMessage);

@@ -29,6 +29,12 @@ public class ImportTemplate : ITenantScoped, ISoftDeletable
     public bool HasHeader { get; set; } = true;
     public string ColumnsJson { get; set; } = "[]";
     public string? DefaultsJson { get; set; }
+    /// <summary>
+    /// Lote 46 (F-B3, solo CONSIGNEE): variantes de mapeo [{name, conditions:[{position, operator, value}], columns:[...]}]; a cada
+    /// fila se le aplica la primera cuya condición se cumple. NULL = una sola variante (ColumnsJson). Con variantes, ColumnsJson
+    /// guarda las columnas de la primera (para quien lea solo ColumnsJson).
+    /// </summary>
+    public string? VariantsJson { get; set; }
     public bool IsActive { get; set; } = true;
     [NotAudited] public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     [NotAudited] public DateTime? UpdatedAtUtc { get; set; }

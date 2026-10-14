@@ -21,6 +21,74 @@ public class PostalLocality : ISoftDeletable
     public string? Municipality { get; set; }
     public int CountryLookupId { get; set; }
     public bool IsActive { get; set; } = true;
+
+    // Lote 46 (F-B3): columnas que llena el script de datos Diseño/logistica-db-zip-catalog.sql (USPS Zip Locale Detail +
+    // GeoNames, CC BY 4.0). NULL = sin dato (el script no se ha corrido o la fuente no lo trae); nunca se inventan.
+    /// <summary>Tipo del ZIP (ZipClasses): STANDARD, PO_BOX, UNIQUE o MILITARY; NULL = sin clasificar.</summary>
+    public string? ZipClass { get; set; }
+    /// <summary>Tipo de oficina USPS (una letra).</summary>
+    public string? LocaleType { get; set; }
+    public string? DistrictName { get; set; }
+    public string? DistrictNo { get; set; }
+    public decimal? Latitude { get; set; }
+    public decimal? Longitude { get; set; }
+    /// <summary>Precisión de la coordenada según GeoNames.</summary>
+    public byte? GeoAccuracy { get; set; }
+}
+
+/// <summary>
+/// Lote 46 (F-B3): tipos de ZIP (dbo.PostalLocality.ZipClass, CHECK CK_PostalLocality_ZipClass). Una dirección de ENTREGA
+/// (consignatario) usa solo STANDARD y UNIQUE; una dirección POSTAL puede usar todos.
+/// </summary>
+public static class ZipClasses
+{
+    public const string Standard = "STANDARD";
+    public const string PoBox = "PO_BOX";
+    public const string Unique = "UNIQUE";
+    public const string Military = "MILITARY";
+    /// <summary>Alias del filtro de GET /postal-localities: STANDARD y UNIQUE (los de entrega).</summary>
+    public const string Delivery = "DELIVERY";
+
+    public static readonly IReadOnlyList<string> All = [Standard, PoBox, Unique, Military];
+
+    /// <summary>¿Sirve para una dirección de entrega? STANDARD y UNIQUE sí; PO_BOX y MILITARY no; sin clasificar (NULL) se admite.</summary>
+    public static bool IsDelivery(string? zipClass) => zipClass is null or Standard or Unique;
+
+    /// <summary>Orden de preferencia para escoger un ZIP de entrega: STANDARD 0, UNIQUE 1, sin clasificar 2; los demás no son de entrega (null).</summary>
+    public static int? DeliveryRank(string? zipClass) => zipClass switch
+    {
+        Standard => 0,
+        Unique => 1,
+        null => 2,
+        _ => null,
+    };
+
+    public const string InvalidFilterMessagePrefix = "Tipo de código postal desconocido";
+    public static string InvalidFilterMessage(string value) => $"Tipo de código postal desconocido: {value}. Use STANDARD, PO_BOX, UNIQUE, MILITARY o DELIVERY.";
+
+    /// <summary>
+    /// Filtro «zipClass» de la búsqueda: lista separada por comas (sin distinguir mayúsculas). DELIVERY = los de entrega con la
+    /// misma regla que la importación (IsDelivery): STANDARD, UNIQUE y los SIN CLASIFICAR (así el filtro sirve aunque el script de
+    /// datos no se haya corrido); un tipo explícito no trae los sin clasificar. Vacío → Classes null (todos). Desconocido → Invalid.
+    /// </summary>
+    public static (IReadOnlySet<string>? Classes, bool IncludeUnclassified, string? Invalid) ParseFilter(string? filter)
+    {
+        if (string.IsNullOrWhiteSpace(filter)) return (null, true, null);
+        var set = new HashSet<string>(StringComparer.Ordinal);
+        var unclassified = false;
+        foreach (var raw in filter.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var v = raw.ToUpperInvariant();
+            if (v == Delivery) { set.Add(Standard); set.Add(Unique); unclassified = true; }
+            else if (All.Contains(v)) set.Add(v);
+            else return (null, false, raw);
+        }
+        return set.Count == 0 ? (null, true, null) : (set, unclassified, null);
+    }
+
+    /// <summary>¿La fila pasa el filtro ya leído? (Classes null = todas).</summary>
+    public static bool Passes(string? zipClass, IReadOnlySet<string>? classes, bool includeUnclassified)
+        => classes is null || (zipClass is null ? includeUnclassified : classes.Contains(zipClass));
 }
 
 /// <summary>Reglas puras de la búsqueda de localidades postales (sin BD).</summary>

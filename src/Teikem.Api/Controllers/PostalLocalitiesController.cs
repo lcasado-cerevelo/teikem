@@ -18,8 +18,10 @@ public sealed class PostalLocalitiesController(PostalLocalityService localities)
     /// <summary>
     /// ?search = ciudad (sin acentos ni mayúsculas; empieza por, luego contiene) o prefijo de código postal ('0094');
     /// ?take (por defecto 20, máximo 100). Sin search devuelve las primeras por ciudad.
+    /// ?zipClass (Lote 46): tipos de ZIP separados por coma (STANDARD, PO_BOX, UNIQUE, MILITARY) o DELIVERY (= STANDARD, UNIQUE y los sin
+    /// clasificar, para direcciones de entrega); sin él, todos (direcciones postales). Tipo desconocido → 400.
     /// </summary>
     [HttpGet]
-    public Task<IReadOnlyList<PostalLocalityDto>> Search([FromQuery] string? search, CancellationToken ct, [FromQuery] int take = 20)
-        => localities.SearchAsync(search, take, ct);
+    public Task<IReadOnlyList<PostalLocalityDto>> Search([FromQuery] string? search, CancellationToken ct, [FromQuery] int take = 20, [FromQuery] string? zipClass = null)
+        => localities.SearchAsync(search, take, ct, zipClass);
 }

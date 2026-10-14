@@ -20,6 +20,9 @@ export type ImportRow = Schemas['ConsigneeImportRowDto']
 export type ImportResult = Schemas['ConsigneeImportResultDto']
 export type ImportFileInspection = Schemas['ImportFileInspectionDto']
 export type ImportTemplateColumn = Schemas['ImportTemplateColumnDto']
+/** Lote F-B3: variante de mapeo de una plantilla de consignatarios (condición por fila y columnas propias). */
+export type ImportTemplateVariant = Schemas['ImportTemplateVariantDto']
+export type ImportVariantCondition = Schemas['ImportVariantConditionDto']
 
 /** Tipo de localización de un consignatario (la pantalla lo fija; no se muestra). */
 export const DELIVERY_TYPE = 'DELIVERY'
@@ -297,6 +300,9 @@ export const CLIENT_CODE_FIELD = 'clientCode'
 export const CLIENT_NAME_FIELD = 'clientName'
 export const REQUIRED_COLUMN_FIELDS = ['name', 'line1'] as const
 export const CITY_FIELD = 'city'
+/** Lote F-B3: con el ZIP basta (el pueblo sale del catálogo de códigos postales en Puerto Rico y EE. UU.). */
+export const POSTAL_FIELD = 'postalCode'
+export const STATE_FIELD = 'state'
 
 /** Delimitadores que ofrece el editor (el servidor acepta cualquier carácter único menos comilla y salto de línea). */
 export const DELIMITERS = [',', ';', '\t', '|'] as const
@@ -358,7 +364,7 @@ export function templateIssues(
   })
   if (chosen.length === 0) issues.push({ path: 'columns', message: m.columnsRequired })
   else if (!REQUIRED_COLUMN_FIELDS.every((f) => seen.has(f))) issues.push({ path: 'columns', message: m.nameLine1 })
-  else if (!seen.has(CITY_FIELD) && !defaultFields.has(CITY_FIELD)) issues.push({ path: 'columns', message: m.city })
+  else if (!seen.has(CITY_FIELD) && !defaultFields.has(CITY_FIELD) && !seen.has(POSTAL_FIELD) && !defaultFields.has(POSTAL_FIELD)) issues.push({ path: 'columns', message: m.city })
   else if (seen.has(CLIENT_CODE_FIELD) && seen.has(CLIENT_NAME_FIELD)) issues.push({ path: 'columns', message: m.clientBoth })
   return issues
 }
@@ -466,14 +472,35 @@ export function templateSummary(t: ImportTemplate | undefined, label: (field: st
   return parts.join(' · ')
 }
 
-/** Campos que la plantilla llena (sin «No usar»), en el orden de su primera columna: columnas de la vista previa. */
+/**
+ * Campos que la plantilla llena (sin «No usar»), en el orden de su primera columna: columnas de la vista previa. Lote F-B3: con
+ * variantes, los de todas (en el orden de la 1 y después los que agregan las demás).
+ */
 export function templateFields(t: ImportTemplate | undefined): string[] {
   const out: string[] = []
-  for (const c of sortedColumns(t)) {
-    const field = c.field ?? ''
-    if (field && field !== IGNORE_FIELD && !out.includes(field)) out.push(field)
-  }
+  const sources: (ImportTemplate | undefined)[] = (t?.variants?.length ?? 0) > 0 ? (t?.variants ?? []).map((v) => ({ columns: v.columns }) as ImportTemplate) : [t]
+  for (const source of sources)
+    for (const c of sortedColumns(source)) {
+      const field = c.field ?? ''
+      if (field && field !== IGNORE_FIELD && !out.includes(field)) out.push(field)
+    }
   return out
+}
+
+/**
+ * Lote F-B3 — columnas de la vista previa: las de la plantilla y, si alguna fila los dedujo del catálogo de códigos postales, el pueblo,
+ * el estado y el ZIP (aunque la plantilla no los traiga).
+ */
+export function previewFields(t: ImportTemplate | undefined, rows: readonly Pick<ImportRow, 'inferred'>[]): string[] {
+  const out = templateFields(t)
+  for (const field of [CITY_FIELD, STATE_FIELD, POSTAL_FIELD]) if (!out.includes(field) && rows.some((r) => r.inferred?.includes(field))) out.push(field)
+  return out
+}
+
+/** Lote F-B3 — ¿la plantilla (o alguna de sus variantes) usa alguno de esos campos? */
+export function templateUsesField(t: ImportTemplate | undefined, ...fields: string[]): boolean {
+  const columns = [...(t?.columns ?? []), ...(t?.variants ?? []).flatMap((v) => v.columns ?? [])]
+  return columns.some((c) => fields.includes(c.field ?? ''))
 }
 
 // ---------------------------------------------------------------- importación: mapeo de consignatarios (Lote F-B2)
@@ -510,9 +537,28 @@ export interface ConsigneeTemplateValues {
   hasHeader: boolean
   /** Cliente por defecto de la importación ('' = sin cliente: compartidos). */
   defaultClientPublicId: string
-  /** Una fila por columna del archivo, en orden (posición = índice + 1). */
+  /** Una fila por columna del archivo, en orden (posición = índice + 1). Lote F-B3: el mapeo de la variante 1. */
   columns: MappingColumn[]
   defaults: { field: string; value: string }[]
+  /** Lote F-B3: nombre y condiciones de la variante 1 (solo cuentan si hay más variantes). */
+  variantName: string
+  conditions: ConditionValues[]
+  /** Lote F-B3: variantes 2…n (vacío = plantilla de una sola variante, lo de siempre). */
+  moreVariants: VariantValues[]
+}
+
+/** Condición de una variante en el editor: columna (texto del select, '' = sin escoger), operador y valor. */
+export interface ConditionValues {
+  position: string
+  operator: string
+  value: string
+}
+
+/** Una variante de mapeo en el editor (la 1 vive en los campos de arriba de ConsigneeTemplateValues). */
+export interface VariantValues {
+  name: string
+  conditions: ConditionValues[]
+  columns: MappingColumn[]
 }
 
 export interface ConsigneeTemplateMessages {
@@ -526,6 +572,12 @@ export interface ConsigneeTemplateMessages {
   tooManyParts: (field: string) => string
   noDefault: (field: string) => string
   defaultValueRequired: (field: string) => string
+  /** Lote F-B3 (variantes): columna de la condición sin escoger. */
+  conditionColumn?: string
+  /** Lote F-B3: «igual a» / «contiene» sin valor. */
+  conditionValue?: string
+  /** Lote F-B3: variante sin condición que no es la última (n = 1…). */
+  unreachable?: (n: number) => string
 }
 
 /** Columnas (1..n) de cada campo, en orden de posición y en el orden en que aparece el campo. */
@@ -584,16 +636,8 @@ export function joinPreview(join: JoinDef, cellOf: (position: number) => string 
   return out
 }
 
-/** Valores del editor y uniones a partir de la plantilla; `fileColumns` = columnas del archivo revisado (se muestran todas). */
-export function consigneeTemplateValuesOf(t: ImportTemplate | null, fileColumns = 0): { values: ConsigneeTemplateValues; joins: JoinDef[] } {
-  if (!t) {
-    const width = Math.max(5, fileColumns)
-    return {
-      values: { name: '', delimiter: ',', hasHeader: true, defaultClientPublicId: '', columns: Array.from({ length: width }, () => ({ fields: [{ field: '' }] })), defaults: [] },
-      joins: [],
-    }
-  }
-  const cols = t.columns ?? []
+/** Filas del editor (una por columna del archivo) y uniones a partir de las columnas guardadas de una variante. */
+function mappingOf(cols: readonly ImportTemplateColumn[], fileColumns: number): { columns: MappingColumn[]; joins: JoinDef[] } {
   const last = cols.reduce((max, c) => Math.max(max, c.position ?? 0), 0)
   const width = Math.max(last, fileColumns, 1)
   const columns = Array.from({ length: width }, (_, i) => {
@@ -606,16 +650,54 @@ export function consigneeTemplateValuesOf(t: ImportTemplate | null, fileColumns 
     if (parts.length < 2) continue
     joins.push({ field, positions: parts.map((c) => c.position ?? 0), separators: parts.slice(1).map((c) => c.separator ?? DEFAULT_SEPARATOR) })
   }
+  return { columns, joins }
+}
+
+function conditionValuesOf(conditions: readonly ImportVariantCondition[] | null | undefined): ConditionValues[] {
+  return (conditions ?? []).map((c) => ({ position: c.position ? String(c.position) : '', operator: c.operator ?? 'EQUALS', value: c.value ?? '' }))
+}
+
+/**
+ * Valores del editor y uniones a partir de la plantilla; `fileColumns` = columnas del archivo revisado (se muestran todas).
+ * Lote F-B3: con variantes, la 1 va en los campos de arriba (`columns`, `variantName`, `conditions`; uniones en `joins`) y las demás en
+ * `moreVariants` (uniones en `moreJoins`, una lista por variante).
+ */
+export function consigneeTemplateValuesOf(t: ImportTemplate | null, fileColumns = 0): { values: ConsigneeTemplateValues; joins: JoinDef[]; moreJoins: JoinDef[][] } {
+  if (!t) {
+    const width = Math.max(5, fileColumns)
+    return {
+      values: {
+        name: '',
+        delimiter: ',',
+        hasHeader: true,
+        defaultClientPublicId: '',
+        columns: Array.from({ length: width }, () => ({ fields: [{ field: '' }] })),
+        defaults: [],
+        variantName: '',
+        conditions: [],
+        moreVariants: [],
+      },
+      joins: [],
+      moreJoins: [],
+    }
+  }
+  const variants = t.variants ?? []
+  const first = mappingOf(variants.length > 0 ? (variants[0].columns ?? []) : (t.columns ?? []), fileColumns)
+  const rest = variants.slice(1).map((v) => ({ v, m: mappingOf(v.columns ?? [], fileColumns) }))
   return {
     values: {
       name: t.name ?? '',
       delimiter: t.delimiter || ',',
       hasHeader: t.hasHeader ?? true,
       defaultClientPublicId: t.defaultClientPublicId ?? '',
-      columns,
+      columns: first.columns,
       defaults: Object.entries(t.defaults ?? {}).map(([field, value]) => ({ field, value })),
+      variantName: variants[0]?.name ?? '',
+      conditions: variants.length > 1 ? conditionValuesOf(variants[0].conditions) : [],
+      moreVariants: rest.map(({ v, m }) => ({ name: v.name ?? '', conditions: conditionValuesOf(v.conditions), columns: m.columns })),
     },
-    joins,
+    joins: first.joins,
+    moreJoins: rest.map(({ m }) => m.joins),
   }
 }
 
@@ -653,7 +735,7 @@ export function consigneeTemplateIssues(
   })
   if (count.size === 0) issues.push({ path: 'columns', message: m.columnsRequired })
   else if (!REQUIRED_COLUMN_FIELDS.every((f) => count.has(f))) issues.push({ path: 'columns', message: m.nameLine1 })
-  else if (!count.has(CITY_FIELD) && !defaultFields.has(CITY_FIELD)) issues.push({ path: 'columns', message: m.city })
+  else if (!count.has(CITY_FIELD) && !defaultFields.has(CITY_FIELD) && !count.has(POSTAL_FIELD) && !defaultFields.has(POSTAL_FIELD)) issues.push({ path: 'columns', message: m.city })
   else if (count.has(CLIENT_CODE_FIELD) && count.has(CLIENT_NAME_FIELD)) issues.push({ path: 'columns', message: m.clientBoth })
   return issues
 }
@@ -667,11 +749,102 @@ export function consigneeTemplateSchema(m: ConsigneeTemplateMessages, fields: re
       defaultClientPublicId: z.string(),
       columns: z.array(z.object({ fields: z.array(z.object({ field: z.string() })) })),
       defaults: z.array(z.object({ field: z.string(), value: z.string() })),
+      variantName: z.string(),
+      conditions: z.array(conditionSchema),
+      moreVariants: z.array(z.object({ name: z.string(), conditions: z.array(conditionSchema), columns: z.array(z.object({ fields: z.array(z.object({ field: z.string() })) })) })),
     })
     .superRefine((v, ctx) => {
-      for (const issue of consigneeTemplateIssues(v, fields, m))
+      for (const issue of [...consigneeTemplateIssues(v, fields, m), ...variantIssues(v, fields, m)])
         ctx.addIssue({ code: 'custom', path: issue.path.split('.').map((p) => (/^\d+$/.test(p) ? Number(p) : p)), message: issue.message })
     })
+}
+
+const conditionSchema = z.object({ position: z.string(), operator: z.string(), value: z.string() })
+
+// ---------------------------------------------------------------- variantes de mapeo (Lote F-B3)
+
+/** Operadores de la condición (espejo de ImportConditionOperators), en el orden del selector. */
+export const CONDITION_OPERATORS = ['EQUALS', 'CONTAINS', 'NOT_EMPTY', 'EMPTY'] as const
+export const MAX_VARIANTS = 10
+export const MAX_CONDITIONS = 5
+export const VARIANT_NAME_MAX = 60
+export const CONDITION_VALUE_MAX = 100
+
+/** ¿El operador compara con un valor? («igual a», «contiene»). */
+export function conditionNeedsValue(operator: string): boolean {
+  return operator === 'EQUALS' || operator === 'CONTAINS'
+}
+
+/** Las variantes del editor en orden (la 1 sale de los campos de arriba). */
+export function variantsOf(v: Pick<ConsigneeTemplateValues, 'variantName' | 'conditions' | 'columns' | 'moreVariants'>): VariantValues[] {
+  return [{ name: v.variantName, conditions: v.conditions, columns: v.columns }, ...v.moreVariants]
+}
+
+/** Valores del editor con otra lista de variantes (la primera vuelve a los campos de arriba). */
+export function withVariants<V extends ConsigneeTemplateValues>(v: V, list: readonly VariantValues[]): V {
+  const [first, ...rest] = list
+  return { ...v, variantName: first?.name ?? '', conditions: first?.conditions ?? [], columns: first?.columns ?? v.columns, moreVariants: [...rest] }
+}
+
+/** Ruta de los campos de la variante k (0 = la 1, en los campos de arriba). */
+export function variantPath(k: number): string {
+  return k === 0 ? '' : `moreVariants.${k - 1}.`
+}
+
+/**
+ * Lote F-B3 — errores de las variantes (espejo de ConsigneeImportVariants.Validate): solo si hay dos o más. Condición sin columna,
+ * «igual a»/«contiene» sin valor, variante sin condición que no es la última, y el mapeo de cada variante (las mismas reglas que la 1).
+ */
+export function variantIssues(
+  v: Pick<ConsigneeTemplateValues, 'variantName' | 'conditions' | 'columns' | 'moreVariants' | 'defaults'>,
+  fields: readonly ImportField[],
+  m: Omit<ConsigneeTemplateMessages, 'nameRequired' | 'nameMax'>,
+): TemplateIssue[] {
+  if (v.moreVariants.length === 0) return []
+  const issues: TemplateIssue[] = []
+  const list = variantsOf(v)
+  list.forEach((variant, k) => {
+    const base = variantPath(k)
+    variant.conditions.forEach((c, j) => {
+      if (!c.position) issues.push({ path: `${base}conditions.${j}.position`, message: m.conditionColumn ?? 'La posición debe ser 1 o mayor.' })
+      if (conditionNeedsValue(c.operator) && !c.value.trim())
+        issues.push({ path: `${base}conditions.${j}.value`, message: m.conditionValue ?? 'La condición «igual a» o «contiene» necesita un valor.' })
+    })
+    if (variant.conditions.length === 0 && k < list.length - 1)
+      issues.push({
+        path: `${base}conditions`,
+        message: m.unreachable?.(k + 1) ?? `La variante ${k + 1} no tiene condición y deja sin uso a las que le siguen; póngala al final o agréguele una condición.`,
+      })
+    if (k > 0)
+      for (const issue of consigneeTemplateIssues({ columns: variant.columns, defaults: v.defaults }, fields, m))
+        if (!issue.path.startsWith('defaults')) issues.push({ path: `${base}${issue.path}`, message: issue.message })
+  })
+  return issues
+}
+
+/** Variantes con algún error (para marcar su pestaña): índices 0…n-1. */
+export function variantsWithIssues(paths: readonly string[], count: number): number[] {
+  const out: number[] = []
+  for (let k = 0; k < count; k++) {
+    const hit = k === 0 ? paths.some((p) => p.startsWith('columns') || p.startsWith('conditions')) : paths.some((p) => p.startsWith(`moreVariants.${k - 1}.`))
+    if (hit) out.push(k)
+  }
+  return out
+}
+
+/** Variante del request: nombre (vacío = null), condiciones (el valor solo en «igual a»/«contiene») y sus columnas. */
+function variantRequest(variant: VariantValues, joins: readonly JoinDef[]): ImportTemplateVariant {
+  return {
+    name: variant.name.trim() || null,
+    conditions: variant.conditions.map((c) => ({ position: Number(c.position), operator: c.operator, value: conditionNeedsValue(c.operator) ? c.value.trim() : null })),
+    columns: consigneeTemplateColumns({ columns: variant.columns }, joins),
+  }
+}
+
+/** Variantes del request (solo con dos o más; si no, la plantilla viaja con `columns`, como siempre). */
+export function consigneeTemplateVariants(v: ConsigneeTemplateValues, joins: readonly JoinDef[], moreJoins: readonly JoinDef[][]): ImportTemplateVariant[] | null {
+  if (v.moreVariants.length === 0) return null
+  return variantsOf(v).map((variant, k) => variantRequest(variant, k === 0 ? joins : (moreJoins[k - 1] ?? [])))
 }
 
 /**
@@ -698,27 +871,33 @@ export function consigneeTemplateColumns(v: Pick<ConsigneeTemplateValues, 'colum
   return out
 }
 
-export function buildConsigneeTemplateCreate(v: ConsigneeTemplateValues, joins: readonly JoinDef[]): ImportTemplateCreateRequest {
+export function buildConsigneeTemplateCreate(v: ConsigneeTemplateValues, joins: readonly JoinDef[], moreJoins: readonly JoinDef[][] = []): ImportTemplateCreateRequest {
   const defaults = templateDefaults(v)
+  const variants = consigneeTemplateVariants(v, joins, moreJoins)
   return {
     name: v.name.trim(),
     delimiter: v.delimiter,
     hasHeader: v.hasHeader,
-    columns: consigneeTemplateColumns(v, joins),
+    // Lote F-B3: con variantes, las columnas van dentro de cada una
+    ...(variants ? { variants } : { columns: consigneeTemplateColumns(v, joins) }),
     defaults: Object.keys(defaults).length > 0 ? defaults : null,
     ...(v.defaultClientPublicId ? { defaultClientPublicId: v.defaultClientPublicId } : {}),
   }
 }
 
-/** PATCH: columnas y defaults reemplazan la lista completa; sin defaults → `clearDefaults`; sin cliente por defecto → `clearDefaultClient`. */
-export function buildConsigneeTemplatePatch(v: ConsigneeTemplateValues, joins: readonly JoinDef[]): ImportTemplatePatchRequest {
+/**
+ * PATCH: columnas y defaults reemplazan la lista completa; sin defaults → `clearDefaults`; sin cliente por defecto → `clearDefaultClient`.
+ * Lote F-B3: con variantes viajan `variants` (sin `columns`); una plantilla que tenía variantes y queda con una sola manda `variants: []`.
+ */
+export function buildConsigneeTemplatePatch(v: ConsigneeTemplateValues, joins: readonly JoinDef[], moreJoins: readonly JoinDef[][] = [], hadVariants = false): ImportTemplatePatchRequest {
   const defaults = templateDefaults(v)
   const hasDefaults = Object.keys(defaults).length > 0
+  const variants = consigneeTemplateVariants(v, joins, moreJoins)
   return {
     name: v.name.trim(),
     delimiter: v.delimiter,
     hasHeader: v.hasHeader,
-    columns: consigneeTemplateColumns(v, joins),
+    ...(variants ? { variants } : { columns: consigneeTemplateColumns(v, joins), ...(hadVariants ? { variants: [] } : {}) }),
     defaults: hasDefaults ? defaults : null,
     clearDefaults: hasDefaults ? null : true,
     ...(v.defaultClientPublicId ? { defaultClientPublicId: v.defaultClientPublicId } : { clearDefaultClient: true }),

@@ -25,6 +25,7 @@ internal static class ConsigneeImportWorld
             s.AddSingleton<ImportTemplateService>();
             s.AddSingleton<LocationService>();
             s.AddSingleton<ContactPointService>();
+            s.AddSingleton<PostalLocalityService>();
             s.AddSingleton<ConsigneeImportService>();
         });
 
@@ -52,6 +53,24 @@ internal static class ConsigneeImportWorld
             Status(9101, ImportBatchStatuses.Validated, pipe, 1, initial: true),
             Status(9102, ImportBatchStatuses.Confirmed, pipe, 2),
             Status(9103, ImportBatchStatuses.Discarded, term, 3));
+
+        // Lote 46 (F-B3): catálogo de códigos postales sintético (la importación deduce pueblo, estado y ZIP de entrega con él).
+        var pr = f.LookupId(LookupDomains.Country, "PR");
+        var us = f.LookupId(LookupDomains.Country, "US");
+        PostalLocality Pr(string city, string zip, string municipality, string? zipClass) => new()
+            { City = city, PostalCode = zip, State = "PR", Municipality = municipality, CountryLookupId = pr, ZipClass = zipClass };
+        PostalLocality Us(string city, string zip, string state, string? zipClass) => new()
+            { City = city, PostalCode = zip, State = state, CountryLookupId = us, ZipClass = zipClass };
+        f.Db.Set<PostalLocality>().AddRange(
+            Pr("PONCE", "00716", "Ponce", ZipClasses.Standard), Pr("PONCE", "00728", "Ponce", ZipClasses.Standard), Pr("PONCE", "00734", "Ponce", ZipClasses.PoBox),
+            Pr("SAN JUAN", "00901", "San Juan", ZipClasses.Standard), Pr("SAN JUAN", "00936", "San Juan", ZipClasses.PoBox),
+            Pr("ANASCO", "00610", "Añasco", ZipClasses.Standard), Pr("PENUELAS", "00624", "Peñuelas", ZipClasses.Standard),
+            Pr("TOA BAJA", "00949", "Toa Baja", ZipClasses.Standard), Pr("SABANA SECA", "00952", "Toa Baja", ZipClasses.Standard),
+            Pr("BAYAMON", "00961", "Bayamón", ZipClasses.Standard), Pr("BAYAMON", "00956", "Bayamón", ZipClasses.Standard), Pr("BAYAMON", "00960", "Bayamón", ZipClasses.PoBox),
+            Pr("ANGELES", "00611", "Utuado", ZipClasses.PoBox), Pr("UTUADO", "00641", "Utuado", ZipClasses.Standard),
+            Pr("CATANO", "00962", "Cataño", null), Pr("FT BUCHANAN", "00934", "Guaynabo", ZipClasses.Unique),
+            Us("BOSTON", "02108", "MA", ZipClasses.Standard), Us("SPRINGFIELD", "62701", "IL", ZipClasses.Standard), Us("SPRINGFIELD", "01103", "MA", ZipClasses.Standard),
+            Us("APO", "09001", "AE", ZipClasses.Military), Us("BARROW", "99723", "AK", ZipClasses.PoBox));
         await f.Db.SaveChangesAsync();
         f.Db.ChangeTracker.Clear();
         return f;
@@ -298,7 +317,7 @@ public sealed class ConsigneeImportServiceTests
         Assert.Equal(18, fields.Count);
         Assert.Equal(new ImportFieldDto("contactName", false, true), fields.Single(x => x.Field == "contactName"));
         Assert.Equal(new ImportFieldDto("name", true, false), fields.Single(x => x.Field == "name"));
-        Assert.Equal(new ImportFieldDto("city", true, true), fields.Single(x => x.Field == "city"));
+        Assert.Equal(new ImportFieldDto("city", false, true), fields.Single(x => x.Field == "city")); // Lote 46: sale del ZIP
         Assert.Equal(new ImportFieldDto("allowDupInvoice", false, true), fields.Single(x => x.Field == "allowDupInvoice"));
         Assert.Equal(new ImportFieldDto("clientCode", false, false), fields.Single(x => x.Field == "clientCode"));
     }

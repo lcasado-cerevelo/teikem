@@ -21,6 +21,9 @@ public sealed record ConsigneeImportOwnerDto(Guid? ClientPublicId, string? Clien
 /// Fila del lote. Row = ordinal de datos (1 = primera fila después de la cabecera); Line = línea física del archivo.
 /// Owner null si el cliente de la fila no se pudo resolver. Errors por campo (la fila no se crea); Warnings informativos.
 /// Tras confirmar: LocationPublicId si se creó, o Error con el motivo; Skipped si no estaba en el subconjunto elegido.
+/// Lote 46 (F-B3): Inferred = campos completados con el catálogo de códigos postales (city, state, postalCode); OriginalPostalCode =
+/// el ZIP del archivo cuando se sustituyó por uno de entrega («código postal ajustado»); Variant/VariantName = variante de mapeo
+/// que se usó (1..n; null si la plantilla no tiene variantes); Cells = las celdas de la fila cuando ninguna variante aplicó.
 /// </summary>
 public sealed record ConsigneeImportRowDto(
     int Row,
@@ -32,7 +35,12 @@ public sealed record ConsigneeImportRowDto(
     bool IsValid,
     Guid? LocationPublicId,
     string? Error,
-    bool Skipped);
+    bool Skipped,
+    IReadOnlyList<string>? Inferred = null,
+    string? OriginalPostalCode = null,
+    int? Variant = null,
+    string? VariantName = null,
+    IReadOnlyList<string>? Cells = null);
 
 /// <summary>Vista previa del lote (resultado de validar y de GET del lote). ClientPublicId null = lote sin cliente. Created/Failed solo tras confirmar.</summary>
 public sealed record ConsigneeImportPreviewDto(
@@ -99,11 +107,21 @@ public sealed class ConsigneeImportRowRecord
     public Guid? LocationPublicId { get; set; }
     public string? Error { get; set; }
     public bool? Skipped { get; set; }
+    /// <summary>Lote 46 (F-B3): campos completados con el catálogo de códigos postales (null = ninguno).</summary>
+    public List<string>? Inferred { get; set; }
+    /// <summary>Lote 46 (F-B3): ZIP del archivo sustituido por uno de entrega (apartados o militar → entrega de la misma ciudad).</summary>
+    public string? OriginalPostalCode { get; set; }
+    /// <summary>Lote 46 (F-B3): variante de mapeo usada (1..n) y su nombre; null sin variantes.</summary>
+    public int? Variant { get; set; }
+    public string? VariantName { get; set; }
+    /// <summary>Lote 46 (F-B3): celdas de la fila, solo cuando ninguna variante aplicó (para ver qué traía).</summary>
+    public List<string>? Cells { get; set; }
 
     [JsonIgnore] public bool IsValid => Errors.Count == 0;
 
     public ConsigneeImportRowDto ToDto() => new(
         Row, Line, Values,
         OwnerResolved ? new ConsigneeImportOwnerDto(OwnerClientPublicId, OwnerClientName, OwnerClientId is null) : null,
-        Errors, Warnings, IsValid, LocationPublicId, Error, Skipped == true);
+        Errors, Warnings, IsValid, LocationPublicId, Error, Skipped == true,
+        Inferred is { Count: > 0 } ? Inferred : null, OriginalPostalCode, Variant, VariantName, Cells);
 }

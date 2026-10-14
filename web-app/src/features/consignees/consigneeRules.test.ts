@@ -17,6 +17,14 @@ import {
   pickPhone,
   buildConsigneeTemplateCreate,
   buildConsigneeTemplatePatch,
+  conditionNeedsValue,
+  previewFields,
+  templateUsesField,
+  variantIssues,
+  variantPath,
+  variantsOf,
+  variantsWithIssues,
+  withVariants,
   consigneeTemplateColumns,
   consigneeTemplateIssues,
   consigneeTemplateValuesOf,
@@ -246,7 +254,7 @@ describe('plantillas de importación', () => {
   const TM = {
     columnsRequired: 'Indique al menos una columna.',
     nameLine1: 'La plantilla debe incluir las columnas name y line1.',
-    city: 'La plantilla debe indicar la ciudad (city) en una columna o en defaults.',
+    city: 'La plantilla debe indicar la ciudad (city) o el código postal (postalCode), en una columna o en defaults.',
     clientBoth: 'Use clientCode o clientName, no ambos.',
     repeated: (f: string) => `El campo ${f} está repetido.`,
     noDefault: (f: string) => `El campo ${f} no admite valor por defecto.`,
@@ -354,7 +362,7 @@ describe('mapeo de consignatarios (Lote F-B2)', () => {
   const MSG = {
     columnsRequired: 'Indique al menos una columna.',
     nameLine1: 'La plantilla debe incluir las columnas name y line1.',
-    city: 'La plantilla debe indicar la ciudad (city) en una columna o en defaults.',
+    city: 'La plantilla debe indicar la ciudad (city) o el código postal (postalCode), en una columna o en defaults.',
     clientBoth: 'Use clientCode o clientName, no ambos.',
     repeated: (f: string) => `El campo ${f} está repetido.`,
     tooManyParts: (f: string) => `El campo ${f} admite a lo sumo 5 columnas unidas.`,
@@ -363,7 +371,7 @@ describe('mapeo de consignatarios (Lote F-B2)', () => {
   }
   const FIELDS2: ImportField[] = ['code', 'name', 'line1', 'city', 'country', 'contactName'].map((field) => ({ field, required: false, defaultAllowed: !['code', 'name', 'line1'].includes(field) }))
   const cols = (...fields: string[][]) => fields.map((f) => ({ fields: f.map((field) => ({ field })) }))
-  const base = (columns: ConsigneeTemplateValues['columns']): ConsigneeTemplateValues => ({ name: 'P', delimiter: ',', hasHeader: true, defaultClientPublicId: '', columns, defaults: [] })
+  const base = (columns: ConsigneeTemplateValues['columns']): ConsigneeTemplateValues => ({ name: 'P', delimiter: ',', hasHeader: true, defaultClientPublicId: '', columns, defaults: [], variantName: '', conditions: [], moreVariants: [] })
 
   it('cada fila del editor viaja: sin campo = «ignore»; una columna a dos campos; un campo con varias columnas lleva su parte y separador', () => {
     const v = base(cols(['code', 'name'], ['name'], [''], ['line1'], ['line1'], ['city']))
@@ -475,5 +483,138 @@ describe('mapeo de consignatarios (Lote F-B2)', () => {
     expect(buildPatchRequest({ ...original, contactName: 'Luis' }, original, null).request).toMatchObject({ contactName: 'Luis' })
     expect(buildPatchRequest(original, original, null).changed).toBe(false)
     expect(matchesConsignee({ ...LOC, contactName: 'Ana Rivera' } as Consignee, 'rivera', { shared: 'S', active: 'A', inactive: 'I' })).toBe(true)
+  })
+})
+
+// Lote F-B3 — variantes de mapeo (espejo de ConsigneeImportVariants) y columnas que la vista previa agrega por el catálogo de ZIP.
+describe('Plantillas con variantes y catálogo de códigos postales (Lote F-B3)', () => {
+  const FIELDS3: ImportField[] = ['code', 'name', 'line1', 'line2', 'city', 'postalCode', 'contactName'].map((field) => ({ field, required: false, defaultAllowed: !['code', 'name', 'line1'].includes(field) }))
+  const MSG3 = {
+    columnsRequired: 'Indique al menos una columna.',
+    nameLine1: 'La plantilla debe incluir las columnas name y line1.',
+    city: 'La plantilla debe indicar la ciudad (city) o el código postal (postalCode), en una columna o en defaults.',
+    clientBoth: 'Use clientCode o clientName, no ambos.',
+    repeated: (f: string) => `El campo ${f} está repetido.`,
+    tooManyParts: (f: string) => `El campo ${f} admite a lo sumo 5 columnas unidas.`,
+    noDefault: (f: string) => `El campo ${f} no admite valor por defecto.`,
+    defaultValueRequired: (f: string) => `Escriba el valor por defecto de ${f}.`,
+    conditionColumn: 'Escoja la columna de la condición.',
+    conditionValue: 'La condición «igual a» o «contiene» necesita un valor.',
+    unreachable: (n: number) => `La variante ${n} no tiene condición y deja sin uso a las que le siguen; póngala al final o agréguele una condición.`,
+  }
+  const cols3 = (...fields: string[][]) => fields.map((f) => ({ fields: f.map((field) => ({ field })) }))
+  const TPL = {
+    publicId: 't',
+    name: 'Mixta',
+    delimiter: ',',
+    hasHeader: true,
+    defaults: {},
+    columns: [{ position: 1, field: 'name' }],
+    variants: [
+      { name: 'Formato B', conditions: [{ position: 9, operator: 'EQUALS', value: 'PUERTO RICO' }], columns: [{ position: 2, field: 'name' }, { position: 6, field: 'line1' }, { position: 8, field: 'city' }] },
+      {
+        name: null,
+        conditions: [],
+        columns: [
+          { position: 2, field: 'name' },
+          { position: 3, field: 'line1', part: 1 },
+          { position: 4, field: 'line1', part: 2, separator: ', ' },
+          { position: 5, field: 'postalCode' },
+        ],
+      },
+    ],
+  } as unknown as ImportTemplate
+
+  it('el ZIP basta en lugar del pueblo (en columna o como valor por defecto)', () => {
+    const noDefaults = { defaults: [] as { field: string; value: string }[] }
+    expect(consigneeTemplateIssues({ ...noDefaults, columns: cols3(['name'], ['line1'], ['postalCode']) }, FIELDS3, MSG3)).toEqual([])
+    expect(consigneeTemplateIssues({ columns: cols3(['name'], ['line1']), defaults: [{ field: 'postalCode', value: '00901' }] }, FIELDS3, MSG3)).toEqual([])
+    expect(consigneeTemplateIssues({ ...noDefaults, columns: cols3(['name'], ['line1']) }, FIELDS3, MSG3)).toEqual([{ path: 'columns', message: MSG3.city }])
+  })
+
+  it('la plantilla con variantes llega al editor: la 1 arriba y las demás en moreVariants, con sus uniones', () => {
+    const { values, joins, moreJoins } = consigneeTemplateValuesOf(TPL, 9)
+    expect(values.variantName).toBe('Formato B')
+    expect(values.conditions).toEqual([{ position: '9', operator: 'EQUALS', value: 'PUERTO RICO' }])
+    expect(values.columns).toHaveLength(9)
+    expect(values.columns[7]).toEqual({ fields: [{ field: 'city' }] })
+    expect(values.moreVariants).toHaveLength(1)
+    expect(values.moreVariants[0]).toMatchObject({ name: '', conditions: [] })
+    expect(values.moreVariants[0].columns[4]).toEqual({ fields: [{ field: 'postalCode' }] })
+    expect(joins).toEqual([])
+    expect(moreJoins).toEqual([[{ field: 'line1', positions: [3, 4], separators: [', '] }]])
+    // sin variantes: lo de siempre
+    expect(consigneeTemplateValuesOf({ ...TPL, variants: null } as ImportTemplate).values).toMatchObject({ moreVariants: [], conditions: [], variantName: '' })
+    expect(variantsOf(values).map((v) => v.name)).toEqual(['Formato B', ''])
+    expect(variantPath(0)).toBe('')
+    expect(variantPath(2)).toBe('moreVariants.1.')
+  })
+
+  it('con dos o más variantes el request lleva variants (sin columns); al volver a una sola, el PATCH manda variants vacío', () => {
+    const { values, joins, moreJoins } = consigneeTemplateValuesOf(TPL, 5)
+    const create = buildConsigneeTemplateCreate(values, joins, moreJoins)
+    expect(create).not.toHaveProperty('columns')
+    expect(create.variants?.[0]).toEqual({
+      name: 'Formato B',
+      conditions: [{ position: 9, operator: 'EQUALS', value: 'PUERTO RICO' }],
+      columns: [
+        { position: 1, field: 'ignore' },
+        { position: 2, field: 'name' },
+        { position: 3, field: 'ignore' },
+        { position: 4, field: 'ignore' },
+        { position: 5, field: 'ignore' },
+        { position: 6, field: 'line1' },
+        { position: 7, field: 'ignore' },
+        { position: 8, field: 'city' },
+      ],
+    })
+    expect(create.variants?.[1]).toMatchObject({ name: null, conditions: [] })
+    expect(create.variants?.[1].columns).toContainEqual({ position: 4, field: 'line1', part: 2, separator: ', ' })
+    const single = withVariants(values, variantsOf(values).slice(0, 1))
+    expect(buildConsigneeTemplatePatch(single, joins, [], true)).toMatchObject({ variants: [], columns: expect.any(Array) })
+    expect(buildConsigneeTemplatePatch(single, joins, [], false)).not.toHaveProperty('variants')
+    expect(buildConsigneeTemplatePatch(values, joins, moreJoins, true)).not.toHaveProperty('columns')
+    // EMPTY / NOT_EMPTY no mandan valor
+    const empty = withVariants(values, [{ ...variantsOf(values)[0], conditions: [{ position: '5', operator: 'NOT_EMPTY', value: 'x' }] }, variantsOf(values)[1]])
+    expect(buildConsigneeTemplateCreate(empty, joins, moreJoins).variants?.[0].conditions).toEqual([{ position: 5, operator: 'NOT_EMPTY', value: null }])
+    expect(conditionNeedsValue('CONTAINS')).toBe(true)
+    expect(conditionNeedsValue('EMPTY')).toBe(false)
+  })
+
+  it('reglas de las variantes: columna y valor de la condición, sin condición solo al final y el mapeo de cada una', () => {
+    const { values } = consigneeTemplateValuesOf(TPL, 9)
+    expect(variantIssues(values, FIELDS3, MSG3)).toEqual([])
+    const bad = withVariants(values, [
+      { name: 'A', conditions: [], columns: cols3(['name'], ['line1'], ['city']) },
+      { name: 'B', conditions: [{ position: '', operator: 'EQUALS', value: ' ' }], columns: cols3(['name'], ['city']) },
+      { name: 'C', conditions: [], columns: cols3(['name'], ['line1']) },
+    ])
+    expect(variantIssues(bad, FIELDS3, MSG3)).toEqual([
+      { path: 'conditions', message: MSG3.unreachable(1) },
+      { path: 'moreVariants.0.conditions.0.position', message: MSG3.conditionColumn },
+      { path: 'moreVariants.0.conditions.0.value', message: MSG3.conditionValue },
+      { path: 'moreVariants.0.columns', message: MSG3.nameLine1 },
+      { path: 'moreVariants.1.columns', message: MSG3.city },
+    ])
+    expect(variantsWithIssues(variantIssues(bad, FIELDS3, MSG3).map((i) => i.path), 3)).toEqual([0, 1, 2])
+    // una sola variante: sin reglas de variantes
+    expect(variantIssues(withVariants(values, variantsOf(values).slice(0, 1)), FIELDS3, MSG3)).toEqual([])
+  })
+
+  it('la vista previa muestra los campos de todas las variantes y los que dedujo el catálogo', () => {
+    expect(templateFields(TPL)).toEqual(['name', 'line1', 'city', 'postalCode'])
+    expect(previewFields(TPL, [{ inferred: ['state', 'city'] }, { inferred: null }])).toEqual(['name', 'line1', 'city', 'postalCode', 'state'])
+    expect(previewFields({ columns: [{ position: 1, field: 'name' }] } as ImportTemplate, [{ inferred: ['postalCode'] }])).toEqual(['name', 'postalCode'])
+    expect(templateUsesField(TPL, 'postalCode')).toBe(true)
+    expect(templateUsesField(TPL, 'clientCode', 'clientName')).toBe(false)
+  })
+
+  it('los textos nuevos existen en los dos idiomas', () => {
+    const keys = ['variantsTitle', 'addVariant', 'variantN', 'conditionsNone', 'zipAdjusted', 'inferredTag', 'adjustedTitle', 'rowCells', 'variantsMapping']
+    for (const dict of [esDict, enDict]) {
+      const imp = (dict as unknown as { consignees: { import: Record<string, unknown> } }).consignees.import
+      for (const k of keys) expect(typeof imp[k]).toBe('string')
+      expect(Object.keys(imp.operators as object)).toEqual(['EQUALS', 'CONTAINS', 'NOT_EMPTY', 'EMPTY'])
+    }
   })
 })

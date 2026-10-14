@@ -7732,3 +7732,106 @@ La persona de contacto admite hasta 150 caracteres, en el archivo y en la ficha.
 
 **¿Dónde veo la persona de contacto?**
 En la ficha del consignatario («Persona de contacto»), en la fila de la lista y en el buscador. Se cambia con **Editar**.
+
+
+## Lote 46 / F-B3 — Importar consignatarios: pueblo, estado y ZIP con el catálogo de códigos postales, y variantes de mapeo (2026-10-14)
+
+Pantalla: [frontend/fb3-variantes-y-codigos-postales.md](frontend/fb3-variantes-y-codigos-postales.md). Servidor: capítulo 02, §2.3.
+
+**Mi archivo trae el ZIP pero no el pueblo (o al revés). ¿Tengo que completarlo?**
+No, en Puerto Rico y Estados Unidos. Con el ZIP, Teikem pone el pueblo y el estado; con el pueblo, el primer ZIP de entrega de ese pueblo. La vista previa marca lo
+completado con **del catálogo** y lo explica en Observaciones.
+
+**¿Por qué cambió el ZIP de una fila?**
+Era un ZIP de **apartados postales** (P.O. Box) o **militar**: a un consignatario se le entrega en una dirección física, así que Teikem usó un ZIP de entrega de la
+misma ciudad. La vista previa lo marca **Código postal ajustado** con el ZIP original tachado. Si prefiere otro ZIP de entrega, corríjalo en el archivo.
+
+**El ZIP y el pueblo de una fila no coinciden. ¿Cuál queda?**
+Los dos, como vienen; solo hay un aviso. Revise cuál está bien antes de importar.
+
+**¿Puede Teikem cambiar el estado que traje?**
+No. Si viene vacío, pone el del catálogo; si viene lleno y no coincide con el ZIP, solo avisa.
+
+**Mi archivo mezcla filas con las columnas en distinto orden.**
+Use **variantes**: en el editor de la plantilla, **+ Agregar variante**, póngale a cada una su condición en **Se usa cuando** (por ejemplo, «Columna 9 es igual a PUERTO
+RICO») y su propio mapeo. A cada fila se le aplica la primera variante que se cumpla.
+
+**¿Las variantes tienen sus propios valores por defecto?**
+No: los valores por defecto son de la plantilla y valen para todas las variantes.
+
+**Antes podía importar sin ZIP y sin que el pueblo estuviera en el catálogo.**
+Desde el Lote 46, en Puerto Rico y Estados Unidos el pueblo o el ZIP deben estar en el catálogo de códigos postales (para tener una dirección de entrega válida). Otros
+países siguen como antes.
+
+**Todos los ZIP salen sin tipo y nunca veo «Código postal ajustado».**
+Falta cargar el tipo de los ZIP: el administrador de la base corre `Diseño/logistica-db-zip-catalog.sql` (después de `db-update`) y reinicia el API. Mientras tanto los
+ZIP se aceptan como de entrega.
+
+**¿De dónde salen los tipos de ZIP y las coordenadas?**
+Del correo de EE. UU. (USPS «Zip Locale Detail») y de **GeoNames** (www.geonames.org, licencia Creative Commons Atribución 4.0). Las coordenadas no se copian al
+consignatario.
+
+**En el alta de un consignatario no encuentro un ZIP que sí existe.**
+El selector **Pueblo** del consignatario ofrece solo ZIP de entrega: los de apartados postales y los militares no salen (sí salen en la dirección postal del cliente y
+en los almacenes).
+
+**«El código postal X no está en el catálogo de códigos postales; corríjalo, o déjelo vacío e indique el pueblo.»** (error de fila)
+El ZIP no existe en el catálogo. Corríjalo, o bórrelo y ponga el pueblo (Teikem asigna el ZIP).
+
+**«El código postal X no es válido: use 5 dígitos (o ZIP+4, como 00901-1234).»** (error de fila)
+El ZIP trae letras o un largo que no es de ZIP. Corríjalo.
+
+**«El pueblo 'X' no está en el catálogo de códigos postales; corríjalo o indique el código postal.»** (error de fila)
+El pueblo está mal escrito o no es un pueblo (a veces viene el barrio). Corríjalo o ponga el ZIP.
+
+**«El pueblo 'X' no tiene un código postal de entrega (solo de apartados postales o militares); indique el código postal de la dirección física.»** (error de fila)
+Ese pueblo solo tiene ZIP de apartados. Ponga el ZIP de la dirección física del consignatario.
+
+**«El pueblo 'X' existe en varios estados (IL, MA); indique el estado o el código postal.»** (error de fila)
+Hay pueblos con el mismo nombre en varios estados de EE. UU. Llene el estado o el ZIP.
+
+**«El código postal X es de apartados postales (P.O. Box) y Y no tiene un código postal de entrega con que sustituirlo; indique el código postal de la dirección física.»** (error de fila; también «…es de correo militar (APO/FPO)…»)
+La ciudad de ese ZIP no tiene ZIP de entrega. Ponga el ZIP de la dirección física.
+
+**«Ninguna variante de la plantilla aplica a esta fila; revise las condiciones de las variantes.»** (error de fila)
+La fila no cumple ninguna condición. La vista previa muestra sus celdas: ajuste las condiciones o agregue una variante para ese formato.
+
+**«Código postal ajustado: 00734 es de apartados postales (P.O. Box); se usó 00715, de entrega en Ponce.»** (aviso)
+Ver «¿Por qué cambió el ZIP de una fila?». La fila se importa con el ZIP nuevo.
+
+**«Pueblo tomado del código postal 00952: Toa Baja.» / «Estado tomado del catálogo de códigos postales: PR.» / «Código postal asignado: 00956, el primero de entrega de Bayamón.»** (avisos)
+Teikem completó ese dato con el catálogo. La fila se importa.
+
+**«El código postal 00716 es de Ponce, no de Caguas; se guardan los dos como vienen.»** (aviso)
+Ver «El ZIP y el pueblo de una fila no coinciden».
+
+**«El estado NY no coincide con el del código postal (PR); se guarda como viene.»** (aviso)
+Revise el estado de la fila; Teikem no lo cambia.
+
+**«La plantilla debe indicar la ciudad (city) o el código postal (postalCode), en una columna o en defaults.»** (400)
+La plantilla no mapea ni el pueblo ni el ZIP. Mapee uno de los dos (o déle valor por defecto). Reemplaza al mensaje anterior «La plantilla debe indicar la ciudad (city) en
+una columna o en defaults.», que ya no sale.
+
+**«La variante N no tiene condición y deja sin uso a las que le siguen; póngala al final o agréguele una condición.»** (400; en pantalla, la pestaña dice «con errores»)
+Una variante sin condición aplica a todas las filas, así que las de después nunca se usarían. Muévala al final (**Mover antes** en la otra) o póngale una condición.
+
+**«La condición «igual a» o «contiene» necesita un valor.»** (400)
+Escriba el texto que debe tener la columna, o cambie la condición a «no está vacía» / «está vacía».
+
+**«Escoja la columna de la condición.»** (solo en pantalla)
+Escoja en **Se usa cuando** qué columna del archivo se revisa.
+
+**«Condición desconocida: X. Use EMPTY, NOT_EMPTY, EQUALS o CONTAINS.»** (400)
+Error de una llamada directa al API con otro operador. La pantalla solo ofrece esos cuatro.
+
+**«Una plantilla admite a lo sumo 10 variantes.» / «Una variante admite a lo sumo 5 condiciones.»** (400)
+Quite variantes o condiciones (la pantalla no deja pasar de esos topes).
+
+**«Esta plantilla usa variantes: las columnas van dentro de cada variante (variants), no en columns.»** (400)
+Error de una llamada directa al API que manda `columns` con variantes. Mande las columnas dentro de cada variante (o `variants: []` para volver a una sola).
+
+**«Las variantes de mapeo solo existen en las plantillas de consignatarios.»** (400)
+Las plantillas de órdenes no tienen variantes.
+
+**«Tipo de código postal desconocido: X. Use STANDARD, PO_BOX, UNIQUE, MILITARY o DELIVERY.»** (400, `GET /postal-localities`)
+El filtro `zipClass` trae un tipo que no existe. Use uno de esos.

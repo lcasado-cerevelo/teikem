@@ -6,6 +6,9 @@
 // Lote F-B2: CSV (UTF-8) o Excel .xlsx (lo lee el servidor; con varias hojas se escoge la hoja), el archivo se revisa al elegirlo
 // (`inspect-file`: hojas, encabezados y muestras, para el editor de plantillas), el cliente por defecto sale de la plantilla y
 // «Recordar este cliente en la plantilla» lo guarda al importar; la fila que trae su propio cliente manda.
+// Lote F-B3: la vista previa marca lo que el servidor dedujo del catálogo de códigos postales (pueblo, estado, ZIP: «del catálogo») y
+// el «Código postal ajustado» (original tachado → el de entrega), dice qué variante de mapeo usó cada fila (columna Variante) y, si
+// ninguna aplicó, muestra sus celdas; el resultado lista los consignatarios creados con datos completados o ajustados.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useCan } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
@@ -30,12 +33,13 @@ import {
   exceedsImportSize,
   IMPORT_FILE_ACCEPT,
   MAX_IMPORT_ROWS,
+  previewFields,
   rowHasProblems,
   rowProblems,
   SHARED,
   standardTemplateRequest,
-  templateFields,
   templateSummary,
+  templateUsesField,
   type ImportFileInspection,
   type ImportPreview,
   type ImportResult,
@@ -98,7 +102,8 @@ export function ConsigneeImportModal({ defaultClient, onClose }: ConsigneeImport
   // nunca empieza «sin plantilla» si hay alguna: la elegida o la primera activa
   const activeTemplate = templates.find((x) => x.publicId === templateId) ?? templates.find((x) => x.isActive !== false) ?? templates[0]
   const templateUsable = !!activeTemplate && activeTemplate.isActive !== false
-  const hasClientColumn = (activeTemplate?.columns ?? []).some((c) => c.field === CLIENT_CODE_FIELD || c.field === CLIENT_NAME_FIELD)
+  const hasClientColumn = templateUsesField(activeTemplate, CLIENT_CODE_FIELD, CLIENT_NAME_FIELD)
+  const variants = activeTemplate?.variants ?? []
   const clientList = useMemo(() => clients.map((c) => ({ value: c.publicId ?? '', label: c.name ?? c.code ?? '' })), [clients])
   const ownerOptions = useMemo(() => {
     const list = [...clientList]
@@ -207,10 +212,36 @@ export function ConsigneeImportModal({ defaultClient, onClose }: ConsigneeImport
     }
   }
 
-  const rows = preview?.rows ?? []
+  const rows = useMemo(() => preview?.rows ?? [], [preview])
   const shownRows = (onlyProblems ? rows.filter(rowHasProblems) : rows).slice(0, PREVIEW_ROWS)
   const invalidRows = (preview?.rowCount ?? 0) - (preview?.validRows ?? 0)
-  const columnFields = useMemo(() => templateFields(activeTemplate), [activeTemplate])
+  const columnFields = useMemo(() => previewFields(activeTemplate, rows), [activeTemplate, rows])
+  const hasVariantColumn = rows.some((r) => r.variant != null) || variants.length > 0
+  /** Celda de la vista previa: el valor y, si salió del catálogo de códigos postales, su marca (o el ZIP original tachado). */
+  const cell = (r: ImportRow, x: string) => {
+    const raw = r.values?.[x]
+    const text = x === 'contactPhone' && raw ? f.phone(raw) : raw || '—'
+    if (x === 'postalCode' && r.originalPostalCode)
+      return (
+        <span className="cs-adjusted" title={t('consignees.import.zipAdjustedTitle', { from: r.originalPostalCode, to: raw ?? '' })}>
+          <s>{r.originalPostalCode}</s> → <b>{text}</b> <Chip tone="warn">{t('consignees.import.zipAdjusted')}</Chip>
+        </span>
+      )
+    if (r.inferred?.includes(x))
+      return (
+        <span className="cs-inferred" title={t('consignees.import.inferredTitle')}>
+          {text} <small>{t('consignees.import.inferredTag')}</small>
+        </span>
+      )
+    return text
+  }
+  const conditionText = (c: { position?: number; operator?: string | null; value?: string | null }) =>
+    t('consignees.import.conditionSummary', {
+      column: t('consignees.import.columnN', { n: c.position ?? 0 }),
+      operator: t(`consignees.import.operators.${c.operator ?? 'EQUALS'}`),
+      value: c.value ? ` «${c.value}»` : '',
+    })
+  const adjustedRows = (result?.rows ?? []).filter((r) => r.locationPublicId && ((r.inferred?.length ?? 0) > 0 || r.originalPostalCode))
 
   const createStandard = async () => {
     try {
@@ -338,9 +369,26 @@ export function ConsigneeImportModal({ defaultClient, onClose }: ConsigneeImport
             <Spinner block />
           ) : activeTemplate ? (
             <div className="note cs-tplnote">
-              <span>
-                {t('consignees.import.mapping')}: {templateSummary(activeTemplate, fieldLabel) || t('consignees.import.ignore')}
-              </span>
+              {variants.length > 0 ? (
+                <div className="cs-varsum">
+                  <span>{t('consignees.import.variantsMapping', { n: variants.length })}</span>
+                  <ol>
+                    {variants.map((v, k) => (
+                      <li key={k}>
+                        <b>{v.name || t('consignees.import.variantN', { n: k + 1 })}</b>
+                        {' — '}
+                        {(v.conditions ?? []).length > 0 ? (v.conditions ?? []).map(conditionText).join(` ${t('consignees.import.and')} `) : t('consignees.import.conditionsNone')}
+                        {': '}
+                        {templateSummary({ columns: v.columns } as ImportTemplate, fieldLabel) || t('consignees.import.ignore')}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ) : (
+                <span>
+                  {t('consignees.import.mapping')}: {templateSummary(activeTemplate, fieldLabel) || t('consignees.import.ignore')}
+                </span>
+              )}
               <button
                 type="button"
                 className="rowbtn"
@@ -438,6 +486,31 @@ export function ConsigneeImportModal({ defaultClient, onClose }: ConsigneeImport
               <b>{result.skipped ?? 0}</b> {t('consignees.import.skipped')}
             </span>
           </div>
+          {adjustedRows.length > 0 && (
+            <div className="cs-tablewrap">
+              <p className="help">{t('consignees.import.adjustedTitle', { n: adjustedRows.length })}</p>
+              <table className="lst densetbl" aria-label={t('consignees.import.adjustedTitle', { n: adjustedRows.length })}>
+                <thead>
+                  <tr>
+                    <th>{t('consignees.import.line')}</th>
+                    <th>{fieldLabel('name')}</th>
+                    <th>{fieldLabel('postalCode')}</th>
+                    <th>{t('consignees.import.remarks')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {adjustedRows.map((r) => (
+                    <tr key={r.row}>
+                      <td className="mono">{r.line ?? r.row}</td>
+                      <td>{r.values?.name ?? '—'}</td>
+                      <td>{cell(r, 'postalCode')}</td>
+                      <td className="cs-remarks">{(r.warnings ?? []).join(' · ') || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
           {(result.rows ?? []).some((r) => !r.locationPublicId && !r.skipped) && (
             <div className="cs-tablewrap">
               <table className="lst densetbl">
@@ -492,6 +565,7 @@ export function ConsigneeImportModal({ defaultClient, onClose }: ConsigneeImport
                 <tr>
                   <th>{t('consignees.import.line')}</th>
                   <th>{t('consignees.import.rowState')}</th>
+                  {hasVariantColumn && <th>{t('consignees.import.variant')}</th>}
                   {columnFields.map((x) => (
                     <th key={x}>{fieldLabel(x)}</th>
                   ))}
@@ -506,8 +580,9 @@ export function ConsigneeImportModal({ defaultClient, onClose }: ConsigneeImport
                     <tr key={r.row} className={r.isValid ? undefined : 'cs-badrow'}>
                       <td className="mono">{r.line ?? r.row}</td>
                       <td>{statusChip(r)}</td>
+                      {hasVariantColumn && <td className="cs-varcell">{r.variantName ?? (r.variant ? t('consignees.import.variantN', { n: r.variant }) : '—')}</td>}
                       {columnFields.map((x) => (
-                        <td key={x}>{x === 'contactPhone' && r.values?.[x] ? f.phone(r.values[x]) : r.values?.[x] || '—'}</td>
+                        <td key={x}>{cell(r, x)}</td>
                       ))}
                       <td>{r.owner ? (r.owner.isShared ? t('consignees.shared') : (r.owner.clientName ?? '—')) : '—'}</td>
                       <td className="cs-remarks">
@@ -521,6 +596,7 @@ export function ConsigneeImportModal({ defaultClient, onClose }: ConsigneeImport
                             {m}
                           </span>
                         ))}
+                        {(r.cells?.length ?? 0) > 0 && <span className="cs-cells">{t('consignees.import.rowCells', { cells: (r.cells ?? []).map((c) => c || '∅').join(' | ') })}</span>}
                         {p.errors.length + p.warnings.length === 0 && '—'}
                       </td>
                     </tr>

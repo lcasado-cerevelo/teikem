@@ -42,7 +42,17 @@ public sealed class PostalLocalityConfiguration : IEntityTypeConfiguration<Posta
         b.Property(p => p.PostalCode).HasMaxLength(10).IsRequired();
         b.Property(p => p.State).HasMaxLength(100);
         b.Property(p => p.Municipality).HasMaxLength(100);
+        // Lote 46 (F-B3): sección 2026-10-14 de logistica-db-update.sql (las llena logistica-db-zip-catalog.sql).
+        b.Property(p => p.ZipClass).HasMaxLength(10).IsUnicode(false);
+        b.Property(p => p.LocaleType).HasMaxLength(1).IsFixedLength().IsUnicode(false);
+        b.Property(p => p.DistrictName).HasMaxLength(40);
+        b.Property(p => p.DistrictNo).HasMaxLength(3).IsUnicode(false);
+        b.Property(p => p.Latitude).HasPrecision(9, 6);
+        b.Property(p => p.Longitude).HasPrecision(9, 6);
+        // ZipClass: CK_PostalLocality_ZipClass en SQL (NULL o ZipClasses.All).
+        b.Property(p => p.GeoAccuracy);
         b.HasIndex(p => new { p.CountryLookupId, p.PostalCode, p.City }).IsUnique().HasDatabaseName("UQ_PostalLocality");
+        b.HasIndex(p => p.PostalCode).HasDatabaseName("IX_PostalLocality_PostalCode");
         b.HasOne<LookupCode>().WithMany().HasForeignKey(p => p.CountryLookupId);
     }
 }

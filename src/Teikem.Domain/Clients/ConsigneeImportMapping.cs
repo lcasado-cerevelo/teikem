@@ -42,8 +42,11 @@ public static class ConsigneeImportFields
         DefaultServiceMinutes, DefaultWindowStart, DefaultWindowEnd, AccessNotes, DeliveryNotes, AllowDupInvoice, ContactPhone, ContactName,
     ];
 
-    /// <summary>Campos que la fila debe traer (city puede venir de defaults).</summary>
-    public static readonly IReadOnlySet<string> Required = new HashSet<string>(StringComparer.Ordinal) { Name, Line1, City };
+    /// <summary>
+    /// Campos que la fila debe traer. Lote 46 (F-B3): el pueblo (city) ya no: en Puerto Rico y Estados Unidos sale del código postal
+    /// con el catálogo; la plantilla debe traer city o postalCode (en columna o en defaults).
+    /// </summary>
+    public static readonly IReadOnlySet<string> Required = new HashSet<string>(StringComparer.Ordinal) { Name, Line1 };
 
     /// <summary>Campos que identifican a CADA consignatario o a su dueño: no admiten valor por defecto en la plantilla.</summary>
     public static readonly IReadOnlySet<string> NoDefault = new HashSet<string>(StringComparer.Ordinal) { Code, Name, Line1, ClientCode, ClientName };
@@ -98,7 +101,8 @@ public static class ConsigneeImportMapping
     public static string IgnoredColumnUsedMessage(int position) => $"La columna {position} está marcada «No usar» y también tiene un campo asignado.";
 
     public const string NameLine1ColumnsMessage = "La plantilla debe incluir las columnas name y line1.";
-    public const string CityColumnMessage = "La plantilla debe indicar la ciudad (city) en una columna o en defaults.";
+    /// <summary>Lote 46 (F-B3): antes «La plantilla debe indicar la ciudad (city) en una columna o en defaults.»; el código postal también basta.</summary>
+    public const string CityColumnMessage = "La plantilla debe indicar la ciudad (city) o el código postal (postalCode), en una columna o en defaults.";
     public const string ClientCodeOrNameMessage = "Use clientCode o clientName, no ambos.";
     public const string NameRequiredMessage = "El nombre es obligatorio.";
     public const string Line1RequiredMessage = "La dirección (línea 1) es obligatoria.";
@@ -188,7 +192,8 @@ public static class ConsigneeImportMapping
         {
             if (!fields.Contains(ConsigneeImportFields.Name) || !fields.Contains(ConsigneeImportFields.Line1))
                 errors["columns"] = NameLine1ColumnsMessage;
-            else if (!fields.Contains(ConsigneeImportFields.City) && !defaultFields.Contains(ConsigneeImportFields.City))
+            else if (!fields.Contains(ConsigneeImportFields.City) && !defaultFields.Contains(ConsigneeImportFields.City)
+                     && !fields.Contains(ConsigneeImportFields.PostalCode) && !defaultFields.Contains(ConsigneeImportFields.PostalCode))
                 errors["columns"] = CityColumnMessage;
             else if (fields.Contains(ConsigneeImportFields.ClientCode) && fields.Contains(ConsigneeImportFields.ClientName))
                 errors["columns"] = ClientCodeOrNameMessage;

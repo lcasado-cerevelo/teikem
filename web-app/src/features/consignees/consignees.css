@@ -91,7 +91,36 @@
 .cs-sheet{margin-top:8px}
 .cs-remember{font-weight:500;font-size:12.5px;white-space:normal;margin-top:6px}
 
+/* Lote F-B3: variantes de mapeo (pestañas, condiciones) y marcas del catálogo de códigos postales en la vista previa */
+.cs-variants{min-width:0;margin-top:6px}
+.cs-vsingle{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;margin:0 0 8px}
+.cs-vtabs{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 0 10px}
+.cs-vtab{border:1px solid var(--line);background:var(--bg-2);color:var(--text);border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:600;cursor:pointer;max-width:100%;overflow-wrap:anywhere;text-align:left}
+.cs-vtab.on{border-color:var(--flow-2);color:var(--flow-2)}
+.cs-vtab.bad{border-color:var(--danger)}
+.cs-vbad{color:var(--danger);font-weight:500}
+.cs-vpanel{min-width:0}
+.cs-vhead{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:flex-end}
+.cs-vhead>.f{flex:1 1 220px;min-width:0;margin:0}
+.cs-vbtns{display:flex;flex-wrap:wrap;gap:6px}
+.cs-conds{border:1px solid var(--line-2);border-radius:8px;padding:8px 10px;margin:10px 0;min-width:0}
+.cs-condtitle{font-size:12.5px}
+.cs-cond{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1.2fr) auto;gap:8px;align-items:start;margin-bottom:6px}
+.cs-cond .f{margin:0}
+.cs-always{margin:0 0 6px;font-style:italic}
+.cs-varsum{flex:1 1 220px;min-width:0;overflow-wrap:anywhere}
+.cs-varsum ol{margin:4px 0 0;padding-left:20px}
+.cs-varsum li{margin:2px 0}
+.cs-varcell{white-space:nowrap}
+.cs-inferred small{display:inline-block;font-size:10.5px;color:var(--flow-2);font-weight:600;white-space:nowrap}
+.cs-adjusted{white-space:nowrap}
+.cs-adjusted s{color:var(--faint)}
+.cs-adjusted .chip{margin-left:4px}
+.cs-cells{color:var(--muted);font-family:var(--mono, monospace);font-size:11.5px}
+
 @media(max-width:720px){
+  .cs-cond{grid-template-columns:minmax(0,1fr) auto}
+  .cs-cond>.f:nth-child(2),.cs-cond>.f:nth-child(3),.cs-cond>.cs-condnone{grid-column:1}
   .cs-list{max-height:none}
   .cs-grid{grid-template-columns:minmax(0,1fr)}
   .cs-filter{width:100%;min-width:0;max-width:100%;box-sizing:border-box}

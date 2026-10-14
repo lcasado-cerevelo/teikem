@@ -29,7 +29,7 @@ public class ConsigneeImportMappingTests
         Assert.Equal("allowDupInvoice", ConsigneeImportFields.Canonical("allowdupinvoice"));
         Assert.Null(ConsigneeImportFields.Canonical("locationType")); // el tipo es fijo DELIVERY
         Assert.Null(ConsigneeImportFields.Canonical("consigneeName"));  // campo de órdenes, no de consignatarios
-        Assert.Equal(new[] { "city", "line1", "name" }, ConsigneeImportFields.Required.OrderBy(x => x, StringComparer.Ordinal));
+        Assert.Equal(new[] { "line1", "name" }, ConsigneeImportFields.Required.OrderBy(x => x, StringComparer.Ordinal)); // Lote 46: city sale del ZIP
         Assert.Equal(new[] { "clientCode", "clientName", "code", "line1", "name" }, ConsigneeImportFields.NoDefault.OrderBy(x => x, StringComparer.Ordinal));
     }
 
@@ -50,9 +50,12 @@ public class ConsigneeImportMappingTests
     [Fact]
     public void City_can_come_from_a_column_or_from_defaults()
     {
-        Assert.Equal("La plantilla debe indicar la ciudad (city) en una columna o en defaults.", Validate(Cols("name", "line1"))["columns"]);
+        Assert.Equal("La plantilla debe indicar la ciudad (city) o el código postal (postalCode), en una columna o en defaults.", Validate(Cols("name", "line1"))["columns"]);
         Assert.Empty(Validate(Cols("name", "line1"), new Dictionary<string, string> { ["city"] = "San Juan" }));
         Assert.Empty(Validate(Cols("name", "line1", "city")));
+        // Lote 46 (F-B3): el código postal basta (el pueblo sale del catálogo)
+        Assert.Empty(Validate(Cols("name", "line1", "postalCode")));
+        Assert.Empty(Validate(Cols("name", "line1"), new Dictionary<string, string> { ["postalCode"] = "00901" }));
     }
 
     [Fact]

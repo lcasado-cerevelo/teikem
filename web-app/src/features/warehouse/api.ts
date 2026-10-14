@@ -1613,9 +1613,10 @@ export const POSTAL_LOCALITIES_TAKE = 30
  * `GET /api/v1/postal-localities?search=&take=` (catálogo global de ciudades y códigos postales; cualquier usuario autenticado):
  * busca por ciudad (sin acentos) o por prefijo de código postal. Caché de 10 min (el catálogo casi no cambia) y
  * `keepPreviousData` para que la lista no parpadee entre teclas. Un 403 no saca de la pantalla.
+ * Lote F-B3: `zipClass` filtra por tipo de ZIP ('DELIVERY' = los de entrega, para el consignatario; sin él, todos).
  */
-export function usePostalLocalities(search: string, options?: WarehouseQueryOptions) {
-  const query = { search: search.trim() || undefined, take: POSTAL_LOCALITIES_TAKE }
+export function usePostalLocalities(search: string, options?: WarehouseQueryOptions, zipClass?: string) {
+  const query = { search: search.trim() || undefined, take: POSTAL_LOCALITIES_TAKE, ...(zipClass ? { zipClass } : {}) }
   return useQuery({
     queryKey: ['/api/v1/postal-localities', query],
     queryFn: () => unwrap(api.GET('/api/v1/postal-localities', { params: { query } })),

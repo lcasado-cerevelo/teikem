@@ -30,7 +30,7 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    2026-10-12 las listas grandes son más rápidas sin cambiar lo que se ve, y qué hacer si la lista de órdenes sigue lenta (`db-update`).
 2. [02 — Clientes y contratos](02-clientes-y-contratos.md): expediente del cliente (alta compuesta, perfil, numeración,
    contactos, estatus, baja), consignatarios y localizaciones (direcciones física/postal, almacenes, compartidas; importación
-  de consignatarios por CSV con plantilla, validar → confirmar, Lote 38; Excel, «(No usar)», columnas unidas, cliente por defecto y persona de contacto, Lote 45, §2.2), contratos
+  de consignatarios por CSV con plantilla, validar → confirmar, Lote 38; Excel, «(No usar)», columnas unidas, cliente por defecto y persona de contacto, Lote 45, §2.2; pueblo, estado y ZIP con el catálogo de códigos postales y variantes de mapeo, Lote 46, §2.3), contratos
    (contrato vigente, modelo de facturación con 5 componentes, despacho, COD, SLA, estatus y efectos), tarifas por servicio y
    pieza extra con historial efectivo-fechado, cotización, servicios especiales y tipos compartidos, usuarios de portal del
    cliente (incluye el portal multi-cliente del Lote 3), permisos y módulos, fuentes de análisis y auditoría.
@@ -273,6 +273,10 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
 F-B2. [F-B2 — Importar consignatarios: Excel, «(No usar)», columnas unidas, cliente por defecto y persona de contacto](frontend/fb2-importacion-consignatarios.md): archivo **CSV o Excel (.xlsx)** con **Hoja del libro**,
    ZIP con sus ceros, CSV de Windows con ñ, **(No usar)**, una columna a dos campos, **Campos con varias columnas** (orden y separador, con resultado), **Cliente por defecto** que se
    guarda en la plantilla (la fila con su propio cliente manda) y **Recordar este cliente en la plantilla**, teléfonos en formatos mezclados y **Persona de contacto** en la ficha. Capturas `fb2-*`.
+F-B3. [F-B3 — Importar consignatarios: pueblo, estado y ZIP con el catálogo de códigos postales, y variantes de mapeo](frontend/fb3-variantes-y-codigos-postales.md): pueblo y estado tomados
+   del ZIP, ZIP de entrega asignado por el pueblo, **Código postal ajustado** (ZIP de apartados o militar → de entrega de la misma ciudad), marca **del catálogo**, filas rechazadas
+   con el mensaje exacto; **variantes de mapeo** con **Se usa cuando** (igual a, contiene, no está vacía, está vacía), columna **Variante** en la vista previa; selector de pueblo del
+   alta solo con ZIP de entrega; fuentes USPS y GeoNames (CC BY 4.0). Capturas `fb3-*`.
 19. [F-C1 — Órdenes: lista y alta](frontend/fc1-ordenes-alta.md): Operación → **Órdenes**: la lista con sus filtros, **Nueva orden** (guardar como borrador o confirmar, crédito excedido, factura repetida,
    entrega especial) y eliminar un borrador; permisos `orders.*` y quién ve los precios (`orders.view_price`).
 20. [F-C2 — Órdenes: el expediente de la orden](frontend/fc2-ordenes-expediente.md): al abrir una orden: **Detalle** que se edita ahí mismo, **Confirmar** (con crédito excedido), **Re-cotizar**,
