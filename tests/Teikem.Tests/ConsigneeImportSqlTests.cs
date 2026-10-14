@@ -18,7 +18,7 @@ public sealed class ConsigneeImportSqlTests
         var start = sql.IndexOf("2026-10-11 (f) — Importación CSV de consignatarios (Lote 38, F-B)", StringComparison.Ordinal);
         Assert.True(start > 0);
         Assert.True(start > sql.IndexOf("2026-10-11 (e) — Rotacion del inventario FEFO / FIFO configurable", StringComparison.Ordinal));
-        var section = sql[start..];
+        var section = UpdateSqlSection.From(sql, start);
 
         Assert.Contains("IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.ImportBatch') AND name = 'ClientId' AND is_nullable = 0)", section);
         Assert.Contains("DROP INDEX IX_ImportBatch_Client ON dbo.ImportBatch;", section);

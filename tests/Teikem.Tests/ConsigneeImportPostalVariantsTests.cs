@@ -448,7 +448,7 @@ public sealed class ConsigneeImportPostalVariantsTests
         var sql = File.ReadAllText(Path.Combine(DatabaseInitializer.ResolveRepoRoot(null), "Diseño", "logistica-db-update.sql")).Replace("\r\n", "\n");
         var start = sql.IndexOf("2026-10-14 — Catálogo de códigos postales con tipo, distrito y geolocalización", StringComparison.Ordinal);
         Assert.True(start > sql.IndexOf("2026-10-13 — Importación de consignatarios, mejoras (Lote 45, F-B2", StringComparison.Ordinal));
-        var section = sql[start..];
+        var section = UpdateSqlSection.From(sql, start);
         foreach (var (column, type) in new[] { ("ZipClass", "VARCHAR(10)"), ("LocaleType", "CHAR(1)"), ("DistrictName", "NVARCHAR(40)"), ("DistrictNo", "VARCHAR(3)"),
                      ("Latitude", "DECIMAL(9,6)"), ("Longitude", "DECIMAL(9,6)"), ("GeoAccuracy", "TINYINT") })
             Assert.Contains($"IF COL_LENGTH('dbo.PostalLocality', '{column}') IS NULL\n    ALTER TABLE dbo.PostalLocality ADD {column} {type} NULL;", section);

@@ -271,7 +271,7 @@ public sealed class ManualIssueDefaultReasonTests
         var sql = File.ReadAllText(Path.Combine(DatabaseInitializer.ResolveRepoRoot(null), "Diseño", "logistica-db-update.sql")).Replace("\r\n", "\n");
         var start = sql.IndexOf("2026-10-11 (b) — Motivo por default del despacho manual", StringComparison.Ordinal);
         Assert.True(start > sql.IndexOf("2026-10-11 — Despacho manual (DMA-#####)", StringComparison.Ordinal));
-        var section = sql[start..];
+        var section = UpdateSqlSection.From(sql, start);
         Assert.Contains("IF COL_LENGTH('dbo.Tenant', 'DefaultManualIssueReasonLookupId') IS NULL\n    ALTER TABLE dbo.Tenant ADD DefaultManualIssueReasonLookupId INT NULL;", section);
         Assert.Contains("IF OBJECT_ID('dbo.FK_Tenant_DefaultManualIssueReason', 'F') IS NULL", section);
         Assert.Contains("FOREIGN KEY (DefaultManualIssueReasonLookupId) REFERENCES dbo.LookupCode(LookupCodeId);", section);

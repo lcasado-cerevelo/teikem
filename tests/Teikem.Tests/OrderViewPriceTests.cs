@@ -64,7 +64,7 @@ public sealed class OrderViewPriceTests
         Assert.True(start > 0, "Falta la sección 2026-10-12 (a) en logistica-db-update.sql.");
         // Sección nueva AL FINAL: después de la última publicada (2026-10-11 (g)).
         Assert.True(start > sql.IndexOf("2026-10-11 (g) — Motivo de despacho manual", StringComparison.Ordinal));
-        var section = sql[start..];
+        var section = UpdateSqlSection.From(sql, start);
         Assert.Contains("IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'orders.view_price')", section);
         Assert.Contains("(SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'ORDERS')", section);
         Assert.Contains("N'{\"es\":\"Ver precios de las órdenes\",\"en\":\"View order prices\"}'", section);

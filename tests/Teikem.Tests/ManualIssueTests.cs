@@ -136,7 +136,7 @@ public sealed class ManualIssueTests
         var sql = UpdateSql();
         var at = sql.IndexOf("2026-10-11 — Despacho manual", StringComparison.Ordinal);
         Assert.True(at > 0, "Falta la sección 2026-10-11 del despacho manual en logistica-db-update.sql.");
-        var section = sql[at..];
+        var section = UpdateSqlSection.From(sql, at);
         Assert.Contains("IF COL_LENGTH('dbo.PickBatch', 'ManualIssueReasonId') IS NULL", section);
         Assert.Contains("IF COL_LENGTH('dbo.PickBatch', 'Note') IS NULL", section);
         Assert.Contains("Note NVARCHAR(500) NULL", section);
