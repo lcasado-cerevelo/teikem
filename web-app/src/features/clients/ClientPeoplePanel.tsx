@@ -187,6 +187,12 @@ export function ClientPeoplePanel({ client }: { client: ClientDetail }) {
       icon={<IconUsers />}
       title={t('clients.people.title')}
       badge={people.length}
+      collapsible
+      storageKey="clients.people"
+      summary={people.length === 0 ? t('clients.summary.empty') : (() => {
+        const main = people.find((c) => c.isPrimary)
+        return main ? t('clients.summary.peopleMain', { n: people.length, name: main.fullName ?? '' }) : t('clients.summary.people', { n: people.length })
+      })()}
       actions={
         <Can perm="clients.update">
           <button type="button" className="btn sm flow" onClick={() => setEditing('new')}>

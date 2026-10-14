@@ -33,6 +33,8 @@ export interface ContactPointsPanelProps {
   removeBodyKey?: string
   /** Solo lectura aunque el usuario tenga los permisos (el dueño ya no admite cambios: un chofer eliminado). */
   readOnly?: boolean
+  /** Con clave, el panel es desplegable (recuerda abierto/cerrado) y cerrado resume cuántos teléfonos y correos hay. */
+  storageKey?: string
 }
 
 interface PointModalProps {
@@ -122,7 +124,7 @@ function PointModal({ owner, editing, onClose, onChanged, idPrefix }: PointModal
   )
 }
 
-export function ContactPointsPanel({ ownerEntity, ownerId, points: rows, perms, onChanged, idPrefix = 'owner', emptyKey = 'clients.points.empty', removeBodyKey = 'clients.points.removeBody', readOnly = false }: ContactPointsPanelProps) {
+export function ContactPointsPanel({ ownerEntity, ownerId, points: rows, perms, onChanged, idPrefix = 'owner', emptyKey = 'clients.points.empty', removeBodyKey = 'clients.points.removeBody', readOnly = false, storageKey }: ContactPointsPanelProps) {
   const t = useT()
   const f = useFormat()
   const save = useContactPointActions(onChanged)
@@ -168,6 +170,9 @@ export function ContactPointsPanel({ ownerEntity, ownerId, points: rows, perms, 
     <Panel
       icon={<IconPhoneFormat />}
       title={t('clients.points.title')}
+      collapsible={storageKey != null}
+      storageKey={storageKey}
+      summary={t('clients.summary.points', { phones: phones.length, emails: emails.length })}
       actions={
         writePerms ? (
           <Can perm={writePerms}>

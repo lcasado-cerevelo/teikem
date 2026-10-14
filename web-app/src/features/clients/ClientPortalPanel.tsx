@@ -157,6 +157,9 @@ export function ClientPortalPanel({ client }: { client: ClientDetail }) {
       icon={<IconUsers />}
       title={t('clients.portal.title')}
       badge={users.length}
+      collapsible
+      storageKey="clients.portal"
+      summary={users.length === 0 ? t('clients.summary.empty') : t('clients.summary.portal', { n: users.length })}
       actions={
         <Can perm="portalusers.manage">
           <button type="button" className="btn sm flow" disabled={!clientActive} onClick={() => setInviting(emptyInvite())}>

@@ -104,7 +104,16 @@ export function ClientNumberingPanel({ client }: { client: ClientDetail }) {
   )
 
   return (
-    <Panel icon={<IconTag />} title={t('clients.numbering.title')}>
+    <Panel
+      icon={<IconTag />}
+      title={t('clients.numbering.title')}
+      collapsible
+      storageKey="clients.numbering"
+      summary={t('clients.summary.numbering', {
+        order: client.numberSettings?.clientAssignsOrderNumber ? t('clients.numbering.byClient') : t('clients.numbering.byTeikem'),
+        invoice: client.numberSettings?.clientAssignsInvoiceNumber ? t('clients.numbering.byClient') : t('clients.numbering.byTeikem'),
+      })}
+    >
       <Form
         form={form}
         onSubmit={async (v) => {

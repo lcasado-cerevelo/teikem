@@ -6,6 +6,7 @@ Esta guía explica cómo ver, buscar, exportar, importar y crear **los consignat
 
 1. En **Listas → Clientes y contratos**, al elegir un cliente, la ficha tiene un panel nuevo, **Consignatarios**. Va **al final**, justo antes del **Historial de estatus**.
 2. En **Listas → Consignatarios**, la cabecera trae, juntos y en este orden, **Exportar**, **Importar** y **Nuevo consignatario** (después del filtro **Cliente**), igual que en el panel de la ficha del cliente.
+3. Los paneles de la ficha del cliente son **desplegables** y, cerrados, dan un **resumen** (sección 6).
 
 ![Panel Consignatarios en la ficha del cliente](img/fb4-panel.png)
 
@@ -22,7 +23,7 @@ Sin `locations.read` el panel **no aparece** en la ficha del cliente (no es un e
 
 1. Entre a **Listas → Clientes y contratos** y escoja un cliente.
 2. Baje hasta el panel **Consignatarios**. El número junto al título es **cuántos consignatarios** cumplen el buscador (todos, no solo los que se ven).
-3. La tabla muestra **a lo sumo 10 filas**: Número, Nombre, Pueblo, Persona de contacto y Estado. Si hay más, el pie dice **Mostrando 10 de N** y el enlace **Ver todos en Consignatarios**.
+3. La tabla muestra **10 filas por página**: Número, Nombre, Pueblo, Persona de contacto y Estado. Si hay más, el pie de la tabla trae la **paginación** (página anterior y siguiente, y «Filas por página»), así que se recorre todo **sin salir de la ficha**.
 4. Solo salen los consignatarios **propios de ese cliente** que están **activos**. Los compartidos con todos los clientes y los inactivos se ven en la pantalla Consignatarios.
 5. **Buscar:** escriba en la casilla. Busca por número, nombre, dirección, pueblo, ZIP, persona de contacto y estado, **entre todos** los consignatarios del cliente (no solo entre las 10 filas visibles).
 6. Un clic en una fila abre ese consignatario en la pantalla **Consignatarios**.
@@ -50,9 +51,20 @@ En **Listas → Consignatarios**, el botón **Exportar** está arriba, en la cab
 
 Todo lo demás de esas ventanas (plantillas, vista previa, avisos, errores) funciona igual que en la pantalla Consignatarios.
 
-## 6. Ver todos
+## 6. Paneles desplegables
 
-Con más de 10 consignatarios, **Ver todos en Consignatarios** abre la pantalla Consignatarios **ya filtrada por ese cliente**. También sirve la dirección `/catalog/consignees?client=<id del cliente>`.
+Todos los paneles de la ficha del cliente (Perfil, Teléfonos y correos, Personas de contacto, Numeración, Campos personalizados, Contratos, Usuarios de portal, Consignatarios e Historial de estatus) se pueden **cerrar y abrir**:
+
+- Pulse la **flecha** a la izquierda del título, o un clic en la cabecera (fuera de los botones). Cerrado, el panel **muestra un resumen de una línea** de lo que tiene, y se esconden sus botones. Por ejemplo, «Consignatarios activos: 12» o «Teléfonos: 2 · Correos: 1».
+- Lo que estaba escribiendo en un panel no se pierde al cerrarlo.
+- El navegador **recuerda** cómo dejó cada panel: al volver a abrir un cliente, los paneles quedan abiertos o cerrados como usted los dejó. Es por navegador, no por cliente.
+- La cabecera del cliente (nombre, estatus y «Dar de baja») no se cierra.
+
+![Ficha del cliente con todos los paneles cerrados y su resumen](img/fb4-paneles.png)
+
+![Panel Consignatarios cerrado](img/fb4-colapsado.png)
+
+La pantalla Consignatarios también abre ya filtrada por un cliente con la dirección `/catalog/consignees?client=<id del cliente>`.
 
 ## 7. Mensajes del panel
 
@@ -60,7 +72,6 @@ Con más de 10 consignatarios, **Ver todos en Consignatarios** abre la pantalla 
 |---|---|---|
 | «Este cliente todavía no tiene consignatarios. Use «Nuevo consignatario» o «Importar».» | El cliente no tiene consignatarios activos. | Cree uno o importe un archivo. Si ya tenía y los dio de baja, revise **Mostrar inactivos** en Consignatarios. |
 | «Ningún consignatario de este cliente coincide con la búsqueda.» | El buscador no encuentra nada. | Borre o cambie lo escrito. |
-| «Mostrando 10 de N» | Hay más de 10 que cumplen la búsqueda. | Use el buscador para acotar, o **Ver todos en Consignatarios**. |
 | El título del error del servidor (en rojo) | Falló la carga de la lista. | Recargue la página; si sigue, avise a soporte con el texto. |
 
 Los mensajes de **Nuevo consignatario** y de **Importar** son los de [fb-consignatarios.md](fb-consignatarios.md) y de [fb2](fb2-importacion-consignatarios.md) / [fb3](fb3-variantes-y-codigos-postales.md).
@@ -69,6 +80,6 @@ Los mensajes de **Nuevo consignatario** y de **Importar** son los de [fb-consign
 
 - **No veo el panel Consignatarios.** Su usuario no tiene `locations.read`, o el módulo Listas está apagado. Pídalo a un administrador.
 - **No veo Importar ni Nuevo consignatario.** Falta `locations.create`.
-- **Creé un consignatario y no sale en la tabla.** Solo se ven los **activos** y que **cumplan el buscador**: borre lo escrito en la casilla. Si el contador subió pero la fila no está entre las 10, use **Ver todos**.
-- **El archivo exportado tiene más filas que la tabla.** Es lo correcto: la tabla enseña 10; el archivo trae todas las filtradas.
+- **Creé un consignatario y no sale en la tabla.** Solo se ven los **activos** y que **cumplan el buscador**: borre lo escrito en la casilla. Si el contador subió pero la fila no está en la primera página, pase a la página siguiente.
+- **El archivo exportado tiene más filas que la página.** Es lo correcto: la tabla enseña 10 por página; el archivo trae todas las filtradas.
 - **Falta el teléfono en el archivo.** El teléfono se guarda aparte y no se exporta en esta versión.

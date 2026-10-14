@@ -80,7 +80,8 @@ beforeEach(() => {
 })
 
 describe('Clientes — panel «Consignatarios» de la ficha', () => {
-  it('pide solo los consignatarios de este cliente y muestra 10 filas de 14 con «Mostrando 10 de 14»', async () => {
+  it('pide solo los consignatarios de este cliente y pagina ahí mismo: 10 filas por página (14 en total) y la segunda página trae las demás', async () => {
+    const user = userEvent.setup()
     renderPanel(['locations.read', 'locations.create'])
     expect(await screen.findByText('Consignatario 01')).toBeInTheDocument()
     const call = mock.urls.find((u) => u.pathname === '/api/v1/locations')!
@@ -88,8 +89,11 @@ describe('Clientes — panel «Consignatarios» de la ficha', () => {
     expect(call.searchParams.get('includeShared')).toBe('false')
     expect(screen.getByText('Consignatario 10')).toBeInTheDocument()
     expect(screen.queryByText('Consignatario 11')).toBeNull()
-    expect(screen.getByText('Mostrando 10 de 14', { exact: false })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Ver todos en Consignatarios' })).toHaveAttribute('href', `/catalog/consignees?client=${CLIENT_ID}`)
+    // la paginación está en la propia tabla (sin salir de la ficha)
+    await user.click(screen.getByRole('button', { name: /siguiente|next|›|»/i }))
+    expect(await screen.findByText('Consignatario 11')).toBeInTheDocument()
+    expect(screen.getByText('Zeta Especial')).toBeInTheDocument()
+    expect(screen.queryByText('Consignatario 01')).toBeNull()
   })
 
   it('el buscador filtra todas las filas (no solo las 10 visibles) y quita el «Mostrando…» si caben', async () => {

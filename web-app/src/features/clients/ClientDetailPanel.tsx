@@ -114,7 +114,13 @@ export function ClientDetailPanel({ publicId }: { publicId: string }) {
       <ClientContractsSection key={client.publicId} client={client} />
       <ClientPortalPanel key={`portal-${client.publicId}`} client={client} />
       <ClientConsigneesPanel key={`consignees-${client.publicId}`} client={client} />
-      <Panel icon={<IconClock />} title={t('status.history')}>
+      <Panel
+        icon={<IconClock />}
+        title={t('status.history')}
+        collapsible
+        storageKey="clients.history"
+        summary={t('clients.summary.history', { status: client.statusLabel ?? client.status ?? '—' })}
+      >
         <StatusHistory entityType={CLIENT_ENTITY_TYPE} entityId={client.id} domain={CLIENT_STATUS_DOMAIN} />
       </Panel>
     </div>

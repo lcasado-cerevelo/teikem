@@ -13,6 +13,16 @@
 .panel .ph2 .r+.kit-acts{margin-left:0}
 /* los íconos de los botones de la cabecera conservan su tamaño y color (.ph2 svg es solo el ícono del título) */
 .panel .ph2 .kit-acts svg{width:15px;height:15px;color:inherit}
+/* panel desplegable: flecha a la izquierda del ícono; cerrado muestra el resumen y oculta las acciones */
+.panel .ph2 .kit-fold{display:inline-flex;align-items:center;justify-content:center;flex:none;width:24px;height:24px;margin-left:-4px;padding:0;border:0;border-radius:7px;background:transparent;color:var(--muted);cursor:pointer}
+.panel .ph2 .kit-fold:hover,.panel .ph2 .kit-fold:focus-visible{background:var(--panel-2);color:var(--text)}
+.panel .ph2 .kit-fold svg{width:16px;height:16px;transition:transform .15s ease}
+.panel.kit-collapsed .ph2 .kit-fold svg{transform:rotate(-90deg)}
+.panel .ph2.kit-fold-head{cursor:pointer}
+.panel.kit-collapsed .ph2 .kit-acts{display:none}
+.panel.kit-collapsed .ph2{border-bottom:0}
+.panel .kit-summary{padding-top:0;color:var(--muted);font-size:13px;overflow-wrap:anywhere}
+@media (prefers-reduced-motion:reduce){.panel .ph2 .kit-fold svg{transition:none}}
 .panel .pb.flush{padding:0}
 .panel .ft.kit-ft{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;padding:11px 14px;border-top:1px solid var(--line-2);font-size:13px;color:var(--text)}
 

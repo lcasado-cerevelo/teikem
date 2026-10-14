@@ -74,7 +74,13 @@ export function ClientProfilePanel({ client }: { client: ClientDetail }) {
   const postal = addressLine(client.postalAddress)
 
   return (
-    <Panel icon={<IconUsers />} title={t('clients.profile.title')}>
+    <Panel
+      icon={<IconUsers />}
+      title={t('clients.profile.title')}
+      collapsible
+      storageKey="clients.profile"
+      summary={[client.legalName, client.taxId, client.currencyLabel ?? client.currency, client.paymentTermLabel ?? client.paymentTerm, physical].filter(Boolean).join(' · ') || t('clients.summary.empty')}
+    >
       <Form
         form={form}
         onSubmit={async (v) => {

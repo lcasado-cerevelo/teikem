@@ -1,10 +1,10 @@
 // Panel «Consignatarios» de la ficha del cliente (va al final, antes del historial de estatus): los consignatarios que son de
-// este cliente en una tabla de 10 filas como máximo, con buscador simple y tres acciones —Exportar (lo filtrado, todas las
-// filas, no solo las 10 visibles), Importar y Nuevo consignatario—. «Importar» y «Nuevo» abren las mismas ventanas de la
+// este cliente en una tabla paginada ahí mismo (10 filas por página), con buscador simple y tres acciones —Exportar (lo filtrado,
+// todas las filas, no solo la página), Importar y Nuevo consignatario—. Es desplegable: cerrado dice cuántos hay. «Importar» y «Nuevo» abren las mismas ventanas de la
 // pantalla Consignatarios con este cliente como dueño; al cerrarlas se está todavía en la ficha del cliente y la tabla se
 // refresca sola (las escrituras de consignatarios invalidan sus listas). Una fila abre el consignatario en su pantalla.
 import { useMemo, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { Can, useCan } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useFormat } from '../../kernel/format'
@@ -19,7 +19,7 @@ import { ConsigneeImportModal } from '../consignees/ConsigneeImportModal'
 import { matchesConsignee, type Consignee } from '../consignees/consigneeRules'
 import type { ClientDetail } from './clientRules'
 
-/** Filas que muestra la tabla (el contador y la exportación cuentan todas las filtradas). */
+/** Filas por página de la tabla (el contador y la exportación cuentan todas las filtradas). */
 export const CLIENT_CONSIGNEES_ROWS = 10
 
 const NO_ROWS: Consignee[] = []
@@ -45,7 +45,6 @@ function ClientConsigneesTable({ client }: { client: ClientDetail }) {
 
   const labels = useMemo(() => ({ shared: t('consignees.shared'), active: t('consignees.active'), inactive: t('consignees.inactive') }), [t])
   const filtered = useMemo(() => (list.data ?? NO_ROWS).filter((c) => matchesConsignee(c, q, labels)), [list.data, q, labels])
-  const shown = useMemo(() => filtered.slice(0, CLIENT_CONSIGNEES_ROWS), [filtered])
 
   const columns = useMemo<DataColumn<Consignee>[]>(
     () => [
@@ -73,6 +72,9 @@ function ClientConsigneesTable({ client }: { client: ClientDetail }) {
       icon={<IconUsers />}
       title={t('clients.consignees.title')}
       badge={list.isPending ? undefined : filtered.length}
+      collapsible
+      storageKey="clients.consignees"
+      summary={list.isPending ? t('common.loading') : (list.data ?? NO_ROWS).length === 0 ? t('clients.summary.empty') : t('clients.summary.consignees', { n: (list.data ?? NO_ROWS).length })}
       actions={
         <>
           <ExportMenu placement="down" count={filtered.length} onExport={(format) => exportConsignees(format, filtered, t, f.lang)} />
@@ -105,19 +107,13 @@ function ClientConsigneesTable({ client }: { client: ClientDetail }) {
           <DataTable
             label={t('clients.consignees.title')}
             columns={columns}
-            rows={shown}
+            rows={filtered}
             rowKey={(c) => c.publicId ?? String(c.id)}
-            pagination={false}
+            pageSize={CLIENT_CONSIGNEES_ROWS}
             exportable={false}
             onRowClick={openRow}
             forceCards={width > 0 && width < 640}
           />
-        )}
-        {!list.isPending && filtered.length > CLIENT_CONSIGNEES_ROWS && (
-          <p className="pb cl-more">
-            {t('clients.consignees.showing', { shown: shown.length, total: filtered.length })} ·{' '}
-            <Link to={`/catalog/consignees?client=${encodeURIComponent(clientId)}`}>{t('clients.consignees.seeAll')}</Link>
-          </p>
         )}
       </div>
 

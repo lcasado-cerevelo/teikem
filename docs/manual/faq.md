@@ -7843,8 +7843,8 @@ El cliente no tiene consignatarios activos propios. Cree uno con **Nuevo consign
 **«Ningún consignatario de este cliente coincide con la búsqueda.»**
 El buscador no encontró nada entre los consignatarios del cliente. Borre o cambie lo escrito.
 
-**¿Por qué dice «Mostrando 10 de N» si hay más?**
-La tabla del panel enseña solo 10 filas. El número junto al título y el archivo exportado cuentan **todos** los que cumplen el buscador. Use **Ver todos en Consignatarios** para verlos todos.
+**La tabla del panel Consignatarios solo enseña 10 filas.**
+Es una página: el pie de la tabla trae la paginación (anterior, siguiente y «Filas por página»). El número junto al título y el archivo exportado cuentan **todos** los que cumplen el buscador.
 
 **¿Qué trae el archivo de Exportar?**
 Exactamente las filas que están filtradas, no solo las 10 visibles: en la ficha del cliente, los consignatarios propios activos del cliente con el buscador aplicado; en Consignatarios (botón **Exportar** de la cabecera, antes de Importar y Nuevo consignatario), lo que la lista muestra con el filtro **Cliente**, **Mostrar inactivos** y el buscador. Columnas: Número, Nombre, Cliente, Dirección 1, Dirección 2, Pueblo, Estado, Código postal, País, Persona de contacto y Estado del registro. El teléfono no se exporta.
@@ -7857,3 +7857,12 @@ Su usuario no tiene `locations.read` o el módulo Listas está apagado. El panel
 
 **No veo los botones Importar ni Nuevo consignatario en el panel.**
 Falta el permiso `locations.create`. **Exportar** sí se ve con solo `locations.read`.
+
+**¿Cómo cierro un panel de la ficha del cliente? ¿Se pierde lo que tenía escrito?**
+Pulse la flecha a la izquierda del título (o un clic en la cabecera). Cerrado, el panel muestra un resumen de una línea, por ejemplo «Consignatarios activos: 12». Lo escrito no se pierde al cerrar. El navegador recuerda cómo dejó cada panel; si lo prefiere abierto, ábralo otra vez.
+
+**Los paneles de la ficha del cliente aparecen cerrados cuando entro.**
+Los dejó así en una visita anterior (el navegador lo recuerda). Pulse la flecha del título para abrirlos. Si usa otro navegador u otro equipo, los verá abiertos.
+
+**No puedo cerrar el cuadro de arriba con el nombre del cliente.**
+Es la cabecera de la ficha (nombre, estatus y «Dar de baja») y no se cierra. Los paneles de abajo sí.

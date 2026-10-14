@@ -427,6 +427,19 @@
       "seeAll": "Ver todos en Consignatarios",
       "open": "Abrir {name} en Consignatarios"
     },
+    "summary": {
+      "empty": "Sin datos todavía",
+      "points": "Teléfonos: {phones} · Correos: {emails}",
+      "people": "Personas de contacto: {n}",
+      "peopleMain": "Personas de contacto: {n} · principal: {name}",
+      "numbering": "Número de orden: {order} · Número de factura: {invoice}",
+      "custom": "Campos personalizados: {n}",
+      "contracts": "Contratos: {n}",
+      "contractsCurrent": "Contratos: {n} · vigente: {name}",
+      "portal": "Usuarios de portal: {n}",
+      "consignees": "Consignatarios activos: {n}",
+      "history": "Estatus actual: {status}"
+    },
     "people": {
       "title": "Personas de contacto",
       "add": "Agregar contacto",
@@ -2332,6 +2345,10 @@
   "ui": {
     "qbox": {
       "placeholder": "Buscar…"
+    },
+    "panel": {
+      "expand": "Abrir el panel",
+      "collapse": "Cerrar el panel"
     },
     "table": {
       "empty": "Sin resultados",

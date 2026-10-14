@@ -41,9 +41,13 @@ export function ClientContractsSection({ client }: { client: ClientDetail }) {
   const [creating, setCreating] = useState(false)
   const contractId = picked && contracts.some((c) => c.publicId === picked) ? picked : defaultContractId(client.currentContract?.publicId, contracts)
 
+  const current = client.currentContract
+  const currentName = current ? [current.contractNumber, current.title].filter(Boolean).join(' · ') : ''
+  const contractsSummary = contracts.length === 0 ? t('clients.summary.empty') : currentName ? t('clients.summary.contractsCurrent', { n: contracts.length, name: currentName }) : t('clients.summary.contracts', { n: contracts.length })
+
   if (!canRead) {
     return (
-      <Panel icon={<IconDoc />} title={t('clients.contracts.title')} badge={contracts.length}>
+      <Panel icon={<IconDoc />} title={t('clients.contracts.title')} badge={contracts.length} collapsible storageKey="clients.contracts" summary={contractsSummary}>
         <p className="cl-billing">
           <span className="meta">{t('clients.contracts.billingLabel')}</span> <b>{client.billingSummary || '—'}</b>
         </p>
@@ -65,6 +69,9 @@ export function ClientContractsSection({ client }: { client: ClientDetail }) {
       icon={<IconDoc />}
       title={t('clients.contracts.title')}
       badge={contracts.length}
+      collapsible
+      storageKey="clients.contracts"
+      summary={contractsSummary}
       actions={
         <Can perm="contracts.create">
           <button type="button" className="btn sm flow" onClick={() => setCreating(true)}>

@@ -23,7 +23,13 @@ export function ClientCustomFieldsPanel({ client }: { client: ClientDetail }) {
   if (!definitions.data || definitions.data.length === 0) return null
 
   return (
-    <Panel icon={<IconTag />} title={t('clients.custom.title')}>
+    <Panel
+      icon={<IconTag />}
+      title={t('clients.custom.title')}
+      collapsible
+      storageKey="clients.custom"
+      summary={t('clients.summary.custom', { n: definitions.data.length })}
+    >
       <Form
         form={form}
         onSubmit={async () => {

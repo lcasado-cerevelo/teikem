@@ -1,10 +1,11 @@
 // Recorrido del panel «Consignatarios» de la ficha del cliente y del Exportar de la pantalla Consignatarios (Lote F-B4) contra el
 // API real (db-init hecho, API en API_URL, por defecto http://localhost:5000; compañía demo, admin con todos los permisos).
 //
-// 1) Ficha del cliente: el panel Consignatarios va al final, antes del historial de estatus; con 12 consignatarios muestra 10 filas,
-//    «Mostrando 10 de 12»; el buscador filtra todas; Exportar (CSV) baja solo lo filtrado; «Nuevo consignatario» crea uno con este
-//    cliente como dueño sin salir de la ficha y la tabla se refresca (el contador sube a 13); «Importar» abre su ventana.
-// 2) «Ver todos» lleva a Consignatarios ya filtrado por el cliente; el Exportar del panel izquierdo baja lo que la lista tiene a la vista.
+// 1) Ficha del cliente: el panel Consignatarios va al final, antes del historial de estatus; con 12 consignatarios muestra 10 filas por
+//    página y se pagina ahí mismo; los paneles de la ficha son desplegables (cerrados dan un resumen y lo recuerdan al recargar);
+//    el buscador filtra todas; Exportar (CSV) baja solo lo filtrado; «Nuevo consignatario» crea uno con este cliente como dueño sin
+//    salir de la ficha y la tabla se refresca (el contador sube a 13); «Importar» abre su ventana.
+// 2) Consignatarios ya filtrado por el cliente (`?client=`); su Exportar de la cabecera baja lo que la lista tiene a la vista.
 //
 // Escritorio y móvil (Pixel 7 a 360 px, sin scroll horizontal de página). Capturas: docs/manual/frontend/img/fb4-<paso>.png (escritorio).
 import { readFileSync, mkdirSync } from 'node:fs'
@@ -94,11 +95,39 @@ test('Ficha del cliente: panel Consignatarios (10 filas, buscador, Exportar, Nue
   expect(titles.at(-1)).toMatch(/Historial/i)
   expect(titles.at(-2)).toMatch(/Consignatarios/)
 
-  // 10 filas de 12
-  await expect(panel.getByText('Mostrando 10 de 12')).toBeVisible()
+  // 10 filas por página (12 en total) y la paginación está ahí mismo
   await expect(panel.getByText(`Consignatario 01 ${suffix}`)).toBeVisible()
   await expect(panel.getByText(`Consignatario 11 ${suffix}`)).toHaveCount(0)
+  await expect(panel.locator('.r').first()).toHaveText('12')
+  await panel.getByRole('button', { name: /siguiente|next/i }).first().click()
+  await expect(panel.getByText(`Consignatario 11 ${suffix}`)).toBeVisible()
+  await expect(panel.getByText(`Consignatario 01 ${suffix}`)).toHaveCount(0)
+  await panel.getByRole('button', { name: /anterior|prev/i }).first().click()
+  await expect(panel.getByText(`Consignatario 01 ${suffix}`)).toBeVisible()
   await shot(page, isMobile, 'fb4-panel', panel)
+
+  // paneles desplegables: cerrados dan un resumen de lo que hay y lo recuerdan al recargar
+  const stack = page.locator('.cl-stack')
+  await panel.getByRole('button', { name: 'Cerrar el panel' }).click()
+  await expect(panel.getByText('Consignatarios activos: 12')).toBeVisible()
+  await expect(panel.getByRole('button', { name: /Nuevo consignatario/ })).toBeHidden()
+  await shot(page, isMobile, 'fb4-colapsado', panel)
+  await panel.getByRole('button', { name: 'Abrir el panel' }).click()
+  await expect(panel.getByText('Consignatarios activos: 12')).toHaveCount(0)
+  // el conjunto de flechas cambia al clic: se toma siempre la primera que queda
+  for (let n = await stack.getByRole('button', { name: 'Cerrar el panel' }).count(); n > 0; n--) await stack.getByRole('button', { name: 'Cerrar el panel' }).first().click()
+  await expect(stack.getByRole('button', { name: 'Cerrar el panel' })).toHaveCount(0)
+  // la ficha entera cabe en la captura con una ventana alta (sin la barra superior encima)
+  const size = page.viewportSize()
+  if (size && !isMobile) await page.setViewportSize({ width: size.width, height: 1500 })
+  await stack.scrollIntoViewIfNeeded()
+  await shot(page, isMobile, 'fb4-paneles', stack)
+  if (size && !isMobile) await page.setViewportSize(size)
+  await page.reload()
+  await expect(stack.getByRole('button', { name: 'Abrir el panel' }).first()).toBeVisible({ timeout: 20_000 })
+  for (let n = await stack.getByRole('button', { name: 'Abrir el panel' }).count(); n > 0; n--) await stack.getByRole('button', { name: 'Abrir el panel' }).first().click()
+  await expect(stack.getByRole('button', { name: 'Abrir el panel' })).toHaveCount(0)
+  await panel.scrollIntoViewIfNeeded()
 
   // buscador: filtra las 12, no solo las 10 visibles
   await panel.getByRole('searchbox').fill('Ponce')
@@ -140,11 +169,10 @@ test('Ficha del cliente: panel Consignatarios (10 filas, buscador, Exportar, Nue
   await dialog.getByRole('button', { name: /Guardar|Crear/ }).click()
   await expect(dialog).toHaveCount(0, { timeout: 15_000 })
   await expect(page).toHaveURL(new RegExp(`client=${client.publicId}`))
-  await expect(panel.getByText('Mostrando 10 de 13')).toBeVisible({ timeout: 15_000 })
+  await expect(panel.locator('.r').first()).toHaveText('13', { timeout: 15_000 })
 
-  // «Ver todos» -> Consignatarios filtrado por el cliente; su Exportar baja lo que la lista tiene a la vista
-  await panel.getByRole('link', { name: 'Ver todos en Consignatarios' }).click()
-  await expect(page).toHaveURL(/\/catalog\/consignees\?client=/)
+  // Consignatarios filtrado por el cliente (`?client=`); su Exportar baja lo que la lista tiene a la vista
+  await page.goto(`/catalog/consignees?client=${client.publicId}`)
   await expect(page.getByRole('combobox', { name: /Cliente/ })).toHaveValue(client.publicId ?? '')
   await expect(page.getByText(`Consignatario 13 ${suffix}`).first()).toBeVisible({ timeout: 15_000 })
   // la cabecera trae, juntos y en este orden: Exportar, Importar y Nuevo consignatario

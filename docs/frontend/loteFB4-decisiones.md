@@ -33,3 +33,17 @@ Pedido de Luis: un panel **Consignatarios** al final de la ficha del cliente (an
 
 - Filas ordenables en el panel (la tabla viene ordenada por nombre).
 - Paginación dentro del panel (para eso está «Ver todos»).
+
+## Ajuste (2026-10-14): paneles desplegables y tabla paginada
+
+Pedido de Luis: los paneles de la ficha del cliente deben ser desplegables, con un **resumen** cuando están cerrados (le gusta el símbolo de cada panel: se conserva y la flecha va a su izquierda), y la tabla de consignatarios debe **paginarse ahí mismo**.
+
+| Pieza | Qué hace | Dónde (`web-app/src/…`) |
+|---|---|---|
+| `Panel` desplegable | Props `collapsible`, `defaultCollapsed`, `summary` y `storageKey`: flecha en la cabecera (y clic en la parte libre de la cabecera), cerrado muestra el resumen y oculta cuerpo, acciones y pie; el cuerpo **sigue montado** (no se pierde lo escrito ni las consultas); recuerda abierto/cerrado en `localStorage` (`teikem.panel.<clave>`, con try/catch). Es opcional: el resto de las pantallas no cambia. | `kernel/ui/Panel.tsx`, `ui.css`, `ui.panel.*` en i18n |
+| Ficha del cliente | Perfil, Teléfonos y correos, Personas de contacto, Numeración, Campos personalizados, Contratos, Usuarios de portal, Consignatarios e Historial de estatus, cada uno con su resumen (`clients.summary.*`). La cabecera del cliente no se cierra. | `features/clients/*Panel.tsx`, `features/contacts/ContactPointsPanel.tsx` (prop `storageKey`) |
+| Tabla paginada | El panel Consignatarios usa la paginación local de `DataTable` (10 por página, selector «Filas por página»); se quita «Mostrando 10 de N / Ver todos». | `features/clients/ClientConsigneesPanel.tsx` |
+
+Pruebas: `PanelCollapsible.test.tsx` (6) y las del panel de consignatarios; vitest de `features/clients`, `consignees`, `contacts` y `kernel/ui` en verde; `tsc -b`; Playwright `loteFB4` en escritorio y móvil (paneles cerrados con su resumen, se recuerdan al recargar, paginación).
+
+Decisiones por omisión: (1) todos los paneles arrancan **abiertos** y recuerdan lo que el usuario elija (por navegador, no por cliente); (2) cerrado se esconden también los botones del panel (Nuevo, Importar, Exportar…); (3) los resúmenes son de una línea con conteos y el dato principal; (4) el panel Teléfonos y correos del cliente es el compartido `ContactPointsPanel`, que solo es desplegable si quien lo usa le pasa `storageKey` (órdenes y choferes no cambian).

@@ -427,6 +427,19 @@
       "seeAll": "See all in Consignees",
       "open": "Open {name} in Consignees"
     },
+    "summary": {
+      "empty": "No data yet",
+      "points": "Phones: {phones} · Emails: {emails}",
+      "people": "Contact people: {n}",
+      "peopleMain": "Contact people: {n} · main: {name}",
+      "numbering": "Order number: {order} · Invoice number: {invoice}",
+      "custom": "Custom fields: {n}",
+      "contracts": "Contracts: {n}",
+      "contractsCurrent": "Contracts: {n} · current: {name}",
+      "portal": "Portal users: {n}",
+      "consignees": "Active consignees: {n}",
+      "history": "Current status: {status}"
+    },
     "people": {
       "title": "Contact people",
       "add": "Add contact",
@@ -2332,6 +2345,10 @@
   "ui": {
     "qbox": {
       "placeholder": "Search…"
+    },
+    "panel": {
+      "expand": "Open the panel",
+      "collapse": "Collapse the panel"
     },
     "table": {
       "empty": "No results",
