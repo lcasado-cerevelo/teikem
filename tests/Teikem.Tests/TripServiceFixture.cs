@@ -183,7 +183,7 @@ internal sealed class TripServiceFixture : IAsyncDisposable
         S(StatusDomains.OptimizationRunStatus, OptimizationRunStatuses.Error, term, 3);
 
         Db.Tenants.Add(new Tenant { TenantId = TenantId, Name = "Tenant de prueba", MaxStopsPerRouteDefault = 25, IsActive = true });
-        Db.ModuleDefinitions.Add(new ModuleDefinition { ModuleKey = ModuleKeys.Catalog, Name = "Catálogo", NameEn = "Catalog", Category = "CORE", IsActive = true });
+        Db.ModuleDefinitions.Add(new ModuleDefinition { ModuleKey = ModuleKeys.Catalog, Name = "Lista", NameEn = "Catalog", Category = "CORE", IsActive = true });
         Db.TenantModules.Add(new TenantModule { TenantId = TenantId, ModuleKey = ModuleKeys.Catalog, IsEnabled = true });
 
         var z1 = new DispatchZone { DispatchZoneId = 11, TenantId = TenantId, Code = "Z1", Name = "Zona 1", IsActive = true };

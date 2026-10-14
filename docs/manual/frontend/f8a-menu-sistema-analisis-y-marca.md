@@ -3,7 +3,7 @@
 Capítulo del manual de pantallas del Lote F8a (frontend): el menú y la cabecera con la maqueta completa (los 7
 grupos, con una pantalla "pendiente" para lo que todavía no tiene función), la marca Teikem, el Pulso del día
 organizado por paneles con permiso propio y orden en dos niveles (compañía y usuario), la pantalla **Roles y
-usuarios** (con el PIN de los aparatos de almacén y el MFA por persona), **Aparatos móviles**, **Catálogos de
+usuarios** (con el PIN de los aparatos de almacén y el MFA por persona), **Aparatos móviles**, **Listas de
 valores** e **Indicadores y Gráficos**. Capturas en `img/f8a-*.png`.
 
 Las acciones por fila de estas tablas (editar, eliminar, PIN, MFA, ajustar, restaurar…) se ven como un icono a
@@ -15,7 +15,7 @@ tono con la acción, no como un botón de texto — pase el cursor sobre el icon
 idioma) y, en la cabecera, la barra "Buscar o ejecutar…" (paleta de comandos), el reloj "en vivo", el selector de
 compañía, tema, idioma, su nombre y "Salir".
 
-Los **7 grupos** de la maqueta, en este orden: **Operación**, **Almacén**, **Contabilidad**, **Catálogo**,
+Los **7 grupos** de la maqueta, en este orden: **Operación**, **Almacén**, **Contabilidad**, **Lista**,
 **Análisis**, **Sistema**, **Portal de clientes**. Un grupo solo se pinta si tiene al menos un ítem que su usuario
 puede ver (por permiso y módulo); dentro de cada grupo, los ítems para los que su compañía o su rol todavía no
 tienen función abren una pantalla "pendiente" con el título y el subtítulo de esa pantalla y el aviso "Esta pantalla
@@ -218,9 +218,9 @@ sola vez, hasta que se pide otro con "Nuevo código de registro".
 (deja de sincronizar) y lo saca de la lista de "Solo activos"; reactivarlo hace que cada persona vuelva a entrar
 con su PIN.
 
-## Catálogos de valores
+## Listas de valores
 
-**Cómo se llega.** Grupo **Sistema** → **Catálogos de valores** (`admin.catalogs`).
+**Cómo se llega.** Grupo **Sistema** → **Listas de valores** (`admin.catalogs`).
 
 **Qué se ve.** Maestro-detalle: lista de dominios a la izquierda (con su chip Sistema/Propio) y, a la derecha, sus
 valores (Código, Etiqueta en español e inglés, Orden, Habilitado, Origen: **Sistema** / **Ajustado** / **Propio**).
@@ -256,11 +256,11 @@ y de secuencia trivial que el PIN que le asigna un administrador. **Quitar** no 
 
 ## En el celular (360 px)
 
-El Pulso, Roles y usuarios y Catálogos de valores se ven sin scroll horizontal ni contenido recortado; la paleta de
+El Pulso, Roles y usuarios y Listas de valores se ven sin scroll horizontal ni contenido recortado; la paleta de
 comandos se abre desde la lupa de la cabecera en vez de la barra "Buscar o ejecutar…".
 
 ![Pulso en un celular, sin desbordar](img/f8a-movil-pulso.png)
-![Catálogos en un celular: dominios como selector arriba, valores en tarjetas](img/f8a-movil-catalogos.png)
+![Listas en un celular: dominios como selector arriba, valores en tarjetas](img/f8a-movil-listas.png)
 
 ## Preguntas frecuentes de este capítulo
 

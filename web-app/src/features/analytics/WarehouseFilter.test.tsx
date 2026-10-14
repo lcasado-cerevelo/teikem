@@ -171,7 +171,7 @@ describe('selección guardada del filtro (lógica pura)', () => {
     expect(getStoredWarehouseFilter(null)).toBe(NO_WAREHOUSE_FILTER)
   })
 
-  it('descarta lo que ya no existe solo cuando llegan los catálogos', () => {
+  it('descarta lo que ya no existe solo cuando llegan las listas', () => {
     const saved = { warehousePublicId: 'gone', item: { kind: 'category' as const, id: 99 } }
     expect(sanitizeWarehouseFilter(saved, {})).toBe(saved)
     expect(sanitizeWarehouseFilter(saved, { warehouses: [WH1], categories: CATEGORIES })).toEqual(NO_WAREHOUSE_FILTER)

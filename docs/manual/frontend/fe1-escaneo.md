@@ -10,8 +10,8 @@ Lo que hace y lo que **no** hace: asigna la orden a una ruta que **ya existe y e
 |---|---|---|
 | Entrar a la pantalla y escanear | `trips.scan` | Operación de carga (LTL) |
 | Ver «Pendientes por escanear», los filtros y el medidor «N de M» | `trips.view` | Operación de carga (LTL) |
-| Filtrar por **Zona** | `fleet.view` | Catálogo |
-| Filtrar por **Cliente** | `clients.read` | Catálogo |
+| Filtrar por **Zona** | `fleet.view` | Lista |
+| Filtrar por **Cliente** | `clients.read` | Lista |
 | Ver los datos de la orden en la ventana y usar **Abrir** | `orders.view` | Operación de carga (LTL) |
 
 Sin `trips.view` la pantalla sigue escaneando: solo desaparecen los pendientes y los filtros, y el medidor muestra únicamente cuántas llevas. Un filtro al que le falta permiso simplemente no aparece.
@@ -40,7 +40,7 @@ Bajo la casilla está **Ruta del día**: por omisión es hoy. Las órdenes se as
 | **No encontrada** (rojo) | `No se encontró la orden.` | Ningún número de orden, empaque ni factura coincide. Revise el código o escanee el empaque. |
 | **No encontrada** (rojo) | `Hay varias órdenes con ese código; escanee el empaque.` | El número lo comparten órdenes de distintos clientes. Escanee el número del empaque, que es único. |
 | **No elegible** (morado) | El motivo (ver abajo) | La orden no puede ir en una ruta todavía. Arregle su estatus en **Órdenes** y escanee de nuevo. |
-| **Sin asignar** (ámbar) | `No se pudo resolver la zona de despacho por código postal ni pueblo; queda sin asignar.` | La dirección no pertenece a ninguna zona. Agregue su código postal o pueblo a una zona (Catálogo → Flota y mantenimiento → Zonas) o asigne la orden a mano en **Sala de despacho**. |
+| **Sin asignar** (ámbar) | `No se pudo resolver la zona de despacho por código postal ni pueblo; queda sin asignar.` | La dirección no pertenece a ninguna zona. Agregue su código postal o pueblo a una zona (Listas → Flota y mantenimiento → Zonas) o asigne la orden a mano en **Sala de despacho**. |
 | **Sin asignar** (ámbar) | `El código postal o pueblo pertenece a varias zonas ({códigos}); queda sin asignar.` | Deje esa dirección en una sola zona o asigne la orden a mano en **Sala de despacho**. |
 | **Sin asignar** (ámbar) | `No hay ruta abierta para la zona {código} en la fecha {fecha}; queda sin asignar.` | Planifique el día o cree la ruta de esa zona en **Sala de despacho** y escanee de nuevo. La orden sigue en «Pendientes por escanear». |
 

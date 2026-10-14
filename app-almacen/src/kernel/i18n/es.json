@@ -268,7 +268,7 @@
     "reasonSale": "Venta",
     "reasonOther": "Otro",
     "issueSummary": "{owner} · líneas: {lines} · unidades: {qty}",
-    "noReasons": "La compañía no tiene motivos habilitados para el despacho manual. Pide al administrador que habilite alguno (Sistema → Catálogos).",
+    "noReasons": "La compañía no tiene motivos habilitados para el despacho manual. Pide al administrador que habilite alguno (Sistema → Listas).",
     "noteLabel": "Nota (opcional)",
     "noteHelp": "{count}/{max} caracteres.",
     "reasonRequired": "Escoge el motivo del despacho manual.",

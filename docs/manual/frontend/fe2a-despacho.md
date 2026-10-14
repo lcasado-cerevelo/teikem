@@ -13,8 +13,8 @@ La ruta activa muestra un **plano esquemático** con sus paradas numeradas, y el
 | **Planificar el día**, **Nueva ruta**, **Reasignar por zona**, añadir, quitar y reordenar órdenes (arrastrando o con ▲ ▼), **Poner pin** y **Mover pin**, cambiar chofer o vehículo, **Eliminar ruta** | `trips.plan` | Operación de carga (LTL) |
 | **Optimizar** | `trips.optimize` | Operación de carga (LTL) |
 | **Cerrar ruta** | `trips.close` | Operación de carga (LTL) |
-| Elegir chofer, vehículo y zona; ver el panel **Choferes** | `fleet.view` | Catálogo |
-| Filtrar por **Cliente** | `clients.read` | Catálogo |
+| Elegir chofer, vehículo y zona; ver el panel **Choferes** | `fleet.view` | Lista |
+| Filtrar por **Cliente** | `clients.read` | Lista |
 
 Un botón que no es suyo simplemente no aparece. Si le falta `fleet.view`, la pantalla funciona igual: el chofer y el vehículo se ven como texto, y se le explica que no puede cambiarlos desde aquí.
 
@@ -43,7 +43,7 @@ La ruta que está viendo y la fecha quedan en la dirección de la página: puede
 
 El sistema reparte por zona las órdenes confirmadas que no tienen ruta. Usa la ruta abierta de la zona o crea una con el **chofer estándar** de la zona. **No** optimiza, **no** despacha y **no** asigna vehículo, y repetirlo no duplica nada.
 
-Al terminar verá el resumen: **Rutas creadas**, **Órdenes asignadas**, **Órdenes omitidas** y **Órdenes sin zona**, y por cada zona sus avisos (por ejemplo, una orden que no se pudo asignar y por qué). Las órdenes sin zona o con zona ambigua no se tocan: arregle la zona en el catálogo.
+Al terminar verá el resumen: **Rutas creadas**, **Órdenes asignadas**, **Órdenes omitidas** y **Órdenes sin zona**, y por cada zona sus avisos (por ejemplo, una orden que no se pudo asignar y por qué). Las órdenes sin zona o con zona ambigua no se tocan: arregle la zona en la lista.
 
 ![Resultado de planificar el día](img/fe2a-planificar-resultado.png)
 

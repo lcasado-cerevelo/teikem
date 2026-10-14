@@ -91,12 +91,12 @@ public sealed class CustomFieldService(TeikemDbContext db, ITenantContext tenant
         if (req.Labels is null || req.Labels.Count == 0) throw new ValidationException("labels", "La etiqueta es obligatoria.");
         var dt = req.DataType.ToUpperInvariant();
         if (dt == CustomFieldDataTypes.LookupRef && string.IsNullOrWhiteSpace(req.RefEntity))
-            throw new ValidationException("refEntity", "LOOKUP_REF requiere el dominio de catálogo referenciado.");
+            throw new ValidationException("refEntity", "LOOKUP_REF requiere el dominio de lista referenciado.");
         // Solo una lista de valores (Scope=Lookup): los dominios de estatus (Scope=Status) viven en StatusCode y sus códigos nunca validarían.
         if (!string.IsNullOrWhiteSpace(req.RefEntity) && !await db.CatalogDomains.AnyAsync(d => d.DomainKey == req.RefEntity && d.IsActive && d.Scope == CatalogScope.Lookup, ct))
             throw new ValidationException("refEntity", $"La lista '{req.RefEntity}' no existe.");
         if (dt is CustomFieldDataTypes.Select or CustomFieldDataTypes.MultiSelect && string.IsNullOrWhiteSpace(req.RefEntity) && (req.Options is null || req.Options.Count == 0))
-            throw new ValidationException("options", "Un campo de selección necesita opciones o una lista del catálogo (refEntity).");
+            throw new ValidationException("options", "Un campo de selección necesita opciones o una lista de valores (refEntity).");
         if (!string.IsNullOrWhiteSpace(req.ValidationJson))
         {
             try { RuleEvaluator.ParseValidation(req.ValidationJson); }

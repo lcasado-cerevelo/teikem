@@ -4,7 +4,7 @@ Pantalla **Operación → Órdenes**. Aquí usted puede:
 
 - **Buscar** cualquier orden de transporte con filtros (por fecha, cliente, consignatario, pueblo, estatus…), ordenar la lista y exportarla.
 - **Crear una orden nueva** con un formulario: elige el cliente, el consignatario, los paquetes y el cobro al entregar (COD), y la guarda como borrador o la confirma de una vez.
-- **Crear una entrega especial** (un servicio del catálogo del cliente en vez de paquetes).
+- **Crear una entrega especial** (un servicio de la lista del cliente en vez de paquetes).
 - **Eliminar** una orden que todavía no se ha confirmado.
 
 Editar una orden, confirmarla después, cancelarla, re-cotizarla y asignarle chofer se hace en su expediente (al abrirla), explicado en [Órdenes: el expediente de la orden](fc2-ordenes-expediente.md). Por ahora esta pantalla **no** tiene la entrada rápida ni la importación de órdenes desde un archivo CSV; eso llegará en la próxima entrega. Lo que ocurre con el precio, el crédito y los estatus en el servidor está explicado en el capítulo «03 — Órdenes de transporte» de este manual.
@@ -23,7 +23,7 @@ Para ver la pantalla hace falta el permiso `orders.view`. El módulo «Última m
 | `clients.read` | Buscar y elegir el cliente en el formulario y en el filtro **Cliente**. |
 | `locations.read` | Buscar y elegir el consignatario, y llenar las opciones del filtro **Pueblo**. |
 | `locations.create` | Usar el botón **+** para crear un consignatario desde la orden. |
-| `contracts.read` | Usar el interruptor **Es una entrega especial** (además, el módulo Catálogo debe estar encendido). |
+| `contracts.read` | Usar el interruptor **Es una entrega especial** (además, el módulo Listas debe estar encendido). |
 
 ---
 
@@ -120,10 +120,10 @@ Los pasos 01, 02 y 03 aparecen a la izquierda; el **Ticket de la orden** a la de
 | Campo | Qué escribir | Reglas |
 |---|---|---|
 | **Nombre** | Busque por nombre, dirección o pueblo y elija. | Obligatorio. Hay que elegir uno del directorio; no se puede escribir un nombre suelto. Salen los consignatarios del cliente y los compartidos (los de todos los clientes). Los que admiten repetir la factura dicen «admite factura repetida». Primero hay que elegir el cliente. |
-| Número, **Dirección**, **Pueblo**, **ZIP**, **Teléfono** | Se llenan solos al elegir el consignatario. | Solo lectura. Para cambiarlos, edite el consignatario en Catálogo → Consignatarios. El teléfono solo aparece si usted puede ver los datos de contacto. |
+| Número, **Dirección**, **Pueblo**, **ZIP**, **Teléfono** | Se llenan solos al elegir el consignatario. | Solo lectura. Para cambiarlos, edite el consignatario en Listas → Consignatarios. El teléfono solo aparece si usted puede ver los datos de contacto. |
 | Aviso bajo el consignatario | — | Dice si ese consignatario admite o no repetir el número de factura. |
 
-**Crear un consignatario desde la orden.** Si no existe, pulse **+** (necesita `locations.create` y haber elegido el cliente). Se abre el mismo formulario de «Nuevo consignatario» del Catálogo (ver el capítulo «F-B — Consignatarios»). El nuevo consignatario queda con el cliente de la orden como dueño y **queda elegido** en la orden. Ojo: crear el consignatario **no guarda la orden**; todavía debe pulsar uno de los botones de guardar.
+**Crear un consignatario desde la orden.** Si no existe, pulse **+** (necesita `locations.create` y haber elegido el cliente). Se abre el mismo formulario de «Nuevo consignatario» del Lista (ver el capítulo «F-B — Consignatarios»). El nuevo consignatario queda con el cliente de la orden como dueño y **queda elegido** en la orden. Ojo: crear el consignatario **no guarda la orden**; todavía debe pulsar uno de los botones de guardar.
 
 ### 03 Paquetes y COD
 
@@ -156,7 +156,7 @@ Cuando algo falla, el formulario **sigue abierto con todo lo que usted había ca
 
 ![Formulario con «Es una entrega especial» encendido: la sección 03 pasa a ser «Servicio especial»](img/fc1-alta-especial.png)
 
-Una entrega especial es un servicio del catálogo del cliente (por ejemplo, traer un vagón del muelle) en vez de paquetes.
+Una entrega especial es un servicio de la lista del cliente (por ejemplo, traer un vagón del muelle) en vez de paquetes.
 
 **Ejemplo.** Quiero registrar una entrega especial para un cliente.
 
@@ -174,7 +174,7 @@ Si el interruptor está deshabilitado, falta el permiso `contracts.read` (la pan
 
 ## 3. Estatus de la orden
 
-El estatus inicial de una orden se llama **Borrador** (su compañía puede haberlo renombrado en Sistema → Catálogos). Esta pantalla hace tres cosas con el estatus:
+El estatus inicial de una orden se llama **Borrador** (su compañía puede haberlo renombrado en Sistema → Listas). Esta pantalla hace tres cosas con el estatus:
 
 | De → a | Cómo | Quién puede | Qué se valida | Qué pasa |
 |---|---|---|---|---|
@@ -228,7 +228,7 @@ El texto aparece tal cual sobre el formulario (o bajo el campo, cuando se indica
 | `No hay tarifa vigente para X/Y; configure la tarifa en el contrato del cliente antes de confirmar.` | 422 | El contrato del cliente no tiene tarifa para ese servicio y tipo de paquete. La orden no se creó. | Configure la tarifa (Clientes → Contrato → Tarifas) o use **Guardar borrador** y confirme después. |
 | `El cliente está suspendido; no se pueden crear ni confirmar órdenes.` | 422 | El cliente está suspendido. | Reactive al cliente desde su ficha o elija otro. |
 | `El cliente está dado de baja; solo se consulta su historial.` | 409 | El cliente está dado de baja. | Reactive al cliente desde su ficha o elija otro. |
-| `Consignatario está inactivo; reactívelo o elija otro.` | 400 | El consignatario fue dado de baja. | Reactívelo en Catálogo → Consignatarios o elija otro. |
+| `Consignatario está inactivo; reactívelo o elija otro.` | 400 | El consignatario fue dado de baja. | Reactívelo en Listas → Consignatarios o elija otro. |
 | `El número de factura lo asigna Teikem para este cliente; déjelo en blanco.` | 400 | Se envió un número de factura, pero este cliente usa la numeración automática. | Deje la factura en «(automático)». |
 | `El número de orden lo asigna Teikem para este cliente; déjelo en blanco.` | 400 | Igual, con el número de orden. | Deje el número de orden vacío. |
 | `El servicio especial no está vigente para este cliente.` | 400 | El servicio elegido ya se cerró. | Elija otro servicio especial. |

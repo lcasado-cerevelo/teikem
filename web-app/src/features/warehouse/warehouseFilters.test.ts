@@ -83,7 +83,7 @@ describe('binsQuery (pestaña Posiciones → GET .../bins)', () => {
   })
 })
 
-describe('localityOptionLabel / localityCity (catálogo USPS de localidades)', () => {
+describe('localityOptionLabel / localityCity (lista USPS de localidades)', () => {
   const SABANA = { city: 'SABANA SECA', postalCode: '00952', state: 'PR', countryCode: 'PR', country: 'Puerto Rico', municipality: 'Toa Baja' }
   const MAYAGUEZ = { city: 'MAYAGUEZ', postalCode: '00680', state: 'PR', countryCode: 'PR', country: 'Puerto Rico', municipality: 'Mayagüez' }
   const NY = { city: 'NEW YORK', postalCode: '10001', state: 'NY', countryCode: 'US', country: 'Estados Unidos', municipality: null }

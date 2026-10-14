@@ -114,7 +114,7 @@ en la FAQ "Región y formatos (2026-10)":
 
 ![Módulos](img/f9-modulos.png)
 
-Catálogo de módulos de la plataforma (`GET /api/v1/modules`) con su **Estado** (Encendido/Apagado) y, si depende de otro,
+Lista de módulos de la plataforma (`GET /api/v1/modules`) con su **Estado** (Encendido/Apagado) y, si depende de otro,
 "Requiere: …". Los **núcleo** dicen "Núcleo — siempre activo" y no tienen interruptor. El interruptor de un módulo cuyo
 requerido está apagado está deshabilitado ("Primero activa: …"). Apagar un módulo del que dependen otros encendidos pide
 confirmación ("¿Apagar …?" — "Al apagar … también se apagan: …"). Encender o apagar (`PUT /api/v1/modules/{clave}`) exige
@@ -130,7 +130,7 @@ repite sola. Al terminar, el menú y el buscador muestran u ocultan las pantalla
 
 ![Operación](img/f9-operacion.png)
 
-- **Valores por defecto.** *Tipo de servicio por defecto* y *Tipo de paquete por defecto* (del catálogo; "Sin valor por
+- **Valores por defecto.** *Tipo de servicio por defecto* y *Tipo de paquete por defecto* (de la lista; "Sin valor por
   defecto" lo quita) y *Máximo de paradas por ruta (default)* (entero ≥ 1; "Debe ser 1 o más." en pantalla, "Debe ser ≥ 1."
   del servidor). Guardar → `PUT /tenant/settings`.
 - **Pipeline de estatus de órdenes** (solo con el módulo de órdenes, `LTL_GROUND`). Matriz estatus × acción (Editar carga,

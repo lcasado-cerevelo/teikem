@@ -56,8 +56,8 @@ Los mensajes salen debajo del campo o debajo de la fila, y **lo que usted escrib
 | El número no puede exceder 40 caracteres. | Acorte el N.º de orden. |
 | El cliente está suspendido; no se pueden crear ni confirmar órdenes. | El cliente no puede recibir órdenes nuevas. Consulte con quien lo administra. |
 | El cliente está dado de baja; solo se consulta su historial. | Elija otro cliente. |
-| Consignatario está inactivo; reactívelo o elija otro. | Elija otro o reactívelo en Catálogo → Consignatarios. |
-| Tipo de paquete desconocido: X. / Tipo de servicio desconocido: X. | Ese valor ya no existe en el catálogo; elija otro de la lista. |
+| Consignatario está inactivo; reactívelo o elija otro. | Elija otro o reactívelo en Listas → Consignatarios. |
+| Tipo de paquete desconocido: X. / Tipo de servicio desconocido: X. | Ese valor ya no existe en la lista; elija otro de la lista. |
 | Ya existe una orden con ese número para este cliente. | El N.º de orden que escribió ya se usó; escriba otro o déjelo vacío si es automático. |
 
 Si se corta la conexión mientras guarda, aparece un error en la fila; al pulsar **Enter** de nuevo se reintenta **sin duplicar** la orden.
@@ -119,7 +119,7 @@ Si cambia el cliente o la plantilla, el archivo se revisa de nuevo.
 | El archivo supera el límite de 5.000 filas o 2 MB. | Divida el archivo en partes. |
 | El archivo no tiene filas de datos. | El archivo está vacío o solo trae el encabezado. |
 | Indique el consignatario: nombre (con dirección) o código del directorio. | En esa fila falta el consignatario. |
-| Tipo de paquete desconocido: X. / Tipo de servicio desconocido: X. | Use un valor del catálogo (por ejemplo STANDARD, BOX). |
+| Tipo de paquete desconocido: X. / Tipo de servicio desconocido: X. | Use un valor de la lista (por ejemplo STANDARD, BOX). |
 | La cantidad de piezas debe ser al menos 1. / La cantidad de piezas debe ser un número entero. | Corrija las piezas. |
 | El monto COD debe ser un número. / El monto COD no puede ser negativo. | Corrija el COD. |
 | La fecha solicitada no es válida; use yyyy-MM-dd. | Escriba la fecha como 2026-10-15. |

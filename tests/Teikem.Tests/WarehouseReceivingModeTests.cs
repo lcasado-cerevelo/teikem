@@ -63,7 +63,7 @@ public sealed class WarehouseReceivingModeTests
 
         var direct = await CreateAsync(f, new WarehouseCreateRequest("W2", "Dos", ReceivingMode: "direct"));
         Assert.Equal(ReceivingModes.Direct, direct.Warehouse.ReceivingModeCode);
-        Assert.Equal(ReceivingModes.Direct, direct.Warehouse.ReceivingMode);   // etiqueta del catálogo del fixture (su código)
+        Assert.Equal(ReceivingModes.Direct, direct.Warehouse.ReceivingMode);   // etiqueta de la lista del fixture (su código)
 
         var bad = await Assert.ThrowsAsync<ValidationException>(() => service.CreateAsync(new WarehouseCreateRequest("W3", "Tres", ReceivingMode: "HALF"), default));
         Assert.Equal(new[] { ReceivingModeRules.UnknownMode("HALF") }, bad.Errors!["receivingMode"]);

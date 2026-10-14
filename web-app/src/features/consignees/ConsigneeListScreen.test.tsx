@@ -399,7 +399,7 @@ describe('Consignatarios — alta', () => {
     const user = userEvent.setup()
     mock.override = ({ method, url }) =>
       method === 'POST' && url.pathname === '/api/v1/locations'
-        ? problem(400, 'Solicitud inválida', 'validation', { name: ['Máximo 200 caracteres.'], country: ['Catálogo Country \'XX\' no encontrado.'] })
+        ? problem(400, 'Solicitud inválida', 'validation', { name: ['Máximo 200 caracteres.'], country: ['Lista Country \'XX\' no encontrada.'] })
         : undefined
     wrap(ALL)
     await screen.findByRole('list', { name: 'Consignatarios' })
@@ -411,7 +411,7 @@ describe('Consignatarios — alta', () => {
     await user.click(await within(dialog).findByRole('option', { name: /PONCE/ }))
     await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
     expect(await within(dialog).findByText('Máximo 200 caracteres.')).toBeInTheDocument()
-    expect(within(dialog).getByText("Catálogo Country 'XX' no encontrado.")).toBeInTheDocument()
+    expect(within(dialog).getByText("Lista Country 'XX' no encontrada.")).toBeInTheDocument()
     expect(screen.getByRole('dialog', { name: 'Nuevo consignatario' })).toBeInTheDocument()
   })
 

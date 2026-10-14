@@ -109,7 +109,7 @@ describe('PackModal: predeterminados de la compañía', () => {
     expect(within(dialog).queryByText('Elija el tipo de paquete.')).toBeNull()
   })
 
-  it('predeterminado que no está en el catálogo: se muestra su código', async () => {
+  it('predeterminado que no está en la lista: se muestra su código', async () => {
     mock.settings = { defaultServiceType: 'OLD_SVC', defaultPackageType: null }
     wrap()
     const dialog = await screen.findByRole('dialog', { name: 'Empacar PB-00001' })

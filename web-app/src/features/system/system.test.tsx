@@ -172,7 +172,7 @@ describe('UsersPage — el segmento se filtra por permisos', () => {
 })
 
 describe('RolesTab — permisos agrupados por categoría y reautenticación', () => {
-  it('el editor agrupa los permisos del catálogo por categoría', async () => {
+  it('el editor agrupa los permisos de la lista por categoría', async () => {
     const user = userEvent.setup()
     mock.handler = ((_method: string, url: URL) => {
       if (url.pathname === '/api/v1/roles') return [ROLE]

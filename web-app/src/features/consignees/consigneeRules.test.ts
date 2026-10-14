@@ -346,7 +346,7 @@ describe('textos', () => {
     expect(keys(enDict.consignees).sort()).toEqual(keys(esDict.consignees).sort())
   })
 
-  it('hay etiqueta para cada campo del catálogo de importación (18), para «(No usar)» y para el nav', () => {
+  it('hay etiqueta para cada campo de la lista de importación (18), para «(No usar)» y para el nav', () => {
     const fields = ['code', 'name', 'line1', 'line2', 'city', 'state', 'postalCode', 'country', 'clientCode', 'clientName', 'defaultServiceMinutes', 'defaultWindowStart', 'defaultWindowEnd', 'accessNotes', 'deliveryNotes', 'allowDupInvoice', 'contactPhone', 'contactName', 'ignore']
     for (const f of fields) {
       expect((esDict.consignees.import.fields as Record<string, string>)[f], f).toBeTruthy()
@@ -487,7 +487,7 @@ describe('mapeo de consignatarios (Lote F-B2)', () => {
 })
 
 // Lote F-B3 — variantes de mapeo (espejo de ConsigneeImportVariants) y columnas que la vista previa agrega por el catálogo de ZIP.
-describe('Plantillas con variantes y catálogo de códigos postales (Lote F-B3)', () => {
+describe('Plantillas con variantes y lista de códigos postales (Lote F-B3)', () => {
   const FIELDS3: ImportField[] = ['code', 'name', 'line1', 'line2', 'city', 'postalCode', 'contactName'].map((field) => ({ field, required: false, defaultAllowed: !['code', 'name', 'line1'].includes(field) }))
   const MSG3 = {
     columnsRequired: 'Indique al menos una columna.',
@@ -601,7 +601,7 @@ describe('Plantillas con variantes y catálogo de códigos postales (Lote F-B3)'
     expect(variantIssues(withVariants(values, variantsOf(values).slice(0, 1)), FIELDS3, MSG3)).toEqual([])
   })
 
-  it('la vista previa muestra los campos de todas las variantes y los que dedujo el catálogo', () => {
+  it('la vista previa muestra los campos de todas las variantes y los que dedujo la lista', () => {
     expect(templateFields(TPL)).toEqual(['name', 'line1', 'city', 'postalCode'])
     expect(previewFields(TPL, [{ inferred: ['state', 'city'] }, { inferred: null }])).toEqual(['name', 'line1', 'city', 'postalCode', 'state'])
     expect(previewFields({ columns: [{ position: 1, field: 'name' }] } as ImportTemplate, [{ inferred: ['postalCode'] }])).toEqual(['name', 'postalCode'])

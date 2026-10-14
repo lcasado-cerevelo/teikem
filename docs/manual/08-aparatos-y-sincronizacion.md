@@ -2,7 +2,7 @@
 
 Este capítulo cubre lo que el Lote 8A deja construido en el API para que, más adelante, exista una app instalable
 de almacén: aparatos de confianza registrados por código, un PIN corto para entrar sin contraseña, sincronización
-por diferencia de catálogos y tareas, búsqueda de producto por código de barras, y llamadas "todo en una" para la
+por diferencia de listas y tareas, búsqueda de producto por código de barras, y llamadas "todo en una" para la
 cola de trabajo del aparato. **La app instalable en sí (pantallas, escáner, base local, cola de salida) no existe
 todavía**; este lote es solo su backend. El Lote 8B (app de choferes) reutiliza esta misma base pero no se toca
 aquí; la tabla `DriverDevice` del Lote 4 sigue igual.

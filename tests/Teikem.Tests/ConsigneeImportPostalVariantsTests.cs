@@ -48,14 +48,14 @@ public sealed class ConsigneePostalInferenceTests
         Assert.Equal(("Toa Baja", "PR", "00952"), (r.City, r.State, r.PostalCode)); // el pueblo es el municipio, no el barrio postal
         Assert.Equal(new[] { "city", "state" }, r.Inferred);
         Assert.Null(r.OriginalPostalCode);
-        Assert.Equal(new[] { "Pueblo tomado del código postal 00952: Toa Baja.", "Estado tomado del catálogo de códigos postales: PR." }, r.Warnings);
+        Assert.Equal(new[] { "Pueblo tomado del código postal 00952: Toa Baja.", "Estado tomado de la lista de códigos postales: PR." }, r.Warnings);
     }
 
     [Fact]
     public void A_town_alone_gets_the_first_delivery_zip_in_a_fixed_order()
     {
         var r = Infer("bayamón", null);
-        Assert.Equal(("bayamón", "PR", "00956"), (r.City, r.State, r.PostalCode)); // el menor STANDARD, no el primero del catálogo (00961)
+        Assert.Equal(("bayamón", "PR", "00956"), (r.City, r.State, r.PostalCode)); // el menor STANDARD, no el primero de la lista (00961)
         Assert.Equal(new[] { "postalCode", "state" }, r.Inferred);
         Assert.Contains("Código postal asignado: 00956, el primero de entrega de bayamón.", r.Warnings);
 
@@ -109,10 +109,10 @@ public sealed class ConsigneePostalInferenceTests
     [Fact]
     public void Unknown_zip_or_town_rejects_the_row_with_a_clear_message()
     {
-        Assert.Equal(("postalCode", "El código postal 00999 no está en el catálogo de códigos postales; corríjalo, o déjelo vacío e indique el pueblo."),
+        Assert.Equal(("postalCode", "El código postal 00999 no está en la lista de códigos postales; corríjalo, o déjelo vacío e indique el pueblo."),
             (Infer(null, "00999").ErrorField, Infer(null, "00999").Error));
         Assert.Equal("El código postal 9A1 no es válido: use 5 dígitos (o ZIP+4, como 00901-1234).", Infer("Ponce", "9A1").Error);
-        Assert.Equal(("city", "El pueblo 'Ciudad Gótica' no está en el catálogo de códigos postales; corríjalo o indique el código postal."),
+        Assert.Equal(("city", "El pueblo 'Ciudad Gótica' no está en la lista de códigos postales; corríjalo o indique el código postal."),
             (Infer("Ciudad Gótica", null).ErrorField, Infer("Ciudad Gótica", null).Error));
         Assert.Equal("El pueblo 'Barrow' no tiene un código postal de entrega (solo de apartados postales o militares); indique el código postal de la dirección física.",
             Infer("Barrow", null, country: "US").Error);
@@ -344,9 +344,9 @@ public sealed class ConsigneeImportPostalVariantsTests
         var preview = await f.Get<ConsigneeImportService>().ValidateAsync(new ConsigneeImportValidateRequest(tpl.PublicId, null,
             "n,l,p,z,c\nUno,Calle 1,,00999,\nDos,Calle 2,Ciudad Gótica,,\nTres,Calle 3,Santo Domingo,10101,DO\nCuatro,Calle 4,,,\nCinco,Calle 5,Caguas,00716,PR\n"), default);
 
-        Assert.Equal("El código postal 00999 no está en el catálogo de códigos postales; corríjalo, o déjelo vacío e indique el pueblo.", preview.Rows[0].Errors["postalCode"]);
-        Assert.Equal("El pueblo 'Ciudad Gótica' no está en el catálogo de códigos postales; corríjalo o indique el código postal.", preview.Rows[1].Errors["city"]);
-        Assert.True(preview.Rows[2].IsValid);                     // fuera del catálogo (DO): como antes
+        Assert.Equal("El código postal 00999 no está en la lista de códigos postales; corríjalo, o déjelo vacío e indique el pueblo.", preview.Rows[0].Errors["postalCode"]);
+        Assert.Equal("El pueblo 'Ciudad Gótica' no está en la lista de códigos postales; corríjalo o indique el código postal.", preview.Rows[1].Errors["city"]);
+        Assert.True(preview.Rows[2].IsValid);                     // fuera de la lista (DO): como antes
         Assert.Null(preview.Rows[2].Inferred);
         Assert.Equal("La ciudad es obligatoria.", preview.Rows[3].Errors["city"]); // ni pueblo ni ZIP
         Assert.True(preview.Rows[4].IsValid);                     // ZIP y pueblo que no coinciden: aviso, se guardan los dos

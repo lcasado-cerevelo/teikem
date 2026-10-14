@@ -1,10 +1,10 @@
 # F-B2 — Importar consignatarios: Excel, «(No usar)», columnas unidas, cliente por defecto y persona de contacto
 
-Mejoras a **Catálogo → Consignatarios → Importar** (lote 45 / F-B2, 2026-10-13). Lo básico de la pantalla (plantilla, vista previa, Importar, Cancelar,
+Mejoras a **Listas → Consignatarios → Importar** (lote 45 / F-B2, 2026-10-13). Lo básico de la pantalla (plantilla, vista previa, Importar, Cancelar,
 resultado, desactivar plantillas) sigue como en [fb-consignatarios.md](fb-consignatarios.md) §4. Detalle técnico y mensajes del servidor: capítulo 02, §2.2.
 Decisiones: [loteFB2-decisiones.md](../../frontend/loteFB2-decisiones.md) y [lote45-decisiones.md](../../lote45-decisiones.md).
 
-**Quién puede.** Igual que antes: el botón **Importar**, el editor de plantillas, **Revisar el archivo** e **Importar** piden `locations.create` con el módulo **Catálogo**. Ver la
+**Quién puede.** Igual que antes: el botón **Importar**, el editor de plantillas, **Revisar el archivo** e **Importar** piden `locations.create` con el módulo **Listas**. Ver la
 persona de contacto en la ficha pide `locations.read`; cambiarla en **Editar**, `locations.update`. No hay permisos nuevos.
 
 ## 1. Archivo CSV o Excel

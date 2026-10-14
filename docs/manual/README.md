@@ -3,18 +3,18 @@
 ## Qué es Teikem
 
 Teikem es una plataforma de logística para varias compañías (multi-tenant): cada empresa que la usa (cada
-"tenant") ve solo sus propios datos, con su propia configuración de catálogos, estatus, usuarios y roles. Un
+"tenant") ve solo sus propios datos, con su propia configuración de listas, estatus, usuarios y roles. Un
 mismo usuario puede pertenecer a más de una compañía y elegir con cuál trabajar al iniciar sesión.
 
 La plataforma se construye por lotes. Cada lote agrega un módulo de negocio (órdenes, almacén, flota, alquiler
-de equipos, compras, portal de clientes, etc.) sobre una base común de seguridad, catálogos, estatus,
+de equipos, compras, portal de clientes, etc.) sobre una base común de seguridad, listas, estatus,
 auditoría, campos personalizados y análisis (vistas, indicadores, gráficos). Este manual documenta, capítulo
 por capítulo, lo que cada lote deja disponible para el usuario final y para soporte.
 
 ## Capítulos
 
 1. [01 — Plataforma y seguridad](01-plataforma-y-seguridad.md): acceso y sesión, MFA, mi perfil y permisos,
-   usuarios y roles del tenant, catálogos, estatus, puntos de contacto, campos personalizados, vistas,
+   usuarios y roles del tenant, listas, estatus, puntos de contacto, campos personalizados, vistas,
    indicadores, gráficos y Pulso del día, auditoría y seguridad, módulos por tenant, configuración de la
    compañía, administración de plataforma.
    Región y formatos (2026-10, sección 11.1): región Puerto Rico o Estados Unidos con su juego de valores, zona horaria de la
@@ -30,7 +30,7 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    2026-10-12 las listas grandes son más rápidas sin cambiar lo que se ve, y qué hacer si la lista de órdenes sigue lenta (`db-update`).
 2. [02 — Clientes y contratos](02-clientes-y-contratos.md): expediente del cliente (alta compuesta, perfil, numeración,
    contactos, estatus, baja), consignatarios y localizaciones (direcciones física/postal, almacenes, compartidas; importación
-  de consignatarios por CSV con plantilla, validar → confirmar, Lote 38; Excel, «(No usar)», columnas unidas, cliente por defecto y persona de contacto, Lote 45, §2.2; pueblo, estado y ZIP con el catálogo de códigos postales y variantes de mapeo, Lote 46, §2.3), contratos
+  de consignatarios por CSV con plantilla, validar → confirmar, Lote 38; Excel, «(No usar)», columnas unidas, cliente por defecto y persona de contacto, Lote 45, §2.2; pueblo, estado y ZIP con la lista de códigos postales y variantes de mapeo, Lote 46, §2.3), contratos
    (contrato vigente, modelo de facturación con 5 componentes, despacho, COD, SLA, estatus y efectos), tarifas por servicio y
    pieza extra con historial efectivo-fechado, cotización, servicios especiales y tipos compartidos, usuarios de portal del
    cliente (incluye el portal multi-cliente del Lote 3), permisos y módulos, fuentes de análisis y auditoría.
@@ -71,7 +71,7 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    barras) para imprimir y escanear desde el papel; sin estado (servidor y web).
    Lote 11 (sección 1, Almacenes y ubicaciones): **cupo máximo** de la posición y su **estado de ocupación**
    (vacía, parcial, llena, ocupada sin cupo), ocupación calculada por zona, código de zona editable, listado de
-   posiciones paginado con búsqueda por código, zona, pasillo, rack, nivel o posición, y el catálogo de **localidades
+   posiciones paginado con búsqueda por código, zona, pasillo, rack, nivel o posición, y la lista de **localidades
    postales** (42.522 ZIP de EE. UU. y Puerto Rico) para llenar ciudad, estado, código postal y país.
    Lote 12 (secciones 1.2, 2 y 8): **marca y modelo** del producto, filtros nuevos de la lista de productos (varios
    almacenes, SKU, nombre, marcas, "con serie" y "series incompletas") y endpoint de marcas, filtros de Kárdex por marca y
@@ -93,14 +93,14 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    (posición destino por línea, sugerencias con cupo, "Usar posiciones sugeridas", cuarentena en devoluciones, cupo que solo avisa, Completado → Acomodado en el mismo momento, sin tareas) con sus
    validaciones, estatus y lo que bloquea; el acomodo pendiente en almacenes directos; el selector de posiciones de Recolección (solo donde hay existencia); el cruce de plataforma que no aplica a
    recibos directos ya confirmados; y el formato de los números (coma de miles y `$`).
-   2026-10-11 (sección 7b): **Despacho manual** `DMA-#####` — salida de inventario sin entrega con motivo obligatorio (catálogo editable
+   2026-10-11 (sección 7b): **Despacho manual** `DMA-#####` — salida de inventario sin entrega con motivo obligatorio (lista editable
    «Motivo del despacho manual») y nota libre, permiso nuevo `warehouse.issue`, ficha consultable, filtro `kind` de la lista de
    recolecciones, Kárdex `DMA-… · motivo`, y sus mensajes 400/403/404/409/422.
    2026-10-11 (sección 7c): **Motivo por default del despacho manual** — ajuste de la compañía (`defaultManualIssueReason`,
    `admin.tenant`) que la app y la web preseleccionan (`isDefault` en `/manual-issues/reasons`); el servidor sigue exigiendo motivo; un
    default deshabilitado se ignora.
 7. [07 — Pulso del día y Actividad reciente (Lote 7A: Almacén)](07-pulso-y-actividad.md): panel de eventos
-   recientes de Almacén (catálogo de 23 eventos, obligatorio/opcional, ventana 24h/48h/hoy, filtro por módulo),
+   recientes de Almacén (lista de 23 eventos, obligatorio/opcional, ventana 24h/48h/hoy, filtro por módulo),
    filtro "bajo mínimo" de productos, e indicadores y gráfico nuevos de Almacén en el Pulso del día (Unidades
    recibidas, Conteos con diferencia, Movimientos de inventario por tipo). Operación (7B) y Contabilidad (7C)
    agregan su propia pestaña más adelante. Lote F8a (sección 3): **Pulso del día: paneles, permisos y orden** —
@@ -213,7 +213,7 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
    los 7 grupos del menú de la maqueta y la pantalla "pendiente", la marca Teikem, paleta de comandos, Pulso del día
    organizado en dos niveles ("Organizar mi Pulso" / "Organizar el de la compañía"), Indicadores y Gráficos, Roles y
    usuarios (con el PIN de los aparatos de almacén y la contraseña temporal), Aparatos móviles (código autogenerado),
-   Catálogos de valores (ajustar/restaurar) y Mi cuenta → PIN de la app.
+   Listas de valores (ajustar/restaurar) y Mi cuenta → PIN de la app.
 5. [F9 — Ajustes de la compañía y región y formatos](frontend/f9-ajustes-de-la-compania.md): cómo se ven fechas, horas,
    números, dinero y teléfonos con la región de la compañía (no con el idioma), y la pantalla Sistema → Ajustes de la
    compañía con sus pestañas General, Región y formatos (vista previa, Personalizada, Restaurar), Calendario (días
@@ -258,7 +258,7 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
    **Devoluciones de renta** (lista con filtros y ficha, enlaces renta ↔ devolución), Almacén → **Proceso de equipos** (cola con Avanzar,
    Completar y Dar de baja con confirmación fuerte), las tarjetas de resumen de la lista de rentas y **Reportes de rentas** (vistas,
    indicadores y gráfico de Análisis). Capturas `f18-*`.
-15. [F-A1 — Clientes: lista, alta y ficha](frontend/fa1-clientes.md): Catálogo → **Clientes**: lista maestra con buscador y «Mostrar inactivos», alta con contrato
+15. [F-A1 — Clientes: lista, alta y ficha](frontend/fa1-clientes.md): Listas → **Clientes**: lista maestra con buscador y «Mostrar inactivos», alta con contrato
    inicial opcional (código duplicado 409) y la ficha con perfil (409 de `rowVersion`), teléfonos y correos, personas de contacto, numeración con ejemplo en vivo,
    campos personalizados, contratos, estatus y baja/reactivación; permisos de cada acción. Capturas `fa1-*`.
 16. [F-A2 — Contratos del cliente](frontend/fa2-contratos.md): en la ficha del cliente, la sección **Contratos** con pestañas **Contrato** (datos, estatus con historial, los 5 checks del
@@ -268,13 +268,13 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
 17. [F19 — Despacho manual en la web](frontend/f19-despacho-manual.md): en **Recolección y empaque**, el interruptor **Despacho manual (sin entrega)** del panel
    Recolección (motivo obligatorio, nota, líneas como una recolección, `Idempotency-Key`, 409 por existencia), la columna y el filtro **Tipo**, la ficha del
    DMA (motivo, nota, Kárdex, sin Empacar) y **Eliminar** con reversa (`warehouse.issue`). Capturas `f19-*`.
-18. [F-B — Consignatarios](frontend/fb-consignatarios.md): Catálogo → **Consignatarios**: lista y ficha, alta y edición, teléfono, baja y reactivación, e **Importar** consignatarios desde un archivo CSV con plantillas
+18. [F-B — Consignatarios](frontend/fb-consignatarios.md): Listas → **Consignatarios**: lista y ficha, alta y edición, teléfono, baja y reactivación, e **Importar** consignatarios desde un archivo CSV con plantillas
    (vista previa fila por fila, errores y avisos, confirmar o descartar); permisos `locations.*`.
 F-B2. [F-B2 — Importar consignatarios: Excel, «(No usar)», columnas unidas, cliente por defecto y persona de contacto](frontend/fb2-importacion-consignatarios.md): archivo **CSV o Excel (.xlsx)** con **Hoja del libro**,
    ZIP con sus ceros, CSV de Windows con ñ, **(No usar)**, una columna a dos campos, **Campos con varias columnas** (orden y separador, con resultado), **Cliente por defecto** que se
    guarda en la plantilla (la fila con su propio cliente manda) y **Recordar este cliente en la plantilla**, teléfonos en formatos mezclados y **Persona de contacto** en la ficha. Capturas `fb2-*`.
-F-B3. [F-B3 — Importar consignatarios: pueblo, estado y ZIP con el catálogo de códigos postales, y variantes de mapeo](frontend/fb3-variantes-y-codigos-postales.md): pueblo y estado tomados
-   del ZIP, ZIP de entrega asignado por el pueblo, **Código postal ajustado** (ZIP de apartados o militar → de entrega de la misma ciudad), marca **del catálogo**, filas rechazadas
+F-B3. [F-B3 — Importar consignatarios: pueblo, estado y ZIP con la lista de códigos postales, y variantes de mapeo](frontend/fb3-variantes-y-codigos-postales.md): pueblo y estado tomados
+   del ZIP, ZIP de entrega asignado por el pueblo, **Código postal ajustado** (ZIP de apartados o militar → de entrega de la misma ciudad), marca **de la lista**, filas rechazadas
    con el mensaje exacto; **variantes de mapeo** con **Se usa cuando** (igual a, contiene, no está vacía, está vacía), columna **Variante** en la vista previa; selector de pueblo del
    alta solo con ZIP de entrega; fuentes USPS y GeoNames (CC BY 4.0). Capturas `fb3-*`.
 19. [F-C1 — Órdenes: lista y alta](frontend/fc1-ordenes-alta.md): Operación → **Órdenes**: la lista con sus filtros, **Nueva orden** (guardar como borrador o confirmar, crédito excedido, factura repetida,
@@ -285,10 +285,10 @@ F-B3. [F-B3 — Importar consignatarios: pueblo, estado y ZIP con el catálogo d
 21. [F-C3 — Órdenes: entrada rápida e importación desde CSV](frontend/fc3-ordenes-rapida-importacion.md): el interruptor **Rápida / Detallada** de **Nueva orden**, la rejilla de captura
    (Enter guarda una orden por fila) y **Importar**: plantillas, vista previa del archivo, casillas **Confirmar las órdenes al importar**, **Autorizar crédito excedido** y **Aceptar facturas repetidas**,
    **Descartar archivo** y resultado. Capturas `fc3-*`.
-22. [F-D1 — Choferes y tarifas](frontend/fd1-choferes.md): Catálogo → **Choferes y tarifas**: lista y ficha, **Nuevo chofer**, **Activo** / **Disponibilidad** / **Eliminar chofer**, licencias y certificaciones con su
+22. [F-D1 — Choferes y tarifas](frontend/fd1-choferes.md): Listas → **Choferes y tarifas**: lista y ficha, **Nuevo chofer**, **Activo** / **Disponibilidad** / **Eliminar chofer**, licencias y certificaciones con su
    chip de vencimiento, tarifas por entrega, intento y viaje (con vigencia, **Cerrar tarifa** e historial), fórmula de pago con vista previa, **Viajes pagados**, dispositivos y contactos; permisos
    `fleet.*` y `driverpay.*`. Capturas `fd1-*`.
-23. [F-D2 — Flota y mantenimiento](frontend/fd2-flota.md): Catálogo → **Flota y mantenimiento**: vehículos (lista y ficha, **Nuevo vehículo**, **Activo** / **Disponibilidad** / **Dar de baja definitiva**, documentos con su chip de vencimiento), **Documentos por vencer**, **Zonas de despacho** y **Disponibilidad** para despacho con sus motivos. Capturas `fd2-*`.
+23. [F-D2 — Flota y mantenimiento](frontend/fd2-flota.md): Listas → **Flota y mantenimiento**: vehículos (lista y ficha, **Nuevo vehículo**, **Activo** / **Disponibilidad** / **Dar de baja definitiva**, documentos con su chip de vencimiento), **Documentos por vencer**, **Zonas de despacho** y **Disponibilidad** para despacho con sus motivos. Capturas `fd2-*`.
 24. [F-D3 — Mantenimiento, órdenes de trabajo y combustible](frontend/fd3-mantenimiento-combustible.md): pestañas **Mantenimiento** (estado de cada programa por vehículo: Al día, Por vencer, Vencido, Sin historial; alta, edición, **Desactivar** y **Reactivar** programas), **Órdenes de trabajo** (lista, **Nueva orden de trabajo**, ficha con tareas y costos, **Iniciar**, **Cerrar orden** con odómetro y **Cancelar orden**) y **Combustible** (bitácora con Km/L y Costo/km, **Registrar carga**, resumen por vehículo, odómetro coherente). Capturas `fd3-*`.
 25. [F-E1 — Estación de escaneo (salida)](frontend/fe1-escaneo.md): Operación → **Estación de escaneo**: escanear con lector o teclado (número de orden, empaque o factura), resultado grande con el mensaje del servidor y qué hacer (**Asignada**, **Ya estaba**, **No encontrada**, **No elegible**, **Sin asignar**), **Ruta del día**, voz Sí/No/Ya, medidor «N de M», **Escaneados en esta sesión**, **Pendientes por escanear** con filtros Cliente, Zona, Código postal y Pueblo, y ventana de la orden. Capturas `fe1-*`.
 26. [F-E2a y F-E2b — Sala de despacho (con plano de ruta, arrastrar y pin manual)](frontend/fe2a-despacho.md): Operación → **Sala de despacho**: **Planificar el día**, **Nueva ruta**, **Reasignar por zona**, **Órdenes sin asignar** con filtros y **Añadir a la ruta**, **Ruta activa** con chofer y vehículo (disponibilidad y errores del servidor), avisos y bloqueantes, ▲ ▼ y quitar, **Optimizar** con «No cupieron», **Rutas por despachar** (bloqueantes, avisos y lote), **Iniciar ruta**, **Cerrar ruta**, **Eliminar ruta**, **Choferes** y **Rutas de hoy**; F-E2b: **plano de la ruta** esquemático (pines exacto, aproximado y manual, sin ubicación), **reordenar arrastrando** el asa, y **Poner pin** manual con sus errores. Capturas `fe2a-*` y `fe2b-*`.
@@ -310,7 +310,7 @@ F-G1. [F-G1 — Impresoras y labels](frontend/fg1-impresoras.md): Sistema → **
 
 ## Preguntas frecuentes
 
-Ver [faq.md](faq.md) para las preguntas y mensajes de error acumulados de cada lote. La sección "Lote 11" recoge los mensajes nuevos de Almacén (cupo, ocupación, código de zona, catálogo de
+Ver [faq.md](faq.md) para las preguntas y mensajes de error acumulados de cada lote. La sección "Lote 11" recoge los mensajes nuevos de Almacén (cupo, ocupación, código de zona, lista de
 ciudades, exportación) y las preguntas sobre "sin cupo configurado", exportar tablas, ciudades en mayúsculas y por qué el
 código y la zona de una posición no cambian. La sección "Lote 27" recoge los mensajes de las rentas (alta, equipos, tarifa, programar, despachar, extender y cancelar) y de una serie en renta, y las
 preguntas sobre por qué el en mano no baja al despachar, dónde ver lo rentado, qué es una renta vencida, si la tarifa se cobra y si una extensión necesita

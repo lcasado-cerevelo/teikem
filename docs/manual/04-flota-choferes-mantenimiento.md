@@ -2,9 +2,9 @@
 
 Este capítulo describe los cinco paneles del módulo de Flota (Vehículos, Documentos por vencer, Mantenimiento
 preventivo, Órdenes de trabajo y Bitácora de combustible) y el maestro-detalle **Choferes y tarifas** del grupo
-Catálogo (identidad del chofer, licencias, certificaciones, dispositivos, zonas de despacho y las tres tarifas de
+Lista (identidad del chofer, licencias, certificaciones, dispositivos, zonas de despacho y las tres tarifas de
 pago). Cierra también el pendiente del [capítulo 03](03-ordenes-de-transporte.md): la entrega especial con chofer.
-La pantalla web de **Choferes y tarifas** (Catálogo → Choferes y tarifas) se explica paso a paso en [Choferes y tarifas](frontend/fd1-choferes.md); este capítulo es la referencia del servidor. La pantalla **Flota y mantenimiento** (vehículos, documentos por vencer, zonas de despacho y disponibilidad) se explica en [Flota y mantenimiento](frontend/fd2-flota.md), y su mantenimiento preventivo, órdenes de trabajo y combustible en [Mantenimiento, órdenes de trabajo y combustible](frontend/fd3-mantenimiento-combustible.md).
+La pantalla web de **Choferes y tarifas** (Listas → Choferes y tarifas) se explica paso a paso en [Choferes y tarifas](frontend/fd1-choferes.md); este capítulo es la referencia del servidor. La pantalla **Flota y mantenimiento** (vehículos, documentos por vencer, zonas de despacho y disponibilidad) se explica en [Flota y mantenimiento](frontend/fd2-flota.md), y su mantenimiento preventivo, órdenes de trabajo y combustible en [Mantenimiento, órdenes de trabajo y combustible](frontend/fd3-mantenimiento-combustible.md).
 Cada sección indica **qué hace**, **quién puede**, **cómo se usa**, las **validaciones** con el mensaje exacto y el
 código HTTP, y los **estatus** con sus transiciones y efectos. Los mensajes están verificados contra el código
 (`src/Teikem.Domain/Fleet/*`, `src/Teikem.Infrastructure/Fleet/*`, `src/Teikem.Infrastructure/Services/{Vehicle,Driver,
@@ -28,7 +28,7 @@ Convenciones del capítulo:
   para vehículos, documentos y mantenimiento; `driverpay.view`/`driverpay.manage` para tarifas y viajes pagados.
 - Un error de validación responde `400` con `title` y `errors` (`{ campo: [mensaje] }`); un conflicto `409`; una
   regla de estatus o de negocio `422`; un recurso ajeno o inexistente `404`; falta de permiso `403`.
-- Nada se borra físicamente: los catálogos y las hijas usan `IsActive` (reversible); vehículo, chofer, orden de
+- Nada se borra físicamente: las listas y las hijas usan `IsActive` (reversible); vehículo, chofer, orden de
   trabajo y viaje pagado usan además un ciclo de estatus con una etapa terminal (baja definitiva).
 
 ---
@@ -39,7 +39,7 @@ Convenciones del capítulo:
 
 Qué hace: lista los vehículos del tenant con buscador libre (código, placa, VIN, marca, modelo y las etiquetas o
 códigos internos de tipo/propiedad/combustible, sin distinguir acentos ni mayúsculas) y filtros multi-valor por
-código de catálogo (`vehicleType`, `ownership`, `fuelType`, `status`; acepta `?x=A&x=B` o `?x=A,B`). Cada fila trae
+código de lista (`vehicleType`, `ownership`, `fuelType`, `status`; acepta `?x=A&x=B` o `?x=A,B`). Cada fila trae
 `nextDocumentExpiry`: el próximo vencimiento entre los documentos **activos y no superados** del vehículo (ver
 sección 3). La ficha agrega capacidades, volumen, odómetro actual y sus documentos.
 
@@ -625,7 +625,7 @@ Cómo se usa:
 
 ### 8.3 Tarifa por viaje (entrega especial)
 
-Qué hace: paga un monto fijo por tipo de viaje. El "tipo de viaje" **es** el catálogo de servicios especiales del
+Qué hace: paga un monto fijo por tipo de viaje. El "tipo de viaje" **es** la lista de servicios especiales del
 tenant (capítulo 02, sección 6): se lista con `GET /driver-trip-types`. Inactivar un tipo de servicio especial que
 tenga tarifas por viaje vigentes en algún chofer responde 409 (ajuste al Lote 2).
 

@@ -74,7 +74,7 @@ public sealed class OrderListFilterTests
         await using var f = await OrderReadFixture.CreateAsync();
         Assert.Equal(new[] { 2, 4 }, await IdsAsync(f, Q(serviceTypes: new[] { "EXPRESS" })));
         Assert.Equal(new[] { 1, 2, 3, 4 }, await IdsAsync(f, Q(serviceTypes: new[] { "standard", " express " })));
-        Assert.Empty(await IdsAsync(f, Q(serviceTypes: new[] { "NEXT_DAY" })));   // existe en el catálogo, sin órdenes
+        Assert.Empty(await IdsAsync(f, Q(serviceTypes: new[] { "NEXT_DAY" })));   // existe en la lista, sin órdenes
     }
 
     [Fact]

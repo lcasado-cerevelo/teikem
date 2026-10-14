@@ -270,7 +270,7 @@ describe('errores del servidor → campos', () => {
       labelEs: ['La etiqueta es obligatoria.'],
       refEntity: ["La lista 'X' no existe."],
     })
-    expect(mapServerErrors(400, 'x', { options: ['Un campo de selección necesita opciones o una lista del catálogo (refEntity).'] }, true, 'SELECT').refEntity).toBeDefined()
+    expect(mapServerErrors(400, 'x', { options: ['Un campo de selección necesita opciones o una lista de valores (refEntity).'] }, true, 'SELECT').refEntity).toBeDefined()
     expect(mapServerErrors(400, 'x', { validationJson: ['ValidationJson no es JSON válido.'] }, true, 'NUMBER')).toEqual({ min: ['ValidationJson no es JSON válido.'] })
     expect(mapServerErrors(400, 'x', { validationJson: ['m'] }, true, 'BOOL')).toEqual({ dataType: ['m'] })
   })

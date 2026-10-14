@@ -271,7 +271,7 @@ describe('Tarifas por intento', () => {
 })
 
 describe('Tarifas por viaje', () => {
-  it('lista tipo de viaje y tarifa; alta con el tipo del catálogo de servicios especiales', async () => {
+  it('lista tipo de viaje y tarifa; alta con el tipo de la lista de servicios especiales', async () => {
     const user = userEvent.setup()
     wrap(ALL)
     const panel = await tripsPanel()
@@ -283,7 +283,7 @@ describe('Tarifas por viaje', () => {
     expect(callsTo('POST', '/api/v1/drivers/d-1/trip-rates')[0].body).toEqual({ specialServiceTypeId: 5, rate: 50 })
   })
 
-  it('sin catálogo de servicios especiales: mensaje de la maqueta y no se puede agregar', async () => {
+  it('sin lista de servicios especiales: mensaje de la maqueta y no se puede agregar', async () => {
     mock.override = ({ method, url }) => (method === 'GET' && url.pathname === '/api/v1/driver-trip-types' ? [] : undefined)
     wrap(ALL)
     const panel = await tripsPanel()

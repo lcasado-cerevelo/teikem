@@ -156,7 +156,7 @@ nuevo.
 No se puede borrar un rol mientras alguien lo tenga asignado. Cambia primero el rol de esos usuarios.
 
 **¿Qué significa "Roles desconocidos: <lista>." / "Permisos desconocidos: <lista>."?**
-Uno o más de los nombres/códigos que enviaste no existen en el catálogo. Revisa `GET /api/v1/roles` o
+Uno o más de los nombres/códigos que enviaste no existen en la lista. Revisa `GET /api/v1/roles` o
 `GET /api/v1/permissions` para ver los válidos.
 
 **¿Qué significa "El usuario ya pertenece a esta compañía."?**
@@ -176,9 +176,9 @@ haga si de verdad es necesario.
 Estás intentando crear un usuario de tipo portal desde la pantalla de usuarios internos. Esa gestión llega con
 el módulo de clientes (lote 2); todavía no existe esa pantalla.
 
-### Catálogos y listas
+### Listas y listas
 
-**¿Qué significa "Dominio de catálogo '<clave>' no encontrado." / "Valor <entidad> '<código>' no encontrado."?**
+**¿Qué significa "Dominio de lista '<clave>' no encontrado." / "Valor <entidad> '<código>' no encontrado."?**
 El dominio o el código que pediste no existe. Revisa `GET /api/v1/catalogs/domains` o
 `GET /api/v1/catalogs/{entity}` para ver los válidos.
 
@@ -187,15 +187,15 @@ Los valores que vienen de fábrica (de sistema) no se apagan para toda la plataf
 override (`PUT .../override` con `isEnabled:false`) para apagarlo solo en tu tenant.
 
 **¿Qué significa "Las listas de sistema no se eliminan."? / "La lista está en uso por un campo personalizado; desactívela en vez de eliminarla."?**
-No puedes borrar catálogos que vienen de fábrica, ni una lista propia que un campo personalizado está usando.
+No puedes borrar listas que vienen de fábrica, ni una lista propia que un campo personalizado está usando.
 En este último caso, desactiva la lista en vez de borrarla.
 
-**¿Qué significa "Los catálogos globales solo los edita el administrador de plataforma; use overrides o cree una lista propia."?**
-No puedes editar directamente un catálogo compartido por toda la plataforma. Usa un override (cambia solo tu
+**¿Qué significa "Las listas globales solo los edita el administrador de plataforma; use overrides o cree una lista propia."?**
+No puedes editar directamente una lista compartida por toda la plataforma. Usa un override (cambia solo tu
 tenant) o crea tu propia lista.
 
 **¿Qué significa "El código de país debe ser ISO 3166-1 alfa-2 (2 letras)."? (HTTP 400)**
-Los países se identifican con su código ISO de dos letras (`PR`, `US`, `DO`…). Lo verás al agregar un valor al catálogo
+Los países se identifican con su código ISO de dos letras (`PR`, `US`, `DO`…). Lo verás al agregar un valor a la lista
 global `Country` (`POST /api/v1/catalogs/Country`, campo `code`), al crear o editar una localización (`country`), al capturar
 una orden con consignatario nuevo (`newConsignee.country`) o en una fila del importador de órdenes (`country`). Usa el código
 de dos letras; las paradas de la orden guardan el país con ese formato.
@@ -252,7 +252,7 @@ empezando con una letra, entre 2 y 60 caracteres (ej. `cost_center`).
 Ya hay registros con datos en ese campo; cambiar su tipo (por ejemplo de texto a número) rompería esos datos.
 Crea un campo nuevo si necesitas otro tipo.
 
-**¿Qué significa "LOOKUP_REF requiere el dominio de catálogo referenciado."? / "Un campo de selección necesita opciones o una lista del catálogo (refEntity)."?**
+**¿Qué significa "LOOKUP_REF requiere el dominio de lista referenciado."? / "Un campo de selección necesita opciones o una lista de valores (refEntity)."?**
 Al crear un campo de tipo lista/selección, falta indicar de dónde vienen las opciones: o defines `options`
 directamente, o apuntas a una lista existente con `refEntity`.
 
@@ -453,7 +453,7 @@ Un contacto inactivo nunca es el principal. Marca otro contacto activo como prin
 Ese contacto no existe o no pertenece al cliente indicado en la URL (los contactos se alcanzan siempre a través de su cliente).
 
 **¿Qué significa "Tipo de servicio desconocido: 'X'."?**
-En los niveles de servicio (SLA) del alta o del contrato usaste un código que no está en el catálogo `ServiceType`. Consulta
+En los niveles de servicio (SLA) del alta o del contrato usaste un código que no está en la lista `ServiceType`. Consulta
 `GET /api/v1/catalogs/ServiceType`.
 
 **Dí de baja un cliente y no aparece en la lista, ¿se borró?**
@@ -656,8 +656,8 @@ La compañía tiene apagado el portal de clientes. Un administrador puede encend
 **¿Por qué no veo al usuario de portal en `/api/v1/users`?**
 Los usuarios de portal no son usuarios de la compañía: se administran desde el expediente del cliente (`.../portal-users`) con el permiso `portalusers.manage`.
 
-**¿Qué significa "Catálogo <Dominio> 'X' no encontrado."?**
-El código de catálogo que enviaste (`paymentTerm`, `currency`, `locationType`, `country`, `role`, `type` del COD…) no existe.
+**¿Qué significa "Lista <Dominio> 'X' no encontrado."?**
+El código de lista que enviaste (`paymentTerm`, `currency`, `locationType`, `country`, `role`, `type` del COD…) no existe.
 Consulta `GET /api/v1/catalogs/<Dominio>`.
 
 **Invité a un usuario de portal y ahora no puede aceptar la invitación, aunque el enlace es reciente.**
@@ -836,12 +836,12 @@ El vehículo tiene el checkbox Activo apagado o está en el estatus terminal `IN
 o una carga de combustible.
 
 **¿Qué significa "Tipo de vehículo desconocido: 'X'." / "Propiedad desconocida: 'X'." / "Tipo de combustible desconocido: 'X'."?**
-El código que enviaste (`vehicleType`, `ownership` o `fuelType`) no existe en el catálogo del tenant. Consulta
+El código que enviaste (`vehicleType`, `ownership` o `fuelType`) no existe en la lista del tenant. Consulta
 `GET /api/v1/catalogs/{VehicleType|Ownership|FuelType}` para ver los códigos válidos.
 
 **¿Qué significa "El tipo de documento de vehículo desconocido: 'X'."?**
 El `docType` no es uno de `REGISTRATION`, `INSURANCE`, `INSPECTION`, `PERMIT` (u otro que tu compañía haya agregado a
-ese catálogo).
+esa lista).
 
 **¿Qué significa "Documento no encontrado."? (documento de vehículo)**
 El `id` del documento no pertenece al vehículo de la URL (es de otro vehículo, o de otro tenant). Los documentos se
@@ -899,7 +899,7 @@ No se puede inactivar una zona mientras algún chofer activo la tenga como zona 
 El `code` de la zona ya lo usa otra zona de tu compañía. Elige otro.
 
 **¿Qué significa "Clase de licencia desconocida: 'X'." / "Tipo de certificación desconocido: 'X'."?**
-El código que enviaste no existe en el catálogo `LicenseClass`/`CertificationType` de tu compañía. Consulta
+El código que enviaste no existe en la lista `LicenseClass`/`CertificationType` de tu compañía. Consulta
 `GET /api/v1/catalogs/{LicenseClass|CertificationType}`.
 
 **¿Qué significa "Licencia no encontrada." / "Certificación no encontrada." / "Dispositivo no encontrado."?**
@@ -1057,7 +1057,7 @@ El código de fórmula (`payoutFormula`/`formula`) no es uno de `DELIVERY_PLUS_A
 
 **¿Qué significa "Sin servicios especiales: agréguelos en Clientes y contratos antes de configurar tarifas por viaje."?**
 Tu compañía no tiene ningún tipo de servicio especial activo (capítulo 02, sección 6): el "tipo de viaje" de las
-tarifas por viaje es ese mismo catálogo. Crea al menos uno antes de configurar tarifas por viaje.
+tarifas por viaje es ese misma lista. Crea al menos uno antes de configurar tarifas por viaje.
 
 **¿Qué significa "El tipo de viaje es obligatorio."?**
 Al agregar una tarifa por viaje (o un viaje manual) faltó `specialServiceTypeId`.
@@ -1320,7 +1320,7 @@ no puede congelarse al despachar. Vuelve a habilitar la etapa si necesitas usar 
 **¿Qué significa "Orden {número}: {motivo}" al despachar? (422)**
 Una orden que estaba en la ruta dejó de ser elegible entre que se armó el selector y el momento del despacho (por
 ejemplo, alguien la canceló, la mandó a un lateral, o tu compañía le apagó `ASSIGN_TRIP`). El motivo es el mismo
-catálogo de la sección de elegibilidad. Quita esa orden de la ruta o resuelve la causa, y vuelve a despachar.
+lista de la sección de elegibilidad. Quita esa orden de la ruta o resuelve la causa, y vuelve a despachar.
 
 **¿Qué significa "Seleccione al menos una ruta." y "Máximo 50 rutas por despacho."? (400)**
 El despacho en lote (`POST /api/v1/trips/dispatch`) exige `tripPublicIds` con al menos una ruta, hasta un máximo
@@ -1351,7 +1351,7 @@ que la ruta esté abierta, o esperar al cierre en el Lote 7). Si la orden va en 
 **¿Qué significa "Indique el criterio de la zona (POSTAL_CODE, POSTAL_RANGE o MUNICIPALITY)." y "Criterio de zona
 desconocido: 'X'."? (400)**
 `POST /api/v1/dispatch-zones/{id}/members` exige `matchType` con uno de esos tres valores exactos (en mayúsculas).
-`POLYGON` existe como catálogo pero todavía no se soporta (ver el siguiente mensaje).
+`POLYGON` existe como lista pero todavía no se soporta (ver el siguiente mensaje).
 
 **¿Qué significa "Las zonas por polígono todavía no se soportan; use código postal, rango postal o municipio."? (400)**
 Este lote solo resuelve zonas por código postal exacto, rango postal o municipio. Define el territorio con uno de
@@ -1562,7 +1562,7 @@ recolecta de otra posición o corrige el saldo con un conteo cíclico.
 `RECEIPT_VARIANCE`, `COUNT_VARIANCE` y `PICK_BATCH_REVERSAL` son motivos que solo el sistema usa (recepción,
 conteo y reversa de una recolección, respectivamente); también `OPENING_BALANCE` (saldo inicial de la migración, Lote 10) y
 `TRACKING_CONVERSION` (conversión a serie, Lote 26). Un ajuste manual capturado por un usuario debe usar otro
-motivo del catálogo `AdjustmentReason` (`DAMAGE`, `LOSS`, `FOUND`, `EXPIRED`, `PO_SHORTAGE`, `OTHER`).
+motivo de la lista `AdjustmentReason` (`DAMAGE`, `LOSS`, `FOUND`, `EXPIRED`, `PO_SHORTAGE`, `OTHER`).
 
 **¿Qué significa "El origen y el destino no pueden ser la misma posición."? (400)**
 Una transferencia mueve inventario entre dos posiciones distintas (pueden ser de almacenes distintos). Si
@@ -1749,8 +1749,8 @@ Porque son dos hechos: se resolvió un faltante de la orden de compra (`PO_SHORT
 y cambió el saldo de inventario con un motivo manual (`INVENTORY_ADJUSTED`, obligatorio, enlaza al producto). Con "Solo
 obligatorios" queda solo el ajuste.
 
-**Renombré o deshabilité un evento del catálogo `ActivityEventType`; ¿por qué un obligatorio sigue apareciendo?**
-Actividad reciente respeta el override del tenant del catálogo (`PUT /api/v1/catalogs/ActivityEventType/{código}/override`,
+**Renombré o deshabilité un evento de la lista `ActivityEventType`; ¿por qué un obligatorio sigue apareciendo?**
+Actividad reciente respeta el override del tenant de la lista (`PUT /api/v1/catalogs/ActivityEventType/{código}/override`,
 permiso `admin.catalogs`): la etiqueta renombrada se muestra en el feed (en el idioma que el override traiga; los demás
 idiomas conservan la etiqueta base) y un evento **opcional** deshabilitado deja de aparecer. Un evento **obligatorio**
 (por ejemplo `PO_CANCELLED` o `RECEIPT_CONFIRMED`) no se puede ocultar ni volver opcional desde el override: sigue
@@ -2606,7 +2606,7 @@ Antes de este lote la pantalla no pedía un código, pero el servidor sí lo exi
 el servidor genera uno legible (`AP-XXXXXX`) automáticamente. El código de **registro** (el que se usa una sola vez
 para dar de alta el aparato en Teikem Almacén) sigue siendo aparte y se muestra tras crear el aparato.
 
-**Ajusté la etiqueta de un valor de catálogo y no veo el cambio en otra pantalla que ya tenía abierta.**
+**Ajusté la etiqueta de un valor de lista y no veo el cambio en otra pantalla que ya tenía abierta.**
 El cambio se aplica de inmediato en el servidor; una pantalla que ya tenía los datos cargados (por ejemplo, Pulso
 abierto en otra pestaña del navegador) los actualiza en su próxima consulta, no retroactivamente en lo que ya
 pintó. Recárguela si hace falta verlo ahí también.
@@ -2670,7 +2670,7 @@ WMS heredado."*, sin importar a qué servidor apunte la cadena de conexión.
 
 **El dry-run rechazó algo con "ejecute db-init antes de la carga", ¿qué hago?**
 Corra `dotnet run --project src/Teikem.Api -- db-init` sobre esa base (es aditivo: no borra nada) para que se
-apliquen los catálogos nuevos del Lote 10 (los términos de pago de QuickBooks y el motivo `OPENING_BALANCE`), y vuelva
+apliquen las listas nuevas del Lote 10 (los términos de pago de QuickBooks y el motivo `OPENING_BALANCE`), y vuelva
 a correr el dry-run.
 
 ## Lote 11 — Cambios de Almacén, tanda 1 (cupo de posición, ocupación, zonas, posiciones, ubicaciones, ciudades y exportación)
@@ -2722,11 +2722,11 @@ El filtro `zoneId` del listado de posiciones apunta a una zona que no es del alm
 zona del propio almacén. (`zoneIds`, en plural, no da este error: un id ajeno simplemente no devuelve posiciones.)
 
 **¿Qué significa "No hay ciudades ni códigos postales que coincidan."? (pantalla)**
-En el selector "Ciudad o código postal" no hay ninguna localidad del catálogo con lo que escribió. Pruebe con menos letras,
+En el selector "Ciudad o código postal" no hay ninguna localidad de la lista con lo que escribió. Pruebe con menos letras,
 con el nombre del municipio o con los primeros dígitos del código postal. La búsqueda no distingue mayúsculas ni acentos.
 
-**¿Qué significa "Su usuario no puede consultar el catálogo de ciudades."? (pantalla)**
-El servidor negó la consulta del catálogo de localidades a esa sesión. El catálogo solo pide una sesión iniciada, así que lo
+**¿Qué significa "Su usuario no puede consultar la lista de ciudades."? (pantalla)**
+El servidor negó la consulta de la lista de localidades a esa sesión. La lista solo pide una sesión iniciada, así que lo
 normal es una sesión vencida: vuelva a iniciar sesión. Si persiste, avise a soporte.
 
 **¿Qué significa "Ninguna posición coincide con los filtros."? (pantalla, Ubicaciones)**
@@ -2778,19 +2778,19 @@ El PDF usa letra estándar que solo cubre caracteres latinos: tildes y eñes sal
 otros alfabetos) se sustituyen. El Excel y el CSV sí los conservan.
 
 **¿Por qué mi ciudad sale en mayúsculas?**
-Porque la ciudad viene del catálogo postal de USPS. Fuera de Puerto Rico se guarda el nombre postal oficial, que está en
+Porque la ciudad viene de la lista postal de USPS. Fuera de Puerto Rico se guarda el nombre postal oficial, que está en
 mayúsculas y sin acentos (`NEW YORK`). En Puerto Rico se guarda el **municipio** con su escritura normal (`Toa Baja`), aunque
 la lista de opciones muestre el nombre postal en mayúsculas y el municipio entre paréntesis (`00952 · SABANA SECA (Toa Baja), PR`).
-Desde la pantalla la ciudad se elige del catálogo, no se escribe a mano.
+Desde la pantalla la ciudad se elige de la lista, no se escribe a mano.
 
 **No encuentro mi ciudad o mi código postal en el selector.**
-El catálogo tiene 42.522 códigos postales de Estados Unidos, sus territorios y Puerto Rico. Busque por el municipio o por los
-primeros dígitos del código postal. Si de verdad no existe, avise a soporte: el catálogo se carga desde el seed y un
+La lista tiene 42.522 códigos postales de Estados Unidos, sus territorios y Puerto Rico. Busque por el municipio o por los
+primeros dígitos del código postal. Si de verdad no existe, avise a soporte: la lista se carga desde el seed y un
 cambio directo en la tabla puede tardar hasta una hora en verse.
 
 **¿Por qué no puedo escribir el Estado ni el País de un almacén?**
 Porque se llenan solos con la ciudad o código postal que elija (aparecen deshabilitados: "Se llena según la ciudad
-elegida."). Si no elige ninguna localidad, el país queda en Puerto Rico. Un almacén cuya dirección no está en el catálogo no
+elegida."). Si no elige ninguna localidad, el país queda en Puerto Rico. Un almacén cuya dirección no está en la lista no
 puede capturar su estado desde la pantalla.
 
 **¿Por qué no puedo cambiar el código ni la zona de una posición?**
@@ -3290,7 +3290,7 @@ El filtro `direction` del Kárdex (o de su resumen) trae otro valor. Use `IN` pa
 mayúsculas), o quite el filtro. El error viene en `errors.direction`.
 
 **¿Qué significa "Motivo de ajuste desconocido: 'X'." en el Kárdex? (400)**
-El filtro `reasons` trae un código que no está en el catálogo de motivos de ajuste. Use los códigos del catálogo (`DAMAGE`, `LOSS`, `FOUND`,
+El filtro `reasons` trae un código que no está en la lista de motivos de ajuste. Use los códigos de la lista (`DAMAGE`, `LOSS`, `FOUND`,
 `EXPIRED`, `PO_SHORTAGE`, `OTHER`, o los que agregue su compañía). Es el mismo mensaje que al capturar un ajuste con un motivo inexistente.
 
 **¿Qué significa "La conciliación manual admite como máximo 200 productos a la vez."? (400)**
@@ -4404,7 +4404,7 @@ Una extensión solo mueve la fecha hacia adelante. La fecha entre paréntesis es
 Toda extensión lleva la nueva fecha y el motivo (queda en la bitácora); una tarifa nueva indica a qué equipo aplica.
 
 **400 — "El número de contrato admite como máximo 80 caracteres."** / **"Las notas admiten como máximo 1000 caracteres."** / **"El costo de transporte estimado no puede ser negativo."** / **"Moneda desconocida: '{código}'."** / **"Los días deben ser 0 o más."**
-Acorte el texto, use un costo de 0 o más, una moneda del catálogo, o un número de días de 0 o más en el filtro "por vencer".
+Acorte el texto, use un costo de 0 o más, una moneda de la lista, o un número de días de 0 o más en el filtro "por vencer".
 
 **404 — "Renta no encontrada."** / **"Localidad no encontrada."** / **"Contacto no encontrado."** / **"Línea no encontrada."**
 La renta, la localidad, el contacto o el equipo no existen en su compañía (o el equipo ya se quitó de la renta). Recargue la ficha.
@@ -5302,9 +5302,9 @@ En **Extender** puso tarifa nueva y quitó todos los equipos de "Equipos con la 
 **"El comentario admite como máximo 500 caracteres."** / **"Escriba un número válido."**
 Acorte el comentario de la confirmación o corrija el costo de transporte.
 
-**"Su usuario no puede consultar localidades (permiso locations.read y módulo Catálogo)."** / **"Su usuario no puede consultar los
+**"Su usuario no puede consultar localidades (permiso locations.read y módulo Listas)."** / **"Su usuario no puede consultar los
 contactos del cliente (permiso clients.read)."** / **"Su usuario no puede consultar clientes."**
-Para crear una renta hace falta consultar clientes y sus localidades (módulo Catálogo). Pida esos permisos al administrador.
+Para crear una renta hace falta consultar clientes y sus localidades (módulo Listas). Pida esos permisos al administrador.
 
 ### Preguntas frecuentes
 
@@ -5665,7 +5665,7 @@ Entra con el resto a la posición de recepción y, al confirmar, sale de ahí ha
 Se **cuenta** (es existencia física de esa posición) pero **no se puede despachar**: en una zona de Cuarentena ya queda fuera de la asignación y, si lo dejó en otra posición (guardado, recepción), el sistema lo **reserva** y baja el disponible; la lista de Daños dice «reservado (no se despacha)». Al desecharlo o recuperarlo la reserva se libera.
 
 **Vienen a recoger lo dañado de cuarentena. ¿Qué hago?**
-En la pestaña Daños use **Dar salida** sobre ese daño y escoja el **destino final** (en la app, al dar salida a lo dañado al recibir o desde el tile Daño, también pregunta **¿A dónde va?**): *Tirado*, *Devuelto al proveedor*, *Donado* o *Vendido como saldo*. No es un despacho: baja el inventario con un ajuste de motivo Daño y queda el destino en el Kárdex y en la lista. Si necesita otro destino, agréguelo en Sistema → Catálogos (Destino final de lo dañado).
+En la pestaña Daños use **Dar salida** sobre ese daño y escoja el **destino final** (en la app, al dar salida a lo dañado al recibir o desde el tile Daño, también pregunta **¿A dónde va?**): *Tirado*, *Devuelto al proveedor*, *Donado* o *Vendido como saldo*. No es un despacho: baja el inventario con un ajuste de motivo Daño y queda el destino en el Kárdex y en la lista. Si necesita otro destino, agréguelo en Sistema → Listas (Destino final de lo dañado).
 
 **Dice `Indique a dónde va lo que sale (tirado, devuelto al proveedor, donado…).`**
 Al darle salida a lo que está en cuarentena hay que escoger el destino final. Elíjalo en la lista y vuelva a dar salida.
@@ -5739,7 +5739,7 @@ Eligió el empaque pero no cuántas unidades trae: escriba la cantidad (Caja = 1
 El empaque debe ser distinto de la unidad base (p. ej. base Galón, empaque Barril).
 
 **Dice `Unidad de empaque desconocida: '{code}'.`**
-Esa unidad no existe en el catálogo *Unidad de medida*. Agréguela en el catálogo o elija otra.
+Esa unidad no existe en la lista *Unidad de medida*. Agréguela en la lista o elija otra.
 
 **No me sale el selector de Caja en la calculadora de la app.**
 El producto no tiene empaque o la app no ha sincronizado desde la actualización: sincronice y reintente.
@@ -5838,7 +5838,7 @@ No. Solo se cierra solo si no hay nada que ajustar; en el historial dice `Cierre
 
 ## Lote F-A1 — Clientes: lista, alta y ficha (2026-10-10)
 
-Mensajes de la pantalla Catálogo → Clientes (los del servidor salen tal cual, debajo del campo o en el diálogo). Capítulo: [fa1-clientes.md](frontend/fa1-clientes.md).
+Mensajes de la pantalla Listas → Clientes (los del servidor salen tal cual, debajo del campo o en el diálogo). Capítulo: [fa1-clientes.md](frontend/fa1-clientes.md).
 
 **`Ya existe un cliente con ese código.` (409) al crear.**
 El duplicado es por **código** (no por nombre). Escriba otro código o déjelo vacío para que se genere del nombre (agrega `-2`, `-3`… si hace falta). Revise con **Mostrar inactivos**: un cliente dado de baja conserva su código.
@@ -5897,7 +5897,7 @@ Son dos cosas: el **estatus** (etapas configurables, p. ej. Activo → En revisi
 
 ## Lote F-A2 — Contratos del cliente (2026-10-10)
 
-Mensajes de la sección Contratos de la ficha del cliente (Catálogo → Clientes). Los del servidor salen tal cual, debajo del campo o en el diálogo. Capítulo: [fa2-contratos.md](frontend/fa2-contratos.md).
+Mensajes de la sección Contratos de la ficha del cliente (Listas → Clientes). Los del servidor salen tal cual, debajo del campo o en el diálogo. Capítulo: [fa2-contratos.md](frontend/fa2-contratos.md).
 
 **`El contrato fue modificado por otro usuario; recargue e intente de nuevo.` (409) al guardar los datos del contrato.**
 Otra persona guardó el mismo contrato antes. El contrato se vuelve a leer solo y lo que usted escribió se conserva: revise y pulse **Guardar** otra vez.
@@ -5917,8 +5917,8 @@ Los números de contrato son únicos en la compañía. Escriba otro o deje el n�
 **`El cliente está dado de baja; solo se consulta su historial.` (409) al crear contratos, tarifas o servicios especiales.**
 Reactive el cliente (botón **Reactivar** de la cabecera) y repita.
 
-**`Catálogo Currency 'X' no encontrado.` / `Catálogo BillingModel 'X' no encontrado.` (404).**
-La moneda o el disparador de cobro ya no están en el catálogo de la compañía; elija otro de la lista.
+**`Lista Currency 'X' no encontrada.` / `Lista BillingModel 'X' no encontrada.` (404).**
+La moneda o el disparador de cobro ya no están en la lista de la compañía; elija otro de la lista.
 
 **`El cargo por despacho no puede ser negativo.` / `El cargo fijo por COD no puede ser negativo.` / `El por ciento del cargo por COD debe estar entre 0 y 100.` (400).**
 Use 0 o más; si el tipo es **Porciento (%)** el valor va de 0 a 100 y se calcula sobre el monto COD cobrado, no sobre el total de la orden. En pantalla también se pide el monto cuando se marca el interruptor.
@@ -5936,7 +5936,7 @@ Solo un contrato puede estar Vigente a la vez. Elija el anterior en el selector,
 Salen bajo el campo del renglón del tipo de servicio. Para un tipo sin SLA deje sus cuatro campos vacíos.
 
 **`Tipo de servicio desconocido: 'X'.` (400) / `Solo puede haber un nivel de servicio activo por tipo de servicio.` (409) al guardar el SLA.**
-El tipo ya no está en el catálogo, o dos personas guardaron a la vez: recargue la ficha y repita.
+El tipo ya no está en la lista, o dos personas guardaron a la vez: recargue la ficha y repita.
 
 **`Ya existe una tarifa vigente en esa fecha para ese servicio y tipo de paquete en el contrato; edítela o ciérrela antes de crear otra.` (409).**
 Solo puede haber una tarifa vigente por servicio y paquete. Use **Editar** (versión nueva) o **Quitar** (cerrar) la existente.
@@ -5997,7 +5997,7 @@ use Recolección y empaque (§7). No use «Ajustar»: un ajuste corrige el inven
 Elija un motivo (`reasonCode`): Muestra, Uso interno, Retiro del cliente, Venta u Otro (o el nombre que su compañía les haya puesto).
 
 **`El motivo {CÓDIGO} no existe o está inactivo.` (400).**
-El código no está en el catálogo, o su compañía deshabilitó ese motivo en Sistema → Catálogos («Motivo del despacho manual»). Use uno de
+El código no está en la lista, o su compañía deshabilitó ese motivo en Sistema → Listas («Motivo del despacho manual»). Use uno de
 `GET /api/v1/manual-issues/reasons`, o pida al administrador que lo vuelva a habilitar.
 
 **`La nota admite como máximo 500 caracteres.` (400).**
@@ -6054,7 +6054,7 @@ tener señal (Inicio sincroniza solo) y vuelva a abrir Despacho.
 Toque uno de los motivos (Muestra, Uso interno, Retiro del cliente, Venta, Otro, o los nombres de su compañía) antes de **Despachar**. La nota es
 opcional.
 
-**`La compañía no tiene motivos habilitados para el despacho manual. Pide al administrador que habilite alguno (Sistema → Catálogos).`**
+**`La compañía no tiene motivos habilitados para el despacho manual. Pide al administrador que habilite alguno (Sistema → Listas).`**
 La compañía deshabilitó todos los motivos de «Motivo del despacho manual». Sin motivo no se puede despachar: el administrador (`admin.catalogs`)
 habilita al menos uno; el aparato lo baja en la siguiente sincronización (como mucho 30 minutos).
 
@@ -6122,8 +6122,8 @@ quien despacha lo puede cambiar. La nota sigue vacía por omisión. El aparato l
 motivos marca cuál es el default con `isDefault`).
 
 **`El motivo {CÓDIGO} no existe o está inactivo.`** (400, al guardar los ajustes, en `defaultManualIssueReason`)
-El código no está en el catálogo «Motivo del despacho manual», está inactivo o su compañía lo deshabilitó. No se guardó ningún ajuste de ese envío.
-Escoja uno de la lista (`GET /api/v1/manual-issues/reasons`) o habilítelo primero en **Sistema → Catálogos**.
+El código no está en la lista «Motivo del despacho manual», está inactivo o su compañía lo deshabilitó. No se guardó ningún ajuste de ese envío.
+Escoja uno de la lista (`GET /api/v1/manual-issues/reasons`) o habilítelo primero en **Sistema → Listas**.
 
 **Puse un motivo por default y ya no se preselecciona.**
 La compañía deshabilitó ese motivo (o se inactivó): el default se ignora sin error y los ajustes lo muestran vacío. Al volver a habilitarlo vuelve a
@@ -6276,7 +6276,7 @@ En la web: Ajustes de la compañía → Operación → «Rotación del inventari
 
 ## Lote 38 — Importación de consignatarios (2026-10-11)
 
-Ver [capítulo 02, §2.1](02-clientes-y-contratos.md#21-importación-de-consignatarios-lote-38). Permisos: `locations.read` (ver) y `locations.create` (plantillas e importar); módulo Catálogo.
+Ver [capítulo 02, §2.1](02-clientes-y-contratos.md#21-importación-de-consignatarios-lote-38). Permisos: `locations.read` (ver) y `locations.create` (plantillas e importar); módulo Listas.
 
 **¿Cómo importo muchos consignatarios a la vez?**
 Cree una plantilla (`POST /api/v1/locations/import-templates`) que diga qué campo va en cada posición de columna (al menos `name`, `line1` y `city`, esta última puede ir como default). Luego valide el archivo (`POST /api/v1/locations/import/validate` o `/validate-file`), revise la vista previa y confirme (`POST /api/v1/locations/import/{lote}/confirm`). Nada se crea hasta confirmar.
@@ -6300,7 +6300,7 @@ La plantilla tiene las dos columnas de cliente. Deje una: `clientCode` es más s
 `code`, `name`, `line1`, `clientCode` y `clientName` identifican a cada consignatario o a su dueño, así que deben venir en cada fila. Quítelo de `defaults`. Para poner el mismo cliente a todo el archivo, use el cliente del lote.
 
 **«Indique al menos una columna.», «Máximo 100 columnas.», «La posición N está repetida.», «La posición debe ser 1 o mayor.», «La posición no puede exceder 500.», «Campo desconocido: X.», «El campo X está repetido.» (400)**
-Corrija la lista de columnas de la plantilla: cada posición una sola vez (de 1 a 500), cada campo una sola vez y solo campos del catálogo (`GET /api/v1/locations/import/fields`). Los campos de órdenes (p. ej. `consigneeName`) no existen aquí.
+Corrija la lista de columnas de la plantilla: cada posición una sola vez (de 1 a 500), cada campo una sola vez y solo campos de la lista (`GET /api/v1/locations/import/fields`). Los campos de órdenes (p. ej. `consigneeName`) no existen aquí.
 
 **«Ya existe una plantilla de importación con ese nombre.» (409)**
 Ya hay una plantilla de consignatarios con ese nombre (activa o inactiva). Use otro nombre o reactive y edite la existente. Las plantillas de órdenes no cuentan.
@@ -6345,7 +6345,7 @@ La celda está vacía (y no hay default para la ciudad). Llénela en el archivo.
 El texto es más largo de lo permitido (nombre 200, código 40, líneas 200, ciudad/estado 100, código postal 20, notas 500). Acórtelo.
 
 **«El código de país debe ser ISO 3166-1 alfa-2 (2 letras).» / «País desconocido: XX.»**
-Use el código de 2 letras (`PR`, `US`, `DO`…). «Desconocido» quiere decir que el país no está en el catálogo o la compañía lo deshabilitó. Si la celda va vacía se usa `PR`.
+Use el código de 2 letras (`PR`, `US`, `DO`…). «Desconocido» quiere decir que el país no está en la lista o la compañía lo deshabilitó. Si la celda va vacía se usa `PR`.
 
 **«Los minutos de servicio deben ser un número entero.» / «Los minutos de servicio no pueden ser negativos.»**
 `defaultServiceMinutes` va como número entero de 0 en adelante (`10`, no `10 min`).
@@ -6421,7 +6421,7 @@ Cada fila se crea por separado (con su revisión, auditoría y teléfono): 5.000
 
 ## Lote F-B — Consignatarios: lista, ficha, alta/edición e importación por CSV (2026-10-11)
 
-Mensajes de la pantalla Catálogo → Consignatarios (los del servidor salen tal cual, debajo del campo, en la tabla de la vista previa o en el diálogo). Capítulo: [fb-consignatarios.md](frontend/fb-consignatarios.md).
+Mensajes de la pantalla Listas → Consignatarios (los del servidor salen tal cual, debajo del campo, en la tabla de la vista previa o en el diálogo). Capítulo: [fb-consignatarios.md](frontend/fb-consignatarios.md).
 
 **`El nombre es obligatorio.` / `La dirección (línea 1) es obligatoria.` / `La ciudad es obligatoria.` (400) al guardar.**
 Son los tres datos obligatorios del consignatario. La ciudad se elige en **Pueblo** (busque por pueblo o por código postal). Hasta que los tres tengan valor, el modal no llama al servidor.
@@ -6429,8 +6429,8 @@ Son los tres datos obligatorios del consignatario. La ciudad se elige en **Puebl
 **`Máximo N caracteres.` (400).**
 Nombre 200, número 40, líneas 200, pueblo y estado 100, ZIP 20, notas 500. Acorte el texto.
 
-**`El país es obligatorio.` / `Catálogo Country 'X' no encontrado.` (400/404).**
-El país está en **Opciones de entrega** (por omisión Puerto Rico). Escoja uno de la lista; si el catálogo `Country` de la compañía no tiene el código, pídale al administrador que lo agregue.
+**`El país es obligatorio.` / `Lista Country 'X' no encontrada.` (400/404).**
+El país está en **Opciones de entrega** (por omisión Puerto Rico). Escoja uno de la lista; si la lista `Country` de la compañía no tiene el código, pídale al administrador que lo agregue.
 
 **`La ventana horaria requiere hora de inicio y hora de fin.` / `La hora de fin de la ventana debe ser posterior a la de inicio.` (400).**
 En **Opciones de entrega**: llene «Ventana: desde» y «Ventana: hasta» (o deje las dos vacías), y que el fin sea después del inicio.
@@ -6464,7 +6464,7 @@ La plantilla se desactivó o es de otro cliente. Elija otra, o en el modal encie
 
 **Vista previa: errores por fila (la fila no se importa).**
 `El nombre es obligatorio.` / `La dirección (línea 1) es obligatoria.` / `La ciudad es obligatoria.`: falta el dato en esa fila o la columna no está en la plantilla (revise el mapeo).
-`País desconocido: X.` o el mensaje de país inválido: use el código de país del catálogo (PR, US…). `Los minutos de servicio deben ser un número entero.` / `…no pueden ser negativos.`.
+`País desconocido: X.` o el mensaje de país inválido: use el código de país de la lista (PR, US…). `Los minutos de servicio deben ser un número entero.` / `…no pueden ser negativos.`.
 `La hora debe tener el formato HH:mm (24 horas).` y las dos de la ventana horaria (`La ventana horaria requiere hora de inicio y hora de fin.` / `La hora de fin de la ventana debe ser posterior a la de inicio.`).
 `El valor de allowDupInvoice debe ser sí o no (también 1/0 o true/false).`
 Duplicados: `Ya existe un consignatario activo con el mismo nombre y dirección (línea 1).`, `Ya existe un consignatario con el código 'X' ('Nombre').`, `Ya existe un consignatario inactivo con el código 'X' ('Nombre'); reactívelo en vez de importarlo.`,
@@ -6529,7 +6529,7 @@ Esa orden no se creó porque, al confirmarla, el crédito del cliente no alcanza
 El campo «Monto cotizado» de la fuente «Órdenes» sale vacío para quien no tiene `orders.view_price`, y un indicador que suma ese campo da 0. Pida el permiso o use otra columna.
 
 **`Tipo de servicio desconocido: X.` / `Tipo de paquete desconocido: X.` / `Estatus desconocido: X.` (400) al filtrar la lista de órdenes.**
-Uno de los valores del filtro no existe en los catálogos. En la pantalla Órdenes normalmente no lo verá, porque ahí los valores se eligen de una lista; sale a quien consulta el API directamente (por ejemplo, una integración). Revise la ortografía del código (como `STANDARD`, `BOX` o `CONFIRMED`; las mayúsculas no importan) y quite el valor o cámbielo por uno válido.
+Uno de los valores del filtro no existe en las listas. En la pantalla Órdenes normalmente no lo verá, porque ahí los valores se eligen de una lista; sale a quien consulta el API directamente (por ejemplo, una integración). Revise la ortografía del código (como `STANDARD`, `BOX` o `CONFIRMED`; las mayúsculas no importan) y quite el valor o cámbielo por uno válido.
 
 **`Cliente no encontrado.` (404) al filtrar la lista por varios clientes.**
 Alguno de los clientes del filtro no es de su compañía o está fuera de los clientes que su usuario puede ver. Quítelo del filtro. Si debería poder verlo, pídale al administrador que revise el alcance de datos de su usuario.
@@ -6569,13 +6569,13 @@ El campo **Servicio** está vacío y la compañía no tiene un servicio predeter
 Falta el consignatario. Búsquelo en **Nombre** (salen los del cliente y los compartidos) o créelo con el botón **+** (necesita `locations.create`). No se puede escribir un nombre suelto.
 
 **El campo del consignatario dice «Elija primero un cliente» o «No se pudo leer el directorio de consignatarios». ¿Qué hago?**
-Los consignatarios dependen del cliente: elija primero el **Cliente**. Si dice que no se pudo leer el directorio, su usuario no tiene el permiso `locations.read` (Catálogo); pídalo.
+Los consignatarios dependen del cliente: elija primero el **Cliente**. Si dice que no se pudo leer el directorio, su usuario no tiene el permiso `locations.read` (Listas); pídalo.
 
 **¿Por qué no aparece el botón «+» junto al consignatario?**
 Falta el permiso `locations.create`, o todavía no eligió el cliente (el botón está deshabilitado hasta entonces). El consignatario que cree ahí queda con el cliente de la orden como dueño.
 
 **¿Por qué no puedo cambiar la dirección, el pueblo, el ZIP o el teléfono del consignatario dentro de la orden?**
-Esos datos son los del directorio. Para cambiarlos, edite el consignatario en Catálogo → Consignatarios. El teléfono solo aparece si usted tiene permiso para ver los datos de contacto.
+Esos datos son los del directorio. Para cambiarlos, edite el consignatario en Listas → Consignatarios. El teléfono solo aparece si usted tiene permiso para ver los datos de contacto.
 
 **¿Qué significa «Indique al menos una línea de paquete.»?**
 Una orden normal necesita al menos una línea de paquete. Pulse **Añadir paquete** para agregar una. La última línea no se puede quitar.
@@ -6616,10 +6616,10 @@ El contrato del cliente no tiene tarifa para ese servicio y tipo de paquete. La 
 El estatus del cliente impide crear órdenes nuevas. Reactive al cliente desde su ficha o elija otro.
 
 **¿Qué significa «Este cliente no tiene servicios especiales configurados»?**
-Marcó **Es una entrega especial**, pero el cliente no tiene servicios en su catálogo de servicios especiales vigente. Agréguelos en Clientes → Contrato → Servicios especiales. Si el aviso dice que el componente «Servicios especiales» está apagado, enciéndalo en el modelo de facturación del contrato.
+Marcó **Es una entrega especial**, pero el cliente no tiene servicios en su lista de servicios especiales vigente. Agréguelos en Clientes → Contrato → Servicios especiales. Si el aviso dice que el componente «Servicios especiales» está apagado, enciéndalo en el modelo de facturación del contrato.
 
 **¿Por qué el interruptor «Es una entrega especial» está deshabilitado?**
-Para leer los servicios especiales del cliente hace falta el permiso `contracts.read` (módulo Catálogo). Pídalo, o capture una orden normal.
+Para leer los servicios especiales del cliente hace falta el permiso `contracts.read` (módulo Listas). Pídalo, o capture una orden normal.
 
 **¿Qué significa «El servicio especial es obligatorio en una entrega especial.»?**
 Con la entrega especial activada hay que elegir el servicio en **Servicio especial**. Si el servidor responde «El servicio especial no está vigente para este cliente.» (400), ese servicio ya se cerró: elija otro.
@@ -6650,7 +6650,7 @@ Aparece «La fecha no se puede quitar; elija otra.» El sistema no permite dejar
 Otra persona guardó cambios en la misma orden mientras usted la editaba. La pantalla vuelve a leer la orden y **conserva lo que usted había escrito**. Revise los datos nuevos y pulse **Guardar cambios** otra vez.
 
 **¿Qué significa «Una entrega especial no lleva líneas de paquete ni COD.»?**
-Una entrega especial es un servicio del catálogo del cliente, no lleva paquetes ni COD. En su expediente esos campos no aparecen; los demás datos (consignatario, fechas, comentario…) sí se editan.
+Una entrega especial es un servicio de la lista del cliente, no lleva paquetes ni COD. En su expediente esos campos no aparecen; los demás datos (consignatario, fechas, comentario…) sí se editan.
 
 **¿Qué significa «El estatus actual no permite la acción 'EDIT_CARGO'.»?**
 La orden ya salió del estatus en que se edita (alguien la confirmó mientras usted la tenía abierta). Recargue la pantalla.
@@ -6695,7 +6695,7 @@ Son desvíos que se registran a mano. El avance normal de la orden (recogido, en
 Pulse **Volver a** y el nombre de la etapa de la que salió (por ejemplo «Volver a Confirmada»). Es el único regreso: no se puede saltar a otra etapa.
 
 **¿Por qué no veo el botón «Asignar chofer»?**
-Solo aparece en una **entrega especial** que está en el recorrido hasta **En tránsito**, y si usted tiene `trips.dispatch` y el módulo Catálogo está encendido. En una orden normal el chofer se asigna en Sala de despacho. Cuando la orden ya tiene chofer el botón dice **Reasignar chofer**.
+Solo aparece en una **entrega especial** que está en el recorrido hasta **En tránsito**, y si usted tiene `trips.dispatch` y el módulo Listas está encendido. En una orden normal el chofer se asigna en Sala de despacho. Cuando la orden ya tiene chofer el botón dice **Reasignar chofer**.
 
 **Al asignar chofer no puedo elegir ninguno / dice que no puedo consultar los choferes.**
 Su usuario no tiene el permiso `fleet.view`. Pídalo al administrador. Si la lista dice «No hay choferes activos», cree o reactive un chofer en Flota → Choferes.
@@ -6788,7 +6788,7 @@ Borra la revisión sin crear ninguna orden y le deja escoger otro archivo.
 
 ## Lote F-D1 — Choferes y tarifas (2026-10-12)
 
-Preguntas de la pantalla **Catálogo → Choferes y tarifas**. Los mensajes aparecen tal cual los muestra la pantalla. El capítulo completo es «Choferes y tarifas» (manual de pantallas).
+Preguntas de la pantalla **Listas → Choferes y tarifas**. Los mensajes aparecen tal cual los muestra la pantalla. El capítulo completo es «Choferes y tarifas» (manual de pantallas).
 
 **¿Cuál es la diferencia entre «Activo», «Disponibilidad» y «Eliminar chofer»?**
 **Activo** apagado saca al chofer de despacho sin perder nada y se puede volver a encender. **No disponible** lo saca de despacho por un tiempo (vacaciones, permiso) y se revierte con **Disponible**. **Eliminar chofer** es una baja definitiva que no se deshace.
@@ -6883,7 +6883,7 @@ Los registra la app del chofer cuando entra por primera vez. Desde aquí solo se
 
 ## Lote F-D2 — Flota: vehículos, documentos y disponibilidad (2026-10-12)
 
-Preguntas de la pantalla **Catálogo → Flota y mantenimiento**. Los mensajes aparecen tal cual los muestra la pantalla. El capítulo completo es «Flota y mantenimiento» (manual de pantallas).
+Preguntas de la pantalla **Listas → Flota y mantenimiento**. Los mensajes aparecen tal cual los muestra la pantalla. El capítulo completo es «Flota y mantenimiento» (manual de pantallas).
 
 **¿Cuál es la diferencia entre «Activo», «Disponibilidad» y «Dar de baja definitiva»?**
 **Activo** apagado saca al vehículo de despacho sin perder nada y se puede volver a encender. **En mantenimiento** lo saca de despacho por un tiempo y se revierte con **Disponible**. **Dar de baja definitiva** no se deshace.
@@ -6956,7 +6956,7 @@ Necesita el permiso `fleet.manage`. Con `fleet.view` todo se consulta pero nada 
 
 ## Lote F-D3 — Mantenimiento y combustible (2026-10-12)
 
-Pantalla: [Mantenimiento, órdenes de trabajo y combustible](frontend/fd3-mantenimiento-combustible.md) (Catálogo → Flota y mantenimiento). Referencia del servidor: [capítulo 04](04-flota-choferes-mantenimiento.md), secciones 5 a 7.
+Pantalla: [Mantenimiento, órdenes de trabajo y combustible](frontend/fd3-mantenimiento-combustible.md) (Listas → Flota y mantenimiento). Referencia del servidor: [capítulo 04](04-flota-choferes-mantenimiento.md), secciones 5 a 7.
 
 **¿Qué significa «Sin historial» en Mantenimiento?**
 Falta el último servicio del programa o la lectura del odómetro del vehículo, así que no hay con qué calcular. En un programa de un vehículo escriba el **Último servicio**; en uno por tipo, cierre una orden de trabajo de ese programa para ese vehículo. Revise también que el vehículo tenga odómetro.
@@ -7068,7 +7068,7 @@ Dos clientes pueden tener el mismo número de orden. Escanee el número del empa
 Ese día no hay una ruta abierta (borrador o planificada) para la zona de la orden. Planifique el día o cree la ruta en **Sala de despacho** y escanee otra vez. Si trabaja las rutas de otro día, cambie **Ruta del día**. El escaneo nunca crea rutas.
 
 **«No se pudo resolver la zona de despacho por código postal ni pueblo; queda sin asignar.»**
-La dirección de entrega no está en ninguna zona. Agregue su código postal o pueblo a una zona (Catálogo → Flota y mantenimiento → Zonas) o asigne la orden a mano.
+La dirección de entrega no está en ninguna zona. Agregue su código postal o pueblo a una zona (Listas → Flota y mantenimiento → Zonas) o asigne la orden a mano.
 
 **«El código postal o pueblo pertenece a varias zonas (…); queda sin asignar.»**
 La dirección cae en más de una zona. Déjela en una sola o asigne la orden a mano.
@@ -7112,7 +7112,7 @@ Necesita el permiso `trips.dispatch`. Cada botón pide el suyo: `trips.plan` (Pl
 Le falta `trips.view`. Sin él la pantalla no puede mostrar rutas ni órdenes sin asignar.
 
 **El chofer y el vehículo se ven como texto y dice que no puedo cambiarlos.**
-Le falta `fleet.view` (o el módulo Catálogo está apagado). Pida el acceso; mientras tanto, otra persona puede asignarlos.
+Le falta `fleet.view` (o el módulo Listas está apagado). Pida el acceso; mientras tanto, otra persona puede asignarlos.
 
 **«Hay órdenes que no se pueden asignar a la ruta.»**
 Al menos una orden marcada no es elegible; debajo aparece cada número con su motivo (por ejemplo `La orden está en Entrada; confírmela antes de asignarla a una ruta.` o `El estatus actual no permite la acción 'ASSIGN_TRIP'.`). No se añadió ninguna. Corrija la orden o desmárquela y pulse otra vez.
@@ -7280,7 +7280,7 @@ La ruta tiene más paradas de las que admite su chofer. Cambie al chofer o repar
 N paradas tienen un pin aproximado (centro del código postal o del pueblo) o todavía no tienen ubicación. En la Sala de despacho se les puede poner un pin manual mientras la ruta no se despache.
 
 **No veo el enlace «Abrir en Sala de despacho» ni el filtro de zona.**
-El enlace exige el permiso `trips.dispatch` y el filtro de zona exige `fleet.view` (con el módulo Catálogo). Pídalos a su administrador; sin ellos la pantalla sigue funcionando.
+El enlace exige el permiso `trips.dispatch` y el filtro de zona exige `fleet.view` (con el módulo Listas). Pídalos a su administrador; sin ellos la pantalla sigue funcionando.
 
 **¿Puedo llamar al chofer desde aquí?**
 No: la pantalla no muestra teléfonos ni datos de contacto del chofer.
@@ -7318,10 +7318,10 @@ No: solo se desactiva.
 Crear listas exige el permiso `admin.catalogs`. Puede escoger una lista que ya exista o pedir a un administrador que cree la que necesita.
 
 **Renombré una opción de la lista y los registros cambiaron.**
-Es lo esperado: los campos de selección apuntan a la lista del catálogo, no guardan copias del texto.
+Es lo esperado: los campos de selección apuntan a la lista de la lista, no guardan copias del texto.
 
 **«Escoge o crea una lista de valores».**
-Los campos Selección, Selección múltiple y Referencia a catálogo necesitan una lista. Escoja una o pulse **Nueva lista…**.
+Los campos Selección, Selección múltiple y Referencia a lista necesitan una lista. Escoja una o pulse **Nueva lista…**.
 
 **«La lista '…' no existe.»**
 La lista fue eliminada o no es una lista de valores (las listas de estatus no sirven para campos). Escoja otra.
@@ -7734,13 +7734,13 @@ La persona de contacto admite hasta 150 caracteres, en el archivo y en la ficha.
 En la ficha del consignatario («Persona de contacto»), en la fila de la lista y en el buscador. Se cambia con **Editar**.
 
 
-## Lote 46 / F-B3 — Importar consignatarios: pueblo, estado y ZIP con el catálogo de códigos postales, y variantes de mapeo (2026-10-14)
+## Lote 46 / F-B3 — Importar consignatarios: pueblo, estado y ZIP con la lista de códigos postales, y variantes de mapeo (2026-10-14)
 
 Pantalla: [frontend/fb3-variantes-y-codigos-postales.md](frontend/fb3-variantes-y-codigos-postales.md). Servidor: capítulo 02, §2.3.
 
 **Mi archivo trae el ZIP pero no el pueblo (o al revés). ¿Tengo que completarlo?**
 No, en Puerto Rico y Estados Unidos. Con el ZIP, Teikem pone el pueblo y el estado; con el pueblo, el primer ZIP de entrega de ese pueblo. La vista previa marca lo
-completado con **del catálogo** y lo explica en Observaciones.
+completado con **de la lista** y lo explica en Observaciones.
 
 **¿Por qué cambió el ZIP de una fila?**
 Era un ZIP de **apartados postales** (P.O. Box) o **militar**: a un consignatario se le entrega en una dirección física, así que Teikem usó un ZIP de entrega de la
@@ -7750,7 +7750,7 @@ misma ciudad. La vista previa lo marca **Código postal ajustado** con el ZIP or
 Los dos, como vienen; solo hay un aviso. Revise cuál está bien antes de importar.
 
 **¿Puede Teikem cambiar el estado que traje?**
-No. Si viene vacío, pone el del catálogo; si viene lleno y no coincide con el ZIP, solo avisa.
+No. Si viene vacío, pone el de la lista; si viene lleno y no coincide con el ZIP, solo avisa.
 
 **Mi archivo mezcla filas con las columnas en distinto orden.**
 Use **variantes**: en el editor de la plantilla, **+ Agregar variante**, póngale a cada una su condición en **Se usa cuando** (por ejemplo, «Columna 9 es igual a PUERTO
@@ -7759,8 +7759,8 @@ RICO») y su propio mapeo. A cada fila se le aplica la primera variante que se c
 **¿Las variantes tienen sus propios valores por defecto?**
 No: los valores por defecto son de la plantilla y valen para todas las variantes.
 
-**Antes podía importar sin ZIP y sin que el pueblo estuviera en el catálogo.**
-Desde el Lote 46, en Puerto Rico y Estados Unidos el pueblo o el ZIP deben estar en el catálogo de códigos postales (para tener una dirección de entrega válida). Otros
+**Antes podía importar sin ZIP y sin que el pueblo estuviera en la lista.**
+Desde el Lote 46, en Puerto Rico y Estados Unidos el pueblo o el ZIP deben estar en la lista de códigos postales (para tener una dirección de entrega válida). Otros
 países siguen como antes.
 
 **Todos los ZIP salen sin tipo y nunca veo «Código postal ajustado».**
@@ -7775,13 +7775,13 @@ consignatario.
 El selector **Pueblo** del consignatario ofrece solo ZIP de entrega: los de apartados postales y los militares no salen (sí salen en la dirección postal del cliente y
 en los almacenes).
 
-**«El código postal X no está en el catálogo de códigos postales; corríjalo, o déjelo vacío e indique el pueblo.»** (error de fila)
-El ZIP no existe en el catálogo. Corríjalo, o bórrelo y ponga el pueblo (Teikem asigna el ZIP).
+**«El código postal X no está en la lista de códigos postales; corríjalo, o déjelo vacío e indique el pueblo.»** (error de fila)
+El ZIP no existe en la lista. Corríjalo, o bórrelo y ponga el pueblo (Teikem asigna el ZIP).
 
 **«El código postal X no es válido: use 5 dígitos (o ZIP+4, como 00901-1234).»** (error de fila)
 El ZIP trae letras o un largo que no es de ZIP. Corríjalo.
 
-**«El pueblo 'X' no está en el catálogo de códigos postales; corríjalo o indique el código postal.»** (error de fila)
+**«El pueblo 'X' no está en la lista de códigos postales; corríjalo o indique el código postal.»** (error de fila)
 El pueblo está mal escrito o no es un pueblo (a veces viene el barrio). Corríjalo o ponga el ZIP.
 
 **«El pueblo 'X' no tiene un código postal de entrega (solo de apartados postales o militares); indique el código postal de la dirección física.»** (error de fila)
@@ -7799,8 +7799,8 @@ La fila no cumple ninguna condición. La vista previa muestra sus celdas: ajuste
 **«Código postal ajustado: 00734 es de apartados postales (P.O. Box); se usó 00715, de entrega en Ponce.»** (aviso)
 Ver «¿Por qué cambió el ZIP de una fila?». La fila se importa con el ZIP nuevo.
 
-**«Pueblo tomado del código postal 00952: Toa Baja.» / «Estado tomado del catálogo de códigos postales: PR.» / «Código postal asignado: 00956, el primero de entrega de Bayamón.»** (avisos)
-Teikem completó ese dato con el catálogo. La fila se importa.
+**«Pueblo tomado del código postal 00952: Toa Baja.» / «Estado tomado de la lista de códigos postales: PR.» / «Código postal asignado: 00956, el primero de entrega de Bayamón.»** (avisos)
+Teikem completó ese dato con la lista. La fila se importa.
 
 **«El código postal 00716 es de Ponce, no de Caguas; se guardan los dos como vienen.»** (aviso)
 Ver «El ZIP y el pueblo de una fila no coinciden».

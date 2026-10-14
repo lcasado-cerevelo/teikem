@@ -2063,3 +2063,26 @@ DELETE FROM dbo.PostalLocality WHERE PostalCode IN (
 '99779'
 );
 GO
+/* ----------------------------------------------------------------------------
+   2026-10-14 (c) — «Catálogo» pasa a «Listas» (pedido de Luis: «catálogo» se confunde con otras cosas): etiquetas de la base de datos.
+   Módulo CATALOG (menú): Catálogo / Catalog -> Listas / Lists. Tipos de entidad: «Valor de catálogo» -> «Valor de lista», «Lista de catálogo / Catalog list»
+   -> «Lista de valores / Value list». Tipo de campo personalizado «Referencia a catálogo» -> «Referencia a lista». Permiso admin.catalogs:
+   «Gestionar catálogos / Manage catalogs» -> «Gestionar listas / Manage lists». Los códigos internos (CATALOG, admin.catalogs) NO cambian.
+   Idempotente: solo toca filas que todavía dicen «catálogo».
+   ---------------------------------------------------------------------------- */
+UPDATE dbo.ModuleDefinition SET Name = N'Listas', NameEn = N'Lists'
+WHERE ModuleKey = 'CATALOG' AND (Name <> N'Listas' OR NameEn <> N'Lists');
+GO
+UPDATE dbo.LookupCode
+SET LabelJson = REPLACE(REPLACE(REPLACE(REPLACE(LabelJson, N'Valor de catálogo', N'Valor de lista'), N'Lista de catálogo', N'Lista de valores'), N'Catalog list', N'Value list'), N'Referencia a catálogo', N'Referencia a lista')
+WHERE ((Entity = 'EntityType' AND InternalCode IN ('LOOKUP_CODE', 'CATALOG_DOMAIN')) OR (Entity = 'CustomFieldDataType' AND InternalCode = 'LOOKUP_REF'))
+  AND (LabelJson LIKE N'%catálogo%' OR LabelJson LIKE N'%Catalog list%' OR LabelJson LIKE N'%Catalog reference%');
+GO
+UPDATE dbo.LookupCode
+SET LabelJson = REPLACE(LabelJson, N'Catalog reference', N'List reference')
+WHERE Entity = 'CustomFieldDataType' AND InternalCode = 'LOOKUP_REF' AND LabelJson LIKE N'%Catalog reference%';
+GO
+UPDATE dbo.Permission
+SET LabelJson = REPLACE(REPLACE(LabelJson, N'Gestionar catálogos', N'Gestionar listas'), N'Manage catalogs', N'Manage lists')
+WHERE Code = 'admin.catalogs' AND (LabelJson LIKE N'%catálogos%' OR LabelJson LIKE N'%Manage catalogs%');
+GO

@@ -227,7 +227,7 @@ test.describe('Lote F8a — escritorio', () => {
   test('2. Menú completo: los 7 grupos de la maqueta y "Sala de despacho" como pantalla pendiente', async ({ page }) => {
     await login(page, ADMIN)
     const rail = page.locator('nav.rnav')
-    for (const label of ['Operación', 'Almacén', 'Contabilidad', 'Catálogo', 'Análisis', 'Sistema', 'Portal de clientes']) {
+    for (const label of ['Operación', 'Almacén', 'Contabilidad', 'Listas', 'Análisis', 'Sistema', 'Portal de clientes']) {
       await expect(rail.getByRole('button', { name: label })).toBeVisible()
     }
     await shot(page, 'menu-completo')
@@ -252,7 +252,7 @@ test.describe('Lote F8a — escritorio', () => {
     await login(page, E2E)
     const rail = page.locator('nav.rnav')
     for (const label of ['Operación', 'Almacén', 'Análisis']) await expect(rail.getByRole('button', { name: label })).toBeVisible()
-    for (const label of ['Contabilidad', 'Catálogo', 'Sistema', 'Portal de clientes']) await expect(rail.getByRole('button', { name: label })).toHaveCount(0)
+    for (const label of ['Contabilidad', 'Listas', 'Sistema', 'Portal de clientes']) await expect(rail.getByRole('button', { name: label })).toHaveCount(0)
 
     await expect(pulseSection(page, 'Tus indicadores')).toBeVisible()
     await expect(pulseSection(page, 'Almacén')).toBeVisible()
@@ -483,7 +483,7 @@ test.describe('Lote F8a — escritorio', () => {
     data.devicePublicId = device?.publicId ?? ''
   })
 
-  test('9. Catálogos: ajustar la etiqueta española de un tipo de tarea; el panel Almacén del Pulso la muestra sin recargar; restaurar', async ({
+  test('9. Listas: ajustar la etiqueta española de un tipo de tarea; el panel Almacén del Pulso la muestra sin recargar; restaurar', async ({
     page,
   }) => {
     await login(page, ADMIN)
@@ -529,7 +529,7 @@ test.describe('Lote F8a — escritorio', () => {
 test.describe('Lote F8a — móvil (360 px)', () => {
   test.skip(({ isMobile }) => !isMobile, 'recorrido móvil (360 px)')
 
-  test('11. Pulso, Roles y usuarios y Catálogos sin scroll horizontal; paleta desde la lupa', async ({ page }) => {
+  test('11. Pulso, Roles y usuarios y Listas sin scroll horizontal; paleta desde la lupa', async ({ page }) => {
     await login(page, ADMIN)
     expect(page.viewportSize()?.width).toBe(360)
     await expect(pulseSection(page, 'Almacén')).toBeVisible()

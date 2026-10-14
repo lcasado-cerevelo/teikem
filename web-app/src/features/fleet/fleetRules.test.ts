@@ -157,7 +157,7 @@ describe('buildVehicleCreate / buildVehiclePatch', () => {
     expect(plan.request).toEqual({ rowVersion: 'AAA=', plateNumber: 'NEW-1', maxStops: 50, vehicleType: 'TRUCK' })
   })
 
-  it('PATCH: un texto vacío se manda como cadena vacía (borra) y un catálogo vacío también; nunca null', () => {
+  it('PATCH: un texto vacío se manda como cadena vacía (borra) y una lista vacía también; nunca null', () => {
     const plan = buildVehiclePatch(values({ plateNumber: '', make: '', fuelType: '', vin: '' }), base)
     expect(plan.request).toEqual({ rowVersion: 'AAA=', plateNumber: '', make: '', fuelType: '', vin: '' })
   })

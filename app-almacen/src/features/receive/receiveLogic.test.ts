@@ -228,7 +228,7 @@ describe('validateTargetBin', () => {
     { code: 'SIN-ZONA', zoneTypeCode: null, isActive: true },
   ]
 
-  it('acepta una posición de guardado activa y devuelve su código como está en el catálogo', () => {
+  it('acepta una posición de guardado activa y devuelve su código como está en la lista', () => {
     expect(validateTargetBin('rsv-a-01 ', BINS)).toEqual({ ok: true, code: 'RSV-A-01' })
     expect(validateTargetBin('SIN-ZONA', BINS)).toEqual({ ok: true, code: 'SIN-ZONA' })
   })

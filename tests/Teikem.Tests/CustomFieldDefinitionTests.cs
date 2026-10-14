@@ -123,9 +123,9 @@ public class CustomFieldDefinitionTests
         await svc.CreateDefinitionAsync(EntityTypes.Warehouse, Text("nota"), default);
         Assert.Equal("Ya existe el campo 'nota' en WAREHOUSE.",
             (await Assert.ThrowsAsync<ConflictException>(() => svc.CreateDefinitionAsync(EntityTypes.Warehouse, Text("nota"), default))).Message);
-        Assert.Equal("LOOKUP_REF requiere el dominio de catálogo referenciado.",
+        Assert.Equal("LOOKUP_REF requiere el dominio de lista referenciado.",
             (await Assert.ThrowsAsync<ValidationException>(() => svc.CreateDefinitionAsync(EntityTypes.Warehouse, Text("ref", null, "LOOKUP_REF"), default))).Message);
-        Assert.Equal("Un campo de selección necesita opciones o una lista del catálogo (refEntity).",
+        Assert.Equal("Un campo de selección necesita opciones o una lista de valores (refEntity).",
             (await Assert.ThrowsAsync<ValidationException>(() => svc.CreateDefinitionAsync(EntityTypes.Warehouse, Text("sel", null, "SELECT"), default))).Message);
         Assert.Equal("ValidationJson no es JSON válido.",
             (await Assert.ThrowsAsync<ValidationException>(() => svc.CreateDefinitionAsync(EntityTypes.Warehouse, Text("vjson") with { ValidationJson = "{no" }, default))).Message);

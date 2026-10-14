@@ -268,7 +268,7 @@
     "reasonSale": "Sale",
     "reasonOther": "Other",
     "issueSummary": "{owner} · lines: {lines} · units: {qty}",
-    "noReasons": "The company has no reasons enabled for manual issues. Ask the administrator to enable one (System → Catalogs).",
+    "noReasons": "The company has no reasons enabled for manual issues. Ask the administrator to enable one (System → Lists).",
     "noteLabel": "Note (optional)",
     "noteHelp": "{count}/{max} characters.",
     "reasonRequired": "Choose the reason for the manual issue.",

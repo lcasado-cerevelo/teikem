@@ -266,7 +266,7 @@ public sealed class TripStatusEffect(TeikemDbContext db, IServiceProvider servic
         => await db.StatusCodes.AsNoTracking()
                .Where(s => s.Entity == StatusDomains.RouteStatus && s.InternalCode == RouteStatuses.Archived)
                .Select(s => (int?)s.StatusCodeId).FirstOrDefaultAsync(ct)
-           ?? throw new InvalidOperationException("El catálogo RouteStatus no tiene la etapa ARCHIVED.");
+           ?? throw new InvalidOperationException("La lista RouteStatus no tiene la etapa ARCHIVED.");
 
     private static List<PipelineStage> Stages(IEnumerable<StatusDto> pipeline)
         => pipeline.Select(s => new PipelineStage(s.Code, s.SortOrder, s.StageKind, s.IsInitial, s.IsEnabled)).ToList();

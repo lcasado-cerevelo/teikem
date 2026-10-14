@@ -1,6 +1,6 @@
 # Usuarios de portal y Cotizador del cliente
 
-En la ficha de cada cliente (**Catálogo → Clientes y contratos**) hay dos herramientas más, que completan el trabajo con clientes y contratos de [F-A1](fa1-clientes.md) y [F-A2](fa2-contratos.md):
+En la ficha de cada cliente (**Listas → Clientes y contratos**) hay dos herramientas más, que completan el trabajo con clientes y contratos de [F-A1](fa1-clientes.md) y [F-A2](fa2-contratos.md):
 
 - **Usuarios de portal**: usted **invita** por correo a las personas del cliente que usarán el portal de clientes, reenvía una invitación perdida, **suspende** y **reactiva** su acceso y los **da de baja**.
 - **Cotizador**: una pestaña nueva de la sección **Contratos** que calcula **cuánto costaría una orden** de ese cliente con las tarifas de su contrato, **sin crear ninguna orden**.
@@ -15,8 +15,8 @@ Cada parte aparece solo si usted tiene su permiso y su compañía tiene el módu
 
 | Qué | Permiso | Módulo de la compañía |
 |---|---|---|
-| Ver el panel **Usuarios de portal** y todos sus botones | `portalusers.manage` | **Portal de clientes** (y Catálogo, como toda la pantalla) |
-| Ver la pestaña **Cotizador** y cotizar | `contracts.read` | **Catálogo** |
+| Ver el panel **Usuarios de portal** y todos sus botones | `portalusers.manage` | **Portal de clientes** (y Lista, como toda la pantalla) |
+| Ver la pestaña **Cotizador** y cotizar | `contracts.read` | **Lista** |
 
 - Sin `portalusers.manage`, o con el módulo **Portal de clientes** apagado, el panel **Usuarios de portal** **no aparece**.
 - Sin `contracts.read` toda la sección **Contratos** (también el Cotizador) queda reducida al aviso «Su usuario no puede ver los contratos (permiso contracts.read)».

@@ -27,7 +27,7 @@ public sealed class LookupService(TeikemDbContext db, ITenantContext tenant, ILo
     public async Task<CatalogDomainDto> GetDomainAsync(string domainKey, CancellationToken ct)
     {
         var d = await db.CatalogDomains.AsNoTracking().FirstOrDefaultAsync(x => x.DomainKey == domainKey, ct)
-                ?? throw new NotFoundException("Dominio de catálogo", domainKey);
+                ?? throw new NotFoundException("Dominio de lista", domainKey);
         return ToDto(d);
     }
 
@@ -43,7 +43,7 @@ public sealed class LookupService(TeikemDbContext db, ITenantContext tenant, ILo
             .Where(l => l.Entity == entity && (l.IsActive || includeDisabled))
             .ToListAsync(ct);
         if (codes.Count == 0 && !await db.CatalogDomains.AnyAsync(d => d.DomainKey == entity, ct))
-            throw new NotFoundException("Dominio de catálogo", entity);
+            throw new NotFoundException("Dominio de lista", entity);
         var ids = codes.Select(c => c.LookupCodeId).ToList();
         var overrides = tenantId is null
             ? new Dictionary<int, LookupCodeOverride>()
@@ -112,7 +112,7 @@ public sealed class LookupService(TeikemDbContext db, ITenantContext tenant, ILo
     public async Task<LookupValueDto> AddValueAsync(string entity, LookupCodeUpsertRequest req, CancellationToken ct)
     {
         var domain = await db.CatalogDomains.FirstOrDefaultAsync(d => d.DomainKey == entity, ct)
-                     ?? throw new NotFoundException("Dominio de catálogo", entity);
+                     ?? throw new NotFoundException("Dominio de lista", entity);
         EnsureCanEditDomain(domain);
         var code = NormalizeCode(req.Code);
         // Country alimenta el snapshot CHAR(2) de las paradas de orden (Lote 3): solo códigos ISO alfa-2.
@@ -136,7 +136,7 @@ public sealed class LookupService(TeikemDbContext db, ITenantContext tenant, ILo
     public async Task<LookupValueDto> UpdateValueAsync(string entity, string code, LookupCodeUpsertRequest req, CancellationToken ct)
     {
         var domain = await db.CatalogDomains.FirstOrDefaultAsync(d => d.DomainKey == entity, ct)
-                     ?? throw new NotFoundException("Dominio de catálogo", entity);
+                     ?? throw new NotFoundException("Dominio de lista", entity);
         EnsureCanEditDomain(domain);
         var lc = await db.LookupCodes.FirstOrDefaultAsync(l => l.Entity == entity && l.InternalCode == code, ct)
                  ?? throw new NotFoundException($"Valor {entity}", code);
@@ -154,7 +154,7 @@ public sealed class LookupService(TeikemDbContext db, ITenantContext tenant, ILo
     public async Task DeactivateValueAsync(string entity, string code, bool active, CancellationToken ct)
     {
         var domain = await db.CatalogDomains.FirstOrDefaultAsync(d => d.DomainKey == entity, ct)
-                     ?? throw new NotFoundException("Dominio de catálogo", entity);
+                     ?? throw new NotFoundException("Dominio de lista", entity);
         EnsureCanEditDomain(domain);
         var lc = await db.LookupCodes.FirstOrDefaultAsync(l => l.Entity == entity && l.InternalCode == code, ct)
                  ?? throw new NotFoundException($"Valor {entity}", code);
@@ -216,7 +216,7 @@ public sealed class LookupService(TeikemDbContext db, ITenantContext tenant, ILo
     private void EnsureCanEditDomain(CatalogDomain domain)
     {
         if (domain.TenantId is null && !tenant.IsPlatformAdmin)
-            throw new ForbiddenException("Los catálogos globales solo los edita el administrador de plataforma; use overrides o cree una lista propia.");
+            throw new ForbiddenException("Las listas globales solo los edita el administrador de plataforma; use overrides o cree una lista propia.");
         if (domain.TenantId is not null && domain.TenantId != tenant.TenantId && !tenant.IsPlatformAdmin)
             throw new ForbiddenException();
     }

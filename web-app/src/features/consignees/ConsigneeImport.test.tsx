@@ -730,7 +730,7 @@ const MIXED_PREVIEW = {
   ],
 }
 
-describe('Importar consignatarios — variantes y catálogo de códigos postales (Lote F-B3)', () => {
+describe('Importar consignatarios — variantes y lista de códigos postales (Lote F-B3)', () => {
   it('Nueva plantilla con dos variantes: condición, mapeo propio, la variante sin condición va al final y viaja como variants', async () => {
     const user = userEvent.setup()
     renderModal()
@@ -855,7 +855,7 @@ describe('Importar consignatarios — variantes y catálogo de códigos postales
     ])
   })
 
-  it('la vista previa dice qué variante usó cada fila, marca lo deducido del catálogo y el código postal ajustado; el resultado lo repite', async () => {
+  it('la vista previa dice qué variante usó cada fila, marca lo deducido de la lista y el código postal ajustado; el resultado lo repite', async () => {
     templates = [{ ...MIXED }]
     mock.override = ({ method, url }) => {
       if (method === 'POST' && url.pathname === '/api/v1/locations/import/validate-file') return MIXED_PREVIEW
@@ -871,7 +871,7 @@ describe('Importar consignatarios — variantes y catálogo de códigos postales
     expect(screen.getByRole('columnheader', { name: 'Variante' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Estado o región' })).toBeInTheDocument() // deducido aunque la plantilla no lo trae
     expect(screen.getAllByText('Variante 2').length).toBeGreaterThanOrEqual(2)
-    expect(screen.getAllByText('del catálogo').length).toBeGreaterThanOrEqual(4)
+    expect(screen.getAllByText('de la lista').length).toBeGreaterThanOrEqual(4)
     expect(screen.getByText('00734').tagName).toBe('S')
     expect(screen.getByText('Código postal ajustado')).toBeInTheDocument()
     expect(screen.getByText('Variante: Ninguna variante de la plantilla aplica a esta fila; revise las condiciones de las variantes.')).toBeInTheDocument()
@@ -879,7 +879,7 @@ describe('Importar consignatarios — variantes y catálogo de códigos postales
 
     await user.click(screen.getByRole('button', { name: 'Importar' }))
     const result = (await screen.findByText('Resultado de la importación')).closest('.cs-result') as HTMLElement
-    const adjusted = within(result).getByRole('table', { name: /completados o ajustados con el catálogo de códigos postales: 2/ })
+    const adjusted = within(result).getByRole('table', { name: /completados o ajustados con la lista de códigos postales: 2/ })
     expect(within(adjusted).getByText('Ferretería Tres')).toBeInTheDocument()
     expect(within(adjusted).getByText(/se usó 00716, de entrega en Ponce/)).toBeInTheDocument()
   })

@@ -127,8 +127,8 @@ Solutions no tiene WMS: sus posiciones no reciben cupo.
 |---|---|---|
 | `import-legacy` sin ruta de configuración, o con opciones que no son `--dry-run`/`--update` | `Uso: dotnet run --project src/Teikem.Api -- import-legacy <config.json> [--dry-run] [--update]` | 2 |
 | `import-legacy` con un archivo de configuración que no existe o le falta un dato obligatorio | (mensaje de la validación, por ejemplo `El archivo no existe: {ruta}.`) | 1 |
-| El motivo `OPENING_BALANCE` no está en el catálogo (falta correr `db-init` con el seed del lote) | `El motivo de ajuste OPENING_BALANCE no existe en el catálogo; ejecute db-init antes de la carga.` | 1 |
-| Un término de pago mapeado de QuickBooks no está en el catálogo | `El término de pago {código} no existe en el catálogo; ejecute db-init antes de la carga.` | 1 |
+| El motivo `OPENING_BALANCE` no está en la lista (falta correr `db-init` con el seed del lote) | `El motivo de ajuste OPENING_BALANCE no existe en la lista; ejecute db-init antes de la carga.` | 1 |
+| Un término de pago mapeado de QuickBooks no está en la lista | `El término de pago {código} no existe en la lista; ejecute db-init antes de la carga.` | 1 |
 | Ajuste manual de inventario con motivo `OPENING_BALANCE` (desde el sitio o la API) | `El motivo OPENING_BALANCE lo asigna el sistema.` | 400 |
 | `db-reset` sin `--yes` | `db-reset borra la base de datos completa; confirme con --yes.` | 2 |
 | `db-reset --yes` contra un servidor que no es local, sin `--allow-remote` | `La cadena de conexión no apunta a un servidor local; use --allow-remote si de verdad quiere borrar esa base.` | 2 |

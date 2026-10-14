@@ -1,6 +1,6 @@
 # Choferes y tarifas
 
-La pantalla **Catálogo → Choferes y tarifas** es el maestro de sus choferes: quiénes son, en qué zona trabajan, si están disponibles, qué licencias tienen y **cuánto se les paga** por entrega, por intento y por viaje. Desde ahí usted puede:
+La pantalla **Listas → Choferes y tarifas** es el maestro de sus choferes: quiénes son, en qué zona trabajan, si están disponibles, qué licencias tienen y **cuánto se les paga** por entrega, por intento y por viaje. Desde ahí usted puede:
 
 - **Crear** un chofer, **corregir sus datos** y **eliminarlo**.
 - Marcarlo **No disponible**, o apagar su casilla **Activo**.
@@ -24,7 +24,7 @@ Cada botón aparece solo si usted tiene su permiso. Si falta alguno, pídaselo a
 | `driverpay.view` | Ver la **fórmula de pago**, la vista previa, las **tarifas** y los **viajes pagados**. Sin este permiso esos paneles no aparecen. |
 | `driverpay.manage` | Cambiar la fórmula, agregar, editar y cerrar tarifas, **+ Agregar intento**, **Registrar viaje** y **Cancelar viaje**. |
 
-El módulo **Catálogo** debe estar encendido para su compañía.
+El módulo **Listas** debe estar encendido para su compañía.
 
 ## 1. La lista de choferes
 

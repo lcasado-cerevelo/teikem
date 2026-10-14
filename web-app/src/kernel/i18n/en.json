@@ -151,7 +151,7 @@
       "ops": "Operations",
       "warehouse": "Warehouse",
       "money": "Accounting",
-      "catalog": "Catalog",
+      "catalog": "Lists",
       "analytics": "Analytics",
       "system": "System",
       "portal": "Client portal"
@@ -281,7 +281,7 @@
       "subtitle": "devices with access to Teikem Almacén and their enrollment code"
     },
     "catalogs": {
-      "title": "Value catalogs",
+      "title": "Value lists",
       "subtitle": "the lists that feed chips and selects across the app"
     },
     "integrations": {
@@ -549,7 +549,7 @@
       "save": "Save SLA",
       "discard": "Discard changes",
       "saved": "SLA saved.",
-      "noTypes": "There are no service types in the catalog.",
+      "noTypes": "There are no service types in the list.",
       "errors": {
         "number": "Enter a number.",
         "hoursInt": "Enter whole hours.",
@@ -901,7 +901,7 @@
       "fieldHeader": "Target field",
       "columnN": "Column {n}",
       "ignore": "(Do not use)",
-      "requiredHelp": "* Required field. The template must have name and address (line 1) in columns, and the town or the ZIP (in a column or as a default value): in Puerto Rico and the US the town, state and delivery ZIP are completed from the postal code catalog.",
+      "requiredHelp": "* Required field. The template must have name and address (line 1) in columns, and the town or the ZIP (in a column or as a default value): in Puerto Rico and the US the town, state and delivery ZIP are completed from the postal code list.",
       "addColumn": "Add column",
       "removeColumn": "Remove this column",
       "removeColumnN": "Remove column {n}",
@@ -947,9 +947,9 @@
       "rowCells": "Row cells: {cells}",
       "zipAdjusted": "Postal code adjusted",
       "zipAdjustedTitle": "ZIP {from} is not a delivery ZIP (PO boxes or military); {to} was used, a delivery ZIP of the same city.",
-      "inferredTag": "from catalog",
-      "inferredTitle": "Completed from the postal code catalog",
-      "adjustedTitle": "Consignees with town, state or ZIP completed or adjusted from the postal code catalog: {n}",
+      "inferredTag": "from list",
+      "inferredTitle": "Completed from the postal code list",
+      "adjustedTitle": "Consignees with town, state or ZIP completed or adjusted from the postal code list: {n}",
       "errors": {
         "nameRequired": "The template name is required.",
         "columnsRequired": "Specify at least one column.",
@@ -1743,8 +1743,8 @@
       "MULTIPLE_MATCHES": "Scan the pack number, which is unique per order.",
       "IN_TRIP": "Nothing to do: the order is already on that route.",
       "NOT_ELIGIBLE": "Fix the order's status in Orders (for example, confirm it) and scan it again.",
-      "NO_ZONE": "Add the postal code or town to a zone (Catalog → Fleet and maintenance → Zones) or assign the order by hand in Dispatch room.",
-      "AMBIGUOUS_ZONE": "The postal code or town is in more than one zone. Leave it in a single zone (Catalog → Fleet and maintenance → Zones) or assign the order by hand in Dispatch room.",
+      "NO_ZONE": "Add the postal code or town to a zone (Lists → Fleet and maintenance → Zones) or assign the order by hand in Dispatch room.",
+      "AMBIGUOUS_ZONE": "The postal code or town is in more than one zone. Leave it in a single zone (Lists → Fleet and maintenance → Zones) or assign the order by hand in Dispatch room.",
       "NO_OPEN_ROUTE": "Plan the day or create that zone's route in Dispatch room and scan again. The order stays in \"Pending to scan\"."
     },
     "errors": {
@@ -2221,7 +2221,7 @@
       "BOOL": "Yes/No",
       "SELECT": "Select",
       "MULTISELECT": "Multi-select",
-      "LOOKUP_REF": "Catalog reference"
+      "LOOKUP_REF": "List reference"
     },
     "listInfo": "List: {name} · {n} options",
     "ownOptionsInfo": "Own options · {n}",
@@ -2276,12 +2276,12 @@
     "list": {
       "label": "Value list",
       "pick": "Choose a list…",
-      "hint": "The options come from a catalog list: renaming an option updates every record that already uses it, and the list can be reused by other fields.",
+      "hint": "The options come from a list list: renaming an option updates every record that already uses it, and the list can be reused by other fields.",
       "optionsOf": "Options: {items}",
       "empty": "This list has no options.",
       "own": "Own",
       "system": "System",
-      "ownOptionsNote": "This field uses its own options ({n}: {items}). Choosing a catalog list replaces them.",
+      "ownOptionsNote": "This field uses its own options ({n}: {items}). Choosing a list list replaces them.",
       "newList": "New list…",
       "newListTitle": "New value list",
       "name": "List name",
@@ -2292,7 +2292,7 @@
       "need": "Give the list a name and at least one option",
       "invalid": "A code cannot be built from: {items}",
       "created": "List created: {name}",
-      "noPermission": "Creating a new list needs the catalogs permission. Ask an administrator to create it and then choose it here."
+      "noPermission": "Creating a new list needs the lists permission. Ask an administrator to create it and then choose it here."
     },
     "errors": {
       "labelRequired": "The label is required.",
@@ -3318,9 +3318,9 @@
       "codAmount": "COD amount",
       "codNote": "The collection type (cash, check…) is recorded at delivery time, not when the order is captured.",
       "special": "It is a special delivery",
-      "specialHint": "A service from the client's catalog (e.g. bring a wagon from the dock) instead of a package. The driver is assigned later, in the order file.",
+      "specialHint": "A service from the client's list (e.g. bring a wagon from the dock) instead of a package. The driver is assigned later, in the order file.",
       "specialTitle": "Special service",
-      "specialDesc": "Choose the service from the client's catalog",
+      "specialDesc": "Choose the service from the client's list",
       "specialNone": "This client has no special services configured",
       "specialChoose": "Choose the special service…",
       "specialComponentOff": "The “Special services” component is off in the client's current contract.",
@@ -3586,7 +3586,7 @@
       "help": "Search by city, municipality or ZIP code; picking one fills City, ZIP code, State and Country.",
       "placeholder": "Search city or ZIP code…",
       "none": "No cities or ZIP codes match.",
-      "noAccess": "Your user cannot view the city catalog.",
+      "noAccess": "Your user cannot view the city list.",
       "clear": "Remove city and ZIP code",
       "derivedHelp": "Filled from the chosen city."
     },
@@ -4002,14 +4002,14 @@
     },
     "products": {
       "title": "Products & inventory",
-      "subtitle": "Catalog with available, reserved stock, and lot/serial tracking",
+      "subtitle": "List with available, reserved stock, and lot/serial tracking",
       "tabProducts": "Products",
       "invReport": "Inventory report",
       "invReportHint": "PDF with every product matching the table filters: available, reserved, total, cost and value, by category.",
       "adjReport": "Adjustment report",
       "adjReportHint": "PDF with the inventory adjustments of the products matching the table filters.",
       "kpis": {
-        "aria": "Catalog summary",
+        "aria": "List summary",
         "activeSkus": "Active SKUs",
         "totalUnits": "Total units",
         "belowMin": "Low stock",
@@ -6300,7 +6300,7 @@
       }
     },
     "catalogs": {
-      "title": "Value catalogs",
+      "title": "Value lists",
       "subtitle": "The lists that feed chips and selects across the app.",
       "lists": "Lists",
       "searchList": "Search list…",
@@ -6526,7 +6526,7 @@
         "confirmOff": "Turn off",
         "turnedOn": "Module on: {name}",
         "turnedOff": "Module off: {name}",
-        "loadError": "The module catalog could not be read."
+        "loadError": "The module list could not be read."
       },
       "ops": {
         "defaultsTitle": "Defaults",
@@ -6896,7 +6896,7 @@
       "pickClientFirst": "Choose the client first.",
       "locationPlaceholder": "Search location",
       "noLocations": "The client has no active locations of its own.",
-      "locationsForbidden": "Your user cannot read locations (locations.read permission and Catalog module).",
+      "locationsForbidden": "Your user cannot read locations (locations.read permission and Lists module).",
       "contactsForbidden": "Your user cannot read the client's contacts (clients.read permission).",
       "noContact": "No contact",
       "warehouseLocked": "Remove the rental's equipment before changing the source warehouse.",

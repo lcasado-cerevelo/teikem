@@ -23,7 +23,7 @@ Cada botón aparece solo si usted tiene su permiso y, además, si la orden está
 | `orders.cancel` | **Cancelar la orden** y **Eliminar la orden**. |
 | `orders.credit_override` | Autorizar una orden cuyo cliente excede su límite de crédito. |
 | `orders.view_price` | Ver el panel **Cotización** y el botón **Cotizar**. Sin este permiso el panel no aparece. |
-| `trips.dispatch` | **Asignar chofer** / **Reasignar chofer** (el módulo Catálogo debe estar encendido). |
+| `trips.dispatch` | **Asignar chofer** / **Reasignar chofer** (el módulo Listas debe estar encendido). |
 | `fleet.view` | Ver la lista de choferes al asignar uno. |
 | `contacts.manage` | Agregar, editar y quitar teléfonos y correos de la orden. |
 

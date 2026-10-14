@@ -26,7 +26,7 @@ La imagen siguiente es un **ejemplo con datos de prueba simulados** (se le puso 
 |---|---|---|
 | Entrar a la pantalla y ver rutas, plano y paradas | `trips.view` | Operación de carga (LTL) |
 | Ver el enlace **Abrir en Sala de despacho** | `trips.dispatch` | Operación de carga (LTL) |
-| Filtrar por **Zona** | `fleet.view` | Catálogo |
+| Filtrar por **Zona** | `fleet.view` | Lista |
 
 Sin `fleet.view` la pantalla funciona igual, pero no ofrece el filtro de zona y lo explica. Sin `trips.dispatch` no aparece el enlace a la Sala de despacho. La pantalla no muestra teléfonos ni datos de contacto del chofer, ni montos.
 

@@ -286,7 +286,7 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
             EntityTypes.Trip, null, count, TripsOverStopLimitFilter, all, true, 82, module: ops);
         // Lote 6 — Inventario y almacén (módulo WAREHOUSE). PRODUCT y STOCK_BALANCE son estado actual sin DateField (sin rango);
         // INVENTORY_TRANSACTION y WAREHOUSE_TASK tienen DateField (el estado actual de las tareas va con rango ALL).
-        Indicator("Productos activos", "Productos activos del catálogo", "Active products in the catalog",
+        Indicator("Productos activos", "Productos activos de la lista", "Active products in the catalog",
             EntityTypes.Product, null, count, ActiveProductsFilter, null, true, 90, module: wh);
         Indicator("Inventario disponible", "Unidades disponibles (en mano − reservado) en todos los almacenes", "Available units (on hand − reserved) across warehouses",
             EntityTypes.StockBalance, "QtyAvailable", sum, null, null, true, 91, module: wh);

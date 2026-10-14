@@ -151,7 +151,7 @@
       "ops": "Operación",
       "warehouse": "Almacén",
       "money": "Contabilidad",
-      "catalog": "Catálogo",
+      "catalog": "Listas",
       "analytics": "Análisis",
       "system": "Sistema",
       "portal": "Portal de clientes"
@@ -281,7 +281,7 @@
       "subtitle": "aparatos con acceso a Teikem Almacén y su código de registro"
     },
     "catalogs": {
-      "title": "Catálogos de valores",
+      "title": "Listas de valores",
       "subtitle": "las listas que alimentan chips y selects en toda la aplicación"
     },
     "integrations": {
@@ -549,7 +549,7 @@
       "save": "Guardar SLA",
       "discard": "Descartar cambios",
       "saved": "SLA guardado.",
-      "noTypes": "No hay tipos de servicio en el catálogo.",
+      "noTypes": "No hay tipos de servicio en la lista.",
       "errors": {
         "number": "Escriba un número.",
         "hoursInt": "Escriba horas enteras.",
@@ -901,7 +901,7 @@
       "fieldHeader": "Campo destino",
       "columnN": "Columna {n}",
       "ignore": "(No usar)",
-      "requiredHelp": "* Campo obligatorio. La plantilla debe traer nombre y dirección (línea 1) en columnas, y el pueblo o el ZIP (en una columna o como valor por defecto): en Puerto Rico y EE. UU. el pueblo, el estado y el ZIP de entrega se completan con el catálogo de códigos postales.",
+      "requiredHelp": "* Campo obligatorio. La plantilla debe traer nombre y dirección (línea 1) en columnas, y el pueblo o el ZIP (en una columna o como valor por defecto): en Puerto Rico y EE. UU. el pueblo, el estado y el ZIP de entrega se completan con la lista de códigos postales.",
       "addColumn": "Agregar columna",
       "removeColumn": "Quitar esta columna",
       "removeColumnN": "Quitar la columna {n}",
@@ -947,9 +947,9 @@
       "rowCells": "Celdas de la fila: {cells}",
       "zipAdjusted": "Código postal ajustado",
       "zipAdjustedTitle": "El ZIP {from} no es de entrega (apartados o militar); se usó {to}, de entrega en la misma ciudad.",
-      "inferredTag": "del catálogo",
-      "inferredTitle": "Completado con el catálogo de códigos postales",
-      "adjustedTitle": "Consignatarios con pueblo, estado o ZIP completados o ajustados con el catálogo de códigos postales: {n}",
+      "inferredTag": "de la lista",
+      "inferredTitle": "Completado con la lista de códigos postales",
+      "adjustedTitle": "Consignatarios con pueblo, estado o ZIP completados o ajustados con la lista de códigos postales: {n}",
       "errors": {
         "nameRequired": "El nombre de la plantilla es obligatorio.",
         "columnsRequired": "Indique al menos una columna.",
@@ -1743,8 +1743,8 @@
       "MULTIPLE_MATCHES": "Escanee el número del empaque, que es único por orden.",
       "IN_TRIP": "No hace falta hacer nada: la orden ya está en esa ruta.",
       "NOT_ELIGIBLE": "Arregle el estatus de la orden en Órdenes (por ejemplo, confírmela) y vuelva a escanearla.",
-      "NO_ZONE": "Agregue el código postal o el pueblo a una zona (Catálogo → Flota y mantenimiento → Zonas) o asigne la orden a mano en Sala de despacho.",
-      "AMBIGUOUS_ZONE": "El código postal o el pueblo está en más de una zona. Déjelo en una sola zona (Catálogo → Flota y mantenimiento → Zonas) o asigne la orden a mano en Sala de despacho.",
+      "NO_ZONE": "Agregue el código postal o el pueblo a una zona (Listas → Flota y mantenimiento → Zonas) o asigne la orden a mano en Sala de despacho.",
+      "AMBIGUOUS_ZONE": "El código postal o el pueblo está en más de una zona. Déjelo en una sola zona (Listas → Flota y mantenimiento → Zonas) o asigne la orden a mano en Sala de despacho.",
       "NO_OPEN_ROUTE": "Planifique el día o cree la ruta de esa zona en Sala de despacho y vuelva a escanear. La orden sigue en «Pendientes por escanear»."
     },
     "errors": {
@@ -2221,7 +2221,7 @@
       "BOOL": "Sí/No",
       "SELECT": "Selección",
       "MULTISELECT": "Selección múltiple",
-      "LOOKUP_REF": "Referencia a catálogo"
+      "LOOKUP_REF": "Referencia a lista"
     },
     "listInfo": "Lista: {name} · {n} opciones",
     "ownOptionsInfo": "Opciones propias · {n}",
@@ -2276,12 +2276,12 @@
     "list": {
       "label": "Lista de valores",
       "pick": "Escoge una lista…",
-      "hint": "Las opciones salen de una lista del catálogo: renombrar una opción actualiza todos los registros que ya la usan, y la lista se puede reutilizar en otros campos.",
+      "hint": "Las opciones salen de una lista de valores: renombrar una opción actualiza todos los registros que ya la usan, y la lista se puede reutilizar en otros campos.",
       "optionsOf": "Opciones: {items}",
       "empty": "Esta lista no tiene opciones.",
       "own": "Propia",
       "system": "Sistema",
-      "ownOptionsNote": "Este campo usa opciones propias ({n}: {items}). Si escoges una lista del catálogo, la reemplaza.",
+      "ownOptionsNote": "Este campo usa opciones propias ({n}: {items}). Si escoges una lista de valores, la reemplaza.",
       "newList": "Nueva lista…",
       "newListTitle": "Nueva lista de valores",
       "name": "Nombre de la lista",
@@ -2292,7 +2292,7 @@
       "need": "Ponle nombre a la lista y al menos una opción",
       "invalid": "No se puede armar un código con: {items}",
       "created": "Lista creada: {name}",
-      "noPermission": "Para crear una lista nueva hace falta el permiso de catálogos. Pide a un administrador que la cree y vuelve a escogerla aquí."
+      "noPermission": "Para crear una lista nueva hace falta el permiso de listas. Pide a un administrador que la cree y vuelve a escogerla aquí."
     },
     "errors": {
       "labelRequired": "La etiqueta es obligatoria.",
@@ -3318,9 +3318,9 @@
       "codAmount": "Monto COD",
       "codNote": "El tipo de cobro (efectivo, cheque…) se registra al momento de entregar, no al capturar la orden.",
       "special": "Es una entrega especial",
-      "specialHint": "Un servicio del catálogo del cliente (ej. traer un vagón del muelle) en vez de un paquete. El chofer se asigna después, en el expediente de la orden.",
+      "specialHint": "Un servicio de la lista del cliente (ej. traer un vagón del muelle) en vez de un paquete. El chofer se asigna después, en el expediente de la orden.",
       "specialTitle": "Servicio especial",
-      "specialDesc": "Escoja el servicio del catálogo del cliente",
+      "specialDesc": "Escoja el servicio de la lista del cliente",
       "specialNone": "Este cliente no tiene servicios especiales configurados",
       "specialChoose": "Elija el servicio especial…",
       "specialComponentOff": "El componente «Servicios especiales» está apagado en el contrato vigente del cliente.",
@@ -3586,7 +3586,7 @@
       "help": "Busque por ciudad, municipio o código postal; al elegir se llenan Ciudad, Código postal, Estado y País.",
       "placeholder": "Buscar ciudad o código postal…",
       "none": "No hay ciudades ni códigos postales que coincidan.",
-      "noAccess": "Su usuario no puede consultar el catálogo de ciudades.",
+      "noAccess": "Su usuario no puede consultar la lista de ciudades.",
       "clear": "Quitar ciudad y código postal",
       "derivedHelp": "Se llena según la ciudad elegida."
     },
@@ -4002,14 +4002,14 @@
     },
     "products": {
       "title": "Productos e inventario",
-      "subtitle": "Catálogo con existencias disponibles, reservadas y rastreo por lote/serie",
+      "subtitle": "Lista con existencias disponibles, reservadas y rastreo por lote/serie",
       "tabProducts": "Productos",
       "invReport": "Reporte de inventario",
       "invReportHint": "PDF con todos los productos que cumplen los filtros de la tabla: disponible, reservado, total, costo y valor, por categoría.",
       "adjReport": "Reporte de ajustes",
       "adjReportHint": "PDF con los ajustes de inventario de los productos que cumplen los filtros de la tabla.",
       "kpis": {
-        "aria": "Resumen del catálogo",
+        "aria": "Resumen de la lista",
         "activeSkus": "SKUs activos",
         "totalUnits": "Unidades totales",
         "belowMin": "Bajo mínimo",
@@ -6300,7 +6300,7 @@
       }
     },
     "catalogs": {
-      "title": "Catálogos de valores",
+      "title": "Listas de valores",
       "subtitle": "Las listas que alimentan chips y selects en toda la aplicación.",
       "lists": "Listas",
       "searchList": "Buscar lista…",
@@ -6526,7 +6526,7 @@
         "confirmOff": "Apagar",
         "turnedOn": "Módulo encendido: {name}",
         "turnedOff": "Módulo apagado: {name}",
-        "loadError": "No se pudo leer el catálogo de módulos."
+        "loadError": "No se pudo leer la lista de módulos."
       },
       "ops": {
         "defaultsTitle": "Valores por defecto",
@@ -6896,7 +6896,7 @@
       "pickClientFirst": "Elija primero el cliente.",
       "locationPlaceholder": "Buscar localidad",
       "noLocations": "El cliente no tiene localidades propias activas.",
-      "locationsForbidden": "Su usuario no puede consultar localidades (permiso locations.read y módulo Catálogo).",
+      "locationsForbidden": "Su usuario no puede consultar localidades (permiso locations.read y módulo Listas).",
       "contactsForbidden": "Su usuario no puede consultar los contactos del cliente (permiso clients.read).",
       "noContact": "Sin contacto",
       "warehouseLocked": "Quite los equipos de la renta antes de cambiar el almacén de origen.",

@@ -65,7 +65,7 @@ describe('calendario laboral', () => {
 
 describe('módulos', () => {
   const modules = [
-    { key: 'CATALOG', name: 'Catálogo', isCore: true, isEnabled: true },
+    { key: 'CATALOG', name: 'Listas', isCore: true, isEnabled: true },
     { key: 'LTL_GROUND', name: 'Operación diaria', isEnabled: true },
     { key: 'COD', name: 'COD', dependsOn: 'LTL_GROUND', isEnabled: true },
     { key: 'WMS_LOTSERIAL', name: 'WMS', isEnabled: false },

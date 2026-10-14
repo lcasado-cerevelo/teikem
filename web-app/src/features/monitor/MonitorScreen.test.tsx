@@ -440,7 +440,7 @@ describe('telemetría y estado en vivo', () => {
     expect(screen.getByText('El último ping es del chofer, pero no viene marcado con esta ruta.')).toBeInTheDocument()
   })
 
-  it('ruta con paradas completadas, una fallida y una en camino: estatus del catálogo, pines por estado y avance', async () => {
+  it('ruta con paradas completadas, una fallida y una en camino: estatus de la lista, pines por estado y avance', async () => {
     const done = tripDetail({
       publicId: 't-1',
       code: '2026-0001',

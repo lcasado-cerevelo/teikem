@@ -21,7 +21,7 @@ Qué hace: muestra, en una ventana corta, los eventos de negocio de Almacén que
 tareas de almacén, conteos cíclicos, recolecciones, órdenes de compra, cruce de plataforma, ajustes y transferencias de
 inventario, baja de producto o de almacén — sin ser la auditoría técnica (`AuditLog`, que exige `admin.audit`). No
 hay una tabla de eventos: cada consulta calcula los eventos al leer, desde el historial de estatus, el ledger de
-inventario y la bitácora, en la ventana pedida. Cada evento tiene un código fijo (catálogo `ActivityEventType`), una
+inventario y la bitácora, en la ventana pedida. Cada evento tiene un código fijo (lista `ActivityEventType`), una
 etiqueta en el idioma del usuario, una bandera de **obligatorio** (siempre visible) u **opcional** (se puede ocultar
 con "Solo obligatorios" o apagar por defecto), y queda enlazado al documento que lo originó.
 
@@ -42,14 +42,14 @@ Cómo se usa:
   (200, no 403).
 - `window` — `24h` (por defecto), `48h` o `today` (desde la medianoche de **hoy en hora de Puerto Rico**, 04:00 UTC; desde el
   Lote 15. Antes era la medianoche UTC. La compañía todavía no guarda su zona: es la de Puerto Rico para todas).
-- `onlyMandatory` — `true` deja solo los eventos obligatorios del catálogo (o del override del tenant, sección 3).
+- `onlyMandatory` — `true` deja solo los eventos obligatorios de la lista (o del override del tenant, sección 3).
 - `skip`/`take` — paginación; `take` por defecto y máximo 50 ("Ver más" pide la siguiente página con `skip`).
 - `GET /api/v1/products?belowMin=true` (mismo endpoint de siempre, con el filtro nuevo) — solo productos activos con
   mínimo definido y disponible por debajo de él (el mismo cálculo que `isBelowMin` de la lista); con
   `warehousePublicId` además, el disponible es el de ese almacén. Sirve para contar "bajo mínimo" por categoría en
   el panel Almacén del Pulso con `take=1` y el `total` de la respuesta, sin traer la lista completa.
 
-### Catálogo de eventos de Almacén (23, `LookupCode.Entity = 'ActivityEventType'`)
+### Lista de eventos de Almacén (23, `LookupCode.Entity = 'ActivityEventType'`)
 
 | Código | Etiqueta (es) | Obligatorio | Encendido por defecto | Cuándo se genera |
 |---|---|---|---|---|
@@ -525,7 +525,7 @@ Las del Lote 15 (franja "Almacén hoy", filas fijas, gráficos de la compañía,
 
 Ver [faq.md](faq.md), sección "Lote 7A — Pulso de almacén y Actividad reciente", para el detalle de cada mensaje
 (qué significa y qué hacer), incluidos por qué un ajuste `FOUND` aparece dos veces, qué pasa al renombrar o
-deshabilitar un evento del catálogo desde el override del tenant, por qué dar de baja una categoría no aparece como
+deshabilitar un evento de la lista desde el override del tenant, por qué dar de baja una categoría no aparece como
 "Producto dado de baja", y por qué alguien sin `inventory.view` puede ver conteos cíclicos en Análisis (decisión a
 revisar, no un defecto de este capítulo). Las del Pulso por paneles (sección 3) están en la sección "Lote F8a — Pulso del
 día: paneles, permisos y orden" de la FAQ: por qué no veo el panel Almacén, por qué mi Pulso no se ve como el de otro

@@ -84,7 +84,7 @@ public sealed class ActivityRulesTests
     [InlineData(AdjustmentReasons.Damage, true, ActivityEvents.InventoryAdjusted)]
     [InlineData(AdjustmentReasons.PoShortage, true, null)]                          // faltante de compra: lo cuenta PO_SHORTAGE_RESOLVED
     [InlineData(AdjustmentReasons.PoShortage, false, ActivityEvents.InventoryAdjusted)]  // ajuste manual con motivo fuera de la lista
-    [InlineData("THEFT", false, ActivityEvents.InventoryAdjusted)]                  // código nuevo del catálogo, sin documento
+    [InlineData("THEFT", false, ActivityEvents.InventoryAdjusted)]                  // código nuevo de la lista, sin documento
     [InlineData("THEFT", true, null)]
     [InlineData(AdjustmentReasons.PickBatchReversal, true, null)]  // reversa de una recolección: la cuenta PICK_CANCELLED
     [InlineData(AdjustmentReasons.PickBatchReversal, false, null)] // motivo de sistema: nunca INVENTORY_ADJUSTED

@@ -100,15 +100,15 @@ public sealed record PostalInferenceResult(
 public static class PostalInference
 {
     public static string ZipInvalidMessage(string zip) => $"El código postal {zip} no es válido: use 5 dígitos (o ZIP+4, como 00901-1234).";
-    public static string ZipNotFoundMessage(string zip) => $"El código postal {zip} no está en el catálogo de códigos postales; corríjalo, o déjelo vacío e indique el pueblo.";
-    public static string TownNotFoundMessage(string town) => $"El pueblo '{town}' no está en el catálogo de códigos postales; corríjalo o indique el código postal.";
+    public static string ZipNotFoundMessage(string zip) => $"El código postal {zip} no está en la lista de códigos postales; corríjalo, o déjelo vacío e indique el pueblo.";
+    public static string TownNotFoundMessage(string town) => $"El pueblo '{town}' no está en la lista de códigos postales; corríjalo o indique el código postal.";
     public static string TownWithoutDeliveryZipMessage(string town) => $"El pueblo '{town}' no tiene un código postal de entrega (solo de apartados postales o militares); indique el código postal de la dirección física.";
     public static string TownInSeveralStatesMessage(string town, string states) => $"El pueblo '{town}' existe en varios estados ({states}); indique el estado o el código postal.";
     public static string NoDeliveryReplacementMessage(string zip, string zipClass, string town)
         => $"El código postal {zip} es de {KindLabel(zipClass)} y {town} no tiene un código postal de entrega con que sustituirlo; indique el código postal de la dirección física.";
 
     public static string CityFromZipWarning(string zip, string town) => $"Pueblo tomado del código postal {zip}: {town}.";
-    public static string StateFromCatalogWarning(string state) => $"Estado tomado del catálogo de códigos postales: {state}.";
+    public static string StateFromCatalogWarning(string state) => $"Estado tomado de la lista de códigos postales: {state}.";
     public static string ZipFromTownWarning(string zip, string town) => $"Código postal asignado: {zip}, el primero de entrega de {town}.";
     public static string ZipAdjustedWarning(string original, string zipClass, string zip, string town)
         => $"Código postal ajustado: {original} es de {KindLabel(zipClass)}; se usó {zip}, de entrega en {town}.";

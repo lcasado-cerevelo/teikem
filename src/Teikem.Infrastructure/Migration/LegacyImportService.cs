@@ -169,8 +169,8 @@ public static class LegacyImportPlanner
     public static string CategoryInactive(string name) => $"La categoría '{name}' existe pero está inactiva; sus productos se crean sin categoría.";
     public static string ZoneMissing(string zone, string code) => $"La zona {zone} no existe; no se crea la posición {code}.";
     public static string CustomFieldInactive(string key) => $"El campo personalizado '{key}' existe pero está inactivo; no se guardan sus valores.";
-    public static string ReasonMissing(string code) => $"El motivo de ajuste {code} no existe en el catálogo; ejecute db-init antes de la carga.";
-    public static string PaymentTermMissing(string code) => $"El término de pago {code} no existe en el catálogo; ejecute db-init antes de la carga.";
+    public static string ReasonMissing(string code) => $"El motivo de ajuste {code} no existe en la lista; ejecute db-init antes de la carga.";
+    public static string PaymentTermMissing(string code) => $"El término de pago {code} no existe en la lista; ejecute db-init antes de la carga.";
     public const string OpeningBalanceNotInUpdate = "El saldo inicial no se toca en modo --update: el inventario lo mueve Teikem.";
     public static string MswmConnectionMissing(string name) => $"Falta la cadena de conexión ConnectionStrings:{name}.";
     public const string AdminEmailRequired = "company.adminEmail es obligatorio para aprovisionar la compañía.";

@@ -196,7 +196,7 @@ public sealed class AuditSaveChangesInterceptor(ITenantContext tenant, ILookupCa
                 var entityTypeId = await lookups.TryGetIdAsync(LookupDomains.EntityType, p.EntityTypeCode, ct);
                 if (entityTypeId is null)
                 {
-                    logger.LogWarning("AuditLog: EntityType '{Code}' no existe en el catálogo; se omite la bitácora.", p.EntityTypeCode);
+                    logger.LogWarning("AuditLog: EntityType '{Code}' no existe en la lista; se omite la bitácora.", p.EntityTypeCode);
                     continue;
                 }
                 if (!actionIds.TryGetValue(p.Action, out var actionId))

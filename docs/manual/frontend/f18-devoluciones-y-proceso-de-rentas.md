@@ -76,7 +76,7 @@ En el celular cada equipo es un bloque de una columna:
 
 - **Filtros**: **Estatus** (los de la compañía, con sus nombres), **Abiertos o terminados** (Abiertos por defecto; Terminados = Lista o
   Dada de baja; Todos), **Almacén** y el buscador (serie, SKU, número de devolución o de renta).
-- **Columnas**: Serie, Producto, Almacén · posición, **Estatus** (con el color del catálogo), **Días en proceso** (días de la compañía desde
+- **Columnas**: Serie, Producto, Almacén · posición, **Estatus** (con el color de la lista), **Días en proceso** (días de la compañía desde
   que volvió, hasta hoy o hasta que terminó), Condición al volver, Devolución y Renta (enlaces), Iniciado el y Terminado el. Los terminados
   se ven atenuados.
 - **Acciones** de la fila (proceso abierto): **Avanzar**, **Completar**, **Dar de baja**; y **Historial** (los pasos con quién, cuándo y

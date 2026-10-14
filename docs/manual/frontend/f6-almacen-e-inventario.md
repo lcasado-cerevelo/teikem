@@ -113,7 +113,7 @@ encendido; sin alguno de los dos, Pulso se ve igual que en F1 (sin este panel, s
 
 **Para qué sirve.** Administra los almacenes de la compañía y, dentro de cada uno, sus zonas, posiciones (bins) y
 plataformas. (Reescrito en el Lote 11: lista en maestro-detalle, ficha con filtros y ocupación, ciudad y código postal desde
-un catálogo. Las reglas y los mensajes del servidor están en el
+una lista. Las reglas y los mensajes del servidor están en el
 [capítulo 06, sección 1](../06-inventario-y-almacen.md#1-almacenes-y-ubicaciones).)
 
 **Cómo se llega.** Menú **Almacén › Almacenes**, dirección `/warehouse/warehouses`; la ficha en
@@ -177,7 +177,7 @@ y cuatro pestañas: **Datos**, **Zonas**, **Posiciones**, **Plataformas**.
 
 **Datos.** Código (solo lectura: "El código del almacén no se puede cambiar."), Nombre, Dirección, **Ciudad o código
 postal** (el mismo combobox de la alta; muestra `Ciudad · ZIP` con lo guardado, aunque el almacén se haya creado antes
-del catálogo), y Estado y País de solo lectura. **Guardar** solo se activa si hubo cambios y solo lo ve quien tiene
+de la lista), y Estado y País de solo lectura. **Guardar** solo se activa si hubo cambios y solo lo ve quien tiene
 `warehouse.manage`; aviso "Cambios guardados.". Sin `warehouse.manage` el formulario se ve deshabilitado.
 
 **Recepción (Lote 16).** Al final de Datos hay un grupo **Recepción** con dos campos, que solo cambia quien tiene `warehouse.manage`:
@@ -342,7 +342,7 @@ etiquetas; no cambia nada en el sistema. Ver [F16 — Etiquetas de posición](f1
 
 ### Permisos y módulo
 
-`inventory.view` (ver Almacenes, la ficha, Posiciones y el catálogo de ciudades); **`warehouse.manage`** para crear y
+`inventory.view` (ver Almacenes, la ficha, Posiciones y la lista de ciudades); **`warehouse.manage`** para crear y
 editar el almacén, sus zonas, posiciones y plataformas, asignar cupo en bloque, dar de baja y reactivar, y el estatus manual de la plataforma. Módulo
 **Almacén y lote/serie** (`WMS_LOTSERIAL`).
 
@@ -378,7 +378,7 @@ solas comparando la existencia en mano con el cupo, no tienen transiciones y no 
 | Peso máximo (posición) | > 0 | "El peso máximo debe ser mayor que cero." | Pantalla |
 | Peso máximo (posición) | ≤ 3 decimales | "El peso máximo admite hasta 3 decimales." | Pantalla |
 | Código (plataforma) | obligatorio | "El código es obligatorio." | Pantalla |
-| Ciudad o código postal | el servidor niega la consulta del catálogo | "Su usuario no puede consultar el catálogo de ciudades." | Lista del combobox |
+| Ciudad o código postal | el servidor niega la consulta de la lista | "Su usuario no puede consultar la lista de ciudades." | Lista del combobox |
 | Ciudad o código postal | sin coincidencias | "No hay ciudades ni códigos postales que coincidan." | Lista del combobox |
 | Filtros de Posiciones | combinación sin resultados | "Ninguna posición coincide con los filtros." | Tabla |
 | Asignar cupo: Cupo máximo | vacío | "Indique el cupo máximo." | Pantalla |
@@ -408,7 +408,7 @@ Series sigue en `/warehouse/products/:publicId` (se llega desde el modal con «V
 > **Captura pendiente:** el bloque «Añadir ajuste» abierto dentro del modal de producto.
 
 **Los indicadores (KPIs) son botones.** Arriba hay cinco tarjetas: **SKUs activos**, **Unidades totales**, **Bajo mínimo**, **No disponibles** (desde 2026-10-05) y
-**Con número de serie**. Sus cifras son de todo el catálogo (no cambian al usar los filtros) y usan el separador de miles del
+**Con número de serie**. Sus cifras son de toda la lista (no cambian al usar los filtros) y usan el separador de miles del
 idioma (367.329 en español). Cada tarjeta filtra la tabla al hacer clic; otro clic en la misma quita el filtro. El filtro
 elegido queda en la dirección (`?kpi=`), así que se puede copiar el enlace o volver atrás con el navegador.
 
@@ -1132,7 +1132,7 @@ direcciones viejas `/warehouse/cycle-counts/:id` redirigen ahí).
 ### Lista de conteos (panel izquierdo, "Tareas de conteo")
 
 Un conteo por fila: la **posición** (o "N posiciones") con el **chip de estatus** (Pendiente, Contado, Concordancia o Diferencia, con el color del
-catálogo); debajo, "CC-00155 · Zona PCK · 27 línea(s) · fecha"; la etiqueta **Lo cambiado** si nació de "lo cambiado"; y **Sin asignar** o
+lista); debajo, "CC-00155 · Zona PCK · 27 línea(s) · fecha"; la etiqueta **Lo cambiado** si nació de "lo cambiado"; y **Sin asignar** o
 "Asignado a {nombre}". Un clic elige el conteo. A la derecha de cada fila hay dos íconos:
 
 | Ícono | Acción | Cuándo | Permiso |
@@ -1628,7 +1628,7 @@ porcentaje se calcula solo con las que tienen cupo; las otras se avisan aparte p
 **¿Cómo exporto una tabla y qué exporta?** Con el botón **Exportar** del pie de la tabla: elija Excel, CSV o PDF. Sale todo lo
 que cumple los filtros de la pantalla (no solo la página que está viendo), hasta 10.000 filas.
 
-**¿Por qué mi ciudad sale en mayúsculas?** Porque la ciudad viene del catálogo postal. Fuera de Puerto Rico es el nombre
+**¿Por qué mi ciudad sale en mayúsculas?** Porque la ciudad viene de la lista postal. Fuera de Puerto Rico es el nombre
 postal oficial (`NEW YORK`); en Puerto Rico se guarda el municipio con su escritura normal (`Toa Baja`). No se puede
 escribir a mano desde la pantalla.
 

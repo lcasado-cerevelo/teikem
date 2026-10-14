@@ -122,7 +122,7 @@ la cabecera con la compañía activa, el idioma, su usuario y salir. Todavía no
 
 ![Pulso del día con el menú de Operación abierto](img/f1-pulso.png)
 
-- **Menú lateral**: agrupa las pantallas por tema (Operación, Catálogo, Almacén, Análisis, Administración); un grupo sin
+- **Menú lateral**: agrupa las pantallas por tema (Operación, Lista, Almacén, Análisis, Administración); un grupo sin
   ninguna pantalla visible para usted no aparece. El botón **Contraer** (abajo) lo reduce a solo íconos en pantallas anchas.
   Por debajo de 900 px de ancho el menú se convierte en un cajón: aparece un botón "Abrir menú" (☰) en la cabecera y el menú
   se desliza por encima del contenido.

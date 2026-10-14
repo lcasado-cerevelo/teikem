@@ -30,7 +30,7 @@ describe('modo de recepción', () => {
     expect(effectiveReceivingMode('', null)).toBe('PUTAWAY')
   })
 
-  it('etiqueta del catálogo (o el código) y dentro de una oración en minúscula', () => {
+  it('etiqueta de la lista (o el código) y dentro de una oración en minúscula', () => {
     const opts = [
       { code: 'PUTAWAY', label: 'Con acomodo' },
       { code: 'DIRECT', label: 'Directo a posición' },

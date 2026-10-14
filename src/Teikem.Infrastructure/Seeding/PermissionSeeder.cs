@@ -81,7 +81,7 @@ public sealed class PermissionSeeder(TeikemDbContext db, ITenantContext tenant, 
 
         db.SuppressAudit = false;
         lookups.Invalidate();
-        logger.LogInformation("Permisos sembrados: {Total} en catálogo ({Added} nuevos); plantillas de rol verificadas; {Propagated} permisos nuevos propagados a roles de tenants.",
+        logger.LogInformation("Permisos sembrados: {Total} en lista ({Added} nuevos); plantillas de rol verificadas; {Propagated} permisos nuevos propagados a roles de tenants.",
             PermissionCatalog.All.Count, added, propagated);
     }
 }

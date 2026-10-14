@@ -108,8 +108,8 @@ function mixedCsv(s: string): string {
   ].join('\r\n')
 }
 
-test.describe('Variantes de mapeo y catálogo de códigos postales (Lote F-B3)', () => {
-  test('archivo con dos formatos: variantes con condición, pueblo/estado/ZIP del catálogo, ZIP de apartados ajustado y filas rechazadas', async ({ page, request }, testInfo) => {
+test.describe('Variantes de mapeo y lista de códigos postales (Lote F-B3)', () => {
+  test('archivo con dos formatos: variantes con condición, pueblo/estado/ZIP de la lista, ZIP de apartados ajustado y filas rechazadas', async ({ page, request }, testInfo) => {
     const isMobile = testInfo.project.name.startsWith('movil')
     const s = `${isMobile ? 'M' : 'D'}${LETTERS}`
     const headers = { Authorization: `Bearer ${await apiToken(request)}` }
@@ -192,7 +192,7 @@ test.describe('Variantes de mapeo y catálogo de códigos postales (Lote F-B3)',
     await expect(rowOf(`A${s}2`).getByText('Código postal ajustado', { exact: true })).toBeVisible()
     await expect(rowOf(`A${s}2`).locator('s', { hasText: '00734' })).toBeVisible()
     await expect(rowOf(`A${s}2`)).toContainText('Código postal ajustado: 00734 es de apartados postales (P.O. Box); se usó 00715, de entrega en Ponce.')
-    await expect(rowOf(`B${s}2`)).toContainText("Pueblo: El pueblo 'Ciudad Gótica' no está en el catálogo de códigos postales; corríjalo o indique el código postal.")
+    await expect(rowOf(`B${s}2`)).toContainText("Pueblo: El pueblo 'Ciudad Gótica' no está en la lista de códigos postales; corríjalo o indique el código postal.")
     await expect(rowOf(`X${s}1`)).toContainText('Variante: Ninguna variante de la plantilla aplica a esta fila; revise las condiciones de las variantes.')
     await expect(rowOf(`X${s}1`)).toContainText(`Celdas de la fila: X${s}1 | Fila Rara ${s} | a | b | c | d | e | f | USA`)
     await expect(dialog.getByText('3 válidas')).toBeVisible()
@@ -203,7 +203,7 @@ test.describe('Variantes de mapeo y catálogo de códigos postales (Lote F-B3)',
     await dialog.getByRole('button', { name: 'Importar', exact: true }).click()
     const result = dialog.locator('.cs-result')
     await expect(result).toContainText('3 creados')
-    await expect(result.getByRole('table', { name: /completados o ajustados con el catálogo de códigos postales: 3/ })).toBeVisible()
+    await expect(result.getByRole('table', { name: /completados o ajustados con la lista de códigos postales: 3/ })).toBeVisible()
     await expectNoHorizontalScroll(page)
     await shot(page, isMobile, 'fb3-resultado')
     await dialog.getByRole('button', { name: 'Cerrar' }).last().click()

@@ -147,7 +147,7 @@ public class KardexDetailTests
         var doc = (await w.F.Get<InventoryReadService>().TransactionDetailAsync(move, InventoryScope.Any, default)).Document!;
         Assert.Equal(EntityTypes.WarehouseTask, doc.EntityCode);
         Assert.Equal($"Tarea #{task.WarehouseTaskId}", doc.Number);
-        Assert.Equal(WarehouseTaskTypes.Putaway, doc.Reference);   // tipo de tarea (etiqueta del catálogo)
+        Assert.Equal(WarehouseTaskTypes.Putaway, doc.Reference);   // tipo de tarea (etiqueta de la lista)
         Assert.Equal(WarehouseTaskStatuses.Pending, doc.StatusCode);
         Assert.Equal(EntityTypes.Receipt, doc.Parent!.EntityCode);
         Assert.Equal(receipt.PublicId, doc.Parent.PublicId);

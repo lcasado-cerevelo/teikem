@@ -1,7 +1,7 @@
 # Capítulo 01 — Plataforma y seguridad (Lote 1)
 
 Este capítulo cubre lo que el Lote 1 deja construido: acceso y sesión, doble factor (MFA), mi perfil, usuarios
-y roles del tenant, catálogos, estatus, puntos de contacto, campos personalizados, vistas/indicadores/gráficos
+y roles del tenant, listas, estatus, puntos de contacto, campos personalizados, vistas/indicadores/gráficos
 (análisis), auditoría y seguridad, módulos por tenant, configuración de la compañía y administración de
 plataforma.
 
@@ -250,10 +250,10 @@ FAQ:
 
 ## 3. Roles y usuarios del tenant
 
-### 3.1 Catálogo de permisos (solo lectura)
+### 3.1 Lista de permisos (solo lectura)
 
 `GET /api/v1/permissions` (autenticado): lista los permisos disponibles en la plataforma (código, categoría,
-etiqueta). El catálogo se define en código (`PermissionCatalog`) y no lo edita el tenant.
+etiqueta). La lista se define en código (`PermissionCatalog`) y no lo edita el tenant.
 
 ### 3.2 Roles: listar, crear, editar, eliminar
 
@@ -269,7 +269,7 @@ Logistics y así queda para toda compañía nueva o recreada.
 Las compañías existentes no cambian solas (la propagación de permisos solo agrega códigos nuevos de la plataforma).
 
 Desde 2026-10-12 (Lote 39) existe el permiso **`orders.view_price`** («Ver precios de las órdenes», categoría Órdenes; el
-catálogo pasa a 74 permisos). Lo traen las plantillas **TenantAdmin** y **Billing**; la actualización de la base
+lista pasa a 74 permisos). Lo traen las plantillas **TenantAdmin** y **Billing**; la actualización de la base
 (`Diseño/logistica-db-update.sql`, sección «2026-10-12 (a)») también se lo agrega a los roles ya clonados de cada compañía
 con esos dos nombres (solo agrega). Sin él, el usuario ve las órdenes pero no sus precios: ver el
 [capítulo 03, sección 3.5](03-ordenes-de-transporte.md#35-quién-ve-los-precios-permiso-ordersview_price-lote-39).
@@ -385,7 +385,7 @@ Cómo se aplica (en el servidor, así que vale para la web, la app y la sincroni
   y muelles del almacén. **Con alcance de cliente**, solo ve los clientes indicados y lo que es de ellos: contactos, contratos, servicios
   especiales, ubicaciones, órdenes de transporte, lotes de importación, plantillas, usuarios de portal, productos del cliente y alquileres.
 - Lo que no pertenece a ningún almacén o cliente (fila con el campo vacío, p. ej. un producto compartido) **se ve siempre**; los
-  catálogos no se filtran.
+  listas no se filtran.
 - Con **los dos tipos** a la vez se exigen **ambos** en lo que tiene almacén y cliente (p. ej. un ASN).
 - Pedir por id algo fuera del alcance responde **404** con el mensaje de «no encontrado» (no revela que existe), igual que entre compañías.
 - **Nadie se exenta**: un administrador con alcance asignado queda limitado igual; para que vea todo se le quitan las filas de alcance.
@@ -418,11 +418,11 @@ exacta por código (escanear el empaque o escribir el número completo: `GET /ap
 
 ---
 
-## 4. Catálogos (LookupCode / CatalogDomain)
+## 4. Listas (LookupCode / CatalogDomain)
 
 Qué hace: valores de clasificación reutilizables (tipos de servicio, tipos de contacto, etc.), agrupados en
 "dominios". Cada valor tiene etiqueta en español/inglés (`labels`), puede estar deshabilitado y puede tener
-override por tenant (cambiar etiqueta, color extra, orden o habilitación sin tocar el catálogo global). Un
+override por tenant (cambiar etiqueta, color extra, orden o habilitación sin tocar la lista global). Un
 tenant también puede crear **sus propias listas** (por ejemplo, para usarlas en un campo personalizado tipo
 lista).
 
@@ -445,7 +445,7 @@ Validaciones:
 
 | Campo / caso | Mensaje exacto | HTTP |
 |---|---|---|
-| Dominio inexistente | `Dominio de catálogo '<domainKey>' no encontrado.` | 404 |
+| Dominio inexistente | `Dominio de lista '<domainKey>' no encontrado.` | 404 |
 | Valor inexistente | `Valor <entity> '<code>' no encontrado.` | 404 |
 | Código repetido en el dominio | `Ya existe el valor '<code>' en <entity>.` | 409 |
 | Etiqueta vacía | `La etiqueta es obligatoria.` | 400 |
@@ -455,13 +455,13 @@ Validaciones:
 | Clave de lista repetida | `Ya existe una lista con la clave '<key>'.` | 409 |
 | Eliminar lista de sistema | `Las listas de sistema no se eliminan.` | 409 |
 | Eliminar lista en uso por un campo personalizado | `La lista está en uso por un campo personalizado; desactívela en vez de eliminarla.` | 409 |
-| Editar catálogo global sin ser admin. de plataforma | `Los catálogos globales solo los edita el administrador de plataforma; use overrides o cree una lista propia.` | 403 |
+| Editar lista global sin ser admin. de plataforma | `Las listas globales solo los edita el administrador de plataforma; use overrides o cree una lista propia.` | 403 |
 | Código de valor vacío | `El código es obligatorio.` | 400 |
 | Código de valor inválido (>40 o no alfanumérico) | `Código inválido (máx. 40 caracteres alfanuméricos).` | 400 |
 
 FAQ:
 - **Cambié la etiqueta de un valor y no veo el cambio.** Revisa que estés usando el idioma esperado
-  (`X-Lang`); el override solo aplica en tu tenant, no cambia el catálogo global.
+  (`X-Lang`); el override solo aplica en tu tenant, no cambia la lista global.
 
 ---
 
@@ -563,7 +563,7 @@ Validaciones:
 Requiere el módulo **CUSTOM_FIELDS** encendido (`[RequireModule]`); ese módulo a su vez depende de **ANALYTICS**.
 
 Qué hace: permite agregar campos propios a una entidad (texto, número, fecha, fecha y hora, sí/no, lista de
-selección simple/múltiple, o referencia a una lista de catálogo) sin necesidad de desarrollo. Cada campo puede
+selección simple/múltiple, o referencia a una lista de lista) sin necesidad de desarrollo. Cada campo puede
 ser obligatorio, único, tener valor por defecto, reglas de validación (JSON con `regex`, `min`, `max`,
 `minLength`, `maxLength`) y mostrarse en listados (`showInList`).
 
@@ -595,9 +595,9 @@ Validaciones:
 | `fieldKey` repetido en la entidad | — | `Ya existe el campo '<key>' en <entityType>.` | 409 |
 | Cambiar el tipo de un campo con valores guardados | — | `No se puede cambiar el tipo de un campo que ya tiene valores guardados.` | 409 |
 | Etiqueta vacía | — | `La etiqueta es obligatoria.` | 400 |
-| `LOOKUP_REF` sin `refEntity` | — | `LOOKUP_REF requiere el dominio de catálogo referenciado.` | 400 |
+| `LOOKUP_REF` sin `refEntity` | — | `LOOKUP_REF requiere el dominio de lista referenciado.` | 400 |
 | `refEntity` no existe | — | `La lista '<refEntity>' no existe.` | 400 |
-| `SELECT`/`MULTISELECT` sin opciones ni `refEntity` | — | `Un campo de selección necesita opciones o una lista del catálogo (refEntity).` | 400 |
+| `SELECT`/`MULTISELECT` sin opciones ni `refEntity` | — | `Un campo de selección necesita opciones o una lista de valores (refEntity).` | 400 |
 | `validationJson` no es JSON válido | — | `ValidationJson no es JSON válido.` | 400 |
 | Definición inexistente | — | `Campo personalizado '<id>' no encontrado.` | 404 |
 | Registro dueño no existe en el tenant | — | `<entityType> '<entityId>' no encontrado.` | 404 |
@@ -834,12 +834,12 @@ Qué hace: cada compañía enciende solo los módulos de negocio que usa (por ej
 COD, almacén con lote/serie y equipos en alquiler, pero no cross-dock ni marítimo). El menú y los endpoints
 protegidos con `[RequireModule]` solo funcionan si el módulo está encendido.
 
-Catálogo de 13 módulos (`ModuleKeys`): `LTL_GROUND` (núcleo), `COD`, `WMS_LOTSERIAL`, `CROSSDOCK`,
+Lista de 13 módulos (`ModuleKeys`): `LTL_GROUND` (núcleo), `COD`, `WMS_LOTSERIAL`, `CROSSDOCK`,
 `RENTAL_EQUIPMENT`, `RENTAL_BILLING` (depende de `RENTAL_EQUIPMENT`), `MARITIME`, `CLIENT_PORTAL`,
 `CUSTOM_FIELDS` (depende de `ANALYTICS`), `PURCHASING`, `CATALOG`, `ANALYTICS`, `SYSTEM` (núcleo). Los módulos
 **núcleo** (`LTL_GROUND`, `SYSTEM`) no se pueden apagar.
 
-Quién puede: ver el catálogo, cualquier autenticado; encender/apagar, `admin.tenant` **+ AAL2**.
+Quién puede: ver la lista, cualquier autenticado; encender/apagar, `admin.tenant` **+ AAL2**.
 
 Cómo se usa:
 - `GET /api/v1/modules`
@@ -895,7 +895,7 @@ Validaciones:
 | `sessionDays` | 1-365 | `Entre 1 y 365 días.` | 400 |
 | `deviceSessionDays` (Lote 8A: vida en días de la sesión de los aparatos de almacén; 30 por defecto; se lee en `GET /api/v1/tenant/settings` y se cambia en `PUT /api/v1/tenant/settings` con `admin.tenant`) | 1-365 | `Entre 1 y 365 días.` | 400 |
 | `brandingJson` | las reglas de la marca (sección 11.2: tamaño, JSON, campos, colores, contraste, matiz) | los de la tabla de la sección 11.2 | 400 |
-| `defaultManualIssueReason` (2026-10-11 b: «Motivo por default del despacho manual»; `""` = sin default; ver [06 §7c](06-inventario-y-almacen.md#7c-motivo-por-default-del-despacho-manual-2026-10-11-b)) | código del catálogo `ManualIssueReason` activo y habilitado para la compañía | `El motivo {CÓDIGO} no existe o está inactivo.` (`errors.defaultManualIssueReason`) | 400 |
+| `defaultManualIssueReason` (2026-10-11 b: «Motivo por default del despacho manual»; `""` = sin default; ver [06 §7c](06-inventario-y-almacen.md#7c-motivo-por-default-del-despacho-manual-2026-10-11-b)) | código de la lista `ManualIssueReason` activo y habilitado para la compañía | `El motivo {CÓDIGO} no existe o está inactivo.` (`errors.defaultManualIssueReason`) | 400 |
 | Nombre de feriado vacío | — | `El nombre es obligatorio.` | 400 |
 | Fecha de feriado ya registrada | — | `Ya hay un feriado en esa fecha.` | 409 |
 | Feriado inexistente | — | `Feriado '<id>' no encontrado.` | 404 |
@@ -1096,7 +1096,7 @@ Casos frecuentes:
 
 Qué hace: un usuario marcado `IsPlatformAdmin` opera cualquier tenant sin necesidad de membresía, tiene todos
 los permisos en cualquier compañía, y sus acciones quedan atribuidas a su usuario en la auditoría/eventos de
-esa compañía (visibles para el propio tenant). Solo él edita catálogos globales y da de alta compañías nuevas
+esa compañía (visibles para el propio tenant). Solo él edita listas globales y da de alta compañías nuevas
 (aprovisionamiento).
 
 Quién puede: exige la política `PlatformAdmin` (claim `IsPlatformAdmin=1` en el JWT), no un permiso de tenant.

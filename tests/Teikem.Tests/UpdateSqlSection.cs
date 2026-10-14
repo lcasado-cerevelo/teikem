@@ -7,7 +7,7 @@ namespace Teikem.Tests;
 /// </summary>
 internal static class UpdateSqlSection
 {
-    private const string ZipCleanup = "2026-10-14 (b) — Fuera del catálogo los ZIP que ya no existen";
+    private const string ZipCleanup = "2026-10-14 (b)";
 
     public static string From(string sql, int start)
     {

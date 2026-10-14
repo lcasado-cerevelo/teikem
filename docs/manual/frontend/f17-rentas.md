@@ -20,8 +20,8 @@ extensiones), `/api/v1/status/history/RENTAL/{id}` (historial) y `POST /api/v1/p
 | Convertir a serie | Ficha del producto (Almacén → Productos e inventario → producto, `/warehouse/products/{producto}`) | `inventory.manage` **y** `inventory.adjust`, módulo **WMS_LOTSERIAL** |
 
 Para elegir el **cliente**, su **localidad** y su **contacto** al crear una renta hace falta además poder consultar clientes y localidades
-(`clients.read` y `locations.read`, módulo **Catálogo**). Sin ellos los campos avisan *"Su usuario no puede consultar clientes"* / *"Su
-usuario no puede consultar localidades (permiso locations.read y módulo Catálogo)."* (ver "Decisiones" del lote: el Operador de almacén
+(`clients.read` y `locations.read`, módulo **Listas**). Sin ellos los campos avisan *"Su usuario no puede consultar clientes"* / *"Su
+usuario no puede consultar localidades (permiso locations.read y módulo Listas)."* (ver "Decisiones" del lote: el Operador de almacén
 no los trae).
 
 El ítem **Rentas** está en el grupo Almacén justo antes de **Kárdex de movimientos**.

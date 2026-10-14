@@ -177,7 +177,7 @@ public static class PermissionCatalog
         new(FleetMaintenance, "FLEET", "Mantenimiento", "Maintenance"),
         new(AdminUsers, "ADMIN", "Gestionar usuarios", "Manage users"),
         new(AdminRoles, "ADMIN", "Gestionar roles", "Manage roles"),
-        new(AdminCatalogs, "ADMIN", "Gestionar catálogos", "Manage catalogs"),
+        new(AdminCatalogs, "ADMIN", "Gestionar listas", "Manage catalogs"),
         new(AdminTenant, "ADMIN", "Configurar compañía", "Configure tenant"),
         new(AdminAudit, "ADMIN", "Ver seguridad y auditoría", "View security & audit"),
         new(AdminCustomFields, "ADMIN", "Gestionar campos personalizados", "Manage custom fields"),

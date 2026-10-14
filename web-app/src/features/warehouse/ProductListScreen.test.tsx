@@ -182,7 +182,7 @@ describe('ProductListScreen · Productos e inventario', () => {
     expect(screen.queryByPlaceholderText('Buscar…')).toBeNull()
   })
 
-  it('cada fila: marca con el modelo debajo, dueño, disponible/reservado/total del API, rastreo del catálogo y estado', async () => {
+  it('cada fila: marca con el modelo debajo, dueño, disponible/reservado/total del API, rastreo de la lista y estado', async () => {
     wrap()
     const table = await screen.findByRole('table', { name: 'Productos e inventario' })
     const cells = (sku: string) =>
@@ -197,9 +197,9 @@ describe('ProductListScreen · Productos e inventario', () => {
     expect(within(table).getByText('OLD-01').closest('tr')).toHaveClass('dim')
   })
 
-  it('KPIs de todo el catálogo con take=1; Bajo mínimo y Con número de serie en naranja solo con algo que atender', async () => {
+  it('KPIs de toda la lista con take=1; Bajo mínimo y Con número de serie en naranja solo con algo que atender', async () => {
     wrap()
-    const river = await screen.findByRole('group', { name: 'Resumen del catálogo' })
+    const river = await screen.findByRole('group', { name: 'Resumen de la lista' })
     const serial = await within(river).findByRole('button', { name: 'Con número de serie: 7. 1 sin series completas' })
     expect(serial).toHaveClass('money')
     expect(within(serial).getByText('1 sin series completas')).toBeInTheDocument()
@@ -222,7 +222,7 @@ describe('ProductListScreen · Productos e inventario', () => {
     mock.belowMin = 0
     mock.serialMissing = 0
     wrap()
-    const river = await screen.findByRole('group', { name: 'Resumen del catálogo' })
+    const river = await screen.findByRole('group', { name: 'Resumen de la lista' })
     expect(await within(river).findByRole('button', { name: 'Bajo mínimo: 0' })).toHaveClass('flow')
     expect(await within(river).findByRole('button', { name: 'Con número de serie: 7' })).toHaveClass('flow')
     expect(within(river).queryByText(/sin series completas/)).toBeNull()
@@ -231,7 +231,7 @@ describe('ProductListScreen · Productos e inventario', () => {
   it('clic en un KPI filtra la tabla (resaltado, página 1); otro clic lo quita; ?kpi= abre filtrado', async () => {
     const user = userEvent.setup()
     wrap()
-    const river = await screen.findByRole('group', { name: 'Resumen del catálogo' })
+    const river = await screen.findByRole('group', { name: 'Resumen de la lista' })
     await user.click(await screen.findByRole('button', { name: 'Página siguiente' }))
     await waitFor(() => expect(lastListQuery().get('skip')).toBe('25'))
 
@@ -263,7 +263,7 @@ describe('ProductListScreen · Productos e inventario', () => {
   it('tableta "No disponibles": entre Bajo mínimo y Con número de serie; al tocarla filtra la tabla con unavailable', async () => {
     const user = userEvent.setup()
     wrap()
-    const river = await screen.findByRole('group', { name: 'Resumen del catálogo' })
+    const river = await screen.findByRole('group', { name: 'Resumen de la lista' })
     const names = (await within(river).findAllByRole('button')).map((b) => (b.textContent ?? '').replace(/[\d,.…—]+.*$/, '').trim())
     expect(names.indexOf('No disponibles')).toBe(names.indexOf('Bajo mínimo') + 1)
     expect(names.indexOf('Con número de serie')).toBe(names.indexOf('No disponibles') + 1)
@@ -279,7 +279,7 @@ describe('ProductListScreen · Productos e inventario', () => {
 
   it('?kpi=low abre con Bajo mínimo elegido', async () => {
     wrap('/warehouse/products?kpi=low')
-    const river = await screen.findByRole('group', { name: 'Resumen del catálogo' })
+    const river = await screen.findByRole('group', { name: 'Resumen de la lista' })
     expect(await within(river).findByRole('button', { name: /^Bajo mínimo/ })).toHaveAttribute('aria-pressed', 'true')
     await waitFor(() => expect(lastListQuery().get('belowMin')).toBe('true'))
   })
@@ -389,7 +389,7 @@ describe('ProductListScreen · Productos e inventario', () => {
   it('con inventory.manage aparece "Nuevo producto"; la pestaña Categorías va en ?tab=categories', async () => {
     wrap('/warehouse/products?tab=categories', ['inventory.view', 'inventory.manage'])
     expect(await screen.findByRole('tab', { name: 'Categorías' })).toHaveAttribute('aria-selected', 'true')
-    expect(screen.queryByRole('group', { name: 'Resumen del catálogo' })).toBeNull()
+    expect(screen.queryByRole('group', { name: 'Resumen de la lista' })).toBeNull()
     await userEvent.setup().click(screen.getByRole('tab', { name: 'Productos' }))
     expect(await screen.findByRole('button', { name: 'Nuevo producto' })).toBeInTheDocument()
   })

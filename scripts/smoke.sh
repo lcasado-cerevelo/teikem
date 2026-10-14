@@ -60,7 +60,7 @@ echo "$ME" | jq -e '.enabledModules | index("COD")' >/dev/null || fail "COD no e
 echo "$ME" | jq -e '.enabledModules | index("CROSSDOCK") | not' >/dev/null || fail "CROSSDOCK debería estar apagado"
 ok "permisos y módulos del tenant demo"
 
-step "catálogos (A)"
+step "listas (A)"
 expect 200 "$(req GET /api/v1/catalogs/domains)" | jq -e 'length > 90' >/dev/null || fail "dominios"
 expect 200 "$(req GET /api/v1/catalogs/ServiceType)" | jq -e '.[] | select(.code=="EXPRESS")' >/dev/null || fail "ServiceType"
 expect 200 "$(req PUT /api/v1/catalogs/ServiceType/EXPRESS/override '{"labels":{"es":"Exprés 24h"}}')" | jq -e '.label=="Exprés 24h" and .isOverridden' >/dev/null || fail "override"
@@ -806,7 +806,7 @@ expect 200 "$(req PATCH "/api/v1/orders/$(echo "$ONP" | jq -r .publicId)" "{\"pi
 CCMSG="El código de país debe ser ISO 3166-1 alfa-2 (2 letras)."
 expect 400 "$(req POST /api/v1/orders "$(ob "{\"consigneeLocationPublicId\":null,\"newConsignee\":{\"name\":\"Mex $TS\",\"line1\":\"Calle 1\",\"city\":\"Ponce\",\"country\":\"MEX\"}}")")" | jq -e --arg m "$CCMSG" '.errors["newConsignee.country"][0]==$m' >/dev/null || fail "país de 3 letras en la captura"
 expect 400 "$(req POST /api/v1/locations "{\"clientPublicId\":\"$CLIENT_O_PID\",\"name\":\"Mex $TS\",\"locationType\":\"DELIVERY\",\"line1\":\"Calle 1\",\"city\":\"Ponce\",\"country\":\"MEX\"}")" | jq -e --arg m "$CCMSG" '.errors.country[0]==$m' >/dev/null || fail "país de 3 letras en el directorio"
-expect 400 "$(req POST /api/v1/catalogs/Country '{"code":"MEX","labels":{"es":"México","en":"Mexico"}}' "$T_SOP")" | jq -e --arg m "$CCMSG" '.errors.code[0]==$m' >/dev/null || fail "país de 3 letras en el catálogo global"
+expect 400 "$(req POST /api/v1/catalogs/Country '{"code":"MEX","labels":{"es":"México","en":"Mexico"}}' "$T_SOP")" | jq -e --arg m "$CCMSG" '.errors.code[0]==$m' >/dev/null || fail "país de 3 letras en la lista global"
 expect 400 "$(req POST /api/v1/orders "{\"consigneeLocationPublicId\":\"$LOC_A_PID\",\"packages\":[{\"pieces\":1}]}")" | jq -e '.errors.clientPublicId' >/dev/null || fail "sin cliente"
 OSUS=$(expect 200 "$(req POST /api/v1/orders "$(ob)")" | jq -r .publicId)
 expect 200 "$(req POST "/api/v1/clients/$CLIENT_O_PID/status" '{"toCode":"SUSPENDED","comment":"smoke órdenes"}')" >/dev/null
@@ -814,7 +814,7 @@ expect 422 "$(req POST /api/v1/orders "$(ob)")" | jq -e '.title | contains("susp
 expect 422 "$(req POST "/api/v1/orders/$OSUS/confirm" '{}')" | jq -e '.title=="El cliente está suspendido; no se pueden crear ni confirmar órdenes."' >/dev/null || fail "confirmar con cliente suspendido"
 expect 200 "$(req GET "/api/v1/orders/$OSUS")" | jq -e '.status=="DRAFT" and .quotedAmount==null' >/dev/null || fail "la confirmación con cliente suspendido se revirtió"
 expect 200 "$(req POST "/api/v1/clients/$CLIENT_O_PID/status" '{"toCode":"ACTIVE"}')" >/dev/null
-ok "consignatario obligatorio/único/ajeno (404)/inactivo, recogido ajeno/inactivo/por defecto/ausente/por PATCH, país ISO-2, paquetes, servicio, COD, topes de columnas, catálogo deshabilitado, cliente obligatorio y suspendido (422: ni se crea ni se confirma)"
+ok "consignatario obligatorio/único/ajeno (404)/inactivo, recogido ajeno/inactivo/por defecto/ausente/por PATCH, país ISO-2, paquetes, servicio, COD, topes de columnas, lista deshabilitado, cliente obligatorio y suspendido (422: ni se crea ni se confirma)"
 
 step "órdenes (Lote 3): multi-paquete, consignatario coincidente y consignatario al vuelo"
 MP=$(expect 200 "$(req POST /api/v1/orders "$(ob '{"packages":[{"packageType":"BOX","pieces":2},{"packageType":"ENVELOPE","pieces":1,"description":"Documentos"}]}')")")
@@ -1480,7 +1480,7 @@ expect 409 "$(req POST "/api/v1/locations/import-templates/$CTPL2_PID/deactivate
 expect 400 "$(req POST /api/v1/locations/import/validate "$(jq -cn --arg t "$CTPL2_PID" '{templatePublicId:$t,content:"a,b,c,d\nx,y,Ponce,1\n"}')")" | jq -e '.errors.templatePublicId[0]=="La plantilla está inactiva; reactívela o elija otra."' >/dev/null || fail "validar con plantilla inactiva"
 expect 200 "$(req POST "/api/v1/locations/import-templates/$CTPL2_PID/reactivate")" | jq -e '.isActive==true' >/dev/null || fail "reactivar plantilla de consignatarios"
 # Catálogo de campos y 415 sin Content-Type
-expect 200 "$(req GET /api/v1/locations/import/fields)" | jq -e 'length==18 and ([.[] | select(.required) | .field] | sort)==["line1","name"] and (.[] | select(.field=="code") | .defaultAllowed==false) and (.[] | select(.field=="allowDupInvoice") | .defaultAllowed)' >/dev/null || fail "catálogo de campos"
+expect 200 "$(req GET /api/v1/locations/import/fields)" | jq -e 'length==18 and ([.[] | select(.required) | .field] | sort)==["line1","name"] and (.[] | select(.field=="code") | .defaultAllowed==false) and (.[] | select(.field=="allowDupInvoice") | .defaultAllowed)' >/dev/null || fail "lista de campos"
 expect 415 "$(curl -sS -X POST "$BASE/api/v1/locations/import/validate" -H "Authorization: Bearer $TOKEN" -w '\n%{http_code}')" >/dev/null   # sin Content-Type: 415, no 500
 # CSV mixto SIN cliente de lote: (1) compartida válida, (2) del cliente por clientCode válida con teléfono/sí/ventana,
 # (3) código repetido de (2), (4) código existente del cliente, (5) teléfono inválido, (6) ventana al revés,
@@ -1543,8 +1543,8 @@ VV=$(expect 200 "$(req POST /api/v1/locations/import/validate "$(jq -cn --arg t 
 echo "$VV" | jq -e '.rowCount==4 and .validRows==2
   and .rows[0].variantName=="Formato A" and .rows[0].values.city=="Toa Baja" and .rows[0].values.state=="PR" and .rows[0].inferred==["city","state"]
   and .rows[1].variantName=="Formato B" and .rows[1].values.postalCode=="00956" and (.rows[1].inferred|index("postalCode"))!=null
-  and .rows[2].errors.city=="El pueblo '"'"'Ciudad Gótica'"'"' no está en el catálogo de códigos postales; corríjalo o indique el código postal."
-  and .rows[3].errors.postalCode=="El código postal 99999 no está en el catálogo de códigos postales; corríjalo, o déjelo vacío e indique el pueblo."' >/dev/null || fail "validar con variantes y catálogo de ZIP: $VV"
+  and .rows[2].errors.city=="El pueblo '"'"'Ciudad Gótica'"'"' no está en la lista de códigos postales; corríjalo o indique el código postal."
+  and .rows[3].errors.postalCode=="El código postal 99999 no está en la lista de códigos postales; corríjalo, o déjelo vacío e indique el pueblo."' >/dev/null || fail "validar con variantes y lista de ZIP: $VV"
 VVR=$(expect 200 "$(req POST "/api/v1/locations/import/$(echo "$VV" | jq -r .batchPublicId)/confirm" '{}')")
 echo "$VVR" | jq -e '.created==2 and .rows[0].variant==2' >/dev/null || fail "confirmar con variantes: $VVR"
 expect 200 "$(req GET "/api/v1/locations?search=VB-$TS")" | jq -e '.[0].city=="Bayamón" and .[0].postalCode=="00956" and .[0].state=="PR"' >/dev/null || fail "consignatario con ZIP asignado por el pueblo"
@@ -1642,7 +1642,7 @@ mago() { date -u -d "$1 minutes ago" +%FT%T; }          # instante UTC de hace N
 T2=$(login "$DISPATCH_EMAIL" "$PASS"); T3=$(login "admin$TS@smoke.local" "Smoke_Admin_2026!"); T7=$(login "contactos$TS@teikem.local" "$PASS")
 RE=$(expect 200 "$(req POST /api/v1/auth/reauth "{\"password\":\"$PASS\"}")"); TOKEN=$(echo "$RE" | jq -r .accessToken)
 
-step "flota (Lote 4): permisos, catálogos, pipelines y capacidades"
+step "flota (Lote 4): permisos, listas, pipelines y capacidades"
 expect 200 "$(req GET /api/v1/me)" | jq -e '.permissions as $p | ["fleet.view","fleet.manage","fleet.maintenance","driverpay.view","driverpay.manage"] | all(.[]; . as $x | ($p | index($x)) != null)' >/dev/null || fail "admin sin permisos del Lote 4"
 expect 200 "$(req GET /api/v1/me '' "$T2")" | jq -e '(.permissions | index("fleet.view")) != null and (.permissions | index("driverpay.view")) == null and (.permissions | index("fleet.manage")) == null' >/dev/null || fail "Despachador: fleet.view sí, driverpay.view/fleet.manage no"
 TBILL=$(login "facturacion$TS@teikem.local" "$PASS")
@@ -1650,12 +1650,12 @@ expect 200 "$(req GET /api/v1/me '' "$TBILL")" | jq -e '(.permissions | index("d
 expect 200 "$(req POST /api/v1/users "{\"email\":\"lectura$TS@teikem.local\",\"fullName\":\"Solo lectura $TS\",\"password\":\"$PASS\",\"roles\":[\"ReadOnly\"]}")" >/dev/null
 expect 200 "$(req GET /api/v1/me '' "$(login "lectura$TS@teikem.local" "$PASS")")" | jq -e '(.permissions | index("fleet.view")) != null and (.permissions | index("driverpay.view")) == null' >/dev/null || fail "Solo lectura con fleet.view"
 for D in VehicleType Ownership FuelType VehicleDocType LicenseClass CertificationType MaintenanceTrigger MaintenanceType DriverPayoutFormula; do
-  expect 200 "$(req GET "/api/v1/catalogs/$D")" | jq -e 'length >= 2' >/dev/null || fail "catálogo $D vacío"
+  expect 200 "$(req GET "/api/v1/catalogs/$D")" | jq -e 'length >= 2' >/dev/null || fail "lista $D vacío"
 done
 for D in VehicleStatus DriverStatus WorkOrderStatus DriverTripStatus; do expect 200 "$(req GET "/api/v1/status/$D")" >/dev/null; done
 expect 200 "$(req GET /api/v1/status/DriverTripStatus)" | jq -e '(.[] | select(.code=="OPEN") | .isInitial) and ([.[] | select(.code=="SETTLED" or .code=="CANCELLED") | .stageKind] == ["TERMINAL","TERMINAL"])' >/dev/null || fail "pipeline DriverTripStatus"
 expect 200 "$(req GET /api/v1/status/capabilities/WORK_ORDER)" | jq -e '([.[] | select(.capability=="EDIT_WORK_ORDER" and .isAllowed==false) | .statusCode] | sort) == ["CANCELLED","CLOSED"]' >/dev/null || fail "EDIT_WORK_ORDER denegado en CLOSED y CANCELLED"
-ok "permisos (admin, Despachador, Facturación, Solo lectura), 9 catálogos, 4 pipelines (DriverTripStatus OPEN→SETTLED|CANCELLED) y capacidad EDIT_WORK_ORDER"
+ok "permisos (admin, Despachador, Facturación, Solo lectura), 9 listas, 4 pipelines (DriverTripStatus OPEN→SETTLED|CANCELLED) y capacidad EDIT_WORK_ORDER"
 
 step "vehículos (Lote 4): alta, código único, qbox, código fijo y precisión"
 vb() { local x=${2:-}; [[ -n "$x" ]] || x='{}'
@@ -1683,7 +1683,7 @@ expect 200 "$(req GET "/api/v1/vehicles?search=propio")" | jq -e --arg p "$VH1_P
 expect 200 "$(req GET "/api/v1/vehicles?search=V$TS&vehicleType=TRUCK")" | jq -e --arg p "$VH1_PID" 'all(.[]; .publicId!=$p)' >/dev/null || fail "filtro vehicleType"
 expect 400 "$(req GET "/api/v1/vehicles?status=NOPE")" >/dev/null
 expect 200 "$(req GET "/api/v1/status/history/VEHICLE/$VH1_ID")" | jq -e 'any(.[]; .toCode=="ACTIVE")' >/dev/null || fail "historial del vehículo"
-ok "alta con estatus inicial, 409 por código repetido y por VIN repetido entre activos, 400 por catálogo/tope/precisión, placa editable, código y almacén base fijos, qbox (VIN, placa, propiedad, 'diesel') y filtros, 409 por rowVersion obsoleto"
+ok "alta con estatus inicial, 409 por código repetido y por VIN repetido entre activos, 400 por lista/tope/precisión, placa editable, código y almacén base fijos, qbox (VIN, placa, propiedad, 'diesel') y filtros, 409 por rowVersion obsoleto"
 
 step "vehículos (Lote 4): estatus y baja lógica"
 expect 200 "$(req POST "/api/v1/vehicles/$VH1_PID/status" '{"toCode":"MAINTENANCE","comment":"smoke"}')" | jq -e '.statusCode=="MAINTENANCE"' >/dev/null || fail "ACTIVE → MAINTENANCE"
@@ -2142,7 +2142,7 @@ expect 200 "$(req GET /api/v1/driver-pay-policy '' "$T3")" | jq -e '.attemptLeve
 expect 409 "$(req POST /api/v1/driver-pay-policy/attempt-levels '' "$T3")" | jq -e '.title=="Se alcanzó el máximo de 20 niveles de intento."' >/dev/null || fail "tope de 20 niveles"
 ok "defaults (2 niveles, entrega + cada intento), 400 intento 3, + Agregar intento → 3 (sin tarifa hasta capturarla), tarifa de intento: editar = cerrar y abrir (historial 2), 400 en el pasado, cierre a futuro (409 al abrir antes, 404 sin abierta), vista previa 10.50/9.50/8.50, entrega sin tarifa en 0 con nota, fórmula desconocida 400 y fórmula vigente, tope 20 niveles → 409"
 
-step "tarifas por viaje (Lote 4): el tipo sale del catálogo de servicios especiales"
+step "tarifas por viaje (Lote 4): el tipo sale de la lista de servicios especiales"
 VAGON=$(expect 200 "$(req GET /api/v1/driver-trip-types)" | jq -r --arg n "Vagón $TS" '[.[] | select(.name==$n)][0].id')
 [[ "$VAGON" =~ ^[0-9]+$ ]] || fail "'Vagón $TS' no aparece en /driver-trip-types"
 expect 200 "$(req GET /api/v1/driver-trip-types)" | jq -e 'length >= 1 and all(.[]; (has("clientsUsing") | not) and (has("id") and has("name")))' >/dev/null || fail "/driver-trip-types expone datos de contratos (clientsUsing)"
@@ -2407,7 +2407,7 @@ ostatus() { expect 200 "$(req GET "/api/v1/orders/$1")" | jq -r .status; }
 scan() { req POST /api/v1/scan/outbound "$(jq -cn --arg c "$1" --arg d "$TODAY" '{code:$c,planDate:$d}')" "${2:-$TOKEN}"; }
 plan() { req POST /api/v1/trips/plan-day "$1" "${2:-$TOKEN}"; }
 
-step "trips (Lote 5): permisos, catálogos, pipelines, capacidades y entradas laterales"
+step "trips (Lote 5): permisos, listas, pipelines, capacidades y entradas laterales"
 expect 200 "$(req GET /api/v1/me)" | jq -e '.permissions as $p | ["trips.view","trips.plan","trips.optimize","trips.dispatch","trips.scan"] | all(.[]; . as $x | ($p | index($x)) != null)' >/dev/null || fail "admin sin permisos del Lote 5"
 expect 200 "$(req GET /api/v1/me '' "$T2")" | jq -e '.permissions as $p | ["trips.view","trips.plan","trips.optimize","trips.dispatch","trips.scan"] | all(.[]; . as $x | ($p | index($x)) != null)' >/dev/null || fail "Despachador sin trips.*"
 expect 200 "$(req GET /api/v1/me '' "$TREAD")" | jq -e '(.permissions | index("trips.view")) != null and (.permissions | index("trips.plan")) == null and (.permissions | index("trips.scan")) == null' >/dev/null || fail "Solo lectura: trips.view sí, trips.plan/scan no"
@@ -3004,7 +3004,7 @@ expect 200 "$(req POST /api/v1/roles "{\"name\":\"Ajustes sin compras $TS\",\"pe
 expect 200 "$(req POST /api/v1/users "{\"email\":\"ajustes6$TS@teikem.local\",\"fullName\":\"Ajustes 6 $TS\",\"password\":\"$PASS\",\"roles\":[\"Ajustes sin compras $TS\"]}")" >/dev/null
 TWH6=$(login "bodega6$TS@teikem.local" "$PASS"); TREAD6=$(login "lectura6$TS@teikem.local" "$PASS"); TADJ6=$(login "ajustes6$TS@teikem.local" "$PASS")
 
-step "catálogos, permisos y almacén demo (Lote 6)"
+step "listas, permisos y almacén demo (Lote 6)"
 ME6=$(expect 200 "$(req GET /api/v1/me)")
 echo "$ME6" | jq -e '[.permissions[]] as $p | all(["inventory.view","inventory.manage","inventory.adjust","warehouse.manage"][]; . as $x | $p | index($x))' >/dev/null || fail "el admin sin los 4 permisos nuevos"
 expect 200 "$(req GET /api/v1/status/SerialStatus)" | jq -e 'any(.[]; .code=="SCRAPPED" and .stageKind=="TERMINAL") and any(.[]; .code=="SHIPPED" and .stageKind=="LATERAL")' >/dev/null || fail "SerialStatus (D16)"
@@ -3265,7 +3265,7 @@ PM=$(prod "{\"sku\":\"PM$TS\",\"name\":\"Despacho manual $TS\",\"purchaseCost\":
 expect 200 "$(adjust "$PM" "$W7P" "$B7" 5 FOUND)" >/dev/null
 mibody() { jq -cn --arg w "$W7P" --arg p "$PM" --argjson q "$1" --arg r "$2" --arg n "${3:-}" '{warehousePublicId:$w,lines:[{productPublicId:$p,quantity:$q}],reasonCode:(if $r=="" then null else $r end),note:(if $n=="" then null else $n end)}'; }
 expect 200 "$(req GET /api/v1/manual-issues/reasons "" "$TWH6")" | jq -e '[.[].code]==["SAMPLE","INTERNAL_USE","OWNER_PICKUP","CUSTOMER_PICKUP","SALE","OTHER"]' >/dev/null || fail "motivos del despacho manual"
-expect 200 "$(req GET /api/v1/catalogs/ManualIssueReason)" | jq -e 'length==6 and any(.[]; .code=="CUSTOMER_PICKUP" and .label=="Retiro del cliente") and any(.[]; .code=="OWNER_PICKUP" and .label=="Retiro del dueño")' >/dev/null || fail "catálogo ManualIssueReason"
+expect 200 "$(req GET /api/v1/catalogs/ManualIssueReason)" | jq -e 'length==6 and any(.[]; .code=="CUSTOMER_PICKUP" and .label=="Retiro del cliente") and any(.[]; .code=="OWNER_PICKUP" and .label=="Retiro del dueño")' >/dev/null || fail "lista ManualIssueReason"
 expect 200 "$(req GET /api/v1/me "" "$TWH6")" | jq -e '.permissions | index("warehouse.issue") != null' >/dev/null || fail "el Operador de almacén sin warehouse.issue"
 # Motivo por default (2026-10-11 b): Ajustes de la compañía lo guarda (admin.tenant) y /reasons lo marca isDefault; deshabilitado se ignora.
 expect 400 "$(req PUT /api/v1/tenant/settings '{"defaultManualIssueReason":"regalo"}')" | jq -e --arg m "El motivo REGALO no existe o está inactivo." '.title==$m and (.errors.defaultManualIssueReason|index($m)!=null)' >/dev/null || fail "motivo por default inexistente → 400"
@@ -3308,7 +3308,7 @@ expect 204 "$(req DELETE "/api/v1/manual-issues/$MIP" '{"comment":"humo"}' "$TWH
 [[ $(onhand "$W7P" "$B7" "$PM") == 5 ]] || fail "eliminar el despacho manual no restauró el inventario"
 expect 200 "$(req GET "/api/v1/manual-issues/$MIP")" | jq -e '.statusCode=="CANCELLED" and .isActive==false and (.lines[0].reversalTxnId != null)' >/dev/null || fail "despacho manual eliminado"
 expect 200 "$(adjust "$PM" "$W7P" "$B7" -5 LOSS)" >/dev/null   # W7 sin existencia de PM (pasos siguientes)
-ok "despacho manual $MIN: 5 motivos (reasons y catálogo), motivo por default (400 inexistente, 403 sin admin.tenant, isDefault, deshabilitado se ignora, quitar), Operador con warehouse.issue y Solo lectura 403; sin motivo, motivo inexistente y nota de 501 → 400; sin existencia 409 insufficient_stock sin efecto; Idempotency-Key repite el mismo documento; Kárdex ISSUE '$MIN · Muestra' / 'Despacho manual $MIN'; empacar 422; kind=MANUAL/PACK/OTRO y búsqueda por nota; ficha (EMP → 404); eliminar con reversa (Solo lectura 403)"
+ok "despacho manual $MIN: 5 motivos (reasons y lista), motivo por default (400 inexistente, 403 sin admin.tenant, isDefault, deshabilitado se ignora, quitar), Operador con warehouse.issue y Solo lectura 403; sin motivo, motivo inexistente y nota de 501 → 400; sin existencia 409 insufficient_stock sin efecto; Idempotency-Key repite el mismo documento; Kárdex ISSUE '$MIN · Muestra' / 'Despacho manual $MIN'; empacar 422; kind=MANUAL/PACK/OTRO y búsqueda por nota; ficha (EMP → 404); eliminar con reversa (Solo lectura 403)"
 
 step "lotes, series, recolección de varias líneas y baja de posición (Lote 6): EnsureLot, series (OPENJSON) y rango por posición en SQL Server"
 PL=$(prod "{\"sku\":\"PL$TS\",\"name\":\"Lote $TS\",\"trackingType\":\"LOT\",\"purchaseCost\":1}")
@@ -3931,9 +3931,9 @@ expect 200 "$(req GET /api/v1/analytics/attention '' "$TREAD6")" | jq -e '(.tota
 expect 403 "$(req GET /api/v1/analytics/attention '' "$TD14")" >/dev/null   # el despachador no tiene pulse.attention
 ok "total numérico ($(echo "$AT14" | jq .total)), a lo sumo 5 ítems, grupos que suman el total; Solo lectura 200 y despachador sin pulse.attention 403 (el panel ATTENTION del Pulso del admin lo cubre el paso del Lote F8a)"
 
-step "conteo cíclico (Lote 14): página con total, 'lo cambiado' (vista previa, alta, repetido y > 31 días), confirmar en un paso y estatus del catálogo"
+step "conteo cíclico (Lote 14): página con total, 'lo cambiado' (vista previa, alta, repetido y > 31 días), confirmar en un paso y estatus de la lista"
 expect 200 "$(req GET /api/v1/status/CycleCountStatus)" | jq -e 'any(.[]; .code=="OPEN" and .label=="Pendiente" and .isInitial) and any(.[]; .code=="RECONCILED" and .label=="Concordancia") and any(.[]; .code=="RECONCILED_VARIANCE" and .label=="Diferencia" and .stageKind=="TERMINAL")' >/dev/null || fail "estatus del conteo Pendiente / Concordancia / Diferencia"
-expect 200 "$(req GET /api/v1/catalogs/CycleCountOrigin)" | jq -e 'any(.[]; .code=="MANUAL") and any(.[]; .code=="CHANGES")' >/dev/null || fail "catálogo CycleCountOrigin (MANUAL y CHANGES)"
+expect 200 "$(req GET /api/v1/catalogs/CycleCountOrigin)" | jq -e 'any(.[]; .code=="MANUAL") and any(.[]; .code=="CHANGES")' >/dev/null || fail "lista CycleCountOrigin (MANUAL y CHANGES)"
 # Ventana explícita que cubre todo el humo (W6 se creó en esta corrida): así la repetición usa la misma ventana.
 F14=$(date -u -d '12 hours ago' +%FT%TZ); F40=$(date -u -d '40 days ago' +%FT%TZ)
 FCB=$(jq -cn --arg w "$W6P" --arg f "$F14" --argjson z "$ZRSV" '{warehousePublicId:$w,fromUtc:$f,zoneIds:[$z]}')

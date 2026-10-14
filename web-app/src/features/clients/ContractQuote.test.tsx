@@ -248,14 +248,14 @@ describe('Cotizador — validación y errores del servidor', () => {
     expect(screen.queryByRole('region', { name: 'Resultado de la cotización' })).toBeNull()
   })
 
-  it('404 de catálogo desconocido: el título del servidor tal cual', async () => {
-    mock.override = (c) => (c.url.pathname.endsWith('/contract-rate-quote') ? problem(404, "Código 'ZZZ' desconocido en el catálogo PackageType.", 'not_found') : undefined)
+  it('404 de lista desconocido: el título del servidor tal cual', async () => {
+    mock.override = (c) => (c.url.pathname.endsWith('/contract-rate-quote') ? problem(404, "Código 'ZZZ' desconocido en la lista PackageType.", 'not_found') : undefined)
     const user = userEvent.setup()
     wrap()
     const line = await openQuote(user)
     await fillLine(user, line, 'STANDARD', 'BOX', '4')
     await user.click(screen.getByRole('button', { name: 'Cotizar' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent("Código 'ZZZ' desconocido en el catálogo PackageType.")
+    expect(await screen.findByRole('alert')).toHaveTextContent("Código 'ZZZ' desconocido en la lista PackageType.")
   })
 })
 

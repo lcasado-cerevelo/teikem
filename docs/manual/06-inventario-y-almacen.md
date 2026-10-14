@@ -64,13 +64,13 @@ documentos abiertos. Con un único almacén activo, las demás pantallas lo usan
 indicarlo. Desde el Lote 11 (cambios de Almacén, tanda 1) además: cada posición puede tener un **cupo máximo** en
 unidades y, con él, un estado de **ocupación**; cada zona muestra su ocupación (calculada, no guardada); el **código de
 una zona se puede editar**; el listado de posiciones es **paginado** y se busca por código, zona, pasillo, rack, nivel o
-posición; y hay un **catálogo de localidades postales** para llenar la ciudad, el estado, el código postal y el país
+posición; y hay un **lista de localidades postales** para llenar la ciudad, el estado, el código postal y el país
 del almacén. Desde el Lote 16, cada almacén tiene además un **modo de recepción** (con acomodo o directo a posición) y una **posición de recepción
 por defecto** (sección 1.4); el recibo directo se describe en la sección 4.1.
 
 Quién puede: `inventory.view` (listar y consultar almacenes, zonas, posiciones y plataformas); `warehouse.manage`
 (alta, edición, baja/reactivación de almacén, zonas, posiciones y plataformas, y el estatus manual de la plataforma). Módulo
-**WMS_LOTSERIAL**. El catálogo de localidades postales (`GET /api/v1/postal-localities`) solo pide una sesión
+**WMS_LOTSERIAL**. La lista de localidades postales (`GET /api/v1/postal-localities`) solo pide una sesión
 iniciada: no exige permiso ni módulo.
 
 Cómo se usa:
@@ -79,7 +79,7 @@ Cómo se usa:
   sin tipo no aporta código).
 - `POST /api/v1/warehouses` — `{ "code": "ALM-02", "name": "Almacén secundario", "line1": "...", "city": "Toa Baja",
   "state": "PR", "postalCode": "00949", "country": "PR" }`. El país por defecto es `PR`. La ciudad, el estado y el
-  código postal son texto libre para el API: el catálogo de localidades es una ayuda de captura de la pantalla, no una
+  código postal son texto libre para el API: la lista de localidades es una ayuda de captura de la pantalla, no una
   validación.
 - `GET /api/v1/warehouses/{publicId}`, `PATCH /api/v1/warehouses/{publicId}` (edición en línea; `null` = sin
   cambio; `rowVersion` opcional).
@@ -133,7 +133,7 @@ visible para revisión. El listado acepta `?isProvisional=true|false`; el superv
 la edita con `PATCH` o la desactiva. La base lo guarda en `WarehouseBin.IsProvisional`, `ProvisionalCreatedBy`, `ProvisionalCreatedAtUtc` y
 `ProvisionalCycleCountId`.
 
-**Estado de ocupación** (`occupancy`). Es un cálculo, no un estatus guardado: no está en un catálogo ni tiene
+**Estado de ocupación** (`occupancy`). Es un cálculo, no un estatus guardado: no está en una lista ni tiene
 transiciones. Compara la existencia en mano de la posición con su cupo:
 
 | Código | Etiqueta en pantalla | Cuándo |
@@ -196,12 +196,12 @@ Advance Solutions no recibe cupo. La migración nunca pisa un cupo ya capturado.
 en bloque o editando la posición. La regla completa, el reporte `-cupos.csv` y el comportamiento de `--update` están en el
 [capítulo 10, sección 4](10-migracion-de-datos.md).
 
-### 1.3 Catálogo de localidades postales
+### 1.3 Lista de localidades postales
 
 `GET /api/v1/postal-localities?search=toa%20baja&take=30` devuelve un arreglo de
 `{ id, city, postalCode, state, countryCode, country, municipality }`. Solo lectura, global (no depende de la compañía).
 
-- **Contenido.** 42.522 códigos postales del catálogo USPS: 42.346 de Estados Unidos y sus territorios (`countryCode`
+- **Contenido.** 42.522 códigos postales de la lista USPS: 42.346 de Estados Unidos y sus territorios (`countryCode`
   `US`) y 176 de Puerto Rico (`PR`). `city` es el nombre postal oficial del ZIP, en mayúsculas y sin acentos
   (`SABANA SECA`, `NEW YORK`). Solo en Puerto Rico viene `municipality` (con acentos): 00952 es `SABANA SECA` del
   municipio `Toa Baja`; 00631 es `CASTANER` del municipio `Lares`. `country` es el nombre del país en el idioma del usuario.
@@ -211,7 +211,7 @@ en bloque o editando la posición. La regla completa, el reporte `-cupos.csv` y 
   él, luego las que lo contienen. A igual coincidencia, Puerto Rico va primero. Sin `search` devuelve las primeras por
   ciudad.
 - **Tamaño.** `take` por defecto 20, máximo 100; la pantalla pide 30.
-- **Memoria.** El catálogo se guarda en memoria del API una hora: un cambio directo en la tabla puede tardar hasta una
+- **Memoria.** La lista se guarda en memoria del API una hora: un cambio directo en la tabla puede tardar hasta una
   hora en verse.
 - **Cómo lo usa la pantalla.** Al elegir una localidad, el formulario del almacén guarda `city` (el **municipio** si lo
   hay —Puerto Rico—, si no la ciudad postal USPS), `postalCode`, `state` y `country`. El almacén guarda texto: no hay
@@ -400,7 +400,7 @@ Cómo se usa:
 
 ### Empaque del producto (2026-10-09)
 
-**Qué es.** Cada producto puede tener **un** empaque: una unidad de empaque (Caja, Barril, Paquete, Bulto, Tambor, Rollo… del catálogo editable
+**Qué es.** Cada producto puede tener **un** empaque: una unidad de empaque (Caja, Barril, Paquete, Bulto, Tambor, Rollo… de la lista editable
 *Unidad de medida*) y cuántas unidades base trae (Caja = 12; Barril = 50 galones). **El inventario siempre se lleva en la unidad base**: el empaque
 solo sirve para contar y para leer cantidades. Nada de lo guardado cambia.
 
@@ -433,7 +433,7 @@ En Productos e inventario, un interruptor junto a los demás filtros. **Encendid
 ### Marca, modelo y filtros de la lista (Lote 12)
 
 **Marca y modelo.** Dos campos de texto libre del producto, opcionales, de hasta 100 caracteres cada uno. Se recortan los
-espacios de los extremos y un valor vacío se guarda como "sin valor". No hay catálogo de marcas: la marca es el texto que
+espacios de los extremos y un valor vacío se guarda como "sin valor". No hay lista de marcas: la marca es el texto que
 se escribe, y `GET /api/v1/products/brands` devuelve las que ya usan los productos de la compañía (activos e inactivos),
 sin repetir aunque difieran en mayúsculas, ordenadas sin distinguir mayúsculas y hasta 500. `?search=` filtra las marcas que
 contienen el texto. Cada fila de la lista y la ficha traen `brand` y `model`.
@@ -625,7 +625,7 @@ productos, así que ahí no hay selector: sus pantallas de salida (selector de p
 ## 3. Inventario: saldos, Kárdex, ajustes, transferencias, conciliación y descuadres, genealogía y rastro de serie
 
 Qué hace: expone el saldo por almacén/posición/lote, el Kárdex de solo lectura del ledger (con resumen, filtros y detalle de cada
-movimiento), el ajuste manual con motivo de catálogo, la transferencia entre posiciones o almacenes, la genealogía de un lote, el rastro
+movimiento), el ajuste manual con motivo de lista, la transferencia entre posiciones o almacenes, la genealogía de un lote, el rastro
 de una serie y la **conciliación** Kárdex ↔ saldo, que ahora corre sola en segundo plano y guarda los **descuadres** que encuentra
 (Lote 14). `InventoryLedger` es la única vía de escritura: **nadie** hace `UPDATE` sobre `InventoryTransaction` (una reversa siempre es
 un movimiento nuevo) ni escribe `StockBalance` fuera de él.
@@ -732,7 +732,7 @@ pantalla**; el API acepta cualquier motivo que no sea de sistema con cualquiera 
 |---|---|---|
 | Encontrado (`FOUND`) | Sí | No |
 | Daño (`DAMAGE`), Pérdida (`LOSS`), Vencido (`EXPIRED`) | No | Sí |
-| Los demás motivos de catálogo que no son de sistema (por ejemplo `PO_SHORTAGE`, `OTHER`) | Sí | Sí |
+| Los demás motivos de lista que no son de sistema (por ejemplo `PO_SHORTAGE`, `OTHER`) | Sí | Sí |
 | `RECEIPT_VARIANCE`, `COUNT_VARIANCE`, `PICK_BATCH_REVERSAL`, `OPENING_BALANCE`, `TRACKING_CONVERSION` (Lote 26) | Nunca (los asigna el sistema) | Nunca |
 
 Al cambiar de dirección, un motivo que ya no vale se quita. El motivo se elige con un buscador. La pantalla muestra **"Disponible en la
@@ -768,7 +768,7 @@ Kárdex (el Kárdex manda) o se descarta con una nota.
   stillOpen, selfCorrected, mismatches }`: cuántos abrió, cuántos siguen pendientes y cuántos se cerraron solos.
 - **Al migrar** (origen `MIGRATION`): `import-legacy` concilia al final. Las órdenes de consola (`db-init`, `import-legacy`) no arrancan la
   revisión en segundo plano.
-- El origen `SCHEDULED` ("Programada") ya existe en el catálogo, pero no hay barrido programado todavía.
+- El origen `SCHEDULED` ("Programada") ya existe en la lista, pero no hay barrido programado todavía.
 - `GET /api/v1/inventory/reconciliation/status` (`inventory.adjust`) dice si la revisión automática está encendida, si está consumiendo,
   cuántos productos esperan (`pending`; 0 = al día), cuántos se han revisado (`processed`), cuántos avisos se descartaron por cola llena
   (`dropped`), cuántas revisiones fallaron (`failed`), la hora de la última (`lastProcessedAtUtc`) y el último error (`lastError`). Los
@@ -1269,7 +1269,7 @@ Casos frecuentes (Lote 16):
 - En una posición de una zona de **Cuarentena** (también *cruce de plataforma* o *renta*) ya está fuera de la asignación: el despacho, las sugerencias de salida y el reabasto no lo toman.
 - En **cualquier otra posición** (guardado, recepción…), donde queda mezclado con lo bueno, el sistema **reserva** esas unidades (`QtyReserved`): la existencia no cambia, pero el **disponible** baja y no se asignan ni se despachan. La lista de Daños lo marca con «reservado (no se despacha)». La reserva se libera sola al **desechar** o **recuperar**.
 
-**Causa:** *Vino así*, *Accidente en el camino*, *Accidente en el almacén*, *Otra* (catálogo `DamageCause`). Por defecto, un daño de recibo propone *Vino así* y uno del almacén *Accidente en el almacén*.
+**Causa:** *Vino así*, *Accidente en el camino*, *Accidente en el almacén*, *Otra* (lista `DamageCause`). Por defecto, un daño de recibo propone *Vino así* y uno del almacén *Accidente en el almacén*.
 
 **Estatus** (`DamageStatus`): Reportado (inicial) → **En cuarentena** → **Con salida** (antes «Desechado») o **Recuperado** (terminales); también Reportado → Con salida cuando se le da salida de una vez. Un daño resuelto no se vuelve a resolver.
 
@@ -1291,7 +1291,7 @@ Casos frecuentes (Lote 16):
 | Nota de más de 300 caracteres | `La nota no puede pasar de 300 caracteres.` | 400 |
 | Posición indicada desactivada | `La posición {código} está desactivada.` | 400 |
 | Dar salida sin destino final | `Indique a dónde va lo que sale (tirado, devuelto al proveedor, donado…).` | 400 |
-| Destino final que no está en el catálogo | `Destino final desconocido: '{valor}'.` | 400 |
+| Destino final que no está en la lista | `Destino final desconocido: '{valor}'.` | 400 |
 | Recuperar sin posición | `Indique la posición a la que vuelve lo recuperado.` | 400 |
 | Recuperar a zona no permitida | `La posición {código} está en una zona {tipo}; lo recuperado vuelve a una posición de guardado.` | 400 |
 | Más de lo que hay en la posición | `Inventario insuficiente de {sku} en {posición}: disponible {x}, solicitado {y}.` | 409 |
@@ -1300,7 +1300,7 @@ Casos frecuentes (Lote 16):
 | Dar salida o recuperar algo que no está en cuarentena | `Solo se resuelve un daño que está en cuarentena.` | 422 |
 | Daño, recibo, producto, posición o lote inexistente | `… no encontrado.` | 404 |
 
-**Daño declarado en la línea del recibo (2026-10-08).** Al capturar la línea de un recibo, la app y la web permiten decir *«de lo recibido, vinieron N unidades dañadas»*: cantidad dañada, **razón** (catálogo *Vino así*, *Accidente en el camino*, *Accidente en el almacén*, *Otra*; con *Otra* hay que escribir la razón) y **dónde quedan** (una posición — por defecto la de cuarentena si existe, si no donde queda la línea —) o **dar salida de una vez**. Las dañadas **cuentan dentro de lo recibido** (recibí 100, 10 dañadas → recibidas 100, buenas 90). Al **confirmar** el recibo, el servidor crea un reporte `DAN-00012` por línea con daño (origen *Llegó dañado*, enlazado al recibo): las unidades entran con el resto de la línea y salen de ahí hacia la posición indicada (transferencia) o se descartan (ajuste negativo, motivo Daño); la **tarea de acomodo solo cuenta lo bueno**. Si la posición indicada es la misma donde aterrizó la línea no hay movimiento: el reporte queda *En cuarentena* ahí. En la web: ficha del recibo abierto → ícono **Unidades dañadas** de la fila (y **Quitar daño**); la fila muestra «3 dañadas · Q-01» y, ya confirmado, el `DAN-…`. Productos con serie: no se declaran aquí. Si el recibo es contra aviso u orden de compra y se captura el mismo producto en varias líneas, lo dañado se suma a la línea del documento.
+**Daño declarado en la línea del recibo (2026-10-08).** Al capturar la línea de un recibo, la app y la web permiten decir *«de lo recibido, vinieron N unidades dañadas»*: cantidad dañada, **razón** (lista *Vino así*, *Accidente en el camino*, *Accidente en el almacén*, *Otra*; con *Otra* hay que escribir la razón) y **dónde quedan** (una posición — por defecto la de cuarentena si existe, si no donde queda la línea —) o **dar salida de una vez**. Las dañadas **cuentan dentro de lo recibido** (recibí 100, 10 dañadas → recibidas 100, buenas 90). Al **confirmar** el recibo, el servidor crea un reporte `DAN-00012` por línea con daño (origen *Llegó dañado*, enlazado al recibo): las unidades entran con el resto de la línea y salen de ahí hacia la posición indicada (transferencia) o se descartan (ajuste negativo, motivo Daño); la **tarea de acomodo solo cuenta lo bueno**. Si la posición indicada es la misma donde aterrizó la línea no hay movimiento: el reporte queda *En cuarentena* ahí. En la web: ficha del recibo abierto → ícono **Unidades dañadas** de la fila (y **Quitar daño**); la fila muestra «3 dañadas · Q-01» y, ya confirmado, el `DAN-…`. Productos con serie: no se declaran aquí. Si el recibo es contra aviso u orden de compra y se captura el mismo producto en varias líneas, lo dañado se suma a la línea del documento.
 
 Validaciones de la línea (`400`, bajo el campo `damagedQty` / `damageCause` / `damageNote`):
 | Situación | Mensaje | HTTP |
@@ -1314,7 +1314,7 @@ Validaciones de la línea (`400`, bajo el campo `damagedQty` / `damageCause` / `
 | Bajar lo recibido por debajo de lo dañado | `La cantidad dañada no puede ser mayor que la cantidad recibida.` | 400 |
 | Posición del daño inexistente / desactivada | `… no encontrada.` (404) / `La posición {código} está desactivada.` | 404 / 422 |
 
-**Destino final al dar salida (cuando vienen a recogerlo).** Sacar lo dañado de cuarentena **no es un despacho** (no hay orden de salida): se registra con **Dar salida** (antes «Desechar»: la palabra no se usa porque lo que sale no necesariamente se tira), que baja el inventario con un ajuste de motivo *Daño* y pide el **destino final** del catálogo editable `DamageFinalDestination`: *Tirado*, *Devuelto al proveedor*, *Donado*, *Vendido como saldo* (Sistema → Catálogos puede agregar o renombrar). Queda en la nota del Kárdex (`DAN-00012 · Salida: Devuelto al proveedor · …`), en la lista de Daños (columna **Destino final**) y en la fuente de datos `DAMAGE_REPORT`. **También se pregunta al darle salida de una vez**: al reportar un daño (web y app) y al declarar el daño en la línea de un recibo (web y app), «Dar salida» pide **a dónde va** antes de confirmar (en la web es obligatorio; la app ofrece los cuatro destinos de fábrica —Tirado, Devuelto al proveedor, Donado, Vendido como saldo—; los destinos que la compañía agregue al catálogo se escogen en la web). El servidor acepta el reporte sin destino (aparatos con la app anterior): queda vacío = tirado. En un recibo, el destino queda en el reporte `DAN-…` que se crea al confirmar.
+**Destino final al dar salida (cuando vienen a recogerlo).** Sacar lo dañado de cuarentena **no es un despacho** (no hay orden de salida): se registra con **Dar salida** (antes «Desechar»: la palabra no se usa porque lo que sale no necesariamente se tira), que baja el inventario con un ajuste de motivo *Daño* y pide el **destino final** de la lista editable `DamageFinalDestination`: *Tirado*, *Devuelto al proveedor*, *Donado*, *Vendido como saldo* (Sistema → Listas puede agregar o renombrar). Queda en la nota del Kárdex (`DAN-00012 · Salida: Devuelto al proveedor · …`), en la lista de Daños (columna **Destino final**) y en la fuente de datos `DAMAGE_REPORT`. **También se pregunta al darle salida de una vez**: al reportar un daño (web y app) y al declarar el daño en la línea de un recibo (web y app), «Dar salida» pide **a dónde va** antes de confirmar (en la web es obligatorio; la app ofrece los cuatro destinos de fábrica —Tirado, Devuelto al proveedor, Donado, Vendido como saldo—; los destinos que la compañía agregue a la lista se escogen en la web). El servidor acepta el reporte sin destino (aparatos con la app anterior): queda vacío = tirado. En un recibo, el destino queda en el reporte `DAN-…` que se crea al confirmar.
 
 **Casos frecuentes.** *Llegaron 100 y 10 venían rotas:* en la línea marque 10 dañadas (recibidas 100) con su razón; al confirmar quedan 90 buenas y 10 en cuarentena. También puede recibir 90 y reportar 10 aparte con origen «Llegó dañado» (a cuarentena o dar salida). *Se cayó una tarima en A-01:* reporte con origen «Se dañó en el almacén» y la posición A-01. *Lo mandé a cuarentena y se puede vender:* en la pestaña Daños, **Recuperar** a una posición de guardado. *Crear la zona de cuarentena:* Almacén → Posiciones → zona de tipo Cuarentena con al menos una posición.
 
@@ -1901,7 +1901,7 @@ Cómo se usa:
   Para saber de antemano si hay predeterminados (ajuste del 2026-09-30: la pantalla solo ofrece "Predeterminado de la
   compañía (…)" cuando existe), lea `GET /api/v1/tenant/settings`: `defaultServiceType` y `defaultPackageType` traen el
   código o `null`. Ese endpoint solo exige sesión (ningún permiso ni módulo), así que lo lee quien empaca; la etiqueta sale
-  del catálogo (`GET /api/v1/catalogs/ServiceType` y `.../PackageType`).
+  de la lista (`GET /api/v1/catalogs/ServiceType` y `.../PackageType`).
 - Lote 8A (cola del aparato) — `POST /api/v1/pick-batches/collect-and-pack` — el mismo cuerpo de recolectar más
   `"pack": { "order": { ... } }`: recolecta y empaca en **una** transacción y responde `{ batch, order }`
   (`PickBatchPackResultDto`), con las mismas reglas, permisos y mensajes que los dos pasos. Si el empaque falla (por
@@ -2005,7 +2005,7 @@ roles en cada compañía existente) para despachar, eliminar y leer los motivos;
 
 Cómo se usa:
 - `GET /api/v1/manual-issues/reasons` — motivos activos y habilitados para la compañía, en el idioma del usuario (también sirve el
-  catálogo genérico `GET /api/v1/catalogs/ManualIssueReason`). De sistema: `SAMPLE` Muestra, `INTERNAL_USE` Uso interno,
+  lista genérica `GET /api/v1/catalogs/ManualIssueReason`). De sistema: `SAMPLE` Muestra, `INTERNAL_USE` Uso interno,
   `OWNER_PICKUP` Retiro del dueño, `CUSTOMER_PICKUP` Retiro del cliente, `SALE` Venta, `OTHER` Otro.
 - `POST /api/v1/manual-issues` — despacha. Cuerpo: el de la recolección más `reasonCode` (obligatorio) y `note` (opcional, hasta 500):
 
@@ -2040,7 +2040,7 @@ Cómo se usa:
   detalle del movimiento muestra el documento con su motivo y su nota. La nota libre queda en la ficha, no en la nota del movimiento.
 - Análisis: la fuente de datos de recolecciones (`PICK_BATCH`) incluye los despachos manuales con los campos **Despacho manual**
   (`IsManual`), **Código del motivo**, **Motivo del despacho manual** y **Nota**.
-- Motivos editables: en **Sistema → Catálogos**, lista «Motivo del despacho manual», la compañía (`admin.catalogs`) cambia el nombre de
+- Motivos editables: en **Sistema → Listas**, lista «Motivo del despacho manual», la compañía (`admin.catalogs`) cambia el nombre de
   un motivo o lo deshabilita con su override (igual que «Destino final de lo dañado»). Un motivo deshabilitado ya no se acepta al
   despachar, pero los documentos que ya lo usan lo siguen mostrando. Agregar un motivo nuevo lo hace el administrador de plataforma.
 
@@ -2096,7 +2096,7 @@ Quién puede: cambiarlo, `admin.tenant` (Ajustes de la compañía); verlo, cualq
 `DefaultManualIssueReasonLookupId`, de → a).
 
 Cómo se usa:
-- `PUT /api/v1/tenant/settings` con `{ "defaultManualIssueReason": "SALE" }` — guarda el código del catálogo «Motivo del despacho manual»
+- `PUT /api/v1/tenant/settings` con `{ "defaultManualIssueReason": "SALE" }` — guarda el código de la lista «Motivo del despacho manual»
   (no distingue mayúsculas). `""` lo quita; sin el campo (o `null`) no cambia. `GET /api/v1/tenant/settings` lo devuelve en
   `defaultManualIssueReason` (código o `null`).
 - `GET /api/v1/manual-issues/reasons` — cada motivo trae ahora `isDefault`; a lo sumo uno sale en `true`. La respuesta sigue siendo la
@@ -2109,7 +2109,7 @@ Cómo se usa:
   ]
   ```
 
-**Si la compañía deshabilita el motivo después** (Sistema → Catálogos) o se inactiva: el default **se ignora** — ningún motivo sale con
+**Si la compañía deshabilita el motivo después** (Sistema → Listas) o se inactiva: el default **se ignora** — ningún motivo sale con
 `isDefault`, los ajustes muestran `defaultManualIssueReason: null` y el aparato no preselecciona nada — sin error y sin borrar lo guardado:
 si se vuelve a habilitar, vuelve a ser el default. Guardar el resto de los ajustes (aunque la pantalla reenvíe el mismo código guardado)
 no falla por eso.
@@ -2374,6 +2374,6 @@ servicio, módulo **WMS_LOTSERIAL**. No hay permisos ni módulos nuevos; la prue
 Lote 12: `GET /api/v1/products/brands` pide `inventory.view` (como la lista de productos) y `POST
 /api/v1/warehouses/{publicId}/bins/capacity` pide `warehouse.manage` (como editar una posición). No hay permisos nuevos.
 
-Excepción (Lote 11): `GET /api/v1/postal-localities` (catálogo de ciudades y códigos postales) no pide permiso ni módulo, solo una
+Excepción (Lote 11): `GET /api/v1/postal-localities` (lista de ciudades y códigos postales) no pide permiso ni módulo, solo una
 sesión iniciada. La pantalla solo lo consulta cuando alguien con `warehouse.manage` abre el selector de ciudad al crear o
 editar un almacén.

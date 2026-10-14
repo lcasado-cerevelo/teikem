@@ -53,7 +53,7 @@ responde 409.
 | `code` ya existe (o colisión de último momento) | único por compañía | `Ya existe un cliente con ese código.` | 409 |
 | `legalName` / `taxId` largos | ≤ 250 / ≤ 50 | `No puede exceder 250 caracteres.` / `No puede exceder 50 caracteres.` | 400 |
 | `creditLimit` negativo | ≥ 0 | `El límite de crédito no puede ser negativo.` | 400 |
-| `paymentTerm` / `currency` desconocidos | código de catálogo | `Catálogo PaymentTerm 'X' no encontrado.` / `Catálogo Currency 'X' no encontrado.` | 404 |
+| `paymentTerm` / `currency` desconocidos | código de lista | `Lista PaymentTerm 'X' no encontrada.` / `Lista Currency 'X' no encontrada.` | 404 |
 | `contract.endDate` < `contract.startDate` | vigencia | `La fecha fin no puede ser anterior a la fecha de inicio.` (campo `contract.endDate`) | 400 |
 | `contract.title` > 200 | — | `El título no puede exceder 200 caracteres.` | 400 |
 | SLA repetido / inválido | mismas reglas que 4.6, campo `contract.serviceLevels[i].*` | ver tabla de 4.6 | 400 |
@@ -193,10 +193,10 @@ cambia de dueño o de tipo a algo que no sea PICKUP/BOTH), el recogido del clien
 
 | Campo / caso | Regla | Mensaje exacto | HTTP |
 |---|---|---|---|
-| `locationType` vacío / desconocido | catálogo `LocationType` | `El tipo de localización es obligatorio.` / `Catálogo LocationType 'X' no encontrado.` (lista: `Tipo de localización desconocido.`) | 400 / 404 / 400 |
+| `locationType` vacío / desconocido | lista `LocationType` | `El tipo de localización es obligatorio.` / `Lista LocationType 'X' no encontrada.` (lista: `Tipo de localización desconocido.`) | 400 / 404 / 400 |
 | `name`, `line1`, `city` vacíos | obligatorios | `El nombre es obligatorio.` / `La dirección (línea 1) es obligatoria.` / `La ciudad es obligatoria.` | 400 |
 | Textos largos | name 200, code 40, líneas 200, city/state 100, postal 20, notas 500 | `Máximo N caracteres.` | 400 |
-| `country` desconocido | catálogo `Country` (default PR) | `Catálogo Country 'X' no encontrado.` | 404 |
+| `country` desconocido | lista `Country` (default PR) | `Lista Country 'X' no encontrada.` | 404 |
 | Ventana con solo inicio o solo fin | ambas o ninguna | `La ventana horaria requiere hora de inicio y hora de fin.` (campo `defaultWindowStart`) | 400 |
 | Fin no posterior al inicio | — | `La hora de fin de la ventana debe ser posterior a la de inicio.` (campo `defaultWindowEnd`) | 400 |
 | `defaultServiceMinutes` negativo | — | `Los minutos de servicio no pueden ser negativos.` | 400 |
@@ -221,7 +221,7 @@ cabecera). Todo consignatario importado es tipo **DELIVERY**. Solo crea: un cód
 actualiza un consignatario existente (para eso, su ficha). Usa las mismas reglas que el alta manual (`POST /locations`) y
 deja la misma auditoría.
 
-Quién puede: módulo **Catálogo** (`CATALOG`). Ver plantillas, el catálogo de campos y un lote: `locations.read`. Crear y editar
+Quién puede: módulo **Listas** (`CATALOG`). Ver plantillas, la lista de campos y un lote: `locations.read`. Crear y editar
 plantillas, validar, confirmar y descartar: `locations.create`. No hay permisos nuevos.
 
 #### Plantillas
@@ -306,7 +306,7 @@ se creará), `warnings` (avisos: la fila **sí** se creará) e `isValid`.
 | Cliente del lote inexistente o de otra compañía | `Cliente no encontrado.` | 404 |
 | Cliente del lote dado de baja | `El cliente está dado de baja; solo se consulta su historial.` | 409 |
 | `validate` sin `Content-Type: application/json` | — | 415 |
-| Sin el permiso / módulo Catálogo apagado | `Falta el permiso 'locations.create'.` / `module_disabled` | 403 |
+| Sin el permiso / módulo Listas apagado | `Falta el permiso 'locations.create'.` / `module_disabled` | 403 |
 
 | Caso (fila; la vista previa responde 200 y la fila queda inválida) | Mensaje exacto (campo) |
 |---|---|
@@ -412,7 +412,7 @@ Qué cambia (mismos permisos y módulo que §2.1; no hay permisos nuevos). Panta
 - **Teléfono**: se aceptan los formatos de los archivos reales (`787-555-0101`, `787 555-0101`, `7875550101`, `(787)555-0101`,
   `+1 787…`) y se guardan los **10 dígitos**. Si la celda trae **dos o más números**, se toma el primero y la fila lleva un aviso.
 - **ZIP** de Puerto Rico o Estados Unidos que perdió los ceros (3 o 4 dígitos) se rellena a 5 (`901` → `00901`). Un ZIP vacío no es
-  error (el lote siguiente lo deducirá del pueblo con el catálogo de códigos postales).
+  error (el lote siguiente lo deducirá del pueblo con la lista de códigos postales).
 
 | Caso | Mensaje exacto | HTTP / tipo |
 |---|---|---|
@@ -448,25 +448,25 @@ Casos frecuentes:
   responden 409 «El lote ya se está confirmando o fue confirmado…»). En ese caso valide **el mismo archivo otra vez**: las
   filas que ya se crearon salen con «Ya existe un consignatario con el código…» y se confirma solo el resto.
 
-### 2.3 Importación de consignatarios: pueblo, estado y ZIP con el catálogo de códigos postales, y variantes de mapeo (Lote 46, F-B3)
+### 2.3 Importación de consignatarios: pueblo, estado y ZIP con la lista de códigos postales, y variantes de mapeo (Lote 46, F-B3)
 
 Mismos permisos y módulo que §2.1 (no hay permisos nuevos). Pantalla: [frontend/fb3-variantes-y-codigos-postales.md](frontend/fb3-variantes-y-codigos-postales.md).
 
-**Catálogo de códigos postales.** `dbo.PostalLocality` (global) gana `ZipClass` (`STANDARD` normal, `PO_BOX` apartados, `UNIQUE` único de una entidad, `MILITARY`
+**Lista de códigos postales.** `dbo.PostalLocality` (global) gana `ZipClass` (`STANDARD` normal, `PO_BOX` apartados, `UNIQUE` único de una entidad, `MILITARY`
 APO/FPO; NULL = sin clasificar), `LocaleType`, `DistrictName`, `DistrictNo`, `Latitude`, `Longitude` y `GeoAccuracy` (sección 2026-10-14 de
 `Diseño/logistica-db-update.sql`, con `CK_PostalLocality_ZipClass` e `IX_PostalLocality_PostalCode`). Los llena el script de **datos** aparte
 `Diseño/logistica-db-zip-catalog.sql` (41.486 ZIP; USPS «Zip Locale Detail» y **GeoNames**, licencia CC BY 4.0: hay que darle crédito), que se corre a mano con
 `sqlcmd … -I -f 65001 -i "Diseño/logistica-db-zip-catalog.sql"` **después** de `db-update`; es idempotente y, si faltan las columnas, se detiene sin tocar nada
 («logistica-db-zip-catalog.sql: faltan las columnas nuevas de dbo.PostalLocality; aplique primero logistica-db-update.sql (db-update). No se cambió nada.»). El API lee
-el catálogo en memoria por una hora: después de correr el script, reinicie el API (o espere).
+la lista en memoria por una hora: después de correr el script, reinicie el API (o espere).
 
 **GET /api/v1/postal-localities** (usuario autenticado) devuelve `zipClass` en cada fila y acepta `?zipClass=` (lista separada por comas de `STANDARD`, `PO_BOX`,
 `UNIQUE`, `MILITARY`, o `DELIVERY` = los de entrega: normal, único y los sin clasificar). Sin filtro salen todos (direcciones postales). El alta y la edición de
 consignatarios usan `DELIVERY`.
 
-**Inferencia en la importación** (filas de país cubierto por el catálogo: Puerto Rico y Estados Unidos; antes de exigir los obligatorios):
+**Inferencia en la importación** (filas de país cubierto por la lista: Puerto Rico y Estados Unidos; antes de exigir los obligatorios):
 
-- Solo ZIP → `city` (en Puerto Rico el municipio, con acentos) y `state` del catálogo, si faltan.
+- Solo ZIP → `city` (en Puerto Rico el municipio, con acentos) y `state` de la lista, si faltan.
 - Solo pueblo → `postalCode` = el PRIMER ZIP de entrega del pueblo (ciudad postal; si no hay, municipio), en orden fijo: `STANDARD`, luego `UNIQUE`, luego sin
   clasificar; a igual tipo, el menor código. Con el estado de la fila se escoge entre pueblos homónimos de varios estados.
 - ZIP y pueblo → se guardan los dos; si no coinciden, aviso. El estado de la fila nunca se cambia (si difiere del ZIP, aviso).
@@ -475,7 +475,7 @@ consignatarios usan `DELIVERY`.
 - Los ZIP se comparan como texto de 5 dígitos (ZIP+4 vale por sus 5); los pueblos, sin acentos ni mayúsculas.
 - Cada fila trae `inferred` (campos completados: `city`, `state`, `postalCode`) y `originalPostalCode` en la vista previa (`validate`, `GET` del lote) y en el
   resultado de `confirm`.
-- La plantilla ya no exige `city`: basta `city` **o** `postalCode` (en columna o en defaults). En el catálogo de campos (`/locations/import/fields`), `city` deja de ser
+- La plantilla ya no exige `city`: basta `city` **o** `postalCode` (en columna o en defaults). En la lista de campos (`/locations/import/fields`), `city` deja de ser
   `required`.
 
 **Variantes de mapeo** (solo plantillas de consignatarios): `variants: [{ name, conditions: [{ position, operator, value }], columns: [...] }]` en el alta y el PATCH
@@ -487,14 +487,14 @@ primera). Las filas traen `variant` (1..n) y `variantName`; la que no encaja tra
 | Caso | Mensaje exacto | HTTP / tipo |
 |---|---|---|
 | ZIP con otro formato | `El código postal X no es válido: use 5 dígitos (o ZIP+4, como 00901-1234).` (`postalCode`) | error de fila |
-| ZIP que no está en el catálogo | `El código postal X no está en el catálogo de códigos postales; corríjalo, o déjelo vacío e indique el pueblo.` (`postalCode`) | error de fila |
-| Pueblo que no está en el catálogo | `El pueblo 'X' no está en el catálogo de códigos postales; corríjalo o indique el código postal.` (`city`) | error de fila |
+| ZIP que no está en la lista | `El código postal X no está en la lista de códigos postales; corríjalo, o déjelo vacío e indique el pueblo.` (`postalCode`) | error de fila |
+| Pueblo que no está en la lista | `El pueblo 'X' no está en la lista de códigos postales; corríjalo o indique el código postal.` (`city`) | error de fila |
 | Pueblo sin ZIP de entrega | `El pueblo 'X' no tiene un código postal de entrega (solo de apartados postales o militares); indique el código postal de la dirección física.` (`city`) | error de fila |
 | Pueblo en varios estados (EE. UU.) | `El pueblo 'X' existe en varios estados (IL, MA); indique el estado o el código postal.` (`city`) | error de fila |
 | ZIP de apartados / militar sin sustituto | `El código postal X es de apartados postales (P.O. Box) y Y no tiene un código postal de entrega con que sustituirlo; indique el código postal de la dirección física.` (o `…es de correo militar (APO/FPO)…`) (`postalCode`) | error de fila |
 | Ninguna variante aplica | `Ninguna variante de la plantilla aplica a esta fila; revise las condiciones de las variantes.` (`variant`) | error de fila |
 | ZIP de apartados sustituido | `Código postal ajustado: 00734 es de apartados postales (P.O. Box); se usó 00715, de entrega en Ponce.` | aviso |
-| Pueblo / estado / ZIP completados | `Pueblo tomado del código postal 00952: Toa Baja.` · `Estado tomado del catálogo de códigos postales: PR.` · `Código postal asignado: 00956, el primero de entrega de Bayamón.` | aviso |
+| Pueblo / estado / ZIP completados | `Pueblo tomado del código postal 00952: Toa Baja.` · `Estado tomado de la lista de códigos postales: PR.` · `Código postal asignado: 00956, el primero de entrega de Bayamón.` | aviso |
 | ZIP y pueblo no coinciden | `El código postal 00716 es de Ponce, no de Caguas; se guardan los dos como vienen.` | aviso |
 | Estado distinto del del ZIP | `El estado NY no coincide con el del código postal (PR); se guarda como viene.` | aviso |
 | Plantilla sin pueblo ni ZIP | `La plantilla debe indicar la ciudad (city) o el código postal (postalCode), en una columna o en defaults.` (`columns`; antes «…la ciudad (city) en una columna o en defaults.») | 400 |
@@ -513,7 +513,7 @@ Casos frecuentes:
 - **Archivo con dos disposiciones de columnas**: una variante por disposición; la condición suele ser una columna que solo una de las dos trae (p. ej. la 9 = «PUERTO
   RICO» en una y vacía en la otra).
 - **El pueblo trae el barrio**: si el archivo trae «Bo. Pueblo» en una columna y el municipio en otra, mapee el municipio a **Pueblo** y el barrio a **Dirección (línea 2)**.
-- **Todos los ZIP salen «sin clasificar» / no hay «Código postal ajustado»**: falta correr `logistica-db-zip-catalog.sql` (o el API aún tiene el catálogo viejo en
+- **Todos los ZIP salen «sin clasificar» / no hay «Código postal ajustado»**: falta correr `logistica-db-zip-catalog.sql` (o el API aún tiene la lista vieja en
   memoria: reinícielo).
 
 ---
@@ -558,7 +558,7 @@ Quién puede: `contracts.create`. Cómo se usa: `POST /api/v1/contracts`
 | `title` vacío / > 200 | obligatorio | `El título del contrato es obligatorio.` / `Máximo 200 caracteres.` | 400 |
 | `endDate` < `startDate` | vigencia | `La fecha fin no puede ser anterior a la fecha de inicio.` | 400 |
 | `contractNumber` ya existe | único por compañía | `Ya existe un contrato con el número 'X'.` | 409 |
-| `currency` / `billingTrigger` desconocidos | catálogos `Currency` / `BillingModel` | `Catálogo Currency 'X' no encontrado.` / `Catálogo BillingModel 'X' no encontrado.` | 404 |
+| `currency` / `billingTrigger` desconocidos | listas `Currency` / `BillingModel` | `Lista Currency 'X' no encontrada.` / `Lista BillingModel 'X' no encontrada.` | 404 |
 | SLA inválido | ver 4.6 | — | 400 |
 
 ### 4.4 Datos generales (título, "cliente desde", fecha fin, renovación, moneda, disparador, notas)
@@ -615,7 +615,7 @@ Quién puede: `contracts.update`. Cómo se usa: `PUT /api/v1/contracts/{publicId
 | `pickupWindowMin` < 0 | — | `La ventana de recogido (minutos) no puede ser negativa.` | 400 |
 | `onTimeTargetPct` fuera de 0..100 | — | `La meta de puntualidad debe estar entre 0 y 100.` | 400 |
 | `penaltyAmount` < 0 | — | `La penalidad no puede ser negativa.` | 400 |
-| Tipo de servicio inexistente | catálogo `ServiceType` | `Tipo de servicio desconocido: 'X'.` | 400 |
+| Tipo de servicio inexistente | lista `ServiceType` | `Tipo de servicio desconocido: 'X'.` | 400 |
 | Duplicado de último momento | índice único | `Solo puede haber un nivel de servicio activo por tipo de servicio.` | 409 |
 
 ### 4.7 Estatus del contrato y sus efectos
@@ -680,7 +680,7 @@ STANDARD/ENVELOPE 5.00, EXPRESS/BOX 8.50…); el 409 "ya existe una tarifa vigen
 |---|---|---|
 | `kind` distinto de PER_SERVICE/EXTRA_PIECE | `Indique el tipo de componente: PER_SERVICE (tarifa por servicio) o EXTRA_PIECE (pieza extra).` | 400 |
 | `serviceType` / `packageType` vacíos | `El tipo de servicio es obligatorio.` / `El tipo de paquete es obligatorio.` | 400 |
-| Código de catálogo desconocido | `Código 'X' desconocido en el catálogo ServiceType.` (o `PackageType`) | 400 |
+| Código de lista desconocido | `Código 'X' desconocido en la lista ServiceType.` (o `PackageType`) | 400 |
 | `rate` ausente o negativo (PER_SERVICE) | `La tarifa por servicio es obligatoria.` / `La tarifa no puede ser negativa.` | 400 |
 | Componente "Por servicio" apagado | `El componente 'Por servicio' está apagado en el modelo de facturación del contrato; enciéndalo antes de trabajar sus tarifas.` | 409 |
 | Ya hay una fila del mismo par vigente en esa fecha | `Ya existe una tarifa vigente en esa fecha para ese servicio y tipo de paquete en el contrato; edítela o ciérrela antes de crear otra.` | 409 |
@@ -743,7 +743,7 @@ Quién puede: `contracts.read`. Cómo se usa: `POST /api/v1/billing/contract-rat
 | Cliente inexistente | `Cliente no encontrado.` | 404 |
 
 Una línea sin tarifa base (ni de contrato ni genérica) **no es un error**: sale con `baseSource: NONE` y `lineTotal` 0; en la web el Cotizador la avisa con «No hay tarifa vigente para X / Y: esa línea se cotiza en 0.». El servidor no oculta estos precios por `orders.view_price`: son precios del **contrato**, no de una orden, y se ven con `contracts.read`. Pantallas: [capítulo del Cotizador y usuarios de portal](frontend/fa3-portal-cotizador.md).
-| Servicio/paquete vacíos o desconocidos | `El tipo de servicio es obligatorio.` / `Código 'X' desconocido en el catálogo PackageType.` | 400 |
+| Servicio/paquete vacíos o desconocidos | `El tipo de servicio es obligatorio.` / `Código 'X' desconocido en la lista PackageType.` | 400 |
 
 ---
 
@@ -827,7 +827,7 @@ Cómo se usa:
 | Caso | Mensaje exacto | HTTP |
 |---|---|---|
 | `email` vacío / inválido | `El correo es obligatorio.` / `Correo inválido.` | 400 |
-| `role` vacío / desconocido | `El rol de portal es obligatorio.` / `Catálogo PortalRole 'X' no encontrado.` | 400 / 404 |
+| `role` vacío / desconocido | `El rol de portal es obligatorio.` / `Lista PortalRole 'X' no encontrada.` | 400 / 404 |
 | El correo no está disponible (ya invitado, activo o suspendido **en este mismo cliente**; cuenta de portal de otra compañía; o usuario interno) | `Ese correo no está disponible para el portal de esta compañía.` (mismo mensaje en todos los casos, a propósito; queda `SecurityEvent` ROLE_CHANGE/FAILURE `portal_invite_conflict`) | 409 |
 | Invitar desde **otro** cliente de la compañía un correo que ya es cuenta de portal (aunque en el primer cliente esté dada de baja) | **No** responde 409 (corregido 2026-10-12: antes decía lo contrario): agrega una fila nueva a esa cuenta, activa de inmediato si la cuenta ya tiene contraseña (sin `expiresAtUtc`) o `INVITED` con enlace si no (ver el recuadro del Lote 3 y el capítulo 03, sección 6). El 409 neutro queda para el mismo cliente, un usuario interno y una cuenta de otra compañía | 200 |
 | Cliente dado de baja: invitar o reenviar | `El cliente está dado de baja; solo se consulta su historial.` (la lista, suspender, reactivar y dar de baja sí se permiten) | 409 |

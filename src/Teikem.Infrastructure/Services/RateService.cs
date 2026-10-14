@@ -409,7 +409,7 @@ public sealed class RateService(TeikemDbContext db, ITenantContext tenant, ILook
         if (string.IsNullOrWhiteSpace(code)) throw new ValidationException(field, requiredMessage);
         var c = code.Trim().ToUpperInvariant();
         return await lookups.TryGetIdAsync(domain, c, ct)
-            ?? throw new ValidationException(field, $"Código '{c}' desconocido en el catálogo {domain}.");
+            ?? throw new ValidationException(field, $"Código '{c}' desconocido en la lista {domain}.");
     }
 
     private async Task<string> RequireCodeAsync(string domain, string? code, string field, string requiredMessage, CancellationToken ct)

@@ -2,11 +2,11 @@
 
 > **Actualizado por el Lote F-B2 (2026-10-13)**: la importación acepta **Excel (.xlsx)** y CSV de Windows, columnas **(No usar)**, columnas unidas, **Cliente por defecto** guardado en la plantilla y **Persona de contacto**. Ver [fb2-importacion-consignatarios.md](fb2-importacion-consignatarios.md); lo de abajo sigue valiendo con los nombres nuevos.
 
-Pantalla **Catálogo → Consignatarios** (`/catalog/consignees`). Los consignatarios son los destinatarios de las entregas: cada uno pertenece a un cliente o es **compartido**
+Pantalla **Listas → Consignatarios** (`/catalog/consignees`). Los consignatarios son los destinatarios de las entregas: cada uno pertenece a un cliente o es **compartido**
 (sin dueño, lo pueden usar todos los clientes). Backend: capítulo 02 del manual, §2 (Consignatarios y localizaciones) y la importación del lote 38. Decisiones del frontend:
 `docs/frontend/loteFB-decisiones.md`.
 
-**Quién puede.** Ver la pantalla: permiso **`locations.read`** con el módulo **Catálogo** (`CATALOG`) encendido (sin el permiso el menú no la muestra; con el módulo apagado, «Módulo apagado»).
+**Quién puede.** Ver la pantalla: permiso **`locations.read`** con el módulo **Listas** (`CATALOG`) encendido (sin el permiso el menú no la muestra; con el módulo apagado, «Módulo apagado»).
 Cada acción pide su permiso y, sin él, el botón no se pinta y los interruptores quedan deshabilitados:
 
 | Acción | Permiso |
@@ -66,7 +66,7 @@ Botón **Nuevo consignatario** (`locations.create`). Campos y reglas (los mensaj
 | Campo | Regla | Mensaje (HTTP) |
 |---|---|---|
 | Dirección (línea 2), Estado o región, ZIP | opcionales, máx. 200 / 100 / 20 | `Máximo N caracteres.` (400) |
-| País | obligatorio; por omisión Puerto Rico | `El país es obligatorio.` · `Catálogo Country 'X' no encontrado.` (404) |
+| País | obligatorio; por omisión Puerto Rico | `El país es obligatorio.` · `Lista Country 'X' no encontrada.` (404) |
 | Ventana: desde / hasta | ambas o ninguna; el fin posterior al inicio | `La ventana horaria requiere hora de inicio y hora de fin.` · `La hora de fin de la ventana debe ser posterior a la de inicio.` (400) |
 | Minutos de servicio | entero, no negativo | `Los minutos de servicio deben ser un número entero.` · `Los minutos de servicio no pueden ser negativos.` (400) |
 | Notas de acceso / de entrega | opcionales, máx. 500 | `Máximo 500 caracteres.` (400) |

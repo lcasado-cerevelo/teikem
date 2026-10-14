@@ -171,7 +171,7 @@ describe('SLA', () => {
     expect(rows[1].maxTransitHours).toBeNull()
   })
 
-  it('un nivel de un tipo que ya no está en el catálogo se conserva', () => {
+  it('un nivel de un tipo que ya no está en la lista se conserva', () => {
     const rows = slaRowsOf(types, [{ id: 9, serviceType: 'OLD', serviceTypeLabel: 'Viejo', maxTransitHours: 12 }]).levels
     expect(rows).toHaveLength(3)
     expect(rows[2]).toMatchObject({ serviceType: 'OLD', label: 'Viejo', maxTransitHours: 12 })

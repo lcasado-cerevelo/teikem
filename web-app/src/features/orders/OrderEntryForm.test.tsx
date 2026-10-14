@@ -476,7 +476,7 @@ describe('Alta detallada — entrega especial', () => {
 })
 
 describe('Alta detallada — consignatario nuevo y permisos', () => {
-  it('«+» abre el modal de alta del catálogo (con teléfono) y deja elegido el recién creado, sin guardar la orden', async () => {
+  it('«+» abre el modal de alta de la lista (con teléfono) y deja elegido el recién creado, sin guardar la orden', async () => {
     const user = userEvent.setup()
     wrap(ALL)
     await pickClient(user)

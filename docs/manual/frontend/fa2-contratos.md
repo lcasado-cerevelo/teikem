@@ -1,11 +1,11 @@
 # F-A2 — Contratos del cliente: Contrato, Tarifas, SLA y Servicios especiales
 
-Dentro de la ficha del cliente (**Catálogo → Clientes**, `/catalog/clients`, ver [F-A1](fa1-clientes.md)) el panel **Contratos** pasó de solo lectura a una sección con cuatro
+Dentro de la ficha del cliente (**Listas → Clientes**, `/catalog/clients`, ver [F-A1](fa1-clientes.md)) el panel **Contratos** pasó de solo lectura a una sección con cuatro
 pestañas: **Contrato · Tarifas · SLA · Servicios especiales**. El resto de la ficha (cabecera, perfil, teléfonos, personas, numeración, campos personalizados e
 historial) no cambió. Backend: capítulo 02 del manual, secciones 4 a 6. Decisiones del frontend: `docs/frontend/loteFA2-decisiones.md`.
 Capturas: `img/fa2-contrato.png`, `img/fa2-sla.png`, `img/fa2-tarifas.png`, `img/fa2-especiales.png` (y `img/fa1-*.png` de la lista, el alta y la ficha).
 
-**Quién puede.** El módulo **Catálogo** (`CATALOG`) encendido, como toda la pantalla. Cada parte pide su permiso y, sin él, el botón no se pinta y los campos quedan de solo lectura:
+**Quién puede.** El módulo **Listas** (`CATALOG`) encendido, como toda la pantalla. Cada parte pide su permiso y, sin él, el botón no se pinta y los campos quedan de solo lectura:
 
 | Acción | Permiso |
 |---|---|
@@ -62,7 +62,7 @@ Mensajes (salen bajo el campo; el servidor los manda tal cual):
 
 ## 3. Pestaña SLA
 
-Niveles de servicio del contrato: **un renglón por tipo de servicio** del catálogo con cuatro campos — **Horas máximas de tránsito**, **Ventana de recogido (min)**,
+Niveles de servicio del contrato: **un renglón por tipo de servicio** de la lista con cuatro campos — **Horas máximas de tránsito**, **Ventana de recogido (min)**,
 **Meta de puntualidad (%)** y **Penalidad ($)**. Empieza vacío: un tipo con todos los campos vacíos no tiene SLA.
 
 - Es un **borrador local**: nada se envía hasta **Guardar SLA**, que manda la lista completa (`PUT …/service-levels`); los tipos sin datos se dan de baja. **Descartar cambios**

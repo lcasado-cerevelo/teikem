@@ -23,7 +23,7 @@ public class ConsigneeImportMappingTests
             "code", "name", "line1", "line2", "city", "state", "postalCode", "country", "clientCode", "clientName",
             "defaultServiceMinutes", "defaultWindowStart", "defaultWindowEnd", "accessNotes", "deliveryNotes", "allowDupInvoice", "contactPhone", "contactName",
         }, ConsigneeImportFields.All);
-        Assert.Null(ConsigneeImportFields.Canonical("ignore")); // «No usar» es una marca, no un campo del catálogo
+        Assert.Null(ConsigneeImportFields.Canonical("ignore")); // «No usar» es una marca, no un campo de la lista
         Assert.True(ConsigneeImportFields.IsIgnore(" IGNORE "));
         Assert.Equal("postalCode", ConsigneeImportFields.Canonical(" POSTALCODE "));
         Assert.Equal("allowDupInvoice", ConsigneeImportFields.Canonical("allowdupinvoice"));

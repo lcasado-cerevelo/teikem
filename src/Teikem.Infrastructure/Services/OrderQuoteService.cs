@@ -55,7 +55,7 @@ public sealed class OrderQuoteService(TeikemDbContext db, ILookupCache lookups, 
         }
 
         var serviceType = await lookups.GetAsync(order.ServiceTypeLookupId, ct)
-                          ?? throw new StatusRuleException("El tipo de servicio de la orden no existe en el catálogo.");
+                          ?? throw new StatusRuleException("El tipo de servicio de la orden no existe en la lista.");
 
         var raw = new List<(string PackageType, int Pieces)>();
         foreach (var line in order.CargoLines.Where(l => l.IsActive))

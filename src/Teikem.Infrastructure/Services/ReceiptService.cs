@@ -1421,7 +1421,7 @@ public sealed class ReceiptService(
     {
         var id = await lookups.TryGetIdAsync(LookupDomains.ReceivingMode, mode, ct);
         if (id is null && mode == ReceivingModes.Direct)
-            throw new InvalidOperationException("El catálogo ReceivingMode no tiene DIRECT (logistica-db-seed.sql).");
+            throw new InvalidOperationException("La lista ReceivingMode no tiene DIRECT (logistica-db-seed.sql).");
         return id;
     }
 

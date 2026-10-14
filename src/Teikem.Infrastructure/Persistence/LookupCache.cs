@@ -40,7 +40,7 @@ public sealed class LookupCache(IServiceScopeFactory scopes, IMemoryCache cache)
     }
 
     public async Task<int> GetIdAsync(string entity, string code, CancellationToken ct = default)
-        => await TryGetIdAsync(entity, code, ct) ?? throw new NotFoundException($"Catálogo {entity}", code);
+        => await TryGetIdAsync(entity, code, ct) ?? throw new NotFoundException($"Lista {entity}", code);
 
     public async Task<int?> TryGetIdAsync(string entity, string code, CancellationToken ct = default)
     {

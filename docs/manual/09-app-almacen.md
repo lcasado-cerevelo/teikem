@@ -574,7 +574,7 @@ uno ya usado, completar son **2 toques — Completar despacho → Despachar — 
      Descartar, §9), y la salida ya se deshizo en el saldo local.
 
 **Motivos.** La app usa los motivos **de la compañía** (`GET /api/v1/manual-issues/reasons`: los activos y habilitados, con el nombre que la compañía les
-haya puesto en Sistema → Catálogos, en el idioma de la app). La sincronización los baja y los guarda en el aparato, como mucho cada 30 minutos y **solo si
+haya puesto en Sistema → Listas, en el idioma de la app). La sincronización los baja y los guarda en el aparato, como mucho cada 30 minutos y **solo si
 el usuario tiene `warehouse.issue`** (sin el permiso el servidor responde 403 y dejaría un evento de seguridad en cada pasada). Sin señal se usan los guardados;
 cada motivo trae `isDefault` (el default de la compañía) y una copia guardada por una versión anterior, sin esa marca, se vuelve a bajar en la siguiente
 pasada con señal sin esperar los 30 minutos. Si el aparato **nunca** los bajó, ofrece los seis de fábrica (`SAMPLE` Muestra, `INTERNAL_USE` Uso interno, `OWNER_PICKUP` Retiro del dueño, `CUSTOMER_PICKUP` Retiro del cliente, `SALE`
@@ -600,7 +600,7 @@ posición sugerida) no se descuenta: se vuelve a bajar en cuanto el despacho lle
 | Usuario sin `warehouse.issue` | No se muestra **Completar despacho**; se lee `«Completar despacho» (despacho manual, sin entrega) necesita el permiso warehouse.issue y tu usuario no lo tiene: aquí puedes Empacar. Pídelo al administrador si hace falta.` | Local (permisos guardados del usuario, `GET /api/v1/me`) |
 | El aparato aún no leyó los permisos del usuario | `Todavía no se pudieron leer tus permisos (hace falta señal una vez): por ahora solo puedes Empacar.` | Local |
 | Sin motivo puesto (ni último usado ni default) | Se abre la lista `¿Por qué sale sin entrega?`; **Despachar** no aparece hasta escoger uno. (El aviso `Escoge el motivo del despacho manual.` queda solo como resguardo y ya no debería verse.) | Local |
-| La compañía no tiene motivos habilitados (la copia bajada está vacía) | `La compañía no tiene motivos habilitados para el despacho manual. Pide al administrador que habilite alguno (Sistema → Catálogos).` | Local |
+| La compañía no tiene motivos habilitados (la copia bajada está vacía) | `La compañía no tiene motivos habilitados para el despacho manual. Pide al administrador que habilite alguno (Sistema → Listas).` | Local |
 | Nota de más de 500 caracteres | No deja escribir más de 500; si llegara a pasar: `La nota admite como máximo 500 caracteres.` | Local |
 | Motivo deshabilitado o borrado en el servidor | `El motivo {CÓDIGO} no existe o está inactivo.` (400) | API |
 | Inventario insuficiente | `Inventario insuficiente de {sku} en {posición}: disponible {x}, solicitado {y}.` (409; no sale nada ni se consume el número DMA) | API |

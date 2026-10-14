@@ -1,6 +1,6 @@
 # Mantenimiento, órdenes de trabajo y combustible
 
-En **Catálogo → Flota y mantenimiento** hay tres pestañas para cuidar sus vehículos:
+En **Listas → Flota y mantenimiento** hay tres pestañas para cuidar sus vehículos:
 
 - **Mantenimiento**: qué vehículos están al día, por vencer o vencidos en su mantenimiento preventivo, y los **programas** que definen cada cuánto toca el servicio.
 - **Órdenes de trabajo**: el registro de cada servicio o reparación (tareas, proveedor y costos), con sus pasos **Iniciar**, **Cerrar orden** y **Cancelar orden**.
@@ -19,7 +19,7 @@ Cada botón aparece solo si usted tiene su permiso. Si falta alguno, pídaselo a
 | `fleet.view` | Entrar a la pantalla y consultar programas, órdenes, tareas y combustible. |
 | `fleet.maintenance` | **Nuevo programa**, editar, **Desactivar** y **Reactivar** programas; **Nueva orden de trabajo**, **Guardar cambios**, tareas, **Iniciar**, **Cerrar orden** y **Cancelar orden**; **Registrar carga**, **Editar** y **Quitar** cargas de combustible. |
 
-El módulo **Catálogo** debe estar encendido para su compañía. Nada de lo que se hace aquí borra información: lo que se quita queda en el historial.
+El módulo **Listas** debe estar encendido para su compañía. Nada de lo que se hace aquí borra información: lo que se quita queda en el historial.
 
 ## 1. Mantenimiento preventivo
 

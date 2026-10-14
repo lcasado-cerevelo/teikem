@@ -68,7 +68,7 @@ describe('PostalLocalityPicker', () => {
     expect(await screen.findByRole('option', { name: '10001 · NEW YORK, NY · Estados Unidos' })).toBeInTheDocument()
   })
 
-  it('muestra el valor actual (aunque no venga del catálogo) y ✕ lo quita con null', async () => {
+  it('muestra el valor actual (aunque no venga de la lista) y ✕ lo quita con null', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
     wrap(<PostalLocalityPicker city="San Juan" postalCode="00901" onChange={onChange} aria-label="Ciudad" />)

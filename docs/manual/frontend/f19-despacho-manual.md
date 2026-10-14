@@ -53,7 +53,7 @@ Después de despachar el panel queda listo para el siguiente con el motivo reci�
 Si el navegador no deja guardar datos, simplemente no se recuerda.
 
 **Dónde se fija el default.** Ajustes de la compañía → **Operación** → panel **Despacho manual** → **Motivo por default del despacho manual** (los motivos activos
-del catálogo + «Sin motivo por default»; ayuda: *«Llega preseleccionado al despachar; el motivo sigue siendo obligatorio.»*). Exige `admin.tenant` (sin él se ve
+de la lista + «Sin motivo por default»; ayuda: *«Llega preseleccionado al despachar; el motivo sigue siendo obligatorio.»*). Exige `admin.tenant` (sin él se ve
 y no se cambia) y el módulo Lotes y series. Guarda con `PUT /api/v1/tenant/settings` (`defaultManualIssueReason`, `""` = sin default); el error 400
 *«El motivo {CÓDIGO} no existe o está inactivo.»* sale bajo el selector y no se guarda nada.
 

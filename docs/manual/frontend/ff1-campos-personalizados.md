@@ -46,7 +46,7 @@ Solo se ofrecen las entidades que hoy tienen una ficha donde escribir los valore
 | Sí/No | Marcado o sin marcar | — | Marcado por defecto |
 | Selección | Una opción de una lista | — | Una opción de la lista |
 | Selección múltiple | Varias opciones de una lista | — | Varias opciones |
-| Referencia a catálogo | Una opción de una lista del catálogo | — | Una opción de la lista |
+| Referencia a lista | Una opción de una lista de valores | — | Una opción de la lista |
 
 No tiene que escribir nada técnico: el formato (por ejemplo `^CC-\d{3}$`, que significa «CC-» y tres dígitos) es lo único que usa una expresión regular, y es opcional.
 
@@ -58,9 +58,9 @@ No tiene que escribir nada técnico: el formato (por ejemplo `^CC-\d{3}$`, que s
 
 ## Campos de selección: la lista de valores
 
-Los campos de selección **no guardan opciones sueltas**: apuntan a una **lista del catálogo**. Así, si más adelante se renombra una opción en **Sistema → Catálogos de valores**, todos los registros que ya la usan se actualizan, y la misma lista sirve para otros campos.
+Los campos de selección **no guardan opciones sueltas**: apuntan a una **lista de la lista**. Así, si más adelante se renombra una opción en **Sistema → Listas de valores**, todos los registros que ya la usan se actualizan, y la misma lista sirve para otros campos.
 
-1. Elija **Selección**, **Selección múltiple** o **Referencia a catálogo**.
+1. Elija **Selección**, **Selección múltiple** o **Referencia a lista**.
 2. En **Lista de valores** escoja una lista (las propias de su compañía salen primero; se puede buscar escribiendo). Debajo se ven sus opciones.
 3. Si la lista que necesita no existe, pulse **Nueva lista…**, escriba el **nombre de la lista** y las **opciones separadas por coma** (por ejemplo «Alto, Medio, Bajo») y pulse **Crear lista**. La lista queda escogida.
 4. Opcional: elija el **Valor por defecto** entre las opciones.
@@ -69,7 +69,7 @@ Los campos de selección **no guardan opciones sueltas**: apuntan a una **lista 
 
 ![Campo de selección con la lista creada y su valor por defecto](img/ff1-seleccion.png)
 
-Los campos creados antes por otras vías pueden traer **opciones propias** («Opciones propias · 2» en la tabla). Al editarlos se conservan; si escoge una lista del catálogo, la lista reemplaza a esas opciones.
+Los campos creados antes por otras vías pueden traer **opciones propias** («Opciones propias · 2» en la tabla). Al editarlos se conservan; si escoge una lista de valores, la lista reemplaza a esas opciones.
 
 ## Editar un campo
 

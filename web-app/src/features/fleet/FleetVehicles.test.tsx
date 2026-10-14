@@ -146,7 +146,7 @@ describe('Flota — lista de vehículos', () => {
 })
 
 describe('Flota — alta de vehículo', () => {
-  it('«Nuevo vehículo» manda el código en mayúsculas, los catálogos y las capacidades; el nuevo queda elegido', async () => {
+  it('«Nuevo vehículo» manda el código en mayúsculas, las listas y las capacidades; el nuevo queda elegido', async () => {
     const user = userEvent.setup()
     wrap(ALL)
     await list()

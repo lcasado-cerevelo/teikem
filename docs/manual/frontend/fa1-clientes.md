@@ -1,12 +1,12 @@
 # F-A1 — Clientes: lista, alta y ficha del cliente
 
-Pantalla **Catálogo → Clientes** (`/catalog/clients`). En una sola pantalla: a la izquierda la lista de clientes y a la derecha la ficha
+Pantalla **Listas → Clientes** (`/catalog/clients`). En una sola pantalla: a la izquierda la lista de clientes y a la derecha la ficha
 (expediente) del cliente elegido. Backend: capítulo 02 del manual (Clientes y contratos). Decisiones del frontend:
 `docs/frontend/loteFA1-decisiones.md`.
 
 Capturas (recorrido `web-app/e2e/loteFA2-clientes.spec.ts`): `img/fa1-lista.png` (lista), `img/fa1-alta.png` (modal Nuevo cliente) e `img/fa1-ficha.png` (ficha).
 
-**Quién puede.** Ver la pantalla: permiso **`clients.read`** con el módulo **Catálogo** (`CATALOG`) encendido (sin el permiso el menú no la muestra y la
+**Quién puede.** Ver la pantalla: permiso **`clients.read`** con el módulo **Listas** (`CATALOG`) encendido (sin el permiso el menú no la muestra y la
 dirección lleva a «Sin permiso»; con el módulo apagado, a «Módulo apagado»). Cada acción pide su permiso y, sin él, el botón no se pinta y los campos
 quedan de solo lectura:
 
@@ -18,7 +18,7 @@ quedan de solo lectura:
 
 ## 1. La lista (izquierda)
 
-- Panel **Clientes** con el contador de clientes mostrados. Cada fila muestra el nombre, el código, el estatus (chip de color del catálogo de la compañía), el chip
+- Panel **Clientes** con el contador de clientes mostrados. Cada fila muestra el nombre, el código, el estatus (chip de color de la lista de la compañía), el chip
   **Inactivo** si el cliente está dado de baja y el resumen de facturación del contrato vigente.
 - **Buscador**: escriba parte del código, el nombre o la razón social; la búsqueda la hace el servidor (espera un instante después de la última tecla).
 - **Mostrar inactivos**: por omisión solo se ven los clientes activos; encienda el interruptor para ver también los dados de baja (salen atenuados).
@@ -36,7 +36,7 @@ Botón **Nuevo cliente** (`clients.create`). Campos:
 | Código | opcional, máx. 30; vacío = se genera del nombre (`FARMACIA-LAS-MARIAS`; si ya existe, `-2`, `-3`…); se guarda en mayúsculas | `El código no puede exceder 30 caracteres.` (400) · `Ya existe un cliente con ese código.` (409) |
 | Razón social | opcional, máx. 250 | `No puede exceder 250 caracteres.` (400) |
 | Identificación fiscal | opcional, máx. 50 | `No puede exceder 50 caracteres.` (400) |
-| Término de pago, Moneda | catálogos de la compañía | — |
+| Término de pago, Moneda | listas de la compañía | — |
 | Límite de crédito | número, no negativo | `El límite de crédito no puede ser negativo.` (400) |
 | Crear contrato inicial | encendido por omisión: abre un contrato en **borrador** | `Ya existe un contrato con ese número.` (409) |
 | Cliente desde | fecha de inicio del contrato (hoy en la zona de la compañía) | `Indique desde cuándo es cliente.` (en pantalla) |

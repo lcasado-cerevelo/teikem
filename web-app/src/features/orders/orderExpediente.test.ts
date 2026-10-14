@@ -122,7 +122,7 @@ describe('isAssignableOrder — derivación en el cliente', () => {
     expect(isAssignableOrder(special('DRAFT'), [])).toBe(false)
   })
 
-  it('sin IN_TRANSIT en el catálogo basta con estar en el pipeline', () => {
+  it('sin IN_TRANSIT en la lista basta con estar en el pipeline', () => {
     expect(isAssignableOrder(special('CONFIRMED'), statuses.filter((s) => s.code !== 'IN_TRANSIT'))).toBe(true)
   })
 })

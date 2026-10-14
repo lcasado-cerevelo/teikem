@@ -639,7 +639,7 @@ export default function ReceiveScreen() {
           </View>
         )}
 
-        {/* 2026-10-08: «Vinieron unidades dañadas» → cantidad dañada y razón (catálogo; «Otra» pide escribirla), uno al lado del otro. */}
+        {/* 2026-10-08: «Vinieron unidades dañadas» → cantidad dañada y razón (lista; «Otra» pide escribirla), uno al lado del otro. */}
         {!requiresSerials(draft) ? (
           <View style={styles.field}>
             <Pressable

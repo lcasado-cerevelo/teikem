@@ -62,7 +62,7 @@ Cómo se usa: `POST /api/v1/orders`
   colapsados); si coincide, se reutiliza esa `Location` sin sobreescribir el directorio; si no, se crea una `Location`
   DELIVERY nueva asignada al cliente de la orden.
 
-**Entrega especial**: `isSpecialDelivery: true` + `specialServiceId` (del catálogo de servicios especiales del cliente,
+**Entrega especial**: `isSpecialDelivery: true` + `specialServiceId` (de la lista de servicios especiales del cliente,
 capítulo 02 sección 6). No lleva `packages` ni `codAmount`; nace con una sola línea con el nombre del servicio y sin tipo
 de paquete. Cotiza la tarifa vigente del servicio especial (sección 3).
 
@@ -149,7 +149,7 @@ Cómo se usa:
 
   | Parámetro | Qué filtra | Ejemplo |
   |---|---|---|
-  | `serviceTypes` | Tipo de servicio de la orden (códigos del catálogo `ServiceType`; no importan las mayúsculas). | `serviceTypes=STANDARD&serviceTypes=EXPRESS` |
+  | `serviceTypes` | Tipo de servicio de la orden (códigos de la lista `ServiceType`; no importan las mayúsculas). | `serviceTypes=STANDARD&serviceTypes=EXPRESS` |
   | `packageTypes` | Tipo de paquete. Entra la orden que tenga **alguna** línea de paquete activa de ese tipo (códigos `PackageType`). | `packageTypes=BOX` |
   | `cities` | Pueblo del consignatario (la parada de entrega). Debe ser igual al pueblo pedido; no importan las mayúsculas, las tildes ni los espacios de más. | `cities=bayamon` encuentra «Bayamón» |
   | `postalCodePrefix` | El código postal (ZIP) del consignatario **empieza con** este texto. | `postalCodePrefix=009` trae `00901`, `00961`… |
@@ -181,7 +181,7 @@ Cómo se usa:
 | `clientId` o algún `clientIds` es de otra compañía o está fuera de los clientes que el usuario puede ver | `Cliente no encontrado.` | 404 |
 
 Qué hacer con los 400 de los filtros: la `X` del mensaje es el valor que no existe; revise cómo está escrito (código del
-catálogo, por ejemplo `STANDARD`, `BOX`, `CONFIRMED`) y quítelo o cámbielo. Un código que está inactivo en el catálogo **sí** se
+lista, por ejemplo `STANDARD`, `BOX`, `CONFIRMED`) y quítelo o cámbielo. Un código que está inactivo en la lista **sí** se
 acepta (sirve para buscar órdenes viejas); solo se rechaza un código que no existe.
 Qué hacer con el 404: quite ese cliente del filtro; si debería poder verlo, pida al administrador que revise el alcance de datos
 de su usuario.
@@ -477,7 +477,7 @@ respondiendo el mismo 409 neutro (`Ese correo no está disponible para el portal
 ### 7.1 Plantillas de importación
 
 Qué hace: define cómo leer un archivo CSV de órdenes por **posición de columna** (no por nombre de cabecera): cada
-columna se mapea a un campo del catálogo (`orderNumber`, `clientInvoiceNumber`, `serviceType`, `consigneeName`,
+columna se mapea a un campo de la lista (`orderNumber`, `clientInvoiceNumber`, `serviceType`, `consigneeName`,
 `consigneeCode`, `line1`, `line2`, `city`, `state`, `postalCode`, `country`, `contactPhone`, `packageType`, `pieces`,
 `weightKg`, `volumeM3`, `description`, `codAmount`, `requestedDate`, `notes`, `reference`) y admite valores fijos
 (`defaults`) para los campos que no varían fila a fila (p. ej. `serviceType: "STANDARD"`). Una plantilla es general del
@@ -487,7 +487,7 @@ Quién puede: `orders.edit`.
 
 Cómo se usa:
 - `GET /api/v1/import-templates?kind=ORDER&clientId=&includeInactive=false`
-- `GET /api/v1/import-templates/fields` (Lote 40): catálogo de campos para el editor de plantillas, `[{ field, required, defaultAllowed }]`; `required` es siempre `false` (las reglas son de grupo: consignatario y paquete) y `defaultAllowed` es `false` para `orderNumber`, `clientInvoiceNumber` y `consigneeName` (identifican cada fila; es una guía para la pantalla, el servidor no los rechaza). Mismo permiso y módulo que el resto de las plantillas.
+- `GET /api/v1/import-templates/fields` (Lote 40): lista de campos para el editor de plantillas, `[{ field, required, defaultAllowed }]`; `required` es siempre `false` (las reglas son de grupo: consignatario y paquete) y `defaultAllowed` es `false` para `orderNumber`, `clientInvoiceNumber` y `consigneeName` (identifican cada fila; es una guía para la pantalla, el servidor no los rechaza). Mismo permiso y módulo que el resto de las plantillas.
 - `POST /api/v1/import-templates` `{ "name": "Plantilla estándar", "columns": [ {"position":1,"field":"consigneeName"}, {"position":2,"field":"line1"}, {"position":3,"field":"city"}, {"position":4,"field":"pieces"} ], "defaults": {"serviceType":"STANDARD","packageType":"BOX"}, "delimiter": ",", "hasHeader": true }`
 - `GET /api/v1/import-templates/{publicId}` · `PATCH /api/v1/import-templates/{publicId}`
 - `POST /api/v1/import-templates/{publicId}/deactivate` / `.../reactivate`

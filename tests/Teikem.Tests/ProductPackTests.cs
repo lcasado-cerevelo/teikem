@@ -40,7 +40,7 @@ public sealed class ProductPackTests
 
         var created = await products.CreateAsync(new ProductCreateRequest("P-1", "Mascarillas", PackUom: " box ", PackQty: 12m), default);
         Assert.Equal(("BOX", 12m), (created.Product.PackUomCode, created.Product.PackQty));
-        Assert.Equal("BOX", created.Product.PackUomName);   // el nombre es el del catálogo (en la prueba, su código)
+        Assert.Equal("BOX", created.Product.PackUomName);   // el nombre es el de la lista (en la prueba, su código)
 
         // cambiar solo la cantidad conserva la unidad; cambiar la unidad conserva la cantidad
         var qtyOnly = await products.UpdateAsync(created.Product.PublicId, new ProductPatchRequest(PackQty: 24m), default);
