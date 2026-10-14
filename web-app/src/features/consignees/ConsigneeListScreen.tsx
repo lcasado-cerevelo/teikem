@@ -7,9 +7,12 @@ import { useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Can } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
+import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
 import { CARDS_QUERY, Chip, EmptyState, FilterScope, IconPlus, IconUpload, IconUsers, Panel, QBox, Spinner, useMediaQuery } from '../../kernel/ui'
+import { ExportMenu } from '../../kernel/ui/ExportMenu'
 import { useClientOptions, useConsignees } from './api'
+import { exportConsignees } from './consigneeExport'
 import { ConsigneeDetailPanel } from './ConsigneeDetailPanel'
 import { ConsigneeFormModal } from './ConsigneeFormModal'
 import { ConsigneeImportModal } from './ConsigneeImportModal'
@@ -20,9 +23,11 @@ const NO_ROWS: Consignee[] = []
 
 export default function ConsigneeListScreen() {
   const t = useT()
+  const f = useFormat()
   const [params, setParams] = useSearchParams()
   const [q, setQ] = useState('')
-  const [filter, setFilter] = useState(FILTER_ALL)
+  // `?client=<publicId>` abre la lista ya filtrada por ese cliente (lo usa «Ver todos» del panel Consignatarios de la ficha del cliente)
+  const [filter, setFilter] = useState(params.get('client') ?? FILTER_ALL)
   const [includeInactive, setIncludeInactive] = useState(false)
   const [creating, setCreating] = useState(false)
   const [importing, setImporting] = useState(false)
@@ -93,7 +98,14 @@ export default function ConsigneeListScreen() {
       </div>
 
       <div className="md cs-md">
-        <Panel flush icon={<IconUsers />} title={t('consignees.list')} badge={list.isPending ? undefined : shown.length}>
+        <Panel
+          flush
+          icon={<IconUsers />}
+          title={t('consignees.list')}
+          badge={list.isPending ? undefined : shown.length}
+          // Exportar lo que la lista tiene a la vista: el filtro de cliente, «Mostrar inactivos» y el buscador
+          actions={<ExportMenu placement="down" count={shown.length} onExport={(format) => exportConsignees(format, shown, t, f.lang)} />}
+        >
           <FilterScope>
             <div className="qrow cs-q">
               <QBox value={q} onChange={setQ} placeholder={t('ui.qbox.placeholder')} />

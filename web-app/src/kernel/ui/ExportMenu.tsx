@@ -11,10 +11,12 @@ export interface ExportMenuProps {
   onExport: (format: ExportFormat) => void | Promise<void>
   /** Filas que se van a exportar (nota informativa dentro del menú). */
   count: number
+  /** Hacia dónde abre el menú: arriba (pie de tabla, por omisión) o abajo (botón en la cabecera de un panel). */
+  placement?: 'up' | 'down'
 }
 
 /** Botón "Exportar" del pie de `DataTable` con su menú Excel / CSV / PDF (abre hacia arriba). */
-export function ExportMenu({ onExport, count }: ExportMenuProps) {
+export function ExportMenu({ onExport, count, placement = 'up' }: ExportMenuProps) {
   const t = useT()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -62,7 +64,7 @@ export function ExportMenu({ onExport, count }: ExportMenuProps) {
   }
 
   return (
-    <div className={open ? 'dt-export open' : 'dt-export'} ref={ref}>
+    <div className={['dt-export', open ? 'open' : '', placement === 'down' ? 'down' : ''].filter(Boolean).join(' ')} ref={ref}>
       <button
         ref={triggerRef}
         type="button"

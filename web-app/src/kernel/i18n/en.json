@@ -419,6 +419,14 @@
       "removed": "Contact method removed.",
       "saved": "Contact method saved."
     },
+    "consignees": {
+      "title": "Consignees",
+      "empty": "This client has no consignees yet. Use \"New consignee\" or \"Import\".",
+      "noResults": "No consignee of this client matches the search.",
+      "showing": "Showing {shown} of {total}",
+      "seeAll": "See all in Consignees",
+      "open": "Open {name} in Consignees"
+    },
     "people": {
       "title": "Contact people",
       "add": "Add contact",
@@ -755,6 +763,20 @@
     "filterAll": "All clients",
     "filterShared": "Shared (no owner)",
     "importBtn": "Import",
+    "export": {
+      "code": "Number",
+      "name": "Name",
+      "client": "Client",
+      "line1": "Address 1",
+      "line2": "Address 2",
+      "city": "Town",
+      "state": "State",
+      "postalCode": "ZIP code",
+      "country": "Country",
+      "contact": "Contact person",
+      "status": "Record status",
+      "fileName": "Consignees"
+    },
     "showInactive": "Show inactive",
     "numberHelp": "Optional. Identifies the consignee in imports and searches.",
     "townHelp": "Search by town or ZIP code; it fills the town, ZIP, state and country.",

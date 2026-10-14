@@ -7835,3 +7835,28 @@ Las plantillas de órdenes no tienen variantes.
 
 **«Tipo de código postal desconocido: X. Use STANDARD, PO_BOX, UNIQUE, MILITARY o DELIVERY.»** (400, `GET /postal-localities`)
 El filtro `zipClass` trae un tipo que no existe. Use uno de esos.
+
+## Lote F-B4 — Consignatarios en la ficha del cliente y Exportar
+
+Preguntas del panel **Consignatarios** de la ficha del cliente y del botón **Exportar** de la pantalla Consignatarios. Capítulo: [fb4-consignatarios-en-la-ficha-del-cliente.md](frontend/fb4-consignatarios-en-la-ficha-del-cliente.md).
+
+**«Este cliente todavía no tiene consignatarios. Use «Nuevo consignatario» o «Importar».»**
+El cliente no tiene consignatarios activos propios. Cree uno con **Nuevo consignatario** o cargue un archivo con **Importar**. Los compartidos con todos los clientes y los inactivos no salen en este panel; búsquelos en **Listas → Consignatarios**.
+
+**«Ningún consignatario de este cliente coincide con la búsqueda.»**
+El buscador no encontró nada entre los consignatarios del cliente. Borre o cambie lo escrito.
+
+**¿Por qué dice «Mostrando 10 de N» si hay más?**
+La tabla del panel enseña solo 10 filas. El número junto al título y el archivo exportado cuentan **todos** los que cumplen el buscador. Use **Ver todos en Consignatarios** para verlos todos.
+
+**¿Qué trae el archivo de Exportar?**
+Exactamente las filas que están filtradas, no solo las 10 visibles: en la ficha del cliente, los consignatarios propios activos del cliente con el buscador aplicado; en Consignatarios, lo que la lista muestra con el filtro **Cliente**, **Mostrar inactivos** y el buscador. Columnas: Número, Nombre, Cliente, Dirección 1, Dirección 2, Pueblo, Estado, Código postal, País, Persona de contacto y Estado del registro. El teléfono no se exporta.
+
+**«No se pudo generar el archivo. Intente de nuevo.» (aviso rojo al exportar)**
+El navegador o el archivo falló al generarse. Intente de nuevo con otro formato (CSV es el más simple). Si se repite, avise a soporte.
+
+**No veo el panel Consignatarios en la ficha del cliente.**
+Su usuario no tiene `locations.read` o el módulo Listas está apagado. El panel no es un error: simplemente no se pinta sin ese permiso.
+
+**No veo los botones Importar ni Nuevo consignatario en el panel.**
+Falta el permiso `locations.create`. **Exportar** sí se ve con solo `locations.read`.

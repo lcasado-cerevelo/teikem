@@ -419,6 +419,14 @@
       "removed": "Medio de contacto quitado.",
       "saved": "Medio de contacto guardado."
     },
+    "consignees": {
+      "title": "Consignatarios",
+      "empty": "Este cliente todavía no tiene consignatarios. Use «Nuevo consignatario» o «Importar».",
+      "noResults": "Ningún consignatario de este cliente coincide con la búsqueda.",
+      "showing": "Mostrando {shown} de {total}",
+      "seeAll": "Ver todos en Consignatarios",
+      "open": "Abrir {name} en Consignatarios"
+    },
     "people": {
       "title": "Personas de contacto",
       "add": "Agregar contacto",
@@ -755,6 +763,20 @@
     "filterAll": "Todos los clientes",
     "filterShared": "Compartidos (sin dueño)",
     "importBtn": "Importar",
+    "export": {
+      "code": "Número",
+      "name": "Nombre",
+      "client": "Cliente",
+      "line1": "Dirección 1",
+      "line2": "Dirección 2",
+      "city": "Pueblo",
+      "state": "Estado",
+      "postalCode": "Código postal",
+      "country": "País",
+      "contact": "Persona de contacto",
+      "status": "Estado del registro",
+      "fileName": "Consignatarios"
+    },
     "showInactive": "Mostrar inactivos",
     "numberHelp": "Opcional. Identifica al consignatario en importaciones y búsquedas.",
     "townHelp": "Busque por pueblo o código postal; llena el pueblo, el ZIP, el estado y el país.",

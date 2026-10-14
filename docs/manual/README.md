@@ -274,6 +274,7 @@ F-B2. [F-B2 — Importar consignatarios: Excel, «(No usar)», columnas unidas, 
    ZIP con sus ceros, CSV de Windows con ñ, **(No usar)**, una columna a dos campos, **Campos con varias columnas** (orden y separador, con resultado), **Cliente por defecto** que se
    guarda en la plantilla (la fila con su propio cliente manda) y **Recordar este cliente en la plantilla**, teléfonos en formatos mezclados y **Persona de contacto** en la ficha. Capturas `fb2-*`.
 F-B3. [F-B3 — Importar consignatarios: pueblo, estado y ZIP con la lista de códigos postales, y variantes de mapeo](frontend/fb3-variantes-y-codigos-postales.md): pueblo y estado tomados
+F-B4. [F-B4 — Consignatarios en la ficha del cliente y Exportar](frontend/fb4-consignatarios-en-la-ficha-del-cliente.md): panel **Consignatarios** al final de la ficha del cliente (10 filas, buscador, **Exportar**, **Importar** y **Nuevo consignatario** sin salir de la ficha, **Ver todos**) y **Exportar** en la pantalla Consignatarios (lo que la lista tiene filtrado).
    del ZIP, ZIP de entrega asignado por el pueblo, **Código postal ajustado** (ZIP de apartados o militar → de entrega de la misma ciudad), marca **de la lista**, filas rechazadas
    con el mensaje exacto; **variantes de mapeo** con **Se usa cuando** (igual a, contiene, no está vacía, está vacía), columna **Variante** en la vista previa; selector de pueblo del
    alta solo con ZIP de entrega; fuentes USPS y GeoNames (CC BY 4.0). Capturas `fb3-*`.
