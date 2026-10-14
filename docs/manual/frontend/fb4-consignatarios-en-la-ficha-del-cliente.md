@@ -6,6 +6,7 @@ Esta guía explica cómo ver, buscar, exportar, importar y crear **los consignat
 
 1. En **Listas → Clientes y contratos**, al elegir un cliente, la ficha tiene un panel nuevo, **Consignatarios**. Va **al final**, justo antes del **Historial de estatus**.
 2. En **Listas → Consignatarios**, la cabecera trae, juntos y en este orden, **Exportar**, **Importar** y **Nuevo consignatario** (después del filtro **Cliente**), igual que en el panel de la ficha del cliente.
+4. En **Listas → Consignatarios**, la lista de la izquierda arranca **más ancha** (unos 10 caracteres más) y entre la lista y la ficha hay una **barra para cambiar el ancho**: arrástrela con el ratón o el dedo, o use las flechas ← y → con la barra seleccionada; **doble clic** (o Enter) vuelve al ancho de inicio. El navegador recuerda el ancho que dejó. En pantallas angostas (menos de 900 px) la ficha queda debajo de la lista y no hay barra.
 3. Los paneles de la ficha del cliente son **desplegables** y, cerrados, dan un **resumen** (sección 6).
 
 ![Panel Consignatarios en la ficha del cliente](img/fb4-panel.png)
@@ -57,8 +58,8 @@ Todos los paneles de la ficha del cliente (Perfil, Teléfonos y correos, Persona
 
 - Pulse la **flecha** a la izquierda del título, o un clic en la cabecera (fuera de los botones). Cerrado, el panel **muestra un resumen de una línea** de lo que tiene, y se esconden sus botones. Por ejemplo, «Consignatarios activos: 12» o «Teléfonos: 2 · Correos: 1».
 - Lo que estaba escribiendo en un panel no se pierde al cerrarlo.
-- El navegador **recuerda** cómo dejó cada panel: al volver a abrir un cliente, los paneles quedan abiertos o cerrados como usted los dejó. Es por navegador, no por cliente.
-- La cabecera del cliente (nombre, estatus y «Dar de baja») no se cierra.
+- Los paneles **arrancan cerrados** cada vez que abre un cliente o recarga la página: no se recuerda cómo los dejó.
+- La cabecera del cliente (nombre, estatus y «Dar de baja») también se cierra; cerrada dice solo el estatus.
 
 ![Ficha del cliente con todos los paneles cerrados y su resumen](img/fb4-paneles.png)
 

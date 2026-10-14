@@ -2,42 +2,49 @@
 
 Esta guía explica cómo registrar **dónde está el cliente y dónde se le recoge**, qué cambió en el **Perfil fiscal** (nuevo nombre del antiguo «Perfil del cliente»), el interruptor **Imprimir los labels automáticamente**, y cómo se ve cada panel de la ficha cuando está **cerrado**. Es para quien atiende clientes y para soporte. Los paneles desplegables y el de Consignatarios están en [fb4](fb4-consignatarios-en-la-ficha-del-cliente.md).
 
-Ficha del cliente: **Listas → Clientes y contratos** y escoja un cliente.
+Ficha del cliente: **Listas → Clientes y contratos** y escoja un cliente. **Todos los paneles de la ficha arrancan cerrados**, cada uno con su resumen; ábralos con la flecha a la izquierda del título.
 
 ## 1. Qué hay de nuevo
 
 1. Un panel nuevo, **Direcciones**, **justo debajo de la cabecera del cliente** y antes del Perfil fiscal.
 2. «Perfil del cliente» se llama ahora **Perfil fiscal**: habla de la entidad fiscal (razón social, identificación fiscal, crédito, término de pago y moneda). Las direcciones salieron de ahí.
 3. En el Perfil fiscal hay un interruptor nuevo, **Imprimir los labels automáticamente**, antes de **Imprimir la factura automáticamente**.
-4. La cabecera del cliente también se puede cerrar, y todos los paneles cerrados dan un resumen (sección 5).
+4. Todos los paneles de la ficha, también la cabecera, se abren y se cierran, y cerrados dan un resumen (sección 5).
 
 ## 2. El panel Direcciones
 
-![Panel Direcciones con la física, la postal, un punto de recogida y «Se recoge en»](img/fb5-direcciones.png)
+![Panel Direcciones: una lista con la física, la postal y un punto de recogida, y «Se recoge en»](img/fb5-direcciones.png)
 
-Un cliente tiene:
+Es **una lista**. Cada fila lleva una etiqueta y, a la derecha, sus botones:
 
-- **Dirección física**: una sola (la corporativa).
-- **Dirección postal**: una sola. Mientras no tenga la suya dice **«Igual a la dirección física»**. Si es distinta (por ejemplo un P.O. Box), use **Otra dirección postal**. **Usar la física** vuelve a «igual a la física».
-- **Puntos de recogida**: los que quiera (almacenes u otros lugares donde se recoge). Cada uno lleva un **nombre** que lo identifica en el despacho.
-- **Se recoge en**: dónde el chofer recoge las órdenes de este cliente. Puede ser **la dirección física, la postal o cualquiera de los puntos de recogida**. Por omisión es la física. Se guarda al escoger.
+| Etiqueta | Qué es | Botones |
+|---|---|---|
+| **Física** | La dirección donde está el cliente. Es una sola. | Editar |
+| **Postal** | A donde se manda lo postal. Es una sola. Mientras no tenga la suya dice «Igual a la dirección física». Puede ser un P.O. Box. | Editar, Quitar |
+| **Recogida** | Un punto de recogida. Puede haber los que quiera, cada uno con su nombre. | Editar, Quitar |
 
-Así, si el punto de recogida no es ni la física ni la postal, se agrega como **otro punto** y se escoge en «Se recoge en». También puede recogerse en la postal, o la postal y la física pueden ser la misma y haber un tercer punto de recogida.
+Debajo de la lista está **Se recoge en**: dónde el chofer recoge las órdenes de este cliente. Puede ser **la dirección física, la postal o cualquiera de los puntos de recogida**. Por omisión es la física. Se guarda al escoger.
 
-### Cómo agregar o editar una dirección
+Hay **un solo botón para agregar**: **Agregar dirección**, arriba a la derecha del panel.
 
-1. Pulse **Agregar** (física), **Otra dirección postal**, **Agregar punto de recogida** o **Editar** en la dirección que quiera cambiar.
-2. Escriba la **dirección (línea 1)** y, si hace falta, la línea 2.
-3. En **Pueblo** busque por pueblo o por código postal y escoja de la lista: se llenan solos el **estado**, el **código postal** y el **país**. La física y los puntos de recogida solo ofrecen códigos postales **de entrega**; la **postal** acepta también **P.O. Box**.
-4. En un punto de recogida escriba su **nombre** (por ejemplo «Almacén Norte»).
-5. **Guardar**. Aparece «Dirección guardada.» y el panel se actualiza.
+### Cómo agregar una dirección
+
+1. Abra el panel **Direcciones** y pulse **Agregar dirección**.
+2. En **Tipo de dirección** escoja: **Dirección física**, **Dirección postal** o **Punto de recogida**. La física y la postal solo se ofrecen si el cliente todavía no la tiene.
+3. Escriba la **dirección (línea 1)** y, si hace falta, la línea 2.
+4. En **Pueblo** busque por pueblo o por código postal y escoja de la lista: se llenan solos el **estado**, el **código postal** y el **país**. La física y los puntos de recogida solo ofrecen códigos postales **de entrega**; la **postal** acepta también **P.O. Box**.
+5. Si es un punto de recogida, escriba su **nombre** (por ejemplo «Almacén Norte»).
+6. **Guardar**. Aparece «Dirección guardada.» y la lista se actualiza.
 
 ![Ventana para agregar una dirección](img/fb5-modal.png)
 
-### Quitar
+Si el punto de recogida no es ni la física ni la postal, se agrega como **punto de recogida** y se escoge en **Se recoge en**. La postal y la física pueden ser la misma (no se crea nada) y haber además un punto de recogida distinto.
 
+### Editar y quitar
+
+- **Editar** abre la misma ventana con la dirección. No se cambia el tipo.
 - **Quitar** (punto de recogida): pide confirmación. El punto deja de existir para este cliente; las órdenes ya creadas no cambian. Si era el punto por defecto, se vuelve a recoger en la dirección física. Mensaje: «Punto de recogida quitado.»
-- **Usar la física** (postal): la postal propia se da de baja y la postal pasa a ser la física. Mensaje: «La dirección postal es ahora la física.»
+- **Quitar** (postal): la postal propia se quita y la postal vuelve a ser la física. Mensaje: «La dirección postal es ahora la física.»
 - La dirección física no se quita; se edita.
 
 ## 3. Quién puede hacerlo
@@ -45,7 +52,7 @@ Así, si el punto de recogida no es ni la física ni la postal, se agrega como *
 | Acción | Permiso |
 |---|---|
 | Ver el panel | `clients.read` |
-| **Agregar** direcciones y puntos de recogida | `locations.create` |
+| **Agregar dirección** | `locations.create` |
 | **Editar** y **Quitar** | `locations.update` |
 | Escoger **Se recoge en** | `clients.update` |
 
@@ -82,20 +89,21 @@ Sin esos permisos los botones no aparecen y «Se recoge en» queda de solo lectu
 
 | Mensaje | Cuándo sale | Qué hacer |
 |---|---|---|
-| `Sin dirección registrada` | El cliente no tiene la dirección física (o postal). | Pulse **Agregar**. |
-| `Igual a la dirección física` | No hay dirección postal propia. | Si es otra, **Otra dirección postal**. |
+| `Sin dirección registrada` | El cliente no tiene la dirección física (o postal). | **Agregar dirección** y escoja el tipo. |
+| `Igual a la dirección física` | No hay dirección postal propia. | Si es otra, **Agregar dirección** → «Dirección postal». |
 | `Escriba el nombre del punto.` | Un punto de recogida sin nombre. | Escriba el nombre. |
 | `La dirección (línea 1) es obligatoria.` / `La ciudad es obligatoria.` / `El país es obligatorio.` | Falta ese dato. | Complételo (el pueblo se escoge de la lista). |
 | `Máximo N caracteres.` | Texto demasiado largo. | Acórtelo. |
-| `El cliente ya tiene una dirección corporativa activa; desactívela o edítela.` (409) | Se intentó crear una segunda física. | Edite la que existe. |
-| `El cliente ya tiene una dirección postal (facturación) activa; desactívela o edítela.` (409) | Se intentó crear una segunda postal. | Edite la que existe o use **Usar la física**. |
+| `El cliente ya tiene una dirección corporativa activa; desactívela o edítela.` (409) | Se intentó crear una segunda física (solo por una llamada directa al API: la ventana ya no la ofrece). | Edite la que existe. |
+| `El cliente ya tiene una dirección postal (facturación) activa; desactívela o edítela.` (409) | Idem, una segunda postal. | Edite la que existe o **Quítela**. |
 | `El punto de recogido debe ser una dirección activa del cliente: la física, la postal o un punto de recogida.` (400) | El «Se recoge en» elegido ya no es válido. | Vuelva a abrir la ficha y escoja otro. |
 | `El registro fue modificado por otro usuario; recargue e intente de nuevo.` (409) | Otra persona guardó antes. | Recargue la ficha y repita. |
 
 ## 7. Casos frecuentes
 
-- **No veo dónde escribir la dirección del cliente.** Está en el panel **Direcciones** (antes estaba solo como lectura en el Perfil). Si no ve **Agregar**, falta el permiso `locations.create`.
+- **No veo dónde escribir la dirección del cliente.** Abra el panel **Direcciones** (arranca cerrado) y pulse **Agregar dirección**. Si no ve el botón, falta el permiso `locations.create`.
 - **La postal y la física son la misma.** No hace falta crear nada: deje «Igual a la dirección física».
-- **Se recoge en un tercer lugar.** Agregue un **punto de recogida** y escójalo en **Se recoge en**.
+- **Se recoge en un tercer lugar.** **Agregar dirección** → «Punto de recogida», y escójalo en **Se recoge en**.
 - **No encuentro el código postal de un P.O. Box.** Solo la dirección **postal** los admite; la física y los puntos de recogida ofrecen códigos de entrega.
+- **No me deja agregar otra dirección física (o postal).** Solo hay una de cada una; use **Editar**.
 - **Activé los labels automáticos y no salen.** Revise que la estación tenga una impresora de labels; la orden se guardó igual y el aviso dice el motivo.

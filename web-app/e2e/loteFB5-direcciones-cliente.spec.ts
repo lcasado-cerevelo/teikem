@@ -2,12 +2,13 @@
 // «Imprimir los labels automáticamente» antes que la factura, y los paneles desplegables con su resumen (Lote F-B5) contra el API real
 // (db-init hecho, API en API_URL, por defecto http://localhost:5000; compañía demo, admin con todos los permisos).
 //
-// 1) La ficha de un cliente nuevo: «Direcciones» va justo después de la cabecera y antes de «Perfil fiscal»; sin dirección dice
-//    «Sin dirección registrada» y ofrece Agregar.
-// 2) Agregar la física (CORPORATE), otra postal (BILLING) y un punto de recogida (PICKUP) desde la ficha; «Se recoge en» puede ser
-//    la física, la postal o el punto; quitar el punto vuelve a recoger en la física. Se comprueba contra el API.
+// 1) La ficha de un cliente nuevo arranca con TODOS los paneles cerrados, cada uno con su resumen; «Direcciones» va justo después de la
+//    cabecera y antes de «Perfil fiscal»; sin dirección dice «Sin dirección registrada».
+// 2) UN solo botón, «Agregar dirección», que pregunta el tipo: física (CORPORATE), postal (BILLING, admite P.O. Box) y punto de recogida
+//    (PICKUP); una vez que hay física y postal ya no se ofrecen. «Se recoge en» puede ser la física, la postal o el punto; quitar el
+//    punto vuelve a recoger en la física. Se comprueba contra el API.
 // 3) Perfil fiscal: los labels automáticos van antes que la factura y se guardan (autoPrintLabels).
-// 4) Todos los paneles cerrados resumen lo que tienen (dirección y recogida, perfil, teléfono principal…).
+// 4) Los paneles cerrados resumen lo que tienen (dirección y recogida, perfil fiscal, estatus…).
 //
 // Escritorio y móvil (Pixel 7 a 360 px, sin scroll horizontal de página). Capturas: docs/manual/frontend/img/fb5-<paso>.png (escritorio).
 import { mkdirSync } from 'node:fs'
@@ -86,53 +87,64 @@ test('Ficha del cliente: Direcciones, Perfil fiscal con labels automáticos y pa
   await page.goto(`/catalog/clients?client=${client.publicId}`)
   const addresses = page.locator('.panel', { has: page.getByRole('heading', { name: 'Direcciones', exact: true }) })
   await expect(addresses).toBeVisible({ timeout: 20_000 })
-  await addresses.scrollIntoViewIfNeeded()
+  const stack = page.locator('.cl-stack')
 
-  // «Direcciones» justo después de la cabecera y antes de «Perfil fiscal»
+  // «Direcciones» justo después de la cabecera y antes de «Perfil fiscal»; todos los paneles arrancan cerrados
   const titles = await page.locator('.cl-stack > .panel > header h2').allTextContents()
   expect(titles[1]).toBe('Direcciones')
   expect(titles[2]).toBe('Perfil fiscal')
-  await expect(addresses.getByText('Sin dirección registrada').first()).toBeVisible() // la física y la postal
+  await expect(stack.getByRole('button', { name: 'Cerrar el panel' })).toHaveCount(0)
+  await expect(addresses.locator('.kit-summary')).toHaveText('Sin dirección registrada') // el resumen
+  await addresses.scrollIntoViewIfNeeded()
+  await addresses.getByRole('button', { name: 'Abrir el panel' }).click()
+  await expect(addresses.locator('.cl-adr-list').getByText('Sin dirección registrada').first()).toBeVisible() // la física y la postal
   await shot(page, isMobile, 'fb5-direcciones-vacio', addresses)
 
-  // dirección física (CORPORATE)
-  await addresses.getByRole('button', { name: 'Agregar', exact: true }).click()
+  // UN solo botón para agregar: pregunta el tipo
+  await expect(addresses.getByRole('button', { name: /Agregar|Otra dirección|punto de recogida/i })).toHaveCount(1)
+  await addresses.getByRole('button', { name: 'Agregar dirección' }).click()
   let dialog = page.getByRole('dialog')
-  await expect(dialog.getByRole('heading', { name: 'Dirección física' })).toBeVisible()
+  await expect(dialog.getByRole('heading', { name: 'Agregar dirección' })).toBeVisible()
+  await expect(dialog.getByLabel('Tipo de dirección').locator('option')).toHaveText(['Dirección física', 'Dirección postal', 'Punto de recogida'])
+  await dialog.getByLabel('Tipo de dirección').selectOption('physical')
   await dialog.getByLabel(/^Dirección/).first().fill('Calle Sol 5')
   await pickTown(page, dialog, 'Caguas')
   await shot(page, isMobile, 'fb5-modal')
   await dialog.getByRole('button', { name: 'Guardar' }).click()
   await expect(dialog).toHaveCount(0, { timeout: 15_000 })
-  await expect(addresses.getByText('Calle Sol 5')).toBeVisible({ timeout: 15_000 })
-  await expect(addresses.getByText('Igual a la dirección física')).toBeVisible()
+  await expect(addresses.locator('.cl-adr-list').getByText('Calle Sol 5')).toBeVisible({ timeout: 15_000 })
+  await expect(addresses.locator('.cl-adr-list').getByText('Igual a la dirección física')).toBeVisible()
   let d = await detail()
   expect(d.physicalAddress?.line1).toBe('Calle Sol 5')
   expect(d.postalAddress).toBeFalsy()
 
-  // otra dirección postal (BILLING); admite P.O. Box
-  await addresses.getByRole('button', { name: 'Otra dirección postal' }).click()
+  // la postal propia (BILLING) con un P.O. Box: ya no se ofrece la física
+  await addresses.getByRole('button', { name: 'Agregar dirección' }).click()
   dialog = page.getByRole('dialog')
+  await expect(dialog.getByLabel('Tipo de dirección').locator('option')).toHaveText(['Dirección postal', 'Punto de recogida'])
+  await dialog.getByLabel('Tipo de dirección').selectOption('postal')
   await dialog.getByLabel(/^Dirección/).first().fill('P.O. Box 123')
   await pickTown(page, dialog, 'San Juan')
   await dialog.getByRole('button', { name: 'Guardar' }).click()
   await expect(dialog).toHaveCount(0, { timeout: 15_000 })
-  await expect(addresses.getByText('P.O. Box 123')).toBeVisible({ timeout: 15_000 })
+  await expect(addresses.locator('.cl-adr-list').getByText('P.O. Box 123')).toBeVisible({ timeout: 15_000 })
   d = await detail()
   expect(d.postalAddress?.line1).toBe('P.O. Box 123')
 
-  // punto de recogida (PICKUP) y «Se recoge en»
-  await addresses.getByRole('button', { name: 'Agregar punto de recogida' }).click()
+  // un punto de recogida (PICKUP): lleva nombre
+  await addresses.getByRole('button', { name: 'Agregar dirección' }).click()
   dialog = page.getByRole('dialog')
+  await expect(dialog.getByLabel('Tipo de dirección').locator('option')).toHaveText(['Punto de recogida'])
   await dialog.getByLabel('Nombre del punto').fill(`Almacén Norte ${suffix}`)
   await dialog.getByLabel(/^Dirección/).first().fill('Carr. 2 km 10')
   await pickTown(page, dialog, 'Bayamon')
   await dialog.getByRole('button', { name: 'Guardar' }).click()
   await expect(dialog).toHaveCount(0, { timeout: 15_000 })
-  await expect(addresses.getByText(`Almacén Norte ${suffix}`).first()).toBeVisible({ timeout: 15_000 })
+  await expect(addresses.locator('.cl-adr-list').getByText(`Almacén Norte ${suffix}`)).toBeVisible({ timeout: 15_000 })
 
+  // «Se recoge en»: la física, la postal o el punto
   const pickup = addresses.getByLabel('Se recoge en')
-  await expect(pickup.locator('option')).toHaveCount(3) // la física, la postal y el punto
+  await expect(pickup.locator('option')).toHaveCount(3)
   await pickup.selectOption({ label: 'La dirección postal' })
   await expect.poll(async () => (await detail()).pickupAddress?.locationType, { timeout: 15_000 }).toBe('BILLING')
   await pickup.selectOption({ index: 2 })
@@ -140,15 +152,16 @@ test('Ficha del cliente: Direcciones, Perfil fiscal con labels automáticos y pa
   await shot(page, isMobile, 'fb5-direcciones', addresses)
 
   // quitar el punto: vuelve a recoger en la física
-  await addresses.getByRole('button', { name: /Quitar el punto de recogida/ }).click()
+  await addresses.getByRole('button', { name: `Quitar Almacén Norte ${suffix}` }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Quitar', exact: true }).click()
-  await expect(addresses.getByText('Sin puntos de recogida', { exact: false })).toBeVisible({ timeout: 15_000 })
+  await expect(addresses.locator('.cl-adr-list').getByText(`Almacén Norte ${suffix}`)).toHaveCount(0, { timeout: 15_000 })
   await expect.poll(async () => (await detail()).pickupAddress?.isDefaultFromCorporate, { timeout: 15_000 }).toBe(true)
   await expect(pickup).toHaveValue('physical')
 
   // Perfil fiscal: los labels automáticos van antes que la factura y se guardan
   const profile = page.locator('.panel', { has: page.getByRole('heading', { name: 'Perfil fiscal' }) })
   await profile.scrollIntoViewIfNeeded()
+  await profile.getByRole('button', { name: 'Abrir el panel' }).click()
   const names = await profile.locator('.f > label').allTextContents()
   expect(names.indexOf('Labels')).toBeGreaterThanOrEqual(0)
   expect(names.indexOf('Labels')).toBeLessThan(names.indexOf('Factura'))
@@ -158,14 +171,15 @@ test('Ficha del cliente: Direcciones, Perfil fiscal con labels automáticos y pa
   expect((await detail()).autoPrintInvoice).toBe(false)
   await shot(page, isMobile, 'fb5-perfil', profile)
 
-  // todos los paneles cerrados: cada uno da su resumen
-  const stack = page.locator('.cl-stack')
-  const size = page.viewportSize()
-  if (size && !isMobile) await page.setViewportSize({ width: size.width, height: 1500 })
-  for (let n = await stack.getByRole('button', { name: 'Cerrar el panel' }).count(); n > 0; n--) await stack.getByRole('button', { name: 'Cerrar el panel' }).first().click()
+  // recargada la ficha, todos los paneles vuelven a arrancar cerrados, cada uno con su resumen
+  await page.reload()
+  await expect(stack.getByRole('button', { name: 'Abrir el panel' }).first()).toBeVisible({ timeout: 20_000 })
+  await expect(stack.getByRole('button', { name: 'Cerrar el panel' })).toHaveCount(0)
   await expect(stack.getByText('Estatus: Activo')).toBeVisible()
   await expect(stack.getByText(/Física: Calle Sol 5, Caguas.*Se recoge en: la dirección física/)).toBeVisible()
   await expect(stack.getByText(`Cliente FB5 ${suffix} LLC · 66-1234567`)).toBeVisible()
+  const size = page.viewportSize()
+  if (size && !isMobile) await page.setViewportSize({ width: size.width, height: 1500 })
   await stack.scrollIntoViewIfNeeded()
   await shot(page, isMobile, 'fb5-resumenes', stack)
   if (size && !isMobile) await page.setViewportSize(size)

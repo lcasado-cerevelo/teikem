@@ -73,7 +73,7 @@ function ClientConsigneesTable({ client }: { client: ClientDetail }) {
       title={t('clients.consignees.title')}
       badge={list.isPending ? undefined : filtered.length}
       collapsible
-      storageKey="clients.consignees"
+      defaultCollapsed
       summary={list.isPending ? t('common.loading') : (list.data ?? NO_ROWS).length === 0 ? t('clients.summary.empty') : t('clients.summary.consignees', { n: (list.data ?? NO_ROWS).length })}
       actions={
         <>

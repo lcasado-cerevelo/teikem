@@ -158,7 +158,7 @@ export function ClientPortalPanel({ client }: { client: ClientDetail }) {
       title={t('clients.portal.title')}
       badge={users.length}
       collapsible
-      storageKey="clients.portal"
+      defaultCollapsed
       summary={users.length === 0 ? t('clients.summary.empty') : t('clients.summary.portal', { n: users.length })}
       actions={
         <Can perm="portalusers.manage">

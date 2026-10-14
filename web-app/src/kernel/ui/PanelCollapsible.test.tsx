@@ -34,7 +34,8 @@ describe('Panel — desplegable', () => {
     await user.click(screen.getByRole('button', { name: 'Cerrar el panel' }))
     expect(screen.getByText('Personas de contacto: 3')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Abrir el panel' })).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.getByLabelText('nombre', { selector: 'input' })).not.toBeVisible()
+    // el cuerpo se oculta con la clase `kit-body-off` (display:none en el CSS) y sigue montado
+    expect(screen.getByLabelText('nombre').closest('.pb')).toHaveClass('kit-body-off')
     expect(document.querySelector('section')).toHaveClass('kit-collapsed')
     await user.click(screen.getByRole('button', { name: 'Abrir el panel' }))
     expect(screen.getByLabelText('nombre')).toHaveValue('Ana')

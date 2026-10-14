@@ -108,7 +108,7 @@ export function ClientNumberingPanel({ client }: { client: ClientDetail }) {
       icon={<IconTag />}
       title={t('clients.numbering.title')}
       collapsible
-      storageKey="clients.numbering"
+      defaultCollapsed
       summary={t('clients.summary.numberingExamples', {
         order: client.numberSettings?.orderNumberPreview ?? localPreview('order', ''),
         invoice: client.numberSettings?.invoiceNumberPreview ?? localPreview('invoice', ''),

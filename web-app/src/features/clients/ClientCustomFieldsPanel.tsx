@@ -39,7 +39,7 @@ export function ClientCustomFieldsPanel({ client }: { client: ClientDetail }) {
       icon={<IconTag />}
       title={t('clients.custom.title')}
       collapsible
-      storageKey="clients.custom"
+      defaultCollapsed
       summary={summary}
     >
       <Form

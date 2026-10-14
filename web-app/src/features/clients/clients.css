@@ -93,17 +93,14 @@
 .cl-q{display:flex;align-items:stretch;padding:10px 12px;border-bottom:1px solid var(--line-2)}
 .cl-q .qbox{flex:1 1 auto;max-width:none}
 .cl-more{margin:0;padding:10px 14px;font-size:12.5px;color:var(--muted)}
-/* panel «Direcciones» de la ficha: filas de dirección con sus botones, lista de puntos de recogida y «Se recoge en» */
-.cl-adr{display:flex;flex-direction:column;gap:12px}
-.cl-adr-row{display:flex;gap:10px 14px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
-.cl-adr-main{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 260px;overflow-wrap:anywhere}
-.cl-adr-main b{font-size:12.5px;color:var(--muted);font-weight:600}
+/* panel «Direcciones»: una lista de filas (etiqueta + dirección + Editar / Quitar) y «Se recoge en» */
+.cl-adr-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.cl-adr-row{display:flex;gap:10px 12px;align-items:center;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--line-2)}
+.cl-adr-row:last-child{border-bottom:0}
+.cl-adr-row .chip{flex:none;min-width:64px;justify-content:center}
+.cl-adr-main{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 220px;overflow-wrap:anywhere}
 .cl-adr-name{font-weight:600}
 .cl-adr-empty{color:var(--muted)}
-.cl-adr-acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.cl-adr-points{border-top:1px solid var(--line-2);padding-top:12px;display:flex;flex-direction:column;gap:8px}
-.cl-adr-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
-.cl-adr-head b{font-size:12.5px;color:var(--muted);font-weight:600}
-.cl-adr-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
-.cl-adr-pickup{border-top:1px solid var(--line-2);padding-top:12px;margin-bottom:0}
-
+.cl-adr-acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-left:auto}
+.cl-adr-pickup{border-top:1px solid var(--line-2);padding-top:12px;margin:4px 0 0}
+.cl-kind{margin-bottom:8px}

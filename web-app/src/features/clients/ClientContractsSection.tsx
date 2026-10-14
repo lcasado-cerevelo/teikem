@@ -47,7 +47,7 @@ export function ClientContractsSection({ client }: { client: ClientDetail }) {
 
   if (!canRead) {
     return (
-      <Panel icon={<IconDoc />} title={t('clients.contracts.title')} badge={contracts.length} collapsible storageKey="clients.contracts" summary={contractsSummary}>
+      <Panel icon={<IconDoc />} title={t('clients.contracts.title')} badge={contracts.length} collapsible defaultCollapsed summary={contractsSummary}>
         <p className="cl-billing">
           <span className="meta">{t('clients.contracts.billingLabel')}</span> <b>{client.billingSummary || '—'}</b>
         </p>
@@ -70,7 +70,7 @@ export function ClientContractsSection({ client }: { client: ClientDetail }) {
       title={t('clients.contracts.title')}
       badge={contracts.length}
       collapsible
-      storageKey="clients.contracts"
+      defaultCollapsed
       summary={contractsSummary}
       actions={
         <Can perm="contracts.create">

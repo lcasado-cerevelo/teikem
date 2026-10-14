@@ -21,6 +21,7 @@
 .panel .ph2.kit-fold-head{cursor:pointer}
 .panel.kit-collapsed .ph2 .kit-acts{display:none}
 .panel.kit-collapsed .ph2{border-bottom:0}
+.panel .pb.kit-body-off{display:none}
 .panel .kit-summary{padding-top:0;color:var(--muted);font-size:13px;overflow-wrap:anywhere}
 @media (prefers-reduced-motion:reduce){.panel .ph2 .kit-fold svg{transition:none}}
 .panel .pb.flush{padding:0}

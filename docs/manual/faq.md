@@ -7858,36 +7858,36 @@ Su usuario no tiene `locations.read` o el módulo Listas está apagado. El panel
 **No veo los botones Importar ni Nuevo consignatario en el panel.**
 Falta el permiso `locations.create`. **Exportar** sí se ve con solo `locations.read`.
 
-**¿Cómo cierro un panel de la ficha del cliente? ¿Se pierde lo que tenía escrito?**
-Pulse la flecha a la izquierda del título (o un clic en la cabecera). Cerrado, el panel muestra un resumen de una línea, por ejemplo «Consignatarios activos: 12». Lo escrito no se pierde al cerrar. El navegador recuerda cómo dejó cada panel; si lo prefiere abierto, ábralo otra vez.
+**¿Cómo abro y cierro un panel de la ficha del cliente? ¿Se pierde lo que tenía escrito?**
+Pulse la flecha a la izquierda del título (o un clic en la cabecera). Cerrado, el panel muestra un resumen de una línea, por ejemplo «Consignatarios activos: 12». Lo escrito no se pierde al cerrar un panel mientras no cambie de cliente ni recargue la página.
 
 **Los paneles de la ficha del cliente aparecen cerrados cuando entro.**
-Los dejó así en una visita anterior (el navegador lo recuerda). Pulse la flecha del título para abrirlos. Si usa otro navegador u otro equipo, los verá abiertos.
+Es lo normal: todos los paneles arrancan **cerrados**, cada uno con su resumen, cada vez que abre un cliente o recarga la página. Pulse la flecha del título del que quiera ver.
 
 **No puedo cerrar el cuadro de arriba con el nombre del cliente.**
-Es la cabecera de la ficha (nombre, estatus y «Dar de baja») y no se cierra. Los paneles de abajo sí.
+Sí se puede: la cabecera del cliente (nombre, estatus y «Dar de baja») también es un panel desplegable. Cerrada, dice solo el estatus; para dar de baja o cambiar el estatus, ábrala.
 
 ## Lote F-B5 — Direcciones y Perfil fiscal del cliente
 
 Preguntas del panel **Direcciones**, del **Perfil fiscal** y de los resúmenes de los paneles cerrados. Capítulo: [fb5-direcciones-y-perfil-fiscal.md](frontend/fb5-direcciones-y-perfil-fiscal.md).
 
 **¿Dónde escribo la dirección del cliente?**
-En el panel **Direcciones** de la ficha (justo debajo de la cabecera): **Agregar** para la física, **Otra dirección postal** para una postal distinta (acepta P.O. Box) y **Agregar punto de recogida** para otros lugares donde se recoge. Si no ve los botones, falta el permiso `locations.create` (o `locations.update` para editar).
+En el panel **Direcciones** de la ficha (justo debajo de la cabecera; ábralo con la flecha). Hay **un solo botón**, **Agregar dirección**: la ventana pregunta el **tipo** (dirección física, dirección postal o punto de recogida). Si no ve el botón, falta el permiso `locations.create` (o `locations.update` para **Editar** y **Quitar**).
 
 **«Sin dirección registrada»**
-El cliente no tiene esa dirección todavía. Pulse **Agregar**.
+El cliente no tiene esa dirección todavía. Pulse **Agregar dirección** y escoja el tipo.
 
 **«Igual a la dirección física»**
-No hay dirección postal propia: la postal es la física. Si es otra, pulse **Otra dirección postal**; si la quita después con **Usar la física**, vuelve a este estado.
+No hay dirección postal propia: la postal es la física. Si es otra, **Agregar dirección** y escoja «Dirección postal»; si después la quita con **Quitar**, vuelve a este estado.
 
 **«Escriba el nombre del punto.»**
 Todo punto de recogida lleva un nombre para reconocerlo en el despacho (por ejemplo «Almacén Norte»). La física y la postal no piden nombre.
 
 **«El cliente ya tiene una dirección corporativa activa; desactívela o edítela.» (409)**
-Solo hay una dirección física por cliente. Edítela con **Editar**.
+Solo hay una dirección física por cliente. Edítela con **Editar**. (En la ventana de agregar, «Dirección física» ya no se ofrece cuando existe.)
 
 **«El cliente ya tiene una dirección postal (facturación) activa; desactívela o edítela.» (409)**
-Solo hay una postal propia por cliente. Edítela, o use **Usar la física** para quitarla.
+Solo hay una postal propia por cliente. Edítela, o **Quítela** para volver a «igual a la física».
 
 **¿Qué es «Se recoge en»?**
 Dónde el chofer recoge las órdenes de este cliente: la dirección física (por omisión), la postal o cualquiera de los puntos de recogida. Se guarda al escogerlo («Punto de recogida guardado.»). Si quita el punto que estaba elegido, vuelve a la dirección física.

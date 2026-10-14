@@ -36,7 +36,7 @@ function ClientHeaderPanel({ client }: { client: ClientDetail }) {
       title={client.name ?? client.code ?? ''}
       badge={client.code ?? undefined}
       collapsible
-      storageKey="clients.header"
+      defaultCollapsed
       summary={t(client.isActive ? 'clients.summary.header' : 'clients.summary.headerInactive', { status: client.statusLabel ?? client.status ?? '—' })}
       actions={
         <Can perm="clients.update">
@@ -123,7 +123,7 @@ export function ClientDetailPanel({ publicId }: { publicId: string }) {
         icon={<IconClock />}
         title={t('status.history')}
         collapsible
-        storageKey="clients.history"
+        defaultCollapsed
         summary={t('clients.summary.history', { status: client.statusLabel ?? client.status ?? '—' })}
       >
         <StatusHistory entityType={CLIENT_ENTITY_TYPE} entityId={client.id} domain={CLIENT_STATUS_DOMAIN} />

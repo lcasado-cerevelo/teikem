@@ -99,8 +99,8 @@ export function Panel({ title, icon, badge, subtitle, actions, footer, flush, cl
         </header>
       )}
       {collapsed && summary != null && <div className="pb kit-summary">{summary}</div>}
-      {/* cerrado el cuerpo sigue montado (conserva lo que se estaba escribiendo y las consultas) pero oculto */}
-      <div id={bodyId} className={flush ? 'pb flush' : 'pb'} hidden={collapsed}>
+      {/* cerrado el cuerpo sigue montado (conserva lo que se estaba escribiendo y las consultas) pero oculto (display:none) */}
+      <div id={bodyId} className={[flush ? 'pb flush' : 'pb', collapsed ? 'kit-body-off' : ''].filter(Boolean).join(' ')}>
         {/* el título en texto llega a las tablas del cuerpo (nombre del archivo exportado) */}
         <PanelTitleContext.Provider value={typeof title === 'string' ? title : null}>{children}</PanelTitleContext.Provider>
       </div>

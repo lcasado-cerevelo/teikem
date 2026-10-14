@@ -301,7 +301,7 @@ describe('Clientes — ficha', () => {
     expect(callsTo('PATCH', '/api/v1/clients/c-1/profile')[1].body).toEqual({ clearDefaultPickup: true, rowVersion: 'BBB=' }) // ya con la versión que devolvió el primer guardado
   })
 
-  it('direcciones: sin dirección física dice «Sin dirección registrada» y ofrece Agregar; la postal propia se agrega aparte', async () => {
+  it('direcciones: sin dirección física dice «Sin dirección registrada» y hay UN solo botón, «Agregar dirección», que pregunta el tipo', async () => {
     const user = userEvent.setup()
     mock.override = ({ method, url }) => {
       if (method === 'GET' && url.pathname === '/api/v1/clients/c-1') return { ...CLIENT_BASE, physicalAddress: null, postalAddress: null, pickupLocations: [], pickupAddress: null }
@@ -310,16 +310,20 @@ describe('Clientes — ficha', () => {
     wrap([...ALL, 'locations.create', 'locations.update'])
     await screen.findByRole('heading', { name: 'Direcciones' })
     expect(await screen.findAllByText('Sin dirección registrada')).not.toHaveLength(0)
-    await user.click(screen.getByRole('button', { name: 'Agregar' }))
-    expect(await screen.findByRole('dialog', { name: 'Dirección física' })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /Agregar dirección|Otra dirección postal|Agregar punto de recogida/ })).toHaveLength(1)
+    await user.click(screen.getByRole('button', { name: 'Agregar dirección' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Agregar dirección' })
+    // sin física ni postal se ofrecen los tres tipos, la física primero
+    const kinds = within(dialog).getAllByRole('option').map((o) => o.textContent)
+    expect(kinds.slice(0, 3)).toEqual(['Dirección física', 'Dirección postal', 'Punto de recogida'])
   })
 
   it('paneles cerrados: cada uno resume lo que tiene (estatus, dirección y recogida, teléfono y correo principales, personas, ejemplos de numeración, contratos)', async () => {
-    const user = userEvent.setup()
     wrap(ALL)
     await screen.findByRole('heading', { name: 'Direcciones' })
-    // cierra todos los paneles de la ficha: cada flecha «Cerrar el panel» (la lista de la izquierda no es desplegable)
-    for (let n = screen.getAllByRole('button', { name: 'Cerrar el panel' }).length; n > 0; n--) await user.click(screen.getAllByRole('button', { name: 'Cerrar el panel' })[0])
+    // los paneles de la ficha arrancan cerrados: ya muestran su resumen sin tocar nada
+    expect(screen.queryAllByRole('button', { name: 'Cerrar el panel' })).toHaveLength(0)
+    expect(screen.getAllByRole('button', { name: 'Abrir el panel' }).length).toBeGreaterThanOrEqual(8)
     expect(screen.getByText('Estatus: Activo')).toBeInTheDocument()
     expect(screen.getByText('Física: Calle 1, San Juan, PR 00901 · Se recoge en: la dirección física')).toBeInTheDocument()
     expect(screen.getByText('Acme LLC · 66-123 · USD · NET30')).toBeInTheDocument()

@@ -58,7 +58,7 @@ export function ClientProfilePanel({ client }: { client: ClientDetail }) {
       icon={<IconUsers />}
       title={t('clients.profile.title')}
       collapsible
-      storageKey="clients.profile"
+      defaultCollapsed
       summary={[client.legalName, client.taxId, client.currencyLabel ?? client.currency, client.paymentTermLabel ?? client.paymentTerm].filter(Boolean).join(' · ') || t('clients.summary.empty')}
     >
       <Form

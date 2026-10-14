@@ -215,7 +215,10 @@ test.describe('Consignatarios (Lote F-B)', () => {
     await editor.getByLabel('Columna 1', { exact: true }).selectOption({ label: 'Nombre *' })
     await editor.getByLabel('Columna 2', { exact: true }).selectOption({ label: 'Número' })
     await editor.getByLabel('Columna 3', { exact: true }).selectOption({ label: 'Dirección *' })
-    await editor.getByLabel('Columna 4', { exact: true }).selectOption({ label: 'Pueblo *' })
+    // el editor (F-B2) arranca con tres columnas: se agregan la 4 y la 5
+    await editor.getByRole('button', { name: 'Agregar columna' }).click()
+    await editor.getByRole('button', { name: 'Agregar columna' }).click()
+    await editor.getByLabel('Columna 4', { exact: true }).selectOption({ label: 'Pueblo' })
     await editor.getByLabel('Columna 5', { exact: true }).selectOption({ label: 'Teléfono' })
     await shot(page, isMobile, 'fb-plantilla')
     await editor.getByRole('button', { name: 'Guardar plantilla' }).click()

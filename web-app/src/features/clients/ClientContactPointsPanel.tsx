@@ -16,7 +16,8 @@ export function ClientContactPointsPanel({ client }: { client: ClientDetail }) {
       points={client.contactPoints ?? []}
       perms={WRITE_PERMS}
       idPrefix="client"
-      storageKey="clients.points"
+      collapsible
+      defaultCollapsed
       // un principal nuevo desmarca a otro del mismo tipo: se relee la ficha
       onChanged={() => queryClient.invalidateQueries({ queryKey: clientKeys.detail(client.publicId ?? '') })}
     />

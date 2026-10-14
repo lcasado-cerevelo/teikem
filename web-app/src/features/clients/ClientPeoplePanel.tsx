@@ -202,7 +202,7 @@ export function ClientPeoplePanel({ client }: { client: ClientDetail }) {
       title={t('clients.people.title')}
       badge={people.length}
       collapsible
-      storageKey="clients.people"
+      defaultCollapsed
       summary={peopleSummary}
       actions={
         <Can perm="clients.update">

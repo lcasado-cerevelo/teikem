@@ -9,7 +9,7 @@ import { Can } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
-import { CARDS_QUERY, Chip, EmptyState, FilterScope, IconPlus, IconUpload, IconUsers, Panel, QBox, Spinner, useMediaQuery } from '../../kernel/ui'
+import { CARDS_QUERY, Chip, EmptyState, FilterScope, IconPlus, IconUpload, IconUsers, Panel, QBox, Spinner, SplitPane, useMediaQuery } from '../../kernel/ui'
 import { ExportMenu } from '../../kernel/ui/ExportMenu'
 import { useClientOptions, useConsignees } from './api'
 import { exportConsignees } from './consigneeExport'
@@ -99,7 +99,8 @@ export default function ConsigneeListScreen() {
         </div>
       </div>
 
-      <div className="md cs-md">
+      {/* la lista arranca más ancha que la de la maqueta (unos 10 caracteres más) y la barra cambia el ancho; recuerda su posición */}
+      <SplitPane storageKey="consignees" defaultRatio={0.36} minRatio={0.22} maxRatio={0.6} minPx={[300, 460]} label={t('consignees.splitLabel')} className="cs-md">
         <Panel flush icon={<IconUsers />} title={t('consignees.list')} badge={list.isPending ? undefined : shown.length}>
           <FilterScope>
             <div className="qrow cs-q">
@@ -158,7 +159,7 @@ export default function ConsigneeListScreen() {
             )}
           </FilterScope>
         </div>
-      </div>
+      </SplitPane>
 
       <ConsigneeFormModal
         key={creating ? `new-${defaultOwner}` : 'closed'}
