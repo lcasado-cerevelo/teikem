@@ -59,7 +59,7 @@ public sealed record ClientDetailDto(
     IReadOnlyList<ClientContactDto> Contacts, IReadOnlyList<ContactPointDto> ContactPoints,
     IReadOnlyList<ClientContractSummaryDto> Contracts, ClientContractSummaryDto? CurrentContract, string BillingSummary,
     DateTime CreatedAtUtc, DateTime? UpdatedAtUtc, string? RowVersion,
-    bool AutoPrintInvoice = false);
+    bool AutoPrintInvoice = false, bool AutoPrintLabels = false);
 
 // ---------------- Edición ----------------
 
@@ -69,7 +69,7 @@ public sealed record ClientDetailDto(
 /// </summary>
 public sealed record ClientProfileUpdateRequest(
     string? LegalName, string? TaxId, decimal? CreditLimit, string? PaymentTerm, string? Currency,
-    Guid? DefaultPickupLocationPublicId, bool ClearDefaultPickup, string? RowVersion, bool? AutoPrintInvoice = null);
+    Guid? DefaultPickupLocationPublicId, bool ClearDefaultPickup, string? RowVersion, bool? AutoPrintInvoice = null, bool? AutoPrintLabels = null);
 
 /// <summary>Cadena vacía en un patrón = NULL = patrón por defecto del sistema.</summary>
 public sealed record ClientNumberSettingsRequest(

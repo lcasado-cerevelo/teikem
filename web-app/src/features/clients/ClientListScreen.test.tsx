@@ -137,6 +137,7 @@ beforeEach(() => {
   mock.calls = []
   mock.override = null
   client = { ...CLIENT_BASE }
+  window.localStorage.clear() // los paneles de la ficha recuerdan abierto/cerrado
 })
 
 describe('Clientes — lista', () => {
@@ -275,7 +276,7 @@ describe('Clientes — ficha', () => {
     wrap(ALL)
     await screen.findByRole('heading', { name: 'Acme Corp' })
     const titles = (await screen.findAllByRole('heading', { level: 2 })).map((h) => h.textContent)
-    const order = ['Acme Corp', 'Perfil del cliente', 'Teléfonos y correos', 'Personas de contacto', 'Numeración', 'Contratos', 'Historial de estatus']
+    const order = ['Acme Corp', 'Direcciones', 'Perfil fiscal', 'Teléfonos y correos', 'Personas de contacto', 'Numeración', 'Contratos', 'Historial de estatus']
     const idx = order.map((o) => titles.indexOf(o))
     expect(idx.every((n) => n >= 0)).toBe(true)
     expect([...idx].sort((a, b) => a - b)).toEqual(idx)
@@ -283,16 +284,62 @@ describe('Clientes — ficha', () => {
     expect(titles).not.toContain('Campos personalizados')
   })
 
-  it('perfil: guarda con rowVersion; las direcciones son de solo lectura y la postal igual a la física se avisa', async () => {
+  it('direcciones: la física, la postal «igual a la física» y los puntos de recogida; «Se recoge en» se guarda solo con el id elegido', async () => {
     const user = userEvent.setup()
     wrap(ALL)
-    await screen.findByRole('heading', { name: 'Perfil del cliente' })
+    await screen.findByRole('heading', { name: 'Direcciones' })
     expect(await screen.findByText('Calle 1 · San Juan, PR 00901 · Puerto Rico')).toBeInTheDocument()
-    expect(screen.getByText('La dirección postal es la misma que la física')).toBeInTheDocument()
+    expect(screen.getByText('Igual a la dirección física')).toBeInTheDocument()
+    expect(screen.getAllByText('Almacén 1').length).toBeGreaterThan(0) // el punto y su opción de «Se recoge en»
+    const pickup = screen.getByLabelText('Se recoge en')
+    expect(pickup).toHaveValue('physical')
+    await user.selectOptions(pickup, 'loc-1')
+    await waitFor(() => expect(callsTo('PATCH', '/api/v1/clients/c-1/profile')).toHaveLength(1))
+    expect(callsTo('PATCH', '/api/v1/clients/c-1/profile')[0].body).toEqual({ clearDefaultPickup: false, defaultPickupLocationPublicId: 'loc-1', rowVersion: 'AAA=' })
+    await user.selectOptions(screen.getByLabelText('Se recoge en'), 'physical')
+    await waitFor(() => expect(callsTo('PATCH', '/api/v1/clients/c-1/profile')).toHaveLength(2))
+    expect(callsTo('PATCH', '/api/v1/clients/c-1/profile')[1].body).toEqual({ clearDefaultPickup: true, rowVersion: 'BBB=' }) // ya con la versión que devolvió el primer guardado
+  })
+
+  it('direcciones: sin dirección física dice «Sin dirección registrada» y ofrece Agregar; la postal propia se agrega aparte', async () => {
+    const user = userEvent.setup()
+    mock.override = ({ method, url }) => {
+      if (method === 'GET' && url.pathname === '/api/v1/clients/c-1') return { ...CLIENT_BASE, physicalAddress: null, postalAddress: null, pickupLocations: [], pickupAddress: null }
+      return undefined
+    }
+    wrap([...ALL, 'locations.create', 'locations.update'])
+    await screen.findByRole('heading', { name: 'Direcciones' })
+    expect(await screen.findAllByText('Sin dirección registrada')).not.toHaveLength(0)
+    await user.click(screen.getByRole('button', { name: 'Agregar' }))
+    expect(await screen.findByRole('dialog', { name: 'Dirección física' })).toBeInTheDocument()
+  })
+
+  it('paneles cerrados: cada uno resume lo que tiene (estatus, dirección y recogida, teléfono y correo principales, personas, ejemplos de numeración, contratos)', async () => {
+    const user = userEvent.setup()
+    wrap(ALL)
+    await screen.findByRole('heading', { name: 'Direcciones' })
+    // cierra todos los paneles de la ficha: cada flecha «Cerrar el panel» (la lista de la izquierda no es desplegable)
+    for (let n = screen.getAllByRole('button', { name: 'Cerrar el panel' }).length; n > 0; n--) await user.click(screen.getAllByRole('button', { name: 'Cerrar el panel' })[0])
+    expect(screen.getByText('Estatus: Activo')).toBeInTheDocument()
+    expect(screen.getByText('Física: Calle 1, San Juan, PR 00901 · Se recoge en: la dirección física')).toBeInTheDocument()
+    expect(screen.getByText('Acme LLC · 66-123 · USD · NET30')).toBeInTheDocument()
+    expect(screen.getByText('Teléfono: (787) 555-0000 · Correo: info@acme.com')).toBeInTheDocument()
+    expect(screen.getByText('Ana Pérez (principal)')).toBeInTheDocument()
+    expect(screen.getByText('Orden: AX-00001 · Factura: FAC-00001 · Paquete: PQT-00001')).toBeInTheDocument()
+    expect(screen.getByText('Contratos: 1 · vigente: ACME-001 · Contrato marco')).toBeInTheDocument()
+  })
+
+  it('perfil fiscal: guarda con rowVersion (sin direcciones ni punto de recogida) y los labels automáticos van antes que la factura', async () => {
+    const user = userEvent.setup()
+    wrap(ALL)
+    await screen.findByRole('heading', { name: 'Perfil fiscal' })
+    const labels = screen.getByLabelText(/Imprimir los labels automáticamente/)
+    const invoice = screen.getByLabelText(/Imprimir la factura automáticamente/)
+    expect(labels.compareDocumentPosition(invoice) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy() // labels primero
     const legal = screen.getByLabelText('Razón social')
     await user.clear(legal)
     await user.type(legal, 'Acme Inc')
-    await user.selectOptions(screen.getByLabelText('Punto de recogido por defecto'), 'loc-1')
+    await user.click(labels)
     await user.click(screen.getAllByRole('button', { name: 'Guardar' })[0])
     await waitFor(() => expect(callsTo('PATCH', '/api/v1/clients/c-1/profile')).toHaveLength(1))
     expect(callsTo('PATCH', '/api/v1/clients/c-1/profile')[0].body).toMatchObject({
@@ -301,9 +348,11 @@ describe('Clientes — ficha', () => {
       creditLimit: 1000,
       paymentTerm: 'NET30',
       currency: 'USD',
-      defaultPickupLocationPublicId: 'loc-1',
+      autoPrintLabels: true,
       rowVersion: 'AAA=',
     })
+    expect(callsTo('PATCH', '/api/v1/clients/c-1/profile')[0].body).not.toHaveProperty('defaultPickupLocationPublicId')
+    expect(callsTo('PATCH', '/api/v1/clients/c-1/profile')[0].body).not.toHaveProperty('autoPrintInvoice')
   })
 
   it('perfil: 409 de rowVersion muestra el mensaje exacto del servidor y relee la ficha', async () => {
@@ -311,7 +360,7 @@ describe('Clientes — ficha', () => {
     const msg = 'El registro fue modificado por otro usuario; recargue e intente de nuevo.'
     mock.override = ({ method, url }) => (method === 'PATCH' && url.pathname === '/api/v1/clients/c-1/profile' ? problem(409, msg, 'conflict') : undefined)
     wrap(ALL)
-    await screen.findByRole('heading', { name: 'Perfil del cliente' })
+    await screen.findByRole('heading', { name: 'Perfil fiscal' })
     const before = callsTo('GET', '/api/v1/clients/c-1').length
     await user.type(await screen.findByLabelText('Identificación fiscal'), '9')
     await user.click(screen.getAllByRole('button', { name: 'Guardar' })[0])
@@ -522,7 +571,7 @@ describe('Clientes — ficha', () => {
 
   it('solo lectura (clients.read): sin altas, bajas, guardados ni transiciones', async () => {
     wrap(['clients.read'])
-    await screen.findByRole('heading', { name: 'Perfil del cliente' })
+    await screen.findByRole('heading', { name: 'Perfil fiscal' })
     await screen.findByText('(787) 555-0000')
     expect(screen.queryByRole('button', { name: 'Nuevo cliente' })).toBeNull()
     expect(screen.queryByRole('button', { name: /Dar de baja/ })).toBeNull()

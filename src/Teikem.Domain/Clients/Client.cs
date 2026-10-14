@@ -6,7 +6,7 @@ namespace Teikem.Domain.Clients;
 /// <summary>
 /// Cliente del operador logístico (el que contrata). Sus direcciones viven en Location por tipo y dueño:
 /// CORPORATE = física, BILLING = postal (NULL = misma que la física), PICKUP/BOTH = almacenes / puntos de recogido,
-/// DELIVERY = consignatarios. DefaultPickupLocationId apunta a uno de sus PICKUP/BOTH; NULL = se recoge en la corporativa.
+/// DELIVERY = consignatarios. DefaultPickupLocationId apunta a una de sus direcciones activas (corporativa, postal, PICKUP o BOTH); NULL = se recoge en la corporativa.
 /// Numeración (Lote 2): quién asigna el número de orden/factura y los patrones (NULL = patrón por defecto del sistema).
 /// </summary>
 [AuditEntity(Constants.EntityTypes.Client)]
@@ -31,7 +31,7 @@ public class Client : ITenantScoped, ISoftDeletable, IHasStatus, IAuditStamped
     [NotAudited] public byte[]? RowVersion { get; set; }
 
     // --- Lote 2 ---
-    /// <summary>Almacén (PICKUP/BOTH) donde se recoge por defecto; NULL = en la dirección corporativa.</summary>
+    /// <summary>Dirección del cliente (corporativa, postal, PICKUP o BOTH) donde se recoge por defecto; NULL = en la dirección corporativa.</summary>
     public int? DefaultPickupLocationId { get; set; }
     public bool ClientAssignsOrderNumber { get; set; }
     public bool ClientAssignsInvoiceNumber { get; set; }
@@ -45,6 +45,13 @@ public class Client : ITenantScoped, ISoftDeletable, IHasStatus, IAuditStamped
     /// factura todavía no existe (llega con facturación); apagada por defecto.
     /// </summary>
     public bool AutoPrintInvoice { get; set; }
+
+    // --- Lote 48 (2026-10-14) ---
+    /// <summary>
+    /// «Imprimir los labels automáticamente»: bandera por cliente (sender). Al guardar una orden de este cliente en la pantalla de órdenes,
+    /// sus labels (uno por paquete) salen solos aunque el interruptor «Label al guardar» de la estación esté apagado. Apagada por defecto.
+    /// </summary>
+    public bool AutoPrintLabels { get; set; }
 
     public StatusCode? Status { get; set; }
     public LookupCode? PaymentTerm { get; set; }

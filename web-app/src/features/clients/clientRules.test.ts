@@ -124,22 +124,26 @@ describe('perfil', () => {
     creditLimit: 100,
     paymentTerm: 'NET30',
     currency: 'USD',
-    pickupAddress: { publicId: 'loc-1', isDefaultFromCorporate: false },
   } as ClientDetail
 
-  it('lee el punto de recogido propio; el corporativo por defecto cuenta como ninguno', () => {
-    expect(profileValuesOf(detail).pickup).toBe('loc-1')
-    expect(profileValuesOf({ ...detail, pickupAddress: { publicId: 'corp', isDefaultFromCorporate: true } } as ClientDetail).pickup).toBe('')
-  })
-
-  it('PATCH: textos tal cual (vacío borra), punto solo si cambió, quitar = clearDefaultPickup', () => {
+  it('PATCH del perfil fiscal: textos tal cual (vacío borra) y ya no manda el punto de recogido (vive en «Direcciones»)', () => {
     const original = profileValuesOf(detail)
     const same = buildProfileRequest(original, original, 'AAA=')
     expect(same).toEqual({ legalName: 'Acme LLC', taxId: '66-123', creditLimit: 100, paymentTerm: 'NET30', currency: 'USD', rowVersion: 'AAA=' })
-    expect(buildProfileRequest({ ...original, pickup: '', legalName: '' }, original, 'AAA=')).toMatchObject({ legalName: '', clearDefaultPickup: true })
-    const other = buildProfileRequest({ ...original, pickup: 'loc-2' }, original, 'AAA=')
-    expect(other.defaultPickupLocationPublicId).toBe('loc-2')
-    expect(other.clearDefaultPickup).toBeUndefined()
+    const cleared = buildProfileRequest({ ...original, legalName: '' }, original, 'AAA=')
+    expect(cleared.legalName).toBe('')
+    expect(cleared.clearDefaultPickup).toBeUndefined()
+    expect(cleared.defaultPickupLocationPublicId).toBeUndefined()
+  })
+
+  it('Lote 48: «Imprimir los labels automáticamente» se lee de la ficha, va antes que la factura y solo viaja si cambió', () => {
+    const original = profileValuesOf(detail)
+    expect(original.autoPrintLabels).toBe(false)
+    expect(profileValuesOf({ ...detail, autoPrintLabels: true } as ClientDetail).autoPrintLabels).toBe(true)
+    expect(buildProfileRequest(original, original, 'AAA=').autoPrintLabels).toBeUndefined()
+    const on = buildProfileRequest({ ...original, autoPrintLabels: true }, original, 'AAA=')
+    expect(on.autoPrintLabels).toBe(true)
+    expect(on.autoPrintInvoice).toBeUndefined() // una bandera no arrastra a la otra
   })
 
   it('Lote 43: «Imprimir la factura automáticamente» se lee de la ficha y solo viaja si cambió', () => {

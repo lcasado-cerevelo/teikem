@@ -2,7 +2,7 @@
 // que dejan en caché la ficha que devuelve el API e invalidan la lista. Permisos: lectura `clients.read`; alta
 // `clients.create`; perfil, numeración, personas de contacto, estatus y baja `clients.update`; teléfonos y correos del
 // cliente `contacts.manage` (más `clients.update`, permiso de la entidad dueña). Módulo CATALOG.
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { api, unwrap } from '../../kernel/api/client'
 import type { components } from '../../kernel/api/schema'
 import { catalogKeys } from '../../kernel/catalogs'
@@ -72,6 +72,47 @@ export function useUpdateClientProfile(publicId: string) {
   return useMutation({
     mutationFn: (body: ClientProfileUpdateRequest) => unwrap(api.PATCH('/api/v1/clients/{publicId}/profile', { params: { path: { publicId } }, body })),
     onSuccess: settle,
+  })
+}
+
+/**
+ * ¿El cliente imprime sus labels solo? («Imprimir los labels automáticamente», Lote 48.) Lee la ficha (en caché un minuto); si el usuario no
+ * puede leer clientes o falla, es «no»: imprimir sin la bandera nunca debe romper el guardado de una orden.
+ */
+export async function clientAutoPrintsLabels(qc: QueryClient, clientPublicId: string | null | undefined): Promise<boolean> {
+  if (!clientPublicId) return false
+  try {
+    const detail = await qc.fetchQuery({
+      queryKey: clientKeys.detail(clientPublicId),
+      queryFn: () => unwrap(api.GET('/api/v1/clients/{publicId}', { params: { path: { publicId: clientPublicId } } })),
+      staleTime: 60_000,
+    })
+    return detail.autoPrintLabels === true
+  } catch {
+    return false
+  }
+}
+
+/** Alta o cambio de una dirección del cliente (la física, la postal o un punto de recogida: una localización) y relectura de la ficha. */
+export function useSaveClientAddress(clientPublicId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (arg: { create: Schemas['LocationUpsertRequest'] } | { publicId: string; patch: Schemas['LocationPatchRequest'] }) =>
+      'create' in arg
+        ? unwrap(api.POST('/api/v1/locations', { body: arg.create }))
+        : unwrap(api.PATCH('/api/v1/locations/{publicId}', { params: { path: { publicId: arg.publicId } }, body: arg.patch })),
+    onSuccess: () => qc.invalidateQueries({ queryKey: clientKeys.detail(clientPublicId) }),
+  })
+}
+
+/** Baja lógica de una dirección (un punto de recogida, o la postal propia para volver a «igual a la física»). Nunca DELETE. */
+export function useDeactivateClientAddress(clientPublicId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (publicId: string) => {
+      await unwrap(api.POST('/api/v1/locations/{publicId}/deactivate', { params: { path: { publicId } } }))
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: clientKeys.detail(clientPublicId) }),
   })
 }
 

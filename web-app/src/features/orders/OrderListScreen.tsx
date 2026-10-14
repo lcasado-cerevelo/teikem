@@ -8,6 +8,7 @@
 // summary» y «Packing list» (las marcadas o, sin marcas, TODO lo filtrado) e «Imprimir label» (las marcadas) / «Todos los labels» (todo lo
 // filtrado, sin tope): un label por pieza con el número de su paquete, por la impresora de labels de esta estación. «Label al guardar» de la
 // entrada rápida y detallada imprime aquí la orden recién creada (este componente sigue montado aunque el formulario se cierre).
+import { useQueryClient } from '@tanstack/react-query'
 import { useContext, useMemo, useState } from 'react'
 import { SessionContext } from '../../app/session'
 import { useNavigate } from 'react-router-dom'
@@ -37,6 +38,7 @@ import {
 } from '../../kernel/ui'
 import { IconBolt, IconDoc, IconForm, IconLayers, IconPrint } from '../../kernel/ui/screenIcons'
 import { labelOrderFromDetail, labelOrderFromList } from '../printing/orderLabels'
+import { clientAutoPrintsLabels } from '../clients/api'
 import { usePrinting } from '../printing/usePrinting'
 import { useClientOptions, useConsignees } from '../consignees/api'
 import { TextFilter } from '../warehouse/filterControls'
@@ -78,6 +80,7 @@ export default function OrderListScreen() {
   const me = useContext(SessionContext)?.me
   const lang = useLang()
   const printing = usePrinting()
+  const queryClient = useQueryClient()
   const appliedFilters = useAppliedFilters()
   // casillas «Elegir»: se recuerdan entre páginas (la fila completa, para imprimir sin volver a pedirla)
   const [marked, setMarked] = useState<ReadonlyMap<string, OrderListItemDto>>(() => new Map())
@@ -286,15 +289,23 @@ export default function OrderListScreen() {
     saveEntryMode(mode)
   }
 
+  /**
+   * Labels al guardar: salen si «Label al guardar» está encendido o si el CLIENTE de la orden tiene «Imprimir los labels
+   * automáticamente» (Lote 48). La orden ya se guardó: un fallo de impresión (o de leer al cliente) solo avisa.
+   */
+  async function printAfterSave(order: OrderDetailDto) {
+    if (labelOnSave || (await clientAutoPrintsLabels(queryClient, order.clientPublicId))) await printing.printLabels([labelOrderFromDetail(order)], { afterSave: true })
+  }
+
   function onCreated(order: OrderDetailDto, confirmed: boolean) {
     setFormOpen(false)
     setCreated({ publicId: order.publicId ?? '', number: order.orderNumber ?? '', confirmed })
-    if (labelOnSave) void printing.printLabels([labelOrderFromDetail(order)], { afterSave: true })
+    void printAfterSave(order)
   }
 
   /** «Label al guardar» de la entrada rápida: la orden ya se guardó; un fallo de impresión solo avisa. */
   function onQuickSaved(order: OrderDetailDto) {
-    if (labelOnSave) void printing.printLabels([labelOrderFromDetail(order)], { afterSave: true })
+    void printAfterSave(order)
   }
   const labelSwitch = { value: labelOnSave, onChange: setLabelOnSave }
 

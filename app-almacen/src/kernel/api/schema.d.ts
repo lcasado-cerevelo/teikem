@@ -21196,6 +21196,7 @@ export interface components {
             updatedAtUtc?: string | null;
             rowVersion?: string | null;
             autoPrintInvoice?: boolean;
+            autoPrintLabels?: boolean;
         };
         ClientInitialContractRequest: {
             /** Format: date */
@@ -21271,6 +21272,7 @@ export interface components {
             clearDefaultPickup?: boolean;
             rowVersion?: string | null;
             autoPrintInvoice?: boolean | null;
+            autoPrintLabels?: boolean | null;
         };
         CodFeeDto: {
             type?: string | null;

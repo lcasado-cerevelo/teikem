@@ -156,6 +156,20 @@ export function ClientPeoplePanel({ client }: { client: ClientDetail }) {
   const width = useElementWidth(ref)
   const people = useMemo(() => sortContacts((client.contacts ?? []).filter((c) => c.isActive)), [client.contacts])
 
+  // cerrado: la principal y hasta tres personas más (sortContacts pone la principal primero); «+N» si hay más
+  const peopleSummary =
+    people.length === 0
+      ? t('clients.summary.empty')
+      : [
+          people
+            .slice(0, 4)
+            .map((c) => (c.isPrimary ? `${c.fullName} (${t('clients.summary.mainTag')})` : (c.fullName ?? '')))
+            .join(', '),
+          people.length > 4 ? t('clients.summary.more', { n: people.length - 4 }) : null,
+        ]
+          .filter(Boolean)
+          .join(' ')
+
   const columns = useMemo<DataColumn<ClientContact>[]>(
     () => [
       { id: 'name', header: t('clients.people.name'), cell: (c) => <b>{c.fullName}</b>, sortValue: (c) => c.fullName, card: 'title' },
@@ -189,10 +203,7 @@ export function ClientPeoplePanel({ client }: { client: ClientDetail }) {
       badge={people.length}
       collapsible
       storageKey="clients.people"
-      summary={people.length === 0 ? t('clients.summary.empty') : (() => {
-        const main = people.find((c) => c.isPrimary)
-        return main ? t('clients.summary.peopleMain', { n: people.length, name: main.fullName ?? '' }) : t('clients.summary.people', { n: people.length })
-      })()}
+      summary={peopleSummary}
       actions={
         <Can perm="clients.update">
           <button type="button" className="btn sm flow" onClick={() => setEditing('new')}>

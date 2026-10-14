@@ -2086,3 +2086,13 @@ UPDATE dbo.Permission
 SET LabelJson = REPLACE(REPLACE(LabelJson, N'Gestionar catálogos', N'Gestionar listas'), N'Manage catalogs', N'Manage lists')
 WHERE Code = 'admin.catalogs' AND (LabelJson LIKE N'%catálogos%' OR LabelJson LIKE N'%Manage catalogs%');
 GO
+/* ----------------------------------------------------------------------------
+   2026-10-14 (d) — «Imprimir los labels automáticamente» por cliente (Lote 48): dbo.Client.AutoPrintLabels BIT NOT NULL DEFAULT 0.
+   Bandera del cliente (sender), como AutoPrintInvoice: al guardar una orden de ese cliente en la pantalla de órdenes, sus labels salen solos aunque
+   el interruptor «Label al guardar» de la estación esté apagado. Apagada por defecto: ningún cliente cambia de comportamiento. Idempotente.
+   Además el punto de recogido por defecto (Client.DefaultPickupLocationId) ya puede ser la dirección física o la postal del cliente, no solo un
+   punto PICKUP/BOTH: no cambia el esquema (la FK apunta a dbo.Location).
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.Client', 'AutoPrintLabels') IS NULL
+    ALTER TABLE dbo.Client ADD AutoPrintLabels BIT NOT NULL CONSTRAINT DF_Client_AutoPrintLabels DEFAULT 0;
+GO

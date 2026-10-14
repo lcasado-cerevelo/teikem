@@ -151,17 +151,16 @@ export function buildCreateRequest(v: CreateInput): ClientCreateRequest {
   }
 }
 
-// ---- Perfil ----
-export const NO_PICKUP = ''
-
+// ---- Perfil fiscal ----
+// (El punto de recogido por defecto y las direcciones viven en el panel «Direcciones»: ver addressRules.ts.)
 export interface ProfileValues {
   legalName: string
   taxId: string
   creditLimit: number | null
   paymentTerm: string
   currency: string
-  /** publicId del punto de recogido por defecto; '' = ninguno (se recoge en la dirección corporativa). */
-  pickup: string
+  /** Lote 48: «Imprimir los labels automáticamente» (sus órdenes imprimen sus labels al guardarse). */
+  autoPrintLabels: boolean
   /** Lote 43: «Imprimir la factura automáticamente» (solo la bandera; la impresión de la factura llega con facturación). */
   autoPrintInvoice: boolean
 }
@@ -173,7 +172,7 @@ export function profileValuesOf(c: ClientDetail): ProfileValues {
     creditLimit: c.creditLimit ?? null,
     paymentTerm: c.paymentTerm ?? '',
     currency: c.currency ?? '',
-    pickup: c.pickupAddress?.publicId && !c.pickupAddress.isDefaultFromCorporate ? c.pickupAddress.publicId : NO_PICKUP,
+    autoPrintLabels: c.autoPrintLabels ?? false,
     autoPrintInvoice: c.autoPrintInvoice ?? false,
   }
 }
@@ -190,15 +189,15 @@ export function profileSchema(m: Pick<CreateMessages, 'legalNameMax' | 'taxIdMax
       .refine((v) => v != null || !hadCreditLimit, m.creditLimitRequired),
     paymentTerm: z.string(),
     currency: z.string(),
-    pickup: z.string(),
+    autoPrintLabels: z.boolean(),
     autoPrintInvoice: z.boolean(),
   })
 }
 
 /**
  * PATCH /profile: texto null = no cambiar, '' = borrar; por eso se envía tal cual. Término y moneda '' los borran.
- * Punto de recogido: '' → `clearDefaultPickup` (solo si había uno propio), un id → ese; sin cambio no se manda.
- * «Imprimir la factura automáticamente» (Lote 43): solo si cambió.
+ * «Imprimir los labels automáticamente» (Lote 48) y «Imprimir la factura automáticamente» (Lote 43): solo si cambiaron.
+ * El punto de recogido ya no va aquí (panel «Direcciones»).
  */
 export type ProfileInput = Omit<ProfileValues, 'creditLimit'> & { creditLimit?: number | null }
 
@@ -211,10 +210,7 @@ export function buildProfileRequest(v: ProfileInput, original: ProfileValues, ro
     currency: v.currency,
     rowVersion,
   }
-  if (v.pickup !== original.pickup) {
-    if (v.pickup === NO_PICKUP) req.clearDefaultPickup = true
-    else req.defaultPickupLocationPublicId = v.pickup
-  }
+  if (v.autoPrintLabels !== original.autoPrintLabels) req.autoPrintLabels = v.autoPrintLabels
   if (v.autoPrintInvoice !== original.autoPrintInvoice) req.autoPrintInvoice = v.autoPrintInvoice
   return req
 }

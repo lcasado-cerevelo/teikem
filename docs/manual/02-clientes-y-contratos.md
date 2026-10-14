@@ -89,7 +89,7 @@ se imprime ninguna factura** (llega con facturación). Ver el capítulo [12 — 
 
 | Campo / caso | Regla | Mensaje exacto | HTTP |
 |---|---|---|---|
-| `defaultPickupLocationPublicId` no es un almacén activo del cliente | debe ser una localización propia, activa, tipo PICKUP o BOTH | `El punto de recogido debe ser un almacén activo del cliente (tipo PICKUP o BOTH).` | 400 |
+| `defaultPickupLocationPublicId` no es una dirección activa del cliente | debe ser una localización propia y activa: la física (CORPORATE), la postal (BILLING) o un punto de recogida (PICKUP o BOTH) | `El punto de recogido debe ser una dirección activa del cliente: la física, la postal o un punto de recogida.` | 400 |
 | `rowVersion` distinto del actual | edición concurrente | `El registro fue modificado por otro usuario; recargue e intente de nuevo.` | 409 |
 | `creditLimit` negativo | — | `El límite de crédito no puede ser negativo.` | 400 |
 

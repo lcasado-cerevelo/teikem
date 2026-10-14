@@ -299,6 +299,10 @@ expect 200 "$(req POST /api/v1/locations "{\"clientPublicId\":\"$CLIENT_PID\",\"
 expect 409 "$(req POST /api/v1/locations "{\"clientPublicId\":\"$CLIENT_PID\",\"name\":\"Otro apartado\",\"locationType\":\"BILLING\",\"line1\":\"PO Box 2\",\"city\":\"San Juan\",\"country\":\"PR\"}")" >/dev/null
 expect 400 "$(req POST /api/v1/locations '{"name":"Corporativa sin dueño","locationType":"CORPORATE","line1":"x","city":"x","country":"PR"}')" | jq -e '.errors.clientPublicId' >/dev/null || fail "CORPORATE no puede ser compartida"
 expect 200 "$(req GET "/api/v1/clients/$CLIENT_PID")" | jq -e '.postalAddress.name=="Apartado postal"' >/dev/null || fail "dirección postal"
+# Lote 48: el punto de recogido por defecto puede ser la dirección postal (o la física), no solo un punto de recogida
+POSTAL_PID=$(expect 200 "$(req GET "/api/v1/clients/$CLIENT_PID")" | jq -r .postalAddress.publicId)
+expect 200 "$(req PATCH "/api/v1/clients/$CLIENT_PID/profile" "{\"defaultPickupLocationPublicId\":\"$POSTAL_PID\"}")" | jq -e '.pickupAddress.locationType=="BILLING" and .pickupAddress.isDefaultFromCorporate==false' >/dev/null || fail "recoger en la dirección postal"
+expect 200 "$(req PATCH "/api/v1/clients/$CLIENT_PID/profile" '{"clearDefaultPickup":true}')" | jq -e '.pickupAddress.isDefaultFromCorporate==true' >/dev/null || fail "volver a recoger en la física"
 WH_PID=$(expect 200 "$(req POST /api/v1/locations "{\"clientPublicId\":\"$CLIENT_PID\",\"name\":\"Mi almacén 1\",\"locationType\":\"PICKUP\",\"line1\":\"Carr. 2 km 10\",\"city\":\"Bayamón\",\"country\":\"PR\"}")" | jq -r .publicId)
 expect 400 "$(req PATCH "/api/v1/clients/$CLIENT_PID/profile" "{\"defaultPickupLocationPublicId\":\"$LOC_PID\"}")" | jq -e '.errors.defaultPickupLocationPublicId' >/dev/null || fail "un DELIVERY no es almacén"
 expect 200 "$(req PATCH "/api/v1/clients/$CLIENT_PID/profile" "{\"defaultPickupLocationPublicId\":\"$WH_PID\"}")" | jq -e '.pickupAddress.name=="Mi almacén 1" and .pickupAddress.isDefaultFromCorporate==false and (.pickupLocations | length)==1' >/dev/null || fail "almacén por defecto"
@@ -5423,6 +5427,9 @@ expect 400 "$(req POST /api/v1/printing/qz/sign '{"request":""}')" | jq -e '.tit
 C43=$(expect 200 "$(req POST /api/v1/clients "{\"name\":\"Cliente impresión $TS\"}")" | jq -r .publicId)
 expect 200 "$(req GET "/api/v1/clients/$C43")" | jq -e '.autoPrintInvoice==false' >/dev/null || fail "factura automática apagada por defecto"
 expect 200 "$(req PATCH "/api/v1/clients/$C43/profile" '{"clearDefaultPickup":false,"autoPrintInvoice":true}')" | jq -e '.autoPrintInvoice==true' >/dev/null || fail "encender factura automática"
+# Lote 48: «Imprimir los labels automáticamente» por cliente (apagado por defecto; no pisa la factura)
+expect 200 "$(req GET "/api/v1/clients/$C43")" | jq -e '.autoPrintLabels==false' >/dev/null || fail "labels automáticos apagados por defecto"
+expect 200 "$(req PATCH "/api/v1/clients/$C43/profile" '{"clearDefaultPickup":false,"autoPrintLabels":true}')" | jq -e '.autoPrintLabels==true and .autoPrintInvoice==true' >/dev/null || fail "encender labels automáticos"
 # El despachador (sin printers.manage) no administra impresoras pero sí lee las opciones de su estación
 TD43=$(login "$DISPATCH_EMAIL" "$PASS")
 expect 403 "$(req POST /api/v1/printers "{\"name\":\"No $TS\",\"purpose\":\"LABEL\"}" "$TD43")" >/dev/null

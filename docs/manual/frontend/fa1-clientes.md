@@ -55,15 +55,14 @@ debajo de **Código** y el modal sigue abierto.
 - **Dar de baja** (`clients.update`): confirma «{nombre} quedará inactivo: no se podrá elegir en órdenes nuevas…». Es una baja lógica; el historial se conserva.
   **Reactivar** lo devuelve a la lista de activos. Un cliente dado de baja muestra el aviso «Este cliente está dado de baja…».
 
-### Perfil del cliente
-- El **nombre** se ve pero no se cambia aquí. Se editan razón social, identificación fiscal, límite de crédito, término de pago, moneda y **punto de recogido por
-  defecto** (un almacén activo del cliente de tipo recogido; «Dirección corporativa» lo quita).
+### Perfil fiscal
+- (Antes «Perfil del cliente».) El **nombre** se ve pero no se cambia aquí. Se editan razón social (el nombre legal de la entidad, el de las facturas), identificación fiscal, límite de crédito, término de pago y moneda. Las **direcciones** y **dónde se recoge** ya no están aquí: van en el panel **Direcciones** ([fb5](fb5-direcciones-y-perfil-fiscal.md)).
+- **Labels → «Imprimir los labels automáticamente»** (Lote 48): interruptor por cliente, apagado por defecto, **antes** del de la factura. Al guardar una orden de este cliente, sus labels (uno por paquete) salen solos aunque «Label al guardar» esté apagado en la estación (con la impresora de labels de la estación).
 - **Factura → «Imprimir la factura automáticamente»** (Lote F-G1): interruptor por cliente, apagado por defecto. Hoy **solo se guarda la
   preferencia**: Teikem todavía no imprime facturas; cuando llegue la facturación, las de este cliente saldrán solas a la impresora de documentos.
 - **Guardar** solo se activa si hay cambios. El límite de crédito no se puede dejar vacío una vez que tiene valor (escriba 0 si no aplica).
-- Las **direcciones física y postal** son de solo lectura; si no hay postal se lee «La dirección postal es la misma que la física». Se administran en Localizaciones.
 - Mensajes: `El registro fue modificado por otro usuario; recargue e intente de nuevo.` (409: otra persona guardó antes; la ficha se vuelve a leer y lo que usted
-  escribió se conserva, vuelva a **Guardar**) · `El punto de recogido debe ser un almacén activo del cliente (tipo PICKUP o BOTH).` (400) ·
+  escribió se conserva, vuelva a **Guardar**) · `El punto de recogido debe ser una dirección activa del cliente: la física, la postal o un punto de recogida.` (400) ·
   `El límite de crédito no puede ser negativo.` (400) · `Cliente no encontrado.` (404).
 
 ### Teléfonos y correos

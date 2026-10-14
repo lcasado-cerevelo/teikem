@@ -116,7 +116,7 @@ Plantillas:
 ## 6. Bandera del cliente: «Imprimir la factura automáticamente»
 
 - `Client.AutoPrintInvoice`, por cliente (el que manda, *sender*), apagada por defecto. Se ve en la ficha del cliente (`autoPrintInvoice`)
-  y se cambia en el Perfil del cliente (`PATCH …/profile` con `autoPrintInvoice: true|false`; sin el campo no cambia).
+  y se cambia en el Perfil fiscal del cliente (`PATCH …/profile` con `autoPrintInvoice: true|false`; sin el campo no cambia).
 - **Todavía no imprime ninguna factura**: solo se guarda la preferencia; la impresión llega con facturación.
 
 ## 7. Mensajes y códigos HTTP

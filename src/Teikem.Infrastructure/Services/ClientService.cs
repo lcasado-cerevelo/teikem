@@ -165,7 +165,9 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
         var corporate = locations.FirstOrDefault(l => l.LocationTypeLookupId == corporateId);
         var postal = locations.FirstOrDefault(l => l.LocationTypeLookupId == billingId);
         var warehouses = locations.Where(l => l.LocationTypeLookupId == pickupId || l.LocationTypeLookupId == bothId).ToList();
-        var defaultPickup = client.DefaultPickupLocationId.HasValue ? warehouses.FirstOrDefault(l => l.LocationId == client.DefaultPickupLocationId.Value) : null;
+        // el punto de recogido por defecto puede ser la física, la postal o cualquier punto de recogida (Lote 48)
+        var pickupCandidates = locations.Where(l => l.LocationTypeLookupId == corporateId || l.LocationTypeLookupId == billingId || l.LocationTypeLookupId == pickupId || l.LocationTypeLookupId == bothId);
+        var defaultPickup = client.DefaultPickupLocationId.HasValue ? pickupCandidates.FirstOrDefault(l => l.LocationId == client.DefaultPickupLocationId.Value) : null;
         ClientPickupAddressDto? pickup = null;
         if (defaultPickup is not null) pickup = await ToPickupAsync(defaultPickup, false, ct);
         else if (corporate is not null) pickup = await ToPickupAsync(corporate, true, ct);
@@ -200,7 +202,7 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
             ToNumberSettings(client),
             contactDtos, clientPoints,
             contractDtos, currentDto, currentDto?.BillingSummary ?? "",
-            client.CreatedAtUtc, client.UpdatedAtUtc, RowVersionOf(client.RowVersion), client.AutoPrintInvoice);
+            client.CreatedAtUtc, client.UpdatedAtUtc, RowVersionOf(client.RowVersion), client.AutoPrintInvoice, client.AutoPrintLabels);
     }
 
     // ---------------- Perfil ----------------
@@ -220,15 +222,20 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
         if (req.PaymentTerm is not null) client.PaymentTermLookupId = await OptionalLookupAsync(LookupDomains.PaymentTerm, req.PaymentTerm, ct);
         if (req.Currency is not null) client.CurrencyLookupId = await OptionalLookupAsync(LookupDomains.Currency, req.Currency, ct);
         if (req.AutoPrintInvoice is { } autoPrint) client.AutoPrintInvoice = autoPrint;   // Lote 43: solo la bandera
+        if (req.AutoPrintLabels is { } autoLabels) client.AutoPrintLabels = autoLabels;    // Lote 48: labels automáticos de sus órdenes
 
         if (req.ClearDefaultPickup) client.DefaultPickupLocationId = null; // vuelve a 'se recoge en la corporativa'
         else if (req.DefaultPickupLocationPublicId.HasValue)
         {
             var pickupId = await lookups.GetIdAsync(LookupDomains.LocationType, LocationTypes.Pickup, ct);
             var bothId = await lookups.GetIdAsync(LookupDomains.LocationType, LocationTypes.Both, ct);
+            var corporateId = await lookups.GetIdAsync(LookupDomains.LocationType, LocationTypes.Corporate, ct);
+            var billingId = await lookups.GetIdAsync(LookupDomains.LocationType, LocationTypes.Billing, ct);
             var loc = await db.Locations.AsNoTracking().FirstOrDefaultAsync(l => l.PublicId == req.DefaultPickupLocationPublicId.Value, ct);
-            if (loc is null || loc.ClientId != client.ClientId || !loc.IsActive || (loc.LocationTypeLookupId != pickupId && loc.LocationTypeLookupId != bothId))
-                throw new ValidationException("defaultPickupLocationPublicId", "El punto de recogido debe ser un almacén activo del cliente (tipo PICKUP o BOTH).");
+            // la física, la postal o un punto de recogida del propio cliente, activos (Lote 48; antes solo PICKUP o BOTH)
+            if (loc is null || loc.ClientId != client.ClientId || !loc.IsActive
+                || (loc.LocationTypeLookupId != pickupId && loc.LocationTypeLookupId != bothId && loc.LocationTypeLookupId != corporateId && loc.LocationTypeLookupId != billingId))
+                throw new ValidationException("defaultPickupLocationPublicId", "El punto de recogido debe ser una dirección activa del cliente: la física, la postal o un punto de recogida.");
             client.DefaultPickupLocationId = loc.LocationId;
         }
 

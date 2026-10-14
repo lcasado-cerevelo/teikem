@@ -430,9 +430,9 @@ captura, da de baja el cliente (`POST .../deactivate`) y crea uno nuevo; la raz�
 **¿Qué significa "El registro fue modificado por otro usuario; recargue e intente de nuevo."?**
 Enviaste `rowVersion` en el PATCH y otro usuario guardó antes que tú. Vuelve a abrir la ficha y repite el cambio.
 
-**¿Qué significa "El punto de recogido debe ser un almacén activo del cliente (tipo PICKUP o BOTH)."?**
-La localización que elegiste como recogido habitual no es del cliente, está inactiva o no es un almacén (por ejemplo es un
-consignatario DELIVERY). Crea o elige una localización del cliente de tipo PICKUP o BOTH.
+**¿Qué significa "El punto de recogido debe ser una dirección activa del cliente: la física, la postal o un punto de recogida."?**
+La dirección que elegiste como «Se recoge en» no es del cliente, está inactiva o no es una de sus direcciones (por ejemplo es un
+consignatario DELIVERY). Escoge en el panel **Direcciones** la dirección física, la postal o uno de los puntos de recogida.
 
 **¿Qué significa "El patrón debe incluir al menos un '#' para el consecutivo." / "Carácter no permitido en el patrón: 'x'…"?**
 El patrón de numeración necesita al menos un `#` (cada `#` es un dígito) y solo admite letras, dígitos y `- _ / . # @`.
@@ -5858,8 +5858,8 @@ El título del contrato inicial admite 200 caracteres (vacío = «Contrato marco
 **`El registro fue modificado por otro usuario; recargue e intente de nuevo.` (409) al guardar el perfil.**
 Otra persona guardó el mismo cliente antes. La ficha se vuelve a leer sola y lo que usted escribió se conserva: revise y pulse **Guardar** otra vez.
 
-**`El punto de recogido debe ser un almacén activo del cliente (tipo PICKUP o BOTH).` (400).**
-Elija uno de la lista (solo se ofrecen los válidos); si el almacén se desactivó mientras tanto, vuelva a abrir la ficha. «Dirección corporativa» quita el punto propio.
+**`El punto de recogido debe ser una dirección activa del cliente: la física, la postal o un punto de recogida.` (400).**
+En el panel **Direcciones**, «Se recoge en» solo ofrece las válidas; si el punto se quitó mientras tanto, vuelva a abrir la ficha. «La dirección física» es la de siempre.
 
 **`Teléfono inválido.` / `Correo inválido.` / `El valor es obligatorio.` (400).**
 El teléfono lleva los dígitos de la máscara de la compañía (p. ej. 10 en Puerto Rico); el correo, `usuario@dominio.com`.
@@ -5889,7 +5889,7 @@ Faltan permisos: crear pide `clients.create`; editar, estatus y baja piden `clie
 La lista muestra solo activos. Encienda **Mostrar inactivos**, ábralo y use **Reactivar**. Un cliente de baja no se puede elegir en órdenes nuevas, pero su historial se conserva.
 
 **¿Dónde cambio la dirección, el SLA o «Cliente desde» de un cliente?**
-Las direcciones se administran en Localizaciones (en el perfil son de solo lectura). El SLA (por tipo de servicio, en horas) y «Cliente desde» (inicio del contrato) pertenecen al contrato y se editarán en el bloque de contratos.
+Las direcciones se administran en el panel **Direcciones** de la ficha del cliente. El SLA (por tipo de servicio, en horas) y «Cliente desde» (inicio del contrato) pertenecen al contrato y se editarán en el bloque de contratos.
 
 **¿El estado «Activo/Inactivo» de la maqueta es el estatus?**
 Son dos cosas: el **estatus** (etapas configurables, p. ej. Activo → En revisión) y la **baja** (Inactivo). La lista muestra las dos.
@@ -7866,3 +7866,40 @@ Los dejó así en una visita anterior (el navegador lo recuerda). Pulse la flech
 
 **No puedo cerrar el cuadro de arriba con el nombre del cliente.**
 Es la cabecera de la ficha (nombre, estatus y «Dar de baja») y no se cierra. Los paneles de abajo sí.
+
+## Lote F-B5 — Direcciones y Perfil fiscal del cliente
+
+Preguntas del panel **Direcciones**, del **Perfil fiscal** y de los resúmenes de los paneles cerrados. Capítulo: [fb5-direcciones-y-perfil-fiscal.md](frontend/fb5-direcciones-y-perfil-fiscal.md).
+
+**¿Dónde escribo la dirección del cliente?**
+En el panel **Direcciones** de la ficha (justo debajo de la cabecera): **Agregar** para la física, **Otra dirección postal** para una postal distinta (acepta P.O. Box) y **Agregar punto de recogida** para otros lugares donde se recoge. Si no ve los botones, falta el permiso `locations.create` (o `locations.update` para editar).
+
+**«Sin dirección registrada»**
+El cliente no tiene esa dirección todavía. Pulse **Agregar**.
+
+**«Igual a la dirección física»**
+No hay dirección postal propia: la postal es la física. Si es otra, pulse **Otra dirección postal**; si la quita después con **Usar la física**, vuelve a este estado.
+
+**«Escriba el nombre del punto.»**
+Todo punto de recogida lleva un nombre para reconocerlo en el despacho (por ejemplo «Almacén Norte»). La física y la postal no piden nombre.
+
+**«El cliente ya tiene una dirección corporativa activa; desactívela o edítela.» (409)**
+Solo hay una dirección física por cliente. Edítela con **Editar**.
+
+**«El cliente ya tiene una dirección postal (facturación) activa; desactívela o edítela.» (409)**
+Solo hay una postal propia por cliente. Edítela, o use **Usar la física** para quitarla.
+
+**¿Qué es «Se recoge en»?**
+Dónde el chofer recoge las órdenes de este cliente: la dirección física (por omisión), la postal o cualquiera de los puntos de recogida. Se guarda al escogerlo («Punto de recogida guardado.»). Si quita el punto que estaba elegido, vuelve a la dirección física.
+
+**¿Qué es la razón social y en qué se diferencia del nombre?**
+La **razón social** es el nombre legal de la entidad (el que va en las facturas), junto con la identificación fiscal. El **nombre** de la cabecera es el nombre comercial y no se cambia desde el Perfil fiscal.
+
+**¿Por qué «Perfil del cliente» ahora se llama «Perfil fiscal»?**
+Porque habla de la entidad fiscal: razón social, identificación fiscal, crédito, término de pago y moneda. Las direcciones salieron a su propio panel.
+
+**¿Qué hace «Imprimir los labels automáticamente»?**
+Al guardar una orden de ese cliente en la pantalla de órdenes, sus labels (uno por paquete) salen solos, aunque «Label al guardar» esté apagado en la estación. Necesita una impresora de labels en la estación; si falla, la orden queda guardada y el aviso dice el motivo. Está apagado por omisión.
+
+**Cerré un panel y no sé qué dice.**
+Cerrado, cada panel muestra una línea con lo principal (estatus, dirección y dónde se recoge, teléfono y correo principales, personas de contacto, ejemplos de numeración…). La tabla de la sección 5 del capítulo las lista todas.

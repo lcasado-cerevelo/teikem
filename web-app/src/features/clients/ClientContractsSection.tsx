@@ -41,7 +41,7 @@ export function ClientContractsSection({ client }: { client: ClientDetail }) {
   const [creating, setCreating] = useState(false)
   const contractId = picked && contracts.some((c) => c.publicId === picked) ? picked : defaultContractId(client.currentContract?.publicId, contracts)
 
-  const current = client.currentContract
+  const current = client.currentContract ?? contracts.find((c) => c.isCurrent)
   const currentName = current ? [current.contractNumber, current.title].filter(Boolean).join(' · ') : ''
   const contractsSummary = contracts.length === 0 ? t('clients.summary.empty') : currentName ? t('clients.summary.contractsCurrent', { n: contracts.length, name: currentName }) : t('clients.summary.contracts', { n: contracts.length })
 

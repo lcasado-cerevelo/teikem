@@ -30123,6 +30123,9 @@
           },
           "autoPrintInvoice": {
             "type": "boolean"
+          },
+          "autoPrintLabels": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -30373,6 +30376,10 @@
             "nullable": true
           },
           "autoPrintInvoice": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "autoPrintLabels": {
             "type": "boolean",
             "nullable": true
           }

@@ -217,6 +217,9 @@ public sealed class LocationService(TeikemDbContext db, ITenantContext tenant, I
     private static bool IsClientAddress(string typeCode) => typeCode is LocationTypes.Corporate or LocationTypes.Billing;
     private static bool IsWarehouse(string typeCode) => typeCode is LocationTypes.Pickup or LocationTypes.Both;
 
+    /// <summary>Puede ser el punto de recogido por defecto del cliente: la física, la postal o un punto de recogida (Lote 48).</summary>
+    private static bool CanBeDefaultPickup(string typeCode) => IsWarehouse(typeCode) || typeCode is LocationTypes.Corporate or LocationTypes.Billing;
+
     /// <summary>Una dirección corporativa o postal siempre pertenece a un cliente: no puede ser compartida.</summary>
     private static void EnsureAddressTypeAllowsOwner(string typeCode, int? clientId)
     {
@@ -244,7 +247,7 @@ public sealed class LocationService(TeikemDbContext db, ITenantContext tenant, I
         if (owners.Count == 0) return;
         foreach (var owner in owners)
         {
-            var stillValid = loc.IsActive && loc.ClientId == owner.ClientId && IsWarehouse(typeCode);
+            var stillValid = loc.IsActive && loc.ClientId == owner.ClientId && CanBeDefaultPickup(typeCode);
             if (!stillValid) owner.DefaultPickupLocationId = null; // vuelve a "misma que la corporativa"
         }
     }

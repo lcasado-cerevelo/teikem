@@ -109,9 +109,10 @@ export function ClientNumberingPanel({ client }: { client: ClientDetail }) {
       title={t('clients.numbering.title')}
       collapsible
       storageKey="clients.numbering"
-      summary={t('clients.summary.numbering', {
-        order: client.numberSettings?.clientAssignsOrderNumber ? t('clients.numbering.byClient') : t('clients.numbering.byTeikem'),
-        invoice: client.numberSettings?.clientAssignsInvoiceNumber ? t('clients.numbering.byClient') : t('clients.numbering.byTeikem'),
+      summary={t('clients.summary.numberingExamples', {
+        order: client.numberSettings?.orderNumberPreview ?? localPreview('order', ''),
+        invoice: client.numberSettings?.invoiceNumberPreview ?? localPreview('invoice', ''),
+        pkg: client.numberSettings?.packageNumberPreview ?? localPreview('package', ''),
       })}
     >
       <Form

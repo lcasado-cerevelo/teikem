@@ -135,6 +135,20 @@ export function ContactPointsPanel({ ownerEntity, ownerId, points: rows, perms, 
   const writePerms = readOnly ? null : perms
   const phones = points.filter((p) => !isEmailType(p.contactType))
   const emails = points.filter((p) => isEmailType(p.contactType))
+  // cerrado: el teléfono y el correo principales y cuántos más hay (una línea)
+  const mainPhone = phones.find((p) => p.isPrimary) ?? phones[0]
+  const mainEmail = emails.find((p) => p.isPrimary) ?? emails[0]
+  const moreCount = points.length - (mainPhone ? 1 : 0) - (mainEmail ? 1 : 0)
+  const pointsSummary =
+    points.length === 0
+      ? t('clients.summary.pointsNone')
+      : [
+          mainPhone ? t('clients.summary.pointsPhone', { value: f.phone(mainPhone.value ?? '') }) : null,
+          mainEmail ? t('clients.summary.pointsEmail', { value: mainEmail.value ?? '' }) : null,
+          moreCount > 0 ? t('clients.summary.more', { n: moreCount }) : null,
+        ]
+          .filter(Boolean)
+          .join(' · ')
 
   const renderList = (list: ContactPoint[], listEmptyKey: string) =>
     list.length === 0 ? (
@@ -172,7 +186,7 @@ export function ContactPointsPanel({ ownerEntity, ownerId, points: rows, perms, 
       title={t('clients.points.title')}
       collapsible={storageKey != null}
       storageKey={storageKey}
-      summary={t('clients.summary.points', { phones: phones.length, emails: emails.length })}
+      summary={pointsSummary}
       actions={
         writePerms ? (
           <Can perm={writePerms}>

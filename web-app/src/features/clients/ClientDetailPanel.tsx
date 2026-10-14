@@ -1,5 +1,5 @@
 // Ficha / expediente del cliente (derecha de la pantalla): paneles apilados, en el orden de la maqueta —
-// cabecera (nombre, código, pipeline de estatus, baja/reactivación), perfil, teléfonos y correos, personas de contacto,
+// cabecera (nombre, código, pipeline de estatus, baja/reactivación), direcciones, perfil fiscal, teléfonos y correos, personas de contacto,
 // numeración, campos personalizados, contratos (pestañas: Contrato, Tarifas, SLA, Servicios especiales), portal, consignatarios
 // (tabla de 10 filas con Exportar / Importar / Nuevo) e historial de estatus.
 import { Can, useCan } from '../../kernel/access'
@@ -10,6 +10,7 @@ import { Chip, ConfirmDialog, EmptyState, Panel, Spinner, toast } from '../../ke
 import { IconPower, IconRotateCcw } from '../../kernel/ui/actionIcons'
 import { IconClock, IconUsers } from '../../kernel/ui/screenIcons'
 import { useClient, useSetClientActive, useTransitionClient } from './api'
+import { ClientAddressesPanel } from './ClientAddressesPanel'
 import { ClientConsigneesPanel } from './ClientConsigneesPanel'
 import { ClientContactPointsPanel } from './ClientContactPointsPanel'
 import { ClientContractsSection } from './ClientContractsSection'
@@ -34,6 +35,9 @@ function ClientHeaderPanel({ client }: { client: ClientDetail }) {
       icon={<IconUsers />}
       title={client.name ?? client.code ?? ''}
       badge={client.code ?? undefined}
+      collapsible
+      storageKey="clients.header"
+      summary={t(client.isActive ? 'clients.summary.header' : 'clients.summary.headerInactive', { status: client.statusLabel ?? client.status ?? '—' })}
       actions={
         <Can perm="clients.update">
           {client.isActive ? (
@@ -106,6 +110,7 @@ export function ClientDetailPanel({ publicId }: { publicId: string }) {
   return (
     <div className="cl-stack">
       <ClientHeaderPanel client={client} />
+      <ClientAddressesPanel client={client} />
       <ClientProfilePanel client={client} />
       <ClientContactPointsPanel client={client} />
       <ClientPeoplePanel client={client} />
