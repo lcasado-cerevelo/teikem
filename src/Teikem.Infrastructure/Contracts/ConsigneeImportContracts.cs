@@ -51,8 +51,22 @@ public sealed record ConsigneeImportPreviewDto(
     int? Created,
     int? Failed);
 
-/// <summary>Confirmación. Rows: subconjunto de filas (ordinales) a crear; vacío o ausente = todas las válidas.</summary>
-public sealed record ConsigneeImportConfirmRequest(IList<int>? Rows = null);
+/// <summary>
+/// Confirmación. Rows: subconjunto de filas (ordinales) a crear; vacío o ausente = todas las válidas. RememberClient (Lote 45):
+/// guarda en la plantilla el cliente del lote como su cliente por defecto (null = compartidos) para la próxima importación.
+/// </summary>
+public sealed record ConsigneeImportConfirmRequest(IList<int>? Rows = null, bool RememberClient = false);
+
+/// <summary>Columna del archivo revisado (Lote 45): posición 1..n, texto del encabezado (si la plantilla lo trae) y hasta 3 valores de muestra.</summary>
+public sealed record ImportFileColumnDto(int Position, string? Header, IReadOnlyList<string> Samples);
+
+/// <summary>
+/// Resultado de POST /locations/import/inspect-file (Lote 45, no guarda nada): formato (CSV o XLSX), hojas del libro (vacío en CSV),
+/// hoja leída, filas de datos, columnas con su encabezado y muestras y las primeras 3 filas completas (SampleRows, para la vista
+/// previa de las columnas unidas), para armar el mapeo en el editor de plantillas.
+/// </summary>
+public sealed record ImportFileInspectionDto(string Format, IReadOnlyList<string> Sheets, string? Sheet, int RowCount, IReadOnlyList<ImportFileColumnDto> Columns,
+    IReadOnlyList<IReadOnlyList<string>> SampleRows);
 
 /// <summary>Resultado de la confirmación: consignatarios creados, filas fallidas (con su error) y filas omitidas.</summary>
 public sealed record ConsigneeImportResultDto(

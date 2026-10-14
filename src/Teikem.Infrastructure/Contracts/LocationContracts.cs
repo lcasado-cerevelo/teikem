@@ -29,7 +29,8 @@ public sealed record LocationDto(
     bool AllowDupInvoice,
     bool IsActive,
     DateTime CreatedAtUtc,
-    string RowVersion);
+    string RowVersion,
+    string? ContactName = null);
 
 /// <summary>
 /// Filtro de la lista. Con ClientPublicId devuelve las propias del cliente y, si IncludeShared, también las compartidas
@@ -43,7 +44,7 @@ public sealed record LocationQuery(
     string? LocationType = null,
     string? Search = null);
 
-/// <summary>Alta de localización. ClientPublicId null = compartida del tenant. Country por defecto 'PR'.</summary>
+/// <summary>Alta de localización. ClientPublicId null = compartida del tenant. Country por defecto 'PR'. ContactName (Lote 45): persona de contacto, opcional (150).</summary>
 public sealed record LocationUpsertRequest(
     Guid? ClientPublicId,
     string? Code,
@@ -60,11 +61,12 @@ public sealed record LocationUpsertRequest(
     TimeOnly? DefaultWindowEnd = null,
     string? AccessNotes = null,
     string? DeliveryNotes = null,
-    bool AllowDupInvoice = false);
+    bool AllowDupInvoice = false,
+    string? ContactName = null);
 
 /// <summary>
 /// Edición parcial: null = sin cambio. En los textos opcionales (Code, Line2, State, PostalCode, AccessNotes,
-/// DeliveryNotes) la cadena vacía borra el valor. MakeShared=true quita el dueño (excluyente con ClientPublicId);
+/// DeliveryNotes, ContactName) la cadena vacía borra el valor. MakeShared=true quita el dueño (excluyente con ClientPublicId);
 /// ClearWindow=true borra la ventana horaria. RowVersion (base64 de la ficha) activa el control de concurrencia (409).
 /// </summary>
 public sealed record LocationPatchRequest(
@@ -86,4 +88,5 @@ public sealed record LocationPatchRequest(
     string? AccessNotes = null,
     string? DeliveryNotes = null,
     bool? AllowDupInvoice = null,
-    string? RowVersion = null);
+    string? RowVersion = null,
+    string? ContactName = null);

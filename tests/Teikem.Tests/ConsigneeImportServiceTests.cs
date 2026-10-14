@@ -181,18 +181,20 @@ public sealed class ConsigneeImportServiceTests
     }
 
     [Fact]
-    public async Task Row_client_different_from_the_batch_client_is_an_error()
+    public async Task The_batch_client_is_the_default_and_a_row_with_its_own_client_wins()
     {
+        // Lote 45 (F-B2): «todo el archivo es del cliente X», salvo la fila que trae su propio cliente (antes era error).
         await using var f = await ConsigneeImportWorld.CreateAsync();
         var acme = await f.AddClientAsync("ACME");
-        await f.AddClientAsync("OTRO");
+        var otro = await f.AddClientAsync("OTRO");
         var tpl = await ConsigneeImportWorld.TemplateAsync(f, "Base", Fields);
         var preview = await ValidateAsync(f, tpl,
             "code,name,line1,city,clientCode\nC-1,Uno,Calle 1,Ponce,OTRO\nC-2,Dos,Calle 2,Ponce,\n", acme.PublicId);
 
         Assert.Equal(acme.PublicId, preview.ClientPublicId);
-        Assert.Equal("La fila indica el cliente 'Cliente OTRO', pero el lote es del cliente 'Cliente ACME'.", preview.Rows[0].Errors["clientCode"]);
-        Assert.Equal(acme.PublicId, preview.Rows[1].Owner!.ClientPublicId); // sin cliente en la fila → el del lote
+        Assert.Equal(2, preview.ValidRows);
+        Assert.Equal(otro.PublicId, preview.Rows[0].Owner!.ClientPublicId);   // la fila manda
+        Assert.Equal(acme.PublicId, preview.Rows[1].Owner!.ClientPublicId);   // sin cliente en la fila → el del lote
     }
 
     [Fact]
@@ -293,7 +295,8 @@ public sealed class ConsigneeImportServiceTests
     public void Field_catalog_endpoint_marks_required_and_default_allowed()
     {
         var fields = ConsigneeImportService.GetFields();
-        Assert.Equal(17, fields.Count);
+        Assert.Equal(18, fields.Count);
+        Assert.Equal(new ImportFieldDto("contactName", false, true), fields.Single(x => x.Field == "contactName"));
         Assert.Equal(new ImportFieldDto("name", true, false), fields.Single(x => x.Field == "name"));
         Assert.Equal(new ImportFieldDto("city", true, true), fields.Single(x => x.Field == "city"));
         Assert.Equal(new ImportFieldDto("allowDupInvoice", false, true), fields.Single(x => x.Field == "allowDupInvoice"));

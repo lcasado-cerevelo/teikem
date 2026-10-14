@@ -78,8 +78,12 @@ public static class ImportFields
     public static bool IsKnown(string? field) => Canonical(field) is not null;
 }
 
-/// <summary>Columna de una plantilla: posición (1 = primera columna del archivo) y campo del catálogo.</summary>
-public sealed record ImportColumn(int Position, string Field);
+/// <summary>
+/// Columna de una plantilla: posición (1 = primera columna del archivo) y campo del catálogo. Lote 45 (F-B2, solo plantillas de
+/// consignatarios): un campo puede tomar VARIAS columnas unidas; Part es el orden de la columna dentro del campo (1, 2…) y
+/// Separator el texto que va ANTES de esta parte (null = un espacio). Las plantillas de órdenes no los usan.
+/// </summary>
+public sealed record ImportColumn(int Position, string Field, int? Part = null, string? Separator = null);
 
 /// <summary>
 /// Reglas puras del mapeo por posición (Lote 3, P9): validación de la plantilla (posiciones únicas &gt;= 1, campos del

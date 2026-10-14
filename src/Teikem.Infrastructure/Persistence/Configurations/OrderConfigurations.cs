@@ -142,6 +142,7 @@ public sealed class ImportTemplateConfiguration : IEntityTypeConfiguration<Impor
         b.HasIndex(t => new { t.TenantId, t.Kind, t.Name }).IsUnique().HasDatabaseName("UQ_ImportTemplate");
         b.HasIndex(t => t.PublicId);
         b.HasOne(t => t.Client).WithMany().HasForeignKey(t => t.ClientId);
+        b.HasOne(t => t.DefaultClient).WithMany().HasForeignKey(t => t.DefaultClientId);
     }
 }
 

@@ -4486,6 +4486,9 @@
                   "file": {
                     "type": "string",
                     "format": "binary"
+                  },
+                  "sheet": {
+                    "type": "string"
                   }
                 }
               },
@@ -4497,6 +4500,9 @@
                   "style": "form"
                 },
                 "file": {
+                  "style": "form"
+                },
+                "sheet": {
                   "style": "form"
                 }
               }
@@ -18007,17 +18013,6 @@
             }
           },
           {
-            "name": "binIds",
-            "in": "query",
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "integer",
-                "format": "int32"
-              }
-            }
-          },
-          {
             "name": "ownerClientPublicIds",
             "in": "query",
             "schema": {
@@ -18034,6 +18029,17 @@
             "schema": {
               "type": "boolean",
               "default": false
+            }
+          },
+          {
+            "name": "binIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int32"
+              }
             }
           }
         ],
@@ -27329,8 +27335,8 @@
           }
         ],
         "responses": {
-          "204": {
-            "description": "No Content"
+          "200": {
+            "description": "OK"
           }
         }
       }
@@ -28372,6 +28378,73 @@
                   "items": {
                     "$ref": "#/components/schemas/KardexUserDto"
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/locations/import/inspect-file": {
+      "post": {
+        "tags": [
+          "ConsigneeImport"
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "delimiter": {
+                    "type": "string"
+                  },
+                  "hasHeader": {
+                    "type": "boolean"
+                  },
+                  "sheet": {
+                    "type": "string"
+                  }
+                }
+              },
+              "encoding": {
+                "file": {
+                  "style": "form"
+                },
+                "delimiter": {
+                  "style": "form"
+                },
+                "hasHeader": {
+                  "style": "form"
+                },
+                "sheet": {
+                  "style": "form"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportFileInspectionDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportFileInspectionDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportFileInspectionDto"
                 }
               }
             }
@@ -30385,6 +30458,9 @@
               "format": "int32"
             },
             "nullable": true
+          },
+          "rememberClient": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -35141,6 +35217,15 @@
           "field": {
             "type": "string",
             "nullable": true
+          },
+          "part": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "separator": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -35180,6 +35265,11 @@
           },
           "kind": {
             "type": "string",
+            "nullable": true
+          },
+          "defaultClientPublicId": {
+            "type": "string",
+            "format": "uuid",
             "nullable": true
           }
         },
@@ -35245,6 +35335,15 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "defaultClientPublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "defaultClientName": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -35288,6 +35387,15 @@
             "nullable": true
           },
           "hasHeader": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "defaultClientPublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "clearDefaultClient": {
             "type": "boolean",
             "nullable": true
           }
@@ -36098,6 +36206,10 @@
           "rowVersion": {
             "type": "string",
             "nullable": true
+          },
+          "contactName": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -36184,6 +36296,10 @@
           "rowVersion": {
             "type": "string",
             "nullable": true
+          },
+          "contactName": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -36256,6 +36372,10 @@
           },
           "allowDupInvoice": {
             "type": "boolean"
+          },
+          "contactName": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -37208,10 +37328,12 @@
             "format": "int32"
           },
           "binCode": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "zoneCode": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "lotId": {
             "type": "integer",
@@ -37241,13 +37363,16 @@
             "format": "uuid"
           },
           "sku": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "name": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "trackingTypeCode": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "isActive": {
             "type": "boolean"
@@ -37256,7 +37381,8 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/MultiAdjustmentPositionDto"
-            }
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -37273,17 +37399,20 @@
             "format": "uuid"
           },
           "number": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "warehousePublicId": {
             "type": "string",
             "format": "uuid"
           },
           "warehouseCode": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "notes": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "lineCount": {
             "type": "integer",
@@ -37325,20 +37454,24 @@
             "format": "uuid"
           },
           "sku": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "productName": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "binId": {
             "type": "integer",
             "format": "int32"
           },
           "binCode": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "zoneCode": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "lotId": {
             "type": "integer",
@@ -37379,7 +37512,8 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/MultiAdjustmentLineDto"
-            }
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -37403,7 +37537,8 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/MultiAdjustmentDto"
-            }
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -47977,7 +48112,8 @@
             "format": "int32"
           },
           "code": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -47990,10 +48126,12 @@
             "format": "int32"
           },
           "code": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "reason": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -48005,13 +48143,15 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/WarehouseBinDeletedDto"
-            }
+            },
+            "nullable": true
           },
           "skipped": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/WarehouseBinSkippedDto"
-            }
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -49153,6 +49293,69 @@
           },
           "isSystem": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ImportFileColumnDto": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "header": {
+            "type": "string",
+            "nullable": true
+          },
+          "samples": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ImportFileInspectionDto": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string",
+            "nullable": true
+          },
+          "sheets": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "sheet": {
+            "type": "string",
+            "nullable": true
+          },
+          "rowCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportFileColumnDto"
+            },
+            "nullable": true
+          },
+          "sampleRows": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false

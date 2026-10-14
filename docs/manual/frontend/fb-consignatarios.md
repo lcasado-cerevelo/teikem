@@ -1,4 +1,6 @@
-# F-B — Consignatarios: lista, ficha, alta/edición e importación por CSV
+# F-B — Consignatarios: lista, ficha, alta/edición e importación por CSV
+
+> **Actualizado por el Lote F-B2 (2026-10-13)**: la importación acepta **Excel (.xlsx)** y CSV de Windows, columnas **(No usar)**, columnas unidas, **Cliente por defecto** guardado en la plantilla y **Persona de contacto**. Ver [fb2-importacion-consignatarios.md](fb2-importacion-consignatarios.md); lo de abajo sigue valiendo con los nombres nuevos.
 
 Pantalla **Catálogo → Consignatarios** (`/catalog/consignees`). Los consignatarios son los destinatarios de las entregas: cada uno pertenece a un cliente o es **compartido**
 (sin dueño, lo pueden usar todos los clientes). Backend: capítulo 02 del manual, §2 (Consignatarios y localizaciones) y la importación del lote 38. Decisiones del frontend:
@@ -75,18 +77,18 @@ El tipo de localización es siempre **entrega** (no se muestra). Al editar, solo
 **Teléfono.** Se guarda aparte, como medio de contacto del consignatario, y exige `contacts.manage` además de `locations.update`; sin esos permisos el campo se ve de solo lectura. Si el
 consignatario se guarda y el teléfono falla, el aviso lo dice y el consignatario queda guardado (el teléfono se puede corregir con **Editar**). Dejar el teléfono vacío lo quita.
 
-## 4. Importar consignatarios desde CSV
+## 4. Importar consignatarios (CSV o Excel)
 
-![Ventana «Importar consignatarios desde CSV»: plantilla, cliente dueño y selector de archivo](img/fb-importar.png)
+![Ventana «Importar consignatarios (CSV o Excel)»: plantilla, cliente por defecto y selector de archivo](img/fb-importar.png)
 
 Botón **Importar** (`locations.create`). La importación es de dos pasos: el servidor **valida** el archivo fila por fila sin crear nada, y solo al pulsar **Importar** crea las filas válidas.
 
 1. **Plantilla.** La plantilla dice qué campo va en cada columna del archivo, **por posición** (1.ª columna, 2.ª, 3.ª…). Sin una plantilla activa, el selector de archivo queda deshabilitado.
    Si la compañía no tiene ninguna, **Crear «Formato estándar»** crea una con las columnas `name, code, line1, city, contactPhone`. **Nueva plantilla** y **Editar** abren el editor.
-2. **Cliente dueño de los consignatarios.** Todos los del archivo quedan asignados a ese cliente (o compartidos). Si la plantilla trae una columna de cliente (`clientCode` o `clientName`),
-   cada fila que traiga un cliente válido se asigna a ese; las demás caen en el elegido aquí.
-3. **Archivo CSV.** Máximo **5.000 filas y 2 MB**. **Guárdelo en UTF-8**: un CSV exportado desde Excel en Windows (Windows-1252) daña los acentos y la ñ. Al elegirlo se valida solo; si cambia
-   la plantilla o el cliente dueño, se valida otra vez (el lote anterior se descarta).
+2. **Cliente por defecto** (F-B2). Todos los del archivo quedan asignados a ese cliente (o compartidos). Si la plantilla trae una columna de cliente (`clientCode` o `clientName`),
+   cada fila que la traiga llena queda con ESE cliente (aunque sea otro); las demás caen en el elegido aquí. La plantilla lo recuerda.
+3. **Archivo (CSV o Excel).** Máximo **5.000 filas y 2 MB**. Desde F-B2 se acepta **.xlsx** (con **Hoja del libro** si tiene varias) y un CSV en UTF-8 o Windows-1252 (la ñ y los acentos
+   llegan bien). Al elegirlo se valida solo; si cambia la plantilla, el cliente o la hoja, se valida otra vez (el lote anterior se descarta).
 4. **Vista previa** (la hace el servidor): «N filas detectadas», cuántas son **válidas** y cuántas **con errores**, y una tabla con, por fila, el estado, los valores leídos y las
    **observaciones** (errores con su campo y avisos). **Solo filas con errores o avisos** deja únicamente las que necesitan atención. Se muestran hasta 200 filas; **Importar** crea todas las válidas.
 5. **Importar** crea las filas válidas (una a una) y muestra el **resultado**: creados, fallidos y omitidos, con el motivo de cada fallida. La lista se actualiza sola. **Cancelar** (o ✕) descarta
@@ -103,7 +105,7 @@ y `El código X también lo usa un consignatario de un cliente; para ese cliente
 ![Editor de plantilla: cada columna del archivo se asocia a un campo del consignatario](img/fb-plantilla.png)
 
 - **Nombre de la plantilla** (obligatorio, máx. 120, único), **Delimitador** (coma, punto y coma, tabulador o barra vertical) y **La primera fila es el encabezado**.
-- Tabla **Columna N → Campo destino**: elija el campo de cada columna del archivo en el mismo orden en que aparecen; **— no importar —** ignora la columna. **Agregar columna** / el bote de basura quitan filas.
+- Tabla **Columna N → Campo destino**: elija el campo de cada columna del archivo en el mismo orden en que aparecen; **(No usar)** ignora la columna (y desde F-B2 se guarda en la plantilla). **Agregar columna** / el bote de basura quitan filas.
   Los campos con `*` son obligatorios en la fila: la plantilla debe traer **name** y **line1**, y la ciudad (**city**) en una columna o como valor por defecto. `clientCode` y `clientName` no pueden estar los dos.
 - **Valores por defecto**: se usan cuando la celda del archivo viene vacía (país, ciudad, minutos de servicio, teléfono…). Número, nombre, dirección y cliente no admiten valor por defecto.
 - Las plantillas **no se eliminan**: **Desactivar esta plantilla** (con confirmación) la saca del selector; **Mostrar plantillas inactivas** + **Reactivar esta plantilla** la devuelve. Los lotes ya validados conservan la referencia.
@@ -115,7 +117,7 @@ Mensajes de la plantilla (400 salvo que se indique): `El nombre de la plantilla 
 ## 5. Casos frecuentes
 
 - **Un consignatario no aparece en la lista**: revise el filtro de **Cliente**, **Mostrar inactivos** y el buscador; los de tipo almacén no se listan aquí.
-- **Los acentos salen mal en la vista previa**: el archivo no está en UTF-8; vuelva a guardarlo así (en Excel: «CSV UTF-8») y súbalo otra vez.
+- **Los acentos salen mal en la vista previa**: desde F-B2 la codificación se detecta sola (UTF-8 o Windows-1252); si aun así salen mal, guarde el archivo como .xlsx y súbalo.
 - **El botón Importar está apagado**: no hay filas válidas en el archivo, o todavía se está validando. Corrija el archivo y vuelva a elegirlo.
 - **«El lote ya fue confirmado…»**: el lote ya se importó (otra pestaña o un doble clic): elija el archivo otra vez si necesita importar más.
 - **No puedo editar el teléfono**: falta `contacts.manage` o `locations.update`.

@@ -68,6 +68,7 @@ public sealed class LocationConfiguration : IEntityTypeConfiguration<Location>
         b.Property(l => l.DefaultWindowEnd).HasColumnType("time");
         b.Property(l => l.AccessNotes).HasMaxLength(500);
         b.Property(l => l.DeliveryNotes).HasMaxLength(500);
+        b.Property(l => l.ContactName).HasMaxLength(150);
         b.Property(l => l.RowVersion).IsRowVersion();
         b.HasIndex(l => new { l.TenantId, l.ClientId }).HasFilter("[IsActive] = 1").HasDatabaseName("IX_Location_Tenant_Client");
         b.HasIndex(l => l.PublicId);

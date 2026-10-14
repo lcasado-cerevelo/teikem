@@ -183,6 +183,8 @@ export function useImportTemplates(clientId: string | null, includeInactive: boo
       const all = await unwrap(api.GET('/api/v1/locations/import-templates', { params: { query: { clientId: clientId ?? undefined, includeInactive } } }))
       return clientId ? all : all.filter((x) => !x.clientPublicId)
     },
+    // al cambiar de cliente (p. ej. el de la plantilla, Lote F-B2) la lista anterior se mantiene mientras llega la nueva: sin parpadeo
+    placeholderData: keepPreviousData,
     enabled,
   })
 }
@@ -215,32 +217,59 @@ export function useSetTemplateActive() {
 }
 
 // ---- Importación: lote ----
-/** Valida el archivo (multipart: templatePublicId, clientPublicId opcional, file) y deja un lote VALIDATED. No crea nada. */
+/**
+ * Lote F-B2: revisa el archivo (CSV o .xlsx) SIN guardar nada: formato, hojas del libro, hoja leída, filas y, por columna, el encabezado
+ * y muestras (multipart: file, delimiter, hasHeader, sheet opcional). Lo usan el selector de hoja y el editor de plantillas.
+ */
+export function useInspectImportFile() {
+  return useMutation({
+    mutationFn: ({ file, delimiter, hasHeader, sheet }: { file: File; delimiter: string; hasHeader: boolean; sheet?: string | null }) => {
+      const form = new FormData()
+      form.append('file', file)
+      form.append('delimiter', delimiter)
+      form.append('hasHeader', String(hasHeader))
+      if (sheet) form.append('sheet', sheet)
+      return unwrap(api.POST('/api/v1/locations/import/inspect-file', { body: {}, bodySerializer: () => form }))
+    },
+  })
+}
+
+/**
+ * Valida el archivo (multipart: templatePublicId, clientPublicId opcional = cliente por defecto, file —CSV o .xlsx— y la hoja del libro)
+ * y deja un lote VALIDATED. No crea nada.
+ */
 export function useValidateImportFile() {
   return useMutation({
-    mutationFn: ({ templatePublicId, clientPublicId, file }: { templatePublicId: string; clientPublicId: string | null; file: File }) => {
+    mutationFn: ({ templatePublicId, clientPublicId, file, sheet }: { templatePublicId: string; clientPublicId: string | null; file: File; sheet?: string | null }) => {
       const form = new FormData()
       form.append('templatePublicId', templatePublicId)
       if (clientPublicId) form.append('clientPublicId', clientPublicId)
       form.append('file', file)
+      if (sheet) form.append('sheet', sheet)
       return unwrap(api.POST('/api/v1/locations/import/validate-file', { body: {}, bodySerializer: () => form }))
     },
   })
 }
 
-/** Crea las filas válidas del lote (`rows` vacío = todas). Lleva `Idempotency-Key`: la misma clave en un reintento. */
+/**
+ * Crea las filas válidas del lote (`rows` vacío = todas). Lleva `Idempotency-Key`: la misma clave en un reintento. `rememberClient`
+ * (Lote F-B2) guarda en la plantilla el cliente del lote como su cliente por defecto.
+ */
 export function useConfirmImport() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ batchPublicId, rows, idempotencyKey }: { batchPublicId: string; rows?: number[]; idempotencyKey: string }) =>
+    mutationFn: ({ batchPublicId, rows, idempotencyKey, rememberClient }: { batchPublicId: string; rows?: number[]; idempotencyKey: string; rememberClient?: boolean }) =>
       unwrap(
         api.POST('/api/v1/locations/import/{batchPublicId}/confirm', {
           params: { path: { batchPublicId } },
-          body: { rows: rows ?? null },
+          body: rememberClient ? { rows: rows ?? null, rememberClient: true } : { rows: rows ?? null },
           headers: { 'Idempotency-Key': idempotencyKey },
         }),
       ),
-    onSuccess: () => qc.invalidateQueries({ queryKey: consigneeKeys.list }),
+    onSuccess: (_dto, req) => {
+      void qc.invalidateQueries({ queryKey: consigneeKeys.list })
+      if (req.rememberClient) void qc.invalidateQueries({ queryKey: consigneeKeys.templates })
+    },
   })
 }
 

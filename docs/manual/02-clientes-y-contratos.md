@@ -207,6 +207,7 @@ cambia de dueño o de tipo a algo que no sea PICKUP/BOTH), el recogido del clien
 | `clientPublicId` de otra compañía | — | `Cliente no encontrado.` | 404 |
 | Localización ajena o inexistente | — | `Localización '<guid>' no encontrado.` | 404 |
 | `rowVersion` distinto | edición concurrente | `La localización fue modificada por otro usuario; recargue e intente de nuevo.` | 409 |
+| `contactName` largo (Lote 45) | persona de contacto, opcional, máx. 150; cadena vacía la borra en el PATCH | `Máximo 150 caracteres.` (campo `contactName`) | 400 |
 
 Casos frecuentes: reactivar una CORPORATE/BILLING cuando ya hay otra activa responde el mismo 409; cambiar el tipo de un
 consignatario a CORPORATE cuando ya existe una activa también.
@@ -229,7 +230,7 @@ Cómo se usa:
 - `GET /api/v1/locations/import-templates?clientId=&includeInactive=false` — con `clientId`, las generales y las de ese cliente.
 - `POST /api/v1/locations/import-templates` `{ "name": "Consignatarios Farmacias", "columns": [ {"position":1,"field":"code"}, {"position":2,"field":"name"}, {"position":3,"field":"line1"}, {"position":4,"field":"city"}, {"position":5,"field":"clientCode"}, {"position":6,"field":"contactPhone"} ], "defaults": {"country":"PR","defaultServiceMinutes":"10"}, "clientPublicId"?: guid, "delimiter": ",", "hasHeader": true }`
 - `GET` / `PATCH /api/v1/locations/import-templates/{publicId}` · `POST .../{publicId}/deactivate` · `POST .../{publicId}/reactivate`
-- `GET /api/v1/locations/import/fields` — los 17 campos con `required` (obligatorio en la fila) y `defaultAllowed` (admite
+- `GET /api/v1/locations/import/fields` — los 18 campos (17 hasta el Lote 45, que sumó `contactName`) con `required` (obligatorio en la fila) y `defaultAllowed` (admite
   valor por defecto en la plantilla).
 
 Una plantilla es **general** (sin cliente, sirve para cualquier lote) o **de un cliente** (solo sirve para lotes de ese
@@ -252,7 +253,8 @@ Las plantillas de consignatarios no se ven por `/api/v1/import-templates` (esa r
 | `defaultWindowStart` / `defaultWindowEnd` | no (las dos o ninguna) | sí | ventana horaria, `HH:mm` de 24 horas (también `H:mm` y `HH:mm:ss`) |
 | `accessNotes` / `deliveryNotes` | no | sí | notas (máx. 500) |
 | `allowDupInvoice` | no (no) | sí | permitir facturas repetidas: `sí/si/s/yes/y/true/1` o `no/n/false/0` (sin distinguir mayúsculas) |
-| `contactPhone` | no | sí | teléfono, se guarda como contacto **PHONE principal** (etiqueta «Teléfono») |
+| `contactPhone` | no | sí | teléfono, se guarda como contacto **PHONE principal** (etiqueta «Teléfono»); desde el Lote 45 se guardan los 10 dígitos (ver §2.2) |
+| `contactName` (Lote 45) | no | sí | persona de contacto del consignatario (máx. 150) |
 
 | Caso (plantilla) | Mensaje exacto | HTTP |
 |---|---|---|
@@ -321,7 +323,7 @@ se creará), `warnings` (avisos: la fila **sí** se creará) e `isValid`.
 | `clientCode` sin coincidencia | `No existe un cliente con el código 'X'.` (`clientCode`) |
 | `clientName` sin coincidencia / con varias | `No existe un cliente con el nombre 'X'.` / `Hay más de un cliente con el nombre 'X'; use clientCode.` (`clientName`) |
 | Cliente de la fila dado de baja | `El cliente está dado de baja; solo se consulta su historial.` (`clientCode` o `clientName`) |
-| La fila nombra un cliente distinto al del lote | `La fila indica el cliente 'A', pero el lote es del cliente 'B'.` |
+| ~~La fila nombra un cliente distinto al del lote~~ | Ya **no es error** desde el Lote 45 (2026-10-13): el cliente del lote es el *cliente por defecto* y la fila con su propio cliente válido queda con ESE cliente (ver §2.2). El mensaje `La fila indica el cliente 'A', pero el lote es del cliente 'B'.` ya no sale. |
 
 #### Duplicados
 
@@ -370,6 +372,69 @@ así que dos lotes con el mismo código nuevo nunca crean dos consignatarios. El
 Estatus del lote (`ImportBatchStatus`): `VALIDATED` → `CONFIRMED` (confirmar) o → `DISCARDED` (descartar). El historial
 (`GET /api/v1/status/history/IMPORT_BATCH/{id}`) pide el permiso `orders.view` (el del importador de órdenes): un usuario que
 solo tiene permisos de consignatarios recibe 403 ahí, aunque sí ve el lote por `GET /api/v1/locations/import/{id}`.
+
+### 2.2 Importación de consignatarios: Excel, «(No usar)», columnas unidas, cliente por defecto y persona de contacto (Lote 45, F-B2)
+
+Qué cambia (mismos permisos y módulo que §2.1; no hay permisos nuevos). Pantalla: [frontend/fb2-importacion-consignatarios.md](frontend/fb2-importacion-consignatarios.md).
+
+- **Excel (.xlsx) además de CSV**, con el mismo flujo (validar → vista previa → confirmar). El servidor lee el libro (librería
+  ExcelDataReader, licencia MIT): una sola **hoja**, la que se pida en `sheet` o la primera. Cada celda se convierte a texto como
+  la ve el usuario: un número entero sin «.0» (`901`), con formato de ceros a la izquierda (`00000`) se rellena (`00901`); una
+  fecha con hora cero → `yyyy-MM-dd`, con hora → `yyyy-MM-dd HH:mm`; una celda **solo de hora** (08:00) → `HH:mm`, lista para la
+  ventana horaria. El `.xls` viejo (binario) no se admite. Los límites son los del CSV (5.000 filas de datos, 2 MB de archivo;
+  además el libro descomprimido no puede pasar de 64 MB).
+- **CSV en UTF-8 o en Windows-1252**: la codificación se detecta sola (marca BOM; si no, UTF-8 cuando los bytes lo son; si no,
+  Windows-1252, que es lo que guarda Excel en Windows al exportar «CSV»). La ñ y los acentos llegan bien en los dos casos.
+- **Revisar el archivo sin guardar nada**: `POST /api/v1/locations/import/inspect-file` (multipart: `file`, `delimiter`,
+  `hasHeader`, `sheet` opcional; `locations.create`) responde `format` (`CSV`/`XLSX`), `sheets` (hojas del libro; vacío en CSV),
+  `sheet` (la leída), `rowCount`, `columns[]` (`position`, `header`, hasta 3 `samples`) y `sampleRows` (las 3 primeras filas).
+  Lo usa la pantalla para el selector de hoja y para mostrar encabezados y muestras en el editor.
+- `validate-file` acepta `sheet`. El JSON `validate` sigue siendo solo CSV (texto en `content`).
+- **Columna «(No usar)»**: en `columns`, `{ "position": 3, "field": "ignore" }`. Se guarda en la plantilla (el editor la
+  recuerda) y al importar la columna se ignora por completo; **la fila no se salta**. Una columna «No usar» no puede tener además
+  otro campo.
+- **Una columna a varios campos** (p. ej. el código va a `code` y también forma parte del nombre): la misma `position` en dos
+  entradas con campos distintos.
+- **Un campo con varias columnas unidas**: el campo repetido en varias posiciones, con `part` (orden 1, 2…) y `separator` (texto
+  que va ANTES de esa parte; sin él, un espacio). Ejemplo «Nombre = Código + « - » + Nombre»:
+  `[{"position":1,"field":"code"},{"position":1,"field":"name","part":1},{"position":2,"field":"name","part":2,"separator":" - "}]`.
+  Una celda vacía no deja su separador; si todas las partes vienen vacías, el campo toma su valor por defecto. Pueden unirse los
+  campos de texto (número, nombre, direcciones, pueblo, estado, ZIP, notas, teléfono, persona de contacto), hasta 5 columnas; los
+  de formato propio (país, cliente, minutos, horas, factura repetida) toman una sola. Al guardar, el servidor numera las partes y
+  quita `part`/`separator` donde no aplican.
+- **Cliente por defecto**: `clientPublicId` del lote es el cliente de **todo el archivo**; una fila que trae su propio cliente
+  válido (`clientCode`/`clientName`) queda con **ese** cliente aunque sea otro (antes era error). La plantilla guarda su cliente
+  por defecto: `defaultClientPublicId` en el alta y en el PATCH (`clearDefaultClient: true` lo quita); el DTO trae
+  `defaultClientPublicId` y `defaultClientName`. Confirmar con `{ "rememberClient": true }` guarda en la plantilla el cliente del
+  lote (o ninguno, si fue «compartidos»).
+- **Persona de contacto**: campo nuevo `contactName` del consignatario (`dbo.Location.ContactName`, máx. 150) en `POST`/`PATCH
+  /locations`, en el DTO y como destino del mapeo (admite valor por defecto). El teléfono sigue siendo un contacto PHONE.
+- **Teléfono**: se aceptan los formatos de los archivos reales (`787-555-0101`, `787 555-0101`, `7875550101`, `(787)555-0101`,
+  `+1 787…`) y se guardan los **10 dígitos**. Si la celda trae **dos o más números**, se toma el primero y la fila lleva un aviso.
+- **ZIP** de Puerto Rico o Estados Unidos que perdió los ceros (3 o 4 dígitos) se rellena a 5 (`901` → `00901`). Un ZIP vacío no es
+  error (el lote siguiente lo deducirá del pueblo con el catálogo de códigos postales).
+
+| Caso | Mensaje exacto | HTTP / tipo |
+|---|---|---|
+| Archivo `.xls` (Excel 97-2003) | `Formato de archivo no admitido: use CSV o Excel (.xlsx).` (campo `file`) | 400 |
+| Libro dañado o que no es un .xlsx | `No se pudo leer el archivo de Excel; ábralo y guárdelo otra vez como .xlsx.` (campo `file`) | 400 |
+| `sheet` que no está en el libro | `El libro no tiene la hoja 'X'.` (campo `sheet`) | 400 |
+| Libro de más de 5.000 filas, 2 MB o 64 MB descomprimido | `El archivo supera el límite de 5.000 filas o 2 MB.` | 400 |
+| Archivo vacío (también `inspect-file`) | `Indique el contenido del archivo CSV.` (campo `file`) | 400 |
+| Columna «No usar» con otro campo | `La columna N está marcada «No usar» y también tiene un campo asignado.` (campo `columns[i].field`) | 400 |
+| La misma columna dos veces en el mismo campo | `La posición N está repetida.` (campo `columns[i].position`) | 400 |
+| Campo de formato propio en dos columnas | `El campo X está repetido.` | 400 |
+| Más de 5 columnas en un campo | `El campo X admite a lo sumo 5 columnas unidas.` | 400 |
+| Separador de más de 10 caracteres | `El separador admite a lo sumo 10 caracteres.` (campo `columns[i].separator`) | 400 |
+| Cliente por defecto distinto del cliente de una plantilla de cliente | `El cliente por defecto debe ser el mismo cliente de la plantilla.` (campo `defaultClientPublicId`) | 400 |
+| `defaultClientPublicId` y `clearDefaultClient` a la vez | `Indique un cliente por defecto o quítelo, no ambos.` | 400 |
+| Cliente por defecto dado de baja / de otra compañía | `El cliente está dado de baja; solo se consulta su historial.` / `Cliente no encontrado.` | 409 / 404 |
+| Persona de contacto larga | `Máximo 150 caracteres.` (`contactName`) | fila con error / 400 en `/locations` |
+| Dos teléfonos en la celda | `La celda del teléfono trae más de un número; se tomó el primero (7875550101).` | aviso (la fila se importa) |
+| Número de consignatario repetido en el archivo | `El código X se repite en la fila N del archivo.` (nombra el número y la primera fila donde aparece) | error de fila |
+
+Estructura (sección 2026-10-13 de `Diseño/logistica-db-update.sql`): `dbo.Location.ContactName NVARCHAR(150) NULL` y
+`dbo.ImportTemplate.DefaultClientId INT NULL` con llave a `dbo.Client`. Sin permisos nuevos.
 
 Casos frecuentes:
 - **Excel**: guarde el archivo como **«CSV UTF-8 (delimitado por comas)»**. Con «CSV (delimitado por comas)» Excel lo guarda en

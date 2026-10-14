@@ -1,9 +1,12 @@
-// Importar consignatarios desde CSV (modal de la maqueta `renderConsigneeImportModalHtml`, flujo de dos pasos del servidor):
-// plantilla primero (decide qué campo va en cada columna), cliente dueño, archivo después → vista previa que valida el
+// Importar consignatarios (modal de la maqueta `renderConsigneeImportModalHtml`, flujo de dos pasos del servidor):
+// plantilla primero (decide qué campo va en cada columna), cliente POR DEFECTO, archivo después → vista previa que valida el
 // SERVIDOR (`validate-file`: errores y avisos por fila) → Importar (`confirm` de las válidas, con Idempotency-Key) o Cancelar
 // (`discard` del lote ya validado) → resultado (creados, fallidos, omitidos). Sin plantilla el selector de archivo queda
-// deshabilitado. Límite 5.000 filas / 2 MB y CSV en UTF-8. Ver/usar plantillas: `locations.read`; todo lo demás: `locations.create`.
-import { useCallback, useMemo, useRef, useState } from 'react'
+// deshabilitado. Límite 5.000 filas / 2 MB. Ver/usar plantillas: `locations.read`; todo lo demás: `locations.create`.
+// Lote F-B2: CSV (UTF-8) o Excel .xlsx (lo lee el servidor; con varias hojas se escoge la hoja), el archivo se revisa al elegirlo
+// (`inspect-file`: hojas, encabezados y muestras, para el editor de plantillas), el cliente por defecto sale de la plantilla y
+// «Recordar este cliente en la plantilla» lo guarda al importar; la fila que trae su propio cliente manda.
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useCan } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useFormat } from '../../kernel/format'
@@ -16,6 +19,7 @@ import {
   useDiscardImport,
   useImportFields,
   useImportTemplates,
+  useInspectImportFile,
   useSaveImportTemplate,
   useSetTemplateActive,
   useValidateImportFile,
@@ -24,24 +28,27 @@ import {
   CLIENT_CODE_FIELD,
   CLIENT_NAME_FIELD,
   exceedsImportSize,
+  IMPORT_FILE_ACCEPT,
   MAX_IMPORT_ROWS,
   rowHasProblems,
   rowProblems,
   SHARED,
   standardTemplateRequest,
+  templateFields,
   templateSummary,
+  type ImportFileInspection,
   type ImportPreview,
   type ImportResult,
   type ImportRow,
   type ImportTemplate,
 } from './consigneeRules'
-import { ImportTemplateEditorModal } from './ImportTemplateEditorModal'
+import { ConsigneeTemplateEditorModal } from './ConsigneeTemplateEditorModal'
 
 /** Filas que se pintan en la vista previa (el lote completo vive en el servidor; hasta 5.000). */
 const PREVIEW_ROWS = 200
 
 export interface ConsigneeImportModalProps {
-  /** Cliente dueño con el que arranca el selector (el filtro de la pantalla; '' = compartidos). */
+  /** Cliente con el que arranca el selector (el filtro de la pantalla; '' = sin cliente: manda el de la plantilla o compartidos). */
   defaultClient: string
   onClose: () => void
 }
@@ -54,19 +61,25 @@ export function ConsigneeImportModal({ defaultClient, onClose }: ConsigneeImport
   const [showInactive, setShowInactive] = useState(false)
   const [clientId, setClientId] = useState(defaultClient)
   const [file, setFile] = useState<File | null>(null)
+  const [inspection, setInspection] = useState<ImportFileInspection | null>(null)
+  const [sheet, setSheet] = useState<string | null>(null)
   const [preview, setPreview] = useState<ImportPreview | null>(null)
   const [result, setResult] = useState<ImportResult | null>(null)
   const [problem, setProblem] = useState<{ title: string; messages: string[] } | null>(null)
   const [onlyProblems, setOnlyProblems] = useState(false)
+  const [remember, setRemember] = useState(true)
   const [editor, setEditor] = useState<{ template: ImportTemplate | null } | null>(null)
   const [toggling, setToggling] = useState<ImportTemplate | null>(null)
   const requestRef = useRef(0)
   const keyRef = useRef<{ batch: string; key: string } | null>(null)
+  // el cliente de la plantilla se aplica una vez al abrir (si la pantalla no trajo uno) y cada vez que se escoge una plantilla
+  const appliedDefault = useRef(defaultClient !== '')
 
   const { data: clients = [] } = useClientOptions(false)
   const { data: fields = [] } = useImportFields()
   const templatesQuery = useImportTemplates(clientId || null, showInactive)
   const templates = useMemo(() => templatesQuery.data ?? [], [templatesQuery.data])
+  const inspect = useInspectImportFile()
   const validate = useValidateImportFile()
   const confirm = useConfirmImport()
   const discard = useDiscardImport()
@@ -86,12 +99,16 @@ export function ConsigneeImportModal({ defaultClient, onClose }: ConsigneeImport
   const activeTemplate = templates.find((x) => x.publicId === templateId) ?? templates.find((x) => x.isActive !== false) ?? templates[0]
   const templateUsable = !!activeTemplate && activeTemplate.isActive !== false
   const hasClientColumn = (activeTemplate?.columns ?? []).some((c) => c.field === CLIENT_CODE_FIELD || c.field === CLIENT_NAME_FIELD)
+  const clientList = useMemo(() => clients.map((c) => ({ value: c.publicId ?? '', label: c.name ?? c.code ?? '' })), [clients])
   const ownerOptions = useMemo(() => {
-    const list = clients.map((c) => ({ value: c.publicId ?? '', label: c.name ?? c.code ?? '' }))
-    // el cliente de arranque aunque no esté entre los activos
-    if (clientId && !list.some((o) => o.value === clientId)) list.push({ value: clientId, label: clientId })
+    const list = [...clientList]
+    // el cliente de arranque (o el de la plantilla) aunque no esté entre los activos
+    if (clientId && !list.some((o) => o.value === clientId))
+      list.push({ value: clientId, label: activeTemplate?.defaultClientPublicId === clientId ? (activeTemplate.defaultClientName ?? clientId) : clientId })
     return [{ value: SHARED, label: t('consignees.shared') }, ...list]
-  }, [clients, clientId, t])
+  }, [clientList, clientId, activeTemplate, t])
+  const templateClient = activeTemplate?.defaultClientPublicId ?? ''
+  const showRemember = canWrite && !!activeTemplate && templateUsable && clientId !== templateClient
 
   /** Descarta el lote anterior (si lo hay) sin molestar: el error de un descarte no importa. */
   const dropBatch = useCallback(
@@ -107,8 +124,9 @@ export function ConsigneeImportModal({ defaultClient, onClose }: ConsigneeImport
     [discard],
   )
 
+  /** Revisa el archivo (hojas, encabezados) y lo valida con la plantilla, el cliente por defecto y la hoja. */
   const runValidate = useCallback(
-    async (next: File | null, tpl: ImportTemplate | undefined, client: string, previous: ImportPreview | null) => {
+    async (next: File | null, tpl: ImportTemplate | undefined, client: string, previous: ImportPreview | null, wantedSheet: string | null) => {
       const mine = ++requestRef.current
       setProblem(null)
       setResult(null)
@@ -120,7 +138,11 @@ export function ConsigneeImportModal({ defaultClient, onClose }: ConsigneeImport
         return
       }
       try {
-        const dto = await validate.mutateAsync({ templatePublicId: tpl.publicId, clientPublicId: client || null, file: next })
+        const info = await inspect.mutateAsync({ file: next, delimiter: tpl.delimiter || ',', hasHeader: tpl.hasHeader ?? true, sheet: wantedSheet })
+        if (mine !== requestRef.current) return
+        setInspection(info)
+        setSheet(info.sheet ?? null)
+        const dto = await validate.mutateAsync({ templatePublicId: tpl.publicId, clientPublicId: client || null, file: next, sheet: info.sheet ?? null })
         if (mine === requestRef.current) setPreview(dto)
       } catch (err) {
         if (mine !== requestRef.current) return
@@ -129,24 +151,41 @@ export function ConsigneeImportModal({ defaultClient, onClose }: ConsigneeImport
         setProblem({ title: p.title, messages })
       }
     },
-    [dropBatch, validate, t],
+    [dropBatch, inspect, validate, t],
   )
+
+  // al abrir: si la pantalla no trajo cliente, el de la plantilla que queda elegida
+  useEffect(() => {
+    if (appliedDefault.current || !activeTemplate) return
+    appliedDefault.current = true
+    if (!activeTemplate.defaultClientPublicId) return
+    // se fija la plantilla: con el cliente cambia la lista (generales + las de ese cliente) y la primera podría ser otra
+    setTemplateId(activeTemplate.publicId ?? '')
+    setClientId(activeTemplate.defaultClientPublicId)
+  }, [activeTemplate])
 
   const pickTemplate = (id: string) => {
     setTemplateId(id)
     const tpl = templates.find((x) => x.publicId === id)
-    if (file) void runValidate(file, tpl, clientId, preview)
+    appliedDefault.current = true
+    const client = tpl?.defaultClientPublicId ?? clientId
+    if (client !== clientId) setClientId(client)
+    if (file) void runValidate(file, tpl, client, preview, sheet)
   }
   const pickClient = (id: string) => {
     setClientId(id)
     if (!file) return
-    // una plantilla general o del cliente elegido sigue sirviendo: se valida otra vez con el nuevo dueño
-    if (activeTemplate && (!activeTemplate.clientPublicId || activeTemplate.clientPublicId === id)) void runValidate(file, activeTemplate, id, preview)
+    // una plantilla general o del cliente elegido sigue sirviendo: se valida otra vez con el nuevo cliente
+    if (activeTemplate && (!activeTemplate.clientPublicId || activeTemplate.clientPublicId === id)) void runValidate(file, activeTemplate, id, preview, sheet)
     else {
       requestRef.current++
       setPreview(null)
       void dropBatch(preview)
     }
+  }
+  const pickSheet = (name: string) => {
+    setSheet(name)
+    if (file) void runValidate(file, activeTemplate, clientId, preview, name)
   }
 
   const cancel = async () => {
@@ -159,7 +198,7 @@ export function ConsigneeImportModal({ defaultClient, onClose }: ConsigneeImport
     // la misma clave en un reintento del mismo lote (el servidor no crea dos veces)
     if (keyRef.current?.batch !== preview.batchPublicId) keyRef.current = { batch: preview.batchPublicId, key: crypto.randomUUID() }
     try {
-      const dto = await confirm.mutateAsync({ batchPublicId: preview.batchPublicId, idempotencyKey: keyRef.current.key })
+      const dto = await confirm.mutateAsync({ batchPublicId: preview.batchPublicId, idempotencyKey: keyRef.current.key, rememberClient: showRemember && remember })
       setResult(dto)
       toast.success(`${dto.created ?? 0} ${t('consignees.import.done')}`)
     } catch (err) {
@@ -171,14 +210,7 @@ export function ConsigneeImportModal({ defaultClient, onClose }: ConsigneeImport
   const rows = preview?.rows ?? []
   const shownRows = (onlyProblems ? rows.filter(rowHasProblems) : rows).slice(0, PREVIEW_ROWS)
   const invalidRows = (preview?.rowCount ?? 0) - (preview?.validRows ?? 0)
-  const columnFields = useMemo(
-    () =>
-      [...(activeTemplate?.columns ?? [])]
-        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-        .map((c) => c.field ?? '')
-        .filter(Boolean),
-    [activeTemplate],
-  )
+  const columnFields = useMemo(() => templateFields(activeTemplate), [activeTemplate])
 
   const createStandard = async () => {
     try {
@@ -190,19 +222,25 @@ export function ConsigneeImportModal({ defaultClient, onClose }: ConsigneeImport
     }
   }
 
-  const busy = validate.isPending || confirm.isPending
+  const busy = inspect.isPending || validate.isPending || confirm.isPending
+  const sheets = inspection?.sheets ?? []
 
   if (editor) {
     return (
-      <ImportTemplateEditorModal
+      <ConsigneeTemplateEditorModal
         template={editor.template}
         fields={fields}
         fieldLabel={fieldLabel}
+        clients={clientList}
+        inspection={inspection}
+        fileName={file?.name ?? null}
         onClose={() => setEditor(null)}
         onSaved={(saved) => {
           setEditor(null)
           setTemplateId(saved.publicId ?? '')
-          if (file) void runValidate(file, saved, clientId, preview)
+          const client = saved.defaultClientPublicId ?? clientId
+          if (client !== clientId) setClientId(client)
+          if (file) void runValidate(file, saved, client, preview, sheet)
         }}
       />
     )
@@ -287,6 +325,13 @@ export function ConsigneeImportModal({ defaultClient, onClose }: ConsigneeImport
               ))}
             </select>
             <p className="help">{hasClientColumn ? t('consignees.import.clientColHint') : t('consignees.import.clientHint')}</p>
+            {showRemember && (
+              <label className="sw cs-remember">
+                <input type="checkbox" role="switch" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+                <span className="tk" aria-hidden="true" />
+                <span>{t('consignees.import.rememberClient')}</span>
+              </label>
+            )}
           </div>
 
           {templatesQuery.isPending ? (
@@ -326,26 +371,43 @@ export function ConsigneeImportModal({ defaultClient, onClose }: ConsigneeImport
                 id="cs-file"
                 className="cs-fileinput"
                 type="file"
-                accept=".csv,text/csv"
+                accept={IMPORT_FILE_ACCEPT}
                 disabled={!templateUsable || busy}
                 onChange={(e) => {
                   const next = e.target.files?.[0] ?? null
                   e.target.value = ''
                   if (!next) return
                   setFile(next)
-                  void runValidate(next, activeTemplate, clientId, preview)
+                  setInspection(null)
+                  setSheet(null)
+                  void runValidate(next, activeTemplate, clientId, preview, null)
                 }}
               />
               {file && preview && (
                 <span className="cs-filemeta">
-                  {file.name} · {preview.rowCount ?? 0} {t('consignees.import.rowsFound')}
+                  {file.name}
+                  {inspection?.sheet ? ` · ${inspection.sheet}` : ''} · {preview.rowCount ?? 0} {t('consignees.import.rowsFound')}
                 </span>
               )}
-              {file && !preview && validate.isPending && <Spinner />}
+              {file && !preview && busy && <Spinner />}
             </div>
             <p className="help">{t('consignees.import.limits', { rows: f.number(MAX_IMPORT_ROWS) })}</p>
             <p className="help">{t('consignees.import.utf8')}</p>
           </div>
+
+          {sheets.length > 1 && (
+            <div className="f cs-sheet">
+              <label htmlFor="cs-sheet">{t('consignees.import.sheet')}</label>
+              <select id="cs-sheet" value={sheet ?? ''} onChange={(e) => pickSheet(e.target.value)} disabled={busy}>
+                {sheets.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+              <p className="help">{t('consignees.import.sheetHint', { n: sheets.length })}</p>
+            </div>
+          )}
         </>
       )}
 
@@ -430,9 +492,10 @@ export function ConsigneeImportModal({ defaultClient, onClose }: ConsigneeImport
                 <tr>
                   <th>{t('consignees.import.line')}</th>
                   <th>{t('consignees.import.rowState')}</th>
-                  {columnFields.map((f) => (
-                    <th key={f}>{fieldLabel(f)}</th>
+                  {columnFields.map((x) => (
+                    <th key={x}>{fieldLabel(x)}</th>
                   ))}
+                  <th>{t('consignees.import.owner')}</th>
                   <th>{t('consignees.import.remarks')}</th>
                 </tr>
               </thead>
@@ -443,9 +506,10 @@ export function ConsigneeImportModal({ defaultClient, onClose }: ConsigneeImport
                     <tr key={r.row} className={r.isValid ? undefined : 'cs-badrow'}>
                       <td className="mono">{r.line ?? r.row}</td>
                       <td>{statusChip(r)}</td>
-                      {columnFields.map((f) => (
-                        <td key={f}>{r.values?.[f] || '—'}</td>
+                      {columnFields.map((x) => (
+                        <td key={x}>{x === 'contactPhone' && r.values?.[x] ? f.phone(r.values[x]) : r.values?.[x] || '—'}</td>
                       ))}
+                      <td>{r.owner ? (r.owner.isShared ? t('consignees.shared') : (r.owner.clientName ?? '—')) : '—'}</td>
                       <td className="cs-remarks">
                         {p.errors.map((m) => (
                           <span key={m} className="cs-err">

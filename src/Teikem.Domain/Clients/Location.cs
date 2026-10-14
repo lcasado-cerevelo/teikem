@@ -32,6 +32,8 @@ public class Location : ITenantScoped, ISoftDeletable
     public string? AccessNotes { get; set; }
     public string? DeliveryNotes { get; set; }
     public bool AllowDupInvoice { get; set; }
+    /// <summary>Lote 45 (F-B2): persona de contacto en el consignatario (opcional, 150). El teléfono sigue siendo un ContactPoint.</summary>
+    public string? ContactName { get; set; }
     public bool IsActive { get; set; } = true;
     [NotAudited] public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     [NotAudited] public byte[]? RowVersion { get; set; }

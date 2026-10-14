@@ -1311,6 +1311,10 @@ Catálogo → Consignatarios (`/catalog/consignees`, `locations.read`, módulo `
 - Teléfono = `ContactPoint` de la localización (`/contacts/LOCATION/{id}`): se escribe con `contacts.manage` **y** `locations.update`. Importación: `validate-file` (multipart, el `FormData` se
   sustituye en pruebas como en `TenantSettingsPage.test.tsx`) → `confirm` con `Idempotency-Key` estable por lote → o `discard`.
 - Kit nuevo en este lote: `TextInput type="time"` ('HH:mm'; al API va 'HH:mm:00') e `IconPlus`/`IconUpload` (`kernel/ui/icons.tsx`, ya en el barril).
+- Lote F-B2 (`docs/frontend/loteFB2-decisiones.md`): archivo CSV o `.xlsx` (lo lee el servidor; `inspect-file` da hojas, encabezados y muestras sin guardar; `validate-file` con `sheet`),
+  editor propio `ConsigneeTemplateEditorModal` (el de `ImportTemplateEditorModal` queda para órdenes): «(No usar)» = `field: 'ignore'`, varios campos por columna, uniones con `part`/`separator`
+  (`syncJoins`, `joinPreview`, `consigneeTemplateColumns`), cliente por defecto de la plantilla (`defaultClientPublicId`/`clearDefaultClient`, `rememberClient` al confirmar) y `contactName`
+  del consignatario.
 
 ## Órdenes (`src/features/orders`, Lote F-C1)
 Operación → Órdenes (`/orders`, `orders.view`, módulo `LTL_GROUND`). Decisiones: `docs/frontend/loteFC1-decisiones.md`; manual: `docs/manual/frontend/fc1-ordenes-alta.md`. Sub-lotes: F-C1 lista + alta detallada + entrega especial

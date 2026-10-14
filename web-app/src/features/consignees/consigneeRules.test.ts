@@ -15,6 +15,19 @@ import {
   FILTER_SHARED,
   matchesConsignee,
   pickPhone,
+  buildConsigneeTemplateCreate,
+  buildConsigneeTemplatePatch,
+  consigneeTemplateColumns,
+  consigneeTemplateIssues,
+  consigneeTemplateValuesOf,
+  isExcelFile,
+  joinPreview,
+  moveJoinPart,
+  syncJoins,
+  templateFields,
+  type ConsigneeTemplateValues,
+  type ImportTemplate,
+  type JoinDef,
   rowHasProblems,
   rowProblems,
   standardTemplateRequest,
@@ -138,7 +151,9 @@ describe('requests', () => {
       accessNotes: null,
       deliveryNotes: null,
       allowDupInvoice: false,
+      contactName: null,
     })
+    expect(buildCreateRequest({ ...valid, contactName: ' Ana Rivera ' }).contactName).toBe('Ana Rivera')
     const req = buildCreateRequest({ ...valid, clientPublicId: 'c-1', code: 'X1', defaultWindowStart: '08:00', defaultWindowEnd: '12:30', defaultServiceMinutes: 20, allowDupInvoice: true })
     expect(req).toMatchObject({ clientPublicId: 'c-1', code: 'X1', defaultWindowStart: '08:00:00', defaultWindowEnd: '12:30:00', defaultServiceMinutes: 20, allowDupInvoice: true })
   })
@@ -323,12 +338,142 @@ describe('textos', () => {
     expect(keys(enDict.consignees).sort()).toEqual(keys(esDict.consignees).sort())
   })
 
-  it('hay etiqueta para cada campo del catálogo de importación (17) y para el nav', () => {
-    const fields = ['code', 'name', 'line1', 'line2', 'city', 'state', 'postalCode', 'country', 'clientCode', 'clientName', 'defaultServiceMinutes', 'defaultWindowStart', 'defaultWindowEnd', 'accessNotes', 'deliveryNotes', 'allowDupInvoice', 'contactPhone']
+  it('hay etiqueta para cada campo del catálogo de importación (18), para «(No usar)» y para el nav', () => {
+    const fields = ['code', 'name', 'line1', 'line2', 'city', 'state', 'postalCode', 'country', 'clientCode', 'clientName', 'defaultServiceMinutes', 'defaultWindowStart', 'defaultWindowEnd', 'accessNotes', 'deliveryNotes', 'allowDupInvoice', 'contactPhone', 'contactName', 'ignore']
     for (const f of fields) {
       expect((esDict.consignees.import.fields as Record<string, string>)[f], f).toBeTruthy()
       expect((enDict.consignees.import.fields as Record<string, string>)[f], f).toBeTruthy()
     }
     expect(esDict.nav.consignees.title).toBe('Consignatarios')
+  })
+})
+
+// ---------------------------------------------------------------- Lote F-B2: «(No usar)», columnas unidas, cliente por defecto, contacto
+
+describe('mapeo de consignatarios (Lote F-B2)', () => {
+  const MSG = {
+    columnsRequired: 'Indique al menos una columna.',
+    nameLine1: 'La plantilla debe incluir las columnas name y line1.',
+    city: 'La plantilla debe indicar la ciudad (city) en una columna o en defaults.',
+    clientBoth: 'Use clientCode o clientName, no ambos.',
+    repeated: (f: string) => `El campo ${f} está repetido.`,
+    tooManyParts: (f: string) => `El campo ${f} admite a lo sumo 5 columnas unidas.`,
+    noDefault: (f: string) => `El campo ${f} no admite valor por defecto.`,
+    defaultValueRequired: (f: string) => `Escriba el valor por defecto de ${f}.`,
+  }
+  const FIELDS2: ImportField[] = ['code', 'name', 'line1', 'city', 'country', 'contactName'].map((field) => ({ field, required: false, defaultAllowed: !['code', 'name', 'line1'].includes(field) }))
+  const cols = (...fields: string[][]) => fields.map((f) => ({ fields: f.map((field) => ({ field })) }))
+  const base = (columns: ConsigneeTemplateValues['columns']): ConsigneeTemplateValues => ({ name: 'P', delimiter: ',', hasHeader: true, defaultClientPublicId: '', columns, defaults: [] })
+
+  it('cada fila del editor viaja: sin campo = «ignore»; una columna a dos campos; un campo con varias columnas lleva su parte y separador', () => {
+    const v = base(cols(['code', 'name'], ['name'], [''], ['line1'], ['line1'], ['city']))
+    const joins = syncJoins(v.columns, [])
+    expect(joins).toEqual([
+      { field: 'name', positions: [1, 2], separators: [' '] },
+      { field: 'line1', positions: [4, 5], separators: [' '] },
+    ])
+    const custom: JoinDef[] = [{ ...joins[0], separators: [' - '] }, moveJoinPart(joins[1], 0, 1)]
+    expect(consigneeTemplateColumns(v, custom)).toEqual([
+      { position: 1, field: 'code' },
+      { position: 1, field: 'name', part: 1 },
+      { position: 2, field: 'name', part: 2, separator: ' - ' },
+      { position: 3, field: 'ignore' },
+      { position: 4, field: 'line1', part: 2, separator: ' ' },
+      { position: 5, field: 'line1', part: 1 },
+      { position: 6, field: 'city' },
+    ])
+  })
+
+  it('las uniones siguen a las columnas: conservan orden y separadores; la que queda con una columna desaparece', () => {
+    const prev: JoinDef[] = [{ field: 'name', positions: [3, 1], separators: [' / '] }]
+    expect(syncJoins(cols(['name'], [''], ['name'], ['name']), prev)).toEqual([{ field: 'name', positions: [3, 1, 4], separators: [' / ', ' '] }])
+    expect(syncJoins(cols(['name'], ['line1']), prev)).toEqual([])
+    expect(moveJoinPart({ field: 'name', positions: [1, 2], separators: ['-'] }, 0, -1).positions).toEqual([1, 2]) // ya es la primera
+  })
+
+  it('vista previa de la unión: mismo criterio que el servidor (una celda vacía no deja separador); sin archivo, «[Columna N]»', () => {
+    const join: JoinDef = { field: 'name', positions: [1, 2, 3], separators: [' - ', ', '] }
+    const row = ['C-001', 'Farmacia Uno', 'Ponce']
+    expect(joinPreview(join, (p) => row[p - 1], (p) => `Columna ${p}`)).toBe('C-001 - Farmacia Uno, Ponce')
+    expect(joinPreview(join, (p) => ['', 'Farmacia', 'Ponce'][p - 1], (p) => `Columna ${p}`)).toBe('Farmacia, Ponce')
+    expect(joinPreview(join, () => undefined, (p) => `Columna ${p}`)).toBe('[Columna 1] - [Columna 2], [Columna 3]')
+  })
+
+  it('reglas de la definición con los mensajes del servidor', () => {
+    expect(consigneeTemplateIssues(base(cols([''], [''])), FIELDS2, MSG)).toEqual([{ path: 'columns', message: MSG.columnsRequired }])
+    expect(consigneeTemplateIssues(base(cols(['name'], ['line1'], ['city'], ['country'], ['country'])), FIELDS2, MSG)).toEqual([
+      { path: 'columns.4.fields.0.field', message: 'El campo country está repetido.' },
+    ])
+    expect(consigneeTemplateIssues(base(cols(['name', 'name'], ['line1'], ['city'])), FIELDS2, MSG)[0]).toEqual({ path: 'columns.0.fields.1.field', message: 'El campo name está repetido.' })
+    const six = consigneeTemplateIssues(base(cols(['name'], ['name'], ['name'], ['name'], ['name'], ['name'], ['line1'], ['city'])), FIELDS2, MSG)
+    expect(six).toEqual([{ path: 'columns.5.fields.0.field', message: 'El campo name admite a lo sumo 5 columnas unidas.' }])
+    expect(consigneeTemplateIssues(base(cols(['name'], ['name'], ['line1'], ['city'])), FIELDS2, MSG)).toEqual([]) // unir texto está permitido
+  })
+
+  it('de la plantilla del API al editor y de vuelta, con el cliente por defecto', () => {
+    const tpl: ImportTemplate = {
+      id: 1,
+      publicId: 't',
+      kind: 'CONSIGNEE',
+      name: 'Excel',
+      delimiter: ';',
+      hasHeader: true,
+      isActive: true,
+      createdAtUtc: '2026-10-13T00:00:00',
+      defaultClientPublicId: 'c-1',
+      defaultClientName: 'Acme',
+      columns: [
+        { position: 1, field: 'code' },
+        { position: 1, field: 'name', part: 1 },
+        { position: 2, field: 'name', part: 2, separator: ' - ' },
+        { position: 3, field: 'ignore' },
+        { position: 4, field: 'line1' },
+        { position: 5, field: 'city' },
+      ],
+    }
+    const { values, joins } = consigneeTemplateValuesOf(tpl, 7)
+    expect(values.columns).toEqual(cols(['code', 'name'], ['name'], [''], ['line1'], ['city'], [''], [''])) // el archivo trae 7 columnas
+    expect(values.defaultClientPublicId).toBe('c-1')
+    expect(joins).toEqual([{ field: 'name', positions: [1, 2], separators: [' - '] }])
+    const create = buildConsigneeTemplateCreate(values, joins)
+    expect(create.defaultClientPublicId).toBe('c-1')
+    expect(create.columns).toHaveLength(8)
+    expect(buildConsigneeTemplatePatch({ ...values, defaultClientPublicId: '' }, joins)).toMatchObject({ clearDefaultClient: true, clearDefaults: true })
+    expect(buildConsigneeTemplateCreate({ ...values, defaultClientPublicId: '' }, joins)).not.toHaveProperty('defaultClientPublicId')
+    expect(consigneeTemplateValuesOf(null, 9).values.columns).toHaveLength(9)
+    expect(consigneeTemplateValuesOf(null).values.columns).toHaveLength(5)
+  })
+
+  it('resumen y columnas de la vista previa con «(No usar)» y columnas unidas', () => {
+    const tpl = {
+      columns: [
+        { position: 2, field: 'name', part: 2, separator: ' - ' },
+        { position: 1, field: 'name', part: 1 },
+        { position: 1, field: 'code' },
+        { position: 3, field: 'ignore' },
+        { position: 4, field: 'line1' },
+        { position: 5, field: 'ignore' },
+      ],
+    } as ImportTemplate
+    const names: Record<string, string> = { code: 'Número', name: 'Nombre', line1: 'Dirección', ignore: '(No usar)' }
+    const label = (f: string) => names[f] ?? f
+    expect(templateSummary(tpl, label)).toBe('1. Número · 1+2. Nombre · 4. Dirección · 3, 5. (No usar)')
+    expect(templateFields(tpl)).toEqual(['code', 'name', 'line1'])
+  })
+
+  it('reconoce un libro de Excel por la extensión o el tipo', () => {
+    expect(isExcelFile({ name: 'Libro.XLSX', type: '' })).toBe(true)
+    expect(isExcelFile({ name: 'x', type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })).toBe(true)
+    expect(isExcelFile({ name: 'datos.csv', type: 'text/csv' })).toBe(false)
+  })
+
+  it('persona de contacto: tope de 150, PATCH solo si cambió y entra en la búsqueda', () => {
+    const schema = consigneeSchema(M, () => true)
+    expect(schema.safeParse({ ...valid, contactName: 'x'.repeat(151) }).error?.issues[0].message).toBe('Máximo 150 caracteres.')
+    const original = consigneeValuesOf({ ...LOC, contactName: 'Ana' } as Consignee, '')
+    expect(original.contactName).toBe('Ana')
+    expect(buildPatchRequest({ ...original, contactName: 'Luis' }, original, null).request).toMatchObject({ contactName: 'Luis' })
+    expect(buildPatchRequest(original, original, null).changed).toBe(false)
+    expect(matchesConsignee({ ...LOC, contactName: 'Ana Rivera' } as Consignee, 'rivera', { shared: 'S', active: 'A', inactive: 'I' })).toBe(true)
   })
 })

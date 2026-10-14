@@ -1480,7 +1480,7 @@ expect 409 "$(req POST "/api/v1/locations/import-templates/$CTPL2_PID/deactivate
 expect 400 "$(req POST /api/v1/locations/import/validate "$(jq -cn --arg t "$CTPL2_PID" '{templatePublicId:$t,content:"a,b,c,d\nx,y,Ponce,1\n"}')")" | jq -e '.errors.templatePublicId[0]=="La plantilla está inactiva; reactívela o elija otra."' >/dev/null || fail "validar con plantilla inactiva"
 expect 200 "$(req POST "/api/v1/locations/import-templates/$CTPL2_PID/reactivate")" | jq -e '.isActive==true' >/dev/null || fail "reactivar plantilla de consignatarios"
 # Catálogo de campos y 415 sin Content-Type
-expect 200 "$(req GET /api/v1/locations/import/fields)" | jq -e 'length==17 and ([.[] | select(.required) | .field] | sort)==["city","line1","name"] and (.[] | select(.field=="code") | .defaultAllowed==false) and (.[] | select(.field=="allowDupInvoice") | .defaultAllowed)' >/dev/null || fail "catálogo de campos"
+expect 200 "$(req GET /api/v1/locations/import/fields)" | jq -e 'length==18 and ([.[] | select(.required) | .field] | sort)==["city","line1","name"] and (.[] | select(.field=="code") | .defaultAllowed==false) and (.[] | select(.field=="allowDupInvoice") | .defaultAllowed)' >/dev/null || fail "catálogo de campos"
 expect 415 "$(curl -sS -X POST "$BASE/api/v1/locations/import/validate" -H "Authorization: Bearer $TOKEN" -w '\n%{http_code}')" >/dev/null   # sin Content-Type: 415, no 500
 # CSV mixto SIN cliente de lote: (1) compartida válida, (2) del cliente por clientCode válida con teléfono/sí/ventana,
 # (3) código repetido de (2), (4) código existente del cliente, (5) teléfono inválido, (6) ventana al revés,
@@ -1504,13 +1504,28 @@ echo "$VC" | jq -e --arg ts "$TS" --arg cpid "$CLIENT_O_PID" \
   and .rows[6].errors.clientCode==$mnoex and .rows[6].owner==null
   and .rows[7].isValid and .rows[7].owner.isShared and .rows[7].warnings==[$md8]' >/dev/null || fail "validar CSV mixto: $VC"
 BC=$(echo "$VC" | jq -r .batchPublicId)
-# Archivo por multipart con cliente de lote: filas sin clientCode toman el cliente del lote; clientCode de OTRO cliente → error
+# Archivo por multipart con cliente de lote (cliente POR DEFECTO, Lote 45): filas sin clientCode toman el cliente del lote; la fila
+# con clientCode de OTRO cliente queda con ESE cliente (antes era error 'La fila indica el cliente…')
 FUPC=$(mktemp)
 printf 'codigo,nombre,linea1,pueblo,zip,cliente,tel,dupfact,desde,hasta\nCIF1-%s,Imp archivo 1 %s,Calle 40,Ponce,00716,,,,,\nCIF2-%s,Imp archivo 2 %s,Calle 41,Ponce,00716,,,,,\nCIF3-%s,Imp archivo 3 %s,Calle 42,Ponce,00716,%s,,,,\n' "$TS" "$TS" "$TS" "$TS" "$TS" "$TS" "$CLIENT2_CODE" > "$FUPC"
 VF=$(expect 200 "$(curl -sS -X POST "$BASE/api/v1/locations/import/validate-file" -H "Authorization: Bearer $TOKEN" -F "templatePublicId=$CTPL_PID" -F "clientPublicId=$CLIENT_O_PID" -F "file=@$FUPC" -w '\n%{http_code}')")
-echo "$VF" | jq -e --arg cpid "$CLIENT_O_PID" --arg m "La fila indica el cliente '$CLIENT2_NAME', pero el lote es del cliente '$CLIENT_O_NAME'." '
-  .rowCount==3 and .validRows==2 and .clientPublicId==$cpid and all(.rows[0,1]; .owner.clientPublicId==$cpid) and .rows[2].errors.clientCode==$m' >/dev/null || fail "validar por multipart con cliente de lote: $VF"
+echo "$VF" | jq -e --arg cpid "$CLIENT_O_PID" --arg c2 "$CLIENT2_PID" '
+  .rowCount==3 and .validRows==3 and .clientPublicId==$cpid and all(.rows[0,1]; .owner.clientPublicId==$cpid) and .rows[2].owner.clientPublicId==$c2' >/dev/null || fail "validar por multipart con cliente de lote: $VF"
 BF=$(echo "$VF" | jq -r .batchPublicId)
+# Lote 45 (F-B2): revisar el archivo sin guardar (encabezados y muestras) y plantilla con «No usar», columnas unidas, persona de
+# contacto y cliente por defecto; ZIP de 3 dígitos (Excel perdió los ceros) → 00901
+expect 200 "$(curl -sS -X POST "$BASE/api/v1/locations/import/inspect-file" -H "Authorization: Bearer $TOKEN" -F "file=@$FUPC" -w '\n%{http_code}')" \
+  | jq -e '.format=="CSV" and .sheets==[] and .rowCount==3 and (.columns|length)==10 and .columns[0].header=="codigo" and (.columns[1].samples|length)==3' >/dev/null || fail "revisar archivo CSV"
+CJCOLS='[{"position":1,"field":"code"},{"position":1,"field":"name","part":1},{"position":2,"field":"name","part":2,"separator":" - "},{"position":3,"field":"line1"},{"position":4,"field":"ignore"},{"position":5,"field":"city"},{"position":6,"field":"postalCode"},{"position":7,"field":"contactName"},{"position":8,"field":"contactPhone"}]'
+CJT=$(expect 200 "$(req POST /api/v1/locations/import-templates "$(jq -cn --arg n "Unidas $TS" --argjson c "$CJCOLS" --arg d "$CLIENT_O_PID" '{name:$n,columns:$c,defaultClientPublicId:$d}')")")
+echo "$CJT" | jq -e --arg d "$CLIENT_O_PID" '.defaultClientPublicId==$d and ([.columns[] | select(.field=="ignore")] | length)==1 and ([.columns[] | select(.field=="name")] | map(.part))==[1,2]' >/dev/null || fail "plantilla con columnas unidas: $CJT"
+CJT_PID=$(echo "$CJT" | jq -r .publicId)
+expect 400 "$(req POST /api/v1/locations/import-templates "$(ctpl "Ignorada usada $TS" '[{"position":1,"field":"name"},{"position":1,"field":"ignore"},{"position":2,"field":"line1"},{"position":3,"field":"city"}]')")" | jq -e '.errors["columns[1].field"][0]=="La columna 1 está marcada «No usar» y también tiene un campo asignado."' >/dev/null || fail "columna ignorada y usada"
+CJV=$(expect 200 "$(req POST /api/v1/locations/import/validate "$(jq -cn --arg t "$CJT_PID" --arg c "$CLIENT_O_PID" --arg s "$(printf 'cod,nom,dir,basura,pueblo,zip,contacto,tel\nUN-%s,Unida %s,Calle 60,xx,San Juan,901,Ana Rivera,787-555-0199\n' "$TS" "$TS")" '{templatePublicId:$t,clientPublicId:$c,content:$s}')")")
+echo "$CJV" | jq -e --arg n "UN-$TS - Unida $TS" '.validRows==1 and .rows[0].values.name==$n and .rows[0].values.postalCode=="00901" and .rows[0].values.contactName=="Ana Rivera" and (.rows[0].values|has("ignore")|not)' >/dev/null || fail "validar con columnas unidas: $CJV"
+CJR=$(expect 200 "$(req POST "/api/v1/locations/import/$(echo "$CJV" | jq -r .batchPublicId)/confirm" '{"rememberClient":true}')")
+echo "$CJR" | jq -e '.created==1' >/dev/null || fail "confirmar con columnas unidas: $CJR"
+expect 200 "$(req GET "/api/v1/locations?search=UN-$TS")" | jq -e '.[0].contactName=="Ana Rivera" and .[0].postalCode=="00901"' >/dev/null || fail "persona de contacto importada"
 # Cliente de baja: el lote con ese cliente 409; la fila que lo nombra, error de fila
 expect 204 "$(req POST "/api/v1/clients/$CLIENT2_PID/deactivate")" >/dev/null
 expect 409 "$(req POST /api/v1/locations/import/validate "$(cbody "$(printf 'c,n,l,p\n,Baja cons %s,Calle 43,Ponce\n' "$TS")" "$CTPL_PID" "$CLIENT2_PID")")" | jq -e --arg m "$BAJA" '.title==$m' >/dev/null || fail "validar con cliente de lote de baja"
@@ -1590,7 +1605,7 @@ expect 404 "$(req POST /api/v1/locations/import/validate "$(cbody "$CSVC" "$TPL_
 expect 200 "$(req PUT /api/v1/modules/CATALOG '{"isEnabled":false}')" >/dev/null
 expect 403 "$(req POST /api/v1/locations/import/validate "$(cbody "$CSVC")")" | jq -e '.code=="module_disabled"' >/dev/null || fail "importar consignatarios con CATALOG apagado"
 expect 200 "$(req PUT /api/v1/modules/CATALOG '{"isEnabled":true}')" >/dev/null
-ok "plantillas por tipo (kind cruzado 400/404, defaults tipados, reglas de columnas, 409 por nombre, baja/reactivación), 17 campos, 415, validar JSON y multipart (dueño por fila o del lote, cliente de otro lote, de baja o inexistente, duplicados en el archivo y en el directorio, aviso D8), confirmar (400 por fila elegida, 3 creados con teléfono, ventana y minutos), reconfirmar 409, descartar 200/409/422, sin filas válidas 400, carreras (mismo lote, confirmar/descartar, mismo código en dos lotes), 5.000 filas, RBAC/tenant/módulo"
+ok "plantillas por tipo (kind cruzado 400/404, defaults tipados, reglas de columnas, 409 por nombre, baja/reactivación), 18 campos, F-B2 (inspect-file, «No usar», columnas unidas, cliente por defecto, contacto, ZIP 00901), 415, validar JSON y multipart (dueño por fila o del lote, cliente de otro lote, de baja o inexistente, duplicados en el archivo y en el directorio, aviso D8), confirmar (400 por fila elegida, 3 creados con teléfono, ventana y minutos), reconfirmar 409, descartar 200/409/422, sin filas válidas 400, carreras (mismo lote, confirmar/descartar, mismo código en dos lotes), 5.000 filas, RBAC/tenant/módulo"
 
 # ============================================================================================================
 # Lote 4 — Flota, choferes y mantenimiento. Re-ejecutable: TS en códigos de vehículos, choferes y zonas; las fechas se
@@ -2970,7 +2985,7 @@ step "catálogos, permisos y almacén demo (Lote 6)"
 ME6=$(expect 200 "$(req GET /api/v1/me)")
 echo "$ME6" | jq -e '[.permissions[]] as $p | all(["inventory.view","inventory.manage","inventory.adjust","warehouse.manage"][]; . as $x | $p | index($x))' >/dev/null || fail "el admin sin los 4 permisos nuevos"
 expect 200 "$(req GET /api/v1/status/SerialStatus)" | jq -e 'any(.[]; .code=="SCRAPPED" and .stageKind=="TERMINAL") and any(.[]; .code=="SHIPPED" and .stageKind=="LATERAL")' >/dev/null || fail "SerialStatus (D16)"
-expect 200 "$(req GET /api/v1/catalogs/AdjustmentReason)" | jq -e 'length==11 and any(.[]; .code=="OPENING_BALANCE") and any(.[]; .code=="TRACKING_CONVERSION")' >/dev/null || fail "AdjustmentReason (11, con OPENING_BALANCE del Lote 10 y TRACKING_CONVERSION del Lote 26)"
+expect 200 "$(req GET /api/v1/catalogs/AdjustmentReason)" | jq -e 'length==12 and any(.[]; .code=="PHYSICAL_COUNT") and any(.[]; .code=="OPENING_BALANCE") and any(.[]; .code=="TRACKING_CONVERSION")' >/dev/null || fail "AdjustmentReason (12, con OPENING_BALANCE del Lote 10, TRACKING_CONVERSION del Lote 26 y PHYSICAL_COUNT del ajuste múltiple)"
 DEMO=$(expect 200 "$(req GET /api/v1/warehouses)" | jq -r '[.[] | select(.code=="ALM-01" and .statusCode=="ACTIVE")][0].publicId')
 [[ "$DEMO" =~ ^[0-9a-f-]{36}$ ]] || fail "almacén demo ALM-01 ACTIVE (D49)"
 expect 200 "$(req GET "/api/v1/warehouses/$DEMO")" | jq -e '([.zones[].code] | sort)==["PCK","QUA","RSV","STG"] and (.zones[] | select(.code=="STG") | .zoneTypeCode=="STAGING") and ([.docks[] | select(.statusCode=="FREE") | .code] | sort)==["D1","D2"]' >/dev/null || fail "zonas y muelles de ALM-01"
@@ -3022,7 +3037,7 @@ expect 400 "$(req PATCH "/api/v1/warehouses/$W6P/zones/$ZRSV" '{"warehouseId":1}
 expect 200 "$(req PATCH "/api/v1/warehouses/$W6P/zones/$ZRSV" '{"code":"rsv-2"}')" | jq -e '.code=="RSV-2"' >/dev/null || fail "código de zona editable"
 expect 200 "$(req PATCH "/api/v1/warehouses/$W6P/zones/$ZRSV" '{"code":"RSV"}')" | jq -e '.code=="RSV"' >/dev/null || fail "código de zona de vuelta a RSV"
 expect 400 "$(req PATCH "/api/v1/warehouses/$W6P/bins/$B_RSV" "{\"zoneId\":$ZPCK}")" | jq -e --arg m "El código y la zona de la posición no se pueden cambiar." "$HASM" >/dev/null || fail "zona de la posición fija"
-expect 400 "$(req PATCH "/api/v1/warehouses/$W6P/docks/$DK" '{"code":"D9"}')" | jq -e --arg m "El código del muelle no se puede cambiar." "$HASM" >/dev/null || fail "código del muelle fijo"
+expect 400 "$(req PATCH "/api/v1/warehouses/$W6P/docks/$DK" '{"code":"D9"}')" | jq -e --arg m "El código de la plataforma no se puede cambiar." "$HASM" >/dev/null || fail "código del muelle fijo"
 # Una zona con posiciones activas no se desactiva (409); el muelle cambia de estatus a mano con historial (maestro L317).
 expect 409 "$(req POST "/api/v1/warehouses/$W6P/zones/$ZRSV/deactivate" '{}')" | jq -e '.title=="La zona tiene posiciones activas; desactívelas primero."' >/dev/null || fail "baja de zona con posiciones activas"
 expect 200 "$(req POST "/api/v1/warehouses/$W6P/docks/$DK/status" '{"status":"MAINTENANCE","comment":"Rampa en reparación"}')" | jq -e '.statusCode=="MAINTENANCE"' >/dev/null || fail "muelle en MAINTENANCE"
@@ -3600,7 +3615,7 @@ APPTS=$(expect 200 "$(req GET "/api/v1/dock-appointments?warehousePublicId=$W6P&
 AP1=$(echo "$APPTS" | jq -r '[.[] | select(.statusCode=="SCHEDULED")][0].id')
 ST3=$(date -u -d "tomorrow 11:00" +%FT%T); EN3=$(date -u -d "tomorrow 11:30" +%FT%T)
 AP2=$(expect 200 "$(req POST /api/v1/dock-appointments "{\"warehousePublicId\":\"$W6P\",\"dockId\":$DK,\"direction\":\"INBOUND\",\"scheduledStartUtc\":\"${ST3}Z\",\"scheduledEndUtc\":\"${EN3}Z\"}")" | jq -r .id)
-expect 409 "$(req PATCH "/api/v1/dock-appointments/$AP2" "{\"scheduledStartUtc\":\"${ST2}Z\"}")" | jq -e '.title=="El muelle ya tiene una cita que se solapa con ese horario."' >/dev/null || fail "reprogramar sobre otra cita → 409"
+expect 409 "$(req PATCH "/api/v1/dock-appointments/$AP2" "{\"scheduledStartUtc\":\"${ST2}Z\"}")" | jq -e '.title=="La plataforma ya tiene una cita que se solapa con ese horario."' >/dev/null || fail "reprogramar sobre otra cita → 409"
 expect 200 "$(req POST "/api/v1/dock-appointments/$AP1/status" '{"status":"ARRIVED"}')" | jq -e '.statusCode=="ARRIVED" and .dockStatusCode=="OCCUPIED"' >/dev/null || fail "ARRIVED ocupa el muelle"
 expect 200 "$(req POST "/api/v1/dock-appointments/$AP1/status" '{"status":"COMPLETED"}')" | jq -e '.statusCode=="COMPLETED" and .dockStatusCode=="FREE"' >/dev/null || fail "COMPLETED libera el muelle"
 expect 200 "$(req POST "/api/v1/dock-appointments/$AP2/status" '{"status":"CANCELLED","comment":"Sin carga"}')" | jq -e '.statusCode=="CANCELLED"' >/dev/null || fail "cancelar la cita"
@@ -3612,7 +3627,7 @@ neworder() { expect 200 "$(req POST /api/v1/orders "$(jq -cn --arg c "$C6P" --ar
 OA1=$(neworder); OA2=$(neworder)
 alloca() { req POST "/api/v1/cross-dock-plans/$PLANA/allocations" "{\"receiptLineId\":$RXAL,\"orderPublicId\":\"$1\",\"quantity\":$2}"; }
 expect 200 "$(alloca "$OA1" 4)" | jq -e 'all(.allocations[]; .confirmedQty==null and .taskId==null)' >/dev/null || fail "asignación sobre recibo abierto sin reserva ni tarea"
-expect 409 "$(alloca "$OA2" 8)" | jq -e '.title | contains("excede lo disponible para cruce de muelle")' >/dev/null || fail "asignar más de lo recibido (Exceeds)"
+expect 409 "$(alloca "$OA2" 8)" | jq -e '.title | contains("excede lo disponible para cruce de plataforma")' >/dev/null || fail "asignar más de lo recibido (Exceeds)"
 expect 200 "$(alloca "$OA2" 6)" >/dev/null
 expect 200 "$(req GET "/api/v1/cross-dock-plans/$PLANA/candidates")" | jq -e --argjson l "$RXAL" 'any(.[]; .receiptLineId==$l and .receiptStatusCode=="RECEIVING" and .allocatedQty==10 and .allocatable==0) or all(.[]; .receiptLineId!=$l)' >/dev/null || fail "candidatos del plan"
 expect 200 "$(req PUT "/api/v1/receipts/$RXAP/lines/$RXAL" '{"receivedQty":8}')" >/dev/null
@@ -3640,7 +3655,7 @@ TA1=$(echo "$PA" | jq -r --arg a "$OA1" '.allocations[] | select(.orderPublicId=
 expect 200 "$(req POST "/api/v1/warehouse-tasks/$TA1/complete" '{}')" | jq -e '.statusCode=="DONE"' >/dev/null || fail "mover O1 desde la cola"
 expect 200 "$(req POST "/api/v1/cross-dock-plans/$PLANA/allocations/$AA2/move" '{}')" >/dev/null
 [[ $(reserved "$W6P" "$B_XD" "$PX") == 0 && $(onhand "$W6P" "$B_XD" "$PX") == 0 ]] || fail "staging en cero tras mover"
-kardex "productPublicIds=$PX&types=CROSSDOCK&binIds=$B_XD" | jq -e '.total==2 and all(.items[]; .quantity==-4 and .type=="Cruce de muelle")' >/dev/null || fail "dos CROSSDOCK −4 con tipo 'Cruce de muelle' (L582)"
+kardex "productPublicIds=$PX&types=CROSSDOCK&binIds=$B_XD" | jq -e '.total==2 and all(.items[]; .quantity==-4 and .type=="Cruce de Plataforma")' >/dev/null || fail "dos CROSSDOCK −4 con tipo 'Cruce de Plataforma' (L582)"
 expect 200 "$(req POST "/api/v1/cross-dock-plans/$PLANA/complete" '{}')" | jq -e '.statusCode=="COMPLETED"' >/dev/null || fail "completar el plan del modo (a)"
 PLAN=$(expect 200 "$(req POST /api/v1/cross-dock-plans "{\"warehousePublicId\":\"$W6P\",\"stagingZoneId\":$ZSTG}")" | jq -r .id)
 RX=$(expect 200 "$(blind "$W6P" "$B_STG" "$PX" 3)"); RXP=$(echo "$RX" | jq -r .header.publicId); RXL=$(echo "$RX" | jq -r '.lines[0].id')

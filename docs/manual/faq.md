@@ -6336,7 +6336,7 @@ La fila nombra un cliente que no está en la compañía. Corrija el código (o e
 Hay dos o más clientes con ese nombre. Cambie la columna a `clientCode` en la plantilla y use el código del cliente.
 
 **«La fila indica el cliente 'A', pero el lote es del cliente 'B'.»**
-Validó con un cliente de lote y esa fila nombra a otro. Quite el cliente de la fila, corríjalo, o valide sin cliente de lote para que cada fila use el suyo.
+Ya no sale desde el Lote 45 (2026-10-13): el cliente del lote es el *cliente por defecto* y la fila que trae su propio cliente queda con ese cliente. Si lo ve, el servidor es anterior al Lote 45.
 
 **«El nombre es obligatorio.» / «La dirección (línea 1) es obligatoria.» / «La ciudad es obligatoria.»**
 La celda está vacía (y no hay default para la ciudad). Llénela en el archivo.
@@ -7655,3 +7655,80 @@ Antes, cada inicio de sesión dejaba la anterior viva hasta que vencía (30 día
 
 **Cambié la duración de la sesión y las viejas siguen ahí.**
 La duración se fija **al iniciar sesión**: las sesiones ya abiertas conservan su vencimiento original; las nuevas usan la duración nueva.
+
+## Lote 45 / F-B2 — Importar consignatarios: Excel, «(No usar)», columnas unidas, cliente por defecto y persona de contacto (2026-10-13)
+
+Pantalla: [frontend/fb2-importacion-consignatarios.md](frontend/fb2-importacion-consignatarios.md). Servidor: capítulo 02, §2.2.
+
+**¿Puedo importar un Excel directamente?**
+Sí, un **.xlsx** (Excel 2007 en adelante). Si el libro tiene varias hojas, escoja la de los datos en **Hoja del libro**. El .xls viejo no se admite.
+
+**El ZIP de Puerto Rico me llega como 901 en vez de 00901.**
+Teikem lo corrige solo: un ZIP de Puerto Rico o Estados Unidos con 3 o 4 dígitos se rellena con ceros a 5. Si el país del consignatario es otro, queda como venga.
+
+**Mi CSV viene de Excel en Windows y antes se dañaban la ñ y los acentos.**
+Ya no: la codificación (UTF-8 o Windows-1252) se detecta sola.
+
+**Mi archivo trae columnas vacías o «Column2…Column11».**
+Déjelas en **(No usar)**. La columna se ignora y la fila se importa igual. La plantilla recuerda esas columnas.
+
+**Quiero que el nombre del consignatario sea «Número - Nombre».**
+En el editor, ponga la columna del número en **Número** y, con **Usar también en otro campo**, también en **Nombre**; ponga la columna del nombre en **Nombre**. En
+**Campos con varias columnas** suba la columna del número con **↑** y escriba « - » en **Separador**. **Resultado** muestra cómo queda.
+
+**¿Por qué una fila salió con un cliente distinto del que escogí?**
+Porque esa fila trae su propio cliente en la columna de cliente de la plantilla: la fila manda. Las filas con esa columna vacía quedan con el **Cliente por defecto**.
+
+**«Recordar este cliente en la plantilla», ¿qué hace?**
+Al importar, la plantilla se queda con el cliente escogido como su cliente por defecto: la próxima vez se propone solo. Apáguelo si es solo por esta vez.
+
+**«Formato de archivo no admitido: use CSV o Excel (.xlsx).»** (400)
+Es un .xls (Excel 97-2003) u otro formato. Ábralo en Excel y guárdelo como «Libro de Excel (.xlsx)» o como «CSV».
+
+**«No se pudo leer el archivo de Excel; ábralo y guárdelo otra vez como .xlsx.»** (400)
+El archivo dice ser .xlsx pero está dañado o es otra cosa con esa extensión. Ábralo y use «Guardar como» .xlsx.
+
+**«El libro no tiene la hoja 'X'.»** (400)
+La hoja escogida ya no está en el libro (lo cambiaron mientras tanto). Escoja el archivo otra vez.
+
+**«El archivo supera el límite de 5.000 filas o 2 MB.»** (400)
+También aplica a Excel (y a un libro que, descomprimido, pase de 64 MB). Pártalo en varios archivos.
+
+**«La columna N está marcada «No usar» y también tiene un campo asignado.»** (400)
+Una columna «(No usar)» no puede llenar ningún campo. Quítele el «(No usar)» o los campos.
+
+**«El campo X admite a lo sumo 5 columnas unidas.»** (400)
+Un campo puede unir hasta 5 columnas. Quite alguna.
+
+**«El campo X está repetido.»** (400)
+País, cliente, minutos de servicio, horas de la ventana y «Permitir factura repetida» van en UNA sola columna (los campos de texto sí pueden unir varias).
+
+**«La posición N está repetida.»** (400)
+La misma columna está dos veces en el mismo campo. Quite la repetida.
+
+**«El separador admite a lo sumo 10 caracteres.»** (400)
+Acorte el separador de las columnas unidas.
+
+**«El cliente por defecto debe ser el mismo cliente de la plantilla.»** (400)
+La plantilla es de un cliente (solo sirve para ese cliente): su cliente por defecto solo puede ser ese o ninguno.
+
+**«Indique un cliente por defecto o quítelo, no ambos.»** (400)
+Error de una llamada directa al API (`defaultClientPublicId` y `clearDefaultClient` a la vez). La pantalla no lo manda.
+
+**«El cliente está dado de baja; solo se consulta su historial.»** (409, cliente por defecto)
+El cliente escogido como cliente por defecto de la plantilla está de baja. Escoja otro o reactive el cliente.
+
+**«La celda del teléfono trae más de un número; se tomó el primero (7875550101).»** (aviso)
+La celda traía dos teléfonos. Se guardó el primero; si necesita el otro, agréguelo en la ficha del consignatario. La fila se importa.
+
+**El teléfono venía como «(787)555-0101» o «787 555-0101» y ahora se ve distinto.**
+Se guardan los 10 dígitos y la pantalla los muestra con el formato de teléfono de la compañía.
+
+**«El código X se repite en la fila N del archivo.»** (error de fila)
+El número de consignatario X ya apareció en la fila N del archivo. Corrija uno de los dos y valide otra vez.
+
+**«Máximo 150 caracteres.»** (persona de contacto)
+La persona de contacto admite hasta 150 caracteres, en el archivo y en la ficha.
+
+**¿Dónde veo la persona de contacto?**
+En la ficha del consignatario («Persona de contacto»), en la fila de la lista y en el buscador. Se cambia con **Editar**.

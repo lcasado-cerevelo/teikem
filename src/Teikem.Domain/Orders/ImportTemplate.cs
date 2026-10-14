@@ -19,6 +19,11 @@ public class ImportTemplate : ITenantScoped, ISoftDeletable
     public string Kind { get; set; } = ImportKinds.Order;
     public string Name { get; set; } = string.Empty;
     public int? ClientId { get; set; }
+    /// <summary>
+    /// Lote 45 (F-B2): cliente por defecto de la importación con esta plantilla («todo el archivo es del cliente X»; la fila con
+    /// su propio cliente manda). NULL = sin cliente por defecto (compartidos). No restringe el uso, a diferencia de ClientId.
+    /// </summary>
+    public int? DefaultClientId { get; set; }
     /// <summary>Un carácter (NCHAR(1)); ',' por defecto.</summary>
     public string Delimiter { get; set; } = ",";
     public bool HasHeader { get; set; } = true;
@@ -29,4 +34,5 @@ public class ImportTemplate : ITenantScoped, ISoftDeletable
     [NotAudited] public DateTime? UpdatedAtUtc { get; set; }
 
     public Client? Client { get; set; }
+    public Client? DefaultClient { get; set; }
 }

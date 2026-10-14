@@ -710,3 +710,18 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_Tenant_SessionMinutes' AND parent_object_id = OBJECT_ID('dbo.Tenant'))
     ALTER TABLE dbo.Tenant ADD CONSTRAINT CK_Tenant_SessionMinutes CHECK ((SessionMinutes IS NULL OR SessionMinutes BETWEEN 1 AND 525600) AND (DeviceSessionMinutes IS NULL OR DeviceSessionMinutes BETWEEN 1 AND 525600));
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-13 — Importación de consignatarios, mejoras (Lote 45, F-B2; docs/lote45-decisiones.md).
+   - dbo.Location.ContactName: persona de contacto del consignatario (opcional, 150). El teléfono sigue siendo un ContactPoint.
+   - dbo.ImportTemplate.DefaultClientId: cliente por defecto de la importación con esa plantilla («todo el archivo es del
+     cliente X»; la fila con su propio cliente manda). NULL = compartidos. No limita el uso (eso sigue siendo ClientId).
+   - Las columnas «No usar» y las columnas unidas viajan en ColumnsJson (sin cambio de estructura). Sin permisos nuevos.
+   Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.Location', 'ContactName') IS NULL
+    ALTER TABLE dbo.Location ADD ContactName NVARCHAR(150) NULL;
+GO
+IF COL_LENGTH('dbo.ImportTemplate', 'DefaultClientId') IS NULL
+    ALTER TABLE dbo.ImportTemplate ADD DefaultClientId INT NULL CONSTRAINT FK_ImportTemplate_DefaultClient REFERENCES dbo.Client(ClientId);
+GO

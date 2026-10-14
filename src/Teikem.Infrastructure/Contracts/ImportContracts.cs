@@ -6,10 +6,17 @@ namespace Teikem.Infrastructure.Contracts;
 
 // ---------------------------------------------------------------- plantillas
 
-/// <summary>Columna de la plantilla: posición 1..n en el archivo y campo del catálogo ImportFields.</summary>
-public sealed record ImportTemplateColumnDto(int Position, string Field);
+/// <summary>
+/// Columna de la plantilla: posición 1..n en el archivo y campo del catálogo ImportFields. Lote 45 (F-B2, solo consignatarios):
+/// Field = "ignore" marca la columna «No usar»; un campo con varias columnas las une en el orden de Part (1, 2…) con el Separator
+/// de cada parte después de la primera (null = un espacio); la misma posición puede alimentar varios campos.
+/// </summary>
+public sealed record ImportTemplateColumnDto(int Position, string Field, int? Part = null, string? Separator = null);
 
-/// <summary>Plantilla reutilizable. ClientPublicId null = plantilla general del tenant (sirve para cualquier cliente).</summary>
+/// <summary>
+/// Plantilla reutilizable. ClientPublicId null = plantilla general del tenant (sirve para cualquier cliente). DefaultClientPublicId
+/// (Lote 45): cliente que la importación propone por defecto («todo el archivo es de X»); no limita el uso de la plantilla.
+/// </summary>
 public sealed record ImportTemplateDto(
     int Id,
     Guid PublicId,
@@ -23,7 +30,9 @@ public sealed record ImportTemplateDto(
     IReadOnlyDictionary<string, string>? Defaults,
     bool IsActive,
     DateTime CreatedAtUtc,
-    DateTime? UpdatedAtUtc);
+    DateTime? UpdatedAtUtc,
+    Guid? DefaultClientPublicId = null,
+    string? DefaultClientName = null);
 
 /// <summary>
 /// Alta de plantilla. Columns: posiciones únicas &gt;= 1 y campos del catálogo (al menos consigneeName o consigneeCode y
@@ -36,9 +45,13 @@ public sealed record ImportTemplateCreateRequest(
     Guid? ClientPublicId = null,
     string? Delimiter = null,
     bool HasHeader = true,
-    string? Kind = null);
+    string? Kind = null,
+    Guid? DefaultClientPublicId = null);
 
-/// <summary>Edición parcial: null = sin cambio. Columns/Defaults reemplazan la lista completa; ClearDefaults borra los defaults; MakeGeneral quita el cliente.</summary>
+/// <summary>
+/// Edición parcial: null = sin cambio. Columns/Defaults reemplazan la lista completa; ClearDefaults borra los defaults; MakeGeneral quita el cliente.
+/// DefaultClientPublicId cambia el cliente por defecto y ClearDefaultClient lo quita (Lote 45; excluyentes).
+/// </summary>
 public sealed record ImportTemplatePatchRequest(
     string? Name = null,
     IList<ImportTemplateColumnDto>? Columns = null,
@@ -47,7 +60,9 @@ public sealed record ImportTemplatePatchRequest(
     Guid? ClientPublicId = null,
     bool? MakeGeneral = null,
     string? Delimiter = null,
-    bool? HasHeader = null);
+    bool? HasHeader = null,
+    Guid? DefaultClientPublicId = null,
+    bool? ClearDefaultClient = null);
 
 // ---------------------------------------------------------------- lotes (validar → confirmar)
 

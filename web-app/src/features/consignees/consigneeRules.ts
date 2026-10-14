@@ -18,6 +18,8 @@ export type ImportField = Schemas['ImportFieldDto']
 export type ImportPreview = Schemas['ConsigneeImportPreviewDto']
 export type ImportRow = Schemas['ConsigneeImportRowDto']
 export type ImportResult = Schemas['ConsigneeImportResultDto']
+export type ImportFileInspection = Schemas['ImportFileInspectionDto']
+export type ImportTemplateColumn = Schemas['ImportTemplateColumnDto']
 
 /** Tipo de localización de un consignatario (la pantalla lo fija; no se muestra). */
 export const DELIVERY_TYPE = 'DELIVERY'
@@ -35,6 +37,8 @@ export const CITY_MAX = 100
 export const STATE_MAX = 100
 export const POSTAL_MAX = 20
 export const NOTES_MAX = 500
+/** Lote F-B2: persona de contacto (Location.ContactName). */
+export const CONTACT_NAME_MAX = 150
 
 /** Valor del filtro de cliente / dueño que significa «sin dueño» (compartidos). */
 export const SHARED = ''
@@ -71,6 +75,8 @@ export interface ConsigneeValues {
   clientPublicId: string
   /** Teléfono con la máscara de la compañía ('' = sin teléfono). */
   phone: string
+  /** Persona de contacto (Lote F-B2; '' = sin persona). */
+  contactName: string
   defaultServiceMinutes: number | null
   /** 'HH:mm' o ''. */
   defaultWindowStart: string
@@ -94,6 +100,7 @@ export function consigneeSchema(m: ConsigneeMessages, isValidPhone: (v: string) 
       country: z.string().trim().min(1, m.countryRequired),
       clientPublicId: z.string(),
       phone: z.string().refine((v) => v.trim() === '' || isValidPhone(v), m.phoneInvalid),
+      contactName: optional(CONTACT_NAME_MAX),
       defaultServiceMinutes: z.number(m.minutesInteger).int(m.minutesInteger).min(0, m.minutesNegative).nullable(),
       defaultWindowStart: z.string(),
       defaultWindowEnd: z.string(),
@@ -134,6 +141,7 @@ export function emptyConsigneeValues(ownerClientId = SHARED): ConsigneeValues {
     country: DEFAULT_COUNTRY,
     clientPublicId: ownerClientId,
     phone: '',
+    contactName: '',
     defaultServiceMinutes: 0,
     defaultWindowStart: '',
     defaultWindowEnd: '',
@@ -156,6 +164,7 @@ export function consigneeValuesOf(c: Consignee, phone: string): ConsigneeValues 
     country: c.country ?? DEFAULT_COUNTRY,
     clientPublicId: c.isShared ? SHARED : (c.clientPublicId ?? SHARED),
     phone,
+    contactName: c.contactName ?? '',
     defaultServiceMinutes: c.defaultServiceMinutes ?? 0,
     defaultWindowStart: timeInput(c.defaultWindowStart),
     defaultWindowEnd: timeInput(c.defaultWindowEnd),
@@ -190,6 +199,7 @@ export function buildCreateRequest(v: ConsigneeInput): ConsigneeCreateRequest {
     accessNotes: v.accessNotes.trim() || null,
     deliveryNotes: v.deliveryNotes.trim() || null,
     allowDupInvoice: v.allowDupInvoice,
+    contactName: v.contactName.trim() || null,
   }
 }
 
@@ -201,7 +211,7 @@ export function buildCreateRequest(v: ConsigneeInput): ConsigneeCreateRequest {
 export function buildPatchRequest(v: ConsigneeInput, original: ConsigneeValues, rowVersion: string | null | undefined): { request: ConsigneePatchRequest; changed: boolean } {
   const req: ConsigneePatchRequest = { rowVersion: rowVersion ?? null }
   let changed = false
-  const text = (key: 'code' | 'name' | 'line1' | 'line2' | 'city' | 'state' | 'postalCode' | 'accessNotes' | 'deliveryNotes') => {
+  const text = (key: 'code' | 'name' | 'line1' | 'line2' | 'city' | 'state' | 'postalCode' | 'accessNotes' | 'deliveryNotes' | 'contactName') => {
     const next = v[key].trim()
     if (next !== original[key].trim()) {
       req[key] = next
@@ -217,6 +227,7 @@ export function buildPatchRequest(v: ConsigneeInput, original: ConsigneeValues, 
   text('postalCode')
   text('accessNotes')
   text('deliveryNotes')
+  text('contactName')
   if (v.country.trim() !== original.country.trim()) {
     req.country = v.country.trim()
     changed = true
@@ -262,7 +273,7 @@ export function ownerLabel(c: Consignee, shared: string): string {
 
 /** Búsqueda libre de la lista (maqueta: número, nombre, dirección, pueblo, dueño y estado). */
 export function matchesConsignee(c: Consignee, q: string, labels: { shared: string; active: string; inactive: string }): boolean {
-  return matchesQ(q, c.code, c.name, c.line1, c.line2, c.city, c.postalCode, ownerLabel(c, labels.shared), c.isActive ? labels.active : labels.inactive)
+  return matchesQ(q, c.code, c.name, c.line1, c.line2, c.city, c.postalCode, c.contactName, ownerLabel(c, labels.shared), c.isActive ? labels.active : labels.inactive)
 }
 
 /** El filtro «Compartidos» se resuelve en el cliente; «Todos» y un cliente ya vienen filtrados por el servidor. */
@@ -430,12 +441,293 @@ export function buildTemplatePatch(v: TemplateValues): ImportTemplatePatchReques
   }
 }
 
-/** Resumen «1. Nombre · 2. Número…» de la plantilla elegida. */
+/** Columnas de la plantilla en orden de posición y, dentro de un campo que une varias, de parte. */
+function sortedColumns(t: ImportTemplate | undefined): ImportTemplateColumn[] {
+  return [...(t?.columns ?? [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || (a.part ?? 0) - (b.part ?? 0))
+}
+
+/**
+ * Resumen «1. Nombre · 2. Número…» de la plantilla elegida. Lote F-B2: un campo que une columnas sale una vez con sus columnas en
+ * orden («1+2. Nombre») y las «(No usar)» van juntas al final («3, 5. (No usar)»). Las plantillas de órdenes no traen ninguna de las dos.
+ */
 export function templateSummary(t: ImportTemplate | undefined, label: (field: string) => string): string {
-  return [...(t?.columns ?? [])]
-    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-    .map((c) => `${c.position}. ${label(c.field ?? '')}`)
-    .join(' · ')
+  const byField = new Map<string, { position: number; part: number }[]>()
+  const ignored: number[] = []
+  for (const c of sortedColumns(t)) {
+    const field = c.field ?? ''
+    if (field === IGNORE_FIELD) {
+      ignored.push(c.position ?? 0)
+      continue
+    }
+    byField.set(field, [...(byField.get(field) ?? []), { position: c.position ?? 0, part: c.part ?? 0 }])
+  }
+  const parts = [...byField].map(([field, list]) => `${[...list].sort((a, b) => a.part - b.part || a.position - b.position).map((x) => x.position).join('+')}. ${label(field)}`)
+  if (ignored.length > 0) parts.push(`${ignored.join(', ')}. ${label(IGNORE_FIELD)}`)
+  return parts.join(' · ')
+}
+
+/** Campos que la plantilla llena (sin «No usar»), en el orden de su primera columna: columnas de la vista previa. */
+export function templateFields(t: ImportTemplate | undefined): string[] {
+  const out: string[] = []
+  for (const c of sortedColumns(t)) {
+    const field = c.field ?? ''
+    if (field && field !== IGNORE_FIELD && !out.includes(field)) out.push(field)
+  }
+  return out
+}
+
+// ---------------------------------------------------------------- importación: mapeo de consignatarios (Lote F-B2)
+
+/** Marca de columna «(No usar)» (espejo de ConsigneeImportFields.Ignore): se guarda en la plantilla y la columna se ignora; la fila sigue. */
+export const IGNORE_FIELD = 'ignore'
+/** Campos con formato propio: toman UNA sola columna (espejo de ConsigneeImportFields.SingleColumn). */
+export const SINGLE_COLUMN_FIELDS: readonly string[] = ['country', 'clientCode', 'clientName', 'defaultServiceMinutes', 'defaultWindowStart', 'defaultWindowEnd', 'allowDupInvoice']
+export const MAX_JOIN_PARTS = 5
+export const SEPARATOR_MAX = 10
+/** Separador entre dos columnas unidas cuando no se escribe otro. */
+export const DEFAULT_SEPARATOR = ' '
+/** Archivos que acepta la importación: CSV en UTF-8 o Excel .xlsx (lo lee el servidor). */
+export const IMPORT_FILE_ACCEPT = '.csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+
+/** Una columna del archivo en el editor: los campos que alimenta; `fields[0].field === ''` = «(No usar)». */
+export interface MappingColumn {
+  fields: { field: string }[]
+}
+
+/**
+ * Un campo que une varias columnas: `positions` en el orden en que se unen y `separators[k]` el texto ENTRE `positions[k]` y
+ * `positions[k + 1]` (al reordenar, los separadores se quedan en su hueco).
+ */
+export interface JoinDef {
+  field: string
+  positions: number[]
+  separators: string[]
+}
+
+export interface ConsigneeTemplateValues {
+  name: string
+  delimiter: string
+  hasHeader: boolean
+  /** Cliente por defecto de la importación ('' = sin cliente: compartidos). */
+  defaultClientPublicId: string
+  /** Una fila por columna del archivo, en orden (posición = índice + 1). */
+  columns: MappingColumn[]
+  defaults: { field: string; value: string }[]
+}
+
+export interface ConsigneeTemplateMessages {
+  nameRequired: string
+  nameMax: string
+  columnsRequired: string
+  nameLine1: string
+  city: string
+  clientBoth: string
+  repeated: (field: string) => string
+  tooManyParts: (field: string) => string
+  noDefault: (field: string) => string
+  defaultValueRequired: (field: string) => string
+}
+
+/** Columnas (1..n) de cada campo, en orden de posición y en el orden en que aparece el campo. */
+export function fieldPositions(columns: readonly MappingColumn[]): Map<string, number[]> {
+  const map = new Map<string, number[]>()
+  columns.forEach((c, i) => {
+    for (const f of c.fields) {
+      if (!f.field || f.field === IGNORE_FIELD) continue
+      const list = map.get(f.field) ?? []
+      if (!list.includes(i + 1)) list.push(i + 1)
+      map.set(f.field, list)
+    }
+  })
+  return map
+}
+
+/**
+ * Uniones al día con las columnas: un campo con dos o más columnas es una unión. Conserva el orden y los separadores de lo que
+ * sigue; una columna nueva se agrega al final con un espacio; una unión que queda con una sola columna desaparece.
+ */
+export function syncJoins(columns: readonly MappingColumn[], joins: readonly JoinDef[]): JoinDef[] {
+  const out: JoinDef[] = []
+  for (const [field, list] of fieldPositions(columns)) {
+    if (list.length < 2) continue
+    const prev = joins.find((j) => j.field === field)
+    const kept = (prev?.positions ?? []).filter((p) => list.includes(p))
+    const positions = [...kept, ...list.filter((p) => !kept.includes(p))]
+    const separators = positions.slice(1).map((_, k) => prev?.separators[k] ?? DEFAULT_SEPARATOR)
+    out.push({ field, positions, separators })
+  }
+  return out
+}
+
+/** Mueve la columna `index` de la unión una posición arriba (-1) o abajo (+1); los separadores se quedan en su hueco. */
+export function moveJoinPart(join: JoinDef, index: number, delta: -1 | 1): JoinDef {
+  const target = index + delta
+  if (target < 0 || target >= join.positions.length) return join
+  const positions = [...join.positions]
+  ;[positions[index], positions[target]] = [positions[target], positions[index]]
+  return { ...join, positions }
+}
+
+/**
+ * Resultado de unir (mismo criterio que el servidor): las celdas vacías no dejan separador. `cellOf(posición)` da el valor de una
+ * fila de muestra (undefined = no hay archivo: se muestra «[Columna N]»).
+ */
+export function joinPreview(join: JoinDef, cellOf: (position: number) => string | undefined, columnLabel: (position: number) => string): string {
+  let out = ''
+  join.positions.forEach((p, k) => {
+    const raw = cellOf(p)
+    const value = raw === undefined ? `[${columnLabel(p)}]` : raw.trim()
+    if (!value) return
+    if (out) out += join.separators[k - 1] ?? DEFAULT_SEPARATOR
+    out += value
+  })
+  return out
+}
+
+/** Valores del editor y uniones a partir de la plantilla; `fileColumns` = columnas del archivo revisado (se muestran todas). */
+export function consigneeTemplateValuesOf(t: ImportTemplate | null, fileColumns = 0): { values: ConsigneeTemplateValues; joins: JoinDef[] } {
+  if (!t) {
+    const width = Math.max(5, fileColumns)
+    return {
+      values: { name: '', delimiter: ',', hasHeader: true, defaultClientPublicId: '', columns: Array.from({ length: width }, () => ({ fields: [{ field: '' }] })), defaults: [] },
+      joins: [],
+    }
+  }
+  const cols = t.columns ?? []
+  const last = cols.reduce((max, c) => Math.max(max, c.position ?? 0), 0)
+  const width = Math.max(last, fileColumns, 1)
+  const columns = Array.from({ length: width }, (_, i) => {
+    const fields = cols.filter((c) => c.position === i + 1 && c.field && c.field !== IGNORE_FIELD).map((c) => ({ field: c.field ?? '' }))
+    return { fields: fields.length > 0 ? fields : [{ field: '' }] }
+  })
+  const joins: JoinDef[] = []
+  for (const [field] of fieldPositions(columns)) {
+    const parts = cols.filter((c) => c.field === field).sort((a, b) => (a.part ?? 1e9) - (b.part ?? 1e9) || (a.position ?? 0) - (b.position ?? 0))
+    if (parts.length < 2) continue
+    joins.push({ field, positions: parts.map((c) => c.position ?? 0), separators: parts.slice(1).map((c) => c.separator ?? DEFAULT_SEPARATOR) })
+  }
+  return {
+    values: {
+      name: t.name ?? '',
+      delimiter: t.delimiter || ',',
+      hasHeader: t.hasHeader ?? true,
+      defaultClientPublicId: t.defaultClientPublicId ?? '',
+      columns,
+      defaults: Object.entries(t.defaults ?? {}).map(([field, value]) => ({ field, value })),
+    },
+    joins,
+  }
+}
+
+/** Errores de la definición (espejo de ConsigneeImportMapping.ValidateColumns, Lote F-B2): ruta → mensaje. */
+export function consigneeTemplateIssues(
+  v: Pick<ConsigneeTemplateValues, 'columns' | 'defaults'>,
+  fields: readonly ImportField[],
+  m: Omit<ConsigneeTemplateMessages, 'nameRequired' | 'nameMax'>,
+): TemplateIssue[] {
+  const issues: TemplateIssue[] = []
+  const count = new Map<string, number>()
+  v.columns.forEach((c, i) => {
+    const inColumn = new Set<string>()
+    c.fields.forEach((f, j) => {
+      if (!f.field || f.field === IGNORE_FIELD) return
+      const path = `columns.${i}.fields.${j}.field`
+      if (inColumn.has(f.field)) {
+        issues.push({ path, message: m.repeated(f.field) })
+        return
+      }
+      inColumn.add(f.field)
+      const n = (count.get(f.field) ?? 0) + 1
+      count.set(f.field, n)
+      if (n > 1 && SINGLE_COLUMN_FIELDS.includes(f.field)) issues.push({ path, message: m.repeated(f.field) })
+      else if (n > MAX_JOIN_PARTS) issues.push({ path, message: m.tooManyParts(f.field) })
+    })
+  })
+  const allowDefault = new Set(fields.filter((f) => f.defaultAllowed).map((f) => f.field ?? ''))
+  const defaultFields = new Set<string>()
+  v.defaults.forEach((d, i) => {
+    if (!d.field) return
+    if (fields.length > 0 && !allowDefault.has(d.field)) issues.push({ path: `defaults.${i}.field`, message: m.noDefault(d.field) })
+    else if (!d.value.trim()) issues.push({ path: `defaults.${i}.value`, message: m.defaultValueRequired(d.field) })
+    else defaultFields.add(d.field)
+  })
+  if (count.size === 0) issues.push({ path: 'columns', message: m.columnsRequired })
+  else if (!REQUIRED_COLUMN_FIELDS.every((f) => count.has(f))) issues.push({ path: 'columns', message: m.nameLine1 })
+  else if (!count.has(CITY_FIELD) && !defaultFields.has(CITY_FIELD)) issues.push({ path: 'columns', message: m.city })
+  else if (count.has(CLIENT_CODE_FIELD) && count.has(CLIENT_NAME_FIELD)) issues.push({ path: 'columns', message: m.clientBoth })
+  return issues
+}
+
+export function consigneeTemplateSchema(m: ConsigneeTemplateMessages, fields: readonly ImportField[]) {
+  return z
+    .object({
+      name: z.string().trim().min(1, m.nameRequired).max(TEMPLATE_NAME_MAX, m.nameMax),
+      delimiter: z.string().min(1),
+      hasHeader: z.boolean(),
+      defaultClientPublicId: z.string(),
+      columns: z.array(z.object({ fields: z.array(z.object({ field: z.string() })) })),
+      defaults: z.array(z.object({ field: z.string(), value: z.string() })),
+    })
+    .superRefine((v, ctx) => {
+      for (const issue of consigneeTemplateIssues(v, fields, m))
+        ctx.addIssue({ code: 'custom', path: issue.path.split('.').map((p) => (/^\d+$/.test(p) ? Number(p) : p)), message: issue.message })
+    })
+}
+
+/**
+ * Columnas del request: TODAS las filas del editor (posición = orden); sin campo → «ignore»; una columna puede ir a varios campos;
+ * un campo de una unión lleva su parte (1..n) y, desde la segunda, el separador que va antes de ella.
+ */
+export function consigneeTemplateColumns(v: Pick<ConsigneeTemplateValues, 'columns'>, joins: readonly JoinDef[]): ImportTemplateColumn[] {
+  const out: ImportTemplateColumn[] = []
+  v.columns.forEach((c, i) => {
+    const position = i + 1
+    const fields = [...new Set(c.fields.map((f) => f.field).filter((f) => f && f !== IGNORE_FIELD))]
+    if (fields.length === 0) {
+      out.push({ position, field: IGNORE_FIELD })
+      return
+    }
+    for (const field of fields) {
+      const join = joins.find((j) => j.field === field && j.positions.length > 1)
+      const k = join ? join.positions.indexOf(position) : -1
+      if (!join || k < 0) out.push({ position, field })
+      else if (k === 0) out.push({ position, field, part: 1 })
+      else out.push({ position, field, part: k + 1, separator: join.separators[k - 1] ?? DEFAULT_SEPARATOR })
+    }
+  })
+  return out
+}
+
+export function buildConsigneeTemplateCreate(v: ConsigneeTemplateValues, joins: readonly JoinDef[]): ImportTemplateCreateRequest {
+  const defaults = templateDefaults(v)
+  return {
+    name: v.name.trim(),
+    delimiter: v.delimiter,
+    hasHeader: v.hasHeader,
+    columns: consigneeTemplateColumns(v, joins),
+    defaults: Object.keys(defaults).length > 0 ? defaults : null,
+    ...(v.defaultClientPublicId ? { defaultClientPublicId: v.defaultClientPublicId } : {}),
+  }
+}
+
+/** PATCH: columnas y defaults reemplazan la lista completa; sin defaults → `clearDefaults`; sin cliente por defecto → `clearDefaultClient`. */
+export function buildConsigneeTemplatePatch(v: ConsigneeTemplateValues, joins: readonly JoinDef[]): ImportTemplatePatchRequest {
+  const defaults = templateDefaults(v)
+  const hasDefaults = Object.keys(defaults).length > 0
+  return {
+    name: v.name.trim(),
+    delimiter: v.delimiter,
+    hasHeader: v.hasHeader,
+    columns: consigneeTemplateColumns(v, joins),
+    defaults: hasDefaults ? defaults : null,
+    clearDefaults: hasDefaults ? null : true,
+    ...(v.defaultClientPublicId ? { defaultClientPublicId: v.defaultClientPublicId } : { clearDefaultClient: true }),
+  }
+}
+
+/** ¿Es un libro de Excel? (por la extensión o el tipo; el servidor lo vuelve a decidir por el contenido). */
+export function isExcelFile(file: Pick<File, 'name' | 'type'>): boolean {
+  return /\.xlsx$/i.test(file.name) || file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 }
 
 // ---------------------------------------------------------------- importación: vista previa y resultado

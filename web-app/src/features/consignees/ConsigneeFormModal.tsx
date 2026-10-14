@@ -18,6 +18,7 @@ import {
   buildCreateRequest,
   buildPatchRequest,
   CODE_MAX,
+  CONTACT_NAME_MAX,
   consigneeSchema,
   consigneeValuesOf,
   emptyConsigneeValues,
@@ -194,6 +195,9 @@ export function ConsigneeFormModal({ open, consignee, phone, defaultOwner, onClo
             </div>
           )}
         </div>
+        <Field name="contactName" label={t('consignees.contactName')} help={t('consignees.contactNameHelp')}>
+          <TextInput maxLength={CONTACT_NAME_MAX} autoComplete="off" />
+        </Field>
         <Field name="clientPublicId" label={t('consignees.scope')}>
           <Select options={ownerOptions} />
         </Field>

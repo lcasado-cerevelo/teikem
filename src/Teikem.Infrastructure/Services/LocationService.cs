@@ -22,7 +22,7 @@ public sealed class LocationService(TeikemDbContext db, ITenantContext tenant, I
     /// <summary>País por defecto de una localización sin país (lo usa también la importación de consignatarios, Lote 38).</summary>
     public const string DefaultCountry = "PR";
     /// <summary>Topes de los textos (= columnas de dbo.Location); la importación de consignatarios valida con los mismos.</summary>
-    public const int NameMax = 200, CodeMax = 40, LineMax = 200, CityMax = 100, StateMax = 100, PostalMax = 20, NotesMax = 500;
+    public const int NameMax = 200, CodeMax = 40, LineMax = 200, CityMax = 100, StateMax = 100, PostalMax = 20, NotesMax = 500, ContactNameMax = 150;
 
     // ---------------------------------------------------------------- consultas
 
@@ -54,6 +54,7 @@ public sealed class LocationService(TeikemDbContext db, ITenantContext tenant, I
             var s = q.Search.Trim();
             query = query.Where(l => l.Name.Contains(s)
                                      || (l.Code != null && l.Code.Contains(s))
+                                     || (l.ContactName != null && l.ContactName.Contains(s))
                                      || l.City.Contains(s)
                                      || l.Line1.Contains(s)
                                      || (l.PostalCode != null && l.PostalCode.Contains(s)));
@@ -117,6 +118,7 @@ public sealed class LocationService(TeikemDbContext db, ITenantContext tenant, I
             AccessNotes = OptionalText(req.AccessNotes, "accessNotes", NotesMax),
             DeliveryNotes = OptionalText(req.DeliveryNotes, "deliveryNotes", NotesMax),
             AllowDupInvoice = req.AllowDupInvoice,
+            ContactName = OptionalText(req.ContactName, "contactName", ContactNameMax),
             IsActive = true,
             CreatedAtUtc = DateTime.UtcNow,
         };
@@ -181,6 +183,7 @@ public sealed class LocationService(TeikemDbContext db, ITenantContext tenant, I
         if (req.PostalCode is not null) loc.PostalCode = OptionalText(req.PostalCode, "postalCode", PostalMax);
         if (req.AccessNotes is not null) loc.AccessNotes = OptionalText(req.AccessNotes, "accessNotes", NotesMax);
         if (req.DeliveryNotes is not null) loc.DeliveryNotes = OptionalText(req.DeliveryNotes, "deliveryNotes", NotesMax);
+        if (req.ContactName is not null) loc.ContactName = OptionalText(req.ContactName, "contactName", ContactNameMax);
         loc.DefaultServiceMinutes = minutes;
         loc.DefaultWindowStart = winStart;
         loc.DefaultWindowEnd = winEnd;
@@ -293,5 +296,6 @@ public sealed class LocationService(TeikemDbContext db, ITenantContext tenant, I
         l.Country?.InternalCode ?? "", MultilingualText.Resolve(l.Country?.LabelJson, tenant.Lang),
         l.DefaultServiceMinutes, l.DefaultWindowStart, l.DefaultWindowEnd, l.AccessNotes, l.DeliveryNotes,
         l.AllowDupInvoice, l.IsActive, l.CreatedAtUtc,
-        Convert.ToBase64String(l.RowVersion ?? Array.Empty<byte>()));
+        Convert.ToBase64String(l.RowVersion ?? Array.Empty<byte>()),
+        l.ContactName);
 }

@@ -27,11 +27,19 @@ public static class ConsigneeImportFields
     public const string DeliveryNotes = "deliveryNotes";
     public const string AllowDupInvoice = "allowDupInvoice";
     public const string ContactPhone = "contactPhone";
+    /// <summary>Lote 45 (F-B2): persona de contacto del consignatario (Location.ContactName).</summary>
+    public const string ContactName = "contactName";
+
+    /// <summary>
+    /// Lote 45 (F-B2): marca de columna «(No usar)». No es un campo del catálogo: la columna se guarda en la plantilla para que
+    /// el editor la recuerde, y al importar se ignora por completo (la fila NO se salta).
+    /// </summary>
+    public const string Ignore = "ignore";
 
     public static readonly IReadOnlyList<string> All =
     [
         Code, Name, Line1, Line2, City, State, PostalCode, Country, ClientCode, ClientName,
-        DefaultServiceMinutes, DefaultWindowStart, DefaultWindowEnd, AccessNotes, DeliveryNotes, AllowDupInvoice, ContactPhone,
+        DefaultServiceMinutes, DefaultWindowStart, DefaultWindowEnd, AccessNotes, DeliveryNotes, AllowDupInvoice, ContactPhone, ContactName,
     ];
 
     /// <summary>Campos que la fila debe traer (city puede venir de defaults).</summary>
@@ -39,6 +47,18 @@ public static class ConsigneeImportFields
 
     /// <summary>Campos que identifican a CADA consignatario o a su dueño: no admiten valor por defecto en la plantilla.</summary>
     public static readonly IReadOnlySet<string> NoDefault = new HashSet<string>(StringComparer.Ordinal) { Code, Name, Line1, ClientCode, ClientName };
+
+    /// <summary>
+    /// Lote 45 (F-B2): campos con formato propio (país, cliente, números, horas, sí/no): toman UNA sola columna. Los de texto
+    /// (nombre, código, dirección, pueblo, ZIP, notas, teléfono, persona de contacto) pueden unir varias.
+    /// </summary>
+    public static readonly IReadOnlySet<string> SingleColumn = new HashSet<string>(StringComparer.Ordinal)
+    {
+        Country, ClientCode, ClientName, DefaultServiceMinutes, DefaultWindowStart, DefaultWindowEnd, AllowDupInvoice,
+    };
+
+    /// <summary>¿Es la marca «(No usar)»? (sin distinguir mayúsculas).</summary>
+    public static bool IsIgnore(string? field) => string.Equals(field?.Trim(), Ignore, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Nombre canónico (camelCase del catálogo) o null si el campo no existe.</summary>
     public static string? Canonical(string? field)
@@ -67,7 +87,15 @@ public sealed record DuplicateFinding(string Field, string Message, bool IsWarni
 /// </summary>
 public static class ConsigneeImportMapping
 {
-    public const int NameMax = 200, CodeMax = 40, LineMax = 200, CityMax = 100, StateMax = 100, PostalMax = 20, NotesMax = 500;
+    public const int NameMax = 200, CodeMax = 40, LineMax = 200, CityMax = 100, StateMax = 100, PostalMax = 20, NotesMax = 500, ContactNameMax = 150;
+
+    /// <summary>Lote 45 (F-B2): columnas que un mismo campo puede unir y largo máximo del separador.</summary>
+    public const int MaxParts = 5, SeparatorMax = 10;
+    /// <summary>Separador que se usa entre dos columnas unidas cuando la plantilla no indica otro.</summary>
+    public const string DefaultSeparator = " ";
+    public const string SeparatorMaxMessage = "El separador admite a lo sumo 10 caracteres.";
+    public static string TooManyPartsMessage(string field) => $"El campo {field} admite a lo sumo {MaxParts} columnas unidas.";
+    public static string IgnoredColumnUsedMessage(int position) => $"La columna {position} está marcada «No usar» y también tiene un campo asignado.";
 
     public const string NameLine1ColumnsMessage = "La plantilla debe incluir las columnas name y line1.";
     public const string CityColumnMessage = "La plantilla debe indicar la ciudad (city) en una columna o en defaults.";
@@ -100,6 +128,10 @@ public static class ConsigneeImportMapping
     /// Errores por campo de la definición de una plantilla CONSIGNEE (vacío = válida). Posiciones y campos con los mismos
     /// mensajes que la plantilla de órdenes; además name y line1 en columna, city en columna o defaults, clientCode y
     /// clientName excluyentes y sin default para code/name/line1/clientCode/clientName.
+    /// Lote 45 (F-B2): una columna puede marcarse «No usar» (field = ignore; no puede tener además otro campo), una misma
+    /// columna puede alimentar varios campos (p. ej. el código y parte del nombre) y un campo de texto puede unir hasta
+    /// MaxParts columnas (los de SingleColumn siguen siendo de una sola: «El campo X está repetido.»). La misma columna dos
+    /// veces en el mismo campo es «La posición N está repetida.».
     /// </summary>
     public static IReadOnlyDictionary<string, string> ValidateColumns(IReadOnlyList<ImportColumn>? columns, IReadOnlyDictionary<string, string>? defaults)
     {
@@ -107,18 +139,33 @@ public static class ConsigneeImportMapping
         if (columns is null || columns.Count == 0) errors["columns"] = ImportMapping.ColumnsRequiredMessage;
         else if (columns.Count > ImportMapping.MaxColumns) errors["columns"] = $"Máximo {ImportMapping.MaxColumns} columnas.";
 
-        var positions = new HashSet<int>();
+        var byPosition = new Dictionary<int, HashSet<string>>();
         var fields = new HashSet<string>(StringComparer.Ordinal);
+        var parts = new Dictionary<string, int>(StringComparer.Ordinal);
         for (var i = 0; columns is not null && i < columns.Count; i++)
         {
             var c = columns[i];
+            var isIgnore = ConsigneeImportFields.IsIgnore(c.Field);
+            var canonical = isIgnore ? ConsigneeImportFields.Ignore : ConsigneeImportFields.Canonical(c.Field);
+
             if (c.Position < 1) errors[$"columns[{i}].position"] = "La posición debe ser 1 o mayor.";
             else if (c.Position > ImportMapping.MaxPosition) errors[$"columns[{i}].position"] = $"La posición no puede exceder {ImportMapping.MaxPosition}.";
-            else if (!positions.Add(c.Position)) errors[$"columns[{i}].position"] = ImportMapping.DuplicatePositionMessage(c.Position);
+            else if (canonical is not null)
+            {
+                if (!byPosition.TryGetValue(c.Position, out var atPosition)) byPosition[c.Position] = atPosition = new HashSet<string>(StringComparer.Ordinal);
+                if (!atPosition.Add(canonical)) errors[$"columns[{i}].position"] = ImportMapping.DuplicatePositionMessage(c.Position);
+                else if (atPosition.Count > 1 && atPosition.Contains(ConsigneeImportFields.Ignore))
+                    errors[$"columns[{i}].field"] = IgnoredColumnUsedMessage(c.Position);
+            }
 
-            var canonical = ConsigneeImportFields.Canonical(c.Field);
-            if (canonical is null) errors[$"columns[{i}].field"] = ImportMapping.UnknownFieldMessage(c.Field?.Trim() ?? string.Empty);
-            else if (!fields.Add(canonical)) errors[$"columns[{i}].field"] = ImportMapping.DuplicateFieldMessage(canonical);
+            if (c.Separator is { Length: > SeparatorMax }) errors[$"columns[{i}].separator"] = SeparatorMaxMessage;
+            if (isIgnore) continue;
+            if (canonical is null) { errors[$"columns[{i}].field"] = ImportMapping.UnknownFieldMessage(c.Field?.Trim() ?? string.Empty); continue; }
+
+            fields.Add(canonical);
+            var count = parts[canonical] = parts.GetValueOrDefault(canonical) + 1;
+            if (count > 1 && ConsigneeImportFields.SingleColumn.Contains(canonical)) errors.TryAdd($"columns[{i}].field", ImportMapping.DuplicateFieldMessage(canonical));
+            else if (count > MaxParts) errors.TryAdd($"columns[{i}].field", TooManyPartsMessage(canonical));
         }
 
         var defaultFields = new HashSet<string>(StringComparer.Ordinal);
@@ -177,9 +224,67 @@ public static class ConsigneeImportMapping
             case ConsigneeImportFields.AccessNotes:
             case ConsigneeImportFields.DeliveryNotes:
                 return v.Length > NotesMax ? MaxLengthMessage(NotesMax) : null;
+            case ConsigneeImportFields.ContactName: return v.Length > ContactNameMax ? MaxLengthMessage(ContactNameMax) : null;
             default:
                 return null;
         }
+    }
+
+    /// <summary>
+    /// Lote 45 (F-B2): columnas como se guardan en la plantilla. Nombre canónico del campo («ignore» para «No usar»); un campo
+    /// de UNA columna queda sin Part ni Separator; uno que une varias queda con Part 1..n (orden pedido, si no por posición) y
+    /// el separador de cada parte después de la primera (la primera nunca lleva). Orden: posición y luego parte.
+    /// </summary>
+    public static IReadOnlyList<ImportColumn> NormalizeColumns(IReadOnlyList<ImportColumn> columns)
+    {
+        ArgumentNullException.ThrowIfNull(columns);
+        var withField = columns.Select((c, i) => (Column: c, Index: i,
+            Field: ConsigneeImportFields.IsIgnore(c.Field) ? ConsigneeImportFields.Ignore : ConsigneeImportFields.Canonical(c.Field) ?? c.Field.Trim())).ToList();
+        var result = new List<ImportColumn>(columns.Count);
+        foreach (var group in withField.GroupBy(x => x.Field, StringComparer.Ordinal))
+        {
+            var ordered = group.OrderBy(x => x.Column.Part ?? int.MaxValue).ThenBy(x => x.Column.Position).ThenBy(x => x.Index).ToList();
+            if (ordered.Count == 1 || group.Key == ConsigneeImportFields.Ignore)
+            {
+                result.AddRange(ordered.Select(x => new ImportColumn(x.Column.Position, group.Key)));
+                continue;
+            }
+            for (var p = 0; p < ordered.Count; p++)
+                result.Add(new ImportColumn(ordered[p].Column.Position, group.Key, p + 1, p == 0 ? null : ordered[p].Column.Separator));
+        }
+        return result.OrderBy(c => c.Position).ThenBy(c => c.Part ?? 0).ThenBy(c => c.Field, StringComparer.Ordinal).ToList();
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex PhoneNumber =
+        new(@"(?<!\d)(?:\+?1[\s.\-]?)?\(?(\d{3})\)?[\s.\-]*(\d{3})[\s.\-]*(\d{4})(?!\d)", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    public static string MultiplePhonesWarning(string first) => $"La celda del teléfono trae más de un número; se tomó el primero ({first}).";
+
+    /// <summary>
+    /// Lote 45 (F-B2): teléfono de la celda en los formatos que traen los archivos reales (787-555-0101, 787 555-0101, 7875550101,
+    /// (787)555-0101, +1 787…): se guardan los 10 dígitos (como el alta manual). Si la celda trae DOS o más números se toma el primero
+    /// y Multiple = true (la fila lleva el aviso). Sin un número de 10 dígitos reconocible, el texto queda igual (lo revisa la regla
+    /// de ContactPoint y, si no sirve, la fila da «Teléfono inválido.»).
+    /// </summary>
+    public static (string Value, bool Multiple) NormalizePhone(string raw)
+    {
+        var text = raw?.Trim() ?? string.Empty;
+        var matches = PhoneNumber.Matches(text);
+        if (matches.Count == 0) return (text, false);
+        var m = matches[0];
+        return (m.Groups[1].Value + m.Groups[2].Value + m.Groups[3].Value, matches.Count > 1);
+    }
+
+    /// <summary>
+    /// Lote 45 (F-B2): ZIP de Puerto Rico o Estados Unidos que perdió los ceros de la izquierda (Excel lo guardó como número:
+    /// 00901 → 901) se rellena a 5 dígitos. Solo toca 3 o 4 dígitos sin nada más; cualquier otro valor queda igual.
+    /// </summary>
+    public static string NormalizePostalCode(string value, string? country)
+    {
+        var c = country?.Trim().ToUpperInvariant();
+        if (c is not ("PR" or "US")) return value;
+        var v = value.Trim();
+        return v.Length is 3 or 4 && v.All(char.IsAsciiDigit) ? v.PadLeft(5, '0') : v;
     }
 
     /// <summary>
@@ -199,21 +304,40 @@ public static class ConsigneeImportMapping
         return result;
     }
 
-    /// <summary>Valores por campo de una fila (misma regla que ImportMapping.Map: la celda no vacía gana; si no, el default).</summary>
+    /// <summary>
+    /// Valores por campo de una fila (misma regla que ImportMapping.Map: la celda no vacía gana; si no, el default).
+    /// Lote 45 (F-B2): las columnas «No usar» se ignoran (la fila sigue); un campo con varias columnas une las celdas no vacías
+    /// en el orden de Part (luego posición), con el separador de cada parte (un espacio si no trae); si todas vienen vacías, el
+    /// campo cae en su default.
+    /// </summary>
     public static IReadOnlyDictionary<string, string> Map(IReadOnlyList<string> cells, IReadOnlyList<ImportColumn> columns, IReadOnlyDictionary<string, string>? defaults)
     {
         ArgumentNullException.ThrowIfNull(cells);
         ArgumentNullException.ThrowIfNull(columns);
         var normalizedDefaults = NormalizeDefaults(defaults);
         var values = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var column in columns)
+        var groups = new Dictionary<string, List<(ImportColumn Column, int Index)>>(StringComparer.Ordinal);
+        for (var i = 0; i < columns.Count; i++)
         {
+            var column = columns[i];
+            if (ConsigneeImportFields.IsIgnore(column.Field)) continue;
             var field = ConsigneeImportFields.Canonical(column.Field)
                         ?? throw new ArgumentException(ImportMapping.UnknownFieldMessage(column.Field), nameof(columns));
-            var index = column.Position - 1;
-            var raw = index >= 0 && index < cells.Count ? cells[index] : null;
-            var value = string.IsNullOrWhiteSpace(raw) ? null : raw.Trim();
-            if (value is not null) values[field] = value;
+            if (!groups.TryGetValue(field, out var list)) groups[field] = list = new List<(ImportColumn, int)>();
+            list.Add((column, i));
+        }
+        foreach (var (field, list) in groups)
+        {
+            var joined = new System.Text.StringBuilder();
+            foreach (var (column, _) in list.OrderBy(x => x.Column.Part ?? int.MaxValue).ThenBy(x => x.Column.Position).ThenBy(x => x.Index))
+            {
+                var index = column.Position - 1;
+                var raw = index >= 0 && index < cells.Count ? cells[index] : null;
+                if (string.IsNullOrWhiteSpace(raw)) continue;
+                if (joined.Length > 0) joined.Append(column.Separator ?? DefaultSeparator);
+                joined.Append(raw.Trim());
+            }
+            if (joined.Length > 0) values[field] = joined.ToString();
         }
         foreach (var (field, value) in normalizedDefaults)
             if (!values.ContainsKey(field)) values[field] = value;

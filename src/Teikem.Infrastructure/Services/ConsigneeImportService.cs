@@ -29,6 +29,9 @@ namespace Teikem.Infrastructure.Services;
 ///   (LocationService.CreateCoreAsync) y su teléfono principal (ContactPoint PHONE). Una fila que falla queda con su error y
 ///   no tumba las demás. El lote pasa a CONFIRMED vía StatusService con el resumen. DiscardAsync → DISCARDED desde VALIDATED.
 /// Solo altas: un código existente es error (no se actualiza el directorio).
+/// Lote 45 (F-B2): el archivo puede ser CSV o Excel .xlsx (ImportFileReader; hoja elegible), las columnas «No usar» se ignoran,
+/// un campo puede unir varias columnas (ConsigneeImportMapping.Map), el cliente del lote es el cliente POR DEFECTO (la fila con su
+/// propio cliente manda) y se importa la persona de contacto (Location.ContactName). InspectFile revisa el archivo sin guardar.
 /// </summary>
 public sealed class ConsigneeImportService(
     TeikemDbContext db,
@@ -53,7 +56,6 @@ public sealed class ConsigneeImportService(
     public static string ClientCodeNotFoundMessage(string code) => $"No existe un cliente con el código '{code}'.";
     public static string ClientNameNotFoundMessage(string name) => $"No existe un cliente con el nombre '{name}'.";
     public static string ClientNameAmbiguousMessage(string name) => $"Hay más de un cliente con el nombre '{name}'; use clientCode.";
-    public static string ClientMismatchMessage(string rowClient, string batchClient) => $"La fila indica el cliente '{rowClient}', pero el lote es del cliente '{batchClient}'.";
 
     private static readonly JsonSerializerOptions RowsJsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -79,25 +81,65 @@ public sealed class ConsigneeImportService(
 
     // ================================================================ VALIDAR
 
-    public async Task<ConsigneeImportPreviewDto> ValidateAsync(ConsigneeImportValidateRequest req, CancellationToken ct)
+    /// <summary>Validar con el CSV en el cuerpo JSON (content).</summary>
+    public Task<ConsigneeImportPreviewDto> ValidateAsync(ConsigneeImportValidateRequest req, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(req.Content)) throw new ValidationException("content", ContentRequiredMessage);
+        if (CsvParser.ExceedsSize(req.Content)) throw new ValidationException("content", CsvParser.LimitMessage);
+        var content = req.Content;
+        return ValidateCoreAsync(req.TemplatePublicId, req.ClientPublicId, req.FileName, "content",
+            template => CsvParser.Parse(content, ImportTemplateService.DelimiterOf(template), template.HasHeader), ct);
+    }
+
+    /// <summary>
+    /// Lote 45 (F-B2): validar el archivo subido, CSV (UTF-8) o Excel .xlsx (la hoja pedida o la primera), con el mismo flujo
+    /// (mapeo, vista previa y errores por fila). 400 'file' si el formato no se admite o el libro no se puede leer.
+    /// </summary>
+    public Task<ConsigneeImportPreviewDto> ValidateFileAsync(Guid templatePublicId, Guid? clientPublicId, string? fileName, byte[] bytes, string? sheet, CancellationToken ct)
+    {
+        if (bytes is null || bytes.Length == 0) throw new ValidationException("file", ContentRequiredMessage);
+        if (bytes.Length > CsvParser.MaxBytes) throw new ValidationException("file", CsvParser.LimitMessage);
+        return ValidateCoreAsync(templatePublicId, clientPublicId, fileName, "file",
+            template => ImportFileReader.Read(bytes, fileName, ImportTemplateService.DelimiterOf(template), template.HasHeader, sheet).Rows, ct);
+    }
+
+    /// <summary>
+    /// Lote 45 (F-B2): revisa el archivo SIN guardar nada (para el editor de plantillas): formato, hojas, hoja leída, cuántas
+    /// filas de datos trae y, por columna, el encabezado y hasta 3 valores de muestra. Mismos límites que validar.
+    /// </summary>
+    public static ImportFileInspectionDto InspectFile(byte[] bytes, string? fileName, string? delimiter, bool hasHeader, string? sheet)
+    {
+        if (bytes is null || bytes.Length == 0) throw new ValidationException("file", ContentRequiredMessage);
+        ImportFileTable table;
+        try { table = ImportFileReader.Read(bytes, fileName, ImportTemplateService.NormalizeDelimiter(delimiter), hasHeader, sheet); }
+        catch (CsvLimitException) { throw new ValidationException("file", CsvParser.LimitMessage); }
+
+        var width = Math.Min(ImportMapping.MaxColumns, Math.Max(table.Header?.Count ?? 0, table.Rows.Count == 0 ? 0 : table.Rows.Max(r => r.Cells.Count)));
+        var columns = Enumerable.Range(0, width).Select(i => new ImportFileColumnDto(
+            i + 1,
+            table.Header is { } h && i < h.Count && !string.IsNullOrWhiteSpace(h[i]) ? h[i].Trim() : null,
+            table.Rows.Select(r => i < r.Cells.Count ? r.Cells[i].Trim() : string.Empty).Where(v => v.Length > 0).Take(3).ToList())).ToList();
+        var sampleRows = table.Rows.Take(3).Select(r => (IReadOnlyList<string>)r.Cells.Take(width).Select(c => c.Trim()).ToList()).ToList();
+        return new ImportFileInspectionDto(table.Format, table.Sheets, table.Sheet, table.Rows.Count, columns, sampleRows);
+    }
+
+    private async Task<ConsigneeImportPreviewDto> ValidateCoreAsync(Guid templatePublicId, Guid? clientPublicId, string? rawFileName, string contentField,
+        Func<ImportTemplate, IReadOnlyList<CsvRow>> parse, CancellationToken ct)
     {
         var tenantId = ((TenantContext)tenant).RequireTenantId();
         var userId = ((TenantContext)tenant).RequireUserId();
 
-        if (string.IsNullOrWhiteSpace(req.Content)) throw new ValidationException("content", ContentRequiredMessage);
-        if (CsvParser.ExceedsSize(req.Content)) throw new ValidationException("content", CsvParser.LimitMessage);
-
         Client? batchClient = null;
-        if (req.ClientPublicId is Guid cpid && cpid != Guid.Empty)
+        if (clientPublicId is Guid cpid && cpid != Guid.Empty)
             batchClient = ClientQueries.EnsureClientActive(await db.ResolveClientAsync(cpid, ct)); // 404 'Cliente' / 409 dado de baja
-        var template = await templates.ResolveForImportAsync(req.TemplatePublicId, batchClient?.ClientId, ImportKinds.Consignee, ct);
+        var template = await templates.ResolveForImportAsync(templatePublicId, batchClient?.ClientId, ImportKinds.Consignee, ct);
         var columns = ImportTemplateService.ParseColumns(template.ColumnsJson);
         var defaults = ImportTemplateService.ParseDefaults(template.DefaultsJson);
 
         IReadOnlyList<CsvRow> csvRows;
-        try { csvRows = CsvParser.Parse(req.Content, ImportTemplateService.DelimiterOf(template), template.HasHeader); }
-        catch (CsvLimitException) { throw new ValidationException("content", CsvParser.LimitMessage); }
-        if (csvRows.Count == 0) throw new ValidationException("content", NoRowsMessage);
+        try { csvRows = parse(template); }
+        catch (CsvLimitException) { throw new ValidationException(contentField, CsvParser.LimitMessage); }
+        if (csvRows.Count == 0) throw new ValidationException(contentField, NoRowsMessage);
 
         var clients = await db.Clients.AsNoTracking()
             .OrderBy(c => c.ClientId)
@@ -117,7 +159,7 @@ public sealed class ConsigneeImportService(
             Apply(r, directory.Evaluate(KeyOf(r, onlyValidFields: true)));
 
         var validRows = records.Count(r => r.IsValid);
-        var fileName = string.IsNullOrWhiteSpace(req.FileName) ? null : req.FileName.Trim();
+        var fileName = string.IsNullOrWhiteSpace(rawFileName) ? null : rawFileName.Trim();
         if (fileName is { Length: > 260 }) fileName = fileName[..260];
 
         var batchPublicId = await db.RunInTransactionAsync(async ct2 =>
@@ -257,6 +299,8 @@ public sealed class ConsigneeImportService(
                 tracked.StatusCodeId, ImportBatchStatuses.Confirmed, $"Consignatarios creados: {created}; fallidos: {failed}; omitidos: {skipped}.", ct2);
             tracked.StatusCodeId = to.StatusCodeId;
             await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
+            // Lote 45 (F-B2): «Recordar este cliente en la plantilla» → la próxima importación lo propone.
+            if (req.RememberClient) await templates.RememberDefaultClientAsync(tracked.ImportTemplateId, tracked.ClientId, ct2);
         }, ct);
 
         return new ConsigneeImportResultDto(batch.PublicId, ImportBatchStatuses.Confirmed, created, failed, skipped, records.Select(r => r.ToDto()).ToList());
@@ -297,6 +341,19 @@ public sealed class ConsigneeImportService(
         void Error(string field, string message) => rec.Errors.TryAdd(field, message);
         void Max(string field, int max) { if (Get(field) is { } v && v.Length > max) Error(field, ConsigneeImportMapping.MaxLengthMessage(max)); }
 
+        // País: PR si falta
+        var country = (Get(ConsigneeImportFields.Country) ?? LocationService.DefaultCountry).ToUpperInvariant();
+        rec.Values[ConsigneeImportFields.Country] = country;
+        if (!CountryCode.IsValid(country)) Error(ConsigneeImportFields.Country, CountryCode.InvalidMessage);
+        else if (!ctx.Countries.Contains(country)) Error(ConsigneeImportFields.Country, ConsigneeImportMapping.UnknownCountryMessage(country));
+
+        // Lote 45 (F-B2): ZIP de PR/EE.UU. que Excel guardó como número (00901 → 901) se rellena a 5 dígitos.
+        if (Get(ConsigneeImportFields.PostalCode) is string zip)
+            rec.Values[ConsigneeImportFields.PostalCode] = ConsigneeImportMapping.NormalizePostalCode(zip, country);
+
+        // Aquí se completarán los datos que se deducen de otros ANTES de exigir los obligatorios (lote siguiente: pueblo y estado
+        // a partir del ZIP con el catálogo de códigos postales; la ciudad dejará de ser obligatoria en la plantilla si viene el ZIP).
+
         // Textos obligatorios y topes (los de la ficha del consignatario)
         if (Get(ConsigneeImportFields.Name) is null) Error(ConsigneeImportFields.Name, ConsigneeImportMapping.NameRequiredMessage);
         if (Get(ConsigneeImportFields.Line1) is null) Error(ConsigneeImportFields.Line1, ConsigneeImportMapping.Line1RequiredMessage);
@@ -310,12 +367,7 @@ public sealed class ConsigneeImportService(
         Max(ConsigneeImportFields.Code, LocationService.CodeMax);
         Max(ConsigneeImportFields.AccessNotes, LocationService.NotesMax);
         Max(ConsigneeImportFields.DeliveryNotes, LocationService.NotesMax);
-
-        // País: PR si falta
-        var country = (Get(ConsigneeImportFields.Country) ?? LocationService.DefaultCountry).ToUpperInvariant();
-        rec.Values[ConsigneeImportFields.Country] = country;
-        if (!CountryCode.IsValid(country)) Error(ConsigneeImportFields.Country, CountryCode.InvalidMessage);
-        else if (!ctx.Countries.Contains(country)) Error(ConsigneeImportFields.Country, ConsigneeImportMapping.UnknownCountryMessage(country));
+        Max(ConsigneeImportFields.ContactName, LocationService.ContactNameMax);
 
         // Minutos de servicio
         if (Get(ConsigneeImportFields.DefaultServiceMinutes) is string minutesText)
@@ -347,8 +399,11 @@ public sealed class ConsigneeImportService(
         }
 
         // Teléfono: misma validación que ContactPointService (se guarda como ContactPoint PHONE principal al confirmar)
-        if (Get(ConsigneeImportFields.ContactPhone) is string phoneText)
+        // Lote 45 (F-B2): formatos mezclados → 10 dígitos; dos números en la celda → el primero, con aviso.
+        if (Get(ConsigneeImportFields.ContactPhone) is string rawPhone)
         {
+            var (phoneText, multiple) = ConsigneeImportMapping.NormalizePhone(rawPhone);
+            if (multiple) rec.Warnings.Add(ConsigneeImportMapping.MultiplePhonesWarning(phoneText));
             try { rec.Values[ConsigneeImportFields.ContactPhone] = ContactPointService.ValidateValue("PHONE", phoneText); }
             catch (ValidationException ex) { Error(ConsigneeImportFields.ContactPhone, ex.Message); }
         }
@@ -357,7 +412,11 @@ public sealed class ConsigneeImportService(
         return rec;
     }
 
-    /// <summary>Dueño: clientCode, luego clientName, luego el cliente del lote; si ninguno, compartida.</summary>
+    /// <summary>
+    /// Dueño: clientCode, luego clientName, luego el cliente del lote; si ninguno, compartida. Lote 45 (F-B2): el cliente del
+    /// lote es el «cliente por defecto»: una fila que trae su propio cliente válido y activo queda con ESE cliente aunque sea otro
+    /// (antes era error 'La fila indica el cliente…'); un archivo puede traer consignatarios de varios clientes.
+    /// </summary>
     private static void ResolveOwner(ConsigneeImportRowRecord rec, RowContext ctx)
     {
         string? Get(string field) => rec.Values.TryGetValue(field, out var v) ? v : null;
@@ -379,15 +438,7 @@ public sealed class ConsigneeImportService(
             rowClient = matches[0];
         }
 
-        if (rowClient is not null && field is not null)
-        {
-            if (!rowClient.IsActive) { rec.Errors.TryAdd(field, ClientQueries.ClientInactiveMessage); return; }
-            if (ctx.BatchClient is not null && ctx.BatchClient.ClientId != rowClient.ClientId)
-            {
-                rec.Errors.TryAdd(field, ClientMismatchMessage(rowClient.Name, ctx.BatchClient.Name));
-                return;
-            }
-        }
+        if (rowClient is not null && field is not null && !rowClient.IsActive) { rec.Errors.TryAdd(field, ClientQueries.ClientInactiveMessage); return; }
 
         var owner = rowClient ?? ctx.BatchClient;
         rec.OwnerResolved = true;
@@ -519,7 +570,8 @@ public sealed class ConsigneeImportService(
             DefaultWindowEnd: end,
             AccessNotes: Get(ConsigneeImportFields.AccessNotes),
             DeliveryNotes: Get(ConsigneeImportFields.DeliveryNotes),
-            AllowDupInvoice: allowDup);
+            AllowDupInvoice: allowDup,
+            ContactName: Get(ConsigneeImportFields.ContactName));
     }
 
     private async Task<ConsigneeImportPreviewDto> ToPreviewAsync(ImportBatch batch, CancellationToken ct)

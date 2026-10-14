@@ -30,7 +30,7 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    2026-10-12 las listas grandes son más rápidas sin cambiar lo que se ve, y qué hacer si la lista de órdenes sigue lenta (`db-update`).
 2. [02 — Clientes y contratos](02-clientes-y-contratos.md): expediente del cliente (alta compuesta, perfil, numeración,
    contactos, estatus, baja), consignatarios y localizaciones (direcciones física/postal, almacenes, compartidas; importación
-  de consignatarios por CSV con plantilla, validar → confirmar, Lote 38), contratos
+  de consignatarios por CSV con plantilla, validar → confirmar, Lote 38; Excel, «(No usar)», columnas unidas, cliente por defecto y persona de contacto, Lote 45, §2.2), contratos
    (contrato vigente, modelo de facturación con 5 componentes, despacho, COD, SLA, estatus y efectos), tarifas por servicio y
    pieza extra con historial efectivo-fechado, cotización, servicios especiales y tipos compartidos, usuarios de portal del
    cliente (incluye el portal multi-cliente del Lote 3), permisos y módulos, fuentes de análisis y auditoría.
@@ -270,6 +270,9 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
    DMA (motivo, nota, Kárdex, sin Empacar) y **Eliminar** con reversa (`warehouse.issue`). Capturas `f19-*`.
 18. [F-B — Consignatarios](frontend/fb-consignatarios.md): Catálogo → **Consignatarios**: lista y ficha, alta y edición, teléfono, baja y reactivación, e **Importar** consignatarios desde un archivo CSV con plantillas
    (vista previa fila por fila, errores y avisos, confirmar o descartar); permisos `locations.*`.
+F-B2. [F-B2 — Importar consignatarios: Excel, «(No usar)», columnas unidas, cliente por defecto y persona de contacto](frontend/fb2-importacion-consignatarios.md): archivo **CSV o Excel (.xlsx)** con **Hoja del libro**,
+   ZIP con sus ceros, CSV de Windows con ñ, **(No usar)**, una columna a dos campos, **Campos con varias columnas** (orden y separador, con resultado), **Cliente por defecto** que se
+   guarda en la plantilla (la fila con su propio cliente manda) y **Recordar este cliente en la plantilla**, teléfonos en formatos mezclados y **Persona de contacto** en la ficha. Capturas `fb2-*`.
 19. [F-C1 — Órdenes: lista y alta](frontend/fc1-ordenes-alta.md): Operación → **Órdenes**: la lista con sus filtros, **Nueva orden** (guardar como borrador o confirmar, crédito excedido, factura repetida,
    entrega especial) y eliminar un borrador; permisos `orders.*` y quién ve los precios (`orders.view_price`).
 20. [F-C2 — Órdenes: el expediente de la orden](frontend/fc2-ordenes-expediente.md): al abrir una orden: **Detalle** que se edita ahí mismo, **Confirmar** (con crédito excedido), **Re-cotizar**,

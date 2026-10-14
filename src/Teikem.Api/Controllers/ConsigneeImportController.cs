@@ -1,4 +1,3 @@
-using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -32,17 +31,38 @@ public sealed class ConsigneeImportController(ConsigneeImportService imports) : 
     public Task<ConsigneeImportPreviewDto> ValidateJson([FromBody] ConsigneeImportValidateRequest req, CancellationToken ct)
         => imports.ValidateAsync(req, ct);
 
-    /// <summary>Validar (multipart/form-data): templatePublicId, clientPublicId opcional y el archivo 'file' (UTF-8). Límite 5.000 filas / 2 MB → 400.</summary>
+    /// <summary>
+    /// Validar (multipart/form-data): templatePublicId, clientPublicId opcional (cliente por defecto), el archivo 'file' —CSV en UTF-8
+    /// o Excel .xlsx (Lote 45)— y, para Excel, 'sheet' (nombre de la hoja; sin él, la primera). Límite 5.000 filas / 2 MB → 400.
+    /// </summary>
     [HttpPost("validate-file"), Consumes("multipart/form-data"), RequirePermission(PermissionCatalog.LocationsCreate)]
     [RequestSizeLimit(4 * 1024 * 1024)]
-    public async Task<ConsigneeImportPreviewDto> ValidateFile([FromForm] Guid templatePublicId, [FromForm] Guid? clientPublicId, IFormFile? file, CancellationToken ct)
+    public async Task<ConsigneeImportPreviewDto> ValidateFile([FromForm] Guid templatePublicId, [FromForm] Guid? clientPublicId, IFormFile? file, [FromForm] string? sheet, CancellationToken ct)
+    {
+        var bytes = await ReadAsync(file, ct);
+        return await imports.ValidateFileAsync(templatePublicId, clientPublicId, file!.FileName, bytes, sheet, ct);
+    }
+
+    /// <summary>
+    /// Lote 45 (F-B2): revisa el archivo SIN guardar nada, para armar el mapeo: formato (CSV/XLSX), hojas del libro, hoja leída,
+    /// filas de datos y, por columna, el encabezado y hasta 3 valores de muestra. delimiter/hasHeader son los del editor (',' y sí
+    /// por defecto); sheet elige la hoja. Mismos límites que validar.
+    /// </summary>
+    [HttpPost("inspect-file"), Consumes("multipart/form-data"), RequirePermission(PermissionCatalog.LocationsCreate)]
+    [RequestSizeLimit(4 * 1024 * 1024)]
+    public async Task<ImportFileInspectionDto> InspectFile(IFormFile? file, [FromForm] string? delimiter, [FromForm] bool? hasHeader, [FromForm] string? sheet, CancellationToken ct)
+    {
+        var bytes = await ReadAsync(file, ct);
+        return ConsigneeImportService.InspectFile(bytes, file!.FileName, delimiter, hasHeader ?? true, sheet);
+    }
+
+    private static async Task<byte[]> ReadAsync(IFormFile? file, CancellationToken ct)
     {
         if (file is null || file.Length == 0) throw new ValidationException("file", ConsigneeImportService.ContentRequiredMessage);
         if (file.Length > CsvParser.MaxBytes) throw new ValidationException("file", CsvParser.LimitMessage);
-        string content;
-        using (var reader = new StreamReader(file.OpenReadStream(), Encoding.UTF8, detectEncodingFromByteOrderMarks: true))
-            content = await reader.ReadToEndAsync(ct);
-        return await imports.ValidateAsync(new ConsigneeImportValidateRequest(templatePublicId, clientPublicId, content, file.FileName), ct);
+        using var buffer = new MemoryStream((int)file.Length);
+        await file.CopyToAsync(buffer, ct);
+        return buffer.ToArray();
     }
 
     /// <summary>Vista previa del lote (filas, dueño, errores y avisos; tras confirmar, el consignatario creado o el error por fila).</summary>

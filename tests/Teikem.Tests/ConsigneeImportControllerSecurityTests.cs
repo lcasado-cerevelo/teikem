@@ -70,7 +70,7 @@ public class ConsigneeImportControllerSecurityTests
             .OrderBy(x => x, StringComparer.Ordinal).ToArray();
         Assert.Equal(new[]
         {
-            "GET fields", "GET {batchPublicId:guid}", "POST validate", "POST validate-file", "POST {batchPublicId:guid}/confirm", "POST {batchPublicId:guid}/discard",
+            "GET fields", "GET {batchPublicId:guid}", "POST inspect-file", "POST validate", "POST validate-file", "POST {batchPublicId:guid}/confirm", "POST {batchPublicId:guid}/discard",
         }, templates);
     }
 }

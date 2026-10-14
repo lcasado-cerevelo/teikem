@@ -21,8 +21,10 @@ public class ConsigneeImportMappingTests
         Assert.Equal(new[]
         {
             "code", "name", "line1", "line2", "city", "state", "postalCode", "country", "clientCode", "clientName",
-            "defaultServiceMinutes", "defaultWindowStart", "defaultWindowEnd", "accessNotes", "deliveryNotes", "allowDupInvoice", "contactPhone",
+            "defaultServiceMinutes", "defaultWindowStart", "defaultWindowEnd", "accessNotes", "deliveryNotes", "allowDupInvoice", "contactPhone", "contactName",
         }, ConsigneeImportFields.All);
+        Assert.Null(ConsigneeImportFields.Canonical("ignore")); // «No usar» es una marca, no un campo del catálogo
+        Assert.True(ConsigneeImportFields.IsIgnore(" IGNORE "));
         Assert.Equal("postalCode", ConsigneeImportFields.Canonical(" POSTALCODE "));
         Assert.Equal("allowDupInvoice", ConsigneeImportFields.Canonical("allowdupinvoice"));
         Assert.Null(ConsigneeImportFields.Canonical("locationType")); // el tipo es fijo DELIVERY
@@ -74,14 +76,119 @@ public class ConsigneeImportMappingTests
     [Fact]
     public void Positions_repeated_fields_and_unknown_fields_use_the_order_template_messages()
     {
-        var errors = Validate(new[] { new ImportColumn(1, "name"), new ImportColumn(1, "line1"), new ImportColumn(0, "city"), new ImportColumn(3, "NAME"), new ImportColumn(4, "foo") },
+        var errors = Validate(new[] { new ImportColumn(1, "name"), new ImportColumn(1, "NAME"), new ImportColumn(0, "city"), new ImportColumn(3, "country"), new ImportColumn(4, "foo"), new ImportColumn(5, "Country") },
             new Dictionary<string, string> { ["bar"] = "1" });
-        Assert.Equal("La posición 1 está repetida.", errors["columns[1].position"]);
+        Assert.Equal("La posición 1 está repetida.", errors["columns[1].position"]);   // la misma columna dos veces en el mismo campo
         Assert.Equal("La posición debe ser 1 o mayor.", errors["columns[2].position"]);
-        Assert.Equal("El campo name está repetido.", errors["columns[3].field"]);
         Assert.Equal("Campo desconocido: foo.", errors["columns[4].field"]);
+        Assert.Equal("El campo country está repetido.", errors["columns[5].field"]); // los campos con formato toman una sola columna
         Assert.Equal("Campo desconocido: bar.", errors["defaults.bar"]);
         Assert.Equal("Indique al menos una columna.", Validate(Array.Empty<ImportColumn>())["columns"]);
+    }
+
+    // ---------------------------------------------------------------- Lote 45 (F-B2): «No usar», columnas unidas, persona de contacto, ZIP
+
+    [Fact]
+    public void Ignored_columns_are_saved_and_skipped_without_skipping_the_row()
+    {
+        var columns = new[] { new ImportColumn(1, "ignore"), new ImportColumn(2, "name"), new ImportColumn(3, "Ignore"), new ImportColumn(4, "line1"), new ImportColumn(5, "city") };
+        Assert.Empty(Validate(columns));
+        var values = ConsigneeImportMapping.Map(new[] { "basura", "Farmacia", "más basura", "Calle 1", "Ponce" }, columns, null);
+        Assert.Equal(new[] { "city", "line1", "name" }, values.Keys.OrderBy(k => k, StringComparer.Ordinal));
+        Assert.Equal("Farmacia", values["name"]);
+        // solo columnas «No usar» = sin name ni line1
+        Assert.Equal("La plantilla debe incluir las columnas name y line1.", Validate(new[] { new ImportColumn(1, "ignore") })["columns"]);
+    }
+
+    [Fact]
+    public void An_ignored_column_cannot_also_feed_a_field()
+    {
+        var errors = Validate(new[] { new ImportColumn(1, "name"), new ImportColumn(2, "line1"), new ImportColumn(3, "city"), new ImportColumn(2, "ignore") });
+        Assert.Equal("La columna 2 está marcada «No usar» y también tiene un campo asignado.", errors["columns[3].field"]);
+    }
+
+    [Fact]
+    public void A_text_field_joins_several_columns_in_part_order_with_its_separator()
+    {
+        // Nombre = Código + « - » + Nombre; la columna del código también va sola al campo code; dirección partida en dos columnas.
+        var columns = new[]
+        {
+            new ImportColumn(1, "code"), new ImportColumn(2, "name", 2, " - "), new ImportColumn(1, "name", 1),
+            new ImportColumn(3, "line1"), new ImportColumn(4, "line1", Separator: ", "), new ImportColumn(5, "city"),
+        };
+        Assert.Empty(Validate(columns));
+        var values = ConsigneeImportMapping.Map(new[] { "C-001", "Farmacia Uno", "Calle 1", "Urb. Sol", "Ponce" }, columns, null);
+        Assert.Equal("C-001", values["code"]);
+        Assert.Equal("C-001 - Farmacia Uno", values["name"]);
+        Assert.Equal("Calle 1, Urb. Sol", values["line1"]);   // sin Part: por posición
+
+        // una parte vacía no deja el separador colgando; todas vacías → el default
+        var empty = ConsigneeImportMapping.Map(new[] { "", "Farmacia Dos", "", "", "" }, columns, new Dictionary<string, string> { ["city"] = "Ponce" });
+        Assert.Equal("Farmacia Dos", empty["name"]);
+        Assert.False(empty.ContainsKey("line1"));
+        Assert.Equal("Ponce", empty["city"]);
+
+        // sin separador: un espacio
+        var spaced = ConsigneeImportMapping.Map(new[] { "Ana", "Rivera" }, new[] { new ImportColumn(1, "contactName", 1), new ImportColumn(2, "contactName", 2) }, null);
+        Assert.Equal("Ana Rivera", spaced["contactName"]);
+    }
+
+    [Fact]
+    public void Join_limits_parts_and_separator_length()
+    {
+        var columns = new List<ImportColumn> { new(1, "line1"), new(2, "city") };
+        for (var p = 1; p <= 6; p++) columns.Add(new ImportColumn(10 + p, "name", p));
+        columns.Add(new ImportColumn(20, "accessNotes", 1));
+        columns.Add(new ImportColumn(21, "accessNotes", 2, new string('-', 11)));
+        var errors = Validate(columns.ToArray());
+        Assert.Equal("El campo name admite a lo sumo 5 columnas unidas.", errors["columns[7].field"]);
+        Assert.Equal("El separador admite a lo sumo 10 caracteres.", errors["columns[9].separator"]);
+    }
+
+    [Fact]
+    public void Normalize_columns_numbers_the_parts_and_drops_what_does_not_apply()
+    {
+        var normalized = ConsigneeImportMapping.NormalizeColumns(new[]
+        {
+            new ImportColumn(3, "NAME", 7, " / "), new ImportColumn(1, "name", 2, "x"), new ImportColumn(2, "line1", 4, "y"), new ImportColumn(4, "IGNORE", 1, "z"),
+        });
+        Assert.Equal(new[]
+        {
+            new ImportColumn(1, "name", 1, null),    // la primera parte nunca lleva separador
+            new ImportColumn(2, "line1"),            // un campo de una sola columna queda sin parte ni separador
+            new ImportColumn(3, "name", 2, " / "),
+            new ImportColumn(4, "ignore"),
+        }, normalized);
+    }
+
+    [Theory]
+    [InlineData("901", "PR", "00901")] [InlineData("2108", "US", "02108")] [InlineData("00901", "PR", "00901")]
+    [InlineData("901", "DO", "901")] [InlineData("90", "PR", "90")] [InlineData("00901-1234", "PR", "00901-1234")] [InlineData("A901", "PR", "A901")]
+    public void Zip_codes_that_lost_their_leading_zeros_are_padded_for_pr_and_us(string zip, string country, string expected)
+        => Assert.Equal(expected, ConsigneeImportMapping.NormalizePostalCode(zip, country));
+
+    [Theory]
+    [InlineData("787-555-0101", "7875550101", false)]
+    [InlineData("787 555-0101", "7875550101", false)]
+    [InlineData("7875550101", "7875550101", false)]
+    [InlineData("(787)555-0101", "7875550101", false)]
+    [InlineData("+1 (787) 555.0101", "7875550101", false)]
+    [InlineData("787-555-0101 / 787-555-0202", "7875550101", true)]
+    [InlineData("7875550101 7875550202", "7875550101", true)]
+    [InlineData("787-555-0101, (939)555-0303", "7875550101", true)]
+    [InlineData("555-0101", "555-0101", false)]   // sin 10 dígitos: queda igual (lo decide la regla del ContactPoint)
+    [InlineData("abc", "abc", false)]
+    public void Phones_in_mixed_formats_keep_ten_digits_and_two_numbers_take_the_first(string raw, string expected, bool multiple)
+    {
+        Assert.Equal((expected, multiple), ConsigneeImportMapping.NormalizePhone(raw));
+        Assert.Equal("La celda del teléfono trae más de un número; se tomó el primero (7875550101).", ConsigneeImportMapping.MultiplePhonesWarning("7875550101"));
+    }
+
+    [Fact]
+    public void Contact_name_accepts_a_default_and_has_a_150_limit()
+    {
+        Assert.Empty(Validate(Cols("name", "line1", "city"), new Dictionary<string, string> { ["contactName"] = "Recepción" }));
+        Assert.Equal("Máximo 150 caracteres.", Validate(Cols("name", "line1", "city"), new Dictionary<string, string> { ["contactName"] = new string('x', 151) })["defaults.contactName"]);
     }
 
     [Fact]

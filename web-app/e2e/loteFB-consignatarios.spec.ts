@@ -111,7 +111,8 @@ test.describe('Consignatarios (Lote F-B)', () => {
     await login(page)
     await page.goto('/catalog/consignees')
     await expect(page.getByRole('heading', { level: 1, name: 'Consignatarios' })).toBeVisible()
-    await expect(page.getByRole('list', { name: 'Consignatarios' })).toBeVisible()
+    // en una base recién creada todavía no hay consignatarios: la lista o su estado vacío
+    await expect(page.getByRole('list', { name: 'Consignatarios' }).or(page.getByText('Sin consignatarios todavía'))).toBeVisible()
     await shot(page, isMobile, 'fb-lista')
 
     // ---- Alta: sin nombre el servidor no se llama ----
@@ -200,9 +201,9 @@ test.describe('Consignatarios (Lote F-B)', () => {
     await login(page)
     await page.goto('/catalog/consignees')
     await page.getByRole('button', { name: /Importar/ }).click()
-    const dialog = page.getByRole('dialog', { name: 'Importar consignatarios desde CSV' })
+    const dialog = page.getByRole('dialog', { name: 'Importar consignatarios (CSV o Excel)' })
     await expect(dialog.getByText(/Máximo .* filas y 2 MB por archivo/)).toBeVisible()
-    await expect(dialog.getByText(/Guarda el CSV en UTF-8/)).toBeVisible()
+    await expect(dialog.getByText(/la codificación se detecta sola/)).toBeVisible()
     await shot(page, isMobile, 'fb-importar')
 
     // ---- Plantilla nueva: columna → campo destino ----
@@ -222,11 +223,11 @@ test.describe('Consignatarios (Lote F-B)', () => {
     await expect(dialog.getByText(/1\. Nombre · 2\. Número · 3\. Dirección · 4\. Pueblo · 5\. Teléfono/)).toBeVisible()
 
     // ---- Archivo → vista previa que valida el servidor ----
-    await dialog.getByLabel('Cliente dueño de los consignatarios').selectOption({ label: `Cliente Imp FB ${suffix}` })
+    await dialog.getByLabel('Cliente por defecto').selectOption({ label: `Cliente Imp FB ${suffix}` })
     // al cambiar de dueño se vuelven a leer las plantillas: el selector de archivo se habilita al terminar
     await expect(dialog.getByText(/Mapeo:/)).toBeVisible()
-    await expect(dialog.getByLabel('Archivo CSV', { exact: true })).toBeEnabled()
-    await dialog.getByLabel('Archivo CSV', { exact: true }).setInputFiles(file)
+    await expect(dialog.getByLabel('Archivo (CSV o Excel)', { exact: true })).toBeEnabled()
+    await dialog.getByLabel('Archivo (CSV o Excel)', { exact: true }).setInputFiles(file)
     await expect(dialog.getByText(/consignatarios\.csv · 2 filas detectadas/)).toBeVisible()
     await expect(dialog.getByText('Nombre: El nombre es obligatorio.')).toBeVisible()
     await expect(dialog.getByText('1 válidas')).toBeVisible()
@@ -236,12 +237,12 @@ test.describe('Consignatarios (Lote F-B)', () => {
     await dialog.getByRole('button', { name: 'Cancelar' }).click()
     await expect(dialog).toBeHidden()
     await page.getByRole('button', { name: /Importar/ }).click()
-    const again = page.getByRole('dialog', { name: 'Importar consignatarios desde CSV' })
+    const again = page.getByRole('dialog', { name: 'Importar consignatarios (CSV o Excel)' })
     await again.getByLabel('Plantilla', { exact: true }).selectOption({ label: template })
-    await again.getByLabel('Cliente dueño de los consignatarios').selectOption({ label: `Cliente Imp FB ${suffix}` })
+    await again.getByLabel('Cliente por defecto').selectOption({ label: `Cliente Imp FB ${suffix}` })
     await expect(again.getByText(/Mapeo:/)).toBeVisible()
-    await expect(again.getByLabel('Archivo CSV', { exact: true })).toBeEnabled()
-    await again.getByLabel('Archivo CSV', { exact: true }).setInputFiles(file)
+    await expect(again.getByLabel('Archivo (CSV o Excel)', { exact: true })).toBeEnabled()
+    await again.getByLabel('Archivo (CSV o Excel)', { exact: true }).setInputFiles(file)
     await expect(again.getByText('Nombre: El nombre es obligatorio.')).toBeVisible()
     await again.getByRole('button', { name: 'Importar', exact: true }).click()
     const result = again.locator('.cs-result')
@@ -260,7 +261,7 @@ test.describe('Consignatarios (Lote F-B)', () => {
 
     // ---- Plantilla: desactivar y reactivar (no hay «eliminar») ----
     await page.getByRole('button', { name: /Importar/ }).click()
-    const last = page.getByRole('dialog', { name: 'Importar consignatarios desde CSV' })
+    const last = page.getByRole('dialog', { name: 'Importar consignatarios (CSV o Excel)' })
     await last.getByLabel('Plantilla', { exact: true }).selectOption({ label: template })
     await last.getByRole('button', { name: 'Desactivar esta plantilla' }).click()
     await page.getByRole('dialog', { name: 'Desactivar la plantilla' }).getByRole('button', { name: 'Desactivar esta plantilla' }).click()

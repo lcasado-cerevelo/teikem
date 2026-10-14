@@ -216,6 +216,36 @@ describe('Consignatarios — ficha', () => {
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Editar consignatario' })).toBeNull())
   })
 
+  it('persona de contacto (Lote F-B2): se ve en la ficha y en la fila, se edita y viaja en el PATCH', async () => {
+    current = { ...L1, contactName: 'Ana Rivera' }
+    const user = userEvent.setup()
+    wrap(ALL)
+    const ficha = (await screen.findByRole('heading', { name: 'Ficha del consignatario' })).closest('.panel') as HTMLElement
+    expect(await within(ficha).findByText('Ana Rivera')).toBeInTheDocument()
+    expect(within(ficha).getByText('Persona de contacto')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Editar/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'Editar consignatario' })
+    const contact = within(dialog).getByLabelText('Persona de contacto')
+    expect(contact).toHaveValue('Ana Rivera')
+    await user.clear(contact)
+    await user.type(contact, 'Luis Casado')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(callsTo('PATCH', '/api/v1/locations/l-1')).toHaveLength(1))
+    expect(callsTo('PATCH', '/api/v1/locations/l-1')[0].body).toEqual({ contactName: 'Luis Casado', rowVersion: 'AAA=' })
+  })
+
+  it('la fila de la lista muestra la persona de contacto y el buscador la encuentra', async () => {
+    const user = userEvent.setup()
+    mock.override = ({ method, url }) =>
+      method === 'GET' && url.pathname === '/api/v1/locations' ? [{ ...L1, contactName: 'Ana Rivera' }, L2] : undefined
+    wrap(ALL)
+    const list = await screen.findByRole('list', { name: 'Consignatarios' })
+    expect(within(list).getByText(/San Juan · Acme Corp · Ana Rivera/)).toBeInTheDocument()
+    await user.type(screen.getByRole('searchbox'), 'rivera')
+    expect(within(list).queryByText('Colmado Boricua')).toBeNull()
+    expect(within(list).getByText('Farmacia Central')).toBeInTheDocument()
+  })
+
   it('cambiar a compartido manda makeShared; solo el teléfono no manda PATCH', async () => {
     const user = userEvent.setup()
     wrap(ALL)

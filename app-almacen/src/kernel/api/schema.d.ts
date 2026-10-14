@@ -2384,6 +2384,195 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/inventory/multi-adjustments/stock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    warehouse?: string;
+                    products?: string[];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MultiAdjustmentProductDto"][];
+                        "application/json": components["schemas"]["MultiAdjustmentProductDto"][];
+                        "text/json": components["schemas"]["MultiAdjustmentProductDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/multi-adjustments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    warehouses?: string[];
+                    from?: string;
+                    to?: string;
+                    userIds?: number[];
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MultiAdjustmentPageDto"];
+                        "application/json": components["schemas"]["MultiAdjustmentPageDto"];
+                        "text/json": components["schemas"]["MultiAdjustmentPageDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["MultiAdjustmentRequest"];
+                    "text/json": components["schemas"]["MultiAdjustmentRequest"];
+                    "application/*+json": components["schemas"]["MultiAdjustmentRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MultiAdjustmentDetailDto"];
+                        "application/json": components["schemas"]["MultiAdjustmentDetailDto"];
+                        "text/json": components["schemas"]["MultiAdjustmentDetailDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/multi-adjustments/by-id/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MultiAdjustmentDetailDto"];
+                        "application/json": components["schemas"]["MultiAdjustmentDetailDto"];
+                        "text/json": components["schemas"]["MultiAdjustmentDetailDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/multi-adjustments/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MultiAdjustmentDetailDto"];
+                        "application/json": components["schemas"]["MultiAdjustmentDetailDto"];
+                        "text/json": components["schemas"]["MultiAdjustmentDetailDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tenant/brand/logos": {
         parameters: {
             query?: never;
@@ -3500,6 +3689,7 @@ export interface paths {
                         clientPublicId?: string;
                         /** Format: binary */
                         file?: string;
+                        sheet?: string;
                     };
                 };
             };
@@ -9140,6 +9330,10 @@ export interface paths {
                     fromWarehousePublicIds?: string[];
                     toWarehousePublicIds?: string[];
                     manualOnly?: boolean;
+                    userIds?: number[];
+                    includeSystem?: boolean;
+                    fromBinIds?: number[];
+                    toBinIds?: number[];
                 };
                 header?: never;
                 path?: never;
@@ -9199,6 +9393,10 @@ export interface paths {
                     toWarehousePublicIds?: string[];
                     includeOwn?: boolean;
                     manualOnly?: boolean;
+                    userIds?: number[];
+                    includeSystem?: boolean;
+                    fromBinIds?: number[];
+                    toBinIds?: number[];
                 };
                 header?: never;
                 path?: never;
@@ -13070,6 +13268,7 @@ export interface paths {
                     binSearch?: string;
                     ownerClientPublicIds?: string[];
                     includeOwn?: boolean;
+                    binIds?: number[];
                 };
                 header?: never;
                 path?: never;
@@ -13610,6 +13809,7 @@ export interface paths {
                     search?: string;
                     supplierIds?: number[];
                     warehousePublicIds?: string[];
+                    productPublicIds?: string[];
                     skip?: number;
                     take?: number;
                 };
@@ -16840,6 +17040,177 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tenant/trusted-networks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TrustedNetworksDto"];
+                        "application/json": components["schemas"]["TrustedNetworksDto"];
+                        "text/json": components["schemas"]["TrustedNetworksDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TrustedNetworkRequest"];
+                    "text/json": components["schemas"]["TrustedNetworkRequest"];
+                    "application/*+json": components["schemas"]["TrustedNetworkRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TrustedNetworkDto"];
+                        "application/json": components["schemas"]["TrustedNetworkDto"];
+                        "text/json": components["schemas"]["TrustedNetworkDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tenant/trusted-networks/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TrustedNetworkRequest"];
+                    "text/json": components["schemas"]["TrustedNetworkRequest"];
+                    "application/*+json": components["schemas"]["TrustedNetworkRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TrustedNetworkDto"];
+                        "application/json": components["schemas"]["TrustedNetworkDto"];
+                        "text/json": components["schemas"]["TrustedNetworkDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tenant/trusted-networks/limit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TrustedNetworkLimitRequest"];
+                    "text/json": components["schemas"]["TrustedNetworkLimitRequest"];
+                    "application/*+json": components["schemas"]["TrustedNetworkLimitRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TrustedNetworksDto"];
+                        "application/json": components["schemas"]["TrustedNetworksDto"];
+                        "text/json": components["schemas"]["TrustedNetworksDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tenant/work-days": {
         parameters: {
             query?: never;
@@ -19380,6 +19751,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/warehouses/{publicId}/bins/delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["WarehouseBinsDeleteRequest"];
+                    "text/json": components["schemas"]["WarehouseBinsDeleteRequest"];
+                    "application/*+json": components["schemas"]["WarehouseBinsDeleteRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["WarehouseBinsDeleteResultDto"];
+                        "application/json": components["schemas"]["WarehouseBinsDeleteResultDto"];
+                        "text/json": components["schemas"]["WarehouseBinsDeleteResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/warehouses/{publicId}/bins/{binId}": {
         parameters: {
             query?: never;
@@ -19390,7 +19806,27 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    binId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch: {
@@ -20140,6 +20576,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/inventory/transactions/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["KardexUserDto"][];
+                        "application/json": components["schemas"]["KardexUserDto"][];
+                        "text/json": components["schemas"]["KardexUserDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/locations/import/inspect-file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        file?: string;
+                        delimiter?: string;
+                        hasHeader?: boolean;
+                        sheet?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ImportFileInspectionDto"];
+                        "application/json": components["schemas"]["ImportFileInspectionDto"];
+                        "text/json": components["schemas"]["ImportFileInspectionDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -20780,6 +21300,7 @@ export interface components {
         };
         ConsigneeImportConfirmRequest: {
             rows?: number[] | null;
+            rememberClient?: boolean;
         };
         ConsigneeImportOwnerDto: {
             /** Format: uuid */
@@ -22373,6 +22894,9 @@ export interface components {
             /** Format: int32 */
             position?: number;
             field?: string | null;
+            /** Format: int32 */
+            part?: number | null;
+            separator?: string | null;
         };
         ImportTemplateCreateRequest: {
             name?: string | null;
@@ -22385,6 +22909,8 @@ export interface components {
             delimiter?: string | null;
             hasHeader?: boolean;
             kind?: string | null;
+            /** Format: uuid */
+            defaultClientPublicId?: string | null;
         };
         ImportTemplateDto: {
             /** Format: int32 */
@@ -22407,6 +22933,9 @@ export interface components {
             createdAtUtc?: string;
             /** Format: date-time */
             updatedAtUtc?: string | null;
+            /** Format: uuid */
+            defaultClientPublicId?: string | null;
+            defaultClientName?: string | null;
         };
         ImportTemplatePatchRequest: {
             name?: string | null;
@@ -22420,6 +22949,9 @@ export interface components {
             makeGeneral?: boolean | null;
             delimiter?: string | null;
             hasHeader?: boolean | null;
+            /** Format: uuid */
+            defaultClientPublicId?: string | null;
+            clearDefaultClient?: boolean | null;
         };
         ImportValidateRequest: {
             /** Format: uuid */
@@ -22687,6 +23219,7 @@ export interface components {
             /** Format: date-time */
             createdAtUtc?: string;
             rowVersion?: string | null;
+            contactName?: string | null;
         };
         LocationPatchRequest: {
             /** Format: uuid */
@@ -22712,6 +23245,7 @@ export interface components {
             deliveryNotes?: string | null;
             allowDupInvoice?: boolean | null;
             rowVersion?: string | null;
+            contactName?: string | null;
         };
         LocationUpsertRequest: {
             /** Format: uuid */
@@ -22734,6 +23268,7 @@ export interface components {
             accessNotes?: string | null;
             deliveryNotes?: string | null;
             allowDupInvoice?: boolean;
+            contactName?: string | null;
         };
         LoginRequest: {
             email?: string | null;
@@ -23032,6 +23567,104 @@ export interface components {
         MovementResultDto: {
             transactions?: components["schemas"]["KardexRowDto"][] | null;
             balances?: components["schemas"]["BalanceDto"][] | null;
+        };
+        MultiAdjustmentLineInput: {
+            /** Format: uuid */
+            productPublicId?: string | null;
+            /** Format: int32 */
+            binId?: number | null;
+            /** Format: int32 */
+            lotId?: number | null;
+            /** Format: double */
+            systemQty?: number | null;
+            /** Format: double */
+            countedQty?: number | null;
+        };
+        MultiAdjustmentRequest: {
+            /** Format: uuid */
+            warehousePublicId?: string | null;
+            notes?: string | null;
+            lines?: components["schemas"]["MultiAdjustmentLineInput"][] | null;
+        };
+        MultiAdjustmentPositionDto: {
+            /** Format: int32 */
+            binId?: number;
+            binCode?: string | null;
+            zoneCode?: string | null;
+            /** Format: int32 */
+            lotId?: number | null;
+            lotNumber?: string | null;
+            /** Format: double */
+            qtyOnHand?: number;
+            /** Format: double */
+            qtyReserved?: number;
+        };
+        MultiAdjustmentProductDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            name?: string | null;
+            trackingTypeCode?: string | null;
+            isActive?: boolean;
+            positions?: components["schemas"]["MultiAdjustmentPositionDto"][] | null;
+        };
+        MultiAdjustmentDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            warehouseCode?: string | null;
+            notes?: string | null;
+            /** Format: int32 */
+            lineCount?: number;
+            /** Format: int32 */
+            productCount?: number;
+            /** Format: double */
+            unitsUp?: number;
+            /** Format: double */
+            unitsDown?: number;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            /** Format: int32 */
+            createdByUserId?: number | null;
+            createdByName?: string | null;
+        };
+        MultiAdjustmentLineDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            /** Format: int32 */
+            binId?: number;
+            binCode?: string | null;
+            zoneCode?: string | null;
+            /** Format: int32 */
+            lotId?: number | null;
+            lotNumber?: string | null;
+            /** Format: double */
+            systemQty?: number;
+            /** Format: double */
+            countedQty?: number;
+            /** Format: double */
+            difference?: number;
+            /** Format: int64 */
+            inventoryTransactionId?: number | null;
+        };
+        MultiAdjustmentDetailDto: {
+            header?: components["schemas"]["MultiAdjustmentDto"];
+            lines?: components["schemas"]["MultiAdjustmentLineDto"][] | null;
+        };
+        MultiAdjustmentPageDto: {
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+            items?: components["schemas"]["MultiAdjustmentDto"][] | null;
         };
         NumberPreviewDto: {
             pattern?: string | null;
@@ -24977,6 +25610,7 @@ export interface components {
             email?: string | null;
             token?: string | null;
             newPassword?: string | null;
+            mfaCode?: string | null;
         };
         RevokeSessionsResultDto: {
             /** Format: int32 */
@@ -25822,6 +26456,10 @@ export interface components {
             /** Format: int32 */
             defaultProductCategoryId?: number | null;
             rotationMethod?: string | null;
+            /** Format: int32 */
+            sessionMinutes?: number;
+            /** Format: int32 */
+            deviceSessionMinutes?: number;
         };
         TenantSettingsUpdateRequest: {
             name?: string | null;
@@ -25868,6 +26506,10 @@ export interface components {
             /** Format: int32 */
             defaultProductCategoryId?: number | null;
             rotationMethod?: string | null;
+            /** Format: int32 */
+            sessionMinutes?: number | null;
+            /** Format: int32 */
+            deviceSessionMinutes?: number | null;
         };
         TenantSummaryDto: {
             /** Format: int32 */
@@ -26125,6 +26767,46 @@ export interface components {
         TripStartRequest: {
             comment?: string | null;
             rowVersion?: string | null;
+        };
+        TrustedNetworkDto: {
+            /** Format: uuid */
+            publicId?: string;
+            name?: string | null;
+            cidr?: string | null;
+            isActive?: boolean;
+            /** Format: date-time */
+            expiresAtUtc?: string | null;
+            isExpired?: boolean;
+            note?: string | null;
+            /** Format: date-time */
+            internalOnlyConfirmedAtUtc?: string | null;
+            internalOnlyConfirmedByName?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            addressCount?: string | null;
+            containsCurrentIp?: boolean;
+        };
+        TrustedNetworkLimitRequest: {
+            /** Format: int32 */
+            maxEntries?: number | null;
+        };
+        TrustedNetworkRequest: {
+            name?: string | null;
+            cidr?: string | null;
+            isActive?: boolean | null;
+            /** Format: date-time */
+            expiresAtUtc?: string | null;
+            clearExpiry?: boolean;
+            note?: string | null;
+            confirmInternalOnly?: boolean | null;
+        };
+        TrustedNetworksDto: {
+            items?: components["schemas"]["TrustedNetworkDto"][] | null;
+            /** Format: int32 */
+            maxEntries?: number | null;
+            featureEnabled?: boolean;
+            currentIp?: string | null;
+            currentIpNetworkName?: string | null;
         };
         UnassignedOrderDto: {
             /** Format: int32 */
@@ -26449,6 +27131,24 @@ export interface components {
             /** Format: int32 */
             maxCapacityQty?: number | null;
         };
+        WarehouseBinsDeleteRequest: {
+            binIds?: number[] | null;
+        };
+        WarehouseBinDeletedDto: {
+            /** Format: int32 */
+            binId?: number;
+            code?: string | null;
+        };
+        WarehouseBinSkippedDto: {
+            /** Format: int32 */
+            binId?: number;
+            code?: string | null;
+            reason?: string | null;
+        };
+        WarehouseBinsDeleteResultDto: {
+            deleted?: components["schemas"]["WarehouseBinDeletedDto"][] | null;
+            skipped?: components["schemas"]["WarehouseBinSkippedDto"][] | null;
+        };
         WarehouseCreateRequest: {
             code?: string | null;
             name?: string | null;
@@ -26551,6 +27251,10 @@ export interface components {
             outboundMovements?: number;
             /** Format: int32 */
             countsWithVariance?: number;
+            /** Format: int32 */
+            transferMovements?: number;
+            /** Format: int32 */
+            adjustmentMovements?: number;
         };
         WarehousePulseDaysDto: {
             timeZone?: string | null;
@@ -26577,6 +27281,14 @@ export interface components {
             belowMinProducts?: number;
             countsAlert?: boolean;
             belowMinAlert?: boolean;
+            /** Format: int32 */
+            transferToday?: number;
+            /** Format: int32 */
+            transferTotal?: number;
+            /** Format: int32 */
+            adjustmentToday?: number;
+            /** Format: int32 */
+            adjustmentTotal?: number;
         };
         WarehouseTaskDto: {
             /** Format: int32 */
@@ -26817,6 +27529,28 @@ export interface components {
             matchedBy?: string | null;
             ambiguous?: boolean;
             candidates?: string[] | null;
+        };
+        KardexUserDto: {
+            /** Format: int32 */
+            userId?: number | null;
+            name?: string | null;
+            isActive?: boolean;
+            isSystem?: boolean;
+        };
+        ImportFileColumnDto: {
+            /** Format: int32 */
+            position?: number;
+            header?: string | null;
+            samples?: string[] | null;
+        };
+        ImportFileInspectionDto: {
+            format?: string | null;
+            sheets?: string[] | null;
+            sheet?: string | null;
+            /** Format: int32 */
+            rowCount?: number;
+            columns?: components["schemas"]["ImportFileColumnDto"][] | null;
+            sampleRows?: string[][] | null;
         };
     };
     responses: never;

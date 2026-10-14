@@ -3689,6 +3689,7 @@ export interface paths {
                         clientPublicId?: string;
                         /** Format: binary */
                         file?: string;
+                        sheet?: string;
                     };
                 };
             };
@@ -13265,9 +13266,9 @@ export interface paths {
                     unavailable?: boolean;
                     hasAvailable?: boolean;
                     binSearch?: string;
-                    binIds?: number[];
                     ownerClientPublicIds?: string[];
                     includeOwn?: boolean;
+                    binIds?: number[];
                 };
                 header?: never;
                 path?: never;
@@ -19817,8 +19818,8 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description No Content */
-                204: {
+                /** @description OK */
+                200: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -20612,6 +20613,53 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/locations/import/inspect-file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        file?: string;
+                        delimiter?: string;
+                        hasHeader?: boolean;
+                        sheet?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ImportFileInspectionDto"];
+                        "application/json": components["schemas"]["ImportFileInspectionDto"];
+                        "text/json": components["schemas"]["ImportFileInspectionDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -21252,6 +21300,7 @@ export interface components {
         };
         ConsigneeImportConfirmRequest: {
             rows?: number[] | null;
+            rememberClient?: boolean;
         };
         ConsigneeImportOwnerDto: {
             /** Format: uuid */
@@ -22845,6 +22894,9 @@ export interface components {
             /** Format: int32 */
             position?: number;
             field?: string | null;
+            /** Format: int32 */
+            part?: number | null;
+            separator?: string | null;
         };
         ImportTemplateCreateRequest: {
             name?: string | null;
@@ -22857,6 +22909,8 @@ export interface components {
             delimiter?: string | null;
             hasHeader?: boolean;
             kind?: string | null;
+            /** Format: uuid */
+            defaultClientPublicId?: string | null;
         };
         ImportTemplateDto: {
             /** Format: int32 */
@@ -22879,6 +22933,9 @@ export interface components {
             createdAtUtc?: string;
             /** Format: date-time */
             updatedAtUtc?: string | null;
+            /** Format: uuid */
+            defaultClientPublicId?: string | null;
+            defaultClientName?: string | null;
         };
         ImportTemplatePatchRequest: {
             name?: string | null;
@@ -22892,6 +22949,9 @@ export interface components {
             makeGeneral?: boolean | null;
             delimiter?: string | null;
             hasHeader?: boolean | null;
+            /** Format: uuid */
+            defaultClientPublicId?: string | null;
+            clearDefaultClient?: boolean | null;
         };
         ImportValidateRequest: {
             /** Format: uuid */
@@ -23159,6 +23219,7 @@ export interface components {
             /** Format: date-time */
             createdAtUtc?: string;
             rowVersion?: string | null;
+            contactName?: string | null;
         };
         LocationPatchRequest: {
             /** Format: uuid */
@@ -23184,6 +23245,7 @@ export interface components {
             deliveryNotes?: string | null;
             allowDupInvoice?: boolean | null;
             rowVersion?: string | null;
+            contactName?: string | null;
         };
         LocationUpsertRequest: {
             /** Format: uuid */
@@ -23206,6 +23268,7 @@ export interface components {
             accessNotes?: string | null;
             deliveryNotes?: string | null;
             allowDupInvoice?: boolean;
+            contactName?: string | null;
         };
         LoginRequest: {
             email?: string | null;
@@ -23526,8 +23589,8 @@ export interface components {
         MultiAdjustmentPositionDto: {
             /** Format: int32 */
             binId?: number;
-            binCode?: string;
-            zoneCode?: string;
+            binCode?: string | null;
+            zoneCode?: string | null;
             /** Format: int32 */
             lotId?: number | null;
             lotNumber?: string | null;
@@ -23539,22 +23602,22 @@ export interface components {
         MultiAdjustmentProductDto: {
             /** Format: uuid */
             productPublicId?: string;
-            sku?: string;
-            name?: string;
-            trackingTypeCode?: string;
+            sku?: string | null;
+            name?: string | null;
+            trackingTypeCode?: string | null;
             isActive?: boolean;
-            positions?: components["schemas"]["MultiAdjustmentPositionDto"][];
+            positions?: components["schemas"]["MultiAdjustmentPositionDto"][] | null;
         };
         MultiAdjustmentDto: {
             /** Format: int32 */
             id?: number;
             /** Format: uuid */
             publicId?: string;
-            number?: string;
+            number?: string | null;
             /** Format: uuid */
             warehousePublicId?: string;
-            warehouseCode?: string;
-            notes?: string;
+            warehouseCode?: string | null;
+            notes?: string | null;
             /** Format: int32 */
             lineCount?: number;
             /** Format: int32 */
@@ -23572,12 +23635,12 @@ export interface components {
         MultiAdjustmentLineDto: {
             /** Format: uuid */
             productPublicId?: string;
-            sku?: string;
-            productName?: string;
+            sku?: string | null;
+            productName?: string | null;
             /** Format: int32 */
             binId?: number;
-            binCode?: string;
-            zoneCode?: string;
+            binCode?: string | null;
+            zoneCode?: string | null;
             /** Format: int32 */
             lotId?: number | null;
             lotNumber?: string | null;
@@ -23592,7 +23655,7 @@ export interface components {
         };
         MultiAdjustmentDetailDto: {
             header?: components["schemas"]["MultiAdjustmentDto"];
-            lines?: components["schemas"]["MultiAdjustmentLineDto"][];
+            lines?: components["schemas"]["MultiAdjustmentLineDto"][] | null;
         };
         MultiAdjustmentPageDto: {
             /** Format: int32 */
@@ -23601,7 +23664,7 @@ export interface components {
             skip?: number;
             /** Format: int32 */
             take?: number;
-            items?: components["schemas"]["MultiAdjustmentDto"][];
+            items?: components["schemas"]["MultiAdjustmentDto"][] | null;
         };
         NumberPreviewDto: {
             pattern?: string | null;
@@ -27074,17 +27137,17 @@ export interface components {
         WarehouseBinDeletedDto: {
             /** Format: int32 */
             binId?: number;
-            code?: string;
+            code?: string | null;
         };
         WarehouseBinSkippedDto: {
             /** Format: int32 */
             binId?: number;
-            code?: string;
-            reason?: string;
+            code?: string | null;
+            reason?: string | null;
         };
         WarehouseBinsDeleteResultDto: {
-            deleted?: components["schemas"]["WarehouseBinDeletedDto"][];
-            skipped?: components["schemas"]["WarehouseBinSkippedDto"][];
+            deleted?: components["schemas"]["WarehouseBinDeletedDto"][] | null;
+            skipped?: components["schemas"]["WarehouseBinSkippedDto"][] | null;
         };
         WarehouseCreateRequest: {
             code?: string | null;
@@ -27473,6 +27536,21 @@ export interface components {
             name?: string | null;
             isActive?: boolean;
             isSystem?: boolean;
+        };
+        ImportFileColumnDto: {
+            /** Format: int32 */
+            position?: number;
+            header?: string | null;
+            samples?: string[] | null;
+        };
+        ImportFileInspectionDto: {
+            format?: string | null;
+            sheets?: string[] | null;
+            sheet?: string | null;
+            /** Format: int32 */
+            rowCount?: number;
+            columns?: components["schemas"]["ImportFileColumnDto"][] | null;
+            sampleRows?: string[][] | null;
         };
     };
     responses: never;

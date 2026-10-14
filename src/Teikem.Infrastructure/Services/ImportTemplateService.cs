@@ -21,12 +21,16 @@ namespace Teikem.Infrastructure.Services;
 /// que atiende (expectedKind): una plantilla de otro tipo responde 404 (sin oráculo) y un kind distinto en el cuerpo o la
 /// consulta responde 400 'Tipo de plantilla desconocido'. La validación y la normalización de columnas y defaults siguen el
 /// catálogo del tipo (ImportMapping para ORDER, ConsigneeImportMapping para CONSIGNEE).
+/// Lote 45 (F-B2): las columnas de CONSIGNEE pueden ser «No usar» (ignore), unir varias columnas en un campo (Part/Separator)
+/// y la plantilla guarda un cliente por defecto (DefaultClientId: activo y, si la plantilla es de un cliente, ese mismo).
 /// </summary>
 public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext tenant)
 {
     public const int NameMaxLength = 120;
     public const string NameTakenMessage = "Ya existe una plantilla de importación con ese nombre.";
     public const string NotFoundLabel = "Plantilla de importación";
+    public const string DefaultClientMismatchMessage = "El cliente por defecto debe ser el mismo cliente de la plantilla.";
+    public const string DefaultClientBothMessage = "Indique un cliente por defecto o quítelo, no ambos.";
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -50,7 +54,7 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
             q = q.Where(t => t.ClientId == null || t.ClientId == clientId);
         }
         var rows = await q.OrderBy(t => t.Name).ThenBy(t => t.ImportTemplateId).ToListAsync(ct);
-        var clients = await ClientNamesAsync(rows.Where(r => r.ClientId.HasValue).Select(r => r.ClientId!.Value), ct);
+        var clients = await ClientNamesAsync(rows.SelectMany(ClientIdsOf), ct);
         return rows.Select(r => ToDto(r, clients)).ToList();
     }
 
@@ -60,7 +64,7 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
         var k = NormalizeKind(expectedKind, expectedKind);
         var row = await db.ImportTemplates.AsNoTracking().FirstOrDefaultAsync(t => t.PublicId == publicId && t.Kind == k, ct)
                   ?? throw new NotFoundException(NotFoundLabel);
-        var clients = await ClientNamesAsync(row.ClientId.HasValue ? new[] { row.ClientId.Value } : Array.Empty<int>(), ct);
+        var clients = await ClientNamesAsync(ClientIdsOf(row), ct);
         return ToDto(row, clients);
     }
 
@@ -93,6 +97,8 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
 
         int? clientId = null;
         if (req.ClientPublicId is Guid cpid) clientId = (await db.ResolveClientAsync(cpid, ct)).ClientId;
+        var defaultClientId = await ResolveDefaultClientAsync(req.DefaultClientPublicId, ct);
+        EnsureDefaultClientMatches(clientId, defaultClientId);
 
         var row = new ImportTemplate
         {
@@ -100,6 +106,7 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
             Kind = kind,
             Name = name,
             ClientId = clientId,
+            DefaultClientId = defaultClientId,
             Delimiter = delimiter.ToString(),
             HasHeader = req.HasHeader,
             ColumnsJson = SerializeColumns(columns, kind),
@@ -119,9 +126,12 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
             throw new ValidationException("clientPublicId", "Indique un cliente o marque la plantilla como general, no ambos.");
         if (req.ClearDefaults == true && req.Defaults is { Count: > 0 })
             throw new ValidationException("defaults", "Indique defaults nuevos o clearDefaults, no ambos.");
+        if (req.ClearDefaultClient == true && req.DefaultClientPublicId.HasValue)
+            throw new ValidationException("defaultClientPublicId", DefaultClientBothMessage);
 
         int? newClientId = null;
         if (req.ClientPublicId is Guid cpid) newClientId = (await db.ResolveClientAsync(cpid, ct)).ClientId;
+        var newDefaultClientId = await ResolveDefaultClientAsync(req.DefaultClientPublicId, ct);
 
         await db.RunInTransactionAsync(async ct2 =>
         {
@@ -139,6 +149,9 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
             if (req.HasHeader is bool hasHeader) row.HasHeader = hasHeader;
             if (req.MakeGeneral == true) row.ClientId = null;
             else if (newClientId is int c) row.ClientId = c;
+            if (req.ClearDefaultClient == true) row.DefaultClientId = null;
+            else if (newDefaultClientId is int dc) row.DefaultClientId = dc;
+            EnsureDefaultClientMatches(row.ClientId, row.DefaultClientId);
             if (req.Columns is not null) row.ColumnsJson = SerializeColumns(columns, kind);
             if (req.ClearDefaults == true || req.Defaults is not null) row.DefaultsJson = defaults.Count == 0 ? null : SerializeDefaults(defaults, kind);
             row.UpdatedAtUtc = DateTime.UtcNow;
@@ -182,7 +195,7 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
     {
         if (string.IsNullOrWhiteSpace(json)) return Array.Empty<ImportColumn>();
         var items = JsonSerializer.Deserialize<List<ImportTemplateColumnDto>>(json, JsonOptions) ?? new List<ImportTemplateColumnDto>();
-        return items.Select(i => new ImportColumn(i.Position, i.Field)).ToList();
+        return items.Select(i => new ImportColumn(i.Position, i.Field, i.Part, i.Separator)).ToList();
     }
 
     public static IReadOnlyDictionary<string, string> ParseDefaults(string? json)
@@ -192,9 +205,14 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
         return items.Where(i => i.Value is not null).ToDictionary(i => i.Key, i => i.Value!, StringComparer.Ordinal);
     }
 
-    /// <summary>Columnas ordenadas por posición con el nombre canónico del catálogo del tipo (ORDER por defecto).</summary>
+    /// <summary>
+    /// Columnas ordenadas por posición con el nombre canónico del catálogo del tipo (ORDER por defecto). Lote 45: CONSIGNEE se
+    /// normaliza con ConsigneeImportMapping.NormalizeColumns (conserva «No usar», partes y separadores); ORDER no los usa.
+    /// </summary>
     public static string SerializeColumns(IReadOnlyList<ImportColumn> columns, string kind = ImportKinds.Order)
-        => JsonSerializer.Serialize(columns.OrderBy(c => c.Position).Select(c => new ImportTemplateColumnDto(c.Position, CanonicalField(kind, c.Field) ?? c.Field)).ToList(), JsonOptions);
+        => IsConsignee(kind)
+            ? JsonSerializer.Serialize(ConsigneeImportMapping.NormalizeColumns(columns).Select(c => new ImportTemplateColumnDto(c.Position, c.Field, c.Part, c.Separator)).ToList(), JsonOptions)
+            : JsonSerializer.Serialize(columns.OrderBy(c => c.Position).Select(c => new ImportTemplateColumnDto(c.Position, CanonicalField(kind, c.Field) ?? c.Field)).ToList(), JsonOptions);
 
     /// <summary>
     /// Defaults normalizados con el catálogo del tipo (ORDER por defecto). Lote 38: con CONSIGNEE se conservan sus campos
@@ -266,7 +284,8 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
         return n;
     }
 
-    private static char NormalizeDelimiter(string? delimiter)
+    /// <summary>Delimitador de un carácter (',' si viene vacío; 'tab' o '\t' = tabulador); otro valor → 400 'delimiter'.</summary>
+    public static char NormalizeDelimiter(string? delimiter)
     {
         if (string.IsNullOrEmpty(delimiter)) return CsvParser.DefaultDelimiter;
         var d = delimiter switch { "\\t" or "tab" or "TAB" => "\t", _ => delimiter };
@@ -276,7 +295,41 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
     }
 
     private static List<ImportColumn> ToColumns(IList<ImportTemplateColumnDto>? columns)
-        => columns is null ? new List<ImportColumn>() : columns.Select(c => new ImportColumn(c.Position, c.Field ?? string.Empty)).ToList();
+        => columns is null ? new List<ImportColumn>() : columns.Select(c => new ImportColumn(c.Position, c.Field ?? string.Empty, c.Part, c.Separator)).ToList();
+
+    /// <summary>Cliente por defecto pedido (404 si no es del tenant, 409 si está de baja) o null.</summary>
+    private async Task<int?> ResolveDefaultClientAsync(Guid? publicId, CancellationToken ct)
+    {
+        if (publicId is not Guid id || id == Guid.Empty) return null;
+        return ClientQueries.EnsureClientActive(await db.ResolveClientAsync(id, ct)).ClientId;
+    }
+
+    /// <summary>Una plantilla de un cliente solo sirve para ese cliente: su cliente por defecto, si lo tiene, es ese mismo.</summary>
+    private static void EnsureDefaultClientMatches(int? templateClientId, int? defaultClientId)
+    {
+        if (templateClientId is int c && defaultClientId is int d && c != d)
+            throw new ValidationException("defaultClientPublicId", DefaultClientMismatchMessage);
+    }
+
+    /// <summary>
+    /// Lote 45 (F-B2): la importación confirmada recuerda en la plantilla el cliente con que se importó (null = compartidos), para
+    /// proponerlo la próxima vez. No hace nada si ya es ese o si la plantilla es de otro cliente.
+    /// </summary>
+    public async Task RememberDefaultClientAsync(int importTemplateId, int? clientId, CancellationToken ct)
+    {
+        var row = await db.ImportTemplates.FirstOrDefaultAsync(t => t.ImportTemplateId == importTemplateId, ct);
+        if (row is null || row.DefaultClientId == clientId) return;
+        if (row.ClientId is int c && clientId is int d && c != d) return;
+        row.DefaultClientId = clientId;
+        row.UpdatedAtUtc = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+    }
+
+    private static IEnumerable<int> ClientIdsOf(ImportTemplate t)
+    {
+        if (t.ClientId is int c) yield return c;
+        if (t.DefaultClientId is int d) yield return d;
+    }
 
     private static Dictionary<string, string> ToDefaults(IDictionary<string, string>? defaults)
     {
@@ -308,12 +361,15 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
     private static ImportTemplateDto ToDto(ImportTemplate t, IReadOnlyDictionary<int, (Guid PublicId, string Name)> clients)
     {
         (Guid PublicId, string Name)? client = t.ClientId is int cid && clients.TryGetValue(cid, out var c) ? c : null;
+        (Guid PublicId, string Name)? defaultClient = t.DefaultClientId is int did && clients.TryGetValue(did, out var dc) ? dc : null;
         var defaults = ParseDefaults(t.DefaultsJson);
         return new ImportTemplateDto(
             t.ImportTemplateId, t.PublicId, t.Kind, t.Name, client?.PublicId, client?.Name,
             DelimiterOf(t).ToString(), t.HasHeader,
-            ParseColumns(t.ColumnsJson).OrderBy(c => c.Position).Select(c => new ImportTemplateColumnDto(c.Position, c.Field)).ToList(),
+            ParseColumns(t.ColumnsJson).OrderBy(c => c.Position).ThenBy(c => c.Part ?? 0)
+                .Select(c => new ImportTemplateColumnDto(c.Position, c.Field, c.Part, c.Separator)).ToList(),
             defaults.Count == 0 ? null : defaults,
-            t.IsActive, t.CreatedAtUtc, t.UpdatedAtUtc);
+            t.IsActive, t.CreatedAtUtc, t.UpdatedAtUtc,
+            defaultClient?.PublicId, defaultClient?.Name);
     }
 }

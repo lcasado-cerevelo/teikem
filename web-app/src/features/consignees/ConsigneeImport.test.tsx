@@ -2,6 +2,9 @@
 // «Formato estándar»), validar el archivo en el servidor (vista previa con errores y avisos por fila), confirmar con
 // Idempotency-Key o descartar el lote, resultado, editor de plantillas (validaciones locales, errores del servidor,
 // valores por defecto) y desactivar/reactivar. Sobre un fetch simulado; el FormData se sustituye por un registro.
+// Lote F-B2: el archivo se revisa (`inspect-file`) antes de validar, Excel con varias hojas (selector de hoja), cliente por defecto de la
+// plantilla y «Recordar este cliente en la plantilla», columna Cliente en la vista previa y el editor nuevo («(No usar)», encabezados y
+// muestras del archivo, una columna a dos campos, columnas unidas con separador y orden, cliente por defecto).
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -59,7 +62,23 @@ const FIELDS = [
   { field: 'country', required: false, defaultAllowed: true },
   { field: 'defaultServiceMinutes', required: false, defaultAllowed: true },
   { field: 'contactPhone', required: false, defaultAllowed: true },
+  { field: 'contactName', required: false, defaultAllowed: true },
 ]
+const INSPECTION = {
+  format: 'CSV',
+  sheets: [] as string[],
+  sheet: null as string | null,
+  rowCount: 3,
+  columns: [
+    { position: 1, header: 'Nombre', samples: ['Farmacia Uno', 'Colmado Dos'] },
+    { position: 2, header: 'Código', samples: ['F1'] },
+    { position: 3, header: 'Calle', samples: ['Calle 1', 'Calle 2'] },
+    { position: 4, header: 'Pueblo', samples: ['Ponce'] },
+    { position: 5, header: 'Notas', samples: ['x'] },
+  ],
+  sampleRows: [['Farmacia Uno', 'F1', 'Calle 1', 'Ponce', 'x']],
+}
+let inspection: typeof INSPECTION = { ...INSPECTION }
 const T1 = {
   id: 1,
   publicId: 't-1',
@@ -86,7 +105,7 @@ const PREVIEW = {
   rowCount: 3,
   validRows: 2,
   rows: [
-    { row: 1, line: 2, isValid: true, values: { name: 'Farmacia Uno', code: 'F1', line1: 'Calle 1', city: 'Ponce' }, warnings: [], errors: {} },
+    { row: 1, line: 2, isValid: true, values: { name: 'Farmacia Uno', code: 'F1', line1: 'Calle 1', city: 'Ponce' }, owner: { clientPublicId: 'c-1', clientName: 'Acme Corp', isShared: false }, warnings: [], errors: {} },
     { row: 2, line: 3, isValid: false, values: { name: '', line1: 'Calle 2', city: 'Ponce' }, errors: { name: 'El nombre es obligatorio.' }, warnings: [] },
     { row: 3, line: 4, isValid: true, values: { name: 'Colmado Dos', line1: 'Calle 3', city: 'Arecibo' }, errors: {}, warnings: ["El nombre 'Colmado Dos' ya lo usa otro consignatario de este dueño; se creará como sucursal distinta."] },
   ],
@@ -125,6 +144,7 @@ function route({ method, url, body }: Call): unknown {
     return templates.find((x) => x.publicId === id)
   }
   if (p === '/api/v1/locations/import/fields') return FIELDS
+  if (p === '/api/v1/locations/import/inspect-file') return inspection
   if (p === '/api/v1/locations/import/validate-file') return PREVIEW
   if (p === '/api/v1/locations/import/b-1/confirm') return RESULT
   if (p === '/api/v1/locations/import/b-1/discard') return { ...PREVIEW, status: 'DISCARDED' }
@@ -152,7 +172,7 @@ function renderModal(permissions = ['locations.read', 'locations.create', 'clien
 
 const callsTo = (method: string, path: string) => mock.calls.filter((c) => c.method === method && c.url.pathname === path)
 const csv = (name = 'consignatarios.csv') => new File(['name,code,line1,city\n'], name, { type: 'text/csv' })
-const fileInput = () => screen.getByLabelText('Archivo CSV') as HTMLInputElement
+const fileInput = () => screen.getByLabelText('Archivo (CSV o Excel)') as HTMLInputElement
 
 beforeAll(() => {
   vi.stubGlobal('FormData', RecordingFormData)
@@ -164,6 +184,7 @@ beforeEach(() => {
   mock.uploads = []
   mock.override = null
   templates = [{ ...T1 }]
+  inspection = { ...INSPECTION }
 })
 
 describe('Importar consignatarios — plantilla y archivo', () => {
@@ -193,9 +214,10 @@ describe('Importar consignatarios — plantilla y archivo', () => {
   it('con plantilla muestra el mapeo, el cliente dueño, el límite de 5.000 filas / 2 MB y la nota de UTF-8', async () => {
     renderModal()
     expect(await screen.findByText(/1\. Nombre · 2\. Número · 3\. Dirección · 4\. Pueblo/)).toBeInTheDocument()
-    expect(screen.getByLabelText('Cliente dueño de los consignatarios')).toHaveValue('')
+    expect(screen.getByLabelText('Cliente por defecto')).toHaveValue('')
     expect(screen.getByText('Máximo 5,000 filas y 2 MB por archivo.')).toBeInTheDocument()
-    expect(screen.getByText(/Guarda el CSV en UTF-8/)).toBeInTheDocument()
+    expect(screen.getByText(/la codificación se detecta sola/)).toBeInTheDocument()
+    expect(fileInput()).toHaveAttribute('accept', expect.stringContaining('.xlsx'))
     expect(fileInput()).toBeEnabled()
     expect(screen.getByRole('button', { name: 'Importar' })).toBeDisabled()
   })
@@ -206,14 +228,19 @@ describe('Importar consignatarios — plantilla y archivo', () => {
     await screen.findByText(/1\. Nombre/)
     await user.upload(fileInput(), csv())
     await waitFor(() => expect(callsTo('POST', '/api/v1/locations/import/validate-file')).toHaveLength(1))
-    expect(mock.uploads.map((u) => u.field)).toEqual(['templatePublicId', 'clientPublicId', 'file'])
-    expect(mock.uploads[0].value).toBe('t-1')
-    expect(mock.uploads[1].value).toBe('c-1')
+    // primero se revisa el archivo (hojas, encabezados) y después se valida con la plantilla y el cliente por defecto
+    expect(mock.uploads.map((u) => u.field)).toEqual(['file', 'delimiter', 'hasHeader', 'templatePublicId', 'clientPublicId', 'file'])
+    expect(mock.uploads.slice(1, 3).map((u) => u.value)).toEqual([',', 'true'])
+    expect(mock.uploads[3].value).toBe('t-1')
+    expect(mock.uploads[4].value).toBe('c-1')
     expect(await screen.findByText(/consignatarios\.csv · 3 filas detectadas/)).toBeInTheDocument()
     const table = screen.getByRole('table')
     expect(within(table).getByText('Nombre: El nombre es obligatorio.')).toBeInTheDocument()
     expect(within(table).getByText(/se creará como sucursal distinta/)).toBeInTheDocument()
     expect(within(table).getByText('Farmacia Uno')).toBeInTheDocument()
+    // la columna Cliente dice de quién queda cada fila (la fila con su propio cliente manda)
+    expect(within(table).getByRole('columnheader', { name: 'Cliente' })).toBeInTheDocument()
+    expect(within(table).getByText('Acme Corp')).toBeInTheDocument()
     // válidas / con errores
     expect(screen.getByText('válidas').closest('.cs-stat')).toHaveTextContent('2 válidas')
     expect(screen.getByText('con errores').closest('.cs-stat')).toHaveTextContent('1 con errores')
@@ -229,7 +256,7 @@ describe('Importar consignatarios — plantilla y archivo', () => {
     await screen.findByText(/1\. Nombre/)
     await user.upload(fileInput(), csv())
     await screen.findByText(/3 filas detectadas/)
-    await user.selectOptions(screen.getByLabelText('Cliente dueño de los consignatarios'), 'Acme Corp')
+    await user.selectOptions(screen.getByLabelText('Cliente por defecto'), 'Acme Corp')
     await waitFor(() => expect(callsTo('POST', '/api/v1/locations/import/validate-file')).toHaveLength(2))
     // el lote anterior se descartó
     expect(callsTo('POST', '/api/v1/locations/import/b-1/discard').length).toBeGreaterThan(0)
@@ -282,7 +309,7 @@ describe('Importar consignatarios — confirmar, descartar y resultado', () => {
     // la fila fallida explica por qué
     expect(within(result).getByText(/Ya existe un consignatario con el código 'F3'/)).toBeInTheDocument()
     // el ✕ del modal y el botón del pie
-    expect(within(screen.getByRole('dialog', { name: 'Importar consignatarios desde CSV' })).getAllByRole('button', { name: 'Cerrar' })).toHaveLength(2)
+    expect(within(screen.getByRole('dialog', { name: 'Importar consignatarios (CSV o Excel)' })).getAllByRole('button', { name: 'Cerrar' })).toHaveLength(2)
   })
 
   it('Cancelar después de validar descarta el lote y cierra', async () => {
@@ -378,9 +405,13 @@ describe('Importar consignatarios — editor de plantillas', () => {
       name: 'Con default',
       delimiter: ',',
       hasHeader: true,
+      // las filas del editor que quedan en «(No usar)» se guardan (la plantilla recuerda todas las columnas)
       columns: [
         { position: 1, field: 'name' },
         { position: 2, field: 'line1' },
+        { position: 3, field: 'ignore' },
+        { position: 4, field: 'ignore' },
+        { position: 5, field: 'ignore' },
       ],
       defaults: { city: 'Ponce' },
     })
@@ -450,6 +481,194 @@ describe('Importar consignatarios — editor de plantillas', () => {
   })
 })
 
+describe('Importar consignatarios — Excel, cliente por defecto y mapeo (Lote F-B2)', () => {
+  const xlsx = () => new File(['PK'], 'consignatarios.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  const uploadsOf = (field: string) => mock.uploads.filter((u) => u.field === field).map((u) => u.value)
+
+  it('un libro con varias hojas ofrece escoger la hoja; cambiarla revisa y valida otra vez con esa hoja', async () => {
+    inspection = { ...INSPECTION, format: 'XLSX', sheets: ['Portada', 'Datos'], sheet: 'Portada' }
+    mock.override = ({ method, url }) => {
+      if (method === 'POST' && url.pathname === '/api/v1/locations/import/inspect-file') {
+        const wanted = mock.uploads.filter((u) => u.field === 'sheet').at(-1)?.value as string | undefined
+        return { ...inspection, sheet: wanted ?? 'Portada' }
+      }
+      return undefined
+    }
+    const user = userEvent.setup()
+    renderModal()
+    await screen.findByText(/1\. Nombre/)
+    await user.upload(fileInput(), xlsx())
+    expect(await screen.findByText(/consignatarios\.xlsx · Portada · 3 filas detectadas/)).toBeInTheDocument()
+    const sheet = screen.getByLabelText('Hoja del libro')
+    expect(sheet).toHaveValue('Portada')
+    expect(screen.getByText('El libro tiene 2 hojas; se importa solo la escogida.')).toBeInTheDocument()
+    expect(uploadsOf('sheet')).toEqual(['Portada']) // la validación usa la hoja que leyó la revisión
+    await user.selectOptions(sheet, 'Datos')
+    await waitFor(() => expect(callsTo('POST', '/api/v1/locations/import/validate-file')).toHaveLength(2))
+    expect(uploadsOf('sheet')).toEqual(['Portada', 'Datos', 'Datos'])
+    expect(callsTo('POST', '/api/v1/locations/import/b-1/discard').length).toBeGreaterThan(0)
+  })
+
+  it('un CSV no muestra selector de hoja', async () => {
+    const user = userEvent.setup()
+    renderModal()
+    await screen.findByText(/1\. Nombre/)
+    await user.upload(fileInput(), csv())
+    await screen.findByText(/3 filas detectadas/)
+    expect(screen.queryByLabelText('Hoja del libro')).toBeNull()
+  })
+
+  it('la plantilla trae su cliente por defecto; escoger otro ofrece recordarlo y la confirmación lo pide', async () => {
+    templates = [{ ...T1, defaultClientPublicId: 'c-1', defaultClientName: 'Acme Corp' }]
+    const user = userEvent.setup()
+    renderModal()
+    await screen.findByText(/1\. Nombre/)
+    await waitFor(() => expect(screen.getByLabelText('Cliente por defecto')).toHaveValue('c-1'))
+    // es el de la plantilla: no hay nada que recordar
+    expect(screen.queryByRole('switch', { name: 'Recordar este cliente en la plantilla' })).toBeNull()
+    await user.selectOptions(screen.getByLabelText('Cliente por defecto'), 'Compartido (todos los clientes)')
+    const remember = await screen.findByRole('switch', { name: 'Recordar este cliente en la plantilla' })
+    expect(remember).toBeChecked()
+    await user.upload(fileInput(), csv())
+    await screen.findByText(/3 filas detectadas/)
+    expect(uploadsOf('clientPublicId')).toEqual([]) // compartidos: sin cliente por defecto
+    await user.click(screen.getByRole('button', { name: 'Importar' }))
+    await waitFor(() => expect(callsTo('POST', '/api/v1/locations/import/b-1/confirm')).toHaveLength(1))
+    expect(callsTo('POST', '/api/v1/locations/import/b-1/confirm')[0].body).toEqual({ rows: null, rememberClient: true })
+  })
+
+  it('sin «Recordar» la confirmación no toca la plantilla', async () => {
+    const user = userEvent.setup()
+    renderModal(undefined, 'c-1')
+    await screen.findByText(/1\. Nombre/)
+    await user.click(await screen.findByRole('switch', { name: 'Recordar este cliente en la plantilla' }))
+    await user.upload(fileInput(), csv())
+    await screen.findByText(/3 filas detectadas/)
+    await user.click(screen.getByRole('button', { name: 'Importar' }))
+    await waitFor(() => expect(callsTo('POST', '/api/v1/locations/import/b-1/confirm')).toHaveLength(1))
+    expect(callsTo('POST', '/api/v1/locations/import/b-1/confirm')[0].body).toEqual({ rows: null })
+  })
+
+  it('el editor muestra el encabezado y las muestras del archivo, «(No usar)», una columna a dos campos y columnas unidas', async () => {
+    const user = userEvent.setup()
+    renderModal()
+    await screen.findByText(/1\. Nombre/)
+    await user.upload(fileInput(), csv())
+    await screen.findByText(/3 filas detectadas/)
+    await user.click(screen.getByRole('button', { name: 'Nueva plantilla' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Nueva plantilla de importación' })
+    // encabezado y muestras de cada columna del archivo revisado
+    expect(within(dialog).getByRole('columnheader', { name: 'En el archivo' })).toBeInTheDocument()
+    expect(within(dialog).getByText('Código')).toBeInTheDocument()
+    expect(within(dialog).getByText('Farmacia Uno · Colmado Dos')).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Columna 1')).toHaveValue('')
+    expect(within(within(dialog).getByLabelText('Columna 1')).getByRole('option', { name: '(No usar)' })).toBeInTheDocument()
+
+    await user.type(within(dialog).getByLabelText(/Nombre de la plantilla/), 'Unidas')
+    // Nombre = Código + « - » + Nombre; la columna del código también va sola al Número
+    await user.selectOptions(within(dialog).getByLabelText('Columna 2'), 'Número')
+    await user.click(within(dialog).getAllByRole('button', { name: /Usar también en otro campo/ })[0])
+    await user.selectOptions(within(dialog).getByLabelText('Columna 2, campo 2'), 'Nombre *')
+    await user.selectOptions(within(dialog).getByLabelText('Columna 1'), 'Nombre *')
+    await user.selectOptions(within(dialog).getByLabelText('Columna 3'), 'Dirección *')
+    await user.selectOptions(within(dialog).getByLabelText('Columna 4'), 'Pueblo *')
+    // la unión aparece con la vista previa de la primera fila del archivo; se pone el código primero y « - » de separador
+    const joins = within(dialog).getByRole('region', { name: 'Campos con varias columnas' })
+    expect(within(joins).getByText('Farmacia Uno F1')).toBeInTheDocument()
+    await user.click(within(joins).getByRole('button', { name: 'Subir Columna 2 «Código» en Nombre' }))
+    const sep = within(joins).getByLabelText('Separador 1 de Nombre')
+    await user.clear(sep)
+    await user.type(sep, ' - ')
+    expect(within(joins).getByText('F1 - Farmacia Uno')).toBeInTheDocument()
+    // cliente por defecto
+    await user.selectOptions(within(dialog).getByLabelText('Cliente por defecto'), 'Acme Corp')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar plantilla' }))
+    await waitFor(() => expect(callsTo('POST', '/api/v1/locations/import-templates')).toHaveLength(1))
+    expect(callsTo('POST', '/api/v1/locations/import-templates')[0].body).toEqual({
+      name: 'Unidas',
+      delimiter: ',',
+      hasHeader: true,
+      columns: [
+        { position: 1, field: 'name', part: 2, separator: ' - ' },
+        { position: 2, field: 'code' },
+        { position: 2, field: 'name', part: 1 },
+        { position: 3, field: 'line1' },
+        { position: 4, field: 'city' },
+        { position: 5, field: 'ignore' },
+      ],
+      defaults: null,
+      defaultClientPublicId: 'c-1',
+    })
+  })
+
+  it('«(No usar)» en el primer campo quita los demás de esa columna; un campo con formato no se une', async () => {
+    const user = userEvent.setup()
+    renderModal()
+    await screen.findByText(/1\. Nombre/)
+    await user.click(screen.getByRole('button', { name: 'Nueva plantilla' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Nueva plantilla de importación' })
+    expect(within(dialog).queryByRole('columnheader', { name: 'En el archivo' })).toBeNull() // sin archivo no hay muestras
+    await user.selectOptions(within(dialog).getByLabelText('Columna 1'), 'Número')
+    await user.click(within(dialog).getAllByRole('button', { name: /Usar también en otro campo/ })[0])
+    expect(within(dialog).getByLabelText('Columna 1, campo 2')).toBeInTheDocument()
+    await user.selectOptions(within(dialog).getByLabelText('Columna 1'), '(No usar)')
+    await waitFor(() => expect(within(dialog).queryByLabelText('Columna 1, campo 2')).toBeNull())
+
+    await user.type(within(dialog).getByLabelText(/Nombre de la plantilla/), 'País doble')
+    await user.selectOptions(within(dialog).getByLabelText('Columna 1'), 'Nombre *')
+    await user.selectOptions(within(dialog).getByLabelText('Columna 2'), 'Dirección *')
+    await user.selectOptions(within(dialog).getByLabelText('Columna 3'), 'Pueblo *')
+    await user.selectOptions(within(dialog).getByLabelText('Columna 4'), 'País')
+    await user.selectOptions(within(dialog).getByLabelText('Columna 5'), 'País')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar plantilla' }))
+    expect(await within(dialog).findByText('El campo country está repetido.')).toBeInTheDocument()
+    expect(callsTo('POST', '/api/v1/locations/import-templates')).toHaveLength(0)
+  })
+
+  it('editar una plantilla con columnas unidas las muestra con su separador y un PATCH sin cliente lo quita', async () => {
+    templates = [
+      {
+        ...T1,
+        defaultClientPublicId: 'c-1',
+        defaultClientName: 'Acme Corp',
+        columns: [
+          { position: 1, field: 'code' },
+          { position: 1, field: 'name', part: 1 },
+          { position: 2, field: 'name', part: 2, separator: ' / ' },
+          { position: 3, field: 'ignore' },
+          { position: 4, field: 'line1' },
+          { position: 5, field: 'city' },
+        ],
+      },
+    ]
+    const user = userEvent.setup()
+    renderModal()
+    expect(await screen.findByText(/1\. Número · 1\+2\. Nombre · 4\. Dirección · 5\. Pueblo · 3\. \(No usar\)/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Editar' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Editar plantilla de importación' })
+    expect(within(dialog).getByLabelText('Columna 1')).toHaveValue('code')
+    expect(within(dialog).getByLabelText('Columna 1, campo 2')).toHaveValue('name')
+    expect(within(dialog).getByLabelText('Columna 3')).toHaveValue('')
+    expect(within(dialog).getByLabelText('Separador 1 de Nombre')).toHaveValue(' / ')
+    expect(within(dialog).getByText('[Columna 1] / [Columna 2]')).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Cliente por defecto')).toHaveValue('c-1')
+    await user.selectOptions(within(dialog).getByLabelText('Cliente por defecto'), 'Sin cliente por defecto (compartidos)')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar plantilla' }))
+    await waitFor(() => expect(callsTo('PATCH', '/api/v1/locations/import-templates/t-1')).toHaveLength(1))
+    expect(callsTo('PATCH', '/api/v1/locations/import-templates/t-1')[0].body).toMatchObject({
+      columns: [
+        { position: 1, field: 'code' },
+        { position: 1, field: 'name', part: 1 },
+        { position: 2, field: 'name', part: 2, separator: ' / ' },
+        { position: 3, field: 'ignore' },
+        { position: 4, field: 'line1' },
+        { position: 5, field: 'city' },
+      ],
+      clearDefaultClient: true,
+    })
+  })
+})
+
 describe('Importar consignatarios — desde la pantalla', () => {
   function wrapScreen(permissions: string[]) {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -468,7 +687,7 @@ describe('Importar consignatarios — desde la pantalla', () => {
     const user = userEvent.setup()
     const view = wrapScreen(['locations.read', 'locations.create'])
     await user.click(await screen.findByRole('button', { name: /Importar/ }))
-    expect(await screen.findByRole('dialog', { name: 'Importar consignatarios desde CSV' })).toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: 'Importar consignatarios (CSV o Excel)' })).toBeInTheDocument()
     view.unmount()
     wrapScreen(['locations.read'])
     await screen.findByRole('heading', { level: 1, name: 'Consignatarios' })

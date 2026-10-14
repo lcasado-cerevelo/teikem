@@ -130,6 +130,7 @@ export default function ConsigneeListScreen() {
                       </span>
                       <span className="meta">
                         {c.city || '—'} · {ownerLabel(c, t('consignees.shared'))}
+                        {c.contactName ? ` · ${c.contactName}` : ''}
                       </span>
                     </span>
                   </button>
