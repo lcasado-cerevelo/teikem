@@ -147,11 +147,13 @@ test('Ficha del cliente: panel Consignatarios (10 filas, buscador, Exportar, Nue
   await expect(page).toHaveURL(/\/catalog\/consignees\?client=/)
   await expect(page.getByRole('combobox', { name: /Cliente/ })).toHaveValue(client.publicId ?? '')
   await expect(page.getByText(`Consignatario 13 ${suffix}`).first()).toBeVisible({ timeout: 15_000 })
-  const list = page.locator('.panel', { has: page.locator('.cs-list') })
+  // la cabecera trae, juntos y en este orden: Exportar, Importar y Nuevo consignatario
+  const names = await page.locator('.head .act button').allTextContents()
+  expect(names.map((n) => n.trim())).toEqual(['Exportar', 'Importar', 'Nuevo consignatario'])
   await page.locator('h1').first().scrollIntoViewIfNeeded()
   await shot(page, isMobile, 'fb4-lista')
   const [dl2] = await Promise.all([page.waitForEvent('download'), (async () => {
-    await list.getByRole('button', { name: /Exportar/ }).click()
+    await page.getByRole('button', { name: /Exportar/ }).click()
     await page.getByRole('menuitem', { name: /CSV/ }).click()
   })()])
   const csv2 = readFileSync((await dl2.path()) ?? '', 'utf-8')

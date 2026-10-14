@@ -1,6 +1,6 @@
 # Lote F-B4 — Consignatarios en la ficha del cliente y Exportar (2026-10-14)
 
-Pedido de Luis: un panel **Consignatarios** al final de la ficha del cliente (antes del historial de estatus), tabla de 10 filas, buscador simple, **Exportar**, **Importar** y **Nuevo**; y un **Exportar** en el panel izquierdo de la pantalla Consignatarios que exporte lo filtrado. Manual de pantallas: [fb4-consignatarios-en-la-ficha-del-cliente.md](../manual/frontend/fb4-consignatarios-en-la-ficha-del-cliente.md); FAQ «Lote F-B4». Sin cambios de servidor ni de base de datos.
+Pedido de Luis: un panel **Consignatarios** al final de la ficha del cliente (antes del historial de estatus), tabla de 10 filas, buscador simple, **Exportar**, **Importar** y **Nuevo**; y un **Exportar** en la pantalla Consignatarios que exporte lo filtrado (ajuste del mismo día: va en la cabecera, junto a Importar y Nuevo, en el orden Cliente · Exportar · Importar · Nuevo consignatario, no en el panel de la izquierda). Manual de pantallas: [fb4-consignatarios-en-la-ficha-del-cliente.md](../manual/frontend/fb4-consignatarios-en-la-ficha-del-cliente.md); FAQ «Lote F-B4». Sin cambios de servidor ni de base de datos.
 
 ## Qué se construyó
 
@@ -9,7 +9,7 @@ Pedido de Luis: un panel **Consignatarios** al final de la ficha del cliente (an
 | Panel de la ficha | Tabla de a lo sumo 10 filas (Número, Nombre, Pueblo, Persona de contacto, Estado), contador con todas las filtradas, buscador, «Mostrando 10 de N» + «Ver todos en Consignatarios», clic en fila abre el consignatario. Solo los propios del cliente y activos. | `features/clients/ClientConsigneesPanel.tsx`, `ClientDetailPanel.tsx` (va después del portal y antes del historial) |
 | Exportar | Excel / CSV / PDF con las filas filtradas (todas, no solo las 10) por el mismo motor de las tablas (`exportTable`). | `features/consignees/consigneeExport.ts` |
 | Menú Exportar hacia abajo | `ExportMenu` gana `placement="down"` (en la cabecera de un panel el menú no puede abrir hacia arriba). | `kernel/ui/ExportMenu.tsx`, `ui.css` |
-| Pantalla Consignatarios | Botón **Exportar** en el panel izquierdo (lo que la lista tiene a la vista); `?client=<id>` abre la lista ya filtrada por ese cliente. | `features/consignees/ConsigneeListScreen.tsx` |
+| Pantalla Consignatarios | Cabecera: filtro **Cliente**, **Exportar** (lo que la lista tiene a la vista), **Importar** y **Nuevo consignatario**, juntos y en ese orden (`ExportMenu` gana `size="md"` para verse como los demás botones); `?client=<id>` abre la lista ya filtrada por ese cliente. | `features/consignees/ConsigneeListScreen.tsx` |
 | Textos | `clients.consignees.*` y `consignees.export.*` en es y en. | `kernel/i18n/{es,en}.json` |
 
 ## Cómo se probó

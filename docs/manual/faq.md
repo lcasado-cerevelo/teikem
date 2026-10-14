@@ -7850,7 +7850,7 @@ El buscador no encontró nada entre los consignatarios del cliente. Borre o camb
 La tabla del panel enseña solo 10 filas. El número junto al título y el archivo exportado cuentan **todos** los que cumplen el buscador. Use **Ver todos en Consignatarios** para verlos todos.
 
 **¿Qué trae el archivo de Exportar?**
-Exactamente las filas que están filtradas, no solo las 10 visibles: en la ficha del cliente, los consignatarios propios activos del cliente con el buscador aplicado; en Consignatarios, lo que la lista muestra con el filtro **Cliente**, **Mostrar inactivos** y el buscador. Columnas: Número, Nombre, Cliente, Dirección 1, Dirección 2, Pueblo, Estado, Código postal, País, Persona de contacto y Estado del registro. El teléfono no se exporta.
+Exactamente las filas que están filtradas, no solo las 10 visibles: en la ficha del cliente, los consignatarios propios activos del cliente con el buscador aplicado; en Consignatarios (botón **Exportar** de la cabecera, antes de Importar y Nuevo consignatario), lo que la lista muestra con el filtro **Cliente**, **Mostrar inactivos** y el buscador. Columnas: Número, Nombre, Cliente, Dirección 1, Dirección 2, Pueblo, Estado, Código postal, País, Persona de contacto y Estado del registro. El teléfono no se exporta.
 
 **«No se pudo generar el archivo. Intente de nuevo.» (aviso rojo al exportar)**
 El navegador o el archivo falló al generarse. Intente de nuevo con otro formato (CSV es el más simple). Si se repite, avise a soporte.

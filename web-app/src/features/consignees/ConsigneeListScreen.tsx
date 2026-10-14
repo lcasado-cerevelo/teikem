@@ -86,26 +86,21 @@ export default function ConsigneeListScreen() {
               ))}
             </select>
           </label>
+          {/* mismo orden que en Clientes: Exportar (lo que la lista tiene a la vista), Importar y Nuevo */}
+          <ExportMenu placement="down" size="md" count={shown.length} onExport={(format) => exportConsignees(format, shown, t, f.lang)} />
           <Can perm="locations.create">
-            <button type="button" className="btn flow" onClick={() => setCreating(true)}>
-              <IconPlus /> {t('consignees.new')}
-            </button>
             <button type="button" className="btn" onClick={() => setImporting(true)}>
               <IconUpload /> {t('consignees.importBtn')}
+            </button>
+            <button type="button" className="btn flow" onClick={() => setCreating(true)}>
+              <IconPlus /> {t('consignees.new')}
             </button>
           </Can>
         </div>
       </div>
 
       <div className="md cs-md">
-        <Panel
-          flush
-          icon={<IconUsers />}
-          title={t('consignees.list')}
-          badge={list.isPending ? undefined : shown.length}
-          // Exportar lo que la lista tiene a la vista: el filtro de cliente, «Mostrar inactivos» y el buscador
-          actions={<ExportMenu placement="down" count={shown.length} onExport={(format) => exportConsignees(format, shown, t, f.lang)} />}
-        >
+        <Panel flush icon={<IconUsers />} title={t('consignees.list')} badge={list.isPending ? undefined : shown.length}>
           <FilterScope>
             <div className="qrow cs-q">
               <QBox value={q} onChange={setQ} placeholder={t('ui.qbox.placeholder')} />

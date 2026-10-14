@@ -5,7 +5,7 @@ Esta guía explica cómo ver, buscar, exportar, importar y crear **los consignat
 ## 1. Qué hay de nuevo
 
 1. En **Listas → Clientes y contratos**, al elegir un cliente, la ficha tiene un panel nuevo, **Consignatarios**. Va **al final**, justo antes del **Historial de estatus**.
-2. En **Listas → Consignatarios**, el panel de la izquierda tiene un botón **Exportar**.
+2. En **Listas → Consignatarios**, la cabecera trae, juntos y en este orden, **Exportar**, **Importar** y **Nuevo consignatario** (después del filtro **Cliente**), igual que en el panel de la ficha del cliente.
 
 ![Panel Consignatarios en la ficha del cliente](img/fb4-panel.png)
 
@@ -34,7 +34,7 @@ Sin `locations.read` el panel **no aparece** en la ficha del cliente (no es un e
 3. Columnas: Número, Nombre, Cliente, Dirección 1, Dirección 2, Pueblo, Estado, Código postal, País, Persona de contacto y Estado del registro. **El teléfono no va en el archivo.**
 4. El menú dice cuántas filas se exportan.
 
-En **Listas → Consignatarios**, el botón **Exportar** está en el panel de la izquierda, junto al contador. Exporta **lo que la lista tiene a la vista**: respeta el filtro **Cliente**, **Mostrar inactivos** y el buscador.
+En **Listas → Consignatarios**, el botón **Exportar** está arriba, en la cabecera, antes de **Importar** y **Nuevo consignatario**. Exporta **lo que la lista tiene a la vista**: respeta el filtro **Cliente**, **Mostrar inactivos** y el buscador.
 
 ![Exportar en la pantalla Consignatarios](img/fb4-lista.png)
 

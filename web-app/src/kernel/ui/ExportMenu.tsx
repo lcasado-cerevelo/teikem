@@ -13,10 +13,12 @@ export interface ExportMenuProps {
   count: number
   /** Hacia dónde abre el menú: arriba (pie de tabla, por omisión) o abajo (botón en la cabecera de un panel). */
   placement?: 'up' | 'down'
+  /** Tamaño del botón: pequeño (pie de tabla y cabecera de panel, por omisión) o normal (junto a los botones de la cabecera de una pantalla). */
+  size?: 'sm' | 'md'
 }
 
 /** Botón "Exportar" del pie de `DataTable` con su menú Excel / CSV / PDF (abre hacia arriba). */
-export function ExportMenu({ onExport, count, placement = 'up' }: ExportMenuProps) {
+export function ExportMenu({ onExport, count, placement = 'up', size = 'sm' }: ExportMenuProps) {
   const t = useT()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -68,7 +70,7 @@ export function ExportMenu({ onExport, count, placement = 'up' }: ExportMenuProp
       <button
         ref={triggerRef}
         type="button"
-        className="btn sm"
+        className={size === 'sm' ? 'btn sm' : 'btn'}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}

@@ -1,8 +1,8 @@
-// Exportar en la pantalla Consignatarios: el botón del panel de la izquierda exporta EXACTAMENTE lo que la lista tiene a la vista
+// Exportar en la pantalla Consignatarios: el botón de la cabecera exporta EXACTAMENTE lo que la lista tiene a la vista
 // (filtro de cliente, «Mostrar inactivos» y buscador), y `?client=` abre la lista ya filtrada por ese cliente (lo usa «Ver todos»
 // del panel Consignatarios de la ficha del cliente). Más las columnas del archivo.
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -68,18 +68,19 @@ beforeEach(() => {
 })
 
 describe('Consignatarios — exportar', () => {
-  it('exporta lo que la lista muestra, con el buscador aplicado, y el botón está en el panel de la izquierda', async () => {
+  it('exporta lo que la lista muestra, con el buscador aplicado, y el botón está en la cabecera, antes de Importar y Nuevo', async () => {
     const user = userEvent.setup()
     renderScreen()
-    const panel = (await screen.findByText('Alfa Piezas')).closest('.panel') as HTMLElement
-    await user.click(within(panel).getByRole('button', { name: /Exportar/ }))
+    await screen.findByText('Alfa Piezas')
+    // orden de la cabecera: Cliente, Exportar, Importar, Nuevo (solo con permiso de crear salen los dos últimos)
+    await user.click(screen.getByRole('button', { name: /Exportar/ }))
     await user.click(await screen.findByRole('menuitem', { name: /CSV/ }))
     await waitFor(() => expect(mock.exported).toHaveLength(1))
     expect(mock.exported[0].names).toEqual(['Alfa Piezas', 'Beta Auto', 'Gamma Compartido'])
 
     await user.type(screen.getByRole('searchbox'), 'Caguas')
     await waitFor(() => expect(screen.queryByText('Alfa Piezas')).toBeNull())
-    await user.click(within(panel).getByRole('button', { name: /Exportar/ }))
+    await user.click(screen.getByRole('button', { name: /Exportar/ }))
     await user.click(await screen.findByRole('menuitem', { name: /Excel/ }))
     await waitFor(() => expect(mock.exported).toHaveLength(2))
     expect(mock.exported[1].names).toEqual(['Gamma Compartido'])
