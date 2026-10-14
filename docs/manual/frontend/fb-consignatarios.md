@@ -97,8 +97,7 @@ Botón **Importar** (`locations.create`). La importación es de dos pasos: el se
 ![Vista previa del archivo: una fila válida y otra con el error «Nombre: El nombre es obligatorio.»](img/fb-importar-previa.png)
 ![Resultado de la importación: creados, fallidos y omitidos](img/fb-importar-resultado.png)
 
-Avisos que no bloquean la fila (se importa): `El nombre 'X' ya lo usa otro consignatario de este dueño; se creará como sucursal distinta.`, `Hay un consignatario inactivo con el mismo nombre y dirección; considere reactivarlo.`
-y `El código X también lo usa un consignatario de un cliente; para ese cliente seguirá resolviendo al suyo.` Errores que bloquean la fila: ver el FAQ.
+Avisos que no bloquean la fila (se importa): `El código X también lo usa un consignatario de un cliente; para ese cliente seguirá resolviendo al suyo.` Errores que bloquean la fila: ver el FAQ.
 
 ### El editor de plantillas
 

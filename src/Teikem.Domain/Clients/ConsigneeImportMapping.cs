@@ -113,18 +113,17 @@ public static class ConsigneeImportMapping
     public const string WindowPairMessage = "La ventana horaria requiere hora de inicio y hora de fin.";
     public const string WindowOrderMessage = "La hora de fin de la ventana debe ser posterior a la de inicio.";
     public const string AllowDupInvoiceMessage = "El valor de allowDupInvoice debe ser sí o no (también 1/0 o true/false).";
-    public const string DuplicateActiveNameLineMessage = "Ya existe un consignatario activo con el mismo nombre y dirección (línea 1).";
-    public const string InactiveNameLineWarning = "Hay un consignatario inactivo con el mismo nombre y dirección; considere reactivarlo.";
+    public const string DuplicateActiveNameMessage = "Ya existe un consignatario activo con el mismo nombre. Agregue un distintivo al nombre (o al número) para distinguirlos.";
+    public const string InactiveNameTakenMessage = "Ya existe un consignatario inactivo con el mismo nombre; reactívelo en vez de importarlo, o agregue un distintivo al nombre (o al número).";
 
     public static string NoDefaultMessage(string field) => $"El campo {field} no admite valor por defecto.";
     public static string MaxLengthMessage(int max) => $"Máximo {max} caracteres.";
     public static string UnknownCountryMessage(string code) => $"País desconocido: {code}.";
     public static string CodeRepeatedInFileMessage(string code, int firstRow) => $"El código {code} se repite en la fila {firstRow} del archivo.";
-    public static string NameLineRepeatedInFileMessage(string name, int firstRow) => $"El consignatario '{name}' con esa dirección se repite en la fila {firstRow} del archivo.";
+    public static string NameRepeatedInFileMessage(string name, int firstRow) => $"El nombre '{name}' se repite en la fila {firstRow} del archivo; agregue un distintivo al nombre (o al número).";
     public static string CodeTakenMessage(string code, string existingName) => $"Ya existe un consignatario con el código '{code}' ('{existingName}').";
     public static string CodeTakenInactiveMessage(string code, string existingName) => $"Ya existe un consignatario inactivo con el código '{code}' ('{existingName}'); reactívelo en vez de importarlo.";
     public static string SharedCodeUsedByClientWarning(string code) => $"El código {code} también lo usa un consignatario de un cliente; para ese cliente seguirá resolviendo al suyo.";
-    public static string SameNameOtherBranchWarning(string name) => $"El nombre '{name}' ya lo usa otro consignatario de este dueño; se creará como sucursal distinta.";
 
     // ---------------------------------------------------------------- plantilla
 
@@ -393,13 +392,15 @@ public static class ConsigneeImportMapping
 
     /// <summary>
     /// Duplicados dentro del archivo, por dueño (mismo ClientId o ambas compartidas): código repetido (sin distinguir
-    /// mayúsculas) → error en code; nombre + línea 1 normalizados (ConsigneeMatch.Key) repetidos → error en name. El mensaje
-    /// nombra la PRIMERA fila donde aparece. Filas de otro dueño no chocan.
+    /// mayúsculas) → error en code; nombre normalizado (ConsigneeMatch.Normalize) repetido → error en name. La dirección
+    /// NO cuenta (decisión de Luis, 2026-10-14: varios consignatarios con el mismo nombre y direcciones distintas confunden
+    /// al capturar una orden; hay que distinguirlos por el nombre o por el número). El mensaje nombra la PRIMERA fila donde
+    /// aparece. Filas de otro dueño no chocan.
     /// </summary>
     public static IReadOnlyDictionary<int, IReadOnlyList<DuplicateFinding>> FindDuplicatesInFile(IEnumerable<ConsigneeRowKey> rows)
     {
         var codes = new Dictionary<(int? Owner, string Code), int>();
-        var keys = new Dictionary<(int? Owner, string Key), int>();
+        var names = new Dictionary<(int? Owner, string Name), int>();
         var result = new Dictionary<int, IReadOnlyList<DuplicateFinding>>();
         foreach (var r in rows)
         {
@@ -410,11 +411,11 @@ public static class ConsigneeImportMapping
                     findings.Add(new DuplicateFinding(ConsigneeImportFields.Code, CodeRepeatedInFileMessage(r.Code!.Trim(), first), false));
                 else codes[(r.OwnerClientId, code)] = r.Row;
             }
-            if (ConsigneeMatch.Key(r.Name, r.Line1) is string key)
+            if (ConsigneeMatch.Normalize(r.Name) is string name)
             {
-                if (keys.TryGetValue((r.OwnerClientId, key), out var first))
-                    findings.Add(new DuplicateFinding(ConsigneeImportFields.Name, NameLineRepeatedInFileMessage(r.Name!.Trim(), first), false));
-                else keys[(r.OwnerClientId, key)] = r.Row;
+                if (names.TryGetValue((r.OwnerClientId, name), out var first))
+                    findings.Add(new DuplicateFinding(ConsigneeImportFields.Name, NameRepeatedInFileMessage(r.Name!.Trim(), first), false));
+                else names[(r.OwnerClientId, name)] = r.Row;
             }
             if (findings.Count > 0) result[r.Row] = findings;
         }
@@ -435,15 +436,14 @@ public static class ConsigneeImportMapping
 /// - Código (sin distinguir mayúsculas, todos los tipos): fila de cliente contra los suyos y los compartidos; fila compartida
 ///   solo contra los compartidos. Activo → error; solo inactivo → error que pide reactivarlo. Fila compartida cuyo código usa
 ///   un consignatario activo de un cliente → aviso.
-/// - Nombre + línea 1 (ConsigneeMatch.Key; mismo dueño exacto; DELIVERY/BOTH): activo → error; inactivo → aviso de reactivar;
-///   mismo nombre normalizado con otra línea 1 (activo) → aviso de sucursal distinta.
+/// - Nombre (ConsigneeMatch.Normalize; mismo dueño exacto; DELIVERY/BOTH; la dirección no cuenta): activo → error; solo inactivo →
+///   error que pide reactivarlo o distinguir el nombre.
 /// </summary>
 public sealed class ConsigneeDirectory
 {
     private readonly HashSet<int> _seen = new();
     private readonly Dictionary<(int? Owner, string Code), List<ExistingConsignee>> _byCode = new();
     private readonly HashSet<string> _clientCodes = new(StringComparer.Ordinal);
-    private readonly Dictionary<(int? Owner, string Key), List<ExistingConsignee>> _byKey = new();
     private readonly Dictionary<(int? Owner, string Name), List<ExistingConsignee>> _byName = new();
 
     public int Count => _seen.Count;
@@ -461,7 +461,6 @@ public sealed class ConsigneeDirectory
                 if (e.ClientId is not null && e.IsActive) _clientCodes.Add(code);
             }
             if (!e.IsDeliveryOrBoth) continue;
-            if (ConsigneeMatch.Key(e.Name, e.Line1) is string key) Bucket(_byKey, (e.ClientId, key)).Add(e);
             if (ConsigneeMatch.Normalize(e.Name) is string name) Bucket(_byName, (e.ClientId, name)).Add(e);
         }
     }
@@ -495,17 +494,13 @@ public sealed class ConsigneeDirectory
                 findings.Add(new DuplicateFinding(ConsigneeImportFields.Code, ConsigneeImportMapping.SharedCodeUsedByClientWarning(typed), true));
         }
 
-        // Nombre + línea 1
-        if (ConsigneeMatch.Key(row.Name, row.Line1) is string key)
+        // Nombre (sin la dirección): mismo dueño exacto
+        if (ConsigneeMatch.Normalize(row.Name) is string name && _byName.TryGetValue((row.OwnerClientId, name), out var sameName))
         {
-            var same = _byKey.TryGetValue((row.OwnerClientId, key), out var list) ? list : null;
-            if (same is not null && same.Any(m => m.IsActive))
-                findings.Add(new DuplicateFinding(ConsigneeImportFields.Name, ConsigneeImportMapping.DuplicateActiveNameLineMessage, false));
-            else if (same is not null && same.Count > 0)
-                findings.Add(new DuplicateFinding(ConsigneeImportFields.Name, ConsigneeImportMapping.InactiveNameLineWarning, true));
-            else if (ConsigneeMatch.Normalize(row.Name) is string name
-                     && _byName.TryGetValue((row.OwnerClientId, name), out var sameName) && sameName.Any(m => m.IsActive))
-                findings.Add(new DuplicateFinding(ConsigneeImportFields.Name, ConsigneeImportMapping.SameNameOtherBranchWarning(row.Name!.Trim()), true));
+            if (sameName.Any(m => m.IsActive))
+                findings.Add(new DuplicateFinding(ConsigneeImportFields.Name, ConsigneeImportMapping.DuplicateActiveNameMessage, false));
+            else if (sameName.Count > 0)
+                findings.Add(new DuplicateFinding(ConsigneeImportFields.Name, ConsigneeImportMapping.InactiveNameTakenMessage, false));
         }
         return findings;
     }

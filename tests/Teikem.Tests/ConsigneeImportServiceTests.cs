@@ -230,7 +230,7 @@ public sealed class ConsigneeImportServiceTests
             "C-1,Nueva,Calle 1,Ponce,ACME\n" +               // código del cliente ya usado → error
             "S-1,Otra,Calle 2,Ponce,\n" +                    // compartida contra compartida inactiva → error de reactivar
             "C-1,Compartida,Calle 3,Ponce,\n" +              // compartida con código de un cliente → solo aviso
-            "N-1,Farmacia Existente,calle 9,Ponce,ACME\n" +  // mismo nombre + línea 1 → error
+            "N-1,Farmacia Existente,Avenida 7,Ponce,ACME\n" +  // mismo nombre (aunque la dirección sea otra) → error
             "N-2,Repetida,Calle 5,Ponce,ACME\n" +
             "N-2,Otra Repetida,Calle 6,Ponce,ACME\n");       // código repetido en el archivo → error con la fila 5
 
@@ -238,7 +238,7 @@ public sealed class ConsigneeImportServiceTests
         Assert.Equal("Ya existe un consignatario inactivo con el código 'S-1' ('Compartida Vieja'); reactívelo en vez de importarlo.", preview.Rows[1].Errors["code"]);
         Assert.True(preview.Rows[2].IsValid);
         Assert.Contains("El código C-1 también lo usa un consignatario de un cliente; para ese cliente seguirá resolviendo al suyo.", preview.Rows[2].Warnings);
-        Assert.Equal("Ya existe un consignatario activo con el mismo nombre y dirección (línea 1).", preview.Rows[3].Errors["name"]);
+        Assert.Equal("Ya existe un consignatario activo con el mismo nombre. Agregue un distintivo al nombre (o al número) para distinguirlos.", preview.Rows[3].Errors["name"]);
         Assert.True(preview.Rows[4].IsValid);
         Assert.Equal("El código N-2 se repite en la fila 5 del archivo.", preview.Rows[5].Errors["code"]);
         Assert.Equal(2, preview.ValidRows);

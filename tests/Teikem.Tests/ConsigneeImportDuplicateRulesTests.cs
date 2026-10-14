@@ -44,7 +44,7 @@ public class ConsigneeImportDuplicateRulesTests
     }
 
     [Fact]
-    public void Name_and_line1_normalized_repeated_in_the_file_is_an_error()
+    public void Name_normalized_repeated_in_the_file_is_an_error()
     {
         var findings = ConsigneeImportMapping.FindDuplicatesInFile(new[]
         {
@@ -52,7 +52,7 @@ public class ConsigneeImportDuplicateRulesTests
         });
         var f = Assert.Single(findings[2]);
         Assert.Equal("name", f.Field);
-        Assert.Equal("El consignatario 'farmacia rio' con esa dirección se repite en la fila 1 del archivo.", f.Message);
+        Assert.Equal("El nombre 'farmacia rio' se repite en la fila 1 del archivo; agregue un distintivo al nombre (o al número).", f.Message);
     }
 
     // ---------------------------------------------------------------- contra el directorio
@@ -86,32 +86,36 @@ public class ConsigneeImportDuplicateRulesTests
     }
 
     [Fact]
-    public void Same_name_and_line1_normalized_with_the_same_owner_is_an_error()
+    public void Same_name_normalized_with_the_same_owner_is_an_error_whatever_the_address()
     {
         var dir = ConsigneeImportMapping.BuildDirectory(new[] { Loc(1, ClientA, null, "Farmacia Río", "Calle Sol 5") });
         var f = Assert.Single(dir.Evaluate(Row(1, ClientA, null, " farmacia   rio", "CALLE SOL 5")));
         Assert.Equal("name", f.Field);
         Assert.False(f.IsWarning);
-        Assert.Equal("Ya existe un consignatario activo con el mismo nombre y dirección (línea 1).", f.Message);
+        Assert.Equal("Ya existe un consignatario activo con el mismo nombre. Agregue un distintivo al nombre (o al número) para distinguirlos.", f.Message);
+        // la dirección no cuenta (decisión de Luis): el mismo nombre con otra dirección también es duplicado
+        Assert.False(Assert.Single(dir.Evaluate(Row(1, ClientA, null, "Farmacia Río", "Avenida 3"))).IsWarning);
         Assert.Empty(dir.Evaluate(Row(1, ClientB, null, "Farmacia Río", "Calle Sol 5"))); // otro dueño: no choca
     }
 
     [Fact]
-    public void Same_name_and_line1_as_an_inactive_one_is_a_warning()
+    public void Same_name_as_an_inactive_one_asks_to_reactivate_it_or_to_tell_them_apart()
     {
         var dir = ConsigneeImportMapping.BuildDirectory(new[] { Loc(1, null, null, "Farmacia", "Calle 1", active: false) });
-        var f = Assert.Single(dir.Evaluate(Row(1, null, null, "Farmacia", "Calle 1")));
-        Assert.True(f.IsWarning);
-        Assert.Equal("Hay un consignatario inactivo con el mismo nombre y dirección; considere reactivarlo.", f.Message);
+        var f = Assert.Single(dir.Evaluate(Row(1, null, null, "Farmacia", "Otra calle")));
+        Assert.False(f.IsWarning);
+        Assert.Equal("Ya existe un consignatario inactivo con el mismo nombre; reactívelo en vez de importarlo, o agregue un distintivo al nombre (o al número).", f.Message);
     }
 
     [Fact]
-    public void Same_name_with_another_line1_is_a_branch_warning()
+    public void Same_name_in_the_file_is_an_error_even_with_another_address_and_names_the_first_row()
     {
-        var dir = ConsigneeImportMapping.BuildDirectory(new[] { Loc(1, ClientA, null, "Farmacia Central", "Calle 9") });
-        var f = Assert.Single(dir.Evaluate(Row(1, ClientA, null, "Farmacia Central", "Avenida 3")));
-        Assert.True(f.IsWarning);
-        Assert.Equal("El nombre 'Farmacia Central' ya lo usa otro consignatario de este dueño; se creará como sucursal distinta.", f.Message);
+        var rows = new[] { Row(2, ClientA, null, "Colmado Uno", "Calle 1"), Row(3, ClientA, null, "colmado  uno", "Calle 2"), Row(4, ClientB, null, "Colmado Uno", "Calle 1") };
+        var found = ConsigneeImportMapping.FindDuplicatesInFile(rows);
+        var f = Assert.Single(found[3]);
+        Assert.Equal("El nombre 'colmado  uno' se repite en la fila 2 del archivo; agregue un distintivo al nombre (o al número).", f.Message);
+        Assert.False(found.ContainsKey(2));
+        Assert.False(found.ContainsKey(4)); // otro dueño: no choca
     }
 
     [Fact]

@@ -334,12 +334,11 @@ comparan sin tildes, sin mayúsculas y sin espacios dobles. Una fila del cliente
 | Caso | Mensaje exacto | Tipo |
 |---|---|---|
 | Código repetido en el archivo (mismo dueño) | `El código X se repite en la fila N del archivo.` (`code`, en la fila posterior) | error |
-| Nombre + línea 1 repetidos en el archivo | `El consignatario 'X' con esa dirección se repite en la fila N del archivo.` (`name`) | error |
+| Nombre repetido en el archivo (mismo dueño; la dirección no cuenta) | `El nombre 'X' se repite en la fila N del archivo; agregue un distintivo al nombre (o al número).` (`name`, en la fila posterior) | error |
 | Código que ya usa un consignatario activo | `Ya existe un consignatario con el código 'X' ('Nombre').` (`code`) | error |
 | Código que usa un consignatario inactivo | `Ya existe un consignatario inactivo con el código 'X' ('Nombre'); reactívelo en vez de importarlo.` (`code`) | error |
-| Nombre + línea 1 de un consignatario activo | `Ya existe un consignatario activo con el mismo nombre y dirección (línea 1).` (`name`) | error |
-| Nombre + línea 1 de uno inactivo | `Hay un consignatario inactivo con el mismo nombre y dirección; considere reactivarlo.` | aviso |
-| Mismo nombre con otra línea 1 | `El nombre 'X' ya lo usa otro consignatario de este dueño; se creará como sucursal distinta.` | aviso |
+| Nombre de un consignatario activo del mismo dueño (la dirección no cuenta) | `Ya existe un consignatario activo con el mismo nombre. Agregue un distintivo al nombre (o al número) para distinguirlos.` (`name`) | error |
+| Nombre de uno inactivo del mismo dueño | `Ya existe un consignatario inactivo con el mismo nombre; reactívelo en vez de importarlo, o agregue un distintivo al nombre (o al número).` (`name`) | error |
 | Fila compartida con un código que usa un consignatario de un cliente | `El código X también lo usa un consignatario de un cliente; para ese cliente seguirá resolviendo al suyo.` | aviso |
 
 #### Confirmar (paso 2 de 2) y descartar

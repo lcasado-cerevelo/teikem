@@ -6365,7 +6365,7 @@ El teléfono de la fila (o el default de la plantilla) no tiene formato de telé
 **Puse un default con un valor malo y la plantilla no se guarda (400 en `defaults.X`).**
 Los defaults se revisan al guardar la plantilla con el mismo mensaje que daría la fila (minutos, horas, `allowDupInvoice`, formato del país, largos y teléfono). Corrija el valor del default.
 
-**«El código X se repite en la fila N del archivo.» / «El consignatario 'X' con esa dirección se repite en la fila N del archivo.»**
+**«El código X se repite en la fila N del archivo.» / «El nombre 'X' se repite en la fila N del archivo; agregue un distintivo al nombre (o al número).»**
 Dos filas del mismo dueño traen el mismo código, o el mismo nombre con la misma línea 1. La primera se crea; corrija o quite la repetida.
 
 **«Ya existe un consignatario con el código 'X' ('Nombre').»**
@@ -6374,14 +6374,11 @@ Ese código ya lo usa un consignatario activo del mismo cliente o uno compartido
 **«Ya existe un consignatario inactivo con el código 'X' ('Nombre'); reactívelo en vez de importarlo.»**
 El consignatario existe pero está dado de baja. Reactívelo desde su ficha (`POST /api/v1/locations/{id}/reactivate`) y quite la fila del archivo.
 
-**«Ya existe un consignatario activo con el mismo nombre y dirección (línea 1).»**
-Ese consignatario ya está en el directorio de ese dueño (sin importar tildes, mayúsculas ni espacios dobles). Quite la fila.
+**«Ya existe un consignatario activo con el mismo nombre. Agregue un distintivo al nombre (o al número) para distinguirlos.»**
+Ya hay un consignatario con ese nombre en ese dueño (sin importar tildes, mayúsculas ni espacios dobles). **La dirección no cuenta**: con el mismo nombre y otra dirección también se rechaza, porque al capturar una orden no se sabría cuál escoger. Cambie el nombre de la fila agregándole un distintivo (por ejemplo la sucursal o el número) o use el número del consignatario, o quite la fila.
 
-**Aviso: «Hay un consignatario inactivo con el mismo nombre y dirección; considere reactivarlo.»**
-No impide crear la fila, pero quedaría repetido con uno dado de baja. Lo normal es reactivar el existente y quitar la fila.
-
-**Aviso: «El nombre 'X' ya lo usa otro consignatario de este dueño; se creará como sucursal distinta.»**
-Hay otro con el mismo nombre en otra dirección. Si es otra sucursal, está bien; si es la misma con la dirección cambiada, edite el existente en vez de importarlo.
+**«Ya existe un consignatario inactivo con el mismo nombre; reactívelo en vez de importarlo, o agregue un distintivo al nombre (o al número).»**
+Hay un consignatario con ese nombre dado de baja. Reactívelo desde su ficha (**Mostrar inactivos**) y quite la fila, o agregue un distintivo al nombre de la fila.
 
 **Aviso: «El código X también lo usa un consignatario de un cliente; para ese cliente seguirá resolviendo al suyo.»**
 La fila es compartida y su código ya lo tiene un consignatario de un cliente. Se crea igual; cuando ese cliente use el código (por ejemplo, en el importador de órdenes) se tomará el suyo, no el compartido.
@@ -6408,7 +6405,7 @@ El lote ya está confirmado o descartado; no hay nada que descartar.
 El lote no existe, es de otra compañía o es un lote de órdenes (esos se consultan en `/api/v1/orders/import/{id}`).
 
 **Una fila salió con error al confirmar aunque en la vista previa estaba bien.**
-Entre validar y confirmar alguien creó un consignatario con ese código o con ese nombre y dirección (o se dio de baja el cliente): al confirmar se vuelve a revisar cada fila. La fila queda con el mensaje en `rows[i].error` y las demás se crean igual. Si dice «Error inesperado al crear el consignatario; revise la fila e intente de nuevo.», valide un archivo con esa fila de nuevo y, si se repite, avise a soporte.
+Entre validar y confirmar alguien creó un consignatario con ese código o con ese nombre (o se dio de baja el cliente): al confirmar se vuelve a revisar cada fila. La fila queda con el mensaje en `rows[i].error` y las demás se crean igual. Si dice «Error inesperado al crear el consignatario; revise la fila e intente de nuevo.», valide un archivo con esa fila de nuevo y, si se repite, avise a soporte.
 
 **¿Dos personas pueden importar consignatarios a la vez?**
 Sí. Las confirmaciones de una misma compañía se crean fila por fila de a una, así que un mismo código nuevo en dos archivos confirmados a la vez se crea una sola vez; la fila del otro archivo sale como fallida con «Ya existe un consignatario con el código…». Mientras tanto, «Planificar el día» de esa compañía espera su turno (usa el mismo candado).
@@ -6467,11 +6464,11 @@ La plantilla se desactivó o es de otro cliente. Elija otra, o en el modal encie
 `País desconocido: X.` o el mensaje de país inválido: use el código de país de la lista (PR, US…). `Los minutos de servicio deben ser un número entero.` / `…no pueden ser negativos.`.
 `La hora debe tener el formato HH:mm (24 horas).` y las dos de la ventana horaria (`La ventana horaria requiere hora de inicio y hora de fin.` / `La hora de fin de la ventana debe ser posterior a la de inicio.`).
 `El valor de allowDupInvoice debe ser sí o no (también 1/0 o true/false).`
-Duplicados: `Ya existe un consignatario activo con el mismo nombre y dirección (línea 1).`, `Ya existe un consignatario con el código 'X' ('Nombre').`, `Ya existe un consignatario inactivo con el código 'X' ('Nombre'); reactívelo en vez de importarlo.`,
-`El código X se repite en la fila N del archivo.` y `El consignatario 'X' con esa dirección se repite en la fila N del archivo.`: quite el duplicado del archivo o reactive el consignatario existente (**Mostrar inactivos**).
+Duplicados: `Ya existe un consignatario activo con el mismo nombre. Agregue un distintivo al nombre (o al número) para distinguirlos.`, `Ya existe un consignatario con el código 'X' ('Nombre').`, `Ya existe un consignatario inactivo con el código 'X' ('Nombre'); reactívelo en vez de importarlo.`,
+`El código X se repite en la fila N del archivo.` y `El nombre 'X' se repite en la fila N del archivo; agregue un distintivo al nombre (o al número).`: quite el duplicado del archivo o reactive el consignatario existente (**Mostrar inactivos**).
 
 **Vista previa: avisos (la fila sí se importa).**
-`El nombre 'X' ya lo usa otro consignatario de este dueño; se creará como sucursal distinta.`, `Hay un consignatario inactivo con el mismo nombre y dirección; considere reactivarlo.` y `El código X también lo usa un consignatario de un cliente; para ese cliente seguirá resolviendo al suyo.` Son informativos; si no quiere la fila, quítela del archivo y valide otra vez.
+`El código X también lo usa un consignatario de un cliente; para ese cliente seguirá resolviendo al suyo.` Son informativos; si no quiere la fila, quítela del archivo y valide otra vez.
 
 **Los acentos y la ñ salen dañados.**
 El CSV no está en UTF-8 (Excel en Windows guarda en Windows-1252). Guárdelo como «CSV UTF-8» y vuelva a elegirlo; la vista previa lo muestra antes de importar.

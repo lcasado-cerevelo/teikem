@@ -108,7 +108,7 @@ const PREVIEW = {
   rows: [
     { row: 1, line: 2, isValid: true, values: { name: 'Farmacia Uno', code: 'F1', line1: 'Calle 1', city: 'Ponce' }, owner: { clientPublicId: 'c-1', clientName: 'Acme Corp', isShared: false }, warnings: [], errors: {} },
     { row: 2, line: 3, isValid: false, values: { name: '', line1: 'Calle 2', city: 'Ponce' }, errors: { name: 'El nombre es obligatorio.' }, warnings: [] },
-    { row: 3, line: 4, isValid: true, values: { name: 'Colmado Dos', line1: 'Calle 3', city: 'Arecibo' }, errors: {}, warnings: ["El nombre 'Colmado Dos' ya lo usa otro consignatario de este dueño; se creará como sucursal distinta."] },
+    { row: 3, line: 4, isValid: true, values: { name: 'Colmado Dos', line1: 'Calle 3', city: 'Arecibo' }, errors: {}, warnings: ["El código C-9 también lo usa un consignatario de un cliente; para ese cliente seguirá resolviendo al suyo."] },
   ],
 }
 const RESULT = {
@@ -237,7 +237,7 @@ describe('Importar consignatarios — plantilla y archivo', () => {
     expect(await screen.findByText(/consignatarios\.csv · 3 filas detectadas/)).toBeInTheDocument()
     const table = screen.getByRole('table')
     expect(within(table).getByText('Nombre: El nombre es obligatorio.')).toBeInTheDocument()
-    expect(within(table).getByText(/se creará como sucursal distinta/)).toBeInTheDocument()
+    expect(within(table).getByText(/para ese cliente seguirá resolviendo al suyo/)).toBeInTheDocument()
     expect(within(table).getByText('Farmacia Uno')).toBeInTheDocument()
     // la columna Cliente dice de quién queda cada fila (la fila con su propio cliente manda)
     expect(within(table).getByRole('columnheader', { name: 'Cliente' })).toBeInTheDocument()

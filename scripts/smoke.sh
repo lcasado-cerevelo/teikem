@@ -1580,7 +1580,7 @@ expect 422 "$(req POST "/api/v1/locations/import/$BC/discard")" | jq -e '.title=
 VC2=$(expect 200 "$(req POST /api/v1/locations/import/validate "$(cbody "$CSVC")")")
 echo "$VC2" | jq -e --arg a "Ya existe un consignatario con el código 'CIA-$TS' ('Imp comp $TS')." --arg b "Ya existe un consignatario con el código 'CIB-$TS' ('Imp cli $TS')." '
   .validRows==0 and .rows[0].errors.code==$a and .rows[1].errors.code==$b
-  and .rows[0].errors.name=="Ya existe un consignatario activo con el mismo nombre y dirección (línea 1)."' >/dev/null || fail "revalidar lo ya importado: $VC2"
+  and .rows[0].errors.name=="Ya existe un consignatario activo con el mismo nombre. Agregue un distintivo al nombre (o al número) para distinguirlos."' >/dev/null || fail "revalidar lo ya importado: $VC2"
 expect 400 "$(req POST "/api/v1/locations/import/$(echo "$VC2" | jq -r .batchPublicId)/confirm" '{}')" | jq -e '.errors.rows[0]=="El lote no tiene filas válidas para crear."' >/dev/null || fail "confirmar sin filas válidas"
 # Descartar un lote VALIDATED: 200 DISCARDED; confirmarlo 409
 expect 200 "$(req POST "/api/v1/locations/import/$BF/discard")" | jq -e '.status=="DISCARDED"' >/dev/null || fail "descartar lote de consignatarios"
