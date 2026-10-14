@@ -4,7 +4,7 @@
        sqlcmd -S <servidor> -d <base> -E -C -f 65001 -i "Diseño/logistica-db-zip-catalog.sql"
    Requiere que la base ya tenga las columnas nuevas de dbo.PostalLocality (ZipClass, LocaleType, DistrictName, DistrictNo,
    Latitude, Longitude, GeoAccuracy), que crea la sección correspondiente de logistica-db-update.sql; si faltan, el script se
-   detiene sin tocar nada y lo dice (usa :on error exit de sqlcmd; corra el script con sqlcmd, no con SSMS sin modo SQLCMD).
+   detiene sin tocar nada (SET NOEXEC ON: puede mostrar errores de columnas inexistentes, pero no ejecuta ni cambia nada). Funciona igual con sqlcmd, SSMS o Azure Data Studio.
    Fuentes:
      · USPS «Zip Locale Detail» (hojas ZIP_Locale, Unique y Other): tipo del ZIP (ZIP CLASS CODE: vacío = STANDARD, P = PO_BOX,
        U = UNIQUE, M = MILITARY), tipo de oficina (LOCALE TYPE), distrito y nombre postal.
@@ -17,9 +17,11 @@
    Filas: 41460 ZIP vigentes. Los ZIP que ya no existen NO se cargan (los borra logistica-db-update.sql).
    ========================================================================================================================= */
 SET NOCOUNT ON;
-:on error exit
 IF COL_LENGTH('dbo.PostalLocality', 'ZipClass') IS NULL OR COL_LENGTH('dbo.PostalLocality', 'Latitude') IS NULL
-    THROW 50000, N'logistica-db-zip-catalog.sql: faltan las columnas nuevas de dbo.PostalLocality; aplique primero logistica-db-update.sql (db-update). No se cambió nada.', 1;
+BEGIN
+    PRINT N'Faltan las columnas nuevas de dbo.PostalLocality: aplique primero logistica-db-update.sql (db-update). No se cambia nada.';
+    SET NOEXEC ON;
+END
 GO
 UPDATE p SET p.ZipClass = v.ZipClass, p.LocaleType = NULLIF(v.LocaleType, ''), p.DistrictName = v.DistrictName, p.DistrictNo = v.DistrictNo,
        p.Latitude = v.Latitude, p.Longitude = v.Longitude, p.GeoAccuracy = v.GeoAccuracy
@@ -83937,5 +83939,6 @@ FROM (VALUES
 JOIN dbo.LookupCode c ON c.Entity = 'Country' AND c.InternalCode = CASE WHEN v.State = 'PR' THEN 'PR' ELSE 'US' END
 WHERE NOT EXISTS (SELECT 1 FROM dbo.PostalLocality p WHERE p.PostalCode = v.Zip);
 GO
+SET NOEXEC OFF;
 PRINT N'Catálogo de ZIP cargado: 41460 códigos.';
 GO
