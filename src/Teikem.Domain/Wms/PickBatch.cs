@@ -34,6 +34,8 @@ public class PickBatch : ITenantScoped, ISoftDeletable, IHasStatus
     public int? ManualIssueReasonId { get; set; }
     /// <summary>2026-10-11: nota libre del despacho manual (≤ 500 caracteres).</summary>
     public string? Note { get; set; }
+    /// <summary>Lote 61: la orden de venta que atiende esta recolección (despacho contra orden de venta); NULL = recolección normal.</summary>
+    public int? SalesOrderId { get; set; }
 
     public StatusCode? Status { get; set; }
     public ICollection<PickBatchLine> Lines { get; set; } = new List<PickBatchLine>();
@@ -56,4 +58,6 @@ public class PickBatchLine
     public decimal? UnitCost { get; set; }
     public long IssueTxnId { get; set; }
     public long? ReversalTxnId { get; set; }
+    /// <summary>Lote 61: la línea de la orden de venta que atendió; NULL = recolección normal.</summary>
+    public int? SalesOrderLineId { get; set; }
 }

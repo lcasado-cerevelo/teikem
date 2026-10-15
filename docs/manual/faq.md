@@ -8292,3 +8292,26 @@ La línea ya está completa (o ya se surtió). No hay nada que surtir ni cerrar.
 
 **¿Me avisan cuando ya hay inventario para un backorder?**
 Todavía no: el aviso automático llega con los avisos de ventas. Mientras tanto, la vista muestra siempre lo que se puede surtir ahora.
+
+## Lote 61 — Despachar contra una orden de venta
+
+**¿Qué hace «despachar» una orden de venta?**
+Saca del almacén lo que estaba reservado: el inventario baja (siempre, lo entreguen o lo vengan a recoger), se crea la recolección `EMP-#####` enlazada a la orden y la orden pasa a despachada parcial o despachada.
+
+**«No se puede despachar más de lo reservado: XXX tiene n reservadas.»**
+Solo se despacha lo que la orden tiene reservado. Si el cliente pide más, hay que subir la cantidad de la línea (se reserva) y luego despachar.
+
+**¿Puedo despachar solo una parte?**
+Sí. Cada despacho crea su recolección; la orden queda en «Despachada parcial» hasta que todo lo reservado salga (y, si hay backorder, hasta que se surta o se cierre con faltante).
+
+**El producto está en otra posición distinta de la reservada.**
+Indique la posición de donde lo tomó: si tiene saldo vendible, la reserva se mueve ahí y sale de esa posición. Si no tiene saldo responde «Inventario insuficiente…».
+
+**«La posición XXX no es vendible…»**
+La posición está inactiva o es de cuarentena, cruce de muelle o renta: de ahí no se vende.
+
+**«Solo se puede despachar una orden solicitada o despachada parcial.»**
+La orden está en borrador, ya despachada o cancelada.
+
+**¿Por qué mi orden se canceló sola?**
+Todas sus líneas se cerraron con faltante sin haber despachado nada: no hay nada que despachar ni facturar. Queda la nota en el historial.

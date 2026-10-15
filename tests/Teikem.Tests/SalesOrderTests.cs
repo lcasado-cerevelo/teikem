@@ -61,6 +61,20 @@ public class SalesRulesTests
     }
 
     [Fact]
+    public void Update_sql_section_l_adds_the_dispatch_links_as_nullable_columns_only()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "Teikem.sln"))) dir = dir.Parent;
+        var sql = File.ReadAllText(Path.Combine(dir!.FullName, "Diseño", "logistica-db-update.sql"));
+        var i = sql.IndexOf("2026-10-15 (l)", StringComparison.Ordinal);
+        Assert.True(i > 0);
+        var section = SqlSections.From(sql, i);
+        Assert.Contains("ADD SalesOrderId INT NULL", section);
+        Assert.Contains("ADD SalesOrderLineId INT NULL", section);
+        Assert.DoesNotContain("DROP ", section, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Permissions_templates_admin_has_all_sales_warehouse_operator_views_and_fulfills_and_sales_role_cannot_price()
     {
         var all = new[] { PermissionCatalog.SalesView, PermissionCatalog.SalesCreate, PermissionCatalog.SalesCancel, PermissionCatalog.SalesPrice, PermissionCatalog.SalesBackorder };

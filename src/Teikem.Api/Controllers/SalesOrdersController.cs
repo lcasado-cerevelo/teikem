@@ -65,6 +65,10 @@ public sealed class SalesOrdersController(SalesOrderService sales) : ControllerB
     [HttpPost("{publicId:guid}/lines/{lineId:int}/close"), RequirePermission(PermissionCatalog.SalesBackorder)]
     public Task<SalesOrderDto> CloseLine(Guid publicId, int lineId, [FromBody] SalesOrderCancelRequest? req, CancellationToken ct) => sales.CloseLineAsync(publicId, lineId, req?.Comment, ct);
 
+    /// <summary>Despacha contra la orden: consume la reserva, saca el inventario y crea la recolección (por partes; nunca más de lo reservado).</summary>
+    [HttpPost("{publicId:guid}/dispatch"), RequirePermission(PermissionCatalog.WarehousePick)]
+    public Task<SalesDispatchResultDto> Dispatch(Guid publicId, [FromBody] SalesDispatchRequest? req, CancellationToken ct) => sales.DispatchAsync(publicId, req, ct);
+
     [HttpPost("{publicId:guid}/cancel"), RequirePermission(PermissionCatalog.SalesCancel)]
     public Task<SalesOrderDto> Cancel(Guid publicId, [FromBody] SalesOrderCancelRequest? req, CancellationToken ct) => sales.CancelAsync(publicId, req?.Comment, ct);
 }

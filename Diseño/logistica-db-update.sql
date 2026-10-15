@@ -2847,3 +2847,21 @@ JOIN dbo.Permission p ON p.Code IN ('sales.view','sales.backorder')
 WHERE r.Name IN ('WarehouseOperator')
   AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-15 (l) — Despachar contra la orden de venta (Lote 61, P4 parte S2). Dos columnas opcionales que enlazan la recolección con la orden:
+   - dbo.PickBatch.SalesOrderId (la orden que atiende la recolección) y dbo.PickBatchLine.SalesOrderLineId (la línea de la orden que atendió).
+   NULL = recolección normal. Solo AGREGA. Idempotente. Depende de la sección (k).
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.PickBatch', 'SalesOrderId') IS NULL
+    ALTER TABLE dbo.PickBatch ADD SalesOrderId INT NULL CONSTRAINT FK_PickBatch_SalesOrder REFERENCES dbo.SalesOrder(SalesOrderId);
+GO
+IF COL_LENGTH('dbo.PickBatchLine', 'SalesOrderLineId') IS NULL
+    ALTER TABLE dbo.PickBatchLine ADD SalesOrderLineId INT NULL CONSTRAINT FK_PickBatchLine_SalesOrderLine REFERENCES dbo.SalesOrderLine(SalesOrderLineId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_PickBatch_SalesOrder' AND object_id = OBJECT_ID('dbo.PickBatch'))
+    CREATE INDEX IX_PickBatch_SalesOrder ON dbo.PickBatch(SalesOrderId) WHERE SalesOrderId IS NOT NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_PickBatchLine_SalesOrderLine' AND object_id = OBJECT_ID('dbo.PickBatchLine'))
+    CREATE INDEX IX_PickBatchLine_SalesOrderLine ON dbo.PickBatchLine(SalesOrderLineId) WHERE SalesOrderLineId IS NOT NULL;
+GO

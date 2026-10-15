@@ -138,6 +138,7 @@ public sealed partial class SalesOrderService
             if (line.IsClosed) throw new StatusRuleException(SalesRules.LineClosed);
             if (line.QtyBackordered <= 0m) throw new ConflictException(SalesRules.NoBackorder);
             (line.QtyBackordered, line.IsClosed) = (0m, true);
+            await RefreshStatusAsync(order, "Línea cerrada con faltante", ct2);
             await db.SaveGuardedAsync(SalesRules.Concurrency, ct2);
         }, ct);
         return await GetAsync(publicId, ct);

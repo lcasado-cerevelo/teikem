@@ -46,6 +46,16 @@ public static class SalesRules
     public const string LineAlreadyShipped = "A esa línea ya se le despachó producto: no se puede modificar.";
     public const string NothingToFulfill = "No hay inventario disponible para surtir esa línea.";
     public const string NoBackorder = "Esa línea no tiene backorder.";
+    public const string DispatchLinesRequired = "Indique qué líneas se despachan.";
+    public const string DispatchLineRequired = "Indique la línea que se despacha.";
+    public const string DispatchLineRepeated = "Una línea no puede repetirse en el despacho.";
+    public const string NotDispatchable = "Solo se puede despachar una orden solicitada o despachada parcial.";
+
+    public static string DispatchMoreThanReserved(string sku, decimal reserved)
+        => $"No se puede despachar más de lo reservado: {sku} tiene {reserved.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)} reservadas.";
+
+    public static string BinNotSellable(string code) => $"La posición {code} no es vendible: está inactiva o es de cuarentena, cruce de muelle o renta.";
+
     public const string SerialNotSupported = "Los productos con número de serie todavía no se venden con orden de venta.";
 
     /// <summary>«pedido / disponible / faltante» de una línea con faltante (lo que muestra el diálogo de faltante).</summary>

@@ -59,3 +59,16 @@ public sealed record SalesBackorderLineDto(Guid OrderPublicId, string OrderNumbe
 public sealed record SalesFulfillLineDto(Guid OrderPublicId, string OrderNumber, int LineId, string Sku, decimal Reserved, decimal StillPending);
 
 public sealed record SalesFulfillResultDto(IReadOnlyList<SalesFulfillLineDto> Lines, decimal TotalReserved, int LinesCompleted);
+
+// ---------------------------------------------------------------- Lote 61 — despachar contra la orden de venta
+
+/// <summary>
+/// Una línea a despachar: cuánto (hasta lo reservado). Sin BinId sale de lo que reservó el sistema; con BinId (y LotId si la posición tiene lotes) el operario tomó de otra
+/// posición: la reserva se mueve a ella si hay saldo.
+/// </summary>
+public sealed record SalesDispatchLineRequest(int? LineId = null, decimal? Quantity = null, int? BinId = null, int? LotId = null);
+
+public sealed record SalesDispatchRequest(IReadOnlyList<SalesDispatchLineRequest>? Lines = null, string? Note = null);
+
+/// <summary>La recolección creada (su número EMP) y la orden como quedó.</summary>
+public sealed record SalesDispatchResultDto(Guid PickBatchPublicId, string PickBatchNumber, SalesOrderDto Order);

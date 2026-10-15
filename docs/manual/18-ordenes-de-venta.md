@@ -1,6 +1,6 @@
 # 18 — Órdenes de venta
 
-Lotes 57 a 59 (2026-10-15) — **parte S1: borrador, solicitar y reservar, backorders**. Una **orden de venta** (OV-#####) es el documento que viaja de **Ventas a Almacén**: Ventas le pide al almacén que despache algo para un cliente. Hasta aquí se puede **armar la orden en borrador, solicitarla (validar y reservar inventario), modificarla y cancelarla**; ver, surtir y cerrar los **backorders**; el despacho contra la orden llega en el lote siguiente de la fase.
+Lotes 57 a 61 (2026-10-15) — **S1: borrador, solicitar y reservar, backorders; S2: despachar**. Una **orden de venta** (OV-#####) es el documento que viaja de **Ventas a Almacén**: Ventas le pide al almacén que despache algo para un cliente. Hasta aquí se puede **armar la orden en borrador, solicitarla (validar y reservar inventario), modificarla y cancelarla**; ver, surtir y cerrar los **backorders**; **despachar contra la orden** (Lote 61); el retiro / entrega y deshacer, la web y la app llegan en los lotes siguientes.
 El diseño completo está en `Diseño/logistica-funcionalidades-maestro.md`, sección 13C. La pantalla se describe en [L60 — Órdenes de venta](frontend/l60-ordenes-de-venta.md).
 
 ## 1. Quién puede
@@ -37,6 +37,7 @@ El diseño completo está en `Diseño/logistica-funcionalidades-maestro.md`, sec
 | Modificar una línea solicitada | `PATCH /api/v1/sales-orders/{publicId}/lines/{lineId}` | `sales.create` |
 | Ver backorders (más antiguo primero) | `GET /api/v1/sales-orders/backorders` | `sales.view` |
 | Surtir una línea / surtir todo / cerrar con faltante | `POST …/lines/{lineId}/fulfill` · `POST /sales-orders/backorders/fulfill` · `POST …/lines/{lineId}/close` | `sales.backorder` |
+| Despachar contra la orden (por partes; consume la reserva y baja el inventario) | `POST /api/v1/sales-orders/{publicId}/dispatch` | `warehouse.pick` |
 | Cancelar un borrador o una solicitada (comentario opcional en el historial; libera lo reservado) | `POST /api/v1/sales-orders/{publicId}/cancel` | `sales.cancel` |
 
 Las órdenes **nunca se borran**: se cancelan. Quedan en la bitácora (altas, cambios) y en el historial de estatus.
@@ -127,8 +128,38 @@ Un **backorder** es lo que se pidió y todavía no hay: la línea queda con su c
 | Surtir o cerrar una línea cerrada | `La línea está cerrada.` | 422 |
 | Línea u orden inexistente | `Línea no encontrada.` / `Orden de venta no encontrada.` | 404 |
 
-## 10. Para soporte
+## 10. Despachar contra la orden (Lote 61)
 
-- Tablas `SalesOrder`, `SalesOrderLine` y `SalesOrderReservation` (la que guarda qué saldo reservó cada línea), contador `SALESORDER`, dominio de estatus `SalesOrderStatus` y EntityType `SALES_ORDER` (sección **2026-10-15 (k)** de `Diseño/logistica-db-update.sql`).
+`POST /api/v1/sales-orders/{publicId}/dispatch` (permiso `warehouse.pick`, el mismo de recolectar) saca del almacén lo reservado para la orden. **Despachar siempre baja el inventario**, lo entreguen o lo vengan a recoger. Todo ocurre en **una sola transacción**:
+
+1. Se **consume la reserva** de las líneas despachadas.
+2. El inventario **sale por el ledger** (movimiento de salida con la recolección como referencia: queda en el Kárdex).
+3. Se crea la **recolección** (`EMP-#####`) **enlazada a la orden** (`PickBatch.SalesOrderId` y, por línea, `PickBatchLine.SalesOrderLineId`), con el costo del producto congelado.
+4. Sube lo **despachado** de cada línea y baja lo reservado.
+5. La orden pasa a **despachada parcial** (`PARTIAL`) o **despachada** (`SHIPPED`).
+
+- **Por partes**: se pueden mandar varias líneas y menos cantidad que lo reservado; cada despacho crea su propia recolección. **Nunca se despacha más de lo reservado.**
+- **Posición y lote guiados, con cambio permitido**: sin `binId` sale de lo que reservó el sistema. Si el operario tomó de **otra posición** (`binId`, y `lotId` si hay lotes), la reserva **se mueve** a esa posición —si tiene saldo vendible— y de ahí sale; sin saldo responde 409 con el aviso de inventario. La posición debe ser del almacén de la orden, activa y vendible (sin cuarentena, cruce de muelle ni renta).
+- **Cuándo está terminada una línea y la orden**: una línea está **terminada** cuando no le queda reserva ni backorder. La orden es `SHIPPED` cuando todas sus líneas están terminadas y se despachó algo; con backorder pendiente se queda en `PARTIAL` hasta que se surta o se **cierre con faltante** (cerrar la última línea pendiente la pasa a despachada).
+- **Orden sin nada despachado y todas las líneas cerradas con faltante**: **se cancela sola**, con la nota «Todas las líneas se cerraron con faltante y no se despachó nada.» en el historial.
+- El retiro (el cliente recoge) o la **entrega** (crea la orden de transporte) y deshacer una recolección llegan en el lote siguiente.
+
+| Situación | Mensaje exacto | HTTP |
+|---|---|---|
+| Sin líneas | `Indique qué líneas se despachan.` | 400 |
+| Línea sin identificar | `Indique la línea que se despacha.` | 400 |
+| Línea repetida | `Una línea no puede repetirse en el despacho.` | 400 |
+| Cantidad vacía o cero | `La cantidad debe ser mayor que cero.` | 400 |
+| Orden que no está solicitada ni despachada parcial | `Solo se puede despachar una orden solicitada o despachada parcial.` | 422 |
+| Más de lo reservado | `No se puede despachar más de lo reservado: {SKU} tiene {n} reservadas.` | 409 |
+| Línea u orden inexistente | `Línea no encontrada.` / `Orden de venta no encontrada.` | 404 |
+| Posición inexistente o de otro almacén | `Posición no encontrada.` | 404 |
+| Posición inactiva o de cuarentena / cruce / renta | `La posición {código} no es vendible: está inactiva o es de cuarentena, cruce de muelle o renta.` | 422 |
+| Sin saldo en la posición escogida | `Inventario insuficiente: …` (el del inventario) | 409 |
+| Sin el permiso `warehouse.pick` | «Sin permiso» | 403 |
+
+## 11. Para soporte
+
+- Tablas `SalesOrder`, `SalesOrderLine` y `SalesOrderReservation` (la que guarda qué saldo reservó cada línea) y las columnas `PickBatch.SalesOrderId` / `PickBatchLine.SalesOrderLineId` (sección **2026-10-15 (l)**), contador `SALESORDER`, dominio de estatus `SalesOrderStatus` y EntityType `SALES_ORDER` (sección **2026-10-15 (k)** de `Diseño/logistica-db-update.sql`).
 - Cada línea guarda `TaxRateId`, `TaxRatePct`, `TaxAmount` e `IsTaxExempt`: un cambio posterior de la tasa **no** altera una orden ya guardada.
 - Un número `OV-` saltado no ocurre: el contador se toma dentro de la misma transacción que crea la orden.
