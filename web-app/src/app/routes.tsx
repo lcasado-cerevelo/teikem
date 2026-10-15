@@ -389,6 +389,7 @@ export const appRoutes: readonly AppRoute[] = [
 
   // ===== Sistema (Impresoras y labels: F-G1; Roles y usuarios: F8a P4; Aparatos móviles: P5; Catálogos de valores: P6; Seguridad y auditoría: F10; el resto F8b o sin backend) =====
   { path: '/system/printers', element: lazy(() => import('../features/system/PrintersScreen')), perm: 'printers.manage', module: ModuleKeys.System, nav: { group: 'system', key: 'printers', order: 10 } },   // Lote F-G1
+  { path: '/system/jobs', element: lazy(() => import('../features/system/JobsScreen')), perm: 'jobs.manage', module: ModuleKeys.System, nav: { group: 'system', key: 'jobs', order: 55 } },   // Lote 50
   { path: '/system/users', element: lazy(() => import('../features/system/UsersPage')), perm: 'admin.users|admin.roles', module: ModuleKeys.System, nav: { group: 'system', key: 'users', order: 20 } },
   { path: '/system/devices', element: lazy(() => import('../features/system/DevicesPage')), perm: 'devices.manage', module: ModuleKeys.WmsLotSerial, nav: { group: 'system', key: 'devices', order: 30 } },
   { path: '/system/catalogs', element: lazy(() => import('../features/system/CatalogsPage')), perm: 'admin.catalogs', module: ModuleKeys.System, nav: { group: 'system', key: 'catalogs', order: 40 } },

@@ -12615,6 +12615,191 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ScheduledJobDto"][];
+                        "application/json": components["schemas"]["ScheduledJobDto"][];
+                        "text/json": components["schemas"]["ScheduledJobDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    key: string | null;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ScheduledJobDto"];
+                        "application/json": components["schemas"]["ScheduledJobDto"];
+                        "text/json": components["schemas"]["ScheduledJobDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    key: string | null;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ScheduledJobRequest"];
+                    "text/json": components["schemas"]["ScheduledJobRequest"];
+                    "application/*+json": components["schemas"]["ScheduledJobRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ScheduledJobDto"];
+                        "application/json": components["schemas"]["ScheduledJobDto"];
+                        "text/json": components["schemas"]["ScheduledJobDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/jobs/{key}/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    key: string | null;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ScheduledJobDto"];
+                        "application/json": components["schemas"]["ScheduledJobDto"];
+                        "text/json": components["schemas"]["ScheduledJobDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{key}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    take?: number;
+                };
+                header?: never;
+                path: {
+                    key: string | null;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ScheduledJobRunDto"][];
+                        "application/json": components["schemas"]["ScheduledJobRunDto"][];
+                        "text/json": components["schemas"]["ScheduledJobRunDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/printers": {
         parameters: {
             query?: never;
@@ -24309,6 +24494,52 @@ export interface components {
             builtInLayout?: components["schemas"]["LabelLayoutDto"];
             printLabelsDirect?: boolean;
             qzSigningConfigured?: boolean;
+        };
+        ScheduledJobDto: {
+            key?: string | null;
+            name?: string | null;
+            nameEn?: string | null;
+            description?: string | null;
+            descriptionEn?: string | null;
+            isEnabled?: boolean;
+            scheduleKind?: string | null;
+            /** Format: int32 */
+            intervalSeconds?: number | null;
+            dailyAt?: string | null;
+            /** Format: date-time */
+            nextRunUtc?: string | null;
+            manualRequested?: boolean;
+            /** Format: date-time */
+            lastStartedUtc?: string | null;
+            /** Format: date-time */
+            lastFinishedUtc?: string | null;
+            lastStatus?: string | null;
+            lastMessage?: string | null;
+            lastError?: string | null;
+            /** Format: int32 */
+            consecutiveFailures?: number;
+            isRunning?: boolean;
+            rowVersion?: string | null;
+        };
+        ScheduledJobRequest: {
+            isEnabled?: boolean | null;
+            scheduleKind?: string | null;
+            /** Format: int32 */
+            intervalSeconds?: number | null;
+            dailyAt?: string | null;
+            rowVersion?: string | null;
+        };
+        ScheduledJobRunDto: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: date-time */
+            startedUtc?: string;
+            /** Format: date-time */
+            finishedUtc?: string | null;
+            status?: string | null;
+            triggeredBy?: string | null;
+            message?: string | null;
+            error?: string | null;
         };
         PrinterDto: {
             /** Format: uuid */

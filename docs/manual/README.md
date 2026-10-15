@@ -310,6 +310,10 @@ F-G1. [F-G1 — Impresoras y labels](frontend/fg1-impresoras.md): Sistema → **
    (9 elementos, posición, tamaño, como código de barras, vista previa en vivo, plantillas nueva/duplicar/predeterminada/desactivar, **Actualizar construcción del label**),
    **Imprimir labels directo a la impresora** de la compañía e **Impresoras de la compañía** (alta y edición, predeterminada, desactivar y reactivar). Capturas `fg1-*`.
 
+13. [13 — Trabajos programados](13-trabajos-programados.md): Lote 50 (P2.2, 2026-10-14) — **tareas automáticas por compañía** (servicio propio, sin Hangfire): interruptor, horario (cada cierto tiempo de 1 minuto a 7 días, o todos los días a una hora), **Ejecutar ahora**, historial y reintentos (1, 2 y 5 minutos); tres trabajos de fábrica (limpieza del historial, revisión diaria de inventario y uno de prueba), permiso `jobs.manage`, mensajes 400/404/409 y datos para soporte.
+
+L50. [L50 — Trabajos programados](frontend/l50-trabajos-programados.md): Sistema → **Trabajos programados** (`jobs.manage`): lista con horario, próxima corrida y último resultado, **Ejecutar ahora**, **Cambiar horario** e **Historial**. Capturas `l50-*`.
+
 ## Preguntas frecuentes
 
 Ver [faq.md](faq.md) para las preguntas y mensajes de error acumulados de cada lote. La sección "Lote 11" recoge los mensajes nuevos de Almacén (cupo, ocupación, código de zona, lista de

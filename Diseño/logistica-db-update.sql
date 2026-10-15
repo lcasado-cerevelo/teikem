@@ -2114,3 +2114,94 @@ ON t.ModuleKey = s.ModuleKey
 WHEN MATCHED THEN UPDATE SET Name = s.Name, NameEn = s.NameEn, Description = s.Description, Category = s.Category, DependsOnModuleKey = s.DependsOnModuleKey, SortOrder = s.SortOrder, IsActive = 1
 WHEN NOT MATCHED THEN INSERT (ModuleKey, Name, NameEn, Description, Category, DependsOnModuleKey, SortOrder) VALUES (s.ModuleKey, s.Name, s.NameEn, s.Description, s.Category, s.DependsOnModuleKey, s.SortOrder);
 GO
+/* ----------------------------------------------------------------------------
+   2026-10-14 (f) — Trabajos programados por compañía (Lote 50, P2.2). Motor propio simple (sin Hangfire/Quartz):
+   - dbo.ScheduledJob: una fila por (compañía, trabajo): interruptor, horario (INTERVAL cada N segundos | DAILY a una hora local),
+     próxima corrida, último resultado y el RECLAMO (LockedBy/LockedUntilUtc) con el que varias copias del API no duplican la corrida.
+   - dbo.ScheduledJobRun: historial de corridas (el trabajo JOB_RUN_PURGE conserva las últimas 100 por trabajo).
+   - EntityType SCHEDULED_JOB (bitácora).
+   - Permiso jobs.manage (categoría ADMIN) -> TenantAdmin de la plantilla Y de los roles YA CLONADOS de cada compañía.
+   Las filas por compañía las crea el propio sistema al arrancar (con el horario por omisión): este script no siembra datos.
+   Solo AGREGA (nunca quita). Idempotente.
+   ---------------------------------------------------------------------------- */
+IF OBJECT_ID(N'dbo.ScheduledJob', N'U') IS NULL CREATE TABLE dbo.ScheduledJob (
+    ScheduledJobId      INT IDENTITY(1,1) CONSTRAINT PK_ScheduledJob PRIMARY KEY,
+    TenantId            INT NOT NULL CONSTRAINT FK_ScheduledJob_Tenant REFERENCES dbo.Tenant(TenantId),
+    JobKey              VARCHAR(60) NOT NULL,
+    IsEnabled           BIT NOT NULL CONSTRAINT DF_ScheduledJob_IsEnabled DEFAULT 0,
+    ScheduleKind        VARCHAR(10) NOT NULL CONSTRAINT DF_ScheduledJob_ScheduleKind DEFAULT 'INTERVAL',
+    IntervalSeconds     INT NULL,
+    DailyAt             TIME(0) NULL,
+    NextRunUtc          DATETIME2 NULL,
+    ManualRequested     BIT NOT NULL CONSTRAINT DF_ScheduledJob_ManualRequested DEFAULT 0,
+    LastStartedUtc      DATETIME2 NULL,
+    LastFinishedUtc     DATETIME2 NULL,
+    LastStatus          VARCHAR(10) NOT NULL CONSTRAINT DF_ScheduledJob_LastStatus DEFAULT 'NEVER',
+    LastMessage         NVARCHAR(400) NULL,
+    LastError           NVARCHAR(1000) NULL,
+    ConsecutiveFailures INT NOT NULL CONSTRAINT DF_ScheduledJob_ConsecutiveFailures DEFAULT 0,
+    LockedBy            NVARCHAR(80) NULL,
+    LockedUntilUtc      DATETIME2 NULL,
+    CreatedAtUtc        DATETIME2 NOT NULL CONSTRAINT DF_ScheduledJob_CreatedAtUtc DEFAULT SYSUTCDATETIME(),
+    CreatedBy           INT NULL CONSTRAINT FK_ScheduledJob_CreatedBy REFERENCES dbo.AspNetUsers(Id),
+    UpdatedAtUtc        DATETIME2 NULL,
+    UpdatedBy           INT NULL CONSTRAINT FK_ScheduledJob_UpdatedBy REFERENCES dbo.AspNetUsers(Id),
+    RowVersion          ROWVERSION,
+    CONSTRAINT CK_ScheduledJob_Kind CHECK (ScheduleKind IN ('INTERVAL', 'DAILY')),
+    CONSTRAINT CK_ScheduledJob_Status CHECK (LastStatus IN ('NEVER', 'OK', 'FAILED', 'RUNNING')),
+    CONSTRAINT CK_ScheduledJob_Schedule CHECK ((ScheduleKind = 'INTERVAL' AND IntervalSeconds BETWEEN 60 AND 604800 AND DailyAt IS NULL) OR (ScheduleKind = 'DAILY' AND DailyAt IS NOT NULL AND IntervalSeconds IS NULL))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_ScheduledJob_Key' AND object_id = OBJECT_ID('dbo.ScheduledJob'))
+    CREATE UNIQUE INDEX UX_ScheduledJob_Key ON dbo.ScheduledJob(TenantId, JobKey);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ScheduledJob_Due' AND object_id = OBJECT_ID('dbo.ScheduledJob'))
+    CREATE INDEX IX_ScheduledJob_Due ON dbo.ScheduledJob(NextRunUtc) INCLUDE (TenantId, JobKey, IsEnabled, ManualRequested, LockedUntilUtc);
+GO
+
+IF OBJECT_ID(N'dbo.ScheduledJobRun', N'U') IS NULL CREATE TABLE dbo.ScheduledJobRun (
+    ScheduledJobRunId BIGINT IDENTITY(1,1) CONSTRAINT PK_ScheduledJobRun PRIMARY KEY,
+    TenantId          INT NOT NULL CONSTRAINT FK_ScheduledJobRun_Tenant REFERENCES dbo.Tenant(TenantId),
+    JobKey            VARCHAR(60) NOT NULL,
+    StartedUtc        DATETIME2 NOT NULL,
+    FinishedUtc       DATETIME2 NULL,
+    Status            VARCHAR(10) NOT NULL CONSTRAINT DF_ScheduledJobRun_Status DEFAULT 'RUNNING',
+    TriggeredBy       VARCHAR(10) NOT NULL CONSTRAINT DF_ScheduledJobRun_TriggeredBy DEFAULT 'SCHEDULE',
+    Message           NVARCHAR(400) NULL,
+    Error             NVARCHAR(1000) NULL,
+    InstanceId        NVARCHAR(80) NOT NULL,
+    CONSTRAINT CK_ScheduledJobRun_Status CHECK (Status IN ('RUNNING', 'OK', 'FAILED')),
+    CONSTRAINT CK_ScheduledJobRun_Trigger CHECK (TriggeredBy IN ('SCHEDULE', 'MANUAL'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ScheduledJobRun_Job' AND object_id = OBJECT_ID('dbo.ScheduledJobRun'))
+    CREATE INDEX IX_ScheduledJobRun_Job ON dbo.ScheduledJobRun(TenantId, JobKey, ScheduledJobRunId);
+GO
+
+-- EntityType de la bitácora
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'SCHEDULED_JOB', N'{"es":"Trabajo programado","en":"Scheduled job"}', 120)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+
+-- Permiso jobs.manage
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'jobs.manage')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('jobs.manage',
+            (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'ADMIN'),
+            N'{"es":"Gestionar los trabajos programados","en":"Manage scheduled jobs"}', 1);
+GO
+
+-- Plantilla de sistema (TenantId NULL) y roles ya clonados de cada compañía: TenantAdmin
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT r.RoleId, p.PermissionId
+FROM dbo.Role r
+JOIN dbo.Permission p ON p.Code = 'jobs.manage'
+WHERE r.Name IN ('TenantAdmin')
+  AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
+GO

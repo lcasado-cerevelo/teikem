@@ -9,6 +9,7 @@ using Teikem.Domain.Identity;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Analytics;
 using Teikem.Infrastructure.Fleet;
+using Teikem.Infrastructure.Jobs;
 using Teikem.Infrastructure.Migration;
 using Teikem.Infrastructure.Orders;
 using Teikem.Infrastructure.Persistence;
@@ -253,6 +254,15 @@ public static class DependencyInjection
         services.Configure<InventoryReconciliationOptions>(config.GetSection(InventoryReconciliationOptions.Section));
         services.AddSingleton(sp => new InventoryReconciliationQueue(sp.GetRequiredService<IOptions<InventoryReconciliationOptions>>().Value));
         services.AddHostedService<InventoryReconciliationWorker>();
+
+        // Lote 50 (P2.2) — trabajos programados por compañía: trabajos en código + ejecutor (reclamo atómico) + worker + servicio de la pantalla.
+        services.Configure<JobsOptions>(config.GetSection(JobsOptions.Section));
+        services.AddSingleton<IScheduledJob, JobRunPurgeJob>();
+        services.AddSingleton<IScheduledJob, InventorySweepJob>();
+        services.AddSingleton<IScheduledJob, TestJob>();
+        services.AddSingleton<ScheduledJobRunner>();
+        services.AddHostedService<ScheduledJobWorker>();
+        services.AddScoped<ScheduledJobService>();
 
         // Lote 8A — app de almacén: aparatos de confianza, PIN por usuario (login por aparato en AuthService) y
         // sincronización por diferencia. La idempotencia (Idempotency-Key) es un middleware del API sin servicio propio.

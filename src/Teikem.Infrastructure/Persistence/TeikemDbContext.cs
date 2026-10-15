@@ -206,6 +206,9 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     // Lote 43 (F-G1) — impresoras y plantillas de label
     public DbSet<Printer> Printers => Set<Printer>();
     public DbSet<LabelTemplate> LabelTemplates => Set<LabelTemplate>();
+    // Lote 50 (P2.2) — trabajos programados por compañía
+    public DbSet<Teikem.Domain.Jobs.ScheduledJob> ScheduledJobs => Set<Teikem.Domain.Jobs.ScheduledJob>();
+    public DbSet<Teikem.Domain.Jobs.ScheduledJobRun> ScheduledJobRuns => Set<Teikem.Domain.Jobs.ScheduledJobRun>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

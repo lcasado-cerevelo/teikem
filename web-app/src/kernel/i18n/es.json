@@ -268,6 +268,10 @@
       "title": "Gráficos",
       "subtitle": "barras, dona y línea por fuente de datos"
     },
+    "jobs": {
+      "title": "Trabajos programados",
+      "subtitle": "tareas automáticas de la compañía"
+    },
     "printers": {
       "title": "Impresoras y labels",
       "subtitle": "impresión por estación"
@@ -7362,6 +7366,83 @@
     "system": "Sistema",
     "company": "Compañía",
     "emptyView": "La vista no tiene filas hoy."
+  },
+  "jobs": {
+    "title": "Trabajos programados",
+    "subtitle": "las tareas automáticas de la compañía: cuándo corren, cómo les fue y «Ejecutar ahora»",
+    "panel": "Trabajos",
+    "empty": "No hay trabajos programados.",
+    "help": "Los trabajos corren solos a su hora; si el sistema estaba apagado a esa hora, corren al volver a encenderse. Si uno falla, se reintenta pronto (1, 2 y 5 minutos) antes de volver a su horario normal.",
+    "yes": "Sí",
+    "no": "No",
+    "close": "Cerrar",
+    "runNow": "Ejecutar ahora",
+    "runRequested": "«{name}» se ejecutará en unos segundos.",
+    "requested": "Pedido: en unos segundos",
+    "changeSchedule": "Cambiar horario",
+    "enabledOn": "«{name}» quedó encendido.",
+    "enabledOff": "«{name}» quedó apagado.",
+    "col": {
+      "name": "Trabajo",
+      "enabled": "Encendido",
+      "enabledFor": "Encender o apagar «{name}»",
+      "schedule": "Horario",
+      "next": "Próxima corrida",
+      "last": "Último resultado"
+    },
+    "status": {
+      "NEVER": "Nunca corrió",
+      "OK": "Bien",
+      "FAILED": "Falló",
+      "RUNNING": "Corriendo"
+    },
+    "trigger": {
+      "SCHEDULE": "Por horario",
+      "MANUAL": "Ejecutar ahora"
+    },
+    "unit": {
+      "m": "minutos",
+      "h": "horas",
+      "d": "días"
+    },
+    "schedule": {
+      "title": "Horario de «{name}»",
+      "saved": "Horario de «{name}» guardado.",
+      "kind": "Tipo de horario",
+      "kindInterval": "Cada cierto tiempo",
+      "kindDaily": "Todos los días a una hora",
+      "every": "Cada",
+      "unit": "Unidad",
+      "intervalHelp": "Entre 1 minuto y 7 días.",
+      "at": "Hora (24 horas)",
+      "atHelp": "Hora de la compañía.",
+      "daily": "Todos los días a las {time}",
+      "every1": {
+        "m": "Cada minuto",
+        "h": "Cada hora",
+        "d": "Cada día"
+      },
+      "everyN": {
+        "m": "Cada {n} minutos",
+        "h": "Cada {n} horas",
+        "d": "Cada {n} días"
+      }
+    },
+    "errors": {
+      "interval": "El intervalo debe estar entre 60 segundos y 7 días (604800).",
+      "dailyRequired": "Indique la hora diaria (HH:mm).",
+      "dailyInvalid": "La hora diaria no es válida; use HH:mm (24 horas)."
+    },
+    "history": {
+      "open": "Ver historial",
+      "title": "Historial de «{name}»",
+      "empty": "Todavía no ha corrido.",
+      "started": "Inicio",
+      "finished": "Fin",
+      "by": "Origen",
+      "status": "Resultado",
+      "detail": "Detalle"
+    }
   },
   "printing": {
     "jobs": {

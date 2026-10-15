@@ -7911,3 +7911,41 @@ Es lo esperado: se definieron para poder encenderlos por compañía cuando se co
 
 **«Órdenes de venta» (o «Facturación») no se deja encender.**
 Cada uno exige que su dependencia esté encendida: **Órdenes de venta** necesita **Inventario y trazabilidad**; **Facturación** necesita **Órdenes de venta**. Encienda primero la dependencia. **Impuestos (IVU)** no depende de ninguno.
+
+## Lote 50 — Trabajos programados
+
+**No veo «Trabajos programados» en el menú Sistema.**
+Necesita el permiso **Gestionar los trabajos programados** (`jobs.manage`); lo trae el rol Admin de compañía. Pídale a un administrador que se lo agregue a su rol.
+
+**Apreté «Ejecutar ahora» y no pasó nada.**
+Es normal que tarde unos segundos: el sistema toma el pedido en su siguiente vuelta (cada 30 segundos como máximo) y la fila cambia sola a «Corriendo» y luego a «Bien» o «Falló». Mientras está pedido o corriendo el botón no se ofrece. Si pasan varios minutos, avise a soporte (el servicio de trabajos puede estar apagado: `Jobs:Enabled`).
+
+**«El trabajo ya se está ejecutando; espere a que termine.»**
+Ese trabajo está corriendo en este momento (lo pidió usted u otra persona, o le tocaba por horario). Espere a que termine y vuelva a intentar.
+
+**«El intervalo debe estar entre 60 segundos y 7 días (604800).»**
+El horario «Cada cierto tiempo» admite desde 1 minuto hasta 7 días. Corrija el número o la unidad.
+
+**«Indique la hora diaria (HH:mm).» / «La hora diaria no es válida; use HH:mm (24 horas).»**
+En «Todos los días a una hora» escriba la hora en 24 horas, por ejemplo 03:30 o 14:00.
+
+**«Tipo de horario desconocido: 'X'. Use INTERVAL o DAILY.»**
+Solo pasa si se llama al API a mano con un tipo que no existe. Desde la pantalla no ocurre.
+
+**«Trabajo no encontrado.»**
+La clave del trabajo no existe en esta versión del sistema. Recargue la pantalla.
+
+**«El registro fue modificado por otro usuario; recargue e intente de nuevo.»**
+El trabajo cambió mientras usted lo editaba (otra persona, o terminó una corrida). Cierre el cuadro, mire el estado actual y vuelva a hacer el cambio.
+
+**Un trabajo salió «Falló».**
+Se ve el error en la misma fila y en el historial. El sistema lo reintenta solo a 1, 2 y 5 minutos; después vuelve a su horario. Si sigue fallando con el mismo error, pase el mensaje a soporte.
+
+**Apagué un trabajo y quiero correrlo una vez.**
+Use «Ejecutar ahora»: corre una vez aunque esté apagado y no lo vuelve a encender.
+
+**¿A qué hora corre «Revisión diaria de inventario»?**
+A las 2:00 a. m. hora de Puerto Rico (la limpieza del historial, a las 3:00 a. m.). Puede cambiarlas en «Cambiar horario».
+
+**El sistema estuvo apagado a la hora del trabajo.**
+Corre al volver a encenderse; no se pierde.

@@ -596,6 +596,8 @@ public static class EntityTypes
     // Lote 43 (F-G1, 2026-10-12): impresoras (perfil de impresión de la compañía) y plantillas de label.
     public const string Printer = "PRINTER";
     public const string LabelTemplate = "LABEL_TEMPLATE";
+    // Lote 50 (P2.2, 2026-10-14): trabajo programado de la compañía.
+    public const string ScheduledJob = "SCHEDULED_JOB";
 }
 
 // ---------------- Lote 43 — Impresoras y labels (F-G1) ----------------
@@ -1274,4 +1276,25 @@ public static class DamageDispositions
     public const string Quarantine = "QUARANTINE";
     public const string Discard = "DISCARD";
     public static readonly string[] All = { Quarantine, Discard };
+}
+
+// Lote 50 (P2.2): trabajos programados. Enums técnicos (VARCHAR + CHECK en dbo.ScheduledJob / dbo.ScheduledJobRun), no LookupCode.
+public static class JobScheduleKinds
+{
+    public const string Interval = "INTERVAL";
+    public const string Daily = "DAILY";
+}
+
+public static class JobStatuses
+{
+    public const string Never = "NEVER";
+    public const string Ok = "OK";
+    public const string Failed = "FAILED";
+    public const string Running = "RUNNING";
+}
+
+public static class JobTriggers
+{
+    public const string Schedule = "SCHEDULE";
+    public const string Manual = "MANUAL";
 }

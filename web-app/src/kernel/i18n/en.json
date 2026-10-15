@@ -268,6 +268,10 @@
       "title": "Charts",
       "subtitle": "bar, donut & line by data source"
     },
+    "jobs": {
+      "title": "Scheduled jobs",
+      "subtitle": "the company's automatic tasks"
+    },
     "printers": {
       "title": "Printers & labels",
       "subtitle": "per-station printing"
@@ -7362,6 +7366,83 @@
     "system": "System",
     "company": "Company",
     "emptyView": "The view has no rows today."
+  },
+  "jobs": {
+    "title": "Scheduled jobs",
+    "subtitle": "the company's automatic tasks: when they run, how they went, and \"Run now\"",
+    "panel": "Jobs",
+    "empty": "There are no scheduled jobs.",
+    "help": "Jobs run on their own at their time; if the system was off at that time they run when it comes back. If one fails it is retried soon (1, 2 and 5 minutes) before going back to its normal schedule.",
+    "yes": "Yes",
+    "no": "No",
+    "close": "Close",
+    "runNow": "Run now",
+    "runRequested": "\"{name}\" will run in a few seconds.",
+    "requested": "Requested: in a few seconds",
+    "changeSchedule": "Change schedule",
+    "enabledOn": "\"{name}\" is now on.",
+    "enabledOff": "\"{name}\" is now off.",
+    "col": {
+      "name": "Job",
+      "enabled": "On",
+      "enabledFor": "Turn \"{name}\" on or off",
+      "schedule": "Schedule",
+      "next": "Next run",
+      "last": "Last result"
+    },
+    "status": {
+      "NEVER": "Never ran",
+      "OK": "OK",
+      "FAILED": "Failed",
+      "RUNNING": "Running"
+    },
+    "trigger": {
+      "SCHEDULE": "By schedule",
+      "MANUAL": "Run now"
+    },
+    "unit": {
+      "m": "minutes",
+      "h": "hours",
+      "d": "days"
+    },
+    "schedule": {
+      "title": "Schedule of \"{name}\"",
+      "saved": "Schedule of \"{name}\" saved.",
+      "kind": "Schedule type",
+      "kindInterval": "Every so often",
+      "kindDaily": "Every day at a time",
+      "every": "Every",
+      "unit": "Unit",
+      "intervalHelp": "Between 1 minute and 7 days.",
+      "at": "Time (24 hours)",
+      "atHelp": "Company time.",
+      "daily": "Every day at {time}",
+      "every1": {
+        "m": "Every minute",
+        "h": "Every hour",
+        "d": "Every day"
+      },
+      "everyN": {
+        "m": "Every {n} minutes",
+        "h": "Every {n} hours",
+        "d": "Every {n} days"
+      }
+    },
+    "errors": {
+      "interval": "The interval must be between 60 seconds and 7 days (604800).",
+      "dailyRequired": "Enter the daily time (HH:mm).",
+      "dailyInvalid": "The daily time is not valid; use HH:mm (24 hours)."
+    },
+    "history": {
+      "open": "View history",
+      "title": "History of \"{name}\"",
+      "empty": "It has not run yet.",
+      "started": "Start",
+      "finished": "End",
+      "by": "Origin",
+      "status": "Result",
+      "detail": "Detail"
+    }
   },
   "printing": {
     "jobs": {
