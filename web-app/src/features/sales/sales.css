@@ -17,3 +17,4 @@
   .sales-line > .btn { grid-column: 2; justify-self: end; }
   .sales-table { display: block; overflow-x: auto; }
 }
+.sales-qty { width: 6rem; text-align: right; }

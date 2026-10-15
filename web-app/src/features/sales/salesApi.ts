@@ -13,6 +13,9 @@ export type SalesOrderLineRequest = Schemas['SalesOrderLineRequest']
 export type SalesAvailabilityDto = Schemas['SalesAvailabilityDto']
 export type SalesBackorderLineDto = Schemas['SalesBackorderLineDto']
 export type SalesFulfillResultDto = Schemas['SalesFulfillResultDto']
+export type SalesDispatchInfoDto = Schemas['SalesDispatchInfoDto']
+export type SalesDispatchRequest = Schemas['SalesDispatchRequest']
+export type SalesDispatchResultDto = Schemas['SalesDispatchResultDto']
 
 export const salesKeys = {
   all: ['sales'] as const,
@@ -77,6 +80,15 @@ export function useSalesMutations() {
     }),
     fulfillLine: useMutation({
       mutationFn: (v: { id: string; lineId: number }) => unwrap(api.POST('/api/v1/sales-orders/{publicId}/lines/{lineId}/fulfill', { params: { path: { publicId: v.id, lineId: v.lineId } } })),
+      onSettled: refresh,
+    }),
+    dispatch: useMutation({
+      mutationFn: (v: { id: string; body: SalesDispatchRequest }) => unwrap(api.POST('/api/v1/sales-orders/{publicId}/dispatch', { params: { path: { publicId: v.id } }, body: v.body })),
+      onSettled: refresh,
+    }),
+    deliver: useMutation({
+      mutationFn: (v: { id: string; pickBatchPublicId: string; order: NonNullable<Schemas['SalesDeliveryRequest']['order']> }) =>
+        unwrap(api.POST('/api/v1/sales-orders/{publicId}/delivery', { params: { path: { publicId: v.id } }, body: { pickBatchPublicId: v.pickBatchPublicId, order: v.order } })),
       onSettled: refresh,
     }),
     fulfillAll: useMutation({ mutationFn: () => unwrap(api.POST('/api/v1/sales-orders/backorders/fulfill')), onSettled: refresh }),

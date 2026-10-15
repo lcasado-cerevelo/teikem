@@ -15,6 +15,7 @@ import type { components } from '../../kernel/api/schema'
 import { lookupLabelOrCode, useLookups, useTenantSettings } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
 import { ClientPickerInput, Field, Form, Modal, NumberInput, Select, TextArea, TextInput, toast } from '../../kernel/ui'
+import { useSalesMutations } from '../sales/salesApi'
 import { usePackPickBatch, type PickBatchDto } from './api'
 import { remapProblemFields } from './lineRules'
 
@@ -31,9 +32,17 @@ const EMPTY_PACKAGE: PackageForm = { packageType: '', description: '', pieces: 1
 /** Recolección a empacar: basta con lo que trae la fila de la lista o la ficha. */
 export type PackableBatch = Pick<PickBatchDto, 'publicId' | 'number' | 'clientName' | 'rowVersion'>
 
-export function PackModal({ batch, onClose }: { batch: PackableBatch; onClose: () => void }) {
+/** Lote 63: la entrega de un despacho de una orden de venta usa este mismo formulario: el cliente y el consignatario salen de la orden de venta y se guarda con su enlace. */
+export interface SalesDeliveryTarget {
+  orderPublicId: string
+  clientPublicId: string
+  consigneePublicId?: string | null
+}
+
+export function PackModal({ batch, onClose, forSalesOrder }: { batch: PackableBatch; onClose: () => void; forSalesOrder?: SalesDeliveryTarget }) {
   const t = useT()
   const pack = usePackPickBatch()
+  const { deliver } = useSalesMutations()
   const { data: serviceTypes = [] } = useLookups('ServiceType')
   const { data: packageTypes = [] } = useLookups('PackageType')
   // Predeterminados de la compañía (código o null). Mientras cargan o si no se pueden leer, se tratan como ausentes: el campo
@@ -92,9 +101,9 @@ export function PackModal({ batch, onClose }: { batch: PackableBatch; onClose: (
   const form = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
-      clientPublicId: null as string | null,
+      clientPublicId: (forSalesOrder?.clientPublicId ?? null) as string | null,
       consignee: 'existing',
-      consigneeLocationPublicId: '',
+      consigneeLocationPublicId: forSalesOrder?.consigneePublicId ?? '',
       newConsignee: { name: '', line1: '', line2: '', city: '', state: '', postalCode: '', country: '' },
       serviceType: '',
       orderNumber: '',
@@ -179,14 +188,20 @@ export function PackModal({ batch, onClose }: { batch: PackableBatch; onClose: (
               overrideCredit: false,
             },
           }
-          let result: Schemas['PickBatchPackResultDto']
+          let orderNumber = ''
           try {
-            result = await pack.mutateAsync({ publicId: batch.publicId ?? '', body })
+            if (forSalesOrder) {
+              const so = await deliver.mutateAsync({ id: forSalesOrder.orderPublicId, pickBatchPublicId: batch.publicId ?? '', order: body.order ?? {} })
+              orderNumber = (so.dispatches ?? []).find((d) => d.pickBatchPublicId === batch.publicId)?.transportOrderNumber ?? ''
+            } else {
+              const result: Schemas['PickBatchPackResultDto'] = await pack.mutateAsync({ publicId: batch.publicId ?? '', body })
+              orderNumber = result.order?.orderNumber ?? ''
+            }
           } catch (err) {
             // `order.clientPublicId` (dueño del inventario) y `order` vienen con prefijo; el resto, con el nombre del campo
             throw remapProblemFields(err, (k) => (k.startsWith('order.') ? k.slice(6) : k === 'order' ? 'clientPublicId' : null))
           }
-          toast.success(t('warehouse.pickBatches.pack.done', { order: result.order?.orderNumber ?? '' }))
+          toast.success(t('warehouse.pickBatches.pack.done', { order: orderNumber }))
           onClose()
         }}
       >

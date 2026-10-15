@@ -14283,6 +14283,96 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sales-orders/{publicId}/delivery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesDeliveryRequest"];
+                    "text/json": components["schemas"]["SalesDeliveryRequest"];
+                    "application/*+json": components["schemas"]["SalesDeliveryRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderDto"];
+                        "application/json": components["schemas"]["SalesOrderDto"];
+                        "text/json": components["schemas"]["SalesOrderDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/dispatch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesDispatchRequest"];
+                    "text/json": components["schemas"]["SalesDispatchRequest"];
+                    "application/*+json": components["schemas"]["SalesDispatchRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesDispatchResultDto"];
+                        "application/json": components["schemas"]["SalesDispatchResultDto"];
+                        "text/json": components["schemas"]["SalesDispatchResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sales-orders/{publicId}/lines/{lineId}": {
         parameters: {
             query?: never;
@@ -27095,6 +27185,44 @@ export interface components {
             exceeded?: boolean;
             message?: string | null;
         };
+        SalesDeliveryRequest: {
+            /** Format: uuid */
+            pickBatchPublicId?: string | null;
+            order?: components["schemas"]["OrderCreateRequest"] | null;
+        };
+        SalesDispatchInfoDto: {
+            /** Format: uuid */
+            pickBatchPublicId?: string;
+            number?: string | null;
+            status?: string | null;
+            /** Format: date-time */
+            collectedAtUtc?: string;
+            /** Format: double */
+            quantity?: number;
+            /** Format: uuid */
+            transportOrderPublicId?: string | null;
+            transportOrderNumber?: string | null;
+        };
+        SalesDispatchLineRequest: {
+            /** Format: int32 */
+            lineId?: number | null;
+            /** Format: double */
+            quantity?: number | null;
+            /** Format: int32 */
+            binId?: number | null;
+            /** Format: int32 */
+            lotId?: number | null;
+        };
+        SalesDispatchRequest: {
+            lines?: components["schemas"]["SalesDispatchLineRequest"][] | null;
+            note?: string | null;
+        };
+        SalesDispatchResultDto: {
+            /** Format: uuid */
+            pickBatchPublicId?: string;
+            pickBatchNumber?: string | null;
+            order?: components["schemas"]["SalesOrderDto"];
+        };
         SalesFulfillLineDto: {
             /** Format: uuid */
             orderPublicId?: string;
@@ -27151,6 +27279,7 @@ export interface components {
             /** Format: date-time */
             createdAtUtc?: string;
             lines?: components["schemas"]["SalesOrderLineDto"][] | null;
+            dispatches?: components["schemas"]["SalesDispatchInfoDto"][] | null;
         };
         SalesOrderLineDto: {
             /** Format: int32 */

@@ -7504,6 +7504,42 @@
     "closeLine": "Close with shortage",
     "lineClosed": "{sku}: closed with shortage.",
     "noLines": "The order has no lines.",
+    "dispatch": {
+      "button": "Dispatch",
+      "title": "Dispatch order {number}",
+      "help": "Dispatching takes from what is reserved for this order. You can dispatch in parts: leave the quantity that goes out now. Stock goes down and the pick batch is created.",
+      "qty": "Dispatch now",
+      "qtyOf": "Quantity to dispatch of {sku}",
+      "note": "Note (optional)",
+      "confirm": "Dispatch",
+      "done": "Dispatch {number} created: the stock left the warehouse.",
+      "errors": {
+        "none": "Enter the quantity to dispatch for at least one line.",
+        "more": "You cannot dispatch more than what is reserved: {sku} has {n} reserved."
+      }
+    },
+    "next": {
+      "title": "Dispatch {number}",
+      "question": "What happens with what was dispatched?",
+      "pickup": "Pickup: the client collects it (done)",
+      "delivery": "Delivery: create the transport order…",
+      "later": "Decide later",
+      "help": "The delivery can also be created later, from the order's list of dispatches."
+    },
+    "dispatches": {
+      "title": "Order dispatches",
+      "empty": "Nothing has been dispatched yet.",
+      "deliver": "Create delivery",
+      "number": "Dispatch",
+      "quantity": "Units",
+      "when": "When",
+      "delivery": "Delivery",
+      "statuses": {
+        "COLLECTED": "Dispatched",
+        "PACKED": "With delivery",
+        "CANCELLED": "Undone"
+      }
+    },
     "totals": "Subtotal {subtotal} · Tax {tax} · Total {total}",
     "backorders": {
       "panel": "Backorders",

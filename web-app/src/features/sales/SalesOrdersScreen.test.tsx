@@ -34,6 +34,7 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
     if (m === 'GET' && p === `/api/v1/sales-orders/${DRAFT}/availability`) return json(mock.availability)
     if (m === 'POST' && p === `/api/v1/sales-orders/${DRAFT}/request`) return json({ ...DRAFT_ORDER, status: 'REQUESTED' })
     if (m === 'PATCH' && p === `/api/v1/sales-orders/${REQ}/lines/20`) return json(REQUESTED_ORDER)
+    if (m === 'POST' && p === `/api/v1/sales-orders/${REQ}/dispatch`) return json({ pickBatchPublicId: BATCH, pickBatchNumber: 'EMP-00009', order: REQUESTED_ORDER })
     if (m === 'POST' && p === `/api/v1/sales-orders/${REQ}/cancel`) return json({ ...REQUESTED_ORDER, status: 'CANCELLED' })
     if (m === 'GET' && p === '/api/v1/clients') return json([{ id: 1, publicId: CLIENT, code: 'FARM', name: 'Farmacia Central', isActive: true }])
     if (m === 'GET' && p === '/api/v1/products') return json({ items: [{ id: 1, publicId: PROD, sku: 'MED', name: 'Medidor', isActive: true, isOwn: true, salePrice: 12.5 }], total: 1, skip: 0, take: 50 })
@@ -53,12 +54,13 @@ const REQ = '22222222-0000-0000-0000-000000000002'
 const CLIENT = '33333333-0000-0000-0000-000000000003'
 const PROD = '44444444-0000-0000-0000-000000000004'
 const WH = '55555555-0000-0000-0000-000000000005'
+const BATCH = '66666666-0000-0000-0000-000000000006'
 
 const DRAFT_ITEM = { publicId: DRAFT, number: 'OV-00001', status: 'DRAFT', statusLabel: 'Borrador', statusColor: '#9CA3AF', clientPublicId: CLIENT, clientName: 'Farmacia Central', warehousePublicId: WH, warehouseName: 'Principal', requestedDate: '2026-10-15', requiredDate: null, subtotal: 50, taxAmount: 5.75, total: 55.75, lineCount: 1, hasBackorder: false, requestedByName: 'Ana', createdAtUtc: '2026-10-15T12:00:00Z' }
 const REQUESTED_ITEM = { ...DRAFT_ITEM, publicId: REQ, number: 'OV-00002', status: 'REQUESTED', statusLabel: 'Solicitada', statusColor: '#3B82F6', hasBackorder: true }
 const LINE = { id: 10, lineNo: 1, productPublicId: PROD, sku: 'MED', productName: 'Medidor', lotId: null, qtyOrdered: 4, qtyReserved: 0, qtyBackordered: 0, qtyShipped: 0, isClosed: false, unitPrice: 12.5, lineSubtotal: 50, taxRatePct: 11.5, taxAmount: 5.75, isTaxExempt: false }
 const DRAFT_ORDER = { ...DRAFT_ITEM, consigneePublicId: null, consigneeName: null, notes: null, requestedAtUtc: null, lines: [LINE] }
-const REQUESTED_ORDER = { ...REQUESTED_ITEM, consigneePublicId: null, consigneeName: null, notes: 'Entregar el viernes', requestedAtUtc: '2026-10-15T13:00:00Z', lines: [{ ...LINE, id: 20, qtyOrdered: 10, qtyReserved: 7, qtyBackordered: 3 }] }
+const REQUESTED_ORDER = { ...REQUESTED_ITEM, consigneePublicId: null, consigneeName: null, notes: 'Entregar el viernes', requestedAtUtc: '2026-10-15T13:00:00Z', lines: [{ ...LINE, id: 20, qtyOrdered: 10, qtyReserved: 7, qtyBackordered: 3 }], dispatches: [{ pickBatchPublicId: BATCH, number: 'EMP-00001', status: 'COLLECTED', collectedAtUtc: '2026-10-15T14:00:00Z', quantity: 2, transportOrderPublicId: null, transportOrderNumber: null }] }
 const BACKORDER = { orderPublicId: REQ, orderNumber: 'OV-00002', orderStatus: 'REQUESTED', clientName: 'Farmacia Central', warehouseName: 'Principal', lineId: 20, lineNo: 1, productPublicId: PROD, sku: 'MED', productName: 'Medidor', ordered: 10, reserved: 7, pending: 3, available: 5, fulfillable: 3, requestedAtUtc: '2026-10-10T12:00:00Z', daysWaiting: 5 }
 
 const SESSION = {
@@ -71,7 +73,7 @@ const SESSION = {
   setLang: () => {},
   logout: async () => {},
   switchTenant: async () => {},
-  permissions: new Set(['sales.view', 'sales.create', 'sales.cancel', 'sales.backorder', 'orders.credit_override', 'clients.read', 'inventory.view', 'warehouse.manage']),
+  permissions: new Set(['sales.view', 'sales.create', 'sales.cancel', 'sales.backorder', 'warehouse.pick', 'orders.create', 'orders.credit_override', 'clients.read', 'inventory.view', 'warehouse.manage']),
   modules: new Set(['SALES_ORDERS', 'CATALOG', 'WMS_LOTSERIAL']),
   reloadMe: async () => {},
 } as unknown as Session
@@ -178,6 +180,31 @@ describe('SalesOrdersScreen', () => {
     const confirm = await screen.findByRole('dialog', { name: /Cancelar la orden OV-00002/ })
     await user.click(within(confirm).getByRole('button', { name: 'Cancelar orden' }))
     await waitFor(() => expect(sent('POST', `/api/v1/sales-orders/${REQ}/cancel`)).toHaveLength(1))
+  })
+
+  it('despachar: por partes (la cantidad por línea), luego «¿qué sigue?» y la entrega con el mismo formulario del empaque', async () => {
+    const user = userEvent.setup()
+    wrap()
+    await user.click(await screen.findByText('OV-00002'))
+    const dialog = await screen.findByRole('dialog', { name: /Orden OV-00002/ })
+    expect(within(dialog).getByText('EMP-00001')).toBeInTheDocument()   // la lista de despachos de la orden
+    expect(within(dialog).getAllByText('Despachado').length).toBeGreaterThan(1)   // el encabezado de la columna y el estatus del despacho
+    await user.click(within(dialog).getByRole('button', { name: 'Despachar' }))
+    const modal = await screen.findByRole('dialog', { name: /Despachar la orden OV-00002/ })
+    const input = within(modal).getByLabelText('Cantidad a despachar de MED')
+    expect(input).toHaveValue('7')
+    await user.clear(input)
+    await user.type(input, '9')
+    await user.click(within(modal).getByRole('button', { name: 'Despachar' }))
+    expect(await within(modal).findByText('No se puede despachar más de lo reservado: MED tiene 7 reservadas.')).toBeInTheDocument()
+    expect(sent('POST', `/api/v1/sales-orders/${REQ}/dispatch`)).toHaveLength(0)
+    await user.clear(input)
+    await user.type(input, '3')
+    await user.click(within(modal).getByRole('button', { name: 'Despachar' }))
+    await waitFor(() => expect(sent('POST', `/api/v1/sales-orders/${REQ}/dispatch`)[0]?.body).toEqual({ lines: [{ lineId: 20, quantity: 3 }] }))
+    const next = await screen.findByRole('dialog', { name: /Despacho EMP-00009/ })
+    await user.click(within(next).getByRole('button', { name: /Entrega: crear la orden de transporte/ }))
+    expect(await screen.findByRole('dialog', { name: /Empacar EMP-00009/ })).toBeInTheDocument()
   })
 
   it('backorders: la vista y «Surtir todo»', async () => {

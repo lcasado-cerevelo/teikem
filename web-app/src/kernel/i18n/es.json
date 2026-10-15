@@ -7504,6 +7504,42 @@
     "closeLine": "Cerrar con faltante",
     "lineClosed": "{sku}: cerrada con faltante.",
     "noLines": "La orden no tiene líneas.",
+    "dispatch": {
+      "button": "Despachar",
+      "title": "Despachar la orden {number}",
+      "help": "Se despacha de lo que está reservado para esta orden. Puede despachar por partes: deje la cantidad que sale ahora. El inventario baja y se crea la recolección.",
+      "qty": "Despachar ahora",
+      "qtyOf": "Cantidad a despachar de {sku}",
+      "note": "Nota (opcional)",
+      "confirm": "Despachar",
+      "done": "Despacho {number} creado: el inventario salió del almacén.",
+      "errors": {
+        "none": "Escriba la cantidad a despachar de al menos una línea.",
+        "more": "No se puede despachar más de lo reservado: {sku} tiene {n} reservadas."
+      }
+    },
+    "next": {
+      "title": "Despacho {number}",
+      "question": "¿Qué sigue con lo despachado?",
+      "pickup": "Retiro: el cliente lo recoge (listo)",
+      "delivery": "Entrega: crear la orden de transporte…",
+      "later": "Decidirlo después",
+      "help": "La entrega también se puede crear después, desde la lista de despachos de la orden."
+    },
+    "dispatches": {
+      "title": "Despachos de la orden",
+      "empty": "Todavía no se ha despachado nada.",
+      "deliver": "Crear entrega",
+      "number": "Despacho",
+      "quantity": "Unidades",
+      "when": "Cuándo",
+      "delivery": "Entrega",
+      "statuses": {
+        "COLLECTED": "Despachado",
+        "PACKED": "Con entrega",
+        "CANCELLED": "Deshecho"
+      }
+    },
     "totals": "Subtotal {subtotal} · Impuesto {tax} · Total {total}",
     "backorders": {
       "panel": "Backorders",

@@ -8,9 +8,10 @@ import { applyProblemDetails } from '../../kernel/api/problem'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
 import { Chip, ClientPicker, ConfirmDialog, DataTable, Modal, Spinner, toast, type DataColumn } from '../../kernel/ui'
+import { PackModal } from '../warehouse/PackModal'
 import { ProductPicker, WarehousePicker } from '../warehouse/pickers'
 import { draftError, draftSubtotal, effectivePrice, lineAmount, parseNumber, toRequest, type LineDraft, type OrderDraft } from './salesRules'
-import { useSalesMutations, useSalesOrder, type SalesAvailabilityDto, type SalesOrderDto, type SalesOrderLineDto } from './salesApi'
+import { useSalesMutations, useSalesOrder, type SalesAvailabilityDto, type SalesDispatchInfoDto, type SalesDispatchResultDto, type SalesOrderDto, type SalesOrderLineDto } from './salesApi'
 
 let nextKey = 1
 
@@ -333,13 +334,111 @@ function QuantityModal({ order, line, onClose }: { order: SalesOrderDto; line: S
   )
 }
 
+// ---------------------------------------------------------------- despachar (Lote 63)
+
+/** Despacha contra la orden: por línea, cuánto sale (por omisión todo lo reservado). El sistema usa las posiciones y lotes que reservó; el aparato permite tomar de otra posición. */
+function DispatchModal({ order, onClose, onDone }: { order: SalesOrderDto; onClose: () => void; onDone: (r: SalesDispatchResultDto) => void }) {
+  const t = useT()
+  const f = useFormat()
+  const { dispatch } = useSalesMutations()
+  const lines = (order.lines ?? []).filter((l) => (l.qtyReserved ?? 0) > 0)
+  const [qty, setQty] = useState<Record<number, string>>(() => Object.fromEntries(lines.map((l) => [l.id!, String(l.qtyReserved)])))
+  const [note, setNote] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  const save = async () => {
+    setError(null)
+    const picked = lines.map((l) => ({ line: l, q: parseNumber(qty[l.id!] ?? '') })).filter((x) => x.q !== null && x.q > 0)
+    if (lines.some((l) => (qty[l.id!] ?? '').trim() !== '' && parseNumber(qty[l.id!]) === null)) return setError(t('sales.errors.quantity'))
+    if (picked.length === 0) return setError(t('sales.dispatch.errors.none'))
+    const over = picked.find((x) => (x.q ?? 0) > (x.line.qtyReserved ?? 0))
+    if (over) return setError(t('sales.dispatch.errors.more', { sku: over.line.sku ?? '', n: over.line.qtyReserved ?? 0 }))
+    try {
+      const result = await dispatch.mutateAsync({ id: order.publicId!, body: { lines: picked.map((x) => ({ lineId: x.line.id, quantity: x.q ?? 0 })), note: note.trim() || undefined } })
+      onDone(result)
+    } catch (e) {
+      setError(applyProblemDetails(e).title)
+    }
+  }
+
+  return (
+    <Modal
+      open
+      size="md"
+      title={t('sales.dispatch.title', { number: order.number ?? '' })}
+      onClose={onClose}
+      dismissible={!dispatch.isPending}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={onClose} disabled={dispatch.isPending}>{t('common.cancel')}</button>
+          <button type="button" className="btn flow" onClick={() => void save()} disabled={dispatch.isPending}>{dispatch.isPending ? t('common.loading') : t('sales.dispatch.confirm')}</button>
+        </>
+      }
+    >
+      <div className="pb sales-form">
+        <p className="help">{t('sales.dispatch.help')}</p>
+        <table className="sales-table">
+          <thead>
+            <tr>
+              <th scope="col">{t('sales.col.product')}</th>
+              <th scope="col" className="num">{t('sales.col.reserved')}</th>
+              <th scope="col" className="num">{t('sales.dispatch.qty')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lines.map((l) => (
+              <tr key={l.id}>
+                <td><b>{l.sku}</b><div className="help">{l.productName}</div></td>
+                <td className="num">{f.number(l.qtyReserved ?? 0)}</td>
+                <td className="num">
+                  <input aria-label={t('sales.dispatch.qtyOf', { sku: l.sku ?? '' })} inputMode="decimal" className="sales-qty" value={qty[l.id!] ?? ''} onChange={(e) => setQty((m) => ({ ...m, [l.id!]: e.target.value }))} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="f">
+          <label htmlFor="so-dnote">{t('sales.dispatch.note')}</label>
+          <input id="so-dnote" value={note} maxLength={500} autoComplete="off" onChange={(e) => setNote(e.target.value)} />
+        </div>
+        {error && <p className="ferr" role="alert">{error}</p>}
+      </div>
+    </Modal>
+  )
+}
+
+/** ¿Qué sigue con lo despachado? Retiro (ahí termina), entrega (orden de transporte) o decidirlo después. */
+function NextDialog({ result, onPickup, onDelivery, onLater }: { result: SalesDispatchResultDto; onPickup: () => void; onDelivery: () => void; onLater: () => void }) {
+  const t = useT()
+  return (
+    <Modal
+      open
+      size="sm"
+      title={t('sales.next.title', { number: result.pickBatchNumber ?? '' })}
+      onClose={onLater}
+      footer={<button type="button" className="btn" onClick={onLater}>{t('sales.next.later')}</button>}
+    >
+      <div className="pb sales-form">
+        <p>{t('sales.next.question')}</p>
+        <button type="button" className="btn" onClick={onPickup}>{t('sales.next.pickup')}</button>
+        <button type="button" className="btn flow" onClick={onDelivery}>{t('sales.next.delivery')}</button>
+        <p className="help">{t('sales.next.help')}</p>
+      </div>
+    </Modal>
+  )
+}
+
 function OrderView({ order, onClose }: { order: SalesOrderDto; onClose: () => void }) {
   const t = useT()
   const f = useFormat()
   const { cancel, fulfillLine, closeLine } = useSalesMutations()
   const [editing, setEditing] = useState<SalesOrderLineDto | null>(null)
   const [cancelling, setCancelling] = useState(false)
+  const [dispatching, setDispatching] = useState(false)
+  const [next, setNext] = useState<SalesDispatchResultDto | null>(null)
+  const [delivering, setDelivering] = useState<{ publicId: string; number: string } | null>(null)
   const open = order.status === 'REQUESTED' || order.status === 'PARTIAL'
+  const canDispatch = open && (order.lines ?? []).some((l) => (l.qtyReserved ?? 0) > 0)
   const anyShipped = (order.lines ?? []).some((l) => (l.qtyShipped ?? 0) > 0)
 
   const run = async (p: Promise<unknown>, ok: string) => {
@@ -379,6 +478,23 @@ function OrderView({ order, onClose }: { order: SalesOrderDto; onClose: () => vo
     [t, f],
   )
 
+  const dispatchColumns = useMemo<DataColumn<SalesDispatchInfoDto>[]>(
+    () => [
+      { id: 'number', header: t('sales.dispatches.number'), cell: (d) => <b>{d.number}</b>, exportValue: (d) => d.number ?? '', sortValue: (d) => d.number ?? '', card: 'title' },
+      {
+        id: 'status',
+        header: t('sales.col.status'),
+        cell: (d) => <Chip tone={d.status === 'PACKED' ? 'deliv' : d.status === 'CANCELLED' ? 'neutral' : 'warn'}>{t(`sales.dispatches.statuses.${d.status}`)}</Chip>,
+        exportValue: (d) => t(`sales.dispatches.statuses.${d.status}`),
+        sortValue: (d) => d.status ?? '',
+      },
+      { id: 'qty', header: t('sales.dispatches.quantity'), cell: (d) => f.number(d.quantity ?? 0), sortValue: (d) => d.quantity ?? 0, align: 'end' },
+      { id: 'when', header: t('sales.dispatches.when'), cell: (d) => f.dateTime(d.collectedAtUtc), exportValue: (d) => d.collectedAtUtc ?? '', sortValue: (d) => d.collectedAtUtc ?? '' },
+      { id: 'delivery', header: t('sales.dispatches.delivery'), cell: (d) => d.transportOrderNumber ?? '—', exportValue: (d) => d.transportOrderNumber ?? '', sortValue: (d) => d.transportOrderNumber ?? '' },
+    ],
+    [t, f],
+  )
+
   const canChangeLine = (l: SalesOrderLineDto) => open && !l.isClosed && (l.qtyShipped ?? 0) === 0
   return (
     <Modal
@@ -388,6 +504,11 @@ function OrderView({ order, onClose }: { order: SalesOrderDto; onClose: () => vo
       onClose={onClose}
       footer={
         <>
+          {canDispatch && (
+            <Can perm="warehouse.pick">
+              <button type="button" className="btn flow" onClick={() => setDispatching(true)}>{t('sales.dispatch.button')}</button>
+            </Can>
+          )}
           {open && !anyShipped && (
             <Can perm="sales.cancel">
               <button type="button" className="btn danger" onClick={() => setCancelling(true)}>{t('sales.cancelOrder')}</button>
@@ -436,8 +557,49 @@ function OrderView({ order, onClose }: { order: SalesOrderDto; onClose: () => vo
         <p className="sales-totals" role="status">
           {t('sales.totals', { subtotal: f.money(order.subtotal ?? 0), tax: f.money(order.taxAmount ?? 0), total: f.money(order.total ?? 0) })}
         </p>
+        {(order.dispatches ?? []).length > 0 && (
+          <DataTable
+            label={t('sales.dispatches.title')}
+            columns={dispatchColumns}
+            rows={order.dispatches ?? []}
+            rowKey={(d) => d.pickBatchPublicId ?? ''}
+            empty={t('sales.dispatches.empty')}
+            rowActions={[
+              { key: 'deliver', label: t('sales.dispatches.deliver'), perm: 'warehouse.pick', visible: (d) => d.status === 'COLLECTED', onClick: (d) => setDelivering({ publicId: d.pickBatchPublicId!, number: d.number ?? '' }) },
+            ]}
+          />
+        )}
       </div>
       {editing && <QuantityModal order={order} line={editing} onClose={() => setEditing(null)} />}
+      {dispatching && (
+        <DispatchModal
+          order={order}
+          onClose={() => setDispatching(false)}
+          onDone={(r) => {
+            setDispatching(false)
+            toast.success(t('sales.dispatch.done', { number: r.pickBatchNumber ?? '' }))
+            setNext(r)
+          }}
+        />
+      )}
+      {next && (
+        <NextDialog
+          result={next}
+          onPickup={() => setNext(null)}
+          onLater={() => setNext(null)}
+          onDelivery={() => {
+            setDelivering({ publicId: next.pickBatchPublicId!, number: next.pickBatchNumber ?? '' })
+            setNext(null)
+          }}
+        />
+      )}
+      {delivering && (
+        <PackModal
+          batch={{ publicId: delivering.publicId, number: delivering.number, clientName: null, rowVersion: null }}
+          forSalesOrder={{ orderPublicId: order.publicId!, clientPublicId: order.clientPublicId!, consigneePublicId: order.consigneePublicId }}
+          onClose={() => setDelivering(null)}
+        />
+      )}
       <ConfirmDialog
         open={cancelling}
         title={t('sales.cancelTitle', { number: order.number ?? '' })}
@@ -471,10 +633,10 @@ export function OrderModal({ publicId, onClose }: { publicId: string | null; onC
       </Modal>
     )
   }
-  // `key`: al cambiar de estatus la ventana arranca de cero
+  // `key` solo por orden: al cambiar de estatus (despachar, cancelar) la ventana NO se reinicia (conserva el diálogo «¿qué sigue?» y la entrega)
   return order.data.status === 'DRAFT' && canCreate ? (
     <DraftEditor key={`${order.data.publicId}-edit`} order={order.data} onClose={onClose} />
   ) : (
-    <OrderView key={`${order.data.publicId}-${order.data.status}`} order={order.data} onClose={onClose} />
+    <OrderView key={`${order.data.publicId}-view`} order={order.data} onClose={onClose} />
   )
 }
