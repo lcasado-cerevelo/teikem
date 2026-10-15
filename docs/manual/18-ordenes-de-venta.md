@@ -1,6 +1,6 @@
 # 18 — Órdenes de venta
 
-Lote 57 (2026-10-15) — **parte S1, borrador**. Una **orden de venta** (OV-#####) es el documento que viaja de **Ventas a Almacén**: Ventas le pide al almacén que despache algo para un cliente. Esta primera parte permite **armar y mantener la orden en borrador**; solicitarla (validar y reservar inventario), los backorders y el despacho contra la orden llegan en los lotes siguientes de la fase.
+Lotes 57 y 58 (2026-10-15) — **parte S1: borrador, solicitar y reservar**. Una **orden de venta** (OV-#####) es el documento que viaja de **Ventas a Almacén**: Ventas le pide al almacén que despache algo para un cliente. Hasta aquí se puede **armar la orden en borrador, solicitarla (validar y reservar inventario), modificarla y cancelarla**; surtir los backorders y el despacho contra la orden llegan en los lotes siguientes de la fase.
 El diseño completo está en `Diseño/logistica-funcionalidades-maestro.md`, sección 13C.
 
 ## 1. Quién puede
@@ -22,7 +22,7 @@ El diseño completo está en `Diseño/logistica-funcionalidades-maestro.md`, sec
 - **Líneas**: producto, cantidad y precio. Solo se venden **productos propios de la compañía** (no los de un cliente de paso), activos, **sin repetir** en la misma orden. Hasta 200 líneas.
 - **Precio**: si no se escribe, se toma el **precio de venta del producto**. Escribir otro precio exige `sales.price` (si es igual al de lista no hace falta). Un producto **sin precio de venta** obliga a escribir el precio.
 - **Impuesto**: con el módulo **Impuestos** encendido, cada línea calcula su impuesto con las reglas de la compañía (capítulo [17](17-impuestos.md)) y **guarda una copia**: la tasa usada, su porcentaje, el monto y si salió exenta (producto exento o cliente con exención vigente). El encabezado guarda el **subtotal** y el **impuesto**; el **total** es su suma. Sin el módulo Impuestos el impuesto es cero. Si se cambia el cliente del borrador, el impuesto se recalcula.
-- **Estatus**: `DRAFT` (borrador) → `REQUESTED` → `PARTIAL` → `SHIPPED`; `CANCELLED`. En este lote solo existen en uso el borrador y el cancelado. La marca **con backorder** no es un estatus: la tiene la orden mientras alguna línea tenga cantidad pendiente.
+- **Estatus**: `DRAFT` (borrador) → `REQUESTED` (solicitada) → `PARTIAL` → `SHIPPED`; `CANCELLED`. En uso hasta ahora: borrador, solicitada y cancelada. La marca **con backorder** no es un estatus: la tiene la orden mientras alguna línea tenga cantidad pendiente.
 
 ## 3. Qué se puede hacer
 
@@ -32,7 +32,10 @@ El diseño completo está en `Diseño/logistica-funcionalidades-maestro.md`, sec
 | Ver una orden | `GET /api/v1/sales-orders/{publicId}` | `sales.view` |
 | Crear el borrador | `POST /api/v1/sales-orders` | `sales.create` (+ `sales.price` si cambia un precio) |
 | Editar el borrador (lo que no se manda no cambia; las **líneas, si se mandan, reemplazan** a las actuales; `clearConsignee` / `clearRequiredDate` quitan esos datos) | `PATCH /api/v1/sales-orders/{publicId}` | `sales.create` |
-| Cancelar un borrador (con un comentario opcional que queda en el historial) | `POST /api/v1/sales-orders/{publicId}/cancel` | `sales.cancel` |
+| Comprobar disponibilidad y crédito (no guarda) | `GET /api/v1/sales-orders/{publicId}/availability` | `sales.create` |
+| Solicitar (validar y reservar) | `POST /api/v1/sales-orders/{publicId}/request` | `sales.create` |
+| Modificar una línea solicitada | `PATCH /api/v1/sales-orders/{publicId}/lines/{lineId}` | `sales.create` |
+| Cancelar un borrador o una solicitada (comentario opcional en el historial; libera lo reservado) | `POST /api/v1/sales-orders/{publicId}/cancel` | `sales.cancel` |
 
 Las órdenes **nunca se borran**: se cancelan. Quedan en la bitácora (altas, cambios) y en el historial de estatus.
 
@@ -63,12 +66,48 @@ Las órdenes **nunca se borran**: se cancelan. Quedan en la bitácora (altas, ca
 | Orden inexistente (o de otra compañía) | `Orden de venta no encontrada.` | 404 |
 | Editar una orden que ya no es borrador | `Solo se puede editar una orden en borrador.` | 422 |
 | Cancelar una orden ya cancelada | `La orden ya está cancelada.` | 409 |
-| Cancelar una orden que ya no es borrador (en este lote) | `Solo se puede cancelar una orden en borrador o solicitada que no se haya despachado.` | 422 |
 | Con Impuestos encendido y sin tasa por omisión / sin tasa vigente | `Escoja la tasa por omisión en Impuestos → Reglas.` / `No hay una tasa de impuesto vigente en esa fecha. Configure una en Impuestos → Tasas.` | 400 |
 | Sin el permiso o con el módulo apagado | «Sin permiso» | 403 |
 
-## 5. Para soporte
+## 6. Solicitar la orden: validar y reservar (Lote 58)
 
-- Tablas `SalesOrder`, `SalesOrderLine` y `SalesOrderReservation` (esta última se usa al solicitar), contador `SALESORDER`, dominio de estatus `SalesOrderStatus` y EntityType `SALES_ORDER` (sección **2026-10-15 (k)** de `Diseño/logistica-db-update.sql`).
+`POST /api/v1/sales-orders/{publicId}/request` (permiso `sales.create`) pasa la orden de **borrador** a **solicitada** (`REQUESTED`): el almacén ya la ve y **el inventario queda reservado para ella**. La validación y la reserva ocurren **en la misma transacción, con el candado del inventario**: dos vendedores que piden lo mismo a la vez no pueden vender más de lo que hay (uno la obtiene, el otro recibe el aviso de faltante). Nunca se reserva más de lo que existe.
+
+- **Disponible para vender** = lo que hay en mano menos lo ya reservado, en las posiciones **activas** del almacén de la orden (y del **lote**, si la línea pidió uno). **No cuenta** la cuarentena, el cruce de muelle ni los equipos en renta, ni otros almacenes. Es lo mismo que puede recolectar el almacén; difiere del «Disponible» de la tabla de inventario, que sí suma la cuarentena.
+- **Qué lote y qué posición**: el sistema reserva por el mismo orden de rotación de la compañía (primero vence / primero entró) y guarda **exactamente** qué saldo reservó cada línea (`SalesOrderReservation`) para liberar justo eso después.
+- **Comprobar antes**: `GET /sales-orders/{publicId}/availability` (no guarda nada) devuelve por línea **pedido / disponible / faltante** y el estado del **crédito**. La pantalla lo usa para mostrar el diálogo de faltante.
+- **Si falta inventario**: la solicitud responde **409** con el mensaje por línea y **no reserva nada** (ni lo de las líneas que sí alcanzaban). Ventas decide: **pedir solo lo disponible** (editar la cantidad), **reservar lo disponible y dejar el resto en backorder** (`allowBackorder = true`) o **quitar la línea**. Con `allowBackorder` cada línea reserva lo que hay y lo pendiente queda en **backorder**; la orden se marca **con backorder** mientras alguna línea tenga pendiente.
+- **Crédito**: se compara el **límite de crédito** del cliente con lo que ya tiene en curso (saldo pendiente de sus órdenes de transporte **más** lo solicitado y sin despachar de sus otras órdenes de venta) y esta orden. Si lo excede responde **422** `credit_exceeded` con el aviso y las cifras; con `overrideCredit = true` y el permiso `orders.credit_override` se autoriza: queda el comentario «Crédito excedido autorizado por …» en el historial de estatus y un evento en la bitácora de seguridad.
+- Un producto **con número de serie** todavía no se vende con orden de venta (mensaje en la tabla).
+
+## 7. Cancelar y modificar una orden solicitada (Lote 58)
+
+- **Cancelar** (`POST /sales-orders/{publicId}/cancel`, permiso `sales.cancel`): una orden solicitada **libera exactamente lo que tenía reservado** y borra su backorder; el inventario vuelve a estar disponible para otras ventas. Una orden a la que ya se le despachó algo no se cancela.
+- **Modificar una línea** (`PATCH /sales-orders/{publicId}/lines/{lineId}`, permiso `sales.create`; precio distinto del de lista, además `sales.price`): se puede cambiar la **cantidad** y el **precio** de una línea de una orden solicitada mientras **no se haya despachado nada de esa línea**.
+  - **Subir** la cantidad reserva lo que haya; si no alcanza responde 409 (o, con `allowBackorder`, el resto queda en backorder).
+  - **Bajar** la cantidad quita primero del backorder y luego libera reserva.
+  - El impuesto y los totales de la orden se recalculan.
+
+## 8. Mensajes nuevos (Lote 58)
+
+| Situación | Mensaje exacto | HTTP |
+|---|---|---|
+| Solicitar o comprobar una orden que no está en borrador | `Solo se puede solicitar una orden en borrador.` | 422 |
+| Falta inventario al solicitar | `No alcanza el inventario de {SKU}: pedido {n}, disponible {n}, faltante {n}.` | 409 (`insufficient_stock`, un mensaje por línea) |
+| Crédito excedido | `El cliente excede su límite de crédito: límite {n}, en curso {n}, esta orden {n}.` | 422 (`credit_exceeded`) |
+| Autorizar el crédito sin el permiso | `Falta el permiso 'orders.credit_override'.` | 403 |
+| Modificar una línea de una orden que no está solicitada | `Solo se pueden modificar las líneas de una orden solicitada.` | 422 |
+| Línea inexistente | `Línea no encontrada.` | 404 |
+| Línea cerrada | `La línea está cerrada.` | 422 |
+| A la línea ya se le despachó producto | `A esa línea ya se le despachó producto: no se puede modificar.` | 422 |
+| Subir una cantidad que no alcanza | `No alcanza el inventario de {SKU} para subir la cantidad: se agregan {n}, disponible {n}, faltante {n}.` | 409 |
+| Cantidad o precio inválidos al modificar | `La cantidad debe ser mayor que cero.` / `El precio no es válido.` | 400 |
+| Precio distinto del de lista sin `sales.price` | `Cambiar el precio exige el permiso de precios (sales.price).` | 403 |
+| Producto con serie en una orden de venta | `Los productos con número de serie todavía no se venden con orden de venta.` | 422 |
+| Cancelar una orden con algo despachado | `Solo se puede cancelar una orden en borrador o solicitada que no se haya despachado.` | 422 |
+
+## 9. Para soporte
+
+- Tablas `SalesOrder`, `SalesOrderLine` y `SalesOrderReservation` (la que guarda qué saldo reservó cada línea), contador `SALESORDER`, dominio de estatus `SalesOrderStatus` y EntityType `SALES_ORDER` (sección **2026-10-15 (k)** de `Diseño/logistica-db-update.sql`).
 - Cada línea guarda `TaxRateId`, `TaxRatePct`, `TaxAmount` e `IsTaxExempt`: un cambio posterior de la tasa **no** altera una orden ya guardada.
 - Un número `OV-` saltado no ocurre: el contador se toma dentro de la misma transacción que crea la orden.

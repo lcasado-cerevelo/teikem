@@ -86,6 +86,13 @@ public class SalesRulesTests
     }
 }
 
+/// <summary>Saldo pendiente del cliente por transporte (lo fija la prueba).</summary>
+internal sealed class FakeBalance : Teikem.Infrastructure.Orders.IClientBalanceProvider
+{
+    public decimal Pending { get; set; }
+    public Task<decimal> PendingBalanceAsync(int clientId, int? excludeOrderId, CancellationToken ct) => Task.FromResult(Pending);
+}
+
 public sealed class SalesOrderServiceTests
 {
     private static Task<WmsFixture> CreateAsync()
@@ -93,6 +100,8 @@ public sealed class SalesOrderServiceTests
         {
             s.AddSingleton<ITenantClock>(TenantClock.Default);
             s.AddSingleton<TaxService>();
+            s.AddSingleton<FakeBalance>();
+            s.AddSingleton<Teikem.Infrastructure.Orders.IClientBalanceProvider>(sp => sp.GetRequiredService<FakeBalance>());
             s.AddSingleton<SalesOrderService>();
         });
 

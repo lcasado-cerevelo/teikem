@@ -20,8 +20,9 @@ namespace Teikem.Infrastructure.Services;
 ///   (tasa, porcentaje, monto, exento); el encabezado guarda el subtotal y el impuesto. Sin el módulo TAX el impuesto es cero.
 /// - El número OV-##### se toma al final de la transacción (el contador es el último bloqueo). Nunca DELETE de órdenes: se cancelan.
 /// </summary>
-public sealed class SalesOrderService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, INumberSequenceService numbers, PermissionService permissions,
-    ModuleService modules, TaxService tax, ITenantClock clock)
+public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, INumberSequenceService numbers, PermissionService permissions,
+    ModuleService modules, TaxService tax, ITenantClock clock, Teikem.Infrastructure.Wms.InventoryLedger ledger, ILookupCache lookups, IClientBalanceProvider balance,
+    ISecurityEventWriter security)
 {
     public const int MaxPageSize = 200;
     private TenantContext T => (TenantContext)tenant;
@@ -153,24 +154,6 @@ public sealed class SalesOrderService(TeikemDbContext db, ITenantContext tenant,
         return await GetAsync(publicId, ct);
     }
 
-    // ---------------------------------------------------------------- cancelar
-
-    /// <summary>Cancela una orden en borrador. (La solicitada, con reservas, se cancela en el lote de «Solicitar».)</summary>
-    public async Task<SalesOrderDto> CancelAsync(Guid publicId, string? comment, CancellationToken ct)
-    {
-        await db.RunInTransactionAsync(async ct2 =>
-        {
-            var order = await db.Set<SalesOrder>().AsTracking().FirstOrDefaultAsync(o => o.PublicId == publicId, ct2) ?? throw NotFound();
-            var code = (await StatusMapAsync(ct2))[order.StatusCodeId].Code;
-            if (code == SalesOrderStatuses.Cancelled) throw new ConflictException(SalesRules.AlreadyCancelled);
-            if (code != SalesOrderStatuses.Draft) throw new StatusRuleException(SalesRules.OnlyDraftOrRequestedCancellable);
-            var to = await statuses.TransitionAsync(SalesCodes.StatusDomain, SalesCodes.EntityType, order.SalesOrderId, order.StatusCodeId, SalesOrderStatuses.Cancelled, comment, ct2);
-            order.StatusCodeId = to.StatusCodeId;
-            await db.SaveGuardedAsync(SalesRules.Concurrency, ct2);
-        }, ct);
-        return await GetAsync(publicId, ct);
-    }
-
     // ---------------------------------------------------------------- piezas
 
     private static NotFoundException NotFound() => new("Orden de venta", feminine: true);
@@ -216,6 +199,7 @@ public sealed class SalesOrderService(TeikemDbContext db, ITenantContext tenant,
         if (lines.Count > SalesRules.MaxLines) throw new ValidationException("lines", SalesRules.TooManyLines);
         var ids = lines.Where(l => l.ProductPublicId is not null).Select(l => l.ProductPublicId!.Value).Distinct().ToList();
         var products = await db.Set<Product>().AsNoTracking().Where(p => ids.Contains(p.PublicId)).ToDictionaryAsync(p => p.PublicId, ct);
+        var serialId = await lookups.GetIdAsync(LookupDomains.TrackingType, TrackingTypes.Serial, ct);
         var seen = new HashSet<int>();
         var result = new List<PlannedLine>();
         var canPrice = false;
@@ -227,6 +211,7 @@ public sealed class SalesOrderService(TeikemDbContext db, ITenantContext tenant,
             var product = products.GetValueOrDefault(l.ProductPublicId.Value) ?? throw new NotFoundException("Producto");
             if (!product.IsActive) throw new StatusRuleException(SalesRules.ProductInactive);
             if (product.ClientId is not null) throw new StatusRuleException(SalesRules.ProductNotOwn);
+            if (product.TrackingTypeLookupId == serialId) throw new StatusRuleException(SalesRules.SerialNotSupported);
             if (!seen.Add(product.ProductId)) throw new ValidationException($"lines[{i}].productPublicId", SalesRules.ProductRepeated);
             var qtyError = SalesRules.QuantityError(l.Quantity);
             if (qtyError is not null) throw new ValidationException($"lines[{i}].quantity", qtyError);

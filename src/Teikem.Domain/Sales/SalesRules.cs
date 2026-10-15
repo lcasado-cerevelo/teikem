@@ -40,6 +40,22 @@ public static class SalesRules
     public const string NumberTaken = "Ya existe una orden de venta con ese número; intente de nuevo.";
     public const string Concurrency = "La orden cambió al mismo tiempo. Recárguela e intente de nuevo.";
 
+    public const string OnlyDraftRequestable = "Solo se puede solicitar una orden en borrador.";
+    public const string OnlyRequestedModifiable = "Solo se pueden modificar las líneas de una orden solicitada.";
+    public const string LineClosed = "La línea está cerrada.";
+    public const string LineAlreadyShipped = "A esa línea ya se le despachó producto: no se puede modificar.";
+    public const string SerialNotSupported = "Los productos con número de serie todavía no se venden con orden de venta.";
+
+    /// <summary>«pedido / disponible / faltante» de una línea con faltante (lo que muestra el diálogo de faltante).</summary>
+    public static string ShortageMessage(string sku, decimal ordered, decimal available)
+        => $"No alcanza el inventario de {sku}: pedido {Num(ordered)}, disponible {Num(available)}, faltante {Num(Math.Max(0m, ordered - available))}.";
+
+    /// <summary>Subir la cantidad de una línea solicitada: lo que se agrega, lo disponible y lo que falta.</summary>
+    public static string IncreaseShortageMessage(string sku, decimal extra, decimal available)
+        => $"No alcanza el inventario de {sku} para subir la cantidad: se agregan {Num(extra)}, disponible {Num(available)}, faltante {Num(Math.Max(0m, extra - available))}.";
+
+    private static string Num(decimal v) => v.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+
     public static string NoPrice(string sku) => $"El producto {sku} no tiene precio de venta: escriba el precio.";
 
     /// <summary>Cantidad válida: mayor que cero, hasta 3 decimales y dentro del máximo. Devuelve el mensaje o null.</summary>

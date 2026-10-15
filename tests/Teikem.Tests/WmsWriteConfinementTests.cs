@@ -32,7 +32,13 @@ public class WmsWriteConfinementTests
     [Fact]
     public void Stock_balance_quantities_are_written_only_by_the_ledger()
     {
-        var offenders = Offenders(new Regex(@"\b(QtyOnHand|QtyReserved)\s*(\+|-)?=(?![=>])"), LedgerFile);
+        // Lote 58: SalesOrderService.Request.cs escribe QtyReserved de SalesOrderLine (la línea de la orden de venta, NO el saldo): se permite ese archivo, pero
+        // solo si no escribe nada de StockBalance (lo lee para calcular lo disponible; reservar y liberar se hace SIEMPRE por el ledger).
+        const string SalesLineFile = "SalesOrderService.Request.cs";
+        var salesText = SourceFiles().Single(f => f.Name == SalesLineFile).Text;
+        Assert.False(Regex.IsMatch(salesText, @"StockBalances?\s*\.\s*(Add|AddRange|Update|Remove)\b|Set<StockBalance>\(\)\s*\.\s*(Add|AddRange|Update|Remove)\b|new\s+StockBalance\b"),
+            "La orden de venta no escribe saldos: reserva y libera por el ledger.");
+        var offenders = Offenders(new Regex(@"\b(QtyOnHand|QtyReserved)\s*(\+|-)?=(?![=>])"), LedgerFile, SalesLineFile);
         Assert.True(offenders.Count == 0, "Escritura de saldos fuera del ledger: " + string.Join(", ", offenders));
         Assert.Empty(Offenders(new Regex(@"new\s+StockBalance\b"), LedgerFile));
     }

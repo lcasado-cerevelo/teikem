@@ -8240,3 +8240,35 @@ Porque el módulo **Impuestos** está apagado en su compañía, o el cliente tie
 
 **¿Se puede borrar una orden?**
 No. Se cancela y queda en el historial.
+
+## Lote 58 — Solicitar y reservar una orden de venta
+
+**¿Qué pasa cuando solicito una orden?**
+Pasa de borrador a **solicitada**: el almacén la ve y el inventario queda **reservado** para esa orden en el mismo instante. Si dos vendedores piden lo mismo a la vez, solo uno lo obtiene; el otro recibe el aviso de faltante.
+
+**«No alcanza el inventario de XXX: pedido 10, disponible 6, faltante 4.»**
+Hay menos para vender de lo que se pidió. No se reservó nada. Escoja: **pedir solo lo disponible** (baje la cantidad), **reservar lo disponible y dejar el resto en backorder**, o quitar la línea.
+
+**¿Por qué el «disponible para vender» es menor que el de la tabla de inventario?**
+Porque no cuenta lo que está en **cuarentena**, en cruce de muelle ni en renta, ni lo ya reservado por otras órdenes, ni lo de otros almacenes. Solo se vende lo que el almacén puede recolectar.
+
+**¿Qué es el backorder?**
+Lo que se pidió y todavía no hay. La orden queda solicitada con las cantidades que sí se reservaron y el resto pendiente; la orden se marca «con backorder» hasta que se surta o se cancele.
+
+**«El cliente excede su límite de crédito…»**
+El cliente ya tiene en curso más de lo que su límite permite (órdenes de transporte pendientes más lo solicitado y sin despachar de sus otras órdenes de venta). Quien tenga el permiso **Autorizar órdenes sobre el límite de crédito** puede solicitarla igual, y queda anotado quién lo autorizó.
+
+**Cancelé una orden solicitada: ¿qué pasa con el inventario?**
+Se libera **exactamente lo que esa orden tenía reservado** y se borra su backorder; vuelve a estar disponible para otras ventas. Una orden a la que ya se le despachó algo no se cancela.
+
+**¿Puedo cambiar la cantidad de una línea ya solicitada?**
+Sí, mientras no se haya despachado nada de esa línea: al subirla se reserva lo que haya (el resto da faltante o va a backorder), al bajarla se libera primero el backorder y luego la reserva. El impuesto y los totales se recalculan.
+
+**«A esa línea ya se le despachó producto: no se puede modificar.» / «La línea está cerrada.»**
+Una línea con producto ya despachado o cerrada con faltante no se modifica. Para lo que falta, cree otra orden.
+
+**«Los productos con número de serie todavía no se venden con orden de venta.»**
+Por ahora las órdenes de venta no manejan productos con serie. Use otra vía para esos productos.
+
+**«Solo se puede solicitar una orden en borrador.»**
+La orden ya está solicitada, despachada o cancelada.
