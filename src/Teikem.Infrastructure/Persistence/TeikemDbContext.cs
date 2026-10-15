@@ -217,6 +217,7 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<Teikem.Domain.Notifications.NotificationLog> NotificationLogs => Set<Teikem.Domain.Notifications.NotificationLog>();
     public DbSet<Teikem.Domain.Notifications.UserNotification> UserNotifications => Set<Teikem.Domain.Notifications.UserNotification>();
     public DbSet<Teikem.Domain.Notifications.UserNotificationPref> UserNotificationPrefs => Set<Teikem.Domain.Notifications.UserNotificationPref>();
+    public DbSet<Teikem.Domain.Notifications.Announcement> Announcements => Set<Teikem.Domain.Notifications.Announcement>();   // Lote 54
     // Lote 53 — mensajería interna (hilos, participantes, mensajes y presencia)
     public DbSet<Teikem.Domain.Messaging.MessageThread> MessageThreads => Set<Teikem.Domain.Messaging.MessageThread>();
     public DbSet<Teikem.Domain.Messaging.MessageThreadMember> MessageThreadMembers => Set<Teikem.Domain.Messaging.MessageThreadMember>();

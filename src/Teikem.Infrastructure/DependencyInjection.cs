@@ -285,6 +285,7 @@ public static class DependencyInjection
         // Lote 53 — mensajería interna con hilos: servicio, presencia («visto por última vez») y el empuje en vivo (nulo aquí; el API pone SignalR).
         services.AddScoped<PresenceService>();
         services.AddScoped<MessagingService>();
+        services.AddScoped<AnnouncementService>();   // Lote 54
         services.AddSingleton<IMessageLiveNotifier, NullMessageLiveNotifier>();
 
         // Lote 8A — app de almacén: aparatos de confianza, PIN por usuario (login por aparato en AuthService) y

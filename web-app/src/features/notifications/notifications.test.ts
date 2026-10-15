@@ -14,7 +14,7 @@ import {
   recipientKey,
   validateForm,
 } from './ruleForm'
-import { filterPeople, MAX_SUGGESTIONS, type PersonOption } from './UserPicker'
+import { filterPeople, matchingPeople, MAX_SUGGESTIONS, type PersonOption } from './UserPicker'
 import type { NotificationEventDto, NotificationRuleDto } from './notificationsApi'
 
 const t = (key: string, params?: Record<string, string | number>) => (params ? `${key}:${JSON.stringify(params)}` : key)
@@ -124,6 +124,15 @@ describe('buscador de personas', () => {
     expect(filterPeople(people, 'gmail').map((p) => p.id)).toEqual([2])
     expect(filterPeople(people, 'advance').map((p) => p.id)).toEqual([1, 3])
     expect(filterPeople(people, '').map((p) => p.id)).toEqual([1, 2, 3])
+  })
+  it('«Seleccionar todo» escoge TODAS las que coinciden con lo escrito, no solo las que caben en la lista', () => {
+    const many = Array.from({ length: 30 }, (_, i) => ({ id: i + 1, name: i < 20 ? `Operador ${i}` : `Gerente ${i}`, email: `p${i}@x.com` }))
+    expect(filterPeople(many, 'operador')).toHaveLength(MAX_SUGGESTIONS)        // la lista se corta en 8
+    expect(matchingPeople(many, 'operador')).toHaveLength(20)                    // pero «Seleccionar todo» son 20
+    expect(matchingPeople(many, 'gerente').every((p) => p.name.startsWith('Gerente'))).toBe(true)   // solo lo filtrado
+    expect(matchingPeople(many, 'operador', new Set([1, 2]))).toHaveLength(18)   // sin los ya escogidos
+    expect(matchingPeople(many, 'zzz')).toHaveLength(0)
+    expect(matchingPeople(many, '')).toHaveLength(30)
   })
   it('no ofrece a los ya agregados y limita la lista', () => {
     expect(filterPeople(people, 'advance', new Set([1])).map((p) => p.id)).toEqual([3])

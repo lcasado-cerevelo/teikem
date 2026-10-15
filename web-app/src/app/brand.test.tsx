@@ -22,6 +22,9 @@ vi.mock('../kernel/api/client', async (importOriginal) => {
   return { ...actual, api: actual.createApiClient({ baseUrl: 'http://api.test', fetch }) }
 })
 
+// y la conexión en vivo de los mensajes y avisos: sin servidor, no se abre.
+vi.mock('../features/messages/messagesRealtime', () => ({ connectMessagesHub: () => ({ stop: async () => undefined }) }))
+
 const SESSION: Session = {
   me: {
     userId: 1,

@@ -13,12 +13,13 @@ Los lotes se hicieron en `master` como commits **consecutivos, autocontenidos y 
 | 4 | `b08c4a4` | **Lote 52** — pantalla Sistema → Reglas de aviso, campanita y Kemi (capa de presentación) | 2 y 3 |
 | 5 | `cd64fb0` | **Lote 53** — mensajería interna con hilos (SignalR, presencia, pantalla de chat, Kemi con mensajes; permiso `messages.use`; SQL «2026-10-15 (h)») | 4 |
 | 6 | `2959d18` | Mensajes: el campo «Para» busca personas y roles a la vez (reemplaza la lista de roles) | 5 |
+| 7 | (el commit del **Lote 54**, justo después de este) | **Lote 54** — Enviar avisos: avisos manuales a personas, roles o todos, no respondibles; permiso `notifications.send`; SQL «2026-10-15 (i)»; «Seleccionar todo» en el buscador | 6 |
 
 Pasarlos **en ese orden**, uno por uno:
 
 ```bash
 git checkout Depot-Implementation          # solo cuando Luis lo ordene
-git cherry-pick -x 221fd59 a0d43a9 1882235 b08c4a4 cd64fb0 2959d18
+git cherry-pick -x 221fd59 a0d43a9 1882235 b08c4a4 cd64fb0 2959d18 <commit del Lote 54>
 ```
 
 Si un paso queda a medias por conflictos: resolver, `git add`, `git cherry-pick --continue`. `-x` deja anotado de qué commit de `master` viene cada uno.
@@ -34,9 +35,9 @@ Depot-Implementation tiene 62 commits que `master` no tiene y `master` tiene 153
 | `src/Teikem.Domain/Constants/CatalogDomains.cs` | EntityType `SCHEDULED_JOB` y las constantes `JobScheduleKinds/JobStatuses/JobTriggers` al final | Agregarlos tal cual |
 | `src/Teikem.Infrastructure/Persistence/TeikemDbContext.cs` | Los `DbSet` se anclan junto a los de impresión | Agregar los `DbSet` de trabajos, avisos y mensajería donde encajen |
 | `src/Teikem.Infrastructure/DependencyInjection.cs` | Los registros se anclan al final de los servicios de Depot | Agregar los registros de Jobs, Notifications y Messaging y sus `using` |
-| `tests/Teikem.Tests/{Fleet,Order,Trip,Wms}CatalogTests.cs`, `Analytics/PulseLayoutTests.cs` | **Conteo de permisos** (hoy en master: 79) | Poner el conteo de Depot **+ 3** (jobs.manage, notifications.manage, messages.use). No copiar el 79 |
-| `web-app/src/app/routes.tsx` | Rutas del grupo Sistema | Rutas nuevas: `/system/notifications` (orden 60), `/system/jobs` (70) y `/messages` (sin menú). Si Depot tiene otras rutas en Sistema, **renumerar los `order`** para que queden 10, 20, 30… consecutivos en el orden del arreglo |
-| `web-app/src/app/navigation.test.ts` | Cantidad de ítems del menú y orden | Recalcular con los ítems de Depot (+2: Trabajos programados y Reglas de aviso; la pantalla Mensajes no tiene ítem) y agregar sus títulos en su lugar |
+| `tests/Teikem.Tests/{Fleet,Order,Trip,Wms}CatalogTests.cs`, `Analytics/PulseLayoutTests.cs` | **Conteo de permisos** (hoy en master: 80) | Poner el conteo de Depot **+ 4** (jobs.manage, notifications.manage, messages.use, notifications.send). No copiar el 80 |
+| `web-app/src/app/routes.tsx` | Rutas del grupo Sistema | Rutas nuevas: `/system/notifications` (orden 60), `/system/announcements` (70), `/system/jobs` (80) y `/messages` (sin menú); Seguridad y auditoría queda en 90 y Ajustes en 100 en master. Si Depot tiene otras rutas en Sistema, **renumerar los `order`** para que queden 10, 20, 30… consecutivos en el orden del arreglo |
+| `web-app/src/app/navigation.test.ts` | Cantidad de ítems del menú y orden | Recalcular con los ítems de Depot (+3: Trabajos programados, Reglas de aviso y Enviar avisos; la pantalla Mensajes no tiene ítem) y agregar sus títulos en su lugar |
 | `web-app/src/kernel/i18n/{es,en}.json` | Claves nuevas: `jobs`, `notifications`, `messages` (arriba) y `nav.jobs` / `nav.notifications` | Agregar los bloques; el JSON debe seguir siendo válido |
 | `web-app/openapi.json` y `web-app/src/kernel/api/schema.d.ts` | Contrato del API | **Regenerar**: dejar la versión de Depot, arrancar el API de Depot con estos lotes y bajar su swagger a `openapi.json`, luego `npm run api:types`. (Alternativa: aceptar las rutas y esquemas nuevos a mano y correr `npm run api:types`) |
 | `docs/manual/README.md`, `docs/manual/faq.md` | Se agregan capítulos y secciones al final | Conservar lo de Depot y agregar lo mío |

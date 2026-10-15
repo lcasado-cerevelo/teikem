@@ -272,6 +272,10 @@
       "title": "Trabajos programados",
       "subtitle": "tareas automáticas de la compañía"
     },
+    "announcements": {
+      "title": "Enviar avisos",
+      "subtitle": "un aviso a personas, roles o a todos"
+    },
     "notifications": {
       "title": "Reglas de aviso",
       "subtitle": "quién se entera de qué y por dónde"
@@ -7371,6 +7375,45 @@
     "company": "Compañía",
     "emptyView": "La vista no tiene filas hoy."
   },
+  "announcements": {
+    "screenTitle": "Enviar avisos",
+    "subtitle": "un aviso a personas, a roles o a todas las personas de la compañía; llega a su campanita y no se responde",
+    "new": "Nuevo aviso",
+    "toAll": "Enviar a todas las personas de la compañía",
+    "toAllCount": "Se enviará a las {n} personas activas (menos a usted).",
+    "to": "Para",
+    "toPh": "Escriba un nombre, un correo o un rol…",
+    "role": "Rol",
+    "remove": "Quitar a {name}",
+    "roleOption": "Rol · {n} personas",
+    "moreChosen": "+{n} personas más",
+    "chosenCount": "{people} personas y {roles} roles escogidos.",
+    "clear": "Quitar todo",
+    "capNote": "La búsqueda trae hasta {n} personas; afine lo escrito para ver el resto.",
+    "title": "Título",
+    "text": "Texto (opcional)",
+    "counter": "{n} de {max}",
+    "noReply": "Es un aviso: quienes lo reciban no pueden contestarlo. Para conversar, use Mensajes.",
+    "send": "Enviar aviso",
+    "sent": "Aviso enviado a {n} personas.",
+    "confirmTitle": "Enviar a todas las personas",
+    "confirmBody": "El aviso le llegará a las {n} personas activas de la compañía. ¿Lo envía?",
+    "errors": {
+      "audience": "Escoja al menos una persona, un rol o a todos.",
+      "title": "Escriba el título del aviso."
+    },
+    "history": "Avisos enviados",
+    "empty": "Todavía no se ha enviado ningún aviso.",
+    "readOf": "{read} de {total}",
+    "col": {
+      "when": "Cuándo",
+      "title": "Aviso",
+      "to": "Para",
+      "people": "Personas",
+      "read": "Leídos",
+      "by": "Enviado por"
+    }
+  },
   "messages": {
     "title": "Mensajes",
     "you": "Tú",
@@ -7454,7 +7497,8 @@
       "unreadMark": "(sin leer)",
       "prefs": "Avisos que puedo silenciar",
       "prefsHelp": "Apague los que no quieras recibir en esta campanita.",
-      "receive": "Recibir «{name}»"
+      "receive": "Recibir «{name}»",
+      "from": "De {name}"
     },
     "kemi": {
       "name": "Kemi",
@@ -7474,7 +7518,9 @@
       }
     },
     "picker": {
-      "none": "Nadie coincide."
+      "none": "Nadie coincide.",
+      "selectAll": "Seleccionar todo ({n})",
+      "more": "…y {n} más (afine lo escrito)"
     },
     "rules": {
       "title": "Reglas de aviso",

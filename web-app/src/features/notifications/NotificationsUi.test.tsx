@@ -94,7 +94,7 @@ function wrap() {
 }
 
 const ITEMS = () => [
-  { id: 2, eventCode: 'TEST', title: 'Recibo con diferencia', body: 'Faltan 3 piezas.', linkUrl: '/orders/9', isRead: false, createdAtUtc: '2026-10-14T12:00:00Z' },
+  { id: 2, eventCode: 'TEST', title: 'Recibo con diferencia', body: 'Faltan 3 piezas.', linkUrl: '/orders/9', isRead: false, createdAtUtc: '2026-10-14T12:00:00Z', fromName: 'Ana Rivera' },
   { id: 1, eventCode: 'TEST', title: 'Aviso viejo', body: null, linkUrl: null, isRead: true, createdAtUtc: '2026-10-13T12:00:00Z' },
 ]
 
@@ -123,6 +123,8 @@ describe('campanita y Kemi', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Avisos' })
     expect(await within(dialog).findByText('Recibo con diferencia')).toBeInTheDocument()
     expect(within(dialog).getByText('Faltan 3 piezas.')).toBeInTheDocument()
+    expect(within(dialog).getByText('De Ana Rivera')).toBeInTheDocument()   // los avisos manuales dicen quién los envió; los de las reglas no
+    expect(within(dialog).queryAllByText(/^De /)).toHaveLength(1)
     await user.click(within(dialog).getByRole('button', { name: /Recibo con diferencia/ }))
     await waitFor(() => expect(mock.requests.some((r) => r.method === 'POST' && r.path === '/api/v1/inbox/2/read')).toBe(true))
     expect(screen.getByTestId('where')).toHaveTextContent('/orders/9')

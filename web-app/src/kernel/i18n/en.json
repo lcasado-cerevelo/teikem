@@ -272,6 +272,10 @@
       "title": "Scheduled jobs",
       "subtitle": "the company's automatic tasks"
     },
+    "announcements": {
+      "title": "Send notices",
+      "subtitle": "a notice to people, roles or everyone"
+    },
     "notifications": {
       "title": "Notification rules",
       "subtitle": "who finds out about what and how"
@@ -7371,6 +7375,45 @@
     "company": "Company",
     "emptyView": "The view has no rows today."
   },
+  "announcements": {
+    "screenTitle": "Send notices",
+    "subtitle": "a notice to people, to roles or to everyone in the company; it reaches their bell and cannot be replied to",
+    "new": "New notice",
+    "toAll": "Send to everyone in the company",
+    "toAllCount": "It will be sent to the {n} active people (except you).",
+    "to": "To",
+    "toPh": "Type a name, an email or a role…",
+    "role": "Role",
+    "remove": "Remove {name}",
+    "roleOption": "Role · {n} people",
+    "moreChosen": "+{n} more people",
+    "chosenCount": "{people} people and {roles} roles chosen.",
+    "clear": "Clear all",
+    "capNote": "The search brings up to {n} people; refine what you typed to see the rest.",
+    "title": "Title",
+    "text": "Text (optional)",
+    "counter": "{n} of {max}",
+    "noReply": "It is a notice: whoever receives it cannot reply. To talk, use Messages.",
+    "send": "Send notice",
+    "sent": "Notice sent to {n} people.",
+    "confirmTitle": "Send to everyone",
+    "confirmBody": "The notice will reach the {n} active people in the company. Send it?",
+    "errors": {
+      "audience": "Choose at least one person, a role or everyone.",
+      "title": "Enter the notice title."
+    },
+    "history": "Sent notices",
+    "empty": "No notice has been sent yet.",
+    "readOf": "{read} of {total}",
+    "col": {
+      "when": "When",
+      "title": "Notice",
+      "to": "To",
+      "people": "People",
+      "read": "Read",
+      "by": "Sent by"
+    }
+  },
   "messages": {
     "title": "Messages",
     "you": "You",
@@ -7454,7 +7497,8 @@
       "unreadMark": "(unread)",
       "prefs": "Notices I can mute",
       "prefsHelp": "Turn off the ones you do not want in this bell.",
-      "receive": "Receive \"{name}\""
+      "receive": "Receive \"{name}\"",
+      "from": "From {name}"
     },
     "kemi": {
       "name": "Kemi",
@@ -7474,7 +7518,9 @@
       }
     },
     "picker": {
-      "none": "Nobody matches."
+      "none": "Nobody matches.",
+      "selectAll": "Select all ({n})",
+      "more": "…and {n} more (refine what you typed)"
     },
     "rules": {
       "title": "Notification rules",

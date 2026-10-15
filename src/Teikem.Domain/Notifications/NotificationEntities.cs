@@ -146,6 +146,8 @@ public class UserNotification : ITenantScoped
     public DateTime? ReadAtUtc { get; set; }
     public long? NotificationOutboxId { get; set; }
     public int? NotificationRuleId { get; set; }
+    /// <summary>Lote 54: si es un aviso manual enviado por una persona, cuál (de ahí sale «De Ana»).</summary>
+    public long? AnnouncementId { get; set; }
 }
 
 /// <summary>Preferencia de un usuario: silenciar un evento opcional en su bandeja.</summary>

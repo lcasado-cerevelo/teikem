@@ -6,6 +6,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useSession } from '../../app/session'
 import { API_BASE_URL } from '../../kernel/api/client'
 import { getAccessToken } from '../../kernel/auth/tokens'
+import { notificationKeys } from '../notifications/notificationsApi'
 import { useNotifications } from '../notifications/NotificationsProvider'
 import { liveDecision } from './messageRules'
 import { messageKeys, pingPresence, PRESENCE_PING_MS, useMessageUnread, type MessageUnreadDto, useMessageMutations } from './messagesApi'
@@ -94,24 +95,28 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
     readRef.current = read.mutate
   })
 
-  // la conexión en vivo: un empuje solo invalida lo que cambió; la web lo vuelve a pedir
+  // la conexión en vivo (la tiene toda persona con sesión: también trae los avisos manuales): un empuje solo invalida lo que cambió; la web lo vuelve a pedir
+  const hasSession = Boolean(me)
   useEffect(() => {
-    if (!enabled) return
+    if (!hasSession) return
     const handle = connectMessagesHub({
       url: `${API_BASE_URL}/hubs/messages`,
       token: () => getAccessToken() ?? null,
       tenantId: tenantId ?? null,
-      onEvent: (_name, _event: LiveEvent) => void qc.invalidateQueries({ queryKey: messageKeys.all }),
+      onEvent: (name, _event: LiveEvent) => void qc.invalidateQueries({ queryKey: name === 'NoticeReceived' ? notificationKeys.all : messageKeys.all }),
       onState: (ok) => {
         setConnected(ok)
-        if (ok) void qc.invalidateQueries({ queryKey: messageKeys.all })   // tras (re)conectar se pone al día
+        if (ok) {
+          void qc.invalidateQueries({ queryKey: messageKeys.all })   // tras (re)conectar se pone al día
+          void qc.invalidateQueries({ queryKey: notificationKeys.all })
+        }
       },
     })
     return () => {
       void handle.stop()
       setConnected(false)
     }
-  }, [enabled, tenantId, qc])
+  }, [hasSession, tenantId, qc])
 
   // presencia: cada 30 s mientras esté abierta (la conexión en vivo también la renueva al conectar)
   useEffect(() => {

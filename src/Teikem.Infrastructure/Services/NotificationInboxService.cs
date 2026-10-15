@@ -25,7 +25,8 @@ public sealed class NotificationInboxService(TeikemDbContext db, ITenantContext 
         if (unreadOnly) q = q.Where(n => !n.IsRead);
         var total = await q.CountAsync(ct);
         var rows = await q.OrderByDescending(n => n.UserNotificationId).Skip(skip).Take(take).ToListAsync(ct);
-        return new PagedResult<UserNotificationDto>(rows.Select(ToDto).ToList(), total, skip, take);
+        var senders = await SendersAsync(rows, ct);
+        return new PagedResult<UserNotificationDto>(rows.Select(n => ToDto(n, senders)).ToList(), total, skip, take);
     }
 
     public async Task<UnreadCountDto> UnreadCountAsync(CancellationToken ct)
@@ -44,7 +45,7 @@ public sealed class NotificationInboxService(TeikemDbContext db, ITenantContext 
             n.ReadAtUtc = DateTime.UtcNow;
             await db.SaveChangesAsync(ct);
         }
-        return ToDto(n);
+        return ToDto(n, await SendersAsync(new[] { n }, ct));
     }
 
     public async Task<MarkedReadDto> MarkAllReadAsync(CancellationToken ct)
@@ -79,5 +80,18 @@ public sealed class NotificationInboxService(TeikemDbContext db, ITenantContext 
         return new NotificationPrefDto(def.Code, def.NameEs, def.NameEn, muted);
     }
 
-    private static UserNotificationDto ToDto(UserNotification n) => new(n.UserNotificationId, n.EventCode, n.Title, n.Body, n.LinkUrl, n.IsRead, n.CreatedAtUtc);
+    /// <summary>Quién envió cada aviso manual (Announcement.SentBy → nombre); los avisos de las reglas no tienen remitente.</summary>
+    private async Task<Dictionary<long, string>> SendersAsync(IReadOnlyCollection<UserNotification> rows, CancellationToken ct)
+    {
+        var ids = rows.Where(n => n.AnnouncementId != null).Select(n => n.AnnouncementId!.Value).Distinct().ToList();
+        if (ids.Count == 0) return new Dictionary<long, string>();
+        var pairs = await (from a in db.Announcements.AsNoTracking()
+                           where ids.Contains(a.AnnouncementId)
+                           join u in db.Users.AsNoTracking() on a.SentBy equals u.Id
+                           select new { a.AnnouncementId, u.FullName, u.Email }).ToListAsync(ct);
+        return pairs.ToDictionary(p => p.AnnouncementId, p => string.IsNullOrWhiteSpace(p.FullName) ? p.Email ?? string.Empty : p.FullName);
+    }
+
+    private static UserNotificationDto ToDto(UserNotification n, Dictionary<long, string> senders)
+        => new(n.UserNotificationId, n.EventCode, n.Title, n.Body, n.LinkUrl, n.IsRead, n.CreatedAtUtc, n.AnnouncementId is long a && senders.TryGetValue(a, out var from) ? from : null);
 }

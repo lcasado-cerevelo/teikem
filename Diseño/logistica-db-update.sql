@@ -2466,3 +2466,52 @@ FROM dbo.Role r
 JOIN dbo.Permission p ON p.Code = 'messages.use'
 WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
 GO
+/* ----------------------------------------------------------------------------
+   2026-10-15 (i) — Avisos manuales (Lote 54). Quien tenga el permiso notifications.send envía un aviso a personas, a roles o a todos; no se
+   responde. Cada persona lo recibe en su campanita (dbo.UserNotification, ahora con AnnouncementId para mostrar «De Ana») y dbo.Announcement
+   es el historial de lo enviado (a quién, cuántas personas).
+   - dbo.Announcement (por compañía; nunca se edita ni se borra) y dbo.UserNotification.AnnouncementId (NULL = los avisos de las reglas).
+   - Permiso notifications.send (categoría ADMIN) -> TenantAdmin de la plantilla Y de los roles YA CLONADOS de cada compañía (el administrador se
+     lo asigna a quien quiera; no se da a otros roles por omisión).
+   Solo AGREGA (nunca quita). Idempotente. Depende de la sección (g) (dbo.UserNotification).
+   ---------------------------------------------------------------------------- */
+IF OBJECT_ID(N'dbo.Announcement', N'U') IS NULL CREATE TABLE dbo.Announcement (
+    AnnouncementId  BIGINT IDENTITY(1,1) CONSTRAINT PK_Announcement PRIMARY KEY,
+    PublicId        UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_Announcement_PublicId DEFAULT NEWID(),
+    TenantId        INT NOT NULL CONSTRAINT FK_Announcement_Tenant REFERENCES dbo.Tenant(TenantId),
+    Title           NVARCHAR(150) NOT NULL,
+    Body            NVARCHAR(1000) NULL,
+    SentBy          INT NOT NULL CONSTRAINT FK_Announcement_SentBy REFERENCES dbo.AspNetUsers(Id),
+    SentAtUtc       DATETIME2 NOT NULL CONSTRAINT DF_Announcement_SentAtUtc DEFAULT SYSUTCDATETIME(),
+    ToAll           BIT NOT NULL CONSTRAINT DF_Announcement_ToAll DEFAULT 0,
+    AudienceText    NVARCHAR(300) NOT NULL,
+    RecipientCount  INT NOT NULL CONSTRAINT DF_Announcement_RecipientCount DEFAULT 0,
+    CONSTRAINT UQ_Announcement_PublicId UNIQUE (PublicId)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Announcement_Tenant' AND object_id = OBJECT_ID('dbo.Announcement'))
+    CREATE INDEX IX_Announcement_Tenant ON dbo.Announcement(TenantId, AnnouncementId);
+GO
+IF COL_LENGTH('dbo.UserNotification', 'AnnouncementId') IS NULL
+    ALTER TABLE dbo.UserNotification ADD AnnouncementId BIGINT NULL CONSTRAINT FK_UserNotification_Announcement REFERENCES dbo.Announcement(AnnouncementId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_UserNotification_Announcement' AND object_id = OBJECT_ID('dbo.UserNotification'))
+    CREATE INDEX IX_UserNotification_Announcement ON dbo.UserNotification(AnnouncementId) WHERE AnnouncementId IS NOT NULL;
+GO
+
+-- Permiso notifications.send
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'notifications.send')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('notifications.send',
+            (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'ADMIN'),
+            N'{"es":"Enviar avisos a otras personas","en":"Send notices to other people"}', 1);
+GO
+
+-- Plantilla de sistema (TenantId NULL) y roles ya clonados de cada compañía: TenantAdmin
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT r.RoleId, p.PermissionId
+FROM dbo.Role r
+JOIN dbo.Permission p ON p.Code = 'notifications.send'
+WHERE r.Name IN ('TenantAdmin')
+  AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
+GO

@@ -3,8 +3,8 @@
 // cae se reconecta sola (0, 2, 5, 10 y 30 s) y, mientras tanto, el sondeo de respaldo (30 s) mantiene todo al día.
 import { HubConnectionBuilder, LogLevel, type HubConnection } from '@microsoft/signalr'
 
-export type LiveEventName = 'MessageReceived' | 'ThreadChanged' | 'ThreadRead'
-export const LIVE_EVENTS: readonly LiveEventName[] = ['MessageReceived', 'ThreadChanged', 'ThreadRead']
+export type LiveEventName = 'MessageReceived' | 'ThreadChanged' | 'ThreadRead' | 'NoticeReceived'
+export const LIVE_EVENTS: readonly LiveEventName[] = ['MessageReceived', 'ThreadChanged', 'ThreadRead', 'NoticeReceived']
 
 export interface LiveEvent {
   tenantId: number

@@ -112,7 +112,8 @@ describe('connectMessagesHub', () => {
     f.handlers.get('MessageReceived')!(ev(7))
     f.handlers.get('MessageReceived')!(ev(8))   // otra compañía de la misma persona: se ignora
     f.handlers.get('ThreadChanged')!(ev(7))
-    expect(onEvent.mock.calls.map((c) => c[0])).toEqual(['MessageReceived', 'ThreadChanged'])
+    f.handlers.get('NoticeReceived')!(ev(7))     // un aviso manual (Lote 54)
+    expect(onEvent.mock.calls.map((c) => c[0])).toEqual(['MessageReceived', 'ThreadChanged', 'NoticeReceived'])
     await h.stop()
     expect(f.fake.stop).toHaveBeenCalled()
   })

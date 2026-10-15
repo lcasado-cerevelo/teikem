@@ -81,3 +81,8 @@
 @media (max-width:600px){.nr-add{grid-template-columns:1fr}}
 .upick-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;background:var(--faint);opacity:.5}
 .upick-dot.on{background:#1faa6a;opacity:1}
+.upick-all{border-bottom:1px solid var(--line-2);margin-bottom:2px}
+.upick-all b{color:var(--flow-2)}
+.upick-more{padding:6px 10px;color:var(--faint);font-size:12px}
+.nitem .nfrom{font-size:11.5px;font-weight:700;color:var(--flow-2)}
+.linklike{border:none;background:transparent;padding:0;color:var(--flow-2);text-decoration:underline;font:inherit;cursor:pointer}

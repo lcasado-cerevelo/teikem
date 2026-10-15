@@ -13837,6 +13837,151 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/announcements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AnnouncementDtoPagedResult"];
+                        "application/json": components["schemas"]["AnnouncementDtoPagedResult"];
+                        "text/json": components["schemas"]["AnnouncementDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["AnnouncementRequest"];
+                    "text/json": components["schemas"]["AnnouncementRequest"];
+                    "application/*+json": components["schemas"]["AnnouncementRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AnnouncementDto"];
+                        "application/json": components["schemas"]["AnnouncementDto"];
+                        "text/json": components["schemas"]["AnnouncementDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/announcements/people": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    q?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AnnouncementPersonDtoPagedResult"];
+                        "application/json": components["schemas"]["AnnouncementPersonDtoPagedResult"];
+                        "text/json": components["schemas"]["AnnouncementPersonDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/announcements/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MessageRoleDto"][];
+                        "application/json": components["schemas"]["MessageRoleDto"][];
+                        "text/json": components["schemas"]["MessageRoleDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/printers": {
         parameters: {
             query?: never;
@@ -25722,6 +25867,7 @@ export interface components {
             isRead?: boolean;
             /** Format: date-time */
             createdAtUtc?: string;
+            fromName?: string | null;
         };
         UserNotificationDtoPagedResult: {
             items?: components["schemas"]["UserNotificationDto"][] | null;
@@ -25827,6 +25973,52 @@ export interface components {
         PresencePingDto: {
             /** Format: date-time */
             seenUtc?: string;
+        };
+        AnnouncementDto: {
+            /** Format: uuid */
+            publicId?: string;
+            title?: string | null;
+            body?: string | null;
+            sentByName?: string | null;
+            /** Format: date-time */
+            sentAtUtc?: string;
+            toAll?: boolean;
+            audienceText?: string | null;
+            /** Format: int32 */
+            recipientCount?: number;
+            /** Format: int32 */
+            readCount?: number;
+        };
+        AnnouncementDtoPagedResult: {
+            items?: components["schemas"]["AnnouncementDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        AnnouncementPersonDto: {
+            /** Format: int32 */
+            id?: number;
+            name?: string | null;
+            email?: string | null;
+        };
+        AnnouncementPersonDtoPagedResult: {
+            items?: components["schemas"]["AnnouncementPersonDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        AnnouncementRequest: {
+            userIds?: number[] | null;
+            roleIds?: number[] | null;
+            all?: boolean | null;
+            title?: string | null;
+            text?: string | null;
         };
         PrinterDto: {
             /** Format: uuid */

@@ -8093,3 +8093,41 @@ Abra la conversación y use **Silenciar**: los mensajes siguen contando como no 
 
 **Un usuario de captura de datos de un cliente no debe escribirme.**
 Correcto: el permiso de mensajería no se da por omisión a los roles del portal de clientes; usted lo asigna solo a los gerenciales de cada cliente.
+
+## Lote 54 — Enviar avisos
+
+**No veo «Enviar avisos» en el menú Sistema.**
+Necesita el permiso **Enviar avisos a otras personas** (`notifications.send`). Lo trae el Admin de compañía; a los demás roles se lo asigna un administrador (Sistema → Roles y usuarios).
+
+**¿En qué se diferencia un aviso de un mensaje?**
+Un aviso es una notificación de un solo sentido: llega a la campanita de cada persona («De Ana Rivera») y **no se puede responder**. Un mensaje abre un hilo donde todos contestan. Para conversar, use Mensajes.
+
+**¿Cómo le envío un aviso a todas las personas?**
+Sistema → Enviar avisos → active **Enviar a todas las personas de la compañía**, escriba el título y **Enviar aviso**. Le pide confirmar con la cantidad de personas. Usted no se avisa a sí mismo.
+
+**¿Qué hace «Seleccionar todo»?**
+En el campo «Para», **Seleccionar todo (N)** escoge **solo lo que coincide con lo que escribió**: si escribió «operador», marca los N operadores; si no escribió nada, marca a todos. No escoge nada que no se vea filtrado.
+
+**La búsqueda dice que hay más personas de las que caben.**
+La búsqueda trae hasta 500 personas. Afine lo escrito (por ejemplo, parte del nombre o del correo) para ver el resto, o use «Enviar a todas las personas».
+
+**«Escriba el título del aviso.» / «Escoja al menos una persona, un rol o a todos.»**
+Falta el título o a quién enviarlo. Escriba el título y escoja destinatarios (o active «todas las personas»).
+
+**«No hay personas a quienes enviar el aviso.»**
+El rol que escogió no tiene personas activas hoy, o el único destinatario es usted. Escoja a otras personas.
+
+**«Usuario no encontrado en esta compañía.» / «Rol no encontrado.»**
+La persona o el rol no es de la compañía activa (o la persona está inactiva). Escoja de la lista.
+
+**¿Cómo sé si leyeron mi aviso?**
+En **Avisos enviados**, la columna **Leídos** dice cuántas personas lo han leído («2 de 5»).
+
+**Quien recibió el aviso no estaba conectado.**
+Le queda pendiente en su campanita; al abrir Teikem ve el contador (y Kemi lo saluda). Si estaba conectado, le llega al instante.
+
+**¿Se puede borrar o corregir un aviso ya enviado?**
+No: queda como se envió, y las personas que ya lo recibieron lo conservan en su campanita. Envíe otro aviso si necesita corregir.
+
+**Un aviso manual no se deja silenciar.**
+Es lo esperado: solo los avisos opcionales de las reglas se pueden silenciar; los que envía una persona con permiso siempre llegan.

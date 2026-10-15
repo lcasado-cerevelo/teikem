@@ -107,6 +107,7 @@ export function NewMessageModal({ onClose, initial }: { onClose: () => void; ini
             exclude={taken}
             autoFocus
             onQuery={setQ}
+            onPickAll={(all) => setChosen((l) => [...l, ...all.filter((p) => p.id > 0 && !l.some((x) => x.id === p.id)).map((p) => ({ id: p.id, name: p.name, email: p.email }))])}
             onPick={(p) => {
               if (p.id < 0) setRoleId(-p.id)   // un rol (un solo rol por mensaje: escoger otro reemplaza al anterior)
               else setChosen((l) => (l.some((x) => x.id === p.id) ? l : [...l, { id: p.id, name: p.name, email: p.email }]))

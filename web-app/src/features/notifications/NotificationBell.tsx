@@ -127,6 +127,7 @@ export function NotificationBell() {
                     <span className="ndot" aria-hidden="true" />
                     <span className="ntxt">
                       <b>{n.title}</b>
+                      {n.fromName && <span className="nfrom">{t('notifications.bell.from', { name: n.fromName })}</span>}
                       {n.body && <span className="nbody">{n.body}</span>}
                       <time dateTime={n.createdAtUtc}>{f.dateTime(n.createdAtUtc)}</time>
                     </span>

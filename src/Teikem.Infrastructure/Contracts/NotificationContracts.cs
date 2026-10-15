@@ -98,7 +98,7 @@ public sealed record NotificationLogDto(
     DateTime? SentAtUtc);
 
 /// <summary>Un aviso de la bandeja del usuario (la campanita).</summary>
-public sealed record UserNotificationDto(long Id, string EventCode, string Title, string? Body, string? LinkUrl, bool IsRead, DateTime CreatedAtUtc);
+public sealed record UserNotificationDto(long Id, string EventCode, string Title, string? Body, string? LinkUrl, bool IsRead, DateTime CreatedAtUtc, string? FromName = null);
 
 public sealed record UnreadCountDto(int Count);
 

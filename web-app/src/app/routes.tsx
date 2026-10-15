@@ -395,14 +395,15 @@ export const appRoutes: readonly AppRoute[] = [
   { path: '/system/catalogs', element: lazy(() => import('../features/system/CatalogsPage')), perm: 'admin.catalogs', module: ModuleKeys.System, nav: { group: 'system', key: 'catalogs', order: 40 } },
   pending({ path: '/system/integrations', perm: 'admin.tenant', module: ModuleKeys.System, nav: { group: 'system', key: 'integrations', order: 50 } }),
   { path: '/system/notifications', element: lazy(() => import('../features/notifications/NotificationRulesScreen')), perm: 'notifications.manage', module: ModuleKeys.System, nav: { group: 'system', key: 'notifications', order: 60 } },   // Lote 52
-  { path: '/system/jobs', element: lazy(() => import('../features/system/JobsScreen')), perm: 'jobs.manage', module: ModuleKeys.System, nav: { group: 'system', key: 'jobs', order: 70 } },   // Lote 50
-  { path: '/system/audit', element: lazy(() => import('../features/system/AuditScreen')), perm: 'admin.audit', module: ModuleKeys.System, nav: { group: 'system', key: 'audit', order: 80 } },
+  { path: '/system/announcements', element: lazy(() => import('../features/notifications/AnnouncementsScreen')), perm: 'notifications.send', module: ModuleKeys.System, nav: { group: 'system', key: 'announcements', order: 70 } },   // Lote 54
+  { path: '/system/jobs', element: lazy(() => import('../features/system/JobsScreen')), perm: 'jobs.manage', module: ModuleKeys.System, nav: { group: 'system', key: 'jobs', order: 80 } },   // Lote 50
+  { path: '/system/audit', element: lazy(() => import('../features/system/AuditScreen')), perm: 'admin.audit', module: ModuleKeys.System, nav: { group: 'system', key: 'audit', order: 90 } },
   {
     path: '/system/settings',
     element: lazy(() => import('../features/system/TenantSettingsPage')),
     perm: 'admin.tenant',
     module: ModuleKeys.System,
-    nav: { group: 'system', key: 'settings', order: 90 },
+    nav: { group: 'system', key: 'settings', order: 100 },
   },
 
   // ===== Portal de clientes (sin backend todavía) =====

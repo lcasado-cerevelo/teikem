@@ -157,6 +157,8 @@ public static class PermissionCatalog
     public const string PrintersManage = "printers.manage";
     public const string JobsManage = "jobs.manage";
     public const string NotificationsManage = "notifications.manage";
+    /// <summary>Lote 54: enviar avisos a otras personas (a personas, roles o todos).</summary>
+    public const string NotificationsSend = "notifications.send";
     /// <summary>Lote 53: mensajería interna (hilos entre personas de la compañía). La traen TODOS los roles.</summary>
     public const string MessagesUse = "messages.use";
 
@@ -251,6 +253,7 @@ public static class PermissionCatalog
         new(PrintersManage, "ADMIN", "Gestionar impresoras y plantillas de label", "Manage printers & label templates"),
         new(JobsManage, "ADMIN", "Gestionar los trabajos programados", "Manage scheduled jobs"),
         new(NotificationsManage, "ADMIN", "Gestionar las reglas de aviso", "Manage notification rules"),
+        new(NotificationsSend, "ADMIN", "Enviar avisos a otras personas", "Send notices to other people"),
         new(MessagesUse, "ADMIN", "Usar la mensajería interna", "Use internal messaging"),
     };
 

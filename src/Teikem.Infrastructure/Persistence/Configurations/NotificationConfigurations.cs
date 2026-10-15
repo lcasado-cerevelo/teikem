@@ -94,8 +94,24 @@ public sealed class UserNotificationConfiguration : IEntityTypeConfiguration<Use
         b.Property(n => n.Body).HasMaxLength(1000);
         b.Property(n => n.LinkUrl).HasMaxLength(300);
         b.HasIndex(n => new { n.TenantId, n.UserId, n.IsRead, n.UserNotificationId }).HasDatabaseName("IX_UserNotification_Inbox");
+        b.HasIndex(n => n.AnnouncementId).HasFilter("[AnnouncementId] IS NOT NULL").HasDatabaseName("IX_UserNotification_Announcement");
         b.HasIndex(n => new { n.NotificationOutboxId, n.NotificationRuleId, n.UserId }).IsUnique()
             .HasFilter("[NotificationOutboxId] IS NOT NULL AND [NotificationRuleId] IS NOT NULL").HasDatabaseName("UX_UserNotification_Delivery");
+    }
+}
+
+public sealed class AnnouncementConfiguration : IEntityTypeConfiguration<Announcement>
+{
+    public void Configure(EntityTypeBuilder<Announcement> b)
+    {
+        b.ToTable("Announcement");
+        b.HasKey(a => a.AnnouncementId);
+        b.Property(a => a.PublicId).HasDefaultValueSql("NEWID()").ValueGeneratedOnAdd();
+        b.Property(a => a.Title).HasMaxLength(150).IsRequired();
+        b.Property(a => a.Body).HasMaxLength(1000);
+        b.Property(a => a.AudienceText).HasMaxLength(300).IsRequired();
+        b.HasIndex(a => a.PublicId).IsUnique().HasDatabaseName("UQ_Announcement_PublicId");
+        b.HasIndex(a => new { a.TenantId, a.AnnouncementId }).HasDatabaseName("IX_Announcement_Tenant");
     }
 }
 
