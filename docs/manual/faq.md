@@ -8337,3 +8337,23 @@ Las solicitadas o despachadas parciales con algo reservado, de su almacén, con 
 
 **El aparato despachó con entrega y el servidor la rechazó.**
 El despacho y la entrega van juntos: si los datos de la entrega no son válidos (servicio desconocido, consignatario incompleto…), no sale el inventario y la orden queda como estaba; el aparato muestra el mensaje en su lista de pendientes.
+
+## Lote 65 — Despachar una orden de venta en el aparato
+
+**No me aparece el botón «Órdenes de venta» en Inicio.**
+Aparece solo cuando el aparato tiene órdenes por despachar de su almacén. Toque **Sincronizar ahora**; si sigue sin aparecer, la compañía no tiene el módulo Órdenes de venta, el usuario no tiene `sales.view` o no hay órdenes solicitadas con algo reservado en ese almacén.
+
+**Escaneé el número y dice «Esa orden no está por despachar en este almacén».**
+La orden es de otro almacén, ya se despachó, está cancelada, no tiene nada reservado (está en backorder) o es nueva y el aparato aún no la bajó. Sincronice y vuelva a intentar.
+
+**Saqué de una posición distinta a la que decía el aparato.**
+Se puede: lea la otra posición. La reserva se mueve ahí si tiene existencia; si no alcanza, el servidor rechaza el despacho con «No hay existencia suficiente…» y no sale nada.
+
+**Despaché sin señal y después el servidor lo rechazó.**
+El aparato muestra el mensaje exacto del servidor, devuelve la existencia local y baja de nuevo la orden: se puede despachar otra vez con lo que sí hay.
+
+**Elegí «Entrega» y no me deja crear la entrega.**
+La entrega necesita que la orden tenga consignatario; si no lo tiene, solo ofrece Retiro o Dejar para después. Cree la entrega después desde la web (Órdenes de venta → el despacho → Entrega).
+
+**¿En qué se diferencian «Retiro» y «Dejar para después»?**
+El servidor hace lo mismo (recolecta y baja el inventario, sin entrega); «Retiro» es que el cliente recoge y ahí termina; «Dejar para después» significa que la entrega se creará más tarde desde la web.

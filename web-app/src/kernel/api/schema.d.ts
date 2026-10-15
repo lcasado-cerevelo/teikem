@@ -19093,6 +19093,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sync/sales-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    warehousePublicId?: string;
+                    since?: string;
+                    cursor?: string;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SyncSalesOrderDtoSyncPage"];
+                        "application/json": components["schemas"]["SyncSalesOrderDtoSyncPage"];
+                        "text/json": components["schemas"]["SyncSalesOrderDtoSyncPage"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sync/warehouse-tasks": {
         parameters: {
             query?: never;
@@ -29458,6 +29500,57 @@ export interface components {
             nextCursor?: string | null;
             /** Format: date-time */
             serverTimeUtc?: string;
+        };
+        SyncSalesOrderDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            clientName?: string | null;
+            consigneeName?: string | null;
+            statusCode?: string | null;
+            /** Format: date */
+            requiredDate?: string | null;
+            /** Format: date-time */
+            requestedAtUtc?: string | null;
+            isActive?: boolean;
+            lines?: components["schemas"]["SyncSalesOrderLineDto"][] | null;
+        };
+        SyncSalesOrderDtoSyncPage: {
+            items?: components["schemas"]["SyncSalesOrderDto"][] | null;
+            nextCursor?: string | null;
+            /** Format: date-time */
+            serverTimeUtc?: string;
+        };
+        SyncSalesOrderLineDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            /** Format: double */
+            qtyOrdered?: number;
+            /** Format: double */
+            qtyReserved?: number;
+            /** Format: double */
+            qtyShipped?: number;
+            /** Format: double */
+            qtyBackordered?: number;
+            reservations?: components["schemas"]["SyncSalesReservationDto"][] | null;
+        };
+        SyncSalesReservationDto: {
+            /** Format: int32 */
+            binId?: number;
+            binCode?: string | null;
+            /** Format: int32 */
+            lotId?: number | null;
+            lotNumber?: string | null;
+            /** Format: double */
+            quantity?: number;
         };
         SyncPurchaseOrderDto: {
             /** Format: int32 */

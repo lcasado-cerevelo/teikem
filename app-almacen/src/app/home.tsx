@@ -8,6 +8,7 @@ import { useMyPermissions } from '../kernel/auth/permissions'
 import { getOpenReceipt } from '../features/receive/localLookup'
 import { getOpenPick } from '../features/dispatch/localPick'
 import { getOpenCount } from '../features/count/localCount'
+import { listSalesOrders } from '../features/salesDispatch/localSales'
 import { getOpenCountHints, refreshOpenCountHints } from '../features/count/openCountHints'
 import { useT } from '../kernel/i18n/useT'
 import {
@@ -47,6 +48,8 @@ export default function HomeScreen() {
   const canAdjust = permissions?.includes('warehouse.adjust') ?? false
 
   const [openKind, setOpenKind] = useState<OpenKind | null>(null)
+  // Lote 65: «Órdenes de venta» solo se ofrece si el aparato tiene órdenes por despachar (sin el módulo o sin permiso nunca bajan)
+  const [hasSalesOrders, setHasSalesOrders] = useState(false)
   const userId = session?.userId
   const warehouseId = activeWarehouse.publicId
   useFocusEffect(
@@ -60,6 +63,7 @@ export default function HomeScreen() {
         else setOpenKind(null)
       }
       compute()
+      setHasSalesOrders(warehouseId ? listSalesOrders(warehouseId).length > 0 : false)
       let alive = true
       if (warehouseId && userId != null) {
         void refreshOpenCountHints(warehouseId, userId).then(() => {
@@ -106,7 +110,7 @@ export default function HomeScreen() {
 
   /** Navega a `path`, salvo que haya un documento distinto abierto (avisa cuál en vez de navegar). `ownKind` es el
    *  tipo de documento que esa pantalla retoma (undefined si no maneja ninguno, como Acomodar o Consultar). */
-  function go(path: '/receive' | '/putaway' | '/dispatch' | '/count' | '/lookup' | '/damage' | '/adjust', ownKind?: OpenKind) {
+  function go(path: '/receive' | '/putaway' | '/dispatch' | '/count' | '/lookup' | '/damage' | '/adjust' | '/sales-dispatch', ownKind?: OpenKind) {
     if (openKind && openKind !== ownKind) {
       Alert.alert(t(`lock.${openKind}InProgress`))
       return
@@ -174,6 +178,11 @@ export default function HomeScreen() {
         <View style={styles.cell}>
           <BigButton layout="tile" label={t('home.dispatch')} icon="🚚" variant="secondary" onPress={() => go('/dispatch', 'dispatch')} />
         </View>
+        {hasSalesOrders ? (
+          <View style={styles.cell}>
+            <BigButton layout="tile" label={t('home.salesDispatch')} icon="🧾" variant="secondary" onPress={() => go('/sales-dispatch')} testID="home-sales-dispatch" />
+          </View>
+        ) : null}
         <View style={styles.cell}>
           <BigButton layout="tile" label={t('home.count')} icon="🔢" variant="secondary" onPress={() => go('/count', 'count')} />
         </View>

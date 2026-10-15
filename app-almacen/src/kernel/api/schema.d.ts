@@ -12615,6 +12615,2458 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ScheduledJobDto"][];
+                        "application/json": components["schemas"]["ScheduledJobDto"][];
+                        "text/json": components["schemas"]["ScheduledJobDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    key: string | null;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ScheduledJobDto"];
+                        "application/json": components["schemas"]["ScheduledJobDto"];
+                        "text/json": components["schemas"]["ScheduledJobDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    key: string | null;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ScheduledJobRequest"];
+                    "text/json": components["schemas"]["ScheduledJobRequest"];
+                    "application/*+json": components["schemas"]["ScheduledJobRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ScheduledJobDto"];
+                        "application/json": components["schemas"]["ScheduledJobDto"];
+                        "text/json": components["schemas"]["ScheduledJobDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/jobs/{key}/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    key: string | null;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ScheduledJobDto"];
+                        "application/json": components["schemas"]["ScheduledJobDto"];
+                        "text/json": components["schemas"]["ScheduledJobDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{key}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    take?: number;
+                };
+                header?: never;
+                path: {
+                    key: string | null;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ScheduledJobRunDto"][];
+                        "application/json": components["schemas"]["ScheduledJobRunDto"][];
+                        "text/json": components["schemas"]["ScheduledJobRunDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    unreadOnly?: boolean;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["UserNotificationDtoPagedResult"];
+                        "application/json": components["schemas"]["UserNotificationDtoPagedResult"];
+                        "text/json": components["schemas"]["UserNotificationDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inbox/prefs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["NotificationPrefDto"][];
+                        "application/json": components["schemas"]["NotificationPrefDto"][];
+                        "text/json": components["schemas"]["NotificationPrefDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inbox/prefs/{eventCode}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    eventCode: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["NotificationPrefRequest"];
+                    "text/json": components["schemas"]["NotificationPrefRequest"];
+                    "application/*+json": components["schemas"]["NotificationPrefRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["NotificationPrefDto"];
+                        "application/json": components["schemas"]["NotificationPrefDto"];
+                        "text/json": components["schemas"]["NotificationPrefDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inbox/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MarkedReadDto"];
+                        "application/json": components["schemas"]["MarkedReadDto"];
+                        "text/json": components["schemas"]["MarkedReadDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inbox/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["UnreadCountDto"];
+                        "application/json": components["schemas"]["UnreadCountDto"];
+                        "text/json": components["schemas"]["UnreadCountDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inbox/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["UserNotificationDto"];
+                        "application/json": components["schemas"]["UserNotificationDto"];
+                        "text/json": components["schemas"]["UserNotificationDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/channels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["NotificationChannelStatusDto"][];
+                        "application/json": components["schemas"]["NotificationChannelStatusDto"][];
+                        "text/json": components["schemas"]["NotificationChannelStatusDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["NotificationEventDto"][];
+                        "application/json": components["schemas"]["NotificationEventDto"][];
+                        "text/json": components["schemas"]["NotificationEventDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    eventCode?: string;
+                    channel?: string;
+                    status?: string;
+                    fromUtc?: string;
+                    toUtc?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["NotificationLogDtoPagedResult"];
+                        "application/json": components["schemas"]["NotificationLogDtoPagedResult"];
+                        "text/json": components["schemas"]["NotificationLogDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["NotificationRuleDto"][];
+                        "application/json": components["schemas"]["NotificationRuleDto"][];
+                        "text/json": components["schemas"]["NotificationRuleDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["NotificationRuleRequest"];
+                    "text/json": components["schemas"]["NotificationRuleRequest"];
+                    "application/*+json": components["schemas"]["NotificationRuleRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["NotificationRuleDto"];
+                        "application/json": components["schemas"]["NotificationRuleDto"];
+                        "text/json": components["schemas"]["NotificationRuleDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/rules/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["NotificationRuleDto"];
+                        "application/json": components["schemas"]["NotificationRuleDto"];
+                        "text/json": components["schemas"]["NotificationRuleDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["NotificationRuleRequest"];
+                    "text/json": components["schemas"]["NotificationRuleRequest"];
+                    "application/*+json": components["schemas"]["NotificationRuleRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["NotificationRuleDto"];
+                        "application/json": components["schemas"]["NotificationRuleDto"];
+                        "text/json": components["schemas"]["NotificationRuleDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/notifications/rules/{publicId}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["NotificationTestRequest"];
+                    "text/json": components["schemas"]["NotificationTestRequest"];
+                    "application/*+json": components["schemas"]["NotificationTestRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["NotificationTestResultDto"];
+                        "application/json": components["schemas"]["NotificationTestResultDto"];
+                        "text/json": components["schemas"]["NotificationTestResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/test-event": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["NotificationTestEventRequest"];
+                    "text/json": components["schemas"]["NotificationTestEventRequest"];
+                    "application/*+json": components["schemas"]["NotificationTestEventRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["NotificationQueuedDto"];
+                        "application/json": components["schemas"]["NotificationQueuedDto"];
+                        "text/json": components["schemas"]["NotificationQueuedDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messages/people": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    q?: string;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MessagePersonDto"][];
+                        "application/json": components["schemas"]["MessagePersonDto"][];
+                        "text/json": components["schemas"]["MessagePersonDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messages/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MessageRoleDto"][];
+                        "application/json": components["schemas"]["MessageRoleDto"][];
+                        "text/json": components["schemas"]["MessageRoleDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messages/threads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MessageThreadSummaryDto"][];
+                        "application/json": components["schemas"]["MessageThreadSummaryDto"][];
+                        "text/json": components["schemas"]["MessageThreadSummaryDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["MessageThreadRequest"];
+                    "text/json": components["schemas"]["MessageThreadRequest"];
+                    "application/*+json": components["schemas"]["MessageThreadRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MessageThreadDto"];
+                        "application/json": components["schemas"]["MessageThreadDto"];
+                        "text/json": components["schemas"]["MessageThreadDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messages/threads/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    before?: number;
+                    take?: number;
+                };
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MessageThreadDto"];
+                        "application/json": components["schemas"]["MessageThreadDto"];
+                        "text/json": components["schemas"]["MessageThreadDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messages/threads/{publicId}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["MessageSendRequest"];
+                    "text/json": components["schemas"]["MessageSendRequest"];
+                    "application/*+json": components["schemas"]["MessageSendRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MessageDto"];
+                        "application/json": components["schemas"]["MessageDto"];
+                        "text/json": components["schemas"]["MessageDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messages/threads/{publicId}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messages/threads/{publicId}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["MessageMembersRequest"];
+                    "text/json": components["schemas"]["MessageMembersRequest"];
+                    "application/*+json": components["schemas"]["MessageMembersRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MessageThreadDto"];
+                        "application/json": components["schemas"]["MessageThreadDto"];
+                        "text/json": components["schemas"]["MessageThreadDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messages/threads/{publicId}/leave": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messages/threads/{publicId}/mute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["MessageMuteRequest"];
+                    "text/json": components["schemas"]["MessageMuteRequest"];
+                    "application/*+json": components["schemas"]["MessageMuteRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MessageThreadSummaryDto"];
+                        "application/json": components["schemas"]["MessageThreadSummaryDto"];
+                        "text/json": components["schemas"]["MessageThreadSummaryDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messages/unread": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MessageUnreadDto"];
+                        "application/json": components["schemas"]["MessageUnreadDto"];
+                        "text/json": components["schemas"]["MessageUnreadDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/presence/ping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PresencePingDto"];
+                        "application/json": components["schemas"]["PresencePingDto"];
+                        "text/json": components["schemas"]["PresencePingDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/announcements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AnnouncementDtoPagedResult"];
+                        "application/json": components["schemas"]["AnnouncementDtoPagedResult"];
+                        "text/json": components["schemas"]["AnnouncementDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["AnnouncementRequest"];
+                    "text/json": components["schemas"]["AnnouncementRequest"];
+                    "application/*+json": components["schemas"]["AnnouncementRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AnnouncementDto"];
+                        "application/json": components["schemas"]["AnnouncementDto"];
+                        "text/json": components["schemas"]["AnnouncementDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/announcements/people": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    q?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AnnouncementPersonDtoPagedResult"];
+                        "application/json": components["schemas"]["AnnouncementPersonDtoPagedResult"];
+                        "text/json": components["schemas"]["AnnouncementPersonDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/announcements/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MessageRoleDto"][];
+                        "application/json": components["schemas"]["MessageRoleDto"][];
+                        "text/json": components["schemas"]["MessageRoleDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    status?: string;
+                    clientPublicId?: string;
+                    q?: string;
+                    backorderOnly?: boolean;
+                    from?: string;
+                    to?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderListItemDtoPagedResult"];
+                        "application/json": components["schemas"]["SalesOrderListItemDtoPagedResult"];
+                        "text/json": components["schemas"]["SalesOrderListItemDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesOrderRequest"];
+                    "text/json": components["schemas"]["SalesOrderRequest"];
+                    "application/*+json": components["schemas"]["SalesOrderRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderDto"];
+                        "application/json": components["schemas"]["SalesOrderDto"];
+                        "text/json": components["schemas"]["SalesOrderDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/backorders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    q?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesBackorderLineDto"][];
+                        "application/json": components["schemas"]["SalesBackorderLineDto"][];
+                        "text/json": components["schemas"]["SalesBackorderLineDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/backorders/fulfill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesFulfillResultDto"];
+                        "application/json": components["schemas"]["SalesFulfillResultDto"];
+                        "text/json": components["schemas"]["SalesFulfillResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderDto"];
+                        "application/json": components["schemas"]["SalesOrderDto"];
+                        "text/json": components["schemas"]["SalesOrderDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesOrderRequest"];
+                    "text/json": components["schemas"]["SalesOrderRequest"];
+                    "application/*+json": components["schemas"]["SalesOrderRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderDto"];
+                        "application/json": components["schemas"]["SalesOrderDto"];
+                        "text/json": components["schemas"]["SalesOrderDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesAvailabilityDto"];
+                        "application/json": components["schemas"]["SalesAvailabilityDto"];
+                        "text/json": components["schemas"]["SalesAvailabilityDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesOrderCancelRequest"];
+                    "text/json": components["schemas"]["SalesOrderCancelRequest"];
+                    "application/*+json": components["schemas"]["SalesOrderCancelRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderDto"];
+                        "application/json": components["schemas"]["SalesOrderDto"];
+                        "text/json": components["schemas"]["SalesOrderDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/delivery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesDeliveryRequest"];
+                    "text/json": components["schemas"]["SalesDeliveryRequest"];
+                    "application/*+json": components["schemas"]["SalesDeliveryRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderDto"];
+                        "application/json": components["schemas"]["SalesOrderDto"];
+                        "text/json": components["schemas"]["SalesOrderDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/dispatch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesDispatchRequest"];
+                    "text/json": components["schemas"]["SalesDispatchRequest"];
+                    "application/*+json": components["schemas"]["SalesDispatchRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesDispatchResultDto"];
+                        "application/json": components["schemas"]["SalesDispatchResultDto"];
+                        "text/json": components["schemas"]["SalesDispatchResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/lines/{lineId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    lineId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesOrderLineModifyRequest"];
+                    "text/json": components["schemas"]["SalesOrderLineModifyRequest"];
+                    "application/*+json": components["schemas"]["SalesOrderLineModifyRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderDto"];
+                        "application/json": components["schemas"]["SalesOrderDto"];
+                        "text/json": components["schemas"]["SalesOrderDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/lines/{lineId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    lineId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesOrderCancelRequest"];
+                    "text/json": components["schemas"]["SalesOrderCancelRequest"];
+                    "application/*+json": components["schemas"]["SalesOrderCancelRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderDto"];
+                        "application/json": components["schemas"]["SalesOrderDto"];
+                        "text/json": components["schemas"]["SalesOrderDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/lines/{lineId}/fulfill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    lineId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderDto"];
+                        "application/json": components["schemas"]["SalesOrderDto"];
+                        "text/json": components["schemas"]["SalesOrderDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesOrderRequestRequest"];
+                    "text/json": components["schemas"]["SalesOrderRequestRequest"];
+                    "application/*+json": components["schemas"]["SalesOrderRequestRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderDto"];
+                        "application/json": components["schemas"]["SalesOrderDto"];
+                        "text/json": components["schemas"]["SalesOrderDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tax/calculate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TaxCalcRequest"];
+                    "text/json": components["schemas"]["TaxCalcRequest"];
+                    "application/*+json": components["schemas"]["TaxCalcRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxCalcDto"];
+                        "application/json": components["schemas"]["TaxCalcDto"];
+                        "text/json": components["schemas"]["TaxCalcDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tax/exemptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    clientId?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxExemptionDto"][];
+                        "application/json": components["schemas"]["TaxExemptionDto"][];
+                        "text/json": components["schemas"]["TaxExemptionDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TaxExemptionRequest"];
+                    "text/json": components["schemas"]["TaxExemptionRequest"];
+                    "application/*+json": components["schemas"]["TaxExemptionRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxExemptionDto"];
+                        "application/json": components["schemas"]["TaxExemptionDto"];
+                        "text/json": components["schemas"]["TaxExemptionDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tax/exemptions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TaxExemptionPatchRequest"];
+                    "text/json": components["schemas"]["TaxExemptionPatchRequest"];
+                    "application/*+json": components["schemas"]["TaxExemptionPatchRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxExemptionDto"];
+                        "application/json": components["schemas"]["TaxExemptionDto"];
+                        "text/json": components["schemas"]["TaxExemptionDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/tax/exemptions/{id}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxExemptionDto"];
+                        "application/json": components["schemas"]["TaxExemptionDto"];
+                        "text/json": components["schemas"]["TaxExemptionDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tax/exemptions/{id}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxExemptionDto"];
+                        "application/json": components["schemas"]["TaxExemptionDto"];
+                        "text/json": components["schemas"]["TaxExemptionDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tax/products/{productId}/category": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    productId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProductTaxCategoryDto"];
+                        "application/json": components["schemas"]["ProductTaxCategoryDto"];
+                        "text/json": components["schemas"]["ProductTaxCategoryDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    productId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ProductTaxCategoryRequest"];
+                    "text/json": components["schemas"]["ProductTaxCategoryRequest"];
+                    "application/*+json": components["schemas"]["ProductTaxCategoryRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProductTaxCategoryDto"];
+                        "application/json": components["schemas"]["ProductTaxCategoryDto"];
+                        "text/json": components["schemas"]["ProductTaxCategoryDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tax/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    q?: string;
+                    category?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProductTaxCategoryDtoPagedResult"];
+                        "application/json": components["schemas"]["ProductTaxCategoryDtoPagedResult"];
+                        "text/json": components["schemas"]["ProductTaxCategoryDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tax/rates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    activeOnly?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxRateDto"][];
+                        "application/json": components["schemas"]["TaxRateDto"][];
+                        "text/json": components["schemas"]["TaxRateDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TaxRateRequest"];
+                    "text/json": components["schemas"]["TaxRateRequest"];
+                    "application/*+json": components["schemas"]["TaxRateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxRateDto"];
+                        "application/json": components["schemas"]["TaxRateDto"];
+                        "text/json": components["schemas"]["TaxRateDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tax/rates/{id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TaxRateCloseRequest"];
+                    "text/json": components["schemas"]["TaxRateCloseRequest"];
+                    "application/*+json": components["schemas"]["TaxRateCloseRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxRateDto"];
+                        "application/json": components["schemas"]["TaxRateDto"];
+                        "text/json": components["schemas"]["TaxRateDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tax/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxSettingsDto"];
+                        "application/json": components["schemas"]["TaxSettingsDto"];
+                        "text/json": components["schemas"]["TaxSettingsDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TaxSettingsRequest"];
+                    "text/json": components["schemas"]["TaxSettingsRequest"];
+                    "application/*+json": components["schemas"]["TaxSettingsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxSettingsDto"];
+                        "application/json": components["schemas"]["TaxSettingsDto"];
+                        "text/json": components["schemas"]["TaxSettingsDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/api/v1/printers": {
         parameters: {
             query?: never;
@@ -16629,6 +19081,48 @@ export interface paths {
                         "text/plain": components["schemas"]["SyncAsnDtoSyncPage"];
                         "application/json": components["schemas"]["SyncAsnDtoSyncPage"];
                         "text/json": components["schemas"]["SyncAsnDtoSyncPage"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sync/sales-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    warehousePublicId?: string;
+                    since?: string;
+                    cursor?: string;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SyncSalesOrderDtoSyncPage"];
+                        "application/json": components["schemas"]["SyncSalesOrderDtoSyncPage"];
+                        "text/json": components["schemas"]["SyncSalesOrderDtoSyncPage"];
                     };
                 };
             };
@@ -24310,6 +26804,787 @@ export interface components {
             printLabelsDirect?: boolean;
             qzSigningConfigured?: boolean;
         };
+        ScheduledJobDto: {
+            key?: string | null;
+            name?: string | null;
+            nameEn?: string | null;
+            description?: string | null;
+            descriptionEn?: string | null;
+            isEnabled?: boolean;
+            scheduleKind?: string | null;
+            /** Format: int32 */
+            intervalSeconds?: number | null;
+            dailyAt?: string | null;
+            /** Format: date-time */
+            nextRunUtc?: string | null;
+            manualRequested?: boolean;
+            /** Format: date-time */
+            lastStartedUtc?: string | null;
+            /** Format: date-time */
+            lastFinishedUtc?: string | null;
+            lastStatus?: string | null;
+            lastMessage?: string | null;
+            lastError?: string | null;
+            /** Format: int32 */
+            consecutiveFailures?: number;
+            isRunning?: boolean;
+            rowVersion?: string | null;
+        };
+        ScheduledJobRequest: {
+            isEnabled?: boolean | null;
+            scheduleKind?: string | null;
+            /** Format: int32 */
+            intervalSeconds?: number | null;
+            dailyAt?: string | null;
+            rowVersion?: string | null;
+        };
+        ScheduledJobRunDto: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: date-time */
+            startedUtc?: string;
+            /** Format: date-time */
+            finishedUtc?: string | null;
+            status?: string | null;
+            triggeredBy?: string | null;
+            message?: string | null;
+            error?: string | null;
+        };
+        MarkedReadDto: {
+            /** Format: int32 */
+            marked?: number;
+        };
+        NotificationChannelRequest: {
+            channel?: string | null;
+            isEnabled?: boolean | null;
+            subjectEs?: string | null;
+            subjectEn?: string | null;
+            bodyEs?: string | null;
+            bodyEn?: string | null;
+        };
+        NotificationChannelStatusDto: {
+            channel?: string | null;
+            isConfigured?: boolean;
+        };
+        NotificationEventDto: {
+            code?: string | null;
+            moduleKey?: string | null;
+            name?: string | null;
+            nameEn?: string | null;
+            isOptional?: boolean;
+            variables?: components["schemas"]["NotificationVariableDto"][] | null;
+            defaultSubject?: string | null;
+            defaultSubjectEn?: string | null;
+            defaultBody?: string | null;
+            defaultBodyEn?: string | null;
+        };
+        NotificationLogDto: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            outboxId?: number;
+            /** Format: uuid */
+            rulePublicId?: string | null;
+            ruleName?: string | null;
+            eventCode?: string | null;
+            channel?: string | null;
+            recipient?: string | null;
+            status?: string | null;
+            error?: string | null;
+            /** Format: int32 */
+            attempts?: number;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            /** Format: date-time */
+            sentAtUtc?: string | null;
+        };
+        NotificationLogDtoPagedResult: {
+            items?: components["schemas"]["NotificationLogDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        NotificationPrefDto: {
+            eventCode?: string | null;
+            name?: string | null;
+            nameEn?: string | null;
+            isMuted?: boolean;
+        };
+        NotificationPrefRequest: {
+            muted?: boolean | null;
+        };
+        NotificationQueuedDto: {
+            queued?: boolean;
+        };
+        NotificationRecipientDto: {
+            kind?: string | null;
+            /** Format: int32 */
+            roleId?: number | null;
+            /** Format: int32 */
+            userId?: number | null;
+            value?: string | null;
+            label?: string | null;
+        };
+        NotificationRecipientRequest: {
+            kind?: string | null;
+            /** Format: int32 */
+            roleId?: number | null;
+            /** Format: int32 */
+            userId?: number | null;
+            value?: string | null;
+        };
+        NotificationRuleChannelDto: {
+            channel?: string | null;
+            isEnabled?: boolean;
+            subjectEs?: string | null;
+            subjectEn?: string | null;
+            bodyEs?: string | null;
+            bodyEn?: string | null;
+            isConfigured?: boolean;
+        };
+        NotificationRuleDto: {
+            /** Format: uuid */
+            publicId?: string;
+            eventCode?: string | null;
+            name?: string | null;
+            isActive?: boolean;
+            channels?: components["schemas"]["NotificationRuleChannelDto"][] | null;
+            recipients?: components["schemas"]["NotificationRecipientDto"][] | null;
+            rowVersion?: string | null;
+        };
+        NotificationRuleRequest: {
+            eventCode?: string | null;
+            name?: string | null;
+            isActive?: boolean | null;
+            channels?: components["schemas"]["NotificationChannelRequest"][] | null;
+            recipients?: components["schemas"]["NotificationRecipientRequest"][] | null;
+            rowVersion?: string | null;
+        };
+        NotificationTestEventRequest: {
+            message?: string | null;
+        };
+        NotificationTestRequest: {
+            channel?: string | null;
+        };
+        NotificationTestResultDto: {
+            channel?: string | null;
+            status?: string | null;
+            message?: string | null;
+        };
+        NotificationVariableDto: {
+            name?: string | null;
+            label?: string | null;
+            labelEn?: string | null;
+            sample?: string | null;
+        };
+        UnreadCountDto: {
+            /** Format: int32 */
+            count?: number;
+        };
+        UserNotificationDto: {
+            /** Format: int64 */
+            id?: number;
+            eventCode?: string | null;
+            title?: string | null;
+            body?: string | null;
+            linkUrl?: string | null;
+            isRead?: boolean;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            fromName?: string | null;
+        };
+        UserNotificationDtoPagedResult: {
+            items?: components["schemas"]["UserNotificationDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        MessageDto: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int32 */
+            senderId?: number;
+            senderName?: string | null;
+            body?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            mine?: boolean;
+        };
+        MessageLatestDto: {
+            /** Format: uuid */
+            threadPublicId?: string;
+            fromName?: string | null;
+            preview?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            isMuted?: boolean;
+        };
+        MessageMembersRequest: {
+            userIds?: number[] | null;
+        };
+        MessageMemberDto: {
+            /** Format: int32 */
+            userId?: number;
+            name?: string | null;
+            email?: string | null;
+            online?: boolean;
+            /** Format: date-time */
+            lastSeenUtc?: string | null;
+            isCreator?: boolean;
+        };
+        MessageMuteRequest: {
+            muted?: boolean | null;
+        };
+        MessagePersonDto: {
+            /** Format: int32 */
+            id?: number;
+            name?: string | null;
+            email?: string | null;
+            online?: boolean;
+            /** Format: date-time */
+            lastSeenUtc?: string | null;
+        };
+        MessageRoleDto: {
+            /** Format: int32 */
+            id?: number;
+            name?: string | null;
+            /** Format: int32 */
+            memberCount?: number;
+        };
+        MessageSendRequest: {
+            text?: string | null;
+        };
+        MessageThreadDto: {
+            thread?: components["schemas"]["MessageThreadSummaryDto"];
+            members?: components["schemas"]["MessageMemberDto"][] | null;
+            messages?: components["schemas"]["MessageDto"][] | null;
+            hasMore?: boolean;
+            canAddMembers?: boolean;
+        };
+        MessageThreadRequest: {
+            userIds?: number[] | null;
+            /** Format: int32 */
+            roleId?: number | null;
+            title?: string | null;
+            text?: string | null;
+        };
+        MessageThreadSummaryDto: {
+            /** Format: uuid */
+            publicId?: string;
+            kind?: string | null;
+            name?: string | null;
+            /** Format: int32 */
+            memberCount?: number;
+            other?: components["schemas"]["MessagePersonDto"];
+            lastMessagePreview?: string | null;
+            lastSenderName?: string | null;
+            /** Format: date-time */
+            lastMessageAtUtc?: string;
+            /** Format: int32 */
+            unread?: number;
+            isMuted?: boolean;
+        };
+        MessageUnreadDto: {
+            /** Format: int32 */
+            count?: number;
+            /** Format: int32 */
+            threads?: number;
+            latest?: components["schemas"]["MessageLatestDto"];
+        };
+        PresencePingDto: {
+            /** Format: date-time */
+            seenUtc?: string;
+        };
+        AnnouncementDto: {
+            /** Format: uuid */
+            publicId?: string;
+            title?: string | null;
+            body?: string | null;
+            sentByName?: string | null;
+            /** Format: date-time */
+            sentAtUtc?: string;
+            toAll?: boolean;
+            audienceText?: string | null;
+            /** Format: int32 */
+            recipientCount?: number;
+            /** Format: int32 */
+            readCount?: number;
+        };
+        AnnouncementDtoPagedResult: {
+            items?: components["schemas"]["AnnouncementDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        AnnouncementPersonDto: {
+            /** Format: int32 */
+            id?: number;
+            name?: string | null;
+            email?: string | null;
+        };
+        AnnouncementPersonDtoPagedResult: {
+            items?: components["schemas"]["AnnouncementPersonDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        AnnouncementRequest: {
+            userIds?: number[] | null;
+            roleIds?: number[] | null;
+            all?: boolean | null;
+            title?: string | null;
+            text?: string | null;
+        };
+        ProductTaxCategoryDto: {
+            /** Format: int32 */
+            productId?: number;
+            sku?: string | null;
+            name?: string | null;
+            category?: string | null;
+        };
+        ProductTaxCategoryDtoPagedResult: {
+            items?: components["schemas"]["ProductTaxCategoryDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        ProductTaxCategoryRequest: {
+            category?: string | null;
+        };
+        SalesAvailabilityDto: {
+            lines?: components["schemas"]["SalesAvailabilityLineDto"][] | null;
+            hasShortage?: boolean;
+            credit?: components["schemas"]["SalesCreditDto"];
+        };
+        SalesAvailabilityLineDto: {
+            /** Format: int32 */
+            lineNo?: number;
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            /** Format: double */
+            ordered?: number;
+            /** Format: double */
+            available?: number;
+            /** Format: double */
+            shortage?: number;
+        };
+        SalesBackorderLineDto: {
+            /** Format: uuid */
+            orderPublicId?: string;
+            orderNumber?: string | null;
+            orderStatus?: string | null;
+            clientName?: string | null;
+            warehouseName?: string | null;
+            /** Format: int32 */
+            lineId?: number;
+            /** Format: int32 */
+            lineNo?: number;
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            /** Format: double */
+            ordered?: number;
+            /** Format: double */
+            reserved?: number;
+            /** Format: double */
+            pending?: number;
+            /** Format: double */
+            available?: number;
+            /** Format: double */
+            fulfillable?: number;
+            /** Format: date-time */
+            requestedAtUtc?: string;
+            /** Format: int32 */
+            daysWaiting?: number;
+        };
+        SalesCreditDto: {
+            /** Format: double */
+            limit?: number | null;
+            /** Format: double */
+            exposure?: number;
+            /** Format: double */
+            newAmount?: number;
+            /** Format: double */
+            available?: number | null;
+            exceeded?: boolean;
+            message?: string | null;
+        };
+        SalesDeliveryRequest: {
+            /** Format: uuid */
+            pickBatchPublicId?: string | null;
+            order?: components["schemas"]["OrderCreateRequest"] | null;
+        };
+        SalesDispatchInfoDto: {
+            /** Format: uuid */
+            pickBatchPublicId?: string;
+            number?: string | null;
+            status?: string | null;
+            /** Format: date-time */
+            collectedAtUtc?: string;
+            /** Format: double */
+            quantity?: number;
+            /** Format: uuid */
+            transportOrderPublicId?: string | null;
+            transportOrderNumber?: string | null;
+        };
+        SalesDispatchLineRequest: {
+            /** Format: int32 */
+            lineId?: number | null;
+            /** Format: double */
+            quantity?: number | null;
+            /** Format: int32 */
+            binId?: number | null;
+            /** Format: int32 */
+            lotId?: number | null;
+        };
+        SalesDispatchRequest: {
+            delivery?: components["schemas"]["OrderCreateRequest"] | null;
+            lines?: components["schemas"]["SalesDispatchLineRequest"][] | null;
+            note?: string | null;
+        };
+        SalesDispatchResultDto: {
+            /** Format: uuid */
+            pickBatchPublicId?: string;
+            pickBatchNumber?: string | null;
+            order?: components["schemas"]["SalesOrderDto"];
+        };
+        SalesFulfillLineDto: {
+            /** Format: uuid */
+            orderPublicId?: string;
+            orderNumber?: string | null;
+            /** Format: int32 */
+            lineId?: number;
+            sku?: string | null;
+            /** Format: double */
+            reserved?: number;
+            /** Format: double */
+            stillPending?: number;
+        };
+        SalesFulfillResultDto: {
+            lines?: components["schemas"]["SalesFulfillLineDto"][] | null;
+            /** Format: double */
+            totalReserved?: number;
+            /** Format: int32 */
+            linesCompleted?: number;
+        };
+        SalesOrderCancelRequest: {
+            comment?: string | null;
+        };
+        SalesOrderDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            statusColor?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            /** Format: uuid */
+            consigneePublicId?: string | null;
+            consigneeName?: string | null;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            warehouseName?: string | null;
+            /** Format: date */
+            requestedDate?: string;
+            /** Format: date */
+            requiredDate?: string | null;
+            notes?: string | null;
+            /** Format: double */
+            subtotal?: number;
+            /** Format: double */
+            taxAmount?: number;
+            /** Format: double */
+            total?: number;
+            hasBackorder?: boolean;
+            requestedByName?: string | null;
+            /** Format: date-time */
+            requestedAtUtc?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            lines?: components["schemas"]["SalesOrderLineDto"][] | null;
+            dispatches?: components["schemas"]["SalesDispatchInfoDto"][] | null;
+        };
+        SalesOrderLineDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: int32 */
+            lineNo?: number;
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            /** Format: int32 */
+            lotId?: number | null;
+            /** Format: double */
+            qtyOrdered?: number;
+            /** Format: double */
+            qtyReserved?: number;
+            /** Format: double */
+            qtyBackordered?: number;
+            /** Format: double */
+            qtyShipped?: number;
+            isClosed?: boolean;
+            /** Format: double */
+            unitPrice?: number;
+            /** Format: double */
+            lineSubtotal?: number;
+            /** Format: double */
+            taxRatePct?: number;
+            /** Format: double */
+            taxAmount?: number;
+            isTaxExempt?: boolean;
+        };
+        SalesOrderLineModifyRequest: {
+            /** Format: double */
+            quantity?: number | null;
+            /** Format: double */
+            unitPrice?: number | null;
+            allowBackorder?: boolean | null;
+        };
+        SalesOrderLineRequest: {
+            /** Format: uuid */
+            productPublicId?: string | null;
+            /** Format: double */
+            quantity?: number | null;
+            /** Format: double */
+            unitPrice?: number | null;
+            /** Format: int32 */
+            lotId?: number | null;
+        };
+        SalesOrderListItemDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            statusColor?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            warehouseName?: string | null;
+            /** Format: date */
+            requestedDate?: string;
+            /** Format: date */
+            requiredDate?: string | null;
+            /** Format: double */
+            subtotal?: number;
+            /** Format: double */
+            taxAmount?: number;
+            /** Format: double */
+            total?: number;
+            /** Format: int32 */
+            lineCount?: number;
+            hasBackorder?: boolean;
+            requestedByName?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+        };
+        SalesOrderListItemDtoPagedResult: {
+            items?: components["schemas"]["SalesOrderListItemDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        SalesOrderRequest: {
+            /** Format: uuid */
+            warehousePublicId?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string | null;
+            /** Format: uuid */
+            consigneePublicId?: string | null;
+            clearConsignee?: boolean | null;
+            /** Format: date */
+            requiredDate?: string | null;
+            clearRequiredDate?: boolean | null;
+            notes?: string | null;
+            lines?: components["schemas"]["SalesOrderLineRequest"][] | null;
+        };
+        SalesOrderRequestRequest: {
+            allowBackorder?: boolean | null;
+            overrideCredit?: boolean | null;
+            comment?: string | null;
+        };
+        TaxCalcComponentDto: {
+            code?: string | null;
+            name?: string | null;
+            /** Format: double */
+            percent?: number;
+            /** Format: double */
+            amount?: number;
+        };
+        TaxCalcDto: {
+            /** Format: date */
+            date?: string;
+            rateCode?: string | null;
+            /** Format: double */
+            ratePercent?: number;
+            pricesIncludeTax?: boolean;
+            roundingMode?: string | null;
+            lines?: components["schemas"]["TaxCalcLineDto"][] | null;
+            /** Format: double */
+            subtotal?: number;
+            /** Format: double */
+            taxAmount?: number;
+            /** Format: double */
+            total?: number;
+            components?: components["schemas"]["TaxCalcComponentDto"][] | null;
+            warnings?: string[] | null;
+        };
+        TaxCalcLineDto: {
+            key?: string | null;
+            /** Format: double */
+            amount?: number;
+            /** Format: double */
+            net?: number;
+            /** Format: double */
+            taxAmount?: number;
+            /** Format: double */
+            total?: number;
+            reason?: string | null;
+            isTaxExempt?: boolean;
+            /** Format: int32 */
+            taxRateId?: number | null;
+            /** Format: double */
+            taxRatePct?: number;
+            exemptionCertificate?: string | null;
+            components?: components["schemas"]["TaxCalcComponentDto"][] | null;
+        };
+        TaxCalcLineRequest: {
+            key?: string | null;
+            /** Format: int32 */
+            productId?: number | null;
+            chargeType?: string | null;
+            /** Format: double */
+            amount?: number | null;
+        };
+        TaxCalcRequest: {
+            /** Format: int32 */
+            clientId?: number | null;
+            /** Format: date */
+            date?: string | null;
+            lines?: components["schemas"]["TaxCalcLineRequest"][] | null;
+        };
+        TaxChargeRuleDto: {
+            chargeType?: string | null;
+            label?: string | null;
+            isTaxable?: boolean;
+        };
+        TaxChargeRuleRequest: {
+            chargeType?: string | null;
+            isTaxable?: boolean | null;
+        };
+        TaxComponentDto: {
+            code?: string | null;
+            name?: string | null;
+            /** Format: double */
+            percent?: number;
+        };
+        TaxExemptionDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            publicId?: string;
+            /** Format: int32 */
+            clientId?: number;
+            clientName?: string | null;
+            exemptionType?: string | null;
+            certificateNumber?: string | null;
+            /** Format: date */
+            validFrom?: string;
+            /** Format: date */
+            validTo?: string | null;
+            notes?: string | null;
+            isActive?: boolean;
+            status?: string | null;
+        };
+        TaxExemptionPatchRequest: {
+            exemptionType?: string | null;
+            certificateNumber?: string | null;
+            /** Format: date */
+            validFrom?: string | null;
+            /** Format: date */
+            validTo?: string | null;
+            clearValidTo?: boolean | null;
+            notes?: string | null;
+        };
+        TaxExemptionRequest: {
+            /** Format: int32 */
+            clientId?: number | null;
+            exemptionType?: string | null;
+            certificateNumber?: string | null;
+            /** Format: date */
+            validFrom?: string | null;
+            /** Format: date */
+            validTo?: string | null;
+            notes?: string | null;
+        };
+        TaxRateCloseRequest: {
+            /** Format: date */
+            effectiveTo?: string | null;
+        };
+        TaxRateDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            publicId?: string;
+            code?: string | null;
+            name?: string | null;
+            /** Format: double */
+            percent?: number;
+            /** Format: date */
+            effectiveFrom?: string;
+            /** Format: date */
+            effectiveTo?: string | null;
+            status?: string | null;
+            components?: components["schemas"]["TaxComponentDto"][] | null;
+        };
+        TaxRateRequest: {
+            code?: string | null;
+            name?: string | null;
+            /** Format: date */
+            effectiveFrom?: string | null;
+            /** Format: date */
+            effectiveTo?: string | null;
+            components?: components["schemas"]["TaxComponentDto"][] | null;
+        };
+        TaxSettingsDto: {
+            pricesIncludeTax?: boolean;
+            roundingMode?: string | null;
+            defaultRateCode?: string | null;
+            chargeRules?: components["schemas"]["TaxChargeRuleDto"][] | null;
+        };
+        TaxSettingsRequest: {
+            pricesIncludeTax?: boolean | null;
+            roundingMode?: string | null;
+            defaultRateCode?: string | null;
+            clearDefaultRate?: boolean | null;
+            chargeRules?: components["schemas"]["TaxChargeRuleRequest"][] | null;
+        };
         PrinterDto: {
             /** Format: uuid */
             publicId?: string;
@@ -26225,6 +29500,57 @@ export interface components {
             nextCursor?: string | null;
             /** Format: date-time */
             serverTimeUtc?: string;
+        };
+        SyncSalesOrderDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            clientName?: string | null;
+            consigneeName?: string | null;
+            statusCode?: string | null;
+            /** Format: date */
+            requiredDate?: string | null;
+            /** Format: date-time */
+            requestedAtUtc?: string | null;
+            isActive?: boolean;
+            lines?: components["schemas"]["SyncSalesOrderLineDto"][] | null;
+        };
+        SyncSalesOrderDtoSyncPage: {
+            items?: components["schemas"]["SyncSalesOrderDto"][] | null;
+            nextCursor?: string | null;
+            /** Format: date-time */
+            serverTimeUtc?: string;
+        };
+        SyncSalesOrderLineDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            /** Format: double */
+            qtyOrdered?: number;
+            /** Format: double */
+            qtyReserved?: number;
+            /** Format: double */
+            qtyShipped?: number;
+            /** Format: double */
+            qtyBackordered?: number;
+            reservations?: components["schemas"]["SyncSalesReservationDto"][] | null;
+        };
+        SyncSalesReservationDto: {
+            /** Format: int32 */
+            binId?: number;
+            binCode?: string | null;
+            /** Format: int32 */
+            lotId?: number | null;
+            lotNumber?: string | null;
+            /** Format: double */
+            quantity?: number;
         };
         SyncPurchaseOrderDto: {
             /** Format: int32 */

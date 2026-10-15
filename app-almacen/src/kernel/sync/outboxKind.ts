@@ -15,6 +15,7 @@ const KIND_KEYS: Record<OutboxKind, string> = {
   adjust: 'sync.kindAdjust',
   damage: 'sync.kindDamage',
   manualIssue: 'sync.kindManualIssue',
+  salesDispatch: 'sync.kindSalesDispatch',
 }
 
 /** Clave i18n del tipo, o null si el tipo no es uno de los conocidos. */

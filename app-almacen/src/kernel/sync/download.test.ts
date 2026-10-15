@@ -6,7 +6,7 @@ import { __resetSecureStoreForTests } from 'expo-secure-store'
 
 import { __resetSessionForTests, saveDeviceIdentity } from '../auth/session'
 import { localBalancesForBin, localBalancesForProduct, localBalancesSearch, balancesSyncedAtUtc } from '../warehouse/localBalances'
-import { downloadAsns, downloadBalances, downloadBins, downloadClients, downloadConsigneeLocations, downloadForReceiving, downloadStockExit, downloadProducts, downloadPurchaseOrders, downloadPurchaseOrdersIfAllowed } from './download'
+import { downloadAsns, downloadBalances, downloadBins, downloadClients, downloadConsigneeLocations, downloadForReceiving, downloadStockExit, downloadProducts, downloadPurchaseOrders, downloadPurchaseOrdersIfAllowed, downloadSalesOrders, downloadSalesOrdersIfAllowed } from './download'
 
 jest.mock('../api/client', () => {
   const actual = jest.requireActual('../api/client')
@@ -241,7 +241,7 @@ describe('órdenes de compra sin permiso (403)', () => {
       path === '/api/v1/sync/purchase-orders' ? forbidden() : Promise.resolve(page([], null, '2026-01-01T00:00:00.000Z')),
     )
     const results = await downloadForReceiving()
-    expect(results.map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins', 'balances', 'stockExit', 'clients', 'consigneeLocations', 'manualIssueReasons'])
+    expect(results.map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins', 'balances', 'stockExit', 'salesOrders', 'clients', 'consigneeLocations', 'manualIssueReasons'])
     expect(results[1]).toEqual({ resource: 'purchaseOrders', pages: 0, items: 0 })
   })
 
@@ -267,7 +267,7 @@ describe('downloadForReceiving', () => {
     expect((await downloadForReceiving()).map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'clients', 'consigneeLocations', 'manualIssueReasons'])
 
     await saveDeviceIdentity({ devicePublicId: 'dev-1', deviceSecret: 's', tenantName: 'T', defaultWarehousePublicId: 'wh-1', theme: null })
-    expect((await downloadForReceiving()).map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins', 'balances', 'stockExit', 'clients', 'consigneeLocations', 'manualIssueReasons'])
+    expect((await downloadForReceiving()).map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins', 'balances', 'stockExit', 'salesOrders', 'clients', 'consigneeLocations', 'manualIssueReasons'])
   })
 })
 
@@ -450,5 +450,39 @@ describe('clientes y consignatarios para despachar sin señal (2026-10-11)', () 
     expect(await downloadClients()).toEqual({ resource: 'clients', pages: 0, items: 0 })
     expect(await downloadConsigneeLocations()).toEqual({ resource: 'consigneeLocations', pages: 0, items: 0 })
     expect(getDb().getFirstSync('SELECT since_utc FROM sync_watermark WHERE resource = ?', ['clients'])).toBeNull()
+  })
+})
+
+describe('downloadSalesOrders (Lote 65)', () => {
+  const order = (id: number, isActive = true) => ({
+    id, publicId: `so-${id}`, number: `OV-0000${id}`, warehousePublicId: 'wh-1', clientName: 'C', consigneeName: null, statusCode: 'REQUESTED', requiredDate: null, requestedAtUtc: null, isActive,
+    lines: [{ id: id * 10, productPublicId: 'p1', sku: 'MED', productName: 'Med', qtyOrdered: 2, qtyReserved: 2, qtyShipped: 0, qtyBackordered: 0, reservations: [{ binId: 1, binCode: 'A-01', lotId: null, lotNumber: null, quantity: 2 }] }],
+  })
+
+  it('reemplaza la copia del almacén: lo que el servidor ya no manda se borra', async () => {
+    getMock.mockResolvedValueOnce(page([order(1), order(2)], null, '2026-10-15T00:00:00.000Z'))
+    expect(await downloadSalesOrders('wh-1')).toEqual({ resource: 'salesOrders', pages: 1, items: 2 })
+    expect(getMock).toHaveBeenCalledWith('/api/v1/sync/sales-orders', expect.objectContaining({ params: { query: expect.objectContaining({ warehousePublicId: 'wh-1' }) } }))
+    expect(getDb().getAllSync<{ number: string }>('SELECT number FROM sales_order ORDER BY id').map((r) => r.number)).toEqual(['OV-00001', 'OV-00002'])
+    expect(getDb().getAllSync('SELECT * FROM sales_order_reservation')).toHaveLength(2)
+
+    getMock.mockResolvedValueOnce(page([order(2)], null, '2026-10-15T00:01:00.000Z'))
+    await downloadSalesOrders('wh-1')
+    expect(getDb().getAllSync<{ number: string }>('SELECT number FROM sales_order').map((r) => r.number)).toEqual(['OV-00002'])
+    expect(getDb().getAllSync('SELECT * FROM sales_order_reservation')).toHaveLength(1)
+  })
+
+  it('una orden inactiva no se guarda', async () => {
+    getMock.mockResolvedValueOnce(page([order(1, false)], null, '2026-10-15T00:00:00.000Z'))
+    await downloadSalesOrders('wh-1')
+    expect(getDb().getAllSync('SELECT * FROM sales_order')).toEqual([])
+  })
+
+  it('sin módulo o sin permiso (403) no es una falla: se salta y se borra lo de antes', async () => {
+    getMock.mockResolvedValueOnce(page([order(1)], null, '2026-10-15T00:00:00.000Z'))
+    await downloadSalesOrders('wh-1')
+    getMock.mockResolvedValueOnce({ error: { title: 'Sin permiso', status: 403, code: 'forbidden' }, response: new Response(null, { status: 403 }) })
+    expect(await downloadSalesOrdersIfAllowed('wh-1')).toEqual({ resource: 'salesOrders', pages: 0, items: 0 })
+    expect(getDb().getAllSync('SELECT * FROM sales_order')).toEqual([])
   })
 })

@@ -1,6 +1,6 @@
 // Lote 8A-app — esquema de la base local (expo-sqlite). Ver docs/mobile/app-almacen-plan.md §1 "Base local".
 // Migraciones por PRAGMA user_version: cada versión agrega su bloque de SQL; nunca se reescribe uno ya publicado.
-export const SCHEMA_VERSION = 13
+export const SCHEMA_VERSION = 14
 
 export const MIGRATIONS: readonly string[] = [
   // v1: kv, catálogos sincronizados, documentos abiertos, cola de salida y marcas de agua.
@@ -409,5 +409,44 @@ export const MIGRATIONS: readonly string[] = [
     city TEXT
   );
   CREATE INDEX IF NOT EXISTS ix_consignee_location_client ON consignee_location(client_public_id);
+  `,
+  // v14 (2026-10-15, Lote 65: despachar contra una orden de venta): las órdenes de venta por despachar (GET /sync/sales-orders: solicitadas o despachadas parciales con
+  // algo reservado), con sus líneas y de qué posición y lote reservó el sistema cada parte (la guía del despacho). Es una copia que se reemplaza completa en cada
+  // sincronización (llegan todas las abiertas): lo que ya no está en el servidor se borra del aparato.
+  `
+  CREATE TABLE IF NOT EXISTS sales_order (
+    id INTEGER PRIMARY KEY NOT NULL,
+    public_id TEXT NOT NULL,
+    number TEXT NOT NULL,
+    warehouse_public_id TEXT NOT NULL,
+    client_name TEXT,
+    consignee_name TEXT,
+    status_code TEXT,
+    required_date TEXT,
+    requested_at_utc TEXT
+  );
+  CREATE INDEX IF NOT EXISTS ix_sales_order_warehouse ON sales_order(warehouse_public_id);
+  CREATE TABLE IF NOT EXISTS sales_order_line (
+    id INTEGER PRIMARY KEY NOT NULL,
+    sales_order_id INTEGER NOT NULL,
+    product_public_id TEXT NOT NULL,
+    sku TEXT,
+    product_name TEXT,
+    qty_ordered REAL NOT NULL,
+    qty_reserved REAL NOT NULL,
+    qty_shipped REAL NOT NULL,
+    qty_backordered REAL NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS ix_sales_order_line_order ON sales_order_line(sales_order_id);
+  CREATE TABLE IF NOT EXISTS sales_order_reservation (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sales_order_line_id INTEGER NOT NULL,
+    bin_id INTEGER NOT NULL,
+    bin_code TEXT NOT NULL,
+    lot_id INTEGER,
+    lot_number TEXT,
+    quantity REAL NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS ix_sales_order_reservation_line ON sales_order_reservation(sales_order_line_id);
   `,
 ]

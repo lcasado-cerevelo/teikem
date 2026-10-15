@@ -1302,3 +1302,13 @@ Antes, **Terminar esta posición** y **Terminar conteo** mandaban a Inicio y hab
 - **Guardar y seguir después** no cambia: guarda, avisa y vuelve a Inicio (el conteo queda abierto y bloquea lo demás hasta retomarlo).
 
 Con el ajuste de compañía **«Cerrar solo los conteos que cuadran»** encendido ([06 §6.9](06-inventario-y-almacen.md#69-cierre-automático-al-terminar-si-el-conteo-cuadra-2026-10-10)), cada posición que cuadra queda en Concordancia en cuanto se envía, y solo las que tienen diferencia esperan en «Por revisar».
+
+
+## 12. Despachar una orden de venta (Lote 65)
+
+Ruta `/sales-dispatch`; botón **Órdenes de venta** de Inicio (solo si el aparato tiene órdenes por despachar; ver [18 §14](18-ordenes-de-venta.md#14-en-el-aparato-despachar-una-orden-de-venta-lote-65)).
+
+- **Datos locales:** esquema 14 (`sales_order`, `sales_order_line`, `sales_order_reservation`). La sincronización baja `GET /sync/sales-orders` **completo** (todas las abiertas del almacén) y reemplaza la copia; sin módulo o sin `sales.view` (403) se salta y se borra lo de antes. Los despachos pendientes en la cola se vuelven a reflejar sobre la copia que llega.
+- **Cola de salida:** tipo `salesDispatch`, `POST /api/v1/sales-orders/{publicId}/dispatch` con `{ lines: [{ lineId, quantity, binId, lotId? }], delivery? }`. De otra posición no se manda el lote. Con entrega: `{ serviceType: "STANDARD", packages: [{ packageType: "BOX", pieces }], confirmNow: true }` (los mismos valores estándar del empaque de Despacho). Efecto local guardado con la fila (existencia de la posición; FEFO dentro de la posición si no es con lote) para deshacerlo si el servidor rechaza.
+- **Mensajes de la pantalla:** `Esa orden no está por despachar en este almacén. Si es nueva, toca Sincronizar ahora.` · `Escribe una cantidad mayor que 0.` · `No puedes sacar más de lo reservado ({qty}).` · `Esa posición no existe en este almacén.` · `Despacho enviado: EMP-#####.` · `Despacho guardado: se envía cuando haya señal.` Los rechazos del servidor se muestran con su texto exacto (ver [18 §10](18-ordenes-de-venta.md#10-despachar-contra-la-orden-lote-61)).
+- **Uno a la vez:** el despacho en pantalla no sobrevive a cerrar la app (nada salió todavía; se vuelve a empezar). Lo ya enviado a la cola sí queda guardado.

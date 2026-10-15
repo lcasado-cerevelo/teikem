@@ -10,7 +10,7 @@ import { recordSkippedFromResult } from '../../features/count/countSkipped'
 import { getDb } from '../db/database'
 import { projectRow, type Delta } from '../warehouse/balanceProjection'
 
-export type OutboxKind = 'receipt' | 'pack' | 'collect' | 'countBatch' | 'countFinish' | 'countOffline' | 'transfer' | 'adjust' | 'damage' | 'manualIssue'
+export type OutboxKind = 'receipt' | 'pack' | 'collect' | 'countBatch' | 'countFinish' | 'countOffline' | 'transfer' | 'adjust' | 'damage' | 'manualIssue' | 'salesDispatch'
 type OutboxMethod = 'POST' | 'PUT'
 
 interface EnqueueInput {
@@ -70,6 +70,7 @@ const DEFAULT_PATH: Partial<Record<OutboxKind, string>> = {
   manualIssue: '/api/v1/manual-issues',
   // 2026-10-11 (señal débil): el conteo de UNA posición hecho sin señal, entero (abrir o retomar, capturar y terminar) al volver la señal
   countOffline: '/api/v1/cycle-counts/offline-bin',
+  // 2026-10-15 (Lote 65): despachar contra una orden de venta; la ruta lleva la orden, así que se arma al encolar (`path` explícito)
 }
 const METHOD: Record<OutboxKind, OutboxMethod> = {
   receipt: 'POST',
@@ -82,6 +83,7 @@ const METHOD: Record<OutboxKind, OutboxMethod> = {
   adjust: 'POST',
   damage: 'POST',
   manualIssue: 'POST',
+  salesDispatch: 'POST',
 }
 
 /** Encola una operación (kind + cuerpo ya armado); devuelve el id local de la fila. */

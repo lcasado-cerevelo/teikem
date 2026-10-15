@@ -183,3 +183,14 @@ Un **backorder** es lo que se pidió y todavía no hay: la línea queda con su c
 - Tablas `SalesOrder`, `SalesOrderLine` y `SalesOrderReservation` (la que guarda qué saldo reservó cada línea) y las columnas `PickBatch.SalesOrderId` / `PickBatchLine.SalesOrderLineId` (sección **2026-10-15 (l)**), `TransportOrder.SalesOrderId` (**(m)**) y el ajuste de estatus de la **(n)**: «Despachada parcial» y «Despachada» son etapas laterales para poder reabrir la orden al deshacer un despacho, contador `SALESORDER`, dominio de estatus `SalesOrderStatus` y EntityType `SALES_ORDER` (sección **2026-10-15 (k)** de `Diseño/logistica-db-update.sql`).
 - Cada línea guarda `TaxRateId`, `TaxRatePct`, `TaxAmount` e `IsTaxExempt`: un cambio posterior de la tasa **no** altera una orden ya guardada.
 - Un número `OV-` saltado no ocurre: el contador se toma dentro de la misma transacción que crea la orden.
+
+## 14. En el aparato: despachar una orden de venta (Lote 65)
+
+Pantalla **Órdenes de venta** del aparato (la ficha técnica de la app está en [09 — App de almacén](09-app-almacen.md#12-despachar-una-orden-de-venta-lote-65)).
+
+- **Quién la ve:** el botón «Órdenes de venta» de Inicio aparece solo si el aparato ya bajó órdenes por despachar de su almacén (módulo SALES_ORDERS y permiso `sales.view` en la compañía; el Operador de almacén lo tiene). Sin ellos el servidor contesta 403 y la app lo salta sin avisar de error.
+- **Cómo se usa:** se escanea (o escribe) el número `OV-#####`, o se toca la orden en la lista. La app guía **posición por posición** según lo que el sistema reservó: «Ve a A-01», la cantidad reservada ya viene puesta (se puede bajar, nunca subir), se lee la posición y queda marcada ✓. Tocar un ✓ lo deshace. **Omitir** deja esa parte reservada para otro despacho.
+- **Sacar de otra posición:** se lee la otra posición; la reserva se mueve ahí si tiene existencia suficiente (el servidor lo confirma al enviar y, si no alcanza, rechaza con `No hay existencia suficiente…`).
+- **Al terminar:** *Retiro* (el cliente recoge), *Entrega* (pide los bultos; solo si la orden tiene consignatario; el cliente y el consignatario salen de la orden, el servicio y el cobro de los valores de la compañía) o *Dejar para después* (queda recolectado; la entrega se crea después desde la web, sección 11).
+- **Sin señal:** el despacho se guarda en la cola de salida («Despacho de orden de venta» en Sincronización) y la existencia local baja de inmediato; el servidor lo valida al sincronizar. Si lo rechaza, el aparato muestra el mensaje exacto del servidor, quita la fila de la cola, devuelve la existencia y vuelve a bajar la orden.
+- **Despacho + entrega** viajan en **una sola llamada** (sección 12): si la entrega falla, no sale el inventario.

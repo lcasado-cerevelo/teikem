@@ -10,6 +10,7 @@ import { getDb, type SQLiteDatabase } from '../db/database'
 import { deltaKey, pendingDeltas } from '../warehouse/balanceProjection'
 import { mapExitRow, replaceStockExit, type StockExitRow } from '../../features/dispatch/stockExit'
 import { downloadManualIssueReasons } from '../../features/dispatch/manualIssueReasons'
+import { deleteLocalSalesOrder, reapplyPendingSalesDispatches } from '../../features/salesDispatch/localSales'
 
 const TAKE = 500
 
@@ -509,6 +510,98 @@ export async function downloadPurchaseOrdersIfAllowed(): Promise<DownloadResult>
   }
 }
 
+// ---------------------------------------------------------------- Lote 65: órdenes de venta por despachar
+
+type SyncSalesOrder = {
+  id?: number
+  publicId?: string
+  number?: string | null
+  warehousePublicId?: string
+  clientName?: string | null
+  consigneeName?: string | null
+  statusCode?: string | null
+  requiredDate?: string | null
+  requestedAtUtc?: string | null
+  isActive?: boolean
+  lines?: Array<{
+    id?: number
+    productPublicId?: string
+    sku?: string | null
+    productName?: string | null
+    qtyOrdered?: number
+    qtyReserved?: number
+    qtyShipped?: number
+    qtyBackordered?: number
+    reservations?: Array<{ binId?: number; binCode?: string | null; lotId?: number | null; lotNumber?: string | null; quantity?: number }> | null
+  }> | null
+}
+
+/** Reemplaza la copia local de las órdenes de venta del almacén por lo que mandó el servidor (llegan TODAS las abiertas; una inactiva se borra). */
+export function applySalesOrders(db: SQLiteDatabase, warehousePublicId: string, items: SyncSalesOrder[]): void {
+  const keep = new Set<number>()
+  for (const o of items) {
+    if (o.id == null) continue
+    deleteLocalSalesOrder(db, o.id)
+    if (o.isActive === false) continue
+    keep.add(o.id)
+    db.runSync(
+      `INSERT INTO sales_order (id, public_id, number, warehouse_public_id, client_name, consignee_name, status_code, required_date, requested_at_utc)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [o.id, o.publicId ?? '', o.number ?? '', o.warehousePublicId ?? warehousePublicId, o.clientName ?? null, o.consigneeName ?? null, o.statusCode ?? null, o.requiredDate ?? null, o.requestedAtUtc ?? null],
+    )
+    for (const l of o.lines ?? []) {
+      db.runSync(
+        `INSERT INTO sales_order_line (id, sales_order_id, product_public_id, sku, product_name, qty_ordered, qty_reserved, qty_shipped, qty_backordered)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [l.id ?? 0, o.id, l.productPublicId ?? '', l.sku ?? null, l.productName ?? null, l.qtyOrdered ?? 0, l.qtyReserved ?? 0, l.qtyShipped ?? 0, l.qtyBackordered ?? 0],
+      )
+      for (const r of l.reservations ?? [])
+        db.runSync(
+          'INSERT INTO sales_order_reservation (sales_order_line_id, bin_id, bin_code, lot_id, lot_number, quantity) VALUES (?, ?, ?, ?, ?, ?)',
+          [l.id ?? 0, r.binId ?? 0, r.binCode ?? '', r.lotId ?? null, r.lotNumber ?? null, r.quantity ?? 0],
+        )
+    }
+  }
+}
+
+/** Órdenes de venta por despachar del almacén (GET /sync/sales-orders: llegan todas las abiertas, así que la pasada reemplaza la copia local de ese almacén). */
+export async function downloadSalesOrders(warehousePublicId: string): Promise<DownloadResult> {
+  const all: SyncSalesOrder[] = []
+  let cursor: string | undefined
+  let pages = 0
+  do {
+    const page = await unwrap(api.GET('/api/v1/sync/sales-orders', { params: { query: { warehousePublicId, cursor, take: TAKE } } }))
+    all.push(...((page.items ?? []) as SyncSalesOrder[]))
+    cursor = page.nextCursor ?? undefined
+    pages += 1
+  } while (cursor)
+  const db = getDb()
+  db.withTransactionSync(() => {
+    // lo que el servidor ya no manda (se despachó, se canceló) se borra del aparato
+    for (const row of db.getAllSync<{ id: number }>('SELECT id FROM sales_order WHERE warehouse_public_id = ?', [warehousePublicId])) deleteLocalSalesOrder(db, row.id)
+    applySalesOrders(db, warehousePublicId, all)
+    // los despachos que siguen en la cola todavía no están en el servidor: se vuelven a reflejar en la copia que acaba de llegar
+    reapplyPendingSalesDispatches(db)
+  })
+  return { resource: 'salesOrders', pages, items: all.length }
+}
+
+/** Sin el módulo Órdenes de venta o sin `sales.view` el API responde 403: no es una falla de sincronización; se borra lo que hubiera de antes y se sigue. */
+export async function downloadSalesOrdersIfAllowed(warehousePublicId: string): Promise<DownloadResult> {
+  try {
+    return await downloadSalesOrders(warehousePublicId)
+  } catch (err) {
+    if (!(err instanceof ApiError) || err.status !== 403) throw err
+    const db = getDb()
+    db.withTransactionSync(() => {
+      db.runSync('DELETE FROM sales_order_reservation')
+      db.runSync('DELETE FROM sales_order_line')
+      db.runSync('DELETE FROM sales_order')
+    })
+    return { resource: 'salesOrders', pages: 0, items: 0 }
+  }
+}
+
 /** Cada cuánto se baja de nuevo todo el orden de salida (minutos) si no hubo movimientos propios que lo desactualicen: la foto es del almacén
  *  completo y la sincronización corre cada minuto. */
 export const STOCK_EXIT_REFRESH_MINUTES = 5
@@ -565,6 +658,8 @@ export async function downloadForReceiving(options: { forceStockExit?: boolean }
     results.push(await downloadBins(warehousePublicId))
     results.push(await downloadBalances(warehousePublicId))
     results.push(await downloadStockExit(warehousePublicId, options.forceStockExit === true))
+    // 2026-10-15 (Lote 65): órdenes de venta por despachar (un 403 se salta)
+    results.push(await downloadSalesOrdersIfAllowed(warehousePublicId))
   }
   // 2026-10-11 (señal débil): clientes y consignatarios para despachar sin señal (un 403 se salta)
   results.push(await downloadClients())

@@ -137,7 +137,7 @@ export function issueDeltas(body: unknown, db: SQLiteDatabase = getDb()): Delta[
 export function pendingDeltas(db: SQLiteDatabase): Map<string, number> {
   const out = new Map<string, number>()
   const rows = db.getAllSync<{ kind: string; body: string; projection_json: string | null }>(
-    "SELECT kind, body, projection_json FROM outbox WHERE status = 'pending' AND kind IN ('transfer', 'adjust', 'manualIssue')",
+    "SELECT kind, body, projection_json FROM outbox WHERE status = 'pending' AND kind IN ('transfer', 'adjust', 'manualIssue', 'salesDispatch')",
   )
   for (const r of rows) {
     for (const d of deltasOfRow(r)) {
