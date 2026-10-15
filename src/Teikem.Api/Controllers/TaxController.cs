@@ -49,6 +49,11 @@ public sealed class TaxController(TaxService tax) : ControllerBase
     [HttpPost("exemptions/{id:int}/reactivate"), RequirePermission(PermissionCatalog.TaxManage)]
     public Task<TaxExemptionDto> ReactivateExemption(int id, CancellationToken ct) => tax.SetExemptionActiveAsync(id, true, ct);
 
+    /// <summary>Productos activos con su categoría de impuesto (buscador q y filtro category; hasta 500 por página).</summary>
+    [HttpGet("products"), RequirePermission(PermissionCatalog.TaxManage)]
+    public Task<PagedResult<ProductTaxCategoryDto>> Products([FromQuery] string? q, [FromQuery] string? category, [FromQuery] int skip, [FromQuery] int take, CancellationToken ct)
+        => tax.ListProductCategoriesAsync(q, category, skip, take, ct);
+
     [HttpGet("products/{productId:int}/category"), RequirePermission(PermissionCatalog.TaxManage)]
     public Task<ProductTaxCategoryDto> ProductCategory(int productId, CancellationToken ct) => tax.GetProductCategoryAsync(productId, ct);
 

@@ -13982,6 +13982,523 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tax/calculate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TaxCalcRequest"];
+                    "text/json": components["schemas"]["TaxCalcRequest"];
+                    "application/*+json": components["schemas"]["TaxCalcRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxCalcDto"];
+                        "application/json": components["schemas"]["TaxCalcDto"];
+                        "text/json": components["schemas"]["TaxCalcDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tax/exemptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    clientId?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxExemptionDto"][];
+                        "application/json": components["schemas"]["TaxExemptionDto"][];
+                        "text/json": components["schemas"]["TaxExemptionDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TaxExemptionRequest"];
+                    "text/json": components["schemas"]["TaxExemptionRequest"];
+                    "application/*+json": components["schemas"]["TaxExemptionRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxExemptionDto"];
+                        "application/json": components["schemas"]["TaxExemptionDto"];
+                        "text/json": components["schemas"]["TaxExemptionDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tax/exemptions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TaxExemptionPatchRequest"];
+                    "text/json": components["schemas"]["TaxExemptionPatchRequest"];
+                    "application/*+json": components["schemas"]["TaxExemptionPatchRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxExemptionDto"];
+                        "application/json": components["schemas"]["TaxExemptionDto"];
+                        "text/json": components["schemas"]["TaxExemptionDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/tax/exemptions/{id}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxExemptionDto"];
+                        "application/json": components["schemas"]["TaxExemptionDto"];
+                        "text/json": components["schemas"]["TaxExemptionDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tax/exemptions/{id}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxExemptionDto"];
+                        "application/json": components["schemas"]["TaxExemptionDto"];
+                        "text/json": components["schemas"]["TaxExemptionDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tax/products/{productId}/category": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    productId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProductTaxCategoryDto"];
+                        "application/json": components["schemas"]["ProductTaxCategoryDto"];
+                        "text/json": components["schemas"]["ProductTaxCategoryDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    productId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ProductTaxCategoryRequest"];
+                    "text/json": components["schemas"]["ProductTaxCategoryRequest"];
+                    "application/*+json": components["schemas"]["ProductTaxCategoryRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProductTaxCategoryDto"];
+                        "application/json": components["schemas"]["ProductTaxCategoryDto"];
+                        "text/json": components["schemas"]["ProductTaxCategoryDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tax/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    q?: string;
+                    category?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProductTaxCategoryDtoPagedResult"];
+                        "application/json": components["schemas"]["ProductTaxCategoryDtoPagedResult"];
+                        "text/json": components["schemas"]["ProductTaxCategoryDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tax/rates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    activeOnly?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxRateDto"][];
+                        "application/json": components["schemas"]["TaxRateDto"][];
+                        "text/json": components["schemas"]["TaxRateDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TaxRateRequest"];
+                    "text/json": components["schemas"]["TaxRateRequest"];
+                    "application/*+json": components["schemas"]["TaxRateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxRateDto"];
+                        "application/json": components["schemas"]["TaxRateDto"];
+                        "text/json": components["schemas"]["TaxRateDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tax/rates/{id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TaxRateCloseRequest"];
+                    "text/json": components["schemas"]["TaxRateCloseRequest"];
+                    "application/*+json": components["schemas"]["TaxRateCloseRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxRateDto"];
+                        "application/json": components["schemas"]["TaxRateDto"];
+                        "text/json": components["schemas"]["TaxRateDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tax/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxSettingsDto"];
+                        "application/json": components["schemas"]["TaxSettingsDto"];
+                        "text/json": components["schemas"]["TaxSettingsDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TaxSettingsRequest"];
+                    "text/json": components["schemas"]["TaxSettingsRequest"];
+                    "application/*+json": components["schemas"]["TaxSettingsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxSettingsDto"];
+                        "application/json": components["schemas"]["TaxSettingsDto"];
+                        "text/json": components["schemas"]["TaxSettingsDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/api/v1/printers": {
         parameters: {
             query?: never;
@@ -26019,6 +26536,181 @@ export interface components {
             all?: boolean | null;
             title?: string | null;
             text?: string | null;
+        };
+        ProductTaxCategoryDto: {
+            /** Format: int32 */
+            productId?: number;
+            sku?: string | null;
+            name?: string | null;
+            category?: string | null;
+        };
+        ProductTaxCategoryDtoPagedResult: {
+            items?: components["schemas"]["ProductTaxCategoryDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        ProductTaxCategoryRequest: {
+            category?: string | null;
+        };
+        TaxCalcComponentDto: {
+            code?: string | null;
+            name?: string | null;
+            /** Format: double */
+            percent?: number;
+            /** Format: double */
+            amount?: number;
+        };
+        TaxCalcDto: {
+            /** Format: date */
+            date?: string;
+            rateCode?: string | null;
+            /** Format: double */
+            ratePercent?: number;
+            pricesIncludeTax?: boolean;
+            roundingMode?: string | null;
+            lines?: components["schemas"]["TaxCalcLineDto"][] | null;
+            /** Format: double */
+            subtotal?: number;
+            /** Format: double */
+            taxAmount?: number;
+            /** Format: double */
+            total?: number;
+            components?: components["schemas"]["TaxCalcComponentDto"][] | null;
+            warnings?: string[] | null;
+        };
+        TaxCalcLineDto: {
+            key?: string | null;
+            /** Format: double */
+            amount?: number;
+            /** Format: double */
+            net?: number;
+            /** Format: double */
+            taxAmount?: number;
+            /** Format: double */
+            total?: number;
+            reason?: string | null;
+            isTaxExempt?: boolean;
+            /** Format: int32 */
+            taxRateId?: number | null;
+            /** Format: double */
+            taxRatePct?: number;
+            exemptionCertificate?: string | null;
+            components?: components["schemas"]["TaxCalcComponentDto"][] | null;
+        };
+        TaxCalcLineRequest: {
+            key?: string | null;
+            /** Format: int32 */
+            productId?: number | null;
+            chargeType?: string | null;
+            /** Format: double */
+            amount?: number | null;
+        };
+        TaxCalcRequest: {
+            /** Format: int32 */
+            clientId?: number | null;
+            /** Format: date */
+            date?: string | null;
+            lines?: components["schemas"]["TaxCalcLineRequest"][] | null;
+        };
+        TaxChargeRuleDto: {
+            chargeType?: string | null;
+            label?: string | null;
+            isTaxable?: boolean;
+        };
+        TaxChargeRuleRequest: {
+            chargeType?: string | null;
+            isTaxable?: boolean | null;
+        };
+        TaxComponentDto: {
+            code?: string | null;
+            name?: string | null;
+            /** Format: double */
+            percent?: number;
+        };
+        TaxExemptionDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            publicId?: string;
+            /** Format: int32 */
+            clientId?: number;
+            clientName?: string | null;
+            exemptionType?: string | null;
+            certificateNumber?: string | null;
+            /** Format: date */
+            validFrom?: string;
+            /** Format: date */
+            validTo?: string | null;
+            notes?: string | null;
+            isActive?: boolean;
+            status?: string | null;
+        };
+        TaxExemptionPatchRequest: {
+            exemptionType?: string | null;
+            certificateNumber?: string | null;
+            /** Format: date */
+            validFrom?: string | null;
+            /** Format: date */
+            validTo?: string | null;
+            clearValidTo?: boolean | null;
+            notes?: string | null;
+        };
+        TaxExemptionRequest: {
+            /** Format: int32 */
+            clientId?: number | null;
+            exemptionType?: string | null;
+            certificateNumber?: string | null;
+            /** Format: date */
+            validFrom?: string | null;
+            /** Format: date */
+            validTo?: string | null;
+            notes?: string | null;
+        };
+        TaxRateCloseRequest: {
+            /** Format: date */
+            effectiveTo?: string | null;
+        };
+        TaxRateDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            publicId?: string;
+            code?: string | null;
+            name?: string | null;
+            /** Format: double */
+            percent?: number;
+            /** Format: date */
+            effectiveFrom?: string;
+            /** Format: date */
+            effectiveTo?: string | null;
+            status?: string | null;
+            components?: components["schemas"]["TaxComponentDto"][] | null;
+        };
+        TaxRateRequest: {
+            code?: string | null;
+            name?: string | null;
+            /** Format: date */
+            effectiveFrom?: string | null;
+            /** Format: date */
+            effectiveTo?: string | null;
+            components?: components["schemas"]["TaxComponentDto"][] | null;
+        };
+        TaxSettingsDto: {
+            pricesIncludeTax?: boolean;
+            roundingMode?: string | null;
+            defaultRateCode?: string | null;
+            chargeRules?: components["schemas"]["TaxChargeRuleDto"][] | null;
+        };
+        TaxSettingsRequest: {
+            pricesIncludeTax?: boolean | null;
+            roundingMode?: string | null;
+            defaultRateCode?: string | null;
+            clearDefaultRate?: boolean | null;
+            chargeRules?: components["schemas"]["TaxChargeRuleRequest"][] | null;
         };
         PrinterDto: {
             /** Format: uuid */

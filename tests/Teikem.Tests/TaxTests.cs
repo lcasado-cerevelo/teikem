@@ -367,6 +367,17 @@ public sealed class TaxSqlTests(MessagingSqlFixture fx) : IClassFixture<Messagin
         Assert.Equal("TAXABLE", (await Svc(A).SetProductCategoryAsync(p, new ProductTaxCategoryRequest("TAXABLE"), default)).Category);
         await using var db = fx.NewDb(new TenantContext { TenantId = A });
         Assert.Null((await db.Set<Product>().AsNoTracking().FirstAsync(x => x.ProductId == p)).TaxCategoryLookupId);
+        // listado para la pantalla: filtros por categoría y buscador, solo de la compañía
+        var other = await ProductAsync(A, "EXEMPT");
+        var exempts = await Svc(A).ListProductCategoriesAsync(null, "exempt", 0, 50, default);
+        Assert.Equal(new[] { other }, exempts.Items.Select(x => x.ProductId).ToArray());
+        Assert.All(exempts.Items, x => Assert.Equal("EXEMPT", x.Category));
+        var taxables = await Svc(A).ListProductCategoriesAsync(null, "TAXABLE", 0, 50, default);
+        Assert.Contains(taxables.Items, x => x.ProductId == p && x.Category == "TAXABLE");
+        Assert.DoesNotContain(taxables.Items, x => x.ProductId == other);
+        Assert.Equal(2, (await Svc(A).ListProductCategoriesAsync(null, null, 0, 1, default)).Total);
+        Assert.Empty((await Svc(B).ListProductCategoriesAsync(null, null, 0, 50, default)).Items);
+        Assert.Equal(TaxRules.CategoryInvalid, (await Thrown<ValidationException>(() => Svc(A).ListProductCategoriesAsync(null, "X", 0, 50, default))).Message);
         Assert.Equal(TaxRules.CategoryInvalid, (await Thrown<ValidationException>(() => Svc(A).SetProductCategoryAsync(p, new ProductTaxCategoryRequest("OTRA"), default))).Message);
         Assert.Equal("Producto no encontrado.", (await Thrown<NotFoundException>(() => Svc(B).SetProductCategoryAsync(p, new ProductTaxCategoryRequest("EXEMPT"), default))).Message);
     }

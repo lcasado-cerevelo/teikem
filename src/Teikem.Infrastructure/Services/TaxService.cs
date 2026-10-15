@@ -264,6 +264,40 @@ public sealed class TaxService(TeikemDbContext db, ITenantContext tenant, ITenan
         return new ProductTaxCategoryDto(p.ProductId, p.Sku, p.Name, code);
     }
 
+    /// <summary>
+    /// Productos activos con su categoría de impuesto, para cambiarla desde la pantalla. q = parte del código, del nombre o del código de barras;
+    /// category = TAXABLE / EXEMPT / ZERO_RATE (vacío = todas). Orden por código; hasta 500 por página.
+    /// </summary>
+    public async Task<PagedResult<ProductTaxCategoryDto>> ListProductCategoriesAsync(string? q, string? category, int skip, int take, CancellationToken ct)
+    {
+        skip = Math.Max(0, skip);
+        take = Math.Clamp(take <= 0 ? 50 : take, 1, 500);
+        var query = db.Set<Product>().Where(p => p.IsActive);
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            var s = q.Trim();
+            query = query.Where(p => p.Sku.Contains(s) || p.Name.Contains(s) || (p.Barcode != null && p.Barcode.Contains(s)));
+        }
+        var cat = (category ?? string.Empty).Trim().ToUpperInvariant();
+        if (cat.Length > 0)
+        {
+            if (!TaxCategories.All.Contains(cat)) throw new ValidationException("category", TaxRules.CategoryInvalid);
+            if (cat == TaxCategories.Taxable) query = query.Where(p => p.TaxCategoryLookupId == null);
+            else
+            {
+                var id = await lookups.GetIdAsync(TaxCodes.CategoryDomain, cat, ct);
+                query = query.Where(p => p.TaxCategoryLookupId == id);
+            }
+        }
+        var total = await query.CountAsync(ct);
+        var rows = await query.OrderBy(p => p.Sku).ThenBy(p => p.ProductId).Skip(skip).Take(take).Select(p => new { p.ProductId, p.Sku, p.Name, p.TaxCategoryLookupId }).ToListAsync(ct);
+        var codes = new Dictionary<int, string>();
+        foreach (var id in rows.Where(r => r.TaxCategoryLookupId != null).Select(r => r.TaxCategoryLookupId!.Value).Distinct())
+            codes[id] = (await lookups.GetAsync(id, ct))?.InternalCode ?? TaxCategories.Taxable;
+        return new PagedResult<ProductTaxCategoryDto>(
+            rows.Select(r => new ProductTaxCategoryDto(r.ProductId, r.Sku, r.Name, r.TaxCategoryLookupId is int c ? codes[c] : TaxCategories.Taxable)).ToList(), total, skip, take);
+    }
+
     // ---------------------------------------------------------------- cálculo
 
     public async Task<TaxCalcDto> CalculateAsync(TaxCalcRequest req, CancellationToken ct)

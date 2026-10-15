@@ -8187,3 +8187,15 @@ No. Se da de baja (queda en el historial) y se puede reactivar.
 
 **¿Dónde está el informe de impuestos por período?**
 Se conecta cuando existan las órdenes de venta y las facturas (P4 y facturación): hoy no hay documentos de los que informar. El cálculo y la copia por línea ya están listos.
+
+**En Impuestos → Productos solo salen 500 productos.**
+El listado trae hasta 500 por vez. Afine con el buscador (código, nombre o código de barras) o con el filtro de categoría para ver el resto.
+
+**Escogí la categoría de un producto y no pasó nada.**
+Se guarda al escoger y sale un aviso «SKU: categoría.». Si sale un error, el producto cambió al mismo tiempo o ya no existe: recargue la lista. Gravable se guarda como «sin categoría» (es lo normal).
+
+**El simulador dice «Escoja la tasa por omisión en Impuestos → Reglas.»**
+El cálculo necesita saber qué tasa usar en lo gravable. En la pestaña **Reglas** escoja el código de la tasa y guarde.
+
+**¿El simulador guarda algo?**
+No. Calcula con las reglas de la compañía y no crea ni cambia ningún documento.

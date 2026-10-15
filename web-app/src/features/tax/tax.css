@@ -1,0 +1,22 @@
+/* Impuestos (Lote 56). Formularios en columna, componentes de la tasa en rejilla y el resultado del simulador. Sin scroll horizontal desde 360 px. */
+.tax-screen .seg { margin-bottom: 12px; }
+.tax-form { display: flex; flex-direction: column; gap: 12px; }
+.tax-comps { border: 1px solid var(--line-2); border-radius: 8px; padding: 10px 12px; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.tax-comps legend { padding: 0 6px; font-weight: 600; }
+.tax-comp, .tax-line { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr) auto; gap: 8px; align-items: end; }
+.tax-line { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto; }
+.tax-comps-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.tax-filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+.tax-result h3 { margin: 0 0 4px; font-size: 1rem; }
+.tax-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+.tax-table th, .tax-table td { padding: 6px 8px; border-bottom: 1px solid var(--line-2); text-align: left; vertical-align: top; }
+.tax-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.tax-table tfoot th, .tax-table tfoot td { border-top: 2px solid var(--line-2); border-bottom: 0; }
+@media (max-width: 640px) {
+  .tax-comp { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .tax-comp > .btn { grid-column: 2; justify-self: end; }
+  .tax-table { display: block; overflow-x: auto; }
+}
+/* listas sueltas (filtro y categoría dentro de la tabla): la misma apariencia que los campos del kit */
+.tax-filters select, .tax-screen table select { min-height: 34px; padding: 4px 10px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--panel); color: inherit; font: inherit; }
+.tax-filters select:focus-visible, .tax-screen table select:focus-visible { outline: 2px solid var(--brand, #1f6feb); outline-offset: 1px; }

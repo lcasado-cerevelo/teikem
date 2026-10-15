@@ -375,6 +375,7 @@ export const appRoutes: readonly AppRoute[] = [
   pending({ path: '/money/cod', perm: 'cod.view', module: ModuleKeys.Cod, nav: { group: 'money', key: 'cod', order: 30 } }),
   pending({ path: '/money/billing', perm: 'billing.generate', module: ModuleKeys.LtlGround, nav: { group: 'money', key: 'billing', order: 40 } }),
   pending({ path: '/money/driver-pay', perm: 'driverpay.view', module: ModuleKeys.LtlGround, nav: { group: 'money', key: 'driverPay', order: 50 } }),
+  { path: '/money/tax', element: lazy(() => import('../features/tax/TaxScreen')), perm: 'tax.manage', module: ModuleKeys.Tax, nav: { group: 'money', key: 'tax', order: 60 } },   // Lote 56
 
   // ===== Catálogo (F2, F4) =====
   { path: '/catalog/clients', element: lazy(() => import('../features/clients/ClientListScreen')), perm: 'clients.read', module: ModuleKeys.Catalog, nav: { group: 'catalog', key: 'clients', order: 10 } },

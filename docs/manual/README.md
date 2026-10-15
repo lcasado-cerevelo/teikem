@@ -320,6 +320,8 @@ F-G1. [F-G1 — Impresoras y labels](frontend/fg1-impresoras.md): Sistema → **
 
 16. [16 — Enviar avisos](16-enviar-avisos.md): Lote 54 (2026-10-15) — **avisos manuales**: quien tiene `notifications.send` envía un aviso a personas, a roles o a **todas** las personas de la compañía; llega a la campanita («De Ana»), en vivo si tiene Teikem abierto, y **no se responde**; historial con a quién se envió y cuántas personas lo leyeron; permiso solo para el Admin de compañía (el administrador lo asigna), mensajes 400/403 y datos para soporte.
 
+L56. [L56 — Impuestos](frontend/l56-impuestos.md): Contabilidad → **Impuestos** (cinco pestañas): tasas con vigencia y componentes (cerrar y crear la nueva desde la anterior), reglas de la compañía, categoría de impuesto de los productos, exenciones de clientes con certificado y **simulador** de cálculo. Capturas `l56-*`.
+
 L54. [L54 — Enviar avisos](frontend/l54-enviar-avisos.md): Sistema → **Enviar avisos**: buscador de personas y roles con **Seleccionar todo (N)** (solo lo filtrado), enviar a todos con confirmación, historial con leídos. Capturas `l54-*`.
 
 L53. [L53 — Mensajes](frontend/l53-mensajes.md): pantalla de chat (lista de conversaciones, burbujas, escribir con Enter, personas del grupo), **Nuevo mensaje** (buscador de nombre y correo, varias personas o un rol) y **Kemi** («Te llegó un mensaje de… → Ver», «Enviar un mensaje a…», «Mis mensajes»). Capturas `l53-*`.

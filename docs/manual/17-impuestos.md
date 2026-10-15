@@ -50,7 +50,7 @@ Un cliente tiene una o más exenciones: **tipo**, **número de certificado**, **
 
 ## 7. API (todo con `tax.manage`, módulo TAX)
 
-`GET /tax/rates?activeOnly=` · `POST /tax/rates` · `POST /tax/rates/{id}/close` · `GET|PATCH /tax/settings` · `GET /tax/exemptions?clientId=` · `POST /tax/exemptions` · `PATCH /tax/exemptions/{id}` · `POST /tax/exemptions/{id}/deactivate|reactivate` · `GET|PUT /tax/products/{id}/category` · `POST /tax/calculate`. No existe PUT/PATCH/DELETE de tasas.
+`GET /tax/rates?activeOnly=` · `POST /tax/rates` · `POST /tax/rates/{id}/close` · `GET|PATCH /tax/settings` · `GET /tax/exemptions?clientId=` · `POST /tax/exemptions` · `PATCH /tax/exemptions/{id}` · `POST /tax/exemptions/{id}/deactivate|reactivate` · `GET /tax/products?q=&category=&skip=&take=` (productos activos con su categoría; hasta 500 por página) · `GET|PUT /tax/products/{id}/category` · `POST /tax/calculate`. No existe PUT/PATCH/DELETE de tasas.
 
 ## 8. Validaciones y mensajes
 

@@ -1,4 +1,4 @@
-// Menú completo de la maqueta (Lote F8a P0): 7 grupos, 41 ítems con permiso y módulo, ítems pendientes y `perm: 'a|b'`; Lote F17 suma Rentas (42); Lote 50 suma Trabajos programados (43); Lote 52 suma Reglas de aviso (44); Lote 54 suma Enviar avisos (45).
+// Menú completo de la maqueta (Lote F8a P0): 7 grupos, 41 ítems con permiso y módulo, ítems pendientes y `perm: 'a|b'`; Lote F17 suma Rentas (42); Lote 50 suma Trabajos programados (43); Lote 52 suma Reglas de aviso (44); Lote 54 suma Enviar avisos (45); Lote 56 suma Impuestos (46).
 import { describe, expect, it } from 'vitest'
 import { permAllowed } from '../kernel/access/accessContext'
 import { ModuleKeys } from '../kernel/access/modules'
@@ -37,12 +37,12 @@ describe('NAV_GROUPS', () => {
 })
 
 describe('menú completo (routes.tsx)', () => {
-  it('con todos los permisos y módulos se ven los 7 grupos y los 45 ítems, en el orden de la maqueta', () => {
+  it('con todos los permisos y módulos se ven los 7 grupos y los 46 ítems, en el orden de la maqueta', () => {
     const groups = visibleNav(appRoutes, ALL_PERMS, ALL_MODULES)
     expect(groups.map((g) => [g.key, g.items.length])).toEqual([
       ['ops', 5],
       ['warehouse', 12],
-      ['money', 5],
+      ['money', 6],
       ['catalog', 4],
       ['analytics', 4],
       ['system', 10],
@@ -71,6 +71,7 @@ describe('menú completo (routes.tsx)', () => {
       'Procesar entregas',
       'Facturación',
       'Liquidación a choferes',
+      'Impuestos',
       'Clientes y contratos',
       'Consignatarios',
       'Choferes y tarifas',
@@ -98,7 +99,7 @@ describe('menú completo (routes.tsx)', () => {
   })
 
   it('cada ítem tiene título y subtítulo en español e inglés, y `order` = posición × 10', () => {
-    expect(navRoutes).toHaveLength(45)
+    expect(navRoutes).toHaveLength(46)
     for (const r of navRoutes) {
       for (const lang of ['es', 'en'] as const) {
         expect(translate(lang, navTitleKey(r.nav!.key)), `${lang} ${r.path}`).not.toBe(navTitleKey(r.nav!.key))
