@@ -8040,8 +8040,11 @@ Necesita el permiso **Usar la mensajería interna** (`messages.use`). Lo traen l
 **¿Cómo le escribo a alguien?**
 Globo de chat de la cabecera (o Kemi → «Enviar un mensaje a…») → **Nuevo mensaje** → escriba parte del nombre o del correo, escoja a la persona, escriba el mensaje y **Enviar**. Una sola persona abre (o vuelve a abrir) su conversación; si ya habían hablado, es el mismo hilo.
 
-**¿Cómo le escribo a un grupo o a todo un rol?**
-En **Nuevo mensaje** agregue varias personas, o escoja un rol en «O escribirle a todo un rol». Se arma un grupo donde todos pueden contestar. Con un rol, entran las personas que lo tienen **hoy**; quien entre al rol después no entra solo: agréguelo con **Personas → Agregar personas** (solo quien creó el grupo).
+**¿Cómo le escribo a varias personas, a un grupo o a todo un rol?**
+En **Nuevo mensaje**, escriba en «Para» y escoja a cada persona (las que quiera, una tras otra); con dos o más se arma un grupo donde todos pueden contestar. Para un rol, escriba su nombre en el mismo campo y escójalo: entran las personas que lo tienen **hoy**; quien entre al rol después no entra solo, agréguelo con **Personas → Agregar personas** (solo quien creó el grupo).
+
+**La otra persona no estaba conectada: ¿le avisa cuando entre?**
+Sí. Al abrir Teikem ve el contador de mensajes sin leer en el globo de chat de la cabecera y Kemi la saluda con «Te llegó un mensaje de…» (una vez por sesión del navegador).
 
 **«Escoja al menos una persona o un rol.» / «Escriba el mensaje.»**
 Falta a quién o qué decir. Agregue a alguien (o un rol) y escriba el texto.

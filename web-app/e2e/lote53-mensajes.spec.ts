@@ -136,9 +136,10 @@ test('Mensajes: dos personas, en vivo, con hilo, presencia y un grupo por rol', 
   await page.goto('/messages')
   await page.getByRole('button', { name: 'Nuevo mensaje' }).click()
   const d2 = page.getByRole('dialog', { name: 'Nuevo mensaje' })
-  const roleSelect = d2.getByLabel('O escribirle a todo un rol')
-  const dispatcher = roleSelect.locator('option').filter({ hasText: /Dispatcher|Despachador/ }).first()
-  await roleSelect.selectOption({ label: (await dispatcher.textContent())! })
+  await d2.getByRole('combobox', { name: 'Para' }).fill('dispatch')   // el mismo campo busca personas y roles
+  const roleOption = d2.getByRole('listbox').getByRole('option').filter({ hasText: /Dispatcher|Despachador/ }).first()
+  await expect(roleOption).toContainText('Rol ·')
+  await roleOption.click()
   await expect(d2.getByText(/Se arma un grupo con las personas que tienen ese rol hoy/)).toBeVisible()
   await d2.getByLabel('Nombre del grupo (opcional)').fill(group)
   await d2.getByLabel('Mensaje', { exact: true }).fill(`Reunión de cierre ${suffix}`)

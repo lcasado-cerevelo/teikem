@@ -24,8 +24,8 @@ La pantalla de chat de Teikem. Quién la ve: quien tiene el permiso **`messages.
 
 ![Buscador de personas](img/l53-nuevo-buscador.png)
 
-- **Para**: escriba parte del nombre o del correo y el buscador lista a las personas con su **nombre y correo** (y su punto de en línea); escoja con el ratón o con las flechas y Enter. Puede agregar **varias** (fichas con ✕).
-- **O escribirle a todo un rol**: escoge un rol (solo salen los que tienen personas activas, con cuántas). Se arma un grupo con quienes lo tienen **hoy**; quien entre al rol después no entra solo.
+- **Para**: un solo campo de búsqueda. Escriba parte del **nombre**, del **correo** o del **rol** y el buscador lista, a la vez, a las **personas** (con su nombre, su correo y su punto de en línea) y a los **roles** que tienen personas activas («Rol · 3 personas»); escoja con el ratón o con las flechas y Enter.
+  Puede agregar **todas las personas que quiera** (fichas con ✕): una sola abre el hilo entre dos; **dos o más arman un grupo**. Escoger un **rol** agrega a quienes lo tienen **hoy** (se arma un grupo; quien entre al rol después no entra solo); un solo rol por mensaje.
 - **Nombre del grupo (opcional)**: aparece si son varias personas o un rol; vacío = el del rol o los nombres.
 - **Mensaje** (hasta 2000 caracteres, con contador). **Enviar**: una sola persona abre (o vuelve a) el hilo entre dos; si algo falta o falla, el mensaje del servidor se muestra tal cual y la ventana sigue abierta.
 

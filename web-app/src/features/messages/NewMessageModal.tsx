@@ -31,8 +31,15 @@ export function NewMessageModal({ onClose, initial }: { onClose: () => void; ini
   const [error, setError] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
 
-  const options = useMemo<PersonOption[]>(() => (people.data ?? []).map((p) => ({ id: p.id!, name: p.name ?? '', email: p.email ?? '', online: !!p.online })), [people.data])
-  const taken = useMemo(() => new Set(chosen.map((c) => c.id)), [chosen])
+  // un solo campo «Para»: lista las personas (con su correo y si están en línea) y los roles con personas (con cuántas), filtrando por lo escrito
+  const options = useMemo<PersonOption[]>(() => {
+    const persons = (people.data ?? []).map((p) => ({ id: p.id!, name: p.name ?? '', email: p.email ?? '', online: !!p.online }))
+    const roleOptions = (roles.data ?? [])
+      .filter((r) => (r.memberCount ?? 0) > 0)
+      .map((r) => ({ id: -r.id!, name: r.name ?? '', email: t('messages.new.roleOption', { n: r.memberCount ?? 0 }) }))
+    return [...persons, ...roleOptions]
+  }, [people.data, roles.data, t])
+  const taken = useMemo(() => new Set([...chosen.map((c) => c.id), ...(roleId !== null ? [-roleId] : [])]), [chosen, roleId])
   const role = (roles.data ?? []).find((r) => r.id === roleId)
   const isGroup = chosen.length + (roleId !== null ? 1 : 0) > 1 || roleId !== null
 
@@ -100,23 +107,13 @@ export function NewMessageModal({ onClose, initial }: { onClose: () => void; ini
             exclude={taken}
             autoFocus
             onQuery={setQ}
-            onPick={(p) => setChosen((l) => (l.some((x) => x.id === p.id) ? l : [...l, { id: p.id, name: p.name, email: p.email }]))}
+            onPick={(p) => {
+              if (p.id < 0) setRoleId(-p.id)   // un rol (un solo rol por mensaje: escoger otro reemplaza al anterior)
+              else setChosen((l) => (l.some((x) => x.id === p.id) ? l : [...l, { id: p.id, name: p.name, email: p.email }]))
+            }}
           />
         </div>
-        <div className="f">
-          <label htmlFor="msg-role">{t('messages.new.orRole')}</label>
-          <select id="msg-role" value={roleId ?? ''} onChange={(e) => setRoleId(e.target.value ? Number(e.target.value) : null)}>
-            <option value="">—</option>
-            {(roles.data ?? [])
-              .filter((r) => (r.memberCount ?? 0) > 0)
-              .map((r) => (
-                <option key={r.id} value={String(r.id)}>
-                  {t('messages.new.roleOption', { name: r.name ?? '', n: r.memberCount ?? 0 })}
-                </option>
-              ))}
-          </select>
-          {roleId !== null && <p className="help">{t('messages.new.roleHelp')}</p>}
-        </div>
+        {roleId !== null && <p className="help">{t('messages.new.roleHelp')}</p>}
         {isGroup && (
           <div className="f">
             <label htmlFor="msg-title">{t('messages.new.groupName')}</label>
