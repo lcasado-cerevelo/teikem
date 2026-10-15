@@ -1,6 +1,6 @@
 # 18 — Órdenes de venta
 
-Lotes 57 a 62 (2026-10-15) — **S1: borrador, solicitar y reservar, backorders; S2: despachar**. Una **orden de venta** (OV-#####) es el documento que viaja de **Ventas a Almacén**: Ventas le pide al almacén que despache algo para un cliente. Hasta aquí se puede **armar la orden en borrador, solicitarla (validar y reservar inventario), modificarla y cancelarla**; ver, surtir y cerrar los **backorders**; **despachar contra la orden**, retiro / entrega y deshacer un despacho; la web y la app llegan en los lotes siguientes.
+Lotes 57 a 64 (2026-10-15) — **S1: borrador, solicitar y reservar, backorders; S2: despachar**. Una **orden de venta** (OV-#####) es el documento que viaja de **Ventas a Almacén**: Ventas le pide al almacén que despache algo para un cliente. Hasta aquí se puede **armar la orden en borrador, solicitarla (validar y reservar inventario), modificarla y cancelarla**; ver, surtir y cerrar los **backorders**; **despachar contra la orden**, retiro / entrega y deshacer un despacho; la web y la app llegan en los lotes siguientes.
 El diseño completo está en `Diseño/logistica-funcionalidades-maestro.md`, sección 13C. La pantalla se describe en [L60 — Órdenes de venta](frontend/l60-ordenes-de-venta.md) y [L63 — Despachar](frontend/l63-despachar-orden-de-venta.md).
 
 ## 1. Quién puede
@@ -173,7 +173,12 @@ Un **backorder** es lo que se pidió y todavía no hay: la línea queda con su c
 | Despacho que no es de esta orden | `Despacho de esta orden no encontrado.` | 404 |
 | Despacho que ya tiene entrega o fue deshecho | `El despacho {EMP-#####} ya tiene entrega o fue deshecho: no se puede crear otra.` | 422 |
 
-## 12. Para soporte
+## 12. Para el aparato: órdenes por despachar y despacho con entrega (Lote 64)
+
+- **`GET /api/v1/sync/sales-orders`** (módulo SALES_ORDERS y permiso `sales.view`; el Operador de almacén lo tiene): las órdenes **solicitadas o despachadas parciales con algo reservado**, con sus líneas (pedido, reservado, despachado, backorder) y, por línea, **de qué posición y lote reservó el sistema cada parte** (`reservations`): es la guía del despacho en el aparato. Siempre llegan **todas las abiertas** (son pocas y sus líneas cambian sin que cambie el encabezado); con `since` llegan además las que se cerraron, despacharon o cancelaron (`isActive = false`) para que el aparato las borre. Filtro opcional `warehousePublicId`.
+- **Despacho con entrega en una sola llamada**: `POST /sales-orders/{publicId}/dispatch` acepta `delivery` (los mismos datos del empaque: servicio, paquetes, consignatario nuevo o el de la orden, COD). Despacha **y** crea la orden de transporte en **una transacción**: si la entrega falla (por ejemplo, «Tipo de servicio desconocido»), no sale el inventario y la orden queda como estaba. Es lo que manda el aparato, que despacha sin señal y no conoce el número de la recolección hasta que sincroniza.
+
+## 13. Para soporte
 
 - Tablas `SalesOrder`, `SalesOrderLine` y `SalesOrderReservation` (la que guarda qué saldo reservó cada línea) y las columnas `PickBatch.SalesOrderId` / `PickBatchLine.SalesOrderLineId` (sección **2026-10-15 (l)**), `TransportOrder.SalesOrderId` (**(m)**) y el ajuste de estatus de la **(n)**: «Despachada parcial» y «Despachada» son etapas laterales para poder reabrir la orden al deshacer un despacho, contador `SALESORDER`, dominio de estatus `SalesOrderStatus` y EntityType `SALES_ORDER` (sección **2026-10-15 (k)** de `Diseño/logistica-db-update.sql`).
 - Cada línea guarda `TaxRateId`, `TaxRatePct`, `TaxAmount` e `IsTaxExempt`: un cambio posterior de la tasa **no** altera una orden ya guardada.

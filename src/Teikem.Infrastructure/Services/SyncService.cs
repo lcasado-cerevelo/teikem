@@ -55,6 +55,16 @@ namespace Teikem.Infrastructure.Contracts
     public sealed record SyncPurchaseOrderDto(int Id, Guid PublicId, string Number, Guid WarehousePublicId, string SupplierName,
         string StatusCode, DateOnly? ExpectedDate, bool IsActive, IReadOnlyList<SyncPurchaseOrderLineDto> Lines);
 
+    /// <summary>Lote 64: de qué posición y lote reservó el sistema parte de una línea de orden de venta (la guía del aparato).</summary>
+    public sealed record SyncSalesReservationDto(int BinId, string BinCode, int? LotId, string? LotNumber, decimal Quantity);
+
+    public sealed record SyncSalesOrderLineDto(int Id, Guid ProductPublicId, string Sku, string ProductName, decimal QtyOrdered, decimal QtyReserved, decimal QtyShipped,
+        decimal QtyBackordered, IReadOnlyList<SyncSalesReservationDto> Reservations);
+
+    /// <summary>Orden de venta por despachar (Lote 64). IsActive = solicitada o despachada parcial CON algo reservado; si no, el aparato la borra.</summary>
+    public sealed record SyncSalesOrderDto(int Id, Guid PublicId, string Number, Guid WarehousePublicId, string ClientName, string? ConsigneeName, string StatusCode,
+        DateOnly? RequiredDate, DateTime? RequestedAtUtc, bool IsActive, IReadOnlyList<SyncSalesOrderLineDto> Lines);
+
     public sealed record SyncAsnLineDto(int Id, Guid ProductPublicId, string Sku, string ProductName, decimal ExpectedQty, string? LotNumber,
         int? PurchaseOrderLineId);
 
@@ -384,6 +394,67 @@ namespace Teikem.Infrastructure.Services
                     p.IsActive && OpenPurchaseOrderStatuses.Contains(code), poLines);
             }).ToList();
             return new SyncPage<SyncPurchaseOrderDto>(items, next, w.Now);
+        }
+
+        // ================================================================ órdenes de venta por despachar (Lote 64)
+
+        /// <summary>
+        /// Órdenes de venta solicitadas o despachadas parciales con lo que tienen reservado y de qué posición/lote (el aparato guía el despacho). Siempre llegan TODAS las abiertas
+        /// (son pocas y los cambios en sus líneas no se auditan); con since llegan además las que se cerraron o cancelaron (isActive = false) para que el aparato las borre.
+        /// </summary>
+        public async Task<SyncPage<SyncSalesOrderDto>> SalesOrdersAsync(SyncQuery q, CancellationToken ct)
+        {
+            var w = Prepare(q);
+            var warehouseId = await WarehouseIdAsync(q.WarehousePublicId, ct);
+            var statuses = await StatusMapAsync(Teikem.Domain.Sales.SalesCodes.StatusDomain, ct);
+            var openIds = statuses.Where(kv => kv.Value is Teikem.Domain.Sales.SalesOrderStatuses.Requested or Teikem.Domain.Sales.SalesOrderStatuses.Partial).Select(kv => kv.Key).ToList();
+
+            var query = db.Set<Teikem.Domain.Sales.SalesOrder>().AsNoTracking();
+            if (warehouseId is int whId) query = query.Where(o => o.WarehouseId == whId);
+            if (w.Since is DateTime since)
+            {
+                var c = await ChangedAsync(Teikem.Domain.Sales.SalesCodes.EntityType, since, ct);
+                query = query.Where(o => openIds.Contains(o.StatusCodeId) || o.CreatedAtUtc >= since || c.Audit.Contains(o.SalesOrderId) || c.History.Contains(o.SalesOrderId));
+            }
+            else query = query.Where(o => openIds.Contains(o.StatusCodeId));
+            if (w.AfterId is int after) query = query.Where(o => o.SalesOrderId > after);
+
+            var rows = await query.OrderBy(o => o.SalesOrderId).Take(w.Take + 1).ToListAsync(ct);
+            var (page, next) = SyncRules.Cut(rows, w.Take, o => o.SalesOrderId);
+            var ids = page.Select(o => o.SalesOrderId).ToList();
+            var warehouses = await WarehousePublicIdsAsync(page.Select(o => o.WarehouseId), ct);
+            var clientIds = page.Select(o => o.ClientId).Distinct().ToList();
+            var clients = await db.Set<Client>().AsNoTracking().Where(c => clientIds.Contains(c.ClientId)).ToDictionaryAsync(c => c.ClientId, c => c.Name, ct);
+            var consigneeIds = page.Where(o => o.ConsigneeId != null).Select(o => o.ConsigneeId!.Value).Distinct().ToList();
+            var consignees = consigneeIds.Count == 0 ? new Dictionary<int, string>()
+                : await db.Set<Location>().AsNoTracking().Where(l => consigneeIds.Contains(l.LocationId)).ToDictionaryAsync(l => l.LocationId, l => l.Name, ct);
+            var lines = await (from l in db.Set<Teikem.Domain.Sales.SalesOrderLine>().AsNoTracking()
+                               join p in db.Set<Product>().AsNoTracking() on l.ProductId equals p.ProductId
+                               where ids.Contains(l.SalesOrderId)
+                               orderby l.LineNo
+                               select new { l.SalesOrderId, l.SalesOrderLineId, p.PublicId, p.Sku, p.Name, l.QtyOrdered, l.QtyReserved, l.QtyShipped, l.QtyBackordered })
+                .ToListAsync(ct);
+            var lineIds = lines.Select(l => l.SalesOrderLineId).ToList();
+            var reservations = await (from r in db.Set<Teikem.Domain.Sales.SalesOrderReservation>().AsNoTracking()
+                                      join b in db.Set<WarehouseBin>().AsNoTracking() on r.WarehouseBinId equals b.WarehouseBinId
+                                      join lot in db.Set<InventoryLot>().AsNoTracking() on r.LotId equals (int?)lot.LotId into lj
+                                      from lot in lj.DefaultIfEmpty()
+                                      where lineIds.Contains(r.SalesOrderLineId)
+                                      orderby r.SalesOrderReservationId
+                                      select new { r.SalesOrderLineId, r.WarehouseBinId, b.Code, r.LotId, LotNumber = lot == null ? null : lot.LotNumber, r.Quantity }).ToListAsync(ct);
+            var byLine = reservations.ToLookup(r => r.SalesOrderLineId);
+            var linesByOrder = lines.ToLookup(l => l.SalesOrderId);
+
+            var items = page.Select(o =>
+            {
+                var code = statuses.GetValueOrDefault(o.StatusCodeId, string.Empty);
+                var dto = linesByOrder[o.SalesOrderId].Select(l => new SyncSalesOrderLineDto(l.SalesOrderLineId, l.PublicId, l.Sku, l.Name, l.QtyOrdered, l.QtyReserved, l.QtyShipped, l.QtyBackordered,
+                    byLine[l.SalesOrderLineId].Select(r => new SyncSalesReservationDto(r.WarehouseBinId, r.Code, r.LotId, r.LotNumber, r.Quantity)).ToList())).ToList();
+                var open = code is Teikem.Domain.Sales.SalesOrderStatuses.Requested or Teikem.Domain.Sales.SalesOrderStatuses.Partial && dto.Any(l => l.QtyReserved > 0m);
+                return new SyncSalesOrderDto(o.SalesOrderId, o.PublicId, o.Number, warehouses.GetValueOrDefault(o.WarehouseId), clients.GetValueOrDefault(o.ClientId, string.Empty),
+                    o.ConsigneeId is int cid ? consignees.GetValueOrDefault(cid) : null, code, o.RequiredDate, o.RequestedAtUtc, open, dto);
+            }).ToList();
+            return new SyncPage<SyncSalesOrderDto>(items, next, w.Now);
         }
 
         // ================================================================ avisos de llegada EXPECTED

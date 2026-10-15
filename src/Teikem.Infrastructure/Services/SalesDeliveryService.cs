@@ -16,6 +16,19 @@ namespace Teikem.Infrastructure.Services;
 /// </summary>
 public sealed class SalesDeliveryService(TeikemDbContext db, PickBatchService pickBatches, SalesOrderService sales)
 {
+    /// <summary>Despacha y entrega en UNA transacción (si la entrega falla, no sale el inventario).</summary>
+    public async Task<SalesDispatchResultDto> DispatchAndDeliverAsync(Guid publicId, SalesDispatchRequest req, CancellationToken ct)
+    {
+        if (req.Delivery is null) return await sales.DispatchAsync(publicId, req, ct);
+        SalesDispatchResultDto? dispatched = null;
+        await db.RunInTransactionAsync(async ct2 =>
+        {
+            dispatched = await sales.DispatchAsync(publicId, req with { Delivery = null }, ct2);
+            await CreateAsync(publicId, new SalesDeliveryRequest(dispatched.PickBatchPublicId, req.Delivery), ct2);
+        }, ct);
+        return new SalesDispatchResultDto(dispatched!.PickBatchPublicId, dispatched.PickBatchNumber, await sales.GetAsync(publicId, ct));
+    }
+
     public async Task<SalesOrderDto> CreateAsync(Guid publicId, SalesDeliveryRequest? req, CancellationToken ct)
     {
         if (req?.PickBatchPublicId is null) throw new ValidationException("pickBatchPublicId", SalesRules.DeliveryBatchRequired);

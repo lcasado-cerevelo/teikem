@@ -27214,6 +27214,7 @@ export interface components {
             lotId?: number | null;
         };
         SalesDispatchRequest: {
+            delivery?: components["schemas"]["OrderCreateRequest"] | null;
             lines?: components["schemas"]["SalesDispatchLineRequest"][] | null;
             note?: string | null;
         };

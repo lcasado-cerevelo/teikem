@@ -144,7 +144,7 @@ public sealed class SyncRulesTests
         var actions = typeof(SyncController).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
             .Where(m => m.GetCustomAttributes<HttpMethodAttribute>().Any()).ToList();
         var routes = actions.Select(a => a.GetCustomAttribute<HttpGetAttribute>()!.Template).OrderBy(x => x).ToArray();
-        Assert.Equal(new[] { "asns", "balances", "bins", "clients", "consignee-locations", "product-categories", "products", "purchase-orders", "warehouse-tasks" }, routes);
+        Assert.Equal(new[] { "asns", "balances", "bins", "clients", "consignee-locations", "product-categories", "products", "purchase-orders", "sales-orders", "warehouse-tasks" }, routes);
         foreach (var action in actions)
         {
             var policies = action.GetCustomAttributes<RequirePermissionAttribute>().Select(a => a.Policy).ToList();
@@ -154,8 +154,10 @@ public sealed class SyncRulesTests
             // 2026-10-11: clientes y consignatarios para el despacho del aparato van detrás de warehouse.pick (quien despacha no necesita clients.read / locations.read solo para elegir a quién).
             var template = action.GetCustomAttribute<HttpGetAttribute>()!.Template;
             var isDispatchLists = template is "clients" or "consignee-locations";
-            Assert.Equal(new[] { RequirePermissionAttribute.Prefix + (isPurchaseOrders ? PermissionCatalog.PurchasingView : isDispatchLists ? PermissionCatalog.WarehousePick : PermissionCatalog.InventoryView) }, policies);
-            Assert.Equal(isPurchaseOrders ? new[] { ModuleKeys.Purchasing } : Array.Empty<string>(), actionModules);
+            // Lote 64: las órdenes de venta por despachar exigen el módulo SALES_ORDERS y sales.view (el Operador de almacén lo tiene).
+            var isSales = template == "sales-orders";
+            Assert.Equal(new[] { RequirePermissionAttribute.Prefix + (isPurchaseOrders ? PermissionCatalog.PurchasingView : isSales ? PermissionCatalog.SalesView : isDispatchLists ? PermissionCatalog.WarehousePick : PermissionCatalog.InventoryView) }, policies);
+            Assert.Equal(isPurchaseOrders ? new[] { ModuleKeys.Purchasing } : isSales ? new[] { ModuleKeys.SalesOrders } : Array.Empty<string>(), actionModules);
             Assert.DoesNotContain(action.GetParameters(), p => string.Equals(p.Name, "tenantId", StringComparison.OrdinalIgnoreCase));
         }
     }

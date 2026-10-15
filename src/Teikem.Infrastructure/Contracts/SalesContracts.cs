@@ -68,7 +68,11 @@ public sealed record SalesFulfillResultDto(IReadOnlyList<SalesFulfillLineDto> Li
 /// </summary>
 public sealed record SalesDispatchLineRequest(int? LineId = null, decimal? Quantity = null, int? BinId = null, int? LotId = null);
 
-public sealed record SalesDispatchRequest(IReadOnlyList<SalesDispatchLineRequest>? Lines = null, string? Note = null);
+/// <summary>
+/// Lote 64: con Delivery (los datos de la entrega, como el empaque) el despacho y la entrega ocurren en UNA sola transacción: es lo que manda el aparato, que despacha sin
+/// señal y no conoce el número de la recolección hasta que sincroniza.
+/// </summary>
+public sealed record SalesDispatchRequest(IReadOnlyList<SalesDispatchLineRequest>? Lines = null, string? Note = null, OrderCreateRequest? Delivery = null);
 
 /// <summary>La recolección creada (su número EMP) y la orden como quedó.</summary>
 public sealed record SalesDispatchResultDto(Guid PickBatchPublicId, string PickBatchNumber, SalesOrderDto Order);

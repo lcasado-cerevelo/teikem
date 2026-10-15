@@ -8329,3 +8329,11 @@ Sí: elimine la recolección del despacho. La existencia vuelve a su posición, 
 
 **¿Por qué «Despachada» ya no es un estatus final?**
 Para poder reabrir la orden si se deshace un despacho. Sigue siendo el estatus de una orden despachada.
+
+## Lote 64 — Órdenes por despachar en el aparato (servidor)
+
+**¿Qué órdenes le llegan al aparato?**
+Las solicitadas o despachadas parciales con algo reservado, de su almacén, con la posición y el lote de donde reservó el sistema cada parte. Las que se despachan por completo, se cancelan o se cierran desaparecen en la siguiente sincronización.
+
+**El aparato despachó con entrega y el servidor la rechazó.**
+El despacho y la entrega van juntos: si los datos de la entrega no son válidos (servicio desconocido, consignatario incompleto…), no sale el inventario y la orden queda como estaba; el aparato muestra el mensaje en su lista de pendientes.

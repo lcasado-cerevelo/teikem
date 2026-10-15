@@ -44021,6 +44021,14 @@
       "SalesDispatchRequest": {
         "type": "object",
         "properties": {
+          "delivery": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OrderCreateRequest"
+              }
+            ],
+            "nullable": true
+          },
           "lines": {
             "type": "array",
             "items": {

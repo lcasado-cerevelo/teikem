@@ -76,6 +76,16 @@ public sealed class SyncController(SyncService sync) : ControllerBase
         => sync.PurchaseOrdersAsync(new SyncQuery(since, cursor, take, warehousePublicId), ct);
 
     /// <summary>
+    /// Órdenes de venta por despachar (solicitadas o despachadas parciales con algo reservado) con sus líneas y de qué posición y lote reservó el sistema cada parte: la guía del
+    /// despacho en el aparato (Lote 64). Siempre llegan todas las abiertas; con since llegan además las cerradas o canceladas (isActive = false). Exige el módulo SALES_ORDERS y
+    /// sales.view (el Operador de almacén lo tiene); despachar usa warehouse.pick.
+    /// </summary>
+    [HttpGet("sales-orders"), RequireModule(ModuleKeys.SalesOrders), RequirePermission(PermissionCatalog.SalesView)]
+    public Task<SyncPage<SyncSalesOrderDto>> SalesOrders([FromQuery] Guid? warehousePublicId, [FromQuery] DateTime? since, [FromQuery] string? cursor,
+        [FromQuery] int take = SyncRules.DefaultTake, CancellationToken ct = default)
+        => sync.SalesOrdersAsync(new SyncQuery(since, cursor, take, warehousePublicId), ct);
+
+    /// <summary>
     /// Avisos de llegada EXPECTED con sus líneas. Con since llegan también los recibidos o cancelados (isActive = false).
     /// Filtro opcional warehousePublicId. since en UTC (since = serverTimeUtc anterior − 5 minutos).
     /// </summary>
