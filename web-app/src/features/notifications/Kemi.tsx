@@ -4,7 +4,10 @@
 // - Dormida: se esconde en la esquina de la cabecera (junto a la campanita); un clic la despierta. Dormida no muestra globos.
 // El «cerebro» de Kemi (hacer cosas, proponer rutas, mensajes) es de lotes posteriores; las opciones de aquí son botones.
 import { useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useT } from '../../kernel/i18n'
+import { messageBubbleText } from '../messages/messageRules'
+import { useMessages } from '../messages/MessagesProvider'
 import { KemiMascot } from './KemiMascot'
 import { bubbleKey } from './kemiState'
 import { useNotifications } from './NotificationsProvider'
@@ -26,6 +29,8 @@ export function KemiSleepButton() {
 export function KemiFloating() {
   const t = useT()
   const { asleep, setAsleep, unread, bubble, dismissBubble, setBellOpen, kemiOpen, setKemiOpen } = useNotifications()
+  const msg = useMessages()
+  const navigate = useNavigate()
   const root = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -61,6 +66,31 @@ export function KemiFloating() {
           </div>
           <p className="kemi-msg">{unread > 0 ? t('notifications.kemi.hiUnread', { n: unread }) : t('notifications.kemi.hi')}</p>
           <div className="kemi-options">
+            {msg.enabled && (
+              <button
+                type="button"
+                className="kemi-opt"
+                onClick={() => {
+                  setKemiOpen(false)
+                  msg.openNewMessage()
+                }}
+              >
+                {t('messages.kemi.optSend')}
+              </button>
+            )}
+            {msg.enabled && (
+              <button
+                type="button"
+                className="kemi-opt"
+                onClick={() => {
+                  setKemiOpen(false)
+                  navigate('/messages')
+                }}
+              >
+                {t('messages.kemi.optMine')}
+                {msg.count > 0 && <span className="kemi-count">{msg.count}</span>}
+              </button>
+            )}
             <button type="button" className="kemi-opt" onClick={() => setBellOpen(true)}>
               {t('notifications.kemi.optAvisos')}
               {unread > 0 && <span className="kemi-count">{unread}</span>}
@@ -71,7 +101,26 @@ export function KemiFloating() {
           </div>
         </div>
       )}
-      {bubble !== null && !kemiOpen && (
+      {msg.bubble !== null && !kemiOpen && (
+        <div className="kemi-bubble" role="status">
+          <span>{messageBubbleText(msg.bubble.fromName, msg.bubble.count, t)}</span>
+          <button
+            type="button"
+            className="kemi-see"
+            onClick={() => {
+              const id = msg.bubble?.threadId
+              msg.dismissBubble()
+              navigate(id ? `/messages?thread=${id}` : '/messages')
+            }}
+          >
+            {t('notifications.kemi.see')} →
+          </button>
+          <button type="button" className="kemi-dismiss" aria-label={t('notifications.kemi.dismiss')} onClick={msg.dismissBubble}>
+            ✕
+          </button>
+        </div>
+      )}
+      {bubble !== null && msg.bubble === null && !kemiOpen && (
         <div className="kemi-bubble" role="status">
           <span>{t(`notifications.kemi.bubble.${bubbleKey(bubble)}`, { n: bubble })}</span>
           <button type="button" className="kemi-see" onClick={() => setBellOpen(true)}>
@@ -90,10 +139,10 @@ export function KemiFloating() {
         aria-expanded={kemiOpen}
         onClick={() => setKemiOpen(!kemiOpen)}
       >
-        <KemiMascot size={38} blinking={bubble !== null} />
-        {unread > 0 && (
+        <KemiMascot size={38} blinking={bubble !== null || msg.bubble !== null} />
+        {unread + msg.count > 0 && (
           <span className="kemi-tag" aria-hidden="true">
-            {unread > 99 ? '99+' : unread}
+            {unread + msg.count > 99 ? '99+' : unread + msg.count}
           </span>
         )}
       </button>

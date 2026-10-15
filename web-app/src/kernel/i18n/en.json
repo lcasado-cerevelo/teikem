@@ -7371,6 +7371,80 @@
     "company": "Company",
     "emptyView": "The view has no rows today."
   },
+  "messages": {
+    "title": "Messages",
+    "you": "You",
+    "muted": "Muted",
+    "unreadN": "{n} unread",
+    "back": "Back to the list",
+    "members": "{n} people",
+    "membersBtn": "People",
+    "creator": "(created the group)",
+    "addPeople": "Add people",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "leave": "Leave",
+    "leaveTitle": "Leave the group",
+    "leaveBody": "You are about to leave \"{name}\". You will no longer see the conversation or receive its messages, unless the person who created the group adds you again.",
+    "left": "You left \"{name}\".",
+    "conversation": "Conversation",
+    "older": "Load earlier messages",
+    "noMessages": "There are no messages yet.",
+    "write": "Write a message…",
+    "send": "Send",
+    "list": {
+      "title": "Conversations",
+      "search": "Search conversations…",
+      "empty": "You have no conversations yet. Start one with \"New message\".",
+      "noMatch": "No conversation matches."
+    },
+    "day": {
+      "today": "Today",
+      "yesterday": "Yesterday"
+    },
+    "presence": {
+      "online": "Online",
+      "never": "Not connected yet",
+      "justNow": "Seen a moment ago",
+      "minutes": "Seen {n} min ago",
+      "hours": "Seen {n} h ago",
+      "date": "Seen on {date}"
+    },
+    "blank": {
+      "title": "Your messages",
+      "body": "Pick a conversation from the list or start a new one."
+    },
+    "new": {
+      "title": "New message",
+      "button": "New message",
+      "send": "Send",
+      "to": "To",
+      "toPh": "Type a name or an email…",
+      "remove": "Remove {name}",
+      "role": "Role",
+      "orRole": "Or write to a whole role",
+      "roleOption": "{name} ({n} people)",
+      "roleHelp": "A group is made with the people who have that role today; whoever joins the role later is not added automatically.",
+      "groupName": "Group name (optional)",
+      "groupNamePh": "If left empty, the names are used",
+      "message": "Message",
+      "counter": "{n} of {max}",
+      "errors": {
+        "recipients": "Choose at least one person or a role.",
+        "text": "Write the message."
+      }
+    },
+    "header": {
+      "open": "Messages",
+      "openUnread": "Messages: {n} unread"
+    },
+    "kemi": {
+      "optSend": "Send a message to…",
+      "optMine": "My messages",
+      "bubbleOne": "You got a message from {name}",
+      "bubbleMany": "{name} wrote to you ({n} messages)"
+    }
+  },
   "notifications": {
     "bell": {
       "title": "Notices",

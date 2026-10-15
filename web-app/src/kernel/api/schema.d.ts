@@ -13375,6 +13375,468 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/messages/people": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    q?: string;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MessagePersonDto"][];
+                        "application/json": components["schemas"]["MessagePersonDto"][];
+                        "text/json": components["schemas"]["MessagePersonDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messages/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MessageRoleDto"][];
+                        "application/json": components["schemas"]["MessageRoleDto"][];
+                        "text/json": components["schemas"]["MessageRoleDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messages/threads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MessageThreadSummaryDto"][];
+                        "application/json": components["schemas"]["MessageThreadSummaryDto"][];
+                        "text/json": components["schemas"]["MessageThreadSummaryDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["MessageThreadRequest"];
+                    "text/json": components["schemas"]["MessageThreadRequest"];
+                    "application/*+json": components["schemas"]["MessageThreadRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MessageThreadDto"];
+                        "application/json": components["schemas"]["MessageThreadDto"];
+                        "text/json": components["schemas"]["MessageThreadDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messages/threads/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    before?: number;
+                    take?: number;
+                };
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MessageThreadDto"];
+                        "application/json": components["schemas"]["MessageThreadDto"];
+                        "text/json": components["schemas"]["MessageThreadDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messages/threads/{publicId}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["MessageSendRequest"];
+                    "text/json": components["schemas"]["MessageSendRequest"];
+                    "application/*+json": components["schemas"]["MessageSendRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MessageDto"];
+                        "application/json": components["schemas"]["MessageDto"];
+                        "text/json": components["schemas"]["MessageDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messages/threads/{publicId}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messages/threads/{publicId}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["MessageMembersRequest"];
+                    "text/json": components["schemas"]["MessageMembersRequest"];
+                    "application/*+json": components["schemas"]["MessageMembersRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MessageThreadDto"];
+                        "application/json": components["schemas"]["MessageThreadDto"];
+                        "text/json": components["schemas"]["MessageThreadDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messages/threads/{publicId}/leave": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messages/threads/{publicId}/mute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["MessageMuteRequest"];
+                    "text/json": components["schemas"]["MessageMuteRequest"];
+                    "application/*+json": components["schemas"]["MessageMuteRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MessageThreadSummaryDto"];
+                        "application/json": components["schemas"]["MessageThreadSummaryDto"];
+                        "text/json": components["schemas"]["MessageThreadSummaryDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messages/unread": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MessageUnreadDto"];
+                        "application/json": components["schemas"]["MessageUnreadDto"];
+                        "text/json": components["schemas"]["MessageUnreadDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/presence/ping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PresencePingDto"];
+                        "application/json": components["schemas"]["PresencePingDto"];
+                        "text/json": components["schemas"]["PresencePingDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/printers": {
         parameters: {
             query?: never;
@@ -25269,6 +25731,102 @@ export interface components {
             skip?: number;
             /** Format: int32 */
             take?: number;
+        };
+        MessageDto: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int32 */
+            senderId?: number;
+            senderName?: string | null;
+            body?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            mine?: boolean;
+        };
+        MessageLatestDto: {
+            /** Format: uuid */
+            threadPublicId?: string;
+            fromName?: string | null;
+            preview?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            isMuted?: boolean;
+        };
+        MessageMembersRequest: {
+            userIds?: number[] | null;
+        };
+        MessageMemberDto: {
+            /** Format: int32 */
+            userId?: number;
+            name?: string | null;
+            email?: string | null;
+            online?: boolean;
+            /** Format: date-time */
+            lastSeenUtc?: string | null;
+            isCreator?: boolean;
+        };
+        MessageMuteRequest: {
+            muted?: boolean | null;
+        };
+        MessagePersonDto: {
+            /** Format: int32 */
+            id?: number;
+            name?: string | null;
+            email?: string | null;
+            online?: boolean;
+            /** Format: date-time */
+            lastSeenUtc?: string | null;
+        };
+        MessageRoleDto: {
+            /** Format: int32 */
+            id?: number;
+            name?: string | null;
+            /** Format: int32 */
+            memberCount?: number;
+        };
+        MessageSendRequest: {
+            text?: string | null;
+        };
+        MessageThreadDto: {
+            thread?: components["schemas"]["MessageThreadSummaryDto"];
+            members?: components["schemas"]["MessageMemberDto"][] | null;
+            messages?: components["schemas"]["MessageDto"][] | null;
+            hasMore?: boolean;
+            canAddMembers?: boolean;
+        };
+        MessageThreadRequest: {
+            userIds?: number[] | null;
+            /** Format: int32 */
+            roleId?: number | null;
+            title?: string | null;
+            text?: string | null;
+        };
+        MessageThreadSummaryDto: {
+            /** Format: uuid */
+            publicId?: string;
+            kind?: string | null;
+            name?: string | null;
+            /** Format: int32 */
+            memberCount?: number;
+            other?: components["schemas"]["MessagePersonDto"];
+            lastMessagePreview?: string | null;
+            lastSenderName?: string | null;
+            /** Format: date-time */
+            lastMessageAtUtc?: string;
+            /** Format: int32 */
+            unread?: number;
+            isMuted?: boolean;
+        };
+        MessageUnreadDto: {
+            /** Format: int32 */
+            count?: number;
+            /** Format: int32 */
+            threads?: number;
+            latest?: components["schemas"]["MessageLatestDto"];
+        };
+        PresencePingDto: {
+            /** Format: date-time */
+            seenUtc?: string;
         };
         PrinterDto: {
             /** Format: uuid */

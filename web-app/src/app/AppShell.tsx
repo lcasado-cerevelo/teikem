@@ -29,6 +29,9 @@ import { Splash } from './Splash'
 import { KemiFloating, KemiSleepButton } from '../features/notifications/Kemi'
 import { NotificationBell } from '../features/notifications/NotificationBell'
 import { NotificationsProvider } from '../features/notifications/NotificationsProvider'
+import { MessagesButton } from '../features/messages/MessagesButton'
+import { MessagesProvider } from '../features/messages/MessagesProvider'
+import { NewMessageHost } from '../features/messages/NewMessageModal'
 
 const COLLAPSED_KEY = 'teikem.rail.collapsed'
 
@@ -174,6 +177,7 @@ export function AppShell() {
 
   return (
     <NotificationsProvider>
+    <MessagesProvider>
     <div className={classes}>
       <aside className="rail" id="app-rail" aria-label={t('shell.menu')}>
         {/* Marca (P7): lockup a todo el ancho; colapsada, la marca cuadrada de 44 px (en el cajón móvil, el lockup). */}
@@ -287,6 +291,7 @@ export function AppShell() {
             )}
           </div>
           <KemiSleepButton />
+          <MessagesButton />
           <NotificationBell />
           <ThemeSwitch />
           <LangSelect lang={lang} onChange={setLang} />
@@ -328,7 +333,9 @@ export function AppShell() {
         }}
       />
       <KemiFloating />
+      <NewMessageHost />
     </div>
+    </MessagesProvider>
     </NotificationsProvider>
   )
 }

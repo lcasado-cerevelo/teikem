@@ -157,6 +157,8 @@ public static class PermissionCatalog
     public const string PrintersManage = "printers.manage";
     public const string JobsManage = "jobs.manage";
     public const string NotificationsManage = "notifications.manage";
+    /// <summary>Lote 53: mensajería interna (hilos entre personas de la compañía). La traen TODOS los roles.</summary>
+    public const string MessagesUse = "messages.use";
 
     public static readonly IReadOnlyList<PermissionDef> All = new List<PermissionDef>
     {
@@ -249,6 +251,7 @@ public static class PermissionCatalog
         new(PrintersManage, "ADMIN", "Gestionar impresoras y plantillas de label", "Manage printers & label templates"),
         new(JobsManage, "ADMIN", "Gestionar los trabajos programados", "Manage scheduled jobs"),
         new(NotificationsManage, "ADMIN", "Gestionar las reglas de aviso", "Manage notification rules"),
+        new(MessagesUse, "ADMIN", "Usar la mensajería interna", "Use internal messaging"),
     };
 
     /// <summary>
@@ -406,7 +409,11 @@ public static class PermissionCatalog
     };
 
     /// <summary>Plantillas de rol de sistema (TenantId NULL) y sus permisos por defecto — clonables al aprovisionar.</summary>
-    public static readonly IReadOnlyDictionary<string, string[]> RoleTemplates = new Dictionary<string, string[]>
+    /// <summary>Lote 53: a cada plantilla se le suma <see cref="MessagesUse"/> (todos los roles se pueden escribir).</summary>
+    private static IReadOnlyDictionary<string, string[]> WithMessaging(Dictionary<string, string[]> templates)
+        => templates.ToDictionary(kv => kv.Key, kv => kv.Value.Contains(MessagesUse) ? kv.Value : kv.Value.Append(MessagesUse).ToArray());
+
+    public static readonly IReadOnlyDictionary<string, string[]> RoleTemplates = WithMessaging(new Dictionary<string, string[]>
     {
         ["TenantAdmin"] = All.Select(p => p.Code).ToArray(),
         ["Dispatcher"] = new[] { OrdersView, OrdersCreate, OrdersEdit, OrdersCancel, TripsPlan, TripsDispatch, TripsClose, TripsOptimize, AnalyticsView, ClientsRead, LocationsRead, LocationsCreate, FleetView, TripsView, TripsScan,
@@ -429,7 +436,7 @@ public static class PermissionCatalog
         ["ReadOnly"] = new[] { OrdersView, CodView, AnalyticsView, ClientsRead, LocationsRead, ContractsRead, FleetView, TripsView, InventoryView,
             PulseIndicators, PulseCharts, PulseActivity,   // Lote F8a
             PulseAttention },   // Lote 14 (D6)
-    };
+    });
 
     /// <summary>
     /// Códigos que un rol clonado de un tenant debe recibir al actualizar la plataforma (Lote 2, PermissionSeeder):

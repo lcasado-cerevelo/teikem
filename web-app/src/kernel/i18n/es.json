@@ -7371,6 +7371,80 @@
     "company": "Compañía",
     "emptyView": "La vista no tiene filas hoy."
   },
+  "messages": {
+    "title": "Mensajes",
+    "you": "Tú",
+    "muted": "Silenciado",
+    "unreadN": "{n} sin leer",
+    "back": "Volver a la lista",
+    "members": "{n} personas",
+    "membersBtn": "Personas",
+    "creator": "(creó el grupo)",
+    "addPeople": "Agregar personas",
+    "mute": "Silenciar",
+    "unmute": "Dejar de silenciar",
+    "leave": "Salirme",
+    "leaveTitle": "Salirse del grupo",
+    "leaveBody": "Va a salirse de «{name}». Ya no verá la conversación ni recibirá sus mensajes, a menos que quien creó el grupo lo vuelva a agregar.",
+    "left": "Salió de «{name}».",
+    "conversation": "Conversación",
+    "older": "Cargar mensajes anteriores",
+    "noMessages": "Todavía no hay mensajes.",
+    "write": "Escriba un mensaje…",
+    "send": "Enviar",
+    "list": {
+      "title": "Conversaciones",
+      "search": "Buscar conversaciones…",
+      "empty": "Todavía no tiene conversaciones. Empiece una con «Nuevo mensaje».",
+      "noMatch": "Ninguna conversación coincide."
+    },
+    "day": {
+      "today": "Hoy",
+      "yesterday": "Ayer"
+    },
+    "presence": {
+      "online": "En línea",
+      "never": "Sin conexión todavía",
+      "justNow": "Visto hace un momento",
+      "minutes": "Visto hace {n} min",
+      "hours": "Visto hace {n} h",
+      "date": "Visto el {date}"
+    },
+    "blank": {
+      "title": "Sus mensajes",
+      "body": "Escoja una conversación de la lista o empiece una nueva."
+    },
+    "new": {
+      "title": "Nuevo mensaje",
+      "button": "Nuevo mensaje",
+      "send": "Enviar",
+      "to": "Para",
+      "toPh": "Escriba un nombre o un correo…",
+      "remove": "Quitar a {name}",
+      "role": "Rol",
+      "orRole": "O escribirle a todo un rol",
+      "roleOption": "{name} ({n} personas)",
+      "roleHelp": "Se arma un grupo con las personas que tienen ese rol hoy; quien entre al rol después no entra solo.",
+      "groupName": "Nombre del grupo (opcional)",
+      "groupNamePh": "Si lo deja vacío, se usan los nombres",
+      "message": "Mensaje",
+      "counter": "{n} de {max}",
+      "errors": {
+        "recipients": "Escoja al menos una persona o un rol.",
+        "text": "Escriba el mensaje."
+      }
+    },
+    "header": {
+      "open": "Mensajes",
+      "openUnread": "Mensajes: {n} sin leer"
+    },
+    "kemi": {
+      "optSend": "Enviar un mensaje a…",
+      "optMine": "Mis mensajes",
+      "bubbleOne": "Te llegó un mensaje de {name}",
+      "bubbleMany": "{name} te escribió ({n} mensajes)"
+    }
+  },
   "notifications": {
     "bell": {
       "title": "Avisos",

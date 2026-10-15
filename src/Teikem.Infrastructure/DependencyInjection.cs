@@ -10,6 +10,7 @@ using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Analytics;
 using Teikem.Infrastructure.Fleet;
 using Teikem.Infrastructure.Jobs;
+using Teikem.Infrastructure.Messaging;
 using Teikem.Infrastructure.Migration;
 using Teikem.Infrastructure.Notifications;
 using Teikem.Infrastructure.Orders;
@@ -280,6 +281,11 @@ public static class DependencyInjection
         services.AddHostedService<NotificationWorker>();
         services.AddScoped<NotificationRuleService>();
         services.AddScoped<NotificationInboxService>();
+
+        // Lote 53 — mensajería interna con hilos: servicio, presencia («visto por última vez») y el empuje en vivo (nulo aquí; el API pone SignalR).
+        services.AddScoped<PresenceService>();
+        services.AddScoped<MessagingService>();
+        services.AddSingleton<IMessageLiveNotifier, NullMessageLiveNotifier>();
 
         // Lote 8A — app de almacén: aparatos de confianza, PIN por usuario (login por aparato en AuthService) y
         // sincronización por diferencia. La idempotencia (Idempotency-Key) es un middleware del API sin servicio propio.

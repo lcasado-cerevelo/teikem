@@ -2382,3 +2382,87 @@ JOIN dbo.Permission p ON p.Code = 'notifications.manage'
 WHERE r.Name IN ('TenantAdmin')
   AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
 GO
+/* ----------------------------------------------------------------------------
+   2026-10-15 (h) — Mensajería interna con hilos (Lote 53). Un mensaje se puede contestar y el hilo se conserva; entre dos personas
+   (DIRECT, único por pareja) o de grupo (GROUP: varias personas o un rol «en foto»). No es un chat en vivo, pero la entrega es inmediata
+   por la conexión en vivo de la web (SignalR) y, sin sesión, el mensaje queda pendiente hasta que la persona entra.
+   - dbo.MessageThread (hilo y resumen del último mensaje), dbo.MessageThreadMember (participantes, hasta dónde leyó cada uno, silenciado,
+     si salió), dbo.Message (los mensajes: nunca se editan ni se borran) y dbo.UserPresence («visto por última vez» de la web abierta).
+   - Permiso messages.use (categoría ADMIN) -> TODOS los roles ya existentes (plantillas y roles clonados o propios de cada compañía):
+     la idea es que todos se puedan escribir; un administrador puede quitárselo a un rol.
+   Solo AGREGA (nunca quita). Idempotente. Autocontenida: no depende de otras secciones nuevas de este archivo.
+   ---------------------------------------------------------------------------- */
+IF OBJECT_ID(N'dbo.MessageThread', N'U') IS NULL CREATE TABLE dbo.MessageThread (
+    MessageThreadId     BIGINT IDENTITY(1,1) CONSTRAINT PK_MessageThread PRIMARY KEY,
+    PublicId            UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_MessageThread_PublicId DEFAULT NEWID(),
+    TenantId            INT NOT NULL CONSTRAINT FK_MessageThread_Tenant REFERENCES dbo.Tenant(TenantId),
+    Kind                VARCHAR(10) NOT NULL,
+    Title               NVARCHAR(100) NULL,
+    DirectKey           VARCHAR(40) NULL,
+    CreatedBy           INT NOT NULL CONSTRAINT FK_MessageThread_CreatedBy REFERENCES dbo.AspNetUsers(Id),
+    CreatedAtUtc        DATETIME2 NOT NULL CONSTRAINT DF_MessageThread_CreatedAtUtc DEFAULT SYSUTCDATETIME(),
+    LastMessageId       BIGINT NOT NULL CONSTRAINT DF_MessageThread_LastMessageId DEFAULT 0,
+    LastMessageAtUtc    DATETIME2 NOT NULL CONSTRAINT DF_MessageThread_LastMessageAtUtc DEFAULT SYSUTCDATETIME(),
+    LastMessagePreview  NVARCHAR(200) NULL,
+    LastSenderId        INT NULL CONSTRAINT FK_MessageThread_LastSender REFERENCES dbo.AspNetUsers(Id),
+    CONSTRAINT UQ_MessageThread_PublicId UNIQUE (PublicId),
+    CONSTRAINT CK_MessageThread_Kind CHECK ((Kind = 'DIRECT' AND DirectKey IS NOT NULL AND Title IS NULL) OR (Kind = 'GROUP' AND DirectKey IS NULL))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_MessageThread_Direct' AND object_id = OBJECT_ID('dbo.MessageThread'))
+    CREATE UNIQUE INDEX UX_MessageThread_Direct ON dbo.MessageThread(TenantId, DirectKey) WHERE DirectKey IS NOT NULL;
+GO
+
+IF OBJECT_ID(N'dbo.MessageThreadMember', N'U') IS NULL CREATE TABLE dbo.MessageThreadMember (
+    MessageThreadMemberId BIGINT IDENTITY(1,1) CONSTRAINT PK_MessageThreadMember PRIMARY KEY,
+    TenantId             INT NOT NULL CONSTRAINT FK_MessageThreadMember_Tenant REFERENCES dbo.Tenant(TenantId),
+    MessageThreadId      BIGINT NOT NULL CONSTRAINT FK_MessageThreadMember_Thread REFERENCES dbo.MessageThread(MessageThreadId),
+    UserId               INT NOT NULL CONSTRAINT FK_MessageThreadMember_User REFERENCES dbo.AspNetUsers(Id),
+    JoinedAtUtc          DATETIME2 NOT NULL CONSTRAINT DF_MessageThreadMember_JoinedAtUtc DEFAULT SYSUTCDATETIME(),
+    JoinedAfterMessageId BIGINT NOT NULL CONSTRAINT DF_MessageThreadMember_JoinedAfter DEFAULT 0,
+    LastReadMessageId    BIGINT NOT NULL CONSTRAINT DF_MessageThreadMember_LastRead DEFAULT 0,
+    IsMuted              BIT NOT NULL CONSTRAINT DF_MessageThreadMember_IsMuted DEFAULT 0,
+    LeftAtUtc            DATETIME2 NULL
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_MessageThreadMember' AND object_id = OBJECT_ID('dbo.MessageThreadMember'))
+    CREATE UNIQUE INDEX UX_MessageThreadMember ON dbo.MessageThreadMember(MessageThreadId, UserId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_MessageThreadMember_User' AND object_id = OBJECT_ID('dbo.MessageThreadMember'))
+    CREATE INDEX IX_MessageThreadMember_User ON dbo.MessageThreadMember(TenantId, UserId, LeftAtUtc) INCLUDE (MessageThreadId, LastReadMessageId, JoinedAfterMessageId, IsMuted);
+GO
+
+IF OBJECT_ID(N'dbo.Message', N'U') IS NULL CREATE TABLE dbo.Message (
+    MessageId       BIGINT IDENTITY(1,1) CONSTRAINT PK_Message PRIMARY KEY,
+    TenantId        INT NOT NULL CONSTRAINT FK_Message_Tenant REFERENCES dbo.Tenant(TenantId),
+    MessageThreadId BIGINT NOT NULL CONSTRAINT FK_Message_Thread REFERENCES dbo.MessageThread(MessageThreadId),
+    SenderId        INT NOT NULL CONSTRAINT FK_Message_Sender REFERENCES dbo.AspNetUsers(Id),
+    Body            NVARCHAR(2000) NOT NULL,
+    CreatedAtUtc    DATETIME2 NOT NULL CONSTRAINT DF_Message_CreatedAtUtc DEFAULT SYSUTCDATETIME()
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Message_Thread' AND object_id = OBJECT_ID('dbo.Message'))
+    CREATE INDEX IX_Message_Thread ON dbo.Message(MessageThreadId, MessageId) INCLUDE (SenderId);
+GO
+
+IF OBJECT_ID(N'dbo.UserPresence', N'U') IS NULL CREATE TABLE dbo.UserPresence (
+    UserId      INT NOT NULL CONSTRAINT PK_UserPresence PRIMARY KEY CONSTRAINT FK_UserPresence_User REFERENCES dbo.AspNetUsers(Id),
+    LastSeenUtc DATETIME2 NOT NULL
+);
+GO
+
+-- Permiso messages.use
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'messages.use')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('messages.use',
+            (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'ADMIN'),
+            N'{"es":"Usar la mensajería interna","en":"Use internal messaging"}', 1);
+GO
+
+-- A TODOS los roles ya existentes: plantillas de sistema (TenantId NULL) y los de cada compañía (clonados o propios)
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT r.RoleId, p.PermissionId
+FROM dbo.Role r
+JOIN dbo.Permission p ON p.Code = 'messages.use'
+WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
+GO

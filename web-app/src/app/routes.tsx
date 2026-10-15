@@ -130,6 +130,7 @@ export const publicRoutes: readonly AppRoute[] = [
 export const appRoutes: readonly AppRoute[] = [
   // ===== Operación =====
   { path: '/', element: lazy(() => import('../features/analytics/Pulse')), nav: { group: 'ops', key: 'pulse', order: 10 } },
+  { path: '/messages', element: lazy(() => import('../features/messages/MessagesScreen')), perm: 'messages.use', module: ModuleKeys.System },   // Lote 53 (sin ítem de menú: va en la cabecera y en Kemi)
   { path: '/account', element: lazy(() => import('../features/account/AccountPage')) },
 
   // Lote F6 — consulta de órdenes (solo lectura).

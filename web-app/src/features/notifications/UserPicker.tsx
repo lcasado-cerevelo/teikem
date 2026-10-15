@@ -9,6 +9,8 @@ export interface PersonOption {
   id: number
   name: string
   email: string
+  /** Si viene, se pinta el punto de «en línea» (mensajería). */
+  online?: boolean
 }
 
 export const MAX_SUGGESTIONS = 8
@@ -25,6 +27,7 @@ export function UserPicker({
   placeholder,
   label,
   autoFocus,
+  onQuery,
 }: {
   people: readonly PersonOption[]
   onPick: (p: PersonOption) => void
@@ -32,6 +35,8 @@ export function UserPicker({
   placeholder: string
   label: string
   autoFocus?: boolean
+  /** Avisa cada vez que cambia lo escrito (quien carga las personas del servidor pide con ese texto). */
+  onQuery?: (q: string) => void
 }) {
   const t = useT()
   const id = useId()
@@ -39,11 +44,17 @@ export function UserPicker({
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
   const input = useRef<HTMLInputElement>(null)
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const cancelClose = () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current)
+    closeTimer.current = null
+  }
   const list = useMemo(() => filterPeople(people, q, exclude), [people, q, exclude])
 
   const pick = (p: PersonOption) => {
     onPick(p)
     setQ('')
+    onQuery?.('')
     setOpen(false)
     setActive(0)
     input.current?.focus()
@@ -65,12 +76,20 @@ export function UserPicker({
         placeholder={placeholder}
         value={q}
         onChange={(e) => {
+          cancelClose()
           setQ(e.target.value)
+          onQuery?.(e.target.value)
           setOpen(true)
           setActive(0)
         }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 120)}
+        onFocus={() => {
+          cancelClose()
+          setOpen(true)
+        }}
+        onBlur={() => {
+          cancelClose()
+          closeTimer.current = setTimeout(() => setOpen(false), 120)   // deja terminar el clic en una opción; un foco nuevo lo cancela
+        }}
         onKeyDown={(e) => {
           if (e.key === 'ArrowDown') {
             e.preventDefault()
@@ -108,7 +127,10 @@ export function UserPicker({
                 }}
                 onMouseEnter={() => setActive(i)}
               >
-                <b>{p.name}</b>
+                <b>
+                  {p.online !== undefined && <i className={`upick-dot${p.online ? ' on' : ''}`} aria-hidden="true" />}
+                  {p.name}
+                </b>
                 <span>{p.email}</span>
               </li>
             ))

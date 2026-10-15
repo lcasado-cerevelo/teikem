@@ -89,3 +89,12 @@ export function IconBell() {
     </Svg>
   )
 }
+
+export function IconMessage() {
+  return (
+    <Svg>
+      <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.5-4.7A8 8 0 1 1 21 12Z" />
+      <path d="M9 11h6M9 14h4" />
+    </Svg>
+  )
+}

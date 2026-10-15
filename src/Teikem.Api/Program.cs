@@ -32,6 +32,9 @@ var builder = WebApplication.CreateBuilder(args);
 }
 
 builder.Services.AddTeikemInfrastructure(builder.Configuration);
+// Lote 53: conexión en vivo de la mensajería (SignalR); reemplaza el empuje nulo de la infraestructura.
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<Teikem.Infrastructure.Messaging.IMessageLiveNotifier, Teikem.Api.Messaging.HubMessageLiveNotifier>();
 
 builder.Services.AddControllers().AddJsonOptions(o =>
 {
@@ -73,6 +76,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
     };
     o.Events = new JwtBearerEvents
     {
+        // Lote 53: los WebSockets no mandan cabeceras; para el hub en vivo el token viaja en el query «access_token».
+        OnMessageReceived = ctx =>
+        {
+            var token = ctx.Request.Query["access_token"];
+            if (!string.IsNullOrEmpty(token) && ctx.HttpContext.Request.Path.StartsWithSegments("/hubs")) ctx.Token = token;
+            return Task.CompletedTask;
+        },
         OnTokenValidated = async ctx =>
         {
             // El SecurityStamp de Identity invalida access tokens vivos (logout global, cambio de contraseña, desactivación).
@@ -230,6 +240,7 @@ app.UseAuthorization();
 // Lote 8A: Idempotency-Key en escrituras autenticadas (después de autenticación, TenantContext y autorización).
 app.UseMiddleware<IdempotencyMiddleware>();
 app.MapControllers();
+app.MapHub<Teikem.Api.Messaging.MessagesHub>("/hubs/messages");   // Lote 53
 // environment (2026-10-12): etiqueta del ambiente (Hosting:EnvironmentLabel, p. ej. "STAGING"; null en producción). La web la lee para mostrar su cinta.
 var environmentLabel = string.IsNullOrWhiteSpace(app.Configuration["Hosting:EnvironmentLabel"]) ? null : app.Configuration["Hosting:EnvironmentLabel"]!.Trim();
 // database: nombre (solo el nombre, sin servidor ni credenciales) de la base a la que está conectado este sitio; SOLO en ambientes con etiqueta

@@ -8031,3 +8031,62 @@ La prueba sale al canal que escogió, a usted. Si dice «no salió», el motivo 
 
 **¿Qué hace «Disparar aviso de prueba»?**
 Pone el evento de prueba en la cola real; lo reciben las reglas **activas** de ese evento en unos segundos y queda en el Registro. Sirve para comprobar que una regla funciona de punta a punta.
+
+## Lote 53 — Mensajería interna
+
+**No veo el globo de chat de la cabecera.**
+Necesita el permiso **Usar la mensajería interna** (`messages.use`). Lo traen los roles del personal que ya existían; un rol nuevo no lo recibe solo. Pídale a un administrador que se lo agregue a su rol (Sistema → Roles y usuarios).
+
+**¿Cómo le escribo a alguien?**
+Globo de chat de la cabecera (o Kemi → «Enviar un mensaje a…») → **Nuevo mensaje** → escriba parte del nombre o del correo, escoja a la persona, escriba el mensaje y **Enviar**. Una sola persona abre (o vuelve a abrir) su conversación; si ya habían hablado, es el mismo hilo.
+
+**¿Cómo le escribo a un grupo o a todo un rol?**
+En **Nuevo mensaje** agregue varias personas, o escoja un rol en «O escribirle a todo un rol». Se arma un grupo donde todos pueden contestar. Con un rol, entran las personas que lo tienen **hoy**; quien entre al rol después no entra solo: agréguelo con **Personas → Agregar personas** (solo quien creó el grupo).
+
+**«Escoja al menos una persona o un rol.» / «Escriba el mensaje.»**
+Falta a quién o qué decir. Agregue a alguien (o un rol) y escriba el texto.
+
+**«El mensaje no puede pasar de 2000 caracteres.»**
+Divídalo en dos mensajes. La caja avisa cuántos caracteres lleva.
+
+**«Usuario no encontrado en esta compañía.»**
+Esa persona no es de la compañía activa o está inactiva. Solo se puede escribir a personas activas de la misma compañía.
+
+**«Ese rol no tiene personas activas a quienes escribir.»**
+Nadie activo tiene ese rol hoy (o solo usted). Escoja otro rol o agregue personas.
+
+**«No puede escribirse a sí mismo.»**
+Escogió solo su propio nombre. Escoja a otra persona.
+
+**«Conversación no encontrada.»**
+La conversación no existe, no es suya, o ya salió del grupo. Vuelva a la lista.
+
+**¿Por qué no puedo agregar personas a un hilo? «Solo quien creó el grupo puede agregar personas.»**
+Solo quien creó el grupo agrega gente. En un hilo entre dos personas no se puede agregar a nadie: cree un grupo nuevo.
+
+**«Una conversación entre dos personas no se abandona.»**
+Solo se sale de los grupos. Si no quiere recibir avisos de un hilo entre dos, use **Silenciar**.
+
+**Me salí de un grupo y quiero volver.**
+Pídale a quien lo creó que lo agregue de nuevo. Verá los mensajes desde que lo agreguen.
+
+**¿Se pueden editar o borrar mensajes?**
+No: los mensajes quedan como se enviaron (es el historial de la conversación).
+
+**¿Cómo sé si la otra persona está conectada?**
+Verá un punto verde en la lista y «En línea» en la conversación cuando tiene Teikem abierto. Si no, «Visto hace 5 min», «Visto hace 3 h» o la fecha. No se muestra en qué pantalla está.
+
+**La otra persona no está conectada, ¿recibe el mensaje?**
+Sí: queda pendiente en el hilo y, al entrar, ve su contador de mensajes sin leer y Kemi la saluda con lo pendiente.
+
+**El mensaje no me llegó al instante.**
+Casi siempre llega en el momento. Si la conexión en vivo se cayó (red, VPN, un servidor intermedio que no deja pasar WebSockets), Teikem se reconecta solo y, mientras tanto, revisa cada 30 segundos. Si pasa seguido, avise a soporte (ver capítulo 15 §7).
+
+**Kemi me avisó de un mensaje y no lo veo en la lista.**
+Recargue la lista (llega sola en segundos). Si el hilo está silenciado, Kemi no avisa, pero el hilo sigue en la lista con su contador.
+
+**No quiero que Kemi me avise de un hilo.**
+Abra la conversación y use **Silenciar**: los mensajes siguen contando como no leídos, pero sin globo.
+
+**Un usuario de captura de datos de un cliente no debe escribirme.**
+Correcto: el permiso de mensajería no se da por omisión a los roles del portal de clientes; usted lo asigna solo a los gerenciales de cada cliente.
