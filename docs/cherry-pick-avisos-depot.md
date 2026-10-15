@@ -13,13 +13,13 @@ Los lotes se hicieron en `master` como commits **consecutivos, autocontenidos y 
 | 4 | `b08c4a4` | **Lote 52** — pantalla Sistema → Reglas de aviso, campanita y Kemi (capa de presentación) | 2 y 3 |
 | 5 | `cd64fb0` | **Lote 53** — mensajería interna con hilos (SignalR, presencia, pantalla de chat, Kemi con mensajes; permiso `messages.use`; SQL «2026-10-15 (h)») | 4 |
 | 6 | `2959d18` | Mensajes: el campo «Para» busca personas y roles a la vez (reemplaza la lista de roles) | 5 |
-| 7 | (el commit del **Lote 54**, justo después de este) | **Lote 54** — Enviar avisos: avisos manuales a personas, roles o todos, no respondibles; permiso `notifications.send`; SQL «2026-10-15 (i)»; «Seleccionar todo» en el buscador | 6 |
+| 7 | `eb24112` | **Lote 54** — Enviar avisos: avisos manuales a personas, roles o todos, no respondibles; permiso `notifications.send`; SQL «2026-10-15 (i)»; «Seleccionar todo» en el buscador | 6 |
 
 Pasarlos **en ese orden**, uno por uno:
 
 ```bash
 git checkout Depot-Implementation          # solo cuando Luis lo ordene
-git cherry-pick -x 221fd59 a0d43a9 1882235 b08c4a4 cd64fb0 2959d18 <commit del Lote 54>
+git cherry-pick -x 221fd59 a0d43a9 1882235 b08c4a4 cd64fb0 2959d18 eb24112
 ```
 
 Si un paso queda a medias por conflictos: resolver, `git add`, `git cherry-pick --continue`. `-x` deja anotado de qué commit de `master` viene cada uno.
