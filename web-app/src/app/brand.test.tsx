@@ -1,8 +1,9 @@
 // Marca Teikem en el shell, la carga a pantalla completa y las pantallas sin sesión (Lote F8a P7).
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthLayout } from '../features/auth/AuthLayout'
 import { AccessProvider } from '../kernel/access'
 import { setLang } from '../kernel/i18n/i18n'
@@ -13,6 +14,13 @@ import { SessionContext, type Session } from './session'
 import { Splash } from './Splash'
 
 const COLLAPSED_KEY = 'teikem.rail.collapsed'
+
+// Lote 52: el shell trae la campanita y a Kemi, que piden cuántos avisos hay sin leer; aquí no hay ninguno.
+vi.mock('../kernel/api/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../kernel/api/client')>()
+  const fetch = async () => new Response(JSON.stringify({ count: 0 }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  return { ...actual, api: actual.createApiClient({ baseUrl: 'http://api.test', fetch }) }
+})
 
 const SESSION: Session = {
   me: {
@@ -40,6 +48,7 @@ const SESSION: Session = {
 
 function renderShell() {
   return render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
     <SessionContext.Provider value={SESSION}>
       <AccessProvider permissions={['analytics.view']} modules={['ANALYTICS']}>
         <MemoryRouter initialEntries={['/test']}>
@@ -50,7 +59,8 @@ function renderShell() {
           </Routes>
         </MemoryRouter>
       </AccessProvider>
-    </SessionContext.Provider>,
+    </SessionContext.Provider>
+    </QueryClientProvider>,
   )
 }
 

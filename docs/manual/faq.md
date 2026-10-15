@@ -7993,3 +7993,41 @@ Solo los avisos marcados como opcionales se pueden silenciar en la bandeja perso
 
 **«Aviso no encontrado.»**
 Ese aviso no existe en su bandeja (puede ser de otra persona). Recargue la campanita.
+
+## Lote 52 — Reglas de aviso, campanita y Kemi
+
+**No veo «Reglas de aviso» en el menú Sistema.**
+Necesita el permiso **Gestionar las reglas de aviso** (`notifications.manage`); lo trae el rol Admin de compañía. Pídale a un administrador que se lo agregue a su rol.
+
+**La campanita no muestra nada.**
+Cada persona ve solo sus propios avisos. «No tienes avisos.» significa que todavía no le ha llegado ninguno. Los avisos le llegan cuando hay una regla activa que la incluye (por su rol, por su usuario) con el canal **Campanita** encendido.
+
+**Me llegan avisos que no quiero.**
+Abra la campanita → **Avisos que puedo silenciar** y apague los que no quiera. Solo se pueden silenciar los avisos marcados como opcionales.
+
+**Kemi no deja de aparecer / me estorba.**
+Ábrala con un clic y escoja **Dormir a Kemi**: se esconde en la cabecera, junto a la campanita, y ya no muestra globos. Un clic en ella la despierta. Se recuerda en ese navegador.
+
+**Kemi me mostró «Te llegó un aviso» y desapareció.**
+El globo se esconde solo a los 15 segundos. Los avisos siguen en la campanita (con su contador) hasta que los marque como leídos.
+
+**¿Kemi reemplaza la campanita?**
+No. La campanita siempre está; Kemi solo avisa y la abre con **Ver**.
+
+**No puedo encender Correo, SMS o Push en una regla.**
+«Este canal todavía no está configurado en Teikem.» SMS y Push no tienen proveedor todavía. El correo necesita la configuración del servicio de correo de Teikem en el servidor; avise a soporte. La **Campanita** siempre se puede encender.
+
+**El buscador de personas no encuentra a alguien.**
+Escriba parte del nombre o del correo. Solo salen usuarios **activos** de esta compañía y los que todavía no agregó a la regla.
+
+**Quiero avisar a alguien que no es usuario.**
+Agréguelo como **Correo** (o **Teléfono**, que se guarda pero no se usa hasta que haya SMS).
+
+**Guardé la regla y no pasa nada cuando ocurre el evento.**
+Revise que la regla esté **activa** (interruptor), tenga destinatarios y al menos un canal encendido. Después mire la pestaña **Registro**: ahí dice si salió, se omitió (y por qué) o falló.
+
+**«Enviar prueba» no llegó.**
+La prueba sale al canal que escogió, a usted. Si dice «no salió», el motivo está en el mensaje (canal no configurado, usted no tiene correo, silenció ese aviso). La prueba usa el texto **guardado**: guarde los cambios antes.
+
+**¿Qué hace «Disparar aviso de prueba»?**
+Pone el evento de prueba en la cola real; lo reciben las reglas **activas** de ese evento en unos segundos y queda en el Registro. Sirve para comprobar que una regla funciona de punta a punta.

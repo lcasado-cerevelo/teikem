@@ -272,6 +272,10 @@
       "title": "Scheduled jobs",
       "subtitle": "the company's automatic tasks"
     },
+    "notifications": {
+      "title": "Notification rules",
+      "subtitle": "who finds out about what and how"
+    },
     "printers": {
       "title": "Printers & labels",
       "subtitle": "per-station printing"
@@ -7366,6 +7370,138 @@
     "system": "System",
     "company": "Company",
     "emptyView": "The view has no rows today."
+  },
+  "notifications": {
+    "bell": {
+      "title": "Notices",
+      "open": "Notices",
+      "openUnread": "Notices: {n} unread",
+      "markAll": "Mark all as read",
+      "empty": "You have no notices.",
+      "unreadMark": "(unread)",
+      "prefs": "Notices I can mute",
+      "prefsHelp": "Turn off the ones you do not want in this bell.",
+      "receive": "Receive \"{name}\""
+    },
+    "kemi": {
+      "name": "Kemi",
+      "subtitle": "Teikem assistant",
+      "fab": "Kemi, Teikem assistant",
+      "close": "Close Kemi",
+      "hi": "Hi! I'm Kemi. What would you like to do?",
+      "hiUnread": "Hi! You have {n} unread notices. What would you like to do?",
+      "optAvisos": "See my notices",
+      "optSleep": "Put Kemi to sleep",
+      "wake": "Wake Kemi up",
+      "see": "See",
+      "dismiss": "Close Kemi's notice",
+      "bubble": {
+        "one": "You got a notice",
+        "many": "You got {n} notices"
+      }
+    },
+    "picker": {
+      "none": "Nobody matches."
+    },
+    "rules": {
+      "title": "Notification rules",
+      "subtitle": "who finds out about what, through which channel and with what text",
+      "tabRules": "Rules",
+      "tabLog": "Log",
+      "new": "New rule",
+      "edit": "Edit rule",
+      "saved": "Rule \"{name}\" saved.",
+      "created": "Rule \"{name}\" created.",
+      "empty": "There are no notification rules yet.",
+      "on": "Rule \"{name}\" turned on.",
+      "off": "Rule \"{name}\" turned off.",
+      "col": {
+        "name": "Rule",
+        "event": "Event",
+        "channels": "Channels",
+        "recipients": "Recipients",
+        "active": "Active",
+        "activeFor": "Turn \"{name}\" on or off"
+      },
+      "noChannels": "None",
+      "recipientsCount": "{n} recipients",
+      "recipientsCount1": "1 recipient",
+      "form": {
+        "event": "Event",
+        "eventHelp": "What has to happen to send the notice. It cannot be changed after the rule is created.",
+        "name": "Rule name",
+        "active": "Active rule",
+        "activeText": "Notify when the event happens",
+        "activeHelp": "To turn it on you need at least one recipient and one channel on.",
+        "recipients": "Who to notify",
+        "addRecipient": "Add",
+        "kind": "Type",
+        "kindROLE": "Role",
+        "kindUSER": "User",
+        "kindEMAIL": "Email",
+        "kindPHONE": "Phone",
+        "pickRole": "Pick a role…",
+        "pickUser": "Pick a user…",
+        "emailPh": "name@company.com",
+        "phonePh": "787-555-0101",
+        "remove": "Remove {name}",
+        "noRecipients": "No recipients yet.",
+        "channels": "Channels and texts",
+        "channelOn": "Send by {channel}",
+        "notConfigured": "This channel is not configured in Teikem yet.",
+        "subjectEs": "Subject (Spanish)",
+        "subjectEn": "Subject (English)",
+        "bodyEs": "Text (Spanish)",
+        "bodyEn": "Text (English)",
+        "variables": "Variables you can use:",
+        "insert": "Insert {variable}",
+        "test": "Send test",
+        "testNeedsSave": "Save the rule to be able to send a test.",
+        "testSent": "Test sent by {channel} to whoever asked for it.",
+        "testSkipped": "The {channel} test did not go out: {why}",
+        "testFailed": "The {channel} test failed: {why}"
+      },
+      "channel": {
+        "EMAIL": "Email",
+        "SMS": "SMS",
+        "APP": "Bell",
+        "PUSH": "Push"
+      },
+      "errors": {
+        "nameRequired": "Enter the rule name.",
+        "nameMax": "The rule name cannot be longer than 100 characters.",
+        "eventRequired": "Choose the rule's event.",
+        "emailInvalid": "Invalid email: \"{value}\".",
+        "phoneInvalid": "Invalid phone: \"{value}\"."
+      },
+      "log": {
+        "event": "Event",
+        "channel": "Channel",
+        "status": "Status",
+        "all": "All",
+        "empty": "No notice has been sent yet.",
+        "title": "Send log",
+        "col": {
+          "when": "When",
+          "rule": "Rule",
+          "event": "Event",
+          "channel": "Channel",
+          "recipient": "Recipient",
+          "status": "Status",
+          "detail": "Detail",
+          "attempts": "Attempts"
+        },
+        "status_": {
+          "SENT": "Sent",
+          "SKIPPED": "Skipped",
+          "FAILED": "Failed",
+          "PENDING": "In progress"
+        },
+        "testEvent": "Fire a test notice",
+        "testEventDone": "Test notice queued; the active rules of the test event receive it.",
+        "testMessage": "This is a test from the rules screen."
+      }
+    }
   },
   "jobs": {
     "title": "Scheduled jobs",

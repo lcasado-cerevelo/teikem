@@ -272,6 +272,10 @@
       "title": "Trabajos programados",
       "subtitle": "tareas automáticas de la compañía"
     },
+    "notifications": {
+      "title": "Reglas de aviso",
+      "subtitle": "quién se entera de qué y por dónde"
+    },
     "printers": {
       "title": "Impresoras y labels",
       "subtitle": "impresión por estación"
@@ -7366,6 +7370,138 @@
     "system": "Sistema",
     "company": "Compañía",
     "emptyView": "La vista no tiene filas hoy."
+  },
+  "notifications": {
+    "bell": {
+      "title": "Avisos",
+      "open": "Avisos",
+      "openUnread": "Avisos: {n} sin leer",
+      "markAll": "Marcar todo como leído",
+      "empty": "No tienes avisos.",
+      "unreadMark": "(sin leer)",
+      "prefs": "Avisos que puedo silenciar",
+      "prefsHelp": "Apague los que no quieras recibir en esta campanita.",
+      "receive": "Recibir «{name}»"
+    },
+    "kemi": {
+      "name": "Kemi",
+      "subtitle": "Asistente de Teikem",
+      "fab": "Kemi, asistente de Teikem",
+      "close": "Cerrar a Kemi",
+      "hi": "¡Hola! Soy Kemi. ¿Qué quieres hacer?",
+      "hiUnread": "¡Hola! Tienes {n} avisos sin leer. ¿Qué quieres hacer?",
+      "optAvisos": "Ver mis avisos",
+      "optSleep": "Dormir a Kemi",
+      "wake": "Despertar a Kemi",
+      "see": "Ver",
+      "dismiss": "Cerrar el aviso de Kemi",
+      "bubble": {
+        "one": "Te llegó un aviso",
+        "many": "Te llegaron {n} avisos"
+      }
+    },
+    "picker": {
+      "none": "Nadie coincide."
+    },
+    "rules": {
+      "title": "Reglas de aviso",
+      "subtitle": "quién se entera de qué, por cuál canal y con qué texto",
+      "tabRules": "Reglas",
+      "tabLog": "Registro",
+      "new": "Nueva regla",
+      "edit": "Editar regla",
+      "saved": "Regla «{name}» guardada.",
+      "created": "Regla «{name}» creada.",
+      "empty": "Todavía no hay reglas de aviso.",
+      "on": "Regla «{name}» activada.",
+      "off": "Regla «{name}» apagada.",
+      "col": {
+        "name": "Regla",
+        "event": "Evento",
+        "channels": "Canales",
+        "recipients": "Destinatarios",
+        "active": "Activa",
+        "activeFor": "Activar o apagar «{name}»"
+      },
+      "noChannels": "Ninguno",
+      "recipientsCount": "{n} destinatarios",
+      "recipientsCount1": "1 destinatario",
+      "form": {
+        "event": "Evento",
+        "eventHelp": "Qué tiene que pasar para avisar. No se cambia después de crear la regla.",
+        "name": "Nombre de la regla",
+        "active": "Regla activa",
+        "activeText": "Avisar cuando pase el evento",
+        "activeHelp": "Para activarla hace falta al menos un destinatario y un canal encendido.",
+        "recipients": "A quién avisar",
+        "addRecipient": "Agregar",
+        "kind": "Tipo",
+        "kindROLE": "Rol",
+        "kindUSER": "Usuario",
+        "kindEMAIL": "Correo",
+        "kindPHONE": "Teléfono",
+        "pickRole": "Escoja un rol…",
+        "pickUser": "Escoja un usuario…",
+        "emailPh": "nombre@empresa.com",
+        "phonePh": "787-555-0101",
+        "remove": "Quitar a {name}",
+        "noRecipients": "Sin destinatarios todavía.",
+        "channels": "Canales y textos",
+        "channelOn": "Enviar por {channel}",
+        "notConfigured": "Este canal todavía no está configurado en Teikem.",
+        "subjectEs": "Asunto (español)",
+        "subjectEn": "Asunto (inglés)",
+        "bodyEs": "Texto (español)",
+        "bodyEn": "Texto (inglés)",
+        "variables": "Variables que puede usar:",
+        "insert": "Insertar {variable}",
+        "test": "Enviar prueba",
+        "testNeedsSave": "Guarde la regla para poder enviar una prueba.",
+        "testSent": "Prueba enviada por {channel} a quien la pidió.",
+        "testSkipped": "La prueba por {channel} no salió: {why}",
+        "testFailed": "La prueba por {channel} falló: {why}"
+      },
+      "channel": {
+        "EMAIL": "Correo",
+        "SMS": "SMS",
+        "APP": "Campanita",
+        "PUSH": "Push"
+      },
+      "errors": {
+        "nameRequired": "Escriba el nombre de la regla.",
+        "nameMax": "El nombre de la regla no puede pasar de 100 caracteres.",
+        "eventRequired": "Indique el evento de la regla.",
+        "emailInvalid": "Correo no válido: «{value}».",
+        "phoneInvalid": "Teléfono no válido: «{value}»."
+      },
+      "log": {
+        "event": "Evento",
+        "channel": "Canal",
+        "status": "Estado",
+        "all": "Todos",
+        "empty": "Todavía no se ha enviado ningún aviso.",
+        "title": "Registro de envíos",
+        "col": {
+          "when": "Cuándo",
+          "rule": "Regla",
+          "event": "Evento",
+          "channel": "Canal",
+          "recipient": "Destinatario",
+          "status": "Estado",
+          "detail": "Detalle",
+          "attempts": "Intentos"
+        },
+        "status_": {
+          "SENT": "Enviado",
+          "SKIPPED": "Omitido",
+          "FAILED": "Falló",
+          "PENDING": "En proceso"
+        },
+        "testEvent": "Disparar aviso de prueba",
+        "testEventDone": "Aviso de prueba enviado a la cola; lo reciben las reglas activas del evento de prueba.",
+        "testMessage": "Esto es una prueba desde la pantalla de reglas."
+      }
+    }
   },
   "jobs": {
     "title": "Trabajos programados",

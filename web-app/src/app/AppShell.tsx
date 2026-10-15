@@ -26,6 +26,9 @@ import { isNavActive, navSubtitleKey, navTitleKey, visibleNav, type NavGroup, ty
 import { appRoutes, type AppRoute } from './routes'
 import { useSession } from './session'
 import { Splash } from './Splash'
+import { KemiFloating, KemiSleepButton } from '../features/notifications/Kemi'
+import { NotificationBell } from '../features/notifications/NotificationBell'
+import { NotificationsProvider } from '../features/notifications/NotificationsProvider'
 
 const COLLAPSED_KEY = 'teikem.rail.collapsed'
 
@@ -170,6 +173,7 @@ export function AppShell() {
   const classes = ['app', collapsed ? 'col' : '', drawer ? 'drawer' : ''].filter(Boolean).join(' ')
 
   return (
+    <NotificationsProvider>
     <div className={classes}>
       <aside className="rail" id="app-rail" aria-label={t('shell.menu')}>
         {/* Marca (P7): lockup a todo el ancho; colapsada, la marca cuadrada de 44 px (en el cajón móvil, el lockup). */}
@@ -282,6 +286,8 @@ export function AppShell() {
               </span>
             )}
           </div>
+          <KemiSleepButton />
+          <NotificationBell />
           <ThemeSwitch />
           <LangSelect lang={lang} onChange={setLang} />
           {/* usuario: solo el círculo de iniciales (maqueta); el nombre completo va en el title y en el nombre accesible */}
@@ -321,6 +327,8 @@ export function AppShell() {
           navigate(item.path)
         }}
       />
+      <KemiFloating />
     </div>
+    </NotificationsProvider>
   )
 }

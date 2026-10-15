@@ -1,4 +1,5 @@
 // Cabecera del shell (Lote F8a P0): tema claro/oscuro, reloj "en vivo" y paleta de comandos con el menú completo.
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
@@ -13,6 +14,13 @@ import { RouteGate } from './RouteGate'
 import { appRoutes } from './routes'
 import { SessionContext, type Session } from './session'
 import { PR_FORMAT, resetFormatSettings, setFormatSettings } from '../kernel/format'
+
+// Lote 52: el shell trae la campanita y a Kemi, que piden cuántos avisos hay sin leer; aquí no hay ninguno.
+vi.mock('../kernel/api/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../kernel/api/client')>()
+  const fetch = async () => new Response(JSON.stringify({ count: 0 }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  return { ...actual, api: actual.createApiClient({ baseUrl: 'http://api.test', fetch }) }
+})
 
 const SESSION: Session = {
   me: {
@@ -45,6 +53,7 @@ function Where() {
 /** Shell con las rutas pendientes reales y una pantalla de prueba con un campo (para ver que nada se desmonta). */
 function renderShell(access: { permissions: string[]; modules: string[] } = { permissions: ['analytics.view'], modules: ['ANALYTICS'] }) {
   return render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
     <SessionContext.Provider value={SESSION}>
       <AccessProvider permissions={access.permissions} modules={access.modules}>
         <MemoryRouter initialEntries={['/test']}>
@@ -63,7 +72,8 @@ function renderShell(access: { permissions: string[]; modules: string[] } = { pe
           <Where />
         </MemoryRouter>
       </AccessProvider>
-    </SessionContext.Provider>,
+    </SessionContext.Provider>
+    </QueryClientProvider>,
   )
 }
 

@@ -1,4 +1,4 @@
-// Menú completo de la maqueta (Lote F8a P0): 7 grupos, 41 ítems con permiso y módulo, ítems pendientes y `perm: 'a|b'`; Lote F17 suma Rentas (42); Lote 50 suma Trabajos programados (43).
+// Menú completo de la maqueta (Lote F8a P0): 7 grupos, 41 ítems con permiso y módulo, ítems pendientes y `perm: 'a|b'`; Lote F17 suma Rentas (42); Lote 50 suma Trabajos programados (43); Lote 52 suma Reglas de aviso (44).
 import { describe, expect, it } from 'vitest'
 import { permAllowed } from '../kernel/access/accessContext'
 import { ModuleKeys } from '../kernel/access/modules'
@@ -37,7 +37,7 @@ describe('NAV_GROUPS', () => {
 })
 
 describe('menú completo (routes.tsx)', () => {
-  it('con todos los permisos y módulos se ven los 7 grupos y los 43 ítems, en el orden de la maqueta', () => {
+  it('con todos los permisos y módulos se ven los 7 grupos y los 44 ítems, en el orden de la maqueta', () => {
     const groups = visibleNav(appRoutes, ALL_PERMS, ALL_MODULES)
     expect(groups.map((g) => [g.key, g.items.length])).toEqual([
       ['ops', 5],
@@ -45,7 +45,7 @@ describe('menú completo (routes.tsx)', () => {
       ['money', 5],
       ['catalog', 4],
       ['analytics', 4],
-      ['system', 8],
+      ['system', 9],
       ['portal', 5],
     ])
     expect(groups.flatMap((g) => g.items.map((r) => translate('es', navTitleKey(r.nav!.key))))).toEqual([
@@ -84,6 +84,7 @@ describe('menú completo (routes.tsx)', () => {
       'Aparatos móviles',
       'Listas de valores',
       'Integraciones / API',
+      'Reglas de aviso',
       'Trabajos programados',
       'Seguridad y auditoría',
       'Ajustes de la compañía',
@@ -96,7 +97,7 @@ describe('menú completo (routes.tsx)', () => {
   })
 
   it('cada ítem tiene título y subtítulo en español e inglés, y `order` = posición × 10', () => {
-    expect(navRoutes).toHaveLength(43)
+    expect(navRoutes).toHaveLength(44)
     for (const r of navRoutes) {
       for (const lang of ['es', 'en'] as const) {
         expect(translate(lang, navTitleKey(r.nav!.key)), `${lang} ${r.path}`).not.toBe(navTitleKey(r.nav!.key))
