@@ -218,6 +218,12 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<Teikem.Domain.Notifications.UserNotification> UserNotifications => Set<Teikem.Domain.Notifications.UserNotification>();
     public DbSet<Teikem.Domain.Notifications.UserNotificationPref> UserNotificationPrefs => Set<Teikem.Domain.Notifications.UserNotificationPref>();
     public DbSet<Teikem.Domain.Notifications.Announcement> Announcements => Set<Teikem.Domain.Notifications.Announcement>();   // Lote 54
+    // Lote 55 (P3) — impuestos (IVU)
+    public DbSet<Teikem.Domain.Tax.TaxRate> TaxRates => Set<Teikem.Domain.Tax.TaxRate>();
+    public DbSet<Teikem.Domain.Tax.TaxRateComponent> TaxRateComponents => Set<Teikem.Domain.Tax.TaxRateComponent>();
+    public DbSet<Teikem.Domain.Tax.TenantTaxSetting> TenantTaxSettings => Set<Teikem.Domain.Tax.TenantTaxSetting>();
+    public DbSet<Teikem.Domain.Tax.TaxChargeRule> TaxChargeRules => Set<Teikem.Domain.Tax.TaxChargeRule>();
+    public DbSet<Teikem.Domain.Tax.ClientTaxExemption> ClientTaxExemptions => Set<Teikem.Domain.Tax.ClientTaxExemption>();
     // Lote 53 — mensajería interna (hilos, participantes, mensajes y presencia)
     public DbSet<Teikem.Domain.Messaging.MessageThread> MessageThreads => Set<Teikem.Domain.Messaging.MessageThread>();
     public DbSet<Teikem.Domain.Messaging.MessageThreadMember> MessageThreadMembers => Set<Teikem.Domain.Messaging.MessageThreadMember>();

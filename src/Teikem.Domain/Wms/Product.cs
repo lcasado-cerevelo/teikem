@@ -44,6 +44,8 @@ public class Product : ITenantScoped, ISoftDeletable
     public string? Barcode { get; set; }
     public decimal? PurchaseCost { get; set; }
     public decimal? SalePrice { get; set; }
+    /// <summary>Lote 55: categoría de impuesto (LookupCode TaxCategory: TAXABLE / EXEMPT / ZERO_RATE). NULL = gravable.</summary>
+    public int? TaxCategoryLookupId { get; set; }
     public int? PreferredWarehouseId { get; set; }
     public int? PreferredBinId { get; set; }
     public decimal? MinQty { get; set; }

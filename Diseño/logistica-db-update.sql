@@ -2515,3 +2515,171 @@ JOIN dbo.Permission p ON p.Code = 'notifications.send'
 WHERE r.Name IN ('TenantAdmin')
   AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-15 (j) — Impuestos / IVU (Lote 55, P3). Todo es configuración: ninguna tasa ni regla va fija en código.
+   - dbo.TaxRate + dbo.TaxRateComponent: tasas por compañía con vigencia (EffectiveFrom/To) y componentes (estatal, municipal…). Una tasa NO se
+     edita: se cierra su vigencia y se crea otra con el mismo Code.
+   - dbo.TenantTaxSetting (una fila por compañía): precios con impuesto incluido, redondeo por línea o por documento y tasa por omisión.
+   - dbo.TaxChargeRule: qué tipos de cargo (flete, manejo…) pagan impuesto. dbo.ClientTaxExemption: exenciones (certificado) de clientes.
+   - dbo.Product.TaxCategoryLookupId (catálogo TaxCategory: TAXABLE / EXEMPT / ZERO_RATE; NULL = gravable).
+   - dbo.InvoiceLine: columnas de copia del impuesto (TaxRateId, TaxRatePct, TaxAmount, IsTaxExempt) para cuando se construya la facturación.
+   - Permiso tax.manage (categoría BILLING) -> TenantAdmin de la plantilla Y de los roles YA CLONADOS de cada compañía. EntityType TAX_RATE,
+     TAX_EXEMPTION y TAX_SETTING (bitácora).
+   No siembra tasas ni cifras legales (las define el contador de la compañía). Solo AGREGA (nunca quita). Idempotente.
+   ---------------------------------------------------------------------------- */
+IF OBJECT_ID(N'dbo.TaxRate', N'U') IS NULL CREATE TABLE dbo.TaxRate (
+    TaxRateId     INT IDENTITY(1,1) CONSTRAINT PK_TaxRate PRIMARY KEY,
+    PublicId      UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_TaxRate_PublicId DEFAULT NEWID(),
+    TenantId      INT NOT NULL CONSTRAINT FK_TaxRate_Tenant REFERENCES dbo.Tenant(TenantId),
+    Code          VARCHAR(30) NOT NULL,
+    Name          NVARCHAR(100) NOT NULL,
+    [Percent]     DECIMAL(9,4) NOT NULL,
+    EffectiveFrom DATE NOT NULL,
+    EffectiveTo   DATE NULL,
+    CreatedAtUtc  DATETIME2 NOT NULL CONSTRAINT DF_TaxRate_CreatedAtUtc DEFAULT SYSUTCDATETIME(),
+    CreatedBy     INT NULL,
+    UpdatedAtUtc  DATETIME2 NULL,
+    UpdatedBy     INT NULL,
+    CONSTRAINT UQ_TaxRate_PublicId UNIQUE (PublicId),
+    CONSTRAINT CK_TaxRate_Percent CHECK ([Percent] >= 0 AND [Percent] <= 100),
+    CONSTRAINT CK_TaxRate_Dates CHECK (EffectiveTo IS NULL OR EffectiveTo >= EffectiveFrom)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_TaxRate_Code_From' AND object_id = OBJECT_ID('dbo.TaxRate'))
+    CREATE UNIQUE INDEX UX_TaxRate_Code_From ON dbo.TaxRate(TenantId, Code, EffectiveFrom);
+GO
+
+IF OBJECT_ID(N'dbo.TaxRateComponent', N'U') IS NULL CREATE TABLE dbo.TaxRateComponent (
+    TaxRateComponentId INT IDENTITY(1,1) CONSTRAINT PK_TaxRateComponent PRIMARY KEY,
+    TenantId   INT NOT NULL CONSTRAINT FK_TaxRateComponent_Tenant REFERENCES dbo.Tenant(TenantId),
+    TaxRateId  INT NOT NULL CONSTRAINT FK_TaxRateComponent_Rate REFERENCES dbo.TaxRate(TaxRateId),
+    Code       VARCHAR(30) NOT NULL,
+    Name       NVARCHAR(100) NOT NULL,
+    [Percent]  DECIMAL(9,4) NOT NULL,
+    SortOrder  INT NOT NULL CONSTRAINT DF_TaxRateComponent_SortOrder DEFAULT 0,
+    CONSTRAINT CK_TaxRateComponent_Percent CHECK ([Percent] >= 0 AND [Percent] <= 100)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_TaxRateComponent_Code' AND object_id = OBJECT_ID('dbo.TaxRateComponent'))
+    CREATE UNIQUE INDEX UX_TaxRateComponent_Code ON dbo.TaxRateComponent(TaxRateId, Code);
+GO
+
+IF OBJECT_ID(N'dbo.TenantTaxSetting', N'U') IS NULL CREATE TABLE dbo.TenantTaxSetting (
+    TenantTaxSettingId INT IDENTITY(1,1) CONSTRAINT PK_TenantTaxSetting PRIMARY KEY,
+    TenantId        INT NOT NULL CONSTRAINT FK_TenantTaxSetting_Tenant REFERENCES dbo.Tenant(TenantId),
+    PricesIncludeTax BIT NOT NULL CONSTRAINT DF_TenantTaxSetting_Incl DEFAULT 0,
+    RoundingMode    VARCHAR(10) NOT NULL CONSTRAINT DF_TenantTaxSetting_Round DEFAULT 'LINE',
+    DefaultRateCode VARCHAR(30) NULL,
+    CreatedAtUtc    DATETIME2 NOT NULL CONSTRAINT DF_TenantTaxSetting_CreatedAtUtc DEFAULT SYSUTCDATETIME(),
+    CreatedBy       INT NULL,
+    UpdatedAtUtc    DATETIME2 NULL,
+    UpdatedBy       INT NULL,
+    CONSTRAINT CK_TenantTaxSetting_Round CHECK (RoundingMode IN ('LINE','DOCUMENT'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_TenantTaxSetting_Tenant' AND object_id = OBJECT_ID('dbo.TenantTaxSetting'))
+    CREATE UNIQUE INDEX UX_TenantTaxSetting_Tenant ON dbo.TenantTaxSetting(TenantId);
+GO
+
+IF OBJECT_ID(N'dbo.TaxChargeRule', N'U') IS NULL CREATE TABLE dbo.TaxChargeRule (
+    TaxChargeRuleId    INT IDENTITY(1,1) CONSTRAINT PK_TaxChargeRule PRIMARY KEY,
+    TenantId           INT NOT NULL CONSTRAINT FK_TaxChargeRule_Tenant REFERENCES dbo.Tenant(TenantId),
+    ChargeTypeLookupId INT NOT NULL CONSTRAINT FK_TaxChargeRule_ChargeType REFERENCES dbo.LookupCode(LookupCodeId),
+    IsTaxable          BIT NOT NULL CONSTRAINT DF_TaxChargeRule_IsTaxable DEFAULT 0
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_TaxChargeRule' AND object_id = OBJECT_ID('dbo.TaxChargeRule'))
+    CREATE UNIQUE INDEX UX_TaxChargeRule ON dbo.TaxChargeRule(TenantId, ChargeTypeLookupId);
+GO
+
+IF OBJECT_ID(N'dbo.ClientTaxExemption', N'U') IS NULL CREATE TABLE dbo.ClientTaxExemption (
+    ClientTaxExemptionId INT IDENTITY(1,1) CONSTRAINT PK_ClientTaxExemption PRIMARY KEY,
+    PublicId          UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_ClientTaxExemption_PublicId DEFAULT NEWID(),
+    TenantId          INT NOT NULL CONSTRAINT FK_ClientTaxExemption_Tenant REFERENCES dbo.Tenant(TenantId),
+    ClientId          INT NOT NULL CONSTRAINT FK_ClientTaxExemption_Client REFERENCES dbo.Client(ClientId),
+    ExemptionType     NVARCHAR(60) NOT NULL,
+    CertificateNumber NVARCHAR(60) NOT NULL,
+    ValidFrom         DATE NOT NULL,
+    ValidTo           DATE NULL,
+    Notes             NVARCHAR(300) NULL,
+    IsActive          BIT NOT NULL CONSTRAINT DF_ClientTaxExemption_IsActive DEFAULT 1,
+    CreatedAtUtc      DATETIME2 NOT NULL CONSTRAINT DF_ClientTaxExemption_CreatedAtUtc DEFAULT SYSUTCDATETIME(),
+    CreatedBy         INT NULL,
+    UpdatedAtUtc      DATETIME2 NULL,
+    UpdatedBy         INT NULL,
+    CONSTRAINT UQ_ClientTaxExemption_PublicId UNIQUE (PublicId),
+    CONSTRAINT CK_ClientTaxExemption_Dates CHECK (ValidTo IS NULL OR ValidTo >= ValidFrom)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ClientTaxExemption_Client' AND object_id = OBJECT_ID('dbo.ClientTaxExemption'))
+    CREATE INDEX IX_ClientTaxExemption_Client ON dbo.ClientTaxExemption(TenantId, ClientId, ValidFrom);
+GO
+
+-- Producto: categoría de impuesto (NULL = gravable)
+IF COL_LENGTH('dbo.Product', 'TaxCategoryLookupId') IS NULL
+    ALTER TABLE dbo.Product ADD TaxCategoryLookupId INT NULL CONSTRAINT FK_Product_TaxCategory REFERENCES dbo.LookupCode(LookupCodeId);
+GO
+
+-- Línea de factura: copia del impuesto con que se calculó (la facturación aún no está construida; queda lista)
+IF OBJECT_ID(N'dbo.InvoiceLine', N'U') IS NOT NULL AND COL_LENGTH('dbo.InvoiceLine', 'TaxRateId') IS NULL
+    ALTER TABLE dbo.InvoiceLine ADD TaxRateId INT NULL CONSTRAINT FK_InvoiceLine_TaxRate REFERENCES dbo.TaxRate(TaxRateId);
+GO
+IF OBJECT_ID(N'dbo.InvoiceLine', N'U') IS NOT NULL AND COL_LENGTH('dbo.InvoiceLine', 'TaxRatePct') IS NULL
+    ALTER TABLE dbo.InvoiceLine ADD TaxRatePct DECIMAL(9,4) NULL;
+GO
+IF OBJECT_ID(N'dbo.InvoiceLine', N'U') IS NOT NULL AND COL_LENGTH('dbo.InvoiceLine', 'TaxAmount') IS NULL
+    ALTER TABLE dbo.InvoiceLine ADD TaxAmount DECIMAL(18,4) NOT NULL CONSTRAINT DF_InvoiceLine_TaxAmount DEFAULT 0;
+GO
+IF OBJECT_ID(N'dbo.InvoiceLine', N'U') IS NOT NULL AND COL_LENGTH('dbo.InvoiceLine', 'IsTaxExempt') IS NULL
+    ALTER TABLE dbo.InvoiceLine ADD IsTaxExempt BIT NOT NULL CONSTRAINT DF_InvoiceLine_IsTaxExempt DEFAULT 0;
+GO
+
+-- Catálogo TaxCategory (dominio global de sistema; la compañía renombra con su override)
+MERGE dbo.CatalogDomain AS t
+USING (SELECT N'TaxCategory' AS DomainKey) AS s ON t.DomainKey = s.DomainKey
+WHEN NOT MATCHED THEN
+    INSERT (DomainKey, Scope, LabelJson, IsSystem, IsActive)
+    VALUES (N'TaxCategory', 1, N'{"es":"Categoría de impuesto","en":"Tax category"}', 1, 1);
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'TAXABLE',   N'{"es":"Gravable","en":"Taxable"}',            1),
+    (N'EXEMPT',    N'{"es":"Exento","en":"Exempt"}',               2),
+    (N'ZERO_RATE', N'{"es":"Tasa cero","en":"Zero rate"}',         3)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'TaxCategory' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'TaxCategory', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+
+-- EntityType de la bitácora
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'TAX_RATE',      N'{"es":"Tasa de impuesto","en":"Tax rate"}',            122),
+    (N'TAX_EXEMPTION', N'{"es":"Exención de impuesto","en":"Tax exemption"}',   123),
+    (N'TAX_SETTING',   N'{"es":"Reglas de impuestos","en":"Tax settings"}',     124)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+
+-- Permiso tax.manage
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'tax.manage')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('tax.manage',
+            (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'BILLING'),
+            N'{"es":"Administrar impuestos (tasas, exenciones)","en":"Manage taxes (rates, exemptions)"}', 1);
+GO
+
+-- Plantilla de sistema (TenantId NULL) y roles ya clonados de cada compañía: TenantAdmin
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT r.RoleId, p.PermissionId
+FROM dbo.Role r
+JOIN dbo.Permission p ON p.Code = 'tax.manage'
+WHERE r.Name IN ('TenantAdmin')
+  AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
+GO

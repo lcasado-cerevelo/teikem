@@ -161,6 +161,8 @@ public static class PermissionCatalog
     public const string NotificationsSend = "notifications.send";
     /// <summary>Lote 53: mensajería interna (hilos entre personas de la compañía). La traen TODOS los roles.</summary>
     public const string MessagesUse = "messages.use";
+    /// <summary>Lote 55 (P3): administrar impuestos (tasas, reglas, categorías de producto y exenciones de clientes).</summary>
+    public const string TaxManage = "tax.manage";
 
     public static readonly IReadOnlyList<PermissionDef> All = new List<PermissionDef>
     {
@@ -255,6 +257,7 @@ public static class PermissionCatalog
         new(NotificationsManage, "ADMIN", "Gestionar las reglas de aviso", "Manage notification rules"),
         new(NotificationsSend, "ADMIN", "Enviar avisos a otras personas", "Send notices to other people"),
         new(MessagesUse, "ADMIN", "Usar la mensajería interna", "Use internal messaging"),
+        new(TaxManage, "BILLING", "Administrar impuestos (tasas, exenciones)", "Manage taxes (rates, exemptions)"),
     };
 
     /// <summary>

@@ -286,6 +286,7 @@ public static class DependencyInjection
         services.AddScoped<PresenceService>();
         services.AddScoped<MessagingService>();
         services.AddScoped<AnnouncementService>();   // Lote 54
+        services.AddScoped<TaxService>();   // Lote 55
         services.AddSingleton<IMessageLiveNotifier, NullMessageLiveNotifier>();
 
         // Lote 8A — app de almacén: aparatos de confianza, PIN por usuario (login por aparato en AuthService) y

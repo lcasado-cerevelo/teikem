@@ -8131,3 +8131,59 @@ No: queda como se envió, y las personas que ya lo recibieron lo conservan en su
 
 **Un aviso manual no se deja silenciar.**
 Es lo esperado: solo los avisos opcionales de las reglas se pueden silenciar; los que envía una persona con permiso siempre llegan.
+
+## Lote 55 — Impuestos (IVU)
+
+**No veo «Impuestos» en el menú.**
+Necesita el permiso **Administrar impuestos** (`tax.manage`; lo trae el Admin de compañía) y que el módulo **Impuestos** esté encendido para su compañía (Sistema → Módulos). Con el módulo apagado el API responde 403.
+
+**¿Dónde pongo el porcentaje del IVU?**
+En Impuestos → Tasas → Nueva tasa: escriba el código (por ejemplo IVU), el nombre, desde qué fecha rige y los **componentes** (estatal, municipal…). El porcentaje de la tasa es la suma de los componentes. Las cifras las define el contador de su compañía: Teikem no trae ninguna sembrada.
+
+**¿Cómo cambio una tasa que subió o bajó?**
+No se edita. **Cierre** la vigencia de la tasa vieja (último día en que rige) y **cree otra** con el mismo código que empiece al día siguiente. Los documentos ya emitidos conservan la tasa con que se calcularon.
+
+**«Ya hay una tasa con ese código que cubre esas fechas. Cierre la vigencia de la anterior primero.»**
+Dos tasas del mismo código no pueden regir el mismo día. Cierre la anterior (o ponga la fecha de inicio después de su último día).
+
+**«La tasa necesita al menos un componente (por ejemplo, Estatal).» / «La suma de los componentes no puede pasar de 100 %.» / «Hay dos componentes con el mismo código.»**
+Cada tasa necesita al menos un componente, con código distinto y porcentaje entre 0 y 100; la suma no puede pasar de 100.
+
+**«La tasa ya tiene fecha final.»**
+Solo se puede cerrar una tasa abierta. Para otra vigencia, cree una tasa nueva.
+
+**«No hay una tasa de impuesto vigente en esa fecha. Configure una en Impuestos → Tasas.»**
+La tasa por omisión no tiene ninguna vigencia que cubra la fecha del documento. Cree la tasa (o ajuste las fechas) en Impuestos → Tasas.
+
+**«Escoja la tasa por omisión en Impuestos → Reglas.»**
+Hay líneas gravables y no se ha dicho qué tasa usar. En Impuestos → Reglas escoja el código de la tasa.
+
+**¿Qué diferencia hay entre redondear «por línea» y «por documento»?**
+Por línea, el impuesto de cada línea se redondea a centavos y se suma (3 líneas de $0.33 al 11.5 % dan $0.12). Por documento se suma sin redondear y se redondea una sola vez ($0.11). Pregúntele a su contador cuál usar.
+
+**¿Qué significa «precios con impuesto incluido»?**
+Que el monto de cada línea ya trae el impuesto: Teikem lo extrae (111.50 con 11.5 % = 100.00 + 11.50) y el total no cambia. Si está apagado, el impuesto se suma encima.
+
+**¿El flete y el manejo pagan impuesto?**
+Depende de su compañía: en Impuestos → Reglas marque los tipos de cargo que son gravables. Los que no marque salen sin impuesto. La venta de producto la decide la categoría del producto.
+
+**¿Cómo hago que un producto no pague impuesto?**
+Póngale la categoría **Exento** (o **Tasa cero** si debe aparecer gravado al 0 %). Gravable es lo normal.
+
+**«Tipo de cargo no válido.»**
+El tipo de cargo no existe en el catálogo o es la venta de producto (esa se decide por producto, no por regla de cargo).
+
+**Un cliente tiene un certificado de exención: ¿qué pasa en sus ventas?**
+Mientras la exención esté **vigente** (y activa), nada se le cobra de impuesto y la línea queda marcada como exenta con el número del certificado. Si venció, el sistema **cobra el impuesto y avisa** qué certificado venció.
+
+**«Escriba el número del certificado.» / «Escriba el tipo de exención.»**
+Ambos son obligatorios en una exención.
+
+**«Cliente no encontrado.» / «Producto no encontrado.» / «Exención no encontrada.» / «Tasa no encontrada.»**
+El registro no existe o es de otra compañía. Escójalo de la lista.
+
+**¿Puedo borrar una exención?**
+No. Se da de baja (queda en el historial) y se puede reactivar.
+
+**¿Dónde está el informe de impuestos por período?**
+Se conecta cuando existan las órdenes de venta y las facturas (P4 y facturación): hoy no hay documentos de los que informar. El cálculo y la copia por línea ya están listos.
