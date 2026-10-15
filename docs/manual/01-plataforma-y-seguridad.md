@@ -834,10 +834,13 @@ Qué hace: cada compañía enciende solo los módulos de negocio que usa (por ej
 COD, almacén con lote/serie y equipos en alquiler, pero no cross-dock ni marítimo). El menú y los endpoints
 protegidos con `[RequireModule]` solo funcionan si el módulo está encendido.
 
-Lista de 13 módulos (`ModuleKeys`): `LTL_GROUND` (núcleo), `COD`, `WMS_LOTSERIAL`, `CROSSDOCK`,
+Lista de 16 módulos (`ModuleKeys`): `LTL_GROUND` (núcleo), `COD`, `WMS_LOTSERIAL`, `CROSSDOCK`,
 `RENTAL_EQUIPMENT`, `RENTAL_BILLING` (depende de `RENTAL_EQUIPMENT`), `MARITIME`, `CLIENT_PORTAL`,
-`CUSTOM_FIELDS` (depende de `ANALYTICS`), `PURCHASING`, `CATALOG`, `ANALYTICS`, `SYSTEM` (núcleo). Los módulos
-**núcleo** (`LTL_GROUND`, `SYSTEM`) no se pueden apagar.
+`CUSTOM_FIELDS` (depende de `ANALYTICS`), `PURCHASING`, `CATALOG`, `ANALYTICS`, `SYSTEM` (núcleo) y, desde el Lote 49,
+`SALES_ORDERS` (Órdenes de venta; depende de `WMS_LOTSERIAL`), `TAX` (Impuestos / IVU; sin dependencias) y `BILLING`
+(Facturación; depende de `SALES_ORDERS`). Los tres nuevos **solo están definidos**: ninguna compañía los tiene encendidos
+todavía y no abren ninguna pantalla hasta que se construyan (impuestos y ventas). Los módulos **núcleo** (`LTL_GROUND`,
+`SYSTEM`) no se pueden apagar. Los avisos (notificaciones) no son un módulo: van siempre disponibles bajo `SYSTEM`.
 
 Quién puede: ver la lista, cualquier autenticado; encender/apagar, `admin.tenant` **+ AAL2**.
 

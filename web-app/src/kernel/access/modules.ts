@@ -13,6 +13,9 @@ export const ModuleKeys = {
   Catalog: 'CATALOG',
   Analytics: 'ANALYTICS',
   System: 'SYSTEM',
+  SalesOrders: 'SALES_ORDERS',
+  Tax: 'TAX',
+  Billing: 'BILLING',
 } as const
 
 export type ModuleKey = (typeof ModuleKeys)[keyof typeof ModuleKeys]

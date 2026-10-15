@@ -7903,3 +7903,11 @@ Al guardar una orden de ese cliente en la pantalla de órdenes, sus labels (uno 
 
 **Cerré un panel y no sé qué dice.**
 Cerrado, cada panel muestra una línea con lo principal (estatus, dirección y dónde se recoge, teléfono y correo principales, personas de contacto, ejemplos de numeración…). La tabla de la sección 5 del capítulo las lista todas.
+
+## Lote 49 — Módulos nuevos: ventas, impuestos y facturación
+
+**Veo tres módulos nuevos (Órdenes de venta, Impuestos (IVU) y Facturación) y están apagados.**
+Es lo esperado: se definieron para poder encenderlos por compañía cuando se construyan; hoy no abren ninguna pantalla. No hay que hacer nada.
+
+**«Órdenes de venta» (o «Facturación») no se deja encender.**
+Cada uno exige que su dependencia esté encendida: **Órdenes de venta** necesita **Inventario y trazabilidad**; **Facturación** necesita **Órdenes de venta**. Encienda primero la dependencia. **Impuestos (IVU)** no depende de ninguno.

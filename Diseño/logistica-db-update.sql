@@ -2096,3 +2096,21 @@ GO
 IF COL_LENGTH('dbo.Client', 'AutoPrintLabels') IS NULL
     ALTER TABLE dbo.Client ADD AutoPrintLabels BIT NOT NULL CONSTRAINT DF_Client_AutoPrintLabels DEFAULT 0;
 GO
+/* ----------------------------------------------------------------------------
+   2026-10-14 (e) — Módulos nuevos (Lote 49, P2.3): SALES_ORDERS (órdenes de venta), TAX (impuestos, IVU) y BILLING (facturación).
+   Solo se DEFINEN en dbo.ModuleDefinition: ninguna compañía los tiene encendidos todavía (se encienden por compañía en
+   Sistema → Módulos cuando cada uno se construya: P3 impuestos, P4 ventas). Dependencias: SALES_ORDERS -> WMS_LOTSERIAL (descuenta
+   inventario); BILLING -> SALES_ORDERS; TAX no depende de nadie (lo usan las ventas y la facturación cuando están encendidas).
+   Notificaciones (P2.1) NO es un módulo: va siempre disponible bajo SYSTEM (permiso notifications.manage). Idempotente: MERGE por clave;
+   no toca IsCore ni lo que cada compañía tenga encendido.
+   ---------------------------------------------------------------------------- */
+MERGE dbo.ModuleDefinition AS t
+USING (VALUES
+ ('SALES_ORDERS', N'Órdenes de venta', N'Sales orders', N'Ventas de productos con pedido, picking, entrega y cobro', N'Dinero', 'WMS_LOTSERIAL', 100),
+ ('TAX', N'Impuestos (IVU)', N'Taxes (IVU)', N'Tasas, categorías de producto, exenciones del cliente e informe de impuestos', N'Dinero', NULL, 110),
+ ('BILLING', N'Facturación', N'Billing', N'Facturas y notas de crédito de ventas y servicios', N'Dinero', 'SALES_ORDERS', 120)
+) AS s(ModuleKey, Name, NameEn, Description, Category, DependsOnModuleKey, SortOrder)
+ON t.ModuleKey = s.ModuleKey
+WHEN MATCHED THEN UPDATE SET Name = s.Name, NameEn = s.NameEn, Description = s.Description, Category = s.Category, DependsOnModuleKey = s.DependsOnModuleKey, SortOrder = s.SortOrder, IsActive = 1
+WHEN NOT MATCHED THEN INSERT (ModuleKey, Name, NameEn, Description, Category, DependsOnModuleKey, SortOrder) VALUES (s.ModuleKey, s.Name, s.NameEn, s.Description, s.Category, s.DependsOnModuleKey, s.SortOrder);
+GO

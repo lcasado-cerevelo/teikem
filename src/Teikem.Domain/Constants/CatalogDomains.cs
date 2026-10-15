@@ -727,6 +727,10 @@ public static class ModuleKeys
     public const string Catalog = "CATALOG";
     public const string Analytics = "ANALYTICS";
     public const string System = "SYSTEM";
+    // Lote 49 (P2.3): módulos de ventas, impuestos y facturación (definidos y apagados hasta que cada uno se construya)
+    public const string SalesOrders = "SALES_ORDERS";
+    public const string Tax = "TAX";
+    public const string Billing = "BILLING";
 }
 
 // ---------------- Lote 4 — Flota, choferes y mantenimiento ----------------
