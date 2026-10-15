@@ -13982,6 +13982,484 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sales-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    status?: string;
+                    clientPublicId?: string;
+                    q?: string;
+                    backorderOnly?: boolean;
+                    from?: string;
+                    to?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderListItemDtoPagedResult"];
+                        "application/json": components["schemas"]["SalesOrderListItemDtoPagedResult"];
+                        "text/json": components["schemas"]["SalesOrderListItemDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesOrderRequest"];
+                    "text/json": components["schemas"]["SalesOrderRequest"];
+                    "application/*+json": components["schemas"]["SalesOrderRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderDto"];
+                        "application/json": components["schemas"]["SalesOrderDto"];
+                        "text/json": components["schemas"]["SalesOrderDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/backorders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    q?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesBackorderLineDto"][];
+                        "application/json": components["schemas"]["SalesBackorderLineDto"][];
+                        "text/json": components["schemas"]["SalesBackorderLineDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/backorders/fulfill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesFulfillResultDto"];
+                        "application/json": components["schemas"]["SalesFulfillResultDto"];
+                        "text/json": components["schemas"]["SalesFulfillResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderDto"];
+                        "application/json": components["schemas"]["SalesOrderDto"];
+                        "text/json": components["schemas"]["SalesOrderDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesOrderRequest"];
+                    "text/json": components["schemas"]["SalesOrderRequest"];
+                    "application/*+json": components["schemas"]["SalesOrderRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderDto"];
+                        "application/json": components["schemas"]["SalesOrderDto"];
+                        "text/json": components["schemas"]["SalesOrderDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesAvailabilityDto"];
+                        "application/json": components["schemas"]["SalesAvailabilityDto"];
+                        "text/json": components["schemas"]["SalesAvailabilityDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesOrderCancelRequest"];
+                    "text/json": components["schemas"]["SalesOrderCancelRequest"];
+                    "application/*+json": components["schemas"]["SalesOrderCancelRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderDto"];
+                        "application/json": components["schemas"]["SalesOrderDto"];
+                        "text/json": components["schemas"]["SalesOrderDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/lines/{lineId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    lineId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesOrderLineModifyRequest"];
+                    "text/json": components["schemas"]["SalesOrderLineModifyRequest"];
+                    "application/*+json": components["schemas"]["SalesOrderLineModifyRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderDto"];
+                        "application/json": components["schemas"]["SalesOrderDto"];
+                        "text/json": components["schemas"]["SalesOrderDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/lines/{lineId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    lineId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesOrderCancelRequest"];
+                    "text/json": components["schemas"]["SalesOrderCancelRequest"];
+                    "application/*+json": components["schemas"]["SalesOrderCancelRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderDto"];
+                        "application/json": components["schemas"]["SalesOrderDto"];
+                        "text/json": components["schemas"]["SalesOrderDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/lines/{lineId}/fulfill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    lineId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderDto"];
+                        "application/json": components["schemas"]["SalesOrderDto"];
+                        "text/json": components["schemas"]["SalesOrderDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesOrderRequestRequest"];
+                    "text/json": components["schemas"]["SalesOrderRequestRequest"];
+                    "application/*+json": components["schemas"]["SalesOrderRequestRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderDto"];
+                        "application/json": components["schemas"]["SalesOrderDto"];
+                        "text/json": components["schemas"]["SalesOrderDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tax/calculate": {
         parameters: {
             query?: never;
@@ -26555,6 +27033,229 @@ export interface components {
         };
         ProductTaxCategoryRequest: {
             category?: string | null;
+        };
+        SalesAvailabilityDto: {
+            lines?: components["schemas"]["SalesAvailabilityLineDto"][] | null;
+            hasShortage?: boolean;
+            credit?: components["schemas"]["SalesCreditDto"];
+        };
+        SalesAvailabilityLineDto: {
+            /** Format: int32 */
+            lineNo?: number;
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            /** Format: double */
+            ordered?: number;
+            /** Format: double */
+            available?: number;
+            /** Format: double */
+            shortage?: number;
+        };
+        SalesBackorderLineDto: {
+            /** Format: uuid */
+            orderPublicId?: string;
+            orderNumber?: string | null;
+            orderStatus?: string | null;
+            clientName?: string | null;
+            warehouseName?: string | null;
+            /** Format: int32 */
+            lineId?: number;
+            /** Format: int32 */
+            lineNo?: number;
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            /** Format: double */
+            ordered?: number;
+            /** Format: double */
+            reserved?: number;
+            /** Format: double */
+            pending?: number;
+            /** Format: double */
+            available?: number;
+            /** Format: double */
+            fulfillable?: number;
+            /** Format: date-time */
+            requestedAtUtc?: string;
+            /** Format: int32 */
+            daysWaiting?: number;
+        };
+        SalesCreditDto: {
+            /** Format: double */
+            limit?: number | null;
+            /** Format: double */
+            exposure?: number;
+            /** Format: double */
+            newAmount?: number;
+            /** Format: double */
+            available?: number | null;
+            exceeded?: boolean;
+            message?: string | null;
+        };
+        SalesFulfillLineDto: {
+            /** Format: uuid */
+            orderPublicId?: string;
+            orderNumber?: string | null;
+            /** Format: int32 */
+            lineId?: number;
+            sku?: string | null;
+            /** Format: double */
+            reserved?: number;
+            /** Format: double */
+            stillPending?: number;
+        };
+        SalesFulfillResultDto: {
+            lines?: components["schemas"]["SalesFulfillLineDto"][] | null;
+            /** Format: double */
+            totalReserved?: number;
+            /** Format: int32 */
+            linesCompleted?: number;
+        };
+        SalesOrderCancelRequest: {
+            comment?: string | null;
+        };
+        SalesOrderDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            statusColor?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            /** Format: uuid */
+            consigneePublicId?: string | null;
+            consigneeName?: string | null;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            warehouseName?: string | null;
+            /** Format: date */
+            requestedDate?: string;
+            /** Format: date */
+            requiredDate?: string | null;
+            notes?: string | null;
+            /** Format: double */
+            subtotal?: number;
+            /** Format: double */
+            taxAmount?: number;
+            /** Format: double */
+            total?: number;
+            hasBackorder?: boolean;
+            requestedByName?: string | null;
+            /** Format: date-time */
+            requestedAtUtc?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            lines?: components["schemas"]["SalesOrderLineDto"][] | null;
+        };
+        SalesOrderLineDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: int32 */
+            lineNo?: number;
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            /** Format: int32 */
+            lotId?: number | null;
+            /** Format: double */
+            qtyOrdered?: number;
+            /** Format: double */
+            qtyReserved?: number;
+            /** Format: double */
+            qtyBackordered?: number;
+            /** Format: double */
+            qtyShipped?: number;
+            isClosed?: boolean;
+            /** Format: double */
+            unitPrice?: number;
+            /** Format: double */
+            lineSubtotal?: number;
+            /** Format: double */
+            taxRatePct?: number;
+            /** Format: double */
+            taxAmount?: number;
+            isTaxExempt?: boolean;
+        };
+        SalesOrderLineModifyRequest: {
+            /** Format: double */
+            quantity?: number | null;
+            /** Format: double */
+            unitPrice?: number | null;
+            allowBackorder?: boolean | null;
+        };
+        SalesOrderLineRequest: {
+            /** Format: uuid */
+            productPublicId?: string | null;
+            /** Format: double */
+            quantity?: number | null;
+            /** Format: double */
+            unitPrice?: number | null;
+            /** Format: int32 */
+            lotId?: number | null;
+        };
+        SalesOrderListItemDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            statusColor?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            warehouseName?: string | null;
+            /** Format: date */
+            requestedDate?: string;
+            /** Format: date */
+            requiredDate?: string | null;
+            /** Format: double */
+            subtotal?: number;
+            /** Format: double */
+            taxAmount?: number;
+            /** Format: double */
+            total?: number;
+            /** Format: int32 */
+            lineCount?: number;
+            hasBackorder?: boolean;
+            requestedByName?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+        };
+        SalesOrderListItemDtoPagedResult: {
+            items?: components["schemas"]["SalesOrderListItemDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        SalesOrderRequest: {
+            /** Format: uuid */
+            warehousePublicId?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string | null;
+            /** Format: uuid */
+            consigneePublicId?: string | null;
+            clearConsignee?: boolean | null;
+            /** Format: date */
+            requiredDate?: string | null;
+            clearRequiredDate?: boolean | null;
+            notes?: string | null;
+            lines?: components["schemas"]["SalesOrderLineRequest"][] | null;
+        };
+        SalesOrderRequestRequest: {
+            allowBackorder?: boolean | null;
+            overrideCredit?: boolean | null;
+            comment?: string | null;
         };
         TaxCalcComponentDto: {
             code?: string | null;

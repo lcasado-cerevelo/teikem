@@ -1,4 +1,4 @@
-// Menú completo de la maqueta (Lote F8a P0): 7 grupos, 41 ítems con permiso y módulo, ítems pendientes y `perm: 'a|b'`; Lote F17 suma Rentas (42); Lote 50 suma Trabajos programados (43); Lote 52 suma Reglas de aviso (44); Lote 54 suma Enviar avisos (45); Lote 56 suma Impuestos (46).
+// Menú completo de la maqueta (Lote F8a P0): 7 grupos, 41 ítems con permiso y módulo, ítems pendientes y `perm: 'a|b'`; Lote F17 suma Rentas (42); Lote 50 suma Trabajos programados (43); Lote 52 suma Reglas de aviso (44); Lote 54 suma Enviar avisos (45); Lote 56 suma Impuestos (46); Lote 60 suma Órdenes de venta (47).
 import { describe, expect, it } from 'vitest'
 import { permAllowed } from '../kernel/access/accessContext'
 import { ModuleKeys } from '../kernel/access/modules'
@@ -37,10 +37,10 @@ describe('NAV_GROUPS', () => {
 })
 
 describe('menú completo (routes.tsx)', () => {
-  it('con todos los permisos y módulos se ven los 7 grupos y los 46 ítems, en el orden de la maqueta', () => {
+  it('con todos los permisos y módulos se ven los 7 grupos y los 47 ítems, en el orden de la maqueta', () => {
     const groups = visibleNav(appRoutes, ALL_PERMS, ALL_MODULES)
     expect(groups.map((g) => [g.key, g.items.length])).toEqual([
-      ['ops', 5],
+      ['ops', 6],
       ['warehouse', 12],
       ['money', 6],
       ['catalog', 4],
@@ -51,6 +51,7 @@ describe('menú completo (routes.tsx)', () => {
     expect(groups.flatMap((g) => g.items.map((r) => translate('es', navTitleKey(r.nav!.key))))).toEqual([
       'Pulso del día',
       'Órdenes',
+      'Órdenes de venta',
       'Estación de escaneo',
       'Sala de despacho',
       'Monitoreo de ruta',
@@ -99,7 +100,7 @@ describe('menú completo (routes.tsx)', () => {
   })
 
   it('cada ítem tiene título y subtítulo en español e inglés, y `order` = posición × 10', () => {
-    expect(navRoutes).toHaveLength(46)
+    expect(navRoutes).toHaveLength(47)
     for (const r of navRoutes) {
       for (const lang of ['es', 'en'] as const) {
         expect(translate(lang, navTitleKey(r.nav!.key)), `${lang} ${r.path}`).not.toBe(navTitleKey(r.nav!.key))
@@ -118,11 +119,11 @@ describe('menú completo (routes.tsx)', () => {
     expect(byPath('/analytics/custom-fields').pending).toBeUndefined() // Lote F-F1
     expect(byPath('/analytics/custom-fields')).toMatchObject({ perm: 'admin.customfields', module: 'CUSTOM_FIELDS', nav: { group: 'analytics', key: 'customFields', order: 20 } })
     expect(byPath('/ops/monitor').pending).toBeUndefined() // Lote F-E3
-    expect(byPath('/ops/monitor')).toMatchObject({ perm: 'trips.view', module: 'LTL_GROUND', nav: { group: 'ops', key: 'monitor', order: 50 } })
+    expect(byPath('/ops/monitor')).toMatchObject({ perm: 'trips.view', module: 'LTL_GROUND', nav: { group: 'ops', key: 'monitor', order: 60 } })
     expect(byPath('/ops/dispatch').pending).toBeUndefined() // Lote F-E2a
-    expect(byPath('/ops/dispatch')).toMatchObject({ perm: 'trips.dispatch', module: 'LTL_GROUND', nav: { group: 'ops', key: 'dispatch', order: 40 } })
+    expect(byPath('/ops/dispatch')).toMatchObject({ perm: 'trips.dispatch', module: 'LTL_GROUND', nav: { group: 'ops', key: 'dispatch', order: 50 } })
     expect(byPath('/ops/scan').pending).toBeUndefined() // Lote F-E1
-    expect(byPath('/ops/scan')).toMatchObject({ perm: 'trips.scan', module: 'LTL_GROUND', nav: { group: 'ops', key: 'scan', order: 30 } })
+    expect(byPath('/ops/scan')).toMatchObject({ perm: 'trips.scan', module: 'LTL_GROUND', nav: { group: 'ops', key: 'scan', order: 40 } })
     expect(byPath('/catalog/fleet').pending).toBeUndefined()
     expect(byPath('/catalog/drivers').pending).toBeUndefined()
     expect(byPath('/catalog/consignees').pending).toBeUndefined()

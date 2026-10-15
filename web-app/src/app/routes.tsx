@@ -141,6 +141,8 @@ export const appRoutes: readonly AppRoute[] = [
     module: ModuleKeys.LtlGround,
     nav: { group: 'ops', key: 'orders', order: 20 },
   },
+  // Lote 60 (P4, S1): órdenes de venta y backorders
+  { path: '/sales-orders', element: lazy(() => import('../features/sales/SalesOrdersScreen')), perm: 'sales.view', module: ModuleKeys.SalesOrders, nav: { group: 'ops', key: 'salesOrders', order: 30 } },
   {
     path: '/orders/:publicId',
     element: lazy(() => import('../features/orders/OrderDetailScreen')),
@@ -154,7 +156,7 @@ export const appRoutes: readonly AppRoute[] = [
     element: lazy(() => import('../features/scan/ScanScreen')),
     perm: 'trips.scan',
     module: ModuleKeys.LtlGround,
-    nav: { group: 'ops', key: 'scan', order: 30 },
+    nav: { group: 'ops', key: 'scan', order: 40 },
   },
   // Lote F-E2a — Sala de despacho (sin mapa: el mapa esquemático y el arrastre llegan en F-E2b).
   {
@@ -162,7 +164,7 @@ export const appRoutes: readonly AppRoute[] = [
     element: lazy(() => import('../features/dispatch/DispatchScreen')),
     perm: 'trips.dispatch',
     module: ModuleKeys.LtlGround,
-    nav: { group: 'ops', key: 'dispatch', order: 40 },
+    nav: { group: 'ops', key: 'dispatch', order: 50 },
   },
   // Lote F-E3 — Monitoreo de ruta (solo lectura; reutiliza el plano `RouteMap` de F-E2b).
   {
@@ -170,7 +172,7 @@ export const appRoutes: readonly AppRoute[] = [
     element: lazy(() => import('../features/monitor/MonitorScreen')),
     perm: 'trips.view',
     module: ModuleKeys.LtlGround,
-    nav: { group: 'ops', key: 'monitor', order: 50 },
+    nav: { group: 'ops', key: 'monitor', order: 60 },
   },
 
   // ===== Almacén =====

@@ -272,6 +272,10 @@
       "title": "Scheduled jobs",
       "subtitle": "the company's automatic tasks"
     },
+    "salesOrders": {
+      "title": "Sales orders",
+      "subtitle": "warehouse requests, reservations and backorders"
+    },
     "tax": {
       "title": "Taxes",
       "subtitle": "rates, rules, client exemptions and simulator"
@@ -7378,6 +7382,138 @@
     "system": "System",
     "company": "Company",
     "emptyView": "The view has no rows today."
+  },
+  "sales": {
+    "title": "Sales orders",
+    "subtitle": "what Sales asks the warehouse for: orders, reservations, backorders and client credit",
+    "close": "Close",
+    "new": "New order",
+    "withBackorder": "With backorder",
+    "tabs": {
+      "label": "Sales sections",
+      "orders": "Orders",
+      "backorders": "Backorders"
+    },
+    "statuses": {
+      "DRAFT": "Draft",
+      "REQUESTED": "Requested",
+      "PARTIAL": "Partially shipped",
+      "SHIPPED": "Shipped",
+      "CANCELLED": "Cancelled"
+    },
+    "orders": {
+      "panel": "Sales orders",
+      "search": "Search by number, client or product",
+      "filterStatus": "Filter by status",
+      "allStatuses": "All statuses",
+      "empty": "There are no sales orders yet. Create the first one with “New order”."
+    },
+    "col": {
+      "number": "Number",
+      "client": "Client",
+      "status": "Status",
+      "date": "Requested",
+      "required": "Required",
+      "lines": "Lines",
+      "total": "Total",
+      "by": "Requested by",
+      "product": "Product",
+      "ordered": "Ordered",
+      "reserved": "Reserved",
+      "backordered": "Backorder",
+      "shipped": "Shipped",
+      "price": "Price",
+      "tax": "Tax",
+      "amount": "Amount",
+      "pending": "Pending",
+      "available": "Available",
+      "fulfillable": "Can be filled",
+      "waiting": "Waiting",
+      "closed": "Closed",
+      "exempt": "Exempt"
+    },
+    "days": "{n} d",
+    "client": "Buying client",
+    "warehouse": "Warehouse",
+    "warehouseHelp": "The one that fills the order. With a single active warehouse it is used automatically.",
+    "requiredDate": "Required date",
+    "requestedDate": "Requested",
+    "notes": "Notes",
+    "lines": "Products",
+    "line": {
+      "product": "Line {n} product",
+      "qty": "Line {n} quantity",
+      "price": "Line {n} price",
+      "amount": "Line {n} amount",
+      "remove": "Remove line {n}"
+    },
+    "addLine": "Add product",
+    "subtotal": "Subtotal: {n}",
+    "priceHelp": "If you leave the price empty the product's sale price is used; changing it needs the price permission. The system calculates the tax when saving.",
+    "saveDraft": "Save draft",
+    "saveAndRequest": "Request…",
+    "saved": "Order {number} saved.",
+    "requested": "Order {number} requested: the stock is reserved.",
+    "errors": {
+      "client": "Choose the buying client.",
+      "lines": "Add at least one product to the order.",
+      "product": "Choose the product of each line.",
+      "quantity": "The quantity must be greater than zero.",
+      "quantityDecimals": "The quantity allows at most 3 decimals.",
+      "price": "The price is not valid.",
+      "priceDecimals": "The price allows at most 4 decimals.",
+      "noPrice": "A product has no sale price: enter the price.",
+      "repeated": "A product cannot be repeated in the order.",
+      "notes": "Notes cannot exceed 500 characters."
+    },
+    "edit": {
+      "title": "Order {number} (draft)"
+    },
+    "view": {
+      "title": "Order {number}"
+    },
+    "loading": "Loading the order…",
+    "cancelOrder": "Cancel order",
+    "cancelTitle": "Cancel order {number}",
+    "cancelBody": "The order is cancelled and this cannot be undone.",
+    "cancelRequestedBody": "The order is cancelled: exactly what it had reserved is released and its backorder is cleared. This cannot be undone.",
+    "cancelled": "Order {number} cancelled.",
+    "check": {
+      "title": "Request order {number}",
+      "back": "Back to editing",
+      "backorder": "Reserve what is available and leave the rest on backorder",
+      "request": "Request and reserve",
+      "shortage": "There is not enough stock for everything ordered. Nothing has been reserved yet.",
+      "ordered": "Ordered",
+      "available": "Available",
+      "missing": "Short",
+      "shortageHelp": "You can reserve what is available and leave the rest on backorder, or go back and order only what is available or remove the line.",
+      "override": "Authorize the exceeded credit",
+      "needOverride": "You need the “Authorize orders over credit limit” permission to request it.",
+      "ok": "There is stock for everything ordered and the client's credit is enough. Requesting reserves the stock."
+    },
+    "qtyTitle": "Change the quantity of {sku}",
+    "qtyHelp": "It currently has {reserved} reserved and {backordered} on backorder.",
+    "qtyNew": "Ordered quantity",
+    "qtySave": "Save quantity",
+    "qtyAllowBackorder": "If there is not enough, leave the rest on backorder",
+    "lineChanged": "Line {sku} updated.",
+    "changeQty": "Change quantity",
+    "fulfill": "Fill",
+    "fulfilled": "{sku}: what was available is reserved.",
+    "closeLine": "Close with shortage",
+    "lineClosed": "{sku}: closed with shortage.",
+    "noLines": "The order has no lines.",
+    "totals": "Subtotal {subtotal} · Tax {tax} · Total {total}",
+    "backorders": {
+      "panel": "Backorders",
+      "search": "Search by order, client or product",
+      "fulfillAll": "Fill all",
+      "nothing": "There is no stock available to fill anything yet.",
+      "fulfilledAll": "{units} units reserved on {lines} line(s).",
+      "empty": "There are no backorders: everything requested is reserved.",
+      "help": "First come, first served. “Can be filled” is what is available today for that line; fill all goes from the oldest to the newest."
+    }
   },
   "tax": {
     "title": "Taxes",

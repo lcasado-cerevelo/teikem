@@ -272,6 +272,10 @@
       "title": "Trabajos programados",
       "subtitle": "tareas automáticas de la compañía"
     },
+    "salesOrders": {
+      "title": "Órdenes de venta",
+      "subtitle": "pedidos a almacén, reservas y backorders"
+    },
     "tax": {
       "title": "Impuestos",
       "subtitle": "tasas, reglas, exenciones de clientes y simulador"
@@ -7378,6 +7382,138 @@
     "system": "Sistema",
     "company": "Compañía",
     "emptyView": "La vista no tiene filas hoy."
+  },
+  "sales": {
+    "title": "Órdenes de venta",
+    "subtitle": "lo que Ventas le pide al almacén: pedidos, reservas, backorders y crédito del cliente",
+    "close": "Cerrar",
+    "new": "Nueva orden",
+    "withBackorder": "Con backorder",
+    "tabs": {
+      "label": "Secciones de ventas",
+      "orders": "Órdenes",
+      "backorders": "Backorders"
+    },
+    "statuses": {
+      "DRAFT": "Borrador",
+      "REQUESTED": "Solicitada",
+      "PARTIAL": "Despachada parcial",
+      "SHIPPED": "Despachada",
+      "CANCELLED": "Cancelada"
+    },
+    "orders": {
+      "panel": "Órdenes de venta",
+      "search": "Buscar por número, cliente o producto",
+      "filterStatus": "Filtrar por estatus",
+      "allStatuses": "Todos los estatus",
+      "empty": "Todavía no hay órdenes de venta. Cree la primera con «Nueva orden»."
+    },
+    "col": {
+      "number": "Número",
+      "client": "Cliente",
+      "status": "Estatus",
+      "date": "Solicitada",
+      "required": "Requerida",
+      "lines": "Líneas",
+      "total": "Total",
+      "by": "Pidió",
+      "product": "Producto",
+      "ordered": "Pedido",
+      "reserved": "Reservado",
+      "backordered": "Backorder",
+      "shipped": "Despachado",
+      "price": "Precio",
+      "tax": "Impuesto",
+      "amount": "Importe",
+      "pending": "Pendiente",
+      "available": "Disponible",
+      "fulfillable": "Se puede surtir",
+      "waiting": "Esperando",
+      "closed": "Cerrada",
+      "exempt": "Exento"
+    },
+    "days": "{n} d",
+    "client": "Cliente que compra",
+    "warehouse": "Almacén",
+    "warehouseHelp": "El que atiende la orden. Con un solo almacén activo se usa solo.",
+    "requiredDate": "Fecha requerida",
+    "requestedDate": "Solicitada",
+    "notes": "Notas",
+    "lines": "Productos",
+    "line": {
+      "product": "Producto de la línea {n}",
+      "qty": "Cantidad de la línea {n}",
+      "price": "Precio de la línea {n}",
+      "amount": "Importe de la línea {n}",
+      "remove": "Quitar la línea {n}"
+    },
+    "addLine": "Agregar producto",
+    "subtotal": "Subtotal: {n}",
+    "priceHelp": "Si no escribe precio se usa el precio de venta del producto; cambiarlo exige el permiso de precios. El impuesto lo calcula el sistema al guardar.",
+    "saveDraft": "Guardar borrador",
+    "saveAndRequest": "Solicitar…",
+    "saved": "Orden {number} guardada.",
+    "requested": "Orden {number} solicitada: el inventario quedó reservado.",
+    "errors": {
+      "client": "Escoja el cliente que compra.",
+      "lines": "Agregue al menos un producto a la orden.",
+      "product": "Escoja el producto de cada línea.",
+      "quantity": "La cantidad debe ser mayor que cero.",
+      "quantityDecimals": "La cantidad admite como máximo 3 decimales.",
+      "price": "El precio no es válido.",
+      "priceDecimals": "El precio admite como máximo 4 decimales.",
+      "noPrice": "Hay un producto sin precio de venta: escriba el precio.",
+      "repeated": "Un producto no puede repetirse en la orden.",
+      "notes": "Las notas no pueden pasar de 500 caracteres."
+    },
+    "edit": {
+      "title": "Orden {number} (borrador)"
+    },
+    "view": {
+      "title": "Orden {number}"
+    },
+    "loading": "Cargando la orden…",
+    "cancelOrder": "Cancelar orden",
+    "cancelTitle": "Cancelar la orden {number}",
+    "cancelBody": "La orden queda cancelada y no se puede deshacer.",
+    "cancelRequestedBody": "La orden queda cancelada: se libera exactamente lo que tenía reservado y se borra su backorder. No se puede deshacer.",
+    "cancelled": "Orden {number} cancelada.",
+    "check": {
+      "title": "Solicitar la orden {number}",
+      "back": "Volver a editar",
+      "backorder": "Reservar lo disponible y dejar el resto en backorder",
+      "request": "Solicitar y reservar",
+      "shortage": "No alcanza el inventario para todo lo pedido. Nada se ha reservado todavía.",
+      "ordered": "Pedido",
+      "available": "Disponible",
+      "missing": "Faltante",
+      "shortageHelp": "Puede reservar lo disponible y dejar el resto en backorder, o volver a editar la orden para pedir solo lo disponible o quitar la línea.",
+      "override": "Autorizar el crédito excedido",
+      "needOverride": "Necesita el permiso «Autorizar órdenes sobre el límite de crédito» para solicitarla.",
+      "ok": "Hay inventario para todo lo pedido y el crédito del cliente alcanza. Al solicitar, el inventario queda reservado."
+    },
+    "qtyTitle": "Cambiar la cantidad de {sku}",
+    "qtyHelp": "Ahora tiene {reserved} reservadas y {backordered} en backorder.",
+    "qtyNew": "Cantidad pedida",
+    "qtySave": "Guardar cantidad",
+    "qtyAllowBackorder": "Si no alcanza, dejar el resto en backorder",
+    "lineChanged": "Línea {sku} actualizada.",
+    "changeQty": "Cambiar cantidad",
+    "fulfill": "Surtir",
+    "fulfilled": "{sku}: reservado lo disponible.",
+    "closeLine": "Cerrar con faltante",
+    "lineClosed": "{sku}: cerrada con faltante.",
+    "noLines": "La orden no tiene líneas.",
+    "totals": "Subtotal {subtotal} · Impuesto {tax} · Total {total}",
+    "backorders": {
+      "panel": "Backorders",
+      "search": "Buscar por orden, cliente o producto",
+      "fulfillAll": "Surtir todo",
+      "nothing": "No hay inventario disponible para surtir nada todavía.",
+      "fulfilledAll": "Se reservaron {units} unidades en {lines} línea(s).",
+      "empty": "No hay backorders: todo lo solicitado está reservado.",
+      "help": "El primero que pidió, primero. «Se puede surtir» es lo que hay disponible hoy para esa línea; surtir todo recorre de la más antigua a la más reciente."
+    }
   },
   "tax": {
     "title": "Impuestos",

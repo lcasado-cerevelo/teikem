@@ -1,7 +1,7 @@
 # 18 — Órdenes de venta
 
 Lotes 57 a 59 (2026-10-15) — **parte S1: borrador, solicitar y reservar, backorders**. Una **orden de venta** (OV-#####) es el documento que viaja de **Ventas a Almacén**: Ventas le pide al almacén que despache algo para un cliente. Hasta aquí se puede **armar la orden en borrador, solicitarla (validar y reservar inventario), modificarla y cancelarla**; ver, surtir y cerrar los **backorders**; el despacho contra la orden llega en el lote siguiente de la fase.
-El diseño completo está en `Diseño/logistica-funcionalidades-maestro.md`, sección 13C.
+El diseño completo está en `Diseño/logistica-funcionalidades-maestro.md`, sección 13C. La pantalla se describe en [L60 — Órdenes de venta](frontend/l60-ordenes-de-venta.md).
 
 ## 1. Quién puede
 

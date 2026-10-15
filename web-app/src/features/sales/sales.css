@@ -1,0 +1,19 @@
+/* Órdenes de venta (Lote 60). Reutiliza las clases de Impuestos (tax.css) para fieldset y filtros; aquí solo lo propio. Sin scroll horizontal desde 360 px. */
+.sales-screen .seg { margin-bottom: 12px; }
+.sales-form { display: flex; flex-direction: column; gap: 12px; }
+.sales-line { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; align-items: end; }
+.sales-amount { text-align: right; font-variant-numeric: tabular-nums; align-self: end; padding-bottom: 8px; }
+.sales-table { width: 100%; border-collapse: collapse; }
+.sales-table th, .sales-table td { padding: 6px 8px; border-bottom: 1px solid var(--line-2); text-align: left; vertical-align: top; }
+.sales-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.sales-credit { border: 1px solid var(--line-2); border-radius: 8px; padding: 10px 12px; background: var(--panel); }
+.sales-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px 16px; margin: 0; }
+.sales-facts dt { font-size: .8rem; opacity: .7; }
+.sales-facts dd { margin: 0; font-weight: 600; }
+.sales-totals { text-align: right; font-weight: 600; margin: 4px 0 0; }
+@media (max-width: 640px) {
+  .sales-line { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .sales-line > :first-child { grid-column: 1 / -1; }
+  .sales-line > .btn { grid-column: 2; justify-self: end; }
+  .sales-table { display: block; overflow-x: auto; }
+}
