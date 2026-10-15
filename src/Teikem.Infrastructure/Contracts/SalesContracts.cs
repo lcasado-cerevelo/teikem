@@ -44,3 +44,18 @@ public sealed record SalesAvailabilityDto(IReadOnlyList<SalesAvailabilityLineDto
 
 /// <summary>Modificar una línea de una orden solicitada: cantidad y/o precio (lo que no viene no cambia). AllowBackorder para subir más de lo disponible.</summary>
 public sealed record SalesOrderLineModifyRequest(decimal? Quantity = null, decimal? UnitPrice = null, bool? AllowBackorder = null);
+
+// ---------------------------------------------------------------- Lote 59 — backorders: ver, surtir y cerrar con faltante
+
+/// <summary>
+/// Una línea con backorder (lo pendiente de una orden solicitada). Pending = lo que falta; Available = lo vendible hoy de ese producto; Fulfillable =
+/// lo que se podría reservar ahora para esta línea (el menor de los dos). DaysWaiting = días desde que se solicitó la orden.
+/// </summary>
+public sealed record SalesBackorderLineDto(Guid OrderPublicId, string OrderNumber, string OrderStatus, string ClientName, string WarehouseName, int LineId, int LineNo,
+    Guid ProductPublicId, string Sku, string ProductName, decimal Ordered, decimal Reserved, decimal Pending, decimal Available, decimal Fulfillable, DateTime RequestedAtUtc,
+    int DaysWaiting);
+
+/// <summary>Resultado de surtir: por línea, cuánto se reservó ahora y cuánto sigue pendiente.</summary>
+public sealed record SalesFulfillLineDto(Guid OrderPublicId, string OrderNumber, int LineId, string Sku, decimal Reserved, decimal StillPending);
+
+public sealed record SalesFulfillResultDto(IReadOnlyList<SalesFulfillLineDto> Lines, decimal TotalReserved, int LinesCompleted);

@@ -49,6 +49,22 @@ public sealed class SalesOrdersController(SalesOrderService sales) : ControllerB
     [HttpPatch("{publicId:guid}/lines/{lineId:int}"), RequirePermission(PermissionCatalog.SalesCreate)]
     public Task<SalesOrderDto> ModifyLine(Guid publicId, int lineId, [FromBody] SalesOrderLineModifyRequest req, CancellationToken ct) => sales.ModifyLineAsync(publicId, lineId, req, ct);
 
+    /// <summary>Líneas con backorder de las órdenes solicitadas, la más antigua primero, con lo disponible hoy y lo que se podría surtir ahora.</summary>
+    [HttpGet("backorders"), RequirePermission(PermissionCatalog.SalesView)]
+    public Task<IReadOnlyList<SalesBackorderLineDto>> Backorders([FromQuery] string? q, CancellationToken ct) => sales.BackordersAsync(q, ct);
+
+    /// <summary>Surte todas las líneas con backorder que se puedan, de la más antigua a la más reciente.</summary>
+    [HttpPost("backorders/fulfill"), RequirePermission(PermissionCatalog.SalesBackorder)]
+    public Task<SalesFulfillResultDto> FulfillAll(CancellationToken ct) => sales.FulfillAllAsync(ct);
+
+    /// <summary>Reserva para la línea lo que haya (todo o parte de su backorder).</summary>
+    [HttpPost("{publicId:guid}/lines/{lineId:int}/fulfill"), RequirePermission(PermissionCatalog.SalesBackorder)]
+    public Task<SalesOrderDto> FulfillLine(Guid publicId, int lineId, CancellationToken ct) => sales.FulfillLineAsync(publicId, lineId, ct);
+
+    /// <summary>Cierra la línea con faltante: no espera más inventario (lo reservado sigue para despacharse).</summary>
+    [HttpPost("{publicId:guid}/lines/{lineId:int}/close"), RequirePermission(PermissionCatalog.SalesBackorder)]
+    public Task<SalesOrderDto> CloseLine(Guid publicId, int lineId, [FromBody] SalesOrderCancelRequest? req, CancellationToken ct) => sales.CloseLineAsync(publicId, lineId, req?.Comment, ct);
+
     [HttpPost("{publicId:guid}/cancel"), RequirePermission(PermissionCatalog.SalesCancel)]
     public Task<SalesOrderDto> Cancel(Guid publicId, [FromBody] SalesOrderCancelRequest? req, CancellationToken ct) => sales.CancelAsync(publicId, req?.Comment, ct);
 }

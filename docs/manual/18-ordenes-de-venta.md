@@ -1,6 +1,6 @@
 # 18 — Órdenes de venta
 
-Lotes 57 y 58 (2026-10-15) — **parte S1: borrador, solicitar y reservar**. Una **orden de venta** (OV-#####) es el documento que viaja de **Ventas a Almacén**: Ventas le pide al almacén que despache algo para un cliente. Hasta aquí se puede **armar la orden en borrador, solicitarla (validar y reservar inventario), modificarla y cancelarla**; surtir los backorders y el despacho contra la orden llegan en los lotes siguientes de la fase.
+Lotes 57 a 59 (2026-10-15) — **parte S1: borrador, solicitar y reservar, backorders**. Una **orden de venta** (OV-#####) es el documento que viaja de **Ventas a Almacén**: Ventas le pide al almacén que despache algo para un cliente. Hasta aquí se puede **armar la orden en borrador, solicitarla (validar y reservar inventario), modificarla y cancelarla**; ver, surtir y cerrar los **backorders**; el despacho contra la orden llega en el lote siguiente de la fase.
 El diseño completo está en `Diseño/logistica-funcionalidades-maestro.md`, sección 13C.
 
 ## 1. Quién puede
@@ -35,6 +35,8 @@ El diseño completo está en `Diseño/logistica-funcionalidades-maestro.md`, sec
 | Comprobar disponibilidad y crédito (no guarda) | `GET /api/v1/sales-orders/{publicId}/availability` | `sales.create` |
 | Solicitar (validar y reservar) | `POST /api/v1/sales-orders/{publicId}/request` | `sales.create` |
 | Modificar una línea solicitada | `PATCH /api/v1/sales-orders/{publicId}/lines/{lineId}` | `sales.create` |
+| Ver backorders (más antiguo primero) | `GET /api/v1/sales-orders/backorders` | `sales.view` |
+| Surtir una línea / surtir todo / cerrar con faltante | `POST …/lines/{lineId}/fulfill` · `POST /sales-orders/backorders/fulfill` · `POST …/lines/{lineId}/close` | `sales.backorder` |
 | Cancelar un borrador o una solicitada (comentario opcional en el historial; libera lo reservado) | `POST /api/v1/sales-orders/{publicId}/cancel` | `sales.cancel` |
 
 Las órdenes **nunca se borran**: se cancelan. Quedan en la bitácora (altas, cambios) y en el historial de estatus.
@@ -106,7 +108,26 @@ Las órdenes **nunca se borran**: se cancelan. Quedan en la bitácora (altas, ca
 | Producto con serie en una orden de venta | `Los productos con número de serie todavía no se venden con orden de venta.` | 422 |
 | Cancelar una orden con algo despachado | `Solo se puede cancelar una orden en borrador o solicitada que no se haya despachado.` | 422 |
 
-## 9. Para soporte
+## 9. Backorders: ver, surtir y cerrar con faltante (Lote 59)
+
+Un **backorder** es lo que se pidió y todavía no hay: la línea queda con su cantidad pendiente (`QtyBackordered`) mientras la orden sigue solicitada.
+
+- **Ver los backorders** (`GET /api/v1/sales-orders/backorders`, permiso `sales.view`): todas las líneas con pendiente, **la más antigua primero** (el primero que pidió, primero). Por línea: orden, cliente, almacén, producto, **pedido / reservado / pendiente**, lo **disponible hoy** para vender y lo que se podría **surtir ahora** (el menor entre lo pendiente y lo disponible), y cuántos días lleva esperando. Buscador por número de orden, cliente o producto.
+- **Surtir una línea** (`POST /api/v1/sales-orders/{publicId}/lines/{lineId}/fulfill`, permiso `sales.backorder`): reserva para la línea **lo que haya** (todo su pendiente o una parte). Usa el mismo candado del inventario que solicitar: nunca reserva más de lo que existe ni le quita a otra orden. Si no hay nada nuevo, responde 409.
+- **Surtir todo** (`POST /api/v1/sales-orders/backorders/fulfill`, permiso `sales.backorder`): recorre los backorders **de la más antigua a la más reciente** y surte lo que se pueda; lo que una línea toma, la siguiente ya no lo ve. Devuelve qué se reservó por línea y cuánto sigue pendiente.
+- **Cuándo se puede surtir**: cuando entra inventario (recibo, ajuste de entrada, transferencia, liberar cuarentena) o se cancela otra orden que lo tenía reservado. Hoy el aviso automático «ya hay para este backorder» no existe todavía (llega con los avisos de ventas); la vista muestra siempre lo surtible.
+- **Cerrar con faltante** (`POST /api/v1/sales-orders/{publicId}/lines/{lineId}/close`, permiso `sales.backorder`): da la línea por **terminada sin esperar más**: su backorder se borra y la línea queda cerrada. **Lo ya reservado sigue reservado** para despacharse y la **cantidad pedida se conserva** (sirve para medir el cumplimiento). Una línea cerrada no se surte ni se modifica.
+- **Cancelar la orden** borra su backorder y libera lo reservado (sección 7).
+
+| Situación | Mensaje exacto | HTTP |
+|---|---|---|
+| Surtir una línea sin inventario disponible | `No hay inventario disponible para surtir esa línea.` | 409 |
+| Surtir o cerrar una línea sin backorder | `Esa línea no tiene backorder.` | 409 |
+| Surtir o cerrar en una orden que no está solicitada | `Solo se pueden modificar las líneas de una orden solicitada.` | 422 |
+| Surtir o cerrar una línea cerrada | `La línea está cerrada.` | 422 |
+| Línea u orden inexistente | `Línea no encontrada.` / `Orden de venta no encontrada.` | 404 |
+
+## 10. Para soporte
 
 - Tablas `SalesOrder`, `SalesOrderLine` y `SalesOrderReservation` (la que guarda qué saldo reservó cada línea), contador `SALESORDER`, dominio de estatus `SalesOrderStatus` y EntityType `SALES_ORDER` (sección **2026-10-15 (k)** de `Diseño/logistica-db-update.sql`).
 - Cada línea guarda `TaxRateId`, `TaxRatePct`, `TaxAmount` e `IsTaxExempt`: un cambio posterior de la tasa **no** altera una orden ya guardada.

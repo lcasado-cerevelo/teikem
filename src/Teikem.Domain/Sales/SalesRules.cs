@@ -44,6 +44,8 @@ public static class SalesRules
     public const string OnlyRequestedModifiable = "Solo se pueden modificar las líneas de una orden solicitada.";
     public const string LineClosed = "La línea está cerrada.";
     public const string LineAlreadyShipped = "A esa línea ya se le despachó producto: no se puede modificar.";
+    public const string NothingToFulfill = "No hay inventario disponible para surtir esa línea.";
+    public const string NoBackorder = "Esa línea no tiene backorder.";
     public const string SerialNotSupported = "Los productos con número de serie todavía no se venden con orden de venta.";
 
     /// <summary>«pedido / disponible / faltante» de una línea con faltante (lo que muestra el diálogo de faltante).</summary>

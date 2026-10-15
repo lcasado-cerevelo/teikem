@@ -8272,3 +8272,23 @@ Por ahora las órdenes de venta no manejan productos con serie. Use otra vía pa
 
 **«Solo se puede solicitar una orden en borrador.»**
 La orden ya está solicitada, despachada o cancelada.
+
+## Lote 59 — Backorders de órdenes de venta
+
+**¿Dónde veo lo que está pendiente de surtir?**
+En la vista de **Backorders**: todas las líneas con pendiente, la más antigua primero (el primero que pidió, primero), con lo que hay disponible hoy y lo que se podría surtir ahora.
+
+**¿Cómo surto un backorder?**
+Cuando haya inventario, **Surtir** en la línea reserva lo que haya (todo o parte). **Surtir todo** recorre todos los backorders de la más antigua a la más reciente. Hace falta el permiso `sales.backorder` (Admin de compañía y Operador de almacén).
+
+**«No hay inventario disponible para surtir esa línea.»**
+Todavía no ha entrado inventario vendible (o otra orden más antigua ya lo reservó). Se surte cuando entre un recibo, un ajuste, una transferencia o se libere cuarentena.
+
+**¿Qué hace «Cerrar con faltante»?**
+Da la línea por terminada sin esperar más: el backorder se borra y la línea queda cerrada. Lo que ya estaba reservado se despacha igual; la cantidad pedida se conserva en la orden. No se puede deshacer: para lo que falta, cree otra orden.
+
+**«Esa línea no tiene backorder.»**
+La línea ya está completa (o ya se surtió). No hay nada que surtir ni cerrar.
+
+**¿Me avisan cuando ya hay inventario para un backorder?**
+Todavía no: el aviso automático llega con los avisos de ventas. Mientras tanto, la vista muestra siempre lo que se puede surtir ahora.
