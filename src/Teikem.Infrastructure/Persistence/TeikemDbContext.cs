@@ -209,6 +209,14 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     // Lote 50 (P2.2) — trabajos programados por compañía
     public DbSet<Teikem.Domain.Jobs.ScheduledJob> ScheduledJobs => Set<Teikem.Domain.Jobs.ScheduledJob>();
     public DbSet<Teikem.Domain.Jobs.ScheduledJobRun> ScheduledJobRuns => Set<Teikem.Domain.Jobs.ScheduledJobRun>();
+    // Lote 51 — avisos (reglas, cola, registro y bandeja)
+    public DbSet<Teikem.Domain.Notifications.NotificationRule> NotificationRules => Set<Teikem.Domain.Notifications.NotificationRule>();
+    public DbSet<Teikem.Domain.Notifications.NotificationRuleChannel> NotificationRuleChannels => Set<Teikem.Domain.Notifications.NotificationRuleChannel>();
+    public DbSet<Teikem.Domain.Notifications.NotificationRuleRecipient> NotificationRuleRecipients => Set<Teikem.Domain.Notifications.NotificationRuleRecipient>();
+    public DbSet<Teikem.Domain.Notifications.NotificationOutbox> NotificationOutbox => Set<Teikem.Domain.Notifications.NotificationOutbox>();
+    public DbSet<Teikem.Domain.Notifications.NotificationLog> NotificationLogs => Set<Teikem.Domain.Notifications.NotificationLog>();
+    public DbSet<Teikem.Domain.Notifications.UserNotification> UserNotifications => Set<Teikem.Domain.Notifications.UserNotification>();
+    public DbSet<Teikem.Domain.Notifications.UserNotificationPref> UserNotificationPrefs => Set<Teikem.Domain.Notifications.UserNotificationPref>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

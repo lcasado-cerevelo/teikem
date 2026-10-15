@@ -12800,6 +12800,581 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/inbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    unreadOnly?: boolean;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["UserNotificationDtoPagedResult"];
+                        "application/json": components["schemas"]["UserNotificationDtoPagedResult"];
+                        "text/json": components["schemas"]["UserNotificationDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inbox/prefs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["NotificationPrefDto"][];
+                        "application/json": components["schemas"]["NotificationPrefDto"][];
+                        "text/json": components["schemas"]["NotificationPrefDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inbox/prefs/{eventCode}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    eventCode: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["NotificationPrefRequest"];
+                    "text/json": components["schemas"]["NotificationPrefRequest"];
+                    "application/*+json": components["schemas"]["NotificationPrefRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["NotificationPrefDto"];
+                        "application/json": components["schemas"]["NotificationPrefDto"];
+                        "text/json": components["schemas"]["NotificationPrefDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inbox/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MarkedReadDto"];
+                        "application/json": components["schemas"]["MarkedReadDto"];
+                        "text/json": components["schemas"]["MarkedReadDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inbox/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["UnreadCountDto"];
+                        "application/json": components["schemas"]["UnreadCountDto"];
+                        "text/json": components["schemas"]["UnreadCountDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inbox/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["UserNotificationDto"];
+                        "application/json": components["schemas"]["UserNotificationDto"];
+                        "text/json": components["schemas"]["UserNotificationDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/channels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["NotificationChannelStatusDto"][];
+                        "application/json": components["schemas"]["NotificationChannelStatusDto"][];
+                        "text/json": components["schemas"]["NotificationChannelStatusDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["NotificationEventDto"][];
+                        "application/json": components["schemas"]["NotificationEventDto"][];
+                        "text/json": components["schemas"]["NotificationEventDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    eventCode?: string;
+                    channel?: string;
+                    status?: string;
+                    fromUtc?: string;
+                    toUtc?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["NotificationLogDtoPagedResult"];
+                        "application/json": components["schemas"]["NotificationLogDtoPagedResult"];
+                        "text/json": components["schemas"]["NotificationLogDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["NotificationRuleDto"][];
+                        "application/json": components["schemas"]["NotificationRuleDto"][];
+                        "text/json": components["schemas"]["NotificationRuleDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["NotificationRuleRequest"];
+                    "text/json": components["schemas"]["NotificationRuleRequest"];
+                    "application/*+json": components["schemas"]["NotificationRuleRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["NotificationRuleDto"];
+                        "application/json": components["schemas"]["NotificationRuleDto"];
+                        "text/json": components["schemas"]["NotificationRuleDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/rules/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["NotificationRuleDto"];
+                        "application/json": components["schemas"]["NotificationRuleDto"];
+                        "text/json": components["schemas"]["NotificationRuleDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["NotificationRuleRequest"];
+                    "text/json": components["schemas"]["NotificationRuleRequest"];
+                    "application/*+json": components["schemas"]["NotificationRuleRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["NotificationRuleDto"];
+                        "application/json": components["schemas"]["NotificationRuleDto"];
+                        "text/json": components["schemas"]["NotificationRuleDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/notifications/rules/{publicId}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["NotificationTestRequest"];
+                    "text/json": components["schemas"]["NotificationTestRequest"];
+                    "application/*+json": components["schemas"]["NotificationTestRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["NotificationTestResultDto"];
+                        "application/json": components["schemas"]["NotificationTestResultDto"];
+                        "text/json": components["schemas"]["NotificationTestResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/test-event": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["NotificationTestEventRequest"];
+                    "text/json": components["schemas"]["NotificationTestEventRequest"];
+                    "application/*+json": components["schemas"]["NotificationTestEventRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["NotificationQueuedDto"];
+                        "application/json": components["schemas"]["NotificationQueuedDto"];
+                        "text/json": components["schemas"]["NotificationQueuedDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/printers": {
         parameters: {
             query?: never;
@@ -24540,6 +25115,160 @@ export interface components {
             triggeredBy?: string | null;
             message?: string | null;
             error?: string | null;
+        };
+        MarkedReadDto: {
+            /** Format: int32 */
+            marked?: number;
+        };
+        NotificationChannelRequest: {
+            channel?: string | null;
+            isEnabled?: boolean | null;
+            subjectEs?: string | null;
+            subjectEn?: string | null;
+            bodyEs?: string | null;
+            bodyEn?: string | null;
+        };
+        NotificationChannelStatusDto: {
+            channel?: string | null;
+            isConfigured?: boolean;
+        };
+        NotificationEventDto: {
+            code?: string | null;
+            moduleKey?: string | null;
+            name?: string | null;
+            nameEn?: string | null;
+            isOptional?: boolean;
+            variables?: components["schemas"]["NotificationVariableDto"][] | null;
+            defaultSubject?: string | null;
+            defaultSubjectEn?: string | null;
+            defaultBody?: string | null;
+            defaultBodyEn?: string | null;
+        };
+        NotificationLogDto: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            outboxId?: number;
+            /** Format: uuid */
+            rulePublicId?: string | null;
+            ruleName?: string | null;
+            eventCode?: string | null;
+            channel?: string | null;
+            recipient?: string | null;
+            status?: string | null;
+            error?: string | null;
+            /** Format: int32 */
+            attempts?: number;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            /** Format: date-time */
+            sentAtUtc?: string | null;
+        };
+        NotificationLogDtoPagedResult: {
+            items?: components["schemas"]["NotificationLogDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        NotificationPrefDto: {
+            eventCode?: string | null;
+            name?: string | null;
+            nameEn?: string | null;
+            isMuted?: boolean;
+        };
+        NotificationPrefRequest: {
+            muted?: boolean | null;
+        };
+        NotificationQueuedDto: {
+            queued?: boolean;
+        };
+        NotificationRecipientDto: {
+            kind?: string | null;
+            /** Format: int32 */
+            roleId?: number | null;
+            /** Format: int32 */
+            userId?: number | null;
+            value?: string | null;
+            label?: string | null;
+        };
+        NotificationRecipientRequest: {
+            kind?: string | null;
+            /** Format: int32 */
+            roleId?: number | null;
+            /** Format: int32 */
+            userId?: number | null;
+            value?: string | null;
+        };
+        NotificationRuleChannelDto: {
+            channel?: string | null;
+            isEnabled?: boolean;
+            subjectEs?: string | null;
+            subjectEn?: string | null;
+            bodyEs?: string | null;
+            bodyEn?: string | null;
+            isConfigured?: boolean;
+        };
+        NotificationRuleDto: {
+            /** Format: uuid */
+            publicId?: string;
+            eventCode?: string | null;
+            name?: string | null;
+            isActive?: boolean;
+            channels?: components["schemas"]["NotificationRuleChannelDto"][] | null;
+            recipients?: components["schemas"]["NotificationRecipientDto"][] | null;
+            rowVersion?: string | null;
+        };
+        NotificationRuleRequest: {
+            eventCode?: string | null;
+            name?: string | null;
+            isActive?: boolean | null;
+            channels?: components["schemas"]["NotificationChannelRequest"][] | null;
+            recipients?: components["schemas"]["NotificationRecipientRequest"][] | null;
+            rowVersion?: string | null;
+        };
+        NotificationTestEventRequest: {
+            message?: string | null;
+        };
+        NotificationTestRequest: {
+            channel?: string | null;
+        };
+        NotificationTestResultDto: {
+            channel?: string | null;
+            status?: string | null;
+            message?: string | null;
+        };
+        NotificationVariableDto: {
+            name?: string | null;
+            label?: string | null;
+            labelEn?: string | null;
+            sample?: string | null;
+        };
+        UnreadCountDto: {
+            /** Format: int32 */
+            count?: number;
+        };
+        UserNotificationDto: {
+            /** Format: int64 */
+            id?: number;
+            eventCode?: string | null;
+            title?: string | null;
+            body?: string | null;
+            linkUrl?: string | null;
+            isRead?: boolean;
+            /** Format: date-time */
+            createdAtUtc?: string;
+        };
+        UserNotificationDtoPagedResult: {
+            items?: components["schemas"]["UserNotificationDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
         };
         PrinterDto: {
             /** Format: uuid */

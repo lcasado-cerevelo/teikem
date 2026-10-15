@@ -312,6 +312,8 @@ F-G1. [F-G1 — Impresoras y labels](frontend/fg1-impresoras.md): Sistema → **
 
 13. [13 — Trabajos programados](13-trabajos-programados.md): Lote 50 (P2.2, 2026-10-14) — **tareas automáticas por compañía** (servicio propio, sin Hangfire): interruptor, horario (cada cierto tiempo de 1 minuto a 7 días, o todos los días a una hora), **Ejecutar ahora**, historial y reintentos (1, 2 y 5 minutos); tres trabajos de fábrica (limpieza del historial, revisión diaria de inventario y uno de prueba), permiso `jobs.manage`, mensajes 400/404/409 y datos para soporte.
 
+14. [14 — Avisos (notificaciones)](14-avisos.md): Lote 51 (P2.1, 2026-10-14) — **motor de avisos**: reglas por compañía (evento + canales EMAIL/SMS/APP/PUSH con plantilla es/en y `{variables}` + destinatarios por rol, usuario, correo o teléfono), cola que se escribe en la misma transacción de la operación y se procesa con reintentos (1, 5 y 30 minutos), registro idempotente de cada envío, bandeja del usuario con silenciar eventos opcionales, canales SMS y push «no configurados» (sin proveedor), evento de prueba, permiso `notifications.manage`, mensajes 400/404/409 y datos para soporte.
+
 L50. [L50 — Trabajos programados](frontend/l50-trabajos-programados.md): Sistema → **Trabajos programados** (`jobs.manage`): lista con horario, próxima corrida y último resultado, **Ejecutar ahora**, **Cambiar horario** e **Historial**. Capturas `l50-*`.
 
 ## Preguntas frecuentes

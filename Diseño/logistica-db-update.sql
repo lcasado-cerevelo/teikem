@@ -2205,3 +2205,180 @@ JOIN dbo.Permission p ON p.Code = 'jobs.manage'
 WHERE r.Name IN ('TenantAdmin')
   AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
 GO
+/* ----------------------------------------------------------------------------
+   2026-10-14 (g) — Avisos / notificaciones (Lote 51). «Cuando pase el evento X, avisar a estos destinatarios por estos canales.»
+   - dbo.NotificationRule (regla por compañía), NotificationRuleChannel (plantilla por canal: asunto y texto en JSON es/en),
+     NotificationRuleRecipient (rol, usuario, correo o teléfono suelto).
+   - dbo.NotificationOutbox: cola que se escribe en la MISMA transacción de la operación; la procesa un servicio de fondo con reclamo
+     atómico y reintentos (1, 5 y 30 min). NotificationLog: cada envío (cola x regla x canal x destinatario; único = idempotente).
+   - dbo.UserNotification: bandeja del usuario (canal APP, la campanita). dbo.UserNotificationPref: eventos silenciados por usuario.
+   - El catálogo de EVENTOS vive en código (no hay tabla): cada módulo registra los suyos.
+   - EntityType NOTIFICATION_RULE (bitácora). Permiso notifications.manage (categoría ADMIN) -> TenantAdmin de la plantilla Y de los
+     roles YA CLONADOS de cada compañía. Los avisos no son un módulo: van bajo SYSTEM.
+   Solo AGREGA (nunca quita). Idempotente. Autocontenida: no depende de otras secciones nuevas de este archivo.
+   ---------------------------------------------------------------------------- */
+IF OBJECT_ID(N'dbo.NotificationRule', N'U') IS NULL CREATE TABLE dbo.NotificationRule (
+    NotificationRuleId INT IDENTITY(1,1) CONSTRAINT PK_NotificationRule PRIMARY KEY,
+    PublicId           UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_NotificationRule_PublicId DEFAULT NEWID(),
+    TenantId           INT NOT NULL CONSTRAINT FK_NotificationRule_Tenant REFERENCES dbo.Tenant(TenantId),
+    EventCode          VARCHAR(60) NOT NULL,
+    Name               NVARCHAR(100) NOT NULL,
+    IsActive           BIT NOT NULL CONSTRAINT DF_NotificationRule_IsActive DEFAULT 0,
+    CreatedAtUtc       DATETIME2 NOT NULL CONSTRAINT DF_NotificationRule_CreatedAtUtc DEFAULT SYSUTCDATETIME(),
+    CreatedBy          INT NULL CONSTRAINT FK_NotificationRule_CreatedBy REFERENCES dbo.AspNetUsers(Id),
+    UpdatedAtUtc       DATETIME2 NULL,
+    UpdatedBy          INT NULL CONSTRAINT FK_NotificationRule_UpdatedBy REFERENCES dbo.AspNetUsers(Id),
+    RowVersion         ROWVERSION,
+    CONSTRAINT UQ_NotificationRule_PublicId UNIQUE (PublicId)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_NotificationRule_Name' AND object_id = OBJECT_ID('dbo.NotificationRule'))
+    CREATE UNIQUE INDEX UX_NotificationRule_Name ON dbo.NotificationRule(TenantId, Name);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_NotificationRule_Event' AND object_id = OBJECT_ID('dbo.NotificationRule'))
+    CREATE INDEX IX_NotificationRule_Event ON dbo.NotificationRule(TenantId, EventCode, IsActive);
+GO
+
+IF OBJECT_ID(N'dbo.NotificationRuleChannel', N'U') IS NULL CREATE TABLE dbo.NotificationRuleChannel (
+    NotificationRuleChannelId INT IDENTITY(1,1) CONSTRAINT PK_NotificationRuleChannel PRIMARY KEY,
+    TenantId           INT NOT NULL CONSTRAINT FK_NotificationRuleChannel_Tenant REFERENCES dbo.Tenant(TenantId),
+    NotificationRuleId INT NOT NULL CONSTRAINT FK_NotificationRuleChannel_Rule REFERENCES dbo.NotificationRule(NotificationRuleId),
+    Channel            VARCHAR(10) NOT NULL,
+    IsEnabled          BIT NOT NULL CONSTRAINT DF_NotificationRuleChannel_IsEnabled DEFAULT 0,
+    SubjectJson        NVARCHAR(1000) NULL,
+    BodyJson           NVARCHAR(4000) NULL,
+    CONSTRAINT CK_NotificationRuleChannel_Channel CHECK (Channel IN ('EMAIL', 'SMS', 'APP', 'PUSH'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_NotificationRuleChannel' AND object_id = OBJECT_ID('dbo.NotificationRuleChannel'))
+    CREATE UNIQUE INDEX UX_NotificationRuleChannel ON dbo.NotificationRuleChannel(NotificationRuleId, Channel);
+GO
+
+IF OBJECT_ID(N'dbo.NotificationRuleRecipient', N'U') IS NULL CREATE TABLE dbo.NotificationRuleRecipient (
+    NotificationRuleRecipientId INT IDENTITY(1,1) CONSTRAINT PK_NotificationRuleRecipient PRIMARY KEY,
+    TenantId           INT NOT NULL CONSTRAINT FK_NotificationRuleRecipient_Tenant REFERENCES dbo.Tenant(TenantId),
+    NotificationRuleId INT NOT NULL CONSTRAINT FK_NotificationRuleRecipient_Rule REFERENCES dbo.NotificationRule(NotificationRuleId),
+    Kind               VARCHAR(10) NOT NULL,
+    RoleId             INT NULL CONSTRAINT FK_NotificationRuleRecipient_Role REFERENCES dbo.Role(RoleId),
+    UserId             INT NULL CONSTRAINT FK_NotificationRuleRecipient_User REFERENCES dbo.AspNetUsers(Id),
+    Value              NVARCHAR(200) NULL,
+    CONSTRAINT CK_NotificationRuleRecipient_Kind CHECK (
+        (Kind = 'ROLE' AND RoleId IS NOT NULL AND UserId IS NULL AND Value IS NULL) OR
+        (Kind = 'USER' AND UserId IS NOT NULL AND RoleId IS NULL AND Value IS NULL) OR
+        (Kind IN ('EMAIL', 'PHONE') AND Value IS NOT NULL AND RoleId IS NULL AND UserId IS NULL))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_NotificationRuleRecipient_Rule' AND object_id = OBJECT_ID('dbo.NotificationRuleRecipient'))
+    CREATE INDEX IX_NotificationRuleRecipient_Rule ON dbo.NotificationRuleRecipient(NotificationRuleId);
+GO
+
+IF OBJECT_ID(N'dbo.NotificationOutbox', N'U') IS NULL CREATE TABLE dbo.NotificationOutbox (
+    NotificationOutboxId BIGINT IDENTITY(1,1) CONSTRAINT PK_NotificationOutbox PRIMARY KEY,
+    TenantId        INT NOT NULL CONSTRAINT FK_NotificationOutbox_Tenant REFERENCES dbo.Tenant(TenantId),
+    EventCode       VARCHAR(60) NOT NULL,
+    PayloadJson     NVARCHAR(4000) NULL,
+    DedupKey        VARCHAR(100) NULL,
+    Status          VARCHAR(10) NOT NULL CONSTRAINT DF_NotificationOutbox_Status DEFAULT 'PENDING',
+    Attempts        INT NOT NULL CONSTRAINT DF_NotificationOutbox_Attempts DEFAULT 0,
+    NextAttemptUtc  DATETIME2 NOT NULL CONSTRAINT DF_NotificationOutbox_NextAttemptUtc DEFAULT SYSUTCDATETIME(),
+    LockedBy        NVARCHAR(80) NULL,
+    LockedUntilUtc  DATETIME2 NULL,
+    LastError       NVARCHAR(1000) NULL,
+    CreatedAtUtc    DATETIME2 NOT NULL CONSTRAINT DF_NotificationOutbox_CreatedAtUtc DEFAULT SYSUTCDATETIME(),
+    CreatedBy       INT NULL CONSTRAINT FK_NotificationOutbox_CreatedBy REFERENCES dbo.AspNetUsers(Id),
+    ProcessedUtc    DATETIME2 NULL,
+    CONSTRAINT CK_NotificationOutbox_Status CHECK (Status IN ('PENDING', 'DONE', 'FAILED'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_NotificationOutbox_Due' AND object_id = OBJECT_ID('dbo.NotificationOutbox'))
+    CREATE INDEX IX_NotificationOutbox_Due ON dbo.NotificationOutbox(Status, NextAttemptUtc) INCLUDE (TenantId, LockedUntilUtc);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_NotificationOutbox_Dedup' AND object_id = OBJECT_ID('dbo.NotificationOutbox'))
+    CREATE UNIQUE INDEX UX_NotificationOutbox_Dedup ON dbo.NotificationOutbox(TenantId, EventCode, DedupKey) WHERE DedupKey IS NOT NULL;
+GO
+
+IF OBJECT_ID(N'dbo.NotificationLog', N'U') IS NULL CREATE TABLE dbo.NotificationLog (
+    NotificationLogId BIGINT IDENTITY(1,1) CONSTRAINT PK_NotificationLog PRIMARY KEY,
+    TenantId             INT NOT NULL CONSTRAINT FK_NotificationLog_Tenant REFERENCES dbo.Tenant(TenantId),
+    NotificationOutboxId BIGINT NOT NULL CONSTRAINT FK_NotificationLog_Outbox REFERENCES dbo.NotificationOutbox(NotificationOutboxId),
+    NotificationRuleId   INT NOT NULL CONSTRAINT FK_NotificationLog_Rule REFERENCES dbo.NotificationRule(NotificationRuleId),
+    EventCode            VARCHAR(60) NOT NULL,
+    Channel              VARCHAR(10) NOT NULL,
+    Recipient            NVARCHAR(200) NOT NULL,
+    Status               VARCHAR(10) NOT NULL CONSTRAINT DF_NotificationLog_Status DEFAULT 'PENDING',
+    Error                NVARCHAR(1000) NULL,
+    Attempts             INT NOT NULL CONSTRAINT DF_NotificationLog_Attempts DEFAULT 0,
+    CreatedAtUtc         DATETIME2 NOT NULL CONSTRAINT DF_NotificationLog_CreatedAtUtc DEFAULT SYSUTCDATETIME(),
+    SentAtUtc            DATETIME2 NULL,
+    CONSTRAINT CK_NotificationLog_Channel CHECK (Channel IN ('EMAIL', 'SMS', 'APP', 'PUSH')),
+    CONSTRAINT CK_NotificationLog_Status CHECK (Status IN ('PENDING', 'SENT', 'FAILED', 'SKIPPED'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_NotificationLog_Delivery' AND object_id = OBJECT_ID('dbo.NotificationLog'))
+    CREATE UNIQUE INDEX UX_NotificationLog_Delivery ON dbo.NotificationLog(NotificationOutboxId, NotificationRuleId, Channel, Recipient);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_NotificationLog_Tenant' AND object_id = OBJECT_ID('dbo.NotificationLog'))
+    CREATE INDEX IX_NotificationLog_Tenant ON dbo.NotificationLog(TenantId, CreatedAtUtc);
+GO
+
+IF OBJECT_ID(N'dbo.UserNotification', N'U') IS NULL CREATE TABLE dbo.UserNotification (
+    UserNotificationId   BIGINT IDENTITY(1,1) CONSTRAINT PK_UserNotification PRIMARY KEY,
+    TenantId             INT NOT NULL CONSTRAINT FK_UserNotification_Tenant REFERENCES dbo.Tenant(TenantId),
+    UserId               INT NOT NULL CONSTRAINT FK_UserNotification_User REFERENCES dbo.AspNetUsers(Id),
+    EventCode            VARCHAR(60) NOT NULL,
+    Title                NVARCHAR(200) NOT NULL,
+    Body                 NVARCHAR(1000) NULL,
+    LinkUrl              NVARCHAR(300) NULL,
+    IsRead               BIT NOT NULL CONSTRAINT DF_UserNotification_IsRead DEFAULT 0,
+    CreatedAtUtc         DATETIME2 NOT NULL CONSTRAINT DF_UserNotification_CreatedAtUtc DEFAULT SYSUTCDATETIME(),
+    ReadAtUtc            DATETIME2 NULL,
+    NotificationOutboxId BIGINT NULL CONSTRAINT FK_UserNotification_Outbox REFERENCES dbo.NotificationOutbox(NotificationOutboxId),
+    NotificationRuleId   INT NULL CONSTRAINT FK_UserNotification_Rule REFERENCES dbo.NotificationRule(NotificationRuleId)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_UserNotification_Inbox' AND object_id = OBJECT_ID('dbo.UserNotification'))
+    CREATE INDEX IX_UserNotification_Inbox ON dbo.UserNotification(TenantId, UserId, IsRead, UserNotificationId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_UserNotification_Delivery' AND object_id = OBJECT_ID('dbo.UserNotification'))
+    CREATE UNIQUE INDEX UX_UserNotification_Delivery ON dbo.UserNotification(NotificationOutboxId, NotificationRuleId, UserId) WHERE NotificationOutboxId IS NOT NULL AND NotificationRuleId IS NOT NULL;
+GO
+
+IF OBJECT_ID(N'dbo.UserNotificationPref', N'U') IS NULL CREATE TABLE dbo.UserNotificationPref (
+    UserNotificationPrefId INT IDENTITY(1,1) CONSTRAINT PK_UserNotificationPref PRIMARY KEY,
+    TenantId   INT NOT NULL CONSTRAINT FK_UserNotificationPref_Tenant REFERENCES dbo.Tenant(TenantId),
+    UserId     INT NOT NULL CONSTRAINT FK_UserNotificationPref_User REFERENCES dbo.AspNetUsers(Id),
+    EventCode  VARCHAR(60) NOT NULL,
+    IsMuted    BIT NOT NULL CONSTRAINT DF_UserNotificationPref_IsMuted DEFAULT 0
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_UserNotificationPref' AND object_id = OBJECT_ID('dbo.UserNotificationPref'))
+    CREATE UNIQUE INDEX UX_UserNotificationPref ON dbo.UserNotificationPref(TenantId, UserId, EventCode);
+GO
+
+-- EntityType de la bitácora
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'NOTIFICATION_RULE', N'{"es":"Regla de aviso","en":"Notification rule"}', 121)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+
+-- Permiso notifications.manage
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'notifications.manage')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('notifications.manage',
+            (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'ADMIN'),
+            N'{"es":"Gestionar las reglas de aviso","en":"Manage notification rules"}', 1);
+GO
+
+-- Plantilla de sistema (TenantId NULL) y roles ya clonados de cada compañía: TenantAdmin
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT r.RoleId, p.PermissionId
+FROM dbo.Role r
+JOIN dbo.Permission p ON p.Code = 'notifications.manage'
+WHERE r.Name IN ('TenantAdmin')
+  AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
+GO

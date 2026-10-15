@@ -156,6 +156,7 @@ public static class PermissionCatalog
     /// </summary>
     public const string PrintersManage = "printers.manage";
     public const string JobsManage = "jobs.manage";
+    public const string NotificationsManage = "notifications.manage";
 
     public static readonly IReadOnlyList<PermissionDef> All = new List<PermissionDef>
     {
@@ -247,6 +248,7 @@ public static class PermissionCatalog
         // Lote 43 — impresoras y plantillas de label (2026-10-12, F-G1)
         new(PrintersManage, "ADMIN", "Gestionar impresoras y plantillas de label", "Manage printers & label templates"),
         new(JobsManage, "ADMIN", "Gestionar los trabajos programados", "Manage scheduled jobs"),
+        new(NotificationsManage, "ADMIN", "Gestionar las reglas de aviso", "Manage notification rules"),
     };
 
     /// <summary>

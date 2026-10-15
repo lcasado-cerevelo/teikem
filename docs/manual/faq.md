@@ -7949,3 +7949,47 @@ A las 2:00 a. m. hora de Puerto Rico (la limpieza del historial, a las 3:00 a. m
 
 **El sistema estuvo apagado a la hora del trabajo.**
 Corre al volver a encenderse; no se pierde.
+
+## Lote 51 — Avisos
+
+**¿Para qué sirven las reglas de aviso?**
+Dicen quién debe enterarse cuando pasa algo (un evento) y por dónde: correo, la campanita de la web, SMS o push. Cada compañía arma las suyas. Hoy el motor está listo y solo hay un evento de prueba; los avisos de cada módulo se irán conectando.
+
+**No puedo encender el canal SMS (o PUSH).**
+«El canal SMS todavía no está configurado en Teikem.» Esos canales aún no tienen proveedor; se podrán encender cuando se contrate uno. Mientras tanto use correo o la campanita.
+
+**No puedo encender el canal EMAIL.**
+Mismo mensaje con EMAIL: el correo de Teikem no está configurado en el servidor. Avise a soporte (hace falta la configuración de Brevo).
+
+**«La regla necesita al menos un destinatario para poder activarse.» / «…al menos un canal encendido…»**
+Para activar una regla agregue a quién avisar (un rol, un usuario, un correo) y encienda al menos un canal. Mientras no lo haga, déjela apagada.
+
+**«La plantilla usa una variable que el evento no tiene: {x}.»**
+Escribió una {variable} que ese evento no ofrece. Use solo las que aparecen en la lista del evento (por ejemplo {message} y {user} en el aviso de prueba).
+
+**«El canal EMAIL necesita un asunto.» / «El canal APP necesita un texto.»**
+Un canal encendido necesita su texto, y el correo y la campanita también un asunto (en español, inglés o ambos).
+
+**«Usuario no encontrado en esta compañía.» / «Rol no encontrado.»**
+El destinatario no pertenece a esta compañía o está inactivo. Escoja de la lista de usuarios y roles de la compañía.
+
+**«Correo no válido» / «Teléfono no válido».**
+Revise el formato: un correo con @ y dominio; un teléfono con 7 a 15 dígitos.
+
+**«Ya existe una regla con ese nombre.»**
+Los nombres de reglas no se repiten en la compañía (aunque una esté apagada). Cambie el nombre.
+
+**¿Por qué una persona no recibió el aviso?**
+Mire el registro de avisos: `SKIPPED` dice por qué no correspondía (canal no configurado, no tiene correo, silenció ese aviso); `FAILED` es que el envío falló y se está reintentando (a 1, 5 y 30 minutos). Una persona inactiva, o que no es de la compañía, nunca recibe.
+
+**¿Me pueden avisar dos veces lo mismo?**
+No: cada envío queda registrado y un reintento solo repite lo que falló. Si está en un rol y además por correo, recibe uno solo.
+
+**El correo estaba caído y no salió.**
+El sistema reintenta a 1, 5 y 30 minutos. Si el cuarto intento también falla, queda fallido en el registro con el error; la operación que lo originó nunca se deshace.
+
+**«Ese aviso no se puede silenciar.»**
+Solo los avisos marcados como opcionales se pueden silenciar en la bandeja personal. Los demás los decide el administrador.
+
+**«Aviso no encontrado.»**
+Ese aviso no existe en su bandeja (puede ser de otra persona). Recargue la campanita.

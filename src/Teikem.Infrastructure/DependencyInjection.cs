@@ -11,6 +11,7 @@ using Teikem.Infrastructure.Analytics;
 using Teikem.Infrastructure.Fleet;
 using Teikem.Infrastructure.Jobs;
 using Teikem.Infrastructure.Migration;
+using Teikem.Infrastructure.Notifications;
 using Teikem.Infrastructure.Orders;
 using Teikem.Infrastructure.Persistence;
 using Teikem.Infrastructure.Persistence.Interceptors;
@@ -263,6 +264,22 @@ public static class DependencyInjection
         services.AddSingleton<ScheduledJobRunner>();
         services.AddHostedService<ScheduledJobWorker>();
         services.AddScoped<ScheduledJobService>();
+
+        // Lote 51 — avisos: catálogo de eventos (cada módulo registra su proveedor), publicador (anota en la cola dentro de la transacción),
+        // procesador + worker (cola con reclamo atómico y reintentos 1/5/30 min), canales (correo real; APP bandeja; SMS y push «no configurado»)
+        // y los servicios de las reglas y de la bandeja.
+        services.Configure<NotificationsOptions>(config.GetSection(NotificationsOptions.Section));
+        services.AddSingleton<INotificationEventProvider, TestEventProvider>();
+        services.AddSingleton<NotificationEventCatalog>();
+        services.AddScoped<INotificationPublisher, NotificationPublisher>();
+        services.AddScoped<INotificationChannelSender, EmailChannelSender>();
+        services.AddScoped<INotificationChannelSender, AppChannelSender>();
+        services.AddScoped<INotificationChannelSender, SmsChannelSender>();
+        services.AddScoped<INotificationChannelSender, PushChannelSender>();
+        services.AddSingleton<NotificationProcessor>();
+        services.AddHostedService<NotificationWorker>();
+        services.AddScoped<NotificationRuleService>();
+        services.AddScoped<NotificationInboxService>();
 
         // Lote 8A — app de almacén: aparatos de confianza, PIN por usuario (login por aparato en AuthService) y
         // sincronización por diferencia. La idempotencia (Idempotency-Key) es un middleware del API sin servicio propio.
