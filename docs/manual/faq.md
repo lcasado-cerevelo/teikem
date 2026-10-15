@@ -8315,3 +8315,17 @@ La orden está en borrador, ya despachada o cancelada.
 
 **¿Por qué mi orden se canceló sola?**
 Todas sus líneas se cerraron con faltante sin haber despachado nada: no hay nada que despachar ni facturar. Queda la nota en el historial.
+
+## Lote 62 — Entrega y deshacer un despacho de una orden de venta
+
+**¿Cómo se entrega lo que se despachó?**
+Si el cliente lo recoge, no hay que hacer nada: el despacho queda como «despachado sin entrega». Si se entrega, cree la **entrega** del despacho con los datos de siempre (servicio, paquetes, COD): el cliente y el consignatario salen de la orden de venta. Se puede hacer al despachar o después.
+
+**«El despacho EMP-… ya tiene entrega o fue deshecho: no se puede crear otra.»**
+Cada despacho se entrega una sola vez, y uno deshecho ya no se entrega.
+
+**Me equivoqué al despachar: ¿se deshace?**
+Sí: elimine la recolección del despacho. La existencia vuelve a su posición, baja lo despachado y **vuelve a quedar reservada** para la orden, que se reabre (parcial o solicitada). Si ya tenía entrega, la orden de transporte se elimina con ella según las reglas de siempre.
+
+**¿Por qué «Despachada» ya no es un estatus final?**
+Para poder reabrir la orden si se deshace un despacho. Sigue siendo el estatus de una orden despachada.

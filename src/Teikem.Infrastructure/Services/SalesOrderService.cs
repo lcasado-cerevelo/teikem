@@ -22,7 +22,7 @@ namespace Teikem.Infrastructure.Services;
 /// </summary>
 public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, INumberSequenceService numbers, PermissionService permissions,
     ModuleService modules, TaxService tax, ITenantClock clock, Teikem.Infrastructure.Wms.InventoryLedger ledger, ILookupCache lookups, IClientBalanceProvider balance,
-    ISecurityEventWriter security)
+    ISecurityEventWriter security) : ISalesDispatchReversal
 {
     public const int MaxPageSize = 200;
     private TenantContext T => (TenantContext)tenant;
@@ -310,6 +310,7 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
         var consIds = orders.Where(o => o.ConsigneeId is not null).Select(o => o.ConsigneeId!.Value).ToList();
         var consignees = await db.Set<Location>().Where(l => consIds.Contains(l.LocationId)).ToDictionaryAsync(l => l.LocationId, ct);
         var users = await UserNamesAsync(orders.Where(o => o.RequestedBy is not null).Select(o => o.RequestedBy!.Value), ct);
+        var dispatchInfo = await DispatchesOfAsync(orders.Select(o => o.SalesOrderId).ToList(), ct);
         return orders.Select(o =>
         {
             var s = map[o.StatusCodeId];
@@ -324,7 +325,7 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
             }).ToList();
             return new SalesOrderDto(o.PublicId, o.Number, s.Code, s.Label, s.Color, c.PublicId, c.Name, cons?.PublicId, cons?.Name, w.PublicId, w.Name, o.RequestedDate, o.RequiredDate,
                 o.Notes, o.Subtotal, o.TaxAmount, o.Subtotal + o.TaxAmount, o.Lines.Any(l => SalesRules.IsBackordered(l.QtyBackordered, l.IsClosed)),
-                o.RequestedBy is int u ? users.GetValueOrDefault(u) : null, o.RequestedAtUtc, o.CreatedAtUtc, lines);
+                o.RequestedBy is int u ? users.GetValueOrDefault(u) : null, o.RequestedAtUtc, o.CreatedAtUtc, lines, dispatchInfo.GetValueOrDefault(o.SalesOrderId) ?? new List<SalesDispatchInfoDto>());
         }).ToList();
     }
 

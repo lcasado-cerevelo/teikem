@@ -23,7 +23,7 @@ public sealed record SalesOrderListItemDto(Guid PublicId, string Number, string 
 public sealed record SalesOrderDto(Guid PublicId, string Number, string Status, string StatusLabel, string StatusColor, Guid ClientPublicId, string ClientName,
     Guid? ConsigneePublicId, string? ConsigneeName, Guid WarehousePublicId, string WarehouseName, DateOnly RequestedDate, DateOnly? RequiredDate, string? Notes,
     decimal Subtotal, decimal TaxAmount, decimal Total, bool HasBackorder, string? RequestedByName, DateTime? RequestedAtUtc, DateTime CreatedAtUtc,
-    IReadOnlyList<SalesOrderLineDto> Lines);
+    IReadOnlyList<SalesOrderLineDto> Lines, IReadOnlyList<SalesDispatchInfoDto>? Dispatches = null);
 
 // ---------------------------------------------------------------- Lote 58 — solicitar, disponibilidad, modificar línea
 
@@ -72,3 +72,14 @@ public sealed record SalesDispatchRequest(IReadOnlyList<SalesDispatchLineRequest
 
 /// <summary>La recolección creada (su número EMP) y la orden como quedó.</summary>
 public sealed record SalesDispatchResultDto(Guid PickBatchPublicId, string PickBatchNumber, SalesOrderDto Order);
+
+// ---------------------------------------------------------------- Lote 62 — entrega y despachos de la orden
+
+/// <summary>
+/// Crea la entrega de un despacho de la orden de venta: la orden de transporte (como el empaque). El cliente y el consignatario se toman de la orden de venta si no se
+/// mandan. Order lleva el servicio, los paquetes, el COD, etc.
+/// </summary>
+public sealed record SalesDeliveryRequest(Guid? PickBatchPublicId = null, OrderCreateRequest? Order = null);
+
+/// <summary>Un despacho de la orden (su recolección): Status = COLLECTED (despachado, sin entrega), PACKED (con entrega) o CANCELLED (deshecho).</summary>
+public sealed record SalesDispatchInfoDto(Guid PickBatchPublicId, string Number, string Status, DateTime CollectedAtUtc, decimal Quantity, Guid? TransportOrderPublicId, string? TransportOrderNumber);

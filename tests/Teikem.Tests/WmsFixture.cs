@@ -299,8 +299,8 @@ internal sealed class WmsFixture : IAsyncDisposable
         // Lote 57 (órdenes de venta): como logistica-db-update.sql (k) (al final: ids previos intactos).
         S(Teikem.Domain.Sales.SalesCodes.StatusDomain, Teikem.Domain.Sales.SalesOrderStatuses.Draft, pipe, 1, true);
         S(Teikem.Domain.Sales.SalesCodes.StatusDomain, Teikem.Domain.Sales.SalesOrderStatuses.Requested, pipe, 2);
-        S(Teikem.Domain.Sales.SalesCodes.StatusDomain, Teikem.Domain.Sales.SalesOrderStatuses.Partial, pipe, 3);
-        S(Teikem.Domain.Sales.SalesCodes.StatusDomain, Teikem.Domain.Sales.SalesOrderStatuses.Shipped, term, 4);
+        S(Teikem.Domain.Sales.SalesCodes.StatusDomain, Teikem.Domain.Sales.SalesOrderStatuses.Partial, lat, 3);
+        S(Teikem.Domain.Sales.SalesCodes.StatusDomain, Teikem.Domain.Sales.SalesOrderStatuses.Shipped, lat, 4);   // Lote 62: laterales (sección (n)): se pueden reabrir al deshacer un despacho
         S(Teikem.Domain.Sales.SalesCodes.StatusDomain, Teikem.Domain.Sales.SalesOrderStatuses.Cancelled, term, 5);
         ReceiptStatusSeed.AddLateralEntries(Db, LookupId(LookupDomains.EntityType, EntityTypes.Receipt), StatusId);
 

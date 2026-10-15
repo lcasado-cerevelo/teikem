@@ -288,6 +288,8 @@ public static class DependencyInjection
         services.AddScoped<AnnouncementService>();   // Lote 54
         services.AddScoped<TaxService>();   // Lote 55
         services.AddScoped<SalesOrderService>();   // Lote 57
+        services.AddScoped<ISalesDispatchReversal>(sp => sp.GetRequiredService<SalesOrderService>());   // Lote 62: deshacer una recolección de venta
+        services.AddScoped<SalesDeliveryService>();   // Lote 62: entrega de una orden de venta
         services.AddSingleton<IMessageLiveNotifier, NullMessageLiveNotifier>();
 
         // Lote 8A — app de almacén: aparatos de confianza, PIN por usuario (login por aparato en AuthService) y

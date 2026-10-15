@@ -2865,3 +2865,26 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_PickBatchLine_SalesOrderLine' AND object_id = OBJECT_ID('dbo.PickBatchLine'))
     CREATE INDEX IX_PickBatchLine_SalesOrderLine ON dbo.PickBatchLine(SalesOrderLineId) WHERE SalesOrderLineId IS NOT NULL;
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-15 (m) — Entrega de una orden de venta (Lote 62, P4 parte S2). dbo.TransportOrder.SalesOrderId (opcional): la orden de venta de la que nació la entrega.
+   NULL = orden de transporte normal. Solo AGREGA. Idempotente. Depende de la sección (k).
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.TransportOrder', 'SalesOrderId') IS NULL
+    ALTER TABLE dbo.TransportOrder ADD SalesOrderId INT NULL CONSTRAINT FK_TransportOrder_SalesOrder REFERENCES dbo.SalesOrder(SalesOrderId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_TransportOrder_SalesOrder' AND object_id = OBJECT_ID('dbo.TransportOrder'))
+    CREATE INDEX IX_TransportOrder_SalesOrder ON dbo.TransportOrder(SalesOrderId) WHERE SalesOrderId IS NOT NULL;
+GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-15 (n) — Ajuste de estatus de la orden de venta (Lote 62): «Despachada parcial» (PARTIAL) y «Despachada» (SHIPPED) pasan a ser etapas LATERALES.
+   El motor de estatus solo deja avanzar de una etapa del pipeline a la siguiente y un terminal no admite más transiciones; deshacer una recolección (la reversa)
+   tiene que reabrir una orden despachada, y una lateral puede volver a la etapa del pipeline de la que salió (SOLICITADA). Solo cambia la clase de etapa de esos dos
+   estatus. Idempotente. Depende de la sección (k).
+   ---------------------------------------------------------------------------- */
+UPDATE s SET StageKindLookupId = k.LookupCodeId
+FROM dbo.StatusCode s
+JOIN dbo.LookupCode k ON k.Entity = N'StageKind' AND k.InternalCode = N'LATERAL'
+WHERE s.Entity = N'SalesOrderStatus' AND s.InternalCode IN (N'PARTIAL', N'SHIPPED') AND s.StageKindLookupId <> k.LookupCodeId;
+GO

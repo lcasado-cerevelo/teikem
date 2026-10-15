@@ -26,6 +26,8 @@ public class TransportOrder : ITenantScoped, ISoftDeletable, IHasStatus, IAuditS
     public string ClientInvoiceNumber { get; set; } = string.Empty;
     /// <summary>true si la factura se tecleó al crear la orden; false si la generó Teikem. R36 solo aplica a facturas tecleadas (L1124).</summary>
     public bool ClientInvoiceNumberTyped { get; set; }
+    /// <summary>Lote 62: la orden de venta de la que nació esta entrega; NULL = orden de transporte normal.</summary>
+    public int? SalesOrderId { get; set; }
     /// <summary>Número de empaque (EMP-##### fijo o id del lote de Recolección y empaque); identificador de escaneo único por tenant.</summary>
     public string PackBatchNumber { get; set; } = string.Empty;
     public int ServiceTypeLookupId { get; set; }

@@ -56,6 +56,12 @@ public static class SalesRules
 
     public static string BinNotSellable(string code) => $"La posición {code} no es vendible: está inactiva o es de cuarentena, cruce de muelle o renta.";
 
+    public const string DeliveryBatchRequired = "Indique el despacho que se entrega.";
+    public const string DeliveryOrderRequired = "Indique los datos de la entrega.";
+    public const string DeliveryBatchNotFound = "Despacho de esta orden";
+
+    public static string DeliveryNotCollected(string number) => $"El despacho {number} ya tiene entrega o fue deshecho: no se puede crear otra.";
+
     public const string SerialNotSupported = "Los productos con número de serie todavía no se venden con orden de venta.";
 
     /// <summary>«pedido / disponible / faltante» de una línea con faltante (lo que muestra el diálogo de faltante).</summary>

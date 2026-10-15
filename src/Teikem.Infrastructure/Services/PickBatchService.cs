@@ -55,7 +55,8 @@ public sealed class PickBatchService(
     INumberSequenceService numbers,
     PermissionService permissions,
     InventoryLedger ledger,
-    OrderService orders)
+    OrderService orders,
+    Teikem.Infrastructure.Abstractions.ISalesDispatchReversal? salesReversal = null)
 {
     public const string PickBatchLabel = "Recolección";
 
@@ -671,6 +672,10 @@ public sealed class PickBatchService(
                     .ToList();
                 var txnIds = await ledger.PostAsync(postings, ct2);
                 for (var i = 0; i < lines.Count; i++) lines[i].ReversalTxnId = txnIds[i];
+                // Lote 62: una recolección de una orden de venta devuelve lo despachado y vuelve a reservar (si la orden no está cancelada)
+                if (batch.SalesOrderId is int salesOrderId && salesReversal is not null)
+                    await salesReversal.OnPickBatchReversedAsync(salesOrderId, batch.Number,
+                        lines.Where(l => l.SalesOrderLineId != null).Select(l => new Teikem.Infrastructure.Abstractions.SalesReversedLine(l.SalesOrderLineId!.Value, l.ProductId, l.FromBinId, l.LotId, l.Quantity)).ToList(), ct2);
             }
 
             var cancelled = await statuses.TransitionAsync(StatusDomains.PickBatchStatus, EntityTypes.PickBatch, batch.PickBatchId,

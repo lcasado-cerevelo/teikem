@@ -3,6 +3,7 @@ using Teikem.Domain.Constants;
 using Teikem.Domain.Orders;
 using Teikem.Domain.Sales;
 using Teikem.Domain.Wms;
+using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
 using Teikem.Infrastructure.Persistence;
@@ -170,6 +171,65 @@ public sealed partial class SalesOrderService
             }
         }
         return new SalesDispatchResultDto(batchId, batchNumber, await GetAsync(publicId, ct));
+    }
+
+    /// <summary>Despachos (recolecciones) de cada orden, con su entrega si ya la tienen; los deshechos salen como CANCELLED.</summary>
+    private async Task<Dictionary<int, List<SalesDispatchInfoDto>>> DispatchesOfAsync(IReadOnlyCollection<int> orderIds, CancellationToken ct)
+    {
+        var batches = await db.Set<PickBatch>().AsNoTracking().Where(b => b.SalesOrderId != null && orderIds.Contains(b.SalesOrderId.Value)).OrderBy(b => b.PickBatchId).ToListAsync(ct);
+        if (batches.Count == 0) return new();
+        var ids = batches.Select(b => b.PickBatchId).ToList();
+        var qty = await db.Set<PickBatchLine>().AsNoTracking().Where(l => ids.Contains(l.PickBatchId)).GroupBy(l => l.PickBatchId).Select(g => new { g.Key, Total = g.Sum(l => l.Quantity) }).ToDictionaryAsync(x => x.Key, x => x.Total, ct);
+        var statusCodes = batches.Select(b => b.StatusCodeId).Distinct().ToList();
+        var codes = await db.StatusCodes.AsNoTracking().Where(s => statusCodes.Contains(s.StatusCodeId)).ToDictionaryAsync(s => s.StatusCodeId, s => s.InternalCode, ct);
+        var transportIds = batches.Where(b => b.TransportOrderId != null).Select(b => b.TransportOrderId!.Value).ToList();
+        var transports = transportIds.Count == 0 ? new() : await db.TransportOrders.AsNoTracking().Where(t => transportIds.Contains(t.TransportOrderId)).ToDictionaryAsync(t => t.TransportOrderId, t => (t.PublicId, t.OrderNumber), ct);
+        return batches.GroupBy(b => b.SalesOrderId!.Value).ToDictionary(g => g.Key, g => g.Select(b =>
+        {
+            var tr = b.TransportOrderId is int tid && transports.TryGetValue(tid, out var t) ? ((Guid, string)?)t : null;
+            return new SalesDispatchInfoDto(b.PublicId, b.Number, codes.GetValueOrDefault(b.StatusCodeId, string.Empty), b.CollectedAtUtc, qty.GetValueOrDefault(b.PickBatchId), tr?.Item1, tr?.Item2);
+        }).ToList());
+    }
+
+    // ---------------------------------------------------------------- deshacer una recolección de una orden de venta (gancho de PickBatchService)
+
+    /// <summary>
+    /// Se eliminó una recolección que atendía esta orden (la existencia ya volvió a su posición, en esta misma transacción): baja lo despachado de cada línea y, si la
+    /// orden no está cancelada, VUELVE A RESERVAR esa cantidad en la misma posición y lote. Una orden despachada o parcial se reabre (parcial / solicitada).
+    /// </summary>
+    public async Task OnPickBatchReversedAsync(int salesOrderId, string pickBatchNumber, IReadOnlyList<SalesReversedLine> reversed, CancellationToken ct)
+    {
+        var order = await db.Set<SalesOrder>().AsTracking().Include(o => o.Lines).FirstOrDefaultAsync(o => o.SalesOrderId == salesOrderId, ct);
+        if (order is null || reversed.Count == 0) return;
+        var code = (await StatusMapAsync(ct))[order.StatusCodeId].Code;
+        var reserve = code != SalesOrderStatuses.Cancelled;
+        var reservations = new List<StockReservation>();
+        foreach (var r in reversed)
+        {
+            var line = order.Lines.FirstOrDefault(l => l.SalesOrderLineId == r.SalesOrderLineId);
+            if (line is null) continue;
+            var back = Math.Min(r.Quantity, line.QtyShipped);
+            if (back <= 0m) continue;
+            (line.QtyShipped, line.QtyReserved) = (line.QtyShipped - back, reserve ? line.QtyReserved + back : line.QtyReserved);
+            if (!reserve) continue;
+            reservations.Add(new StockReservation(r.ProductId, order.WarehouseId, r.BinId, r.LotId, back));
+            db.Set<SalesOrderReservation>().Add(new SalesOrderReservation { TenantId = order.TenantId, SalesOrderLineId = line.SalesOrderLineId, WarehouseId = order.WarehouseId, WarehouseBinId = r.BinId, LotId = r.LotId, Quantity = back });
+        }
+        await ledger.ReserveAsync(reservations, ct);
+        if (reserve)
+        {
+            var anyShipped = order.Lines.Any(l => l.QtyShipped > 0m);
+            var anyPending = order.Lines.Any(l => l.QtyReserved > 0m || l.QtyBackordered > 0m);
+            string? target = null;
+            if (code == SalesOrderStatuses.Shipped) target = anyShipped ? SalesOrderStatuses.Partial : SalesOrderStatuses.Requested;
+            else if (code == SalesOrderStatuses.Partial && !anyShipped) target = SalesOrderStatuses.Requested;
+            if (target is not null && anyPending)
+            {
+                var to = await statuses.TransitionAsync(SalesCodes.StatusDomain, SalesCodes.EntityType, order.SalesOrderId, order.StatusCodeId, target, "Se deshizo el despacho " + pickBatchNumber, ct);
+                order.StatusCodeId = to.StatusCodeId;
+            }
+        }
+        await db.SaveGuardedAsync(SalesRules.Concurrency, ct);
     }
 
     /// <summary>La posición es del almacén de la orden, está activa y es vendible (sin cuarentena, cross-dock ni renta).</summary>

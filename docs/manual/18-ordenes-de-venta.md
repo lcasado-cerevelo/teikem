@@ -1,6 +1,6 @@
 # 18 — Órdenes de venta
 
-Lotes 57 a 61 (2026-10-15) — **S1: borrador, solicitar y reservar, backorders; S2: despachar**. Una **orden de venta** (OV-#####) es el documento que viaja de **Ventas a Almacén**: Ventas le pide al almacén que despache algo para un cliente. Hasta aquí se puede **armar la orden en borrador, solicitarla (validar y reservar inventario), modificarla y cancelarla**; ver, surtir y cerrar los **backorders**; **despachar contra la orden** (Lote 61); el retiro / entrega y deshacer, la web y la app llegan en los lotes siguientes.
+Lotes 57 a 62 (2026-10-15) — **S1: borrador, solicitar y reservar, backorders; S2: despachar**. Una **orden de venta** (OV-#####) es el documento que viaja de **Ventas a Almacén**: Ventas le pide al almacén que despache algo para un cliente. Hasta aquí se puede **armar la orden en borrador, solicitarla (validar y reservar inventario), modificarla y cancelarla**; ver, surtir y cerrar los **backorders**; **despachar contra la orden**, retiro / entrega y deshacer un despacho; la web y la app llegan en los lotes siguientes.
 El diseño completo está en `Diseño/logistica-funcionalidades-maestro.md`, sección 13C. La pantalla se describe en [L60 — Órdenes de venta](frontend/l60-ordenes-de-venta.md).
 
 ## 1. Quién puede
@@ -38,6 +38,7 @@ El diseño completo está en `Diseño/logistica-funcionalidades-maestro.md`, sec
 | Ver backorders (más antiguo primero) | `GET /api/v1/sales-orders/backorders` | `sales.view` |
 | Surtir una línea / surtir todo / cerrar con faltante | `POST …/lines/{lineId}/fulfill` · `POST /sales-orders/backorders/fulfill` · `POST …/lines/{lineId}/close` | `sales.backorder` |
 | Despachar contra la orden (por partes; consume la reserva y baja el inventario) | `POST /api/v1/sales-orders/{publicId}/dispatch` | `warehouse.pick` |
+| Crear la entrega de un despacho (orden de transporte) | `POST /api/v1/sales-orders/{publicId}/delivery` | `warehouse.pick` |
 | Cancelar un borrador o una solicitada (comentario opcional en el historial; libera lo reservado) | `POST /api/v1/sales-orders/{publicId}/cancel` | `sales.cancel` |
 
 Las órdenes **nunca se borran**: se cancelan. Quedan en la bitácora (altas, cambios) y en el historial de estatus.
@@ -142,7 +143,7 @@ Un **backorder** es lo que se pidió y todavía no hay: la línea queda con su c
 - **Posición y lote guiados, con cambio permitido**: sin `binId` sale de lo que reservó el sistema. Si el operario tomó de **otra posición** (`binId`, y `lotId` si hay lotes), la reserva **se mueve** a esa posición —si tiene saldo vendible— y de ahí sale; sin saldo responde 409 con el aviso de inventario. La posición debe ser del almacén de la orden, activa y vendible (sin cuarentena, cruce de muelle ni renta).
 - **Cuándo está terminada una línea y la orden**: una línea está **terminada** cuando no le queda reserva ni backorder. La orden es `SHIPPED` cuando todas sus líneas están terminadas y se despachó algo; con backorder pendiente se queda en `PARTIAL` hasta que se surta o se **cierre con faltante** (cerrar la última línea pendiente la pasa a despachada).
 - **Orden sin nada despachado y todas las líneas cerradas con faltante**: **se cancela sola**, con la nota «Todas las líneas se cerraron con faltante y no se despachó nada.» en el historial.
-- El retiro (el cliente recoge) o la **entrega** (crea la orden de transporte) y deshacer una recolección llegan en el lote siguiente.
+- El retiro, la **entrega** (crea la orden de transporte) y deshacer un despacho se describen en la sección 11.
 
 | Situación | Mensaje exacto | HTTP |
 |---|---|---|
@@ -158,8 +159,22 @@ Un **backorder** es lo que se pidió y todavía no hay: la línea queda con su c
 | Sin saldo en la posición escogida | `Inventario insuficiente: …` (el del inventario) | 409 |
 | Sin el permiso `warehouse.pick` | «Sin permiso» | 403 |
 
-## 11. Para soporte
+## 11. Entrega y deshacer un despacho (Lote 62)
 
-- Tablas `SalesOrder`, `SalesOrderLine` y `SalesOrderReservation` (la que guarda qué saldo reservó cada línea) y las columnas `PickBatch.SalesOrderId` / `PickBatchLine.SalesOrderLineId` (sección **2026-10-15 (l)**), contador `SALESORDER`, dominio de estatus `SalesOrderStatus` y EntityType `SALES_ORDER` (sección **2026-10-15 (k)** de `Diseño/logistica-db-update.sql`).
+- **Qué pasa después de despachar**: el despacho queda como una **recolección** (`EMP-#####`) enlazada a la orden y la orden muestra su lista de **despachos** (`dispatches`): número, estatus (`COLLECTED` = despachado sin entrega, `PACKED` = con entrega, `CANCELLED` = deshecho), cantidad y, si ya la tiene, la **orden de transporte** de la entrega.
+  - **Retiro** (el cliente recoge): no hace falta nada más; el despacho queda como `COLLECTED` y ahí termina.
+  - **Entrega**: `POST /api/v1/sales-orders/{publicId}/delivery` (permiso `warehouse.pick`, y `orders.create` para crear la orden de transporte) con el despacho (`pickBatchPublicId`) y los datos de la entrega (`order`: servicio, paquetes, COD…, igual que el empaque de hoy). **El cliente y el consignatario salen de la orden de venta** si no se mandan (o se manda un consignatario nuevo). Crea la orden de transporte real, enlazada a la orden de venta (`TransportOrder.SalesOrderId`), y el despacho pasa a `PACKED`. También se puede crear **después**, sobre un despacho ya hecho.
+- **Deshacer un despacho** (eliminar su recolección, como hoy): la existencia vuelve a su posición, baja lo despachado de cada línea y, si la orden no está cancelada, **vuelve a reservar** esa cantidad en la misma posición y lote. Una orden despachada o parcial **se reabre** (parcial o solicitada). Si el despacho tenía entrega (empacado), se elimina junto con su orden de transporte según las reglas de siempre.
+
+| Situación | Mensaje exacto | HTTP |
+|---|---|---|
+| Entrega sin indicar el despacho | `Indique el despacho que se entrega.` | 400 |
+| Entrega sin datos | `Indique los datos de la entrega.` | 400 |
+| Despacho que no es de esta orden | `Despacho de esta orden no encontrado.` | 404 |
+| Despacho que ya tiene entrega o fue deshecho | `El despacho {EMP-#####} ya tiene entrega o fue deshecho: no se puede crear otra.` | 422 |
+
+## 12. Para soporte
+
+- Tablas `SalesOrder`, `SalesOrderLine` y `SalesOrderReservation` (la que guarda qué saldo reservó cada línea) y las columnas `PickBatch.SalesOrderId` / `PickBatchLine.SalesOrderLineId` (sección **2026-10-15 (l)**), `TransportOrder.SalesOrderId` (**(m)**) y el ajuste de estatus de la **(n)**: «Despachada parcial» y «Despachada» son etapas laterales para poder reabrir la orden al deshacer un despacho, contador `SALESORDER`, dominio de estatus `SalesOrderStatus` y EntityType `SALES_ORDER` (sección **2026-10-15 (k)** de `Diseño/logistica-db-update.sql`).
 - Cada línea guarda `TaxRateId`, `TaxRatePct`, `TaxAmount` e `IsTaxExempt`: un cambio posterior de la tasa **no** altera una orden ya guardada.
 - Un número `OV-` saltado no ocurre: el contador se toma dentro de la misma transacción que crea la orden.

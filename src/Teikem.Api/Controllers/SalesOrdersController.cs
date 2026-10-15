@@ -69,6 +69,10 @@ public sealed class SalesOrdersController(SalesOrderService sales) : ControllerB
     [HttpPost("{publicId:guid}/dispatch"), RequirePermission(PermissionCatalog.WarehousePick)]
     public Task<SalesDispatchResultDto> Dispatch(Guid publicId, [FromBody] SalesDispatchRequest? req, CancellationToken ct) => sales.DispatchAsync(publicId, req, ct);
 
+    /// <summary>Crea la entrega (orden de transporte) de un despacho de la orden de venta. Cliente y consignatario salen de la orden si no se mandan.</summary>
+    [HttpPost("{publicId:guid}/delivery"), RequirePermission(PermissionCatalog.WarehousePick)]
+    public Task<SalesOrderDto> Delivery(Guid publicId, [FromBody] SalesDeliveryRequest? req, [FromServices] SalesDeliveryService delivery, CancellationToken ct) => delivery.CreateAsync(publicId, req, ct);
+
     [HttpPost("{publicId:guid}/cancel"), RequirePermission(PermissionCatalog.SalesCancel)]
     public Task<SalesOrderDto> Cancel(Guid publicId, [FromBody] SalesOrderCancelRequest? req, CancellationToken ct) => sales.CancelAsync(publicId, req?.Comment, ct);
 }
