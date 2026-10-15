@@ -117,7 +117,7 @@ public class NotificationsTests
         var sql = File.ReadAllText(Path.Combine(DatabaseInitializer.ResolveRepoRoot(null), "Diseño", "logistica-db-update.sql")).Replace("\r\n", "\n");
         var start = sql.IndexOf("2026-10-14 (g) — Avisos / notificaciones (Lote 51)", StringComparison.Ordinal);
         Assert.True(start >= 0, "Falta la sección 2026-10-14 (g).");
-        return sql[start..];
+        return SqlSections.From(sql, start);
     }
 
     [Fact]

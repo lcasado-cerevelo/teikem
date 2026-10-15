@@ -2683,3 +2683,167 @@ JOIN dbo.Permission p ON p.Code = 'tax.manage'
 WHERE r.Name IN ('TenantAdmin')
   AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-15 (k) — Órdenes de venta (Lote 57, P4 parte S1). El documento que viaja de Ventas a Almacén (OV-#####).
+   - dbo.SalesOrder, dbo.SalesOrderLine (con copia del impuesto) y dbo.SalesOrderReservation (qué saldo reservó cada línea).
+   - Contador SALESORDER (OV-#####, por compañía, ClientId NULL): se amplía CK_NumberSequence_Kind. La fila del contador la crea el API.
+   - Dominio de estatus SalesOrderStatus (DRAFT inicial -> REQUESTED -> PARTIAL -> SHIPPED; CANCELLED) y EntityType SALES_ORDER.
+   - Permisos sales.view, sales.create, sales.cancel, sales.price y sales.backorder (categoría ORDERS) -> TenantAdmin de la plantilla Y de los roles
+     YA CLONADOS; el Operador de almacén recibe sales.view y sales.backorder. La plantilla de rol «Ventas» la crea el API al arrancar.
+   Solo AGREGA (nunca quita). Idempotente. El módulo SALES_ORDERS (sección e) viene apagado: se enciende por compañía.
+   ---------------------------------------------------------------------------- */
+IF OBJECT_ID(N'dbo.SalesOrder', N'U') IS NULL CREATE TABLE dbo.SalesOrder (
+    SalesOrderId   INT IDENTITY(1,1) CONSTRAINT PK_SalesOrder PRIMARY KEY,
+    PublicId       UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_SalesOrder_PublicId DEFAULT NEWID(),
+    TenantId       INT NOT NULL CONSTRAINT FK_SalesOrder_Tenant REFERENCES dbo.Tenant(TenantId),
+    Number         NVARCHAR(40) NOT NULL,
+    WarehouseId    INT NOT NULL CONSTRAINT FK_SalesOrder_Warehouse REFERENCES dbo.Warehouse(WarehouseId),
+    ClientId       INT NOT NULL CONSTRAINT FK_SalesOrder_Client REFERENCES dbo.Client(ClientId),
+    ConsigneeId    INT NULL CONSTRAINT FK_SalesOrder_Consignee REFERENCES dbo.Location(LocationId),
+    RequestedBy    INT NULL CONSTRAINT FK_SalesOrder_RequestedBy REFERENCES dbo.AspNetUsers(Id),
+    RequestedDate  DATE NOT NULL,
+    RequiredDate   DATE NULL,
+    CurrencyLookupId INT NULL CONSTRAINT FK_SalesOrder_Currency REFERENCES dbo.LookupCode(LookupCodeId),
+    Notes          NVARCHAR(500) NULL,
+    Subtotal       DECIMAL(18,4) NOT NULL CONSTRAINT DF_SalesOrder_Subtotal DEFAULT 0,
+    TaxAmount      DECIMAL(18,4) NOT NULL CONSTRAINT DF_SalesOrder_TaxAmount DEFAULT 0,
+    StatusCodeId   INT NOT NULL CONSTRAINT FK_SalesOrder_Status REFERENCES dbo.StatusCode(StatusCodeId),
+    RequestedAtUtc DATETIME2 NULL,
+    CreatedAtUtc   DATETIME2 NOT NULL CONSTRAINT DF_SalesOrder_CreatedAtUtc DEFAULT SYSUTCDATETIME(),
+    CreatedBy      INT NULL,
+    UpdatedAtUtc   DATETIME2 NULL,
+    UpdatedBy      INT NULL,
+    RowVersion     ROWVERSION,
+    CONSTRAINT UQ_SalesOrder_PublicId UNIQUE (PublicId),
+    CONSTRAINT UQ_SalesOrder_Number UNIQUE (TenantId, Number)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_SalesOrder_Client' AND object_id = OBJECT_ID('dbo.SalesOrder'))
+    CREATE INDEX IX_SalesOrder_Client ON dbo.SalesOrder(TenantId, ClientId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_SalesOrder_Status' AND object_id = OBJECT_ID('dbo.SalesOrder'))
+    CREATE INDEX IX_SalesOrder_Status ON dbo.SalesOrder(TenantId, StatusCodeId);
+GO
+
+IF OBJECT_ID(N'dbo.SalesOrderLine', N'U') IS NULL CREATE TABLE dbo.SalesOrderLine (
+    SalesOrderLineId INT IDENTITY(1,1) CONSTRAINT PK_SalesOrderLine PRIMARY KEY,
+    TenantId       INT NOT NULL CONSTRAINT FK_SalesOrderLine_Tenant REFERENCES dbo.Tenant(TenantId),
+    SalesOrderId   INT NOT NULL CONSTRAINT FK_SalesOrderLine_Order REFERENCES dbo.SalesOrder(SalesOrderId),
+    [LineNo]       INT NOT NULL,
+    ProductId      INT NOT NULL CONSTRAINT FK_SalesOrderLine_Product REFERENCES dbo.Product(ProductId),
+    LotId          INT NULL CONSTRAINT FK_SalesOrderLine_Lot REFERENCES dbo.InventoryLot(LotId),
+    QtyOrdered     DECIMAL(14,3) NOT NULL,
+    QtyReserved    DECIMAL(14,3) NOT NULL CONSTRAINT DF_SalesOrderLine_QtyReserved DEFAULT 0,
+    QtyBackordered DECIMAL(14,3) NOT NULL CONSTRAINT DF_SalesOrderLine_QtyBackordered DEFAULT 0,
+    QtyShipped     DECIMAL(14,3) NOT NULL CONSTRAINT DF_SalesOrderLine_QtyShipped DEFAULT 0,
+    QtyInvoiced    DECIMAL(14,3) NOT NULL CONSTRAINT DF_SalesOrderLine_QtyInvoiced DEFAULT 0,
+    QtyReturned    DECIMAL(14,3) NOT NULL CONSTRAINT DF_SalesOrderLine_QtyReturned DEFAULT 0,
+    QtyCredited    DECIMAL(14,3) NOT NULL CONSTRAINT DF_SalesOrderLine_QtyCredited DEFAULT 0,
+    IsClosed       BIT NOT NULL CONSTRAINT DF_SalesOrderLine_IsClosed DEFAULT 0,
+    UnitPrice      DECIMAL(18,4) NOT NULL CONSTRAINT DF_SalesOrderLine_UnitPrice DEFAULT 0,
+    TaxRateId      INT NULL CONSTRAINT FK_SalesOrderLine_TaxRate REFERENCES dbo.TaxRate(TaxRateId),
+    TaxRatePct     DECIMAL(9,4) NOT NULL CONSTRAINT DF_SalesOrderLine_TaxRatePct DEFAULT 0,
+    TaxAmount      DECIMAL(18,4) NOT NULL CONSTRAINT DF_SalesOrderLine_TaxAmount DEFAULT 0,
+    IsTaxExempt    BIT NOT NULL CONSTRAINT DF_SalesOrderLine_IsTaxExempt DEFAULT 0,
+    CONSTRAINT CK_SalesOrderLine_Qty CHECK (QtyOrdered > 0 AND QtyReserved >= 0 AND QtyBackordered >= 0 AND QtyShipped >= 0)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_SalesOrderLine_No' AND object_id = OBJECT_ID('dbo.SalesOrderLine'))
+    CREATE UNIQUE INDEX UX_SalesOrderLine_No ON dbo.SalesOrderLine(SalesOrderId, [LineNo]);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_SalesOrderLine_Product' AND object_id = OBJECT_ID('dbo.SalesOrderLine'))
+    CREATE INDEX IX_SalesOrderLine_Product ON dbo.SalesOrderLine(TenantId, ProductId);
+GO
+
+IF OBJECT_ID(N'dbo.SalesOrderReservation', N'U') IS NULL CREATE TABLE dbo.SalesOrderReservation (
+    SalesOrderReservationId INT IDENTITY(1,1) CONSTRAINT PK_SalesOrderReservation PRIMARY KEY,
+    TenantId         INT NOT NULL CONSTRAINT FK_SalesOrderReservation_Tenant REFERENCES dbo.Tenant(TenantId),
+    SalesOrderLineId INT NOT NULL CONSTRAINT FK_SalesOrderReservation_Line REFERENCES dbo.SalesOrderLine(SalesOrderLineId),
+    WarehouseId      INT NOT NULL CONSTRAINT FK_SalesOrderReservation_Warehouse REFERENCES dbo.Warehouse(WarehouseId),
+    WarehouseBinId   INT NOT NULL CONSTRAINT FK_SalesOrderReservation_Bin REFERENCES dbo.WarehouseBin(WarehouseBinId),
+    LotId            INT NULL CONSTRAINT FK_SalesOrderReservation_Lot REFERENCES dbo.InventoryLot(LotId),
+    Quantity         DECIMAL(14,3) NOT NULL,
+    CONSTRAINT CK_SalesOrderReservation_Qty CHECK (Quantity > 0)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_SalesOrderReservation_Line' AND object_id = OBJECT_ID('dbo.SalesOrderReservation'))
+    CREATE INDEX IX_SalesOrderReservation_Line ON dbo.SalesOrderReservation(SalesOrderLineId);
+GO
+
+-- Contador SALESORDER (OV-#####)
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_NumberSequence_Kind' AND parent_object_id = OBJECT_ID('dbo.NumberSequence')
+           AND definition NOT LIKE '%SALESORDER%')
+BEGIN
+    ALTER TABLE dbo.NumberSequence DROP CONSTRAINT CK_NumberSequence_Kind;
+    ALTER TABLE dbo.NumberSequence ADD CONSTRAINT CK_NumberSequence_Kind CHECK (Kind IN ('ORDER','INVOICE','PACKAGE','PACKBATCH','WORKORDER','TRIP','RECEIPT','CYCLECOUNT','CROSSDOCK','PURCHASE','RENTAL','RENTALRETURN','MANUALISSUE','MULTIADJUST','SALESORDER'));
+END
+GO
+
+-- Dominio de estatus SalesOrderStatus y sus estatus
+MERGE dbo.CatalogDomain AS t
+USING (SELECT N'SalesOrderStatus' AS DomainKey) AS s ON t.DomainKey = s.DomainKey
+WHEN NOT MATCHED THEN
+    INSERT (DomainKey, Scope, LabelJson, IsSystem, IsActive)
+    VALUES (N'SalesOrderStatus', 2, N'{"es":"Estatus de la orden de venta","en":"Sales order status"}', 1, 1);
+GO
+MERGE dbo.StatusCode AS t
+USING (
+    SELECT v.Code, v.LabelJson, v.Color, v.Srt, v.Init, k.LookupCodeId AS StageKindLookupId
+    FROM (VALUES
+        (N'DRAFT',     N'{"es":"Borrador","en":"Draft"}',                    '#9CA3AF', 1, 1, 'PIPELINE'),
+        (N'REQUESTED', N'{"es":"Solicitada","en":"Requested"}',              '#3B82F6', 2, 0, 'PIPELINE'),
+        (N'PARTIAL',   N'{"es":"Despachada parcial","en":"Partially shipped"}', '#F59E0B', 3, 0, 'PIPELINE'),
+        (N'SHIPPED',   N'{"es":"Despachada","en":"Shipped"}',                '#10B981', 4, 0, 'TERMINAL'),
+        (N'CANCELLED', N'{"es":"Cancelada","en":"Cancelled"}',               '#6B7280', 5, 0, 'TERMINAL')
+    ) AS v (Code, LabelJson, Color, Srt, Init, Kind)
+    JOIN dbo.LookupCode k ON k.Entity = N'StageKind' AND k.InternalCode = v.Kind
+) AS s
+ON t.Entity = N'SalesOrderStatus' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, ColorHex, SortOrder, StageKindLookupId, IsInitial, IsActive)
+    VALUES (N'SalesOrderStatus', s.Code, s.LabelJson, s.Color, s.Srt, s.StageKindLookupId, s.Init, 1);
+GO
+
+-- EntityType de la bitácora y del historial de estatus
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'SALES_ORDER', N'{"es":"Orden de venta","en":"Sales order"}', 125)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+
+-- Permisos
+MERGE dbo.Permission AS t
+USING (VALUES
+    ('sales.view',      N'{"es":"Ver órdenes de venta","en":"View sales orders"}'),
+    ('sales.create',    N'{"es":"Crear, editar y solicitar órdenes de venta","en":"Create, edit and request sales orders"}'),
+    ('sales.cancel',    N'{"es":"Cancelar órdenes de venta","en":"Cancel sales orders"}'),
+    ('sales.price',     N'{"es":"Cambiar el precio en las órdenes de venta","en":"Change the price on sales orders"}'),
+    ('sales.backorder', N'{"es":"Surtir y cerrar backorders","en":"Fulfill and close backorders"}')
+) AS s (Code, LabelJson)
+ON t.Code = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES (s.Code, (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'ORDERS'), s.LabelJson, 1);
+GO
+
+-- TenantAdmin (plantilla y roles clonados): los cinco
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT r.RoleId, p.PermissionId
+FROM dbo.Role r
+JOIN dbo.Permission p ON p.Code IN ('sales.view','sales.create','sales.cancel','sales.price','sales.backorder')
+WHERE r.Name IN ('TenantAdmin')
+  AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
+GO
+-- Operador de almacén (plantilla y roles clonados): ver y surtir backorders
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT r.RoleId, p.PermissionId
+FROM dbo.Role r
+JOIN dbo.Permission p ON p.Code IN ('sales.view','sales.backorder')
+WHERE r.Name IN ('WarehouseOperator')
+  AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
+GO

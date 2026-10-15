@@ -163,6 +163,12 @@ public static class PermissionCatalog
     public const string MessagesUse = "messages.use";
     /// <summary>Lote 55 (P3): administrar impuestos (tasas, reglas, categorías de producto y exenciones de clientes).</summary>
     public const string TaxManage = "tax.manage";
+    /// <summary>Lote 57 (P4): órdenes de venta. Ver / crear, editar y solicitar / cancelar / cambiar el precio / surtir y cerrar backorders.</summary>
+    public const string SalesView = "sales.view";
+    public const string SalesCreate = "sales.create";
+    public const string SalesCancel = "sales.cancel";
+    public const string SalesPrice = "sales.price";
+    public const string SalesBackorder = "sales.backorder";
 
     public static readonly IReadOnlyList<PermissionDef> All = new List<PermissionDef>
     {
@@ -258,6 +264,11 @@ public static class PermissionCatalog
         new(NotificationsSend, "ADMIN", "Enviar avisos a otras personas", "Send notices to other people"),
         new(MessagesUse, "ADMIN", "Usar la mensajería interna", "Use internal messaging"),
         new(TaxManage, "BILLING", "Administrar impuestos (tasas, exenciones)", "Manage taxes (rates, exemptions)"),
+        new(SalesView, "ORDERS", "Ver órdenes de venta", "View sales orders"),
+        new(SalesCreate, "ORDERS", "Crear, editar y solicitar órdenes de venta", "Create, edit and request sales orders"),
+        new(SalesCancel, "ORDERS", "Cancelar órdenes de venta", "Cancel sales orders"),
+        new(SalesPrice, "ORDERS", "Cambiar el precio en las órdenes de venta", "Change the price on sales orders"),
+        new(SalesBackorder, "ORDERS", "Surtir y cerrar backorders", "Fulfill and close backorders"),
     };
 
     /// <summary>
@@ -437,7 +448,10 @@ public static class PermissionCatalog
             // El filtro por fuente de datos (§2.2) y el de módulo del servicio lo siguen acotando a WAREHOUSE.
             AnalyticsView, PulseWarehouse, PulseIndicators, PulseCharts, PulseActivity,   // Lote F8a
             PulseAttention,   // Lote 14 (D6)
-            RentalExtend, RentalReturn },   // Lote 27 (Rentas R1)
+            RentalExtend, RentalReturn,   // Lote 27 (Rentas R1)
+            SalesView, SalesBackorder },   // Lote 57: ve las órdenes de venta y surte los backorders
+        // Lote 57: quien arma las ventas (sin precio ni backorder: eso lo da el administrador)
+        ["Sales"] = new[] { SalesView, SalesCreate, SalesCancel, InventoryView, ClientsRead },
         ["Driver"] = new[] { OrdersView, CodCollect },
         ["ReadOnly"] = new[] { OrdersView, CodView, AnalyticsView, ClientsRead, LocationsRead, ContractsRead, FleetView, TripsView, InventoryView,
             PulseIndicators, PulseCharts, PulseActivity,   // Lote F8a
@@ -460,6 +474,7 @@ public static class PermissionCatalog
         ["TenantAdmin"] = ("Admin de compañía", "Tenant admin"),
         ["Dispatcher"] = ("Despachador", "Dispatcher"),
         ["Billing"] = ("Facturación", "Billing"),
+        ["Sales"] = ("Ventas", "Sales"),
         ["WarehouseOperator"] = ("Operador de almacén", "Warehouse operator"),
         ["Driver"] = ("Chofer", "Driver"),
         ["ReadOnly"] = ("Solo lectura", "Read only"),

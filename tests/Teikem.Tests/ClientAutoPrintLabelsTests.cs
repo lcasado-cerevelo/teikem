@@ -27,7 +27,7 @@ public class ClientAutoPrintLabelsTests
         var sql = File.ReadAllText(Path.Combine(DatabaseInitializer.ResolveRepoRoot(null), "Diseño", "logistica-db-update.sql")).Replace("\r\n", "\n");
         var start = sql.IndexOf("2026-10-14 (d) — «Imprimir los labels automáticamente» por cliente (Lote 48)", StringComparison.Ordinal);
         Assert.True(start > sql.IndexOf("2026-10-14 (b)", StringComparison.Ordinal), "Falta la sección 2026-10-14 (d) después de la (b).");
-        var section = sql[start..];
+        var section = SqlSections.From(sql, start);
         Assert.Contains("IF COL_LENGTH('dbo.Client', 'AutoPrintLabels') IS NULL\n    ALTER TABLE dbo.Client ADD AutoPrintLabels BIT NOT NULL CONSTRAINT DF_Client_AutoPrintLabels DEFAULT 0;", section);
         Assert.DoesNotContain("DROP ", section, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("DELETE", section, StringComparison.OrdinalIgnoreCase);

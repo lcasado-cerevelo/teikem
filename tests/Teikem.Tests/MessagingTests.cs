@@ -96,7 +96,7 @@ public class MessagingTests
         var sql = File.ReadAllText(Path.Combine(DatabaseInitializer.ResolveRepoRoot(null), "Diseño", "logistica-db-update.sql")).Replace("\r\n", "\n");
         var start = sql.IndexOf("2026-10-15 (h) — Mensajería interna con hilos (Lote 53)", StringComparison.Ordinal);
         Assert.True(start >= 0, "Falta la sección 2026-10-15 (h).");
-        return sql[start..];
+        return SqlSections.From(sql, start);
     }
 
     [Fact]
@@ -127,7 +127,7 @@ public class MessagingTests
         foreach (var (role, perms) in PermissionCatalog.RoleTemplates)
             Assert.Contains(PermissionCatalog.MessagesUse, perms);
         // el catálogo de permisos es lo que se ofrece al armar un rol nuevo: no se marca solo (el portal de clientes lo recibirá solo si el dueño lo asigna)
-        Assert.Equal(6, PermissionCatalog.RoleTemplates.Count);
+        Assert.Equal(7, PermissionCatalog.RoleTemplates.Count);   // Lote 57: + Ventas
     }
 
     [Fact]

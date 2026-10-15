@@ -8199,3 +8199,44 @@ El cálculo necesita saber qué tasa usar en lo gravable. En la pestaña **Regla
 
 **¿El simulador guarda algo?**
 No. Calcula con las reglas de la compañía y no crea ni cambia ningún documento.
+
+## Lote 57 — Órdenes de venta (borrador)
+
+**No veo «Órdenes de venta» / el API responde 403.**
+Necesita el módulo **Órdenes de venta** encendido para su compañía (Sistema → Módulos; viene apagado) y el permiso `sales.view` (ver), `sales.create` (crear y editar) o `sales.cancel` (cancelar).
+
+**«Escoja el cliente que compra.» / «Cliente no encontrado.» / «El cliente está inactivo; no se le puede vender.»**
+La orden necesita un cliente activo de su compañía. Escójalo de la lista; si está inactivo, reactívelo primero.
+
+**«Indique el almacén: la compañía tiene más de uno.»**
+Con varios almacenes activos hay que decir cuál atiende la orden. Con uno solo se usa automáticamente.
+
+**«Agregue al menos un producto a la orden.» / «Escoja el producto de cada línea.» / «Un producto no puede repetirse en la orden.»**
+La orden lleva al menos una línea, cada una con su producto, y un producto va una sola vez (sume las cantidades en una línea).
+
+**«Solo se pueden vender productos propios de la compañía.»**
+Los productos de un cliente de paso (3PL) no se venden desde aquí. Escoja un producto propio.
+
+**«El producto XXX no tiene precio de venta: escriba el precio.»**
+El producto no tiene precio de venta en su ficha. Escriba el precio en la línea (necesita el permiso de precios) o ponga el precio de venta al producto.
+
+**«Cambiar el precio exige el permiso de precios (sales.price).»**
+Solo el Admin de compañía (y quien él designe) puede vender a un precio distinto del precio de lista. Pídale al administrador el permiso o que ajuste el precio.
+
+**«La cantidad debe ser mayor que cero.» / «La cantidad admite como máximo 3 decimales.»**
+Escriba una cantidad positiva con hasta 3 decimales.
+
+**«Solo se puede editar una orden en borrador.»**
+Una orden solicitada, despachada o cancelada ya no se edita. Para cambiarla hay que cancelarla y crear otra (las órdenes solicitadas se modifican con «Modificar», en el lote siguiente).
+
+**«La orden ya está cancelada.» / «Solo se puede cancelar una orden en borrador…»**
+Una orden cancelada no se cancela otra vez; y en este lote solo se cancelan los borradores (las solicitadas, con reservas, se cancelan desde su pantalla cuando exista «Solicitar»).
+
+**¿Por qué el impuesto de mi orden no cambió cuando cambió la tasa?**
+Cada línea guarda una copia del impuesto con que se calculó. Si cambia el cliente del borrador o se vuelven a mandar las líneas, se recalcula con la tasa vigente ese día.
+
+**¿Por qué la orden sale con impuesto cero?**
+Porque el módulo **Impuestos** está apagado en su compañía, o el cliente tiene una exención vigente, o los productos son exentos. Con el módulo encendido y sin tasa configurada el sistema avisa con el mensaje correspondiente.
+
+**¿Se puede borrar una orden?**
+No. Se cancela y queda en el historial.

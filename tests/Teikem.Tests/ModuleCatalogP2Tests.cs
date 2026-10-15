@@ -23,7 +23,7 @@ public class ModuleCatalogP2Tests
         var sql = Sql();
         var start = sql.IndexOf("2026-10-14 (e) — Módulos nuevos (Lote 49, P2.3)", StringComparison.Ordinal);
         Assert.True(start > sql.IndexOf("2026-10-14 (d)", StringComparison.Ordinal), "Falta la sección 2026-10-14 (e) después de la (d).");
-        var section = sql[start..];
+        var section = SqlSections.From(sql, start);
         Assert.Contains("MERGE dbo.ModuleDefinition AS t", section);
         Assert.Contains("('SALES_ORDERS', N'Órdenes de venta', N'Sales orders'", section);
         Assert.Contains("'WMS_LOTSERIAL', 100)", section); // las ventas descuentan inventario

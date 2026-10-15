@@ -76,7 +76,7 @@ public class ScheduledJobsTests
         var sql = File.ReadAllText(Path.Combine(DatabaseInitializer.ResolveRepoRoot(null), "Diseño", "logistica-db-update.sql")).Replace("\r\n", "\n");
         var start = sql.IndexOf("2026-10-14 (f) — Trabajos programados por compañía (Lote 50, P2.2)", StringComparison.Ordinal);
         Assert.True(start > sql.IndexOf("2026-10-14 (e)", StringComparison.Ordinal), "Falta la sección 2026-10-14 (f) después de la (e).");
-        return sql[start..];
+        return SqlSections.From(sql, start);
     }
 
     [Fact]

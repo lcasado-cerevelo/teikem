@@ -201,6 +201,8 @@ internal sealed class WmsFixture : IAsyncDisposable
         foreach (var c in DamageFinalDestinations.All) L(LookupDomains.DamageFinalDestination, c);
         // 2026-10-11 (despacho manual): motivos (al final: ids previos intactos).
         foreach (var c in ManualIssueReasons.All) L(LookupDomains.ManualIssueReason, c);
+        // Lote 57 (órdenes de venta): entidad (al final: ids previos intactos).
+        L(LookupDomains.EntityType, Teikem.Domain.Sales.SalesCodes.EntityType);
         Db.LookupCodes.AddRange(all);
         Lookups.Load(all);
 
@@ -294,6 +296,12 @@ internal sealed class WmsFixture : IAsyncDisposable
         S(StatusDomains.DamageStatus, DamageStatuses.Quarantined, pipe, 2);
         S(StatusDomains.DamageStatus, DamageStatuses.Discarded, term, 3);
         S(StatusDomains.DamageStatus, DamageStatuses.Recovered, term, 4);
+        // Lote 57 (órdenes de venta): como logistica-db-update.sql (k) (al final: ids previos intactos).
+        S(Teikem.Domain.Sales.SalesCodes.StatusDomain, Teikem.Domain.Sales.SalesOrderStatuses.Draft, pipe, 1, true);
+        S(Teikem.Domain.Sales.SalesCodes.StatusDomain, Teikem.Domain.Sales.SalesOrderStatuses.Requested, pipe, 2);
+        S(Teikem.Domain.Sales.SalesCodes.StatusDomain, Teikem.Domain.Sales.SalesOrderStatuses.Partial, pipe, 3);
+        S(Teikem.Domain.Sales.SalesCodes.StatusDomain, Teikem.Domain.Sales.SalesOrderStatuses.Shipped, term, 4);
+        S(Teikem.Domain.Sales.SalesCodes.StatusDomain, Teikem.Domain.Sales.SalesOrderStatuses.Cancelled, term, 5);
         ReceiptStatusSeed.AddLateralEntries(Db, LookupId(LookupDomains.EntityType, EntityTypes.Receipt), StatusId);
 
         // 3G: WAREHOUSE_TASK CANCELLED solo desde PENDING e IN_PROGRESS.
