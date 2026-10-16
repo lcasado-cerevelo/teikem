@@ -7427,6 +7427,143 @@
     "company": "Company",
     "emptyView": "The view has no rows today."
   },
+    "billing": {
+      "title": "Billing",
+      "subtitle": "Runs that gather what was dispatched and not yet billed, review it, approve it and issue the invoices",
+      "close": "Close",
+      "allClients": "All customers",
+      "allStatuses": "All statuses",
+      "filterStatus": "Filter by status",
+      "tabs": {
+        "label": "Billing",
+        "runs": "Runs",
+        "invoices": "Invoices",
+        "settings": "Settings"
+      },
+      "col": {
+        "run": "Run",
+        "period": "Period",
+        "client": "Customer",
+        "status": "Status",
+        "invoices": "Invoices",
+        "total": "Total",
+        "generated": "Generated",
+        "number": "Invoice",
+        "subtotal": "Subtotal",
+        "tax": "Tax",
+        "issued": "Issued",
+        "due": "Due",
+        "balance": "Balance",
+        "description": "Description",
+        "qty": "Quantity",
+        "unit": "Unit amount"
+      },
+      "runStatuses": {
+        "GENERATED": "Generated",
+        "REVIEWED": "Reviewed",
+        "APPROVED": "Approved",
+        "EXPORTED": "Exported",
+        "CANCELLED": "Cancelled"
+      },
+      "invoiceStatuses": {
+        "DRAFT": "Draft",
+        "ISSUED": "Issued",
+        "PAID": "Paid",
+        "OVERDUE": "Overdue",
+        "VOID": "Void"
+      },
+      "runs": {
+        "panel": "Billing runs",
+        "empty": "There are no runs yet. Generate one with \"New run\"."
+      },
+      "invoices": {
+        "panel": "Invoices",
+        "search": "Search by number or customer",
+        "empty": "There are no invoices with those filters."
+      },
+      "new": {
+        "title": "New run",
+        "generate": "Generate",
+        "help": "Gathers what was dispatched and not billed from the sales orders and builds one draft invoice per customer. Nothing is issued until the run is approved.",
+        "client": "Customer",
+        "clientHelp": "No customer: everyone with something to bill.",
+        "from": "From",
+        "to": "To",
+        "onlyInPeriod": "Only what was dispatched within the period (otherwise everything pending up to the end date)",
+        "note": "Note"
+      },
+      "generated": "Run #{id} generated: {count} invoice(s).",
+      "run": {
+        "title": "Run #{id}",
+        "review": "Mark as reviewed",
+        "approve": "Approve and issue",
+        "cancel": "Cancel the run",
+        "reviewed": "Run #{id} reviewed.",
+        "approved": "Run #{id} approved: invoices issued.",
+        "cancelled": "Run #{id} cancelled.",
+        "cancelTitle": "Cancel run #{id}?",
+        "cancelBody": "Its invoices are voided and what they claimed goes back to unbilled.",
+        "approvedAt": "Approved",
+        "invoices": "Invoices of the run",
+        "noInvoices": "No invoices",
+        "total": "Run total: {total}",
+        "hint": {
+          "GENERATED": "Review the amounts (you can adjust a line with a reason) and mark it as reviewed.",
+          "REVIEWED": "Ready to approve: approving issues the invoices (asks for re-authentication).",
+          "APPROVED": "Approved: the invoices are issued. An invoice is corrected by voiding it.",
+          "EXPORTED": "Exported.",
+          "CANCELLED": "Cancelled: it billed nothing."
+        }
+      },
+      "invoice": {
+        "title": "Invoice {number}",
+        "lines": "Invoice lines",
+        "noLines": "No lines",
+        "totals": "Subtotal {subtotal} + tax {tax} = {total}",
+        "paid": "paid {paid}, balance {balance}",
+        "adjustHelp": "While the run is generated or reviewed you can adjust a line's unit amount (with a reason).",
+        "void": "Void the invoice",
+        "voidTitle": "Void invoice {number}?",
+        "voidBody": "What it had billed goes back to unbilled. This cannot be undone. Asks for re-authentication.",
+        "voidReason": "Reason (optional)",
+        "voided": "Invoice {number} voided."
+      },
+      "adjust": {
+        "action": "Adjust",
+        "title": "Adjust the amount",
+        "amount": "Unit amount",
+        "note": "Reason for the adjustment",
+        "save": "Save adjustment",
+        "original": "Calculated amount: {amount}"
+      },
+      "adjusted": "Adjustment saved.",
+      "adjustedChip": "Adjusted",
+      "exempt": "Exempt",
+      "errors": {
+        "period": "Enter the start and end dates.",
+        "order": "The end date cannot be before the start date.",
+        "note": "The note cannot exceed 500 characters.",
+        "adjust": {
+          "amount": "Enter the new unit amount (a number from 0 up).",
+          "decimals": "The amount allows up to 4 decimals.",
+          "note": "Enter the reason for the adjustment.",
+          "noteLong": "The reason cannot exceed 250 characters."
+        }
+      },
+      "settings": {
+        "panel": "Billing settings",
+        "trigger": "When the sold product is billed",
+        "onDispatch": "On dispatch (pickup)",
+        "onDelivery": "On delivery",
+        "triggerHelp": "On dispatch: what leaves the warehouse is billed. On delivery: only what is picked up or whose delivery was already delivered.",
+        "days": "Days until due",
+        "daysHelp": "Days between issuing an invoice and its due date (0 to 365).",
+        "daysError": "Enter a whole number from 0 to 365.",
+        "save": "Save settings",
+        "saved": "Settings saved.",
+        "readOnly": "Only those who can approve billing change these settings."
+      }
+    },
   "sales": {
     "title": "Sales orders",
     "subtitle": "what Sales asks the warehouse for: orders, reservations, backorders and client credit",

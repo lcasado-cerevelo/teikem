@@ -7427,6 +7427,143 @@
     "company": "Compañía",
     "emptyView": "La vista no tiene filas hoy."
   },
+    "billing": {
+      "title": "Facturación",
+      "subtitle": "Corridas que juntan lo despachado y no facturado, lo revisan, lo aprueban y emiten las facturas",
+      "close": "Cerrar",
+      "allClients": "Todos los clientes",
+      "allStatuses": "Todos los estatus",
+      "filterStatus": "Filtrar por estatus",
+      "tabs": {
+        "label": "Facturación",
+        "runs": "Corridas",
+        "invoices": "Facturas",
+        "settings": "Ajustes"
+      },
+      "col": {
+        "run": "Corrida",
+        "period": "Período",
+        "client": "Cliente",
+        "status": "Estatus",
+        "invoices": "Facturas",
+        "total": "Total",
+        "generated": "Generada",
+        "number": "Factura",
+        "subtotal": "Subtotal",
+        "tax": "Impuesto",
+        "issued": "Emitida",
+        "due": "Vence",
+        "balance": "Saldo",
+        "description": "Descripción",
+        "qty": "Cantidad",
+        "unit": "Monto unitario"
+      },
+      "runStatuses": {
+        "GENERATED": "Generada",
+        "REVIEWED": "Revisada",
+        "APPROVED": "Aprobada",
+        "EXPORTED": "Exportada",
+        "CANCELLED": "Cancelada"
+      },
+      "invoiceStatuses": {
+        "DRAFT": "Borrador",
+        "ISSUED": "Emitida",
+        "PAID": "Pagada",
+        "OVERDUE": "Vencida",
+        "VOID": "Anulada"
+      },
+      "runs": {
+        "panel": "Corridas de facturación",
+        "empty": "Todavía no hay corridas. Genere una con «Nueva corrida»."
+      },
+      "invoices": {
+        "panel": "Facturas",
+        "search": "Buscar por número o cliente",
+        "empty": "No hay facturas con esos filtros."
+      },
+      "new": {
+        "title": "Nueva corrida",
+        "generate": "Generar",
+        "help": "Junta lo despachado y no facturado de las órdenes de venta y arma una factura en borrador por cliente. Nada se emite hasta aprobar la corrida.",
+        "client": "Cliente",
+        "clientHelp": "Sin cliente: todos los que tengan algo por facturar.",
+        "from": "Desde",
+        "to": "Hasta",
+        "onlyInPeriod": "Solo lo despachado dentro del período (si no, entra todo lo pendiente hasta la fecha final)",
+        "note": "Nota"
+      },
+      "generated": "Corrida #{id} generada: {count} factura(s).",
+      "run": {
+        "title": "Corrida #{id}",
+        "review": "Marcar como revisada",
+        "approve": "Aprobar y emitir",
+        "cancel": "Cancelar la corrida",
+        "reviewed": "Corrida #{id} revisada.",
+        "approved": "Corrida #{id} aprobada: facturas emitidas.",
+        "cancelled": "Corrida #{id} cancelada.",
+        "cancelTitle": "¿Cancelar la corrida #{id}?",
+        "cancelBody": "Sus facturas se anulan y lo que reclamaron vuelve a quedar por facturar.",
+        "approvedAt": "Aprobada",
+        "invoices": "Facturas de la corrida",
+        "noInvoices": "Sin facturas",
+        "total": "Total de la corrida: {total}",
+        "hint": {
+          "GENERATED": "Revise los montos (puede ajustar una línea con un motivo) y márquela como revisada.",
+          "REVIEWED": "Lista para aprobar: al aprobar se emiten las facturas (pide reautenticación).",
+          "APPROVED": "Aprobada: las facturas están emitidas. Una factura se corrige anulándola.",
+          "EXPORTED": "Exportada.",
+          "CANCELLED": "Cancelada: no facturó nada."
+        }
+      },
+      "invoice": {
+        "title": "Factura {number}",
+        "lines": "Líneas de la factura",
+        "noLines": "Sin líneas",
+        "totals": "Subtotal {subtotal} + impuesto {tax} = {total}",
+        "paid": "pagado {paid}, saldo {balance}",
+        "adjustHelp": "Mientras la corrida esté generada o revisada puede ajustar el monto unitario de una línea (con un motivo).",
+        "void": "Anular la factura",
+        "voidTitle": "¿Anular la factura {number}?",
+        "voidBody": "Lo que había facturado vuelve a quedar por facturar. No se puede deshacer. Pide reautenticación.",
+        "voidReason": "Motivo (opcional)",
+        "voided": "Factura {number} anulada."
+      },
+      "adjust": {
+        "action": "Ajustar",
+        "title": "Ajustar el monto",
+        "amount": "Monto unitario",
+        "note": "Motivo del ajuste",
+        "save": "Guardar ajuste",
+        "original": "Monto calculado: {amount}"
+      },
+      "adjusted": "Ajuste guardado.",
+      "adjustedChip": "Ajustada",
+      "exempt": "Exento",
+      "errors": {
+        "period": "Indique la fecha inicial y la final.",
+        "order": "La fecha final no puede ser anterior a la inicial.",
+        "note": "La nota no puede pasar de 500 caracteres.",
+        "adjust": {
+          "amount": "Escriba el nuevo monto unitario (un número de 0 en adelante).",
+          "decimals": "El monto admite hasta 4 decimales.",
+          "note": "Escriba el motivo del ajuste.",
+          "noteLong": "El motivo no puede pasar de 250 caracteres."
+        }
+      },
+      "settings": {
+        "panel": "Ajustes de facturación",
+        "trigger": "Cuándo se factura el producto vendido",
+        "onDispatch": "Al despachar (recoger)",
+        "onDelivery": "Al entregar",
+        "triggerHelp": "Al despachar: se factura lo que sale del almacén. Al entregar: solo lo que se retira o cuya entrega ya se entregó.",
+        "days": "Días para el vencimiento",
+        "daysHelp": "Días entre la emisión de una factura y su vencimiento (0 a 365).",
+        "daysError": "Escriba un número entero de 0 a 365.",
+        "save": "Guardar ajustes",
+        "saved": "Ajustes guardados.",
+        "readOnly": "Solo quien puede aprobar la facturación cambia estos ajustes."
+      }
+    },
   "sales": {
     "title": "Órdenes de venta",
     "subtitle": "lo que Ventas le pide al almacén: pedidos, reservas, backorders y crédito del cliente",
