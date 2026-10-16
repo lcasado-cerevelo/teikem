@@ -194,3 +194,15 @@ Pantalla **Órdenes de venta** del aparato (la ficha técnica de la app está en
 - **Al terminar:** *Retiro* (el cliente recoge), *Entrega* (pide los bultos; solo si la orden tiene consignatario; el cliente y el consignatario salen de la orden, el servicio y el cobro de los valores de la compañía) o *Dejar para después* (queda recolectado; la entrega se crea después desde la web, sección 11).
 - **Sin señal:** el despacho se guarda en la cola de salida («Despacho de orden de venta» en Sincronización) y la existencia local baja de inmediato; el servidor lo valida al sincronizar. Si lo rechaza, el aparato muestra el mensaje exacto del servidor, quita la fila de la cola, devuelve la existencia y vuelve a bajar la orden.
 - **Despacho + entrega** viajan en **una sola llamada** (sección 12): si la entrega falla, no sale el inventario.
+
+## 15. Avisos de ventas (Lote 66)
+
+Las órdenes de venta publican cinco avisos (solicitada, despachada, cancelada, crédito por autorizar y backorder surtible) sobre el motor de avisos: ver la
+tabla en [14 — Avisos §3.1](14-avisos.md#31-eventos-de-las-órdenes-de-venta-lote-66). Para recibirlos hay que crear la regla en **Sistema → Reglas de aviso**
+(permiso `notifications.manage`) y elegir destinatarios y canal; sin regla no llega nada (no se siembra ninguna).
+
+- **Crédito:** la petición de autorización sale al fallar la solicitud con `El cliente excede su límite de crédito…` (422); quien tenga el permiso de autorizar
+  crédito (`orders.credit_override`) solicita de nuevo marcando la autorización. El aviso sirve para que esa persona se entere sin que se lo pidan de palabra.
+- **Backorder surtible:** el aviso **no surte**; quien tenga `sales.backorder` surte desde la vista Backorders (sección 9). El modo automático queda para más adelante.
+- **Un aviso nunca deshace la operación:** si el correo falla, la orden queda igual y el aviso se reintenta (1, 5 y 30 minutos).
+- **Soporte:** los avisos quedan en el registro de envíos (Sistema → Reglas de aviso → Registro) por evento y destinatario; el trabajo `SALES_BACKORDER_SCAN` y su historial se ven en Sistema → Trabajos programados.

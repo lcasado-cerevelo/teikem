@@ -6,6 +6,7 @@ using Teikem.Domain.Sales;
 using Teikem.Domain.Wms;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
+using Teikem.Infrastructure.Notifications;
 using Teikem.Infrastructure.Persistence;
 using Teikem.Infrastructure.Wms;
 
@@ -68,7 +69,11 @@ public sealed partial class SalesOrderService
         var overridden = false;
         if (!CreditRules.Evaluate(check).Ok)
         {
-            if (req.OverrideCredit != true) throw new CreditExceededException(check, CreditRules.Evaluate(check).Available);
+            if (req.OverrideCredit != true)
+            {
+                await NotifyCreditNeededAsync(peek, check, ct);   // lote 66: quien autoriza se entera
+                throw new CreditExceededException(check, CreditRules.Evaluate(check).Available);
+            }
             await permissions.EnsureAsync(OrderStatusService.CreditOverridePermission, ct);
             overridden = true;
             comment = OrderStatusService.CreditOverrideCommentPrefix + await CurrentUserNameAsync(ct)
@@ -107,6 +112,7 @@ public sealed partial class SalesOrderService
                     var to = await statuses.TransitionAsync(SalesCodes.StatusDomain, SalesCodes.EntityType, order.SalesOrderId, order.StatusCodeId, SalesOrderStatuses.Requested, comment, ct2);
                     order.StatusCodeId = to.StatusCodeId;
                     order.RequestedAtUtc = DateTime.UtcNow;
+                    await NotifyRequestedAsync(order, ct2);
                     await db.SaveGuardedAsync(SalesRules.Concurrency, ct2);
                 }, ct);
                 break;
@@ -141,6 +147,7 @@ public sealed partial class SalesOrderService
             if (code == SalesOrderStatuses.Requested) await ReleaseAllAsync(order, ct2);
             var to = await statuses.TransitionAsync(SalesCodes.StatusDomain, SalesCodes.EntityType, order.SalesOrderId, order.StatusCodeId, SalesOrderStatuses.Cancelled, comment, ct2);
             order.StatusCodeId = to.StatusCodeId;
+            await NotifyOrderAsync(SalesEventCodes.OrderCancelled, order, new Dictionary<string, string?> { ["reason"] = string.IsNullOrWhiteSpace(comment) ? string.Empty : comment.Trim() }, null, ct2);
             await db.SaveGuardedAsync(SalesRules.Concurrency, ct2);
         }, ct);
         return await GetAsync(publicId, ct);

@@ -83,3 +83,30 @@ public sealed class TestJob : IScheduledJob
 
     public Task<string?> RunAsync(JobRunContext context, CancellationToken ct) => Task.FromResult<string?>("Prueba completada.");
 }
+
+/// <summary>
+/// Lote 66 (P4 S3) — avisa cuando un backorder de una orden de venta ya se puede surtir (entró inventario por cualquier vía). Cada 10 minutos. Si el módulo de órdenes
+/// de venta está apagado no hace nada. Solo avisa (no surte solo: el modo automático de backorder queda para después).
+/// </summary>
+public sealed class SalesBackorderScanJob : IScheduledJob
+{
+    public string Key => JobKeys.SalesBackorderScan;
+    public string NameEs => "Avisar backorders que ya se pueden surtir";
+    public string NameEn => "Notify backorders ready to fulfill";
+    public string DescriptionEs => "Revisa las órdenes de venta con backorder y avisa (evento «Backorder que ya se puede surtir») cuando hay inventario disponible para surtirlas.";
+    public string DescriptionEn => "Checks sales orders with backorder and notifies (event \"Backorder ready to fulfill\") when stock is available to fulfill them.";
+    public string DefaultKind => JobScheduleKinds.Interval;
+    public int? DefaultIntervalSeconds => 600;
+    public TimeSpan? DefaultDailyAt => null;
+    public bool DefaultEnabled => true;
+    public TimeSpan MaxRuntime => TimeSpan.FromMinutes(5);
+
+    public async Task<string?> RunAsync(JobRunContext context, CancellationToken ct)
+    {
+        var modules = context.Services.GetRequiredService<ModuleService>();
+        if (!await modules.IsEnabledAsync(ModuleKeys.SalesOrders, ct)) return "El módulo de órdenes de venta está apagado; no se hizo nada.";
+        var sales = context.Services.GetRequiredService<SalesOrderService>();
+        var sent = await sales.NotifyFulfillableBackordersAsync(ct);
+        return sent == 0 ? "Ningún backorder nuevo por avisar." : $"{sent} orden(es) con backorder surtible avisadas.";
+    }
+}

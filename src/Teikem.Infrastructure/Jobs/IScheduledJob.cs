@@ -31,4 +31,5 @@ public static class JobKeys
     public const string RunPurge = "JOB_RUN_PURGE";
     public const string InventorySweep = "INVENTORY_SWEEP";
     public const string Test = "JOB_TEST";
+    public const string SalesBackorderScan = "SALES_BACKORDER_SCAN";
 }

@@ -19,6 +19,7 @@ dentro del API (sin programas externos).
 | `JOB_RUN_PURGE` | **Limpiar el historial de trabajos**: conserva las últimas 100 corridas de cada trabajo y borra las más viejas (solo historial, nunca datos del negocio). | Todos los días 3:00 a. m. | Sí |
 | `INVENTORY_SWEEP` | **Revisión diaria de inventario**: compara todo el Kárdex contra los saldos y abre descuadres si algo no cuadra (el barrido completo del Lote 14). Si el módulo de inventario está apagado no hace nada. | Todos los días 2:00 a. m. | Sí |
 | `JOB_TEST` | **Trabajo de prueba**: no hace nada; sirve para probar «Ejecutar ahora» y el historial. | Cada hora | No |
+| `SALES_BACKORDER_SCAN` | **Avisar backorders que ya se pueden surtir** (Lote 66): revisa las órdenes de venta con backorder y publica el aviso «Backorder que ya se puede surtir» cuando hay inventario disponible. Solo avisa; no surte solo. Si el módulo Órdenes de venta está apagado no hace nada. | Cada 10 minutos | Sí |
 
 Las horas diarias son **hora de Puerto Rico** (la de la compañía). Los trabajos nuevos de versiones futuras aparecen solos en la lista, con
 su horario de fábrica; **lo que usted cambie (interruptor u horario) nunca se pisa**.

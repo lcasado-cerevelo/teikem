@@ -8357,3 +8357,21 @@ La entrega necesita que la orden tenga consignatario; si no lo tiene, solo ofrec
 
 **¿En qué se diferencian «Retiro» y «Dejar para después»?**
 El servidor hace lo mismo (recolecta y baja el inventario, sin entrega); «Retiro» es que el cliente recoge y ahí termina; «Dejar para después» significa que la entrega se creará más tarde desde la web.
+
+
+## Lote 66 — Avisos de ventas
+
+**Creé una orden y nadie recibió aviso.**
+No viene ninguna regla armada. El administrador la crea en Sistema → Reglas de aviso: evento «Orden de venta solicitada», destinatarios (rol, usuario o correo) y el canal encendido (Correo o App). Revise también el registro de envíos: un destinatario sin correo queda en «Omitido» con el motivo.
+
+**Me avisó del crédito pero ya autoricé la orden.**
+El aviso sale cuando alguien intenta solicitar la orden y excede el crédito; ya estaba anotado. No se repite mientras el límite, lo en curso y el monto no cambien.
+
+**«Backorder que ya se puede surtir» tardó unos minutos.**
+Lo detecta un trabajo que corre cada 10 minutos (Sistema → Trabajos programados → «Avisar backorders que ya se pueden surtir»; se puede usar «Ejecutar ahora»). Si el trabajo está apagado o el módulo Órdenes de venta está apagado, no avisa.
+
+**El aviso dice que hay inventario, pero Surtir no reservó todo.**
+El aviso usa lo disponible para vender en ese momento; otra orden más antigua puede haberlo tomado antes. Surtir reserva lo que haya, de la orden más antigua a la más reciente.
+
+**Quiero dejar de recibir los avisos de órdenes despachadas.**
+Silencie el evento en su bandeja (los de ventas son opcionales, salvo el de crédito por autorizar).

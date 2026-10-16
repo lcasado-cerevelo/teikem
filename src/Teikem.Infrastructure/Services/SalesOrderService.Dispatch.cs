@@ -6,6 +6,7 @@ using Teikem.Domain.Wms;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
+using Teikem.Infrastructure.Notifications;
 using Teikem.Infrastructure.Persistence;
 using Teikem.Infrastructure.Wms;
 
@@ -261,5 +262,10 @@ public sealed partial class SalesOrderService
         var text = target == SalesOrderStatuses.Cancelled ? "Todas las líneas se cerraron con faltante y no se despachó nada." : comment;
         var to = await statuses.TransitionAsync(SalesCodes.StatusDomain, SalesCodes.EntityType, order.SalesOrderId, order.StatusCodeId, target, text, ct);
         order.StatusCodeId = to.StatusCodeId;
+        // lote 66: orden despachada por completo / cancelada sola (todo cerrado con faltante); en la misma transacción de quien llama
+        if (target == SalesOrderStatuses.Shipped)
+            await NotifyOrderAsync(SalesEventCodes.OrderShipped, order, new Dictionary<string, string?> { ["shipped"] = Qty(order.Lines.Sum(l => l.QtyShipped)) }, null, ct);
+        else if (target == SalesOrderStatuses.Cancelled)
+            await NotifyOrderAsync(SalesEventCodes.OrderCancelled, order, new Dictionary<string, string?> { ["reason"] = text }, null, ct);
     }
 }

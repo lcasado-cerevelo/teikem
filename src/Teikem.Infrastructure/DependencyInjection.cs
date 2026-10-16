@@ -262,6 +262,7 @@ public static class DependencyInjection
         services.AddSingleton<IScheduledJob, JobRunPurgeJob>();
         services.AddSingleton<IScheduledJob, InventorySweepJob>();
         services.AddSingleton<IScheduledJob, TestJob>();
+        services.AddSingleton<IScheduledJob, SalesBackorderScanJob>();   // Lote 66
         services.AddSingleton<ScheduledJobRunner>();
         services.AddHostedService<ScheduledJobWorker>();
         services.AddScoped<ScheduledJobService>();
@@ -271,6 +272,7 @@ public static class DependencyInjection
         // y los servicios de las reglas y de la bandeja.
         services.Configure<NotificationsOptions>(config.GetSection(NotificationsOptions.Section));
         services.AddSingleton<INotificationEventProvider, TestEventProvider>();
+        services.AddSingleton<INotificationEventProvider, SalesEventProvider>();   // Lote 66
         services.AddSingleton<NotificationEventCatalog>();
         services.AddScoped<INotificationPublisher, NotificationPublisher>();
         services.AddScoped<INotificationChannelSender, EmailChannelSender>();

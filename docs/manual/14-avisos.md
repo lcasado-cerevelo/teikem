@@ -27,6 +27,23 @@ Cada módulo define los suyos en código (con sus variables y textos por omisió
 `{message}` (mensaje) y `{user}` (quién lo disparó). Se dispara con `POST /api/v1/notifications/test-event` y lo reciben las reglas
 **activas** de ese evento. Un evento **opcional** puede silenciarse en la bandeja de cada usuario.
 
+### 3.1 Eventos de las órdenes de venta (Lote 66)
+
+Módulo **Órdenes de venta** (los eventos existen siempre; solo se disparan si la compañía usa el módulo). **No viene ninguna regla armada**: el administrador
+las crea en Sistema → Reglas de aviso, eligiendo a quién y por qué canal. Todos se pueden silenciar en la bandeja de cada usuario **salvo el de crédito**.
+
+| Evento (código) | Cuándo se dispara | Variables |
+|---|---|---|
+| **Orden de venta solicitada** (`SALES_ORDER_REQUESTED`) | Al solicitar una orden (validada y reservada). | `{orderNumber}` `{client}` `{warehouse}` `{lineCount}` `{detail}` (si quedó algo en backorder) |
+| **Orden de venta despachada** (`SALES_ORDER_SHIPPED`) | Cuando la orden queda despachada **por completo** (un despacho parcial no avisa). | `{orderNumber}` `{client}` `{warehouse}` `{shipped}` (unidades) |
+| **Orden de venta cancelada** (`SALES_ORDER_CANCELLED`) | Al cancelarla, y también cuando se cancela sola porque todas sus líneas se cerraron con faltante sin despachar nada. | `{orderNumber}` `{client}` `{warehouse}` `{reason}` |
+| **Orden de venta necesita autorizar crédito** (`SALES_CREDIT_OVERRIDE_NEEDED`) | Cuando alguien intenta solicitar una orden que excede el crédito del cliente y no la autoriza. Una vez por situación (el mismo intento repetido no avisa otra vez; si cambia el límite, lo en curso o el monto, sí). | `{orderNumber}` `{client}` `{warehouse}` `{user}` `{limit}` `{exposure}` `{amount}` |
+| **Backorder que ya se puede surtir** (`SALES_BACKORDER_AVAILABLE`) | Cuando hay inventario disponible para vender que alcanza para surtir líneas con backorder. Una vez por orden y situación (si entra más, o cambia lo surtible, vuelve a avisar). | `{orderNumber}` `{client}` `{warehouse}` `{lines}` (p. ej. «MED × 3, VIT × 2») `{lineCount}` |
+
+Los cuatro primeros salen **en la misma operación** que los causa (si la operación se revierte, no se avisa). El de backorder lo detecta un trabajo programado
+(`SALES_BACKORDER_SCAN`, [capítulo 13](13-trabajos-programados.md)) cada 10 minutos: cubre **cualquier forma** en que entra inventario (recibo, ajuste,
+transferencia, liberar cuarentena, cancelar otra orden), sin tocar esos módulos.
+
 ## 4. Las reglas
 
 Una regla = **un evento** + **un nombre** (único en la compañía, hasta 100 caracteres) + **canales** + **destinatarios**.
