@@ -2262,6 +2262,54 @@ recepciones sigue protegida (no se elimina, no baja de lo recibido, no cambia de
 
 ---
 
+## 8b. Kits (Lote 68, 2026-10-16)
+
+Un **kit** es un producto que se arma al pedir con otros productos (por ejemplo, «Kit de limpieza» = 2 desinfectantes + 1 trapeador). **No tiene existencia ni movimientos
+propios**: todo pasa en sus componentes. Este lote deja listo el catálogo; usar los kits en las órdenes de venta y en la recolección es del siguiente (ver
+[18 — Órdenes de venta](18-ordenes-de-venta.md) cuando se publique).
+
+### 8b.1 Quién y dónde
+
+- Ver el kit de un producto: `inventory.view`. Convertir en kit, cambiar componentes o volver a producto normal: `inventory.manage`. Módulo de inventario (`WMS_LOTSERIAL`).
+- Pantalla: **Productos e inventario → el producto → pestaña «Kit»**. La lista de productos marca los kits con un distintivo «Kit».
+- API: `GET /api/v1/products/{publicId}/kit` y `PUT /api/v1/products/{publicId}/kit`.
+
+### 8b.2 Cómo se usa
+
+1. Abra el producto → pestaña **Kit** → **Convertir en kit**.
+2. Escoja los componentes (producto y **cantidad por kit**; admite decimales) y, si quiere, marque **Ajustable al pedir** (en una orden se podrán cambiar sus piezas sin tocar el catálogo).
+3. **Guardar kit.** La pestaña muestra los componentes y, por almacén, **«se pueden armar N»**: el menor cociente entre lo *disponible para vender* de cada componente y su cantidad
+   por kit, hacia abajo. «Disponible para vender» es la misma cuenta de las órdenes de venta (sin cuarentena, cruce de plataforma ni renta).
+4. **Editar componentes** reemplaza la lista; **Volver a producto normal** quita los componentes.
+
+### 8b.3 Reglas y mensajes
+
+| Situación | Mensaje | HTTP |
+|---|---|---|
+| Sin componentes | `Un kit necesita al menos un componente.` | 400 |
+| Más de 50 componentes | `Un kit lleva como máximo 50 componentes.` | 400 |
+| Cantidad de un componente 0 o vacía | `La cantidad de cada componente debe ser mayor que cero.` | 400 |
+| Producto repetido | `El componente {SKU} está repetido.` | 400 |
+| El kit como componente de sí mismo | `El kit {SKU} no puede ser componente de sí mismo.` | 400 |
+| Un componente que ya es kit | `{SKU} es un kit: un kit no puede llevar otro kit como componente.` | 400 |
+| Componente inactivo | `El componente {SKU} está inactivo.` | 400 |
+| Componente de otro dueño de inventario | `El componente {SKU} es de otro dueño de inventario que el kit.` | 400 |
+| Producto con rastreo por lote o serie | `Un kit no se rastrea por lote ni serie.` | 400 |
+| Componente que no existe | `Componente no encontrado.` | 404 |
+| Convertir un producto con existencia o reservas | `{SKU} tiene existencia: no se puede convertir en kit mientras tenga existencia o reservas.` | 409 |
+| Convertir un producto que es componente de otro kit | `{SKU} es componente de otro kit: no puede ser un kit.` | 409 |
+| Volver normal un producto que no es kit | `El producto {SKU} no es un kit.` | 409 |
+| Volver normal un kit que ya se usó en órdenes de venta | `El kit {SKU} ya se usó en órdenes de venta: no se puede volver un producto normal.` | 409 |
+| Recibir, ajustar o mover existencia del kit | `{SKU} es un kit: no tiene existencia propia. Los movimientos se hacen sobre sus componentes.` | 400 |
+
+Además: un kit nunca aparece en los conteos (no tiene saldos) y no puede tener existencia; sus componentes son productos normales y activos **del mismo dueño** de inventario.
+
+### 8b.4 Para soporte
+
+- Tabla `ProductKitComponent` (kit → componente → cantidad, único por par) y columnas `Product.ProductTypeLookupId` (catálogo `ProductType`: STANDARD / KIT; NULL = normal) y
+  `Product.KitAdjustable`, sección **2026-10-16 (p)** de `Diseño/logistica-db-update.sql`.
+- El cambio de tipo del producto queda en la bitácora del producto; los cambios de componentes también (con el tipo de entidad del producto).
+
 ## 9. Cruce de plataforma (demo): citas y planes
 
 Qué hace: agenda citas de plataforma (llegada/salida) y arma planes de cruce de plataforma que asignan líneas de recibos

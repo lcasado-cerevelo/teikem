@@ -764,6 +764,7 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
             : await db.Set<ProductCategory>().AsNoTracking().Where(c => categoryIds.Contains(c.ProductCategoryId))
                 .ToDictionaryAsync(c => c.ProductCategoryId, c => c.Name, ct);
 
+        var kitTypeId = products.Any(x => x.ProductTypeLookupId != null) ? await lookups.TryGetIdAsync(KitCodes.ProductTypeDomain, ProductTypes.Kit, ct) : null;   // Lote 68
         var items = new List<ProductListItemDto>(products.Count);
         foreach (var p in products)
         {
@@ -776,7 +777,8 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
                 await CodeAsync(p.BaseUomLookupId, ct), await CodeAsync(p.TrackingTypeLookupId, ct),
                 p.Barcode, p.PurchaseCost, p.SalePrice,
                 t.OnHand, t.Reserved, available, p.MinQty, ProductRules.IsBelowMin(p.MinQty, available, p.IsActive), p.IsActive,
-                p.Brand, p.Model, p.PackUomLookupId is int pu ? await CodeAsync(pu, ct) : null, p.PackUomLookupId is int pn ? await LabelAsync(pn, ct) : null, p.PackQty));
+                p.Brand, p.Model, p.PackUomLookupId is int pu ? await CodeAsync(pu, ct) : null, p.PackUomLookupId is int pn ? await LabelAsync(pn, ct) : null, p.PackQty,
+                kitTypeId is not null && p.ProductTypeLookupId == kitTypeId));
         }
         return items;
     }

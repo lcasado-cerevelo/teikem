@@ -109,7 +109,15 @@ public sealed class InventoryLedger(TeikemDbContext db, ITenantContext tenant, I
         // 4. Producto, lote, posición y almacén (después de bloquear).
         var productIds = postings.Select(p => p.ProductId).Distinct().ToList();
         var products = await db.Products.AsNoTracking().Where(p => productIds.Contains(p.ProductId))
-            .Select(p => new { p.ProductId, p.Sku, p.IsActive }).ToDictionaryAsync(p => p.ProductId, ct);
+            .Select(p => new { p.ProductId, p.Sku, p.IsActive, p.ProductTypeLookupId }).ToDictionaryAsync(p => p.ProductId, ct);
+        // Lote 68: un kit no tiene existencia propia (todo pasa en sus componentes)
+        if (products.Values.Any(p => p.ProductTypeLookupId != null))
+        {
+            var kitTypeId = await lookups.TryGetIdAsync(KitCodes.ProductTypeDomain, ProductTypes.Kit, ct);
+            for (var i = 0; i < postings.Count; i++)
+                if (products.TryGetValue(postings[i].ProductId, out var kp) && kitTypeId is not null && kp.ProductTypeLookupId == kitTypeId)
+                    throw new ValidationException($"postings[{i}]", KitRules.KitHasNoStock(kp.Sku));
+        }
         var lotIds = postings.Where(p => p.LotId.HasValue).Select(p => p.LotId!.Value).Distinct().ToList();
         var lots = await db.InventoryLots.AsNoTracking().Where(l => lotIds.Contains(l.LotId))
             .Select(l => new { l.LotId, l.ProductId }).ToDictionaryAsync(l => l.LotId, ct);

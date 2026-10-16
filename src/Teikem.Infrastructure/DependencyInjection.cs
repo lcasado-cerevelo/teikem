@@ -395,6 +395,7 @@ public static class DependencyInjection
         // con el módulo Rentas encendido (IDataSource.TenantModule), y el aviso de rentas vencidas o por vencer en "Necesita tu atención".
         services.AddScoped<IDataSource, RentalDataSource>();
         services.AddScoped<IDataSource, RentalReturnDataSource>();
+        services.AddScoped<KitService>();   // Lote 68
         services.AddScoped<IDataSource, SalesOrderDataSource>();        // Lote 67: órdenes de venta
         services.AddScoped<IDataSource, SalesOrderLineDataSource>();
         services.AddScoped<IDataSource, RentalProcessDataSource>();

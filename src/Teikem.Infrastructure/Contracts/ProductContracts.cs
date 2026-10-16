@@ -62,7 +62,7 @@ public sealed record ProductListQuery(string? Search = null, int[]? CategoryIds 
 public sealed record ProductListItemDto(int Id, Guid PublicId, string Sku, string Name, int? CategoryId, string? CategoryName,
     Guid? OwnerClientPublicId, string? OwnerName, bool IsOwn, string BaseUomCode, string TrackingTypeCode, string? Barcode,
     decimal? PurchaseCost, decimal? SalePrice, decimal QtyOnHand, decimal QtyReserved, decimal QtyAvailable, decimal? MinQty,
-    bool IsBelowMin, bool IsActive, string? Brand, string? Model, string? PackUomCode = null, string? PackUomName = null, decimal? PackQty = null);
+    bool IsBelowMin, bool IsActive, string? Brand, string? Model, string? PackUomCode = null, string? PackUomName = null, decimal? PackQty = null, bool IsKit = false);
 
 public sealed record ProductPageDto(int Total, int Skip, int Take, IReadOnlyList<ProductListItemDto> Items);
 

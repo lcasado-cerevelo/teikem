@@ -203,6 +203,9 @@ internal sealed class WmsFixture : IAsyncDisposable
         foreach (var c in ManualIssueReasons.All) L(LookupDomains.ManualIssueReason, c);
         // Lote 57 (órdenes de venta): entidad (al final: ids previos intactos).
         L(LookupDomains.EntityType, Teikem.Domain.Sales.SalesCodes.EntityType);
+        // Lote 68 (kits): tipo de producto (al final: ids previos intactos).
+        L(Teikem.Domain.Wms.KitCodes.ProductTypeDomain, Teikem.Domain.Wms.ProductTypes.Standard);
+        L(Teikem.Domain.Wms.KitCodes.ProductTypeDomain, Teikem.Domain.Wms.ProductTypes.Kit);
         Db.LookupCodes.AddRange(all);
         Lookups.Load(all);
 

@@ -138,8 +138,24 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         b.HasIndex(p => new { p.TenantId, p.Barcode }).IsUnique().HasFilter("[Barcode] IS NOT NULL AND [IsActive] = 1").HasDatabaseName("UX_Product_Barcode");
 
         b.HasOne<Teikem.Domain.Clients.Client>().WithMany().HasForeignKey(p => p.ClientId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<Teikem.Domain.Catalogs.LookupCode>().WithMany().HasForeignKey(p => p.ProductTypeLookupId).OnDelete(DeleteBehavior.NoAction);   // Lote 68
         b.HasOne<ProductCategory>().WithMany().HasForeignKey(p => p.ProductCategoryId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<Warehouse>().WithMany().HasForeignKey(p => p.PreferredWarehouseId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<WarehouseBin>().WithMany().HasForeignKey(p => p.PreferredBinId).OnDelete(DeleteBehavior.NoAction);
+    }
+}
+
+/// <summary>Lote 68 — componente de un kit (tabla ProductKitComponent, sección 2026-10-16 (p) de update.sql).</summary>
+public sealed class ProductKitComponentConfiguration : IEntityTypeConfiguration<ProductKitComponent>
+{
+    public void Configure(EntityTypeBuilder<ProductKitComponent> b)
+    {
+        b.ToTable("ProductKitComponent");
+        b.HasKey(c => c.ProductKitComponentId);
+        b.Property(c => c.Quantity).HasColumnType("decimal(16,3)");
+        b.HasIndex(c => new { c.KitProductId, c.ComponentProductId }).IsUnique().HasDatabaseName("UQ_ProductKitComponent");
+        b.HasIndex(c => c.ComponentProductId).HasDatabaseName("IX_ProductKitComponent_Component");
+        b.HasOne<Product>().WithMany().HasForeignKey(c => c.KitProductId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<Product>().WithMany().HasForeignKey(c => c.ComponentProductId).OnDelete(DeleteBehavior.NoAction);
     }
 }

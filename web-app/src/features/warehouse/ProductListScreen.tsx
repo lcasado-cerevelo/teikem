@@ -245,7 +245,15 @@ function ProductsTab() {
     const num = (n: number | null | undefined) => <span className="mono">{formatNumber(n ?? 0, lang)}</span>
     return [
       // Orden en el cliente: la lista es paginada por el servidor (sin parámetro de orden), así que solo reacomoda la página visible.
-      { id: 'sku', header: t('warehouse.products.columns.sku'), cell: (p) => <span className="ref">{p.sku}</span>, sortValue: (p) => p.sku, card: 'title' },
+      { id: 'sku', header: t('warehouse.products.columns.sku'), cell: (p) => (
+          <>
+            <span className="ref">{p.sku}</span>
+            {p.isKit && <> <Chip tone="neutral">{t('warehouse.products.kit.chip')}</Chip></>}
+          </>
+        ),
+        sortValue: (p) => p.sku,
+        card: 'title',
+      },
       { id: 'name', header: t('warehouse.products.columns.product'), cell: (p) => p.name, sortValue: (p) => p.name },
       { id: 'category', header: t('warehouse.products.columns.category'), cell: (p) => p.categoryName ?? '', sortValue: (p) => p.categoryName },
       {

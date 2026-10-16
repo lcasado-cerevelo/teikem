@@ -57,6 +57,10 @@ public class Product : ITenantScoped, ISoftDeletable
     public string? Brand { get; set; }
     /// <summary>Lote 12: modelo en texto libre (NVARCHAR(100), recortado; vacío = NULL).</summary>
     public string? Model { get; set; }
+    /// <summary>Lote 68: tipo de producto (LookupCode ProductType: STANDARD / KIT). NULL = producto normal.</summary>
+    public int? ProductTypeLookupId { get; set; }
+    /// <summary>Lote 68: kit «ajustable al pedir» — en una orden de venta se pueden cambiar sus piezas sin tocar el catálogo.</summary>
+    public bool KitAdjustable { get; set; }
     public bool IsActive { get; set; } = true;
     [NotAudited] public byte[]? RowVersion { get; set; }
 }

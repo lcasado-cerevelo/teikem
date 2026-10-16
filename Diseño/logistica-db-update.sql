@@ -2903,3 +2903,49 @@ WHEN NOT MATCHED THEN
     INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
     VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-16 (p) — Kits (Lote 68, P4-T). Un kit es un producto que se arma al pedir con otros productos y NO tiene existencia ni movimientos propios.
+   - Catálogo ProductType (STANDARD / KIT) y dbo.Product.ProductTypeLookupId (NULL = producto normal) + dbo.Product.KitAdjustable (el kit se puede ajustar al pedir).
+   - dbo.ProductKitComponent: kit -> componente -> cantidad (único por par; sin kits dentro de kits lo valida el servicio).
+   Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+MERGE dbo.CatalogDomain AS t
+USING (SELECT N'ProductType' AS DomainKey) AS s ON t.DomainKey = s.DomainKey
+WHEN NOT MATCHED THEN
+    INSERT (DomainKey, Scope, LabelJson, IsSystem, IsActive)
+    VALUES (N'ProductType', 1, N'{"es":"Tipo de producto","en":"Product type"}', 1, 1);
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'STANDARD', N'{"es":"Producto","en":"Product"}', 1),
+    (N'KIT',      N'{"es":"Kit","en":"Kit"}',          2)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'ProductType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'ProductType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+IF COL_LENGTH('dbo.Product', 'ProductTypeLookupId') IS NULL
+    ALTER TABLE dbo.Product ADD ProductTypeLookupId INT NULL CONSTRAINT FK_Product_ProductType REFERENCES dbo.LookupCode(LookupCodeId);
+GO
+IF COL_LENGTH('dbo.Product', 'KitAdjustable') IS NULL
+    ALTER TABLE dbo.Product ADD KitAdjustable BIT NOT NULL CONSTRAINT DF_Product_KitAdjustable DEFAULT 0;
+GO
+IF OBJECT_ID(N'dbo.ProductKitComponent', N'U') IS NULL CREATE TABLE dbo.ProductKitComponent (
+    ProductKitComponentId INT IDENTITY(1,1) CONSTRAINT PK_ProductKitComponent PRIMARY KEY,
+    TenantId           INT NOT NULL CONSTRAINT FK_ProductKitComponent_Tenant REFERENCES dbo.Tenant(TenantId),
+    KitProductId       INT NOT NULL CONSTRAINT FK_ProductKitComponent_Kit REFERENCES dbo.Product(ProductId),
+    ComponentProductId INT NOT NULL CONSTRAINT FK_ProductKitComponent_Component REFERENCES dbo.Product(ProductId),
+    Quantity           DECIMAL(16,3) NOT NULL,
+    SortOrder          INT NOT NULL CONSTRAINT DF_ProductKitComponent_SortOrder DEFAULT 0,
+    CONSTRAINT CK_ProductKitComponent_Qty CHECK (Quantity > 0),
+    CONSTRAINT CK_ProductKitComponent_NotSelf CHECK (KitProductId <> ComponentProductId)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_ProductKitComponent' AND object_id = OBJECT_ID('dbo.ProductKitComponent'))
+    CREATE UNIQUE INDEX UQ_ProductKitComponent ON dbo.ProductKitComponent(KitProductId, ComponentProductId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ProductKitComponent_Component' AND object_id = OBJECT_ID('dbo.ProductKitComponent'))
+    CREATE INDEX IX_ProductKitComponent_Component ON dbo.ProductKitComponent(ComponentProductId);
+GO

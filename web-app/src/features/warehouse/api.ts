@@ -117,6 +117,7 @@ export const warehouseKeys = {
   productLots: ['/api/v1/products/{publicId}/lots'],
   productSerials: ['/api/v1/products/{publicId}/serials'],
   productBrands: ['/api/v1/products/brands'],
+  productKit: ['/api/v1/products/{publicId}/kit'],
   productCategories: ['/api/v1/product-categories'],
   balances: ['/api/v1/inventory/balances'],
   transactions: ['/api/v1/inventory/transactions'],
@@ -449,6 +450,26 @@ export function useProductBrands(search = '', options?: WarehouseQueryOptions) {
     enabled: options?.enabled ?? true,
     staleTime: 60 * 1000,
     meta: { handleAccessDenied: false },
+  })
+}
+
+/** Lote 68 — `GET /api/v1/products/{publicId}/kit`: si el producto es kit, sus componentes y cuántos se pueden armar por almacén. */
+export function useKit(publicId: string | null | undefined, options?: WarehouseQueryOptions) {
+  return useQuery({
+    queryKey: [warehouseKeys.productKit[0], publicId],
+    queryFn: () => unwrap(api.GET('/api/v1/products/{publicId}/kit', { params: { path: { publicId: publicId ?? '' } } })),
+    enabled: Boolean(publicId) && (options?.enabled ?? true),
+    meta: meta(options),
+  })
+}
+
+/** Lote 68 — `PUT /api/v1/products/{publicId}/kit` (`inventory.manage`): convierte en kit / vuelve producto normal; deja la lista de productos al día. */
+export function useSetKit() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ publicId, body }: { publicId: string; body: Schemas['KitSetRequest'] }) =>
+      unwrap(api.PUT('/api/v1/products/{publicId}/kit', { params: { path: { publicId } }, body })),
+    onSuccess: () => invalidate(qc, 'products', 'product', 'productKit'),
   })
 }
 

@@ -83,6 +83,8 @@ public class WmsControllerSecurityTests
         [(typeof(ProductsController), nameof(ProductsController.ByBarcode))] = PermissionCatalog.InventoryView,   // Lote 8A
         [(typeof(ProductsController), nameof(ProductsController.Lots))] = PermissionCatalog.InventoryView,
         [(typeof(ProductsController), nameof(ProductsController.Serials))] = PermissionCatalog.InventoryView,
+        [(typeof(ProductsController), nameof(ProductsController.GetKit))] = PermissionCatalog.InventoryView,   // Lote 68
+        [(typeof(ProductsController), nameof(ProductsController.SetKit))] = PermissionCatalog.InventoryManage,
         [(typeof(ProductsController), nameof(ProductsController.Create))] = PermissionCatalog.InventoryManage,
         [(typeof(ProductsController), nameof(ProductsController.Update))] = PermissionCatalog.InventoryManage,
         [(typeof(ProductsController), nameof(ProductsController.Deactivate))] = PermissionCatalog.InventoryManage,
@@ -341,7 +343,7 @@ public class WmsControllerSecurityTests
         Assert.Equal(PermissionCatalog.WarehouseIssue, Expected[(typeof(ManualIssuesController), nameof(ManualIssuesController.Create))]);
         Assert.Equal(PermissionCatalog.WarehouseIssue, Expected[(typeof(ManualIssuesController), nameof(ManualIssuesController.Delete))]);
         Assert.Equal(ModuleOf[typeof(PickBatchesController)], ModuleOf[typeof(ManualIssuesController)]);
-        Assert.Equal(165, Expected.Count); // 2026-10-12: + 2 (WarehousesController.DeleteBin/DeleteBins, eliminar posiciones) = 165; + 1 (InventoryController.TransactionUsers, filtro Usuario del Kárdex) = 163; 2026-10-11: + 1 (CaptureOffline, conteo sin señal) = 161; + 1 (ReceiptsController.SummaryByWarehouse) = 162; // 132 de master + 1 de reparto por posición (Distribute) + 1 de verificación de línea (CheckLine) + 12 de RentalsController + 3 de RentalReturnsController + 4 de RentalProcessesController + 5 de ManualIssuesController
+        Assert.Equal(167, Expected.Count); // 2026-10-16: + 2 (ProductsController.GetKit/SetKit, Lote 68) = 167; 2026-10-12: + 2 (WarehousesController.DeleteBin/DeleteBins, eliminar posiciones) = 165; + 1 (InventoryController.TransactionUsers, filtro Usuario del Kárdex) = 163; 2026-10-11: + 1 (CaptureOffline, conteo sin señal) = 161; + 1 (ReceiptsController.SummaryByWarehouse) = 162; // 132 de master + 1 de reparto por posición (Distribute) + 1 de verificación de línea (CheckLine) + 12 de RentalsController + 3 de RentalReturnsController + 4 de RentalProcessesController + 5 de ManualIssuesController
     }
 
     [Fact]

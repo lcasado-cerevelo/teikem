@@ -14,11 +14,12 @@ import { useT } from '../../kernel/i18n'
 import { Chip, DataTable, EmptyState, Filters, Panel, QBox, SelectFilter, Spinner, Tabs, matchesQ, type DataColumn } from '../../kernel/ui'
 import { useProduct, useProductLots, useProductSerials, type LotDto, type SerialDto } from './api'
 import { ConvertToSerialModal } from './ConvertToSerialModal'
+import { KitTab } from './KitTab'
 import { ProductEditorModal } from './ProductEditorModal'
 import { canConvertToSerial } from './serialConversion'
 import { IconLayers } from '../../kernel/ui/screenIcons'
 
-type TabKey = 'lots' | 'serials'
+type TabKey = 'lots' | 'serials' | 'kit'
 
 // ---- Pestaña Lotes ----
 function LotsTab({ publicId }: { publicId: string }) {
@@ -111,7 +112,7 @@ export default function ProductDetailScreen() {
   const canConvert = canConvertPerm && wmsOn
   const [converting, setConverting] = useState(false)
   const { data: detail, isLoading, error } = useProduct(publicId)
-  const tab: TabKey = searchParams.get('tab') === 'serials' ? 'serials' : 'lots'
+  const tab: TabKey = searchParams.get('tab') === 'serials' ? 'serials' : searchParams.get('tab') === 'kit' ? 'kit' : 'lots'
   // sin `?tab=` al entrar, el producto se muestra en su modal (la maqueta no tiene ficha aparte)
   const [editing, setEditing] = useState(() => !searchParams.has('tab'))
 
@@ -138,7 +139,10 @@ export default function ProductDetailScreen() {
           <h1>
             <span className="ref">{product.sku}</span> · {product.name}
           </h1>
-          <p>{!product.isActive && <Chip tone="fail">{t('warehouse.products.inactive')}</Chip>}</p>
+          <p>
+            {!product.isActive && <Chip tone="fail">{t('warehouse.products.inactive')}</Chip>}
+            {product.isKit && <Chip tone="neutral">{t('warehouse.products.kit.chip')}</Chip>}
+          </p>
         </div>
         <div className="act">
           <Link className="btn" to="/warehouse/products">
@@ -163,6 +167,7 @@ export default function ProductDetailScreen() {
           tabs={[
             { key: 'lots', label: t('warehouse.products.tabLots') },
             { key: 'serials', label: t('warehouse.products.tabSerials') },
+            { key: 'kit', label: t('warehouse.products.kit.tab') },
           ]}
         />
       </div>
@@ -175,6 +180,12 @@ export default function ProductDetailScreen() {
       {tab === 'serials' && (
         <Panel flush icon={<IconLayers />} title={t('warehouse.products.tabSerials')}>
           <SerialsTab publicId={publicId} />
+        </Panel>
+      )}
+
+      {tab === 'kit' && (
+        <Panel flush icon={<IconLayers />} title={t('warehouse.products.kit.tab')}>
+          <KitTab publicId={publicId} product={product} canManage={canManage} />
         </Panel>
       )}
 

@@ -17,7 +17,7 @@ namespace Teikem.Api.Controllers;
 [Route("api/v1/products")]
 [Authorize]
 [RequireModule(ModuleKeys.WmsLotSerial)]
-public sealed class ProductsController(ProductService products, ProductSerialConversionService conversions) : ControllerBase
+public sealed class ProductsController(ProductService products, ProductSerialConversionService conversions, KitService kits) : ControllerBase
 {
     /// <summary>
     /// Lista paginada (take ≤ 200) con buscador (SKU, nombre, código de barras, dueño) y filtros: categoryIds (con
@@ -84,6 +84,21 @@ public sealed class ProductsController(ProductService products, ProductSerialCon
     [HttpPatch("{publicId:guid}"), RequirePermission(PermissionCatalog.InventoryManage)]
     public Task<ProductDetailDto> Update(Guid publicId, [FromBody] ProductPatchRequest req, CancellationToken ct)
         => products.UpdateAsync(publicId, req, ct);
+
+    /// <summary>
+    /// Lote 68 — el kit del producto: si lo es, sus componentes (cantidad por kit) y cuántos se pueden armar por almacén con lo disponible para vender. Un producto
+    /// que no es kit contesta isKit=false sin componentes.
+    /// </summary>
+    [HttpGet("{publicId:guid}/kit"), RequirePermission(PermissionCatalog.InventoryView)]
+    public Task<KitDto> GetKit(Guid publicId, CancellationToken ct) => kits.GetAsync(publicId, ct);
+
+    /// <summary>
+    /// Lote 68 — convierte el producto en kit (isKit=true con sus componentes, y si es ajustable al pedir) o lo vuelve un producto normal (isKit=false). Los componentes
+    /// reemplazan a los anteriores. 400: sin componentes, cantidad no positiva, repetido, él mismo, otro kit, inactivo, otro dueño, rastreo por lote o serie. 409: tiene existencia
+    /// o es componente de otro kit; o (al volverlo normal) ya se usó en órdenes de venta.
+    /// </summary>
+    [HttpPut("{publicId:guid}/kit"), RequirePermission(PermissionCatalog.InventoryManage)]
+    public Task<KitDto> SetKit(Guid publicId, [FromBody] KitSetRequest req, CancellationToken ct) => kits.SetAsync(publicId, req, ct);
 
     /// <summary>Baja lógica: 409 con inventario en mano, recibos abiertos, tareas pendientes, recolecciones eliminables o conteos abiertos.</summary>
     [HttpPost("{publicId:guid}/deactivate"), RequirePermission(PermissionCatalog.InventoryManage)]

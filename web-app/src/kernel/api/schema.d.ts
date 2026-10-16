@@ -23155,6 +23155,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/products/{publicId}/kit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["KitDto"];
+                        "application/json": components["schemas"]["KitDto"];
+                        "text/json": components["schemas"]["KitDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["KitSetRequest"];
+                    "text/json": components["schemas"]["KitSetRequest"];
+                    "application/*+json": components["schemas"]["KitSetRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["KitDto"];
+                        "application/json": components["schemas"]["KitDto"];
+                        "text/json": components["schemas"]["KitDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -27744,6 +27812,7 @@ export interface components {
             packUomName?: string | null;
             /** Format: double */
             packQty?: number | null;
+            isKit?: boolean;
         };
         ProductPageDto: {
             /** Format: int32 */
@@ -30901,6 +30970,45 @@ export interface components {
             position?: number;
             operator?: string | null;
             value?: string | null;
+        };
+        KitAvailabilityDto: {
+            /** Format: uuid */
+            warehousePublicId?: string;
+            warehouseCode?: string | null;
+            /** Format: int32 */
+            canBuild?: number;
+        };
+        KitComponentDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            name?: string | null;
+            /** Format: double */
+            quantity?: number;
+            /** Format: int32 */
+            sortOrder?: number;
+            isActive?: boolean;
+        };
+        KitComponentRequest: {
+            /** Format: uuid */
+            productPublicId?: string | null;
+            /** Format: double */
+            quantity?: number | null;
+        };
+        KitDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            name?: string | null;
+            isKit?: boolean;
+            adjustable?: boolean;
+            components?: components["schemas"]["KitComponentDto"][] | null;
+            availability?: components["schemas"]["KitAvailabilityDto"][] | null;
+        };
+        KitSetRequest: {
+            isKit?: boolean | null;
+            adjustable?: boolean | null;
+            components?: components["schemas"]["KitComponentRequest"][] | null;
         };
     };
     responses: never;

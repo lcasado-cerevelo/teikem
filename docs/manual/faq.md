@@ -8393,3 +8393,21 @@ El aviso usa lo disponible para vender en ese momento; una orden más antigua pu
 
 **No me aparece la fila de backorder en «Necesita tu atención».**
 Se muestra solo con `sales.backorder` y el módulo Órdenes de venta; y solo si hay inventario disponible para surtir (una orden esperando sin inventario no aparece).
+
+
+## Lote 68 — Kits
+
+**No me deja convertir un producto en kit: «tiene existencia».**
+Un kit no tiene existencia propia. Saque la existencia del producto (ajuste o transferencia a otro producto) hasta que quede en cero y sin reservas, o cree un producto nuevo para el kit.
+
+**No me deja agregar un producto como componente.**
+Debe ser un producto normal, activo, del mismo dueño de inventario que el kit y no puede ser otro kit ni el mismo kit. Lea el mensaje: dice cuál SKU y por qué.
+
+**«Se pueden armar 0» pero hay existencia de todos los componentes.**
+La cuenta usa lo *disponible para vender*: se descuenta lo reservado y no cuenta lo que está en cuarentena, cruce de plataforma o renta; y se limita por el componente que menos alcanza (disponible ÷ cantidad por kit, hacia abajo).
+
+**No puedo volver el kit a producto normal.**
+Si alguna orden de venta ya lo usó, no se puede (el historial de esas órdenes depende de que siga siendo kit). Déjelo como kit o desactívelo si ya no se vende.
+
+**Quise recibir el kit en un recibo y falló.**
+Un kit no se recibe: se reciben sus componentes. El mensaje dice `… es un kit: no tiene existencia propia. Los movimientos se hacen sobre sus componentes.`

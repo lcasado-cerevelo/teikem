@@ -314,6 +314,17 @@ public sealed partial class SalesOrderService
         return result;
     }
 
+    /// <summary>
+    /// Lote 68 — lo disponible para vender de cada producto en el almacén (misma cuenta que usa Solicitar: sin cuarentena, cruce de plataforma ni renta, en posiciones
+    /// activas). Lo usan los kits para decir «se pueden armar N». Foto sin bloqueo.
+    /// </summary>
+    public async Task<IReadOnlyDictionary<int, decimal>> SellableAsync(int warehouseId, IReadOnlyCollection<int> productIds, CancellationToken ct)
+    {
+        if (productIds.Count == 0) return new Dictionary<int, decimal>();
+        var plan = await PlanAsync(warehouseId, productIds.Select(id => new Want(id, id, null, 0m)).ToList(), ct);
+        return plan.ToDictionary(kv => kv.Key, kv => kv.Value.Available);
+    }
+
     private async Task EnsureNoShortageUnlessAllowedAsync(IReadOnlyList<SalesOrderLine> lines, Dictionary<int, Availability> plan, bool allowBackorder, CancellationToken ct)
     {
         var short1 = lines.Where(l => plan[l.SalesOrderLineId].Shortage > 0m).Select(l => (l, plan[l.SalesOrderLineId], l.QtyOrdered)).ToList();

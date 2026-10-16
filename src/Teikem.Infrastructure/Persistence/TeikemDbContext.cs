@@ -171,6 +171,7 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<WarehouseDock> WarehouseDocks => Set<WarehouseDock>();
     public DbSet<ProductCategory> ProductCategories => Set<ProductCategory>();
     public DbSet<Product> Products => Set<Product>();
+    public DbSet<ProductKitComponent> ProductKitComponents => Set<ProductKitComponent>();   // Lote 68
     public DbSet<InventoryLot> InventoryLots => Set<InventoryLot>();
     public DbSet<InventorySerial> InventorySerials => Set<InventorySerial>();
     public DbSet<StockBalance> StockBalances => Set<StockBalance>();
