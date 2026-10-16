@@ -17,6 +17,8 @@ interface NotificationsState {
   /** El panel de opciones de Kemi. */
   kemiOpen: boolean
   setKemiOpen: (open: boolean) => void
+  /** Quién es (para guardar por usuario dónde dejó a Kemi). */
+  userKey: number | string | null
 }
 
 const Ctx = createContext<NotificationsState | null>(null)
@@ -86,8 +88,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   )
 
   const value = useMemo<NotificationsState>(
-    () => ({ unread, bellOpen, setBellOpen, asleep, setAsleep, bubble, dismissBubble: () => setBubble(null), kemiOpen, setKemiOpen }),
-    [unread, bellOpen, setBellOpen, asleep, setAsleep, bubble, kemiOpen],
+    () => ({ unread, bellOpen, setBellOpen, asleep, setAsleep, bubble, dismissBubble: () => setBubble(null), kemiOpen, setKemiOpen, userKey }),
+    [unread, bellOpen, setBellOpen, asleep, setAsleep, bubble, kemiOpen, userKey],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

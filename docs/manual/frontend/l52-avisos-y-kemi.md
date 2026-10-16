@@ -68,6 +68,12 @@ El ícono de campana de la cabecera (junto al tema) muestra cuántos avisos tien
 
 ![Kemi dormida](img/l52-kemi-dormida.png)
 
-- Con «reducir movimiento» activado en el sistema, Kemi no parpadea ni se mueve.
+- **Kemi con vida (Lote 76a)**: despierta, nunca está congelada.
+  - **Parpadea** cada 2.5 a 6 segundos y, cada 8 a 25 segundos, **hace un gesto corto**: mira a un lado, guiña o sonríe. Cada 1 a 3 minutos hace una **mueca** más grande (saca la lengua, se sorprende, se preocupa). Las esperas son **al azar**, nunca un reloj, y no repite el mismo gesto dos veces seguidas.
+  - **Con el puntero encima** se queda pendiente (ojos más grandes) y **las pupilas siguen al puntero**.
+  - **Cuando llega un aviso o un mensaje** abre grande los ojos y la boca, **brinca tres veces** y se queda con esa cara mientras el globo está a la vista.
+  - **Se arrastra a donde el usuario la quiera**: se agarra y se suelta; un movimiento de menos de 5 px sigue contando como clic. Se **recuerda por usuario** en el navegador. El globo y el panel se abren hacia donde hay lugar (si está arriba, hacia abajo; si está a la izquierda, alineados a la izquierda) y ella no se corre al abrirlos. En sus opciones aparece **Llevar a Kemi a su esquina** cuando no está en la de siempre. Siempre se mantiene dentro de la ventana, también al cambiar su tamaño.
+  - **Liviana**: es un solo dibujo vectorial (SVG, sin imágenes) con las piezas de todos sus gestos; el movimiento es solo `transform` y `opacity` de CSS. No hay ciclo de animación: solo unos temporizadores con espera al azar que cambian dos atributos del dibujo, y no corren con la pestaña oculta, con el puntero encima, con «reducir movimiento» activado ni si Kemi está dormida o con su panel abierto. Las pupilas siguen al puntero solo mientras está encima, y como máximo un cuadro por pantalla.
+- Con «reducir movimiento» activado en el sistema, Kemi no parpadea, no se mueve ni brinca (sí se puede arrastrar).
 
 Funciona de 360 px en adelante sin scroll horizontal de página. (Más opciones de Kemi —por ejemplo enviar un mensaje— llegan en lotes siguientes.)
