@@ -3093,3 +3093,12 @@ WHERE (r.Name = 'TenantAdmin' OR EXISTS (
           WHERE rp.RoleId = r.RoleId AND p.Code IN ('billing.generate','billing.approve','billing.export')))
   AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = v.PermissionId);
 GO
+
+-- =====================================================================================================================
+-- 2026-10-16 (s) Lote 74 — flete de las órdenes de transporte en la facturación
+-- TransportOrder.FreightInvoiced: el flete de la orden ya está en una factura no anulada (se reclama al generar la corrida bajo bloqueo de la orden
+-- y se libera al cancelar la corrida o anular la factura). Las líneas de factura ya traen TransportOrderId, RateComponentId y ChargeType desde el diseño original.
+-- =====================================================================================================================
+IF COL_LENGTH('dbo.TransportOrder', 'FreightInvoiced') IS NULL
+    ALTER TABLE dbo.TransportOrder ADD FreightInvoiced BIT NOT NULL CONSTRAINT DF_TransportOrder_FreightInvoiced DEFAULT 0;
+GO

@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { adjustError, invoiceCanVoid, monthStartIso, parseAmount, runFormError, runIsOpen, todayIso, toRunRequest, type RunForm } from './billingRules'
 
-const form = (patch: Partial<RunForm> = {}): RunForm => ({ clientPublicId: null, periodStart: '2026-10-01', periodEnd: '2026-10-15', onlyInPeriod: false, note: '', ...patch })
+const form = (patch: Partial<RunForm> = {}): RunForm => ({ clientPublicId: null, periodStart: '2026-10-01', periodEnd: '2026-10-15', onlyInPeriod: false, includeProducts: true, includeFreight: true, note: '', ...patch })
 
 describe('formulario de la corrida', () => {
   it('pide las dos fechas, en orden, y una nota corta', () => {
@@ -10,11 +10,14 @@ describe('formulario de la corrida', () => {
     expect(runFormError(form({ periodStart: '' }))).toBe('period')
     expect(runFormError(form({ periodEnd: '' }))).toBe('period')
     expect(runFormError(form({ periodStart: '2026-10-20' }))).toBe('order')
+    expect(runFormError(form({ includeProducts: false, includeFreight: false }))).toBe('include')
+    expect(runFormError(form({ includeProducts: false }))).toBeNull()
     expect(runFormError(form({ note: 'x'.repeat(501) }))).toBe('note')
   })
 
   it('el cuerpo omite lo vacío y solo manda onlyInPeriod si se marcó', () => {
-    expect(toRunRequest(form())).toEqual({ clientPublicId: undefined, periodStart: '2026-10-01', periodEnd: '2026-10-15', onlyInPeriod: undefined, note: undefined })
+    expect(toRunRequest(form())).toEqual({ clientPublicId: undefined, periodStart: '2026-10-01', periodEnd: '2026-10-15', onlyInPeriod: undefined, includeProducts: undefined, includeFreight: undefined, note: undefined })
+    expect(toRunRequest(form({ includeFreight: false }))).toMatchObject({ includeProducts: undefined, includeFreight: false })
     expect(toRunRequest(form({ clientPublicId: 'c1', onlyInPeriod: true, note: '  Octubre  ' }))).toMatchObject({ clientPublicId: 'c1', onlyInPeriod: true, note: 'Octubre' })
   })
 

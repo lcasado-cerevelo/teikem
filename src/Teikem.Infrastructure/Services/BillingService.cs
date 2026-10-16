@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Teikem.Domain.Billing;
+using Teikem.Domain.Catalogs;
 using Teikem.Domain.Clients;
 using Teikem.Domain.Common;
 using Teikem.Domain.Constants;
@@ -7,6 +8,7 @@ using Teikem.Domain.Orders;
 using Teikem.Domain.Sales;
 using Teikem.Domain.Wms;
 using Teikem.Infrastructure.Abstractions;
+using Teikem.Infrastructure.Clients;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
 using Teikem.Infrastructure.Orders;
@@ -17,13 +19,16 @@ namespace Teikem.Infrastructure.Services;
 
 /// <summary>
 /// Lote 72 (P5) — facturación. Una CORRIDA (generar → revisar → aprobar → exportar) junta lo que hay por facturar y arma una factura por cliente.
-/// - Hoy lo que se factura es la VENTA DE PRODUCTO de las órdenes de venta (ChargeType PRODUCT_SALE): lo despachado y no facturado (QtyShipped − QtyReturned − QtyInvoiced), con la copia del
-///   impuesto de su línea. La base la elige la compañía (SalesBillingTrigger): al despachar o al entregar. El flete de las órdenes de transporte llega en el lote siguiente.
+/// - Lote 74: también el FLETE de las órdenes de transporte (ver más abajo). La VENTA DE PRODUCTO de las órdenes de venta (ChargeType PRODUCT_SALE): lo despachado y no facturado (QtyShipped − QtyReturned − QtyInvoiced), con la copia del
+///   impuesto de su línea. La base la elige la compañía (SalesBillingTrigger): al despachar o al entregar.
+///   El FLETE de una orden de transporte se factura según el modelo de cobro de su contrato (por recogido, por entrega o mixto) con lo que se le cotizó al confirmarla, desglosado por concepto con la fila
+///   de tarifa de cada uno; TransportOrder.FreightInvoiced la protege de facturarse dos veces (bloqueo de la orden al generar).
 /// - Nunca se factura dos veces: al GENERAR se reclama lo facturado (SalesOrderLine.QtyInvoiced) bajo bloqueo de la línea; cancelar la corrida o anular la factura lo libera exactamente.
 /// - El cálculo se congela al generar; el ajuste manual de un monto cambia la línea y deja el calculado y el motivo. Aprobar y anular exigen AAL2 (en el controlador).
 /// - Estatus por StatusService: corrida GENERATED → REVIEWED → APPROVED → EXPORTED (o CANCELLED); factura DRAFT → ISSUED → PAID (o VOID).
 /// </summary>
-public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, INumberSequenceService numbers, ILookupCache lookups, ITenantClock clock)
+public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, INumberSequenceService numbers, ILookupCache lookups, ITenantClock clock,
+    OrderQuoteService quotes, TaxService taxes)
 {
     public const string Concurrency = "La facturación cambió mientras se guardaba. Revise y vuelva a intentar.";
     public const string CancelledCode = "CANCELLED";
@@ -118,12 +123,21 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
         if (req.ClientPublicId is Guid cid) client = await db.Set<Client>().AsNoTracking().FirstOrDefaultAsync(c => c.PublicId == cid, ct) ?? throw new NotFoundException("Cliente");
         var settings = await GetSettingsAsync(ct);
         var onlyInPeriod = req.OnlyInPeriod == true;
+        var includeProducts = req.IncludeProducts ?? true;
+        var includeFreight = req.IncludeFreight ?? true;
+        if (!includeProducts && !includeFreight) throw new ValidationException("include", FreightRules.NothingSelected);
 
-        var snapshot = await EligibleAsync(client?.ClientId, start, end, onlyInPeriod, settings.SalesBillingTrigger, ct);
-        if (snapshot.Count == 0) throw new StatusRuleException(BillingRules.NothingToBill);
+        var snapshot = includeProducts ? await EligibleAsync(client?.ClientId, start, end, onlyInPeriod, settings.SalesBillingTrigger, ct) : new List<Eligible>();
+        var freight = includeFreight ? await EligibleFreightAsync(client?.ClientId, start, end, onlyInPeriod, ct) : new List<FreightEligible>();
+        if (snapshot.Count == 0 && freight.Count == 0) throw new StatusRuleException(BillingRules.NothingToBill);
+        var freightCharges = await FreightChargesAsync(freight, ct);
+        var freightTax = await FreightTaxAsync(freight, freightCharges, ct);
         await numbers.EnsureAsync(BillingCodes.NumberKind, null, ct);
         var usd = await lookups.GetIdAsync(LookupDomains.Currency, "USD", ct);
         var productSale = await lookups.GetIdAsync(BillingCodes.ChargeTypeDomain, BillingCodes.ProductSale, ct);
+        var chargeIds = new Dictionary<string, int>();
+        foreach (var code in freightCharges.Values.SelectMany(c => c).Select(c => c.ChargeCode).Distinct())
+            chargeIds[code] = await lookups.GetIdAsync(BillingCodes.ChargeTypeDomain, code, ct);
 
         var runId = await db.RunInTransactionAsync(async ct2 =>
         {
@@ -148,7 +162,16 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
                 work.Add((e, qty, tax));
                 line.QtyInvoiced += qty;
             }
-            if (work.Count == 0) throw new StatusRuleException(BillingRules.NothingToBill);
+            // 1b) el flete: se bloquea cada orden (en orden de id) y se reclama solo si nadie la facturó entre tanto
+            var freightWork = new List<FreightEligible>();
+            foreach (var f in freight.OrderBy(x => x.OrderId))
+            {
+                var order = await db.LockTransportOrderAsync(f.OrderId, ct2);
+                if (order.FreightInvoiced) continue;
+                order.FreightInvoiced = true;
+                freightWork.Add(f);
+            }
+            if (work.Count == 0 && freightWork.Count == 0) throw new StatusRuleException(BillingRules.NothingToBill);
 
             // 2) la corrida y una factura por cliente y moneda
             var runInitial = await statuses.GetInitialAsync(BillingCodes.RunStatusDomain, ct2);
@@ -157,20 +180,37 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
             await db.SaveGuardedAsync(Concurrency, ct2);
             var invInitial = await statuses.GetInitialAsync(BillingCodes.InvoiceStatusDomain, ct2);
             var invoices = new List<Invoice>();
-            foreach (var g in work.GroupBy(w => (w.E.ClientId, Currency: w.E.CurrencyLookupId ?? usd)).OrderBy(g => g.Key.ClientId))
+            var keys = work.Select(w => (w.E.ClientId, Currency: w.E.CurrencyLookupId ?? usd))
+                .Concat(freightWork.Select(f => (f.ClientId, Currency: f.CurrencyLookupId ?? usd)))
+                .Distinct().OrderBy(k => k.ClientId).ThenBy(k => k.Currency).ToList();
+            foreach (var key in keys)
             {
                 var seq = await numbers.NextAsync(BillingCodes.NumberKind, null, ct2);
                 var invoice = new Invoice
                 {
-                    PublicId = Guid.NewGuid(), TenantId = tenantId, ClientId = g.Key.ClientId, InvoiceNumber = NumberFormat.Resolve(BillingCodes.NumberPattern, seq),
-                    StatusCodeId = invInitial.StatusCodeId, CurrencyLookupId = g.Key.Currency, BillingRunId = run.BillingRunId,
+                    PublicId = Guid.NewGuid(), TenantId = tenantId, ClientId = key.ClientId, InvoiceNumber = NumberFormat.Resolve(BillingCodes.NumberPattern, seq),
+                    StatusCodeId = invInitial.StatusCodeId, CurrencyLookupId = key.Currency, BillingRunId = run.BillingRunId,
                 };
-                foreach (var w in g)
+                foreach (var w in work.Where(w => w.E.ClientId == key.ClientId && (w.E.CurrencyLookupId ?? usd) == key.Currency))
                     invoice.Lines.Add(new InvoiceLine
                     {
                         ProductId = w.E.ProductId, ChargeTypeLookupId = productSale, Description = BillingRules.Describe(w.E.OrderNumber, w.E.Sku, w.E.Name), Quantity = w.Qty, UnitAmount = w.E.UnitPrice,
                         SalesOrderLineId = w.E.LineId, TaxRateId = w.E.TaxRateId, TaxRatePct = w.E.TaxRatePct, TaxAmount = w.Tax, IsTaxExempt = w.E.Exempt,
                     });
+                foreach (var f in freightWork.Where(f => f.ClientId == key.ClientId && (f.CurrencyLookupId ?? usd) == key.Currency))
+                {
+                    var charges = freightCharges[f.OrderId];
+                    for (var i = 0; i < charges.Count; i++)
+                    {
+                        var c = charges[i];
+                        var tx = freightTax[FreightKey(f.OrderId, i)];
+                        invoice.Lines.Add(new InvoiceLine
+                        {
+                            TransportOrderId = f.OrderId, ChargeTypeLookupId = chargeIds[c.ChargeCode], Description = c.Description, Quantity = 1m, UnitAmount = tx.Net, RateComponentId = c.RateComponentId,
+                            TaxRateId = tx.TaxRateId, TaxRatePct = tx.TaxRatePct, TaxAmount = tx.TaxAmount, IsTaxExempt = tx.IsTaxExempt,
+                        });
+                    }
+                }
                 Recalculate(invoice);
                 db.Set<Invoice>().Add(invoice);
                 invoices.Add(invoice);
@@ -184,6 +224,105 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
             return run.BillingRunId;
         }, ct);
         return await GetRunAsync(runId, ct);
+    }
+
+    // ================================================================ flete de las órdenes de transporte (Lote 74)
+
+    private sealed record FreightEligible(int OrderId, string OrderNumber, int ClientId, int? CurrencyLookupId, decimal Quoted, DateTime QuotedAtUtc);
+
+    private sealed record FreightCharge(string Component, string ChargeCode, string Description, decimal Amount, int? RateComponentId);
+
+    private static string FreightKey(int orderId, int index) => $"{orderId}:{index}";
+
+    /// <summary>
+    /// Órdenes de transporte con flete por facturar: activas, con monto cotizado (mayor que cero), sin facturar, en un estatus que su contrato ya admite (FreightRules.BillableStatuses según el modelo de
+    /// cobro: por recogido desde Recogido; por entrega, mixto o sin modelo, solo Entregada) y cuyo hecho (recogida o entrega, de la bitácora de estatus) cae hasta la fecha final (o dentro del período).
+    /// </summary>
+    private async Task<List<FreightEligible>> EligibleFreightAsync(int? clientId, DateOnly start, DateOnly end, bool onlyInPeriod, CancellationToken ct)
+    {
+        var statusMap = await db.StatusCodes.AsNoTracking().Where(s => s.Entity == StatusDomains.OrderStatus).ToDictionaryAsync(s => s.StatusCodeId, s => s.InternalCode, ct);
+        var pickedIds = statusMap.Where(kv => FreightRules.PickedUpOrLater.Contains(kv.Value)).Select(kv => kv.Key).ToList();
+        if (pickedIds.Count == 0) return new List<FreightEligible>();
+        var orders = await db.Set<TransportOrder>().AsNoTracking()
+            .Where(o => o.IsActive && !o.FreightInvoiced && o.QuotedAmount > 0m && pickedIds.Contains(o.StatusCodeId) && (clientId == null || o.ClientId == clientId))
+            .OrderBy(o => o.TransportOrderId).ToListAsync(ct);
+        if (orders.Count == 0) return new List<FreightEligible>();
+
+        var contractIds = orders.Where(o => o.ContractId != null).Select(o => o.ContractId!.Value).Distinct().ToList();
+        var modelIds = await db.Set<Contract>().AsNoTracking().Where(c => contractIds.Contains(c.ContractId)).Select(c => new { c.ContractId, c.BillingModelLookupId }).ToListAsync(ct);
+        var models = new Dictionary<int, string?>();
+        foreach (var m in modelIds) models[m.ContractId] = m.BillingModelLookupId is int lid ? (await lookups.GetAsync(lid, ct))?.InternalCode : null;
+        string? ModelOf(TransportOrder o) => o.ContractId is int c ? models.GetValueOrDefault(c) : null;
+
+        var allowed = orders.Where(o => FreightRules.BillableStatuses(ModelOf(o)).Contains(statusMap[o.StatusCodeId])).ToList();
+        if (allowed.Count == 0) return new List<FreightEligible>();
+
+        // el hecho: la primera vez que la orden llegó a un estatus facturable de su modelo
+        var orderIds = allowed.Select(o => o.TransportOrderId).ToList();
+        var entityTypeId = await lookups.TryGetIdAsync(LookupDomains.EntityType, EntityTypes.TransportOrder, ct);
+        var history = new List<(int OrderId, string Code, DateTime At)>();
+        if (entityTypeId is int etid)
+        {
+            var rows = await db.Set<EntityStatusHistory>().AsNoTracking()
+                .Where(h => h.EntityTypeLookupId == etid && orderIds.Contains(h.EntityId) && pickedIds.Contains(h.ToStatusCodeId))
+                .Select(h => new { h.EntityId, h.ToStatusCodeId, h.ChangedAtUtc }).ToListAsync(ct);
+            history = rows.Select(r => (r.EntityId, statusMap[r.ToStatusCodeId], r.ChangedAtUtc)).ToList();
+        }
+        var (rangeFrom, toExclusive) = clock.UtcRange(onlyInPeriod ? start : null, end);
+        var result = new List<FreightEligible>();
+        foreach (var o in allowed)
+        {
+            var billable = FreightRules.BillableStatuses(ModelOf(o));
+            var fact = history.Where(h => h.OrderId == o.TransportOrderId && billable.Contains(h.Code)).Select(h => (DateTime?)h.At).Min()
+                       ?? o.ConfirmedAtUtc ?? o.QuotedAtUtc ?? o.CreatedAtUtc;
+            if ((rangeFrom != null && fact < rangeFrom) || (toExclusive != null && fact >= toExclusive)) continue;
+            result.Add(new FreightEligible(o.TransportOrderId, o.OrderNumber, o.ClientId, o.CurrencyLookupId, o.QuotedAmount ?? 0m, o.QuotedAtUtc ?? fact));
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Los cargos de cada orden: el desglose de su cotización (tarifa base, piezas extra, despacho, COD o servicio especial) con la fila de tarifa de cada uno, recalculado con las tarifas vigentes el día en
+    /// que se cotizó. Si no se puede desglosar (cliente dado de baja, servicio especial cerrado, líneas sin tarifa) o la suma ya no coincide con lo cotizado, se factura UNA línea con el monto cotizado:
+    /// lo que se le dijo al cliente manda.
+    /// </summary>
+    private async Task<Dictionary<int, List<FreightCharge>>> FreightChargesAsync(IReadOnlyList<FreightEligible> list, CancellationToken ct)
+    {
+        var result = new Dictionary<int, List<FreightCharge>>();
+        if (list.Count == 0) return result;
+        var ids = list.Select(f => f.OrderId).ToList();
+        var orders = await db.Set<TransportOrder>().AsNoTracking().Include(o => o.CargoLines).Where(o => ids.Contains(o.TransportOrderId)).ToDictionaryAsync(o => o.TransportOrderId, ct);
+        var clientIds = list.Select(f => f.ClientId).Distinct().ToList();
+        var clients = await db.Set<Client>().AsNoTracking().Where(c => clientIds.Contains(c.ClientId)).ToDictionaryAsync(c => c.ClientId, ct);
+        foreach (var f in list)
+        {
+            var asOf = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(f.QuotedAtUtc, DateTimeKind.Utc), clock.Zone));
+            FreightBreakdown? breakdown = null;
+            try { breakdown = await quotes.BreakdownAsync(orders[f.OrderId], clients[f.ClientId], asOf, ct); }
+            catch (Exception ex) when (ex is ConflictException or StatusRuleException or ValidationException or NotFoundException) { }
+            if (breakdown is { Pieces.Count: > 0 } && FreightRules.MatchesQuote(breakdown.Total, f.Quoted))
+                result[f.OrderId] = breakdown.Pieces.Select(p => new FreightCharge(p.Component, FreightRules.ChargeTypeOf(p.Component),
+                    FreightRules.Describe(f.OrderNumber, p.Component, p.ServiceType, p.PackageType, null), p.Amount, p.RateComponentId)).ToList();
+            else
+                result[f.OrderId] = new List<FreightCharge> { new(FreightComponents.Quoted, FreightRules.ChargeTypeOf(FreightComponents.Quoted), FreightRules.Describe(f.OrderNumber, FreightComponents.Quoted, null, null), f.Quoted, null) };
+        }
+        return result;
+    }
+
+    /// <summary>El impuesto de cada cargo del flete con el motor de impuestos (regla por tipo de cargo y exención vigente del cliente), calculado hoy: la copia queda en la línea.</summary>
+    private async Task<Dictionary<string, TaxCalcLineDto>> FreightTaxAsync(IReadOnlyList<FreightEligible> list, Dictionary<int, List<FreightCharge>> charges, CancellationToken ct)
+    {
+        var result = new Dictionary<string, TaxCalcLineDto>();
+        foreach (var byClient in list.GroupBy(f => f.ClientId))
+        {
+            var lines = byClient.SelectMany(f => charges[f.OrderId].Select((c, i) => new TaxCalcLineRequest(FreightKey(f.OrderId, i), null, c.ChargeCode, c.Amount))).ToList();
+            foreach (var chunk in lines.Chunk(400))
+            {
+                var calc = await taxes.CalculateAsync(new TaxCalcRequest(byClient.Key, clock.Today, chunk), ct);
+                foreach (var l in calc.Lines) result[l.Key] = l;
+            }
+        }
+        return result;
     }
 
     /// <summary>Bloquea las líneas (en orden de id, siempre el mismo, para no interbloquear) y las devuelve rastreadas con lo que hay AHORA.</summary>
@@ -260,14 +399,18 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
         return await GetRunAsync(runId, ct);
     }
 
-    /// <summary>Devuelve a «por facturar» lo que reclamaron las líneas de estas facturas (bajo bloqueo de las líneas de orden de venta).</summary>
+    /// <summary>Devuelve a «por facturar» lo que reclamaron las líneas de estas facturas (bajo bloqueo de las líneas de orden de venta y de las órdenes de transporte).</summary>
     private async Task ReleaseAsync(IReadOnlyList<Invoice> invoices, CancellationToken ct)
     {
         var claimed = invoices.SelectMany(i => i.Lines).Where(l => l.SalesOrderLineId != null).GroupBy(l => l.SalesOrderLineId!.Value).ToDictionary(g => g.Key, g => g.Sum(l => l.Quantity));
-        if (claimed.Count == 0) return;
-        var locked = await LockLinesAsync(claimed.Keys.OrderBy(i => i).ToList(), ct);
-        foreach (var (lineId, qty) in claimed)
-            if (locked.TryGetValue(lineId, out var line)) line.QtyInvoiced = Math.Max(0m, line.QtyInvoiced - qty);
+        if (claimed.Count > 0)
+        {
+            var locked = await LockLinesAsync(claimed.Keys.OrderBy(i => i).ToList(), ct);
+            foreach (var (lineId, qty) in claimed)
+                if (locked.TryGetValue(lineId, out var line)) line.QtyInvoiced = Math.Max(0m, line.QtyInvoiced - qty);
+        }
+        foreach (var orderId in invoices.SelectMany(i => i.Lines).Where(l => l.TransportOrderId != null).Select(l => l.TransportOrderId!.Value).Distinct().OrderBy(i => i))
+            (await db.LockTransportOrderAsync(orderId, ct)).FreightInvoiced = false;
     }
 
     // ================================================================ ajustar una línea y anular una factura
@@ -424,6 +567,9 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
         var productIds = i.Lines.Where(l => l.ProductId != null).Select(l => l.ProductId!.Value).Distinct().ToList();
         var products = await db.Set<Product>().AsNoTracking().Where(p => productIds.Contains(p.ProductId)).ToDictionaryAsync(p => p.ProductId, p => (p.PublicId, p.Sku), ct);
         var lineIds = i.Lines.Where(l => l.SalesOrderLineId != null).Select(l => l.SalesOrderLineId!.Value).ToList();
+        var transportIds = i.Lines.Where(l => l.TransportOrderId != null).Select(l => l.TransportOrderId!.Value).Distinct().ToList();
+        var transportNumbers = transportIds.Count == 0 ? new Dictionary<int, string>()
+            : await db.Set<TransportOrder>().AsNoTracking().Where(o => transportIds.Contains(o.TransportOrderId)).ToDictionaryAsync(o => o.TransportOrderId, o => o.OrderNumber, ct);
         var orderNumbers = lineIds.Count == 0 ? new Dictionary<int, string>()
             : await (from sl in db.Set<SalesOrderLine>().AsNoTracking() join o in db.Set<SalesOrder>().AsNoTracking() on sl.SalesOrderId equals o.SalesOrderId where lineIds.Contains(sl.SalesOrderLineId) select new { sl.SalesOrderLineId, o.Number })
                 .ToDictionaryAsync(x => x.SalesOrderLineId, x => x.Number, ct);
@@ -431,7 +577,8 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
         {
             var p = l.ProductId is int pid && products.TryGetValue(pid, out var pr) ? ((Guid, string)?)pr : null;
             return new InvoiceLineDto(l.InvoiceLineId, l.Description, chargeCodes[l.ChargeTypeLookupId], p?.Item1, p?.Item2, l.SalesOrderLineId is int sl ? orderNumbers.GetValueOrDefault(sl) : null, l.Quantity, l.UnitAmount,
-                l.OriginalUnitAmount, l.OriginalUnitAmount != null, l.AdjustmentNote, Math.Round(l.Quantity * l.UnitAmount, 4, MidpointRounding.AwayFromZero), l.TaxRatePct, l.TaxAmount, l.IsTaxExempt);
+                l.OriginalUnitAmount, l.OriginalUnitAmount != null, l.AdjustmentNote, Math.Round(l.Quantity * l.UnitAmount, 4, MidpointRounding.AwayFromZero), l.TaxRatePct, l.TaxAmount, l.IsTaxExempt,
+                l.TransportOrderId is int tid ? transportNumbers.GetValueOrDefault(tid) : null, l.RateComponentId);
         }).ToList();
         var total = i.Subtotal + i.TaxAmount;
         return new InvoiceDto(i.PublicId, i.InvoiceNumber, st.Code, st.Label, st.Color, c.PublicId, c.Name, i.IssueDate, i.DueDate, currency, i.Subtotal, i.TaxAmount, total, paid, total - paid, i.BillingRunId, i.Notes, lines);

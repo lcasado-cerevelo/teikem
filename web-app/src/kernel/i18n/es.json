@@ -7484,8 +7484,10 @@
       "new": {
         "title": "Nueva corrida",
         "generate": "Generar",
-        "help": "Junta lo despachado y no facturado de las órdenes de venta y arma una factura en borrador por cliente. Nada se emite hasta aprobar la corrida.",
+        "help": "Junta lo despachado y no facturado de las órdenes de venta y el flete de las órdenes de transporte (según el modelo de cobro del contrato) y arma una factura en borrador por cliente. Nada se emite hasta aprobar la corrida.",
         "client": "Cliente",
+        "includeProducts": "Venta de producto despachado",
+        "includeFreight": "Flete de las órdenes de transporte",
         "clientHelp": "Sin cliente: todos los que tengan algo por facturar.",
         "from": "Desde",
         "to": "Hasta",
@@ -7541,6 +7543,7 @@
       "exempt": "Exento",
       "errors": {
         "period": "Indique la fecha inicial y la final.",
+        "include": "Elija qué facturar: la venta de producto, el flete o las dos cosas.",
         "order": "La fecha final no puede ser anterior a la inicial.",
         "note": "La nota no puede pasar de 500 caracteres.",
         "adjust": {

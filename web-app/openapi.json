@@ -56175,6 +56175,14 @@
           "onlyInPeriod": {
             "type": "boolean",
             "nullable": true
+          },
+          "includeProducts": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "includeFreight": {
+            "type": "boolean",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -56370,6 +56378,15 @@
           },
           "isTaxExempt": {
             "type": "boolean"
+          },
+          "transportOrderNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "rateComponentId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
           }
         },
         "additionalProperties": false

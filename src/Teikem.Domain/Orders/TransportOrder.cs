@@ -40,6 +40,8 @@ public class TransportOrder : ITenantScoped, ISoftDeletable, IHasStatus, IAuditS
     public int? TotalPieces { get; set; }
     public decimal? QuotedAmount { get; set; }
     public DateTime? QuotedAtUtc { get; set; }
+    /// <summary>Lote 74: el flete de la orden ya está en una factura (no anulada) de la facturación; se reclama al generar la corrida y se libera al cancelarla o anular la factura.</summary>
+    [NotAudited] public bool FreightInvoiced { get; set; }
     public int? CurrencyLookupId { get; set; }
     /// <summary>Siempre NULL en este lote: el tipo de COD se define al entregar (11B/POD).</summary>
     public int? CodTypeLookupId { get; set; }

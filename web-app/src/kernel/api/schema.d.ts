@@ -31567,6 +31567,8 @@ export interface components {
             periodEnd?: string | null;
             note?: string | null;
             onlyInPeriod?: boolean | null;
+            includeProducts?: boolean | null;
+            includeFreight?: boolean | null;
         };
         BillingSettingsDto: {
             salesBillingTrigger?: string | null;
@@ -31637,6 +31639,9 @@ export interface components {
             /** Format: double */
             taxAmount?: number;
             isTaxExempt?: boolean;
+            transportOrderNumber?: string | null;
+            /** Format: int32 */
+            rateComponentId?: number | null;
         };
         InvoiceListItemDto: {
             /** Format: uuid */

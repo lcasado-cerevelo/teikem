@@ -46,6 +46,8 @@ public sealed class BillingTests
         {
             s.AddSingleton<ITenantClock>(TenantClock.Default);
             s.AddSingleton<TaxService>();
+            s.AddSingleton<RateService>();
+            s.AddSingleton<OrderQuoteService>();
             s.AddSingleton<FakeBalance>();
             s.AddSingleton<Teikem.Infrastructure.Orders.IClientBalanceProvider>(sp => sp.GetRequiredService<FakeBalance>());
             s.AddSingleton<SalesOrderService>();

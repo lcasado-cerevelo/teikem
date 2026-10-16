@@ -8475,3 +8475,21 @@ Es lo correcto: la factura conserva la tasa con que se calculó la orden de vent
 
 **Anulé una factura y la orden vuelve a aparecer como por facturar.**
 Sí: anular libera exactamente lo que esa factura había reclamado.
+
+
+## Lote 74 — Flete en la facturación
+
+**Una orden entregada no aparece para facturar.**
+Debe estar **activa**, con **monto cotizado** (se cotiza al confirmarla) mayor que cero y sin facturar. Con el contrato **Por recogido** cuenta desde que se recoge; con **Por entrega**, **Mixto** o sin contrato, solo cuando está **Entregada**. Las fallidas, parciales y en espera no se facturan. Y la corrida debe incluir el **flete** (casilla «Flete de las órdenes de transporte»).
+
+**`Elija qué facturar: la venta de producto, el flete o las dos cosas.` (400)**
+Desmarcó las dos casillas de la nueva corrida. Deje marcada al menos una.
+
+**La factura trae una sola línea «Flete (monto cotizado)» en vez del desglose.**
+El desglose de hoy no coincide con lo cotizado a esa orden (se cambió el modelo de facturación del contrato, el cliente se dio de baja o el servicio especial se cerró). Se factura el monto cotizado, que es lo que se le dijo al cliente. Si hay que corregirlo, ajuste la línea con su motivo.
+
+**¿Cómo sé de qué tarifa salió cada cargo?**
+Cada línea de flete guarda la tarifa que la dio (`RateComponentId`); el despacho y el COD salen del contrato.
+
+**¿Se puede facturar dos veces el flete de una orden?**
+No: al generar se bloquea y se marca la orden. Si cancela la corrida o anula la factura, vuelve a quedar por facturar.

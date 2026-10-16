@@ -1,3 +1,4 @@
+using Teikem.Domain.Billing;
 using Teikem.Domain.Constants;
 
 namespace Teikem.Infrastructure.Clients;
@@ -10,6 +11,12 @@ public static class RateKinds
     /// <summary>Pieza extra: EXTRA_PIECE / TIERED / GRADUATED / PER_PIECE, tramos por número de pieza.</summary>
     public const string ExtraPiece = "EXTRA_PIECE";
 }
+
+/// <summary>Un concepto del flete de una orden (Lote 74): Component = FreightComponents, el monto ya redondeado y la fila de tarifa que lo dio (null en despacho y COD, que salen del contrato).</summary>
+public sealed record FreightPiece(string Component, string? ServiceType, string? PackageType, decimal Amount, int? RateComponentId);
+
+/// <summary>El flete de una orden por concepto; Total = la cotización de la orden (QuoteOrder) cuando no hay línea sin tarifa.</summary>
+public sealed record FreightBreakdown(IReadOnlyList<FreightPiece> Pieces, decimal Total, int? ContractId);
 
 /// <summary>De dónde salió cada monto de la cotización (R35).</summary>
 public static class RateSources
@@ -157,6 +164,31 @@ public static class ContractRateResolver
         if (usedGeneric && genericRow is not null) ids.Add(genericRow.Id);
         var source = usedContract ? RateSources.Contract : usedGeneric ? RateSources.Generic : RateSources.None;
         return new ExtraPiecesResult(Money.Round4(total), source, ids);
+    }
+
+    /// <summary>
+    /// Lote 74: lo mismo que <see cref="QuoteOrder"/> pero por concepto, con la fila de tarifa de cada monto: la base y las piezas extra de cada línea (los montos en cero no se listan) y, una sola vez por orden,
+    /// el cargo por despacho y el de COD. La suma de los conceptos es el Total de QuoteOrder.
+    /// </summary>
+    public static IReadOnlyList<FreightPiece> Breakdown(IEnumerable<RateRow> rows, ContractFlags flags, IEnumerable<QuoteLine> lines, decimal codAmount)
+    {
+        var list = rows as IReadOnlyCollection<RateRow> ?? rows.ToList();
+        var pieces = new List<FreightPiece>();
+        var any = false;
+        foreach (var line in lines)
+        {
+            any = true;
+            var baseRate = BaseRate(list, flags, line.ServiceType, line.PackageType);
+            if (baseRate.Amount is decimal b && b != 0m) pieces.Add(new FreightPiece(FreightComponents.BaseFreight, line.ServiceType, line.PackageType, b, baseRate.RowId));
+            var extra = ExtraPieces(list, flags, line.ServiceType, line.PackageType, line.Pieces);
+            if (extra.Amount != 0m) pieces.Add(new FreightPiece(FreightComponents.ExtraPieces, line.ServiceType, line.PackageType, extra.Amount, extra.RowIds.Count > 0 ? extra.RowIds[0] : null));
+        }
+        if (!any) return pieces;
+        var dispatch = DispatchFee(flags);
+        if (dispatch != 0m) pieces.Add(new FreightPiece(FreightComponents.DispatchFee, null, null, dispatch, null));
+        var cod = CodFee(flags, codAmount);
+        if (cod != 0m) pieces.Add(new FreightPiece(FreightComponents.CodFee, null, null, cod, null));
+        return pieces;
     }
 
     private static TierRow? FindTier(RateRow? row, int unit)

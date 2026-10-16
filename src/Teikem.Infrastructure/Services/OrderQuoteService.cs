@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Teikem.Domain.Billing;
 using Teikem.Domain.Clients;
 using Teikem.Domain.Common;
 using Teikem.Domain.Orders;
@@ -79,6 +80,34 @@ public sealed class OrderQuoteService(TeikemDbContext db, ILookupCache lookups, 
 
         return new OrderQuoteComputation(quote.Total, quote.Lines, quote.DispatchFee, quote.CodFee,
             contract?.ContractId, contract?.PublicId, null);
+    }
+
+    /// <summary>
+    /// Lote 74 (facturación del flete): el desglose por concepto de la cotización de la orden en asOf, con la fila de tarifa de cada monto. Entrega especial: un solo concepto (el servicio especial).
+    /// Lanza lo mismo que ComputeAsync cuando no se puede cotizar (409/422): el llamador decide qué hacer.
+    /// </summary>
+    public async Task<FreightBreakdown> BreakdownAsync(TransportOrder order, Client client, DateOnly asOf, CancellationToken ct)
+    {
+        if (order.IsSpecialDelivery)
+        {
+            var c = await ComputeAsync(order, client, asOf, ct);
+            return new FreightBreakdown(new[] { new FreightPiece(FreightComponents.SpecialService, null, null, c.Total, null) }, c.Total, c.ContractId);
+        }
+        var serviceType = await lookups.GetAsync(order.ServiceTypeLookupId, ct)
+                          ?? throw new StatusRuleException("El tipo de servicio de la orden no existe en la lista.");
+        var raw = new List<(string PackageType, int Pieces)>();
+        foreach (var line in order.CargoLines.Where(l => l.IsActive))
+        {
+            if (line.PackageTypeLookupId is not int packageTypeId) continue;
+            var packageType = await lookups.GetAsync(packageTypeId, ct);
+            if (packageType is null) continue;
+            raw.Add((packageType.InternalCode, Math.Max(1, (int)line.Quantity)));
+        }
+        var lines = OrderQuoteLines.Build(serviceType.InternalCode, raw);
+        if (lines.Count == 0) throw new StatusRuleException(NoLinesMessage);
+        var request = new RateQuoteRequest(client.PublicId,
+            lines.Select(l => new RateQuoteLineRequest(l.ServiceType, l.PackageType, l.Pieces)).ToList(), order.CodAmount ?? 0m, asOf);
+        return await rates.BreakdownAsync(request, ct);
     }
 
     /// <summary>

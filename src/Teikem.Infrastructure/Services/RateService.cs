@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Teikem.Domain.Billing;
 using Teikem.Domain.Catalogs;
 using Teikem.Domain.Clients;
 using Teikem.Domain.Common;
@@ -270,6 +271,28 @@ public sealed class RateService(TeikemDbContext db, ITenantContext tenant, ILook
     /// </summary>
     public async Task<RateQuoteDto> QuoteAsync(RateQuoteRequest req, CancellationToken ct)
     {
+        var p = await PrepareQuoteAsync(req, ct);
+        var result = ContractRateResolver.QuoteOrder(p.Rows, p.Flags, p.Lines, req.CodAmount ?? 0m);
+        return new RateQuoteDto(p.Contract?.PublicId, p.ContractStatus, p.AsOf,
+            result.Lines.Select(l => new QuoteLineDto(l.ServiceType, l.PackageType, l.Pieces, l.BaseRate, l.BaseSource, l.ExtraPieces, l.ExtraSource, l.LineTotal)).ToList(),
+            result.DispatchFee, result.CodFee, result.Total, result.RateComponentIds);
+    }
+
+    /// <summary>
+    /// Lote 74 (facturación del flete): la misma cotización de <see cref="QuoteAsync"/> pero por concepto (tarifa base, piezas extra, despacho y COD) y con la fila de tarifa (RateComponentId) que
+    /// dio cada monto, para que la factura guarde de dónde salió cada cargo. Despacho y COD se cobran una sola vez, como en la cotización (R31–R33).
+    /// </summary>
+    public async Task<FreightBreakdown> BreakdownAsync(RateQuoteRequest req, CancellationToken ct)
+    {
+        var p = await PrepareQuoteAsync(req, ct);
+        var pieces = ContractRateResolver.Breakdown(p.Rows, p.Flags, p.Lines, req.CodAmount ?? 0m);
+        return new FreightBreakdown(pieces, Money.Round4(pieces.Sum(x => x.Amount)), p.Contract?.ContractId);
+    }
+
+    private sealed record QuotePreparation(Contract? Contract, string? ContractStatus, List<RateRow> Rows, ContractFlags Flags, List<QuoteLine> Lines, DateOnly AsOf);
+
+    private async Task<QuotePreparation> PrepareQuoteAsync(RateQuoteRequest req, CancellationToken ct)
+    {
         if (req.Lines is null || req.Lines.Count == 0)
             throw new ValidationException("lines", "Indique al menos una línea (servicio, tipo de paquete, piezas).");
         if (req.CodAmount is < 0) throw new ValidationException("codAmount", "El monto COD no puede ser negativo.");
@@ -308,11 +331,7 @@ public sealed class RateService(TeikemDbContext db, ITenantContext tenant, ILook
             contractStatus = await db.StatusCodes.AsNoTracking().Where(s => s.StatusCodeId == contract.StatusCodeId)
                 .Select(s => s.InternalCode).FirstOrDefaultAsync(ct);
         }
-
-        var result = ContractRateResolver.QuoteOrder(rateRows, flags, lines, req.CodAmount ?? 0m);
-        return new RateQuoteDto(contract?.PublicId, contractStatus, asOf,
-            result.Lines.Select(l => new QuoteLineDto(l.ServiceType, l.PackageType, l.Pieces, l.BaseRate, l.BaseSource, l.ExtraPieces, l.ExtraSource, l.LineTotal)).ToList(),
-            result.DispatchFee, result.CodFee, result.Total, result.RateComponentIds);
+        return new QuotePreparation(contract, contractStatus, rateRows, flags, lines, asOf);
     }
 
     // ---------------- Helpers de carga (siempre bajo el filtro global y a través del contrato) ----------------

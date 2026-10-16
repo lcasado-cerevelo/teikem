@@ -19,14 +19,18 @@ export interface RunForm {
   periodStart: string
   periodEnd: string
   onlyInPeriod: boolean
+  /** Lote 74: qué se factura (la venta de producto, el flete o las dos cosas). */
+  includeProducts: boolean
+  includeFreight: boolean
   note: string
 }
 
-export type RunFormError = 'period' | 'order' | 'note'
+export type RunFormError = 'period' | 'order' | 'note' | 'include'
 
 export function runFormError(f: RunForm): RunFormError | null {
   if (!f.periodStart || !f.periodEnd) return 'period'
   if (f.periodEnd < f.periodStart) return 'order'
+  if (!f.includeProducts && !f.includeFreight) return 'include'
   if (f.note.length > 500) return 'note'
   return null
 }
@@ -37,6 +41,8 @@ export function toRunRequest(f: RunForm) {
     periodStart: f.periodStart,
     periodEnd: f.periodEnd,
     onlyInPeriod: f.onlyInPeriod || undefined,
+    includeProducts: f.includeProducts ? undefined : false,
+    includeFreight: f.includeFreight ? undefined : false,
     note: f.note.trim() || undefined,
   }
 }

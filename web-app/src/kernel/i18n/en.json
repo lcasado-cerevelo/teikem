@@ -7484,8 +7484,10 @@
       "new": {
         "title": "New run",
         "generate": "Generate",
-        "help": "Gathers what was dispatched and not billed from the sales orders and builds one draft invoice per customer. Nothing is issued until the run is approved.",
+        "help": "Gathers what was dispatched and not billed from the sales orders and the freight of the transport orders (per the contract billing model) and builds one draft invoice per customer. Nothing is issued until the run is approved.",
         "client": "Customer",
+        "includeProducts": "Dispatched product sales",
+        "includeFreight": "Freight of the transport orders",
         "clientHelp": "No customer: everyone with something to bill.",
         "from": "From",
         "to": "To",
@@ -7541,6 +7543,7 @@
       "exempt": "Exempt",
       "errors": {
         "period": "Enter the start and end dates.",
+        "include": "Choose what to bill: product sales, freight or both.",
         "order": "The end date cannot be before the start date.",
         "note": "The note cannot exceed 500 characters.",
         "adjust": {

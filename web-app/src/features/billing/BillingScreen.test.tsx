@@ -171,6 +171,18 @@ describe('BillingScreen', () => {
     expect(await within(dialog).findByText('No hay nada por facturar con esos datos.')).toBeInTheDocument()
     expect(sent('POST', '/api/v1/billing/runs')[0].body).toMatchObject({ periodStart: '2026-10-01', onlyInPeriod: true })
 
+    // Lote 74: hay que dejar marcado al menos uno (producto o flete) y solo se manda lo que se apagó
+    await user.click(within(dialog).getByLabelText('Venta de producto despachado'))
+    await user.click(within(dialog).getByLabelText('Flete de las órdenes de transporte'))
+    await user.click(within(dialog).getByRole('button', { name: 'Generar' }))
+    expect(await within(dialog).findByText('Elija qué facturar: la venta de producto, el flete o las dos cosas.')).toBeInTheDocument()
+    await user.click(within(dialog).getByLabelText('Flete de las órdenes de transporte'))
+    await user.click(within(dialog).getByRole('button', { name: 'Generar' }))
+    await within(dialog).findByText('No hay nada por facturar con esos datos.')
+    expect(sent('POST', '/api/v1/billing/runs')[1].body).toMatchObject({ includeProducts: false })
+    expect(sent('POST', '/api/v1/billing/runs')[1].body).not.toHaveProperty('includeFreight')
+    await user.click(within(dialog).getByLabelText('Venta de producto despachado'))
+
     mock.failGenerate = false
     await user.click(within(dialog).getByRole('button', { name: 'Generar' }))
     expect(await screen.findByRole('dialog', { name: /Corrida #8/ })).toBeInTheDocument()

@@ -81,7 +81,7 @@ function RunsTab({ onOpen }: { onOpen: (id: number) => void }) {
 function NewRunModal({ onClose, onCreated }: { onClose: () => void; onCreated: (id: number) => void }) {
   const t = useT()
   const { generate } = useRunMutations()
-  const [form, setForm] = useState<RunForm>(() => ({ clientPublicId: null, periodStart: monthStartIso(), periodEnd: todayIso(), onlyInPeriod: false, note: '' }))
+  const [form, setForm] = useState<RunForm>(() => ({ clientPublicId: null, periodStart: monthStartIso(), periodEnd: todayIso(), onlyInPeriod: false, includeProducts: true, includeFreight: true, note: '' }))
   const [error, setError] = useState<string | null>(null)
   const set = (patch: Partial<RunForm>) => setForm((x) => ({ ...x, ...patch }))
 
@@ -129,6 +129,14 @@ function NewRunModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
             <input id="br-to" type="date" value={form.periodEnd} onChange={(e) => set({ periodEnd: e.target.value })} />
           </div>
         </div>
+        <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input type="checkbox" checked={form.includeProducts} onChange={(e) => set({ includeProducts: e.target.checked })} />
+          {t('billing.new.includeProducts')}
+        </label>
+        <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input type="checkbox" checked={form.includeFreight} onChange={(e) => set({ includeFreight: e.target.checked })} />
+          {t('billing.new.includeFreight')}
+        </label>
         <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <input type="checkbox" checked={form.onlyInPeriod} onChange={(e) => set({ onlyInPeriod: e.target.checked })} />
           {t('billing.new.onlyInPeriod')}

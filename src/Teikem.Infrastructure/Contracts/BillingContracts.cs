@@ -2,9 +2,10 @@ namespace Teikem.Infrastructure.Contracts;
 
 /// <summary>
 /// Lote 72 (P5) — POST /billing/runs. ClientPublicId vacío = todos los clientes con algo por facturar. Por omisión entra TODO lo pendiente hasta la fecha final (lo despachado antes del
-/// período que no se facturó no se pierde); con OnlyInPeriod solo lo despachado dentro de [inicio, fin].
+/// período que no se facturó no se pierde); con OnlyInPeriod solo lo despachado dentro de [inicio, fin]. Lote 74: IncludeProducts (venta de producto) e IncludeFreight (flete de las órdenes de
+/// transporte) son true por omisión; al menos uno debe ir.
 /// </summary>
-public sealed record BillingRunRequest(Guid? ClientPublicId = null, DateOnly? PeriodStart = null, DateOnly? PeriodEnd = null, string? Note = null, bool? OnlyInPeriod = null);
+public sealed record BillingRunRequest(Guid? ClientPublicId = null, DateOnly? PeriodStart = null, DateOnly? PeriodEnd = null, string? Note = null, bool? OnlyInPeriod = null, bool? IncludeProducts = null, bool? IncludeFreight = null);
 
 public sealed record BillingSettingsDto(string SalesBillingTrigger, int InvoiceDueDays);
 
@@ -15,7 +16,7 @@ public sealed record InvoiceListItemDto(Guid PublicId, string Number, string Sta
     DateOnly? DueDate, decimal Subtotal, decimal TaxAmount, decimal Total, decimal Paid, decimal Balance, int LineCount, int? RunId);
 
 public sealed record InvoiceLineDto(int Id, string Description, string ChargeType, Guid? ProductPublicId, string? Sku, string? SalesOrderNumber, decimal Quantity, decimal UnitAmount,
-    decimal? OriginalUnitAmount, bool IsAdjusted, string? AdjustmentNote, decimal LineSubtotal, decimal? TaxRatePct, decimal TaxAmount, bool IsTaxExempt);
+    decimal? OriginalUnitAmount, bool IsAdjusted, string? AdjustmentNote, decimal LineSubtotal, decimal? TaxRatePct, decimal TaxAmount, bool IsTaxExempt, string? TransportOrderNumber = null, int? RateComponentId = null);
 
 public sealed record InvoiceDto(Guid PublicId, string Number, string Status, string StatusLabel, string StatusColor, Guid ClientPublicId, string ClientName, DateOnly? IssueDate,
     DateOnly? DueDate, string Currency, decimal Subtotal, decimal TaxAmount, decimal Total, decimal Paid, decimal Balance, int? RunId, string? Notes,
