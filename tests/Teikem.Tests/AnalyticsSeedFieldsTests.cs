@@ -151,6 +151,46 @@ public class AnalyticsSeedFieldsTests
     }
 
     [Fact]
+    public async Task Lote67_sales_content_is_seeded_once_with_fields_that_exist_in_its_sources()
+    {
+        var tenant = new TenantContext { TenantId = TenantId, UserId = 1 };
+        var lookups = new FakeLookups();
+        using var db = InMemoryDb(tenant);
+        await new SystemAnalyticsSeeder(db, tenant, lookups).SeedForTenantAsync(TenantId, default);
+        await new SystemAnalyticsSeeder(db, tenant, lookups).SeedForTenantAsync(TenantId, default);   // idempotente
+
+        var orderFields = new SalesOrderDataSource(db, lookups, tenant).Fields.Select(f => f.Key).ToHashSet();
+        var lineFields = new SalesOrderLineDataSource(db, tenant).Fields.Select(f => f.Key).ToHashSet();
+        var inds = await db.IndicatorDefinitions.AsNoTracking().Where(i => i.DataSourceKey == Teikem.Domain.Sales.SalesCodes.EntityType).ToListAsync();
+        Assert.Equal(4, inds.Count);
+        Assert.All(inds, i => Assert.True(i.IsSystem));
+        Assert.Equal(new[] { Teikem.Domain.Sales.SalesAnalyticsRules.OpenOrdersIndicatorName }, inds.Where(i => i.ShowInPulse).Select(i => i.Name));   // solo las abiertas en el Pulso
+        foreach (var i in inds)
+        {
+            if (i.FieldKey is not null) Assert.Contains(i.FieldKey, orderFields);
+            foreach (var f in JsonFields(i.FilterJson)) Assert.Contains(f, orderFields);
+        }
+        Assert.Equal(AggregateFns.Avg, lookups.CodeOf(inds.Single(i => i.Name == Teikem.Domain.Sales.SalesAnalyticsRules.FillRateIndicatorName).AggregateFnLookupId));
+        Assert.Equal(DateRangeModes.Last30, lookups.CodeOf(inds.Single(i => i.Name == Teikem.Domain.Sales.SalesAnalyticsRules.DaysToShipIndicatorName).DateRangeModeLookupId!.Value));
+
+        var chart = Assert.Single(await db.ChartDefinitions.AsNoTracking().Where(c => c.Name == Teikem.Domain.Sales.SalesAnalyticsRules.OrdersByStatusChartName).ToListAsync());
+        Assert.Equal(("Status", false), (chart.GroupByField, chart.ShowInPulse));
+        Assert.Contains(chart.GroupByField!, orderFields);
+
+        var reports = await db.ReportDefinitions.AsNoTracking().Where(r => r.Name == Teikem.Domain.Sales.SalesAnalyticsRules.OrdersReportName
+            || r.Name == Teikem.Domain.Sales.SalesAnalyticsRules.OrdersByClientReportName || r.Name == Teikem.Domain.Sales.SalesAnalyticsRules.BackordersReportName).ToListAsync();
+        Assert.Equal(3, reports.Count);
+        var backorders = reports.Single(r => r.Name == Teikem.Domain.Sales.SalesAnalyticsRules.BackordersReportName);
+        foreach (var f in JsonFields(backorders.ColumnsJson).Concat(JsonFields(backorders.FilterJson)).Concat(JsonFields(backorders.SortJson))) Assert.Contains(f, lineFields);
+        foreach (var col in JsonSerializer.Deserialize<string[]>(backorders.ColumnsJson!)!) Assert.Contains(col, lineFields);
+        foreach (var r in reports.Where(r => r.ReportDefinitionId != backorders.ReportDefinitionId))
+        {
+            foreach (var f in JsonFields(r.FilterJson).Concat(JsonFields(r.GroupJson)).Concat(JsonFields(r.SortJson))) Assert.Contains(f, orderFields);
+            foreach (var col in JsonSerializer.Deserialize<string[]>(r.ColumnsJson ?? "[]")!) Assert.Contains(col, orderFields);
+        }
+    }
+
+    [Fact]
     public async Task Lote5_system_content_is_seeded()
     {
         var (_, reports, indicators, charts) = await SeedAsync();

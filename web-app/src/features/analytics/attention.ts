@@ -1,7 +1,7 @@
 // Lote 14 (D6) — lógica pura del panel "Necesita tu atención" del Pulso (GET /api/v1/analytics/attention). Sin React: arma
 // el enlace de "Revisar"/"Ver todos" con la ruta y los parámetros que manda el servidor, el tono de la fila (clases de la
 // maqueta .work.tone-*) y el texto de cada tipo de aviso con `t('analytics.attention.items.<code>.*', params)`.
-// Tipos: INVENTORY_DISCREPANCY (Lote 14) y RENTAL_DUE (rentas vencidas o por vencer, Lote 29; texto desde F17).
+// Tipos: INVENTORY_DISCREPANCY (Lote 14), RENTAL_DUE (rentas vencidas o por vencer, Lote 29; texto desde F17) y SALES_BACKORDER_READY (backorder de ventas que ya se puede surtir, Lote 67).
 import type { components } from '../../kernel/api/schema'
 import type { TParams } from '../../kernel/i18n/i18n'
 import { formatEventTime } from './activity'
@@ -14,7 +14,7 @@ export type AttentionGroupDto = components['schemas']['AttentionGroupDto']
 type Translate = (key: string, params?: TParams) => string
 
 /** Tipos de aviso que esta web sabe describir (el resto se pinta con su código y su "Revisar"). */
-export const ATTENTION_CODES = ['INVENTORY_DISCREPANCY', 'RENTAL_DUE'] as const
+export const ATTENTION_CODES = ['INVENTORY_DISCREPANCY', 'RENTAL_DUE', 'SALES_BACKORDER_READY'] as const
 export type AttentionCode = (typeof ATTENTION_CODES)[number]
 
 export function isKnownAttention(code: string | null | undefined): code is AttentionCode {
@@ -106,6 +106,7 @@ export function attentionRowText(item: AttentionItemDto, t: Translate, lang: str
   }
 
   if (item.code === 'RENTAL_DUE') return rentalDueText(p, t, lang, since)
+  if (item.code === 'SALES_BACKORDER_READY') return salesBackorderText(p, t, lang, since)
 
   const title = item.code ?? ''
   return { title, detail: '', figures: [], since, reviewLabel: title ? `${review} ${title}` : review }
@@ -136,6 +137,28 @@ function rentalDueText(p: Record<string, string>, t: Translate, lang: string, si
   return {
     title,
     detail: [p.client, p.location, p.warehouse].filter(Boolean).join(' · '),
+    figures: figures.filter((f) => f.value !== ''),
+    since,
+    reviewLabel: t(`${base}.reviewLabel`, { number, client: p.client ?? '' }),
+  }
+}
+
+/**
+ * Lote 67 (P4 S4) — orden de venta con backorder que ya se puede surtir (SALES_BACKORDER_READY). Params del servidor: number, client, warehouse, lines (líneas
+ * surtibles), units (unidades surtibles) y days (días de la línea que más espera). "Revisar" abre la orden (`/sales-orders?order=`).
+ */
+function salesBackorderText(p: Record<string, string>, t: Translate, lang: string, since: string): AttentionRowText {
+  const base = 'analytics.attention.items.SALES_BACKORDER_READY'
+  const number = p.number ?? ''
+  const figures: AttentionFigure[] = [
+    { label: t(`${base}.units`), value: formatQty(p.units, lang) },
+    { label: t(`${base}.lines`), value: formatQty(p.lines, lang) },
+  ]
+  const days = Number(p.days ?? '0')
+  if (Number.isFinite(days) && days > 0) figures.push({ label: t(`${base}.days`), value: formatNumber(days), emphasis: days > 7 })
+  return {
+    title: t(`${base}.title`, { number }),
+    detail: [p.client, p.warehouse].filter(Boolean).join(' · '),
     figures: figures.filter((f) => f.value !== ''),
     since,
     reviewLabel: t(`${base}.reviewLabel`, { number, client: p.client ?? '' }),

@@ -324,6 +324,12 @@ No hay otra validación: el panel es de solo lectura. Un tipo de aviso cuyo mód
 
 ---
 
+### 4.x Orden de venta con backorder por surtir (Lote 67)
+
+Código `SALES_BACKORDER_READY`. Para quien tiene `sales.backorder` con el módulo Órdenes de venta encendido. Una fila por orden abierta con backorder que ya se puede
+surtir, la más esperada primero. Parámetros: `publicId`, `number`, `client`, `warehouse`, `lines`, `units` (surtibles) y `days` (de la línea que más espera). Tono
+`warn`, o `danger` si lleva más de 7 días. «Revisar» → `/sales-orders?order=<publicId>`; «Ver todos» → `/sales-orders`. Detalle en [18 §16](18-ordenes-de-venta.md#16-análisis-de-órdenes-de-venta-lote-67).
+
 ## 5. Pulso del día (Lote 15)
 
 Este lote reordena el Pulso: pone arriba una franja de números de Almacén, deja fijas las filas de arriba al desplazarse, agrupa los

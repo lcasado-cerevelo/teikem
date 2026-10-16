@@ -364,6 +364,9 @@ public static class PermissionCatalog
         [EntityTypes.AuditLog] = AdminAudit,
         [EntityTypes.SecurityEvent] = AdminAudit,
         [EntityTypes.User] = AdminUsers,
+        // Lote 67 (P4 S4): análisis de órdenes de venta con sales.view
+        [Sales.SalesCodes.EntityType] = SalesView,
+        [EntityTypes.SalesOrderLine] = SalesView,
     };
 
     /// <summary>

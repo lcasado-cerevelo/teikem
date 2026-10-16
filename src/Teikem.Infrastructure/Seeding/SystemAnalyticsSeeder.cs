@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Teikem.Domain.Analytics;
 using Teikem.Domain.Common;
 using Teikem.Domain.Constants;
+using Teikem.Domain.Sales;
 using Teikem.Domain.Wms;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Persistence;
@@ -145,6 +146,7 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
         var visTenant = await lookups.GetIdAsync(LookupDomains.ReportVisibility, ReportVisibilities.Tenant, ct);
         var count = await lookups.GetIdAsync(LookupDomains.AggregateFn, AggregateFns.Count, ct);
         var sum = await lookups.GetIdAsync(LookupDomains.AggregateFn, AggregateFns.Sum, ct);
+        var avg = await lookups.GetIdAsync(LookupDomains.AggregateFn, AggregateFns.Avg, ct);
         var ops = await lookups.GetIdAsync(LookupDomains.BusinessModule, BusinessModules.Operations, ct);
         var acct = await lookups.GetIdAsync(LookupDomains.BusinessModule, BusinessModules.Accounting, ct);
         var wh = await lookups.GetIdAsync(LookupDomains.BusinessModule, BusinessModules.Warehouse, ct);
@@ -242,6 +244,17 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
             new[] { "SerialNumber", "Sku", "ProductName", "WarehouseCode", "BinCode", "Status", "Condition", "ReturnNumber", "RentalNumber", "ClientName", "StartedAtUtc", "DaysInProcess" },
             RentalAnalyticsRules.OpenProcessFilter, null, "[{\"field\":\"StartedAtUtc\",\"dir\":\"asc\"}]");
 
+        // Lote 67 (P4 S4) — vistas de órdenes de venta (nombres de campo de SalesOrderDataSource y SalesOrderLineDataSource).
+        await Report(SalesCodes.EntityType, SalesAnalyticsRules.OrdersReportName, "Órdenes de venta con estatus, cliente, fechas, unidades y cumplimiento", "Sales orders with status, client, dates, units and fill rate",
+            new[] { "Number", "ClientName", "WarehouseCode", "Status", "RequiredDate", "IsLate", "LineCount", "UnitsOrdered", "UnitsShipped", "UnitsBackordered", "FillRatePct", "Total", "CreatedAtUtc" },
+            null, null, "[{\"field\":\"CreatedAtUtc\",\"dir\":\"desc\"}]");
+        await Report(SalesCodes.EntityType, SalesAnalyticsRules.OrdersByClientReportName, "Órdenes de venta, unidades pedidas y total por cliente", "Sales orders, units ordered and total by client",
+            Array.Empty<string>(), null, SalesAnalyticsRules.OrdersByClientGroup, null);
+        if (await lookups.TryGetIdAsync(LookupDomains.EntityType, EntityTypes.SalesOrderLine, ct) is not null)
+            await Report(EntityTypes.SalesOrderLine, SalesAnalyticsRules.BackordersReportName, "Líneas con backorder pendiente de órdenes abiertas, las más esperadas primero", "Lines with pending backorder in open orders, longest waiting first",
+                new[] { "OrderNumber", "ClientName", "WarehouseCode", "Sku", "ProductName", "QtyOrdered", "QtyReserved", "QtyBackordered", "DaysWaiting" },
+                SalesAnalyticsRules.PendingBackorderFilter, null, "[{\"field\":\"DaysWaiting\",\"dir\":\"desc\"}]");
+
         // ---- Indicadores ----
         var existingInd = await db.IndicatorDefinitions.Where(i => i.TenantId == tenantId).Select(i => i.Name).ToListAsync(ct);
         void Indicator(string name, string es, string en, string source, string? field, int fn, string? filter, int? range, bool pulse, int sort, bool isMoney = false, int? module = null)
@@ -320,6 +333,18 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
         Indicator(RentalAnalyticsRules.OverdueIndicatorName, "Rentas abiertas (Programadas o En renta) cuya fecha de recogido ya pasó",
             "Open rentals (scheduled or on rent) whose pickup date has passed",
             EntityTypes.Rental, null, count, RentalAnalyticsRules.OverdueFilter, all, false, 101, module: wh);
+
+        // Lote 67 (P4 S4): órdenes de venta (fuentes SALES_ORDER y SALES_ORDER_LINE). Estado actual con rango ALL; los de desempeño (cumplimiento y días a
+        // despachar) miran los últimos 30 días. Ocultos con el módulo Órdenes de venta apagado (IDataSource.TenantModule). "Necesita tu atención" ya muestra el
+        // backorder surtible; los indicadores van apagados en el Pulso salvo las órdenes abiertas.
+        Indicator(SalesAnalyticsRules.OpenOrdersIndicatorName, "Órdenes de venta solicitadas o despachadas parcial (por despachar)", "Sales orders requested or partially shipped (to dispatch)",
+            SalesCodes.EntityType, null, count, SalesAnalyticsRules.OpenFilter, all, true, 110, module: wh);
+        Indicator(SalesAnalyticsRules.BackorderUnitsIndicatorName, "Unidades esperando inventario en órdenes de venta abiertas", "Units waiting for stock in open sales orders",
+            SalesCodes.EntityType, "UnitsBackordered", sum, SalesAnalyticsRules.OpenFilter, all, false, 111, module: wh);
+        Indicator(SalesAnalyticsRules.FillRateIndicatorName, "Promedio de lo despachado sobre lo pedido en las órdenes despachadas de los últimos 30 días", "Average shipped over ordered in orders shipped in the last 30 days",
+            SalesCodes.EntityType, "FillRatePct", avg, SalesAnalyticsRules.ShippedFilter, last30, false, 112, module: wh);
+        Indicator(SalesAnalyticsRules.DaysToShipIndicatorName, "Días promedio de solicitar a despachar por completo (últimos 30 días)", "Average days from request to full shipment (last 30 days)",
+            SalesCodes.EntityType, "DaysToShip", avg, SalesAnalyticsRules.ShippedFilter, last30, false, 113, module: wh);
 
         // Corrección idempotente de tenants ya sembrados con la versión anterior (rango null / COD en Operación).
         var orderIndicators = await db.IndicatorDefinitions
@@ -435,6 +460,10 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
         Chart(MovementsByTypeChartName, MovementsByTypeChartDescriptionEs, MovementsByTypeChartDescriptionEn,
             EntityTypes.InventoryTransaction, "TxnType", bar, null, last7, true, MovementsByTypeChartSortOrder, field: "Units", fn: sum, module: wh,
             isSystem: false, seedKey: ChartSeedKeys.MovementsByType);
+
+        // Lote 67 (P4 S4): órdenes de venta por estatus (últimos 30 días; de sistema, apagada en el Pulso).
+        Chart(SalesAnalyticsRules.OrdersByStatusChartName, "Órdenes de venta de los últimos 30 días por estatus", "Sales orders of the last 30 days by status",
+            SalesCodes.EntityType, "Status", donut, null, last30, false, 110, module: wh);
 
         // Lote 29 (Rentas R3): devoluciones de renta por motivo (fuente RENTAL_RETURN, por fecha de devolución), dona de 30 días, de
         // sistema y apagada en el Pulso (cada usuario la enciende); oculta con el módulo Rentas apagado.

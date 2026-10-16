@@ -2,6 +2,7 @@
 // (lista con filtro de estatus y buscador; «Nueva orden» con sales.create) y los BACKORDERS (lo pendiente, el más antiguo primero; surtir una línea, surtir todo
 // o cerrar con faltante con sales.backorder). Una orden se abre en su ventana (borrador editable, o solicitada con lo reservado y lo pendiente).
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Can } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { fetchAllPages } from '../../kernel/api/fetchAllPages'
@@ -200,7 +201,9 @@ function BackordersTab({ onOpen }: { onOpen: (id: string) => void }) {
 export default function SalesOrdersScreen() {
   const t = useT()
   const [tab, setTab] = useState<TabKey>('orders')
-  const [openId, setOpenId] = useState<string | null | 'new'>(null)
+  // Lote 67: el aviso del Pulso «Necesita tu atención» abre la orden directo (?order=<publicId>)
+  const [params] = useSearchParams()
+  const [openId, setOpenId] = useState<string | null | 'new'>(() => params.get('order'))
   return (
     <div className="sales-screen">
       <div className="head">

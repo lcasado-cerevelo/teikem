@@ -2888,3 +2888,18 @@ FROM dbo.StatusCode s
 JOIN dbo.LookupCode k ON k.Entity = N'StageKind' AND k.InternalCode = N'LATERAL'
 WHERE s.Entity = N'SalesOrderStatus' AND s.InternalCode IN (N'PARTIAL', N'SHIPPED') AND s.StageKindLookupId <> k.LookupCodeId;
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-16 (o) — Análisis de órdenes de venta (Lote 67, P4 parte S4). EntityType SALES_ORDER_LINE: la base de las vistas sobre las líneas de las órdenes de venta
+   (la fuente de datos SALES_ORDER_LINE). Solo AGREGA. Idempotente. Depende de la sección (k). Los indicadores, el gráfico y las vistas de sistema los siembra el
+   código por compañía (SystemAnalyticsSeeder), igual que los de Rentas.
+   ---------------------------------------------------------------------------- */
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'SALES_ORDER_LINE', N'{"es":"Línea de orden de venta","en":"Sales order line"}', 126)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO

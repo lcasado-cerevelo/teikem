@@ -8375,3 +8375,21 @@ El aviso usa lo disponible para vender en ese momento; otra orden más antigua p
 
 **Quiero dejar de recibir los avisos de órdenes despachadas.**
 Silencie el evento en su bandeja (los de ventas son opcionales, salvo el de crédito por autorizar).
+
+
+## Lote 67 — Análisis de órdenes de venta
+
+**No veo los indicadores ni las vistas de órdenes de venta en Análisis.**
+Hacen falta el módulo Órdenes de venta encendido para la compañía y el permiso `sales.view`. Sin alguno, las fuentes (y lo que se arme con ellas) no aparecen.
+
+**El cumplimiento (%) está vacío en una orden.**
+Solo tienen cumplimiento y días a despachar las órdenes **despachadas por completo**. Una abierta, cancelada o borrador no lo tiene (no se cuenta como cero).
+
+**El cumplimiento sale menos de 100 aunque la orden está «Despachada».**
+Se cerraron líneas con faltante: el cumplimiento es lo despachado sobre lo pedido.
+
+**«Necesita tu atención» dice que hay inventario, pero Surtir no reserva todo.**
+El aviso usa lo disponible para vender en ese momento; una orden más antigua puede tomarlo antes. Surtir reserva de la orden más antigua a la más reciente.
+
+**No me aparece la fila de backorder en «Necesita tu atención».**
+Se muestra solo con `sales.backorder` y el módulo Órdenes de venta; y solo si hay inventario disponible para surtir (una orden esperando sin inventario no aparece).

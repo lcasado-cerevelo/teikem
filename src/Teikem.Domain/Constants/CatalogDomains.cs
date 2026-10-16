@@ -593,6 +593,8 @@ public static class EntityTypes
     public const string RentalProcess = "RENTAL_PROCESS";
     /// <summary>2026-10-08: reporte de daño (llegó dañado en un recibo o se dañó en el almacén).</summary>
     public const string DamageReport = "DAMAGE_REPORT";
+    /// <summary>Lote 67: líneas de órdenes de venta (fuente de análisis; la orden es SalesCodes.EntityType = SALES_ORDER).</summary>
+    public const string SalesOrderLine = "SALES_ORDER_LINE";
     // Lote 43 (F-G1, 2026-10-12): impresoras (perfil de impresión de la compañía) y plantillas de label.
     public const string Printer = "PRINTER";
     public const string LabelTemplate = "LABEL_TEMPLATE";

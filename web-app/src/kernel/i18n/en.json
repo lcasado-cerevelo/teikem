@@ -2914,6 +2914,14 @@
           "difference": "Difference",
           "reviewLabel": "Review the discrepancy of {sku} ({where})"
         },
+        "SALES_BACKORDER_READY": {
+          "title": "Order {number}: stock is now available to fulfill",
+          "group": "Sales orders with backorder ready to fulfill",
+          "units": "Units available",
+          "lines": "Lines",
+          "days": "Days waiting",
+          "reviewLabel": "Review order {number} ({client})"
+        },
         "RENTAL_DUE": {
           "titleOverdue": "Rental {number} overdue",
           "titleToday": "Rental {number}: pickup today",

@@ -206,3 +206,42 @@ tabla en [14 — Avisos §3.1](14-avisos.md#31-eventos-de-las-órdenes-de-venta-
 - **Backorder surtible:** el aviso **no surte**; quien tenga `sales.backorder` surte desde la vista Backorders (sección 9). El modo automático queda para más adelante.
 - **Un aviso nunca deshace la operación:** si el correo falla, la orden queda igual y el aviso se reintenta (1, 5 y 30 minutos).
 - **Soporte:** los avisos quedan en el registro de envíos (Sistema → Reglas de aviso → Registro) por evento y destinatario; el trabajo `SALES_BACKORDER_SCAN` y su historial se ven en Sistema → Trabajos programados.
+
+## 16. Análisis de órdenes de venta (Lote 67)
+
+Con el módulo **Órdenes de venta** encendido y el permiso `sales.view`, Análisis (Pulso, Indicadores, Gráficos y Vistas) ofrece dos fuentes de datos nuevas.
+Sin el módulo apagado o sin el permiso, las fuentes y todo lo que se arme con ellas no aparecen.
+
+**Fuente «Órdenes de venta» (`SALES_ORDER`)**, una fila por orden, con rango de fecha por la fecha de creación:
+
+| Campo | Qué es |
+|---|---|
+| Número, Cliente, Almacén, Estatus | Los de la orden. |
+| Abierta | Solicitada o despachada parcial (todavía hay algo por despachar o esperando inventario). |
+| Con backorder / Unidades en backorder | Alguna línea espera inventario (sin contar las cerradas con faltante). |
+| Atrasada | Abierta con fecha requerida anterior a hoy (día de la compañía). |
+| Fecha del pedido, Fecha requerida, Solicitada el, Despachada el | Fechas. «Despachada el» es el último cambio a Despachada. |
+| Días a despachar | De solicitarla a despacharla por completo; solo en órdenes despachadas. |
+| Líneas, Unidades pedidas / reservadas / despachadas | Totales de las líneas. |
+| Cumplimiento (%) | Despachado sobre lo pedido (máximo 100); solo en órdenes despachadas (con faltante cerrado queda por debajo de 100). |
+| Subtotal, Impuesto, Total | Dinero de la orden. |
+
+**Fuente «Líneas de órdenes de venta» (`SALES_ORDER_LINE`)**, una fila por línea: orden, cliente, almacén, estatus de la orden, SKU, producto, pedido, reservado,
+despachado, en backorder, cerrada con faltante, **días esperando** (del backorder pendiente), precio, total de la línea e impuesto.
+
+**Contenido de sistema** (se siembra solo en cada compañía; apagado el módulo, queda oculto):
+
+| Qué | Nombre | Detalle |
+|---|---|---|
+| Indicador (en el Pulso) | **Órdenes de venta abiertas** | Cuántas hay por despachar. |
+| Indicador | **Unidades en backorder** | Unidades esperando inventario en órdenes abiertas. |
+| Indicador | **Cumplimiento de órdenes de venta (%)** | Promedio de lo despachado sobre lo pedido, órdenes despachadas en 30 días. |
+| Indicador | **Días promedio a despachar** | De solicitar a despachar por completo, 30 días. |
+| Gráfico | **Órdenes de venta por estatus** | Dona de 30 días. |
+| Vistas | **Órdenes de venta**, **Órdenes de venta por cliente**, **Backorders de órdenes de venta** | La última lista las líneas con backorder pendiente, las que más esperan primero. |
+
+**Pulso → Necesita tu atención:** una fila por cada orden abierta con backorder que **ya se puede surtir** (hay disponible para vender), para quien tenga `sales.backorder`.
+Muestra unidades surtibles, líneas y días esperando (en rojo si pasa de 7). **Revisar** abre la orden; **Ver todos** abre Órdenes de venta. Es la misma cuenta que la
+pestaña Backorders: lo que avisa es lo que **Surtir** va a reservar.
+
+Base de datos: sección **2026-10-16 (o)** de `Diseño/logistica-db-update.sql` (EntityType `SALES_ORDER_LINE`); lo demás lo siembra el código.

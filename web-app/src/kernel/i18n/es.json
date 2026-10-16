@@ -2914,6 +2914,14 @@
           "difference": "Diferencia",
           "reviewLabel": "Revisar el descuadre de {sku} ({where})"
         },
+        "SALES_BACKORDER_READY": {
+          "title": "Orden {number}: ya hay inventario para surtir",
+          "group": "Órdenes de venta con backorder por surtir",
+          "units": "Unidades surtibles",
+          "lines": "Líneas",
+          "days": "Días esperando",
+          "reviewLabel": "Revisar la orden {number} ({client})"
+        },
         "RENTAL_DUE": {
           "titleOverdue": "Renta {number} vencida",
           "titleToday": "Renta {number}: se recoge hoy",

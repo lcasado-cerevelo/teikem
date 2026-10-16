@@ -78,13 +78,13 @@ const SESSION = {
   reloadMe: async () => {},
 } as unknown as Session
 
-function wrap() {
+function wrap(initial = '/') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
       <SessionContext.Provider value={SESSION}>
         <AccessProvider permissions={SESSION.permissions} modules={SESSION.modules}>
-          <MemoryRouter>
+          <MemoryRouter initialEntries={[initial]}>
             <SalesOrdersScreen />
           </MemoryRouter>
         </AccessProvider>
@@ -111,6 +111,11 @@ describe('SalesOrdersScreen', () => {
     expect(screen.getByText('Con backorder')).toBeInTheDocument()
     await user.selectOptions(screen.getByLabelText('Filtrar por estatus'), 'REQUESTED')
     await waitFor(() => expect(mock.requests.some((r) => r.path === '/api/v1/sales-orders' && r.search.includes('status=REQUESTED'))).toBe(true))
+  })
+
+  it('el aviso del Pulso abre la orden directo con ?order= (Lote 67)', async () => {
+    wrap(`/sales-orders?order=${DRAFT}`)
+    expect(await screen.findByRole('dialog', { name: /Orden OV-00001/ })).toBeInTheDocument()
   })
 
   it('un borrador se abre para editar y «Solicitar…» comprueba el inventario: con faltante ofrece reservar lo disponible y dejar el resto en backorder', async () => {
