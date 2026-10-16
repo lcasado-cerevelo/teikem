@@ -74,7 +74,10 @@ public sealed class PickBatchService(
     private sealed record BinInfo(int BinId, string Code, bool Active, string? ZoneTypeCode);
 
     /// <summary>Movimiento planeado de una línea: una fila de ISSUE y una fila de PickBatchLine.</summary>
-    private sealed record PlannedPick(ProductInfo Product, int BinId, int? LotId, int? SerialId, string? SerialNumber, decimal Quantity);
+    private sealed record PlannedPick(ProductInfo Product, int BinId, int? LotId, int? SerialId, string? SerialNumber, decimal Quantity, int LineIndex = 0);
+
+    /// <summary>Lote 70 — una línea de la recolección ya «explotada»: un kit se reemplaza por una línea por componente (cantidad por kit × kits). Origin = índice de la línea pedida.</summary>
+    private sealed record ExplodedLine(PickBatchLineRequest Line, int Origin, int? KitProductId = null, string? KitSku = null, decimal KitUnits = 0m, bool FirstOfKit = false);
 
     private sealed record SerialRow(int SerialId, string SerialNumber, int? LotId, int? StatusCodeId, int? CurrentWarehouseId, int? CurrentBinId);
 
@@ -354,13 +357,17 @@ public sealed class PickBatchService(
             // (2a) almacén, productos y asignación SIN bloqueo (el ledger bloquea y re-verifica después)
             var warehouse = await ResolveWarehouseOrDefaultAsync(req.WarehousePublicId, ct2);
             if (!warehouse.IsActive) throw new StatusRuleException(PickBatchRules.WarehouseInactive);
-            var products = await ProductsAsync(lines.Select(l => l.ProductPublicId!.Value), ct2);
+            // Lote 70: un kit se recolecta por sus componentes (cantidad por kit × kits), cada uno con su posición por FEFO/FIFO
+            var exploded = await ExplodeKitsAsync(lines, ct2);
+            var effective = exploded.Select(e => e.Line).ToList();
+            var effectiveSerials = exploded.Select(e => e.KitProductId is null ? serialsByLine[e.Origin] : (IReadOnlyList<string>)Array.Empty<string>()).ToList();
+            var products = await ProductsAsync(effective.Select(l => l.ProductPublicId!.Value), ct2);
             foreach (var p in products.Values)
                 if (!p.IsActive) throw new StatusRuleException(PickBatchRules.ProductInactive(p.Sku));
             if (!PickBatchRules.IsSingleOwner(products.Values.Select(p => p.ClientId)))
                 throw new ValidationException("lines", manual is null ? PickBatchRules.SingleOwner : PickBatchRules.ManualSingleOwner);
 
-            var plan = await PlanAsync(warehouse, lines, serialsByLine, products, ct2);
+            var plan = await PlanAsync(warehouse, effective, effectiveSerials, products, ct2);
 
             // (2b) número EMP (o DMA): PRIMER bloqueo de la transacción (excepción D48 al orden del lote)
             var seq = await numbers.NextAsync(counterKind, PackBatchCounterClientId, ct2);
@@ -395,14 +402,17 @@ public sealed class PickBatchService(
             var postings = plan.Select(x => new InventoryPosting(InventoryTxnTypes.Issue, x.Product.ProductId, x.Quantity,
                     LotId: x.LotId, SerialId: x.SerialId, SerialNumber: x.SerialNumber,
                     FromWarehouseId: warehouse.WarehouseId, FromBinId: x.BinId,
-                    RefEntityType: EntityTypes.PickBatch, RefId: batch.PickBatchId, Notes: movementNote))
+                    RefEntityType: EntityTypes.PickBatch, RefId: batch.PickBatchId,
+                    Notes: exploded[x.LineIndex].KitSku is string kitSku ? $"{kitSku} × {exploded[x.LineIndex].KitUnits:0.###} · {number}" : movementNote))
                 .ToList();
             var txnIds = await ledger.PostAsync(postings, ct2);
 
             // (2e) líneas con el costo congelado (D35) y su movimiento
+            var kitCounted = new HashSet<int>();
             for (var i = 0; i < plan.Count; i++)
             {
                 var x = plan[i];
+                var ex = exploded[x.LineIndex];
                 db.Set<PickBatchLine>().Add(new PickBatchLine
                 {
                     PickBatchId = batch.PickBatchId,
@@ -413,6 +423,8 @@ public sealed class PickBatchService(
                     Quantity = x.Quantity,
                     UnitCost = x.Product.PurchaseCost,
                     IssueTxnId = txnIds[i],
+                    KitProductId = ex.KitProductId,
+                    KitQuantity = ex.KitProductId is not null && kitCounted.Add(ex.Origin) ? ex.KitUnits : null,   // los kits se anotan una sola vez (para deshacer en kits)
                 });
             }
             await db.SaveGuardedAsync(numberTaken, ct2);
@@ -420,6 +432,47 @@ public sealed class PickBatchService(
         }, ct);
 
         return publicId;
+    }
+
+    /// <summary>
+    /// Lote 70 — explota los kits de la recolección: cada línea de kit se reemplaza por una línea por componente (cantidad por kit × kits). Un kit no admite posición, lote ni
+    /// series (sale de sus componentes por FEFO/FIFO), se pide en piezas enteras y debe tener componentes. Las demás líneas pasan igual.
+    /// </summary>
+    private async Task<List<ExplodedLine>> ExplodeKitsAsync(IReadOnlyList<PickBatchLineRequest> lines, CancellationToken ct)
+    {
+        var result = new List<ExplodedLine>();
+        var kitTypeId = await lookups.TryGetIdAsync(KitCodes.ProductTypeDomain, ProductTypes.Kit, ct);
+        var ids = lines.Select(l => l.ProductPublicId!.Value).Distinct().ToList();
+        var kits = kitTypeId is null ? new Dictionary<Guid, Product>()
+            : await db.Set<Product>().AsNoTracking().Where(p => ids.Contains(p.PublicId) && p.ProductTypeLookupId == kitTypeId).ToDictionaryAsync(p => p.PublicId, ct);
+        if (kits.Count == 0)
+        {
+            for (var i = 0; i < lines.Count; i++) result.Add(new ExplodedLine(lines[i], i));
+            return result;
+        }
+        var kitIds = kits.Values.Select(k => k.ProductId).ToList();
+        var comps = await (from c in db.Set<ProductKitComponent>().AsNoTracking()
+                           join p in db.Set<Product>().AsNoTracking() on c.ComponentProductId equals p.ProductId
+                           where kitIds.Contains(c.KitProductId)
+                           orderby c.SortOrder, c.ProductKitComponentId
+                           select new { c.KitProductId, c.Quantity, p.PublicId }).ToListAsync(ct);
+        for (var i = 0; i < lines.Count; i++)
+        {
+            var line = lines[i];
+            if (!kits.TryGetValue(line.ProductPublicId!.Value, out var kit)) { result.Add(new ExplodedLine(line, i)); continue; }
+            if (line.BinId is not null || line.LotId is not null || (line.SerialNumbers?.Count ?? 0) > 0) throw new ValidationException($"lines[{i}]", KitRules.CollectNoBinChoice);
+            var units = line.Quantity!.Value;
+            if (units != Math.Floor(units)) throw new ValidationException($"lines[{i}].quantity", Teikem.Domain.Sales.SalesRules.KitQuantityWhole(kit.Sku));
+            var mine = comps.Where(c => c.KitProductId == kit.ProductId).ToList();
+            if (mine.Count == 0) throw new ValidationException($"lines[{i}]", Teikem.Domain.Sales.SalesRules.KitWithoutComponents(kit.Sku));
+            var first = true;
+            foreach (var c in mine)
+            {
+                result.Add(new ExplodedLine(new PickBatchLineRequest(c.PublicId, units * c.Quantity), i, kit.ProductId, kit.Sku, units, first));
+                first = false;
+            }
+        }
+        return result;
     }
 
     /// <summary>
@@ -500,7 +553,7 @@ public sealed class PickBatchService(
                              && (line.BinId is null || s.CurrentBinId == line.BinId)
                              && (line.LotId is null || s.LotId == line.LotId);
                     if (!ok) throw new ConflictException(PickBatchRules.SerialNotAvailable(number));
-                    plan.Add(new PlannedPick(product, bin!.BinId, s!.LotId, s.SerialId, s.SerialNumber, 1m));
+                    plan.Add(new PlannedPick(product, bin!.BinId, s!.LotId, s.SerialId, s.SerialNumber, 1m, i));
                 }
                 continue;
             }
@@ -526,7 +579,7 @@ public sealed class PickBatchService(
             foreach (var a in allocation.Allocations)
             {
                 remaining[(product.ProductId, a.BinId, a.LotId)] -= a.Quantity;
-                plan.Add(new PlannedPick(product, a.BinId, a.LotId, null, null, a.Quantity));
+                plan.Add(new PlannedPick(product, a.BinId, a.LotId, null, null, a.Quantity, i));
             }
         }
 

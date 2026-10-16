@@ -8432,3 +8432,12 @@ El aparato todavía no despacha líneas de kit; despáchelas desde la web. Llega
 
 **Deshice un despacho de kits.**
 Los componentes vuelven a su posición, los kits despachados bajan y quedan reservados otra vez; la orden se reabre.
+
+
+## Lote 70 — Recolectar kits
+
+**Recolecté un kit y en el Kárdex veo las piezas sueltas.**
+Es lo normal: el kit no tiene existencia, así que sale cada componente (con la nota «KIT-1 × 2 · EMP-…»). Eliminar la recolección las devuelve todas.
+
+**No puedo escoger la posición al recolectar un kit.**
+Un kit sale de sus componentes por la rotación (FEFO/FIFO) de cada uno; no admite posición, lote ni series. Para sacar de una posición concreta, recolecte los componentes como productos sueltos.

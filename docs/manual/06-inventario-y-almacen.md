@@ -2309,6 +2309,26 @@ Además: un kit nunca aparece en los conteos (no tiene saldos) y no puede tener 
   `Product.KitAdjustable`, sección **2026-10-16 (p)** de `Diseño/logistica-db-update.sql`.
 - El cambio de tipo del producto queda en la bitácora del producto; los cambios de componentes también (con el tipo de entidad del producto).
 
+### 8b.5 Recolectar un kit (Lote 70)
+
+`POST /api/v1/pick-batches` (y `collect-and-pack`, y el despacho manual) aceptan una línea con un **kit**: se **explota** en una línea por componente (cantidad por kit × kits),
+cada una con su posición por FEFO/FIFO como cualquier producto; todo en la misma recolección y la misma transacción.
+
+- En el Kárdex, cada salida lleva la nota `{KIT} × n · EMP-#####` (o `DMA-…` en un despacho manual).
+- Las líneas de la recolección anotan el kit (`KitProductId`) y cuántos kits representa (`KitQuantity`, una sola vez por kit).
+- Un kit se recolecta en **piezas enteras** y **no admite posición, lote ni series**; si no alcanza algún componente, 409 `insufficient_stock` con el faltante de ese componente y no sale nada.
+- Eliminar la recolección devuelve todos los componentes a su posición (como siempre).
+- Un kit y un componente suyo en la misma recolección **comparten el mismo saldo** (no se cuenta dos veces).
+
+| Situación | Mensaje | HTTP |
+|---|---|---|
+| Posición, lote o series en una línea de kit | `Un kit se recolecta por sus componentes: no se escoge posición, lote ni series.` | 400 |
+| Cantidad con decimales | `El kit {SKU} se pide en piezas enteras.` | 400 |
+| Kit sin componentes | `El kit {SKU} no tiene componentes: defínalos antes de venderlo.` | 400 |
+| No alcanza un componente | el mensaje de inventario insuficiente de ese componente | 409 |
+
+La pantalla de Recolección todavía no ofrece kits en su selector (muestra productos con existencia): se usan desde las órdenes de venta o por el API.
+
 ## 9. Cruce de plataforma (demo): citas y planes
 
 Qué hace: agenda citas de plataforma (llegada/salida) y arma planes de cruce de plataforma que asignan líneas de recibos

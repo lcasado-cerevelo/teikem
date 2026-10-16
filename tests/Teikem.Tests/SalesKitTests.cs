@@ -260,6 +260,63 @@ public sealed class SalesKitTests
         Assert.Equal(new[] { ("A", 1m, 4m), ("B", 3m, 12m) }, saved.Lines[0].Components!.Select(c => (c.Sku, c.QtyPerKit, c.Needed)).ToArray());
     }
 
+    // ---------------------------------------------------------------- Lote 70: recolección normal con kits
+
+    private static PickBatchCreateRequest Collect(World x, params PickBatchLineRequest[] lines) => new(x.W.PublicId, lines);
+
+    [Fact]
+    public async Task Collecting_a_kit_issues_its_components_by_rotation_with_the_kit_in_the_ledger_note()
+    {
+        var x = await NewWorldAsync();
+        await using var _ = x.F;
+        var batch = await x.Batches.CollectAsync(Collect(x, new PickBatchLineRequest(x.Kit.PublicId, 2m)), default);
+        Assert.Equal((6m, 0m), await BalanceAsync(x, x.A));   // 10 - 2×2
+        Assert.Equal((3m, 0m), await BalanceAsync(x, x.B));   // 5 - 2×1
+        var lines = await x.F.Db.Set<PickBatchLine>().AsNoTracking().Where(l => l.PickBatchId == x.F.Db.Set<PickBatch>().Single(b => b.PublicId == batch.PublicId).PickBatchId).ToListAsync();
+        Assert.Equal(new[] { 2m, 4m }, lines.Select(l => l.Quantity).OrderBy(q => q));
+        Assert.All(lines, l => Assert.Equal(x.Kit.ProductId, l.KitProductId));
+        Assert.Equal(2m, lines.Sum(l => l.KitQuantity ?? 0m));
+        var notes = await x.F.Db.InventoryTransactions.AsNoTracking().Where(t => t.RefId == lines[0].PickBatchId).Select(t => t.Notes).ToListAsync();
+        Assert.All(notes, n => Assert.StartsWith("KIT-1 × 2 · EMP-", n));
+    }
+
+    [Fact]
+    public async Task A_kit_next_to_a_normal_line_of_one_of_its_components_shares_the_same_stock()
+    {
+        var x = await NewWorldAsync(stockA: 6m, stockB: 5m);
+        await using var _ = x.F;
+        // el kit lleva 2 A por kit: 2 kits = 4 A; la línea suelta pide 2 A más = 6 en total (todo el saldo)
+        await x.Batches.CollectAsync(Collect(x, new PickBatchLineRequest(x.Kit.PublicId, 2m), new PickBatchLineRequest(x.A.PublicId, 2m)), default);
+        Assert.Equal((0m, 0m), await BalanceAsync(x, x.A));
+        // y una más no alcanza
+        var ex = await Assert.ThrowsAnyAsync<TeikemException>(() => x.Batches.CollectAsync(Collect(x, new PickBatchLineRequest(x.Kit.PublicId, 1m)), default));
+        Assert.Equal((409, "insufficient_stock"), (ex.StatusCode, ex.Code));
+        Assert.Contains("A", ex.Message);
+    }
+
+    [Fact]
+    public async Task Collecting_a_kit_rejects_a_bin_lot_decimals_and_a_kit_without_enough_stock_leaves_nothing_behind()
+    {
+        var x = await NewWorldAsync(stockA: 10m, stockB: 1m);
+        await using var _ = x.F;
+        Assert.Equal(KitRules.CollectNoBinChoice, await MsgOf(() => x.Batches.CollectAsync(Collect(x, new PickBatchLineRequest(x.Kit.PublicId, 1m, BinId: x.Bin.WarehouseBinId)), default)));
+        Assert.Equal(SalesRules.KitQuantityWhole("KIT-1"), await MsgOf(() => x.Batches.CollectAsync(Collect(x, new PickBatchLineRequest(x.Kit.PublicId, 1.5m)), default)));
+        Assert.Equal("insufficient_stock", (await Assert.ThrowsAnyAsync<TeikemException>(() => x.Batches.CollectAsync(Collect(x, new PickBatchLineRequest(x.Kit.PublicId, 2m)), default))).Code);   // B alcanza para 1
+        Assert.Equal((10m, 0m), await BalanceAsync(x, x.A));
+        Assert.Equal(0, await x.F.Db.Set<PickBatch>().CountAsync());
+    }
+
+    [Fact]
+    public async Task Undoing_a_collected_kit_returns_every_component()
+    {
+        var x = await NewWorldAsync();
+        await using var _ = x.F;
+        var batch = await x.Batches.CollectAsync(Collect(x, new PickBatchLineRequest(x.Kit.PublicId, 3m)), default);
+        await x.Batches.DeleteAsync(batch.PublicId, null, default);
+        Assert.Equal((10m, 0m), await BalanceAsync(x, x.A));
+        Assert.Equal((5m, 0m), await BalanceAsync(x, x.B));
+    }
+
     [Fact]
     public async Task Kits_are_sold_in_whole_pieces_and_components_only_go_on_kit_lines()
     {

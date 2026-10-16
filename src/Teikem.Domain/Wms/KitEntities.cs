@@ -52,6 +52,7 @@ public static class KitRules
     public static string IsComponent(string sku) => $"{sku} es componente de otro kit: no puede ser un kit.";
     public static string UsedInSales(string sku) => $"El kit {sku} ya se usó en órdenes de venta: no se puede volver un producto normal.";
     public const string ComponentNotFound = "Componente";
+    public const string CollectNoBinChoice = "Un kit se recolecta por sus componentes: no se escoge posición, lote ni series.";
 
     /// <summary>
     /// Cuántos kits completos se pueden armar con lo disponible: el menor cociente disponible ÷ cantidad por kit entre los componentes, hacia abajo (un kit es
