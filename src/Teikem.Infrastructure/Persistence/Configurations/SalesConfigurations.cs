@@ -42,6 +42,20 @@ public sealed class SalesOrderLineConfiguration : IEntityTypeConfiguration<Sales
         b.Property(l => l.TaxAmount).HasColumnType("decimal(18,4)");
         b.HasIndex(l => new { l.SalesOrderId, l.LineNo }).IsUnique().HasDatabaseName("UX_SalesOrderLine_No");
         b.HasIndex(l => new { l.TenantId, l.ProductId }).HasDatabaseName("IX_SalesOrderLine_Product");
+        b.HasMany(l => l.Components).WithOne().HasForeignKey(c => c.SalesOrderLineId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+/// <summary>Lote 69 — foto de los componentes de un kit en la línea (sección 2026-10-16 (q) de update.sql).</summary>
+public sealed class SalesOrderLineComponentConfiguration : IEntityTypeConfiguration<SalesOrderLineComponent>
+{
+    public void Configure(EntityTypeBuilder<SalesOrderLineComponent> b)
+    {
+        b.ToTable("SalesOrderLineComponent");
+        b.HasKey(c => c.SalesOrderLineComponentId);
+        b.Property(c => c.Quantity).HasColumnType("decimal(16,3)");
+        b.HasIndex(c => new { c.SalesOrderLineId, c.ComponentProductId }).IsUnique().HasDatabaseName("UQ_SalesOrderLineComponent");
+        b.HasOne<Teikem.Domain.Wms.Product>().WithMany().HasForeignKey(c => c.ComponentProductId).OnDelete(DeleteBehavior.NoAction);
     }
 }
 
@@ -53,5 +67,6 @@ public sealed class SalesOrderReservationConfiguration : IEntityTypeConfiguratio
         b.HasKey(r => r.SalesOrderReservationId);
         b.Property(r => r.Quantity).HasColumnType("decimal(14,3)");
         b.HasIndex(r => r.SalesOrderLineId).HasDatabaseName("IX_SalesOrderReservation_Line");
+        b.HasOne<Teikem.Domain.Wms.Product>().WithMany().HasForeignKey(r => r.ProductId).OnDelete(DeleteBehavior.NoAction);   // Lote 69
     }
 }

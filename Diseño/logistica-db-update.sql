@@ -2949,3 +2949,32 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ProductKitComponent_Component' AND object_id = OBJECT_ID('dbo.ProductKitComponent'))
     CREATE INDEX IX_ProductKitComponent_Component ON dbo.ProductKitComponent(ComponentProductId);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-16 (q) — Órdenes de venta con kits (Lote 69, P4-T). Depende de las secciones (k), (l) y (p).
+   - dbo.SalesOrderLineComponent: la FOTO de los componentes de un kit en cada línea de la orden (cantidad por kit); se borra con la línea.
+   - dbo.SalesOrderReservation.ProductId (opcional): el producto que se reservó; NULL = el de la línea (filas anteriores); en una línea de kit es el componente.
+   - dbo.PickBatchLine.KitProductId / KitQuantity (opcionales): la línea de recolección que salió de un kit y cuántos kits representa (para deshacer en kits).
+   Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF OBJECT_ID(N'dbo.SalesOrderLineComponent', N'U') IS NULL CREATE TABLE dbo.SalesOrderLineComponent (
+    SalesOrderLineComponentId INT IDENTITY(1,1) CONSTRAINT PK_SalesOrderLineComponent PRIMARY KEY,
+    TenantId           INT NOT NULL CONSTRAINT FK_SalesOrderLineComponent_Tenant REFERENCES dbo.Tenant(TenantId),
+    SalesOrderLineId   INT NOT NULL CONSTRAINT FK_SalesOrderLineComponent_Line REFERENCES dbo.SalesOrderLine(SalesOrderLineId) ON DELETE CASCADE,
+    ComponentProductId INT NOT NULL CONSTRAINT FK_SalesOrderLineComponent_Product REFERENCES dbo.Product(ProductId),
+    Quantity           DECIMAL(16,3) NOT NULL,
+    CONSTRAINT CK_SalesOrderLineComponent_Qty CHECK (Quantity > 0)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_SalesOrderLineComponent' AND object_id = OBJECT_ID('dbo.SalesOrderLineComponent'))
+    CREATE UNIQUE INDEX UQ_SalesOrderLineComponent ON dbo.SalesOrderLineComponent(SalesOrderLineId, ComponentProductId);
+GO
+IF COL_LENGTH('dbo.SalesOrderReservation', 'ProductId') IS NULL
+    ALTER TABLE dbo.SalesOrderReservation ADD ProductId INT NULL CONSTRAINT FK_SalesOrderReservation_Product REFERENCES dbo.Product(ProductId);
+GO
+IF COL_LENGTH('dbo.PickBatchLine', 'KitProductId') IS NULL
+    ALTER TABLE dbo.PickBatchLine ADD KitProductId INT NULL CONSTRAINT FK_PickBatchLine_KitProduct REFERENCES dbo.Product(ProductId);
+GO
+IF COL_LENGTH('dbo.PickBatchLine', 'KitQuantity') IS NULL
+    ALTER TABLE dbo.PickBatchLine ADD KitQuantity DECIMAL(14,3) NULL;
+GO

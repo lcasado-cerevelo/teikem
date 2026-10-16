@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { draftError, draftSubtotal, effectivePrice, lineAmount, parseNumber, toRequest, type LineDraft, type OrderDraft } from './salesRules'
 
-const line = (patch: Partial<LineDraft> = {}): LineDraft => ({ key: 1, productPublicId: 'p1', sku: 'MED', name: 'Medidor', listPrice: 12.5, quantity: '4', price: '', ...patch })
+const line = (patch: Partial<LineDraft> = {}): LineDraft => ({ key: 1, productPublicId: 'p1', sku: 'MED', name: 'Medidor', listPrice: 12.5, quantity: '4', price: '', isKit: false, components: null, ...patch })
 const draft = (patch: Partial<OrderDraft> = {}): OrderDraft => ({ clientPublicId: 'c1', warehousePublicId: null, requiredDate: '', notes: '', lines: [line()], ...patch })
 
 describe('salesRules', () => {
@@ -46,5 +46,21 @@ describe('salesRules', () => {
     expect(body.lines.map((l) => l.unitPrice)).toEqual([undefined, 9, undefined])
     expect(body.lines.map((l) => l.quantity)).toEqual([4, 2, 4])
     expect(toRequest(draft({ requiredDate: '2026-11-01' })).requiredDate).toBe('2026-11-01')
+  })
+})
+
+describe('kits (Lote 69)', () => {
+  it('un kit se pide en piezas enteras y las piezas ajustadas deben ser mayores que cero', () => {
+    expect(draftError(draft({ lines: [line({ isKit: true, quantity: '2' })] }))).toBeNull()
+    expect(draftError(draft({ lines: [line({ isKit: true, quantity: '1,5' })] }))).toBe('kitWhole')
+    expect(draftError(draft({ lines: [line({ isKit: true, components: [{ productPublicId: 'a', sku: 'A', name: 'A', quantity: '0' }] })] }))).toBe('kitPiece')
+    expect(draftError(draft({ lines: [line({ quantity: '1,5' })] }))).toBeNull()   // un producto normal sí admite decimales
+  })
+
+  it('las piezas solo viajan si es un kit y se ajustaron', () => {
+    const pieces = [{ productPublicId: 'a', sku: 'A', name: 'A', quantity: '1,5' }]
+    expect(toRequest(draft({ lines: [line({ isKit: true, components: pieces })] })).lines[0].components).toEqual([{ productPublicId: 'a', quantity: 1.5 }])
+    expect(toRequest(draft({ lines: [line({ isKit: true })] })).lines[0].components).toBeUndefined()
+    expect(toRequest(draft({ lines: [line({ components: pieces })] })).lines[0].components).toBeUndefined()
   })
 })

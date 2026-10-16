@@ -27,7 +27,7 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
     public const int MaxPageSize = 200;
     private TenantContext T => (TenantContext)tenant;
 
-    private sealed record PlannedLine(Product Product, decimal Quantity, decimal UnitPrice, int? LotId);
+    private sealed record PlannedLine(Product Product, decimal Quantity, decimal UnitPrice, int? LotId, IReadOnlyList<(int ProductId, decimal Quantity)>? Components = null, bool CustomComponents = false);
 
     // ---------------------------------------------------------------- consulta
 
@@ -125,7 +125,7 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
 
         await db.RunInTransactionAsync(async ct2 =>
         {
-            var order = await db.Set<SalesOrder>().AsTracking().Include(o => o.Lines).FirstOrDefaultAsync(o => o.PublicId == publicId, ct2) ?? throw NotFound();
+            var order = await db.Set<SalesOrder>().AsTracking().Include(o => o.Lines).ThenInclude(l => l.Components).FirstOrDefaultAsync(o => o.PublicId == publicId, ct2) ?? throw NotFound();
             await EnsureDraftAsync(order.StatusCodeId, ct2);
             order.ClientId = clientId;
             if (warehouse is not null) order.WarehouseId = warehouse.WarehouseId;
@@ -136,6 +136,12 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
             if (req.Notes is not null) order.Notes = notes;
             if (priced is not null)
             {
+                // Lote 69: la foto de componentes de un kit se conserva al guardar de nuevo el borrador (incluidas las piezas ajustadas) salvo que el vendedor mande otras
+                var kept = order.Lines.Where(l => l.Components.Count > 0).GroupBy(l => l.ProductId)
+                    .ToDictionary(g => g.Key, g => (IReadOnlyList<(int ProductId, decimal Quantity)>)g.First().Components.Select(c => (c.ComponentProductId, c.Quantity)).ToList());
+                priced = priced.Select(p => p.Line.Components is not null && !p.Line.CustomComponents && kept.TryGetValue(p.Line.Product.ProductId, out var old)
+                    ? p with { Line = p.Line with { Components = old } } : p).ToList();
+                db.Set<SalesOrderLineComponent>().RemoveRange(order.Lines.SelectMany(l => l.Components));   // la foto de cada línea se va con ella
                 db.Set<SalesOrderLine>().RemoveRange(order.Lines);
                 order.Lines.Clear();
                 ApplyLines(order, priced);
@@ -143,8 +149,9 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
             else if (req.ClientPublicId is not null)
             {
                 // cambió el cliente: el impuesto depende de su exención, se recalcula con las mismas líneas
-                var again = await PriceAsync(order.Lines.OrderBy(l => l.LineNo).Select(l => new PlannedLine(db.Set<Product>().First(p => p.ProductId == l.ProductId), l.QtyOrdered, l.UnitPrice, l.LotId)).ToList(),
+                var again = await PriceAsync(order.Lines.OrderBy(l => l.LineNo).Select(l => new PlannedLine(db.Set<Product>().First(p => p.ProductId == l.ProductId), l.QtyOrdered, l.UnitPrice, l.LotId, l.Components.Count == 0 ? null : l.Components.Select(c => (c.ComponentProductId, c.Quantity)).ToList())).ToList(),
                     clientId, order.RequestedDate, ct2);
+                db.Set<SalesOrderLineComponent>().RemoveRange(order.Lines.SelectMany(l => l.Components));
                 db.Set<SalesOrderLine>().RemoveRange(order.Lines);
                 order.Lines.Clear();
                 ApplyLines(order, again);
@@ -200,6 +207,7 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
         var ids = lines.Where(l => l.ProductPublicId is not null).Select(l => l.ProductPublicId!.Value).Distinct().ToList();
         var products = await db.Set<Product>().AsNoTracking().Where(p => ids.Contains(p.PublicId)).ToDictionaryAsync(p => p.PublicId, ct);
         var serialId = await lookups.GetIdAsync(LookupDomains.TrackingType, TrackingTypes.Serial, ct);
+        var kitTypeId = await lookups.TryGetIdAsync(KitCodes.ProductTypeDomain, ProductTypes.Kit, ct);   // Lote 69
         var seen = new HashSet<int>();
         var result = new List<PlannedLine>();
         var canPrice = false;
@@ -234,9 +242,51 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
             if (l.LotId is int lotId
                 && !await db.Set<InventoryLot>().AsNoTracking().AnyAsync(x => x.LotId == lotId && x.ProductId == product.ProductId, ct))
                 throw new NotFoundException("Lote");
-            result.Add(new PlannedLine(product, l.Quantity!.Value, price, l.LotId));
+            IReadOnlyList<(int ProductId, decimal Quantity)>? components = null;
+            if (kitTypeId is not null && product.ProductTypeLookupId == kitTypeId)
+            {
+                if (l.Quantity!.Value != Math.Floor(l.Quantity.Value)) throw new ValidationException($"lines[{i}].quantity", SalesRules.KitQuantityWhole(product.Sku));
+                components = await KitSnapshotAsync(product, l.Components, i, ct);
+            }
+            else if (l.Components is { Count: > 0 }) throw new ValidationException($"lines[{i}].components", KitRules.NotAKit(product.Sku));
+            result.Add(new PlannedLine(product, l.Quantity!.Value, price, l.LotId, components, l.Components is { Count: > 0 }));
         }
         return result;
+    }
+
+    /// <summary>
+    /// Lote 69 — los componentes que lleva una línea de kit: los del catálogo o, si el kit es «ajustable al pedir» y el vendedor los mandó, los suyos (activos, normales,
+    /// propios, sin repetir). Un kit sin componentes no se vende.
+    /// </summary>
+    private async Task<IReadOnlyList<(int ProductId, decimal Quantity)>> KitSnapshotAsync(Product kit, IReadOnlyList<KitComponentRequest>? custom, int lineIndex, CancellationToken ct)
+    {
+        if (custom is { Count: > 0 })
+        {
+            if (!kit.KitAdjustable) throw new ValidationException($"lines[{lineIndex}].components", SalesRules.KitNotAdjustable(kit.Sku));
+            if (custom.Count > KitCodes.MaxComponents) throw new ValidationException($"lines[{lineIndex}].components", KitRules.TooManyComponents());
+            var ids = custom.Where(c => c.ProductPublicId is not null).Select(c => c.ProductPublicId!.Value).ToList();
+            var products = await db.Set<Product>().AsNoTracking().Where(p => ids.Contains(p.PublicId)).ToDictionaryAsync(p => p.PublicId, ct);
+            var kitTypeId = await lookups.TryGetIdAsync(KitCodes.ProductTypeDomain, ProductTypes.Kit, ct);
+            var seen = new HashSet<Guid>();
+            var result = new List<(int, decimal)>();
+            for (var j = 0; j < custom.Count; j++)
+            {
+                var field = $"lines[{lineIndex}].components[{j}]";
+                if (custom[j].ProductPublicId is not Guid pid) throw new ValidationException(field, "Indique el producto del componente.");
+                if (custom[j].Quantity is not decimal q || q <= 0m) throw new ValidationException(field, KitRules.ComponentQuantity);
+                var p = products.GetValueOrDefault(pid) ?? throw new NotFoundException(KitRules.ComponentNotFound);
+                if (!seen.Add(pid)) throw new ValidationException(field, KitRules.DuplicateComponent(p.Sku));
+                if (p.ProductId == kit.ProductId) throw new ValidationException(field, KitRules.SelfComponent(p.Sku));
+                if (p.ProductTypeLookupId == kitTypeId) throw new ValidationException(field, KitRules.ComponentIsKit(p.Sku));
+                if (!p.IsActive) throw new ValidationException(field, KitRules.ComponentInactive(p.Sku));
+                if (p.ClientId != kit.ClientId) throw new ValidationException(field, KitRules.ComponentOtherOwner(p.Sku));
+                result.Add((p.ProductId, q));
+            }
+            return result;
+        }
+        var catalog = await db.Set<ProductKitComponent>().AsNoTracking().Where(c => c.KitProductId == kit.ProductId).OrderBy(c => c.SortOrder).Select(c => new { c.ComponentProductId, c.Quantity }).ToListAsync(ct);
+        if (catalog.Count == 0) throw new ValidationException($"lines[{lineIndex}].productPublicId", SalesRules.KitWithoutComponents(kit.Sku));
+        return catalog.Select(c => (c.ComponentProductId, c.Quantity)).ToList();
     }
 
     private sealed record PricedLine(PlannedLine Line, decimal Subtotal, decimal TaxAmount, decimal TaxRatePct, int? TaxRateId, bool IsExempt);
@@ -261,11 +311,14 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
         var no = 0;
         foreach (var p in lines)
         {
-            order.Lines.Add(new SalesOrderLine
+            var line = new SalesOrderLine
             {
                 TenantId = order.TenantId, LineNo = ++no, ProductId = p.Line.Product.ProductId, LotId = p.Line.LotId, QtyOrdered = p.Line.Quantity, UnitPrice = p.Line.UnitPrice,
                 TaxRateId = p.TaxRateId, TaxRatePct = p.TaxRatePct, TaxAmount = p.TaxAmount, IsTaxExempt = p.IsExempt,
-            });
+            };
+            foreach (var c in p.Line.Components ?? Array.Empty<(int ProductId, decimal Quantity)>())
+                line.Components.Add(new SalesOrderLineComponent { TenantId = order.TenantId, ComponentProductId = c.ProductId, Quantity = c.Quantity });
+            order.Lines.Add(line);
         }
         order.Subtotal = lines.Sum(l => l.Subtotal);
         order.TaxAmount = lines.Sum(l => l.TaxAmount);
@@ -311,6 +364,20 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
         var consignees = await db.Set<Location>().Where(l => consIds.Contains(l.LocationId)).ToDictionaryAsync(l => l.LocationId, ct);
         var users = await UserNamesAsync(orders.Where(o => o.RequestedBy is not null).Select(o => o.RequestedBy!.Value), ct);
         var dispatchInfo = await DispatchesOfAsync(orders.Select(o => o.SalesOrderId).ToList(), ct);
+        // Lote 69: kits — la foto de componentes de cada línea y lo reservado de cada componente
+        var allLineIds = orders.SelectMany(o => o.Lines.Select(l => l.SalesOrderLineId)).ToList();
+        var snapshots = (await db.Set<SalesOrderLineComponent>().AsNoTracking().Where(c => allLineIds.Contains(c.SalesOrderLineId)).ToListAsync(ct))
+            .GroupBy(c => c.SalesOrderLineId).ToDictionary(g => g.Key, g => g.ToList());
+        var componentProducts = new Dictionary<int, Product>();
+        var reservedBy = new Dictionary<(int LineId, int ProductId), decimal>();
+        if (snapshots.Count > 0)
+        {
+            var cids = snapshots.Values.SelectMany(v => v.Select(c => c.ComponentProductId)).Distinct().ToList();
+            componentProducts = await db.Set<Product>().Where(p => cids.Contains(p.ProductId)).ToDictionaryAsync(p => p.ProductId, ct);
+            var kitLineIds = snapshots.Keys.ToList();
+            reservedBy = (await db.Set<SalesOrderReservation>().AsNoTracking().Where(r => kitLineIds.Contains(r.SalesOrderLineId) && r.ProductId != null).ToListAsync(ct))
+                .GroupBy(r => (r.SalesOrderLineId, r.ProductId!.Value)).ToDictionary(g => g.Key, g => g.Sum(r => r.Quantity));
+        }
         return orders.Select(o =>
         {
             var s = map[o.StatusCodeId];
@@ -320,8 +387,15 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
             var lines = o.Lines.OrderBy(l => l.LineNo).Select(l =>
             {
                 var p = products[l.ProductId];
+                var snap = snapshots.GetValueOrDefault(l.SalesOrderLineId);
+                var comps = snap?.Select(c =>
+                {
+                    var cp = componentProducts[c.ComponentProductId];
+                    return new SalesOrderLineComponentDto(cp.PublicId, cp.Sku, cp.Name, c.Quantity, c.Quantity * l.QtyOrdered, reservedBy.GetValueOrDefault((l.SalesOrderLineId, c.ComponentProductId)),
+                        c.Quantity * l.QtyBackordered, c.Quantity * l.QtyShipped);
+                }).ToList();
                 return new SalesOrderLineDto(l.SalesOrderLineId, l.LineNo, p.PublicId, p.Sku, p.Name, l.LotId, l.QtyOrdered, l.QtyReserved, l.QtyBackordered, l.QtyShipped, l.IsClosed,
-                    l.UnitPrice, SalesRules.LineAmount(l.QtyOrdered, l.UnitPrice), l.TaxRatePct, l.TaxAmount, l.IsTaxExempt);
+                    l.UnitPrice, SalesRules.LineAmount(l.QtyOrdered, l.UnitPrice), l.TaxRatePct, l.TaxAmount, l.IsTaxExempt, comps is { Count: > 0 }, comps);
             }).ToList();
             return new SalesOrderDto(o.PublicId, o.Number, s.Code, s.Label, s.Color, c.PublicId, c.Name, cons?.PublicId, cons?.Name, w.PublicId, w.Name, o.RequestedDate, o.RequiredDate,
                 o.Notes, o.Subtotal, o.TaxAmount, o.Subtotal + o.TaxAmount, o.Lines.Any(l => SalesRules.IsBackordered(l.QtyBackordered, l.IsClosed)),

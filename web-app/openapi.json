@@ -44452,6 +44452,16 @@
           },
           "isTaxExempt": {
             "type": "boolean"
+          },
+          "isKit": {
+            "type": "boolean"
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SalesOrderLineComponentDto"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -44497,6 +44507,13 @@
           "lotId": {
             "type": "integer",
             "format": "int32",
+            "nullable": true
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KitComponentRequest"
+            },
             "nullable": true
           }
         },
@@ -55322,6 +55339,44 @@
               "$ref": "#/components/schemas/KitComponentRequest"
             },
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesOrderLineComponentDto": {
+        "type": "object",
+        "properties": {
+          "productPublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sku": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "qtyPerKit": {
+            "type": "number",
+            "format": "double"
+          },
+          "needed": {
+            "type": "number",
+            "format": "double"
+          },
+          "reserved": {
+            "type": "number",
+            "format": "double"
+          },
+          "backordered": {
+            "type": "number",
+            "format": "double"
+          },
+          "shipped": {
+            "type": "number",
+            "format": "double"
           }
         },
         "additionalProperties": false

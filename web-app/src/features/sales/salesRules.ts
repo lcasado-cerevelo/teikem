@@ -24,6 +24,18 @@ export interface LineDraft {
   quantity: string
   /** Vacío = el precio de lista. */
   price: string
+  /** Lote 69: la línea es de un kit (se pide en piezas enteras; sus componentes se ven debajo). */
+  isKit: boolean
+  /** Lote 69: piezas ajustadas al pedir (solo kits ajustables); null = las del catálogo / las ya guardadas en la orden. */
+  components: KitPiece[] | null
+}
+
+export interface KitPiece {
+  productPublicId: string
+  sku: string
+  name: string
+  /** Cantidad por kit escrita a mano. */
+  quantity: string
 }
 
 export interface OrderDraft {
@@ -34,7 +46,7 @@ export interface OrderDraft {
   lines: LineDraft[]
 }
 
-export type DraftErrorKey = 'client' | 'lines' | 'product' | 'quantity' | 'quantityDecimals' | 'price' | 'priceDecimals' | 'noPrice' | 'repeated' | 'notes'
+export type DraftErrorKey = 'client' | 'lines' | 'product' | 'quantity' | 'quantityDecimals' | 'kitWhole' | 'kitPiece' | 'price' | 'priceDecimals' | 'noPrice' | 'repeated' | 'notes'
 
 /** Primer problema del borrador (la clave se traduce en la pantalla) o null. El servidor repite estas reglas. */
 export function draftError(d: OrderDraft): DraftErrorKey | null {
@@ -48,6 +60,8 @@ export function draftError(d: OrderDraft): DraftErrorKey | null {
     const q = parseNumber(l.quantity)
     if (q === null || q <= 0) return 'quantity'
     if (decimalsOf(q) > 3) return 'quantityDecimals'
+    if (l.isKit && !Number.isInteger(q)) return 'kitWhole'
+    if (l.isKit && l.components && l.components.some((c) => { const n = parseNumber(c.quantity); return n === null || n <= 0 })) return 'kitPiece'
     if (l.price.trim() !== '') {
       const p = parseNumber(l.price)
       if (p === null) return 'price'
@@ -85,7 +99,12 @@ export function toRequest(d: OrderDraft) {
     notes: d.notes,
     lines: d.lines.map((l) => {
       const price = l.price.trim() === '' ? null : parseNumber(l.price)
-      return { productPublicId: l.productPublicId, quantity: parseNumber(l.quantity) ?? undefined, unitPrice: price === null || price === l.listPrice ? undefined : price }
+      return {
+        productPublicId: l.productPublicId,
+        quantity: parseNumber(l.quantity) ?? undefined,
+        unitPrice: price === null || price === l.listPrice ? undefined : price,
+        components: l.isKit && l.components ? l.components.map((c) => ({ productPublicId: c.productPublicId, quantity: parseNumber(c.quantity) ?? 0 })) : undefined,
+      }
     }),
   }
 }

@@ -8411,3 +8411,24 @@ Si alguna orden de venta ya lo usó, no se puede (el historial de esas órdenes 
 
 **Quise recibir el kit en un recibo y falló.**
 Un kit no se recibe: se reciben sus componentes. El mensaje dice `… es un kit: no tiene existencia propia. Los movimientos se hacen sobre sus componentes.`
+
+
+## Lote 69 — Kits en las órdenes de venta
+
+**Vendí un kit y el sistema reservó piezas sueltas.**
+Es lo normal: la línea es del kit, pero lo reservado son las piezas de sus componentes (por kit entero). En la orden, la tabla «Componentes de los kits» muestra cuánto está reservado de cada uno.
+
+**Cambié los componentes del kit en el catálogo y mi orden sigue con los anteriores.**
+La orden guarda una foto de los componentes al guardar el borrador; no cambia sola. Quite la línea del borrador y agréguela otra vez para tomar el catálogo nuevo.
+
+**Pedí 5 kits y dice «disponible 3».**
+Se cuentan kits completos: el componente que menos alcanza limita (disponible para vender ÷ cantidad por kit, hacia abajo). Con «Dejar el resto en backorder» se reservan 3 kits y quedan 2 esperando.
+
+**No puedo escoger la posición al despachar un kit.**
+Un kit sale de lo que sus componentes tienen reservado; no se escoge posición ni lote. Si necesita sacar de otra posición, ajuste la reserva del componente o despache por otra vía.
+
+**¿Por qué el aparato no me muestra la orden con kits?**
+El aparato todavía no despacha líneas de kit; despáchelas desde la web. Llega en un lote siguiente.
+
+**Deshice un despacho de kits.**
+Los componentes vuelven a su posición, los kits despachados bajan y quedan reservados otra vez; la orden se reabre.

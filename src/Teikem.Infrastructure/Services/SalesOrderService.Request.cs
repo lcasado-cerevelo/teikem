@@ -27,7 +27,9 @@ public sealed partial class SalesOrderService
     private const int MaxReserveAttempts = 3;
 
     private sealed record Want(int LineId, int ProductId, int? LotId, decimal Quantity);
-    private sealed record Availability(IReadOnlyList<PickAllocation> Allocations, decimal Allocated, decimal Available, decimal Shortage);
+    /// <summary>Lote 69: de qué producto sale cada porción (el de la línea o, en una línea de kit, un componente).</summary>
+    private sealed record LineAllocation(int ProductId, int BinId, int? LotId, decimal Quantity);
+    private sealed record Availability(IReadOnlyList<LineAllocation> Allocations, decimal Allocated, decimal Available, decimal Shortage);
 
     // ---------------------------------------------------------------- comprobación (no guarda)
 
@@ -101,10 +103,11 @@ public sealed partial class SalesOrderService
                         l.QtyBackordered = a.Shortage;
                         foreach (var al in a.Allocations)
                         {
-                            reservations.Add(new StockReservation(l.ProductId, order.WarehouseId, al.BinId, al.LotId, al.Quantity));
+                            reservations.Add(new StockReservation(al.ProductId, order.WarehouseId, al.BinId, al.LotId, al.Quantity));
                             db.Set<SalesOrderReservation>().Add(new SalesOrderReservation
                             {
                                 TenantId = order.TenantId, SalesOrderLineId = l.SalesOrderLineId, WarehouseId = order.WarehouseId, WarehouseBinId = al.BinId, LotId = al.LotId, Quantity = al.Quantity,
+                                ProductId = al.ProductId,
                             });
                         }
                     }
@@ -159,7 +162,7 @@ public sealed partial class SalesOrderService
         var lineIds = order.Lines.Select(l => l.SalesOrderLineId).ToList();
         var rows = await db.Set<SalesOrderReservation>().AsTracking().Where(r => lineIds.Contains(r.SalesOrderLineId)).ToListAsync(ct);
         var productOf = order.Lines.ToDictionary(l => l.SalesOrderLineId, l => l.ProductId);
-        await ledger.ReleaseAsync(rows.Select(r => new StockReservation(productOf[r.SalesOrderLineId], r.WarehouseId, r.WarehouseBinId, r.LotId, r.Quantity)).ToList(), ct);
+        await ledger.ReleaseAsync(rows.Select(r => new StockReservation(r.ProductId ?? productOf[r.SalesOrderLineId], r.WarehouseId, r.WarehouseBinId, r.LotId, r.Quantity)).ToList(), ct);
         db.Set<SalesOrderReservation>().RemoveRange(rows);
         foreach (var l in order.Lines) (l.QtyReserved, l.QtyBackordered) = (0m, 0m);
     }
@@ -232,8 +235,8 @@ public sealed partial class SalesOrderService
         var reservations = new List<StockReservation>();
         foreach (var al in a.Allocations)
         {
-            reservations.Add(new StockReservation(line.ProductId, order.WarehouseId, al.BinId, al.LotId, al.Quantity));
-            db.Set<SalesOrderReservation>().Add(new SalesOrderReservation { TenantId = order.TenantId, SalesOrderLineId = line.SalesOrderLineId, WarehouseId = order.WarehouseId, WarehouseBinId = al.BinId, LotId = al.LotId, Quantity = al.Quantity });
+            reservations.Add(new StockReservation(al.ProductId, order.WarehouseId, al.BinId, al.LotId, al.Quantity));
+            db.Set<SalesOrderReservation>().Add(new SalesOrderReservation { TenantId = order.TenantId, SalesOrderLineId = line.SalesOrderLineId, WarehouseId = order.WarehouseId, WarehouseBinId = al.BinId, LotId = al.LotId, Quantity = al.Quantity, ProductId = al.ProductId });
         }
         await ledger.ReserveAsync(reservations, ct);
         line.QtyReserved += a.Allocated;
@@ -246,19 +249,34 @@ public sealed partial class SalesOrderService
         line.QtyBackordered -= fromBackorder;
         var toRelease = less - fromBackorder;
         if (toRelease <= 0m) return;
+        var factors = await LineFactorsAsync(line, ct);
         var rows = await db.Set<SalesOrderReservation>().AsTracking().Where(r => r.SalesOrderLineId == line.SalesOrderLineId).OrderByDescending(r => r.SalesOrderReservationId).ToListAsync(ct);
         var release = new List<StockReservation>();
-        foreach (var r in rows)
+        foreach (var (productId, perUnit) in factors)
         {
-            if (toRelease <= 0m) break;
-            var take = Math.Min(r.Quantity, toRelease);
-            release.Add(new StockReservation(line.ProductId, r.WarehouseId, r.WarehouseBinId, r.LotId, take));
-            r.Quantity -= take;
-            toRelease -= take;
-            if (r.Quantity <= 0m) db.Set<SalesOrderReservation>().Remove(r);
+            var left = toRelease * perUnit;
+            foreach (var r in rows.Where(r => (r.ProductId ?? line.ProductId) == productId))
+            {
+                if (left <= 0m) break;
+                var take = Math.Min(r.Quantity, left);
+                release.Add(new StockReservation(productId, r.WarehouseId, r.WarehouseBinId, r.LotId, take));
+                r.Quantity -= take;
+                left -= take;
+                if (r.Quantity <= 0m) db.Set<SalesOrderReservation>().Remove(r);
+            }
         }
         await ledger.ReleaseAsync(release, ct);
-        line.QtyReserved -= release.Sum(x => x.Quantity);
+        line.QtyReserved -= factors.Count == 1 && factors.ContainsKey(line.ProductId) && factors[line.ProductId] == 1m ? release.Sum(x => x.Quantity) : toRelease;
+    }
+
+    /// <summary>
+    /// Lote 69 — cuántas piezas de cada producto lleva una unidad de la línea: un producto normal = {su producto: 1}; un kit = la foto de sus componentes. Las reservas y los
+    /// despachos de una línea se hacen sobre estos productos.
+    /// </summary>
+    private async Task<Dictionary<int, decimal>> LineFactorsAsync(SalesOrderLine line, CancellationToken ct)
+    {
+        var comps = await db.Set<SalesOrderLineComponent>().AsNoTracking().Where(c => c.SalesOrderLineId == line.SalesOrderLineId).ToListAsync(ct);
+        return comps.Count == 0 ? new Dictionary<int, decimal> { [line.ProductId] = 1m } : comps.ToDictionary(c => c.ComponentProductId, c => c.Quantity);
     }
 
     /// <summary>Recalcula el impuesto de todas las líneas EN SU LUGAR (las reservas cuelgan de los ids de línea) y los totales del encabezado.</summary>
@@ -281,7 +299,17 @@ public sealed partial class SalesOrderService
     /// </summary>
     private async Task<Dictionary<int, Availability>> PlanAsync(int warehouseId, IReadOnlyList<Want> wants, CancellationToken ct)
     {
-        var productIds = wants.Select(w => w.ProductId).Distinct().ToList();
+        // Lote 69: una línea de KIT se planea sobre la foto de sus componentes (todo-o-nada por kit entero); el resto, sobre su propio producto
+        var kitTypeId = await lookups.TryGetIdAsync(KitCodes.ProductTypeDomain, ProductTypes.Kit, ct);
+        var wantProducts = wants.Select(w => w.ProductId).Distinct().ToList();
+        var kitProducts = kitTypeId is null ? new HashSet<int>()
+            : (await db.Set<Product>().AsNoTracking().Where(p => wantProducts.Contains(p.ProductId) && p.ProductTypeLookupId == kitTypeId).Select(p => p.ProductId).ToListAsync(ct)).ToHashSet();
+        var kitLineIds = wants.Where(w => kitProducts.Contains(w.ProductId)).Select(w => w.LineId).ToList();
+        var snapshots = kitLineIds.Count == 0 ? new Dictionary<int, List<(int ProductId, decimal Quantity)>>()
+            : (await db.Set<SalesOrderLineComponent>().AsNoTracking().Where(c => kitLineIds.Contains(c.SalesOrderLineId)).ToListAsync(ct))
+                .GroupBy(c => c.SalesOrderLineId).ToDictionary(g => g.Key, g => g.Select(c => (ProductId: c.ComponentProductId, Quantity: c.Quantity)).ToList());
+        var productIds = wantProducts.Where(id => !kitProducts.Contains(id)).Concat(snapshots.Values.SelectMany(v => v.Select(c => c.ProductId))).Distinct().ToList();
+
         var bins = await (from b in db.Set<WarehouseBin>().AsNoTracking()
                           join z in db.Set<WarehouseZone>().AsNoTracking() on b.WarehouseZoneId equals z.WarehouseZoneId
                           join w in db.Set<Warehouse>().AsNoTracking() on b.WarehouseId equals w.WarehouseId
@@ -301,17 +329,57 @@ public sealed partial class SalesOrderService
         var tenantMethod = await db.Tenants.AsNoTracking().Where(t => t.TenantId == db.CurrentTenantId).Select(t => t.RotationMethod).FirstOrDefaultAsync(ct);
         var rotations = await db.Set<Product>().AsNoTracking().Where(p => productIds.Contains(p.ProductId)).ToDictionaryAsync(p => p.ProductId, p => p.RotationMethod, ct);
 
+        List<PickCandidate> CandidatesOf(int productId)
+            => balances.Where(b => b.ProductId == productId && binInfo.ContainsKey(b.BinId))
+                .Select(b => new PickCandidate(b.BinId, binInfo[b.BinId].Code, binInfo[b.BinId].Zone, binInfo[b.BinId].Active, b.LotId, b.Expiry,
+                    Math.Max(0m, b.QtyOnHand - b.QtyReserved), b.FirstReceivedAtUtc)).ToList();
+        decimal SellableOf(List<PickCandidate> candidates, int? lotId)
+            => candidates.Where(c => c.BinActive && PickBatchRules.IsPickableZone(c.ZoneTypeCode) && (lotId is null || c.LotId == lotId)).Sum(c => c.Available);
+
         var result = new Dictionary<int, Availability>();
         foreach (var w in wants)
         {
-            var candidates = balances.Where(b => b.ProductId == w.ProductId && binInfo.ContainsKey(b.BinId))
-                .Select(b => new PickCandidate(b.BinId, binInfo[b.BinId].Code, binInfo[b.BinId].Zone, binInfo[b.BinId].Active, b.LotId, b.Expiry,
-                    Math.Max(0m, b.QtyOnHand - b.QtyReserved), b.FirstReceivedAtUtc)).ToList();
+            if (kitProducts.Contains(w.ProductId))
+            {
+                result[w.LineId] = PlanKit(w, snapshots.GetValueOrDefault(w.LineId), CandidatesOf, SellableOf, rotations, tenantMethod);
+                continue;
+            }
+            var candidates = CandidatesOf(w.ProductId);
             var allocation = PickBatchRules.Allocate(w.Quantity, candidates, null, w.LotId, RotationRules.Resolve(rotations.GetValueOrDefault(w.ProductId), tenantMethod));
-            var sellable = candidates.Where(c => c.BinActive && PickBatchRules.IsPickableZone(c.ZoneTypeCode) && (w.LotId is null || c.LotId == w.LotId)).Sum(c => c.Available);
-            result[w.LineId] = new Availability(allocation.Allocations, allocation.Allocated, sellable, Math.Max(0m, w.Quantity - allocation.Allocated));
+            result[w.LineId] = new Availability(allocation.Allocations.Select(a => new LineAllocation(w.ProductId, a.BinId, a.LotId, a.Quantity)).ToList(), allocation.Allocated,
+                SellableOf(candidates, w.LotId), Math.Max(0m, w.Quantity - allocation.Allocated));
         }
         return result;
+    }
+
+    /// <summary>
+    /// Lote 69 — disponibilidad y asignación de una línea de kit: se pueden armar tantos kits ENTEROS como alcance el componente que menos da (disponible ÷ cantidad por kit);
+    /// cada componente se asigna por su rotación (FEFO/FIFO). Available = kits que se podrían armar; Allocated = kits que se reservan; Shortage = kits que faltan.
+    /// </summary>
+    private static Availability PlanKit(Want w, List<(int ProductId, decimal Quantity)>? comps, Func<int, List<PickCandidate>> candidatesOf, Func<List<PickCandidate>, int?, decimal> sellableOf,
+        Dictionary<int, string?> rotations, string? tenantMethod)
+    {
+        if (comps is null || comps.Count == 0) return new Availability(Array.Empty<LineAllocation>(), 0m, 0m, w.Quantity);
+        var byProduct = comps.ToDictionary(c => c.ProductId, c => candidatesOf(c.ProductId));
+        var canBuild = KitRules.CanBuild(comps.Select(c => (sellableOf(byProduct[c.ProductId], null), c.Quantity)));
+        var kits = Math.Min(Math.Floor(w.Quantity), canBuild);
+        var allocations = new List<LineAllocation>();
+        for (var pass = 0; pass < 3 && kits > 0m; pass++)
+        {
+            allocations = new List<LineAllocation>();
+            var achievable = kits;
+            foreach (var c in comps)
+            {
+                var r = PickBatchRules.Allocate(kits * c.Quantity, byProduct[c.ProductId], null, null, RotationRules.Resolve(rotations.GetValueOrDefault(c.ProductId), tenantMethod));
+                allocations.AddRange(r.Allocations.Select(a => new LineAllocation(c.ProductId, a.BinId, a.LotId, a.Quantity)));
+                achievable = Math.Min(achievable, Math.Floor(r.Allocated / c.Quantity));
+            }
+            if (achievable == kits) break;
+            kits = achievable;
+            allocations = new List<LineAllocation>();
+        }
+        if (kits <= 0m) allocations = new List<LineAllocation>();
+        return new Availability(allocations, kits, canBuild, Math.Max(0m, w.Quantity - kits));
     }
 
     /// <summary>

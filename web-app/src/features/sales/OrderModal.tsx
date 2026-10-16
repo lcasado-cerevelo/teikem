@@ -11,20 +11,21 @@ import { Chip, ClientPicker, ConfirmDialog, DataTable, Modal, Spinner, toast, ty
 import { PackModal } from '../warehouse/PackModal'
 import { ProductPicker, WarehousePicker } from '../warehouse/pickers'
 import { draftError, draftSubtotal, effectivePrice, lineAmount, parseNumber, toRequest, type LineDraft, type OrderDraft } from './salesRules'
+import { KitLineBlock, KitComponentsSection } from './KitLineBlock'
 import { useSalesMutations, useSalesOrder, type SalesAvailabilityDto, type SalesDispatchInfoDto, type SalesDispatchResultDto, type SalesOrderDto, type SalesOrderLineDto } from './salesApi'
 
 let nextKey = 1
 
 function draftOf(order: SalesOrderDto | null): OrderDraft {
   // una orden nueva arranca con una línea vacía para escoger el primer producto
-  if (!order) return { clientPublicId: null, warehousePublicId: null, requiredDate: '', notes: '', lines: [{ key: nextKey++, productPublicId: null, sku: '', name: '', listPrice: null, quantity: '', price: '' }] }
+  if (!order) return { clientPublicId: null, warehousePublicId: null, requiredDate: '', notes: '', lines: [{ key: nextKey++, productPublicId: null, sku: '', name: '', listPrice: null, quantity: '', price: '', isKit: false, components: null }] }
   return {
     clientPublicId: order.clientPublicId ?? null,
     warehousePublicId: order.warehousePublicId ?? null,
     requiredDate: order.requiredDate ?? '',
     notes: order.notes ?? '',
     // el precio de una línea ya guardada viaja siempre (no se sabe si era el de lista)
-    lines: (order.lines ?? []).map((l) => ({ key: nextKey++, productPublicId: l.productPublicId ?? null, sku: l.sku ?? '', name: l.productName ?? '', listPrice: null, quantity: String(l.qtyOrdered ?? ''), price: String(l.unitPrice ?? '') })),
+    lines: (order.lines ?? []).map((l) => ({ key: nextKey++, productPublicId: l.productPublicId ?? null, sku: l.sku ?? '', name: l.productName ?? '', listPrice: null, quantity: String(l.qtyOrdered ?? ''), price: String(l.unitPrice ?? ''), isKit: l.isKit === true, components: null })),
   }
 }
 
@@ -223,7 +224,7 @@ function DraftEditor({ order, onClose }: { order: SalesOrderDto | null; onClose:
                   id={`so-p-${l.key}`}
                   ownOnly
                   value={l.productPublicId}
-                  onChange={(id, p) => setLine(l.key, { productPublicId: id, sku: p?.sku ?? '', name: p?.name ?? '', listPrice: p?.salePrice ?? null, price: '' })}
+                  onChange={(id, p) => setLine(l.key, { productPublicId: id, sku: p?.sku ?? '', name: p?.name ?? '', listPrice: p?.salePrice ?? null, price: '', isKit: p?.isKit === true, components: null })}
                 />
               </div>
               <div className="f">
@@ -244,10 +245,11 @@ function DraftEditor({ order, onClose }: { order: SalesOrderDto | null; onClose:
                 <span>{effectivePrice(l) === null || parseNumber(l.quantity) === null ? '—' : f.money(lineAmount(l))}</span>
               </div>
               <button type="button" className="btn ghost" aria-label={t('sales.line.remove', { n: i + 1 })} onClick={() => set({ lines: draft.lines.filter((x) => x.key !== l.key) })}>✕</button>
+              {l.isKit && <KitLineBlock line={l} saved={current?.lines?.find((x) => x.productPublicId === l.productPublicId)} onPieces={(components) => setLine(l.key, { components })} />}
             </div>
           ))}
           <div className="tax-comps-foot">
-            <button type="button" className="btn" onClick={() => set({ lines: [...draft.lines, { key: nextKey++, productPublicId: null, sku: '', name: '', listPrice: null, quantity: '', price: '' }] })}>{t('sales.addLine')}</button>
+            <button type="button" className="btn" onClick={() => set({ lines: [...draft.lines, { key: nextKey++, productPublicId: null, sku: '', name: '', listPrice: null, quantity: '', price: '', isKit: false, components: null }] })}>{t('sales.addLine')}</button>
             <b role="status">{t('sales.subtotal', { n: f.money(draftSubtotal(draft)) })}</b>
           </div>
         </fieldset>
@@ -554,6 +556,7 @@ function OrderView({ order, onClose }: { order: SalesOrderDto; onClose: () => vo
             },
           ]}
         />
+        <KitComponentsSection lines={order.lines ?? []} />
         <p className="sales-totals" role="status">
           {t('sales.totals', { subtotal: f.money(order.subtotal ?? 0), tax: f.money(order.taxAmount ?? 0), total: f.money(order.total ?? 0) })}
         </p>

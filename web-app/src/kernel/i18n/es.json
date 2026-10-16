@@ -7483,6 +7483,21 @@
     "requiredDate": "Fecha requerida",
     "requestedDate": "Solicitada",
     "notes": "Notas",
+    "kit": {
+      "badge": "Kit",
+      "components": "Componentes",
+      "perKit": "Por kit",
+      "needed": "Pedido",
+      "reserved": "Reservado",
+      "backordered": "En backorder",
+      "shipped": "Despachado",
+      "savedHint": "Los componentes quedan fijos al guardar el borrador: un cambio posterior del catálogo no altera esta orden.",
+      "newHint": "Los componentes se guardan con el borrador.",
+      "adjust": "Ajustar piezas",
+      "adjustHelp": "Este kit se puede ajustar al pedir: cambie las piezas solo para esta orden.",
+      "reset": "Volver a las del catálogo",
+      "sectionTitle": "Componentes de los kits"
+    },
     "lines": "Productos",
     "line": {
       "product": "Producto de la línea {n}",
@@ -7499,6 +7514,8 @@
     "saved": "Orden {number} guardada.",
     "requested": "Orden {number} solicitada: el inventario quedó reservado.",
     "errors": {
+      "kitWhole": "Un kit se pide en piezas enteras.",
+      "kitPiece": "La cantidad de cada pieza del kit debe ser mayor que cero.",
       "client": "Escoja el cliente que compra.",
       "lines": "Agregue al menos un producto a la orden.",
       "product": "Escoja el producto de cada línea.",

@@ -7483,6 +7483,21 @@
     "requiredDate": "Required date",
     "requestedDate": "Requested",
     "notes": "Notes",
+    "kit": {
+      "badge": "Kit",
+      "components": "Components",
+      "perKit": "Per kit",
+      "needed": "Ordered",
+      "reserved": "Reserved",
+      "backordered": "Backordered",
+      "shipped": "Shipped",
+      "savedHint": "Components are fixed when the draft is saved: a later catalog change does not alter this order.",
+      "newHint": "Components are saved with the draft.",
+      "adjust": "Adjust pieces",
+      "adjustHelp": "This kit can be adjusted when ordering: change the pieces for this order only.",
+      "reset": "Back to the catalog ones",
+      "sectionTitle": "Kit components"
+    },
     "lines": "Products",
     "line": {
       "product": "Line {n} product",
@@ -7499,6 +7514,8 @@
     "saved": "Order {number} saved.",
     "requested": "Order {number} requested: the stock is reserved.",
     "errors": {
+      "kitWhole": "A kit is ordered in whole pieces.",
+      "kitPiece": "Each kit piece quantity must be greater than zero.",
       "client": "Choose the buying client.",
       "lines": "Add at least one product to the order.",
       "product": "Choose the product of each line.",

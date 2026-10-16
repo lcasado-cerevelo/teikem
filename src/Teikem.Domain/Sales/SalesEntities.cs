@@ -84,6 +84,21 @@ public class SalesOrderLine : ITenantScoped
     public decimal TaxRatePct { get; set; }
     public decimal TaxAmount { get; set; }
     public bool IsTaxExempt { get; set; }
+    /// <summary>Lote 69: si la línea es de un kit, la FOTO de sus componentes al guardar el borrador (cantidad por kit). Vacío = producto normal.</summary>
+    public List<SalesOrderLineComponent> Components { get; set; } = new();
+}
+
+/// <summary>
+/// Lote 69 — componente de un kit en una línea de orden de venta: copia (foto) de lo que llevaba el kit al guardar el borrador, o lo que el vendedor ajustó (si el kit es
+/// ajustable al pedir). Un cambio posterior del catálogo no altera una orden ya guardada. Quantity = piezas del componente por cada kit.
+/// </summary>
+public class SalesOrderLineComponent : ITenantScoped
+{
+    public int SalesOrderLineComponentId { get; set; }
+    public int TenantId { get; set; }
+    public int SalesOrderLineId { get; set; }
+    public int ComponentProductId { get; set; }
+    public decimal Quantity { get; set; }
 }
 
 /// <summary>Qué saldo (almacén, posición, lote) reservó una línea y cuánto: se libera EXACTAMENTE esto al cancelar, modificar o despachar.</summary>
@@ -96,4 +111,6 @@ public class SalesOrderReservation : ITenantScoped
     public int WarehouseBinId { get; set; }
     public int? LotId { get; set; }
     public decimal Quantity { get; set; }
+    /// <summary>Lote 69: el producto que se reservó. NULL = el de la línea (filas anteriores); en una línea de kit es el componente.</summary>
+    public int? ProductId { get; set; }
 }

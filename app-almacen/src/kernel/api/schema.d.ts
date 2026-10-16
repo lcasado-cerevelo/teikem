@@ -27421,6 +27421,8 @@ export interface components {
             /** Format: double */
             taxAmount?: number;
             isTaxExempt?: boolean;
+            isKit?: boolean;
+            components?: components["schemas"]["SalesOrderLineComponentDto"][] | null;
         };
         SalesOrderLineModifyRequest: {
             /** Format: double */
@@ -27438,6 +27440,7 @@ export interface components {
             unitPrice?: number | null;
             /** Format: int32 */
             lotId?: number | null;
+            components?: components["schemas"]["KitComponentRequest"][] | null;
         };
         SalesOrderListItemDto: {
             /** Format: uuid */
@@ -31009,6 +31012,22 @@ export interface components {
             isKit?: boolean | null;
             adjustable?: boolean | null;
             components?: components["schemas"]["KitComponentRequest"][] | null;
+        };
+        SalesOrderLineComponentDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            name?: string | null;
+            /** Format: double */
+            qtyPerKit?: number;
+            /** Format: double */
+            needed?: number;
+            /** Format: double */
+            reserved?: number;
+            /** Format: double */
+            backordered?: number;
+            /** Format: double */
+            shipped?: number;
         };
     };
     responses: never;

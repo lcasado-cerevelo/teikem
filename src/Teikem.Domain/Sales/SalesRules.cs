@@ -6,6 +6,12 @@ namespace Teikem.Domain.Sales;
 /// </summary>
 public static class SalesRules
 {
+    // ---- Lote 69: kits
+    public static string KitQuantityWhole(string sku) => $"El kit {sku} se pide en piezas enteras.";
+    public static string KitNotAdjustable(string sku) => $"El kit {sku} no se puede ajustar al pedir.";
+    public static string KitWithoutComponents(string sku) => $"El kit {sku} no tiene componentes: defínalos antes de venderlo.";
+    public const string KitNoBinChoice = "Un kit se despacha de lo reservado de sus componentes: no se escoge posición ni lote.";
+
     public const int MaxLines = 200;
     public const int MaxNotesLength = 500;
     public const decimal MaxQuantity = 9_999_999_999.999m;

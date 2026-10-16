@@ -23,7 +23,7 @@ namespace Teikem.Infrastructure.Services;
 /// </summary>
 public sealed partial class SalesOrderService
 {
-    private sealed record Pick(int LineId, int ProductId, int BinId, int? LotId, decimal Quantity);
+    private sealed record Pick(int LineId, int ProductId, int BinId, int? LotId, decimal Quantity, int? KitProductId = null, decimal? KitQuantity = null);
 
     public async Task<SalesDispatchResultDto> DispatchAsync(Guid publicId, SalesDispatchRequest? req, CancellationToken ct)
     {
@@ -57,7 +57,13 @@ public sealed partial class SalesOrderService
 
                     var lineIds = order.Lines.Select(l => l.SalesOrderLineId).ToList();
                     var rows = await db.Set<SalesOrderReservation>().AsTracking().Where(r => lineIds.Contains(r.SalesOrderLineId)).OrderBy(r => r.SalesOrderReservationId).ToListAsync(ct2);
-                    var skus = await db.Set<Product>().AsNoTracking().Where(p => order.Lines.Select(l => l.ProductId).Contains(p.ProductId)).ToDictionaryAsync(p => p.ProductId, ct2);
+                    // Lote 69: las líneas de kit se despachan en kits enteros, sobre lo reservado de sus componentes
+                    var snapshots = (await db.Set<SalesOrderLineComponent>().AsNoTracking().Where(c => lineIds.Contains(c.SalesOrderLineId)).ToListAsync(ct2))
+                        .GroupBy(c => c.SalesOrderLineId).ToDictionary(g => g.Key, g => g.ToList());
+                    var neededProducts = order.Lines.Select(l => l.ProductId).Concat(snapshots.Values.SelectMany(v => v.Select(c => c.ComponentProductId))).Distinct().ToList();
+                    var skus = await db.Set<Product>().AsNoTracking().Where(p => neededProducts.Contains(p.ProductId)).ToDictionaryAsync(p => p.ProductId, ct2);
+                    var lineProduct = order.Lines.ToDictionary(l => l.SalesOrderLineId, l => l.ProductId);
+                    var kitUnits = requested.Where(d => snapshots.ContainsKey(d.LineId!.Value)).ToDictionary(d => d.LineId!.Value, d => d.Quantity!.Value);
 
                     // 1) cantidades contra lo reservado
                     foreach (var d in requested)
@@ -65,6 +71,11 @@ public sealed partial class SalesOrderService
                         var line = order.Lines.FirstOrDefault(l => l.SalesOrderLineId == d.LineId!.Value) ?? throw new NotFoundException("Línea", feminine: true);
                         if (d.Quantity!.Value > line.QtyReserved)
                             throw new ConflictException(SalesRules.DispatchMoreThanReserved(skus[line.ProductId].Sku, line.QtyReserved));
+                        if (snapshots.ContainsKey(line.SalesOrderLineId))
+                        {
+                            if (d.BinId is not null || d.LotId is not null) throw new Exceptions.ValidationException("lines", SalesRules.KitNoBinChoice);
+                            if (d.Quantity.Value != Math.Floor(d.Quantity.Value)) throw new Exceptions.ValidationException("lines", SalesRules.KitQuantityWhole(skus[line.ProductId].Sku));
+                        }
                     }
 
                     // 2) de dónde sale cada línea (y mover la reserva si el operario tomó de otra posición)
@@ -74,6 +85,25 @@ public sealed partial class SalesOrderService
                         var line = order.Lines.First(l => l.SalesOrderLineId == d.LineId!.Value);
                         var mine = rows.Where(r => r.SalesOrderLineId == line.SalesOrderLineId).ToList();
                         var q = d.Quantity!.Value;
+                        if (snapshots.TryGetValue(line.SalesOrderLineId, out var comps))
+                        {
+                            // kit: de cada componente sale (cantidad por kit × kits) de lo que tiene reservado; la primera porción lleva el número de kits (para deshacer en kits)
+                            var firstOfKit = true;
+                            foreach (var c in comps)
+                            {
+                                var need = q * c.Quantity;
+                                foreach (var r in mine.Where(r => (r.ProductId ?? line.ProductId) == c.ComponentProductId))
+                                {
+                                    if (need <= 0m) break;
+                                    var take = Math.Min(r.Quantity, need);
+                                    picks.Add(new Pick(line.SalesOrderLineId, c.ComponentProductId, r.WarehouseBinId, r.LotId, take, line.ProductId, firstOfKit ? q : null));
+                                    firstOfKit = false;
+                                    need -= take;
+                                }
+                                if (need > 0m) throw new ConflictException(SalesRules.DispatchMoreThanReserved(skus[line.ProductId].Sku, line.QtyReserved));
+                            }
+                            continue;
+                        }
                         if (d.BinId is null)
                         {
                             var left = q;
@@ -120,7 +150,7 @@ public sealed partial class SalesOrderService
                     foreach (var pk in picks)
                     {
                         var left = pk.Quantity;
-                        foreach (var r in rows.Where(r => r.SalesOrderLineId == pk.LineId && r.WarehouseBinId == pk.BinId && r.LotId == pk.LotId && r.Quantity > 0m).ToList())
+                        foreach (var r in rows.Where(r => r.SalesOrderLineId == pk.LineId && (r.ProductId ?? lineProduct[pk.LineId]) == pk.ProductId && r.WarehouseBinId == pk.BinId && r.LotId == pk.LotId && r.Quantity > 0m).ToList())
                         {
                             if (left <= 0m) break;
                             var take = Math.Min(r.Quantity, left);
@@ -144,19 +174,21 @@ public sealed partial class SalesOrderService
                     batch.StatusCodeId = born.StatusCodeId;
 
                     var postings = picks.Select(pk => new InventoryPosting(InventoryTxnTypes.Issue, pk.ProductId, pk.Quantity, LotId: pk.LotId, FromWarehouseId: order.WarehouseId, FromBinId: pk.BinId,
-                        RefEntityType: EntityTypes.PickBatch, RefId: batch.PickBatchId, Notes: $"{batch.Number} · {order.Number}")).ToList();
+                        RefEntityType: EntityTypes.PickBatch, RefId: batch.PickBatchId,
+                        Notes: pk.KitProductId is int kp ? $"{skus[kp].Sku} × {kitUnits[pk.LineId]:0.###} · {batch.Number} · {order.Number}" : $"{batch.Number} · {order.Number}")).ToList();
                     var txnIds = await ledger.PostAsync(postings, ct2);
                     for (var i = 0; i < picks.Count; i++)
                         db.Set<PickBatchLine>().Add(new PickBatchLine
                         {
                             PickBatchId = batch.PickBatchId, ProductId = picks[i].ProductId, LotId = picks[i].LotId, FromBinId = picks[i].BinId, Quantity = picks[i].Quantity,
                             UnitCost = skus[picks[i].ProductId].PurchaseCost, IssueTxnId = txnIds[i], SalesOrderLineId = picks[i].LineId,
+                            KitProductId = picks[i].KitProductId, KitQuantity = picks[i].KitQuantity,
                         });
 
                     // 4) lo despachado y lo reservado de cada línea; el estatus de la orden
                     foreach (var line in order.Lines)
                     {
-                        var shipped = picks.Where(pk => pk.LineId == line.SalesOrderLineId).Sum(pk => pk.Quantity);
+                        var shipped = kitUnits.TryGetValue(line.SalesOrderLineId, out var kitsShipped) ? kitsShipped : picks.Where(pk => pk.LineId == line.SalesOrderLineId).Sum(pk => pk.Quantity);
                         if (shipped > 0m) (line.QtyShipped, line.QtyReserved) = (line.QtyShipped + shipped, line.QtyReserved - shipped);
                     }
                     await RefreshStatusAsync(order, "Despacho " + batch.Number, ct2);
@@ -180,7 +212,7 @@ public sealed partial class SalesOrderService
         var batches = await db.Set<PickBatch>().AsNoTracking().Where(b => b.SalesOrderId != null && orderIds.Contains(b.SalesOrderId.Value)).OrderBy(b => b.PickBatchId).ToListAsync(ct);
         if (batches.Count == 0) return new();
         var ids = batches.Select(b => b.PickBatchId).ToList();
-        var qty = await db.Set<PickBatchLine>().AsNoTracking().Where(l => ids.Contains(l.PickBatchId)).GroupBy(l => l.PickBatchId).Select(g => new { g.Key, Total = g.Sum(l => l.Quantity) }).ToDictionaryAsync(x => x.Key, x => x.Total, ct);
+        var qty = await db.Set<PickBatchLine>().AsNoTracking().Where(l => ids.Contains(l.PickBatchId)).GroupBy(l => l.PickBatchId).Select(g => new { g.Key, Total = g.Sum(l => l.KitProductId == null ? l.Quantity : (l.KitQuantity ?? 0m)) }).ToDictionaryAsync(x => x.Key, x => x.Total, ct);
         var statusCodes = batches.Select(b => b.StatusCodeId).Distinct().ToList();
         var codes = await db.StatusCodes.AsNoTracking().Where(s => statusCodes.Contains(s.StatusCodeId)).ToDictionaryAsync(s => s.StatusCodeId, s => s.InternalCode, ct);
         var transportIds = batches.Where(b => b.TransportOrderId != null).Select(b => b.TransportOrderId!.Value).ToList();
@@ -209,12 +241,25 @@ public sealed partial class SalesOrderService
         {
             var line = order.Lines.FirstOrDefault(l => l.SalesOrderLineId == r.SalesOrderLineId);
             if (line is null) continue;
+            if (r.KitProductId is not null)
+            {
+                // Lote 69: una porción de un kit — los kits se descuentan una sola vez (la porción que lleva KitQuantity); toda porción vuelve a reservarse en su componente
+                if (r.KitQuantity is decimal kits && kits > 0m)
+                {
+                    var backKits = Math.Min(kits, line.QtyShipped);
+                    (line.QtyShipped, line.QtyReserved) = (line.QtyShipped - backKits, reserve ? line.QtyReserved + backKits : line.QtyReserved);
+                }
+                if (!reserve) continue;
+                reservations.Add(new StockReservation(r.ProductId, order.WarehouseId, r.BinId, r.LotId, r.Quantity));
+                db.Set<SalesOrderReservation>().Add(new SalesOrderReservation { TenantId = order.TenantId, SalesOrderLineId = line.SalesOrderLineId, WarehouseId = order.WarehouseId, WarehouseBinId = r.BinId, LotId = r.LotId, Quantity = r.Quantity, ProductId = r.ProductId });
+                continue;
+            }
             var back = Math.Min(r.Quantity, line.QtyShipped);
             if (back <= 0m) continue;
             (line.QtyShipped, line.QtyReserved) = (line.QtyShipped - back, reserve ? line.QtyReserved + back : line.QtyReserved);
             if (!reserve) continue;
             reservations.Add(new StockReservation(r.ProductId, order.WarehouseId, r.BinId, r.LotId, back));
-            db.Set<SalesOrderReservation>().Add(new SalesOrderReservation { TenantId = order.TenantId, SalesOrderLineId = line.SalesOrderLineId, WarehouseId = order.WarehouseId, WarehouseBinId = r.BinId, LotId = r.LotId, Quantity = back });
+            db.Set<SalesOrderReservation>().Add(new SalesOrderReservation { TenantId = order.TenantId, SalesOrderLineId = line.SalesOrderLineId, WarehouseId = order.WarehouseId, WarehouseBinId = r.BinId, LotId = r.LotId, Quantity = back, ProductId = r.ProductId });
         }
         await ledger.ReserveAsync(reservations, ct);
         if (reserve)

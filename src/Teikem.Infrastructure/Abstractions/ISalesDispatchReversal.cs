@@ -1,7 +1,7 @@
 namespace Teikem.Infrastructure.Abstractions;
 
 /// <summary>Una línea de recolección que se acaba de revertir y que atendía una línea de orden de venta (Lote 62).</summary>
-public sealed record SalesReversedLine(int SalesOrderLineId, int ProductId, int BinId, int? LotId, decimal Quantity);
+public sealed record SalesReversedLine(int SalesOrderLineId, int ProductId, int BinId, int? LotId, decimal Quantity, int? KitProductId = null, decimal? KitQuantity = null);
 
 /// <summary>
 /// Lote 62 — gancho que llama PickBatchService al ELIMINAR (revertir) una recolección que atendía una orden de venta, dentro de la misma transacción y DESPUÉS de

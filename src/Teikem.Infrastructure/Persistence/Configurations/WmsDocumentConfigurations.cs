@@ -265,6 +265,8 @@ public sealed class PickBatchLineConfiguration : IEntityTypeConfiguration<PickBa
         b.Property(l => l.UnitCost).HasColumnType("decimal(18,4)");
 
         b.HasIndex(l => l.PickBatchId).HasDatabaseName("IX_PickBatchLine_Batch");
+        b.Property(l => l.KitQuantity).HasColumnType("decimal(14,3)");   // Lote 69
+        b.HasOne<Product>().WithMany().HasForeignKey(l => l.KitProductId).OnDelete(DeleteBehavior.NoAction);
 
         b.HasOne<Product>().WithMany().HasForeignKey(l => l.ProductId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<InventoryLot>().WithMany().HasForeignKey(l => l.LotId).OnDelete(DeleteBehavior.NoAction);

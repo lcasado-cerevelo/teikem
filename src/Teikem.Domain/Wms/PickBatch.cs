@@ -60,4 +60,8 @@ public class PickBatchLine
     public long? ReversalTxnId { get; set; }
     /// <summary>Lote 61: la línea de la orden de venta que atendió; NULL = recolección normal.</summary>
     public int? SalesOrderLineId { get; set; }
+    /// <summary>Lote 69: si esta línea sale de un kit, el kit (la línea es de un componente); NULL = producto normal.</summary>
+    public int? KitProductId { get; set; }
+    /// <summary>Lote 69: cuántos kits representa este despacho; solo en UNA de las líneas de componentes de cada kit (el resto NULL), para deshacer en kits.</summary>
+    public decimal? KitQuantity { get; set; }
 }

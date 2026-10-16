@@ -5,7 +5,9 @@ namespace Teikem.Infrastructure.Contracts;
 // ======================================================================================================================
 
 /// <summary>Una línea a vender. Con UnitPrice vacío se usa el precio de venta del producto; escribir otro exige sales.price.</summary>
-public sealed record SalesOrderLineRequest(Guid? ProductPublicId = null, decimal? Quantity = null, decimal? UnitPrice = null, int? LotId = null);
+/// <summary>Lote 69: Components solo para un kit «ajustable al pedir»: las piezas de ESTA línea (si no vienen, las del catálogo).</summary>
+public sealed record SalesOrderLineRequest(Guid? ProductPublicId = null, decimal? Quantity = null, decimal? UnitPrice = null, int? LotId = null,
+    IReadOnlyList<KitComponentRequest>? Components = null);
 
 /// <summary>
 /// Orden de venta a crear o a reemplazar (PATCH, solo en borrador). WarehousePublicId vacío = el único almacén activo. ClearConsignee quita el consignatario.
@@ -14,7 +16,11 @@ public sealed record SalesOrderRequest(Guid? WarehousePublicId = null, Guid? Cli
     DateOnly? RequiredDate = null, bool? ClearRequiredDate = null, string? Notes = null, IReadOnlyList<SalesOrderLineRequest>? Lines = null);
 
 public sealed record SalesOrderLineDto(int Id, int LineNo, Guid ProductPublicId, string Sku, string ProductName, int? LotId, decimal QtyOrdered, decimal QtyReserved,
-    decimal QtyBackordered, decimal QtyShipped, bool IsClosed, decimal UnitPrice, decimal LineSubtotal, decimal TaxRatePct, decimal TaxAmount, bool IsTaxExempt);
+    decimal QtyBackordered, decimal QtyShipped, bool IsClosed, decimal UnitPrice, decimal LineSubtotal, decimal TaxRatePct, decimal TaxAmount, bool IsTaxExempt,
+    bool IsKit = false, IReadOnlyList<SalesOrderLineComponentDto>? Components = null);
+
+/// <summary>Lote 69: un componente de la línea de un kit. Las cantidades son de piezas del componente (cantidad por kit × kits): pedido, reservado, en backorder y despachado.</summary>
+public sealed record SalesOrderLineComponentDto(Guid ProductPublicId, string Sku, string Name, decimal QtyPerKit, decimal Needed, decimal Reserved, decimal Backordered, decimal Shipped);
 
 public sealed record SalesOrderListItemDto(Guid PublicId, string Number, string Status, string StatusLabel, string StatusColor, Guid ClientPublicId, string ClientName,
     Guid WarehousePublicId, string WarehouseName, DateOnly RequestedDate, DateOnly? RequiredDate, decimal Subtotal, decimal TaxAmount, decimal Total,

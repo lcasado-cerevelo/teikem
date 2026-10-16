@@ -2265,8 +2265,7 @@ recepciones sigue protegida (no se elimina, no baja de lo recibido, no cambia de
 ## 8b. Kits (Lote 68, 2026-10-16)
 
 Un **kit** es un producto que se arma al pedir con otros productos (por ejemplo, «Kit de limpieza» = 2 desinfectantes + 1 trapeador). **No tiene existencia ni movimientos
-propios**: todo pasa en sus componentes. Este lote deja listo el catálogo; usar los kits en las órdenes de venta y en la recolección es del siguiente (ver
-[18 — Órdenes de venta](18-ordenes-de-venta.md) cuando se publique).
+propios**: todo pasa en sus componentes. Este lote deja listo el catálogo; su uso en las órdenes de venta está en [18 §17](18-ordenes-de-venta.md#17-kits-en-las-órdenes-de-venta-lote-69) y en la recolección, en el lote siguiente.
 
 ### 8b.1 Quién y dónde
 

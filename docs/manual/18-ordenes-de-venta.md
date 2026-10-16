@@ -245,3 +245,38 @@ Muestra unidades surtibles, líneas y días esperando (en rojo si pasa de 7). **
 pestaña Backorders: lo que avisa es lo que **Surtir** va a reservar.
 
 Base de datos: sección **2026-10-16 (o)** de `Diseño/logistica-db-update.sql` (EntityType `SALES_ORDER_LINE`); lo demás lo siembra el código.
+
+## 17. Kits en las órdenes de venta (Lote 69)
+
+Un **kit** ([06 §8b](06-inventario-y-almacen.md#8b-kits-lote-68-2026-10-16)) se vende como una línea más de la orden: la cantidad son **kits enteros** y el precio es el del kit.
+Por dentro, todo se mueve en sus **componentes**.
+
+- **Componentes de la línea.** Al guardar el borrador se toma una **foto** de los componentes del kit (cantidad por kit). Un cambio posterior del catálogo **no** altera la orden; si
+  usted vuelve a guardar el borrador, la foto se conserva (incluidas las piezas ajustadas). Para tomar el catálogo nuevo, quite la línea y agréguela otra vez.
+- **Kit ajustable al pedir.** Si el kit se marcó «Ajustable al pedir», en el borrador se pueden cambiar las **cantidades por kit solo para esta orden** (el cuerpo lleva `components` en la línea).
+  En un kit fijo, mandar `components` da `El kit {SKU} no se puede ajustar al pedir.` (400).
+- **Disponible y faltante en kits.** Se pueden armar tantos kits como alcance el componente que menos da (disponible para vender ÷ cantidad por kit, hacia abajo). El diálogo de
+  faltante, la orden y el backorder cuentan **kits**: pedido 5, disponible 3, faltante 2.
+- **Reservar y liberar.** Solicitar reserva **los componentes de cada kit completo** (por FEFO/FIFO de cada componente); nunca una mitad de kit. Cambiar la cantidad, cancelar, surtir un
+  backorder o cerrar con faltante actúan sobre los componentes de la misma forma. La reserva guarda el producto reservado (`SalesOrderReservation.ProductId`).
+- **Despachar.** Se despachan kits enteros, **de lo reservado de sus componentes** (no se escoge posición ni lote). Salen las piezas de cada componente por el ledger, con la nota
+  `{KIT} × n · EMP-… · OV-…` en el Kárdex; la recolección trae una línea por componente y anota los kits que representa (`PickBatchLine.KitProductId` / `KitQuantity`).
+  La cantidad de un despacho en la lista de despachos de la orden es en **kits**.
+- **Deshacer un despacho** devuelve los componentes a su posición, baja los kits despachados y **vuelve a reservar** cada componente, igual que con un producto normal.
+- **En la web** (Operación → Órdenes de venta): una línea de kit lleva el distintivo «Kit» y muestra sus componentes debajo; en la orden solicitada, una tabla por kit con pedido, reservado,
+  en backorder y despachado de cada componente.
+- **Aparato:** todavía **no** despacha líneas de kit (el servidor no se las manda); eso llega en el siguiente lote.
+
+| Situación | Mensaje | HTTP |
+|---|---|---|
+| Cantidad de kit con decimales | `El kit {SKU} se pide en piezas enteras.` | 400 |
+| Piezas ajustadas en un kit fijo | `El kit {SKU} no se puede ajustar al pedir.` | 400 |
+| Piezas en una línea que no es kit | `El producto {SKU} no es un kit.` | 400 |
+| Piezas ajustadas inválidas | los mismos de [06 §8b.3](06-inventario-y-almacen.md#8b3-reglas-y-mensajes) (cantidad, repetido, kit dentro de kit, inactivo, otro dueño) | 400 |
+| Kit sin componentes | `El kit {SKU} no tiene componentes: defínalos antes de venderlo.` | 400 |
+| Despachar un kit escogiendo posición o lote | `Un kit se despacha de lo reservado de sus componentes: no se escoge posición ni lote.` | 400 |
+| Despachar kits con decimales | `El kit {SKU} se pide en piezas enteras.` | 400 |
+| Despachar más kits de los reservados | `No se puede despachar más de lo reservado: {SKU} tiene {n} reservadas.` | 409 |
+
+Para soporte: tabla `SalesOrderLineComponent` (la foto, se borra con la línea) y columnas `SalesOrderReservation.ProductId`, `PickBatchLine.KitProductId` y `KitQuantity`
+(sección **2026-10-16 (q)** de `Diseño/logistica-db-update.sql`).

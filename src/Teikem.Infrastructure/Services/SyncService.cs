@@ -430,7 +430,8 @@ namespace Teikem.Infrastructure.Services
                 : await db.Set<Location>().AsNoTracking().Where(l => consigneeIds.Contains(l.LocationId)).ToDictionaryAsync(l => l.LocationId, l => l.Name, ct);
             var lines = await (from l in db.Set<Teikem.Domain.Sales.SalesOrderLine>().AsNoTracking()
                                join p in db.Set<Product>().AsNoTracking() on l.ProductId equals p.ProductId
-                               where ids.Contains(l.SalesOrderId)
+                               // Lote 69: las líneas de KIT todavía no se despachan desde el aparato (sus reservas son de los componentes): no se mandan
+                               where ids.Contains(l.SalesOrderId) && !db.Set<Teikem.Domain.Sales.SalesOrderLineComponent>().Any(c => c.SalesOrderLineId == l.SalesOrderLineId)
                                orderby l.LineNo
                                select new { l.SalesOrderId, l.SalesOrderLineId, p.PublicId, p.Sku, p.Name, l.QtyOrdered, l.QtyReserved, l.QtyShipped, l.QtyBackordered })
                 .ToListAsync(ct);

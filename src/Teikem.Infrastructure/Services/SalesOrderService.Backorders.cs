@@ -104,8 +104,8 @@ public sealed partial class SalesOrderService
                     var reservations = new List<StockReservation>();
                     foreach (var al in a.Allocations)
                     {
-                        reservations.Add(new StockReservation(line.ProductId, order.WarehouseId, al.BinId, al.LotId, al.Quantity));
-                        db.Set<SalesOrderReservation>().Add(new SalesOrderReservation { TenantId = order.TenantId, SalesOrderLineId = line.SalesOrderLineId, WarehouseId = order.WarehouseId, WarehouseBinId = al.BinId, LotId = al.LotId, Quantity = al.Quantity });
+                        reservations.Add(new StockReservation(al.ProductId, order.WarehouseId, al.BinId, al.LotId, al.Quantity));
+                        db.Set<SalesOrderReservation>().Add(new SalesOrderReservation { TenantId = order.TenantId, SalesOrderLineId = line.SalesOrderLineId, WarehouseId = order.WarehouseId, WarehouseBinId = al.BinId, LotId = al.LotId, Quantity = al.Quantity, ProductId = al.ProductId });
                     }
                     await ledger.ReserveAsync(reservations, ct2);
                     (line.QtyReserved, line.QtyBackordered) = (line.QtyReserved + a.Allocated, line.QtyBackordered - a.Allocated);
