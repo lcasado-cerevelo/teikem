@@ -3115,3 +3115,39 @@ IF COL_LENGTH('dbo.Payment', 'VoidedBy') IS NULL ALTER TABLE dbo.Payment ADD Voi
 GO
 IF COL_LENGTH('dbo.Payment', 'VoidReason') IS NULL ALTER TABLE dbo.Payment ADD VoidReason NVARCHAR(250) NULL;
 GO
+
+-- =====================================================================================================================
+-- 2026-10-16 (u) Lote 77 — plantillas de exportación a contabilidad
+-- ExportTemplate: formato (CSV/TXT), delimitador, formato de fecha, encabezado y columnas (JSON) por compañía y alcance (hoy BILLING). Una plantilla no se borra: se desactiva (IsActive = 0).
+-- El nombre no se repite entre las activas de un alcance. EntityType EXPORT_TEMPLATE para la bitácora.
+-- =====================================================================================================================
+IF OBJECT_ID(N'dbo.ExportTemplate', N'U') IS NULL CREATE TABLE dbo.ExportTemplate (
+    ExportTemplateId INT IDENTITY(1,1) PRIMARY KEY,
+    PublicId UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_ExportTemplate_PublicId DEFAULT NEWID(),
+    TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    Scope VARCHAR(20) NOT NULL,
+    Name NVARCHAR(80) NOT NULL,
+    Format VARCHAR(3) NOT NULL CONSTRAINT CK_ExportTemplate_Format CHECK (Format IN ('CSV','TXT')),
+    Delimiter NCHAR(1) NOT NULL,
+    DateFormat VARCHAR(10) NOT NULL CONSTRAINT CK_ExportTemplate_DateFormat CHECK (DateFormat IN ('YYYY-MM-DD','MM/DD/YYYY','DD/MM/YYYY')),
+    IncludeHeader BIT NOT NULL CONSTRAINT DF_ExportTemplate_Header DEFAULT 1,
+    ColumnsJson NVARCHAR(MAX) NOT NULL,
+    IsActive BIT NOT NULL CONSTRAINT DF_ExportTemplate_IsActive DEFAULT 1,
+    CreatedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_ExportTemplate_Created DEFAULT SYSUTCDATETIME(),
+    CreatedBy INT NULL, UpdatedAtUtc DATETIME2 NULL, UpdatedBy INT NULL,
+    RowVersion ROWVERSION
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ExportTemplate_PublicId' AND object_id = OBJECT_ID('dbo.ExportTemplate')) CREATE INDEX IX_ExportTemplate_PublicId ON dbo.ExportTemplate(PublicId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_ExportTemplate_Name' AND object_id = OBJECT_ID('dbo.ExportTemplate')) CREATE UNIQUE INDEX UX_ExportTemplate_Name ON dbo.ExportTemplate(TenantId, Scope, Name) WHERE IsActive = 1;
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'EXPORT_TEMPLATE', N'{"es":"Plantilla de exportación","en":"Export template"}', 128)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO

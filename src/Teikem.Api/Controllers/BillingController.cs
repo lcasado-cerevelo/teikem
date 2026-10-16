@@ -18,7 +18,7 @@ public sealed record BillingRunCancelRequest(string? Comment = null);
 [Route("api/v1/billing")]
 [Authorize]
 [RequireModule(ModuleKeys.Billing)]
-public sealed class BillingController(BillingService billing, PaymentService payments) : ControllerBase
+public sealed class BillingController(BillingService billing, PaymentService payments, BillingExportService export) : ControllerBase
 {
     /// <summary>Base de facturación del producto vendido (al despachar o al entregar) y días de vencimiento de las facturas.</summary>
     [HttpGet("settings"), RequirePermission(PermissionCatalog.BillingView)]
@@ -85,4 +85,16 @@ public sealed class BillingController(BillingService billing, PaymentService pay
     /// <summary>Cuentas por cobrar: por cliente, lo que debe y su antigüedad (por vencer, 1–30, 31–60, 61–90 y más de 90 días).</summary>
     [HttpGet("receivables"), RequirePermission(PermissionCatalog.BillingView)]
     public Task<ReceivablesDto> Receivables([FromQuery] DateOnly? asOf, CancellationToken ct) => payments.ReceivablesAsync(asOf, ct);
+
+    // ---------------------------------------------------------------- Lote 77 — archivo de exportación a contabilidad
+
+    /// <summary>
+    /// El archivo de exportación de una corrida aprobada o exportada con una plantilla (la estándar si no se pide), sin cambiar nada: la vista previa antes de descargar. Con billing.export.
+    /// </summary>
+    [HttpGet("runs/{id:int}/export-preview"), RequirePermission(PermissionCatalog.BillingExport)]
+    public Task<ExportFileDto> ExportPreview(int id, [FromQuery] Guid? templateId, CancellationToken ct) => export.PreviewAsync(id, templateId, ct);
+
+    /// <summary>Arma el archivo y, si la corrida estaba aprobada, la pasa a exportada (quién y cuándo). Una corrida exportada se puede volver a exportar. Con billing.export.</summary>
+    [HttpPost("runs/{id:int}/export"), RequirePermission(PermissionCatalog.BillingExport)]
+    public Task<ExportFileDto> Export(int id, [FromBody] BillingExportRequest? req, CancellationToken ct) => export.ExportAsync(id, req?.TemplatePublicId, ct);
 }

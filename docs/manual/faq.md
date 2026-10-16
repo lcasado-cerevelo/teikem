@@ -8516,3 +8516,26 @@ Solo cuentan las facturas emitidas, vencidas y pagadas, desde su fecha de emisi�
 
 **¿Qué significan las columnas de antigüedad?**
 Por vencer (todavía no llega la fecha de vencimiento) y los días de vencida: 1–30, 31–60, 61–90 y más de 90.
+
+## Lote 77 — Exportar a contabilidad
+
+**`Solo se exporta una corrida aprobada o exportada.` (422)**
+La corrida sigue generada o revisada (o está cancelada). Apruébela (con reautenticación) y exporte; la vista previa tampoco se arma antes de aprobar.
+
+**¿Qué pasa con el estatus al exportar?**
+La corrida pasa de **Aprobada** a **Exportada** la primera vez que se exporta, con quién y cuándo. Exportar otra vez (con otra plantilla, por ejemplo) arma el archivo de nuevo y no cambia nada más.
+
+**El programa de contabilidad no acepta el archivo.**
+Ajuste la plantilla, no el programa: el delimitador, el formato de fecha, si lleva encabezado, las columnas que pide y su orden, y el encabezado de cada una. Pruebe con la vista previa (no cambia el estatus) hasta que coincida con una muestra del formato real.
+
+**`Ya existe una plantilla con ese nombre.` (409)**
+El nombre se compara sin mayúsculas ni acentos. Cambie el nombre o desactive la otra.
+
+**No me deja desactivar una plantilla.**
+La compañía necesita al menos una. Cree la nueva y desactive la vieja.
+
+**La factura anulada no sale en el archivo.**
+Correcto: solo salen las facturas de la corrida que no están anuladas.
+
+**Salen caracteres raros o campos corridos.**
+En CSV, lo que lleva el delimitador va entre comillas; en TXT no hay comillas y el delimitador dentro de un valor se cambia por un espacio. Si su programa necesita comillas, use CSV; si no las tolera, use TXT.

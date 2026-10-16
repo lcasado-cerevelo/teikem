@@ -209,6 +209,7 @@ internal sealed class WmsFixture : IAsyncDisposable
         // Lote 72 (facturación): entidades y tipo de cargo (al final: ids previos intactos).
         L(LookupDomains.EntityType, Teikem.Domain.Billing.BillingCodes.InvoiceEntityType);
         L(LookupDomains.EntityType, Teikem.Domain.Billing.BillingCodes.RunEntityType);
+        L(LookupDomains.EntityType, Teikem.Domain.Export.ExportCodes.EntityType);   // Lote 77
         L(Teikem.Domain.Billing.BillingCodes.ChargeTypeDomain, Teikem.Domain.Billing.BillingCodes.ProductSale);
         L(Teikem.Domain.Billing.BillingCodes.PaymentMethodDomain, "CASH");
         foreach (var m in new[] { "ACH", "CHECK", "CARD" }) L(Teikem.Domain.Billing.BillingCodes.PaymentMethodDomain, m);   // Lote 75

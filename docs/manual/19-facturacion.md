@@ -2,7 +2,7 @@
 
 Lote 72 (P5, 2026-10-16). La **facturación** convierte lo que ya salió (despachado) en facturas al cliente, por **corridas** que se generan, se revisan, se aprueban y se exportan.
 Este capítulo describe las corridas y facturas de la **venta de producto** de las órdenes de venta ([capítulo 18](18-ordenes-de-venta.md)) y, desde el Lote 74, el **flete de las órdenes de
-transporte** (sección 2b) y, desde el Lote 75, los **pagos, el estado de cuenta y las cuentas por cobrar** (sección 4b). La exportación a contabilidad se agrega en el lote siguiente.
+transporte** (sección 2b) y, desde el Lote 75, los **pagos, el estado de cuenta y las cuentas por cobrar** (sección 4b). Desde el Lote 77, la **exportación a contabilidad** con plantillas (sección 4c).
 
 ## 1. Quién puede y dónde
 
@@ -78,6 +78,21 @@ La pantalla de todo esto está descrita en [L76 — Cobros](frontend/l76-cobros.
 
 **Cuentas por cobrar** (`GET /billing/receivables?asOf`, `billing.view`): por cliente, cuántas facturas abiertas, el saldo y su antigüedad en cinco cubetas: **por vencer**, **1–30**, **31–60**, **61–90** y **más de 90** días de vencida, de mayor a menor saldo; el cliente sin saldo no aparece. El estado de cuenta suma los montos tal cual, sin separar monedas: supone una moneda por cliente.
 
+## 4c. Exportar a contabilidad con plantillas (Lote 77)
+
+Una corrida **aprobada** (o ya exportada) se exporta a un archivo **CSV o TXT** con una **plantilla** configurable: el motor no depende de un formato fijo (QuickBooks u otro se ajusta con una muestra real, solo cambiando la plantilla).
+
+**Plantillas** (`/api/v1/export-templates`; ver con `billing.view`, crear, cambiar y desactivar con `billing.export`): cada una lleva un **nombre**, el **formato** (CSV o TXT), el **delimitador** (coma, punto y coma, tabulador o barra vertical), el **formato de fecha** (`YYYY-MM-DD`, `MM/DD/YYYY` o `DD/MM/YYYY`), si lleva **encabezado** y las **columnas en el orden que se elija**, cada una con un encabezado propio opcional (si no, el del catálogo, en inglés, como lo piden los programas de contabilidad). La primera vez que se consulta, la compañía recibe **«Formato estándar»** (CSV con coma, fecha ISO, encabezado y las 23 columnas). El nombre no se repite entre las activas (sin distinguir mayúsculas ni acentos). Una plantilla **no se borra: se desactiva**, y no se puede desactivar la última. El catálogo de campos (`GET /export-templates/fields`) trae el código, el tipo, el encabezado por omisión y la etiqueta en el idioma de la compañía.
+
+**Campos de Facturación** (una fila por línea de factura; los datos de la factura y de la corrida se repiten en cada línea): `INVOICE_NUMBER`, `ISSUE_DATE`, `DUE_DATE`, `CLIENT_CODE`, `CLIENT_NAME`, `CURRENCY`, `LINE_NO`, `CHARGE_TYPE`, `DESCRIPTION`, `ORDER_NUMBER` (la orden de venta o la de transporte), `SKU`, `QUANTITY`, `UNIT_AMOUNT`, `LINE_SUBTOTAL`, `TAX_RATE_PCT`, `TAX_AMOUNT`, `LINE_TOTAL`, `INVOICE_SUBTOTAL`, `INVOICE_TAX`, `INVOICE_TOTAL`, `RUN_NUMBER`, `PERIOD_START`, `PERIOD_END`.
+
+**El archivo.**
+- **Vista previa** (`GET /billing/runs/{id}/export-preview?templateId=`, `billing.export`): arma el archivo sin cambiar nada.
+- **Exportar** (`POST /billing/runs/{id}/export` con `templatePublicId`, `billing.export`): arma el mismo archivo y, si la corrida estaba **Aprobada**, la pasa a **Exportada** (con quién y cuándo, y el historial de estatus). Una corrida exportada se puede volver a exportar (otra plantilla, otra copia): no cambia de estatus otra vez.
+- **Reproducible:** la misma corrida con la misma plantilla da siempre el mismo texto (facturas por número, líneas en orden). Las facturas **anuladas** de la corrida no salen.
+- **Formato:** el dinero con 2 decimales y punto; las cantidades y los montos unitarios con hasta 4 decimales sin ceros de más; fin de línea CRLF; UTF-8. En **CSV** lo que lleva el delimitador, comillas o saltos de línea va entre comillas (las comillas se duplican); en **TXT** no hay comillas: el delimitador y los saltos de línea dentro de un valor se cambian por un espacio. Los campos que no existen en el catálogo se dejan fuera.
+- Nombre del archivo: `facturacion-corrida-{número}.csv` o `.txt`.
+
 ## 5. Validaciones y mensajes
 
 | Situación | Mensaje | HTTP |
@@ -109,13 +124,21 @@ La pantalla de todo esto está descrita en [L76 — Cobros](frontend/l76-cobros.
 | Anular el pago de una factura pagada | `La factura ya está pagada por completo: un pago registrado por error se corrige con una nota de crédito o con soporte.` | 422 |
 | Estado de cuenta con fecha final anterior a la inicial | `La fecha final no puede ser anterior a la inicial.` | 400 |
 | Pago o cliente inexistente | `Pago no encontrado.` / `Cliente no encontrado.` | 404 |
+| Exportar o ver el archivo de una corrida que no está aprobada ni exportada | `Solo se exporta una corrida aprobada o exportada.` | 422 |
+| Plantilla sin nombre / nombre largo / nombre repetido | `Escriba el nombre de la plantilla.` / `El nombre no puede pasar de 80 caracteres.` / `Ya existe una plantilla con ese nombre.` | 400 / 400 / 409 |
+| Formato, delimitador o formato de fecha inválidos | `El formato debe ser CSV o TXT.` / `El delimitador debe ser coma, punto y coma, tabulador o barra vertical.` / `El formato de fecha debe ser YYYY-MM-DD, MM/DD/YYYY o DD/MM/YYYY.` | 400 |
+| Plantilla sin columnas / con demasiadas | `Elija al menos una columna.` / `La plantilla no puede tener más de 40 columnas.` | 400 |
+| Columna que no existe / repetida / encabezado largo | `Una de las columnas no es un campo exportable.` / `Una columna se repite en la plantilla.` / `El encabezado de una columna no puede pasar de 60 caracteres.` | 400 |
+| Alcance de la plantilla inexistente | `El alcance de la plantilla no existe.` | 400 |
+| Desactivar la única plantilla | `No se puede desactivar la única plantilla del alcance: deje al menos una.` | 409 |
+| Plantilla inexistente (o de otra compañía) | `Plantilla de exportación no encontrada.` | 404 |
 | Aprobar o anular sin reautenticación reciente | `Esta acción requiere reautenticación reciente (AAL2).` | 403 |
 | Corrida / factura / línea inexistente | `Corrida de facturación no encontrada.` / `Factura no encontrada.` / `Línea de factura no encontrada.` | 404 |
 
 ## 6. Para soporte
 
 - Tablas `BillingRun`, `Invoice`, `InvoiceLine` y `Payment` (las del diseño original) más las columnas de la sección **2026-10-16 (r)** de `Diseño/logistica-db-update.sql`: `BillingRun.ClientId/Note/ReviewedBy/ReviewedAtUtc/ExportedAtUtc/ExportedBy`,
-  `Invoice.Notes`, `InvoiceLine.SalesOrderLineId/OriginalUnitAmount/AdjustmentNote`, `Tenant.SalesBillingTrigger/InvoiceDueDays`; en la sección **2026-10-16 (s)** (Lote 74) `TransportOrder.FreightInvoiced`; en la **(t)** (Lote 75) `Payment.RecordedBy/VoidedAtUtc/VoidedBy/VoidReason`; el contador `BILLINVOICE` (**FAC-#####**, uno por compañía), el estatus
+  `Invoice.Notes`, `InvoiceLine.SalesOrderLineId/OriginalUnitAmount/AdjustmentNote`, `Tenant.SalesBillingTrigger/InvoiceDueDays`; en la sección **2026-10-16 (s)** (Lote 74) `TransportOrder.FreightInvoiced`; en la **(t)** (Lote 75) `Payment.RecordedBy/VoidedAtUtc/VoidedBy/VoidReason`; en la **(u)** (Lote 77) la tabla `ExportTemplate` y el EntityType `EXPORT_TEMPLATE`; el contador `BILLINVOICE` (**FAC-#####**, uno por compañía), el estatus
   **Cancelada** de la corrida, el EntityType `BILLING_RUN` y el permiso `billing.view`.
 - `InvoiceLine.LineTotal` e `Invoice.Total` son columnas calculadas de la base; el sistema suma las líneas.
 - El historial de estatus de la corrida y de cada factura está en `EntityStatusHistory` (con el comentario de cancelar/anular).

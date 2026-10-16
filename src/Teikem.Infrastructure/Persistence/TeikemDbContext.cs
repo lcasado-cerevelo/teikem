@@ -176,6 +176,7 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<Teikem.Domain.Billing.Invoice> Invoices => Set<Teikem.Domain.Billing.Invoice>();
     public DbSet<Teikem.Domain.Billing.InvoiceLine> InvoiceLines => Set<Teikem.Domain.Billing.InvoiceLine>();
     public DbSet<Teikem.Domain.Billing.Payment> Payments => Set<Teikem.Domain.Billing.Payment>();
+    public DbSet<Teikem.Domain.Export.ExportTemplate> ExportTemplates => Set<Teikem.Domain.Export.ExportTemplate>();   // Lote 77 (P5)
     public DbSet<InventoryLot> InventoryLots => Set<InventoryLot>();
     public DbSet<InventorySerial> InventorySerials => Set<InventorySerial>();
     public DbSet<StockBalance> StockBalances => Set<StockBalance>();
