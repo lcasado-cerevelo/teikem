@@ -1,6 +1,7 @@
-// Lote 65 (P4, S2) — la copia local de las órdenes de venta por despachar (schema v14: sales_order, sales_order_line, sales_order_reservation) y el envío del despacho
-// por la cola de salida. Lo que se despacha se refleja AL INSTANTE en la copia (reservado/despachado de la orden) y en los saldos (existencia de la posición); si el
-// servidor lo rechaza, los saldos se deshacen solos (runOutbox) y la orden se vuelve a bajar completa en la siguiente sincronización.
+// Lote 65 (P4, S2) — la copia local de las órdenes de venta por despachar (schema v14/v15: sales_order, sales_order_line, sales_order_reservation, sales_order_component) y el envío del despacho
+// por la cola de salida. Lo que se despacha se refleja AL INSTANTE en la copia (reservado/despachado de la orden) y en los saldos (existencia de la posición); si el servidor lo rechaza, los saldos se
+// deshacen solos (runOutbox) y la orden se vuelve a bajar completa en la siguiente sincronización.
+// Lote 71 (kits): una línea de kit se despacha en kits (sin posición ni lote); lo que sale de cada posición lo deciden las reservas de sus componentes, igual que en el servidor.
 import { getDb, type SQLiteDatabase } from '../../kernel/db/database'
 import { enqueue } from '../../kernel/sync/outbox'
 import { applyDeltasIn, issueDeltas } from '../../kernel/warehouse/balanceProjection'
@@ -71,7 +72,7 @@ export function findSalesOrderByNumber(warehousePublicId: string, code: string):
 
 export function getSalesOrderLines(orderId: number): LocalSalesLine[] {
   const db = getDb()
-  const lines = db.getAllSync<{ id: number; product_public_id: string; sku: string | null; product_name: string | null; qty_ordered: number; qty_reserved: number; qty_shipped: number; qty_backordered: number }>(
+  const lines = db.getAllSync<{ id: number; product_public_id: string; sku: string | null; product_name: string | null; qty_ordered: number; qty_reserved: number; qty_shipped: number; qty_backordered: number; is_kit: number }>(
     'SELECT * FROM sales_order_line WHERE sales_order_id = ? ORDER BY id',
     [orderId],
   )
@@ -84,17 +85,25 @@ export function getSalesOrderLines(orderId: number): LocalSalesLine[] {
     qtyReserved: l.qty_reserved,
     qtyShipped: l.qty_shipped,
     qtyBackordered: l.qty_backordered,
-    reservations: db
-      .getAllSync<{ bin_id: number; bin_code: string; lot_id: number | null; lot_number: string | null; quantity: number }>(
-        'SELECT bin_id, bin_code, lot_id, lot_number, quantity FROM sales_order_reservation WHERE sales_order_line_id = ? ORDER BY id',
+    isKit: l.is_kit === 1,
+    components: db
+      .getAllSync<{ product_public_id: string; sku: string | null; product_name: string | null; qty_per_kit: number }>(
+        'SELECT product_public_id, sku, product_name, qty_per_kit FROM sales_order_component WHERE sales_order_line_id = ? ORDER BY id',
         [l.id],
       )
-      .map((r) => ({ binId: r.bin_id, binCode: r.bin_code, lotId: r.lot_id, lotNumber: r.lot_number, quantity: r.quantity })),
+      .map((c) => ({ productPublicId: c.product_public_id, sku: c.sku ?? '', name: c.product_name ?? '', qtyPerKit: c.qty_per_kit })),
+    reservations: db
+      .getAllSync<{ bin_id: number; bin_code: string; lot_id: number | null; lot_number: string | null; quantity: number; product_public_id: string | null; sku: string | null; product_name: string | null }>(
+        'SELECT bin_id, bin_code, lot_id, lot_number, quantity, product_public_id, sku, product_name FROM sales_order_reservation WHERE sales_order_line_id = ? ORDER BY id',
+        [l.id],
+      )
+      .map((r) => ({ binId: r.bin_id, binCode: r.bin_code, lotId: r.lot_id, lotNumber: r.lot_number, quantity: r.quantity, productPublicId: r.product_public_id, sku: r.sku, productName: r.product_name })),
   }))
 }
 
 export function deleteLocalSalesOrder(db: SQLiteDatabase, id: number): void {
   db.runSync('DELETE FROM sales_order_reservation WHERE sales_order_line_id IN (SELECT id FROM sales_order_line WHERE sales_order_id = ?)', [id])
+  db.runSync('DELETE FROM sales_order_component WHERE sales_order_line_id IN (SELECT id FROM sales_order_line WHERE sales_order_id = ?)', [id])
   db.runSync('DELETE FROM sales_order_line WHERE sales_order_id = ?', [id])
   db.runSync('DELETE FROM sales_order WHERE id = ?', [id])
 }
@@ -102,21 +111,75 @@ export function deleteLocalSalesOrder(db: SQLiteDatabase, id: number): void {
 interface DispatchLine {
   lineId: number
   quantity: number
-  binId: number
+  /** Ausentes en una línea de kit (se despacha de lo reservado de sus componentes). */
+  binId?: number
   lotId?: number
 }
 
-/** Refleja un despacho en la copia local: baja lo reservado y sube lo despachado de la línea; quita la reserva usada (primero la de esa posición y lote). */
+interface Consumption {
+  productPublicId: string
+  binId: number
+  lotId: number | null
+  quantity: number
+}
+
+/**
+ * Lo que sale de las reservas de una línea de KIT al despachar `kits`: de cada componente (cantidad por kit × kits), las filas de reserva en el orden en que las dejó el servidor
+ * (el mismo orden con el que el servidor consume). No modifica nada.
+ */
+function kitConsumption(db: SQLiteDatabase, lineId: number, kits: number): Consumption[] {
+  const out: Consumption[] = []
+  const comps = db.getAllSync<{ product_public_id: string; qty_per_kit: number }>('SELECT product_public_id, qty_per_kit FROM sales_order_component WHERE sales_order_line_id = ? ORDER BY id', [lineId])
+  for (const c of comps) {
+    let left = kits * c.qty_per_kit
+    const rows = db.getAllSync<{ bin_id: number; lot_id: number | null; quantity: number }>(
+      'SELECT bin_id, lot_id, quantity FROM sales_order_reservation WHERE sales_order_line_id = ? AND product_public_id = ? ORDER BY id',
+      [lineId, c.product_public_id],
+    )
+    for (const r of rows) {
+      if (left <= 1e-9) break
+      const take = Math.min(r.quantity, left)
+      out.push({ productPublicId: c.product_public_id, binId: r.bin_id, lotId: r.lot_id, quantity: take })
+      left = Math.round((left - take) * 1000) / 1000
+    }
+  }
+  return out
+}
+
+function isKitLine(db: SQLiteDatabase, lineId: number): boolean {
+  return db.getFirstSync<{ is_kit: number }>('SELECT is_kit FROM sales_order_line WHERE id = ?', [lineId])?.is_kit === 1
+}
+
+/** Refleja un despacho en la copia local: baja lo reservado y sube lo despachado de la línea; quita la reserva usada (primero la de esa posición y lote; en un kit, la de sus componentes). */
 export function applyDispatchLocally(db: SQLiteDatabase, orderId: number, lines: readonly DispatchLine[]): void {
   for (const dl of lines) {
     const line = db.getFirstSync<{ qty_reserved: number }>('SELECT qty_reserved FROM sales_order_line WHERE id = ? AND sales_order_id = ?', [dl.lineId, orderId])
     if (!line) continue
     const take = Math.min(dl.quantity, line.qty_reserved)
+    if (isKitLine(db, dl.lineId)) {
+      // primero lo que sale de los componentes (con las reservas todavía intactas), luego se descuentan
+      for (const c of kitConsumption(db, dl.lineId, take)) {
+        const rows = db.getAllSync<{ id: number; quantity: number }>(
+          'SELECT id, quantity FROM sales_order_reservation WHERE sales_order_line_id = ? AND product_public_id = ? AND bin_id = ? AND (lot_id IS ? OR (lot_id IS NULL AND ? IS NULL)) ORDER BY id',
+          [dl.lineId, c.productPublicId, c.binId, c.lotId, c.lotId],
+        )
+        let left = c.quantity
+        for (const r of rows) {
+          if (left <= 1e-9) break
+          const used = Math.min(r.quantity, left)
+          left = Math.round((left - used) * 1000) / 1000
+          if (r.quantity - used <= 1e-9) db.runSync('DELETE FROM sales_order_reservation WHERE id = ?', [r.id])
+          else db.runSync('UPDATE sales_order_reservation SET quantity = quantity - ? WHERE id = ?', [used, r.id])
+        }
+      }
+      db.runSync('UPDATE sales_order_line SET qty_reserved = qty_reserved - ?, qty_shipped = qty_shipped + ? WHERE id = ?', [take, take, dl.lineId])
+      continue
+    }
     db.runSync('UPDATE sales_order_line SET qty_reserved = qty_reserved - ?, qty_shipped = qty_shipped + ? WHERE id = ?', [take, take, dl.lineId])
     let left = take
     const rows = db.getAllSync<{ id: number; bin_id: number; lot_id: number | null; quantity: number }>(
       'SELECT id, bin_id, lot_id, quantity FROM sales_order_reservation WHERE sales_order_line_id = ? ORDER BY (bin_id = ? AND (lot_id IS ? OR ? IS NULL)) DESC, id',
-      [dl.lineId, dl.binId, dl.lotId ?? null, dl.lotId ?? null],
+      [dl.lineId, dl.binId ?? -1, dl.lotId ?? null, dl.lotId ?? null],
     )
     for (const r of rows) {
       if (left <= 0) break
@@ -157,16 +220,17 @@ export function queueSalesDispatch(order: LocalSalesOrder, tasks: readonly Sales
   let id = 0
   db.withTransactionSync(() => {
     const lines = buildDispatchLines(tasks, picks)
-    const projection = issueDeltas(
-      {
-        warehousePublicId: order.warehousePublicId,
-        lines: lines.map((l) => {
-          const task = tasks.find((t) => t.lineId === l.lineId)
-          return { productPublicId: task?.productPublicId ?? '', quantity: l.quantity, binId: l.binId, lotId: l.lotId ?? null }
-        }),
-      },
-      db,
-    )
+    // lo que sale de cada posición: producto normal = la posición leída; kit = lo reservado de sus componentes
+    const issue: Array<{ productPublicId: string; quantity: number; binId: number; lotId: number | null }> = []
+    for (const l of lines) {
+      if (l.binId === undefined) {
+        for (const c of kitConsumption(db, l.lineId, l.quantity)) issue.push({ productPublicId: c.productPublicId, quantity: c.quantity, binId: c.binId, lotId: c.lotId })
+        continue
+      }
+      const task = tasks.find((t) => t.lineId === l.lineId)
+      issue.push({ productPublicId: task?.productPublicId ?? '', quantity: l.quantity, binId: l.binId, lotId: l.lotId ?? null })
+    }
+    const projection = issueDeltas({ warehousePublicId: order.warehousePublicId, lines: issue }, db)
     id = enqueue({ kind: 'salesDispatch', path: `/api/v1/sales-orders/${order.publicId}/dispatch`, body, projection })
     applyDeltasIn(db, projection, 1)
     applyDispatchLocally(db, order.id, lines)

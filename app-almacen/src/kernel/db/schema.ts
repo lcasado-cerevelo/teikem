@@ -1,6 +1,6 @@
 // Lote 8A-app — esquema de la base local (expo-sqlite). Ver docs/mobile/app-almacen-plan.md §1 "Base local".
 // Migraciones por PRAGMA user_version: cada versión agrega su bloque de SQL; nunca se reescribe uno ya publicado.
-export const SCHEMA_VERSION = 14
+export const SCHEMA_VERSION = 15
 
 export const MIGRATIONS: readonly string[] = [
   // v1: kv, catálogos sincronizados, documentos abiertos, cola de salida y marcas de agua.
@@ -448,5 +448,22 @@ export const MIGRATIONS: readonly string[] = [
     quantity REAL NOT NULL
   );
   CREATE INDEX IF NOT EXISTS ix_sales_order_reservation_line ON sales_order_reservation(sales_order_line_id);
+  `,
+  // v15 (2026-10-16, Lote 71: kits en las órdenes de venta): una línea de kit se pide en kits pero lo reservado es de sus componentes. La línea sabe que es de un kit, cada reserva dice
+  // de qué componente es y la tabla sales_order_component guarda cuántas piezas lleva cada kit. Misma regla: la copia se reemplaza completa en cada sincronización.
+  `
+  ALTER TABLE sales_order_line ADD COLUMN is_kit INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE sales_order_reservation ADD COLUMN product_public_id TEXT;
+  ALTER TABLE sales_order_reservation ADD COLUMN sku TEXT;
+  ALTER TABLE sales_order_reservation ADD COLUMN product_name TEXT;
+  CREATE TABLE IF NOT EXISTS sales_order_component (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sales_order_line_id INTEGER NOT NULL,
+    product_public_id TEXT NOT NULL,
+    sku TEXT,
+    product_name TEXT,
+    qty_per_kit REAL NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS ix_sales_order_component_line ON sales_order_component(sales_order_line_id);
   `,
 ]

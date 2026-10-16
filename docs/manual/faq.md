@@ -8427,8 +8427,8 @@ Se cuentan kits completos: el componente que menos alcanza limita (disponible pa
 **No puedo escoger la posición al despachar un kit.**
 Un kit sale de lo que sus componentes tienen reservado; no se escoge posición ni lote. Si necesita sacar de otra posición, ajuste la reserva del componente o despache por otra vía.
 
-**¿Por qué el aparato no me muestra la orden con kits?**
-El aparato todavía no despacha líneas de kit; despáchelas desde la web. Llega en un lote siguiente.
+**¿El aparato despacha kits?**
+Sí (desde el Lote 71): ver «Kits en el aparato» en esta misma sección de preguntas.
 
 **Deshice un despacho de kits.**
 Los componentes vuelven a su posición, los kits despachados bajan y quedan reservados otra vez; la orden se reabre.
@@ -8441,3 +8441,15 @@ Es lo normal: el kit no tiene existencia, así que sale cada componente (con la 
 
 **No puedo escoger la posición al recolectar un kit.**
 Un kit sale de sus componentes por la rotación (FEFO/FIFO) de cada uno; no admite posición, lote ni series. Para sacar de una posición concreta, recolecte los componentes como productos sueltos.
+
+
+## Lote 71 — Kits en el aparato
+
+**En el aparato, mi orden de kits pide recoger piezas sueltas.**
+Así es: el aparato muestra las piezas de cada componente y, al terminar, manda los kits completos que alcanzan. Recoja todas las piezas de cada kit.
+
+**Recogí las piezas pero me dice que no se completa ningún kit.**
+Falta alguna pieza de algún componente (por ejemplo, 3 tornillos de un kit que lleva 2 por kit y 2 tuercas: alcanzan 1 kit, y 1 tornillo sobra). Recoja lo que falta o quite lo que sobra con «Deshacer».
+
+**Recogí piezas de más.**
+Lo que no completa otro kit se queda reservado en su posición; no sale ni se descuenta.

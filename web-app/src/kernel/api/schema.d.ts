@@ -29613,6 +29613,8 @@ export interface components {
             /** Format: double */
             qtyBackordered?: number;
             reservations?: components["schemas"]["SyncSalesReservationDto"][] | null;
+            isKit?: boolean;
+            components?: components["schemas"]["SyncSalesComponentDto"][] | null;
         };
         SyncSalesReservationDto: {
             /** Format: int32 */
@@ -29623,6 +29625,10 @@ export interface components {
             lotNumber?: string | null;
             /** Format: double */
             quantity?: number;
+            /** Format: uuid */
+            productPublicId?: string | null;
+            sku?: string | null;
+            productName?: string | null;
         };
         SyncPurchaseOrderDto: {
             /** Format: int32 */
@@ -31028,6 +31034,14 @@ export interface components {
             backordered?: number;
             /** Format: double */
             shipped?: number;
+        };
+        SyncSalesComponentDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            /** Format: double */
+            qtyPerKit?: number;
         };
     };
     responses: never;

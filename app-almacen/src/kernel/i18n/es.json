@@ -124,6 +124,9 @@
     "deliverTo": "Se entrega a {name}. El servicio y el cobro salen de los valores de la compañía.",
     "deliverConfirm": "Despachar y crear la entrega",
     "sending": "Enviando el despacho…",
+    "kitPart": "Pieza del kit {kit} ({per} por kit)",
+    "kitSummary": "Kit {kit}: {kits} completos",
+    "kitIncomplete": "Con lo recogido no se completa ningún kit {kit}. Recoge las piezas que faltan o quítalas.",
     "sent": "Despacho enviado: {number}.",
     "sentNoNumber": "Despacho enviado.",
     "queued": "Despacho guardado: se envía cuando haya señal."

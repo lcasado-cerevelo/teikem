@@ -51017,6 +51017,16 @@
               "$ref": "#/components/schemas/SyncSalesReservationDto"
             },
             "nullable": true
+          },
+          "isKit": {
+            "type": "boolean"
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SyncSalesComponentDto"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -51044,6 +51054,19 @@
           "quantity": {
             "type": "number",
             "format": "double"
+          },
+          "productPublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "sku": {
+            "type": "string",
+            "nullable": true
+          },
+          "productName": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -55375,6 +55398,28 @@
             "format": "double"
           },
           "shipped": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SyncSalesComponentDto": {
+        "type": "object",
+        "properties": {
+          "productPublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sku": {
+            "type": "string",
+            "nullable": true
+          },
+          "productName": {
+            "type": "string",
+            "nullable": true
+          },
+          "qtyPerKit": {
             "type": "number",
             "format": "double"
           }

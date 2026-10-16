@@ -140,3 +140,74 @@ describe('Despachar orden de venta en el aparato', () => {
     expect(listOutbox()).toEqual([])
   })
 })
+
+// ---------------------------------------------------------------- Lote 71: kits
+const KIT_ORDER = {
+  id: 9, publicId: 'so-9', number: 'OV-00009', warehousePublicId: 'wh-1', clientName: 'Cliente 1', consigneeName: null, statusCode: 'REQUESTED', requiredDate: null, requestedAtUtc: null, isActive: true,
+  lines: [
+    {
+      id: 90, productPublicId: 'kit', sku: 'KIT-1', productName: 'Kit uno', qtyOrdered: 3, qtyReserved: 3, qtyShipped: 0, qtyBackordered: 0, isKit: true,
+      components: [{ productPublicId: 'a', sku: 'TORN', productName: 'Tornillo', qtyPerKit: 2 }, { productPublicId: 'b', sku: 'TUER', productName: 'Tuerca', qtyPerKit: 1 }],
+      reservations: [
+        { binId: 55, binCode: 'A-01', lotId: null, lotNumber: null, quantity: 6, productPublicId: 'a', sku: 'TORN', productName: 'Tornillo' },
+        { binId: 56, binCode: 'A-02', lotId: null, lotNumber: null, quantity: 3, productPublicId: 'b', sku: 'TUER', productName: 'Tuerca' },
+      ],
+    },
+  ],
+}
+
+async function seedKit() {
+  await setupDevice()
+  const db = getDb()
+  db.runSync("INSERT INTO bin (id, code, warehouse_public_id, zone_id, is_active) VALUES (55, 'A-01', 'wh-1', 1, 1)")
+  db.runSync("INSERT INTO bin (id, code, warehouse_public_id, zone_id, is_active) VALUES (56, 'A-02', 'wh-1', 1, 1)")
+  db.runSync(`INSERT INTO stock_balance (id, warehouse_public_id, bin_id, product_id, product_public_id, qty_on_hand, qty_reserved, updated_at_utc) VALUES (1, 'wh-1', 55, 1, 'a', 10, 6, '2026-10-16T10:00:00.000Z')`)
+  db.runSync(`INSERT INTO stock_balance (id, warehouse_public_id, bin_id, product_id, product_public_id, qty_on_hand, qty_reserved, updated_at_utc) VALUES (2, 'wh-1', 56, 2, 'b', 5, 3, '2026-10-16T10:00:00.000Z')`)
+  applySalesOrders(db, 'wh-1', [KIT_ORDER])
+}
+
+describe('Despachar una orden con kits en el aparato', () => {
+  it('recoge pieza por pieza y manda los kits completos, sin posición ni lote', async () => {
+    await seedKit()
+    const calls = mockFetch([
+      ME,
+      (c) => (c.method === 'POST' && c.path === '/api/v1/sales-orders/so-9/dispatch' ? json(200, { pickBatchPublicId: 'b1', pickBatchNumber: 'EMP-00020', order: {} }) : null),
+    ])
+    await renderRouter('src/app', { initialUrl: '/sales-dispatch' })
+    await fireEvent.press(await screen.findByTestId('sales-order-OV-00009'))
+    await waitFor(() => expect(screen.getByText('Ve a A-01')).toBeTruthy())
+    expect(screen.getByText('Pieza del kit KIT-1 (2 por kit)')).toBeTruthy()
+    await fireEvent.changeText(screen.getByTestId('sales-qty'), '4')   // 4 tornillos = 2 kits
+    await fireEvent.changeText(screen.getByLabelText('Posición de donde sacas'), 'A-01')
+    await fireEvent.press(screen.getAllByLabelText('Aceptar')[0])
+    await waitFor(() => expect(screen.getByText('Ve a A-02')).toBeTruthy())
+    await fireEvent.changeText(screen.getByTestId('sales-qty'), '3')
+    await fireEvent.changeText(screen.getByLabelText('Posición de donde sacas'), 'A-02')
+    await fireEvent.press(screen.getAllByLabelText('Aceptar')[0])
+    await waitFor(() => expect(screen.getByText(/Listo: no quedan más posiciones/)).toBeTruthy())
+    await fireEvent.press(screen.getByTestId('sales-finish'))
+    expect(await screen.findByText('Kit KIT-1: 2 completos')).toBeTruthy()
+    await fireEvent.press(await screen.findByTestId('sales-pickup'))
+    await waitFor(() => expect(screen.getByText('Despacho enviado: EMP-00020.')).toBeTruthy())
+    const post = calls.find((c) => c.method === 'POST' && c.path === '/api/v1/sales-orders/so-9/dispatch')
+    expect(post?.body).toEqual({ lines: [{ lineId: 90, quantity: 2 }] })
+    const onHand = (pid: string) => getDb().getFirstSync<{ q: number }>('SELECT qty_on_hand AS q FROM stock_balance WHERE product_public_id = ?', [pid])?.q
+    expect([onHand('a'), onHand('b')]).toEqual([6, 3])
+  })
+
+  it('si lo recogido no completa ningún kit, no se manda y se dice cuál', async () => {
+    await seedKit()
+    mockFetch([ME])
+    await renderRouter('src/app', { initialUrl: '/sales-dispatch' })
+    await fireEvent.press(await screen.findByTestId('sales-order-OV-00009'))
+    await waitFor(() => expect(screen.getByText('Ve a A-01')).toBeTruthy())
+    await fireEvent.changeText(screen.getByLabelText('Posición de donde sacas'), 'A-01')
+    await fireEvent.press(screen.getAllByLabelText('Aceptar')[0])
+    await waitFor(() => expect(screen.getByText('Ve a A-02')).toBeTruthy())
+    await fireEvent.press(screen.getByTestId('sales-skip'))   // no se recoge la tuerca
+    await fireEvent.press(await screen.findByTestId('sales-finish'))
+    await fireEvent.press(await screen.findByTestId('sales-pickup'))
+    await waitFor(() => expect(screen.getByText(/no se completa ningún kit KIT-1/)).toBeTruthy())
+    expect(listOutbox()).toEqual([])
+  })
+})

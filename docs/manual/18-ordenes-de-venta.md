@@ -265,7 +265,7 @@ Por dentro, todo se mueve en sus **componentes**.
 - **Deshacer un despacho** devuelve los componentes a su posición, baja los kits despachados y **vuelve a reservar** cada componente, igual que con un producto normal.
 - **En la web** (Operación → Órdenes de venta): una línea de kit lleva el distintivo «Kit» y muestra sus componentes debajo; en la orden solicitada, una tabla por kit con pedido, reservado,
   en backorder y despachado de cada componente.
-- **Aparato:** todavía **no** despacha líneas de kit (el servidor no se las manda); eso llega en el siguiente lote.
+- **Aparato** (Lote 71): despacha líneas de kit **pieza por pieza** — ver la sección «Kits» de [09 §12](09-app-almacen.md#12-despachar-una-orden-de-venta-lote-65). El servidor manda las líneas de kit con sus componentes y la reserva de cada componente (`GET /sync/sales-orders`: `isKit`, `components` y, por reserva, el producto).
 
 | Situación | Mensaje | HTTP |
 |---|---|---|

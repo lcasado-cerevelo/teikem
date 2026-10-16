@@ -1312,3 +1312,16 @@ Ruta `/sales-dispatch`; botón **Órdenes de venta** de Inicio (solo si el apara
 - **Cola de salida:** tipo `salesDispatch`, `POST /api/v1/sales-orders/{publicId}/dispatch` con `{ lines: [{ lineId, quantity, binId, lotId? }], delivery? }`. De otra posición no se manda el lote. Con entrega: `{ serviceType: "STANDARD", packages: [{ packageType: "BOX", pieces }], confirmNow: true }` (los mismos valores estándar del empaque de Despacho). Efecto local guardado con la fila (existencia de la posición; FEFO dentro de la posición si no es con lote) para deshacerlo si el servidor rechaza.
 - **Mensajes de la pantalla:** `Esa orden no está por despachar en este almacén. Si es nueva, toca Sincronizar ahora.` · `Escribe una cantidad mayor que 0.` · `No puedes sacar más de lo reservado ({qty}).` · `Esa posición no existe en este almacén.` · `Despacho enviado: EMP-#####.` · `Despacho guardado: se envía cuando haya señal.` Los rechazos del servidor se muestran con su texto exacto (ver [18 §10](18-ordenes-de-venta.md#10-despachar-contra-la-orden-lote-61)).
 - **Uno a la vez:** el despacho en pantalla no sobrevive a cerrar la app (nada salió todavía; se vuelve a empezar). Lo ya enviado a la cola sí queda guardado.
+
+### 12.1 Kits en el despacho del aparato (Lote 71)
+
+Una línea de **kit** se pide en kits, pero lo reservado es de sus **componentes**. En el aparato cada reserva de un componente es una **tarea** («Ve a A-01», con la nota «Pieza del kit KIT-1 (2 por kit)»): se recoge la
+pieza, se lee la posición y queda ✓, igual que un producto normal.
+
+- **Al terminar** el aparato cuenta los **kits completos** que alcanzan con lo recogido: el menor cociente (recogido ÷ piezas por kit) entre los componentes, hacia abajo; el resumen dice `Kit KIT-1: N completos`.
+  Al servidor se manda **una línea por kit** — `{ "lineId": …, "quantity": N }` (kits), **sin posición ni lote**; él saca los componentes de lo que tienen reservado.
+- Si lo recogido **no completa ningún kit** de una línea (por ejemplo, falta una pieza), no se manda y avisa: `Con lo recogido no se completa ningún kit {KIT}. Recoge las piezas que faltan o quítalas.`
+  Las piezas recogidas de más (que no completan otro kit) se quedan reservadas.
+- **Sin señal:** igual que el resto: queda en la cola; la existencia local baja de cada componente por lo que sale de sus reservas y la orden descuenta los kits despachados; si el servidor lo rechaza, todo vuelve.
+- Datos locales (esquema 15): `sales_order_line.is_kit`, `sales_order_component` (piezas por kit) y, por reserva, el componente (`product_public_id`, `sku`, `product_name`).
+- Varias reservas de un mismo producto en la misma posición y lote son **una sola tarea** (suman).

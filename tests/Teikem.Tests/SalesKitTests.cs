@@ -329,14 +329,29 @@ public sealed class SalesKitTests
     }
 
     [Fact]
-    public async Task The_device_sync_does_not_send_kit_lines_yet()
+    public async Task The_device_sync_sends_kit_lines_with_their_components_and_the_reservations_of_each_component()
     {
         var x = await NewWorldAsync();
         await using var _ = x.F;
-        await RequestedAsync(x, 2m);
+        var o = await RequestedAsync(x, 2m);
         var sync = x.F.Get<SyncService>();
         var page = await sync.SalesOrdersAsync(new SyncQuery(WarehousePublicId: x.W.PublicId), default);
-        Assert.All(page.Items, o => Assert.Empty(o.Lines));
-        Assert.All(page.Items, o => Assert.False(o.IsActive));
+        var order = Assert.Single(page.Items);
+        Assert.True(order.IsActive);
+        var line = Assert.Single(order.Lines);
+        Assert.True(line.IsKit);
+        Assert.Equal((2m, 2m), (line.QtyOrdered, line.QtyReserved));   // en kits
+        Assert.Equal(new[] { ("A", 2m), ("B", 1m) }, line.Components!.Select(c => (c.Sku, c.QtyPerKit)).ToArray());
+        Assert.Equal(new[] { ("A", 4m), ("B", 2m) }, line.Reservations.Select(r => (r.Sku!, r.Quantity)).OrderBy(r => r.Item1).ToArray());   // piezas de cada componente
+        Assert.All(line.Reservations, r => Assert.Equal("P-01", r.BinCode));
+        Assert.Equal(o.Lines[0].Id, line.Id);
+
+        // una línea normal no lleva producto en la reserva
+        var normal = await x.Svc.RequestAsync((await x.Svc.CreateAsync(new SalesOrderRequest(x.W.PublicId, x.C.PublicId, Lines: new[] { new SalesOrderLineRequest(x.A.PublicId, 1m) }), default)).PublicId, null, default);
+        var again = await sync.SalesOrdersAsync(new SyncQuery(WarehousePublicId: x.W.PublicId), default);
+        var plain = again.Items.Single(i => i.Number == normal.Number).Lines.Single();
+        Assert.False(plain.IsKit);
+        Assert.Null(plain.Components);
+        Assert.All(plain.Reservations, r => Assert.Null(r.Sku));
     }
 }

@@ -532,7 +532,9 @@ type SyncSalesOrder = {
     qtyReserved?: number
     qtyShipped?: number
     qtyBackordered?: number
-    reservations?: Array<{ binId?: number; binCode?: string | null; lotId?: number | null; lotNumber?: string | null; quantity?: number }> | null
+    isKit?: boolean
+    components?: Array<{ productPublicId?: string; sku?: string | null; productName?: string | null; qtyPerKit?: number }> | null
+    reservations?: Array<{ binId?: number; binCode?: string | null; lotId?: number | null; lotNumber?: string | null; quantity?: number; productPublicId?: string | null; sku?: string | null; productName?: string | null }> | null
   }> | null
 }
 
@@ -551,14 +553,18 @@ export function applySalesOrders(db: SQLiteDatabase, warehousePublicId: string, 
     )
     for (const l of o.lines ?? []) {
       db.runSync(
-        `INSERT INTO sales_order_line (id, sales_order_id, product_public_id, sku, product_name, qty_ordered, qty_reserved, qty_shipped, qty_backordered)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [l.id ?? 0, o.id, l.productPublicId ?? '', l.sku ?? null, l.productName ?? null, l.qtyOrdered ?? 0, l.qtyReserved ?? 0, l.qtyShipped ?? 0, l.qtyBackordered ?? 0],
+        `INSERT INTO sales_order_line (id, sales_order_id, product_public_id, sku, product_name, qty_ordered, qty_reserved, qty_shipped, qty_backordered, is_kit)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [l.id ?? 0, o.id, l.productPublicId ?? '', l.sku ?? null, l.productName ?? null, l.qtyOrdered ?? 0, l.qtyReserved ?? 0, l.qtyShipped ?? 0, l.qtyBackordered ?? 0, l.isKit ? 1 : 0],
       )
+      for (const c of l.components ?? [])
+        db.runSync('INSERT INTO sales_order_component (sales_order_line_id, product_public_id, sku, product_name, qty_per_kit) VALUES (?, ?, ?, ?, ?)', [
+          l.id ?? 0, c.productPublicId ?? '', c.sku ?? null, c.productName ?? null, c.qtyPerKit ?? 1,
+        ])
       for (const r of l.reservations ?? [])
         db.runSync(
-          'INSERT INTO sales_order_reservation (sales_order_line_id, bin_id, bin_code, lot_id, lot_number, quantity) VALUES (?, ?, ?, ?, ?, ?)',
-          [l.id ?? 0, r.binId ?? 0, r.binCode ?? '', r.lotId ?? null, r.lotNumber ?? null, r.quantity ?? 0],
+          'INSERT INTO sales_order_reservation (sales_order_line_id, bin_id, bin_code, lot_id, lot_number, quantity, product_public_id, sku, product_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [l.id ?? 0, r.binId ?? 0, r.binCode ?? '', r.lotId ?? null, r.lotNumber ?? null, r.quantity ?? 0, r.productPublicId ?? null, r.sku ?? null, r.productName ?? null],
         )
     }
   }
@@ -595,6 +601,7 @@ export async function downloadSalesOrdersIfAllowed(warehousePublicId: string): P
     const db = getDb()
     db.withTransactionSync(() => {
       db.runSync('DELETE FROM sales_order_reservation')
+      db.runSync('DELETE FROM sales_order_component')
       db.runSync('DELETE FROM sales_order_line')
       db.runSync('DELETE FROM sales_order')
     })

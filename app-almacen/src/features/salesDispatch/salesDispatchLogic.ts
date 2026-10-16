@@ -1,10 +1,13 @@
-// Lote 65 (P4, S2) — despachar contra una orden de venta en el aparato: lógica pura (sin base ni red). La orden trae, por línea, de qué posición y lote reservó el
-// sistema cada parte; cada una es una TAREA guiada: ir a la posición, leerla y confirmar la cantidad. Se puede tomar de otra posición (la reserva se mueve en el
-// servidor si ahí hay existencia) o menos de lo reservado (el resto queda reservado para otro despacho).
+// Lote 65 (P4, S2) — despachar contra una orden de venta en el aparato: lógica pura (sin base ni red). La orden trae, por línea, de qué posición y lote reservó el sistema cada parte; cada una es una
+// TAREA guiada: ir a la posición, leerla y confirmar la cantidad. Se puede tomar de otra posición (la reserva se mueve en el servidor si ahí hay existencia) o menos de lo reservado (el resto queda
+// reservado para otro despacho).
+// Lote 71 (kits): una línea de KIT se pide en kits pero lo reservado es de sus COMPONENTES; cada reserva de un componente es una tarea (se recoge la pieza) y al terminar se manda
+// «N kits» — los kits completos que alcanzan con lo recogido (el menor cociente recogido ÷ cantidad por kit entre los componentes); el servidor saca los componentes de lo reservado.
 export interface SalesTask {
-  /** Clave estable de la tarea (línea + posición + lote). */
+  /** Clave estable de la tarea (línea + posición + lote; en un kit, también el componente). */
   key: string
   lineId: number
+  /** El producto que se recoge: el de la línea o, en un kit, el componente. */
   productPublicId: string
   sku: string
   productName: string
@@ -12,8 +15,12 @@ export interface SalesTask {
   binCode: string
   lotId: number | null
   lotNumber: string | null
-  /** Lo reservado en esa posición y lote. */
+  /** Lo reservado en esa posición y lote (piezas del producto que se recoge). */
   qty: number
+  /** Lote 71: SKU del kit si esta tarea es una pieza de un kit; null = línea normal. */
+  kitSku: string | null
+  /** Lote 71: piezas de este componente por cada kit (solo en una pieza de kit). */
+  perKit: number | null
 }
 
 /** Una tarea ya cumplida (o con lo tomado distinto): lo que el operario leyó y cuánto sacó. */
@@ -33,7 +40,10 @@ export interface LocalSalesLine {
   qtyReserved: number
   qtyShipped: number
   qtyBackordered: number
-  reservations: Array<{ binId: number; binCode: string; lotId: number | null; lotNumber: string | null; quantity: number }>
+  /** Lote 71: la línea es de un kit (cantidades en kits; las reservas son de los componentes). */
+  isKit: boolean
+  components: Array<{ productPublicId: string; sku: string; name: string; qtyPerKit: number }>
+  reservations: Array<{ binId: number; binCode: string; lotId: number | null; lotNumber: string | null; quantity: number; productPublicId: string | null; sku: string | null; productName: string | null }>
 }
 
 /** Mensajes de bloqueo (clave i18n) al revisar lo que se va a mandar. */
@@ -42,8 +52,8 @@ export type SalesPickBlock = 'qtyInvalid' | 'qtyTooMuch'
 export const SALES_STANDARD_SERVICE = 'STANDARD'
 export const SALES_STANDARD_PACKAGE = 'BOX'
 
-export function taskKey(lineId: number, binId: number, lotId: number | null): string {
-  return `${lineId}|${binId}|${lotId ?? ''}`
+export function taskKey(lineId: number, binId: number, lotId: number | null, productPublicId: string | null = null): string {
+  return `${lineId}|${productPublicId ? productPublicId + '|' : ''}${binId}|${lotId ?? ''}`
 }
 
 /** Las tareas de la orden, en el orden de las líneas y de las reservas (el orden de salida que dejó el servidor). Una línea sin reservas no tiene tarea. */
@@ -52,6 +62,24 @@ export function buildTasks(lines: readonly LocalSalesLine[]): SalesTask[] {
   for (const l of lines) {
     for (const r of l.reservations) {
       if (!(r.quantity > 0)) continue
+      if (l.isKit) {
+        const productPublicId = r.productPublicId ?? ''
+        out.push({
+          key: taskKey(l.id, r.binId, r.lotId, productPublicId),
+          lineId: l.id,
+          productPublicId,
+          sku: r.sku ?? '',
+          productName: r.productName ?? '',
+          binId: r.binId,
+          binCode: r.binCode,
+          lotId: r.lotId,
+          lotNumber: r.lotNumber,
+          qty: r.quantity,
+          kitSku: l.sku,
+          perKit: l.components.find((c) => c.productPublicId === productPublicId)?.qtyPerKit ?? 1,
+        })
+        continue
+      }
       out.push({
         key: taskKey(l.id, r.binId, r.lotId),
         lineId: l.id,
@@ -63,10 +91,19 @@ export function buildTasks(lines: readonly LocalSalesLine[]): SalesTask[] {
         lotId: r.lotId,
         lotNumber: r.lotNumber,
         qty: r.quantity,
+        kitSku: null,
+        perKit: null,
       })
     }
   }
-  return out
+  // varias reservas de la misma posición y lote (productos iguales) son UNA tarea
+  const merged = new Map<string, SalesTask>()
+  for (const t of out) {
+    const same = merged.get(t.key)
+    if (same) same.qty += t.qty
+    else merged.set(t.key, { ...t })
+  }
+  return [...merged.values()]
 }
 
 /** Texto de cantidad escrito por el operario → número > 0 o null (acepta coma decimal). */
@@ -88,28 +125,63 @@ export function nextTask(tasks: readonly SalesTask[], picks: readonly SalesPick[
   return tasks.find((t) => !done.has(t.key) && !skipped.has(t.key)) ?? null
 }
 
-/** Lo total que se va a sacar. */
+/** Lo total que se va a sacar (piezas). */
 export function totalPicked(picks: readonly SalesPick[]): number {
   return picks.reduce((sum, p) => sum + p.qty, 0)
 }
 
-/** Líneas del cuerpo de POST /sales-orders/{id}/dispatch. Si se tomó de una posición distinta a la reservada no se manda el lote (el servidor lo decide ahí). */
-export function buildDispatchLines(tasks: readonly SalesTask[], picks: readonly SalesPick[]): Array<{ lineId: number; quantity: number; binId: number; lotId?: number }> {
-  const out: Array<{ lineId: number; quantity: number; binId: number; lotId?: number }> = []
+/**
+ * Lote 71 — kits completos que alcanzan en una línea de kit con lo recogido: el menor cociente (recogido ÷ cantidad por kit) entre los componentes de la línea, hacia abajo.
+ * Un componente sin nada recogido da 0 kits.
+ */
+export function kitsReady(tasks: readonly SalesTask[], picks: readonly SalesPick[], lineId: number): number {
+  const parts = tasks.filter((t) => t.lineId === lineId && t.kitSku !== null)
+  if (parts.length === 0) return 0
+  const pickedBy = new Map<string, number>()
+  for (const p of picks) {
+    const t = parts.find((x) => x.key === p.taskKey)
+    if (t) pickedBy.set(t.productPublicId, (pickedBy.get(t.productPublicId) ?? 0) + p.qty)
+  }
+  const perKit = new Map<string, number>()
+  for (const t of parts) perKit.set(t.productPublicId, t.perKit ?? 1)
+  let min = Infinity
+  for (const [product, per] of perKit) min = Math.min(min, Math.floor(((pickedBy.get(product) ?? 0) + 1e-9) / per))
+  return Number.isFinite(min) ? Math.max(0, min) : 0
+}
+
+/** Resumen por kit de lo recogido: kits completos y si quedó alguna pieza recogida que no completa un kit (se queda reservada). */
+export function kitSummaries(tasks: readonly SalesTask[], picks: readonly SalesPick[]): Array<{ lineId: number; kitSku: string; kits: number; hasPicks: boolean }> {
+  const lineIds = [...new Set(tasks.filter((t) => t.kitSku !== null).map((t) => t.lineId))]
+  return lineIds.map((lineId) => {
+    const kitSku = tasks.find((t) => t.lineId === lineId)?.kitSku ?? ''
+    const taskKeys = new Set(tasks.filter((t) => t.lineId === lineId).map((t) => t.key))
+    return { lineId, kitSku, kits: kitsReady(tasks, picks, lineId), hasPicks: picks.some((p) => taskKeys.has(p.taskKey)) }
+  })
+}
+
+type DispatchLineBody = { lineId: number; quantity: number; binId?: number; lotId?: number }
+
+/**
+ * Líneas del cuerpo de POST /sales-orders/{id}/dispatch. Producto normal: una por tarea, con su posición (y el lote solo si se tomó de la reservada). Kit: UNA por línea con los kits
+ * completos (sin posición ni lote: el servidor saca los componentes de lo reservado).
+ */
+export function buildDispatchLines(tasks: readonly SalesTask[], picks: readonly SalesPick[]): DispatchLineBody[] {
+  const out: DispatchLineBody[] = []
   for (const p of picks) {
     const task = tasks.find((t) => t.key === p.taskKey)
-    if (!task || !(p.qty > 0)) continue
-    const line: { lineId: number; quantity: number; binId: number; lotId?: number } = { lineId: task.lineId, quantity: p.qty, binId: p.binId }
+    if (!task || task.kitSku !== null || !(p.qty > 0)) continue
+    const line: DispatchLineBody = { lineId: task.lineId, quantity: p.qty, binId: p.binId }
     if (p.binId === task.binId && task.lotId != null) line.lotId = task.lotId
     out.push(line)
   }
+  for (const k of kitSummaries(tasks, picks)) if (k.kits > 0) out.push({ lineId: k.lineId, quantity: k.kits })
   return out
 }
 
 /** Cuerpo del despacho. Con `bultos` también pide la entrega (la orden de transporte) en la misma transacción: cliente y consignatario salen de la orden de venta. */
 export function buildDispatchBody(tasks: readonly SalesTask[], picks: readonly SalesPick[], delivery: { packages: number } | null) {
   const body: {
-    lines: Array<{ lineId: number; quantity: number; binId: number; lotId?: number }>
+    lines: DispatchLineBody[]
     delivery?: { serviceType: string; packages: Array<{ packageType: string; pieces: number }>; confirmNow: boolean }
   } = { lines: buildDispatchLines(tasks, picks) }
   if (delivery) {

@@ -56,10 +56,14 @@ namespace Teikem.Infrastructure.Contracts
         string StatusCode, DateOnly? ExpectedDate, bool IsActive, IReadOnlyList<SyncPurchaseOrderLineDto> Lines);
 
     /// <summary>Lote 64: de qué posición y lote reservó el sistema parte de una línea de orden de venta (la guía del aparato).</summary>
-    public sealed record SyncSalesReservationDto(int BinId, string BinCode, int? LotId, string? LotNumber, decimal Quantity);
+    /// <summary>Lote 71: en una línea de KIT la reserva es de un componente (ProductPublicId / Sku / ProductName); en una normal van nulos (es el producto de la línea).</summary>
+    public sealed record SyncSalesReservationDto(int BinId, string BinCode, int? LotId, string? LotNumber, decimal Quantity, Guid? ProductPublicId = null, string? Sku = null, string? ProductName = null);
+
+    /// <summary>Lote 71: un componente de una línea de kit: cuántas piezas lleva cada kit.</summary>
+    public sealed record SyncSalesComponentDto(Guid ProductPublicId, string Sku, string ProductName, decimal QtyPerKit);
 
     public sealed record SyncSalesOrderLineDto(int Id, Guid ProductPublicId, string Sku, string ProductName, decimal QtyOrdered, decimal QtyReserved, decimal QtyShipped,
-        decimal QtyBackordered, IReadOnlyList<SyncSalesReservationDto> Reservations);
+        decimal QtyBackordered, IReadOnlyList<SyncSalesReservationDto> Reservations, bool IsKit = false, IReadOnlyList<SyncSalesComponentDto>? Components = null);
 
     /// <summary>Orden de venta por despachar (Lote 64). IsActive = solicitada o despachada parcial CON algo reservado; si no, el aparato la borra.</summary>
     public sealed record SyncSalesOrderDto(int Id, Guid PublicId, string Number, Guid WarehousePublicId, string ClientName, string? ConsigneeName, string StatusCode,
@@ -430,19 +434,27 @@ namespace Teikem.Infrastructure.Services
                 : await db.Set<Location>().AsNoTracking().Where(l => consigneeIds.Contains(l.LocationId)).ToDictionaryAsync(l => l.LocationId, l => l.Name, ct);
             var lines = await (from l in db.Set<Teikem.Domain.Sales.SalesOrderLine>().AsNoTracking()
                                join p in db.Set<Product>().AsNoTracking() on l.ProductId equals p.ProductId
-                               // Lote 69: las líneas de KIT todavía no se despachan desde el aparato (sus reservas son de los componentes): no se mandan
-                               where ids.Contains(l.SalesOrderId) && !db.Set<Teikem.Domain.Sales.SalesOrderLineComponent>().Any(c => c.SalesOrderLineId == l.SalesOrderLineId)
+                               where ids.Contains(l.SalesOrderId)
                                orderby l.LineNo
                                select new { l.SalesOrderId, l.SalesOrderLineId, p.PublicId, p.Sku, p.Name, l.QtyOrdered, l.QtyReserved, l.QtyShipped, l.QtyBackordered })
                 .ToListAsync(ct);
             var lineIds = lines.Select(l => l.SalesOrderLineId).ToList();
+            // Lote 71: kits — los componentes de cada línea y, por reserva, el producto reservado (el componente)
+            var snapshot = await (from c in db.Set<Teikem.Domain.Sales.SalesOrderLineComponent>().AsNoTracking()
+                                  join p in db.Set<Product>().AsNoTracking() on c.ComponentProductId equals p.ProductId
+                                  where lineIds.Contains(c.SalesOrderLineId)
+                                  orderby c.SalesOrderLineComponentId
+                                  select new { c.SalesOrderLineId, p.PublicId, p.Sku, p.Name, c.Quantity }).ToListAsync(ct);
+            var componentsByLine = snapshot.ToLookup(c => c.SalesOrderLineId);
             var reservations = await (from r in db.Set<Teikem.Domain.Sales.SalesOrderReservation>().AsNoTracking()
                                       join b in db.Set<WarehouseBin>().AsNoTracking() on r.WarehouseBinId equals b.WarehouseBinId
                                       join lot in db.Set<InventoryLot>().AsNoTracking() on r.LotId equals (int?)lot.LotId into lj
                                       from lot in lj.DefaultIfEmpty()
                                       where lineIds.Contains(r.SalesOrderLineId)
                                       orderby r.SalesOrderReservationId
-                                      select new { r.SalesOrderLineId, r.WarehouseBinId, b.Code, r.LotId, LotNumber = lot == null ? null : lot.LotNumber, r.Quantity }).ToListAsync(ct);
+                                      join rp in db.Set<Product>().AsNoTracking() on r.ProductId equals (int?)rp.ProductId into pj
+                                      from rp in pj.DefaultIfEmpty()
+                                      select new { r.SalesOrderLineId, r.WarehouseBinId, b.Code, r.LotId, LotNumber = lot == null ? null : lot.LotNumber, r.Quantity, RPublicId = rp == null ? (Guid?)null : rp.PublicId, RSku = rp == null ? null : rp.Sku, RName = rp == null ? null : rp.Name }).ToListAsync(ct);
             var byLine = reservations.ToLookup(r => r.SalesOrderLineId);
             var linesByOrder = lines.ToLookup(l => l.SalesOrderId);
 
@@ -450,7 +462,9 @@ namespace Teikem.Infrastructure.Services
             {
                 var code = statuses.GetValueOrDefault(o.StatusCodeId, string.Empty);
                 var dto = linesByOrder[o.SalesOrderId].Select(l => new SyncSalesOrderLineDto(l.SalesOrderLineId, l.PublicId, l.Sku, l.Name, l.QtyOrdered, l.QtyReserved, l.QtyShipped, l.QtyBackordered,
-                    byLine[l.SalesOrderLineId].Select(r => new SyncSalesReservationDto(r.WarehouseBinId, r.Code, r.LotId, r.LotNumber, r.Quantity)).ToList())).ToList();
+                    byLine[l.SalesOrderLineId].Select(r => new SyncSalesReservationDto(r.WarehouseBinId, r.Code, r.LotId, r.LotNumber, r.Quantity,
+                        componentsByLine[l.SalesOrderLineId].Any() ? r.RPublicId : null, componentsByLine[l.SalesOrderLineId].Any() ? r.RSku : null, componentsByLine[l.SalesOrderLineId].Any() ? r.RName : null)).ToList(),
+                    componentsByLine[l.SalesOrderLineId].Any(), componentsByLine[l.SalesOrderLineId].Any() ? componentsByLine[l.SalesOrderLineId].Select(c => new SyncSalesComponentDto(c.PublicId, c.Sku, c.Name, c.Quantity)).ToList() : null)).ToList();
                 var open = code is Teikem.Domain.Sales.SalesOrderStatuses.Requested or Teikem.Domain.Sales.SalesOrderStatuses.Partial && dto.Any(l => l.QtyReserved > 0m);
                 return new SyncSalesOrderDto(o.SalesOrderId, o.PublicId, o.Number, warehouses.GetValueOrDefault(o.WarehouseId), clients.GetValueOrDefault(o.ClientId, string.Empty),
                     o.ConsigneeId is int cid ? consignees.GetValueOrDefault(cid) : null, code, o.RequiredDate, o.RequestedAtUtc, open, dto);

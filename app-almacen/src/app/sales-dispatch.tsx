@@ -19,6 +19,7 @@ import { findSalesOrderByNumber, getSalesOrderLines, listSalesOrders, queueSales
 import {
   buildTasks,
   checkPickQty,
+  kitSummaries,
   dispatchBatchNumber,
   nextTask,
   parseQty,
@@ -129,6 +130,12 @@ export default function SalesDispatchScreen() {
 
   async function send(withDelivery: boolean) {
     if (!order || lock.current) return
+    const incomplete = kitSummaries(tasks, picks).find((k) => k.hasPicks && k.kits === 0)
+    if (incomplete) {
+      setScanError(t('salesDispatch.kitIncomplete', { kit: incomplete.kitSku }))
+      vibrateError()
+      return
+    }
     const n = Math.max(1, Math.round(Number(pieces) || 1))
     lock.current = true
     setStep('sending')
@@ -213,6 +220,11 @@ export default function SalesDispatchScreen() {
       <KeyboardScreen contentContainerStyle={styles.fill}>
         <Text style={styles.title}>{t('salesDispatch.finishTitle', { number: order.number })}</Text>
         <Text style={styles.label}>{t('salesDispatch.finishSummary', { lines: picks.length, qty: f.qty(total) })}</Text>
+        {kitSummaries(tasks, picks).filter((k) => k.hasPicks).map((k) => (
+          <Text key={k.lineId} style={styles.help}>
+            {t('salesDispatch.kitSummary', { kit: k.kitSku, kits: k.kits })}
+          </Text>
+        ))}
         {scanError ? <Text style={styles.error}>{scanError}</Text> : null}
         {step === 'finish' ? (
           <>
@@ -251,6 +263,7 @@ export default function SalesDispatchScreen() {
           <Text style={styles.label}>
             {current.sku} · {current.productName}
           </Text>
+          {current.kitSku ? <Text style={styles.help}>{t('salesDispatch.kitPart', { kit: current.kitSku, per: f.qty(current.perKit ?? 1) })}</Text> : null}
           {current.lotNumber ? <Text style={styles.help}>{t('dispatch.lotNumber', { lot: current.lotNumber })}</Text> : null}
           <Text style={styles.label}>{t('salesDispatch.qtyToTake', { qty: f.qty(current.qty) })}</Text>
           <KeyboardInput

@@ -124,6 +124,9 @@
     "deliverTo": "Delivered to {name}. Service and charges come from the company defaults.",
     "deliverConfirm": "Dispatch and create the delivery",
     "sending": "Sending the dispatch…",
+    "kitPart": "Piece of kit {kit} ({per} per kit)",
+    "kitSummary": "Kit {kit}: {kits} complete",
+    "kitIncomplete": "What you picked does not complete any {kit} kit. Pick the missing pieces or remove them.",
     "sent": "Dispatch sent: {number}.",
     "sentNoNumber": "Dispatch sent.",
     "queued": "Dispatch saved: it is sent when there is signal."
