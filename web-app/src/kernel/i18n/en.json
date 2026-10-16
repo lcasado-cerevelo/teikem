@@ -7438,6 +7438,7 @@
         "label": "Billing",
         "runs": "Runs",
         "invoices": "Invoices",
+        "collections": "Collections",
         "settings": "Settings"
       },
       "col": {
@@ -7471,6 +7472,71 @@
         "PAID": "Paid",
         "OVERDUE": "Overdue",
         "VOID": "Void"
+      },
+      "methods": {
+        "CASH": "Cash",
+        "CHECK": "Check",
+        "ACH": "ACH",
+        "CARD": "Card"
+      },
+      "pay": {
+        "title": "Payments",
+        "record": "Record payment",
+        "save": "Save payment",
+        "recorded": "Payment recorded.",
+        "empty": "There are no payments yet.",
+        "date": "Date",
+        "method": "Method",
+        "reference": "Reference",
+        "referenceHint": "Check number, confirmation…",
+        "amount": "Amount",
+        "voided": "Voided",
+        "void": "Void the payment",
+        "voidTitle": "Void the payment of {amount}?",
+        "voidBody": "The payment stops counting in the invoice balance. Asks for re-authentication.",
+        "voidReason": "Reason",
+        "voidedToast": "Payment voided.",
+        "balanceHelp": "Invoice {number}: balance {balance}.",
+        "errors": {
+          "amount": "Enter the payment amount (greater than zero).",
+          "decimals": "The amount allows up to 2 decimals.",
+          "exceeds": "The payment cannot exceed the invoice balance.",
+          "method": "Choose the payment method.",
+          "future": "The payment date cannot be in the future.",
+          "beforeIssue": "The payment date cannot be before the invoice issue date.",
+          "reference": "The reference cannot exceed 80 characters.",
+          "void": {
+            "required": "Enter the reason for voiding the payment.",
+            "long": "The reason cannot exceed 250 characters."
+          }
+        }
+      },
+      "rec": {
+        "panel": "Accounts receivable",
+        "empty": "There are no balances to collect.",
+        "open": "Open invoices",
+        "oldest": "Due since",
+        "total": "Receivable: {total} (overdue: {over}).",
+        "help": "Tap a customer to see their statement."
+      },
+      "aging": {
+        "current": "Not yet due",
+        "days1To30": "1–30 days",
+        "days31To60": "31–60 days",
+        "days61To90": "61–90 days",
+        "over90": "Over 90"
+      },
+      "stmt": {
+        "title": "Statement · {client}",
+        "opening": "Opening balance",
+        "invoiced": "Invoiced",
+        "paid": "Paid",
+        "closing": "Closing balance",
+        "debit": "Charges",
+        "credit": "Payments",
+        "lines": "Movements",
+        "empty": "No movements in the period.",
+        "aging": "Aging of what is open"
       },
       "runs": {
         "panel": "Billing runs",

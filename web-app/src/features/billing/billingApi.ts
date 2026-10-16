@@ -13,6 +13,13 @@ export type BillingSettingsRequest = Schemas['BillingSettingsRequest']
 export type InvoiceDto = Schemas['InvoiceDto']
 export type InvoiceListItemDto = Schemas['InvoiceListItemDto']
 export type InvoiceLineDto = Schemas['InvoiceLineDto']
+export type PaymentDto = Schemas['PaymentDto']
+export type PaymentRequest = Schemas['PaymentRequest']
+export type AgingDto = Schemas['AgingDto']
+export type ReceivableRowDto = Schemas['ReceivableRowDto']
+export type ReceivablesDto = Schemas['ReceivablesDto']
+export type StatementDto = Schemas['StatementDto']
+export type StatementLineDto = Schemas['StatementLineDto']
 
 export const billingKeys = {
   all: ['billing'] as const,
@@ -21,6 +28,8 @@ export const billingKeys = {
   run: (id: number | null) => ['billing', 'run', id] as const,
   invoices: (status: string, q: string, skip: number, take: number) => ['billing', 'invoices', status, q, skip, take] as const,
   invoice: (id: string | null) => ['billing', 'invoice', id] as const,
+  receivables: ['billing', 'receivables'] as const,
+  statement: (clientId: string | null, from: string, to: string) => ['billing', 'statement', clientId, from, to] as const,
 }
 
 export function useBillingSettings() {
@@ -96,4 +105,34 @@ export function useInvoiceMutations() {
       onSettled: refresh,
     }),
   }
+}
+
+// ---------------------------------------------------------------- pagos, cuentas por cobrar y estado de cuenta (Lote 76)
+
+export function usePaymentMutations() {
+  const qc = useQueryClient()
+  const refresh = () => qc.invalidateQueries({ queryKey: billingKeys.all })
+  return {
+    record: useMutation({
+      mutationFn: (v: { id: string; body: PaymentRequest }) => unwrap(api.POST('/api/v1/billing/invoices/{publicId}/payments', { params: { path: { publicId: v.id } }, body: v.body })),
+      onSettled: refresh,
+    }),
+    // anular un pago lleva [RequireAal2]: el cliente del API reautentica solo
+    voidPayment: useMutation({
+      mutationFn: (v: { paymentId: number; reason: string }) => unwrap(api.POST('/api/v1/billing/payments/{id}/void', { params: { path: { id: v.paymentId } }, body: { reason: v.reason } })),
+      onSettled: refresh,
+    }),
+  }
+}
+
+export function useReceivables() {
+  return useQuery({ queryKey: billingKeys.receivables, queryFn: () => unwrap(api.GET('/api/v1/billing/receivables')) })
+}
+
+export function useStatement(clientId: string | null, from: string, to: string) {
+  return useQuery({
+    queryKey: billingKeys.statement(clientId, from, to),
+    queryFn: () => unwrap(api.GET('/api/v1/billing/clients/{publicId}/statement', { params: { path: { publicId: clientId! }, query: { from, to } } })),
+    enabled: clientId !== null && from !== '' && to !== '' && from <= to,
+  })
 }

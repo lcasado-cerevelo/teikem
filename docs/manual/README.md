@@ -322,6 +322,8 @@ F-G1. [F-G1 — Impresoras y labels](frontend/fg1-impresoras.md): Sistema → **
 
 16. [16 — Enviar avisos](16-enviar-avisos.md): Lote 54 (2026-10-15) — **avisos manuales**: quien tiene `notifications.send` envía un aviso a personas, a roles o a **todas** las personas de la compañía; llega a la campanita («De Ana»), en vivo si tiene Teikem abierto, y **no se responde**; historial con a quién se envió y cuántas personas lo leyeron; permiso solo para el Admin de compañía (el administrador lo asigna), mensajes 400/403 y datos para soporte.
 
+L76. [L76 — Cobros](frontend/l76-cobros.md): Contabilidad → **Facturación → Cobros** y la ficha de la factura: **pagos** (registrar con validación y tope del saldo, anular con motivo y reautenticación), **cuentas por cobrar** por cliente con la antigüedad en cinco columnas y el **estado de cuenta** con saldo corrido; escritorio y móvil.
+
 L73. [L73 — Facturación](frontend/l73-facturacion.md): Dinero → **Facturación** (`billing.view`): corridas (nueva, revisar, aprobar con reautenticación, cancelar), facturas (ajustar una línea con motivo, anular) y ajustes de la base de facturación y del vencimiento; escritorio y móvil.
 
 L63. [L63 — Despachar contra una orden de venta](frontend/l63-despachar-orden-de-venta.md): en la ventana de la orden solicitada, **Despachar** (por partes, hasta lo reservado), la pregunta «¿qué sigue?» (retiro / entrega / después), la entrega con el formulario del empaque (cliente y consignatario de la orden) y la tabla de despachos. Capturas `l63-*`.

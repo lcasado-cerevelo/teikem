@@ -23,9 +23,11 @@ import {
   type InvoiceListItemDto,
 } from './billingApi'
 import { adjustError, INVOICE_STATUSES, invoiceCanVoid, monthStartIso, parseAmount, RUN_STATUSES, runFormError, runIsOpen, todayIso, toRunRequest, type RunForm } from './billingRules'
+import { PaymentsSection, ReceivablesTab, StatementModal } from './CollectionsParts'
+import './billing.css'
 import '../tax/tax.css'
 
-type TabKey = 'runs' | 'invoices' | 'settings'
+type TabKey = 'runs' | 'invoices' | 'collections' | 'settings'
 
 function useDebounced(value: string, ms = 300) {
   const [v, setV] = useState(value)
@@ -428,6 +430,7 @@ function InvoiceModal({ publicId, onClose }: { publicId: string; onClose: () => 
               {(data.paid ?? 0) > 0 && ` · ${t('billing.invoice.paid', { paid: f.money(data.paid ?? 0), balance: f.money(data.balance ?? 0) })}`}
             </p>
             {editable && canAdjust && <p className="help">{t('billing.invoice.adjustHelp')}</p>}
+            <PaymentsSection invoice={data} />
           </>
         )}
       </div>
@@ -526,6 +529,7 @@ export default function BillingScreen() {
   const [runId, setRunId] = useState<number | null>(null)
   const [newRun, setNewRun] = useState(false)
   const [invoiceId, setInvoiceId] = useState<string | null>(null)
+  const [statement, setStatement] = useState<{ id: string; name: string } | null>(null)
   return (
     <div className="sales-screen">
       <div className="head">
@@ -544,11 +548,13 @@ export default function BillingScreen() {
         tabs={[
           { key: 'runs', label: t('billing.tabs.runs') },
           { key: 'invoices', label: t('billing.tabs.invoices') },
+          { key: 'collections', label: t('billing.tabs.collections') },
           { key: 'settings', label: t('billing.tabs.settings') },
         ]}
       />
       {tab === 'runs' && <RunsTab onOpen={setRunId} />}
       {tab === 'invoices' && <InvoicesTab onOpen={setInvoiceId} />}
+      {tab === 'collections' && <ReceivablesTab onOpenStatement={(id, name) => setStatement({ id, name })} />}
       {tab === 'settings' && <SettingsTab />}
       {newRun && (
         <NewRunModal
@@ -560,6 +566,7 @@ export default function BillingScreen() {
         />
       )}
       {runId !== null && <RunModal key={runId} id={runId} onClose={() => setRunId(null)} onOpenInvoice={setInvoiceId} />}
+      {statement && <StatementModal key={statement.id} clientId={statement.id} clientName={statement.name} onClose={() => setStatement(null)} onOpenInvoice={setInvoiceId} />}
       {invoiceId !== null && <InvoiceModal key={invoiceId} publicId={invoiceId} onClose={() => setInvoiceId(null)} />}
     </div>
   )

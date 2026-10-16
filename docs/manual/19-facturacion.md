@@ -66,6 +66,8 @@ El ajuste manual (sección 3) también aplica a las líneas de flete.
 
 ## 4b. Pagos, estado de cuenta y cuentas por cobrar (Lote 75)
 
+La pantalla de todo esto está descrita en [L76 — Cobros](frontend/l76-cobros.md).
+
 **Registrar un pago** (`POST /billing/invoices/{id}/payments`, permiso `billing.generate`): monto, **método** (ACH, cheque, tarjeta o efectivo), **fecha del pago** (hoy por omisión; no futura ni anterior a la emisión) y **referencia** (número de cheque o confirmación, hasta 80 caracteres). Solo una factura **Emitida o Vencida** recibe pagos; el monto es mayor que cero, con hasta 2 decimales y **no pasa del saldo** (el saldo es el total menos los pagos no anulados). La factura se bloquea al registrar, así que dos pagos a la vez no pasan del saldo. Cuando lo pagado cubre el total, la factura pasa a **Pagada** (también si estaba Vencida).
 
 **Anular un pago** (`POST /billing/payments/{id}/void`, permiso `billing.approve` y reautenticación **AAL2**): exige el motivo (hasta 250 caracteres); el pago queda en el historial tachado y deja de contar en el saldo. **No se anula el pago de una factura ya Pagada** (ese estatus es terminal): un pago anotado por error ahí se corrige con una nota de crédito (llega con las devoluciones) o con soporte. Anular todos los pagos de una factura permite anularla (sección 3).

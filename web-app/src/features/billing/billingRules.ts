@@ -82,3 +82,61 @@ export function todayIso(now = new Date()): string {
 export function monthStartIso(now = new Date()): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
 }
+
+// ---------------------------------------------------------------- pagos y estado de cuenta (Lote 76)
+
+export const PAYMENT_METHODS = ['CASH', 'CHECK', 'ACH', 'CARD'] as const
+
+/** Solo una factura emitida o vencida recibe pagos. */
+export function invoiceCanPay(status: string | null | undefined): boolean {
+  return status === 'ISSUED' || status === 'OVERDUE'
+}
+
+/** Un pago se anula mientras la factura no esté pagada por completo (ese estatus es terminal). */
+export function paymentCanVoid(invoiceStatus: string | null | undefined, voidedAtUtc: string | null | undefined): boolean {
+  return invoiceCanPay(invoiceStatus) && !voidedAtUtc
+}
+
+export interface PaymentForm {
+  amount: string
+  method: string
+  paidDate: string
+  reference: string
+}
+
+export type PaymentFormError = 'amount' | 'decimals' | 'method' | 'exceeds' | 'future' | 'beforeIssue' | 'reference'
+
+/** Lo que el servidor también valida (PaymentRules): monto con hasta 2 decimales sin pasar del saldo, método, fecha entre la emisión y hoy, referencia de hasta 80 caracteres. */
+export function paymentFormError(f: PaymentForm, balance: number, today: string, issueDate: string | null | undefined): PaymentFormError | null {
+  const n = parseAmount(f.amount)
+  if (n === null || n <= 0) return 'amount'
+  if (decimalsOf(n) > 2) return 'decimals'
+  if (n > balance + 0.00001) return 'exceeds'
+  if (!f.method) return 'method'
+  if (f.paidDate > today) return 'future'
+  if (issueDate && f.paidDate < issueDate) return 'beforeIssue'
+  if (f.reference.trim().length > 80) return 'reference'
+  return null
+}
+
+export function toPaymentRequest(f: PaymentForm, today: string) {
+  return { amount: parseAmount(f.amount)!, method: f.method, paidDate: f.paidDate === today ? undefined : f.paidDate, reference: f.reference.trim() || undefined }
+}
+
+export type VoidPaymentError = 'required' | 'long'
+
+export function voidPaymentError(reason: string): VoidPaymentError | null {
+  const r = reason.trim()
+  if (r === '') return 'required'
+  if (r.length > 250) return 'long'
+  return null
+}
+
+/** Fecha inicial por omisión del estado de cuenta: 90 días antes de la final (como el servidor). */
+export function statementFrom(to: string): string {
+  const d = new Date(`${to}T00:00:00`)
+  d.setDate(d.getDate() - 90)
+  return todayIso(d)
+}
+
+export const AGING_KEYS = ['current', 'days1To30', 'days31To60', 'days61To90', 'over90'] as const

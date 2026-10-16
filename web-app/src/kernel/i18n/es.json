@@ -7438,6 +7438,7 @@
         "label": "Facturación",
         "runs": "Corridas",
         "invoices": "Facturas",
+        "collections": "Cobros",
         "settings": "Ajustes"
       },
       "col": {
@@ -7471,6 +7472,71 @@
         "PAID": "Pagada",
         "OVERDUE": "Vencida",
         "VOID": "Anulada"
+      },
+      "methods": {
+        "CASH": "Efectivo",
+        "CHECK": "Cheque",
+        "ACH": "ACH",
+        "CARD": "Tarjeta"
+      },
+      "pay": {
+        "title": "Pagos",
+        "record": "Registrar pago",
+        "save": "Guardar pago",
+        "recorded": "Pago registrado.",
+        "empty": "Todavía no hay pagos.",
+        "date": "Fecha",
+        "method": "Método",
+        "reference": "Referencia",
+        "referenceHint": "Cheque, confirmación…",
+        "amount": "Monto",
+        "voided": "Anulado",
+        "void": "Anular el pago",
+        "voidTitle": "¿Anular el pago de {amount}?",
+        "voidBody": "El pago deja de contar en el saldo de la factura. Pide reautenticación.",
+        "voidReason": "Motivo",
+        "voidedToast": "Pago anulado.",
+        "balanceHelp": "Factura {number}: saldo {balance}.",
+        "errors": {
+          "amount": "Escriba el monto del pago (mayor que cero).",
+          "decimals": "El monto admite hasta 2 decimales.",
+          "exceeds": "El pago no puede pasar del saldo de la factura.",
+          "method": "Elija el método de pago.",
+          "future": "La fecha del pago no puede ser futura.",
+          "beforeIssue": "La fecha del pago no puede ser anterior a la emisión de la factura.",
+          "reference": "La referencia no puede pasar de 80 caracteres.",
+          "void": {
+            "required": "Escriba el motivo para anular el pago.",
+            "long": "El motivo no puede pasar de 250 caracteres."
+          }
+        }
+      },
+      "rec": {
+        "panel": "Cuentas por cobrar",
+        "empty": "No hay saldos por cobrar.",
+        "open": "Facturas abiertas",
+        "oldest": "Vence desde",
+        "total": "Por cobrar: {total} (vencido: {over}).",
+        "help": "Toque un cliente para ver su estado de cuenta."
+      },
+      "aging": {
+        "current": "Por vencer",
+        "days1To30": "1–30 días",
+        "days31To60": "31–60 días",
+        "days61To90": "61–90 días",
+        "over90": "Más de 90"
+      },
+      "stmt": {
+        "title": "Estado de cuenta · {client}",
+        "opening": "Saldo inicial",
+        "invoiced": "Facturado",
+        "paid": "Pagado",
+        "closing": "Saldo final",
+        "debit": "Cargos",
+        "credit": "Pagos",
+        "lines": "Movimientos",
+        "empty": "Sin movimientos en el período.",
+        "aging": "Antigüedad de lo abierto"
       },
       "runs": {
         "panel": "Corridas de facturación",

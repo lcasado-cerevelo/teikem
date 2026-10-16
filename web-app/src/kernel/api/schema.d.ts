@@ -23689,6 +23689,177 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/billing/invoices/{publicId}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PaymentRequest"];
+                    "text/json": components["schemas"]["PaymentRequest"];
+                    "application/*+json": components["schemas"]["PaymentRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["InvoiceDto"];
+                        "application/json": components["schemas"]["InvoiceDto"];
+                        "text/json": components["schemas"]["InvoiceDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/payments/{id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PaymentVoidRequest"];
+                    "text/json": components["schemas"]["PaymentVoidRequest"];
+                    "application/*+json": components["schemas"]["PaymentVoidRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["InvoiceDto"];
+                        "application/json": components["schemas"]["InvoiceDto"];
+                        "text/json": components["schemas"]["InvoiceDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/clients/{publicId}/statement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    from?: string;
+                    to?: string;
+                };
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["StatementDto"];
+                        "application/json": components["schemas"]["StatementDto"];
+                        "text/json": components["schemas"]["StatementDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/receivables": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    asOf?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ReceivablesDto"];
+                        "application/json": components["schemas"]["ReceivablesDto"];
+                        "text/json": components["schemas"]["ReceivablesDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -31609,6 +31780,7 @@ export interface components {
             runId?: number | null;
             notes?: string | null;
             lines?: components["schemas"]["InvoiceLineDto"][] | null;
+            payments?: components["schemas"]["PaymentDto"][] | null;
         };
         InvoiceLineAdjustRequest: {
             /** Format: double */
@@ -31683,6 +31855,97 @@ export interface components {
         };
         InvoiceVoidRequest: {
             comment?: string | null;
+        };
+        PaymentRequest: {
+            /** Format: double */
+            amount?: number | null;
+            method?: string | null;
+            /** Format: date */
+            paidDate?: string | null;
+            reference?: string | null;
+        };
+        PaymentVoidRequest: {
+            reason?: string | null;
+        };
+        PaymentDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: double */
+            amount?: number;
+            method?: string | null;
+            methodLabel?: string | null;
+            /** Format: date */
+            paidDate?: string;
+            reference?: string | null;
+            /** Format: date-time */
+            voidedAtUtc?: string | null;
+            voidReason?: string | null;
+        };
+        StatementLineDto: {
+            /** Format: date */
+            date?: string;
+            kind?: string | null;
+            reference?: string | null;
+            description?: string | null;
+            /** Format: double */
+            debit?: number;
+            /** Format: double */
+            credit?: number;
+            /** Format: double */
+            balance?: number;
+            /** Format: uuid */
+            invoicePublicId?: string | null;
+        };
+        AgingDto: {
+            /** Format: double */
+            current?: number;
+            /** Format: double */
+            days1To30?: number;
+            /** Format: double */
+            days31To60?: number;
+            /** Format: double */
+            days61To90?: number;
+            /** Format: double */
+            over90?: number;
+            /** Format: double */
+            total?: number;
+        };
+        StatementDto: {
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            /** Format: date */
+            from?: string;
+            /** Format: date */
+            to?: string;
+            /** Format: double */
+            openingBalance?: number;
+            /** Format: double */
+            totalInvoiced?: number;
+            /** Format: double */
+            totalPaid?: number;
+            /** Format: double */
+            closingBalance?: number;
+            lines?: components["schemas"]["StatementLineDto"][] | null;
+            aging?: components["schemas"]["AgingDto"];
+        };
+        ReceivableRowDto: {
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            /** Format: int32 */
+            openInvoices?: number;
+            /** Format: double */
+            balance?: number;
+            aging?: components["schemas"]["AgingDto"];
+            /** Format: date */
+            oldestDueDate?: string | null;
+        };
+        ReceivablesDto: {
+            /** Format: date */
+            asOf?: string;
+            rows?: components["schemas"]["ReceivableRowDto"][] | null;
+            total?: components["schemas"]["AgingDto"];
         };
     };
     responses: never;

@@ -1,0 +1,4 @@
+/* Cobros (Lote 76): pagos de una factura */
+.pay-section{margin-top:16px}
+.pay-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.pay-head h3{margin:0;font-size:14px}
