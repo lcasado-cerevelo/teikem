@@ -23223,6 +23223,472 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/billing/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["BillingSettingsDto"];
+                        "application/json": components["schemas"]["BillingSettingsDto"];
+                        "text/json": components["schemas"]["BillingSettingsDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["BillingSettingsRequest"];
+                    "text/json": components["schemas"]["BillingSettingsRequest"];
+                    "application/*+json": components["schemas"]["BillingSettingsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["BillingSettingsDto"];
+                        "application/json": components["schemas"]["BillingSettingsDto"];
+                        "text/json": components["schemas"]["BillingSettingsDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    status?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["BillingRunListItemDto"][];
+                        "application/json": components["schemas"]["BillingRunListItemDto"][];
+                        "text/json": components["schemas"]["BillingRunListItemDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["BillingRunRequest"];
+                    "text/json": components["schemas"]["BillingRunRequest"];
+                    "application/*+json": components["schemas"]["BillingRunRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["BillingRunDto"];
+                        "application/json": components["schemas"]["BillingRunDto"];
+                        "text/json": components["schemas"]["BillingRunDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/runs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["BillingRunDto"];
+                        "application/json": components["schemas"]["BillingRunDto"];
+                        "text/json": components["schemas"]["BillingRunDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/runs/{id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["BillingRunDto"];
+                        "application/json": components["schemas"]["BillingRunDto"];
+                        "text/json": components["schemas"]["BillingRunDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/runs/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["BillingRunDto"];
+                        "application/json": components["schemas"]["BillingRunDto"];
+                        "text/json": components["schemas"]["BillingRunDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/runs/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["BillingRunCancelRequest"];
+                    "text/json": components["schemas"]["BillingRunCancelRequest"];
+                    "application/*+json": components["schemas"]["BillingRunCancelRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["BillingRunDto"];
+                        "application/json": components["schemas"]["BillingRunDto"];
+                        "text/json": components["schemas"]["BillingRunDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    status?: string;
+                    clientPublicId?: string;
+                    runId?: number;
+                    q?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["InvoiceListItemDtoPagedResult"];
+                        "application/json": components["schemas"]["InvoiceListItemDtoPagedResult"];
+                        "text/json": components["schemas"]["InvoiceListItemDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/invoices/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["InvoiceDto"];
+                        "application/json": components["schemas"]["InvoiceDto"];
+                        "text/json": components["schemas"]["InvoiceDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/invoices/{publicId}/lines/{lineId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    lineId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["InvoiceLineAdjustRequest"];
+                    "text/json": components["schemas"]["InvoiceLineAdjustRequest"];
+                    "application/*+json": components["schemas"]["InvoiceLineAdjustRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["InvoiceDto"];
+                        "application/json": components["schemas"]["InvoiceDto"];
+                        "text/json": components["schemas"]["InvoiceDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/billing/invoices/{publicId}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["InvoiceVoidRequest"];
+                    "text/json": components["schemas"]["InvoiceVoidRequest"];
+                    "application/*+json": components["schemas"]["InvoiceVoidRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["InvoiceDto"];
+                        "application/json": components["schemas"]["InvoiceDto"];
+                        "text/json": components["schemas"]["InvoiceDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -31042,6 +31508,176 @@ export interface components {
             productName?: string | null;
             /** Format: double */
             qtyPerKit?: number;
+        };
+        BillingRunCancelRequest: {
+            comment?: string | null;
+        };
+        BillingRunDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: date */
+            periodStart?: string;
+            /** Format: date */
+            periodEnd?: string;
+            status?: string | null;
+            statusLabel?: string | null;
+            statusColor?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string | null;
+            clientName?: string | null;
+            note?: string | null;
+            /** Format: int32 */
+            invoiceCount?: number;
+            /** Format: double */
+            totalAmount?: number;
+            /** Format: date-time */
+            generatedAtUtc?: string;
+            /** Format: date-time */
+            reviewedAtUtc?: string | null;
+            /** Format: date-time */
+            approvedAtUtc?: string | null;
+            /** Format: date-time */
+            exportedAtUtc?: string | null;
+            invoices?: components["schemas"]["InvoiceListItemDto"][] | null;
+        };
+        BillingRunListItemDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: date */
+            periodStart?: string;
+            /** Format: date */
+            periodEnd?: string;
+            status?: string | null;
+            statusLabel?: string | null;
+            statusColor?: string | null;
+            clientName?: string | null;
+            /** Format: int32 */
+            invoiceCount?: number;
+            /** Format: double */
+            totalAmount?: number;
+            /** Format: date-time */
+            generatedAtUtc?: string;
+        };
+        BillingRunRequest: {
+            /** Format: uuid */
+            clientPublicId?: string | null;
+            /** Format: date */
+            periodStart?: string | null;
+            /** Format: date */
+            periodEnd?: string | null;
+            note?: string | null;
+            onlyInPeriod?: boolean | null;
+        };
+        BillingSettingsDto: {
+            salesBillingTrigger?: string | null;
+            /** Format: int32 */
+            invoiceDueDays?: number;
+        };
+        BillingSettingsRequest: {
+            salesBillingTrigger?: string | null;
+            /** Format: int32 */
+            invoiceDueDays?: number | null;
+        };
+        InvoiceDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            statusColor?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            /** Format: date */
+            issueDate?: string | null;
+            /** Format: date */
+            dueDate?: string | null;
+            currency?: string | null;
+            /** Format: double */
+            subtotal?: number;
+            /** Format: double */
+            taxAmount?: number;
+            /** Format: double */
+            total?: number;
+            /** Format: double */
+            paid?: number;
+            /** Format: double */
+            balance?: number;
+            /** Format: int32 */
+            runId?: number | null;
+            notes?: string | null;
+            lines?: components["schemas"]["InvoiceLineDto"][] | null;
+        };
+        InvoiceLineAdjustRequest: {
+            /** Format: double */
+            unitAmount?: number | null;
+            note?: string | null;
+        };
+        InvoiceLineDto: {
+            /** Format: int32 */
+            id?: number;
+            description?: string | null;
+            chargeType?: string | null;
+            /** Format: uuid */
+            productPublicId?: string | null;
+            sku?: string | null;
+            salesOrderNumber?: string | null;
+            /** Format: double */
+            quantity?: number;
+            /** Format: double */
+            unitAmount?: number;
+            /** Format: double */
+            originalUnitAmount?: number | null;
+            isAdjusted?: boolean;
+            adjustmentNote?: string | null;
+            /** Format: double */
+            lineSubtotal?: number;
+            /** Format: double */
+            taxRatePct?: number | null;
+            /** Format: double */
+            taxAmount?: number;
+            isTaxExempt?: boolean;
+        };
+        InvoiceListItemDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            statusColor?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            /** Format: date */
+            issueDate?: string | null;
+            /** Format: date */
+            dueDate?: string | null;
+            /** Format: double */
+            subtotal?: number;
+            /** Format: double */
+            taxAmount?: number;
+            /** Format: double */
+            total?: number;
+            /** Format: double */
+            paid?: number;
+            /** Format: double */
+            balance?: number;
+            /** Format: int32 */
+            lineCount?: number;
+            /** Format: int32 */
+            runId?: number | null;
+        };
+        InvoiceListItemDtoPagedResult: {
+            items?: components["schemas"]["InvoiceListItemDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        InvoiceVoidRequest: {
+            comment?: string | null;
         };
     };
     responses: never;

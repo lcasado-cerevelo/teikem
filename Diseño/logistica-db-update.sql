@@ -2978,3 +2978,118 @@ GO
 IF COL_LENGTH('dbo.PickBatchLine', 'KitQuantity') IS NULL
     ALTER TABLE dbo.PickBatchLine ADD KitQuantity DECIMAL(14,3) NULL;
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-16 (r) — Facturación (Lote 72, P5). Completa las tablas BillingRun, Invoice, InvoiceLine y Payment del DDL original:
+   - dbo.BillingRun: ClientId (corrida de un solo cliente), Note, ReviewedBy/ReviewedAtUtc y ExportedAtUtc/ExportedBy.
+   - dbo.Invoice: Notes.
+   - dbo.InvoiceLine: SalesOrderLineId (la línea de orden de venta que se facturó), OriginalUnitAmount (el monto calculado antes de un ajuste manual) y AdjustmentNote.
+   - dbo.Tenant: SalesBillingTrigger (ON_DISPATCH | ON_DELIVERY: cuándo se factura el producto vendido) e InvoiceDueDays (días hasta el vencimiento).
+   - Estatus CANCELLED (terminal) de BillingRunStatus (una corrida generada o revisada se cancela y libera lo que había facturado).
+   - Contador BILLINVOICE (FAC-#####), EntityType BILLING_RUN y permiso billing.view (a quien ya tiene generar, aprobar o exportar facturación).
+   Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.BillingRun', 'ClientId') IS NULL
+    ALTER TABLE dbo.BillingRun ADD ClientId INT NULL CONSTRAINT FK_BillingRun_Client REFERENCES dbo.Client(ClientId);
+GO
+IF COL_LENGTH('dbo.BillingRun', 'Note') IS NULL
+    ALTER TABLE dbo.BillingRun ADD Note NVARCHAR(500) NULL;
+GO
+IF COL_LENGTH('dbo.BillingRun', 'ReviewedBy') IS NULL
+    ALTER TABLE dbo.BillingRun ADD ReviewedBy INT NULL CONSTRAINT FK_BillingRun_ReviewedBy REFERENCES dbo.AspNetUsers(Id);
+GO
+IF COL_LENGTH('dbo.BillingRun', 'ReviewedAtUtc') IS NULL
+    ALTER TABLE dbo.BillingRun ADD ReviewedAtUtc DATETIME2 NULL;
+GO
+IF COL_LENGTH('dbo.BillingRun', 'ExportedAtUtc') IS NULL
+    ALTER TABLE dbo.BillingRun ADD ExportedAtUtc DATETIME2 NULL;
+GO
+IF COL_LENGTH('dbo.BillingRun', 'ExportedBy') IS NULL
+    ALTER TABLE dbo.BillingRun ADD ExportedBy INT NULL CONSTRAINT FK_BillingRun_ExportedBy REFERENCES dbo.AspNetUsers(Id);
+GO
+IF COL_LENGTH('dbo.Invoice', 'Notes') IS NULL
+    ALTER TABLE dbo.Invoice ADD Notes NVARCHAR(500) NULL;
+GO
+IF COL_LENGTH('dbo.InvoiceLine', 'SalesOrderLineId') IS NULL
+    ALTER TABLE dbo.InvoiceLine ADD SalesOrderLineId INT NULL CONSTRAINT FK_InvoiceLine_SalesOrderLine REFERENCES dbo.SalesOrderLine(SalesOrderLineId);
+GO
+IF COL_LENGTH('dbo.InvoiceLine', 'OriginalUnitAmount') IS NULL
+    ALTER TABLE dbo.InvoiceLine ADD OriginalUnitAmount DECIMAL(18,4) NULL;
+GO
+IF COL_LENGTH('dbo.InvoiceLine', 'AdjustmentNote') IS NULL
+    ALTER TABLE dbo.InvoiceLine ADD AdjustmentNote NVARCHAR(250) NULL;
+GO
+IF COL_LENGTH('dbo.Tenant', 'SalesBillingTrigger') IS NULL
+    ALTER TABLE dbo.Tenant ADD SalesBillingTrigger VARCHAR(12) NOT NULL CONSTRAINT DF_Tenant_SalesBillingTrigger DEFAULT 'ON_DISPATCH';
+GO
+IF COL_LENGTH('dbo.Tenant', 'InvoiceDueDays') IS NULL
+    ALTER TABLE dbo.Tenant ADD InvoiceDueDays INT NOT NULL CONSTRAINT DF_Tenant_InvoiceDueDays DEFAULT 30;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_Tenant_SalesBillingTrigger')
+    ALTER TABLE dbo.Tenant ADD CONSTRAINT CK_Tenant_SalesBillingTrigger CHECK (SalesBillingTrigger IN ('ON_DISPATCH','ON_DELIVERY'));
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Invoice_PublicId' AND object_id = OBJECT_ID('dbo.Invoice'))
+    CREATE INDEX IX_Invoice_PublicId ON dbo.Invoice(PublicId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Invoice_Run' AND object_id = OBJECT_ID('dbo.Invoice'))
+    CREATE INDEX IX_Invoice_Run ON dbo.Invoice(BillingRunId) WHERE BillingRunId IS NOT NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_InvoiceLine_SalesOrderLine' AND object_id = OBJECT_ID('dbo.InvoiceLine'))
+    CREATE INDEX IX_InvoiceLine_SalesOrderLine ON dbo.InvoiceLine(SalesOrderLineId) WHERE SalesOrderLineId IS NOT NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Payment_Invoice' AND object_id = OBJECT_ID('dbo.Payment'))
+    CREATE INDEX IX_Payment_Invoice ON dbo.Payment(InvoiceId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_BillingRun_Status' AND object_id = OBJECT_ID('dbo.BillingRun'))
+    CREATE INDEX IX_BillingRun_Status ON dbo.BillingRun(TenantId, StatusCodeId);
+GO
+
+-- Contador de facturas: el CHECK de los tipos de contador se vuelve a crear con BILLINVOICE
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_NumberSequence_Kind' AND definition NOT LIKE '%BILLINVOICE%')
+    ALTER TABLE dbo.NumberSequence DROP CONSTRAINT CK_NumberSequence_Kind;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_NumberSequence_Kind')
+    ALTER TABLE dbo.NumberSequence ADD CONSTRAINT CK_NumberSequence_Kind CHECK (Kind IN ('ORDER','INVOICE','PACKAGE','PACKBATCH','WORKORDER','TRIP','RECEIPT','CYCLECOUNT','CROSSDOCK','PURCHASE','RENTAL','RENTALRETURN','MANUALISSUE','MULTIADJUST','SALESORDER','BILLINVOICE'));
+GO
+
+-- EntityType de la corrida de facturación
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'BILLING_RUN', N'{"es":"Corrida de facturación","en":"Billing run"}', 127)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+
+-- Estatus CANCELLED (terminal) de la corrida de facturación
+MERGE dbo.StatusCode AS t
+USING (
+    SELECT N'CANCELLED' AS Code, N'{"es":"Cancelada","en":"Cancelled"}' AS LabelJson, '#6B7280' AS Color, 5 AS Srt, k.LookupCodeId AS StageKindLookupId
+    FROM dbo.LookupCode k WHERE k.Entity = N'StageKind' AND k.InternalCode = N'TERMINAL'
+) AS s
+ON t.Entity = N'BillingRunStatus' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, ColorHex, SortOrder, StageKindLookupId, IsInitial, IsActive)
+    VALUES (N'BillingRunStatus', s.Code, s.LabelJson, s.Color, s.Srt, s.StageKindLookupId, 0, 1);
+GO
+
+-- Permiso billing.view
+MERGE dbo.Permission AS t
+USING (VALUES ('billing.view', N'{"es":"Ver facturación","en":"View billing"}')) AS s (Code, LabelJson)
+ON t.Code = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES (s.Code, (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'BILLING'), s.LabelJson, 1);
+GO
+-- A todo rol (plantilla y clonados) que ya genera, aprueba o exporta facturación, y al administrador de la compañía
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT DISTINCT r.RoleId, v.PermissionId
+FROM dbo.Role r
+JOIN dbo.Permission v ON v.Code = 'billing.view'
+WHERE (r.Name = 'TenantAdmin' OR EXISTS (
+          SELECT 1 FROM dbo.RolePermission rp JOIN dbo.Permission p ON p.PermissionId = rp.PermissionId
+          WHERE rp.RoleId = r.RoleId AND p.Code IN ('billing.generate','billing.approve','billing.export')))
+  AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = v.PermissionId);
+GO

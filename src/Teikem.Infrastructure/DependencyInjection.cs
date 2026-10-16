@@ -396,6 +396,7 @@ public static class DependencyInjection
         services.AddScoped<IDataSource, RentalDataSource>();
         services.AddScoped<IDataSource, RentalReturnDataSource>();
         services.AddScoped<KitService>();   // Lote 68
+        services.AddScoped<BillingService>();   // Lote 72 (P5)
         services.AddScoped<IDataSource, SalesOrderDataSource>();        // Lote 67: órdenes de venta
         services.AddScoped<IDataSource, SalesOrderLineDataSource>();
         services.AddScoped<IDataSource, RentalProcessDataSource>();

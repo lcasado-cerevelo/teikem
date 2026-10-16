@@ -191,7 +191,9 @@ public static class NumberingRules
         // 2026-10-12: ajuste múltiple AJM-###### (por tenant, ClientId NULL)
         or NumberKinds.MultiAdjust
         // Lote 57: orden de venta OV-##### (por tenant, ClientId NULL)
-        or Teikem.Domain.Sales.SalesCodes.NumberKind;
+        or Teikem.Domain.Sales.SalesCodes.NumberKind
+        // Lote 72: factura FAC-##### (por tenant, ClientId NULL)
+        or Teikem.Domain.Billing.BillingCodes.NumberKind;
 
     private static string Coalesce(string? pattern, string fallback) => string.IsNullOrWhiteSpace(pattern) ? fallback : pattern.Trim();
 

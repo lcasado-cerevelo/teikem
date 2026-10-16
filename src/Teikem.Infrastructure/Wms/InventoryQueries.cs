@@ -233,6 +233,19 @@ public static class InventoryQueries
         return await LoadTrackedAsync(db, db.RentalProcesses.Where(x => x.RentalProcessId == rentalProcessId), () => new NotFoundException("Proceso"), ct);
     }
 
+    /// <summary>(20, Lote 72) Línea de orden de venta con UPDLOCK, tracked: la facturación la bloquea para reclamar lo facturado sin que otra corrida facture lo mismo. 404 'Línea no encontrada.'</summary>
+    public static async Task<Teikem.Domain.Sales.SalesOrderLine> LockSalesOrderLineAsync(this TeikemDbContext db, int salesOrderLineId, CancellationToken ct)
+    {
+        if (db.Database.IsRelational())
+        {
+            RequireTransaction(db, nameof(LockSalesOrderLineAsync));
+            var tenantId = db.CurrentTenantId;
+            await RequireLockedAsync(db.Database.SqlQuery<int>($"SELECT SalesOrderLineId AS Value FROM dbo.SalesOrderLine WITH (UPDLOCK, ROWLOCK) WHERE SalesOrderLineId = {salesOrderLineId} AND TenantId = {tenantId}"),
+                () => new NotFoundException("Línea", null, true), ct);
+        }
+        return await LoadTrackedAsync(db, db.Set<Teikem.Domain.Sales.SalesOrderLine>().Where(x => x.SalesOrderLineId == salesOrderLineId), () => new NotFoundException("Línea", null, true), ct);
+    }
+
     /// <summary>(12) Producto con UPDLOCK, tracked. 404 'Producto no encontrado.'</summary>
     public static async Task<Product> LockProductAsync(this TeikemDbContext db, int productId, CancellationToken ct)
     {

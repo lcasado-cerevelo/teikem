@@ -206,6 +206,11 @@ internal sealed class WmsFixture : IAsyncDisposable
         // Lote 68 (kits): tipo de producto (al final: ids previos intactos).
         L(Teikem.Domain.Wms.KitCodes.ProductTypeDomain, Teikem.Domain.Wms.ProductTypes.Standard);
         L(Teikem.Domain.Wms.KitCodes.ProductTypeDomain, Teikem.Domain.Wms.ProductTypes.Kit);
+        // Lote 72 (facturación): entidades y tipo de cargo (al final: ids previos intactos).
+        L(LookupDomains.EntityType, Teikem.Domain.Billing.BillingCodes.InvoiceEntityType);
+        L(LookupDomains.EntityType, Teikem.Domain.Billing.BillingCodes.RunEntityType);
+        L(Teikem.Domain.Billing.BillingCodes.ChargeTypeDomain, Teikem.Domain.Billing.BillingCodes.ProductSale);
+        L(Teikem.Domain.Billing.BillingCodes.PaymentMethodDomain, "CASH");
         Db.LookupCodes.AddRange(all);
         Lookups.Load(all);
 
@@ -305,6 +310,18 @@ internal sealed class WmsFixture : IAsyncDisposable
         S(Teikem.Domain.Sales.SalesCodes.StatusDomain, Teikem.Domain.Sales.SalesOrderStatuses.Partial, lat, 3);
         S(Teikem.Domain.Sales.SalesCodes.StatusDomain, Teikem.Domain.Sales.SalesOrderStatuses.Shipped, lat, 4);   // Lote 62: laterales (sección (n)): se pueden reabrir al deshacer un despacho
         S(Teikem.Domain.Sales.SalesCodes.StatusDomain, Teikem.Domain.Sales.SalesOrderStatuses.Cancelled, term, 5);
+        // Lote 72 (facturación): como logistica-db-seed.sql y la sección (r) de update.sql (al final: ids previos intactos).
+        S(Teikem.Domain.Billing.BillingCodes.InvoiceStatusDomain, Teikem.Domain.Billing.InvoiceStatuses.Draft, pipe, 1, true);
+        S(Teikem.Domain.Billing.BillingCodes.InvoiceStatusDomain, Teikem.Domain.Billing.InvoiceStatuses.Issued, pipe, 2);
+        S(Teikem.Domain.Billing.BillingCodes.InvoiceStatusDomain, Teikem.Domain.Billing.InvoiceStatuses.Paid, term, 3);
+        S(Teikem.Domain.Billing.BillingCodes.InvoiceStatusDomain, Teikem.Domain.Billing.InvoiceStatuses.Overdue, lat, 4);
+        S(Teikem.Domain.Billing.BillingCodes.InvoiceStatusDomain, Teikem.Domain.Billing.InvoiceStatuses.Void, term, 5);
+        S(Teikem.Domain.Billing.BillingCodes.RunStatusDomain, Teikem.Domain.Billing.BillingRunStatuses.Generated, pipe, 1, true);
+        S(Teikem.Domain.Billing.BillingCodes.RunStatusDomain, Teikem.Domain.Billing.BillingRunStatuses.Reviewed, pipe, 2);
+        S(Teikem.Domain.Billing.BillingCodes.RunStatusDomain, Teikem.Domain.Billing.BillingRunStatuses.Approved, pipe, 3);
+        S(Teikem.Domain.Billing.BillingCodes.RunStatusDomain, Teikem.Domain.Billing.BillingRunStatuses.Exported, term, 4);
+        S(Teikem.Domain.Billing.BillingCodes.RunStatusDomain, "CANCELLED", term, 5);
+        S(StatusDomains.OrderStatus, OrderStatuses.Delivered, term, 3);   // para la base «al entregar» de la facturación
         ReceiptStatusSeed.AddLateralEntries(Db, LookupId(LookupDomains.EntityType, EntityTypes.Receipt), StatusId);
 
         // 3G: WAREHOUSE_TASK CANCELLED solo desde PENDING e IN_PROGRESS.

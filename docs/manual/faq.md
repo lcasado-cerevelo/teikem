@@ -8453,3 +8453,25 @@ Falta alguna pieza de algún componente (por ejemplo, 3 tornillos de un kit que 
 
 **Recogí piezas de más.**
 Lo que no completa otro kit se queda reservado en su posición; no sale ni se descuenta.
+
+
+## Lote 72 — Facturación
+
+**Generé la corrida y dice «No hay nada por facturar con esos datos».**
+Solo se factura lo **despachado** de las órdenes de venta y que no se haya facturado. Revise que la orden tenga despachos, que el cliente (si lo escogió) sea el correcto, y la base de facturación de la compañía: con «al entregar» las
+entregas aún no entregadas no entran. Con «solo dentro del período» el despacho debe caer entre las fechas.
+
+**¿Se puede facturar dos veces lo mismo?**
+No. Al generar, cada línea de orden de venta anota lo facturado; una segunda corrida no lo vuelve a tomar. Si cancela la corrida (generada o revisada) o anula la factura, vuelve a quedar por facturar.
+
+**No me deja aprobar.**
+La corrida debe estar **revisada** y quien aprueba necesita `billing.approve` y una reautenticación reciente (AAL2): vuelva a confirmar su contraseña y repita.
+
+**Quiero cambiar un monto ya calculado.**
+Solo mientras la corrida está generada o revisada: ajuste la línea con el nuevo monto unitario y el motivo (obligatorio). Se conserva el monto calculado. Una corrida aprobada se corrige anulando la factura y generando otra vez.
+
+**La factura salió con impuesto distinto al de hoy.**
+Es lo correcto: la factura conserva la tasa con que se calculó la orden de venta (copia por línea), no la vigente hoy.
+
+**Anulé una factura y la orden vuelve a aparecer como por facturar.**
+Sí: anular libera exactamente lo que esa factura había reclamado.
