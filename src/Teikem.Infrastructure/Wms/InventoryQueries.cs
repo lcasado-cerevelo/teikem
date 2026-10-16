@@ -259,6 +259,19 @@ public static class InventoryQueries
         return await LoadTrackedAsync(db, db.Set<Teikem.Domain.Orders.TransportOrder>().Where(x => x.TransportOrderId == transportOrderId), () => new NotFoundException("Orden", null, true), ct);
     }
 
+    /// <summary>(22, Lote 75) Factura con UPDLOCK, tracked: registrar o anular un pago la bloquea para que dos pagos a la vez no pasen del saldo. 404 'Factura no encontrada.'</summary>
+    public static async Task<Teikem.Domain.Billing.Invoice> LockInvoiceAsync(this TeikemDbContext db, int invoiceId, CancellationToken ct)
+    {
+        if (db.Database.IsRelational())
+        {
+            RequireTransaction(db, nameof(LockInvoiceAsync));
+            var tenantId = db.CurrentTenantId;
+            await RequireLockedAsync(db.Database.SqlQuery<int>($"SELECT InvoiceId AS Value FROM dbo.Invoice WITH (UPDLOCK, ROWLOCK) WHERE InvoiceId = {invoiceId} AND TenantId = {tenantId}"),
+                () => new NotFoundException("Factura", null, true), ct);
+        }
+        return await LoadTrackedAsync(db, db.Set<Teikem.Domain.Billing.Invoice>().Where(x => x.InvoiceId == invoiceId), () => new NotFoundException("Factura", null, true), ct);
+    }
+
     /// <summary>(12) Producto con UPDLOCK, tracked. 404 'Producto no encontrado.'</summary>
     public static async Task<Product> LockProductAsync(this TeikemDbContext db, int productId, CancellationToken ct)
     {

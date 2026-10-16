@@ -32,4 +32,6 @@ public static class JobKeys
     public const string InventorySweep = "INVENTORY_SWEEP";
     public const string Test = "JOB_TEST";
     public const string SalesBackorderScan = "SALES_BACKORDER_SCAN";
+    /// <summary>Lote 75: pasa a Vencida lo facturado cuyo plazo ya pasó.</summary>
+    public const string BillingOverdueScan = "BILLING_OVERDUE_SCAN";
 }

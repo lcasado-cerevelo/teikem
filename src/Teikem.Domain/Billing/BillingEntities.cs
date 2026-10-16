@@ -130,4 +130,9 @@ public class Payment : ITenantScoped
     public decimal Amount { get; set; }
     public DateTime PaidAtUtc { get; set; }
     public string? Reference { get; set; }
+    /// <summary>Lote 75: quién lo registró; un pago no se borra: se anula (VoidedAtUtc) con motivo y deja de contar en el saldo.</summary>
+    public int? RecordedBy { get; set; }
+    public DateTime? VoidedAtUtc { get; set; }
+    public int? VoidedBy { get; set; }
+    public string? VoidReason { get; set; }
 }

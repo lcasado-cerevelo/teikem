@@ -66,6 +66,7 @@ public sealed class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         b.HasKey(p => p.PaymentId);
         b.Property(p => p.Amount).HasColumnType("decimal(18,4)");
         b.Property(p => p.Reference).HasMaxLength(80);
+        b.Property(p => p.VoidReason).HasMaxLength(250);
         b.HasIndex(p => p.InvoiceId).HasDatabaseName("IX_Payment_Invoice");
     }
 }

@@ -2,7 +2,7 @@
 
 Lote 72 (P5, 2026-10-16). La **facturación** convierte lo que ya salió (despachado) en facturas al cliente, por **corridas** que se generan, se revisan, se aprueban y se exportan.
 Este capítulo describe las corridas y facturas de la **venta de producto** de las órdenes de venta ([capítulo 18](18-ordenes-de-venta.md)) y, desde el Lote 74, el **flete de las órdenes de
-transporte** (sección 2b). Los pagos, el estado de cuenta y la exportación a contabilidad se agregan en lotes siguientes.
+transporte** (sección 2b) y, desde el Lote 75, los **pagos, el estado de cuenta y las cuentas por cobrar** (sección 4b). La exportación a contabilidad se agrega en el lote siguiente.
 
 ## 1. Quién puede y dónde
 
@@ -64,6 +64,18 @@ El ajuste manual (sección 3) también aplica a las líneas de flete.
 - **Corrida:** Generada → Revisada → Aprobada → Exportada; o Cancelada.
 - **Factura:** Borrador → Emitida → Pagada; Vencida y Anulada.
 
+## 4b. Pagos, estado de cuenta y cuentas por cobrar (Lote 75)
+
+**Registrar un pago** (`POST /billing/invoices/{id}/payments`, permiso `billing.generate`): monto, **método** (ACH, cheque, tarjeta o efectivo), **fecha del pago** (hoy por omisión; no futura ni anterior a la emisión) y **referencia** (número de cheque o confirmación, hasta 80 caracteres). Solo una factura **Emitida o Vencida** recibe pagos; el monto es mayor que cero, con hasta 2 decimales y **no pasa del saldo** (el saldo es el total menos los pagos no anulados). La factura se bloquea al registrar, así que dos pagos a la vez no pasan del saldo. Cuando lo pagado cubre el total, la factura pasa a **Pagada** (también si estaba Vencida).
+
+**Anular un pago** (`POST /billing/payments/{id}/void`, permiso `billing.approve` y reautenticación **AAL2**): exige el motivo (hasta 250 caracteres); el pago queda en el historial tachado y deja de contar en el saldo. **No se anula el pago de una factura ya Pagada** (ese estatus es terminal): un pago anotado por error ahí se corrige con una nota de crédito (llega con las devoluciones) o con soporte. Anular todos los pagos de una factura permite anularla (sección 3).
+
+**Vencimiento.** El trabajo programado `BILLING_OVERDUE_SCAN` (cada hora, con el módulo Facturación encendido) pasa a **Vencida** las facturas emitidas cuya fecha de vencimiento ya pasó; el historial de estatus guarda «Venció el plazo de pago». Una factura vencida se sigue pagando.
+
+**Estado de cuenta** (`GET /billing/clients/{clientId}/statement?from&to`, `billing.view`): las facturas emitidas (débito, en la fecha de emisión) y los pagos (crédito, en la fecha del pago) del período con el **saldo corrido**, el saldo inicial (lo anterior al período) y el final, los totales facturado y pagado, y la **antigüedad** de lo abierto hoy. Por omisión, los últimos 90 días. Las facturas borrador y anuladas no cuentan.
+
+**Cuentas por cobrar** (`GET /billing/receivables?asOf`, `billing.view`): por cliente, cuántas facturas abiertas, el saldo y su antigüedad en cinco cubetas: **por vencer**, **1–30**, **31–60**, **61–90** y **más de 90** días de vencida, de mayor a menor saldo; el cliente sin saldo no aparece. El estado de cuenta suma los montos tal cual, sin separar monedas: supone una moneda por cliente.
+
 ## 5. Validaciones y mensajes
 
 | Situación | Mensaje | HTTP |
@@ -84,13 +96,24 @@ El ajuste manual (sección 3) también aplica a las líneas de flete.
 | Anular una factura con pagos | `La factura tiene pagos registrados: no se puede anular.` | 422 |
 | Base de facturación inválida | `La base de facturación debe ser ON_DISPATCH (al despachar) u ON_DELIVERY (al entregar).` | 400 |
 | Días de vencimiento fuera de 0–365 | `Los días de vencimiento deben estar entre 0 y 365.` | 400 |
+| Pago sin monto / monto inválido | `Indique el monto del pago.` / `El monto del pago debe ser mayor que cero y tener hasta 2 decimales.` | 400 |
+| Pago sin método / método inexistente | `Indique el método de pago.` / `El método de pago no existe.` | 400 |
+| Fecha del pago futura / anterior a la emisión | `La fecha del pago no puede ser futura.` / `La fecha del pago no puede ser anterior a la emisión de la factura.` | 400 |
+| Referencia de más de 80 caracteres | `La referencia no puede pasar de 80 caracteres.` | 400 |
+| Pago de una factura que no está emitida ni vencida | `Solo se registran pagos de una factura emitida o vencida.` | 422 |
+| Pago mayor que el saldo | `El pago (X) es mayor que el saldo de la factura (Y).` | 422 |
+| Anular un pago sin motivo / motivo largo | `Escriba el motivo para anular el pago.` / `El motivo no puede pasar de 250 caracteres.` | 400 |
+| Anular un pago ya anulado | `El pago ya está anulado.` | 422 |
+| Anular el pago de una factura pagada | `La factura ya está pagada por completo: un pago registrado por error se corrige con una nota de crédito o con soporte.` | 422 |
+| Estado de cuenta con fecha final anterior a la inicial | `La fecha final no puede ser anterior a la inicial.` | 400 |
+| Pago o cliente inexistente | `Pago no encontrado.` / `Cliente no encontrado.` | 404 |
 | Aprobar o anular sin reautenticación reciente | `Esta acción requiere reautenticación reciente (AAL2).` | 403 |
 | Corrida / factura / línea inexistente | `Corrida de facturación no encontrada.` / `Factura no encontrada.` / `Línea de factura no encontrada.` | 404 |
 
 ## 6. Para soporte
 
 - Tablas `BillingRun`, `Invoice`, `InvoiceLine` y `Payment` (las del diseño original) más las columnas de la sección **2026-10-16 (r)** de `Diseño/logistica-db-update.sql`: `BillingRun.ClientId/Note/ReviewedBy/ReviewedAtUtc/ExportedAtUtc/ExportedBy`,
-  `Invoice.Notes`, `InvoiceLine.SalesOrderLineId/OriginalUnitAmount/AdjustmentNote`, `Tenant.SalesBillingTrigger/InvoiceDueDays`; en la sección **2026-10-16 (s)** (Lote 74) `TransportOrder.FreightInvoiced`; el contador `BILLINVOICE` (**FAC-#####**, uno por compañía), el estatus
+  `Invoice.Notes`, `InvoiceLine.SalesOrderLineId/OriginalUnitAmount/AdjustmentNote`, `Tenant.SalesBillingTrigger/InvoiceDueDays`; en la sección **2026-10-16 (s)** (Lote 74) `TransportOrder.FreightInvoiced`; en la **(t)** (Lote 75) `Payment.RecordedBy/VoidedAtUtc/VoidedBy/VoidReason`; el contador `BILLINVOICE` (**FAC-#####**, uno por compañía), el estatus
   **Cancelada** de la corrida, el EntityType `BILLING_RUN` y el permiso `billing.view`.
 - `InvoiceLine.LineTotal` e `Invoice.Total` son columnas calculadas de la base; el sistema suma las líneas.
 - El historial de estatus de la corrida y de cada factura está en `EntityStatusHistory` (con el comentario de cancelar/anular).

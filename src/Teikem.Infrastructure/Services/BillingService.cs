@@ -460,7 +460,7 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
             var inv = await db.Set<Invoice>().AsTracking().Include(i => i.Lines).FirstOrDefaultAsync(i => i.PublicId == invoicePublicId, ct2) ?? throw InvoiceNotFound();
             var code = (await StatusMapAsync(BillingCodes.InvoiceStatusDomain, ct2))[inv.StatusCodeId].Code;
             if (code is not (InvoiceStatuses.Issued or InvoiceStatuses.Overdue)) throw new StatusRuleException(BillingRules.VoidNeedsIssued);
-            if (await db.Set<Payment>().AsNoTracking().AnyAsync(p => p.InvoiceId == inv.InvoiceId, ct2)) throw new StatusRuleException(BillingRules.VoidHasPayments);
+            if (await db.Set<Payment>().AsNoTracking().AnyAsync(p => p.InvoiceId == inv.InvoiceId && p.VoidedAtUtc == null, ct2)) throw new StatusRuleException(BillingRules.VoidHasPayments);
             await ReleaseAsync(new[] { inv }, ct2);
             var to = await statuses.TransitionAsync(BillingCodes.InvoiceStatusDomain, BillingCodes.InvoiceEntityType, inv.InvoiceId, inv.StatusCodeId, InvoiceStatuses.Void, comment, ct2);
             inv.StatusCodeId = to.StatusCodeId;
@@ -580,8 +580,16 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
                 l.OriginalUnitAmount, l.OriginalUnitAmount != null, l.AdjustmentNote, Math.Round(l.Quantity * l.UnitAmount, 4, MidpointRounding.AwayFromZero), l.TaxRatePct, l.TaxAmount, l.IsTaxExempt,
                 l.TransportOrderId is int tid ? transportNumbers.GetValueOrDefault(tid) : null, l.RateComponentId);
         }).ToList();
+        var pays = await db.Set<Payment>().AsNoTracking().Where(p => p.InvoiceId == i.InvoiceId).OrderBy(p => p.PaymentId).ToListAsync(ct);
+        var payDtos = new List<PaymentDto>();
+        foreach (var p in pays)
+        {
+            var m = await lookups.GetAsync(p.PaymentMethodLookupId, ct);
+            payDtos.Add(new PaymentDto(p.PaymentId, p.Amount, m?.InternalCode ?? string.Empty, MultilingualText.Resolve(m?.LabelJson, T.Lang) ?? m?.InternalCode ?? string.Empty,
+                DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(p.PaidAtUtc, DateTimeKind.Utc), clock.Zone)), p.Reference, p.VoidedAtUtc, p.VoidReason));
+        }
         var total = i.Subtotal + i.TaxAmount;
-        return new InvoiceDto(i.PublicId, i.InvoiceNumber, st.Code, st.Label, st.Color, c.PublicId, c.Name, i.IssueDate, i.DueDate, currency, i.Subtotal, i.TaxAmount, total, paid, total - paid, i.BillingRunId, i.Notes, lines);
+        return new InvoiceDto(i.PublicId, i.InvoiceNumber, st.Code, st.Label, st.Color, c.PublicId, c.Name, i.IssueDate, i.DueDate, currency, i.Subtotal, i.TaxAmount, total, paid, total - paid, i.BillingRunId, i.Notes, lines, payDtos);
     }
 
     private async Task<Dictionary<int, (Guid PublicId, string Name)>> ClientsAsync(IEnumerable<int> ids, CancellationToken ct)
@@ -593,6 +601,6 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
     private async Task<Dictionary<int, decimal>> PaidAsync(IEnumerable<int> invoiceIds, CancellationToken ct)
     {
         var list = invoiceIds.Distinct().ToList();
-        return (await db.Set<Payment>().AsNoTracking().Where(p => list.Contains(p.InvoiceId)).ToListAsync(ct)).GroupBy(p => p.InvoiceId).ToDictionary(g => g.Key, g => g.Sum(p => p.Amount));
+        return (await db.Set<Payment>().AsNoTracking().Where(p => list.Contains(p.InvoiceId) && p.VoidedAtUtc == null).ToListAsync(ct)).GroupBy(p => p.InvoiceId).ToDictionary(g => g.Key, g => g.Sum(p => p.Amount));
     }
 }

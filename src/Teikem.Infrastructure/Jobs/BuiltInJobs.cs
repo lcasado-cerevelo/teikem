@@ -110,3 +110,29 @@ public sealed class SalesBackorderScanJob : IScheduledJob
         return sent == 0 ? "Ningún backorder nuevo por avisar." : $"{sent} orden(es) con backorder surtible avisadas.";
     }
 }
+
+/// <summary>
+/// Lote 75 (P5) — pasa a Vencida (OVERDUE) lo facturado cuyo vencimiento ya pasó y todavía tiene saldo. Cada hora. Si el módulo de facturación está apagado no hace nada.
+/// </summary>
+public sealed class BillingOverdueScanJob : IScheduledJob
+{
+    public string Key => JobKeys.BillingOverdueScan;
+    public string NameEs => "Marcar facturas vencidas";
+    public string NameEn => "Mark overdue invoices";
+    public string DescriptionEs => "Pasa a «Vencida» las facturas emitidas cuya fecha de vencimiento ya pasó y todavía tienen saldo.";
+    public string DescriptionEn => "Marks as \"Overdue\" the issued invoices whose due date has passed and still have a balance.";
+    public string DefaultKind => JobScheduleKinds.Interval;
+    public int? DefaultIntervalSeconds => 3600;
+    public TimeSpan? DefaultDailyAt => null;
+    public bool DefaultEnabled => true;
+    public TimeSpan MaxRuntime => TimeSpan.FromMinutes(5);
+
+    public async Task<string?> RunAsync(JobRunContext context, CancellationToken ct)
+    {
+        var modules = context.Services.GetRequiredService<ModuleService>();
+        if (!await modules.IsEnabledAsync(ModuleKeys.Billing, ct)) return "El módulo de facturación está apagado; no se hizo nada.";
+        var payments = context.Services.GetRequiredService<PaymentService>();
+        var n = await payments.MarkOverdueAsync(ct);
+        return n == 0 ? "Ninguna factura nueva por vencer." : $"{n} factura(s) marcadas como vencidas.";
+    }
+}

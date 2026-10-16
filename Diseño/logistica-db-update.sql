@@ -3102,3 +3102,16 @@ GO
 IF COL_LENGTH('dbo.TransportOrder', 'FreightInvoiced') IS NULL
     ALTER TABLE dbo.TransportOrder ADD FreightInvoiced BIT NOT NULL CONSTRAINT DF_TransportOrder_FreightInvoiced DEFAULT 0;
 GO
+
+-- =====================================================================================================================
+-- 2026-10-16 (t) Lote 75 — pagos de las facturas y estado de cuenta
+-- Payment: quién lo registró y la anulación (un pago no se borra: se anula con motivo y deja de contar en el saldo).
+-- =====================================================================================================================
+IF COL_LENGTH('dbo.Payment', 'RecordedBy') IS NULL ALTER TABLE dbo.Payment ADD RecordedBy INT NULL;
+GO
+IF COL_LENGTH('dbo.Payment', 'VoidedAtUtc') IS NULL ALTER TABLE dbo.Payment ADD VoidedAtUtc DATETIME2 NULL;
+GO
+IF COL_LENGTH('dbo.Payment', 'VoidedBy') IS NULL ALTER TABLE dbo.Payment ADD VoidedBy INT NULL;
+GO
+IF COL_LENGTH('dbo.Payment', 'VoidReason') IS NULL ALTER TABLE dbo.Payment ADD VoidReason NVARCHAR(250) NULL;
+GO

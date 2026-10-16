@@ -20,7 +20,7 @@ public sealed record InvoiceLineDto(int Id, string Description, string ChargeTyp
 
 public sealed record InvoiceDto(Guid PublicId, string Number, string Status, string StatusLabel, string StatusColor, Guid ClientPublicId, string ClientName, DateOnly? IssueDate,
     DateOnly? DueDate, string Currency, decimal Subtotal, decimal TaxAmount, decimal Total, decimal Paid, decimal Balance, int? RunId, string? Notes,
-    IReadOnlyList<InvoiceLineDto> Lines);
+    IReadOnlyList<InvoiceLineDto> Lines, IReadOnlyList<PaymentDto>? Payments = null);
 
 public sealed record BillingRunDto(int Id, DateOnly PeriodStart, DateOnly PeriodEnd, string Status, string StatusLabel, string StatusColor, Guid? ClientPublicId, string? ClientName, string? Note,
     int InvoiceCount, decimal TotalAmount, DateTime GeneratedAtUtc, DateTime? ReviewedAtUtc, DateTime? ApprovedAtUtc, DateTime? ExportedAtUtc, IReadOnlyList<InvoiceListItemDto> Invoices);
@@ -32,3 +32,25 @@ public sealed record BillingRunListItemDto(int Id, DateOnly PeriodStart, DateOnl
 public sealed record InvoiceLineAdjustRequest(decimal? UnitAmount = null, string? Note = null);
 
 public sealed record InvoiceVoidRequest(string? Comment = null);
+
+// ---------------------------------------------------------------- Lote 75 — pagos y estado de cuenta
+
+/// <summary>POST /billing/invoices/{id}/payments: monto (hasta 2 decimales, sin pasar del saldo), método (ACH, CHECK, CARD, CASH), fecha del pago (hoy por omisión) y referencia (cheque, confirmación…).</summary>
+public sealed record PaymentRequest(decimal? Amount = null, string? Method = null, DateOnly? PaidDate = null, string? Reference = null);
+
+public sealed record PaymentVoidRequest(string? Reason = null);
+
+public sealed record PaymentDto(int Id, decimal Amount, string Method, string MethodLabel, DateOnly PaidDate, string? Reference, DateTime? VoidedAtUtc, string? VoidReason);
+
+/// <summary>Un movimiento del estado de cuenta: la factura emitida (débito) o un pago (crédito), con el saldo corrido. Kind = INVOICE o PAYMENT.</summary>
+public sealed record StatementLineDto(DateOnly Date, string Kind, string Reference, string Description, decimal Debit, decimal Credit, decimal Balance, Guid? InvoicePublicId);
+
+/// <summary>Saldos abiertos por antigüedad al día de consulta: por vencer y vencidos de 1–30, 31–60, 61–90 y más de 90 días.</summary>
+public sealed record AgingDto(decimal Current, decimal Days1To30, decimal Days31To60, decimal Days61To90, decimal Over90, decimal Total);
+
+public sealed record StatementDto(Guid ClientPublicId, string ClientName, DateOnly From, DateOnly To, decimal OpeningBalance, decimal TotalInvoiced, decimal TotalPaid, decimal ClosingBalance,
+    IReadOnlyList<StatementLineDto> Lines, AgingDto Aging);
+
+public sealed record ReceivableRowDto(Guid ClientPublicId, string ClientName, int OpenInvoices, decimal Balance, AgingDto Aging, DateOnly? OldestDueDate);
+
+public sealed record ReceivablesDto(DateOnly AsOf, IReadOnlyList<ReceivableRowDto> Rows, AgingDto Total);

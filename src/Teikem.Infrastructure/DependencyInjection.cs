@@ -263,6 +263,7 @@ public static class DependencyInjection
         services.AddSingleton<IScheduledJob, InventorySweepJob>();
         services.AddSingleton<IScheduledJob, TestJob>();
         services.AddSingleton<IScheduledJob, SalesBackorderScanJob>();   // Lote 66
+        services.AddSingleton<IScheduledJob, BillingOverdueScanJob>();   // Lote 75
         services.AddSingleton<ScheduledJobRunner>();
         services.AddHostedService<ScheduledJobWorker>();
         services.AddScoped<ScheduledJobService>();
@@ -397,6 +398,7 @@ public static class DependencyInjection
         services.AddScoped<IDataSource, RentalReturnDataSource>();
         services.AddScoped<KitService>();   // Lote 68
         services.AddScoped<BillingService>();   // Lote 72 (P5)
+        services.AddScoped<PaymentService>();   // Lote 75 (P5)
         services.AddScoped<IDataSource, SalesOrderDataSource>();        // Lote 67: órdenes de venta
         services.AddScoped<IDataSource, SalesOrderLineDataSource>();
         services.AddScoped<IDataSource, RentalProcessDataSource>();

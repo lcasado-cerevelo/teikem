@@ -8493,3 +8493,26 @@ Cada línea de flete guarda la tarifa que la dio (`RateComponentId`); el despach
 
 **¿Se puede facturar dos veces el flete de una orden?**
 No: al generar se bloquea y se marca la orden. Si cancela la corrida o anula la factura, vuelve a quedar por facturar.
+
+## Lote 75 — Pagos y estado de cuenta
+
+**`El pago (X) es mayor que el saldo de la factura (Y).` (422)**
+El monto pasa de lo que falta por pagar (el total menos los pagos no anulados). Registre solo el saldo o menos; un cobro de más no se anota contra la factura.
+
+**`Solo se registran pagos de una factura emitida o vencida.` (422)**
+La factura sigue en borrador (la corrida no se ha aprobado), ya está pagada o está anulada.
+
+**Registré un pago por error.**
+Si la factura sigue Emitida o Vencida: anule el pago con su motivo (permiso de aprobar facturación y reautenticación). Si ya quedó **Pagada** por completo no se puede anular desde la pantalla: se corrige con una nota de crédito o con soporte.
+
+**La factura sigue «Emitida» aunque ya pasó su vencimiento.**
+El trabajo `BILLING_OVERDUE_SCAN` corre cada hora (Sistema → Trabajos programados) y requiere el módulo Facturación encendido. Después de correr aparece como Vencida.
+
+**No me deja anular una factura con pagos.**
+Anule primero sus pagos (cada uno con motivo); sin pagos activos la factura se anula.
+
+**El estado de cuenta no muestra una factura.**
+Solo cuentan las facturas emitidas, vencidas y pagadas, desde su fecha de emisión; los borradores y las anuladas no. Revise el rango de fechas (por omisión, los últimos 90 días; lo anterior entra como saldo inicial).
+
+**¿Qué significan las columnas de antigüedad?**
+Por vencer (todavía no llega la fecha de vencimiento) y los días de vencida: 1–30, 31–60, 61–90 y más de 90.
