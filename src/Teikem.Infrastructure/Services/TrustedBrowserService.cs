@@ -51,7 +51,17 @@ public sealed class TrustedBrowserService(TeikemDbContext db, ITenantContext ten
             return new TrustedBrowserCheck(false, false, "Este cliente no identifica la computadora; entre desde la web.", null);
         var now = DateTime.UtcNow;
         var hash = Hash(browserToken!);
-        var row = await db.TrustedBrowsers.FirstOrDefaultAsync(b => b.UserId == user.Id && b.TokenHash == hash && b.RevokedAtUtc == null, ct);
+        // la fila de esta marca (el índice es único por usuario y marca): puede estar quitada o consumida («No confiar»); en ese caso se reutiliza como pendiente
+        var row = await db.TrustedBrowsers.FirstOrDefaultAsync(b => b.UserId == user.Id && b.TokenHash == hash, ct);
+        if (row is { RevokedAtUtc: not null })
+        {
+            row.RevokedAtUtc = null;
+            row.ConfirmedAtUtc = null;
+            row.ExpiresAtUtc = null;
+            row.MfaVerifiedAtUtc = null;
+            row.EmailSentAtUtc = null;
+            row.SingleUse = false;
+        }
         if (row is not null && row.IsTrusted(now))
         {
             if (doNotTrust) row.SingleUse = true;   // «No confiar en esta computadora»: este ingreso entra, luego se quita (ConsumeIfSingleUseAsync)

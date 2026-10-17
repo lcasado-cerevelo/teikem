@@ -45,7 +45,7 @@ Hecho a partir de lo que dictó Luis el 2026-10-17 y de sus respuestas a tres pr
 | **99** | **Documento legal único** (privacidad + términos de uso): se acepta en el primer ingreso y cada vez que cambie la versión; lista de quién aceptó y quién no (Seguridad y auditoría) | Lo exigen todos los accesos que siguen (hecho) |
 | **100** | **Computadoras de confianza (30 días) y candado antifuerza bruta común** a todos los logins (hecho; el reto anti-robot queda pendiente del proveedor; la confianza del MFA a 30 días del cliente entra con el login del portal) | Es lo que protege al portal |
 | **101** | **Portal: acceso por cliente** (servidor, hecho): login propio, `cid`, segundo filtro, invitación (48 h), MFA recordado 30 días, «no confiar», Turnstile, `/portal/me` y `/portal/orders` con pruebas de acceso cruzado. Facturas, COD y avisos llegan con la app | El corazón de seguridad |
-| 102 | **app-cliente** (Expo web+móvil, instalable): login, inicio, mis órdenes, ficha, bandeja de avisos | La primera pantalla del portal |
+| **102** | **app-cliente** (Expo web+móvil, instalable, hecho): login con «No confiar» recordada, computadora de confianza, MFA, documento legal, inicio, órdenes, ficha con seguimiento, avisos, ajustes y **Abrir con huella** (teléfono). Facturas, COD y mensajes llegan en lotes siguientes | La primera pantalla del portal |
 | 103 | **«¿Cómo va mi orden?»** público por conduce (con tope de consultas y sin datos personales) | |
 | 104 | **Mensajes** del portal con el equipo de servicio al cliente (designado por cliente) | |
 | 105 | **Entrada de órdenes** del cliente en el portal, **acceso del consignatario** (primer ingreso, avisos con su aceptación) y **órdenes que crean los consignatarios** | |

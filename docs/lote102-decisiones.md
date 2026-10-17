@@ -1,0 +1,24 @@
+# Lote 102 — app-cliente (portal de clientes, 6) (2026-10-17)
+
+La app **aparte** del cliente ([p10-portal-diseno.md](p10-portal-diseno.md)): Expo / React Native, versión web instalable y móvil, en `app-cliente/`. Luis pidió además poder **autenticar con la huella** en el teléfono.
+
+## Qué se construyó
+- **Proyecto `app-cliente`** (Expo SDK 57, Expo Router, TypeScript estricto, jest, oxlint, mismas versiones que `app-almacen`): cliente del API **generado** desde `web-app/openapi.json`, sesión en el almacén seguro del aparato (Keychain/Keystore; `localStorage` en la web), renovación única de sesión ante 401, idioma es/en sin reiniciar, kit de interfaz propio, manifiesto web (`public/manifest.json` + `+html.tsx`) y job de CI `client-app`.
+- **Pantallas:** login (casilla «No confiar en esta computadora» **recordada**, «Poner en mi escritorio», reto anti-robot), confirmar la computadora (también el enlace del correo, `/confirm-browser`), MFA (inscribir con clave y códigos de recuperación / verificar), documento legal (botón al final del texto), inicio, órdenes (búsqueda y «cargar más»), ficha con seguimiento, avisos y ajustes (cuenta, cambiar de cliente, idioma, huella, «No confiar», mis computadoras de confianza, cerrar sesión).
+- **Abrir con huella:** `expo-local-authentication`; se activa en Ajustes (solo con lector y huella registrada, identificándose una vez); la app se bloquea al abrirla con una sesión guardada y al volver de segundo plano pasados 2 minutos; el sistema deja el PIN o patrón como respaldo; 5 fallos seguidos o «Usar mi contraseña» cierran la sesión del aparato. **No reemplaza** el primer ingreso, la confirmación de computadora nueva ni el MFA: solo abre la sesión ya guardada.
+- **Servidor:** `GET /api/v1/portal/summary` (inicio) y `GET /api/v1/portal/notifications` (bandeja de avisos del cliente, canal «bandeja del portal»); openapi y cliente generado en las tres apps.
+- **Corrección de un error del lote 100/101** que solo SQL real podía mostrar: volver a entrar desde una computadora **quitada** o consumida con «No confiar» intentaba crear otra fila con la misma marca (índice único por usuario y marca) → ahora la fila se reutiliza como pendiente; prueba nueva.
+- Manual 27, manual de pantallas L102 con capturas, FAQ, README de la app y diseño actualizado.
+
+## Cómo se probó
+- jest (39): reglas de bloqueo con huella, formatos y colores de estatus, paridad de textos es/en (mismas claves y parámetros), errores del API, flujo de acceso con fetch simulado (marca de la computadora, «No confiar», computadora nueva, reto anti-robot, 401, MFA con challenge, inscripción, cerrar sesión), pantalla de login (casilla recordada, cada resultado), pantalla de bloqueo (huella ok, intentos, 5 fallos, «Usar mi contraseña»), ajustes (activar/apagar huella, sin lector, computadoras, cambiar de cliente, cerrar sesión) y llegar al final del documento legal. `npm run check` (tipos generados, tsc, oxlint, jest) en verde.
+- xunit: +2 (inicio y bandeja de avisos limitados al cliente) y +1 de la fila reutilizada; suite completa.
+- Playwright contra el API real y la app web (escritorio y móvil): computadora nueva → confirmar → inscribir MFA → código de recuperación → documento legal (rueda del ratón hasta el final) → inicio (2 órdenes) → órdenes y búsqueda → ficha con seguimiento → **orden de otro cliente: «no encontrada»** → avisos → ajustes → cerrar sesión → la casilla «No confiar» sigue marcada tras recargar → entrar con «No confiar» (pide el código) → la computadora se olvida (vuelve a pedir el correo).
+
+## Decisiones a revisar con Luis
+1. **Huella en teléfono real:** la lógica está probada con dobles (jest) y la pantalla por web, pero **no se pudo probar el lector de huella real** en este entorno. Hay que probarla en un Android/iPhone con una compilación de desarrollo (`npm run android`).
+2. **Reto anti-robot en el teléfono:** en la web ya sale el widget de Cloudflare; **en el teléfono no está integrado** (haría falta una vista web dentro de la app): mientras, la app pide entrar desde el navegador. El reto solo se exige tras 3 fallos y mientras no se configure Turnstile no sale.
+3. **Huella ≠ contraseña:** abre la sesión guardada; si la sesión venció o se revocó hay que entrar con contraseña. El bloqueo es a los 2 minutos en segundo plano (`LOCK_AFTER_MINUTES`); si se prefiere otro tiempo se cambia en un solo lugar.
+4. **Facturas, COD y mensajes** no están en esta primera app (llegan en lotes siguientes); tampoco crear órdenes ni el acceso del consignatario.
+5. La sesión guardada en el teléfono está cifrada por el aparato (Keychain/Keystore) pero **no** atada a la huella a nivel del sistema (se protege con el bloqueo de la app); si se quiere atarla (SecureStore con `requireAuthentication`) es un cambio chico más adelante.
+6. **Compilar y publicar** las apps (APK, tiendas, dominio de la web) no se hizo; la app apunta al API por `EXPO_PUBLIC_API_URL` / `TEIKEM_API_URL`.

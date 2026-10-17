@@ -8945,3 +8945,30 @@ El código se recuerda 30 días por computadora de confianza. Lo vuelve a pedir 
 
 **«La invitación venció».**
 Valen 48 horas y una sola vez; pida al administrador que la reenvíe (el enlace anterior deja de servir).
+
+
+## Lote 102 — App del cliente
+
+**«No hay conexión con el servidor. Revise su internet e intente de nuevo.»**
+La app no llegó al servidor (sin internet, o la dirección del API está mal en esta compilación). Con internet, avise a soporte: la dirección sale de `EXPO_PUBLIC_API_URL` / `TEIKEM_API_URL`.
+
+**«No me aparece Abrir con huella.»**
+El teléfono no tiene lector de huella o no tiene huellas registradas. Registre una en los ajustes del teléfono y vuelva a Ajustes → Seguridad. En la web no existe.
+
+**La app me pide la huella cada vez que vuelvo.**
+Es lo esperado con «Abrir con huella» activo: se bloquea al abrirla y al volver de segundo plano pasados 2 minutos. Se apaga en Ajustes → Seguridad.
+
+**«Le quedan N intentos antes de pedirle la contraseña.»**
+La huella falló. Tras 5 fallos seguidos se cierra la sesión del aparato y hay que entrar con la contraseña.
+
+**La casilla «No confiar en esta computadora» siempre sale marcada.**
+La app recuerda lo último que usted dejó. Desmárquela en el login o en Ajustes si la computadora es suya.
+
+**«Para continuar, entre al portal desde un navegador web.» (reto anti-robot en el teléfono)**
+El servidor pidió el reto anti-robot (tras varias contraseñas equivocadas) y la app del teléfono todavía no lo integra. Entre desde un navegador web.
+
+**Los avisos están vacíos.**
+Su compañía decide qué avisos le manda y por qué canal (capítulo 23). Si el canal «bandeja del portal» está apagado, no llega nada aquí.
+
+**«Poner en mi escritorio» no aparece.**
+Solo aparece en navegadores que dejan instalar la página (Chrome, Edge, Android) y cuando todavía no está instalada. En iPhone y iPad se usa Compartir → Añadir a pantalla de inicio.

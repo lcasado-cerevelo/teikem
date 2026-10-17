@@ -287,10 +287,14 @@ public class PortalAccessTests
         Assert.True(check.Trusted);
         Assert.False(check.MfaRecent);
 
-        // al terminar el ingreso se olvida la computadora: la próxima vez vuelve a pedir el correo
+        // al terminar el ingreso se olvida la computadora: la próxima vez vuelve a pedir el correo (reutiliza su fila: el índice es único por usuario y marca)
         await w.Browsers.ConsumeIfSingleUseAsync(21, Browser, default);
         w.F.Db.ChangeTracker.Clear();
-        Assert.False((await w.Browsers.CheckAsync(user, Browser, null, default)).Trusted);
+        var again = await w.Browsers.CheckAsync(user, Browser, null, default, doNotTrust: true);
+        Assert.False(again.Trusted);
+        Assert.Single(w.F.Db.TrustedBrowsers.AsNoTracking());
+        Assert.Null(w.F.Db.TrustedBrowsers.AsNoTracking().Single().RevokedAtUtc);
+        Assert.Null(w.F.Db.TrustedBrowsers.AsNoTracking().Single().ConfirmedAtUtc);
     }
 
     [Fact]
@@ -435,5 +439,36 @@ public class PortalAccessTests
         var dto = await PortalOf(f, f.C1.ClientId).GetOrderAsync(f.O1.PublicId, default);
         Assert.Equal(f.O1.WaybillNumber, dto.WaybillNumber);
         Assert.NotNull(dto.Delivery);
+    }
+
+    [Fact]
+    public async Task The_summary_counts_only_the_orders_of_the_client_in_the_session()
+    {
+        await using var f = await OrderReadFixture.CreateAsync();
+        var mine = await PortalOf(f, f.C1.ClientId).GetSummaryAsync(default);
+        Assert.Equal(2, mine.TotalOrders);
+        Assert.Equal(2, mine.ByStatus.Sum(s => s.Count));
+        Assert.Equal(2, mine.RecentOrders.Count);
+        Assert.DoesNotContain(mine.RecentOrders, o => o.PublicId == f.O3.PublicId || o.PublicId == f.O4.PublicId);
+        var other = await PortalOf(f, f.C2.ClientId).GetSummaryAsync(default);
+        Assert.DoesNotContain(other.RecentOrders, o => o.PublicId == f.O1.PublicId || o.PublicId == f.O2.PublicId);
+    }
+
+    [Fact]
+    public async Task The_notice_inbox_shows_only_the_portal_notices_of_this_client_newest_first()
+    {
+        await using var f = await OrderReadFixture.CreateAsync();
+        var set = f.Db.Set<Teikem.Domain.Clients.ClientNotification>();
+        Teikem.Domain.Clients.ClientNotification N(int client, string subject, bool inPortal, int minutesAgo, int tenant = OrderReadFixture.TenantId) => new()
+        {
+            PublicId = Guid.NewGuid(), TenantId = tenant, ClientId = client, Kind = "DELIVERED", Subject = subject, BodyText = "texto", InPortal = inPortal, CreatedAtUtc = DateTime.UtcNow.AddMinutes(-minutesAgo),
+        };
+        set.AddRange(N(f.C1.ClientId, "viejo", true, 60), N(f.C1.ClientId, "nuevo", true, 5), N(f.C1.ClientId, "solo correo", false, 1), N(f.C2.ClientId, "de otro cliente", true, 2));
+        await f.Db.SaveChangesAsync();
+        var page = await PortalOf(f, f.C1.ClientId).ListNotificationsAsync(0, 25, default);
+        Assert.Equal(new[] { "nuevo", "viejo" }, page.Items.Select(n => n.Subject));
+        Assert.Equal(2, page.Total);
+        var paged = await PortalOf(f, f.C1.ClientId).ListNotificationsAsync(1, 1, default);
+        Assert.Equal(new[] { "viejo" }, paged.Items.Select(n => n.Subject));
     }
 }

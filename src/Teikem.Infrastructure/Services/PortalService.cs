@@ -55,6 +55,33 @@ public sealed class PortalService(TeikemDbContext db, ITenantContext tenant, Use
             o.Packages.Select(p => new PortalOrderPackageDto(p.Description, p.Pieces, p.WeightKg)).ToList(), timeline);
     }
 
+    /// <summary>Inicio: total de órdenes del cliente, por estatus y las 5 más recientes.</summary>
+    public async Task<PortalSummaryDto> GetSummaryAsync(CancellationToken ct)
+    {
+        var cid = ClientIdOfSession;
+        var groups = await db.TransportOrders.AsNoTracking().Where(o => o.IsActive && o.ClientId == cid)
+            .GroupBy(o => o.StatusCodeId).Select(g => new { StatusCodeId = g.Key, Count = g.Count() }).ToListAsync(ct);
+        var ids = groups.Select(g => g.StatusCodeId).ToList();
+        var codes = await db.StatusCodes.AsNoTracking().Where(s => ids.Contains(s.StatusCodeId)).ToDictionaryAsync(s => s.StatusCodeId, ct);
+        var byStatus = groups.Select(g => new PortalStatusCountDto(codes.GetValueOrDefault(g.StatusCodeId)?.InternalCode ?? string.Empty,
+                MultilingualText.Resolve(codes.GetValueOrDefault(g.StatusCodeId)?.LabelJson, tenant.Lang), g.Count))
+            .OrderByDescending(s => s.Count).ThenBy(s => s.StatusLabel).ToList();
+        var recent = await ListOrdersAsync(null, null, null, null, 0, 5, ct);
+        return new PortalSummaryDto(groups.Sum(g => g.Count), byStatus, recent.Items);
+    }
+
+    /// <summary>Bandeja de avisos: los resúmenes de ESTE cliente marcados para el portal, los más nuevos primero.</summary>
+    public async Task<PagedResult<PortalNotificationDto>> ListNotificationsAsync(int skip, int take, CancellationToken ct)
+    {
+        var cid = ClientIdOfSession;
+        take = Math.Clamp(take <= 0 ? 25 : take, 1, MaxTake);
+        skip = Math.Max(0, skip);
+        var q = db.Set<Teikem.Domain.Clients.ClientNotification>().AsNoTracking().Where(n => n.ClientId == cid && n.InPortal);
+        var total = await q.CountAsync(ct);
+        var rows = await q.OrderByDescending(n => n.CreatedAtUtc).ThenByDescending(n => n.ClientNotificationId).Skip(skip).Take(take).ToListAsync(ct);
+        return new PagedResult<PortalNotificationDto>(rows.Select(n => new PortalNotificationDto(n.PublicId, n.Kind, n.Subject, n.BodyText, n.CreatedAtUtc)).ToList(), total, skip, take);
+    }
+
     /// <summary>Línea de tiempo: solo el estatus y cuándo (sin comentarios internos ni quién lo cambió).</summary>
     private async Task<IReadOnlyList<PortalOrderEventDto>> TimelineAsync(int orderId, CancellationToken ct)
     {

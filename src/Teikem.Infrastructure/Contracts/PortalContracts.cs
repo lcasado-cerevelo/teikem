@@ -48,3 +48,12 @@ public sealed record PortalOrderDto(
     PortalOrderStopDto Delivery,
     IReadOnlyList<PortalOrderPackageDto> Packages,
     IReadOnlyList<PortalOrderEventDto> Timeline);
+
+/// <summary>Cuántas órdenes del cliente hay en cada estatus (para el inicio del portal).</summary>
+public sealed record PortalStatusCountDto(string Status, string StatusLabel, int Count);
+
+/// <summary>Inicio del portal: total de órdenes, cuántas hay por estatus y las más recientes.</summary>
+public sealed record PortalSummaryDto(int TotalOrders, IReadOnlyList<PortalStatusCountDto> ByStatus, IReadOnlyList<PortalOrderListItemDto> RecentOrders);
+
+/// <summary>Un aviso de la bandeja del portal: el resumen que la compañía configuró mandar a este cliente (canal «bandeja del portal»).</summary>
+public sealed record PortalNotificationDto(Guid PublicId, string Kind, string Subject, string BodyText, DateTime CreatedAtUtc);

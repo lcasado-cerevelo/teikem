@@ -25,6 +25,8 @@ Respuestas posibles del login (`status`): `ok`, `mfa_required`, `browser_confirm
 | `GET /api/v1/portal/me` | La cuenta, el cliente actual y los demás clientes a los que tiene acceso |
 | `GET /api/v1/portal/orders?search&status&fromUtc&toUtc&skip&take` | Mis órdenes (solo las del cliente de la sesión): conduce, orden, factura del cliente, consignatario, pueblo, servicio, piezas, COD, estatus. Máximo 100 por página |
 | `GET /api/v1/portal/orders/{id}` | Una orden mía con la dirección de entrega, los paquetes y su **línea de tiempo** (estatus y cuándo) |
+| `GET /api/v1/portal/summary` | El inicio: total de mis órdenes, cuántas hay por estatus y las 5 más recientes (Lote 102) |
+| `GET /api/v1/portal/notifications?skip&take` | La bandeja de avisos: los resúmenes de mi cliente marcados para el portal, los más nuevos primero; máximo 100 por página (Lote 102) |
 | `GET /api/v1/portal/auth/config` | Si el login pide reto anti-robot y con qué llave del sitio |
 
 Los DTO del portal son **propios y mínimos**: no llevan precios cotizados, notas internas, rutas, choferes ni datos de otros clientes. Facturas, COD, avisos y el resto de lecturas llegan en los siguientes lotes.

@@ -289,9 +289,11 @@ public class LoginHardeningTests
         Assert.Single(await browsers.ListMineAsync(Token1, default));
         var nf = await Assert.ThrowsAsync<NotFoundException>(() => browsers.RevokeMineAsync(Guid.NewGuid(), default));
         Assert.Equal("Computadora no encontrada.", nf.Message);
-        // la quitada vuelve a pedir confirmación
+        // la quitada vuelve a pedir confirmación, reutilizando su fila (el índice es único por usuario y marca: otra fila daría error en SQL Server)
         f.Db.ChangeTracker.Clear();
         Assert.Equal("browser_confirmation_required", (await auth.LoginAsync(new LoginRequest("yo@t.local", Password, null, null, Token2), default)).Status);
+        Assert.Equal(2, f.Db.TrustedBrowsers.AsNoTracking().Count());
+        Assert.Equal(2, f.Db.TrustedBrowsers.AsNoTracking().Select(b => b.TokenHash).Distinct().Count());
     }
 
     [Fact]

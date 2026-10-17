@@ -1,0 +1,152 @@
+{
+  "common": {
+    "back": "Atrás",
+    "cancel": "Cancelar",
+    "retry": "Reintentar"
+  },
+  "errors": {
+    "generic": "Ocurrió un error. Intente de nuevo.",
+    "network": "No hay conexión con el servidor. Revise su internet e intente de nuevo.",
+    "forbidden": "No tiene permiso para esta acción."
+  },
+  "tabs": {
+    "home": "Inicio",
+    "orders": "Órdenes",
+    "notices": "Avisos",
+    "settings": "Ajustes"
+  },
+  "login": {
+    "title": "Portal de clientes",
+    "subtitle": "Entre con su correo y su contraseña.",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "show": "Mostrar contraseña",
+    "hide": "Ocultar contraseña",
+    "submit": "Entrar",
+    "noTrust": "No confiar en esta computadora",
+    "noTrustHelp": "Márquela si es un equipo compartido o público: entrará una sola vez, no se recordará y se le pedirá el código de seguridad siempre."
+  },
+  "browser": {
+    "title": "Confirme esta computadora",
+    "sentTo": "Le enviamos un correo a {email}.",
+    "sentHelp": "Es la primera vez que entra desde esta computadora. Abra el correo y pulse «Confirmar esta computadora» (el enlace vale 24 horas). Puede abrirlo desde su teléfono.",
+    "notSent": "No se pudo enviar el correo de confirmación. Intente de nuevo en unos minutos.",
+    "afterConfirm": "Cuando la confirme, vuelva aquí y entre otra vez.",
+    "back": "Volver a la pantalla de entrada",
+    "devLink": "Confirmar ahora (solo desarrollo)",
+    "confirmTitle": "Confirmar computadora",
+    "confirmDone": "Listo: esta computadora quedó confirmada.",
+    "confirmNext": "Vuelva a la pantalla de entrada y entre otra vez desde la computadora donde lo intentó.",
+    "confirmInvalid": "El enlace no es válido o venció. Vuelva a intentar entrar para recibir uno nuevo.",
+    "goLogin": "Ir a la pantalla de entrada"
+  },
+  "captcha": {
+    "required": "Confirme que no es un robot para continuar.",
+    "help": "Por seguridad, confirme que no es un robot.",
+    "nativeUnavailable": "Para continuar, entre al portal desde un navegador web. La verificación anti-robot todavía no está disponible en la app."
+  },
+  "mfa": {
+    "verifyTitle": "Código de seguridad",
+    "verifySubtitle": "Escriba el código de 6 dígitos de su app de autenticación (o un código de recuperación).",
+    "code": "Código",
+    "verify": "Verificar",
+    "back": "Volver a la pantalla de entrada",
+    "enrollTitle": "Active la verificación en dos pasos",
+    "enrollSubtitle": "Para proteger su cuenta, el portal exige una app de autenticación (Google Authenticator, Microsoft Authenticator, Authy…).",
+    "enrollStart": "Empezar",
+    "enrollScan": "Agregue esta clave en su app de autenticación y escriba el código que le muestre.",
+    "secretLabel": "Clave de configuración",
+    "openInApp": "Abrir en mi app de autenticación",
+    "confirm": "Confirmar",
+    "recoveryTitle": "Códigos de recuperación",
+    "recoveryHelp": "Guárdelos en un lugar seguro: sirven si pierde su teléfono y solo se muestran esta vez.",
+    "recoverySaved": "Ya los guardé"
+  },
+  "legal": {
+    "title": "Política de privacidad y términos de uso",
+    "lead": "Para continuar, lea el documento completo y acéptelo. Si cambia, se le pedirá de nuevo.",
+    "scrollHint": "Desplácese hasta el final del texto para poder aceptar.",
+    "accept": "Acepto la política de privacidad y los términos de uso",
+    "decline": "No acepto, salir"
+  },
+  "lock": {
+    "title": "App bloqueada",
+    "help": "Use su huella (o el PIN de su teléfono) para abrir el portal.",
+    "prompt": "Abra el portal de clientes",
+    "cancel": "Cancelar",
+    "fallback": "Usar PIN",
+    "unlock": "Abrir con huella",
+    "goPassword": "Usar mi contraseña",
+    "failed": "No se pudo verificar. Le quedan {left} intentos antes de pedirle la contraseña."
+  },
+  "home": {
+    "greeting": "Hola, {name}",
+    "greetingPlain": "Hola",
+    "client": "Cliente: {client}",
+    "totalOrders": "órdenes en total",
+    "byStatus": "Por estatus",
+    "recent": "Órdenes recientes",
+    "noOrders": "Todavía no hay órdenes.",
+    "seeAll": "Ver todas las órdenes"
+  },
+  "orders": {
+    "title": "Mis órdenes",
+    "search": "Buscar",
+    "searchPlaceholder": "Conduce, orden, factura o consignatario",
+    "empty": "Todavía no hay órdenes.",
+    "noMatches": "Ninguna orden coincide con la búsqueda.",
+    "orderNumber": "Orden {number}",
+    "loadMore": "Cargar más ({shown} de {total})"
+  },
+  "order": {
+    "title": "Orden",
+    "waybill": "Conduce",
+    "orderNumber": "N.º de orden",
+    "invoice": "Factura",
+    "service": "Servicio",
+    "created": "Creada",
+    "promised": "Fecha prometida",
+    "pieces": "Piezas",
+    "cod": "COD",
+    "delivery": "Entrega",
+    "packages": "Paquetes",
+    "timeline": "Seguimiento",
+    "noTimeline": "Todavía no hay cambios de estatus."
+  },
+  "notices": {
+    "title": "Avisos",
+    "help": "Los resúmenes que su compañía de entregas configuró mandarle.",
+    "empty": "Todavía no hay avisos.",
+    "loadMore": "Cargar más ({shown} de {total})",
+    "kinds": {
+      "PICKED_UP": "Recogido",
+      "OUT_FOR_DELIVERY": "Salió a entrega",
+      "DELIVERED": "Entregado",
+      "COD_PROCESSED": "COD procesado",
+      "INVOICE_ISSUED": "Factura emitida"
+    }
+  },
+  "settings": {
+    "title": "Ajustes",
+    "switchClient": "Cambiar de cliente",
+    "language": "Idioma",
+    "security": "Seguridad",
+    "biometric": "Abrir con huella",
+    "biometricHelp": "Al reabrir la app o tras unos minutos en segundo plano, se le pedirá la huella (o el PIN del teléfono) en lugar de la contraseña.",
+    "biometricNotEnrolled": "Este teléfono no tiene una huella registrada. Regístrela en los ajustes del teléfono para poder abrir con huella.",
+    "biometricUnavailable": "Abrir con huella no está disponible en este aparato.",
+    "computers": "Mis computadoras de confianza",
+    "computersHelp": "Desde estas computadoras entra sin confirmar por correo (30 días sin uso).",
+    "computersEmpty": "Todavía no hay computadoras de confianza.",
+    "thisComputer": "Esta computadora",
+    "computerExpires": "Vence: {date}",
+    "remove": "Quitar",
+    "logout": "Cerrar sesión"
+  },
+  "install": {
+    "title": "Poner en mi escritorio",
+    "help": "Instale el portal como una app, con su ícono en el escritorio o la pantalla de inicio.",
+    "button": "Instalar",
+    "ios": "En iPhone y iPad: pulse el botón Compartir y elija «Añadir a pantalla de inicio»."
+  }
+}

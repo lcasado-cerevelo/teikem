@@ -26605,6 +26605,326 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portal/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PortalLoginRequest"];
+                    "text/json": components["schemas"]["PortalLoginRequest"];
+                    "application/*+json": components["schemas"]["PortalLoginRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AuthResultDto"];
+                        "application/json": components["schemas"]["AuthResultDto"];
+                        "text/json": components["schemas"]["AuthResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/auth/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalAuthConfigDto"];
+                        "application/json": components["schemas"]["PortalAuthConfigDto"];
+                        "text/json": components["schemas"]["PortalAuthConfigDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/auth/switch-client": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PortalSwitchClientRequest"];
+                    "text/json": components["schemas"]["PortalSwitchClientRequest"];
+                    "application/*+json": components["schemas"]["PortalSwitchClientRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TokenPairDto"];
+                        "application/json": components["schemas"]["TokenPairDto"];
+                        "text/json": components["schemas"]["TokenPairDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalMeDto"];
+                        "application/json": components["schemas"]["PortalMeDto"];
+                        "text/json": components["schemas"]["PortalMeDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalSummaryDto"];
+                        "application/json": components["schemas"]["PortalSummaryDto"];
+                        "text/json": components["schemas"]["PortalSummaryDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalNotificationDtoPagedResult"];
+                        "application/json": components["schemas"]["PortalNotificationDtoPagedResult"];
+                        "text/json": components["schemas"]["PortalNotificationDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    search?: string;
+                    status?: string;
+                    fromUtc?: string;
+                    toUtc?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalOrderListItemDtoPagedResult"];
+                        "application/json": components["schemas"]["PortalOrderListItemDtoPagedResult"];
+                        "text/json": components["schemas"]["PortalOrderListItemDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/orders/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalOrderDto"];
+                        "application/json": components["schemas"]["PortalOrderDto"];
+                        "text/json": components["schemas"]["PortalOrderDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -29458,6 +29778,7 @@ export interface components {
         MfaVerifyRequest: {
             code?: string | null;
             deviceInfo?: string | null;
+            trustedBrowserToken?: string | null;
         };
         ModuleDto: {
             key?: string | null;
@@ -35731,6 +36052,147 @@ export interface components {
         };
         ConfirmBrowserRequest: {
             token?: string | null;
+        };
+        PortalSwitchClientRequest: {
+            refreshToken?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+        };
+        PortalOrderListItemDtoPagedResult: {
+            items?: components["schemas"]["PortalOrderListItemDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        PortalOrderDto: {
+            /** Format: uuid */
+            publicId?: string;
+            waybillNumber?: string | null;
+            orderNumber?: string | null;
+            clientInvoiceNumber?: string | null;
+            serviceTypeLabel?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            /** Format: int32 */
+            totalPieces?: number;
+            /** Format: double */
+            totalWeightKg?: number | null;
+            /** Format: double */
+            codAmount?: number | null;
+            codStatusLabel?: string | null;
+            /** Format: date-time */
+            requestedDate?: string | null;
+            /** Format: date-time */
+            promisedDate?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            pickup?: components["schemas"]["PortalOrderStopDto"];
+            delivery?: components["schemas"]["PortalOrderStopDto"];
+            packages?: components["schemas"]["PortalOrderPackageDto"][] | null;
+            timeline?: components["schemas"]["PortalOrderEventDto"][] | null;
+        };
+        PortalAuthConfigDto: {
+            captchaEnabled?: boolean;
+            captchaSiteKey?: string | null;
+            /** Format: int32 */
+            captchaAfterFailures?: number;
+        };
+        PortalSummaryDto: {
+            /** Format: int32 */
+            totalOrders?: number;
+            byStatus?: components["schemas"]["PortalStatusCountDto"][] | null;
+            recentOrders?: components["schemas"]["PortalOrderListItemDto"][] | null;
+        };
+        PortalOrderListItemDto: {
+            /** Format: uuid */
+            publicId?: string;
+            waybillNumber?: string | null;
+            orderNumber?: string | null;
+            clientInvoiceNumber?: string | null;
+            consigneeName?: string | null;
+            consigneeCity?: string | null;
+            consigneeState?: string | null;
+            serviceTypeLabel?: string | null;
+            /** Format: int32 */
+            totalPieces?: number;
+            /** Format: double */
+            codAmount?: number | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+        };
+        PortalMeDto: {
+            fullName?: string | null;
+            email?: string | null;
+            mfaEnabled?: boolean;
+            currentClient?: components["schemas"]["PortalClientDto"];
+            clients?: components["schemas"]["PortalClientDto"][] | null;
+        };
+        PortalNotificationDtoPagedResult: {
+            items?: components["schemas"]["PortalNotificationDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        PortalOrderEventDto: {
+            status?: string | null;
+            statusLabel?: string | null;
+            /** Format: date-time */
+            atUtc?: string;
+        };
+        PortalOrderStopDto: {
+            name?: string | null;
+            line1?: string | null;
+            line2?: string | null;
+            city?: string | null;
+            state?: string | null;
+            postalCode?: string | null;
+        };
+        PortalStatusCountDto: {
+            status?: string | null;
+            statusLabel?: string | null;
+            /** Format: int32 */
+            count?: number;
+        };
+        PortalLoginRequest: {
+            email?: string | null;
+            password?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string | null;
+            deviceInfo?: string | null;
+            trustedBrowserToken?: string | null;
+            captchaToken?: string | null;
+            doNotTrust?: boolean;
+        };
+        PortalOrderPackageDto: {
+            description?: string | null;
+            /** Format: int32 */
+            pieces?: number;
+            /** Format: double */
+            weightKg?: number | null;
+        };
+        PortalNotificationDto: {
+            /** Format: uuid */
+            publicId?: string;
+            kind?: string | null;
+            subject?: string | null;
+            bodyText?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+        };
+        PortalClientDto: {
+            /** Format: uuid */
+            clientPublicId?: string;
+            name?: string | null;
+            tenantName?: string | null;
+            isCurrent?: boolean;
         };
     };
     responses: never;

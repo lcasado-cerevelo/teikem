@@ -103,6 +103,22 @@ jobs:
           npm ci --legacy-peer-deps
           npm run check
 
+  # Lote 102: la app del cliente (portal de clientes); mismas comprobaciones que la app de almacén
+  client-app:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app-cliente/package-lock.json
+      - name: Instalar y verificar (tipos generados, tsc, lint, jest)
+        working-directory: app-cliente
+        run: |
+          npm ci --legacy-peer-deps
+          npm run check
+
   android:
     needs: mobile
     runs-on: ubuntu-latest

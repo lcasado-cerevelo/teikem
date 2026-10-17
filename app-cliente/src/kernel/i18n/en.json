@@ -1,0 +1,152 @@
+{
+  "common": {
+    "back": "Back",
+    "cancel": "Cancel",
+    "retry": "Retry"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "network": "Cannot reach the server. Check your internet and try again.",
+    "forbidden": "You do not have permission for this action."
+  },
+  "tabs": {
+    "home": "Home",
+    "orders": "Orders",
+    "notices": "Notices",
+    "settings": "Settings"
+  },
+  "login": {
+    "title": "Client portal",
+    "subtitle": "Sign in with your email and password.",
+    "email": "Email",
+    "password": "Password",
+    "show": "Show password",
+    "hide": "Hide password",
+    "submit": "Sign in",
+    "noTrust": "Do not trust this computer",
+    "noTrustHelp": "Tick it on a shared or public device: you will sign in once, it will not be remembered and you will always be asked for the security code."
+  },
+  "browser": {
+    "title": "Confirm this computer",
+    "sentTo": "We sent an email to {email}.",
+    "sentHelp": "This is the first time you sign in from this computer. Open the email and press \"Confirm this computer\" (the link is valid for 24 hours). You can open it from your phone.",
+    "notSent": "The confirmation email could not be sent. Try again in a few minutes.",
+    "afterConfirm": "Once you confirm it, come back here and sign in again.",
+    "back": "Back to the sign-in screen",
+    "devLink": "Confirm now (development only)",
+    "confirmTitle": "Confirm computer",
+    "confirmDone": "Done: this computer is now confirmed.",
+    "confirmNext": "Go back to the sign-in screen and sign in again from the computer where you tried.",
+    "confirmInvalid": "The link is not valid or has expired. Try signing in again to receive a new one.",
+    "goLogin": "Go to the sign-in screen"
+  },
+  "captcha": {
+    "required": "Confirm you are not a robot to continue.",
+    "help": "For security, confirm you are not a robot.",
+    "nativeUnavailable": "To continue, sign in to the portal from a web browser. The anti-robot check is not available in the app yet."
+  },
+  "mfa": {
+    "verifyTitle": "Security code",
+    "verifySubtitle": "Enter the 6-digit code from your authenticator app (or a recovery code).",
+    "code": "Code",
+    "verify": "Verify",
+    "back": "Back to the sign-in screen",
+    "enrollTitle": "Turn on two-step verification",
+    "enrollSubtitle": "To protect your account, the portal requires an authenticator app (Google Authenticator, Microsoft Authenticator, Authy…).",
+    "enrollStart": "Start",
+    "enrollScan": "Add this key to your authenticator app and enter the code it shows.",
+    "secretLabel": "Setup key",
+    "openInApp": "Open in my authenticator app",
+    "confirm": "Confirm",
+    "recoveryTitle": "Recovery codes",
+    "recoveryHelp": "Keep them somewhere safe: they work if you lose your phone and are shown only this once.",
+    "recoverySaved": "I saved them"
+  },
+  "legal": {
+    "title": "Privacy Policy and Terms of Use",
+    "lead": "To continue, read the whole document and accept it. If it changes, you will be asked again.",
+    "scrollHint": "Scroll to the end of the text to be able to accept.",
+    "accept": "I accept the privacy policy and the terms of use",
+    "decline": "I do not accept, sign out"
+  },
+  "lock": {
+    "title": "App locked",
+    "help": "Use your fingerprint (or your phone PIN) to open the portal.",
+    "prompt": "Open the client portal",
+    "cancel": "Cancel",
+    "fallback": "Use PIN",
+    "unlock": "Open with fingerprint",
+    "goPassword": "Use my password",
+    "failed": "Could not verify. You have {left} attempts left before the password is asked for."
+  },
+  "home": {
+    "greeting": "Hello, {name}",
+    "greetingPlain": "Hello",
+    "client": "Client: {client}",
+    "totalOrders": "orders in total",
+    "byStatus": "By status",
+    "recent": "Recent orders",
+    "noOrders": "There are no orders yet.",
+    "seeAll": "See all orders"
+  },
+  "orders": {
+    "title": "My orders",
+    "search": "Search",
+    "searchPlaceholder": "Waybill, order, invoice or consignee",
+    "empty": "There are no orders yet.",
+    "noMatches": "No order matches the search.",
+    "orderNumber": "Order {number}",
+    "loadMore": "Load more ({shown} of {total})"
+  },
+  "order": {
+    "title": "Order",
+    "waybill": "Waybill",
+    "orderNumber": "Order no.",
+    "invoice": "Invoice",
+    "service": "Service",
+    "created": "Created",
+    "promised": "Promised date",
+    "pieces": "Pieces",
+    "cod": "COD",
+    "delivery": "Delivery",
+    "packages": "Packages",
+    "timeline": "Tracking",
+    "noTimeline": "There are no status changes yet."
+  },
+  "notices": {
+    "title": "Notices",
+    "help": "The summaries your delivery company set up to send you.",
+    "empty": "There are no notices yet.",
+    "loadMore": "Load more ({shown} of {total})",
+    "kinds": {
+      "PICKED_UP": "Picked up",
+      "OUT_FOR_DELIVERY": "Out for delivery",
+      "DELIVERED": "Delivered",
+      "COD_PROCESSED": "COD processed",
+      "INVOICE_ISSUED": "Invoice issued"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "switchClient": "Switch client",
+    "language": "Language",
+    "security": "Security",
+    "biometric": "Open with fingerprint",
+    "biometricHelp": "When you reopen the app or after a few minutes in the background, you will be asked for your fingerprint (or phone PIN) instead of the password.",
+    "biometricNotEnrolled": "This phone has no fingerprint registered. Register one in the phone settings to open with fingerprint.",
+    "biometricUnavailable": "Open with fingerprint is not available on this device.",
+    "computers": "My trusted computers",
+    "computersHelp": "From these computers you sign in without email confirmation (30 days without use).",
+    "computersEmpty": "There are no trusted computers yet.",
+    "thisComputer": "This computer",
+    "computerExpires": "Expires: {date}",
+    "remove": "Remove",
+    "logout": "Sign out"
+  },
+  "install": {
+    "title": "Put it on my desktop",
+    "help": "Install the portal as an app, with its icon on your desktop or home screen.",
+    "button": "Install",
+    "ios": "On iPhone and iPad: tap the Share button and choose \"Add to Home Screen\"."
+  }
+}

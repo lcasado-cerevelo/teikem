@@ -4,14 +4,46 @@
     {
       "name": "api",
       "runtimeExecutable": "dotnet",
-      "runtimeArgs": ["run", "--project", "src/Teikem.Api", "--no-launch-profile", "--environment", "Development", "--urls", "https://localhost:5001;http://localhost:5000"],
+      "runtimeArgs": [
+        "run",
+        "--project",
+        "src/Teikem.Api",
+        "--no-launch-profile",
+        "--environment",
+        "Development",
+        "--urls",
+        "https://localhost:5001;http://localhost:5000"
+      ],
       "port": 5000
     },
     {
       "name": "web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "web-app", "run", "dev", "--", "--port", "5173", "--strictPort"],
+      "runtimeArgs": [
+        "--prefix",
+        "web-app",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5173",
+        "--strictPort"
+      ],
       "port": 5173
+    },
+    {
+      "name": "app-cliente",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "app-cliente",
+        "run",
+        "web",
+        "--",
+        "--port",
+        "8081"
+      ],
+      "port": 8081
     }
   ]
 }

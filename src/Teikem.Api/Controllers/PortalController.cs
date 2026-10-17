@@ -35,6 +35,14 @@ public sealed class PortalController(AuthService auth, PortalService portal) : C
     [HttpGet("me"), Authorize, RequireModule(ModuleKeys.ClientPortal)]
     public Task<PortalMeDto> Me(CancellationToken ct) => portal.GetMeAsync(ct);
 
+    /// <summary>Inicio del portal: total de mis órdenes, cuántas hay por estatus y las 5 más recientes.</summary>
+    [HttpGet("summary"), Authorize, RequireModule(ModuleKeys.ClientPortal)]
+    public Task<PortalSummaryDto> Summary(CancellationToken ct) => portal.GetSummaryAsync(ct);
+
+    /// <summary>Bandeja de avisos: los resúmenes que la compañía configuró mandar a mi cliente por el canal «bandeja del portal» (los más nuevos primero; máximo 100 por página).</summary>
+    [HttpGet("notifications"), Authorize, RequireModule(ModuleKeys.ClientPortal)]
+    public Task<PagedResult<PortalNotificationDto>> Notifications([FromQuery] int skip, [FromQuery] int take, CancellationToken ct) => portal.ListNotificationsAsync(skip, take, ct);
+
     /// <summary>Mis órdenes (solo las del cliente de la sesión): búsqueda por conduce, orden, factura o consignatario; estatus y fechas; paginado (máximo 100).</summary>
     [HttpGet("orders"), Authorize, RequireModule(ModuleKeys.ClientPortal)]
     public Task<PagedResult<PortalOrderListItemDto>> Orders([FromQuery] string? search, [FromQuery] string? status, [FromQuery] DateTime? fromUtc, [FromQuery] DateTime? toUtc,
