@@ -104,7 +104,7 @@ public class DeviceControllerSecurityTests
         {
             var claims = new List<System.Security.Claims.Claim> { new(TeikemClaims.Subject, "7") };
             if (device) claims.Add(new(DeviceClaims.DeviceId, Guid.NewGuid().ToString()));
-            return new AuthController(null!, null!)
+            return new AuthController(null!, null!, null!)
             {
                 ControllerContext = new ControllerContext
                 {

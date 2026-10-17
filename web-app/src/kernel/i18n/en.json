@@ -30,6 +30,20 @@
       "passwordRequired": "Enter your password."
     },
     "backToLogin": "Back to sign in",
+    "browser": {
+      "title": "Confirm this computer",
+      "sentTo": "We sent an email to {email}.",
+      "sentHelp": "This is the first time you sign in from this computer. Open the email and press \"Confirm this computer\" (the link is valid for 24 hours). You can open it from your phone.",
+      "notSent": "The confirmation email could not be sent. Try again in a few minutes.",
+      "afterConfirm": "Once you confirm it, come back here and sign in again: this computer will be saved for 30 days without use.",
+      "back": "Back to the sign-in screen",
+      "devLink": "Confirm now (development only)",
+      "confirmTitle": "Confirm computer",
+      "confirmDone": "Done: this computer is now confirmed.",
+      "confirmNext": "Go back to the sign-in screen and sign in again from the computer where you tried.",
+      "confirmInvalid": "The link is not valid or has expired. Try signing in again to receive a new one.",
+      "goLogin": "Go to the sign-in screen"
+    },
     "login": {
       "title": "Sign in",
       "subtitle": "Use your email and password.",
@@ -2794,6 +2808,21 @@
       "errors": {
         "code": "Enter the 6 digits shown by your app."
       }
+    },
+    "trusted": {
+      "title": "My trusted computers",
+      "subtitle": "From these computers you sign in without confirming by email. A computer stays trusted for 30 days without use; if you change your password, all of them must be confirmed again.",
+      "computer": "Computer",
+      "ip": "Address",
+      "since": "Confirmed",
+      "lastUsed": "Last used",
+      "expires": "Expires",
+      "current": "This computer",
+      "revoke": "Remove",
+      "revokeTitle": "Remove trusted computer",
+      "revokeBody": "{computer} will no longer be trusted: the next time you sign in from it you will have to confirm by email.",
+      "revoked": "Computer removed.",
+      "empty": "There are no trusted computers yet."
     },
     "sessions": {
       "title": "Active sessions",

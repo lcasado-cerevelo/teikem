@@ -1,13 +1,19 @@
 namespace Teikem.Infrastructure.Contracts;
 
-public sealed record LoginRequest(string Email, string Password, int? TenantId, string? DeviceInfo);
+/// <summary>TrustedBrowserToken (Lote 100): marca secreta aleatoria que la web guarda en el navegador para que el servidor reconozca la computadora.</summary>
+public sealed record LoginRequest(string Email, string Password, int? TenantId, string? DeviceInfo, string? TrustedBrowserToken = null);
 public sealed record TokenPairDto(string AccessToken, DateTime AccessExpiresAtUtc, string RefreshToken, DateTime RefreshExpiresAtUtc, int TenantId);
 public sealed record TenantOptionDto(int TenantId, string Name, bool IsDefault);
 /// <summary>Status: ok | mfa_required | onboarding_required. (tenant_selection ya no se emite desde 2026-09-30: el login escoge la
 /// compañía solo.) onboarding_required (2026-09-30): primer ingreso pendiente; MfaChallengeToken sirve para los pasos de
 /// /auth/onboarding/* y para enrolar el MFA, y Onboarding dice qué falta.</summary>
 public sealed record AuthResultDto(string Status, TokenPairDto? Tokens, string? MfaChallengeToken, bool MfaEnrollmentRequired, IReadOnlyList<TenantOptionDto>? Tenants,
-    OnboardingStateDto? Onboarding = null);
+    OnboardingStateDto? Onboarding = null, BrowserConfirmationDto? Browser = null);
+
+public sealed record ConfirmBrowserRequest(string? Token);
+
+/// <summary>Status browser_confirmation_required (Lote 100): la computadora no se reconoce. Sent = salió el correo con el enlace; Message = por qué no; DevLink solo en desarrollo.</summary>
+public sealed record BrowserConfirmationDto(string Email, bool Sent, string? Message, string? DevLink);
 
 /// <summary>Primer ingreso (2026-09-30): en orden, verificar el correo → poner contraseña propia → configurar el MFA.
 /// Email va enmascarado (j***@empresa.com).</summary>

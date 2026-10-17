@@ -1,6 +1,7 @@
 // Flujo de autenticación contra AuthController (/api/v1/auth/*).
 import { api, unwrap } from '../api/client'
 import type { components } from '../api/schema'
+import { getBrowserToken } from './browserToken'
 import { clearTokens, getMfaChallenge, getRefreshToken, setMfaChallenge, setTokens } from './tokens'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
@@ -9,11 +10,14 @@ export type TenantOptionDto = components['schemas']['TenantOptionDto']
 export type MfaEnrollResultDto = components['schemas']['MfaEnrollResultDto']
 export type OnboardingStateDto = components['schemas']['OnboardingStateDto']
 export type OnboardingEmailSentDto = components['schemas']['OnboardingEmailSentDto']
+export type BrowserConfirmationDto = components['schemas']['BrowserConfirmationDto']
 
 export type LoginOutcome =
   | { status: 'ok' }
   | { status: 'mfa_required'; enrollmentRequired: boolean }
   | { status: 'onboarding_required'; onboarding: OnboardingStateDto }
+  // Lote 100: la computadora no se reconoce; se mandó (o no) un correo con el enlace para confirmarla
+  | { status: 'browser_confirmation_required'; browser: BrowserConfirmationDto }
 
 function deviceInfo(): string | undefined {
   return globalThis.navigator?.userAgent?.slice(0, 200)
@@ -37,6 +41,7 @@ function handleResult(result: AuthResultDto): LoginOutcome {
     setMfaChallenge({ token: result.mfaChallengeToken, enrollmentRequired: result.mfaEnrollmentRequired ?? true })
     return { status: 'onboarding_required', onboarding: result.onboarding }
   }
+  if (result.status === 'browser_confirmation_required' && result.browser) return { status: 'browser_confirmation_required', browser: result.browser }
   if (result.status === 'mfa_required' && result.mfaChallengeToken) {
     setMfaChallenge({ token: result.mfaChallengeToken, enrollmentRequired: result.mfaEnrollmentRequired ?? false })
     return { status: 'mfa_required', enrollmentRequired: result.mfaEnrollmentRequired ?? false }
@@ -50,7 +55,7 @@ function handleResult(result: AuthResultDto): LoginOutcome {
  *  API entra a la predeterminada (o la primera por nombre) y se cambia desde el selector de la cabecera. */
 export async function login(email: string, password: string): Promise<LoginOutcome> {
   const result = await unwrap(
-    api.POST('/api/v1/auth/login', { body: { email, password, tenantId: null, deviceInfo: deviceInfo() } }),
+    api.POST('/api/v1/auth/login', { body: { email, password, tenantId: null, deviceInfo: deviceInfo(), trustedBrowserToken: getBrowserToken() } }),
   )
   return handleResult(result)
 }

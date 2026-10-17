@@ -24,6 +24,12 @@ public static class DeviceRateLimits
     public const string DeviceAuth = "device-auth";
     /// <summary>2026-10-07: POST /auth/forgot-password y /auth/reset-password: 5 por minuto por IP y ruta (RateLimiting:PasswordResetPerMinute).</summary>
     public const string PasswordReset = "password-reset";
+    /// <summary>
+    /// Lote 100: POST /auth/login y /auth/mfa/verify: 60 por minuto por dirección IP (todas las rutas juntas; RateLimiting:LoginPerMinute). Frena a quien prueba muchas cuentas con la misma
+    /// contraseña (el bloqueo por cuenta frena a quien prueba muchas contraseñas en una cuenta). Holgado a propósito: una oficina entera suele salir por la misma IP.
+    /// </summary>
+    public const string Login = "login";
+    public const int DefaultLoginPerMinute = 60;
     public const int DefaultPasswordResetPerMinute = 5;
     public const int DefaultEnrollPerMinute = 10;
     public const int DefaultDeviceAuthPerMinute = 60;
@@ -34,12 +40,14 @@ public static class DeviceRateLimits
         var enroll = Positive(config.GetValue<int?>("RateLimiting:DeviceEnrollPerMinute"), DefaultEnrollPerMinute);
         var auth = Positive(config.GetValue<int?>("RateLimiting:DeviceAuthPerMinute"), DefaultDeviceAuthPerMinute);
         var reset = Positive(config.GetValue<int?>("RateLimiting:PasswordResetPerMinute"), DefaultPasswordResetPerMinute);
+        var login = Positive(config.GetValue<int?>("RateLimiting:LoginPerMinute"), DefaultLoginPerMinute);
         return services.AddRateLimiter(o =>
         {
             o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             o.AddPolicy(Enroll, ctx => PerIpAndPath(ctx, enroll));
             o.AddPolicy(DeviceAuth, ctx => PerIpAndPath(ctx, auth));
             o.AddPolicy(PasswordReset, ctx => PerIpAndPath(ctx, reset));
+            o.AddPolicy(Login, ctx => PerIp(ctx, login));
             o.OnRejected = async (context, ct) =>
             {
                 var http = context.HttpContext;
@@ -54,6 +62,11 @@ public static class DeviceRateLimits
             };
         });
     }
+
+    private static RateLimitPartition<string> PerIp(HttpContext ctx, int permits)
+        => RateLimitPartition.GetFixedWindowLimiter(
+            $"login|{ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown"}",
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = permits, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 });
 
     private static RateLimitPartition<string> PerIpAndPath(HttpContext ctx, int permits)
         => RateLimitPartition.GetFixedWindowLimiter(

@@ -101,7 +101,7 @@ public sealed partial class AuthService
         if (await users.IsLockedOutAsync(user) || code.Length == 0
             || !await users.VerifyTwoFactorTokenAsync(user, TokenOptions.DefaultEmailProvider, code))
         {
-            await users.AccessFailedAsync(user);
+            await RegisterFailureAsync(user, ct);
             await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Failure, user.Id, tenantId, new { stage = "onboarding_email" }, ct);
             throw new ValidationException("code", InvalidEmailCodeMessage);
         }

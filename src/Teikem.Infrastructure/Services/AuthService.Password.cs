@@ -173,7 +173,7 @@ public sealed partial class AuthService
             var locked = await users.IsLockedOutAsync(user);
             if (locked || !await VerifyCodeAsync(user, req.MfaCode, ct))
             {
-                if (!locked) await users.AccessFailedAsync(user);
+                if (!locked) await RegisterFailureAsync(user, ct);
                 await security.WriteAsync(SecurityEventTypes.PasswordChange, SecurityOutcomes.Failure, user.Id, null, new { stage = "reset_link", reason = "mfa_failed" }, ct);
                 throw new ValidationException("mfaCode", ResetMfaInvalidMessage);
             }
@@ -197,6 +197,7 @@ public sealed partial class AuthService
         await users.SetLockoutEndDateAsync(user, null);
         await RevokeSessionsAsync(user, ct);
         await security.WriteAsync(SecurityEventTypes.PasswordChange, SecurityOutcomes.Success, user.Id, null, new { stage = "reset_link", mfa = mfaVerified ? "verified" : "not_enrolled" }, ct);
+        if (trustedBrowsers is not null) await trustedBrowsers.RevokeAllAsync(user.Id, ct);   // Lote 100
     }
 }
 

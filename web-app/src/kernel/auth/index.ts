@@ -12,7 +12,8 @@ export {
   verifyMfa,
   verifyOnboardingEmail,
 } from './auth'
-export type { LoginOutcome, MfaEnrollResultDto, OnboardingEmailSentDto, OnboardingStateDto, TenantOptionDto } from './auth'
+export { getBrowserToken } from './browserToken'
+export type { BrowserConfirmationDto, LoginOutcome, MfaEnrollResultDto, OnboardingEmailSentDto, OnboardingStateDto, TenantOptionDto } from './auth'
 export { ReauthProvider } from './ReauthProvider'
 export { useReauth } from './reauthContext'
 export type { ReauthApi } from './reauthContext'

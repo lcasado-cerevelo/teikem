@@ -124,6 +124,7 @@ export const publicRoutes: readonly AppRoute[] = [
   { path: '/reset-password', element: lazy(() => import('../features/auth/ResetPasswordPage')) },
   { path: '/mfa', element: lazy(() => import('../features/auth/MfaPage')) },
   { path: '/onboarding', element: lazy(() => import('../features/auth/OnboardingPage')) },
+  { path: '/confirm-browser', element: lazy(() => import('../features/auth/ConfirmBrowserPage')) },   // Lote 100: enlace del correo que confirma la computadora
   { path: '/legal', element: lazy(() => import('../features/legal/LegalPage')) },   // Lote 99: el documento legal vigente, sin sesión
 ]
 

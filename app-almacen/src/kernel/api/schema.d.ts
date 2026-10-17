@@ -26494,6 +26494,117 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/confirm-browser": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ConfirmBrowserRequest"];
+                    "text/json": components["schemas"]["ConfirmBrowserRequest"];
+                    "application/*+json": components["schemas"]["ConfirmBrowserRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/trusted-browsers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TrustedBrowserDto"][];
+                        "application/json": components["schemas"]["TrustedBrowserDto"][];
+                        "text/json": components["schemas"]["TrustedBrowserDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/trusted-browsers/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -26731,6 +26842,7 @@ export interface components {
             mfaEnrollmentRequired?: boolean;
             tenants?: components["schemas"]["TenantOptionDto"][] | null;
             onboarding?: components["schemas"]["OnboardingStateDto"];
+            browser?: components["schemas"]["BrowserConfirmationDto"];
         };
         AvailabilityIssueDto: {
             code?: string | null;
@@ -29122,6 +29234,7 @@ export interface components {
             /** Format: int32 */
             tenantId?: number | null;
             deviceInfo?: string | null;
+            trustedBrowserToken?: string | null;
         };
         LookupCodeUpsertRequest: {
             code?: string | null;
@@ -35596,6 +35709,28 @@ export interface components {
             /** Format: date-time */
             acceptedAtUtc?: string | null;
             lastVersion?: string | null;
+        };
+        TrustedBrowserDto: {
+            /** Format: uuid */
+            publicId?: string;
+            label?: string | null;
+            ipAddress?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            /** Format: date-time */
+            lastUsedAtUtc?: string | null;
+            /** Format: date-time */
+            expiresAtUtc?: string | null;
+            isCurrent?: boolean;
+        };
+        BrowserConfirmationDto: {
+            email?: string | null;
+            sent?: boolean;
+            message?: string | null;
+            devLink?: string | null;
+        };
+        ConfirmBrowserRequest: {
+            token?: string | null;
         };
     };
     responses: never;

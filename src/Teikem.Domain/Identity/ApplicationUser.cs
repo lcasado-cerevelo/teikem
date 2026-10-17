@@ -28,6 +28,10 @@ public class ApplicationUser : IdentityUser<int>, ISoftDeletable
     /// <summary>2026-10-07: hasta cuándo vale la contraseña temporal que puso un administrador (null = no hay). Pasado ese momento, el siguiente intento de
     /// entrar restaura la contraseña anterior (<see cref="PreviousPasswordHash"/>).</summary>
     [NotAudited] public DateTime? TempPasswordExpiresUtc { get; set; }
+    /// <summary>Lote 100: cuántos bloqueos seguidos lleva la cuenta (la espera crece: 1, 5, 15 y 60 min); vuelve a 0 si pasan 24 horas sin otro bloqueo.</summary>
+    [NotAudited] public int LockoutLevel { get; set; }
+    /// <summary>Lote 100: cuándo fue el último bloqueo por intentos fallidos.</summary>
+    [NotAudited] public DateTime? LockoutLevelAtUtc { get; set; }
     /// <summary>Hash de la contraseña que tenía antes de la temporal; vuelve si la temporal vence sin usarse.</summary>
     [SensitiveData] public string? PreviousPasswordHash { get; set; }
     /// <summary>Cómo estaban OnboardingRequired y MustChangePassword antes de la contraseña temporal (la temporal los enciende para forzar el cambio).</summary>

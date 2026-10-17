@@ -4,6 +4,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap } from '../../kernel/api/client'
 import type { components } from '../../kernel/api/schema'
+import { getBrowserToken } from '../../kernel/auth/browserToken'
 
 export type SessionDto = components['schemas']['SessionDto']
 export type ChangePasswordRequest = components['schemas']['ChangePasswordRequest']
@@ -98,5 +99,26 @@ export function useDisableTotp() {
     mutationFn: async () => {
       await unwrap(api.DELETE('/api/v1/auth/mfa/totp'))
     },
+  })
+}
+
+// ---------------------------------------------------------------- computadoras de confianza (Lote 100)
+export type TrustedBrowserDto = components['schemas']['TrustedBrowserDto']
+export const TRUSTED_BROWSERS_KEY = ['/api/v1/auth/trusted-browsers'] as const
+
+/** Mis computadoras de confianza; el encabezado X-Trusted-Browser marca cuál es «esta». */
+export function useTrustedBrowsers() {
+  return useQuery({
+    queryKey: TRUSTED_BROWSERS_KEY,
+    queryFn: () => unwrap(api.GET('/api/v1/auth/trusted-browsers', { headers: { 'X-Trusted-Browser': getBrowserToken() } })),
+  })
+}
+
+/** Quitar la confianza de una computadora: la próxima vez que entre desde ella pedirá confirmar por correo. */
+export function useRevokeTrustedBrowser() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (publicId: string) => unwrap(api.DELETE('/api/v1/auth/trusted-browsers/{publicId}', { params: { path: { publicId } } })),
+    onSuccess: () => qc.invalidateQueries({ queryKey: TRUSTED_BROWSERS_KEY }),
   })
 }

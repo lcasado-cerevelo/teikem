@@ -11,7 +11,7 @@ namespace Teikem.Api.Controllers;
 [ApiController]
 [SkipIdempotency("login, refresco y MFA: tokens en claro")]
 [Route("api/v1/auth")]
-public sealed class AuthController(AuthService auth, DeviceService devices) : ControllerBase
+public sealed class AuthController(AuthService auth, DeviceService devices, TrustedBrowserService browsers) : ControllerBase
 {
     private long SessionId => long.TryParse(User.FindFirst(TeikemClaims.SessionId)?.Value, out var s) ? s : 0;
 
@@ -30,7 +30,7 @@ public sealed class AuthController(AuthService auth, DeviceService devices) : Co
     }
 
     /// <summary>Paso 1: correo + contraseña (+ tenant opcional). Puede devolver mfa_required. Sin tenant entra a la compañía predeterminada (o la primera por nombre).</summary>
-    [HttpPost("login"), AllowAnonymous]
+    [HttpPost("login"), AllowAnonymous, EnableRateLimiting(DeviceRateLimits.Login)]
     public Task<AuthResultDto> Login([FromBody] LoginRequest req, CancellationToken ct) => auth.LoginAsync(req, ct);
 
     /// <summary>
@@ -45,7 +45,7 @@ public sealed class AuthController(AuthService auth, DeviceService devices) : Co
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest req, CancellationToken ct) { await auth.ResetPasswordWithLinkAsync(req, ct); return NoContent(); }
 
     /// <summary>Paso 2 (con el challenge token como Bearer): código TOTP o de recuperación.</summary>
-    [HttpPost("mfa/verify"), Authorize(Policy = Policies.MfaChallenge)]
+    [HttpPost("mfa/verify"), Authorize(Policy = Policies.MfaChallenge), EnableRateLimiting(DeviceRateLimits.Login)]
     public Task<AuthResultDto> VerifyMfa([FromBody] MfaVerifyRequest req, CancellationToken ct)
         => auth.VerifyMfaAsync(int.Parse(User.FindFirst(TeikemClaims.Subject)!.Value), int.Parse(User.FindFirst(TeikemClaims.TenantId)!.Value), User.FindFirst("device")?.Value, req, ct);
 
@@ -116,6 +116,21 @@ public sealed class AuthController(AuthService auth, DeviceService devices) : Co
 
     [HttpDelete("sessions/{id:long}"), Authorize]
     public async Task<IActionResult> RevokeSession(long id, CancellationToken ct) { await auth.RevokeSessionAsync(id, SessionId, ct); return NoContent(); }
+
+    /// <summary>
+    /// Lote 100: confirma la computadora con el enlace del correo (anónimo; el enlace es el secreto): 400 'El enlace no es válido o venció. Vuelva a intentar entrar para recibir uno nuevo.'.
+    /// 429 con el mismo tope que el login (60 por minuto por IP; la marca del enlace es de 256 bits, no se puede adivinar).
+    /// </summary>
+    [HttpPost("confirm-browser"), AllowAnonymous, EnableRateLimiting(DeviceRateLimits.Login)]
+    public async Task<IActionResult> ConfirmBrowser([FromBody] ConfirmBrowserRequest req, CancellationToken ct) { await browsers.ConfirmAsync(req.Token, ct); return NoContent(); }
+
+    /// <summary>Lote 100: mis computadoras de confianza (con la marca del navegador actual en el encabezado X-Trusted-Browser para saber cuál es «esta»).</summary>
+    [HttpGet("trusted-browsers"), Authorize]
+    public Task<IReadOnlyList<TrustedBrowserDto>> TrustedBrowsers(CancellationToken ct) => browsers.ListMineAsync(Request.Headers["X-Trusted-Browser"].FirstOrDefault(), ct);
+
+    /// <summary>Lote 100: quita la confianza de una de mis computadoras (404 'Computadora no encontrada.'); la próxima vez que entre desde ella pedirá confirmar por correo.</summary>
+    [HttpDelete("trusted-browsers/{publicId:guid}"), Authorize]
+    public async Task<IActionResult> RevokeTrustedBrowser(Guid publicId, CancellationToken ct) { await browsers.RevokeMineAsync(publicId, ct); return NoContent(); }
 
     [HttpPut("password"), Authorize]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest req, CancellationToken ct) { await auth.ChangePasswordAsync(req, SessionId, ct); return NoContent(); }

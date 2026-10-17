@@ -113,7 +113,7 @@ public class AuthLockoutTests
 
         for (var i = 0; i < 5; i++)
             await Assert.ThrowsAsync<UnauthorizedException>(() => auth.ReauthAsync(sessionId, new ReauthRequest("equivocada", null), default));
-        Assert.True(User(f).LockoutEnd > DateTimeOffset.UtcNow.AddMinutes(14));
+        Assert.True(User(f).LockoutEnd > DateTimeOffset.UtcNow.AddSeconds(30));   // Lote 100: el primer bloqueo dura 1 minuto
 
         writer.Events.Clear();
         var locked = await Assert.ThrowsAsync<UnauthorizedException>(() => auth.ReauthAsync(sessionId, new ReauthRequest(Password, null), default));
@@ -140,7 +140,7 @@ public class AuthLockoutTests
         for (var i = 0; i < 4; i++)
             await Assert.ThrowsAsync<ValidationException>(() => auth.ChangePasswordAsync(new ChangePasswordRequest("equivocada", "Otra-Clave22"), sessionId, default));
         var lockedUser = User(f);
-        Assert.True(lockedUser.LockoutEnd > DateTimeOffset.UtcNow.AddMinutes(14));
+        Assert.True(lockedUser.LockoutEnd > DateTimeOffset.UtcNow.AddSeconds(30));   // Lote 100: el primer bloqueo dura 1 minuto
         Assert.Contains(writer.Events, e => e.EventType == SecurityEventTypes.Lockout && e.Detail.Contains("\"stage\":\"password_change\""));
         var hashBefore = lockedUser.PasswordHash;
 

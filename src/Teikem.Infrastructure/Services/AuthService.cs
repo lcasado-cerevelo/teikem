@@ -72,7 +72,7 @@ public sealed partial class AuthService(
     ISecurityEventWriter security, IDataProtectionProvider dataProtection, IPasswordBreachChecker breachChecker, PermissionService permissions,
     DeviceService devices, PinService pins, Microsoft.Extensions.Options.IOptions<OnboardingOptions> onboarding, ITransactionalEmailSender email,
     Microsoft.Extensions.Caching.Memory.IMemoryCache cache,
-    Microsoft.Extensions.Options.IOptions<PasswordResetOptions>? passwordReset = null, TrustedNetworkService? trustedNetworks = null)
+    Microsoft.Extensions.Options.IOptions<PasswordResetOptions>? passwordReset = null, TrustedNetworkService? trustedNetworks = null, TrustedBrowserService? trustedBrowsers = null)
 {
     private const string InvalidCredentials = "Credenciales inválidas.";
 
@@ -87,11 +87,13 @@ public sealed partial class AuthService(
         var user = string.IsNullOrWhiteSpace(req.Email) ? null : await users.FindByEmailAsync(req.Email.Trim());
         if (user is null || !user.IsActive)
         {
+            BurnPasswordCheck(req.Password);   // mismo costo que un intento real: el tiempo no delata si el usuario existe
             await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Failure, null, null, new { email = req.Email }, ct);
             throw new UnauthorizedException(InvalidCredentials); // sin enumeración de usuarios
         }
         if (await users.IsLockedOutAsync(user))
         {
+            BurnPasswordCheck(req.Password);
             await security.WriteAsync(SecurityEventTypes.Lockout, SecurityOutcomes.Blocked, user.Id, null, null, ct);
             throw new UnauthorizedException(InvalidCredentials);
         }
@@ -99,9 +101,10 @@ public sealed partial class AuthService(
         await ExpireTempPasswordIfDueAsync(user);
         if (!await users.CheckPasswordAsync(user, req.Password ?? string.Empty))
         {
-            await users.AccessFailedAsync(user);
-            var locked = await users.IsLockedOutAsync(user);
-            await security.WriteAsync(locked ? SecurityEventTypes.Lockout : SecurityEventTypes.Login, locked ? SecurityOutcomes.Blocked : SecurityOutcomes.Failure, user.Id, null, null, ct);
+            var lockMinutes = await RegisterFailureAsync(user, ct);
+            var locked = lockMinutes is not null;
+            await security.WriteAsync(locked ? SecurityEventTypes.Lockout : SecurityEventTypes.Login, locked ? SecurityOutcomes.Blocked : SecurityOutcomes.Failure, user.Id, null,
+                locked ? new { stage = "login", locked = true, minutes = lockMinutes } : null, ct);
             throw new UnauthorizedException(InvalidCredentials);
         }
         await users.ResetAccessFailedCountAsync(user);
@@ -133,6 +136,14 @@ public sealed partial class AuthService(
             var (onbChallenge, _) = OnboardingChallenge(user, tenantId, req.DeviceInfo);
             await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Success, user.Id, tenantId, new { stage = "password", onboarding = "required" }, ct);
             return new AuthResultDto("onboarding_required", null, onbChallenge, totp is null, null, OnboardingState(user, totp is not null));
+        }
+
+        // Computadora de confianza (Lote 100): una computadora que no se reconoce primero se confirma por correo (después de la contraseña, antes del segundo paso).
+        if (trustedBrowsers is { Enabled: true })
+        {
+            var check = await trustedBrowsers.CheckAsync(user, req.TrustedBrowserToken, await CompanyNameForEmailAsync(user, tenantId, ct), ct);
+            if (!check.Trusted)
+                return new AuthResultDto("browser_confirmation_required", null, null, false, null, null, new BrowserConfirmationDto(MaskEmail(user.Email ?? string.Empty), check.Sent, check.Reason, check.DevLink));
         }
 
         var membershipMfaRequired = !user.IsPlatformAdmin && await db.UserTenants.AsNoTracking().IgnoreQueryFilters()
@@ -174,7 +185,8 @@ public sealed partial class AuthService(
         if (!await VerifyCodeAsync(user, req.Code, ct))
         {
             await security.WriteAsync(SecurityEventTypes.Mfa, SecurityOutcomes.Failure, user.Id, tenantId, null, ct);
-            await users.AccessFailedAsync(user);
+            var mfaLock = await RegisterFailureAsync(user, ct);
+            if (mfaLock is not null) await security.WriteAsync(SecurityEventTypes.Lockout, SecurityOutcomes.Blocked, user.Id, tenantId, new { stage = "mfa", locked = true, minutes = mfaLock }, ct);
             throw new UnauthorizedException("Código MFA inválido.");
         }
         await users.ResetAccessFailedCountAsync(user);
@@ -561,10 +573,10 @@ public sealed partial class AuthService(
         }
         if (!await users.CheckPasswordAsync(user, req.Password ?? ""))
         {
-            await users.AccessFailedAsync(user);
-            var locked = await users.IsLockedOutAsync(user);
+            var lockMinutes = await RegisterFailureAsync(user, ct);
+            var locked = lockMinutes is not null;
             await security.WriteAsync(locked ? SecurityEventTypes.Lockout : SecurityEventTypes.Reauth, locked ? SecurityOutcomes.Blocked : SecurityOutcomes.Failure,
-                userId, tenant.TenantId, locked ? new { stage = "reauth" } : null, ct);
+                userId, tenant.TenantId, locked ? new { stage = "reauth", locked = true, minutes = lockMinutes } : null, ct);
             throw new UnauthorizedException("Contraseña incorrecta.");
         }
         await users.ResetAccessFailedCountAsync(user);
@@ -603,9 +615,9 @@ public sealed partial class AuthService(
         {
             if (result.Errors.Any(e => e.Code == nameof(IdentityErrorDescriber.PasswordMismatch)))
             {
-                await users.AccessFailedAsync(user);
-                if (await users.IsLockedOutAsync(user))
-                    await security.WriteAsync(SecurityEventTypes.Lockout, SecurityOutcomes.Blocked, userId, tenant.TenantId, new { stage = "password_change" }, ct);
+                var pwLock = await RegisterFailureAsync(user, ct);
+                if (pwLock is not null)
+                    await security.WriteAsync(SecurityEventTypes.Lockout, SecurityOutcomes.Blocked, userId, tenant.TenantId, new { stage = "password_change", locked = true, minutes = pwLock }, ct);
             }
             await security.WriteAsync(SecurityEventTypes.PasswordChange, SecurityOutcomes.Failure, userId, tenant.TenantId, new { errors = result.Errors.Select(e => e.Code) }, ct);
             throw new ValidationException("newPassword", string.Join(" ", result.Errors.Select(e => e.Description)));
@@ -616,6 +628,7 @@ public sealed partial class AuthService(
         foreach (var t in others) t.RevokedAtUtc = DateTime.UtcNow;
         db.SuppressAudit = true; await db.SaveChangesAsync(ct); db.SuppressAudit = false;
         await security.WriteAsync(SecurityEventTypes.PasswordChange, SecurityOutcomes.Success, userId, tenant.TenantId, null, ct);
+        if (trustedBrowsers is not null) await trustedBrowsers.RevokeAllAsync(userId, ct);   // Lote 100: con otra contraseña, las computadoras de confianza vuelven a confirmarse
     }
 
     // ---------------- MFA (TOTP + recuperación) ----------------

@@ -3961,3 +3961,43 @@ IF OBJECT_ID(N'dbo.LegalAcceptance', N'U') IS NULL CREATE TABLE dbo.LegalAccepta
 GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_LegalAcceptance_User' AND object_id = OBJECT_ID('dbo.LegalAcceptance')) CREATE INDEX IX_LegalAcceptance_User ON dbo.LegalAcceptance(UserId, Version);
 GO
+
+-- =====================================================================================================================
+-- (ai) 2026-10-17 — Lote 100: bloqueo de cuenta con espera que crece (1, 5, 15 y 60 min). LockoutLevel = cuántos bloqueos seguidos lleva la cuenta;
+-- LockoutLevelAtUtc = cuándo fue el último (pasadas 24 horas sin otro bloqueo se empieza de nuevo).
+-- =====================================================================================================================
+IF COL_LENGTH('dbo.AspNetUsers', 'LockoutLevel') IS NULL
+    ALTER TABLE dbo.AspNetUsers ADD LockoutLevel INT NOT NULL CONSTRAINT DF_AspNetUsers_LockoutLevel DEFAULT 0;
+GO
+IF COL_LENGTH('dbo.AspNetUsers', 'LockoutLevelAtUtc') IS NULL
+    ALTER TABLE dbo.AspNetUsers ADD LockoutLevelAtUtc DATETIME2 NULL;
+GO
+
+-- =====================================================================================================================
+-- (aj) 2026-10-17 — Lote 100: computadoras de confianza. Una computadora que no se reconoce se confirma por correo y queda de confianza 30 días sin uso. Solo el resumen (SHA-256)
+-- de la marca secreta del navegador y del enlace del correo; tabla global por usuario (sin TenantId).
+-- =====================================================================================================================
+IF OBJECT_ID(N'dbo.TrustedBrowser', N'U') IS NULL CREATE TABLE dbo.TrustedBrowser (
+    TrustedBrowserId BIGINT IDENTITY(1,1) PRIMARY KEY,
+    PublicId UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_TrustedBrowser_PublicId DEFAULT NEWID(),
+    UserId INT NOT NULL REFERENCES dbo.AspNetUsers(Id),
+    TokenHash NVARCHAR(64) NOT NULL,
+    ConfirmHash NVARCHAR(64) NULL,
+    LinkExpiresAtUtc DATETIME2 NULL,
+    EmailSentAtUtc DATETIME2 NULL,
+    Label NVARCHAR(80) NOT NULL CONSTRAINT DF_TrustedBrowser_Label DEFAULT N'',
+    IpAddress NVARCHAR(64) NULL,
+    UserAgent NVARCHAR(400) NULL,
+    CreatedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_TrustedBrowser_Created DEFAULT SYSUTCDATETIME(),
+    ConfirmedAtUtc DATETIME2 NULL,
+    LastUsedAtUtc DATETIME2 NULL,
+    ExpiresAtUtc DATETIME2 NULL,
+    RevokedAtUtc DATETIME2 NULL
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_TrustedBrowser_UserToken' AND object_id = OBJECT_ID('dbo.TrustedBrowser')) CREATE UNIQUE INDEX UX_TrustedBrowser_UserToken ON dbo.TrustedBrowser(UserId, TokenHash);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_TrustedBrowser_PublicId' AND object_id = OBJECT_ID('dbo.TrustedBrowser')) CREATE UNIQUE INDEX UX_TrustedBrowser_PublicId ON dbo.TrustedBrowser(PublicId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_TrustedBrowser_Confirm' AND object_id = OBJECT_ID('dbo.TrustedBrowser')) CREATE INDEX IX_TrustedBrowser_Confirm ON dbo.TrustedBrowser(ConfirmHash) WHERE ConfirmHash IS NOT NULL;
+GO

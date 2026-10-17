@@ -30,6 +30,20 @@
       "passwordRequired": "Escriba su contraseña."
     },
     "backToLogin": "Volver al inicio de sesión",
+    "browser": {
+      "title": "Confirme esta computadora",
+      "sentTo": "Le enviamos un correo a {email}.",
+      "sentHelp": "Es la primera vez que entra desde esta computadora. Abra el correo y pulse «Confirmar esta computadora» (el enlace vale 24 horas). Puede abrirlo desde su teléfono.",
+      "notSent": "No se pudo enviar el correo de confirmación. Intente de nuevo en unos minutos.",
+      "afterConfirm": "Cuando la confirme, vuelva aquí y entre otra vez: esta computadora quedará guardada por 30 días sin uso.",
+      "back": "Volver a la pantalla de entrada",
+      "devLink": "Confirmar ahora (solo desarrollo)",
+      "confirmTitle": "Confirmar computadora",
+      "confirmDone": "Listo: esta computadora quedó confirmada.",
+      "confirmNext": "Vuelva a la pantalla de entrada y entre otra vez desde la computadora donde lo intentó.",
+      "confirmInvalid": "El enlace no es válido o venció. Vuelva a intentar entrar para recibir uno nuevo.",
+      "goLogin": "Ir a la pantalla de entrada"
+    },
     "login": {
       "title": "Iniciar sesión",
       "subtitle": "Entre con su correo y contraseña.",
@@ -2794,6 +2808,21 @@
       "errors": {
         "code": "Escriba los 6 dígitos que muestra su app."
       }
+    },
+    "trusted": {
+      "title": "Mis computadoras de confianza",
+      "subtitle": "Desde estas computadoras entra sin confirmar por correo. Una computadora queda de confianza 30 días sin uso; si cambia su contraseña, todas vuelven a confirmarse.",
+      "computer": "Computadora",
+      "ip": "Dirección",
+      "since": "Confirmada",
+      "lastUsed": "Último uso",
+      "expires": "Vence",
+      "current": "Esta computadora",
+      "revoke": "Quitar",
+      "revokeTitle": "Quitar computadora de confianza",
+      "revokeBody": "{computer} dejará de ser de confianza: la próxima vez que entre desde ella tendrá que confirmar por correo.",
+      "revoked": "Computadora quitada.",
+      "empty": "Todavía no hay computadoras de confianza."
     },
     "sessions": {
       "title": "Sesiones activas",

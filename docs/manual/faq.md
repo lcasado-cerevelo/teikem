@@ -8894,3 +8894,30 @@ Faltan los datos del operador en la configuración (`Legal:OperatorName`, `Legal
 
 **¿Qué pasa con los usuarios que ya existen cuando se pase a producción?**
 No tienen aceptación guardada, así que la verán en su siguiente ingreso. Cuando el documento cambie, todos la verán otra vez.
+
+
+## Lote 100 — Acceso seguro
+
+**«Confirme esta computadora» — me pide confirmar por correo otra vez.**
+Entró desde un navegador que no se reconoce: otro navegador, modo incógnito, datos del navegador borrados, 30 días sin usar esa computadora o cambio de contraseña. Abra el enlace del correo (puede ser desde el teléfono), vuelva a la pantalla de entrada y entre otra vez.
+
+**`El enlace no es válido o venció. Vuelva a intentar entrar para recibir uno nuevo.` (400)**
+El enlace de confirmación dura 24 horas y se usa una sola vez. Vuelva a intentar entrar para recibir uno nuevo.
+
+**`Credenciales inválidas.` aunque la contraseña es correcta.**
+La cuenta está bloqueada por intentos fallidos (1, 5, 15 o 60 minutos según los bloqueos repetidos). Espere el tiempo del correo de aviso; el mensaje es el mismo a propósito, para no revelar si el usuario existe.
+
+**`Demasiados intentos; espere un minuto e intente de nuevo.` (429) al entrar.**
+Se superó el tope de 60 intentos por minuto desde esa dirección IP. Espere un minuto.
+
+**`Ya se enviaron varios correos de confirmación hoy…` / `No se pudo enviar el correo de confirmación.`**
+Tope de 10 correos de confirmación por usuario al día, o el correo de la plataforma no está configurado. Espere o pida al administrador revisar el envío de correo.
+
+**`Este cliente no identifica la computadora; entre desde la web.`**
+La función está encendida y quien llama (una integración, por ejemplo) no manda la marca de la computadora. Debe entrar desde la web.
+
+**`Computadora no encontrada.` (404)**
+Esa computadora ya se quitó o no es del usuario de la sesión.
+
+**¿Cómo quito una computadora compartida?**
+Mi cuenta → Sesiones → Mis computadoras de confianza → Quitar.

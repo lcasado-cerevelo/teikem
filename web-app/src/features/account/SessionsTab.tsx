@@ -5,6 +5,7 @@ import { Chip, ConfirmDialog, DataTable, EmptyState, Panel, toast, type DataColu
 import { useRevokeSession, useSessions, type SessionDto } from './api'
 import { describeDevice, formatDateTime } from './format'
 import { IconClock } from '../../kernel/ui/screenIcons'
+import { TrustedBrowsersPanel } from './TrustedBrowsersPanel'
 
 const NO_SESSIONS: SessionDto[] = []
 
@@ -93,6 +94,8 @@ export function SessionsTab() {
           />
         )}
       </Panel>
+
+      <TrustedBrowsersPanel />
 
       <ConfirmDialog
         open={target !== null}

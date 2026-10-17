@@ -5,7 +5,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
 import { useSession } from '../../app/session'
 import { applyProblemDetails } from '../../kernel/api/problem'
-import { login } from '../../kernel/auth/auth'
+import { login, type BrowserConfirmationDto } from '../../kernel/auth/auth'
 import { useT } from '../../kernel/i18n/useT'
 import { IconEye, IconEyeOff } from '../../kernel/ui/icons'
 import { AuthLayout } from './AuthLayout'
@@ -19,6 +19,8 @@ export default function LoginPage() {
   const { isAuthenticated } = useSession()
   const [formError, setFormError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
+  // Lote 100: la computadora no se reconoce; se muestra «revise su correo» en lugar del formulario
+  const [confirm, setConfirm] = useState<BrowserConfirmationDto | null>(null)
   const next = safeNext(params.get('next'))
 
   const schema = useMemo(
@@ -38,13 +40,25 @@ export default function LoginPage() {
     setFormError(null)
     try {
       const outcome = await login(email, password)
-      if (outcome.status === 'ok') navigate(next, { replace: true })
+      if (outcome.status === 'browser_confirmation_required') setConfirm(outcome.browser)
+      else if (outcome.status === 'ok') navigate(next, { replace: true })
       else if (outcome.status === 'onboarding_required') navigate(`/onboarding?next=${encodeURIComponent(next)}`)
       else navigate(`/mfa?next=${encodeURIComponent(next)}`)
     } catch (err) {
       setFormError(applyProblemDetails(err, form).title)
     }
   })
+
+  if (confirm) {
+    return (
+      <AuthLayout title={t('auth.browser.title')} subtitle={confirm.sent ? t('auth.browser.sentTo', { email: confirm.email ?? '' }) : undefined}>
+        {confirm.sent ? <p>{t('auth.browser.sentHelp')}</p> : <div className="alert" role="alert">{confirm.message ?? t('auth.browser.notSent')}</div>}
+        {confirm.devLink && <p className="subtle"><a href={confirm.devLink}>{t('auth.browser.devLink')}</a></p>}
+        <p className="subtle">{t('auth.browser.afterConfirm')}</p>
+        <button type="button" className="btn flow block" onClick={() => setConfirm(null)}>{t('auth.browser.back')}</button>
+      </AuthLayout>
+    )
+  }
 
   return (
     <AuthLayout title={t('auth.login.title')} subtitle={t('auth.login.subtitle')}>

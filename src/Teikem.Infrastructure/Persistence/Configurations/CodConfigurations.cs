@@ -215,3 +215,21 @@ public sealed class LegalAcceptanceConfiguration : IEntityTypeConfiguration<Teik
         b.HasIndex(a => new { a.UserId, a.Version }).HasDatabaseName("IX_LegalAcceptance_User");
     }
 }
+
+public sealed class TrustedBrowserConfiguration : IEntityTypeConfiguration<Teikem.Domain.Security.TrustedBrowser>
+{
+    public void Configure(EntityTypeBuilder<Teikem.Domain.Security.TrustedBrowser> b)
+    {
+        b.ToTable("TrustedBrowser");
+        b.HasKey(x => x.TrustedBrowserId);
+        b.Property(x => x.PublicId).HasDefaultValueSql("NEWID()").ValueGeneratedOnAdd();
+        b.Property(x => x.TokenHash).HasMaxLength(64);
+        b.Property(x => x.ConfirmHash).HasMaxLength(64);
+        b.Property(x => x.Label).HasMaxLength(80);
+        b.Property(x => x.IpAddress).HasMaxLength(64);
+        b.Property(x => x.UserAgent).HasMaxLength(400);
+        b.HasIndex(x => new { x.UserId, x.TokenHash }).IsUnique().HasDatabaseName("UX_TrustedBrowser_UserToken");
+        b.HasIndex(x => x.ConfirmHash).HasDatabaseName("IX_TrustedBrowser_Confirm");
+        b.HasIndex(x => x.PublicId).IsUnique().HasDatabaseName("UX_TrustedBrowser_PublicId");
+    }
+}
