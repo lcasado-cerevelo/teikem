@@ -6,7 +6,7 @@ import { __resetSecureStoreForTests } from 'expo-secure-store'
 
 import { __resetSessionForTests, saveDeviceIdentity } from '../auth/session'
 import { localBalancesForBin, localBalancesForProduct, localBalancesSearch, balancesSyncedAtUtc } from '../warehouse/localBalances'
-import { downloadAsns, downloadBalances, downloadBins, downloadClients, downloadConsigneeLocations, downloadForReceiving, downloadStockExit, downloadProducts, downloadPurchaseOrders, downloadPurchaseOrdersIfAllowed, downloadSalesOrders, downloadSalesOrdersIfAllowed } from './download'
+import { downloadAsns, downloadBalances, downloadBins, downloadClients, downloadConsigneeLocations, downloadForReceiving, downloadStockExit, downloadProducts, downloadPurchaseOrders, downloadPurchaseOrdersIfAllowed, downloadSalesOrders, downloadSalesOrdersIfAllowed, downloadSalesReturns, downloadSalesReturnsIfAllowed } from './download'
 
 jest.mock('../api/client', () => {
   const actual = jest.requireActual('../api/client')
@@ -241,7 +241,7 @@ describe('órdenes de compra sin permiso (403)', () => {
       path === '/api/v1/sync/purchase-orders' ? forbidden() : Promise.resolve(page([], null, '2026-01-01T00:00:00.000Z')),
     )
     const results = await downloadForReceiving()
-    expect(results.map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins', 'balances', 'stockExit', 'salesOrders', 'clients', 'consigneeLocations', 'manualIssueReasons'])
+    expect(results.map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins', 'balances', 'stockExit', 'salesOrders', 'salesReturns', 'clients', 'consigneeLocations', 'manualIssueReasons'])
     expect(results[1]).toEqual({ resource: 'purchaseOrders', pages: 0, items: 0 })
   })
 
@@ -267,7 +267,7 @@ describe('downloadForReceiving', () => {
     expect((await downloadForReceiving()).map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'clients', 'consigneeLocations', 'manualIssueReasons'])
 
     await saveDeviceIdentity({ devicePublicId: 'dev-1', deviceSecret: 's', tenantName: 'T', defaultWarehousePublicId: 'wh-1', theme: null })
-    expect((await downloadForReceiving()).map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins', 'balances', 'stockExit', 'salesOrders', 'clients', 'consigneeLocations', 'manualIssueReasons'])
+    expect((await downloadForReceiving()).map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins', 'balances', 'stockExit', 'salesOrders', 'salesReturns', 'clients', 'consigneeLocations', 'manualIssueReasons'])
   })
 })
 
@@ -484,5 +484,33 @@ describe('downloadSalesOrders (Lote 65)', () => {
     getMock.mockResolvedValueOnce({ error: { title: 'Sin permiso', status: 403, code: 'forbidden' }, response: new Response(null, { status: 403 }) })
     expect(await downloadSalesOrdersIfAllowed('wh-1')).toEqual({ resource: 'salesOrders', pages: 0, items: 0 })
     expect(getDb().getAllSync('SELECT * FROM sales_order')).toEqual([])
+  })
+})
+
+describe('downloadSalesReturns (Lote 83)', () => {
+  const ret = (id: number, isActive = true) => ({
+    id, publicId: `dv-${id}`, number: `DV-0000${id}`, warehousePublicId: 'wh-1', clientName: 'C', orderNumber: 'OV-00001', statusCode: 'AUTHORIZED', note: null, requestedAtUtc: '2026-10-16T10:00:00Z', isActive,
+    lines: [{ id: id * 10, productPublicId: 'p1', sku: 'MED', productName: 'Med', trackingTypeCode: 'NONE', qtyRequested: 3, qtyReceived: 0, qtyDamaged: 0, pending: 3 }],
+  })
+
+  it('reemplaza la copia del almacén: lo que el servidor ya no manda se borra', async () => {
+    getMock.mockResolvedValueOnce(page([ret(1), ret(2)], null, '2026-10-16T00:00:00.000Z'))
+    expect(await downloadSalesReturns('wh-1')).toEqual({ resource: 'salesReturns', pages: 1, items: 2 })
+    expect(getMock).toHaveBeenCalledWith('/api/v1/sync/sales-returns', expect.objectContaining({ params: { query: expect.objectContaining({ warehousePublicId: 'wh-1' }) } }))
+    expect(getDb().getAllSync<{ number: string }>('SELECT number FROM sales_return ORDER BY id').map((r) => r.number)).toEqual(['DV-00001', 'DV-00002'])
+    expect(getDb().getAllSync('SELECT * FROM sales_return_line')).toHaveLength(2)
+
+    getMock.mockResolvedValueOnce(page([ret(2)], null, '2026-10-16T00:01:00.000Z'))
+    await downloadSalesReturns('wh-1')
+    expect(getDb().getAllSync<{ number: string }>('SELECT number FROM sales_return').map((r) => r.number)).toEqual(['DV-00002'])
+    expect(getDb().getAllSync('SELECT * FROM sales_return_line')).toHaveLength(1)
+  })
+
+  it('sin módulo o sin permiso (403) no es una falla: se salta y se borra lo de antes', async () => {
+    getMock.mockResolvedValueOnce(page([ret(1)], null, '2026-10-16T00:00:00.000Z'))
+    await downloadSalesReturns('wh-1')
+    getMock.mockResolvedValueOnce({ error: { title: 'Sin permiso', status: 403, code: 'forbidden' }, response: new Response(null, { status: 403 }) })
+    expect(await downloadSalesReturnsIfAllowed('wh-1')).toEqual({ resource: 'salesReturns', pages: 0, items: 0 })
+    expect(getDb().getAllSync('SELECT * FROM sales_return')).toEqual([])
   })
 })

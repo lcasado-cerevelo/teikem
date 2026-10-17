@@ -23689,6 +23689,1196 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/billing/invoices/{publicId}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PaymentRequest"];
+                    "text/json": components["schemas"]["PaymentRequest"];
+                    "application/*+json": components["schemas"]["PaymentRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["InvoiceDto"];
+                        "application/json": components["schemas"]["InvoiceDto"];
+                        "text/json": components["schemas"]["InvoiceDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/payments/{id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PaymentVoidRequest"];
+                    "text/json": components["schemas"]["PaymentVoidRequest"];
+                    "application/*+json": components["schemas"]["PaymentVoidRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["InvoiceDto"];
+                        "application/json": components["schemas"]["InvoiceDto"];
+                        "text/json": components["schemas"]["InvoiceDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/clients/{publicId}/statement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    from?: string;
+                    to?: string;
+                };
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["StatementDto"];
+                        "application/json": components["schemas"]["StatementDto"];
+                        "text/json": components["schemas"]["StatementDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/receivables": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    asOf?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ReceivablesDto"];
+                        "application/json": components["schemas"]["ReceivablesDto"];
+                        "text/json": components["schemas"]["ReceivablesDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/runs/{id}/export-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    templateId?: string;
+                };
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExportFileDto"];
+                        "application/json": components["schemas"]["ExportFileDto"];
+                        "text/json": components["schemas"]["ExportFileDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/runs/{id}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["BillingExportRequest"];
+                    "text/json": components["schemas"]["BillingExportRequest"];
+                    "application/*+json": components["schemas"]["BillingExportRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExportFileDto"];
+                        "application/json": components["schemas"]["ExportFileDto"];
+                        "text/json": components["schemas"]["ExportFileDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/export-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    scope?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExportTemplateDto"][];
+                        "application/json": components["schemas"]["ExportTemplateDto"][];
+                        "text/json": components["schemas"]["ExportTemplateDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ExportTemplateRequest"];
+                    "text/json": components["schemas"]["ExportTemplateRequest"];
+                    "application/*+json": components["schemas"]["ExportTemplateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExportTemplateDto"];
+                        "application/json": components["schemas"]["ExportTemplateDto"];
+                        "text/json": components["schemas"]["ExportTemplateDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/export-templates/fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    scope?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExportFieldDto"][];
+                        "application/json": components["schemas"]["ExportFieldDto"][];
+                        "text/json": components["schemas"]["ExportFieldDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/export-templates/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExportTemplateDto"];
+                        "application/json": components["schemas"]["ExportTemplateDto"];
+                        "text/json": components["schemas"]["ExportTemplateDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ExportTemplateRequest"];
+                    "text/json": components["schemas"]["ExportTemplateRequest"];
+                    "application/*+json": components["schemas"]["ExportTemplateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExportTemplateDto"];
+                        "application/json": components["schemas"]["ExportTemplateDto"];
+                        "text/json": components["schemas"]["ExportTemplateDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/credit-notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    status?: string;
+                    clientPublicId?: string;
+                    q?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CreditNoteListItemDtoPagedResult"];
+                        "application/json": components["schemas"]["CreditNoteListItemDtoPagedResult"];
+                        "text/json": components["schemas"]["CreditNoteListItemDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CreditNoteRequest"];
+                    "text/json": components["schemas"]["CreditNoteRequest"];
+                    "application/*+json": components["schemas"]["CreditNoteRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CreditNoteDto"];
+                        "application/json": components["schemas"]["CreditNoteDto"];
+                        "text/json": components["schemas"]["CreditNoteDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/credit-notes/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CreditNoteDto"];
+                        "application/json": components["schemas"]["CreditNoteDto"];
+                        "text/json": components["schemas"]["CreditNoteDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CreditNoteRequest"];
+                    "text/json": components["schemas"]["CreditNoteRequest"];
+                    "application/*+json": components["schemas"]["CreditNoteRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CreditNoteDto"];
+                        "application/json": components["schemas"]["CreditNoteDto"];
+                        "text/json": components["schemas"]["CreditNoteDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/credit-notes/{publicId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CreditNoteDto"];
+                        "application/json": components["schemas"]["CreditNoteDto"];
+                        "text/json": components["schemas"]["CreditNoteDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/credit-notes/{publicId}/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CreditApplyRequest"];
+                    "text/json": components["schemas"]["CreditApplyRequest"];
+                    "application/*+json": components["schemas"]["CreditApplyRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CreditNoteDto"];
+                        "application/json": components["schemas"]["CreditNoteDto"];
+                        "text/json": components["schemas"]["CreditNoteDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/credit-notes/{publicId}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CreditVoidRequest"];
+                    "text/json": components["schemas"]["CreditVoidRequest"];
+                    "application/*+json": components["schemas"]["CreditVoidRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CreditNoteDto"];
+                        "application/json": components["schemas"]["CreditNoteDto"];
+                        "text/json": components["schemas"]["CreditNoteDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-returns/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesReturnSettingsDto"];
+                        "application/json": components["schemas"]["SalesReturnSettingsDto"];
+                        "text/json": components["schemas"]["SalesReturnSettingsDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesReturnSettingsRequest"];
+                    "text/json": components["schemas"]["SalesReturnSettingsRequest"];
+                    "application/*+json": components["schemas"]["SalesReturnSettingsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesReturnSettingsDto"];
+                        "application/json": components["schemas"]["SalesReturnSettingsDto"];
+                        "text/json": components["schemas"]["SalesReturnSettingsDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-returns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    status?: string;
+                    clientPublicId?: string;
+                    orderPublicId?: string;
+                    q?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesReturnListItemDtoPagedResult"];
+                        "application/json": components["schemas"]["SalesReturnListItemDtoPagedResult"];
+                        "text/json": components["schemas"]["SalesReturnListItemDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesReturnRequest"];
+                    "text/json": components["schemas"]["SalesReturnRequest"];
+                    "application/*+json": components["schemas"]["SalesReturnRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesReturnDto"];
+                        "application/json": components["schemas"]["SalesReturnDto"];
+                        "text/json": components["schemas"]["SalesReturnDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-returns/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesReturnDto"];
+                        "application/json": components["schemas"]["SalesReturnDto"];
+                        "text/json": components["schemas"]["SalesReturnDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-returns/returnable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    salesOrderPublicId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ReturnableDto"];
+                        "application/json": components["schemas"]["ReturnableDto"];
+                        "text/json": components["schemas"]["ReturnableDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-returns/{publicId}/authorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesReturnAuthorizeRequest"];
+                    "text/json": components["schemas"]["SalesReturnAuthorizeRequest"];
+                    "application/*+json": components["schemas"]["SalesReturnAuthorizeRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesReturnDto"];
+                        "application/json": components["schemas"]["SalesReturnDto"];
+                        "text/json": components["schemas"]["SalesReturnDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-returns/{publicId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesReturnRejectRequest"];
+                    "text/json": components["schemas"]["SalesReturnRejectRequest"];
+                    "application/*+json": components["schemas"]["SalesReturnRejectRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesReturnDto"];
+                        "application/json": components["schemas"]["SalesReturnDto"];
+                        "text/json": components["schemas"]["SalesReturnDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-returns/{publicId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesReturnCancelRequest"];
+                    "text/json": components["schemas"]["SalesReturnCancelRequest"];
+                    "application/*+json": components["schemas"]["SalesReturnCancelRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesReturnDto"];
+                        "application/json": components["schemas"]["SalesReturnDto"];
+                        "text/json": components["schemas"]["SalesReturnDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-returns/{publicId}/receive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesReturnReceiveRequest"];
+                    "text/json": components["schemas"]["SalesReturnReceiveRequest"];
+                    "application/*+json": components["schemas"]["SalesReturnReceiveRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesReturnDto"];
+                        "application/json": components["schemas"]["SalesReturnDto"];
+                        "text/json": components["schemas"]["SalesReturnDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-returns/{publicId}/credit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesReturnDto"];
+                        "application/json": components["schemas"]["SalesReturnDto"];
+                        "text/json": components["schemas"]["SalesReturnDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sync/sales-returns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    warehousePublicId?: string;
+                    since?: string;
+                    cursor?: string;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SyncSalesReturnDtoSyncPage"];
+                        "application/json": components["schemas"]["SyncSalesReturnDtoSyncPage"];
+                        "text/json": components["schemas"]["SyncSalesReturnDtoSyncPage"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -31567,6 +32757,8 @@ export interface components {
             periodEnd?: string | null;
             note?: string | null;
             onlyInPeriod?: boolean | null;
+            includeProducts?: boolean | null;
+            includeFreight?: boolean | null;
         };
         BillingSettingsDto: {
             salesBillingTrigger?: string | null;
@@ -31607,6 +32799,9 @@ export interface components {
             runId?: number | null;
             notes?: string | null;
             lines?: components["schemas"]["InvoiceLineDto"][] | null;
+            payments?: components["schemas"]["PaymentDto"][] | null;
+            /** Format: double */
+            credited?: number;
         };
         InvoiceLineAdjustRequest: {
             /** Format: double */
@@ -31637,6 +32832,9 @@ export interface components {
             /** Format: double */
             taxAmount?: number;
             isTaxExempt?: boolean;
+            transportOrderNumber?: string | null;
+            /** Format: int32 */
+            rateComponentId?: number | null;
         };
         InvoiceListItemDto: {
             /** Format: uuid */
@@ -31666,6 +32864,8 @@ export interface components {
             lineCount?: number;
             /** Format: int32 */
             runId?: number | null;
+            /** Format: double */
+            credited?: number;
         };
         InvoiceListItemDtoPagedResult: {
             items?: components["schemas"]["InvoiceListItemDto"][] | null;
@@ -31678,6 +32878,488 @@ export interface components {
         };
         InvoiceVoidRequest: {
             comment?: string | null;
+        };
+        PaymentRequest: {
+            /** Format: double */
+            amount?: number | null;
+            method?: string | null;
+            /** Format: date */
+            paidDate?: string | null;
+            reference?: string | null;
+        };
+        PaymentVoidRequest: {
+            reason?: string | null;
+        };
+        PaymentDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: double */
+            amount?: number;
+            method?: string | null;
+            methodLabel?: string | null;
+            /** Format: date */
+            paidDate?: string;
+            reference?: string | null;
+            /** Format: date-time */
+            voidedAtUtc?: string | null;
+            voidReason?: string | null;
+        };
+        StatementLineDto: {
+            /** Format: date */
+            date?: string;
+            kind?: string | null;
+            reference?: string | null;
+            description?: string | null;
+            /** Format: double */
+            debit?: number;
+            /** Format: double */
+            credit?: number;
+            /** Format: double */
+            balance?: number;
+            /** Format: uuid */
+            invoicePublicId?: string | null;
+        };
+        AgingDto: {
+            /** Format: double */
+            current?: number;
+            /** Format: double */
+            days1To30?: number;
+            /** Format: double */
+            days31To60?: number;
+            /** Format: double */
+            days61To90?: number;
+            /** Format: double */
+            over90?: number;
+            /** Format: double */
+            total?: number;
+        };
+        StatementDto: {
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            /** Format: date */
+            from?: string;
+            /** Format: date */
+            to?: string;
+            /** Format: double */
+            openingBalance?: number;
+            /** Format: double */
+            totalInvoiced?: number;
+            /** Format: double */
+            totalPaid?: number;
+            /** Format: double */
+            closingBalance?: number;
+            lines?: components["schemas"]["StatementLineDto"][] | null;
+            aging?: components["schemas"]["AgingDto"];
+            /** Format: double */
+            unappliedCredit?: number;
+        };
+        ReceivableRowDto: {
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            /** Format: int32 */
+            openInvoices?: number;
+            /** Format: double */
+            balance?: number;
+            aging?: components["schemas"]["AgingDto"];
+            /** Format: date */
+            oldestDueDate?: string | null;
+            /** Format: double */
+            creditBalance?: number;
+        };
+        ReceivablesDto: {
+            /** Format: date */
+            asOf?: string;
+            rows?: components["schemas"]["ReceivableRowDto"][] | null;
+            total?: components["schemas"]["AgingDto"];
+        };
+        ExportColumnDto: {
+            field?: string | null;
+            header?: string | null;
+        };
+        ExportTemplateDto: {
+            /** Format: uuid */
+            publicId?: string;
+            scope?: string | null;
+            name?: string | null;
+            format?: string | null;
+            delimiter?: string | null;
+            dateFormat?: string | null;
+            includeHeader?: boolean;
+            columns?: components["schemas"]["ExportColumnDto"][] | null;
+        };
+        ExportTemplateRequest: {
+            scope?: string | null;
+            name?: string | null;
+            format?: string | null;
+            delimiter?: string | null;
+            dateFormat?: string | null;
+            includeHeader?: boolean | null;
+            columns?: components["schemas"]["ExportColumnDto"][] | null;
+        };
+        ExportFieldDto: {
+            code?: string | null;
+            kind?: string | null;
+            defaultHeader?: string | null;
+            label?: string | null;
+        };
+        ExportFileDto: {
+            fileName?: string | null;
+            contentType?: string | null;
+            text?: string | null;
+            /** Format: int32 */
+            rowCount?: number;
+            templateName?: string | null;
+        };
+        BillingExportRequest: {
+            /** Format: uuid */
+            templatePublicId?: string | null;
+        };
+        CreditNoteLineRequest: {
+            /** Format: int32 */
+            invoiceLineId?: number | null;
+            description?: string | null;
+            /** Format: double */
+            quantity?: number | null;
+            /** Format: double */
+            unitAmount?: number | null;
+            chargeType?: string | null;
+            /** Format: uuid */
+            productPublicId?: string | null;
+        };
+        CreditNoteRequest: {
+            /** Format: uuid */
+            clientPublicId?: string | null;
+            /** Format: uuid */
+            invoicePublicId?: string | null;
+            externalInvoiceRef?: string | null;
+            reason?: string | null;
+            note?: string | null;
+            lines?: components["schemas"]["CreditNoteLineRequest"][] | null;
+        };
+        CreditApplyRequest: {
+            /** Format: uuid */
+            invoicePublicId?: string | null;
+            /** Format: double */
+            amount?: number | null;
+        };
+        CreditVoidRequest: {
+            reason?: string | null;
+        };
+        CreditNoteLineDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: int32 */
+            invoiceLineId?: number | null;
+            description?: string | null;
+            chargeType?: string | null;
+            sku?: string | null;
+            /** Format: double */
+            quantity?: number;
+            /** Format: double */
+            unitAmount?: number;
+            /** Format: double */
+            lineSubtotal?: number;
+            /** Format: double */
+            taxRatePct?: number | null;
+            /** Format: double */
+            taxAmount?: number;
+            isTaxExempt?: boolean;
+        };
+        CreditApplicationDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            invoicePublicId?: string;
+            invoiceNumber?: string | null;
+            /** Format: double */
+            amount?: number;
+            /** Format: date */
+            appliedDate?: string;
+        };
+        CreditNoteDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            statusColor?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            /** Format: uuid */
+            invoicePublicId?: string | null;
+            invoiceNumber?: string | null;
+            externalInvoiceRef?: string | null;
+            reason?: string | null;
+            reasonLabel?: string | null;
+            currency?: string | null;
+            /** Format: double */
+            subtotal?: number;
+            /** Format: double */
+            taxAmount?: number;
+            /** Format: double */
+            total?: number;
+            /** Format: double */
+            applied?: number;
+            /** Format: double */
+            balance?: number;
+            note?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            /** Format: date-time */
+            approvedAtUtc?: string | null;
+            lines?: components["schemas"]["CreditNoteLineDto"][] | null;
+            applications?: components["schemas"]["CreditApplicationDto"][] | null;
+        };
+        CreditNoteListItemDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            statusColor?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            invoiceNumber?: string | null;
+            reason?: string | null;
+            reasonLabel?: string | null;
+            /** Format: double */
+            total?: number;
+            /** Format: double */
+            applied?: number;
+            /** Format: double */
+            balance?: number;
+            /** Format: date-time */
+            createdAtUtc?: string;
+        };
+        CreditNoteListItemDtoPagedResult: {
+            items?: components["schemas"]["CreditNoteListItemDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        ReturnableDto: {
+            /** Format: uuid */
+            orderPublicId?: string;
+            orderNumber?: string | null;
+            /** Format: date */
+            lastDispatchDate?: string | null;
+            /** Format: int32 */
+            windowDays?: number;
+            outsideWindow?: boolean;
+            lines?: components["schemas"]["ReturnableLineDto"][] | null;
+        };
+        ReturnableLineDto: {
+            /** Format: int32 */
+            lineId?: number;
+            /** Format: int32 */
+            lineNo?: number;
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            /** Format: double */
+            shipped?: number;
+            /** Format: double */
+            returned?: number;
+            /** Format: double */
+            pending?: number;
+            /** Format: double */
+            returnable?: number;
+            isKit?: boolean;
+            isSerial?: boolean;
+        };
+        SalesReturnAuthorizeRequest: {
+            note?: string | null;
+        };
+        SalesReturnCancelRequest: {
+            comment?: string | null;
+        };
+        SalesReturnCreditDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            /** Format: double */
+            total?: number;
+        };
+        SalesReturnDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            statusColor?: string | null;
+            /** Format: uuid */
+            orderPublicId?: string;
+            orderNumber?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            warehouseName?: string | null;
+            reason?: string | null;
+            reasonLabel?: string | null;
+            note?: string | null;
+            outsideWindow?: boolean;
+            /** Format: date-time */
+            requestedAtUtc?: string;
+            /** Format: date-time */
+            authorizedAtUtc?: string | null;
+            authorizationNote?: string | null;
+            /** Format: date-time */
+            receivedAtUtc?: string | null;
+            lines?: components["schemas"]["SalesReturnLineDto"][] | null;
+            receipts?: components["schemas"]["SalesReturnReceiptDto"][] | null;
+            creditNotes?: components["schemas"]["SalesReturnCreditDto"][] | null;
+        };
+        SalesReturnLineDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: int32 */
+            salesOrderLineId?: number;
+            /** Format: int32 */
+            lineNo?: number;
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            /** Format: double */
+            qtyRequested?: number;
+            /** Format: double */
+            qtyReceived?: number;
+            /** Format: double */
+            qtyDamaged?: number;
+            /** Format: double */
+            qtyCredited?: number;
+            /** Format: double */
+            pending?: number;
+        };
+        SalesReturnLineRequest: {
+            /** Format: int32 */
+            salesOrderLineId?: number | null;
+            /** Format: double */
+            quantity?: number | null;
+        };
+        SalesReturnListItemDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            statusColor?: string | null;
+            /** Format: uuid */
+            orderPublicId?: string;
+            orderNumber?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            reason?: string | null;
+            reasonLabel?: string | null;
+            /** Format: double */
+            qtyRequested?: number;
+            /** Format: double */
+            qtyReceived?: number;
+            outsideWindow?: boolean;
+            /** Format: date-time */
+            requestedAtUtc?: string;
+        };
+        SalesReturnListItemDtoPagedResult: {
+            items?: components["schemas"]["SalesReturnListItemDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        SalesReturnReceiptDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+        };
+        SalesReturnReceiveLineRequest: {
+            /** Format: int32 */
+            lineId?: number | null;
+            /** Format: double */
+            goodQty?: number | null;
+            /** Format: double */
+            damagedQty?: number | null;
+            damageNote?: string | null;
+            damageDiscard?: boolean | null;
+            /** Format: int32 */
+            targetBinId?: number | null;
+            lot?: components["schemas"]["LotInput"];
+        };
+        SalesReturnReceiveRequest: {
+            lines?: components["schemas"]["SalesReturnReceiveLineRequest"][] | null;
+            closeRest?: boolean | null;
+        };
+        SalesReturnRejectRequest: {
+            reason?: string | null;
+        };
+        SalesReturnRequest: {
+            /** Format: uuid */
+            salesOrderPublicId?: string | null;
+            reason?: string | null;
+            note?: string | null;
+            lines?: components["schemas"]["SalesReturnLineRequest"][] | null;
+            confirmOutsideWindow?: boolean | null;
+        };
+        SalesReturnSettingsDto: {
+            /** Format: int32 */
+            windowDays?: number;
+        };
+        SalesReturnSettingsRequest: {
+            /** Format: int32 */
+            windowDays?: number | null;
+        };
+        SyncSalesReturnDtoSyncPage: {
+            items?: components["schemas"]["SyncSalesReturnDto"][] | null;
+            nextCursor?: string | null;
+            /** Format: date-time */
+            serverTimeUtc?: string;
+        };
+        SyncSalesReturnDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            clientName?: string | null;
+            orderNumber?: string | null;
+            statusCode?: string | null;
+            note?: string | null;
+            /** Format: date-time */
+            requestedAtUtc?: string;
+            isActive?: boolean;
+            lines?: components["schemas"]["SyncSalesReturnLineDto"][] | null;
+        };
+        SyncSalesReturnLineDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            trackingTypeCode?: string | null;
+            /** Format: double */
+            qtyRequested?: number;
+            /** Format: double */
+            qtyReceived?: number;
+            /** Format: double */
+            qtyDamaged?: number;
+            /** Format: double */
+            pending?: number;
         };
     };
     responses: never;

@@ -1,6 +1,6 @@
 // Lote 8A-app — esquema de la base local (expo-sqlite). Ver docs/mobile/app-almacen-plan.md §1 "Base local".
 // Migraciones por PRAGMA user_version: cada versión agrega su bloque de SQL; nunca se reescribe uno ya publicado.
-export const SCHEMA_VERSION = 15
+export const SCHEMA_VERSION = 16
 
 export const MIGRATIONS: readonly string[] = [
   // v1: kv, catálogos sincronizados, documentos abiertos, cola de salida y marcas de agua.
@@ -465,5 +465,33 @@ export const MIGRATIONS: readonly string[] = [
     qty_per_kit REAL NOT NULL
   );
   CREATE INDEX IF NOT EXISTS ix_sales_order_component_line ON sales_order_component(sales_order_line_id);
+  `,
+  // v16 (2026-10-16, Lote 83: recibir una devolución de venta): las devoluciones autorizadas (o recibidas en parte con algo pendiente) del almacén (GET /sync/sales-returns), con lo
+  // que falta por recibir de cada línea. Misma regla que las órdenes de venta: la copia se reemplaza completa en cada sincronización (llegan todas las abiertas).
+  `
+  CREATE TABLE IF NOT EXISTS sales_return (
+    id INTEGER PRIMARY KEY NOT NULL,
+    public_id TEXT NOT NULL,
+    number TEXT NOT NULL,
+    warehouse_public_id TEXT NOT NULL,
+    client_name TEXT,
+    order_number TEXT,
+    status_code TEXT,
+    note TEXT,
+    requested_at_utc TEXT
+  );
+  CREATE INDEX IF NOT EXISTS ix_sales_return_warehouse ON sales_return(warehouse_public_id);
+  CREATE TABLE IF NOT EXISTS sales_return_line (
+    id INTEGER PRIMARY KEY NOT NULL,
+    sales_return_id INTEGER NOT NULL,
+    product_public_id TEXT NOT NULL,
+    sku TEXT,
+    product_name TEXT,
+    tracking_type_code TEXT,
+    qty_requested REAL NOT NULL,
+    qty_received REAL NOT NULL,
+    qty_damaged REAL NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS ix_sales_return_line_return ON sales_return_line(sales_return_id);
   `,
 ]

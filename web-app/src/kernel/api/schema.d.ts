@@ -24837,6 +24837,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sync/sales-returns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    warehousePublicId?: string;
+                    since?: string;
+                    cursor?: string;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SyncSalesReturnDtoSyncPage"];
+                        "application/json": components["schemas"]["SyncSalesReturnDtoSyncPage"];
+                        "text/json": components["schemas"]["SyncSalesReturnDtoSyncPage"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -33278,6 +33320,46 @@ export interface components {
         SalesReturnSettingsRequest: {
             /** Format: int32 */
             windowDays?: number | null;
+        };
+        SyncSalesReturnDtoSyncPage: {
+            items?: components["schemas"]["SyncSalesReturnDto"][] | null;
+            nextCursor?: string | null;
+            /** Format: date-time */
+            serverTimeUtc?: string;
+        };
+        SyncSalesReturnDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            clientName?: string | null;
+            orderNumber?: string | null;
+            statusCode?: string | null;
+            note?: string | null;
+            /** Format: date-time */
+            requestedAtUtc?: string;
+            isActive?: boolean;
+            lines?: components["schemas"]["SyncSalesReturnLineDto"][] | null;
+        };
+        SyncSalesReturnLineDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            trackingTypeCode?: string | null;
+            /** Format: double */
+            qtyRequested?: number;
+            /** Format: double */
+            qtyReceived?: number;
+            /** Format: double */
+            qtyDamaged?: number;
+            /** Format: double */
+            pending?: number;
         };
     };
     responses: never;

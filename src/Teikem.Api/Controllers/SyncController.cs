@@ -86,6 +86,15 @@ public sealed class SyncController(SyncService sync) : ControllerBase
         => sync.SalesOrdersAsync(new SyncQuery(since, cursor, take, warehousePublicId), ct);
 
     /// <summary>
+    /// Devoluciones de venta por recibir (autorizadas, o recibidas en parte con algo pendiente) con lo pendiente de cada línea: la guía de «Devoluciones» en el aparato (Lote 83). Siempre llegan todas las
+    /// abiertas; con since llegan además las cerradas o canceladas (isActive = false). Exige el módulo SALES_ORDERS y warehouse.receive (recibir la devolución usa ese mismo permiso).
+    /// </summary>
+    [HttpGet("sales-returns"), RequireModule(ModuleKeys.SalesOrders), RequirePermission(PermissionCatalog.WarehouseReceive)]
+    public Task<SyncPage<SyncSalesReturnDto>> SalesReturns([FromQuery] Guid? warehousePublicId, [FromQuery] DateTime? since, [FromQuery] string? cursor,
+        [FromQuery] int take = SyncRules.DefaultTake, CancellationToken ct = default)
+        => sync.SalesReturnsAsync(new SyncQuery(since, cursor, take, warehousePublicId), ct);
+
+    /// <summary>
     /// Avisos de llegada EXPECTED con sus líneas. Con since llegan también los recibidos o cancelados (isActive = false).
     /// Filtro opcional warehousePublicId. since en UTC (since = serverTimeUtc anterior − 5 minutos).
     /// </summary>

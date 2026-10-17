@@ -1,5 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
+using Teikem.Api.Auth;
+using Teikem.Api.Controllers;
 using Teikem.Domain.Billing;
 using Teikem.Domain.Clients;
 using Teikem.Domain.Constants;
@@ -71,6 +74,7 @@ public sealed class SalesReturnTests
             s.AddSingleton<BillingService>();
             s.AddSingleton<CreditNoteService>();
             s.AddSingleton<SalesReturnService>();
+            s.AddSingleton<SyncService>();
         });
         f.SetModules(ModuleKeys.SalesOrders, ModuleKeys.Billing);
         var w = await f.AddWarehouseAsync("W1");
@@ -102,6 +106,42 @@ public sealed class SalesReturnTests
     private static async Task<string> MsgOf(Func<Task> act) => (await Assert.ThrowsAnyAsync<TeikemException>(act)).Message;
 
     private static async Task<decimal> OnHandAsync(World x, WarehouseBin b) => await x.F.OnHandAsync(x.P.ProductId, b.WarehouseBinId);
+
+    // Lote 83: las devoluciones por recibir para el aparato (GET /sync/sales-returns)
+    [Fact]
+    public async Task The_device_gets_the_authorized_returns_with_what_is_pending_and_the_closed_ones_come_as_inactive()
+    {
+        var x = await NewWorldAsync();
+        await using var _ = x.F;
+        var o = await OrderAsync(x, 10m, 8m);
+        var requested = await x.Returns.CreateAsync(Req(o, 3m), default);
+        var sync = x.F.Get<SyncService>();
+        Assert.Empty((await sync.SalesReturnsAsync(new SyncQuery(WarehousePublicId: x.W.PublicId), default)).Items);   // solicitada: todavía no se recibe
+
+        await x.Returns.AuthorizeAsync(requested.PublicId, "La recoge el chofer", default);
+        var item = Assert.Single((await sync.SalesReturnsAsync(new SyncQuery(WarehousePublicId: x.W.PublicId), default)).Items);
+        Assert.Equal((requested.Number, o.Number, "AUTHORIZED", true, "Cliente C1"), (item.Number, item.OrderNumber, item.StatusCode, item.IsActive, item.ClientName));
+        Assert.Equal(x.W.PublicId, item.WarehousePublicId);
+        var line = Assert.Single(item.Lines);
+        Assert.Equal(("MED", "NONE", 3m, 0m, 3m), (line.Sku, line.TrackingTypeCode, line.QtyRequested, line.QtyReceived, line.Pending));
+
+        // recibida en parte: sigue abierta con lo pendiente; recibida del todo: con since llega como no activa
+        var lineId = requested.Lines[0].Id;
+        await x.Returns.ReceiveAsync(requested.PublicId, new SalesReturnReceiveRequest(new[] { new SalesReturnReceiveLineRequest(lineId, 1m, 0m) }), default);
+        var part = Assert.Single((await sync.SalesReturnsAsync(new SyncQuery(WarehousePublicId: x.W.PublicId), default)).Items);
+        Assert.Equal(("RECEIVED", true, 2m), (part.StatusCode, part.IsActive, part.Lines[0].Pending));
+        await x.Returns.ReceiveAsync(requested.PublicId, new SalesReturnReceiveRequest(new[] { new SalesReturnReceiveLineRequest(lineId, 2m, 0m) }), default);
+        Assert.Empty((await sync.SalesReturnsAsync(new SyncQuery(WarehousePublicId: x.W.PublicId), default)).Items);
+        var delta = await sync.SalesReturnsAsync(new SyncQuery(Since: DateTime.UtcNow.AddMinutes(-5), WarehousePublicId: x.W.PublicId), default);
+        Assert.False(Assert.Single(delta.Items).IsActive);
+
+        // otra compañía no ve nada y el endpoint pide módulo y permiso
+        using (x.F.AsTenant(WmsFixture.OtherTenantId))
+            Assert.Empty((await sync.SalesReturnsAsync(new SyncQuery(Since: DateTime.UtcNow.AddMinutes(-5)), default)).Items);
+        var m = typeof(SyncController).GetMethod(nameof(SyncController.SalesReturns))!;
+        Assert.Contains(ModuleKeys.SalesOrders, m.GetCustomAttributes<RequireModuleAttribute>().Select(a => a.ModuleKey));
+        Assert.Contains(RequirePermissionAttribute.Prefix + PermissionCatalog.WarehouseReceive, m.GetCustomAttributes<RequirePermissionAttribute>().Select(a => a.Policy));
+    }
 
     [Fact]
     public async Task Requesting_validates_and_numbers_the_return_and_the_cap_counts_open_returns()

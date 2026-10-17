@@ -88,6 +88,7 @@
     "damage": "Damage",
     "adjust": "Adjust",
     "salesDispatch": "Sales orders",
+    "salesReturn": "Returns",
     "build": "Version {build}"
   },
   "salesDispatch": {
@@ -130,6 +131,34 @@
     "sent": "Dispatch sent: {number}.",
     "sentNoNumber": "Dispatch sent.",
     "queued": "Dispatch saved: it is sent when there is signal."
+  },
+  "salesReturn": {
+    "title": "Receive return",
+    "scanReturn": "Return number",
+    "scanReturnHelp": "Scan or type the return number (DV-…), or tap one from the list.",
+    "returnNotFound": "That return is not waiting to be received in this warehouse. If it is new, tap Sync now.",
+    "noReturns": "There are no returns to receive in this warehouse.",
+    "openReturn": "Open return {number}",
+    "toReceive": "To receive: {qty}",
+    "forOrder": "for order {order}",
+    "pendingOf": "Pending: {qty}",
+    "good": "Arrived good",
+    "damaged": "Arrived damaged",
+    "lot": "Lot",
+    "damageNote": "What happened",
+    "discard": "Discard the damaged items (no quarantine)",
+    "closeRest": "Close what is pending (will not come back)",
+    "summary": "Good: {good} · Damaged: {damaged}",
+    "receive": "Receive",
+    "cancel": "Cancel",
+    "sending": "Sending the receipt…",
+    "sent": "Return received.",
+    "queued": "Receipt saved: it is sent when there is signal.",
+    "errNothing": "Enter what arrived on at least one line.",
+    "errQtyInvalid": "{sku}: enter a valid quantity (up to 3 decimals).",
+    "errExceeds": "{sku}: you cannot receive more than what is pending ({pending}).",
+    "errDamageNote": "{sku}: describe what happened to the damaged items.",
+    "errLot": "{sku}: enter the lot."
   },
   "warehousePick": {
     "title": "Which warehouse are you working in?",
@@ -542,7 +571,8 @@
     "kindAdjust": "Inventory adjustment",
     "kindDamage": "Damage report",
     "kindManualIssue": "Manual issue",
-    "kindSalesDispatch": "Sales order dispatch"
+    "kindSalesDispatch": "Sales order dispatch",
+    "kindSalesReturnReceive": "Return receipt"
   },
   "countRejection": {
     "headline": "The supervisor already corrected all the lines of this submission.",

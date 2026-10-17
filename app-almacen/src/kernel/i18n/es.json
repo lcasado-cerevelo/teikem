@@ -88,6 +88,7 @@
     "damage": "Daño",
     "adjust": "Ajustar",
     "salesDispatch": "Órdenes de venta",
+    "salesReturn": "Devoluciones",
     "build": "Versión {build}"
   },
   "salesDispatch": {
@@ -130,6 +131,34 @@
     "sent": "Despacho enviado: {number}.",
     "sentNoNumber": "Despacho enviado.",
     "queued": "Despacho guardado: se envía cuando haya señal."
+  },
+  "salesReturn": {
+    "title": "Recibir devolución",
+    "scanReturn": "Número de la devolución",
+    "scanReturnHelp": "Escanea o escribe el número de la devolución (DV-…), o toca una de la lista.",
+    "returnNotFound": "Esa devolución no está por recibir en este almacén. Si es nueva, toca Sincronizar ahora.",
+    "noReturns": "No hay devoluciones por recibir en este almacén.",
+    "openReturn": "Abrir la devolución {number}",
+    "toReceive": "Por recibir: {qty}",
+    "forOrder": "de la orden {order}",
+    "pendingOf": "Pendiente: {qty}",
+    "good": "Llegó bueno",
+    "damaged": "Llegó dañado",
+    "lot": "Lote",
+    "damageNote": "Qué le pasó",
+    "discard": "Desechar lo dañado (no va a cuarentena)",
+    "closeRest": "Cerrar lo pendiente (no regresará más)",
+    "summary": "Bueno: {good} · Dañado: {damaged}",
+    "receive": "Recibir",
+    "cancel": "Cancelar",
+    "sending": "Enviando la recepción…",
+    "sent": "Devolución recibida.",
+    "queued": "Recepción guardada: se envía cuando haya señal.",
+    "errNothing": "Anota lo que llegó en al menos una línea.",
+    "errQtyInvalid": "{sku}: escribe una cantidad válida (hasta 3 decimales).",
+    "errExceeds": "{sku}: no puedes recibir más de lo pendiente ({pending}).",
+    "errDamageNote": "{sku}: describe qué le pasó a lo dañado.",
+    "errLot": "{sku}: escribe el lote."
   },
   "warehousePick": {
     "title": "¿En qué almacén trabajas?",
@@ -542,7 +571,8 @@
     "kindAdjust": "Ajuste de inventario",
     "kindDamage": "Reporte de daño",
     "kindManualIssue": "Despacho manual",
-    "kindSalesDispatch": "Despacho de orden de venta"
+    "kindSalesDispatch": "Despacho de orden de venta",
+    "kindSalesReturnReceive": "Recepción de devolución"
   },
   "countRejection": {
     "headline": "El supervisor ya corrigió todas las líneas de este envío.",

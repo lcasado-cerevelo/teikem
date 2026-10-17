@@ -8588,3 +8588,21 @@ Lo recibido no se había facturado (ya no se facturará: la devolución lo descu
 
 **No me deja devolver un kit o un producto con serie.**
 En esta versión no se devuelven; los kits se devolverían por sus piezas y la serie por serie, y vienen más adelante.
+
+## Lote 83 — Recibir devoluciones en el aparato
+
+**¿Por qué no veo el botón «Devoluciones» en Inicio?**
+Aparece solo si el aparato ya bajó al menos una devolución **autorizada** de su almacén y el usuario tiene `warehouse.receive`. Si la devolución es nueva, toque **Sincronizar ahora**; si sigue sin salir, revise en la web que esté **Autorizada** (una solicitada todavía no se recibe) y que sea del almacén activo del aparato.
+
+**`Esa devolución no está por recibir en este almacén. Si es nueva, toca Sincronizar ahora.`**
+El número no está en la copia del aparato: no existe, es de otro almacén, ya se recibió completa o todavía no se sincroniza.
+
+**`{SKU}: no puedes recibir más de lo pendiente ({n}).` / `{SKU}: describe qué le pasó a lo dañado.` / `{SKU}: escribe el lote.`**
+Se corrige la línea marcada y se vuelve a tocar **Recibir**. Lo bueno más lo dañado no puede pasar de lo pendiente; lo dañado pide la descripción; el producto con lote pide el lote.
+
+**Recibí sin señal: ¿se perdió?**
+No. Queda en la cola de salida («Recepción de devolución» en Sincronización) y se manda sola al volver la señal. La devolución desaparece de la lista del aparato al instante; si el servidor la rechaza, aparece de nuevo en la siguiente sincronización y se muestra el motivo exacto.
+
+**Recibí en el aparato pero la existencia de la posición no cambió.**
+La recepción entra por el modo de recepción del almacén (zona de recepción con tareas de **Acomodar**, o directo): la existencia se ve en cuanto llega la siguiente sincronización o al acomodar. Lo dañado queda en su reporte de daño (cuarentena) y no en la posición normal.
+

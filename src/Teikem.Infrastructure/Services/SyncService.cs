@@ -69,6 +69,13 @@ namespace Teikem.Infrastructure.Contracts
     public sealed record SyncSalesOrderDto(int Id, Guid PublicId, string Number, Guid WarehousePublicId, string ClientName, string? ConsigneeName, string StatusCode,
         DateOnly? RequiredDate, DateTime? RequestedAtUtc, bool IsActive, IReadOnlyList<SyncSalesOrderLineDto> Lines);
 
+    /// <summary>Lote 83: una línea de devolución por recibir (lo que falta es Pending); TrackingTypeCode = NONE o LOT (la serie no se devuelve en esta versión).</summary>
+    public sealed record SyncSalesReturnLineDto(int Id, Guid ProductPublicId, string Sku, string ProductName, string TrackingTypeCode, decimal QtyRequested, decimal QtyReceived, decimal QtyDamaged, decimal Pending);
+
+    /// <summary>Devolución de venta por recibir (Lote 83). IsActive = autorizada, o recibida en parte con algo pendiente; si no, el aparato la borra.</summary>
+    public sealed record SyncSalesReturnDto(int Id, Guid PublicId, string Number, Guid WarehousePublicId, string ClientName, string OrderNumber, string StatusCode, string? Note,
+        DateTime RequestedAtUtc, bool IsActive, IReadOnlyList<SyncSalesReturnLineDto> Lines);
+
     public sealed record SyncAsnLineDto(int Id, Guid ProductPublicId, string Sku, string ProductName, decimal ExpectedQty, string? LotNumber,
         int? PurchaseOrderLineId);
 
@@ -470,6 +477,59 @@ namespace Teikem.Infrastructure.Services
                     o.ConsigneeId is int cid ? consignees.GetValueOrDefault(cid) : null, code, o.RequiredDate, o.RequestedAtUtc, open, dto);
             }).ToList();
             return new SyncPage<SyncSalesOrderDto>(items, next, w.Now);
+        }
+
+        // ================================================================ devoluciones de venta por recibir (Lote 83)
+
+        /// <summary>
+        /// Devoluciones de venta autorizadas (o recibidas en parte con algo pendiente) con lo que falta por recibir de cada línea: el aparato guía la recepción. Siempre llegan TODAS las abiertas;
+        /// con since llegan además las que ya se recibieron del todo, se acreditaron o se cancelaron (isActive = false) para que el aparato las borre.
+        /// </summary>
+        public async Task<SyncPage<SyncSalesReturnDto>> SalesReturnsAsync(SyncQuery q, CancellationToken ct)
+        {
+            var w = Prepare(q);
+            var warehouseId = await WarehouseIdAsync(q.WarehousePublicId, ct);
+            var statuses = await StatusMapAsync(Teikem.Domain.Sales.ReturnCodes.StatusDomain, ct);
+            var authorizedIds = statuses.Where(kv => kv.Value == Teikem.Domain.Sales.SalesReturnStatuses.Authorized).Select(kv => kv.Key).ToList();
+            var receivedIds = statuses.Where(kv => kv.Value == Teikem.Domain.Sales.SalesReturnStatuses.Received).Select(kv => kv.Key).ToList();
+
+            var query = db.Set<Teikem.Domain.Sales.SalesReturn>().AsNoTracking();
+            if (warehouseId is int whId) query = query.Where(r => r.WarehouseId == whId);
+            if (w.Since is DateTime since)
+            {
+                var c = await ChangedAsync(Teikem.Domain.Sales.ReturnCodes.EntityType, since, ct);
+                query = query.Where(r => authorizedIds.Contains(r.StatusCodeId) || (receivedIds.Contains(r.StatusCodeId) && db.Set<Teikem.Domain.Sales.SalesReturnLine>().Any(l => l.SalesReturnId == r.SalesReturnId && l.QtyRequested > l.QtyReceived))
+                    || r.CreatedAtUtc >= since || c.Audit.Contains(r.SalesReturnId) || c.History.Contains(r.SalesReturnId));
+            }
+            else query = query.Where(r => authorizedIds.Contains(r.StatusCodeId) || (receivedIds.Contains(r.StatusCodeId) && db.Set<Teikem.Domain.Sales.SalesReturnLine>().Any(l => l.SalesReturnId == r.SalesReturnId && l.QtyRequested > l.QtyReceived)));
+            if (w.AfterId is int after) query = query.Where(r => r.SalesReturnId > after);
+
+            var rows = await query.OrderBy(r => r.SalesReturnId).Take(w.Take + 1).ToListAsync(ct);
+            var (page, next) = SyncRules.Cut(rows, w.Take, r => r.SalesReturnId);
+            var ids = page.Select(r => r.SalesReturnId).ToList();
+            var warehouses = await WarehousePublicIdsAsync(page.Select(r => r.WarehouseId), ct);
+            var clientIds = page.Select(r => r.ClientId).Distinct().ToList();
+            var clients = await db.Set<Client>().AsNoTracking().Where(c => clientIds.Contains(c.ClientId)).ToDictionaryAsync(c => c.ClientId, c => c.Name, ct);
+            var orderIds = page.Select(r => r.SalesOrderId).Distinct().ToList();
+            var orders = await db.Set<Teikem.Domain.Sales.SalesOrder>().AsNoTracking().Where(o => orderIds.Contains(o.SalesOrderId)).ToDictionaryAsync(o => o.SalesOrderId, o => o.Number, ct);
+            var lines = await (from l in db.Set<Teikem.Domain.Sales.SalesReturnLine>().AsNoTracking()
+                               join p in db.Set<Product>().AsNoTracking() on l.ProductId equals p.ProductId
+                               where ids.Contains(l.SalesReturnId)
+                               orderby l.SalesReturnLineId
+                               select new { l.SalesReturnId, l.SalesReturnLineId, p.PublicId, p.Sku, p.Name, p.TrackingTypeLookupId, l.QtyRequested, l.QtyReceived, l.QtyDamaged }).ToListAsync(ct);
+            var codes = await LookupCodesAsync(lines.Select(l => l.TrackingTypeLookupId), ct);
+            var linesByReturn = lines.ToLookup(l => l.SalesReturnId);
+
+            var items = page.Select(r =>
+            {
+                var code = statuses.GetValueOrDefault(r.StatusCodeId, string.Empty);
+                var dto = linesByReturn[r.SalesReturnId].Select(l => new SyncSalesReturnLineDto(l.SalesReturnLineId, l.PublicId, l.Sku, l.Name, codes.GetValueOrDefault(l.TrackingTypeLookupId, TrackingTypes.None),
+                    l.QtyRequested, l.QtyReceived, l.QtyDamaged, Teikem.Domain.Sales.SalesReturnRules.PendingToReceive(l.QtyRequested, l.QtyReceived))).ToList();
+                var open = code is Teikem.Domain.Sales.SalesReturnStatuses.Authorized || (code == Teikem.Domain.Sales.SalesReturnStatuses.Received && dto.Any(l => l.Pending > 0m));
+                return new SyncSalesReturnDto(r.SalesReturnId, r.PublicId, r.Number, warehouses.GetValueOrDefault(r.WarehouseId), clients.GetValueOrDefault(r.ClientId, string.Empty),
+                    orders.GetValueOrDefault(r.SalesOrderId, string.Empty), code, r.Note, r.RequestedAtUtc, open, dto);
+            }).ToList();
+            return new SyncPage<SyncSalesReturnDto>(items, next, w.Now);
         }
 
         // ================================================================ avisos de llegada EXPECTED
