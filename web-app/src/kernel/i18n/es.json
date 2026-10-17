@@ -7791,6 +7791,151 @@
         "readOnly": "Solo quien puede aprobar la facturación cambia estos ajustes."
       }
     },
+  "cod": {
+    "title": "COD",
+    "subtitle": "Cobro contra entrega y su reconciliación con las hojas que regresan de la calle.",
+    "close": "Cerrar",
+    "collect": "Registrar cobro",
+    "collectTitle": "Cobro de {number}",
+    "collectSave": "Registrar",
+    "collected": "Cobro de {number} registrado.",
+    "collectHelp": "Falta por cobrar {pending}. Puedes cobrar en partes.",
+    "collections": "Cobros",
+    "noCollections": "Todavía no hay cobros.",
+    "checkNumber": "Número del cheque",
+    "notes": "Nota",
+    "tabs": {
+      "label": "Secciones de COD",
+      "orders": "Órdenes con COD",
+      "reconcile": "Reconciliar",
+      "runs": "Corridas"
+    },
+    "orders": {
+      "panel": "Órdenes con COD",
+      "search": "Buscar por orden, factura o cliente",
+      "filterStatus": "Filtrar por estatus del COD",
+      "allStatuses": "Todos los estatus",
+      "empty": "No hay órdenes con COD con este filtro."
+    },
+    "statuses": {
+      "PENDING": "Por cobrar",
+      "PARTIAL": "Parcial",
+      "COLLECTED": "Cobrado",
+      "RECONCILED": "Cuadrado",
+      "REMITTED": "Remitido"
+    },
+    "methods": {
+      "CASH": "Efectivo",
+      "CHECK": "Cheque",
+      "COMPANY_CHECK": "Company check",
+      "ATH_MOVIL": "ATH Móvil",
+      "CARD": "Tarjeta"
+    },
+    "col": {
+      "order": "Orden",
+      "invoice": "Factura",
+      "client": "Cliente",
+      "orderStatus": "Estatus de la orden",
+      "cod": "COD",
+      "collected": "Cobrado",
+      "pending": "Por cobrar",
+      "status": "Estatus del COD",
+      "when": "Fecha",
+      "method": "Método",
+      "amount": "Monto",
+      "reference": "Referencia",
+      "code": "Código",
+      "result": "Resultado",
+      "reconciled": "Cuadrado",
+      "source": "Origen",
+      "detail": "Detalle",
+      "codes": "Códigos",
+      "reconciledCount": "Cuadrados",
+      "issues": "Con problema",
+      "by": "Quién"
+    },
+    "order": {
+      "title": "COD de {number}"
+    },
+    "errors": {
+      "method": "Elige el método de cobro.",
+      "amount": "Escribe un monto mayor que cero (hasta 2 decimales).",
+      "exceeds": "El monto pasa de lo que falta por cobrar ({pending}).",
+      "checkNumber": "Escribe el número del cheque (hasta 40 caracteres).",
+      "reference": "La referencia admite hasta 80 caracteres.",
+      "notes": "La nota admite hasta 300 caracteres.",
+      "none": "Agrega al menos un código.",
+      "tooMany": "Una corrida admite hasta 2000 códigos."
+    },
+    "results": {
+      "RECONCILED": "Se cuadra",
+      "ALREADY_RECONCILED": "Ya cuadrado",
+      "NOT_FOUND": "No encontrado",
+      "AMBIGUOUS": "Ambiguo",
+      "NO_COD": "Sin COD",
+      "NOTHING_COLLECTED": "Nada cobrado",
+      "DUPLICATE": "Repetido"
+    },
+    "reconcile": {
+      "title": "Reconciliar con hojas escaneadas",
+      "help": "Sube las hojas escaneadas (PDF o imágenes): se lee el código de barras de cada una, que es el número de la factura. También puedes escribir los códigos. Primero ves una vista previa y después cuadras.",
+      "client": "Cliente de las hojas (opcional)",
+      "clientHelp": "El número de factura se repite entre clientes. Si todas las hojas son de un cliente, elígelo para que no haya confusiones."
+    },
+    "drop": {
+      "text": "Arrastra aquí las hojas escaneadas",
+      "input": "Archivos de hojas escaneadas",
+      "choose": "Elegir archivos",
+      "formats": "PDF, PNG, JPG, WEBP, BMP o TIFF. Los archivos no se suben: solo se leen los códigos en tu equipo."
+    },
+    "files": "Archivos leídos",
+    "file": {
+      "opening": "abriendo…",
+      "reading": "leyendo la página {page} de {pages}…",
+      "done": "{codes} código(s) en {pages} página(s)",
+      "empty": "sin código en las páginas {pages}",
+      "error": {
+        "type": "no es un PDF ni una imagen",
+        "open": "no se pudo leer el archivo"
+      }
+    },
+    "manual": {
+      "label": "Códigos escritos a mano",
+      "placeholder": "Uno por línea, o separados por coma",
+      "add": "Agregar"
+    },
+    "codes": {
+      "title": "Códigos por procesar ({n})"
+    },
+    "noCodes": "No hay códigos.",
+    "remove": "Quitar",
+    "removeCode": "Quitar el código {code}",
+    "previewBtn": "Vista previa",
+    "previewTitle": "Vista previa",
+    "previewHelp": "Esto es solo una simulación: todavía no se cuadró nada.",
+    "apply": "Cuadrar",
+    "clear": "Empezar de nuevo",
+    "summary": {
+      "total": "{n} códigos",
+      "amount": "se cuadran {amount}"
+    },
+    "confirm": {
+      "title": "Cuadrar lo cobrado",
+      "body": "Se van a cuadrar los cobros de {n} código(s). La corrida queda guardada."
+    },
+    "reconciledToast": "Corrida hecha: {n} cuadrados.",
+    "done": {
+      "title": "Corrida hecha"
+    },
+    "newRun": "Nueva corrida",
+    "runs": {
+      "panel": "Corridas de reconciliación",
+      "empty": "Todavía no hay corridas."
+    },
+    "run": {
+      "title": "Corrida del {date}"
+    }
+  },
   "salesReturns": {
     "panel": "Devoluciones de venta",
     "new": "Pedir devolución",

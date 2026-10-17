@@ -7791,6 +7791,151 @@
         "readOnly": "Only those who can approve billing change these settings."
       }
     },
+  "cod": {
+    "title": "COD",
+    "subtitle": "Cash on delivery and its reconciliation against the sheets that come back from the street.",
+    "close": "Close",
+    "collect": "Record collection",
+    "collectTitle": "Collection for {number}",
+    "collectSave": "Record",
+    "collected": "Collection for {number} recorded.",
+    "collectHelp": "{pending} left to collect. You can collect in parts.",
+    "collections": "Collections",
+    "noCollections": "There are no collections yet.",
+    "checkNumber": "Check number",
+    "notes": "Note",
+    "tabs": {
+      "label": "COD sections",
+      "orders": "Orders with COD",
+      "reconcile": "Reconcile",
+      "runs": "Runs"
+    },
+    "orders": {
+      "panel": "Orders with COD",
+      "search": "Search by order, invoice or client",
+      "filterStatus": "Filter by COD status",
+      "allStatuses": "All statuses",
+      "empty": "No orders with COD match this filter."
+    },
+    "statuses": {
+      "PENDING": "To collect",
+      "PARTIAL": "Partial",
+      "COLLECTED": "Collected",
+      "RECONCILED": "Reconciled",
+      "REMITTED": "Remitted"
+    },
+    "methods": {
+      "CASH": "Cash",
+      "CHECK": "Check",
+      "COMPANY_CHECK": "Company check",
+      "ATH_MOVIL": "ATH Móvil",
+      "CARD": "Card"
+    },
+    "col": {
+      "order": "Order",
+      "invoice": "Invoice",
+      "client": "Client",
+      "orderStatus": "Order status",
+      "cod": "COD",
+      "collected": "Collected",
+      "pending": "To collect",
+      "status": "COD status",
+      "when": "Date",
+      "method": "Method",
+      "amount": "Amount",
+      "reference": "Reference",
+      "code": "Code",
+      "result": "Result",
+      "reconciled": "Reconciled",
+      "source": "Source",
+      "detail": "Detail",
+      "codes": "Codes",
+      "reconciledCount": "Reconciled",
+      "issues": "With issues",
+      "by": "By"
+    },
+    "order": {
+      "title": "COD of {number}"
+    },
+    "errors": {
+      "method": "Choose the collection method.",
+      "amount": "Enter an amount greater than zero (up to 2 decimals).",
+      "exceeds": "The amount is more than what is left to collect ({pending}).",
+      "checkNumber": "Enter the check number (up to 40 characters).",
+      "reference": "The reference allows up to 80 characters.",
+      "notes": "The note allows up to 300 characters.",
+      "none": "Add at least one code.",
+      "tooMany": "A run allows up to 2000 codes."
+    },
+    "results": {
+      "RECONCILED": "Will reconcile",
+      "ALREADY_RECONCILED": "Already reconciled",
+      "NOT_FOUND": "Not found",
+      "AMBIGUOUS": "Ambiguous",
+      "NO_COD": "No COD",
+      "NOTHING_COLLECTED": "Nothing collected",
+      "DUPLICATE": "Repeated"
+    },
+    "reconcile": {
+      "title": "Reconcile with scanned sheets",
+      "help": "Upload the scanned sheets (PDF or images): the barcode of each one, which is the invoice number, is read. You can also type the codes. You see a preview first and then reconcile.",
+      "client": "Client of the sheets (optional)",
+      "clientHelp": "The invoice number repeats across clients. If all the sheets are from one client, choose it to avoid confusion."
+    },
+    "drop": {
+      "text": "Drop the scanned sheets here",
+      "input": "Scanned sheet files",
+      "choose": "Choose files",
+      "formats": "PDF, PNG, JPG, WEBP, BMP or TIFF. The files are not uploaded: only the codes are read on your computer."
+    },
+    "files": "Files read",
+    "file": {
+      "opening": "opening…",
+      "reading": "reading page {page} of {pages}…",
+      "done": "{codes} code(s) in {pages} page(s)",
+      "empty": "no code on pages {pages}",
+      "error": {
+        "type": "is not a PDF or an image",
+        "open": "the file could not be read"
+      }
+    },
+    "manual": {
+      "label": "Codes typed by hand",
+      "placeholder": "One per line, or separated by commas",
+      "add": "Add"
+    },
+    "codes": {
+      "title": "Codes to process ({n})"
+    },
+    "noCodes": "There are no codes.",
+    "remove": "Remove",
+    "removeCode": "Remove code {code}",
+    "previewBtn": "Preview",
+    "previewTitle": "Preview",
+    "previewHelp": "This is only a simulation: nothing has been reconciled yet.",
+    "apply": "Reconcile",
+    "clear": "Start over",
+    "summary": {
+      "total": "{n} codes",
+      "amount": "{amount} will be reconciled"
+    },
+    "confirm": {
+      "title": "Reconcile what was collected",
+      "body": "The collections of {n} code(s) will be reconciled. The run is saved."
+    },
+    "reconciledToast": "Run done: {n} reconciled.",
+    "done": {
+      "title": "Run done"
+    },
+    "newRun": "New run",
+    "runs": {
+      "panel": "Reconciliation runs",
+      "empty": "There are no runs yet."
+    },
+    "run": {
+      "title": "Run of {date}"
+    }
+  },
   "salesReturns": {
     "panel": "Sales returns",
     "new": "Request return",

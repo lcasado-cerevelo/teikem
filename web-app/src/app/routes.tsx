@@ -374,7 +374,7 @@ export const appRoutes: readonly AppRoute[] = [
   // ===== Contabilidad (7C) =====
   pending({ path: '/money/purchases', perm: 'purchasing.view', module: ModuleKeys.Purchasing, nav: { group: 'money', key: 'purchaseAccounting', order: 10 } }),
   pending({ path: '/money/dispatch', perm: 'billing.export', module: ModuleKeys.LtlGround, nav: { group: 'money', key: 'dispatchAccounting', order: 20 } }),
-  pending({ path: '/money/cod', perm: 'cod.view', module: ModuleKeys.Cod, nav: { group: 'money', key: 'cod', order: 30 } }),
+  { path: '/money/cod', element: lazy(() => import('../features/cod/CodScreen')), perm: 'cod.view', module: ModuleKeys.Cod, nav: { group: 'money', key: 'cod', order: 30 } },   // Lote 85
   { path: '/money/billing', element: lazy(() => import('../features/billing/BillingScreen')), perm: 'billing.view', module: ModuleKeys.Billing, nav: { group: 'money', key: 'billing', order: 40 } },   // Lote 73
   pending({ path: '/money/driver-pay', perm: 'driverpay.view', module: ModuleKeys.LtlGround, nav: { group: 'money', key: 'driverPay', order: 50 } }),
   { path: '/money/tax', element: lazy(() => import('../features/tax/TaxScreen')), perm: 'tax.manage', module: ModuleKeys.Tax, nav: { group: 'money', key: 'tax', order: 60 } },   // Lote 56

@@ -8629,3 +8629,23 @@ Es lo esperado: con `dryRun` solo se simula. Confirme la corrida (sin `dryRun`) 
 **El COD de la orden sigue «Parcial» aunque cuadré su hoja.**
 Se cuadró lo cobrado, pero todavía falta cobrar parte del COD. Cuando se cobre el resto y se procese otra vez la hoja, la orden pasa a «Cuadrado».
 
+## Lote 85 — Pantalla COD y lectura de hojas escaneadas
+
+**La hoja se subió, pero «no se encontró ningún código» en una página.**
+La pantalla avisa «sin código en las páginas N». Causas frecuentes: el código de barras salió muy pequeño, borroso o cortado al escanear; la página no lo trae (p. ej. la segunda hoja de una factura). Vuelva a escanear a 300 ppp (o más) con el código completo y sin arrugas, o escriba el número de la factura a mano.
+
+**¿Se guardan mis archivos en el servidor?**
+No. El navegador lee el código de barras en su equipo y solo se envían los códigos (número de factura) con el nombre del archivo y la página de donde salieron.
+
+**`no es un PDF ni una imagen` / `no se pudo leer el archivo`.**
+Solo se leen PDF y las imágenes PNG, JPG, WEBP, BMP y TIFF. Un PDF protegido con contraseña o dañado no se puede abrir; los demás archivos de la misma selección se procesan igual.
+
+**La lectura tarda la primera vez.**
+Se descargan una sola vez las piezas que leen PDF y códigos de barras (unos cientos de KB); después quedan en la memoria del navegador.
+
+**Leyó un código que no es la factura (una guía, otro número).**
+Aparece como **No encontrado** en la vista previa; se puede **quitar** de la lista antes de cuadrar, o dejar: no cuadra nada.
+
+**«Cuadrar» está deshabilitado.**
+Primero hay que hacer la **Vista previa** y debe haber al menos un código que se cuadre; si se cambia la lista o el cliente, la vista previa se descarta y hay que hacerla otra vez.
+

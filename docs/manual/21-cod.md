@@ -63,3 +63,8 @@ La remesa al cliente (`cod.remit`) llega en el siguiente lote.
 - Tabla `CodCollection` (ya estaba en el esquema original) con las columnas `CollectedBy`, `ReconciledBy` y `ReconcileRunId`; tablas `CodReconcileRun` y `CodReconcileItem`; EntityType `COD_COLLECTION`: sección **2026-10-17 (x)** de `Diseño/logistica-db-update.sql`.
 - El ciclo formal con historial es el del **COD de la orden** (`EntityType ORDER_COD`: Por cobrar → Parcial → Cobrado → Cuadrado → Remitido). El estatus de cada cobro (`CodCollectionStatus`) cambia sin historial propio.
 - La **anulación de un cobro** y el **registro desde la app del chofer con el POD** (P7) quedan fuera de este lote.
+
+## 5. En la pantalla (Lote 85)
+
+**Contabilidad → Procesar entregas** ([L85](frontend/l85-cod.md)): órdenes con COD y registro de cobros; **Reconciliar** subiendo las hojas escaneadas (PDF o imágenes). El **navegador** lee el código de barras de cada hoja (pdf.js y zxing-wasm, servidos con la propia aplicación; los archivos **no se suben**) y al API solo llegan los códigos con su origen (archivo y página); vista previa (`dryRun`), cuadrar con confirmación y corridas anteriores. Las páginas donde no se encontró ningún código se avisan para revisarlas a mano. Si se elige el cliente de las hojas, se manda `clientPublicId` (ver §3).
+
