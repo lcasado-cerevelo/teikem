@@ -28,4 +28,4 @@ Luis recordó que **todo debe tener los dos temas (claro y oscuro) y los dos idi
 - **Selectores** (`PreferencesBar`): **Español / English** y **Automático / Claro / Oscuro** en el login, la página pública, el documento legal y Ajustes.
 - **Pruebas:** jest (+9, 63 en total): paletas completas e iguales, **contraste AA** de cada par de texto y fondo (claro y oscuro), elección del tema, cambio al instante, recordado, y el selector de idioma; Playwright: la página pública cambia de claro a oscuro con el sistema y con la elección, se recuerda al recargar, cambia a inglés y se recuerda; el portal en oscuro; el panel de la web de la compañía en oscuro.
 - **Regla permanente** agregada a `CLAUDE.md` (convenciones de interfaz) y a la memoria del proyecto.
-- **Pendiente de decidir con Luis:** `app-almacen` (la app de los aparatos) **no tiene tema oscuro** (el idioma sí). Hacerlo toca todas sus pantallas.
+- **Decidido por Luis (2026-10-17):** `app-almacen` (la app de los aparatos) **se queda solo en tema claro** (el idioma sí lo tiene); no se hace tema oscuro ahí.
