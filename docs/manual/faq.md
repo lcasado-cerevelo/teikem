@@ -8921,3 +8921,27 @@ Esa computadora ya se quitó o no es del usuario de la sesión.
 
 **¿Cómo quito una computadora compartida?**
 Mi cuenta → Sesiones → Mis computadoras de confianza → Quitar.
+
+
+## Lote 101 — Portal del cliente (acceso)
+
+**`El usuario no tiene acceso activo al portal.` (403)**
+La cuenta existe pero su usuario de portal no está ACTIVO en ningún cliente (suspendido, dado de baja o sin aceptar la invitación). Revise el expediente del cliente → Usuarios de portal.
+
+**`No tiene acceso a ese cliente.` (403)**
+Se pidió entrar o cambiar a un cliente que no es de la cuenta.
+
+**`Esta ruta no está disponible para usuarios del portal.` / `Esta ruta es solo para usuarios del portal.` (403 `portal_scope`)**
+Una sesión de portal llamó a una ruta del staff, o una del staff llamó a una del portal. Cada una usa su propio login.
+
+**`Credenciales inválidas.` en el portal aunque la contraseña es correcta.**
+Cuenta bloqueada por intentos fallidos (1, 5, 15 o 60 minutos), cuenta del staff (entra por su propio login) o cuenta inactiva. El mensaje es el mismo a propósito.
+
+**`captcha_required` al entrar.**
+Después de 3 contraseñas equivocadas el login pide resolver el reto anti-robot (Turnstile). Hasta resolverlo no se revisa la contraseña.
+
+**«Me sigue pidiendo el código de seguridad en el portal».**
+El código se recuerda 30 días por computadora de confianza. Lo vuelve a pedir si es una computadora nueva, si pasaron más de 30 días desde que lo escribió, si marcó «No confiar en esta computadora» o si cambió su contraseña.
+
+**«La invitación venció».**
+Valen 48 horas y una sola vez; pida al administrador que la reenvíe (el enlace anterior deja de servir).

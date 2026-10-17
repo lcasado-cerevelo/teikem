@@ -23,7 +23,7 @@ public static class LegalRules
     /// Versión vigente del documento (fecha de su última modificación, AAAA-MM-DD). Al cambiar el texto de <c>LegalText</c> se cambia esta fecha: todos los
     /// usuarios vuelven a aceptar en su siguiente ingreso.
     /// </summary>
-    public const string CurrentVersion = "2026-10-17";
+    public const string CurrentVersion = "2026-10-17.2";
 
     public const string ErrorCode = "legal_acceptance_required";
     public const string RequiredMessage = "Debe aceptar la política de privacidad y los términos de uso para continuar.";
@@ -34,6 +34,6 @@ public static class LegalRules
     {
         if (string.IsNullOrEmpty(path)) return true;
         var p = path.TrimEnd('/').ToLowerInvariant();
-        return p.StartsWith("/api/v1/auth") || p.StartsWith("/api/v1/legal") || p == "/api/v1/me" || !p.StartsWith("/api/");
+        return p.StartsWith("/api/v1/auth") || p.StartsWith("/api/v1/legal") || p == "/api/v1/me" || p == "/api/v1/portal/me" || !p.StartsWith("/api/");
     }
 }

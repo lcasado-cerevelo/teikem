@@ -228,6 +228,7 @@ public sealed class TrustedBrowserConfiguration : IEntityTypeConfiguration<Teike
         b.Property(x => x.Label).HasMaxLength(80);
         b.Property(x => x.IpAddress).HasMaxLength(64);
         b.Property(x => x.UserAgent).HasMaxLength(400);
+        b.Property(x => x.SingleUse).HasDefaultValue(false);
         b.HasIndex(x => new { x.UserId, x.TokenHash }).IsUnique().HasDatabaseName("UX_TrustedBrowser_UserToken");
         b.HasIndex(x => x.ConfirmHash).HasDatabaseName("IX_TrustedBrowser_Confirm");
         b.HasIndex(x => x.PublicId).IsUnique().HasDatabaseName("UX_TrustedBrowser_PublicId");

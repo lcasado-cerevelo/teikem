@@ -4001,3 +4001,17 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_TrustedBrowser_PublicI
 GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_TrustedBrowser_Confirm' AND object_id = OBJECT_ID('dbo.TrustedBrowser')) CREATE INDEX IX_TrustedBrowser_Confirm ON dbo.TrustedBrowser(ConfirmHash) WHERE ConfirmHash IS NOT NULL;
 GO
+
+-- =====================================================================================================================
+-- (ak) 2026-10-17 — Lote 101: acceso del portal por cliente. RefreshToken.PortalClientId = el cliente con el que entró un usuario de portal (se conserva al renovar la sesión);
+-- TrustedBrowser.MfaVerifiedAtUtc = cuándo se escribió el código del segundo paso desde esa computadora (los portales no lo repiten por 30 días); TrustedBrowser.SingleUse = «No confiar en esta computadora» (un solo ingreso).
+-- =====================================================================================================================
+IF COL_LENGTH('dbo.RefreshToken', 'PortalClientId') IS NULL
+    ALTER TABLE dbo.RefreshToken ADD PortalClientId INT NULL;
+GO
+IF COL_LENGTH('dbo.TrustedBrowser', 'MfaVerifiedAtUtc') IS NULL
+    ALTER TABLE dbo.TrustedBrowser ADD MfaVerifiedAtUtc DATETIME2 NULL;
+GO
+IF COL_LENGTH('dbo.TrustedBrowser', 'SingleUse') IS NULL
+    ALTER TABLE dbo.TrustedBrowser ADD SingleUse BIT NOT NULL CONSTRAINT DF_TrustedBrowser_SingleUse DEFAULT 0;
+GO

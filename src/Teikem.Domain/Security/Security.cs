@@ -135,6 +135,8 @@ public class RefreshToken : ITenantScoped
     public int? UserDeviceId { get; set; }
     /// <summary>Lote F10: IP desde la que se emitió (o se renovó por última vez) la sesión; la muestra Seguridad y auditoría → Sesiones.</summary>
     public string? IpAddress { get; set; }
+    /// <summary>Lote 101: cliente con el que entró un usuario de PORTAL (el claim `cid` de su access token); se conserva al renovar. Null en sesiones del staff.</summary>
+    public int? PortalClientId { get; set; }
     public bool IsActive => RevokedAtUtc == null && ExpiresAtUtc > DateTime.UtcNow;
 }
 

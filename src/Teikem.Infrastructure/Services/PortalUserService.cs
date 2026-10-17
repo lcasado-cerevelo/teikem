@@ -308,6 +308,10 @@ public sealed class PortalUserService(
             if (!reset.Succeeded) { await FailAsync("token_or_password_rejected:" + string.Join(",", reset.Errors.Select(e => e.Code))); return; }
 
             user.EmailConfirmed = true;
+            // El portal no usa el primer ingreso del staff (correo, contraseña y MFA en ese orden): el enlace de la invitación ya verificó el correo y fijó la contraseña.
+            user.EmailVerifiedUtc ??= DateTime.UtcNow;
+            user.OnboardingRequired = false;
+            user.MustChangePassword = false;
             await users.UpdateAsync(user);
 
             // Un solo enlace activa todas las invitaciones pendientes de la cuenta (una por cliente).

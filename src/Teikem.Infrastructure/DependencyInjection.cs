@@ -82,6 +82,7 @@ public static class DependencyInjection
 
         services.Configure<JwtOptions>(config.GetSection("Jwt"));
         services.Configure<OnboardingOptions>(config.GetSection("Auth:Onboarding"));
+        services.Configure<TurnstileOptions>(config.GetSection("Auth:Turnstile"));   // Lote 101: apagado por omisión
         services.Configure<TrustedBrowserOptions>(config.GetSection("Auth:TrustedBrowsers"));   // Lote 100: apagado por omisión
         services.Configure<Teikem.Infrastructure.Legal.LegalOptions>(config.GetSection("Legal"));   // Lote 99
         services.Configure<PasswordResetOptions>(config.GetSection("Auth:PasswordReset"));
@@ -421,6 +422,8 @@ public static class DependencyInjection
         services.AddScoped<KpiSnapshotService>();
         services.AddScoped<ReportDeliveryService>();   // Lote 92 (P12)
         services.AddScoped<ClientNotificationService>();   // Lote 98 (P10)
+        services.AddScoped<PortalService>();   // Lote 101: lecturas del portal del cliente
+        services.AddHttpClient<ITurnstileVerifier, CloudflareTurnstileVerifier>(c => c.Timeout = TimeSpan.FromSeconds(8));   // Lote 101: reto anti-robot de los portales
         services.AddScoped<TrustedBrowserService>();   // Lote 100: computadoras de confianza
         services.AddScoped<Teikem.Infrastructure.Legal.LegalService>();   // Lote 99: documento legal único y su aceptación
         services.AddScoped<IStatusTransitionEffect, ClientNotificationOrderEffect>();

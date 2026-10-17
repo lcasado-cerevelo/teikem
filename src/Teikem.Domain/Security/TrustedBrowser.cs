@@ -26,6 +26,10 @@ public class TrustedBrowser
     /// <summary>Hasta cuándo vale la confianza (se corre en cada ingreso). Null = aún sin confirmar.</summary>
     public DateTime? ExpiresAtUtc { get; set; }
     public DateTime? RevokedAtUtc { get; set; }
+    /// <summary>Lote 101: cuándo se escribió el código del segundo paso (MFA) desde esta computadora; mientras tenga menos de 30 días, los portales no lo vuelven a pedir.</summary>
+    public DateTime? MfaVerifiedAtUtc { get; set; }
+    /// <summary>Lote 101: «No confiar en esta computadora» — sirve para UN ingreso y luego se quita (equipos compartidos); en ese ingreso el MFA se pide siempre.</summary>
+    public bool SingleUse { get; set; }
 
     public bool IsTrusted(DateTime nowUtc) => RevokedAtUtc is null && ConfirmedAtUtc is not null && ExpiresAtUtc is DateTime e && e > nowUtc;
 }
@@ -33,6 +37,8 @@ public class TrustedBrowser
 public static class TrustedBrowserRules
 {
     public const int Days = 30;
+    /// <summary>Días que vale recordar el segundo paso (MFA) en una computadora de confianza (portales).</summary>
+    public const int MfaDays = 30;
     public const int LinkHours = 24;
     public const int ResendMinutes = 2;
     /// <summary>Largo mínimo de la marca que manda el navegador (la web genera 64 caracteres).</summary>

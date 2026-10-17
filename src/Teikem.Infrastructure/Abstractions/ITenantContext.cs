@@ -22,6 +22,10 @@ public interface ITenantContext
     IReadOnlyCollection<int>? ScopedWarehouseIds => null;
     /// <summary>Alcance de datos del usuario (UserDataScope): clientes que puede ver. null = sin restricción (todos).</summary>
     IReadOnlyCollection<int>? ScopedClientIds => null;
+    /// <summary>Lote 101: sesión de un usuario de PORTAL (claim `kind` = PORTAL).</summary>
+    bool IsPortal => false;
+    /// <summary>Lote 101: el cliente de la sesión del portal (claim `cid`); null en sesiones del staff.</summary>
+    int? PortalClientId => null;
 }
 
 /// <summary>Implementación mutable (scoped). El middleware y los seeders la configuran.</summary>
@@ -39,6 +43,8 @@ public sealed class TenantContext : ITenantContext
     public DateTime? Aal2VerifiedAtUtc { get; set; }
     public IReadOnlyCollection<int>? ScopedWarehouseIds { get; set; }
     public IReadOnlyCollection<int>? ScopedClientIds { get; set; }
+    public bool IsPortal { get; set; }
+    public int? PortalClientId { get; set; }
 
     public int RequireTenantId() => TenantId ?? throw new Exceptions.ForbiddenException("No hay tenant activo en la sesión.");
     public int RequireUserId() => UserId ?? throw new Exceptions.UnauthorizedException();

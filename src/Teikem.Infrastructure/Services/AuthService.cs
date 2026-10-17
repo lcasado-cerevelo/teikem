@@ -72,7 +72,8 @@ public sealed partial class AuthService(
     ISecurityEventWriter security, IDataProtectionProvider dataProtection, IPasswordBreachChecker breachChecker, PermissionService permissions,
     DeviceService devices, PinService pins, Microsoft.Extensions.Options.IOptions<OnboardingOptions> onboarding, ITransactionalEmailSender email,
     Microsoft.Extensions.Caching.Memory.IMemoryCache cache,
-    Microsoft.Extensions.Options.IOptions<PasswordResetOptions>? passwordReset = null, TrustedNetworkService? trustedNetworks = null, TrustedBrowserService? trustedBrowsers = null)
+    Microsoft.Extensions.Options.IOptions<PasswordResetOptions>? passwordReset = null, TrustedNetworkService? trustedNetworks = null, TrustedBrowserService? trustedBrowsers = null,
+    ITurnstileVerifier? turnstile = null)
 {
     private const string InvalidCredentials = "Credenciales inválidas.";
 
@@ -199,7 +200,17 @@ public sealed partial class AuthService(
             await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Success, user.Id, tenantId, new { stage = "onboarding_completed" }, ct);
         }
         var kind = user.UserKindLookupId is null ? UserKinds.Internal : (await lookups.GetAsync(user.UserKindLookupId.Value, ct))?.InternalCode;
-        var pair = await IssueAsync(user, tenantId, kind, req.DeviceInfo ?? deviceInfo, aal2At: DateTime.UtcNow, ct);
+        // Portal (Lote 101): la sesión nace ligada a un cliente (el predeterminado de la cuenta) y la computadora recuerda el segundo paso 30 días.
+        int? portalClientId = null;
+        if (kind == UserKinds.Portal)
+        {
+            var access = (await PortalAccessAsync(user.Id, ct)).Where(a => a.TenantId == tenantId).ToList();
+            var pick = PickPortalAccess(user, access, null) ?? throw new ForbiddenException(PortalNoAccessMessage);
+            portalClientId = pick.ClientId;
+            if (trustedBrowsers is not null) await trustedBrowsers.MarkMfaVerifiedAsync(user.Id, req.TrustedBrowserToken, ct);
+        }
+        var pair = await IssueAsync(user, tenantId, kind, req.DeviceInfo ?? deviceInfo, aal2At: DateTime.UtcNow, ct, portalClientId: portalClientId);
+        if (kind == UserKinds.Portal && trustedBrowsers is not null) await trustedBrowsers.ConsumeIfSingleUseAsync(user.Id, req.TrustedBrowserToken, ct);   // «No confiar en esta computadora»
         await security.WriteAsync(SecurityEventTypes.Mfa, SecurityOutcomes.Success, user.Id, tenantId, null, ct);
         await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Success, user.Id, tenantId, new { stage = "mfa" }, ct);
         return new AuthResultDto("ok", pair, null, false, null);
@@ -235,7 +246,7 @@ public sealed partial class AuthService(
     /// <summary>Aparato al que queda ligada una sesión (Lote 8A): Id para RefreshToken.UserDeviceId, PublicId para `did`.</summary>
     private sealed record DeviceBinding(int UserDeviceId, Guid PublicId, int SessionMinutes);
 
-    private async Task<TokenPairDto> IssueAsync(ApplicationUser user, int tenantId, string? kind, string? deviceInfo, DateTime? aal2At, CancellationToken ct, DeviceBinding? device = null)
+    private async Task<TokenPairDto> IssueAsync(ApplicationUser user, int tenantId, string? kind, string? deviceInfo, DateTime? aal2At, CancellationToken ct, DeviceBinding? device = null, int? portalClientId = null)
     {
         var t = await db.Tenants.AsNoTracking().IgnoreQueryFilters().FirstAsync(x => x.TenantId == tenantId, ct);
         var raw = JwtTokenService.NewRefreshToken();
@@ -243,7 +254,7 @@ public sealed partial class AuthService(
         {
             UserId = user.Id, TenantId = tenantId, TokenHash = JwtTokenService.HashToken(raw), DeviceInfo = deviceInfo is { Length: > 200 } d ? d[..200] : deviceInfo,
             IssuedAtUtc = DateTime.UtcNow, ExpiresAtUtc = DateTime.UtcNow.AddMinutes(device?.SessionMinutes ?? SessionRules.Minutes(t.SessionMinutes, t.SessionDays)), Aal2VerifiedAtUtc = aal2At,   // 2026-10-12: la duración es en minutos
-            IpAddress = RequestIp(),
+            IpAddress = RequestIp(), PortalClientId = portalClientId,
         };
         // Si UserManager dejó al usuario marcado como modificado (ResetAccessFailedCount que perdió la carrera con un intento
         // fallido concurrente: Identity no lanza, devuelve un IdentityResult fallido), se recarga para no arrastrar ese
@@ -263,7 +274,7 @@ public sealed partial class AuthService(
         var now = DateTime.UtcNow;
         await db.Users.Where(u => u.Id == user.Id).ExecuteUpdateAsync(s => s.SetProperty(u => u.LastLoginUtc, now), ct);
         user.LastLoginUtc = now;
-        var (access, exp) = CreateAccess(user, tenantId, rt.RefreshTokenId, kind, aal2At, device?.PublicId);
+        var (access, exp) = CreateAccess(user, tenantId, rt.RefreshTokenId, kind, aal2At, device?.PublicId, portalClientId);
         return new TokenPairDto(access, exp, raw, rt.ExpiresAtUtc, tenantId);
     }
 
@@ -373,9 +384,9 @@ public sealed partial class AuthService(
     /// Access token del usuario; en sesiones de aparato agrega el claim `did`. Se firma con la misma llave, emisor,
     /// audiencia y vigencia que JwtTokenService (se re-firma su token con el claim extra para no duplicar la lista de claims).
     /// </summary>
-    private (string Token, DateTime ExpiresAtUtc) CreateAccess(ApplicationUser user, int tenantId, long sessionId, string? kind, DateTime? aal2At, Guid? devicePublicId)
+    private (string Token, DateTime ExpiresAtUtc) CreateAccess(ApplicationUser user, int tenantId, long sessionId, string? kind, DateTime? aal2At, Guid? devicePublicId, int? portalClientId = null)
     {
-        var (token, exp) = jwt.CreateAccessToken(user, tenantId, sessionId, kind, aal2At);
+        var (token, exp) = jwt.CreateAccessToken(user, tenantId, sessionId, kind, aal2At, portalClientId);
         if (devicePublicId is not Guid did) return (token, exp);
         var handler = new JwtSecurityTokenHandler();
         var parsed = handler.ReadJwtToken(token);
@@ -400,8 +411,13 @@ public sealed partial class AuthService(
         // compañía y inventory.view); si ya no se cumple, la sesión se revoca y el refresh da 401 como un token inválido.
         if (TokenDevice(rt) is not null) await EnsureDeviceUserStillValidAsync(rt, user, ct);
         if (user is null || !user.IsActive) throw new UnauthorizedException();
-        var memberships = await ActiveMembershipsAsync(user, ct);
-        if (!memberships.Any(m => m.TenantId == rt.TenantId)) { await RevokeAsync(rt, null, ct); throw new ForbiddenException("La membresía ya no está activa."); }
+        // Usuario de PORTAL (Lote 101): no tiene membresías; la sesión vale mientras siga teniendo acceso ACTIVO al cliente con el que entró.
+        if (rt.PortalClientId is not null) await EnsurePortalSessionStillValidAsync(rt, ct);
+        else
+        {
+            var memberships = await ActiveMembershipsAsync(user, ct);
+            if (!memberships.Any(m => m.TenantId == rt.TenantId)) { await RevokeAsync(rt, null, ct); throw new ForbiddenException("La membresía ya no está activa."); }
+        }
         // Sesión de aparato (Lote 8A): el aparato debe seguir activo; la vigencia se renueva (DeviceSessionDays desde hoy).
         var device = await SessionDeviceAsync(rt, ct);
         // PIN impuesto por otro (Lote 8A): si quien lo asignó ya no cubre los permisos actuales del usuario, la sesión de
@@ -422,7 +438,7 @@ public sealed partial class AuthService(
             UserId = rt.UserId, TenantId = rt.TenantId, TokenHash = JwtTokenService.HashToken(raw),
             DeviceInfo = device is null ? deviceInfo ?? rt.DeviceInfo : rt.DeviceInfo,
             IssuedAtUtc = DateTime.UtcNow, ExpiresAtUtc = expires, Aal2VerifiedAtUtc = rt.Aal2VerifiedAtUtc,
-            IpAddress = RequestIp() ?? rt.IpAddress,
+            IpAddress = RequestIp() ?? rt.IpAddress, PortalClientId = rt.PortalClientId,
         };
         db.SuppressAudit = true;
         db.RefreshTokens.Add(next);
@@ -432,7 +448,7 @@ public sealed partial class AuthService(
         await db.SaveChangesAsync(ct);
         db.SuppressAudit = false;
         var kind = user.UserKindLookupId is null ? UserKinds.Internal : (await lookups.GetAsync(user.UserKindLookupId.Value, ct))?.InternalCode;
-        var (access, exp) = CreateAccess(user, rt.TenantId, next.RefreshTokenId, kind, next.Aal2VerifiedAtUtc, device?.PublicId);
+        var (access, exp) = CreateAccess(user, rt.TenantId, next.RefreshTokenId, kind, next.Aal2VerifiedAtUtc, device?.PublicId, rt.PortalClientId);
         return new TokenPairDto(access, exp, raw, next.ExpiresAtUtc, rt.TenantId);
     }
 

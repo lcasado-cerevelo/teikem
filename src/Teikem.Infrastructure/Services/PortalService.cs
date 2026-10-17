@@ -1,0 +1,66 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Teikem.Domain.Common;
+using Teikem.Domain.Constants;
+using Teikem.Domain.Identity;
+using Teikem.Infrastructure.Abstractions;
+using Teikem.Infrastructure.Contracts;
+using Teikem.Infrastructure.Exceptions;
+using Teikem.Infrastructure.Persistence;
+
+namespace Teikem.Infrastructure.Services;
+
+/// <summary>
+/// Lote 101 — lecturas del portal del cliente. REGLA: todo se limita al cliente de la sesión (<c>cid</c>) además de la compañía (<c>tid</c>): el contexto lo fija como alcance (<c>ScopedClientIds</c>, filtro global de
+/// datos) y cada lectura lo vuelve a exigir (<c>OrderScope(ClientId)</c>). Una orden de otro cliente (de la misma compañía o de otra) responde 404, igual que una que no existe (sin oráculo).
+/// Se devuelven DTOs propios y mínimos (<c>PortalContracts</c>): sin precios cotizados, notas internas, rutas, choferes ni datos de otros clientes.
+/// </summary>
+public sealed class PortalService(TeikemDbContext db, ITenantContext tenant, UserManager<ApplicationUser> users, AuthService auth, OrderReadService orders, ILookupCache lookups)
+{
+    public const int MaxTake = 100;
+
+    private int ClientIdOfSession => ((TenantContext)tenant).PortalClientId ?? throw new ForbiddenException(AuthService.PortalNoAccessMessage);
+
+    public async Task<PortalMeDto> GetMeAsync(CancellationToken ct)
+    {
+        var cid = ClientIdOfSession;
+        var userId = ((TenantContext)tenant).RequireUserId();
+        var user = await users.FindByIdAsync(userId.ToString()) ?? throw new UnauthorizedException();
+        var clients = await auth.PortalClientsOfAsync(userId, ct);
+        var list = clients.Select(c => new PortalClientDto(c.ClientPublicId, c.ClientName, c.TenantName, c.ClientId == cid && c.TenantId == tenant.TenantId)).ToList();
+        var current = list.FirstOrDefault(c => c.IsCurrent) ?? throw new ForbiddenException(AuthService.PortalNoAccessMessage);
+        return new PortalMeDto(user.FullName, user.Email, user.TwoFactorEnabled, current, list);
+    }
+
+    public async Task<PagedResult<PortalOrderListItemDto>> ListOrdersAsync(string? search, string? status, DateTime? fromUtc, DateTime? toUtc, int skip, int take, CancellationToken ct)
+    {
+        var cid = ClientIdOfSession;
+        take = Math.Clamp(take <= 0 ? 25 : take, 1, MaxTake);
+        skip = Math.Max(0, skip);
+        var q = new OrderListQuery(null, string.IsNullOrWhiteSpace(status) ? null : status.Trim(), null, null, null, null, string.IsNullOrWhiteSpace(search) ? null : search.Trim(), fromUtc, toUtc, false, skip, take);
+        var page = await orders.GetListAsync(q, new OrderScope(cid), ct);
+        var items = page.Items.Select(o => new PortalOrderListItemDto(o.PublicId, o.WaybillNumber ?? string.Empty, o.OrderNumber, o.ClientInvoiceNumber, o.ConsigneeName, o.ConsigneeCity, o.ConsigneeState,
+            o.ServiceTypeLabel, o.TotalPieces, o.CodAmount, o.Status, o.StatusLabel, o.CreatedAtUtc)).ToList();
+        return new PagedResult<PortalOrderListItemDto>(items, page.Total, skip, take);
+    }
+
+    public async Task<PortalOrderDto> GetOrderAsync(Guid publicId, CancellationToken ct)
+    {
+        var cid = ClientIdOfSession;
+        var o = await orders.GetAsync(publicId, new OrderScope(cid), ct);   // otro cliente u otra compañía: 404
+        var timeline = await TimelineAsync(o.Id, ct);
+        PortalOrderStopDto? Stop(OrderStopDto? s) => s is null ? null : new PortalOrderStopDto(s.Name, s.Line1, s.Line2, s.City, s.State, s.PostalCode);
+        return new PortalOrderDto(o.PublicId, o.WaybillNumber ?? string.Empty, o.OrderNumber, o.ClientInvoiceNumber, o.ServiceTypeLabel, o.Status, o.StatusLabel, o.TotalPieces, o.TotalWeightKg, o.CodAmount,
+            o.CodStatusLabel, o.RequestedDate, o.PromisedDate, o.CreatedAtUtc, Stop(o.Pickup), Stop(o.Delivery)!,
+            o.Packages.Select(p => new PortalOrderPackageDto(p.Description, p.Pieces, p.WeightKg)).ToList(), timeline);
+    }
+
+    /// <summary>Línea de tiempo: solo el estatus y cuándo (sin comentarios internos ni quién lo cambió).</summary>
+    private async Task<IReadOnlyList<PortalOrderEventDto>> TimelineAsync(int orderId, CancellationToken ct)
+    {
+        var typeId = await lookups.GetIdAsync(LookupDomains.EntityType, EntityTypes.TransportOrder, ct);
+        var rows = await db.EntityStatusHistories.AsNoTracking().Include(h => h.ToStatus)
+            .Where(h => h.EntityTypeLookupId == typeId && h.EntityId == orderId).OrderBy(h => h.ChangedAtUtc).ThenBy(h => h.EntityStatusHistoryId).ToListAsync(ct);
+        return rows.Select(h => new PortalOrderEventDto(h.ToStatus?.InternalCode ?? string.Empty, MultilingualText.Resolve(h.ToStatus?.LabelJson, tenant.Lang), h.ChangedAtUtc)).ToList();
+    }
+}

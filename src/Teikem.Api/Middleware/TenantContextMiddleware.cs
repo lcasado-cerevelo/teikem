@@ -31,7 +31,14 @@ public sealed class TenantContextMiddleware(RequestDelegate next)
             if (int.TryParse(user.FindFirst(TeikemClaims.TenantId)?.Value, out var tid)) tenant.TenantId = tid;
             tenant.IsPlatformAdmin = user.FindFirst(TeikemClaims.PlatformAdmin)?.Value == "1";
             if (long.TryParse(user.FindFirst(TeikemClaims.Aal2At)?.Value, out var aal2)) tenant.Aal2VerifiedAtUtc = DateTimeOffset.FromUnixTimeSeconds(aal2).UtcDateTime;
-            await LoadDataScopeAsync(tenant, db, http.RequestAborted);
+            // Sesión de PORTAL (Lote 101): el cliente del claim `cid` es el alcance de datos (segundo filtro, además de la compañía); no se carga el alcance del staff.
+            if (user.FindFirst(TeikemClaims.UserKind)?.Value == Teikem.Domain.Constants.UserKinds.Portal)
+            {
+                tenant.IsPortal = true;
+                if (int.TryParse(user.FindFirst(TeikemClaims.ClientId)?.Value, out var cid)) { tenant.PortalClientId = cid; tenant.ScopedClientIds = new[] { cid }; }
+                else tenant.ScopedClientIds = new[] { -1 };   // un token de portal sin cliente no ve nada
+            }
+            else await LoadDataScopeAsync(tenant, db, http.RequestAborted);
         }
         await next(http);
     }

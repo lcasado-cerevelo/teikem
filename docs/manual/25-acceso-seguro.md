@@ -27,7 +27,9 @@ Lote 100 (portal de clientes, 2026-10-17). Dos protecciones que valen para **tod
 - Un cliente que no manda la marca (una integración, por ejemplo) no entra cuando la función está encendida: `Este cliente no identifica la computadora; entre desde la web.`
 - Las sesiones de **aparato** (app de almacén con PIN) no pasan por esto.
 
-**Encenderla (para el dueño).** Viene **apagada** (`Auth:TrustedBrowsers:Enabled = false`) porque, encendida, todo el que entre desde una computadora nueva necesita **recibir el correo**: hay que encenderla solo con el envío de correo (Brevo) andando y `Auth:PasswordReset:WebBaseUrl` apuntando a la web. Otras opciones: `Auth:TrustedBrowsers:Days` (30), `LinkHours` (24) y, **solo en desarrollo**, `ReturnLinkInResponse` (devuelve el enlace en la pantalla para probar sin correo).
+**Quién la usa.** Decidido con Luis (2026-10-17): **el staff queda como está** (su login no cambia: contraseña, MFA e «IP preferida»). Las computadoras de confianza son para los **portales** (cliente y consignatario) y ahí van **siempre encendidas**; la opción `Auth:TrustedBrowsers:Enabled` queda apagada y solo sirve si algún día se quisiera aplicar también al staff. En los portales además: el **código MFA se recuerda 30 días** por computadora de confianza y existe **«No confiar en esta computadora»** (ver capítulo 26).
+
+**Encenderla para el staff (no recomendado hoy).** Viene **apagada** (`Auth:TrustedBrowsers:Enabled = false`) porque, encendida, todo el que entre desde una computadora nueva necesita **recibir el correo**: hay que encenderla solo con el envío de correo (Brevo) andando y `Auth:PasswordReset:WebBaseUrl` apuntando a la web. Otras opciones: `Auth:TrustedBrowsers:Days` (30), `LinkHours` (24) y, **solo en desarrollo**, `ReturnLinkInResponse` (devuelve el enlace en la pantalla para probar sin correo).
 
 ## 3. Endpoints
 | Endpoint | Para qué | Quién |

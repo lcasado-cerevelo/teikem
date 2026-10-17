@@ -24,7 +24,8 @@ public sealed class TrustedBrowserOptions
 }
 
 /// <summary>Resultado de revisar el navegador en el login: <c>Trusted</c> entra; si no, <c>Sent</c> dice si salió el correo y <c>DevLink</c> (solo desarrollo) el enlace.</summary>
-public sealed record TrustedBrowserCheck(bool Trusted, bool Sent, string? Reason, string? DevLink);
+/// <summary>MfaRecent (portales): el código del segundo paso se escribió desde esta computadora hace menos de 30 días, así que no se vuelve a pedir.</summary>
+public sealed record TrustedBrowserCheck(bool Trusted, bool Sent, string? Reason, string? DevLink, bool MfaRecent = false);
 
 public sealed record TrustedBrowserDto(Guid PublicId, string Label, string? IpAddress, DateTime CreatedAtUtc, DateTime? LastUsedAtUtc, DateTime? ExpiresAtUtc, bool IsCurrent);
 
@@ -44,7 +45,7 @@ public sealed class TrustedBrowserService(TeikemDbContext db, ITenantContext ten
 
     // ---------------------------------------------------------------- login
 
-    public async Task<TrustedBrowserCheck> CheckAsync(ApplicationUser user, string? browserToken, string? companyName, CancellationToken ct)
+    public async Task<TrustedBrowserCheck> CheckAsync(ApplicationUser user, string? browserToken, string? companyName, CancellationToken ct, bool doNotTrust = false)
     {
         if (!TrustedBrowserRules.IsValidToken(browserToken))
             return new TrustedBrowserCheck(false, false, "Este cliente no identifica la computadora; entre desde la web.", null);
@@ -53,11 +54,12 @@ public sealed class TrustedBrowserService(TeikemDbContext db, ITenantContext ten
         var row = await db.TrustedBrowsers.FirstOrDefaultAsync(b => b.UserId == user.Id && b.TokenHash == hash && b.RevokedAtUtc == null, ct);
         if (row is not null && row.IsTrusted(now))
         {
+            if (doNotTrust) row.SingleUse = true;   // «No confiar en esta computadora»: este ingreso entra, luego se quita (ConsumeIfSingleUseAsync)
             row.LastUsedAtUtc = now;
             row.ExpiresAtUtc = now.AddDays(options.Value.Days);   // la ventana corre: 30 días SIN USO
             db.SuppressAudit = true;
             try { await db.SaveChangesAsync(ct); } finally { db.SuppressAudit = false; }
-            return new TrustedBrowserCheck(true, false, null, null);
+            return new TrustedBrowserCheck(true, false, null, null, !row.SingleUse && row.MfaVerifiedAtUtc is DateTime mv && mv > now.AddDays(-TrustedBrowserRules.MfaDays));
         }
 
         // no se reconoce: se pide confirmar por correo (sin saturar el correo del usuario)
@@ -77,6 +79,8 @@ public sealed class TrustedBrowserService(TeikemDbContext db, ITenantContext ten
         row.Label = TrustedBrowserRules.Describe(tenant.UserAgent);
         row.ConfirmedAtUtc = null;
         row.ExpiresAtUtc = null;
+        row.MfaVerifiedAtUtc = null;
+        row.SingleUse = doNotTrust;
         db.SuppressAudit = true;
         try { await db.SaveChangesAsync(ct); } finally { db.SuppressAudit = false; }
         await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Blocked, user.Id, null, new { stage = "browser_pending", browser = row.Label, ip = row.IpAddress }, ct);
@@ -108,6 +112,31 @@ public sealed class TrustedBrowserService(TeikemDbContext db, ITenantContext ten
             + $"<ul><li>Navegador: <b>{enc(row.Label)}</b></li><li>Dirección: {enc(row.IpAddress ?? "desconocida")}</li><li>Fecha: {DateTime.UtcNow:yyyy-MM-dd HH:mm} UTC</li></ul>"
             + $"<p><b>Si fue usted</b>, confirme esta computadora: <a href=\"{enc(link)}\">Confirmar esta computadora</a>. El enlace vale {linkHours} horas y se usa una sola vez. Después vuelva a la pantalla de entrada e inicie sesión otra vez; esta computadora quedará guardada por {TrustedBrowserRules.Days} días sin uso.</p>"
             + "<p><b>Si no fue usted</b>, no haga clic: ignore este correo y cambie su contraseña, porque alguien la conoce.</p>";
+    }
+
+    /// <summary>Anota que desde esta computadora (ya de confianza) se escribió el código del segundo paso: los portales no lo repiten por 30 días. Sin marca o sin fila no hace nada.</summary>
+    public async Task MarkMfaVerifiedAsync(int userId, string? browserToken, CancellationToken ct)
+    {
+        if (!TrustedBrowserRules.IsValidToken(browserToken)) return;
+        var hash = Hash(browserToken!);
+        var row = await db.TrustedBrowsers.FirstOrDefaultAsync(b => b.UserId == userId && b.TokenHash == hash && b.RevokedAtUtc == null && b.ConfirmedAtUtc != null, ct);
+        if (row is null) return;
+        row.MfaVerifiedAtUtc = DateTime.UtcNow;
+        db.SuppressAudit = true;
+        try { await db.SaveChangesAsync(ct); } finally { db.SuppressAudit = false; }
+    }
+
+    /// <summary>Si la computadora era «no confiar» (un solo ingreso), se quita ahora que el ingreso terminó (después de emitir la sesión).</summary>
+    public async Task ConsumeIfSingleUseAsync(int userId, string? browserToken, CancellationToken ct)
+    {
+        if (!TrustedBrowserRules.IsValidToken(browserToken)) return;
+        var hash = Hash(browserToken!);
+        var row = await db.TrustedBrowsers.FirstOrDefaultAsync(b => b.UserId == userId && b.TokenHash == hash && b.RevokedAtUtc == null && b.SingleUse, ct);
+        if (row is null) return;
+        row.RevokedAtUtc = DateTime.UtcNow;
+        db.SuppressAudit = true;
+        try { await db.SaveChangesAsync(ct); } finally { db.SuppressAudit = false; }
+        await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Success, userId, null, new { stage = "browser_single_use_consumed", browser = row.Label }, ct);
     }
 
     // ---------------------------------------------------------------- confirmar (anónimo, con el enlace)

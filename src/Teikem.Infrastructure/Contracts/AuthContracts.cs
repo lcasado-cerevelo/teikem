@@ -12,6 +12,12 @@ public sealed record AuthResultDto(string Status, TokenPairDto? Tokens, string? 
 
 public sealed record ConfirmBrowserRequest(string? Token);
 
+/// <summary>Login del portal (Lote 101). DoNotTrust = la casilla «No confiar en esta computadora» (equipo compartido): entra una vez, no se recuerda y el MFA se pide siempre. ClientPublicId opcional: con qué cliente entrar si la cuenta tiene varios (por omisión el primero por nombre). CaptchaToken: el del widget de Turnstile cuando se pide.</summary>
+public sealed record PortalLoginRequest(string Email, string Password, Guid? ClientPublicId, string? DeviceInfo, string? TrustedBrowserToken, string? CaptchaToken, bool DoNotTrust = false);
+public sealed record PortalSwitchClientRequest(string RefreshToken, Guid ClientPublicId);
+/// <summary>Configuración pública del login del portal: si pide reto anti-robot y con qué llave del sitio.</summary>
+public sealed record PortalAuthConfigDto(bool CaptchaEnabled, string? CaptchaSiteKey, int CaptchaAfterFailures);
+
 /// <summary>Status browser_confirmation_required (Lote 100): la computadora no se reconoce. Sent = salió el correo con el enlace; Message = por qué no; DevLink solo en desarrollo.</summary>
 public sealed record BrowserConfirmationDto(string Email, bool Sent, string? Message, string? DevLink);
 
@@ -30,7 +36,7 @@ public sealed record OnboardingPasswordRequest(string? NewPassword);
 public sealed record OnboardingStepDto(OnboardingStateDto State, string? MfaChallengeToken);
 public sealed record RefreshRequest(string RefreshToken);
 public sealed record SwitchTenantRequest(string RefreshToken, int TenantId);
-public sealed record MfaVerifyRequest(string Code, string? DeviceInfo);
+public sealed record MfaVerifyRequest(string Code, string? DeviceInfo, string? TrustedBrowserToken = null);
 public sealed record MfaEnrollResultDto(string Secret, string OtpAuthUri);
 public sealed record MfaConfirmRequest(string Code);
 public sealed record MfaConfirmResultDto(IReadOnlyList<string> RecoveryCodes);

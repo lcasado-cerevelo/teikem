@@ -13,6 +13,9 @@ Lote 99 (portal de clientes, 2026-10-17). Hay **un solo documento** —«Políti
 ## 2. Quién aceptó y quién no
 **Seguridad y auditoría → Aceptación legal** (permiso `admin.audit`): los usuarios de la compañía con su estado —**Aceptó** (con fecha), **Pendiente** o **Versión anterior (AAAA-MM-DD)**—, los pendientes primero. Búsqueda por nombre o correo, filtro por estado, ordenar columnas y exportar todo lo que dice el filtro. Cada aceptación guarda **versión, fecha, idioma, dirección IP y navegador**, y queda un evento en la bitácora de seguridad (`LOGIN`, etapa `legal_accepted`).
 
+## 2b. Cookies y almacenamiento del navegador
+Teikem **no usa cookies de publicidad ni de seguimiento**: guarda en el navegador (almacenamiento local) solo lo estrictamente necesario —sesión, la marca de la computadora, el idioma y la casilla «No confiar en esta computadora»—, que está exento de consentimiento, y **lo informa** en una sección de la política de privacidad («Cookies y almacenamiento del navegador», incluyendo que Cloudflare Turnstile puede guardar datos técnicos para comprobar que no es un robot). **Por eso no hay banner de cookies.** Si algún día se agrega analítica o publicidad, ese día sí hace falta pedir consentimiento antes (y poner el banner). Esta sección subió la versión a `2026-10-17.2`: todos aceptan de nuevo.
+
 ## 3. Endpoints
 | Endpoint | Para qué | Quién |
 |---|---|---|

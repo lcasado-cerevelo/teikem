@@ -25,6 +25,13 @@ Hecho a partir de lo que dictó Luis el 2026-10-17 y de sus respuestas a tres pr
 7. **Portal instalable (PWA):** después de crear su contraseña, un botón «Poner en mi escritorio» (Chrome/Edge de computadora y Android crean el ícono y abren como app; en iPhone y iPad se muestra la instrucción «Compartir → Añadir a pantalla de inicio»). El correo de invitación no puede crear el acceso directo (los correos no ejecutan nada y los adjuntos `.url` se bloquean): lleva el enlace y avisa que al terminar podrá poner el ícono.
 8. **Documento legal único** (política de privacidad + términos de uso, una sola versión para staff, cliente y consignatarios): **Lote 99, hecho**; se acepta en el primer ingreso y cada vez que cambie.
 
+## Ajustes decididos (Luis, 2026-10-17, después del lote 100)
+- **El staff queda como está** (sin computadoras de confianza); eso es solo para los portales.
+- **Computadora de confianza y MFA recordado: ambos 30 días.**
+- **Casilla «No confiar en esta computadora» en el login del portal**, y **el login recuerda** que se marcó (preferencia guardada en el navegador o teléfono; sale marcada la próxima vez). Con ella, cada entrada pide el correo de confirmación y el código MFA.
+- **Reto anti-robot con Cloudflare Turnstile** (Luis tiene cuenta de Cloudflare), pedido solo tras 3 fallos de la cuenta para no complicarle la vida a nadie.
+- **Cookies:** no se usan cookies de seguimiento; lo estrictamente necesario del navegador se informa en la política de privacidad y no requiere banner.
+
 ## Lo que ya existe y se reutiliza
 - `PortalUser` (alta/estatus desde el expediente del cliente), `UserKind = PORTAL`; el login interno lo rechaza.
 - Avisos (Lotes 51–52): cola con reintentos, canales EMAIL / APP / SMS / PUSH, bandeja; **mensajería** con hilos y grupos (Lote 53) y presencia; `messages.use` (no se da por omisión al portal).
@@ -37,7 +44,7 @@ Hecho a partir de lo que dictó Luis el 2026-10-17 y de sus respuestas a tres pr
 | 98 | **Avisos al cliente** (servidor y pantalla en el expediente del cliente): resúmenes por evento de ruta, COD procesado y factura emitida; **configuración por cliente y canal, la decide la compañía (todo apagado por omisión)**; correo y bandeja del portal; interruptor de SMS | No necesita el login del portal para el correo |
 | **99** | **Documento legal único** (privacidad + términos de uso): se acepta en el primer ingreso y cada vez que cambie la versión; lista de quién aceptó y quién no (Seguridad y auditoría) | Lo exigen todos los accesos que siguen (hecho) |
 | **100** | **Computadoras de confianza (30 días) y candado antifuerza bruta común** a todos los logins (hecho; el reto anti-robot queda pendiente del proveedor; la confianza del MFA a 30 días del cliente entra con el login del portal) | Es lo que protege al portal |
-| 101 | **Portal: acceso por cliente** (servidor): login de portal, claim del cliente, segundo filtro `ClientId`, invitación con vencimiento, MFA, bitácora; endpoints de lectura con pruebas de acceso cruzado | El corazón de seguridad |
+| **101** | **Portal: acceso por cliente** (servidor, hecho): login propio, `cid`, segundo filtro, invitación (48 h), MFA recordado 30 días, «no confiar», Turnstile, `/portal/me` y `/portal/orders` con pruebas de acceso cruzado. Facturas, COD y avisos llegan con la app | El corazón de seguridad |
 | 102 | **app-cliente** (Expo web+móvil, instalable): login, inicio, mis órdenes, ficha, bandeja de avisos | La primera pantalla del portal |
 | 103 | **«¿Cómo va mi orden?»** público por conduce (con tope de consultas y sin datos personales) | |
 | 104 | **Mensajes** del portal con el equipo de servicio al cliente (designado por cliente) | |
