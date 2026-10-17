@@ -220,6 +220,7 @@ internal sealed class WmsFixture : IAsyncDisposable
         L(LookupDomains.StopType, StopTypes.Pickup);
         L(LookupDomains.EntityType, Teikem.Domain.Cod.CodCodes.CollectionEntityType);
         L(LookupDomains.EntityType, Teikem.Domain.Cod.RemittanceCodes.EntityType);   // Lote 86
+        L(LookupDomains.EntityType, EntityTypes.Trip);   // Lote 91
         foreach (var m in new[] { Teikem.Domain.Cod.CodMethods.Cash, Teikem.Domain.Cod.CodMethods.Check, Teikem.Domain.Cod.CodMethods.AthMovil }) L(Teikem.Domain.Cod.CodCodes.MethodDomain, m);
         L(Teikem.Domain.Billing.BillingCodes.ChargeTypeDomain, Teikem.Domain.Billing.BillingCodes.ProductSale);
         L(Teikem.Domain.Billing.BillingCodes.PaymentMethodDomain, "CASH");
@@ -371,6 +372,9 @@ internal sealed class WmsFixture : IAsyncDisposable
         S(StatusDomains.TripStatus, TripStatuses.Planned, pipe, 2);
         S(StatusDomains.TripStatus, TripStatuses.Dispatched, pipe, 3);
         S(StatusDomains.TripStatus, TripStatuses.InProgress, pipe, 4);
+        S(StatusDomains.TripStatus, TripStatuses.Completed, term, 5);   // Lote 91: Actividad de Operación
+        S(StatusDomains.TripStatus, TripStatuses.Cancelled, term, 6);
+        S(StatusDomains.OrderStatus, OrderStatuses.OnHold, lat, 21);
         S(Teikem.Domain.Cod.RemittanceCodes.StatusDomain, Teikem.Domain.Cod.RemittanceStatuses.Open, pipe, 1, true);
         S(Teikem.Domain.Cod.RemittanceCodes.StatusDomain, Teikem.Domain.Cod.RemittanceStatuses.Reconciled, pipe, 2);
         S(Teikem.Domain.Cod.RemittanceCodes.StatusDomain, Teikem.Domain.Cod.RemittanceStatuses.Approved, pipe, 3);

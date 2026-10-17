@@ -19,6 +19,9 @@ public interface IActivityEventProvider
     /// <summary>Permiso que da visibilidad a la pestaña (Almacén: inventory.view).</summary>
     string RequiredPermission { get; }
 
+    /// <summary>Lote 91: módulo del tenant que debe estar encendido para que el proveedor aporte eventos (y la pestaña se vea); null = lo que diga ActivityRules.TenantModuleFor.</summary>
+    string? TenantModule => null;
+
     /// <summary>Eventos del tenant del scope desde fromUtc (sin paginar; el servicio ordena y recorta).</summary>
     Task<IReadOnlyList<ActivityEventDto>> ReadAsync(ActivityScope scope, DateTime fromUtc, bool onlyMandatory, CancellationToken ct);
 }

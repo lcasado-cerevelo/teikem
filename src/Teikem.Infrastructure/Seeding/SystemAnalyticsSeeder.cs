@@ -346,6 +346,23 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
         Indicator(SalesAnalyticsRules.DaysToShipIndicatorName, "Días promedio de solicitar a despachar por completo (últimos 30 días)", "Average days from request to full shipment (last 30 days)",
             SalesCodes.EntityType, "DaysToShip", avg, SalesAnalyticsRules.ShippedFilter, last30, false, 113, module: wh);
 
+        // Lote 91 (P12): COD y facturación (fuentes COD_COLLECTION e INVOICE) y ventas del mes. Se siembran en toda compañía y se ocultan con el módulo apagado (IDataSource.TenantModule).
+        // En el Pulso van los tres de dinero por atender; el resto se enciende desde «Organizar». Sumas en la moneda de la compañía.
+        Indicator(FinanceAnalyticsRules.CodUnreconciledIndicatorName, "Dinero de COD cobrado en la calle que todavía no se ha cuadrado", "COD money collected that has not been reconciled yet",
+            FinanceAnalyticsRules.CodSource, "Amount", sum, FinanceAnalyticsRules.CodUnreconciledFilter, all, true, 120, isMoney: true, module: acct);
+        Indicator(FinanceAnalyticsRules.CodUnremittedIndicatorName, "Dinero de COD cuadrado que todavía no está en una remesa", "Reconciled COD money not yet in a remittance",
+            FinanceAnalyticsRules.CodSource, "Amount", sum, FinanceAnalyticsRules.CodUnremittedFilter, all, false, 121, isMoney: true, module: acct);
+        Indicator(FinanceAnalyticsRules.CodCollectedIndicatorName, "Total cobrado de COD en los últimos 30 días (sin cobros anulados)", "Total COD collected in the last 30 days (excluding voided)",
+            FinanceAnalyticsRules.CodSource, "Amount", sum, FinanceAnalyticsRules.CodLiveFilter, last30, false, 122, isMoney: true, module: acct);
+        Indicator(FinanceAnalyticsRules.InvoicesReceivableIndicatorName, "Saldo por cobrar de las facturas emitidas y vencidas", "Outstanding balance of issued and overdue invoices",
+            FinanceAnalyticsRules.InvoiceSource, "Balance", sum, FinanceAnalyticsRules.InvoiceOpenFilter, all, true, 123, isMoney: true, module: acct);
+        Indicator(FinanceAnalyticsRules.InvoicesOverdueIndicatorName, "Facturas cuyo plazo de pago ya venció y siguen con saldo", "Invoices past their due date that still have a balance",
+            FinanceAnalyticsRules.InvoiceSource, null, count, FinanceAnalyticsRules.InvoiceOverdueFilter, all, true, 124, module: acct);
+        Indicator(FinanceAnalyticsRules.InvoicedIndicatorName, "Total facturado en los últimos 30 días (facturas emitidas, pagadas o vencidas)", "Total invoiced in the last 30 days (issued, paid or overdue invoices)",
+            FinanceAnalyticsRules.InvoiceSource, "Total", sum, FinanceAnalyticsRules.InvoiceIssuedFilter, last30, false, 125, isMoney: true, module: acct);
+        Indicator(FinanceAnalyticsRules.SalesLast30IndicatorName, "Total de las órdenes de venta de los últimos 30 días (sin borradores ni canceladas)", "Total of the sales orders of the last 30 days (no drafts or cancelled)",
+            SalesCodes.EntityType, "Total", sum, FinanceAnalyticsRules.SalesConfirmedFilter, last30, false, 126, isMoney: true, module: wh);
+
         // Corrección idempotente de tenants ya sembrados con la versión anterior (rango null / COD en Operación).
         var orderIndicators = await db.IndicatorDefinitions
             .Where(i => i.TenantId == tenantId && i.IsSystem && (i.Name == "Órdenes en curso" || i.Name == "COD por cobrar"))
@@ -469,6 +486,18 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
         // sistema y apagada en el Pulso (cada usuario la enciende); oculta con el módulo Rentas apagado.
         Chart(RentalAnalyticsRules.ReturnsByReasonChartName, "Devoluciones de renta de los últimos 30 días por motivo", "Rental returns of the last 30 days by reason",
             EntityTypes.RentalReturn, "Reason", donut, null, last30, false, 100, module: wh);
+
+        // Lote 91 (P12): gráficos de COD, facturación y ventas. De sistema; en el Pulso solo los dos que cuentan el estado del dinero.
+        Chart(FinanceAnalyticsRules.CodByMethodChartName, "Dinero de COD cobrado en los últimos 30 días por método de pago", "COD money collected in the last 30 days by payment method",
+            FinanceAnalyticsRules.CodSource, "Method", donut, FinanceAnalyticsRules.CodLiveFilter, last30, false, 120, field: "Amount", fn: sum, isMoney: true, module: acct);
+        Chart(FinanceAnalyticsRules.CodByDayChartName, "Tendencia diaria del dinero de COD cobrado", "Daily trend of COD money collected",
+            FinanceAnalyticsRules.CodSource, "CollectedAtUtc", line, FinanceAnalyticsRules.CodLiveFilter, last30, true, 121, field: "Amount", fn: sum, isMoney: true, module: acct);
+        Chart(FinanceAnalyticsRules.InvoicesByStatusChartName, "Facturas de los últimos 30 días por estatus", "Invoices of the last 30 days by status",
+            FinanceAnalyticsRules.InvoiceSource, "Status", donut, "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"}]}", last30, true, 122, module: acct);
+        Chart(FinanceAnalyticsRules.InvoicedByDayChartName, "Tendencia diaria de lo facturado", "Daily trend of invoiced amounts",
+            FinanceAnalyticsRules.InvoiceSource, "IssueDate", line, FinanceAnalyticsRules.InvoiceIssuedFilter, last30, false, 123, field: "Total", fn: sum, isMoney: true, module: acct);
+        Chart(FinanceAnalyticsRules.SalesByDayChartName, "Tendencia diaria del total de las órdenes de venta", "Daily trend of sales order totals",
+            SalesCodes.EntityType, "CreatedAtUtc", line, FinanceAnalyticsRules.SalesConfirmedFilter, last30, false, 124, field: "Total", fn: sum, isMoney: true, module: wh);
 
         await db.SaveChangesAsync(ct);
         db.SuppressAudit = false;

@@ -115,6 +115,17 @@ export function activityLink(e: ActivityEventDto): ActivityLink | null {
       return byPublicId('/warehouse/warehouses')
     case 'CROSSDOCK_PLAN':
       return byId('/warehouse/cross-dock-plans', 'inventory.view', ModuleKeys.CrossDock)
+    // Lote 91: Operación y Contabilidad
+    case 'TRANSPORT_ORDER':
+      return byPublicId('/orders', 'orders.view', ModuleKeys.LtlGround)
+    case 'TRIP':
+      return e.publicId ? { to: `/ops/dispatch?trip=${encodeURIComponent(e.publicId)}`, perm: 'trips.view', module: ModuleKeys.LtlGround } : null
+    case 'INVOICE':
+    case 'BILLING_RUN':
+      // las pantallas de facturación no tienen ficha propia por dirección: se abre la pantalla
+      return { to: '/money/billing', perm: 'billing.view', module: ModuleKeys.Billing }
+    case 'COD_REMITTANCE':
+      return { to: '/money/cod?tab=remittances', perm: 'cod.view', module: ModuleKeys.Cod }
     default:
       return null
   }
@@ -130,6 +141,13 @@ export function activityTone(code: string | null | undefined): ChipTone {
   if (c.endsWith('_VARIANCE')) return 'fail'
   if (c === 'INVENTORY_ADJUSTED') return 'warn'
   if (c.endsWith('_DEACTIVATED')) return 'cap'
+  // Lote 91: Operación y Contabilidad
+  if (c === 'ORDER_DELIVERED' || c === 'TRIP_COMPLETED' || c === 'INVOICE_PAID') return 'deliv'
+  if (c === 'ORDER_FAILED' || c === 'ORDER_CANCELLED' || c === 'TRIP_CANCELLED' || c === 'INVOICE_OVERDUE' || c.endsWith('_VOIDED')) return 'fail'
+  if (c === 'ORDER_ON_HOLD') return 'warn'
+  if (c === 'TRIP_DISPATCHED') return 'route'
+  if (c.startsWith('INVOICE_') || c.startsWith('PAYMENT_') || c.startsWith('BILLING_RUN_')) return 'disp'
+  if (c.startsWith('COD_')) return 'cod'
   if (c.startsWith('RECEIPT_')) return 'deliv'
   if (c.startsWith('COUNT_')) return 'route'
   if (c.startsWith('PICK_')) return 'cod'

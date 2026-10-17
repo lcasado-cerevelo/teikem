@@ -622,6 +622,64 @@ Cada noche el trabajo programado **`KPI_SNAPSHOT`** («Foto diaria de indicadore
 - **Falta un día en la gráfica:** el servidor estaba apagado a las 23:55 o el trabajo está deshabilitado; ese día cuenta 0.
 - **Cambié de módulos:** los indicadores del módulo apagado dejan de guardarse; lo ya guardado se conserva.
 
+## 9. Indicadores y gráficos de COD, facturación y ventas; Actividad de Operación y Contabilidad (Lote 91, P12)
+
+### Fuentes de datos nuevas
+
+| Fuente (`DataSourceKey`) | Una fila por | Fecha del período | Permiso de lectura | Módulo |
+|---|---|---|---|---|
+| `COD_COLLECTION` («Cobros COD») | cobro de COD | `CollectedAtUtc` | `cod.view` | `COD` |
+| `INVOICE` («Facturas») | factura al cliente | `IssueDate` (día de la compañía; los borradores no tienen fecha y quedan fuera cuando hay rango) | `billing.view` | `BILLING` |
+
+Campos de `COD_COLLECTION`: orden, factura del cliente, cliente, método, estatus, monto cobrado, cobrado el, cuadrado el, chofer, número de cheque. Campos de `INVOICE`: número, cliente, estatus, con saldo (`IsOpen` = Emitida o Vencida), fecha de emisión y de vencimiento, días de vencida, subtotal, impuesto, total, pagado (pagos no anulados) y saldo. Se pueden usar en vistas, indicadores y gráficos propios como cualquier otra fuente.
+
+### Indicadores de fábrica (de sistema)
+
+| Indicador | Qué suma o cuenta | Rango | En el Pulso |
+|---|---|---|---|
+| COD cobrado sin cuadrar | dinero cobrado en estatus Cobrado | ahora | Sí |
+| COD cuadrado sin remesa | dinero en estatus Cuadrado | ahora | No |
+| COD cobrado (30 días) | cobros no anulados de los últimos 30 días | 30 días | No |
+| Facturas por cobrar | saldo de las facturas Emitidas y Vencidas | ahora | Sí |
+| Facturas vencidas | facturas en estatus Vencida | ahora | Sí |
+| Facturado (30 días) | total de las facturas emitidas, pagadas o vencidas | 30 días | No |
+| Ventas (30 días) | total de las órdenes de venta que no son borrador ni canceladas | 30 días | No |
+
+### Gráficos de fábrica (de sistema)
+
+| Gráfico | Tipo | Rango | En el Pulso |
+|---|---|---|---|
+| Cobros COD por método | dona (monto) | 30 días | No |
+| COD cobrado por día | línea (monto) | 30 días | Sí |
+| Facturas por estatus | dona | 30 días | Sí |
+| Facturado por día | línea (monto) | 30 días | No |
+| Ventas por día | línea (monto) | 30 días | No |
+
+Los de COD y facturación pertenecen a **Contabilidad**; los de ventas, a **Almacén**. Se ocultan con su módulo apagado (COD, Facturación, Órdenes de venta). Se siembran solos en toda compañía al iniciar la base (`db-init`); cada usuario enciende u oculta los que quiera con «Organizar». Las sumas suponen una sola moneda (la de la compañía).
+
+### Actividad reciente: pestañas Operación y Contabilidad
+
+Además de Almacén, el panel «Actividad reciente» trae dos pestañas. Cada una se ve con su permiso y su módulo; un usuario con `billing.view` y `cod.view` ve en Contabilidad los eventos de los dos.
+
+| Pestaña | Permiso | Módulo | Evento | Obligatorio | Origen |
+|---|---|---|---|---|---|
+| Operación | `orders.view` | `LTL_GROUND` | Orden entregada / en pausa | no | historial de estatus de la orden |
+| | | | Orden fallida / cancelada | sí | historial de estatus de la orden |
+| | | | Ruta despachada / completada | no | historial de estatus de la ruta |
+| | | | Ruta cancelada | sí | historial de estatus de la ruta |
+| Contabilidad | `billing.view` | `BILLING` | Factura emitida / pagada, pago registrado | no | historial de la factura y tabla de pagos |
+| | | | Factura vencida / anulada, pago anulado, corrida aprobada | sí | historial de la factura, pagos y corrida |
+| Contabilidad | `cod.view` | `COD` | Cobro COD registrado / cuadrado | no | tabla de cobros (un evento por cobro) |
+| | | | Remesa COD aprobada / remitida | sí | historial de la remesa |
+
+La referencia es el número de la orden, el código de la ruta, el número de la factura o de la remesa (la corrida lleva su período); el detalle, el cliente y el monto. Al hacer clic: órdenes y cobros → la orden; rutas → Sala de despacho con la ruta; facturas y corridas → Facturación; remesas → COD → Remesas. El catálogo (`ActivityEventType`, sección (ab) de `update.sql`) permite renombrar o apagar los opcionales por compañía; los obligatorios siempre se muestran.
+
+### Casos frecuentes
+
+- **No veo la pestaña Contabilidad:** hace falta `billing.view` con Facturación encendida, o `cod.view` con COD encendido.
+- **No veo un indicador o gráfico de COD o facturas:** el módulo de su fuente está apagado, o el usuario lo ocultó en «Organizar».
+- **«Facturado por día» no cuenta el borrador:** solo suma facturas emitidas, pagadas o vencidas (con fecha de emisión).
+
 ## Preguntas frecuentes de este capítulo
 
 Las del Lote 15 (franja "Almacén hoy", filas fijas, gráficos de la compañía, "Otras" y días de Puerto Rico) están en [faq.md](faq.md), sección "Lote 15".

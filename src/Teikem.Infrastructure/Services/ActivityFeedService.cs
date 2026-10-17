@@ -40,7 +40,7 @@ public sealed class ActivityFeedService(
         var visible = new List<IActivityEventProvider>();
         foreach (var p in providers.OrderBy(p => ActivityRules.ModuleRank(p.Module)).ThenBy(p => p.Module, StringComparer.Ordinal))
         {
-            if (ActivityRules.TenantModuleFor(p.Module) is string key && !enabled.Contains(key)) continue;
+            if ((p.TenantModule ?? ActivityRules.TenantModuleFor(p.Module)) is string key && !enabled.Contains(key)) continue;
             if (!await permissions.HasPermissionAsync(p.RequiredPermission, ct)) continue;
             visible.Add(p);
         }

@@ -3590,3 +3590,40 @@ WHEN NOT MATCHED THEN
     INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
     VALUES (N'KpiKey', s.Code, s.LabelJson, s.Srt, 1, 1);
 GO
+
+-- =====================================================================================================================
+-- 2026-10-17 (ab) Lote 91 (P12) — «Actividad reciente» para Operación y Contabilidad
+-- Catálogo ActivityEventType de las pestañas Operación (órdenes y rutas) y Contabilidad (facturación y COD); el almacén ya tenía el suyo en el seed original. Qué transición produce cada
+-- evento vive en código (OperationsActivityProvider, BillingActivityProvider, CodActivityProvider). Solo AGREGA. Idempotente.
+-- =====================================================================================================================
+MERGE dbo.LookupCode AS t
+USING (
+    SELECT v.Code, N'{"es":"' + v.Es + N'","en":"' + v.En + N'"}' AS LabelJson,
+           N'{"module":"' + v.Module + N'","mandatory":' + CASE v.Mandatory WHEN 1 THEN N'true' ELSE N'false' END
+             + N',"defaultOn":' + CASE v.DefaultOn WHEN 1 THEN N'true' ELSE N'false' END + N'}' AS ExtraJson,
+           v.Srt
+    FROM (VALUES
+    (N'ORDER_DELIVERED', N'Orden entregada', N'Order delivered', N'OPERATIONS', 0, 1, 101),
+    (N'ORDER_FAILED', N'Orden fallida', N'Order failed', N'OPERATIONS', 1, 1, 102),
+    (N'ORDER_CANCELLED', N'Orden cancelada', N'Order cancelled', N'OPERATIONS', 1, 1, 103),
+    (N'ORDER_ON_HOLD', N'Orden en pausa', N'Order on hold', N'OPERATIONS', 0, 1, 104),
+    (N'TRIP_DISPATCHED', N'Ruta despachada', N'Trip dispatched', N'OPERATIONS', 0, 1, 105),
+    (N'TRIP_COMPLETED', N'Ruta completada', N'Trip completed', N'OPERATIONS', 0, 1, 106),
+    (N'TRIP_CANCELLED', N'Ruta cancelada', N'Trip cancelled', N'OPERATIONS', 1, 1, 107),
+    (N'INVOICE_ISSUED', N'Factura emitida', N'Invoice issued', N'ACCOUNTING', 0, 1, 201),
+    (N'INVOICE_PAID', N'Factura pagada', N'Invoice paid', N'ACCOUNTING', 0, 1, 202),
+    (N'INVOICE_OVERDUE', N'Factura vencida', N'Invoice overdue', N'ACCOUNTING', 1, 1, 203),
+    (N'INVOICE_VOIDED', N'Factura anulada', N'Invoice voided', N'ACCOUNTING', 1, 1, 204),
+    (N'PAYMENT_RECORDED', N'Pago registrado', N'Payment recorded', N'ACCOUNTING', 0, 1, 205),
+    (N'PAYMENT_VOIDED', N'Pago anulado', N'Payment voided', N'ACCOUNTING', 1, 1, 206),
+    (N'BILLING_RUN_APPROVED', N'Corrida de facturación aprobada', N'Billing run approved', N'ACCOUNTING', 1, 1, 207),
+    (N'COD_COLLECTED', N'Cobro COD registrado', N'COD collection recorded', N'ACCOUNTING', 0, 1, 211),
+    (N'COD_RECONCILED', N'Cobro COD cuadrado', N'COD collection reconciled', N'ACCOUNTING', 0, 1, 212),
+    (N'COD_REMITTANCE_APPROVED', N'Remesa COD aprobada', N'COD remittance approved', N'ACCOUNTING', 1, 1, 213),
+    (N'COD_REMITTED', N'Remesa COD remitida', N'COD remittance sent', N'ACCOUNTING', 1, 1, 214)
+    ) v(Code, Es, En, Module, Mandatory, DefaultOn, Srt)
+) AS s ON t.Entity = N'ActivityEventType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, ExtraJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'ActivityEventType', s.Code, s.LabelJson, s.ExtraJson, s.Srt, 1, 1);
+GO

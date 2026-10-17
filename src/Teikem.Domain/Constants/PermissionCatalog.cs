@@ -388,6 +388,9 @@ public static class PermissionCatalog
         [EntityTypes.SalesOrderLine] = SalesView,
         // Lote 90 (P12): el historial diario de indicadores se lee con analytics.view
         [Analytics.KpiCodes.DataSource] = AnalyticsView,
+        // Lote 91 (P12): cobros COD y facturas
+        [Analytics.FinanceAnalyticsRules.CodSource] = CodView,
+        [Analytics.FinanceAnalyticsRules.InvoiceSource] = BillingView,
     };
 
     /// <summary>

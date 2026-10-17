@@ -8732,3 +8732,18 @@ Solo se guardan los indicadores de los módulos Órdenes LTL (`LTL_GROUND`) y CO
 
 **Corrí el trabajo dos veces, ¿se duplican las cifras?**
 No: hay una fila por día e indicador y la segunda corrida reemplaza la de hoy.
+
+
+## Lote 91 — Indicadores y gráficos de COD, facturación y ventas; Actividad de Operación y Contabilidad
+
+**No aparecen los indicadores «COD cobrado sin cuadrar» o «Facturas por cobrar» en el Pulso.**
+Dependen del módulo (COD o Facturación) y del permiso de lectura de su fuente (`cod.view` o `billing.view`). Revíselos en «Organizar» por si el usuario los ocultó.
+
+**La pestaña «Contabilidad» de Actividad reciente está vacía.**
+Solo muestra lo ocurrido en la ventana elegida (24 h, 48 h u hoy): facturas emitidas, pagadas, vencidas o anuladas, pagos, corridas aprobadas, cobros y remesas de COD.
+
+**¿Por qué «Facturas por cobrar» difiere del total de mi lista de facturas?**
+Suma el **saldo** (total menos pagos no anulados) de las facturas Emitidas y Vencidas; no incluye borradores, pagadas ni anuladas.
+
+**¿Se pueden crear gráficos propios con cobros o facturas?**
+Sí: en Análisis, elija la fuente «Cobros COD» o «Facturas» (requiere `cod.view` o `billing.view`).

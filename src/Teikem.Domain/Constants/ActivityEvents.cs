@@ -41,4 +41,31 @@ public static class ActivityEvents
         PickPacked, PickCancelled, PoSent, PoReceived, PoCancelled, PoShortageResolved, CrossDockCompleted, ProductDeactivated,
         WarehouseDeactivated,
     };
+    // Lote 91 (P12) — Operación (BusinessModule OPERATIONS)
+    public const string OrderDelivered = "ORDER_DELIVERED";
+    public const string OrderFailed = "ORDER_FAILED";
+    public const string OrderCancelled = "ORDER_CANCELLED";
+    public const string OrderOnHold = "ORDER_ON_HOLD";
+    public const string TripDispatched = "TRIP_DISPATCHED";
+    public const string TripCompleted = "TRIP_COMPLETED";
+    public const string TripCancelled = "TRIP_CANCELLED";
+
+    /// <summary>Los 7 eventos de Operación (SortOrder 101..107).</summary>
+    public static readonly IReadOnlyList<string> Operations = new[] { OrderDelivered, OrderFailed, OrderCancelled, OrderOnHold, TripDispatched, TripCompleted, TripCancelled };
+
+    // Lote 91 (P12) — Contabilidad (BusinessModule ACCOUNTING): facturación (billing.view) y COD (cod.view)
+    public const string InvoiceIssued = "INVOICE_ISSUED";
+    public const string InvoicePaid = "INVOICE_PAID";
+    public const string InvoiceOverdue = "INVOICE_OVERDUE";
+    public const string InvoiceVoided = "INVOICE_VOIDED";
+    public const string PaymentRecorded = "PAYMENT_RECORDED";
+    public const string PaymentVoided = "PAYMENT_VOIDED";
+    public const string BillingRunApproved = "BILLING_RUN_APPROVED";
+    public const string CodCollected = "COD_COLLECTED";
+    public const string CodReconciled = "COD_RECONCILED";
+    public const string CodRemittanceApproved = "COD_REMITTANCE_APPROVED";
+    public const string CodRemitted = "COD_REMITTED";
+
+    public static readonly IReadOnlyList<string> Billing = new[] { InvoiceIssued, InvoicePaid, InvoiceOverdue, InvoiceVoided, PaymentRecorded, PaymentVoided, BillingRunApproved };
+    public static readonly IReadOnlyList<string> Cod = new[] { CodCollected, CodReconciled, CodRemittanceApproved, CodRemitted };
 }

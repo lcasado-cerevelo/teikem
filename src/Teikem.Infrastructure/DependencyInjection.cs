@@ -362,6 +362,9 @@ public static class DependencyInjection
         services.AddScoped<IDataSource, CycleCountDataSource>();   // Lote 7A (P2): indicador de Pulso 'Conteos con diferencia'
         // Lote 7A — "Actividad reciente": un proveedor de eventos por BusinessModule (colección, igual que IDataSource) y el feed.
         services.AddScoped<IActivityEventProvider, WarehouseActivityProvider>();
+        services.AddScoped<IActivityEventProvider, OperationsActivityProvider>();   // Lote 91 (P12)
+        services.AddScoped<IActivityEventProvider, BillingActivityProvider>();
+        services.AddScoped<IActivityEventProvider, CodActivityProvider>();
         services.AddScoped<ActivityFeedService>();
         // Lote 14 (D6) — "Necesita tu atención": un proveedor de filas por tipo de aviso (colección) y el servicio del panel.
         services.AddScoped<IAttentionItemProvider, InventoryDiscrepancyAttentionProvider>();
@@ -409,7 +412,9 @@ public static class DependencyInjection
         services.AddScoped<PulseRadarService>();   // Lote 89 (P12)
         services.AddScoped<KpiHistory>();   // Lote 90 (P12)
         services.AddScoped<KpiSnapshotService>();
-        services.AddScoped<IDataSource, KpiDailyDataSource>();   // historial por día para indicadores y gráficos
+        services.AddScoped<IDataSource, KpiDailyDataSource>();
+        services.AddScoped<IDataSource, CodCollectionDataSource>();   // Lote 91 (P12)
+        services.AddScoped<IDataSource, InvoiceDataSource>();   // historial por día para indicadores y gráficos
         services.AddScoped<IAttentionItemProvider, OrdersNoDriverAttentionProvider>();   // Lote 89
         services.AddScoped<IAttentionItemProvider, CodUnreconciledAttentionProvider>();   // Lote 89
         services.AddScoped<BillingExportService>();

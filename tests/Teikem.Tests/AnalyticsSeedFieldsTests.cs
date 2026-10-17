@@ -162,7 +162,7 @@ public class AnalyticsSeedFieldsTests
         var orderFields = new SalesOrderDataSource(db, lookups, tenant).Fields.Select(f => f.Key).ToHashSet();
         var lineFields = new SalesOrderLineDataSource(db, tenant).Fields.Select(f => f.Key).ToHashSet();
         var inds = await db.IndicatorDefinitions.AsNoTracking().Where(i => i.DataSourceKey == Teikem.Domain.Sales.SalesCodes.EntityType).ToListAsync();
-        Assert.Equal(4, inds.Count);
+        Assert.Equal(5, inds.Count);   // Lote 91 sumó «Ventas (30 días)»
         Assert.All(inds, i => Assert.True(i.IsSystem));
         Assert.Equal(new[] { Teikem.Domain.Sales.SalesAnalyticsRules.OpenOrdersIndicatorName }, inds.Where(i => i.ShowInPulse).Select(i => i.Name));   // solo las abiertas en el Pulso
         foreach (var i in inds)
@@ -187,6 +187,56 @@ public class AnalyticsSeedFieldsTests
         {
             foreach (var f in JsonFields(r.FilterJson).Concat(JsonFields(r.GroupJson)).Concat(JsonFields(r.SortJson))) Assert.Contains(f, orderFields);
             foreach (var col in JsonSerializer.Deserialize<string[]>(r.ColumnsJson ?? "[]")!) Assert.Contains(col, orderFields);
+        }
+    }
+
+    [Fact]
+    public async Task Lote91_finance_content_is_seeded_once_with_fields_that_exist_in_its_sources()
+    {
+        var tenant = new TenantContext { TenantId = TenantId, UserId = 1 };
+        var lookups = new FakeLookups();
+        using var db = InMemoryDb(tenant);
+        await new SystemAnalyticsSeeder(db, tenant, lookups).SeedForTenantAsync(TenantId, default);
+        await new SystemAnalyticsSeeder(db, tenant, lookups).SeedForTenantAsync(TenantId, default);   // idempotente
+
+        var fields = new Dictionary<string, HashSet<string>>
+        {
+            [Teikem.Domain.Analytics.FinanceAnalyticsRules.CodSource] = new CodCollectionDataSource(db, lookups, tenant).Fields.Select(f => f.Key).ToHashSet(),
+            [Teikem.Domain.Analytics.FinanceAnalyticsRules.InvoiceSource] = new InvoiceDataSource(db, tenant).Fields.Select(f => f.Key).ToHashSet(),
+            [Teikem.Domain.Sales.SalesCodes.EntityType] = new SalesOrderDataSource(db, lookups, tenant).Fields.Select(f => f.Key).ToHashSet(),
+        };
+        var names = new[]
+        {
+            Teikem.Domain.Analytics.FinanceAnalyticsRules.CodUnreconciledIndicatorName, Teikem.Domain.Analytics.FinanceAnalyticsRules.CodUnremittedIndicatorName,
+            Teikem.Domain.Analytics.FinanceAnalyticsRules.CodCollectedIndicatorName, Teikem.Domain.Analytics.FinanceAnalyticsRules.InvoicesReceivableIndicatorName,
+            Teikem.Domain.Analytics.FinanceAnalyticsRules.InvoicesOverdueIndicatorName, Teikem.Domain.Analytics.FinanceAnalyticsRules.InvoicedIndicatorName,
+            Teikem.Domain.Analytics.FinanceAnalyticsRules.SalesLast30IndicatorName,
+        };
+        var inds = await db.IndicatorDefinitions.AsNoTracking().Where(i => names.Contains(i.Name)).ToListAsync();
+        Assert.Equal(names.Length, inds.Count);
+        foreach (var i in inds)
+        {
+            Assert.True(i.IsSystem);
+            var f = fields[i.DataSourceKey];
+            if (i.FieldKey is not null) Assert.Contains(i.FieldKey, f);
+            foreach (var x in JsonFields(i.FilterJson)) Assert.Contains(x, f);
+        }
+        Assert.Equal(new[] { "COD cobrado sin cuadrar", "Facturas por cobrar", "Facturas vencidas" }.OrderBy(n => n), inds.Where(i => i.ShowInPulse).Select(i => i.Name).OrderBy(n => n));
+
+        var chartNames = new[]
+        {
+            Teikem.Domain.Analytics.FinanceAnalyticsRules.CodByMethodChartName, Teikem.Domain.Analytics.FinanceAnalyticsRules.CodByDayChartName,
+            Teikem.Domain.Analytics.FinanceAnalyticsRules.InvoicesByStatusChartName, Teikem.Domain.Analytics.FinanceAnalyticsRules.InvoicedByDayChartName,
+            Teikem.Domain.Analytics.FinanceAnalyticsRules.SalesByDayChartName,
+        };
+        var charts = await db.ChartDefinitions.AsNoTracking().Where(c => chartNames.Contains(c.Name)).ToListAsync();
+        Assert.Equal(chartNames.Length, charts.Count);
+        foreach (var c in charts)
+        {
+            var f = fields[c.DataSourceKey];
+            Assert.Contains(c.GroupByField!, f);
+            if (c.FieldKey is not null) Assert.Contains(c.FieldKey, f);
+            foreach (var x in JsonFields(c.FilterJson)) Assert.Contains(x, f);
         }
     }
 
