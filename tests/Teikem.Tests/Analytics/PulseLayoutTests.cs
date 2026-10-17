@@ -171,7 +171,7 @@ public class PulseLayoutTests
         // Registro del plan §2.3.
         // Lote 14 (D6): + ATTENTION ("Necesita tu atención", orden 5: el primero, debajo de la franja del Lote 15), sin datos ni módulo.
         Assert.Equal(new[] { ("INDICATORS", "pulse.indicators", 20), ("CHARTS", "pulse.charts", 30), ("WAREHOUSE", "pulse.warehouse", 40), ("ACTIVITY", "pulse.activity", 50),
-                ("ATTENTION", "pulse.attention", 5), ("WAREHOUSE_DAY", "pulse.warehouse", -10) },
+                ("ATTENTION", "pulse.attention", 5), ("WAREHOUSE_DAY", "pulse.warehouse", -10), ("ORDERS_RIVER", "pulse.orders", 10), ("COD_RIVER", "pulse.cod", 11) },
             PulsePanels.All.Select(p => (p.Key, p.Permission, p.DefaultSortOrder)));
         Assert.Empty(PulsePanels.Find(PulsePanels.Attention)!.DataPermissions);
         Assert.Null(PulsePanels.Find(PulsePanels.Attention)!.Module);
@@ -418,14 +418,15 @@ public class PulseLayoutTests
         var t = PermissionCatalog.RoleTemplates;
         string[] Pulse(string role) => t[role].Where(c => c.StartsWith("pulse.", StringComparison.Ordinal)).OrderBy(c => c, StringComparer.Ordinal).ToArray();
         // Lote 14 (D6): pulse.attention para quien ve inventario (TenantAdmin por "todos", Operador, Facturación y Solo lectura).
-        Assert.Equal(new[] { "pulse.activity", "pulse.attention", "pulse.charts", "pulse.indicators", "pulse.organize_company", "pulse.warehouse" }, Pulse("TenantAdmin"));
+        // Lote 88: pulse.orders y pulse.cod (los dos ríos) para quien ve órdenes / COD: TenantAdmin, Facturación y Solo lectura (los dos), Despachador (órdenes).
+        Assert.Equal(new[] { "pulse.activity", "pulse.attention", "pulse.charts", "pulse.cod", "pulse.indicators", "pulse.orders", "pulse.organize_company", "pulse.warehouse" }, Pulse("TenantAdmin"));
         Assert.Equal(new[] { "pulse.activity", "pulse.attention", "pulse.charts", "pulse.indicators", "pulse.warehouse" }, Pulse("WarehouseOperator"));
         foreach (var role in new[] { "Billing", "ReadOnly" })
-            Assert.Equal(new[] { "pulse.activity", "pulse.attention", "pulse.charts", "pulse.indicators" }, Pulse(role));
-        Assert.Equal(new[] { "pulse.activity", "pulse.charts", "pulse.indicators" }, Pulse("Dispatcher"));
+            Assert.Equal(new[] { "pulse.activity", "pulse.attention", "pulse.charts", "pulse.cod", "pulse.indicators", "pulse.orders" }, Pulse(role));
+        Assert.Equal(new[] { "pulse.activity", "pulse.charts", "pulse.indicators", "pulse.orders" }, Pulse("Dispatcher"));
         Assert.All(t.Where(kv => kv.Value.Contains(PermissionCatalog.PulseAttention)), kv => Assert.Contains(PermissionCatalog.InventoryView, kv.Value));
         Assert.Empty(Pulse("Driver"));
-        Assert.Equal(90, PermissionCatalog.All.Count);   // 2026-10-08: + warehouse.damage;   // Lote 27: + rental.extend, rental.return; 2026-10-11: + warehouse.issue; 2026-10-12: + orders.view_price; 2026-10-12 (Lote 43): + printers.manage; 2026-10-12: + inventory.adjust.multi; 2026-10-16 (Lote 72): + billing.view
+        Assert.Equal(92, PermissionCatalog.All.Count);   // 2026-10-08: + warehouse.damage;   // Lote 27: + rental.extend, rental.return; 2026-10-11: + warehouse.issue; 2026-10-12: + orders.view_price; 2026-10-12 (Lote 43): + printers.manage; 2026-10-12: + inventory.adjust.multi; 2026-10-16 (Lote 72): + billing.view
         Assert.All(PermissionCatalog.All.Where(p => p.Code.StartsWith("pulse.", StringComparison.Ordinal)), p => Assert.Equal("PULSE", p.Category));
 
         // PermissionSeeder real sobre InMemory: plantillas y un rol clonado de un tenant sin los pulse.* (versión anterior).

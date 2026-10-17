@@ -3543,3 +3543,26 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_NumberSequence_Kind')
     ALTER TABLE dbo.NumberSequence ADD CONSTRAINT CK_NumberSequence_Kind CHECK (Kind IN ('ORDER','INVOICE','PACKAGE','PACKBATCH','WORKORDER','TRIP','RECEIPT','CYCLECOUNT','CROSSDOCK','PURCHASE','RENTAL','RENTALRETURN','MANUALISSUE','MULTIADJUST','SALESORDER','BILLINVOICE','CREDITNOTE','SALESRETURN','CODREMIT'));
 GO
+
+-- =====================================================================================================================
+-- 2026-10-17 (z) Lote 88 (P12) — los dos ríos del Pulso: permisos pulse.orders (río «Paquetes en la calle») y pulse.cod (río «Dinero COD»)
+-- A los roles que ya existen (plantillas y clonados, por nombre): Despachador, Facturación y Solo lectura → pulse.orders; Facturación y Solo lectura → pulse.cod; el administrador de la compañía los recibe por
+-- «todos los permisos». Solo AGREGA. Idempotente.
+-- =====================================================================================================================
+MERGE dbo.Permission AS t
+USING (VALUES
+    ('pulse.orders', N'{"es":"Ver el río Paquetes en la calle del Pulso","en":"See the Packages on the street river"}'),
+    ('pulse.cod',    N'{"es":"Ver el río Dinero COD del Pulso","en":"See the COD money river"}')
+) AS s (Code, LabelJson)
+ON t.Code = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES (s.Code, (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'PULSE'), s.LabelJson, 1);
+GO
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT DISTINCT r.RoleId, p.PermissionId
+FROM dbo.Role r
+JOIN dbo.Permission p ON (p.Code = 'pulse.orders' AND r.Name IN ('TenantAdmin', 'Dispatcher', 'Billing', 'ReadOnly'))
+                      OR (p.Code = 'pulse.cod' AND r.Name IN ('TenantAdmin', 'Billing', 'ReadOnly'))
+WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = p.PermissionId);
+GO

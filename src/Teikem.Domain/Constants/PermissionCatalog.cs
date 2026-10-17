@@ -148,6 +148,10 @@ public static class PermissionCatalog
     public const string PulseActivity = "pulse.activity";
     /// <summary>Lote F8a: organizar el Pulso de la compañía (PUT /api/v1/analytics/pulse/layout?scope=company).</summary>
     public const string PulseOrganizeCompany = "pulse.organize_company";
+    /// <summary>Lote 88 (P12): el río «Paquetes en la calle» del Pulso (datos: orders.view; módulo LTL_GROUND).</summary>
+    public const string PulseOrders = "pulse.orders";
+    /// <summary>Lote 88 (P12): el río «Dinero COD» del Pulso (datos: cod.view; módulo COD).</summary>
+    public const string PulseCod = "pulse.cod";
     /// <summary>
     /// Lote 14 (D6): panel "Necesita tu atención" del Pulso (GET /api/v1/analytics/attention). Sin permiso de datos ni módulo en
     /// el panel: cada fila decide el suyo (descuadres de inventario: inventory.view + WMS_LOTSERIAL). Lo ve quien ve inventario.
@@ -260,6 +264,9 @@ public static class PermissionCatalog
         new(PulseWarehouse, "PULSE", "Ver el panel Almacén del Pulso", "See the Warehouse panel"),
         new(PulseActivity, "PULSE", "Ver Actividad reciente en el Pulso", "See Recent activity"),
         new(PulseOrganizeCompany, "PULSE", "Organizar el Pulso de la compañía", "Organize the company Pulse"),
+        // Lote 88 (P12) — los dos ríos del Pulso
+        new(PulseOrders, "PULSE", "Ver el río Paquetes en la calle del Pulso", "See the Packages on the street river"),
+        new(PulseCod, "PULSE", "Ver el río Dinero COD del Pulso", "See the COD money river"),
         // Lote 14 — "Necesita tu atención" (D6)
         new(PulseAttention, "PULSE", "Ver la sección Necesita tu atención del Pulso", "See the Needs your attention section"),
         // Lote 27 — Rentas (R1)
@@ -449,10 +456,12 @@ public static class PermissionCatalog
     {
         ["TenantAdmin"] = All.Select(p => p.Code).ToArray(),
         ["Dispatcher"] = new[] { OrdersView, OrdersCreate, OrdersEdit, OrdersCancel, TripsPlan, TripsDispatch, TripsClose, TripsOptimize, AnalyticsView, ClientsRead, LocationsRead, LocationsCreate, FleetView, TripsView, TripsScan,
-            PulseIndicators, PulseCharts, PulseActivity },   // Lote F8a
+            PulseIndicators, PulseCharts, PulseActivity,   // Lote F8a
+            PulseOrders },   // Lote 88: el río Paquetes en la calle
         ["Billing"] = new[] { OrdersView, BillingView, BillingCredit, BillingGenerate, BillingApprove, BillingExport, CodView, CodReconcile, CodRemit, RentalBilling, RentalView, PurchasingView, PurchasingManage, AnalyticsView, ClientsRead, ContractsRead, OrdersCreditOverride, DriverPayView, InventoryView,
             PulseIndicators, PulseCharts, PulseActivity,   // Lote F8a
             PulseAttention,   // Lote 14 (D6): la ve quien ve inventario
+            PulseOrders, PulseCod,   // Lote 88: los dos ríos
             OrdersViewPrice },   // Lote 39: Facturación ve los precios de las órdenes
         // 2026-10-01 (Luis), como lo dejó en Advance Logistics: sin cod.reconcile, sin rutas (trips.*) ni compras (purchasing.*;
         // no recibe contra órdenes de compra) y con ajustar/administrar inventario y administrar almacenes.
@@ -470,7 +479,8 @@ public static class PermissionCatalog
         ["Driver"] = new[] { OrdersView, CodCollect },
         ["ReadOnly"] = new[] { OrdersView, CodView, AnalyticsView, ClientsRead, LocationsRead, ContractsRead, FleetView, TripsView, InventoryView,
             PulseIndicators, PulseCharts, PulseActivity,   // Lote F8a
-            PulseAttention },   // Lote 14 (D6)
+            PulseAttention,   // Lote 14 (D6)
+            PulseOrders, PulseCod },   // Lote 88: los dos ríos
     });
 
     /// <summary>

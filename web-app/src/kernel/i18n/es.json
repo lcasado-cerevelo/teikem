@@ -2788,11 +2788,45 @@
       "chartEmpty": "Este gráfico no tiene datos en el rango configurado.",
       "showInPulseMine": "Mostrar en Pulso del día",
       "showInPulseCompany": "…en el de la compañía",
+        "rivers": {
+          "orders": {
+            "title": "Paquetes en la calle",
+            "ENTRY": "Entrada",
+            "IN_WAREHOUSE": "En almacén",
+            "TO_DISPATCH": "Por despachar",
+            "ON_ROUTE": "En ruta",
+            "DELIVERED": "Entregado",
+            "unit": "órdenes",
+            "sub": {
+              "ENTRY": "órdenes nuevas hoy · {waiting} esperan",
+              "IN_WAREHOUSE": "recibidas en el almacén",
+              "TO_DISPATCH": "sin chofer",
+              "ON_ROUTE": "{drivers} choferes",
+              "DELIVERED": "hoy"
+            }
+          },
+          "cod": {
+            "title": "Dinero COD",
+            "TO_COLLECT": "Por cobrar",
+            "COLLECTED": "Cobrado",
+            "RECONCILED": "Cuadrado",
+            "REMITTANCE": "Remesa lista",
+            "sub": {
+              "TO_COLLECT": "órdenes · faltan {amount}",
+              "COLLECTED": "efectivo {cash} · cheques {checks}",
+              "other": "otros {other}",
+              "RECONCILED": "sin remesa · {clients} clientes",
+              "REMITTANCE": "{remittances} remesas · {clients} clientes"
+            }
+          }
+        },
       "panels": {
         "INDICATORS": "Tus indicadores",
         "CHARTS": "Tus gráficos",
         "ATTENTION": "Necesita tu atención",
-        "WAREHOUSE_DAY": "Almacén hoy"
+        "WAREHOUSE_DAY": "Almacén hoy",
+        "ORDERS_RIVER": "Paquetes en la calle",
+        "COD_RIVER": "Dinero COD"
       },
       "day": {
         "received": "Unidades recibidas",

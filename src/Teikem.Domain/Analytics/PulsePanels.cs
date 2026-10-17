@@ -33,6 +33,9 @@ public static class PulsePanels
     public const string Activity = "ACTIVITY";
     public const string Attention = "ATTENTION";
     public const string WarehouseDay = "WAREHOUSE_DAY";
+    /// <summary>Lote 88 (P12): el río «Paquetes en la calle» (orden 10) y el río «Dinero COD» (orden 11): las dos corrientes de la maqueta, debajo de «Necesita tu atención».</summary>
+    public const string OrdersRiver = "ORDERS_RIVER";
+    public const string CodRiver = "COD_RIVER";
 
     public static readonly IReadOnlyList<PulsePanelDef> All = new List<PulsePanelDef>
     {
@@ -42,6 +45,8 @@ public static class PulsePanels
         new(Activity, PermissionCatalog.PulseActivity, new[] { PermissionCatalog.AnalyticsView }, ModuleKeys.Analytics, 50),
         new(Attention, PermissionCatalog.PulseAttention, Array.Empty<string>(), null, 5),
         new(WarehouseDay, PermissionCatalog.PulseWarehouse, new[] { PermissionCatalog.InventoryView }, ModuleKeys.WmsLotSerial, -10),
+        new(OrdersRiver, PermissionCatalog.PulseOrders, new[] { PermissionCatalog.OrdersView }, ModuleKeys.LtlGround, 10),
+        new(CodRiver, PermissionCatalog.PulseCod, new[] { PermissionCatalog.CodView }, ModuleKeys.Cod, 11),
     };
 
     /// <summary>Panel por clave (sin distinguir mayúsculas); null si no está en el registro.</summary>

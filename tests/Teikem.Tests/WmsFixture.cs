@@ -358,6 +358,16 @@ internal sealed class WmsFixture : IAsyncDisposable
         S(Teikem.Domain.Cod.CodCodes.CollectionStatusDomain, Teikem.Domain.Cod.CodCollectionStatuses.Remitted, term, 3);
         S(Teikem.Domain.Cod.CodCodes.CollectionStatusDomain, Teikem.Domain.Cod.CodCollectionStatuses.Void, lat, 4);
         S(StatusDomains.ContractStatus, ContractStatuses.Active, pipe, 2);   // Lote 86: comisión del contrato activo
+        // Lote 88: los ríos del Pulso cuentan órdenes por estatus y rutas con chofer
+        S(StatusDomains.OrderStatus, OrderStatuses.Inbound, pipe, 5);
+        S(StatusDomains.OrderStatus, OrderStatuses.Planned, pipe, 6);
+        S(StatusDomains.OrderStatus, OrderStatuses.InTransit, pipe, 7);
+        S(StatusDomains.OrderStatus, OrderStatuses.Arrived, pipe, 8);
+        S(StatusDomains.OrderStatus, OrderStatuses.Cancelled, term, 20);
+        S(StatusDomains.TripStatus, TripStatuses.Draft, pipe, 1, true);
+        S(StatusDomains.TripStatus, TripStatuses.Planned, pipe, 2);
+        S(StatusDomains.TripStatus, TripStatuses.Dispatched, pipe, 3);
+        S(StatusDomains.TripStatus, TripStatuses.InProgress, pipe, 4);
         S(Teikem.Domain.Cod.RemittanceCodes.StatusDomain, Teikem.Domain.Cod.RemittanceStatuses.Open, pipe, 1, true);
         S(Teikem.Domain.Cod.RemittanceCodes.StatusDomain, Teikem.Domain.Cod.RemittanceStatuses.Reconciled, pipe, 2);
         S(Teikem.Domain.Cod.RemittanceCodes.StatusDomain, Teikem.Domain.Cod.RemittanceStatuses.Approved, pipe, 3);

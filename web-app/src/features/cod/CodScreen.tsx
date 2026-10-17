@@ -1,6 +1,7 @@
 // Contabilidad → COD (Lote 85, módulo COD, permiso cod.view): el cobro contra entrega, su reconciliación y la remesa al cliente. Pestañas: las ÓRDENES con COD (lista y ficha con los cobros; «Registrar cobro» con
 // cod.collect), RECONCILIAR (cod.reconcile: se suben las hojas escaneadas —el código de barras es el número de la factura— o se escriben los códigos; vista previa y cuadrar) y las CORRIDAS ya hechas.
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useCan } from '../../kernel/access'
 import { useT } from '../../kernel/i18n'
 import { Tabs } from '../../kernel/ui'
@@ -15,7 +16,12 @@ type TabKey = 'orders' | 'reconcile' | 'remittances' | 'runs'
 export default function CodScreen() {
   const t = useT()
   const canReconcile = useCan('cod.reconcile')
-  const [tab, setTab] = useState<TabKey>('orders')
+  // Lote 88: las tarjetas del río «Dinero COD» del Pulso abren la pestaña que atiende cada una (?tab=)
+  const [params] = useSearchParams()
+  const [tab, setTab] = useState<TabKey>(() => {
+    const wanted = params.get('tab')
+    return wanted === 'reconcile' || wanted === 'remittances' || wanted === 'runs' ? wanted : 'orders'
+  })
   const [openId, setOpenId] = useState<string | null>(null)
   const [remittanceId, setRemittanceId] = useState<string | null>(null)
   const [newRemittance, setNewRemittance] = useState(false)

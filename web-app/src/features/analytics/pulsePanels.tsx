@@ -8,6 +8,7 @@ import { ActivityPanel } from './ActivityPanel'
 import { AttentionPanel } from './AttentionPanel'
 import { ChartsGrid, IndicatorsRiver } from './PulseSections'
 import type { ChartDatum, Indicator, PulseDto, PulsePanelKey } from './pulseLayout'
+import { CodRiver, OrdersRiver } from './RiversPanel'
 import { WarehouseDayBand } from './WarehouseDayBand'
 import { WarehousePulsePanel } from './WarehousePulsePanel'
 
@@ -74,6 +75,19 @@ export const PULSE_PANELS: Record<PulsePanelKey, PulsePanelEntry> = {
     titleKey: 'analytics.pulse.panels.WAREHOUSE_DAY',
     hasContent: always,
     render: () => <WarehouseDayBand />,
+  },
+  // Lote 88 (P12): los dos ríos de la maqueta. Siempre se pintan (sin movimiento, ceros).
+  ORDERS_RIVER: {
+    key: 'ORDERS_RIVER',
+    titleKey: 'analytics.pulse.panels.ORDERS_RIVER',
+    hasContent: always,
+    render: () => <OrdersRiver />,
+  },
+  COD_RIVER: {
+    key: 'COD_RIVER',
+    titleKey: 'analytics.pulse.panels.COD_RIVER',
+    hasContent: always,
+    render: () => <CodRiver />,
   },
 }
 

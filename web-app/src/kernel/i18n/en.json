@@ -2788,11 +2788,45 @@
       "chartEmpty": "This chart has no data in the configured range.",
       "showInPulseMine": "Show in the day's Pulse",
       "showInPulseCompany": "…in the company's",
+        "rivers": {
+          "orders": {
+            "title": "Packages on the street",
+            "ENTRY": "Entry",
+            "IN_WAREHOUSE": "In warehouse",
+            "TO_DISPATCH": "To dispatch",
+            "ON_ROUTE": "On route",
+            "DELIVERED": "Delivered",
+            "unit": "orders",
+            "sub": {
+              "ENTRY": "new orders today · {waiting} waiting",
+              "IN_WAREHOUSE": "received in the warehouse",
+              "TO_DISPATCH": "no driver",
+              "ON_ROUTE": "{drivers} drivers",
+              "DELIVERED": "today"
+            }
+          },
+          "cod": {
+            "title": "COD money",
+            "TO_COLLECT": "To collect",
+            "COLLECTED": "Collected",
+            "RECONCILED": "Reconciled",
+            "REMITTANCE": "Remittance ready",
+            "sub": {
+              "TO_COLLECT": "orders · {amount} left",
+              "COLLECTED": "cash {cash} · checks {checks}",
+              "other": "other {other}",
+              "RECONCILED": "no remittance · {clients} clients",
+              "REMITTANCE": "{remittances} remittances · {clients} clients"
+            }
+          }
+        },
       "panels": {
         "INDICATORS": "Your indicators",
         "CHARTS": "Your charts",
         "ATTENTION": "Needs your attention",
-        "WAREHOUSE_DAY": "Warehouse today"
+        "WAREHOUSE_DAY": "Warehouse today",
+        "ORDERS_RIVER": "Packages on the street",
+        "COD_RIVER": "COD money"
       },
       "day": {
         "received": "Units received",

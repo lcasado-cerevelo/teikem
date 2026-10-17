@@ -8683,3 +8683,20 @@ La lista de plantillas se pide con los permisos de facturación (y el módulo de
 **¿De dónde sale la comisión que muestra la pantalla?**
 Debajo de los candidatos dice si es la que usted escribió, la del contrato del cliente o la por omisión de la compañía. La por omisión se cambia en la misma pestaña, debajo de la lista.
 
+## Lote 88 — Los dos ríos del Pulso
+
+**No veo los ríos «Paquetes en la calle» ni «Dinero COD».**
+Cada uno exige su permiso (`pulse.orders` / `pulse.cod`), el permiso de sus datos (`orders.view` / `cod.view`) y el módulo encendido (`LTL_GROUND` / `COD`). Un Pulso ya organizado los muestra en su orden por omisión (10 y 11) y se pueden mover con «Organizar».
+
+**«Por despachar» sigue mostrando una orden que ya tiene chofer.**
+Solo deja de contarse cuando la orden está en una ruta **con chofer** que no está cancelada ni completada. Revise en la Sala de despacho que la ruta tenga el chofer asignado.
+
+**«Entregado» tiene menos órdenes que la lista de Órdenes.**
+Cuenta las entregas de **hoy** (por el historial de estatus, en la hora de la compañía); la lista de Órdenes trae todas las entregadas.
+
+**«Por cobrar» no incluye una orden con COD.**
+Solo cuenta las órdenes con COD que ya están **en destino o entregadas** y no se han cobrado del todo; una orden que todavía va en camino no es «por cobrar».
+
+**Los números cambian de un minuto a otro.**
+Son fotos de ahora y se vuelven a pedir cada minuto; no son acumulados del día (salvo Entrada y Entregado, que cuentan hoy).
+

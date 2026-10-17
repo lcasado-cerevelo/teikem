@@ -525,6 +525,46 @@ Aparece en Análisis → Indicadores; se puede encender con "Mostrar en Pulso de
 
 ---
 
+## 6. Los dos ríos del Pulso (Lote 88, P12)
+
+Debajo de «Necesita tu atención» el Pulso trae las **dos corrientes** de la maqueta: **Paquetes en la calle** (azul, el flujo de las órdenes) y **Dinero COD** (naranja, el flujo del dinero). Cada una es un **panel** del Pulso (`ORDERS_RIVER`, orden 10, y `COD_RIVER`, orden 11) con su permiso, su permiso de datos y su módulo, y se puede ordenar u ocultar con «Organizar» como los demás:
+
+| Panel | Permiso del panel | Datos | Módulo |
+|---|---|---|---|
+| Paquetes en la calle | `pulse.orders` | `orders.view` | `LTL_GROUND` |
+| Dinero COD | `pulse.cod` | `cod.view` | `COD` |
+
+`pulse.orders` lo traen Despachador, Facturación y Solo lectura; `pulse.cod`, Facturación y Solo lectura; el administrador de la compañía, los dos. A los roles ya creados se les propagan solos (sección 2026-10-17 (z) de `update.sql`).
+
+Son **fotos de ahora** (todavía no hay tabla de instantáneas diarias): cada tarjeta cuenta lo que hay en ese punto. Se vuelven a pedir cada minuto. Endpoints: `GET /api/v1/pulse/rivers/orders` (`orders.view`, módulo `LTL_GROUND`) y `GET /api/v1/pulse/rivers/cod` (`cod.view`, módulo `COD`).
+
+### Paquetes en la calle
+
+| Tarjeta | Qué cuenta | Texto pequeño | Al hacer clic |
+|---|---|---|---|
+| **Entrada** | órdenes creadas hoy (sin canceladas ni dadas de baja), con las barritas de 7 días | «órdenes nuevas hoy · N esperan» (N = confirmadas y por recoger, de cualquier fecha) | Órdenes |
+| **En almacén** | órdenes recibidas en el almacén (estatus Inbound) | «recibidas en el almacén» | Órdenes |
+| **Por despachar** | órdenes en el almacén o planificadas **sin una ruta con chofer** | «sin chofer» | Sala de despacho |
+| **En ruta** | órdenes en tránsito o en destino | «N choferes» (los de las rutas despachadas o en curso) | Monitoreo de ruta |
+| **Entregado** | órdenes entregadas **hoy** (por el historial de estatus), con barritas de 7 días | «hoy» | Órdenes |
+
+### Dinero COD
+
+| Tarjeta | Qué cuenta | Texto pequeño | Al hacer clic |
+|---|---|---|---|
+| **Por cobrar** | órdenes con COD **ya en destino o entregadas** que no se han cobrado del todo | «órdenes · faltan $X» | COD (Órdenes con COD) |
+| **Cobrado** | dinero cobrado en la calle **sin cuadrar** | «efectivo $X · cheques $Y» (y «otros $Z» si hay ATH Móvil o tarjeta) | COD → Reconciliar |
+| **Cuadrado** | dinero cuadrado que todavía **no está en una remesa** | «sin remesa · N clientes» | COD → Remesas |
+| **Remesa lista** | el **neto** de las remesas abiertas, cuadradas o aprobadas (todavía no remitidas) | «N remesas · N clientes» | COD → Remesas |
+
+Las sumas de dinero suponen **una sola moneda** (la de la compañía). Una orden **cancelada o dada de baja** no cuenta en ninguna tarjeta. Si el servidor no responde, la sección dice el error en lugar de las tarjetas.
+
+### Casos frecuentes
+
+- **No veo los ríos:** hacen falta el permiso del panel (`pulse.orders` / `pulse.cod`), el permiso de los datos (`orders.view` / `cod.view`) y el módulo encendido; si el Pulso estaba ya organizado (personal o de la compañía), el panel nuevo aparece en su orden por omisión (10 y 11) hasta que se reorganice.
+- **«Por despachar» no baja aunque asigné chofer:** la orden deja de contarse cuando está en una ruta **con chofer** y la ruta no está cancelada ni completada.
+- **«Entregado» no coincide con Órdenes:** cuenta las entregas que ocurrieron **hoy** (hora de la compañía), no todas las entregadas.
+
 ## Preguntas frecuentes de este capítulo
 
 Las del Lote 15 (franja "Almacén hoy", filas fijas, gráficos de la compañía, "Otras" y días de Puerto Rico) están en [faq.md](faq.md), sección "Lote 15".
