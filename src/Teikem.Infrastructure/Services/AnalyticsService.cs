@@ -327,6 +327,9 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
             catch (JsonException) { throw new ValidationException("filterJson", "FilterJson no es JSON válido."); }
             catch (InvalidOperationException ex) { throw new ValidationException("filterJson", ex.Message); }
         }
+        // Lote 92: programación por correo
+        try { ReportScheduleRules.ValidateForSave(req.ScheduleCron, req.DeliveryEmails, req.DeliveryRangeMode); }
+        catch (FormatException ex) { throw new ValidationException(ex.Message.Contains("correo", StringComparison.OrdinalIgnoreCase) ? "deliveryEmails" : ex.Message.Contains("período", StringComparison.OrdinalIgnoreCase) ? "deliveryRangeMode" : "scheduleCron", ex.Message); }
     }
 
     private static void Apply(ReportDefinition r, ReportUpsertRequest req)
@@ -335,7 +338,11 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
         r.ColumnsJson = JsonSerializer.Serialize(req.Columns ?? new List<string>());
         r.SecondaryJson = req.Secondary is { Count: > 0 } ? JsonSerializer.Serialize(req.Secondary) : null;
         r.FilterJson = req.FilterJson; r.SortJson = req.SortJson; r.GroupJson = req.GroupJson;
-        r.ScheduleCron = req.ScheduleCron; r.DeliveryEmails = req.DeliveryEmails;
+        // Lote 92: se guarda normalizado; si cambia la programación, los destinatarios o el período, el «último envío» se fija a ahora para que no dispare una ocurrencia anterior
+        var (cron, emails, range) = ReportScheduleRules.ValidateForSave(req.ScheduleCron, req.DeliveryEmails, req.DeliveryRangeMode);
+        var changed = r.ScheduleCron != cron || r.DeliveryEmails != emails || r.DeliveryRangeMode != range;
+        r.ScheduleCron = cron; r.DeliveryEmails = emails; r.DeliveryRangeMode = range;
+        if (changed) { r.LastDeliveryUtc = cron is null ? null : DateTime.UtcNow; r.LastDeliveryStatus = null; r.LastDeliveryMessage = null; }
     }
 
     private async Task<ReportDefinition> LoadReportAsync(int id, CancellationToken ct, bool track = false, bool requireReadable = true)
@@ -356,7 +363,8 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
             MultilingualText.Parse(r.DescriptionJson), r.Visibility?.InternalCode ?? "", r.OwnerUserId, await UserNameAsync(r.OwnerUserId, ct), r.IsSystem,
             CanEdit(r.IsSystem, r.OwnerUserId) || r.Shares.Any(s => s.CanEdit && s.UserId == tenant.UserId),
             AnalyticsEngine.ParseStringList(r.SecondaryJson), AnalyticsEngine.ParseStringList(r.ColumnsJson), r.FilterJson, r.SortJson, r.GroupJson,
-            chartType, r.ScheduleCron, r.DeliveryEmails, r.Shares.Select(s => new ShareDto(s.UserId, s.RoleId, s.CanEdit)).ToList(), r.IsActive);
+            chartType, r.ScheduleCron, r.DeliveryEmails, r.Shares.Select(s => new ShareDto(s.UserId, s.RoleId, s.CanEdit)).ToList(), r.IsActive,
+            r.DeliveryRangeMode, r.LastDeliveryUtc, r.LastDeliveryStatus, r.LastDeliveryMessage);
     }
 
     private void EnsureEditable(bool isSystem, int? ownerUserId, bool sharedWithEdit)

@@ -3627,3 +3627,21 @@ WHEN NOT MATCHED THEN
     INSERT (Entity, InternalCode, LabelJson, ExtraJson, SortOrder, IsSystem, IsActive)
     VALUES (N'ActivityEventType', s.Code, s.LabelJson, s.ExtraJson, s.Srt, 1, 1);
 GO
+
+-- =====================================================================================================================
+-- 2026-10-17 (ac) Lote 92 (P12) — informes programados por correo
+-- ReportDefinition ya traía ScheduleCron y DeliveryEmails; se agregan el período que se envía y el resultado del último envío. El trabajo REPORT_DELIVERY se registra solo (trabajos programados).
+-- Solo AGREGA. Idempotente.
+-- =====================================================================================================================
+IF COL_LENGTH('dbo.ReportDefinition', 'DeliveryRangeMode') IS NULL
+    ALTER TABLE dbo.ReportDefinition ADD DeliveryRangeMode NVARCHAR(20) NULL;
+GO
+IF COL_LENGTH('dbo.ReportDefinition', 'LastDeliveryUtc') IS NULL
+    ALTER TABLE dbo.ReportDefinition ADD LastDeliveryUtc DATETIME2 NULL;
+GO
+IF COL_LENGTH('dbo.ReportDefinition', 'LastDeliveryStatus') IS NULL
+    ALTER TABLE dbo.ReportDefinition ADD LastDeliveryStatus NVARCHAR(20) NULL;
+GO
+IF COL_LENGTH('dbo.ReportDefinition', 'LastDeliveryMessage') IS NULL
+    ALTER TABLE dbo.ReportDefinition ADD LastDeliveryMessage NVARCHAR(400) NULL;
+GO

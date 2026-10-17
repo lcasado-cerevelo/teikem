@@ -8747,3 +8747,27 @@ Suma el **saldo** (total menos pagos no anulados) de las facturas Emitidas y Ven
 
 **¿Se pueden crear gráficos propios con cobros o facturas?**
 Sí: en Análisis, elija la fuente «Cobros COD» o «Facturas» (requiere `cod.view` o `billing.view`).
+
+
+## Lote 92 — Informes programados por correo
+
+**Programé una vista y no llega el correo.**
+Revise en el bloque «Enviar por correo» el último envío: **Omitido** con «El envío de correo no está configurado.» significa que la plataforma no tiene proveedor de correo (Brevo) configurado; **Omitido** con «El dueño del informe ya no está activo.» significa que la persona que creó la vista fue desactivada; **Con error** dice a quién no se pudo enviar. También confirme que el trabajo «Enviar informes programados» esté activo en Sistema → Trabajos programados.
+
+**Programé el informe y salió una hora tarde o no salió justo a la hora.**
+El trabajo corre cada 5 minutos y envía lo que ya tocaba; la hora es la de la compañía, no la de su computadora.
+
+**¿Por qué el correo trae menos filas que la pantalla?**
+El correo lleva hasta 200 filas y solo las que el **dueño** de la vista puede ver (sus permisos y su alcance de almacenes y clientes). El resto está en Teikem.
+
+**Cambié la programación y no salió el envío de hoy.**
+Al guardar una programación nueva, el contador empieza en ese momento; si la hora de hoy ya pasó, el primer envío es en la siguiente ocurrencia. Use «Enviar ahora» para mandarlo ya.
+
+**«Enviar ahora» está apagado.**
+Hay cambios sin guardar en el bloque (se envía lo guardado) o no hay destinatarios válidos.
+
+**No puedo programar una vista de sistema.**
+Las vistas de sistema no se editan: guarde una copia propia (400 «Los informes de sistema no se programan; guarde una copia propia.»).
+
+**¿Se puede mandar el informe como archivo adjunto?**
+Todavía no: el correo lleva la tabla dentro del mensaje (hasta 200 filas). El adjunto (CSV) queda pendiente porque el envío de correo de la plataforma no soporta adjuntos.

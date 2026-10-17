@@ -694,7 +694,24 @@ Cambios del lote F-F2 (2026-10-12), hallados al construir la pantalla:
 | **Renombrar** una vista al nombre de otra activa de la misma fuente | `Error interno.` | `Ya existe una vista '<name>' para <source>.` | 409 |
 | `chartType` de una vista | se ignoraba (siempre null) | se guarda y se devuelve; uno desconocido da `Tipo de gráfico: BAR, DONUT o LINE.` | 200 / 400 |
 
-Precisiones: `ScheduleCron` y `DeliveryEmails` se guardan pero no hay ningún proceso que programe ni envíe (queda para la fase de entrega programada); el `PUT` reemplaza esos dos campos, así que quien edita por API debe reenviarlos. Las únicas rutas de exportación son las del navegador: no hay endpoint de exportación de vistas.
+Precisiones: la programación por correo (`ScheduleCron`, `DeliveryEmails`, `DeliveryRangeMode`) se describe en **§8.2.1** y la envía el trabajo `REPORT_DELIVERY`; el `PUT` reemplaza esos tres campos, así que quien edita por API debe reenviarlos (o `null` para quitar la programación). Las únicas rutas de exportación son las del navegador: no hay endpoint de exportación de vistas.
+
+#### 8.2.1 Enviar una vista por correo (Lote 92)
+
+Una vista propia (no de sistema) se puede **programar** para que llegue por correo a una o más personas: en el constructor de vistas, bloque **«Enviar por correo»** (permiso `analytics.manage`).
+
+| Campo | Qué es | Validación (mensaje y código) |
+|---|---|---|
+| Frecuencia, día y hora | Todos los días, una vez por semana (día 0 domingo a 6 sábado) o una vez al mes (día 1 a 28), a una hora **de la compañía**. Se guarda en `scheduleCron` como cron restringido: `M H * * *`, `M H * * D`, `M H D * *`. | 400 `La programación debe ser diaria, semanal (día 0 a 6) o mensual (día 1 a 28) con una hora válida.` |
+| Destinatarios (`deliveryEmails`) | Hasta 10 correos separados por coma o punto y coma; se quitan los repetidos. | 400 `El correo '{correo}' no es válido.` · 400 `Máximo 10 correos destinatarios.` |
+| Programación y destinatarios | Van juntos: no hay una sin la otra. | 400 `Una programación necesita al menos un correo destinatario.` · 400 `Los correos destinatarios necesitan una programación.` |
+| Período (`deliveryRangeMode`) | Últimos 7 días (por omisión), Últimos 30 días, Este mes o Todo el historial. | 400 `El período del informe enviado debe ser Últimos 7 días, Últimos 30 días, Este mes o Todo.` |
+
+**Cómo se envía.** El trabajo programado `REPORT_DELIVERY` (Sistema → Trabajos programados, cada 5 minutos, activo por omisión) revisa las vistas con programación. Cuando pasa la hora de una vista, la **corre como su dueño** —con los permisos, la visibilidad y el alcance de datos de almacenes y clientes del dueño— y manda a cada destinatario un correo con título `{Compañía} · {Vista} · {fecha}`, el período, la tabla (hasta **200 filas**, con una nota si hay más) y la fila de totales. Una vista se envía **una vez por ocurrencia**: si el servidor estuvo apagado y se perdieron varias, sale una sola con los datos de ahora. Al guardar o cambiar la programación, el contador empieza ese momento (no se dispara una hora que ya pasó).
+
+**Resultado.** Cada vista guarda su último envío: **Enviado** (a cuántos y cuántas filas), **Omitido** (el correo no está configurado en la plataforma, o el dueño ya no está activo) o **Con error** (a quiénes no se pudo enviar, o por qué no se pudo correr). Se ve en el mismo bloque. Una vista que falla no impide las demás.
+
+**Enviar ahora.** En una vista guardada, el botón **Enviar ahora** (`POST /api/v1/analytics/reports/{id}/deliver`, `analytics.manage`) manda la vista en ese momento a sus destinatarios y deja el resultado; **no mueve** la programación. Lo puede usar el dueño o quien la comparte con permiso de edición. Errores: 400 `Los informes de sistema no se programan; guarde una copia propia.` · 400 `El informe no tiene dueño para correrlo.` · 400 `El informe no tiene programación ni correos destinatarios.` · 403 `No tiene permiso para enviar este informe.` · 404 si la vista no existe.
 
 ### 8.3 Indicadores
 

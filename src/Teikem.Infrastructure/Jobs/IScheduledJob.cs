@@ -36,4 +36,6 @@ public static class JobKeys
     public const string BillingOverdueScan = "BILLING_OVERDUE_SCAN";
     /// <summary>Lote 90: guarda la foto diaria de los indicadores (ríos del Pulso y Radar).</summary>
     public const string KpiSnapshot = "KPI_SNAPSHOT";
+    /// <summary>Lote 92: envía por correo los informes programados que ya tocan.</summary>
+    public const string ReportDelivery = "REPORT_DELIVERY";
 }

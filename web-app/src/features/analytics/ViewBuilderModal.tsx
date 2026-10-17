@@ -15,6 +15,7 @@ import { useAnalyticsShareUsers, useDataSources } from './api'
 import { blankFilterRow, type ShareDto } from './definitions'
 import { FilterRowEditor } from './FilterRowEditor'
 import { ReportResultTable } from './ReportResultTable'
+import { ReportScheduleFields } from './ReportScheduleParts'
 import { usePreviewReport, useSaveReport } from './reportsApi'
 import { useDebounced } from '../warehouse/lineRules'
 import {
@@ -165,7 +166,7 @@ export function ViewBuilderModal({ source, report, reports, onClose, onSaved }: 
 
   const decorated = decorateResult(preview.data, { groupJson: serializeGroupJson({ by: draft.groupBy, aggregates: draft.aggregates, totals: false }) }, index, (fn) => t(`analytics.reports.fn.${fn}`))
   const err = (field: string) => serverErrors[field] ?? null
-  const otherServerError = serverErrors._title && !['name', 'columns', 'secondary', 'filterJson', 'groupJson', 'sortJson'].some((k) => serverErrors[k]) && !(serverErrors.name === serverErrors._title) ? serverErrors._title : null
+  const otherServerError = serverErrors._title && !['name', 'columns', 'secondary', 'filterJson', 'groupJson', 'sortJson', 'scheduleCron', 'deliveryEmails', 'deliveryRangeMode'].some((k) => serverErrors[k]) && !(serverErrors.name === serverErrors._title) ? serverErrors._title : null
   const title = isNew ? t('analytics.reports.builder.newTitle') : t('analytics.reports.builder.editTitle')
 
   const fieldSelect = (value: string, onChange: (v: string) => void, label: string, options: { key: string; label: string }[], extra?: ReactNode) => (
@@ -469,6 +470,15 @@ export function ViewBuilderModal({ source, report, reports, onClose, onSaved }: 
             </>
           )}
           <p className="help">{t('analytics.reports.builder.visibilityHint')}</p>
+        </Block>
+
+        <Block title={t('analytics.reports.schedule.title')} error={err('scheduleCron') ?? err('deliveryEmails') ?? err('deliveryRangeMode')}>
+          <ReportScheduleFields
+            value={{ scheduleCron: draft.scheduleCron, deliveryEmails: draft.deliveryEmails, deliveryRangeMode: draft.deliveryRangeMode }}
+            onChange={(patch) => update(patch)}
+            report={report}
+            dirty={report != null && (draft.scheduleCron !== (report.scheduleCron ?? null) || draft.deliveryEmails !== (report.deliveryEmails ?? null) || draft.deliveryRangeMode !== (report.deliveryRangeMode ?? null))}
+          />
         </Block>
 
         <Block title={t('analytics.reports.builder.previewTitle')} hint={previewBody(draft, choices) ? t('analytics.reports.builder.previewHint', { n: PREVIEW_ROWS }) : undefined}>

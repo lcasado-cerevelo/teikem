@@ -75,6 +75,10 @@ public sealed class AnalyticsController(AnalyticsService analytics) : Controller
     [HttpPost("reports/{id:int}/run")]
     public Task<ReportRunResultDto> RunReport(int id, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] ReportRunRequest? run, CancellationToken ct) => analytics.RunReportAsync(id, run ?? new ReportRunRequest(null, null, null, null, null), ct);
 
+    /// <summary>Lote 92: «Enviar ahora» — manda el informe programado a sus destinatarios en este momento (no cambia la programación).</summary>
+    [HttpPost("reports/{id:int}/deliver"), RequirePermission(PermissionCatalog.AnalyticsManage)]
+    public Task<ReportDeliveryResultDto> DeliverReport(int id, [FromServices] Teikem.Infrastructure.Services.ReportDeliveryService delivery, CancellationToken ct) => delivery.SendNowAsync(id, ct);
+
     /// <summary>Vista previa del constructor sin guardar.</summary>
     [HttpPost("reports/{baseEntityType}/preview")]
     public Task<ReportRunResultDto> Preview(string baseEntityType, [FromBody] ReportUpsertRequest req, [FromQuery] string? dateRangeMode, [FromQuery] int? take, CancellationToken ct)

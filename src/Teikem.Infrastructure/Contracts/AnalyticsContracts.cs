@@ -12,11 +12,13 @@ public sealed record ReportDto(
     int Id, Guid PublicId, string BaseEntityType, string Name, string? Description, IDictionary<string, string> Descriptions,
     string Visibility, int? OwnerUserId, string? OwnerName, bool IsSystem, bool CanEdit,
     IReadOnlyList<string> Secondary, IReadOnlyList<string> Columns, string? FilterJson, string? SortJson, string? GroupJson,
-    string? ChartType, string? ScheduleCron, string? DeliveryEmails, IReadOnlyList<ShareDto> Shares, bool IsActive);
+    string? ChartType, string? ScheduleCron, string? DeliveryEmails, IReadOnlyList<ShareDto> Shares, bool IsActive,
+    string? DeliveryRangeMode = null, DateTime? LastDeliveryUtc = null, string? LastDeliveryStatus = null, string? LastDeliveryMessage = null);
 
 public sealed record ReportUpsertRequest(
     string Name, IDictionary<string, string>? Descriptions, string? Visibility, IList<string>? Secondary, IList<string> Columns,
-    string? FilterJson, string? SortJson, string? GroupJson, string? ChartType, string? ScheduleCron, string? DeliveryEmails, IList<ShareDto>? Shares);
+    string? FilterJson, string? SortJson, string? GroupJson, string? ChartType, string? ScheduleCron, string? DeliveryEmails, IList<ShareDto>? Shares,
+    string? DeliveryRangeMode = null);
 
 public sealed record ReportRunRequest(string? DateRangeMode, DateOnly? DateFrom, DateOnly? DateTo, int? Skip, int? Take);
 public sealed record ReportRunResultDto(IReadOnlyList<ReportColumn> Columns, IReadOnlyList<IDictionary<string, object?>> Rows, IDictionary<string, object?>? Totals, int Total);
@@ -66,3 +68,6 @@ public sealed record PulseLayoutItem(string Kind, int Id, int SortOrder, bool Is
 public sealed record PulseLayoutPanel(string Key, int SortOrder, bool IsVisible);
 /// <summary>Cuerpo de PUT /analytics/pulse/layout: solo se escribe lo que viene (lo ausente no se toca).</summary>
 public sealed record PulseLayoutRequest(IList<PulseLayoutItem>? Items, IList<PulseLayoutPanel>? Panels);
+
+/// <summary>Lote 92: resultado de «Enviar ahora» / de un envío programado de un informe.</summary>
+public sealed record ReportDeliveryResultDto(string Status, string? Message, IReadOnlyList<string> Recipients, int Rows);

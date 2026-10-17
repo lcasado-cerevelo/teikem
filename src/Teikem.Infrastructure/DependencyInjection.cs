@@ -265,6 +265,7 @@ public static class DependencyInjection
         services.AddSingleton<IScheduledJob, SalesBackorderScanJob>();   // Lote 66
         services.AddSingleton<IScheduledJob, BillingOverdueScanJob>();   // Lote 75
         services.AddSingleton<IScheduledJob, KpiSnapshotJob>();   // Lote 90
+        services.AddSingleton<IScheduledJob, ReportDeliveryJob>();   // Lote 92
         services.AddSingleton<ScheduledJobRunner>();
         services.AddHostedService<ScheduledJobWorker>();
         services.AddScoped<ScheduledJobService>();
@@ -412,6 +413,7 @@ public static class DependencyInjection
         services.AddScoped<PulseRadarService>();   // Lote 89 (P12)
         services.AddScoped<KpiHistory>();   // Lote 90 (P12)
         services.AddScoped<KpiSnapshotService>();
+        services.AddScoped<ReportDeliveryService>();   // Lote 92 (P12)
         services.AddScoped<IDataSource, KpiDailyDataSource>();
         services.AddScoped<IDataSource, CodCollectionDataSource>();   // Lote 91 (P12)
         services.AddScoped<IDataSource, InvoiceDataSource>();   // historial por día para indicadores y gráficos

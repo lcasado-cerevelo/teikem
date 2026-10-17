@@ -25660,6 +25660,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/analytics/reports/{id}/deliver": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ReportDeliveryResultDto"];
+                        "application/json": components["schemas"]["ReportDeliveryResultDto"];
+                        "text/json": components["schemas"]["ReportDeliveryResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -31365,6 +31404,11 @@ export interface components {
             deliveryEmails?: string | null;
             shares?: components["schemas"]["ShareDto"][] | null;
             isActive?: boolean;
+            deliveryRangeMode?: string | null;
+            /** Format: date-time */
+            lastDeliveryUtc?: string | null;
+            lastDeliveryStatus?: string | null;
+            lastDeliveryMessage?: string | null;
         };
         ReportRunRequest: {
             dateRangeMode?: string | null;
@@ -31403,6 +31447,7 @@ export interface components {
             scheduleCron?: string | null;
             deliveryEmails?: string | null;
             shares?: components["schemas"]["ShareDto"][] | null;
+            deliveryRangeMode?: string | null;
         };
         ResetPasswordRequest: {
             email?: string | null;
@@ -34469,6 +34514,13 @@ export interface components {
             count?: number;
             /** Format: double */
             codAmount?: number;
+        };
+        ReportDeliveryResultDto: {
+            status?: string | null;
+            message?: string | null;
+            recipients?: string[] | null;
+            /** Format: int32 */
+            rows?: number;
         };
     };
     responses: never;

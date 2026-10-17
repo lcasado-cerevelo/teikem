@@ -21,6 +21,12 @@ public class ReportDefinition : ITenantScoped, ISoftDeletable, IAuditStamped
     public int? ChartTypeLookupId { get; set; }
     public string? ScheduleCron { get; set; }
     public string? DeliveryEmails { get; set; }
+    /// <summary>Lote 92: período del informe que se envía (LAST7, LAST30, THIS_MONTH o ALL); NULL = sin programación.</summary>
+    public string? DeliveryRangeMode { get; set; }
+    /// <summary>Lote 92: último envío programado (o el momento de guardar la programación: así no se dispara una ocurrencia anterior) y su resultado.</summary>
+    [NotAudited] public DateTime? LastDeliveryUtc { get; set; }
+    [NotAudited] public string? LastDeliveryStatus { get; set; }
+    [NotAudited] public string? LastDeliveryMessage { get; set; }
     public bool IsActive { get; set; } = true;
     [NotAudited] public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     [NotAudited] public int? CreatedBy { get; set; }

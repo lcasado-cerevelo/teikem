@@ -48,3 +48,11 @@
   .vw-agg>.btn,.vw-sort>.btn{grid-row:1;grid-column:2}
 }
 .qrow.vw-q{padding:0 0 12px}
+
+/* Lote 92: bloque «Enviar por correo» del constructor de vistas */
+.rs-schedule{display:flex;flex-direction:column;gap:10px}
+.rs-last{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.rs-last p{margin:0}
+.rs-ok{color:var(--ok, #1f9d55)}
+.rs-warn{color:var(--warn, #b7791f)}
+.rs-bad{color:var(--fail, #c53030)}

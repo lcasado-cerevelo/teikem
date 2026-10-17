@@ -71,6 +71,9 @@ public sealed class ReportDefinitionConfiguration : IEntityTypeConfiguration<Rep
         b.Property(r => r.Name).HasMaxLength(150).IsRequired();
         b.Property(r => r.ScheduleCron).HasMaxLength(60);
         b.Property(r => r.DeliveryEmails).HasMaxLength(400);
+        b.Property(r => r.DeliveryRangeMode).HasMaxLength(20);   // Lote 92
+        b.Property(r => r.LastDeliveryStatus).HasMaxLength(20);
+        b.Property(r => r.LastDeliveryMessage).HasMaxLength(400);
         b.Property(r => r.RowVersion).IsRowVersion();
         b.HasIndex(r => new { r.TenantId, r.BaseEntityTypeLookupId, r.Name }).IsUnique();
         b.HasOne(r => r.BaseEntityType).WithMany().HasForeignKey(r => r.BaseEntityTypeLookupId);

@@ -24879,6 +24879,826 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cod/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    status?: string;
+                    clientPublicId?: string;
+                    q?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CodOrderListItemDtoPagedResult"];
+                        "application/json": components["schemas"]["CodOrderListItemDtoPagedResult"];
+                        "text/json": components["schemas"]["CodOrderListItemDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cod/orders/{orderPublicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    orderPublicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CodOrderDto"];
+                        "application/json": components["schemas"]["CodOrderDto"];
+                        "text/json": components["schemas"]["CodOrderDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cod/orders/{orderPublicId}/collections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    orderPublicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CodCollectionRequest"];
+                    "text/json": components["schemas"]["CodCollectionRequest"];
+                    "application/*+json": components["schemas"]["CodCollectionRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CodOrderDto"];
+                        "application/json": components["schemas"]["CodOrderDto"];
+                        "text/json": components["schemas"]["CodOrderDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cod/reconcile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CodReconcileRequest"];
+                    "text/json": components["schemas"]["CodReconcileRequest"];
+                    "application/*+json": components["schemas"]["CodReconcileRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CodReconcileResultDto"];
+                        "application/json": components["schemas"]["CodReconcileResultDto"];
+                        "text/json": components["schemas"]["CodReconcileResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cod/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CodRunListItemDtoPagedResult"];
+                        "application/json": components["schemas"]["CodRunListItemDtoPagedResult"];
+                        "text/json": components["schemas"]["CodRunListItemDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cod/runs/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CodRunDto"];
+                        "application/json": components["schemas"]["CodRunDto"];
+                        "text/json": components["schemas"]["CodRunDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cod/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CodSettingsDto"];
+                        "application/json": components["schemas"]["CodSettingsDto"];
+                        "text/json": components["schemas"]["CodSettingsDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CodSettingsRequest"];
+                    "text/json": components["schemas"]["CodSettingsRequest"];
+                    "application/*+json": components["schemas"]["CodSettingsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CodSettingsDto"];
+                        "application/json": components["schemas"]["CodSettingsDto"];
+                        "text/json": components["schemas"]["CodSettingsDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cod/remittances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    status?: string;
+                    clientPublicId?: string;
+                    q?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CodRemittanceListItemDtoPagedResult"];
+                        "application/json": components["schemas"]["CodRemittanceListItemDtoPagedResult"];
+                        "text/json": components["schemas"]["CodRemittanceListItemDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CodRemittanceRequest"];
+                    "text/json": components["schemas"]["CodRemittanceRequest"];
+                    "application/*+json": components["schemas"]["CodRemittanceRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CodRemittanceDto"];
+                        "application/json": components["schemas"]["CodRemittanceDto"];
+                        "text/json": components["schemas"]["CodRemittanceDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cod/remittances/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CodRemittanceDto"];
+                        "application/json": components["schemas"]["CodRemittanceDto"];
+                        "text/json": components["schemas"]["CodRemittanceDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cod/remittances/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    clientPublicId?: string;
+                    periodStart?: string;
+                    periodEnd?: string;
+                    commissionPct?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CodRemittanceCandidatesDto"];
+                        "application/json": components["schemas"]["CodRemittanceCandidatesDto"];
+                        "text/json": components["schemas"]["CodRemittanceCandidatesDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cod/remittances/{publicId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CodRemittanceDto"];
+                        "application/json": components["schemas"]["CodRemittanceDto"];
+                        "text/json": components["schemas"]["CodRemittanceDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cod/remittances/{publicId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CodRemittanceDto"];
+                        "application/json": components["schemas"]["CodRemittanceDto"];
+                        "text/json": components["schemas"]["CodRemittanceDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cod/remittances/{publicId}/remit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CodRemitRequest"];
+                    "text/json": components["schemas"]["CodRemitRequest"];
+                    "application/*+json": components["schemas"]["CodRemitRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CodRemittanceDto"];
+                        "application/json": components["schemas"]["CodRemittanceDto"];
+                        "text/json": components["schemas"]["CodRemittanceDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cod/remittances/{publicId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CodRemittanceDto"];
+                        "application/json": components["schemas"]["CodRemittanceDto"];
+                        "text/json": components["schemas"]["CodRemittanceDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cod/remittances/{publicId}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    templatePublicId?: string;
+                };
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExportFileDto"];
+                        "application/json": components["schemas"]["ExportFileDto"];
+                        "text/json": components["schemas"]["ExportFileDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pulse/rivers/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PulseRiverDto"];
+                        "application/json": components["schemas"]["PulseRiverDto"];
+                        "text/json": components["schemas"]["PulseRiverDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pulse/rivers/cod": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PulseRiverDto"];
+                        "application/json": components["schemas"]["PulseRiverDto"];
+                        "text/json": components["schemas"]["PulseRiverDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pulse/radar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    groupBy?: string;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PulseRadarDto"];
+                        "application/json": components["schemas"]["PulseRadarDto"];
+                        "text/json": components["schemas"]["PulseRadarDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/reports/{id}/deliver": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ReportDeliveryResultDto"];
+                        "application/json": components["schemas"]["ReportDeliveryResultDto"];
+                        "text/json": components["schemas"]["ReportDeliveryResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -25080,6 +25900,7 @@ export interface components {
             } | null;
             /** Format: date-time */
             sinceUtc?: string | null;
+            summary?: boolean;
         };
         AuditLogDto: {
             /** Format: int64 */
@@ -30583,6 +31404,11 @@ export interface components {
             deliveryEmails?: string | null;
             shares?: components["schemas"]["ShareDto"][] | null;
             isActive?: boolean;
+            deliveryRangeMode?: string | null;
+            /** Format: date-time */
+            lastDeliveryUtc?: string | null;
+            lastDeliveryStatus?: string | null;
+            lastDeliveryMessage?: string | null;
         };
         ReportRunRequest: {
             dateRangeMode?: string | null;
@@ -30621,6 +31447,7 @@ export interface components {
             scheduleCron?: string | null;
             deliveryEmails?: string | null;
             shares?: components["schemas"]["ShareDto"][] | null;
+            deliveryRangeMode?: string | null;
         };
         ResetPasswordRequest: {
             email?: string | null;
@@ -33360,6 +34187,340 @@ export interface components {
             qtyDamaged?: number;
             /** Format: double */
             pending?: number;
+        };
+        CodOrderListItemDtoPagedResult: {
+            items?: components["schemas"]["CodOrderListItemDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        CodOrderDto: {
+            /** Format: uuid */
+            orderPublicId?: string;
+            orderNumber?: string | null;
+            invoiceNumber?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            orderStatus?: string | null;
+            orderStatusLabel?: string | null;
+            /** Format: double */
+            codAmount?: number;
+            /** Format: double */
+            collected?: number;
+            /** Format: double */
+            pending?: number;
+            codStatus?: string | null;
+            codStatusLabel?: string | null;
+            codStatusColor?: string | null;
+            collections?: components["schemas"]["CodCollectionDto"][] | null;
+        };
+        CodRunDto: {
+            /** Format: uuid */
+            publicId?: string;
+            source?: string | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            reconciled?: number;
+            /** Format: int32 */
+            issues?: number;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            createdByName?: string | null;
+            items?: components["schemas"]["CodReconcileItemDto"][] | null;
+        };
+        CodReconcileItemDto: {
+            code?: string | null;
+            source?: string | null;
+            result?: string | null;
+            message?: string | null;
+            /** Format: uuid */
+            orderPublicId?: string | null;
+            orderNumber?: string | null;
+            invoiceNumber?: string | null;
+            clientName?: string | null;
+            /** Format: double */
+            codAmount?: number;
+            /** Format: double */
+            reconciled?: number;
+            /** Format: int32 */
+            collections?: number;
+        };
+        CodCollectionRequest: {
+            method?: string | null;
+            /** Format: double */
+            amount?: number | null;
+            checkNumber?: string | null;
+            reference?: string | null;
+            notes?: string | null;
+            /** Format: date-time */
+            collectedAtUtc?: string | null;
+        };
+        CodReconcileResultDto: {
+            /** Format: uuid */
+            runPublicId?: string | null;
+            dryRun?: boolean;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            reconciled?: number;
+            /** Format: int32 */
+            issues?: number;
+            items?: components["schemas"]["CodReconcileItemDto"][] | null;
+        };
+        CodReconcileRequest: {
+            codes?: components["schemas"]["CodReconcileCode"][] | null;
+            source?: string | null;
+            dryRun?: boolean | null;
+            /** Format: uuid */
+            clientPublicId?: string | null;
+        };
+        CodOrderListItemDto: {
+            /** Format: uuid */
+            orderPublicId?: string;
+            orderNumber?: string | null;
+            invoiceNumber?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            orderStatusLabel?: string | null;
+            /** Format: double */
+            codAmount?: number;
+            /** Format: double */
+            collected?: number;
+            /** Format: double */
+            pending?: number;
+            codStatus?: string | null;
+            codStatusLabel?: string | null;
+            codStatusColor?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+        };
+        CodRunListItemDtoPagedResult: {
+            items?: components["schemas"]["CodRunListItemDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        CodCollectionDto: {
+            /** Format: int64 */
+            id?: number;
+            method?: string | null;
+            methodLabel?: string | null;
+            /** Format: double */
+            amount?: number;
+            checkNumber?: string | null;
+            reference?: string | null;
+            /** Format: date-time */
+            collectedAtUtc?: string;
+            status?: string | null;
+            statusLabel?: string | null;
+            statusColor?: string | null;
+            /** Format: date-time */
+            reconciledAtUtc?: string | null;
+            notes?: string | null;
+        };
+        CodReconcileCode: {
+            code?: string | null;
+            source?: string | null;
+        };
+        CodRunListItemDto: {
+            /** Format: uuid */
+            publicId?: string;
+            source?: string | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            reconciled?: number;
+            /** Format: int32 */
+            issues?: number;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            createdByName?: string | null;
+        };
+        CodRemitRequest: {
+            exportRef?: string | null;
+        };
+        CodRemittanceDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            statusColor?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            /** Format: date */
+            periodStart?: string;
+            /** Format: date */
+            periodEnd?: string;
+            /** Format: double */
+            grossCollected?: number;
+            /** Format: double */
+            commissionPct?: number | null;
+            /** Format: double */
+            commissionAmount?: number;
+            /** Format: double */
+            netRemitted?: number;
+            currency?: string | null;
+            /** Format: date-time */
+            generatedAtUtc?: string;
+            /** Format: date-time */
+            approvedAtUtc?: string | null;
+            approvedByName?: string | null;
+            /** Format: date-time */
+            remittedAtUtc?: string | null;
+            exportRef?: string | null;
+            lines?: components["schemas"]["CodRemittanceLineDto"][] | null;
+        };
+        CodSettingsDto: {
+            /** Format: double */
+            defaultCommissionPct?: number;
+        };
+        CodRemittanceListItemDtoPagedResult: {
+            items?: components["schemas"]["CodRemittanceListItemDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        CodRemittanceRequest: {
+            /** Format: uuid */
+            clientPublicId?: string | null;
+            /** Format: date */
+            periodStart?: string | null;
+            /** Format: date */
+            periodEnd?: string | null;
+            /** Format: double */
+            commissionPct?: number | null;
+        };
+        CodSettingsRequest: {
+            /** Format: double */
+            defaultCommissionPct?: number | null;
+        };
+        CodRemittanceLineDto: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            collectionId?: number;
+            /** Format: uuid */
+            orderPublicId?: string;
+            orderNumber?: string | null;
+            invoiceNumber?: string | null;
+            /** Format: date-time */
+            collectedAtUtc?: string;
+            method?: string | null;
+            methodLabel?: string | null;
+            checkNumber?: string | null;
+            reference?: string | null;
+            /** Format: double */
+            amountCollected?: number;
+            /** Format: double */
+            commissionAmount?: number;
+            /** Format: double */
+            netAmount?: number;
+        };
+        CodRemittanceCandidatesDto: {
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            /** Format: date */
+            periodStart?: string;
+            /** Format: date */
+            periodEnd?: string;
+            /** Format: double */
+            commissionPct?: number;
+            commissionSource?: string | null;
+            /** Format: double */
+            grossCollected?: number;
+            /** Format: double */
+            commissionAmount?: number;
+            /** Format: double */
+            netRemitted?: number;
+            lines?: components["schemas"]["CodRemittanceLineDto"][] | null;
+        };
+        CodRemittanceListItemDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            statusColor?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            /** Format: date */
+            periodStart?: string;
+            /** Format: date */
+            periodEnd?: string;
+            /** Format: double */
+            grossCollected?: number;
+            /** Format: double */
+            commissionPct?: number | null;
+            /** Format: double */
+            commissionAmount?: number;
+            /** Format: double */
+            netRemitted?: number;
+            /** Format: int32 */
+            lineCount?: number;
+            /** Format: date-time */
+            generatedAtUtc?: string;
+            /** Format: date-time */
+            remittedAtUtc?: string | null;
+        };
+        PulseRiverDto: {
+            river?: string | null;
+            /** Format: date */
+            day?: string;
+            nodes?: components["schemas"]["PulseRiverNodeDto"][] | null;
+        };
+        PulseRiverNodeDto: {
+            key?: string | null;
+            /** Format: double */
+            value?: number;
+            kind?: string | null;
+            details?: components["schemas"]["PulseRiverValueDto"][] | null;
+            spark?: number[] | null;
+        };
+        PulseRiverValueDto: {
+            key?: string | null;
+            /** Format: double */
+            value?: number;
+            kind?: string | null;
+        };
+        PulseRadarDto: {
+            groupBy?: string | null;
+            /** Format: int32 */
+            openCount?: number;
+            /** Format: double */
+            codAmount?: number;
+            openStatuses?: string[] | null;
+            groups?: components["schemas"]["PulseRadarGroupDto"][] | null;
+        };
+        PulseRadarGroupDto: {
+            key?: string | null;
+            label?: string | null;
+            /** Format: int32 */
+            count?: number;
+            /** Format: double */
+            codAmount?: number;
+        };
+        ReportDeliveryResultDto: {
+            status?: string | null;
+            message?: string | null;
+            recipients?: string[] | null;
+            /** Format: int32 */
+            rows?: number;
         };
     };
     responses: never;

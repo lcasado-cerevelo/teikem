@@ -161,3 +161,29 @@ public sealed class KpiSnapshotJob : IScheduledJob
         return saved == 0 ? "Ningún módulo con indicadores está encendido; no se guardó nada." : $"Foto del {day:yyyy-MM-dd}: {saved} cifras guardadas.";
     }
 }
+
+/// <summary>
+/// Lote 92 (P12) — envía por correo los informes programados (Vistas con programación y destinatarios) que ya tocan según la hora local de la compañía. Corre cada 5 minutos; un informe se manda una vez por ocurrencia. Cada
+/// informe corre con los permisos y el alcance de datos de su dueño, y uno que falla no impide los demás.
+/// </summary>
+public sealed class ReportDeliveryJob : IScheduledJob
+{
+    public string Key => JobKeys.ReportDelivery;
+    public string NameEs => "Enviar informes programados";
+    public string NameEn => "Send scheduled reports";
+    public string DescriptionEs => "Manda por correo los informes con programación y destinatarios cuando les toca (hora de la compañía).";
+    public string DescriptionEn => "Emails the reports that have a schedule and recipients when they are due (company time).";
+    public string DefaultKind => JobScheduleKinds.Interval;
+    public int? DefaultIntervalSeconds => 300;
+    public TimeSpan? DefaultDailyAt => null;
+    public bool DefaultEnabled => true;
+    public TimeSpan MaxRuntime => TimeSpan.FromMinutes(10);
+
+    public async Task<string?> RunAsync(JobRunContext context, CancellationToken ct)
+    {
+        var delivery = context.Services.GetRequiredService<ReportDeliveryService>();
+        var (sent, skipped, failed) = await delivery.RunDueAsync(ct);
+        return sent + skipped + failed == 0 ? "Ningún informe por enviar." : $"{sent} enviado(s), {skipped} omitido(s), {failed} con error.";
+    }
+}
+

@@ -230,9 +230,11 @@ export interface ViewDraft {
   sort: SortRow[]
   visibility: string
   shares: ShareDto[]
-  /** Se reenvían tal cual para no borrar lo que otro cliente del API haya guardado (el PUT reemplaza todo). */
+  /** Lote 92: programación de envío por correo (se edita en el bloque «Enviar por correo»). */
   scheduleCron: string | null
   deliveryEmails: string | null
+  /** Lote 92: período que se envía por correo (LAST7, LAST30, THIS_MONTH, ALL); null sin programación. */
+  deliveryRangeMode: string | null
   chartType: string | null
 }
 
@@ -253,6 +255,7 @@ export function blankDraft(source: string): ViewDraft {
     shares: [],
     scheduleCron: null,
     deliveryEmails: null,
+    deliveryRangeMode: null,
     chartType: null,
   }
 }
@@ -276,6 +279,7 @@ export function draftFromReport(r: ReportDto): ViewDraft {
     shares: (r.shares ?? []).map((s) => ({ userId: s.userId ?? null, roleId: s.roleId ?? null, canEdit: Boolean(s.canEdit) })),
     scheduleCron: r.scheduleCron ?? null,
     deliveryEmails: r.deliveryEmails ?? null,
+    deliveryRangeMode: r.deliveryRangeMode ?? null,
     chartType: r.chartType ?? null,
   }
 }
@@ -383,6 +387,7 @@ export function buildReportBody(d: ViewDraft, choices: readonly { key: string }[
     chartType: d.chartType,
     scheduleCron: d.scheduleCron,
     deliveryEmails: d.deliveryEmails,
+    deliveryRangeMode: d.scheduleCron ? (d.deliveryRangeMode ?? 'LAST7') : null,
     shares: d.visibility === 'SHARED' ? d.shares : [],
   }
 }

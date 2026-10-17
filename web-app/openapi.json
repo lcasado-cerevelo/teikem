@@ -34765,6 +34765,46 @@
           }
         }
       }
+    },
+    "/api/v1/analytics/reports/{id}/deliver": {
+      "post": {
+        "tags": [
+          "Analytics"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportDeliveryResultDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportDeliveryResultDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportDeliveryResultDto"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -52045,6 +52085,23 @@
           },
           "isActive": {
             "type": "boolean"
+          },
+          "deliveryRangeMode": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastDeliveryUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastDeliveryStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastDeliveryMessage": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -52172,6 +52229,10 @@
             "items": {
               "$ref": "#/components/schemas/ShareDto"
             },
+            "nullable": true
+          },
+          "deliveryRangeMode": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -61332,6 +61393,31 @@
           "codAmount": {
             "type": "number",
             "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReportDeliveryResultDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "recipients": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "rows": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false

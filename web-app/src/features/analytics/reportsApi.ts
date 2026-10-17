@@ -75,3 +75,12 @@ export function useDeleteReport() {
     onSuccess: invalidate,
   })
 }
+
+/** Lote 92: «Enviar ahora» — manda el informe programado a sus destinatarios (`POST /reports/{id}/deliver`); refresca la lista para ver el último envío. */
+export function useDeliverReport() {
+  const invalidate = useInvalidateReports()
+  return useMutation({
+    mutationFn: (id: number) => unwrap(api.POST('/api/v1/analytics/reports/{id}/deliver', { params: { path: { id } } })),
+    onSuccess: invalidate,
+  })
+}
