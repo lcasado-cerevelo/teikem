@@ -3463,3 +3463,58 @@ WHERE (r.Name = 'TenantAdmin' OR EXISTS (
           WHERE rp.RoleId = r.RoleId AND p.Code = 'sales.cancel'))
   AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = v.PermissionId);
 GO
+
+-- =====================================================================================================================
+-- 2026-10-17 (x) Lote 84 (P8) — COD: cobro contra entrega y reconciliación por hojas escaneadas
+-- CodCollection (ya existía en el DDL original) gana quién lo cobró, quién lo cuadró y en qué corrida; tablas CodReconcileRun / CodReconcileItem (cada corrida de reconciliación con los códigos que
+-- se procesaron y su resultado); EntityType COD_COLLECTION de la bitácora. Solo AGREGA. Idempotente.
+-- =====================================================================================================================
+IF COL_LENGTH('dbo.CodCollection', 'CollectedBy') IS NULL
+    ALTER TABLE dbo.CodCollection ADD CollectedBy INT NULL;
+GO
+IF COL_LENGTH('dbo.CodCollection', 'ReconciledBy') IS NULL
+    ALTER TABLE dbo.CodCollection ADD ReconciledBy INT NULL;
+GO
+IF OBJECT_ID(N'dbo.CodReconcileRun', N'U') IS NULL CREATE TABLE dbo.CodReconcileRun (
+    CodReconcileRunId INT IDENTITY(1,1) PRIMARY KEY,
+    PublicId UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_CodReconcileRun_PublicId DEFAULT NEWID(),
+    TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    Source NVARCHAR(300) NULL,
+    Total INT NOT NULL CONSTRAINT DF_CodReconcileRun_Total DEFAULT 0,
+    Reconciled INT NOT NULL CONSTRAINT DF_CodReconcileRun_Reconciled DEFAULT 0,
+    Issues INT NOT NULL CONSTRAINT DF_CodReconcileRun_Issues DEFAULT 0,
+    CreatedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_CodReconcileRun_Created DEFAULT SYSUTCDATETIME(),
+    CreatedBy INT NULL
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_CodReconcileRun_PublicId' AND object_id = OBJECT_ID('dbo.CodReconcileRun')) CREATE INDEX IX_CodReconcileRun_PublicId ON dbo.CodReconcileRun(PublicId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_CodReconcileRun_Tenant' AND object_id = OBJECT_ID('dbo.CodReconcileRun')) CREATE INDEX IX_CodReconcileRun_Tenant ON dbo.CodReconcileRun(TenantId, CreatedAtUtc);
+GO
+IF OBJECT_ID(N'dbo.CodReconcileItem', N'U') IS NULL CREATE TABLE dbo.CodReconcileItem (
+    CodReconcileItemId INT IDENTITY(1,1) PRIMARY KEY,
+    CodReconcileRunId INT NOT NULL REFERENCES dbo.CodReconcileRun(CodReconcileRunId),
+    Code NVARCHAR(80) NOT NULL,
+    Source NVARCHAR(300) NULL,
+    Result NVARCHAR(30) NOT NULL,
+    TransportOrderId INT NULL REFERENCES dbo.TransportOrder(TransportOrderId),
+    Amount DECIMAL(18,4) NOT NULL CONSTRAINT DF_CodReconcileItem_Amount DEFAULT 0,
+    Collections INT NOT NULL CONSTRAINT DF_CodReconcileItem_Collections DEFAULT 0
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_CodReconcileItem_Run' AND object_id = OBJECT_ID('dbo.CodReconcileItem')) CREATE INDEX IX_CodReconcileItem_Run ON dbo.CodReconcileItem(CodReconcileRunId);
+GO
+IF COL_LENGTH('dbo.CodCollection', 'ReconcileRunId') IS NULL
+    ALTER TABLE dbo.CodCollection ADD ReconcileRunId INT NULL CONSTRAINT FK_CodCollection_ReconcileRun REFERENCES dbo.CodReconcileRun(CodReconcileRunId);
+GO
+
+-- EntityType de la bitácora del cobro
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'COD_COLLECTION', N'{"es":"Cobro COD","en":"COD collection"}', 140)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO

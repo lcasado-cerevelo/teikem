@@ -8606,3 +8606,26 @@ No. Queda en la cola de salida («Recepción de devolución» en Sincronización
 **Recibí en el aparato pero la existencia de la posición no cambió.**
 La recepción entra por el modo de recepción del almacén (zona de recepción con tareas de **Acomodar**, o directo): la existencia se ve en cuanto llega la siguiente sincronización o al acomodar. Lo dañado queda en su reporte de daño (cuarentena) y no en la posición normal.
 
+## Lote 84 — COD: cobro y reconciliación
+
+**`El cobro pasa de lo que falta por cobrar de {orden}: {monto}.` (422)**
+La suma de los cobros no puede pasar del COD de la orden. Revise cuánto se ha cobrado ya en el detalle de la orden (`GET /cod/orders/{id}`); un cobro parcial deja el COD en «Parcial».
+
+**`No se registra un cobro en una orden en borrador o cancelada.` (422)**
+El cobro se hace en la entrega: confirme la orden (o reabra la cancelada) antes de cobrar.
+
+**Leí la hoja y dice `NOTHING_COLLECTED`.**
+La orden tiene COD, pero nadie registró el cobro. Regístrelo (web o app del chofer) y vuelva a procesar la hoja: la misma hoja se puede procesar de nuevo sin problema.
+
+**Leí la hoja y dice `AMBIGUOUS`.**
+El número de factura se cuenta **por cliente**: `FAC-00001` existe en cada cliente. Procese las hojas indicando el **cliente** (todas las hojas de la corrida son de ese cliente) o cuadre esa orden a mano desde su detalle.
+
+**`ALREADY_RECONCILED`.**
+Esa hoja ya se había cuadrado antes; no se vuelve a cuadrar ni se duplica nada.
+
+**La vista previa dice que se cuadra, pero no cambió nada.**
+Es lo esperado: con `dryRun` solo se simula. Confirme la corrida (sin `dryRun`) para cuadrar.
+
+**El COD de la orden sigue «Parcial» aunque cuadré su hoja.**
+Se cuadró lo cobrado, pero todavía falta cobrar parte del COD. Cuando se cobre el resto y se procese otra vez la hoja, la orden pasa a «Cuadrado».
+
