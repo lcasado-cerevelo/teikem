@@ -8807,3 +8807,18 @@ Cambiar el monto de una línea exige el motivo (hasta 250 caracteres). Si deja e
 
 **¿Por qué mi permiso no deja aprobar?**
 Aprobar y exportar usan `driverpay.approve` y `driverpay.export`, que por omisión solo trae el administrador de la compañía; quien genera (`driverpay.manage`) no aprueba.
+
+
+## Lote 95 — Exportar la liquidación a choferes
+
+**`Solo se exporta una liquidación aprobada o exportada.`**
+Primero hay que revisarla y aprobarla (la aprobación pide reautenticación). Una generada o revisada no se exporta.
+
+**No veo plantillas para exportar la liquidación.**
+La primera vez se crea «Formato estándar» con todas las columnas. Para tener otras, créelas en el alcance `DRIVER_SETTLEMENT` (necesita `billing.export`); verlas basta con `billing.view`, `cod.view` o `driverpay.view`.
+
+**¿Puedo volver a bajar el archivo?**
+Sí: una liquidación exportada se puede exportar de nuevo (con otra plantilla si se quiere). El estatus no cambia.
+
+**¿Exportar paga al chofer?**
+No. Teikem calcula y exporta; el pago lo hace nómina o contabilidad con el archivo.

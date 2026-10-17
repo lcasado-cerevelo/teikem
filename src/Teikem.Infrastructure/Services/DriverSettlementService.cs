@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Teikem.Domain.Clients;
 using Teikem.Domain.Common;
 using Teikem.Domain.Constants;
+using Teikem.Domain.Export;
 using Teikem.Domain.Fleet;
 using Teikem.Domain.Orders;
 using Teikem.Infrastructure.Abstractions;
@@ -25,7 +26,7 @@ namespace Teikem.Infrastructure.Services;
 /// - El cálculo se congela: una corrida ya generada no se recalcula si cambian las tarifas o la política. El ajuste manual de una línea conserva el monto calculado y exige el motivo.
 /// - Aprobar pasa los viajes de la corrida a LIQUIDADO. La plataforma calcula y exporta; no emite el pago.
 /// </summary>
-public sealed class DriverSettlementService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, INumberSequenceService numbers, ILookupCache lookups, ITenantClock clock)
+public sealed class DriverSettlementService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, INumberSequenceService numbers, ILookupCache lookups, ITenantClock clock, ExportTemplateService templates)
 {
     public const int MaxPageSize = 200;
     private TenantContext T => (TenantContext)tenant;
@@ -274,6 +275,54 @@ public sealed class DriverSettlementService(TeikemDbContext db, ITenantContext t
             await db.SaveGuardedAsync(SettlementRules.Concurrency, ct2);
         }, ct);
         return await GetAsync(publicId, ct);
+    }
+
+    // ================================================================ exportar
+
+    /// <summary>El archivo de la liquidación (una fila por línea) con una plantilla del alcance DRIVER_SETTLEMENT, de una liquidación aprobada o exportada; sin cambiar nada.</summary>
+    public async Task<ExportFileDto> PreviewExportAsync(Guid publicId, Guid? templatePublicId, CancellationToken ct)
+    {
+        var r = await db.Set<DriverSettlementRun>().AsNoTracking().Include(x => x.Lines).FirstOrDefaultAsync(x => x.PublicId == publicId, ct) ?? throw new NotFoundException("Liquidación", feminine: true);
+        var code = (await StatusMapAsync(ct))[r.StatusCodeId].Code;
+        if (code is not (DriverSettlementStatuses.Approved or DriverSettlementStatuses.Exported)) throw new StatusRuleException(SettlementRules.ExportNeedsApproved);
+        var template = await templates.ResolveAsync(ExportCodes.ScopeDriverSettlement, templatePublicId, ct);
+        var currency = (await lookups.GetAsync(r.CurrencyLookupId, ct))?.InternalCode ?? "USD";
+        var dids = r.Lines.Select(l => l.DriverId).Distinct().ToList();
+        var drivers = await db.Set<Driver>().AsNoTracking().Where(d => dids.Contains(d.DriverId)).ToDictionaryAsync(d => d.DriverId, ct);
+        var oids = r.Lines.Where(l => l.TransportOrderId != null).Select(l => l.TransportOrderId!.Value).Distinct().ToList();
+        var orders = await db.TransportOrders.AsNoTracking().Where(o => oids.Contains(o.TransportOrderId)).ToDictionaryAsync(o => o.TransportOrderId, o => o.OrderNumber, ct);
+        var rows = new List<IReadOnlyDictionary<string, object?>>();
+        var n = 0;
+        foreach (var l in r.Lines.OrderBy(x => x.ServiceDate).ThenBy(x => x.DriverSettlementLineId))
+        {
+            n++;
+            var breakdown = ParseBreakdown(l.BreakdownJson);
+            var d = drivers.GetValueOrDefault(l.DriverId);
+            rows.Add(new Dictionary<string, object?>
+            {
+                ["SETTLEMENT_NUMBER"] = r.Number, ["PERIOD_START"] = r.PeriodStart, ["PERIOD_END"] = r.PeriodEnd, ["DRIVER_CODE"] = d?.EmployeeCode, ["DRIVER_NAME"] = d?.FullName, ["CURRENCY"] = currency,
+                ["LINE_NO"] = n, ["LINE_KIND"] = l.Kind, ["SERVICE_DATE"] = l.ServiceDate, ["ORDER_NUMBER"] = l.TransportOrderId is int oid ? orders.GetValueOrDefault(oid) : null, ["DESCRIPTION"] = l.Description,
+                ["ATTEMPTS"] = l.AttemptCount, ["DELIVERY_AMOUNT"] = breakdown.Where(b => b.Kind is DriverPayoutRules.LineDelivery or SettlementCodes.LineTrip).Sum(b => b.Amount),
+                ["ATTEMPTS_AMOUNT"] = breakdown.Where(b => b.Kind == DriverPayoutRules.LineAttempt).Sum(b => b.Amount), ["CALCULATED_AMOUNT"] = l.CalculatedAmount, ["AMOUNT"] = l.Amount,
+                ["ADJUSTMENT_NOTE"] = l.AdjustmentNote, ["PAYOUT_FORMULA"] = r.PayoutFormulaCode, ["RUN_TOTAL"] = r.TotalAmount,
+            });
+        }
+        var file = ExportEngine.Render(ExportCodes.ScopeDriverSettlement, template.Format, template.Delimiter, template.DateFormat, template.IncludeHeader, ExportRules.ParseColumns(template.ColumnsJson), rows, $"liquidacion-{r.Number}");
+        return new ExportFileDto(file.FileName, file.ContentType, file.Text, file.RowCount, template.Name);
+    }
+
+    /// <summary>Arma el archivo y, si la liquidación estaba aprobada, la pasa a EXPORTADA (quién y cuándo). Una exportada se puede volver a exportar (otra plantilla, otra copia).</summary>
+    public async Task<ExportFileDto> ExportAsync(Guid publicId, Guid? templatePublicId, CancellationToken ct)
+    {
+        var file = await PreviewExportAsync(publicId, templatePublicId, ct);
+        var head = await db.Set<DriverSettlementRun>().AsNoTracking().FirstAsync(x => x.PublicId == publicId, ct);
+        if ((await StatusMapAsync(ct))[head.StatusCodeId].Code == DriverSettlementStatuses.Approved)
+            await MoveAsync(publicId, DriverSettlementStatuses.Approved, DriverSettlementStatuses.Exported, SettlementRules.ExportNeedsApproved, null, (r, _) =>
+            {
+                (r.ExportedBy, r.ExportedAtUtc) = (tenant.UserId, clock.UtcNow);
+                return Task.CompletedTask;
+            }, ct);
+        return file;
     }
 
     // ================================================================ ajustar una línea

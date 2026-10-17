@@ -45,4 +45,12 @@ public sealed class DriverSettlementsController(DriverSettlementService settleme
     /// <summary>Ajuste manual del monto de una línea (con motivo), mientras la liquidación está generada o revisada.</summary>
     [HttpPatch("{publicId:guid}/lines/{lineId:int}"), RequirePermission(PermissionCatalog.DriverPayManage)]
     public Task<DriverSettlementDto> AdjustLine(Guid publicId, int lineId, [FromBody] DriverSettlementAdjustRequest req, CancellationToken ct) => settlements.AdjustLineAsync(publicId, lineId, req, ct);
+
+    /// <summary>El archivo de la liquidación (una fila por línea) con una plantilla del alcance DRIVER_SETTLEMENT, sin cambiar nada; sin plantilla, la primera activa.</summary>
+    [HttpGet("{publicId:guid}/export-preview"), RequirePermission(PermissionCatalog.DriverPayExport)]
+    public Task<ExportFileDto> ExportPreview(Guid publicId, [FromQuery] Guid? templatePublicId, CancellationToken ct) => settlements.PreviewExportAsync(publicId, templatePublicId, ct);
+
+    /// <summary>Exporta: arma el archivo y pasa la liquidación aprobada a exportada.</summary>
+    [HttpPost("{publicId:guid}/export"), RequirePermission(PermissionCatalog.DriverPayExport)]
+    public Task<ExportFileDto> Export(Guid publicId, [FromQuery] Guid? templatePublicId, CancellationToken ct) => settlements.ExportAsync(publicId, templatePublicId, ct);
 }

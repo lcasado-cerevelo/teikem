@@ -1,6 +1,6 @@
 # 22 — Liquidación a choferes
 
-Lotes 93 y 94 (P9, 2026-10-17). A cada chofer se le paga por lo que hizo en la calle: por entrega, por intento y por viaje. Este capítulo crece con cada lote de P9: la base (los intentos de entrega, §1) y la **liquidación** (§2). Las tarifas y la política de pago ya existen (Choferes y tarifas, capítulo 04).
+Lotes 93 a 95 (P9, 2026-10-17). A cada chofer se le paga por lo que hizo en la calle: por entrega, por intento y por viaje. Este capítulo crece con cada lote de P9: la base (los intentos de entrega, §1) y la **liquidación** (§2). Las tarifas y la política de pago ya existen (Choferes y tarifas, capítulo 04).
 
 ## 1. Intentos de entrega
 
@@ -66,7 +66,7 @@ Una **liquidación** (`LIQ-#####`) junta, para un chofer o para todos, lo que ha
 | Ver liquidaciones y la vista previa | `driverpay.view` |
 | Generar, revisar, ajustar una línea y cancelar | `driverpay.manage` |
 | Aprobar (pide reautenticación, AAL2) | `driverpay.approve` |
-| Exportar (llega en el siguiente lote) | `driverpay.export` |
+| Exportar | `driverpay.export` |
 
 `driverpay.approve` y `driverpay.export` los trae por omisión solo el administrador de la compañía (quien genera no aprueba). Módulo `LTL_GROUND`.
 
@@ -103,3 +103,20 @@ La liquidación guarda la fórmula y el desglose de cada línea (entrega e inten
 - **«Hay N intentos sin chofer»:** la ruta de esas órdenes no tenía chofer. Anule el intento y regístrelo con el chofer (§1) y genere de nuevo.
 - **No encuentro una entrega:** revise que tenga intentos vigentes en el período, que no sea una entrega especial y que no esté ya en otra liquidación.
 - **Aprobar pide reautenticarse:** es normal (AAL2), igual que aprobar una corrida de facturación.
+
+## 3. Exportar la liquidación (Lote 95)
+
+Una liquidación **aprobada** se exporta a un archivo (CSV o TXT) para nómina o contabilidad, con el mismo motor de **plantillas de exportación** de Facturación y de la remesa COD: formato, delimitador, formato de fecha, encabezado y columnas con su orden. El alcance de las plantillas es **`DRIVER_SETTLEMENT`** y trae «Formato estándar» con todas las columnas la primera vez.
+
+| Acción | Endpoint | Permiso |
+|---|---|---|
+| Vista previa del archivo (no cambia nada) | `GET /api/v1/driver-settlements/{id}/export-preview?templatePublicId=` | `driverpay.export` |
+| Exportar: arma el archivo y pasa la liquidación aprobada a **Exportada** (quién y cuándo) | `POST /api/v1/driver-settlements/{id}/export?templatePublicId=` | `driverpay.export` |
+| Ver las plantillas y sus campos (`?scope=DRIVER_SETTLEMENT`) | `GET /api/v1/export-templates` y `/fields` | `billing.view`, `cod.view` o `driverpay.view` |
+| Crear, cambiar o desactivar plantillas | `/api/v1/export-templates` | `billing.export` |
+
+Si no se manda `templatePublicId` se usa la primera plantilla activa del alcance. Una liquidación **exportada** se puede volver a exportar (otra plantilla, otra copia). Error: `Solo se exporta una liquidación aprobada o exportada.` (422).
+
+**Una fila por línea** de la liquidación (primero por fecha del servicio). Campos disponibles: `SETTLEMENT_NUMBER`, `PERIOD_START`, `PERIOD_END`, `DRIVER_CODE`, `DRIVER_NAME`, `CURRENCY`, `LINE_NO`, `LINE_KIND` (entrega o viaje), `SERVICE_DATE`, `ORDER_NUMBER`, `DESCRIPTION`, `ATTEMPTS`, `DELIVERY_AMOUNT` (lo que paga la entrega o el viaje), `ATTEMPTS_AMOUNT` (lo que pagan los intentos), `CALCULATED_AMOUNT`, `AMOUNT` (lo que se paga, con el ajuste si lo hay), `ADJUSTMENT_NOTE`, `PAYOUT_FORMULA` y `RUN_TOTAL`. El archivo se llama `liquidacion-LIQ-#####`. El mismo archivo sale siempre para la misma liquidación y plantilla (es reproducible).
+
+Teikem **no emite el pago**: el archivo se lleva a nómina o contabilidad.

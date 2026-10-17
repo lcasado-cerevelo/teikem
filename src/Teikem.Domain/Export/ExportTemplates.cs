@@ -19,7 +19,9 @@ public static class ExportCodes
     public const string ScopeBilling = "BILLING";
     /// <summary>Lote 86 (P8): la remesa COD al cliente (una fila por cobro remitido).</summary>
     public const string ScopeCodRemittance = "COD_REMITTANCE";
-    public static readonly string[] Scopes = { ScopeBilling, ScopeCodRemittance };
+    /// <summary>Lote 95 (P9): la liquidación a choferes (una fila por línea: entrega con sus intentos o viaje).</summary>
+    public const string ScopeDriverSettlement = "DRIVER_SETTLEMENT";
+    public static readonly string[] Scopes = { ScopeBilling, ScopeCodRemittance, ScopeDriverSettlement };
 
     public const string FormatCsv = "CSV";
     public const string FormatTxt = "TXT";
@@ -122,7 +124,31 @@ public static class ExportFields
         new ExportField("BATCH_NET", ExportKind.Money, "BatchNet", "Neto de la remesa", "Batch net"),
     };
 
-    public static IReadOnlyList<ExportField> Of(string scope) => scope == ExportCodes.ScopeBilling ? Billing : scope == ExportCodes.ScopeCodRemittance ? CodRemittance : Array.Empty<ExportField>();
+    // ---- Liquidación a choferes (Lote 95): una fila por línea de la liquidación, con los datos de la liquidación repetidos en cada una
+    public static readonly IReadOnlyList<ExportField> DriverSettlement = new[]
+    {
+        new ExportField("SETTLEMENT_NUMBER", ExportKind.Text, "SettlementNo", "Número de la liquidación", "Settlement number"),
+        new ExportField("PERIOD_START", ExportKind.Date, "PeriodStart", "Inicio del período", "Period start"),
+        new ExportField("PERIOD_END", ExportKind.Date, "PeriodEnd", "Fin del período", "Period end"),
+        new ExportField("DRIVER_CODE", ExportKind.Text, "DriverCode", "Código del chofer", "Driver code"),
+        new ExportField("DRIVER_NAME", ExportKind.Text, "Driver", "Chofer", "Driver"),
+        new ExportField("CURRENCY", ExportKind.Text, "Currency", "Moneda", "Currency"),
+        new ExportField("LINE_NO", ExportKind.Number, "LineNo", "Número de línea", "Line number"),
+        new ExportField("LINE_KIND", ExportKind.Text, "Kind", "Tipo de línea (entrega o viaje)", "Line kind (delivery or trip)"),
+        new ExportField("SERVICE_DATE", ExportKind.Date, "ServiceDate", "Fecha del servicio", "Service date"),
+        new ExportField("ORDER_NUMBER", ExportKind.Text, "OrderNo", "Número de orden", "Order number"),
+        new ExportField("DESCRIPTION", ExportKind.Text, "Description", "Descripción", "Description"),
+        new ExportField("ATTEMPTS", ExportKind.Number, "Attempts", "Intentos", "Attempts"),
+        new ExportField("DELIVERY_AMOUNT", ExportKind.Money, "DeliveryPay", "Pago por la entrega", "Delivery pay"),
+        new ExportField("ATTEMPTS_AMOUNT", ExportKind.Money, "AttemptsPay", "Pago por los intentos", "Attempts pay"),
+        new ExportField("CALCULATED_AMOUNT", ExportKind.Money, "Calculated", "Monto calculado", "Calculated amount"),
+        new ExportField("AMOUNT", ExportKind.Money, "Amount", "Monto a pagar", "Amount to pay"),
+        new ExportField("ADJUSTMENT_NOTE", ExportKind.Text, "AdjustmentNote", "Motivo del ajuste", "Adjustment note"),
+        new ExportField("PAYOUT_FORMULA", ExportKind.Text, "Formula", "Fórmula de pago", "Payout formula"),
+        new ExportField("RUN_TOTAL", ExportKind.Money, "RunTotal", "Total de la liquidación", "Settlement total"),
+    };
+
+    public static IReadOnlyList<ExportField> Of(string scope) => scope == ExportCodes.ScopeBilling ? Billing : scope == ExportCodes.ScopeCodRemittance ? CodRemittance : scope == ExportCodes.ScopeDriverSettlement ? DriverSettlement : Array.Empty<ExportField>();
 }
 
 /// <summary>Reglas puras de las plantillas (sin EF; ExportTemplateService las traduce a 400/404/409). Los mensajes son públicos: el manual y la FAQ los citan.</summary>

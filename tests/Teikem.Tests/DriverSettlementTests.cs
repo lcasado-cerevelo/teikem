@@ -36,6 +36,7 @@ public sealed class DriverSettlementTests
         {
             s.AddSingleton<ITenantClock>(TenantClock.Default);
             s.AddSingleton<DeliveryAttemptService>();
+            s.AddSingleton<ExportTemplateService>();
             s.AddSingleton<DriverSettlementService>();
         });
         f.SetModules(ModuleKeys.LtlGround);
@@ -296,5 +297,37 @@ public sealed class DriverSettlementTests
             Assert.Equal(0, (await L()).Total);
             await Assert.ThrowsAsync<NotFoundException>(() => x.Svc.GetAsync(run.PublicId, default));
         }
+    }
+
+    [Fact]
+    public async Task Export_builds_one_row_per_line_and_marks_an_approved_run_as_exported()
+    {
+        var x = await NewWorldAsync(attemptRates: new[] { (1, 5m), (2, 3m) });
+        await using var _ = x.F;
+        await OrderWithAttemptsAsync(x, "O-1", false, true);   // entrega 10 + intentos 5 y 3 = 18
+        var run = await x.Svc.GenerateAsync(Period(x), default);
+        await x.Svc.AdjustLineAsync(run.PublicId, run.Lines[0].Id, new DriverSettlementAdjustRequest(20m, "Bono, por zona"), default);
+        Assert.Equal(SettlementRules.ExportNeedsApproved, (await Assert.ThrowsAsync<StatusRuleException>(() => x.Svc.PreviewExportAsync(run.PublicId, null, default))).Message);
+        await x.Svc.ReviewAsync(run.PublicId, default);
+        await x.Svc.ApproveAsync(run.PublicId, default);
+
+        var preview = await x.Svc.PreviewExportAsync(run.PublicId, null, default);
+        Assert.Equal(1, preview.RowCount);
+        Assert.Equal("APPROVED", (await x.Svc.GetAsync(run.PublicId, default)).StatusCode);   // la vista previa no cambia nada
+        var lines = preview.Text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal(2, lines.Length);   // encabezado + una fila
+        Assert.Contains("SettlementNo", lines[0]);
+        Assert.Contains("LIQ-00001", lines[1]);
+        Assert.Contains("O-1", lines[1]);
+        Assert.Contains("\"Bono, por zona\"", lines[1]);   // la coma del motivo se entrecomilla
+        Assert.Contains("20.00", lines[1]);
+        Assert.StartsWith("liquidacion-LIQ-00001", preview.FileName);
+
+        var exported = await x.Svc.ExportAsync(run.PublicId, null, default);
+        Assert.Equal(1, exported.RowCount);
+        var after = await x.Svc.GetAsync(run.PublicId, default);
+        Assert.Equal(("EXPORTED", true), (after.StatusCode, after.ExportedAtUtc != null));
+        Assert.Equal(1, (await x.Svc.ExportAsync(run.PublicId, null, default)).RowCount);   // una exportada se puede volver a exportar
+        Assert.Equal(SettlementRules.CancelNeedsOpen, (await Assert.ThrowsAsync<StatusRuleException>(() => x.Svc.CancelAsync(run.PublicId, null, default))).Message);
     }
 }

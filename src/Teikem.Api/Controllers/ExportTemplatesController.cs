@@ -9,7 +9,7 @@ namespace Teikem.Api.Controllers;
 
 /// <summary>
 /// Lote 77 (P5) — plantillas de exportación a contabilidad (formato CSV o TXT, delimitador, formato de fecha, encabezado y columnas). Ver con billing.view; crear, cambiar y desactivar con billing.export.
-/// Por ahora el único alcance es BILLING (facturación); los de compras, despachos y liquidación se suman con sus pantallas.
+/// Alcances: BILLING (facturación), COD_REMITTANCE (remesa COD) y DRIVER_SETTLEMENT (liquidación a choferes). Leerlas basta con ver facturación, COD o el pago a choferes; cambiarlas exige billing.export.
 /// </summary>
 [ApiController]
 [Route("api/v1/export-templates")]
@@ -18,14 +18,14 @@ namespace Teikem.Api.Controllers;
 public sealed class ExportTemplatesController(ExportTemplateService templates) : ControllerBase
 {
     /// <summary>Las plantillas activas del alcance (BILLING por omisión). La primera vez la compañía recibe «Formato estándar» con todas las columnas.</summary>
-    [HttpGet, RequirePermission(PermissionCatalog.BillingView)]
+    [HttpGet, RequirePermission(PermissionCatalog.BillingView + "|" + PermissionCatalog.CodView + "|" + PermissionCatalog.DriverPayView)]
     public Task<IReadOnlyList<ExportTemplateDto>> List([FromQuery] string? scope, CancellationToken ct) => templates.ListAsync(scope, ct);
 
     /// <summary>El catálogo de campos que se pueden exportar en el alcance (código, tipo, encabezado por omisión y etiqueta).</summary>
-    [HttpGet("fields"), RequirePermission(PermissionCatalog.BillingView)]
+    [HttpGet("fields"), RequirePermission(PermissionCatalog.BillingView + "|" + PermissionCatalog.CodView + "|" + PermissionCatalog.DriverPayView)]
     public IReadOnlyList<ExportFieldDto> Fields([FromQuery] string? scope) => templates.Fields(scope);
 
-    [HttpGet("{publicId:guid}"), RequirePermission(PermissionCatalog.BillingView)]
+    [HttpGet("{publicId:guid}"), RequirePermission(PermissionCatalog.BillingView + "|" + PermissionCatalog.CodView + "|" + PermissionCatalog.DriverPayView)]
     public Task<ExportTemplateDto> Get(Guid publicId, CancellationToken ct) => templates.GetAsync(publicId, ct);
 
     [HttpPost, RequirePermission(PermissionCatalog.BillingExport)]
