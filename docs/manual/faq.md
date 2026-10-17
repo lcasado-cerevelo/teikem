@@ -8873,3 +8873,24 @@ Estos avisos son para el cliente. Avisar al consignatario (con su aceptación, q
 
 **En el registro dice «No hay destinatarios».**
 El cliente no tiene usuarios activos en el portal ni correos extra en ese aviso. El resumen igual queda en la bandeja del portal si esa casilla está encendida.
+
+
+## Lote 99 — Documento legal
+
+**`Debe aceptar la política de privacidad y los términos de uso para continuar.` (403 `legal_acceptance_required`)**
+El usuario de esa sesión no ha aceptado la versión vigente del documento. Debe entrar a la web, leerlo hasta el final y pulsar «Acepto». Con eso el resto del API vuelve a responder.
+
+**`La versión del documento ya no es la vigente. Vuelva a leerlo.` (409)**
+El documento cambió mientras la persona lo leía. Que recargue la pantalla y lo acepte de nuevo.
+
+**El botón «Acepto» no se habilita.**
+Hay que desplazar el texto hasta el final (en el celular, deslizar dentro del cuadro hasta abajo). El botón solo se habilita al llegar ahí.
+
+**¿Cómo sé quién ha aceptado y quién no?**
+Seguridad y auditoría → pestaña «Aceptación legal» (permiso `admin.audit`). Los pendientes salen primero; «Versión anterior» es quien aceptó antes de un cambio del documento.
+
+**Salen marcas entre corchetes ([RAZÓN SOCIAL DEL OPERADOR]) en el documento.**
+Faltan los datos del operador en la configuración (`Legal:OperatorName`, `Legal:OperatorAddress`, `Legal:ContactEmail`, `Legal:Jurisdiction`). Hay que llenarlos antes de producción.
+
+**¿Qué pasa con los usuarios que ya existen cuando se pase a producción?**
+No tienen aceptación guardada, así que la verán en su siguiente ingreso. Cuando el documento cambie, todos la verán otra vez.

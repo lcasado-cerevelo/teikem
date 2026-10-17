@@ -14,16 +14,16 @@ Hecho a partir de lo que dictó Luis el 2026-10-17 y de sus respuestas a tres pr
 4. **Mensajes**: el cliente puede escribir desde el portal; el mensaje llega a un **equipo de servicio al cliente designado por cliente** (un grupo de personas, como un chat). Si el cliente no tiene equipo, al rol «Servicio al cliente» de la compañía.
 5. El portal es solo de consumo para el usuario: **no se autoadministra** (lo da de alta la compañía desde el expediente del cliente; ya existe `PortalUser`). Seguridad al nivel del documento maestro (módulo 10): login separado, claim del cliente, segundo filtro por `ClientId` (BOLA), MFA por política, bitácora de acceso.
 
-## Pendiente de decidir: los consignatarios crean sus propias órdenes (dicho por Luis, 2026-10-17)
-Los consignatarios de un cliente deben poder **crear sus propias órdenes**, con la misma pantalla de entrada de órdenes del portal pero **con el consignatario ya escogido** (solo esa parte). Luis no ha decidido cómo se maneja el **usuario del consignatario** (hoy hay un usuario y contraseña por consignatario, no sabe si es lo mejor). Lo que pide: **que no moleste al consignatario** y que **cualquiera no pueda entrar una orden**; una orden creada así no pesa tanto porque **se tiene que confirmar** antes de entregarse.
-
-Propuesta (para aprobar antes de construir):
-1. **Sin contraseña: código de un solo uso.** El consignatario entra con su correo o teléfono **registrado por el cliente**; Teikem le manda un código de 6 dígitos (correo hoy, SMS cuando exista Twilio) que vale unos minutos; la sesión dura poco y se renueva con otro código. Nada que recordar ni que resetear.
-2. **Solo si el cliente lo permite:** el cliente enciende «mis consignatarios pueden crear órdenes» (y a cuáles) **desde su portal**; la compañía no lo maneja (igual que los avisos al consignatario).
-3. **La orden nace «solicitada por el consignatario»** (borrador por confirmar): el cliente (o quien él designe) la **confirma** en el portal y recién entonces entra al flujo normal. Sin confirmar no se despacha ni se factura.
-4. **Seguridad:** el consignatario solo ve y crea órdenes **con su propio consignatario como destino** y de **su cliente**; tope de órdenes por día y por consignatario, límite de intentos de código, todo a la bitácora de seguridad; nunca ve datos de otros consignatarios ni precios.
-5. Alternativas descartadas: usuario y contraseña por consignatario (fricción, reseteos, muchas cuentas); enlace permanente sin verificación (cualquiera con el enlace crea órdenes).
-Va después de la app del cliente y del acceso del portal (lotes 99–100); necesita el correo/teléfono del consignatario ya guardado por el cliente.
+## Decidido (Luis, 2026-10-17): acceso, seguridad y consignatarios que crean órdenes
+**Consignatarios crean sus propias órdenes.** Misma pantalla de entrada de órdenes del portal, con el consignatario ya escogido (solo esa parte). Reglas decididas:
+1. **Usuario y contraseña** (no código de un solo uso en cada entrada: la gente de almacén no es técnica y tendría que buscar un correo cada vez). **Alta por invitación**: el cliente da de alta al consignatario; llega un correo con un enlace que **vence (48 h, configurable), se usa una sola vez**, y al mandar otro el anterior deja de servir. Con el enlace escoge su contraseña. Passkey: opcional más adelante, nunca obligatorio.
+2. **Computadora de confianza (30 días):** al entrar bien desde una computadora o navegador que no se reconoce, se pide **confirmar por correo**; esa computadora queda guardada **30 días sin uso** (marca secreta aleatoria en el navegador, solo su resumen cifrado en el servidor). Cada usuario ve y quita sus computadoras (el administrador del cliente también); «no confiar en esta computadora» para equipos compartidos. Mismo mecanismo para el **cliente** (contraseña + MFA obligatorio; la computadora de confianza evita repetir el MFA **30 días**, y una computadora nueva también pide confirmación por correo) y se aplicará al staff si se aprueba.
+3. **Primer ingreso del consignatario, en este orden:** enlace de la invitación (confirma su correo) → crea su contraseña → acepta el documento legal → **elige cómo recibir avisos** (correo, texto, ambos o ninguno; si quiere texto, escribe su teléfono y lo **confirma con un código por SMS**, que espera a Twilio) → entra, y esa computadora queda de confianza. **Los avisos al consignatario los decide él**, no el cliente ni la compañía; puede cambiarlo en su perfil, cada texto trae la baja (STOP) y se guarda cuándo y qué aceptó. La compañía y el cliente no lo cambian (a lo sumo ven si acepta o no).
+4. **Solo si el cliente lo permite** (lo enciende desde su portal; la compañía no lo maneja). **La orden nace «solicitada por el consignatario»** y el **cliente la confirma** antes de que entre al flujo normal: sin confirmar no se despacha ni se factura. Esa confirmación es la segunda barrera (no hay MFA para el consignatario).
+5. **Candado antifuerza bruta en TODOS los logins** (staff, cliente, consignatario): espera por cuenta que crece (1, 5, 15 y 60 min; no bloqueo eterno), tope por dirección IP, mismo mensaje y tiempo si el usuario no existe, bitácora y aviso, reto anti-robot tras varios fallos. Hoy el login del staff ya tiene el bloqueo de Identity; se revisa qué existe y se reutiliza.
+6. **El consignatario solo ve y crea lo suyo** (su cliente, él como destino); tope de órdenes por día y aviso al cliente si llega una cantidad rara; nada de precios ni de otros consignatarios; todo a la bitácora de seguridad.
+7. **Portal instalable (PWA):** después de crear su contraseña, un botón «Poner en mi escritorio» (Chrome/Edge de computadora y Android crean el ícono y abren como app; en iPhone y iPad se muestra la instrucción «Compartir → Añadir a pantalla de inicio»). El correo de invitación no puede crear el acceso directo (los correos no ejecutan nada y los adjuntos `.url` se bloquean): lleva el enlace y avisa que al terminar podrá poner el ícono.
+8. **Documento legal único** (política de privacidad + términos de uso, una sola versión para staff, cliente y consignatarios): **Lote 99, hecho**; se acepta en el primer ingreso y cada vez que cambie.
 
 ## Lo que ya existe y se reutiliza
 - `PortalUser` (alta/estatus desde el expediente del cliente), `UserKind = PORTAL`; el login interno lo rechaza.
@@ -35,12 +35,14 @@ Va después de la app del cliente y del acceso del portal (lotes 99–100); nece
 |---|---|---|
 | **97** | **Número de conduce** (único por orden de entrega, generado por Teikem), en Órdenes, labels y búsquedas; las órdenes viejas lo reciben | Es el identificador que usan el cliente, el consignatario y las notificaciones: va primero |
 | 98 | **Avisos al cliente** (servidor y pantalla en el expediente del cliente): resúmenes por evento de ruta, COD procesado y factura emitida; **configuración por cliente y canal, la decide la compañía (todo apagado por omisión)**; correo y bandeja del portal; interruptor de SMS | No necesita el login del portal para el correo |
-| 99 | **Portal: acceso por cliente** (servidor): login de portal, claim del cliente, segundo filtro `ClientId`, invitación, MFA, eventos de seguridad; endpoints de lectura (inicio, órdenes, ficha, facturas, COD) con pruebas de acceso cruzado | El corazón de seguridad |
-| 100 | **app-cliente** (Expo web+móvil): login, inicio, mis órdenes, ficha, bandeja de avisos | La primera pantalla del portal |
-| 101 | **«¿Cómo va mi orden?»** público por conduce (con tope de consultas y sin datos personales) | |
-| 102 | **Mensajes** del portal con el equipo de servicio al cliente (designado por cliente) | |
-| 103 | **Entrada de órdenes** del cliente en el portal y **órdenes que crean los consignatarios** (ver «Pendiente de decidir») | |
-| 104+ | Consignatarios, configuración, perfil, indicadores del cliente; seguimiento en vivo cuando exista P7 | |
+| **99** | **Documento legal único** (privacidad + términos de uso): se acepta en el primer ingreso y cada vez que cambie la versión; lista de quién aceptó y quién no (Seguridad y auditoría) | Lo exigen todos los accesos que siguen (hecho) |
+| 100 | **Computadoras de confianza (30 días) y candado antifuerza bruta común** a todos los logins | Es lo que protege al portal |
+| 101 | **Portal: acceso por cliente** (servidor): login de portal, claim del cliente, segundo filtro `ClientId`, invitación con vencimiento, MFA, bitácora; endpoints de lectura con pruebas de acceso cruzado | El corazón de seguridad |
+| 102 | **app-cliente** (Expo web+móvil, instalable): login, inicio, mis órdenes, ficha, bandeja de avisos | La primera pantalla del portal |
+| 103 | **«¿Cómo va mi orden?»** público por conduce (con tope de consultas y sin datos personales) | |
+| 104 | **Mensajes** del portal con el equipo de servicio al cliente (designado por cliente) | |
+| 105 | **Entrada de órdenes** del cliente en el portal, **acceso del consignatario** (primer ingreso, avisos con su aceptación) y **órdenes que crean los consignatarios** | |
+| 106+ | Consignatarios, configuración, perfil, indicadores del cliente; seguimiento en vivo cuando exista P7 | |
 
 ## Decisiones propias a revisar con Luis
 - El número de conduce lo genera Teikem (patrón configurable, por omisión `CND-#######`); sigue habiendo número de orden del cliente (puede repetirse entre clientes) y número de empaque (EMP-#####). El label pasa a mostrar el conduce como «Waybill» (antes mostraba el número de orden).

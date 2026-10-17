@@ -3943,4 +3943,21 @@ ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
 WHEN NOT MATCHED THEN
     INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
     VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+
+-- =====================================================================================================================
+-- (ah) 2026-10-17 — Lote 99: aceptación del documento legal único («Política de privacidad y términos de uso»). Tabla global por usuario (sin TenantId):
+-- quién aceptó qué versión, cuándo y desde dónde. Al cambiar la versión vigente en el código, todos vuelven a aceptar; los usuarios existentes (sin filas) aceptan en su siguiente ingreso.
+-- =====================================================================================================================
+IF OBJECT_ID(N'dbo.LegalAcceptance', N'U') IS NULL CREATE TABLE dbo.LegalAcceptance (
+    LegalAcceptanceId BIGINT IDENTITY(1,1) PRIMARY KEY,
+    UserId INT NOT NULL REFERENCES dbo.AspNetUsers(Id),
+    Version NVARCHAR(20) NOT NULL,
+    Lang NVARCHAR(5) NOT NULL CONSTRAINT DF_LegalAcceptance_Lang DEFAULT N'es',
+    IpAddress NVARCHAR(64) NULL,
+    UserAgent NVARCHAR(400) NULL,
+    AcceptedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_LegalAcceptance_Accepted DEFAULT SYSUTCDATETIME()
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_LegalAcceptance_User' AND object_id = OBJECT_ID('dbo.LegalAcceptance')) CREATE INDEX IX_LegalAcceptance_User ON dbo.LegalAcceptance(UserId, Version);
 GO

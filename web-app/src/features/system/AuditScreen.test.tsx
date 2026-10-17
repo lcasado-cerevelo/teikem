@@ -142,7 +142,7 @@ describe('Seguridad y auditoría', () => {
   it('Actividad: pestañas, filas con Cambio / Alerta / Evento, usuario y detalle legible', async () => {
     wrap()
     const tabs = screen.getByRole('tablist', { name: 'Secciones de Seguridad y auditoría' })
-    expect(within(tabs).getAllByRole('tab').map((b) => b.textContent?.trim())).toEqual(['Actividad', 'Sesiones y MFA'])
+    expect(within(tabs).getAllByRole('tab').map((b) => b.textContent?.trim())).toEqual(['Actividad', 'Sesiones y MFA', 'Aceptación legal'])
     expect(within(tabs).getByRole('tab', { name: 'Actividad' })).toHaveAttribute('aria-selected', 'true')
     await screen.findByText('Modificación · Compañía #1')
     const rows = bodyRows()

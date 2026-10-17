@@ -7,6 +7,7 @@ import { IconClock, IconShield, Tabs } from '../../kernel/ui'
 import { ActivityTab } from './audit/ActivityTab'
 import { auditTabFromParam, type AuditTab } from './audit/auditView'
 import { CompanySessionsTab } from './audit/CompanySessionsTab'
+import { LegalAcceptancesTab } from '../legal/LegalAcceptancesTab'
 import './audit/audit.css'
 import './settings/settings.css'
 
@@ -51,11 +52,19 @@ export default function AuditScreen() {
                   </>
                 ),
               },
+              {
+                key: 'legal',
+                label: (
+                  <>
+                    <IconShield /> {t('system.audit.tabs.legal')}
+                  </>
+                ),
+              },
             ]}
           />
         </div>
       </div>
-      {tab === 'activity' ? <ActivityTab /> : <CompanySessionsTab />}
+      {tab === 'activity' ? <ActivityTab /> : tab === 'sessions' ? <CompanySessionsTab /> : <LegalAcceptancesTab />}
       <p className="note set-gap">{t('system.audit.note')}</p>
     </div>
   )

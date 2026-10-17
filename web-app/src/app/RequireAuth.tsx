@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { applyProblemDetails } from '../kernel/api/problem'
 import { useT } from '../kernel/i18n/useT'
+import { LegalGate } from '../features/legal/LegalGate'
 import { useSession } from './session'
 import { Splash } from './Splash'
 
@@ -34,5 +35,6 @@ export function RequireAuth({ children }: { children: ReactNode }) {
       </div>
     )
   }
-  return <>{children}</>
+  // Lote 99: sin aceptar el documento legal vigente, en lugar de la aplicación sale la pantalla de aceptación
+  return <LegalGate>{children}</LegalGate>
 }

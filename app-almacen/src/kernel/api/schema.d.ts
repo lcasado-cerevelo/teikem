@@ -26333,6 +26333,167 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/legal/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    lang?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["LegalDocumentDto"];
+                        "application/json": components["schemas"]["LegalDocumentDto"];
+                        "text/json": components["schemas"]["LegalDocumentDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/legal/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["LegalStatusDto"];
+                        "application/json": components["schemas"]["LegalStatusDto"];
+                        "text/json": components["schemas"]["LegalStatusDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/legal/acceptances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    status?: string;
+                    q?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["LegalAcceptanceRowDtoPagedResult"];
+                        "application/json": components["schemas"]["LegalAcceptanceRowDtoPagedResult"];
+                        "text/json": components["schemas"]["LegalAcceptanceRowDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/legal/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["LegalAcceptRequest"];
+                    "text/json": components["schemas"]["LegalAcceptRequest"];
+                    "application/*+json": components["schemas"]["LegalAcceptRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["LegalStatusDto"];
+                        "application/json": components["schemas"]["LegalStatusDto"];
+                        "text/json": components["schemas"]["LegalStatusDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -35390,6 +35551,51 @@ export interface components {
             attempts?: number;
             /** Format: date-time */
             sentAtUtc?: string | null;
+        };
+        LegalDocumentDto: {
+            version?: string | null;
+            lang?: string | null;
+            title?: string | null;
+            intro?: string | null;
+            partPrivacy?: string | null;
+            partTerms?: string | null;
+            sections?: components["schemas"]["LegalSectionDto"][] | null;
+            required?: boolean;
+        };
+        LegalAcceptRequest: {
+            version?: string | null;
+            lang?: string | null;
+        };
+        LegalSectionDto: {
+            id?: string | null;
+            part?: string | null;
+            heading?: string | null;
+            paragraphs?: string[] | null;
+        };
+        LegalAcceptanceRowDtoPagedResult: {
+            items?: components["schemas"]["LegalAcceptanceRowDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        LegalStatusDto: {
+            currentVersion?: string | null;
+            required?: boolean;
+            accepted?: boolean;
+            /** Format: date-time */
+            acceptedAtUtc?: string | null;
+            acceptedVersion?: string | null;
+        };
+        LegalAcceptanceRowDto: {
+            fullName?: string | null;
+            email?: string | null;
+            accepted?: boolean;
+            /** Format: date-time */
+            acceptedAtUtc?: string | null;
+            lastVersion?: string | null;
         };
     };
     responses: never;

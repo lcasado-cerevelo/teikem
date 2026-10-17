@@ -95,6 +95,7 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<MfaRecoveryCode> MfaRecoveryCodes => Set<MfaRecoveryCode>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<SecurityEvent> SecurityEvents => Set<SecurityEvent>();
+    public DbSet<LegalAcceptance> LegalAcceptances => Set<LegalAcceptance>();   // Lote 99
     // Lote 8A — aparatos de confianza de la app de almacén, PIN por usuario e idempotencia del API
     public DbSet<UserDevice> UserDevices => Set<UserDevice>();
     public DbSet<UserDeviceActivity> UserDeviceActivities => Set<UserDeviceActivity>();

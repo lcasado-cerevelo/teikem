@@ -6445,6 +6445,31 @@
       "nothing": "There are no products to print with the current filters."
     }
   },
+  "legal": {
+    "title": "Privacy Policy and Terms of Use",
+    "accept": {
+      "lead": "To continue, read the whole document and accept it. If it changes, you will be asked again.",
+      "scrollHint": "Scroll to the end of the text to be able to accept.",
+      "button": "I accept the privacy policy and the terms of use",
+      "decline": "I do not accept, sign out",
+      "fine": "Your acceptance is recorded with the version, the date and the connection it was made from."
+    },
+    "list": {
+      "title": "Legal document acceptance",
+      "help": "Who accepted the current version of the privacy policy and terms of use, and who did not. Anyone who has not will see it on their next sign-in. If the document changes, everyone accepts again.",
+      "filters": "Acceptance filters",
+      "search": "Search by name or email",
+      "user": "User",
+      "email": "Email",
+      "state": "Status",
+      "when": "Accepted on",
+      "any": "All",
+      "pending": "Pending",
+      "accepted": "Accepted",
+      "oldVersion": "Earlier version ({v})",
+      "empty": "No users match that filter."
+    }
+  },
   "system": {
     "devices": {
       "title": "Mobile devices",
@@ -6988,7 +7013,8 @@
       "tabs": {
         "label": "Security & audit sections",
         "activity": "Activity",
-        "sessions": "Sessions & MFA"
+        "sessions": "Sessions & MFA",
+        "legal": "Legal acceptance"
       },
       "activity": {
         "title": "Activity",

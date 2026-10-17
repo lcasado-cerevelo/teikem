@@ -6445,6 +6445,31 @@
       "nothing": "No hay productos para imprimir con los filtros actuales."
     }
   },
+  "legal": {
+    "title": "Política de privacidad y términos de uso",
+    "accept": {
+      "lead": "Para continuar, lea el documento completo y acéptelo. Si cambia, se le pedirá de nuevo.",
+      "scrollHint": "Desplácese hasta el final del texto para poder aceptar.",
+      "button": "Acepto la política de privacidad y los términos de uso",
+      "decline": "No acepto, salir",
+      "fine": "Su aceptación queda registrada con la versión, la fecha y la conexión desde la que la hace."
+    },
+    "list": {
+      "title": "Aceptación del documento legal",
+      "help": "Quién aceptó la versión vigente de la política de privacidad y los términos de uso, y quién no. Quien no la ha aceptado la verá en su próximo ingreso. Si el documento cambia, todos vuelven a aceptar.",
+      "filters": "Filtros de la aceptación",
+      "search": "Buscar por nombre o correo",
+      "user": "Usuario",
+      "email": "Correo",
+      "state": "Estado",
+      "when": "Aceptó el",
+      "any": "Todos",
+      "pending": "Pendiente",
+      "accepted": "Aceptó",
+      "oldVersion": "Versión anterior ({v})",
+      "empty": "No hay usuarios con ese filtro."
+    }
+  },
   "system": {
     "devices": {
       "title": "Aparatos móviles",
@@ -6988,7 +7013,8 @@
       "tabs": {
         "label": "Secciones de Seguridad y auditoría",
         "activity": "Actividad",
-        "sessions": "Sesiones y MFA"
+        "sessions": "Sesiones y MFA",
+        "legal": "Aceptación legal"
       },
       "activity": {
         "title": "Actividad",

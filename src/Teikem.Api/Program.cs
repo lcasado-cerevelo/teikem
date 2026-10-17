@@ -236,6 +236,7 @@ app.UseCors();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseMiddleware<TenantContextMiddleware>();
+app.UseMiddleware<LegalAcceptanceMiddleware>();   // Lote 99: sin aceptar el documento legal vigente, 403 'legal_acceptance_required'
 app.UseAuthorization();
 // Lote 8A: Idempotency-Key en escrituras autenticadas (después de autenticación, TenantContext y autorización).
 app.UseMiddleware<IdempotencyMiddleware>();

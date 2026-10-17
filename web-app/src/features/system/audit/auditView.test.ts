@@ -41,6 +41,7 @@ const row = (over: Partial<ActivityRowDto>): ActivityRowDto => ({
 describe('pestañas', () => {
   it('?tab=sessions abre Sesiones y MFA; sin parámetro o desconocido, Actividad', () => {
     expect(auditTabFromParam('sessions')).toBe('sessions')
+    expect(auditTabFromParam('legal')).toBe('legal')
     expect(auditTabFromParam(null)).toBe('activity')
     expect(auditTabFromParam('otra')).toBe('activity')
   })

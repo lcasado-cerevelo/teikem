@@ -201,3 +201,17 @@ public sealed class ClientNotificationDeliveryConfiguration : IEntityTypeConfigu
         b.HasIndex(d => d.ClientNotificationId).HasDatabaseName("IX_ClientNotificationDelivery_Notification");
     }
 }
+
+public sealed class LegalAcceptanceConfiguration : IEntityTypeConfiguration<Teikem.Domain.Security.LegalAcceptance>
+{
+    public void Configure(EntityTypeBuilder<Teikem.Domain.Security.LegalAcceptance> b)
+    {
+        b.ToTable("LegalAcceptance");
+        b.HasKey(a => a.LegalAcceptanceId);
+        b.Property(a => a.Version).HasMaxLength(20);
+        b.Property(a => a.Lang).HasMaxLength(5);
+        b.Property(a => a.IpAddress).HasMaxLength(64);
+        b.Property(a => a.UserAgent).HasMaxLength(400);
+        b.HasIndex(a => new { a.UserId, a.Version }).HasDatabaseName("IX_LegalAcceptance_User");
+    }
+}

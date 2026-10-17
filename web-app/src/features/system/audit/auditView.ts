@@ -11,12 +11,12 @@ export type CompanySessionDto = components['schemas']['CompanySessionDto']
 
 // ------------------------------------------------------------------------------------------------ pestañas
 
-export const AUDIT_TABS = ['activity', 'sessions'] as const
+export const AUDIT_TABS = ['activity', 'sessions', 'legal'] as const
 export type AuditTab = (typeof AUDIT_TABS)[number]
 
 /** `?tab=` → pestaña (desconocida o sin parámetro = Actividad). `?tab=sessions` lo usa Ajustes → General. */
 export function auditTabFromParam(v: string | null): AuditTab {
-  return v === 'sessions' ? 'sessions' : 'activity'
+  return v === 'sessions' ? 'sessions' : v === 'legal' ? 'legal' : 'activity'
 }
 
 // ------------------------------------------------------------------------------------------------ actividad

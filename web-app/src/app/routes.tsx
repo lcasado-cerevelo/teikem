@@ -124,6 +124,7 @@ export const publicRoutes: readonly AppRoute[] = [
   { path: '/reset-password', element: lazy(() => import('../features/auth/ResetPasswordPage')) },
   { path: '/mfa', element: lazy(() => import('../features/auth/MfaPage')) },
   { path: '/onboarding', element: lazy(() => import('../features/auth/OnboardingPage')) },
+  { path: '/legal', element: lazy(() => import('../features/legal/LegalPage')) },   // Lote 99: el documento legal vigente, sin sesión
 ]
 
 /** Pantallas internas (dentro del shell, con sesión). */
