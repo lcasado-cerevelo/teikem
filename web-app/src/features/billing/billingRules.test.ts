@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   adjustError, invoiceCanPay, invoiceCanVoid, monthStartIso, parseAmount, paymentCanVoid, paymentFormError, runFormError, runIsOpen, statementFrom, todayIso, toPaymentRequest, toRunRequest, voidPaymentError,
+  availableFields, moveColumn, runCanExport, templateFormError, toTemplateRequest,
   type RunForm,
 } from './billingRules'
 
@@ -90,5 +91,40 @@ describe('pagos (Lote 76)', () => {
   it('el estado de cuenta empieza 90 días antes', () => {
     expect(statementFrom('2026-10-16')).toBe('2026-07-18')
     expect(statementFrom('2026-03-01')).toBe('2025-12-01')
+  })
+})
+
+describe('plantillas de exportación (Lote 78)', () => {
+  const cols = [{ field: 'A', header: '' }, { field: 'B', header: ' Total ' }, { field: 'C', header: '' }]
+  const base = { name: 'Contable', format: 'CSV', delimiter: ',', dateFormat: 'YYYY-MM-DD', includeHeader: true, columns: cols }
+
+  it('valida lo mismo que el servidor antes de enviar', () => {
+    expect(templateFormError(base)).toBeNull()
+    expect(templateFormError({ ...base, name: '  ' })).toBe('name')
+    expect(templateFormError({ ...base, name: 'x'.repeat(81) })).toBe('nameLong')
+    expect(templateFormError({ ...base, columns: [] })).toBe('columns')
+    expect(templateFormError({ ...base, columns: [{ field: 'A', header: 'h'.repeat(61) }] })).toBe('header')
+  })
+
+  it('el cuerpo recorta el nombre y los encabezados y omite los vacíos', () => {
+    expect(toTemplateRequest({ ...base, name: ' Contable ' }).columns).toEqual([{ field: 'A', header: undefined }, { field: 'B', header: 'Total' }, { field: 'C', header: undefined }])
+    expect(toTemplateRequest(base)).toMatchObject({ name: 'Contable', format: 'CSV', delimiter: ',', dateFormat: 'YYYY-MM-DD', includeHeader: true })
+  })
+
+  it('mueve una columna y en los extremos no hace nada', () => {
+    expect(moveColumn(['a', 'b', 'c'], 1, -1)).toEqual(['b', 'a', 'c'])
+    expect(moveColumn(['a', 'b', 'c'], 1, 1)).toEqual(['a', 'c', 'b'])
+    expect(moveColumn(['a', 'b', 'c'], 0, -1)).toEqual(['a', 'b', 'c'])
+    expect(moveColumn(['a', 'b', 'c'], 2, 1)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('ofrece los campos del catálogo que todavía no están en la plantilla', () => {
+    const catalog = [{ code: 'A' }, { code: 'B' }, { code: 'D' }]
+    expect(availableFields(catalog, cols).map((f) => f.code)).toEqual(['D'])
+    expect(availableFields(catalog, []).map((f) => f.code)).toEqual(['A', 'B', 'D'])
+  })
+
+  it('solo una corrida aprobada o exportada se exporta', () => {
+    expect(['GENERATED', 'REVIEWED', 'APPROVED', 'EXPORTED', 'CANCELLED'].map(runCanExport)).toEqual([false, false, true, true, false])
   })
 })

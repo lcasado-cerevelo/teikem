@@ -2,3 +2,15 @@
 .pay-section{margin-top:16px}
 .pay-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
 .pay-head h3{margin:0;font-size:14px}
+/* Exportar a contabilidad (Lote 78) */
+.exp-section{margin-top:16px}
+.exp-section h3,.exp-grid + label + h3{margin:0 0 8px;font-size:14px}
+.exp-row{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.exp-row .f{flex:1 1 200px;margin:0}
+.exp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px}
+.exp-pre{max-height:320px;overflow:auto;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:12px;line-height:1.45;white-space:pre;tab-size:8}
+.exp-cols{list-style:none;margin:0 0 8px;padding:0;display:flex;flex-direction:column;gap:6px}
+.exp-cols li{display:grid;grid-template-columns:minmax(120px,1fr) minmax(120px,1.2fr) auto auto auto;gap:6px;align-items:center}
+.exp-col-name{font-weight:600;overflow-wrap:anywhere}
+@media (max-width:600px){.exp-cols li{grid-template-columns:1fr auto auto auto}.exp-cols li input{grid-column:1 / -1;order:2}}
+.exp-h{margin:14px 0 6px;font-size:14px}

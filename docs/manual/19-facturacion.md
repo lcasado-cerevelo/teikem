@@ -80,6 +80,8 @@ La pantalla de todo esto está descrita en [L76 — Cobros](frontend/l76-cobros.
 
 ## 4c. Exportar a contabilidad con plantillas (Lote 77)
 
+La pantalla está descrita en [L78 — Exportar a contabilidad](frontend/l78-exportacion.md).
+
 Una corrida **aprobada** (o ya exportada) se exporta a un archivo **CSV o TXT** con una **plantilla** configurable: el motor no depende de un formato fijo (QuickBooks u otro se ajusta con una muestra real, solo cambiando la plantilla).
 
 **Plantillas** (`/api/v1/export-templates`; ver con `billing.view`, crear, cambiar y desactivar con `billing.export`): cada una lleva un **nombre**, el **formato** (CSV o TXT), el **delimitador** (coma, punto y coma, tabulador o barra vertical), el **formato de fecha** (`YYYY-MM-DD`, `MM/DD/YYYY` o `DD/MM/YYYY`), si lleva **encabezado** y las **columnas en el orden que se elija**, cada una con un encabezado propio opcional (si no, el del catálogo, en inglés, como lo piden los programas de contabilidad). La primera vez que se consulta, la compañía recibe **«Formato estándar»** (CSV con coma, fecha ISO, encabezado y las 23 columnas). El nombre no se repite entre las activas (sin distinguir mayúsculas ni acentos). Una plantilla **no se borra: se desactiva**, y no se puede desactivar la última. El catálogo de campos (`GET /export-templates/fields`) trae el código, el tipo, el encabezado por omisión y la etiqueta en el idioma de la compañía.

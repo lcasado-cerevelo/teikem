@@ -20,6 +20,10 @@ export type ReceivableRowDto = Schemas['ReceivableRowDto']
 export type ReceivablesDto = Schemas['ReceivablesDto']
 export type StatementDto = Schemas['StatementDto']
 export type StatementLineDto = Schemas['StatementLineDto']
+export type ExportTemplateDto = Schemas['ExportTemplateDto']
+export type ExportTemplateRequest = Schemas['ExportTemplateRequest']
+export type ExportFieldDto = Schemas['ExportFieldDto']
+export type ExportFileDto = Schemas['ExportFileDto']
 
 export const billingKeys = {
   all: ['billing'] as const,
@@ -29,6 +33,9 @@ export const billingKeys = {
   invoices: (status: string, q: string, skip: number, take: number) => ['billing', 'invoices', status, q, skip, take] as const,
   invoice: (id: string | null) => ['billing', 'invoice', id] as const,
   receivables: ['billing', 'receivables'] as const,
+  templates: ['billing', 'export-templates'] as const,
+  fields: ['billing', 'export-fields'] as const,
+  preview: (runId: number, templateId: string | null) => ['billing', 'export-preview', runId, templateId] as const,
   statement: (clientId: string | null, from: string, to: string) => ['billing', 'statement', clientId, from, to] as const,
 }
 
@@ -134,5 +141,48 @@ export function useStatement(clientId: string | null, from: string, to: string) 
     queryKey: billingKeys.statement(clientId, from, to),
     queryFn: () => unwrap(api.GET('/api/v1/billing/clients/{publicId}/statement', { params: { path: { publicId: clientId! }, query: { from, to } } })),
     enabled: clientId !== null && from !== '' && to !== '' && from <= to,
+  })
+}
+
+// ---------------------------------------------------------------- plantillas de exportación y archivo de una corrida (Lote 78)
+
+export function useExportTemplates() {
+  return useQuery({ queryKey: billingKeys.templates, queryFn: () => unwrap(api.GET('/api/v1/export-templates', { params: { query: { scope: 'BILLING' } } })) })
+}
+
+export function useExportFields() {
+  return useQuery({ queryKey: billingKeys.fields, queryFn: () => unwrap(api.GET('/api/v1/export-templates/fields', { params: { query: { scope: 'BILLING' } } })) })
+}
+
+export function useTemplateMutations() {
+  const qc = useQueryClient()
+  const refresh = () => qc.invalidateQueries({ queryKey: billingKeys.templates })
+  return {
+    create: useMutation({ mutationFn: (body: ExportTemplateRequest) => unwrap(api.POST('/api/v1/export-templates', { body: { ...body, scope: 'BILLING' } })), onSettled: refresh }),
+    update: useMutation({
+      mutationFn: (v: { id: string; body: ExportTemplateRequest }) => unwrap(api.PUT('/api/v1/export-templates/{publicId}', { params: { path: { publicId: v.id } }, body: v.body })),
+      onSettled: refresh,
+    }),
+    deactivate: useMutation({ mutationFn: (id: string) => unwrap(api.DELETE('/api/v1/export-templates/{publicId}', { params: { path: { publicId: id } } })), onSettled: refresh }),
+  }
+}
+
+/** La vista previa del archivo con una plantilla (no cambia nada en el servidor). */
+export function useExportPreview(runId: number, templateId: string | null) {
+  return useQuery({
+    queryKey: billingKeys.preview(runId, templateId),
+    queryFn: () => unwrap(api.GET('/api/v1/billing/runs/{id}/export-preview', { params: { path: { id: runId }, query: { templateId: templateId ?? undefined } } })),
+    enabled: templateId !== null,
+    gcTime: 0,
+  })
+}
+
+/** Arma el archivo y pasa la corrida de Aprobada a Exportada (la primera vez). */
+export function useExportRun() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { runId: number; templateId: string | null }) =>
+      unwrap(api.POST('/api/v1/billing/runs/{id}/export', { params: { path: { id: v.runId } }, body: { templatePublicId: v.templateId ?? undefined } })),
+    onSettled: () => qc.invalidateQueries({ queryKey: billingKeys.all }),
   })
 }

@@ -24,6 +24,7 @@ import {
 } from './billingApi'
 import { adjustError, INVOICE_STATUSES, invoiceCanVoid, monthStartIso, parseAmount, RUN_STATUSES, runFormError, runIsOpen, todayIso, toRunRequest, type RunForm } from './billingRules'
 import { PaymentsSection, ReceivablesTab, StatementModal } from './CollectionsParts'
+import { ExportSection } from './ExportParts'
 import './billing.css'
 import '../tax/tax.css'
 
@@ -231,6 +232,7 @@ function RunModal({ id, onClose, onOpenInvoice }: { id: number; onClose: () => v
             <DataTable label={t('billing.run.invoices')} columns={columns} rows={data.invoices ?? []} rowKey={(i) => i.publicId ?? ''} onRowClick={(i) => onOpenInvoice(i.publicId!)} empty={t('billing.run.noInvoices')} />
             <p className="sales-totals" role="status">{t('billing.run.total', { total: f.money(data.totalAmount ?? 0) })}</p>
             {error && <p className="ferr" role="alert">{error}</p>}
+            <ExportSection run={data} />
           </>
         )}
       </div>

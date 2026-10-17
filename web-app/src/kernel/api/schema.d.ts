@@ -23860,6 +23860,284 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/billing/runs/{id}/export-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    templateId?: string;
+                };
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExportFileDto"];
+                        "application/json": components["schemas"]["ExportFileDto"];
+                        "text/json": components["schemas"]["ExportFileDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/runs/{id}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["BillingExportRequest"];
+                    "text/json": components["schemas"]["BillingExportRequest"];
+                    "application/*+json": components["schemas"]["BillingExportRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExportFileDto"];
+                        "application/json": components["schemas"]["ExportFileDto"];
+                        "text/json": components["schemas"]["ExportFileDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/export-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    scope?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExportTemplateDto"][];
+                        "application/json": components["schemas"]["ExportTemplateDto"][];
+                        "text/json": components["schemas"]["ExportTemplateDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ExportTemplateRequest"];
+                    "text/json": components["schemas"]["ExportTemplateRequest"];
+                    "application/*+json": components["schemas"]["ExportTemplateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExportTemplateDto"];
+                        "application/json": components["schemas"]["ExportTemplateDto"];
+                        "text/json": components["schemas"]["ExportTemplateDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/export-templates/fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    scope?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExportFieldDto"][];
+                        "application/json": components["schemas"]["ExportFieldDto"][];
+                        "text/json": components["schemas"]["ExportFieldDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/export-templates/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExportTemplateDto"];
+                        "application/json": components["schemas"]["ExportTemplateDto"];
+                        "text/json": components["schemas"]["ExportTemplateDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ExportTemplateRequest"];
+                    "text/json": components["schemas"]["ExportTemplateRequest"];
+                    "application/*+json": components["schemas"]["ExportTemplateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExportTemplateDto"];
+                        "application/json": components["schemas"]["ExportTemplateDto"];
+                        "text/json": components["schemas"]["ExportTemplateDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -31946,6 +32224,48 @@ export interface components {
             asOf?: string;
             rows?: components["schemas"]["ReceivableRowDto"][] | null;
             total?: components["schemas"]["AgingDto"];
+        };
+        ExportColumnDto: {
+            field?: string | null;
+            header?: string | null;
+        };
+        ExportTemplateDto: {
+            /** Format: uuid */
+            publicId?: string;
+            scope?: string | null;
+            name?: string | null;
+            format?: string | null;
+            delimiter?: string | null;
+            dateFormat?: string | null;
+            includeHeader?: boolean;
+            columns?: components["schemas"]["ExportColumnDto"][] | null;
+        };
+        ExportTemplateRequest: {
+            scope?: string | null;
+            name?: string | null;
+            format?: string | null;
+            delimiter?: string | null;
+            dateFormat?: string | null;
+            includeHeader?: boolean | null;
+            columns?: components["schemas"]["ExportColumnDto"][] | null;
+        };
+        ExportFieldDto: {
+            code?: string | null;
+            kind?: string | null;
+            defaultHeader?: string | null;
+            label?: string | null;
+        };
+        ExportFileDto: {
+            fileName?: string | null;
+            contentType?: string | null;
+            text?: string | null;
+            /** Format: int32 */
+            rowCount?: number;
+            templateName?: string | null;
+        };
+        BillingExportRequest: {
+            /** Format: uuid */
+            templatePublicId?: string | null;
         };
     };
     responses: never;
