@@ -213,3 +213,32 @@
   .pulse-home .pulse-pin-head .act .btn{padding:5px 9px;font-size:12px}
 }
 @media(max-width:980px){.pulse-home .pulse-pin-wrap.pinned::before{height:14px}}
+
+/* Lote 89: Radar de órdenes abiertas */
+.pulse .radar{background:var(--panel);border:1px solid var(--line);border-radius:13px;margin-top:16px;overflow:hidden}
+.pulse .radar .rh{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line-2);font-weight:600;flex-wrap:wrap}
+.pulse .radar .rh h2{margin:0;font-size:inherit;font-weight:600}
+.pulse .radar .rh svg{color:var(--flow-2);width:15px;height:15px;flex:none}
+.pulse .radar .rh .r{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.pulse .radar .gtoggle{display:inline-flex;align-items:center;gap:4px;margin-left:6px}
+.pulse .radar .gt-label{color:var(--faint);font-size:11px;font-weight:500;padding:0 4px}
+.pulse .radar .gtoggle button{background:var(--bg-2);border:1px solid var(--line);border-radius:7px;padding:3px 9px;font-size:12px;color:var(--muted);cursor:pointer}
+.pulse .radar .gtoggle button.on{background:var(--flow-bg);border-color:var(--flow-line);color:var(--flow-2);font-weight:600}
+.pulse .radar .search{display:flex;align-items:center;gap:10px;margin:14px 16px;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:2px 4px 2px 13px}
+.pulse .radar .search svg{color:var(--faint);width:15px;height:15px;flex:none}
+.pulse .radar .search input{flex:1;min-width:0;background:transparent;border:none;outline:none;color:var(--text);font-size:14px;padding:10px 0}
+.pulse .radar .search:focus-within{border-color:var(--flow);box-shadow:0 0 0 3px var(--flow-bg)}
+.pulse .radar .gchips{display:flex;flex-wrap:wrap;gap:8px;padding:0 16px 12px}
+.pulse .radar .gchip{display:inline-flex;align-items:center;gap:6px;background:var(--bg-2);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px;color:var(--text);text-decoration:none;max-width:100%}
+.pulse .radar .gchip:hover{border-color:var(--flow-line)}
+.pulse .radar .gchip .cash{font-family:var(--mono);font-size:11px;color:var(--money-2)}
+.pulse .radar-hits{list-style:none;margin:0;padding:0}
+.pulse .radar .rrow{display:flex;align-items:center;gap:12px;padding:10px 16px;border-top:1px solid var(--line-2);color:inherit;text-decoration:none;flex-wrap:wrap}
+.pulse .radar .rrow:hover{background:var(--panel-2)}
+.pulse .radar .rrow .ref{font-family:var(--mono);font-weight:600}
+.pulse .radar .rrow .rcons{min-width:0;overflow-wrap:anywhere}
+.pulse .radar .rrow .meta{color:var(--muted);font-size:12.5px}
+.pulse .radar .rrow .cash{margin-left:auto;font-family:var(--mono);color:var(--money-2)}
+.pulse .radar .radar-empty{padding:6px 16px 12px;margin:0}
+.pulse .radar .rfoot{padding:4px 16px 8px}
+.pulse .radar .radar-hint{padding:0 16px 12px;margin:0;font-size:11.5px}

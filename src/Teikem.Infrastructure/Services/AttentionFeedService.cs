@@ -43,8 +43,8 @@ public sealed class AttentionFeedService(
         return new AttentionDto(total, Oldest(items, MaxItems), groups);
     }
 
-    /// <summary>Las filas más antiguas primero (SinceUtc ascendente; sin fecha al final; desempate por código), hasta max.</summary>
+    /// <summary>Primero las filas resumen (Lote 89: «83 órdenes sin chofer», «$2,230 sin cuadrar»), luego las más antiguas (SinceUtc ascendente; sin fecha al final; desempate por código), hasta max.</summary>
     public static IReadOnlyList<AttentionItemDto> Oldest(IEnumerable<AttentionItemDto> items, int max)
-        => items.OrderBy(i => i.SinceUtc is null ? 1 : 0).ThenBy(i => i.SinceUtc).ThenBy(i => i.Code, StringComparer.Ordinal)
+        => items.OrderBy(i => i.Summary ? 0 : 1).ThenBy(i => i.SinceUtc is null ? 1 : 0).ThenBy(i => i.SinceUtc).ThenBy(i => i.Code, StringComparer.Ordinal)
             .Take(Math.Max(0, max)).ToList();
 }

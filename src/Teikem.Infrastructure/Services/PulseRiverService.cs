@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Teikem.Domain.Cod;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Entities;
+using Teikem.Domain.Orders;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Persistence;
@@ -38,6 +39,18 @@ public sealed class PulseRiverService(TeikemDbContext db, ITenantClock clock, IL
         return counts;
     }
 
+    /// <summary>Órdenes en almacén o planificadas SIN una ruta con chofer (la ruta no está cancelada ni completada). Las usan el río, el aviso «sin chofer» y el Radar.</summary>
+    public async Task<IQueryable<TransportOrder>> UnassignedQueryAsync(CancellationToken ct)
+    {
+        var st = await StatusIdsAsync(StatusDomains.OrderStatus, ct);
+        int inboundId = st.GetValueOrDefault(OrderStatuses.Inbound, -1), plannedId = st.GetValueOrDefault(OrderStatuses.Planned, -1);
+        var tripOk = new[] { TripStatuses.Draft, TripStatuses.Planned, TripStatuses.Dispatched, TripStatuses.InProgress };
+        var tripIds = (await StatusIdsAsync(StatusDomains.TripStatus, ct)).Where(kv => tripOk.Contains(kv.Key)).Select(kv => kv.Value).ToList();
+        var withDriver = db.Set<Teikem.Domain.Trips.TripOrder>().AsNoTracking().Where(to => to.IsCurrent && db.Set<Teikem.Domain.Trips.Trip>().Any(t => t.TripId == to.TripId && t.IsActive && t.DriverId != null && tripIds.Contains(t.StatusCodeId)))
+            .Select(to => to.TransportOrderId);
+        return db.TransportOrders.AsNoTracking().Where(o => o.IsActive && (o.StatusCodeId == inboundId || o.StatusCodeId == plannedId) && !withDriver.Contains(o.TransportOrderId));
+    }
+
     // ================================================================ órdenes
 
     public async Task<PulseRiverDto> OrdersAsync(CancellationToken ct)
@@ -60,11 +73,7 @@ public sealed class PulseRiverService(TeikemDbContext db, ITenantClock clock, IL
         var inWarehouse = await orders.CountAsync(o => o.StatusCodeId == inboundId, ct);
 
         // Por despachar: en almacén o planificadas sin una ruta con chofer
-        var tripOk = new[] { TripStatuses.Draft, TripStatuses.Planned, TripStatuses.Dispatched, TripStatuses.InProgress };
-        var tripIds = (await StatusIdsAsync(StatusDomains.TripStatus, ct)).Where(kv => tripOk.Contains(kv.Key)).Select(kv => kv.Value).ToList();
-        var withDriver = db.Set<Teikem.Domain.Trips.TripOrder>().AsNoTracking().Where(to => to.IsCurrent && db.Set<Teikem.Domain.Trips.Trip>().Any(t => t.TripId == to.TripId && t.IsActive && t.DriverId != null && tripIds.Contains(t.StatusCodeId)))
-            .Select(to => to.TransportOrderId);
-        var toDispatch = await orders.CountAsync(o => (o.StatusCodeId == inboundId || o.StatusCodeId == plannedId) && !withDriver.Contains(o.TransportOrderId), ct);
+        var toDispatch = await (await UnassignedQueryAsync(ct)).CountAsync(ct);
 
         // En ruta: en tránsito o en destino, y los choferes de las rutas en curso
         var onRoute = await orders.CountAsync(o => o.StatusCodeId == inTransitId || o.StatusCodeId == arrivedId, ct);

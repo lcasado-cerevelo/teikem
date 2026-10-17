@@ -8,6 +8,7 @@ import { ActivityPanel } from './ActivityPanel'
 import { AttentionPanel } from './AttentionPanel'
 import { ChartsGrid, IndicatorsRiver } from './PulseSections'
 import type { ChartDatum, Indicator, PulseDto, PulsePanelKey } from './pulseLayout'
+import { RadarPanel } from './RadarPanel'
 import { CodRiver, OrdersRiver } from './RiversPanel'
 import { WarehouseDayBand } from './WarehouseDayBand'
 import { WarehousePulsePanel } from './WarehousePulsePanel'
@@ -88,6 +89,13 @@ export const PULSE_PANELS: Record<PulsePanelKey, PulsePanelEntry> = {
     titleKey: 'analytics.pulse.panels.COD_RIVER',
     hasContent: always,
     render: () => <CodRiver />,
+  },
+  // Lote 89 (P12): Radar de órdenes abiertas (orden 60).
+  RADAR: {
+    key: 'RADAR',
+    titleKey: 'analytics.pulse.panels.RADAR',
+    hasContent: always,
+    render: () => <RadarPanel />,
   },
 }
 

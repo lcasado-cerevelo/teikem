@@ -405,6 +405,9 @@ public static class DependencyInjection
         services.AddScoped<CodService>();   // Lote 84 (P8)
         services.AddScoped<CodRemittanceService>();   // Lote 86 (P8)
         services.AddScoped<PulseRiverService>();   // Lote 88 (P12)
+        services.AddScoped<PulseRadarService>();   // Lote 89 (P12)
+        services.AddScoped<IAttentionItemProvider, OrdersNoDriverAttentionProvider>();   // Lote 89
+        services.AddScoped<IAttentionItemProvider, CodUnreconciledAttentionProvider>();   // Lote 89
         services.AddScoped<BillingExportService>();
         services.AddScoped<IDataSource, SalesOrderDataSource>();        // Lote 67: órdenes de venta
         services.AddScoped<IDataSource, SalesOrderLineDataSource>();

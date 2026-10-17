@@ -2788,6 +2788,19 @@
       "chartEmpty": "Este gráfico no tiene datos en el rango configurado.",
       "showInPulseMine": "Mostrar en Pulso del día",
       "showInPulseCompany": "…en el de la compañía",
+        "radar": {
+          "title": "Radar de órdenes abiertas",
+          "by": "Agrupar por",
+          "town": "Pueblo",
+          "client": "Cliente",
+          "open": "{n} abiertas",
+          "placeholder": "Busca por factura, orden o consignatario…",
+          "results": "Órdenes encontradas",
+          "noResults": "Sin resultados en abiertas",
+          "none": "No hay órdenes abiertas.",
+          "all": "Ver todas en Órdenes",
+          "hint": "Solo lo abierto — lo entregado no estorba aquí"
+        },
         "rivers": {
           "orders": {
             "title": "Paquetes en la calle",
@@ -2826,7 +2839,8 @@
         "ATTENTION": "Necesita tu atención",
         "WAREHOUSE_DAY": "Almacén hoy",
         "ORDERS_RIVER": "Paquetes en la calle",
-        "COD_RIVER": "Dinero COD"
+        "COD_RIVER": "Dinero COD",
+        "RADAR": "Radar de órdenes abiertas"
       },
       "day": {
         "received": "Unidades recibidas",
@@ -2955,6 +2969,25 @@
           "lines": "Líneas",
           "days": "Días esperando",
           "reviewLabel": "Revisar la orden {number} ({client})"
+        },
+        "ORDERS_NO_DRIVER": {
+          "titleOne": "1 orden sin chofer",
+          "title": "{count} órdenes sin chofer",
+          "detail": "Listas en el almacén o planificadas, esperando una ruta con chofer",
+          "oldest": "La más antigua",
+          "days": "{n} días",
+          "group": "Órdenes sin chofer",
+          "reviewLabel": "Asignar chofer a {count} órdenes"
+        },
+        "COD_UNRECONCILED": {
+          "title": "{amount} de COD sin cuadrar",
+          "detail": "Cobrado en la calle, pendiente de cuadrar con las hojas",
+          "collections": "Cobros",
+          "orders": "Órdenes",
+          "oldest": "El más antiguo",
+          "days": "{n} días",
+          "group": "COD sin cuadrar",
+          "reviewLabel": "Cuadrar {amount} de COD"
         },
         "RENTAL_DUE": {
           "titleOverdue": "Renta {number} vencida",

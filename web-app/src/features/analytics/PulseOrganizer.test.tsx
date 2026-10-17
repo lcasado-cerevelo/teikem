@@ -40,7 +40,7 @@ const PULSE: PulseDto = {
   panels: [
     { key: 'WAREHOUSE', sortOrder: 40, isVisible: true, source: 'default' },
     { key: 'INDICATORS', sortOrder: 20, isVisible: true, source: 'default' },
-    { key: 'RADAR', sortOrder: 25, isVisible: true, source: 'default' },
+    { key: 'FUTURE_PANEL', sortOrder: 25, isVisible: true, source: 'default' },
     { key: 'ACTIVITY', sortOrder: 50, isVisible: false, source: 'user' },
     { key: 'CHARTS', sortOrder: 30, isVisible: true, source: 'company' },
   ],
@@ -82,7 +82,7 @@ beforeEach(() => {
 describe('pulseLayout (lógica pura)', () => {
   it('shownPanels: orden por sortOrder, sin ocultos ni claves desconocidas; shownItems: orden y sin ocultos', () => {
     expect(shownPanels(PULSE.panels).map((p) => p.key)).toEqual(['INDICATORS', 'CHARTS', 'WAREHOUSE'])
-    expect(sortPanels(PULSE.panels).map((p) => p.key)).toEqual(['INDICATORS', 'RADAR', 'CHARTS', 'WAREHOUSE', 'ACTIVITY'])
+    expect(sortPanels(PULSE.panels).map((p) => p.key)).toEqual(['INDICATORS', 'FUTURE_PANEL', 'CHARTS', 'WAREHOUSE', 'ACTIVITY'])
     expect(shownItems(PULSE.indicators).map((i) => i.name)).toEqual(['Ventas'])
     // empate de sortOrder: por nombre sin distinguir mayúsculas ni acentos
     expect(shownItems([{ name: 'beta', sortOrder: 0 }, { name: 'Álamo', sortOrder: 0 }]).map((i) => i.name)).toEqual(['Álamo', 'beta'])

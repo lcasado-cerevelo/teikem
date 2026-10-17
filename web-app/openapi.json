@@ -34719,6 +34719,52 @@
           }
         }
       }
+    },
+    "/api/v1/pulse/radar": {
+      "get": {
+        "tags": [
+          "PulseRivers"
+        ],
+        "parameters": [
+          {
+            "name": "groupBy",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PulseRadarDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PulseRadarDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PulseRadarDto"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -35325,6 +35371,9 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "summary": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -61229,6 +61278,60 @@
           "kind": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PulseRadarDto": {
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "type": "string",
+            "nullable": true
+          },
+          "openCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "codAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "openStatuses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PulseRadarGroupDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PulseRadarGroupDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "codAmount": {
+            "type": "number",
+            "format": "double"
           }
         },
         "additionalProperties": false

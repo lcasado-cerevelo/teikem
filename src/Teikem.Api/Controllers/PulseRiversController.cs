@@ -14,7 +14,7 @@ namespace Teikem.Api.Controllers;
 [ApiController]
 [Route("api/v1/pulse/rivers")]
 [Authorize]
-public sealed class PulseRiversController(PulseRiverService rivers) : ControllerBase
+public sealed class PulseRiversController(PulseRiverService rivers, PulseRadarService radar) : ControllerBase
 {
     /// <summary>«Paquetes en la calle»: Entrada, En almacén, Por despachar (sin chofer), En ruta y Entregado hoy.</summary>
     [HttpGet("orders"), RequireModule(ModuleKeys.LtlGround), RequirePermission(PermissionCatalog.OrdersView)]
@@ -23,4 +23,8 @@ public sealed class PulseRiversController(PulseRiverService rivers) : Controller
     /// <summary>«Dinero COD»: Por cobrar, Cobrado, Cuadrado y Remesa lista.</summary>
     [HttpGet("cod"), RequireModule(ModuleKeys.Cod), RequirePermission(PermissionCatalog.CodView)]
     public Task<PulseRiverDto> Cod(CancellationToken ct) => rivers.CodAsync(ct);
+
+    /// <summary>Lote 89: Radar de órdenes abiertas — cuántas hay y los grupos con más órdenes, por pueblo (TOWN) o por cliente (CLIENT). Se busca una orden con el listado de Órdenes.</summary>
+    [HttpGet("/api/v1/pulse/radar"), RequireModule(ModuleKeys.LtlGround), RequirePermission(PermissionCatalog.OrdersView)]
+    public Task<PulseRadarDto> Radar([FromQuery] string? groupBy, [FromQuery] int take, CancellationToken ct) => radar.RadarAsync(groupBy, take, ct);
 }

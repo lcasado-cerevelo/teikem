@@ -11,7 +11,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useContext, useMemo, useState } from 'react'
 import { SessionContext } from '../../app/session'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Can, useCan } from '../../kernel/access'
 import { StatusChip, useLookups, useStatuses } from '../../kernel/catalogs'
 import { useFormat } from '../../kernel/format'
@@ -49,7 +49,7 @@ import { OrderEntryForm } from './OrderEntryForm'
 import { OrderImportModal } from './OrderImportModal'
 import { OrderQuickEntry } from './OrderQuickEntry'
 import { readEntryMode, saveEntryMode, type EntryMode } from './orderQuickRules'
-import { buildOrderQuery, canDeleteOrder, EMPTY_ORDER_FILTERS, packageGroups, packageSummaryText, type OrderFilters } from './orderRules'
+import { buildOrderQuery, canDeleteOrder, EMPTY_ORDER_FILTERS, filtersFromParams, packageGroups, packageSummaryText, type OrderFilters } from './orderRules'
 import './orders.css'
 
 const PAGE_SIZE = 25
@@ -68,7 +68,8 @@ export default function OrderListScreen() {
   const navigate = useNavigate()
   const canViewPrice = useCan('orders.view_price')
   const cards = useMediaQuery(CARDS_QUERY)
-  const [filters, setFilters] = useState<OrderFilters>(EMPTY_ORDER_FILTERS)
+  const [params] = useSearchParams()
+  const [filters, setFilters] = useState<OrderFilters>(() => filtersFromParams(params))
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [formOpen, setFormOpen] = useState(false)

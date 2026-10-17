@@ -27,6 +27,16 @@ export interface OrderFilters {
   search: string
 }
 
+/**
+ * Lote 89 (P12): los filtros que trae el enlace del Radar del Pulso — `?city=` (pueblo), `?client=` (publicId del cliente) y `?statuses=` (códigos separados por coma). Sin parámetros, sin filtros.
+ */
+export function filtersFromParams(params: URLSearchParams): OrderFilters {
+  const city = params.get('city')?.trim()
+  const client = params.get('client')?.trim()
+  const statuses = (params.get('statuses') ?? '').split(',').map((x) => x.trim()).filter(Boolean)
+  return { ...EMPTY_ORDER_FILTERS, cities: city ? [city] : [], clientIds: client ? [client] : [], statuses }
+}
+
 export const EMPTY_ORDER_FILTERS: OrderFilters = {
   from: '',
   to: '',

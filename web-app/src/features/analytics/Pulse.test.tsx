@@ -207,7 +207,7 @@ describe('Pulse — paneles del API', () => {
   it('pinta los paneles en su sortOrder, ignora claves desconocidas y no pinta los ocultos (ni consulta sus datos)', async () => {
     mock.handler = () =>
       pulse({
-        panels: [panel('INDICATORS', 30), panel('RADAR', 5), panel('CHARTS', 10), panel('WAREHOUSE', 20, false), panel('ACTIVITY', 40, false)],
+        panels: [panel('INDICATORS', 30), panel('FUTURE_PANEL', 5), panel('CHARTS', 10), panel('WAREHOUSE', 20, false), panel('ACTIVITY', 40, false)],
         indicators: [{ id: 1, name: 'Ventas', value: 10, isVisible: true }],
         charts: [{ id: 3, name: 'Órdenes por día', chartType: 'BAR', isVisible: true, points: [{ label: 'Lun', value: 3 }] }],
       })
@@ -410,7 +410,7 @@ describe('Pulse — estados vacíos', () => {
   })
 
   it('solo un panel desconocido: también es la bienvenida', async () => {
-    mock.handler = () => pulse({ panels: [panel('RADAR', 60)] })
+    mock.handler = () => pulse({ panels: [panel('FUTURE_PANEL', 60)] })
     renderPulse()
     expect(await screen.findByText('Bienvenido, Ana Admin')).toBeInTheDocument()
   })

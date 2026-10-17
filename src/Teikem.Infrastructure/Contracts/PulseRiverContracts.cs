@@ -10,3 +10,11 @@ public sealed record PulseRiverNodeDto(string Key, decimal Value, string Kind, I
 
 /// <summary>River = "ORDERS" o "COD"; Day = el día de la compañía al que se refiere «hoy».</summary>
 public sealed record PulseRiverDto(string River, DateOnly Day, IReadOnlyList<PulseRiverNodeDto> Nodes);
+
+// Lote 89 (P12) — Radar de órdenes abiertas: cuántas hay y los grupos con más (por pueblo del consignatario o por cliente).
+
+/// <summary>Un grupo del Radar: Key = el pueblo (GroupBy = TOWN) o el publicId del cliente (GroupBy = CLIENT); Label = lo que se lee; Count = órdenes abiertas; CodAmount = el COD de esas órdenes.</summary>
+public sealed record PulseRadarGroupDto(string Key, string Label, int Count, decimal CodAmount);
+
+/// <summary>OpenStatuses = los estatus que cuentan como abierta (para abrir Órdenes ya filtrada); OpenCount y CodAmount = lo abierto en total.</summary>
+public sealed record PulseRadarDto(string GroupBy, int OpenCount, decimal CodAmount, IReadOnlyList<string> OpenStatuses, IReadOnlyList<PulseRadarGroupDto> Groups);

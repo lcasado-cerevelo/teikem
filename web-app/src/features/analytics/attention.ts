@@ -5,7 +5,7 @@
 import type { components } from '../../kernel/api/schema'
 import type { TParams } from '../../kernel/i18n/i18n'
 import { formatEventTime } from './activity'
-import { formatDate, formatNumber } from '../../kernel/format'
+import { formatDate, formatMoney, formatNumber } from '../../kernel/format'
 
 export type AttentionDto = components['schemas']['AttentionDto']
 export type AttentionItemDto = components['schemas']['AttentionItemDto']
@@ -14,7 +14,7 @@ export type AttentionGroupDto = components['schemas']['AttentionGroupDto']
 type Translate = (key: string, params?: TParams) => string
 
 /** Tipos de aviso que esta web sabe describir (el resto se pinta con su código y su "Revisar"). */
-export const ATTENTION_CODES = ['INVENTORY_DISCREPANCY', 'RENTAL_DUE', 'SALES_BACKORDER_READY'] as const
+export const ATTENTION_CODES = ['INVENTORY_DISCREPANCY', 'RENTAL_DUE', 'SALES_BACKORDER_READY', 'ORDERS_NO_DRIVER', 'COD_UNRECONCILED'] as const
 export type AttentionCode = (typeof ATTENTION_CODES)[number]
 
 export function isKnownAttention(code: string | null | undefined): code is AttentionCode {
@@ -107,6 +107,8 @@ export function attentionRowText(item: AttentionItemDto, t: Translate, lang: str
 
   if (item.code === 'RENTAL_DUE') return rentalDueText(p, t, lang, since)
   if (item.code === 'SALES_BACKORDER_READY') return salesBackorderText(p, t, lang, since)
+  if (item.code === 'ORDERS_NO_DRIVER') return noDriverText(p, t, since)
+  if (item.code === 'COD_UNRECONCILED') return codUnreconciledText(p, t, since)
 
   const title = item.code ?? ''
   return { title, detail: '', figures: [], since, reviewLabel: title ? `${review} ${title}` : review }
@@ -162,6 +164,48 @@ function salesBackorderText(p: Record<string, string>, t: Translate, lang: strin
     figures: figures.filter((f) => f.value !== ''),
     since,
     reviewLabel: t(`${base}.reviewLabel`, { number, client: p.client ?? '' }),
+  }
+}
+
+/**
+ * Lote 89 (P12) — órdenes en almacén o planificadas SIN una ruta con chofer (ORDERS_NO_DRIVER): una fila agregada. Params del servidor: count (órdenes) y oldestDays (días de la más antigua).
+ * «Revisar» abre la Sala de despacho.
+ */
+function noDriverText(p: Record<string, string>, t: Translate, since: string): AttentionRowText {
+  const base = 'analytics.attention.items.ORDERS_NO_DRIVER'
+  const count = Number(p.count ?? '0')
+  const days = Number(p.oldestDays ?? '0')
+  const figures: AttentionFigure[] = []
+  if (Number.isFinite(days) && days > 0) figures.push({ label: t(`${base}.oldest`), value: t(`${base}.days`, { n: formatNumber(days) }), emphasis: days >= 2 })
+  return {
+    title: t(count === 1 ? `${base}.titleOne` : `${base}.title`, { count: formatNumber(count) }),
+    detail: t(`${base}.detail`),
+    figures,
+    since,
+    reviewLabel: t(`${base}.reviewLabel`, { count: formatNumber(count) }),
+  }
+}
+
+/**
+ * Lote 89 (P12) — dinero COD cobrado en la calle que todavía no se cuadra (COD_UNRECONCILED): una fila agregada. Params del servidor: amount (con punto decimal), collections, orders y oldestDays.
+ * «Revisar» abre COD en la pestaña Reconciliar.
+ */
+function codUnreconciledText(p: Record<string, string>, t: Translate, since: string): AttentionRowText {
+  const base = 'analytics.attention.items.COD_UNRECONCILED'
+  const amount = Number(p.amount ?? '0')
+  const days = Number(p.oldestDays ?? '0')
+  const money = Number.isFinite(amount) ? formatMoney(amount) : (p.amount ?? '')
+  const figures: AttentionFigure[] = [
+    { label: t(`${base}.collections`), value: formatNumber(Number(p.collections ?? '0')) },
+    { label: t(`${base}.orders`), value: formatNumber(Number(p.orders ?? '0')) },
+  ]
+  if (Number.isFinite(days) && days > 0) figures.push({ label: t(`${base}.oldest`), value: t(`${base}.days`, { n: formatNumber(days) }), emphasis: days >= 3 })
+  return {
+    title: t(`${base}.title`, { amount: money }),
+    detail: t(`${base}.detail`),
+    figures,
+    since,
+    reviewLabel: t(`${base}.reviewLabel`, { amount: money }),
   }
 }
 

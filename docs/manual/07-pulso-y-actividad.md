@@ -565,6 +565,34 @@ Las sumas de dinero suponen **una sola moneda** (la de la compañía). Una orden
 - **«Por despachar» no baja aunque asigné chofer:** la orden deja de contarse cuando está en una ruta **con chofer** y la ruta no está cancelada ni completada.
 - **«Entregado» no coincide con Órdenes:** cuenta las entregas que ocurrieron **hoy** (hora de la compañía), no todas las entregadas.
 
+## 7. Radar de órdenes abiertas y avisos de operación (Lote 89, P12)
+
+### El Radar
+
+Panel `RADAR` del Pulso (orden 60) con los mismos permisos que el río de órdenes: `pulse.orders`, `orders.view` y el módulo `LTL_GROUND`. Cuenta las órdenes **abiertas** —confirmadas, por recoger, en almacén, planificadas, en tránsito, en destino, en espera o parciales— y **no** las entregadas, canceladas, fallidas, borradores ni dadas de baja («lo entregado no estorba aquí»).
+
+- **Cuántas hay abiertas** y, sin búsqueda, los **grupos con más órdenes** (hasta 6) con el COD que llevan: **por pueblo** del consignatario (la parada de entrega) o **por cliente** (el selector «Agrupar por»). Un grupo abre **Órdenes ya filtrado** (el pueblo o el cliente y solo los estatus abiertos); **Ver todas en Órdenes** abre la lista con solo lo abierto.
+- **Buscador:** desde 2 letras busca entre lo abierto por **factura, número de orden, empaque o consignatario** (el mismo buscador libre de Órdenes) y muestra hasta 6 con su estatus y COD; un clic abre la orden.
+- Endpoint: `GET /api/v1/pulse/radar?groupBy=TOWN|CLIENT&take=6` (`orders.view`, módulo `LTL_GROUND`; `groupBy` inválido → 400 «Agrupe por pueblo (TOWN) o por cliente (CLIENT).»; `take` de 1 a 20).
+- **Órdenes** acepta los filtros del enlace: `/orders?city=…`, `/orders?client=<publicId>` y `/orders?statuses=CONFIRMED,IN_TRANSIT…`.
+
+### Avisos nuevos de «Necesita tu atención»
+
+Son filas **agregadas** (una sola fila con la cuenta, como en la maqueta) y van **antes** que las filas por registro (rentas, descuadres…), para que no las tape una larga lista de rentas:
+
+| Aviso | Qué dice | Quién lo ve | «Revisar» |
+|---|---|---|---|
+| **Órdenes sin chofer** (`ORDERS_NO_DRIVER`) | «N órdenes sin chofer»: en almacén o planificadas **sin una ruta con chofer**; la cifra «La más antigua» (días); rojo desde 2 días | `trips.dispatch` y módulo `LTL_GROUND` | Sala de despacho |
+| **COD sin cuadrar** (`COD_UNRECONCILED`) | «$X de COD sin cuadrar»: lo cobrado en la calle que todavía no se cuadra, con los cobros, las órdenes y «El más antiguo»; rojo desde 3 días | `cod.reconcile` y módulo `COD` | COD → Reconciliar |
+
+El aviso de **SLA en riesgo** de la maqueta espera al POD (P7): sin la hora real de entrega no se puede medir.
+
+### Casos frecuentes
+
+- **El Radar no muestra mi orden:** solo cuenta lo abierto; un borrador (todavía no confirmada) o una entregada no sale. Búsquela en Órdenes.
+- **Un pueblo sale dos veces:** el pueblo es el que se guardó en la parada de entrega de cada orden; «Ponce» y «PONCE» se agrupan juntos en SQL Server, pero «Ponce Playa» es otro.
+- **No veo el aviso de órdenes sin chofer:** hace falta `trips.dispatch`; y se muestra solo si hay órdenes en almacén o planificadas sin ruta con chofer.
+
 ## Preguntas frecuentes de este capítulo
 
 Las del Lote 15 (franja "Almacén hoy", filas fijas, gráficos de la compañía, "Otras" y días de Puerto Rico) están en [faq.md](faq.md), sección "Lote 15".

@@ -8700,3 +8700,23 @@ Solo cuenta las órdenes con COD que ya están **en destino o entregadas** y no 
 **Los números cambian de un minuto a otro.**
 Son fotos de ahora y se vuelven a pedir cada minuto; no son acumulados del día (salvo Entrada y Entregado, que cuentan hoy).
 
+## Lote 89 — Radar y avisos de operación
+
+**El Radar no muestra una orden que sé que existe.**
+El Radar solo cuenta lo **abierto** (confirmada, por recoger, en almacén, planificada, en tránsito, en destino, en espera o parcial). Un borrador, una entregada, una cancelada o una dada de baja no sale: búsquela en Órdenes.
+
+**Al hacer clic en un pueblo, Órdenes abre con filtros que no puse.**
+Es lo esperado: el enlace trae el pueblo (o el cliente) y los estatus abiertos. «Limpiar filtros» de Órdenes los quita.
+
+**La búsqueda del Radar no responde con una letra.**
+Busca desde 2 letras (factura, número de orden, empaque o consignatario).
+
+**«Órdenes sin chofer» no coincide con «Por despachar» del río.**
+Es la misma cuenta (en almacén o planificadas sin una ruta con chofer); el aviso solo aparece si tiene `trips.dispatch`.
+
+**El aviso de COD sin cuadrar dice un monto pero Reconciliar no lo muestra por orden.**
+El aviso suma **todo lo cobrado sin cuadrar**; en COD → Órdenes con COD (filtro «Cobrado») se ven las órdenes y en Reconciliar se suben las hojas.
+
+**¿Por qué los avisos nuevos salen arriba y no por antigüedad?**
+Son resúmenes («83 órdenes…», «$2,230…»): van antes que las filas por registro para que no los tape una lista larga de rentas o descuadres.
+

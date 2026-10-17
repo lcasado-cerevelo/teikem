@@ -14,8 +14,8 @@ export type PulseScope = 'mine' | 'company'
 
 /** Paneles que este frontend sabe pintar (registro `PulsePanels` del dominio). Uno nuevo = una clave aquí y en `pulsePanels.tsx`.
  *  Lote 15: WAREHOUSE_DAY (franja "Almacén hoy", orden −10 del dominio: la fila siguiente a la fecha).
- *  Lote 88: ORDERS_RIVER (10) y COD_RIVER (11), los dos ríos. */
-export const PULSE_PANEL_KEYS = ['INDICATORS', 'CHARTS', 'WAREHOUSE', 'ACTIVITY', 'ATTENTION', 'WAREHOUSE_DAY', 'ORDERS_RIVER', 'COD_RIVER'] as const
+ *  Lote 88: ORDERS_RIVER (10) y COD_RIVER (11), los dos ríos. Lote 89: RADAR (60), el Radar de órdenes abiertas. */
+export const PULSE_PANEL_KEYS = ['INDICATORS', 'CHARTS', 'WAREHOUSE', 'ACTIVITY', 'ATTENTION', 'WAREHOUSE_DAY', 'ORDERS_RIVER', 'COD_RIVER', 'RADAR'] as const
 export type PulsePanelKey = (typeof PULSE_PANEL_KEYS)[number]
 
 export function isKnownPanel(key: string | null | undefined): key is PulsePanelKey {

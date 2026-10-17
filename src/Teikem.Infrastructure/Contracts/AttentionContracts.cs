@@ -9,7 +9,7 @@ namespace Teikem.Infrastructure.Contracts;
 /// ISO 8601 UTC), ruta y parámetros de "Revisar" y desde cuándo está pendiente (orden: más antiguo primero).
 /// </summary>
 public sealed record AttentionItemDto(string Code, string Module, string Tone, int Count, IReadOnlyDictionary<string, string> Params,
-    string? Route, IReadOnlyDictionary<string, string>? Query, DateTime? SinceUtc);
+    string? Route, IReadOnlyDictionary<string, string>? Query, DateTime? SinceUtc, bool Summary = false);
 
 /// <summary>Total por tipo de aviso con su ruta de "Ver todos (N)".</summary>
 public sealed record AttentionGroupDto(string Code, string Module, int Total, string? Route, IReadOnlyDictionary<string, string>? Query);

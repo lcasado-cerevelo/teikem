@@ -25620,6 +25620,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pulse/radar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    groupBy?: string;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PulseRadarDto"];
+                        "application/json": components["schemas"]["PulseRadarDto"];
+                        "text/json": components["schemas"]["PulseRadarDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -25821,6 +25861,7 @@ export interface components {
             } | null;
             /** Format: date-time */
             sinceUtc?: string | null;
+            summary?: boolean;
         };
         AuditLogDto: {
             /** Format: int64 */
@@ -34411,6 +34452,23 @@ export interface components {
             /** Format: double */
             value?: number;
             kind?: string | null;
+        };
+        PulseRadarDto: {
+            groupBy?: string | null;
+            /** Format: int32 */
+            openCount?: number;
+            /** Format: double */
+            codAmount?: number;
+            openStatuses?: string[] | null;
+            groups?: components["schemas"]["PulseRadarGroupDto"][] | null;
+        };
+        PulseRadarGroupDto: {
+            key?: string | null;
+            label?: string | null;
+            /** Format: int32 */
+            count?: number;
+            /** Format: double */
+            codAmount?: number;
         };
     };
     responses: never;

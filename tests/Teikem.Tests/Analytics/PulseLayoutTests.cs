@@ -171,7 +171,7 @@ public class PulseLayoutTests
         // Registro del plan §2.3.
         // Lote 14 (D6): + ATTENTION ("Necesita tu atención", orden 5: el primero, debajo de la franja del Lote 15), sin datos ni módulo.
         Assert.Equal(new[] { ("INDICATORS", "pulse.indicators", 20), ("CHARTS", "pulse.charts", 30), ("WAREHOUSE", "pulse.warehouse", 40), ("ACTIVITY", "pulse.activity", 50),
-                ("ATTENTION", "pulse.attention", 5), ("WAREHOUSE_DAY", "pulse.warehouse", -10), ("ORDERS_RIVER", "pulse.orders", 10), ("COD_RIVER", "pulse.cod", 11) },
+                ("ATTENTION", "pulse.attention", 5), ("WAREHOUSE_DAY", "pulse.warehouse", -10), ("ORDERS_RIVER", "pulse.orders", 10), ("COD_RIVER", "pulse.cod", 11), ("RADAR", "pulse.orders", 60) },
             PulsePanels.All.Select(p => (p.Key, p.Permission, p.DefaultSortOrder)));
         Assert.Empty(PulsePanels.Find(PulsePanels.Attention)!.DataPermissions);
         Assert.Null(PulsePanels.Find(PulsePanels.Attention)!.Module);
@@ -353,10 +353,10 @@ public class PulseLayoutTests
         x.As(Me, PermissionCatalog.PulseIndicators, PermissionCatalog.InventoryView);
 
         var v = await Assert.ThrowsAsync<ValidationException>(() => x.SaveAsync(AnalyticsService.ScopeMine,
-            panels: new[] { new PulseLayoutPanel("INDICATORS", 1, true), new PulseLayoutPanel("RADAR", 2, true) }));
+            panels: new[] { new PulseLayoutPanel("INDICATORS", 1, true), new PulseLayoutPanel("NOPE_PANEL", 2, true) }));
         Assert.Equal(400, v.StatusCode);
-        Assert.Equal("Panel de Pulso desconocido: RADAR.", v.Message);
-        Assert.Equal(new[] { "Panel de Pulso desconocido: RADAR." }, v.Errors!["panels[1].key"]);
+        Assert.Equal("Panel de Pulso desconocido: NOPE_PANEL.", v.Message);
+        Assert.Equal(new[] { "Panel de Pulso desconocido: NOPE_PANEL." }, v.Errors!["panels[1].key"]);
 
         v = await Assert.ThrowsAsync<ValidationException>(() => x.SaveAsync("todos"));
         Assert.Equal(new[] { "Alcance inválido: use mine o company." }, v.Errors!["scope"]);

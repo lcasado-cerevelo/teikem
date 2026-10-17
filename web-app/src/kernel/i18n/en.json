@@ -2788,6 +2788,19 @@
       "chartEmpty": "This chart has no data in the configured range.",
       "showInPulseMine": "Show in the day's Pulse",
       "showInPulseCompany": "…in the company's",
+        "radar": {
+          "title": "Open orders radar",
+          "by": "Group by",
+          "town": "Town",
+          "client": "Client",
+          "open": "{n} open",
+          "placeholder": "Search by invoice, order or consignee…",
+          "results": "Orders found",
+          "noResults": "No results among open orders",
+          "none": "There are no open orders.",
+          "all": "See all in Orders",
+          "hint": "Only what is open — what was delivered stays out of the way"
+        },
         "rivers": {
           "orders": {
             "title": "Packages on the street",
@@ -2826,7 +2839,8 @@
         "ATTENTION": "Needs your attention",
         "WAREHOUSE_DAY": "Warehouse today",
         "ORDERS_RIVER": "Packages on the street",
-        "COD_RIVER": "COD money"
+        "COD_RIVER": "COD money",
+        "RADAR": "Open orders radar"
       },
       "day": {
         "received": "Units received",
@@ -2955,6 +2969,25 @@
           "lines": "Lines",
           "days": "Days waiting",
           "reviewLabel": "Review order {number} ({client})"
+        },
+        "ORDERS_NO_DRIVER": {
+          "titleOne": "1 order without a driver",
+          "title": "{count} orders without a driver",
+          "detail": "Ready in the warehouse or planned, waiting for a route with a driver",
+          "oldest": "The oldest",
+          "days": "{n} days",
+          "group": "Orders without a driver",
+          "reviewLabel": "Assign a driver to {count} orders"
+        },
+        "COD_UNRECONCILED": {
+          "title": "{amount} of COD not reconciled",
+          "detail": "Collected on the street, waiting to be reconciled against the sheets",
+          "collections": "Collections",
+          "orders": "Orders",
+          "oldest": "The oldest",
+          "days": "{n} days",
+          "group": "COD not reconciled",
+          "reviewLabel": "Reconcile {amount} of COD"
         },
         "RENTAL_DUE": {
           "titleOverdue": "Rental {number} overdue",
