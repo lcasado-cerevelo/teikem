@@ -38,4 +38,6 @@ public static class JobKeys
     public const string KpiSnapshot = "KPI_SNAPSHOT";
     /// <summary>Lote 92: envía por correo los informes programados que ya tocan.</summary>
     public const string ReportDelivery = "REPORT_DELIVERY";
+    /// <summary>Lote 98: resume los hechos de los clientes y manda sus avisos.</summary>
+    public const string ClientNotificationDigest = "CLIENT_NOTIFICATION_DIGEST";
 }

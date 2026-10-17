@@ -14,6 +14,17 @@ Hecho a partir de lo que dictó Luis el 2026-10-17 y de sus respuestas a tres pr
 4. **Mensajes**: el cliente puede escribir desde el portal; el mensaje llega a un **equipo de servicio al cliente designado por cliente** (un grupo de personas, como un chat). Si el cliente no tiene equipo, al rol «Servicio al cliente» de la compañía.
 5. El portal es solo de consumo para el usuario: **no se autoadministra** (lo da de alta la compañía desde el expediente del cliente; ya existe `PortalUser`). Seguridad al nivel del documento maestro (módulo 10): login separado, claim del cliente, segundo filtro por `ClientId` (BOLA), MFA por política, bitácora de acceso.
 
+## Pendiente de decidir: los consignatarios crean sus propias órdenes (dicho por Luis, 2026-10-17)
+Los consignatarios de un cliente deben poder **crear sus propias órdenes**, con la misma pantalla de entrada de órdenes del portal pero **con el consignatario ya escogido** (solo esa parte). Luis no ha decidido cómo se maneja el **usuario del consignatario** (hoy hay un usuario y contraseña por consignatario, no sabe si es lo mejor). Lo que pide: **que no moleste al consignatario** y que **cualquiera no pueda entrar una orden**; una orden creada así no pesa tanto porque **se tiene que confirmar** antes de entregarse.
+
+Propuesta (para aprobar antes de construir):
+1. **Sin contraseña: código de un solo uso.** El consignatario entra con su correo o teléfono **registrado por el cliente**; Teikem le manda un código de 6 dígitos (correo hoy, SMS cuando exista Twilio) que vale unos minutos; la sesión dura poco y se renueva con otro código. Nada que recordar ni que resetear.
+2. **Solo si el cliente lo permite:** el cliente enciende «mis consignatarios pueden crear órdenes» (y a cuáles) **desde su portal**; la compañía no lo maneja (igual que los avisos al consignatario).
+3. **La orden nace «solicitada por el consignatario»** (borrador por confirmar): el cliente (o quien él designe) la **confirma** en el portal y recién entonces entra al flujo normal. Sin confirmar no se despacha ni se factura.
+4. **Seguridad:** el consignatario solo ve y crea órdenes **con su propio consignatario como destino** y de **su cliente**; tope de órdenes por día y por consignatario, límite de intentos de código, todo a la bitácora de seguridad; nunca ve datos de otros consignatarios ni precios.
+5. Alternativas descartadas: usuario y contraseña por consignatario (fricción, reseteos, muchas cuentas); enlace permanente sin verificación (cualquiera con el enlace crea órdenes).
+Va después de la app del cliente y del acceso del portal (lotes 99–100); necesita el correo/teléfono del consignatario ya guardado por el cliente.
+
 ## Lo que ya existe y se reutiliza
 - `PortalUser` (alta/estatus desde el expediente del cliente), `UserKind = PORTAL`; el login interno lo rechaza.
 - Avisos (Lotes 51–52): cola con reintentos, canales EMAIL / APP / SMS / PUSH, bandeja; **mensajería** con hilos y grupos (Lote 53) y presencia; `messages.use` (no se da por omisión al portal).
@@ -28,7 +39,8 @@ Hecho a partir de lo que dictó Luis el 2026-10-17 y de sus respuestas a tres pr
 | 100 | **app-cliente** (Expo web+móvil): login, inicio, mis órdenes, ficha, bandeja de avisos | La primera pantalla del portal |
 | 101 | **«¿Cómo va mi orden?»** público por conduce (con tope de consultas y sin datos personales) | |
 | 102 | **Mensajes** del portal con el equipo de servicio al cliente (designado por cliente) | |
-| 103+ | Entrada de órdenes, consignatarios, configuración, perfil, indicadores del cliente; seguimiento en vivo cuando exista P7 | |
+| 103 | **Entrada de órdenes** del cliente en el portal y **órdenes que crean los consignatarios** (ver «Pendiente de decidir») | |
+| 104+ | Consignatarios, configuración, perfil, indicadores del cliente; seguimiento en vivo cuando exista P7 | |
 
 ## Decisiones propias a revisar con Luis
 - El número de conduce lo genera Teikem (patrón configurable, por omisión `CND-#######`); sigue habiendo número de orden del cliente (puede repetirse entre clientes) y número de empaque (EMP-#####). El label pasa a mostrar el conduce como «Waybill» (antes mostraba el número de orden).

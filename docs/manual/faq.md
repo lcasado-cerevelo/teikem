@@ -8855,3 +8855,21 @@ Todas las órdenes existentes lo recibieron al actualizar la base. Si un label s
 
 **Busco un conduce y no sale.**
 Búsquelo completo o parte (`CND-0000042`) en el buscador de Órdenes; el conduce de una orden dada de baja solo aparece con «incluir inactivas».
+
+
+## Lote 98 — Avisos al cliente
+
+**El cliente no recibe ningún aviso.**
+Todo está apagado hasta que la compañía lo encienda: en la ficha del cliente, panel «Avisos al cliente». Los hechos solo se anotan desde que el aviso está encendido.
+
+**`El correo '…' no es válido.` / `El teléfono '…' no es válido.`**
+Corrija el valor: los correos y teléfonos extra van separados por coma (hasta 10 de cada uno); el teléfono lleva de 7 a 15 dígitos.
+
+**Encendí SMS y no sale nada.**
+El SMS solo guarda la preferencia: no sale hasta contratar el proveedor. El registro muestra el envío como «omitido».
+
+**¿Por qué no le avisan al consignatario?**
+Estos avisos son para el cliente. Avisar al consignatario (con su aceptación, que la maneja el cliente desde su portal) se construye después.
+
+**En el registro dice «No hay destinatarios».**
+El cliente no tiene usuarios activos en el portal ni correos extra en ese aviso. El resumen igual queda en la bandeja del portal si esa casilla está encendida.

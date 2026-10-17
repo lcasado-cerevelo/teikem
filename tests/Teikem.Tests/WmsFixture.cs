@@ -391,6 +391,9 @@ internal sealed class WmsFixture : IAsyncDisposable
         S(Teikem.Domain.Fleet.SettlementCodes.StatusDomain, Teikem.Domain.Fleet.DriverSettlementStatuses.Approved, pipe, 3);
         S(Teikem.Domain.Fleet.SettlementCodes.StatusDomain, Teikem.Domain.Fleet.DriverSettlementStatuses.Exported, term, 4);
         S(Teikem.Domain.Fleet.SettlementCodes.StatusDomain, Teikem.Domain.Fleet.DriverSettlementStatuses.Cancelled, term, 5);
+        // Lote 98: usuarios del portal (destinatarios de los avisos al cliente)
+        S(StatusDomains.PortalUserStatus, PortalUserStatuses.Invited, pipe, 1, true);
+        S(StatusDomains.PortalUserStatus, PortalUserStatuses.Active, pipe, 2);
         ReceiptStatusSeed.AddLateralEntries(Db, LookupId(LookupDomains.EntityType, EntityTypes.Receipt), StatusId);
 
         // 3G: WAREHOUSE_TASK CANCELLED solo desde PENDING e IN_PROGRESS.

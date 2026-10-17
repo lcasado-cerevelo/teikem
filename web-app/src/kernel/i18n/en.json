@@ -738,6 +738,66 @@
         "rateMin": "The special service rate cannot be negative."
       }
     },
+    "notif": {
+      "title": "Client notifications",
+      "summary": "{n} notice(s) on",
+      "intro": "The company decides, client by client: which notices this client receives and through which channel. They are summaries (not the detail of each order) and go to the client, never to the consignee. Until one is turned on, the client receives nothing.",
+      "recipients": "The email goes to this client's active portal users ({n}) and to the extra emails you add below. The inbox is the client's portal inbox.",
+      "emailOff": "Email sending is not configured on the platform: email notices are logged as skipped.",
+      "save": "Save notices",
+      "discard": "Discard changes",
+      "saved": "Client notices saved.",
+      "channels": {
+        "email": "Email",
+        "app": "Portal inbox",
+        "sms": "SMS"
+      },
+      "extraEmails": "Extra emails (comma separated)",
+      "extraEmailsPh": "purchasing@client.com, management@client.com",
+      "extraPhones": "Phones for SMS (comma separated)",
+      "extraPhonesPh": "787-555-0100, 939-555-0101",
+      "smsHelp": "The preference is saved; SMS is not sent until the provider is contracted.",
+      "kinds": {
+        "PICKED_UP": {
+          "title": "Picked up",
+          "help": "Summary when their packages are picked up: how many boxes from how many orders."
+        },
+        "OUT_FOR_DELIVERY": {
+          "title": "Out for delivery",
+          "help": "Summary when a route leaves to deliver their orders."
+        },
+        "DELIVERED": {
+          "title": "Delivered",
+          "help": "Summary of what was delivered (boxes, orders and the COD collected)."
+        },
+        "COD_PROCESSED": {
+          "title": "COD processed",
+          "help": "When a COD remittance is sent to them: collected, commission and net."
+        },
+        "INVOICE_ISSUED": {
+          "title": "Invoice issued",
+          "help": "When an invoice is issued to them: number, total and due date."
+        }
+      },
+      "errors": {
+        "email": "The email '{value}' is not valid.",
+        "phone": "The phone '{value}' is not valid.",
+        "tooMany": "At most 10 extra emails and 10 extra phones per notice.",
+        "tooLong": "Extra emails or phones cannot exceed 400 characters."
+      },
+      "log": {
+        "title": "Summaries sent",
+        "when": "Date",
+        "kind": "Notice",
+        "text": "Summary",
+        "deliveries": "Deliveries",
+        "inPortal": "In the portal",
+        "sent": "{n} sent",
+        "skipped": "{n} skipped",
+        "failed": "{n} failed",
+        "empty": "No notice has been sent to this client yet."
+      }
+    },
     "portal": {
       "title": "Portal users",
       "help": "People at the client who sign in to the client portal. Each one gets an email link to set their own password; you never type it.",

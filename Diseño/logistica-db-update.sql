@@ -3861,3 +3861,86 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_Order_Waybill' AND object_id = OBJECT_ID('dbo.TransportOrder'))
     CREATE UNIQUE INDEX UX_Order_Waybill ON dbo.TransportOrder(TenantId, WaybillNumber) WHERE IsActive = 1;
 GO
+
+-- =====================================================================================================================
+-- 2026-10-17 (ag) Lote 98 (P10) — avisos al cliente
+-- ClientNotificationSetting (qué avisos y por qué canal los quiere cada cliente: lo decide la compañía; sin fila = apagado), ClientNotificationEvent (los hechos que se avisan, solo de clientes con el aviso encendido),
+-- ClientNotification (el resumen que se manda y que ve el portal del cliente) y ClientNotificationDelivery (cada envío por canal y destinatario, con su resultado y reintentos). EntityType de la configuración para la
+-- bitácora. Solo AGREGA. Idempotente.
+-- =====================================================================================================================
+IF OBJECT_ID(N'dbo.ClientNotificationSetting', N'U') IS NULL CREATE TABLE dbo.ClientNotificationSetting (
+    ClientNotificationSettingId INT IDENTITY(1,1) PRIMARY KEY,
+    TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    ClientId INT NOT NULL REFERENCES dbo.Client(ClientId),
+    Kind NVARCHAR(30) NOT NULL,
+    EmailEnabled BIT NOT NULL CONSTRAINT DF_ClientNotificationSetting_Email DEFAULT 0,
+    AppEnabled BIT NOT NULL CONSTRAINT DF_ClientNotificationSetting_App DEFAULT 0,
+    SmsEnabled BIT NOT NULL CONSTRAINT DF_ClientNotificationSetting_Sms DEFAULT 0,
+    ExtraEmails NVARCHAR(400) NULL,
+    ExtraPhones NVARCHAR(400) NULL,
+    UpdatedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_ClientNotificationSetting_Updated DEFAULT SYSUTCDATETIME(),
+    UpdatedBy INT NULL,
+    CONSTRAINT CK_ClientNotificationSetting_Kind CHECK (Kind IN ('PICKED_UP','OUT_FOR_DELIVERY','DELIVERED','COD_PROCESSED','INVOICE_ISSUED'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_ClientNotificationSetting' AND object_id = OBJECT_ID('dbo.ClientNotificationSetting')) CREATE UNIQUE INDEX UQ_ClientNotificationSetting ON dbo.ClientNotificationSetting(TenantId, ClientId, Kind);
+GO
+IF OBJECT_ID(N'dbo.ClientNotification', N'U') IS NULL CREATE TABLE dbo.ClientNotification (
+    ClientNotificationId BIGINT IDENTITY(1,1) PRIMARY KEY,
+    PublicId UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_ClientNotification_PublicId DEFAULT NEWID(),
+    TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    ClientId INT NOT NULL REFERENCES dbo.Client(ClientId),
+    Kind NVARCHAR(30) NOT NULL,
+    Subject NVARCHAR(200) NOT NULL,
+    BodyText NVARCHAR(2000) NOT NULL,
+    SummaryJson NVARCHAR(1000) NULL,
+    InPortal BIT NOT NULL CONSTRAINT DF_ClientNotification_InPortal DEFAULT 0,
+    CreatedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_ClientNotification_Created DEFAULT SYSUTCDATETIME()
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ClientNotification_Client' AND object_id = OBJECT_ID('dbo.ClientNotification')) CREATE INDEX IX_ClientNotification_Client ON dbo.ClientNotification(TenantId, ClientId, CreatedAtUtc DESC);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ClientNotification_PublicId' AND object_id = OBJECT_ID('dbo.ClientNotification')) CREATE UNIQUE INDEX IX_ClientNotification_PublicId ON dbo.ClientNotification(PublicId);
+GO
+IF OBJECT_ID(N'dbo.ClientNotificationEvent', N'U') IS NULL CREATE TABLE dbo.ClientNotificationEvent (
+    ClientNotificationEventId BIGINT IDENTITY(1,1) PRIMARY KEY,
+    TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    ClientId INT NOT NULL REFERENCES dbo.Client(ClientId),
+    Kind NVARCHAR(30) NOT NULL,
+    TransportOrderId INT NULL REFERENCES dbo.TransportOrder(TransportOrderId),
+    TripId INT NULL REFERENCES dbo.Trip(TripId),
+    RefId INT NULL,
+    Pieces INT NOT NULL CONSTRAINT DF_ClientNotificationEvent_Pieces DEFAULT 0,
+    OccurredAtUtc DATETIME2 NOT NULL CONSTRAINT DF_ClientNotificationEvent_Occurred DEFAULT SYSUTCDATETIME(),
+    NotificationId BIGINT NULL REFERENCES dbo.ClientNotification(ClientNotificationId)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ClientNotificationEvent_Pending' AND object_id = OBJECT_ID('dbo.ClientNotificationEvent')) CREATE INDEX IX_ClientNotificationEvent_Pending ON dbo.ClientNotificationEvent(TenantId, ClientId, Kind) WHERE NotificationId IS NULL;
+GO
+IF OBJECT_ID(N'dbo.ClientNotificationDelivery', N'U') IS NULL CREATE TABLE dbo.ClientNotificationDelivery (
+    ClientNotificationDeliveryId BIGINT IDENTITY(1,1) PRIMARY KEY,
+    TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    ClientNotificationId BIGINT NOT NULL REFERENCES dbo.ClientNotification(ClientNotificationId),
+    Channel NVARCHAR(10) NOT NULL,
+    Recipient NVARCHAR(200) NOT NULL,
+    Status NVARCHAR(10) NOT NULL,
+    Message NVARCHAR(400) NULL,
+    Attempts INT NOT NULL CONSTRAINT DF_ClientNotificationDelivery_Attempts DEFAULT 0,
+    NextAttemptUtc DATETIME2 NULL,
+    SentAtUtc DATETIME2 NULL,
+    CONSTRAINT CK_ClientNotificationDelivery_Status CHECK (Status IN ('PENDING','SENT','SKIPPED','FAILED'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ClientNotificationDelivery_Notification' AND object_id = OBJECT_ID('dbo.ClientNotificationDelivery')) CREATE INDEX IX_ClientNotificationDelivery_Notification ON dbo.ClientNotificationDelivery(ClientNotificationId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ClientNotificationDelivery_Pending' AND object_id = OBJECT_ID('dbo.ClientNotificationDelivery')) CREATE INDEX IX_ClientNotificationDelivery_Pending ON dbo.ClientNotificationDelivery(TenantId, NextAttemptUtc) WHERE Status = 'PENDING';
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'CLIENT_NOTIFICATION_SETTING', N'{"es":"Avisos del cliente","en":"Client notifications"}', 180)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO

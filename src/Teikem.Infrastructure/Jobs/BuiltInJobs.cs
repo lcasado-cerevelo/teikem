@@ -187,3 +187,28 @@ public sealed class ReportDeliveryJob : IScheduledJob
     }
 }
 
+/// <summary>
+/// Lote 98 (P10) — avisos al cliente: junta los hechos ya asentados (órdenes recogidas, en ruta o entregadas; remesas COD remitidas; facturas emitidas) en resúmenes por cliente y ruta, los manda por correo, los deja
+/// en la bandeja del portal y reintenta los envíos fallidos. Corre cada 2 minutos; un grupo se resume cuando lleva 3 minutos sin hechos nuevos.
+/// </summary>
+public sealed class ClientNotificationDigestJob : IScheduledJob
+{
+    public string Key => JobKeys.ClientNotificationDigest;
+    public string NameEs => "Avisos a los clientes";
+    public string NameEn => "Client notifications";
+    public string DescriptionEs => "Resume lo ocurrido con las órdenes, el COD y las facturas de cada cliente y se lo manda por los canales que la compañía encendió.";
+    public string DescriptionEn => "Summarizes what happened with each client's orders, COD and invoices and sends it through the channels the company turned on.";
+    public string DefaultKind => JobScheduleKinds.Interval;
+    public int? DefaultIntervalSeconds => 120;
+    public TimeSpan? DefaultDailyAt => null;
+    public bool DefaultEnabled => true;
+    public TimeSpan MaxRuntime => TimeSpan.FromMinutes(5);
+
+    public async Task<string?> RunAsync(JobRunContext context, CancellationToken ct)
+    {
+        var service = context.Services.GetRequiredService<ClientNotificationService>();
+        var (summaries, sent, failed) = await service.DigestAsync(ct);
+        return summaries + sent + failed == 0 ? "Ningún aviso por mandar." : $"{summaries} resumen(es), {sent} envío(s), {failed} con error.";
+    }
+}
+

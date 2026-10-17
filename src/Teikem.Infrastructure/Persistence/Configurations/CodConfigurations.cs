@@ -146,3 +146,58 @@ public sealed class DriverSettlementLineConfiguration : IEntityTypeConfiguration
         b.HasIndex(l => l.DriverSettlementRunId).HasDatabaseName("IX_DriverSettlementLine_Run");
     }
 }
+
+// Lote 98 (P10) — avisos al cliente.
+public sealed class ClientNotificationSettingConfiguration : IEntityTypeConfiguration<Teikem.Domain.Clients.ClientNotificationSetting>
+{
+    public void Configure(EntityTypeBuilder<Teikem.Domain.Clients.ClientNotificationSetting> b)
+    {
+        b.ToTable("ClientNotificationSetting");
+        b.HasKey(s => s.ClientNotificationSettingId);
+        b.Property(s => s.Kind).HasMaxLength(30);
+        b.Property(s => s.ExtraEmails).HasMaxLength(Teikem.Domain.Clients.ClientNotificationRules.MaxListLength);
+        b.Property(s => s.ExtraPhones).HasMaxLength(Teikem.Domain.Clients.ClientNotificationRules.MaxListLength);
+        b.Ignore(s => s.AnyChannel);
+        b.HasIndex(s => new { s.TenantId, s.ClientId, s.Kind }).IsUnique().HasDatabaseName("UQ_ClientNotificationSetting");
+    }
+}
+
+public sealed class ClientNotificationEventConfiguration : IEntityTypeConfiguration<Teikem.Domain.Clients.ClientNotificationEvent>
+{
+    public void Configure(EntityTypeBuilder<Teikem.Domain.Clients.ClientNotificationEvent> b)
+    {
+        b.ToTable("ClientNotificationEvent");
+        b.HasKey(e => e.ClientNotificationEventId);
+        b.Property(e => e.Kind).HasMaxLength(30);
+        b.HasIndex(e => new { e.TenantId, e.ClientId, e.Kind }).HasDatabaseName("IX_ClientNotificationEvent_Pending");
+    }
+}
+
+public sealed class ClientNotificationConfiguration : IEntityTypeConfiguration<Teikem.Domain.Clients.ClientNotification>
+{
+    public void Configure(EntityTypeBuilder<Teikem.Domain.Clients.ClientNotification> b)
+    {
+        b.ToTable("ClientNotification");
+        b.HasKey(n => n.ClientNotificationId);
+        b.Property(n => n.PublicId).HasDefaultValueSql("NEWID()").ValueGeneratedOnAdd();
+        b.Property(n => n.Kind).HasMaxLength(30);
+        b.Property(n => n.Subject).HasMaxLength(200);
+        b.Property(n => n.BodyText).HasMaxLength(2000);
+        b.Property(n => n.SummaryJson).HasMaxLength(1000);
+        b.HasIndex(n => new { n.TenantId, n.ClientId, n.CreatedAtUtc }).HasDatabaseName("IX_ClientNotification_Client");
+    }
+}
+
+public sealed class ClientNotificationDeliveryConfiguration : IEntityTypeConfiguration<Teikem.Domain.Clients.ClientNotificationDelivery>
+{
+    public void Configure(EntityTypeBuilder<Teikem.Domain.Clients.ClientNotificationDelivery> b)
+    {
+        b.ToTable("ClientNotificationDelivery");
+        b.HasKey(d => d.ClientNotificationDeliveryId);
+        b.Property(d => d.Channel).HasMaxLength(10);
+        b.Property(d => d.Recipient).HasMaxLength(200);
+        b.Property(d => d.Status).HasMaxLength(10);
+        b.Property(d => d.Message).HasMaxLength(400);
+        b.HasIndex(d => d.ClientNotificationId).HasDatabaseName("IX_ClientNotificationDelivery_Notification");
+    }
+}

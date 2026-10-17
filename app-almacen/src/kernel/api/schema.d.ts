@@ -26223,6 +26223,116 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/clients/{publicId}/notifications/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientNotificationSettingsDto"];
+                        "application/json": components["schemas"]["ClientNotificationSettingsDto"];
+                        "text/json": components["schemas"]["ClientNotificationSettingsDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ClientNotificationSettingsRequest"];
+                    "text/json": components["schemas"]["ClientNotificationSettingsRequest"];
+                    "application/*+json": components["schemas"]["ClientNotificationSettingsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientNotificationSettingsDto"];
+                        "application/json": components["schemas"]["ClientNotificationSettingsDto"];
+                        "text/json": components["schemas"]["ClientNotificationSettingsDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clients/{publicId}/notifications/log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientNotificationDtoPagedResult"];
+                        "application/json": components["schemas"]["ClientNotificationDtoPagedResult"];
+                        "text/json": components["schemas"]["ClientNotificationDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -35229,6 +35339,57 @@ export interface components {
             payoutFormulaCode?: string | null;
             /** Format: date-time */
             generatedAtUtc?: string;
+        };
+        ClientNotificationDtoPagedResult: {
+            items?: components["schemas"]["ClientNotificationDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        ClientNotificationSettingsRequest: {
+            settings?: components["schemas"]["ClientNotificationSettingDto"][] | null;
+        };
+        ClientNotificationSettingDto: {
+            kind?: string | null;
+            emailEnabled?: boolean;
+            appEnabled?: boolean;
+            smsEnabled?: boolean;
+            extraEmails?: string | null;
+            extraPhones?: string | null;
+        };
+        ClientNotificationSettingsDto: {
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            /** Format: int32 */
+            portalRecipients?: number;
+            emailConfigured?: boolean;
+            smsConfigured?: boolean;
+            settings?: components["schemas"]["ClientNotificationSettingDto"][] | null;
+        };
+        ClientNotificationDto: {
+            /** Format: uuid */
+            publicId?: string;
+            kind?: string | null;
+            subject?: string | null;
+            bodyText?: string | null;
+            inPortal?: boolean;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            deliveries?: components["schemas"]["ClientNotificationDeliveryDto"][] | null;
+        };
+        ClientNotificationDeliveryDto: {
+            channel?: string | null;
+            recipient?: string | null;
+            status?: string | null;
+            message?: string | null;
+            /** Format: int32 */
+            attempts?: number;
+            /** Format: date-time */
+            sentAtUtc?: string | null;
         };
     };
     responses: never;

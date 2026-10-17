@@ -738,6 +738,66 @@
         "rateMin": "La tarifa del servicio especial no puede ser negativa."
       }
     },
+    "notif": {
+      "title": "Avisos al cliente",
+      "summary": "{n} aviso(s) encendido(s)",
+      "intro": "Lo decide la compañía, cliente por cliente: qué avisos recibe este cliente y por qué canal. Son resúmenes (no el detalle de cada orden) y se mandan al cliente, nunca al consignatario. Mientras no se encienda uno, el cliente no recibe nada.",
+      "recipients": "El correo llega a los usuarios activos del portal de este cliente ({n}) y a los correos extra que ponga abajo. La bandeja es la del portal del cliente.",
+      "emailOff": "El envío de correo no está configurado en la plataforma: los avisos por correo quedan registrados como omitidos.",
+      "save": "Guardar avisos",
+      "discard": "Descartar cambios",
+      "saved": "Avisos del cliente guardados.",
+      "channels": {
+        "email": "Correo",
+        "app": "Bandeja del portal",
+        "sms": "SMS"
+      },
+      "extraEmails": "Correos extra (separados por coma)",
+      "extraEmailsPh": "compras@cliente.com, gerencia@cliente.com",
+      "extraPhones": "Teléfonos para SMS (separados por coma)",
+      "extraPhonesPh": "787-555-0100, 939-555-0101",
+      "smsHelp": "Se guarda la preferencia; el SMS no sale hasta que se contrate el proveedor.",
+      "kinds": {
+        "PICKED_UP": {
+          "title": "Recogido",
+          "help": "Resumen cuando se recogen sus paquetes: cuántas cajas y de cuántas órdenes."
+        },
+        "OUT_FOR_DELIVERY": {
+          "title": "Salió a entrega",
+          "help": "Resumen cuando una ruta sale a entregar sus órdenes."
+        },
+        "DELIVERED": {
+          "title": "Entregado",
+          "help": "Resumen de lo entregado (cajas, órdenes y el COD cobrado)."
+        },
+        "COD_PROCESSED": {
+          "title": "COD procesado",
+          "help": "Cuando se le remite una remesa de COD: cobrado, comisión y neto."
+        },
+        "INVOICE_ISSUED": {
+          "title": "Factura emitida",
+          "help": "Cuando se le emite una factura: número, total y vencimiento."
+        }
+      },
+      "errors": {
+        "email": "El correo '{value}' no es válido.",
+        "phone": "El teléfono '{value}' no es válido.",
+        "tooMany": "Máximo 10 correos y 10 teléfonos extra por aviso.",
+        "tooLong": "Los correos o teléfonos extra no pueden pasar de 400 caracteres."
+      },
+      "log": {
+        "title": "Resúmenes enviados",
+        "when": "Fecha",
+        "kind": "Aviso",
+        "text": "Resumen",
+        "deliveries": "Envíos",
+        "inPortal": "En el portal",
+        "sent": "{n} enviado(s)",
+        "skipped": "{n} omitido(s)",
+        "failed": "{n} con error",
+        "empty": "Todavía no se le ha mandado ningún aviso."
+      }
+    },
     "portal": {
       "title": "Usuarios de portal",
       "help": "Personas del cliente que entran al portal de clientes. Cada una recibe un enlace por correo para fijar su propia contraseña; usted nunca la escribe.",

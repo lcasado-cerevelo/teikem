@@ -16,6 +16,7 @@ import { ClientContactPointsPanel } from './ClientContactPointsPanel'
 import { ClientContractsSection } from './ClientContractsSection'
 import { ClientCustomFieldsPanel } from './ClientCustomFieldsPanel'
 import { ClientNumberingPanel } from './ClientNumberingPanel'
+import { ClientNotificationsPanel } from './ClientNotificationsPanel'
 import { ClientPortalPanel } from './ClientPortalPanel'
 import { ClientPeoplePanel } from './ClientPeoplePanel'
 import { ClientProfilePanel } from './ClientProfilePanel'
@@ -118,6 +119,7 @@ export function ClientDetailPanel({ publicId }: { publicId: string }) {
       <ClientCustomFieldsPanel client={client} />
       <ClientContractsSection key={client.publicId} client={client} />
       <ClientPortalPanel key={`portal-${client.publicId}`} client={client} />
+      <ClientNotificationsPanel key={`notif-${client.publicId}`} client={client} />
       <ClientConsigneesPanel key={`consignees-${client.publicId}`} client={client} />
       <Panel
         icon={<IconClock />}
