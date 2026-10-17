@@ -26925,6 +26925,112 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/track/{slug}/{waybill}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    lang?: string;
+                };
+                header?: never;
+                path: {
+                    slug: string;
+                    waybill: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PublicTrackDto"];
+                        "application/json": components["schemas"]["PublicTrackDto"];
+                        "text/json": components["schemas"]["PublicTrackDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tenant/tracking": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TrackingSettingsDto"];
+                        "application/json": components["schemas"]["TrackingSettingsDto"];
+                        "text/json": components["schemas"]["TrackingSettingsDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TrackingSettingsRequest"];
+                    "text/json": components["schemas"]["TrackingSettingsRequest"];
+                    "application/*+json": components["schemas"]["TrackingSettingsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TrackingSettingsDto"];
+                        "application/json": components["schemas"]["TrackingSettingsDto"];
+                        "text/json": components["schemas"]["TrackingSettingsDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -36093,6 +36199,8 @@ export interface components {
             delivery?: components["schemas"]["PortalOrderStopDto"];
             packages?: components["schemas"]["PortalOrderPackageDto"][] | null;
             timeline?: components["schemas"]["PortalOrderEventDto"][] | null;
+            progress?: components["schemas"]["PortalProgressDto"];
+            stepLabels?: string[] | null;
         };
         PortalAuthConfigDto: {
             captchaEnabled?: boolean;
@@ -36124,6 +36232,7 @@ export interface components {
             statusLabel?: string | null;
             /** Format: date-time */
             createdAtUtc?: string;
+            progress?: components["schemas"]["PortalProgressDto"];
         };
         PortalMeDto: {
             fullName?: string | null;
@@ -36193,6 +36302,41 @@ export interface components {
             name?: string | null;
             tenantName?: string | null;
             isCurrent?: boolean;
+        };
+        PublicTrackDto: {
+            waybill?: string | null;
+            companyName?: string | null;
+            /** Format: int32 */
+            step?: number;
+            /** Format: int32 */
+            total?: number;
+            state?: string | null;
+            statusLabel?: string | null;
+            steps?: components["schemas"]["PublicTrackStepDto"][] | null;
+            /** Format: date-time */
+            lastUpdateUtc?: string | null;
+        };
+        TrackingSettingsRequest: {
+            slug?: string | null;
+        };
+        PublicTrackStepDto: {
+            key?: string | null;
+            label?: string | null;
+            done?: boolean;
+            current?: boolean;
+        };
+        TrackingSettingsDto: {
+            slug?: string | null;
+            enabled?: boolean;
+        };
+        PortalProgressDto: {
+            /** Format: int32 */
+            step?: number;
+            /** Format: int32 */
+            total?: number;
+            state?: string | null;
+            statusCode?: string | null;
+            statusLabel?: string | null;
         };
     };
     responses: never;

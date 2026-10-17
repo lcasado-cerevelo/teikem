@@ -38,6 +38,8 @@ public class Tenant : ISoftDeletable
     public int? DeviceSessionMinutes { get; set; }
     /// <summary>Marca por compañía: tema de color y logos (JSON libre, validado en servicio).</summary>
     public string? BrandingJson { get; set; }
+    /// <summary>Lote 103: identificador corto de la dirección pública de seguimiento («¿Cómo va mi orden?»); null = el seguimiento público está apagado para esta compañía. Único entre compañías.</summary>
+    public string? TrackingSlug { get; set; }
 
     // --- Región y formatos de la compañía (2026-10). Defaults = los de dbo.Tenant (Puerto Rico); reglas en TenantFormatRules. ---
     /// <summary>Región que trae el juego de valores por defecto: 'PR' o 'US'.</summary>

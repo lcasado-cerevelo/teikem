@@ -4015,3 +4015,13 @@ GO
 IF COL_LENGTH('dbo.TrustedBrowser', 'SingleUse') IS NULL
     ALTER TABLE dbo.TrustedBrowser ADD SingleUse BIT NOT NULL CONSTRAINT DF_TrustedBrowser_SingleUse DEFAULT 0;
 GO
+
+-- =====================================================================================================================
+-- (al) 2026-10-17 — Lote 103: seguimiento público «¿Cómo va mi orden?». Tenant.TrackingSlug = identificador corto de la dirección pública de la compañía (el conduce se repite entre compañías, así que la página
+-- necesita saber de cuál es); NULL = el seguimiento público está APAGADO. No se enciende solo para ninguna compañía existente: lo enciende su administrador (Ajustes de la compañía).
+-- =====================================================================================================================
+IF COL_LENGTH('dbo.Tenant', 'TrackingSlug') IS NULL
+    ALTER TABLE dbo.Tenant ADD TrackingSlug NVARCHAR(40) NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_Tenant_TrackingSlug' AND object_id = OBJECT_ID('dbo.Tenant')) CREATE UNIQUE INDEX UX_Tenant_TrackingSlug ON dbo.Tenant(TrackingSlug) WHERE TrackingSlug IS NOT NULL;
+GO

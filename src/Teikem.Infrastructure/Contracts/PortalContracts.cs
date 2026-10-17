@@ -20,7 +20,14 @@ public sealed record PortalOrderListItemDto(
     decimal? CodAmount,
     string Status,
     string StatusLabel,
-    DateTime CreatedAtUtc);
+    DateTime CreatedAtUtc,
+    PortalProgressDto? Progress = null);
+
+/// <summary>
+/// El avance de la orden para la barra de progreso: etapa actual (Step) de Total (las etapas son los estatus del camino normal de la compañía), estado (IN_PROGRESS, COMPLETED, ALERT = detenida, CANCELLED) y el estatus actual
+/// con su texto. En la ficha, StepLabels trae el texto de cada etapa.
+/// </summary>
+public sealed record PortalProgressDto(int Step, int Total, string State, string StatusCode, string StatusLabel);
 
 public sealed record PortalOrderStopDto(string? Name, string Line1, string? Line2, string City, string? State, string? PostalCode);
 
@@ -47,7 +54,9 @@ public sealed record PortalOrderDto(
     PortalOrderStopDto? Pickup,
     PortalOrderStopDto Delivery,
     IReadOnlyList<PortalOrderPackageDto> Packages,
-    IReadOnlyList<PortalOrderEventDto> Timeline);
+    IReadOnlyList<PortalOrderEventDto> Timeline,
+    PortalProgressDto? Progress = null,
+    IReadOnlyList<string>? StepLabels = null);
 
 /// <summary>Cuántas órdenes del cliente hay en cada estatus (para el inicio del portal).</summary>
 public sealed record PortalStatusCountDto(string Status, string StatusLabel, int Count);

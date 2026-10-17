@@ -148,5 +148,20 @@
     "help": "Instale el portal como una app, con su ícono en el escritorio o la pantalla de inicio.",
     "button": "Instalar",
     "ios": "En iPhone y iPad: pulse el botón Compartir y elija «Añadir a pantalla de inicio»."
+  },
+  "progress": {
+    "step": "Paso {step} de {total} · {status}",
+    "alert": "{status} · va por el paso {step} de {total}"
+  },
+  "track": {
+    "title": "¿Cómo va mi orden?",
+    "help": "Escriba el número de conduce de su paquete para ver en qué etapa va.",
+    "waybill": "Número de conduce",
+    "placeholder": "CND-0000000",
+    "submit": "Consultar",
+    "lastUpdate": "Última actualización: {date}",
+    "tooMany": "Demasiadas consultas seguidas. Espere un minuto e intente de nuevo.",
+    "privacy": "Solo mostramos el avance del paquete: nunca nombres, direcciones ni teléfonos.",
+    "portalLink": "¿Es cliente? Entre al portal"
   }
 }

@@ -66,6 +66,8 @@ function Gate() {
   }, [session])
 
   useEffect(() => {
+    // «¿Cómo va mi orden?» es pública: con o sin sesión se queda donde está
+    if (pathname.startsWith('/track')) return
     const isPublic = PUBLIC_PATHS.includes(pathname)
     if (!session) {
       if (!isPublic) router.replace('/login')

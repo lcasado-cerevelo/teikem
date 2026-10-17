@@ -15,7 +15,13 @@ export type LegalStatusDto = Schemas['LegalStatusDto']
 export type TrustedBrowserDto = Schemas['TrustedBrowserDto']
 export type PortalAuthConfigDto = Schemas['PortalAuthConfigDto']
 
+export type PublicTrackDto = Schemas['PublicTrackDto']
+
 export const PAGE_SIZE = 20
+
+/** «¿Cómo va mi orden?»: consulta PÚBLICA por el conduce de una compañía (su identificador va en el enlace). Solo devuelve el avance. */
+export const trackOrder = (slug: string, waybill: string, lang: string) =>
+  unwrap(api.GET('/api/v1/public/track/{slug}/{waybill}', { params: { path: { slug, waybill }, query: { lang } } }))
 
 export const getAuthConfig = () => unwrap(api.GET('/api/v1/portal/auth/config'))
 export const getMe = () => unwrap(api.GET('/api/v1/portal/me'))

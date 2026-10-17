@@ -8972,3 +8972,30 @@ Su compañía decide qué avisos le manda y por qué canal (capítulo 23). Si el
 
 **«Poner en mi escritorio» no aparece.**
 Solo aparece en navegadores que dejan instalar la página (Chrome, Edge, Android) y cuando todavía no está instalada. En iPhone y iPad se usa Compartir → Añadir a pantalla de inicio.
+
+
+## Lote 103 — «¿Cómo va mi orden?» y la barra de progreso
+
+**`No encontramos ese número de conduce.` (404)**
+El número no existe, está mal escrito, la orden se dio de baja, el identificador de la compañía en el enlace no es el correcto, o la compañía tiene el seguimiento público apagado. La página contesta lo mismo en todos los casos a propósito.
+
+**`Demasiados intentos; espere un minuto e intente de nuevo.` (429) en «¿Cómo va mi orden?»**
+Más de 20 consultas por minuto desde la misma conexión. Espere un minuto.
+
+**`El identificador debe tener de 3 a 40 caracteres: letras minúsculas, números y guiones…` (400)**
+En Ajustes → Seguimiento público: use solo minúsculas, números y guiones, sin empezar ni terminar con guion.
+
+**`Ese identificador no está disponible.` (400) / `Ese identificador ya lo usa otra compañía.` (409)**
+Es una palabra reservada (api, login, track…) o ya la usa otra compañía: escoja otro.
+
+**¿Por qué la página pública no muestra nombre ni dirección?**
+Porque cualquiera con el número puede consultarla: solo se muestra el avance del paquete.
+
+**La barra tiene más o menos etapas que antes.**
+Las etapas son los estatus del camino normal de la compañía: si se agregó, quitó o apagó un estatus, la barra cambia.
+
+**La barra no avanza (orden «En espera»).**
+Un estatus lateral (en espera, parcial, fallida) no avanza la barra: se queda donde iba y avisa. Sigue cuando la orden vuelve al camino normal.
+
+**El seguimiento público de mi compañía no responde.**
+Viene apagado: el administrador lo enciende en Ajustes de la compañía → General → Seguimiento público.

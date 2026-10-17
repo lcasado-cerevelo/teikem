@@ -148,5 +148,20 @@
     "help": "Install the portal as an app, with its icon on your desktop or home screen.",
     "button": "Install",
     "ios": "On iPhone and iPad: tap the Share button and choose \"Add to Home Screen\"."
+  },
+  "progress": {
+    "step": "Step {step} of {total} · {status}",
+    "alert": "{status} · at step {step} of {total}"
+  },
+  "track": {
+    "title": "Where is my order?",
+    "help": "Enter your package waybill number to see which stage it is in.",
+    "waybill": "Waybill number",
+    "placeholder": "CND-0000000",
+    "submit": "Check",
+    "lastUpdate": "Last update: {date}",
+    "tooMany": "Too many requests in a row. Wait a minute and try again.",
+    "privacy": "We only show the progress of the package: never names, addresses or phone numbers.",
+    "portalLink": "Are you a client? Sign in to the portal"
   }
 }

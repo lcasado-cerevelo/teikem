@@ -6760,6 +6760,21 @@
       "saved": "Ajustes guardados",
       "unsaved": "Hay cambios sin guardar.",
       "note": "Cada compañía guarda sus propios ajustes. Al guardar, la región y los formatos se reflejan en toda la aplicación sin recargar; el idioma de cada usuario no cambia.",
+      "tracking": {
+        "title": "Seguimiento público",
+        "subtitle": "La página «¿Cómo va mi orden?»: quien tiene el número de conduce ve en qué etapa va su paquete.",
+        "on": "Encendido",
+        "disabled": "Apagado",
+        "slugLabel": "Identificador de la compañía",
+        "slugPlaceholder": "mi-compania",
+        "slugHelp": "De 3 a 40 caracteres: letras minúsculas, números y guiones. Va en la dirección pública, porque el conduce se repite entre compañías. Vacío = apagado.",
+        "linkLabel": "Enlace para compartir",
+        "linkHelp": "Agregue ?n=<conduce> al final para abrirlo con la consulta hecha. La página solo muestra el avance: nunca nombres, direcciones ni teléfonos.",
+        "turnOn": "Encender",
+        "turnOff": "Apagar",
+        "saved": "Seguimiento público guardado.",
+        "off": "Seguimiento público apagado."
+      },
       "general": {
         "profileTitle": "Datos de la compañía",
         "nameLabel": "Nombre",

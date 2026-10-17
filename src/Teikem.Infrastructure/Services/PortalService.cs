@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Teikem.Domain.Common;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Identity;
+using Teikem.Domain.Orders;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
@@ -15,7 +16,7 @@ namespace Teikem.Infrastructure.Services;
 /// datos) y cada lectura lo vuelve a exigir (<c>OrderScope(ClientId)</c>). Una orden de otro cliente (de la misma compañía o de otra) responde 404, igual que una que no existe (sin oráculo).
 /// Se devuelven DTOs propios y mínimos (<c>PortalContracts</c>): sin precios cotizados, notas internas, rutas, choferes ni datos de otros clientes.
 /// </summary>
-public sealed class PortalService(TeikemDbContext db, ITenantContext tenant, UserManager<ApplicationUser> users, AuthService auth, OrderReadService orders, ILookupCache lookups)
+public sealed class PortalService(TeikemDbContext db, ITenantContext tenant, UserManager<ApplicationUser> users, AuthService auth, OrderReadService orders, ILookupCache lookups, OrderProgressService progress)
 {
     public const int MaxTake = 100;
 
@@ -39,8 +40,9 @@ public sealed class PortalService(TeikemDbContext db, ITenantContext tenant, Use
         skip = Math.Max(0, skip);
         var q = new OrderListQuery(null, string.IsNullOrWhiteSpace(status) ? null : status.Trim(), null, null, null, null, string.IsNullOrWhiteSpace(search) ? null : search.Trim(), fromUtc, toUtc, false, skip, take);
         var page = await orders.GetListAsync(q, new OrderScope(cid), ct);
+        var avance = await progress.ComputeAsync(page.Items.Select(o => new OrderProgressInput(o.Id, o.Status)), ct);
         var items = page.Items.Select(o => new PortalOrderListItemDto(o.PublicId, o.WaybillNumber ?? string.Empty, o.OrderNumber, o.ClientInvoiceNumber, o.ConsigneeName, o.ConsigneeCity, o.ConsigneeState,
-            o.ServiceTypeLabel, o.TotalPieces, o.CodAmount, o.Status, o.StatusLabel, o.CreatedAtUtc)).ToList();
+            o.ServiceTypeLabel, o.TotalPieces, o.CodAmount, o.Status, o.StatusLabel, o.CreatedAtUtc, ProgressOf(avance[o.Id]))).ToList();
         return new PagedResult<PortalOrderListItemDto>(items, page.Total, skip, take);
     }
 
@@ -49,10 +51,12 @@ public sealed class PortalService(TeikemDbContext db, ITenantContext tenant, Use
         var cid = ClientIdOfSession;
         var o = await orders.GetAsync(publicId, new OrderScope(cid), ct);   // otro cliente u otra compañía: 404
         var timeline = await TimelineAsync(o.Id, ct);
+        var avance = (await progress.ComputeAsync(new[] { new OrderProgressInput(o.Id, o.Status) }, ct))[o.Id];
+        var stepLabels = (await progress.StepsAsync(ct)).Select(s => s.Label).ToList();
         PortalOrderStopDto? Stop(OrderStopDto? s) => s is null ? null : new PortalOrderStopDto(s.Name, s.Line1, s.Line2, s.City, s.State, s.PostalCode);
         return new PortalOrderDto(o.PublicId, o.WaybillNumber ?? string.Empty, o.OrderNumber, o.ClientInvoiceNumber, o.ServiceTypeLabel, o.Status, o.StatusLabel, o.TotalPieces, o.TotalWeightKg, o.CodAmount,
             o.CodStatusLabel, o.RequestedDate, o.PromisedDate, o.CreatedAtUtc, Stop(o.Pickup), Stop(o.Delivery)!,
-            o.Packages.Select(p => new PortalOrderPackageDto(p.Description, p.Pieces, p.WeightKg)).ToList(), timeline);
+            o.Packages.Select(p => new PortalOrderPackageDto(p.Description, p.Pieces, p.WeightKg)).ToList(), timeline, ProgressOf(avance), stepLabels);
     }
 
     /// <summary>Inicio: total de órdenes del cliente, por estatus y las 5 más recientes.</summary>
@@ -81,6 +85,8 @@ public sealed class PortalService(TeikemDbContext db, ITenantContext tenant, Use
         var rows = await q.OrderByDescending(n => n.CreatedAtUtc).ThenByDescending(n => n.ClientNotificationId).Skip(skip).Take(take).ToListAsync(ct);
         return new PagedResult<PortalNotificationDto>(rows.Select(n => new PortalNotificationDto(n.PublicId, n.Kind, n.Subject, n.BodyText, n.CreatedAtUtc)).ToList(), total, skip, take);
     }
+
+    private static PortalProgressDto ProgressOf(OrderProgressResult p) => new(p.Step, p.Total, p.State, p.StatusCode, p.StatusLabel);
 
     /// <summary>Línea de tiempo: solo el estatus y cuándo (sin comentarios internos ni quién lo cambió).</summary>
     private async Task<IReadOnlyList<PortalOrderEventDto>> TimelineAsync(int orderId, CancellationToken ct)

@@ -10,8 +10,8 @@ Lote 102 (portal de clientes, 2026-10-17). La app **aparte** del cliente: **web*
 | **Segundo paso (MFA)** | La primera vez inscribe su app de autenticación (clave o enlace, código y **códigos de recuperación**); después escribe el código (se recuerda 30 días en la computadora de confianza) |
 | **Documento legal** | Política de privacidad y términos de uso: el botón «Acepto» se habilita solo al llegar al final del texto |
 | **Inicio** | Saludo, el cliente actual, cuántas órdenes tiene en total y por estatus, y las 5 más recientes |
-| **Órdenes** | Sus órdenes con búsqueda por conduce, orden, factura o consignatario y «Cargar más» (20 por página) |
-| **Ficha de la orden** | Conduce, estatus, servicio, entrega, paquetes, COD y el **seguimiento** (cada cambio de estatus con su fecha) |
+| **Órdenes** | Sus órdenes con búsqueda por conduce, orden, factura o consignatario y «Cargar más» (20 por página); cada una con su **barra de progreso** (capítulo 28) |
+| **Ficha de la orden** | La **barra de progreso** con la lista de etapas, conduce, estatus, servicio, entrega, paquetes, COD y el **seguimiento** (cada cambio de estatus con su fecha) |
 | **Avisos** | Los resúmenes que su compañía configuró mandarle por la bandeja del portal (recogido, salió a entrega, entregado, COD procesado, factura emitida) |
 | **Ajustes** | La cuenta; **cambiar de cliente** (si tiene acceso a varios); idioma (es/en); **Abrir con huella** (solo teléfono); «No confiar en esta computadora»; **mis computadoras de confianza** (con «Quitar»); cerrar sesión |
 

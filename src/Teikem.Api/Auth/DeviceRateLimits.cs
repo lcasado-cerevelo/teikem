@@ -30,6 +30,9 @@ public static class DeviceRateLimits
     /// </summary>
     public const string Login = "login";
     public const int DefaultLoginPerMinute = 60;
+    /// <summary>Lote 103: GET /public/track/{slug}/{waybill} (anónimo, «¿Cómo va mi orden?»): 20 por minuto por IP (RateLimiting:TrackPerMinute); el conduce es consecutivo, así que el tope frena a quien recorra todos los números.</summary>
+    public const string Track = "public-track";
+    public const int DefaultTrackPerMinute = 20;
     public const int DefaultPasswordResetPerMinute = 5;
     public const int DefaultEnrollPerMinute = 10;
     public const int DefaultDeviceAuthPerMinute = 60;
@@ -41,6 +44,7 @@ public static class DeviceRateLimits
         var auth = Positive(config.GetValue<int?>("RateLimiting:DeviceAuthPerMinute"), DefaultDeviceAuthPerMinute);
         var reset = Positive(config.GetValue<int?>("RateLimiting:PasswordResetPerMinute"), DefaultPasswordResetPerMinute);
         var login = Positive(config.GetValue<int?>("RateLimiting:LoginPerMinute"), DefaultLoginPerMinute);
+        var track = Positive(config.GetValue<int?>("RateLimiting:TrackPerMinute"), DefaultTrackPerMinute);
         return services.AddRateLimiter(o =>
         {
             o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -48,6 +52,7 @@ public static class DeviceRateLimits
             o.AddPolicy(DeviceAuth, ctx => PerIpAndPath(ctx, auth));
             o.AddPolicy(PasswordReset, ctx => PerIpAndPath(ctx, reset));
             o.AddPolicy(Login, ctx => PerIp(ctx, login));
+            o.AddPolicy(Track, ctx => PerIp(ctx, track));
             o.OnRejected = async (context, ct) =>
             {
                 var http = context.HttpContext;

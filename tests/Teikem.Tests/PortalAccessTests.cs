@@ -387,7 +387,7 @@ public class PortalAccessTests
         f.Tenant.IsPortal = true;
         f.Tenant.PortalClientId = clientId;
         f.Tenant.ScopedClientIds = new[] { clientId };   // lo que hace TenantContextMiddleware con el claim cid
-        return new PortalService(f.Db, f.Tenant, null!, null!, f.Reader, f.Lookups);
+        return new PortalService(f.Db, f.Tenant, null!, null!, f.Reader, f.Lookups, new OrderProgressService(f.Db, f.Tenant, f.Lookups));
     }
 
     [Fact]

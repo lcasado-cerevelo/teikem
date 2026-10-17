@@ -7,6 +7,8 @@ import { useT } from '../../kernel/i18n/useT'
 import { Button, Card, Chip, colors, Muted, Notice, Screen, Spinner, Title } from '../../kernel/ui/ui'
 import { useAsync } from '../../kernel/ui/useAsync'
 import { formatDate, formatDateTime, formatMoney, statusTone } from '../format'
+import { ProgressBar, ProgressSteps } from '../progress/ProgressBar'
+import { toProgressInfo } from '../progress/progressInfo'
 import { getOrder } from '../portalApi'
 
 export function OrderDetailScreen() {
@@ -30,6 +32,12 @@ export function OrderDetailScreen() {
           <>
             <Title>{o.waybillNumber || o.orderNumber}</Title>
             <Chip label={o.statusLabel ?? o.status ?? ''} tone={statusTone(o.status)} />
+            {toProgressInfo(o.progress) && (
+              <Card>
+                <ProgressBar progress={toProgressInfo(o.progress)!} />
+                {(o.stepLabels ?? []).length > 0 && <ProgressSteps labels={o.stepLabels ?? []} progress={toProgressInfo(o.progress)!} />}
+              </Card>
+            )}
             <Card>
               <Row label={t('order.waybill')} value={o.waybillNumber} />
               <Row label={t('order.orderNumber')} value={o.orderNumber} />

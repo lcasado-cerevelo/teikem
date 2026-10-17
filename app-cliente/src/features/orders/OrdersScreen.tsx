@@ -7,6 +7,8 @@ import { apiErrorMessage } from '../../kernel/api/client'
 import { useT } from '../../kernel/i18n/useT'
 import { Button, Card, Chip, colors, Field, Muted, Notice, Screen, Spinner, Title } from '../../kernel/ui/ui'
 import { formatDate, statusTone } from '../format'
+import { ProgressBar } from '../progress/ProgressBar'
+import { toProgressInfo } from '../progress/progressInfo'
 import { listOrders, PAGE_SIZE, type PortalOrderListItemDto } from '../portalApi'
 
 export function OrdersScreen() {
@@ -65,7 +67,7 @@ export function OrdersScreen() {
           <Text style={{ fontWeight: '700', color: colors.text }}>{o.waybillNumber || o.orderNumber}</Text>
           <Muted>{t('orders.orderNumber', { number: o.orderNumber ?? '' })}</Muted>
           <Text style={{ color: colors.text }}>{[o.consigneeName, o.consigneeCity].filter(Boolean).join(' · ')}</Text>
-          <Chip label={o.statusLabel ?? o.status ?? ''} tone={statusTone(o.status)} />
+          {toProgressInfo(o.progress) ? <ProgressBar compact progress={toProgressInfo(o.progress)!} /> : <Chip label={o.statusLabel ?? o.status ?? ''} tone={statusTone(o.status)} />}
           <Muted>{formatDate(o.createdAtUtc, lang)}</Muted>
         </Card>
       ))}

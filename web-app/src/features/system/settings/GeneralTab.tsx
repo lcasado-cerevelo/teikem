@@ -6,6 +6,7 @@ import { useT } from '../../../kernel/i18n'
 import { Field, Form, IconGear, Panel, Select, TextInput, toast } from '../../../kernel/ui'
 import { IconShield } from '../../../kernel/ui/actionIcons'
 import { useSaveTenantSettings, type TenantSettingsDto } from '../tenantSettingsApi'
+import { TrackingPanel } from './TrackingPanel'
 
 interface GeneralValues {
   legalName: string
@@ -78,6 +79,7 @@ export function GeneralTab({ settings, canEdit }: { settings: TenantSettingsDto;
           )}
         </Form>
       </Panel>
+      <TrackingPanel canEdit={canEdit} />
       <Panel icon={<IconShield />} title={t('system.settings.general.secLinkTitle')}>
         <p className="set-d" style={{ marginBottom: 12 }}>
           {t('system.settings.general.secLinkHint')}

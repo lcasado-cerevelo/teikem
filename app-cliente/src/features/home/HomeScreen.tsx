@@ -7,6 +7,8 @@ import { useT } from '../../kernel/i18n/useT'
 import { Button, Card, Chip, colors, Muted, Notice, Screen, Spinner, Title } from '../../kernel/ui/ui'
 import { useAsync } from '../../kernel/ui/useAsync'
 import { statusTone } from '../format'
+import { ProgressBar } from '../progress/ProgressBar'
+import { toProgressInfo } from '../progress/progressInfo'
 import { getMe, getSummary } from '../portalApi'
 
 export function HomeScreen() {
@@ -54,7 +56,7 @@ export function HomeScreen() {
               <Card key={o.publicId} onPress={() => router.push({ pathname: '/order/[id]', params: { id: o.publicId as string } })}>
                 <Text style={{ fontWeight: '700', color: colors.text }}>{o.waybillNumber || o.orderNumber}</Text>
                 <Muted>{[o.consigneeName, o.consigneeCity].filter(Boolean).join(' · ')}</Muted>
-                <Chip label={o.statusLabel ?? o.status ?? ''} tone={statusTone(o.status)} />
+                {toProgressInfo(o.progress) ? <ProgressBar compact progress={toProgressInfo(o.progress)!} /> : <Chip label={o.statusLabel ?? o.status ?? ''} tone={statusTone(o.status)} />}
               </Card>
             ))}
             {(summary.data.recentOrders ?? []).length > 0 && <Button title={t('home.seeAll')} variant="secondary" onPress={() => router.push('/orders')} />}
