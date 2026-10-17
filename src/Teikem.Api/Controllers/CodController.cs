@@ -15,8 +15,15 @@ namespace Teikem.Api.Controllers;
 [Route("api/v1/cod")]
 [Authorize]
 [RequireModule(ModuleKeys.Cod)]
-public sealed class CodController(CodService cod) : ControllerBase
+public sealed class CodController(CodService cod, CodRemittanceService remittances) : ControllerBase
 {
+    /// <summary>Comisión por omisión de la remesa de la compañía (% de lo cobrado), cuando el contrato del cliente no trae la suya.</summary>
+    [HttpGet("settings"), RequirePermission(PermissionCatalog.CodView)]
+    public Task<CodSettingsDto> Settings(CancellationToken ct) => remittances.GetSettingsAsync(ct);
+
+    [HttpPut("settings"), RequirePermission(PermissionCatalog.CodRemit)]
+    public Task<CodSettingsDto> UpdateSettings([FromBody] CodSettingsRequest req, CancellationToken ct) => remittances.UpdateSettingsAsync(req, ct);
+
     /// <summary>Órdenes con COD: lo pedido, lo cobrado y lo que falta. Filtros: estatus del COD, cliente y búsqueda (orden, factura o cliente).</summary>
     [HttpGet("orders"), RequirePermission(PermissionCatalog.CodView)]
     public Task<PagedResult<CodOrderListItemDto>> Orders([FromQuery] string? status, [FromQuery] Guid? clientPublicId, [FromQuery] string? q, [FromQuery] int skip, [FromQuery] int take, CancellationToken ct)

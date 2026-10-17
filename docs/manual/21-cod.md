@@ -68,3 +68,48 @@ La remesa al cliente (`cod.remit`) llega en el siguiente lote.
 
 **Contabilidad → Procesar entregas** ([L85](frontend/l85-cod.md)): órdenes con COD y registro de cobros; **Reconciliar** subiendo las hojas escaneadas (PDF o imágenes). El **navegador** lee el código de barras de cada hoja (pdf.js y zxing-wasm, servidos con la propia aplicación; los archivos **no se suben**) y al API solo llegan los códigos con su origen (archivo y página); vista previa (`dryRun`), cuadrar con confirmación y corridas anteriores. Las páginas donde no se encontró ningún código se avisan para revisarlas a mano. Si se elige el cliente de las hojas, se manda `clientPublicId` (ver §3).
 
+## 6. La remesa al cliente (Lote 86)
+
+La **remesa** (`REM-#####`) le devuelve al cliente el dinero que se cobró por él en la calle, menos la **comisión**. **Teikem calcula y exporta; no emite el pago.** API: `/api/v1/cod/remittances`. Ver con `cod.view`; todo lo demás con **`cod.remit`**.
+
+### El flujo
+
+**Abierta → Cuadrada → Aprobada → Remitida.** Una abierta o cuadrada se puede **cancelar**.
+
+1. **Candidatos** (`GET /cod/remittances/candidates?clientPublicId=&periodStart=&periodEnd=&commissionPct=`): lo que entraría (sin crear nada) y la comisión que se aplicaría.
+2. **Crear** (`POST /cod/remittances`: cliente y período): agrupa los cobros **cuadrados** (reconciliados) de las órdenes de ese cliente cuya **fecha de cobro** cae en el período (en la zona horaria de la compañía) y que todavía no están en otra remesa. **Cada cobro entra en una sola remesa a la vez.** Lo cobrado que no se ha cuadrado no entra.
+3. **Cuadrar** (`POST .../review`): se revisó el cuadre. **Aprobar** (`POST .../approve`): exige **reautenticación (AAL2)** como aprobar una corrida de facturación; queda quién y cuándo. **Remitir** (`POST .../remit`, con una referencia opcional del pago, p. ej. el número de cheque): los cobros pasan a **Remitido** y, cuando todos los cobros de una orden ya se remitieron, el **COD de la orden pasa a Remitido** (terminal).
+4. **Cancelar** (`POST .../cancel`): solo abierta o cuadrada; la remesa se desactiva (sale de la lista) y sus cobros quedan libres para otra remesa.
+
+### La comisión
+
+Por cada cobro: **monto × % ÷ 100**, redondeado a 2 decimales (el medio hacia arriba); **neto = bruto − comisión**. El % es, en este orden: el que se pide al crear (`commissionPct`); el del **contrato activo** del cliente (`CodCommissionPct`); el **por omisión de la compañía** (`GET/PUT /cod/settings`, 8 % de fábrica; lo cambia quien tiene `cod.remit`). La remesa guarda el % que usó. (No confundir con el *cargo por COD* de la facturación, que es un cobro de Advance al cliente por el servicio.)
+
+### Exportar
+
+`GET /cod/remittances/{id}/export?templatePublicId=` arma el archivo de una remesa **aprobada o remitida**: **una fila por cobro**, con los datos de la remesa repetidos, con una plantilla del alcance `COD_REMITTANCE` (el mismo motor de plantillas de la facturación: CSV o TXT, delimitador, formato de fecha, columnas y encabezados). Sin plantilla se usa la primera activa (**Formato estándar**, todas las columnas, que se crea sola). Las plantillas se administran en `/export-templates?scope=COD_REMITTANCE` (con los permisos de facturación). Campos: número de la remesa, período, cliente, moneda, orden, factura, fecha, método, cheque, referencia, monto cobrado, comisión (% y monto), neto y los totales de la remesa.
+
+### Validaciones y mensajes
+
+| Situación | Mensaje | HTTP |
+|---|---|---|
+| Sin cliente / cliente inexistente | `Indique el cliente de la remesa.` / `El cliente no existe.` | 400 |
+| Sin período / período invertido | `Indique el período de la remesa (desde y hasta).` / `El período no es válido: la fecha final no puede ser anterior a la inicial.` | 400 |
+| Comisión fuera de 0–100 o con más de 2 decimales | `La comisión debe estar entre 0 y 100 (hasta 2 decimales).` | 400 |
+| Comisión por omisión inválida | `La comisión por omisión debe estar entre 0 y 100 (hasta 2 decimales).` | 400 |
+| Nada que remitir | `No hay cobros cuadrados de ese cliente en ese período para remitir.` | 422 |
+| Cuadrar una que no está abierta | `Solo se cuadra una remesa abierta.` | 422 |
+| Aprobar una que no está cuadrada | `Solo se aprueba una remesa cuadrada.` | 422 |
+| Remitir una que no está aprobada | `Solo se remite una remesa aprobada.` | 422 |
+| Cancelar una aprobada o remitida | `Solo se cancela una remesa abierta o cuadrada (una aprobada o remitida ya no).` | 422 |
+| Exportar una que no está aprobada ni remitida | `Solo se exporta una remesa aprobada o remitida.` | 422 |
+| Referencia de pago larga | `La referencia no puede pasar de 80 caracteres.` | 400 |
+| Aprobar sin reautenticación | `Esta acción requiere reautenticación reciente (AAL2).` (`aal2_required`) | 403 |
+| Remesa inexistente (o cancelada) | `Remesa no encontrada.` | 404 |
+
+### Para soporte
+
+- Tablas `CodRemittanceBatch` y `CodRemittanceLine` (ya estaban en el esquema original; `NetRemitted` y `NetAmount` son columnas calculadas); `Tenant.CodDefaultCommissionPct`; EntityType `COD_REMITTANCE`; contador `CODREMIT` y su CHECK: sección **2026-10-17 (y)** de `Diseño/logistica-db-update.sql`.
+- Una remesa **cancelada** queda en la base con `IsActive = 0` y sus líneas (no se borra); sus cobros vuelven a quedar sin remesa.
+- La **comisión del contrato** se lee de `Contract.CodCommissionPct`; todavía no hay un campo para editarla en la pantalla de contratos (se puede escribir por base o API); la pantalla de remesas (Lote 87) muestra de dónde sale el % aplicado.
+

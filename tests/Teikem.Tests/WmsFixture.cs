@@ -216,6 +216,7 @@ internal sealed class WmsFixture : IAsyncDisposable
         foreach (var c in Teikem.Domain.Sales.ReturnReasons.All) L(Teikem.Domain.Sales.ReturnCodes.ReasonDomain, c);
         L(LookupDomains.EntityType, EntityTypes.OrderCod);   // Lote 84
         L(LookupDomains.EntityType, Teikem.Domain.Cod.CodCodes.CollectionEntityType);
+        L(LookupDomains.EntityType, Teikem.Domain.Cod.RemittanceCodes.EntityType);   // Lote 86
         foreach (var m in new[] { Teikem.Domain.Cod.CodMethods.Cash, Teikem.Domain.Cod.CodMethods.Check, Teikem.Domain.Cod.CodMethods.AthMovil }) L(Teikem.Domain.Cod.CodCodes.MethodDomain, m);
         L(Teikem.Domain.Billing.BillingCodes.ChargeTypeDomain, Teikem.Domain.Billing.BillingCodes.ProductSale);
         L(Teikem.Domain.Billing.BillingCodes.PaymentMethodDomain, "CASH");
@@ -356,6 +357,11 @@ internal sealed class WmsFixture : IAsyncDisposable
         S(Teikem.Domain.Cod.CodCodes.CollectionStatusDomain, Teikem.Domain.Cod.CodCollectionStatuses.Reconciled, pipe, 2);
         S(Teikem.Domain.Cod.CodCodes.CollectionStatusDomain, Teikem.Domain.Cod.CodCollectionStatuses.Remitted, term, 3);
         S(Teikem.Domain.Cod.CodCodes.CollectionStatusDomain, Teikem.Domain.Cod.CodCollectionStatuses.Void, lat, 4);
+        S(StatusDomains.ContractStatus, ContractStatuses.Active, pipe, 2);   // Lote 86: comisión del contrato activo
+        S(Teikem.Domain.Cod.RemittanceCodes.StatusDomain, Teikem.Domain.Cod.RemittanceStatuses.Open, pipe, 1, true);
+        S(Teikem.Domain.Cod.RemittanceCodes.StatusDomain, Teikem.Domain.Cod.RemittanceStatuses.Reconciled, pipe, 2);
+        S(Teikem.Domain.Cod.RemittanceCodes.StatusDomain, Teikem.Domain.Cod.RemittanceStatuses.Approved, pipe, 3);
+        S(Teikem.Domain.Cod.RemittanceCodes.StatusDomain, Teikem.Domain.Cod.RemittanceStatuses.Remitted, term, 4);
         ReceiptStatusSeed.AddLateralEntries(Db, LookupId(LookupDomains.EntityType, EntityTypes.Receipt), StatusId);
 
         // 3G: WAREHOUSE_TASK CANCELLED solo desde PENDING e IN_PROGRESS.

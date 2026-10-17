@@ -46,3 +46,37 @@ public sealed class CodReconcileItemConfiguration : IEntityTypeConfiguration<Cod
         b.Property(i => i.Amount).HasColumnType("decimal(18,4)");
     }
 }
+
+// Lote 86 (P8) — remesa COD. Las tablas ya existen en el DDL original (NetRemitted y NetAmount son columnas calculadas); BatchId de CodCollection ya estaba mapeada; IsActive y los índices los crea la
+// sección «2026-10-17 (y)» de update.sql.
+public sealed class CodRemittanceBatchConfiguration : IEntityTypeConfiguration<CodRemittanceBatch>
+{
+    public void Configure(EntityTypeBuilder<CodRemittanceBatch> b)
+    {
+        b.ToTable("CodRemittanceBatch");
+        b.HasKey(r => r.CodRemittanceBatchId);
+        b.Property(r => r.PublicId).HasDefaultValueSql("NEWID()").ValueGeneratedOnAdd();
+        b.Property(r => r.Number).HasMaxLength(40).IsRequired();
+        b.Property(r => r.GrossCollected).HasColumnType("decimal(18,4)");
+        b.Property(r => r.CommissionPct).HasColumnType("decimal(5,2)");
+        b.Property(r => r.CommissionAmount).HasColumnType("decimal(18,4)");
+        b.Property(r => r.NetRemitted).HasColumnType("decimal(18,4)").HasComputedColumnSql("[GrossCollected] - [CommissionAmount]", stored: true);
+        b.Property(r => r.ExportRef).HasMaxLength(RemittanceRules.MaxExportRefLength);
+        b.Property(r => r.RowVersion).IsRowVersion();
+        b.HasMany(r => r.Lines).WithOne().HasForeignKey(l => l.CodRemittanceBatchId).OnDelete(DeleteBehavior.Cascade);
+        b.HasIndex(r => r.PublicId);
+        b.HasIndex(r => new { r.TenantId, r.Number }).IsUnique().HasDatabaseName("UQ_CodRemittanceBatch_Number");
+    }
+}
+
+public sealed class CodRemittanceLineConfiguration : IEntityTypeConfiguration<CodRemittanceLine>
+{
+    public void Configure(EntityTypeBuilder<CodRemittanceLine> b)
+    {
+        b.ToTable("CodRemittanceLine");
+        b.HasKey(l => l.CodRemittanceLineId);
+        b.Property(l => l.AmountCollected).HasColumnType("decimal(18,4)");
+        b.Property(l => l.CommissionAmount).HasColumnType("decimal(18,4)");
+        b.Property(l => l.NetAmount).HasColumnType("decimal(18,4)").HasComputedColumnSql("[AmountCollected] - [CommissionAmount]", stored: true);
+    }
+}

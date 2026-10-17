@@ -17,7 +17,9 @@ public static class ExportCodes
 
     /// <summary>Alcances: qué documento exporta la plantilla. Hoy solo Facturación; los demás se suman con su pantalla.</summary>
     public const string ScopeBilling = "BILLING";
-    public static readonly string[] Scopes = { ScopeBilling };
+    /// <summary>Lote 86 (P8): la remesa COD al cliente (una fila por cobro remitido).</summary>
+    public const string ScopeCodRemittance = "COD_REMITTANCE";
+    public static readonly string[] Scopes = { ScopeBilling, ScopeCodRemittance };
 
     public const string FormatCsv = "CSV";
     public const string FormatTxt = "TXT";
@@ -96,7 +98,31 @@ public static class ExportFields
         new ExportField("PERIOD_END", ExportKind.Date, "PeriodEnd", "Fin del período", "Period end"),
     };
 
-    public static IReadOnlyList<ExportField> Of(string scope) => scope == ExportCodes.ScopeBilling ? Billing : Array.Empty<ExportField>();
+    // ---- Remesa COD (Lote 86): una fila por cobro, con los datos de la remesa repetidos en cada una
+    public static readonly IReadOnlyList<ExportField> CodRemittance = new[]
+    {
+        new ExportField("REMITTANCE_NUMBER", ExportKind.Text, "RemittanceNo", "Número de la remesa", "Remittance number"),
+        new ExportField("PERIOD_START", ExportKind.Date, "PeriodStart", "Inicio del período", "Period start"),
+        new ExportField("PERIOD_END", ExportKind.Date, "PeriodEnd", "Fin del período", "Period end"),
+        new ExportField("CLIENT_CODE", ExportKind.Text, "CustomerCode", "Código del cliente", "Customer code"),
+        new ExportField("CLIENT_NAME", ExportKind.Text, "Customer", "Cliente", "Customer"),
+        new ExportField("CURRENCY", ExportKind.Text, "Currency", "Moneda", "Currency"),
+        new ExportField("ORDER_NUMBER", ExportKind.Text, "OrderNo", "Número de orden", "Order number"),
+        new ExportField("INVOICE_NUMBER", ExportKind.Text, "InvoiceNo", "Factura del cliente", "Client invoice"),
+        new ExportField("COLLECTED_DATE", ExportKind.Date, "CollectedDate", "Fecha del cobro", "Collection date"),
+        new ExportField("METHOD", ExportKind.Text, "Method", "Método de cobro", "Payment method"),
+        new ExportField("CHECK_NUMBER", ExportKind.Text, "CheckNo", "Número del cheque", "Check number"),
+        new ExportField("REFERENCE", ExportKind.Text, "Reference", "Referencia", "Reference"),
+        new ExportField("AMOUNT_COLLECTED", ExportKind.Money, "Collected", "Monto cobrado", "Amount collected"),
+        new ExportField("COMMISSION_PCT", ExportKind.Number, "CommissionPct", "Comisión (%)", "Commission (%)"),
+        new ExportField("COMMISSION_AMOUNT", ExportKind.Money, "Commission", "Comisión", "Commission"),
+        new ExportField("NET_AMOUNT", ExportKind.Money, "Net", "Neto a remitir", "Net to remit"),
+        new ExportField("BATCH_GROSS", ExportKind.Money, "BatchGross", "Bruto de la remesa", "Batch gross"),
+        new ExportField("BATCH_COMMISSION", ExportKind.Money, "BatchCommission", "Comisión de la remesa", "Batch commission"),
+        new ExportField("BATCH_NET", ExportKind.Money, "BatchNet", "Neto de la remesa", "Batch net"),
+    };
+
+    public static IReadOnlyList<ExportField> Of(string scope) => scope == ExportCodes.ScopeBilling ? Billing : scope == ExportCodes.ScopeCodRemittance ? CodRemittance : Array.Empty<ExportField>();
 }
 
 /// <summary>Reglas puras de las plantillas (sin EF; ExportTemplateService las traduce a 400/404/409). Los mensajes son públicos: el manual y la FAQ los citan.</summary>

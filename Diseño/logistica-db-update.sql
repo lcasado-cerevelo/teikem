@@ -3518,3 +3518,28 @@ WHEN NOT MATCHED THEN
     INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
     VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
 GO
+
+-- =====================================================================================================================
+-- 2026-10-17 (y) Lote 86 (P8) — remesa COD al cliente
+-- CodRemittanceBatch / CodRemittanceLine (ya existían en el DDL original; NetRemitted y NetAmount son columnas calculadas); comisión por omisión de la compañía (Tenant.CodDefaultCommissionPct, 8 %);
+-- EntityType COD_REMITTANCE (bitácora e historial de estatus); contador CODREMIT (REM-#####). Solo AGREGA. Idempotente.
+-- =====================================================================================================================
+IF COL_LENGTH('dbo.Tenant', 'CodDefaultCommissionPct') IS NULL
+    ALTER TABLE dbo.Tenant ADD CodDefaultCommissionPct DECIMAL(5,2) NOT NULL CONSTRAINT DF_Tenant_CodDefaultCommissionPct DEFAULT 8;
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'COD_REMITTANCE', N'{"es":"Remesa COD","en":"COD remittance"}', 150)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+-- Contador de remesas: el CHECK de los tipos de contador se vuelve a crear con CODREMIT
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_NumberSequence_Kind' AND definition NOT LIKE '%CODREMIT%')
+    ALTER TABLE dbo.NumberSequence DROP CONSTRAINT CK_NumberSequence_Kind;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_NumberSequence_Kind')
+    ALTER TABLE dbo.NumberSequence ADD CONSTRAINT CK_NumberSequence_Kind CHECK (Kind IN ('ORDER','INVOICE','PACKAGE','PACKBATCH','WORKORDER','TRIP','RECEIPT','CYCLECOUNT','CROSSDOCK','PURCHASE','RENTAL','RENTALRETURN','MANUALISSUE','MULTIADJUST','SALESORDER','BILLINVOICE','CREDITNOTE','SALESRETURN','CODREMIT'));
+GO

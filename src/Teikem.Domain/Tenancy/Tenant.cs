@@ -86,6 +86,8 @@ public class Tenant : ISoftDeletable
     public int InvoiceDueDays { get; set; } = 30;
     /// <summary>Lote 81: días después del último despacho en que se acepta pedir una devolución de venta (0 = sin ventana).</summary>
     public int SalesReturnWindowDays { get; set; } = 30;
+    /// <summary>Lote 86 (P8): comisión por omisión de la remesa COD (% de lo cobrado) cuando el contrato del cliente no trae la suya.</summary>
+    public decimal CodDefaultCommissionPct { get; set; } = 8m;
     /// <summary>
     /// Lote 43 (F-G1): «Imprimir labels directo a la impresora». Encendido, el label de cada paquete de una orden nueva (entrada rápida y
     /// detallada) sale solo a la impresora de labels de la estación (QZ Tray; sin QZ Tray, el PDF del navegador). Apagado por defecto.

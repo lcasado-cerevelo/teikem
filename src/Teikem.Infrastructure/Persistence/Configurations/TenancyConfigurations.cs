@@ -24,6 +24,7 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
     public void Configure(EntityTypeBuilder<Tenant> b)
     {
         b.ToTable("Tenant");
+        b.Property(t => t.CodDefaultCommissionPct).HasColumnType("decimal(5,2)");   // Lote 86
         b.HasKey(t => t.TenantId);
         b.Property(t => t.PublicId).HasDefaultValueSql("NEWID()");
         b.Property(t => t.Name).HasMaxLength(200).IsRequired();

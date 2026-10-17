@@ -8649,3 +8649,23 @@ Aparece como **No encontrado** en la vista previa; se puede **quitar** de la lis
 **«Cuadrar» está deshabilitado.**
 Primero hay que hacer la **Vista previa** y debe haber al menos un código que se cuadre; si se cambia la lista o el cliente, la vista previa se descarta y hay que hacerla otra vez.
 
+## Lote 86 — Remesa COD al cliente
+
+**`No hay cobros cuadrados de ese cliente en ese período para remitir.` (422)**
+Una remesa solo junta cobros **cuadrados** (reconciliados contra su hoja) del cliente cuya **fecha de cobro** cae en el período. Revise que los cobros estén cuadrados (pestaña Reconciliar), que el período incluya la fecha de cobro y que no estén ya en otra remesa.
+
+**¿Qué comisión se aplica?**
+La que se pida al crear la remesa; si no, la del contrato activo del cliente; si no, la de la compañía (8 % de fábrica). Los candidatos (`/cod/remittances/candidates`) dicen cuál y de dónde sale antes de crear.
+
+**Me equivoqué de período o de comisión.**
+Mientras la remesa esté abierta o cuadrada, **cancélela** y créela otra vez: sus cobros quedan libres. Una aprobada o remitida ya no se cancela.
+
+**`Esta acción requiere reautenticación reciente (AAL2).` al aprobar.**
+Aprobar una remesa pide confirmar la contraseña (como aprobar una corrida de facturación); la pantalla lo pide sola y reintenta.
+
+**La remesa quedó Remitida pero el COD de una orden no pasó a Remitido.**
+El COD de la orden pasa a Remitido cuando **todos** sus cobros ya se remitieron. Si la orden tiene un cobro que no estaba cuadrado (o está en otra remesa), sigue en su estatus hasta que ese cobro también se remita.
+
+**¿Teikem paga al cliente?**
+No. Teikem calcula la remesa (bruto, comisión y neto) y exporta el archivo para contabilidad; el pago lo hace la compañía. «Remitir» solo marca que ya se pagó (con la referencia del cheque o transferencia).
+
