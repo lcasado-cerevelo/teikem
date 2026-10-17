@@ -8669,3 +8669,17 @@ El COD de la orden pasa a Remitido cuando **todos** sus cobros ya se remitieron.
 **¿Teikem paga al cliente?**
 No. Teikem calcula la remesa (bruto, comisión y neto) y exporta el archivo para contabilidad; el pago lo hace la compañía. «Remitir» solo marca que ya se pagó (con la referencia del cheque o transferencia).
 
+## Lote 87 — Pestaña Remesas
+
+**«Crear remesa» está deshabilitado.**
+Hace falta elegir el cliente, un período válido (desde ≤ hasta), una comisión válida (si se escribe) y que existan **cobros cuadrados** de ese cliente en el período: la sección «Cobros que entrarían» lo dice. Si sale 0, revise que los cobros estén cuadrados (pestaña Reconciliar) y la fecha de cobro.
+
+**No veo el botón «Nueva remesa» ni «Aprobar».**
+Crear, cuadrar, aprobar, remitir, cancelar y exportar piden el permiso `cod.remit`; con solo `cod.view` la pestaña es de consulta.
+
+**«Exportar archivo» no me deja elegir plantilla.**
+La lista de plantillas se pide con los permisos de facturación (y el módulo de facturación). Sin ellos se usa la plantilla estándar: baja el mismo archivo con todas las columnas.
+
+**¿De dónde sale la comisión que muestra la pantalla?**
+Debajo de los candidatos dice si es la que usted escribió, la del contrato del cliente o la por omisión de la compañía. La por omisión se cambia en la misma pestaña, debajo de la lista.
+

@@ -7808,6 +7808,7 @@
       "label": "Secciones de COD",
       "orders": "Órdenes con COD",
       "reconcile": "Reconciliar",
+      "remittances": "Remesas",
       "runs": "Corridas"
     },
     "orders": {
@@ -7928,6 +7929,88 @@
       "title": "Corrida hecha"
     },
     "newRun": "Nueva corrida",
+      "rem": {
+          "panel": "Remesas al cliente",
+          "new": "Nueva remesa",
+          "newTitle": "Nueva remesa",
+          "search": "Buscar por número o cliente",
+          "filterStatus": "Filtrar por estatus de la remesa",
+          "empty": "No hay remesas con este filtro.",
+          "title": "Remesa {number}",
+          "lines": "Cobros de la remesa",
+          "col": {
+              "number": "Remesa",
+              "period": "Período",
+              "lines": "Cobros",
+              "gross": "Cobrado",
+              "commission": "Comisión",
+              "net": "Neto a remitir"
+          },
+          "statuses": {
+              "OPEN": "Abierta",
+              "RECONCILED": "Cuadrada",
+              "APPROVED": "Aprobada",
+              "REMITTED": "Remitida"
+          },
+          "hint": {
+              "OPEN": "Revisa los cobros y el neto; después cuádrala.",
+              "RECONCILED": "Cuadrada: ahora se aprueba (pide confirmar tu identidad).",
+              "APPROVED": "Aprobada: exporta el archivo y, cuando se pague al cliente, márcala como remitida.",
+              "REMITTED": "Remitida: el dinero ya se devolvió al cliente."
+          },
+          "commissionWith": "Comisión ({pct})",
+          "currency": "Moneda",
+          "approvedAt": "Aprobada",
+          "remittedAt": "Remitida",
+          "review": "Cuadrar",
+          "reviewed": "Remesa cuadrada.",
+          "approve": "Aprobar",
+          "approved": "Remesa aprobada.",
+          "remit": "Remitir",
+          "remitTitle": "Remitir {number}",
+          "remitBody": "Marca que ya se le pagó {net} a {client}. Teikem no emite el pago: esto solo lo registra.",
+          "remitted": "{number} remitida.",
+          "ref": "Referencia del pago (opcional)",
+          "refHelp": "Por ejemplo, el número del cheque o de la transferencia.",
+          "cancel": "Cancelar remesa",
+          "cancelTitle": "Cancelar {number}",
+          "cancelBody": "La remesa se cancela y sus cobros quedan libres para otra remesa.",
+          "cancelled": "{number} cancelada.",
+          "export": "Exportar archivo",
+          "exportTitle": "Exportar {number}",
+          "exportHelp": "Se descarga un archivo con una fila por cobro, con la comisión y el neto.",
+          "template": "Plantilla",
+          "templateDefault": "La primera activa",
+          "templateStandard": "Se usa la plantilla estándar (las plantillas se administran con los permisos de facturación).",
+          "download": "Descargar",
+          "exported": "Archivo descargado.",
+          "newHelp": "Elige el cliente y el período: entran los cobros ya cuadrados de ese cliente cuya fecha de cobro cae en el período.",
+          "from": "Desde",
+          "to": "Hasta",
+          "pct": "Comisión (%)",
+          "pctPlaceholder": "La del contrato o la de la compañía",
+          "candidates": "Cobros que entrarían ({n})",
+          "noCandidates": "No hay cobros cuadrados de ese cliente en ese período.",
+          "create": "Crear remesa",
+          "created": "Remesa {number} creada.",
+          "source": {
+              "request": "Se usa la comisión que escribiste: {pct}.",
+              "contract": "Se usa la comisión del contrato del cliente: {pct}.",
+              "tenant": "Se usa la comisión por omisión de la compañía: {pct}."
+          },
+          "errors": {
+              "client": "Elige el cliente.",
+              "period": "Elige el período (desde y hasta).",
+              "order": "La fecha final no puede ser anterior a la inicial.",
+              "pct": "La comisión debe estar entre 0 y 100 (hasta 2 decimales).",
+              "ref": "La referencia admite hasta 80 caracteres."
+          },
+          "defaultPct": "Comisión por omisión de la compañía (%)",
+          "defaultPctSave": "Guardar comisión",
+          "defaultPctSaved": "Comisión guardada.",
+          "defaultPctError": "Escribe un número de 0 a 100 (hasta 2 decimales).",
+          "defaultPctHelp": "La usa una remesa cuando el contrato del cliente no trae su propia comisión."
+      },
     "runs": {
       "panel": "Corridas de reconciliación",
       "empty": "Todavía no hay corridas."

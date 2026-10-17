@@ -25128,6 +25128,424 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cod/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CodSettingsDto"];
+                        "application/json": components["schemas"]["CodSettingsDto"];
+                        "text/json": components["schemas"]["CodSettingsDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CodSettingsRequest"];
+                    "text/json": components["schemas"]["CodSettingsRequest"];
+                    "application/*+json": components["schemas"]["CodSettingsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CodSettingsDto"];
+                        "application/json": components["schemas"]["CodSettingsDto"];
+                        "text/json": components["schemas"]["CodSettingsDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cod/remittances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    status?: string;
+                    clientPublicId?: string;
+                    q?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CodRemittanceListItemDtoPagedResult"];
+                        "application/json": components["schemas"]["CodRemittanceListItemDtoPagedResult"];
+                        "text/json": components["schemas"]["CodRemittanceListItemDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CodRemittanceRequest"];
+                    "text/json": components["schemas"]["CodRemittanceRequest"];
+                    "application/*+json": components["schemas"]["CodRemittanceRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CodRemittanceDto"];
+                        "application/json": components["schemas"]["CodRemittanceDto"];
+                        "text/json": components["schemas"]["CodRemittanceDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cod/remittances/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CodRemittanceDto"];
+                        "application/json": components["schemas"]["CodRemittanceDto"];
+                        "text/json": components["schemas"]["CodRemittanceDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cod/remittances/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    clientPublicId?: string;
+                    periodStart?: string;
+                    periodEnd?: string;
+                    commissionPct?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CodRemittanceCandidatesDto"];
+                        "application/json": components["schemas"]["CodRemittanceCandidatesDto"];
+                        "text/json": components["schemas"]["CodRemittanceCandidatesDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cod/remittances/{publicId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CodRemittanceDto"];
+                        "application/json": components["schemas"]["CodRemittanceDto"];
+                        "text/json": components["schemas"]["CodRemittanceDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cod/remittances/{publicId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CodRemittanceDto"];
+                        "application/json": components["schemas"]["CodRemittanceDto"];
+                        "text/json": components["schemas"]["CodRemittanceDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cod/remittances/{publicId}/remit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CodRemitRequest"];
+                    "text/json": components["schemas"]["CodRemitRequest"];
+                    "application/*+json": components["schemas"]["CodRemitRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CodRemittanceDto"];
+                        "application/json": components["schemas"]["CodRemittanceDto"];
+                        "text/json": components["schemas"]["CodRemittanceDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cod/remittances/{publicId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CodRemittanceDto"];
+                        "application/json": components["schemas"]["CodRemittanceDto"];
+                        "text/json": components["schemas"]["CodRemittanceDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cod/remittances/{publicId}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    templatePublicId?: string;
+                };
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExportFileDto"];
+                        "application/json": components["schemas"]["ExportFileDto"];
+                        "text/json": components["schemas"]["ExportFileDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -33766,6 +34184,139 @@ export interface components {
             /** Format: date-time */
             createdAtUtc?: string;
             createdByName?: string | null;
+        };
+        CodRemitRequest: {
+            exportRef?: string | null;
+        };
+        CodRemittanceDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            statusColor?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            /** Format: date */
+            periodStart?: string;
+            /** Format: date */
+            periodEnd?: string;
+            /** Format: double */
+            grossCollected?: number;
+            /** Format: double */
+            commissionPct?: number | null;
+            /** Format: double */
+            commissionAmount?: number;
+            /** Format: double */
+            netRemitted?: number;
+            currency?: string | null;
+            /** Format: date-time */
+            generatedAtUtc?: string;
+            /** Format: date-time */
+            approvedAtUtc?: string | null;
+            approvedByName?: string | null;
+            /** Format: date-time */
+            remittedAtUtc?: string | null;
+            exportRef?: string | null;
+            lines?: components["schemas"]["CodRemittanceLineDto"][] | null;
+        };
+        CodSettingsDto: {
+            /** Format: double */
+            defaultCommissionPct?: number;
+        };
+        CodRemittanceListItemDtoPagedResult: {
+            items?: components["schemas"]["CodRemittanceListItemDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        CodRemittanceRequest: {
+            /** Format: uuid */
+            clientPublicId?: string | null;
+            /** Format: date */
+            periodStart?: string | null;
+            /** Format: date */
+            periodEnd?: string | null;
+            /** Format: double */
+            commissionPct?: number | null;
+        };
+        CodSettingsRequest: {
+            /** Format: double */
+            defaultCommissionPct?: number | null;
+        };
+        CodRemittanceLineDto: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            collectionId?: number;
+            /** Format: uuid */
+            orderPublicId?: string;
+            orderNumber?: string | null;
+            invoiceNumber?: string | null;
+            /** Format: date-time */
+            collectedAtUtc?: string;
+            method?: string | null;
+            methodLabel?: string | null;
+            checkNumber?: string | null;
+            reference?: string | null;
+            /** Format: double */
+            amountCollected?: number;
+            /** Format: double */
+            commissionAmount?: number;
+            /** Format: double */
+            netAmount?: number;
+        };
+        CodRemittanceCandidatesDto: {
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            /** Format: date */
+            periodStart?: string;
+            /** Format: date */
+            periodEnd?: string;
+            /** Format: double */
+            commissionPct?: number;
+            commissionSource?: string | null;
+            /** Format: double */
+            grossCollected?: number;
+            /** Format: double */
+            commissionAmount?: number;
+            /** Format: double */
+            netRemitted?: number;
+            lines?: components["schemas"]["CodRemittanceLineDto"][] | null;
+        };
+        CodRemittanceListItemDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            statusColor?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            /** Format: date */
+            periodStart?: string;
+            /** Format: date */
+            periodEnd?: string;
+            /** Format: double */
+            grossCollected?: number;
+            /** Format: double */
+            commissionPct?: number | null;
+            /** Format: double */
+            commissionAmount?: number;
+            /** Format: double */
+            netRemitted?: number;
+            /** Format: int32 */
+            lineCount?: number;
+            /** Format: date-time */
+            generatedAtUtc?: string;
+            /** Format: date-time */
+            remittedAtUtc?: string | null;
         };
     };
     responses: never;

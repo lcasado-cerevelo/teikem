@@ -7808,6 +7808,7 @@
       "label": "COD sections",
       "orders": "Orders with COD",
       "reconcile": "Reconcile",
+      "remittances": "Remittances",
       "runs": "Runs"
     },
     "orders": {
@@ -7928,6 +7929,88 @@
       "title": "Run done"
     },
     "newRun": "New run",
+      "rem": {
+          "panel": "Client remittances",
+          "new": "New remittance",
+          "newTitle": "New remittance",
+          "search": "Search by number or client",
+          "filterStatus": "Filter by remittance status",
+          "empty": "No remittances match this filter.",
+          "title": "Remittance {number}",
+          "lines": "Collections in the remittance",
+          "col": {
+              "number": "Remittance",
+              "period": "Period",
+              "lines": "Collections",
+              "gross": "Collected",
+              "commission": "Commission",
+              "net": "Net to remit"
+          },
+          "statuses": {
+              "OPEN": "Open",
+              "RECONCILED": "Reconciled",
+              "APPROVED": "Approved",
+              "REMITTED": "Remitted"
+          },
+          "hint": {
+              "OPEN": "Review the collections and the net; then reconcile it.",
+              "RECONCILED": "Reconciled: now approve it (you will be asked to confirm your identity).",
+              "APPROVED": "Approved: export the file and, once the client is paid, mark it as remitted.",
+              "REMITTED": "Remitted: the money was already returned to the client."
+          },
+          "commissionWith": "Commission ({pct})",
+          "currency": "Currency",
+          "approvedAt": "Approved",
+          "remittedAt": "Remitted",
+          "review": "Reconcile",
+          "reviewed": "Remittance reconciled.",
+          "approve": "Approve",
+          "approved": "Remittance approved.",
+          "remit": "Remit",
+          "remitTitle": "Remit {number}",
+          "remitBody": "Marks that {client} was already paid {net}. Teikem does not issue the payment: this only records it.",
+          "remitted": "{number} remitted.",
+          "ref": "Payment reference (optional)",
+          "refHelp": "For example, the check or transfer number.",
+          "cancel": "Cancel remittance",
+          "cancelTitle": "Cancel {number}",
+          "cancelBody": "The remittance is cancelled and its collections are free for another remittance.",
+          "cancelled": "{number} cancelled.",
+          "export": "Export file",
+          "exportTitle": "Export {number}",
+          "exportHelp": "A file is downloaded with one row per collection, with the commission and the net.",
+          "template": "Template",
+          "templateDefault": "The first active one",
+          "templateStandard": "The standard template is used (templates are managed with the billing permissions).",
+          "download": "Download",
+          "exported": "File downloaded.",
+          "newHelp": "Choose the client and the period: the already reconciled collections of that client whose collection date falls in the period are included.",
+          "from": "From",
+          "to": "To",
+          "pct": "Commission (%)",
+          "pctPlaceholder": "The contract one or the company one",
+          "candidates": "Collections that would be included ({n})",
+          "noCandidates": "There are no reconciled collections of that client in that period.",
+          "create": "Create remittance",
+          "created": "Remittance {number} created.",
+          "source": {
+              "request": "The commission you typed is used: {pct}.",
+              "contract": "The client contract commission is used: {pct}.",
+              "tenant": "The company default commission is used: {pct}."
+          },
+          "errors": {
+              "client": "Choose the client.",
+              "period": "Choose the period (from and to).",
+              "order": "The end date cannot be before the start date.",
+              "pct": "The commission must be between 0 and 100 (up to 2 decimals).",
+              "ref": "The reference allows up to 80 characters."
+          },
+          "defaultPct": "Company default commission (%)",
+          "defaultPctSave": "Save commission",
+          "defaultPctSaved": "Commission saved.",
+          "defaultPctError": "Enter a number from 0 to 100 (up to 2 decimals).",
+          "defaultPctHelp": "A remittance uses it when the client contract has no commission of its own."
+      },
     "runs": {
       "panel": "Reconciliation runs",
       "empty": "There are no runs yet."

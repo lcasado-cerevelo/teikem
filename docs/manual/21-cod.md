@@ -113,3 +113,5 @@ Por cada cobro: **monto × % ÷ 100**, redondeado a 2 decimales (el medio hacia 
 - Una remesa **cancelada** queda en la base con `IsActive = 0` y sus líneas (no se borra); sus cobros vuelven a quedar sin remesa.
 - La **comisión del contrato** se lee de `Contract.CodCommissionPct`; todavía no hay un campo para editarla en la pantalla de contratos (se puede escribir por base o API); la pantalla de remesas (Lote 87) muestra de dónde sale el % aplicado.
 
+La **pestaña Remesas** de la misma pantalla ([L87](frontend/l87-remesas.md)) cubre §6: lista, nueva remesa con los candidatos y la comisión, ficha con el flujo, exportar y la comisión por omisión.
+
