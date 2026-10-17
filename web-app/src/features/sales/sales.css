@@ -18,3 +18,25 @@
   .sales-table { display: block; overflow-x: auto; }
 }
 .sales-qty { width: 6rem; text-align: right; }
+
+/* Lote 82: devoluciones de venta */
+.linklike{border:none;background:none;padding:0;color:var(--flow);font:inherit;cursor:pointer;text-decoration:underline}
+.credit-pick{list-style:none;margin:8px 0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto}
+.credit-pick .btn{width:100%;text-align:left}
+.ret-window{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;margin:12px 16px 16px}
+.ret-window .f{margin:0;min-width:0;flex:1 1 260px}
+.ret-window .help,.ret-window .ferr{flex-basis:100%;margin:0}
+.ret-lines{list-style:none;margin:8px 0;padding:0;display:flex;flex-direction:column;gap:10px}
+.ret-lines>li{border:1px solid var(--line,#e5e7eb);border-radius:8px;padding:10px;min-width:0}
+.ret-line-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;margin-bottom:6px}
+.ret-line-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.ret-line-grid .f,.ret-damage .f{margin:0;min-width:0}
+.ret-damage{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;margin-top:8px}
+.ret-damage .f{flex:1 1 220px}
+.ret-check{display:flex;align-items:center;gap:8px;margin:8px 0}
+.ret-outside{border:1px solid var(--warn,#f59e0b);border-radius:8px;padding:8px 12px;margin-bottom:10px}
+.ret-grid-head{display:none}
+.ret-grid>li{display:grid;grid-template-columns:minmax(0,1fr) repeat(4,64px) 96px;align-items:center;gap:8px}
+.ret-grid input{min-width:0;width:100%}
+@media (min-width:720px){.ret-grid-head{display:grid;grid-template-columns:minmax(0,1fr) repeat(4,64px) 96px;gap:8px;font-size:12px;color:var(--muted,#6b7280)}}
+@media (max-width:719px){.ret-grid>li{grid-template-columns:1fr 1fr}.ret-grid>li>span:first-child{grid-column:1/-1}.ret-grid>li>input{grid-column:1/-1}.ret-line-grid{grid-template-columns:1fr}}

@@ -11,12 +11,13 @@ import { useT } from '../../kernel/i18n'
 import { Chip, DataTable, Panel, QBox, Spinner, Tabs, toast, type DataColumn } from '../../kernel/ui'
 import { IconCart } from '../../kernel/ui/screenIcons'
 import { OrderModal } from './OrderModal'
+import { ReturnEditor, ReturnModal, ReturnsTab } from './ReturnsParts'
 import { ORDER_STATUSES } from './salesRules'
 import { salesOrderPageReader, useBackorders, useSalesMutations, useSalesOrders, type SalesBackorderLineDto, type SalesOrderListItemDto } from './salesApi'
 import '../tax/tax.css'
 import './sales.css'
 
-type TabKey = 'orders' | 'backorders'
+type TabKey = 'orders' | 'backorders' | 'returns'
 
 function useDebounced(value: string, ms = 300) {
   const [v, setV] = useState(value)
@@ -204,6 +205,9 @@ export default function SalesOrdersScreen() {
   // Lote 67: el aviso del Pulso «Necesita tu atención» abre la orden directo (?order=<publicId>)
   const [params] = useSearchParams()
   const [openId, setOpenId] = useState<string | null | 'new'>(() => params.get('order'))
+  // Lote 82: devoluciones (la ficha por su id y el editor, opcionalmente sobre una orden)
+  const [returnId, setReturnId] = useState<string | null>(null)
+  const [newReturn, setNewReturn] = useState<{ orderId: string | null } | null>(null)
   return (
     <div className="sales-screen">
       <div className="head">
@@ -222,10 +226,33 @@ export default function SalesOrdersScreen() {
         tabs={[
           { key: 'orders', label: t('sales.tabs.orders') },
           { key: 'backorders', label: t('sales.tabs.backorders') },
+          { key: 'returns', label: t('sales.tabs.returns') },
         ]}
       />
-      {tab === 'orders' ? <OrdersTab onOpen={setOpenId} /> : <BackordersTab onOpen={setOpenId} />}
-      {openId !== null && <OrderModal key={openId} publicId={openId === 'new' ? null : openId} onClose={() => setOpenId(null)} />}
+      {tab === 'orders' ? <OrdersTab onOpen={setOpenId} /> : tab === 'backorders' ? <BackordersTab onOpen={setOpenId} /> : <ReturnsTab onOpen={setReturnId} onNew={() => setNewReturn({ orderId: null })} />}
+      {openId !== null && (
+        <OrderModal
+          key={openId}
+          publicId={openId === 'new' ? null : openId}
+          onClose={() => setOpenId(null)}
+          onReturn={(orderId) => {
+            setOpenId(null)
+            setNewReturn({ orderId })
+          }}
+        />
+      )}
+      {newReturn && (
+        <ReturnEditor
+          orderPublicId={newReturn.orderId}
+          onClose={() => setNewReturn(null)}
+          onSaved={(id) => {
+            setNewReturn(null)
+            setTab('returns')
+            setReturnId(id)
+          }}
+        />
+      )}
+      {returnId !== null && <ReturnModal key={returnId} id={returnId} onClose={() => setReturnId(null)} />}
     </div>
   )
 }

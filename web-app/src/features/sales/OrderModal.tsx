@@ -430,7 +430,7 @@ function NextDialog({ result, onPickup, onDelivery, onLater }: { result: SalesDi
   )
 }
 
-function OrderView({ order, onClose }: { order: SalesOrderDto; onClose: () => void }) {
+function OrderView({ order, onClose, onReturn }: { order: SalesOrderDto; onClose: () => void; onReturn?: (orderPublicId: string) => void }) {
   const t = useT()
   const f = useFormat()
   const { cancel, fulfillLine, closeLine } = useSalesMutations()
@@ -514,6 +514,11 @@ function OrderView({ order, onClose }: { order: SalesOrderDto; onClose: () => vo
           {open && !anyShipped && (
             <Can perm="sales.cancel">
               <button type="button" className="btn danger" onClick={() => setCancelling(true)}>{t('sales.cancelOrder')}</button>
+            </Can>
+          )}
+          {anyShipped && onReturn && (
+            <Can perm="sales.return">
+              <button type="button" className="btn" onClick={() => onReturn(order.publicId!)}>{t('salesReturns.fromOrder')}</button>
             </Can>
           )}
           <button type="button" className="btn flow" onClick={onClose}>{t('sales.close')}</button>
@@ -624,7 +629,7 @@ function OrderView({ order, onClose }: { order: SalesOrderDto; onClose: () => vo
 // ---------------------------------------------------------------- punto de entrada
 
 /** `publicId` null = orden nueva. */
-export function OrderModal({ publicId, onClose }: { publicId: string | null; onClose: () => void }) {
+export function OrderModal({ publicId, onClose, onReturn }: { publicId: string | null; onClose: () => void; onReturn?: (orderPublicId: string) => void }) {
   const t = useT()
   const order = useSalesOrder(publicId)
   const canCreate = useCan('sales.create')
@@ -640,6 +645,6 @@ export function OrderModal({ publicId, onClose }: { publicId: string | null; onC
   return order.data.status === 'DRAFT' && canCreate ? (
     <DraftEditor key={`${order.data.publicId}-edit`} order={order.data} onClose={onClose} />
   ) : (
-    <OrderView key={`${order.data.publicId}-view`} order={order.data} onClose={onClose} />
+    <OrderView key={`${order.data.publicId}-view`} order={order.data} onClose={onClose} onReturn={onReturn} />
   )
 }

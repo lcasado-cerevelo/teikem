@@ -24405,6 +24405,438 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sales-returns/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesReturnSettingsDto"];
+                        "application/json": components["schemas"]["SalesReturnSettingsDto"];
+                        "text/json": components["schemas"]["SalesReturnSettingsDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesReturnSettingsRequest"];
+                    "text/json": components["schemas"]["SalesReturnSettingsRequest"];
+                    "application/*+json": components["schemas"]["SalesReturnSettingsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesReturnSettingsDto"];
+                        "application/json": components["schemas"]["SalesReturnSettingsDto"];
+                        "text/json": components["schemas"]["SalesReturnSettingsDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-returns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    status?: string;
+                    clientPublicId?: string;
+                    orderPublicId?: string;
+                    q?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesReturnListItemDtoPagedResult"];
+                        "application/json": components["schemas"]["SalesReturnListItemDtoPagedResult"];
+                        "text/json": components["schemas"]["SalesReturnListItemDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesReturnRequest"];
+                    "text/json": components["schemas"]["SalesReturnRequest"];
+                    "application/*+json": components["schemas"]["SalesReturnRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesReturnDto"];
+                        "application/json": components["schemas"]["SalesReturnDto"];
+                        "text/json": components["schemas"]["SalesReturnDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-returns/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesReturnDto"];
+                        "application/json": components["schemas"]["SalesReturnDto"];
+                        "text/json": components["schemas"]["SalesReturnDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-returns/returnable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    salesOrderPublicId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ReturnableDto"];
+                        "application/json": components["schemas"]["ReturnableDto"];
+                        "text/json": components["schemas"]["ReturnableDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-returns/{publicId}/authorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesReturnAuthorizeRequest"];
+                    "text/json": components["schemas"]["SalesReturnAuthorizeRequest"];
+                    "application/*+json": components["schemas"]["SalesReturnAuthorizeRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesReturnDto"];
+                        "application/json": components["schemas"]["SalesReturnDto"];
+                        "text/json": components["schemas"]["SalesReturnDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-returns/{publicId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesReturnRejectRequest"];
+                    "text/json": components["schemas"]["SalesReturnRejectRequest"];
+                    "application/*+json": components["schemas"]["SalesReturnRejectRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesReturnDto"];
+                        "application/json": components["schemas"]["SalesReturnDto"];
+                        "text/json": components["schemas"]["SalesReturnDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-returns/{publicId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesReturnCancelRequest"];
+                    "text/json": components["schemas"]["SalesReturnCancelRequest"];
+                    "application/*+json": components["schemas"]["SalesReturnCancelRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesReturnDto"];
+                        "application/json": components["schemas"]["SalesReturnDto"];
+                        "text/json": components["schemas"]["SalesReturnDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-returns/{publicId}/receive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesReturnReceiveRequest"];
+                    "text/json": components["schemas"]["SalesReturnReceiveRequest"];
+                    "application/*+json": components["schemas"]["SalesReturnReceiveRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesReturnDto"];
+                        "application/json": components["schemas"]["SalesReturnDto"];
+                        "text/json": components["schemas"]["SalesReturnDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-returns/{publicId}/credit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesReturnDto"];
+                        "application/json": components["schemas"]["SalesReturnDto"];
+                        "text/json": components["schemas"]["SalesReturnDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -32669,6 +33101,183 @@ export interface components {
             skip?: number;
             /** Format: int32 */
             take?: number;
+        };
+        ReturnableDto: {
+            /** Format: uuid */
+            orderPublicId?: string;
+            orderNumber?: string | null;
+            /** Format: date */
+            lastDispatchDate?: string | null;
+            /** Format: int32 */
+            windowDays?: number;
+            outsideWindow?: boolean;
+            lines?: components["schemas"]["ReturnableLineDto"][] | null;
+        };
+        ReturnableLineDto: {
+            /** Format: int32 */
+            lineId?: number;
+            /** Format: int32 */
+            lineNo?: number;
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            /** Format: double */
+            shipped?: number;
+            /** Format: double */
+            returned?: number;
+            /** Format: double */
+            pending?: number;
+            /** Format: double */
+            returnable?: number;
+            isKit?: boolean;
+            isSerial?: boolean;
+        };
+        SalesReturnAuthorizeRequest: {
+            note?: string | null;
+        };
+        SalesReturnCancelRequest: {
+            comment?: string | null;
+        };
+        SalesReturnCreditDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            /** Format: double */
+            total?: number;
+        };
+        SalesReturnDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            statusColor?: string | null;
+            /** Format: uuid */
+            orderPublicId?: string;
+            orderNumber?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            warehouseName?: string | null;
+            reason?: string | null;
+            reasonLabel?: string | null;
+            note?: string | null;
+            outsideWindow?: boolean;
+            /** Format: date-time */
+            requestedAtUtc?: string;
+            /** Format: date-time */
+            authorizedAtUtc?: string | null;
+            authorizationNote?: string | null;
+            /** Format: date-time */
+            receivedAtUtc?: string | null;
+            lines?: components["schemas"]["SalesReturnLineDto"][] | null;
+            receipts?: components["schemas"]["SalesReturnReceiptDto"][] | null;
+            creditNotes?: components["schemas"]["SalesReturnCreditDto"][] | null;
+        };
+        SalesReturnLineDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: int32 */
+            salesOrderLineId?: number;
+            /** Format: int32 */
+            lineNo?: number;
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            /** Format: double */
+            qtyRequested?: number;
+            /** Format: double */
+            qtyReceived?: number;
+            /** Format: double */
+            qtyDamaged?: number;
+            /** Format: double */
+            qtyCredited?: number;
+            /** Format: double */
+            pending?: number;
+        };
+        SalesReturnLineRequest: {
+            /** Format: int32 */
+            salesOrderLineId?: number | null;
+            /** Format: double */
+            quantity?: number | null;
+        };
+        SalesReturnListItemDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            statusColor?: string | null;
+            /** Format: uuid */
+            orderPublicId?: string;
+            orderNumber?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            reason?: string | null;
+            reasonLabel?: string | null;
+            /** Format: double */
+            qtyRequested?: number;
+            /** Format: double */
+            qtyReceived?: number;
+            outsideWindow?: boolean;
+            /** Format: date-time */
+            requestedAtUtc?: string;
+        };
+        SalesReturnListItemDtoPagedResult: {
+            items?: components["schemas"]["SalesReturnListItemDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        SalesReturnReceiptDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+        };
+        SalesReturnReceiveLineRequest: {
+            /** Format: int32 */
+            lineId?: number | null;
+            /** Format: double */
+            goodQty?: number | null;
+            /** Format: double */
+            damagedQty?: number | null;
+            damageNote?: string | null;
+            damageDiscard?: boolean | null;
+            /** Format: int32 */
+            targetBinId?: number | null;
+            lot?: components["schemas"]["LotInput"];
+        };
+        SalesReturnReceiveRequest: {
+            lines?: components["schemas"]["SalesReturnReceiveLineRequest"][] | null;
+            closeRest?: boolean | null;
+        };
+        SalesReturnRejectRequest: {
+            reason?: string | null;
+        };
+        SalesReturnRequest: {
+            /** Format: uuid */
+            salesOrderPublicId?: string | null;
+            reason?: string | null;
+            note?: string | null;
+            lines?: components["schemas"]["SalesReturnLineRequest"][] | null;
+            confirmOutsideWindow?: boolean | null;
+        };
+        SalesReturnSettingsDto: {
+            /** Format: int32 */
+            windowDays?: number;
+        };
+        SalesReturnSettingsRequest: {
+            /** Format: int32 */
+            windowDays?: number | null;
         };
     };
     responses: never;
