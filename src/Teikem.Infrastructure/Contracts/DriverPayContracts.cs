@@ -150,3 +150,52 @@ public sealed record SpecialDeliveryAssignRequest(
     bool OverrideCredit = false,
     string? Comment = null,
     string? RowVersion = null);
+
+// ---------------------------------------------------------------- Lote 93 (P9): intentos de entrega
+
+/// <summary>Intento de entrega de una orden. DriverPublicId nulo = sin chofer (ruta sin chofer: la oficina lo completa o lo anula). Settled = ya está en una liquidación.</summary>
+public sealed record DeliveryAttemptDto(
+    int Id,
+    Guid PublicId,
+    Guid OrderPublicId,
+    string OrderNumber,
+    string? ClientInvoiceNumber,
+    int AttemptNumber,
+    Guid? DriverPublicId,
+    string? DriverCode,
+    string? DriverName,
+    string? TripCode,
+    DateTime AttemptedAtUtc,
+    bool Delivered,
+    string? FailureReasonCode,
+    string? FailureReason,
+    string? Notes,
+    string Source,
+    bool Settled,
+    int? SettledRunId,
+    bool IsActive,
+    string? VoidReason);
+
+/// <summary>Alta a mano. AttemptNumber vacío = el siguiente de la orden; FailureReason es un código del catálogo (solo si no se entregó).</summary>
+public sealed record DeliveryAttemptCreateRequest(
+    Guid? OrderPublicId,
+    Guid? DriverPublicId,
+    bool? Delivered = null,
+    int? AttemptNumber = null,
+    DateTime? AttemptedAtUtc = null,
+    string? FailureReason = null,
+    string? Notes = null);
+
+public sealed record DeliveryAttemptVoidRequest(string? Reason = null);
+
+public sealed record DeliveryAttemptListQuery(
+    Guid? DriverPublicId = null,
+    Guid? OrderPublicId = null,
+    DateOnly? From = null,
+    DateOnly? To = null,
+    bool? Delivered = null,
+    bool? Settled = null,
+    bool? WithoutDriver = null,
+    bool IncludeVoided = false,
+    int Skip = 0,
+    int Take = 50);

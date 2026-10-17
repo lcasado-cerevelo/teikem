@@ -3645,3 +3645,49 @@ GO
 IF COL_LENGTH('dbo.ReportDefinition', 'LastDeliveryMessage') IS NULL
     ALTER TABLE dbo.ReportDefinition ADD LastDeliveryMessage NVARCHAR(400) NULL;
 GO
+
+-- =====================================================================================================================
+-- 2026-10-17 (ad) Lote 93 (P9) — intentos de entrega
+-- Tabla DeliveryAttempt (una fila por intento de entrega de una orden: número, chofer, resultado y razón de fallo); es la fuente de verdad de la liquidación a choferes. Un intento no se borra: se anula
+-- (IsActive 0, con motivo). EntityType DELIVERY_ATTEMPT para la bitácora. Solo AGREGA. Idempotente.
+-- =====================================================================================================================
+IF OBJECT_ID(N'dbo.DeliveryAttempt', N'U') IS NULL CREATE TABLE dbo.DeliveryAttempt (
+    DeliveryAttemptId INT IDENTITY(1,1) PRIMARY KEY,
+    PublicId UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_DeliveryAttempt_PublicId DEFAULT NEWID(),
+    TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    TransportOrderId INT NOT NULL REFERENCES dbo.TransportOrder(TransportOrderId),
+    AttemptNumber INT NOT NULL,
+    DriverId INT NULL REFERENCES dbo.Driver(DriverId),
+    TripId INT NULL REFERENCES dbo.Trip(TripId),
+    AttemptedAtUtc DATETIME2 NOT NULL,
+    Delivered BIT NOT NULL,
+    FailureReasonLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),
+    Notes NVARCHAR(400) NULL,
+    Source NVARCHAR(20) NOT NULL,
+    RecordedBy INT NULL,
+    IsActive BIT NOT NULL CONSTRAINT DF_DeliveryAttempt_IsActive DEFAULT 1,
+    VoidedAtUtc DATETIME2 NULL,
+    VoidedBy INT NULL,
+    VoidReason NVARCHAR(400) NULL,
+    SettledRunId INT NULL,
+    CreatedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_DeliveryAttempt_Created DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT CK_DeliveryAttempt_Number CHECK (AttemptNumber >= 1)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_DeliveryAttempt_PublicId' AND object_id = OBJECT_ID('dbo.DeliveryAttempt')) CREATE UNIQUE INDEX IX_DeliveryAttempt_PublicId ON dbo.DeliveryAttempt(PublicId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_DeliveryAttempt_Order_Number' AND object_id = OBJECT_ID('dbo.DeliveryAttempt')) CREATE UNIQUE INDEX UX_DeliveryAttempt_Order_Number ON dbo.DeliveryAttempt(TransportOrderId, AttemptNumber) WHERE IsActive = 1;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_DeliveryAttempt_Order' AND object_id = OBJECT_ID('dbo.DeliveryAttempt')) CREATE INDEX IX_DeliveryAttempt_Order ON dbo.DeliveryAttempt(TransportOrderId, AttemptNumber);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_DeliveryAttempt_Driver' AND object_id = OBJECT_ID('dbo.DeliveryAttempt')) CREATE INDEX IX_DeliveryAttempt_Driver ON dbo.DeliveryAttempt(TenantId, DriverId, AttemptedAtUtc);
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'DELIVERY_ATTEMPT', N'{"es":"Intento de entrega","en":"Delivery attempt"}', 160)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO

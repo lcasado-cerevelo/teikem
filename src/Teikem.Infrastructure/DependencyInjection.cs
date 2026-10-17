@@ -167,6 +167,8 @@ public static class DependencyInjection
         services.AddScoped<IStatusTransitionEffect, DriverRatesRetirementEffect>();
         services.AddScoped<IStatusTransitionEffect, WorkOrderStatusEffect>();
         services.AddScoped<IStatusTransitionEffect, DriverTripOrderEffect>();
+        services.AddScoped<DeliveryAttemptService>();   // Lote 93 (P9)
+        services.AddScoped<IStatusTransitionEffect, DeliveryAttemptOrderEffect>();
         services.AddScoped<IStatusTransitionEffect, DriverTripStatusEffect>();
 
         // Lote 5 — Trips y rutas. RouteWriter es la única vía de escritura de TripOrder/Route/RouteStop; el motor de

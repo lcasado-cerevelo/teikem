@@ -93,3 +93,19 @@ public sealed class KpiSnapshotConfiguration : IEntityTypeConfiguration<Teikem.D
         b.HasIndex(k => new { k.TenantId, k.SnapshotDate, k.KpiKeyLookupId, k.DimEntityLookupId, k.DimId }).IsUnique().HasDatabaseName("UQ_KpiSnapshot");
     }
 }
+
+// Lote 93 (P9) — intentos de entrega (fuente de verdad de la liquidación a choferes).
+public sealed class DeliveryAttemptConfiguration : IEntityTypeConfiguration<Teikem.Domain.Fleet.DeliveryAttempt>
+{
+    public void Configure(EntityTypeBuilder<Teikem.Domain.Fleet.DeliveryAttempt> b)
+    {
+        b.ToTable("DeliveryAttempt");
+        b.HasKey(a => a.DeliveryAttemptId);
+        b.Property(a => a.PublicId).HasDefaultValueSql("NEWID()").ValueGeneratedOnAdd();
+        b.Property(a => a.Notes).HasMaxLength(Teikem.Domain.Fleet.DeliveryAttemptRules.MaxNotesLength);
+        b.Property(a => a.Source).HasMaxLength(20);
+        b.Property(a => a.VoidReason).HasMaxLength(Teikem.Domain.Fleet.DeliveryAttemptRules.MaxVoidReasonLength);
+        b.HasIndex(a => new { a.TransportOrderId, a.AttemptNumber }).HasDatabaseName("IX_DeliveryAttempt_Order");
+        b.HasIndex(a => new { a.TenantId, a.DriverId, a.AttemptedAtUtc }).HasDatabaseName("IX_DeliveryAttempt_Driver");
+    }
+}

@@ -8771,3 +8771,18 @@ Las vistas de sistema no se editan: guarde una copia propia (400 «Los informes 
 
 **¿Se puede mandar el informe como archivo adjunto?**
 Todavía no: el correo lleva la tabla dentro del mensaje (hasta 200 filas). El adjunto (CSV) queda pendiente porque el envío de correo de la plataforma no soporta adjuntos.
+
+
+## Lote 93 — Intentos de entrega
+
+**Marqué una orden como entregada y no veo el intento.**
+El intento solo se anota si la orden no es una entrega especial (esas se pagan por viaje) y si aún no tiene un intento entregado vigente. Si la ruta no tenía chofer, el intento existe pero «sin chofer» (filtro `withoutDriver`).
+
+**`La orden ya tiene un intento número 1.`**
+Ese número ya está en uso entre los intentos vigentes. Deje vacío el número (se usa el siguiente) o anule el intento repetido.
+
+**`La entrega debe ser el último intento.`**
+No se puede registrar un fallo con un número mayor al del intento entregado. Anule el entregado o use un número menor.
+
+**`El intento ya está en una liquidación y no se puede anular.`**
+Un intento pagado queda fijo. Para corregirlo hay que cancelar la liquidación que lo incluye (mientras esté abierta).

@@ -86,7 +86,7 @@ public class TenantIsolationModelTests
 
         // Y todas las demás de flota tienen filtro de tenant.
         var fleetWithTenant = DomainEntities(db).Where(e => e.ClrType.Namespace == "Teikem.Domain.Fleet" && e.FindProperty("TenantId") is not null).ToList();
-        Assert.Equal(12, fleetWithTenant.Count);
+        Assert.Equal(13, fleetWithTenant.Count);   // Lote 93: + DeliveryAttempt
         Assert.All(fleetWithTenant, e => Assert.NotNull(e.GetQueryFilter()));
     }
 
