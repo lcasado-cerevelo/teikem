@@ -4,7 +4,7 @@ import { Text, View } from 'react-native'
 
 import { apiErrorMessage } from '../../kernel/api/client'
 import { useT } from '../../kernel/i18n/useT'
-import { Button, Card, Chip, colors, Muted, Notice, Screen, Spinner, Title } from '../../kernel/ui/ui'
+import { Button, Card, Chip, Muted, Notice, Screen, Spinner, Title, useColors } from '../../kernel/ui/ui'
 import { useAsync } from '../../kernel/ui/useAsync'
 import { formatDate, formatDateTime, formatMoney, statusTone } from '../format'
 import { ProgressBar, ProgressSteps } from '../progress/ProgressBar'
@@ -12,6 +12,7 @@ import { toProgressInfo } from '../progress/progressInfo'
 import { getOrder } from '../portalApi'
 
 export function OrderDetailScreen() {
+  const colors = useColors()
   const { t, lang } = useT()
   const { id } = useLocalSearchParams<{ id: string }>()
   const order = useAsync(() => getOrder(String(id)), [id])
@@ -83,6 +84,7 @@ export function OrderDetailScreen() {
 }
 
 function Row({ label, value }: { label: string; value?: string | null }) {
+  const colors = useColors()
   return (
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
       <Muted>{label}</Muted>

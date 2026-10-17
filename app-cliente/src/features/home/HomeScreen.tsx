@@ -4,7 +4,7 @@ import { Text, View } from 'react-native'
 
 import { apiErrorMessage } from '../../kernel/api/client'
 import { useT } from '../../kernel/i18n/useT'
-import { Button, Card, Chip, colors, Muted, Notice, Screen, Spinner, Title } from '../../kernel/ui/ui'
+import { Button, Card, Chip, Muted, Notice, Screen, Spinner, Title, useColors } from '../../kernel/ui/ui'
 import { useAsync } from '../../kernel/ui/useAsync'
 import { statusTone } from '../format'
 import { ProgressBar } from '../progress/ProgressBar'
@@ -12,6 +12,7 @@ import { toProgressInfo } from '../progress/progressInfo'
 import { getMe, getSummary } from '../portalApi'
 
 export function HomeScreen() {
+  const colors = useColors()
   const { t } = useT()
   const router = useRouter()
   const me = useAsync(getMe, [])

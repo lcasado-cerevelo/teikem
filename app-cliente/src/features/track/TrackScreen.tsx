@@ -6,13 +6,15 @@ import { Text } from 'react-native'
 
 import { ApiError, apiErrorMessage } from '../../kernel/api/client'
 import { useT } from '../../kernel/i18n/useT'
-import { Button, Card, colors, Field, Muted, Notice, Screen, Title } from '../../kernel/ui/ui'
+import { PreferencesBar } from '../../kernel/ui/PreferencesBar'
+import { Button, Card, Field, Muted, Notice, Screen, Title, useColors } from '../../kernel/ui/ui'
 import { formatDateTime } from '../format'
 import { type PublicTrackDto, trackOrder } from '../portalApi'
 import { ProgressBar, ProgressSteps } from '../progress/ProgressBar'
 import { toProgressInfo } from '../progress/progressInfo'
 
 export function TrackScreen() {
+  const colors = useColors()
   const { t, lang } = useT()
   const { company, n } = useLocalSearchParams<{ company?: string; n?: string }>()
   const [waybill, setWaybill] = useState(typeof n === 'string' ? n : '')
@@ -67,6 +69,7 @@ export function TrackScreen() {
         </Card>
       )}
       <Muted>{t('track.privacy')}</Muted>
+      <PreferencesBar />
       <Link href="/login" style={{ color: colors.flow, fontSize: 15, fontWeight: '600', paddingVertical: 8 }}>
         {t('track.portalLink')}
       </Link>

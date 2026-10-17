@@ -21,3 +21,11 @@ Luis pidió: (1) la página pública por número de conduce que conteste **solo 
 4. **El portal del consignatario** todavía no existe: `ProgressBar` / `ProgressSteps` y la página pública ya sirven para él.
 5. Los avisos por correo/SMS aún **no llevan** el enlace `…/track/<identificador>?n=<conduce>`; se agrega cuando se hagan los avisos al consignatario (lote 105), porque necesitan la dirección de la app.
 6. El enlace público necesita la dirección de la app del cliente (`VITE_CLIENT_APP_URL` en la web); sin ella el panel muestra solo la ruta.
+
+## Ajuste posterior (2026-10-17): claro y oscuro e idioma en todo
+Luis recordó que **todo debe tener los dos temas (claro y oscuro) y los dos idiomas (español por omisión), con su opción para cambiarlos, también el portal**, y que **si hay algo que decidir se le pregunta**. `app-cliente` solo tenía tema claro; se corrigió:
+- **Tema** (`kernel/ui/theme.ts`): paletas clara y oscura con los mismos colores, elección **Automático** (por omisión, a escoger de Luis) / Claro / Oscuro que se recuerda; todos los componentes leen la paleta del tema (`useColors`), incluidas la barra de progreso, las etiquetas y los avisos; la barra de pestañas y el encabezado también; `userInterfaceStyle: automatic` y fondo sin destello en la web.
+- **Selectores** (`PreferencesBar`): **Español / English** y **Automático / Claro / Oscuro** en el login, la página pública, el documento legal y Ajustes.
+- **Pruebas:** jest (+9, 63 en total): paletas completas e iguales, **contraste AA** de cada par de texto y fondo (claro y oscuro), elección del tema, cambio al instante, recordado, y el selector de idioma; Playwright: la página pública cambia de claro a oscuro con el sistema y con la elección, se recuerda al recargar, cambia a inglés y se recuerda; el portal en oscuro; el panel de la web de la compañía en oscuro.
+- **Regla permanente** agregada a `CLAUDE.md` (convenciones de interfaz) y a la memoria del proyecto.
+- **Pendiente de decidir con Luis:** `app-almacen` (la app de los aparatos) **no tiene tema oscuro** (el idioma sí). Hacerlo toca todas sus pantallas.

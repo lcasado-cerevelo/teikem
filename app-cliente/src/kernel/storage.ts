@@ -61,4 +61,5 @@ export const StoreKeys = {
   lang: 'teikem.cliente.lang',
   noTrust: 'teikem.cliente.noTrust',
   biometric: 'teikem.cliente.biometric',
+  theme: 'teikem.cliente.theme',
 } as const

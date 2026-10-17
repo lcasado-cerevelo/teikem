@@ -8999,3 +8999,15 @@ Un estatus lateral (en espera, parcial, fallida) no avanza la barra: se queda do
 
 **El seguimiento público de mi compañía no responde.**
 Viene apagado: el administrador lo enciende en Ajustes de la compañía → General → Seguimiento público.
+
+
+## Idioma y tema (app del cliente y página pública)
+
+**¿Cómo cambio al modo oscuro?**
+En el login, la página «¿Cómo va mi orden?», el documento legal o Ajustes: **Automático / Claro / Oscuro**. Automático sigue al teléfono o al navegador; Claro y Oscuro mandan sobre el sistema. Se recuerda en ese aparato.
+
+**¿Cómo cambio al inglés?**
+En los mismos lugares: **Español / English**. El español es el de omisión; la elección se recuerda.
+
+**La app abrió en oscuro y yo no lo pedí.**
+Está en Automático y el teléfono o el navegador está en modo oscuro. Escoja «Claro» para fijarlo.

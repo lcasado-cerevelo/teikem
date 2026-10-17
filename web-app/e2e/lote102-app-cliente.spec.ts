@@ -192,6 +192,15 @@ test('App del cliente: computadora nueva, MFA, documento legal, órdenes, «No c
   await expect(page.getByText(/no está disponible en este aparato/)).toBeVisible()   // la huella solo existe en el teléfono
   expect(await noHScroll()).toBe(true)
   await shot(page, isMobile, 'l102-ajustes')
+  // tema oscuro y claro desde Ajustes: se aplica al instante y se recuerda
+  await page.getByTestId('theme-dark').click()
+  await expect(page.getByTestId('theme-dark')).toBeChecked()
+  await shot(page, isMobile, 'l102-ajustes-oscuro')
+  await page.goto(`${APP_URL}/orders`)
+  await expect(page.getByTestId('orders-search')).toBeVisible({ timeout: 30_000 })
+  await shot(page, isMobile, 'l102-ordenes-oscuro')
+  await page.goto(`${APP_URL}/settings`)
+  await page.getByTestId('theme-auto').click()
 
   // 8) cerrar sesión; la casilla «No confiar» se RECUERDA entre visitas
   await page.getByRole('button', { name: 'Cerrar sesión' }).click()

@@ -163,5 +163,15 @@
     "tooMany": "Demasiadas consultas seguidas. Espere un minuto e intente de nuevo.",
     "privacy": "Solo mostramos el avance del paquete: nunca nombres, direcciones ni teléfonos.",
     "portalLink": "¿Es cliente? Entre al portal"
+  },
+  "prefs": {
+    "language": "Idioma",
+    "theme": "Tema",
+    "themes": {
+      "auto": "Automático",
+      "light": "Claro",
+      "dark": "Oscuro"
+    },
+    "themeHelp": "Automático sigue al teléfono o al navegador."
   }
 }

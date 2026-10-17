@@ -19,7 +19,7 @@ const config: ExpoConfig = {
   slug: 'teikem-cliente',
   version: process.env.TEIKEM_APP_VERSION || '1.0.0',
   orientation: 'portrait',
-  userInterfaceStyle: 'light',
+  userInterfaceStyle: 'automatic',
   scheme: staging ? 'teikem-cliente-staging' : 'teikem-cliente',
   icon: './assets/icon.png',
   android: {

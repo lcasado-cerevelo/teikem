@@ -11,13 +11,15 @@ import type { BiometricSupport } from '../../kernel/auth/lockRules'
 import { logout, switchClient } from '../../kernel/auth/portalAuth'
 import { getNoTrust, setNoTrust } from '../../kernel/auth/preferences'
 import { useT } from '../../kernel/i18n/useT'
-import { Button, Card, Check, Chip, colors, Muted, Notice, Screen, Spinner, Title } from '../../kernel/ui/ui'
+import { LanguageSwitch, ThemeSwitch } from '../../kernel/ui/PreferencesBar'
+import { Button, Card, Check, Chip, Muted, Notice, Screen, Spinner, Title, useColors } from '../../kernel/ui/ui'
 import { useAsync } from '../../kernel/ui/useAsync'
 import { formatDateTime } from '../format'
 import { getMe, listTrustedBrowsers, revokeTrustedBrowser } from '../portalApi'
 
 export function SettingsScreen() {
-  const { t, lang, setLang } = useT()
+  const colors = useColors()
+  const { t, lang } = useT()
   const router = useRouter()
   const lock = useAppLock()
   const me = useAsync(getMe, [])
@@ -86,10 +88,10 @@ export function SettingsScreen() {
 
       <Card>
         <Text style={{ fontWeight: '700', color: colors.text }}>{t('settings.language')}</Text>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <View style={{ flex: 1 }}><Button title="Español" variant={lang === 'es' ? 'primary' : 'secondary'} onPress={() => setLang('es')} /></View>
-          <View style={{ flex: 1 }}><Button title="English" variant={lang === 'en' ? 'primary' : 'secondary'} onPress={() => setLang('en')} /></View>
-        </View>
+        <View style={{ alignItems: 'flex-start' }}><LanguageSwitch /></View>
+        <Text style={{ fontWeight: '700', color: colors.text, marginTop: 8 }}>{t('prefs.theme')}</Text>
+        <View style={{ alignItems: 'flex-start' }}><ThemeSwitch /></View>
+        <Muted>{t('prefs.themeHelp')}</Muted>
       </Card>
 
       <Card>

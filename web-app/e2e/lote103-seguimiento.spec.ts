@@ -29,6 +29,19 @@ async function shot(page: Page, isMobile: boolean, name: string) {
   await page.screenshot({ path: `${IMG_DIR}${name}.png`, animations: 'disabled', caret: 'hide' })
 }
 
+/** El color de fondo que de verdad se ve: el del primer ascendiente con fondo propio del elemento. */
+async function paintedBackground(page: Page, testId: string): Promise<string> {
+  return page.getByTestId(testId).evaluate((el) => {
+    let n: Element | null = el
+    while (n) {
+      const bg = getComputedStyle(n).backgroundColor
+      if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') return bg
+      n = n.parentElement
+    }
+    return 'transparent'
+  })
+}
+
 async function adminToken(request: APIRequestContext): Promise<string> {
   const res = await request.post(`${API_URL}/api/v1/auth/login`, { data: { email: ADMIN.email, password: ADMIN.password } })
   expect(res.ok(), `login: ${await res.text()}`).toBeTruthy()
@@ -93,6 +106,34 @@ test('Seguimiento público: la compañía lo enciende y la página muestra solo 
   const text = (await page.locator('body').innerText()) + (await page.content())
   for (const secret of [consignee, 'Calle Privada', clientName, draft.orderNumber, '00716']) expect(text).not.toContain(secret)
 
+  // 1b) los dos temas y los dos idiomas, con su opción en la misma página (por omisión: automático y español)
+  await expect(page.getByTestId('theme-auto')).toBeChecked()
+  await expect(page.getByTestId('lang-es')).toBeChecked()
+  await page.emulateMedia({ colorScheme: 'light' })
+  expect(await paintedBackground(page, 'track-result-waybill')).toBe('rgb(255, 255, 255)')   // la tarjeta, en claro
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await expect.poll(() => paintedBackground(page, 'track-result-waybill')).toBe('rgb(21, 29, 46)')   // Automático sigue al sistema: en oscuro
+  await shot(page, isMobile, 'l103-publica-oscuro')
+  await page.getByTestId('theme-light').click()                                  // Claro manda sobre el sistema
+  await expect.poll(() => paintedBackground(page, 'track-result-waybill')).toBe('rgb(255, 255, 255)')
+  await page.getByTestId('theme-dark').click()
+  await expect.poll(() => paintedBackground(page, 'track-result-waybill')).toBe('rgb(21, 29, 46)')
+  await page.reload()                                                           // la elección se recuerda
+  await expect(page.getByTestId('theme-dark')).toBeChecked({ timeout: 30_000 })
+  await page.getByTestId('theme-auto').click()
+  await page.getByTestId('lang-en').click()
+  await expect(page.getByRole('heading', { name: 'Where is my order?' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Check' })).toBeVisible()
+  await page.reload()
+  await expect(page.getByRole('heading', { name: 'Where is my order?' })).toBeVisible({ timeout: 30_000 })   // el idioma también se recuerda
+  await shot(page, isMobile, 'l103-publica-ingles')
+  await page.getByTestId('lang-es').click()
+  await expect(page.getByRole('heading', { name: '¿Cómo va mi orden?' })).toBeVisible()
+  await page.emulateMedia({ colorScheme: 'light' })
+  await page.getByLabel('Número de conduce').fill(draft.waybill)
+  await page.getByRole('button', { name: 'Consultar' }).click()
+  await expect(page.getByTestId('track-result-waybill')).toHaveText(draft.waybill, { timeout: 30_000 })
+
   // 2) en espera: la barra se queda donde iba y avisa; cancelada: toda apagada
   await page.getByLabel('Número de conduce').fill(held.waybill)
   await page.getByRole('button', { name: 'Consultar' }).click()
@@ -138,5 +179,9 @@ test('Seguimiento público: la compañía lo enciende y la página muestra solo 
   await expect(panel.getByLabel('Identificador de la compañía')).toHaveValue(SLUG)
   expect(await web.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
   await shot(web, isMobile, 'l103-ajuste')
+  await web.getByRole('button', { name: 'Oscuro' }).click()   // el selector de tema de la web de la compañía
+  await expect(web.locator('html')).toHaveAttribute('data-theme', 'dark')
+  await web.waitForTimeout(500)
+  await shot(web, isMobile, 'l103-ajuste-oscuro')
   await web.close()
 })

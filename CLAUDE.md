@@ -58,6 +58,7 @@ y `Diseño/logistica-db-seed.sql`. Se construye por lotes (ver `docs/lote1-decis
 - Textos de interfaz con `t('clave')` en `src/kernel/i18n/{es,en}.json`; identificadores en inglés; comentarios en español.
 - Permisos y módulos siempre con `<Can perm>` / `<ModuleGate module>` usando los códigos exactos del API.
 - **Ordenar una tabla paginada por el servidor ordena TODO lo que dice el filtro**, no solo la página en pantalla (`DataTable` lee la consulta completa con `exportRows`, **sin tope de cantidad**, y ordena y pagina ahí): toda tabla paginada por el servidor debe llevar `exportRows`.
+- **Todas las pantallas (web, apps, portales y páginas públicas) tienen tema CLARO y OSCURO y los idiomas español (por omisión) e inglés, cada uno con su selector visible y recordado** (decidido por Luis, 2026-10-17). Los colores salen de la paleta del tema (nunca fijos) y el contraste de los pares texto/fondo cumple WCAG AA (lo vigila una prueba); los textos van con `t('clave')` en es y en. Si hay algo que decidir, se le pregunta a Luis.
 - Full responsive (360 px en adelante), sin scroll horizontal de página; convenciones de interfaz del documento maestro (ordenar columnas, buscador libre `QBox`, chips sin envolver, idioma sin reiniciar).
 - Compuerta antes de cualquier revisión: `npm run check` (tipos generados, tsc, oxlint, vitest, build). Recorridos Playwright en `web-app/e2e` contra el API real.
 - Cierre de un lote de frontend: `docs/frontend/loteFN-decisiones.md` + capítulo del manual de pantallas en `docs/manual/frontend/` con capturas.

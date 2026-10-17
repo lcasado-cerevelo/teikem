@@ -12,8 +12,9 @@ import { setAuthLostHandler } from '../kernel/api/client'
 import { AppLockProvider, useAppLock } from '../kernel/auth/AppLock'
 import { loadSession, useSessionState } from '../kernel/auth/session'
 import { initLang } from '../kernel/i18n/i18n'
+import { initTheme } from '../kernel/ui/theme'
 import { useT } from '../kernel/i18n/useT'
-import { colors, Spinner } from '../kernel/ui/ui'
+import { Spinner, useColors } from '../kernel/ui/ui'
 
 /** Pantallas que se ven sin sesión. */
 const PUBLIC_PATHS = ['/login', '/mfa', '/confirm-browser']
@@ -22,7 +23,7 @@ export default function RootLayout() {
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    void Promise.all([initLang(), loadSession()]).then(() => setReady(true))
+    void Promise.all([initLang(), initTheme(), loadSession()]).then(() => setReady(true))
   }, [])
 
   return (
@@ -36,6 +37,7 @@ export default function RootLayout() {
 }
 
 function Gate() {
+  const colors = useColors()
   const { t } = useT()
   const router = useRouter()
   const pathname = usePathname()
@@ -86,7 +88,7 @@ function Gate() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <Stack screenOptions={{ headerShown: false, headerStyle: { backgroundColor: colors.brand }, headerTintColor: '#fff', headerBackTitle: t('common.back') }}>
+      <Stack screenOptions={{ headerShown: false, headerStyle: { backgroundColor: colors.brand }, headerTintColor: colors.onBrand, headerBackTitle: t('common.back') }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="order/[id]" options={{ headerShown: true }} />
       </Stack>

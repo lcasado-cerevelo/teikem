@@ -8,13 +8,14 @@ import { apiErrorMessage } from '../../kernel/api/client'
 import { login, type BrowserConfirmationDto } from '../../kernel/auth/portalAuth'
 import { getNoTrust, setNoTrust } from '../../kernel/auth/preferences'
 import { useT } from '../../kernel/i18n/useT'
+import { PreferencesBar } from '../../kernel/ui/PreferencesBar'
 import { Button, Card, Check, Field, Muted, Notice, Screen, Title } from '../../kernel/ui/ui'
 import { getAuthConfig } from '../portalApi'
 import { Captcha } from './Captcha'
 import { InstallPrompt } from './InstallPrompt'
 
 export function LoginScreen() {
-  const { t, lang, setLang } = useT()
+  const { t } = useT()
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -100,7 +101,7 @@ export function LoginScreen() {
       )}
       <Button title={t('login.submit')} onPress={() => void submit()} busy={busy} disabled={!canSubmit} testID="login-submit" />
       <InstallPrompt />
-      <Button title={lang === 'es' ? 'English' : 'Español'} variant="link" onPress={() => setLang(lang === 'es' ? 'en' : 'es')} />
+      <PreferencesBar />
     </Screen>
   )
 }

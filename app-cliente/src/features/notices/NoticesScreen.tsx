@@ -4,13 +4,14 @@ import { Text } from 'react-native'
 
 import { apiErrorMessage } from '../../kernel/api/client'
 import { useT } from '../../kernel/i18n/useT'
-import { Button, Card, Chip, colors, Muted, Notice, Screen, Spinner, Title } from '../../kernel/ui/ui'
+import { Button, Card, Chip, Muted, Notice, Screen, Spinner, Title, useColors } from '../../kernel/ui/ui'
 import { formatDateTime } from '../format'
 import { listNotifications, PAGE_SIZE, type PortalNotificationDto } from '../portalApi'
 
 const KIND_TONE: Record<string, 'ok' | 'info' | 'warn' | 'neutral'> = { DELIVERED: 'ok', PICKED_UP: 'info', OUT_FOR_DELIVERY: 'info', COD_PROCESSED: 'warn', INVOICE_ISSUED: 'warn' }
 
 export function NoticesScreen() {
+  const colors = useColors()
   const { t, lang } = useT()
   const [items, setItems] = useState<PortalNotificationDto[]>([])
   const [total, setTotal] = useState(0)

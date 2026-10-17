@@ -3,15 +3,11 @@
 import { Text, View } from 'react-native'
 
 import { useT } from '../../kernel/i18n/useT'
-import { colors } from '../../kernel/ui/ui'
+import { useColors, type Palette } from '../../kernel/ui/theme'
 import { progressPercent, segmentKinds, stepKind, type ProgressState, type SegmentKind } from './progressRules'
 
-const fill: Record<SegmentKind, string> = {
-  done: colors.brand,
-  current: colors.flow,
-  alert: '#F59E0B',
-  todo: '#DCE0E8',
-  cancelled: '#C4C9D2',
+function fillOf(c: Palette): Record<SegmentKind, string> {
+  return { done: c.done, current: c.flow, alert: c.segAlert, todo: c.segTodo, cancelled: c.segCancelled }
 }
 
 export interface ProgressInfo {
@@ -23,7 +19,9 @@ export interface ProgressInfo {
 
 /** La barra sola con su texto («Paso 3 de 8 · Recogido»); `compact` la hace más baja para las listas. */
 export function ProgressBar({ progress, compact = false }: { progress: ProgressInfo; compact?: boolean }) {
+  const colors = useColors()
   const { t } = useT()
+  const fill = fillOf(colors)
   if (progress.total <= 0) return null
   const kinds = segmentKinds(progress.step, progress.total, progress.state)
   const done = progress.state === 'COMPLETED'
@@ -55,6 +53,8 @@ export function ProgressBar({ progress, compact = false }: { progress: ProgressI
 
 /** La lista de etapas (una por estatus): hechas con ✓, la actual resaltada y las que faltan apagadas. */
 export function ProgressSteps({ labels, progress }: { labels: readonly string[]; progress: ProgressInfo }) {
+  const colors = useColors()
+  const fill = fillOf(colors)
   return (
     <View style={{ gap: 2 }}>
       {labels.map((label, i) => {

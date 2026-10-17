@@ -6,7 +6,8 @@ import { ScrollView, Text, View } from 'react-native'
 import { apiErrorMessage } from '../../kernel/api/client'
 import { logout } from '../../kernel/auth/portalAuth'
 import { useT } from '../../kernel/i18n/useT'
-import { Button, colors, Muted, Notice, Spinner, Title } from '../../kernel/ui/ui'
+import { PreferencesBar } from '../../kernel/ui/PreferencesBar'
+import { Button, Muted, Notice, Spinner, Title, useColors } from '../../kernel/ui/ui'
 import { useAsync } from '../../kernel/ui/useAsync'
 import { acceptLegal, getLegalDocument } from '../portalApi'
 
@@ -16,6 +17,7 @@ export function reachedEnd(m: { contentOffset: { y: number }; layoutMeasurement:
 }
 
 export function LegalScreen({ onAccepted }: { onAccepted: () => void }) {
+  const colors = useColors()
   const { t, lang } = useT()
   const router = useRouter()
   const doc = useAsync(() => getLegalDocument(lang), [lang])
@@ -42,6 +44,7 @@ export function LegalScreen({ onAccepted }: { onAccepted: () => void }) {
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg, padding: 16, gap: 10, alignItems: 'center' }}>
       <View style={{ flex: 1, width: '100%', maxWidth: 720, gap: 10 }}>
+        <PreferencesBar />
         <Title>{d?.title ?? t('legal.title')}</Title>
         <Muted>{t('legal.lead')}</Muted>
         {!!doc.error && <Notice>{apiErrorMessage(doc.error)}</Notice>}
@@ -51,7 +54,7 @@ export function LegalScreen({ onAccepted }: { onAccepted: () => void }) {
           !!d && (
             <ScrollView
               testID="legal-scroll"
-              style={{ flex: 1, backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: colors.line }}
+              style={{ flex: 1, backgroundColor: colors.card, borderRadius: 12, borderWidth: 1, borderColor: colors.line }}
               contentContainerStyle={{ padding: 14, gap: 6 }}
               scrollEventThrottle={64}
               onScroll={(e) => reachedEnd(e.nativeEvent) && setRead(true)}

@@ -5,13 +5,14 @@ import { Text } from 'react-native'
 
 import { apiErrorMessage } from '../../kernel/api/client'
 import { useT } from '../../kernel/i18n/useT'
-import { Button, Card, Chip, colors, Field, Muted, Notice, Screen, Spinner, Title } from '../../kernel/ui/ui'
+import { Button, Card, Chip, Field, Muted, Notice, Screen, Spinner, Title, useColors } from '../../kernel/ui/ui'
 import { formatDate, statusTone } from '../format'
 import { ProgressBar } from '../progress/ProgressBar'
 import { toProgressInfo } from '../progress/progressInfo'
 import { listOrders, PAGE_SIZE, type PortalOrderListItemDto } from '../portalApi'
 
 export function OrdersScreen() {
+  const colors = useColors()
   const { t, lang } = useT()
   const router = useRouter()
   const [search, setSearch] = useState('')

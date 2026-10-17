@@ -4,10 +4,11 @@ import { useEffect, useRef, useState } from 'react'
 
 import { apiErrorMessage } from '../../kernel/api/client'
 import { useT } from '../../kernel/i18n/useT'
-import { Muted, Notice, Screen, Spinner, Title } from '../../kernel/ui/ui'
+import { Muted, Notice, Screen, Spinner, Title, useColors } from '../../kernel/ui/ui'
 import { confirmBrowser } from '../portalApi'
 
 export function ConfirmBrowserScreen() {
+  const colors = useColors()
   const { t } = useT()
   const { token } = useLocalSearchParams<{ token?: string }>()
   const [state, setState] = useState<'working' | 'done' | { error: string }>('working')
@@ -35,7 +36,7 @@ export function ConfirmBrowserScreen() {
       )}
       {typeof state === 'object' && <Notice>{state.error}</Notice>}
       {state !== 'working' && (
-        <Link href="/login" style={{ color: '#1D6FE8', fontSize: 16, fontWeight: '600', paddingVertical: 12 }}>
+        <Link href="/login" style={{ color: colors.link, fontSize: 16, fontWeight: '600', paddingVertical: 12 }}>
           {t('browser.goLogin')}
         </Link>
       )}

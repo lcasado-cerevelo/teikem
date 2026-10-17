@@ -163,5 +163,15 @@
     "tooMany": "Too many requests in a row. Wait a minute and try again.",
     "privacy": "We only show the progress of the package: never names, addresses or phone numbers.",
     "portalLink": "Are you a client? Sign in to the portal"
+  },
+  "prefs": {
+    "language": "Language",
+    "theme": "Theme",
+    "themes": {
+      "auto": "Automatic",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "themeHelp": "Automatic follows your phone or browser."
   }
 }

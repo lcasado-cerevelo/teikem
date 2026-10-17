@@ -15,6 +15,12 @@ Lote 102 (portal de clientes, 2026-10-17). La app **aparte** del cliente: **web*
 | **Avisos** | Los resúmenes que su compañía configuró mandarle por la bandeja del portal (recogido, salió a entrega, entregado, COD procesado, factura emitida) |
 | **Ajustes** | La cuenta; **cambiar de cliente** (si tiene acceso a varios); idioma (es/en); **Abrir con huella** (solo teléfono); «No confiar en esta computadora»; **mis computadoras de confianza** (con «Quitar»); cerrar sesión |
 
+## 1b. Idioma y tema (claro y oscuro)
+Decidido con Luis (2026-10-17): **toda pantalla tiene los dos temas y los dos idiomas, con su opción para cambiarlos**.
+- **Idioma:** español por omisión; **Español / English** en el login, en la página pública «¿Cómo va mi orden?», en el documento legal y en Ajustes. Cambia al instante, sin recargar, y se recuerda.
+- **Tema:** **Automático** (por omisión: sigue al teléfono o al navegador), **Claro** u **Oscuro**, en los mismos lugares. Cambia al instante y se recuerda; Claro y Oscuro mandan sobre el sistema. Todos los colores (incluidas las etiquetas, avisos y la barra de progreso) salen de una paleta por tema, con **contraste de accesibilidad AA** vigilado por pruebas.
+- Los textos que viene del servidor (estatus de la compañía, el documento legal, avisos) salen en el idioma elegido.
+
 ## 2. Abrir con huella (teléfono)
 - En **Ajustes → Seguridad → Abrir con huella** (solo aparece si el teléfono tiene lector **y** una huella registrada; si no, la pantalla explica por qué). Al activarla se pide identificarse una vez.
 - Con la huella activa, la app **se bloquea** al abrirla (con una sesión guardada) y al volver de segundo plano pasados **2 minutos**: pide la huella (o el PIN o patrón del teléfono como respaldo) en lugar de la contraseña.
