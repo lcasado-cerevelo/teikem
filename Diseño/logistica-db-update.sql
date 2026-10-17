@@ -3819,3 +3819,45 @@ FROM dbo.Role r
 JOIN dbo.Permission p ON p.Code IN ('driverpay.approve', 'driverpay.export') AND r.Name = 'TenantAdmin'
 WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = p.PermissionId);
 GO
+
+-- =====================================================================================================================
+-- 2026-10-17 (af) Lote 97 (P10) — número de conduce (waybill number)
+-- TransportOrder.WaybillNumber: el identificador ÚNICO de cada orden de entrega en la compañía (CND-#######), que usan el cliente y el consignatario. Lo genera Teikem al crear la orden (contador WAYBILL por
+-- compañía). Las órdenes que ya existen lo reciben aquí, en orden de creación (por compañía), y el contador queda en el siguiente. Índice único entre las órdenes activas. Solo AGREGA. Idempotente.
+-- =====================================================================================================================
+IF COL_LENGTH('dbo.TransportOrder', 'WaybillNumber') IS NULL
+    ALTER TABLE dbo.TransportOrder ADD WaybillNumber NVARCHAR(40) NULL;
+GO
+-- el contador: el CHECK de los tipos de contador se vuelve a crear con WAYBILL
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_NumberSequence_Kind' AND definition NOT LIKE '%WAYBILL%')
+    ALTER TABLE dbo.NumberSequence DROP CONSTRAINT CK_NumberSequence_Kind;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_NumberSequence_Kind')
+    ALTER TABLE dbo.NumberSequence ADD CONSTRAINT CK_NumberSequence_Kind CHECK (Kind IN ('ORDER','INVOICE','PACKAGE','PACKBATCH','WORKORDER','TRIP','RECEIPT','CYCLECOUNT','CROSSDOCK','PURCHASE','RENTAL','RENTALRETURN','MANUALISSUE','MULTIADJUST','SALESORDER','BILLINVOICE','CREDITNOTE','SALESRETURN','CODREMIT','DRIVERSETTLE','WAYBILL'));
+GO
+-- las órdenes existentes (incluidas las dadas de baja: su número no se reutiliza) reciben su conduce en orden de creación
+IF EXISTS (SELECT 1 FROM dbo.TransportOrder WHERE WaybillNumber IS NULL)
+BEGIN
+    ;WITH base AS (
+        SELECT o.TransportOrderId,
+               COALESCE((SELECT MAX(TRY_CAST(SUBSTRING(x.WaybillNumber, 5, 20) AS BIGINT)) FROM dbo.TransportOrder x WHERE x.TenantId = o.TenantId AND x.WaybillNumber LIKE 'CND-%'), 0) AS MaxDone,
+               ROW_NUMBER() OVER (PARTITION BY o.TenantId ORDER BY o.TransportOrderId) AS Rn
+        FROM dbo.TransportOrder o WHERE o.WaybillNumber IS NULL
+    )
+    UPDATE o SET WaybillNumber = 'CND-' + RIGHT('0000000' + CAST(b.MaxDone + b.Rn AS VARCHAR(20)), 7)
+    FROM dbo.TransportOrder o JOIN base b ON b.TransportOrderId = o.TransportOrderId;
+END
+GO
+-- el contador de cada compañía queda en el siguiente número libre
+MERGE dbo.NumberSequence AS t
+USING (SELECT TenantId, MAX(TRY_CAST(SUBSTRING(WaybillNumber, 5, 20) AS BIGINT)) + 1 AS NextValue FROM dbo.TransportOrder WHERE WaybillNumber LIKE 'CND-%' GROUP BY TenantId) AS s
+ON t.TenantId = s.TenantId AND t.Kind = 'WAYBILL' AND t.ClientId IS NULL
+WHEN MATCHED AND t.NextValue < s.NextValue THEN UPDATE SET NextValue = s.NextValue
+WHEN NOT MATCHED THEN INSERT (TenantId, Kind, ClientId, NextValue) VALUES (s.TenantId, 'WAYBILL', NULL, s.NextValue);
+GO
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.TransportOrder') AND name = 'WaybillNumber' AND is_nullable = 1)
+    ALTER TABLE dbo.TransportOrder ALTER COLUMN WaybillNumber NVARCHAR(40) NOT NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_Order_Waybill' AND object_id = OBJECT_ID('dbo.TransportOrder'))
+    CREATE UNIQUE INDEX UX_Order_Waybill ON dbo.TransportOrder(TenantId, WaybillNumber) WHERE IsActive = 1;
+GO

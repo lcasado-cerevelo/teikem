@@ -315,7 +315,7 @@ public class WmsContractsTests
     public void Order_detail_dto_is_not_touched_by_the_lote()
     {
         // El Lote 6 no agrega parámetros a OrderDetailDto (D45: las líneas de producto salen de IOrderInventoryLines).
-        var tail = typeof(OrderDetailDto).GetConstructors().Single().GetParameters().TakeLast(2).Select(p => p.Name).ToArray();
+        var tail = typeof(OrderDetailDto).GetConstructors().Single().GetParameters().SkipLast(1).TakeLast(2).Select(p => p.Name).ToArray();   // Lote 97: WaybillNumber va al final
         Assert.Equal(new[] { "AssignedTripPublicId", "AssignedTripCode" }, tail);
         Assert.DoesNotContain(typeof(OrderDetailDto).GetProperties(), p => p.Name.Contains("Product", StringComparison.Ordinal) || p.Name.Contains("PickBatch", StringComparison.Ordinal));
     }

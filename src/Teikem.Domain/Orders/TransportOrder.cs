@@ -30,6 +30,8 @@ public class TransportOrder : ITenantScoped, ISoftDeletable, IHasStatus, IAuditS
     public int? SalesOrderId { get; set; }
     /// <summary>Número de empaque (EMP-##### fijo o id del lote de Recolección y empaque); identificador de escaneo único por tenant.</summary>
     public string PackBatchNumber { get; set; } = string.Empty;
+    /// <summary>Lote 97: número de conduce, único por orden en la compañía (CND-#######); lo genera Teikem.</summary>
+    public string WaybillNumber { get; set; } = string.Empty;
     public int ServiceTypeLookupId { get; set; }
     public int StatusCodeId { get; set; }
     public int? PriorityLookupId { get; set; }

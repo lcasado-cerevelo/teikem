@@ -32,6 +32,7 @@ public sealed class OrdersController(OrderService orders, OrderReadService reade
         [FromQuery] string? orderNumber,
         [FromQuery] string? invoice,
         [FromQuery] string? packBatch,
+        [FromQuery] string? waybill,
         [FromQuery] string? consignee,
         [FromQuery] string? search,
         [FromQuery] DateTime? from,
@@ -48,9 +49,9 @@ public sealed class OrdersController(OrderService orders, OrderReadService reade
         CancellationToken ct = default)
         => reader.GetListAsync(new OrderListQuery(clientId, status, orderNumber, invoice, packBatch, consignee, search, from, to, includeInactive, skip, take,
             ServiceTypes: serviceTypes, PackageTypes: packageTypes, Cities: cities, PostalCodePrefix: postalCodePrefix,
-            ClientPublicIds: clientIds, Statuses: statuses), OrderScope.Any, ct);
+            ClientPublicIds: clientIds, Statuses: statuses, Waybill: waybill), OrderScope.Any, ct);
 
-    /// <summary>Buscar o escanear: coincidencia EXACTA por número de orden, empaque o factura (todas las coincidencias).</summary>
+    /// <summary>Buscar o escanear: coincidencia EXACTA por número de conduce, orden, empaque o factura (todas las coincidencias).</summary>
     [HttpGet("lookup"), RequirePermission(PermissionCatalog.OrdersView)]
     public Task<OrderLookupDto> Lookup([FromQuery] string? code, CancellationToken ct)
         => reader.LookupAsync(code ?? string.Empty, OrderScope.Any, ct);

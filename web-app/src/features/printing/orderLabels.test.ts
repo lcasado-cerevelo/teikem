@@ -32,6 +32,11 @@ describe('orderLabelsOf', () => {
     expect(labels[0]).toMatchObject({ company: 'Advance Logistics', sender: 'Acme Corp', consignee: 'Farmacia Central', waybill: 'ORD-00007', invoice: 'FAC-7', cod: 50, codText: '$50.00', service: 'Estándar' })
   })
 
+  it('el «Waybill» del label es el número de conduce; sin él (orden vieja) sale el número de orden', () => {
+    expect(orderLabelsOf({ ...ORDER, waybillNumber: 'CND-0000042' }, 'Advance Logistics', money).labels[0].waybill).toBe('CND-0000042')
+    expect(orderLabelsOf({ ...ORDER, waybillNumber: null }, 'Advance Logistics', money).labels[0].waybill).toBe('ORD-00007')
+  })
+
   it('una línea sin número de paquete no lleva label pero cuenta en N; COD 0 sin texto', () => {
     const { labels, withoutNumber } = orderLabelsOf({ ...ORDER, codAmount: 0, packages: [{ packageNumber: null, pieces: 2 }, { packageNumber: 'PQT-9', pieces: 1 }] }, 'X', money)
     expect(withoutNumber).toBe(2)

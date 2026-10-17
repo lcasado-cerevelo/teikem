@@ -11604,6 +11604,7 @@ export interface paths {
                     orderNumber?: string;
                     invoice?: string;
                     packBatch?: string;
+                    waybill?: string;
                     consignee?: string;
                     search?: string;
                     from?: string;
@@ -29438,6 +29439,7 @@ export interface components {
             /** Format: uuid */
             assignedTripPublicId?: string | null;
             assignedTripCode?: string | null;
+            waybillNumber?: string | null;
         };
         OrderListItemDto: {
             /** Format: int32 */
@@ -29473,6 +29475,7 @@ export interface components {
             consigneeLine1?: string | null;
             consigneeLine2?: string | null;
             consigneeState?: string | null;
+            waybillNumber?: string | null;
         };
         OrderLookupDto: {
             code?: string | null;

@@ -38,7 +38,7 @@ const problem = (status: number, title: string, code: string) =>
   new Response(JSON.stringify({ title, code, status }), { status, headers: { 'Content-Type': 'application/problem+json' } })
 
 const O1 = {
-  id: 1, publicId: 'o-1', packBatchNumber: 'EMP-00001', orderNumber: 'ORD-00001', clientInvoiceNumber: 'FAC-1', clientPublicId: 'c-1', clientName: 'Acme Corp',
+  id: 1, publicId: 'o-1', packBatchNumber: 'EMP-00001', waybillNumber: 'CND-0000001', orderNumber: 'ORD-00001', clientInvoiceNumber: 'FAC-1', clientPublicId: 'c-1', clientName: 'Acme Corp',
   consigneeName: 'Farmacia Central', consigneeCity: 'San Juan', consigneePostalCode: '00901', serviceType: 'STANDARD', serviceTypeLabel: 'Estándar',
   totalPieces: 3, codAmount: 50, quotedAmount: 120, status: 'DRAFT', statusLabel: 'Entrada', isInitialStatus: true, isActive: true, createdAtUtc: '2026-10-10T15:00:00',
   packages: [
@@ -47,7 +47,7 @@ const O1 = {
   ],
 }
 const O2 = {
-  id: 2, publicId: 'o-2', packBatchNumber: 'EMP-00002', orderNumber: 'ORD-00002', clientInvoiceNumber: 'FAC-2', clientPublicId: 'c-2', clientName: 'Beta SA',
+  id: 2, publicId: 'o-2', packBatchNumber: 'EMP-00002', waybillNumber: 'CND-0000002', orderNumber: 'ORD-00002', clientInvoiceNumber: 'FAC-2', clientPublicId: 'c-2', clientName: 'Beta SA',
   consigneeName: 'Colmado Boricua', consigneeCity: 'Ponce', consigneePostalCode: '00716', serviceType: 'EXPRESS', serviceTypeLabel: 'Express',
   totalPieces: 1, codAmount: null, quotedAmount: 80, status: 'CONFIRMED', statusLabel: 'Confirmada', isInitialStatus: false, isActive: true, createdAtUtc: '2026-10-11T15:00:00',
   packages: [{ id: 3, packageType: 'BOX', packageTypeLabel: 'Caja', description: '', pieces: 1 }],
@@ -110,6 +110,7 @@ describe('Órdenes — lista', () => {
     expect(rows).toHaveLength(3) // O1 = 2 filas (Caja, Sobre) + O2 = 1
     const [first, cont, second] = rows
     expect(within(first).getByText('EMP-00001')).toBeInTheDocument()
+    expect(within(first).getByText('CND-0000001')).toBeInTheDocument()   // Lote 97: el conduce
     expect(within(first).getByText('ORD-00001')).toBeInTheDocument()
     expect(within(first).getByText('Caja')).toBeInTheDocument()
     expect(within(first).getByText('Ropa')).toBeInTheDocument()
@@ -131,7 +132,7 @@ describe('Órdenes — lista', () => {
     await screen.findByText('Farmacia Central')
     const heads = within(screen.getAllByRole('rowgroup')[0]).getAllByRole('columnheader').map((h) => h.textContent?.trim())
     // Lote F-G2: la casilla «Elegir» primero (para Imprimir label)
-    expect(heads.slice(0, 12)).toEqual(['Elegir', 'Empaque', 'N.º orden', 'Fecha', 'Consignatario', 'Pueblo', 'ZIP', 'Servicio', 'Paquete', 'Piezas', 'COD', 'Estatus'])
+    expect(heads.slice(0, 13)).toEqual(['Elegir', 'Empaque', 'Conduce', 'N.º orden', 'Fecha', 'Consignatario', 'Pueblo', 'ZIP', 'Servicio', 'Paquete', 'Piezas', 'COD', 'Estatus'])
   })
 
   it('pide la primera página con skip/take', async () => {

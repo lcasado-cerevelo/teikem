@@ -212,7 +212,9 @@ public sealed record OrderDetailDto(
     string? AssignedDriverName = null,
     // Lote 5: ruta vigente de la orden (solo ficha interna; el portal no la recibe). Con ruta, AssignedDriver* es su chofer.
     Guid? AssignedTripPublicId = null,
-    string? AssignedTripCode = null);
+    string? AssignedTripCode = null,
+    // Lote 97: número de conduce (único por orden en la compañía)
+    string? WaybillNumber = null);
 
 /// <summary>
 /// Fila del listado: Empaque es la primera columna de negocio (siempre con valor). Lote 44 (F-G2): ConsigneeLine1/2 y ConsigneeState
@@ -244,7 +246,9 @@ public sealed record OrderListItemDto(
     IReadOnlyList<OrderPackageLineDto> Packages,
     string? ConsigneeLine1 = null,
     string? ConsigneeLine2 = null,
-    string? ConsigneeState = null);
+    string? ConsigneeState = null,
+    // Lote 97: número de conduce
+    string? WaybillNumber = null);
 
 /// <summary>
 /// Filtros del listado (LIKE parcial en orden/factura/empaque/consignatario; FromUtc inclusivo, ToUtc exclusivo sobre CreatedAtUtc; Take 1..500).
@@ -270,11 +274,13 @@ public sealed record OrderListQuery(
     IReadOnlyList<string>? Cities = null,
     string? PostalCodePrefix = null,
     IReadOnlyList<Guid>? ClientPublicIds = null,
-    IReadOnlyList<string>? Statuses = null);
+    IReadOnlyList<string>? Statuses = null,
+    // Lote 97: búsqueda parcial por número de conduce
+    string? Waybill = null);
 
 public sealed record OrderPageDto(int Total, IReadOnlyList<OrderListItemDto> Items);
 
-/// <summary>Buscar o escanear: coincidencia exacta. MatchedBy = ORDER_NUMBER | PACK_BATCH | INVOICE del primer grupo con resultados, o null.</summary>
+/// <summary>Buscar o escanear: coincidencia exacta. MatchedBy = WAYBILL | ORDER_NUMBER | PACK_BATCH | INVOICE del primer grupo con resultados, o null.</summary>
 public sealed record OrderLookupDto(string Code, string? MatchedBy, IReadOnlyList<OrderListItemDto> Matches);
 
 // ---------------------------------------------------------------- estatus, cotización y crédito

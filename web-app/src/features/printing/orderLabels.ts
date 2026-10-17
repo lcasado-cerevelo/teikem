@@ -3,7 +3,7 @@
 // las piezas de la línea, D-FG17) y «Paquete i de N» con i corrido sobre todas las piezas de la orden y N = sus piezas.
 // - Una pieza de una línea sin número de paquete no lleva label (se cuenta para avisar).
 // - Las órdenes canceladas o dadas de baja no se imprimen (se cuentan para avisar).
-// - Waybill = número de orden (D-FG10); factura = factura del cliente; sender = el cliente; consignatario y dirección = la parada de
+// - Waybill = número de conduce (Lote 97; antes el número de orden, D-FG10); factura = factura del cliente; sender = el cliente; consignatario y dirección = la parada de
 //   entrega; servicio = su etiqueta; logo = el nombre de la compañía (D-FG11). Nunca el precio.
 import type { OrderLabelData } from '../../kernel/ui/orderLabelLayout'
 import type { components } from '../../kernel/api/schema'
@@ -24,6 +24,8 @@ export interface LabelPackage {
 export interface LabelOrder {
   publicId: string
   orderNumber: string
+  /** Lote 97: número de conduce (único por orden); sale como «Waybill» del label. Sin él (órdenes de una versión vieja) se usa el número de orden. */
+  waybillNumber?: string | null
   clientInvoiceNumber: string
   clientName: string
   consigneeName: string
@@ -50,6 +52,7 @@ export function labelOrderFromList(o: ListItem): LabelOrder {
   return {
     publicId: o.publicId ?? '',
     orderNumber: o.orderNumber ?? '',
+    waybillNumber: o.waybillNumber ?? null,
     clientInvoiceNumber: o.clientInvoiceNumber ?? '',
     clientName: o.clientName ?? '',
     consigneeName: o.consigneeName ?? '',
@@ -66,6 +69,7 @@ export function labelOrderFromDetail(o: Detail): LabelOrder {
   return {
     publicId: o.publicId ?? '',
     orderNumber: o.orderNumber ?? '',
+    waybillNumber: o.waybillNumber ?? null,
     clientInvoiceNumber: o.clientInvoiceNumber ?? '',
     clientName: o.clientName ?? '',
     consigneeName: d?.name ?? '',
@@ -99,7 +103,7 @@ export function orderLabelsOf(order: LabelOrder, company: string, money: (n: num
         packageNumber: p.packageNumber,
         packageIndex: i,
         packageCount: total,
-        waybill: order.orderNumber,
+        waybill: order.waybillNumber || order.orderNumber,
         invoice: order.clientInvoiceNumber,
         cod: order.codAmount,
         codText: order.codAmount != null && order.codAmount > 0 ? money(order.codAmount) : null,

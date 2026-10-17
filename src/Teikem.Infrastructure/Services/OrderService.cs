@@ -155,6 +155,7 @@ public sealed class OrderService(
         if (typedOrder is null) await sequences.EnsureAsync(NumberKinds.Order, orderSeqClient, ct);
         if (typedInvoice is null) await sequences.EnsureAsync(NumberKinds.Invoice, invoiceSeqClient, ct);
         if (packBatchOverride is null) await sequences.EnsureAsync(NumberKinds.PackBatch, packBatchSeqClient, ct);
+        await sequences.EnsureAsync(WaybillCodes.NumberKind, null, ct);   // Lote 97: el conduce siempre lo genera Teikem
         if (special is null && lines.Any(l => l.TypedPackageNumber is null)) await sequences.EnsureAsync(NumberKinds.Package, packageSeqClient, ct);
 
         var pickupTypeId = await lookups.GetIdAsync(LookupDomains.StopType, StopTypes.Pickup, ct);
@@ -199,6 +200,7 @@ public sealed class OrderService(
                         await sequences.NextAsync(NumberKinds.Invoice, invoiceSeqClient, ct2));
                     var packBatchNumber = packBatchOverride ?? ResolveAuto(NumberKinds.PackBatch, settings,
                         await sequences.NextAsync(NumberKinds.PackBatch, packBatchSeqClient, ct2));
+                    var waybillNumber = NumberFormat.Resolve(WaybillCodes.NumberPattern, await sequences.NextAsync(WaybillCodes.NumberKind, null, ct2));
                     var packageNumbers = new List<string?>(lines.Count);
                     foreach (var line in lines)
                     {
@@ -217,6 +219,7 @@ public sealed class OrderService(
                         ClientInvoiceNumber = invoiceNumber,
                         ClientInvoiceNumberTyped = typedInvoice is not null,
                         PackBatchNumber = packBatchNumber,
+                        WaybillNumber = waybillNumber,
                         ServiceTypeLookupId = serviceTypeId,
                         StatusCodeId = initial.StatusCodeId,
                         PriorityLookupId = priorityId,

@@ -200,7 +200,9 @@ public static class NumberingRules
         or Teikem.Domain.Sales.ReturnCodes.NumberKind
         or Teikem.Domain.Cod.RemittanceCodes.NumberKind   // Lote 86
         // Lote 94: liquidación a choferes LIQ-##### (por tenant, ClientId NULL)
-        or Teikem.Domain.Fleet.SettlementCodes.NumberKind;
+        or Teikem.Domain.Fleet.SettlementCodes.NumberKind
+        // Lote 97: número de conduce CND-####### (por tenant, ClientId NULL)
+        or WaybillCodes.NumberKind;
 
     private static string Coalesce(string? pattern, string fallback) => string.IsNullOrWhiteSpace(pattern) ? fallback : pattern.Trim();
 

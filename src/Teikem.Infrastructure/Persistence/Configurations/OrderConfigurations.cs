@@ -29,6 +29,8 @@ public sealed class TransportOrderConfiguration : IEntityTypeConfiguration<Trans
         b.HasIndex(o => new { o.TenantId, o.ClientId, o.OrderNumber }).IsUnique().HasFilter("[IsActive] = 1").HasDatabaseName("UX_Order_Number");
         // Identificador de escaneo único por tenant
         b.HasIndex(o => new { o.TenantId, o.PackBatchNumber }).IsUnique().HasFilter("[IsActive] = 1").HasDatabaseName("UX_Order_PackBatch");
+        b.Property(o => o.WaybillNumber).HasMaxLength(40);   // Lote 97
+        b.HasIndex(o => new { o.TenantId, o.WaybillNumber }).IsUnique().HasFilter("[IsActive] = 1").HasDatabaseName(Teikem.Domain.Orders.WaybillCodes.UniqueIndex);
         b.HasIndex(o => new { o.TenantId, o.ClientInvoiceNumber }).HasDatabaseName("IX_Order_Invoice");
         b.HasIndex(o => new { o.TenantId, o.StatusCodeId }).HasFilter("[IsActive] = 1").HasDatabaseName("IX_Order_Tenant_Status");
         b.HasIndex(o => new { o.TenantId, o.CodStatusCodeId }).HasFilter("[CodStatusCodeId] IS NOT NULL").HasDatabaseName("IX_Order_Cod");

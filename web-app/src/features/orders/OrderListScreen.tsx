@@ -140,6 +140,14 @@ export default function OrderListScreen() {
         card: 'hidden',
       },
       {
+        id: 'waybill',
+        header: t('orders.list.columns.waybill'),
+        cell: (o) => <span className="ref oe-small">{o.waybillNumber || '—'}</span>,
+        sortValue: (o) => o.waybillNumber ?? '',
+        exportValue: (o) => o.waybillNumber ?? '',
+        card: 'hidden',
+      },
+      {
         id: 'orderNumber',
         header: t('orders.list.columns.orderNumber'),
         cell: (o) => <span className="ref">{o.orderNumber}</span>,

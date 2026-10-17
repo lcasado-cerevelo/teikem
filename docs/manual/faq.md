@@ -8840,3 +8840,18 @@ Elegir plantilla pide ver facturación o el pago a choferes y el módulo de Fact
 
 **Aprobar pidió mi contraseña.**
 Es la reautenticación (AAL2): se pide para aprobar igual que en Facturación y en las remesas COD.
+
+
+## Lote 97 — Número de conduce
+
+**¿Qué es el número de conduce y en qué se diferencia del número de orden y del de empaque?**
+El **conduce** (`CND-#######`) es único por orden en toda la compañía y lo genera Teikem: es el que se le da al cliente y al consignatario. El **número de orden** lo escribe el cliente o lo genera Teikem por cliente y puede repetirse entre clientes. El **empaque** (`EMP-#####`) es el del escaneo en el almacén.
+
+**¿Se puede cambiar o teclear el conduce?**
+No: siempre lo genera Teikem, para que sea único.
+
+**El label de una orden vieja no muestra el conduce.**
+Todas las órdenes existentes lo recibieron al actualizar la base. Si un label sigue mostrando el número de orden, la lista no se ha recargado con el API nuevo (la ficha trae `waybillNumber`).
+
+**Busco un conduce y no sale.**
+Búsquelo completo o parte (`CND-0000042`) en el buscador de Órdenes; el conduce de una orden dada de baja solo aparece con «incluir inactivas».

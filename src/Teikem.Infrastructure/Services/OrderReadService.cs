@@ -32,6 +32,7 @@ namespace Teikem.Infrastructure.Services;
 public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, StatusService statuses,
     OrderPriceVisibility? prices = null)
 {
+    public const string MatchedByWaybill = "WAYBILL";   // Lote 97: el conduce, único por orden: gana sobre los demás
     public const string MatchedByOrderNumber = "ORDER_NUMBER";
     public const string MatchedByPackBatch = "PACK_BATCH";
     public const string MatchedByInvoice = "INVOICE";
@@ -172,7 +173,8 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
             AssignedDriverCode: assigned?.EmployeeCode,
             AssignedDriverName: assigned?.FullName,
             AssignedTripPublicId: assignedTripPublicId,
-            AssignedTripCode: assignedTripCode);
+            AssignedTripCode: assignedTripCode,
+            WaybillNumber: order.WaybillNumber);
         // Lote 39: el monto cotizado solo para quien ve precios (orders.view_price).
         return OrderPriceRules.Apply(detail, await OrderPriceVisibility.CanViewAsync(prices, ct));
     }
@@ -258,6 +260,7 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
         if (!string.IsNullOrWhiteSpace(q.OrderNumber)) { var v = q.OrderNumber.Trim(); query = query.Where(o => o.OrderNumber.Contains(v)); }
         if (!string.IsNullOrWhiteSpace(q.Invoice)) { var v = q.Invoice.Trim(); query = query.Where(o => o.ClientInvoiceNumber.Contains(v)); }
         if (!string.IsNullOrWhiteSpace(q.PackBatch)) { var v = q.PackBatch.Trim(); query = query.Where(o => o.PackBatchNumber.Contains(v)); }
+        if (!string.IsNullOrWhiteSpace(q.Waybill)) { var v = q.Waybill.Trim(); query = query.Where(o => o.WaybillNumber.Contains(v)); }
 
         var deliveryTypeId = await lookups.GetIdAsync(LookupDomains.StopType, StopTypes.Delivery, ct);
         if (!string.IsNullOrWhiteSpace(q.Consignee))
@@ -291,6 +294,7 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
             query = query.Where(o => o.OrderNumber.Contains(v)
                                      || o.ClientInvoiceNumber.Contains(v)
                                      || o.PackBatchNumber.Contains(v)
+                                     || o.WaybillNumber.Contains(v)
                                      || o.Stops.Any(s => s.StopTypeLookupId == deliveryTypeId && s.SnapName != null && s.SnapName.Contains(v)));
         }
 
@@ -325,18 +329,20 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
         var c = code.Trim();
 
         var candidates = await db.ScopedOrders(scope).AsNoTracking()
-            .Where(o => o.IsActive && (o.OrderNumber == c || o.PackBatchNumber == c || o.ClientInvoiceNumber == c))
+            .Where(o => o.IsActive && (o.WaybillNumber == c || o.OrderNumber == c || o.PackBatchNumber == c || o.ClientInvoiceNumber == c))
             .OrderByDescending(o => o.CreatedAtUtc).ThenByDescending(o => o.TransportOrderId)
             .ToListAsync(ct);
 
         // La BD ya comparó sin distinguir mayúsculas: la clasificación en memoria usa la misma regla.
+        var byWaybill = candidates.Where(o => string.Equals(o.WaybillNumber, c, StringComparison.OrdinalIgnoreCase)).ToList();
         var byOrder = candidates.Where(o => string.Equals(o.OrderNumber, c, StringComparison.OrdinalIgnoreCase)).ToList();
         var byPackBatch = candidates.Where(o => string.Equals(o.PackBatchNumber, c, StringComparison.OrdinalIgnoreCase)).ToList();
         var byInvoice = candidates.Where(o => string.Equals(o.ClientInvoiceNumber, c, StringComparison.OrdinalIgnoreCase)).ToList();
 
         string? matchedBy = null;
         var matches = new List<TransportOrder>();
-        if (byOrder.Count > 0) { matchedBy = MatchedByOrderNumber; matches = byOrder; }
+        if (byWaybill.Count > 0) { matchedBy = MatchedByWaybill; matches = byWaybill; }
+        else if (byOrder.Count > 0) { matchedBy = MatchedByOrderNumber; matches = byOrder; }
         else if (byPackBatch.Count > 0) { matchedBy = MatchedByPackBatch; matches = byPackBatch; }
         else if (byInvoice.Count > 0) { matchedBy = MatchedByInvoice; matches = byInvoice; }
         else
@@ -418,7 +424,7 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
                 status.Code, status.Label, status.IsInitial,
                 o.IsSpecialDelivery, o.IsActive, o.CreatedAtUtc,
                 packages,
-                delivery?.SnapLine1, delivery?.SnapLine2, delivery?.SnapState), canViewPrice));   // Lote 44: dirección para labels y documentos
+                delivery?.SnapLine1, delivery?.SnapLine2, delivery?.SnapState, o.WaybillNumber), canViewPrice));   // Lote 44: dirección para labels y documentos; Lote 97: conduce
         }
         return items;
     }

@@ -272,6 +272,9 @@ export function OrderDetailPanel({ order, editable, lockReason = 'advanced' }: O
           <ReadField label={t('orders.entry.invoice')} mono>
             {order.clientInvoiceNumber}
           </ReadField>
+          <ReadField label={t('orders.detail.waybill')} mono>
+            {order.waybillNumber}
+          </ReadField>
           <ReadField label={t('orders.detail.packBatch')} mono>
             {order.packBatchNumber}
           </ReadField>

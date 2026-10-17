@@ -15732,6 +15732,13 @@
             }
           },
           {
+            "name": "waybill",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "consignee",
             "in": "query",
             "schema": {
@@ -45282,6 +45289,10 @@
           "assignedTripCode": {
             "type": "string",
             "nullable": true
+          },
+          "waybillNumber": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -45392,6 +45403,10 @@
             "nullable": true
           },
           "consigneeState": {
+            "type": "string",
+            "nullable": true
+          },
+          "waybillNumber": {
             "type": "string",
             "nullable": true
           }

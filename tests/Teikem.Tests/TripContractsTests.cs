@@ -167,7 +167,7 @@ public class TripContractsTests
     [Fact]
     public void Order_detail_tail_adds_the_assigned_trip_after_the_assigned_driver()
     {
-        var tail = typeof(OrderDetailDto).GetConstructors().Single().GetParameters().TakeLast(5).ToArray();
+        var tail = typeof(OrderDetailDto).GetConstructors().Single().GetParameters().SkipLast(1).TakeLast(5).ToArray();   // Lote 97: WaybillNumber va al final
         Assert.Equal(new[] { "Guid? AssignedDriverPublicId", "string? AssignedDriverCode", "string? AssignedDriverName", "Guid? AssignedTripPublicId", "string? AssignedTripCode" },
             tail.Select(p => $"{TypeName(p.ParameterType, Nullability.Create(p))} {p.Name}"));
         Assert.All(tail, p => Assert.True(p.HasDefaultValue));

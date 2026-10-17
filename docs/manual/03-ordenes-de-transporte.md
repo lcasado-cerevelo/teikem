@@ -610,3 +610,12 @@ quien tiene `admin.audit`.
 
 Ver [faq.md](faq.md), sección "Lote 3 — Órdenes de transporte", para cada mensaje de error citado en este capítulo con
 su causa y qué hacer.
+
+## Número de conduce (Lote 97, P10)
+
+Cada orden de entrega tiene un **número de conduce** (`waybillNumber`, «Waybill» en Advance): el identificador **único** de la orden en toda la compañía, que usan el cliente y el consignatario para referirse a ella (y el que busca el consignatario en «¿Cómo va mi orden?» del portal). Lo **genera Teikem** al crear la orden —contador `WAYBILL` por compañía, formato `CND-#######`— y no se teclea ni se cambia. El **número de orden** del cliente (que puede repetirse entre clientes) y el **número de empaque** (`EMP-#####`, el del escaneo) siguen existiendo.
+
+- **Dónde se ve:** columna **Conduce** de la lista de Órdenes (se ordena y se exporta), campo **Conduce (waybill)** de la ficha y el campo **Número de waybill** del **label** (antes el label mostraba el número de orden; ahora el conduce).
+- **Cómo se busca:** el buscador libre de Órdenes, el filtro `waybill` del API (`GET /api/v1/orders?waybill=`, parcial) y **buscar o escanear** (`GET /api/v1/orders/lookup?code=`, exacto): el conduce es la primera coincidencia (`matchedBy = WAYBILL`) y no es ambiguo.
+- **Órdenes que ya existían:** al actualizar la base (`update.sql` (af)) cada una recibió su conduce en orden de creación y el contador quedó en el siguiente número libre.
+- Las órdenes dadas de baja conservan su conduce y no se reutiliza.

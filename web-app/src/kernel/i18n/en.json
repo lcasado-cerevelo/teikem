@@ -3343,6 +3343,7 @@
       "newOrder": "New order",
       "hideForm": "Hide form",
       "columns": {
+        "waybill": "Waybill",
         "packBatch": "Pack",
         "orderNumber": "Order no.",
         "client": "Client",
@@ -3401,6 +3402,7 @@
       "priority": "Priority",
       "noPriority": "No priority",
       "pickup": "Pickup",
+      "waybill": "Waybill number",
       "packBatch": "Pack batch",
       "references": "References",
       "packagesTitle": "Packages",
