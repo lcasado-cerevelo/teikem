@@ -61,7 +61,9 @@ public sealed class DriverSettlementService(TeikemDbContext db, ITenantContext t
         if (attempts.Count > 0)
         {
             var orderIds = attempts.Select(a => a.TransportOrderId).Distinct().ToList();
-            var orders = await db.TransportOrders.AsNoTracking().Where(o => orderIds.Contains(o.TransportOrderId)).Select(o => new { o.TransportOrderId, o.OrderNumber, o.ServiceTypeLookupId }).ToDictionaryAsync(o => o.TransportOrderId, ct);
+            var orders = await db.TransportOrders.AsNoTracking().Where(o => orderIds.Contains(o.TransportOrderId)).Select(o => new { o.TransportOrderId, o.OrderNumber, o.ServiceTypeLookupId, o.ClientId }).ToDictionaryAsync(o => o.TransportOrderId, ct);
+            var clientIds = orders.Values.Select(o => o.ClientId).Distinct().ToList();
+            var clientNames = await db.Set<Client>().AsNoTracking().Where(c => clientIds.Contains(c.ClientId)).ToDictionaryAsync(c => c.ClientId, c => c.Name, ct);
             var cargo = await db.Set<CargoLine>().AsNoTracking().Where(c => orderIds.Contains(c.TransportOrderId) && c.IsActive && c.PackageTypeLookupId != null)
                 .Select(c => new { c.TransportOrderId, c.CargoLineId, c.PackageTypeLookupId }).ToListAsync(ct);
             var packageOf = cargo.GroupBy(c => c.TransportOrderId).ToDictionary(g => g.Key, g => g.OrderBy(c => c.CargoLineId).First().PackageTypeLookupId!.Value);
@@ -97,7 +99,7 @@ public sealed class DriverSettlementService(TeikemDbContext db, ITenantContext t
                     amount = 0m;
                     missing = true;
                 }
-                lines.Add(new BuiltLine(g.Key.Driver, SettlementCodes.LineDelivery, date, g.Key.Order, null, $"Orden {order?.OrderNumber ?? g.Key.Order.ToString()}", ordered.Count, breakdown, missing, amount,
+                lines.Add(new BuiltLine(g.Key.Driver, SettlementCodes.LineDelivery, date, g.Key.Order, null, order is null ? $"Orden {g.Key.Order}" : $"Orden {order.OrderNumber} · {clientNames.GetValueOrDefault(order.ClientId)}", ordered.Count, breakdown, missing, amount,
                     ordered.Select(a => a.DeliveryAttemptId).ToList()));
             }
         }

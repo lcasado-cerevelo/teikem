@@ -174,7 +174,8 @@ public sealed record DeliveryAttemptDto(
     bool Settled,
     int? SettledRunId,
     bool IsActive,
-    string? VoidReason);
+    string? VoidReason,
+    string? ClientName = null);
 
 /// <summary>Alta a mano. AttemptNumber vacío = el siguiente de la orden; FailureReason es un código del catálogo (solo si no se entregó).</summary>
 public sealed record DeliveryAttemptCreateRequest(

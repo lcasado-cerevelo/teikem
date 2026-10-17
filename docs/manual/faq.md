@@ -8822,3 +8822,21 @@ Sí: una liquidación exportada se puede exportar de nuevo (con otra plantilla s
 
 **¿Exportar paga al chofer?**
 No. Teikem calcula y exporta; el pago lo hace nómina o contabilidad con el archivo.
+
+
+## Lote 96 — Pantalla de liquidación a choferes
+
+**No veo «Liquidación a choferes» en el menú.**
+Hace falta `driverpay.view` y el módulo de órdenes de transporte (`LTL_GROUND`) encendido.
+
+**El selector de chofer está apagado.**
+Listar los choferes pide `fleet.view`. Sin él se liquida a «Todos los choferes» (un chofer concreto se elige con un usuario que vea la flota).
+
+**Busco una orden para registrar un intento y salen varias con el mismo número.**
+El número de orden se repite entre clientes. Cada opción trae factura y consignatario; elija la del cliente correcto (la lista de intentos muestra después el cliente de cada orden).
+
+**Al exportar no puedo elegir plantilla.**
+Elegir plantilla pide ver facturación o el pago a choferes y el módulo de Facturación encendido; sin eso se descarga con el formato estándar.
+
+**Aprobar pidió mi contraseña.**
+Es la reautenticación (AAL2): se pide para aprobar igual que en Facturación y en las remesas COD.

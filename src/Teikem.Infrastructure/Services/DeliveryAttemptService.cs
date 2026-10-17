@@ -132,7 +132,9 @@ public sealed class DeliveryAttemptService(TeikemDbContext db, ITenantContext te
         var rows = await query.ToListAsync(ct);
         if (rows.Count == 0) return new List<DeliveryAttemptDto>();
         var orderIds = rows.Select(r => r.TransportOrderId).Distinct().ToList();
-        var orders = await db.TransportOrders.AsNoTracking().Where(o => orderIds.Contains(o.TransportOrderId)).Select(o => new { o.TransportOrderId, o.PublicId, o.OrderNumber, o.ClientInvoiceNumber }).ToDictionaryAsync(o => o.TransportOrderId, ct);
+        var orders = await db.TransportOrders.AsNoTracking().Where(o => orderIds.Contains(o.TransportOrderId)).Select(o => new { o.TransportOrderId, o.PublicId, o.OrderNumber, o.ClientInvoiceNumber, o.ClientId }).ToDictionaryAsync(o => o.TransportOrderId, ct);
+        var clientIds = orders.Values.Select(o => o.ClientId).Distinct().ToList();
+        var clients = await db.Set<Teikem.Domain.Clients.Client>().AsNoTracking().Where(c => clientIds.Contains(c.ClientId)).ToDictionaryAsync(c => c.ClientId, c => c.Name, ct);
         var driverIds = rows.Where(r => r.DriverId != null).Select(r => r.DriverId!.Value).Distinct().ToList();
         var drivers = await db.Set<Driver>().AsNoTracking().Where(d => driverIds.Contains(d.DriverId)).Select(d => new { d.DriverId, d.PublicId, d.EmployeeCode, d.FullName }).ToDictionaryAsync(d => d.DriverId, ct);
         var tripIds = rows.Where(r => r.TripId != null).Select(r => r.TripId!.Value).Distinct().ToList();
@@ -148,7 +150,7 @@ public sealed class DeliveryAttemptService(TeikemDbContext db, ITenantContext te
                 (reasonCode, reason) = (lc.InternalCode, Domain.Common.MultilingualText.Resolve(lc.LabelJson, lang));
             list.Add(new DeliveryAttemptDto(r.DeliveryAttemptId, r.PublicId, o?.PublicId ?? Guid.Empty, o?.OrderNumber ?? string.Empty, o?.ClientInvoiceNumber, r.AttemptNumber,
                 d?.PublicId, d?.EmployeeCode, d?.FullName, r.TripId is int ti ? trips.GetValueOrDefault(ti) : null, r.AttemptedAtUtc, r.Delivered, reasonCode, reason, r.Notes, r.Source,
-                r.SettledRunId != null, r.SettledRunId, r.IsActive, r.VoidReason));
+                r.SettledRunId != null, r.SettledRunId, r.IsActive, r.VoidReason, o is null ? null : clients.GetValueOrDefault(o.ClientId)));
         }
         return list;
     }

@@ -1,0 +1,27 @@
+/* Lote 96: liquidación a choferes */
+.pay-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 16px;margin:0 0 12px}
+.pay-meta>div{min-width:0}
+.pay-meta dt{font-size:12px;color:var(--muted,#6b7280)}
+.pay-meta dd{margin:2px 0 0;overflow-wrap:anywhere}
+.pay-totals{margin:8px 0}
+.pay-dates{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.pay-dates .f{margin:0;min-width:0}
+.pay-dates input,.pay-dates select{width:100%;min-width:0;box-sizing:border-box}
+@media (max-width:640px){.pay-dates{grid-template-columns:1fr}}
+.pay-warn{color:var(--warn,#b45309);margin:8px 0}
+.pay-lines{overflow-x:auto;margin:8px 0}
+.pay-table{width:100%;border-collapse:collapse}
+.pay-table th,.pay-table td{padding:6px 8px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line,#e5e7eb)}
+.pay-table .num{text-align:right;white-space:nowrap}
+.pay-table thead th{font-size:12px;color:var(--muted,#6b7280);white-space:nowrap}
+.pay-day th{background:var(--panel-2,rgba(0,0,0,.04));font-weight:600}
+.pay-sub{font-weight:400;color:var(--muted,#6b7280);margin-left:8px}
+.pay-break{font-size:12px;color:var(--muted,#6b7280);min-width:180px;overflow-wrap:anywhere}
+.pay-missing td{background:rgba(180,83,9,.07)}
+.pay-adj{font-size:12px;color:var(--warn,#b45309);font-weight:400;overflow-wrap:anywhere}
+.pay-kind{display:inline-block;margin-right:6px;font-size:11px;padding:1px 6px;border-radius:8px;background:var(--panel-2,rgba(0,0,0,.06))}
+.pay-picked{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.pay-hits{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.pay-hits .btn{text-align:left;white-space:normal}
+.pay-screen textarea{width:100%;min-width:0;box-sizing:border-box}
+@media (max-width:640px){.pay-table .pay-break{min-width:0}}

@@ -120,3 +120,9 @@ Si no se manda `templatePublicId` se usa la primera plantilla activa del alcance
 **Una fila por línea** de la liquidación (primero por fecha del servicio). Campos disponibles: `SETTLEMENT_NUMBER`, `PERIOD_START`, `PERIOD_END`, `DRIVER_CODE`, `DRIVER_NAME`, `CURRENCY`, `LINE_NO`, `LINE_KIND` (entrega o viaje), `SERVICE_DATE`, `ORDER_NUMBER`, `DESCRIPTION`, `ATTEMPTS`, `DELIVERY_AMOUNT` (lo que paga la entrega o el viaje), `ATTEMPTS_AMOUNT` (lo que pagan los intentos), `CALCULATED_AMOUNT`, `AMOUNT` (lo que se paga, con el ajuste si lo hay), `ADJUSTMENT_NOTE`, `PAYOUT_FORMULA` y `RUN_TOTAL`. El archivo se llama `liquidacion-LIQ-#####`. El mismo archivo sale siempre para la misma liquidación y plantilla (es reproducible).
 
 Teikem **no emite el pago**: el archivo se lleva a nómina o contabilidad.
+
+## 4. La pantalla (Lote 96)
+
+Todo lo anterior se usa desde **Contabilidad → Liquidación a choferes** (dos pestañas: Liquidaciones e Intentos de entrega). Cómo se ve y qué botón sale con cada estatus y permiso: [manual de pantallas, L96](frontend/l96-liquidacion-choferes.md).
+
+El API de intentos devuelve también el **nombre del cliente** de la orden (`clientName`), porque el número de orden se repite entre clientes; la descripción de una línea de entrega dice «Orden {número} · {cliente}».

@@ -25699,6 +25699,529 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/delivery-attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    DriverPublicId?: string;
+                    OrderPublicId?: string;
+                    From?: string;
+                    To?: string;
+                    Delivered?: boolean;
+                    Settled?: boolean;
+                    WithoutDriver?: boolean;
+                    IncludeVoided?: boolean;
+                    Skip?: number;
+                    Take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DeliveryAttemptDtoPagedResult"];
+                        "application/json": components["schemas"]["DeliveryAttemptDtoPagedResult"];
+                        "text/json": components["schemas"]["DeliveryAttemptDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["DeliveryAttemptCreateRequest"];
+                    "text/json": components["schemas"]["DeliveryAttemptCreateRequest"];
+                    "application/*+json": components["schemas"]["DeliveryAttemptCreateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DeliveryAttemptDto"];
+                        "application/json": components["schemas"]["DeliveryAttemptDto"];
+                        "text/json": components["schemas"]["DeliveryAttemptDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/delivery-attempts/{publicId}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["DeliveryAttemptVoidRequest"];
+                    "text/json": components["schemas"]["DeliveryAttemptVoidRequest"];
+                    "application/*+json": components["schemas"]["DeliveryAttemptVoidRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DeliveryAttemptDto"];
+                        "application/json": components["schemas"]["DeliveryAttemptDto"];
+                        "text/json": components["schemas"]["DeliveryAttemptDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver-settlements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    status?: string;
+                    driverPublicId?: string;
+                    q?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DriverSettlementListItemDtoPagedResult"];
+                        "application/json": components["schemas"]["DriverSettlementListItemDtoPagedResult"];
+                        "text/json": components["schemas"]["DriverSettlementListItemDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["DriverSettlementRequest"];
+                    "text/json": components["schemas"]["DriverSettlementRequest"];
+                    "application/*+json": components["schemas"]["DriverSettlementRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DriverSettlementDto"];
+                        "application/json": components["schemas"]["DriverSettlementDto"];
+                        "text/json": components["schemas"]["DriverSettlementDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver-settlements/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DriverSettlementDto"];
+                        "application/json": components["schemas"]["DriverSettlementDto"];
+                        "text/json": components["schemas"]["DriverSettlementDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver-settlements/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["DriverSettlementRequest"];
+                    "text/json": components["schemas"]["DriverSettlementRequest"];
+                    "application/*+json": components["schemas"]["DriverSettlementRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DriverSettlementPreviewDto"];
+                        "application/json": components["schemas"]["DriverSettlementPreviewDto"];
+                        "text/json": components["schemas"]["DriverSettlementPreviewDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver-settlements/{publicId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DriverSettlementDto"];
+                        "application/json": components["schemas"]["DriverSettlementDto"];
+                        "text/json": components["schemas"]["DriverSettlementDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver-settlements/{publicId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DriverSettlementDto"];
+                        "application/json": components["schemas"]["DriverSettlementDto"];
+                        "text/json": components["schemas"]["DriverSettlementDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver-settlements/{publicId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["DriverSettlementCancelRequest"];
+                    "text/json": components["schemas"]["DriverSettlementCancelRequest"];
+                    "application/*+json": components["schemas"]["DriverSettlementCancelRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DriverSettlementDto"];
+                        "application/json": components["schemas"]["DriverSettlementDto"];
+                        "text/json": components["schemas"]["DriverSettlementDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver-settlements/{publicId}/lines/{lineId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    lineId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["DriverSettlementAdjustRequest"];
+                    "text/json": components["schemas"]["DriverSettlementAdjustRequest"];
+                    "application/*+json": components["schemas"]["DriverSettlementAdjustRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DriverSettlementDto"];
+                        "application/json": components["schemas"]["DriverSettlementDto"];
+                        "text/json": components["schemas"]["DriverSettlementDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/driver-settlements/{publicId}/export-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    templatePublicId?: string;
+                };
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExportFileDto"];
+                        "application/json": components["schemas"]["ExportFileDto"];
+                        "text/json": components["schemas"]["ExportFileDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver-settlements/{publicId}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: {
+                    templatePublicId?: string;
+                };
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExportFileDto"];
+                        "application/json": components["schemas"]["ExportFileDto"];
+                        "text/json": components["schemas"]["ExportFileDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -34521,6 +35044,188 @@ export interface components {
             recipients?: string[] | null;
             /** Format: int32 */
             rows?: number;
+        };
+        DeliveryAttemptDtoPagedResult: {
+            items?: components["schemas"]["DeliveryAttemptDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        DriverSettlementCancelRequest: {
+            comment?: string | null;
+        };
+        DriverSettlementPreviewDto: {
+            payoutFormulaCode?: string | null;
+            /** Format: int32 */
+            lineCount?: number;
+            /** Format: double */
+            totalAmount?: number;
+            /** Format: int32 */
+            skippedNoDriver?: number;
+            lines?: components["schemas"]["DriverSettlementLineDto"][] | null;
+        };
+        DriverSettlementLineDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            driverPublicId?: string;
+            driverCode?: string | null;
+            driverName?: string | null;
+            kind?: string | null;
+            /** Format: date */
+            serviceDate?: string;
+            /** Format: uuid */
+            orderPublicId?: string | null;
+            orderNumber?: string | null;
+            /** Format: uuid */
+            tripPublicId?: string | null;
+            description?: string | null;
+            /** Format: int32 */
+            attemptCount?: number;
+            breakdown?: components["schemas"]["PayoutLineDto"][] | null;
+            rateMissing?: boolean;
+            /** Format: double */
+            calculatedAmount?: number;
+            /** Format: double */
+            amount?: number;
+            adjusted?: boolean;
+            adjustmentNote?: string | null;
+        };
+        DeliveryAttemptCreateRequest: {
+            /** Format: uuid */
+            orderPublicId?: string | null;
+            /** Format: uuid */
+            driverPublicId?: string | null;
+            delivered?: boolean | null;
+            /** Format: int32 */
+            attemptNumber?: number | null;
+            /** Format: date-time */
+            attemptedAtUtc?: string | null;
+            failureReason?: string | null;
+            notes?: string | null;
+        };
+        DeliveryAttemptVoidRequest: {
+            reason?: string | null;
+        };
+        DriverSettlementDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            statusCode?: string | null;
+            status?: string | null;
+            statusColor?: string | null;
+            /** Format: uuid */
+            driverPublicId?: string | null;
+            driverCode?: string | null;
+            driverName?: string | null;
+            /** Format: date */
+            periodStart?: string;
+            /** Format: date */
+            periodEnd?: string;
+            payoutFormulaCode?: string | null;
+            currency?: string | null;
+            /** Format: int32 */
+            lineCount?: number;
+            /** Format: double */
+            totalAmount?: number;
+            /** Format: double */
+            deliveriesAmount?: number;
+            /** Format: double */
+            tripsAmount?: number;
+            /** Format: int32 */
+            skippedNoDriver?: number;
+            note?: string | null;
+            /** Format: date-time */
+            generatedAtUtc?: string;
+            reviewedBy?: string | null;
+            /** Format: date-time */
+            reviewedAtUtc?: string | null;
+            approvedBy?: string | null;
+            /** Format: date-time */
+            approvedAtUtc?: string | null;
+            /** Format: date-time */
+            exportedAtUtc?: string | null;
+            rowVersion?: string | null;
+            lines?: components["schemas"]["DriverSettlementLineDto"][] | null;
+        };
+        DeliveryAttemptDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            publicId?: string;
+            /** Format: uuid */
+            orderPublicId?: string;
+            orderNumber?: string | null;
+            clientInvoiceNumber?: string | null;
+            /** Format: int32 */
+            attemptNumber?: number;
+            /** Format: uuid */
+            driverPublicId?: string | null;
+            driverCode?: string | null;
+            driverName?: string | null;
+            tripCode?: string | null;
+            /** Format: date-time */
+            attemptedAtUtc?: string;
+            delivered?: boolean;
+            failureReasonCode?: string | null;
+            failureReason?: string | null;
+            notes?: string | null;
+            source?: string | null;
+            settled?: boolean;
+            /** Format: int32 */
+            settledRunId?: number | null;
+            isActive?: boolean;
+            voidReason?: string | null;
+            clientName?: string | null;
+        };
+        DriverSettlementRequest: {
+            /** Format: uuid */
+            driverPublicId?: string | null;
+            /** Format: date */
+            periodStart?: string | null;
+            /** Format: date */
+            periodEnd?: string | null;
+            note?: string | null;
+        };
+        DriverSettlementListItemDtoPagedResult: {
+            items?: components["schemas"]["DriverSettlementListItemDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        DriverSettlementAdjustRequest: {
+            /** Format: double */
+            amount?: number | null;
+            note?: string | null;
+        };
+        DriverSettlementListItemDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            statusCode?: string | null;
+            status?: string | null;
+            statusColor?: string | null;
+            /** Format: uuid */
+            driverPublicId?: string | null;
+            driverCode?: string | null;
+            driverName?: string | null;
+            /** Format: date */
+            periodStart?: string;
+            /** Format: date */
+            periodEnd?: string;
+            /** Format: int32 */
+            lineCount?: number;
+            /** Format: double */
+            totalAmount?: number;
+            payoutFormulaCode?: string | null;
+            /** Format: date-time */
+            generatedAtUtc?: string;
         };
     };
     responses: never;
