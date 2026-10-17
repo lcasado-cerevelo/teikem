@@ -3691,3 +3691,131 @@ WHEN NOT MATCHED THEN
     INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
     VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
 GO
+
+-- =====================================================================================================================
+-- 2026-10-17 (ae) Lote 94 (P9) — liquidación a choferes
+-- Tablas nuevas DriverSettlementRun / DriverSettlementLine (el DDL original trae CarrierSettlement / SettlementLine, otro diseño; no se tocan). DeliveryAttempt.SettledRunId y DriverTrip.SettlementRunId
+-- reservan lo que una corrida ya pagó. Dominio de estatus DriverSettlementStatus (GENERATED, REVIEWED, APPROVED, EXPORTED, CANCELLED), EntityType DRIVER_SETTLEMENT, contador DRIVERSETTLE (LIQ-#####) y
+-- permisos driverpay.approve y driverpay.export (a TenantAdmin). Solo AGREGA. Idempotente.
+-- =====================================================================================================================
+IF OBJECT_ID(N'dbo.DriverSettlementRun', N'U') IS NULL CREATE TABLE dbo.DriverSettlementRun (
+    DriverSettlementRunId INT IDENTITY(1,1) PRIMARY KEY,
+    PublicId UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_DriverSettlementRun_PublicId DEFAULT NEWID(),
+    TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    Number NVARCHAR(40) NOT NULL,
+    DriverId INT NULL REFERENCES dbo.Driver(DriverId),
+    PeriodStart DATE NOT NULL,
+    PeriodEnd DATE NOT NULL,
+    StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),
+    PayoutFormulaCode NVARCHAR(40) NOT NULL,
+    CurrencyLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),
+    LineCount INT NOT NULL CONSTRAINT DF_DriverSettlementRun_LineCount DEFAULT 0,
+    TotalAmount DECIMAL(18,4) NOT NULL CONSTRAINT DF_DriverSettlementRun_Total DEFAULT 0,
+    SkippedNoDriver INT NOT NULL CONSTRAINT DF_DriverSettlementRun_Skipped DEFAULT 0,
+    Note NVARCHAR(500) NULL,
+    GeneratedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_DriverSettlementRun_Generated DEFAULT SYSUTCDATETIME(),
+    GeneratedBy INT NULL,
+    ReviewedBy INT NULL, ReviewedAtUtc DATETIME2 NULL,
+    ApprovedBy INT NULL, ApprovedAtUtc DATETIME2 NULL,
+    ExportedBy INT NULL, ExportedAtUtc DATETIME2 NULL,
+    RowVersion ROWVERSION NOT NULL,
+    CONSTRAINT CK_DriverSettlementRun_Period CHECK (PeriodEnd >= PeriodStart)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_DriverSettlementRun_PublicId' AND object_id = OBJECT_ID('dbo.DriverSettlementRun')) CREATE INDEX IX_DriverSettlementRun_PublicId ON dbo.DriverSettlementRun(PublicId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_DriverSettlementRun_Number' AND object_id = OBJECT_ID('dbo.DriverSettlementRun')) CREATE UNIQUE INDEX UQ_DriverSettlementRun_Number ON dbo.DriverSettlementRun(TenantId, Number);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_DriverSettlementRun_Status' AND object_id = OBJECT_ID('dbo.DriverSettlementRun')) CREATE INDEX IX_DriverSettlementRun_Status ON dbo.DriverSettlementRun(TenantId, StatusCodeId);
+GO
+IF OBJECT_ID(N'dbo.DriverSettlementLine', N'U') IS NULL CREATE TABLE dbo.DriverSettlementLine (
+    DriverSettlementLineId INT IDENTITY(1,1) PRIMARY KEY,
+    TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    DriverSettlementRunId INT NOT NULL REFERENCES dbo.DriverSettlementRun(DriverSettlementRunId),
+    DriverId INT NOT NULL REFERENCES dbo.Driver(DriverId),
+    Kind NVARCHAR(20) NOT NULL,
+    ServiceDate DATE NOT NULL,
+    TransportOrderId INT NULL REFERENCES dbo.TransportOrder(TransportOrderId),
+    DriverTripId INT NULL REFERENCES dbo.DriverTrip(DriverTripId),
+    Description NVARCHAR(250) NOT NULL,
+    AttemptCount INT NOT NULL CONSTRAINT DF_DriverSettlementLine_Attempts DEFAULT 0,
+    BreakdownJson NVARCHAR(2000) NULL,
+    RateMissing BIT NOT NULL CONSTRAINT DF_DriverSettlementLine_RateMissing DEFAULT 0,
+    CalculatedAmount DECIMAL(18,4) NOT NULL,
+    Amount DECIMAL(18,4) NOT NULL,
+    AdjustmentNote NVARCHAR(250) NULL,
+    AdjustedBy INT NULL,
+    AdjustedAtUtc DATETIME2 NULL,
+    CONSTRAINT CK_DriverSettlementLine_Kind CHECK (Kind IN ('DELIVERY','TRIP'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_DriverSettlementLine_Run' AND object_id = OBJECT_ID('dbo.DriverSettlementLine')) CREATE INDEX IX_DriverSettlementLine_Run ON dbo.DriverSettlementLine(DriverSettlementRunId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_DeliveryAttempt_SettledRun')
+    ALTER TABLE dbo.DeliveryAttempt ADD CONSTRAINT FK_DeliveryAttempt_SettledRun FOREIGN KEY (SettledRunId) REFERENCES dbo.DriverSettlementRun(DriverSettlementRunId);
+GO
+IF COL_LENGTH('dbo.DriverTrip', 'SettlementRunId') IS NULL
+    ALTER TABLE dbo.DriverTrip ADD SettlementRunId INT NULL CONSTRAINT FK_DriverTrip_SettlementRun REFERENCES dbo.DriverSettlementRun(DriverSettlementRunId);
+GO
+
+-- Dominio de estatus DriverSettlementStatus y sus estatus
+MERGE dbo.CatalogDomain AS t
+USING (SELECT N'DriverSettlementStatus' AS DomainKey) AS s ON t.DomainKey = s.DomainKey
+WHEN NOT MATCHED THEN
+    INSERT (DomainKey, Scope, LabelJson, IsSystem, IsActive)
+    VALUES (N'DriverSettlementStatus', 2, N'{"es":"Estatus de la liquidación a choferes","en":"Driver settlement status"}', 1, 1);
+GO
+MERGE dbo.StatusCode AS t
+USING (
+    SELECT v.Code, v.LabelJson, v.Color, v.Srt, v.Init, k.LookupCodeId AS StageKindLookupId
+    FROM (VALUES
+        (N'GENERATED', N'{"es":"Generada","en":"Generated"}',  '#9CA3AF', 1, 1, 'PIPELINE'),
+        (N'REVIEWED',  N'{"es":"Revisada","en":"Reviewed"}',   '#F59E0B', 2, 0, 'PIPELINE'),
+        (N'APPROVED',  N'{"es":"Aprobada","en":"Approved"}',   '#3B82F6', 3, 0, 'PIPELINE'),
+        (N'EXPORTED',  N'{"es":"Exportada","en":"Exported"}',  '#059669', 4, 0, 'TERMINAL'),
+        (N'CANCELLED', N'{"es":"Cancelada","en":"Cancelled"}', '#6B7280', 5, 0, 'TERMINAL')
+    ) AS v (Code, LabelJson, Color, Srt, Init, Kind)
+    JOIN dbo.LookupCode k ON k.Entity = N'StageKind' AND k.InternalCode = v.Kind
+) AS s
+ON t.Entity = N'DriverSettlementStatus' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, ColorHex, SortOrder, StageKindLookupId, IsInitial, IsActive)
+    VALUES (N'DriverSettlementStatus', s.Code, s.LabelJson, s.Color, s.Srt, s.StageKindLookupId, s.Init, 1);
+GO
+
+-- EntityType de la bitácora y del historial de estatus
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'DRIVER_SETTLEMENT', N'{"es":"Liquidación a choferes","en":"Driver settlement"}', 170)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+
+-- Contador de liquidaciones: el CHECK de los tipos de contador se vuelve a crear con DRIVERSETTLE
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_NumberSequence_Kind' AND definition NOT LIKE '%DRIVERSETTLE%')
+    ALTER TABLE dbo.NumberSequence DROP CONSTRAINT CK_NumberSequence_Kind;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_NumberSequence_Kind')
+    ALTER TABLE dbo.NumberSequence ADD CONSTRAINT CK_NumberSequence_Kind CHECK (Kind IN ('ORDER','INVOICE','PACKAGE','PACKBATCH','WORKORDER','TRIP','RECEIPT','CYCLECOUNT','CROSSDOCK','PURCHASE','RENTAL','RENTALRETURN','MANUALISSUE','MULTIADJUST','SALESORDER','BILLINVOICE','CREDITNOTE','SALESRETURN','CODREMIT','DRIVERSETTLE'));
+GO
+
+-- Permisos driverpay.approve y driverpay.export (al administrador de la compañía, plantilla y clonados)
+MERGE dbo.Permission AS t
+USING (VALUES
+    ('driverpay.approve', N'{"es":"Aprobar liquidaciones a choferes","en":"Approve driver settlements"}'),
+    ('driverpay.export',  N'{"es":"Exportar liquidaciones a choferes","en":"Export driver settlements"}')
+) AS s (Code, LabelJson)
+ON t.Code = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES (s.Code, (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'FLEET'), s.LabelJson, 1);
+GO
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT DISTINCT r.RoleId, p.PermissionId
+FROM dbo.Role r
+JOIN dbo.Permission p ON p.Code IN ('driverpay.approve', 'driverpay.export') AND r.Name = 'TenantAdmin'
+WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = p.PermissionId);
+GO

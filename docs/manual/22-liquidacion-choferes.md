@@ -1,6 +1,6 @@
 # 22 — Liquidación a choferes
 
-Lote 93 (P9, 1 de 4, 2026-10-17). A cada chofer se le paga por lo que hizo en la calle: por entrega, por intento y por viaje. Este capítulo crece con cada lote de P9; hoy trae la **base**: el registro de intentos de entrega. Las tarifas y la política de pago ya existen (Choferes y tarifas, capítulo 04).
+Lotes 93 y 94 (P9, 2026-10-17). A cada chofer se le paga por lo que hizo en la calle: por entrega, por intento y por viaje. Este capítulo crece con cada lote de P9: la base (los intentos de entrega, §1) y la **liquidación** (§2). Las tarifas y la política de pago ya existen (Choferes y tarifas, capítulo 04).
 
 ## 1. Intentos de entrega
 
@@ -54,3 +54,52 @@ La regla de la secuencia (a lo sumo un entregado y debe ser el último) es la mi
 - **Una orden entregada no tiene intentos:** es una entrega especial (se paga por viaje) o se entregó antes de este lote. Regístrelos a mano.
 - **Un intento salió «sin chofer»:** la ruta de la orden no tenía chofer. Anúlelo y regístrelo con el chofer correcto.
 - **Me equivoqué de chofer:** anule el intento (con motivo) y regístrelo de nuevo; si ya está en una liquidación no se puede anular.
+
+## 2. La liquidación (Lote 94)
+
+Una **liquidación** (`LIQ-#####`) junta, para un chofer o para todos, lo que hay por pagar en un período: las **entregas** (con sus intentos) y los **viajes**. Calcula el pago con las tarifas y la fórmula vigentes y lo **congela**. Sigue el mismo flujo de aprobación humana que una corrida de facturación: **Generada → Revisada → Aprobada → Exportada** (o Cancelada). Teikem calcula y exporta; **no emite el pago**.
+
+### Quién puede
+
+| Acción | Permiso |
+|---|---|
+| Ver liquidaciones y la vista previa | `driverpay.view` |
+| Generar, revisar, ajustar una línea y cancelar | `driverpay.manage` |
+| Aprobar (pide reautenticación, AAL2) | `driverpay.approve` |
+| Exportar (llega en el siguiente lote) | `driverpay.export` |
+
+`driverpay.approve` y `driverpay.export` los trae por omisión solo el administrador de la compañía (quien genera no aprueba). Módulo `LTL_GROUND`.
+
+### Qué entra en una liquidación
+
+- **Entregas:** los intentos vigentes y sin liquidar de cada orden y chofer, con fecha dentro del período (días de la compañía). El motor de pago los convierte en dinero con la **fórmula** de la política:
+  1. *Entrega + cada intento* (la de fábrica): la tarifa de entrega una vez (si hubo entrega) más la de cada intento, incluido el exitoso.
+  2. *La entrega incluye el 1.er intento*: la entrega más los intentos desde el 2.º.
+  3. *Intento fallido reemplaza a entrega*: cada intento fallido paga su tarifa; el exitoso paga solo la entrega.
+  La **tarifa de entrega** es la del chofer para el servicio de la orden y el tipo de paquete de su **primera línea de carga**, vigente el día de la entrega; las de **intento** son las del chofer por nivel (un intento mayor al último nivel usa el último nivel). Una tarifa que falta deja la línea en **$0 con la nota «sin tarifa configurada»**; nunca se inventa un monto.
+- **Viajes:** los viajes pagados (`DriverTrip`) abiertos con fecha del viaje dentro del período, con el monto que se congeló al crearlos (los que no tenían tarifa entran en $0 con la misma nota).
+- **Quedan fuera:** las entregas especiales (se pagan por su viaje), los intentos anulados o ya liquidados, y los intentos **sin chofer** (se cuentan en «sin chofer» de la liquidación para que la oficina los complete).
+
+### Pasos y reglas
+
+| Paso | Qué hace | Mensaje si no se puede (422) |
+|---|---|---|
+| **Vista previa** `POST /driver-settlements/preview` | Muestra lo que entraría, sin guardar nada. | — |
+| **Generar** `POST /driver-settlements` (`driverPublicId` opcional, `periodStart`, `periodEnd`, `note`) | Crea la liquidación con sus líneas, **congela** la fórmula y los montos y **reserva** los intentos y viajes (nada se paga dos veces). | `No hay nada por liquidar en el período.` |
+| **Revisar** `POST …/review` | Generada → Revisada. | `Solo se revisa una liquidación generada.` |
+| **Ajustar una línea** `PATCH …/lines/{id}` (`amount`, `note`) | Cambia el monto de una línea (conserva el calculado); el motivo es obligatorio. Volver al monto calculado quita el ajuste. Solo generada o revisada. | `Solo se ajusta una liquidación generada o revisada.` |
+| **Aprobar** `POST …/approve` (AAL2) | Revisada → Aprobada; los viajes de la liquidación pasan a **Liquidado**. | `Solo se aprueba una liquidación revisada.` |
+| **Cancelar** `POST …/cancel` (`comment`) | Generada o Revisada → Cancelada; los intentos y viajes reservados quedan libres. | `Solo se cancela una liquidación generada o revisada.` |
+
+Validaciones del cuerpo (400): `Indique el período (desde y hasta).` · `El período no es válido: la fecha final no puede ser anterior a la inicial.` · `El chofer no existe.` · `La nota no puede pasar de 500 caracteres.` · del ajuste: `Indique el monto del ajuste.` · `El monto debe estar entre 0 y 1,000,000.00 con dos decimales como máximo.` · `Indique el motivo del ajuste.` · `El motivo no puede pasar de 250 caracteres.`
+
+### Congelado
+
+La liquidación guarda la fórmula y el desglose de cada línea (entrega e intentos, con su nota). **Si después cambian las tarifas o la política, las liquidaciones ya generadas no se recalculan.** Para recalcular hay que cancelarla y generar otra.
+
+### Casos frecuentes
+
+- **Una entrega salió en $0:** falta la tarifa del chofer para ese servicio y tipo de paquete (o la de algún intento). Complétela en Choferes y tarifas, cancele la liquidación y vuelva a generarla; o ajuste la línea con su motivo.
+- **«Hay N intentos sin chofer»:** la ruta de esas órdenes no tenía chofer. Anule el intento y regístrelo con el chofer (§1) y genere de nuevo.
+- **No encuentro una entrega:** revise que tenga intentos vigentes en el período, que no sea una entrega especial y que no esté ya en otra liquidación.
+- **Aprobar pide reautenticarse:** es normal (AAL2), igual que aprobar una corrida de facturación.

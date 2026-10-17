@@ -8786,3 +8786,24 @@ No se puede registrar un fallo con un número mayor al del intento entregado. An
 
 **`El intento ya está en una liquidación y no se puede anular.`**
 Un intento pagado queda fijo. Para corregirlo hay que cancelar la liquidación que lo incluye (mientras esté abierta).
+
+
+## Lote 94 — Liquidación a choferes
+
+**`No hay nada por liquidar en el período.`**
+No hay intentos vigentes sin liquidar con chofer ni viajes abiertos con fecha dentro del período (o ya están en otra liquidación). Revise el período y los intentos (`GET /delivery-attempts?settled=false`).
+
+**Una línea de la liquidación salió en $0.**
+Falta la tarifa del chofer para el servicio y el tipo de paquete de la orden, o la de algún nivel de intento; la línea dice «sin tarifa configurada». Cargue la tarifa, cancele la liquidación y vuelva a generarla, o ajuste la línea con su motivo.
+
+**Cambié una tarifa y la liquidación no cambió.**
+Es a propósito: el cálculo se congela al generar. Cancele la liquidación (si está generada o revisada) y genere otra.
+
+**`Solo se aprueba una liquidación revisada.` / `Solo se revisa una liquidación generada.`**
+El flujo es Generada → Revisada → Aprobada. Revise primero; aprobar además pide reautenticación.
+
+**`Indique el motivo del ajuste.`**
+Cambiar el monto de una línea exige el motivo (hasta 250 caracteres). Si deja el monto igual al calculado, el ajuste se quita y no hace falta motivo.
+
+**¿Por qué mi permiso no deja aprobar?**
+Aprobar y exportar usan `driverpay.approve` y `driverpay.export`, que por omisión solo trae el administrador de la compañía; quien genera (`driverpay.manage`) no aprueba.

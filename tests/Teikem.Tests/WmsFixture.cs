@@ -223,6 +223,9 @@ internal sealed class WmsFixture : IAsyncDisposable
         L(LookupDomains.EntityType, EntityTypes.Trip);   // Lote 91
         foreach (var m in new[] { Teikem.Domain.Cod.CodMethods.Cash, Teikem.Domain.Cod.CodMethods.Check, Teikem.Domain.Cod.CodMethods.AthMovil }) L(Teikem.Domain.Cod.CodCodes.MethodDomain, m);
         L(Teikem.Domain.Billing.BillingCodes.ChargeTypeDomain, Teikem.Domain.Billing.BillingCodes.ProductSale);
+        L(LookupDomains.EntityType, EntityTypes.DriverTrip);   // Lote 94 (liquidación a choferes)
+        L(LookupDomains.EntityType, Teikem.Domain.Fleet.SettlementCodes.EntityType);
+        L(LookupDomains.EntityType, Teikem.Domain.Fleet.DeliveryAttemptCodes.EntityType);
         L(Teikem.Domain.Billing.BillingCodes.PaymentMethodDomain, "CASH");
         foreach (var m in new[] { "ACH", "CHECK", "CARD" }) L(Teikem.Domain.Billing.BillingCodes.PaymentMethodDomain, m);   // Lote 75
         // Lote 74 (flete): tipos de cargo y modelos de cobro (al final: ids previos intactos).
@@ -379,6 +382,15 @@ internal sealed class WmsFixture : IAsyncDisposable
         S(Teikem.Domain.Cod.RemittanceCodes.StatusDomain, Teikem.Domain.Cod.RemittanceStatuses.Reconciled, pipe, 2);
         S(Teikem.Domain.Cod.RemittanceCodes.StatusDomain, Teikem.Domain.Cod.RemittanceStatuses.Approved, pipe, 3);
         S(Teikem.Domain.Cod.RemittanceCodes.StatusDomain, Teikem.Domain.Cod.RemittanceStatuses.Remitted, term, 4);
+        // Lote 94: viajes pagados y liquidación a choferes
+        S(StatusDomains.DriverTripStatus, DriverTripStatuses.Open, pipe, 1, true);
+        S(StatusDomains.DriverTripStatus, DriverTripStatuses.Settled, term, 2);
+        S(StatusDomains.DriverTripStatus, DriverTripStatuses.Cancelled, term, 3);
+        S(Teikem.Domain.Fleet.SettlementCodes.StatusDomain, Teikem.Domain.Fleet.DriverSettlementStatuses.Generated, pipe, 1, true);
+        S(Teikem.Domain.Fleet.SettlementCodes.StatusDomain, Teikem.Domain.Fleet.DriverSettlementStatuses.Reviewed, pipe, 2);
+        S(Teikem.Domain.Fleet.SettlementCodes.StatusDomain, Teikem.Domain.Fleet.DriverSettlementStatuses.Approved, pipe, 3);
+        S(Teikem.Domain.Fleet.SettlementCodes.StatusDomain, Teikem.Domain.Fleet.DriverSettlementStatuses.Exported, term, 4);
+        S(Teikem.Domain.Fleet.SettlementCodes.StatusDomain, Teikem.Domain.Fleet.DriverSettlementStatuses.Cancelled, term, 5);
         ReceiptStatusSeed.AddLateralEntries(Db, LookupId(LookupDomains.EntityType, EntityTypes.Receipt), StatusId);
 
         // 3G: WAREHOUSE_TASK CANCELLED solo desde PENDING e IN_PROGRESS.

@@ -68,8 +68,8 @@ public class RawSqlConfinementTests
         var statements = Regex.Matches(text, "\\$\"((?:SELECT|UPDATE|IF|INSERT|MERGE)[^\"]*)\"").Select(m => m.Groups[1].Value).ToList();
 
         // (1) upsert, (2) bloqueo por clave, (3-5) rangos, (6-14) encabezados, (15) muelle, (16) series, (17) lote, (18) renta (Lote 27),
-        // (19) proceso del equipo devuelto (Lote 28), (20) línea de orden de venta (Lote 72), (21) orden de transporte (Lote 74), (22) factura (Lote 75).
-        Assert.Equal(22, statements.Count);
+        // (19) proceso del equipo devuelto (Lote 28), (20) línea de orden de venta (Lote 72), (21) orden de transporte (Lote 74), (22) factura (Lote 75), (23) viajes pagados al chofer (Lote 94).
+        Assert.Equal(23, statements.Count);
         Assert.All(statements, s => Assert.Contains("TenantId = {tenantId}", s));
         Assert.Contains(statements, s => s.StartsWith("IF NOT EXISTS (SELECT 1 FROM dbo.StockBalance WITH (UPDLOCK, HOLDLOCK)", StringComparison.Ordinal) && s.Contains("INSERT INTO dbo.StockBalance"));
         Assert.Contains(statements, s => s.StartsWith("SELECT * FROM dbo.StockBalance WITH (UPDLOCK, ROWLOCK)", StringComparison.Ordinal));
@@ -77,7 +77,7 @@ public class RawSqlConfinementTests
         foreach (var (table, pk) in new[] { ("PickBatch", "PickBatchId"), ("CrossDockPlan", "CrossDockPlanId"), ("CycleCount", "CycleCountId"),
                      ("ReceiptHeader", "ReceiptHeaderId"), ("Asn", "AsnId"), ("PurchaseOrder", "PurchaseOrderId"), ("Product", "ProductId"),
                      ("Warehouse", "WarehouseId"), ("WarehouseTask", "WarehouseTaskId"), ("Rental", "RentalId"),
-                     ("RentalProcess", "RentalProcessId"), ("SalesOrderLine", "SalesOrderLineId"), ("TransportOrder", "TransportOrderId"), ("Invoice", "InvoiceId") })
+                     ("RentalProcess", "RentalProcessId"), ("SalesOrderLine", "SalesOrderLineId"), ("TransportOrder", "TransportOrderId"), ("Invoice", "InvoiceId"), ("DriverTrip", "DriverTripId") })
             Assert.Contains(statements, s => s.StartsWith($"SELECT {pk} AS Value FROM dbo.{table} WITH (UPDLOCK, ROWLOCK)", StringComparison.Ordinal));
         Assert.Contains(statements, s => s.StartsWith("SELECT d.WarehouseDockId AS Value FROM dbo.WarehouseDock d WITH (UPDLOCK, ROWLOCK) JOIN dbo.Warehouse w", StringComparison.Ordinal));
         Assert.Contains(statements, s => s.StartsWith("SELECT s.* FROM dbo.InventorySerial s WITH (UPDLOCK, ROWLOCK)", StringComparison.Ordinal) && s.Contains("OPENJSON"));

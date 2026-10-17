@@ -88,6 +88,9 @@ public static class PermissionCatalog
     public const string DriverPayView = "driverpay.view";
     /// <summary>Lote 4: gestionar tarifas, política de pago y viajes pagados a choferes.</summary>
     public const string DriverPayManage = "driverpay.manage";
+    /// <summary>Lote 94 (P9): aprobar una liquidación a choferes (con reautenticación) y exportarla. Quien genera no aprueba: solo TenantAdmin los trae por omisión.</summary>
+    public const string DriverPayApprove = "driverpay.approve";
+    public const string DriverPayExport = "driverpay.export";
     // Administración
     public const string AdminUsers = "admin.users";
     public const string AdminRoles = "admin.roles";
@@ -242,6 +245,8 @@ public static class PermissionCatalog
         new(FleetView, "FLEET", "Ver flota y choferes", "View fleet & drivers"),
         new(DriverPayView, "FLEET", "Ver tarifas y viajes de choferes", "View driver rates & trips"),
         new(DriverPayManage, "FLEET", "Gestionar tarifas y viajes de choferes", "Manage driver rates & trips"),
+        new(DriverPayApprove, "FLEET", "Aprobar liquidaciones a choferes", "Approve driver settlements"),
+        new(DriverPayExport, "FLEET", "Exportar liquidaciones a choferes", "Export driver settlements"),
         // Lote 5 — Trips y rutas
         new(TripsView, "TRIPS", "Ver rutas y despacho", "View trips & dispatch"),
         new(TripsScan, "TRIPS", "Escanear salida (Outbound)", "Scan outbound"),

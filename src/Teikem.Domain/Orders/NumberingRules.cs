@@ -198,7 +198,9 @@ public static class NumberingRules
         or Teikem.Domain.Billing.CreditCodes.NumberKind
         // Lote 81: devolución de venta DV-##### (por tenant, ClientId NULL)
         or Teikem.Domain.Sales.ReturnCodes.NumberKind
-        or Teikem.Domain.Cod.RemittanceCodes.NumberKind;   // Lote 86
+        or Teikem.Domain.Cod.RemittanceCodes.NumberKind   // Lote 86
+        // Lote 94: liquidación a choferes LIQ-##### (por tenant, ClientId NULL)
+        or Teikem.Domain.Fleet.SettlementCodes.NumberKind;
 
     private static string Coalesce(string? pattern, string fallback) => string.IsNullOrWhiteSpace(pattern) ? fallback : pattern.Trim();
 

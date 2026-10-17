@@ -109,3 +109,40 @@ public sealed class DeliveryAttemptConfiguration : IEntityTypeConfiguration<Teik
         b.HasIndex(a => new { a.TenantId, a.DriverId, a.AttemptedAtUtc }).HasDatabaseName("IX_DeliveryAttempt_Driver");
     }
 }
+
+// Lote 94 (P9) — liquidación a choferes.
+public sealed class DriverSettlementRunConfiguration : IEntityTypeConfiguration<Teikem.Domain.Fleet.DriverSettlementRun>
+{
+    public void Configure(EntityTypeBuilder<Teikem.Domain.Fleet.DriverSettlementRun> b)
+    {
+        b.ToTable("DriverSettlementRun");
+        b.HasKey(r => r.DriverSettlementRunId);
+        b.Property(r => r.PublicId).HasDefaultValueSql("NEWID()").ValueGeneratedOnAdd();
+        b.Property(r => r.Number).HasMaxLength(40);
+        b.Property(r => r.PayoutFormulaCode).HasMaxLength(40);
+        b.Property(r => r.TotalAmount).HasColumnType("decimal(18,4)");
+        b.Property(r => r.Note).HasMaxLength(Teikem.Domain.Fleet.SettlementRules.MaxNoteLength);
+        b.Property(r => r.RowVersion).IsRowVersion();
+        b.HasMany(r => r.Lines).WithOne().HasForeignKey(l => l.DriverSettlementRunId).OnDelete(DeleteBehavior.Cascade);
+        b.HasIndex(r => r.PublicId).HasDatabaseName("IX_DriverSettlementRun_PublicId");
+        b.HasIndex(r => new { r.TenantId, r.Number }).IsUnique().HasDatabaseName("UQ_DriverSettlementRun_Number");
+        b.HasIndex(r => new { r.TenantId, r.StatusCodeId }).HasDatabaseName("IX_DriverSettlementRun_Status");
+    }
+}
+
+public sealed class DriverSettlementLineConfiguration : IEntityTypeConfiguration<Teikem.Domain.Fleet.DriverSettlementLine>
+{
+    public void Configure(EntityTypeBuilder<Teikem.Domain.Fleet.DriverSettlementLine> b)
+    {
+        b.ToTable("DriverSettlementLine");
+        b.HasKey(l => l.DriverSettlementLineId);
+        b.Property(l => l.Kind).HasMaxLength(20);
+        b.Property(l => l.ServiceDate).HasColumnType("date");
+        b.Property(l => l.Description).HasMaxLength(250);
+        b.Property(l => l.BreakdownJson).HasMaxLength(2000);
+        b.Property(l => l.CalculatedAmount).HasColumnType("decimal(18,4)");
+        b.Property(l => l.Amount).HasColumnType("decimal(18,4)");
+        b.Property(l => l.AdjustmentNote).HasMaxLength(Teikem.Domain.Fleet.SettlementRules.MaxAdjustNoteLength);
+        b.HasIndex(l => l.DriverSettlementRunId).HasDatabaseName("IX_DriverSettlementLine_Run");
+    }
+}

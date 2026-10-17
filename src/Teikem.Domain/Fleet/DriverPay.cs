@@ -105,6 +105,8 @@ public class DriverTrip : ITenantScoped, ISoftDeletable, IHasStatus, IAuditStamp
     public DateOnly TripDate { get; set; }
     public decimal Amount { get; set; }
     public bool RateMissing { get; set; }
+    /// <summary>Lote 94: la corrida de liquidación que lo reservó (nulo = por liquidar); pasa a SETTLED al aprobarla.</summary>
+    public int? SettlementRunId { get; set; }
     public int StatusCodeId { get; set; }
     public string? Notes { get; set; }
     public bool IsActive { get; set; } = true;
