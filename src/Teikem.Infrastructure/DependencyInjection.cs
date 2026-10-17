@@ -401,6 +401,7 @@ public static class DependencyInjection
         services.AddScoped<PaymentService>();   // Lote 75 (P5)
         services.AddScoped<ExportTemplateService>();   // Lote 77 (P5)
         services.AddScoped<CreditNoteService>();   // Lote 79 (P6)
+        services.AddScoped<SalesReturnService>();   // Lote 81 (P6)
         services.AddScoped<BillingExportService>();
         services.AddScoped<IDataSource, SalesOrderDataSource>();        // Lote 67: órdenes de venta
         services.AddScoped<IDataSource, SalesOrderLineDataSource>();

@@ -1243,7 +1243,9 @@ public static class DamageCauses
     public const string TransitAccident = "TRANSIT_ACCIDENT";
     public const string WarehouseAccident = "WAREHOUSE_ACCIDENT";
     public const string Other = "OTHER";
-    public static readonly string[] All = { ArrivedDamaged, TransitAccident, WarehouseAccident, Other };
+    /// <summary>Lote 81: lo dañado que llegó en una devolución de venta.</summary>
+    public const string CustomerReturn = "CUSTOMER_RETURN";
+    public static readonly string[] All = { ArrivedDamaged, TransitAccident, WarehouseAccident, Other, CustomerReturn };
 }
 
 /// <summary>LookupCode 'DamageFinalDestination' (editable por compañía): a dónde fue a parar lo dañado al sacarlo de cuarentena.</summary>

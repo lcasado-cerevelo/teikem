@@ -47,6 +47,8 @@ public class CreditNote : ITenantScoped, IHasStatus, IAuditStamped
     /// <summary>Factura de Teikem que se acredita; NULL = factura externa (ExternalInvoiceRef) o ajuste sin factura.</summary>
     public int? InvoiceId { get; set; }
     public string? ExternalInvoiceRef { get; set; }
+    /// <summary>Lote 81: la devolución de venta de la que nació la nota (NULL = no viene de una devolución).</summary>
+    public int? SalesReturnId { get; set; }
     public int ReasonLookupId { get; set; }
     public int CurrencyLookupId { get; set; }
     public int StatusCodeId { get; set; }

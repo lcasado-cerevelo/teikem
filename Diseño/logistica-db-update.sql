@@ -3298,3 +3298,168 @@ WHERE (r.Name = 'TenantAdmin' OR EXISTS (
           WHERE rp.RoleId = r.RoleId AND p.Code = 'billing.approve'))
   AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = v.PermissionId);
 GO
+
+-- =====================================================================================================================
+-- 2026-10-16 (w) Lote 81 (P6) — devoluciones de venta
+-- SalesReturn / SalesReturnLine; dominio de estatus SalesReturnStatus (REQUESTED -> AUTHORIZED -> RECEIVED -> CREDITED; REJECTED y CANCELLED), catálogo ReturnReason, causa de daño CUSTOMER_RETURN,
+-- EntityType SALES_RETURN, contador SALESRETURN (DV-#####), Tenant.SalesReturnWindowDays, ReceiptHeader.SalesReturnId, CreditNote.SalesReturnId y los permisos sales.return y sales.return.authorize.
+-- Solo AGREGA. Idempotente.
+-- =====================================================================================================================
+IF COL_LENGTH('dbo.Tenant', 'SalesReturnWindowDays') IS NULL
+    ALTER TABLE dbo.Tenant ADD SalesReturnWindowDays INT NOT NULL CONSTRAINT DF_Tenant_SalesReturnWindowDays DEFAULT 30;
+GO
+IF OBJECT_ID(N'dbo.SalesReturn', N'U') IS NULL CREATE TABLE dbo.SalesReturn (
+    SalesReturnId INT IDENTITY(1,1) PRIMARY KEY,
+    PublicId UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_SalesReturn_PublicId DEFAULT NEWID(),
+    TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    Number NVARCHAR(30) NOT NULL,
+    SalesOrderId INT NOT NULL REFERENCES dbo.SalesOrder(SalesOrderId),
+    ClientId INT NOT NULL REFERENCES dbo.Client(ClientId),
+    WarehouseId INT NOT NULL REFERENCES dbo.Warehouse(WarehouseId),
+    ReasonLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),
+    StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),
+    Note NVARCHAR(500) NULL,
+    RequestedBy INT NULL,
+    RequestedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_SalesReturn_Requested DEFAULT SYSUTCDATETIME(),
+    OutsideWindow BIT NOT NULL CONSTRAINT DF_SalesReturn_Outside DEFAULT 0,
+    AuthorizedBy INT NULL, AuthorizedAtUtc DATETIME2 NULL, AuthorizationNote NVARCHAR(500) NULL,
+    ReceivedAtUtc DATETIME2 NULL,
+    CreatedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_SalesReturn_Created DEFAULT SYSUTCDATETIME(),
+    CreatedBy INT NULL, UpdatedAtUtc DATETIME2 NULL, UpdatedBy INT NULL,
+    RowVersion ROWVERSION
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_SalesReturn_PublicId' AND object_id = OBJECT_ID('dbo.SalesReturn')) CREATE INDEX IX_SalesReturn_PublicId ON dbo.SalesReturn(PublicId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_SalesReturn_Number' AND object_id = OBJECT_ID('dbo.SalesReturn')) CREATE UNIQUE INDEX UX_SalesReturn_Number ON dbo.SalesReturn(TenantId, Number);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_SalesReturn_Order' AND object_id = OBJECT_ID('dbo.SalesReturn')) CREATE INDEX IX_SalesReturn_Order ON dbo.SalesReturn(TenantId, SalesOrderId);
+GO
+IF OBJECT_ID(N'dbo.SalesReturnLine', N'U') IS NULL CREATE TABLE dbo.SalesReturnLine (
+    SalesReturnLineId INT IDENTITY(1,1) PRIMARY KEY,
+    SalesReturnId INT NOT NULL REFERENCES dbo.SalesReturn(SalesReturnId),
+    SalesOrderLineId INT NOT NULL REFERENCES dbo.SalesOrderLine(SalesOrderLineId),
+    ProductId INT NOT NULL REFERENCES dbo.Product(ProductId),
+    QtyRequested DECIMAL(14,3) NOT NULL,
+    QtyReceived DECIMAL(14,3) NOT NULL CONSTRAINT DF_SalesReturnLine_Received DEFAULT 0,
+    QtyDamaged DECIMAL(14,3) NOT NULL CONSTRAINT DF_SalesReturnLine_Damaged DEFAULT 0,
+    QtyCredited DECIMAL(14,3) NOT NULL CONSTRAINT DF_SalesReturnLine_Credited DEFAULT 0
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_SalesReturnLine_OrderLine' AND object_id = OBJECT_ID('dbo.SalesReturnLine')) CREATE INDEX IX_SalesReturnLine_OrderLine ON dbo.SalesReturnLine(SalesOrderLineId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_SalesReturnLine_Return' AND object_id = OBJECT_ID('dbo.SalesReturnLine')) CREATE INDEX IX_SalesReturnLine_Return ON dbo.SalesReturnLine(SalesReturnId);
+GO
+IF COL_LENGTH('dbo.ReceiptHeader', 'SalesReturnId') IS NULL
+    ALTER TABLE dbo.ReceiptHeader ADD SalesReturnId INT NULL CONSTRAINT FK_ReceiptHeader_SalesReturn REFERENCES dbo.SalesReturn(SalesReturnId);
+GO
+IF COL_LENGTH('dbo.CreditNote', 'SalesReturnId') IS NULL
+    ALTER TABLE dbo.CreditNote ADD SalesReturnId INT NULL CONSTRAINT FK_CreditNote_SalesReturn REFERENCES dbo.SalesReturn(SalesReturnId);
+GO
+
+-- Dominio de estatus SalesReturnStatus y sus estatus (REJECTED y CANCELLED se alcanzan desde una etapa anterior: entrada lateral permitida desde cualquier etapa)
+MERGE dbo.CatalogDomain AS t
+USING (SELECT N'SalesReturnStatus' AS DomainKey) AS s ON t.DomainKey = s.DomainKey
+WHEN NOT MATCHED THEN
+    INSERT (DomainKey, Scope, LabelJson, IsSystem, IsActive)
+    VALUES (N'SalesReturnStatus', 2, N'{"es":"Estatus de la devolución de venta","en":"Sales return status"}', 1, 1);
+GO
+MERGE dbo.StatusCode AS t
+USING (
+    SELECT v.Code, v.LabelJson, v.Color, v.Srt, v.Init, k.LookupCodeId AS StageKindLookupId
+    FROM (VALUES
+        (N'REQUESTED',  N'{"es":"Solicitada","en":"Requested"}',   '#9CA3AF', 1, 1, 'PIPELINE'),
+        (N'AUTHORIZED', N'{"es":"Autorizada","en":"Authorized"}',  '#3B82F6', 2, 0, 'PIPELINE'),
+        (N'RECEIVED',   N'{"es":"Recibida","en":"Received"}',      '#F59E0B', 3, 0, 'PIPELINE'),
+        (N'CREDITED',   N'{"es":"Acreditada","en":"Credited"}',    '#059669', 4, 0, 'TERMINAL'),
+        (N'REJECTED',   N'{"es":"Rechazada","en":"Rejected"}',     '#EF4444', 5, 0, 'TERMINAL'),
+        (N'CANCELLED',  N'{"es":"Cancelada","en":"Cancelled"}',    '#6B7280', 6, 0, 'TERMINAL')
+    ) AS v (Code, LabelJson, Color, Srt, Init, Kind)
+    JOIN dbo.LookupCode k ON k.Entity = N'StageKind' AND k.InternalCode = v.Kind
+) AS s
+ON t.Entity = N'SalesReturnStatus' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, ColorHex, SortOrder, StageKindLookupId, IsInitial, IsActive)
+    VALUES (N'SalesReturnStatus', s.Code, s.LabelJson, s.Color, s.Srt, s.StageKindLookupId, s.Init, 1);
+GO
+
+-- Catálogo de motivos de la devolución
+MERGE dbo.CatalogDomain AS t
+USING (SELECT N'ReturnReason' AS DomainKey) AS s ON t.DomainKey = s.DomainKey
+WHEN NOT MATCHED THEN
+    INSERT (DomainKey, Scope, LabelJson, IsSystem, IsActive)
+    VALUES (N'ReturnReason', 1, N'{"es":"Motivo de la devolución","en":"Return reason"}', 1, 1);
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'DAMAGED',    N'{"es":"Dañado","en":"Damaged"}',                         1),
+    (N'WRONG_ITEM', N'{"es":"Equivocado","en":"Wrong item"}',                  2),
+    (N'NOT_NEEDED', N'{"es":"No lo necesitaba o sobrante","en":"Not needed or surplus"}', 3),
+    (N'EXPIRED',    N'{"es":"Vencido","en":"Expired"}',                        4),
+    (N'OTHER',      N'{"es":"Otro","en":"Other"}',                             5)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'ReturnReason' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'ReturnReason', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+
+-- Causa de daño «Devolución de cliente»
+MERGE dbo.LookupCode AS t
+USING (VALUES (N'CUSTOMER_RETURN', N'{"es":"Devolución de cliente","en":"Customer return"}', 5)) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'DamageCause' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'DamageCause', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+
+-- EntityType de la bitácora y del historial de estatus
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'SALES_RETURN', N'{"es":"Devolución de venta","en":"Sales return"}', 130)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+
+-- Contador de devoluciones: el CHECK de los tipos de contador se vuelve a crear con SALESRETURN
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_NumberSequence_Kind' AND definition NOT LIKE '%SALESRETURN%')
+    ALTER TABLE dbo.NumberSequence DROP CONSTRAINT CK_NumberSequence_Kind;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_NumberSequence_Kind')
+    ALTER TABLE dbo.NumberSequence ADD CONSTRAINT CK_NumberSequence_Kind CHECK (Kind IN ('ORDER','INVOICE','PACKAGE','PACKBATCH','WORKORDER','TRIP','RECEIPT','CYCLECOUNT','CROSSDOCK','PURCHASE','RENTAL','RENTALRETURN','MANUALISSUE','MULTIADJUST','SALESORDER','BILLINVOICE','CREDITNOTE','SALESRETURN'));
+GO
+
+-- Permisos sales.return y sales.return.authorize
+MERGE dbo.Permission AS t
+USING (VALUES
+    ('sales.return',           N'{"es":"Pedir devoluciones de venta","en":"Request sales returns"}'),
+    ('sales.return.authorize', N'{"es":"Autorizar devoluciones de venta","en":"Authorize sales returns"}')
+) AS s (Code, LabelJson)
+ON t.Code = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES (s.Code, (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'ORDERS'), s.LabelJson, 1);
+GO
+-- sales.return: a todo rol (plantilla y clonados) que ya crea órdenes de venta y al administrador de la compañía
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT DISTINCT r.RoleId, v.PermissionId
+FROM dbo.Role r
+JOIN dbo.Permission v ON v.Code = 'sales.return'
+WHERE (r.Name = 'TenantAdmin' OR EXISTS (
+          SELECT 1 FROM dbo.RolePermission rp JOIN dbo.Permission p ON p.PermissionId = rp.PermissionId
+          WHERE rp.RoleId = r.RoleId AND p.Code = 'sales.create'))
+  AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = v.PermissionId);
+GO
+-- sales.return.authorize: al administrador de la compañía y a quien ya cancela órdenes de venta (supervisión)
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT DISTINCT r.RoleId, v.PermissionId
+FROM dbo.Role r
+JOIN dbo.Permission v ON v.Code = 'sales.return.authorize'
+WHERE (r.Name = 'TenantAdmin' OR EXISTS (
+          SELECT 1 FROM dbo.RolePermission rp JOIN dbo.Permission p ON p.PermissionId = rp.PermissionId
+          WHERE rp.RoleId = r.RoleId AND p.Code = 'sales.cancel'))
+  AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = v.PermissionId);
+GO

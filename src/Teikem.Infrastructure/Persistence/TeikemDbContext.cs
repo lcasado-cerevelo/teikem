@@ -180,6 +180,8 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<Teikem.Domain.Billing.CreditNote> CreditNotes => Set<Teikem.Domain.Billing.CreditNote>();   // Lote 79 (P6)
     public DbSet<Teikem.Domain.Billing.CreditNoteLine> CreditNoteLines => Set<Teikem.Domain.Billing.CreditNoteLine>();
     public DbSet<Teikem.Domain.Billing.CreditApplication> CreditApplications => Set<Teikem.Domain.Billing.CreditApplication>();
+    public DbSet<Teikem.Domain.Sales.SalesReturn> SalesReturns => Set<Teikem.Domain.Sales.SalesReturn>();   // Lote 81 (P6)
+    public DbSet<Teikem.Domain.Sales.SalesReturnLine> SalesReturnLines => Set<Teikem.Domain.Sales.SalesReturnLine>();
     public DbSet<InventoryLot> InventoryLots => Set<InventoryLot>();
     public DbSet<InventorySerial> InventorySerials => Set<InventorySerial>();
     public DbSet<StockBalance> StockBalances => Set<StockBalance>();

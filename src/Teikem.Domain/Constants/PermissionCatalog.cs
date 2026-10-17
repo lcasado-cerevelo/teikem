@@ -173,6 +173,10 @@ public static class PermissionCatalog
     public const string SalesCancel = "sales.cancel";
     public const string SalesPrice = "sales.price";
     public const string SalesBackorder = "sales.backorder";
+    /// <summary>Lote 81 (P6): pedir una devolución de venta.</summary>
+    public const string SalesReturn = "sales.return";
+    /// <summary>Lote 81 (P6): autorizar o rechazar una devolución de venta (también la que está fuera de la ventana).</summary>
+    public const string SalesReturnAuthorize = "sales.return.authorize";
 
     public static readonly IReadOnlyList<PermissionDef> All = new List<PermissionDef>
     {
@@ -275,6 +279,8 @@ public static class PermissionCatalog
         new(SalesCancel, "ORDERS", "Cancelar órdenes de venta", "Cancel sales orders"),
         new(SalesPrice, "ORDERS", "Cambiar el precio en las órdenes de venta", "Change the price on sales orders"),
         new(SalesBackorder, "ORDERS", "Surtir y cerrar backorders", "Fulfill and close backorders"),
+        new(SalesReturn, "ORDERS", "Pedir devoluciones de venta", "Request sales returns"),
+        new(SalesReturnAuthorize, "ORDERS", "Autorizar devoluciones de venta", "Authorize sales returns"),
     };
 
     /// <summary>
@@ -460,7 +466,7 @@ public static class PermissionCatalog
             RentalExtend, RentalReturn,   // Lote 27 (Rentas R1)
             SalesView, SalesBackorder },   // Lote 57: ve las órdenes de venta y surte los backorders
         // Lote 57: quien arma las ventas (sin precio ni backorder: eso lo da el administrador)
-        ["Sales"] = new[] { SalesView, SalesCreate, SalesCancel, InventoryView, ClientsRead },
+        ["Sales"] = new[] { SalesView, SalesCreate, SalesCancel, SalesReturn, InventoryView, ClientsRead },
         ["Driver"] = new[] { OrdersView, CodCollect },
         ["ReadOnly"] = new[] { OrdersView, CodView, AnalyticsView, ClientsRead, LocationsRead, ContractsRead, FleetView, TripsView, InventoryView,
             PulseIndicators, PulseCharts, PulseActivity,   // Lote F8a

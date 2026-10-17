@@ -212,6 +212,8 @@ internal sealed class WmsFixture : IAsyncDisposable
         L(LookupDomains.EntityType, Teikem.Domain.Export.ExportCodes.EntityType);   // Lote 77
         L(LookupDomains.EntityType, Teikem.Domain.Billing.CreditCodes.EntityType);   // Lote 79
         foreach (var c in Teikem.Domain.Billing.CreditReasons.All) L(Teikem.Domain.Billing.CreditCodes.ReasonDomain, c);
+        L(LookupDomains.EntityType, Teikem.Domain.Sales.ReturnCodes.EntityType);   // Lote 81
+        foreach (var c in Teikem.Domain.Sales.ReturnReasons.All) L(Teikem.Domain.Sales.ReturnCodes.ReasonDomain, c);
         L(Teikem.Domain.Billing.BillingCodes.ChargeTypeDomain, Teikem.Domain.Billing.BillingCodes.ProductSale);
         L(Teikem.Domain.Billing.BillingCodes.PaymentMethodDomain, "CASH");
         foreach (var m in new[] { "ACH", "CHECK", "CARD" }) L(Teikem.Domain.Billing.BillingCodes.PaymentMethodDomain, m);   // Lote 75
@@ -336,6 +338,12 @@ internal sealed class WmsFixture : IAsyncDisposable
         S(Teikem.Domain.Billing.CreditCodes.StatusDomain, Teikem.Domain.Billing.CreditNoteStatuses.Approved, pipe, 2);
         S(Teikem.Domain.Billing.CreditCodes.StatusDomain, Teikem.Domain.Billing.CreditNoteStatuses.Applied, term, 3);
         S(Teikem.Domain.Billing.CreditCodes.StatusDomain, Teikem.Domain.Billing.CreditNoteStatuses.Void, term, 4);
+        S(Teikem.Domain.Sales.ReturnCodes.StatusDomain, Teikem.Domain.Sales.SalesReturnStatuses.Requested, pipe, 1, true);   // Lote 81
+        S(Teikem.Domain.Sales.ReturnCodes.StatusDomain, Teikem.Domain.Sales.SalesReturnStatuses.Authorized, pipe, 2);
+        S(Teikem.Domain.Sales.ReturnCodes.StatusDomain, Teikem.Domain.Sales.SalesReturnStatuses.Received, pipe, 3);
+        S(Teikem.Domain.Sales.ReturnCodes.StatusDomain, Teikem.Domain.Sales.SalesReturnStatuses.Credited, term, 4);
+        S(Teikem.Domain.Sales.ReturnCodes.StatusDomain, Teikem.Domain.Sales.SalesReturnStatuses.Rejected, term, 5);
+        S(Teikem.Domain.Sales.ReturnCodes.StatusDomain, Teikem.Domain.Sales.SalesReturnStatuses.Cancelled, term, 6);
         ReceiptStatusSeed.AddLateralEntries(Db, LookupId(LookupDomains.EntityType, EntityTypes.Receipt), StatusId);
 
         // 3G: WAREHOUSE_TASK CANCELLED solo desde PENDING e IN_PROGRESS.

@@ -8565,3 +8565,26 @@ Es el **saldo a favor**: lo no aplicado. Use **Aplicar** con una factura abierta
 
 **No veo el botón / el permiso para crear notas.**
 Se necesita el permiso **Notas de crédito** (`billing.credit`); aprobar pide además reautenticación.
+
+## Lote 81 — Devoluciones de venta
+
+**`De X solo se pueden devolver Y más.` (422)**
+Lo que se puede devolver de una línea es lo despachado menos lo ya devuelto y menos lo que ya piden otras devoluciones abiertas (solicitadas, autorizadas o recibidas con faltante). Cancele la devolución que no va o ciérrela con «cerrar lo pendiente» al recibir.
+
+**`La devolución está fuera de la ventana de devolución…` (403)**
+Pasaron más de los días de la ventana (30 por omisión) desde el último despacho. La pide quien tiene permiso para autorizar devoluciones y lo confirma; el administrador puede cambiar los días (0 = sin ventana).
+
+**El cliente devolvió solo una parte de lo pedido.**
+Reciba en partes lo que llegó (lo demás sigue pendiente) y, si el resto no va a llegar, marque «cerrar lo pendiente»: deja de contar como pendiente.
+
+**Llegó mercancía dañada.**
+Al recibir, ponga la cantidad en **dañada** y describa el daño: se crea su reporte de daño (causa «Devolución de cliente») y queda en cuarentena, o se desecha si marca desechar. Lo dañado cuenta como devuelto (se acredita) pero no entra como bueno al inventario.
+
+**¿Se mueve el inventario al acreditar?**
+No. El inventario lo movió el **recibo** de la devolución. La nota de crédito solo acredita el dinero.
+
+**`No hay nada por acreditar…` (422)**
+Lo recibido no se había facturado (ya no se facturará: la devolución lo descuenta de lo facturable) o ya se acreditó. Una factura todavía en borrador se ajusta en su corrida, no con nota.
+
+**No me deja devolver un kit o un producto con serie.**
+En esta versión no se devuelven; los kits se devolverían por sus piezas y la serie por serie, y vienen más adelante.

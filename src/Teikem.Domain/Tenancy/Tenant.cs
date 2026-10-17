@@ -84,6 +84,8 @@ public class Tenant : ISoftDeletable
     public string SalesBillingTrigger { get; set; } = "ON_DISPATCH";
     /// <summary>Lote 72 (P5): días entre la emisión de una factura y su vencimiento.</summary>
     public int InvoiceDueDays { get; set; } = 30;
+    /// <summary>Lote 81: días después del último despacho en que se acepta pedir una devolución de venta (0 = sin ventana).</summary>
+    public int SalesReturnWindowDays { get; set; } = 30;
     /// <summary>
     /// Lote 43 (F-G1): «Imprimir labels directo a la impresora». Encendido, el label de cada paquete de una orden nueva (entrada rápida y
     /// detallada) sale solo a la impresora de labels de la estación (QZ Tray; sin QZ Tray, el PDF del navegador). Apagado por defecto.

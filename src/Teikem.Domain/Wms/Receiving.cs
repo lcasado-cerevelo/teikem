@@ -69,6 +69,8 @@ public class ReceiptHeader : ITenantScoped, ISoftDeletable, IHasStatus
     /// no lo toca (D2). NULL = PUTAWAY.
     /// </summary>
     public int? ReceivingModeLookupId { get; set; }
+    /// <summary>Lote 81: la devolución de venta que originó este recibo (tipo RETURN); NULL en los demás.</summary>
+    public int? SalesReturnId { get; set; }
 
     public StatusCode? Status { get; set; }
     public ICollection<ReceiptLine> Lines { get; set; } = new List<ReceiptLine>();
