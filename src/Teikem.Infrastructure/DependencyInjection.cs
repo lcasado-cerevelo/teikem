@@ -422,6 +422,7 @@ public static class DependencyInjection
         services.AddScoped<KpiSnapshotService>();
         services.AddScoped<ReportDeliveryService>();   // Lote 92 (P12)
         services.AddScoped<ClientNotificationService>();   // Lote 98 (P10)
+        services.AddScoped<ClientMessagingService>();   // Lote 104: mensajes del portal con el equipo de servicio al cliente
         services.AddScoped<OrderProgressService>();   // Lote 103: barra de progreso (etapas = estatus de la compañía)
         services.AddScoped<PublicTrackingService>();   // Lote 103: «¿Cómo va mi orden?» público y su ajuste
         services.AddScoped<PortalService>();   // Lote 101: lecturas del portal del cliente

@@ -9011,3 +9011,24 @@ En los mismos lugares: **Español / English**. El español es el de omisión; la
 
 **La app abrió en oscuro y yo no lo pedí.**
 Está en Automático y el teléfono o el navegador está en modo oscuro. Escoja «Claro» para fijarlo.
+
+
+## Mensajes con el equipo de servicio al cliente (Lote 104)
+
+**«Escriba el mensaje.» (400)** — El mensaje está vacío o solo tiene espacios. Escriba el texto y envíe de nuevo.
+
+**«El mensaje no puede pasar de 2000 caracteres.» (400)** — Acorte el mensaje o envíelo en dos.
+
+**«Demasiados mensajes seguidos; espere un rato para volver a escribir.» (429)** — Cada persona puede mandar 30 mensajes por hora. Espere un rato.
+
+**«La persona no es un usuario activo de portal de ese cliente.» (400)** — Al escribirle primero a alguien: esa persona no pertenece al cliente o está dada de baja. Escoja otra de la lista del cliente.
+
+**«Solo pueden estar en el equipo usuarios activos de la compañía.» (400)** — Al designar el equipo se incluyó a alguien inactivo o de otra compañía. Escoja de la lista de candidatos.
+
+**¿Quién atiende los mensajes de un cliente?** Su equipo designado; si no tiene, cualquiera con el permiso `clientmessages.reply`. El administrador ve todo.
+
+**¿Se enteran del mensaje por correo?** Todavía no: el equipo ve el número de no leídos en la bandeja (se actualiza sola cada pocos segundos). El correo al cliente cuando contesta el equipo tampoco está hecho.
+
+**¿Puede otra persona de mi empresa leer mis mensajes?** No: cada persona tiene su propia conversación con el equipo.
+
+**¿Se pueden adjuntar archivos?** No, por ahora solo texto.

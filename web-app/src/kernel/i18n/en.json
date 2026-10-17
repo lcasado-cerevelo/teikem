@@ -330,6 +330,10 @@
       "title": "Tenant settings",
       "subtitle": "rules & pipeline"
     },
+    "portalMessages": {
+      "title": "Client messages",
+      "subtitle": "conversations with the people at your clients"
+    },
     "portalHome": {
       "title": "Home",
       "subtitle": "overview of your orders and account"
@@ -8880,6 +8884,54 @@
       "colNet": "Net",
       "colTax": "Tax",
       "colTotal": "Total"
+    }
+  },
+  "clientMessages": {
+    "title": "Client messages",
+    "subtitle": "conversations with the people at your clients; one per person",
+    "listLabel": "Conversations",
+    "conversation": "Conversation",
+    "search": "Search person, client or text…",
+    "allClients": "All clients",
+    "clientFilter": "Filter by client",
+    "unreadOnly": "Unread only",
+    "unreadBadge": "{n} unread conversations",
+    "empty": "No conversations yet. Write to a person from the client's record.",
+    "noMatches": "No conversation matches the filter.",
+    "loadMore": "Load more ({shown} of {total})",
+    "pick": "Pick a conversation from the list.",
+    "back": "Back",
+    "older": "Show earlier messages",
+    "noMessages": "No messages yet.",
+    "write": "Write your reply…",
+    "send": "Send",
+    "charsLeft": "{n} of {max} characters left",
+    "errors": {
+      "empty": "Write the message.",
+      "tooLong": "The message cannot exceed 2000 characters.",
+      "personRequired": "Choose the person."
+    },
+    "team": {
+      "title": "Customer service team",
+      "help": "The people who handle this client's messages.",
+      "summary": "{n} person(s) on the team",
+      "summaryFallback": "No team assigned",
+      "fallbackNote": "This client has no assigned team: its messages are handled by anyone allowed to reply ({n} person(s)).",
+      "designate": "Assign team",
+      "designateTitle": "Assign the service team",
+      "designateHelp": "Check the people who will handle this client. With nobody checked, anyone allowed to reply handles it.",
+      "noCandidates": "There are no users that can be assigned.",
+      "save": "Save team",
+      "saved": "Team saved."
+    },
+    "writeFirst": {
+      "button": "Write to a person",
+      "title": "Write to a person at the client",
+      "help": "The conversation with that person is opened (or the existing one continues). Nobody else at their company sees it.",
+      "person": "Person",
+      "choosePerson": "Choose the person",
+      "noPeople": "This client has no people with active portal access.",
+      "message": "Message"
     }
   },
   "announcements": {

@@ -54,3 +54,44 @@ public sealed class UserPresenceConfiguration : IEntityTypeConfiguration<UserPre
         b.Property(p => p.UserId).ValueGeneratedNever();
     }
 }
+
+// Lote 104 — mensajes del portal con el equipo de servicio al cliente. Mapeo 1:1 con la sección «2026-10-17 (am)» de Diseño/logistica-db-update.sql.
+
+public sealed class ClientConversationConfiguration : IEntityTypeConfiguration<ClientConversation>
+{
+    public void Configure(EntityTypeBuilder<ClientConversation> b)
+    {
+        b.ToTable("ClientConversation");
+        b.HasKey(c => c.ClientConversationId);
+        b.Property(c => c.PublicId).HasDefaultValueSql("NEWID()").ValueGeneratedOnAdd();
+        b.Property(c => c.StartedBy).HasMaxLength(10).IsUnicode(false).IsRequired();
+        b.Property(c => c.LastMessagePreview).HasMaxLength(200);
+        b.Property(c => c.LastSenderKind).HasMaxLength(10).IsUnicode(false);
+        b.HasIndex(c => c.PublicId).IsUnique().HasDatabaseName("UQ_ClientConversation_PublicId");
+        b.HasIndex(c => new { c.TenantId, c.ClientId, c.PortalUserId }).IsUnique().HasDatabaseName("UX_ClientConversation_Person");
+        b.HasIndex(c => new { c.TenantId, c.LastMessageAtUtc }).HasDatabaseName("IX_ClientConversation_Last");
+    }
+}
+
+public sealed class ClientMessageConfiguration : IEntityTypeConfiguration<ClientMessage>
+{
+    public void Configure(EntityTypeBuilder<ClientMessage> b)
+    {
+        b.ToTable("ClientMessage");
+        b.HasKey(m => m.ClientMessageId);
+        b.Property(m => m.SenderKind).HasMaxLength(10).IsUnicode(false).IsRequired();
+        b.Property(m => m.Body).HasMaxLength(2000).IsRequired();
+        b.HasIndex(m => new { m.ClientConversationId, m.ClientMessageId }).HasDatabaseName("IX_ClientMessage_Conversation");
+        b.HasIndex(m => new { m.SenderUserId, m.CreatedAtUtc }).HasDatabaseName("IX_ClientMessage_Sender");
+    }
+}
+
+public sealed class ClientServiceTeamMemberConfiguration : IEntityTypeConfiguration<ClientServiceTeamMember>
+{
+    public void Configure(EntityTypeBuilder<ClientServiceTeamMember> b)
+    {
+        b.ToTable("ClientServiceTeamMember");
+        b.HasKey(m => m.ClientServiceTeamMemberId);
+        b.HasIndex(m => new { m.TenantId, m.ClientId, m.UserId }).IsUnique().HasDatabaseName("UX_ClientServiceTeamMember");
+    }
+}

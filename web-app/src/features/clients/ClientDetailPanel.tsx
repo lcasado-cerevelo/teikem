@@ -17,6 +17,7 @@ import { ClientContractsSection } from './ClientContractsSection'
 import { ClientCustomFieldsPanel } from './ClientCustomFieldsPanel'
 import { ClientNumberingPanel } from './ClientNumberingPanel'
 import { ClientNotificationsPanel } from './ClientNotificationsPanel'
+import { ClientServiceTeamPanel } from '../clientMessages/ClientServiceTeamPanel'
 import { ClientPortalPanel } from './ClientPortalPanel'
 import { ClientPeoplePanel } from './ClientPeoplePanel'
 import { ClientProfilePanel } from './ClientProfilePanel'
@@ -119,6 +120,7 @@ export function ClientDetailPanel({ publicId }: { publicId: string }) {
       <ClientCustomFieldsPanel client={client} />
       <ClientContractsSection key={client.publicId} client={client} />
       <ClientPortalPanel key={`portal-${client.publicId}`} client={client} />
+      <ClientServiceTeamPanel key={`team-${client.publicId}`} clientPublicId={client.publicId ?? ''} clientActive={client.isActive} />
       <ClientNotificationsPanel key={`notif-${client.publicId}`} client={client} />
       <ClientConsigneesPanel key={`consignees-${client.publicId}`} client={client} />
       <Panel

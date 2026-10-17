@@ -14,7 +14,7 @@ namespace Teikem.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/portal")]
-public sealed class PortalController(AuthService auth, PortalService portal) : ControllerBase
+public sealed class PortalController(AuthService auth, PortalService portal, ClientMessagingService messages) : ControllerBase
 {
     /// <summary>
     /// Login del portal: correo y contraseña (+ cliente opcional). Puede responder: <c>ok</c> (tokens), <c>mfa_required</c> (segundo paso; con challenge), <c>browser_confirmation_required</c> (computadora nueva: se manda un correo) o
@@ -42,6 +42,22 @@ public sealed class PortalController(AuthService auth, PortalService portal) : C
     /// <summary>Bandeja de avisos: los resúmenes que la compañía configuró mandar a mi cliente por el canal «bandeja del portal» (los más nuevos primero; máximo 100 por página).</summary>
     [HttpGet("notifications"), Authorize, RequireModule(ModuleKeys.ClientPortal)]
     public Task<PagedResult<PortalNotificationDto>> Notifications([FromQuery] int skip, [FromQuery] int take, CancellationToken ct) => portal.ListNotificationsAsync(skip, take, ct);
+
+    /// <summary>Mi conversación con el equipo de servicio al cliente (la mía, no la de nadie más de mi empresa): los últimos mensajes (o los anteriores a <c>before</c>) en orden cronológico y cuántos del equipo no he leído.</summary>
+    [HttpGet("messages"), Authorize, RequireModule(ModuleKeys.ClientPortal)]
+    public Task<PortalMessagesDto> Messages([FromQuery] long? before, [FromQuery] int take, CancellationToken ct) => messages.GetMineAsync(before, take, ct);
+
+    /// <summary>Escribirle al equipo. Crea mi conversación con el primer mensaje. 400 si está vacío o pasa de 2000 caracteres; 429 si mando demasiados seguidos (30 por hora).</summary>
+    [HttpPost("messages"), Authorize, RequireModule(ModuleKeys.ClientPortal)]
+    public Task<ClientMessageDto> SendMessage([FromBody] ClientMessageSendRequest req, CancellationToken ct) => messages.SendAsPortalAsync(req, ct);
+
+    /// <summary>Marcar como leído lo que escribió el equipo.</summary>
+    [HttpPost("messages/read"), Authorize, RequireModule(ModuleKeys.ClientPortal)]
+    public async Task<IActionResult> ReadMessages(CancellationToken ct) { await messages.MarkReadAsPortalAsync(ct); return NoContent(); }
+
+    /// <summary>Cuántos mensajes del equipo no he leído (para el número de la pestaña).</summary>
+    [HttpGet("messages/unread"), Authorize, RequireModule(ModuleKeys.ClientPortal)]
+    public Task<PortalUnreadDto> UnreadMessages(CancellationToken ct) => messages.UnreadMineAsync(ct);
 
     /// <summary>Mis órdenes (solo las del cliente de la sesión): búsqueda por conduce, orden, factura o consignatario; estatus y fechas; paginado (máximo 100).</summary>
     [HttpGet("orders"), Authorize, RequireModule(ModuleKeys.ClientPortal)]

@@ -330,6 +330,10 @@
       "title": "Ajustes de la compañía",
       "subtitle": "reglas y pipeline"
     },
+    "portalMessages": {
+      "title": "Mensajes de clientes",
+      "subtitle": "conversaciones con las personas de tus clientes"
+    },
     "portalHome": {
       "title": "Página principal",
       "subtitle": "resumen de tus órdenes y tu cuenta"
@@ -8880,6 +8884,54 @@
       "colNet": "Neto",
       "colTax": "Impuesto",
       "colTotal": "Total"
+    }
+  },
+  "clientMessages": {
+    "title": "Mensajes de clientes",
+    "subtitle": "conversaciones con las personas de sus clientes; una por persona",
+    "listLabel": "Conversaciones",
+    "conversation": "Conversación",
+    "search": "Buscar persona, cliente o texto…",
+    "allClients": "Todos los clientes",
+    "clientFilter": "Filtrar por cliente",
+    "unreadOnly": "Solo sin leer",
+    "unreadBadge": "{n} conversaciones sin leer",
+    "empty": "Todavía no hay conversaciones. Escríbale a una persona desde la ficha del cliente.",
+    "noMatches": "Ninguna conversación coincide con el filtro.",
+    "loadMore": "Cargar más ({shown} de {total})",
+    "pick": "Elija una conversación de la lista.",
+    "back": "Volver",
+    "older": "Ver mensajes anteriores",
+    "noMessages": "Todavía no hay mensajes.",
+    "write": "Escriba su respuesta…",
+    "send": "Enviar",
+    "charsLeft": "{n} de {max} caracteres disponibles",
+    "errors": {
+      "empty": "Escriba el mensaje.",
+      "tooLong": "El mensaje no puede pasar de 2000 caracteres.",
+      "personRequired": "Elija a la persona."
+    },
+    "team": {
+      "title": "Equipo de servicio al cliente",
+      "help": "Las personas que atienden los mensajes de este cliente.",
+      "summary": "{n} persona(s) en el equipo",
+      "summaryFallback": "Sin equipo designado",
+      "fallbackNote": "Este cliente no tiene equipo designado: sus mensajes los atiende cualquiera con permiso para responder ({n} persona(s)).",
+      "designate": "Designar equipo",
+      "designateTitle": "Designar el equipo de servicio",
+      "designateHelp": "Marque a quienes atenderán a este cliente. Sin nadie marcado, lo atiende cualquiera con permiso para responder.",
+      "noCandidates": "No hay usuarios que se puedan designar.",
+      "save": "Guardar equipo",
+      "saved": "Equipo guardado."
+    },
+    "writeFirst": {
+      "button": "Escribirle a una persona",
+      "title": "Escribirle a una persona del cliente",
+      "help": "Se abre la conversación con esa persona (o se continúa la que ya existe). Nadie más de su empresa la ve.",
+      "person": "Persona",
+      "choosePerson": "Elija a la persona",
+      "noPeople": "Este cliente no tiene personas con acceso activo al portal.",
+      "message": "Mensaje"
     }
   },
   "announcements": {

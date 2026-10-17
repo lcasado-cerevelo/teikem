@@ -127,7 +127,7 @@ public class MessagingTests
         foreach (var (role, perms) in PermissionCatalog.RoleTemplates)
             Assert.Contains(PermissionCatalog.MessagesUse, perms);
         // el catálogo de permisos es lo que se ofrece al armar un rol nuevo: no se marca solo (el portal de clientes lo recibirá solo si el dueño lo asigna)
-        Assert.Equal(7, PermissionCatalog.RoleTemplates.Count);   // Lote 57: + Ventas
+        Assert.Equal(8, PermissionCatalog.RoleTemplates.Count);   // Lote 57: + Ventas; Lote 104: + Servicio al cliente
     }
 
     [Fact]

@@ -27031,6 +27031,516 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/client-messages/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    clientId?: string;
+                    unread?: boolean;
+                    q?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientConversationSummaryDtoPagedResult"];
+                        "application/json": components["schemas"]["ClientConversationSummaryDtoPagedResult"];
+                        "text/json": components["schemas"]["ClientConversationSummaryDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ClientConversationStartRequest"];
+                    "text/json": components["schemas"]["ClientConversationStartRequest"];
+                    "application/*+json": components["schemas"]["ClientConversationStartRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientConversationDto"];
+                        "application/json": components["schemas"]["ClientConversationDto"];
+                        "text/json": components["schemas"]["ClientConversationDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/client-messages/unread": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["StaffUnreadDto"];
+                        "application/json": components["schemas"]["StaffUnreadDto"];
+                        "text/json": components["schemas"]["StaffUnreadDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/client-messages/conversations/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    before?: number;
+                    take?: number;
+                };
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientConversationDto"];
+                        "application/json": components["schemas"]["ClientConversationDto"];
+                        "text/json": components["schemas"]["ClientConversationDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/client-messages/conversations/{publicId}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ClientMessageSendRequest"];
+                    "text/json": components["schemas"]["ClientMessageSendRequest"];
+                    "application/*+json": components["schemas"]["ClientMessageSendRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientMessageDto"];
+                        "application/json": components["schemas"]["ClientMessageDto"];
+                        "text/json": components["schemas"]["ClientMessageDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/client-messages/conversations/{publicId}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/client-messages/clients/{clientId}/people": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    clientId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientPersonDto"][];
+                        "application/json": components["schemas"]["ClientPersonDto"][];
+                        "text/json": components["schemas"]["ClientPersonDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/client-messages/clients/{clientId}/team": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    clientId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientServiceTeamDto"];
+                        "application/json": components["schemas"]["ClientServiceTeamDto"];
+                        "text/json": components["schemas"]["ClientServiceTeamDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    clientId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ClientServiceTeamRequest"];
+                    "text/json": components["schemas"]["ClientServiceTeamRequest"];
+                    "application/*+json": components["schemas"]["ClientServiceTeamRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientServiceTeamDto"];
+                        "application/json": components["schemas"]["ClientServiceTeamDto"];
+                        "text/json": components["schemas"]["ClientServiceTeamDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/client-messages/team-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TeamCandidateDto"][];
+                        "application/json": components["schemas"]["TeamCandidateDto"][];
+                        "text/json": components["schemas"]["TeamCandidateDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    before?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalMessagesDto"];
+                        "application/json": components["schemas"]["PortalMessagesDto"];
+                        "text/json": components["schemas"]["PortalMessagesDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ClientMessageSendRequest"];
+                    "text/json": components["schemas"]["ClientMessageSendRequest"];
+                    "application/*+json": components["schemas"]["ClientMessageSendRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientMessageDto"];
+                        "application/json": components["schemas"]["ClientMessageDto"];
+                        "text/json": components["schemas"]["ClientMessageDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/messages/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/messages/unread": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalUnreadDto"];
+                        "application/json": components["schemas"]["PortalUnreadDto"];
+                        "text/json": components["schemas"]["PortalUnreadDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -36337,6 +36847,108 @@ export interface components {
             state?: string | null;
             statusCode?: string | null;
             statusLabel?: string | null;
+        };
+        ClientServiceTeamRequest: {
+            userIds?: number[] | null;
+        };
+        ClientServiceTeamDto: {
+            members?: components["schemas"]["ClientServiceTeamMemberDto"][] | null;
+            usesFallback?: boolean;
+            /** Format: int32 */
+            fallbackCount?: number;
+        };
+        ClientConversationStartRequest: {
+            /** Format: uuid */
+            clientPublicId?: string;
+            /** Format: int32 */
+            personId?: number;
+            body?: string | null;
+        };
+        StaffUnreadDto: {
+            /** Format: int32 */
+            conversations?: number;
+        };
+        ClientServiceTeamMemberDto: {
+            /** Format: int32 */
+            userId?: number;
+            fullName?: string | null;
+            email?: string | null;
+        };
+        PortalMessagesDto: {
+            /** Format: uuid */
+            conversationPublicId?: string | null;
+            messages?: components["schemas"]["ClientMessageDto"][] | null;
+            hasMore?: boolean;
+            /** Format: int32 */
+            unread?: number;
+        };
+        ClientMessageDto: {
+            /** Format: int64 */
+            id?: number;
+            senderKind?: string | null;
+            senderName?: string | null;
+            body?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            mine?: boolean;
+        };
+        ClientPersonDto: {
+            /** Format: int32 */
+            personId?: number;
+            fullName?: string | null;
+            email?: string | null;
+        };
+        ClientMessageSendRequest: {
+            body?: string | null;
+        };
+        ClientConversationSummaryDtoPagedResult: {
+            items?: components["schemas"]["ClientConversationSummaryDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        PortalUnreadDto: {
+            /** Format: int32 */
+            unread?: number;
+        };
+        TeamCandidateDto: {
+            /** Format: int32 */
+            userId?: number;
+            fullName?: string | null;
+            email?: string | null;
+        };
+        ClientConversationSummaryDto: {
+            /** Format: uuid */
+            publicId?: string;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            /** Format: int32 */
+            personId?: number;
+            personName?: string | null;
+            personEmail?: string | null;
+            lastMessagePreview?: string | null;
+            /** Format: date-time */
+            lastMessageAtUtc?: string;
+            lastSenderKind?: string | null;
+            /** Format: int32 */
+            unread?: number;
+        };
+        ClientConversationDto: {
+            /** Format: uuid */
+            publicId?: string;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            /** Format: int32 */
+            personId?: number;
+            personName?: string | null;
+            personEmail?: string | null;
+            messages?: components["schemas"]["ClientMessageDto"][] | null;
+            hasMore?: boolean;
         };
     };
     responses: never;

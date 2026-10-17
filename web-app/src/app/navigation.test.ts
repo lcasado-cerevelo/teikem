@@ -37,7 +37,7 @@ describe('NAV_GROUPS', () => {
 })
 
 describe('menú completo (routes.tsx)', () => {
-  it('con todos los permisos y módulos se ven los 7 grupos y los 47 ítems, en el orden de la maqueta', () => {
+  it('con todos los permisos y módulos se ven los 7 grupos y los 48 ítems, en el orden de la maqueta', () => {
     const groups = visibleNav(appRoutes, ALL_PERMS, ALL_MODULES)
     expect(groups.map((g) => [g.key, g.items.length])).toEqual([
       ['ops', 6],
@@ -46,7 +46,7 @@ describe('menú completo (routes.tsx)', () => {
       ['catalog', 4],
       ['analytics', 4],
       ['system', 10],
-      ['portal', 5],
+      ['portal', 6],
     ])
     expect(groups.flatMap((g) => g.items.map((r) => translate('es', navTitleKey(r.nav!.key))))).toEqual([
       'Pulso del día',
@@ -91,6 +91,7 @@ describe('menú completo (routes.tsx)', () => {
       'Trabajos programados',
       'Seguridad y auditoría',
       'Ajustes de la compañía',
+      'Mensajes de clientes',
       'Página principal',
       'Entrada de órdenes',
       'Consignatarios',
@@ -100,7 +101,7 @@ describe('menú completo (routes.tsx)', () => {
   })
 
   it('cada ítem tiene título y subtítulo en español e inglés, y `order` = posición × 10', () => {
-    expect(navRoutes).toHaveLength(47)
+    expect(navRoutes).toHaveLength(48)
     for (const r of navRoutes) {
       for (const lang of ['es', 'en'] as const) {
         expect(translate(lang, navTitleKey(r.nav!.key)), `${lang} ${r.path}`).not.toBe(navTitleKey(r.nav!.key))
@@ -109,7 +110,9 @@ describe('menú completo (routes.tsx)', () => {
     }
     for (const g of NAV_GROUPS) {
       const orders = navRoutes.filter((r) => r.nav!.group === g.key).map((r) => r.nav!.order)
-      expect(orders).toEqual(orders.map((_, i) => (i + 1) * 10))
+      // Lote 104: «Mensajes de clientes» abre el grupo del portal con order 5 (los demás siguen en 10, 20…)
+      const expected = g.key === 'portal' ? [5, 10, 20, 30, 40, 50] : orders.map((_, i) => (i + 1) * 10)
+      expect(orders).toEqual(expected)
     }
   })
 

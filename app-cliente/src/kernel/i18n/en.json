@@ -13,6 +13,7 @@
     "home": "Home",
     "orders": "Orders",
     "notices": "Notices",
+    "messages": "Messages",
     "settings": "Settings"
   },
   "login": {
@@ -173,5 +174,15 @@
       "dark": "Dark"
     },
     "themeHelp": "Automatic follows your phone or browser."
+  },
+  "messages": {
+    "help": "Your conversation with the customer service team. Only you and the team can see it.",
+    "empty": "No messages yet. Write to the team below.",
+    "older": "Load earlier messages",
+    "team": "Customer service",
+    "placeholder": "Write your message",
+    "send": "Send",
+    "charsLeft": "{n} characters left",
+    "tooMany": "Too many messages in a row; please wait a while before writing again."
   }
 }

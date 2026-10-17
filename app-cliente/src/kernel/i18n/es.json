@@ -13,6 +13,7 @@
     "home": "Inicio",
     "orders": "Órdenes",
     "notices": "Avisos",
+    "messages": "Mensajes",
     "settings": "Ajustes"
   },
   "login": {
@@ -173,5 +174,15 @@
       "dark": "Oscuro"
     },
     "themeHelp": "Automático sigue al teléfono o al navegador."
+  },
+  "messages": {
+    "help": "Su conversación con el equipo de servicio al cliente. Solo usted y el equipo la ven.",
+    "empty": "Todavía no hay mensajes. Escríbale al equipo abajo.",
+    "older": "Cargar mensajes anteriores",
+    "team": "Servicio al cliente",
+    "placeholder": "Escriba su mensaje",
+    "send": "Enviar",
+    "charsLeft": "{n} caracteres restantes",
+    "tooMany": "Demasiados mensajes seguidos; espere un rato para volver a escribir."
   }
 }

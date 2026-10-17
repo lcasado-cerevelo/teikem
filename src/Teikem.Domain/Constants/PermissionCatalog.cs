@@ -133,6 +133,10 @@ public static class PermissionCatalog
     public const string ContractsCreate = "contracts.create";
     public const string ContractsUpdate = "contracts.update";
     public const string PortalUsersManage = "portalusers.manage";
+    /// <summary>Lote 104: atender los mensajes que los clientes mandan desde su portal (leer y contestar las conversaciones de sus clientes).</summary>
+    public const string ClientMessagesReply = "clientmessages.reply";
+    /// <summary>Lote 104: designar el equipo de servicio al cliente de cada cliente y ver todas las conversaciones.</summary>
+    public const string ClientMessagesManage = "clientmessages.manage";
     // Seguridad (Lote 8A, categoría SECURITY)
     /// <summary>
     /// Lote 8A: aparatos de confianza de la app de almacén (registrar, editar, desactivar, regenerar el código de registro) y
@@ -239,6 +243,8 @@ public static class PermissionCatalog
         new(ContractsCreate, "CLIENTS", "Crear contratos", "Create contracts"),
         new(ContractsUpdate, "CLIENTS", "Editar contratos y tarifas", "Edit contracts & rates"),
         new(PortalUsersManage, "CLIENTS", "Administrar usuarios de portal del cliente", "Manage client portal users"),
+        new(ClientMessagesReply, "CLIENTS", "Atender los mensajes de los clientes", "Handle client messages"),
+        new(ClientMessagesManage, "CLIENTS", "Designar el equipo de servicio al cliente", "Manage the customer service team"),
         // Lote 3 — Órdenes de transporte (ajuste C: crédito excedido = aviso + autorización con permiso)
         new(OrdersCreditOverride, "ORDERS", "Autorizar órdenes sobre el límite de crédito", "Authorize orders over credit limit"),
         // Lote 4 — Flota, choferes y mantenimiento (flota separada de la compensación, R8)
@@ -486,6 +492,8 @@ public static class PermissionCatalog
             SalesView, SalesBackorder },   // Lote 57: ve las órdenes de venta y surte los backorders
         // Lote 57: quien arma las ventas (sin precio ni backorder: eso lo da el administrador)
         ["Sales"] = new[] { SalesView, SalesCreate, SalesCancel, SalesReturn, InventoryView, ClientsRead },
+        // Lote 104: el rol «Servicio al cliente» atiende los mensajes de los clientes (si un cliente no tiene equipo designado, lo atiende quien tenga ClientMessagesReply)
+        ["CustomerService"] = new[] { ClientMessagesReply, ClientsRead, OrdersView, LocationsRead, ContractsRead },
         ["Driver"] = new[] { OrdersView, CodCollect },
         ["ReadOnly"] = new[] { OrdersView, CodView, AnalyticsView, ClientsRead, LocationsRead, ContractsRead, FleetView, TripsView, InventoryView,
             PulseIndicators, PulseCharts, PulseActivity,   // Lote F8a
@@ -511,6 +519,7 @@ public static class PermissionCatalog
         ["Billing"] = ("Facturación", "Billing"),
         ["Sales"] = ("Ventas", "Sales"),
         ["WarehouseOperator"] = ("Operador de almacén", "Warehouse operator"),
+        ["CustomerService"] = ("Servicio al cliente", "Customer service"),
         ["Driver"] = ("Chofer", "Driver"),
         ["ReadOnly"] = ("Solo lectura", "Read only"),
     };

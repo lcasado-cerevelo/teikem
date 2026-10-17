@@ -4025,3 +4025,75 @@ IF COL_LENGTH('dbo.Tenant', 'TrackingSlug') IS NULL
 GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_Tenant_TrackingSlug' AND object_id = OBJECT_ID('dbo.Tenant')) CREATE UNIQUE INDEX UX_Tenant_TrackingSlug ON dbo.Tenant(TrackingSlug) WHERE TrackingSlug IS NOT NULL;
 GO
+
+-- =====================================================================================================================
+-- (am) 2026-10-17 — Lote 104 (portal de clientes): mensajes del portal con el equipo de servicio al cliente.
+-- ClientConversation = la conversación de UNA persona de un cliente con el equipo (una por persona, se crea con el primer mensaje); ClientMessage = sus mensajes (nunca se editan ni se borran);
+-- ClientServiceTeamMember = el equipo de cada cliente (sin filas = lo atiende quien tenga clientmessages.reply). Permisos clientmessages.reply y clientmessages.manage (al administrador de la compañía:
+-- plantilla y clonados). Solo AGREGA. Idempotente.
+-- =====================================================================================================================
+IF OBJECT_ID(N'dbo.ClientConversation', N'U') IS NULL CREATE TABLE dbo.ClientConversation (
+    ClientConversationId BIGINT IDENTITY(1,1) PRIMARY KEY,
+    PublicId UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_ClientConversation_PublicId DEFAULT NEWID(),
+    TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    ClientId INT NOT NULL REFERENCES dbo.Client(ClientId),
+    PortalUserId INT NOT NULL REFERENCES dbo.AspNetUsers(Id),
+    StartedBy VARCHAR(10) NOT NULL,
+    CreatedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_ClientConversation_Created DEFAULT SYSUTCDATETIME(),
+    LastMessageId BIGINT NOT NULL CONSTRAINT DF_ClientConversation_LastId DEFAULT 0,
+    LastMessageAtUtc DATETIME2 NOT NULL CONSTRAINT DF_ClientConversation_LastAt DEFAULT SYSUTCDATETIME(),
+    LastMessagePreview NVARCHAR(200) NULL,
+    LastSenderKind VARCHAR(10) NULL,
+    TeamLastReadMessageId BIGINT NOT NULL CONSTRAINT DF_ClientConversation_TeamRead DEFAULT 0,
+    ClientLastReadMessageId BIGINT NOT NULL CONSTRAINT DF_ClientConversation_ClientRead DEFAULT 0,
+    CONSTRAINT CK_ClientConversation_StartedBy CHECK (StartedBy IN ('CLIENT','STAFF'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_ClientConversation_PublicId' AND object_id = OBJECT_ID('dbo.ClientConversation')) CREATE UNIQUE INDEX UQ_ClientConversation_PublicId ON dbo.ClientConversation(PublicId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_ClientConversation_Person' AND object_id = OBJECT_ID('dbo.ClientConversation')) CREATE UNIQUE INDEX UX_ClientConversation_Person ON dbo.ClientConversation(TenantId, ClientId, PortalUserId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ClientConversation_Last' AND object_id = OBJECT_ID('dbo.ClientConversation')) CREATE INDEX IX_ClientConversation_Last ON dbo.ClientConversation(TenantId, LastMessageAtUtc DESC);
+GO
+IF OBJECT_ID(N'dbo.ClientMessage', N'U') IS NULL CREATE TABLE dbo.ClientMessage (
+    ClientMessageId BIGINT IDENTITY(1,1) PRIMARY KEY,
+    TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    ClientConversationId BIGINT NOT NULL REFERENCES dbo.ClientConversation(ClientConversationId),
+    SenderKind VARCHAR(10) NOT NULL,
+    SenderUserId INT NOT NULL REFERENCES dbo.AspNetUsers(Id),
+    Body NVARCHAR(2000) NOT NULL,
+    CreatedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_ClientMessage_Created DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT CK_ClientMessage_Sender CHECK (SenderKind IN ('CLIENT','STAFF'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ClientMessage_Conversation' AND object_id = OBJECT_ID('dbo.ClientMessage')) CREATE INDEX IX_ClientMessage_Conversation ON dbo.ClientMessage(ClientConversationId, ClientMessageId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ClientMessage_Sender' AND object_id = OBJECT_ID('dbo.ClientMessage')) CREATE INDEX IX_ClientMessage_Sender ON dbo.ClientMessage(SenderUserId, CreatedAtUtc);
+GO
+IF OBJECT_ID(N'dbo.ClientServiceTeamMember', N'U') IS NULL CREATE TABLE dbo.ClientServiceTeamMember (
+    ClientServiceTeamMemberId INT IDENTITY(1,1) PRIMARY KEY,
+    TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    ClientId INT NOT NULL REFERENCES dbo.Client(ClientId),
+    UserId INT NOT NULL REFERENCES dbo.AspNetUsers(Id),
+    AddedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_ClientServiceTeamMember_Added DEFAULT SYSUTCDATETIME(),
+    AddedBy INT NULL
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_ClientServiceTeamMember' AND object_id = OBJECT_ID('dbo.ClientServiceTeamMember')) CREATE UNIQUE INDEX UX_ClientServiceTeamMember ON dbo.ClientServiceTeamMember(TenantId, ClientId, UserId);
+GO
+MERGE dbo.Permission AS t
+USING (VALUES
+    ('clientmessages.reply',  N'{"es":"Atender los mensajes de los clientes","en":"Handle client messages"}'),
+    ('clientmessages.manage', N'{"es":"Designar el equipo de servicio al cliente","en":"Manage the customer service team"}')
+) AS s (Code, LabelJson)
+ON t.Code = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES (s.Code, (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'CLIENTS'), s.LabelJson, 1);
+GO
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT DISTINCT r.RoleId, p.PermissionId
+FROM dbo.Role r
+JOIN dbo.Permission p ON p.Code IN ('clientmessages.reply', 'clientmessages.manage') AND r.Name = 'TenantAdmin'
+WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = p.PermissionId);
+GO

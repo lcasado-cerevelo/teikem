@@ -411,7 +411,14 @@ export const appRoutes: readonly AppRoute[] = [
     nav: { group: 'system', key: 'settings', order: 100 },
   },
 
-  // ===== Portal de clientes (sin backend todavía) =====
+  // ===== Portal de clientes (Lote 104: Mensajes de clientes es real; el resto sin backend todavía) =====
+  {
+    path: '/portal/messages',
+    element: lazy(() => import('../features/clientMessages/ClientMessagesScreen')),
+    perm: 'clientmessages.reply',
+    module: ModuleKeys.ClientPortal,
+    nav: { group: 'portal', key: 'portalMessages', order: 5 },
+  },
   pending({ path: '/portal/home', perm: 'portalusers.manage', module: ModuleKeys.ClientPortal, nav: { group: 'portal', key: 'portalHome', order: 10 } }),
   pending({ path: '/portal/orders', perm: 'portalusers.manage', module: ModuleKeys.ClientPortal, nav: { group: 'portal', key: 'portalOrders', order: 20 } }),
   pending({ path: '/portal/consignees', perm: 'portalusers.manage', module: ModuleKeys.ClientPortal, nav: { group: 'portal', key: 'portalConsignees', order: 30 } }),
