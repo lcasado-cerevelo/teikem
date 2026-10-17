@@ -8539,3 +8539,29 @@ Correcto: solo salen las facturas de la corrida que no están anuladas.
 
 **Salen caracteres raros o campos corridos.**
 En CSV, lo que lleva el delimitador va entre comillas; en TXT no hay comillas y el delimitador dentro de un valor se cambia por un espacio. Si su programa necesita comillas, use CSV; si no las tolera, use TXT.
+
+## Lote 79 — Notas de crédito
+
+**`No se puede acreditar más de lo facturado: de «X» quedan Y por acreditar.` (422)**
+La línea de la factura ya tiene notas **aprobadas o aplicadas** que acreditan parte de ella. Acredite solo lo que queda, o anule la nota que sobra. Dos notas en borrador pueden parecer caber, pero al **aprobar** la segunda se vuelve a comprobar.
+
+**Facturé de más o el cliente devolvió algo y la factura ya está Pagada.**
+Cree una **nota de crédito** sobre esa factura. Al aprobarla queda como **saldo a favor** del cliente (se ve en su estado de cuenta) y se aplica a la próxima factura abierta con **Aplicar**.
+
+**¿Cómo acredito solo parte del precio (un descuento)?**
+Cree la nota con la línea de la factura y un **monto unitario menor** (por ejemplo 40 de una línea de 100). El impuesto se acredita en la misma proporción.
+
+**¿La nota de crédito devuelve el inventario?**
+No. La mercancía regresa al inventario al **recibir la devolución**; la nota solo acredita el dinero.
+
+**No me deja anular una factura.**
+Si tiene **notas de crédito aprobadas o aplicadas** (o pagos) no se anula. Anule primero la nota (si no se ha aplicado) o corrija con otra nota de crédito.
+
+**No me deja anular una nota.**
+Solo se anula una nota en borrador o aprobada que **no se haya aplicado** a ninguna factura.
+
+**La nota dice «Aprobada» pero sigue con saldo.**
+Es el **saldo a favor**: lo no aplicado. Use **Aplicar** con una factura abierta del mismo cliente; cuando se agota pasa a «Aplicada».
+
+**No veo el botón / el permiso para crear notas.**
+Se necesita el permiso **Notas de crédito** (`billing.credit`); aprobar pide además reautenticación.

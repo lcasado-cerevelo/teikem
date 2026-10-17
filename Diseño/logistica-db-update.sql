@@ -3151,3 +3151,150 @@ WHEN NOT MATCHED THEN
     INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
     VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
 GO
+
+-- =====================================================================================================================
+-- 2026-10-16 (v) Lote 79 (P6) — notas de crédito
+-- CreditNote / CreditNoteLine / CreditApplication; dominio de estatus CreditNoteStatus (DRAFT -> APPROVED -> APPLIED; VOID), catálogo CreditReason, EntityType CREDIT_NOTE,
+-- contador CREDITNOTE (NC-#####) y permiso billing.credit (a quien ya aprueba facturación y al administrador de la compañía, también en los roles ya clonados). Solo AGREGA. Idempotente.
+-- =====================================================================================================================
+IF OBJECT_ID(N'dbo.CreditNote', N'U') IS NULL CREATE TABLE dbo.CreditNote (
+    CreditNoteId INT IDENTITY(1,1) PRIMARY KEY,
+    PublicId UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_CreditNote_PublicId DEFAULT NEWID(),
+    TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    CreditNumber NVARCHAR(30) NOT NULL,
+    ClientId INT NOT NULL REFERENCES dbo.Client(ClientId),
+    InvoiceId INT NULL REFERENCES dbo.Invoice(InvoiceId),
+    ExternalInvoiceRef NVARCHAR(80) NULL,
+    ReasonLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),
+    CurrencyLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),
+    StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),
+    Subtotal DECIMAL(18,4) NOT NULL CONSTRAINT DF_CreditNote_Subtotal DEFAULT 0,
+    TaxAmount DECIMAL(18,4) NOT NULL CONSTRAINT DF_CreditNote_Tax DEFAULT 0,
+    Note NVARCHAR(500) NULL,
+    ApprovedBy INT NULL, ApprovedAtUtc DATETIME2 NULL,
+    CreatedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_CreditNote_Created DEFAULT SYSUTCDATETIME(),
+    CreatedBy INT NULL, UpdatedAtUtc DATETIME2 NULL, UpdatedBy INT NULL,
+    RowVersion ROWVERSION
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_CreditNote_PublicId' AND object_id = OBJECT_ID('dbo.CreditNote')) CREATE INDEX IX_CreditNote_PublicId ON dbo.CreditNote(PublicId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_CreditNote_Number' AND object_id = OBJECT_ID('dbo.CreditNote')) CREATE UNIQUE INDEX UX_CreditNote_Number ON dbo.CreditNote(TenantId, CreditNumber);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_CreditNote_Client' AND object_id = OBJECT_ID('dbo.CreditNote')) CREATE INDEX IX_CreditNote_Client ON dbo.CreditNote(TenantId, ClientId, StatusCodeId);
+GO
+IF OBJECT_ID(N'dbo.CreditNoteLine', N'U') IS NULL CREATE TABLE dbo.CreditNoteLine (
+    CreditNoteLineId INT IDENTITY(1,1) PRIMARY KEY,
+    CreditNoteId INT NOT NULL REFERENCES dbo.CreditNote(CreditNoteId),
+    InvoiceLineId INT NULL REFERENCES dbo.InvoiceLine(InvoiceLineId),
+    ProductId INT NULL REFERENCES dbo.Product(ProductId),
+    ChargeTypeLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),
+    Description NVARCHAR(250) NOT NULL,
+    Quantity DECIMAL(14,3) NOT NULL CONSTRAINT DF_CreditNoteLine_Qty DEFAULT 1,
+    UnitAmount DECIMAL(18,4) NOT NULL,
+    TaxRateId INT NULL REFERENCES dbo.TaxRate(TaxRateId),
+    TaxRatePct DECIMAL(9,4) NULL,
+    TaxAmount DECIMAL(18,4) NOT NULL CONSTRAINT DF_CreditNoteLine_Tax DEFAULT 0,
+    IsTaxExempt BIT NOT NULL CONSTRAINT DF_CreditNoteLine_Exempt DEFAULT 0
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_CreditNoteLine_InvoiceLine' AND object_id = OBJECT_ID('dbo.CreditNoteLine')) CREATE INDEX IX_CreditNoteLine_InvoiceLine ON dbo.CreditNoteLine(InvoiceLineId) WHERE InvoiceLineId IS NOT NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_CreditNoteLine_Note' AND object_id = OBJECT_ID('dbo.CreditNoteLine')) CREATE INDEX IX_CreditNoteLine_Note ON dbo.CreditNoteLine(CreditNoteId);
+GO
+IF OBJECT_ID(N'dbo.CreditApplication', N'U') IS NULL CREATE TABLE dbo.CreditApplication (
+    CreditApplicationId INT IDENTITY(1,1) PRIMARY KEY,
+    TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    CreditNoteId INT NOT NULL REFERENCES dbo.CreditNote(CreditNoteId),
+    InvoiceId INT NOT NULL REFERENCES dbo.Invoice(InvoiceId),
+    Amount DECIMAL(18,4) NOT NULL CONSTRAINT CK_CreditApplication_Amount CHECK (Amount > 0),
+    AppliedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_CreditApplication_At DEFAULT SYSUTCDATETIME(),
+    AppliedBy INT NULL
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_CreditApplication_Invoice' AND object_id = OBJECT_ID('dbo.CreditApplication')) CREATE INDEX IX_CreditApplication_Invoice ON dbo.CreditApplication(InvoiceId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_CreditApplication_Note' AND object_id = OBJECT_ID('dbo.CreditApplication')) CREATE INDEX IX_CreditApplication_Note ON dbo.CreditApplication(CreditNoteId);
+GO
+
+-- Dominio de estatus CreditNoteStatus y sus estatus (VOID se alcanza desde borrador o aprobada: entrada lateral permitida desde cualquier etapa)
+MERGE dbo.CatalogDomain AS t
+USING (SELECT N'CreditNoteStatus' AS DomainKey) AS s ON t.DomainKey = s.DomainKey
+WHEN NOT MATCHED THEN
+    INSERT (DomainKey, Scope, LabelJson, IsSystem, IsActive)
+    VALUES (N'CreditNoteStatus', 2, N'{"es":"Estatus de la nota de crédito","en":"Credit note status"}', 1, 1);
+GO
+MERGE dbo.StatusCode AS t
+USING (
+    SELECT v.Code, v.LabelJson, v.Color, v.Srt, v.Init, k.LookupCodeId AS StageKindLookupId
+    FROM (VALUES
+        (N'DRAFT',    N'{"es":"Borrador","en":"Draft"}',    '#9CA3AF', 1, 1, 'PIPELINE'),
+        (N'APPROVED', N'{"es":"Aprobada","en":"Approved"}', '#3B82F6', 2, 0, 'PIPELINE'),
+        (N'APPLIED',  N'{"es":"Aplicada","en":"Applied"}',  '#059669', 3, 0, 'TERMINAL'),
+        (N'VOID',     N'{"es":"Anulada","en":"Void"}',      '#6B7280', 4, 0, 'TERMINAL')
+    ) AS v (Code, LabelJson, Color, Srt, Init, Kind)
+    JOIN dbo.LookupCode k ON k.Entity = N'StageKind' AND k.InternalCode = v.Kind
+) AS s
+ON t.Entity = N'CreditNoteStatus' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, ColorHex, SortOrder, StageKindLookupId, IsInitial, IsActive)
+    VALUES (N'CreditNoteStatus', s.Code, s.LabelJson, s.Color, s.Srt, s.StageKindLookupId, s.Init, 1);
+GO
+
+-- Catálogo de motivos de la nota de crédito
+MERGE dbo.CatalogDomain AS t
+USING (SELECT N'CreditReason' AS DomainKey) AS s ON t.DomainKey = s.DomainKey
+WHEN NOT MATCHED THEN
+    INSERT (DomainKey, Scope, LabelJson, IsSystem, IsActive)
+    VALUES (N'CreditReason', 1, N'{"es":"Motivo de la nota de crédito","en":"Credit note reason"}', 1, 1);
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'RETURN',           N'{"es":"Devolución","en":"Return"}',                       1),
+    (N'PRICE_ADJUSTMENT', N'{"es":"Ajuste de precio","en":"Price adjustment"}',       2),
+    (N'SERVICE_FAILURE',  N'{"es":"Falla del servicio","en":"Service failure"}',      3),
+    (N'BILLING_ERROR',    N'{"es":"Error de facturación","en":"Billing error"}',      4)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'CreditReason' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'CreditReason', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+
+-- EntityType de la bitácora y del historial de estatus
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'CREDIT_NOTE', N'{"es":"Nota de crédito","en":"Credit note"}', 129)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+
+-- Contador de notas de crédito: el CHECK de los tipos de contador se vuelve a crear con CREDITNOTE
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_NumberSequence_Kind' AND definition NOT LIKE '%CREDITNOTE%')
+    ALTER TABLE dbo.NumberSequence DROP CONSTRAINT CK_NumberSequence_Kind;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_NumberSequence_Kind')
+    ALTER TABLE dbo.NumberSequence ADD CONSTRAINT CK_NumberSequence_Kind CHECK (Kind IN ('ORDER','INVOICE','PACKAGE','PACKBATCH','WORKORDER','TRIP','RECEIPT','CYCLECOUNT','CROSSDOCK','PURCHASE','RENTAL','RENTALRETURN','MANUALISSUE','MULTIADJUST','SALESORDER','BILLINVOICE','CREDITNOTE'));
+GO
+
+-- Permiso billing.credit
+MERGE dbo.Permission AS t
+USING (VALUES ('billing.credit', N'{"es":"Notas de crédito","en":"Credit notes"}')) AS s (Code, LabelJson)
+ON t.Code = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES (s.Code, (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'BILLING'), s.LabelJson, 1);
+GO
+-- A todo rol (plantilla y clonados) que ya aprueba facturación, y al administrador de la compañía
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT DISTINCT r.RoleId, v.PermissionId
+FROM dbo.Role r
+JOIN dbo.Permission v ON v.Code = 'billing.credit'
+WHERE (r.Name = 'TenantAdmin' OR EXISTS (
+          SELECT 1 FROM dbo.RolePermission rp JOIN dbo.Permission p ON p.PermissionId = rp.PermissionId
+          WHERE rp.RoleId = r.RoleId AND p.Code = 'billing.approve'))
+  AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = v.PermissionId);
+GO

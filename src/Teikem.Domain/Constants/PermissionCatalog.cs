@@ -78,6 +78,8 @@ public static class PermissionCatalog
     public const string BillingExport = "billing.export";
     /// <summary>Lote 72 (P5): ver facturas y corridas de facturación (generar, aprobar y exportar siguen siendo sus propios permisos).</summary>
     public const string BillingView = "billing.view";
+    /// <summary>Lote 79 (P6): crear, aprobar (con reautenticación), aplicar y anular notas de crédito.</summary>
+    public const string BillingCredit = "billing.credit";
     public const string FleetManage = "fleet.manage";
     public const string FleetMaintenance = "fleet.maintenance";
     /// <summary>Lote 4: lectura de flota, choferes, mantenimiento y combustible (sin tarifas ni viajes pagados).</summary>
@@ -187,6 +189,7 @@ public static class PermissionCatalog
         new(WarehouseCount, "WAREHOUSE", "Contar", "Count"),
         new(WarehouseCrossdock, "WAREHOUSE", "Cross-dock", "Cross-dock"),
         new(BillingView, "BILLING", "Ver facturación", "View billing"),
+        new(BillingCredit, "BILLING", "Notas de crédito", "Credit notes"),
         new(BillingGenerate, "BILLING", "Generar facturación", "Generate billing"),
         new(BillingApprove, "BILLING", "Aprobar facturación", "Approve billing"),
         new(BillingExport, "BILLING", "Exportar facturación", "Export billing"),
@@ -441,7 +444,7 @@ public static class PermissionCatalog
         ["TenantAdmin"] = All.Select(p => p.Code).ToArray(),
         ["Dispatcher"] = new[] { OrdersView, OrdersCreate, OrdersEdit, OrdersCancel, TripsPlan, TripsDispatch, TripsClose, TripsOptimize, AnalyticsView, ClientsRead, LocationsRead, LocationsCreate, FleetView, TripsView, TripsScan,
             PulseIndicators, PulseCharts, PulseActivity },   // Lote F8a
-        ["Billing"] = new[] { OrdersView, BillingView, BillingGenerate, BillingApprove, BillingExport, CodView, CodReconcile, CodRemit, RentalBilling, RentalView, PurchasingView, PurchasingManage, AnalyticsView, ClientsRead, ContractsRead, OrdersCreditOverride, DriverPayView, InventoryView,
+        ["Billing"] = new[] { OrdersView, BillingView, BillingCredit, BillingGenerate, BillingApprove, BillingExport, CodView, CodReconcile, CodRemit, RentalBilling, RentalView, PurchasingView, PurchasingManage, AnalyticsView, ClientsRead, ContractsRead, OrdersCreditOverride, DriverPayView, InventoryView,
             PulseIndicators, PulseCharts, PulseActivity,   // Lote F8a
             PulseAttention,   // Lote 14 (D6): la ve quien ve inventario
             OrdersViewPrice },   // Lote 39: Facturación ve los precios de las órdenes

@@ -239,7 +239,7 @@ public sealed class ExportTemplateTests
         var file = await x.Export.PreviewAsync(id, custom.PublicId, default);
         var rows = file.Text.TrimEnd().Split("\r\n");
         Assert.Equal(2, rows.Length);
-        var today = DateOnly.FromDateTime(DateTime.UtcNow).ToString("dd/MM/yyyy");
+        var today = TenantClock.Default.Today.ToString("dd/MM/yyyy");
         Assert.Equal($"FAC-00001|{today}|25.00|T-1", rows[0]);
         Assert.EndsWith(".txt", file.FileName);
     }

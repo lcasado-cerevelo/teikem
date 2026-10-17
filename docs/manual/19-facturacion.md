@@ -2,7 +2,7 @@
 
 Lote 72 (P5, 2026-10-16). La **facturación** convierte lo que ya salió (despachado) en facturas al cliente, por **corridas** que se generan, se revisan, se aprueban y se exportan.
 Este capítulo describe las corridas y facturas de la **venta de producto** de las órdenes de venta ([capítulo 18](18-ordenes-de-venta.md)) y, desde el Lote 74, el **flete de las órdenes de
-transporte** (sección 2b) y, desde el Lote 75, los **pagos, el estado de cuenta y las cuentas por cobrar** (sección 4b). Desde el Lote 77, la **exportación a contabilidad** con plantillas (sección 4c).
+transporte** (sección 2b) y, desde el Lote 75, los **pagos, el estado de cuenta y las cuentas por cobrar** (sección 4b). Desde el Lote 77, la **exportación a contabilidad** con plantillas (sección 4c) y, desde el Lote 79, las **notas de crédito** (sección 4d).
 
 ## 1. Quién puede y dónde
 
@@ -95,6 +95,24 @@ Una corrida **aprobada** (o ya exportada) se exporta a un archivo **CSV o TXT** 
 - **Formato:** el dinero con 2 decimales y punto; las cantidades y los montos unitarios con hasta 4 decimales sin ceros de más; fin de línea CRLF; UTF-8. En **CSV** lo que lleva el delimitador, comillas o saltos de línea va entre comillas (las comillas se duplican); en **TXT** no hay comillas: el delimitador y los saltos de línea dentro de un valor se cambian por un espacio. Los campos que no existen en el catálogo se dejan fuera.
 - Nombre del archivo: `facturacion-corrida-{número}.csv` o `.txt`.
 
+## 4d. Notas de crédito (Lote 79)
+
+Una **nota de crédito** (`NC-#####`, un contador por compañía) le acredita al cliente parte o todo de lo facturado: una **devolución**, un **ajuste de precio**, una **falla del servicio** o un **error de facturación** (catálogo `CreditReason`). Estatus: **Borrador → Aprobada → Aplicada**, o **Anulada**. **Aprobarla no mueve inventario** (eso lo hace la recepción de la devolución); lo que no se aplica a facturas queda como **saldo a favor** del cliente.
+
+**Permisos** (`/api/v1/billing/credit-notes`): ver con `billing.view`; crear, cambiar, aplicar y anular con **`billing.credit`** (permiso nuevo: se agregó a los roles que ya aprueban facturación y al administrador de la compañía, también en los roles ya clonados); **aprobar** exige además **reautenticación reciente (AAL2)**.
+
+**Crear la nota** (`POST`, en borrador):
+- **Sobre una factura de Teikem** (emitida, vencida o pagada): cada línea indica la **línea de la factura** que acredita (`invoiceLineId`). Por omisión acredita toda la línea a su monto; con `quantity` y `unitAmount` se acredita menos (un ajuste de precio es acreditar menos monto unitario). **No se acredita más de lo facturado de esa línea**, descontando lo que ya acreditaron las notas **aprobadas o aplicadas** (el tope se vuelve a comprobar al aprobar, bajo bloqueo de la factura, así dos notas en borrador no acreditan el doble).
+- **Impuesto:** el de la línea original (la copia: tasa y exención), proporcional a lo acreditado y nunca más del que se cobró.
+- **Sin factura de Teikem** (una factura externa de otro sistema o un ajuste): hace falta el **cliente** (y, si se quiere, `externalInvoiceRef`); las líneas son libres (descripción, cantidad, monto unitario y tipo de cargo, o un producto) y llevan el impuesto del **motor de impuestos** de hoy.
+- Con la nota en **borrador** se puede **cambiar** el motivo, la nota y las líneas (`PUT` reemplaza todas); el cliente y la factura no cambian.
+
+**Aplicar** (`POST .../apply` con la factura y el monto): descuenta del saldo de una factura **emitida o vencida** del **mismo cliente**, hasta el menor entre el saldo de la nota y el de la factura (hasta 2 decimales). Es como un pago: **la factura pasa a Pagada si queda en cero**, y la nota pasa a **Aplicada** cuando se agota. La ficha de la factura muestra lo **acreditado** y su saldo ya lo descuenta (pagos + notas aplicadas), y el pago de una factura no puede pasar de ese saldo.
+
+**Anular** (`POST .../void`, con motivo): una nota en borrador o aprobada **sin aplicaciones**. Una **factura con notas aprobadas o aplicadas no se puede anular** (anule primero la nota, si no se aplicó). Una factura **Pagada** se corrige ahora con una nota de crédito.
+
+**Estado de cuenta y por cobrar.** El estado de cuenta del cliente trae las notas aprobadas como movimientos de crédito (con su saldo corrido), el **saldo a favor** (`unappliedCredit`: lo aprobado que no se ha aplicado) y la antigüedad ya descuenta lo aplicado. Cuentas por cobrar trae la columna **saldo a favor** por cliente.
+
 ## 5. Validaciones y mensajes
 
 | Situación | Mensaje | HTTP |
@@ -134,13 +152,31 @@ Una corrida **aprobada** (o ya exportada) se exporta a un archivo **CSV o TXT** 
 | Alcance de la plantilla inexistente | `El alcance de la plantilla no existe.` | 400 |
 | Desactivar la única plantilla | `No se puede desactivar la única plantilla del alcance: deje al menos una.` | 409 |
 | Plantilla inexistente (o de otra compañía) | `Plantilla de exportación no encontrada.` | 404 |
+| Nota sin motivo / motivo inexistente | `Indique el motivo de la nota de crédito.` / `El motivo de la nota de crédito no existe.` | 400 |
+| Nota sin líneas / con más de 200 | `Agregue al menos una línea a la nota de crédito.` / `La nota de crédito no puede tener más de 200 líneas.` | 400 |
+| Nota de más de 500 caracteres / referencia externa de más de 80 | `La nota no puede pasar de 500 caracteres.` / `La referencia de la factura externa no puede pasar de 80 caracteres.` | 400 |
+| Nota sin cliente (y sin factura) | `Indique el cliente de la nota de crédito.` | 400 |
+| Factura de otro cliente | `La factura no es de ese cliente.` | 400 |
+| Factura en borrador o anulada | `Solo se acredita una factura emitida, vencida o pagada.` | 422 |
+| Línea sin la línea de factura / que no es de esa factura / en una nota sin factura | `Cada línea de una nota sobre una factura debe indicar la línea de la factura que acredita.` / `La línea no es de esa factura.` / `Una nota sin factura no acredita líneas de factura.` | 400 |
+| Línea libre sin descripción / larga / sin tipo de cargo / tipo inexistente | `Escriba la descripción de la línea.` / `La descripción no puede pasar de 250 caracteres.` / `Indique el tipo de cargo de la línea.` / `El tipo de cargo no existe.` | 400 |
+| Cantidad o monto inválidos | `La cantidad debe ser mayor que cero (hasta 3 decimales).` / `El monto unitario debe ser mayor que cero con hasta 4 decimales.` | 400 |
+| Acreditar más de lo facturado | `No se puede acreditar más de lo facturado: de «X» quedan Y por acreditar.` | 422 |
+| Cambiar una nota que no está en borrador / aprobar una que no lo está | `Solo se cambia una nota de crédito en borrador.` / `Solo se aprueba una nota de crédito en borrador.` | 422 |
+| Anular sin motivo / motivo largo / nota ya cerrada / con aplicaciones | `Escriba el motivo para anular la nota de crédito.` / `El motivo no puede pasar de 250 caracteres.` / `Solo se anula una nota en borrador o aprobada.` / `La nota ya se aplicó a una factura: no se puede anular.` | 400 / 400 / 422 / 422 |
+| Aplicar una nota que no está aprobada o sin saldo | `Solo se aplica una nota de crédito aprobada con saldo.` | 422 |
+| Aplicar sin monto / monto inválido | `Indique el monto a aplicar.` / `El monto a aplicar debe ser mayor que cero y tener hasta 2 decimales.` | 400 |
+| Aplicar a una factura cerrada o de otro cliente | `Solo se aplica a una factura emitida o vencida con saldo.` / `La nota y la factura deben ser del mismo cliente.` | 422 |
+| Monto mayor que el saldo de la nota o de la factura | `El monto (X) es mayor que el saldo de la nota (Y).` / `El monto (X) es mayor que el saldo de la factura (Y).` | 422 |
+| Anular una factura con notas de crédito | `La factura tiene notas de crédito aprobadas o aplicadas: no se puede anular.` | 422 |
+| Nota inexistente | `Nota de crédito no encontrada.` | 404 |
 | Aprobar o anular sin reautenticación reciente | `Esta acción requiere reautenticación reciente (AAL2).` | 403 |
 | Corrida / factura / línea inexistente | `Corrida de facturación no encontrada.` / `Factura no encontrada.` / `Línea de factura no encontrada.` | 404 |
 
 ## 6. Para soporte
 
 - Tablas `BillingRun`, `Invoice`, `InvoiceLine` y `Payment` (las del diseño original) más las columnas de la sección **2026-10-16 (r)** de `Diseño/logistica-db-update.sql`: `BillingRun.ClientId/Note/ReviewedBy/ReviewedAtUtc/ExportedAtUtc/ExportedBy`,
-  `Invoice.Notes`, `InvoiceLine.SalesOrderLineId/OriginalUnitAmount/AdjustmentNote`, `Tenant.SalesBillingTrigger/InvoiceDueDays`; en la sección **2026-10-16 (s)** (Lote 74) `TransportOrder.FreightInvoiced`; en la **(t)** (Lote 75) `Payment.RecordedBy/VoidedAtUtc/VoidedBy/VoidReason`; en la **(u)** (Lote 77) la tabla `ExportTemplate` y el EntityType `EXPORT_TEMPLATE`; el contador `BILLINVOICE` (**FAC-#####**, uno por compañía), el estatus
+  `Invoice.Notes`, `InvoiceLine.SalesOrderLineId/OriginalUnitAmount/AdjustmentNote`, `Tenant.SalesBillingTrigger/InvoiceDueDays`; en la sección **2026-10-16 (s)** (Lote 74) `TransportOrder.FreightInvoiced`; en la **(t)** (Lote 75) `Payment.RecordedBy/VoidedAtUtc/VoidedBy/VoidReason`; en la **(u)** (Lote 77) la tabla `ExportTemplate` y el EntityType `EXPORT_TEMPLATE`; en la **(v)** (Lote 79) las tablas `CreditNote`, `CreditNoteLine` y `CreditApplication`, el dominio de estatus `CreditNoteStatus`, el catálogo `CreditReason`, el EntityType `CREDIT_NOTE`, el contador `CREDITNOTE` (NC-#####) y el permiso `billing.credit`; el contador `BILLINVOICE` (**FAC-#####**, uno por compañía), el estatus
   **Cancelada** de la corrida, el EntityType `BILLING_RUN` y el permiso `billing.view`.
 - `InvoiceLine.LineTotal` e `Invoice.Total` son columnas calculadas de la base; el sistema suma las líneas.
 - El historial de estatus de la corrida y de cada factura está en `EntityStatusHistory` (con el comentario de cancelar/anular).

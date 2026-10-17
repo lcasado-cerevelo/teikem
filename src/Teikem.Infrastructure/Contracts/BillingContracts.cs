@@ -13,14 +13,14 @@ public sealed record BillingSettingsDto(string SalesBillingTrigger, int InvoiceD
 public sealed record BillingSettingsRequest(string? SalesBillingTrigger = null, int? InvoiceDueDays = null);
 
 public sealed record InvoiceListItemDto(Guid PublicId, string Number, string Status, string StatusLabel, string StatusColor, Guid ClientPublicId, string ClientName, DateOnly? IssueDate,
-    DateOnly? DueDate, decimal Subtotal, decimal TaxAmount, decimal Total, decimal Paid, decimal Balance, int LineCount, int? RunId);
+    DateOnly? DueDate, decimal Subtotal, decimal TaxAmount, decimal Total, decimal Paid, decimal Balance, int LineCount, int? RunId, decimal Credited = 0m);
 
 public sealed record InvoiceLineDto(int Id, string Description, string ChargeType, Guid? ProductPublicId, string? Sku, string? SalesOrderNumber, decimal Quantity, decimal UnitAmount,
     decimal? OriginalUnitAmount, bool IsAdjusted, string? AdjustmentNote, decimal LineSubtotal, decimal? TaxRatePct, decimal TaxAmount, bool IsTaxExempt, string? TransportOrderNumber = null, int? RateComponentId = null);
 
 public sealed record InvoiceDto(Guid PublicId, string Number, string Status, string StatusLabel, string StatusColor, Guid ClientPublicId, string ClientName, DateOnly? IssueDate,
     DateOnly? DueDate, string Currency, decimal Subtotal, decimal TaxAmount, decimal Total, decimal Paid, decimal Balance, int? RunId, string? Notes,
-    IReadOnlyList<InvoiceLineDto> Lines, IReadOnlyList<PaymentDto>? Payments = null);
+    IReadOnlyList<InvoiceLineDto> Lines, IReadOnlyList<PaymentDto>? Payments = null, decimal Credited = 0m);
 
 public sealed record BillingRunDto(int Id, DateOnly PeriodStart, DateOnly PeriodEnd, string Status, string StatusLabel, string StatusColor, Guid? ClientPublicId, string? ClientName, string? Note,
     int InvoiceCount, decimal TotalAmount, DateTime GeneratedAtUtc, DateTime? ReviewedAtUtc, DateTime? ApprovedAtUtc, DateTime? ExportedAtUtc, IReadOnlyList<InvoiceListItemDto> Invoices);
@@ -49,8 +49,8 @@ public sealed record StatementLineDto(DateOnly Date, string Kind, string Referen
 public sealed record AgingDto(decimal Current, decimal Days1To30, decimal Days31To60, decimal Days61To90, decimal Over90, decimal Total);
 
 public sealed record StatementDto(Guid ClientPublicId, string ClientName, DateOnly From, DateOnly To, decimal OpeningBalance, decimal TotalInvoiced, decimal TotalPaid, decimal ClosingBalance,
-    IReadOnlyList<StatementLineDto> Lines, AgingDto Aging);
+    IReadOnlyList<StatementLineDto> Lines, AgingDto Aging, decimal UnappliedCredit = 0m);
 
-public sealed record ReceivableRowDto(Guid ClientPublicId, string ClientName, int OpenInvoices, decimal Balance, AgingDto Aging, DateOnly? OldestDueDate);
+public sealed record ReceivableRowDto(Guid ClientPublicId, string ClientName, int OpenInvoices, decimal Balance, AgingDto Aging, DateOnly? OldestDueDate, decimal CreditBalance = 0m);
 
 public sealed record ReceivablesDto(DateOnly AsOf, IReadOnlyList<ReceivableRowDto> Rows, AgingDto Total);

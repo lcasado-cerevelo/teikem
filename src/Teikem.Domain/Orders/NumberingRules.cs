@@ -193,7 +193,9 @@ public static class NumberingRules
         // Lote 57: orden de venta OV-##### (por tenant, ClientId NULL)
         or Teikem.Domain.Sales.SalesCodes.NumberKind
         // Lote 72: factura FAC-##### (por tenant, ClientId NULL)
-        or Teikem.Domain.Billing.BillingCodes.NumberKind;
+        or Teikem.Domain.Billing.BillingCodes.NumberKind
+        // Lote 79: nota de crédito NC-##### (por tenant, ClientId NULL)
+        or Teikem.Domain.Billing.CreditCodes.NumberKind;
 
     private static string Coalesce(string? pattern, string fallback) => string.IsNullOrWhiteSpace(pattern) ? fallback : pattern.Trim();
 

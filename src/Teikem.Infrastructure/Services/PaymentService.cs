@@ -51,7 +51,7 @@ public sealed class PaymentService(TeikemDbContext db, ITenantContext tenant, St
             if (code is not (InvoiceStatuses.Issued or InvoiceStatuses.Overdue)) throw new StatusRuleException(PaymentRules.NotPayable);
             if (inv.IssueDate is DateOnly issued && paidDate < issued) throw new ValidationException("paidDate", PaymentRules.DateBeforeIssue);
             var total = inv.Subtotal + inv.TaxAmount;
-            var paid = await ActivePaidAsync(inv.InvoiceId, ct2);
+            var paid = await ActivePaidAsync(inv.InvoiceId, ct2) + (await db.AppliedByInvoiceAsync(new[] { inv.InvoiceId }, ct2)).GetValueOrDefault(inv.InvoiceId);
             var balance = PaymentRules.Balance(total, paid);
             if (amount > balance) throw new StatusRuleException(PaymentRules.ExceedsBalance(amount, balance));
 
@@ -108,6 +108,8 @@ public sealed class PaymentService(TeikemDbContext db, ITenantContext tenant, St
         var payments = ids.Count == 0 ? new List<Payment>()
             : await db.Set<Payment>().AsNoTracking().Where(p => ids.Contains(p.InvoiceId) && p.VoidedAtUtc == null).OrderBy(p => p.PaidAtUtc).ThenBy(p => p.PaymentId).ToListAsync(ct);
         var byId = invoices.ToDictionary(i => i.InvoiceId);
+        var applied = await db.AppliedByInvoiceAsync(ids, ct);
+        var notes = await ApprovedNotesAsync(client.ClientId, ct);
 
         // movimientos de todo el historial, ordenados: la factura antes que sus pagos del mismo día
         var moves = new List<(DateOnly Date, int Order, string Kind, string Ref, string Desc, decimal Debit, decimal Credit, Guid Invoice)>();
@@ -120,6 +122,8 @@ public sealed class PaymentService(TeikemDbContext db, ITenantContext tenant, St
             var method = MultilingualText.Resolve(m?.LabelJson, T.Lang) ?? m?.InternalCode ?? string.Empty;
             moves.Add((LocalDate(p.PaidAtUtc), 1, "PAYMENT", p.Reference ?? inv.Number, $"Pago {method} de la factura {inv.Number}", 0m, p.Amount, inv.PublicId));
         }
+        foreach (var n in notes)
+            moves.Add((n.ApprovedDate, 2, "CREDIT_NOTE", n.Number, "Nota de crédito " + n.Number, 0m, n.Total, n.InvoicePublicId ?? Guid.Empty));
         moves = moves.OrderBy(x => x.Date).ThenBy(x => x.Order).ThenBy(x => x.Ref, StringComparer.Ordinal).ToList();
 
         var opening = moves.Where(x => x.Date < start).Sum(x => x.Debit - x.Credit);
@@ -128,10 +132,10 @@ public sealed class PaymentService(TeikemDbContext db, ITenantContext tenant, St
         foreach (var x in moves.Where(x => x.Date >= start && x.Date <= end))
         {
             running += x.Debit - x.Credit;
-            lines.Add(new StatementLineDto(x.Date, x.Kind, x.Ref, x.Desc, x.Debit, x.Credit, running, x.Invoice));
+            lines.Add(new StatementLineDto(x.Date, x.Kind, x.Ref, x.Desc, x.Debit, x.Credit, running, x.Invoice == Guid.Empty ? null : x.Invoice));
         }
-        var aging = AgingOf(invoices, payments, today);
-        return new StatementDto(client.PublicId, client.Name, start, end, opening, lines.Sum(l => l.Debit), lines.Sum(l => l.Credit), running, lines, aging);
+        var aging = AgingOf(invoices, payments, applied, today);
+        return new StatementDto(client.PublicId, client.Name, start, end, opening, lines.Sum(l => l.Debit), lines.Sum(l => l.Credit), running, lines, aging, notes.Sum(n => n.Balance));
     }
 
     public async Task<ReceivablesDto> ReceivablesAsync(DateOnly? asOf, CancellationToken ct)
@@ -140,17 +144,18 @@ public sealed class PaymentService(TeikemDbContext db, ITenantContext tenant, St
         var invoices = (await InvoicesOfAsync(null, ct)).Where(i => i.Status is InvoiceStatuses.Issued or InvoiceStatuses.Overdue).ToList();
         var ids = invoices.Select(i => i.InvoiceId).ToList();
         var payments = ids.Count == 0 ? new List<Payment>() : await db.Set<Payment>().AsNoTracking().Where(p => ids.Contains(p.InvoiceId) && p.VoidedAtUtc == null).ToListAsync(ct);
+        var applied = await db.AppliedByInvoiceAsync(ids, ct);
         var clientOf = await db.Set<Invoice>().AsNoTracking().Where(i => ids.Contains(i.InvoiceId)).ToDictionaryAsync(i => i.InvoiceId, i => i.ClientId, ct);
         var clients = await db.Set<Client>().AsNoTracking().Where(c => clientOf.Values.Contains(c.ClientId)).ToDictionaryAsync(c => c.ClientId, ct);
         var rows = new List<ReceivableRowDto>();
         foreach (var g in invoices.GroupBy(i => clientOf[i.InvoiceId]))
         {
             var mine = g.ToList();
-            var aging = AgingOf(mine, payments.Where(p => mine.Any(i => i.InvoiceId == p.InvoiceId)).ToList(), day);
+            var aging = AgingOf(mine, payments.Where(p => mine.Any(i => i.InvoiceId == p.InvoiceId)).ToList(), applied, day);
             if (aging.Total <= 0m) continue;
-            var open = mine.Count(i => PaymentRules.Balance(i.Total, payments.Where(p => p.InvoiceId == i.InvoiceId).Sum(p => p.Amount)) > 0m);
+            var open = mine.Count(i => PaymentRules.Balance(i.Total, payments.Where(p => p.InvoiceId == i.InvoiceId).Sum(p => p.Amount) + applied.GetValueOrDefault(i.InvoiceId)) > 0m);
             var c = clients[g.Key];
-            rows.Add(new ReceivableRowDto(c.PublicId, c.Name, open, aging.Total, aging, mine.Where(i => i.DueDate != null).Select(i => i.DueDate).Min()));
+            rows.Add(new ReceivableRowDto(c.PublicId, c.Name, open, aging.Total, aging, mine.Where(i => i.DueDate != null).Select(i => i.DueDate).Min(), (await ApprovedNotesAsync(g.Key, ct)).Sum(n => n.Balance)));
         }
         rows = rows.OrderByDescending(r => r.Balance).ThenBy(r => r.ClientName, StringComparer.OrdinalIgnoreCase).ToList();
         var total = new AgingDto(rows.Sum(r => r.Aging.Current), rows.Sum(r => r.Aging.Days1To30), rows.Sum(r => r.Aging.Days31To60), rows.Sum(r => r.Aging.Days61To90), rows.Sum(r => r.Aging.Over90), rows.Sum(r => r.Aging.Total));
@@ -167,15 +172,36 @@ public sealed class PaymentService(TeikemDbContext db, ITenantContext tenant, St
         return rows.Select(i => new InvoiceFact(i.InvoiceId, i.PublicId, i.InvoiceNumber, i.IssueDate, i.DueDate, i.Subtotal + i.TaxAmount, map[i.StatusCodeId])).ToList();
     }
 
-    private static AgingDto AgingOf(IReadOnlyList<InvoiceFact> invoices, IReadOnlyList<Payment> payments, DateOnly asOf)
+    private static AgingDto AgingOf(IReadOnlyList<InvoiceFact> invoices, IReadOnlyList<Payment> payments, IReadOnlyDictionary<int, decimal> applied, DateOnly asOf)
     {
         var buckets = new decimal[5];
         foreach (var i in invoices)
         {
-            var balance = PaymentRules.Balance(i.Total, payments.Where(p => p.InvoiceId == i.InvoiceId).Sum(p => p.Amount));
+            var balance = PaymentRules.Balance(i.Total, payments.Where(p => p.InvoiceId == i.InvoiceId).Sum(p => p.Amount) + applied.GetValueOrDefault(i.InvoiceId));
             if (balance > 0m) buckets[PaymentRules.AgingBucket(i.DueDate, asOf)] += balance;
         }
         return new AgingDto(buckets[0], buckets[1], buckets[2], buckets[3], buckets[4], buckets.Sum());
+    }
+
+    private sealed record NoteFact(string Number, DateOnly ApprovedDate, decimal Total, decimal Balance, Guid? InvoicePublicId);
+
+    /// <summary>Las notas de crédito aprobadas o aplicadas del cliente (lo que le acredita), con su saldo sin aplicar.</summary>
+    private async Task<List<NoteFact>> ApprovedNotesAsync(int clientId, CancellationToken ct)
+    {
+        var rows = await (from n in db.CreditNotes.AsNoTracking()
+                          join s in db.StatusCodes.AsNoTracking() on n.StatusCodeId equals s.StatusCodeId
+                          where n.ClientId == clientId && (s.InternalCode == CreditNoteStatuses.Approved || s.InternalCode == CreditNoteStatuses.Applied)
+                          select new { n.CreditNoteId, n.CreditNumber, n.ApprovedAtUtc, n.Subtotal, n.TaxAmount, n.InvoiceId, Status = s.InternalCode }).ToListAsync(ct);
+        var ids = rows.Select(r => r.CreditNoteId).ToList();
+        var applications = (await db.Set<CreditApplication>().AsNoTracking().Where(a => ids.Contains(a.CreditNoteId)).ToListAsync(ct)).GroupBy(a => a.CreditNoteId).ToDictionary(g => g.Key, g => g.Sum(a => a.Amount));
+        var invoiceIds = rows.Where(r => r.InvoiceId != null).Select(r => r.InvoiceId!.Value).ToList();
+        var publicIds = await db.Set<Invoice>().AsNoTracking().Where(i => invoiceIds.Contains(i.InvoiceId)).ToDictionaryAsync(i => i.InvoiceId, i => i.PublicId, ct);
+        return rows.Select(r =>
+        {
+            var total = r.Subtotal + r.TaxAmount;
+            return new NoteFact(r.CreditNumber, LocalDate(r.ApprovedAtUtc ?? DateTime.UtcNow), total, r.Status == CreditNoteStatuses.Approved ? CreditNoteRules.Balance(total, applications.GetValueOrDefault(r.CreditNoteId)) : 0m,
+                r.InvoiceId is int i && publicIds.TryGetValue(i, out var pid) ? pid : null);
+        }).OrderBy(n => n.ApprovedDate).ToList();
     }
 
     // ================================================================ vencimiento

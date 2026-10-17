@@ -210,6 +210,8 @@ internal sealed class WmsFixture : IAsyncDisposable
         L(LookupDomains.EntityType, Teikem.Domain.Billing.BillingCodes.InvoiceEntityType);
         L(LookupDomains.EntityType, Teikem.Domain.Billing.BillingCodes.RunEntityType);
         L(LookupDomains.EntityType, Teikem.Domain.Export.ExportCodes.EntityType);   // Lote 77
+        L(LookupDomains.EntityType, Teikem.Domain.Billing.CreditCodes.EntityType);   // Lote 79
+        foreach (var c in Teikem.Domain.Billing.CreditReasons.All) L(Teikem.Domain.Billing.CreditCodes.ReasonDomain, c);
         L(Teikem.Domain.Billing.BillingCodes.ChargeTypeDomain, Teikem.Domain.Billing.BillingCodes.ProductSale);
         L(Teikem.Domain.Billing.BillingCodes.PaymentMethodDomain, "CASH");
         foreach (var m in new[] { "ACH", "CHECK", "CARD" }) L(Teikem.Domain.Billing.BillingCodes.PaymentMethodDomain, m);   // Lote 75
@@ -330,6 +332,10 @@ internal sealed class WmsFixture : IAsyncDisposable
         S(StatusDomains.OrderStatus, OrderStatuses.Delivered, term, 3);   // para la base «al entregar» de la facturación
         S(StatusDomains.OrderStatus, OrderStatuses.Pickup, pipe, 4);   // Lote 74: flete «por recogido»
         S(StatusDomains.OrderStatus, OrderStatuses.Failed, lat, 22);
+        S(Teikem.Domain.Billing.CreditCodes.StatusDomain, Teikem.Domain.Billing.CreditNoteStatuses.Draft, pipe, 1, true);   // Lote 79
+        S(Teikem.Domain.Billing.CreditCodes.StatusDomain, Teikem.Domain.Billing.CreditNoteStatuses.Approved, pipe, 2);
+        S(Teikem.Domain.Billing.CreditCodes.StatusDomain, Teikem.Domain.Billing.CreditNoteStatuses.Applied, term, 3);
+        S(Teikem.Domain.Billing.CreditCodes.StatusDomain, Teikem.Domain.Billing.CreditNoteStatuses.Void, term, 4);
         ReceiptStatusSeed.AddLateralEntries(Db, LookupId(LookupDomains.EntityType, EntityTypes.Receipt), StatusId);
 
         // 3G: WAREHOUSE_TASK CANCELLED solo desde PENDING e IN_PROGRESS.

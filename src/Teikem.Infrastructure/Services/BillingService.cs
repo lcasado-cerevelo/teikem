@@ -461,6 +461,7 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
             var code = (await StatusMapAsync(BillingCodes.InvoiceStatusDomain, ct2))[inv.StatusCodeId].Code;
             if (code is not (InvoiceStatuses.Issued or InvoiceStatuses.Overdue)) throw new StatusRuleException(BillingRules.VoidNeedsIssued);
             if (await db.Set<Payment>().AsNoTracking().AnyAsync(p => p.InvoiceId == inv.InvoiceId && p.VoidedAtUtc == null, ct2)) throw new StatusRuleException(BillingRules.VoidHasPayments);
+            if (await HasCreditsAsync(inv.InvoiceId, ct2)) throw new StatusRuleException(CreditNoteRules.InvoiceHasCredits);
             await ReleaseAsync(new[] { inv }, ct2);
             var to = await statuses.TransitionAsync(BillingCodes.InvoiceStatusDomain, BillingCodes.InvoiceEntityType, inv.InvoiceId, inv.StatusCodeId, InvoiceStatuses.Void, comment, ct2);
             inv.StatusCodeId = to.StatusCodeId;
@@ -473,6 +474,14 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
         }, ct);
         return await GetInvoiceAsync(invoicePublicId, ct);
     }
+
+    /// <summary>La factura tiene notas de crédito aprobadas o aplicadas (lo acreditado no se deshace anulando la factura).</summary>
+    private async Task<bool> HasCreditsAsync(int invoiceId, CancellationToken ct)
+        => await (from n in db.CreditNotes.AsNoTracking()
+                  join s in db.StatusCodes.AsNoTracking() on n.StatusCodeId equals s.StatusCodeId
+                  where n.InvoiceId == invoiceId && (s.InternalCode == CreditNoteStatuses.Approved || s.InternalCode == CreditNoteStatuses.Applied)
+                  select n.CreditNoteId).AnyAsync(ct)
+           || await db.Set<CreditApplication>().AsNoTracking().AnyAsync(a => a.InvoiceId == invoiceId, ct);
 
     // ================================================================ consultas
 
@@ -543,13 +552,15 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
         var rows = await query.OrderByDescending(i => i.InvoiceId).Skip(skip).Take(take).Include(i => i.Lines).ToListAsync(ct);
         var clients = await ClientsAsync(rows.Select(i => i.ClientId), ct);
         var paid = await PaidAsync(rows.Select(i => i.InvoiceId), ct);
+        var credits = await db.AppliedByInvoiceAsync(rows.Select(i => i.InvoiceId), ct);
         var items = rows.Select(i =>
         {
             var st = map[i.StatusCodeId];
             var c = clients[i.ClientId];
             var totalAmount = i.Subtotal + i.TaxAmount;
             var p = paid.GetValueOrDefault(i.InvoiceId);
-            return new InvoiceListItemDto(i.PublicId, i.InvoiceNumber, st.Code, st.Label, st.Color, c.PublicId, c.Name, i.IssueDate, i.DueDate, i.Subtotal, i.TaxAmount, totalAmount, p, totalAmount - p, i.Lines.Count, i.BillingRunId);
+            var cr = credits.GetValueOrDefault(i.InvoiceId);
+            return new InvoiceListItemDto(i.PublicId, i.InvoiceNumber, st.Code, st.Label, st.Color, c.PublicId, c.Name, i.IssueDate, i.DueDate, i.Subtotal, i.TaxAmount, totalAmount, p, totalAmount - p - cr, i.Lines.Count, i.BillingRunId, cr);
         }).ToList();
         return new PagedResult<InvoiceListItemDto>(items, total, skip, take);
     }
@@ -560,6 +571,7 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
         var st = (await StatusMapAsync(BillingCodes.InvoiceStatusDomain, ct))[i.StatusCodeId];
         var c = (await ClientsAsync(new[] { i.ClientId }, ct))[i.ClientId];
         var paid = (await PaidAsync(new[] { i.InvoiceId }, ct)).GetValueOrDefault(i.InvoiceId);
+        var credited = (await db.AppliedByInvoiceAsync(new[] { i.InvoiceId }, ct)).GetValueOrDefault(i.InvoiceId);
         var currency = (await lookups.GetAsync(i.CurrencyLookupId, ct))?.InternalCode ?? "USD";
         var chargeTypes = i.Lines.Select(l => l.ChargeTypeLookupId).Distinct().ToList();
         var chargeCodes = new Dictionary<int, string>();
@@ -589,7 +601,7 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
                 DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(p.PaidAtUtc, DateTimeKind.Utc), clock.Zone)), p.Reference, p.VoidedAtUtc, p.VoidReason));
         }
         var total = i.Subtotal + i.TaxAmount;
-        return new InvoiceDto(i.PublicId, i.InvoiceNumber, st.Code, st.Label, st.Color, c.PublicId, c.Name, i.IssueDate, i.DueDate, currency, i.Subtotal, i.TaxAmount, total, paid, total - paid, i.BillingRunId, i.Notes, lines, payDtos);
+        return new InvoiceDto(i.PublicId, i.InvoiceNumber, st.Code, st.Label, st.Color, c.PublicId, c.Name, i.IssueDate, i.DueDate, currency, i.Subtotal, i.TaxAmount, total, paid, total - paid - credited, i.BillingRunId, i.Notes, lines, payDtos, credited);
     }
 
     private async Task<Dictionary<int, (Guid PublicId, string Name)>> ClientsAsync(IEnumerable<int> ids, CancellationToken ct)
