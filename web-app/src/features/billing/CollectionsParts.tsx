@@ -203,6 +203,7 @@ export function ReceivablesTab({ onOpenStatement }: { onOpenStatement: (clientId
         }),
       ),
       { id: 'balance', header: t('billing.col.balance'), cell: (r) => <b>{f.money(r.balance ?? 0)}</b>, exportValue: (r) => r.balance ?? 0, sortValue: (r) => r.balance ?? 0, align: 'end' },
+      { id: 'credit', header: t('billing.rec.credit'), cell: (r) => agingCell(f, r.creditBalance), exportValue: (r) => r.creditBalance ?? 0, sortValue: (r) => r.creditBalance ?? 0, align: 'end' },
       { id: 'oldest', header: t('billing.rec.oldest'), cell: (r) => (r.oldestDueDate ? f.date(r.oldestDueDate) : '—'), exportValue: (r) => r.oldestDueDate ?? '', sortValue: (r) => r.oldestDueDate ?? '' },
     ],
     [t, f],
@@ -296,6 +297,7 @@ export function StatementModal({ clientId, clientName, onClose, onOpenInvoice }:
               <div><dt>{t('billing.stmt.invoiced')}</dt><dd>{f.money(data.totalInvoiced ?? 0)}</dd></div>
               <div><dt>{t('billing.stmt.paid')}</dt><dd>{f.money(data.totalPaid ?? 0)}</dd></div>
               <div><dt>{t('billing.stmt.closing')}</dt><dd><b>{f.money(data.closingBalance ?? 0)}</b></dd></div>
+              {(data.unappliedCredit ?? 0) > 0 && <div><dt>{t('billing.stmt.unapplied')}</dt><dd>{f.money(data.unappliedCredit ?? 0)}</dd></div>}
             </dl>
             <DataTable
               label={t('billing.stmt.lines')}

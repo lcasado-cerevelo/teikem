@@ -24138,6 +24138,273 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/billing/credit-notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    status?: string;
+                    clientPublicId?: string;
+                    q?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CreditNoteListItemDtoPagedResult"];
+                        "application/json": components["schemas"]["CreditNoteListItemDtoPagedResult"];
+                        "text/json": components["schemas"]["CreditNoteListItemDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CreditNoteRequest"];
+                    "text/json": components["schemas"]["CreditNoteRequest"];
+                    "application/*+json": components["schemas"]["CreditNoteRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CreditNoteDto"];
+                        "application/json": components["schemas"]["CreditNoteDto"];
+                        "text/json": components["schemas"]["CreditNoteDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/credit-notes/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CreditNoteDto"];
+                        "application/json": components["schemas"]["CreditNoteDto"];
+                        "text/json": components["schemas"]["CreditNoteDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CreditNoteRequest"];
+                    "text/json": components["schemas"]["CreditNoteRequest"];
+                    "application/*+json": components["schemas"]["CreditNoteRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CreditNoteDto"];
+                        "application/json": components["schemas"]["CreditNoteDto"];
+                        "text/json": components["schemas"]["CreditNoteDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/credit-notes/{publicId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CreditNoteDto"];
+                        "application/json": components["schemas"]["CreditNoteDto"];
+                        "text/json": components["schemas"]["CreditNoteDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/credit-notes/{publicId}/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CreditApplyRequest"];
+                    "text/json": components["schemas"]["CreditApplyRequest"];
+                    "application/*+json": components["schemas"]["CreditApplyRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CreditNoteDto"];
+                        "application/json": components["schemas"]["CreditNoteDto"];
+                        "text/json": components["schemas"]["CreditNoteDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/credit-notes/{publicId}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CreditVoidRequest"];
+                    "text/json": components["schemas"]["CreditVoidRequest"];
+                    "application/*+json": components["schemas"]["CreditVoidRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CreditNoteDto"];
+                        "application/json": components["schemas"]["CreditNoteDto"];
+                        "text/json": components["schemas"]["CreditNoteDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -32059,6 +32326,8 @@ export interface components {
             notes?: string | null;
             lines?: components["schemas"]["InvoiceLineDto"][] | null;
             payments?: components["schemas"]["PaymentDto"][] | null;
+            /** Format: double */
+            credited?: number;
         };
         InvoiceLineAdjustRequest: {
             /** Format: double */
@@ -32121,6 +32390,8 @@ export interface components {
             lineCount?: number;
             /** Format: int32 */
             runId?: number | null;
+            /** Format: double */
+            credited?: number;
         };
         InvoiceListItemDtoPagedResult: {
             items?: components["schemas"]["InvoiceListItemDto"][] | null;
@@ -32206,6 +32477,8 @@ export interface components {
             closingBalance?: number;
             lines?: components["schemas"]["StatementLineDto"][] | null;
             aging?: components["schemas"]["AgingDto"];
+            /** Format: double */
+            unappliedCredit?: number;
         };
         ReceivableRowDto: {
             /** Format: uuid */
@@ -32218,6 +32491,8 @@ export interface components {
             aging?: components["schemas"]["AgingDto"];
             /** Format: date */
             oldestDueDate?: string | null;
+            /** Format: double */
+            creditBalance?: number;
         };
         ReceivablesDto: {
             /** Format: date */
@@ -32266,6 +32541,134 @@ export interface components {
         BillingExportRequest: {
             /** Format: uuid */
             templatePublicId?: string | null;
+        };
+        CreditNoteLineRequest: {
+            /** Format: int32 */
+            invoiceLineId?: number | null;
+            description?: string | null;
+            /** Format: double */
+            quantity?: number | null;
+            /** Format: double */
+            unitAmount?: number | null;
+            chargeType?: string | null;
+            /** Format: uuid */
+            productPublicId?: string | null;
+        };
+        CreditNoteRequest: {
+            /** Format: uuid */
+            clientPublicId?: string | null;
+            /** Format: uuid */
+            invoicePublicId?: string | null;
+            externalInvoiceRef?: string | null;
+            reason?: string | null;
+            note?: string | null;
+            lines?: components["schemas"]["CreditNoteLineRequest"][] | null;
+        };
+        CreditApplyRequest: {
+            /** Format: uuid */
+            invoicePublicId?: string | null;
+            /** Format: double */
+            amount?: number | null;
+        };
+        CreditVoidRequest: {
+            reason?: string | null;
+        };
+        CreditNoteLineDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: int32 */
+            invoiceLineId?: number | null;
+            description?: string | null;
+            chargeType?: string | null;
+            sku?: string | null;
+            /** Format: double */
+            quantity?: number;
+            /** Format: double */
+            unitAmount?: number;
+            /** Format: double */
+            lineSubtotal?: number;
+            /** Format: double */
+            taxRatePct?: number | null;
+            /** Format: double */
+            taxAmount?: number;
+            isTaxExempt?: boolean;
+        };
+        CreditApplicationDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            invoicePublicId?: string;
+            invoiceNumber?: string | null;
+            /** Format: double */
+            amount?: number;
+            /** Format: date */
+            appliedDate?: string;
+        };
+        CreditNoteDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            statusColor?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            /** Format: uuid */
+            invoicePublicId?: string | null;
+            invoiceNumber?: string | null;
+            externalInvoiceRef?: string | null;
+            reason?: string | null;
+            reasonLabel?: string | null;
+            currency?: string | null;
+            /** Format: double */
+            subtotal?: number;
+            /** Format: double */
+            taxAmount?: number;
+            /** Format: double */
+            total?: number;
+            /** Format: double */
+            applied?: number;
+            /** Format: double */
+            balance?: number;
+            note?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            /** Format: date-time */
+            approvedAtUtc?: string | null;
+            lines?: components["schemas"]["CreditNoteLineDto"][] | null;
+            applications?: components["schemas"]["CreditApplicationDto"][] | null;
+        };
+        CreditNoteListItemDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            statusColor?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            invoiceNumber?: string | null;
+            reason?: string | null;
+            reasonLabel?: string | null;
+            /** Format: double */
+            total?: number;
+            /** Format: double */
+            applied?: number;
+            /** Format: double */
+            balance?: number;
+            /** Format: date-time */
+            createdAtUtc?: string;
+        };
+        CreditNoteListItemDtoPagedResult: {
+            items?: components["schemas"]["CreditNoteListItemDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
         };
     };
     responses: never;

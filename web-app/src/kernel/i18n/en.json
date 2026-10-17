@@ -7439,6 +7439,7 @@
         "runs": "Runs",
         "invoices": "Invoices",
         "collections": "Collections",
+        "credits": "Credit notes",
         "settings": "Settings"
       },
       "col": {
@@ -7512,6 +7513,7 @@
         }
       },
       "rec": {
+        "credit": "Credit balance",
         "panel": "Accounts receivable",
         "empty": "There are no balances to collect.",
         "open": "Open invoices",
@@ -7527,6 +7529,7 @@
         "over90": "Over 90"
       },
       "stmt": {
+        "unapplied": "Credit balance (unapplied)",
         "title": "Statement · {client}",
         "opening": "Opening balance",
         "invoiced": "Invoiced",
@@ -7587,6 +7590,110 @@
           "header": "A column header cannot exceed 60 characters."
         }
       },
+      "credit": {
+        "panel": "Credit notes",
+        "new": "New credit note",
+        "search": "Search by number or customer",
+        "empty": "There are no credit notes with those filters.",
+        "number": "Note",
+        "invoice": "Invoice",
+        "reason": "Reason",
+        "created": "Created",
+        "balance": "Balance",
+        "approvedAt": "Approved",
+        "title": "Credit note {number}",
+        "lines": "Note lines",
+        "applications": "Applications",
+        "appliedBalance": "applied {applied}, balance {balance}",
+        "edit": "Edit",
+        "approve": "Approve",
+        "approved": "Note {number} approved.",
+        "apply": "Apply to an invoice",
+        "void": "Void the note",
+        "statuses": {
+          "DRAFT": "Draft",
+          "APPROVED": "Approved",
+          "APPLIED": "Applied",
+          "VOID": "Void"
+        },
+        "reasons": {
+          "RETURN": "Return",
+          "PRICE_ADJUSTMENT": "Price adjustment",
+          "SERVICE_FAILURE": "Service failure",
+          "BILLING_ERROR": "Billing error"
+        },
+        "charges": {
+          "FREIGHT": "Freight",
+          "SURCHARGE": "Surcharge",
+          "HANDLING": "Handling",
+          "PICKUP": "Pickup"
+        },
+        "hint": {
+          "DRAFT": "Review the lines and approve it (asks for re-authentication). It can be edited while it is a draft.",
+          "APPROVED": "Approved: its balance is applied to the customer's open invoices; what is not applied stays as a credit balance.",
+          "APPLIED": "Applied: its whole amount has been applied to invoices.",
+          "VOID": "Void: it counts for nothing."
+        },
+        "voidTitle": "Void note {number}?",
+        "voidBody": "An approved note stops crediting what it credited. It cannot be voided once applied to an invoice.",
+        "voidReason": "Reason",
+        "voidedToast": "Note {number} voided.",
+        "applyTitle": "Apply note {number}",
+        "applyHelp": "Note balance: {balance}. It is applied to an open invoice of {client}.",
+        "applyNone": "The customer has no issued or overdue invoices with a balance.",
+        "chooseInvoice": "Choose an invoice",
+        "invoiceBalance": "balance {balance}",
+        "applySave": "Apply",
+        "applied": "Note applied.",
+        "newTitle": "New credit note",
+        "editTitle": "Edit the credit note",
+        "mode": "Note type",
+        "modeInvoice": "On an invoice",
+        "modeFree": "Free (invoice from another system or an adjustment)",
+        "onInvoice": "On invoice {number} of {client}.",
+        "changeInvoice": "Change invoice",
+        "externalRef": "Invoice from another system (optional)",
+        "chooseReason": "Choose the reason",
+        "pickFirst": "Choose the invoice first.",
+        "linesHelpInvoice": "Check the lines being credited. By default the invoiced amount shows; a lower unit amount is a price adjustment. You cannot credit more than was invoiced.",
+        "linesHelpFree": "Describe what is credited, the quantity, the unit amount and the charge type; the system calculates the tax.",
+        "line": "Line",
+        "charge": "Charge type",
+        "include": "Credit line {n}",
+        "descriptionOf": "Description of line {n}",
+        "qtyOf": "Quantity of line {n}",
+        "unitOf": "Unit amount of line {n}",
+        "chargeOf": "Charge type of line {n}",
+        "removeLine": "Remove line {n}",
+        "addLine": "Add a line",
+        "estimate": "Value of the lines (before tax): {total}",
+        "saveDraft": "Save draft",
+        "saved": "Note {number} saved.",
+        "createdToast": "Note {number} created as a draft.",
+        "errors": {
+          "reason": "Choose the reason for the note.",
+          "lines": "Add or check at least one line.",
+          "note": "The note cannot exceed 500 characters.",
+          "ref": "The reference cannot exceed 80 characters.",
+          "description": "Enter the description of each line.",
+          "quantity": "The quantity must be greater than zero (up to 3 decimals).",
+          "amount": "The unit amount must be greater than zero (up to 4 decimals).",
+          "chargeType": "Choose the charge type of each line.",
+          "client": "Choose the customer of the note.",
+          "invoice": "Choose the invoice.",
+          "void": {
+            "required": "Enter the reason for voiding the note.",
+            "long": "The reason cannot exceed 250 characters."
+          },
+          "apply": {
+            "invoice": "Choose the invoice.",
+            "amount": "Enter the amount to apply (greater than zero).",
+            "decimals": "The amount allows up to 2 decimals.",
+            "noteBalance": "The amount cannot exceed the note balance.",
+            "invoiceBalance": "The amount cannot exceed the invoice balance."
+          }
+        }
+      },
       "runs": {
         "panel": "Billing runs",
         "empty": "There are no runs yet. Generate one with \"New run\"."
@@ -7633,6 +7740,8 @@
         }
       },
       "invoice": {
+        "credit": "Create credit note",
+        "credited": "credited {credited}, balance {balance}",
         "title": "Invoice {number}",
         "lines": "Invoice lines",
         "noLines": "No lines",

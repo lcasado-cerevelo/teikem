@@ -322,6 +322,8 @@ F-G1. [F-G1 — Impresoras y labels](frontend/fg1-impresoras.md): Sistema → **
 
 16. [16 — Enviar avisos](16-enviar-avisos.md): Lote 54 (2026-10-15) — **avisos manuales**: quien tiene `notifications.send` envía un aviso a personas, a roles o a **todas** las personas de la compañía; llega a la campanita («De Ana»), en vivo si tiene Teikem abierto, y **no se responde**; historial con a quién se envió y cuántas personas lo leyeron; permiso solo para el Admin de compañía (el administrador lo asigna), mensajes 400/403 y datos para soporte.
 
+L80. [L80 — Notas de crédito](frontend/l80-notas-de-credito.md): Facturación → **Notas de crédito** y la ficha de la factura: lista, **crear** (sobre una factura con sus líneas y ajuste de precio, o libre), **aprobar** con reautenticación, **aplicar** a facturas abiertas con topes y **anular** con motivo; saldo a favor en Cobros y el estado de cuenta; escritorio y móvil.
+
 L78. [L78 — Exportar a contabilidad](frontend/l78-exportacion.md): en la corrida aprobada o exportada (`billing.export`): selector de **plantilla**, **Configurar…** (formato, delimitador, fecha, encabezado y las columnas en orden con su encabezado propio; guardar, guardar como nueva, desactivar), **vista previa** del archivo y **descarga** que marca la corrida como exportada; escritorio y móvil.
 
 L76. [L76 — Cobros](frontend/l76-cobros.md): Contabilidad → **Facturación → Cobros** y la ficha de la factura: **pagos** (registrar con validación y tope del saldo, anular con motivo y reautenticación), **cuentas por cobrar** por cliente con la antigüedad en cinco columnas y el **estado de cuenta** con saldo corrido; escritorio y móvil.

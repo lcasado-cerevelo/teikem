@@ -20,15 +20,17 @@ import {
   useUpdateBillingSettings,
   type BillingRunListItemDto,
   type InvoiceLineDto,
+  type CreditNoteDto,
   type InvoiceListItemDto,
 } from './billingApi'
-import { adjustError, INVOICE_STATUSES, invoiceCanVoid, monthStartIso, parseAmount, RUN_STATUSES, runFormError, runIsOpen, todayIso, toRunRequest, type RunForm } from './billingRules'
+import { adjustError, INVOICE_STATUSES, invoiceCanCredit, invoiceCanVoid, monthStartIso, parseAmount, RUN_STATUSES, runFormError, runIsOpen, todayIso, toRunRequest, type RunForm } from './billingRules'
 import { PaymentsSection, ReceivablesTab, StatementModal } from './CollectionsParts'
+import { CreditEditor, CreditNoteModal, CreditNotesTab } from './CreditParts'
 import { ExportSection } from './ExportParts'
 import './billing.css'
 import '../tax/tax.css'
 
-type TabKey = 'runs' | 'invoices' | 'collections' | 'settings'
+type TabKey = 'runs' | 'invoices' | 'collections' | 'credits' | 'settings'
 
 function useDebounced(value: string, ms = 300) {
   const [v, setV] = useState(value)
@@ -364,7 +366,7 @@ function AdjustDialog({ invoiceId, line, onClose }: { invoiceId: string; line: I
   )
 }
 
-function InvoiceModal({ publicId, onClose }: { publicId: string; onClose: () => void }) {
+function InvoiceModal({ publicId, onClose, onCredit }: { publicId: string; onClose: () => void; onCredit: (publicId: string) => void }) {
   const t = useT()
   const f = useFormat()
   const invoice = useInvoice(publicId)
@@ -396,6 +398,11 @@ function InvoiceModal({ publicId, onClose }: { publicId: string; onClose: () => 
       onClose={onClose}
       footer={
         <>
+          {data && invoiceCanCredit(data.status) && (
+            <Can perm="billing.credit">
+              <button type="button" className="btn" onClick={() => onCredit(publicId)}>{t('billing.invoice.credit')}</button>
+            </Can>
+          )}
           {data && invoiceCanVoid(data.status) && (
             <Can perm="billing.approve">
               <button type="button" className="btn danger" onClick={() => setVoiding(true)}>{t('billing.invoice.void')}</button>
@@ -430,6 +437,7 @@ function InvoiceModal({ publicId, onClose }: { publicId: string; onClose: () => 
             <p className="sales-totals" role="status">
               {t('billing.invoice.totals', { subtotal: f.money(data.subtotal ?? 0), tax: f.money(data.taxAmount ?? 0), total: f.money(data.total ?? 0) })}
               {(data.paid ?? 0) > 0 && ` · ${t('billing.invoice.paid', { paid: f.money(data.paid ?? 0), balance: f.money(data.balance ?? 0) })}`}
+              {(data.credited ?? 0) > 0 && ` · ${t('billing.invoice.credited', { credited: f.money(data.credited ?? 0), balance: f.money(data.balance ?? 0) })}`}
             </p>
             {editable && canAdjust && <p className="help">{t('billing.invoice.adjustHelp')}</p>}
             <PaymentsSection invoice={data} />
@@ -532,6 +540,8 @@ export default function BillingScreen() {
   const [newRun, setNewRun] = useState(false)
   const [invoiceId, setInvoiceId] = useState<string | null>(null)
   const [statement, setStatement] = useState<{ id: string; name: string } | null>(null)
+  const [creditId, setCreditId] = useState<string | null>(null)
+  const [creditEditor, setCreditEditor] = useState<{ invoicePublicId?: string | null; note?: CreditNoteDto | null } | null>(null)
   return (
     <div className="sales-screen">
       <div className="head">
@@ -551,12 +561,14 @@ export default function BillingScreen() {
           { key: 'runs', label: t('billing.tabs.runs') },
           { key: 'invoices', label: t('billing.tabs.invoices') },
           { key: 'collections', label: t('billing.tabs.collections') },
+          { key: 'credits', label: t('billing.tabs.credits') },
           { key: 'settings', label: t('billing.tabs.settings') },
         ]}
       />
       {tab === 'runs' && <RunsTab onOpen={setRunId} />}
       {tab === 'invoices' && <InvoicesTab onOpen={setInvoiceId} />}
       {tab === 'collections' && <ReceivablesTab onOpenStatement={(id, name) => setStatement({ id, name })} />}
+      {tab === 'credits' && <CreditNotesTab onOpen={setCreditId} onNew={() => setCreditEditor({})} />}
       {tab === 'settings' && <SettingsTab />}
       {newRun && (
         <NewRunModal
@@ -569,7 +581,22 @@ export default function BillingScreen() {
       )}
       {runId !== null && <RunModal key={runId} id={runId} onClose={() => setRunId(null)} onOpenInvoice={setInvoiceId} />}
       {statement && <StatementModal key={statement.id} clientId={statement.id} clientName={statement.name} onClose={() => setStatement(null)} onOpenInvoice={setInvoiceId} />}
-      {invoiceId !== null && <InvoiceModal key={invoiceId} publicId={invoiceId} onClose={() => setInvoiceId(null)} />}
+      {invoiceId !== null && <InvoiceModal key={invoiceId} publicId={invoiceId} onClose={() => setInvoiceId(null)} onCredit={(id) => setCreditEditor({ invoicePublicId: id })} />}
+      {creditId !== null && (
+        <CreditNoteModal key={creditId} id={creditId} onClose={() => setCreditId(null)} onEdit={(n) => setCreditEditor({ note: n })} onOpenInvoice={setInvoiceId} />
+      )}
+      {creditEditor && (
+        <CreditEditor
+          seed={creditEditor}
+          onClose={() => setCreditEditor(null)}
+          onSaved={(id) => {
+            setCreditEditor(null)
+            setInvoiceId(null)
+            setTab('credits')
+            setCreditId(id)
+          }}
+        />
+      )}
     </div>
   )
 }

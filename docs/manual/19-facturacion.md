@@ -97,6 +97,8 @@ Una corrida **aprobada** (o ya exportada) se exporta a un archivo **CSV o TXT** 
 
 ## 4d. Notas de crédito (Lote 79)
 
+La pantalla está descrita en [L80 — Notas de crédito](frontend/l80-notas-de-credito.md).
+
 Una **nota de crédito** (`NC-#####`, un contador por compañía) le acredita al cliente parte o todo de lo facturado: una **devolución**, un **ajuste de precio**, una **falla del servicio** o un **error de facturación** (catálogo `CreditReason`). Estatus: **Borrador → Aprobada → Aplicada**, o **Anulada**. **Aprobarla no mueve inventario** (eso lo hace la recepción de la devolución); lo que no se aplica a facturas queda como **saldo a favor** del cliente.
 
 **Permisos** (`/api/v1/billing/credit-notes`): ver con `billing.view`; crear, cambiar, aplicar y anular con **`billing.credit`** (permiso nuevo: se agregó a los roles que ya aprueban facturación y al administrador de la compañía, también en los roles ya clonados); **aprobar** exige además **reautenticación reciente (AAL2)**.

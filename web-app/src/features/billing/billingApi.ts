@@ -24,6 +24,10 @@ export type ExportTemplateDto = Schemas['ExportTemplateDto']
 export type ExportTemplateRequest = Schemas['ExportTemplateRequest']
 export type ExportFieldDto = Schemas['ExportFieldDto']
 export type ExportFileDto = Schemas['ExportFileDto']
+export type CreditNoteDto = Schemas['CreditNoteDto']
+export type CreditNoteListItemDto = Schemas['CreditNoteListItemDto']
+export type CreditNoteLineDto = Schemas['CreditNoteLineDto']
+export type CreditNoteRequest = Schemas['CreditNoteRequest']
 
 export const billingKeys = {
   all: ['billing'] as const,
@@ -34,6 +38,8 @@ export const billingKeys = {
   invoice: (id: string | null) => ['billing', 'invoice', id] as const,
   receivables: ['billing', 'receivables'] as const,
   templates: ['billing', 'export-templates'] as const,
+  creditNotes: (status: string, q: string, skip: number, take: number) => ['billing', 'credit-notes', status, q, skip, take] as const,
+  creditNote: (id: string | null) => ['billing', 'credit-note', id] as const,
   fields: ['billing', 'export-fields'] as const,
   preview: (runId: number, templateId: string | null) => ['billing', 'export-preview', runId, templateId] as const,
   statement: (clientId: string | null, from: string, to: string) => ['billing', 'statement', clientId, from, to] as const,
@@ -185,4 +191,50 @@ export function useExportRun() {
       unwrap(api.POST('/api/v1/billing/runs/{id}/export', { params: { path: { id: v.runId } }, body: { templatePublicId: v.templateId ?? undefined } })),
     onSettled: () => qc.invalidateQueries({ queryKey: billingKeys.all }),
   })
+}
+
+// ---------------------------------------------------------------- notas de crédito (Lote 80)
+
+export function useCreditNotes(status: string, q: string, skip: number, take: number) {
+  return useQuery({
+    queryKey: billingKeys.creditNotes(status, q, skip, take),
+    queryFn: () => unwrap(api.GET('/api/v1/billing/credit-notes', { params: { query: { status: status || undefined, q: q || undefined, skip, take } } })),
+    placeholderData: keepPreviousData,
+  })
+}
+
+/** Todas las páginas del filtro actual (la exportación de la tabla). */
+export function creditNotePageReader(status: string, q: string) {
+  return (skip: number, take: number) => unwrap(api.GET('/api/v1/billing/credit-notes', { params: { query: { status: status || undefined, q: q || undefined, skip, take } } }))
+}
+
+export function useCreditNote(publicId: string | null) {
+  return useQuery({
+    queryKey: billingKeys.creditNote(publicId),
+    queryFn: () => unwrap(api.GET('/api/v1/billing/credit-notes/{publicId}', { params: { path: { publicId: publicId! } } })),
+    enabled: publicId !== null,
+  })
+}
+
+export function useCreditMutations() {
+  const qc = useQueryClient()
+  const refresh = () => qc.invalidateQueries({ queryKey: billingKeys.all })
+  return {
+    create: useMutation({ mutationFn: (body: CreditNoteRequest) => unwrap(api.POST('/api/v1/billing/credit-notes', { body })), onSettled: refresh }),
+    update: useMutation({
+      mutationFn: (v: { id: string; body: CreditNoteRequest }) => unwrap(api.PUT('/api/v1/billing/credit-notes/{publicId}', { params: { path: { publicId: v.id } }, body: v.body })),
+      onSettled: refresh,
+    }),
+    // aprobar lleva [RequireAal2]: el cliente del API reautentica solo
+    approve: useMutation({ mutationFn: (id: string) => unwrap(api.POST('/api/v1/billing/credit-notes/{publicId}/approve', { params: { path: { publicId: id } } })), onSettled: refresh }),
+    apply: useMutation({
+      mutationFn: (v: { id: string; invoicePublicId: string; amount: number }) =>
+        unwrap(api.POST('/api/v1/billing/credit-notes/{publicId}/apply', { params: { path: { publicId: v.id } }, body: { invoicePublicId: v.invoicePublicId, amount: v.amount } })),
+      onSettled: refresh,
+    }),
+    voidNote: useMutation({
+      mutationFn: (v: { id: string; reason: string }) => unwrap(api.POST('/api/v1/billing/credit-notes/{publicId}/void', { params: { path: { publicId: v.id } }, body: { reason: v.reason } })),
+      onSettled: refresh,
+    }),
+  }
 }

@@ -7439,6 +7439,7 @@
         "runs": "Corridas",
         "invoices": "Facturas",
         "collections": "Cobros",
+        "credits": "Notas de crédito",
         "settings": "Ajustes"
       },
       "col": {
@@ -7512,6 +7513,7 @@
         }
       },
       "rec": {
+        "credit": "Saldo a favor",
         "panel": "Cuentas por cobrar",
         "empty": "No hay saldos por cobrar.",
         "open": "Facturas abiertas",
@@ -7527,6 +7529,7 @@
         "over90": "Más de 90"
       },
       "stmt": {
+        "unapplied": "Saldo a favor (sin aplicar)",
         "title": "Estado de cuenta · {client}",
         "opening": "Saldo inicial",
         "invoiced": "Facturado",
@@ -7587,6 +7590,110 @@
           "header": "El encabezado de una columna no puede pasar de 60 caracteres."
         }
       },
+      "credit": {
+        "panel": "Notas de crédito",
+        "new": "Nueva nota de crédito",
+        "search": "Buscar por número o cliente",
+        "empty": "No hay notas de crédito con esos filtros.",
+        "number": "Nota",
+        "invoice": "Factura",
+        "reason": "Motivo",
+        "created": "Creada",
+        "balance": "Saldo",
+        "approvedAt": "Aprobada",
+        "title": "Nota de crédito {number}",
+        "lines": "Líneas de la nota",
+        "applications": "Aplicaciones",
+        "appliedBalance": "aplicado {applied}, saldo {balance}",
+        "edit": "Cambiar",
+        "approve": "Aprobar",
+        "approved": "Nota {number} aprobada.",
+        "apply": "Aplicar a una factura",
+        "void": "Anular la nota",
+        "statuses": {
+          "DRAFT": "Borrador",
+          "APPROVED": "Aprobada",
+          "APPLIED": "Aplicada",
+          "VOID": "Anulada"
+        },
+        "reasons": {
+          "RETURN": "Devolución",
+          "PRICE_ADJUSTMENT": "Ajuste de precio",
+          "SERVICE_FAILURE": "Falla del servicio",
+          "BILLING_ERROR": "Error de facturación"
+        },
+        "charges": {
+          "FREIGHT": "Flete",
+          "SURCHARGE": "Recargo",
+          "HANDLING": "Manejo",
+          "PICKUP": "Recogido"
+        },
+        "hint": {
+          "DRAFT": "Revise las líneas y apruébela (pide reautenticación). Mientras sea borrador se puede cambiar.",
+          "APPROVED": "Aprobada: el saldo se aplica a facturas abiertas del cliente; lo que no se aplique queda como saldo a favor.",
+          "APPLIED": "Aplicada: todo su monto ya se aplicó a facturas.",
+          "VOID": "Anulada: no cuenta para nada."
+        },
+        "voidTitle": "¿Anular la nota {number}?",
+        "voidBody": "Una nota aprobada deja de acreditar lo que acreditaba. No se puede anular si ya se aplicó a una factura.",
+        "voidReason": "Motivo",
+        "voidedToast": "Nota {number} anulada.",
+        "applyTitle": "Aplicar la nota {number}",
+        "applyHelp": "Saldo de la nota: {balance}. Se aplica a una factura abierta de {client}.",
+        "applyNone": "El cliente no tiene facturas emitidas o vencidas con saldo.",
+        "chooseInvoice": "Elija una factura",
+        "invoiceBalance": "saldo {balance}",
+        "applySave": "Aplicar",
+        "applied": "Nota aplicada.",
+        "newTitle": "Nueva nota de crédito",
+        "editTitle": "Cambiar la nota de crédito",
+        "mode": "Tipo de nota",
+        "modeInvoice": "Sobre una factura",
+        "modeFree": "Libre (factura de otro sistema o ajuste)",
+        "onInvoice": "Sobre la factura {number} de {client}.",
+        "changeInvoice": "Cambiar de factura",
+        "externalRef": "Factura de otro sistema (opcional)",
+        "chooseReason": "Elija el motivo",
+        "pickFirst": "Elija primero la factura.",
+        "linesHelpInvoice": "Marque las líneas que se acreditan. Por omisión sale lo facturado; un monto unitario menor es un ajuste de precio. No se acredita más de lo facturado.",
+        "linesHelpFree": "Describa lo que se acredita, la cantidad, el monto unitario y el tipo de cargo; el impuesto lo calcula el sistema.",
+        "line": "Línea",
+        "charge": "Tipo de cargo",
+        "include": "Acreditar la línea {n}",
+        "descriptionOf": "Descripción de la línea {n}",
+        "qtyOf": "Cantidad de la línea {n}",
+        "unitOf": "Monto unitario de la línea {n}",
+        "chargeOf": "Tipo de cargo de la línea {n}",
+        "removeLine": "Quitar la línea {n}",
+        "addLine": "Agregar una línea",
+        "estimate": "Valor de las líneas (sin impuesto): {total}",
+        "saveDraft": "Guardar borrador",
+        "saved": "Nota {number} guardada.",
+        "createdToast": "Nota {number} creada en borrador.",
+        "errors": {
+          "reason": "Elija el motivo de la nota.",
+          "lines": "Agregue o marque al menos una línea.",
+          "note": "La nota no puede pasar de 500 caracteres.",
+          "ref": "La referencia no puede pasar de 80 caracteres.",
+          "description": "Escriba la descripción de cada línea.",
+          "quantity": "La cantidad debe ser mayor que cero (hasta 3 decimales).",
+          "amount": "El monto unitario debe ser mayor que cero (hasta 4 decimales).",
+          "chargeType": "Elija el tipo de cargo de cada línea.",
+          "client": "Elija el cliente de la nota.",
+          "invoice": "Elija la factura.",
+          "void": {
+            "required": "Escriba el motivo para anular la nota.",
+            "long": "El motivo no puede pasar de 250 caracteres."
+          },
+          "apply": {
+            "invoice": "Elija la factura.",
+            "amount": "Escriba el monto a aplicar (mayor que cero).",
+            "decimals": "El monto admite hasta 2 decimales.",
+            "noteBalance": "El monto no puede pasar del saldo de la nota.",
+            "invoiceBalance": "El monto no puede pasar del saldo de la factura."
+          }
+        }
+      },
       "runs": {
         "panel": "Corridas de facturación",
         "empty": "Todavía no hay corridas. Genere una con «Nueva corrida»."
@@ -7633,6 +7740,8 @@
         }
       },
       "invoice": {
+        "credit": "Crear nota de crédito",
+        "credited": "acreditado {credited}, saldo {balance}",
         "title": "Factura {number}",
         "lines": "Líneas de la factura",
         "noLines": "Sin líneas",

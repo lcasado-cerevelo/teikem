@@ -214,3 +214,112 @@ export function blankTemplate(columns: readonly TemplateColumn[] = []): Template
 export function runCanExport(status: string | null | undefined): boolean {
   return status === 'APPROVED' || status === 'EXPORTED'
 }
+
+// ---------------------------------------------------------------- notas de crédito (Lote 80)
+
+export const CREDIT_REASONS = ['RETURN', 'PRICE_ADJUSTMENT', 'SERVICE_FAILURE', 'BILLING_ERROR'] as const
+export const CREDIT_STATUSES = ['DRAFT', 'APPROVED', 'APPLIED', 'VOID'] as const
+/** Tipos de cargo de una línea libre (las de una factura traen el suyo). */
+export const CREDIT_CHARGE_TYPES = ['FREIGHT', 'SURCHARGE', 'HANDLING', 'PICKUP'] as const
+
+/** Una factura se acredita si está emitida, vencida o pagada. */
+export function invoiceCanCredit(status: string | null | undefined): boolean {
+  return status === 'ISSUED' || status === 'OVERDUE' || status === 'PAID'
+}
+
+export function noteCanEdit(status: string | null | undefined): boolean {
+  return status === 'DRAFT'
+}
+
+export function noteCanApprove(status: string | null | undefined): boolean {
+  return status === 'DRAFT'
+}
+
+/** Se aplica una nota aprobada que todavía tiene saldo. */
+export function noteCanApply(status: string | null | undefined, balance: number | null | undefined): boolean {
+  return status === 'APPROVED' && (balance ?? 0) > 0
+}
+
+/** Se anula una nota en borrador o aprobada que no se ha aplicado. */
+export function noteCanVoid(status: string | null | undefined, applied: number | null | undefined): boolean {
+  return (status === 'DRAFT' || status === 'APPROVED') && (applied ?? 0) === 0
+}
+
+export interface CreditLineForm {
+  /** Línea de la factura que se acredita (nota sobre una factura). */
+  invoiceLineId: number | null
+  description: string
+  quantity: string
+  unitAmount: string
+  chargeType: string
+  /** En una nota sobre una factura, si la línea entra en la nota. */
+  included: boolean
+}
+
+export interface CreditForm {
+  reason: string
+  note: string
+  externalInvoiceRef: string
+  lines: CreditLineForm[]
+}
+
+export type CreditFormError = 'reason' | 'lines' | 'note' | 'ref' | 'description' | 'quantity' | 'amount' | 'chargeType'
+
+/** Lo que el servidor también valida (CreditNoteRules). `onInvoice` = la nota es sobre una factura (las líneas traen su cantidad y monto; solo entran las marcadas). */
+export function creditFormError(f: CreditForm, onInvoice: boolean): CreditFormError | null {
+  if (!f.reason) return 'reason'
+  if (f.note.length > 500) return 'note'
+  if (f.externalInvoiceRef.trim().length > 80) return 'ref'
+  const lines = onInvoice ? f.lines.filter((l) => l.included) : f.lines
+  if (lines.length === 0) return 'lines'
+  for (const l of lines) {
+    if (!onInvoice) {
+      if (l.description.trim() === '') return 'description'
+      if (!l.chargeType) return 'chargeType'
+    }
+    const q = parseAmount(l.quantity)
+    if (q === null || q <= 0 || decimalsOf(q) > 3) return 'quantity'
+    const u = parseAmount(l.unitAmount)
+    if (u === null || u <= 0 || decimalsOf(u) > 4) return 'amount'
+  }
+  return null
+}
+
+export function toCreditRequest(f: CreditForm, onInvoice: boolean) {
+  const lines = (onInvoice ? f.lines.filter((l) => l.included) : f.lines).map((l) => ({
+    invoiceLineId: onInvoice ? (l.invoiceLineId ?? undefined) : undefined,
+    description: l.description.trim() || undefined,
+    quantity: parseAmount(l.quantity) ?? undefined,
+    unitAmount: parseAmount(l.unitAmount) ?? undefined,
+    chargeType: onInvoice ? undefined : l.chargeType,
+  }))
+  return { reason: f.reason, note: f.note.trim() || undefined, externalInvoiceRef: onInvoice ? undefined : f.externalInvoiceRef.trim() || undefined, lines }
+}
+
+export type ApplyError = 'amount' | 'decimals' | 'noteBalance' | 'invoiceBalance'
+
+/** Aplicar: monto mayor que cero con hasta 2 decimales, sin pasar del saldo de la nota ni del de la factura. */
+export function applyCreditError(amount: string, noteBalance: number, invoiceBalance: number): ApplyError | null {
+  const n = parseAmount(amount)
+  if (n === null || n <= 0) return 'amount'
+  if (decimalsOf(n) > 2) return 'decimals'
+  if (n > noteBalance + 0.00001) return 'noteBalance'
+  if (n > invoiceBalance + 0.00001) return 'invoiceBalance'
+  return null
+}
+
+/** El monto por omisión de aplicar: lo menor entre el saldo de la nota y el de la factura. */
+export function defaultApplyAmount(noteBalance: number, invoiceBalance: number): number {
+  return Math.round(Math.min(noteBalance, invoiceBalance) * 100) / 100
+}
+
+/** Estimado del valor de una línea (el servidor calcula el impuesto): cantidad × monto unitario. */
+export function lineValue(l: Pick<CreditLineForm, 'quantity' | 'unitAmount'>): number {
+  const q = parseAmount(l.quantity)
+  const u = parseAmount(l.unitAmount)
+  return q === null || u === null ? 0 : Math.round(q * u * 10000) / 10000
+}
+
+export function blankCreditLine(): CreditLineForm {
+  return { invoiceLineId: null, description: '', quantity: '1', unitAmount: '', chargeType: 'FREIGHT', included: true }
+}

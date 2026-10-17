@@ -14,3 +14,16 @@
 .exp-col-name{font-weight:600;overflow-wrap:anywhere}
 @media (max-width:600px){.exp-cols li{grid-template-columns:1fr auto auto auto}.exp-cols li input{grid-column:1 / -1;order:2}}
 .exp-h{margin:14px 0 6px;font-size:14px}
+/* Notas de crédito (Lote 80) */
+.linklike{border:none;background:none;padding:0;color:var(--flow);font:inherit;cursor:pointer;text-decoration:underline}
+.credit-mode{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:8px}
+.credit-mode label,.credit-incl{display:flex;gap:8px;align-items:center}
+.credit-pick{list-style:none;margin:8px 0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto}
+.credit-pick .btn{width:100%;text-align:left}
+.credit-lines{list-style:none;margin:0 0 8px;padding:0;display:flex;flex-direction:column;gap:6px}
+.credit-lines li{display:grid;grid-template-columns:minmax(140px,2fr) minmax(70px,.6fr) minmax(90px,.8fr) minmax(110px,.8fr) auto;gap:6px;align-items:center}
+.credit-apps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.credit-apps li{display:flex;gap:12px;align-items:center}
+@media (max-width:600px){.credit-lines li{grid-template-columns:1fr 1fr}.credit-lines li > :first-child{grid-column:1 / -1}}
+.credit-lines-head{display:grid;grid-template-columns:minmax(140px,2fr) minmax(70px,.6fr) minmax(90px,.8fr) minmax(110px,.8fr) auto;gap:6px;font-size:11px;color:var(--faint);text-transform:uppercase;margin-bottom:2px}
+@media (max-width:600px){.credit-lines-head{display:none}}
