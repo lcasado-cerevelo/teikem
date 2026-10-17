@@ -20,6 +20,7 @@ dentro del API (sin programas externos).
 | `INVENTORY_SWEEP` | **Revisión diaria de inventario**: compara todo el Kárdex contra los saldos y abre descuadres si algo no cuadra (el barrido completo del Lote 14). Si el módulo de inventario está apagado no hace nada. | Todos los días 2:00 a. m. | Sí |
 | `JOB_TEST` | **Trabajo de prueba**: no hace nada; sirve para probar «Ejecutar ahora» y el historial. | Cada hora | No |
 | `BILLING_OVERDUE_SCAN` | **Marcar facturas vencidas** (Lote 75): pasa a «Vencida» las facturas emitidas cuya fecha de vencimiento ya pasó y todavía tienen saldo. | Cada hora | Sí |
+| `KPI_SNAPSHOT` | **Foto diaria de indicadores** (Lote 90): guarda las cifras del día (órdenes por etapa y dinero COD) para el historial del Pulso y los gráficos; «Ejecutar ahora» reemplaza la de hoy. | Diario 23:55 | Sí |
 | `SALES_BACKORDER_SCAN` | **Avisar backorders que ya se pueden surtir** (Lote 66): revisa las órdenes de venta con backorder y publica el aviso «Backorder que ya se puede surtir» cuando hay inventario disponible. Solo avisa; no surte solo. Si el módulo Órdenes de venta está apagado no hace nada. | Cada 10 minutos | Sí |
 
 Las horas diarias son **hora de Puerto Rico** (la de la compañía). Los trabajos nuevos de versiones futuras aparecen solos en la lista, con

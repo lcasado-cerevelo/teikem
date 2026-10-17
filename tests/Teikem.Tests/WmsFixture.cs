@@ -215,6 +215,7 @@ internal sealed class WmsFixture : IAsyncDisposable
         L(LookupDomains.EntityType, Teikem.Domain.Sales.ReturnCodes.EntityType);   // Lote 81
         foreach (var c in Teikem.Domain.Sales.ReturnReasons.All) L(Teikem.Domain.Sales.ReturnCodes.ReasonDomain, c);
         L(LookupDomains.EntityType, EntityTypes.OrderCod);   // Lote 84
+        foreach (var k in Teikem.Domain.Analytics.KpiKeys.All) L(Teikem.Domain.Analytics.KpiCodes.KeyDomain, k.Key);   // Lote 90: claves de las fotos diarias
         L(LookupDomains.StopType, StopTypes.Delivery);   // Lote 89: el Radar agrupa por el pueblo de la parada de entrega
         L(LookupDomains.StopType, StopTypes.Pickup);
         L(LookupDomains.EntityType, Teikem.Domain.Cod.CodCodes.CollectionEntityType);

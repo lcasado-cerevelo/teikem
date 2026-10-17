@@ -8720,3 +8720,15 @@ El aviso suma **todo lo cobrado sin cuadrar**; en COD → Órdenes con COD (filt
 **¿Por qué los avisos nuevos salen arriba y no por antigüedad?**
 Son resúmenes («83 órdenes…», «$2,230…»): van antes que las filas por registro para que no los tape una lista larga de rentas o descuadres.
 
+
+
+## Lote 90 — Fotos diarias de indicadores
+
+**Las barritas de los ríos del Pulso salen vacías.**
+Vienen del historial que guarda el trabajo `KPI_SNAPSHOT` a las 23:55. El primer día no hay historial; en Sistema → Trabajos programados use «Ejecutar ahora» para guardar la foto de hoy.
+
+**El trabajo dice «Ningún módulo con indicadores está encendido; no se guardó nada.»**
+Solo se guardan los indicadores de los módulos Órdenes LTL (`LTL_GROUND`) y COD; encienda alguno en la compañía.
+
+**Corrí el trabajo dos veces, ¿se duplican las cifras?**
+No: hay una fila por día e indicador y la segunda corrida reemplaza la de hoy.

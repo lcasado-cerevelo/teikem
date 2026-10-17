@@ -78,10 +78,10 @@ function River({ kind, title, icon }: { kind: RiverKind; title: string; icon: Re
                       <ChartVisual
                         chartType="BAR"
                         size="mini"
-                        isMoney={false}
+                        isMoney={tone === 'money'}
                         name={label}
-                        points={spark.map((p) => ({ label: p.date, value: p.value, color: 'var(--flow)' }))}
-                        unit={t('analytics.pulse.rivers.orders.unit')}
+                        points={spark.map((p) => ({ label: p.date, value: p.value, color: tone === 'money' ? 'var(--money)' : 'var(--flow)' }))}
+                        unit={tone === 'money' ? '' : t('analytics.pulse.rivers.orders.unit')}
                         tooltipLabel={(date, k) => (k === spark.length - 1 ? t('analytics.pulse.day.tooltipToday', { date: longDay(date, lang) }) : longDay(date, lang))}
                       />
                     </div>

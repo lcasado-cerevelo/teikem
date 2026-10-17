@@ -3566,3 +3566,27 @@ JOIN dbo.Permission p ON (p.Code = 'pulse.orders' AND r.Name IN ('TenantAdmin', 
                       OR (p.Code = 'pulse.cod' AND r.Name IN ('TenantAdmin', 'Billing', 'ReadOnly'))
 WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = p.PermissionId);
 GO
+
+-- =====================================================================================================================
+-- 2026-10-17 (aa) Lote 90 (P12) — fotos diarias de indicadores
+-- KpiDailySnapshot ya existía en el DDL original; aquí se siembran las claves de indicador (dominio KpiKey) que guarda el trabajo KPI_SNAPSHOT (órdenes por etapa y dinero COD). El trabajo mismo lo crea el ejecutor de
+-- trabajos programados con su horario de fábrica (23:55). Solo AGREGA. Idempotente.
+-- =====================================================================================================================
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'ORDERS_CREATED',        N'{"es":"Órdenes nuevas del día","en":"New orders of the day"}',               10),
+    (N'ORDERS_IN_WAREHOUSE',   N'{"es":"Órdenes en almacén","en":"Orders in warehouse"}',                     11),
+    (N'ORDERS_UNASSIGNED',     N'{"es":"Órdenes sin chofer","en":"Orders without a driver"}',                 12),
+    (N'ORDERS_ON_ROUTE',       N'{"es":"Órdenes en ruta","en":"Orders on route"}',                            13),
+    (N'ORDERS_DELIVERED',      N'{"es":"Órdenes entregadas del día","en":"Orders delivered in the day"}',     14),
+    (N'ORDERS_OPEN',           N'{"es":"Órdenes abiertas","en":"Open orders"}',                               15),
+    (N'COD_TO_COLLECT',        N'{"es":"COD por cobrar","en":"COD to collect"}',                              16),
+    (N'COD_COLLECTED',         N'{"es":"COD cobrado sin cuadrar","en":"COD collected, not reconciled"}',      17),
+    (N'COD_RECONCILED',        N'{"es":"COD cuadrado sin remesa","en":"COD reconciled, no remittance"}',      18),
+    (N'COD_REMITTANCE_READY',  N'{"es":"Remesas listas (neto)","en":"Remittances ready (net)"}',              19)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'KpiKey' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'KpiKey', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO

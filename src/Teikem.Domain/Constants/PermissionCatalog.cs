@@ -386,6 +386,8 @@ public static class PermissionCatalog
         // Lote 67 (P4 S4): análisis de órdenes de venta con sales.view
         [Sales.SalesCodes.EntityType] = SalesView,
         [EntityTypes.SalesOrderLine] = SalesView,
+        // Lote 90 (P12): el historial diario de indicadores se lee con analytics.view
+        [Analytics.KpiCodes.DataSource] = AnalyticsView,
     };
 
     /// <summary>

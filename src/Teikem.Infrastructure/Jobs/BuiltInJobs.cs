@@ -136,3 +136,28 @@ public sealed class BillingOverdueScanJob : IScheduledJob
         return n == 0 ? "Ninguna factura nueva por vencer." : $"{n} factura(s) marcadas como vencidas.";
     }
 }
+
+/// <summary>
+/// Lote 90 (P12) — la foto diaria de los indicadores: guarda en KpiDailySnapshot las cifras de hoy (órdenes y COD) para que los ríos del Pulso y los gráficos tengan historial. Cada noche a las 23:55 (hora local) para
+/// quedarse con el cierre del día; «Ejecutar ahora» la repite y reemplaza la de hoy. Solo guarda los indicadores de los módulos encendidos.
+/// </summary>
+public sealed class KpiSnapshotJob : IScheduledJob
+{
+    public string Key => JobKeys.KpiSnapshot;
+    public string NameEs => "Foto diaria de indicadores";
+    public string NameEn => "Daily indicator snapshot";
+    public string DescriptionEs => "Guarda las cifras del día (órdenes por etapa y dinero COD) para ver su historial en el Pulso y en los gráficos.";
+    public string DescriptionEn => "Saves the day's figures (orders by stage and COD money) so their history shows on the Pulse and in the charts.";
+    public string DefaultKind => JobScheduleKinds.Daily;
+    public int? DefaultIntervalSeconds => null;
+    public TimeSpan? DefaultDailyAt => new(23, 55, 0);
+    public bool DefaultEnabled => true;
+    public TimeSpan MaxRuntime => TimeSpan.FromMinutes(5);
+
+    public async Task<string?> RunAsync(JobRunContext context, CancellationToken ct)
+    {
+        var snapshots = context.Services.GetRequiredService<KpiSnapshotService>();
+        var (day, saved) = await snapshots.CaptureAsync(ct);
+        return saved == 0 ? "Ningún módulo con indicadores está encendido; no se guardó nada." : $"Foto del {day:yyyy-MM-dd}: {saved} cifras guardadas.";
+    }
+}

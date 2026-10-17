@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Teikem.Domain.Analytics;
 using Teikem.Domain.Cod;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Entities;
@@ -17,7 +18,7 @@ namespace Teikem.Infrastructure.Services;
 ///   Cuadrado (cuadrado y sin remesa, con cuántos clientes) y Remesa lista (remesas abiertas, cuadradas o aprobadas: el neto por remitir).
 /// Los datos siguen el filtro de la compañía; los permisos y el módulo los pide el controlador. Las sumas de dinero suponen una sola moneda (la de la compañía).
 /// </summary>
-public sealed class PulseRiverService(TeikemDbContext db, ITenantClock clock, ILookupCache lookups)
+public sealed class PulseRiverService(TeikemDbContext db, ITenantClock clock, ILookupCache lookups, KpiHistory? history = null)
 {
     public const int SparkDays = 7;
 
@@ -49,6 +50,19 @@ public sealed class PulseRiverService(TeikemDbContext db, ITenantClock clock, IL
         var withDriver = db.Set<Teikem.Domain.Trips.TripOrder>().AsNoTracking().Where(to => to.IsCurrent && db.Set<Teikem.Domain.Trips.Trip>().Any(t => t.TripId == to.TripId && t.IsActive && t.DriverId != null && tripIds.Contains(t.StatusCodeId)))
             .Select(to => to.TransportOrderId);
         return db.TransportOrders.AsNoTracking().Where(o => o.IsActive && (o.StatusCodeId == inboundId || o.StatusCodeId == plannedId) && !withDriver.Contains(o.TransportOrderId));
+    }
+
+    /// <summary>
+    /// Las barritas de 7 días de un nodo con el historial de las fotos diarias: los 6 días anteriores salen de las fotos (0 donde no hubo) y el último es el valor de AHORA. Sin servicio de historial (pruebas),
+    /// o sin ninguna foto todavía, no hay barritas (null) para no dibujar siete ceros.
+    /// </summary>
+    private async Task<IReadOnlyList<decimal>?> SparkFromHistoryAsync(string key, decimal today, CancellationToken ct)
+    {
+        if (history is null) return null;
+        var series = (await history.SeriesAsync(key, SparkDays, ct)).ToArray();
+        if (series.Take(SparkDays - 1).All(v => v == 0m) && today == 0m) return null;
+        series[^1] = today;
+        return series;
     }
 
     // ================================================================ órdenes
@@ -91,9 +105,9 @@ public sealed class PulseRiverService(TeikemDbContext db, ITenantClock clock, IL
         return new PulseRiverDto("ORDERS", today, new[]
         {
             new PulseRiverNodeDto("ENTRY", entryToday, "count", new[] { Count("waiting", waiting) }, Spark(created, today)),
-            new PulseRiverNodeDto("IN_WAREHOUSE", inWarehouse, "count", Array.Empty<PulseRiverValueDto>(), null),
-            new PulseRiverNodeDto("TO_DISPATCH", toDispatch, "count", Array.Empty<PulseRiverValueDto>(), null),
-            new PulseRiverNodeDto("ON_ROUTE", onRoute, "count", new[] { Count("drivers", drivers) }, null),
+            new PulseRiverNodeDto("IN_WAREHOUSE", inWarehouse, "count", Array.Empty<PulseRiverValueDto>(), await SparkFromHistoryAsync(KpiKeys.OrdersInWarehouse, inWarehouse, ct)),
+            new PulseRiverNodeDto("TO_DISPATCH", toDispatch, "count", Array.Empty<PulseRiverValueDto>(), await SparkFromHistoryAsync(KpiKeys.OrdersUnassigned, toDispatch, ct)),
+            new PulseRiverNodeDto("ON_ROUTE", onRoute, "count", new[] { Count("drivers", drivers) }, await SparkFromHistoryAsync(KpiKeys.OrdersOnRoute, onRoute, ct)),
             new PulseRiverNodeDto("DELIVERED", deliveredToday, "count", Array.Empty<PulseRiverValueDto>(), Spark(delivered.GroupBy(d => d.EntityId).Select(g => g.Min(x => x.ChangedAtUtc)), today)),
         });
     }
@@ -144,10 +158,10 @@ public sealed class PulseRiverService(TeikemDbContext db, ITenantClock clock, IL
 
         return new PulseRiverDto("COD", today, new[]
         {
-            new PulseRiverNodeDto("TO_COLLECT", toCollect.Count, "count", new[] { Money("amount", toCollectAmount) }, null),
-            new PulseRiverNodeDto("COLLECTED", collectedRows.Sum(c => c.AmountCollected), "money", new[] { Money("cash", cash), Money("checks", checks), Money("other", other) }, null),
-            new PulseRiverNodeDto("RECONCILED", reconciled.Sum(r => r.AmountCollected), "money", new[] { Count("clients", reconciledClients) }, null),
-            new PulseRiverNodeDto("REMITTANCE", batches.Sum(b => b.Net), "money", new[] { Count("remittances", batches.Count), Count("clients", batches.Select(b => b.ClientId).Distinct().Count()) }, null),
+            new PulseRiverNodeDto("TO_COLLECT", toCollect.Count, "count", new[] { Money("amount", toCollectAmount) }, await SparkFromHistoryAsync(KpiKeys.CodToCollect, toCollectAmount, ct)),
+            new PulseRiverNodeDto("COLLECTED", collectedRows.Sum(c => c.AmountCollected), "money", new[] { Money("cash", cash), Money("checks", checks), Money("other", other) }, await SparkFromHistoryAsync(KpiKeys.CodCollected, collectedRows.Sum(c => c.AmountCollected), ct)),
+            new PulseRiverNodeDto("RECONCILED", reconciled.Sum(r => r.AmountCollected), "money", new[] { Count("clients", reconciledClients) }, await SparkFromHistoryAsync(KpiKeys.CodReconciled, reconciled.Sum(r => r.AmountCollected), ct)),
+            new PulseRiverNodeDto("REMITTANCE", batches.Sum(b => b.Net), "money", new[] { Count("remittances", batches.Count), Count("clients", batches.Select(b => b.ClientId).Distinct().Count()) }, await SparkFromHistoryAsync(KpiKeys.CodRemittanceReady, batches.Sum(b => b.Net), ct)),
         });
     }
 }

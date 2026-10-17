@@ -536,7 +536,7 @@ Debajo de «Necesita tu atención» el Pulso trae las **dos corrientes** de la m
 
 `pulse.orders` lo traen Despachador, Facturación y Solo lectura; `pulse.cod`, Facturación y Solo lectura; el administrador de la compañía, los dos. A los roles ya creados se les propagan solos (sección 2026-10-17 (z) de `update.sql`).
 
-Son **fotos de ahora** (todavía no hay tabla de instantáneas diarias): cada tarjeta cuenta lo que hay en ese punto. Se vuelven a pedir cada minuto. Endpoints: `GET /api/v1/pulse/rivers/orders` (`orders.view`, módulo `LTL_GROUND`) y `GET /api/v1/pulse/rivers/cod` (`cod.view`, módulo `COD`).
+Son **fotos de ahora** (las barritas de 7 días salen del historial diario, ver §8): cada tarjeta cuenta lo que hay en ese punto. Se vuelven a pedir cada minuto. Endpoints: `GET /api/v1/pulse/rivers/orders` (`orders.view`, módulo `LTL_GROUND`) y `GET /api/v1/pulse/rivers/cod` (`cod.view`, módulo `COD`).
 
 ### Paquetes en la calle
 
@@ -592,6 +592,35 @@ El aviso de **SLA en riesgo** de la maqueta espera al POD (P7): sin la hora real
 - **El Radar no muestra mi orden:** solo cuenta lo abierto; un borrador (todavía no confirmada) o una entregada no sale. Búsquela en Órdenes.
 - **Un pueblo sale dos veces:** el pueblo es el que se guardó en la parada de entrega de cada orden; «Ponce» y «PONCE» se agrupan juntos en SQL Server, pero «Ponce Playa» es otro.
 - **No veo el aviso de órdenes sin chofer:** hace falta `trips.dispatch`; y se muestra solo si hay órdenes en almacén o planificadas sin ruta con chofer.
+
+## 8. Fotos diarias de indicadores (Lote 90, P12)
+
+Cada noche el trabajo programado **`KPI_SNAPSHOT`** («Foto diaria de indicadores», a las **23:55** hora de la compañía, activo por omisión) guarda en la tabla `KpiDailySnapshot` las cifras del día, una fila por día e indicador. Así los ríos del Pulso y los gráficos tienen **historial**.
+
+| Clave (`KpiKey`) | Qué guarda | Tipo | Módulo |
+|---|---|---|---|
+| `ORDERS_CREATED` | órdenes nuevas del día | cantidad | `LTL_GROUND` |
+| `ORDERS_IN_WAREHOUSE` | órdenes en almacén | cantidad | `LTL_GROUND` |
+| `ORDERS_UNASSIGNED` | órdenes sin chofer | cantidad | `LTL_GROUND` |
+| `ORDERS_ON_ROUTE` | órdenes en ruta | cantidad | `LTL_GROUND` |
+| `ORDERS_DELIVERED` | órdenes entregadas del día | cantidad | `LTL_GROUND` |
+| `ORDERS_OPEN` | órdenes abiertas (Radar) | cantidad | `LTL_GROUND` |
+| `COD_TO_COLLECT` | COD por cobrar (monto) | dinero | `COD` |
+| `COD_COLLECTED` | COD cobrado sin cuadrar | dinero | `COD` |
+| `COD_RECONCILED` | COD cuadrado sin remesa | dinero | `COD` |
+| `COD_REMITTANCE_READY` | neto de remesas listas | dinero | `COD` |
+
+- **Solo se guardan los indicadores de los módulos encendidos.** Con ninguno encendido el trabajo avisa «Ningún módulo con indicadores está encendido; no se guardó nada.»
+- **Una fila por día e indicador:** «Ejecutar ahora» (Sistema → Trabajos programados) repite la foto y **reemplaza** la de hoy; se puede correr cuantas veces haga falta.
+- **Barritas de los ríos:** En almacén, Por despachar y En ruta (órdenes) y los cuatro nodos del Dinero COD (en naranja) dibujan los **6 días anteriores desde las fotos** y el último con el valor de ahora. Un día sin foto cuenta 0. Si no hay ninguna foto y hoy es 0, no se dibuja nada.
+- **Fuente de datos `KPI_DAILY`** («Historial diario de indicadores»): campos Día, Clave, Indicador, Tipo y Valor; se usa en indicadores y gráficos con rango de fechas. Se lee con `analytics.view`.
+- Sin permisos nuevos ni endpoints nuevos: los ríos devuelven las barritas en el campo `spark` que ya tenían.
+
+### Casos frecuentes
+
+- **Las barritas salen vacías:** el trabajo corre a las 23:55; el primer día todavía no hay historial. Para probar, «Ejecutar ahora».
+- **Falta un día en la gráfica:** el servidor estaba apagado a las 23:55 o el trabajo está deshabilitado; ese día cuenta 0.
+- **Cambié de módulos:** los indicadores del módulo apagado dejan de guardarse; lo ya guardado se conserva.
 
 ## Preguntas frecuentes de este capítulo
 

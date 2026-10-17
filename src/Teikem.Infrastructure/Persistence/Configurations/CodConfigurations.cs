@@ -80,3 +80,16 @@ public sealed class CodRemittanceLineConfiguration : IEntityTypeConfiguration<Co
         b.Property(l => l.NetAmount).HasColumnType("decimal(18,4)").HasComputedColumnSql("[AmountCollected] - [CommissionAmount]", stored: true);
     }
 }
+
+// Lote 90 (P12) — fotos diarias de indicadores. La tabla y su única (tenant, día, indicador, dimensión) ya existen en el DDL original.
+public sealed class KpiSnapshotConfiguration : IEntityTypeConfiguration<Teikem.Domain.Analytics.KpiSnapshot>
+{
+    public void Configure(EntityTypeBuilder<Teikem.Domain.Analytics.KpiSnapshot> b)
+    {
+        b.ToTable("KpiDailySnapshot");
+        b.HasKey(k => k.KpiDailySnapshotId);
+        b.Property(k => k.SnapshotDate).HasColumnType("date");
+        b.Property(k => k.NumericValue).HasColumnType("decimal(18,4)");
+        b.HasIndex(k => new { k.TenantId, k.SnapshotDate, k.KpiKeyLookupId, k.DimEntityLookupId, k.DimId }).IsUnique().HasDatabaseName("UQ_KpiSnapshot");
+    }
+}

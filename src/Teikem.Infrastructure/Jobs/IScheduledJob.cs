@@ -34,4 +34,6 @@ public static class JobKeys
     public const string SalesBackorderScan = "SALES_BACKORDER_SCAN";
     /// <summary>Lote 75: pasa a Vencida lo facturado cuyo plazo ya pasó.</summary>
     public const string BillingOverdueScan = "BILLING_OVERDUE_SCAN";
+    /// <summary>Lote 90: guarda la foto diaria de los indicadores (ríos del Pulso y Radar).</summary>
+    public const string KpiSnapshot = "KPI_SNAPSHOT";
 }
