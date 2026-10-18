@@ -13,6 +13,7 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
+import { openClientPanels } from './staffHelpers'
 import type { components } from '../src/kernel/api/schema'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
@@ -130,13 +131,14 @@ test.describe('Clientes y contratos (F-A1 + F-A2)', () => {
     await expect(dialog).toBeHidden()
     const detail = panel(page, name)
     await expect(detail).toBeVisible()
+    await openClientPanels(page)
     await expect(page).toHaveURL(/client=/)
     const found = await ok<{ publicId: string; name: string }[]>(request.get(`${API_URL}/api/v1/clients?search=${encodeURIComponent(name)}`, { headers }), 'buscar')
     expect(found).toHaveLength(1)
     const clientId = found[0].publicId
 
     // ---- Perfil ----
-    const profile = panel(page, 'Perfil del cliente')
+    const profile = panel(page, 'Perfil fiscal')
     await profile.getByLabel('Razón social').fill(`Razón ${suffix} LLC`)
     await profile.getByRole('button', { name: 'Guardar' }).click()
     await expect(toast(page, 'Cambios guardados.')).toBeVisible()
@@ -183,7 +185,7 @@ test.describe('Clientes y contratos (F-A1 + F-A2)', () => {
     await expect(detail.getByText('Este cliente está dado de baja')).toBeHidden()
 
     // ---- Buscador de la lista ----
-    await page.getByRole('searchbox').fill(suffix)
+    await page.getByRole('searchbox', { name: 'Buscar por código, nombre o razón social' }).fill(suffix)
     await expect(page.getByRole('list', { name: 'Clientes' }).getByText(name)).toBeVisible()
     await expectNoHorizontalScroll(page)
   })
@@ -205,6 +207,7 @@ test.describe('Clientes y contratos (F-A1 + F-A2)', () => {
 
     await login(page)
     await page.goto(`/catalog/clients?client=${clientId}`)
+    await openClientPanels(page)
     const section = panel(page, 'Contratos')
     await expect(section).toBeVisible()
     await expect(section.getByRole('tab')).toHaveText(['Contrato', 'Tarifas', 'SLA', 'Servicios especiales', 'Cotizador'])

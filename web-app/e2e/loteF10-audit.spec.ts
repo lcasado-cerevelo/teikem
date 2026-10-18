@@ -117,23 +117,24 @@ test('Seguridad y auditoría: revocar una sesión, filtrar y exportar la activid
   await expect(page.getByText('Sesión revocada')).toBeVisible()
   await expect(table.getByRole('row').filter({ hasText: device })).toHaveCount(0)
 
-  // política: 30 → 29 días, comprobado por API, y restaurada desde la pantalla
-  const days = page.getByLabel('Duración de la sesión (días)')
-  await expect(days).toHaveValue(String(originalSessionDays))
-  const changed = originalSessionDays === 29 ? 28 : 29
-  await days.fill(String(changed))
+  // política (desde el Lote 100 la duración de la sesión se escribe en HORAS): 720 h → 719 h, comprobado por API, y restaurada desde la pantalla
+  const hours = page.getByLabel('Duración de la sesión (horas)', { exact: true })
+  const originalHours = (await settings(request, token)).sessionMinutes! / 60
+  await expect(hours).toHaveValue(String(originalHours))
+  const changed = originalHours === 719 ? 718 : 719
+  await hours.fill(String(changed))
   await page.getByRole('button', { name: 'Guardar política' }).click()
   await expect(page.getByText('Política guardada')).toBeVisible()
-  expect((await settings(request, token)).sessionDays).toBe(changed)
+  expect((await settings(request, token)).sessionMinutes).toBe(changed * 60)
   // valor fuera de rango: el mensaje junto al campo y nada se manda
-  await days.fill('0')
+  await hours.fill('0')
   await page.getByRole('button', { name: 'Guardar política' }).click()
-  await expect(page.getByText('Entre 1 y 365 días.')).toBeVisible()
-  expect((await settings(request, token)).sessionDays).toBe(changed)
-  await days.fill(String(originalSessionDays))
+  await expect(page.getByText('Entre 0.02 horas (1 minuto) y 8760 horas (365 días).')).toBeVisible()
+  expect((await settings(request, token)).sessionMinutes).toBe(changed * 60)
+  await hours.fill(String(originalHours))
   await page.getByRole('button', { name: 'Guardar política' }).click()
   await expect(page.getByText('Política guardada').first()).toBeVisible()
-  await expect.poll(async () => (await settings(request, token)).sessionDays).toBe(originalSessionDays)
+  await expect.poll(async () => (await settings(request, token)).sessionMinutes).toBe(originalHours * 60)
 
   // Actividad: Seguridad + buscador → el TOKEN_REVOKED de la revocación; Exportar CSV con lo filtrado
   await page.getByRole('tab', { name: 'Actividad' }).click()
@@ -171,7 +172,7 @@ test('móvil 360 px: Actividad y Sesiones y MFA sin scroll horizontal', async ({
   await shot(page, 'actividad-movil')
   await page.getByRole('tab', { name: 'Sesiones y MFA' }).click()
   await expect(page).toHaveURL(/tab=sessions/)
-  await expect(page.getByLabel('Duración de la sesión (días)')).toBeVisible()
+  await expect(page.getByLabel('Duración de la sesión (horas)', { exact: true })).toBeVisible()
   await expectNoHorizontalScroll(page)
   await shot(page, 'sesiones-movil')
 })

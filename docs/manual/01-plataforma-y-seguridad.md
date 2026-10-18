@@ -1145,3 +1145,6 @@ Validaciones:
 | Módulo pedido desconocido | `Módulo desconocido: <key>.` | 400 |
 | Región o formato inválido | los mensajes de la sección 11.1 (p. ej. `Región desconocida: 'MX'. Use PR (Puerto Rico) o US (Estados Unidos).`) | 400 |
 | Contraseña de admin inválida (Identity) | mensaje de Identity | 400 |
+
+## Ajuste de sesiones: `Auth:Sessions:SingleSessionPerBrowser`
+Por omisión (`true`) al iniciar sesión se cierran las sesiones anteriores de la misma persona, con el mismo navegador y la misma IP. Solo en **pruebas** se pone en `false` (variable de entorno `Auth__Sessions__SingleSessionPerBrowser=false`, como ya hace el CI): los recorridos de Playwright entran en paralelo con el mismo administrador desde el mismo navegador y, con la regla activa, unos cerraban la sesión de otros («Sesión inválida.» al reautenticar). **Nunca se apaga en producción.**

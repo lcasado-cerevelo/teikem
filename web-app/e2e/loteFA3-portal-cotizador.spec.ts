@@ -14,6 +14,7 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
+import { openClientPanels } from './staffHelpers'
 import type { components } from '../src/kernel/api/schema'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
@@ -143,6 +144,7 @@ test.describe('Usuarios de portal y cotizador del cliente (F-A3)', () => {
 
     await login(page)
     await page.goto(`/catalog/clients?client=${clientId}`)
+    await openClientPanels(page)
     const portal = panel(page, 'Usuarios de portal')
     await expect(portal).toBeVisible()
     await expect(portal.getByText('Este cliente todavía no tiene usuarios de portal.')).toBeVisible()
@@ -204,6 +206,7 @@ test.describe('Usuarios de portal y cotizador del cliente (F-A3)', () => {
 
     // Reenviar a quien ya aceptó: ya no hay botón; si otra sesión lo hizo, el servidor responde 409 (la ficha abierta aún lo ofrece)
     await page.reload()
+    await openClientPanels(page)
     await expect(row(ana)).toContainText('Activo')
     await expect(row(ana).getByRole('button', { name: 'Reenviar invitación' })).toHaveCount(0)
 
@@ -252,6 +255,7 @@ test.describe('Usuarios de portal y cotizador del cliente (F-A3)', () => {
     expect((await request.post(`${API_URL}/api/v1/clients/${clientId}/portal-users/${idOf(carla)}/suspend`, { headers })).status()).toBe(204)
     expect((await request.post(`${API_URL}/api/v1/clients/${clientId}/portal-users/${idOf(dario)}/remove`, { headers })).status()).toBe(204)
     await page.reload()
+    await openClientPanels(page)
     await expect(row(beto)).toContainText('Activo')
     await expect(row(carla)).toContainText('Suspendido')
     await expect(row(dario)).toContainText('Inhabilitado')
@@ -274,6 +278,7 @@ test.describe('Usuarios de portal y cotizador del cliente (F-A3)', () => {
     await dialog.getByRole('button', { name: 'Cancelar' }).click()
     // al recargar la ficha, la pantalla ya lo sabe: aviso, sin invitar y sin reenviar; lo demás se sigue consultando
     await page.reload()
+    await openClientPanels(page)
     await expect(portal.getByText('El cliente está dado de baja; solo se consulta su historial.')).toBeVisible()
     await expect(portal.getByRole('button', { name: 'Invitar usuario' })).toBeDisabled()
     await expect(row(ana).getByRole('button', { name: 'Reenviar invitación' })).toHaveCount(0)
@@ -324,6 +329,7 @@ test.describe('Usuarios de portal y cotizador del cliente (F-A3)', () => {
 
     await login(page)
     await page.goto(`/catalog/clients?client=${clientId}`)
+    await openClientPanels(page)
     const section = panel(page, 'Contratos')
     await expect(section.getByRole('tab')).toHaveText(['Contrato', 'Tarifas', 'SLA', 'Servicios especiales', 'Cotizador'])
     await section.getByRole('tab', { name: 'Cotizador' }).click()
@@ -387,6 +393,7 @@ test.describe('Usuarios de portal y cotizador del cliente (F-A3)', () => {
 
     // ----- cliente con contrato en borrador y sin tarifas -----
     await page.goto(`/catalog/clients?client=${bare.publicId}`)
+    await openClientPanels(page)
     const section2 = panel(page, 'Contratos')
     await section2.getByRole('tab', { name: 'Cotizador' }).click()
     await section2.getByLabel(/^Servicio/).selectOption('STANDARD')

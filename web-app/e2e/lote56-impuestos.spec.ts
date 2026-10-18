@@ -13,6 +13,7 @@ import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
 import type { components } from '../src/kernel/api/schema'
+import { enableModule } from './staffHelpers'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
 type ClientDetailDto = components['schemas']['ClientDetailDto']
@@ -64,6 +65,7 @@ async function login(page: Page) {
 }
 
 test('Impuestos: tasas con vigencia, reglas, categoría de producto, exenciones y simulador', async ({ page, request, isMobile }) => {
+  await enableModule(request, 'TAX')   // este recorrido necesita el módulo de impuestos (los de facturación lo suponen apagado: corre después de ellos)
   const suffix = `${isMobile ? 'M' : 'D'}${LETTERS}`
   const code = `IVU${suffix}`
   const noHScroll = (p: Page) => p.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)

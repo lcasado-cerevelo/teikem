@@ -19,7 +19,7 @@ const API_URL = process.env.API_URL ?? 'http://localhost:5000'
 const ADMIN = { email: process.env.TEIKEM_ADMIN_EMAIL ?? 'teikem+admin@cerevelo.com', password: process.env.TEIKEM_ADMIN_PASSWORD ?? 'Teikem_Admin_2026!' }
 const STAMP = Date.now()
 const SKU = `P15-${STAMP}`
-const CARDS = ['received', 'outbound', 'countsVariance', 'belowMin'] as const
+const CARDS = ['received', 'outbound', 'countsVariance', 'moves', 'belowMin'] as const
 
 test.use({ locale: 'es-PR' })
 
@@ -168,7 +168,7 @@ test.describe('Lote 15 — escritorio', () => {
     await seedPulseData(request)
   })
 
-  test('1. franja "Almacén hoy": 4 tarjetas, 7 barritas en las tres primeras y ninguna en "Productos bajo mínimo"', async ({ page }) => {
+  test('1. franja "Almacén hoy": 5 tarjetas, 7 barritas en las tres primeras, 7 barras apiladas en "Transferencias y ajustes" y ninguna en "Productos bajo mínimo"', async ({ page }) => {
     await login(page)
     await waitPulse(page)
     const band = page.locator('.wh-band')
@@ -176,17 +176,20 @@ test.describe('Lote 15 — escritorio', () => {
     await expect(band.getByRole('heading', { level: 2 })).toHaveText(/^Almacén hoy$/)
 
     const cards = band.locator('[data-card]')
-    await expect(cards).toHaveCount(4)
+    await expect(cards).toHaveCount(5)
     expect(await cards.evaluateAll((els) => els.map((e) => e.getAttribute('data-card')))).toEqual([...CARDS])
     await expect(card(page, 'received')).toContainText('Unidades recibidas')
     await expect(card(page, 'outbound')).toContainText('Unidades de salida')
     await expect(card(page, 'countsVariance')).toContainText('Conteos con diferencia')
+    await expect(card(page, 'moves')).toContainText('Transferencias y ajustes')
     await expect(card(page, 'belowMin')).toContainText('Productos bajo mínimo')
 
     for (const key of ['received', 'outbound', 'countsVariance'] as const) {
       await expect(card(page, key).locator('.recharts-bar-rectangle')).toHaveCount(7)
       await expect(card(page, key)).toContainText('7 días:')
     }
+    await expect(card(page, 'moves').locator('rect[fill="var(--violet)"]')).toHaveCount(7)   // una barra apilada por día (transferencias abajo, ajustes arriba)
+    await expect(card(page, 'moves').locator('rect[fill="var(--flow)"]')).toHaveCount(7)
     await expect(card(page, 'belowMin').locator('.recharts-bar-rectangle')).toHaveCount(0)
     await expect(card(page, 'belowMin').locator('svg.recharts-surface')).toHaveCount(0)
     await expect(card(page, 'belowMin')).toContainText('en este momento')
@@ -439,16 +442,19 @@ test.describe('Lote 15 — escritorio', () => {
 test.describe('Lote 15 — móvil (360 px)', () => {
   test.skip(({ isMobile }) => !isMobile, 'recorrido móvil (360 px)')
 
-  test('9. franja compacta 2×2, el encabezado queda fijo (la franja no) y sin scroll horizontal', async ({ page }) => {
+  test('9. franja compacta (2×2 y una más de lado a lado), el encabezado queda fijo (la franja no) y sin scroll horizontal', async ({ page }) => {
     await login(page)
     expect(page.viewportSize()?.width).toBe(360)
     await waitPulse(page)
     const band = page.locator('.wh-band')
     const boxes = await page.locator('.wh-band [data-card]').evaluateAll((els) => els.map((e) => e.getBoundingClientRect()).map((r) => ({ x: Math.round(r.left), y: Math.round(r.top), w: r.width })))
-    expect(boxes).toHaveLength(4)
-    // 2×2: dos columnas y dos filas
-    expect(new Set(boxes.map((b) => b.x)).size).toBe(2)
-    expect(new Set(boxes.map((b) => b.y)).size).toBe(2)
+    expect(boxes).toHaveLength(5)
+    // las cuatro primeras 2×2 (dos columnas y dos filas) y la quinta («Productos bajo mínimo») sola, de lado a lado, en una tercera fila
+    const grid = boxes.slice(0, 4)
+    expect(new Set(grid.map((b) => b.x)).size).toBe(2)
+    expect(new Set(grid.map((b) => b.y)).size).toBe(2)
+    expect(boxes[4].w).toBeGreaterThan(grid[0].w * 1.8)
+    expect(boxes[4].y).toBeGreaterThan(Math.max(...grid.map((b) => b.y)))
     // compacta: sin el texto pequeño de los 7 días
     await expect(card(page, 'received').locator('.sub')).toBeHidden()
     await expectNoHorizontalScroll(page)

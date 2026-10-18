@@ -33,6 +33,18 @@ test.use({ locale: 'es-PR' })
 const IMG_DIR = fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url))
 
 /** Captura de la pantalla actual para el manual, cuando ya no hay peticiones pendientes. `mask` tapa datos variables. */
+/** Filtro «Producto» de las pantallas de inventario (selector múltiple con casillas): se abre, se busca por SKU y se marca; luego se cierra. */
+async function pickFilterProduct(page: Page, sku: string) {
+  await page.getByRole('button', { name: 'Producto', exact: true }).first().click()
+  await page.getByRole('searchbox', { name: 'Buscar…' }).fill(sku)
+  await page.getByRole('option', { name: new RegExp(`^${sku} · `) }).click()
+  await page.keyboard.press('Escape')
+}
+/** El filtro «Producto» ya trae ese SKU elegido (el botón lo dice). */
+async function expectFilterProduct(page: Page, sku: string) {
+  await expect(page.getByRole('button', { name: 'Producto', exact: true }).first()).toContainText(sku.length > 30 ? sku.slice(0, 20) : sku)
+}
+
 async function shot(page: Page, name: string, opts: { mask?: Locator[] } = {}) {
   await page.waitForLoadState('networkidle')
   mkdirSync(IMG_DIR, { recursive: true })
@@ -286,7 +298,7 @@ test.describe('Lote F7A — escritorio', () => {
     await expect(page).toHaveURL(/\/warehouse\/kardex\?product=/)
     await expect(page.getByRole('tab', { name: 'Kárdex' })).toHaveAttribute('aria-selected', 'true')
     // el filtro Producto llega de la URL con su SKU resuelto
-    await expect(page.getByRole('button', { name: `Quitar ${SKU}` })).toBeVisible()
+    await expectFilterProduct(page, SKU)
     const rows = page.getByRole('row').filter({ hasText: SKU })
     await expect(rows).toHaveCount(1)
     await expect(rows.getByText('+3')).toBeVisible()
@@ -417,8 +429,8 @@ test.describe('Lote F7A — escritorio', () => {
     const activityRes = await activityResponse
     expect(activityRes.status()).toBe(200)
     const activityBody = (await activityRes.json()) as { visibleModules?: string[] | null }
-    expect(activityBody.visibleModules).toEqual([])
-    await expect(pulseSection(page, 'Actividad reciente')).toHaveCount(0)
+    expect(activityBody.visibleModules).toEqual(['OPERATIONS'])   // solo lo de Operación (sin inventory.view no hay Almacén)
+    await expect(pulseSection(page, 'Actividad reciente')).toHaveCount(1)   // el panel se pinta con lo de Operación; de Almacén no trae nada
     await shot(page, 'pulso-sin-almacen')
   })
 })

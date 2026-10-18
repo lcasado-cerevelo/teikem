@@ -26,9 +26,13 @@ export default defineConfig({
     env: { VITE_API_URL: process.env.VITE_API_URL ?? process.env.API_URL ?? 'http://localhost:5000' },
   },
   projects: [
-    { name: 'escritorio', testIgnore: /(f8a|lote16|loteF9-region|loteF11-marca|loteF12-conteo|loteF13-conteo-web|loteF14-codigos|productosPorPosicion|loteF16|loteF17|loteF18|loteF19-despacho-manual|loteFE2a-despacho)\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
+    { name: 'escritorio', testIgnore: /(f8a|lote56-impuestos|lote60-ordenes-de-venta|lote16|loteF9-region|loteF11-marca|loteF12-conteo|loteF13-conteo-web|loteF14-codigos|productosPorPosicion|loteF16|loteF17|loteF18|loteF19-despacho-manual|loteFE2a-despacho)\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
     // Móvil al ancho mínimo que exige el kit (360 px), con el resto del perfil de Pixel 7 (táctil, isMobile).
-    { name: 'movil', testIgnore: /(lote16|loteF9-region|loteF11-marca|loteF12-conteo|loteF13-conteo-web|loteF14-codigos|productosPorPosicion|loteF16|loteF17|loteF18|loteF19-despacho-manual|loteFE2a-despacho)\.spec\.ts/, use: { ...devices['Pixel 7'], viewport: { width: 360, height: 780 } } },
+    { name: 'movil', testIgnore: /(lote56-impuestos|lote60-ordenes-de-venta|lote16|loteF9-region|loteF11-marca|loteF12-conteo|loteF13-conteo-web|loteF14-codigos|productosPorPosicion|loteF16|loteF17|loteF18|loteF19-despacho-manual|loteFE2a-despacho)\.spec\.ts/, use: { ...devices['Pixel 7'], viewport: { width: 360, height: 780 } } },
+    // Lote 56 y 60: encienden el módulo de impuestos y dejan tasas para toda la compañía; los recorridos de facturación, cobros y notas de crédito
+    // (73, 76, 78, 80, 96) esperan montos SIN impuesto, así que estos dos corren después de todos ellos.
+    { name: 'escritorio-impuestos', testMatch: /(lote56-impuestos|lote60-ordenes-de-venta)\.spec\.ts/, dependencies: ['escritorio', 'movil'], use: { ...devices['Desktop Chrome'] } },
+    { name: 'movil-impuestos', testMatch: /(lote56-impuestos|lote60-ordenes-de-venta)\.spec\.ts/, dependencies: ['escritorio', 'movil', 'escritorio-impuestos'], use: { ...devices['Pixel 7'], viewport: { width: 360, height: 780 } } },
     // El recorrido de escritorio de F8a reorganiza el Pulso personal del admin y el de toda la compañía (oculta el panel
     // Almacén unos segundos): corre después de los demás para no chocar con los recorridos que leen ese Pulso cuando hay
     // varios workers en paralelo.

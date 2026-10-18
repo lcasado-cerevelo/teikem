@@ -139,7 +139,7 @@ async function login(page: Page, user: { email: string; password: string }) {
 async function maybeReauth(page: Page, password: string) {
   const reauthDialog = page.getByRole('dialog', { name: 'Confirme su identidad' })
   const appeared = await reauthDialog
-    .waitFor({ state: 'visible', timeout: 4000 })
+    .waitFor({ state: 'visible', timeout: 20_000 })
     .then(() => true)
     .catch(() => false)
   if (appeared) {

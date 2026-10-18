@@ -12,6 +12,7 @@ import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
 import type { components } from '../src/kernel/api/schema'
+import { enableModule } from './staffHelpers'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
 type SalesOrderDtoPaged = components['schemas']['SalesOrderListItemDtoPagedResult']
@@ -63,6 +64,7 @@ async function login(page: Page) {
 }
 
 test('Órdenes de venta: borrador, faltante y backorder al solicitar, surtir todo y cancelar liberando lo reservado', async ({ page, request, isMobile }) => {
+  await enableModule(request, 'TAX')   // este recorrido necesita el módulo de impuestos (los de facturación lo suponen apagado: corre después de ellos)
   const suffix = `${isMobile ? 'M' : 'D'}${LETTERS}`
   const noHScroll = (p: Page) => p.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
   const headers = { Authorization: `Bearer ${await apiToken(request)}` }

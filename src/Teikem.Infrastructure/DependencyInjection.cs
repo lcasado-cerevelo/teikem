@@ -86,6 +86,7 @@ public static class DependencyInjection
         services.Configure<TrustedBrowserOptions>(config.GetSection("Auth:TrustedBrowsers"));   // Lote 100: apagado por omisión
         services.Configure<Teikem.Infrastructure.Legal.LegalOptions>(config.GetSection("Legal"));   // Lote 99
         services.Configure<PasswordResetOptions>(config.GetSection("Auth:PasswordReset"));
+        services.Configure<SessionOptions>(config.GetSection("Auth:Sessions"));
         services.Configure<TrustedNetworkOptions>(config.GetSection("Auth:TrustedNetworks"));   // 2026-10-12: IP preferida (apagada por defecto)
         services.AddSingleton<JwtTokenService>();
 

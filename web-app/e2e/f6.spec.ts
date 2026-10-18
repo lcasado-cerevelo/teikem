@@ -8,6 +8,7 @@ import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
 import type { components } from '../src/kernel/api/schema'
+import { createClient } from './staffHelpers'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
 
@@ -29,6 +30,26 @@ test.use({ locale: 'es-PR' })
 const IMG_DIR = fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url))
 
 /** Captura de la pantalla actual para el manual, cuando ya no hay peticiones pendientes. `mask` tapa datos variables. */
+/** Filtro múltiple con buscador (selector con casillas): se abre, se escribe `text` y se marca la opción cuyo SKU es `sku`. */
+async function pickFilterByText(page: Page, label: string, text: string, sku: string) {
+  await page.getByRole('button', { name: label, exact: true }).first().click()
+  await page.getByRole('searchbox', { name: 'Buscar…' }).fill(text)
+  await page.getByRole('option', { name: new RegExp(`^${sku} · `) }).click()
+  await page.keyboard.press('Escape')
+}
+
+/** Filtro «Producto» de las pantallas de inventario (selector múltiple con casillas): se abre, se busca por SKU y se marca; luego se cierra. */
+async function pickFilterProduct(page: Page, sku: string) {
+  await page.getByRole('button', { name: 'Producto', exact: true }).first().click()
+  await page.getByRole('searchbox', { name: 'Buscar…' }).fill(sku)
+  await page.getByRole('option', { name: new RegExp(`^${sku} · `) }).click()
+  await page.keyboard.press('Escape')
+}
+/** El filtro «Producto» ya trae ese SKU elegido (el botón lo dice). */
+async function expectFilterProduct(page: Page, sku: string) {
+  await expect(page.getByRole('button', { name: 'Producto', exact: true }).first()).toContainText(sku.length > 30 ? sku.slice(0, 20) : sku)
+}
+
 async function shot(page: Page, name: string, opts: { mask?: Locator[] } = {}) {
   await page.waitForLoadState('networkidle')
   mkdirSync(IMG_DIR, { recursive: true })
@@ -195,8 +216,8 @@ test.describe('Lote F6 — escritorio', () => {
     await expect(bins.getByRole('row').nth(1)).toBeVisible()
     await expect(bins.getByRole('row').nth(1).getByRole('cell').nth(1)).not.toHaveText('')
     await shot(page, 'almacen-posiciones')
-    await page.getByRole('tab', { name: 'Muelles' }).click()
-    await expect(page.getByRole('table', { name: 'Muelles' })).toBeVisible()
+    await page.getByRole('tab', { name: 'Plataformas' }).click()
+    await expect(page.getByRole('table', { name: 'Plataformas' })).toBeVisible()
     await shot(page, 'almacen-muelles')
   })
 
@@ -222,7 +243,7 @@ test.describe('Lote F6 — escritorio', () => {
     await expect(page).toHaveURL(/\/warehouse\/products$/)
 
     // filtro «SKU o nombre» (varios): busca en el API por nombre y agrega el producto como píldora
-    await pickProductByText(page, 'SKU o nombre', PRODUCT_NAME, SKU)
+    await pickFilterByText(page, 'SKU o nombre', PRODUCT_NAME, SKU)
     const row = page.getByRole('row').filter({ hasText: SKU })
     await expect(row).toHaveCount(1)
     // columnas: SKU, Producto, Categoría, Empaque, Marca, Dueño, Disponible, Reservado, Total, Rastreo, Estado
@@ -236,11 +257,10 @@ test.describe('Lote F6 — escritorio', () => {
     await shot(page, 'producto-ficha')
     await edit.getByRole('button', { name: 'Cancelar' }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
-    await page.getByRole('button', { name: `Quitar ${SKU}` }).click()
+    await page.goto('/warehouse/products')   // sin filtros otra vez
     // por SKU también filtra
-    await pickProductByText(page, 'SKU o nombre', SKU, SKU)
+    await pickFilterByText(page, 'SKU o nombre', SKU, SKU)
     await expect(page.getByRole('row').filter({ hasText: SKU })).toHaveCount(1)
-    await page.getByRole('button', { name: `Quitar ${SKU}` }).click()
     await page.getByRole('tab', { name: 'Categorías' }).click()
     await shot(page, 'categorias')
   })
@@ -248,8 +268,8 @@ test.describe('Lote F6 — escritorio', () => {
   test('4. Saldos: ajuste +10 con motivo FOUND en ALM-01 sube el saldo del producto a 10', async ({ page }) => {
     await login(page)
     await page.goto('/warehouse/kardex?tab=balances')
-    await pickProduct(page, 'Producto', SKU)
-    await expect(page.getByRole('button', { name: `Quitar ${SKU}` })).toBeVisible()
+    await pickFilterProduct(page, SKU)
+    await expectFilterProduct(page, SKU)
     // sin existencias todavía (la lista no incluye saldos en cero)
     await expect(page.getByText('Sin resultados')).toBeVisible()
 
@@ -286,7 +306,7 @@ test.describe('Lote F6 — escritorio', () => {
     await login(page)
     await page.goto('/warehouse/kardex')
     await expect(page.getByRole('tab', { name: 'Kárdex' })).toHaveAttribute('aria-selected', 'true')
-    await pickProduct(page, 'Producto', SKU)
+    await pickFilterProduct(page, SKU)
     const row = page.getByRole('row').filter({ hasText: SKU })
     await expect(row).toHaveCount(1)
     // tipo ADJUSTMENT ('Ajuste'), signo visible y el motivo FOUND ('Encontrado') con las notas capturadas
@@ -381,7 +401,7 @@ test.describe('Lote F6 — escritorio', () => {
     await shot(page, 'recepcion')
 
     await page.goto('/warehouse/kardex?tab=balances')
-    await pickProduct(page, 'Producto', SKU)
+    await pickFilterProduct(page, SKU)
     const rows = page.getByRole('row').filter({ hasText: SKU })
     await expect(rows).toHaveCount(2) // la posición del ajuste (10) y la de recepción (5)
     const onHand = await rows.evaluateAll((trs) => trs.map((tr) => Number(tr.querySelectorAll('td')[9]?.textContent ?? 0)))
@@ -427,9 +447,8 @@ test.describe('Lote F6 — escritorio', () => {
   test('9. recolectar 3 unidades (EMP-#####) y empacarlas desde la fila: la orden creada se ve en Consulta de órdenes', async ({ page, request }) => {
     // Cliente de la orden del empaque (propio de esta corrida)
     const token = await apiToken(request)
-    const created = await request.post(`${API_URL}/api/v1/clients`, { headers: { Authorization: `Bearer ${token}` }, data: { name: CLIENT } })
-    expect(created.ok()).toBeTruthy()
-    const clientCode = ((await created.json()) as { code?: string }).code ?? ''
+    // con contrato y tarifa STANDARD/BOX: al someter la orden se cotiza y sin tarifa vigente se rechaza
+    const clientCode = (await createClient(request, { Authorization: `Bearer ${token}` }, CLIENT)).code
 
     await login(page)
     await page.goto('/warehouse/pick-batches')
@@ -555,8 +574,8 @@ test.describe('Lote F6 — móvil (360 px)', () => {
       await expectNoHorizontalScroll(page)
 
       // Filtro Producto con el SKU de 60 caracteres: la píldora se recorta y no desborda
-      await pickProduct(page, 'Producto', longSku)
-      await expect(page.getByRole('button', { name: `Quitar ${longSku}` })).toBeVisible()
+      await pickFilterProduct(page, longSku)
+      await expectFilterProduct(page, longSku)
       await expectNoHorizontalScroll(page)
     } finally {
       await adjust(-1, 'LOSS')

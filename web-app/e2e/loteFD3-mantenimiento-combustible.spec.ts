@@ -559,6 +559,7 @@ test.describe('Mantenimiento y combustible (Lote F-D3)', () => {
     await expect(fuel.locator('tbody tr, li.dt-card')).toHaveCount(1)
     await fuel.getByRole('button', { name: 'Limpiar' }).click()
     await fuel.getByLabel('Vehículo', { exact: true }).selectOption({ label: `F3A${suffix} · ${plateA}` })
+    await fuel.getByRole('combobox', { name: 'Fechas', exact: true }).selectOption({ label: 'Personalizado' })   // el filtro de fecha compacto: primero «Personalizado», luego los dos campos
     await fuel.getByLabel('Desde').fill(tenantDay(-1))
     await fuel.getByLabel('Hasta').fill(tenantDay(-1))
     await expect(fuel.locator('tbody tr, li.dt-card')).toHaveCount(1) // solo la del día -1 (la del -2 queda fuera, la del día -1 entra completa)

@@ -28,6 +28,18 @@ test.use({ locale: 'es-PR' })
 const IMG_DIR = fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url))
 
 /** Captura para el manual, cuando ya no hay peticiones pendientes. */
+/** Filtro «Producto» de las pantallas de inventario (selector múltiple con casillas): se abre, se busca por SKU y se marca; luego se cierra. */
+async function pickFilterProduct(page: Page, sku: string) {
+  await page.getByRole('button', { name: 'Producto', exact: true }).first().click()
+  await page.getByRole('searchbox', { name: 'Buscar…' }).fill(sku)
+  await page.getByRole('option', { name: new RegExp(`^${sku} · `) }).click()
+  await page.keyboard.press('Escape')
+}
+/** El filtro «Producto» ya trae ese SKU elegido (el botón lo dice). */
+async function expectFilterProduct(page: Page, sku: string) {
+  await expect(page.getByRole('button', { name: 'Producto', exact: true }).first()).toContainText(sku.length > 30 ? sku.slice(0, 20) : sku)
+}
+
 async function shot(page: Page, name: string, opts: { mask?: Locator[] } = {}) {
   await page.waitForLoadState('networkidle')
   await expect(page.locator('.toast.on')).toHaveCount(0, { timeout: 15_000 })
@@ -88,8 +100,8 @@ async function expectToast(page: Page, text: string | RegExp) {
 
 /** Filtra la lista de la pantalla por el producto del recorrido (filtro "Producto" con buscador). */
 async function filterBySku(page: Page) {
-  await pickProduct(page, 'Producto', SKU)
-  await expect(page.getByRole('button', { name: `Quitar ${SKU}` })).toBeVisible()
+  await pickFilterProduct(page, SKU)
+  await expectFilterProduct(page, SKU)
 }
 
 /** Sin scroll horizontal de página y sin elementos visibles fuera del ancho de la ventana (mismo criterio que f6/lote13). */
@@ -318,13 +330,13 @@ test.describe('Lote 14 — escritorio', () => {
 
     await page.getByRole('tab', { name: 'Saldos' }).click()
     await expect(page.getByRole('tab', { name: 'Saldos' })).toHaveAttribute('aria-selected', 'true')
-    await expect(page.getByRole('button', { name: `Quitar ${SKU}` })).toBeVisible()
+    await expectFilterProduct(page, SKU)
     await expect(page.getByRole('switch', { name: 'Solo manuales' })).toBeChecked()
     await expect(summary.getByText('En mano', { exact: true })).toBeVisible()
     await expect(summary.getByText('Disponible', { exact: true })).toBeVisible()
 
     await page.getByRole('tab', { name: 'Conciliación' }).click()
-    await expect(page.getByRole('button', { name: `Quitar ${SKU}` })).toBeVisible()
+    await expectFilterProduct(page, SKU)
     await shot(page, 'conciliacion')
 
     await page.goto(`/warehouse/kardex?txn=${txnId}`)

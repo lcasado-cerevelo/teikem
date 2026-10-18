@@ -73,7 +73,7 @@ public sealed partial class AuthService(
     DeviceService devices, PinService pins, Microsoft.Extensions.Options.IOptions<OnboardingOptions> onboarding, ITransactionalEmailSender email,
     Microsoft.Extensions.Caching.Memory.IMemoryCache cache,
     Microsoft.Extensions.Options.IOptions<PasswordResetOptions>? passwordReset = null, TrustedNetworkService? trustedNetworks = null, TrustedBrowserService? trustedBrowsers = null,
-    ITurnstileVerifier? turnstile = null)
+    ITurnstileVerifier? turnstile = null, Microsoft.Extensions.Options.IOptions<SessionOptions>? sessionOptions = null)
 {
     private const string InvalidCredentials = "Credenciales inválidas.";
 
@@ -285,6 +285,7 @@ public sealed partial class AuthService(
     /// </summary>
     private async Task RevokeSupersededSessionsAsync(RefreshToken current, CancellationToken ct)
     {
+        if (sessionOptions?.Value.SingleSessionPerBrowser == false) return;   // Auth:Sessions:SingleSessionPerBrowser=false (solo recorridos de prueba en paralelo con la misma persona)
         if (string.IsNullOrWhiteSpace(current.DeviceInfo)) return;   // sin navegador identificado no se adivina cuál es «la misma»
         var now = DateTime.UtcNow;
         var old = await db.RefreshTokens.IgnoreQueryFilters()
@@ -781,4 +782,10 @@ public sealed partial class AuthService(
         await security.WriteAsync(SecurityEventTypes.Mfa, SecurityOutcomes.Success, user.Id, tenant.TenantId, new { action = "recovery_code_used" }, ct);
         return true;
     }
+}
+
+/// <summary>Opciones de sesión (<c>Auth:Sessions</c>). Por omisión una sola sesión por persona y navegador; apagarlo es solo para recorridos de prueba que entran en paralelo con la misma persona.</summary>
+public sealed class SessionOptions
+{
+    public bool SingleSessionPerBrowser { get; set; } = true;
 }

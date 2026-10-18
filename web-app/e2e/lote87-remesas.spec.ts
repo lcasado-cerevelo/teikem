@@ -63,7 +63,7 @@ async function login(page: Page) {
 /** Si la acción pidió reautenticación (AAL2), confirma con la contraseña del administrador. */
 async function maybeReauth(page: Page) {
   const dialog = page.getByRole('dialog', { name: 'Confirme su identidad' })
-  const appeared = await dialog.waitFor({ state: 'visible', timeout: 4000 }).then(() => true).catch(() => false)
+  const appeared = await dialog.waitFor({ state: 'visible', timeout: 20_000 }).then(() => true).catch(() => false)
   if (appeared) {
     await dialog.getByLabel('Contraseña', { exact: true }).fill(ADMIN.password)
     await dialog.getByRole('button', { name: 'Confirmar' }).click()

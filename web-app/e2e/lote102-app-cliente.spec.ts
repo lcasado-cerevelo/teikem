@@ -103,6 +103,9 @@ async function fillLogin(page: Page, email: string, password: string) {
 test('App del cliente: computadora nueva, MFA, documento legal, órdenes, «No confiar» recordada y aislamiento', async ({ page, request, isMobile }) => {
   const suffix = `${isMobile ? 'M' : 'D'}${LETTERS}`
   const noHScroll = () => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
+  // con Legal:RequireAcceptance apagado (el CI lo apaga para los demás recorridos) este recorrido no aplica: pasa por el documento legal
+  const legalDoc = await request.get(`${API_URL}/api/v1/legal/current`)
+  test.skip(!((await legalDoc.json()) as { required?: boolean }).required, 'Legal:RequireAcceptance está apagado en este API')
   const headers = { Authorization: `Bearer ${await adminToken(request)}` }
 
   // 0) dos clientes con órdenes y un usuario de portal para el primero

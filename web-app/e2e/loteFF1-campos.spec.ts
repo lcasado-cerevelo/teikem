@@ -14,6 +14,7 @@
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
+import { openClientPanels } from './staffHelpers'
 import type { components } from '../src/kernel/api/schema'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
@@ -125,7 +126,7 @@ test.describe('Campos personalizados (Lote F-F1)', () => {
       await expect(nav.getByRole('button')).toHaveCount(6)
       for (const name of ['Cliente', 'Orden', 'Chofer', 'Vehículo', 'Producto', 'Ubicación (consignatario)']) await expect(nav.getByRole('button', { name: new RegExp(`^${name.replace(/[()]/g, '\\$&')}`) })).toBeVisible()
       await expect(page.getByText(/Cada campo se define una vez por entidad/)).toBeVisible()
-      await expect(page.getByRole('table', { name: 'Cliente' }).or(page.getByText('Todavía no hay campos personalizados para esta entidad.'))).toBeVisible()
+      await expect(page.getByRole('table', { name: 'Cliente' }).or(page.getByRole('list', { name: 'Cliente' })).or(page.getByText('Todavía no hay campos personalizados para esta entidad.'))).toBeVisible()
       if (isMobile) await expectNoHorizontalScroll(page)
       await shot(page, isMobile, 'ff1-lista', 760)
 
@@ -210,6 +211,7 @@ test.describe('Campos personalizados (Lote F-F1)', () => {
 
       // ================= 6) La ficha del cliente: los tres campos, valor inválido y válido =================
       await page.goto(`/catalog/clients?client=${client.publicId}`)
+      await openClientPanels(page)
       const panel = page.locator('section.panel').filter({ has: page.getByRole('heading', { name: 'Campos personalizados' }) })
       await expect(panel).toBeVisible()
       await expect(panel.getByLabel(labels.text)).toBeVisible()
@@ -226,6 +228,7 @@ test.describe('Campos personalizados (Lote F-F1)', () => {
       if (isMobile) await expectNoHorizontalScroll(page)
       await shot(page, isMobile, 'ff1-ficha', 1100, panel, 1100)
       await page.reload()
+      await openClientPanels(page)
       const panel2 = page.locator('section.panel').filter({ has: page.getByRole('heading', { name: 'Campos personalizados' }) })
       await expect(panel2.getByLabel(labels.text)).toHaveValue('CC-123')
       await expect(panel2.getByLabel(labels.num)).toHaveValue('50')
@@ -259,6 +262,7 @@ test.describe('Campos personalizados (Lote F-F1)', () => {
       await toastOf(`Campo desactivado: ${labels.sel}`)
       await expect(row(keys.sel)).toHaveCount(0)
       await page.goto(`/catalog/clients?client=${client.publicId}`)
+      await openClientPanels(page)
       const panel3 = page.locator('section.panel').filter({ has: page.getByRole('heading', { name: 'Campos personalizados' }) })
       await expect(panel3.getByLabel(labels.text)).toBeVisible()
       await expect(panel3.getByLabel(labels.sel)).toHaveCount(0)
@@ -267,6 +271,7 @@ test.describe('Campos personalizados (Lote F-F1)', () => {
       await page.goto('/analytics/custom-fields')
       await expect(row(keys.sel)).toHaveCount(0)
       await page.getByRole('switch', { name: 'Incluir inactivos' }).check()
+      await page.getByRole('combobox', { name: 'Filas por página' }).selectOption('100')   // las corridas anteriores dejan muchos campos inactivos: la fila de este recorrido puede quedar en la página 2
       await expect(row(keys.sel)).toContainText('Inactivo')
       await expect(row(keys.sel).getByRole('button', { name: 'Editar' })).toHaveCount(0)
       if (isMobile) await expectNoHorizontalScroll(page)
@@ -275,6 +280,7 @@ test.describe('Campos personalizados (Lote F-F1)', () => {
       await toastOf(`Campo reactivado: ${labels.sel}`)
       await expect(row(keys.sel)).toContainText('Activo')
       await page.goto(`/catalog/clients?client=${client.publicId}`)
+      await openClientPanels(page)
       const panel4 = page.locator('section.panel').filter({ has: page.getByRole('heading', { name: 'Campos personalizados' }) })
       await expect(panel4.getByLabel(labels.sel)).toHaveValue('ALTO') // el valor guardado se conservó
     } finally {

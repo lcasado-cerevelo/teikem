@@ -76,19 +76,20 @@ export function tenantDay(plus = 0): string {
 export interface TestClient {
   publicId: string
   name: string
+  code: string
   contractId: string
 }
 
 /** Un cliente con contrato activo y tarifa (el cernidor es al someter la orden). */
 export async function createClient(request: APIRequestContext, headers: Record<string, string>, name: string): Promise<TestClient> {
-  const client = await ok<{ publicId: string; currentContract?: { publicId?: string } | null }>(
+  const client = await ok<{ publicId: string; code?: string; currentContract?: { publicId?: string } | null }>(
     request.post(`${API_URL}/api/v1/clients`, { headers, data: { name, contract: { startDate: tenantDay(-30), title: 'Contrato de prueba' } } }),
     'cliente',
   )
   const contractId = client.currentContract?.publicId ?? ''
   await ok(request.post(`${API_URL}/api/v1/contracts/${contractId}/rate-components`, { headers, data: { kind: 'PER_SERVICE', serviceType: 'STANDARD', packageType: 'BOX', rate: 10, effectiveFrom: tenantDay(-30) } }), 'tarifa')
   await ok(request.post(`${API_URL}/api/v1/contracts/${contractId}/status`, { headers, data: { toCode: 'ACTIVE' } }), 'contrato activo')
-  return { publicId: client.publicId, name, contractId }
+  return { publicId: client.publicId, name, code: client.code ?? '', contractId }
 }
 
 export async function createConsignee(request: APIRequestContext, headers: Record<string, string>, clientPublicId: string, name: string) {
@@ -116,4 +117,21 @@ export async function createOrder(request: APIRequestContext, headers: Record<st
 /** Una acción de la estación de escaneo (PICKUP, ARRIVE, ROUTE, DEPART, RETURN) sobre una pieza. */
 export async function scan(request: APIRequestContext, headers: Record<string, string>, action: string, code: string) {
   return ok<Record<string, unknown>>(request.post(`${API_URL}/api/v1/scan/action`, { headers, data: { action, code } }), `escaneo ${action}`)
+}
+
+/** La ficha del cliente abre todos sus paneles cerrados (arrancan plegados cada vez que se abre): se esperan a que cargue la ficha y se despliegan todos. */
+export async function openClientPanels(page: Page) {
+  await page.getByRole('heading', { name: 'Direcciones', exact: true }).waitFor({ timeout: 30_000 })
+  const closed = page.getByRole('button', { name: 'Abrir el panel' })
+  for (let i = 0; i < 20 && (await closed.count()) > 0; i++) await closed.first().click()
+}
+
+/** Enciende un módulo de la compañía de prueba (pide verificación reciente: se reautentica con la contraseña del administrador). */
+export async function enableModule(request: APIRequestContext, key: string) {
+  const headers = await apiHeaders(request)
+  const reauth = await request.post(`${API_URL}/api/v1/auth/reauth`, { headers, data: { password: ADMIN.password } })
+  expect(reauth.ok(), await reauth.text()).toBeTruthy()
+  const token = ((await reauth.json()) as { accessToken: string }).accessToken
+  const res = await request.put(`${API_URL}/api/v1/modules/${key}`, { headers: { Authorization: `Bearer ${token}`, 'Idempotency-Key': crypto.randomUUID() }, data: { isEnabled: true } })
+  expect(res.ok(), await res.text()).toBeTruthy()
 }

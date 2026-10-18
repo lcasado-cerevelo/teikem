@@ -293,7 +293,7 @@ test.describe('Lote F1 — móvil (360 px)', () => {
     await shot(page, 'pulso-movil')
 
     // Diálogo "Mi rango de fecha" de una tarjeta: cabe a 360 px; se cancela sin guardar
-    await cards.first().getByRole('button', { name: /^Cambiar mi rango de fecha de / }).click()
+    await cards.getByRole('button', { name: /^Cambiar mi rango de fecha de / }).first().click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
     const box = await dialog.boundingBox()

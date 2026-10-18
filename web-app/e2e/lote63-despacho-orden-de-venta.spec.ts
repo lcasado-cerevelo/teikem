@@ -11,6 +11,7 @@ import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
 import type { components } from '../src/kernel/api/schema'
+import { createClient } from './staffHelpers'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
 type SalesOrderDto = components['schemas']['SalesOrderDto']
@@ -69,9 +70,7 @@ test('Despachar contra una orden de venta: por partes, retiro, entrega con orden
   const sku = `MED-${suffix}`
 
   // 1) datos de apoyo por API
-  const client = await request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: clientName } })
-  expect(client.ok(), await client.text()).toBeTruthy()
-  const clientId = ((await client.json()) as { publicId: string }).publicId
+  const clientId = (await createClient(request, headers, clientName)).publicId   // con contrato y tarifa: la entrega se cotiza
   const product = await request.post(`${API_URL}/api/v1/products`, { headers, data: { sku, name: `Medidor ${suffix}`, trackingType: 'NONE', salePrice: 12.5, purchaseCost: 4 } })
   expect(product.ok(), await product.text()).toBeTruthy()
   const productId = ((await product.json()) as { product: { publicId: string } }).product.publicId
