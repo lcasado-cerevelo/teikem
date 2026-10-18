@@ -64,6 +64,26 @@ public class ClaimServiceTests
     }
 
     [Fact]
+    public async Task Every_claim_has_its_own_public_id_and_opening_or_resolving_by_it_acts_on_that_claim()
+    {
+        // hallazgo del recorrido de Playwright (2026-10-18): las reclamaciones se guardaban con el Guid vacío y abrir una por su identificador traía otra
+        await using var f = await TripServiceFixture.CreateAsync();
+        var a = await OrderWithMissingAsync(f, 2, 2);
+        var b = await OrderWithMissingAsync(f, 2, 2);
+        await Svc(f).MarkLostAsync(new MarkLostRequest(a.PublicId, null), default);
+        await Svc(f).MarkLostAsync(new MarkLostRequest(b.PublicId, null), default);
+        var ca = await Svc(f).CreateAsync(new ClaimCreateRequest(a.PublicId, null, 10m, null), default);
+        var cb = await Svc(f).CreateAsync(new ClaimCreateRequest(b.PublicId, null, 20m, null), default);
+        Assert.NotEqual(Guid.Empty, ca.PublicId);
+        Assert.NotEqual(Guid.Empty, cb.PublicId);
+        Assert.NotEqual(ca.PublicId, cb.PublicId);
+        Assert.Equal(cb.Number, (await Svc(f).GetAsync(cb.PublicId, default)).Number);
+        Assert.Equal(ca.Number, (await Svc(f).GetAsync(ca.PublicId, default)).Number);
+        Assert.Equal(new[] { ca.PublicId, cb.PublicId }.OrderBy(x => x), (await Svc(f).ListAsync(null, null, 0, 25, default)).Items.Select(i => i.PublicId).OrderBy(x => x));
+        await Assert.ThrowsAsync<NotFoundException>(() => Svc(f).GetAsync(Guid.Empty, default));   // el Guid vacío ya no es de nadie
+    }
+
+    [Fact]
     public async Task Marking_lost_validates_the_pieces_and_the_order()
     {
         await using var f = await TripServiceFixture.CreateAsync();

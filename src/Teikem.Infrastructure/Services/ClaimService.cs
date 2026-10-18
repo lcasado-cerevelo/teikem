@@ -88,7 +88,7 @@ public sealed class ClaimService(TeikemDbContext db, ITenantContext tenant, Stat
             var initial = await statuses.GetInitialAsync(ClaimStatuses.Domain, ct2);
             var claim = new Claim
             {
-                TenantId = tenantId, Number = "REC-" + Guid.NewGuid().ToString("N")[..20], TransportOrderId = orderId, ClientId = order.ClientId, StatusCodeId = initial.StatusCodeId,
+                PublicId = Guid.NewGuid(), TenantId = tenantId, Number = "REC-" + Guid.NewGuid().ToString("N")[..20], TransportOrderId = orderId, ClientId = order.ClientId, StatusCodeId = initial.StatusCodeId,
                 Description = description, DeclaredValue = req?.DeclaredValue, Notes = notes, IsActive = true, CreatedBy = tenant.UserId,
             };
             db.Claims.Add(claim);

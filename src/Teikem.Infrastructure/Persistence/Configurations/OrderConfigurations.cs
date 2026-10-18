@@ -210,6 +210,7 @@ public sealed class ClaimConfiguration : IEntityTypeConfiguration<Claim>
     {
         b.ToTable("Claim");
         b.HasKey(c => c.ClaimId);
+        b.Property(c => c.PublicId).HasDefaultValueSql("NEWID()").ValueGeneratedOnAdd();   // sin esto EF mandaba el Guid vacío y todas las reclamaciones quedaban con el mismo identificador
         b.Property(c => c.Number).HasMaxLength(30).IsRequired();
         b.Property(c => c.Description).HasMaxLength(500).IsRequired();
         b.Property(c => c.Notes).HasMaxLength(1000);

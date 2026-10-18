@@ -4549,3 +4549,9 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ConsigneeMessage_Sender' AND object_id = OBJECT_ID('dbo.ConsigneeMessage')) CREATE INDEX IX_ConsigneeMessage_Sender ON dbo.ConsigneeMessage(SenderUserId, CreatedAtUtc);
 GO
 
+/* =========================================================================
+   2026-10-18 (ba) — Corrección del Lote 111: las reclamaciones se guardaban con PublicId = 00000000-0000-0000-0000-000000000000 (EF mandaba el Guid vacío y el DEFAULT NEWID() no entraba), así que abrir o resolver una
+   reclamación por su identificador actuaba sobre otra. Se les asigna un identificador propio. Idempotente.
+   ========================================================================= */
+UPDATE dbo.Claim SET PublicId = NEWID() WHERE PublicId = '00000000-0000-0000-0000-000000000000';
+GO
