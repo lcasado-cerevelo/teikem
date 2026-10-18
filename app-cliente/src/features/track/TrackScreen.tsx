@@ -1,63 +1,48 @@
-// «¿Cómo va mi orden?» — página PÚBLICA (sin sesión) en /track/<identificador de la compañía>: se escribe el número de conduce y se ve SOLO el avance del paquete (barra con las etapas de la compañía y el último movimiento);
-// nunca nombres, direcciones, teléfonos ni montos. El enlace lo da la compañía (también puede traer ?n=<conduce> para abrir ya con la consulta hecha).
+// «¿Cómo va mi orden?» — página PÚBLICA (sin sesión) en /track/<token>: el enlace del aviso trae el token propio de la orden y se ve SOLO el avance del paquete (barra con las etapas y el último movimiento);
+// nunca nombres, direcciones, teléfonos ni montos. La página no recibe datos: ya no se busca por número de conduce.
 import { Link, useLocalSearchParams } from 'expo-router'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Text } from 'react-native'
 
 import { ApiError, apiErrorMessage } from '../../kernel/api/client'
 import { useT } from '../../kernel/i18n/useT'
 import { PreferencesBar } from '../../kernel/ui/PreferencesBar'
-import { Button, Card, Field, Muted, Notice, Screen, Title, useColors } from '../../kernel/ui/ui'
+import { Card, Muted, Notice, Screen, Spinner, Title, useColors } from '../../kernel/ui/ui'
 import { formatDateTime } from '../format'
-import { type PublicTrackDto, trackOrder } from '../portalApi'
+import { type PublicTrackDto, trackByLink } from '../portalApi'
 import { ProgressBar, ProgressSteps } from '../progress/ProgressBar'
 import { toProgressInfo } from '../progress/progressInfo'
 
 export function TrackScreen() {
   const colors = useColors()
   const { t, lang } = useT()
-  const { company, n } = useLocalSearchParams<{ company?: string; n?: string }>()
-  const [waybill, setWaybill] = useState(typeof n === 'string' ? n : '')
+  const { token } = useLocalSearchParams<{ token?: string }>()
   const [result, setResult] = useState<PublicTrackDto | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-  const seq = useRef(0)
+  const [busy, setBusy] = useState(true)
 
-  const search = useCallback(
-    async (value: string) => {
-      const w = value.trim()
-      if (w.length < 3) return
-      const mine = ++seq.current
-      setBusy(true)
-      setError(null)
-      try {
-        const data = await trackOrder(String(company ?? ''), w, lang)
-        if (mine === seq.current) setResult(data)
-      } catch (e) {
-        if (mine !== seq.current) return
+  useEffect(() => {
+    let alive = true
+    setBusy(true)
+    setError(null)
+    trackByLink(String(token ?? ''), lang)
+      .then((data) => alive && setResult(data))
+      .catch((e: unknown) => {
+        if (!alive) return
         setResult(null)
         setError(e instanceof ApiError && e.status === 429 ? t('track.tooMany') : apiErrorMessage(e))
-      } finally {
-        if (mine === seq.current) setBusy(false)
-      }
-    },
-    [company, lang, t],
-  )
-
-  // con ?n=… se abre ya con la consulta hecha
-  useEffect(() => {
-    if (typeof n === 'string' && n.trim().length >= 3) void search(n)
-    // solo al abrir (o si cambia el enlace)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [n, company])
+      })
+      .finally(() => alive && setBusy(false))
+    return () => {
+      alive = false
+    }
+  }, [token, lang, t])
 
   const progress = result ? toProgressInfo({ step: result.step, total: result.total, state: result.state, statusLabel: result.statusLabel }) : null
   return (
     <Screen>
       <Title>{t('track.title')}</Title>
-      <Muted>{t('track.help')}</Muted>
-      <Field label={t('track.waybill')} value={waybill} onChangeText={setWaybill} placeholder={t('track.placeholder')} autoCapitalize="characters" autoCorrect={false} returnKeyType="search" onSubmitEditing={() => void search(waybill)} testID="track-waybill" />
-      <Button title={t('track.submit')} busy={busy} disabled={waybill.trim().length < 3} onPress={() => void search(waybill)} testID="track-submit" />
+      {busy && <Spinner />}
       {!!error && <Notice>{error}</Notice>}
       {!!result && !!progress && (
         <Card>

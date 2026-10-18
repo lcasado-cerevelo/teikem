@@ -1,4 +1,4 @@
-# Lote 116 — Avisos al consignatario (116a: backend) (2026-10-18)
+# Lote 116 — Avisos al consignatario (116a backend y 116b pantallas) (2026-10-18)
 
 Luis dictó (docs/p12): la página pública se queda solo como consulta por enlace con token propio; el enlace sale cuando la orden sale En ruta y se sigue avisando de intento fallido y de los estatus finales (no de los movimientos del almacén ni de los brincados); **el cliente** (no la compañía) prende el aviso y marca por consignatario correo y/o teléfono, con advertencia, bitácora y aviso de alta al consignatario; toda comunicación trae la baja; idioma del aviso = el del cliente; el texto (SMS) espera a Twilio, primero correo.
 
@@ -12,7 +12,13 @@ Luis dictó (docs/p12): la página pública se queda solo como consulta por enla
 
 ## Decisiones a revisar con Luis
 1. **Configuración nueva:** `ConsigneeNotices:ClientAppBaseUrl` (la dirección de la app del cliente donde viven `/track/<token>` y `/unsubscribe/<token>`); sin ella los avisos quedan «omitidos».
-2. **La búsqueda manual por conduce** (`GET /api/v1/public/track/{slug}/{waybill}` y su pantalla) **sigue viva** hasta el 116b, que la retira cuando la página pública quede solo por enlace.
+2. **La búsqueda manual por conduce se retiró** (116b): el endpoint `GET /api/v1/public/track/{slug}/{waybill}`, el ajuste «Seguimiento público» de la compañía (`/api/v1/tenant/tracking`, `TrackingRules`, su panel y pruebas) y la caja de búsqueda de la página. La columna `Tenant.TrackingSlug` se conserva sin uso (SQL congelado).
 3. **Una baja afecta el correo/teléfono en toda la compañía**, no solo al cliente que lo marcó: así se respeta la voluntad del consignatario aunque otro cliente lo vuelva a marcar.
 4. **El idioma** del aviso es el que el cliente escoge al prender (por omisión el de la compañía); el portal puede mostrar el suyo aparte.
-5. **Pendiente 116b:** las pantallas (portal de la app del cliente, página pública por enlace y página de baja).
+
+## 116b — Pantallas (app del cliente) y retiro de la búsqueda manual
+- **app-cliente**: `Ajustes → Configurar avisos` (`/consignee-notices`: casilla de avisos, idioma, lista de consignatarios con casillas de correo y texto, advertencia con Continuar/Cancelar), `/track/<token>` (reemplaza a `/track/<compañía>` y ya no pide datos) y `/unsubscribe/<token>` (confirmar con botón). Es/en y claro/oscuro como el resto de la app.
+- **web (staff)**: se quitó el panel «Seguimiento público» de Ajustes → General.
+- **Contrato**: se quitaron `/api/v1/tenant/tracking` y `/api/v1/public/track/{slug}/{waybill}`; se agregaron los de avisos al consignatario (portal) y los públicos por token.
+- Pruebas (solo el área): jest de la app del cliente (`TrackScreen`, `UnsubscribeScreen`, `ConsigneeNoticesScreen`, `SettingsScreen`: 23); xunit `TrackingTests` (por token: solo el avance, otro idioma/compañía sin mezclar, fallido y cancelada, 404 genérico) y `ConsigneeNotice*`; vitest `system` (150).
+- **No se hicieron capturas ni recorridos Playwright de estas pantallas** (el portal es la app Expo); queda para la revisión de pantallas.

@@ -26952,112 +26952,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/public/track/{slug}/{waybill}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: {
-                    lang?: string;
-                };
-                header?: never;
-                path: {
-                    slug: string;
-                    waybill: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["PublicTrackDto"];
-                        "application/json": components["schemas"]["PublicTrackDto"];
-                        "text/json": components["schemas"]["PublicTrackDto"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/tenant/tracking": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["TrackingSettingsDto"];
-                        "application/json": components["schemas"]["TrackingSettingsDto"];
-                        "text/json": components["schemas"]["TrackingSettingsDto"];
-                    };
-                };
-            };
-        };
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["TrackingSettingsRequest"];
-                    "text/json": components["schemas"]["TrackingSettingsRequest"];
-                    "application/*+json": components["schemas"]["TrackingSettingsRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["TrackingSettingsDto"];
-                        "application/json": components["schemas"]["TrackingSettingsDto"];
-                        "text/json": components["schemas"]["TrackingSettingsDto"];
-                    };
-                };
-            };
-        };
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/client-messages/conversations": {
         parameters: {
             query?: never;
@@ -27727,6 +27621,623 @@ export interface paths {
                         "application/json": components["schemas"]["ScanCloseCountResultDto"];
                         "text/json": components["schemas"]["ScanCloseCountResultDto"];
                     };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/claims/to-verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    search?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MissingOrderDtoPagedResult"];
+                        "application/json": components["schemas"]["MissingOrderDtoPagedResult"];
+                        "text/json": components["schemas"]["MissingOrderDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/claims/lost": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["MarkLostRequest"];
+                    "text/json": components["schemas"]["MarkLostRequest"];
+                    "application/*+json": components["schemas"]["MarkLostRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MissingOrderDto"];
+                        "application/json": components["schemas"]["MissingOrderDto"];
+                        "text/json": components["schemas"]["MissingOrderDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/claims": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    status?: string;
+                    search?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClaimListItemDtoPagedResult"];
+                        "application/json": components["schemas"]["ClaimListItemDtoPagedResult"];
+                        "text/json": components["schemas"]["ClaimListItemDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ClaimCreateRequest"];
+                    "text/json": components["schemas"]["ClaimCreateRequest"];
+                    "application/*+json": components["schemas"]["ClaimCreateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClaimDto"];
+                        "application/json": components["schemas"]["ClaimDto"];
+                        "text/json": components["schemas"]["ClaimDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/claims/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClaimDto"];
+                        "application/json": components["schemas"]["ClaimDto"];
+                        "text/json": components["schemas"]["ClaimDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/claims/{publicId}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ClaimResolveRequest"];
+                    "text/json": components["schemas"]["ClaimResolveRequest"];
+                    "application/*+json": components["schemas"]["ClaimResolveRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClaimDto"];
+                        "application/json": components["schemas"]["ClaimDto"];
+                        "text/json": components["schemas"]["ClaimDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders/{publicId}/return": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ReturnOrderRequest"];
+                    "text/json": components["schemas"]["ReturnOrderRequest"];
+                    "application/*+json": components["schemas"]["ReturnOrderRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ReturnOrderResultDto"];
+                        "application/json": components["schemas"]["ReturnOrderResultDto"];
+                        "text/json": components["schemas"]["ReturnOrderResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tenant/return-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ReturnSettingsDto"];
+                        "application/json": components["schemas"]["ReturnSettingsDto"];
+                        "text/json": components["schemas"]["ReturnSettingsDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ReturnSettingsRequest"];
+                    "text/json": components["schemas"]["ReturnSettingsRequest"];
+                    "application/*+json": components["schemas"]["ReturnSettingsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ReturnSettingsDto"];
+                        "application/json": components["schemas"]["ReturnSettingsDto"];
+                        "text/json": components["schemas"]["ReturnSettingsDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/contracts/{publicId}/return-fee": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ReturnFeeRequest"];
+                    "text/json": components["schemas"]["ReturnFeeRequest"];
+                    "application/*+json": components["schemas"]["ReturnFeeRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ContractDetailDto"];
+                        "application/json": components["schemas"]["ContractDetailDto"];
+                        "text/json": components["schemas"]["ContractDetailDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/portal/consignee-notices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsigneeNoticeSettingsDto"];
+                        "application/json": components["schemas"]["ConsigneeNoticeSettingsDto"];
+                        "text/json": components["schemas"]["ConsigneeNoticeSettingsDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ConsigneeNoticeSettingsRequest"];
+                    "text/json": components["schemas"]["ConsigneeNoticeSettingsRequest"];
+                    "application/*+json": components["schemas"]["ConsigneeNoticeSettingsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsigneeNoticeSettingsDto"];
+                        "application/json": components["schemas"]["ConsigneeNoticeSettingsDto"];
+                        "text/json": components["schemas"]["ConsigneeNoticeSettingsDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/consignee-notices/consignees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    search?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsigneeNoticeConsigneeDtoPagedResult"];
+                        "application/json": components["schemas"]["ConsigneeNoticeConsigneeDtoPagedResult"];
+                        "text/json": components["schemas"]["ConsigneeNoticeConsigneeDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/consignee-notices/consignees/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ConsigneeNoticeMarkRequest"];
+                    "text/json": components["schemas"]["ConsigneeNoticeMarkRequest"];
+                    "application/*+json": components["schemas"]["ConsigneeNoticeMarkRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsigneeNoticeConsigneeDto"];
+                        "application/json": components["schemas"]["ConsigneeNoticeConsigneeDto"];
+                        "text/json": components["schemas"]["ConsigneeNoticeConsigneeDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/track/link/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    lang?: string;
+                };
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PublicTrackDto"];
+                        "application/json": components["schemas"]["PublicTrackDto"];
+                        "text/json": components["schemas"]["PublicTrackDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/consignee-unsubscribe/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
             };
         };
@@ -28530,6 +29041,7 @@ export interface components {
             canEdit?: boolean;
             isActive?: boolean;
             rowVersion?: string | null;
+            returnFee?: components["schemas"]["ReturnFeeDto"];
         };
         ContractPatchRequest: {
             title?: string | null;
@@ -30957,6 +31469,10 @@ export interface components {
             assignedTripPublicId?: string | null;
             assignedTripCode?: string | null;
             waybillNumber?: string | null;
+            /** Format: int32 */
+            failedAttempts?: number | null;
+            suggestReturn?: boolean | null;
+            returnOfOrderNumber?: string | null;
         };
         OrderListItemDto: {
             /** Format: int32 */
@@ -37024,18 +37540,11 @@ export interface components {
             /** Format: date-time */
             lastUpdateUtc?: string | null;
         };
-        TrackingSettingsRequest: {
-            slug?: string | null;
-        };
         PublicTrackStepDto: {
             key?: string | null;
             label?: string | null;
             done?: boolean;
             current?: boolean;
-        };
-        TrackingSettingsDto: {
-            slug?: string | null;
-            enabled?: boolean;
         };
         PortalProgressDto: {
             /** Format: int32 */
@@ -37235,6 +37744,9 @@ export interface components {
             /** Format: int32 */
             missing?: number | null;
             pieceNumber?: string | null;
+            /** Format: int32 */
+            failedAttempts?: number | null;
+            suggestReturn?: boolean | null;
         };
         ScanActionRequest: {
             action?: string | null;
@@ -37254,10 +37766,215 @@ export interface components {
             /** Format: int32 */
             missing?: number;
             missingNumbers?: string[] | null;
+            needsConfirmation?: boolean;
+            preview?: components["schemas"]["ScanClosePreviewDto"];
+            /** Format: uuid */
+            newOrderPublicId?: string | null;
+            newOrderNumber?: string | null;
+            newWaybillNumber?: string | null;
         };
         ScanCloseCountRequest: {
             /** Format: uuid */
             orderPublicId?: string | null;
+            confirm?: boolean | null;
+            /** Format: date */
+            planDate?: string | null;
+        };
+        ClaimDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            /** Format: uuid */
+            orderPublicId?: string;
+            orderNumber?: string | null;
+            waybillNumber?: string | null;
+            clientName?: string | null;
+            description?: string | null;
+            /** Format: double */
+            declaredValue?: number | null;
+            notes?: string | null;
+            resolution?: string | null;
+            /** Format: double */
+            amountPaid?: number | null;
+            resolutionNotes?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            /** Format: date-time */
+            resolvedAtUtc?: string | null;
+            pieces?: components["schemas"]["MissingPieceDto"][] | null;
+            rowVersion?: string | null;
+        };
+        ClaimCreateRequest: {
+            /** Format: uuid */
+            orderPublicId?: string | null;
+            pieceNumbers?: string[] | null;
+            /** Format: double */
+            declaredValue?: number | null;
+            notes?: string | null;
+        };
+        MarkLostRequest: {
+            /** Format: uuid */
+            orderPublicId?: string | null;
+            pieceNumbers?: string[] | null;
+        };
+        MissingPieceDto: {
+            packageNumber?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            /** Format: date-time */
+            missingAtUtc?: string | null;
+            claimNumber?: string | null;
+            lineDescription?: string | null;
+        };
+        MissingOrderDto: {
+            /** Format: uuid */
+            orderPublicId?: string;
+            orderNumber?: string | null;
+            waybillNumber?: string | null;
+            clientName?: string | null;
+            orderStatus?: string | null;
+            orderStatusLabel?: string | null;
+            /** Format: int32 */
+            totalPieces?: number;
+            pieces?: components["schemas"]["MissingPieceDto"][] | null;
+        };
+        ClaimListItemDtoPagedResult: {
+            items?: components["schemas"]["ClaimListItemDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        MissingOrderDtoPagedResult: {
+            items?: components["schemas"]["MissingOrderDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        ClaimResolveRequest: {
+            resolution?: string | null;
+            /** Format: double */
+            amountPaid?: number | null;
+            notes?: string | null;
+            rowVersion?: string | null;
+        };
+        ClaimListItemDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            /** Format: uuid */
+            orderPublicId?: string;
+            orderNumber?: string | null;
+            waybillNumber?: string | null;
+            clientName?: string | null;
+            description?: string | null;
+            /** Format: int32 */
+            pieces?: number;
+            /** Format: double */
+            declaredValue?: number | null;
+            resolution?: string | null;
+            /** Format: double */
+            amountPaid?: number | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            /** Format: date-time */
+            resolvedAtUtc?: string | null;
+        };
+        ScanClosePreviewDto: {
+            orderNumber?: string | null;
+            clientName?: string | null;
+            consigneeName?: string | null;
+            newOrderStatusLabel?: string | null;
+            reappearedNumbers?: string[] | null;
+            missingNumbers?: string[] | null;
+        };
+        ReturnOrderRequest: {
+            pieceNumbers?: string[] | null;
+            notes?: string | null;
+        };
+        ReturnOrderResultDto: {
+            /** Format: uuid */
+            returnOrderPublicId?: string;
+            returnOrderNumber?: string | null;
+            returnWaybillNumber?: string | null;
+            originalOrderNumber?: string | null;
+            /** Format: int32 */
+            pieces?: number;
+            message?: string | null;
+        };
+        ReturnSettingsDto: {
+            /** Format: int32 */
+            suggestAfterAttempts?: number;
+        };
+        ReturnSettingsRequest: {
+            /** Format: int32 */
+            suggestAfterAttempts?: number | null;
+        };
+        ReturnFeeDto: {
+            mode?: string | null;
+            /** Format: double */
+            amount?: number | null;
+            byType?: components["schemas"]["ReturnFeeTypeDto"][] | null;
+        };
+        ReturnFeeTypeDto: {
+            packageType?: string | null;
+            packageTypeLabel?: string | null;
+            /** Format: double */
+            amount?: number;
+        };
+        ReturnFeeRequest: {
+            mode?: string | null;
+            /** Format: double */
+            amount?: number | null;
+            byType?: components["schemas"]["ReturnFeeTypeAmount"][] | null;
+        };
+        ReturnFeeTypeAmount: {
+            packageType?: string | null;
+            /** Format: double */
+            amount?: number;
+        };
+        ConsigneeNoticeSettingsDto: {
+            enabled?: boolean;
+            lang?: string | null;
+            emailConfigured?: boolean;
+            canEdit?: boolean;
+        };
+        ConsigneeNoticeSettingsRequest: {
+            enabled?: boolean | null;
+            lang?: string | null;
+        };
+        ConsigneeNoticeConsigneeDto: {
+            /** Format: uuid */
+            publicId?: string;
+            name?: string | null;
+            city?: string | null;
+            email?: string | null;
+            phone?: string | null;
+            acceptsEmail?: boolean;
+            acceptsSms?: boolean;
+        };
+        ConsigneeNoticeConsigneeDtoPagedResult: {
+            items?: components["schemas"]["ConsigneeNoticeConsigneeDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        ConsigneeNoticeMarkRequest: {
+            channel?: string | null;
+            accepted?: boolean | null;
+            warningAccepted?: boolean | null;
         };
     };
     responses: never;

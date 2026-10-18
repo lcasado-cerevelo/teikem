@@ -69,7 +69,7 @@ function Gate() {
 
   useEffect(() => {
     // «¿Cómo va mi orden?» es pública: con o sin sesión se queda donde está
-    if (pathname.startsWith('/track')) return
+    if (pathname.startsWith('/track') || pathname.startsWith('/unsubscribe')) return   // páginas públicas del consignatario (seguimiento por enlace y baja)
     const isPublic = PUBLIC_PATHS.includes(pathname)
     if (!session) {
       if (!isPublic) router.replace('/login')
@@ -92,6 +92,7 @@ function Gate() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="order/[id]" options={{ headerShown: true }} />
         <Stack.Screen name="order/new" options={{ headerShown: true, title: t('newOrder.title') }} />
+        <Stack.Screen name="consignee-notices" options={{ headerShown: true, title: t('consigneeNotices.title') }} />
       </Stack>
       {!!session && legalRequired === null && (
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.bg, justifyContent: 'center' }}>

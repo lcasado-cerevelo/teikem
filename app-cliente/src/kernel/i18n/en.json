@@ -143,7 +143,9 @@
     "thisComputer": "This computer",
     "computerExpires": "Expires: {date}",
     "remove": "Remove",
-    "logout": "Sign out"
+    "logout": "Sign out",
+    "consigneeNoticesHelp": "Email notices to the consignees you mark.",
+    "consigneeNoticesOpen": "Set up notices"
   },
   "install": {
     "title": "Put it on my desktop",
@@ -156,14 +158,10 @@
     "alert": "{status} · at step {step} of {total}"
   },
   "track": {
-    "title": "Where is my order?",
-    "help": "Enter your package waybill number to see which stage it is in.",
-    "waybill": "Waybill number",
-    "placeholder": "CND-0000000",
-    "submit": "Check",
+    "title": "How is my package doing?",
     "lastUpdate": "Last update: {date}",
     "tooMany": "Too many requests in a row. Wait a minute and try again.",
-    "privacy": "We only show the progress of the package: never names, addresses or phone numbers.",
+    "privacy": "We only show the package progress: never names, addresses or phone numbers.",
     "portalLink": "Are you a client? Sign in to the portal"
   },
   "prefs": {
@@ -221,5 +219,31 @@
       "date": "Write the date as YYYY-MM-DD, today or later.",
       "notes": "Notes cannot exceed {max} characters."
     }
+  },
+  "unsubscribe": {
+    "title": "Unsubscribe from notices",
+    "help": "If you confirm, you will stop receiving notices about your shipments through this medium. This cannot be undone from the portal.",
+    "confirm": "Yes, unsubscribe me",
+    "done": "Done: you will not receive more notices through this medium."
+  },
+  "consigneeNotices": {
+    "title": "Notices to my consignees",
+    "help": "The consignees you mark get a link to follow their packages when they go out on route, have a failed attempt or reach a final status.",
+    "readOnly": "Your role is read-only: you can see the notices but not change them.",
+    "noEmail": "Email sending is not configured yet for the company: notices will stay pending.",
+    "enable": "Notify my consignees",
+    "enableHelp": "Only the consignees you mark below are notified.",
+    "lang": "Language of the notices",
+    "warningTitle": "Before you continue",
+    "warning": "By continuing you confirm that the consignee agreed to receive notices about their shipments through this medium. The consignee will be told that you marked them, every message will include a way to unsubscribe, and this change will be recorded.",
+    "continue": "Continue",
+    "search": "Search consignee",
+    "searchPlaceholder": "Name or city",
+    "empty": "There are no consignees.",
+    "byEmail": "Notify by email: {value}",
+    "bySms": "Notify by text: {value}",
+    "smsHelp": "Text sending is not available yet; the preference is saved.",
+    "none": "not registered",
+    "on": "Receives notices"
   }
 }

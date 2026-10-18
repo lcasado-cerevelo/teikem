@@ -143,7 +143,9 @@
     "thisComputer": "Esta computadora",
     "computerExpires": "Vence: {date}",
     "remove": "Quitar",
-    "logout": "Cerrar sesión"
+    "logout": "Cerrar sesión",
+    "consigneeNoticesHelp": "Avisos por correo a los consignatarios que usted marque.",
+    "consigneeNoticesOpen": "Configurar avisos"
   },
   "install": {
     "title": "Poner en mi escritorio",
@@ -156,11 +158,7 @@
     "alert": "{status} · va por el paso {step} de {total}"
   },
   "track": {
-    "title": "¿Cómo va mi orden?",
-    "help": "Escriba el número de conduce de su paquete para ver en qué etapa va.",
-    "waybill": "Número de conduce",
-    "placeholder": "CND-0000000",
-    "submit": "Consultar",
+    "title": "¿Cómo va mi paquete?",
     "lastUpdate": "Última actualización: {date}",
     "tooMany": "Demasiadas consultas seguidas. Espere un minuto e intente de nuevo.",
     "privacy": "Solo mostramos el avance del paquete: nunca nombres, direcciones ni teléfonos.",
@@ -221,5 +219,31 @@
       "date": "Escriba la fecha como AAAA-MM-DD, de hoy en adelante.",
       "notes": "Las notas no pueden pasar de {max} caracteres."
     }
+  },
+  "unsubscribe": {
+    "title": "Darse de baja de los avisos",
+    "help": "Si confirma, dejará de recibir avisos sobre sus envíos por este medio. Esta baja no se puede deshacer desde el portal.",
+    "confirm": "Sí, darme de baja",
+    "done": "Listo: no recibirá más avisos por este medio."
+  },
+  "consigneeNotices": {
+    "title": "Avisos a mis consignatarios",
+    "help": "Los consignatarios que usted marque reciben un enlace para ver el avance de sus paquetes cuando salen en ruta, tienen un intento fallido o llegan a un estatus final.",
+    "readOnly": "Su rol es de solo consulta: puede ver los avisos, no cambiarlos.",
+    "noEmail": "El envío de correo todavía no está configurado en la compañía: los avisos quedarán pendientes.",
+    "enable": "Avisar a mis consignatarios",
+    "enableHelp": "Solo se avisa a los consignatarios que marque abajo.",
+    "lang": "Idioma de los avisos",
+    "warningTitle": "Antes de continuar",
+    "warning": "Si desea continuar, confirma que el consignatario aceptó recibir avisos sobre sus envíos por este medio. Se le notificará al consignatario que usted lo marcó, cada mensaje traerá la opción de darse de baja y este cambio quedará registrado en la bitácora.",
+    "continue": "Continuar",
+    "search": "Buscar consignatario",
+    "searchPlaceholder": "Nombre o ciudad",
+    "empty": "No hay consignatarios.",
+    "byEmail": "Avisar por correo: {value}",
+    "bySms": "Avisar por texto: {value}",
+    "smsHelp": "El envío de texto todavía no está disponible; la preferencia se guarda.",
+    "none": "sin registrar",
+    "on": "Recibe avisos"
   }
 }

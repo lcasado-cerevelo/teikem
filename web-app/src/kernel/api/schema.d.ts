@@ -26952,112 +26952,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/public/track/{slug}/{waybill}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: {
-                    lang?: string;
-                };
-                header?: never;
-                path: {
-                    slug: string;
-                    waybill: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["PublicTrackDto"];
-                        "application/json": components["schemas"]["PublicTrackDto"];
-                        "text/json": components["schemas"]["PublicTrackDto"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/tenant/tracking": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["TrackingSettingsDto"];
-                        "application/json": components["schemas"]["TrackingSettingsDto"];
-                        "text/json": components["schemas"]["TrackingSettingsDto"];
-                    };
-                };
-            };
-        };
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["TrackingSettingsRequest"];
-                    "text/json": components["schemas"]["TrackingSettingsRequest"];
-                    "application/*+json": components["schemas"]["TrackingSettingsRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["TrackingSettingsDto"];
-                        "application/json": components["schemas"]["TrackingSettingsDto"];
-                        "text/json": components["schemas"]["TrackingSettingsDto"];
-                    };
-                };
-            };
-        };
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/client-messages/conversations": {
         parameters: {
             query?: never;
@@ -28125,6 +28019,232 @@ export interface paths {
                 };
             };
         };
+        trace?: never;
+    };
+    "/api/v1/portal/consignee-notices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsigneeNoticeSettingsDto"];
+                        "application/json": components["schemas"]["ConsigneeNoticeSettingsDto"];
+                        "text/json": components["schemas"]["ConsigneeNoticeSettingsDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ConsigneeNoticeSettingsRequest"];
+                    "text/json": components["schemas"]["ConsigneeNoticeSettingsRequest"];
+                    "application/*+json": components["schemas"]["ConsigneeNoticeSettingsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsigneeNoticeSettingsDto"];
+                        "application/json": components["schemas"]["ConsigneeNoticeSettingsDto"];
+                        "text/json": components["schemas"]["ConsigneeNoticeSettingsDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/consignee-notices/consignees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    search?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsigneeNoticeConsigneeDtoPagedResult"];
+                        "application/json": components["schemas"]["ConsigneeNoticeConsigneeDtoPagedResult"];
+                        "text/json": components["schemas"]["ConsigneeNoticeConsigneeDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/consignee-notices/consignees/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ConsigneeNoticeMarkRequest"];
+                    "text/json": components["schemas"]["ConsigneeNoticeMarkRequest"];
+                    "application/*+json": components["schemas"]["ConsigneeNoticeMarkRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsigneeNoticeConsigneeDto"];
+                        "application/json": components["schemas"]["ConsigneeNoticeConsigneeDto"];
+                        "text/json": components["schemas"]["ConsigneeNoticeConsigneeDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/track/link/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    lang?: string;
+                };
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PublicTrackDto"];
+                        "application/json": components["schemas"]["PublicTrackDto"];
+                        "text/json": components["schemas"]["PublicTrackDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/consignee-unsubscribe/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
 }
@@ -37420,18 +37540,11 @@ export interface components {
             /** Format: date-time */
             lastUpdateUtc?: string | null;
         };
-        TrackingSettingsRequest: {
-            slug?: string | null;
-        };
         PublicTrackStepDto: {
             key?: string | null;
             label?: string | null;
             done?: boolean;
             current?: boolean;
-        };
-        TrackingSettingsDto: {
-            slug?: string | null;
-            enabled?: boolean;
         };
         PortalProgressDto: {
             /** Format: int32 */
@@ -37828,6 +37941,40 @@ export interface components {
             packageType?: string | null;
             /** Format: double */
             amount?: number;
+        };
+        ConsigneeNoticeSettingsDto: {
+            enabled?: boolean;
+            lang?: string | null;
+            emailConfigured?: boolean;
+            canEdit?: boolean;
+        };
+        ConsigneeNoticeSettingsRequest: {
+            enabled?: boolean | null;
+            lang?: string | null;
+        };
+        ConsigneeNoticeConsigneeDto: {
+            /** Format: uuid */
+            publicId?: string;
+            name?: string | null;
+            city?: string | null;
+            email?: string | null;
+            phone?: string | null;
+            acceptsEmail?: boolean;
+            acceptsSms?: boolean;
+        };
+        ConsigneeNoticeConsigneeDtoPagedResult: {
+            items?: components["schemas"]["ConsigneeNoticeConsigneeDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        ConsigneeNoticeMarkRequest: {
+            channel?: string | null;
+            accepted?: boolean | null;
+            warningAccepted?: boolean | null;
         };
     };
     responses: never;

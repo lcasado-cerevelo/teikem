@@ -6904,21 +6904,6 @@
       "saved": "Settings saved",
       "unsaved": "There are unsaved changes.",
       "note": "Each company keeps its own settings. When saved, the region and formats apply across the whole app without reloading; each user's language does not change.",
-      "tracking": {
-        "title": "Public tracking",
-        "subtitle": "The \"Where is my order?\" page: anyone with the waybill number sees which stage the package is in.",
-        "on": "On",
-        "disabled": "Off",
-        "slugLabel": "Company identifier",
-        "slugPlaceholder": "my-company",
-        "slugHelp": "3 to 40 characters: lowercase letters, numbers and hyphens. It goes in the public address, because waybill numbers repeat between companies. Empty = off.",
-        "linkLabel": "Link to share",
-        "linkHelp": "Add ?n=<waybill> at the end to open it with the lookup done. The page only shows the progress: never names, addresses or phone numbers.",
-        "turnOn": "Turn on",
-        "turnOff": "Turn off",
-        "saved": "Public tracking saved.",
-        "off": "Public tracking turned off."
-      },
       "general": {
         "profileTitle": "Company details",
         "nameLabel": "Name",

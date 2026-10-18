@@ -11,50 +11,12 @@ using Teikem.Infrastructure.Persistence;
 
 namespace Teikem.Infrastructure.Services;
 
-/// <summary>404 con el mensaje de «no encontrado» del seguimiento público: es el MISMO para compañía sin seguimiento, número inexistente, número mal escrito u orden dada de baja (sin oráculo).</summary>
-public sealed class TrackingNotFoundException() : TeikemException(TrackingRules.NotFoundMessage, 404, "not_found");
-
 /// <summary>
-/// Lote 103 — seguimiento público y su ajuste. <b>La consulta pública</b> (<c>GET /api/v1/public/track/{slug}/{waybill}</c>, sin sesión): del número de conduce de una compañía devuelve SOLO el avance (etapa de cuatro,
-/// estado y fecha del último movimiento): nada de nombres, direcciones, teléfonos, montos ni números del cliente. <b>El ajuste</b> (<c>/api/v1/tenant/tracking</c>, admin.tenant): la compañía enciende o apaga el
-/// seguimiento público poniendo o quitando su identificador corto.
+/// Lote 103/116 — seguimiento público «¿Cómo va mi orden?» por ENLACE: del token propio de la orden (imposible de adivinar, sin sesión) devuelve SOLO el avance (etapa de cuatro, estado y fecha del último movimiento): nada de nombres,
+/// direcciones, teléfonos, montos ni números del cliente. Ya no hay búsqueda manual por número de conduce (Lote 116).
 /// </summary>
 public sealed class PublicTrackingService(TeikemDbContext db, ITenantContext tenant, OrderProgressService progress)
 {
-    // ---------------------------------------------------------------- consulta pública
-
-    public async Task<PublicTrackDto> TrackAsync(string? slug, string? waybill, string? lang, CancellationToken ct)
-    {
-        var s = TrackingRules.Normalize(slug);
-        var w = waybill?.Trim().ToUpperInvariant();
-        if (s is null || !TrackingRules.IsValidSlug(s) || !TrackingRules.LooksLikeWaybill(w)) throw new TrackingNotFoundException();
-
-        var company = await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(t => t.TrackingSlug == s && t.IsActive).Select(t => new { t.TenantId, t.Name, t.DefaultLangCode }).FirstOrDefaultAsync(ct)
-            ?? throw new TrackingNotFoundException();
-        var language = lang is "en" or "es" ? lang : company.DefaultLangCode.Trim() == "en" ? "en" : "es";
-
-        // el filtro global de compañía: sin sesión no hay compañía en el principal, así que se trabaja «como» la compañía del identificador (y en el idioma pedido)
-        var ctx = (TenantContext)tenant;
-        var previousLang = ctx.Lang;
-        using (ctx.AsAnonymous(company.TenantId))
-        {
-            ctx.Lang = language;
-            try
-            {
-                var order = await db.TransportOrders.AsNoTracking().Include(o => o.Status)
-                    .Where(o => o.WaybillNumber == w && o.IsActive).Select(o => new { o.TransportOrderId, o.WaybillNumber, Code = o.Status!.InternalCode, o.CreatedAtUtc, o.UpdatedAtUtc })
-                    .FirstOrDefaultAsync(ct) ?? throw new TrackingNotFoundException();
-                var result = (await progress.ComputeAsync(new[] { new OrderProgressInput(order.TransportOrderId, order.Code) }, ct))[order.TransportOrderId];
-                var last = await progress.LastMovementAsync(order.TransportOrderId, ct) ?? order.UpdatedAtUtc ?? order.CreatedAtUtc;
-                return Build(order.WaybillNumber, company.Name, result, await progress.StepsAsync(ct), last);
-            }
-            finally
-            {
-                ctx.Lang = previousLang;
-            }
-        }
-    }
-
     /// <summary>
     /// Lote 116 — el seguimiento por ENLACE (token propio de la orden, imposible de adivinar; sin sesión): devuelve lo mismo que la consulta por número de conduce, solo el avance. Un token que no existe da el mismo 404 genérico.
     /// </summary>
@@ -93,31 +55,5 @@ public sealed class PublicTrackingService(TeikemDbContext db, ITenantContext ten
         var cancelled = p.State == OrderProgress.Cancelled;   // cancelada: la barra va apagada (ninguna etapa hecha ni actual)
         var list = steps.Select((s, i) => new PublicTrackStepDto(s.Code, s.Label, !cancelled && (i + 1 < p.Step || (i + 1 == p.Step && p.State == OrderProgress.Completed)), !cancelled && i + 1 == p.Step && p.State != OrderProgress.Completed)).ToList();
         return new PublicTrackDto(waybill, companyName, p.Step, p.Total, p.State, p.StatusLabel, list, lastUpdateUtc);
-    }
-
-    // ---------------------------------------------------------------- ajuste de la compañía
-
-    public async Task<TrackingSettingsDto> GetSettingsAsync(CancellationToken ct)
-    {
-        var tid = ((TenantContext)tenant).RequireTenantId();
-        var slug = await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(t => t.TenantId == tid).Select(t => t.TrackingSlug).FirstOrDefaultAsync(ct);
-        return new TrackingSettingsDto(slug, slug is not null);
-    }
-
-    /// <summary>Pone o quita el identificador (vacío = apagar). 400 si no es válido o está reservado; 409 si ya lo usa otra compañía.</summary>
-    public async Task<TrackingSettingsDto> SetSettingsAsync(TrackingSettingsRequest req, CancellationToken ct)
-    {
-        var tid = ((TenantContext)tenant).RequireTenantId();
-        var slug = TrackingRules.Normalize(req.Slug);
-        if (slug is not null)
-        {
-            if (!TrackingRules.IsValidSlug(slug)) throw new ValidationException("slug", TrackingRules.InvalidSlugMessage);
-            if (TrackingRules.IsReserved(slug)) throw new ValidationException("slug", TrackingRules.ReservedSlugMessage);
-            if (await db.Tenants.AsNoTracking().IgnoreQueryFilters().AnyAsync(t => t.TrackingSlug == slug && t.TenantId != tid, ct)) throw new ConflictException(TrackingRules.SlugTakenMessage);
-        }
-        var row = await db.Tenants.IgnoreQueryFilters().FirstAsync(t => t.TenantId == tid, ct);
-        row.TrackingSlug = slug;
-        await db.SaveGuardedAsync(TrackingRules.SlugTakenMessage, ct);
-        return new TrackingSettingsDto(slug, slug is not null);
     }
 }

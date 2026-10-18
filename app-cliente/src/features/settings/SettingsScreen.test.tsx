@@ -109,4 +109,10 @@ describe('SettingsScreen', () => {
     await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith('/login'))
     expect(logout).toHaveBeenCalledTimes(1)
   })
+
+  it('Lote 116: «Configurar avisos» lleva a la pantalla de avisos a los consignatarios', async () => {
+    await render(<SettingsScreen />)
+    await fireEvent.press(await screen.findByTestId('settings-consignee-notices'))
+    expect(mockRouter.push).toHaveBeenCalledWith('/consignee-notices')
+  })
 })

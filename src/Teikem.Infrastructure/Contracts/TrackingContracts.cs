@@ -11,8 +11,3 @@ public sealed record PublicTrackStepDto(string Key, string Label, bool Done, boo
 /// CompanyName es el nombre de la compañía (público, el de la marca), no datos de personas.
 /// </summary>
 public sealed record PublicTrackDto(string Waybill, string CompanyName, int Step, int Total, string State, string StatusLabel, IReadOnlyList<PublicTrackStepDto> Steps, DateTime? LastUpdateUtc);
-
-/// <summary>Ajuste de la compañía: identificador de la dirección pública (null = apagado) y si está encendido.</summary>
-public sealed record TrackingSettingsDto(string? Slug, bool Enabled);
-
-public sealed record TrackingSettingsRequest(string? Slug);

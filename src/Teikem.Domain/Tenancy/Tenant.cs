@@ -38,7 +38,7 @@ public class Tenant : ISoftDeletable
     public int? DeviceSessionMinutes { get; set; }
     /// <summary>Marca por compañía: tema de color y logos (JSON libre, validado en servicio).</summary>
     public string? BrandingJson { get; set; }
-    /// <summary>Lote 103: identificador corto de la dirección pública de seguimiento («¿Cómo va mi orden?»); null = el seguimiento público está apagado para esta compañía. Único entre compañías.</summary>
+    /// <summary>Lote 103: identificador corto que servía para buscar por conduce; desde el Lote 116 el seguimiento es por enlace con token y esta columna ya no se usa (se conserva por el SQL congelado).</summary>
     public string? TrackingSlug { get; set; }
     /// <summary>Lote 113: con cuántos intentos fallidos se SUGIERE devolver una orden (por omisión 2; 0 = nunca sugiere). Solo una marca y un mensaje: no bloquea nada.</summary>
     public int ReturnSuggestAfterAttempts { get; set; } = 2;

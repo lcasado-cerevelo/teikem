@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Teikem.Domain.Catalogs;
+using Teikem.Domain.Clients;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Orders;
 using Teikem.Domain.Tenancy;
@@ -58,24 +59,7 @@ public class TrackingTests
         Assert.Equal((2, OrderProgress.Alert, "Retenida"), (other.Step, other.State, other.StatusLabel));
     }
 
-    // ---------------------------------------------------------------- identificador y número
-
-    [Fact]
-    public void Slug_rules_normalize_validate_and_reserve_words()
-    {
-        Assert.Equal("advance-depot", TrackingRules.Normalize("  Advance-Depot "));
-        Assert.Null(TrackingRules.Normalize("   "));
-        foreach (var ok in new[] { "abc", "advance-depot", "a1b2", new string('a', 40) }) Assert.True(TrackingRules.IsValidSlug(ok), ok);
-        foreach (var bad in new[] { "ab", "-abc", "abc-", "ab--cd", "Abc", "con espacio", "ñandú", new string('a', 41), "a_b" }) Assert.False(TrackingRules.IsValidSlug(bad), bad);
-        Assert.True(TrackingRules.IsReserved("api"));
-        Assert.True(TrackingRules.IsReserved("login"));
-        Assert.False(TrackingRules.IsReserved("advance"));
-        Assert.True(TrackingRules.LooksLikeWaybill("CND-0000415"));
-        Assert.True(TrackingRules.LooksLikeWaybill(" cnd-1 "));
-        foreach (var bad in new[] { null, "", "ab", "CND 123", "CND-1; DROP", "../etc", new string('9', 41) }) Assert.False(TrackingRules.LooksLikeWaybill(bad), bad ?? "null");
-    }
-
-    // ---------------------------------------------------------------- consulta pública (servicio)
+    // ---------------------------------------------------------------- consulta pública por enlace (servicio)
 
     private static async Task<(OrderReadFixture F, PublicTrackingService Svc)> WorldAsync()
     {
@@ -87,12 +71,15 @@ public class TrackingTests
             new StatusCode { StatusCodeId = 300, Entity = StatusDomains.OrderStatus, InternalCode = "IN_TRANSIT", LabelJson = "{\"es\":\"En tránsito\",\"en\":\"In transit\"}", StageKindLookupId = pipe, SortOrder = 6, IsActive = true },
             new StatusCode { StatusCodeId = 301, Entity = StatusDomains.OrderStatus, InternalCode = "DELIVERED", LabelJson = "{\"es\":\"Entregada\",\"en\":\"Delivered\"}", StageKindLookupId = term, SortOrder = 8, IsActive = true });
         f.Db.Tenants.AddRange(
-            new Tenant { TenantId = 1, Name = "Advance Logistics", TrackingSlug = "advance", IsActive = true, DefaultLangCode = "es" },
-            new Tenant { TenantId = 2, Name = "Otra Compañía", TrackingSlug = "otra", IsActive = true, DefaultLangCode = "es" });
+            new Tenant { TenantId = 1, Name = "Advance Logistics", IsActive = true, DefaultLangCode = "es" },
+            new Tenant { TenantId = 2, Name = "Otra Compañía", IsActive = true, DefaultLangCode = "es" });
         await f.Db.SaveChangesAsync();
-        // el mismo número de conduce en las dos compañías (se repite entre compañías) y uno en la compañía 1
+        // el mismo número de conduce en las dos compañías (se repite entre compañías) y un token propio por orden
         foreach (var o in f.Db.TransportOrders.IgnoreQueryFilters().ToList())
+        {
             o.WaybillNumber = o.TransportOrderId switch { 1 => "CND-0000001", 2 => "CND-0000002", 3 => "CND-0000003", 4 => "CND-0000004", 5 => "CND-0000001", _ => o.WaybillNumber };
+            o.TrackToken = "tok-" + o.TransportOrderId;
+        }
         await f.Db.SaveChangesAsync();
         f.Db.ChangeTracker.Clear();
         return (f, new PublicTrackingService(f.Db, f.Tenant, new OrderProgressService(f.Db, f.Tenant, f.Lookups)));
@@ -103,7 +90,7 @@ public class TrackingTests
     {
         var (f, svc) = await WorldAsync();
         await using var _ = f;
-        var dto = await svc.TrackAsync("advance", "cnd-0000002", null, default);   // O2 está RECOGIDA
+        var dto = await svc.TrackByTokenAsync("tok-2", null, default);   // O2 está RECOGIDA
         Assert.Equal("CND-0000002", dto.Waybill);
         Assert.Equal("Advance Logistics", dto.CompanyName);
         Assert.Equal(("RECEIVED", 2, OrderProgress.InProgress), (dto.Steps[dto.Step - 1].Key, dto.Step, dto.State));   // recogida = «Recibida»
@@ -119,16 +106,16 @@ public class TrackingTests
     }
 
     [Fact]
-    public async Task The_same_number_in_two_companies_answers_with_each_companys_own_order_and_the_right_language()
+    public async Task The_token_answers_with_its_own_companys_order_and_the_right_language_and_the_same_number_in_two_companies_does_not_mix()
     {
         var (f, svc) = await WorldAsync();
         await using var _ = f;
-        var mine = await svc.TrackAsync("advance", "CND-0000001", null, default);   // O1: sometida, compañía 1
-        var other = await svc.TrackAsync("otra", "CND-0000001", null, default);     // O5: recogida, compañía 2
+        var mine = await svc.TrackByTokenAsync("tok-1", null, default);   // O1: sometida, compañía 1
+        var other = await svc.TrackByTokenAsync("tok-5", null, default);   // O5: recogida, compañía 2 (mismo conduce CND-0000001)
         Assert.Equal(("Advance Logistics", 1), (mine.CompanyName, mine.Step));
         Assert.Equal(("Otra Compañía", 2), (other.CompanyName, other.Step));
         // el idioma pedido se respeta (los estatus de la compañía en inglés)
-        var en = await svc.TrackAsync("advance", "CND-0000001", "en", default);
+        var en = await svc.TrackByTokenAsync("tok-1", "en", default);
         Assert.Equal("Submitted", en.StatusLabel);
         Assert.Equal("es", f.Tenant.Lang);                           // y la petición no deja cambiado el idioma
     }
@@ -149,13 +136,13 @@ public class TrackingTests
         await f.Db.SaveChangesAsync();
         f.Db.ChangeTracker.Clear();
 
-        var held = await svc.TrackAsync("advance", "CND-0000003", null, default);
+        var held = await svc.TrackByTokenAsync("tok-3", null, default);
         Assert.Equal((3, OrderProgress.Alert, "Intentada"), (held.Step, held.State, held.StatusLabel));   // sigue en «En ruta», en alerta
         Assert.Equal(new[] { true, true, false, false }, held.Steps.Select(s => s.Done));
         Assert.True(held.Steps[2].Current);
         Assert.InRange((DateTime.UtcNow - held.LastUpdateUtc!.Value).TotalMinutes, 55, 65);   // el último movimiento fue hace una hora
 
-        var cancelled = await svc.TrackAsync("advance", "CND-0000004", null, default);          // O4: cancelada
+        var cancelled = await svc.TrackByTokenAsync("tok-4", null, default);          // O4: cancelada
         Assert.Equal((4, OrderProgress.Cancelled), (cancelled.Step, cancelled.State));
         Assert.All(cancelled.Steps, s => Assert.False(s.Done || s.Current));
     }
@@ -165,57 +152,18 @@ public class TrackingTests
     {
         var (f, svc) = await WorldAsync();
         await using var _ = f;
-        var t = await f.Db.Tenants.IgnoreQueryFilters().SingleAsync(x => x.TenantId == 2);
-        t.TrackingSlug = null;   // la compañía 2 apagó el seguimiento
         var inactive = f.Db.TransportOrders.IgnoreQueryFilters().Single(x => x.TransportOrderId == 1);
         inactive.IsActive = false;   // orden dada de baja
+        var t = await f.Db.Tenants.IgnoreQueryFilters().SingleAsync(x => x.TenantId == 2);
+        t.IsActive = false;          // compañía dada de baja
         await f.Db.SaveChangesAsync();
         f.Db.ChangeTracker.Clear();
 
-        var cases = new (string? Slug, string? Waybill)[]
+        foreach (var token in new string?[] { "no-existe", "tok-1", "tok-5", null, "", "   ", new string('x', 65), "CND-0000002" })
         {
-            ("nadie", "CND-0000002"),        // identificador desconocido
-            ("otra", "CND-0000001"),         // compañía con el seguimiento apagado
-            ("advance", "CND-9999999"),      // número que no existe
-            ("advance", "CND-0000001"),      // orden dada de baja
-            ("advance", "no es un número"),  // mal escrito
-            ("Adv ance", "CND-0000002"),     // identificador inválido
-            (null, null),
-        };
-        foreach (var (slug, waybill) in cases)
-        {
-            var ex = await Assert.ThrowsAsync<TrackingNotFoundException>(() => svc.TrackAsync(slug, waybill, null, default));
-            Assert.Equal(TrackingRules.NotFoundMessage, ex.Message);
+            var ex = await Assert.ThrowsAsync<ConsigneeLinkNotFoundException>(() => svc.TrackByTokenAsync(token, null, default));
+            Assert.Equal(ConsigneeNoticeRules.TrackLinkNotFoundMessage, ex.Message);
             Assert.Equal(404, ex.StatusCode);
         }
-    }
-
-    // ---------------------------------------------------------------- ajuste de la compañía
-
-    [Fact]
-    public async Task The_company_turns_public_tracking_on_with_a_valid_free_identifier_and_off_with_an_empty_one()
-    {
-        var (f, svc) = await WorldAsync();
-        await using var _ = f;
-        Assert.Equal(new TrackingSettingsDto("advance", true), await svc.GetSettingsAsync(default));
-        Assert.Equal(new TrackingSettingsDto("mi-compania", true), await svc.SetSettingsAsync(new TrackingSettingsRequest("  Mi-Compania "), default));
-        await Assert.ThrowsAsync<TrackingNotFoundException>(() => svc.TrackAsync("advance", "CND-0000002", null, default));   // el anterior ya no sirve
-        Assert.Equal("Advance Logistics", (await svc.TrackAsync("mi-compania", "CND-0000002", null, default)).CompanyName);
-        Assert.Equal(new TrackingSettingsDto(null, false), await svc.SetSettingsAsync(new TrackingSettingsRequest("   "), default));
-        await Assert.ThrowsAsync<TrackingNotFoundException>(() => svc.TrackAsync("mi-compania", "CND-0000002", null, default));
-    }
-
-    [Fact]
-    public async Task Invalid_reserved_and_taken_identifiers_are_refused_with_their_message()
-    {
-        var (f, svc) = await WorldAsync();
-        await using var _ = f;
-        var bad = await Assert.ThrowsAsync<ValidationException>(() => svc.SetSettingsAsync(new TrackingSettingsRequest("a b"), default));
-        Assert.Equal(TrackingRules.InvalidSlugMessage, bad.Errors!["slug"].Single());
-        var reserved = await Assert.ThrowsAsync<ValidationException>(() => svc.SetSettingsAsync(new TrackingSettingsRequest("api"), default));
-        Assert.Equal(TrackingRules.ReservedSlugMessage, reserved.Errors!["slug"].Single());
-        var taken = await Assert.ThrowsAsync<ConflictException>(() => svc.SetSettingsAsync(new TrackingSettingsRequest("otra"), default));   // lo usa la compañía 2
-        Assert.Equal(TrackingRules.SlugTakenMessage, taken.Message);
-        Assert.Equal("advance", (await svc.GetSettingsAsync(default)).Slug);   // nada cambió
     }
 }

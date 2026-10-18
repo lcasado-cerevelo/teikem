@@ -25,9 +25,23 @@ export type PortalOrderCreatedDto = Schemas['PortalOrderCreatedDto']
 
 export const PAGE_SIZE = 20
 
-/** «¿Cómo va mi orden?»: consulta PÚBLICA por el conduce de una compañía (su identificador va en el enlace). Solo devuelve el avance. */
-export const trackOrder = (slug: string, waybill: string, lang: string) =>
-  unwrap(api.GET('/api/v1/public/track/{slug}/{waybill}', { params: { path: { slug, waybill }, query: { lang } } }))
+/** «¿Cómo va mi orden?»: consulta PÚBLICA por el ENLACE (token propio de la orden, imposible de adivinar). Solo devuelve el avance. */
+export const trackByLink = (token: string, lang: string) => unwrap(api.GET('/api/v1/public/track/link/{token}', { params: { path: { token }, query: { lang } } }))
+
+/** Baja de los avisos con el enlace de un aviso (sin sesión; idempotente). */
+export const unsubscribeConsignee = async (token: string) => {
+  await unwrap(api.POST('/api/v1/public/consignee-unsubscribe/{token}', { params: { path: { token } } }))
+}
+
+// ---------------------------------------------------------------- avisos al consignatario (Lote 116): los prende el CLIENTE y marca, por consignatario, correo y/o texto
+export type ConsigneeNoticeSettingsDto = Schemas['ConsigneeNoticeSettingsDto']
+export type ConsigneeNoticeConsigneeDto = Schemas['ConsigneeNoticeConsigneeDto']
+export const getConsigneeNotices = () => unwrap(api.GET('/api/v1/portal/consignee-notices'))
+export const setConsigneeNotices = (body: { enabled?: boolean; lang?: string }) => unwrap(api.PUT('/api/v1/portal/consignee-notices', { body }))
+export const listNoticeConsignees = (search: string, skip = 0, take = PAGE_SIZE) =>
+  unwrap(api.GET('/api/v1/portal/consignee-notices/consignees', { params: { query: { search: search || undefined, skip, take } } }))
+export const markConsignee = (publicId: string, channel: 'EMAIL' | 'SMS', accepted: boolean, warningAccepted: boolean) =>
+  unwrap(api.PUT('/api/v1/portal/consignee-notices/consignees/{publicId}', { params: { path: { publicId } }, body: { channel, accepted, warningAccepted } }))
 
 // ---------------------------------------------------------------- nueva orden (Lote 105): el cliente sale de la sesión
 export const getOrderForm = () => unwrap(api.GET('/api/v1/portal/order-form'))

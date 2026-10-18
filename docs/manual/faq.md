@@ -9251,3 +9251,9 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 
 **El aviso quedó «omitido».** Falta el correo configurado o la dirección de la app del cliente (`ConsigneeNotices:ClientAppBaseUrl`), el consignatario se dio de baja o ya no estaba marcado; el motivo queda en el aviso.
 
+**La página «¿Cómo va mi paquete?» ya no pide el número de conduce.** Es solo por enlace: el consignatario la abre desde el aviso que recibe (el enlace trae un token propio de su orden). Un enlace que no existe responde `No encontramos ese enlace de seguimiento.` (404).
+
+**Abrí el enlace de baja y sigo recibiendo avisos.** Abrir el enlace no da de baja; hay que pulsar «Sí, darme de baja» en la página. El enlace que no es válido responde `El enlace de baja no es válido.` (404).
+
+**¿Dónde se prende el «Seguimiento público» en Ajustes?** Ya no existe (Lote 116): el seguimiento viaja en el enlace de cada aviso al consignatario, que prende el cliente en su portal.
+

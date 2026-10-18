@@ -3,8 +3,13 @@
 Lote 116 (2026-10-18, dictado por Luis; diseño en `docs/p12-avisos-consignatario-diseno.md`). Lo que **recibe el consignatario** (el que recibe el paquete) sobre sus envíos. **Lo prende y lo marca el cliente** (no la compañía), desde el portal.
 
 ## 1. Quién y dónde
-- **Cliente (portal):** un administrador u operador del cliente **prende** el aviso, escoge su **idioma** (el de los avisos al consignatario) y **marca, por consignatario**, si acepta recibir avisos por **correo** y/o por **texto**. Quien solo consulta no puede cambiarlo. (Módulo CLIENT_PORTAL; pantalla en el portal de la app del cliente — Lote 116b.)
+- **Cliente (portal):** un administrador u operador del cliente **prende** el aviso, escoge su **idioma** (el de los avisos al consignatario) y **marca, por consignatario**, si acepta recibir avisos por **correo** y/o por **texto**. Quien solo consulta no puede cambiarlo. (Módulo CLIENT_PORTAL.)
 - **Consignatario (sin sesión):** abre el enlace del correo para ver el avance de su paquete o para **darse de baja**.
+
+## 1.1 Las pantallas (app del cliente)
+- **Ajustes → Avisos a mis consignatarios → Configurar avisos** (`/consignee-notices`): casilla **«Avisar a mis consignatarios»**, **Idioma de los avisos** (Español / English) y la lista de consignatarios con búsqueda por nombre o ciudad. Cada consignatario trae dos casillas: **Avisar por correo: <correo>** y **Avisar por texto: <teléfono>** (deshabilitadas si ese medio no está registrado o el aviso está apagado; el texto se guarda pero todavía no sale). Marcar muestra la **advertencia** de privacidad con **Continuar / Cancelar**; desmarcar no la pide. Quien solo consulta lo ve sin poder cambiarlo.
+- **Seguimiento por enlace** (`/track/<token>`): pública; la barra de progreso de la orden y el último movimiento. Ver capítulo 28.
+- **Darse de baja** (`/unsubscribe/<token>`): pública; abrir el enlace **no** da de baja: hay que pulsar **«Sí, darme de baja»** (así un filtro de correo no lo hace por usted).
 
 ## 2. Cuándo se avisa
 | Qué pasó con la orden | ¿Se avisa? |

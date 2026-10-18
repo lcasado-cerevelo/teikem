@@ -114,6 +114,12 @@ export function SettingsScreen() {
       </Card>
 
       <Card>
+        <Text style={{ fontWeight: '700', color: colors.text }}>{t('consigneeNotices.title')}</Text>
+        <Muted>{t('settings.consigneeNoticesHelp')}</Muted>
+        <Button title={t('settings.consigneeNoticesOpen')} variant="secondary" onPress={() => router.push('/consignee-notices')} testID="settings-consignee-notices" />
+      </Card>
+
+      <Card>
         <Text style={{ fontWeight: '700', color: colors.text }}>{t('settings.computers')}</Text>
         <Muted>{t('settings.computersHelp')}</Muted>
         {computers.loading && !computers.data && <Spinner />}
