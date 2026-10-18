@@ -309,9 +309,10 @@ public sealed class OrderService(
                     // confirmNow (DECISIÓN 26): cotiza, verifica crédito y avanza en la misma transacción; un 422 revierte también la creación.
                     // Lote 4 (P7): con chofer, la asignación reemplaza a la confirmación (confirma, avanza hasta IN_TRANSIT y crea
                     // el DriverTrip). Se repite en cada intento: el savepoint/rollback del reintento revierte también la asignación.
+                    // Lote 107: el cernidor es AL SOMETER: contrato y tarifa, cliente y crédito se revisan siempre aquí; lo que viene después (confirmNow, asignar chofer) ya no revisa nada.
+                    await orderStatuses.QuoteOnSubmissionAsync(order, req.OverrideCredit, ct2);
                     if (preparedDriver is not null) await specialDispatch.AssignTrackedAsync(order, preparedDriver, req.OverrideCredit, null, ct2);
                     else if (req.ConfirmNow) await orderStatuses.ConfirmTrackedAsync(order, req.OverrideCredit, ct2);
-                    else await orderStatuses.QuoteOnSubmissionAsync(order, req.OverrideCredit, ct2);   // Lote 106: la orden nace Sometida y ya cotizada (si hay contrato y tarifa) con el crédito medido
 
                     return order.PublicId;
                 }, ct);

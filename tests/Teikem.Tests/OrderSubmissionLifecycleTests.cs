@@ -229,17 +229,12 @@ public sealed class OrderSubmissionLifecycleTests
     [Theory]
     [InlineData(false, false)]   // sin contrato
     [InlineData(true, false)]    // contrato sin tarifa para STANDARD/BOX
-    public async Task Without_contract_or_rate_the_order_is_created_unquoted_without_error(bool contract, bool rate)
+    public async Task Without_contract_or_rate_the_order_is_rejected_at_submission(bool contract, bool rate)
     {
-        var x = await NewWorldAsync(contract, rate, creditLimit: 1m);   // con límite: tampoco se mide el crédito sin monto
+        // Lote 107: el cernidor es al someter; sin contrato o sin tarifa la orden no se crea (mismos 409/422 de siempre).
+        var x = await NewWorldAsync(contract, rate, creditLimit: 1m);
         await using var _ = x.F;
-        var dto = await x.Orders.CreateAsync(Req(x), OrderScope.Any, null, default);
-
-        var o = await OrderAsync(x, dto.PublicId);
-        Assert.Equal(OrderStatuses.Submitted, o.Status!.InternalCode);
-        Assert.Null(o.QuotedAmount);
-        Assert.Null(o.QuotedAtUtc);
-        Assert.Null(o.ContractId);
+        await Assert.ThrowsAnyAsync<TeikemException>(() => x.Orders.CreateAsync(Req(x), OrderScope.Any, null, default));
         Assert.Empty(x.Security.Actions("credit_override"));
     }
 

@@ -64,7 +64,7 @@ function route(call: Call): unknown {
   const { method, url } = call
   const p = url.pathname
   const q = url.searchParams
-  if (method === 'POST' && p === '/api/v1/scan/outbound') {
+  if (method === 'POST' && p === '/api/v1/scan/action') {
     const code = String(call.body?.code ?? '')
     return mock.scans[code] ?? { outcome: 'NOT_FOUND', voice: 'notfound', message: 'No se encontró la orden.', reasonCode: 'NO_MATCH' }
   }

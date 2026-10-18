@@ -21,7 +21,7 @@ public sealed record StatusCapabilityUpsert(string StatusCode, string Capability
 public sealed record StatusLateralEntryDto(string LateralStatusCode, string FromStatusCode, bool IsAllowed, bool IsTenantRule);
 public sealed record StatusLateralEntryUpsert(string LateralStatusCode, string FromStatusCode, bool IsAllowed);
 
-public sealed record StatusHistoryDto(long Id, string? FromCode, string? FromLabel, string ToCode, string ToLabel, string? Comment, DateTime ChangedAtUtc, int? ChangedBy, string? ChangedByName);
+public sealed record StatusHistoryDto(long Id, string? FromCode, string? FromLabel, string ToCode, string ToLabel, string? Comment, DateTime ChangedAtUtc, int? ChangedBy, string? ChangedByName, bool IsSkipped = false);
 
 public sealed record PipelineValidationResult(bool IsValid, IReadOnlyList<string> Errors, IReadOnlyList<string> Warnings);
 

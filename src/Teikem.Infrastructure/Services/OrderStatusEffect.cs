@@ -75,33 +75,8 @@ public sealed class OrderStatusEffect(TeikemDbContext db, IServiceProvider servi
     /// <summary>Último chequeo de crédito evaluado por el efecto (lo lee OrderStatusService para la bitácora del override).</summary>
     public CreditCheck? LastCreditCheck { get; private set; }
 
-    public async Task OnTransitionedAsync(StatusTransitionContext context, CancellationToken ct)
-    {
-        if (!string.Equals(context.EntityTypeCode, EntityTypes.TransportOrder, StringComparison.OrdinalIgnoreCase)) return;
-        if (context.From is not { IsInitial: true }) return;
-        if (!string.Equals(context.To.StageKind?.InternalCode, StageKinds.Pipeline, StringComparison.OrdinalIgnoreCase)) return;
-
-        // La entidad tracked del llamador (ResolveOrderForWriteAsync ya trae las líneas); si no está, se carga con tracking
-        // para que la cotización quede en la misma unidad de trabajo. Siempre bajo el filtro global de tenant.
-        var order = db.TransportOrders.Local.FirstOrDefault(o => o.TransportOrderId == context.EntityId)
-                    ?? await db.TransportOrders.Include(o => o.CargoLines).FirstOrDefaultAsync(o => o.TransportOrderId == context.EntityId, ct)
-                    ?? throw new NotFoundException("Orden");
-
-        var client = await db.Clients.AsNoTracking().FirstOrDefaultAsync(c => c.ClientId == order.ClientId, ct)
-                     ?? throw new NotFoundException("Cliente");
-        var suspendedId = await db.StatusIdAsync(StatusDomains.ClientStatus, ClientStatuses.Suspended, ct);
-        if (client.StatusCodeId == suspendedId) throw new StatusRuleException(ClientSuspendedMessage);
-
-        var quotes = services.GetRequiredService<OrderQuoteService>();
-        await quotes.ApplyQuoteAsync(order, client, _clock.Today, ct);
-
-        var pending = await balance.PendingBalanceAsync(client.ClientId, order.TransportOrderId, ct);
-        var check = new CreditCheck(client.CreditLimit, pending, order.QuotedAmount!.Value);
-        LastCreditCheck = check;
-        var (ok, available) = CreditRules.Evaluate(check);
-        if (ok || _creditOverrides.Contains(order.TransportOrderId)) return;
-        throw await CreditExceededAsync(services, check, available, ct);
-    }
+    /// <summary>Lote 107: sin acciones. La cotización, el cliente suspendido y el crédito se revisan al someter la orden (OrderStatusService.QuoteOnSubmissionAsync); salir de Sometida ya no revisa nada.</summary>
+    public Task OnTransitionedAsync(StatusTransitionContext context, CancellationToken ct) => Task.CompletedTask;
 
     /// <summary>
     /// Lote 39: el 422 credit_exceeded con cifras solo para quien ve precios (orders.view_price, OrderPriceVisibility del scope);

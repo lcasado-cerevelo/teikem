@@ -313,6 +313,7 @@ public sealed class ClientNotificationOrderEffect(ClientNotificationService noti
     public async Task OnTransitionedAsync(StatusTransitionContext context, CancellationToken ct)
     {
         if (!string.Equals(context.EntityTypeCode, EntityTypes.TransportOrder, StringComparison.OrdinalIgnoreCase)) return;
+        if (context.Skipped) return;   // Lote 107: los estatus brincados no se avisan al cliente
         var kind = context.To.InternalCode switch
         {
             OrderStatuses.Pickup => ClientNotificationKinds.PickedUp,

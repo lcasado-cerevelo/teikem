@@ -72,16 +72,14 @@ public sealed class OrderStatusService(
     // ================================================================ cotizar al someter (Lote 106)
 
     /// <summary>
-    /// La orden nace Sometida (decidido con Luis, 2026-10-17): al crearla se cotiza —si el cliente tiene contrato y tarifa; si no, queda sin cotizar y la cotización estricta se exige al marcarla recogida— y se mide el
-    /// crédito del cliente (Sometida ya cuenta en su saldo en curso). Crédito excedido → 422 credit_exceeded (revierte la creación) salvo overrideCredit con el permiso orders.credit_override (queda SecurityEvent).
+    /// El cernidor al someter (Luis, 2026-10-17): la orden nace Sometida y AQUÍ se revisa todo lo que puede rechazarla: contrato y tarifa vigentes (sin ellos, 409/422 con el mismo mensaje de siempre y no se crea), cliente no suspendido
+    /// (lo exige OrderService antes) y crédito del cliente (Sometida ya cuenta en su saldo en curso). Crédito excedido → 422 credit_exceeded (revierte la creación) salvo overrideCredit con el permiso orders.credit_override (queda SecurityEvent).
+    /// Quien pasó el cernidor no se vuelve a revisar: marcarla recogida o escanearla solo congela el precio.
     /// </summary>
     public async Task QuoteOnSubmissionAsync(TransportOrder order, bool overrideCredit, CancellationToken ct)
     {
         var client = await LoadClientAsync(order.ClientId, ct);
-        try { await quotes.ApplyQuoteAsync(order, client, Today(), ct); }
-        catch (StatusRuleException) { return; }   // sin contrato o sin tarifa: se queda sin cotizar
-        catch (ConflictException) { return; }
-        if (order.QuotedAmount is not decimal total) return;
+        var total = await quotes.ApplyQuoteAsync(order, client, Today(), ct);
         var pending = await balance.PendingBalanceAsync(client.ClientId, order.TransportOrderId, ct);
         var check = new CreditCheck(client.CreditLimit, pending, total);
         var (ok, available) = CreditRules.Evaluate(check);
@@ -125,43 +123,12 @@ public sealed class OrderStatusService(
         if (!await db.IsInitialAsync(order.StatusCodeId, ct)) throw new StatusRuleException(NotInitialMessage);
         var target = await ConfirmTargetAsync(ct);
 
-        string? comment = null;
-        CreditCheck? overridden = null;
-        if (overrideCredit)
-        {
-            await permissions.EnsureAsync(CreditOverridePermission, ct);
-            var client = await LoadClientAsync(order.ClientId, ct);
-            var computation = await quotes.ComputeAsync(order, client, Today(), ct);
-            var pending = await balance.PendingBalanceAsync(client.ClientId, order.TransportOrderId, ct);
-            var check = new CreditCheck(client.CreditLimit, pending, computation.Total);
-            if (!CreditRules.Evaluate(check).Ok)
-            {
-                overridden = check;
-                comment = CreditOverrideCommentPrefix + await CurrentUserNameAsync(ct)
-                          + $" (límite {CreditRules.Format(check.Limit ?? 0m)}, en curso {CreditRules.Format(CreditRules.Exposure(check))}, esta orden {CreditRules.Format(check.NewAmount)})";
-                var effect = effects.OfType<OrderStatusEffect>().FirstOrDefault()
-                             ?? throw new InvalidOperationException("OrderStatusEffect no está registrado como IStatusTransitionEffect (scoped).");
-                effect.AuthorizeCreditOverride(order.TransportOrderId);
-            }
-        }
-
+        // Lote 107: marcar recogida ya no cotiza ni mide el crédito (eso se hizo al someter; overrideCredit se ignora): solo congela el precio que tenía.
         var to = await statuses.TransitionAsync(StatusDomains.OrderStatus, EntityTypes.TransportOrder, order.TransportOrderId,
-            order.StatusCodeId, target.Code, comment, ct);
+            order.StatusCodeId, target.Code, null, ct);
         order.StatusCodeId = to.StatusCodeId;
         order.ConfirmedAtUtc = DateTime.UtcNow;
         await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct);
-
-        if (overridden is not null)
-            await security.WriteAsync(SecurityEventTypes.RoleChange, SecurityOutcomes.Success, tenant.UserId, tenant.TenantId,
-                new
-                {
-                    action = "credit_override",
-                    order = order.PublicId,
-                    orderNumber = order.OrderNumber,
-                    limit = overridden.Limit,
-                    exposure = CreditRules.Exposure(overridden),
-                    amount = overridden.NewAmount,
-                }, ct);
     }
 
     public Task<OrderDetailDto> ConfirmAsync(Guid publicId, OrderConfirmRequest? req, OrderScope scope, CancellationToken ct)

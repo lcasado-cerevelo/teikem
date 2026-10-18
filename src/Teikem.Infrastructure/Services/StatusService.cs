@@ -17,7 +17,7 @@ public interface IStatusTransitionEffect
     Task OnTransitionedAsync(StatusTransitionContext context, CancellationToken ct);
 }
 
-public sealed record StatusTransitionContext(string StatusDomain, string EntityTypeCode, int EntityId, StatusCode? From, StatusCode To, string? Comment);
+public sealed record StatusTransitionContext(string StatusDomain, string EntityTypeCode, int EntityId, StatusCode? From, StatusCode To, string? Comment, bool Skipped = false);
 
 /// <summary>
 /// Capa B: motor de estatus sin grafo de workflow. El pipeline de cada tenant es data (StatusCode + override),
@@ -229,6 +229,40 @@ public sealed class StatusService(TeikemDbContext db, ITenantContext tenant, ILo
         return to;
     }
 
+    /// <summary>
+    /// Lote 107 — avanza una entidad por varias etapas PIPELINE de una vez (un escaneo que se brinca estatus): una fila de historial por etapa, TODAS con la misma fecha y hora, y las de en medio marcadas IsSkipped.
+    /// Los efectos corren en cada etapa (los de aviso al cliente ignoran las brincadas: context.Skipped). Quien llama calcula <paramref name="stepCodes"/> con PipelinePath.StepsTo (ya válidos y en orden); aquí no se
+    /// revalida el pipeline, así que sirve también para regresar de un lateral (Intento fallido → Sin asignar). Devuelve el StatusCode final.
+    /// </summary>
+    public async Task<StatusCode> AdvanceSkippingAsync(string statusDomain, string entityTypeCode, int entityId, int? fromStatusId, IReadOnlyList<string> stepCodes, string? comment, CancellationToken ct)
+    {
+        if (stepCodes.Count == 0) throw new StatusRuleException("No hay etapas por recorrer.");
+        if (comment is { Length: > CommentMaxLength }) throw new ValidationException("comment", CommentTooLongMessage);
+        var enabled = await LoadEnabledAsync(statusDomain, ct);
+        var entityTypeId = await lookups.GetIdAsync(LookupDomains.EntityType, entityTypeCode, ct);
+        var from = fromStatusId.HasValue ? await db.StatusCodes.AsNoTracking().Include(s => s.StageKind).FirstOrDefaultAsync(s => s.StatusCodeId == fromStatusId.Value, ct) : null;
+        var at = DateTime.UtcNow;
+        StatusCode? last = null;
+        for (var i = 0; i < stepCodes.Count; i++)
+        {
+            var to = enabled.FirstOrDefault(s => s.InternalCode.Equals(stepCodes[i], StringComparison.OrdinalIgnoreCase))
+                     ?? throw new StatusRuleException($"El estatus '{stepCodes[i]}' no existe o no está habilitado para esta compañía.");
+            var skipped = i < stepCodes.Count - 1;
+            db.EntityStatusHistories.Add(new EntityStatusHistory
+            {
+                TenantId = ((TenantContext)tenant).RequireTenantId(), EntityTypeLookupId = entityTypeId, EntityId = entityId,
+                FromStatusCodeId = from?.StatusCodeId, ToStatusCodeId = to.StatusCodeId, Comment = comment,
+                ChangedAtUtc = at, ChangedBy = tenant.UserId, IsSkipped = skipped,
+            });
+            var context = new StatusTransitionContext(statusDomain, entityTypeCode, entityId, from, to, comment, skipped);
+            foreach (var effect in effects.Where(e => e.StatusDomain.Equals(statusDomain, StringComparison.OrdinalIgnoreCase)))
+                await effect.OnTransitionedAsync(context, ct);
+            from = to;
+            last = to;
+        }
+        return last!;
+    }
+
     private async Task EnsureTransitionAllowedAsync(List<StatusCode> enabled, StatusCode? from, StatusCode to, int entityTypeId, int entityId, CancellationToken ct)
     {
         var toKind = to.StageKind!.InternalCode;
@@ -310,7 +344,7 @@ public sealed class StatusService(TeikemDbContext db, ITenantContext tenant, ILo
             h.FromStatus?.InternalCode, h.FromStatus is null ? null : MultilingualText.Resolve(h.FromStatus.LabelJson, tenant.Lang),
             h.ToStatus!.InternalCode, MultilingualText.Resolve(h.ToStatus.LabelJson, tenant.Lang),
             OrderPriceRules.RedactHistoryComment(h.Comment, canViewPrice), h.ChangedAtUtc, h.ChangedBy,
-            h.ChangedBy.HasValue ? users.GetValueOrDefault(h.ChangedBy.Value) : null)).ToList();
+            h.ChangedBy.HasValue ? users.GetValueOrDefault(h.ChangedBy.Value) : null, h.IsSkipped)).ToList();
     }
 
     private StatusDto ToDto(StatusCode s, StatusCodeOverride? o)

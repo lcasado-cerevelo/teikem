@@ -425,6 +425,8 @@ app del chofer (por ahora el cierre es manual).
 
 ## 7. Estación de escaneo Outbound
 
+> **Lote 107 (2026-10-17): la estación ahora tiene ACCIÓN escogida.** El usuario escoge qué va a hacer —**Recoger, Llegó, Enrutar o Salir**— y cada escaneo lleva la orden al estatus de esa acción (`POST /api/v1/scan/action`, descrito en la sección 7b). **Enrutar** (la acción por omisión) hace lo de siempre —poner la orden en la ruta abierta de su zona— y además la deja **Asignada**; el texto de abajo (`/scan/outbound`) sigue describiendo ese asignador, que Enrutar reutiliza. Una Sometida ya no se rechaza al enrutarla: se lleva hasta Asignada brincando Recogida y Sin asignar.
+
 Qué hace: escanea el número de orden, el número de empaque o el número de factura del cliente (mismo criterio y
 precedencia que `/orders/lookup`: número de orden primero, luego empaque, luego factura y, desde el Lote 44, el número de paquete
 del label de cada pieza) y asigna la orden a la
@@ -458,6 +460,37 @@ El escaneo nunca inventa rutas: si la única ruta abierta de la zona dejó de es
 (por ejemplo, alguien la acaba de despachar), prueba la siguiente ruta abierta de menor id; si no queda ninguna,
 el resultado es `NO_OPEN_ROUTE`. Ocho escaneos simultáneos de órdenes distintas hacia la misma ruta quedan todos
 `FOUND_ASSIGNED`, con secuencias 1..N sin huecos ni duplicados.
+
+---
+
+## 7b. Escaneo con acción escogida (Lote 107)
+
+Qué hace: el usuario escoge la **acción** y escanea; cada escaneo lleva la orden al estatus de esa acción **brincando los estatus de en medio** (no hay que escanear varias veces). Los estatus brincados quedan en el historial con la marca **«(brincado)»** y **la misma fecha y hora** que el estatus al que llegó; los avisos al cliente de los estatus brincados **no** se mandan. No revisa tarifa, crédito ni cliente: eso se revisó al someter la orden.
+
+Quién puede: `trips.scan` (módulo LTL_GROUND). Cómo se usa: pantalla **Operación → Estación de escaneo** (selector de acción arriba) o `POST /api/v1/scan/action` — `{ "action": "ARRIVE", "code": "CND-0000123", "planDate": null }`. El código es el mismo de siempre (número de orden, empaque, factura o número de paquete).
+
+| Acción | `action` | Lleva la orden a | Quién la usa |
+|---|---|---|---|
+| Recoger | `PICKUP` | Recogida | quien recoge (chofer o guarda) |
+| Llegó | `ARRIVE` | Sin asignar | el guarda del almacén |
+| Enrutar | `ROUTE` | Asignada **y** la pone en la ruta abierta de su zona | el guarda del almacén |
+| Salir | `DEPART` | En tránsito | el chofer al aceptarla |
+
+Resultados (`outcome` / `voice`), siempre `200`:
+
+| `outcome` | `voice` | Cuándo | Mensaje (ejemplo) |
+|---|---|---|---|
+| `APPLIED` | `found` | el estatus cambió | `La orden CND-0000123 pasó a Sin asignar.` / `… pasó a En tránsito (brincó 2 estatus).` / con Enrutar: `Asignada a la ruta 2026-0001. (brincó 2 estatus)` |
+| `ALREADY_BEYOND` | `dup` | la orden ya está en ese estatus o más adelante: no se toca (con Enrutar, si ya está en una ruta: `Ya estaba en la ruta 2026-0001.`) | `La orden CND-0000123 ya está en Asignada o más adelante: no se cambia.` |
+| `FINAL` | `dup` | la orden está en un estatus final (Entregada, Cancelada, En almacén): se ignora; reabrirla exige el permiso `orders.reopen` | `La orden CND-0000123 está en un estatus final (Entregada): no se cambia.` |
+| `NO_ROUTE` | `notfound` | **Enrutar** y no hay ruta abierta que reciba la orden (sin zona, zona ambigua o sin ruta ese día): no cambia nada, ni el estatus | el motivo de siempre (sección 7), p. ej. `No hay ruta abierta para la zona R-01 en la fecha 2026-10-17; queda sin asignar.` |
+| `NOT_FOUND` / `AMBIGUOUS` | `notfound` | código que no existe o está en varias órdenes | `No se encontró la orden.` / `Hay varias órdenes con ese código; escanee el empaque.` |
+
+Reglas:
+- **Desde Intento fallido** (lateral): **Llegó** la devuelve a Sin asignar (el intento fallido queda en el historial); Enrutar y Salir la llevan a Asignada / En tránsito pasando por Sin asignar (brincado); Recoger ya está más adelante.
+- **Se puede brincar estatus**: desde Sometida, **Salir** la lleva a En tránsito dejando Recogida, Sin asignar y Asignada brincados.
+- Errores `400`: acción distinta de las cuatro → `Escoja la acción: recoger, llegó, enrutar o salir.` (campo `action`); código vacío o de más de 40 caracteres, igual que la sección 7.
+- Silencioso: nunca pregunta ni interrumpe; cada escaneo contesta con su resultado en la lista de la sesión.
 
 ---
 

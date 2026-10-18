@@ -46,7 +46,7 @@ function wrap(permissions: string[], modules = MODULES) {
 
 const input = () => screen.getByRole('textbox', { name: 'Código a escanear' })
 const result = () => screen.getByRole('status', { name: 'Resultado del último escaneo' })
-const posts = () => callsTo('POST', '/api/v1/scan/outbound')
+const posts = () => callsTo('POST', '/api/v1/scan/action')
 const feed = () => screen.getByRole('list', { name: 'Escaneados en esta sesión' })
 
 /** Escribe el código y pulsa Enter, como el lector. */
@@ -63,11 +63,13 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('Estación de escaneo — pantalla', () => {
-  it('título, solo el modo «Salida», entrada con foco y avisos; sin modos ni botones que el servidor no tiene', async () => {
+  it('título, las cuatro acciones (Enrutar por omisión), entrada con foco y avisos; sin modos que el servidor no tiene', async () => {
     wrap(ALL)
     expect(screen.getByRole('heading', { level: 1, name: 'Estación de escaneo' })).toBeInTheDocument()
     expect(input()).toHaveFocus()
-    expect(within(screen.getByRole('group', { name: 'Modo de escaneo' })).getByText('Salida')).toBeInTheDocument()
+    const actions = within(screen.getByRole('radiogroup', { name: 'Acción del escaneo' }))
+    for (const name of ['Recoger', 'Llegó', 'Enrutar', 'Salir']) expect(actions.getByRole('radio', { name })).toBeInTheDocument()
+    expect(actions.getByRole('radio', { name: 'Enrutar' })).toBeChecked()
     for (const fake of [/Inbound|Entrada/, /Procesamiento/, /COD/]) expect(screen.queryByRole('button', { name: fake })).toBeNull()
     // Lote F-G2: el «Informe de faltantes» ya existe (con trips.view)
     expect(screen.getByRole('button', { name: 'Informe de faltantes' })).toBeInTheDocument()
@@ -89,7 +91,7 @@ describe('Estación de escaneo — pantalla', () => {
     await scanCode(user, 'OT-0001')
     await waitFor(() => expect(result()).toHaveTextContent('Asignada a la ruta R-0001.'))
     expect(posts()).toHaveLength(1)
-    expect(posts()[0].body).toEqual({ code: 'OT-0001', planDate: tenantToday() })
+    expect(posts()[0].body).toEqual({ action: 'ROUTE', code: 'OT-0001', planDate: tenantToday() })
     expect(posts()[0].headers.get('Idempotency-Key')).toMatch(/[0-9a-f-]{36}/)
     expect(result()).toHaveTextContent('Asignada')
     expect(result()).toHaveTextContent('Encontrada por número de orden.')
@@ -107,6 +109,22 @@ describe('Estación de escaneo — pantalla', () => {
     await waitFor(() => expect(callsTo('GET', '/api/v1/trips/unassigned-orders').length).toBeGreaterThan(1))
     await waitFor(() => expect(screen.getByText('de 3')).toBeInTheDocument())
     expect(screen.getByRole('progressbar', { name: 'Avance de la sesión' })).toHaveAttribute('aria-valuenow', '33')
+  })
+
+  it('la acción escogida va en cada escaneo (Llegó → ARRIVE) y se queda escogida', async () => {
+    const user = userEvent.setup()
+    wrap(SCAN)
+    await user.click(screen.getByRole('radio', { name: 'Llegó' }))
+    expect(screen.getByRole('radio', { name: 'Llegó' })).toBeChecked()
+    expect(screen.getByTestId('scan-action-help')).toHaveTextContent('Llegó al almacén')
+    mock.scans['L1'] = assigned('o-1', 'OT-0001')
+    await scanCode(user, 'L1')
+    await waitFor(() => expect(posts()).toHaveLength(1))
+    expect(posts()[0].body?.action).toBe('ARRIVE')
+    await user.click(screen.getByRole('radio', { name: 'Salir' }))
+    await scanCode(user, 'L1')
+    await waitFor(() => expect(posts()).toHaveLength(2))
+    expect(posts()[1].body?.action).toBe('DEPART')
   })
 
   it('el botón «Registrar» hace lo mismo que Enter y las lecturas llevan cada una su Idempotency-Key', async () => {

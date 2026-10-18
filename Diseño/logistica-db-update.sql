@@ -4195,3 +4195,10 @@ FROM dbo.Role r
 JOIN dbo.Permission p ON p.Code = 'orders.reopen' AND r.Name = 'TenantAdmin'
 WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = p.PermissionId);
 GO
+
+/* =========================================================================
+   2026-10-17 (ap) — Lote 107: estatus «brincado». Un escaneo que lleva la orden más adelante registra los estatus del medio con la misma fecha y hora y esta marca.
+   ========================================================================= */
+IF COL_LENGTH('dbo.EntityStatusHistory', 'IsSkipped') IS NULL
+    ALTER TABLE dbo.EntityStatusHistory ADD IsSkipped BIT NOT NULL CONSTRAINT DF_EntityStatusHistory_IsSkipped DEFAULT 0;
+GO

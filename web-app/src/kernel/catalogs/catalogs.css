@@ -16,6 +16,8 @@
 .stpipe-act{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .stpipe-act .btn{max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .stpipe-count{font-size:11px;color:var(--faint);text-align:right;margin-top:4px}
+/* Lote 107: «(brincado)» junto al estatus que registró un escaneo al saltar etapas */
+.sthist .skipped{font-size:11.5px;color:var(--muted);margin-left:6px}
 .sthist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
 .sthist li{display:flex;flex-direction:column;gap:5px;padding:10px 0;border-bottom:1px solid var(--line-2);min-width:0}
 .sthist li:last-child{border-bottom:none}

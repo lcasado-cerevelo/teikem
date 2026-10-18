@@ -27650,6 +27650,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/scan/action": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ScanActionRequest"];
+                    "text/json": components["schemas"]["ScanActionRequest"];
+                    "application/*+json": components["schemas"]["ScanActionRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ScanActionResultDto"];
+                        "application/json": components["schemas"]["ScanActionResultDto"];
+                        "text/json": components["schemas"]["ScanActionResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -33753,6 +33796,7 @@ export interface components {
             /** Format: int32 */
             changedBy?: number | null;
             changedByName?: string | null;
+            isSkipped?: boolean;
         };
         StatusLateralEntryDto: {
             lateralStatusCode?: string | null;
@@ -37119,6 +37163,33 @@ export interface components {
             toCode?: string | null;
             comment?: string | null;
             rowVersion?: string | null;
+        };
+        ScanActionResultDto: {
+            action?: string | null;
+            outcome?: string | null;
+            voice?: string | null;
+            message?: string | null;
+            /** Format: uuid */
+            orderPublicId?: string | null;
+            orderNumber?: string | null;
+            packBatchNumber?: string | null;
+            fromStatus?: string | null;
+            fromLabel?: string | null;
+            toStatus?: string | null;
+            toLabel?: string | null;
+            skipped?: string[] | null;
+            zoneCode?: string | null;
+            /** Format: uuid */
+            tripPublicId?: string | null;
+            tripCode?: string | null;
+            reasonCode?: string | null;
+            matchedBy?: string | null;
+        };
+        ScanActionRequest: {
+            action?: string | null;
+            code?: string | null;
+            /** Format: date */
+            planDate?: string | null;
         };
     };
     responses: never;

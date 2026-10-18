@@ -4,9 +4,10 @@
 .scn .panel{margin-bottom:16px}
 
 .scn .scanhero{background:linear-gradient(160deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:16px;padding:26px 26px 22px;text-align:center;margin-bottom:16px;min-width:0}
-.scn .modes{display:inline-flex;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:3px;margin-bottom:18px}
-.scn .modes span{border-radius:8px;padding:7px 14px;font-size:12.5px;font-weight:600;color:var(--muted)}
-.scn .modes span.on{background:var(--flow);color:#fff}
+.scn .modes{display:inline-flex;flex-wrap:wrap;gap:2px;max-width:100%;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:3px;margin-bottom:18px}
+.scn .modes span,.scn .modes button{border-radius:8px;padding:7px 14px;font-size:12.5px;font-weight:600;color:var(--muted);background:transparent;border:0;cursor:pointer;font-family:inherit}
+.scn .modes span.on,.scn .modes button.on{background:var(--flow);color:#fff}
+.scn .modes button:focus-visible{outline:2px solid var(--flow);outline-offset:1px}
 .scn .scaninput{display:flex;align-items:center;gap:12px;background:var(--bg-2);border:2px solid var(--flow);border-radius:14px;padding:4px 6px 4px 18px;box-shadow:0 0 0 5px var(--flow-bg);max-width:520px;margin:0 auto;min-width:0}
 .scn .scaninput svg{width:22px;height:22px;color:var(--flow-2);flex:none}
 .scn .scaninput input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-family:var(--mono);font-size:17px;padding:12px 0;min-width:0;width:100%}

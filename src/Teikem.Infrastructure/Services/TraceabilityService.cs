@@ -217,7 +217,7 @@ public sealed class TraceabilityService(TeikemDbContext db, ITenantContext tenan
         return rows.Select(h => new StatusHistoryDto(h.EntityStatusHistoryId,
             h.FromStatus?.InternalCode, h.FromStatus is null ? null : MultilingualText.Resolve(h.FromStatus.LabelJson, tenant.Lang),
             h.ToStatus?.InternalCode ?? string.Empty, h.ToStatus is null ? string.Empty : MultilingualText.Resolve(h.ToStatus.LabelJson, tenant.Lang),
-            h.Comment, h.ChangedAtUtc, h.ChangedBy, h.ChangedBy is int u ? users.GetValueOrDefault(u) : null)).ToList();
+            h.Comment, h.ChangedAtUtc, h.ChangedBy, h.ChangedBy is int u ? users.GetValueOrDefault(u) : null, h.IsSkipped)).ToList();
     }
 
     // ================================================================ conciliación ledger ↔ saldo

@@ -18,7 +18,7 @@ import { usePrinting } from '../printing/usePrinting'
 import { missingReportSpec } from './missingReport'
 import { useDispatchZones } from '../drivers/api'
 import { useDebounced } from '../warehouse/lineRules'
-import { fetchOrderKnown, useOutboundScan, useUnassignedOrders } from './scanApi'
+import { fetchOrderKnown, SCAN_ACTIONS, type ScanActionKey, useScanAction, useUnassignedOrders } from './scanApi'
 import { ScanOrderModal, type PeekTarget } from './ScanOrderModal'
 import { ScanFeedPanel, ScanPendingPanel } from './ScanPanels'
 import { ScanResultBox, type LastScan } from './ScanResultBox'
@@ -75,7 +75,8 @@ export default function ScanScreen() {
   const [filters, setFilters] = useState<ScanFilters>(NO_FILTERS)
   const [clientPublicId, setClientPublicId] = useState<string | null>(null)
 
-  const scan = useOutboundScan()
+  const scan = useScanAction()
+  const [action, setAction] = useState<ScanActionKey>('ROUTE')   // Lote 107: el usuario escoge qué va a hacer; por omisión, Enrutar (lo de siempre)
   const zones = useDispatchZones(false, canFleet && catalogOn)
   const showZoneFilter = canTrips && canFleet && catalogOn && !zones.isError && (zones.data?.length ?? 0) > 0
   const showClientFilter = canTrips && canClients && catalogOn
@@ -91,9 +92,9 @@ export default function ScanScreen() {
   const filtered = hasFilters(settled) || settledClient !== null
 
   // refs con lo último, para la fila de escaneos (corre fuera del ciclo de render)
-  const latest = useRef({ planDate, pendingItems, voiceOn: voice.on, lang, canOrders, scope })
+  const latest = useRef({ planDate, pendingItems, voiceOn: voice.on, lang, canOrders, scope, action })
   useEffect(() => {
-    latest.current = { planDate, pendingItems, voiceOn: voice.on, lang, canOrders, scope }
+    latest.current = { planDate, pendingItems, voiceOn: voice.on, lang, canOrders, scope, action }
   })
   const chain = useRef<Promise<void>>(Promise.resolve())
 
@@ -117,7 +118,7 @@ export default function ScanScreen() {
     async (code: string) => {
       const date = latest.current.planDate ?? tenantToday()
       try {
-        const result: ScanResult = await scan.mutateAsync({ code, planDate: date })
+        const result: ScanResult = await scan.mutateAsync({ action: latest.current.action, code, planDate: date })
         const fromPending = latest.current.pendingItems.find((o) => o.publicId && o.publicId === result.orderPublicId)
         const known: KnownOrder = { ...(fromPending ? knownFromPending(fromPending) : {}), ...(result.zoneCode ? { zoneCode: result.zoneCode } : {}) }
         const entry: ScanEntry = { id: nextEntryId(), code, at: new Date().toISOString(), result, known }
@@ -229,11 +230,24 @@ export default function ScanScreen() {
       {printing.dialog}
 
       <div className="scanhero">
-        <div className="modes" role="group" aria-label={t('scan.mode.label')}>
-          <span className="on" aria-current="true">
-            {t('scan.mode.out')}
-          </span>
+        <div className="modes" role="radiogroup" aria-label={t('scan.mode.label')}>
+          {SCAN_ACTIONS.map((a) => (
+            <button
+              key={a}
+              type="button"
+              role="radio"
+              aria-checked={action === a}
+              className={action === a ? 'on' : undefined}
+              onClick={() => {
+                setAction(a)
+                focusInput()
+              }}
+            >
+              {t(`scan.action.${a}`)}
+            </button>
+          ))}
         </div>
+        <div className="hint" data-testid="scan-action-help">{t(`scan.actionHelp.${action}`)}</div>
         <form className="scaninput" onSubmit={submit}>
           <IconScan />
           <input

@@ -130,6 +130,8 @@ public class EntityStatusHistory : ITenantScoped
     public string? Comment { get; set; }
     public DateTime ChangedAtUtc { get; set; } = DateTime.UtcNow;
     public int? ChangedBy { get; set; }
+    /// <summary>Lote 107: el estatus se registró «brincado» (un escaneo llevó la orden más adelante): misma fecha y hora que el estatus al que llegó, sin avisos al cliente.</summary>
+    public bool IsSkipped { get; set; }
     public LookupCode? EntityType { get; set; }
     public StatusCode? FromStatus { get; set; }
     public StatusCode? ToStatus { get; set; }

@@ -1130,7 +1130,12 @@
       "removeCondition": "Remove this condition",
       "removeConditionN": "Remove condition {n}",
       "addCondition": "Add condition",
-      "operators": { "EQUALS": "equals", "CONTAINS": "contains", "NOT_EMPTY": "is not empty", "EMPTY": "is empty" },
+      "operators": {
+        "EQUALS": "equals",
+        "CONTAINS": "contains",
+        "NOT_EMPTY": "is not empty",
+        "EMPTY": "is empty"
+      },
       "conditionSummary": "{column} {operator}{value}",
       "and": "and",
       "variantsMapping": "Mapping in {n} variants (the first one that holds is used):",
@@ -1894,7 +1899,10 @@
       "notfound": "No",
       "dup": "Already"
     },
-    "mode": { "label": "Scan mode", "out": "Outbound" },
+    "mode": {
+      "label": "Scan action",
+      "out": "Outbound"
+    },
     "input": {
       "label": "Code to scan",
       "placeholder": "Scan or type the reference…",
@@ -1989,6 +1997,18 @@
       "cod": "COD",
       "status": "Status",
       "trip": "Current route"
+    },
+    "action": {
+      "PICKUP": "Pick up",
+      "ARRIVE": "Arrived",
+      "ROUTE": "Route",
+      "DEPART": "Depart"
+    },
+    "actionHelp": {
+      "PICKUP": "Pick up: whatever you scan becomes Picked up.",
+      "ARRIVE": "Arrived at the warehouse: whatever you scan becomes Unassigned (a failed attempt coming back too).",
+      "ROUTE": "Route: whatever you scan becomes Assigned and joins the open route of its zone; with no route to take it, nothing changes.",
+      "DEPART": "Depart: whatever you scan becomes In transit."
     }
   },
   "routeMap": {
@@ -1998,9 +2018,23 @@
     "unlocated": "Without location: {count}",
     "schematic": "Schematic plan: it shows the relative position of the stops, not streets.",
     "pickHint": "Tap the plan to take an approximate position.",
-    "accuracy": { "exact": "Exact pin", "approximate": "Approximate pin", "manual": "Manual pin" },
-    "state": { "pending": "Pending", "current": "In progress", "done": "Delivered", "failed": "Failed" },
-    "legend": { "exact": "Exact pin", "approximate": "Approximate (center of the ZIP or town)", "manual": "Manual pin", "live": "Driver position" }
+    "accuracy": {
+      "exact": "Exact pin",
+      "approximate": "Approximate pin",
+      "manual": "Manual pin"
+    },
+    "state": {
+      "pending": "Pending",
+      "current": "In progress",
+      "done": "Delivered",
+      "failed": "Failed"
+    },
+    "legend": {
+      "exact": "Exact pin",
+      "approximate": "Approximate (center of the ZIP or town)",
+      "manual": "Manual pin",
+      "live": "Driver position"
+    }
   },
   "monitor": {
     "title": "Route monitoring",
@@ -2055,7 +2089,16 @@
     "speed": "Speed",
     "heading": "Heading",
     "none": "—",
-    "compass": { "N": "N", "NE": "NE", "E": "E", "SE": "SE", "S": "S", "SW": "SW", "W": "W", "NW": "NW" },
+    "compass": {
+      "N": "N",
+      "NE": "NE",
+      "E": "E",
+      "SE": "SE",
+      "S": "S",
+      "SW": "SW",
+      "W": "W",
+      "NW": "NW"
+    },
     "noPing": "No ping",
     "lastPing": "Last ping",
     "staleChip": "No recent signal",
@@ -2085,7 +2128,7 @@
     }
   },
   "dispatch": {
-    "title":"Dispatch room",
+    "title": "Dispatch room",
     "sub": "Build routes: pick orders, assign them to a driver, optimize and dispatch",
     "date": "Route date",
     "todayButton": "Today",
@@ -2356,7 +2399,8 @@
     "pipelineInvalid": "This company's status setup has errors; let your administrator know.",
     "history": "Status history",
     "historyEmpty": "No status changes yet.",
-    "system": "System"
+    "system": "System",
+    "skipped": "(skipped)"
   },
   "customFields": {
     "choose": "Select…",
@@ -2881,51 +2925,51 @@
       "chartEmpty": "This chart has no data in the configured range.",
       "showInPulseMine": "Show in the day's Pulse",
       "showInPulseCompany": "…in the company's",
-        "radar": {
-          "title": "Open orders radar",
-          "by": "Group by",
-          "town": "Town",
-          "client": "Client",
-          "open": "{n} open",
-          "placeholder": "Search by invoice, order or consignee…",
-          "results": "Orders found",
-          "noResults": "No results among open orders",
-          "none": "There are no open orders.",
-          "all": "See all in Orders",
-          "hint": "Only what is open — what was delivered stays out of the way"
-        },
-        "rivers": {
-          "orders": {
-            "title": "Packages on the street",
-            "ENTRY": "Entry",
-            "IN_WAREHOUSE": "In warehouse",
-            "TO_DISPATCH": "To dispatch",
-            "ON_ROUTE": "On route",
-            "DELIVERED": "Delivered",
-            "unit": "orders",
-            "sub": {
-              "ENTRY": "new orders today · {waiting} waiting",
-              "IN_WAREHOUSE": "received in the warehouse",
-              "TO_DISPATCH": "no driver",
-              "ON_ROUTE": "{drivers} drivers",
-              "DELIVERED": "today"
-            }
-          },
-          "cod": {
-            "title": "COD money",
-            "TO_COLLECT": "To collect",
-            "COLLECTED": "Collected",
-            "RECONCILED": "Reconciled",
-            "REMITTANCE": "Remittance ready",
-            "sub": {
-              "TO_COLLECT": "orders · {amount} left",
-              "COLLECTED": "cash {cash} · checks {checks}",
-              "other": "other {other}",
-              "RECONCILED": "no remittance · {clients} clients",
-              "REMITTANCE": "{remittances} remittances · {clients} clients"
-            }
+      "radar": {
+        "title": "Open orders radar",
+        "by": "Group by",
+        "town": "Town",
+        "client": "Client",
+        "open": "{n} open",
+        "placeholder": "Search by invoice, order or consignee…",
+        "results": "Orders found",
+        "noResults": "No results among open orders",
+        "none": "There are no open orders.",
+        "all": "See all in Orders",
+        "hint": "Only what is open — what was delivered stays out of the way"
+      },
+      "rivers": {
+        "orders": {
+          "title": "Packages on the street",
+          "ENTRY": "Entry",
+          "IN_WAREHOUSE": "In warehouse",
+          "TO_DISPATCH": "To dispatch",
+          "ON_ROUTE": "On route",
+          "DELIVERED": "Delivered",
+          "unit": "orders",
+          "sub": {
+            "ENTRY": "new orders today · {waiting} waiting",
+            "IN_WAREHOUSE": "received in the warehouse",
+            "TO_DISPATCH": "no driver",
+            "ON_ROUTE": "{drivers} drivers",
+            "DELIVERED": "today"
           }
         },
+        "cod": {
+          "title": "COD money",
+          "TO_COLLECT": "To collect",
+          "COLLECTED": "Collected",
+          "RECONCILED": "Reconciled",
+          "REMITTANCE": "Remittance ready",
+          "sub": {
+            "TO_COLLECT": "orders · {amount} left",
+            "COLLECTED": "cash {cash} · checks {checks}",
+            "other": "other {other}",
+            "RECONCILED": "no remittance · {clients} clients",
+            "REMITTANCE": "{remittances} remittances · {clients} clients"
+          }
+        }
+      },
       "panels": {
         "INDICATORS": "Your indicators",
         "CHARTS": "Your charts",
@@ -3304,11 +3348,24 @@
         "weekly": "Once a week",
         "monthly": "Once a month",
         "weekday": "Day of the week",
-        "weekdays": { "0": "Sunday", "1": "Monday", "2": "Tuesday", "3": "Wednesday", "4": "Thursday", "5": "Friday", "6": "Saturday" },
+        "weekdays": {
+          "0": "Sunday",
+          "1": "Monday",
+          "2": "Tuesday",
+          "3": "Wednesday",
+          "4": "Thursday",
+          "5": "Friday",
+          "6": "Saturday"
+        },
         "monthDay": "Day of the month",
         "time": "Time (company time)",
         "range": "Period of the report sent",
-        "ranges": { "LAST7": "Last 7 days", "LAST30": "Last 30 days", "THIS_MONTH": "This month", "ALL": "All history" },
+        "ranges": {
+          "LAST7": "Last 7 days",
+          "LAST30": "Last 30 days",
+          "THIS_MONTH": "This month",
+          "ALL": "All history"
+        },
         "emails": "Recipients",
         "emailsPh": "ana@company.com, luis@company.com",
         "badEmail": "The email '{email}' is not valid.",
@@ -3318,7 +3375,11 @@
         "ownerHint": "The report runs with your permissions and data scope; only the rows you can see are sent. At most 200 rows per email.",
         "last": "Last delivery: {status} · {date}",
         "neverSent": "Not sent yet.",
-        "status": { "SENT": "Sent", "SKIPPED": "Skipped", "FAILED": "Failed" },
+        "status": {
+          "SENT": "Sent",
+          "SKIPPED": "Skipped",
+          "FAILED": "Failed"
+        },
         "sendNow": "Send now",
         "sending": "Sending…",
         "saveFirst": "Save your changes to send the new ones.",
@@ -3524,7 +3585,7 @@
         "run": "Quote",
         "quoted": "Quoted amount",
         "quotedAt": "Quoted on {date}",
-        "notQuoted": "Not quoted yet: it is quoted when the order is created if the client has a contract and a rate; otherwise, when it is marked as picked up.",
+        "notQuoted": "This order has no quote (it predates the flow change): orders are quoted when they are created.",
         "preview": "Preview with current rates",
         "dispatch": "Dispatch",
         "codFee": "COD fee",
@@ -3561,7 +3622,7 @@
       "confirm": {
         "button": "Mark as picked up",
         "title": "Mark order {number} as picked up",
-        "body": "The order is quoted with the contract rates, the client credit is checked and the order moves from Submitted to Picked up. Afterwards its data can no longer be edited here.",
+        "body": "The order moves from Submitted to Picked up and its price is frozen (the quote and the credit were checked when it was submitted). Afterwards its data can no longer be edited here.",
         "bodyOverrideOnly": "This order is marked as picked up by quoting it with the contract rates. Your user can only do it by authorizing the client credit excess.",
         "authorize": "Authorize and mark as picked up",
         "creditNote": "If you authorize, the order is marked as picked up anyway and who authorized it is recorded.",
@@ -7678,370 +7739,370 @@
     "company": "Company",
     "emptyView": "The view has no rows today."
   },
-    "billing": {
-      "title": "Billing",
-      "subtitle": "Runs that gather what was dispatched and not yet billed, review it, approve it and issue the invoices",
-      "close": "Close",
-      "allClients": "All customers",
-      "allStatuses": "All statuses",
-      "filterStatus": "Filter by status",
-      "tabs": {
-        "label": "Billing",
-        "runs": "Runs",
-        "invoices": "Invoices",
-        "collections": "Collections",
-        "credits": "Credit notes",
-        "settings": "Settings"
-      },
-      "col": {
-        "run": "Run",
-        "period": "Period",
-        "client": "Customer",
-        "status": "Status",
-        "invoices": "Invoices",
-        "total": "Total",
-        "generated": "Generated",
-        "number": "Invoice",
-        "subtotal": "Subtotal",
-        "tax": "Tax",
-        "issued": "Issued",
-        "due": "Due",
-        "balance": "Balance",
-        "description": "Description",
-        "qty": "Quantity",
-        "unit": "Unit amount"
-      },
-      "runStatuses": {
-        "GENERATED": "Generated",
-        "REVIEWED": "Reviewed",
-        "APPROVED": "Approved",
-        "EXPORTED": "Exported",
-        "CANCELLED": "Cancelled"
-      },
-      "invoiceStatuses": {
-        "DRAFT": "Draft",
-        "ISSUED": "Issued",
-        "PAID": "Paid",
-        "OVERDUE": "Overdue",
-        "VOID": "Void"
-      },
-      "methods": {
-        "CASH": "Cash",
-        "CHECK": "Check",
-        "ACH": "ACH",
-        "CARD": "Card"
-      },
-      "pay": {
-        "title": "Payments",
-        "record": "Record payment",
-        "save": "Save payment",
-        "recorded": "Payment recorded.",
-        "empty": "There are no payments yet.",
-        "date": "Date",
-        "method": "Method",
-        "reference": "Reference",
-        "referenceHint": "Check number, confirmation…",
-        "amount": "Amount",
-        "voided": "Voided",
-        "void": "Void the payment",
-        "voidTitle": "Void the payment of {amount}?",
-        "voidBody": "The payment stops counting in the invoice balance. Asks for re-authentication.",
-        "voidReason": "Reason",
-        "voidedToast": "Payment voided.",
-        "balanceHelp": "Invoice {number}: balance {balance}.",
-        "errors": {
-          "amount": "Enter the payment amount (greater than zero).",
-          "decimals": "The amount allows up to 2 decimals.",
-          "exceeds": "The payment cannot exceed the invoice balance.",
-          "method": "Choose the payment method.",
-          "future": "The payment date cannot be in the future.",
-          "beforeIssue": "The payment date cannot be before the invoice issue date.",
-          "reference": "The reference cannot exceed 80 characters.",
-          "void": {
-            "required": "Enter the reason for voiding the payment.",
-            "long": "The reason cannot exceed 250 characters."
-          }
-        }
-      },
-      "rec": {
-        "credit": "Credit balance",
-        "panel": "Accounts receivable",
-        "empty": "There are no balances to collect.",
-        "open": "Open invoices",
-        "oldest": "Due since",
-        "total": "Receivable: {total} (overdue: {over}).",
-        "help": "Tap a customer to see their statement."
-      },
-      "aging": {
-        "current": "Not yet due",
-        "days1To30": "1–30 days",
-        "days31To60": "31–60 days",
-        "days61To90": "61–90 days",
-        "over90": "Over 90"
-      },
-      "stmt": {
-        "unapplied": "Credit balance (unapplied)",
-        "title": "Statement · {client}",
-        "opening": "Opening balance",
-        "invoiced": "Invoiced",
-        "paid": "Paid",
-        "closing": "Closing balance",
-        "debit": "Charges",
-        "credit": "Payments",
-        "lines": "Movements",
-        "empty": "No movements in the period.",
-        "aging": "Aging of what is open"
-      },
-      "exp": {
-        "title": "Export to accounting",
-        "exportedAt": "Exported on {at}. It can be exported again with another template.",
-        "template": "Export template",
-        "configure": "Configure…",
-        "file": "Export file",
-        "previewTitle": "File of run #{id}",
-        "previewHelp": "{file} · {rows} row(s) · template \"{template}\". This is how the file will look; viewing it changes nothing.",
-        "markHelp": "When you download, the run becomes \"Exported\".",
-        "fileText": "File contents",
-        "downloadMark": "Download and mark as exported",
-        "download": "Download again",
-        "exported": "Run #{id} exported.",
-        "downloaded": "File of run #{id} downloaded.",
-        "configureTitle": "Configure the template",
-        "configureHelp": "Choose the format, delimiter and date, and the columns in the order they go in the file. \"Save\" changes this template; \"Save as new template\" copies it under another name.",
-        "name": "Name",
-        "format": "Format",
-        "delimiter": "Delimiter",
-        "delimiters": {
-          "comma": "Comma ( , )",
-          "semicolon": "Semicolon ( ; )",
-          "tab": "Tab",
-          "pipe": "Pipe ( | )"
-        },
-        "dateFormat": "Date format",
-        "header": "Include a header row",
-        "columns": "Columns",
-        "headerOf": "Header of {field}",
-        "up": "Move {field} up",
-        "down": "Move {field} down",
-        "remove": "Remove {field}",
-        "addField": "Add a column",
-        "chooseField": "Choose a field…",
-        "save": "Save",
-        "saveAsNew": "Save as new template",
-        "savedToast": "Template saved.",
-        "createdToast": "New template saved.",
-        "deactivate": "Deactivate the template",
-        "deactivateTitle": "Deactivate the template \"{name}\"?",
-        "deactivateBody": "It stops appearing in the list; runs already exported do not change. At least one must always remain.",
-        "deactivatedToast": "Template deactivated.",
-        "errors": {
-          "name": "Enter the template name.",
-          "nameLong": "The name cannot exceed 80 characters.",
-          "columns": "Choose at least one column.",
-          "header": "A column header cannot exceed 60 characters."
-        }
-      },
-      "credit": {
-        "panel": "Credit notes",
-        "new": "New credit note",
-        "search": "Search by number or customer",
-        "empty": "There are no credit notes with those filters.",
-        "number": "Note",
-        "invoice": "Invoice",
-        "reason": "Reason",
-        "created": "Created",
-        "balance": "Balance",
-        "approvedAt": "Approved",
-        "title": "Credit note {number}",
-        "lines": "Note lines",
-        "applications": "Applications",
-        "appliedBalance": "applied {applied}, balance {balance}",
-        "edit": "Edit",
-        "approve": "Approve",
-        "approved": "Note {number} approved.",
-        "apply": "Apply to an invoice",
-        "void": "Void the note",
-        "statuses": {
-          "DRAFT": "Draft",
-          "APPROVED": "Approved",
-          "APPLIED": "Applied",
-          "VOID": "Void"
-        },
-        "reasons": {
-          "RETURN": "Return",
-          "PRICE_ADJUSTMENT": "Price adjustment",
-          "SERVICE_FAILURE": "Service failure",
-          "BILLING_ERROR": "Billing error"
-        },
-        "charges": {
-          "FREIGHT": "Freight",
-          "SURCHARGE": "Surcharge",
-          "HANDLING": "Handling",
-          "PICKUP": "Pickup"
-        },
-        "hint": {
-          "DRAFT": "Review the lines and approve it (asks for re-authentication). It can be edited while it is a draft.",
-          "APPROVED": "Approved: its balance is applied to the customer's open invoices; what is not applied stays as a credit balance.",
-          "APPLIED": "Applied: its whole amount has been applied to invoices.",
-          "VOID": "Void: it counts for nothing."
-        },
-        "voidTitle": "Void note {number}?",
-        "voidBody": "An approved note stops crediting what it credited. It cannot be voided once applied to an invoice.",
-        "voidReason": "Reason",
-        "voidedToast": "Note {number} voided.",
-        "applyTitle": "Apply note {number}",
-        "applyHelp": "Note balance: {balance}. It is applied to an open invoice of {client}.",
-        "applyNone": "The customer has no issued or overdue invoices with a balance.",
-        "chooseInvoice": "Choose an invoice",
-        "invoiceBalance": "balance {balance}",
-        "applySave": "Apply",
-        "applied": "Note applied.",
-        "newTitle": "New credit note",
-        "editTitle": "Edit the credit note",
-        "mode": "Note type",
-        "modeInvoice": "On an invoice",
-        "modeFree": "Free (invoice from another system or an adjustment)",
-        "onInvoice": "On invoice {number} of {client}.",
-        "changeInvoice": "Change invoice",
-        "externalRef": "Invoice from another system (optional)",
-        "chooseReason": "Choose the reason",
-        "pickFirst": "Choose the invoice first.",
-        "linesHelpInvoice": "Check the lines being credited. By default the invoiced amount shows; a lower unit amount is a price adjustment. You cannot credit more than was invoiced.",
-        "linesHelpFree": "Describe what is credited, the quantity, the unit amount and the charge type; the system calculates the tax.",
-        "line": "Line",
-        "charge": "Charge type",
-        "include": "Credit line {n}",
-        "descriptionOf": "Description of line {n}",
-        "qtyOf": "Quantity of line {n}",
-        "unitOf": "Unit amount of line {n}",
-        "chargeOf": "Charge type of line {n}",
-        "removeLine": "Remove line {n}",
-        "addLine": "Add a line",
-        "estimate": "Value of the lines (before tax): {total}",
-        "saveDraft": "Save draft",
-        "saved": "Note {number} saved.",
-        "createdToast": "Note {number} created as a draft.",
-        "errors": {
-          "reason": "Choose the reason for the note.",
-          "lines": "Add or check at least one line.",
-          "note": "The note cannot exceed 500 characters.",
-          "ref": "The reference cannot exceed 80 characters.",
-          "description": "Enter the description of each line.",
-          "quantity": "The quantity must be greater than zero (up to 3 decimals).",
-          "amount": "The unit amount must be greater than zero (up to 4 decimals).",
-          "chargeType": "Choose the charge type of each line.",
-          "client": "Choose the customer of the note.",
-          "invoice": "Choose the invoice.",
-          "void": {
-            "required": "Enter the reason for voiding the note.",
-            "long": "The reason cannot exceed 250 characters."
-          },
-          "apply": {
-            "invoice": "Choose the invoice.",
-            "amount": "Enter the amount to apply (greater than zero).",
-            "decimals": "The amount allows up to 2 decimals.",
-            "noteBalance": "The amount cannot exceed the note balance.",
-            "invoiceBalance": "The amount cannot exceed the invoice balance."
-          }
-        }
-      },
-      "runs": {
-        "panel": "Billing runs",
-        "empty": "There are no runs yet. Generate one with \"New run\"."
-      },
-      "invoices": {
-        "panel": "Invoices",
-        "search": "Search by number or customer",
-        "empty": "There are no invoices with those filters."
-      },
-      "new": {
-        "title": "New run",
-        "generate": "Generate",
-        "help": "Gathers what was dispatched and not billed from the sales orders and the freight of the transport orders (per the contract billing model) and builds one draft invoice per customer. Nothing is issued until the run is approved.",
-        "client": "Customer",
-        "includeProducts": "Dispatched product sales",
-        "includeFreight": "Freight of the transport orders",
-        "clientHelp": "No customer: everyone with something to bill.",
-        "from": "From",
-        "to": "To",
-        "onlyInPeriod": "Only what was dispatched within the period (otherwise everything pending up to the end date)",
-        "note": "Note"
-      },
-      "generated": "Run #{id} generated: {count} invoice(s).",
-      "run": {
-        "title": "Run #{id}",
-        "review": "Mark as reviewed",
-        "approve": "Approve and issue",
-        "cancel": "Cancel the run",
-        "reviewed": "Run #{id} reviewed.",
-        "approved": "Run #{id} approved: invoices issued.",
-        "cancelled": "Run #{id} cancelled.",
-        "cancelTitle": "Cancel run #{id}?",
-        "cancelBody": "Its invoices are voided and what they claimed goes back to unbilled.",
-        "approvedAt": "Approved",
-        "invoices": "Invoices of the run",
-        "noInvoices": "No invoices",
-        "total": "Run total: {total}",
-        "hint": {
-          "GENERATED": "Review the amounts (you can adjust a line with a reason) and mark it as reviewed.",
-          "REVIEWED": "Ready to approve: approving issues the invoices (asks for re-authentication).",
-          "APPROVED": "Approved: the invoices are issued. An invoice is corrected by voiding it.",
-          "EXPORTED": "Exported.",
-          "CANCELLED": "Cancelled: it billed nothing."
-        }
-      },
-      "invoice": {
-        "credit": "Create credit note",
-        "credited": "credited {credited}, balance {balance}",
-        "title": "Invoice {number}",
-        "lines": "Invoice lines",
-        "noLines": "No lines",
-        "totals": "Subtotal {subtotal} + tax {tax} = {total}",
-        "paid": "paid {paid}, balance {balance}",
-        "adjustHelp": "While the run is generated or reviewed you can adjust a line's unit amount (with a reason).",
-        "void": "Void the invoice",
-        "voidTitle": "Void invoice {number}?",
-        "voidBody": "What it had billed goes back to unbilled. This cannot be undone. Asks for re-authentication.",
-        "voidReason": "Reason (optional)",
-        "voided": "Invoice {number} voided."
-      },
-      "adjust": {
-        "action": "Adjust",
-        "title": "Adjust the amount",
-        "amount": "Unit amount",
-        "note": "Reason for the adjustment",
-        "save": "Save adjustment",
-        "original": "Calculated amount: {amount}"
-      },
-      "adjusted": "Adjustment saved.",
-      "adjustedChip": "Adjusted",
-      "exempt": "Exempt",
+  "billing": {
+    "title": "Billing",
+    "subtitle": "Runs that gather what was dispatched and not yet billed, review it, approve it and issue the invoices",
+    "close": "Close",
+    "allClients": "All customers",
+    "allStatuses": "All statuses",
+    "filterStatus": "Filter by status",
+    "tabs": {
+      "label": "Billing",
+      "runs": "Runs",
+      "invoices": "Invoices",
+      "collections": "Collections",
+      "credits": "Credit notes",
+      "settings": "Settings"
+    },
+    "col": {
+      "run": "Run",
+      "period": "Period",
+      "client": "Customer",
+      "status": "Status",
+      "invoices": "Invoices",
+      "total": "Total",
+      "generated": "Generated",
+      "number": "Invoice",
+      "subtotal": "Subtotal",
+      "tax": "Tax",
+      "issued": "Issued",
+      "due": "Due",
+      "balance": "Balance",
+      "description": "Description",
+      "qty": "Quantity",
+      "unit": "Unit amount"
+    },
+    "runStatuses": {
+      "GENERATED": "Generated",
+      "REVIEWED": "Reviewed",
+      "APPROVED": "Approved",
+      "EXPORTED": "Exported",
+      "CANCELLED": "Cancelled"
+    },
+    "invoiceStatuses": {
+      "DRAFT": "Draft",
+      "ISSUED": "Issued",
+      "PAID": "Paid",
+      "OVERDUE": "Overdue",
+      "VOID": "Void"
+    },
+    "methods": {
+      "CASH": "Cash",
+      "CHECK": "Check",
+      "ACH": "ACH",
+      "CARD": "Card"
+    },
+    "pay": {
+      "title": "Payments",
+      "record": "Record payment",
+      "save": "Save payment",
+      "recorded": "Payment recorded.",
+      "empty": "There are no payments yet.",
+      "date": "Date",
+      "method": "Method",
+      "reference": "Reference",
+      "referenceHint": "Check number, confirmation…",
+      "amount": "Amount",
+      "voided": "Voided",
+      "void": "Void the payment",
+      "voidTitle": "Void the payment of {amount}?",
+      "voidBody": "The payment stops counting in the invoice balance. Asks for re-authentication.",
+      "voidReason": "Reason",
+      "voidedToast": "Payment voided.",
+      "balanceHelp": "Invoice {number}: balance {balance}.",
       "errors": {
-        "period": "Enter the start and end dates.",
-        "include": "Choose what to bill: product sales, freight or both.",
-        "order": "The end date cannot be before the start date.",
-        "note": "The note cannot exceed 500 characters.",
-        "adjust": {
-          "amount": "Enter the new unit amount (a number from 0 up).",
-          "decimals": "The amount allows up to 4 decimals.",
-          "note": "Enter the reason for the adjustment.",
-          "noteLong": "The reason cannot exceed 250 characters."
+        "amount": "Enter the payment amount (greater than zero).",
+        "decimals": "The amount allows up to 2 decimals.",
+        "exceeds": "The payment cannot exceed the invoice balance.",
+        "method": "Choose the payment method.",
+        "future": "The payment date cannot be in the future.",
+        "beforeIssue": "The payment date cannot be before the invoice issue date.",
+        "reference": "The reference cannot exceed 80 characters.",
+        "void": {
+          "required": "Enter the reason for voiding the payment.",
+          "long": "The reason cannot exceed 250 characters."
         }
-      },
-      "settings": {
-        "panel": "Billing settings",
-        "trigger": "When the sold product is billed",
-        "onDispatch": "On dispatch (pickup)",
-        "onDelivery": "On delivery",
-        "triggerHelp": "On dispatch: what leaves the warehouse is billed. On delivery: only what is picked up or whose delivery was already delivered.",
-        "days": "Days until due",
-        "daysHelp": "Days between issuing an invoice and its due date (0 to 365).",
-        "daysError": "Enter a whole number from 0 to 365.",
-        "save": "Save settings",
-        "saved": "Settings saved.",
-        "readOnly": "Only those who can approve billing change these settings."
       }
     },
+    "rec": {
+      "credit": "Credit balance",
+      "panel": "Accounts receivable",
+      "empty": "There are no balances to collect.",
+      "open": "Open invoices",
+      "oldest": "Due since",
+      "total": "Receivable: {total} (overdue: {over}).",
+      "help": "Tap a customer to see their statement."
+    },
+    "aging": {
+      "current": "Not yet due",
+      "days1To30": "1–30 days",
+      "days31To60": "31–60 days",
+      "days61To90": "61–90 days",
+      "over90": "Over 90"
+    },
+    "stmt": {
+      "unapplied": "Credit balance (unapplied)",
+      "title": "Statement · {client}",
+      "opening": "Opening balance",
+      "invoiced": "Invoiced",
+      "paid": "Paid",
+      "closing": "Closing balance",
+      "debit": "Charges",
+      "credit": "Payments",
+      "lines": "Movements",
+      "empty": "No movements in the period.",
+      "aging": "Aging of what is open"
+    },
+    "exp": {
+      "title": "Export to accounting",
+      "exportedAt": "Exported on {at}. It can be exported again with another template.",
+      "template": "Export template",
+      "configure": "Configure…",
+      "file": "Export file",
+      "previewTitle": "File of run #{id}",
+      "previewHelp": "{file} · {rows} row(s) · template \"{template}\". This is how the file will look; viewing it changes nothing.",
+      "markHelp": "When you download, the run becomes \"Exported\".",
+      "fileText": "File contents",
+      "downloadMark": "Download and mark as exported",
+      "download": "Download again",
+      "exported": "Run #{id} exported.",
+      "downloaded": "File of run #{id} downloaded.",
+      "configureTitle": "Configure the template",
+      "configureHelp": "Choose the format, delimiter and date, and the columns in the order they go in the file. \"Save\" changes this template; \"Save as new template\" copies it under another name.",
+      "name": "Name",
+      "format": "Format",
+      "delimiter": "Delimiter",
+      "delimiters": {
+        "comma": "Comma ( , )",
+        "semicolon": "Semicolon ( ; )",
+        "tab": "Tab",
+        "pipe": "Pipe ( | )"
+      },
+      "dateFormat": "Date format",
+      "header": "Include a header row",
+      "columns": "Columns",
+      "headerOf": "Header of {field}",
+      "up": "Move {field} up",
+      "down": "Move {field} down",
+      "remove": "Remove {field}",
+      "addField": "Add a column",
+      "chooseField": "Choose a field…",
+      "save": "Save",
+      "saveAsNew": "Save as new template",
+      "savedToast": "Template saved.",
+      "createdToast": "New template saved.",
+      "deactivate": "Deactivate the template",
+      "deactivateTitle": "Deactivate the template \"{name}\"?",
+      "deactivateBody": "It stops appearing in the list; runs already exported do not change. At least one must always remain.",
+      "deactivatedToast": "Template deactivated.",
+      "errors": {
+        "name": "Enter the template name.",
+        "nameLong": "The name cannot exceed 80 characters.",
+        "columns": "Choose at least one column.",
+        "header": "A column header cannot exceed 60 characters."
+      }
+    },
+    "credit": {
+      "panel": "Credit notes",
+      "new": "New credit note",
+      "search": "Search by number or customer",
+      "empty": "There are no credit notes with those filters.",
+      "number": "Note",
+      "invoice": "Invoice",
+      "reason": "Reason",
+      "created": "Created",
+      "balance": "Balance",
+      "approvedAt": "Approved",
+      "title": "Credit note {number}",
+      "lines": "Note lines",
+      "applications": "Applications",
+      "appliedBalance": "applied {applied}, balance {balance}",
+      "edit": "Edit",
+      "approve": "Approve",
+      "approved": "Note {number} approved.",
+      "apply": "Apply to an invoice",
+      "void": "Void the note",
+      "statuses": {
+        "DRAFT": "Draft",
+        "APPROVED": "Approved",
+        "APPLIED": "Applied",
+        "VOID": "Void"
+      },
+      "reasons": {
+        "RETURN": "Return",
+        "PRICE_ADJUSTMENT": "Price adjustment",
+        "SERVICE_FAILURE": "Service failure",
+        "BILLING_ERROR": "Billing error"
+      },
+      "charges": {
+        "FREIGHT": "Freight",
+        "SURCHARGE": "Surcharge",
+        "HANDLING": "Handling",
+        "PICKUP": "Pickup"
+      },
+      "hint": {
+        "DRAFT": "Review the lines and approve it (asks for re-authentication). It can be edited while it is a draft.",
+        "APPROVED": "Approved: its balance is applied to the customer's open invoices; what is not applied stays as a credit balance.",
+        "APPLIED": "Applied: its whole amount has been applied to invoices.",
+        "VOID": "Void: it counts for nothing."
+      },
+      "voidTitle": "Void note {number}?",
+      "voidBody": "An approved note stops crediting what it credited. It cannot be voided once applied to an invoice.",
+      "voidReason": "Reason",
+      "voidedToast": "Note {number} voided.",
+      "applyTitle": "Apply note {number}",
+      "applyHelp": "Note balance: {balance}. It is applied to an open invoice of {client}.",
+      "applyNone": "The customer has no issued or overdue invoices with a balance.",
+      "chooseInvoice": "Choose an invoice",
+      "invoiceBalance": "balance {balance}",
+      "applySave": "Apply",
+      "applied": "Note applied.",
+      "newTitle": "New credit note",
+      "editTitle": "Edit the credit note",
+      "mode": "Note type",
+      "modeInvoice": "On an invoice",
+      "modeFree": "Free (invoice from another system or an adjustment)",
+      "onInvoice": "On invoice {number} of {client}.",
+      "changeInvoice": "Change invoice",
+      "externalRef": "Invoice from another system (optional)",
+      "chooseReason": "Choose the reason",
+      "pickFirst": "Choose the invoice first.",
+      "linesHelpInvoice": "Check the lines being credited. By default the invoiced amount shows; a lower unit amount is a price adjustment. You cannot credit more than was invoiced.",
+      "linesHelpFree": "Describe what is credited, the quantity, the unit amount and the charge type; the system calculates the tax.",
+      "line": "Line",
+      "charge": "Charge type",
+      "include": "Credit line {n}",
+      "descriptionOf": "Description of line {n}",
+      "qtyOf": "Quantity of line {n}",
+      "unitOf": "Unit amount of line {n}",
+      "chargeOf": "Charge type of line {n}",
+      "removeLine": "Remove line {n}",
+      "addLine": "Add a line",
+      "estimate": "Value of the lines (before tax): {total}",
+      "saveDraft": "Save draft",
+      "saved": "Note {number} saved.",
+      "createdToast": "Note {number} created as a draft.",
+      "errors": {
+        "reason": "Choose the reason for the note.",
+        "lines": "Add or check at least one line.",
+        "note": "The note cannot exceed 500 characters.",
+        "ref": "The reference cannot exceed 80 characters.",
+        "description": "Enter the description of each line.",
+        "quantity": "The quantity must be greater than zero (up to 3 decimals).",
+        "amount": "The unit amount must be greater than zero (up to 4 decimals).",
+        "chargeType": "Choose the charge type of each line.",
+        "client": "Choose the customer of the note.",
+        "invoice": "Choose the invoice.",
+        "void": {
+          "required": "Enter the reason for voiding the note.",
+          "long": "The reason cannot exceed 250 characters."
+        },
+        "apply": {
+          "invoice": "Choose the invoice.",
+          "amount": "Enter the amount to apply (greater than zero).",
+          "decimals": "The amount allows up to 2 decimals.",
+          "noteBalance": "The amount cannot exceed the note balance.",
+          "invoiceBalance": "The amount cannot exceed the invoice balance."
+        }
+      }
+    },
+    "runs": {
+      "panel": "Billing runs",
+      "empty": "There are no runs yet. Generate one with \"New run\"."
+    },
+    "invoices": {
+      "panel": "Invoices",
+      "search": "Search by number or customer",
+      "empty": "There are no invoices with those filters."
+    },
+    "new": {
+      "title": "New run",
+      "generate": "Generate",
+      "help": "Gathers what was dispatched and not billed from the sales orders and the freight of the transport orders (per the contract billing model) and builds one draft invoice per customer. Nothing is issued until the run is approved.",
+      "client": "Customer",
+      "includeProducts": "Dispatched product sales",
+      "includeFreight": "Freight of the transport orders",
+      "clientHelp": "No customer: everyone with something to bill.",
+      "from": "From",
+      "to": "To",
+      "onlyInPeriod": "Only what was dispatched within the period (otherwise everything pending up to the end date)",
+      "note": "Note"
+    },
+    "generated": "Run #{id} generated: {count} invoice(s).",
+    "run": {
+      "title": "Run #{id}",
+      "review": "Mark as reviewed",
+      "approve": "Approve and issue",
+      "cancel": "Cancel the run",
+      "reviewed": "Run #{id} reviewed.",
+      "approved": "Run #{id} approved: invoices issued.",
+      "cancelled": "Run #{id} cancelled.",
+      "cancelTitle": "Cancel run #{id}?",
+      "cancelBody": "Its invoices are voided and what they claimed goes back to unbilled.",
+      "approvedAt": "Approved",
+      "invoices": "Invoices of the run",
+      "noInvoices": "No invoices",
+      "total": "Run total: {total}",
+      "hint": {
+        "GENERATED": "Review the amounts (you can adjust a line with a reason) and mark it as reviewed.",
+        "REVIEWED": "Ready to approve: approving issues the invoices (asks for re-authentication).",
+        "APPROVED": "Approved: the invoices are issued. An invoice is corrected by voiding it.",
+        "EXPORTED": "Exported.",
+        "CANCELLED": "Cancelled: it billed nothing."
+      }
+    },
+    "invoice": {
+      "credit": "Create credit note",
+      "credited": "credited {credited}, balance {balance}",
+      "title": "Invoice {number}",
+      "lines": "Invoice lines",
+      "noLines": "No lines",
+      "totals": "Subtotal {subtotal} + tax {tax} = {total}",
+      "paid": "paid {paid}, balance {balance}",
+      "adjustHelp": "While the run is generated or reviewed you can adjust a line's unit amount (with a reason).",
+      "void": "Void the invoice",
+      "voidTitle": "Void invoice {number}?",
+      "voidBody": "What it had billed goes back to unbilled. This cannot be undone. Asks for re-authentication.",
+      "voidReason": "Reason (optional)",
+      "voided": "Invoice {number} voided."
+    },
+    "adjust": {
+      "action": "Adjust",
+      "title": "Adjust the amount",
+      "amount": "Unit amount",
+      "note": "Reason for the adjustment",
+      "save": "Save adjustment",
+      "original": "Calculated amount: {amount}"
+    },
+    "adjusted": "Adjustment saved.",
+    "adjustedChip": "Adjusted",
+    "exempt": "Exempt",
+    "errors": {
+      "period": "Enter the start and end dates.",
+      "include": "Choose what to bill: product sales, freight or both.",
+      "order": "The end date cannot be before the start date.",
+      "note": "The note cannot exceed 500 characters.",
+      "adjust": {
+        "amount": "Enter the new unit amount (a number from 0 up).",
+        "decimals": "The amount allows up to 4 decimals.",
+        "note": "Enter the reason for the adjustment.",
+        "noteLong": "The reason cannot exceed 250 characters."
+      }
+    },
+    "settings": {
+      "panel": "Billing settings",
+      "trigger": "When the sold product is billed",
+      "onDispatch": "On dispatch (pickup)",
+      "onDelivery": "On delivery",
+      "triggerHelp": "On dispatch: what leaves the warehouse is billed. On delivery: only what is picked up or whose delivery was already delivered.",
+      "days": "Days until due",
+      "daysHelp": "Days between issuing an invoice and its due date (0 to 365).",
+      "daysError": "Enter a whole number from 0 to 365.",
+      "save": "Save settings",
+      "saved": "Settings saved.",
+      "readOnly": "Only those who can approve billing change these settings."
+    }
+  },
   "pay": {
     "screenTitle": "Driver settlement",
     "subtitle": "What each driver is paid for deliveries, attempts and trips. Teikem calculates and exports; it does not issue the payment.",
@@ -8337,88 +8398,88 @@
       "title": "Run done"
     },
     "newRun": "New run",
-      "rem": {
-          "panel": "Client remittances",
-          "new": "New remittance",
-          "newTitle": "New remittance",
-          "search": "Search by number or client",
-          "filterStatus": "Filter by remittance status",
-          "empty": "No remittances match this filter.",
-          "title": "Remittance {number}",
-          "lines": "Collections in the remittance",
-          "col": {
-              "number": "Remittance",
-              "period": "Period",
-              "lines": "Collections",
-              "gross": "Collected",
-              "commission": "Commission",
-              "net": "Net to remit"
-          },
-          "statuses": {
-              "OPEN": "Open",
-              "RECONCILED": "Reconciled",
-              "APPROVED": "Approved",
-              "REMITTED": "Remitted"
-          },
-          "hint": {
-              "OPEN": "Review the collections and the net; then reconcile it.",
-              "RECONCILED": "Reconciled: now approve it (you will be asked to confirm your identity).",
-              "APPROVED": "Approved: export the file and, once the client is paid, mark it as remitted.",
-              "REMITTED": "Remitted: the money was already returned to the client."
-          },
-          "commissionWith": "Commission ({pct})",
-          "currency": "Currency",
-          "approvedAt": "Approved",
-          "remittedAt": "Remitted",
-          "review": "Reconcile",
-          "reviewed": "Remittance reconciled.",
-          "approve": "Approve",
-          "approved": "Remittance approved.",
-          "remit": "Remit",
-          "remitTitle": "Remit {number}",
-          "remitBody": "Marks that {client} was already paid {net}. Teikem does not issue the payment: this only records it.",
-          "remitted": "{number} remitted.",
-          "ref": "Payment reference (optional)",
-          "refHelp": "For example, the check or transfer number.",
-          "cancel": "Cancel remittance",
-          "cancelTitle": "Cancel {number}",
-          "cancelBody": "The remittance is cancelled and its collections are free for another remittance.",
-          "cancelled": "{number} cancelled.",
-          "export": "Export file",
-          "exportTitle": "Export {number}",
-          "exportHelp": "A file is downloaded with one row per collection, with the commission and the net.",
-          "template": "Template",
-          "templateDefault": "The first active one",
-          "templateStandard": "The standard template is used (templates are managed with the billing permissions).",
-          "download": "Download",
-          "exported": "File downloaded.",
-          "newHelp": "Choose the client and the period: the already reconciled collections of that client whose collection date falls in the period are included.",
-          "from": "From",
-          "to": "To",
-          "pct": "Commission (%)",
-          "pctPlaceholder": "The contract one or the company one",
-          "candidates": "Collections that would be included ({n})",
-          "noCandidates": "There are no reconciled collections of that client in that period.",
-          "create": "Create remittance",
-          "created": "Remittance {number} created.",
-          "source": {
-              "request": "The commission you typed is used: {pct}.",
-              "contract": "The client contract commission is used: {pct}.",
-              "tenant": "The company default commission is used: {pct}."
-          },
-          "errors": {
-              "client": "Choose the client.",
-              "period": "Choose the period (from and to).",
-              "order": "The end date cannot be before the start date.",
-              "pct": "The commission must be between 0 and 100 (up to 2 decimals).",
-              "ref": "The reference allows up to 80 characters."
-          },
-          "defaultPct": "Company default commission (%)",
-          "defaultPctSave": "Save commission",
-          "defaultPctSaved": "Commission saved.",
-          "defaultPctError": "Enter a number from 0 to 100 (up to 2 decimals).",
-          "defaultPctHelp": "A remittance uses it when the client contract has no commission of its own."
+    "rem": {
+      "panel": "Client remittances",
+      "new": "New remittance",
+      "newTitle": "New remittance",
+      "search": "Search by number or client",
+      "filterStatus": "Filter by remittance status",
+      "empty": "No remittances match this filter.",
+      "title": "Remittance {number}",
+      "lines": "Collections in the remittance",
+      "col": {
+        "number": "Remittance",
+        "period": "Period",
+        "lines": "Collections",
+        "gross": "Collected",
+        "commission": "Commission",
+        "net": "Net to remit"
       },
+      "statuses": {
+        "OPEN": "Open",
+        "RECONCILED": "Reconciled",
+        "APPROVED": "Approved",
+        "REMITTED": "Remitted"
+      },
+      "hint": {
+        "OPEN": "Review the collections and the net; then reconcile it.",
+        "RECONCILED": "Reconciled: now approve it (you will be asked to confirm your identity).",
+        "APPROVED": "Approved: export the file and, once the client is paid, mark it as remitted.",
+        "REMITTED": "Remitted: the money was already returned to the client."
+      },
+      "commissionWith": "Commission ({pct})",
+      "currency": "Currency",
+      "approvedAt": "Approved",
+      "remittedAt": "Remitted",
+      "review": "Reconcile",
+      "reviewed": "Remittance reconciled.",
+      "approve": "Approve",
+      "approved": "Remittance approved.",
+      "remit": "Remit",
+      "remitTitle": "Remit {number}",
+      "remitBody": "Marks that {client} was already paid {net}. Teikem does not issue the payment: this only records it.",
+      "remitted": "{number} remitted.",
+      "ref": "Payment reference (optional)",
+      "refHelp": "For example, the check or transfer number.",
+      "cancel": "Cancel remittance",
+      "cancelTitle": "Cancel {number}",
+      "cancelBody": "The remittance is cancelled and its collections are free for another remittance.",
+      "cancelled": "{number} cancelled.",
+      "export": "Export file",
+      "exportTitle": "Export {number}",
+      "exportHelp": "A file is downloaded with one row per collection, with the commission and the net.",
+      "template": "Template",
+      "templateDefault": "The first active one",
+      "templateStandard": "The standard template is used (templates are managed with the billing permissions).",
+      "download": "Download",
+      "exported": "File downloaded.",
+      "newHelp": "Choose the client and the period: the already reconciled collections of that client whose collection date falls in the period are included.",
+      "from": "From",
+      "to": "To",
+      "pct": "Commission (%)",
+      "pctPlaceholder": "The contract one or the company one",
+      "candidates": "Collections that would be included ({n})",
+      "noCandidates": "There are no reconciled collections of that client in that period.",
+      "create": "Create remittance",
+      "created": "Remittance {number} created.",
+      "source": {
+        "request": "The commission you typed is used: {pct}.",
+        "contract": "The client contract commission is used: {pct}.",
+        "tenant": "The company default commission is used: {pct}."
+      },
+      "errors": {
+        "client": "Choose the client.",
+        "period": "Choose the period (from and to).",
+        "order": "The end date cannot be before the start date.",
+        "pct": "The commission must be between 0 and 100 (up to 2 decimals).",
+        "ref": "The reference allows up to 80 characters."
+      },
+      "defaultPct": "Company default commission (%)",
+      "defaultPctSave": "Save commission",
+      "defaultPctSaved": "Commission saved.",
+      "defaultPctError": "Enter a number from 0 to 100 (up to 2 decimals).",
+      "defaultPctHelp": "A remittance uses it when the client contract has no commission of its own."
+    },
     "runs": {
       "panel": "Reconciliation runs",
       "empty": "There are no runs yet."

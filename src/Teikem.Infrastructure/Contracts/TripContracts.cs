@@ -339,6 +339,29 @@ public sealed record MonitorDto(DateOnly Date, MonitorTotalsDto Totals, IReadOnl
 /// <summary>Escaneo Outbound: número de orden, empaque o factura; sin fecha = hoy en la zona de la compañía.</summary>
 public sealed record OutboundScanRequest(string? Code, DateOnly? PlanDate = null);
 
+/// <summary>Lote 107: escaneo con acción escogida: Action = PICKUP, ARRIVE, ROUTE o DEPART; Code = número de orden, empaque o factura.</summary>
+public sealed record ScanActionRequest(string? Action, string? Code, DateOnly? PlanDate = null);
+
+/// <summary>Resultado de aplicar la acción: Outcome (APPLIED, ALREADY_BEYOND, FINAL, NO_ROUTE, NOT_FOUND, AMBIGUOUS), palabra de voz, mensaje, el estatus de antes y de después y los que se brincaron; con Enrutar, la zona y la ruta.</summary>
+public sealed record ScanActionResultDto(
+    string Action,
+    string Outcome,
+    string Voice,
+    string Message,
+    Guid? OrderPublicId,
+    string? OrderNumber,
+    string? PackBatchNumber,
+    string? FromStatus,
+    string? FromLabel,
+    string? ToStatus,
+    string? ToLabel,
+    IReadOnlyList<string> Skipped,
+    string? ZoneCode,
+    Guid? TripPublicId,
+    string? TripCode,
+    string? ReasonCode,
+    string? MatchedBy = null);
+
 /// <summary>Resultado tipado del escaneo (Outcome), palabra de voz (found/dup/notfound) y mensaje exacto.</summary>
 public sealed record OutboundScanResultDto(
     string Outcome,

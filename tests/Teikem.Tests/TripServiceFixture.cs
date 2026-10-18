@@ -96,6 +96,7 @@ internal sealed class TripServiceFixture : IAsyncDisposable
         services.AddSingleton<RouteOptimizationService>();
         services.AddSingleton<OrderReadService>();
         services.AddSingleton<OutboundScanService>();
+        services.AddSingleton<ScanActionService>();
         // Edición de cabecera (UpdateAsync) y monitor: UpdateAsync no numera; el contador de prueba solo cubre la firma.
         services.AddSingleton<INumberSequenceService, InMemoryNumberSequence>();
         services.AddSingleton<TripService>();

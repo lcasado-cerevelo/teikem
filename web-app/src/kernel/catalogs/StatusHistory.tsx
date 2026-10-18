@@ -44,6 +44,7 @@ export function StatusHistory({ entityType, entityId, domain }: StatusHistoryPro
             <span className="chip" style={statusChipStyle(colorOf(h.toCode))}>
               {h.toLabel || h.toCode}
             </span>
+            {h.isSkipped && <span className="skipped">{t('status.skipped')}</span>}   {/* Lote 107: lo brincó un escaneo (misma fecha y hora que el estatus al que llegó) */}
           </div>
           <div className="meta">
             {formatDateTime(h.changedAtUtc, lang)}

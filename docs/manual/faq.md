@@ -9123,3 +9123,18 @@ La barra se queda en el nivel de la última etapa normal (por ejemplo En tránsi
 
 **Mis indicadores, gráficos o informes de órdenes cambiaron de números. ¿Por qué?**
 La actualización de la base reescribió los filtros guardados de órdenes que nombraban estatus viejos: `CONFIRMED` y `DRAFT` pasaron a `SUBMITTED`, `INBOUND` a `UNASSIGNED`, `PLANNED` a `ASSIGNED`, y `ARRIVED` y `ON_HOLD` a `FAILED`. Si un filtro suyo ya no dice lo que usted quería, edítelo en Análisis. «Órdenes en curso» ahora cuenta Sometida, Recogida, Sin asignar, Asignada, En tránsito e Intento fallido.
+
+
+## Escaneo con acción escogida (Lote 107)
+
+**¿Qué hago si escaneo y no pasa nada («ya está en Asignada o más adelante»)?** La orden ya estaba en ese estatus o más adelante: el escaneo no la mueve hacia atrás. Solo «Llegó» devuelve al almacén una orden en Intento fallido.
+
+**«La orden … está en un estatus final (Entregada): no se cambia.»** Entregada, Cancelada y En almacén son finales. Para reabrirla hace falta el permiso `orders.reopen` (acción «Reabrir» en la ficha de la orden), con razón.
+
+**«Escoja la acción: recoger, llegó, enrutar o salir.» (400)** La estación mandó una acción desconocida; escoja una de las cuatro.
+
+**Enrutar dijo «No hay ruta abierta para la zona…» y la orden no cambió de estatus.** Es a propósito: Asignada significa que está en una ruta. Cree o planifique la ruta del día y escanee de nuevo; mientras tanto puede usar «Llegó» para dejarla Sin asignar.
+
+**¿Por qué el historial dice «(brincado)»?** Un escaneo llevó la orden más adelante de una vez; los estatus del medio se anotan con la misma fecha y hora, y a los clientes no se les avisa de ellos.
+
+**¿Puedo crear una orden para un cliente sin contrato o sin tarifa?** No (Lote 107): se revisa al someter. Cree el contrato y la tarifa primero.

@@ -18,8 +18,13 @@ namespace Teikem.Api.Controllers;
 [Route("api/v1/scan")]
 [Authorize]
 [RequireModule(ModuleKeys.LtlGround)]
-public sealed class ScanController(OutboundScanService scanner) : ControllerBase
+public sealed class ScanController(OutboundScanService scanner, ScanActionService actions) : ControllerBase
 {
+    /// <summary>Lote 107: escaneo con acción escogida { action: PICKUP|ARRIVE|ROUTE|DEPART, code, planDate? }; brinca estatus y registra los de en medio; si ya está más adelante o es final no hace nada.</summary>
+    [HttpPost("action"), RequirePermission(PermissionCatalog.TripsScan)]
+    public Task<ScanActionResultDto> Action([FromBody] ScanActionRequest req, CancellationToken ct)
+        => actions.ApplyAsync(req, ct);
+
     /// <summary>Escaneo de salida: { code, planDate? } (sin fecha = hoy en la zona de la compañía).</summary>
     [HttpPost("outbound"), RequirePermission(PermissionCatalog.TripsScan)]
     public Task<OutboundScanResultDto> Outbound([FromBody] OutboundScanRequest req, CancellationToken ct)

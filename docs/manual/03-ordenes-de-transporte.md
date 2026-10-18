@@ -270,6 +270,8 @@ lo genera Teikem igual.
 
 ## 3. Cotización y crédito
 
+> **Lote 107 (2026-10-17) — el cernidor es AL SOMETER.** Contrato y tarifa vigentes, cliente no suspendido y crédito se revisan **al crear la orden**; si no pasa, no se crea (409/422 con los mismos mensajes de siempre, sin «orden sin cotizar»). Quien pasó el cernidor no se vuelve a revisar: **«Marcar como recogida»** y el escaneo solo **congelan** el precio que ya tenía (ya no cotizan ni miden el crédito). Un cliente sin contrato o sin tarifa no puede someter órdenes, ni en la web ni en el portal. Re-cotizar solo mientras la orden está Sometida.
+
 Desde el Lote 106 la orden **se cotiza y se mide el crédito al crearla** (nace Sometida). Marcarla como recogida (antes
 «Confirmar») repite la cotización en modo estricto, congela el precio y vuelve a medir el crédito.
 
