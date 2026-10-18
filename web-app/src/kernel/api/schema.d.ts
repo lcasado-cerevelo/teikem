@@ -37491,10 +37491,17 @@ export interface components {
             /** Format: int32 */
             missing?: number;
             missingNumbers?: string[] | null;
+            needsConfirmation?: boolean;
+            preview?: components["schemas"]["ScanReappearedPreviewDto"];
+            /** Format: uuid */
+            newOrderPublicId?: string | null;
+            newOrderNumber?: string | null;
+            newWaybillNumber?: string | null;
         };
         ScanCloseCountRequest: {
             /** Format: uuid */
             orderPublicId?: string | null;
+            confirm?: boolean | null;
         };
         ClaimDto: {
             /** Format: uuid */
@@ -37604,6 +37611,13 @@ export interface components {
             createdAtUtc?: string;
             /** Format: date-time */
             resolvedAtUtc?: string | null;
+        };
+        ScanReappearedPreviewDto: {
+            orderNumber?: string | null;
+            clientName?: string | null;
+            consigneeName?: string | null;
+            statusLabel?: string | null;
+            pieceNumbers?: string[] | null;
         };
     };
     responses: never;

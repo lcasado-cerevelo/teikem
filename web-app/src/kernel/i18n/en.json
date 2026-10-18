@@ -2019,6 +2019,15 @@
     },
     "closeCount": {
       "button": "Close count"
+    },
+    "reappeared": {
+      "title": "This is what will happen",
+      "body": "Closing the count will create a new order with {count} piece(s) that showed up from order {order}.",
+      "client": "Client",
+      "consignee": "Consignee",
+      "status": "Status of the new order",
+      "confirm": "Confirm and close the count",
+      "cancel": "Cancel"
     }
   },
   "routeMap": {

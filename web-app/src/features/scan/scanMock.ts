@@ -14,6 +14,8 @@ export const mock = {
   override: null as null | ((call: Call) => unknown),
   /** Resultado por código escaneado (lo no programado es NOT_FOUND / NO_MATCH). */
   scans: {} as Record<string, Rec | Response>,
+  /** Lote 111b: el cierre del conteo pide confirmar la orden nueva de las piezas que aparecieron. */
+  reappeared: false,
   /** Órdenes sin asignar que devuelve `unassigned-orders` (se filtran por la consulta). */
   pending: [] as Rec[],
   /** Respuesta de `GET /orders/{id}` por publicId. */
@@ -54,6 +56,7 @@ export function resetMock() {
   mock.calls = []
   mock.override = null
   mock.scans = {}
+  mock.reappeared = false
   mock.pending = [P1, P2, P3]
   mock.orders = { 'o-1': ORDER_DETAIL }
 }
@@ -68,6 +71,11 @@ function route(call: Call): unknown {
     const code = String(call.body?.code ?? '')
     return mock.scans[code] ?? { outcome: 'NOT_FOUND', voice: 'notfound', message: 'No se encontró la orden.', reasonCode: 'NO_MATCH' }
   }
+  if (method === 'POST' && p === '/api/v1/scan/close-count' && mock.reappeared && !call.body?.confirm) {
+    return { message: 'Al cerrar el conteo se creará una orden nueva con 1 pieza(s) que aparecieron de la orden OT-0001.', orderPublicId: call.body?.orderPublicId, orderNumber: 'OT-0001', scanned: 0, total: 0, missing: 0, missingNumbers: [], needsConfirmation: true,
+      preview: { orderNumber: 'OT-0001', clientName: 'Farmacia Central', consigneeName: 'Tienda Norte', statusLabel: 'Sin asignar', pieceNumbers: ['PZ-9'] } }
+  }
+  if (method === 'POST' && p === '/api/v1/scan/close-count' && mock.reappeared) return { message: 'Conteo cerrado: la orden OT-0001 está completa. Se creó la orden OT-0002 (conduce W2) con 1 pieza(s) que aparecieron de la orden OT-0001.', orderPublicId: call.body?.orderPublicId, orderNumber: 'OT-0001', scanned: 4, total: 4, missing: 0, missingNumbers: [], newOrderPublicId: 'o-2', newOrderNumber: 'OT-0002', newWaybillNumber: 'W2' }
   if (method === 'POST' && p === '/api/v1/scan/close-count') return { message: 'Conteo cerrado: a la orden OT-0001 le faltan 1 de 5 piezas («Por verificar»).', orderPublicId: call.body?.orderPublicId, orderNumber: 'OT-0001', scanned: 4, total: 5, missing: 1, missingNumbers: ['PZ-5'] }
   if (method === 'GET' && p === '/api/v1/trips/unassigned-orders') {
     let items = mock.pending

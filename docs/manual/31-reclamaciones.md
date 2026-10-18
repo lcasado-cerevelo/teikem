@@ -25,8 +25,9 @@ Lote 111 (2026-10-18, dictado por Luis). Qué pasa con una pieza que no llegó: 
 
 ## 4. Cuando una pieza aparece (estación de escaneo)
 Si se escanea una pieza que estaba **Por verificar, Perdido o Reclamada**:
-- **Reclamación sin cerrar:** la pieza se **quita de la reclamación**; si la reclamación se queda sin piezas, **se elimina**. La pieza deja de ser faltante, se escanea como cualquier otra (resultado «apareció», audio «Sí») y queda anotada para que, al cerrar el conteo, se cree su orden nueva (el mismo cliente y consignatario; una por cada orden original — llega en el lote siguiente).
+- **Reclamación sin cerrar:** la pieza se **quita de la reclamación**; si la reclamación se queda sin piezas, **se elimina**. La pieza deja de ser faltante, se escanea como cualquier otra (resultado «apareció», audio «Sí») y queda anotada para que, al cerrar el conteo, se cree su orden nueva (ver §4.1).
 - **Reclamación cerrada (Resuelta):** el escaneo responde **«No»**: *La pieza pertenece a una reclamación cerrada.*
+- **4.1 La orden nueva (Lote 111b).** Al pulsar **Cerrar conteo** en la estación de escaneo de la orden original, si tiene piezas que aparecieron, la web muestra **«Esto es lo que va a pasar»**: se crea **una orden de entrega nueva** con esas piezas (las que aparecieron de esa orden original), con el **mismo cliente y el mismo consignatario** (las mismas paradas de recogida y entrega, tipo de servicio y prioridad), un **conduce nuevo** y las **mismas piezas con sus mismos números** (los labels ya impresos siguen valiendo). Se confirma con **«Confirmar y cerrar el conteo»**; con «Cancelar» no pasa nada. La orden nueva entra al estatus de la acción con que se escanearon las piezas (si fue «Enrutar» queda en «Sin asignar», porque todavía no hay ruta). **No se cotiza ni se cobra de nuevo** (es el mismo envío ya cotizado en la original). La orden original conserva sus demás piezas. La app móvil manda la confirmación sola: avisa y no se detiene.
 - Aunque la orden ya esté en un estatus final (entregada incompleta), la pieza faltante que aparece se acepta; no se rechaza como «final».
 
 ## 5. Mensajes de error
@@ -45,6 +46,7 @@ Si se escanea una pieza que estaba **Por verificar, Perdido o Reclamada**:
 | La reclamación ya está resuelta. | 409 | Resolver dos veces. |
 | La pieza pertenece a una reclamación cerrada. | 200 (resultado «No») | Escanear la pieza de una reclamación Resuelta. |
 | Reclamación no encontrada. / Orden no encontrada. | 404 | Identificador inexistente (o de otra compañía). |
+| Al cerrar el conteo se creará una orden nueva con {n} pieza(s)… (`needsConfirmation`) | 200 | Hay piezas que aparecieron: no se hizo nada todavía; reenviar `POST /api/v1/scan/close-count` con `confirm: true`. |
 
 ## 6. Endpoints
 `GET /api/v1/claims/to-verify` (`search`, `skip`, `take`), `POST /api/v1/claims/lost`, `POST /api/v1/claims`, `GET /api/v1/claims`, `GET /api/v1/claims/{publicId}`, `POST /api/v1/claims/{publicId}/resolve`. La compañía sale siempre de la sesión.

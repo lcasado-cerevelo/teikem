@@ -189,6 +189,7 @@ public static class DependencyInjection
         services.AddScoped<TripLifecycleService>();
         services.AddScoped<TripDayPlanningService>();
         services.AddScoped<OutboundScanService>();
+        services.AddScoped<ReappearedOrderService>();   // Lote 111b: la orden nueva de las piezas que aparecieron
         services.AddScoped<ScanActionService>();   // Lote 107: escaneo con acción escogida
         services.AddScoped<ClaimService>();   // Lote 111: faltantes y reclamaciones
         services.AddScoped<TripMonitorService>();

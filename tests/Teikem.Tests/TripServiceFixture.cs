@@ -96,6 +96,7 @@ internal sealed class TripServiceFixture : IAsyncDisposable
         services.AddSingleton<RouteOptimizationService>();
         services.AddSingleton<OrderReadService>();
         services.AddSingleton<OutboundScanService>();
+        services.AddSingleton<ReappearedOrderService>();
         services.AddSingleton<ScanActionService>();
         services.AddSingleton<ClaimService>();
         // Edición de cabecera (UpdateAsync) y monitor: UpdateAsync no numera; el contador de prueba solo cubre la firma.
@@ -129,6 +130,7 @@ internal sealed class TripServiceFixture : IAsyncDisposable
             L(LookupDomains.EntityType, EntityTypes.RouteStop),
             L(LookupDomains.EntityType, EntityTypes.OptimizationRun),
             L(LookupDomains.EntityType, EntityTypes.TransportOrder),
+            L(LookupDomains.EntityType, EntityTypes.OrderStop),   // Lote 111b
             L(LookupDomains.EntityType, Teikem.Domain.Orders.ClaimStatuses.EntityType),   // Lote 111
             L(LookupDomains.EntityType, EntityTypes.Client),
             L(LookupDomains.EntityType, EntityTypes.Vehicle),
@@ -223,6 +225,7 @@ internal sealed class TripServiceFixture : IAsyncDisposable
             GeocodeAccuracyLookupId = await Lookups.GetIdAsync(LookupDomains.GeocodeAccuracy, GeocodeAccuracies.ZipCentroid),
             StatusCodeId = Id(StatusDomains.StopStatus, StopStatuses.Pending),
         });
+        Db.CargoLines.Add(new CargoLine { CargoLineId = orderId, TransportOrderId = orderId, DeliveryStopId = stopId, Description = "Cajas", Quantity = pieces, IsActive = true });   // Lote 111b: la línea de las piezas
         for (var i = 1; i <= pieces; i++)   // Lote 110: cada pieza con su número (lo que se escanea)
             Db.OrderPieces.Add(new Teikem.Domain.Orders.OrderPiece { TenantId = TenantId, TransportOrderId = orderId, CargoLineId = orderId, Sequence = i, PackageNumber = PieceNumberOf(orderId, i), IsActive = true });
         await Db.SaveChangesAsync();

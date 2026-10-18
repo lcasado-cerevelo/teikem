@@ -2019,6 +2019,15 @@
     },
     "closeCount": {
       "button": "Cerrar conteo"
+    },
+    "reappeared": {
+      "title": "Esto es lo que va a pasar",
+      "body": "Al cerrar el conteo se creará una orden nueva con {count} pieza(s) que aparecieron de la orden {order}.",
+      "client": "Cliente",
+      "consignee": "Consignatario",
+      "status": "Estatus de la orden nueva",
+      "confirm": "Confirmar y cerrar el conteo",
+      "cancel": "Cancelar"
     }
   },
   "routeMap": {

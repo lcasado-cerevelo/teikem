@@ -92,6 +92,6 @@ export function useScanAction() {
 /** `POST /scan/close-count` (Lote 110): cierra el conteo de una orden; lo que no se escaneó queda faltante «Por verificar». */
 export function useCloseCount() {
   return useMutation({
-    mutationFn: (orderPublicId: string) => unwrap(api.POST('/api/v1/scan/close-count', { body: { orderPublicId }, headers: { 'Idempotency-Key': crypto.randomUUID() } })),
+    mutationFn: (v: { orderPublicId: string; confirm?: boolean }) => unwrap(api.POST('/api/v1/scan/close-count', { body: v.confirm ? { orderPublicId: v.orderPublicId, confirm: true } : { orderPublicId: v.orderPublicId }, headers: { 'Idempotency-Key': crypto.randomUUID() } })),
   })
 }

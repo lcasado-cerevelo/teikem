@@ -343,9 +343,15 @@ public sealed record OutboundScanRequest(string? Code, DateOnly? PlanDate = null
 public sealed record ScanActionRequest(string? Action, string? Code, DateOnly? PlanDate = null);
 
 /// <summary>Lote 110: cerrar el conteo de una orden (la última acción escaneada): lo que no se escaneó queda faltante «Por verificar».</summary>
-public sealed record ScanCloseCountRequest(Guid? OrderPublicId);
+/// <summary>Cerrar el conteo de una orden. Confirm: la web de staff manda true después de mostrar «esto es lo que va a pasar» (se crea la orden nueva de las piezas que aparecieron); la app móvil siempre manda true (avisa y no se detiene).</summary>
+public sealed record ScanCloseCountRequest(Guid? OrderPublicId, bool? Confirm = null);
 
-public sealed record ScanCloseCountResultDto(string Message, Guid? OrderPublicId, string? OrderNumber, int Scanned, int Total, int Missing, IReadOnlyList<string> MissingNumbers);
+/// <summary>Lote 111b — lo que pasará al cerrar el conteo: se crea una orden nueva con las piezas que aparecieron (mismo cliente y consignatario).</summary>
+public sealed record ScanReappearedPreviewDto(string OrderNumber, string ClientName, string? ConsigneeName, string StatusLabel, IReadOnlyList<string> PieceNumbers);
+
+/// <summary>Con NeedsConfirmation = true no se hizo nada: falta la confirmación (Preview dice qué se va a crear). Con la orden nueva creada, NewOrder* la identifica.</summary>
+public sealed record ScanCloseCountResultDto(string Message, Guid? OrderPublicId, string? OrderNumber, int Scanned, int Total, int Missing, IReadOnlyList<string> MissingNumbers,
+    bool NeedsConfirmation = false, ScanReappearedPreviewDto? Preview = null, Guid? NewOrderPublicId = null, string? NewOrderNumber = null, string? NewWaybillNumber = null);
 
 /// <summary>Resultado de aplicar la acción: Outcome (APPLIED, ALREADY_BEYOND, FINAL, NO_ROUTE, NOT_FOUND, AMBIGUOUS), palabra de voz, mensaje, el estatus de antes y de después y los que se brincaron; con Enrutar, la zona y la ruta.</summary>
 public sealed record ScanActionResultDto(

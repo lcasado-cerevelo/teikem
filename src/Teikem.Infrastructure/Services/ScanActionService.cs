@@ -20,7 +20,7 @@ namespace Teikem.Infrastructure.Services;
 /// - Faltantes: cuando la orden pasa a la acción siguiente sin alguna pieza (o al cerrar el conteo), esa pieza queda «Por verificar». Si aparece (se escanea después) deja de ser faltante.
 /// Nada de esto revisa tarifa, crédito ni cliente: eso se revisó al someter la orden. Silencioso: nunca pregunta ni interrumpe; cada escaneo contesta con su resultado y su palabra (Sí / No / Ok).
 /// </summary>
-public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, OutboundScanService outbound)
+public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, OutboundScanService outbound, ReappearedOrderService reappeared)
 {
     private readonly Dictionary<string, string> labels = new(StringComparer.OrdinalIgnoreCase);
 
@@ -202,17 +202,24 @@ public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant,
         if (tenant.TenantId is null) throw new ForbiddenException("No hay tenant activo en la sesión.");
         if (req?.OrderPublicId is not Guid publicId) throw new ValidationException("orderPublicId", "Indique la orden cuyo conteo se cierra.");
         var order = await db.TransportOrders.AsNoTracking().Include(o => o.Status).Where(o => o.PublicId == publicId && o.IsActive).FirstOrDefaultAsync(ct) ?? throw new NotFoundException("Orden", feminine: true);
+        // Lote 111b: si aparecieron piezas perdidas o reclamadas de esta orden, al cerrar el conteo se crea una orden nueva con ellas; la web de staff lo confirma antes
+        var preview = await reappeared.PreviewAsync(order.TransportOrderId, ct);
+        if (preview is not null && req.Confirm != true)
+            return new ScanCloseCountResultDto(string.Format(ReappearedOrderService.ConfirmMessageFormat, preview.PieceNumbers.Count, preview.OrderNumber, preview.StatusLabel), order.PublicId, order.OrderNumber, 0, 0, 0, Array.Empty<string>(), true, preview);
+        if (preview is not null) await reappeared.EnsureSequencesAsync(order.TransportOrderId, ct);
         ScanCloseCountResultDto? done = null;
         await db.RunInTransactionAsync(async ct2 =>
         {
+            var created = preview is null ? null : await reappeared.CreateAsync(order.TransportOrderId, ct2);   // primero se mudan las piezas que aparecieron: ya no cuentan como faltantes de esta orden
             await MarkMissingAsync(order.TransportOrderId, 0, order.Status!.InternalCode, ct2);
             var pieces = await db.OrderPieces.AsNoTracking().Where(p => p.TransportOrderId == order.TransportOrderId && p.IsActive).OrderBy(p => p.Sequence).ToListAsync(ct2);
             var missing = pieces.Where(p => p.MissingStatus == PieceMissing.ToVerify).Select(p => p.PackageNumber).ToList();
             var action = ScanActions.ForStatus(order.Status.InternalCode);
             var ids = pieces.Select(p => p.OrderPieceId).ToList();
             var scanned = action is null ? 0 : await db.OrderPieceScans.AsNoTracking().CountAsync(s => ids.Contains(s.OrderPieceId) && s.Action == action, ct2);
-            done = new ScanCloseCountResultDto(missing.Count == 0 ? $"Conteo cerrado: la orden {order.OrderNumber} está completa." : $"Conteo cerrado: a la orden {order.OrderNumber} le faltan {missing.Count} de {pieces.Count} piezas («Por verificar»).",
-                order.PublicId, order.OrderNumber, scanned, pieces.Count, missing.Count, missing);
+            var message = missing.Count == 0 ? $"Conteo cerrado: la orden {order.OrderNumber} está completa." : $"Conteo cerrado: a la orden {order.OrderNumber} le faltan {missing.Count} de {pieces.Count} piezas («Por verificar»).";
+            if (created is not null) message += " " + string.Format(ReappearedOrderService.CreatedMessageFormat, created.OrderNumber, created.WaybillNumber, created.Pieces, created.OriginalOrderNumber);
+            done = new ScanCloseCountResultDto(message, order.PublicId, order.OrderNumber, scanned, pieces.Count, missing.Count, missing, false, null, created?.PublicId, created?.OrderNumber, created?.WaybillNumber);
         }, ct);
         return done!;
     }

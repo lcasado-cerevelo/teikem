@@ -17,8 +17,10 @@ import { IconDoc } from '../../kernel/ui/screenIcons'
 import { usePrinting } from '../printing/usePrinting'
 import { missingReportSpec } from './missingReport'
 import { useDispatchZones } from '../drivers/api'
+import { orderKeys } from '../orders/api'
 import { useDebounced } from '../warehouse/lineRules'
 import { fetchOrderKnown, SCAN_ACTIONS, type ScanActionKey, useCloseCount, useScanAction, useUnassignedOrders } from './scanApi'
+import { ScanReappearedConfirm } from './ScanReappearedConfirm'
 import { ScanOrderModal, type PeekTarget } from './ScanOrderModal'
 import { ScanFeedPanel, ScanPendingPanel } from './ScanPanels'
 import { ScanResultBox, type LastScan } from './ScanResultBox'
@@ -77,6 +79,22 @@ export default function ScanScreen() {
 
   const scan = useScanAction()
   const closeCount = useCloseCount()
+  // Lote 111b: si al cerrar el conteo aparecieron piezas perdidas, el servidor pide confirmar la orden nueva antes de hacer nada
+  const [reappeared, setReappeared] = useState<{ orderPublicId: string; preview: NonNullable<Awaited<ReturnType<typeof closeCount.mutateAsync>>['preview']> } | null>(null)
+  const closeOrderCount = (orderPublicId: string, confirm = false) =>
+    closeCount.mutate(
+      { orderPublicId, confirm },
+      {
+        onSuccess: (r) => {
+          if (r.needsConfirmation && r.preview) return setReappeared({ orderPublicId, preview: r.preview })
+          setReappeared(null)
+          if ((r.missing ?? 0) > 0) toast.error(r.message ?? '')
+          else toast.success(r.message ?? '')
+          if (r.newOrderPublicId) void qc.invalidateQueries({ queryKey: orderKeys.list })
+        },
+        onError: (e) => toast.error(applyProblemDetails(e).title),
+      },
+    )
   const [action, setAction] = useState<ScanActionKey>('ROUTE')   // Lote 107: el usuario escoge qué va a hacer; por omisión, Enrutar (lo de siempre)
   const zones = useDispatchZones(false, canFleet && catalogOn)
   const showZoneFilter = canTrips && canFleet && catalogOn && !zones.isError && (zones.data?.length ?? 0) > 0
@@ -269,7 +287,8 @@ export default function ScanScreen() {
           </button>
         </form>
         <div className="hint">{t('scan.input.hint')}</div>
-        <ScanResultBox last={last} busy={busy} closing={closeCount.isPending} onCloseCount={(id) => closeCount.mutate(id, { onSuccess: (r) => ((r.missing ?? 0) > 0 ? toast.error(r.message ?? '') : toast.success(r.message ?? '')), onError: (e) => toast.error(applyProblemDetails(e).title) })} />
+        <ScanResultBox last={last} busy={busy} closing={closeCount.isPending} onCloseCount={(id) => closeOrderCount(id)} />
+        {reappeared && <ScanReappearedConfirm preview={reappeared.preview} busy={closeCount.isPending} onConfirm={() => closeOrderCount(reappeared.orderPublicId, true)} onCancel={() => setReappeared(null)} />}
         <div className="scn-date">
           <label htmlFor="scan-plan-date">{t('scan.planDate.label')}</label>
           <input

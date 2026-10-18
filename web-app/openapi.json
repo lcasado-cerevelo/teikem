@@ -66341,6 +66341,25 @@
               "type": "string"
             },
             "nullable": true
+          },
+          "needsConfirmation": {
+            "type": "boolean"
+          },
+          "preview": {
+            "$ref": "#/components/schemas/ScanReappearedPreviewDto"
+          },
+          "newOrderPublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "newOrderNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "newWaybillNumber": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -66351,6 +66370,10 @@
           "orderPublicId": {
             "type": "string",
             "format": "uuid",
+            "nullable": true
+          },
+          "confirm": {
+            "type": "boolean",
             "nullable": true
           }
         },
@@ -66694,6 +66717,35 @@
           "resolvedAtUtc": {
             "type": "string",
             "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ScanReappearedPreviewDto": {
+        "type": "object",
+        "properties": {
+          "orderNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "clientName": {
+            "type": "string",
+            "nullable": true
+          },
+          "consigneeName": {
+            "type": "string",
+            "nullable": true
+          },
+          "statusLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "pieceNumbers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
             "nullable": true
           }
         },

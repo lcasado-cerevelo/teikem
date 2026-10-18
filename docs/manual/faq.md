@@ -9187,5 +9187,8 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 
 **«La pieza pertenece a una reclamación cerrada.»** (el audio dice «No») Se escaneó una pieza cuya reclamación ya está resuelta; no se acepta.
 
-**Se escaneó una pieza que estaba perdida o reclamada, ¿qué pasa?** Aparece: se quita de su reclamación (si no está cerrada) y, si la reclamación se queda sin piezas, se elimina. Su orden nueva se crea al cerrar el conteo (lote siguiente).
+**Se escaneó una pieza que estaba perdida o reclamada, ¿qué pasa?** Aparece: se quita de su reclamación (si no está cerrada) y, si la reclamación se queda sin piezas, se elimina. Su orden nueva se crea al cerrar el conteo: la estación muestra «Esto es lo que va a pasar» y hay que confirmar.
 
+**Al pulsar «Cerrar conteo» salió «Esto es lo que va a pasar», ¿qué hago?** Aparecieron piezas que estaban perdidas o reclamadas de esa orden. «Confirmar y cerrar el conteo» crea una orden nueva con ellas (mismo cliente y consignatario, conduce nuevo, mismos números de pieza); «Cancelar» no cambia nada.
+
+**¿La orden nueva se cobra otra vez?** No: no se cotiza ni se cobra, es el mismo envío ya cotizado en la orden original.

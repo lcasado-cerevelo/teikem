@@ -220,6 +220,76 @@ public class ClaimServiceTests
         Assert.Equal(ScanActionOutcomes.Reappeared, r.Outcome);                                      // en vez de «FINAL»: la pieza espera su orden nueva
     }
 
+    // ---------------------------------------------------------------- la orden nueva al cerrar el conteo (111b)
+
+    private static Task<ScanCloseCountResultDto> CloseAsync(TripServiceFixture f, SeededOrder o, bool? confirm)
+        => f.Get<ScanActionService>().CloseCountAsync(new ScanCloseCountRequest(o.PublicId, confirm), default);
+
+    [Fact]
+    public async Task Closing_the_count_asks_for_confirmation_when_pieces_reappeared_and_changes_nothing()
+    {
+        await using var f = await TripServiceFixture.CreateAsync();
+        var o = await OrderWithMissingAsync(f, pieces: 3, toVerify: 2);
+        await Svc(f).MarkLostAsync(new MarkLostRequest(o.PublicId, null), default);
+        await Svc(f).CreateAsync(new ClaimCreateRequest(o.PublicId, null, 10m, null), default);
+        await ScanAsync(f, o, 1);
+
+        var asked = await CloseAsync(f, o, null);
+        Assert.True(asked.NeedsConfirmation);
+        Assert.NotNull(asked.Preview);
+        Assert.Equal(new[] { TripServiceFixture.PieceNumberOf(o.Id, 1) }, asked.Preview!.PieceNumbers);
+        Assert.Null(asked.NewOrderPublicId);
+        Assert.Equal(1, await f.Db.TransportOrders.AsNoTracking().CountAsync());               // todavía no se creó nada
+        Assert.NotNull((await PiecesAsync(f, o.Id))[0].ReappearedAtUtc);
+    }
+
+    [Fact]
+    public async Task Confirming_creates_one_new_order_with_the_pieces_that_reappeared_for_the_same_client_and_consignee()
+    {
+        await using var f = await TripServiceFixture.CreateAsync();
+        var o = await OrderWithMissingAsync(f, pieces: 4, toVerify: 3);
+        await Svc(f).MarkLostAsync(new MarkLostRequest(o.PublicId, null), default);
+        await Svc(f).CreateAsync(new ClaimCreateRequest(o.PublicId, null, 10m, null), default);
+        await ScanAsync(f, o, 1);
+        await ScanAsync(f, o, 2);
+
+        var done = await CloseAsync(f, o, true);
+        Assert.False(done.NeedsConfirmation);
+        Assert.NotNull(done.NewOrderPublicId);
+        Assert.Contains(done.NewOrderNumber!, done.Message);
+
+        var original = await f.Db.TransportOrders.AsNoTracking().SingleAsync(x => x.TransportOrderId == o.Id);
+        var created = await f.Db.TransportOrders.AsNoTracking().SingleAsync(x => x.PublicId == done.NewOrderPublicId);
+        Assert.NotEqual(original.TransportOrderId, created.TransportOrderId);
+        Assert.Equal((original.ClientId, original.ServiceTypeLookupId, 2), (created.ClientId, created.ServiceTypeLookupId, created.TotalPieces));
+        Assert.False(string.IsNullOrWhiteSpace(created.WaybillNumber));
+        Assert.NotEqual(original.WaybillNumber, created.WaybillNumber);
+        Assert.Null(created.QuotedAmount);                                                      // no se cotiza ni se cobra de nuevo
+        Assert.Equal(await f.Db.OrderStops.CountAsync(s => s.TransportOrderId == o.Id), await f.Db.OrderStops.CountAsync(s => s.TransportOrderId == created.TransportOrderId));
+        Assert.Equal(OrderStatuses.Unassigned, await f.OrderStatusAsync(created.TransportOrderId));   // Llegó
+        var moved = await PiecesAsync(f, created.TransportOrderId);
+        Assert.Equal(Numbers(o, 1, 2), moved.Select(p => p.PackageNumber).ToArray());
+        Assert.All(moved, p => Assert.Equal((null, null, null), (p.MissingStatus, p.ClaimId, (DateTime?)p.ReappearedAtUtc)));
+        Assert.Equal(new[] { 1, 2 }, moved.Select(p => p.Sequence).ToArray());
+        var left = await PiecesAsync(f, o.Id);
+        Assert.Equal(2, left.Count);                                                             // la original conserva las suyas (la 3.ª sigue «Por verificar»)
+        Assert.Equal(PieceMissing.Claimed, left.First(p => p.PackageNumber == Numbers(o, 3)[0]).MissingStatus);
+
+        var again = await CloseAsync(f, o, true);                                               // cerrar otra vez no crea otra
+        Assert.Null(again.NewOrderPublicId);
+        Assert.Equal(2, await f.Db.TransportOrders.AsNoTracking().CountAsync());
+    }
+
+    [Fact]
+    public async Task Closing_the_count_without_reappeared_pieces_needs_no_confirmation()
+    {
+        await using var f = await TripServiceFixture.CreateAsync();
+        var o = await f.SeedOrderAsync(OrderStatuses.Pickup, pieces: 2);
+        var r = await CloseAsync(f, o, null);
+        Assert.False(r.NeedsConfirmation);
+        Assert.Null(r.Preview);
+    }
+
     [Fact]
     public void The_claim_number_is_the_id_with_zeros_and_the_resolutions_normalize()
     {
