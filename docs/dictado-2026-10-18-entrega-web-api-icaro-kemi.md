@@ -20,7 +20,7 @@ Notas textuales de lo que Luis pidió mientras se discutía P10 / P7 / P11. Es d
 ## 3. App de choferes (P7)
 - Debe **verse exactamente igual** a la que Luis ya usa: carpeta **`Colavora_Courier`** en `F:\Visual Studio 2022\Projects` (Luis la nombró «Colabora Web Courier»), dentro de la subcarpeta que él llamó «Colabora New», una aplicación **web Expo / React Native** que es la que se usa hoy.
 - Cambia solo a qué API llama (el de Teikem); **las pantallas deben ser las mismas**.
-- Luis va a dar/confirmar la carpeta. **(pregunta)** Revisar esa app antes de diseñar P7.
+- La app de los choferes está en una subcarpeta «New» dentro de `Colavora_Courier` (Luis lo confirmó). **(pregunta)** Revisar esa app antes de diseñar P7.
 
 ## 4. API de integraciones (P11): versión mínima
 - Luis quiere **dar acceso a información** y quizá **ejecutar algunos procesos**, pero con una **versión mínima y controlada** del API: **no un libro abierto**.
@@ -36,10 +36,11 @@ Notas textuales de lo que Luis pidió mientras se discutía P10 / P7 / P11. Es d
 - **(pregunta)** Revisar Ícaro para ver qué conceptos reutilizar (fuentes, mapeos, programación, bitácora).
 
 ## 6. Kemi (asistente) con el manual y la FAQ
-- Kemi debe **contestar como una persona**, usando lo que ya hay en el **manual** y la **FAQ**.
-- Para el usuario debe ser **transparente de dónde saca la respuesta**: Kemi simplemente contesta.
-- Si la persona **no queda satisfecha**, Kemi **pregunta si le contestó** y **busca por otro lado**.
-- Luis quiere analizar cómo hacerlo con el manual y la FAQ que ya existen. **(pregunta)** Proveedor de IA y dónde viven los datos (ya listado como pendiente del dueño), y qué pasa cuando no hay respuesta en el manual.
+- A futuro Kemi trabajará con IA; **por ahora, sin IA**: Kemi **busca en el manual y la FAQ** y **trae las opciones** (los pasajes que mejor responden), sin que el usuario vea de dónde salen.
+- Si la persona no queda satisfecha, Kemi **pregunta si le contestó** y busca por otro lado.
+- Otra opción que Kemi ofrece: **«Pregúntame cómo usar el sistema»**. Eventualmente Kemi también **ayudará a hacer operaciones** en la aplicación (acciones por el API normal, con permiso y confirmación).
+- **Para mostrarlo (demo):** la pregunta debe aparecer en la interfaz de Kemi y, **aunque no haga nada todavía, al hacer clic debe responder algo como «en construcción»**.
+- **(pregunta)** Dónde vive el buscador (servidor con índice del manual y la FAQ), qué pasa cuando no hay resultado, e idioma (es/en).
 
 ## Orden vigente
 Sin cambio: P11 y P12 antes; luego P13; P7 y lo que depende de él al final. Esta discusión puede cambiar el alcance de P7 y P10 (la entrega registrada por la web).
