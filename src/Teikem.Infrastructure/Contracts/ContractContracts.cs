@@ -15,6 +15,16 @@ public sealed record ContractBillingModelDto(
 /// <summary>Cargo por COD configurado: FIXED = monto fijo por orden; PERCENT = por ciento del monto COD cobrado.</summary>
 public sealed record CodFeeDto(string Type, decimal Value);
 
+/// <summary>Lote 115: cargo por devolución del contrato: modo (ORDER | PACKAGE_TYPE | PIECE), monto (ORDER y PIECE) y el monto de cada tipo de paquete (PACKAGE_TYPE).</summary>
+public sealed record ReturnFeeDto(string Mode, decimal? Amount, IReadOnlyList<ReturnFeeTypeDto> ByType);
+
+public sealed record ReturnFeeTypeDto(string PackageType, string PackageTypeLabel, decimal Amount);
+
+/// <summary>Mode vacío o nulo = sin cargo por devolución. Amount para ORDER y PIECE; ByType para PACKAGE_TYPE (la lista se reemplaza completa).</summary>
+public sealed record ReturnFeeRequest(string? Mode, decimal? Amount, IList<ReturnFeeTypeAmount>? ByType);
+
+public sealed record ReturnFeeTypeAmount(string PackageType, decimal Amount);
+
 public sealed record ServiceLevelDto(
     int Id, string ServiceType, string ServiceTypeLabel,
     int? MaxTransitHours, int? PickupWindowMin, decimal? OnTimeTargetPct, decimal? PenaltyAmount);
@@ -28,7 +38,8 @@ public sealed record ContractDetailDto(
     string ContractNumber, string Title, DateOnly StartDate, DateOnly? EndDate, bool AutoRenew,
     string Status, string StatusLabel, string? Currency, string? BillingTrigger, string? Notes,
     ContractBillingModelDto BillingModel, decimal? DispatchFee, CodFeeDto? CodFee,
-    IReadOnlyList<ServiceLevelDto> ServiceLevels, bool CanEdit, bool IsActive, string RowVersion);
+    IReadOnlyList<ServiceLevelDto> ServiceLevels, bool CanEdit, bool IsActive, string RowVersion,
+    ReturnFeeDto? ReturnFee = null);   // Lote 115
 
 /// <summary>
 /// Alta de contrato adicional (el inicial se crea con el cliente). ContractNumber vacío = '{Code}-C{n}' automático.

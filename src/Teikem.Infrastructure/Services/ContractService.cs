@@ -1,3 +1,4 @@
+using Teikem.Domain.Billing;
 using Microsoft.EntityFrameworkCore;
 using Teikem.Domain.Clients;
 using Teikem.Domain.Common;
@@ -183,6 +184,44 @@ public sealed class ContractService(TeikemDbContext db, ITenantContext tenant, I
         return await GetByIdAsync(contract.ContractId, ct);
     }
 
+    /// <summary>
+    /// Lote 115: cargo por devolución del contrato. Mode vacío = sin cargo; ORDER (monto por orden devuelta) y PIECE (monto por pieza devuelta) llevan Amount; PACKAGE_TYPE lleva el monto de cada tipo de paquete
+    /// (la lista se reemplaza completa). Montos >= 0. No toca los demás cargos.
+    /// </summary>
+    public async Task<ContractDetailDto> SetReturnFeeAsync(Guid publicId, ReturnFeeRequest? req, CancellationToken ct)
+    {
+        var mode = ReturnFeeModes.Normalize(req?.Mode);
+        if (mode == "?") throw new ValidationException("mode", ReturnFeeRules.InvalidModeMessage);
+        if (mode is ReturnFeeModes.Order or ReturnFeeModes.Piece)
+        {
+            if (req!.Amount is null) throw new ValidationException("amount", ReturnFeeRules.AmountRequiredMessage);
+            if (req.Amount < 0) throw new ValidationException("amount", ReturnFeeRules.NegativeMessage);
+        }
+        var byType = new List<(int TypeId, decimal Amount)>();
+        if (mode == ReturnFeeModes.PackageType)
+        {
+            if (req!.ByType is not { Count: > 0 }) throw new ValidationException("byType", ReturnFeeRules.ByTypeRequiredMessage);
+            foreach (var item in req.ByType)
+            {
+                if (item.Amount < 0) throw new ValidationException("byType", ReturnFeeRules.NegativeMessage);
+                var code = item.PackageType?.Trim().ToUpperInvariant() ?? string.Empty;
+                var id = await lookups.TryGetIdAsync(LookupDomains.PackageType, code, ct) ?? throw new ValidationException("byType", $"Tipo de paquete desconocido: '{item.PackageType}'.");
+                if (byType.Any(x => x.TypeId == id)) throw new ValidationException("byType", string.Format(ReturnFeeRules.DuplicateTypeMessage, code));
+                byType.Add((id, item.Amount));
+            }
+        }
+        var contract = await LoadForWriteAsync(publicId, ct);
+        contract.ReturnFeeMode = mode;
+        contract.ReturnFeeAmount = mode is ReturnFeeModes.Order or ReturnFeeModes.Piece ? req!.Amount : null;
+        var current = await db.ContractReturnFees.Where(r => r.ContractId == contract.ContractId && r.IsActive).ToListAsync(ct);
+        foreach (var r in current) r.IsActive = false;
+        await db.SaveChangesAsync(ct);
+        foreach (var (typeId, amount) in byType)
+            db.ContractReturnFees.Add(new ContractReturnFee { ContractId = contract.ContractId, PackageTypeLookupId = typeId, Amount = amount, IsActive = true });
+        await db.SaveGuardedAsync(ConcurrencyMessage, ct);
+        return await GetByIdAsync(contract.ContractId, ct);
+    }
+
     /// <summary>Reemplazo completo: los ausentes pasan a IsActive=0; un solo nivel activo por tipo de servicio.</summary>
     public async Task<ContractDetailDto> SetServiceLevelsAsync(Guid publicId, IList<ServiceLevelUpsert>? items, CancellationToken ct)
     {
@@ -331,6 +370,18 @@ public sealed class ContractService(TeikemDbContext db, ITenantContext tenant, I
         }
         var canEdit = await status.IsAllowedAsync(EntityTypes.Contract, c.StatusCodeId, Capabilities.EditContract, ct);
         var codFee = c.CodFeeTypeLookupId is null ? null : new CodFeeDto(c.CodFeeType?.InternalCode ?? "", c.CodFeeValue ?? 0m);
+        ReturnFeeDto? returnFee = null;
+        if (c.ReturnFeeMode is not null)
+        {
+            var rows = await db.ContractReturnFees.AsNoTracking().Where(r => r.ContractId == c.ContractId && r.IsActive).OrderBy(r => r.ContractReturnFeeId).ToListAsync(ct);
+            var byType = new List<ReturnFeeTypeDto>(rows.Count);
+            foreach (var r in rows)
+            {
+                var pt = await lookups.GetAsync(r.PackageTypeLookupId, ct);
+                byType.Add(new ReturnFeeTypeDto(pt?.InternalCode ?? "", MultilingualText.Resolve(pt?.LabelJson, tenant.Lang), r.Amount));
+            }
+            returnFee = new ReturnFeeDto(c.ReturnFeeMode, c.ReturnFeeAmount, byType);
+        }
 
         return new ContractDetailDto(
             c.ContractId, c.PublicId, c.Client!.PublicId, c.Client.Name, c.ContractNumber, c.Title, c.StartDate, c.EndDate, c.AutoRenew,
@@ -338,6 +389,7 @@ public sealed class ContractService(TeikemDbContext db, ITenantContext tenant, I
             c.Currency?.InternalCode, c.BillingModel?.InternalCode, c.Notes,
             new ContractBillingModelDto(c.BillPerService, c.BillExtraPiece, c.BillDispatchFee, c.BillCodFee, c.BillSpecialServices, Summary(c)),
             c.DispatchFee, codFee, levelDtos, canEdit, c.IsActive,
-            Convert.ToBase64String(c.RowVersion ?? Array.Empty<byte>()));
+            Convert.ToBase64String(c.RowVersion ?? Array.Empty<byte>()),
+            returnFee);
     }
 }

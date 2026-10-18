@@ -20,14 +20,25 @@ El guarda escoge **Devolver** y escanea **las piezas que devuelve**, una por una
 - Repetir una pieza es **duplicado** («Ok»). Una pieza faltante responde «No».
 - Al **Cerrar conteo** de la orden devuelta, la estación muestra la **lista de las piezas que no se escanearon** (no se devolvieron) y pide **«Confirmar y cerrar el conteo»**; al confirmar quedan «Por verificar» (de ahí siguen en Reclamaciones).
 
-## 4. «Devolver tras N intentos» (sugerencia)
+## 4. Cargo por devolución (opcional, por contrato)
+Cada contrato puede cobrar un **cargo por devolución** (**Cliente → Contrato → Cargo por devolución**, `contracts.update`; por omisión **sin cargo**). Tres modos:
+| Modo | Qué cobra |
+|---|---|
+| **Por orden** | Un monto por orden devuelta (el mismo para todos los tipos de paquete); se cobra una sola vez aunque se devuelvan más piezas después. |
+| **Por tipo de paquete** | El monto de cada tipo de paquete que se devuelve (un tipo sin monto no cobra). |
+| **Por pieza devuelta** | Un monto por cada pieza que viaja en la orden de vuelta. |
+- El cargo se **le suma a la orden devuelta** al devolverla (botón o escaneo; con el modo por pieza o por tipo crece al sumar piezas) y se **factura aparte del flete** como su propia línea **«ORD-… · Cargo por devolución»** (recargo, con su impuesto), cuando la orden está Devuelta; entra en la corrida de facturación del flete (**Incluir flete**). Cancelar la corrida o anular la factura lo libera.
+- La **orden de vuelta** sigue sin flete ni cargo. Una orden sin contrato o con contrato sin cargo no cobra nada.
+- API: `PATCH /api/v1/contracts/{publicId}/return-fee` con `{ mode, amount, byType:[{packageType, amount}] }` (modo vacío = sin cargo; la lista por tipo se reemplaza completa).
+
+## 5. «Devolver tras N intentos» (sugerencia)
 Cada compañía define con cuántos **intentos fallidos** se **sugiere** devolver una orden (**Ajustes de la compañía → General → Devolución**, `admin.tenant`; por omisión **2**; **0** = nunca sugerir; de 0 a 20). Es **solo una sugerencia y una marca**: nunca bloquea y la orden se puede seguir reintentando.
 - **En la ficha de la orden** aparece «Se sugiere devolverla: N intento(s) fallido(s)» junto al estatus, y en una orden de vuelta se lee «Vuelta de {orden}».
 - **En la estación de escaneo** el mensaje del escaneo de una orden con esos intentos termina con «Lleva N intento(s) fallido(s): se sugiere devolverla.» (el escaneo se hace igual).
 - Cuentan los intentos de entrega **vigentes y no entregados** (los anulados no cuentan). No se sugiere en una orden Sometida ni en una que ya terminó (Entregada, Cancelada, En almacén, Devuelta).
 - API: `GET/PUT /api/v1/tenant/return-settings` (`{ suggestAfterAttempts }`; 400 «Indique con cuántos intentos fallidos se sugiere devolver: de 0 (sin sugerencia) a 20.»).
 
-## 5. Mensajes de error
+## 6. Mensajes de error
 | Mensaje | HTTP | Cuándo |
 |---|---|---|
 | Una orden Sometida no se devuelve: todavía no se recoge. Cancélela. | 422 | Devolver una orden en Sometida. |
@@ -39,7 +50,12 @@ Cada compañía define con cuántos **intentos fallidos** se **sugiere** devolve
 | La orden ya salió a devolución: cancele primero la orden de vuelta {n} para poder reabrirla. | 422 | Reabrir una orden Devuelta cuya vuelta sigue viva. |
 | No tiene permiso para esta acción. | 403 | Falta `orders.return`. |
 | Orden no encontrada. | 404 | Identificador inexistente (o de otra compañía). |
+| Indique el cargo por devolución: por orden, por tipo de paquete o por pieza. | 400 | Modo desconocido en el contrato. |
+| Indique el monto del cargo por devolución. | 400 | Modo por orden o por pieza sin monto. |
+| El cargo por devolución no puede ser negativo. | 400 | Monto negativo. |
+| Indique el monto de al menos un tipo de paquete. | 400 | Modo por tipo de paquete sin ningún monto. |
+| El tipo de paquete {t} está repetido. / Tipo de paquete desconocido: '{t}'. | 400 | Lista por tipo con repetidos o con un tipo que no existe. |
 
-## 6. Casos frecuentes
+## 7. Casos frecuentes
 - *Devolví por error:* primero se **cancela la orden de vuelta**; después la orden Devuelta se reabre con `orders.reopen`. Mientras la vuelta siga viva no se reabre.
 - *La orden tenía 4 piezas y solo escaneé 3 con «Devolver»:* al cerrar el conteo, la 4.ª queda «Por verificar» y se atiende en Reclamaciones.

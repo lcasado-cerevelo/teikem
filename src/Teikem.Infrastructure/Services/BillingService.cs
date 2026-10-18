@@ -129,15 +129,18 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
 
         var snapshot = includeProducts ? await EligibleAsync(client?.ClientId, start, end, onlyInPeriod, settings.SalesBillingTrigger, ct) : new List<Eligible>();
         var freight = includeFreight ? await EligibleFreightAsync(client?.ClientId, start, end, onlyInPeriod, ct) : new List<FreightEligible>();
-        if (snapshot.Count == 0 && freight.Count == 0) throw new StatusRuleException(BillingRules.NothingToBill);
+        var returnFees = includeFreight ? await EligibleReturnFeesAsync(client?.ClientId, start, end, onlyInPeriod, ct) : new List<ReturnFeeEligible>();   // Lote 115
+        if (snapshot.Count == 0 && freight.Count == 0 && returnFees.Count == 0) throw new StatusRuleException(BillingRules.NothingToBill);
         var freightCharges = await FreightChargesAsync(freight, ct);
         var freightTax = await FreightTaxAsync(freight, freightCharges, ct);
+        var returnFeeTax = await ReturnFeeTaxAsync(returnFees, ct);
         await numbers.EnsureAsync(BillingCodes.NumberKind, null, ct);
         var usd = await lookups.GetIdAsync(LookupDomains.Currency, "USD", ct);
         var productSale = await lookups.GetIdAsync(BillingCodes.ChargeTypeDomain, BillingCodes.ProductSale, ct);
         var chargeIds = new Dictionary<string, int>();
         foreach (var code in freightCharges.Values.SelectMany(c => c).Select(c => c.ChargeCode).Distinct())
             chargeIds[code] = await lookups.GetIdAsync(BillingCodes.ChargeTypeDomain, code, ct);
+        if (returnFees.Count > 0 && !chargeIds.ContainsKey(ReturnFeeChargeCode)) chargeIds[ReturnFeeChargeCode] = await lookups.GetIdAsync(BillingCodes.ChargeTypeDomain, ReturnFeeChargeCode, ct);   // Lote 115
 
         var runId = await db.RunInTransactionAsync(async ct2 =>
         {
@@ -171,7 +174,15 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
                 order.FreightInvoiced = true;
                 freightWork.Add(f);
             }
-            if (work.Count == 0 && freightWork.Count == 0) throw new StatusRuleException(BillingRules.NothingToBill);
+            var returnFeeWork = new List<ReturnFeeEligible>();
+            foreach (var f in returnFees.OrderBy(x => x.OrderId))
+            {
+                var order = await db.LockTransportOrderAsync(f.OrderId, ct2);
+                if (order.ReturnFeeInvoiced) continue;
+                order.ReturnFeeInvoiced = true;
+                returnFeeWork.Add(f);
+            }
+            if (work.Count == 0 && freightWork.Count == 0 && returnFeeWork.Count == 0) throw new StatusRuleException(BillingRules.NothingToBill);
 
             // 2) la corrida y una factura por cliente y moneda
             var runInitial = await statuses.GetInitialAsync(BillingCodes.RunStatusDomain, ct2);
@@ -182,6 +193,7 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
             var invoices = new List<Invoice>();
             var keys = work.Select(w => (w.E.ClientId, Currency: w.E.CurrencyLookupId ?? usd))
                 .Concat(freightWork.Select(f => (f.ClientId, Currency: f.CurrencyLookupId ?? usd)))
+                .Concat(returnFeeWork.Select(f => (f.ClientId, Currency: f.CurrencyLookupId ?? usd)))
                 .Distinct().OrderBy(k => k.ClientId).ThenBy(k => k.Currency).ToList();
             foreach (var key in keys)
             {
@@ -211,6 +223,15 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
                         });
                     }
                 }
+                foreach (var f in returnFeeWork.Where(f => f.ClientId == key.ClientId && (f.CurrencyLookupId ?? usd) == key.Currency))
+                {
+                    var tx = returnFeeTax[ReturnFeeKey(f.OrderId)];
+                    invoice.Lines.Add(new InvoiceLine
+                    {
+                        TransportOrderId = f.OrderId, ChargeTypeLookupId = chargeIds[ReturnFeeChargeCode], Description = string.Format(ReturnFeeRules.DescriptionFormat, f.OrderNumber), Quantity = 1m, UnitAmount = tx.Net,
+                        TaxRateId = tx.TaxRateId, TaxRatePct = tx.TaxRatePct, TaxAmount = tx.TaxAmount, IsTaxExempt = tx.IsTaxExempt, IsReturnFee = true,
+                    });
+                }
                 Recalculate(invoice);
                 db.Set<Invoice>().Add(invoice);
                 invoices.Add(invoice);
@@ -227,6 +248,56 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
     }
 
     // ================================================================ flete de las órdenes de transporte (Lote 74)
+
+    private sealed record ReturnFeeEligible(int OrderId, string OrderNumber, int ClientId, int? CurrencyLookupId, decimal Amount);
+
+    /// <summary>Lote 115: el cargo por devolución se factura como recargo (SURCHARGE), aparte del flete de la orden.</summary>
+    private const string ReturnFeeChargeCode = "SURCHARGE";
+
+    private static string ReturnFeeKey(int orderId) => $"R{orderId}";
+
+    /// <summary>
+    /// Órdenes «Devuelta» con cargo por devolución por facturar (activas, con monto mayor que cero y sin facturar), cuyo hecho —el día que quedaron Devuelta— cae hasta la fecha final (o dentro del período).
+    /// </summary>
+    private async Task<List<ReturnFeeEligible>> EligibleReturnFeesAsync(int? clientId, DateOnly start, DateOnly end, bool onlyInPeriod, CancellationToken ct)
+    {
+        var returnedId = await db.StatusCodes.AsNoTracking().Where(s => s.Entity == StatusDomains.OrderStatus && s.InternalCode == OrderStatuses.Returned).Select(s => (int?)s.StatusCodeId).FirstOrDefaultAsync(ct);
+        if (returnedId is null) return new List<ReturnFeeEligible>();
+        var orders = await db.Set<TransportOrder>().AsNoTracking()
+            .Where(o => o.IsActive && !o.ReturnFeeInvoiced && o.ReturnFeeAmount > 0m && o.StatusCodeId == returnedId && (clientId == null || o.ClientId == clientId))
+            .OrderBy(o => o.TransportOrderId).ToListAsync(ct);
+        if (orders.Count == 0) return new List<ReturnFeeEligible>();
+        var entityTypeId = await lookups.TryGetIdAsync(LookupDomains.EntityType, EntityTypes.TransportOrder, ct);
+        var ids = orders.Select(o => o.TransportOrderId).ToList();
+        var facts = entityTypeId is int etid
+            ? (await db.Set<EntityStatusHistory>().AsNoTracking().Where(h => h.EntityTypeLookupId == etid && ids.Contains(h.EntityId) && h.ToStatusCodeId == returnedId).Select(h => new { h.EntityId, h.ChangedAtUtc }).ToListAsync(ct))
+                .GroupBy(h => h.EntityId).ToDictionary(g => g.Key, g => g.Min(h => h.ChangedAtUtc))
+            : new Dictionary<int, DateTime>();
+        var (rangeFrom, toExclusive) = clock.UtcRange(onlyInPeriod ? start : null, end);
+        var result = new List<ReturnFeeEligible>();
+        foreach (var o in orders)
+        {
+            var fact = facts.TryGetValue(o.TransportOrderId, out var at) ? at : o.UpdatedAtUtc ?? o.CreatedAtUtc;
+            if ((rangeFrom != null && fact < rangeFrom) || (toExclusive != null && fact >= toExclusive)) continue;
+            result.Add(new ReturnFeeEligible(o.TransportOrderId, o.OrderNumber, o.ClientId, o.CurrencyLookupId, o.ReturnFeeAmount ?? 0m));
+        }
+        return result;
+    }
+
+    private async Task<Dictionary<string, TaxCalcLineDto>> ReturnFeeTaxAsync(IReadOnlyList<ReturnFeeEligible> list, CancellationToken ct)
+    {
+        var result = new Dictionary<string, TaxCalcLineDto>();
+        foreach (var byClient in list.GroupBy(f => f.ClientId))
+        {
+            var lines = byClient.Select(f => new TaxCalcLineRequest(ReturnFeeKey(f.OrderId), null, ReturnFeeChargeCode, f.Amount)).ToList();
+            foreach (var chunk in lines.Chunk(400))
+            {
+                var calc = await taxes.CalculateAsync(new TaxCalcRequest(byClient.Key, clock.Today, chunk), ct);
+                foreach (var l in calc.Lines) result[l.Key] = l;
+            }
+        }
+        return result;
+    }
 
     private sealed record FreightEligible(int OrderId, string OrderNumber, int ClientId, int? CurrencyLookupId, decimal Quoted, DateTime QuotedAtUtc);
 
@@ -410,8 +481,11 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
             foreach (var (lineId, qty) in claimed)
                 if (locked.TryGetValue(lineId, out var line)) line.QtyInvoiced = Math.Max(0m, line.QtyInvoiced - qty);
         }
-        foreach (var orderId in invoices.SelectMany(i => i.Lines).Where(l => l.TransportOrderId != null).Select(l => l.TransportOrderId!.Value).Distinct().OrderBy(i => i))
+        foreach (var orderId in invoices.SelectMany(i => i.Lines).Where(l => l.TransportOrderId != null && !l.IsReturnFee).Select(l => l.TransportOrderId!.Value).Distinct().OrderBy(i => i))
             (await db.LockTransportOrderAsync(orderId, ct)).FreightInvoiced = false;
+        // Lote 115: el cargo por devolución se libera aparte del flete
+        foreach (var orderId in invoices.SelectMany(i => i.Lines).Where(l => l.TransportOrderId != null && l.IsReturnFee).Select(l => l.TransportOrderId!.Value).Distinct().OrderBy(i => i))
+            (await db.LockTransportOrderAsync(orderId, ct)).ReturnFeeInvoiced = false;
     }
 
     // ================================================================ ajustar una línea y anular una factura

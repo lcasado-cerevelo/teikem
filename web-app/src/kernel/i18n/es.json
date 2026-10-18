@@ -639,6 +639,32 @@
         "codFixedMin": "El cargo fijo por COD no puede ser negativo.",
         "codPercentRange": "El por ciento del cargo por COD debe estar entre 0 y 100.",
         "codRequired": "Indique el valor del cargo por COD."
+      },
+      "returnFee": {
+        "title": "Cargo por devolución",
+        "mode": "Cargo por devolución",
+        "none": "Sin cargo por devolución",
+        "modes": {
+          "ORDER": "Por orden (un monto a todos los tipos de paquete)",
+          "PACKAGE_TYPE": "Por tipo de paquete",
+          "PIECE": "Por pieza devuelta"
+        },
+        "help": "Opcional. Se le cobra a la orden devuelta al quedar «Devuelta» y se factura aparte del flete.",
+        "amountOrder": "Monto por orden devuelta",
+        "amountPiece": "Monto por cada pieza devuelta",
+        "byType": "Monto por cada tipo de paquete devuelto",
+        "packageType": "Tipo de paquete",
+        "pickType": "Tipo de paquete…",
+        "amountType": "Monto",
+        "add": "Agregar tipo de paquete",
+        "remove": "Quitar",
+        "errors": {
+          "amountRequired": "Indique el monto del cargo por devolución.",
+          "badAmount": "Escriba un monto válido (cero o más).",
+          "byTypeRequired": "Indique el monto de al menos un tipo de paquete.",
+          "duplicateType": "Un tipo de paquete está repetido.",
+          "typeRequired": "Escoja el tipo de paquete de cada monto."
+        }
       }
     },
     "errors": {

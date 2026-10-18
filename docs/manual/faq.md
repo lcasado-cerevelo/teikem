@@ -9226,3 +9226,11 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **«No hay tarifa vigente para PICK_UP/…» al someter un pick up.** Un pick up facturable necesita tarifa en el contrato del cliente. Si no se va a cobrar, apague **Facturable** en Listas → Tipo de servicio → Pick up → Ajustar.
 
 **¿Cuándo se cobra un pick up?** Al llegar a **En almacén** (con «Llegó»), sin importar el modelo de cobro del contrato; si «Facturable» está apagado, nunca.
+
+**¿Cómo cobro la devolución?** En el contrato del cliente, **Cargo por devolución**: por orden (un monto), por tipo de paquete o por pieza devuelta. Se le suma a la orden devuelta y se factura como «Cargo por devolución» en la corrida de facturación del flete. Sin configurarlo no se cobra nada.
+
+**«Indique el monto del cargo por devolución.» / «El cargo por devolución no puede ser negativo.»** (400) Escriba el monto (cero o más) del modo por orden o por pieza.
+
+**«Indique el monto de al menos un tipo de paquete.»** (400) El modo por tipo de paquete necesita al menos un tipo con su monto.
+
+**El cargo por devolución no apareció en la factura.** La orden debe estar Devuelta con monto mayor que cero, no facturado antes, y la corrida debe incluir flete y cubrir la fecha en que quedó Devuelta.

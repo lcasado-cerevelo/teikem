@@ -94,6 +94,16 @@ export function useBillingMutations(publicId: string, clientPublicId: string) {
   }
 }
 
+/** Cargo por devolución (Lote 115): `PATCH /contracts/{publicId}/return-fee` (modo vacío = sin cargo). */
+export function useSetReturnFee(publicId: string, clientPublicId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { mode: string | null; amount: number | null; byType: { packageType: string; amount: number }[] | null }) =>
+      unwrap(api.PATCH('/api/v1/contracts/{publicId}/return-fee', { params: { path: { publicId } }, body })),
+    onSuccess: (d: ContractDetail) => settleContract(qc, clientPublicId, d),
+  })
+}
+
 /** SLA: PUT reemplaza la lista completa (los tipos ausentes se dan de baja). */
 export function useSetServiceLevels(publicId: string, clientPublicId: string) {
   const qc = useQueryClient()

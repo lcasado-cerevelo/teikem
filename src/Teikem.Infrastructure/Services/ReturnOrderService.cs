@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Teikem.Domain.Billing;
 using Teikem.Domain.Clients;
 using Teikem.Domain.Common;
 using Teikem.Domain.Constants;
@@ -182,6 +183,7 @@ public sealed class ReturnOrderService(TeikemDbContext db, ITenantContext tenant
         var targetLines = await db.CargoLines.Where(l => l.TransportOrderId == target.TransportOrderId).ToListAsync(ct);
         var nextSequence = (await db.OrderPieces.Where(p => p.TransportOrderId == target.TransportOrderId).MaxAsync(p => (int?)p.Sequence, ct)) ?? 0;
         var originLines = await db.CargoLines.Where(l => pieces.Select(p => p.CargoLineId).Contains(l.CargoLineId)).ToListAsync(ct);
+        var pieceTypes = pieces.Select(p => originLines.First(l => l.CargoLineId == p.CargoLineId).PackageTypeLookupId).ToList();   // Lote 115: el tipo de paquete de cada pieza que se devuelve
         foreach (var group in pieces.GroupBy(p => p.CargoLineId))
         {
             var src = originLines.First(l => l.CargoLineId == group.Key);
@@ -216,6 +218,22 @@ public sealed class ReturnOrderService(TeikemDbContext db, ITenantContext tenant
         target.TotalWeightKg = targetLines.Any(l => l.WeightKg is not null) ? targetLines.Sum(l => l.WeightKg ?? 0m) : null;
         target.TotalVolumeM3 = targetLines.Any(l => l.VolumeM3 is not null) ? targetLines.Sum(l => l.VolumeM3 ?? 0m) : null;
         await db.SaveChangesAsync(ct);
+
+        // Lote 115: cargo por devolución según el contrato (opcional): por orden, por tipo de paquete o por pieza; se le suma a la orden devuelta y se factura aparte del flete
+        if (original.ContractId is int contractId && !original.ReturnFeeInvoiced)
+        {
+            var terms = await db.Contracts.AsNoTracking().Where(c => c.ContractId == contractId).Select(c => new { c.ReturnFeeMode, c.ReturnFeeAmount }).FirstOrDefaultAsync(ct);
+            if (terms?.ReturnFeeMode is not null)
+            {
+                var byType = await db.ContractReturnFees.AsNoTracking().Where(r => r.ContractId == contractId && r.IsActive).ToDictionaryAsync(r => r.PackageTypeLookupId, r => r.Amount, ct);
+                var fee = ReturnFeeRules.Compute(terms.ReturnFeeMode, terms.ReturnFeeAmount, byType, pieceTypes, alreadyCharged: original.ReturnFeeAmount is not null);
+                if (fee > 0m)
+                {
+                    original.ReturnFeeAmount = (original.ReturnFeeAmount ?? 0m) + fee;
+                    await db.SaveChangesAsync(ct);
+                }
+            }
+        }
 
         // la original queda «Devuelta» (una vez) y, si el contrato cobra por entrega, lo devuelto no se cobra en ella
         if (!isReturned)

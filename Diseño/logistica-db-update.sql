@@ -4384,3 +4384,29 @@ WHEN NOT MATCHED THEN
     INSERT (Entity, InternalCode, LabelJson, ExtraJson, SortOrder, IsSystem, IsActive)
     VALUES (N'ServiceType', N'PICK_UP', N'{"es":"Pick up","en":"Pick up"}', N'{"pickUp":true,"billable":true}', 5, 1, 1);
 GO
+
+/* =========================================================================
+   2026-10-18 (aw) — Lote 115: cargo por devolución (opcional por contrato del cliente). Modo ORDER (monto único por orden devuelta, a todos los tipos de paquete), PACKAGE_TYPE (monto por cada tipo de paquete devuelto,
+   tabla ContractReturnFee) o PIECE (monto por cada pieza devuelta). La orden devuelta guarda lo que se le cobra (TransportOrder.ReturnFeeAmount) y se factura aparte del flete (ReturnFeeInvoiced, InvoiceLine.IsReturnFee).
+   ========================================================================= */
+IF COL_LENGTH('dbo.Contract', 'ReturnFeeMode') IS NULL ALTER TABLE dbo.Contract ADD ReturnFeeMode VARCHAR(12) NULL CONSTRAINT CK_Contract_ReturnFeeMode CHECK (ReturnFeeMode IS NULL OR ReturnFeeMode IN ('ORDER','PACKAGE_TYPE','PIECE'));
+GO
+IF COL_LENGTH('dbo.Contract', 'ReturnFeeAmount') IS NULL ALTER TABLE dbo.Contract ADD ReturnFeeAmount DECIMAL(14,2) NULL;
+GO
+IF OBJECT_ID(N'dbo.ContractReturnFee', N'U') IS NULL CREATE TABLE dbo.ContractReturnFee (
+    ContractReturnFeeId  INT IDENTITY(1,1) PRIMARY KEY,
+    ContractId           INT NOT NULL REFERENCES dbo.Contract(ContractId),
+    PackageTypeLookupId  INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),
+    Amount               DECIMAL(14,2) NOT NULL CONSTRAINT CK_ContractReturnFee_Amount CHECK (Amount >= 0),
+    IsActive             BIT NOT NULL CONSTRAINT DF_ContractReturnFee_IsActive DEFAULT 1
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_ContractReturnFee' AND object_id = OBJECT_ID('dbo.ContractReturnFee'))
+    CREATE UNIQUE INDEX UX_ContractReturnFee ON dbo.ContractReturnFee (ContractId, PackageTypeLookupId) WHERE IsActive = 1;
+GO
+IF COL_LENGTH('dbo.TransportOrder', 'ReturnFeeAmount') IS NULL ALTER TABLE dbo.TransportOrder ADD ReturnFeeAmount DECIMAL(14,2) NULL;
+GO
+IF COL_LENGTH('dbo.TransportOrder', 'ReturnFeeInvoiced') IS NULL ALTER TABLE dbo.TransportOrder ADD ReturnFeeInvoiced BIT NOT NULL CONSTRAINT DF_TransportOrder_ReturnFeeInvoiced DEFAULT 0;
+GO
+IF COL_LENGTH('dbo.InvoiceLine', 'IsReturnFee') IS NULL ALTER TABLE dbo.InvoiceLine ADD IsReturnFee BIT NOT NULL CONSTRAINT DF_InvoiceLine_IsReturnFee DEFAULT 0;
+GO

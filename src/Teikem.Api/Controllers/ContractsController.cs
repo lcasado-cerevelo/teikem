@@ -46,6 +46,10 @@ public sealed class ContractsController(ContractService contracts) : ControllerB
     [HttpPatch("{publicId:guid}/cod-fee"), RequirePermission(PermissionCatalog.ContractsUpdate)]
     public Task<ContractDetailDto> SetCodFee(Guid publicId, [FromBody] CodFeeRequest req, CancellationToken ct) => contracts.SetCodFeeAsync(publicId, req, ct);
 
+    /// <summary>Lote 115: cargo por devolución (opcional): por orden, por tipo de paquete o por pieza. Mode vacío = sin cargo.</summary>
+    [HttpPatch("{publicId:guid}/return-fee"), RequirePermission(PermissionCatalog.ContractsUpdate)]
+    public Task<ContractDetailDto> SetReturnFee(Guid publicId, [FromBody] ReturnFeeRequest req, CancellationToken ct) => contracts.SetReturnFeeAsync(publicId, req, ct);
+
     /// <summary>Reemplazo completo de los niveles de servicio (los ausentes se dan de baja; uno por tipo de servicio).</summary>
     [HttpPut("{publicId:guid}/service-levels"), RequirePermission(PermissionCatalog.ContractsUpdate)]
     public Task<ContractDetailDto> SetServiceLevels(Guid publicId, [FromBody] IList<ServiceLevelUpsert> items, CancellationToken ct) => contracts.SetServiceLevelsAsync(publicId, items, ct);

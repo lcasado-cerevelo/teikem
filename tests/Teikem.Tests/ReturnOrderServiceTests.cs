@@ -173,4 +173,71 @@ public class ReturnOrderServiceTests
         Assert.Equal(2, closed.Missing);
         Assert.All(await f.Db.OrderPieces.AsNoTracking().Where(p => p.TransportOrderId == o.Id).ToListAsync(), p => Assert.Equal(PieceMissing.ToVerify, p.MissingStatus));
     }
+
+    // ---------------------------------------------------------------- cargo por devolución (Lote 115)
+
+    private static async Task<SeededOrder> OrderWithFeeAsync(TripServiceFixture f, string? mode, decimal? amount, int pieces = 3, bool byType = false)
+    {
+        f.Db.Set<Teikem.Domain.Clients.Contract>().Add(new Teikem.Domain.Clients.Contract { ContractId = 1, TenantId = TripServiceFixture.TenantId, ClientId = 1, ContractNumber = "K-1", Title = "Marco", StartDate = new DateOnly(2026, 1, 1), StatusCodeId = 1, ReturnFeeMode = mode, ReturnFeeAmount = amount });
+        if (byType) f.Db.ContractReturnFees.Add(new Teikem.Domain.Clients.ContractReturnFee { ContractId = 1, PackageTypeLookupId = 7, Amount = 5m });
+        await f.Db.SaveChangesAsync();
+        var o = await OrderAsync(f, pieces: pieces);
+        var order = await f.Db.TransportOrders.SingleAsync(x => x.TransportOrderId == o.Id);
+        order.ContractId = 1;
+        foreach (var line in f.Db.CargoLines.Where(l => l.TransportOrderId == o.Id)) line.PackageTypeLookupId = 7;
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        return o;
+    }
+
+    private static async Task<decimal?> FeeOfAsync(TripServiceFixture f, SeededOrder o) => (await f.Db.TransportOrders.AsNoTracking().SingleAsync(x => x.TransportOrderId == o.Id)).ReturnFeeAmount;
+
+    [Fact]
+    public async Task By_order_the_fee_is_charged_once_even_if_more_pieces_are_returned_later()
+    {
+        await using var f = await TripServiceFixture.CreateAsync();
+        var o = await OrderWithFeeAsync(f, "ORDER", 12m);
+        await ReturnScanAsync(f, o, 1);
+        Assert.Equal(12m, await FeeOfAsync(f, o));
+        await ReturnScanAsync(f, o, 2);
+        Assert.Equal(12m, await FeeOfAsync(f, o));
+    }
+
+    [Fact]
+    public async Task By_piece_the_fee_grows_with_each_returned_piece()
+    {
+        await using var f = await TripServiceFixture.CreateAsync();
+        var o = await OrderWithFeeAsync(f, "PIECE", 3m);
+        await Svc(f).ReturnAsync(o.PublicId, new ReturnOrderRequest(new[] { Piece(o, 1), Piece(o, 2) }, null), default);
+        Assert.Equal(6m, await FeeOfAsync(f, o));
+        await ReturnScanAsync(f, o, 3);
+        Assert.Equal(9m, await FeeOfAsync(f, o));
+    }
+
+    [Fact]
+    public async Task By_package_type_the_amount_of_each_returned_type_is_added()
+    {
+        await using var f = await TripServiceFixture.CreateAsync();
+        var o = await OrderWithFeeAsync(f, "PACKAGE_TYPE", null, byType: true);
+        await Svc(f).ReturnAsync(o.PublicId, new ReturnOrderRequest(new[] { Piece(o, 1), Piece(o, 2) }, null), default);
+        Assert.Equal(10m, await FeeOfAsync(f, o));                                           // 2 piezas del tipo 7 × 5
+    }
+
+    [Fact]
+    public async Task Without_a_fee_in_the_contract_or_without_a_contract_nothing_is_charged()
+    {
+        await using var f = await TripServiceFixture.CreateAsync();
+        var none = await OrderWithFeeAsync(f, null, null);
+        await Svc(f).ReturnAsync(none.PublicId, null, default);
+        Assert.Null(await FeeOfAsync(f, none));
+    }
+
+    [Fact]
+    public async Task Without_a_contract_nothing_is_charged()
+    {
+        await using var f = await TripServiceFixture.CreateAsync();
+        var noContract = await OrderAsync(f, pieces: 1);
+        await Svc(f).ReturnAsync(noContract.PublicId, null, default);
+        Assert.Null(await FeeOfAsync(f, noContract));
+    }
 }

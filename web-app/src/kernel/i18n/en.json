@@ -639,6 +639,32 @@
         "codFixedMin": "The fixed COD fee cannot be negative.",
         "codPercentRange": "The COD fee percentage must be between 0 and 100.",
         "codRequired": "Enter the COD fee value."
+      },
+      "returnFee": {
+        "title": "Return fee",
+        "mode": "Return fee",
+        "none": "No return fee",
+        "modes": {
+          "ORDER": "Per order (one amount for all package types)",
+          "PACKAGE_TYPE": "Per package type",
+          "PIECE": "Per returned piece"
+        },
+        "help": "Optional. Charged to the returned order when it becomes «Returned» and billed apart from the freight.",
+        "amountOrder": "Amount per returned order",
+        "amountPiece": "Amount per returned piece",
+        "byType": "Amount per returned package type",
+        "packageType": "Package type",
+        "pickType": "Package type…",
+        "amountType": "Amount",
+        "add": "Add package type",
+        "remove": "Remove",
+        "errors": {
+          "amountRequired": "Enter the return fee amount.",
+          "badAmount": "Enter a valid amount (zero or more).",
+          "byTypeRequired": "Enter the amount of at least one package type.",
+          "duplicateType": "A package type is repeated.",
+          "typeRequired": "Choose the package type of each amount."
+        }
       }
     },
     "errors": {

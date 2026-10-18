@@ -167,6 +167,32 @@ public sealed class FreightBillingTests
     }
 
     [Fact]
+    public async Task Lote115_the_return_fee_is_billed_as_its_own_line_apart_from_the_freight_and_is_released_when_the_run_is_cancelled()
+    {
+        var x = await NewWorldAsync();
+        await using var _ = x.F;
+        var returned = await QuotedOrderAsync(x, "T-DEV", OrderStatuses.Returned, 0m);
+        var tracked = await x.F.Db.TransportOrders.AsTracking().SingleAsync(r => r.TransportOrderId == returned.TransportOrderId);
+        tracked.ReturnFeeAmount = 20m;
+        await x.F.Db.SaveChangesAsync();
+        x.F.Db.ChangeTracker.Clear();
+
+        var run = await x.Billing.GenerateAsync(Period(), default);
+        var inv = Assert.Single(run.Invoices);
+        Assert.Equal(20m, inv.Subtotal);
+        var line = Assert.Single((await x.Billing.GetInvoiceAsync(inv.PublicId, default)).Lines);
+        Assert.Contains("Cargo por devolución", line.Description);
+        var order = await x.F.Db.TransportOrders.AsNoTracking().SingleAsync(o => o.TransportOrderId == returned.TransportOrderId);
+        Assert.True(order.ReturnFeeInvoiced);
+        Assert.False(order.FreightInvoiced);                                                    // el flete no se tocó
+        Assert.Equal(BillingRules.NothingToBill, await MsgOf(() => x.Billing.GenerateAsync(Period(), default)));   // nunca dos veces
+
+        await x.Billing.CancelAsync(run.Id, null, default);
+        Assert.False((await x.F.Db.TransportOrders.AsNoTracking().SingleAsync(o => o.TransportOrderId == returned.TransportOrderId)).ReturnFeeInvoiced);
+        Assert.Equal(20m, (await x.Billing.GenerateAsync(Period(), default)).Invoices[0].Subtotal);
+    }
+
+    [Fact]
     public async Task Drafts_inactive_unquoted_and_zero_orders_are_not_billed()
     {
         var x = await NewWorldAsync();

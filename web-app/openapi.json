@@ -37699,6 +37699,65 @@
           }
         }
       }
+    },
+    "/api/v1/contracts/{publicId}/return-fee": {
+      "patch": {
+        "tags": [
+          "Contracts"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReturnFeeRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReturnFeeRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReturnFeeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractDetailDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractDetailDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractDetailDto"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -40178,6 +40237,9 @@
           "rowVersion": {
             "type": "string",
             "nullable": true
+          },
+          "returnFee": {
+            "$ref": "#/components/schemas/ReturnFeeDto"
           }
         },
         "additionalProperties": false
@@ -66983,6 +67045,82 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReturnFeeDto": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "nullable": true
+          },
+          "amount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "byType": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReturnFeeTypeDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReturnFeeTypeDto": {
+        "type": "object",
+        "properties": {
+          "packageType": {
+            "type": "string",
+            "nullable": true
+          },
+          "packageTypeLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReturnFeeRequest": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "nullable": true
+          },
+          "amount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "byType": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReturnFeeTypeAmount"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReturnFeeTypeAmount": {
+        "type": "object",
+        "properties": {
+          "packageType": {
+            "type": "string",
+            "nullable": true
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
           }
         },
         "additionalProperties": false

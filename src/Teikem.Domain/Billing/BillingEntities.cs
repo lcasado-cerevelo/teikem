@@ -117,6 +117,8 @@ public class InvoiceLine
     /// <summary>El monto unitario como lo calculó el sistema al generar; NULL = nunca se ajustó.</summary>
     public decimal? OriginalUnitAmount { get; set; }
     public string? AdjustmentNote { get; set; }
+    /// <summary>Lote 115: la línea es el cargo por devolución de la orden (se libera aparte del flete al anular).</summary>
+    public bool IsReturnFee { get; set; }
 }
 
 /// <summary>Pago recibido de una factura. Una factura se salda (PAID) cuando sus pagos cubren el total.</summary>

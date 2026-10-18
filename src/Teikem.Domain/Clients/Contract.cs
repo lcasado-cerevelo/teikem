@@ -41,6 +41,9 @@ public class Contract : ITenantScoped, ISoftDeletable, IHasStatus
     /// <summary>PricingType FIXED (monto por orden) | PERCENT (por ciento del monto COD cobrado).</summary>
     public int? CodFeeTypeLookupId { get; set; }
     public decimal? CodFeeValue { get; set; }
+    /// <summary>Lote 115: cargo por devolución (ORDER | PACKAGE_TYPE | PIECE; NULL = sin cargo). Monto de ORDER y PIECE; por tipo de paquete en ContractReturnFee.</summary>
+    public string? ReturnFeeMode { get; set; }
+    public decimal? ReturnFeeAmount { get; set; }
 
     public Client? Client { get; set; }
     public StatusCode? Status { get; set; }
@@ -48,6 +51,17 @@ public class Contract : ITenantScoped, ISoftDeletable, IHasStatus
     public LookupCode? BillingModel { get; set; }
     public LookupCode? CodFeeType { get; set; }
     public ICollection<ContractServiceLevel> ServiceLevels { get; set; } = new List<ContractServiceLevel>();
+}
+
+/// <summary>Lote 115: monto del cargo por devolución de un tipo de paquete (modo PACKAGE_TYPE); un monto activo por tipo y contrato.</summary>
+[AuditEntity(Constants.EntityTypes.Contract)]
+public class ContractReturnFee
+{
+    public int ContractReturnFeeId { get; set; }
+    public int ContractId { get; set; }
+    public int PackageTypeLookupId { get; set; }
+    public decimal Amount { get; set; }
+    public bool IsActive { get; set; } = true;
 }
 
 /// <summary>

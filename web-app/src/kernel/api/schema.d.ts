@@ -28082,6 +28082,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/contracts/{publicId}/return-fee": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ReturnFeeRequest"];
+                    "text/json": components["schemas"]["ReturnFeeRequest"];
+                    "application/*+json": components["schemas"]["ReturnFeeRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ContractDetailDto"];
+                        "application/json": components["schemas"]["ContractDetailDto"];
+                        "text/json": components["schemas"]["ContractDetailDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -28876,6 +28921,7 @@ export interface components {
             canEdit?: boolean;
             isActive?: boolean;
             rowVersion?: string | null;
+            returnFee?: components["schemas"]["ReturnFeeDto"];
         };
         ContractPatchRequest: {
             title?: string | null;
@@ -37759,6 +37805,29 @@ export interface components {
         ReturnSettingsRequest: {
             /** Format: int32 */
             suggestAfterAttempts?: number | null;
+        };
+        ReturnFeeDto: {
+            mode?: string | null;
+            /** Format: double */
+            amount?: number | null;
+            byType?: components["schemas"]["ReturnFeeTypeDto"][] | null;
+        };
+        ReturnFeeTypeDto: {
+            packageType?: string | null;
+            packageTypeLabel?: string | null;
+            /** Format: double */
+            amount?: number;
+        };
+        ReturnFeeRequest: {
+            mode?: string | null;
+            /** Format: double */
+            amount?: number | null;
+            byType?: components["schemas"]["ReturnFeeTypeAmount"][] | null;
+        };
+        ReturnFeeTypeAmount: {
+            packageType?: string | null;
+            /** Format: double */
+            amount?: number;
         };
     };
     responses: never;
