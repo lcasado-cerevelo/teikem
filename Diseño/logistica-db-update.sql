@@ -4507,3 +4507,45 @@ WHEN NOT MATCHED THEN
     VALUES (N'PortalRole', s.Code, s.LabelJson, s.Srt, 1, 1);
 GO
 
+/* =========================================================================
+   2026-10-18 (az) — Lote 117b: mensajes del consignatario con su cliente (dictado por Luis). ConsigneeConversation = la conversación de UNA persona de un consignatario con su cliente (la abre el consignatario con su primer
+   mensaje; del lado del cliente la contestan sus administradores y operadores); ConsigneeMessage = sus mensajes (nunca se editan ni se borran).
+   ========================================================================= */
+IF OBJECT_ID(N'dbo.ConsigneeConversation', N'U') IS NULL CREATE TABLE dbo.ConsigneeConversation (
+    ConsigneeConversationId BIGINT IDENTITY(1,1) PRIMARY KEY,
+    PublicId UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_ConsigneeConversation_PublicId DEFAULT NEWID(),
+    TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    ClientId INT NOT NULL REFERENCES dbo.Client(ClientId),
+    LocationId INT NOT NULL REFERENCES dbo.Location(LocationId),
+    ConsigneeUserId INT NOT NULL REFERENCES dbo.AspNetUsers(Id),
+    CreatedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_ConsigneeConversation_Created DEFAULT SYSUTCDATETIME(),
+    LastMessageId BIGINT NOT NULL CONSTRAINT DF_ConsigneeConversation_LastId DEFAULT 0,
+    LastMessageAtUtc DATETIME2 NOT NULL CONSTRAINT DF_ConsigneeConversation_LastAt DEFAULT SYSUTCDATETIME(),
+    LastMessagePreview NVARCHAR(200) NULL,
+    LastSenderKind VARCHAR(10) NULL,
+    ClientLastReadMessageId BIGINT NOT NULL CONSTRAINT DF_ConsigneeConversation_ClientRead DEFAULT 0,
+    ConsigneeLastReadMessageId BIGINT NOT NULL CONSTRAINT DF_ConsigneeConversation_ConsigneeRead DEFAULT 0
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_ConsigneeConversation_PublicId' AND object_id = OBJECT_ID('dbo.ConsigneeConversation')) CREATE UNIQUE INDEX UQ_ConsigneeConversation_PublicId ON dbo.ConsigneeConversation(PublicId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_ConsigneeConversation_Person' AND object_id = OBJECT_ID('dbo.ConsigneeConversation')) CREATE UNIQUE INDEX UX_ConsigneeConversation_Person ON dbo.ConsigneeConversation(TenantId, ClientId, LocationId, ConsigneeUserId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ConsigneeConversation_Last' AND object_id = OBJECT_ID('dbo.ConsigneeConversation')) CREATE INDEX IX_ConsigneeConversation_Last ON dbo.ConsigneeConversation(TenantId, ClientId, LastMessageAtUtc);
+GO
+IF OBJECT_ID(N'dbo.ConsigneeMessage', N'U') IS NULL CREATE TABLE dbo.ConsigneeMessage (
+    ConsigneeMessageId BIGINT IDENTITY(1,1) PRIMARY KEY,
+    TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    ConsigneeConversationId BIGINT NOT NULL REFERENCES dbo.ConsigneeConversation(ConsigneeConversationId),
+    SenderKind VARCHAR(10) NOT NULL,
+    SenderUserId INT NOT NULL REFERENCES dbo.AspNetUsers(Id),
+    Body NVARCHAR(2000) NOT NULL,
+    CreatedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_ConsigneeMessage_Created DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT CK_ConsigneeMessage_Sender CHECK (SenderKind IN ('CONSIGNEE','CLIENT'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ConsigneeMessage_Conversation' AND object_id = OBJECT_ID('dbo.ConsigneeMessage')) CREATE INDEX IX_ConsigneeMessage_Conversation ON dbo.ConsigneeMessage(ConsigneeConversationId, ConsigneeMessageId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ConsigneeMessage_Sender' AND object_id = OBJECT_ID('dbo.ConsigneeMessage')) CREATE INDEX IX_ConsigneeMessage_Sender ON dbo.ConsigneeMessage(SenderUserId, CreatedAtUtc);
+GO
+

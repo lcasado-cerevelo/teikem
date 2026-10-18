@@ -9266,3 +9266,7 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **¿El consignatario usa verificación en dos pasos?** No: entra con contraseña y la computadora de confianza (se confirma por correo la primera vez y dura 30 días sin uso).
 
 **Invité al consignatario y responde «Ese correo no está disponible para el portal de esta compañía.» (409).** Ese correo ya tiene acceso en este cliente, o es de un usuario del staff o de otra compañía; el mensaje es el mismo en todos los casos para no revelar dónde está registrado. Use otro correo.
+
+**¿Con quién habla el consignatario en los mensajes?** Con su cliente (no con la compañía): él abre la conversación con su primer mensaje y los administradores y operadores del cliente la contestan. Quien solo consulta la lee sin poder contestar (`Su rol en el portal es de solo consulta: puede leer los mensajes de los consignatarios, no contestarlos.`, 403).
+
+**El cliente no se entera de que el consignatario le escribió.** Por ahora el aviso es el número de conversaciones sin leer en su bandeja de mensajes de consignatarios; no se manda correo.

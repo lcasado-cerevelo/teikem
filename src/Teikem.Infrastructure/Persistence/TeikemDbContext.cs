@@ -254,6 +254,8 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     // Lote 104 — mensajes del portal con el equipo de servicio al cliente
     public DbSet<Teikem.Domain.Messaging.ClientConversation> ClientConversations => Set<Teikem.Domain.Messaging.ClientConversation>();
     public DbSet<Teikem.Domain.Messaging.ClientMessage> ClientMessages => Set<Teikem.Domain.Messaging.ClientMessage>();
+    public DbSet<Teikem.Domain.Messaging.ConsigneeConversation> ConsigneeConversations => Set<Teikem.Domain.Messaging.ConsigneeConversation>();
+    public DbSet<Teikem.Domain.Messaging.ConsigneeMessage> ConsigneeMessages => Set<Teikem.Domain.Messaging.ConsigneeMessage>();
     public DbSet<Teikem.Domain.Messaging.ClientServiceTeamMember> ClientServiceTeamMembers => Set<Teikem.Domain.Messaging.ClientServiceTeamMember>();
     public DbSet<Teikem.Domain.Messaging.Message> Messages => Set<Teikem.Domain.Messaging.Message>();
     public DbSet<Teikem.Domain.Messaging.UserPresence> UserPresences => Set<Teikem.Domain.Messaging.UserPresence>();

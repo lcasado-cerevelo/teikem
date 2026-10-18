@@ -95,3 +95,33 @@ public sealed class ClientServiceTeamMemberConfiguration : IEntityTypeConfigurat
         b.HasIndex(m => new { m.TenantId, m.ClientId, m.UserId }).IsUnique().HasDatabaseName("UX_ClientServiceTeamMember");
     }
 }
+
+// Lote 117b — mensajes del consignatario con su cliente. Mapeo 1:1 con la sección «2026-10-18 (az)» de Diseño/logistica-db-update.sql.
+
+public sealed class ConsigneeConversationConfiguration : IEntityTypeConfiguration<ConsigneeConversation>
+{
+    public void Configure(EntityTypeBuilder<ConsigneeConversation> b)
+    {
+        b.ToTable("ConsigneeConversation");
+        b.HasKey(c => c.ConsigneeConversationId);
+        b.Property(c => c.PublicId).HasDefaultValueSql("NEWID()").ValueGeneratedOnAdd();
+        b.Property(c => c.LastMessagePreview).HasMaxLength(200);
+        b.Property(c => c.LastSenderKind).HasMaxLength(10).IsUnicode(false);
+        b.HasIndex(c => c.PublicId).IsUnique().HasDatabaseName("UQ_ConsigneeConversation_PublicId");
+        b.HasIndex(c => new { c.TenantId, c.ClientId, c.LocationId, c.ConsigneeUserId }).IsUnique().HasDatabaseName("UX_ConsigneeConversation_Person");
+        b.HasIndex(c => new { c.TenantId, c.ClientId, c.LastMessageAtUtc }).HasDatabaseName("IX_ConsigneeConversation_Last");
+    }
+}
+
+public sealed class ConsigneeMessageConfiguration : IEntityTypeConfiguration<ConsigneeMessage>
+{
+    public void Configure(EntityTypeBuilder<ConsigneeMessage> b)
+    {
+        b.ToTable("ConsigneeMessage");
+        b.HasKey(m => m.ConsigneeMessageId);
+        b.Property(m => m.SenderKind).HasMaxLength(10).IsUnicode(false).IsRequired();
+        b.Property(m => m.Body).HasMaxLength(2000).IsRequired();
+        b.HasIndex(m => new { m.ConsigneeConversationId, m.ConsigneeMessageId }).HasDatabaseName("IX_ConsigneeMessage_Conversation");
+        b.HasIndex(m => new { m.SenderUserId, m.CreatedAtUtc }).HasDatabaseName("IX_ConsigneeMessage_Sender");
+    }
+}

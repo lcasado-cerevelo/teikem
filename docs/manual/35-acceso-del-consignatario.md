@@ -1,6 +1,6 @@
 # 35 — Acceso del consignatario
 
-Lote 117 (2026-10-18, dictado por Luis; diseño en `docs/p10-portal-diseno.md`). Un **consignatario** (quien recibe el paquete) puede tener **su propio acceso** al portal. **Solo el cliente se lo da**, por **invitación a un correo**; la mayoría de los consignatarios no tendrá acceso y seguirá recibiendo los avisos con el enlace de seguimiento (capítulo 34).
+Lote 117 (117a acceso, perfil y bandeja; 117b mensajes con su cliente; 2026-10-18, dictado por Luis; diseño en `docs/p10-portal-diseno.md`). Un **consignatario** (quien recibe el paquete) puede tener **su propio acceso** al portal. **Solo el cliente se lo da**, por **invitación a un correo**; la mayoría de los consignatarios no tendrá acceso y seguirá recibiendo los avisos con el enlace de seguimiento (capítulo 34).
 
 ## 1. Quién y dónde
 - **Cliente (portal):** un administrador u operador del cliente **invita**, **reenvía** o **quita** el acceso de un consignatario suyo (módulo CLIENT_PORTAL). Quien solo consulta ve quién tiene acceso, sin cambiarlo.
@@ -44,6 +44,21 @@ Muestra su nombre, el cliente que lo atiende y, por **correo** y por **texto**, 
 ### 3.2 Su bandeja
 Los avisos que **se le enviaron** (más nuevos primero, hasta 100 por página): «Su paquete va en camino», «fue entregado», «tuvo un intento de entrega fallido»…, el conduce, el estado del envío del aviso (enviado, omitido, fallido) y el enlace de seguimiento de la orden. Solo ve los suyos.
 
+### 3.3 Mensajes con su cliente (Lote 117b)
+El consignatario **le escribe a su cliente** y el cliente le contesta. Es aparte de los mensajes del cliente con el equipo de la compañía (capítulo 29).
+- **Del lado del consignatario:** una sola conversación con su cliente, que **abre con su primer mensaje**; ve lo que el cliente le contesta, cuántos mensajes nuevos tiene y los marca leídos. Nadie más de su empresa ve la suya.
+- **Del lado del cliente:** los **administradores y operadores** ven las conversaciones de sus consignatarios (la más reciente primero; filtro «sin leer»; buscar por consignatario, persona, correo o texto del último mensaje) y **contestan**; quien **solo consulta** las lee, sin contestar. La lectura es **compartida**: cuando uno la abre o contesta, queda leída para todos los de su cliente. Nunca ven las conversaciones de otro cliente.
+- Los mensajes **no se editan ni se borran**. Tope de **2000 caracteres** y **30 mensajes por hora** por persona.
+
+| Situación | Respuesta |
+|---|---|
+| Mensaje vacío | **400 `Escriba el mensaje.`** |
+| Más de 2000 caracteres | **400 `El mensaje no puede pasar de 2000 caracteres.`** |
+| Más de 30 en una hora | **429 `Demasiados mensajes seguidos; espere un rato para volver a escribir.`** |
+| Contesta quien solo consulta | **403 `Su rol en el portal es de solo consulta: puede leer los mensajes de los consignatarios, no contestarlos.`** |
+| Conversación de otro cliente o que no existe | **404** (igual para ambos) |
+| Un consignatario entra a la bandeja del cliente, o una persona del cliente escribe como consignatario | **403** |
+
 ## 4. Endpoints
 | Endpoint | Para qué | Quién |
 |---|---|---|
@@ -54,9 +69,16 @@ Los avisos que **se le enviaron** (más nuevos primero, hasta 100 por página): 
 | `GET /api/v1/portal/consignee/me` | Su perfil y sus medios de aviso | Consignatario |
 | `PUT /api/v1/portal/consignee/me/notices/{EMAIL o SMS}` | Apagar o volver a prender (`enabled`) | Consignatario |
 | `GET /api/v1/portal/consignee/notices` | Su bandeja | Consignatario |
+| `GET /api/v1/portal/consignee/messages?before=&take=` | Mi conversación con mi cliente | Consignatario |
+| `POST /api/v1/portal/consignee/messages` | Escribirle a mi cliente (`body`) | Consignatario |
+| `POST /api/v1/portal/consignee/messages/read` · `GET .../messages/unread` | Marcar leído · cuántos sin leer | Consignatario |
+| `GET /api/v1/portal/consignee-messages?unreadOnly=&q=&skip=&take=` | Las conversaciones de mis consignatarios | Persona del cliente |
+| `GET /api/v1/portal/consignee-messages/unread` | Cuántas conversaciones tienen mensajes sin leer | Persona del cliente |
+| `GET /api/v1/portal/consignee-messages/{id}?before=&take=` | Abrir una conversación | Persona del cliente |
+| `POST /api/v1/portal/consignee-messages/{id}` · `POST .../{id}/read` | Contestar · marcar leída | Admin/operador (contestar) |
 
 ## Casos frecuentes
 - **«El consignatario no recibe la invitación»:** revise el correo escrito y la carpeta de no deseados; **Reenviar** manda un enlace nuevo (el anterior deja de servir).
 - **«Mi enlace dice que es inválido o venció»:** el enlace dura 48 horas y sirve una sola vez; pida que el cliente lo reenvíe.
-- **«Entró pero no ve nada de las órdenes»:** correcto: el consignatario solo tiene su perfil y su bandeja (y, más adelante, los mensajes con su cliente).
+- **«Entró pero no ve nada de las órdenes»:** correcto: el consignatario solo tiene su perfil, su bandeja y los mensajes con su cliente.
 - **«No puedo volver a prender los avisos por texto»:** solo el cliente puede prender un medio que el consignatario no apagó él mismo.

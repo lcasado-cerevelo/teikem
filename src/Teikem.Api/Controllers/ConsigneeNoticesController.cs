@@ -81,7 +81,7 @@ public sealed class PortalConsigneeAccessController(ConsigneeAccessService acces
 [Route("api/v1/portal/consignee")]
 [Authorize]
 [RequireModule(ModuleKeys.ClientPortal)]
-public sealed class PortalConsigneeController(ConsigneeSelfService self) : ControllerBase
+public sealed class PortalConsigneeController(ConsigneeSelfService self, ConsigneeMessagingService messages) : ControllerBase
 {
     [HttpGet("me")]
     public Task<ConsigneeMeDto> Me(CancellationToken ct) => self.GetMeAsync(ct);
@@ -93,4 +93,49 @@ public sealed class PortalConsigneeController(ConsigneeSelfService self) : Contr
     /// <summary>La bandeja: los avisos que se le enviaron (más nuevos primero).</summary>
     [HttpGet("notices")]
     public Task<PagedResult<ConsigneeInboxItemDto>> Notices([FromQuery] int skip, [FromQuery] int take, CancellationToken ct) => self.ListNoticesAsync(skip, take, ct);
+
+    /// <summary>Mi conversación con mi cliente: los últimos mensajes (o los anteriores a <c>before</c>) en orden cronológico y cuántos del cliente no he leído.</summary>
+    [HttpGet("messages")]
+    public Task<PortalMessagesDto> Messages([FromQuery] long? before, [FromQuery] int take, CancellationToken ct) => messages.GetMineAsync(before, take, ct);
+
+    /// <summary>Escribirle a mi cliente. Crea mi conversación con el primer mensaje. 400 si está vacío o pasa de 2000 caracteres; 429 si mando demasiados seguidos (30 por hora).</summary>
+    [HttpPost("messages")]
+    public Task<ClientMessageDto> SendMessage([FromBody] ClientMessageSendRequest req, CancellationToken ct) => messages.SendAsConsigneeAsync(req, ct);
+
+    /// <summary>Marcar como leído lo que escribió el cliente.</summary>
+    [HttpPost("messages/read")]
+    public async Task<IActionResult> ReadMessages(CancellationToken ct) { await messages.MarkReadAsConsigneeAsync(ct); return NoContent(); }
+
+    /// <summary>Cuántos mensajes del cliente no he leído (para el número de la pestaña).</summary>
+    [HttpGet("messages/unread")]
+    public Task<PortalUnreadDto> UnreadMessages(CancellationToken ct) => messages.UnreadMineAsync(ct);
+}
+
+/// <summary>
+/// Lote 117b — el cliente lee y contesta los mensajes de sus consignatarios con acceso. Sesión de portal de una persona del cliente (no de un consignatario) con el módulo CLIENT_PORTAL; contestar exige rol de administrador u
+/// operador (quien solo consulta lee). Todo se limita al cliente de la sesión: la conversación de otro cliente responde 404.
+/// </summary>
+[ApiController]
+[Route("api/v1/portal/consignee-messages")]
+[Authorize]
+[RequireModule(ModuleKeys.ClientPortal)]
+public sealed class PortalConsigneeMessagesController(ConsigneeMessagingService messages) : ControllerBase
+{
+    /// <summary>Las conversaciones de mis consignatarios (más recientes primero); <c>unreadOnly</c> trae las que tienen mensajes sin leer; <c>q</c> busca por consignatario, persona, correo o texto.</summary>
+    [HttpGet]
+    public Task<PagedResult<ConsigneeConversationSummaryDto>> List([FromQuery] bool unreadOnly, [FromQuery] string? q, [FromQuery] int skip, [FromQuery] int take, CancellationToken ct) => messages.ListAsync(unreadOnly, q, skip, take, ct);
+
+    /// <summary>Cuántas conversaciones tienen mensajes del consignatario sin leer.</summary>
+    [HttpGet("unread")]
+    public Task<PortalUnreadDto> Unread(CancellationToken ct) => messages.UnreadAsync(ct);
+
+    [HttpGet("{publicId:guid}")]
+    public Task<ConsigneeConversationDto> Get(Guid publicId, [FromQuery] long? before, [FromQuery] int take, CancellationToken ct) => messages.GetAsync(publicId, before, take, ct);
+
+    /// <summary>Contestar (administrador u operador; solo consulta = 403). La marca como leída para todos los de mi cliente.</summary>
+    [HttpPost("{publicId:guid}")]
+    public Task<ClientMessageDto> Reply(Guid publicId, [FromBody] ClientMessageSendRequest req, CancellationToken ct) => messages.ReplyAsync(publicId, req, ct);
+
+    [HttpPost("{publicId:guid}/read")]
+    public async Task<IActionResult> Read(Guid publicId, CancellationToken ct) { await messages.MarkReadAsClientAsync(publicId, ct); return NoContent(); }
 }

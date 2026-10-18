@@ -440,6 +440,7 @@ public static class DependencyInjection
         services.AddScoped<IStatusTransitionEffect, ClientNotificationOrderEffect>();
         services.AddScoped<ConsigneeNoticeService>();   // Lote 116: avisos al consignatario
         services.AddScoped<ConsigneeAccessService>();   // Lote 117: el cliente le da acceso al consignatario
+        services.AddScoped<ConsigneeMessagingService>();   // Lote 117b: mensajes del consignatario con su cliente
         services.AddScoped<ConsigneeSelfService>();     // Lote 117: el espacio del consignatario (perfil y bandeja)
         services.AddScoped<IStatusTransitionEffect, ConsigneeNoticeOrderEffect>();
         services.AddScoped<IStatusTransitionEffect, ClientNotificationInvoiceEffect>();

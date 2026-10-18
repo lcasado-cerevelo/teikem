@@ -1,4 +1,4 @@
-# Lote 117 — Acceso del consignatario (117a: acceso, perfil y bandeja) (2026-10-18)
+# Lote 117 — Acceso del consignatario (117a: acceso, perfil y bandeja; 117b: mensajes con su cliente) (2026-10-18)
 
 Luis dictó (docs/p10-portal-diseno.md, aclaración del 2026-10-18): el consignatario puede tener acceso propio al portal; **solo el cliente se lo da, por invitación a un correo**; entra con contraseña y computadora de confianza (**sin MFA**); el cliente decide los avisos y el medio, se le notifica al consignatario y **él puede apagarlos**; en su perfil cambia correo/teléfono de los avisos, tiene una **bandeja** con lo que se le envió y podrá **escribirle mensajes a su cliente** (117b).
 
@@ -22,4 +22,11 @@ Luis dictó (docs/p10-portal-diseno.md, aclaración del 2026-10-18): el consigna
 2. **El correo de la invitación** es el mismo texto de las invitaciones del portal (nombra al cliente); no hay uno propio para consignatarios.
 3. **Un correo, un consignatario por cliente** (índice único (compañía, cliente, correo)); la misma persona sí puede ser consignatario de varios clientes.
 4. **Quitar el acceso es baja definitiva** de esa persona (se reinvita con el mismo correo); no hay «suspender» desde el portal del cliente (el staff sí lo ve en el expediente).
-5. **Pendiente de este lote:** mensajes consignatario ↔ cliente (117b); pantallas en la app del cliente (117c); «Envíos del consignatario» y que cree órdenes (decidido en docs/p10, aún no pedido).
+5. **Pendiente de este lote:** pantallas en la app del cliente (117c); «Envíos del consignatario» y que cree órdenes (decidido en docs/p10, aún no pedido).
+
+## 117b — Mensajes del consignatario con su cliente
+- **SQL (update.sql, sección (az))**: `ConsigneeConversation` (una por persona del consignatario: cliente, consignatario y usuario; último mensaje y hasta dónde leyó cada lado) y `ConsigneeMessage` (nunca se editan ni se borran).
+- **`ConsigneeMessagingService`**: del lado del consignatario (abre la conversación con su primer mensaje; todo sale de la sesión) y del cliente (lista, abrir, contestar, marcar leída, sin leer; administrador y operador contestan, solo consulta lee; lectura compartida entre los de su cliente; otro cliente = 404). 2000 caracteres y 30 por hora por persona (las reglas y el mensaje del Lote 104). Un consignatario no entra al lado del cliente ni una persona del cliente al del consignatario (403).
+- **API**: `/api/v1/portal/consignee/messages*` (consignatario) y `/api/v1/portal/consignee-messages*` (cliente). Las rutas del cliente siguen cerradas al consignatario por `PortalScopeMiddleware`.
+- **Pruebas (solo el área)**: xunit `ConsigneeMessagingTests` (8: abre con el primer mensaje, vacío y largo, tope 429 por persona, el cliente ve/lee/contesta con la lectura compartida, el consignatario ve la respuesta y la marca leída, solo consulta no contesta y otro cliente 404, cada lado cerrado al otro, paginación hacia atrás) + `ConsigneeAccessTests` y mensajes del Lote 104: 40 sin fallos; y **contra SQL y API reales** (sin conversación, vacío 400, escribir, bandeja del cliente con 1 sin leer, leer, contestar, 1 sin leer del consignatario, leerlo, 403 cruzados y 404).
+- **Decisiones a revisar con Luis**: (6) **solo el consignatario abre la conversación** (el cliente no le escribe primero, a diferencia del equipo del Lote 104); (7) **no se manda correo** cuando alguien escribe: el aviso es el contador de «sin leer» de cada lado; (8) una conversación de un consignatario al que se le **quitó el acceso** sigue visible para el cliente (historial), aunque el consignatario ya no entra.

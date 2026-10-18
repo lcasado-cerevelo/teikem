@@ -25,3 +25,13 @@ public sealed record ConsigneeChannelRequest(bool? Enabled);
 
 /// <summary>Un aviso que se le envió al consignatario (la bandeja). Title = «Su paquete va en camino»; TrackToken lleva a la página de seguimiento de la orden.</summary>
 public sealed record ConsigneeInboxItemDto(int Id, string Kind, string Channel, string Title, string? Waybill, string? TrackToken, string State, DateTime CreatedAtUtc, DateTime? SentAtUtc);
+
+// ---------------------------------------------------------------- mensajes del consignatario con su cliente (Lote 117b)
+// El consignatario usa PortalMessagesDto / PortalUnreadDto / ClientMessageDto / ClientMessageSendRequest del Lote 104 (SenderKind: CONSIGNEE o CLIENT).
+
+/// <summary>Una conversación de un consignatario con el cliente, para la bandeja del cliente. Unread = mensajes del consignatario que ningún administrador u operador ha leído.</summary>
+public sealed record ConsigneeConversationSummaryDto(Guid PublicId, Guid LocationPublicId, string ConsigneeName, string PersonName, string? PersonEmail, string? LastMessagePreview,
+    DateTime LastMessageAtUtc, string? LastSenderKind, int Unread);
+
+/// <summary>La conversación abierta (lado del cliente): Messages en orden cronológico; HasMore = hay mensajes más viejos.</summary>
+public sealed record ConsigneeConversationDto(Guid PublicId, Guid LocationPublicId, string ConsigneeName, string PersonName, string? PersonEmail, IReadOnlyList<ClientMessageDto> Messages, bool HasMore);
