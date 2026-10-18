@@ -37102,6 +37102,65 @@
           }
         }
       }
+    },
+    "/api/v1/orders/{publicId}/reopen": {
+      "post": {
+        "tags": [
+          "OrderStatus"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderReopenRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderReopenRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderReopenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderDetailDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderDetailDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderDetailDto"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -46502,6 +46561,9 @@
             "type": "boolean"
           },
           "canReprice": {
+            "type": "boolean"
+          },
+          "canReopen": {
             "type": "boolean"
           }
         },
@@ -65690,6 +65752,24 @@
             "nullable": true
           },
           "statusLabel": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "OrderReopenRequest": {
+        "type": "object",
+        "properties": {
+          "toCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "comment": {
+            "type": "string",
+            "nullable": true
+          },
+          "rowVersion": {
             "type": "string",
             "nullable": true
           }

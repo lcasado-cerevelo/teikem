@@ -32,7 +32,7 @@ public class RouteOptimizationServiceTests
         var f = await TripServiceFixture.CreateAsync();
         var (tripId, publicId) = await f.SeedTripAsync("2026-0001", TripStatuses.Draft, f.Zone1);
         var orders = new List<SeededOrder>();
-        for (var i = 0; i < count; i++) orders.Add(await f.SeedOrderAsync(OrderStatuses.Confirmed));
+        for (var i = 0; i < count; i++) orders.Add(await f.SeedOrderAsync(OrderStatuses.Pickup));
         if (count > 0) await f.AddOrdersAsync(tripId, orders.Select(o => o.Id).ToArray());
         return (f, tripId, publicId, orders);
     }
@@ -100,7 +100,7 @@ public class RouteOptimizationServiceTests
 
         // Lo que no cupo vuelve a 'sin asignar' sin tocar su estatus; el Trip pasa a PLANNED con su comentario.
         Assert.False(await f.Db.TripOrders.AnyAsync(t => t.TransportOrderId == orders[1].Id && t.IsCurrent));
-        Assert.Equal(OrderStatuses.Confirmed, await f.OrderStatusAsync(orders[1].Id));
+        Assert.Equal(OrderStatuses.Pickup, await f.OrderStatusAsync(orders[1].Id));
         Assert.Equal(TripStatuses.Planned, await f.TripStatusAsync(tripId));
         Assert.Contains("Ruta optimizada (versión 2)", await f.CommentsAsync(EntityTypes.Trip, tripId));
         Assert.Equal(TripStatuses.Planned, result.Trip.StatusCode);
@@ -334,7 +334,7 @@ public class RouteOptimizationServiceTests
         Assert.Empty(await f.Db.OptimizationRuns.AsNoTracking().ToListAsync());
 
         var other = await f.SeedTripAsync("2026-0002", TripStatuses.Draft, f.Zone1);
-        var foreign = await f.SeedOrderAsync(OrderStatuses.Confirmed);
+        var foreign = await f.SeedOrderAsync(OrderStatuses.Pickup);
         await f.AddOrdersAsync(other.TripId, foreign.Id);
         var foreignStop = await f.Db.RouteStops.AsNoTracking().Where(s => s.OrderStopId == foreign.StopId).Select(s => s.RouteStopId).SingleAsync();
         var bad = await Assert.ThrowsAsync<ValidationException>(() => f.Get<RouteOptimizationService>()
@@ -365,7 +365,7 @@ public class RouteOptimizationServiceTests
 
         // BOLA por id hijo: una parada de otra ruta por la URL de esta → 404 sin tocar nada.
         var other = await f.SeedTripAsync("2026-0002", TripStatuses.Draft, f.Zone1);
-        var foreign = await f.SeedOrderAsync(OrderStatuses.Confirmed);
+        var foreign = await f.SeedOrderAsync(OrderStatuses.Pickup);
         await f.AddOrdersAsync(other.TripId, foreign.Id);
         var foreignStop = await f.Db.RouteStops.AsNoTracking().Where(s => s.OrderStopId == foreign.StopId).Select(s => s.RouteStopId).SingleAsync();
         var notFound = await Assert.ThrowsAnyAsync<TeikemException>(() => svc.SetStopLocationAsync(publicId, foreignStop, new StopLocationRequest(18.4, -66.1), default));

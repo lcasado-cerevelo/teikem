@@ -1,5 +1,5 @@
-// Diálogo «El cliente excede su límite de crédito» con «Autorizar…»: lo comparten el alta (Guardar y confirmar, F-C1) y el expediente
-// (Confirmar, F-C2). Solo se abre para quien tiene `orders.credit_override`; reenvía la misma acción con `overrideCredit=true`.
+// Diálogo «El cliente excede su límite de crédito» con «Autorizar…»: lo comparten el alta (Guardar, F-C1) y el expediente
+// (Marcar como recogida, F-C2). Solo se abre para quien tiene `orders.credit_override`; reenvía la misma acción con `overrideCredit=true`.
 import { type ReactNode } from 'react'
 import { useT } from '../../kernel/i18n'
 import { ConfirmDialog } from '../../kernel/ui'

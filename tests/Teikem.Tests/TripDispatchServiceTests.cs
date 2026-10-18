@@ -26,9 +26,9 @@ public class TripDispatchServiceTests
         await f.SeedTripAsync("2026-0004", TripStatuses.Dispatched, f.Zone1);
         await f.SeedTripAsync("2026-0005", TripStatuses.Draft, f.Zone1, isActive: false);
         await f.SeedTripAsync("2026-0006", TripStatuses.Planned, f.Zone1, planDate: TripServiceFixture.Today.AddDays(1));
-        await f.AddOrdersAsync(a.TripId, (await f.SeedOrderAsync(OrderStatuses.Confirmed, "00902")).Id);
-        await f.AddOrdersAsync(b.TripId, (await f.SeedOrderAsync(OrderStatuses.Confirmed)).Id);
-        await f.AddOrdersAsync(c.TripId, (await f.SeedOrderAsync(OrderStatuses.Confirmed)).Id);
+        await f.AddOrdersAsync(a.TripId, (await f.SeedOrderAsync(OrderStatuses.Pickup, "00902")).Id);
+        await f.AddOrdersAsync(b.TripId, (await f.SeedOrderAsync(OrderStatuses.Pickup)).Id);
+        await f.AddOrdersAsync(c.TripId, (await f.SeedOrderAsync(OrderStatuses.Pickup)).Id);
 
         var list = await f.Get<TripDispatchService>().ListDispatchableAsync(TripServiceFixture.Today, default);
 
@@ -50,8 +50,8 @@ public class TripDispatchServiceTests
         await f.SeedClientAsync(1, "Cliente Uno");
         await f.SeedClientAsync(2, "Cliente Dos");
         var (tripId, publicId) = await f.SeedTripAsync("2026-0001", TripStatuses.Planned, f.Zone1);
-        var a = await f.SeedOrderAsync(OrderStatuses.Confirmed, clientId: 1, orderNumber: "R-00001");
-        var b = await f.SeedOrderAsync(OrderStatuses.Confirmed, clientId: 2, orderNumber: "R-00001");
+        var a = await f.SeedOrderAsync(OrderStatuses.Pickup, clientId: 1, orderNumber: "R-00001");
+        var b = await f.SeedOrderAsync(OrderStatuses.Pickup, clientId: 2, orderNumber: "R-00001");
         await f.AddOrdersAsync(tripId, a.Id, b.Id);
 
         var detail = await f.Get<TripReadService>().GetAsync(publicId, default);
@@ -61,8 +61,8 @@ public class TripDispatchServiceTests
 
         var dispatched = await f.Get<TripDispatchService>().DispatchAsync(publicId, null, default);
         Assert.Equal(TripStatuses.Dispatched, dispatched.StatusCode);
-        Assert.Equal(OrderStatuses.Planned, await f.OrderStatusAsync(a.Id));
-        Assert.Equal(OrderStatuses.Planned, await f.OrderStatusAsync(b.Id));
+        Assert.Equal(OrderStatuses.Assigned, await f.OrderStatusAsync(a.Id));
+        Assert.Equal(OrderStatuses.Assigned, await f.OrderStatusAsync(b.Id));
     }
 
     [Fact]
@@ -71,7 +71,7 @@ public class TripDispatchServiceTests
         // Maestro L286: el vehículo debe estar disponible (sin mantenimiento abierto que lo inhabilite) para despachar.
         await using var f = await TripServiceFixture.CreateAsync();
         var (tripId, publicId) = await f.SeedTripAsync("2026-0001", TripStatuses.Planned, f.Zone1);
-        var o = await f.SeedOrderAsync(OrderStatuses.Confirmed);
+        var o = await f.SeedOrderAsync(OrderStatuses.Pickup);
         await f.AddOrdersAsync(tripId, o.Id);
         f.Availability.BlockedVehicles.Add(9);   // vehículo de SeedTripAsync
 
@@ -87,7 +87,7 @@ public class TripDispatchServiceTests
         Assert.StartsWith("La ruta 2026-0001 no se puede despachar:", ex.Message);
         Assert.Contains("El vehículo no está disponible para despacho:", ex.Message);
         Assert.Equal(TripStatuses.Planned, await f.TripStatusAsync(tripId));
-        Assert.Equal(OrderStatuses.Confirmed, await f.OrderStatusAsync(o.Id));
+        Assert.Equal(OrderStatuses.Pickup, await f.OrderStatusAsync(o.Id));
     }
 
     [Fact]
@@ -96,8 +96,8 @@ public class TripDispatchServiceTests
         await using var f = await TripServiceFixture.CreateAsync();
         var ok = await f.SeedTripAsync("2026-0001", TripStatuses.Planned, f.Zone1);
         var blocked = await f.SeedTripAsync("2026-0002", TripStatuses.Draft, f.Zone1, withVehicle: false);
-        var o1 = await f.SeedOrderAsync(OrderStatuses.Confirmed);
-        var o2 = await f.SeedOrderAsync(OrderStatuses.Confirmed);
+        var o1 = await f.SeedOrderAsync(OrderStatuses.Pickup);
+        var o2 = await f.SeedOrderAsync(OrderStatuses.Pickup);
         await f.AddOrdersAsync(ok.TripId, o1.Id);
         await f.AddOrdersAsync(blocked.TripId, o2.Id);
         var foreign = Guid.NewGuid();
@@ -124,9 +124,9 @@ public class TripDispatchServiceTests
         Assert.Equal(TripStatuses.Dispatched, await f.TripStatusAsync(ok.TripId));
         var route = await f.Db.Routes.AsNoTracking().SingleAsync(r => r.TripId == ok.TripId && r.IsActive);
         Assert.Equal(RouteStatuses.Active, f.CodeOf(route.StatusCodeId));
-        Assert.Equal(OrderStatuses.Planned, await f.OrderStatusAsync(o1.Id));
+        Assert.Equal(OrderStatuses.Assigned, await f.OrderStatusAsync(o1.Id));
         Assert.Equal(TripStatuses.Draft, await f.TripStatusAsync(blocked.TripId));
-        Assert.Equal(OrderStatuses.Confirmed, await f.OrderStatusAsync(o2.Id));
+        Assert.Equal(OrderStatuses.Pickup, await f.OrderStatusAsync(o2.Id));
 
         // El selector ya no muestra la ruta despachada.
         var list = await f.Get<TripDispatchService>().ListDispatchableAsync(TripServiceFixture.Today, default);
@@ -139,7 +139,7 @@ public class TripDispatchServiceTests
     {
         await using var f = await TripServiceFixture.CreateAsync();
         var trip = await f.SeedTripAsync("2026-0001", TripStatuses.Planned, f.Zone1);
-        await f.AddOrdersAsync(trip.TripId, (await f.SeedOrderAsync(OrderStatuses.Confirmed)).Id);
+        await f.AddOrdersAsync(trip.TripId, (await f.SeedOrderAsync(OrderStatuses.Pickup)).Id);
         await f.DisableAsync(StatusDomains.TripStatus, TripStatuses.Dispatched);
 
         var ex = await Assert.ThrowsAsync<StatusRuleException>(() => f.Get<TripDispatchService>().DispatchAsync(trip.PublicId, null, default));
@@ -166,7 +166,7 @@ public class TripDispatchServiceTests
     {
         await using var f = await TripServiceFixture.CreateAsync();
         var trip = await f.SeedTripAsync("2026-0001", TripStatuses.Planned, f.Zone1, withDriver: false);
-        await f.AddOrdersAsync(trip.TripId, (await f.SeedOrderAsync(OrderStatuses.Confirmed)).Id);
+        await f.AddOrdersAsync(trip.TripId, (await f.SeedOrderAsync(OrderStatuses.Pickup)).Id);
         var svc = f.Get<TripDispatchService>();
 
         var item = (await svc.ListDispatchableAsync(TripServiceFixture.Today, default)).Single(d => d.Trip.PublicId == trip.PublicId);

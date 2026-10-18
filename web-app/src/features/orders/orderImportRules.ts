@@ -81,28 +81,26 @@ export function templatesForClient(list: readonly ImportTemplate[], clientPublic
 
 /** Opciones de la confirmación tal como las ve el usuario (casillas del modal). */
 export interface ImportOptions {
-  confirmNow: boolean
   overrideCredit: boolean
   confirmDuplicateInvoice: boolean
 }
 
-export const DEFAULT_IMPORT_OPTIONS: ImportOptions = { confirmNow: false, overrideCredit: false, confirmDuplicateInvoice: false }
+export const DEFAULT_IMPORT_OPTIONS: ImportOptions = { overrideCredit: false, confirmDuplicateInvoice: false }
 
 /**
- * Cuerpo de `POST /orders/import/{lote}/confirm`: solo lo que se marcó. `overrideCredit` exige `confirmNow` (400 si no) y el permiso
- * `orders.credit_override` (403 si no), así que sin ellos nunca se manda. Sin `rows` se crean todas las válidas.
+ * Cuerpo de `POST /orders/import/{lote}/confirm`: solo lo que se marcó. Lote 106: ya no hay «confirmar al importar» (las órdenes nacen Sometidas y cotizadas);
+ * `overrideCredit` (crédito excedido al crear) exige el permiso `orders.credit_override` (403 si no), así que sin él nunca se manda. Sin `rows` se crean todas las válidas.
  */
 export function buildConfirmRequest(o: ImportOptions, canOverride: boolean): OrderImportConfirmRequest {
   const body: OrderImportConfirmRequest = {}
-  if (o.confirmNow) body.confirmNow = true
-  if (o.confirmNow && o.overrideCredit && canOverride) body.overrideCredit = true
+  if (o.overrideCredit && canOverride) body.overrideCredit = true
   if (o.confirmDuplicateInvoice) body.confirmDuplicateInvoice = true
   return body
 }
 
 /** Firma de las opciones: una clave de idempotencia sirve para reintentar la MISMA confirmación, no una con otras opciones. */
 export function confirmSignature(batch: string, body: OrderImportConfirmRequest): string {
-  return `${batch}|${body.confirmNow ? 1 : 0}${body.overrideCredit ? 1 : 0}${body.confirmDuplicateInvoice ? 1 : 0}`
+  return `${batch}|${body.overrideCredit ? 1 : 0}${body.confirmDuplicateInvoice ? 1 : 0}`
 }
 
 export type RowStatus = 'ok' | 'warn' | 'bad' | 'created' | 'failed' | 'skipped'

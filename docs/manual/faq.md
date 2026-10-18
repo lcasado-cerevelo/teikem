@@ -674,9 +674,9 @@ que los `#` del patrón, los antepone. Con un patrón muy largo, el número resu
 La orden no se crea (ni en la captura, ni en el PATCH que agrega paquetes, ni en la fila del importador) y no se gasta ningún
 consecutivo. Acorta el patrón (o déjalo en blanco para usar el patrón por defecto) y vuelve a intentarlo.
 
-**Eliminé una orden en captura y ahora confirmar, cancelar, repreciar o cambiar su estatus responde "Orden no encontrado." (HTTP 404). ¿Por qué?**
+**Eliminé una orden en captura y ahora marcarla como recogida, cancelar, repreciar o cambiar su estatus responde "Orden no encontrado." (HTTP 404). ¿Por qué?**
 Eliminar una orden (solo en su estatus inicial) es una baja lógica: la orden sigue visible en su ficha y en el listado con
-`includeInactive=true`, pero ya no admite ninguna acción (editar, eliminar, confirmar, repreciar, cancelar ni estatus). Si la
+`includeInactive=true`, pero ya no admite ninguna acción (editar, eliminar, marcar como recogida, repreciar, cancelar ni estatus). Si la
 necesitas, captúrala de nuevo: su número de orden y de empaque quedaron libres.
 
 **Cambié el consignatario de una orden y no me avisó de factura repetida. ¿Es correcto?**
@@ -707,13 +707,13 @@ El correo del usuario de portal admite hasta 150 caracteres. No se creó ninguna
 `accept-invite` un correo así recibe la respuesta neutra "Invitación inválida o vencida.".
 
 **Soy de Facturación: ¿cómo autorizo una orden que excede el límite de crédito? ¿Por qué "Falta el permiso 'orders.edit'." (HTTP 403)?**
-Desde la ficha de la orden (en DRAFT), `GET /api/v1/orders/{id}/quote` muestra el aviso (`credit.exceeds=true`) y
-`POST /api/v1/orders/{id}/confirm` con `{"overrideCredit": true}` la confirma. Con la plantilla Facturación (`orders.view`
+Desde la ficha de la orden (Sometida), `GET /api/v1/orders/{id}/quote` muestra el aviso (`credit.exceeds=true`) y
+`POST /api/v1/orders/{id}/confirm` con `{"overrideCredit": true}` la marca como recogida (Lote 106: antes se llamaba «confirmar»). Con la plantilla Facturación (`orders.view`
 + `orders.credit_override`, sin `orders.edit`) eso solo funciona cuando el crédito **realmente** se excede: confirmar sin
 `overrideCredit`, o una orden que cabe en el crédito, sigue exigiendo `orders.edit` (403 "Falta el permiso 'orders.edit'.").
 Sin `orders.credit_override`, `overrideCredit: true` responde 403 "Falta el permiso 'orders.credit_override'.". La
 autorización queda en el historial de estatus ("Crédito excedido autorizado por …") y en la bitácora de seguridad
-(ROLE_CHANGE `credit_override`). La creación con `confirmNow` y la confirmación del importador siguen exigiendo `orders.create`.
+(ROLE_CHANGE `credit_override`). Crear una orden con `overrideCredit` y la importación siguen exigiendo `orders.create` (desde el Lote 106 el exceso se mide al crear).
 
 **El indicador "COD por cobrar" bajó al cancelar una orden. ¿Es correcto?**
 Sí. Suma el COD PENDING de las órdenes activas que **no** están canceladas: una orden cancelada nunca se entrega, así que
@@ -750,37 +750,36 @@ Solo aplica a facturas **tecleadas**; si Teikem genera el número de factura, nu
 
 **¿Qué significa "El cliente está suspendido; no se pueden crear ni confirmar órdenes."? (HTTP 422)**
 El cliente está en estatus `SUSPENDED` (capítulo 02, sección 1.6). No se pueden crear órdenes nuevas para él, ni
-confirmar una que ya estaba en captura. Reactívalo (`ACTIVE`) para seguir.
+marcar como recogida una que ya estaba Sometida. Reactívalo (`ACTIVE`) para seguir.
 
 **¿Qué significa "El consignatario es obligatorio: elija uno del directorio o capture uno nuevo." o "Indique un consignatario del directorio o uno nuevo, no ambos."? (HTTP 400, campo `consignee`)**
 Toda orden necesita exactamente un consignatario: o el `publicId` de una localización del directorio
 (`consigneeLocationPublicId`), o los datos de uno nuevo (`newConsignee`), nunca los dos a la vez ni ninguno.
 
 **¿Qué significa "El cliente excede su límite de crédito: límite X.XX, en curso Y.YY, esta orden Z.ZZ." (HTTP 422, `code: "credit_exceeded"`)?**
-Al confirmar, la suma de lo que el cliente tiene en curso (órdenes ya cotizadas que no son borrador ni terminales) más
-el monto de esta orden pasa su límite de crédito. No es un bloqueo definitivo: la orden queda como estaba (sin
-confirmar) y quien tenga el permiso `orders.credit_override` puede repetir la confirmación con `overrideCredit: true`
+Al crear la orden o al marcarla como recogida, la suma de lo que el cliente tiene en curso (órdenes ya cotizadas que no son terminales; desde el Lote 106 las Sometidas cuentan) más
+el monto de esta orden pasa su límite de crédito. No es un bloqueo definitivo: la orden queda como estaba (al crear, no se crea; al marcarla como recogida, sigue Sometida) y quien tenga el permiso `orders.credit_override` puede repetir la acción con `overrideCredit: true`
 para autorizarla (ver capítulo 03, sección 3.3; en el Lote 4, `overrideCredit` también se acepta junto con
 `driverPublicId` al crear una entrega especial con chofer, capítulo 04, sección 11).
 
 **¿Qué significa "No hay tarifa vigente para X/Y; configure la tarifa en el contrato del cliente antes de confirmar."? (HTTP 422)**
 Al cotizar, alguna línea (combinación de tipo de servicio y tipo de paquete) no tiene tarifa vigente ni en el contrato
-del cliente ni en las tarifas genéricas del tenant. La orden no se confirma ni se congela con un monto en $0: agrega el
+del cliente ni en las tarifas genéricas del tenant. Desde el Lote 106 la creación **no** da este error (la orden se guarda Sometida y sin cotizar); sale al marcarla como recogida. La orden no pasa a Recogida ni se congela con un monto en $0: agrega el
 componente de tarifa que falta (capítulo 02, sección 5) y vuelve a intentar.
 
 **¿Qué significa "El servicio especial ya no está vigente; elija otro antes de confirmar."? (HTTP 409)**
 El servicio especial de una entrega especial se cerró (o venció su vigencia) después de crear la orden pero antes de
-confirmarla. Edita la orden con otro servicio especial vigente del cliente y confirma de nuevo.
+marcarla como recogida. Edita la orden con otro servicio especial vigente del cliente y vuelve a marcarla como recogida.
 
-**Edito una orden confirmada y responde "El estatus actual no permite la acción 'EDIT_CARGO'." (HTTP 422). ¿Cómo la corrijo?**
-Por defecto, la carga de una orden (consignatario, paquetes, COD) solo se edita mientras está en **DRAFT** (borrador).
-Una orden confirmada ya no se edita salvo que un administrador habilite `EDIT_CARGO` para el estatus `CONFIRMED` desde
+**Edito una orden ya recogida y responde "El estatus actual no permite la acción 'EDIT_CARGO'." (HTTP 422). ¿Cómo la corrijo?**
+Por defecto, la carga de una orden (consignatario, paquetes, COD) solo se edita mientras está **Sometida** (`SUBMITTED`).
+Una orden ya recogida no se edita salvo que un administrador habilite `EDIT_CARGO` para el estatus `PICKUP` desde
 `PUT /api/v1/status/capabilities/TRANSPORT_ORDER`; en ese caso, editarla también exige la capacidad `REPRICE` (re-cotiza
 para no dejar un monto viejo). Si no quieres relajar esa regla, cancela la orden y captura una nueva.
 
 **¿Qué significa "El avance a 'X' lo realiza el módulo correspondiente (trips/entregas); desde aquí solo se registran estatus laterales."? (HTTP 422)**
-`POST /api/v1/orders/{id}/status` solo mueve la orden a un estatus lateral (`ON_HOLD`, `PARTIAL`, `FAILED`) o la regresa
-al pipeline del que salió. Avanzar el pipeline en sí (recogido, en tránsito, entregada…) lo hace, desde el Lote 4, la
+`POST /api/v1/orders/{id}/status` solo mueve la orden al estatus lateral Intento fallido (`FAILED`) o la regresa
+al pipeline del que salió. Marcarla como recogida y cancelarla tienen su propia acción. Avanzar el pipeline en sí (en tránsito, entregada…) lo hace, desde el Lote 4, la
 asignación de chofer a una entrega especial (capítulo 04, sección 11), o lo hará el módulo de rutas y entregas de un
 lote posterior para las demás órdenes.
 
@@ -1231,7 +1230,7 @@ elegibilidad más abajo). Quita esas órdenes de la solicitud, o resuelve su cau
 lateral, etc.) y vuelve a intentar.
 
 **¿Cuáles son los motivos exactos por los que una orden no es elegible para una ruta?**
-- `La orden está en Entrada; confírmela antes de asignarla a una ruta.` — todavía está en `DRAFT` (etapa inicial).
+- `La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.` — todavía está en `SUBMITTED` (Sometida, etapa inicial).
 - `Las entregas especiales se asignan al chofer desde la orden; no pasan por Sala de despacho.` — usa
   `POST /api/v1/orders/{publicId}/driver` (capítulo 04).
 - `La orden está en '{estatus}'; regrésela al pipeline antes de asignarla a una ruta.` — está en un lateral
@@ -1421,7 +1420,7 @@ falta escanearla de nuevo.
 
 **¿Qué significa `NOT_ELIGIBLE` al escanear una orden?**
 La orden no cumple la elegibilidad para rutas (ver la tabla de motivos de la sección "Órdenes en la ruta"): por
-ejemplo, sigue en Entrada sin confirmar, está en un estatus lateral, o su estatus no tiene `ASSIGN_TRIP`
+ejemplo, sigue Sometida (hay que marcarla como recogida), está en un estatus lateral, o su estatus no tiene `ASSIGN_TRIP`
 habilitado. El mensaje trae el motivo exacto y la estación pronuncia "notfound".
 
 **¿Qué significa `FOUND_UNASSIGNED` "No se pudo resolver la zona de despacho por código postal ni pueblo; queda
@@ -1656,8 +1655,7 @@ hueco en la numeración). Reduce la cantidad o revisa el saldo disponible antes 
 
 **¿Qué significa "La orden de la recolección {n} ya avanzó a '{estatus}'; la recolección ya no se puede
 eliminar."? (422)**
-Una recolección ya empacada (`PACKED`) solo se elimina si su orden real todavía está en la **etapa inicial** (por
-ejemplo, sin confirmar todavía). Si la orden ya avanzó, hay que trabajar sobre la orden directamente (ver el
+Una recolección ya empacada (`PACKED`) solo se elimina si su orden real todavía está en la **etapa inicial** (Sometida). Si la orden ya avanzó, hay que trabajar sobre la orden directamente (ver el
 siguiente mensaje).
 
 **¿Qué significa "Esta orden nació de la recolección {n}; elimínela desde Recolección y empaque para restaurar el
@@ -6236,7 +6234,7 @@ Casi seguro tiene **alcance de datos** (almacenes y/o clientes) en su usuario. C
 Sí. Lo que no pertenece a ningún almacén/cliente (campo vacío, como un producto compartido o una plantilla general) lo ven todos los de la compañía; el alcance solo oculta lo que pertenece a un almacén/cliente fuera del suyo.
 
 **¿Qué significa «La ruta {código} no se puede cerrar: hay órdenes sin terminar (…)»? (422)**
-Esa ruta todavía tiene órdenes que no terminaron: siguen en camino, llegaron sin resultado o están Retenidas. El mensaje nombra hasta 10 (y agrega «y N más»). Registra la entrega de cada una, o márcala Fallida/Parcial (esas cuentan como terminadas y vuelven a la bandeja para reprogramarse), o cancélala, y vuelve a cerrar. Las órdenes Entregadas, Canceladas, Fallidas y Parciales no estorban.
+Esa ruta todavía tiene órdenes que no terminaron: siguen en camino o llegaron sin resultado. El mensaje nombra hasta 10 (y agrega «y N más»). Registra la entrega de cada una, o márcala Intento fallido (cuenta como terminada y vuelve a la bandeja para reprogramarse), o cancélala, y vuelve a cerrar. Las órdenes Entregadas, Canceladas y con Intento fallido no estorban.
 
 **¿Qué significa «La ruta {código} no está en curso; solo se cierra una ruta que ya salió.» y «La ruta {código} ya está cerrada.»? (422)**
 Solo se cierra una ruta que ya salió (`IN_PROGRESS`). Una ruta en borrador, planificada o solo despachada primero debe registrar su salida (`POST /trips/{id}/start`). Si dice «ya está cerrada», alguien la cerró antes; no hay nada más que hacer.
@@ -6514,19 +6512,19 @@ De fábrica, el rol Admin de compañía (TenantAdmin) y el de Facturación (Bill
 La cotización completa (total, líneas, cargo de despacho, cargo de COD y crédito del cliente) es información de precios. Para verla hacen falta los permisos `orders.view` y `orders.view_price`. Pídale el segundo al administrador o a Facturación.
 
 **¿Qué hago si dice «El cliente excede su límite de crédito.» y no me muestra cifras?**
-Quiere decir que el crédito del cliente no alcanza para confirmar la orden. No ve el límite, lo que el cliente ya debe en órdenes en curso ni el monto de esta orden porque no tiene `orders.view_price`. Avise a Facturación (o a quien tenga el permiso `orders.credit_override`) para que autorice el exceso, o para que suban el límite del cliente. Si usted tiene `orders.view_price`, el mensaje trae las cifras: «El cliente excede su límite de crédito: límite X, en curso Y, esta orden Z.» (ver el Lote F-C1, más abajo).
+Quiere decir que el crédito del cliente no alcanza para crear la orden o marcarla como recogida. No ve el límite, lo que el cliente ya debe en órdenes en curso ni el monto de esta orden porque no tiene `orders.view_price`. Avise a Facturación (o a quien tenga el permiso `orders.credit_override`) para que autorice el exceso, o para que suban el límite del cliente. Si usted tiene `orders.view_price`, el mensaje trae las cifras: «El cliente excede su límite de crédito: límite X, en curso Y, esta orden Z.» (ver el Lote F-C1, más abajo).
 
 **En el historial de la orden dice «Crédito excedido autorizado por …» pero sin montos. ¿Por qué?**
 Es el registro de que alguien autorizó un exceso de crédito. Las cifras (límite, en curso, monto de la orden) solo las ve quien tiene `orders.view_price`.
 
 **Importé órdenes desde un archivo y una fila dice «El cliente excede su límite de crédito.». ¿Qué pasó?**
-Esa orden no se creó porque, al confirmarla, el crédito del cliente no alcanzaba. Quien tiene `orders.view_price` ve el mismo aviso con cifras. Puede volver a importar esa fila autorizando el exceso (hace falta `orders.credit_override`) o importarla sin confirmar.
+Esa orden no se creó porque, al crearla, el crédito del cliente no alcanzaba. Quien tiene `orders.view_price` ve el mismo aviso con cifras. Puede volver a importar esa fila autorizando el exceso (hace falta `orders.credit_override`).
 
 **Mi indicador o vista de Análisis con «Monto cotizado» sale vacío o en 0. ¿Por qué?**
 El campo «Monto cotizado» de la fuente «Órdenes» sale vacío para quien no tiene `orders.view_price`, y un indicador que suma ese campo da 0. Pida el permiso o use otra columna.
 
 **`Tipo de servicio desconocido: X.` / `Tipo de paquete desconocido: X.` / `Estatus desconocido: X.` (400) al filtrar la lista de órdenes.**
-Uno de los valores del filtro no existe en las listas. En la pantalla Órdenes normalmente no lo verá, porque ahí los valores se eligen de una lista; sale a quien consulta el API directamente (por ejemplo, una integración). Revise la ortografía del código (como `STANDARD`, `BOX` o `CONFIRMED`; las mayúsculas no importan) y quite el valor o cámbielo por uno válido.
+Uno de los valores del filtro no existe en las listas. En la pantalla Órdenes normalmente no lo verá, porque ahí los valores se eligen de una lista; sale a quien consulta el API directamente (por ejemplo, una integración). Revise la ortografía del código (como `STANDARD`, `BOX` o `PICKUP`; las mayúsculas no importan) y quite el valor o cámbielo por uno válido.
 
 **`Cliente no encontrado.` (404) al filtrar la lista por varios clientes.**
 Alguno de los clientes del filtro no es de su compañía o está fuera de los clientes que su usuario puede ver. Quítelo del filtro. Si debería poder verlo, pídale al administrador que revise el alcance de datos de su usuario.
@@ -6542,7 +6540,7 @@ Dentro de un mismo filtro se suman: la orden entra si cumple **cualquiera** de l
 Preguntas de la pantalla **Operación → Órdenes**. Los mensajes aparecen tal cual los muestra la pantalla. El capítulo completo es «Órdenes: buscar órdenes y crear una nueva» (manual de pantallas).
 
 **¿Por qué no veo el botón «Nueva orden»?**
-Falta el permiso `orders.create`. Pídalo al administrador de su compañía (Sistema → Roles). Sin ese permiso tampoco aparecen **Guardar borrador** ni **Guardar y confirmar**.
+Falta el permiso `orders.create`. Pídalo al administrador de su compañía (Sistema → Roles). Sin ese permiso tampoco aparece **Guardar**.
 
 **¿Por qué no veo la columna «Cotizado» (el precio)?**
 Falta el permiso `orders.view_price` («Ver precios de las órdenes»). El COD se ve igual, con o sin el permiso, porque no es un precio. Lo traen de fábrica los roles Admin de compañía y Facturación.
@@ -6551,7 +6549,7 @@ Falta el permiso `orders.view_price` («Ver precios de las órdenes»). El COD s
 Se muestra una fila por cada tipo de paquete. La primera fila lleva los datos de la orden y las siguientes solo «↳», el otro tipo de paquete y sus piezas. Es una sola orden: el contador y las páginas cuentan órdenes, y las acciones (abrir y eliminar) están en la primera fila.
 
 **¿Por qué no veo la papelera en una orden?**
-La papelera solo aparece si la orden sigue en su estatus inicial (Borrador) y usted tiene el permiso `orders.cancel`. Una orden confirmada ya no se elimina: se cancela.
+La papelera solo aparece si la orden sigue en su estatus inicial (Sometida) y usted tiene el permiso `orders.cancel`. Una orden ya recogida no se elimina: se cancela.
 
 **¿Qué significa «Solo se puede eliminar una orden en su estatus inicial; use la cancelación.» (422)?**
 Alguien confirmó la orden mientras usted tenía la lista abierta, y ya no se puede eliminar. Recargue la lista. Si la orden debe anularse, hay que cancelarla.
@@ -6602,12 +6600,12 @@ Escribió un número de factura que otra orden activa de ese consignatario ya us
 Ese consignatario no admite facturas repetidas y el número ya está en la orden N. El mensaje sale bajo **N.º de factura** y la orden no se crea. Cambie el número de factura o elija otro consignatario.
 
 **¿Qué hago si dice que el cliente excede su límite de crédito?**
-Pasa solo con **Guardar y confirmar**: el crédito del cliente no alcanza para esta orden (422). El mensaje es «El cliente excede su límite de crédito: límite X, en curso Y, esta orden Z.»; si usted no tiene `orders.view_price`, dice solo «El cliente excede su límite de crédito.», sin cifras.
-- Si tiene el permiso `orders.credit_override`: se abre una ventana con el aviso y el botón **Autorizar y confirmar**. Al pulsarlo, la orden se crea y se confirma de todos modos, y queda registrado quién la autorizó.
-- Si no lo tiene: la orden no se crea y la pantalla dice «La orden no se creó. Pida a alguien con el permiso de autorizar crédito excedido (orders.credit_override) que la capture o la confirme.» Pídaselo a Facturación o a un administrador, o use **Guardar borrador** (el borrador no revisa el crédito) y confirme después.
+El crédito del cliente no alcanza para esta orden (422); se mide al guardar. El mensaje es «El cliente excede su límite de crédito: límite X, en curso Y, esta orden Z.»; si usted no tiene `orders.view_price`, dice solo «El cliente excede su límite de crédito.», sin cifras.
+- Si tiene el permiso `orders.credit_override`: se abre una ventana con el aviso y el botón **Autorizar y guardar**. Al pulsarlo, la orden se crea de todos modos, y queda registrado quién la autorizó.
+- Si no lo tiene: la orden no se crea y la pantalla dice «La orden no se creó. Pida a alguien con el permiso de autorizar crédito excedido (orders.credit_override) que la capture.» Pídaselo a Facturación o a un administrador, o pida que suban el límite del cliente.
 
 **¿Qué significa «No hay tarifa vigente para X/Y; configure la tarifa en el contrato del cliente antes de confirmar.» (422)?**
-El contrato del cliente no tiene tarifa para ese servicio y tipo de paquete. La orden no se creó y el formulario conserva lo que escribió. Configure la tarifa (Clientes → Contrato → Tarifas) o use **Guardar borrador** y confirme cuando la tarifa exista.
+El contrato del cliente no tiene tarifa para ese servicio y tipo de paquete. Al **guardar** una orden este error ya no sale (Lote 106): la orden se guarda Sometida y sin cotizar. Sale al marcarla como recogida: configure la tarifa (Clientes → Contrato → Tarifas) y vuelva a intentarlo.
 
 **¿Qué significa «El cliente está suspendido; no se pueden crear ni confirmar órdenes.» (422) o «El cliente está dado de baja; solo se consulta su historial.» (409)?**
 El estatus del cliente impide crear órdenes nuevas. Reactive al cliente desde su ficha o elija otro.
@@ -6625,17 +6623,17 @@ Con la entrega especial activada hay que elegir el servicio en **Servicio especi
 En la web el chofer se asigna después, en el expediente de la orden con el botón **Asignar chofer** (ver el Lote F-C2). La orden nace sin paquetes, sin COD y sin chofer.
 
 **El formulario sigue abierto y muestra un error. ¿Se guardó la orden?**
-No. Cuando el servidor devuelve un error al crear, la orden no se crea (tampoco con **Guardar y confirmar**). Corrija lo que dice el mensaje y vuelva a guardar: no se duplica.
+No. Cuando el servidor devuelve un error al crear, la orden no se crea. Corrija lo que dice el mensaje y vuelva a guardar: no se duplica.
 
 ## Lote F-C2 — Expediente de la orden (2026-10-12)
 
 Preguntas de la pantalla que se abre al pulsar una orden en **Operación → Órdenes**. Los mensajes aparecen tal cual los muestra la pantalla. El capítulo completo es «Órdenes: el expediente de la orden» (manual de pantallas).
 
 **¿Por qué no puedo editar los datos de una orden?**
-Solo se editan mientras la orden es borrador (el estatus inicial) y con el permiso `orders.edit`. Después de confirmarla, el panel **Detalle** dice «Esta orden ya avanzó de Borrador: sus datos se muestran como referencia, ya no se editan aquí.» y no hay botón **Guardar cambios**. Si su usuario no tiene `orders.edit`, dice «Su usuario no tiene permiso para editar órdenes: los datos se muestran como referencia.»
+Solo se editan mientras la orden está Sometida (el estatus inicial) y con el permiso `orders.edit`. Después de marcarla como recogida, el panel **Detalle** dice «Esta orden ya avanzó de Sometida: sus datos se muestran como referencia, ya no se editan aquí.» y no hay botón **Guardar cambios**. Si su usuario no tiene `orders.edit`, dice «Su usuario no tiene permiso para editar órdenes: los datos se muestran como referencia.»
 
 **¿Por qué no puedo cambiar el cliente, el número de orden, la factura o el empaque?**
-Esos datos se fijan al crear la orden y no se editan. Si la orden está mal creada, cancélela (o elimínela si todavía es borrador) y cree otra.
+Esos datos se fijan al crear la orden y no se editan. Si la orden está mal creada, cancélela (o elimínela si todavía está Sometida) y cree otra.
 
 **El botón «Guardar cambios» está apagado. ¿Qué pasa?**
 Se enciende solo cuando usted cambia algo. Si no cambió nada, no hay nada que guardar.
@@ -6655,41 +6653,41 @@ La orden ya salió del estatus en que se edita (alguien la confirmó mientras us
 **Cambié de consignatario y salió «Factura repetida para este consignatario». ¿Qué hago?**
 La orden tiene un número de factura que usted tecleó y el nuevo consignatario ya tiene otra orden con el mismo número. Si ese consignatario admite facturas repetidas, pulse **Guardar de todos modos**; si no, elija otro consignatario.
 
-**¿Por qué no veo el botón «Confirmar»?**
-La orden ya no está en su estatus inicial, o su usuario no tiene `orders.edit` (ni `orders.credit_override`). Una orden se confirma una sola vez.
+**¿Por qué no veo el botón «Marcar como recogida»?** (antes «Confirmar»)
+La orden ya no está Sometida, o su usuario no tiene `orders.edit` (ni `orders.credit_override`). Una orden se marca como recogida una sola vez.
 
-**Al confirmar sale «El cliente excede su límite de crédito». ¿Qué hago?**
-El crédito del cliente no alcanza para esta orden. Si usted tiene `orders.credit_override`, pulse **Autorizar y confirmar**: la orden se confirma y queda registrado quién lo autorizó. Si no lo tiene, avise a Facturación o a un administrador, o pida que suban el límite del cliente. Sin `orders.view_price` el mensaje no trae las cifras.
+**Al marcar como recogida sale «El cliente excede su límite de crédito». ¿Qué hago?**
+El crédito del cliente no alcanza para esta orden. Si usted tiene `orders.credit_override`, pulse **Autorizar y marcar como recogida**: la orden pasa a Recogida y queda registrado quién lo autorizó. Si no lo tiene, avise a Facturación o a un administrador, o pida que suban el límite del cliente. Sin `orders.view_price` el mensaje no trae las cifras.
 
-**Soy de Facturación y el botón me dice «Autorizar y confirmar». ¿Por qué?**
+**Soy de Facturación y el botón me dice «Autorizar y marcar como recogida». ¿Por qué?**
 Su rol tiene `orders.credit_override` pero no `orders.edit`. Ese permiso solo sirve para autorizar un exceso de crédito; si el crédito no se excede, el servidor responde «Falta el permiso 'orders.edit'.»
 
 **¿Qué significa «No hay tarifa vigente para X/Y; configure la tarifa en el contrato del cliente antes de confirmar.»?**
-El contrato del cliente no tiene tarifa para ese servicio y tipo de paquete (X/Y). Configúrela en Clientes → Contrato → Tarifas y vuelva a confirmar.
+El contrato del cliente no tiene tarifa para ese servicio y tipo de paquete (X/Y). Configúrela en Clientes → Contrato → Tarifas y vuelva a marcar la orden como recogida.
 
 **¿Por qué no veo el panel «Cotización»?**
 Falta el permiso `orders.view_price` («Ver precios de las órdenes»). Sin él tampoco se ve el monto cotizado. Lo traen de fábrica los roles Admin de compañía y Facturación.
 
 **¿Para qué sirve el botón «Cotizar»? ¿Cambia la orden?**
-Muestra una vista previa de cuánto costaría la orden con las tarifas vigentes y cómo queda el crédito del cliente. **No guarda nada.** Para guardar el monto nuevo use **Re-cotizar** (en una orden confirmada).
+Muestra una vista previa de cuánto costaría la orden con las tarifas vigentes y cómo queda el crédito del cliente. **No guarda nada.** Para guardar el monto nuevo use **Re-cotizar** (en una orden Sometida y cotizada).
 
 **¿Cuándo sale el botón «Re-cotizar»?**
-En una orden ya cotizada y en un estatus que lo permite (de fábrica, solo **Confirmada**), con `orders.edit`. Si sale «El estatus actual no permite la acción 'REPRICE'.», la orden ya no está en un estatus que permita re-cotizar.
+En una orden ya cotizada y en un estatus que lo permite (de fábrica, solo **Sometida**; antes del Lote 106 era Confirmada), con `orders.edit`. Si sale «El estatus actual no permite la acción 'REPRICE'.», la orden ya no está en un estatus que permita re-cotizar.
 
 **¿Cómo cancelo una orden? ¿Se puede deshacer?**
-Pulse **Cancelar la orden**, escriba un comentario si quiere (máximo 500 caracteres) y confirme. No se puede deshacer. Si era una entrega especial con chofer, su viaje también se cancela. Necesita `orders.cancel`. Una orden Entregada o Cancelada ya no se cancela.
+Pulse **Cancelar la orden**, escriba la **razón** (obligatoria, máximo 500 caracteres) y confirme. Para deshacerlo hace falta **Reabrir** (permiso `orders.reopen`). Si era una entrega especial con chofer, su viaje también se cancela. Necesita `orders.cancel`. Una orden Entregada, Cancelada o En almacén ya no se cancela.
 
 **¿Por qué el comentario no me deja guardar? Dice «El comentario admite como máximo 500 caracteres.»**
 El comentario de cancelar, de cambiar de estatus o de asignar chofer admite hasta 500 caracteres. Acórtelo.
 
 **¿Cuál es la diferencia entre cancelar y eliminar?**
-**Eliminar la orden** solo se puede en un borrador: libera el número de orden y de empaque. Una orden confirmada solo se cancela. Si intenta eliminar una ya confirmada sale «Solo se puede eliminar una orden en su estatus inicial; use la cancelación.»
+**Eliminar la orden** solo se puede en una orden Sometida: libera el número de orden y de empaque. Una orden ya recogida solo se cancela. Si intenta eliminar una ya recogida sale «Solo se puede eliminar una orden en su estatus inicial; use la cancelación.»
 
-**¿Para qué sirven En espera, Parcial y Fallida? ¿Por qué no hay botón para avanzar la orden?**
-Son desvíos que se registran a mano. El avance normal de la orden (recogido, en tránsito, entregada…) lo hacen las pantallas de despacho, rutas y entregas, no el expediente. Para confirmar o cancelar use los botones de arriba.
+**¿Para qué sirve Intento fallido? ¿Por qué no hay botón para avanzar la orden?**
+Es un desvío que se registra a mano (En espera y Parcial ya no existen desde el Lote 106). El avance normal de la orden (en tránsito, entregada…) lo hacen las pantallas de despacho, rutas y entregas, no el expediente. Para marcarla como recogida, cancelar o reabrir use los botones de arriba.
 
-**La orden está En espera. ¿Cómo la regreso?**
-Pulse **Volver a** y el nombre de la etapa de la que salió (por ejemplo «Volver a Confirmada»). Es el único regreso: no se puede saltar a otra etapa.
+**La orden tuvo un Intento fallido. ¿Cómo la regreso?**
+Pulse **Volver a** y el nombre de la etapa de la que salió (por ejemplo «Volver a En tránsito»). Es el único regreso: no se puede saltar a otra etapa.
 
 **¿Por qué no veo el botón «Asignar chofer»?**
 Solo aparece en una **entrega especial** que está en el recorrido hasta **En tránsito**, y si usted tiene `trips.dispatch` y el módulo Listas está encendido. En una orden normal el chofer se asigna en Sala de despacho. Cuando la orden ya tiene chofer el botón dice **Reasignar chofer**.
@@ -6723,8 +6721,8 @@ Todavía no están en la web; llegarán en otra entrega.
 **¿Qué diferencia hay entre «Rápida» y «Detallada»?**
 La **Rápida** es una rejilla donde cada fila es una orden de 1 paquete y 1 pieza, para capturar muchas seguidas con Tab y Enter. La **Detallada** es un formulario para una orden con varios paquetes, fechas, factura o entrega especial. La pantalla recuerda la última que usó.
 
-**Guardé una orden en la Rápida y quedó en Borrador. ¿Cómo la confirmo?**
-La Rápida solo guarda borradores, sin cotizar. Ábrala desde la lista (flecha **Abrir la orden**) y pulse **Confirmar**; o use **Guardar y confirmar** en la entrada Detallada.
+**Guardé una orden en la Rápida y quedó Sometida. ¿Cómo la marco como recogida?**
+La Rápida guarda la orden Sometida (cotizada si el cliente tiene contrato y tarifa). Ábrala desde la lista (flecha **Abrir la orden**) y pulse **Marcar como recogida** cuando se recoja.
 
 **¿Por qué el N.º de orden dice «(automático)» y no puedo escribir?**
 Porque Teikem asigna ese número para ese cliente. Solo se puede escribir si en la ficha del cliente se activó que el cliente asigna sus propios números de orden.
@@ -6768,14 +6766,14 @@ Que ese consignatario no está en el directorio del cliente ni entre los compart
 **Una fila dice «Con errores». ¿Se importa?**
 No. Las filas con errores se omiten y las demás sí se importan. Corrija el archivo y vuelva a importar solo esas filas.
 
-**¿Para qué sirve «Confirmar las órdenes al importar»?**
-Para que cada orden se cotice, revise el crédito del cliente y quede confirmada. Sin marcarla, quedan en Borrador.
+**¿Qué pasó con «Confirmar las órdenes al importar»?**
+Ya no existe (Lote 106). Cada orden importada nace Sometida, cotizada si el cliente tiene contrato y tarifa y con el crédito medido. Para pasarla a Recogida, use **Marcar como recogida** en su expediente.
 
 **No veo «Autorizar crédito excedido».**
-Necesita el permiso `orders.credit_override`, y solo se puede marcar junto con **Confirmar las órdenes al importar**.
+Necesita el permiso `orders.credit_override`.
 
 **En el resultado una fila dice «El cliente excede su límite de crédito.»**
-Esa orden no se creó; las demás sí. Pida a quien tenga `orders.credit_override` que importe con **Autorizar crédito excedido**, o importe sin confirmar.
+Esa orden no se creó; las demás sí. Pida a quien tenga `orders.credit_override` que importe con **Autorizar crédito excedido**, o corrija el límite de crédito del cliente.
 
 **«El lote ya fue confirmado; valide un archivo nuevo para importar más órdenes.»**
 Ese archivo ya se importó (por ejemplo, desde otra ventana). Vea la lista de Órdenes antes de volver a importarlo.
@@ -7071,7 +7069,7 @@ La dirección de entrega no está en ninguna zona. Agregue su código postal o p
 La dirección cae en más de una zona. Déjela en una sola o asigne la orden a mano.
 
 **Sale «No elegible» con un motivo.**
-La orden no puede ir en una ruta todavía. Los motivos y qué hacer están en el manual de la pantalla (por ejemplo, «La orden está en Entrada; confírmela antes de asignarla a una ruta.»: confirme la orden en **Órdenes**).
+La orden no puede ir en una ruta todavía. Los motivos y qué hacer están en el manual de la pantalla (por ejemplo, «La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.»: confirme la orden en **Órdenes**).
 
 **«Escanee o escriba un código.» / «El código no puede exceder 40 caracteres.»**
 La casilla estaba vacía o el código es demasiado largo. No se registró nada.
@@ -7112,7 +7110,7 @@ Le falta `trips.view`. Sin él la pantalla no puede mostrar rutas ni órdenes si
 Le falta `fleet.view` (o el módulo Listas está apagado). Pida el acceso; mientras tanto, otra persona puede asignarlos.
 
 **«Hay órdenes que no se pueden asignar a la ruta.»**
-Al menos una orden marcada no es elegible; debajo aparece cada número con su motivo (por ejemplo `La orden está en Entrada; confírmela antes de asignarla a una ruta.` o `El estatus actual no permite la acción 'ASSIGN_TRIP'.`). No se añadió ninguna. Corrija la orden o desmárquela y pulse otra vez.
+Al menos una orden marcada no es elegible; debajo aparece cada número con su motivo (por ejemplo `La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.` o `El estatus actual no permite la acción 'ASSIGN_TRIP'.`). No se añadió ninguna. Corrija la orden o desmárquela y pulse otra vez.
 
 **«La orden ya está asignada a la ruta {código}.»**
 Otra persona la puso en esa ruta antes. La lista se actualiza sola; elija otra orden.
@@ -8480,7 +8478,7 @@ Sí: anular libera exactamente lo que esa factura había reclamado.
 ## Lote 74 — Flete en la facturación
 
 **Una orden entregada no aparece para facturar.**
-Debe estar **activa**, con **monto cotizado** (se cotiza al confirmarla) mayor que cero y sin facturar. Con el contrato **Por recogido** cuenta desde que se recoge; con **Por entrega**, **Mixto** o sin contrato, solo cuando está **Entregada**. Las fallidas, parciales y en espera no se facturan. Y la corrida debe incluir el **flete** (casilla «Flete de las órdenes de transporte»).
+Debe estar **activa**, con **monto cotizado** (se cotiza al crearla; se congela al marcarla como recogida) mayor que cero y sin facturar. Con el contrato **Por recogido** cuenta desde que se recoge; con **Por entrega**, **Mixto** o sin contrato, solo cuando está **Entregada**. Las Sometidas, con Intento fallido y Canceladas no se facturan. Y la corrida debe incluir el **flete** (casilla «Flete de las órdenes de transporte»).
 
 **`Elija qué facturar: la venta de producto, el flete o las dos cosas.` (400)**
 Desmarcó las dos casillas de la nueva corrida. Deje marcada al menos una.
@@ -8612,7 +8610,7 @@ La recepción entra por el modo de recepción del almacén (zona de recepción c
 La suma de los cobros no puede pasar del COD de la orden. Revise cuánto se ha cobrado ya en el detalle de la orden (`GET /cod/orders/{id}`); un cobro parcial deja el COD en «Parcial».
 
 **`No se registra un cobro en una orden en borrador o cancelada.` (422)**
-El cobro se hace en la entrega: confirme la orden (o reabra la cancelada) antes de cobrar.
+El cobro se hace en la entrega. El mensaje dice «borrador», pero desde el Lote 106 se refiere a una orden **Sometida**: márquela como recogida (o reabra la cancelada, con `orders.reopen`) antes de cobrar.
 
 **Leí la hoja y dice `NOTHING_COLLECTED`.**
 La orden tiene COD, pero nadie registró el cobro. Regístrelo (web o app del chofer) y vuelva a procesar la hoja: la misma hoja se puede procesar de nuevo sin problema.
@@ -8703,7 +8701,7 @@ Son fotos de ahora y se vuelven a pedir cada minuto; no son acumulados del día 
 ## Lote 89 — Radar y avisos de operación
 
 **El Radar no muestra una orden que sé que existe.**
-El Radar solo cuenta lo **abierto** (confirmada, por recoger, en almacén, planificada, en tránsito, en destino, en espera o parcial). Un borrador, una entregada, una cancelada o una dada de baja no sale: búsquela en Órdenes.
+El Radar solo cuenta lo **abierto** (Sometida, Recogida, Sin asignar, Asignada, En tránsito o con Intento fallido; desde el Lote 106 las Sometidas cuentan). Una entregada, una cancelada, una En almacén o una dada de baja no sale: búsquela en Órdenes.
 
 **Al hacer clic en un pueblo, Órdenes abre con filtros que no puse.**
 Es lo esperado: el enlace trae el pueblo (o el cliente) y los estatus abiertos. «Limpiar filtros» de Órdenes los quita.
@@ -8994,8 +8992,8 @@ Porque cualquiera con el número puede consultarla: solo se muestra el avance de
 **La barra tiene más o menos etapas que antes.**
 Las etapas son los estatus del camino normal de la compañía: si se agregó, quitó o apagó un estatus, la barra cambia.
 
-**La barra no avanza (orden «En espera»).**
-Un estatus lateral (en espera, parcial, fallida) no avanza la barra: se queda donde iba y avisa. Sigue cuando la orden vuelve al camino normal.
+**La barra no avanza (orden con «Intento fallido»).**
+Un estatus lateral (hoy, Intento fallido) no avanza la barra: se queda donde iba y avisa. Sigue cuando la orden vuelve al camino normal.
 
 **El seguimiento público de mi compañía no responde.**
 Viene apagado: el administrador lo enciende en Ajustes de la compañía → General → Seguimiento público.
@@ -9051,3 +9049,77 @@ Está en Automático y el teléfono o el navegador está en modo oscuro. Escoja 
 **¿La orden que creo necesita aprobación de la compañía?** No: entra directo al flujo normal, como una creada por la compañía.
 
 **¿Puedo ponerle precio o prioridad?** No; solo lo básico. La compañía completa el resto.
+
+
+## Estatus de la orden (Lote 106)
+
+Preguntas sobre el nuevo flujo de la orden de transporte: **Sometida → Recogida → Sin asignar → Asignada → En tránsito → Entregada**, con **Intento fallido** (lateral), **Cancelada** y **En almacén** (finales). El detalle está en el [capítulo 03, sección 4](03-ordenes-de-transporte.md#4-estatus-y-transiciones).
+
+**¿Qué pasó con Borrador, Confirmada, En espera, Parcial, Inbound, Planificada y En sitio?**
+Ya no existen. La orden nace **Sometida** (lo que antes era Borrador); «Confirmar» ahora es **Marcar como recogida** (pasa a Recogida); Inbound es **Sin asignar**; Planificada es **Asignada**; En espera, Parcial y En sitio desaparecieron (lo que estaba así en bases de desarrollo quedó como Intento fallido o En tránsito). En producción no había órdenes que cambiar.
+
+**¿Qué significa «Indique la razón de la cancelación.»? (400, campo `comment`)**
+Se intentó cancelar sin escribir la razón. Desde el Lote 106 cancelar una orden exige una razón (hasta 500 caracteres); queda en el historial. En la pantalla, escríbala en **Razón de la cancelación**. Si usted llama al API, mande `comment` en `POST /api/v1/orders/{id}/cancel`.
+
+**¿Qué significa «Indique la razón para reabrir la orden.»? (400, campo `comment`)**
+Se intentó reabrir sin razón. Escriba por qué se reabre (hasta 500 caracteres) y repita.
+
+**¿Qué significa «Solo se reabre una orden en estatus final.»? (422)**
+La orden no está Entregada, Cancelada ni En almacén (por ejemplo, alguien ya la reabrió). Recargue la pantalla. Una orden en curso no se reabre: se cambia con sus acciones normales.
+
+**¿Qué significa «Una orden reabierta debe quedar en una etapa en curso.»? (422)**
+En **Estatus destino** (o en `toCode`) se escogió un estatus final (Entregada, Cancelada o En almacén). Escoja uno en curso (Sometida, Recogida, Sin asignar, Asignada, En tránsito o Intento fallido), o deje «El último en que estuvo».
+
+**¿Qué significa «La orden no tiene un estatus anterior al que volver; indique el estatus destino.»? (422)**
+Se reabrió sin escoger destino y la orden no tiene en su historial un estatus en curso al que volver. Escoja el **Estatus destino**.
+
+**¿Qué significa «Falta el permiso 'orders.reopen'.»? (403)**
+Su usuario no puede reabrir órdenes. El permiso `orders.reopen` («Reabrir órdenes en estatus final») lo trae el rol Admin de compañía; para otro rol, el administrador lo agrega en Sistema → Roles. Queda un evento `PERMISSION_DENIED` en la bitácora de seguridad.
+
+**¿Quién puede reabrir una orden y qué pasa al reabrirla?**
+Quien tenga `orders.reopen`. La orden vuelve a una etapa en curso (por omisión, la última en que estuvo), la razón queda en el historial y se registra el evento de seguridad `order_reopen`. **No** se vuelve a cotizar ni a medir el crédito.
+
+**¿Qué significa «La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.»? (422 al agregar a una ruta o despachar)**
+La orden sigue Sometida y una orden Sometida no se asigna a una ruta. Ábrala en Órdenes y pulse **Marcar como recogida**; luego agréguela a la ruta.
+
+**¿Por qué mi orden ya tiene precio al crearla?**
+Desde el Lote 106 la orden se cotiza al crear si el cliente tiene contrato y tarifa. El precio se congela al marcarla como recogida. Mientras siga Sometida y cotizada, editarla la recotiza.
+
+**Mi orden Sometida no tiene precio. ¿Es un error?**
+No. Si el cliente no tiene contrato o falta la tarifa de ese servicio y paquete, la orden se guarda **sin cotizar y sin error**. El error `No hay tarifa vigente para X/Y; …` aparece al marcarla como recogida. Configure la tarifa en Clientes → Contrato → Tarifas.
+
+**Al guardar una orden sale «El cliente excede su límite de crédito» y no se crea. ¿Antes no pasaba?**
+Antes el crédito se medía al confirmar; ahora se mide **al crear** (Sometida ya cuenta en lo que el cliente tiene en curso). Con `orders.credit_override` use **Autorizar y guardar**; si no, avise a Facturación o pida que suban el límite. Ver el capítulo 03, sección 3.3.
+
+**Ya no existe «overrideCredit requiere confirmNow=true.» ¿Por qué?**
+Porque `overrideCredit` ahora se aplica al crear la orden (y al marcarla como recogida), sin necesidad de `confirmNow`. Si una integración mandaba `confirmNow` junto con `overrideCredit`, sigue funcionando.
+
+**¿Puedo seguir mandando `confirmNow: true` al crear una orden?**
+Sí, el API lo acepta: crea la orden y la marca como recogida de una vez. La pantalla web ya no lo usa; lo sigue usando la app de almacén al empacar y despachar con entrega.
+
+**¿Qué significa «Salto ilegal: de 'X' solo se puede avanzar a 'Y'.»? (422)**
+Se intentó pasar la orden a una etapa que no es la siguiente (por ejemplo, de Recogida a Asignada). Hoy el motor de estatus solo avanza de una etapa a la siguiente; las rutas la llevan por las etapas intermedias solas. El escaneo que permite saltar etapas llega en un lote posterior.
+
+**¿Qué significa «Estatus OrderStatus 'X' no encontrado.» (404) o «El estatus 'X' no existe o no está habilitado para esta compañía.» (422)?**
+Se pidió un estatus que no existe (404 en `POST /orders/{id}/status`; 422 al reabrir con un `toCode` que no existe o que la compañía apagó). Si `X` es `DRAFT`, `CONFIRMED`, `INBOUND`, `PLANNED`, `ARRIVED`, `ON_HOLD` o `PARTIAL`, es un código viejo que el Lote 106 eliminó: use `SUBMITTED`, `PICKUP`, `UNASSIGNED`, `ASSIGNED`, `IN_TRANSIT`, `FAILED` o `IN_WAREHOUSE`. Revise integraciones y filtros guardados.
+
+**¿Qué significa «Para confirmar use la acción de confirmación.»? (422)**
+Se intentó pasar la orden de Sometida a Recogida con `POST /orders/{id}/status`. Use **Marcar como recogida** (`POST /orders/{id}/confirm`).
+
+**¿Qué significa «Solo se confirma una orden en su estatus inicial.»? (422)**
+Se intentó marcar como recogida una orden que ya no está Sometida. Recargue: probablemente otra persona la marcó antes.
+
+**¿Qué significa «El avance a 'X' lo realiza el módulo correspondiente (trips/entregas); desde aquí solo se registran estatus laterales.»? (422)**
+Desde el expediente solo se registra el Intento fallido y su regreso. Pasar a Sin asignar, Asignada, En tránsito o Entregada lo hacen las rutas, el despacho y las entregas.
+
+**¿Dónde quedó «Planificar»?**
+Planificar no es un estatus: es la **fecha pedida** de una orden Sometida (el campo de fecha lista del formulario).
+
+**¿Qué es «En almacén» y por qué no lo veo en ninguna orden?**
+Es un estatus final para los tipos de servicio de **solo recogida**. El tipo de servicio «pick up» y su flujo (Sometida → Recogida → En almacén) llegan en un lote posterior; por ahora ninguna orden llega ahí. Bloquea todas las acciones salvo **Reabrir**.
+
+**Un Intento fallido, ¿cómo se ve en la barra de progreso de mi cliente?**
+La barra se queda en el nivel de la última etapa normal (por ejemplo En tránsito), con color de alerta, y avisa «Intento fallido». Queda en el historial.
+
+**Mis indicadores, gráficos o informes de órdenes cambiaron de números. ¿Por qué?**
+La actualización de la base reescribió los filtros guardados de órdenes que nombraban estatus viejos: `CONFIRMED` y `DRAFT` pasaron a `SUBMITTED`, `INBOUND` a `UNASSIGNED`, `PLANNED` a `ASSIGNED`, y `ARRIVED` y `ON_HOLD` a `FAILED`. Si un filtro suyo ya no dice lo que usted quería, edítelo en Análisis. «Órdenes en curso» ahora cuenta Sometida, Recogida, Sin asignar, Asignada, En tránsito e Intento fallido.

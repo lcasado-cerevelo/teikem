@@ -63,17 +63,17 @@ public sealed class PulseRiverTests
     {
         var x = await NewWorldAsync();
         await using var _ = x.F;
-        await OrderAsync(x, "A", OrderStatuses.Confirmed);                       // entrada de hoy, esperando
+        await OrderAsync(x, "A", OrderStatuses.Submitted);                    // entrada de hoy, esperando
         await OrderAsync(x, "B", OrderStatuses.Pickup);                          // entrada de hoy, esperando
-        var c = await OrderAsync(x, "C", OrderStatuses.Inbound, createdDaysAgo: 3);   // en almacén, sin chofer
-        var d = await OrderAsync(x, "D", OrderStatuses.Inbound, createdDaysAgo: 3);   // en almacén, con ruta y chofer
-        await OrderAsync(x, "E", OrderStatuses.Planned, createdDaysAgo: 5);      // planificada sin ruta
+        var c = await OrderAsync(x, "C", OrderStatuses.Unassigned, createdDaysAgo: 3);   // en almacén, sin chofer
+        var d = await OrderAsync(x, "D", OrderStatuses.Unassigned, createdDaysAgo: 3);   // en almacén, con ruta y chofer
+        await OrderAsync(x, "E", OrderStatuses.Assigned, createdDaysAgo: 5);      // asignada sin ruta con chofer
         await OrderAsync(x, "F", OrderStatuses.InTransit, createdDaysAgo: 1);
-        await OrderAsync(x, "G", OrderStatuses.Arrived, createdDaysAgo: 1);
+        await OrderAsync(x, "G", OrderStatuses.InTransit, createdDaysAgo: 1);
         var h = await OrderAsync(x, "H", OrderStatuses.Delivered, createdDaysAgo: 1);   // entregada hoy
         var i = await OrderAsync(x, "I", OrderStatuses.Delivered, createdDaysAgo: 4);   // entregada hace 2 días
         await OrderAsync(x, "J", OrderStatuses.Cancelled);                       // cancelada: no cuenta como entrada
-        await OrderAsync(x, "K", OrderStatuses.Confirmed, active: false);        // dada de baja
+        await OrderAsync(x, "K", OrderStatuses.Pickup, active: false);        // dada de baja
 
         // una ruta despachada con chofer (D va en ella) y otra sin chofer
         var dispatched = x.F.StatusId(StatusDomains.TripStatus, TripStatuses.Dispatched);
@@ -126,7 +126,7 @@ public sealed class PulseRiverTests
             return t;
         }
         var o1 = await CodOrder("O1", OrderStatuses.Delivered, 100m);   // entregada, sin cobrar
-        var o2 = await CodOrder("O2", OrderStatuses.Arrived, 50m);       // en destino, cobrada en parte
+        var o2 = await CodOrder("O2", OrderStatuses.Delivered, 50m);       // entregada, cobrada en parte
         var o3 = await CodOrder("O3", OrderStatuses.Delivered, 60m);     // cobrada con cheque, sin cuadrar
         var o4 = await CodOrder("O4", OrderStatuses.Delivered, 40m);     // cuadrada, sin remesa
         var o5 = await CodOrder("O5", OrderStatuses.Delivered, 30m, other);   // cuadrada y en una remesa
@@ -175,7 +175,7 @@ public sealed class PulseRiverTests
     {
         var x = await NewWorldAsync();
         await using var _ = x.F;
-        await OrderAsync(x, "A", OrderStatuses.Confirmed);
+        await OrderAsync(x, "A", OrderStatuses.Pickup);
         using (x.F.AsTenant(WmsFixture.OtherTenantId))
         {
             var orders = await x.Rivers.OrdersAsync(default);

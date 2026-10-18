@@ -108,7 +108,8 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
             CanCancel: canCancel,
             CanDelete: status.IsInitial && order.IsActive,
             CanConfirm: status.IsInitial && order.IsActive,
-            CanReprice: canReprice);
+            CanReprice: canReprice,
+            CanReopen: order.IsActive && status.StageKind == StageKinds.Terminal);   // Lote 106: reabrir exige además el permiso orders.reopen (la pantalla lo cruza)
 
         // Lote 4 (P7): chofer asignado = el del DriverTrip vigente (IsActive = 1) de la orden; solo identidad, nunca montos.
         var orderId = order.TransportOrderId;

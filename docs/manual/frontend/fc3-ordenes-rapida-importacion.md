@@ -24,7 +24,7 @@ Si falta un permiso, pídaselo al administrador de su compañía (Sistema → Ro
 
 ![Entrada rápida con dos órdenes ya guardadas y la fila nueva lista](img/fc3-rapida.png)
 
-Cada **fila** de la rejilla es **una orden de 1 paquete y 1 pieza**. Se guarda como **Borrador**, sin cotizar: para confirmarla, ábrala desde la lista (botón **Confirmar** del expediente). Si necesita varios paquetes en una orden, use **Detallada**.
+Cada **fila** de la rejilla es **una orden de 1 paquete y 1 pieza**. Se guarda como **Sometida** (Lote 106), ya cotizada si el cliente tiene contrato y tarifa: para marcarla como recogida, ábrala desde la lista (botón **Marcar como recogida** del expediente). Si necesita varios paquetes en una orden, use **Detallada**.
 
 ### Cómo se usa
 
@@ -128,12 +128,11 @@ Si cambia el cliente o la plantilla, el archivo se revisa de nuevo.
 
 ### Paso 2: importar o descartar
 
-Antes de importar, la sección **Al importar** tiene tres casillas:
+Antes de importar, la sección **Al importar** tiene hasta dos casillas (desde el Lote 106 ya no existe «Confirmar las órdenes al importar»: las órdenes nacen **Sometidas** y cotizadas):
 
 | Casilla | Qué hace |
 |---|---|
-| **Confirmar las órdenes al importar** | Cotiza, revisa el crédito del cliente y confirma cada orden. Si no la marca, las órdenes quedan en **Borrador**. |
-| **Autorizar crédito excedido** | Solo aparece con `orders.credit_override` y solo se puede marcar junto con la casilla anterior. Confirma también las órdenes que pasen el límite de crédito; queda registrado quién lo autorizó. |
+| **Autorizar crédito excedido** | Solo aparece con `orders.credit_override`. Crea también las órdenes que pasen el límite de crédito del cliente (al crear se cotiza y se mide el crédito); queda registrado quién lo autorizó. |
 | **Aceptar facturas repetidas** | Crea también las filas cuyo número de factura ya usa otra orden del mismo consignatario, cuando ese consignatario admite repetirlo. |
 
 - **Importar** crea una orden por cada fila válida. Si una falla, las demás se crean igual.
@@ -150,7 +149,7 @@ Al terminar verá el **Resultado de la importación**: cuántas quedaron **cread
 |---|---|
 | El lote ya fue confirmado; valide un archivo nuevo para importar más órdenes. | Ese archivo ya se importó. Escoja el archivo otra vez si necesita otro lote. |
 | El lote fue descartado; valide el archivo de nuevo. | Vuelva a escoger el archivo. |
-| El cliente excede su límite de crédito. | Esa fila no se creó. Pida a quien tenga `orders.credit_override` que importe con **Autorizar crédito excedido**, o importe sin confirmar. |
+| El cliente excede su límite de crédito. | Esa fila no se creó. Pida a quien tenga `orders.credit_override` que importe con **Autorizar crédito excedido**, o corrija el límite de crédito del cliente. |
 | Falta el permiso 'orders.credit_override'. | No puede autorizar crédito; desmarque esa casilla. |
 
 Las órdenes importadas aparecen en la lista de **Órdenes**.

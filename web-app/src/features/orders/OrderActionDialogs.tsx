@@ -1,13 +1,14 @@
-// Diálogos de acciones del expediente de la orden (Lote F-C2): «Cancelar la orden» (comentario opcional, máx. 500) y «Asignar chofer»
+// Diálogos de acciones del expediente de la orden (Lote F-C2): «Cancelar la orden» y «Reabrir» (razón obligatoria, máx. 500) y «Asignar chofer»
 // (solo entrega especial: chofer activo, comentario opcional y, si el servidor avisa de crédito excedido, «Autorizar y asignar» para
 // quien tiene `orders.credit_override`). Los errores del servidor se muestran EXACTOS dentro del diálogo, sin cerrarlo.
 import { useId, useMemo, useState } from 'react'
 import { useCan } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
+import { useStatuses } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
 import { ComboSelect, Modal, toast, type ComboOption } from '../../kernel/ui'
 import { useDrivers } from '../drivers/api'
-import { useAssignOrderDriver, useCancelOrder, type OrderDetailDto } from './api'
+import { useAssignOrderDriver, useCancelOrder, useReopenOrder, type OrderDetailDto } from './api'
 import { COMMENT_MAX, isCreditExceeded } from './orderRules'
 
 interface DialogProps {
@@ -17,35 +18,65 @@ interface DialogProps {
 }
 
 /** Comentario opcional con contador (máx. 500, igual que el historial de estatus). */
-function CommentField({ id, value, onChange }: { id: string; value: string; onChange: (v: string) => void }) {
+function CommentField({
+  id,
+  value,
+  onChange,
+  label,
+  placeholder,
+  error,
+}: {
+  id: string
+  value: string
+  onChange: (v: string) => void
+  /** Rótulo propio (razón obligatoria); sin él, «Comentario». */
+  label?: string
+  placeholder?: string
+  /** Error de validación a mostrar (razón vacía). */
+  error?: string | null
+}) {
   const t = useT()
   const tooLong = value.length > COMMENT_MAX
   return (
     <div className="f">
-      <label htmlFor={id}>{t('status.comment')}</label>
-      <textarea id={id} rows={3} value={value} aria-invalid={tooLong || undefined} onChange={(e) => onChange(e.target.value)} />
+      <label htmlFor={id}>{label ?? t('status.comment')}</label>
+      <textarea
+        id={id}
+        rows={3}
+        value={value}
+        placeholder={placeholder}
+        aria-invalid={tooLong || !!error || undefined}
+        onChange={(e) => onChange(e.target.value)}
+      />
       <div className="stpipe-count">
         {value.length}/{COMMENT_MAX}
       </div>
       {tooLong && <p className="ferr">{t('status.commentTooLong', { max: COMMENT_MAX })}</p>}
+      {error && !tooLong && <p className="ferr">{error}</p>}
     </div>
   )
 }
 
-/** «Cancelar la orden»: pide un comentario opcional y llama a `POST /cancel`. */
+/** «Cancelar la orden»: pide la razón (obligatoria, máx. 500) y llama a `POST /cancel` con `comment`. */
 export function CancelOrderDialog({ order, open, onClose }: DialogProps) {
   const t = useT()
   const cancel = useCancelOrder()
   const commentId = useId()
   const [comment, setComment] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [reasonError, setReasonError] = useState<string | null>(null)
   const tooLong = comment.length > COMMENT_MAX
 
   async function submit() {
     if (tooLong || cancel.isPending) return
+    if (!comment.trim()) {
+      setReasonError(t('orders.actions.cancel.reasonRequired'))
+      return
+    }
+    setReasonError(null)
     setError(null)
     try {
-      await cancel.mutateAsync({ publicId: order.publicId ?? '', comment: comment.trim() || undefined, rowVersion: order.rowVersion })
+      await cancel.mutateAsync({ publicId: order.publicId ?? '', comment: comment.trim(), rowVersion: order.rowVersion })
       toast.success(t('orders.actions.cancel.done', { number: order.orderNumber ?? '' }))
       onClose()
     } catch (err) {
@@ -78,7 +109,99 @@ export function CancelOrderDialog({ order, open, onClose }: DialogProps) {
         </div>
       )}
       <p>{t('orders.actions.cancel.body')}</p>
-      <CommentField id={commentId} value={comment} onChange={setComment} />
+      <CommentField
+        id={commentId}
+        value={comment}
+        onChange={(v) => {
+          setComment(v)
+          setReasonError(null)
+        }}
+        label={t('orders.actions.cancel.reason')}
+        placeholder={t('orders.actions.cancel.reasonPlaceholder')}
+        error={reasonError}
+      />
+    </Modal>
+  )
+}
+
+/** «Reabrir»: razón obligatoria (máx. 500) y, opcional, estatus destino (por omisión, el último en que estuvo). `POST /reopen`. */
+export function ReopenOrderDialog({ order, open, onClose }: DialogProps) {
+  const t = useT()
+  const reopen = useReopenOrder()
+  const { data: statuses = [] } = useStatuses('OrderStatus')
+  const commentId = useId()
+  const toId = useId()
+  const [comment, setComment] = useState('')
+  const [toCode, setToCode] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [reasonError, setReasonError] = useState<string | null>(null)
+  const tooLong = comment.length > COMMENT_MAX
+  const options = statuses.filter((s) => s.isEnabled !== false && s.stageKind !== 'TERMINAL' && s.code.toLowerCase() !== (order.status ?? '').toLowerCase())
+
+  async function submit() {
+    if (tooLong || reopen.isPending) return
+    if (!comment.trim()) {
+      setReasonError(t('orders.actions.reopen.reasonRequired'))
+      return
+    }
+    setReasonError(null)
+    setError(null)
+    try {
+      await reopen.mutateAsync({ publicId: order.publicId ?? '', comment: comment.trim(), toCode: toCode || null, rowVersion: order.rowVersion })
+      toast.success(t('orders.actions.reopen.done', { number: order.orderNumber ?? '' }))
+      onClose()
+    } catch (err) {
+      const p = applyProblemDetails(err)
+      setError(p.errors.comment?.join(' ') ?? p.errors.toCode?.join(' ') ?? p.title)
+    }
+  }
+
+  return (
+    <Modal
+      open={open}
+      size="sm"
+      title={t('orders.actions.reopen.title', { number: order.orderNumber ?? '' })}
+      onClose={onClose}
+      dismissible={!reopen.isPending}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={onClose} disabled={reopen.isPending}>
+            {t('orders.actions.back')}
+          </button>
+          <button type="button" className="btn flow" onClick={() => void submit()} disabled={reopen.isPending || tooLong}>
+            {reopen.isPending ? t('common.loading') : t('orders.actions.reopen.confirm')}
+          </button>
+        </>
+      }
+    >
+      {error && (
+        <div className="form-alert" role="alert">
+          {error}
+        </div>
+      )}
+      <p>{t('orders.actions.reopen.body')}</p>
+      <div className="f">
+        <label htmlFor={toId}>{t('orders.actions.reopen.toStatus')}</label>
+        <select id={toId} value={toCode} onChange={(e) => setToCode(e.target.value)}>
+          <option value="">{t('orders.actions.reopen.lastStatus')}</option>
+          {options.map((s) => (
+            <option key={s.code} value={s.code}>
+              {s.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <CommentField
+        id={commentId}
+        value={comment}
+        onChange={(v) => {
+          setComment(v)
+          setReasonError(null)
+        }}
+        label={t('orders.actions.reopen.reason')}
+        placeholder={t('orders.actions.reopen.reasonPlaceholder')}
+        error={reasonError}
+      />
     </Modal>
   )
 }

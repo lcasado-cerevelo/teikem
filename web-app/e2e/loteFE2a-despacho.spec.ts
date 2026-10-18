@@ -2,7 +2,7 @@
 // compañía demo, admin con todos los permisos, módulos LTL_GROUND y CATALOG encendidos).
 //
 // Datos propios de cada corrida (por API): un cliente con contrato y tarifa, dos zonas (A y B) con su pueblo, choferes (uno estándar de la zona A
-// con licencia, otros con licencia, uno SIN licencia = no disponible), tres vehículos y uno en mantenimiento, y órdenes confirmadas por pueblo.
+// con licencia, otros con licencia, uno SIN licencia = no disponible), tres vehículos y uno en mantenimiento, y órdenes recogidas por pueblo.
 // Todo ocurre en un día futuro (hoy + 2) para que «Rutas de hoy» solo traiga lo de la corrida; «Órdenes sin asignar» se filtra por el cliente.
 //
 // 1) Planificar el día (zona A): crea la ruta con el chofer estándar y le asigna las órdenes.   2) Nueva ruta (zona B, chofer, vehículo, salida).
@@ -142,7 +142,7 @@ test.describe('Sala de despacho (Lote F-E2a)', () => {
     const day = tenantDay(offset)
     const license = tenantDay(300)
 
-    // ---- Datos: cliente con contrato y tarifa; zonas A y B con su pueblo; choferes y vehículos; órdenes confirmadas ----
+    // ---- Datos: cliente con contrato y tarifa; zonas A y B con su pueblo; choferes y vehículos; órdenes recogidas ----
     const client = await ok<ClientDetailDto>(
       request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: clientName, contract: { startDate: tenantDay(-30), title: 'Contrato FE2A' } } }),
       'cliente',
@@ -285,7 +285,7 @@ test.describe('Sala de despacho (Lote F-E2a)', () => {
     // ---- 3. Agregar órdenes a la ruta B: una no elegible con su motivo (422) y luego las buenas ----
     const row = (o: OrderDetailDto) => unassigned.filter({ hasText: o.orderNumber ?? '' })
     const setAssignTrip = (allowed: boolean) =>
-      ok(request.put(`${API_URL}/api/v1/status/capabilities/TRANSPORT_ORDER?statusDomain=OrderStatus`, { headers, data: [{ statusCode: 'CONFIRMED', capability: 'ASSIGN_TRIP', isAllowed: allowed }] }), 'capacidad ASSIGN_TRIP')
+      ok(request.put(`${API_URL}/api/v1/status/capabilities/TRANSPORT_ORDER?statusDomain=OrderStatus`, { headers, data: [{ statusCode: 'PICKUP', capability: 'ASSIGN_TRIP', isAllowed: allowed }] }), 'capacidad ASSIGN_TRIP')
     await setAssignTrip(false)
     try {
       await row(b3).getByRole('checkbox').check()

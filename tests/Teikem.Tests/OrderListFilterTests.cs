@@ -120,16 +120,16 @@ public sealed class OrderListFilterTests
     public async Task Statuses_join_the_single_status()
     {
         await using var f = await OrderReadFixture.CreateAsync();
-        Assert.Equal(new[] { 2, 3 }, await IdsAsync(f, Q(statuses: new[] { "confirmed" })));
-        Assert.Equal(new[] { 1, 4 }, await IdsAsync(f, Q(status: "DRAFT", statuses: new[] { OrderStatuses.Cancelled })));
-        Assert.Equal(new[] { 1 }, await IdsAsync(f, Q(status: "draft", statuses: new[] { "DRAFT" })));
+        Assert.Equal(new[] { 2, 3 }, await IdsAsync(f, Q(statuses: new[] { "pickup" })));
+        Assert.Equal(new[] { 1, 4 }, await IdsAsync(f, Q(status: "SUBMITTED", statuses: new[] { OrderStatuses.Cancelled })));
+        Assert.Equal(new[] { 1 }, await IdsAsync(f, Q(status: "submitted", statuses: new[] { "SUBMITTED" })));
     }
 
     [Fact]
     public async Task Filters_combine_with_and_and_keep_total_and_paging()
     {
         await using var f = await OrderReadFixture.CreateAsync();
-        Assert.Equal(new[] { 3 }, await IdsAsync(f, Q(serviceTypes: new[] { "STANDARD" }, cities: new[] { "bayamon" }, statuses: new[] { "CONFIRMED" })));
+        Assert.Equal(new[] { 3 }, await IdsAsync(f, Q(serviceTypes: new[] { "STANDARD" }, cities: new[] { "bayamon" }, statuses: new[] { "PICKUP" })));
         Assert.Equal(new[] { 2 }, await IdsAsync(f, Q(zip: "009", packageTypes: new[] { "ENVELOPE" }, clientIds: new[] { f.C1.PublicId })));
 
         // Total = todo lo que cumple el filtro; la página trae solo 'take'.
@@ -152,7 +152,7 @@ public sealed class OrderListFilterTests
         {
             "serviceTypes" => Q(serviceTypes: new[] { "STANDARD", "xx" }),
             "packageTypes" => Q(packageTypes: new[] { "yy" }),
-            _ => Q(statuses: new[] { "CONFIRMED", "zz" }),
+            _ => Q(statuses: new[] { "PICKUP", "zz" }),
         };
         var ex = await Assert.ThrowsAsync<ValidationException>(() => f.Reader.GetListAsync(q, OrderScope.Any, default));
         Assert.Equal(400, ex.StatusCode);

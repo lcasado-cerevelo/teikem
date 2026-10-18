@@ -36,4 +36,4 @@ Al crear, se abre la ficha de la orden con su conduce y su barra de progreso. Va
 
 ## 5. Casos frecuentes
 - **No veo el botón «Nueva orden»:** su rol es de solo consulta; que la compañía cambie su rol (ficha del cliente → Usuarios de portal, en la web de la compañía).
-- **Mi orden quedó en «Borrador»:** así nacen las órdenes según la configuración de la compañía; la compañía la confirma o la confirma el flujo normal.
+- **Mi orden aparece «Sometida»:** así nacen todas las órdenes (Lote 106): ya está cotizada si su cuenta tiene contrato y tarifa, y mientras siga Sometida se puede corregir; después la recogen y avanza sola.

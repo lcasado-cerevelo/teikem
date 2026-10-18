@@ -83,8 +83,9 @@ test('Seguimiento público: la compañía lo enciende y la página muestra solo 
   const draft = await newOrder(request, headers, clientId, locId)
   const held = await newOrder(request, headers, clientId, locId)
   const cancelled = await newOrder(request, headers, clientId, locId)
-  expect((await request.post(`${API_URL}/api/v1/orders/${held.publicId}/status`, { headers, data: { toCode: 'ON_HOLD' } })).ok()).toBeTruthy()
-  expect((await request.post(`${API_URL}/api/v1/orders/${cancelled.publicId}/cancel`, { headers, data: { reason: 'prueba' } })).ok()).toBeTruthy()
+  // Lote 106: «Intento fallido» (FAILED) es el lateral; la barra se queda donde iba (Sometida)
+  expect((await request.post(`${API_URL}/api/v1/orders/${held.publicId}/status`, { headers, data: { toCode: 'FAILED' } })).ok()).toBeTruthy()
+  expect((await request.post(`${API_URL}/api/v1/orders/${cancelled.publicId}/cancel`, { headers, data: { comment: 'prueba' } })).ok()).toBeTruthy()
 
   // 1) la página pública, sin sesión: solo el número de conduce
   if (!isMobile) await page.setViewportSize({ width: 1100, height: 760 })
@@ -138,7 +139,7 @@ test('Seguimiento público: la compañía lo enciende y la página muestra solo 
   await page.getByLabel('Número de conduce').fill(held.waybill)
   await page.getByRole('button', { name: 'Consultar' }).click()
   await expect(page.getByTestId('track-result-waybill')).toHaveText(held.waybill, { timeout: 30_000 })
-  await expect(page.getByText(/^En espera · va por el paso \d+ de \d+$/)).toBeVisible()
+  await expect(page.getByText(/^Intento fallido · va por el paso \d+ de \d+$/)).toBeVisible()
   await expect(page.getByTestId('segment-alert')).toHaveCount(1)
   await shot(page, isMobile, 'l103-publica-espera')
   await page.getByLabel('Número de conduce').fill(cancelled.waybill)

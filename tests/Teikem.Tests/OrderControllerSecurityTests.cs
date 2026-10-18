@@ -33,6 +33,8 @@ public class OrderControllerSecurityTests
         [(typeof(OrderStatusController), nameof(OrderStatusController.Confirm))] = null,
         [(typeof(OrderStatusController), nameof(OrderStatusController.Reprice))] = PermissionCatalog.OrdersEdit,
         [(typeof(OrderStatusController), nameof(OrderStatusController.Cancel))] = PermissionCatalog.OrdersCancel,
+        // Lote 106: reabrir una orden en estatus final, permiso propio (el servicio lo vuelve a exigir en código).
+        [(typeof(OrderStatusController), nameof(OrderStatusController.Reopen))] = PermissionCatalog.OrdersReopen,
         [(typeof(OrderStatusController), nameof(OrderStatusController.TransitionStatus))] = PermissionCatalog.OrdersEdit,
     };
 

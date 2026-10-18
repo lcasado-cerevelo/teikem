@@ -24,7 +24,7 @@ Un botón que no es suyo simplemente no aparece. Si le falta `fleet.view`, la pa
 
 Arriba están la **Fecha de las rutas** (hoy por omisión; **Hoy** vuelve a hoy) y los botones. Debajo, los filtros de las órdenes sin asignar y tres columnas:
 
-- **Órdenes sin asignar** (izquierda): las órdenes confirmadas que todavía no tienen ruta.
+- **Órdenes sin asignar** (izquierda): las órdenes ya recogidas (no las Sometidas) que todavía no tienen ruta.
 - **Ruta activa** (centro): la ruta que está trabajando, con su chofer, vehículo, avisos y órdenes. Debajo, el panel **Choferes**.
 - **Rutas de hoy** (derecha): una tarjeta por ruta de la fecha. Toque una para hacerla la ruta activa.
 
@@ -41,7 +41,7 @@ La ruta que está viendo y la fecha quedan en la dirección de la página: puede
 
 ![Ventana Planificar el día](img/fe2a-planificar-dia.png)
 
-El sistema reparte por zona las órdenes confirmadas que no tienen ruta. Usa la ruta abierta de la zona o crea una con el **chofer estándar** de la zona. **No** optimiza, **no** despacha y **no** asigna vehículo, y repetirlo no duplica nada.
+El sistema reparte por zona las órdenes ya recogidas que no tienen ruta. Usa la ruta abierta de la zona o crea una con el **chofer estándar** de la zona. **No** optimiza, **no** despacha y **no** asigna vehículo, y repetirlo no duplica nada.
 
 Al terminar verá el resumen: **Rutas creadas**, **Órdenes asignadas**, **Órdenes omitidas** y **Órdenes sin zona**, y por cada zona sus avisos (por ejemplo, una orden que no se pudo asignar y por qué). Las órdenes sin zona o con zona ambigua no se tocan: arregle la zona en la lista.
 
@@ -76,7 +76,7 @@ Si alguna orden no se puede asignar, no se añade ninguna y verá cada número c
 
 | Mensaje | Qué significa y qué hacer |
 |---|---|
-| `Hay órdenes que no se pueden asignar a la ruta.` y, debajo, `{orden}: {motivo}` | Una o más órdenes no son elegibles. El motivo dice por qué (por ejemplo `La orden está en Entrada; confírmela antes de asignarla a una ruta.` o `El estatus actual no permite la acción 'ASSIGN_TRIP'.`). Corrija la orden o quítela de la selección. |
+| `Hay órdenes que no se pueden asignar a la ruta.` y, debajo, `{orden}: {motivo}` | Una o más órdenes no son elegibles. El motivo dice por qué (por ejemplo `La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.` o `El estatus actual no permite la acción 'ASSIGN_TRIP'.`). Corrija la orden o quítela de la selección. |
 | `La orden ya está en esta ruta.` | Esa orden ya estaba en la ruta. |
 | `La orden ya está asignada a la ruta {código}.` | Otra persona la asignó antes que usted. Se actualiza la lista. |
 | `Una ruta admite como máximo 300 paradas.` | La ruta está llena. Use otra ruta. |
@@ -245,13 +245,13 @@ Verá el resultado de cada ruta: **despachada** o el mensaje exacto de por qué 
 
   ![Iniciar la ruta](img/fe2a-iniciar.png)
 
-- **Cerrar ruta** (ruta **En curso**, permiso `trips.close`): solo se puede cerrar cuando **todas** sus órdenes terminaron (entregadas, canceladas, fallidas o parciales). Si no, el mensaje dice cuáles faltan y la ruta sigue abierta:
+- **Cerrar ruta** (ruta **En curso**, permiso `trips.close`): solo se puede cerrar cuando **todas** sus órdenes terminaron (entregadas, canceladas o con intento fallido). Si no, el mensaje dice cuáles faltan y la ruta sigue abierta:
 
   ![Cerrar la ruta con órdenes sin terminar](img/fe2a-cerrar-422.png)
 
 | Mensaje | Qué hacer |
 |---|---|
-| `La ruta {código} no se puede cerrar: hay órdenes sin terminar ({números}).` | Registre la entrega o el intento fallido de esas órdenes (o libere las retenidas) y cierre de nuevo. |
+| `La ruta {código} no se puede cerrar: hay órdenes sin terminar ({números}).` | Registre la entrega o el intento fallido de esas órdenes y cierre de nuevo. |
 | `La ruta {código} no está despachada; despáchela antes de registrar su salida.` | Despache primero. |
 | `La ruta {código} ya salió.` / `La ruta {código} ya está cerrada.` | Ya se hizo; actualice la pantalla. |
 

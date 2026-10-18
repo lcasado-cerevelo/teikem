@@ -123,7 +123,7 @@ public class OutboundScanRulesTests
     [Fact]
     public void Not_eligible_without_trip_uses_the_trip_rules_reason()
     {
-        const string reason = "La orden está en Entrada; confírmela antes de asignarla a una ruta.";
+        const string reason = "La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.";
         var d = OutboundScanRules.Decide(Ok() with { IneligibleReason = reason, Zone = null, OpenTripCode = null });
         Assert.Equal(ScanOutcomes.NotEligible, d.Outcome);
         Assert.Equal(ScanReasonCodes.NotEligible, d.ReasonCode);

@@ -203,8 +203,8 @@ describe('progreso y optimización', () => {
 
 describe('errores del servidor', () => {
   it('422 al agregar: una fila por orden y motivo', () => {
-    expect(orderProblems({ 'OT-1': ['La orden está en Entrada; confírmela antes de asignarla a una ruta.'], 'OT-2': ['a', 'b'] })).toEqual([
-      { number: 'OT-1', reason: 'La orden está en Entrada; confírmela antes de asignarla a una ruta.' },
+    expect(orderProblems({ 'OT-1': ['La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.'], 'OT-2': ['a', 'b'] })).toEqual([
+      { number: 'OT-1', reason: 'La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.' },
       { number: 'OT-2', reason: 'a' },
       { number: 'OT-2', reason: 'b' },
     ])

@@ -32,7 +32,8 @@ public sealed class OrderStatusService(
     IEnumerable<IStatusTransitionEffect> effects,
     PermissionService permissions,
     ISecurityEventWriter security,
-    ITenantClock? clock = null)
+    ITenantClock? clock = null,
+    OrderPriceVisibility? priceVisibility = null)
 {
     private readonly ITenantClock _clock = clock ?? TenantClock.Default;
 
@@ -43,6 +44,11 @@ public sealed class OrderStatusService(
     public const string NoNextStageMessage = "El pipeline de órdenes no tiene una etapa siguiente a la inicial.";
     public const string NotInitialMessage = "Solo se confirma una orden en su estatus inicial.";
     public const string UseCancelMessage = "Para cancelar use la acción de cancelación.";
+    public const string CancelReasonRequiredMessage = "Indique la razón de la cancelación.";
+    public const string ReopenReasonRequiredMessage = "Indique la razón para reabrir la orden.";
+    public const string NotFinalMessage = "Solo se reabre una orden en estatus final.";
+    public const string NoReopenTargetMessage = "La orden no tiene un estatus anterior al que volver; indique el estatus destino.";
+    public const string ReopenPermission = "orders.reopen";
     public const string UseConfirmMessage = "Para confirmar use la acción de confirmación.";
 
     public static string ReservedAdvanceMessage(string code)
@@ -61,6 +67,31 @@ public sealed class OrderStatusService(
                                && string.Equals(s.StageKind, StageKinds.Pipeline, StringComparison.OrdinalIgnoreCase))
                    .OrderBy(s => s.SortOrder).FirstOrDefault()
                ?? throw new StatusRuleException(NoNextStageMessage);
+    }
+
+    // ================================================================ cotizar al someter (Lote 106)
+
+    /// <summary>
+    /// La orden nace Sometida (decidido con Luis, 2026-10-17): al crearla se cotiza —si el cliente tiene contrato y tarifa; si no, queda sin cotizar y la cotización estricta se exige al marcarla recogida— y se mide el
+    /// crédito del cliente (Sometida ya cuenta en su saldo en curso). Crédito excedido → 422 credit_exceeded (revierte la creación) salvo overrideCredit con el permiso orders.credit_override (queda SecurityEvent).
+    /// </summary>
+    public async Task QuoteOnSubmissionAsync(TransportOrder order, bool overrideCredit, CancellationToken ct)
+    {
+        var client = await LoadClientAsync(order.ClientId, ct);
+        try { await quotes.ApplyQuoteAsync(order, client, Today(), ct); }
+        catch (StatusRuleException) { return; }   // sin contrato o sin tarifa: se queda sin cotizar
+        catch (ConflictException) { return; }
+        if (order.QuotedAmount is not decimal total) return;
+        var pending = await balance.PendingBalanceAsync(client.ClientId, order.TransportOrderId, ct);
+        var check = new CreditCheck(client.CreditLimit, pending, total);
+        var (ok, available) = CreditRules.Evaluate(check);
+        // La cotización (QuotedAmount, QuotedAtUtc, ContractId, moneda) se guarda aquí, como en ConfirmTrackedAsync: el llamador ya guardó antes de cotizar.
+        if (ok) { await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct); return; }
+        if (!overrideCredit) throw new CreditExceededException(check, available, await OrderPriceVisibility.CanViewAsync(priceVisibility, ct));
+        await permissions.EnsureAsync(CreditOverridePermission, ct);
+        await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct);
+        await security.WriteAsync(SecurityEventTypes.RoleChange, SecurityOutcomes.Success, tenant.UserId, tenant.TenantId,
+            new { action = "credit_override", order = order.PublicId, orderNumber = order.OrderNumber, limit = check.Limit, exposure = CreditRules.Exposure(check), amount = check.NewAmount }, ct);
     }
 
     // ================================================================ vista previa
@@ -172,6 +203,8 @@ public sealed class OrderStatusService(
 
     public async Task<OrderDetailDto> CancelAsync(Guid publicId, OrderCancelRequest? req, OrderScope scope, CancellationToken ct)
     {
+        // Lote 106: cancelar exige razón (decidido por Luis); queda en el historial de estatus.
+        if (string.IsNullOrWhiteSpace(req?.Comment)) throw new ValidationException("comment", CancelReasonRequiredMessage);
         await db.RunInTransactionAsync(async ct2 =>
         {
             var order = await db.ResolveOrderForWriteAsync(publicId, scope, ct2);
@@ -185,10 +218,45 @@ public sealed class OrderStatusService(
         return await reader.GetAsync(publicId, scope, ct);
     }
 
+    // ================================================================ reabrir (Lote 106)
+
+    /// <summary>
+    /// Reabre una orden en estatus final (Entregada, Cancelada, En almacén…): exige el permiso orders.reopen y la razón; sin ToCode vuelve al último estatus no final que tuvo. Queda en el historial; no recotiza ni revalida el crédito.
+    /// </summary>
+    public async Task<OrderDetailDto> ReopenAsync(Guid publicId, OrderReopenRequest req, OrderScope scope, CancellationToken ct)
+    {
+        await permissions.EnsureAsync(ReopenPermission, ct);
+        if (string.IsNullOrWhiteSpace(req?.Comment)) throw new ValidationException("comment", ReopenReasonRequiredMessage);
+        await db.RunInTransactionAsync(async ct2 =>
+        {
+            var order = await db.ResolveOrderForWriteAsync(publicId, scope, ct2);
+            db.ApplyRowVersion(order, req.RowVersion);
+            var current = await db.StatusCodes.AsNoTracking().Include(s => s.StageKind).FirstAsync(s => s.StatusCodeId == order.StatusCodeId, ct2);
+            if (current.StageKind!.InternalCode != StageKinds.Terminal) throw new StatusRuleException(NotFinalMessage);
+            string target;
+            if (!string.IsNullOrWhiteSpace(req.ToCode)) target = req.ToCode.Trim();
+            else
+            {
+                var entityType = await db.LookupCodes.AsNoTracking().Where(l => l.Entity == LookupDomains.EntityType && l.InternalCode == EntityTypes.TransportOrder).Select(l => l.LookupCodeId).FirstAsync(ct2);
+                var orderId = order.TransportOrderId;
+                target = await db.EntityStatusHistories.AsNoTracking()
+                    .Where(h => h.EntityTypeLookupId == entityType && h.EntityId == orderId && h.FromStatusCodeId != null && h.ToStatus!.StageKind!.InternalCode == StageKinds.Terminal)
+                    .OrderByDescending(h => h.EntityStatusHistoryId).Select(h => h.FromStatus!.InternalCode).FirstOrDefaultAsync(ct2)
+                    ?? throw new StatusRuleException(NoReopenTargetMessage);
+            }
+            var to = await statuses.TransitionAsync(StatusDomains.OrderStatus, EntityTypes.TransportOrder, order.TransportOrderId, order.StatusCodeId, target, req.Comment.Trim(), reopen: true, ct2);
+            order.StatusCodeId = to.StatusCodeId;
+            await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
+            await security.WriteAsync(SecurityEventTypes.RoleChange, SecurityOutcomes.Success, tenant.UserId, tenant.TenantId,
+                new { action = "order_reopen", order = order.PublicId, orderNumber = order.OrderNumber, from = current.InternalCode, to = to.InternalCode }, ct2);
+        }, ct);
+        return await reader.GetAsync(publicId, scope, ct);
+    }
+
     // ================================================================ laterales y regreso
 
     /// <summary>
-    /// Estatus laterales (ON_HOLD, PARTIAL, FAILED) y regreso al pipeline. CANCELLED y la confirmación tienen acción propia
+    /// Estatus laterales (FAILED, el intento fallido) y regreso al pipeline. CANCELLED y la confirmación tienen acción propia
     /// (422); cualquier otro avance PIPELINE/TERMINAL lo realiza el módulo correspondiente (422).
     /// </summary>
     public async Task<OrderDetailDto> TransitionAsync(Guid publicId, StatusChangeRequest req, OrderScope scope, CancellationToken ct)

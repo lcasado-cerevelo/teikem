@@ -184,7 +184,6 @@ export function PackModal({ batch, onClose, forSalesOrder }: { batch: PackableBa
               // un empaque no es entrega especial ni lleva chofer (400 si no)
               isSpecialDelivery: false,
               confirmDuplicateInvoice: false,
-              confirmNow: false,
               overrideCredit: false,
             },
           }

@@ -2,7 +2,7 @@
 // compañía demo, admin con todos los permisos, módulos LTL_GROUND y CATALOG). QZ Tray no está en este entorno: todo sale por el PDF del
 // navegador; el recorrido usa «Confirmar antes» y «Descargar PDF» (el diálogo de impresión del sistema no se puede pulsar).
 //
-// Datos propios por corrida (sufijo): un cliente, un consignatario y dos órdenes en Borrador: A con un paquete de 2 piezas (número
+// Datos propios por corrida (sufijo): un cliente, un consignatario y dos órdenes Sometidas: A con un paquete de 2 piezas (número
 // tecleado PKG-<sufijo>) y otro de 1 (PQT automático); B con 1 pieza. Al final las dos órdenes y la de la entrada rápida se eliminan.
 // NO se toca el ajuste de la compañía «Imprimir labels directo» (otros recorridos guardan órdenes a la vez): se enciende el «Label al
 // guardar» de la pantalla.

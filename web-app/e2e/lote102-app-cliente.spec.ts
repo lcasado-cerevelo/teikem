@@ -164,7 +164,7 @@ test('App del cliente: computadora nueva, MFA, documento legal, órdenes, «No c
   await page.getByRole('tab', { name: 'Órdenes' }).click()
   await expect(page.getByRole('heading', { name: 'Mis órdenes' })).toBeVisible()
   await expect(page.getByText(/^Orden ORD-/)).toHaveCount(2)
-  await expect(page.getByRole('progressbar').first()).toBeVisible()   // cada orden de la lista trae su barra de progreso («Paso 1 de N · Borrador»)
+  await expect(page.getByRole('progressbar').first()).toBeVisible()   // cada orden de la lista trae su barra de progreso («Paso 1 de N · Sometida»)
   await shot(page, isMobile, 'l102-ordenes')
   await page.getByTestId('orders-search').fill(a.orders[0].orderNumber)
   await expect(page.getByText(/^Orden ORD-/)).toHaveCount(1, { timeout: 15_000 })

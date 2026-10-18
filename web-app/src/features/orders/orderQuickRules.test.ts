@@ -66,7 +66,7 @@ describe('quickCod', () => {
 
 describe('buildQuickRequest', () => {
   const opts = { orderNumberEditable: false, today: '2026-10-12' }
-  it('una línea de 1 pieza, borrador y fechas de hoy', () => {
+  it('una línea de 1 pieza, Sometida (sin confirmNow) y fechas de hoy', () => {
     expect(buildQuickRequest('c-1', { ...OK, cod: '50', notes: ' hola ' }, opts)).toEqual({
       clientPublicId: 'c-1',
       consigneeLocationPublicId: 'l-1',
@@ -76,7 +76,6 @@ describe('buildQuickRequest', () => {
       requestedDate: '2026-10-12T00:00:00',
       promisedDate: '2026-10-12T00:00:00',
       notes: 'hola',
-      confirmNow: false,
     })
   })
   it('sin COD ni comentario manda null; el número de orden solo si el cliente lo asigna y se tecleó', () => {

@@ -34,8 +34,8 @@ public class RouteWriterTests
     {
         await using var f = await Fx.CreateAsync();
         var trip = await f.SeedTripAsync("2026-0001", TripStatuses.Draft);
-        var o1 = await f.SeedOrderAsync(OrderStatuses.Confirmed);
-        var o2 = await f.SeedOrderAsync(OrderStatuses.Planned);
+        var o1 = await f.SeedOrderAsync(OrderStatuses.Pickup);
+        var o2 = await f.SeedOrderAsync(OrderStatuses.Assigned);
 
         await f.Writer.AddOrdersAsync(trip, new[] { o1, o2 }, default);
         await f.Db.SaveChangesAsync();
@@ -64,7 +64,7 @@ public class RouteWriterTests
         // Historial: nacimiento de la versión (ROUTE) y ninguno por parada; el estatus de las órdenes no cambia.
         Assert.Equal(1, await f.HistoryCountAsync(EntityTypes.Route, route.RouteId));
         Assert.Equal(1, await f.Db.EntityStatusHistories.CountAsync());
-        Assert.Equal(f.Id(StatusDomains.OrderStatus, OrderStatuses.Confirmed), (await f.Db.TransportOrders.AsNoTracking().SingleAsync(o => o.TransportOrderId == o1)).StatusCodeId);
+        Assert.Equal(f.Id(StatusDomains.OrderStatus, OrderStatuses.Pickup), (await f.Db.TransportOrders.AsNoTracking().SingleAsync(o => o.TransportOrderId == o1)).StatusCodeId);
     }
 
     [Fact]
@@ -72,8 +72,8 @@ public class RouteWriterTests
     {
         await using var f = await Fx.CreateAsync();
         var trip = await f.SeedTripAsync("2026-0001", TripStatuses.Draft);
-        var o1 = await f.SeedOrderAsync(OrderStatuses.Confirmed);
-        var o2 = await f.SeedOrderAsync(OrderStatuses.Confirmed);
+        var o1 = await f.SeedOrderAsync(OrderStatuses.Pickup);
+        var o2 = await f.SeedOrderAsync(OrderStatuses.Pickup);
         await f.Writer.AddOrdersAsync(trip, new[] { o1 }, default);
         await f.Db.SaveChangesAsync();
 
@@ -91,7 +91,7 @@ public class RouteWriterTests
         await using var f = await Fx.CreateAsync();
         var a = await f.SeedTripAsync("2026-0001", TripStatuses.Draft);
         var b = await f.SeedTripAsync("2026-0002", TripStatuses.Planned);
-        var o1 = await f.SeedOrderAsync(OrderStatuses.Confirmed);
+        var o1 = await f.SeedOrderAsync(OrderStatuses.Pickup);
         await f.Writer.AddOrdersAsync(a, new[] { o1 }, default);
         await f.Db.SaveChangesAsync();
 
@@ -106,14 +106,14 @@ public class RouteWriterTests
     {
         await using var f = await Fx.CreateAsync();
         var trip = await f.SeedTripAsync("2026-0001", TripStatuses.Draft);
-        var ok = await f.SeedOrderAsync(OrderStatuses.Confirmed);
-        var draft = await f.SeedOrderAsync(OrderStatuses.Draft);
-        var special = await f.SeedOrderAsync(OrderStatuses.Confirmed, special: true);
+        var ok = await f.SeedOrderAsync(OrderStatuses.Pickup);
+        var draft = await f.SeedOrderAsync(OrderStatuses.Submitted);
+        var special = await f.SeedOrderAsync(OrderStatuses.Pickup, special: true);
 
         var ex = await Assert.ThrowsAsync<StatusRuleException>(() => f.Writer.AddOrdersAsync(trip, new[] { ok, draft, special }, default));
         Assert.Equal(422, ex.StatusCode);
         Assert.Equal("Hay órdenes que no se pueden asignar a la ruta.", ex.Message);
-        Assert.Equal(new[] { "La orden está en Entrada; confírmela antes de asignarla a una ruta." }, ex.Errors![Fx.OrderNumber(draft)]);
+        Assert.Equal(new[] { "La orden está en Sometida; márquela como recogida antes de asignarla a una ruta." }, ex.Errors![Fx.OrderNumber(draft)]);
         Assert.Equal(new[] { "Las entregas especiales se asignan al chofer desde la orden; no pasan por Sala de despacho." }, ex.Errors[Fx.OrderNumber(special)]);
         Assert.False(ex.Errors.ContainsKey(Fx.OrderNumber(ok)));
 
@@ -128,8 +128,8 @@ public class RouteWriterTests
         // número; la ruta los distingue por id (TripOrder/RouteStop) y no por número.
         await using var f = await Fx.CreateAsync();
         var trip = await f.SeedTripAsync("2026-0001", TripStatuses.Draft);
-        var a = await f.SeedOrderAsync(OrderStatuses.Confirmed, clientId: 1, orderNumber: "R-00001");
-        var b = await f.SeedOrderAsync(OrderStatuses.Confirmed, clientId: 2, orderNumber: "R-00001");
+        var a = await f.SeedOrderAsync(OrderStatuses.Pickup, clientId: 1, orderNumber: "R-00001");
+        var b = await f.SeedOrderAsync(OrderStatuses.Pickup, clientId: 2, orderNumber: "R-00001");
 
         await f.Writer.AddOrdersAsync(trip, new[] { a, b }, default);
         await f.Db.SaveChangesAsync();
@@ -143,9 +143,9 @@ public class RouteWriterTests
     {
         await using var f = await Fx.CreateAsync();
         var trip = await f.SeedTripAsync("2026-0001", TripStatuses.Draft);
-        var ok = await f.SeedOrderAsync(OrderStatuses.Confirmed, clientId: 1, orderNumber: "R-00002");
-        var draft = await f.SeedOrderAsync(OrderStatuses.Draft, clientId: 1, orderNumber: "R-00001");
-        var lateral = await f.SeedOrderAsync(OrderStatuses.OnHold, clientId: 2, orderNumber: "R-00001");
+        var ok = await f.SeedOrderAsync(OrderStatuses.Pickup, clientId: 1, orderNumber: "R-00002");
+        var draft = await f.SeedOrderAsync(OrderStatuses.Submitted, clientId: 1, orderNumber: "R-00001");
+        var lateral = await f.SeedOrderAsync(OrderStatuses.Failed, clientId: 2, orderNumber: "R-00001");
 
         var ex = await Assert.ThrowsAsync<StatusRuleException>(() => f.Writer.AddOrdersAsync(trip, new[] { ok, draft, lateral }, default));
         Assert.Equal(422, ex.StatusCode);
@@ -154,8 +154,8 @@ public class RouteWriterTests
         Assert.Equal(new[] { "R-00001" }, ex.Errors!.Keys);
         Assert.Equal(new[]
         {
-            "La orden está en Entrada; confírmela antes de asignarla a una ruta.",
-            "La orden está en 'ON_HOLD'; regrésela al pipeline antes de asignarla a una ruta.",
+            "La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.",
+            "La orden está en 'FAILED'; regrésela al pipeline antes de asignarla a una ruta.",
         }, ex.Errors["R-00001"]);
         Assert.False(await f.Db.TripOrders.AnyAsync());
         Assert.False(await f.Db.RouteStops.AnyAsync());
@@ -166,8 +166,8 @@ public class RouteWriterTests
     {
         await using var f = await Fx.CreateAsync();
         var trip = await f.SeedTripAsync("2026-0001", TripStatuses.Draft);
-        var o = await f.SeedOrderAsync(OrderStatuses.Confirmed);
-        await f.DenyAssignTripAsync(OrderStatuses.Confirmed);
+        var o = await f.SeedOrderAsync(OrderStatuses.Pickup);
+        await f.DenyAssignTripAsync(OrderStatuses.Pickup);
 
         var ex = await Assert.ThrowsAsync<StatusRuleException>(() => f.Writer.AddOrdersAsync(trip, new[] { o }, default));
         Assert.Equal(new[] { "El estatus actual no permite la acción 'ASSIGN_TRIP'." }, ex.Errors![Fx.OrderNumber(o)]);
@@ -178,7 +178,7 @@ public class RouteWriterTests
     {
         await using var f = await Fx.CreateAsync();
         var trip = await f.SeedTripAsync("2026-0001", TripStatuses.Draft);
-        var foreign = await f.SeedOrderAsync(OrderStatuses.Confirmed, tenantId: 2);
+        var foreign = await f.SeedOrderAsync(OrderStatuses.Pickup, tenantId: 2);
         var ex = await Assert.ThrowsAsync<NotFoundException>(() => f.Writer.AddOrdersAsync(trip, new[] { foreign }, default));
         Assert.Equal("Orden no encontrado.", ex.Message);
     }
@@ -190,9 +190,9 @@ public class RouteWriterTests
     {
         await using var f = await Fx.CreateAsync();
         var trip = await f.SeedTripAsync("2026-0001", TripStatuses.Planned);
-        var o1 = await f.SeedOrderAsync(OrderStatuses.Confirmed);
-        var o2 = await f.SeedOrderAsync(OrderStatuses.Confirmed);
-        var o3 = await f.SeedOrderAsync(OrderStatuses.Confirmed);
+        var o1 = await f.SeedOrderAsync(OrderStatuses.Pickup);
+        var o2 = await f.SeedOrderAsync(OrderStatuses.Pickup);
+        var o3 = await f.SeedOrderAsync(OrderStatuses.Pickup);
         await f.Writer.AddOrdersAsync(trip, new[] { o1, o2, o3 }, default);
         await f.Db.SaveChangesAsync();
 
@@ -204,7 +204,7 @@ public class RouteWriterTests
         Assert.Equal(new[] { 1, 2 }, stops.Select(s => s.Sequence));
         Assert.Equal(new[] { f.StopOf(o1), f.StopOf(o3) }, stops.Select(s => s.OrderStopId));
         Assert.Equal(2, (await f.Db.Routes.AsNoTracking().SingleAsync()).StopCount);
-        Assert.Equal(f.Id(StatusDomains.OrderStatus, OrderStatuses.Confirmed), (await f.Db.TransportOrders.AsNoTracking().SingleAsync(o => o.TransportOrderId == o2)).StatusCodeId);
+        Assert.Equal(f.Id(StatusDomains.OrderStatus, OrderStatuses.Pickup), (await f.Db.TransportOrders.AsNoTracking().SingleAsync(o => o.TransportOrderId == o2)).StatusCodeId);
     }
 
     [Fact]
@@ -213,7 +213,7 @@ public class RouteWriterTests
         await using var f = await Fx.CreateAsync();
         var a = await f.SeedTripAsync("2026-0001", TripStatuses.Draft);
         var b = await f.SeedTripAsync("2026-0002", TripStatuses.Draft);
-        var inB = await f.SeedOrderAsync(OrderStatuses.Confirmed);
+        var inB = await f.SeedOrderAsync(OrderStatuses.Pickup);
         await f.Writer.AddOrdersAsync(b, new[] { inB }, default);
         await f.Db.SaveChangesAsync();
 
@@ -229,9 +229,9 @@ public class RouteWriterTests
         await using var f = await Fx.CreateAsync();
         var a = await f.SeedTripAsync("2026-0001", TripStatuses.Planned);
         var b = await f.SeedTripAsync("2026-0002", TripStatuses.Planned);
-        var o1 = await f.SeedOrderAsync(OrderStatuses.Confirmed);
-        var o2 = await f.SeedOrderAsync(OrderStatuses.Confirmed);
-        var ob = await f.SeedOrderAsync(OrderStatuses.Confirmed);
+        var o1 = await f.SeedOrderAsync(OrderStatuses.Pickup);
+        var o2 = await f.SeedOrderAsync(OrderStatuses.Pickup);
+        var ob = await f.SeedOrderAsync(OrderStatuses.Pickup);
         await f.Writer.AddOrdersAsync(a, new[] { o1, o2 }, default);
         await f.Writer.AddOrdersAsync(b, new[] { ob }, default);
         await f.Db.SaveChangesAsync();
@@ -264,8 +264,8 @@ public class RouteWriterTests
     {
         await using var f = await Fx.CreateAsync();
         var trip = await f.SeedTripAsync("2026-0001", TripStatuses.Draft);
-        var o1 = await f.SeedOrderAsync(OrderStatuses.Confirmed);
-        var o2 = await f.SeedOrderAsync(OrderStatuses.Confirmed);
+        var o1 = await f.SeedOrderAsync(OrderStatuses.Pickup);
+        var o2 = await f.SeedOrderAsync(OrderStatuses.Pickup);
         await f.Writer.AddOrdersAsync(trip, new[] { o1, o2 }, default);
         await f.Db.SaveChangesAsync();
 
@@ -296,7 +296,7 @@ public class RouteWriterTests
     {
         await using var f = await Fx.CreateAsync();
         var trip = await f.SeedTripAsync("2026-0001", TripStatuses.Draft);
-        var o1 = await f.SeedOrderAsync(OrderStatuses.Confirmed);
+        var o1 = await f.SeedOrderAsync(OrderStatuses.Pickup);
         await f.Writer.AddOrdersAsync(trip, new[] { o1 }, default);
         await f.Db.SaveChangesAsync();
         await Assert.ThrowsAsync<InvalidOperationException>(() => f.Writer.ReplaceActiveRouteAsync(trip, new[] { f.StopOf(o1), 999999 }, RouteStatuses.Optimized, null, default));
@@ -307,8 +307,8 @@ public class RouteWriterTests
     {
         await using var f = await Fx.CreateAsync();
         var trip = await f.SeedTripAsync("2026-0001", TripStatuses.Draft);
-        var o1 = await f.SeedOrderAsync(OrderStatuses.Confirmed);
-        var o2 = await f.SeedOrderAsync(OrderStatuses.Confirmed);
+        var o1 = await f.SeedOrderAsync(OrderStatuses.Pickup);
+        var o2 = await f.SeedOrderAsync(OrderStatuses.Pickup);
         await f.Writer.AddOrdersAsync(trip, new[] { o1, o2 }, default);
         await f.Db.SaveChangesAsync();
         var ids = await f.Db.RouteStops.OrderBy(s => s.Sequence).Select(s => s.RouteStopId).ToListAsync();
@@ -329,8 +329,8 @@ public class RouteWriterTests
         // Lo mismo que hace RouteOptimizationService.ReorderAsync: ApplySequence + RecomputeAsync (L265: sin re-optimizar).
         await using var f = await Fx.CreateAsync();
         var trip = await f.SeedTripAsync("2026-0001", TripStatuses.Draft);
-        var o1 = await f.SeedOrderAsync(OrderStatuses.Confirmed);
-        var o2 = await f.SeedOrderAsync(OrderStatuses.Confirmed);
+        var o1 = await f.SeedOrderAsync(OrderStatuses.Pickup);
+        var o2 = await f.SeedOrderAsync(OrderStatuses.Pickup);
         await f.Writer.AddOrdersAsync(trip, new[] { o1, o2 }, default);
         await f.Db.SaveChangesAsync();
         var before = await f.Db.RouteStops.AsNoTracking().OrderBy(s => s.Sequence).ToListAsync();
@@ -360,12 +360,12 @@ public class RouteWriterTests
         await using var f = await Fx.CreateAsync();
         var trip = await f.SeedTripAsync("2026-0001", TripStatuses.Draft);
         var first = new List<int>();
-        for (var i = 0; i < TripRules.MaxStopsHardCap; i++) first.Add(await f.SeedOrderAsync(OrderStatuses.Confirmed));
+        for (var i = 0; i < TripRules.MaxStopsHardCap; i++) first.Add(await f.SeedOrderAsync(OrderStatuses.Pickup));
         await f.Writer.AddOrdersAsync(trip, first, default);
         await f.Db.SaveChangesAsync();
         Assert.Equal(300, await f.Db.RouteStops.CountAsync());
 
-        var extra = await f.SeedOrderAsync(OrderStatuses.Confirmed);
+        var extra = await f.SeedOrderAsync(OrderStatuses.Pickup);
         var ex = await Assert.ThrowsAsync<ValidationException>(() => f.Writer.AddOrdersAsync(trip, new[] { extra }, default));
         Assert.Equal(400, ex.StatusCode);
         Assert.Equal("Una ruta admite como máximo 300 paradas.", ex.Message);
@@ -385,8 +385,8 @@ public class RouteWriterTests
     {
         await using var f = await Fx.CreateAsync();
         var trip = await f.SeedTripAsync("2026-0001", TripStatuses.Draft);
-        var o1 = await f.SeedOrderAsync(OrderStatuses.Confirmed);
-        var o2 = await f.SeedOrderAsync(OrderStatuses.Confirmed);
+        var o1 = await f.SeedOrderAsync(OrderStatuses.Pickup);
+        var o2 = await f.SeedOrderAsync(OrderStatuses.Pickup);
         await f.Writer.AddOrdersAsync(trip, new[] { o1 }, default);
         await f.Db.SaveChangesAsync();
         trip.StatusCodeId = f.Id(StatusDomains.TripStatus, TripStatuses.Dispatched);
@@ -423,9 +423,9 @@ public class RouteWriterTests
         // escanear, reordenar, pin), y los PATCH con un rowVersion anterior responden 409.
         await using var f = await Fx.CreateAsync();
         var trip = await f.SeedTripAsync("2026-0001", TripStatuses.Draft);
-        var o1 = await f.SeedOrderAsync(OrderStatuses.Confirmed);
-        var o2 = await f.SeedOrderAsync(OrderStatuses.Confirmed);
-        var o3 = await f.SeedOrderAsync(OrderStatuses.Confirmed);
+        var o1 = await f.SeedOrderAsync(OrderStatuses.Pickup);
+        var o2 = await f.SeedOrderAsync(OrderStatuses.Pickup);
+        var o3 = await f.SeedOrderAsync(OrderStatuses.Pickup);
         await f.Writer.AddOrdersAsync(trip, new[] { o1, o2 }, default);
         await f.Db.SaveChangesAsync();
         var ids = await f.Db.RouteStops.OrderBy(s => s.Sequence).Select(s => s.RouteStopId).ToListAsync();
@@ -460,7 +460,7 @@ public class RouteWriterTests
     {
         await using var f = await Fx.CreateAsync();
         var seeded = await f.SeedTripAsync("2026-0001", TripStatuses.Draft);
-        var o1 = await f.SeedOrderAsync(OrderStatuses.Confirmed);
+        var o1 = await f.SeedOrderAsync(OrderStatuses.Pickup);
         f.Db.Entry(seeded).State = EntityState.Detached;
         var detached = await f.Db.Trips.AsNoTracking().SingleAsync();
 
@@ -472,15 +472,15 @@ public class RouteWriterTests
     public async Task Eligibility_is_reported_per_order()
     {
         await using var f = await Fx.CreateAsync();
-        var ok = await f.SeedOrderAsync(OrderStatuses.Confirmed);
-        var lateral = await f.SeedOrderAsync(OrderStatuses.OnHold);
+        var ok = await f.SeedOrderAsync(OrderStatuses.Pickup);
+        var lateral = await f.SeedOrderAsync(OrderStatuses.Failed);
         var gone = await f.SeedOrderAsync(OrderStatuses.InTransit);
-        var noStop = await f.SeedOrderAsync(OrderStatuses.Confirmed, withDelivery: false);
+        var noStop = await f.SeedOrderAsync(OrderStatuses.Pickup, withDelivery: false);
         var orders = await f.Db.TransportOrders.AsNoTracking().ToListAsync();
 
         var reasons = await f.Writer.CheckEligibilityAsync(orders, default);
         Assert.False(reasons.ContainsKey(ok));
-        Assert.Equal("La orden está en 'ON_HOLD'; regrésela al pipeline antes de asignarla a una ruta.", reasons[lateral]);
+        Assert.Equal("La orden está en 'FAILED'; regrésela al pipeline antes de asignarla a una ruta.", reasons[lateral]);
         Assert.Equal("La orden ya salió a ruta o terminó; no se puede asignar a otra ruta.", reasons[gone]);
         Assert.Equal("La orden no tiene una parada de entrega pendiente.", reasons[noStop]);
     }
@@ -558,15 +558,13 @@ public class RouteWriterTests
             }
 
             // Igual que logistica-db-seed.sql
-            S(StatusDomains.OrderStatus, OrderStatuses.Draft, pipe, 1, true);
-            S(StatusDomains.OrderStatus, OrderStatuses.Confirmed, pipe, 2);
-            S(StatusDomains.OrderStatus, OrderStatuses.Pickup, pipe, 3);
-            S(StatusDomains.OrderStatus, OrderStatuses.Inbound, pipe, 4);
-            S(StatusDomains.OrderStatus, OrderStatuses.Planned, pipe, 5);
-            S(StatusDomains.OrderStatus, OrderStatuses.InTransit, pipe, 6);
-            S(StatusDomains.OrderStatus, OrderStatuses.Arrived, pipe, 7);
+            S(StatusDomains.OrderStatus, OrderStatuses.Submitted, pipe, 1, true);
+            S(StatusDomains.OrderStatus, OrderStatuses.Pickup, pipe, 2);
+            S(StatusDomains.OrderStatus, OrderStatuses.Unassigned, pipe, 3);
+            S(StatusDomains.OrderStatus, OrderStatuses.Assigned, pipe, 4);
+            S(StatusDomains.OrderStatus, OrderStatuses.InTransit, pipe, 5);
             S(StatusDomains.OrderStatus, OrderStatuses.Delivered, term, 8);
-            S(StatusDomains.OrderStatus, OrderStatuses.OnHold, lat, 20);
+            S(StatusDomains.OrderStatus, OrderStatuses.Failed, lat, 22);
             S(StatusDomains.OrderStatus, OrderStatuses.Cancelled, term, 30);
             S(StatusDomains.StopStatus, StopStatuses.Pending, pipe, 1, true);
             S(StatusDomains.StopStatus, StopStatuses.Completed, term, 3);

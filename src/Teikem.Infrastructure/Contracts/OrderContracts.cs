@@ -160,7 +160,7 @@ public sealed record OrderPackageLineDto(
 public sealed record OrderReferenceDto(int Id, string RefType, string RefTypeLabel, string Value, string? Source);
 
 /// <summary>Acciones disponibles según el estatus (StatusCapability, tenant pisa default) y el estado del registro.</summary>
-public sealed record OrderCapabilitiesDto(bool CanEditCargo, bool CanCancel, bool CanDelete, bool CanConfirm, bool CanReprice);
+public sealed record OrderCapabilitiesDto(bool CanEditCargo, bool CanCancel, bool CanDelete, bool CanConfirm, bool CanReprice, bool CanReopen = false);
 
 public sealed record OrderDetailDto(
     int Id,
@@ -288,6 +288,9 @@ public sealed record OrderLookupDto(string Code, string? MatchedBy, IReadOnlyLis
 public sealed record OrderConfirmRequest(string? RowVersion);
 
 public sealed record OrderCancelRequest(string? Comment, string? RowVersion);
+
+/// <summary>Lote 106: reabrir una orden en estatus final. Comment (la razón) es obligatorio; ToCode vacío = el último estatus no final que tuvo.</summary>
+public sealed record OrderReopenRequest(string? ToCode, string? Comment, string? RowVersion);
 
 /// <summary>Chequeo de crédito (R18): límite del cliente (null = sin límite), pendiente en curso, esta orden, disponible y si excede.</summary>
 public sealed record CreditCheckDto(decimal? CreditLimit, decimal PendingBalance, decimal OrderTotal, decimal? Available, bool Exceeds);

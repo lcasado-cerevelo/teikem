@@ -27605,6 +27605,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/orders/{publicId}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["OrderReopenRequest"];
+                    "text/json": components["schemas"]["OrderReopenRequest"];
+                    "application/*+json": components["schemas"]["OrderReopenRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OrderDetailDto"];
+                        "application/json": components["schemas"]["OrderDetailDto"];
+                        "text/json": components["schemas"]["OrderDetailDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -30705,6 +30750,7 @@ export interface components {
             canDelete?: boolean;
             canConfirm?: boolean;
             canReprice?: boolean;
+            canReopen?: boolean;
         };
         OrderConfirmBody: {
             rowVersion?: string | null;
@@ -37068,6 +37114,11 @@ export interface components {
             orderNumber?: string | null;
             status?: string | null;
             statusLabel?: string | null;
+        };
+        OrderReopenRequest: {
+            toCode?: string | null;
+            comment?: string | null;
+            rowVersion?: string | null;
         };
     };
     responses: never;

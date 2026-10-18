@@ -5,11 +5,11 @@ Reglas y mensajes: [capítulo 28](../28-como-va-mi-orden.md). Capturas de la ver
 ## La página pública
 ![La página pública](img/l103-publica.png)
 
-Sin sesión: se escribe el número de conduce y se ve el **avance**: el nombre de la compañía, el conduce, la barra con **una etapa por estatus de la compañía** (aquí 8), «Paso 1 de 8 · Borrador», la lista de etapas con la actual resaltada y la última actualización. Abajo: «Solo mostramos el avance del paquete: nunca nombres, direcciones ni teléfonos» y el enlace al portal.
+Sin sesión: se escribe el número de conduce y se ve el **avance**: el nombre de la compañía, el conduce, la barra con **una etapa por estatus de la compañía** (con el flujo de fábrica del Lote 106, 6), «Paso 1 de 6 · Sometida», la lista de etapas con la actual resaltada y la última actualización. Abajo: «Solo mostramos el avance del paquete: nunca nombres, direcciones ni teléfonos» y el enlace al portal.
 
 ![Detenida](img/l103-publica-espera.png)
 
-Una orden **en espera** (o parcial, o fallida): la barra se queda donde iba, la etapa actual sale en ámbar y el texto dice «En espera · va por el paso 1 de 8». Una **cancelada** sale con todas las etapas apagadas; una **entregada**, toda en verde.
+Una orden con **Intento fallido**: la barra se queda donde iba, la etapa actual sale en ámbar y el texto dice «Intento fallido · va por el paso N de 6». Una **cancelada** sale con todas las etapas apagadas; una **entregada**, toda en verde.
 
 ![Sin consulta](img/l103-publica-vacia.png)
 

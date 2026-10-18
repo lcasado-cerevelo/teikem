@@ -1,5 +1,5 @@
 // Datos de Órdenes de transporte (manual 03). Lectura: `orders.view` + LTL_GROUND (el módulo lo aplica la ruta). Alta
-// `orders.create` (con `confirmNow`: cotiza, revisa crédito y confirma en la misma transacción; `overrideCredit` exige
+// `orders.create` (Lote 106: al crear ya se cotiza y se mide el crédito; `overrideCredit` exige
 // `orders.credit_override`), eliminación `orders.cancel` (baja lógica solo en el estatus inicial). `quotedAmount` solo llega con
 // `orders.view_price`; sin él viene null. Lecturas con `useQuery` (clave `[ruta, params]`); escrituras con `useMutation`.
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -64,7 +64,7 @@ export const exportOrders = (query: OrderListQuery) =>
 
 /**
  * `POST /api/v1/orders` con `Idempotency-Key` (la misma clave en un reintento del mismo intento no duplica). Devuelve la ficha
- * de la orden creada; con `confirmNow` ya viene confirmada. Invalida la lista.
+ * de la orden creada (Sometida, ya cotizada). Invalida la lista.
  */
 export function useCreateOrder() {
   const qc = useQueryClient()
@@ -132,7 +132,7 @@ export function useOrderQuote(publicId: string | null | undefined, enabled: bool
   })
 }
 
-/** `POST /orders/{id}/confirm` (`orders.edit`; con `overrideCredit`, `orders.credit_override`): cotiza, revisa el crédito y confirma. */
+/** `POST /orders/{id}/confirm` (`orders.edit`; con `overrideCredit`, `orders.credit_override`): «Marcar como recogida» (Sometida → Recogida; cotiza estricto y revisa el crédito). */
 export function useConfirmOrder() {
   const qc = useQueryClient()
   return useMutation({
@@ -157,7 +157,7 @@ export function useRepriceOrder() {
   })
 }
 
-/** `POST /orders/{id}/cancel` (`orders.cancel`): cancela con un comentario opcional (máx. 500). */
+/** `POST /orders/{id}/cancel` (`orders.cancel`): cancela; la razón (`comment`, máx. 500) es obligatoria. */
 export function useCancelOrder() {
   const qc = useQueryClient()
   return useMutation({
@@ -167,7 +167,23 @@ export function useCancelOrder() {
   })
 }
 
-/** `POST /orders/{id}/status` (`orders.edit`): estatus laterales (en espera, parcial, fallida) y el regreso a la etapa de la que salió. */
+/** `POST /orders/{id}/reopen` (`orders.reopen`): saca la orden de un estatus final; razón obligatoria (máx. 500) y estatus destino opcional. */
+export function useReopenOrder() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ publicId, comment, toCode, rowVersion }: { publicId: string; comment: string; toCode?: string | null; rowVersion?: string | null }) =>
+      unwrap(
+        api.POST('/api/v1/orders/{publicId}/reopen', {
+          params: { path: { publicId } },
+          body: { comment, toCode: toCode || null, rowVersion: rowVersion ?? null },
+          headers: idempotencyHeaders(),
+        }),
+      ),
+    onSuccess: (order) => invalidateOrder(qc, order.id),
+  })
+}
+
+/** `POST /orders/{id}/status` (`orders.edit`): el desvío lateral «Intento fallido» y el regreso a la etapa de la que salió. */
 export function useOrderStatusChange() {
   const qc = useQueryClient()
   return useMutation({

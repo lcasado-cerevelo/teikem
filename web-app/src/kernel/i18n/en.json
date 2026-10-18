@@ -3476,8 +3476,7 @@
       "deleteMessage": "Order {number} is removed and its number is released. Only orders in their initial status can be deleted; after that they are cancelled.",
       "deleteConfirm": "Delete",
       "deleted": "Order {number} deleted.",
-      "createdDraft": "Order {number} saved as a draft.",
-      "createdConfirmed": "Order {number} saved and confirmed.",
+      "created": "Order {number} saved.",
       "dismiss": "Dismiss notice",
       "import": "Import"
     },
@@ -3490,7 +3489,7 @@
       "editableHint": "This order is in {status}: you can correct its data and its packages.",
       "lockedHint": "This order has moved past {status}: its data is shown for reference and is no longer edited here.",
       "lockedPermissionHint": "Your user cannot edit orders: the data is shown for reference.",
-      "initialFallback": "Draft",
+      "initialFallback": "Submitted",
       "consigneeHelp": "The town and ZIP come from the address of the chosen consignee.",
       "priority": "Priority",
       "noPriority": "No priority",
@@ -3508,7 +3507,7 @@
       "deliveryStop": "Delivery",
       "history": "History",
       "dupSave": "Save anyway",
-      "pipelineNote": "Only detours (on hold, partial, failed) and the return to the stage the order left are recorded here. Confirm, cancel and assign driver are the buttons above.",
+      "pipelineNote": "Only the “Failed attempt” detour and the return to the stage the order left are recorded here. Mark as picked up, cancel, reopen and assign driver are the buttons above.",
       "errors": {
         "dateRequired": "The date cannot be removed; choose another one."
       },
@@ -3525,7 +3524,7 @@
         "run": "Quote",
         "quoted": "Quoted amount",
         "quotedAt": "Quoted on {date}",
-        "notQuoted": "Not quoted yet: the quote is frozen when the order is confirmed.",
+        "notQuoted": "Not quoted yet: it is quoted when the order is created if the client has a contract and a rate; otherwise, when it is marked as picked up.",
         "preview": "Preview with current rates",
         "dispatch": "Dispatch",
         "codFee": "COD fee",
@@ -3560,12 +3559,13 @@
       "back": "Back",
       "statusChanged": "Order {number} moved to {status}.",
       "confirm": {
-        "button": "Confirm",
-        "title": "Confirm order {number}",
-        "body": "The order is quoted with the contract rates, the client credit is checked and the order leaves its initial status. Afterwards its data can no longer be edited here.",
-        "bodyOverrideOnly": "This order is confirmed by quoting it with the contract rates. Your user can only confirm by authorizing the client credit excess.",
-        "creditNote": "If you authorize, the order is confirmed anyway and who authorized it is recorded.",
-        "done": "Order {number} confirmed."
+        "button": "Mark as picked up",
+        "title": "Mark order {number} as picked up",
+        "body": "The order is quoted with the contract rates, the client credit is checked and the order moves from Submitted to Picked up. Afterwards its data can no longer be edited here.",
+        "bodyOverrideOnly": "This order is marked as picked up by quoting it with the contract rates. Your user can only do it by authorizing the client credit excess.",
+        "authorize": "Authorize and mark as picked up",
+        "creditNote": "If you authorize, the order is marked as picked up anyway and who authorized it is recorded.",
+        "done": "Order {number} marked as picked up."
       },
       "reprice": {
         "button": "Re-quote",
@@ -3578,7 +3578,24 @@
         "title": "Cancel order {number}",
         "body": "The order becomes Cancelled and its special-delivery trip, if any, is cancelled too. This cannot be undone.",
         "confirm": "Cancel the order",
+        "reason": "Reason for cancelling",
+        "reasonPlaceholder": "Why is the order being cancelled?",
+        "reasonRequired": "Enter the reason for the cancellation.",
+        "reasonMax": "The reason cannot exceed 500 characters.",
         "done": "Order {number} cancelled."
+      },
+      "reopen": {
+        "button": "Reopen",
+        "title": "Reopen order {number}",
+        "body": "The order leaves its final status and returns to the flow. The reason is recorded.",
+        "reason": "Reason for reopening",
+        "reasonPlaceholder": "Why is the order being reopened?",
+        "reasonRequired": "Enter the reason for reopening the order.",
+        "reasonMax": "The reason cannot exceed 500 characters.",
+        "toStatus": "Target status",
+        "lastStatus": "The last one it was in",
+        "confirm": "Reopen the order",
+        "done": "Order {number} reopened."
       },
       "delete": {
         "button": "Delete the order"
@@ -3588,7 +3605,7 @@
         "reassign": "Reassign driver",
         "title": "Assign a driver to order {number}",
         "reassignTitle": "Reassign the driver of order {number}",
-        "hint": "If the order is still in its initial status it is confirmed (quoted and credit-checked), advances to In transit and the driver trip is created. Reassigning cancels the previous driver trip.",
+        "hint": "If the order is still Submitted it is marked as picked up (final quote and credit check), advances to In transit and the driver trip is created. Reassigning cancels the previous driver trip.",
         "driver": "Driver",
         "chooseDriver": "Choose the driver…",
         "noDrivers": "There are no active drivers",
@@ -3653,10 +3670,9 @@
       "ticketPackages": "Packages",
       "ticketCod": "COD",
       "ticketSpecial": "Special service",
-      "saveDraft": "Save draft",
-      "saveConfirm": "Save and confirm",
+      "save": "Save",
       "saving": "Saving…",
-      "ticketNote": "The order is saved as a Draft and can be edited. “Save and confirm” prices the order, checks the client's credit and confirms it in one step.",
+      "ticketNote": "The order is saved as Submitted: it is quoted and the client's credit is checked when saving.",
       "created": "Order {number} saved.",
       "errors": {
         "clientRequired": "The client is required.",
@@ -3682,9 +3698,9 @@
       },
       "credit": {
         "title": "The client exceeds its credit limit",
-        "authorize": "Authorize and confirm",
-        "note": "If you authorize, the order is created and confirmed anyway and who authorized it is recorded.",
-        "denied": "The order was not created. Ask someone with the permission to authorize exceeded credit (orders.credit_override) to capture or confirm it."
+        "authorize": "Authorize and save",
+        "note": "If you authorize, the order is saved anyway and who authorized it is recorded.",
+        "denied": "The order was not created. Ask someone with the permission to authorize exceeded credit (orders.credit_override) to capture it."
       },
       "mode": "Entry mode",
       "quick": "Quick",
@@ -3718,7 +3734,7 @@
       "saveRow": "Save row",
       "saved": "Saved",
       "captured": "{count} entries saved",
-      "help": "Each row creates a 1-package, 1-piece order as a Draft, not priced. To confirm it, open it from the list; for several packages use Detailed entry.",
+      "help": "Each row creates a 1-package, 1-piece Submitted order; for several packages use Detailed entry.",
       "errors": {
         "codInvalid": "The COD amount must be a number."
       }
@@ -3778,10 +3794,8 @@
         "skipped": "Skipped"
       },
       "optionsTitle": "When importing",
-      "optConfirmNow": "Confirm the orders when importing",
-      "optConfirmNowHelp": "Prices, checks the client’s credit and confirms each order. If unchecked, the orders stay as Drafts.",
       "optOverride": "Authorize exceeded credit",
-      "optOverrideHelp": "Also confirms orders that exceed the client’s credit limit; who authorized it is recorded. Only with “Confirm the orders when importing”.",
+      "optOverrideHelp": "Also creates orders that exceed the client’s credit limit (orders are quoted and credit is checked on creation); who authorized it is recorded.",
       "optDuplicate": "Accept repeated invoices",
       "optDuplicateHelp": "Also creates rows whose invoice number is already used by another order of the same consignee, when that consignee allows repeating it.",
       "do": "Import",

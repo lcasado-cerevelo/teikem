@@ -155,7 +155,7 @@ public sealed class CodService(TeikemDbContext db, ITenantContext tenant, Status
             var order = await db.TransportOrders.AsTracking().FirstOrDefaultAsync(o => o.PublicId == orderPublicId, ct2) ?? throw new NotFoundException("Orden", feminine: true);
             if (order.CodStatusCodeId is null) throw new StatusRuleException(CodRules.OrderHasNoCod);
             var orderStatus = (await StatusMapAsync(StatusDomains.OrderStatus, ct2))[order.StatusCodeId].Code;
-            if (orderStatus is OrderStatuses.Draft or OrderStatuses.Cancelled) throw new StatusRuleException(CodRules.OrderNotCollectable);
+            if (orderStatus is OrderStatuses.Submitted or OrderStatuses.Cancelled) throw new StatusRuleException(CodRules.OrderNotCollectable);
 
             var collected = (await CollectedAsync(new[] { order.TransportOrderId }, ct2)).GetValueOrDefault(order.TransportOrderId);
             var pending = CodRules.Pending(order.CodAmount ?? 0m, collected);

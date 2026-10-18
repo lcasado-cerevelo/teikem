@@ -29,7 +29,7 @@ public class OutboundScanServiceTests
         var second = await f.SeedTripAsync("2026-0002", TripStatuses.Planned, f.Zone1);
         await f.SeedTripAsync("2026-0003", TripStatuses.Draft, f.Zone2);
         await f.SeedTripAsync("2026-0004", TripStatuses.Draft, f.Zone1, planDate: TripServiceFixture.Today.AddDays(1));
-        var order = await f.SeedOrderAsync(OrderStatuses.Confirmed);
+        var order = await f.SeedOrderAsync(OrderStatuses.Pickup);
 
         var r = await ScanAsync(f, order.PackBatchNumber);
 
@@ -43,7 +43,7 @@ public class OutboundScanServiceTests
         Assert.Equal(first.TripId, link.TripId);
         Assert.NotEqual(second.TripId, link.TripId);
         Assert.Equal(1, await f.Db.RouteStops.AsNoTracking().CountAsync(s => s.OrderStopId == order.StopId));
-        Assert.Equal(OrderStatuses.Confirmed, await f.OrderStatusAsync(order.Id));
+        Assert.Equal(OrderStatuses.Pickup, await f.OrderStatusAsync(order.Id));
 
         // Escanear otra vez: 'Ya' (dup) con la misma ruta, sin duplicar la parada.
         var dup = await ScanAsync(f, order.OrderNumber);
@@ -59,7 +59,7 @@ public class OutboundScanServiceTests
         await using var f = await TripServiceFixture.CreateAsync();
         var dispatched = await f.SeedTripAsync("2026-0001", TripStatuses.Dispatched, f.Zone1);
         var open = await f.SeedTripAsync("2026-0002", TripStatuses.Planned, f.Zone1);
-        var order = await f.SeedOrderAsync(OrderStatuses.Confirmed);
+        var order = await f.SeedOrderAsync(OrderStatuses.Pickup);
 
         var r = await ScanAsync(f, order.PackBatchNumber);
 
@@ -77,9 +77,9 @@ public class OutboundScanServiceTests
         var full = await f.SeedTripAsync("2026-0001", TripStatuses.Draft, f.Zone1);
         var next = await f.SeedTripAsync("2026-0002", TripStatuses.Draft, f.Zone1);
         var fill = new List<int>();
-        for (var i = 0; i < 300; i++) fill.Add((await f.SeedOrderAsync(OrderStatuses.Confirmed)).Id);
+        for (var i = 0; i < 300; i++) fill.Add((await f.SeedOrderAsync(OrderStatuses.Pickup)).Id);
         await f.AddOrdersAsync(full.TripId, fill.ToArray());
-        var order = await f.SeedOrderAsync(OrderStatuses.Confirmed);
+        var order = await f.SeedOrderAsync(OrderStatuses.Pickup);
 
         var r = await ScanAsync(f, order.PackBatchNumber);
 
@@ -93,7 +93,7 @@ public class OutboundScanServiceTests
         await using var f = await TripServiceFixture.CreateAsync();
         await f.SeedTripAsync("2026-0001", TripStatuses.Dispatched, f.Zone1);
         await f.SeedTripAsync("2026-0002", TripStatuses.Draft, f.Zone1, isActive: false);
-        var order = await f.SeedOrderAsync(OrderStatuses.Confirmed);
+        var order = await f.SeedOrderAsync(OrderStatuses.Pickup);
 
         var r = await ScanAsync(f, order.PackBatchNumber);
 
@@ -110,7 +110,7 @@ public class OutboundScanServiceTests
         await using var f = await TripServiceFixture.CreateAsync();
         var target = await f.SeedTripAsync("2026-0001", TripStatuses.Draft, f.Zone1);
         var winner = await f.SeedTripAsync("2026-0002", TripStatuses.Draft, f.Zone2);
-        var order = await f.SeedOrderAsync(OrderStatuses.Confirmed);
+        var order = await f.SeedOrderAsync(OrderStatuses.Pickup);
 
         // Cuando el escaneo ya bloqueó la ruta destino (Trip tracked), otra solicitud asigna la orden a la ruta 'winner'.
         f.Lookups.BeforeGetId = async () =>
@@ -133,7 +133,7 @@ public class OutboundScanServiceTests
         Assert.Equal(winner.PublicId, r.TripPublicId);
         Assert.Equal("Ya estaba en la ruta 2026-0002.", r.Message);
         Assert.False(await f.Db.TripOrders.AnyAsync(t => t.TripId == target.TripId));
-        Assert.Equal(OrderStatuses.Confirmed, await f.OrderStatusAsync(order.Id));
+        Assert.Equal(OrderStatuses.Pickup, await f.OrderStatusAsync(order.Id));
     }
 
     [Fact]
@@ -141,8 +141,8 @@ public class OutboundScanServiceTests
     {
         await using var f = await TripServiceFixture.CreateAsync();
         var target = await f.SeedTripAsync("2026-0001", TripStatuses.Draft, f.Zone1);
-        var order = await f.SeedOrderAsync(OrderStatuses.Confirmed);
-        var onHoldId = f.Id(StatusDomains.OrderStatus, OrderStatuses.OnHold);
+        var order = await f.SeedOrderAsync(OrderStatuses.Pickup);
+        var onHoldId = f.Id(StatusDomains.OrderStatus, OrderStatuses.Failed);
 
         // Con la ruta ya bloqueada (Trip tracked), otra solicitud manda la orden a ON_HOLD: la re-verificación de
         // RouteWriter.AddOrdersAsync bajo bloqueo la rechaza y el escaneo lo reporta como NOT_ELIGIBLE.
@@ -160,7 +160,7 @@ public class OutboundScanServiceTests
         Assert.Null(f.Lookups.BeforeGetId);   // el gancho corrió dentro de la asignación
         Assert.Equal("NOT_ELIGIBLE", r.Outcome);
         Assert.Equal("notfound", r.Voice);
-        Assert.Equal(TripRules.LateralOrderMessage(OrderStatuses.OnHold), r.Message);
+        Assert.Equal(TripRules.LateralOrderMessage(OrderStatuses.Failed), r.Message);
         Assert.Null(r.TripPublicId);
         Assert.False(await f.Db.TripOrders.AnyAsync());
     }
@@ -170,8 +170,8 @@ public class OutboundScanServiceTests
     {
         await using var f = await TripServiceFixture.CreateAsync();
         await f.SeedTripAsync("2026-0001", TripStatuses.Draft, f.Zone1);
-        var noZone = await f.SeedOrderAsync(OrderStatuses.Confirmed, "00999");
-        var draft = await f.SeedOrderAsync(OrderStatuses.Draft);
+        var noZone = await f.SeedOrderAsync(OrderStatuses.Pickup, "00999");
+        var draft = await f.SeedOrderAsync(OrderStatuses.Submitted);
 
         var missing = await ScanAsync(f, "NOEXISTE");
         Assert.Equal("NOT_FOUND", missing.Outcome);
@@ -184,7 +184,7 @@ public class OutboundScanServiceTests
         var ne = await ScanAsync(f, draft.PackBatchNumber);
         Assert.Equal("NOT_ELIGIBLE", ne.Outcome);
         Assert.Equal("notfound", ne.Voice);
-        Assert.Equal("La orden está en Entrada; confírmela antes de asignarla a una ruta.", ne.Message);
+        Assert.Equal("La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.", ne.Message);
 
         var empty = await Assert.ThrowsAsync<ValidationException>(() => ScanAsync(f, "  "));
         Assert.Equal("Escanee o escriba un código.", empty.Message);

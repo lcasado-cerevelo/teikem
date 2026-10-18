@@ -38,6 +38,12 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    especial), numeración de los cuatro identificadores, cotización y chequeo de crédito al confirmar (con autorización por
    permiso cuando se excede), estatus y transiciones, importador de órdenes por plantilla (validar → confirmar), el
    bloqueo de lo nuevo para un cliente dado de baja, permisos y módulos, fuentes de análisis y auditoría.
+   **Lote 106 (2026-10-17, sección 4 y secciones 1, 3, 7 y 8): nuevo flujo de estatus.** La orden nace **Sometida** (ya no hay
+   Borrador ni Confirmada), se cotiza y se mide el crédito al crear, «Confirmar» pasó a ser **Marcar como recogida**, cancelar
+   exige razón y hay una acción nueva, **Reabrir** (permiso `orders.reopen`); los estatus `DRAFT`, `CONFIRMED`, `INBOUND`,
+   `PLANNED`, `ARRIVED`, `ON_HOLD` y `PARTIAL` ya no existen. Se actualizaron también los capítulos 04, 05, 07, 19, 28 y 30 y los
+   de pantallas fc1, fc2, fc3, fe1, fe2a, l89 y l103; las preguntas están en la sección «Estatus de la orden (Lote 106)» de
+   [faq.md](faq.md).
 4. [04 — Flota, choferes y mantenimiento](04-flota-choferes-mantenimiento.md): vehículos y sus documentos, choferes
    (identidad, licencias, certificaciones, dispositivos, zonas de despacho), documentos por vencer y disponibilidad
    para despacho, mantenimiento preventivo y órdenes de trabajo, bitácora de combustible, tarifas del chofer (por

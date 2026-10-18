@@ -25,7 +25,7 @@ public sealed class FreightBillingTests
         Assert.Equal(FreightRules.DeliveredOnly, FreightRules.BillableStatuses("MIXED"));
         Assert.Equal(FreightRules.DeliveredOnly, FreightRules.BillableStatuses(null));
         Assert.DoesNotContain(OrderStatuses.Failed, FreightRules.PickedUpOrLater);
-        Assert.DoesNotContain(OrderStatuses.Partial, FreightRules.PickedUpOrLater);
+        Assert.DoesNotContain(OrderStatuses.Failed, FreightRules.PickedUpOrLater);
         Assert.Equal(new[] { "FREIGHT", "FREIGHT", "HANDLING", "SURCHARGE", "FREIGHT", "FREIGHT" },
             new[] { FreightComponents.BaseFreight, FreightComponents.ExtraPieces, FreightComponents.DispatchFee, FreightComponents.CodFee, FreightComponents.SpecialService, FreightComponents.Quoted }.Select(FreightRules.ChargeTypeOf));
         Assert.True(FreightRules.MatchesQuote(11.50005m, 11.5001m));   // se compara a 4 decimales
@@ -156,7 +156,7 @@ public sealed class FreightBillingTests
     {
         var x = await NewWorldAsync();
         await using var _ = x.F;
-        await QuotedOrderAsync(x, "T-DRAFT", OrderStatuses.Draft, 10m);
+        await QuotedOrderAsync(x, "T-DRAFT", OrderStatuses.Submitted, 10m);
         await QuotedOrderAsync(x, "T-INACTIVE", OrderStatuses.Delivered, 10m, active: false);
         await QuotedOrderAsync(x, "T-ZERO", OrderStatuses.Delivered, 0m);
         await x.F.AddOrderAsync(x.C.ClientId, "T-UNQUOTED", OrderStatuses.Delivered);   // sin cotizar

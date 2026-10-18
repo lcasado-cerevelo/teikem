@@ -59,7 +59,6 @@ const NO_ROWS: OrderListItemDto[] = []
 interface Created {
   publicId: string
   number: string
-  confirmed: boolean
 }
 
 export default function OrderListScreen() {
@@ -306,9 +305,9 @@ export default function OrderListScreen() {
     if (labelOnSave || (await clientAutoPrintsLabels(queryClient, order.clientPublicId))) await printing.printLabels([labelOrderFromDetail(order)], { afterSave: true })
   }
 
-  function onCreated(order: OrderDetailDto, confirmed: boolean) {
+  function onCreated(order: OrderDetailDto) {
     setFormOpen(false)
-    setCreated({ publicId: order.publicId ?? '', number: order.orderNumber ?? '', confirmed })
+    setCreated({ publicId: order.publicId ?? '', number: order.orderNumber ?? '' })
     void printAfterSave(order)
   }
 
@@ -365,7 +364,7 @@ export default function OrderListScreen() {
 
       {created && (
         <div className="note oe-created" role="status">
-          <span>{t(created.confirmed ? 'orders.list.createdConfirmed' : 'orders.list.createdDraft', { number: created.number })}</span>
+          <span>{t('orders.list.created', { number: created.number })}</span>
           <button type="button" className="btn sm" onClick={() => navigate(`/orders/${created.publicId}`)}>
             {t('orders.list.open')}
           </button>

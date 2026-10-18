@@ -102,8 +102,8 @@ public class CrossDockRulesTests
     [Fact]
     public void Order_shippable_rules()
     {
-        Assert.True(CrossDockRules.IsOrderShippable(true, OrderStatuses.Confirmed, StageKinds.Pipeline));
-        Assert.False(CrossDockRules.IsOrderShippable(false, OrderStatuses.Confirmed, StageKinds.Pipeline));
+        Assert.True(CrossDockRules.IsOrderShippable(true, OrderStatuses.Pickup, StageKinds.Pipeline));
+        Assert.False(CrossDockRules.IsOrderShippable(false, OrderStatuses.Pickup, StageKinds.Pipeline));
         Assert.False(CrossDockRules.IsOrderShippable(true, OrderStatuses.Cancelled, StageKinds.Terminal));
         Assert.False(CrossDockRules.IsOrderShippable(true, OrderStatuses.Delivered, StageKinds.Terminal));
         Assert.False(CrossDockRules.IsOrderShippable(true, "OTHER_END", StageKinds.Terminal));

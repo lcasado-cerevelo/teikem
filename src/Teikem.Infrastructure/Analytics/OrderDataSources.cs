@@ -21,7 +21,7 @@ namespace Teikem.Infrastructure.Analytics;
 ///   "COD por cobrar" —este usa CodStatusCode—, gráfico "Órdenes por estatus"): no cambiarlos sin cambiar el seeder.
 /// - Lote 5 (P7): ruta vigente (TripId/TripCode/TripStatusCode), chofer asignado (el de la ruta vigente o, si no hay, el del
 ///   DriverTrip activo de la entrega especial), zona de despacho resuelta por CP/pueblo (DispatchZoneMatcher; ambigua = null)
-///   e IsException (ON_HOLD, PARTIAL, FAILED). Los usan los indicadores "Órdenes sin chofer asignado" y "Órdenes en
+///   e IsException (FAILED). Los usan los indicadores "Órdenes sin chofer asignado" y "Órdenes en
 ///   excepción". Se calculan con dos consultas por lote (TripOrder vigente → Trip → Driver; DriverTrip activo → Driver),
 ///   solo identidad: nunca montos de chofer.
 /// - Lote 39: el campo QuotedAmount (monto cotizado) sale en null para quien no tiene orders.view_price (OrderPriceVisibility):

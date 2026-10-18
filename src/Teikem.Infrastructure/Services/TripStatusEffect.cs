@@ -128,7 +128,7 @@ public sealed class TripStatusEffect(TeikemDbContext db, IServiceProvider servic
         foreach (var order in orders)
         {
             var current = orderPipeline.First(s => s.Id == order.StatusCodeId);
-            foreach (var code in PipelinePath.StepsTo(stages, current.Code, OrderStatuses.Planned))
+            foreach (var code in PipelinePath.StepsTo(stages, current.Code, OrderStatuses.Assigned))
             {
                 var next = await statuses.TransitionAsync(StatusDomains.OrderStatus, EntityTypes.TransportOrder, order.TransportOrderId,
                     order.StatusCodeId, code, comment, ct);

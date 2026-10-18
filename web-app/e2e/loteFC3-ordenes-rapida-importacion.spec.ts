@@ -2,10 +2,10 @@
 // http://localhost:5000; compañía demo, admin con todos los permisos, módulo LTL_GROUND y CATALOG encendidos).
 //
 // 1) Entrada rápida: «Nueva orden» abre la rejilla Rápida; Tab recorre los campos; Enter y «Guardar fila» crean UNA orden de 1 paquete y 1 pieza
-//    en Borrador; validaciones sin llamar al servidor; un cliente que asigna su número de orden habilita la columna; el segmentado recuerda
+//    Sometida; validaciones sin llamar al servidor; un cliente que asigna su número de orden habilita la columna; el segmentado recuerda
 //    la última elección (Detallada) aunque se recargue la página.
 // 2) Importación CSV: plantilla nueva (editor de órdenes), cliente, archivo UTF-8 con filas válidas e inválidas, vista previa del servidor
-//    (errores, avisos y consignatario existente / por crear), «Descartar archivo», importar como borrador, importar confirmando las órdenes y
+//    (errores, avisos y consignatario existente / por crear), «Descartar archivo», importar (las órdenes nacen Sometidas, ya cotizadas y con el crédito medido), importar otra vez con otra plantilla y
 //    verificar el resultado y la lista.
 //
 // Escritorio y móvil (Pixel 7 a 360 px, sin scroll horizontal de página), cada uno con sus propios datos.
@@ -202,7 +202,7 @@ test.describe('Órdenes — entrada rápida e importación (Lote F-C3)', () => {
     await shot(page, isMobile, 'fc3-rapida', 900, page.locator('.oe-wrap'))
     if (isMobile) await expectNoHorizontalScroll(page)
 
-    // ---- Lo que quedó en el servidor: dos borradores de 1 paquete y 1 pieza ----
+    // ---- Lo que quedó en el servidor: dos órdenes Sometidas de 1 paquete y 1 pieza ----
     const page1 = await ok<OrderPageDto>(request.get(`${API_URL}/api/v1/orders?search=${encodeURIComponent(`FC3 ${suffix}`)}&take=50`, { headers }), 'órdenes')
     const mine = (page1.items ?? []).filter((o) => o.clientPublicId === client.publicId)
     expect(mine).toHaveLength(2)
@@ -244,14 +244,14 @@ test.describe('Órdenes — entrada rápida e importación (Lote F-C3)', () => {
     await expect(page.locator('.stage').getByText(cons1.name ?? '', { exact: true }).first()).toBeVisible()
   })
 
-  test('importación: plantilla nueva, CSV con filas válidas e inválidas, vista previa, descartar, importar borradores e importar confirmando', async ({ page, request }, testInfo) => {
+  test('importación: plantilla nueva, CSV con filas válidas e inválidas, vista previa, descartar, importar e importar de nuevo', async ({ page, request }, testInfo) => {
     const isMobile = testInfo.project.name.startsWith('movil')
     const suffix = `${isMobile ? 'M' : 'D'}${LETTERS}`
     const clientName = `Cliente Imp FC3 ${suffix}`
     const template = `Plantilla FC3 ${suffix}`
     const headers = { Authorization: `Bearer ${await apiToken(request)}` }
 
-    // cliente con contrato activo, tarifas y crédito de sobra (para poder confirmar al importar)
+    // cliente con contrato activo, tarifas y crédito de sobra (al importar se cotiza y se mide el crédito)
     const client = await ok<ClientDetailDto>(
       request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: clientName, creditLimit: 100000, contract: { startDate: tenantDay(-30), title: 'Contrato FC3' } } }),
       'cliente',
@@ -322,7 +322,7 @@ test.describe('Órdenes — entrada rápida e importación (Lote F-C3)', () => {
     await expect(dialog.getByText(`Se creará: ${newName}`)).toBeVisible()
     await expect(dialog.locator('.cs-stat.ok').first()).toContainText('2 válidas')
     await expect(dialog.locator('.cs-stat.bad').first()).toContainText('2 con errores')
-    await expect(dialog.getByRole('switch', { name: 'Confirmar las órdenes al importar' })).not.toBeChecked()
+    await expect(dialog.getByRole('switch', { name: 'Confirmar las órdenes al importar' })).toHaveCount(0) // Lote 106: ya no existe
     await shot(page, isMobile, 'fc3-importar-previa', 1500)
     if (isMobile) await expectNoHorizontalScroll(page)
 
@@ -332,7 +332,7 @@ test.describe('Órdenes — entrada rápida e importación (Lote F-C3)', () => {
     const none = await ok<OrderPageDto>(request.get(`${API_URL}/api/v1/orders?clientIds=${client.publicId}&take=50`, { headers }), 'órdenes')
     expect(none.items ?? []).toHaveLength(0)
 
-    // ---- Importar como borrador: solo las 2 válidas ----
+    // ---- Importar: solo las 2 válidas ----
     await dialog.getByLabel('Archivo CSV', { exact: true }).setInputFiles(file(csv1))
     await expect(dialog.getByText(/ordenes\.csv · 4 filas detectadas/)).toBeVisible()
     await dialog.getByRole('button', { name: 'Importar', exact: true }).click()
@@ -345,7 +345,7 @@ test.describe('Órdenes — entrada rápida e importación (Lote F-C3)', () => {
     await dialog.getByRole('button', { name: 'Cerrar' }).last().click()
     await expect(dialog).toBeHidden()
 
-    const drafts = await ok<OrderPageDto>(request.get(`${API_URL}/api/v1/orders?clientIds=${client.publicId}&take=50`, { headers }), 'borradores')
+    const drafts = await ok<OrderPageDto>(request.get(`${API_URL}/api/v1/orders?clientIds=${client.publicId}&take=50`, { headers }), 'órdenes importadas')
     expect(drafts.items ?? []).toHaveLength(2)
     for (const o of drafts.items ?? []) expect(o.isInitialStatus).toBe(true)
     expect((drafts.items ?? []).map((o) => o.consigneeName).sort()).toEqual([existing.name, newName].sort())
@@ -355,7 +355,7 @@ test.describe('Órdenes — entrada rápida e importación (Lote F-C3)', () => {
     expect(created).toHaveLength(1)
     expect(created[0]).toMatchObject({ clientPublicId: client.publicId, line1: 'Calle Ñ 9', city: 'Bayamón' })
 
-    // ---- Importar confirmando las órdenes: cotiza y confirma cada una ----
+    // ---- Importar otra vez: cada orden nace Sometida y cotizada ----
     await page.getByRole('button', { name: 'Importar', exact: true }).click()
     const again = page.getByRole('dialog', { name: 'Importar órdenes desde CSV' })
     await again.getByLabel('Plantilla', { exact: true }).selectOption({ label: template })
@@ -364,7 +364,6 @@ test.describe('Órdenes — entrada rápida e importación (Lote F-C3)', () => {
     await again.getByLabel('Archivo CSV', { exact: true }).setInputFiles(file(csv2))
     await expect(again.getByText(/ordenes\.csv · 2 filas detectadas/)).toBeVisible()
     await expect(again.getByText(`Existente: ${newName}`)).toBeVisible()
-    await again.getByRole('switch', { name: 'Confirmar las órdenes al importar' }).click()
     await expect(again.getByRole('switch', { name: 'Autorizar crédito excedido' })).toBeEnabled()
     await shot(page, isMobile, 'fc3-importar-opciones', 1500)
     await again.getByRole('button', { name: 'Importar', exact: true }).click()
@@ -374,7 +373,8 @@ test.describe('Órdenes — entrada rápida e importación (Lote F-C3)', () => {
 
     const all = await ok<OrderPageDto>(request.get(`${API_URL}/api/v1/orders?clientIds=${client.publicId}&take=50`, { headers }), 'todas')
     expect(all.items ?? []).toHaveLength(4)
-    expect((all.items ?? []).filter((o) => !o.isInitialStatus)).toHaveLength(2) // las dos confirmadas salieron del estatus inicial
+    expect((all.items ?? []).filter((o) => o.isInitialStatus)).toHaveLength(4) // todas nacen Sometidas
+    expect((all.items ?? []).every((o) => (o.quotedAmount ?? 0) > 0)).toBe(true) // y ya vienen cotizadas
 
     // ---- La lista muestra las órdenes importadas ----
     await page.getByRole('searchbox', { name: 'Buscar…' }).fill(newName)

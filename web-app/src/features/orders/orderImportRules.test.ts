@@ -85,19 +85,16 @@ describe('templatesForClient', () => {
 })
 
 describe('buildConfirmRequest', () => {
-  const off = { confirmNow: false, overrideCredit: false, confirmDuplicateInvoice: false }
-  it('sin nada marcado el cuerpo va vacío (se crean todas las válidas como borrador)', () => {
+  const off = { overrideCredit: false, confirmDuplicateInvoice: false }
+  it('sin nada marcado el cuerpo va vacío (se crean todas las válidas Sometidas)', () => {
     expect(buildConfirmRequest(off, true)).toEqual({})
   })
   it('manda solo lo marcado', () => {
-    expect(buildConfirmRequest({ ...off, confirmNow: true }, false)).toEqual({ confirmNow: true })
     expect(buildConfirmRequest({ ...off, confirmDuplicateInvoice: true }, false)).toEqual({ confirmDuplicateInvoice: true })
   })
-  it('overrideCredit exige confirmNow (si no, 400) y el permiso orders.credit_override (si no, 403): sin ellos nunca se manda', () => {
-    expect(buildConfirmRequest({ confirmNow: false, overrideCredit: true, confirmDuplicateInvoice: false }, true)).toEqual({})
-    expect(buildConfirmRequest({ confirmNow: true, overrideCredit: true, confirmDuplicateInvoice: false }, false)).toEqual({ confirmNow: true })
-    expect(buildConfirmRequest({ confirmNow: true, overrideCredit: true, confirmDuplicateInvoice: true }, true)).toEqual({
-      confirmNow: true,
+  it('overrideCredit exige el permiso orders.credit_override (si no, 403): sin él nunca se manda, y nunca se manda confirmNow', () => {
+    expect(buildConfirmRequest({ overrideCredit: true, confirmDuplicateInvoice: false }, false)).toEqual({})
+    expect(buildConfirmRequest({ overrideCredit: true, confirmDuplicateInvoice: true }, true)).toEqual({
       overrideCredit: true,
       confirmDuplicateInvoice: true,
     })
@@ -105,7 +102,7 @@ describe('buildConfirmRequest', () => {
   it('la firma distingue las opciones (otra operación = otra Idempotency-Key)', () => {
     const a = confirmSignature('b-1', {})
     expect(confirmSignature('b-1', {})).toBe(a)
-    expect(confirmSignature('b-1', { confirmNow: true })).not.toBe(a)
+    expect(confirmSignature('b-1', { overrideCredit: true })).not.toBe(a)
     expect(confirmSignature('b-2', {})).not.toBe(a)
   })
 })

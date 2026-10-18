@@ -1,13 +1,15 @@
 # Órdenes: buscar órdenes y crear una nueva
 
+> **Lote 106 (2026-10-17): nuevo flujo de estatus.** La orden nace **Sometida** (ya no existe el Borrador ni la Confirmada) y el formulario tiene **un solo botón, «Guardar»**. Al guardar se cotiza y se mide el crédito. Detalle de estatus en el [capítulo 03, sección 4](../03-ordenes-de-transporte.md#4-estatus-y-transiciones).
+
 Pantalla **Operación → Órdenes**. Aquí usted puede:
 
 - **Buscar** cualquier orden de transporte con filtros (por fecha, cliente, consignatario, pueblo, estatus…), ordenar la lista y exportarla.
-- **Crear una orden nueva** con un formulario: elige el cliente, el consignatario, los paquetes y el cobro al entregar (COD), y la guarda como borrador o la confirma de una vez.
+- **Crear una orden nueva** con un formulario: elige el cliente, el consignatario, los paquetes y el cobro al entregar (COD), y la guarda; la orden nace Sometida, ya cotizada y con el crédito medido.
 - **Crear una entrega especial** (un servicio de la lista del cliente en vez de paquetes).
-- **Eliminar** una orden que todavía no se ha confirmado.
+- **Eliminar** una orden que todavía está Sometida.
 
-Editar una orden, confirmarla después, cancelarla, re-cotizarla y asignarle chofer se hace en su expediente (al abrirla), explicado en [Órdenes: el expediente de la orden](fc2-ordenes-expediente.md). Por ahora esta pantalla **no** tiene la entrada rápida ni la importación de órdenes desde un archivo CSV; eso llegará en la próxima entrega. Lo que ocurre con el precio, el crédito y los estatus en el servidor está explicado en el capítulo «03 — Órdenes de transporte» de este manual.
+Editar una orden, marcarla como recogida, cancelarla, reabrirla, re-cotizarla y asignarle chofer se hace en su expediente (al abrirla), explicado en [Órdenes: el expediente de la orden](fc2-ordenes-expediente.md). Por ahora esta pantalla **no** tiene la entrada rápida ni la importación de órdenes desde un archivo CSV; eso llegará en la próxima entrega. Lo que ocurre con el precio, el crédito y los estatus en el servidor está explicado en el capítulo «03 — Órdenes de transporte» de este manual.
 
 ## Permisos necesarios
 
@@ -16,9 +18,9 @@ Para ver la pantalla hace falta el permiso `orders.view`. El módulo «Última m
 | Permiso | Qué permite |
 |---|---|
 | `orders.view` | Ver la lista de órdenes y abrir una orden. |
-| `orders.create` | Usar el botón **Nueva orden** y los botones **Guardar borrador** y **Guardar y confirmar**. |
+| `orders.create` | Usar el botón **Nueva orden** y el botón **Guardar**. |
 | `orders.cancel` | Eliminar una orden con la papelera (mientras está en su estatus inicial). |
-| `orders.credit_override` | Autorizar una orden cuyo cliente excede su límite de crédito, al usar **Guardar y confirmar**. |
+| `orders.credit_override` | Autorizar una orden cuyo cliente excede su límite de crédito (**Autorizar y guardar**). |
 | `orders.view_price` | Ver el precio de las órdenes (columna **Cotizado**). Sin este permiso la columna no aparece. |
 | `clients.read` | Buscar y elegir el cliente en el formulario y en el filtro **Cliente**. |
 | `locations.read` | Buscar y elegir el consignatario, y llenar las opciones del filtro **Pueblo**. |
@@ -36,7 +38,7 @@ Para ver la pantalla hace falta el permiso `orders.view`. El módulo «Última m
 1. Entre a **Operación → Órdenes**.
 2. En **Cliente**, abra la lista, escriba parte del nombre y marque el cliente. Puede marcar varios.
 3. En **Pueblo**, marque «Bayamón».
-4. En **Estatus**, marque el estatus inicial «Borrador».
+4. En **Estatus**, marque el estatus inicial «Sometida».
 5. La lista se actualiza sola. Para empezar de nuevo, pulse **Limpiar**.
 
 ### Filtros
@@ -99,7 +101,7 @@ La papelera solo aparece si la orden está en su **estatus inicial** y usted tie
 3. **02 Consignatario.** En **Nombre** escriba parte del nombre del consignatario y elíjalo de la lista. Se llenan solos (solo para leer) el número, la dirección, el pueblo, el ZIP y el teléfono.
 4. **03 Paquetes y COD.** En la primera línea elija el **Tipo de paquete** «Caja», escriba **Piezas** = 2. Pulse **Añadir paquete**, elija «Sobre», **Descripción** = «Documentos», **Piezas** = 1. En **Monto COD** escriba 50.
 5. Revise el **Ticket de la orden** (a la derecha): debe decir, por ejemplo, «Caja ×2 + Sobre ×1» y el COD.
-6. Pulse **Guardar borrador** o **Guardar y confirmar** (ver «Guardar» más abajo).
+6. Pulse **Guardar** (ver «Guardar» más abajo).
 
 Los pasos 01, 02 y 03 aparecen a la izquierda; el **Ticket de la orden** a la derecha (en pantallas angostas, debajo). El ticket resume lo capturado: cliente, servicio, consignatario, pueblo, paquetes y COD. **No muestra precio.** El precio se ve después, en la lista y en la ficha de la orden, y solo con `orders.view_price`.
 
@@ -142,15 +144,15 @@ Los pasos 01, 02 y 03 aparecen a la izquierda; el **Ticket de la orden** a la de
 
 | Botón | Qué hace |
 |---|---|
-| **Guardar borrador** | Crea la orden en su estatus inicial «Borrador», donde todavía se puede editar. **No** calcula el precio ni revisa el crédito del cliente. |
-| **Guardar y confirmar** | Crea la orden, calcula su precio con la tarifa del contrato del cliente, revisa el crédito y la confirma, todo en una sola operación. Si algo falla, la orden **no se crea**. |
+| **Guardar** | Crea la orden en su estatus inicial «Sometida», donde todavía se puede editar. Calcula su precio con la tarifa del contrato del cliente (si el cliente no tiene contrato o tarifa, la orden se guarda **sin cotizar y sin error**) y revisa el crédito del cliente. Si el crédito se excede y usted no puede autorizarlo, la orden **no se crea**. |
+| **Autorizar y guardar** | Aparece en la ventana de crédito excedido, solo con el permiso `orders.credit_override`: guarda la orden de todos modos y queda registrado quién la autorizó. |
 
 Cuando se guarda bien:
 
 - El formulario se cierra y se limpia.
-- Sale el aviso «Orden … guardada.» y, sobre los filtros, «Orden … guardada como borrador.» o «Orden … guardada y confirmada.», con el botón **Abrir la orden**. Pulse **Cerrar aviso** para quitarlo.
+- Sale el aviso «Orden … guardada.» y, sobre los filtros, «Orden … guardada.», con el botón **Abrir la orden**. Pulse **Cerrar aviso** para quitarlo.
 
-Cuando algo falla, el formulario **sigue abierto con todo lo que usted había capturado**; lea el mensaje, corríjalo y vuelva a guardar. Si el formulario sigue abierto con un error, la orden **no** se creó (tampoco con **Guardar y confirmar**); puede reintentar sin miedo a duplicarla.
+Cuando algo falla, el formulario **sigue abierto con todo lo que usted había capturado**; lea el mensaje, corríjalo y vuelva a guardar. Si el formulario sigue abierto con un error, la orden **no** se creó; puede reintentar sin miedo a duplicarla.
 
 ### Entrega especial
 
@@ -164,7 +166,7 @@ Una entrega especial es un servicio de la lista del cliente (por ejemplo, traer 
 2. Active el interruptor **Es una entrega especial**.
 3. La sección 03 cambia a «Servicio especial». En **Servicio especial** elija el servicio (se muestra «nombre · tarifa»).
 4. Si el cliente asigna sus propios números de orden, el campo **N.º de orden** estará habilitado; si no, dice «(automático)».
-5. Pulse **Guardar borrador** o **Guardar y confirmar**.
+5. Pulse **Guardar**.
 
 La orden se crea **sin paquetes, sin COD y sin chofer**; el chofer se asigna después. El ticket muestra «Servicio especial» en lugar de «Paquetes» y no muestra COD.
 
@@ -174,20 +176,21 @@ Si el interruptor está deshabilitado, falta el permiso `contracts.read` (la pan
 
 ## 3. Estatus de la orden
 
-El estatus inicial de una orden se llama **Borrador** (su compañía puede haberlo renombrado en Sistema → Listas). Esta pantalla hace tres cosas con el estatus:
+El estatus inicial de una orden se llama **Sometida** (su compañía puede haberlo renombrado en Sistema → Listas). Esta pantalla hace dos cosas con el estatus:
 
 | De → a | Cómo | Quién puede | Qué se valida | Qué pasa |
 |---|---|---|---|---|
-| (orden nueva) → **Borrador** | **Guardar borrador** | `orders.create` | Datos obligatorios; el cliente no puede estar suspendido ni dado de baja. | La orden se crea y se puede seguir editando. No se calcula el precio ni se revisa el crédito. |
-| (orden nueva) → **Confirmada** (la primera etapa que la compañía tenga habilitada después de la inicial) | **Guardar y confirmar** | `orders.create`; si el crédito se excede, también `orders.credit_override` | Que exista tarifa vigente, que el cliente no esté suspendido ni dado de baja y que su crédito alcance. | Se calcula y se congela el precio, se revisa el crédito y la orden queda confirmada. Si algo falla, no se crea. Si se autoriza un crédito excedido, queda registrado quién lo autorizó. |
-| **Borrador** → eliminada | Papelera | `orders.cancel` | Que la orden siga en su estatus inicial. | Se da de baja y su número de orden queda libre. |
+| (orden nueva) → **Sometida** | **Guardar** | `orders.create`; si el crédito se excede, también `orders.credit_override` (**Autorizar y guardar**) | Datos obligatorios; el cliente no puede estar suspendido ni dado de baja; que su crédito alcance. | La orden se crea, se cotiza (si hay contrato y tarifa) y se puede seguir editando. Si el crédito se excede y no se autoriza, no se crea. Si se autoriza, queda registrado quién lo autorizó. |
+| **Sometida** → eliminada | Papelera | `orders.cancel` | Que la orden siga en su estatus inicial. | Se da de baja y su número de orden queda libre. |
+
+Pasar de Sometida a **Recogida** («Marcar como recogida»), cancelar y reabrir se hacen en el expediente (ver [el expediente](fc2-ordenes-expediente.md)).
 
 Qué se puede hacer según el estatus:
 
 | Estatus | Eliminar con la papelera | Qué más |
 |---|---|---|
-| **Borrador** | Sí (con `orders.cancel`) | Todavía se puede editar y confirmar, desde el expediente de la orden (ver [el expediente](fc2-ordenes-expediente.md)). |
-| **Confirmada** y siguientes | No. Aparece «Solo se puede eliminar una orden en su estatus inicial; use la cancelación.» | Una orden confirmada no se elimina: se cancela. La cancelación todavía no está en esta pantalla. |
+| **Sometida** | Sí (con `orders.cancel`) | Todavía se puede editar y marcar como recogida, desde el expediente de la orden (ver [el expediente](fc2-ordenes-expediente.md)). |
+| **Recogida** y siguientes | No. Aparece «Solo se puede eliminar una orden en su estatus inicial; use la cancelación.» | Una orden recogida no se elimina: se cancela (con razón) desde el expediente. |
 
 ---
 
@@ -217,15 +220,15 @@ El texto aparece tal cual sobre el formulario (o bajo el campo, cuando se indica
 
 ![Aviso de factura repetida para este consignatario, con las opciones «No crear la orden» y «Crear de todos modos»](img/fc1-factura-repetida.png)
 
-![Aviso de que el cliente excede su límite de crédito, con la opción «Autorizar y confirmar»](img/fc1-credito.png)
+![Aviso de que el cliente excede su límite de crédito, con la opción de autorizar («Autorizar y guardar»)](img/fc1-credito.png)
 
 | Mensaje | Código | Qué significa | Qué hacer |
 |---|---|---|---|
 | Ventana **Factura repetida para este consignatario** | 409 | Usted escribió un número de factura que otra orden activa de ese consignatario ya usa, y ese consignatario sí admite repetirlo. | Pulse **No crear la orden** para revisar el número (**Ver la orden …** abre la que ya lo usa) o **Crear de todos modos** para crearla con el número repetido. |
 | `El consignatario 'X' no permite facturas repetidas: la orden N ya usa el número F.` (sale bajo **N.º de factura**) | 409 | Ese consignatario no admite facturas repetidas y el número ya está en otra orden. | Cambie el número de factura o elija otro consignatario. La orden no se crea. |
-| `El cliente excede su límite de crédito: límite X, en curso Y, esta orden Z.` | 422 | Solo con **Guardar y confirmar**: el crédito del cliente no alcanza para esta orden. | Si tiene `orders.credit_override`, pulse **Autorizar y confirmar** (la orden se crea y se confirma, y queda registrado quién autorizó). Si no, la pantalla dice «La orden no se creó. Pida a alguien con el permiso de autorizar crédito excedido (orders.credit_override) que la capture o la confirme.»: pida ese favor, o use **Guardar borrador**. |
+| `El cliente excede su límite de crédito: límite X, en curso Y, esta orden Z.` | 422 | El crédito del cliente no alcanza para esta orden (se mide al guardar). | Si tiene `orders.credit_override`, pulse **Autorizar y guardar** (la orden se crea y queda registrado quién autorizó). Si no, la pantalla dice «La orden no se creó. Pida a alguien con el permiso de autorizar crédito excedido (orders.credit_override) que la capture.»: pida ese favor o pida que suban el límite del cliente. |
 | `El cliente excede su límite de crédito.` | 422 | Es el mismo caso; usted no tiene `orders.view_price`, por eso no se muestran las cifras. | Igual que el anterior. |
-| `No hay tarifa vigente para X/Y; configure la tarifa en el contrato del cliente antes de confirmar.` | 422 | El contrato del cliente no tiene tarifa para ese servicio y tipo de paquete. La orden no se creó. | Configure la tarifa (Clientes → Contrato → Tarifas) o use **Guardar borrador** y confirme después. |
+| `No hay tarifa vigente para X/Y; configure la tarifa en el contrato del cliente antes de confirmar.` | 422 | El contrato del cliente no tiene tarifa para ese servicio y tipo de paquete. Al guardar **no** sale: la orden se guarda sin cotizar; el error sale al marcarla como recogida. | Configure la tarifa (Clientes → Contrato → Tarifas) y marque la orden como recogida de nuevo. |
 | `El cliente está suspendido; no se pueden crear ni confirmar órdenes.` | 422 | El cliente está suspendido. | Reactive al cliente desde su ficha o elija otro. |
 | `El cliente está dado de baja; solo se consulta su historial.` | 409 | El cliente está dado de baja. | Reactive al cliente desde su ficha o elija otro. |
 | `Consignatario está inactivo; reactívelo o elija otro.` | 400 | El consignatario fue dado de baja. | Reactívelo en Listas → Consignatarios o elija otro. |
@@ -239,13 +242,13 @@ El texto aparece tal cual sobre el formulario (o bajo el campo, cuando se indica
 
 | Mensaje | Código | Qué significa | Qué hacer |
 |---|---|---|---|
-| `Solo se puede eliminar una orden en su estatus inicial; use la cancelación.` | 422 | Alguien confirmó la orden mientras usted tenía la lista abierta; ya no se puede eliminar. | Recargue la lista. Si la orden debe anularse, cancélela. |
+| `Solo se puede eliminar una orden en su estatus inicial; use la cancelación.` | 422 | Alguien la marcó como recogida mientras usted tenía la lista abierta; ya no se puede eliminar. | Recargue la lista. Si la orden debe anularse, cancélela. |
 
 ---
 
 ## 5. Casos frecuentes
 
-- **No veo el botón «Nueva orden».** Falta el permiso `orders.create`. Sin él tampoco salen **Guardar borrador** ni **Guardar y confirmar**.
+- **No veo el botón «Nueva orden».** Falta el permiso `orders.create`. Sin él tampoco sale **Guardar**.
 - **No veo la columna «Cotizado».** Falta `orders.view_price`. Es normal para el personal que no maneja precios.
 - **No me deja elegir consignatario y dice «Elija primero un cliente».** Elija primero el **Cliente**.
 - **Dice «No se pudo leer el directorio de consignatarios».** Su usuario no tiene `locations.read`.

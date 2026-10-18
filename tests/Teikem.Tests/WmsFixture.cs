@@ -291,8 +291,8 @@ internal sealed class WmsFixture : IAsyncDisposable
         S(StatusDomains.PickBatchStatus, PickBatchStatuses.Collected, pipe, 1, true);
         S(StatusDomains.PickBatchStatus, PickBatchStatuses.Packed, pipe, 2);
         S(StatusDomains.PickBatchStatus, PickBatchStatuses.Cancelled, term, 3);
-        S(StatusDomains.OrderStatus, OrderStatuses.Draft, pipe, 1, true);
-        S(StatusDomains.OrderStatus, OrderStatuses.Confirmed, pipe, 2);
+        S(StatusDomains.OrderStatus, OrderStatuses.Submitted, pipe, 1, true);
+        S(StatusDomains.OrderStatus, OrderStatuses.Pickup, pipe, 2);
         S(StatusDomains.ReceiptStatus, ReceiptStatuses.Receiving, pipe, 2);
         S(StatusDomains.ReceiptStatus, ReceiptStatuses.Discrepancy, lat, 3);
         S(StatusDomains.ReceiptStatus, ReceiptStatuses.ReceivedWithVariance, lat, 5);
@@ -343,7 +343,6 @@ internal sealed class WmsFixture : IAsyncDisposable
         S(Teikem.Domain.Billing.BillingCodes.RunStatusDomain, Teikem.Domain.Billing.BillingRunStatuses.Exported, term, 4);
         S(Teikem.Domain.Billing.BillingCodes.RunStatusDomain, "CANCELLED", term, 5);
         S(StatusDomains.OrderStatus, OrderStatuses.Delivered, term, 3);   // para la base «al entregar» de la facturación
-        S(StatusDomains.OrderStatus, OrderStatuses.Pickup, pipe, 4);   // Lote 74: flete «por recogido»
         S(StatusDomains.OrderStatus, OrderStatuses.Failed, lat, 22);
         S(Teikem.Domain.Billing.CreditCodes.StatusDomain, Teikem.Domain.Billing.CreditNoteStatuses.Draft, pipe, 1, true);   // Lote 79
         S(Teikem.Domain.Billing.CreditCodes.StatusDomain, Teikem.Domain.Billing.CreditNoteStatuses.Approved, pipe, 2);
@@ -366,10 +365,9 @@ internal sealed class WmsFixture : IAsyncDisposable
         S(Teikem.Domain.Cod.CodCodes.CollectionStatusDomain, Teikem.Domain.Cod.CodCollectionStatuses.Void, lat, 4);
         S(StatusDomains.ContractStatus, ContractStatuses.Active, pipe, 2);   // Lote 86: comisión del contrato activo
         // Lote 88: los ríos del Pulso cuentan órdenes por estatus y rutas con chofer
-        S(StatusDomains.OrderStatus, OrderStatuses.Inbound, pipe, 5);
-        S(StatusDomains.OrderStatus, OrderStatuses.Planned, pipe, 6);
-        S(StatusDomains.OrderStatus, OrderStatuses.InTransit, pipe, 7);
-        S(StatusDomains.OrderStatus, OrderStatuses.Arrived, pipe, 8);
+        S(StatusDomains.OrderStatus, OrderStatuses.Unassigned, pipe, 3);
+        S(StatusDomains.OrderStatus, OrderStatuses.Assigned, pipe, 4);
+        S(StatusDomains.OrderStatus, OrderStatuses.InTransit, pipe, 5);
         S(StatusDomains.OrderStatus, OrderStatuses.Cancelled, term, 20);
         S(StatusDomains.TripStatus, TripStatuses.Draft, pipe, 1, true);
         S(StatusDomains.TripStatus, TripStatuses.Planned, pipe, 2);
@@ -377,7 +375,6 @@ internal sealed class WmsFixture : IAsyncDisposable
         S(StatusDomains.TripStatus, TripStatuses.InProgress, pipe, 4);
         S(StatusDomains.TripStatus, TripStatuses.Completed, term, 5);   // Lote 91: Actividad de Operación
         S(StatusDomains.TripStatus, TripStatuses.Cancelled, term, 6);
-        S(StatusDomains.OrderStatus, OrderStatuses.OnHold, lat, 21);
         S(Teikem.Domain.Cod.RemittanceCodes.StatusDomain, Teikem.Domain.Cod.RemittanceStatuses.Open, pipe, 1, true);
         S(Teikem.Domain.Cod.RemittanceCodes.StatusDomain, Teikem.Domain.Cod.RemittanceStatuses.Reconciled, pipe, 2);
         S(Teikem.Domain.Cod.RemittanceCodes.StatusDomain, Teikem.Domain.Cod.RemittanceStatuses.Approved, pipe, 3);
@@ -514,7 +511,7 @@ internal sealed class WmsFixture : IAsyncDisposable
     }
 
     /// <summary>Orden de transporte activa del tenant activo (DRAFT por defecto: etapa inicial).</summary>
-    public async Task<Teikem.Domain.Orders.TransportOrder> AddOrderAsync(int clientId, string number, string status = OrderStatuses.Draft,
+    public async Task<Teikem.Domain.Orders.TransportOrder> AddOrderAsync(int clientId, string number, string status = OrderStatuses.Submitted,
         string? packBatchNumber = null)
     {
         var o = new Teikem.Domain.Orders.TransportOrder

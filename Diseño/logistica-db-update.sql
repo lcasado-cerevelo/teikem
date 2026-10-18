@@ -3943,7 +3943,8 @@ ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
 WHEN NOT MATCHED THEN
     INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
     VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
-GO
+GO
+
 
 -- =====================================================================================================================
 -- (ah) 2026-10-17 — Lote 99: aceptación del documento legal único («Política de privacidad y términos de uso»). Tabla global por usuario (sin TenantId):
@@ -4095,5 +4096,102 @@ INSERT INTO dbo.RolePermission (RoleId, PermissionId)
 SELECT DISTINCT r.RoleId, p.PermissionId
 FROM dbo.Role r
 JOIN dbo.Permission p ON p.Code IN ('clientmessages.reply', 'clientmessages.manage') AND r.Name = 'TenantAdmin'
+WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = p.PermissionId);
+GO
+
+/* =========================================================================
+   2026-10-17 (an) — Lote 106: nuevo flujo de estatus de la orden de transporte (dictado por Luis; el del seed original era solo un ejemplo).
+   Sometida → Recogida → Sin asignar → Asignada → En tránsito → Entregada (terminal); Intento fallido (lateral); Cancelada y En almacén (terminales).
+   Se renombra EN SITIO (conserva ids e historial): DRAFT→SUBMITTED, INBOUND→UNASSIGNED, PLANNED→ASSIGNED; se BORRAN CONFIRMED, ARRIVED, ON_HOLD y PARTIAL (nada en producción); FAILED pasa a «Intento fallido». Idempotente. Sin órdenes en producción que remapear.
+   ========================================================================= */
+DECLARE @PIPE INT = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity='StageKind' AND InternalCode='PIPELINE');
+DECLARE @TERM INT = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity='StageKind' AND InternalCode='TERMINAL');
+
+UPDATE dbo.StatusCode SET InternalCode='SUBMITTED', LabelJson=N'{"es":"Sometida","en":"Submitted"}', SortOrder=1, ColorHex='#9CA3AF', IsInitial=1, IsActive=1
+WHERE Entity='OrderStatus' AND InternalCode='DRAFT' AND NOT EXISTS (SELECT 1 FROM dbo.StatusCode x WHERE x.Entity='OrderStatus' AND x.InternalCode='SUBMITTED');
+UPDATE dbo.StatusCode SET InternalCode='UNASSIGNED', LabelJson=N'{"es":"Sin asignar","en":"Unassigned"}', SortOrder=3, ColorHex='#8B5CF6'
+WHERE Entity='OrderStatus' AND InternalCode='INBOUND' AND NOT EXISTS (SELECT 1 FROM dbo.StatusCode x WHERE x.Entity='OrderStatus' AND x.InternalCode='UNASSIGNED');
+UPDATE dbo.StatusCode SET InternalCode='ASSIGNED', LabelJson=N'{"es":"Asignada","en":"Assigned"}', SortOrder=4, ColorHex='#0EA5E9'
+WHERE Entity='OrderStatus' AND InternalCode='PLANNED' AND NOT EXISTS (SELECT 1 FROM dbo.StatusCode x WHERE x.Entity='OrderStatus' AND x.InternalCode='ASSIGNED');
+
+UPDATE dbo.StatusCode SET LabelJson=N'{"es":"Sometida","en":"Submitted"}', SortOrder=1, ColorHex='#9CA3AF', IsInitial=1, IsActive=1, StageKindLookupId=@PIPE WHERE Entity='OrderStatus' AND InternalCode='SUBMITTED';
+UPDATE dbo.StatusCode SET LabelJson=N'{"es":"Recogida","en":"Picked up"}', SortOrder=2 WHERE Entity='OrderStatus' AND InternalCode='PICKUP';
+UPDATE dbo.StatusCode SET LabelJson=N'{"es":"Sin asignar","en":"Unassigned"}', SortOrder=3, IsActive=1 WHERE Entity='OrderStatus' AND InternalCode='UNASSIGNED';
+UPDATE dbo.StatusCode SET LabelJson=N'{"es":"Asignada","en":"Assigned"}', SortOrder=4, IsActive=1 WHERE Entity='OrderStatus' AND InternalCode='ASSIGNED';
+UPDATE dbo.StatusCode SET SortOrder=5 WHERE Entity='OrderStatus' AND InternalCode='IN_TRANSIT';
+UPDATE dbo.StatusCode SET LabelJson=N'{"es":"Intento fallido","en":"Failed attempt"}', ColorHex='#EF4444', SortOrder=22 WHERE Entity='OrderStatus' AND InternalCode='FAILED';
+
+IF NOT EXISTS (SELECT 1 FROM dbo.StatusCode WHERE Entity='OrderStatus' AND InternalCode='IN_WAREHOUSE')
+    INSERT INTO dbo.StatusCode (Entity, InternalCode, LabelJson, ColorHex, SortOrder, StageKindLookupId, IsInitial, IsActive)
+    VALUES ('OrderStatus','IN_WAREHOUSE', N'{"es":"En almacén","en":"In warehouse"}', '#14B8A6', 9, @TERM, 0, 1);
+
+/* Se BORRAN los cuatro estatus que ya no existen (Luis, 2026-10-17: «bórralo, no hay nada en producción»). Antes se remapea lo que pudiera referenciarlos en bases de desarrollo:
+   CONFIRMED→PICKUP, ARRIVED→IN_TRANSIT, ON_HOLD y PARTIAL→FAILED; y se quitan sus filas de capacidades, entradas laterales y ajustes por compañía. Idempotente. */
+DECLARE @old TABLE (StatusCodeId INT PRIMARY KEY, NewId INT NULL);
+INSERT INTO @old (StatusCodeId, NewId)
+SELECT s.StatusCodeId,
+       (SELECT TOP 1 n.StatusCodeId FROM dbo.StatusCode n WHERE n.Entity='OrderStatus' AND n.InternalCode =
+            CASE s.InternalCode WHEN 'CONFIRMED' THEN 'PICKUP' WHEN 'ARRIVED' THEN 'IN_TRANSIT' ELSE 'FAILED' END)
+FROM dbo.StatusCode s WHERE s.Entity='OrderStatus' AND s.InternalCode IN ('CONFIRMED','ARRIVED','ON_HOLD','PARTIAL');
+
+UPDATE o SET o.StatusCodeId = x.NewId FROM dbo.TransportOrder o JOIN @old x ON x.StatusCodeId = o.StatusCodeId;
+UPDATE h SET h.FromStatusCodeId = x.NewId FROM dbo.EntityStatusHistory h JOIN @old x ON x.StatusCodeId = h.FromStatusCodeId;
+UPDATE h SET h.ToStatusCodeId = x.NewId FROM dbo.EntityStatusHistory h JOIN @old x ON x.StatusCodeId = h.ToStatusCodeId;
+DELETE c FROM dbo.StatusCapability c JOIN @old x ON x.StatusCodeId = c.StatusCodeId;
+DELETE l FROM dbo.StatusLateralEntry l JOIN @old x ON x.StatusCodeId IN (l.LateralStatusCodeId, l.FromStatusCodeId);
+DELETE v FROM dbo.StatusCodeOverride v JOIN @old x ON x.StatusCodeId = v.StatusCodeId;
+DELETE s FROM dbo.StatusCode s JOIN @old x ON x.StatusCodeId = s.StatusCodeId;
+GO
+
+/* Capacidades por defecto (TenantId NULL): solo se EDITA en Sometida (EDIT_CARGO sin fila de bloqueo = permitido), se recotiza solo en Sometida, y En almacén (terminal) no permite nada. */
+DELETE c FROM dbo.StatusCapability c
+JOIN dbo.StatusCode s ON s.StatusCodeId = c.StatusCodeId AND s.Entity='OrderStatus' AND s.InternalCode='SUBMITTED'
+JOIN dbo.LookupCode cap ON cap.LookupCodeId = c.CapabilityLookupId AND cap.Entity='Capability' AND cap.InternalCode='REPRICE'
+JOIN dbo.LookupCode et ON et.LookupCodeId = c.EntityTypeLookupId AND et.Entity='EntityType' AND et.InternalCode='TRANSPORT_ORDER'
+WHERE c.TenantId IS NULL;
+GO
+MERGE dbo.StatusCapability AS t
+USING (
+    SELECT et.LookupCodeId AS EntityTypeLookupId, s.StatusCodeId, c.LookupCodeId AS CapabilityLookupId
+    FROM dbo.LookupCode et
+    CROSS JOIN dbo.StatusCode s
+    CROSS JOIN dbo.LookupCode c
+    WHERE et.Entity='EntityType' AND et.InternalCode='TRANSPORT_ORDER'
+      AND s.Entity='OrderStatus' AND s.InternalCode='IN_WAREHOUSE'
+      AND c.Entity='Capability' AND c.InternalCode IN ('EDIT_CARGO','REPRICE','CANCEL','ASSIGN_TRIP')
+) AS s
+ON t.TenantId IS NULL AND t.EntityTypeLookupId = s.EntityTypeLookupId AND t.StatusCodeId = s.StatusCodeId AND t.CapabilityLookupId = s.CapabilityLookupId
+WHEN NOT MATCHED THEN
+    INSERT (TenantId, EntityTypeLookupId, StatusCodeId, CapabilityLookupId, IsAllowed)
+    VALUES (NULL, s.EntityTypeLookupId, s.StatusCodeId, s.CapabilityLookupId, 0);
+GO
+
+/* Informes, indicadores y gráficos de órdenes que filtran por los códigos viejos. */
+UPDATE dbo.IndicatorDefinition SET FilterJson = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(FilterJson, '"CONFIRMED"', '"SUBMITTED"'), '"DRAFT"', '"SUBMITTED"'), '"INBOUND"', '"UNASSIGNED"'), '"PLANNED"', '"ASSIGNED"'), '"ARRIVED"', '"FAILED"'), '"ON_HOLD"', '"FAILED"')
+WHERE DataSourceKey = 'TRANSPORT_ORDER' AND FilterJson IS NOT NULL AND (FilterJson LIKE '%"CONFIRMED"%' OR FilterJson LIKE '%"DRAFT"%' OR FilterJson LIKE '%"INBOUND"%' OR FilterJson LIKE '%"PLANNED"%' OR FilterJson LIKE '%"ARRIVED"%' OR FilterJson LIKE '%"ON_HOLD"%');
+UPDATE dbo.ChartDefinition SET FilterJson = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(FilterJson, '"CONFIRMED"', '"SUBMITTED"'), '"DRAFT"', '"SUBMITTED"'), '"INBOUND"', '"UNASSIGNED"'), '"PLANNED"', '"ASSIGNED"'), '"ARRIVED"', '"FAILED"'), '"ON_HOLD"', '"FAILED"')
+WHERE DataSourceKey = 'TRANSPORT_ORDER' AND FilterJson IS NOT NULL AND (FilterJson LIKE '%"CONFIRMED"%' OR FilterJson LIKE '%"DRAFT"%' OR FilterJson LIKE '%"INBOUND"%' OR FilterJson LIKE '%"PLANNED"%' OR FilterJson LIKE '%"ARRIVED"%' OR FilterJson LIKE '%"ON_HOLD"%');
+UPDATE r SET FilterJson = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(r.FilterJson, '"CONFIRMED"', '"SUBMITTED"'), '"DRAFT"', '"SUBMITTED"'), '"INBOUND"', '"UNASSIGNED"'), '"PLANNED"', '"ASSIGNED"'), '"ARRIVED"', '"FAILED"'), '"ON_HOLD"', '"FAILED"')
+FROM dbo.ReportDefinition r
+JOIN dbo.LookupCode et ON et.LookupCodeId = r.BaseEntityTypeLookupId AND et.InternalCode = 'TRANSPORT_ORDER'
+WHERE r.FilterJson IS NOT NULL AND (r.FilterJson LIKE '%"CONFIRMED"%' OR r.FilterJson LIKE '%"DRAFT"%' OR r.FilterJson LIKE '%"INBOUND"%' OR r.FilterJson LIKE '%"PLANNED"%' OR r.FilterJson LIKE '%"ARRIVED"%' OR r.FilterJson LIKE '%"ON_HOLD"%');
+GO
+
+/* =========================================================================
+   2026-10-17 (ao) — Lote 106: permiso orders.reopen (reabrir una orden en estatus final: Entregada, Cancelada, En almacén…). Se propaga a los roles TenantAdmin ya clonados (solo agregar).
+   ========================================================================= */
+MERGE dbo.Permission AS t
+USING (VALUES
+    ('orders.reopen', N'{"es":"Reabrir órdenes en estatus final","en":"Reopen orders in a final status"}')
+) AS s (Code, LabelJson)
+ON t.Code = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES (s.Code, (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'ORDERS'), s.LabelJson, 1);
+GO
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT DISTINCT r.RoleId, p.PermissionId
+FROM dbo.Role r
+JOIN dbo.Permission p ON p.Code = 'orders.reopen' AND r.Name = 'TenantAdmin'
 WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = p.PermissionId);
 GO

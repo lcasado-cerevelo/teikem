@@ -1,5 +1,5 @@
 // Lote F-C1 — Alta detallada de una orden: predeterminados, validaciones (mensajes del servidor), consignatario existente y nuevo
-// (modal del catálogo), borrador vs «Guardar y confirmar», factura repetida (R36), crédito excedido con y sin override, errores
+// (modal del catálogo), un solo «Guardar», factura repetida (R36), crédito excedido con y sin override, errores
 // del servidor sin cerrar el formulario, entrega especial y permisos. Sobre un fetch simulado; el precio nunca se muestra.
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
@@ -202,33 +202,32 @@ describe('Alta detallada — guardar', () => {
     wrap()
     await user.click(screen.getByRole('combobox', { name: /^Servicio/ }))
     await user.selectOptions(screen.getByRole('combobox', { name: /^Servicio/ }), '')
-    await user.click(screen.getByRole('button', { name: 'Guardar borrador' }))
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
     expect(await screen.findByText('El cliente es obligatorio.')).toBeInTheDocument()
     expect(screen.getByText('El tipo de servicio es obligatorio.')).toBeInTheDocument()
     expect(screen.getByText('El consignatario es obligatorio: elija uno del directorio o capture uno nuevo.')).toBeInTheDocument()
     await user.selectOptions(screen.getByRole('combobox', { name: /^Tipo de paquete/ }), '')
     await user.clear(screen.getByLabelText(/^Piezas/))
     await user.type(screen.getByLabelText(/^Piezas/), '0')
-    await user.click(screen.getByRole('button', { name: 'Guardar borrador' }))
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
     expect(await screen.findByText('El tipo de paquete es obligatorio.')).toBeInTheDocument()
     expect(screen.getByText('La cantidad de piezas debe ser al menos 1.')).toBeInTheDocument()
     expect(posts()).toHaveLength(0)
   })
 
-  it('«Guardar borrador» manda confirmNow=false con el consignatario del directorio, paquetes, COD, Lista/Límite e Idempotency-Key', async () => {
+  it('«Guardar» crea la orden con el consignatario del directorio, paquetes, COD, Lista/Límite e Idempotency-Key', async () => {
     const user = userEvent.setup()
     wrap()
     await fillValid(user)
     await user.type(screen.getByLabelText('Descripción'), 'Ropa')
     await user.type(screen.getByLabelText('Monto COD'), '50')
-    await user.click(screen.getByRole('button', { name: 'Guardar borrador' }))
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
     await waitFor(() => expect(posts()).toHaveLength(1))
     const post = posts()[0]
     expect(post.body).toMatchObject({
       clientPublicId: 'c-1',
       consigneeLocationPublicId: 'l-1',
       serviceType: 'STANDARD',
-      confirmNow: false,
       clientInvoiceNumber: null,
       codAmount: 50,
       packages: [{ packageType: 'BOX', description: 'Ropa', pieces: 2 }],
@@ -238,17 +237,19 @@ describe('Alta detallada — guardar', () => {
     expect(post.body).not.toHaveProperty('newConsignee')
     expect(post.body).not.toHaveProperty('overrideCredit')
     expect(post.headers.get('Idempotency-Key')).toMatch(/^[0-9a-f-]{36}$/)
-    await waitFor(() => expect(onCreated).toHaveBeenCalledWith(expect.objectContaining({ publicId: 'o-new', orderNumber: 'ORD-00050' }), false))
+    await waitFor(() => expect(onCreated).toHaveBeenCalledWith(expect.objectContaining({ publicId: 'o-new', orderNumber: 'ORD-00050' })))
   })
 
-  it('«Guardar y confirmar» manda confirmNow=true', async () => {
+  it('hay UN solo botón «Guardar»: sin «Guardar borrador» ni «Guardar y confirmar», y nunca manda confirmNow', async () => {
     const user = userEvent.setup()
     wrap()
     await fillValid(user)
-    await user.click(screen.getByRole('button', { name: 'Guardar y confirmar' }))
+    expect(screen.queryByRole('button', { name: /borrador|confirmar/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /borrador|confirmar/i })).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
     await waitFor(() => expect(posts()).toHaveLength(1))
-    expect(posts()[0].body?.confirmNow).toBe(true)
-    await waitFor(() => expect(onCreated).toHaveBeenCalledWith(expect.anything(), true))
+    expect(posts()[0].body).not.toHaveProperty('confirmNow')
+    expect(posts()[0].body).not.toHaveProperty('overrideCredit')
   })
 
   it('con una factura tecleada (el cliente la asigna) la manda', async () => {
@@ -259,7 +260,7 @@ describe('Alta detallada — guardar', () => {
     await waitFor(() => expect(screen.getByLabelText(/N\.º de factura/)).toBeEnabled())
     await pickConsignee(user)
     await user.type(screen.getByLabelText(/N\.º de factura/), 'AX-77')
-    await user.click(screen.getByRole('button', { name: 'Guardar borrador' }))
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
     await waitFor(() => expect(posts()).toHaveLength(1))
     expect(posts()[0].body?.clientInvoiceNumber).toBe('AX-77')
   })
@@ -272,7 +273,7 @@ describe('Alta detallada — guardar', () => {
         : undefined
     wrap()
     await fillValid(user)
-    await user.click(screen.getByRole('button', { name: 'Guardar borrador' }))
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
     expect(await screen.findByText('La cantidad de piezas debe ser al menos 1.')).toBeInTheDocument()
     expect(onCreated).not.toHaveBeenCalled()
   })
@@ -283,11 +284,11 @@ describe('Alta detallada — guardar', () => {
     mock.override = (c) => (c.method === 'POST' && c.url.pathname === '/api/v1/orders' ? problem(422, msg, 'status_rule') : undefined)
     wrap()
     await fillValid(user)
-    await user.click(screen.getByRole('button', { name: 'Guardar y confirmar' }))
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
     expect((await screen.findAllByText(msg)).length).toBeGreaterThan(0)
     expect(onCreated).not.toHaveBeenCalled()
     expect(screen.getByLabelText(/^Piezas/)).toHaveValue(2)
-    expect(screen.getByRole('button', { name: 'Guardar y confirmar' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Guardar' })).toBeEnabled()
   })
 
   it('cliente suspendido o dado de baja: el mensaje del servidor, sin crear', async () => {
@@ -296,7 +297,7 @@ describe('Alta detallada — guardar', () => {
       c.method === 'POST' && c.url.pathname === '/api/v1/orders' ? problem(409, 'El cliente está dado de baja; solo se consulta su historial.', 'conflict') : undefined
     wrap()
     await fillValid(user)
-    await user.click(screen.getByRole('button', { name: 'Guardar borrador' }))
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
     expect((await screen.findAllByText('El cliente está dado de baja; solo se consulta su historial.')).length).toBeGreaterThan(0)
     expect(onCreated).not.toHaveBeenCalled()
   })
@@ -320,7 +321,7 @@ describe('Alta detallada — factura repetida (R36)', () => {
     await waitFor(() => expect(screen.getByLabelText(/N\.º de factura/)).toBeEnabled())
     await pickConsignee(user, 'Colmado')
     await user.type(screen.getByLabelText(/N\.º de factura/), 'FAC-100')
-    await user.click(screen.getByRole('button', { name: 'Guardar borrador' }))
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
   }
 
   it('confirmable: abre «Factura repetida…»; «Crear de todos modos» reenvía con confirmDuplicateInvoice=true', async () => {
@@ -362,7 +363,7 @@ describe('Alta detallada — factura repetida (R36)', () => {
     await waitFor(() => expect(screen.getByLabelText(/N\.º de factura/)).toBeEnabled())
     await pickConsignee(user)
     await user.type(screen.getByLabelText(/N\.º de factura/), 'FAC-100')
-    await user.click(screen.getByRole('button', { name: 'Guardar borrador' }))
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
     expect((await screen.findAllByText(msg)).length).toBeGreaterThan(0)
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.queryByText('ORD-00007')).toBeNull()
@@ -377,20 +378,20 @@ describe('Alta detallada — crédito excedido', () => {
       ? problem(422, MSG, 'credit_exceeded', { limit: ['1000.00'], exposure: ['900.00'], newAmount: ['200.00'], available: ['100.00'] })
       : undefined
 
-  it('con orders.credit_override: diálogo con el mensaje del servidor y «Autorizar y confirmar» reenvía con overrideCredit', async () => {
+  it('con orders.credit_override: diálogo con el mensaje del servidor y «Autorizar y guardar» reenvía con overrideCredit', async () => {
     const user = userEvent.setup()
     mock.override = credit
     wrap([...ALL, 'orders.credit_override'])
     await fillValid(user)
-    await user.click(screen.getByRole('button', { name: 'Guardar y confirmar' }))
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
     const dialog = await screen.findByRole('dialog', { name: 'El cliente excede su límite de crédito' })
     expect(within(dialog).getByText(MSG)).toBeInTheDocument()
     expect(onCreated).not.toHaveBeenCalled()
-    await user.click(within(dialog).getByRole('button', { name: 'Autorizar y confirmar' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Autorizar y guardar' }))
     await waitFor(() => expect(posts()).toHaveLength(2))
-    expect(posts()[1].body).toMatchObject({ confirmNow: true, overrideCredit: true })
+    expect(posts()[1].body).toMatchObject({ overrideCredit: true })
     expect(posts()[1].headers.get('Idempotency-Key')).not.toBe(posts()[0].headers.get('Idempotency-Key'))
-    await waitFor(() => expect(onCreated).toHaveBeenCalledWith(expect.anything(), true))
+    await waitFor(() => expect(onCreated).toHaveBeenCalledWith(expect.anything()))
   })
 
   it('sin orders.credit_override: solo el mensaje, sin diálogo ni segundo envío, y la orden NO se crea', async () => {
@@ -398,7 +399,7 @@ describe('Alta detallada — crédito excedido', () => {
     mock.override = credit
     wrap(ALL)
     await fillValid(user)
-    await user.click(screen.getByRole('button', { name: 'Guardar y confirmar' }))
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
     expect((await screen.findAllByText(MSG)).length).toBeGreaterThan(0)
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.getByText(/La orden no se creó/)).toBeInTheDocument()
@@ -406,11 +407,11 @@ describe('Alta detallada — crédito excedido', () => {
     expect(onCreated).not.toHaveBeenCalled()
   })
 
-  it('el borrador no revisa crédito: nunca pide autorización', async () => {
+  it('sin exceso de crédito el servidor guarda directo: nunca pide autorización', async () => {
     const user = userEvent.setup()
     wrap([...ALL, 'orders.credit_override'])
     await fillValid(user)
-    await user.click(screen.getByRole('button', { name: 'Guardar borrador' }))
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
     await waitFor(() => expect(onCreated).toHaveBeenCalled())
     expect(screen.queryByRole('dialog')).toBeNull()
   })
@@ -428,7 +429,7 @@ describe('Alta detallada — entrega especial', () => {
     expect(screen.getByLabelText(/N\.º de orden/)).toBeInTheDocument()
     const select = await screen.findByRole('combobox', { name: /^Servicio especial/ })
     await waitFor(() => expect(within(select).getByRole('option', { name: 'Traer vagón · $75.00' })).toBeInTheDocument())
-    await user.click(screen.getByRole('button', { name: 'Guardar borrador' }))
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
     expect(await screen.findByText('El servicio especial es obligatorio en una entrega especial.')).toBeInTheDocument()
     expect(posts()).toHaveLength(0)
     await user.selectOptions(select, 'Traer vagón · $75.00')
@@ -436,10 +437,10 @@ describe('Alta detallada — entrega especial', () => {
     const ticket = screen.getByRole('complementary', { name: 'Ticket de la orden' })
     expect(within(ticket).getByText('Traer vagón')).toBeInTheDocument()
     expect(within(ticket).queryByText('COD')).toBeNull()
-    await user.click(screen.getByRole('button', { name: 'Guardar borrador' }))
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
     await waitFor(() => expect(posts()).toHaveLength(1))
     const body = posts()[0].body!
-    expect(body).toMatchObject({ isSpecialDelivery: true, specialServiceId: 12, consigneeLocationPublicId: 'l-1', confirmNow: false })
+    expect(body).toMatchObject({ isSpecialDelivery: true, specialServiceId: 12, consigneeLocationPublicId: 'l-1' })
     expect(body).not.toHaveProperty('packages')
     expect(body).not.toHaveProperty('codAmount')
     expect(body).not.toHaveProperty('driverPublicId')
@@ -497,7 +498,7 @@ describe('Alta detallada — consignatario nuevo y permisos', () => {
     // guardar el consignatario NO guarda la orden
     expect(posts()).toHaveLength(0)
     // y la orden se manda con el consignatario recién creado
-    await user.click(screen.getByRole('button', { name: 'Guardar borrador' }))
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
     await waitFor(() => expect(posts()).toHaveLength(1))
     expect(posts()[0].body).toMatchObject({ consigneeLocationPublicId: 'l-new' })
     expect(posts()[0].body).not.toHaveProperty('newConsignee')
@@ -513,8 +514,7 @@ describe('Alta detallada — consignatario nuevo y permisos', () => {
   it('sin orders.create no hay botones de guardar', async () => {
     wrap(['locations.read', 'clients.read'])
     await screen.findByText('Ticket de la orden')
-    expect(screen.queryByRole('button', { name: 'Guardar borrador' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Guardar y confirmar' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Guardar' })).toBeNull()
   })
 
   it('sin cliente el selector de consignatario espera y el «+» está deshabilitado', async () => {

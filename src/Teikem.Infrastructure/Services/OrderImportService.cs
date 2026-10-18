@@ -158,7 +158,6 @@ public sealed class OrderImportService(
         var userId = ((TenantContext)tenant).RequireUserId();
         var batch = await LoadBatchAsync(batchPublicId, scope, ct);
         await EnsureValidatedAsync(batch, ct);
-        if (req.OverrideCredit && !req.ConfirmNow) throw new ValidationException("overrideCredit", OverrideNeedsConfirmNowMessage);
         if (req.OverrideCredit) await permissions.EnsureAsync(OrderStatusService.CreditOverridePermission, ct); // 403 + PERMISSION_DENIED
 
         var client = await db.Clients.AsNoTracking().FirstOrDefaultAsync(c => c.ClientId == batch.ClientId, ct) ?? throw new NotFoundException("Cliente");
@@ -206,7 +205,7 @@ public sealed class OrderImportService(
                 // Una transacción por fila: creación (y confirmación opcional) atómicas; un fallo revierte solo esta fila.
                 var dto = await db.RunInTransactionAsync(async ct2 =>
                 {
-                    var createdDto = await orders.CreateAsync(request, scope, options, ct2);
+                    var createdDto = await orders.CreateAsync(req.OverrideCredit ? request with { OverrideCredit = true } : request, scope, options, ct2);
                     // Teléfono de contacto de la fila → ContactPoint de la orden (capa C: nunca como texto suelto en notas).
                     if (record.Values.TryGetValue(ImportFields.ContactPhone, out var phone) && !string.IsNullOrWhiteSpace(phone))
                         await contactPoints.AddAsync(EntityTypes.TransportOrder, createdDto.Id,

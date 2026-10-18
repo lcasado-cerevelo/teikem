@@ -3476,8 +3476,7 @@
       "deleteMessage": "La orden {number} se da de baja y libera su número. Solo se pueden eliminar órdenes en su estatus inicial; después se cancelan.",
       "deleteConfirm": "Eliminar",
       "deleted": "Orden {number} eliminada.",
-      "createdDraft": "Orden {number} guardada como borrador.",
-      "createdConfirmed": "Orden {number} guardada y confirmada.",
+      "created": "Orden {number} guardada.",
       "dismiss": "Cerrar aviso",
       "import": "Importar"
     },
@@ -3490,7 +3489,7 @@
       "editableHint": "Esta orden está en {status}: puede corregir sus datos y sus paquetes.",
       "lockedHint": "Esta orden ya avanzó de {status}: sus datos se muestran como referencia, ya no se editan aquí.",
       "lockedPermissionHint": "Su usuario no tiene permiso para editar órdenes: los datos se muestran como referencia.",
-      "initialFallback": "Borrador",
+      "initialFallback": "Sometida",
       "consigneeHelp": "El pueblo y el ZIP salen de la dirección del consignatario elegido.",
       "priority": "Prioridad",
       "noPriority": "Sin prioridad",
@@ -3508,7 +3507,7 @@
       "deliveryStop": "Entrega",
       "history": "Historial",
       "dupSave": "Guardar de todos modos",
-      "pipelineNote": "Aquí solo se registran desvíos (en espera, parcial, fallida) y el regreso a la etapa de la que salió la orden. Confirmar, cancelar y asignar chofer son los botones de arriba.",
+      "pipelineNote": "Aquí solo se registra el desvío «Intento fallido» y el regreso a la etapa de la que salió la orden. Marcar como recogida, cancelar, reabrir y asignar chofer son los botones de arriba.",
       "errors": {
         "dateRequired": "La fecha no se puede quitar; elija otra."
       },
@@ -3525,7 +3524,7 @@
         "run": "Cotizar",
         "quoted": "Monto cotizado",
         "quotedAt": "Cotizada el {date}",
-        "notQuoted": "Todavía no se ha cotizado: la cotización se congela al confirmar la orden.",
+        "notQuoted": "Todavía no se ha cotizado: se cotiza al crear la orden si el cliente tiene contrato y tarifa; si no, al marcarla como recogida.",
         "preview": "Vista previa con las tarifas vigentes",
         "dispatch": "Despacho",
         "codFee": "Cargo por COD",
@@ -3560,12 +3559,13 @@
       "back": "Volver",
       "statusChanged": "La orden {number} pasó a {status}.",
       "confirm": {
-        "button": "Confirmar",
-        "title": "Confirmar la orden {number}",
-        "body": "Se cotiza la orden con las tarifas del contrato, se revisa el crédito del cliente y la orden sale de su estatus inicial. Después ya no se podrán editar sus datos aquí.",
-        "bodyOverrideOnly": "Esta orden se confirma cotizando con las tarifas del contrato. Su usuario solo puede confirmar autorizando el exceso del crédito del cliente.",
-        "creditNote": "Si autoriza, la orden se confirma de todos modos y queda registrado quién lo autorizó.",
-        "done": "Orden {number} confirmada."
+        "button": "Marcar como recogida",
+        "title": "Marcar como recogida la orden {number}",
+        "body": "Se cotiza la orden con las tarifas del contrato, se revisa el crédito del cliente y la orden pasa de Sometida a Recogida. Después ya no se podrán editar sus datos aquí.",
+        "bodyOverrideOnly": "Esta orden se marca como recogida cotizando con las tarifas del contrato. Su usuario solo puede hacerlo autorizando el exceso del crédito del cliente.",
+        "authorize": "Autorizar y marcar como recogida",
+        "creditNote": "Si autoriza, la orden se marca como recogida de todos modos y queda registrado quién lo autorizó.",
+        "done": "Orden {number} marcada como recogida."
       },
       "reprice": {
         "button": "Re-cotizar",
@@ -3578,7 +3578,24 @@
         "title": "Cancelar la orden {number}",
         "body": "La orden pasa a Cancelada y su viaje de entrega especial, si lo tiene, también se cancela. Esto no se puede deshacer.",
         "confirm": "Cancelar la orden",
+        "reason": "Razón de la cancelación",
+        "reasonPlaceholder": "¿Por qué se cancela la orden?",
+        "reasonRequired": "Indique la razón de la cancelación.",
+        "reasonMax": "La razón no puede pasar de 500 caracteres.",
         "done": "Orden {number} cancelada."
+      },
+      "reopen": {
+        "button": "Reabrir",
+        "title": "Reabrir la orden {number}",
+        "body": "La orden sale de su estatus final y vuelve al flujo. Queda registrada la razón.",
+        "reason": "Razón para reabrir",
+        "reasonPlaceholder": "¿Por qué se reabre la orden?",
+        "reasonRequired": "Indique la razón para reabrir la orden.",
+        "reasonMax": "La razón no puede pasar de 500 caracteres.",
+        "toStatus": "Estatus destino",
+        "lastStatus": "El último en que estuvo",
+        "confirm": "Reabrir la orden",
+        "done": "Orden {number} reabierta."
       },
       "delete": {
         "button": "Eliminar la orden"
@@ -3588,7 +3605,7 @@
         "reassign": "Reasignar chofer",
         "title": "Asignar chofer a la orden {number}",
         "reassignTitle": "Reasignar chofer de la orden {number}",
-        "hint": "Si la orden sigue en su estatus inicial se confirma (cotiza y revisa el crédito), avanza hasta En tránsito y se crea el viaje del chofer. Reasignar cancela el viaje del chofer anterior.",
+        "hint": "Si la orden sigue Sometida se marca como recogida (cotiza con precio final y revisa el crédito), avanza hasta En tránsito y se crea el viaje del chofer. Reasignar cancela el viaje del chofer anterior.",
         "driver": "Chofer",
         "chooseDriver": "Elija el chofer…",
         "noDrivers": "No hay choferes activos",
@@ -3653,10 +3670,9 @@
       "ticketPackages": "Paquetes",
       "ticketCod": "COD",
       "ticketSpecial": "Servicio especial",
-      "saveDraft": "Guardar borrador",
-      "saveConfirm": "Guardar y confirmar",
+      "save": "Guardar",
       "saving": "Guardando…",
-      "ticketNote": "La orden queda en Borrador y se puede editar. «Guardar y confirmar» cotiza, revisa el crédito del cliente y confirma la orden de una vez.",
+      "ticketNote": "La orden queda Sometida: se cotiza y se revisa el crédito del cliente al guardar.",
       "created": "Orden {number} guardada.",
       "errors": {
         "clientRequired": "El cliente es obligatorio.",
@@ -3682,9 +3698,9 @@
       },
       "credit": {
         "title": "El cliente excede su límite de crédito",
-        "authorize": "Autorizar y confirmar",
-        "note": "Si autoriza, la orden se crea y se confirma de todos modos y queda registrado quién lo autorizó.",
-        "denied": "La orden no se creó. Pida a alguien con el permiso de autorizar crédito excedido (orders.credit_override) que la capture o la confirme."
+        "authorize": "Autorizar y guardar",
+        "note": "Si autoriza, la orden se guarda de todos modos y queda registrado quién lo autorizó.",
+        "denied": "La orden no se creó. Pida a alguien con el permiso de autorizar crédito excedido (orders.credit_override) que la capture."
       },
       "mode": "Modo de captura",
       "quick": "Rápida",
@@ -3718,7 +3734,7 @@
       "saveRow": "Guardar fila",
       "saved": "Guardada",
       "captured": "{count} entradas guardadas",
-      "help": "Cada fila crea una orden de 1 paquete y 1 pieza en Borrador, sin cotizar. Para confirmarla, ábrala desde la lista; para varios paquetes use la entrada Detallada.",
+      "help": "Cada fila crea una orden de 1 paquete y 1 pieza Sometida; para varios paquetes use la entrada Detallada.",
       "errors": {
         "codInvalid": "El monto COD debe ser un número."
       }
@@ -3778,10 +3794,8 @@
         "skipped": "Omitida"
       },
       "optionsTitle": "Al importar",
-      "optConfirmNow": "Confirmar las órdenes al importar",
-      "optConfirmNowHelp": "Cotiza, revisa el crédito del cliente y confirma cada orden. Si no lo marca, las órdenes quedan en Borrador.",
       "optOverride": "Autorizar crédito excedido",
-      "optOverrideHelp": "Confirma también las órdenes que pasen el límite de crédito del cliente; queda registrado quién lo autorizó. Solo con «Confirmar las órdenes al importar».",
+      "optOverrideHelp": "Crea también las órdenes que pasen el límite de crédito del cliente (al crear se cotiza y se mide el crédito); queda registrado quién lo autorizó.",
       "optDuplicate": "Aceptar facturas repetidas",
       "optDuplicateHelp": "Crea también las filas cuyo número de factura ya usa otra orden del mismo consignatario, cuando ese consignatario admite repetirlo.",
       "do": "Importar",

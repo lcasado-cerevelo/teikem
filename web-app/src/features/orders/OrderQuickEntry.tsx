@@ -1,5 +1,5 @@
 // Entrada RÁPIDA de órdenes (Lote F-C3; maqueta `quickEditor`/`initQuick`): una rejilla de captura en la que cada Enter (o «Guardar fila»)
-// crea UNA orden de 1 paquete y 1 pieza como BORRADOR (`confirmNow=false`: sin cotizar; confirmar se hace desde la lista o el expediente).
+// crea UNA orden de 1 paquete y 1 pieza Sometida (Lote 106: al crear ya se cotiza y se mide el crédito; si se excede, el servidor responde 422).
 // La fila guardada queda de solo lectura con su número y arriba aparece una fila nueva con el cliente y el servicio conservados. Barra:
 // Cliente (obligatorio), Líneas guardadas y COD acumulado. Columnas: N.º de orden (solo si el cliente asigna sus números), Consignatario
 // (directorio del cliente + compartidos, «+» con `locations.create`), Dirección · Pueblo, Paquete, COD, Servicio y Comentario.

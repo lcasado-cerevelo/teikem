@@ -204,14 +204,14 @@ describe('agregar órdenes a la ruta', () => {
     wrap()
     mock.override = (c: Call) =>
       c.method === 'POST' && c.url.pathname.endsWith('/orders')
-        ? problem(422, 'Hay órdenes que no se pueden asignar a la ruta.', 'status_rule', { 'OT-0001': ['La orden está en Entrada; confírmela antes de asignarla a una ruta.'] })
+        ? problem(422, 'Hay órdenes que no se pueden asignar a la ruta.', 'status_rule', { 'OT-0001': ['La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.'] })
         : undefined
     await user.click(await screen.findByLabelText('OT-0001'))
     await user.click(screen.getByLabelText('OT-0002'))
     await user.click(btn(/^Añadir a la ruta/))
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent('Hay órdenes que no se pueden asignar a la ruta.')
-    expect(alert).toHaveTextContent('OT-0001: La orden está en Entrada; confírmela antes de asignarla a una ruta.')
+    expect(alert).toHaveTextContent('OT-0001: La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.')
     expect(btn(/^Añadir a la ruta/)).toHaveTextContent('Añadir a la ruta (2)')
     expect(screen.getByLabelText('OT-0001').closest('label')).toHaveClass('err')
     await user.click(btn('Entendido'))
@@ -762,7 +762,7 @@ describe('planificar el día', () => {
             ordersSkipped: 2,
             ordersWithoutZone: 3,
             zones: [
-              { dispatchZoneId: 1, zoneCode: 'R-01', tripPublicId: 't-1', tripCode: '2026-0001', tripCreated: false, ordersAssigned: 5, ordersSkipped: 2, issues: [{ code: 'NOT_ELIGIBLE', message: 'Orden OT-0007: La orden está en Entrada; confírmela antes de asignarla a una ruta.', blocking: false }] },
+              { dispatchZoneId: 1, zoneCode: 'R-01', tripPublicId: 't-1', tripCode: '2026-0001', tripCreated: false, ordersAssigned: 5, ordersSkipped: 2, issues: [{ code: 'NOT_ELIGIBLE', message: 'Orden OT-0007: La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.', blocking: false }] },
               { dispatchZoneId: 2, zoneCode: 'R-02', tripPublicId: 't-9', tripCode: '2026-0009', tripCreated: true, ordersAssigned: 0, ordersSkipped: 0, issues: [] },
             ],
           }
@@ -780,7 +780,7 @@ describe('planificar el día', () => {
     expect(summary).toHaveTextContent('3Órdenes sin zona')
     expect(result).toHaveTextContent('R-01 · ruta 2026-0001 · 5 asignadas, 2 omitidas')
     expect(result).toHaveTextContent('R-02 · ruta 2026-0009 creada')
-    expect(result).toHaveTextContent('Orden OT-0007: La orden está en Entrada; confírmela antes de asignarla a una ruta.')
+    expect(result).toHaveTextContent('Orden OT-0007: La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.')
     await user.click(within(result).getByRole('button', { name: 'Listo' }))
     expect(screen.queryByRole('dialog')).toBeNull()
   })

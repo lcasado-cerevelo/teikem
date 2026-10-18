@@ -639,23 +639,22 @@ public static class PrintMediaSizes
 // ---------------- Lote 3 — Órdenes de transporte ----------------
 
 /// <summary>
-/// Dominio OrderStatus (seed): DRAFT (inicial) → CONFIRMED → PICKUP → INBOUND → PLANNED → IN_TRANSIT → ARRIVED → DELIVERED (terminal);
-/// ON_HOLD, PARTIAL y FAILED laterales; CANCELLED terminal. Este lote solo mueve DRAFT → siguiente etapa (confirmar), laterales y CANCELLED.
+/// Dominio OrderStatus — flujo dictado por Luis (2026-10-17, Lote 106; sustituye al del seed original, que era solo un ejemplo):
+/// SUBMITTED «Sometida» (inicial; única etapa donde se edita la orden) → PICKUP «Recogida» → UNASSIGNED «Sin asignar» (ya en el almacén, sin ruta)
+/// → ASSIGNED «Asignada» (puesta en una ruta/chofer) → IN_TRANSIT → DELIVERED (terminal). FAILED «Intento fallido» es lateral (se documenta con un DeliveryAttempt);
+/// CANCELLED (terminal, con razón) e IN_WAREHOUSE «En almacén» (terminal de los servicios de solo recogida). Se puede brincar estatus.
 /// </summary>
 public static class OrderStatuses
 {
-    public const string Draft = "DRAFT";
-    public const string Confirmed = "CONFIRMED";
+    public const string Submitted = "SUBMITTED";
     public const string Pickup = "PICKUP";
-    public const string Inbound = "INBOUND";
-    public const string Planned = "PLANNED";
+    public const string Unassigned = "UNASSIGNED";
+    public const string Assigned = "ASSIGNED";
     public const string InTransit = "IN_TRANSIT";
-    public const string Arrived = "ARRIVED";
     public const string Delivered = "DELIVERED";
-    public const string OnHold = "ON_HOLD";
-    public const string Partial = "PARTIAL";
     public const string Failed = "FAILED";
     public const string Cancelled = "CANCELLED";
+    public const string InWarehouse = "IN_WAREHOUSE";
 }
 
 /// <summary>Dominio StopStatus: PENDING (inicial) → EN_ROUTE → COMPLETED (terminal); FAILED lateral.</summary>

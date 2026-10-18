@@ -46,7 +46,7 @@ export const assigned = (orderPublicId: string, orderNumber: string, tripCode = 
 
 export const ORDER_DETAIL: Rec = {
   id: 11, publicId: 'o-1', orderNumber: 'OT-0001', clientName: 'Advance Solutions', serviceTypeLabel: 'Estándar', serviceType: 'STANDARD',
-  status: 'CONFIRMED', statusLabel: 'Confirmada', totalPieces: 3, packagesSummary: '3 cajas', codAmount: 125.5,
+  status: 'PICKUP', statusLabel: 'Recogida', totalPieces: 3, packagesSummary: '3 cajas', codAmount: 125.5,
   delivery: { name: 'Taller Díaz', city: 'Bayamón', postalCode: '00959' }, assignedTripCode: 'R-0001',
 }
 

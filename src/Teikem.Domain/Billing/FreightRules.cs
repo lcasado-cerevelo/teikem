@@ -24,10 +24,10 @@ public static class FreightRules
     public const string BillingModelDelivery = "BY_DELIVERY";
     public const string BillingModelMixed = "MIXED";
 
-    /// <summary>Estatus de la orden que ya cuentan como «recogida» (de Recogido en adelante en el flujo normal; la fallida, la parcial y la cancelada nunca).</summary>
+    /// <summary>Estatus de la orden que ya cuentan como «recogida» (de Recogida en adelante en el flujo normal, incluida «En almacén» de los servicios de solo recogida; la fallida y la cancelada nunca).</summary>
     public static readonly string[] PickedUpOrLater =
     {
-        OrderStatuses.Pickup, OrderStatuses.Inbound, OrderStatuses.Planned, OrderStatuses.InTransit, OrderStatuses.Arrived, OrderStatuses.Delivered,
+        OrderStatuses.Pickup, OrderStatuses.Unassigned, OrderStatuses.Assigned, OrderStatuses.InTransit, OrderStatuses.Delivered, OrderStatuses.InWarehouse,
     };
 
     public static readonly string[] DeliveredOnly = { OrderStatuses.Delivered };

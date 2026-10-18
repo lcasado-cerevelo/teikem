@@ -1,7 +1,7 @@
 // Alta DETALLADA de una orden (Lote F-C1; maqueta `detailEditor`): paso 01 Cliente y servicio, 02 Consignatario y 03 Paquetes y COD
-// (o Servicio especial) con el «Ticket de la orden» a la derecha. Dos formas de guardar: «Guardar borrador» (nace en Entrada) y
-// «Guardar y confirmar» (`confirmNow`: cotiza, revisa el crédito y confirma en una transacción). Si el servidor responde 422
-// `credit_exceeded` y el usuario tiene `orders.credit_override` se ofrece «Autorizar y confirmar» (reenvía con `overrideCredit`);
+// (o Servicio especial) con el «Ticket de la orden» a la derecha. Un solo «Guardar» (Lote 106): la orden nace Sometida, ya cotizada
+// y con el crédito medido. Si el servidor responde 422 `credit_exceeded` y el usuario tiene `orders.credit_override` se ofrece
+// «Autorizar y guardar» (reenvía con `overrideCredit`);
 // 409 `duplicate_invoice_confirmable` abre «Factura repetida para este consignatario» (reenvía con `confirmDuplicateInvoice`).
 // El precio NO se muestra al capturar. Entrega especial: servicio del catálogo del cliente, sin paquetes, COD ni chofer.
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -38,18 +38,15 @@ import {
 } from './orderRules'
 import './orders.css'
 
-type SaveMode = 'draft' | 'confirm'
-
 /** Un envío que quedó esperando una decisión del usuario (factura repetida / crédito excedido). */
 interface Pending {
   values: OrderFormValues
-  confirmNow: boolean
   confirmDuplicateInvoice: boolean
 }
 
 export interface OrderEntryFormProps {
-  /** La orden se creó (ficha devuelta por el servidor); `confirmed` = se guardó con «Guardar y confirmar». */
-  onCreated: (order: OrderDetailDto, confirmed: boolean) => void
+  /** La orden se creó (ficha devuelta por el servidor). */
+  onCreated: (order: OrderDetailDto) => void
   /** Lote F-G2: interruptor «Label al guardar» (la lista imprime el label de la orden creada; sin él no se pinta). */
   labelOnSave?: { value: boolean; onChange: (on: boolean) => void }
 }
@@ -76,8 +73,6 @@ export function OrderEntryForm({ onCreated, labelOnSave }: OrderEntryFormProps) 
   const { data: settings } = useTenantSettings()
   const { data: serviceTypes = [] } = useLookups('ServiceType')
   const { data: packageTypes = [] } = useLookups('PackageType')
-  const modeRef = useRef<SaveMode>('draft')
-  const [savingMode, setSavingMode] = useState<SaveMode>('draft')
   const [dup, setDup] = useState<{ info: DuplicateInvoice; pending: Pending } | null>(null)
   const [dupError, setDupError] = useState<string | null>(null)
   const [dupBusy, setDupBusy] = useState(false)
@@ -162,7 +157,6 @@ export function OrderEntryForm({ onCreated, labelOnSave }: OrderEntryFormProps) 
   // ---- Envío ----
   async function send(p: Pending, extra: { overrideCredit?: boolean } = {}): Promise<void> {
     const body = buildOrderRequest(p.values, {
-      confirmNow: p.confirmNow,
       overrideCredit: extra.overrideCredit,
       confirmDuplicateInvoice: p.confirmDuplicateInvoice,
       invoiceEditable,
@@ -170,7 +164,7 @@ export function OrderEntryForm({ onCreated, labelOnSave }: OrderEntryFormProps) 
     })
     const order = await create.mutateAsync({ body, idempotencyKey: crypto.randomUUID() })
     toast.success(t('orders.entry.created', { number: order.orderNumber ?? '' }))
-    onCreated(order, p.confirmNow)
+    onCreated(order)
   }
 
   /** Decide qué hacer con un error del envío: abrir un diálogo o devolverlo (con los campos renombrados) para que el formulario lo muestre. */
@@ -181,7 +175,7 @@ export function OrderEntryForm({ onCreated, labelOnSave }: OrderEntryFormProps) 
       setDup({ info: d, pending: { ...p, confirmDuplicateInvoice: false } })
       return 'handled'
     }
-    if (p.confirmNow && isCreditExceeded(err)) {
+    if (isCreditExceeded(err)) {
       if (canOverride) {
         setCredit({ message: err.title, pending: p })
         return 'handled'
@@ -193,7 +187,7 @@ export function OrderEntryForm({ onCreated, labelOnSave }: OrderEntryFormProps) 
 
   async function submit(values: OrderFormValues) {
     setCreditDenied(false)
-    const pending: Pending = { values, confirmNow: modeRef.current === 'confirm', confirmDuplicateInvoice: false }
+    const pending: Pending = { values, confirmDuplicateInvoice: false }
     try {
       await send(pending)
     } catch (err) {
@@ -211,7 +205,7 @@ export function OrderEntryForm({ onCreated, labelOnSave }: OrderEntryFormProps) 
       await send(pending)
       setDup(null)
     } catch (err) {
-      if (pending.confirmNow && isCreditExceeded(err) && canOverride) {
+      if (isCreditExceeded(err) && canOverride) {
         setDup(null)
         setCredit({ message: err.title, pending })
       } else {
@@ -458,17 +452,8 @@ export function OrderEntryForm({ onCreated, labelOnSave }: OrderEntryFormProps) 
           )}
           <Can perm="orders.create">
             <div className="oe-save">
-              <button type="submit" className="btn" disabled={busy} onClick={() => {
-                modeRef.current = 'draft'
-                setSavingMode('draft')
-              }}>
-                {busy && savingMode === 'draft' ? t('orders.entry.saving') : t('orders.entry.saveDraft')}
-              </button>
-              <button type="submit" className="btn flow" disabled={busy} onClick={() => {
-                modeRef.current = 'confirm'
-                setSavingMode('confirm')
-              }}>
-                {busy && savingMode === 'confirm' ? t('orders.entry.saving') : t('orders.entry.saveConfirm')}
+              <button type="submit" className="btn flow" disabled={busy}>
+                {busy ? t('orders.entry.saving') : t('orders.entry.save')}
               </button>
             </div>
           </Can>
@@ -540,7 +525,7 @@ export function OrderEntryForm({ onCreated, labelOnSave }: OrderEntryFormProps) 
         message={credit?.message}
         note={t('orders.entry.credit.note')}
         onAuthorize={async () => {
-          if (credit) await send({ ...credit.pending, confirmNow: true }, { overrideCredit: true })
+          if (credit) await send(credit.pending, { overrideCredit: true })
         }}
         onClose={() => setCredit(null)}
       />

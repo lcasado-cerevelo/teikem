@@ -2,13 +2,12 @@
 // admin con todos los permisos, módulos LTL_GROUND y CATALOG encendidos).
 //
 // 1) Alta detallada desplegable: «Nueva orden» → cliente → consignatario del directorio (campos de solo lectura) → dos tipos de paquete
-//    y COD → validaciones sin llamar al servidor → «Guardar borrador» (nace en Entrada) → el formulario se cierra, aviso con
+//    y COD → validaciones sin llamar al servidor → «Guardar» (nace Sometida) → el formulario se cierra, aviso con
 //    «Abrir la orden» y la lista muestra UNA FILA POR TIPO DE PAQUETE con «↳».
 // 2) Filtros de la lista (Cliente múltiple, Factura, ZIP) y Limpiar.
-// 3) «Guardar y confirmar» de un cliente sin tarifa vigente: el mensaje del servidor se muestra y el formulario sigue abierto con lo
-//    capturado (la orden no se crea).
+// 3) Un segundo formulario se llena sin guardarlo y queda abierto con lo capturado (Lote 106: ya no hay «Guardar y confirmar»).
 // 4) Entrega especial: el interruptor cambia la sección 03; un cliente sin servicios especiales lo avisa.
-// 5) Papelera: eliminar una orden en Entrada con confirmación.
+// 5) Papelera: eliminar una orden en su estatus inicial (Sometida) con confirmación.
 //
 // Escritorio y móvil (Pixel 7 a 360 px, sin scroll horizontal de página), cada uno con sus propios datos.
 // Capturas: docs/manual/frontend/img/fc1-<paso>.png (solo en escritorio).
@@ -123,7 +122,7 @@ async function pickConsignee(page: Page, name: string) {
 }
 
 test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
-  test('alta de un borrador con dos tipos de paquete, fila por paquete, filtros, entrega especial y papelera', async ({ page, request }, testInfo) => {
+  test('alta de una orden con dos tipos de paquete, fila por paquete, filtros, entrega especial y papelera', async ({ page, request }, testInfo) => {
     const isMobile = testInfo.project.name.startsWith('movil')
     const suffix = `${isMobile ? 'M' : 'D'}${LETTERS}`
     const clientName = `Cliente FC1 ${suffix}`
@@ -153,7 +152,7 @@ test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
     await expect(page.getByRole('switch', { name: 'Label al guardar' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Todos los labels' })).toBeVisible()
     // validaciones: sin cliente ni consignatario el servidor no se llama
-    await page.getByRole('button', { name: 'Guardar borrador' }).click()
+    await page.getByRole('button', { name: 'Guardar', exact: true }).click()
     await expect(page.getByText('El cliente es obligatorio.')).toBeVisible()
     await expect(page.getByText('El consignatario es obligatorio: elija uno del directorio o capture uno nuevo.')).toBeVisible()
 
@@ -184,16 +183,16 @@ test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
     await shot(page, isMobile, 'fc1-alta')
     if (isMobile) await expectNoHorizontalScroll(page)
 
-    // ---- Guardar borrador ----
-    await page.getByRole('button', { name: 'Guardar borrador' }).click()
+    // ---- Guardar ----
+    await page.getByRole('button', { name: 'Guardar', exact: true }).click()
     await expect(toast(page, /^Orden .+ guardada\.$/)).toBeVisible()
     await expect(page.getByText('Ticket de la orden')).toHaveCount(0)
     const banner = page.locator('.oe-created')
-    await expect(banner).toContainText('guardada como borrador')
+    await expect(banner).toContainText('guardada')
     const page1 = await ok<OrderPageDto>(request.get(`${API_URL}/api/v1/orders?clientId=${client.publicId}`, { headers }), 'órdenes del cliente')
     expect(page1.total).toBe(1)
     const created = page1.items?.[0]
-    expect(created?.status).toBe('DRAFT')
+    expect(created?.status).toBe('SUBMITTED')
     expect(created?.isInitialStatus).toBe(true)
     expect(created?.packages).toHaveLength(2)
 
@@ -223,7 +222,7 @@ test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
     await page.getByRole('button', { name: 'Limpiar' }).click()
     await expect(page.getByLabel('ZIP', { exact: true })).toHaveValue('')
 
-    // ---- Guardar y confirmar sin tarifa: el mensaje del servidor y el formulario sigue abierto ----
+    // ---- Segundo formulario lleno y sin guardar: sigue abierto con lo capturado ----
     await page.getByRole('button', { name: /Nueva orden/ }).click()
     await page.getByRole('button', { name: /Detallada/ }).click()
     await pickClient(page, clientName)
@@ -232,11 +231,9 @@ test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
     if ((await service2.inputValue()) === '') await service2.selectOption({ index: 1 })
     const types2 = page.getByRole('combobox', { name: /^Tipo de paquete/ })
     if ((await types2.first().inputValue()) === '') await types2.first().selectOption({ index: 1 })
-    await page.getByRole('button', { name: 'Guardar y confirmar' }).click()
-    await expect(page.locator('.form-alert')).toContainText(/tarifa|contrato/i)
     await expect(page.getByText('Ticket de la orden')).toBeVisible()
     await expect(page.getByLabel(/^Piezas/).first()).toHaveValue('1')
-    const after = await ok<OrderPageDto>(request.get(`${API_URL}/api/v1/orders?clientId=${client.publicId}`, { headers }), 'órdenes tras confirmar')
+    const after = await ok<OrderPageDto>(request.get(`${API_URL}/api/v1/orders?clientId=${client.publicId}`, { headers }), 'órdenes sin guardar')
     expect(after.total).toBe(1)
 
     // ---- Entrega especial: el cliente no tiene servicios especiales ----
@@ -265,7 +262,7 @@ test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
     expect(gone.total).toBe(0)
   })
 
-  test('factura repetida y crédito excedido: avisos al guardar y confirmar, con autorización', async ({ page, request }, testInfo) => {
+  test('factura repetida y crédito excedido: avisos al guardar, con autorización', async ({ page, request }, testInfo) => {
     const isMobile = testInfo.project.name.startsWith('movil')
     const suffix = `${isMobile ? 'M' : 'D'}${LETTERS}`
     const clientName = `Cliente Cred FC1 ${suffix}`
@@ -303,30 +300,33 @@ test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
     await page.goto('/orders')
     await expect(page.getByRole('heading', { level: 1, name: 'Órdenes' })).toBeVisible()
 
-    // primera orden: borrador con la factura
+    // primera orden con la factura: ya al guardar se cotiza y se mide el crédito (límite 10, tarifa 100) → autorizar
     await fillOrder()
-    await page.getByRole('button', { name: 'Guardar borrador' }).click()
+    await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+    const credit1 = page.getByRole('dialog', { name: 'El cliente excede su límite de crédito' })
+    await expect(credit1).toBeVisible()
+    await credit1.getByRole('button', { name: 'Autorizar y guardar' }).click()
     await expect(toast(page, /^Orden .+ guardada\.$/)).toBeVisible()
     await expect(page.getByText('Ticket de la orden')).toHaveCount(0)
 
     // segunda con la misma factura: el consignatario la admite repetida, avisa y deja decidir
     await fillOrder()
-    await page.getByRole('button', { name: 'Guardar y confirmar' }).click()
+    await page.getByRole('button', { name: 'Guardar', exact: true }).click()
     const dup = page.getByRole('dialog', { name: 'Factura repetida para este consignatario' })
     await expect(dup).toContainText(invoice)
     await shot(page, isMobile, 'fc1-factura-repetida')
     await dup.getByRole('button', { name: 'Crear de todos modos' }).click()
 
-    // al confirmar, el cliente excede su límite: aviso con la opción de autorizar
+    // al guardar, el cliente excede su límite: aviso con la opción de autorizar
     const credit = page.getByRole('dialog', { name: 'El cliente excede su límite de crédito' })
     await expect(credit).toBeVisible()
     await shot(page, isMobile, 'fc1-credito')
     const before = await ok<OrderPageDto>(request.get(`${API_URL}/api/v1/orders?clientId=${client.publicId}`, { headers }), 'órdenes antes de autorizar')
     expect(before.total).toBe(1)
-    await credit.getByRole('button', { name: 'Autorizar y confirmar' }).click()
+    await credit.getByRole('button', { name: 'Autorizar y guardar' }).click()
     await expect(credit).toBeHidden()
     const after = await ok<OrderPageDto>(request.get(`${API_URL}/api/v1/orders?clientId=${client.publicId}`, { headers }), 'órdenes tras autorizar')
     expect(after.total).toBe(2)
-    expect(after.items?.some((o) => o.isInitialStatus === false)).toBe(true)
+    expect(after.items?.every((o) => o.status === 'SUBMITTED')).toBe(true)
   })
 })

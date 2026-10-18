@@ -113,7 +113,7 @@ public sealed class CodTests
 
         var noCod = await OrderAsync(x, "T-2", null);
         Assert.Equal(CodRules.OrderHasNoCod, await MsgOf(() => x.Cod.CollectAsync(noCod.PublicId, Cash(5m), default)));
-        var draft = await OrderAsync(x, "T-3", 50m, status: OrderStatuses.Draft);
+        var draft = await OrderAsync(x, "T-3", 50m, status: OrderStatuses.Submitted);
         Assert.Equal(CodRules.OrderNotCollectable, await MsgOf(() => x.Cod.CollectAsync(draft.PublicId, Cash(5m), default)));
         await Assert.ThrowsAsync<NotFoundException>(() => x.Cod.CollectAsync(Guid.NewGuid(), Cash(5m), default));
     }

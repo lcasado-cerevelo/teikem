@@ -195,7 +195,11 @@ public sealed class StatusService(TeikemDbContext db, ITenantContext tenant, ILo
     /// Transición segura: valida etapa activa + dependencia dura, registra EntityStatusHistory y dispara efectos.
     /// Devuelve el StatusCode destino; el llamador asigna StatusCodeId en su entidad dentro de la misma unidad de trabajo.
     /// </summary>
-    public async Task<StatusCode> TransitionAsync(string statusDomain, string entityTypeCode, int entityId, int? fromStatusId, string toCode, string? comment, CancellationToken ct)
+    public Task<StatusCode> TransitionAsync(string statusDomain, string entityTypeCode, int entityId, int? fromStatusId, string toCode, string? comment, CancellationToken ct)
+        => TransitionAsync(statusDomain, entityTypeCode, entityId, fromStatusId, toCode, comment, reopen: false, ct);
+
+    /// <summary>Con reopen=true (solo lo llama OrderStatusService.ReopenAsync tras exigir el permiso) se puede salir de un estatus terminal hacia cualquier etapa no terminal; no se revalida el orden del pipeline.</summary>
+    public async Task<StatusCode> TransitionAsync(string statusDomain, string entityTypeCode, int entityId, int? fromStatusId, string toCode, string? comment, bool reopen, CancellationToken ct)
     {
         // EntityStatusHistory.Comment es NVARCHAR(500): un comentario más largo terminaría en 500 al guardar (truncado en SQL).
         if (comment is { Length: > CommentMaxLength }) throw new ValidationException("comment", CommentTooLongMessage);
@@ -205,7 +209,12 @@ public sealed class StatusService(TeikemDbContext db, ITenantContext tenant, ILo
         var from = fromStatusId.HasValue ? await db.StatusCodes.AsNoTracking().Include(s => s.StageKind).FirstOrDefaultAsync(s => s.StatusCodeId == fromStatusId.Value, ct) : null;
         var entityTypeId = await lookups.GetIdAsync(LookupDomains.EntityType, entityTypeCode, ct);
 
-        await EnsureTransitionAllowedAsync(enabled, from, to, entityTypeId, entityId, ct);
+        if (reopen)
+        {
+            if (from is null || from.StageKind!.InternalCode != StageKinds.Terminal) throw new StatusRuleException("Solo se reabre un registro en estatus final.");
+            if (to.StageKind!.InternalCode == StageKinds.Terminal) throw new StatusRuleException("Una orden reabierta debe quedar en una etapa en curso.");
+        }
+        else await EnsureTransitionAllowedAsync(enabled, from, to, entityTypeId, entityId, ct);
 
         db.EntityStatusHistories.Add(new EntityStatusHistory
         {

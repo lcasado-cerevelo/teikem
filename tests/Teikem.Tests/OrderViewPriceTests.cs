@@ -300,10 +300,10 @@ public sealed class OrderViewPriceTests
         var full = OrderStatusService.CreditOverrideCommentPrefix + "Ana (límite 10.00, en curso 0.00, esta orden 26.25)";
         f.Db.EntityStatusHistories.AddRange(
             new EntityStatusHistory { EntityStatusHistoryId = 1, TenantId = OrderReadFixture.TenantId, EntityTypeLookupId = typeId, EntityId = 2,
-                ToStatusCodeId = f.StatusId(StatusDomains.OrderStatus, OrderStatuses.Draft) },
+                ToStatusCodeId = f.StatusId(StatusDomains.OrderStatus, OrderStatuses.Submitted) },
             new EntityStatusHistory { EntityStatusHistoryId = 2, TenantId = OrderReadFixture.TenantId, EntityTypeLookupId = typeId, EntityId = 2,
-                FromStatusCodeId = f.StatusId(StatusDomains.OrderStatus, OrderStatuses.Draft),
-                ToStatusCodeId = f.StatusId(StatusDomains.OrderStatus, OrderStatuses.Confirmed), Comment = full });
+                FromStatusCodeId = f.StatusId(StatusDomains.OrderStatus, OrderStatuses.Submitted),
+                ToStatusCodeId = f.StatusId(StatusDomains.OrderStatus, OrderStatuses.Pickup), Comment = full });
         await f.Db.SaveChangesAsync();
         f.Db.ChangeTracker.Clear();
 

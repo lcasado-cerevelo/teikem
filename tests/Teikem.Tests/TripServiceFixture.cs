@@ -149,15 +149,13 @@ internal sealed class TripServiceFixture : IAsyncDisposable
             _statusIds[domain + "|" + code] = s.StatusCodeId;
         }
 
-        S(StatusDomains.OrderStatus, OrderStatuses.Draft, pipe, 1, true);
-        S(StatusDomains.OrderStatus, OrderStatuses.Confirmed, pipe, 2);
-        S(StatusDomains.OrderStatus, OrderStatuses.Pickup, pipe, 3);
-        S(StatusDomains.OrderStatus, OrderStatuses.Inbound, pipe, 4);
-        S(StatusDomains.OrderStatus, OrderStatuses.Planned, pipe, 5);
-        S(StatusDomains.OrderStatus, OrderStatuses.InTransit, pipe, 6);
-        S(StatusDomains.OrderStatus, OrderStatuses.Arrived, pipe, 7);
+        S(StatusDomains.OrderStatus, OrderStatuses.Submitted, pipe, 1, true);
+        S(StatusDomains.OrderStatus, OrderStatuses.Pickup, pipe, 2);
+        S(StatusDomains.OrderStatus, OrderStatuses.Unassigned, pipe, 3);
+        S(StatusDomains.OrderStatus, OrderStatuses.Assigned, pipe, 4);
+        S(StatusDomains.OrderStatus, OrderStatuses.InTransit, pipe, 5);
         S(StatusDomains.OrderStatus, OrderStatuses.Delivered, term, 8);
-        S(StatusDomains.OrderStatus, OrderStatuses.OnHold, lat, 20);
+        S(StatusDomains.OrderStatus, OrderStatuses.Failed, lat, 20);
         S(StatusDomains.OrderStatus, OrderStatuses.Cancelled, term, 30);
 
         S(StatusDomains.StopStatus, StopStatuses.Pending, pipe, 1, true);

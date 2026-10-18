@@ -41,8 +41,8 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
 const problem = (status: number, title: string, code: string, errors?: Record<string, string[]>) =>
   new Response(JSON.stringify({ title, code, status, errors }), { status, headers: { 'Content-Type': 'application/problem+json' } })
 
-const DRAFT_CAPS = { canEditCargo: true, canCancel: true, canDelete: true, canConfirm: true, canReprice: false }
-const CONFIRMED_CAPS = { canEditCargo: false, canCancel: true, canDelete: false, canConfirm: false, canReprice: true }
+const DRAFT_CAPS = { canEditCargo: true, canCancel: true, canDelete: true, canConfirm: true, canReprice: false, canReopen: false }
+const CONFIRMED_CAPS = { canEditCargo: false, canCancel: true, canDelete: false, canConfirm: false, canReprice: true, canReopen: false }
 const BASE_ORDER = {
   id: 7,
   publicId: 'o-7',
@@ -54,8 +54,8 @@ const BASE_ORDER = {
   serviceType: 'STANDARD',
   serviceTypeLabel: 'Estándar',
   priority: 'NORMAL',
-  status: 'DRAFT',
-  statusLabel: 'Borrador',
+  status: 'SUBMITTED',
+  statusLabel: 'Sometida',
   isInitialStatus: true,
   isActive: true,
   currency: 'USD',
@@ -84,18 +84,20 @@ type Order = typeof BASE_ORDER & Record<string, unknown>
 let current: Order = { ...BASE_ORDER }
 
 const STATUSES = [
-  { code: 'DRAFT', label: 'Borrador', stageKind: 'PIPELINE', isInitial: true, isEnabled: true, sortOrder: 10 },
-  { code: 'CONFIRMED', label: 'Confirmada', stageKind: 'PIPELINE', isInitial: false, isEnabled: true, sortOrder: 20 },
+  { code: 'SUBMITTED', label: 'Sometida', stageKind: 'PIPELINE', isInitial: true, isEnabled: true, sortOrder: 10 },
+  { code: 'PICKUP', label: 'Recogida', stageKind: 'PIPELINE', isInitial: false, isEnabled: true, sortOrder: 20 },
+  { code: 'UNASSIGNED', label: 'Sin asignar', stageKind: 'PIPELINE', isInitial: false, isEnabled: true, sortOrder: 30 },
+  { code: 'ASSIGNED', label: 'Asignada', stageKind: 'PIPELINE', isInitial: false, isEnabled: true, sortOrder: 40 },
   { code: 'IN_TRANSIT', label: 'En tránsito', stageKind: 'PIPELINE', isInitial: false, isEnabled: true, sortOrder: 50 },
-  { code: 'ARRIVED', label: 'En destino', stageKind: 'PIPELINE', isInitial: false, isEnabled: true, sortOrder: 55 },
-  { code: 'DELIVERED', label: 'Entregada', stageKind: 'TERMINAL', isInitial: false, isEnabled: true, sortOrder: 60 },
-  { code: 'ON_HOLD', label: 'En espera', stageKind: 'LATERAL', isInitial: false, isEnabled: true, sortOrder: 70 },
+  { code: 'DELIVERED', label: 'Entregada', stageKind: 'PIPELINE', isInitial: false, isEnabled: true, sortOrder: 60 },
+  { code: 'FAILED', label: 'Intento fallido', stageKind: 'LATERAL', isInitial: false, isEnabled: true, sortOrder: 70 },
   { code: 'CANCELLED', label: 'Cancelada', stageKind: 'TERMINAL', isInitial: false, isEnabled: true, sortOrder: 80 },
+  { code: 'IN_WAREHOUSE', label: 'En almacén', stageKind: 'TERMINAL', isInitial: false, isEnabled: true, sortOrder: 90 },
 ]
 const BASE_LOC = { locationType: 'DELIVERY', country: 'PR', defaultServiceMinutes: 0, isActive: true, rowVersion: 'AAA=', clientPublicId: 'c-1', isShared: false, allowDupInvoice: false }
 const L1 = { ...BASE_LOC, id: 100, publicId: 'l-1', code: 'C-001', name: 'Farmacia Central', line1: 'Calle Sol 1', city: 'San Juan', postalCode: '00901' }
 const L2 = { ...BASE_LOC, id: 101, publicId: 'l-2', code: 'C-002', name: 'Colmado Boricua', line1: 'Carr. 14 km 2', city: 'Ponce', postalCode: '00716' }
-const HISTORY = [{ id: 1, fromCode: null, toCode: 'DRAFT', toLabel: 'Borrador', changedAtUtc: '2026-10-12T10:00:00', changedByName: 'Ana' }]
+const HISTORY = [{ id: 1, fromCode: null, toCode: 'SUBMITTED', toLabel: 'Sometida', changedAtUtc: '2026-10-12T10:00:00', changedByName: 'Ana' }]
 const DRIVERS = [
   { id: 1, publicId: 'd-1', code: 'CH-001', fullName: 'Pedro Rivera', zoneCode: 'SJ', status: 'Disponible', isActive: true },
   { id: 2, publicId: 'd-2', code: 'CH-002', fullName: 'María Soto', zoneCode: 'PO', status: 'Disponible', isActive: true },
@@ -114,7 +116,7 @@ function route({ method, url, body }: Call): unknown {
   }
   if (p === '/api/v1/orders/o-7' && method === 'DELETE') return null
   if (p === '/api/v1/orders/o-7/quote') return { total: 130, lines: [{ serviceType: 'STANDARD', packageType: 'BOX', pieces: 2, baseRate: 60, lineTotal: 120 }], dispatchFee: 10, codFee: 0, credit: { creditLimit: 1000, pendingBalance: 200, orderTotal: 130, available: 800, exceeds: false } }
-  if (/^\/api\/v1\/orders\/o-7\/(confirm|reprice|cancel|status|driver)$/.test(p)) return { ...current, rowVersion: 'CCC=' }
+  if (/^\/api\/v1\/orders\/o-7\/(confirm|reprice|cancel|reopen|status|driver)$/.test(p)) return { ...current, rowVersion: 'CCC=' }
   if (p === '/api/v1/status/OrderStatus') return STATUSES
   if (p === '/api/v1/status/OrderStatus/validate') return { isValid: true, errors: [], warnings: [] }
   if (p === '/api/v1/status/lateral-entries/TRANSPORT_ORDER') return []
@@ -176,12 +178,12 @@ beforeEach(() => {
 })
 
 describe('Expediente — cabecera, paneles y capacidades', () => {
-  it('en Borrador con todos los permisos: Confirmar, Cancelar la orden y Eliminar la orden; sin Re-cotizar ni Asignar chofer', async () => {
+  it('en Sometida con todos los permisos: Marcar como recogida, Cancelar la orden y Eliminar la orden; sin Re-cotizar ni Asignar chofer', async () => {
     wrap()
     await loaded()
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('ORD-00007 · Farmacia Central')
     expect(header()).toHaveTextContent('San Juan · Acme Corp')
-    for (const name of ['Confirmar', 'Cancelar la orden', 'Eliminar la orden']) expect(headerBtn(name)).toBeInTheDocument()
+    for (const name of ['Marcar como recogida', 'Cancelar la orden', 'Eliminar la orden']) expect(headerBtn(name)).toBeInTheDocument()
     expect(headerBtn('Re-cotizar')).toBeNull()
     expect(headerBtn(/chofer/i)).toBeNull()
     // Lote F-G2: «Imprimir label» ya existe; POD (sin endpoint) no
@@ -195,16 +197,16 @@ describe('Expediente — cabecera, paneles y capacidades', () => {
     expect(await screen.findByText('Recibe: Carmen Ortiz', { exact: false })).toBeInTheDocument()
   })
 
-  it('confirmada: Re-cotizar y Cancelar; sin Confirmar, Eliminar ni edición (datos como referencia)', async () => {
-    current = { ...BASE_ORDER, status: 'CONFIRMED', statusLabel: 'Confirmada', isInitialStatus: false, quotedAmount: 120, quotedAtUtc: '2026-10-12T12:00:00', capabilities: CONFIRMED_CAPS }
+  it('recogida: Re-cotizar y Cancelar; sin Marcar como recogida, Eliminar ni edición (datos como referencia)', async () => {
+    current = { ...BASE_ORDER, status: 'PICKUP', statusLabel: 'Recogida', isInitialStatus: false, quotedAmount: 120, quotedAtUtc: '2026-10-12T12:00:00', capabilities: CONFIRMED_CAPS }
     wrap()
     await loaded()
     expect(headerBtn('Re-cotizar')).toBeInTheDocument()
     expect(headerBtn('Cancelar la orden')).toBeInTheDocument()
-    expect(headerBtn('Confirmar')).toBeNull()
+    expect(headerBtn('Marcar como recogida')).toBeNull()
     expect(headerBtn('Eliminar la orden')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Guardar cambios' })).toBeNull()
-    expect(screen.getByText(/Esta orden ya avanzó de Borrador/)).toBeInTheDocument()
+    expect(screen.getByText(/Esta orden ya avanzó de Sometida/)).toBeInTheDocument()
     // paquetes en tabla de solo lectura
     expect(screen.getByRole('cell', { name: 'Caja' })).toBeInTheDocument()
     expect(screen.queryByLabelText('Monto COD')).toBeNull()
@@ -213,7 +215,7 @@ describe('Expediente — cabecera, paneles y capacidades', () => {
   it('sin permisos de escritura la ficha es de lectura: ninguna acción ni edición', async () => {
     wrap(['orders.view'])
     await loaded()
-    for (const name of ['Confirmar', 'Cancelar la orden', 'Eliminar la orden', 'Re-cotizar']) expect(headerBtn(name)).toBeNull()
+    for (const name of ['Marcar como recogida', 'Cancelar la orden', 'Eliminar la orden', 'Re-cotizar']) expect(headerBtn(name)).toBeNull()
     expect(screen.queryByRole('button', { name: 'Guardar cambios' })).toBeNull()
     expect(screen.getByText('Su usuario no tiene permiso para editar órdenes: los datos se muestran como referencia.')).toBeInTheDocument()
   })
@@ -302,7 +304,7 @@ describe('Expediente — Cotización (orders.view_price)', () => {
   })
 
   it('muestra el monto congelado y cuándo se cotizó', async () => {
-    current = { ...BASE_ORDER, status: 'CONFIRMED', statusLabel: 'Confirmada', isInitialStatus: false, quotedAmount: 120, quotedAtUtc: '2026-10-12T12:00:00', capabilities: CONFIRMED_CAPS }
+    current = { ...BASE_ORDER, status: 'PICKUP', statusLabel: 'Recogida', isInitialStatus: false, quotedAmount: 120, quotedAtUtc: '2026-10-12T12:00:00', capabilities: CONFIRMED_CAPS }
     wrap()
     await loaded()
     const panel = screen.getByRole('heading', { name: 'Cotización' }).closest('.panel') as HTMLElement
@@ -316,7 +318,7 @@ describe('Expediente — edición dentro del Detalle', () => {
     const user = userEvent.setup()
     wrap()
     await loaded()
-    expect(screen.getByText('Esta orden está en Borrador: puede corregir sus datos y sus paquetes.')).toBeInTheDocument()
+    expect(screen.getByText('Esta orden está en Sometida: puede corregir sus datos y sus paquetes.')).toBeInTheDocument()
     const save = screen.getByRole('button', { name: 'Guardar cambios' })
     expect(save).toBeDisabled()
     // el cliente, el N.º de orden, la factura y el empaque son de solo lectura
@@ -460,19 +462,19 @@ describe('Expediente — edición dentro del Detalle', () => {
 })
 
 describe('Expediente — Confirmar y crédito', () => {
-  it('Confirmar pide confirmación y manda rowVersion con su Idempotency-Key, sin overrideCredit', async () => {
+  it('«Marcar como recogida» pide confirmación y manda rowVersion con su Idempotency-Key, sin overrideCredit', async () => {
     wrap()
     await loaded()
-    const { user, dialog } = await openDialog('Confirmar')
-    await user.click(within(dialog).getByRole('button', { name: 'Confirmar' }))
+    const { user, dialog } = await openDialog('Marcar como recogida')
+    await user.click(within(dialog).getByRole('button', { name: 'Marcar como recogida' }))
     await waitFor(() => expect(callsTo('POST', '/api/v1/orders/o-7/confirm')).toHaveLength(1))
     const call = callsTo('POST', '/api/v1/orders/o-7/confirm')[0]
     expect(call.body).toEqual({ rowVersion: 'AAA=' })
     expect(call.headers.get('Idempotency-Key')).toBeTruthy()
-    expect(await screen.findByText('Orden ORD-00007 confirmada.')).toBeInTheDocument()
+    expect(await screen.findByText('Orden ORD-00007 marcada como recogida.')).toBeInTheDocument()
   })
 
-  it('crédito excedido con orders.credit_override: «Autorizar y confirmar» reenvía con overrideCredit y otra clave', async () => {
+  it('crédito excedido con orders.credit_override: «Autorizar y marcar como recogida» reenvía con overrideCredit y otra clave', async () => {
     let n = 0
     mock.override = ({ method, url }) =>
       method === 'POST' && url.pathname === '/api/v1/orders/o-7/confirm' && n++ === 0
@@ -480,11 +482,11 @@ describe('Expediente — Confirmar y crédito', () => {
         : undefined
     wrap()
     await loaded()
-    const { user, dialog } = await openDialog('Confirmar')
-    await user.click(within(dialog).getByRole('button', { name: 'Confirmar' }))
+    const { user, dialog } = await openDialog('Marcar como recogida')
+    await user.click(within(dialog).getByRole('button', { name: 'Marcar como recogida' }))
     const credit = await screen.findByRole('dialog', { name: 'El cliente excede su límite de crédito' })
     expect(credit).toHaveTextContent('límite 100.00, en curso 90.00')
-    await user.click(within(credit).getByRole('button', { name: 'Autorizar y confirmar' }))
+    await user.click(within(credit).getByRole('button', { name: 'Autorizar y marcar como recogida' }))
     await waitFor(() => expect(callsTo('POST', '/api/v1/orders/o-7/confirm')).toHaveLength(2))
     const [a, b] = callsTo('POST', '/api/v1/orders/o-7/confirm')
     expect(a.body).toEqual({ rowVersion: 'AAA=' })
@@ -497,17 +499,17 @@ describe('Expediente — Confirmar y crédito', () => {
       method === 'POST' && url.pathname === '/api/v1/orders/o-7/confirm' ? problem(422, 'El cliente excede su límite de crédito.', 'credit_exceeded') : undefined
     wrap(EDITOR)
     await loaded()
-    const { user, dialog } = await openDialog('Confirmar')
-    await user.click(within(dialog).getByRole('button', { name: 'Confirmar' }))
+    const { user, dialog } = await openDialog('Marcar como recogida')
+    await user.click(within(dialog).getByRole('button', { name: 'Marcar como recogida' }))
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('El cliente excede su límite de crédito.')
-    expect(screen.queryByRole('button', { name: 'Autorizar y confirmar' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Autorizar y marcar como recogida' })).toBeNull()
   })
 
   it('Facturación (solo orders.credit_override): el botón autoriza directamente con overrideCredit', async () => {
     wrap(['orders.view', 'orders.credit_override', 'orders.view_price'])
     await loaded()
-    const { user, dialog } = await openDialog('Confirmar')
-    await user.click(within(dialog).getByRole('button', { name: 'Autorizar y confirmar' }))
+    const { user, dialog } = await openDialog('Marcar como recogida')
+    await user.click(within(dialog).getByRole('button', { name: 'Autorizar y marcar como recogida' }))
     await waitFor(() => expect(callsTo('POST', '/api/v1/orders/o-7/confirm')).toHaveLength(1))
     expect(callsTo('POST', '/api/v1/orders/o-7/confirm')[0].body).toEqual({ rowVersion: 'AAA=', overrideCredit: true })
   })
@@ -517,15 +519,15 @@ describe('Expediente — Confirmar y crédito', () => {
       method === 'POST' && url.pathname === '/api/v1/orders/o-7/confirm' ? problem(422, 'El cliente está suspendido; no se pueden crear ni confirmar órdenes.', 'status_rule') : undefined
     wrap()
     await loaded()
-    const { user, dialog } = await openDialog('Confirmar')
-    await user.click(within(dialog).getByRole('button', { name: 'Confirmar' }))
+    const { user, dialog } = await openDialog('Marcar como recogida')
+    await user.click(within(dialog).getByRole('button', { name: 'Marcar como recogida' }))
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('El cliente está suspendido; no se pueden crear ni confirmar órdenes.')
   })
 })
 
 describe('Expediente — Re-cotizar, cancelar y eliminar', () => {
   beforeEach(() => {
-    current = { ...BASE_ORDER, status: 'CONFIRMED', statusLabel: 'Confirmada', isInitialStatus: false, quotedAmount: 120, capabilities: CONFIRMED_CAPS }
+    current = { ...BASE_ORDER, status: 'PICKUP', statusLabel: 'Recogida', isInitialStatus: false, quotedAmount: 120, capabilities: CONFIRMED_CAPS }
   })
 
   it('Re-cotizar confirma y llama a POST /reprice sin cuerpo', async () => {
@@ -548,42 +550,43 @@ describe('Expediente — Re-cotizar, cancelar y eliminar', () => {
     expect(await within(dialog).findByRole('alert')).toHaveTextContent("El estatus actual no permite la acción 'REPRICE'.")
   })
 
-  it('Cancelar la orden manda el comentario (opcional) y avisa', async () => {
+  it('Cancelar la orden manda la razón en comment y avisa', async () => {
     wrap()
     await loaded()
     const { user, dialog } = await openDialog('Cancelar la orden')
-    await user.type(within(dialog).getByLabelText('Comentario (opcional)'), 'El cliente la anuló')
+    await user.type(within(dialog).getByLabelText('Razón de la cancelación'), 'El cliente la anuló')
     await user.click(within(dialog).getByRole('button', { name: 'Cancelar la orden' }))
     await waitFor(() => expect(callsTo('POST', '/api/v1/orders/o-7/cancel')).toHaveLength(1))
     expect(callsTo('POST', '/api/v1/orders/o-7/cancel')[0].body).toEqual({ comment: 'El cliente la anuló', rowVersion: 'AAA=' })
     expect(await screen.findByText('Orden ORD-00007 cancelada.')).toBeInTheDocument()
   })
 
-  it('sin comentario manda null; un comentario de más de 500 caracteres lo avisa y no envía', async () => {
+  it('cancelar sin razón no envía y muestra «Indique la razón de la cancelación.»; más de 500 caracteres lo avisa', async () => {
     wrap()
     await loaded()
     const { user, dialog } = await openDialog('Cancelar la orden')
-    fireLong(within(dialog).getByLabelText('Comentario (opcional)'), 501)
+    await user.click(within(dialog).getByRole('button', { name: 'Cancelar la orden' }))
+    expect(await within(dialog).findByText('Indique la razón de la cancelación.')).toBeInTheDocument()
+    expect(callsTo('POST', '/api/v1/orders/o-7/cancel')).toHaveLength(0)
+    fireLong(within(dialog).getByLabelText('Razón de la cancelación'), 501)
     expect(await within(dialog).findByText('El comentario admite como máximo 500 caracteres.')).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'Cancelar la orden' })).toBeDisabled()
-    fireLong(within(dialog).getByLabelText('Comentario (opcional)'), 0)
-    await user.click(within(dialog).getByRole('button', { name: 'Cancelar la orden' }))
-    await waitFor(() => expect(callsTo('POST', '/api/v1/orders/o-7/cancel')).toHaveLength(1))
-    expect(callsTo('POST', '/api/v1/orders/o-7/cancel')[0].body).toEqual({ comment: null, rowVersion: 'AAA=' })
+    expect(callsTo('POST', '/api/v1/orders/o-7/cancel')).toHaveLength(0)
   })
 
   it('el error del servidor al cancelar se ve en el diálogo, que sigue abierto', async () => {
     mock.override = ({ method, url }) =>
-      method === 'POST' && url.pathname.endsWith('/cancel') ? problem(400, 'Solicitud inválida', 'validation', { comment: ['El comentario admite como máximo 500 caracteres.'] }) : undefined
+      method === 'POST' && url.pathname.endsWith('/cancel') ? problem(400, 'Solicitud inválida', 'validation', { comment: ['Indique la razón de la cancelación.'] }) : undefined
     wrap()
     await loaded()
     const { user, dialog } = await openDialog('Cancelar la orden')
+    await user.type(within(dialog).getByLabelText('Razón de la cancelación'), 'x')
     await user.click(within(dialog).getByRole('button', { name: 'Cancelar la orden' }))
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('El comentario admite como máximo 500 caracteres.')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Indique la razón de la cancelación.')
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
-  it('Eliminar (solo en Borrador): DELETE y vuelve a la lista', async () => {
+  it('Eliminar (solo en Sometida): DELETE y vuelve a la lista', async () => {
     current = { ...BASE_ORDER }
     wrap()
     await loaded()
@@ -614,42 +617,42 @@ function fireLong(el: HTMLElement, n: number) {
 
 describe('Expediente — estatus laterales y regreso exacto', () => {
   it('en el pipeline ofrece solo los desvíos (nunca avanzar, cancelar ni confirmar) y los manda por POST /status', async () => {
-    current = { ...BASE_ORDER, status: 'CONFIRMED', statusLabel: 'Confirmada', isInitialStatus: false, capabilities: CONFIRMED_CAPS }
-    history = [...HISTORY, { id: 2, fromCode: 'DRAFT', toCode: 'CONFIRMED', toLabel: 'Confirmada', changedAtUtc: '2026-10-12T11:00:00' }]
+    current = { ...BASE_ORDER, status: 'PICKUP', statusLabel: 'Recogida', isInitialStatus: false, capabilities: CONFIRMED_CAPS }
+    history = [...HISTORY, { id: 2, fromCode: 'SUBMITTED', toCode: 'PICKUP', toLabel: 'Recogida', changedAtUtc: '2026-10-12T11:00:00' }]
     wrap()
     await loaded()
     const user = userEvent.setup()
-    const hold = await screen.findByRole('button', { name: 'Pasar a En espera' })
+    const hold = await screen.findByRole('button', { name: 'Pasar a Intento fallido' })
     expect(screen.queryByRole('button', { name: /Avanzar a|En tránsito|Cancelada|Entregada/ })).toBeNull()
     await user.click(hold)
     await user.type(screen.getByLabelText('Comentario (opcional)'), 'Cliente ausente')
     await user.click(screen.getByRole('button', { name: 'Cambiar estatus' }))
     await waitFor(() => expect(callsTo('POST', '/api/v1/orders/o-7/status')).toHaveLength(1))
-    expect(callsTo('POST', '/api/v1/orders/o-7/status')[0].body).toEqual({ toCode: 'ON_HOLD', comment: 'Cliente ausente' })
+    expect(callsTo('POST', '/api/v1/orders/o-7/status')[0].body).toEqual({ toCode: 'FAILED', comment: 'Cliente ausente' })
     expect(callsTo('POST', '/api/v1/orders/o-7/status')[0].headers.get('Idempotency-Key')).toBeTruthy()
   })
 
   it('desde un lateral ofrece solo volver a la etapa de la que salió', async () => {
-    current = { ...BASE_ORDER, status: 'ON_HOLD', statusLabel: 'En espera', isInitialStatus: false, capabilities: CONFIRMED_CAPS }
+    current = { ...BASE_ORDER, status: 'FAILED', statusLabel: 'Intento fallido', isInitialStatus: false, capabilities: CONFIRMED_CAPS }
     history = [
       ...HISTORY,
-      { id: 2, fromCode: 'DRAFT', toCode: 'CONFIRMED', toLabel: 'Confirmada', changedAtUtc: '2026-10-12T11:00:00' },
-      { id: 3, fromCode: 'CONFIRMED', toCode: 'ON_HOLD', toLabel: 'En espera', changedAtUtc: '2026-10-12T12:00:00' },
+      { id: 2, fromCode: 'SUBMITTED', toCode: 'PICKUP', toLabel: 'Recogida', changedAtUtc: '2026-10-12T11:00:00' },
+      { id: 3, fromCode: 'PICKUP', toCode: 'FAILED', toLabel: 'Intento fallido', changedAtUtc: '2026-10-12T12:00:00' },
     ]
     wrap()
     await loaded()
     const user = userEvent.setup()
-    await user.click(await screen.findByRole('button', { name: 'Volver a Confirmada' }))
+    await user.click(await screen.findByRole('button', { name: 'Volver a Recogida' }))
     await user.click(screen.getByRole('button', { name: 'Cambiar estatus' }))
     await waitFor(() => expect(callsTo('POST', '/api/v1/orders/o-7/status')).toHaveLength(1))
-    expect(callsTo('POST', '/api/v1/orders/o-7/status')[0].body).toMatchObject({ toCode: 'CONFIRMED' })
+    expect(callsTo('POST', '/api/v1/orders/o-7/status')[0].body).toMatchObject({ toCode: 'PICKUP' })
     expect(screen.queryByRole('button', { name: /En tránsito|Cancelada|Entregada/ })).toBeNull()
   })
 
   it('sin orders.edit no hay botones de estatus', async () => {
     wrap(['orders.view'])
     await loaded()
-    await screen.findByText('Borrador', { selector: '.lbl' })
+    await screen.findByText('Sometida', { selector: '.lbl' })
     expect(screen.queryByRole('button', { name: /Pasar a|Volver a|Avanzar a/ })).toBeNull()
   })
 
@@ -677,13 +680,13 @@ describe('Expediente — Asignar chofer (entrega especial)', () => {
       current = order
       const { unmount } = wrap(permissions, modules)
       await loaded()
-      await screen.findByText('Borrador', { selector: '.lbl' })
+      await screen.findByText('Sometida', { selector: '.lbl' })
       expect(headerBtn(/chofer/i)).toBeNull()
       unmount()
     }
     await check({ ...BASE_ORDER })
     await check({ ...BASE_ORDER, isSpecialDelivery: true, status: 'ARRIVED', statusLabel: 'En destino', isInitialStatus: false })
-    await check({ ...BASE_ORDER, isSpecialDelivery: true, status: 'ON_HOLD', statusLabel: 'En espera', isInitialStatus: false })
+    await check({ ...BASE_ORDER, isSpecialDelivery: true, status: 'FAILED', statusLabel: 'Intento fallido', isInitialStatus: false })
     await check({ ...BASE_ORDER, isSpecialDelivery: true }, ALL.filter((p) => p !== 'trips.dispatch'))
     await check({ ...BASE_ORDER, isSpecialDelivery: true }, ALL, ['LTL_GROUND'])
   })
@@ -837,5 +840,66 @@ describe('Expediente — no encontrada', () => {
     wrap()
     expect(await screen.findByText('La orden no existe o no pertenece a su compañía.')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Volver a órdenes' })).toBeInTheDocument()
+  })
+})
+
+describe('Expediente — Reabrir', () => {
+  const FINAL = { ...BASE_ORDER, status: 'DELIVERED', statusLabel: 'Entregada', isInitialStatus: false, capabilities: { ...CONFIRMED_CAPS, canReopen: true } }
+
+  it('solo se ve con capabilities.canReopen Y el permiso orders.reopen', async () => {
+    current = { ...FINAL }
+    wrap([...ALL, 'orders.reopen'])
+    await loaded()
+    expect(headerBtn('Reabrir')).toBeInTheDocument()
+  })
+
+  it('sin el permiso orders.reopen, o sin canReopen, no se pinta', async () => {
+    current = { ...FINAL }
+    wrap(ALL)
+    await loaded()
+    expect(headerBtn('Reabrir')).toBeNull()
+  })
+
+  it('sin canReopen (orden activa) no se pinta aunque tenga el permiso', async () => {
+    current = { ...BASE_ORDER }
+    wrap([...ALL, 'orders.reopen'])
+    await loaded()
+    expect(headerBtn('Reabrir')).toBeNull()
+  })
+
+  it('la razón es obligatoria: vacía no llama al API', async () => {
+    current = { ...FINAL }
+    wrap([...ALL, 'orders.reopen'])
+    await loaded()
+    const { user, dialog } = await openDialog('Reabrir')
+    await user.click(within(dialog).getByRole('button', { name: 'Reabrir la orden' }))
+    expect(await within(dialog).findByText('Indique la razón para reabrir la orden.')).toBeInTheDocument()
+    expect(callsTo('POST', '/api/v1/orders/o-7/reopen')).toHaveLength(0)
+  })
+
+  it('manda POST /reopen con la razón, el estatus destino elegido y su Idempotency-Key, y avisa', async () => {
+    current = { ...FINAL }
+    wrap([...ALL, 'orders.reopen'])
+    await loaded()
+    const { user, dialog } = await openDialog('Reabrir')
+    await user.selectOptions(within(dialog).getByLabelText('Estatus destino'), 'IN_TRANSIT')
+    await user.type(within(dialog).getByLabelText('Razón para reabrir'), 'Se entregó por error')
+    await user.click(within(dialog).getByRole('button', { name: 'Reabrir la orden' }))
+    await waitFor(() => expect(callsTo('POST', '/api/v1/orders/o-7/reopen')).toHaveLength(1))
+    const call = callsTo('POST', '/api/v1/orders/o-7/reopen')[0]
+    expect(call.body).toEqual({ toCode: 'IN_TRANSIT', comment: 'Se entregó por error', rowVersion: 'AAA=' })
+    expect(call.headers.get('Idempotency-Key')).toBeTruthy()
+    expect(await screen.findByText('Orden ORD-00007 reabierta.')).toBeInTheDocument()
+  })
+
+  it('por omisión no manda toCode (el último en que estuvo)', async () => {
+    current = { ...FINAL }
+    wrap([...ALL, 'orders.reopen'])
+    await loaded()
+    const { user, dialog } = await openDialog('Reabrir')
+    await user.type(within(dialog).getByLabelText('Razón para reabrir'), 'Error de captura')
+    await user.click(within(dialog).getByRole('button', { name: 'Reabrir la orden' }))
+    await waitFor(() => expect(callsTo('POST', '/api/v1/orders/o-7/reopen')).toHaveLength(1))
+    expect(callsTo('POST', '/api/v1/orders/o-7/reopen')[0].body).toEqual({ toCode: null, comment: 'Error de captura', rowVersion: 'AAA=' })
   })
 })

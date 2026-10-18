@@ -33,7 +33,7 @@ orden de transporte ya está **Entregada**. Se cambia en `PUT /billing/settings`
 La misma corrida factura también el **flete** de las órdenes de transporte, con lo que se le **cotizó al cliente al confirmar la orden** (`QuotedAmount`). Una orden entra cuando:
 
 - está activa, tiene monto cotizado mayor que cero y su flete no se ha facturado;
-- está en un estatus que su **contrato** ya admite según el **modelo de cobro** (`BillingModel` del contrato): **Por recogido** (`BY_PICKUP`) desde que se recoge (Recogido, Inbound, Planificada, En tránsito, En sitio o Entregada); **Por entrega** (`BY_DELIVERY`), **Mixto** (`MIXED`) y las órdenes sin contrato o sin modelo, **solo cuando está Entregada** (el mixto cobra al entregar porque necesita las dos cosas cumplidas). Una orden Fallida, Parcial, En espera, Borrador o Cancelada no se factura;
+- está en un estatus que su **contrato** ya admite según el **modelo de cobro** (`BillingModel` del contrato): **Por recogido** (`BY_PICKUP`) desde que se recoge (Recogida, Sin asignar, Asignada, En tránsito, Entregada o En almacén; Lote 106); **Por entrega** (`BY_DELIVERY`), **Mixto** (`MIXED`) y las órdenes sin contrato o sin modelo, **solo cuando está Entregada** (el mixto cobra al entregar porque necesita las dos cosas cumplidas). Una orden con Intento fallido, Sometida o Cancelada no se factura;
 - el hecho (la primera vez que llegó a un estatus facturable) cae hasta la fecha final de la corrida (o dentro del período con *solo dentro del período*).
 
 **Cómo se arman las líneas.** Se recalcula la cotización con las tarifas vigentes **el día en que se cotizó** y se factura **una línea por concepto**, cada una con el `RateComponentId` de la tarifa que la dio:

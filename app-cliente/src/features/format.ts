@@ -23,12 +23,12 @@ export function formatMoney(amount: number | null | undefined, lang: Lang): stri
 
 export type Tone = 'ok' | 'warn' | 'danger' | 'info' | 'neutral'
 
-/** Color del estatus de una orden por su código: entregada = verde; fallida o cancelada = rojo; pendiente = amarillo; lo demás (en camino, recogida…) = azul. */
+/** Color del estatus de una orden por su código: entregada o en almacén = verde; intento fallido o cancelada = rojo; sometida o pendiente = amarillo; lo demás (en camino, recogida…) = azul. */
 export function statusTone(code: string | null | undefined): Tone {
   const c = (code ?? '').toUpperCase()
-  if (c.includes('DELIVER') || c === 'COMPLETED') return 'ok'
+  if (c.includes('DELIVER') || c === 'COMPLETED' || c === 'IN_WAREHOUSE') return 'ok'
   if (c.includes('FAIL') || c.includes('CANCEL') || c.includes('REJECT') || c.includes('RETURN')) return 'danger'
-  if (c.includes('DRAFT') || c.includes('PENDING') || c === 'CREATED' || c === 'NEW') return 'warn'
+  if (c.includes('SUBMITTED') || c.includes('DRAFT') || c.includes('PENDING') || c === 'CREATED' || c === 'NEW') return 'warn'
   if (c === '') return 'neutral'
   return 'info'
 }

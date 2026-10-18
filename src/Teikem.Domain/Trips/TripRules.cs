@@ -130,7 +130,7 @@ public static class TripRules
 
     // ---------------- Elegibilidad ----------------
 
-    public const string DraftOrderMessage = "La orden está en Entrada; confírmela antes de asignarla a una ruta.";
+    public const string DraftOrderMessage = "La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.";
     public const string SpecialDeliveryMessage = "Las entregas especiales se asignan al chofer desde la orden; no pasan por Sala de despacho.";
     public const string AlreadyOutMessage = "La orden ya salió a ruta o terminó; no se puede asignar a otra ruta.";
     public const string AssignTripNotAllowedMessage = "El estatus actual no permite la acción 'ASSIGN_TRIP'.";

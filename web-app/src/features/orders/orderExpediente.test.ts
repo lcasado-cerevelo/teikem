@@ -18,8 +18,8 @@ import {
   type OrderAbilities,
 } from './orderRules'
 
-const ALL: OrderAbilities = { edit: true, cancel: true, creditOverride: true, dispatch: true, viewPrice: true, catalogOn: true }
-const NONE: OrderAbilities = { edit: false, cancel: false, creditOverride: false, dispatch: false, viewPrice: false, catalogOn: false }
+const ALL: OrderAbilities = { edit: true, cancel: true, reopen: true, creditOverride: true, dispatch: true, viewPrice: true, catalogOn: true }
+const NONE: OrderAbilities = { edit: false, cancel: false, reopen: false, creditOverride: false, dispatch: false, viewPrice: false, catalogOn: false }
 
 const DRAFT_CAPS = { canEditCargo: true, canCancel: true, canDelete: true, canConfirm: true, canReprice: false }
 const CONFIRMED_CAPS = { canEditCargo: false, canCancel: true, canDelete: false, canConfirm: false, canReprice: true }
@@ -65,12 +65,20 @@ describe('orderActionVisibility — permiso Y capacidad', () => {
 
   it('sin permisos no se ofrece ninguna acción aunque la capacidad lo permita', () => {
     const v = orderActionVisibility(order(), NONE, true)
-    expect(v).toEqual({ confirm: null, reprice: false, cancel: false, delete: false, assignDriver: false, edit: false, quote: false, lateral: false })
+    expect(v).toEqual({ confirm: null, reprice: false, cancel: false, reopen: false, delete: false, assignDriver: false, edit: false, quote: false, lateral: false })
   })
 
   it('quien solo tiene orders.credit_override ve «Confirmar» en modo de autorización (Facturación)', () => {
     expect(orderActionVisibility(order(), { ...NONE, creditOverride: true }, false).confirm).toBe('overrideOnly')
     expect(orderActionVisibility(order(), { ...NONE, edit: true }, false).confirm).toBe('normal')
+  })
+
+  it('Reabrir exige la capacidad canReopen Y el permiso orders.reopen', () => {
+    const final = order({ capabilities: { canReopen: true } })
+    expect(orderActionVisibility(final, { ...NONE, reopen: true }, false).reopen).toBe(true)
+    expect(orderActionVisibility(final, NONE, false).reopen).toBe(false)
+    expect(orderActionVisibility(order({ capabilities: { canReopen: false } }), { ...NONE, reopen: true }, false).reopen).toBe(false)
+    expect(orderActionVisibility(order({ capabilities: { canReopen: true }, isActive: false }), { ...NONE, reopen: true }, false).reopen).toBe(false)
   })
 
   it('cancelar y eliminar usan orders.cancel; re-cotizar y laterales, orders.edit', () => {

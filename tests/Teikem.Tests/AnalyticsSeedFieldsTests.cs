@@ -318,8 +318,8 @@ public class AnalyticsSeedFieldsTests
         var tenant = new TenantContext { TenantId = TenantId, UserId = 1 };
         using var db = InMemoryDb(tenant);
         db.StatusCodes.AddRange(
-            new StatusCode { StatusCodeId = 1, Entity = StatusDomains.OrderStatus, InternalCode = OrderStatuses.Confirmed, LabelJson = "{\"es\":\"Confirmada\"}" },
-            new StatusCode { StatusCodeId = 2, Entity = StatusDomains.OrderStatus, InternalCode = OrderStatuses.OnHold, LabelJson = "{\"es\":\"En espera\"}" },
+            new StatusCode { StatusCodeId = 1, Entity = StatusDomains.OrderStatus, InternalCode = OrderStatuses.Pickup, LabelJson = "{\"es\":\"Confirmada\"}" },
+            new StatusCode { StatusCodeId = 2, Entity = StatusDomains.OrderStatus, InternalCode = OrderStatuses.Failed, LabelJson = "{\"es\":\"En espera\"}" },
             new StatusCode { StatusCodeId = 3, Entity = StatusDomains.TripStatus, InternalCode = TripStatuses.Planned, LabelJson = "{\"es\":\"Planificada\"}" });
         db.Drivers.AddRange(
             new Driver { DriverId = 10, TenantId = TenantId, EmployeeCode = "D1", FullName = "Ana", StatusCodeId = 1, IsActive = true },

@@ -14,7 +14,7 @@ Con **2 letras o más** el buscador cambia los grupos por las órdenes abiertas 
 
 ## Avisos de «Necesita tu atención»
 
-**N órdenes sin chofer** (en almacén o planificadas sin ruta con chofer; con la más antigua y en rojo desde 2 días) lleva a la **Sala de despacho**; **$X de COD sin cuadrar** (con los cobros, las órdenes y el más antiguo; en rojo desde 3 días) lleva a **COD → Reconciliar**. Son filas resumen y salen **antes** que las filas por registro.
+**N órdenes sin chofer** (Sin asignar o Asignadas sin ruta con chofer; con la más antigua y en rojo desde 2 días) lleva a la **Sala de despacho**; **$X de COD sin cuadrar** (con los cobros, las órdenes y el más antiguo; en rojo desde 3 días) lleva a **COD → Reconciliar**. Son filas resumen y salen **antes** que las filas por registro.
 
 ![Aviso de órdenes sin chofer](img/l89-aviso.png)
 

@@ -113,9 +113,9 @@ internal sealed class OrderReadFixture : IAsyncDisposable
             Db.StatusCodes.Add(s);
             _status[domain + "|" + code] = s.StatusCodeId;
         }
-        S(StatusDomains.OrderStatus, OrderStatuses.Draft, pipe, 1, true);
-        S(StatusDomains.OrderStatus, OrderStatuses.Confirmed, pipe, 2);
-        S(StatusDomains.OrderStatus, OrderStatuses.OnHold, lat, 20);
+        S(StatusDomains.OrderStatus, OrderStatuses.Submitted, pipe, 1, true);
+        S(StatusDomains.OrderStatus, OrderStatuses.Pickup, pipe, 2);
+        S(StatusDomains.OrderStatus, OrderStatuses.Failed, lat, 20);
         S(StatusDomains.OrderStatus, OrderStatuses.Cancelled, term, 30);
         S(StatusDomains.StopStatus, StopStatuses.Pending, pipe, 1, true);
         S(ImportBatchStatuses.Domain, ImportBatchStatuses.Validated, pipe, 1, true);
@@ -161,11 +161,11 @@ internal sealed class OrderReadFixture : IAsyncDisposable
             return o;
         }
 
-        O1 = O(1, 1, standard, OrderStatuses.Draft, "Bayamón", "00961", null, new[] { (box, 2, true) });
-        O2 = O(2, 1, express, OrderStatuses.Confirmed, "San Juan", "00901", 26.25m, new[] { (envelope, 1, true), (pallet, 4, false) }, cod: 200m);
-        O3 = O(3, 2, standard, OrderStatuses.Confirmed, "bayamon", "00956", 40m, new[] { (pallet, 3, true) });
+        O1 = O(1, 1, standard, OrderStatuses.Submitted, "Bayamón", "00961", null, new[] { (box, 2, true) });
+        O2 = O(2, 1, express, OrderStatuses.Pickup, "San Juan", "00901", 26.25m, new[] { (envelope, 1, true), (pallet, 4, false) }, cod: 200m);
+        O3 = O(3, 2, standard, OrderStatuses.Pickup, "bayamon", "00956", 40m, new[] { (pallet, 3, true) });
         O4 = O(4, 3, express, OrderStatuses.Cancelled, "Caguas", "00725", 10m, new[] { (box, 1, true) });
-        O(5, 9, standard, OrderStatuses.Confirmed, "Bayamón", "00961", 99m, new[] { (box, 1, true) }, tenantId: 2);
+        O(5, 9, standard, OrderStatuses.Pickup, "Bayamón", "00961", 99m, new[] { (box, 1, true) }, tenantId: 2);
         await Db.SaveChangesAsync();
         Db.ChangeTracker.Clear();
     }

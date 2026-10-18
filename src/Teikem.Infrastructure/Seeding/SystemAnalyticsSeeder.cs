@@ -41,13 +41,13 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
         "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"StatusCode\",\"op\":\"in\",\"value\":[\"OPEN\",\"IN_PROGRESS\"]}]}";
 
     /// <summary>
-    /// Lote 5: órdenes activas pendientes de despacho (CONFIRMED..PLANNED) sin chofer asignado: ni ruta vigente con chofer ni
+    /// Lote 5: órdenes activas pendientes de despacho (SUBMITTED..ASSIGNED) sin chofer asignado: ni ruta vigente con chofer ni
     /// DriverTrip activo (campo HasAssignedDriver de TransportOrderDataSource).
     /// </summary>
     public const string OrdersWithoutDriverFilter =
-        "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"StatusCode\",\"op\":\"in\",\"value\":[\"CONFIRMED\",\"PICKUP\",\"INBOUND\",\"PLANNED\"]},{\"field\":\"HasAssignedDriver\",\"op\":\"isFalse\"}]}";
+        "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"StatusCode\",\"op\":\"in\",\"value\":[\"SUBMITTED\",\"PICKUP\",\"UNASSIGNED\",\"ASSIGNED\"]},{\"field\":\"HasAssignedDriver\",\"op\":\"isFalse\"}]}";
 
-    /// <summary>Lote 5: órdenes activas en excepción (ON_HOLD, PARTIAL, FAILED; CANCELLED no cuenta).</summary>
+    /// <summary>Lote 5: órdenes activas en excepción (FAILED, el intento fallido; CANCELLED no cuenta).</summary>
     public const string OrdersInExceptionFilter =
         "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"IsException\",\"op\":\"isTrue\"}]}";
 
@@ -281,7 +281,7 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
         // Lote 3 — Órdenes de transporte (estado actual: rango ALL, porque la fuente TRANSPORT_ORDER tiene DateField y con
         // rango null el motor aplicaría LAST7 por defecto). 'COD por cobrar' es de Contabilidad (L155/L159: el ciclo COD vive ahí).
         Indicator("Órdenes en curso", "Órdenes activas confirmadas y aún no entregadas", "Active orders confirmed and not yet delivered", EntityTypes.TransportOrder, null, count,
-            "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"StatusCode\",\"op\":\"in\",\"value\":[\"CONFIRMED\",\"PICKUP\",\"INBOUND\",\"PLANNED\",\"IN_TRANSIT\",\"ARRIVED\"]}]}", all, true, 70);
+            "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"StatusCode\",\"op\":\"in\",\"value\":[\"SUBMITTED\",\"PICKUP\",\"UNASSIGNED\",\"ASSIGNED\",\"IN_TRANSIT\",\"FAILED\"]}]}", all, true, 70);
         Indicator("COD por cobrar", "Suma del COD pendiente de cobro de las órdenes activas no canceladas", "Sum of pending COD of active, non-cancelled orders", EntityTypes.TransportOrder, "CodAmount", sum,
             CodPendingFilter, all, true, 71, isMoney: true, module: acct);
         // Lote 4 — Flota. FLEET_DOCUMENT es un estado actual sin DateField (sin rango); WORK_ORDER tiene DateField, así que

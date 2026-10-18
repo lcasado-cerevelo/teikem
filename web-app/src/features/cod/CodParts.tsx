@@ -112,7 +112,7 @@ export function CodOrderModal({ id, onClose }: { id: string; onClose: () => void
     ],
     [t, f],
   )
-  const canCollect = data !== undefined && (data.pending ?? 0) > 0 && data.orderStatus !== 'DRAFT' && data.orderStatus !== 'CANCELLED'
+  const canCollect = data !== undefined && (data.pending ?? 0) > 0 && data.orderStatus !== 'SUBMITTED' && data.orderStatus !== 'CANCELLED'
   return (
     <Modal
       open

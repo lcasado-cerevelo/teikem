@@ -3,10 +3,10 @@
 Lote 103 (portal de clientes, 2026-10-17). Dos cosas relacionadas: la **barra de progreso** de una orden y la **página pública** donde cualquiera con el número de conduce ve en qué etapa va su paquete. La respuesta pública es **solo el avance**: **nunca nombres, direcciones, teléfonos ni montos** (decidido con Luis).
 
 ## 1. La barra de progreso
-- **Tantas etapas como estatus tiene el camino normal de las órdenes de la compañía.** Si la compañía usa ocho estatus (Borrador, Confirmada, Recogido, Inbound, Planificada, En tránsito, En sitio, Entregada), la barra tiene ocho tramos; si usa cuatro, cuatro. Las etapas llevan los nombres que la compañía les puso (y el idioma de quien mira).
+- **Tantas etapas como estatus tiene el camino normal de las órdenes de la compañía.** Con el flujo de fábrica (Lote 106: Sometida, Recogida, Sin asignar, Asignada, En tránsito, Entregada) la barra tiene seis tramos; si la compañía apaga o agrega estatus, cambia. Las etapas llevan los nombres que la compañía les puso (y el idioma de quien mira).
 - **Qué es una etapa:** los estatus del camino normal (tipo PIPELINE) y el primer estatus final (el de «entregada»), en su orden. Un estatus que la compañía **apaga** deja de ser etapa; uno propio que agregue al camino, pasa a serlo.
-- **Qué muestra:** las etapas que ya pasaron en azul, **la actual resaltada («va por aquí»)**, las que faltan apagadas, y debajo «Paso 3 de 8 · Recogido». En la ficha y en la página pública también la **lista de etapas** (hechas con ✓, la actual en negrita).
-- **Entregada:** toda la barra en verde. **Detenida** (en espera, parcial, fallida…): la barra **se queda donde iba**, la etapa actual sale en ámbar y el texto dice «En espera · va por el paso 3 de 8»; la etapa sale del último estatus normal del historial de la orden. **Cancelada:** toda apagada.
+- **Qué muestra:** las etapas que ya pasaron en azul, **la actual resaltada («va por aquí»)**, las que faltan apagadas, y debajo «Paso 2 de 6 · Recogida». En la ficha y en la página pública también la **lista de etapas** (hechas con ✓, la actual en negrita).
+- **Entregada:** toda la barra en verde. **Detenida** (hoy, **Intento fallido**): la barra **se queda donde iba** (por ejemplo, en En tránsito), la etapa actual sale en ámbar y el texto dice «Intento fallido · va por el paso 5 de 6»; la etapa sale del último estatus normal del historial de la orden. **Cancelada:** toda apagada.
 - **Dónde está:** en la **lista de órdenes** y el **inicio** del portal del cliente (barra baja), en la **ficha** de la orden (barra + lista de etapas) y en la **página pública**. El portal del consignatario (lote siguiente) usa el mismo componente.
 
 ## 2. La página pública «¿Cómo va mi orden?»
@@ -40,5 +40,5 @@ Lote 103 (portal de clientes, 2026-10-17). Dos cosas relacionadas: la **barra de
 - **«La página dice que no encuentra mi número»:** revise que el enlace sea el de su compañía, que el número esté bien escrito (sin espacios) y que la compañía tenga el seguimiento encendido. La página contesta lo mismo en todos los casos.
 - **«¿Por qué no sale el nombre ni la dirección?»:** a propósito: cualquiera con un número puede consultar, así que solo se muestra el avance.
 - **«La barra tiene más (o menos) etapas que antes»:** las etapas son los estatus del camino normal de la compañía; si se agregó, quitó o apagó un estatus, cambia la barra.
-- **«Mi paquete está en espera»:** la barra se queda donde iba y el aviso dice «En espera»; cuando se retome, sigue avanzando.
+- **«Mi paquete tuvo un intento fallido»:** la barra se queda donde iba y el aviso dice «Intento fallido»; cuando la compañía lo reprograme, sigue avanzando.
 - **El conduce es consecutivo:** por eso hay tope de consultas por IP; aun así solo revela el avance, nunca datos de personas.

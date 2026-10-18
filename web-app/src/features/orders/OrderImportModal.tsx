@@ -518,17 +518,6 @@ export function OrderImportModal({ defaultClient = '', onClose }: OrderImportMod
 
             <fieldset className="oi-options" disabled={!canImport || busy}>
               <legend>{t('orders.import.optionsTitle')}</legend>
-              <label className="sw">
-                <input
-                  type="checkbox"
-                  role="switch"
-                  checked={options.confirmNow}
-                  onChange={(e) => setOptions((o) => ({ ...o, confirmNow: e.target.checked, overrideCredit: e.target.checked ? o.overrideCredit : false }))}
-                />
-                <span className="tk" aria-hidden="true" />
-                <span>{t('orders.import.optConfirmNow')}</span>
-              </label>
-              <p className="help">{t('orders.import.optConfirmNowHelp')}</p>
               {canOverride && (
                 <>
                   <label className="sw">
@@ -536,7 +525,6 @@ export function OrderImportModal({ defaultClient = '', onClose }: OrderImportMod
                       type="checkbox"
                       role="switch"
                       checked={options.overrideCredit}
-                      disabled={!options.confirmNow}
                       onChange={(e) => setOptions((o) => ({ ...o, overrideCredit: e.target.checked }))}
                     />
                     <span className="tk" aria-hidden="true" />

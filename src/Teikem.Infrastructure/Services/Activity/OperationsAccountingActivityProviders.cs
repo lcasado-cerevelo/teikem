@@ -111,7 +111,6 @@ public sealed class OperationsActivityProvider(TeikemDbContext db, ILookupCache 
         new(EntityTypes.TransportOrder, StatusDomains.OrderStatus, OrderStatuses.Delivered, ActivityEvents.OrderDelivered),
         new(EntityTypes.TransportOrder, StatusDomains.OrderStatus, OrderStatuses.Failed, ActivityEvents.OrderFailed),
         new(EntityTypes.TransportOrder, StatusDomains.OrderStatus, OrderStatuses.Cancelled, ActivityEvents.OrderCancelled),
-        new(EntityTypes.TransportOrder, StatusDomains.OrderStatus, OrderStatuses.OnHold, ActivityEvents.OrderOnHold),
         new(EntityTypes.Trip, StatusDomains.TripStatus, TripStatuses.Dispatched, ActivityEvents.TripDispatched),
         new(EntityTypes.Trip, StatusDomains.TripStatus, TripStatuses.Completed, ActivityEvents.TripCompleted),
         new(EntityTypes.Trip, StatusDomains.TripStatus, TripStatuses.Cancelled, ActivityEvents.TripCancelled),

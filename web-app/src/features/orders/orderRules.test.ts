@@ -154,9 +154,9 @@ describe('esquema del alta (mensajes exactos del servidor)', () => {
 })
 
 describe('request de POST /orders', () => {
-  const opts = { confirmNow: false, invoiceEditable: false, orderNumberEditable: false }
+  const opts = { invoiceEditable: false, orderNumberEditable: false }
 
-  it('borrador: paquetes, COD, fechas Lista/Límite y sin factura si la asigna Teikem', () => {
+  it('Sometida: paquetes, COD, fechas Lista/Límite y sin factura si la asigna Teikem', () => {
     const req = buildOrderRequest(
       valid({
         readyDate: '2026-10-12',
@@ -177,7 +177,6 @@ describe('request de POST /orders', () => {
       requestedDate: '2026-10-12T00:00:00',
       promisedDate: '2026-10-14T00:00:00',
       clientInvoiceNumber: null,
-      confirmNow: false,
       packages: [
         { packageType: 'BOX', description: 'Ropa', pieces: 2 },
         { packageType: 'ENV', description: null, pieces: 1 },
@@ -194,13 +193,13 @@ describe('request de POST /orders', () => {
     expect(buildOrderRequest(valid({ clientInvoiceNumber: '  ' }), { ...opts, invoiceEditable: true }).clientInvoiceNumber).toBeNull()
   })
 
-  it('confirmar, autorizar crédito y confirmar factura repetida solo van cuando se piden', () => {
-    const plain = buildOrderRequest(valid(), { ...opts, confirmNow: true })
-    expect(plain.confirmNow).toBe(true)
+  it('autorizar crédito y confirmar factura repetida solo van cuando se piden; confirmNow nunca se manda', () => {
+    const plain = buildOrderRequest(valid(), opts)
+    expect('confirmNow' in plain).toBe(false)
     expect('overrideCredit' in plain).toBe(false)
     expect('confirmDuplicateInvoice' in plain).toBe(false)
-    const full = buildOrderRequest(valid(), { ...opts, confirmNow: true, overrideCredit: true, confirmDuplicateInvoice: true })
-    expect(full).toMatchObject({ confirmNow: true, overrideCredit: true, confirmDuplicateInvoice: true })
+    const full = buildOrderRequest(valid(), { ...opts, overrideCredit: true, confirmDuplicateInvoice: true })
+    expect(full).toMatchObject({ overrideCredit: true, confirmDuplicateInvoice: true })
   })
 
   it('entrega especial: isSpecialDelivery + specialServiceId, sin paquetes ni COD ni chofer', () => {

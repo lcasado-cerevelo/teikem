@@ -67,7 +67,8 @@ public sealed class PulseRadarTests
         Assert.Equal("CLIENT", RadarRules.NormalizeGroupBy("client"));
         Assert.Null(RadarRules.NormalizeGroupBy("zip"));
         Assert.Equal((6, 1, 20), (RadarRules.ClampTake(0), RadarRules.ClampTake(1), RadarRules.ClampTake(500)));
-        Assert.DoesNotContain(OrderStatuses.Draft, RadarRules.OpenStatuses);
+        Assert.Contains(OrderStatuses.Submitted, RadarRules.OpenStatuses);   // Lote 106: Sometida absorbe a Confirmada
+        Assert.Contains(OrderStatuses.Failed, RadarRules.OpenStatuses);
         Assert.DoesNotContain(OrderStatuses.Delivered, RadarRules.OpenStatuses);
         Assert.DoesNotContain(OrderStatuses.Cancelled, RadarRules.OpenStatuses);
     }
@@ -78,22 +79,22 @@ public sealed class PulseRadarTests
         var x = await NewWorldAsync();
         await using var _ = x.F;
         var other = await x.F.AddClientAsync("C2");
-        await OrderAsync(x, "A", OrderStatuses.Confirmed, "Ponce", cod: 30m);
+        await OrderAsync(x, "A", OrderStatuses.Pickup, "Ponce", cod: 30m);
         await OrderAsync(x, "B", OrderStatuses.InTransit, "Ponce", cod: 20m);
-        await OrderAsync(x, "C", OrderStatuses.Inbound, "Caguas", client: other);
-        await OrderAsync(x, "D", OrderStatuses.Arrived, "Ponce", client: other);
+        await OrderAsync(x, "C", OrderStatuses.Unassigned, "Caguas", client: other);
+        await OrderAsync(x, "D", OrderStatuses.InTransit, "Ponce", client: other);
         await OrderAsync(x, "E", OrderStatuses.Delivered, "Ponce", cod: 99m);       // entregada: no estorba
-        await OrderAsync(x, "F", OrderStatuses.Draft, "Ponce");                       // borrador: todavía no es una orden en curso
+        await OrderAsync(x, "F", OrderStatuses.Submitted, "Ponce");                    // sometida: ya es una orden en curso (Lote 106)
         await OrderAsync(x, "G", OrderStatuses.Cancelled, "Ponce");
-        await OrderAsync(x, "H", OrderStatuses.Confirmed, "Ponce", active: false);   // dada de baja
+        await OrderAsync(x, "H", OrderStatuses.Pickup, "Ponce", active: false);   // dada de baja
 
         var byTown = await x.Radar.RadarAsync(null, 0, default);
-        Assert.Equal(("TOWN", 4, 50m), (byTown.GroupBy, byTown.OpenCount, byTown.CodAmount));
-        Assert.Equal(new[] { ("Ponce", 3, 50m), ("Caguas", 1, 0m) }, byTown.Groups.Select(g => (g.Key, g.Count, g.CodAmount)).ToArray());
+        Assert.Equal(("TOWN", 5, 50m), (byTown.GroupBy, byTown.OpenCount, byTown.CodAmount));
+        Assert.Equal(new[] { ("Ponce", 4, 50m), ("Caguas", 1, 0m) }, byTown.Groups.Select(g => (g.Key, g.Count, g.CodAmount)).ToArray());
         Assert.Contains(OrderStatuses.InTransit, byTown.OpenStatuses);
 
         var byClient = await x.Radar.RadarAsync("client", 6, default);
-        Assert.Equal(new[] { ("Cliente C1", 2, 50m), ("Cliente C2", 2, 0m) }, byClient.Groups.OrderBy(g => g.Label).Select(g => (g.Label, g.Count, g.CodAmount)).ToArray());
+        Assert.Equal(new[] { ("Cliente C1", 3, 50m), ("Cliente C2", 2, 0m) }, byClient.Groups.OrderBy(g => g.Label).Select(g => (g.Label, g.Count, g.CodAmount)).ToArray());
         Assert.All(byClient.Groups, g => Assert.True(Guid.TryParse(g.Key, out var guid) && guid != Guid.Empty));   // la clave es el publicId del cliente
 
         Assert.Single((await x.Radar.RadarAsync("TOWN", 1, default)).Groups);   // el tope de grupos
@@ -107,8 +108,8 @@ public sealed class PulseRadarTests
     {
         var x = await NewWorldAsync();
         await using var _ = x.F;
-        var a = await OrderAsync(x, "A", OrderStatuses.Inbound, "Ponce", createdDaysAgo: 3);
-        await OrderAsync(x, "B", OrderStatuses.Planned, "Ponce");
+        var a = await OrderAsync(x, "A", OrderStatuses.Unassigned, "Ponce", createdDaysAgo: 3);
+        await OrderAsync(x, "B", OrderStatuses.Assigned, "Ponce");
         var provider = new OrdersNoDriverAttentionProvider(x.Rivers);
         var scope = new AttentionScope(WmsFixture.TenantId, 1, "es", new HashSet<string> { ModuleKeys.LtlGround });
 

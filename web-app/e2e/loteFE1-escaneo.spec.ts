@@ -2,11 +2,11 @@
 // compañía demo, admin con todos los permisos, módulos LTL_GROUND y CATALOG encendidos).
 //
 // Datos propios de cada corrida (por API): un cliente con contrato y tarifa, dos zonas (una con ruta abierta de hoy y otra SIN ruta),
-// consignatarios por pueblo (uno sin zona), órdenes confirmadas y una orden en borrador. El panel «Pendientes» se filtra por ese cliente
+// consignatarios por pueblo (uno sin zona), órdenes recogidas y una orden Sometida. El panel «Pendientes» se filtra por ese cliente
 // para dejar a la vista solo lo de la corrida (la base trae datos de otras).
 //
 // 1) Escaneo con ruta abierta (FOUND_ASSIGNED) por número de orden y por número de empaque; repetir (ALREADY_ASSIGNED).
-// 2) Código inexistente, código vacío, orden en borrador (NOT_ELIGIBLE), zona sin ruta abierta (NO_OPEN_ROUTE), pueblo sin zona (NO_ZONE).
+// 2) Código inexistente, código vacío, orden Sometida (NOT_ELIGIBLE), zona sin ruta abierta (NO_OPEN_ROUTE), pueblo sin zona (NO_ZONE).
 // 3) Medidor «N de M», lista de la sesión con buscador, ventana de la orden con «Abrir», «Pendientes» con filtros y voz.
 //
 // Escritorio y móvil (Pixel 7 a 360 px, sin scroll horizontal de página), cada uno con sus propios datos.
@@ -109,7 +109,7 @@ function tenantDay(plus = 0): string {
 }
 
 test.describe('Estación de escaneo (Lote F-E1)', () => {
-  test('asignar por orden y por empaque, repetir, inexistente, vacío, borrador, sin ruta abierta, sin zona, medidor, sesión, ventana y filtros', async ({ page, request }, testInfo) => {
+  test('asignar por orden y por empaque, repetir, inexistente, vacío, Sometida, sin ruta abierta, sin zona, medidor, sesión, ventana y filtros', async ({ page, request }, testInfo) => {
     const isMobile = testInfo.project.name.startsWith('movil')
     const suffix = `${isMobile ? 'M' : 'D'}${LETTERS}`
     const clientName = `Cliente FE1 ${suffix}`
@@ -180,7 +180,7 @@ test.describe('Estación de escaneo (Lote F-E1)', () => {
     const filters = page.getByRole('group', { name: 'Filtros del escaneo' })
     await filters.getByRole('combobox', { name: 'Cliente' }).fill(clientName)
     await page.getByRole('option', { name: new RegExp(clientName) }).click()
-    await expect(pendingList.getByRole('button')).toHaveCount(4) // a1, a2, b1, c1 (el borrador no está confirmada: no es pendiente)
+    await expect(pendingList.getByRole('button')).toHaveCount(4) // a1, a2, b1, c1 (la Sometida no está recogida: no es pendiente)
     await expect(pendingList.getByRole('button', { name: `Ver la orden ${a1.orderNumber}` })).toContainText(`${clientName} · ${townA} 00959 · FA${suffix}`)
     await expect(pendingList.getByRole('button', { name: `Ver la orden ${c1.orderNumber}` })).toContainText('Sin zona')
     if (isMobile) await expectNoHorizontalScroll(page)
@@ -200,7 +200,7 @@ test.describe('Estación de escaneo (Lote F-E1)', () => {
     await expect(result).toContainText(`Asignada a la ruta ${tripCode}.`)
     await expect(result).toContainText('Encontrada por número de empaque.')
 
-    // ---- 2. Repetir (ALREADY_ASSIGNED), inexistente, vacío, borrador, sin ruta abierta, sin zona ----
+    // ---- 2. Repetir (ALREADY_ASSIGNED), inexistente, vacío, Sometida, sin ruta abierta, sin zona ----
     await scan(a1.orderNumber ?? '')
     await expect(result).toContainText(`Ya estaba en la ruta ${tripCode}.`)
     await expect(result).toContainText('No hace falta hacer nada')
@@ -209,7 +209,7 @@ test.describe('Estación de escaneo (Lote F-E1)', () => {
     await input.press('Enter')
     await expect(result).toContainText('Escanee o escriba un código.')
     await scan(draft.orderNumber ?? '')
-    await expect(result).toContainText('La orden está en Entrada; confírmela antes de asignarla a una ruta.')
+    await expect(result).toContainText('La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.')
     await expect(result).toContainText('No elegible')
     await scan(b1.orderNumber ?? '')
     await expect(result).toContainText(`No hay ruta abierta para la zona FB${suffix} en la fecha ${tenantDay()}; queda sin asignar.`)
@@ -221,7 +221,7 @@ test.describe('Estación de escaneo (Lote F-E1)', () => {
     // ---- 3. Medidor «2 de 4», lista de la sesión con buscador, pendientes que quedan ----
     await expect(page.locator('.scanmeter .nums b')).toHaveText('2')
     await expect(page.locator('.scanmeter .nums .of')).toHaveText(/de [4-5]/)
-    await expect(feedList.getByRole('button')).toHaveCount(6) // a1, a2, a1 otra vez, borrador, b1 y c1 (el inexistente no abre ventana)
+    await expect(feedList.getByRole('button')).toHaveCount(6) // a1, a2, a1 otra vez, Sometida, b1 y c1 (el inexistente no abre ventana)
     await expect(feedList).toContainText(`NOEXISTE-${suffix}`)
     await expect(pendingList.getByRole('button', { name: `Ver la orden ${b1.orderNumber}` })).toBeVisible()
     await expect(pendingList.getByRole('button', { name: `Ver la orden ${c1.orderNumber}` })).toBeVisible()

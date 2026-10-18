@@ -40,16 +40,16 @@ public sealed class PulseRiverService(TeikemDbContext db, ITenantClock clock, IL
         return counts;
     }
 
-    /// <summary>Órdenes en almacén o planificadas SIN una ruta con chofer (la ruta no está cancelada ni completada). Las usan el río, el aviso «sin chofer» y el Radar.</summary>
+    /// <summary>Órdenes sin asignar o asignadas SIN una ruta con chofer (la ruta no está cancelada ni completada). Las usan el río, el aviso «sin chofer» y el Radar.</summary>
     public async Task<IQueryable<TransportOrder>> UnassignedQueryAsync(CancellationToken ct)
     {
         var st = await StatusIdsAsync(StatusDomains.OrderStatus, ct);
-        int inboundId = st.GetValueOrDefault(OrderStatuses.Inbound, -1), plannedId = st.GetValueOrDefault(OrderStatuses.Planned, -1);
+        int unassignedId = st.GetValueOrDefault(OrderStatuses.Unassigned, -1), assignedId = st.GetValueOrDefault(OrderStatuses.Assigned, -1);
         var tripOk = new[] { TripStatuses.Draft, TripStatuses.Planned, TripStatuses.Dispatched, TripStatuses.InProgress };
         var tripIds = (await StatusIdsAsync(StatusDomains.TripStatus, ct)).Where(kv => tripOk.Contains(kv.Key)).Select(kv => kv.Value).ToList();
         var withDriver = db.Set<Teikem.Domain.Trips.TripOrder>().AsNoTracking().Where(to => to.IsCurrent && db.Set<Teikem.Domain.Trips.Trip>().Any(t => t.TripId == to.TripId && t.IsActive && t.DriverId != null && tripIds.Contains(t.StatusCodeId)))
             .Select(to => to.TransportOrderId);
-        return db.TransportOrders.AsNoTracking().Where(o => o.IsActive && (o.StatusCodeId == inboundId || o.StatusCodeId == plannedId) && !withDriver.Contains(o.TransportOrderId));
+        return db.TransportOrders.AsNoTracking().Where(o => o.IsActive && (o.StatusCodeId == unassignedId || o.StatusCodeId == assignedId) && !withDriver.Contains(o.TransportOrderId));
     }
 
     /// <summary>
@@ -74,23 +74,23 @@ public sealed class PulseRiverService(TeikemDbContext db, ITenantClock clock, IL
         var sparkFrom = clock.StartOfDayUtc(today.AddDays(-(SparkDays - 1)));
         var st = await StatusIdsAsync(StatusDomains.OrderStatus, ct);
         int Id(string code) => st.GetValueOrDefault(code, -1);
-        int cancelledId = Id(OrderStatuses.Cancelled), confirmedId = Id(OrderStatuses.Confirmed), pickupId = Id(OrderStatuses.Pickup), inboundId = Id(OrderStatuses.Inbound), plannedId = Id(OrderStatuses.Planned),
-            inTransitId = Id(OrderStatuses.InTransit), arrivedId = Id(OrderStatuses.Arrived);
+        int cancelledId = Id(OrderStatuses.Cancelled), submittedId = Id(OrderStatuses.Submitted), pickupId = Id(OrderStatuses.Pickup), unassignedId = Id(OrderStatuses.Unassigned),
+            inTransitId = Id(OrderStatuses.InTransit);
 
         var orders = db.TransportOrders.AsNoTracking().Where(o => o.IsActive);
 
         // Entrada: creadas hoy (sin canceladas) y, aparte, las que esperan recogida o recibo
         var created = await orders.Where(o => o.CreatedAtUtc >= sparkFrom && o.StatusCodeId != cancelledId).Select(o => o.CreatedAtUtc).ToListAsync(ct);
         var entryToday = created.Count(c => c >= todayFrom && c < todayTo);
-        var waiting = await orders.CountAsync(o => o.StatusCodeId == confirmedId || o.StatusCodeId == pickupId, ct);
+        var waiting = await orders.CountAsync(o => o.StatusCodeId == submittedId || o.StatusCodeId == pickupId, ct);
 
-        var inWarehouse = await orders.CountAsync(o => o.StatusCodeId == inboundId, ct);
+        var inWarehouse = await orders.CountAsync(o => o.StatusCodeId == unassignedId, ct);
 
         // Por despachar: en almacén o planificadas sin una ruta con chofer
         var toDispatch = await (await UnassignedQueryAsync(ct)).CountAsync(ct);
 
-        // En ruta: en tránsito o en destino, y los choferes de las rutas en curso
-        var onRoute = await orders.CountAsync(o => o.StatusCodeId == inTransitId || o.StatusCodeId == arrivedId, ct);
+        // En ruta: en tránsito, y los choferes de las rutas en curso
+        var onRoute = await orders.CountAsync(o => o.StatusCodeId == inTransitId, ct);
         var tripStatuses = await StatusIdsAsync(StatusDomains.TripStatus, ct);
         var live = new[] { tripStatuses.GetValueOrDefault(TripStatuses.Dispatched, -1), tripStatuses.GetValueOrDefault(TripStatuses.InProgress, -1) };
         var drivers = await db.Set<Teikem.Domain.Trips.Trip>().AsNoTracking().Where(t => t.IsActive && t.DriverId != null && live.Contains(t.StatusCodeId)).Select(t => t.DriverId).Distinct().CountAsync(ct);
@@ -126,8 +126,8 @@ public sealed class PulseRiverService(TeikemDbContext db, ITenantClock clock, IL
         var collectedStatusId = Id(colSt, CodCollectionStatuses.Collected);
         var reconciledStatusId = Id(colSt, CodCollectionStatuses.Reconciled);
 
-        // Por cobrar: la entrega ya ocurrió (en destino, entregada o parcial) y el COD no se cobró del todo
-        var atDestination = new[] { Id(orderSt, OrderStatuses.Arrived), Id(orderSt, OrderStatuses.Delivered), Id(orderSt, OrderStatuses.Partial) };
+        // Por cobrar: la entrega ya ocurrió (entregada) y el COD no se cobró del todo
+        var atDestination = new[] { Id(orderSt, OrderStatuses.Delivered) };
         var open = new[] { Id(codSt, CodStatuses.Pending), Id(codSt, CodStatuses.Partial) };
         var toCollect = await db.TransportOrders.AsNoTracking().Where(o => o.IsActive && o.CodStatusCodeId != null && open.Contains(o.CodStatusCodeId!.Value) && atDestination.Contains(o.StatusCodeId))
             .Select(o => new { Cod = o.CodAmount ?? 0m, Collected = db.Set<CodCollection>().Where(c => c.TransportOrderId == o.TransportOrderId && c.StatusCodeId != voidId).Sum(c => (decimal?)c.AmountCollected) ?? 0m })

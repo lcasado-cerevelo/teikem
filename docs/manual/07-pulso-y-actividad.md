@@ -542,17 +542,17 @@ Son **fotos de ahora** (las barritas de 7 días salen del historial diario, ver 
 
 | Tarjeta | Qué cuenta | Texto pequeño | Al hacer clic |
 |---|---|---|---|
-| **Entrada** | órdenes creadas hoy (sin canceladas ni dadas de baja), con las barritas de 7 días | «órdenes nuevas hoy · N esperan» (N = confirmadas y por recoger, de cualquier fecha) | Órdenes |
-| **En almacén** | órdenes recibidas en el almacén (estatus Inbound) | «recibidas en el almacén» | Órdenes |
-| **Por despachar** | órdenes en el almacén o planificadas **sin una ruta con chofer** | «sin chofer» | Sala de despacho |
-| **En ruta** | órdenes en tránsito o en destino | «N choferes» (los de las rutas despachadas o en curso) | Monitoreo de ruta |
+| **Entrada** | órdenes creadas hoy (sin canceladas ni dadas de baja), con las barritas de 7 días | «órdenes nuevas hoy · N esperan» (N = Sometidas y Recogidas, de cualquier fecha) | Órdenes |
+| **En almacén** | órdenes recibidas en el almacén y aún sin ruta (estatus Sin asignar) | «recibidas en el almacén» | Órdenes |
+| **Por despachar** | órdenes Sin asignar o Asignadas **sin una ruta con chofer** | «sin chofer» | Sala de despacho |
+| **En ruta** | órdenes En tránsito | «N choferes» (los de las rutas despachadas o en curso) | Monitoreo de ruta |
 | **Entregado** | órdenes entregadas **hoy** (por el historial de estatus), con barritas de 7 días | «hoy» | Órdenes |
 
 ### Dinero COD
 
 | Tarjeta | Qué cuenta | Texto pequeño | Al hacer clic |
 |---|---|---|---|
-| **Por cobrar** | órdenes con COD **ya en destino o entregadas** que no se han cobrado del todo | «órdenes · faltan $X» | COD (Órdenes con COD) |
+| **Por cobrar** | órdenes con COD **Entregadas** que no se han cobrado del todo | «órdenes · faltan $X» | COD (Órdenes con COD) |
 | **Cobrado** | dinero cobrado en la calle **sin cuadrar** | «efectivo $X · cheques $Y» (y «otros $Z» si hay ATH Móvil o tarjeta) | COD → Reconciliar |
 | **Cuadrado** | dinero cuadrado que todavía **no está en una remesa** | «sin remesa · N clientes» | COD → Remesas |
 | **Remesa lista** | el **neto** de las remesas abiertas, cuadradas o aprobadas (todavía no remitidas) | «N remesas · N clientes» | COD → Remesas |
@@ -569,12 +569,12 @@ Las sumas de dinero suponen **una sola moneda** (la de la compañía). Una orden
 
 ### El Radar
 
-Panel `RADAR` del Pulso (orden 60) con los mismos permisos que el río de órdenes: `pulse.orders`, `orders.view` y el módulo `LTL_GROUND`. Cuenta las órdenes **abiertas** —confirmadas, por recoger, en almacén, planificadas, en tránsito, en destino, en espera o parciales— y **no** las entregadas, canceladas, fallidas, borradores ni dadas de baja («lo entregado no estorba aquí»).
+Panel `RADAR` del Pulso (orden 60) con los mismos permisos que el río de órdenes: `pulse.orders`, `orders.view` y el módulo `LTL_GROUND`. Cuenta las órdenes **abiertas** —Sometidas, Recogidas, Sin asignar, Asignadas, En tránsito o con Intento fallido (desde el Lote 106 las Sometidas cuentan; antes el borrador no)— y **no** las entregadas, canceladas, En almacén ni dadas de baja («lo entregado no estorba aquí»).
 
 - **Cuántas hay abiertas** y, sin búsqueda, los **grupos con más órdenes** (hasta 6) con el COD que llevan: **por pueblo** del consignatario (la parada de entrega) o **por cliente** (el selector «Agrupar por»). Un grupo abre **Órdenes ya filtrado** (el pueblo o el cliente y solo los estatus abiertos); **Ver todas en Órdenes** abre la lista con solo lo abierto.
 - **Buscador:** desde 2 letras busca entre lo abierto por **factura, número de orden, empaque o consignatario** (el mismo buscador libre de Órdenes) y muestra hasta 6 con su estatus y COD; un clic abre la orden.
 - Endpoint: `GET /api/v1/pulse/radar?groupBy=TOWN|CLIENT&take=6` (`orders.view`, módulo `LTL_GROUND`; `groupBy` inválido → 400 «Agrupe por pueblo (TOWN) o por cliente (CLIENT).»; `take` de 1 a 20).
-- **Órdenes** acepta los filtros del enlace: `/orders?city=…`, `/orders?client=<publicId>` y `/orders?statuses=CONFIRMED,IN_TRANSIT…`.
+- **Órdenes** acepta los filtros del enlace: `/orders?city=…`, `/orders?client=<publicId>` y `/orders?statuses=PICKUP,IN_TRANSIT…`.
 
 ### Avisos nuevos de «Necesita tu atención»
 
@@ -582,16 +582,16 @@ Son filas **agregadas** (una sola fila con la cuenta, como en la maqueta) y van 
 
 | Aviso | Qué dice | Quién lo ve | «Revisar» |
 |---|---|---|---|
-| **Órdenes sin chofer** (`ORDERS_NO_DRIVER`) | «N órdenes sin chofer»: en almacén o planificadas **sin una ruta con chofer**; la cifra «La más antigua» (días); rojo desde 2 días | `trips.dispatch` y módulo `LTL_GROUND` | Sala de despacho |
+| **Órdenes sin chofer** (`ORDERS_NO_DRIVER`) | «N órdenes sin chofer»: Sin asignar o Asignadas **sin una ruta con chofer**; la cifra «La más antigua» (días); rojo desde 2 días | `trips.dispatch` y módulo `LTL_GROUND` | Sala de despacho |
 | **COD sin cuadrar** (`COD_UNRECONCILED`) | «$X de COD sin cuadrar»: lo cobrado en la calle que todavía no se cuadra, con los cobros, las órdenes y «El más antiguo»; rojo desde 3 días | `cod.reconcile` y módulo `COD` | COD → Reconciliar |
 
 El aviso de **SLA en riesgo** de la maqueta espera al POD (P7): sin la hora real de entrega no se puede medir.
 
 ### Casos frecuentes
 
-- **El Radar no muestra mi orden:** solo cuenta lo abierto; un borrador (todavía no confirmada) o una entregada no sale. Búsquela en Órdenes.
+- **El Radar no muestra mi orden:** solo cuenta lo abierto; una orden entregada, cancelada o En almacén no sale. Búsquela en Órdenes.
 - **Un pueblo sale dos veces:** el pueblo es el que se guardó en la parada de entrega de cada orden; «Ponce» y «PONCE» se agrupan juntos en SQL Server, pero «Ponce Playa» es otro.
-- **No veo el aviso de órdenes sin chofer:** hace falta `trips.dispatch`; y se muestra solo si hay órdenes en almacén o planificadas sin ruta con chofer.
+- **No veo el aviso de órdenes sin chofer:** hace falta `trips.dispatch`; y se muestra solo si hay órdenes Sin asignar o Asignadas sin ruta con chofer.
 
 ## 8. Fotos diarias de indicadores (Lote 90, P12)
 

@@ -1,4 +1,7 @@
+using System.Reflection;
+using System.Text.RegularExpressions;
 using Teikem.Domain.Constants;
+using Teikem.Infrastructure.Persistence.Scripts;
 using Xunit;
 
 namespace Teikem.Tests;
@@ -32,8 +35,8 @@ public class OrderCatalogTests
     public void Permission_catalog_has_69_codes_including_credit_override()
     {
         // Lote 4: 49 → 52 (fleet.view, driverpay.view, driverpay.manage). Lote 5: 52 → 54 (trips.view, trips.scan). Lote 6: 54 → 58. Lote 8A: 58 → 60 (devices.manage, warehouse.count.capture). Lote F8a: 60 → 65 (pulse.*). Lote 14: 65 → 66 (pulse.attention). Lote 27: 66 → 68 (rental.extend, rental.return).
-        Assert.Equal(96, PermissionCatalog.All.Count);   // Lote 104: + clientmessages.reply, clientmessages.manage;   // 2026-10-08: + warehouse.damage; 2026-10-11: + warehouse.issue; 2026-10-12: + orders.view_price; 2026-10-12 (Lote 43): + printers.manage; 2026-10-12: + inventory.adjust.multi; 2026-10-16 (Lote 72): + billing.view
-        Assert.Equal(96, PermissionCatalog.All.Select(p => p.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        Assert.Equal(97, PermissionCatalog.All.Count);   // Lote 106: + orders.reopen;   // Lote 104: + clientmessages.reply, clientmessages.manage;   // 2026-10-08: + warehouse.damage; 2026-10-11: + warehouse.issue; 2026-10-12: + orders.view_price; 2026-10-12 (Lote 43): + printers.manage; 2026-10-12: + inventory.adjust.multi; 2026-10-16 (Lote 72): + billing.view
+        Assert.Equal(97, PermissionCatalog.All.Select(p => p.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count());
         var credit = Assert.Single(PermissionCatalog.All, p => p.Code == "orders.credit_override");
         Assert.Equal("ORDERS", credit.Category);
         Assert.Equal("Autorizar órdenes sobre el límite de crédito", credit.LabelEs);
@@ -59,19 +62,53 @@ public class OrderCatalogTests
     [Fact]
     public void Order_statuses_match_the_seed()
     {
-        Assert.Equal("DRAFT", OrderStatuses.Draft);
-        Assert.Equal("CONFIRMED", OrderStatuses.Confirmed);
+        Assert.Equal("SUBMITTED", OrderStatuses.Submitted);
         Assert.Equal("PICKUP", OrderStatuses.Pickup);
-        Assert.Equal("INBOUND", OrderStatuses.Inbound);
-        Assert.Equal("PLANNED", OrderStatuses.Planned);
+        Assert.Equal("UNASSIGNED", OrderStatuses.Unassigned);
+        Assert.Equal("ASSIGNED", OrderStatuses.Assigned);
         Assert.Equal("IN_TRANSIT", OrderStatuses.InTransit);
-        Assert.Equal("ARRIVED", OrderStatuses.Arrived);
         Assert.Equal("DELIVERED", OrderStatuses.Delivered);
-        Assert.Equal("ON_HOLD", OrderStatuses.OnHold);
-        Assert.Equal("PARTIAL", OrderStatuses.Partial);
         Assert.Equal("FAILED", OrderStatuses.Failed);
         Assert.Equal("CANCELLED", OrderStatuses.Cancelled);
+        Assert.Equal("IN_WAREHOUSE", OrderStatuses.InWarehouse);
         Assert.Equal("OrderStatus", StatusDomains.OrderStatus);
+    }
+
+    /// <summary>
+    /// Lote 106: el seed (CONGELADO) trae el flujo viejo; la sección (an) del 2026-10-17 de logistica-db-update.sql renombra en sitio
+    /// (DRAFT→SUBMITTED, INBOUND→UNASSIGNED, PLANNED→ASSIGNED), da de baja CONFIRMED/ARRIVED/ON_HOLD/PARTIAL y agrega IN_WAREHOUSE.
+    /// El catálogo activo que resulta de aplicar seed + esa sección debe ser exactamente el de OrderStatuses.
+    /// </summary>
+    [Fact]
+    public void Order_statuses_are_the_catalog_of_seed_plus_update()
+    {
+        var root = DatabaseInitializer.ResolveRepoRoot(null);
+        var seed = File.ReadAllText(Path.Combine(root, "Diseño", "logistica-db-seed.sql"));
+        var update = File.ReadAllText(Path.Combine(root, "Diseño", "logistica-db-update.sql")).Replace("\r\n", "\n");
+
+        var codes = Regex.Matches(seed, @"\('OrderStatus','([A-Z_]+)'").Select(m => m.Groups[1].Value).ToHashSet();
+        Assert.Contains("DRAFT", codes);
+
+        var start = update.IndexOf("2026-10-17 (an) — Lote 106", StringComparison.Ordinal);
+        Assert.True(start >= 0, "Falta la sección (an) del Lote 106 en logistica-db-update.sql.");
+        var next = Regex.Match(update[(start + 10)..], @"\n\s+\d{4}-\d{2}-\d{2} \([a-z]+\) —");
+        var section = next.Success ? update.Substring(start, next.Index + 10) : update[start..];
+
+        foreach (Match m in Regex.Matches(section, @"SET InternalCode='([A-Z_]+)'[^\n]*\nWHERE Entity='OrderStatus' AND InternalCode='([A-Z_]+)'"))
+        {
+            Assert.True(codes.Remove(m.Groups[2].Value), $"El update renombra {m.Groups[2].Value}, que no está en el seed.");
+            codes.Add(m.Groups[1].Value);
+        }
+        // Se borran los estatus que el update lista en el SELECT del remapeo (CONFIRMED, ARRIVED, ON_HOLD, PARTIAL) antes del DELETE FROM dbo.StatusCode.
+        Assert.Contains("DELETE s FROM dbo.StatusCode s JOIN @old", section);
+        var retired = Regex.Match(section, @"FROM dbo\.StatusCode s WHERE s\.Entity='OrderStatus' AND s\.InternalCode IN \(([^)]*)\)");
+        Assert.True(retired.Success, "La sección (an) debe borrar los estatus viejos.");
+        foreach (Match m in Regex.Matches(retired.Groups[1].Value, @"'([A-Z_]+)'")) codes.Remove(m.Groups[1].Value);
+        foreach (Match m in Regex.Matches(section, @"VALUES \('OrderStatus','([A-Z_]+)'")) codes.Add(m.Groups[1].Value);
+
+        var constants = typeof(OrderStatuses).GetFields(BindingFlags.Public | BindingFlags.Static)
+            .Where(f => f.IsLiteral).Select(f => (string)f.GetRawConstantValue()!).ToHashSet();
+        Assert.Equal(constants.OrderBy(c => c), codes.OrderBy(c => c));
     }
 
     [Fact]

@@ -63,12 +63,17 @@ public sealed class OrderStatusController(OrderStatusService service, Permission
     public Task<OrderDetailDto> Reprice(Guid publicId, CancellationToken ct)
         => service.RepriceAsync(publicId, OrderScope.Any, ct);
 
+    /// <summary>Lote 106: reabrir una orden en estatus final (permiso propio orders.reopen). La razón es obligatoria; sin toCode vuelve al último estatus en curso que tuvo.</summary>
+    [HttpPost("reopen"), RequirePermission(PermissionCatalog.OrdersReopen)]
+    public Task<OrderDetailDto> Reopen(Guid publicId, [FromBody] OrderReopenRequest req, CancellationToken ct)
+        => service.ReopenAsync(publicId, req, OrderScope.Any, ct);
+
     /// <summary>Cancelar con bitácora (capacidad CANCEL; respeta las entradas laterales del tenant).</summary>
     [HttpPost("cancel"), RequirePermission(PermissionCatalog.OrdersCancel)]
     public Task<OrderDetailDto> Cancel(Guid publicId, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] OrderCancelRequest? req, CancellationToken ct)
         => service.CancelAsync(publicId, req, OrderScope.Any, ct);
 
-    /// <summary>Estatus laterales (ON_HOLD, PARTIAL, FAILED) y regreso al pipeline. CANCELLED y la confirmación tienen acción propia.</summary>
+    /// <summary>Estatus laterales (FAILED, el intento fallido) y regreso al pipeline. CANCELLED y la confirmación tienen acción propia.</summary>
     [HttpPost("status"), RequirePermission(PermissionCatalog.OrdersEdit)]
     public Task<OrderDetailDto> TransitionStatus(Guid publicId, [FromBody] StatusChangeRequest req, CancellationToken ct)
         => service.TransitionAsync(publicId, req, OrderScope.Any, ct);

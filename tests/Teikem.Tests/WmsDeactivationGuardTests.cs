@@ -101,7 +101,7 @@ public sealed class WmsDeactivationGuardTests
 
         // La orden avanzó: la recolección ya no se elimina, así que no bloquea la baja.
         (await x.F.Db.TransportOrders.SingleAsync(o => o.TransportOrderId == order.TransportOrderId)).StatusCodeId =
-            x.F.StatusId(StatusDomains.OrderStatus, OrderStatuses.Confirmed);
+            x.F.StatusId(StatusDomains.OrderStatus, OrderStatuses.Pickup);
         await x.F.Db.SaveChangesAsync();
         x.F.Db.ChangeTracker.Clear();
         await x.F.Get<ProductService>().DeactivateAsync(x.P.PublicId, default);
@@ -136,7 +136,7 @@ public sealed class WmsDeactivationGuardTests
 
         // Con la orden avanzada, la recolección ya no se puede eliminar: la baja procede.
         (await x.F.Db.TransportOrders.SingleAsync(o => o.TransportOrderId == order.TransportOrderId)).StatusCodeId =
-            x.F.StatusId(StatusDomains.OrderStatus, OrderStatuses.Confirmed);
+            x.F.StatusId(StatusDomains.OrderStatus, OrderStatuses.Pickup);
         await x.F.Db.SaveChangesAsync();
         x.F.Db.ChangeTracker.Clear();
         var done = await x.F.Get<WarehouseService>().DeactivateAsync(x.W.PublicId, null, default);

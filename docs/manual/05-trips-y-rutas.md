@@ -137,7 +137,7 @@ avisos `DRIVER_DOUBLE_BOOKED` de las rutas actualizadas (el chofer queda en más
 
 ## 3. Órdenes en la ruta (consolidación multi-cliente)
 
-Qué hace: agrega y quita órdenes confirmadas de la ruta, y lista las órdenes **sin ruta vigente** ("Sin asignar")
+Qué hace: agrega y quita órdenes ya recogidas (Recogida o Sin asignar; una Sometida no entra) de la ruta, y lista las órdenes **sin ruta vigente** ("Sin asignar")
 con su zona resuelta. Agregar es **atómico** (todo o nada) y **no cambia el estatus de la orden**; quitar la
 libera sin tocarlo tampoco. Una orden solo puede estar en una ruta vigente a la vez.
 
@@ -158,8 +158,8 @@ una parada `DELIVERY` pendiente. En orden de precedencia:
 |---|---|
 | Inactiva, o ya en una etapa terminal | `La orden ya salió a ruta o terminó; no se puede asignar a otra ruta.` |
 | Es una entrega especial | `Las entregas especiales se asignan al chofer desde la orden; no pasan por Sala de despacho.` |
-| Está en la etapa inicial (Entrada) | `La orden está en Entrada; confírmela antes de asignarla a una ruta.` |
-| Está en un estatus lateral (`ON_HOLD`, `PARTIAL`, `FAILED`, …) | `La orden está en '{estatus}'; regrésela al pipeline antes de asignarla a una ruta.` |
+| Está en la etapa inicial (Sometida) | `La orden está en Sometida; márquela como recogida antes de asignarla a una ruta.` |
+| Está en un estatus lateral (`FAILED`, Intento fallido) | `La orden está en '{estatus}'; regrésela al pipeline antes de asignarla a una ruta.` |
 | Ya está en `IN_TRANSIT` o después | `La orden ya salió a ruta o terminó; no se puede asignar a otra ruta.` |
 | Su estatus no tiene la capacidad `ASSIGN_TRIP` | `El estatus actual no permite la acción 'ASSIGN_TRIP'.` |
 | No tiene una parada `DELIVERY` pendiente | `La orden no tiene una parada de entrega pendiente.` |
@@ -321,8 +321,8 @@ Cómo se usa:
 
 Qué hace: lista las rutas activas en `DRAFT`/`PLANNED` de un día con sus avisos y bloqueantes, y despacha una ruta
 (individual o en lote). Al despachar: la ruta se congela (`Route` pasa a `ACTIVE`) y las órdenes vigentes avanzan
-**etapa por etapa** hasta `PLANNED` (o hasta la última etapa habilitada anterior, si el tenant deshabilitó
-`PLANNED`). Despachar es **irreversible**.
+**etapa por etapa** hasta `ASSIGNED` (Asignada; o hasta la última etapa habilitada anterior, si el tenant deshabilitó
+`ASSIGNED`). Al salir la ruta (`IN_PROGRESS`) pasan a `IN_TRANSIT`. Despachar es **irreversible**.
 
 Quién puede: `trips.dispatch`.
 
@@ -389,8 +389,8 @@ Cómo se usa: `POST /api/v1/trips/{publicId}/start` — cuerpo opcional `{ "comm
 
 Qué hace: cierra una ruta en curso (`IN_PROGRESS` → `COMPLETED`): fija `actualEndUtc` y las órdenes dejan de estar vigentes en la
 ruta. Solo se puede cerrar cuando **todas las órdenes vigentes de la ruta ya terminaron**: entregadas, canceladas u otra etapa
-terminal, o con el intento ya concluido sin entrega (**Fallida** o **Parcial**: pasan a la bandeja para reprogramarse). No cuentan
-como terminadas las que siguen en camino, las que llegaron sin resultado ni las **Retenidas**.
+terminal, o con el intento ya concluido sin entrega (**Intento fallido**: pasa a la bandeja para reprogramarse). No cuentan
+como terminadas las que siguen en camino ni las que llegaron sin resultado.
 
 Quién puede: `trips.close` (permiso nuevo; lo traen las plantillas Dispatcher y TenantAdmin, y se agregó a los roles ya existentes
 con esos nombres al correr `db-update`). Un rol personalizado necesita que se lo agreguen.
@@ -408,8 +408,8 @@ El comentario por defecto en el historial es `Ruta cerrada`.
 | `comment` de más de 500 caracteres | `El comentario admite como máximo 500 caracteres.` | 400 |
 | `rowVersion` no coincide | `El registro fue modificado por otro usuario; recargue e intente de nuevo.` | 409 |
 
-Casos frecuentes: una orden sigue `IN_TRANSIT` porque el chofer no registró la entrega → registrarla (o marcarla Fallida/Parcial) y volver a
-cerrar; una orden está `Retenida` → liberarla o cancelarla antes de cerrar. Un cierre automático al terminar la última orden lo traerá la
+Casos frecuentes: una orden sigue `IN_TRANSIT` porque el chofer no registró la entrega → registrarla (o marcarla Intento fallido) y volver a
+cerrar. Un cierre automático al terminar la última orden lo traerá la
 app del chofer (por ahora el cierre es manual).
 
 ### 6.3 Cancelar una orden que va en una ruta
@@ -418,7 +418,7 @@ app del chofer (por ahora el cierre es manual).
 |---|---|---|
 | Cancelar una orden que va en una ruta `DRAFT`/`PLANNED` | se libera de la ruta automáticamente (`204`, sin error) | — |
 | Cancelar una orden que va en una ruta `DISPATCHED`/`IN_PROGRESS` | `La orden va en la ruta {código} ya despachada; no se puede cancelar mientras la ruta esté en curso.` | 422 |
-| Mandar a un lateral (`ON_HOLD`/`PARTIAL`/`FAILED`) una orden de una ruta abierta | se libera de la ruta automáticamente | — |
+| Mandar a Intento fallido (`FAILED`) una orden de una ruta abierta | se libera de la ruta automáticamente | — |
 | Mandar a un lateral una orden de una ruta ya despachada | no cambia nada (lo decide el Lote 7) | — |
 
 ---
@@ -463,7 +463,7 @@ el resultado es `NO_OPEN_ROUTE`. Ocho escaneos simultáneos de órdenes distinta
 
 ## 8. Planificar el día
 
-Qué hace: agrupa por zona de despacho las órdenes confirmadas **sin ruta vigente** de una fecha: usa la ruta
+Qué hace: agrupa por zona de despacho las órdenes elegibles (ya recogidas) **sin ruta vigente** de una fecha: usa la ruta
 abierta de la zona (la de menor id si hay varias) o crea una con el chofer estándar (sección 1). Es **idempotente**
 (repetirla no crea rutas de más y solo agrega lo que sigue sin asignar), está serializada por compañía y **no**
 optimiza, no despacha, no asigna vehículo ni cambia el estatus de las órdenes.
@@ -518,7 +518,7 @@ Sin validaciones propias más allá de las compartidas (permiso y módulo). La f
 | `DRAFT`/`PLANNED` | `PLANNED` (solo se llega optimizando, sección 4.1) | `trips.optimize`, automático al aplicar una optimización | — | Ninguno propio | — |
 | `DRAFT`/`PLANNED` | `DISPATCHED` | `trips.dispatch` (`POST .../dispatch`) | Sin bloqueantes (sección 6.1); pipeline con `DISPATCHED` habilitado | `TripStatusEffect`: congela la ruta (etapa por etapa hasta `Route.ACTIVE`) y avanza las órdenes vigentes hasta `PLANNED` | Contenido de la ruta congelado; cabecera solo editable con `EDIT_TRIP` |
 | `DISPATCHED` | `IN_PROGRESS` | `trips.dispatch` (`POST .../start`) | Debe estar `DISPATCHED` | `TripStatusEffect`: `actualStartUtc`, órdenes vigentes en pipeline avanzan hasta `IN_TRANSIT` | — |
-| `IN_PROGRESS` | `COMPLETED` | `trips.close` (`POST .../complete`, sección 6.2b) | Todas las órdenes vigentes terminadas (terminal, Fallida o Parcial) | `TripStatusEffect`: `actualEndUtc`, `TripOrder.IsCurrent = 0` | Ruta cerrada, solo consulta |
+| `IN_PROGRESS` | `COMPLETED` | `trips.close` (`POST .../complete`, sección 6.2b) | Todas las órdenes vigentes terminadas (terminal o Intento fallido) | `TripStatusEffect`: `actualEndUtc`, `TripOrder.IsCurrent = 0` | Ruta cerrada, solo consulta |
 | `DRAFT`/`PLANNED` | `CANCELLED` ("Eliminar ruta", lateral) | `trips.plan` (`DELETE`) | Solo desde `DRAFT`/`PLANNED` | `TripStatusEffect`: libera todas las órdenes vigentes, archiva la versión vigente de la ruta, `Trip.IsActive = 0` | Reintentar `DELETE`, editar, agregar órdenes, optimizar, despachar (422 "cerrada") |
 
 Intentar `CANCELLED` desde `DISPATCHED`/`IN_PROGRESS` responde el 422 del motor de estatus ("No se permite pasar a
@@ -599,12 +599,12 @@ que `DRIVER_RATE` y `FLEET_DOCUMENT`): es una bitácora de solo lectura, no un r
 
 Fuente nueva **`TRIP`** ("Rutas", con `PlanDate` como campo de fecha), sin `Amount` ni `Rate`. La fuente de Órdenes
 (`TRANSPORT_ORDER`) gana `TripCode`/`TripStatusCode`, `AssignedDriverCode`/`AssignedDriverName`/
-`HasAssignedDriver`, `DispatchZoneCode` e `IsException` (`ON_HOLD`, `PARTIAL` o `FAILED`; `CANCELLED` no cuenta).
+`HasAssignedDriver`, `DispatchZoneCode` e `IsException` (`FAILED`, Intento fallido; `CANCELLED` no cuenta).
 
 El tenant nuevo (y el demo) reciben de fábrica: la vista **"Rutas"** (fecha, número, zona, chofer, vehículo,
 estatus, paradas, sobre el máximo, distancia total; orden por fecha descendente); los indicadores **"Órdenes sin
-chofer asignado"** (activas en `CONFIRMED`..`PLANNED` sin ruta vigente con chofer y sin viaje pagado propio) y
-**"Órdenes en excepción"** (`ON_HOLD`/`PARTIAL`/`FAILED`); el indicador **"Rutas sobre el máximo de paradas"**; y
+chofer asignado"** (activas en `SUBMITTED`..`ASSIGNED` sin ruta vigente con chofer y sin viaje pagado propio) y
+**"Órdenes en excepción"** (`FAILED`); el indicador **"Rutas sobre el máximo de paradas"**; y
 el gráfico de donut **"Rutas por estatus"** (últimos 7 días). Cada alta o cambio de una ruta, sus órdenes, la
 versión de la ruta y los miembros de zona queda en `AuditLog` (`GET /api/v1/audit/changes?entityType=TRIP|ROUTE|
 DISPATCH_ZONE|TRANSPORT_ORDER`); las corridas de optimización no generan `AuditLog` (ya son su propia bitácora).

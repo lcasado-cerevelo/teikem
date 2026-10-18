@@ -125,7 +125,7 @@ describe('Entrada rápida — rejilla', () => {
     expect(screen.getByRole('button', { name: 'Guardar fila' })).toBeEnabled()
   })
 
-  it('Enter guarda UNA orden de 1 paquete y 1 pieza en Borrador, con Idempotency-Key, y abre una fila nueva con el servicio conservado', async () => {
+  it('Enter guarda UNA orden de 1 paquete y 1 pieza Sometida, con Idempotency-Key, y abre una fila nueva con el servicio conservado', async () => {
     const user = userEvent.setup()
     wrap()
     await fillValid(user)
@@ -142,8 +142,8 @@ describe('Entrada rápida — rejilla', () => {
       packages: [{ packageType: 'BOX', pieces: 1 }],
       codAmount: 50,
       notes: 'Llamar antes',
-      confirmNow: false,
     })
+    expect(call.body).not.toHaveProperty('confirmNow')
     expect(call.body).not.toHaveProperty('orderNumber')
     expect(call.body).not.toHaveProperty('overrideCredit')
     expect(call.headers.get('Idempotency-Key')).toMatch(/[0-9a-f-]{36}/)

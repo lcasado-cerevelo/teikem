@@ -81,9 +81,8 @@ public sealed class OrderService(
         // Lote 4 (P7): el chofer solo se asigna en una entrega especial.
         if (req.DriverPublicId is not null && !req.IsSpecialDelivery) throw new ValidationException("driverPublicId", DriverOnlySpecialMessage);
 
-        // Ajuste C: overrideCredit solo acompaña a confirmNow o (Lote 4) a la asignación de chofer, que también confirma; el
-        // permiso se exige pronto (403 + PERMISSION_DENIED) y ConfirmTrackedAsync lo vuelve a comprobar.
-        if (req.OverrideCredit && !req.ConfirmNow && req.DriverPublicId is null) throw new ValidationException("overrideCredit", OrderImportService.OverrideNeedsConfirmNowMessage);
+        // Ajuste C / Lote 106: overrideCredit autoriza crear la orden aunque exceda el crédito del cliente (la cotización y el crédito se miden al crear, en Sometida); el
+        // permiso se exige pronto (403 + PERMISSION_DENIED) y el servicio lo vuelve a comprobar.
         if (req.OverrideCredit) await permissions.EnsureAsync(OrderStatusService.CreditOverridePermission, ct);
 
         // (b) cliente: el scope (portal) gana siempre; si no, clientPublicId. Dado de baja → 409; suspendido → 422.
@@ -312,6 +311,7 @@ public sealed class OrderService(
                     // el DriverTrip). Se repite en cada intento: el savepoint/rollback del reintento revierte también la asignación.
                     if (preparedDriver is not null) await specialDispatch.AssignTrackedAsync(order, preparedDriver, req.OverrideCredit, null, ct2);
                     else if (req.ConfirmNow) await orderStatuses.ConfirmTrackedAsync(order, req.OverrideCredit, ct2);
+                    else await orderStatuses.QuoteOnSubmissionAsync(order, req.OverrideCredit, ct2);   // Lote 106: la orden nace Sometida y ya cotizada (si hay contrato y tarifa) con el crédito medido
 
                     return order.PublicId;
                 }, ct);

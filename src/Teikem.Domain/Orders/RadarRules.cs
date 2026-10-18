@@ -12,7 +12,7 @@ public static class RadarRules
 
     public static readonly string[] OpenStatuses =
     {
-        OrderStatuses.Confirmed, OrderStatuses.Pickup, OrderStatuses.Inbound, OrderStatuses.Planned, OrderStatuses.InTransit, OrderStatuses.Arrived, OrderStatuses.OnHold, OrderStatuses.Partial,
+        OrderStatuses.Submitted, OrderStatuses.Pickup, OrderStatuses.Unassigned, OrderStatuses.Assigned, OrderStatuses.InTransit, OrderStatuses.Failed,
     };
 
     public const string GroupByInvalid = "Agrupe por pueblo (TOWN) o por cliente (CLIENT).";

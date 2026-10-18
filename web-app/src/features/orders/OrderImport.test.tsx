@@ -295,7 +295,7 @@ describe('Importar órdenes — plantilla, cliente y archivo', () => {
 })
 
 describe('Importar órdenes — confirmar, descartar y resultado', () => {
-  it('Importar sin casillas confirma las válidas como borrador, con Idempotency-Key, y muestra creadas, fallidas y omitidas con su número o error', async () => {
+  it('Importar sin casillas confirma las válidas Sometidas, con Idempotency-Key, y muestra creadas, fallidas y omitidas con su número o error', async () => {
     const user = userEvent.setup()
     renderModal()
     await previewed(user)
@@ -313,41 +313,26 @@ describe('Importar órdenes — confirmar, descartar y resultado', () => {
     expect(within(screen.getByRole('dialog', { name: 'Importar órdenes desde CSV' })).getAllByRole('button', { name: 'Cerrar' })).toHaveLength(2)
   })
 
-  it('las casillas viajan en el cuerpo: confirmar al importar, autorizar crédito (solo con lo anterior) y aceptar facturas repetidas', async () => {
+  it('las casillas viajan en el cuerpo: autorizar crédito y aceptar facturas repetidas; nunca confirmNow', async () => {
     const user = userEvent.setup()
     renderModal()
     await previewed(user)
-    const confirmNow = screen.getByRole('switch', { name: 'Confirmar las órdenes al importar' })
+    expect(screen.queryByRole('switch', { name: 'Confirmar las órdenes al importar' })).toBeNull()
     const override = screen.getByRole('switch', { name: 'Autorizar crédito excedido' })
     const dup = screen.getByRole('switch', { name: 'Aceptar facturas repetidas' })
-    expect(confirmNow).not.toBeChecked()
-    expect(override).toBeDisabled() // exige confirmar al importar
-    await user.click(confirmNow)
     expect(override).toBeEnabled()
     await user.click(override)
     await user.click(dup)
     await user.click(screen.getByRole('button', { name: 'Importar' }))
     await waitFor(() => expect(confirmCalls()).toHaveLength(1))
-    expect(confirmCalls()[0].body).toEqual({ confirmNow: true, overrideCredit: true, confirmDuplicateInvoice: true })
-  })
-
-  it('desmarcar «Confirmar las órdenes al importar» también quita la autorización del crédito', async () => {
-    const user = userEvent.setup()
-    renderModal()
-    await previewed(user)
-    await user.click(screen.getByRole('switch', { name: 'Confirmar las órdenes al importar' }))
-    await user.click(screen.getByRole('switch', { name: 'Autorizar crédito excedido' }))
-    await user.click(screen.getByRole('switch', { name: 'Confirmar las órdenes al importar' }))
-    await user.click(screen.getByRole('button', { name: 'Importar' }))
-    await waitFor(() => expect(confirmCalls()).toHaveLength(1))
-    expect(confirmCalls()[0].body).toEqual({})
+    expect(confirmCalls()[0].body).toEqual({ overrideCredit: true, confirmDuplicateInvoice: true })
   })
 
   it('sin orders.credit_override la casilla de autorizar crédito no existe', async () => {
     const user = userEvent.setup()
     renderModal(['orders.create', 'orders.edit', 'clients.read'])
     await previewed(user)
-    expect(screen.getByRole('switch', { name: 'Confirmar las órdenes al importar' })).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'Aceptar facturas repetidas' })).toBeInTheDocument()
     expect(screen.queryByRole('switch', { name: 'Autorizar crédito excedido' })).toBeNull()
   })
 
@@ -434,7 +419,7 @@ describe('Importar órdenes — confirmar, descartar y resultado', () => {
     await user.upload(fileInput(), csv())
     await screen.findByText(/3 filas detectadas/)
     expect(screen.getByRole('button', { name: 'Importar' })).toBeDisabled()
-    expect(screen.getByRole('switch', { name: 'Confirmar las órdenes al importar' })).toBeDisabled()
+    expect(screen.getByRole('switch', { name: 'Aceptar facturas repetidas' })).toBeDisabled()
   })
 })
 

@@ -27,7 +27,7 @@ public class TripServiceTests
         var f = await TripServiceFixture.CreateAsync();
         var (tripId, publicId) = await f.SeedTripAsync("2026-0001", TripStatuses.Draft, f.Zone1);
         var orders = new List<SeededOrder>();
-        for (var i = 0; i < count; i++) orders.Add(await f.SeedOrderAsync(OrderStatuses.Confirmed));
+        for (var i = 0; i < count; i++) orders.Add(await f.SeedOrderAsync(OrderStatuses.Pickup));
         if (count > 0) await f.AddOrdersAsync(tripId, orders.Select(o => o.Id).ToArray());
         return (f, tripId, publicId, orders);
     }
@@ -168,8 +168,8 @@ public class TripServiceTests
         await f.Db.SaveChangesAsync();
         f.Db.ChangeTracker.Clear();
 
-        var o1 = await f.SeedOrderAsync(OrderStatuses.Confirmed);
-        var o2 = await f.SeedOrderAsync(OrderStatuses.Confirmed);
+        var o1 = await f.SeedOrderAsync(OrderStatuses.Pickup);
+        var o2 = await f.SeedOrderAsync(OrderStatuses.Pickup);
         await f.AddOrdersAsync(tripA, o1.Id, o2.Id);
 
         // Carga de o1 por encima de la capacidad; ventana de o1 que la llegada planificada ya pasó; ruta sin hora de salida.

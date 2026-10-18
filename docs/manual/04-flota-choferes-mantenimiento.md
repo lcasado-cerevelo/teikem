@@ -754,8 +754,8 @@ Historial de cualquiera de las cuatro entidades: `GET /api/v1/status/history/{EN
 Qué hace: completa el flujo que el Lote 3 dejó pendiente. Asigna (o reasigna) el chofer de una entrega especial ya
 creada, o lo indica al crearla (`OrderCreateRequest.driverPublicId`). El chofer, su disponibilidad (sección 4) y su
 tarifa por viaje (sección 8.3) se verifican **antes de sacar números** (así un rechazo no deja hueco en la
-numeración de la orden); la asignación confirma la orden si sigue en la etapa inicial (cotiza y verifica crédito
-como en el capítulo 03, sección 3.2), avanza la orden **etapa por etapa** (sin saltos) hasta **IN_TRANSIT** con un
+numeración de la orden); la asignación marca la orden como recogida si sigue Sometida (cotiza y verifica crédito
+como en el capítulo 03, sección 3.2; Lote 106), avanza la orden **etapa por etapa** (sin saltos) hasta **IN_TRANSIT** con un
 registro de historial por etapa, y crea el `DriverTrip` con el monto congelado (sección 9). La ficha de la orden
 expone solo la identidad del chofer asignado (`assignedDriverPublicId/Code/Name`); **nunca** el monto del viaje.
 
@@ -774,10 +774,9 @@ Cómo se usa:
 | `driverPublicId` de otro tenant o inexistente | `Chofer no encontrado.` | 404 |
 | Chofer no disponible para despacho | `El chofer no está disponible para despacho: {motivos bloqueantes separados por '; '}.` | 409 |
 | `driverPublicId` en una orden que **no** es entrega especial | `El chofer solo se asigna en una entrega especial.` (campo `driverPublicId`) | 400 |
-| `overrideCredit: true` sin `confirmNow` ni `driverPublicId` | `overrideCredit requiere confirmNow=true.` (campo `overrideCredit`) | 400 |
-| Exceso de crédito al confirmar, sin `orders.credit_override` | (igual que capítulo 03, sección 3.3) `code: "credit_exceeded"` | 422 |
+| Exceso de crédito al marcar como recogida, sin `orders.credit_override` | (igual que capítulo 03, sección 3.3) `code: "credit_exceeded"` | 422 |
 | Reasignar/asignar sobre una orden que **no** es entrega especial | `Solo las entregas especiales se asignan a un chofer desde aquí; las demás órdenes pasan por Sala de despacho.` | 422 |
-| La orden ya pasó de `IN_TRANSIT` (llegó a ARRIVED o más adelante), o está en un lateral/terminal (en `IN_TRANSIT` todavía se reasigna) | `La entrega especial ya llegó a destino o terminó; no se puede asignar ni reasignar el chofer.` | 422 |
+| La orden ya pasó de `IN_TRANSIT` (ya está Entregada), o está en un lateral/terminal (en `IN_TRANSIT` todavía se reasigna) | `La entrega especial ya llegó a destino o terminó; no se puede asignar ni reasignar el chofer.` | 422 |
 | Asignar el mismo chofer que ya la tiene | `La orden ya está asignada a ese chofer.` | 409 |
 | Dos asignaciones concurrentes a la misma orden | `La orden ya tiene un viaje vigente; recargue e intente de nuevo.` | 409 |
 

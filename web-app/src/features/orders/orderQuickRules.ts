@@ -1,5 +1,5 @@
 // Reglas puras de la entrada RÁPIDA de órdenes (Lote F-C3; maqueta `quickEditor`/`initQuick`): una fila = una orden de 1 paquete y 1 pieza.
-// Validación de la fila con los mensajes del servidor (manual 03 §1.1), request de `POST /orders` (borrador: `confirmNow=false`),
+// Validación de la fila con los mensajes del servidor (manual 03 §1.1), request de `POST /orders` (la orden nace Sometida),
 // traducción de los errores del servidor a campos de la fila y preferencia Rápida/Detallada. Sin React: se prueba en `orderQuickRules.test.ts`.
 import { ApiError } from '../../kernel/api/problem'
 import { parseNumber } from '../../kernel/format'
@@ -80,7 +80,6 @@ export function buildQuickRequest(clientPublicId: string, v: QuickRowValues, o: 
     requestedDate: dayStart(o.today),
     promisedDate: dayStart(o.today),
     notes: v.notes.trim() || null,
-    confirmNow: false,
   }
   if (o.orderNumberEditable && v.orderNumber.trim()) req.orderNumber = v.orderNumber.trim()
   return req

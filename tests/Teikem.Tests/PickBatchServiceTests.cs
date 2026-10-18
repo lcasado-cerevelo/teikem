@@ -220,14 +220,14 @@ public sealed class PickBatchServiceTests
         var bin = await f.AddBinAsync(await f.AddZoneAsync(w, "PCK", ZoneTypes.Picking), "P-01");
         var p = await f.AddProductAsync("PN");
         var client = await f.AddClientAsync("C1");
-        var order = await f.AddOrderAsync(client.ClientId, "2026-000778", status: OrderStatuses.Confirmed, packBatchNumber: "EMP-00010");
+        var order = await f.AddOrderAsync(client.ClientId, "2026-000778", status: OrderStatuses.Pickup, packBatchNumber: "EMP-00010");
         var batch = await AddBatchAsync(f, w, bin, p, "EMP-00010", PickBatchStatuses.Packed, order.TransportOrderId);
         f.SetPermissions(PermissionCatalog.InventoryView, PermissionCatalog.WarehousePick, PermissionCatalog.OrdersCancel);
 
         var ex = await Assert.ThrowsAsync<StatusRuleException>(() =>
             f.Get<PickBatchService>().DeleteAsync(batch.PublicId, new PickBatchDeleteRequest(), default));
-        // La etiqueta del estatus es la del catálogo (el fixture siembra {"es":"CONFIRMED"}).
-        Assert.Equal(PickBatchRules.DeleteBlocked("EMP-00010", "CONFIRMED"), ex.Message);
+        // La etiqueta del estatus es la del catálogo (el fixture siembra {"es":"PICKUP"}).
+        Assert.Equal(PickBatchRules.DeleteBlocked("EMP-00010", "PICKUP"), ex.Message);
         await AssertUntouchedAsync(f, batch, PickBatchStatuses.Packed);
         Assert.True((await f.Db.TransportOrders.AsNoTracking().SingleAsync(o => o.TransportOrderId == order.TransportOrderId)).IsActive);
     }

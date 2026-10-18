@@ -79,8 +79,8 @@ public sealed class KpiSnapshotTests
     {
         var x = await NewWorldAsync();
         await using var _ = x.F;
-        await OrderAsync(x, "A", OrderStatuses.Inbound);
-        await OrderAsync(x, "B", OrderStatuses.Planned);
+        await OrderAsync(x, "A", OrderStatuses.Unassigned);
+        await OrderAsync(x, "B", OrderStatuses.Assigned);
         await OrderAsync(x, "C", OrderStatuses.InTransit);
         var o = await OrderAsync(x, "D", OrderStatuses.Delivered, cod: 100m);
         await x.Cod.CollectAsync(o.PublicId, new CodCollectionRequest("CASH", 60m), default);
@@ -93,7 +93,7 @@ public sealed class KpiSnapshotTests
         Assert.Equal((3m, 60m, 40m), (first[KpiKeys.OrdersOpen], first[KpiKeys.CodCollected], first[KpiKeys.CodToCollect]));   // abiertas: A, B, C; D ya entregada con 40 por cobrar
 
         // otra orden en almacén y se vuelve a capturar: se reemplaza la foto de hoy (misma cantidad de filas)
-        await OrderAsync(x, "E", OrderStatuses.Inbound);
+        await OrderAsync(x, "E", OrderStatuses.Unassigned);
         Assert.Equal(KpiKeys.All.Count, (await x.Snapshots.CaptureAsync(default)).Saved);
         var second = await SavedTodayAsync(x);
         Assert.Equal((2m, 3m), (second[KpiKeys.OrdersInWarehouse], second[KpiKeys.OrdersUnassigned]));
@@ -119,7 +119,7 @@ public sealed class KpiSnapshotTests
     {
         var x = await NewWorldAsync();
         await using var _ = x.F;
-        await OrderAsync(x, "A", OrderStatuses.Inbound);
+        await OrderAsync(x, "A", OrderStatuses.Unassigned);
         var today = TenantClock.Default.Today;
         var keyId = x.F.LookupId(KpiCodes.KeyDomain, KpiKeys.OrdersInWarehouse);
         x.F.Db.Set<KpiSnapshot>().AddRange(
@@ -176,7 +176,7 @@ public sealed class KpiSnapshotTests
     {
         var x = await NewWorldAsync();
         await using var _ = x.F;
-        await OrderAsync(x, "A", OrderStatuses.Inbound);
+        await OrderAsync(x, "A", OrderStatuses.Unassigned);
         var job = new KpiSnapshotJob();
         Assert.Equal(("KPI_SNAPSHOT", true, new TimeSpan(23, 55, 0)), (job.Key, job.DefaultEnabled, job.DefaultDailyAt!.Value));
         var summary = await job.RunAsync(new JobRunContext(WmsFixture.TenantId, "test", x.Sp, DateTime.UtcNow), default);

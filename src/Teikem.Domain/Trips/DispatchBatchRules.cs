@@ -78,12 +78,11 @@ public static class DispatchBatchRules
 
     /// <summary>
     /// ¿La orden ya terminó para efectos de cerrar la ruta? Sí si está en una etapa terminal (entregada, cancelada…) o si su intento en esta
-    /// ruta ya concluyó sin entrega (Fallida o Parcial: pasan a la bandeja para reprogramarse). No cuenta: pipeline en curso ni Retenida.
+    /// ruta ya concluyó sin entrega (Intento fallido: pasa a la bandeja para reprogramarse o devolverse). No cuenta: pipeline en curso ni Retenida.
     /// </summary>
     public static bool OrderFinishedForClose(string stageKind, string statusCode)
         => string.Equals(stageKind, StageKinds.Terminal, StringComparison.OrdinalIgnoreCase)
-           || string.Equals(statusCode, OrderStatuses.Failed, StringComparison.OrdinalIgnoreCase)
-           || string.Equals(statusCode, OrderStatuses.Partial, StringComparison.OrdinalIgnoreCase);
+           || string.Equals(statusCode, OrderStatuses.Failed, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Tope de órdenes que se nombran en el mensaje de bloqueo del cierre (el resto va como «y N más»).</summary>
     public const int OpenOrdersListed = 10;

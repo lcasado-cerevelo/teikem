@@ -91,7 +91,7 @@ public class TrackingTests
     private static async Task<(OrderReadFixture F, PublicTrackingService Svc)> WorldAsync()
     {
         var f = await OrderReadFixture.CreateAsync();
-        // estatus de entrega y en tránsito (el fixture solo trae borrador, confirmada, en espera y cancelada)
+        // estatus de entrega y en tránsito (el fixture solo trae sometida, recogida, intento fallido y cancelada)
         var pipe = f.Db.LookupCodes.Single(l => l.Entity == LookupDomains.StageKind && l.InternalCode == StageKinds.Pipeline).LookupCodeId;
         var term = f.Db.LookupCodes.Single(l => l.Entity == LookupDomains.StageKind && l.InternalCode == StageKinds.Terminal).LookupCodeId;
         f.Db.StatusCodes.AddRange(
@@ -114,11 +114,11 @@ public class TrackingTests
     {
         var (f, svc) = await WorldAsync();
         await using var _ = f;
-        var dto = await svc.TrackAsync("advance", "cnd-0000002", null, default);   // O2 está CONFIRMADA
+        var dto = await svc.TrackAsync("advance", "cnd-0000002", null, default);   // O2 está RECOGIDA
         Assert.Equal("CND-0000002", dto.Waybill);
         Assert.Equal("Advance Logistics", dto.CompanyName);
-        Assert.Equal(("CONFIRMED", 2, OrderProgress.InProgress), (dto.Steps[dto.Step - 1].Key, dto.Step, dto.State));
-        Assert.Equal(new[] { "DRAFT", "CONFIRMED", "IN_TRANSIT", "DELIVERED" }, dto.Steps.Select(s => s.Key));   // las etapas de ESTA compañía (4 aquí; 8 con el seed completo)
+        Assert.Equal(("PICKUP", 2, OrderProgress.InProgress), (dto.Steps[dto.Step - 1].Key, dto.Step, dto.State));
+        Assert.Equal(new[] { "SUBMITTED", "PICKUP", "IN_TRANSIT", "DELIVERED" }, dto.Steps.Select(s => s.Key));   // las etapas de ESTA compañía (4 aquí; 8 con el seed completo)
         Assert.Equal(dto.Steps.Count, dto.Total);
         Assert.Equal(new[] { true, false, false, false }, dto.Steps.Select(s => s.Done));
         Assert.Equal(new[] { false, true, false, false }, dto.Steps.Select(s => s.Current));
@@ -134,34 +134,34 @@ public class TrackingTests
     {
         var (f, svc) = await WorldAsync();
         await using var _ = f;
-        var mine = await svc.TrackAsync("advance", "CND-0000001", null, default);   // O1: borrador, compañía 1
-        var other = await svc.TrackAsync("otra", "CND-0000001", null, default);     // O5: confirmada, compañía 2
+        var mine = await svc.TrackAsync("advance", "CND-0000001", null, default);   // O1: sometida, compañía 1
+        var other = await svc.TrackAsync("otra", "CND-0000001", null, default);     // O5: recogida, compañía 2
         Assert.Equal(("Advance Logistics", 1), (mine.CompanyName, mine.Step));
         Assert.Equal(("Otra Compañía", 2), (other.CompanyName, other.Step));
         // el idioma pedido se respeta (los estatus de la compañía en inglés)
         var en = await svc.TrackAsync("advance", "CND-0000001", "en", default);
-        Assert.Equal("DRAFT", en.StatusLabel.ToUpperInvariant());   // el fixture solo tiene etiqueta en español: cae a ella
+        Assert.Equal("SUBMITTED", en.StatusLabel.ToUpperInvariant());   // el fixture solo tiene etiqueta en español: cae a ella
         Assert.Equal("es", f.Tenant.Lang);                           // y la petición no deja cambiado el idioma
     }
 
     [Fact]
-    public async Task A_held_order_keeps_the_bar_where_it_was_using_its_history_and_a_cancelled_one_is_empty()
+    public async Task A_failed_attempt_keeps_the_bar_where_it_was_using_its_history_and_a_cancelled_one_is_empty()
     {
         var (f, svc) = await WorldAsync();
         await using var _ = f;
         var typeId = f.Db.LookupCodes.Single(l => l.Entity == LookupDomains.EntityType && l.InternalCode == EntityTypes.TransportOrder).LookupCodeId;
-        var confirmed = f.StatusId(StatusDomains.OrderStatus, OrderStatuses.Confirmed);
-        var onHold = f.StatusId(StatusDomains.OrderStatus, OrderStatuses.OnHold);
+        var pickup = f.StatusId(StatusDomains.OrderStatus, OrderStatuses.Pickup);
+        var failed = f.StatusId(StatusDomains.OrderStatus, OrderStatuses.Failed);
         var o = f.Db.TransportOrders.IgnoreQueryFilters().Single(x => x.TransportOrderId == 3);
-        o.StatusCodeId = onHold;
+        o.StatusCodeId = failed;
         f.Db.EntityStatusHistories.AddRange(
-            new EntityStatusHistory { TenantId = 1, EntityTypeLookupId = typeId, EntityId = 3, ToStatusCodeId = confirmed, ChangedAtUtc = DateTime.UtcNow.AddHours(-3) },
-            new EntityStatusHistory { TenantId = 1, EntityTypeLookupId = typeId, EntityId = 3, FromStatusCodeId = confirmed, ToStatusCodeId = onHold, ChangedAtUtc = DateTime.UtcNow.AddHours(-1) });
+            new EntityStatusHistory { TenantId = 1, EntityTypeLookupId = typeId, EntityId = 3, ToStatusCodeId = pickup, ChangedAtUtc = DateTime.UtcNow.AddHours(-3) },
+            new EntityStatusHistory { TenantId = 1, EntityTypeLookupId = typeId, EntityId = 3, FromStatusCodeId = pickup, ToStatusCodeId = failed, ChangedAtUtc = DateTime.UtcNow.AddHours(-1) });
         await f.Db.SaveChangesAsync();
         f.Db.ChangeTracker.Clear();
 
         var held = await svc.TrackAsync("advance", "CND-0000003", null, default);
-        Assert.Equal((2, OrderProgress.Alert, "ON_HOLD"), (held.Step, held.State, held.StatusLabel));   // sigue en «Confirmada»
+        Assert.Equal((2, OrderProgress.Alert, "FAILED"), (held.Step, held.State, held.StatusLabel));   // sigue en «Recogida»
         Assert.True(held.Steps[0].Done);
         Assert.True(held.Steps[1].Current);
         Assert.InRange((DateTime.UtcNow - held.LastUpdateUtc!.Value).TotalMinutes, 55, 65);   // el último movimiento fue hace una hora

@@ -2,7 +2,7 @@
 // por defecto http://localhost:5000; compañía demo, admin con todos los permisos, módulos LTL_GROUND y CATALOG encendidos).
 //
 // Datos propios de cada corrida (por API): un cliente con contrato y tarifa, una zona con su pueblo, un chofer con licencia, un vehículo y cuatro
-// órdenes confirmadas ya dentro de una ruta en borrador. Todo en un día futuro.
+// órdenes recogidas ya dentro de una ruta en borrador. Todo en un día futuro.
 //
 // 1) Plano vacío: «Ninguna parada tiene coordenadas todavía» y las cuatro en «Sin ubicación».   2) Tres pines puestos por API: los pines aparecen,
 // y elegir un pin o una fila los resalta a los dos.   3) Pin manual por pantalla: error de rango, plano de referencia, guardar; la parada pasa a

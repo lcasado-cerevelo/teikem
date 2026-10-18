@@ -1,7 +1,7 @@
 // Expediente de la orden (Lote F-C2; maqueta `record()`). `/orders/:publicId`. Lectura: orders.view (aplicado por la ruta).
-// Cabecera con las acciones (cada una con su permiso Y la capacidad del DTO): Confirmar, Re-cotizar, Cancelar la orden, Eliminar y
-// Asignar chofer (entrega especial). Debajo, el `StatusPipeline` solo con los desvíos laterales y el regreso exacto (avanzar,
-// confirmar y cancelar son botones propios). A la izquierda «Detalle» (se edita ahí mismo) e «Historial»; a la derecha COD,
+// Cabecera con las acciones (cada una con su permiso Y la capacidad del DTO): Marcar como recogida, Re-cotizar, Cancelar la orden,
+// Reabrir (estatus final, `orders.reopen`), Eliminar y Asignar chofer (entrega especial). Debajo, el `StatusPipeline` solo con el
+// desvío «Intento fallido» y el regreso exacto (avanzar, marcar como recogida, cancelar y reabrir son botones propios). A la izquierda «Detalle» (se edita ahí mismo) e «Historial»; a la derecha COD,
 // Cotización (solo con orders.view_price), Chofer asignado, Campos personalizados y Contactos. Sin pestañas.
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -14,7 +14,7 @@ import { IconClock, IconPrint } from '../../kernel/ui/screenIcons'
 import { labelOrderFromDetail } from '../printing/orderLabels'
 import { usePrinting } from '../printing/usePrinting'
 import { useConfirmOrder, useDeleteOrder, useOrder, useOrderStatusChange, useRepriceOrder } from './api'
-import { AssignDriverModal, CancelOrderDialog } from './OrderActionDialogs'
+import { AssignDriverModal, CancelOrderDialog, ReopenOrderDialog } from './OrderActionDialogs'
 import { CreditOverrideDialog } from './CreditOverrideDialog'
 import { OrderDetailPanel } from './OrderDetailPanel'
 import { CodPanel, DriverPanel, ORDER_ENTITY_TYPE, OrderContactsPanel, OrderCustomFieldsPanel, QuotePanel } from './OrderSidePanels'
@@ -23,7 +23,7 @@ import './orders.css'
 
 const STATUS_DOMAIN = 'OrderStatus'
 
-type Dialog = 'confirm' | 'reprice' | 'cancel' | 'delete' | 'assign' | null
+type Dialog = 'confirm' | 'reprice' | 'cancel' | 'reopen' | 'delete' | 'assign' | null
 
 export default function OrderDetailScreen() {
   const t = useT()
@@ -37,6 +37,7 @@ export default function OrderDetailScreen() {
   const statusChange = useOrderStatusChange()
   const edit = useCan('orders.edit')
   const cancel = useCan('orders.cancel')
+  const reopen = useCan('orders.reopen')
   const creditOverride = useCan('orders.credit_override')
   const dispatch = useCan('trips.dispatch')
   const viewPrice = useCan('orders.view_price')
@@ -63,7 +64,7 @@ export default function OrderDetailScreen() {
   }
 
   const number = order.orderNumber ?? ''
-  const vis = orderActionVisibility(order, { edit, cancel, creditOverride, dispatch, viewPrice, catalogOn }, isAssignableOrder(order, statuses))
+  const vis = orderActionVisibility(order, { edit, cancel, reopen, creditOverride, dispatch, viewPrice, catalogOn }, isAssignableOrder(order, statuses))
   const label = (code: string) => statuses.find((s) => s.code.toLowerCase() === code.toLowerCase())?.label ?? code
   const lockReason = order.capabilities?.canEditCargo && !edit ? 'permission' : 'advanced'
 
@@ -115,6 +116,11 @@ export default function OrderDetailScreen() {
               {t('orders.actions.cancel.button')}
             </button>
           )}
+          {vis.reopen && (
+            <button type="button" className="btn" onClick={() => setDialog('reopen')}>
+              {t('orders.actions.reopen.button')}
+            </button>
+          )}
           {vis.delete && (
             <button type="button" className="btn danger" onClick={() => setDialog('delete')}>
               {t('orders.actions.delete.button')}
@@ -163,7 +169,7 @@ export default function OrderDetailScreen() {
         open={dialog === 'confirm'}
         title={t('orders.actions.confirm.title', { number })}
         message={<p>{t(vis.confirm === 'overrideOnly' ? 'orders.actions.confirm.bodyOverrideOnly' : 'orders.actions.confirm.body')}</p>}
-        confirmLabel={t(vis.confirm === 'overrideOnly' ? 'orders.entry.credit.authorize' : 'orders.actions.confirm.button')}
+        confirmLabel={t(vis.confirm === 'overrideOnly' ? 'orders.actions.confirm.authorize' : 'orders.actions.confirm.button')}
         onConfirm={async () => {
           try {
             await doConfirm(vis.confirm === 'overrideOnly')
@@ -182,6 +188,7 @@ export default function OrderDetailScreen() {
         open={credit !== null}
         message={credit}
         note={t('orders.actions.confirm.creditNote')}
+        confirmLabel={t('orders.actions.confirm.authorize')}
         onAuthorize={() => doConfirm(true)}
         onClose={() => setCredit(null)}
       />
@@ -197,6 +204,7 @@ export default function OrderDetailScreen() {
         onClose={() => setDialog(null)}
       />
       {dialog === 'cancel' && <CancelOrderDialog order={order} open onClose={() => setDialog(null)} />}
+      {dialog === 'reopen' && <ReopenOrderDialog order={order} open onClose={() => setDialog(null)} />}
       {dialog === 'assign' && <AssignDriverModal order={order} open onClose={() => setDialog(null)} />}
       <ConfirmDialog
         open={dialog === 'delete'}

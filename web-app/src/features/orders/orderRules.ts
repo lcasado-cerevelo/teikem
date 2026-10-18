@@ -228,9 +228,7 @@ export function orderSchema(m: OrderMessages) {
 }
 
 export interface OrderRequestOptions {
-  /** true = crear y confirmar en la misma transacción (cotiza, revisa crédito). */
-  confirmNow: boolean
-  /** Reintento autorizado por quien tiene `orders.credit_override` (exige confirmNow). */
+  /** Reintento autorizado por quien tiene `orders.credit_override` (al crear se cotiza y se mide el crédito). */
   overrideCredit?: boolean
   /** Reintento tras «Factura repetida… Crear de todos modos». */
   confirmDuplicateInvoice?: boolean
@@ -253,7 +251,6 @@ export function buildOrderRequest(v: OrderFormValues, o: OrderRequestOptions): O
     requestedDate: dayStart(v.readyDate),
     promisedDate: dayStart(v.dueDate),
     clientInvoiceNumber: o.invoiceEditable ? v.clientInvoiceNumber.trim() || null : null,
-    confirmNow: o.confirmNow,
   }
   if (o.confirmDuplicateInvoice) req.confirmDuplicateInvoice = true
   if (o.overrideCredit) req.overrideCredit = true
@@ -336,20 +333,24 @@ export interface OrderAbilities {
   edit: boolean
   cancel: boolean
   creditOverride: boolean
+  /** `orders.reopen`. */
+  reopen?: boolean
   dispatch: boolean
   viewPrice: boolean
   /** Módulo CATALOG encendido (choferes y tarifas); sin él el servidor rechaza la asignación. */
   catalogOn: boolean
 }
 
-/** `normal` = confirma quien tiene `orders.edit`; `overrideOnly` = solo `orders.credit_override` (Facturación): únicamente autoriza el exceso. */
+/** `normal` = «Marcar como recogida» quien tiene `orders.edit`; `overrideOnly` = solo `orders.credit_override` (Facturación): únicamente autoriza el exceso. */
 export type ConfirmMode = 'normal' | 'overrideOnly'
 
 export interface OrderActionVisibility {
-  /** null = no se ofrece «Confirmar». */
+  /** null = no se ofrece «Marcar como recogida». */
   confirm: ConfirmMode | null
   reprice: boolean
   cancel: boolean
+  /** «Reabrir»: `capabilities.canReopen` Y `orders.reopen`. */
+  reopen: boolean
   delete: boolean
   assignDriver: boolean
   /** Edición en el Detalle (`capabilities.canEditCargo` con `orders.edit`). */
@@ -370,6 +371,7 @@ export function orderActionVisibility(order: ActionOrder, can: OrderAbilities, a
     confirm: cap.canConfirm && active ? (can.edit ? 'normal' : can.creditOverride ? 'overrideOnly' : null) : null,
     reprice: !!cap.canReprice && can.edit && active,
     cancel: !!cap.canCancel && can.cancel && active,
+    reopen: !!cap.canReopen && !!can.reopen && active,
     delete: !!cap.canDelete && can.cancel && active,
     assignDriver: assignable && can.dispatch && can.catalogOn && active,
     edit: !!cap.canEditCargo && can.edit && active,

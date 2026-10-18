@@ -532,7 +532,7 @@ internal sealed class InventoryServiceFixture
         S("SerialStatus", "RESERVED", lat, 2);
         S("SerialStatus", "SHIPPED", lat, 3);
         S("SerialStatus", "SCRAPPED", term, 4);
-        S(StatusDomains.OrderStatus, OrderStatuses.Draft, pipe, 1, true);
+        S(StatusDomains.OrderStatus, OrderStatuses.Submitted, pipe, 1, true);
 
         Db.Users.Add(new ApplicationUser { Id = UserId, UserName = "ana", Email = "ana@teikem.test", FullName = "Ana Operadora" });
         await Db.SaveChangesAsync();
@@ -622,7 +622,7 @@ internal sealed class InventoryServiceFixture
         var order = await SaveAsync(new TransportOrder
         {
             PublicId = Guid.NewGuid(), TenantId = TenantId, ClientId = clientId, OrderNumber = number, PackBatchNumber = "EMP-00001",
-            ServiceTypeLookupId = 1, StatusCodeId = StatusId(StatusDomains.OrderStatus, OrderStatuses.Draft), IsActive = true,
+            ServiceTypeLookupId = 1, StatusCodeId = StatusId(StatusDomains.OrderStatus, OrderStatuses.Submitted), IsActive = true,
             CreatedAtUtc = DateTime.UtcNow,
         });
         await SaveAsync(new OrderStop

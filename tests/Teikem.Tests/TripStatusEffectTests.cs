@@ -32,10 +32,10 @@ public class TripStatusEffectTests
     // ================================================================ despacho (→ DISPATCHED)
 
     [Fact]
-    public async Task Dispatch_from_planned_freezes_route_and_moves_orders_to_planned_step_by_step()
+    public async Task Dispatch_from_planned_freezes_route_and_moves_orders_to_assigned_step_by_step()
     {
         await using var f = await Fixture.CreateAsync();
-        var (trip, orders) = await f.SeedTripAsync(TripStatuses.Planned, RouteStatuses.Optimized, OrderStatuses.Confirmed, 2);
+        var (trip, orders) = await f.SeedTripAsync(TripStatuses.Planned, RouteStatuses.Optimized, OrderStatuses.Pickup, 2);
 
         await f.TransitionTripAsync(trip, TripStatuses.Dispatched);
 
@@ -47,9 +47,9 @@ public class TripStatusEffectTests
         foreach (var orderId in orders)
         {
             var order = await f.Db.TransportOrders.SingleAsync(o => o.TransportOrderId == orderId);
-            Assert.Equal(f.Id(StatusDomains.OrderStatus, OrderStatuses.Planned), order.StatusCodeId);
+            Assert.Equal(f.Id(StatusDomains.OrderStatus, OrderStatuses.Assigned), order.StatusCodeId);
             Assert.NotEqual(f.Id(StatusDomains.OrderStatus, OrderStatuses.InTransit), order.StatusCodeId);
-            Assert.Equal(new[] { OrderStatuses.Pickup, OrderStatuses.Inbound, OrderStatuses.Planned },
+            Assert.Equal(new[] { OrderStatuses.Unassigned, OrderStatuses.Assigned },
                 await f.HistoryCodesAsync(EntityTypes.TransportOrder, orderId));
             Assert.All(await f.CommentsAsync(EntityTypes.TransportOrder, orderId), c => Assert.Equal($"Despachada en la ruta {TripCode}", c));
         }
@@ -63,7 +63,7 @@ public class TripStatusEffectTests
     public async Task Dispatch_of_a_never_optimized_route_walks_draft_optimized_active_with_manual_comment()
     {
         await using var f = await Fixture.CreateAsync();
-        var (trip, _) = await f.SeedTripAsync(TripStatuses.Planned, RouteStatuses.Draft, OrderStatuses.Confirmed, 1);
+        var (trip, _) = await f.SeedTripAsync(TripStatuses.Planned, RouteStatuses.Draft, OrderStatuses.Pickup, 1);
 
         await f.TransitionTripAsync(trip, TripStatuses.Dispatched);
 
@@ -74,17 +74,17 @@ public class TripStatusEffectTests
     }
 
     [Fact]
-    public async Task Dispatch_with_planned_disabled_leaves_orders_in_the_last_enabled_stage_before_it()
+    public async Task Dispatch_with_assigned_disabled_leaves_orders_in_the_last_enabled_stage_before_it()
     {
         await using var f = await Fixture.CreateAsync();
-        await f.DisableAsync(StatusDomains.OrderStatus, OrderStatuses.Planned);
-        var (trip, orders) = await f.SeedTripAsync(TripStatuses.Planned, RouteStatuses.Optimized, OrderStatuses.Confirmed, 1);
+        await f.DisableAsync(StatusDomains.OrderStatus, OrderStatuses.Assigned);
+        var (trip, orders) = await f.SeedTripAsync(TripStatuses.Planned, RouteStatuses.Optimized, OrderStatuses.Pickup, 1);
 
         await f.TransitionTripAsync(trip, TripStatuses.Dispatched);
 
         var order = await f.Db.TransportOrders.SingleAsync(o => o.TransportOrderId == orders[0]);
-        Assert.Equal(f.Id(StatusDomains.OrderStatus, OrderStatuses.Inbound), order.StatusCodeId);
-        Assert.Equal(new[] { OrderStatuses.Pickup, OrderStatuses.Inbound }, await f.HistoryCodesAsync(EntityTypes.TransportOrder, orders[0]));
+        Assert.Equal(f.Id(StatusDomains.OrderStatus, OrderStatuses.Unassigned), order.StatusCodeId);
+        Assert.Equal(new[] { OrderStatuses.Unassigned }, await f.HistoryCodesAsync(EntityTypes.TransportOrder, orders[0]));
     }
 
     [Fact]
@@ -93,7 +93,7 @@ public class TripStatusEffectTests
         // Riesgo 2 del plan: si el tenant deshabilita ACTIVE en RouteStatus, despachar responde un 422 explícito.
         await using var f = await Fixture.CreateAsync();
         await f.DisableAsync(StatusDomains.RouteStatus, RouteStatuses.Active);
-        var (trip, orders) = await f.SeedTripAsync(TripStatuses.Planned, RouteStatuses.Optimized, OrderStatuses.Confirmed, 1);
+        var (trip, orders) = await f.SeedTripAsync(TripStatuses.Planned, RouteStatuses.Optimized, OrderStatuses.Pickup, 1);
 
         var ex = await Assert.ThrowsAsync<StatusRuleException>(() => f.TransitionTripAsync(trip, TripStatuses.Dispatched));
         Assert.Equal(422, ex.StatusCode);
@@ -103,7 +103,7 @@ public class TripStatusEffectTests
         // Nada quedó escrito: la ruta, la versión y las órdenes siguen como estaban.
         Assert.Equal(f.Id(StatusDomains.TripStatus, TripStatuses.Planned), (await f.Db.Trips.AsNoTracking().SingleAsync()).StatusCodeId);
         Assert.Equal(f.Id(StatusDomains.RouteStatus, RouteStatuses.Optimized), (await f.Db.Routes.AsNoTracking().SingleAsync()).StatusCodeId);
-        Assert.Equal(f.Id(StatusDomains.OrderStatus, OrderStatuses.Confirmed),
+        Assert.Equal(f.Id(StatusDomains.OrderStatus, OrderStatuses.Pickup),
             (await f.Db.TransportOrders.AsNoTracking().SingleAsync(o => o.TransportOrderId == orders[0])).StatusCodeId);
     }
 
@@ -111,7 +111,7 @@ public class TripStatusEffectTests
     public async Task Dispatch_without_vehicle_is_rejected()
     {
         await using var f = await Fixture.CreateAsync();
-        var (trip, _) = await f.SeedTripAsync(TripStatuses.Planned, RouteStatuses.Optimized, OrderStatuses.Confirmed, 1, withVehicle: false);
+        var (trip, _) = await f.SeedTripAsync(TripStatuses.Planned, RouteStatuses.Optimized, OrderStatuses.Pickup, 1, withVehicle: false);
 
         var ex = await Assert.ThrowsAsync<StatusRuleException>(() => f.TransitionTripAsync(trip, TripStatuses.Dispatched));
         Assert.Equal(422, ex.StatusCode);
@@ -122,7 +122,7 @@ public class TripStatusEffectTests
     public async Task Dispatch_without_driver_is_rejected()
     {
         await using var f = await Fixture.CreateAsync();
-        var (trip, _) = await f.SeedTripAsync(TripStatuses.Planned, RouteStatuses.Optimized, OrderStatuses.Confirmed, 1, withDriver: false);
+        var (trip, _) = await f.SeedTripAsync(TripStatuses.Planned, RouteStatuses.Optimized, OrderStatuses.Pickup, 1, withDriver: false);
 
         var ex = await Assert.ThrowsAsync<StatusRuleException>(() => f.TransitionTripAsync(trip, TripStatuses.Dispatched));
         Assert.Equal(422, ex.StatusCode);
@@ -133,7 +133,7 @@ public class TripStatusEffectTests
     public async Task Dispatch_without_stops_is_rejected()
     {
         await using var f = await Fixture.CreateAsync();
-        var (trip, _) = await f.SeedTripAsync(TripStatuses.Planned, RouteStatuses.Optimized, OrderStatuses.Confirmed, 0);
+        var (trip, _) = await f.SeedTripAsync(TripStatuses.Planned, RouteStatuses.Optimized, OrderStatuses.Pickup, 0);
 
         var ex = await Assert.ThrowsAsync<StatusRuleException>(() => f.TransitionTripAsync(trip, TripStatuses.Dispatched));
         Assert.Contains(DispatchBatchRules.NoStopsMessage.TrimEnd('.'), ex.Message);
@@ -143,8 +143,8 @@ public class TripStatusEffectTests
     public async Task Dispatch_rechecks_order_eligibility_under_lock()
     {
         await using var f = await Fixture.CreateAsync();
-        var (trip, orders) = await f.SeedTripAsync(TripStatuses.Planned, RouteStatuses.Optimized, OrderStatuses.Confirmed, 1);
-        await f.DenyAssignTripAsync(OrderStatuses.Confirmed);
+        var (trip, orders) = await f.SeedTripAsync(TripStatuses.Planned, RouteStatuses.Optimized, OrderStatuses.Pickup, 1);
+        await f.DenyAssignTripAsync(OrderStatuses.Pickup);
 
         var ex = await Assert.ThrowsAsync<StatusRuleException>(() => f.TransitionTripAsync(trip, TripStatuses.Dispatched));
         Assert.Equal($"Orden {Fixture.OrderNumber(orders[0])}: El estatus actual no permite la acción 'ASSIGN_TRIP'.", ex.Message);
@@ -158,8 +158,8 @@ public class TripStatusEffectTests
     public async Task Start_sets_actual_start_and_moves_pipeline_orders_to_in_transit_skipping_laterals()
     {
         await using var f = await Fixture.CreateAsync();
-        var (trip, orders) = await f.SeedTripAsync(TripStatuses.Dispatched, RouteStatuses.Active, OrderStatuses.Planned, 2);
-        await f.SetOrderStatusAsync(orders[1], OrderStatuses.OnHold);
+        var (trip, orders) = await f.SeedTripAsync(TripStatuses.Dispatched, RouteStatuses.Active, OrderStatuses.Assigned, 2);
+        await f.SetOrderStatusAsync(orders[1], OrderStatuses.Failed);
 
         await f.Lifecycle.StartTrackedAsync(trip, null, default);
         await f.Db.SaveChangesAsync();
@@ -174,14 +174,14 @@ public class TripStatusEffectTests
         Assert.Equal(new[] { $"Salió en la ruta {TripCode}" }, await f.CommentsAsync(EntityTypes.TransportOrder, orders[0]));
 
         var lateral = await f.Db.TransportOrders.SingleAsync(o => o.TransportOrderId == orders[1]);
-        Assert.Equal(f.Id(StatusDomains.OrderStatus, OrderStatuses.OnHold), lateral.StatusCodeId);
+        Assert.Equal(f.Id(StatusDomains.OrderStatus, OrderStatuses.Failed), lateral.StatusCodeId);
     }
 
     [Fact]
     public async Task Start_of_a_planned_trip_is_rejected()
     {
         await using var f = await Fixture.CreateAsync();
-        var (trip, _) = await f.SeedTripAsync(TripStatuses.Planned, RouteStatuses.Optimized, OrderStatuses.Confirmed, 1);
+        var (trip, _) = await f.SeedTripAsync(TripStatuses.Planned, RouteStatuses.Optimized, OrderStatuses.Pickup, 1);
 
         var ex = await Assert.ThrowsAsync<StatusRuleException>(() => f.Lifecycle.StartTrackedAsync(trip, null, default));
         Assert.Equal($"La ruta {TripCode} no está despachada; despáchela antes de registrar su salida.", ex.Message);
@@ -194,7 +194,7 @@ public class TripStatusEffectTests
     {
         // Defensa en profundidad: aunque la cabecera haya perdido el chofer o el vehículo, la ruta no sale.
         await using var f = await Fixture.CreateAsync();
-        var (trip, _) = await f.SeedTripAsync(TripStatuses.Dispatched, RouteStatuses.Active, OrderStatuses.Planned, 1,
+        var (trip, _) = await f.SeedTripAsync(TripStatuses.Dispatched, RouteStatuses.Active, OrderStatuses.Assigned, 1,
             withVehicle: withVehicle, withDriver: withDriver);
 
         var ex = await Assert.ThrowsAsync<StatusRuleException>(() => f.Lifecycle.StartTrackedAsync(trip, null, default));
@@ -241,7 +241,7 @@ public class TripStatusEffectTests
         var (trip, orders) = await f.SeedTripAsync(TripStatuses.InProgress, RouteStatuses.Active, OrderStatuses.InTransit, 3);
         await f.SetOrderStatusAsync(orders[0], OrderStatuses.Delivered);
         await f.SetOrderStatusAsync(orders[1], OrderStatuses.Failed);     // intento concluido sin entrega: cuenta
-        await f.SetOrderStatusAsync(orders[2], OrderStatuses.Partial);    // entrega parcial: cuenta
+        await f.SetOrderStatusAsync(orders[2], OrderStatuses.Cancelled);  // terminal: cuenta
 
         await f.Lifecycle.CompleteTrackedAsync(trip, null, default);
         await f.Db.SaveChangesAsync();
@@ -268,8 +268,7 @@ public class TripStatusEffectTests
 
     [Theory]
     [InlineData(OrderStatuses.InTransit)]
-    [InlineData(OrderStatuses.Arrived)]
-    [InlineData(OrderStatuses.OnHold)]
+    [InlineData(OrderStatuses.Assigned)]
     public async Task Close_is_blocked_while_an_order_is_not_finished_and_names_it(string pending)
     {
         await using var f = await Fixture.CreateAsync();
@@ -297,7 +296,7 @@ public class TripStatusEffectTests
     public async Task Close_of_a_trip_that_has_not_started_is_rejected(string status)
     {
         await using var f = await Fixture.CreateAsync();
-        var (trip, _) = await f.SeedTripAsync(status, status == TripStatuses.Planned ? RouteStatuses.Optimized : RouteStatuses.Active, OrderStatuses.Planned, 1);
+        var (trip, _) = await f.SeedTripAsync(status, status == TripStatuses.Planned ? RouteStatuses.Optimized : RouteStatuses.Active, OrderStatuses.Assigned, 1);
 
         var ex = await Assert.ThrowsAsync<StatusRuleException>(() => f.Lifecycle.CompleteTrackedAsync(trip, null, default));
         Assert.Equal($"La ruta {TripCode} no está en curso; solo se cierra una ruta que ya salió.", ex.Message);
@@ -314,14 +313,16 @@ public class TripStatusEffectTests
     }
 
     [Fact]
-    public void A_trip_with_no_orders_can_be_closed_and_only_laterals_other_than_failed_or_partial_block()
+    public void A_trip_with_no_orders_can_be_closed_and_only_laterals_other_than_failed_block()
     {
         Assert.True(DispatchBatchRules.OrderFinishedForClose(StageKinds.Terminal, OrderStatuses.Delivered));
         Assert.True(DispatchBatchRules.OrderFinishedForClose(StageKinds.Terminal, OrderStatuses.Cancelled));
+        Assert.True(DispatchBatchRules.OrderFinishedForClose(StageKinds.Terminal, OrderStatuses.InWarehouse));
         Assert.True(DispatchBatchRules.OrderFinishedForClose(StageKinds.Lateral, OrderStatuses.Failed));
-        Assert.True(DispatchBatchRules.OrderFinishedForClose(StageKinds.Lateral, OrderStatuses.Partial));
-        Assert.False(DispatchBatchRules.OrderFinishedForClose(StageKinds.Lateral, OrderStatuses.OnHold));
+        Assert.True(DispatchBatchRules.OrderFinishedForClose(StageKinds.Lateral, "failed"));
+        Assert.False(DispatchBatchRules.OrderFinishedForClose(StageKinds.Lateral, "CUSTOM_HOLD"));   // otro lateral de la compañía: bloquea
         Assert.False(DispatchBatchRules.OrderFinishedForClose(StageKinds.Pipeline, OrderStatuses.InTransit));
+        Assert.False(DispatchBatchRules.OrderFinishedForClose(StageKinds.Pipeline, OrderStatuses.Assigned));
     }
 
     // ================================================================ 'Eliminar ruta' (→ CANCELLED)
@@ -330,7 +331,7 @@ public class TripStatusEffectTests
     public async Task Cancelling_from_planned_releases_orders_and_archives_the_route()
     {
         await using var f = await Fixture.CreateAsync();
-        var (trip, orders) = await f.SeedTripAsync(TripStatuses.Planned, RouteStatuses.Optimized, OrderStatuses.Confirmed, 2);
+        var (trip, orders) = await f.SeedTripAsync(TripStatuses.Planned, RouteStatuses.Optimized, OrderStatuses.Pickup, 2);
 
         await f.TransitionTripAsync(trip, TripStatuses.Cancelled);
 
@@ -346,7 +347,7 @@ public class TripStatusEffectTests
 
         // Liberar nunca cambia el estatus de la orden.
         foreach (var orderId in orders)
-            Assert.Equal(f.Id(StatusDomains.OrderStatus, OrderStatuses.Confirmed),
+            Assert.Equal(f.Id(StatusDomains.OrderStatus, OrderStatuses.Pickup),
                 (await f.Db.TransportOrders.SingleAsync(o => o.TransportOrderId == orderId)).StatusCodeId);
     }
 
@@ -354,7 +355,7 @@ public class TripStatusEffectTests
     public async Task Cancelling_a_dispatched_trip_is_rejected()
     {
         await using var f = await Fixture.CreateAsync();
-        var (trip, _) = await f.SeedTripAsync(TripStatuses.Dispatched, RouteStatuses.Active, OrderStatuses.Planned, 1);
+        var (trip, _) = await f.SeedTripAsync(TripStatuses.Dispatched, RouteStatuses.Active, OrderStatuses.Assigned, 1);
 
         var ex = await Assert.ThrowsAsync<StatusRuleException>(() => f.TransitionTripAsync(trip, TripStatuses.Cancelled));
         Assert.Equal($"La ruta {TripCode} ya fue despachada; no se puede eliminar.", ex.Message);
@@ -366,7 +367,7 @@ public class TripStatusEffectTests
     public async Task Birth_and_other_entities_have_no_effect()
     {
         await using var f = await Fixture.CreateAsync();
-        var (trip, orders) = await f.SeedTripAsync(TripStatuses.Draft, RouteStatuses.Draft, OrderStatuses.Confirmed, 1, withVehicle: false);
+        var (trip, orders) = await f.SeedTripAsync(TripStatuses.Draft, RouteStatuses.Draft, OrderStatuses.Pickup, 1, withVehicle: false);
         var effect = f.Services.GetServices<IStatusTransitionEffect>().OfType<TripStatusEffect>().Single();
         var dispatched = await f.StatusAsync(StatusDomains.TripStatus, TripStatuses.Dispatched);
         var cancelled = await f.StatusAsync(StatusDomains.TripStatus, TripStatuses.Cancelled);
@@ -389,7 +390,7 @@ public class TripStatusEffectTests
     public async Task Cancelling_an_order_in_an_open_route_releases_it()
     {
         await using var f = await Fixture.CreateAsync();
-        var (_, orders) = await f.SeedTripAsync(TripStatuses.Planned, RouteStatuses.Optimized, OrderStatuses.Confirmed, 2);
+        var (_, orders) = await f.SeedTripAsync(TripStatuses.Planned, RouteStatuses.Optimized, OrderStatuses.Pickup, 2);
 
         await f.TransitionOrderAsync(orders[0], OrderStatuses.Cancelled);
 
@@ -404,17 +405,17 @@ public class TripStatusEffectTests
     public async Task Sending_an_order_to_a_lateral_releases_it_from_a_draft_route()
     {
         await using var f = await Fixture.CreateAsync();
-        var (_, orders) = await f.SeedTripAsync(TripStatuses.Draft, RouteStatuses.Draft, OrderStatuses.Confirmed, 1);
+        var (_, orders) = await f.SeedTripAsync(TripStatuses.Draft, RouteStatuses.Draft, OrderStatuses.Pickup, 1);
 
-        await f.TransitionOrderAsync(orders[0], OrderStatuses.OnHold);
+        await f.TransitionOrderAsync(orders[0], OrderStatuses.Failed);
 
         Assert.False(await f.Db.TripOrders.AnyAsync(x => x.IsCurrent && x.TransportOrderId == orders[0]));
-        Assert.Equal(f.Id(StatusDomains.OrderStatus, OrderStatuses.OnHold),
+        Assert.Equal(f.Id(StatusDomains.OrderStatus, OrderStatuses.Failed),
             (await f.Db.TransportOrders.SingleAsync(o => o.TransportOrderId == orders[0])).StatusCodeId);
     }
 
     [Theory]
-    [InlineData(TripStatuses.Dispatched, OrderStatuses.Planned)]
+    [InlineData(TripStatuses.Dispatched, OrderStatuses.Assigned)]
     [InlineData(TripStatuses.InProgress, OrderStatuses.InTransit)]
     public async Task Cancelling_an_order_in_a_dispatched_or_started_route_is_rejected(string tripStatus, string orderStatus)
     {
@@ -429,9 +430,9 @@ public class TripStatusEffectTests
     public async Task Lateral_in_a_dispatched_route_changes_nothing()
     {
         await using var f = await Fixture.CreateAsync();
-        var (_, orders) = await f.SeedTripAsync(TripStatuses.Dispatched, RouteStatuses.Active, OrderStatuses.Planned, 1);
+        var (_, orders) = await f.SeedTripAsync(TripStatuses.Dispatched, RouteStatuses.Active, OrderStatuses.Assigned, 1);
 
-        await f.TransitionOrderAsync(orders[0], OrderStatuses.OnHold);
+        await f.TransitionOrderAsync(orders[0], OrderStatuses.Failed);
 
         Assert.True(await f.Db.TripOrders.AnyAsync(x => x.IsCurrent && x.TransportOrderId == orders[0]));
         Assert.Equal(1, await f.Db.RouteStops.CountAsync());
@@ -441,15 +442,15 @@ public class TripStatusEffectTests
     public async Task Order_without_route_or_other_entity_is_a_no_op()
     {
         await using var f = await Fixture.CreateAsync();
-        var (_, orders) = await f.SeedTripAsync(TripStatuses.Planned, RouteStatuses.Optimized, OrderStatuses.Confirmed, 1);
-        var loose = await f.SeedOrderAsync(OrderStatuses.Confirmed);
+        var (_, orders) = await f.SeedTripAsync(TripStatuses.Planned, RouteStatuses.Optimized, OrderStatuses.Pickup, 1);
+        var loose = await f.SeedOrderAsync(OrderStatuses.Pickup);
 
         await f.TransitionOrderAsync(loose, OrderStatuses.Cancelled);   // sin ruta: no-op
 
         var effect = f.Services.GetServices<IStatusTransitionEffect>().OfType<TripOrderReleaseEffect>().Single();
-        var confirmed = await f.StatusAsync(StatusDomains.OrderStatus, OrderStatuses.Confirmed);
+        var pickup = await f.StatusAsync(StatusDomains.OrderStatus, OrderStatuses.Pickup);
         var cancelled = await f.StatusAsync(StatusDomains.OrderStatus, OrderStatuses.Cancelled);
-        await effect.OnTransitionedAsync(new StatusTransitionContext(StatusDomains.OrderStatus, EntityTypes.Client, orders[0], confirmed, cancelled, null), default);
+        await effect.OnTransitionedAsync(new StatusTransitionContext(StatusDomains.OrderStatus, EntityTypes.Client, orders[0], pickup, cancelled, null), default);
         await f.Db.SaveChangesAsync();
 
         Assert.True(await f.Db.TripOrders.AnyAsync(x => x.IsCurrent && x.TransportOrderId == orders[0]));
@@ -541,17 +542,14 @@ public class TripStatusEffectTests
                 _statusIds[domain + "|" + code] = s.StatusCodeId;
             }
 
-            // Igual que logistica-db-seed.sql
-            S(StatusDomains.OrderStatus, OrderStatuses.Draft, pipe, 1, true);
-            S(StatusDomains.OrderStatus, OrderStatuses.Confirmed, pipe, 2);
-            S(StatusDomains.OrderStatus, OrderStatuses.Pickup, pipe, 3);
-            S(StatusDomains.OrderStatus, OrderStatuses.Inbound, pipe, 4);
-            S(StatusDomains.OrderStatus, OrderStatuses.Planned, pipe, 5);
-            S(StatusDomains.OrderStatus, OrderStatuses.InTransit, pipe, 6);
-            S(StatusDomains.OrderStatus, OrderStatuses.Arrived, pipe, 7);
+            // Igual que logistica-db-seed.sql + la sección (an) del Lote 106 en logistica-db-update.sql
+            S(StatusDomains.OrderStatus, OrderStatuses.Submitted, pipe, 1, true);
+            S(StatusDomains.OrderStatus, OrderStatuses.Pickup, pipe, 2);
+            S(StatusDomains.OrderStatus, OrderStatuses.Unassigned, pipe, 3);
+            S(StatusDomains.OrderStatus, OrderStatuses.Assigned, pipe, 4);
+            S(StatusDomains.OrderStatus, OrderStatuses.InTransit, pipe, 5);
             S(StatusDomains.OrderStatus, OrderStatuses.Delivered, term, 8);
-            S(StatusDomains.OrderStatus, OrderStatuses.OnHold, lat, 20);
-            S(StatusDomains.OrderStatus, OrderStatuses.Partial, lat, 21);
+            S(StatusDomains.OrderStatus, OrderStatuses.InWarehouse, term, 9);
             S(StatusDomains.OrderStatus, OrderStatuses.Failed, lat, 22);
             S(StatusDomains.OrderStatus, OrderStatuses.Cancelled, term, 30);
 
