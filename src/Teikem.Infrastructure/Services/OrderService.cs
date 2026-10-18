@@ -54,6 +54,7 @@ public sealed class OrderService(
     public const string SpecialServiceRequiredMessage = "El servicio especial es obligatorio en una entrega especial.";
     public const string SpecialServiceNotCurrentMessage = "El servicio especial no está vigente para este cliente.";
     /// <summary>Lote 4 (P7): driverPublicId solo acompaña a isSpecialDelivery.</summary>
+    public const string PieceNumberTakenMessage = "Ya existe una pieza con ese número de paquete.";
     public const string DriverOnlySpecialMessage = "El chofer solo se asigna en una entrega especial.";
 
     /// <summary>Savepoint de cada intento de alta cuando CreateAsync corre dentro de una transacción ambiente (importador).</summary>
@@ -68,6 +69,38 @@ public sealed class OrderService(
     private sealed record PreparedLine(int? PackageTypeId, string Description, int Pieces, decimal? WeightKg, decimal? VolumeM3, string? TypedPackageNumber);
 
     private sealed record PreparedReference(int RefTypeId, string Value, string? Source);
+
+    // ================================================================ piezas (Lote 109)
+
+    /// <summary>
+    /// Crea las piezas de las líneas recién guardadas, cada una con su número único: el de la línea tecleado por el cliente (con sufijo si hay varias), el formato propio del cliente (contador) o el del sistema
+    /// ({ClientId}{LocationId}{aammdd}{hhmmssfff}{n}, con la fecha y hora de la compañía). La línea sin número tecleado queda con el de su primera pieza. El número de pieza dentro de la orden corre sobre todas las líneas.
+    /// </summary>
+    private async Task AddPiecesAsync(TransportOrder order, string clientPart, string consigneePart, IReadOnlyList<(CargoLine Line, string? Typed)> lines, NumberingSettings settings, int? packageSeqClient, CancellationToken ct)
+    {
+        var tenantId = ((TenantContext)tenant).RequireTenantId();
+        var localNow = TimeZoneInfo.ConvertTimeFromUtc(_clock.UtcNow, _clock.Zone);
+        var configured = !string.IsNullOrWhiteSpace(settings.PackageNumberFormat);
+        var sequence = 0;
+        foreach (var (line, typed) in lines)
+        {
+            var count = Math.Max(1, (int)Math.Round(line.Quantity));
+            string? first = null;
+            for (var i = 1; i <= count; i++)
+            {
+                sequence++;
+                var number = typed is not null
+                    ? PieceNumbering.FromTyped(typed, i, count)
+                    : configured
+                        ? ResolveAuto(NumberKinds.Package, settings, await sequences.NextAsync(NumberKinds.Package, packageSeqClient, ct))
+                        : PieceNumbering.ForSystem(clientPart, consigneePart, localNow, sequence);
+                db.OrderPieces.Add(new OrderPiece { TenantId = tenantId, TransportOrderId = order.TransportOrderId, CargoLineId = line.CargoLineId, Sequence = sequence, PackageNumber = number, IsActive = true });
+                first ??= number;
+            }
+            line.PackageNumber ??= first;
+        }
+        await db.SaveGuardedAsync(PieceNumberTakenMessage, ct);
+    }
 
     // ================================================================ CREAR
 
@@ -155,7 +188,7 @@ public sealed class OrderService(
         if (typedInvoice is null) await sequences.EnsureAsync(NumberKinds.Invoice, invoiceSeqClient, ct);
         if (packBatchOverride is null) await sequences.EnsureAsync(NumberKinds.PackBatch, packBatchSeqClient, ct);
         await sequences.EnsureAsync(WaybillCodes.NumberKind, null, ct);   // Lote 97: el conduce siempre lo genera Teikem
-        if (special is null && lines.Any(l => l.TypedPackageNumber is null)) await sequences.EnsureAsync(NumberKinds.Package, packageSeqClient, ct);
+        if (special is null && !string.IsNullOrWhiteSpace(settings.PackageNumberFormat) && lines.Any(l => l.TypedPackageNumber is null)) await sequences.EnsureAsync(NumberKinds.Package, packageSeqClient, ct);   // solo con formato propio del cliente: el del sistema no usa contador
 
         var pickupTypeId = await lookups.GetIdAsync(LookupDomains.StopType, StopTypes.Pickup, ct);
         var deliveryTypeId = await lookups.GetIdAsync(LookupDomains.StopType, StopTypes.Delivery, ct);
@@ -200,13 +233,6 @@ public sealed class OrderService(
                     var packBatchNumber = packBatchOverride ?? ResolveAuto(NumberKinds.PackBatch, settings,
                         await sequences.NextAsync(NumberKinds.PackBatch, packBatchSeqClient, ct2));
                     var waybillNumber = NumberFormat.Resolve(WaybillCodes.NumberPattern, await sequences.NextAsync(WaybillCodes.NumberKind, null, ct2));
-                    var packageNumbers = new List<string?>(lines.Count);
-                    foreach (var line in lines)
-                    {
-                        if (special is not null) { packageNumbers.Add(null); continue; }
-                        packageNumbers.Add(line.TypedPackageNumber ?? ResolveAuto(NumberKinds.Package, settings,
-                            await sequences.NextAsync(NumberKinds.Package, packageSeqClient, ct2)));
-                    }
 
                     var initial = await statuses.GetInitialAsync(StatusDomains.OrderStatus, ct2);
                     var order = new TransportOrder
@@ -276,23 +302,26 @@ public sealed class OrderService(
                     await BornStopAsync(deliveryStop, stopInitial.InternalCode, ct2);
 
                     // Líneas (R9: paradas de la misma orden por construcción) y referencias
+                    var cargoEntities = new List<CargoLine>(lines.Count);
                     for (var i = 0; i < lines.Count; i++)
                     {
                         var line = lines[i];
-                        db.CargoLines.Add(new CargoLine
+                        var cargo = new CargoLine
                         {
                             TransportOrderId = order.TransportOrderId,
                             PickupStopId = pickupStop?.OrderStopId,
                             DeliveryStopId = deliveryStop.OrderStopId,
                             PackageTypeLookupId = line.PackageTypeId,
-                            PackageNumber = packageNumbers[i],
+                            PackageNumber = special is null ? line.TypedPackageNumber : null,   // el de la línea tecleada; si no, lo pone la primera pieza (Lote 109)
                             Description = line.Description,
                             Quantity = line.Pieces,
                             WeightKg = line.WeightKg,
                             VolumeM3 = line.VolumeM3,
                             HandlingFlags = 0,
                             IsActive = true,
-                        });
+                        };
+                        db.CargoLines.Add(cargo);
+                        cargoEntities.Add(cargo);
                     }
                     foreach (var r in references)
                         db.OrderReferences.Add(new OrderReference { TransportOrderId = order.TransportOrderId, RefTypeLookupId = r.RefTypeId, RefValue = r.Value, Source = r.Source });
@@ -305,6 +334,10 @@ public sealed class OrderService(
                     }
 
                     await db.SaveGuardedAsync(OrderNumberTakenMessage, ct2);
+
+                    // Lote 109: cada pieza con su número único (una entrega especial no lleva piezas)
+                    if (special is null)
+                        await AddPiecesAsync(order, PieceNumbering.Part(client.Code, client.ClientId), PieceNumbering.Part(consigneeLoc.Code, consigneeLoc.LocationId), cargoEntities.Select((c, i) => (c, lines[i].TypedPackageNumber)).ToList(), settings, packageSeqClient, ct2);
 
                     // confirmNow (DECISIÓN 26): cotiza, verifica crédito y avanza en la misma transacción; un 422 revierte también la creación.
                     // Lote 4 (P7): con chofer, la asignación reemplaza a la confirmación (confirma, avanza hasta IN_TRANSIT y crea
@@ -454,11 +487,12 @@ public sealed class OrderService(
             if (newLines is not null)
             {
                 foreach (var line in order.CargoLines.Where(l => l.IsActive)) line.IsActive = false;
+                foreach (var oldPiece in await db.OrderPieces.Where(p => p.TransportOrderId == order.TransportOrderId && p.IsActive).ToListAsync(ct2)) oldPiece.IsActive = false;   // Lote 109: sus piezas también
+                var addedLines = new List<(CargoLine Line, string? Typed)>();
                 foreach (var line in newLines)
                 {
-                    var packageNumber = line.TypedPackageNumber ?? ResolveAuto(NumberKinds.Package, settings,
-                        await sequences.NextAsync(NumberKinds.Package, packageSeqClient, ct2));
-                    order.CargoLines.Add(new CargoLine
+                    var packageNumber = line.TypedPackageNumber;
+                    var added = new CargoLine
                     {
                         TransportOrderId = order.TransportOrderId,
                         PickupStopId = pickupStop?.OrderStopId,
@@ -471,7 +505,15 @@ public sealed class OrderService(
                         VolumeM3 = line.VolumeM3,
                         HandlingFlags = 0,
                         IsActive = true,
-                    });
+                    };
+                    order.CargoLines.Add(added);
+                    addedLines.Add((added, line.TypedPackageNumber));
+                }
+                if (!order.IsSpecialDelivery)
+                {
+                    await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);   // las líneas necesitan su id para las piezas
+                    var deliveryPlace = deliveryStop.LocationId is int dl ? await db.Locations.AsNoTracking().Where(l => l.LocationId == dl).Select(l => new { l.Code, l.LocationId }).FirstOrDefaultAsync(ct2) : null;
+                    await AddPiecesAsync(order, PieceNumbering.Part(client.Code, client.ClientId), PieceNumbering.Part(deliveryPlace?.Code, deliveryPlace?.LocationId ?? 0), addedLines, settings, packageSeqClient, ct2);
                 }
                 var totals = OrderRules.Totals(newLines.Select(l => new PackageLineInput(l.Description, l.Pieces, l.WeightKg, l.VolumeM3)));
                 order.TotalPieces = totals.Pieces;

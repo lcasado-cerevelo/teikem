@@ -90,7 +90,7 @@ public sealed record DuplicateFinding(string Field, string Message, bool IsWarni
 /// </summary>
 public static class ConsigneeImportMapping
 {
-    public const int NameMax = 200, CodeMax = 40, LineMax = 200, CityMax = 100, StateMax = 100, PostalMax = 20, NotesMax = 500, ContactNameMax = 150;
+    public const int NameMax = 200, CodeMax = 10, LineMax = 200, CityMax = 100, StateMax = 100, PostalMax = 20, NotesMax = 500, ContactNameMax = 150;
 
     /// <summary>Lote 45 (F-B2): columnas que un mismo campo puede unir y largo máximo del separador.</summary>
     public const int MaxParts = 5, SeparatorMax = 10;

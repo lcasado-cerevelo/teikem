@@ -30969,6 +30969,7 @@ export interface components {
             weightKg?: number | null;
             /** Format: double */
             volumeM3?: number | null;
+            pieceNumbers?: string[] | null;
         };
         OrderPackageLineRequest: {
             packageType?: string | null;

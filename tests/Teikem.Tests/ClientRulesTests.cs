@@ -75,26 +75,27 @@ public class ClientCodeTests
     [Fact]
     public void FromName_uppercases_and_strips_diacritics()
     {
-        Assert.Equal("FARMACIA-LAS-MARIAS", ClientCode.FromName("Farmacia Las Marías"));
+        Assert.Equal("FARMACIA-L", ClientCode.FromName("Farmacia Las Marías"));   // Lote 109: máximo 10 caracteres
     }
 
     [Fact]
     public void FromName_replaces_symbols_with_dash_and_collapses()
     {
-        Assert.Equal("BEAUTY-CODE-INC", ClientCode.FromName("Beauty  Code, Inc."));
+        Assert.Equal("BEAUTY-COD", ClientCode.FromName("Beauty  Code, Inc."));
         Assert.Equal("ACME-2026", ClientCode.FromName("  ¡¡Acme (2026)!!  "));
     }
 
     [Fact]
-    public void FromName_truncates_to_20_without_trailing_dash()
+    public void FromName_truncates_to_10_without_trailing_dash()
     {
-        // "DISTRIBUIDORA-NACIONAL" → 20 chars sería "DISTRIBUIDORA-NACION"
-        Assert.Equal("DISTRIBUIDORA-NACION", ClientCode.FromName("Distribuidora Nacional del Caribe"));
-        // Corte justo en un guion: "SUPERMERCADOS-ECONO" (19) + "-" → se quita el guion final
-        var code = ClientCode.FromName("Supermercados Econo Xpress");
+        // "DISTRIBUIDORA-NACIONAL" → 10 caracteres: "DISTRIBUID"
+        Assert.Equal("DISTRIBUID", ClientCode.FromName("Distribuidora Nacional del Caribe"));
+        Assert.Equal("ECONO-XPRE", ClientCode.FromName("Econo Xpress"));
+        // Corte justo en un guion: "ECONO-XPRESS" → "ECONO-XPRE"; "AAAAA-BBBBB-C" → "AAAAA-BBBB" (sin guion final)
+        var code = ClientCode.FromName("Aaaaaaaaa Bbbbb");   // "AAAAAAAAA-BBBBB" → 10 caracteres cae justo en el guion
         Assert.True(code.Length <= ClientCode.MaxLength);
         Assert.False(code.EndsWith('-'));
-        Assert.Equal("SUPERMERCADOS-ECONO", code);
+        Assert.Equal("AAAAAAAAA", code);
     }
 
     [Fact]
@@ -110,7 +111,7 @@ public class ClientCodeTests
     public void WithSuffix_keeps_max_length()
     {
         Assert.Equal("ACME-2", ClientCode.WithSuffix("ACME", 2));
-        var longBase = new string('A', 20);
+        var longBase = new string('A', 10);
         var s = ClientCode.WithSuffix(longBase, 12);
         Assert.True(s.Length <= ClientCode.MaxLength);
         Assert.EndsWith("-12", s);

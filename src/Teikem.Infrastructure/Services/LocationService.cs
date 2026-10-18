@@ -22,7 +22,7 @@ public sealed class LocationService(TeikemDbContext db, ITenantContext tenant, I
     /// <summary>País por defecto de una localización sin país (lo usa también la importación de consignatarios, Lote 38).</summary>
     public const string DefaultCountry = "PR";
     /// <summary>Topes de los textos (= columnas de dbo.Location); la importación de consignatarios valida con los mismos.</summary>
-    public const int NameMax = 200, CodeMax = 40, LineMax = 200, CityMax = 100, StateMax = 100, PostalMax = 20, NotesMax = 500, ContactNameMax = 150;
+    public const int NameMax = 200, CodeMax = 10, LineMax = 200, CityMax = 100, StateMax = 100, PostalMax = 20, NotesMax = 500, ContactNameMax = 150;
 
     // ---------------------------------------------------------------- consultas
 

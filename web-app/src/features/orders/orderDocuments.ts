@@ -89,7 +89,7 @@ export function packingListSpec(orders: readonly OrderListItemDto[], ctx: Docume
     const pkgs = o.packages ?? []
     return {
       title: [o.packBatchNumber, o.orderNumber, o.clientInvoiceNumber && `${t('orders.docs.cols.invoice')} ${o.clientInvoiceNumber}`, o.consigneeName, address].filter(Boolean).join(' · '),
-      rows: pkgs.map((p): ReportValue[] => [p.packageTypeLabel || p.packageType || '', p.packageNumber ?? '', p.description, p.pieces ?? 0, p.weightKg ?? null]),
+      rows: pkgs.map((p): ReportValue[] => [p.packageTypeLabel || p.packageType || '', (p.pieceNumbers?.length ? p.pieceNumbers.join(', ') : p.packageNumber) ?? '', p.description, p.pieces ?? 0, p.weightKg ?? null]),
       subtotal: [t('orders.docs.packageCount', { n: pkgs.length }), '', '', sum(pkgs.map((p) => p.pieces ?? 0)), sum(pkgs.map((p) => p.weightKg ?? 0))] as ReportValue[],
     }
   })

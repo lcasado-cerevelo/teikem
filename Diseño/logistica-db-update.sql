@@ -4202,3 +4202,24 @@ GO
 IF COL_LENGTH('dbo.EntityStatusHistory', 'IsSkipped') IS NULL
     ALTER TABLE dbo.EntityStatusHistory ADD IsSkipped BIT NOT NULL CONSTRAINT DF_EntityStatusHistory_IsSkipped DEFAULT 0;
 GO
+
+/* =========================================================================
+   2026-10-18 (aq) — Lote 109: piezas. Cada pieza (paquete) de una orden tiene su propio número único (el del label); se crean al someter la orden.
+   ========================================================================= */
+IF OBJECT_ID(N'dbo.OrderPiece', N'U') IS NULL CREATE TABLE dbo.OrderPiece (
+    OrderPieceId     INT IDENTITY(1,1) PRIMARY KEY,
+    TenantId         INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    TransportOrderId INT NOT NULL REFERENCES dbo.TransportOrder(TransportOrderId),
+    CargoLineId      INT NOT NULL REFERENCES dbo.CargoLine(CargoLineId),
+    Sequence         INT NOT NULL,
+    PackageNumber    NVARCHAR(40) NOT NULL,
+    IsActive         BIT NOT NULL CONSTRAINT DF_OrderPiece_IsActive DEFAULT 1,
+    CreatedAtUtc     DATETIME2 NOT NULL CONSTRAINT DF_OrderPiece_Created DEFAULT SYSUTCDATETIME()
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_OrderPiece_Order' AND object_id = OBJECT_ID('dbo.OrderPiece'))
+    CREATE INDEX IX_OrderPiece_Order ON dbo.OrderPiece (TransportOrderId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_OrderPiece_Number' AND object_id = OBJECT_ID('dbo.OrderPiece'))
+    CREATE UNIQUE INDEX UX_OrderPiece_Number ON dbo.OrderPiece (TenantId, PackageNumber) WHERE IsActive = 1;
+GO

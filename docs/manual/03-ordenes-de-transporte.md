@@ -243,6 +243,13 @@ Cómo se usa: `DELETE /api/v1/orders/{publicId}` → `204`.
 
 ## 2. Numeración de los cuatro identificadores
 
+> **Lote 109 (2026-10-18) — cada PIEZA tiene su propio número único.** El número de paquete ya no es uno por línea repetido en cada pieza: al someter la orden se crea **una pieza por cada pieza de cada línea** (una línea de 3 piezas crea 3), y cada una lleva su número, que es el del label y el que se escanea. El número de la **orden** (el conduce) sigue siendo aparte y único.
+> - **Formato del sistema** (el que vale cuando el cliente no tiene formato propio): `{Code del cliente}{Code del consignatario}{aammdd}{hhmmssfff}{n}` — por ejemplo `ACMEPR01232610181534051231` — sin separadores nuestros (los Codes se toman tal cual vengan, con rayas si las traen). Si el consignatario no tiene Code se usa su ID. La fecha y la hora son las de la compañía; **n** es el número de la pieza dentro de la orden (1, 2, 3… corrido sobre todas las líneas). Máximo 38 caracteres (cabe en el campo de 40 y en un Code 128 de 4 pulgadas).
+> - **Los Codes** del cliente y del consignatario tienen **máximo 10 caracteres** (un código, no un título): «El código no puede exceder 10 caracteres.» (400). Un Code ya guardado de más de 10 usa sus primeros 10 en el número. Los códigos autogenerados desde el nombre del cliente salen de 10 caracteres como máximo.
+> - **Formato propio del cliente** (ficha del cliente → Numeración): si lo tiene, cada pieza toma el siguiente número de su contador. **Línea con número tecleado**: una pieza → ese número; varias → ese número más el de la pieza (`PQ-B1`, `PQ-B2`…).
+> - Al **editar los paquetes** de una orden Sometida las piezas viejas se dan de baja y se crean las nuevas. Una entrega especial no lleva piezas.
+> - Buscar o escanear por el número de una pieza encuentra su orden; la ficha lista los números de cada pieza y los labels y la hoja de empaque los usan.
+
 Qué hace: toda orden recibe cuatro identificadores, cada uno con su propio contador atómico (tabla `NumberSequence`,
 `UPDATE … OUTPUT` dentro de la transacción del alta: sin huecos ni choques entre altas simultáneas):
 

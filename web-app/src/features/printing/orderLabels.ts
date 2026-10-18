@@ -1,7 +1,7 @@
 // Lote F-G2 — de las órdenes a los labels (puro). Un label POR PIEZA: la cantidad de cada línea de carga (de la unidad que sea) es el
-// número de labels de esa línea, y cada uno lleva el NÚMERO DE PAQUETE de su línea en el código de barras (el mismo número repetido en
-// las piezas de la línea, D-FG17) y «Paquete i de N» con i corrido sobre todas las piezas de la orden y N = sus piezas.
-// - Una pieza de una línea sin número de paquete no lleva label (se cuenta para avisar).
+// número de labels de esa línea. Lote 109: cada pieza lleva SU PROPIO número de paquete, único, en el código de barras (el de `pieceNumbers`; antes el
+// de la línea repetido en cada pieza, D-FG17) y «Paquete i de N» con i corrido sobre todas las piezas de la orden y N = sus piezas.
+// - Una pieza sin número de paquete no lleva label (se cuenta para avisar).
 // - Las órdenes canceladas o dadas de baja no se imprimen (se cuentan para avisar).
 // - Waybill = número de conduce (Lote 97; antes el número de orden, D-FG10); factura = factura del cliente; sender = el cliente; consignatario y dirección = la parada de
 //   entrega; servicio = su etiqueta; logo = el nombre de la compañía (D-FG11). Nunca el precio.
@@ -16,8 +16,11 @@ type Detail = Schemas['OrderDetailDto']
 export const LARGE_LABEL_JOB = 500
 
 export interface LabelPackage {
+  /** El de la línea (órdenes anteriores al Lote 109, sin piezas con número propio). */
   packageNumber: string | null
   pieces: number
+  /** Lote 109: el número único de cada pieza de la línea, en orden. */
+  pieceNumbers?: string[]
 }
 
 /** Lo que hace falta de una orden para sus labels (sale de la lista o de la ficha). */
@@ -46,7 +49,7 @@ export function cityLine(city?: string | null, state?: string | null, zip?: stri
 
 const isCancelled = (status: string | null | undefined, active: boolean | undefined) => active === false || (status ?? '').toUpperCase() === 'CANCELLED'
 const packagesOf = (lines: readonly Schemas['OrderPackageLineDto'][] | null | undefined): LabelPackage[] =>
-  (lines ?? []).map((p) => ({ packageNumber: p.packageNumber?.trim() || null, pieces: Math.max(0, Math.floor(p.pieces ?? 0)) }))
+  (lines ?? []).map((p) => ({ packageNumber: p.packageNumber?.trim() || null, pieces: Math.max(0, Math.floor(p.pieces ?? 0)), pieceNumbers: (p.pieceNumbers ?? []).map((n) => n.trim()).filter(Boolean) }))
 
 export function labelOrderFromList(o: ListItem): LabelOrder {
   return {
@@ -90,7 +93,8 @@ export function orderLabelsOf(order: LabelOrder, company: string, money: (n: num
   for (const p of order.packages) {
     for (let k = 0; k < p.pieces; k++) {
       i++
-      if (!p.packageNumber) {
+      const number = p.pieceNumbers?.[k] || p.packageNumber   // Lote 109: el de la pieza; sin él, el de la línea (órdenes viejas)
+      if (!number) {
         withoutNumber++
         continue
       }
@@ -100,7 +104,7 @@ export function orderLabelsOf(order: LabelOrder, company: string, money: (n: num
         sender: order.clientName,
         consignee: order.consigneeName,
         addressLines: order.addressLines,
-        packageNumber: p.packageNumber,
+        packageNumber: number,
         packageIndex: i,
         packageCount: total,
         waybill: order.waybillNumber || order.orderNumber,

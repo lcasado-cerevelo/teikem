@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Teikem.Domain.Orders;
 using Teikem.Domain.Catalogs;
 using Teikem.Domain.Clients;
 using Teikem.Domain.Common;
@@ -68,7 +69,7 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
         if (!string.IsNullOrWhiteSpace(req.Code))
         {
             explicitCode = req.Code.Trim().ToUpperInvariant();
-            if (explicitCode.Length > 30) throw new ValidationException("code", "El código no puede exceder 30 caracteres.");
+            if (explicitCode.Length > PieceNumbering.CodeMax) throw new ValidationException("code", "El código no puede exceder 10 caracteres.");   // Lote 109: un código, no un título
         }
 
         // Contrato inicial: validaciones puras antes de abrir la transacción

@@ -168,3 +168,18 @@ public sealed class ImportBatchConfiguration : IEntityTypeConfiguration<ImportBa
         b.HasOne(x => x.Creator).WithMany().HasForeignKey(x => x.CreatedBy);
     }
 }
+
+/// <summary>Lote 109 — una pieza con su número único. Mapeo 1:1 con la sección «2026-10-18 (aq)» de Diseño/logistica-db-update.sql.</summary>
+public sealed class OrderPieceConfiguration : IEntityTypeConfiguration<OrderPiece>
+{
+    public void Configure(EntityTypeBuilder<OrderPiece> b)
+    {
+        b.ToTable("OrderPiece");
+        b.HasKey(p => p.OrderPieceId);
+        b.Property(p => p.PackageNumber).HasMaxLength(40).IsRequired();
+        b.HasIndex(p => p.TransportOrderId).HasDatabaseName("IX_OrderPiece_Order");
+        b.HasIndex(p => new { p.TenantId, p.PackageNumber }).IsUnique().HasFilter("[IsActive] = 1").HasDatabaseName("UX_OrderPiece_Number");
+        b.HasOne(p => p.Order).WithMany().HasForeignKey(p => p.TransportOrderId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne(p => p.Line).WithMany().HasForeignKey(p => p.CargoLineId).OnDelete(DeleteBehavior.NoAction);
+    }
+}

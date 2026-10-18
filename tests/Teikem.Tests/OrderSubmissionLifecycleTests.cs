@@ -538,4 +538,109 @@ public sealed class OrderSubmissionLifecycleTests
         var ex = await Assert.ThrowsAsync<StatusRuleException>(() => MoveAsync(x, o.PublicId, OrderStatuses.InTransit));
         Assert.Equal("'DELIVERED' es terminal: no admite más transiciones.", ex.Message);
     }
+
+    // ---------------------------------------------------------------- piezas (Lote 109)
+
+    private static OrderCreateRequest ReqWith(World x, params OrderPackageLineRequest[] lines)
+        => new(x.C.PublicId, x.Consignee.PublicId, null, null, "STANDARD", null, lines.ToList(), null, null, null, null, null, null, null, OverrideCredit: true);
+
+    private static async Task<List<OrderPiece>> PiecesAsync(World x, int orderId, bool onlyActive = true)
+        => await x.Db.OrderPieces.AsNoTracking().Where(p => p.TransportOrderId == orderId && (!onlyActive || p.IsActive)).OrderBy(p => p.Sequence).ToListAsync();
+
+    [Fact]
+    public async Task A_line_of_three_pieces_creates_three_pieces_each_with_its_own_system_number()
+    {
+        var x = await NewWorldAsync();
+        await using var _ = x.F;
+        var dto = await x.Orders.CreateAsync(ReqWith(x, new OrderPackageLineRequest("BOX", "Caja", 3)), OrderScope.Any, null, default);
+        var order = await OrderAsync(x, dto.PublicId);
+        var pieces = await PiecesAsync(x, order.TransportOrderId);
+
+        Assert.Equal(new[] { 1, 2, 3 }, pieces.Select(p => p.Sequence));
+        Assert.Equal(3, pieces.Select(p => p.PackageNumber).Distinct().Count());   // cada pieza con su número, sin repetir
+        // formato del sistema: {Code cliente}{Code consignatario o su ID}{aammdd}{hhmmssfff}{n}, sin separadores nuestros (este consignatario no tiene Code: su ID)
+        var prefix = $"{x.C.Code}{x.Consignee.LocationId}";
+        foreach (var p in pieces)
+        {
+            Assert.StartsWith(prefix, p.PackageNumber);
+            Assert.Matches("^[0-9A-Z]+$", p.PackageNumber);
+            Assert.EndsWith(p.Sequence.ToString(), p.PackageNumber);
+            Assert.Equal(prefix.Length + 6 + 9 + p.Sequence.ToString().Length, p.PackageNumber.Length);
+            Assert.True(p.PackageNumber.Length <= PieceNumbering.MaxLength);
+        }
+        // la línea queda con el número de su primera pieza y la ficha lista los números de cada pieza
+        var line = await x.Db.CargoLines.AsNoTracking().SingleAsync(l => l.TransportOrderId == order.TransportOrderId);
+        Assert.Equal(pieces[0].PackageNumber, line.PackageNumber);
+        var detail = await x.F.Get<OrderReadService>().GetAsync(dto.PublicId, OrderScope.Any, default);
+        Assert.Equal(pieces.Select(p => p.PackageNumber), detail.Packages!.Single().PieceNumbers);
+    }
+
+    [Fact]
+    public async Task The_piece_sequence_runs_over_all_the_lines_of_the_order()
+    {
+        var x = await NewWorldAsync();
+        await using var _ = x.F;
+        var dto = await x.Orders.CreateAsync(ReqWith(x, new OrderPackageLineRequest("BOX", "Caja", 2), new OrderPackageLineRequest("BOX", "Otra", 1)), OrderScope.Any, null, default);
+        var order = await OrderAsync(x, dto.PublicId);
+        var pieces = await PiecesAsync(x, order.TransportOrderId);
+        Assert.Equal(new[] { 1, 2, 3 }, pieces.Select(p => p.Sequence));
+        Assert.Equal(2, pieces.Select(p => p.CargoLineId).Distinct().Count());
+    }
+
+    [Fact]
+    public async Task A_number_typed_by_the_client_numbers_the_pieces_of_that_line()
+    {
+        var x = await NewWorldAsync();
+        await using var _ = x.F;
+        var dto = await x.Orders.CreateAsync(ReqWith(x, new OrderPackageLineRequest("BOX", "Una", 1, null, null, "PQ-A"), new OrderPackageLineRequest("BOX", "Tres", 3, null, null, "PQ-B")), OrderScope.Any, null, default);
+        var order = await OrderAsync(x, dto.PublicId);
+        var numbers = (await PiecesAsync(x, order.TransportOrderId)).Select(p => p.PackageNumber).ToArray();
+        Assert.Equal(new[] { "PQ-A", "PQ-B1", "PQ-B2", "PQ-B3" }, numbers);   // una pieza: el mismo; varias: con el número de la pieza
+    }
+
+    [Fact]
+    public async Task Editing_the_packages_of_a_submitted_order_replaces_its_pieces()
+    {
+        var x = await NewWorldAsync();
+        await using var _ = x.F;
+        var dto = await x.Orders.CreateAsync(ReqWith(x, new OrderPackageLineRequest("BOX", "Caja", 2)), OrderScope.Any, null, default);
+        var order = await OrderAsync(x, dto.PublicId);
+        var before = (await PiecesAsync(x, order.TransportOrderId)).Select(p => p.PackageNumber).ToList();
+
+        await x.Orders.UpdateAsync(dto.PublicId, new OrderPatchRequest(null, null, null, null, null, new List<OrderPackageLineRequest> { new("BOX", "Caja nueva", 3) }, null, null, null, null, null, null, null), OrderScope.Any, default);
+
+        var all = await PiecesAsync(x, order.TransportOrderId, onlyActive: false);
+        Assert.Equal(2, all.Count(p => !p.IsActive));                         // las viejas quedan de baja
+        var active = all.Where(p => p.IsActive).OrderBy(p => p.Sequence).ToList();
+        Assert.Equal(new[] { 1, 2, 3 }, active.Select(p => p.Sequence));
+        Assert.Empty(active.Select(p => p.PackageNumber).Intersect(before));  // números nuevos
+    }
+
+    [Fact]
+    public async Task A_piece_number_finds_its_order_and_a_missing_one_finds_nothing()
+    {
+        var x = await NewWorldAsync();
+        await using var _ = x.F;
+        var dto = await x.Orders.CreateAsync(ReqWith(x, new OrderPackageLineRequest("BOX", "Caja", 2)), OrderScope.Any, null, default);
+        var order = await OrderAsync(x, dto.PublicId);
+        var second = (await PiecesAsync(x, order.TransportOrderId))[1].PackageNumber;
+
+        var found = await x.F.Get<OrderReadService>().LookupAsync(second, OrderScope.Any, default);
+        Assert.Equal(OrderReadService.MatchedByPackage, found.MatchedBy);
+        Assert.Equal(dto.PublicId, found.Matches.Single().PublicId);
+        Assert.Empty((await x.F.Get<OrderReadService>().LookupAsync("000000", OrderScope.Any, default)).Matches);
+    }
+
+    [Fact]
+    public void The_system_number_uses_the_codes_the_date_and_the_time_with_milliseconds()
+    {
+        var n = PieceNumbering.ForSystem("ACME", "PR0123", new DateTime(2026, 10, 18, 15, 34, 5, 123), 7);
+        Assert.Equal("ACMEPR01232610181534051237", n);                       // {cliente}{consignatario}{aammdd}{hhmmssfff}{n}
+        Assert.Equal("ACME-PR", PieceNumbering.Part("ACME-PR", 5));           // el Code tal cual viene, con raya si la trae
+        Assert.Equal("ABCDEFGHIJ", PieceNumbering.Part("ABCDEFGHIJKL", 5));   // un Code ya guardado de más de 10: sus primeros 10
+        Assert.Equal("987", PieceNumbering.Part(null, 987));                  // sin Code, su ID
+        Assert.Equal("987", PieceNumbering.Part("  ", 987));
+        Assert.Equal("PQ-X", PieceNumbering.FromTyped("PQ-X", 1, 1));
+        Assert.Equal("PQ-X2", PieceNumbering.FromTyped("PQ-X", 2, 3));
+    }
 }

@@ -6,12 +6,12 @@ namespace Teikem.Domain.Clients;
 /// <summary>
 /// Código de cliente autogenerado desde el nombre (el modal '+ Nuevo cliente' solo captura el nombre):
 /// mayúsculas, sin acentos ni diacríticos, todo lo no alfanumérico se vuelve '-', guiones colapsados y sin guion
-/// en los extremos, máximo 20 caracteres. Si choca con uno existente, el servicio le agrega el sufijo -2, -3…
+/// en los extremos, máximo 10 caracteres. Si choca con uno existente, el servicio le agrega el sufijo -2, -3…
 /// Lógica pura: un nombre sin letras ni dígitos lanza ArgumentException (el servicio la traduce a 400).
 /// </summary>
 public static class ClientCode
 {
-    public const int MaxLength = 20;
+    public const int MaxLength = 10;   // Lote 109: un código, no un título (el número de pieza lo lleva dentro)
 
     public static string FromName(string? name)
     {

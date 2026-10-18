@@ -13,13 +13,17 @@ Dictado por Luis (2026-10-17/18). **Todavía no hay código**: este documento ju
 ## Cómo se parte
 | Lote | Qué |
 |---|---|
-| **109 — Piezas** | Entidad pieza (`OrderPiece`): una fila por pieza con su número único, generada al someter la orden; labels por pieza con su número; búsqueda por número de pieza (la de la línea deja de ser el código del label) |
+| **109 — Piezas (hecho)** | Entidad pieza (`OrderPiece`): una fila por pieza con su número único, generada al someter la orden; labels por pieza con su número; búsqueda por número de pieza (la de la línea deja de ser el código del label) |
 | **110 — Escaneo por pieza** | Cada escaneo de una pieza con la acción escogida se registra; conteo «4 de 5»; incompleta; «Cerrar conteo»; el número de orden ya no se escanea; audio Sí/No/Ok |
 | **111 — Reclamaciones** | Faltantes «Por verificar» → «Perdido» → reclamación (Reclamada → Resuelta), con su pantalla y permisos |
 | 112+ | Devolución (Devuelta + orden de vuelta), reubicar piezas, tipo «pick up», cargo por devolución, acceso del consignatario |
 
 ## Lo que falta decidir (antes del 109)
-1. **El formato del número de la pieza.** La propuesta: `{código del cliente}{código del consignatario}{aaaammddhhmmssfff}` más el número de la pieza dentro de la orden para que nunca se repita (p. ej. ACME-PR0123-20261018153042123-01). Hoy cada cliente tiene un formato configurable de número de paquete (`PackageNumberFormat`, por omisión PQT-#####); ¿el formato nuevo reemplaza el configurable o lo convierte en uno más (con esos datos como opciones)?
+1. ~~El formato del número de la pieza.~~ **Resuelto (Luis, 2026-10-18):** `{Code del cliente}{Code del consignatario o su ID}{aammdd}{hhmmssfff}{n}`, sin rayas nuestras, Codes de máximo 10 caracteres tal cual vengan; el configurable por cliente se queda y este es el de omisión. (Propuesta original: `{código del cliente}{código del consignatario}{aaaammddhhmmssfff}` más el número de la pieza dentro de la orden para que nunca se repita (p. ej. ACME-PR0123-20261018153042123-01). Hoy cada cliente tiene un formato configurable de número de paquete (`PackageNumberFormat`, por omisión PQT-#####); ¿el formato nuevo reemplaza el configurable o lo convierte en uno más (con esos datos como opciones)?
 2. **Etiquetas ya impresas / órdenes viejas:** no hay órdenes en producción; las de desarrollo se pueden regenerar. ¿Confirmado?
 3. **La orden recreada al cerrar el conteo** (punto 6): una sola orden por cada orden original, con las piezas que aparecieron. ¿Mismo cliente y mismo consignatario que la original, y la reclamación queda enlazada a la nueva orden? ¿Y la reclamación se cierra sola cuando aparecen todas las piezas, o la resuelve alguien?
 4. **Una línea de 3 piezas del importador y de la entrada rápida:** crean 3 piezas con su número cada una (ya no un número por línea).
+
+## Estado (2026-10-18)
+- **109 hecho:** piezas con número único (formato del sistema con los Codes), labels por pieza, búsqueda por número de pieza. Ver `docs/lote109-decisiones.md`.
+- **Pendiente decidido por Luis para el 110:** el número de la **orden** (conduce) pasa a `{Code cliente}{Code consignatario}{aammdd}{secuencial del día por consignatario}`, sin rayas (reemplaza `CND-0000001`; afecta la búsqueda del portal y la página pública), el escaneo por pieza y el audio Sí/No/Ok.

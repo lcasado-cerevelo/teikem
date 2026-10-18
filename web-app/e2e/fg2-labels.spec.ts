@@ -163,7 +163,7 @@ test.describe('Labels y documentos (Lote F-G2)', () => {
       await print.click()
       const preview = page.getByRole('dialog', { name: 'Imprimir 4 labels' })
       await expect(preview.getByTestId('print-count')).toHaveText('Labels: 4 · órdenes: 2 (uno por pieza).')
-      await expect(preview.getByTestId('label-preview')).toContainText(`PKG-${s} · Paquete 1 de 3`)
+      await expect(preview.getByTestId('label-preview')).toContainText(`PKG-${s}1 · Paquete 1 de 3`)   // Lote 109: cada pieza con su número (la línea tecleada PKG-x numera sus 2 piezas PKG-x1 y PKG-x2)
       if (isMobile) await expectNoHorizontalScroll(page)
       await shot(page, isMobile, 'fg2-labels-vista', 1000, preview)
       const [labelsPdf] = await Promise.all([page.waitForEvent('download'), preview.getByRole('button', { name: 'Descargar PDF' }).click()])
@@ -211,7 +211,7 @@ test.describe('Labels y documentos (Lote F-G2)', () => {
       // 7) escaneo: el número de paquete encuentra la orden; informe de faltantes
       await page.goto('/ops/scan')
       const input = page.getByRole('textbox', { name: 'Código a escanear' })
-      await input.fill(`PKG-${s}`)
+      await input.fill(`PKG-${s}2`)   // el número de UNA pieza (Lote 109)
       await input.press('Enter')
       await expect(page.getByRole('status', { name: 'Resultado del último escaneo' })).toContainText('Encontrada por número de paquete.')
       const missing = await downloadFromPreview(page, () => page.getByRole('button', { name: 'Informe de faltantes' }).click(), 'Informe de faltantes')

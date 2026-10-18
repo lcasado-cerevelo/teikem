@@ -351,7 +351,8 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
             // Lote 44: cuarta precedencia, el número de paquete (el label de cada paquete lo lleva en el código de barras). Solo se
             // consulta si los tres primeros no coinciden (IX_CargoLine_PackageNumber); varias órdenes = ambiguo, igual que los demás.
             var byPackage = await db.ScopedOrders(scope).AsNoTracking()
-                .Where(o => o.IsActive && o.CargoLines.Any(l => l.IsActive && l.PackageNumber == c))
+                .Where(o => o.IsActive && (o.CargoLines.Any(l => l.IsActive && l.PackageNumber == c)
+                                           || db.OrderPieces.Any(p => p.IsActive && p.PackageNumber == c && p.TransportOrderId == o.TransportOrderId)))   // Lote 109: el número de cada pieza
                 .OrderByDescending(o => o.CreatedAtUtc).ThenByDescending(o => o.TransportOrderId)
                 .ToListAsync(ct);
             if (byPackage.Count > 0) { matchedBy = MatchedByPackage; matches = byPackage; }
@@ -403,12 +404,16 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
         // Lote 39: una sola consulta del permiso por página; sin orders.view_price el monto cotizado va en null.
         var canViewPrice = await OrderPriceVisibility.CanViewAsync(prices, ct);
 
+        // Lote 109: los números de las piezas de toda la página en una sola consulta
+        var pageLineIds = linesByOrder.Values.SelectMany(l => l).Where(l => l.IsActive).Select(l => l.CargoLineId).ToList();
+        var piecesOfPage = await LoadPieceNumbersAsync(pageLineIds, ct);
+
         var items = new List<OrderListItemDto>(orders.Count);
         foreach (var o in orders)
         {
             var client = clients.GetValueOrDefault(o.ClientId);
             var delivery = deliveryByOrder.GetValueOrDefault(o.TransportOrderId);
-            var packages = await ToPackageDtosAsync(linesByOrder.GetValueOrDefault(o.TransportOrderId) ?? new List<CargoLine>(), ct);
+            var packages = await ToPackageDtosAsync(linesByOrder.GetValueOrDefault(o.TransportOrderId) ?? new List<CargoLine>(), ct, piecesOfPage);
             var serviceType = await lookups.GetAsync(o.ServiceTypeLookupId, ct);
             var status = orderStatuses.GetValueOrDefault(o.StatusCodeId) ?? new StatusInfo("", "", false, "");
             var specialName = o.SpecialServiceId is int ssId ? specialNames.GetValueOrDefault(ssId) : null;
@@ -432,11 +437,21 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
 
     // ---------------------------------------------------------------- helpers
 
+    /// <summary>Lote 109: los números de las piezas activas de esas líneas, en orden (línea → números).</summary>
+    private async Task<Dictionary<int, List<string>>> LoadPieceNumbersAsync(IReadOnlyCollection<int> lineIds, CancellationToken ct)
+        => lineIds.Count == 0
+            ? new Dictionary<int, List<string>>()
+            : (await db.OrderPieces.AsNoTracking().Where(p => p.IsActive && lineIds.Contains(p.CargoLineId)).OrderBy(p => p.Sequence).Select(p => new { p.CargoLineId, p.PackageNumber }).ToListAsync(ct))
+                .GroupBy(p => p.CargoLineId).ToDictionary(g => g.Key, g => g.Select(p => p.PackageNumber).ToList());
+
     /// <summary>Líneas activas de la orden como paquetes (etiqueta del tipo desde el catálogo; una entrega especial trae PackageType null).</summary>
-    private async Task<IReadOnlyList<OrderPackageLineDto>> ToPackageDtosAsync(IEnumerable<CargoLine> cargoLines, CancellationToken ct)
+    private async Task<IReadOnlyList<OrderPackageLineDto>> ToPackageDtosAsync(IEnumerable<CargoLine> cargoLines, CancellationToken ct, IReadOnlyDictionary<int, List<string>>? preloadedPieces = null)
     {
         var result = new List<OrderPackageLineDto>();
-        foreach (var l in cargoLines.Where(l => l.IsActive).OrderBy(l => l.CargoLineId))
+        var activeLines = cargoLines.Where(l => l.IsActive).OrderBy(l => l.CargoLineId).ToList();
+        var lineIds = activeLines.Select(l => l.CargoLineId).ToList();
+        var pieces = preloadedPieces ?? await LoadPieceNumbersAsync(lineIds, ct);
+        foreach (var l in activeLines)
         {
             var packageType = l.PackageTypeLookupId is int typeId ? await lookups.GetAsync(typeId, ct) : null;
             result.Add(new OrderPackageLineDto(
@@ -447,7 +462,8 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
                 l.Description,
                 (int)l.Quantity,
                 l.WeightKg,
-                l.VolumeM3));
+                l.VolumeM3,
+                pieces.GetValueOrDefault(l.CargoLineId)));
         }
         return result;
     }

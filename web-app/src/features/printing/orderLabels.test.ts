@@ -66,7 +66,7 @@ describe('mapeo de la lista y de la ficha', () => {
       status: 'CONFIRMED', isActive: true, packages: [{ id: 1, packageNumber: ' PQT-1 ', pieces: 2, description: '' }],
     })
     expect(o.addressLines).toEqual(['Carr. 2 km 14.5', 'Toa Baja, PR 00949'])
-    expect(o.packages).toEqual([{ packageNumber: 'PQT-1', pieces: 2 }])
+    expect(o.packages).toEqual([{ packageNumber: 'PQT-1', pieces: 2, pieceNumbers: [] }])
     expect(o.serviceLabel).toBe('Next day')
     expect(labelOrderFromList({ status: 'CANCELLED', isActive: true }).cancelled).toBe(true)
     expect(labelOrderFromList({ status: 'DRAFT', isActive: false }).cancelled).toBe(true)
@@ -81,5 +81,13 @@ describe('mapeo de la lista y de la ficha', () => {
     expect(o.consigneeName).toBe('Colmado')
     expect(o.addressLines).toEqual(['Calle 1', 'Apt 2', 'Ponce 00716'])
     expect(cityLine('', 'PR', '')).toBe('PR')
+  })
+
+  it('Lote 109: cada pieza lleva su propio número único en el código de barras', () => {
+    const order = { ...ORDER, codAmount: 0, packages: [{ packageNumber: 'ACME5261018', pieces: 2, pieceNumbers: ['ACME52610181', 'ACME52610182'] }, { packageNumber: null, pieces: 1, pieceNumbers: ['ACME52610183'] }] }
+    const { labels, withoutNumber } = orderLabelsOf(order, 'X', money)
+    expect(labels.map((l) => l.packageNumber)).toEqual(['ACME52610181', 'ACME52610182', 'ACME52610183'])
+    expect(labels.map((l) => `${l.packageIndex}/${l.packageCount}`)).toEqual(['1/3', '2/3', '3/3'])
+    expect(withoutNumber).toBe(0)
   })
 })

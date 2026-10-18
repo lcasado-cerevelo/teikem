@@ -155,7 +155,8 @@ public sealed record OrderPackageLineDto(
     string Description,
     int Pieces,
     decimal? WeightKg,
-    decimal? VolumeM3);
+    decimal? VolumeM3,
+    IReadOnlyList<string>? PieceNumbers = null);   // Lote 109: el número único de cada pieza de la línea (el del label), en orden
 
 public sealed record OrderReferenceDto(int Id, string RefType, string RefTypeLabel, string Value, string? Source);
 

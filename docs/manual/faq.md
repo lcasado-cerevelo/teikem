@@ -9138,3 +9138,16 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **¿Por qué el historial dice «(brincado)»?** Un escaneo llevó la orden más adelante de una vez; los estatus del medio se anotan con la misma fecha y hora, y a los clientes no se les avisa de ellos.
 
 **¿Puedo crear una orden para un cliente sin contrato o sin tarifa?** No (Lote 107): se revisa al someter. Cree el contrato y la tarifa primero.
+
+
+## Piezas y su número (Lote 109)
+
+**¿Cada pieza tiene su propio número?** Sí: al someter la orden, una línea de 3 piezas crea 3 piezas, cada una con su número único (el del label y el que se escanea). El número de la orden es otro.
+
+**«El código no puede exceder 10 caracteres.» (400)** Los Codes del cliente y del consignatario son de 10 caracteres como máximo; use uno más corto. Un Code que ya existía con más de 10 sigue funcionando: en el número de la pieza se usan sus primeros 10.
+
+**El consignatario no tiene Code, ¿qué número lleva?** Su ID (un entero de hasta 10 dígitos). Póngale un Code corto si quiere reconocerlo a simple vista en el label.
+
+**«Ya existe una pieza con ese número de paquete.» (409)** Dos piezas activas de la compañía no pueden tener el mismo número (por ejemplo, dos líneas con el mismo número tecleado). Cambie el número tecleado o déjelo en blanco.
+
+**Edité los paquetes de la orden y los números de los labels cambiaron.** Es lo esperado: al reemplazar los paquetes se crean piezas nuevas con números nuevos; reimprima los labels.
