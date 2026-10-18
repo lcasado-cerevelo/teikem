@@ -200,7 +200,14 @@ public class ScanActionServiceTests
         await PieceAsync(f, ScanActions.Arrive, order, 1);
         await PieceAsync(f, ScanActions.Arrive, order, 2);
 
-        var close = await f.Get<ScanActionService>().CloseCountAsync(new ScanCloseCountRequest(order.PublicId), default);
+        // sin confirmar: dice qué pasará (la lista de las piezas sin escanear) y no cambia nada
+        var asked = await f.Get<ScanActionService>().CloseCountAsync(new ScanCloseCountRequest(order.PublicId), default);
+        Assert.True(asked.NeedsConfirmation);
+        Assert.Equal(new[] { TripServiceFixture.PieceNumberOf(order.Id, 3) }, asked.Preview!.MissingNumbers.ToArray());
+        Assert.Contains(TripServiceFixture.PieceNumberOf(order.Id, 3), asked.Message);
+        Assert.Null((await PiecesAsync(f, order.Id))[2].MissingStatus);
+
+        var close = await f.Get<ScanActionService>().CloseCountAsync(new ScanCloseCountRequest(order.PublicId, true), default);
         Assert.Equal((2, 3, 1), (close.Scanned, close.Total, close.Missing));
         Assert.Equal(new[] { TripServiceFixture.PieceNumberOf(order.Id, 3) }, close.MissingNumbers.ToArray());
         Assert.Equal(OrderStatuses.Unassigned, await f.OrderStatusAsync(order.Id));              // el cierre no cambia el estatus

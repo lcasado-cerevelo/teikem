@@ -73,7 +73,7 @@ function route(call: Call): unknown {
   }
   if (method === 'POST' && p === '/api/v1/scan/close-count' && mock.reappeared && !call.body?.confirm) {
     return { message: 'Al cerrar el conteo se creará una orden nueva con 1 pieza(s) que aparecieron de la orden OT-0001.', orderPublicId: call.body?.orderPublicId, orderNumber: 'OT-0001', scanned: 0, total: 0, missing: 0, missingNumbers: [], needsConfirmation: true,
-      preview: { orderNumber: 'OT-0001', clientName: 'Farmacia Central', consigneeName: 'Tienda Norte', statusLabel: 'Sin asignar', pieceNumbers: ['PZ-9'] } }
+      preview: { orderNumber: 'OT-0001', clientName: 'Farmacia Central', consigneeName: 'Tienda Norte', newOrderStatusLabel: 'Sin asignar', reappearedNumbers: ['PZ-9'], missingNumbers: ['PZ-5'] } }
   }
   if (method === 'POST' && p === '/api/v1/scan/close-count' && mock.reappeared) return { message: 'Conteo cerrado: la orden OT-0001 está completa. Se creó la orden OT-0002 (conduce W2) con 1 pieza(s) que aparecieron de la orden OT-0001.', orderPublicId: call.body?.orderPublicId, orderNumber: 'OT-0001', scanned: 4, total: 4, missing: 0, missingNumbers: [], newOrderPublicId: 'o-2', newOrderNumber: 'OT-0002', newWaybillNumber: 'W2' }
   if (method === 'POST' && p === '/api/v1/scan/close-count') return { message: 'Conteo cerrado: a la orden OT-0001 le faltan 1 de 5 piezas («Por verificar»).', orderPublicId: call.body?.orderPublicId, orderNumber: 'OT-0001', scanned: 4, total: 5, missing: 1, missingNumbers: ['PZ-5'] }

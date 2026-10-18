@@ -83,7 +83,7 @@ export default function ScanScreen() {
   const [reappeared, setReappeared] = useState<{ orderPublicId: string; preview: NonNullable<Awaited<ReturnType<typeof closeCount.mutateAsync>>['preview']> } | null>(null)
   const closeOrderCount = (orderPublicId: string, confirm = false) =>
     closeCount.mutate(
-      { orderPublicId, confirm },
+      { orderPublicId, confirm, planDate },
       {
         onSuccess: (r) => {
           if (r.needsConfirmation && r.preview) return setReappeared({ orderPublicId, preview: r.preview })

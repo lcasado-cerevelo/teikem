@@ -139,21 +139,22 @@ describe('Estación de escaneo — pantalla', () => {
     expect(callsTo('POST', '/api/v1/scan/close-count')[0].body).toEqual({ orderPublicId: 'o-1' })
   })
 
-  it('Lote 111b: si aparecieron piezas perdidas, «Cerrar conteo» muestra lo que va a pasar y solo se hace al confirmar', async () => {
+  it('Lote 111b: «Cerrar conteo» muestra las piezas sin escanear y la orden nueva de las que aparecieron, y solo se hace al confirmar', async () => {
     const user = userEvent.setup()
     wrap(SCAN)
     mock.reappeared = true
     mock.scans['PZ-1'] = { ...assigned('o-1', 'OT-0001'), outcome: 'COUNTED', scanned: 4, total: 5, missing: 1, pieceNumber: 'PZ-1' } as never
     await scanCode(user, 'PZ-1')
     await user.click(await screen.findByRole('button', { name: 'Cerrar conteo' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Esto es lo que va a pasar' })
+    const dialog = await screen.findByRole('dialog', { name: 'Cerrar el conteo de OT-0001' })
     expect(within(dialog).getByText(/orden nueva con 1 pieza\(s\) que aparecieron de la orden OT-0001/)).toBeInTheDocument()
     expect(within(dialog).getByTestId('reappeared-pieces')).toHaveTextContent('PZ-9')
+    expect(within(dialog).getByTestId('missing-pieces')).toHaveTextContent('PZ-5')
     expect(callsTo('POST', '/api/v1/scan/close-count')[0].body).toEqual({ orderPublicId: 'o-1' })
     await user.click(within(dialog).getByRole('button', { name: 'Confirmar y cerrar el conteo' }))
     await waitFor(() => expect(callsTo('POST', '/api/v1/scan/close-count')).toHaveLength(2))
     expect(callsTo('POST', '/api/v1/scan/close-count')[1].body).toEqual({ orderPublicId: 'o-1', confirm: true })
-    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Esto es lo que va a pasar' })).toBeNull())
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Cerrar el conteo de OT-0001' })).toBeNull())
   })
 
   it('el botón «Registrar» hace lo mismo que Enter y las lecturas llevan cada una su Idempotency-Key', async () => {

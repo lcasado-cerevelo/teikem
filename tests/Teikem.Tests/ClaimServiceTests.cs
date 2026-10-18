@@ -237,7 +237,7 @@ public class ClaimServiceTests
         var asked = await CloseAsync(f, o, null);
         Assert.True(asked.NeedsConfirmation);
         Assert.NotNull(asked.Preview);
-        Assert.Equal(new[] { TripServiceFixture.PieceNumberOf(o.Id, 1) }, asked.Preview!.PieceNumbers);
+        Assert.Equal(new[] { TripServiceFixture.PieceNumberOf(o.Id, 1) }, asked.Preview!.ReappearedNumbers);
         Assert.Null(asked.NewOrderPublicId);
         Assert.Equal(1, await f.Db.TransportOrders.AsNoTracking().CountAsync());               // todavía no se creó nada
         Assert.NotNull((await PiecesAsync(f, o.Id))[0].ReappearedAtUtc);
@@ -278,6 +278,33 @@ public class ClaimServiceTests
         var again = await CloseAsync(f, o, true);                                               // cerrar otra vez no crea otra
         Assert.Null(again.NewOrderPublicId);
         Assert.Equal(2, await f.Db.TransportOrders.AsNoTracking().CountAsync());
+    }
+
+    [Fact]
+    public async Task The_new_order_repeats_the_submitted_and_pickup_history_of_the_original_with_the_same_dates_before_the_scanned_status()
+    {
+        await using var f = await TripServiceFixture.CreateAsync();
+        var o = await OrderWithMissingAsync(f, pieces: 3, toVerify: 2);
+        var typeId = await f.Db.LookupCodes.Where(l => l.Entity == "EntityType" && l.InternalCode == "TRANSPORT_ORDER").Select(l => l.LookupCodeId).SingleAsync();
+        int Status(string code) => f.Db.StatusCodes.Single(x => x.Entity == "OrderStatus" && x.InternalCode == code).StatusCodeId;
+        var submittedAt = new DateTime(2026, 9, 1, 14, 0, 0, DateTimeKind.Utc);
+        var pickupAt = new DateTime(2026, 9, 2, 9, 30, 0, DateTimeKind.Utc);
+        f.Db.EntityStatusHistories.Add(new Teikem.Domain.Catalogs.EntityStatusHistory { TenantId = TripServiceFixture.TenantId, EntityTypeLookupId = typeId, EntityId = o.Id, FromStatusCodeId = null, ToStatusCodeId = Status(OrderStatuses.Submitted), ChangedAtUtc = submittedAt });
+        f.Db.EntityStatusHistories.Add(new Teikem.Domain.Catalogs.EntityStatusHistory { TenantId = TripServiceFixture.TenantId, EntityTypeLookupId = typeId, EntityId = o.Id, FromStatusCodeId = Status(OrderStatuses.Submitted), ToStatusCodeId = Status(OrderStatuses.Pickup), ChangedAtUtc = pickupAt });
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        await Svc(f).MarkLostAsync(new MarkLostRequest(o.PublicId, null), default);
+        await Svc(f).CreateAsync(new ClaimCreateRequest(o.PublicId, null, null, null), default);
+        await ScanAsync(f, o, 1);
+
+        var done = await CloseAsync(f, o, true);
+        var created = await f.Db.TransportOrders.AsNoTracking().SingleAsync(x => x.PublicId == done.NewOrderPublicId);
+        var history = await f.Db.EntityStatusHistories.AsNoTracking().Where(h => h.EntityTypeLookupId == typeId && h.EntityId == created.TransportOrderId).OrderBy(h => h.EntityStatusHistoryId).ToListAsync();
+        Assert.Equal(new[] { Status(OrderStatuses.Submitted), Status(OrderStatuses.Pickup), Status(OrderStatuses.Unassigned) }, history.Select(h => h.ToStatusCodeId).ToArray());
+        Assert.Equal(submittedAt, history[0].ChangedAtUtc);                                       // Sometida con la fecha de la original
+        Assert.Equal(pickupAt, history[1].ChangedAtUtc);                                          // Recogida con la fecha de la original
+        Assert.True(history[2].ChangedAtUtc > pickupAt);                                          // el estatus del escaneo es de ahora
+        Assert.Equal(pickupAt, created.ConfirmedAtUtc);
     }
 
     [Fact]

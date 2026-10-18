@@ -1,17 +1,18 @@
-// Lote 111b — «esto es lo que va a pasar»: al cerrar el conteo de una orden con piezas que aparecieron (estaban perdidas o reclamadas) se crea UNA orden nueva con ellas; la web de staff lo confirma antes.
+// Lote 111b — «Confirmar y cerrar el conteo»: antes de cerrar se dice qué va a pasar: las piezas que no se escanearon (quedarán «Por verificar») y, si aparecieron piezas perdidas o reclamadas, la orden nueva que se crea con ellas.
 import { useT } from '../../kernel/i18n'
 import { Modal } from '../../kernel/ui'
 import type { components } from '../../kernel/api/schema'
 
-type Preview = components['schemas']['ScanReappearedPreviewDto']
+type Preview = components['schemas']['ScanClosePreviewDto']
 
 export function ScanReappearedConfirm({ preview, busy, onConfirm, onCancel }: { preview: Preview; busy: boolean; onConfirm: () => void; onCancel: () => void }) {
   const t = useT()
-  const pieces = preview.pieceNumbers ?? []
+  const missing = preview.missingNumbers ?? []
+  const reappeared = preview.reappearedNumbers ?? []
   return (
     <Modal
       open
-      title={t('scan.reappeared.title')}
+      title={t('scan.reappeared.title', { order: preview.orderNumber ?? '' })}
       onClose={onCancel}
       dismissible={!busy}
       footer={
@@ -22,15 +23,29 @@ export function ScanReappearedConfirm({ preview, busy, onConfirm, onCancel }: { 
       }
     >
       <div className="pb">
-        <p>{t('scan.reappeared.body', { count: pieces.length, order: preview.orderNumber ?? '' })}</p>
-        <p>
-          <b>{t('scan.reappeared.client')}:</b> {preview.clientName} · <b>{t('scan.reappeared.consignee')}:</b> {preview.consigneeName ?? '—'} · <b>{t('scan.reappeared.status')}:</b> {preview.statusLabel}
-        </p>
-        <ul data-testid="reappeared-pieces">
-          {pieces.map((p) => (
-            <li key={p}>{p}</li>
-          ))}
-        </ul>
+        {missing.length > 0 && (
+          <>
+            <p>{t('scan.reappeared.missing', { count: missing.length })}</p>
+            <ul data-testid="missing-pieces">
+              {missing.map((p) => (
+                <li key={p}>{p}</li>
+              ))}
+            </ul>
+          </>
+        )}
+        {reappeared.length > 0 && (
+          <>
+            <p>{t('scan.reappeared.body', { count: reappeared.length, order: preview.orderNumber ?? '' })}</p>
+            <p>
+              <b>{t('scan.reappeared.client')}:</b> {preview.clientName} · <b>{t('scan.reappeared.consignee')}:</b> {preview.consigneeName ?? '—'} · <b>{t('scan.reappeared.status')}:</b> {preview.newOrderStatusLabel}
+            </p>
+            <ul data-testid="reappeared-pieces">
+              {reappeared.map((p) => (
+                <li key={p}>{p}</li>
+              ))}
+            </ul>
+          </>
+        )}
       </div>
     </Modal>
   )

@@ -66346,7 +66346,7 @@
             "type": "boolean"
           },
           "preview": {
-            "$ref": "#/components/schemas/ScanReappearedPreviewDto"
+            "$ref": "#/components/schemas/ScanClosePreviewDto"
           },
           "newOrderPublicId": {
             "type": "string",
@@ -66374,6 +66374,11 @@
           },
           "confirm": {
             "type": "boolean",
+            "nullable": true
+          },
+          "planDate": {
+            "type": "string",
+            "format": "date",
             "nullable": true
           }
         },
@@ -66722,7 +66727,7 @@
         },
         "additionalProperties": false
       },
-      "ScanReappearedPreviewDto": {
+      "ScanClosePreviewDto": {
         "type": "object",
         "properties": {
           "orderNumber": {
@@ -66737,11 +66742,18 @@
             "type": "string",
             "nullable": true
           },
-          "statusLabel": {
+          "newOrderStatusLabel": {
             "type": "string",
             "nullable": true
           },
-          "pieceNumbers": {
+          "reappearedNumbers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "missingNumbers": {
             "type": "array",
             "items": {
               "type": "string"

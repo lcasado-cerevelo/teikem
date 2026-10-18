@@ -174,7 +174,7 @@ public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant,
     /// Las piezas de la orden que no se escanearon en la acción en que iba la orden (ni en una posterior) quedan «Por verificar». Solo si en esa acción se escaneó alguna pieza (si la orden brincó esa acción no hay conteo que cerrar).
     /// <paramref name="exceptPieceId"/> es la pieza que se está escaneando ahora (0 = ninguna). Devuelve los ids de las piezas marcadas.
     /// </summary>
-    private async Task<List<int>> MarkMissingAsync(int orderId, int exceptPieceId, string currentStatusCode, CancellationToken ct)
+    private async Task<List<int>> MarkMissingAsync(int orderId, int exceptPieceId, string currentStatusCode, CancellationToken ct, bool dryRun = false)
     {
         var marked = new List<int>();
         var currentAction = ScanActions.ForStatus(currentStatusCode);
@@ -188,11 +188,12 @@ public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant,
         foreach (var p in pieces.Where(p => p.OrderPieceId != exceptPieceId && p.MissingStatus is null))
         {
             if (scans.Any(s => s.OrderPieceId == p.OrderPieceId && ScanActions.Rank(s.Action) >= rank)) continue;
+            marked.Add(p.OrderPieceId);
+            if (dryRun) continue;   // la vista previa solo dice cuáles quedarían «Por verificar»
             p.MissingStatus = PieceMissing.ToVerify;
             p.MissingAtUtc = now;
-            marked.Add(p.OrderPieceId);
         }
-        if (marked.Count > 0) await db.SaveChangesAsync(ct);
+        if (marked.Count > 0 && !dryRun) await db.SaveChangesAsync(ct);
         return marked;
     }
 
@@ -202,15 +203,28 @@ public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant,
         if (tenant.TenantId is null) throw new ForbiddenException("No hay tenant activo en la sesión.");
         if (req?.OrderPublicId is not Guid publicId) throw new ValidationException("orderPublicId", "Indique la orden cuyo conteo se cierra.");
         var order = await db.TransportOrders.AsNoTracking().Include(o => o.Status).Where(o => o.PublicId == publicId && o.IsActive).FirstOrDefaultAsync(ct) ?? throw new NotFoundException("Orden", feminine: true);
-        // Lote 111b: si aparecieron piezas perdidas o reclamadas de esta orden, al cerrar el conteo se crea una orden nueva con ellas; la web de staff lo confirma antes
+        // Lote 111b: antes de cerrar se le dice a quien escanea qué va a pasar: las piezas que no se escanearon (quedarán «Por verificar») y la orden nueva de las que aparecieron. Sin confirmar no se hace nada.
         var preview = await reappeared.PreviewAsync(order.TransportOrderId, ct);
-        if (preview is not null && req.Confirm != true)
-            return new ScanCloseCountResultDto(string.Format(ReappearedOrderService.ConfirmMessageFormat, preview.PieceNumbers.Count, preview.OrderNumber, preview.StatusLabel), order.PublicId, order.OrderNumber, 0, 0, 0, Array.Empty<string>(), true, preview);
+        var wouldMark = await MarkMissingAsync(order.TransportOrderId, 0, order.Status!.InternalCode, ct, dryRun: true);
+        if (preview is not null || wouldMark.Count > 0)
+        {
+            var notScanned = await db.OrderPieces.AsNoTracking().Where(p => p.TransportOrderId == order.TransportOrderId && p.IsActive && (wouldMark.Contains(p.OrderPieceId) || p.MissingStatus == PieceMissing.ToVerify))
+                .OrderBy(p => p.Sequence).Select(p => p.PackageNumber).ToListAsync(ct);
+            if (req.Confirm != true)
+            {
+                var clientName = preview?.ClientName ?? await db.Clients.AsNoTracking().Where(c => c.ClientId == order.ClientId).Select(c => c.Name).FirstOrDefaultAsync(ct) ?? string.Empty;
+                var text = $"Va a cerrar el conteo de la orden {order.OrderNumber}.";
+                if (notScanned.Count > 0) text += $" No se escanearon {notScanned.Count} pieza(s) y quedarán «Por verificar»: {string.Join(", ", notScanned)}.";
+                if (preview is not null) text += $" Aparecieron {preview.Numbers.Count} pieza(s) y se creará una orden nueva con ellas (mismo cliente y consignatario, estatus «{preview.StatusLabel}»).";
+                return new ScanCloseCountResultDto(text, order.PublicId, order.OrderNumber, 0, 0, notScanned.Count, notScanned, true,
+                    new ScanClosePreviewDto(order.OrderNumber, clientName, preview?.ConsigneeName, preview?.StatusLabel, preview?.Numbers ?? Array.Empty<string>(), notScanned));
+            }
+        }
         if (preview is not null) await reappeared.EnsureSequencesAsync(order.TransportOrderId, ct);
         ScanCloseCountResultDto? done = null;
         await db.RunInTransactionAsync(async ct2 =>
         {
-            var created = preview is null ? null : await reappeared.CreateAsync(order.TransportOrderId, ct2);   // primero se mudan las piezas que aparecieron: ya no cuentan como faltantes de esta orden
+            var created = preview is null ? null : await reappeared.CreateAsync(order.TransportOrderId, req.PlanDate, ct2);   // primero se mudan las piezas que aparecieron: ya no cuentan como faltantes de esta orden
             await MarkMissingAsync(order.TransportOrderId, 0, order.Status!.InternalCode, ct2);
             var pieces = await db.OrderPieces.AsNoTracking().Where(p => p.TransportOrderId == order.TransportOrderId && p.IsActive).OrderBy(p => p.Sequence).ToListAsync(ct2);
             var missing = pieces.Where(p => p.MissingStatus == PieceMissing.ToVerify).Select(p => p.PackageNumber).ToList();

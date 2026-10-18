@@ -2021,13 +2021,14 @@
       "button": "Cerrar conteo"
     },
     "reappeared": {
-      "title": "Esto es lo que va a pasar",
+      "title": "Cerrar el conteo de {order}",
       "body": "Al cerrar el conteo se creará una orden nueva con {count} pieza(s) que aparecieron de la orden {order}.",
       "client": "Cliente",
       "consignee": "Consignatario",
       "status": "Estatus de la orden nueva",
       "confirm": "Confirmar y cerrar el conteo",
-      "cancel": "Cancelar"
+      "cancel": "Cancelar",
+      "missing": "No se escanearon {count} pieza(s); quedarán «Por verificar»:"
     }
   },
   "routeMap": {

@@ -9189,6 +9189,8 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 
 **Se escaneó una pieza que estaba perdida o reclamada, ¿qué pasa?** Aparece: se quita de su reclamación (si no está cerrada) y, si la reclamación se queda sin piezas, se elimina. Su orden nueva se crea al cerrar el conteo: la estación muestra «Esto es lo que va a pasar» y hay que confirmar.
 
-**Al pulsar «Cerrar conteo» salió «Esto es lo que va a pasar», ¿qué hago?** Aparecieron piezas que estaban perdidas o reclamadas de esa orden. «Confirmar y cerrar el conteo» crea una orden nueva con ellas (mismo cliente y consignatario, conduce nuevo, mismos números de pieza); «Cancelar» no cambia nada.
+**Al pulsar «Cerrar conteo» salió un mensaje con una lista, ¿qué hago?** Es lo que va a pasar al cerrar: las piezas de la lista que no se escanearon quedarán «Por verificar» y, si aparecieron piezas perdidas o reclamadas, se creará una orden nueva con ellas. «Confirmar y cerrar el conteo» lo hace; «Cancelar» no cambia nada.
 
-**¿La orden nueva se cobra otra vez?** No: no se cotiza ni se cobra, es el mismo envío ya cotizado en la orden original.
+**¿Qué estatus tiene la orden nueva?** Los mismos que la original hasta Recogida (Sometida y Recogida, con sus mismas fechas) y después el de la acción con que se escaneó la pieza. Si fue «Enrutar», también se asigna a una ruta (si no hay ruta que la reciba, no se cierra el conteo).
+
+**¿La orden nueva se cobra otra vez?** Depende del contrato: si cobra por recogido, no (la original ya se cobra completa); si cobra por entrega, se cotiza con sus piezas y se cobra cuando se entregue, y a la original se le quitan esas piezas.

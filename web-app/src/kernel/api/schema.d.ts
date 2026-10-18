@@ -37492,7 +37492,7 @@ export interface components {
             missing?: number;
             missingNumbers?: string[] | null;
             needsConfirmation?: boolean;
-            preview?: components["schemas"]["ScanReappearedPreviewDto"];
+            preview?: components["schemas"]["ScanClosePreviewDto"];
             /** Format: uuid */
             newOrderPublicId?: string | null;
             newOrderNumber?: string | null;
@@ -37502,6 +37502,8 @@ export interface components {
             /** Format: uuid */
             orderPublicId?: string | null;
             confirm?: boolean | null;
+            /** Format: date */
+            planDate?: string | null;
         };
         ClaimDto: {
             /** Format: uuid */
@@ -37612,12 +37614,13 @@ export interface components {
             /** Format: date-time */
             resolvedAtUtc?: string | null;
         };
-        ScanReappearedPreviewDto: {
+        ScanClosePreviewDto: {
             orderNumber?: string | null;
             clientName?: string | null;
             consigneeName?: string | null;
-            statusLabel?: string | null;
-            pieceNumbers?: string[] | null;
+            newOrderStatusLabel?: string | null;
+            reappearedNumbers?: string[] | null;
+            missingNumbers?: string[] | null;
         };
     };
     responses: never;
