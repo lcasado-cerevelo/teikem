@@ -86,6 +86,8 @@ export default function OrderDetailScreen() {
           </h1>
           <p>
             {[order.delivery?.city, order.clientName].filter(Boolean).join(' · ')} <StatusChip domain={STATUS_DOMAIN} code={order.status} label={order.statusLabel} />
+            {order.returnOfOrderNumber && <> · <span data-testid="return-of">{t('orders.detail.returnOf', { number: order.returnOfOrderNumber })}</span></>}
+            {order.suggestReturn && <> · <span className="ferr" role="status" data-testid="suggest-return">{t('orders.detail.suggestReturn', { count: order.failedAttempts ?? 0 })}</span></>}
           </p>
         </div>
         <div className="act">

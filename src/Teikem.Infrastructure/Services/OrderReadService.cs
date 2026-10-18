@@ -151,6 +151,18 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
             }
         }
 
+        int? failedAttempts = null;
+        bool? suggestReturn = null;
+        string? returnOfNumber = null;
+        if (scope.ClientId is null)
+        {
+            var (attempts, suggest) = await ReturnSuggestionService.EvaluateAsync(db, order.TenantId, orderId, status.Code, ct);
+            failedAttempts = attempts;
+            suggestReturn = suggest;
+            if (order.ReturnOfOrderId is int returnOfId)
+                returnOfNumber = await db.TransportOrders.AsNoTracking().Where(o => o.TransportOrderId == returnOfId).Select(o => o.OrderNumber).FirstOrDefaultAsync(ct);
+        }
+
         var detail = new OrderDetailDto(
             order.TransportOrderId, order.PublicId, order.OrderNumber, order.ClientInvoiceNumber, order.PackBatchNumber,
             client.PublicId, client.Name, contractPublicId,
@@ -175,7 +187,10 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
             AssignedDriverName: assigned?.FullName,
             AssignedTripPublicId: assignedTripPublicId,
             AssignedTripCode: assignedTripCode,
-            WaybillNumber: order.WaybillNumber);
+            WaybillNumber: order.WaybillNumber,
+            FailedAttempts: failedAttempts,
+            SuggestReturn: suggestReturn,
+            ReturnOfOrderNumber: returnOfNumber);
         // Lote 39: el monto cotizado solo para quien ve precios (orders.view_price).
         return OrderPriceRules.Apply(detail, await OrderPriceVisibility.CanViewAsync(prices, ct));
     }

@@ -37624,6 +37624,81 @@
           }
         }
       }
+    },
+    "/api/v1/tenant/return-settings": {
+      "get": {
+        "tags": [
+          "ReturnSettings"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReturnSettingsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReturnSettingsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReturnSettingsDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "ReturnSettings"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReturnSettingsRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReturnSettingsRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReturnSettingsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReturnSettingsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReturnSettingsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReturnSettingsDto"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -47399,6 +47474,19 @@
             "nullable": true
           },
           "waybillNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "failedAttempts": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "suggestReturn": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "returnOfOrderNumber": {
             "type": "string",
             "nullable": true
           }
@@ -66343,6 +66431,15 @@
           "pieceNumber": {
             "type": "string",
             "nullable": true
+          },
+          "failedAttempts": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "suggestReturn": {
+            "type": "boolean",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -66864,6 +66961,27 @@
           },
           "message": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReturnSettingsDto": {
+        "type": "object",
+        "properties": {
+          "suggestAfterAttempts": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReturnSettingsRequest": {
+        "type": "object",
+        "properties": {
+          "suggestAfterAttempts": {
+            "type": "integer",
+            "format": "int32",
             "nullable": true
           }
         },

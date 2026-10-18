@@ -28018,6 +28018,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tenant/return-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ReturnSettingsDto"];
+                        "application/json": components["schemas"]["ReturnSettingsDto"];
+                        "text/json": components["schemas"]["ReturnSettingsDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ReturnSettingsRequest"];
+                    "text/json": components["schemas"]["ReturnSettingsRequest"];
+                    "application/*+json": components["schemas"]["ReturnSettingsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ReturnSettingsDto"];
+                        "application/json": components["schemas"]["ReturnSettingsDto"];
+                        "text/json": components["schemas"]["ReturnSettingsDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -31239,6 +31303,10 @@ export interface components {
             assignedTripPublicId?: string | null;
             assignedTripCode?: string | null;
             waybillNumber?: string | null;
+            /** Format: int32 */
+            failedAttempts?: number | null;
+            suggestReturn?: boolean | null;
+            returnOfOrderNumber?: string | null;
         };
         OrderListItemDto: {
             /** Format: int32 */
@@ -37517,6 +37585,9 @@ export interface components {
             /** Format: int32 */
             missing?: number | null;
             pieceNumber?: string | null;
+            /** Format: int32 */
+            failedAttempts?: number | null;
+            suggestReturn?: boolean | null;
         };
         ScanActionRequest: {
             action?: string | null;
@@ -37680,6 +37751,14 @@ export interface components {
             /** Format: int32 */
             pieces?: number;
             message?: string | null;
+        };
+        ReturnSettingsDto: {
+            /** Format: int32 */
+            suggestAfterAttempts?: number;
+        };
+        ReturnSettingsRequest: {
+            /** Format: int32 */
+            suggestAfterAttempts?: number | null;
         };
     };
     responses: never;

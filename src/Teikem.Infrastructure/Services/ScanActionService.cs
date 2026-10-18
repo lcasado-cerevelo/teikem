@@ -299,8 +299,11 @@ public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant,
         var ids = pieces.Select(p => p.OrderPieceId).ToList();
         var scanned = await db.OrderPieceScans.AsNoTracking().CountAsync(s => ids.Contains(s.OrderPieceId) && s.Action == action, ct);
         var missing = pieces.Count(p => p.MissingStatus == PieceMissing.ToVerify);
+        // Lote 113: la sugerencia de devolver tras N intentos fallidos (solo un aviso; no cambia lo que hizo el escaneo)
+        var (attempts, suggest) = await ReturnSuggestionService.EvaluateAsync(db, tenant.TenantId ?? 0, orderId, toCode ?? from?.Code, ct);
+        if (suggest && action != ScanActions.Return) message += " " + ReturnSuggestionRules.Message(attempts);
         return new ScanActionResultDto(action, outcome, VoiceOf(outcome), message, order.PublicId, order.OrderNumber, order.PackBatchNumber, from?.Code, from?.Label, toCode, toCode is null ? null : LabelOf(toCode),
-            skipped ?? Array.Empty<string>(), route?.ZoneCode, route?.TripPublicId, route?.TripCode, route?.ReasonCode, "PIECE", scanned, pieces.Count, missing, pieceNumber);
+            skipped ?? Array.Empty<string>(), route?.ZoneCode, route?.TripPublicId, route?.TripCode, route?.ReasonCode, "PIECE", scanned, pieces.Count, missing, pieceNumber, attempts, suggest);
     }
 
     private string LabelOf(string statusCode) => labels.TryGetValue(statusCode, out var l) ? l : statusCode;

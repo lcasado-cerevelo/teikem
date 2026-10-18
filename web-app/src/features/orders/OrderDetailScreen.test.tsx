@@ -938,6 +938,21 @@ describe('Expediente — Devolver (Lote 112)', () => {
     expect(await screen.findByText(/se creó la orden de vuelta ORD-00008/)).toBeInTheDocument()
   })
 
+  it('Lote 113: la ficha avisa que se sugiere devolverla y, en una orden de vuelta, de qué orden es', async () => {
+    current = { ...RETURNABLE, suggestReturn: true, failedAttempts: 2, returnOfOrderNumber: 'ORD-00003' }
+    wrap([...ALL, 'orders.return'])
+    await loaded()
+    expect(screen.getByTestId('suggest-return')).toHaveTextContent('Se sugiere devolverla: 2 intento(s) fallido(s)')
+    expect(screen.getByTestId('return-of')).toHaveTextContent('Vuelta de ORD-00003')
+  })
+
+  it('Lote 113: sin sugerencia la ficha no muestra el aviso', async () => {
+    current = { ...RETURNABLE, suggestReturn: false, failedAttempts: 1 }
+    wrap([...ALL, 'orders.return'])
+    await loaded()
+    expect(screen.queryByTestId('suggest-return')).toBeNull()
+  })
+
   it('sin ninguna pieza marcada no llama al API', async () => {
     current = { ...RETURNABLE }
     wrap([...ALL, 'orders.return'])

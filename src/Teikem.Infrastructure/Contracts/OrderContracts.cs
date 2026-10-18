@@ -215,7 +215,12 @@ public sealed record OrderDetailDto(
     Guid? AssignedTripPublicId = null,
     string? AssignedTripCode = null,
     // Lote 97: número de conduce (único por orden en la compañía)
-    string? WaybillNumber = null);
+    string? WaybillNumber = null,
+    // Lote 113: intentos fallidos vigentes y si toca sugerir devolverla (solo ficha interna)
+    int? FailedAttempts = null,
+    bool? SuggestReturn = null,
+    // Lote 112: si es una orden de vuelta, el número de la orden que se devolvió
+    string? ReturnOfOrderNumber = null);
 
 /// <summary>
 /// Fila del listado: Empaque es la primera columna de negocio (siempre con valor). Lote 44 (F-G2): ConsigneeLine1/2 y ConsigneeState

@@ -4367,3 +4367,9 @@ FROM dbo.Role r
 JOIN dbo.Permission p ON p.Code = 'orders.return' AND r.Name = 'TenantAdmin'
 WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = p.PermissionId);
 GO
+
+/* =========================================================================
+   2026-10-18 (au) — Lote 113: «Devolver tras N intentos». Por compañía (Tenant.ReturnSuggestAfterAttempts, por omisión 2; 0 = sin sugerencia): cuando una orden lleva N intentos fallidos se SUGIERE devolverla (marca y mensaje); nunca bloquea.
+   ========================================================================= */
+IF COL_LENGTH('dbo.Tenant', 'ReturnSuggestAfterAttempts') IS NULL ALTER TABLE dbo.Tenant ADD ReturnSuggestAfterAttempts INT NOT NULL CONSTRAINT DF_Tenant_ReturnSuggest DEFAULT 2 CONSTRAINT CK_Tenant_ReturnSuggest CHECK (ReturnSuggestAfterAttempts BETWEEN 0 AND 20);
+GO

@@ -375,7 +375,9 @@ public sealed record ScanActionResultDto(
     int? Scanned = null,      // Lote 110: piezas de la orden escaneadas con esta acción…
     int? Total = null,        // …de las que tiene la orden
     int? Missing = null,      // y las que ya quedaron faltantes «Por verificar»
-    string? PieceNumber = null);
+    string? PieceNumber = null,
+    int? FailedAttempts = null,   // Lote 113: intentos fallidos vigentes de la orden…
+    bool? SuggestReturn = null);  // …y si toca SUGERIR devolverla (nunca bloquea)
 
 /// <summary>Resultado tipado del escaneo (Outcome), palabra de voz (found/dup/notfound) y mensaje exacto.</summary>
 public sealed record OutboundScanResultDto(

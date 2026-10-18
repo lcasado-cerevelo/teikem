@@ -20,7 +20,14 @@ El guarda escoge **Devolver** y escanea **las piezas que devuelve**, una por una
 - Repetir una pieza es **duplicado** («Ok»). Una pieza faltante responde «No».
 - Al **Cerrar conteo** de la orden devuelta, la estación muestra la **lista de las piezas que no se escanearon** (no se devolvieron) y pide **«Confirmar y cerrar el conteo»**; al confirmar quedan «Por verificar» (de ahí siguen en Reclamaciones).
 
-## 4. Mensajes de error
+## 4. «Devolver tras N intentos» (sugerencia)
+Cada compañía define con cuántos **intentos fallidos** se **sugiere** devolver una orden (**Ajustes de la compañía → General → Devolución**, `admin.tenant`; por omisión **2**; **0** = nunca sugerir; de 0 a 20). Es **solo una sugerencia y una marca**: nunca bloquea y la orden se puede seguir reintentando.
+- **En la ficha de la orden** aparece «Se sugiere devolverla: N intento(s) fallido(s)» junto al estatus, y en una orden de vuelta se lee «Vuelta de {orden}».
+- **En la estación de escaneo** el mensaje del escaneo de una orden con esos intentos termina con «Lleva N intento(s) fallido(s): se sugiere devolverla.» (el escaneo se hace igual).
+- Cuentan los intentos de entrega **vigentes y no entregados** (los anulados no cuentan). No se sugiere en una orden Sometida ni en una que ya terminó (Entregada, Cancelada, En almacén, Devuelta).
+- API: `GET/PUT /api/v1/tenant/return-settings` (`{ suggestAfterAttempts }`; 400 «Indique con cuántos intentos fallidos se sugiere devolver: de 0 (sin sugerencia) a 20.»).
+
+## 5. Mensajes de error
 | Mensaje | HTTP | Cuándo |
 |---|---|---|
 | Una orden Sometida no se devuelve: todavía no se recoge. Cancélela. | 422 | Devolver una orden en Sometida. |
@@ -33,7 +40,6 @@ El guarda escoge **Devolver** y escanea **las piezas que devuelve**, una por una
 | No tiene permiso para esta acción. | 403 | Falta `orders.return`. |
 | Orden no encontrada. | 404 | Identificador inexistente (o de otra compañía). |
 
-## 5. Casos frecuentes
+## 6. Casos frecuentes
 - *Devolví por error:* primero se **cancela la orden de vuelta**; después la orden Devuelta se reabre con `orders.reopen`. Mientras la vuelta siga viva no se reabre.
 - *La orden tenía 4 piezas y solo escaneé 3 con «Devolver»:* al cerrar el conteo, la 4.ª queda «Por verificar» y se atiende en Reclamaciones.
-- *«Devolver tras N intentos»:* es una sugerencia por compañía (por omisión 2) que se construye en un lote posterior; nunca bloquea.

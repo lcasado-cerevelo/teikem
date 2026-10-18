@@ -9213,3 +9213,6 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 
 **Escaneé «Devolver» una pieza y la orden quedó «Devuelta»; ¿y las demás piezas?** Siga escaneando «Devolver» las que se devuelven: se suman a la misma orden de vuelta. Al «Cerrar conteo», las que no se escanearon quedan «Por verificar».
 
+**Sale «Se sugiere devolverla: N intento(s) fallido(s)», ¿tengo que devolverla?** No: es solo una sugerencia por compañía (Ajustes → General → Devolución, por omisión 2). La orden se puede seguir reintentando; si prefiere no ver la sugerencia, ponga 0.
+
+**«Indique con cuántos intentos fallidos se sugiere devolver: de 0 (sin sugerencia) a 20.»** (400) El ajuste solo acepta números enteros de 0 a 20.

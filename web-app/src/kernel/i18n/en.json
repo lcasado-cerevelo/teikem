@@ -3635,7 +3635,9 @@
       "contacts": {
         "empty": "This order has no contacts (who receives it, phone, email).",
         "removeBody": "{value} will be removed from the contacts of this order."
-      }
+      },
+      "returnOf": "Return of {number}",
+      "suggestReturn": "Returning it is suggested: {count} failed attempt(s)"
     },
     "actions": {
       "printLabel": "Print label",
@@ -7162,6 +7164,14 @@
           "mark": "Just the square symbol: collapsed sidebar.",
           "mark-inverted": "The square mark, inverted for the dark theme."
         }
+      },
+      "returns": {
+        "title": "Returns",
+        "subtitle": "when returning an order is suggested",
+        "label": "Suggest returning after this many failed attempts",
+        "help": "Defaults to 2; 0 = never suggest. It is only a suggestion and a flag: the order can keep being retried.",
+        "invalid": "Enter a number from 0 to 20 (0 = no suggestion).",
+        "saved": "Return setting saved."
       }
     },
     "audit": {

@@ -190,6 +190,7 @@ public static class DependencyInjection
         services.AddScoped<TripDayPlanningService>();
         services.AddScoped<OutboundScanService>();
         services.AddScoped<PartialBillingService>();   // Lote 111c: entrega parcial y cobro
+        services.AddScoped<ReturnSuggestionService>();   // Lote 113: devolver tras N intentos
         services.AddScoped<ReturnOrderService>();   // Lote 112: devolución
         services.AddScoped<ReappearedOrderService>();   // Lote 111b: la orden nueva de las piezas que aparecieron
         services.AddScoped<ScanActionService>();   // Lote 107: escaneo con acción escogida

@@ -3635,7 +3635,9 @@
       "contacts": {
         "empty": "Esta orden no tiene contactos (quién recibe, teléfono, correo).",
         "removeBody": "Se quitará {value} de los contactos de esta orden."
-      }
+      },
+      "returnOf": "Vuelta de {number}",
+      "suggestReturn": "Se sugiere devolverla: {count} intento(s) fallido(s)"
     },
     "actions": {
       "printLabel": "Imprimir label",
@@ -7162,6 +7164,14 @@
           "mark": "Solo el símbolo, cuadrado: barra lateral colapsada.",
           "mark-inverted": "La marca cuadrada, invertida para el tema oscuro."
         }
+      },
+      "returns": {
+        "title": "Devolución",
+        "subtitle": "cuándo se sugiere devolver una orden",
+        "label": "Sugerir devolver con este número de intentos fallidos",
+        "help": "Por omisión 2; 0 = nunca sugerir. Es solo una sugerencia y una marca: la orden se puede seguir reintentando.",
+        "invalid": "Escriba un número de 0 a 20 (0 = sin sugerencia).",
+        "saved": "Ajuste de devolución guardado."
       }
     },
     "audit": {
