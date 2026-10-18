@@ -279,6 +279,7 @@ public static class DependencyInjection
         services.AddSingleton<IScheduledJob, KpiSnapshotJob>();   // Lote 90
         services.AddSingleton<IScheduledJob, ReportDeliveryJob>();   // Lote 92
         services.AddSingleton<IScheduledJob, ClientNotificationDigestJob>();   // Lote 98
+        services.AddSingleton<IScheduledJob, ConsigneeNoticeDispatchJob>();   // Lote 116
         services.AddSingleton<ScheduledJobRunner>();
         services.AddHostedService<ScheduledJobWorker>();
         services.AddScoped<ScheduledJobService>();
@@ -437,6 +438,8 @@ public static class DependencyInjection
         services.AddScoped<TrustedBrowserService>();   // Lote 100: computadoras de confianza
         services.AddScoped<Teikem.Infrastructure.Legal.LegalService>();   // Lote 99: documento legal único y su aceptación
         services.AddScoped<IStatusTransitionEffect, ClientNotificationOrderEffect>();
+        services.AddScoped<ConsigneeNoticeService>();   // Lote 116: avisos al consignatario
+        services.AddScoped<IStatusTransitionEffect, ConsigneeNoticeOrderEffect>();
         services.AddScoped<IStatusTransitionEffect, ClientNotificationInvoiceEffect>();
         services.AddScoped<IStatusTransitionEffect, ClientNotificationRemittanceEffect>();
         services.AddScoped<IDataSource, KpiDailyDataSource>();

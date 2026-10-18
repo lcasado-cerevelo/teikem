@@ -122,6 +122,9 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<Contract> Contracts => Set<Contract>();
     public DbSet<ContractServiceLevel> ContractServiceLevels => Set<ContractServiceLevel>();
     public DbSet<ContractReturnFee> ContractReturnFees => Set<ContractReturnFee>();   // Lote 115
+    public DbSet<ConsigneeNoticeConsent> ConsigneeNoticeConsents => Set<ConsigneeNoticeConsent>();   // Lote 116
+    public DbSet<ConsigneeNotice> ConsigneeNotices => Set<ConsigneeNotice>();
+    public DbSet<ConsigneeUnsubscribe> ConsigneeUnsubscribes => Set<ConsigneeUnsubscribe>();
     public DbSet<RateComponent> RateComponents => Set<RateComponent>();
     public DbSet<RateTier> RateTiers => Set<RateTier>();
     public DbSet<SpecialServiceType> SpecialServiceTypes => Set<SpecialServiceType>();

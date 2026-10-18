@@ -9234,3 +9234,20 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **«Indique el monto de al menos un tipo de paquete.»** (400) El modo por tipo de paquete necesita al menos un tipo con su monto.
 
 **El cargo por devolución no apareció en la factura.** La orden debe estar Devuelta con monto mayor que cero, no facturado antes, y la corrida debe incluir flete y cubrir la fecha en que quedó Devuelta.
+
+## Avisos al consignatario (Lote 116)
+
+**¿Quién prende los avisos al consignatario?** El cliente, desde el portal (administrador u operador); la compañía no. Ver capítulo 34.
+
+**«Primero prenda el aviso al consignatario.»** (422) Antes de marcar a un consignatario hay que prender el aviso del cliente.
+
+**«Para marcar que el consignatario recibe avisos debe aceptar la advertencia de privacidad.»** (400) Marcar exige aceptar la advertencia (confirma que el consignatario aceptó recibir avisos por ese medio).
+
+**«El consignatario no tiene un correo registrado…»** (400) Agregue el correo (o teléfono) en la ficha del consignatario y vuelva a marcarlo.
+
+**«El consignatario se dio de baja de los avisos por ese medio: no se puede volver a marcar.»** (409) La baja es definitiva; solo el propio consignatario puede volver a aceptar, con un nuevo acuerdo con la compañía.
+
+**¿De qué estatus se avisa?** Cuando sale En ruta, en cada intento fallido y salida, y en los estatus finales (Entregada, Devuelta, Cancelada, En almacén). Nunca de Recogida, Sin asignar ni Asignada, ni de los estatus brincados.
+
+**El aviso quedó «omitido».** Falta el correo configurado o la dirección de la app del cliente (`ConsigneeNotices:ClientAppBaseUrl`), el consignatario se dio de baja o ya no estaba marcado; el motivo queda en el aviso.
+

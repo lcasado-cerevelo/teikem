@@ -40,4 +40,6 @@ public static class JobKeys
     public const string ReportDelivery = "REPORT_DELIVERY";
     /// <summary>Lote 98: resume los hechos de los clientes y manda sus avisos.</summary>
     public const string ClientNotificationDigest = "CLIENT_NOTIFICATION_DIGEST";
+    /// <summary>Lote 116: manda los avisos pendientes a los consignatarios.</summary>
+    public const string ConsigneeNoticeDispatch = "CONSIGNEE_NOTICE_DISPATCH";
 }

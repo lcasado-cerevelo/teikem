@@ -12,3 +12,7 @@ Dictado por Luis. **Todavía sin código** (lote aparte, después de piezas y es
 
 ## Por construir (lote aparte)
 Ajuste del cliente (aviso al consignatario + marcas por consignatario, con advertencia y bitácora), aviso de alta al consignatario, token por orden para el enlace, página pública solo por enlace, eventos de aviso por estatus (En ruta, intento fallido, finales), baja por correo/texto, pruebas, manual y FAQ.
+
+## Estado (2026-10-18)
+- **116a hecho (backend):** ajuste del cliente (prender, idioma) y marcas por consignatario con advertencia y bitácora, aviso de alta, token por orden, avisos por estatus (En ruta, intento fallido, finales; no brincados) con reintentos, enlace de seguimiento por token (`GET /api/v1/public/track/link/{token}`) y baja (`POST /api/v1/public/consignee-unsubscribe/{token}`). Ver `docs/lote116-decisiones.md` y el capítulo 34 del manual.
+- **Pendiente (116b):** las pantallas (ajuste y marcas en el portal de la app del cliente; página pública solo por enlace y página de baja) y retirar la búsqueda manual por conduce.

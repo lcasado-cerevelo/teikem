@@ -23,6 +23,7 @@ public sealed class ClientConfiguration : IEntityTypeConfiguration<Client>
         b.Property(c => c.OrderNumberFormat).HasMaxLength(40);
         b.Property(c => c.InvoiceNumberFormat).HasMaxLength(40);
         b.Property(c => c.PackageNumberFormat).HasMaxLength(40);
+        b.Property(c => c.NoticeLang).HasMaxLength(2);   // Lote 116
         b.Property(c => c.RowVersion).IsRowVersion();
         b.HasIndex(c => new { c.TenantId, c.Code }).IsUnique().HasDatabaseName("UQ_Client_Tenant_Code");
         b.HasIndex(c => c.PublicId);
@@ -101,6 +102,50 @@ public sealed class ContractConfiguration : IEntityTypeConfiguration<Contract>
         b.HasMany(c => c.ServiceLevels).WithOne(l => l.Contract).HasForeignKey(l => l.ContractId);
         b.Property(c => c.ReturnFeeMode).HasMaxLength(12);   // Lote 115
         b.Property(c => c.ReturnFeeAmount).HasColumnType("decimal(14,2)");
+    }
+}
+
+public sealed class ConsigneeNoticeConsentConfiguration : IEntityTypeConfiguration<ConsigneeNoticeConsent>
+{
+    public void Configure(EntityTypeBuilder<ConsigneeNoticeConsent> b)
+    {
+        b.ToTable("ConsigneeNoticeConsent");
+        b.HasKey(c => c.ConsigneeNoticeConsentId);
+        b.Property(c => c.Channel).HasMaxLength(5).IsRequired();
+        b.Property(c => c.Contact).HasMaxLength(200).IsRequired();
+        b.Property(c => c.Source).HasMaxLength(10).IsRequired();
+        b.HasIndex(c => new { c.LocationId, c.ChangedAtUtc }).HasDatabaseName("IX_ConsigneeNoticeConsent_Location");
+    }
+}
+
+public sealed class ConsigneeNoticeConfiguration : IEntityTypeConfiguration<ConsigneeNotice>
+{
+    public void Configure(EntityTypeBuilder<ConsigneeNotice> b)
+    {
+        b.ToTable("ConsigneeNotice");
+        b.HasKey(n => n.ConsigneeNoticeId);
+        b.Property(n => n.Kind).HasMaxLength(8).IsRequired();
+        b.Property(n => n.Channel).HasMaxLength(5).IsRequired();
+        b.Property(n => n.Contact).HasMaxLength(200).IsRequired();
+        b.Property(n => n.StatusCode).HasMaxLength(40);
+        b.Property(n => n.Lang).HasMaxLength(2).IsRequired();
+        b.Property(n => n.Token).HasMaxLength(64).IsRequired();
+        b.Property(n => n.Status).HasMaxLength(8).IsRequired();
+        b.Property(n => n.Message).HasMaxLength(400);
+        b.HasIndex(n => n.Token).IsUnique().HasDatabaseName("UX_ConsigneeNotice_Token");
+        b.HasIndex(n => new { n.Status, n.NextAttemptUtc }).HasDatabaseName("IX_ConsigneeNotice_Pending");
+    }
+}
+
+public sealed class ConsigneeUnsubscribeConfiguration : IEntityTypeConfiguration<ConsigneeUnsubscribe>
+{
+    public void Configure(EntityTypeBuilder<ConsigneeUnsubscribe> b)
+    {
+        b.ToTable("ConsigneeUnsubscribe");
+        b.HasKey(u => u.ConsigneeUnsubscribeId);
+        b.Property(u => u.Channel).HasMaxLength(5).IsRequired();
+        b.Property(u => u.Contact).HasMaxLength(200).IsRequired();
+        b.HasIndex(u => new { u.TenantId, u.Channel, u.Contact }).IsUnique().HasDatabaseName("UX_ConsigneeUnsubscribe");
     }
 }
 

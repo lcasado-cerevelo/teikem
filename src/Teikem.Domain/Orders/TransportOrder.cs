@@ -34,6 +34,8 @@ public class TransportOrder : ITenantScoped, ISoftDeletable, IHasStatus, IAuditS
     public string WaybillNumber { get; set; } = string.Empty;
     /// <summary>Lote 112: si es una orden de vuelta, la orden que se devolvió (que quedó «Devuelta»); NULL en las demás.</summary>
     public int? ReturnOfOrderId { get; set; }
+    /// <summary>Lote 116: token propio, imposible de adivinar, del enlace de seguimiento que se manda al consignatario (se crea al primer aviso).</summary>
+    public string? TrackToken { get; set; }
     /// <summary>Lote 115: lo que se le cobra a esta orden por devolverla (según el contrato; NULL = nada) y si ya se facturó (aparte del flete).</summary>
     public decimal? ReturnFeeAmount { get; set; }
     [NotAudited] public bool ReturnFeeInvoiced { get; set; }

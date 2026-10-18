@@ -4410,3 +4410,82 @@ IF COL_LENGTH('dbo.TransportOrder', 'ReturnFeeInvoiced') IS NULL ALTER TABLE dbo
 GO
 IF COL_LENGTH('dbo.InvoiceLine', 'IsReturnFee') IS NULL ALTER TABLE dbo.InvoiceLine ADD IsReturnFee BIT NOT NULL CONSTRAINT DF_InvoiceLine_IsReturnFee DEFAULT 0;
 GO
+
+/* =========================================================================
+   2026-10-18 (ax) — Lote 116: avisos al consignatario (docs/p12). EL CLIENTE (no la compañía) prende el aviso al consignatario (Client.NotifyConsignee, idioma Client.NoticeLang) y marca, por consignatario, si acepta correo y/o texto
+   (Location.NoticeEmailOptIn / NoticeSmsOptIn), con advertencia y bitácora (ConsigneeNoticeConsent). Los avisos salen por la tabla ConsigneeNotice (cola con reintentos; un aviso de alta CONSENT y los de estatus STATUS) con un enlace al
+   avance de la orden por TOKEN propio (TransportOrder.TrackToken) y un enlace de baja (ConsigneeNotice.Token → ConsigneeUnsubscribe).
+   ========================================================================= */
+IF COL_LENGTH('dbo.Client', 'NotifyConsignee') IS NULL ALTER TABLE dbo.Client ADD NotifyConsignee BIT NOT NULL CONSTRAINT DF_Client_NotifyConsignee DEFAULT 0;
+GO
+IF COL_LENGTH('dbo.Client', 'NoticeLang') IS NULL ALTER TABLE dbo.Client ADD NoticeLang VARCHAR(2) NULL;
+GO
+IF COL_LENGTH('dbo.Location', 'NoticeEmailOptIn') IS NULL ALTER TABLE dbo.Location ADD NoticeEmailOptIn BIT NOT NULL CONSTRAINT DF_Location_NoticeEmailOptIn DEFAULT 0;
+GO
+IF COL_LENGTH('dbo.Location', 'NoticeSmsOptIn') IS NULL ALTER TABLE dbo.Location ADD NoticeSmsOptIn BIT NOT NULL CONSTRAINT DF_Location_NoticeSmsOptIn DEFAULT 0;
+GO
+IF COL_LENGTH('dbo.TransportOrder', 'TrackToken') IS NULL ALTER TABLE dbo.TransportOrder ADD TrackToken VARCHAR(64) NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_TransportOrder_TrackToken' AND object_id = OBJECT_ID('dbo.TransportOrder'))
+    CREATE UNIQUE INDEX UX_TransportOrder_TrackToken ON dbo.TransportOrder (TrackToken) WHERE TrackToken IS NOT NULL;
+GO
+IF OBJECT_ID(N'dbo.ConsigneeNoticeConsent', N'U') IS NULL CREATE TABLE dbo.ConsigneeNoticeConsent (
+    ConsigneeNoticeConsentId INT IDENTITY(1,1) PRIMARY KEY,
+    TenantId        INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    ClientId        INT NOT NULL REFERENCES dbo.Client(ClientId),
+    LocationId      INT NOT NULL REFERENCES dbo.Location(LocationId),
+    Channel         VARCHAR(5) NOT NULL,
+    Accepted        BIT NOT NULL,
+    Contact         NVARCHAR(200) NOT NULL,
+    WarningAccepted BIT NOT NULL,
+    Source          VARCHAR(10) NOT NULL,
+    ChangedBy       INT NULL,
+    ChangedAtUtc    DATETIME2 NOT NULL CONSTRAINT DF_ConsigneeNoticeConsent_At DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT CK_ConsigneeNoticeConsent_Channel CHECK (Channel IN ('EMAIL','SMS')),
+    CONSTRAINT CK_ConsigneeNoticeConsent_Source CHECK (Source IN ('CLIENT','CONSIGNEE'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ConsigneeNoticeConsent_Location' AND object_id = OBJECT_ID('dbo.ConsigneeNoticeConsent'))
+    CREATE INDEX IX_ConsigneeNoticeConsent_Location ON dbo.ConsigneeNoticeConsent (LocationId, ChangedAtUtc);
+GO
+IF OBJECT_ID(N'dbo.ConsigneeNotice', N'U') IS NULL CREATE TABLE dbo.ConsigneeNotice (
+    ConsigneeNoticeId INT IDENTITY(1,1) PRIMARY KEY,
+    TenantId          INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    ClientId          INT NOT NULL REFERENCES dbo.Client(ClientId),
+    LocationId        INT NOT NULL REFERENCES dbo.Location(LocationId),
+    TransportOrderId  INT NULL REFERENCES dbo.TransportOrder(TransportOrderId),
+    Kind              VARCHAR(8) NOT NULL,
+    Channel           VARCHAR(5) NOT NULL,
+    Contact           NVARCHAR(200) NOT NULL,
+    StatusCode        VARCHAR(40) NULL,
+    Lang              VARCHAR(2) NOT NULL,
+    Token             VARCHAR(64) NOT NULL,
+    Status            VARCHAR(8) NOT NULL CONSTRAINT DF_ConsigneeNotice_Status DEFAULT 'PENDING',
+    Attempts          INT NOT NULL CONSTRAINT DF_ConsigneeNotice_Attempts DEFAULT 0,
+    NextAttemptUtc    DATETIME2 NULL,
+    SentAtUtc         DATETIME2 NULL,
+    Message           NVARCHAR(400) NULL,
+    CreatedAtUtc      DATETIME2 NOT NULL CONSTRAINT DF_ConsigneeNotice_Created DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT CK_ConsigneeNotice_Kind CHECK (Kind IN ('STATUS','CONSENT')),
+    CONSTRAINT CK_ConsigneeNotice_Channel CHECK (Channel IN ('EMAIL','SMS')),
+    CONSTRAINT CK_ConsigneeNotice_Status CHECK (Status IN ('PENDING','SENT','SKIPPED','FAILED'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_ConsigneeNotice_Token' AND object_id = OBJECT_ID('dbo.ConsigneeNotice'))
+    CREATE UNIQUE INDEX UX_ConsigneeNotice_Token ON dbo.ConsigneeNotice (Token);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ConsigneeNotice_Pending' AND object_id = OBJECT_ID('dbo.ConsigneeNotice'))
+    CREATE INDEX IX_ConsigneeNotice_Pending ON dbo.ConsigneeNotice (Status, NextAttemptUtc);
+GO
+IF OBJECT_ID(N'dbo.ConsigneeUnsubscribe', N'U') IS NULL CREATE TABLE dbo.ConsigneeUnsubscribe (
+    ConsigneeUnsubscribeId INT IDENTITY(1,1) PRIMARY KEY,
+    TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    Channel      VARCHAR(5) NOT NULL,
+    Contact      NVARCHAR(200) NOT NULL,
+    AtUtc        DATETIME2 NOT NULL CONSTRAINT DF_ConsigneeUnsubscribe_At DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT CK_ConsigneeUnsubscribe_Channel CHECK (Channel IN ('EMAIL','SMS'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_ConsigneeUnsubscribe' AND object_id = OBJECT_ID('dbo.ConsigneeUnsubscribe'))
+    CREATE UNIQUE INDEX UX_ConsigneeUnsubscribe ON dbo.ConsigneeUnsubscribe (TenantId, Channel, Contact);
+GO

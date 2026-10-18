@@ -212,3 +212,27 @@ public sealed class ClientNotificationDigestJob : IScheduledJob
     }
 }
 
+/// <summary>
+/// Lote 116 — avisos al consignatario: manda por correo los avisos pendientes (la orden salió En ruta, intento fallido, estatus final, o el alta del consignatario) con el enlace de seguimiento y el de baja, y reintenta los fallidos
+/// a 1, 5 y 30 minutos. Corre cada minuto.
+/// </summary>
+public sealed class ConsigneeNoticeDispatchJob : IScheduledJob
+{
+    public string Key => JobKeys.ConsigneeNoticeDispatch;
+    public string NameEs => "Avisos a los consignatarios";
+    public string NameEn => "Consignee notices";
+    public string DescriptionEs => "Manda a los consignatarios que el cliente marcó los avisos de sus paquetes (en camino, intento fallido, entregado…) con el enlace de seguimiento.";
+    public string DescriptionEn => "Sends the consignees the client marked the notices about their packages (on its way, failed attempt, delivered…) with the tracking link.";
+    public string DefaultKind => JobScheduleKinds.Interval;
+    public int? DefaultIntervalSeconds => 60;
+    public TimeSpan? DefaultDailyAt => null;
+    public bool DefaultEnabled => true;
+    public TimeSpan MaxRuntime => TimeSpan.FromMinutes(5);
+
+    public async Task<string?> RunAsync(JobRunContext context, CancellationToken ct)
+    {
+        var service = context.Services.GetRequiredService<ConsigneeNoticeService>();
+        var (sent, skipped, failed) = await service.DispatchAsync(ct);
+        return sent + skipped + failed == 0 ? "Ningún aviso por mandar." : $"{sent} enviado(s), {skipped} omitido(s), {failed} con error.";
+    }
+}

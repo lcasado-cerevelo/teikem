@@ -34,6 +34,9 @@ public class Client : ITenantScoped, ISoftDeletable, IHasStatus, IAuditStamped
     /// <summary>Dirección del cliente (corporativa, postal, PICKUP o BOTH) donde se recoge por defecto; NULL = en la dirección corporativa.</summary>
     public int? DefaultPickupLocationId { get; set; }
     public bool ClientAssignsOrderNumber { get; set; }
+    /// <summary>Lote 116: el cliente prendió los avisos a sus consignatarios (solo a los que marcó); NoticeLang = idioma de esos avisos (es/en; NULL = el de la compañía).</summary>
+    public bool NotifyConsignee { get; set; }
+    public string? NoticeLang { get; set; }
     public bool ClientAssignsInvoiceNumber { get; set; }
     public string? OrderNumberFormat { get; set; }
     public string? InvoiceNumberFormat { get; set; }
