@@ -20,7 +20,7 @@ namespace Teikem.Infrastructure.Services;
 /// - Faltantes: cuando la orden pasa a la acción siguiente sin alguna pieza (o al cerrar el conteo), esa pieza queda «Por verificar». Si aparece (se escanea después) deja de ser faltante.
 /// Nada de esto revisa tarifa, crédito ni cliente: eso se revisó al someter la orden. Silencioso: nunca pregunta ni interrumpe; cada escaneo contesta con su resultado y su palabra (Sí / No / Ok).
 /// </summary>
-public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, OutboundScanService outbound, ReappearedOrderService reappeared)
+public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, OutboundScanService outbound, ReappearedOrderService reappeared, ReturnOrderService returns, PermissionService? permissions = null)
 {
     private readonly Dictionary<string, string> labels = new(StringComparer.OrdinalIgnoreCase);
 
@@ -61,6 +61,35 @@ public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant,
                 done = Plain(action, ScanActionOutcomes.NotFound, ClaimRules.ClosedClaimPieceMessage);
                 return;
             }
+            // Lote 112: «Devolver» (orders.return): la pieza viaja en la orden de vuelta y la orden queda «Devuelta»; no sigue el camino de las demás acciones
+            if (action == ScanActions.Return)
+            {
+                if (permissions is not null) await permissions.EnsureAsync(Teikem.Domain.Constants.PermissionCatalog.OrdersReturn, ct2);
+                if (pieceRow.MissingStatus is not null)
+                {
+                    done = Plain(action, ScanActionOutcomes.NotFound, string.Format(ReturnOrderService.PieceMissingMessage, piece.PackageNumber));
+                    return;
+                }
+                if (await db.OrderPieceScans.AnyAsync(s => s.OrderPieceId == pieceRow.OrderPieceId && s.Action == action, ct2))
+                {
+                    done = await ResultAsync(action, ScanActionOutcomes.Duplicate, DuplicateMessage(piece.PackageNumber), orderFacts, current, null, null, null, piece.PackageNumber, orderId, ct2);
+                    return;
+                }
+                if (orderIsFinal && current.Code != OrderStatuses.Returned)
+                {
+                    done = await ResultAsync(action, ScanActionOutcomes.Final, FinalMessage(orderFacts.OrderNumber, current.Label), orderFacts, current, null, null, null, piece.PackageNumber, orderId, ct2);
+                    return;
+                }
+                var (returnOrder, createdReturn) = await returns.ReturnScannedPieceAsync(order, pieceRow, ct2);
+                db.OrderPieceScans.Add(new OrderPieceScan { TenantId = order.TenantId, OrderPieceId = pieceRow.OrderPieceId, Action = action, ScannedAtUtc = DateTime.UtcNow, ScannedBy = tenant.UserId });
+                await db.SaveChangesAsync(ct2);
+                var text = createdReturn
+                    ? string.Format(ReturnOrderService.CreatedMessageFormat, orderFacts.OrderNumber, returnOrder.OrderNumber, returnOrder.WaybillNumber, 1)
+                    : string.Format(ReturnOrderService.AddedMessageFormat, piece.PackageNumber, returnOrder.OrderNumber);
+                done = await ResultAsync(action, ScanActionOutcomes.Returned, text, orderFacts, current, createdReturn ? OrderStatuses.Returned : null, null, null, piece.PackageNumber, orderId, ct2);
+                return;
+            }
+
             if (pieceRow.MissingStatus is PieceMissing.Lost or PieceMissing.Claimed || pieceRow.ReappearedAtUtc is not null || (pieceRow.MissingStatus == PieceMissing.ToVerify && orderIsFinal))
             {
                 if (await db.OrderPieceScans.AnyAsync(s => s.OrderPieceId == pieceRow.OrderPieceId && s.Action == action, ct2))
@@ -177,6 +206,20 @@ public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant,
     private async Task<List<int>> MarkMissingAsync(int orderId, int exceptPieceId, string currentStatusCode, CancellationToken ct, bool dryRun = false)
     {
         var marked = new List<int>();
+        if (currentStatusCode == OrderStatuses.Returned)
+        {
+            // Lote 112: una orden «Devuelta» ya mandó a la vuelta lo que se escaneó con «Devolver»; lo que sigue en ella y no es faltante queda «Por verificar» (de ahí sigue en Reclamaciones)
+            var left = await db.OrderPieces.Where(p => p.TransportOrderId == orderId && p.IsActive && p.MissingStatus == null && p.ReappearedAtUtc == null).ToListAsync(ct);
+            foreach (var p in left)
+            {
+                marked.Add(p.OrderPieceId);
+                if (dryRun) continue;
+                p.MissingStatus = PieceMissing.ToVerify;
+                p.MissingAtUtc = DateTime.UtcNow;
+            }
+            if (marked.Count > 0 && !dryRun) await db.SaveChangesAsync(ct);
+            return marked;
+        }
         var currentAction = ScanActions.ForStatus(currentStatusCode);
         if (currentAction is null) return marked;
         var pieces = await db.OrderPieces.Where(p => p.TransportOrderId == orderId && p.IsActive).ToListAsync(ct);
@@ -245,7 +288,7 @@ public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant,
 
     private static string VoiceOf(string outcome) => outcome switch
     {
-        ScanActionOutcomes.Applied or ScanActionOutcomes.Counted or ScanActionOutcomes.Reappeared => ScanVoices.Found,                 // «Sí»
+        ScanActionOutcomes.Applied or ScanActionOutcomes.Counted or ScanActionOutcomes.Reappeared or ScanActionOutcomes.Returned => ScanVoices.Found,                 // «Sí»
         ScanActionOutcomes.Duplicate => ScanVoices.Duplicate,                                          // «Ok»
         _ => ScanVoices.NotFound,                                                                      // «No»
     };

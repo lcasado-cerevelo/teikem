@@ -35,8 +35,8 @@ public class OrderCatalogTests
     public void Permission_catalog_has_69_codes_including_credit_override()
     {
         // Lote 4: 49 → 52 (fleet.view, driverpay.view, driverpay.manage). Lote 5: 52 → 54 (trips.view, trips.scan). Lote 6: 54 → 58. Lote 8A: 58 → 60 (devices.manage, warehouse.count.capture). Lote F8a: 60 → 65 (pulse.*). Lote 14: 65 → 66 (pulse.attention). Lote 27: 66 → 68 (rental.extend, rental.return).
-        Assert.Equal(99, PermissionCatalog.All.Count);   // Lote 111: + claims.view, claims.manage; Lote 106: + orders.reopen;   // Lote 104: + clientmessages.reply, clientmessages.manage;   // 2026-10-08: + warehouse.damage; 2026-10-11: + warehouse.issue; 2026-10-12: + orders.view_price; 2026-10-12 (Lote 43): + printers.manage; 2026-10-12: + inventory.adjust.multi; 2026-10-16 (Lote 72): + billing.view
-        Assert.Equal(99, PermissionCatalog.All.Select(p => p.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        Assert.Equal(100, PermissionCatalog.All.Count);   // Lote 112: + orders.return; Lote 111: + claims.view, claims.manage; Lote 106: + orders.reopen;   // Lote 104: + clientmessages.reply, clientmessages.manage;   // 2026-10-08: + warehouse.damage; 2026-10-11: + warehouse.issue; 2026-10-12: + orders.view_price; 2026-10-12 (Lote 43): + printers.manage; 2026-10-12: + inventory.adjust.multi; 2026-10-16 (Lote 72): + billing.view
+        Assert.Equal(100, PermissionCatalog.All.Select(p => p.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count());
         var credit = Assert.Single(PermissionCatalog.All, p => p.Code == "orders.credit_override");
         Assert.Equal("ORDERS", credit.Category);
         Assert.Equal("Autorizar órdenes sobre el límite de crédito", credit.LabelEs);
@@ -105,6 +105,8 @@ public class OrderCatalogTests
         Assert.True(retired.Success, "La sección (an) debe borrar los estatus viejos.");
         foreach (Match m in Regex.Matches(retired.Groups[1].Value, @"'([A-Z_]+)'")) codes.Remove(m.Groups[1].Value);
         foreach (Match m in Regex.Matches(section, @"VALUES \('OrderStatus','([A-Z_]+)'")) codes.Add(m.Groups[1].Value);
+        // Lote 112: secciones posteriores agregan estatus de orden (RETURNED en la (at)); esas inserciones también cuentan
+        foreach (Match m in Regex.Matches(update, @"VALUES \(N'OrderStatus', N'([A-Z_]+)'")) codes.Add(m.Groups[1].Value);
 
         var constants = typeof(OrderStatuses).GetFields(BindingFlags.Public | BindingFlags.Static)
             .Where(f => f.IsLiteral).Select(f => (string)f.GetRawConstantValue()!).ToHashSet();

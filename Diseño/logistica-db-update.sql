@@ -4327,3 +4327,43 @@ FROM dbo.Role r
 JOIN dbo.Permission p ON p.Code IN ('claims.view', 'claims.manage') AND r.Name = 'TenantAdmin'
 WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = p.PermissionId);
 GO
+
+/* =========================================================================
+   2026-10-18 (at) — Lote 112: Devolución. Estatus final OrderStatus «Devuelta» (RETURNED), permiso orders.return (propagado a los TenantAdmin ya clonados) y TransportOrder.ReturnOfOrderId (la orden de vuelta apunta a la que devolvió).
+   ========================================================================= */
+IF NOT EXISTS (SELECT 1 FROM dbo.StatusCode WHERE Entity = N'OrderStatus' AND InternalCode = N'RETURNED')
+    INSERT INTO dbo.StatusCode (Entity, InternalCode, LabelJson, ColorHex, SortOrder, StageKindLookupId, IsInitial, IsActive)
+    VALUES (N'OrderStatus', N'RETURNED', N'{"es":"Devuelta","en":"Returned"}', '#F97316', 10, (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'StageKind' AND InternalCode = 'TERMINAL'), 0, 1);
+GO
+MERGE dbo.StatusCapability AS t
+USING (
+    SELECT et.LookupCodeId AS EntityTypeLookupId, s.StatusCodeId, c.LookupCodeId AS CapabilityLookupId
+    FROM dbo.LookupCode et
+    CROSS JOIN dbo.StatusCode s
+    CROSS JOIN dbo.LookupCode c
+    WHERE et.Entity = 'EntityType' AND et.InternalCode = 'TRANSPORT_ORDER'
+      AND s.Entity = 'OrderStatus' AND s.InternalCode = 'RETURNED'
+      AND c.Entity = 'Capability' AND c.InternalCode IN ('EDIT_CARGO', 'REPRICE', 'CANCEL', 'ASSIGN_TRIP')
+) AS s
+ON t.TenantId IS NULL AND t.EntityTypeLookupId = s.EntityTypeLookupId AND t.StatusCodeId = s.StatusCodeId AND t.CapabilityLookupId = s.CapabilityLookupId
+WHEN NOT MATCHED THEN
+    INSERT (TenantId, EntityTypeLookupId, StatusCodeId, CapabilityLookupId, IsAllowed)
+    VALUES (NULL, s.EntityTypeLookupId, s.StatusCodeId, s.CapabilityLookupId, 0);
+GO
+IF COL_LENGTH('dbo.TransportOrder', 'ReturnOfOrderId') IS NULL ALTER TABLE dbo.TransportOrder ADD ReturnOfOrderId INT NULL REFERENCES dbo.TransportOrder(TransportOrderId);
+GO
+MERGE dbo.Permission AS t
+USING (VALUES
+    ('orders.return', N'{"es":"Devolver órdenes (crear la orden de vuelta)","en":"Return orders (create the return order)"}')
+) AS s (Code, LabelJson)
+ON t.Code = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES (s.Code, (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'ORDERS'), s.LabelJson, 1);
+GO
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT DISTINCT r.RoleId, p.PermissionId
+FROM dbo.Role r
+JOIN dbo.Permission p ON p.Code = 'orders.return' AND r.Name = 'TenantAdmin'
+WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = p.PermissionId);
+GO

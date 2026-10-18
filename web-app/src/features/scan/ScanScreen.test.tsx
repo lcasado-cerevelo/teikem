@@ -63,6 +63,16 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('Estación de escaneo — pantalla', () => {
+  it('Lote 112: «Devolver» solo se ofrece con el permiso orders.return', () => {
+    wrap(ALL)
+    expect(screen.queryByRole('radio', { name: 'Devolver' })).toBeNull()
+  })
+
+  it('Lote 112: con orders.return aparece la acción «Devolver»', () => {
+    wrap([...ALL, 'orders.return'])
+    expect(screen.getByRole('radio', { name: 'Devolver' })).toBeInTheDocument()
+  })
+
   it('título, las cuatro acciones (Enrutar por omisión), entrada con foco y avisos; sin modos que el servidor no tiene', async () => {
     wrap(ALL)
     expect(screen.getByRole('heading', { level: 1, name: 'Estación de escaneo' })).toBeInTheDocument()

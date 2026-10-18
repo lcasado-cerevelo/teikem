@@ -36,19 +36,25 @@ public sealed class PartialBillingService(TeikemDbContext db, ILookupCache looku
         if (client is null) return false;
 
         var pieces = await db.OrderPieces.AsNoTracking().Where(p => p.TransportOrderId == orderId && p.IsActive).ToListAsync(ct);
-        if (pieces.Count == 0) return false;
+        if (order.IsSpecialDelivery) return false;   // la entrega especial no lleva piezas
         var lines = await db.CargoLines.Where(l => l.TransportOrderId == orderId).ToListAsync(ct);
         var changed = false;
-        foreach (var l in lines.Where(l => pieces.Any(p => p.CargoLineId == l.CargoLineId)))
+        foreach (var l in lines.Where(l => l.IsActive))
         {
             var billable = pieces.Count(p => p.CargoLineId == l.CargoLineId && p.MissingStatus is null or PieceMissing.ToVerify);
             var before = l.Quantity;
             if (billable == before) continue;
-            var keep = before <= 0 ? 0m : billable / before;
+            if (billable == 0)
+            {
+                l.IsActive = false;   // CK_CargoLine_Quantity exige > 0: la línea sin piezas cobrables se da de baja y conserva su cantidad
+                changed = true;
+                continue;
+            }
+            var keep = billable / before;
             l.Quantity = billable;
             if (l.WeightKg is not null) l.WeightKg *= keep;
             if (l.VolumeM3 is not null) l.VolumeM3 *= keep;
-            l.IsActive = billable > 0;
+            l.IsActive = true;
             changed = true;
         }
         if (!changed) return false;

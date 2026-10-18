@@ -208,3 +208,22 @@ export function useAssignOrderDriver() {
     onSuccess: (order) => invalidateOrder(qc, order.id),
   })
 }
+
+/** `POST /orders/{publicId}/return` (Lote 112, `orders.return`): la orden queda «Devuelta» y se crea la orden de vuelta con las piezas indicadas (sin números, todas las que no son faltantes). */
+export function useReturnOrder() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ publicId, pieceNumbers, notes }: { publicId: string; pieceNumbers?: string[]; notes?: string | null }) =>
+      unwrap(
+        api.POST('/api/v1/orders/{publicId}/return', {
+          params: { path: { publicId } },
+          body: { pieceNumbers: pieceNumbers && pieceNumbers.length > 0 ? pieceNumbers : null, notes: notes || null },
+          headers: idempotencyHeaders(),
+        }),
+      ),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: orderKeys.list })
+      void qc.invalidateQueries({ queryKey: orderKeys.detail })
+    },
+  })
+}

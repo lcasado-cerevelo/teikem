@@ -97,6 +97,7 @@ internal sealed class TripServiceFixture : IAsyncDisposable
         services.AddSingleton<OrderReadService>();
         services.AddSingleton<OutboundScanService>();
         services.AddSingleton<PartialBillingService>();
+        services.AddSingleton<ReturnOrderService>();
         services.AddSingleton<ReappearedOrderService>();
         services.AddSingleton<ScanActionService>();
         services.AddSingleton<ClaimService>();
@@ -165,6 +166,7 @@ internal sealed class TripServiceFixture : IAsyncDisposable
         S(StatusDomains.OrderStatus, OrderStatuses.Delivered, term, 8);
         S(StatusDomains.OrderStatus, OrderStatuses.Failed, lat, 20);
         S(StatusDomains.OrderStatus, OrderStatuses.Cancelled, term, 30);
+        S(StatusDomains.OrderStatus, OrderStatuses.Returned, term, 10);   // Lote 112
 
         S(StatusDomains.StopStatus, StopStatuses.Pending, pipe, 1, true);
         S(StatusDomains.StopStatus, StopStatuses.Completed, term, 3);

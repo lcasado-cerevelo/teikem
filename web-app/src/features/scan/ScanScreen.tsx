@@ -56,6 +56,7 @@ export default function ScanScreen() {
   const qc = useQueryClient()
   const canTrips = useCan('trips.view')
   const canOrders = useCan('orders.view')
+  const canReturn = useCan('orders.return')   // Lote 112: la acción «Devolver»
   const canFleet = useCan('fleet.view')
   const canClients = useCan('clients.read')
   const catalogOn = useModule('CATALOG')
@@ -250,7 +251,7 @@ export default function ScanScreen() {
 
       <div className="scanhero">
         <div className="modes" role="radiogroup" aria-label={t('scan.mode.label')}>
-          {SCAN_ACTIONS.map((a) => (
+          {SCAN_ACTIONS.filter((a) => a !== 'RETURN' || canReturn).map((a) => (
             <button
               key={a}
               type="button"

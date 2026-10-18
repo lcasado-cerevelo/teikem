@@ -2009,13 +2009,15 @@
       "PICKUP": "Recoger",
       "ARRIVE": "Llegó",
       "ROUTE": "Enrutar",
-      "DEPART": "Salir"
+      "DEPART": "Salir",
+      "RETURN": "Devolver"
     },
     "actionHelp": {
       "PICKUP": "Recogida: lo que escanee pasa a Recogida.",
       "ARRIVE": "Llegó al almacén: lo que escanee pasa a Sin asignar (un intento fallido que vuelve también).",
       "ROUTE": "Enrutar: lo que escanee pasa a Asignada y entra a la ruta abierta de su zona; sin ruta que la reciba, no cambia.",
-      "DEPART": "Salir: lo que escanee pasa a En tránsito."
+      "DEPART": "Salir: lo que escanee pasa a En tránsito.",
+      "RETURN": "Devolver: la pieza que escanee viaja en la orden de vuelta (nace Recogida) y su orden queda Devuelta. Requiere permiso de devolver."
     },
     "closeCount": {
       "button": "Cerrar conteo"
@@ -3697,6 +3699,16 @@
         "authorize": "Autorizar y asignar",
         "creditNote": "Si autoriza, la asignación se hace de todos modos y queda registrado quién lo autorizó.",
         "done": "Chofer asignado a la orden {number}."
+      },
+      "return": {
+        "button": "Devolver",
+        "title": "Devolver {number}",
+        "body": "La orden quedará «Devuelta» y se creará la orden de vuelta (recogido y entrega al revés) con las piezas que marque. Las piezas faltantes no se pueden devolver.",
+        "pieces": "Piezas que se devuelven",
+        "notes": "Nota (opcional)",
+        "confirm": "Devolver la orden",
+        "noPieces": "Marque al menos una pieza que se devuelve.",
+        "done": "La orden {number} quedó Devuelta."
       }
     },
     "entry": {

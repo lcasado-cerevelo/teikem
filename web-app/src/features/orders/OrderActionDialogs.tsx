@@ -8,7 +8,7 @@ import { useStatuses } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
 import { ComboSelect, Modal, toast, type ComboOption } from '../../kernel/ui'
 import { useDrivers } from '../drivers/api'
-import { useAssignOrderDriver, useCancelOrder, useReopenOrder, type OrderDetailDto } from './api'
+import { useAssignOrderDriver, useCancelOrder, useReopenOrder, useReturnOrder, type OrderDetailDto } from './api'
 import { COMMENT_MAX, isCreditExceeded } from './orderRules'
 
 interface DialogProps {
@@ -202,6 +202,73 @@ export function ReopenOrderDialog({ order, open, onClose }: DialogProps) {
         placeholder={t('orders.actions.reopen.reasonPlaceholder')}
         error={reasonError}
       />
+    </Modal>
+  )
+}
+
+/** «Devolver» (Lote 112, `orders.return`): elige las piezas que viajan en la orden de vuelta (por omisión todas) y una nota. La orden queda «Devuelta» y se crea la orden de vuelta (nace Sometida). `POST /return`. */
+export function ReturnOrderDialog({ order, open, onClose }: DialogProps) {
+  const t = useT()
+  const returnOrder = useReturnOrder()
+  const notesId = useId()
+  const pieces = (order.packages ?? []).flatMap((p) => p.pieceNumbers ?? [])
+  const [chosen, setChosen] = useState<string[]>(pieces)
+  const [notes, setNotes] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const toggle = (n: string) => setChosen((c) => (c.includes(n) ? c.filter((x) => x !== n) : [...c, n]))
+
+  async function submit() {
+    if (returnOrder.isPending) return
+    if (chosen.length === 0) {
+      setError(t('orders.actions.return.noPieces'))
+      return
+    }
+    setError(null)
+    try {
+      const r = await returnOrder.mutateAsync({ publicId: order.publicId ?? '', pieceNumbers: chosen.length === pieces.length ? undefined : chosen, notes: notes.trim() || null })
+      toast.success(r.message ?? t('orders.actions.return.done', { number: order.orderNumber ?? '' }))
+      onClose()
+    } catch (err) {
+      setError(applyProblemDetails(err).title)
+    }
+  }
+
+  return (
+    <Modal
+      open={open}
+      size="sm"
+      title={t('orders.actions.return.title', { number: order.orderNumber ?? '' })}
+      onClose={onClose}
+      dismissible={!returnOrder.isPending}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={onClose} disabled={returnOrder.isPending}>
+            {t('orders.actions.back')}
+          </button>
+          <button type="button" className="btn flow" onClick={() => void submit()} disabled={returnOrder.isPending}>
+            {returnOrder.isPending ? t('common.loading') : t('orders.actions.return.confirm')}
+          </button>
+        </>
+      }
+    >
+      {error && (
+        <div className="form-alert" role="alert">
+          {error}
+        </div>
+      )}
+      <p>{t('orders.actions.return.body')}</p>
+      <fieldset className="f">
+        <legend>{t('orders.actions.return.pieces')}</legend>
+        {pieces.map((n) => (
+          <label key={n} style={{ display: 'block' }}>
+            <input type="checkbox" checked={chosen.includes(n)} onChange={() => toggle(n)} /> {n}
+          </label>
+        ))}
+      </fieldset>
+      <div className="f">
+        <label htmlFor={notesId}>{t('orders.actions.return.notes')}</label>
+        <input id={notesId} value={notes} maxLength={300} autoComplete="off" onChange={(e) => setNotes(e.target.value)} />
+      </div>
     </Modal>
   )
 }

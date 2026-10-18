@@ -2009,13 +2009,15 @@
       "PICKUP": "Pick up",
       "ARRIVE": "Arrived",
       "ROUTE": "Route",
-      "DEPART": "Depart"
+      "DEPART": "Depart",
+      "RETURN": "Return"
     },
     "actionHelp": {
       "PICKUP": "Pick up: whatever you scan becomes Picked up.",
       "ARRIVE": "Arrived at the warehouse: whatever you scan becomes Unassigned (a failed attempt coming back too).",
       "ROUTE": "Route: whatever you scan becomes Assigned and joins the open route of its zone; with no route to take it, nothing changes.",
-      "DEPART": "Depart: whatever you scan becomes In transit."
+      "DEPART": "Depart: whatever you scan becomes In transit.",
+      "RETURN": "Return: the piece you scan travels in the return order (born Picked up) and its order becomes Returned. Requires the return permission."
     },
     "closeCount": {
       "button": "Close count"
@@ -3697,6 +3699,16 @@
         "authorize": "Authorize and assign",
         "creditNote": "If you authorize, the assignment is made anyway and who authorized it is recorded.",
         "done": "Driver assigned to order {number}."
+      },
+      "return": {
+        "button": "Return",
+        "title": "Return {number}",
+        "body": "The order will become «Returned» and the return order (pickup and delivery swapped) will be created with the pieces you tick. Missing pieces cannot be returned.",
+        "pieces": "Pieces being returned",
+        "notes": "Note (optional)",
+        "confirm": "Return the order",
+        "noPieces": "Tick at least one piece to return.",
+        "done": "Order {number} was returned."
       }
     },
     "entry": {

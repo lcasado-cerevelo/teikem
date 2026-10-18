@@ -37565,6 +37565,65 @@
           }
         }
       }
+    },
+    "/api/v1/orders/{publicId}/return": {
+      "post": {
+        "tags": [
+          "OrderReturn"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReturnOrderRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReturnOrderRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReturnOrderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReturnOrderResultDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReturnOrderResultDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReturnOrderResultDto"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -66758,6 +66817,53 @@
             "items": {
               "type": "string"
             },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReturnOrderRequest": {
+        "type": "object",
+        "properties": {
+          "pieceNumbers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReturnOrderResultDto": {
+        "type": "object",
+        "properties": {
+          "returnOrderPublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "returnOrderNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "returnWaybillNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "originalOrderNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "pieces": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string",
             "nullable": true
           }
         },

@@ -13,17 +13,19 @@ public static class ScanActions
     public const string Arrive = "ARRIVE";   // Llegó: entró al almacén (guarda) → Sin asignar
     public const string Route = "ROUTE";     // Enrutar: puesta en una ruta (guarda) → Asignada
     public const string Depart = "DEPART";   // Salir: el chofer la acepta y sale (chofer) → En tránsito
+    /// <summary>Lote 112: Devolver (permiso orders.return): la pieza escaneada viaja en la orden de vuelta y la orden queda «Devuelta». No está en el camino de las cuatro acciones (no tiene lugar en el orden).</summary>
+    public const string Return = "RETURN";
 
     public static readonly string[] All = { Pickup, Arrive, Route, Depart };
 
     public const string PieceNotFoundMessage = "No se encontró la pieza.";   // el número de la orden no se escanea: lo que se escanea son las piezas
-    public const string InvalidActionMessage = "Escoja la acción: recoger, llegó, enrutar o salir.";
+    public const string InvalidActionMessage = "Escoja la acción: recoger, llegó, enrutar, salir o devolver.";
 
     /// <summary>Acción normalizada (sin distinguir mayúsculas) o null si no es una de las cuatro.</summary>
     public static string? Normalize(string? raw)
     {
         var a = raw?.Trim().ToUpperInvariant();
-        return a is not null && All.Contains(a) ? a : null;
+        return a is not null && (All.Contains(a) || a == Return) ? a : null;
     }
 
     /// <summary>Orden de las acciones en el camino de la orden (Recoger 1, Llegó 2, Enrutar 3, Salir 4).</summary>
@@ -39,6 +41,7 @@ public static class ScanActions
         Arrive => OrderStatuses.Unassigned,
         Route => OrderStatuses.Assigned,
         Depart => OrderStatuses.InTransit,
+        Return => OrderStatuses.Pickup,   // el estatus de la ORDEN DE VUELTA que nace con lo escaneado (la original queda Devuelta)
         _ => throw new ArgumentOutOfRangeException(nameof(action), action, "Acción de escaneo desconocida."),
     };
 }
@@ -58,4 +61,6 @@ public static class ScanActionOutcomes
     public const string Duplicate = "DUPLICATE";
     /// <summary>Lote 111: una pieza perdida o reclamada apareció: se quitó de su reclamación y su orden nueva se crea al cerrar el conteo.</summary>
     public const string Reappeared = "REAPPEARED";
+    /// <summary>Lote 112: la pieza escaneada con «Devolver» viaja en la orden de vuelta (la orden queda «Devuelta»).</summary>
+    public const string Returned = "RETURNED";
 }

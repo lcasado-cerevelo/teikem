@@ -655,6 +655,8 @@ public static class OrderStatuses
     public const string Failed = "FAILED";
     public const string Cancelled = "CANCELLED";
     public const string InWarehouse = "IN_WAREHOUSE";
+    /// <summary>Lote 112: «Devuelta» (terminal): la orden no se pudo entregar y volvió; sus piezas devueltas viajan en la orden de vuelta (ReturnOfOrderId).</summary>
+    public const string Returned = "RETURNED";
 }
 
 /// <summary>Dominio StopStatus: PENDING (inicial) → EN_ROUTE → COMPLETED (terminal); FAILED lateral.</summary>

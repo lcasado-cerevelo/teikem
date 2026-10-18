@@ -27973,6 +27973,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/orders/{publicId}/return": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ReturnOrderRequest"];
+                    "text/json": components["schemas"]["ReturnOrderRequest"];
+                    "application/*+json": components["schemas"]["ReturnOrderRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ReturnOrderResultDto"];
+                        "application/json": components["schemas"]["ReturnOrderResultDto"];
+                        "text/json": components["schemas"]["ReturnOrderResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -37621,6 +37666,20 @@ export interface components {
             newOrderStatusLabel?: string | null;
             reappearedNumbers?: string[] | null;
             missingNumbers?: string[] | null;
+        };
+        ReturnOrderRequest: {
+            pieceNumbers?: string[] | null;
+            notes?: string | null;
+        };
+        ReturnOrderResultDto: {
+            /** Format: uuid */
+            returnOrderPublicId?: string;
+            returnOrderNumber?: string | null;
+            returnWaybillNumber?: string | null;
+            originalOrderNumber?: string | null;
+            /** Format: int32 */
+            pieces?: number;
+            message?: string | null;
         };
     };
     responses: never;

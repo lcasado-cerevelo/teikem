@@ -117,6 +117,7 @@ function route({ method, url, body }: Call): unknown {
   if (p === '/api/v1/orders/o-7' && method === 'DELETE') return null
   if (p === '/api/v1/orders/o-7/quote') return { total: 130, lines: [{ serviceType: 'STANDARD', packageType: 'BOX', pieces: 2, baseRate: 60, lineTotal: 120 }], dispatchFee: 10, codFee: 0, credit: { creditLimit: 1000, pendingBalance: 200, orderTotal: 130, available: 800, exceeds: false } }
   if (/^\/api\/v1\/orders\/o-7\/(confirm|reprice|cancel|reopen|status|driver)$/.test(p)) return { ...current, rowVersion: 'CCC=' }
+  if (p === '/api/v1/orders/o-7/return' && method === 'POST') return { returnOrderPublicId: 'o-8', returnOrderNumber: 'ORD-00008', returnWaybillNumber: 'W8', originalOrderNumber: 'ORD-00007', pieces: (body?.pieceNumbers as string[] | null)?.length ?? 3, message: 'La orden ORD-00007 quedó «Devuelta»: se creó la orden de vuelta ORD-00008.' }
   if (p === '/api/v1/status/OrderStatus') return STATUSES
   if (p === '/api/v1/status/OrderStatus/validate') return { isValid: true, errors: [], warnings: [] }
   if (p === '/api/v1/status/lateral-entries/TRANSPORT_ORDER') return []
@@ -901,5 +902,50 @@ describe('Expediente — Reabrir', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Reabrir la orden' }))
     await waitFor(() => expect(callsTo('POST', '/api/v1/orders/o-7/reopen')).toHaveLength(1))
     expect(callsTo('POST', '/api/v1/orders/o-7/reopen')[0].body).toEqual({ toCode: null, comment: 'Error de captura', rowVersion: 'AAA=' })
+  })
+})
+
+describe('Expediente — Devolver (Lote 112)', () => {
+  const RETURNABLE = {
+    ...BASE_ORDER, status: 'UNASSIGNED', statusLabel: 'Sin asignar', isInitialStatus: false,
+    packages: [{ id: 1, packageType: 'BOX', packageTypeLabel: 'Caja', description: 'Ropa', pieces: 3, pieceNumbers: ['P-1', 'P-2', 'P-3'] }],
+  }
+
+  it('solo se ve con el permiso orders.return y en una orden recogida que sigue en curso', async () => {
+    current = { ...RETURNABLE }
+    wrap([...ALL, 'orders.return'])
+    await loaded()
+    expect(headerBtn('Devolver')).toBeInTheDocument()
+  })
+
+  it('sin el permiso, en una orden Sometida o en una final no se pinta', async () => {
+    current = { ...RETURNABLE }
+    wrap(ALL)
+    await loaded()
+    expect(headerBtn('Devolver')).toBeNull()
+  })
+
+  it('manda POST /return con las piezas marcadas y avisa; con todas marcadas no manda números', async () => {
+    current = { ...RETURNABLE }
+    wrap([...ALL, 'orders.return'])
+    await loaded()
+    const { user, dialog } = await openDialog('Devolver')
+    await user.click(within(dialog).getByLabelText('P-3'))
+    await user.type(within(dialog).getByLabelText('Nota (opcional)'), 'Cerrado')
+    await user.click(within(dialog).getByRole('button', { name: 'Devolver la orden' }))
+    await waitFor(() => expect(callsTo('POST', '/api/v1/orders/o-7/return')).toHaveLength(1))
+    expect(callsTo('POST', '/api/v1/orders/o-7/return')[0].body).toEqual({ pieceNumbers: ['P-1', 'P-2'], notes: 'Cerrado' })
+    expect(await screen.findByText(/se creó la orden de vuelta ORD-00008/)).toBeInTheDocument()
+  })
+
+  it('sin ninguna pieza marcada no llama al API', async () => {
+    current = { ...RETURNABLE }
+    wrap([...ALL, 'orders.return'])
+    await loaded()
+    const { user, dialog } = await openDialog('Devolver')
+    for (const n of ['P-1', 'P-2', 'P-3']) await user.click(within(dialog).getByLabelText(n))
+    await user.click(within(dialog).getByRole('button', { name: 'Devolver la orden' }))
+    expect(await within(dialog).findByText('Marque al menos una pieza que se devuelve.')).toBeInTheDocument()
+    expect(callsTo('POST', '/api/v1/orders/o-7/return')).toHaveLength(0)
   })
 })

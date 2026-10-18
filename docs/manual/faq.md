@@ -9194,3 +9194,20 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **¿Qué estatus tiene la orden nueva?** Los mismos que la original hasta Recogida (Sometida y Recogida, con sus mismas fechas) y después el de la acción con que se escaneó la pieza. Si fue «Enrutar», también se asigna a una ruta (si no hay ruta que la reciba, no se cierra el conteo).
 
 **¿La orden nueva se cobra otra vez?** Depende del contrato: si cobra por recogido, no (la original ya se cobra completa); si cobra por entrega, se cotiza con sus piezas y se cobra cuando se entregue, y a la original se le quitan esas piezas.
+
+## Devolución (Lote 112)
+
+**¿Qué pasa cuando devuelvo una orden?** Queda «Devuelta» (final) y se crea la orden de vuelta con las piezas que se devuelven: mismo cliente, recogido en el consignatario y entrega en el recogido del cliente, sin cobrar flete. Ver capítulo 32.
+
+**«Una orden Sometida no se devuelve: todavía no se recoge. Cancélela.»** (422) La orden aún no se recoge; se cancela en vez de devolverse.
+
+**«La orden … está en un estatus final (…): no se devuelve.»** (422) Ya está Entregada, Cancelada, En almacén o Devuelta sin piezas por devolver.
+
+**«La pieza … figura como faltante: no se puede devolver.»** (422) La pieza está Por verificar, Perdido o Reclamada: se atiende en Reclamaciones, no se devuelve.
+
+**«El cliente no tiene un recogido para el regreso: indíquelo en su ficha.»** (422) La orden no tiene parada de recogido y el cliente no tiene dirección corporativa ni recogido por omisión: dónde entregar la vuelta no se sabe.
+
+**No veo la acción «Devolver» en la estación.** Hace falta el permiso `orders.return`.
+
+**Escaneé «Devolver» una pieza y la orden quedó «Devuelta»; ¿y las demás piezas?** Siga escaneando «Devolver» las que se devuelven: se suman a la misma orden de vuelta. Al «Cerrar conteo», las que no se escanearon quedan «Por verificar».
+

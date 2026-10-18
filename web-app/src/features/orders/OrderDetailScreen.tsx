@@ -14,7 +14,7 @@ import { IconClock, IconPrint } from '../../kernel/ui/screenIcons'
 import { labelOrderFromDetail } from '../printing/orderLabels'
 import { usePrinting } from '../printing/usePrinting'
 import { useConfirmOrder, useDeleteOrder, useOrder, useOrderStatusChange, useRepriceOrder } from './api'
-import { AssignDriverModal, CancelOrderDialog, ReopenOrderDialog } from './OrderActionDialogs'
+import { AssignDriverModal, CancelOrderDialog, ReopenOrderDialog, ReturnOrderDialog } from './OrderActionDialogs'
 import { CreditOverrideDialog } from './CreditOverrideDialog'
 import { OrderDetailPanel } from './OrderDetailPanel'
 import { CodPanel, DriverPanel, ORDER_ENTITY_TYPE, OrderContactsPanel, OrderCustomFieldsPanel, QuotePanel } from './OrderSidePanels'
@@ -23,7 +23,7 @@ import './orders.css'
 
 const STATUS_DOMAIN = 'OrderStatus'
 
-type Dialog = 'confirm' | 'reprice' | 'cancel' | 'reopen' | 'delete' | 'assign' | null
+type Dialog = 'confirm' | 'reprice' | 'cancel' | 'reopen' | 'delete' | 'assign' | 'return' | null
 
 export default function OrderDetailScreen() {
   const t = useT()
@@ -38,6 +38,7 @@ export default function OrderDetailScreen() {
   const edit = useCan('orders.edit')
   const cancel = useCan('orders.cancel')
   const reopen = useCan('orders.reopen')
+  const canReturn = useCan('orders.return')   // Lote 112: Devolver
   const creditOverride = useCan('orders.credit_override')
   const dispatch = useCan('trips.dispatch')
   const viewPrice = useCan('orders.view_price')
@@ -65,6 +66,9 @@ export default function OrderDetailScreen() {
 
   const number = order.orderNumber ?? ''
   const vis = orderActionVisibility(order, { edit, cancel, reopen, creditOverride, dispatch, viewPrice, catalogOn }, isAssignableOrder(order, statuses))
+  // Lote 112: se devuelve una orden que ya se recogió y sigue en curso (ni Sometida ni final); el servidor decide con 422
+  const currentStatus = statuses.find((s) => s.code.toLowerCase() === (order.status ?? '').toLowerCase())
+  const returnable = canReturn && order.isActive !== false && !order.isSpecialDelivery && !!currentStatus && currentStatus.stageKind.toUpperCase() !== 'TERMINAL' && !currentStatus.isInitial
   const label = (code: string) => statuses.find((s) => s.code.toLowerCase() === code.toLowerCase())?.label ?? code
   const lockReason = order.capabilities?.canEditCargo && !edit ? 'permission' : 'advanced'
 
@@ -114,6 +118,11 @@ export default function OrderDetailScreen() {
           {vis.cancel && (
             <button type="button" className="btn danger" onClick={() => setDialog('cancel')}>
               {t('orders.actions.cancel.button')}
+            </button>
+          )}
+          {returnable && (
+            <button type="button" className="btn" onClick={() => setDialog('return')}>
+              {t('orders.actions.return.button')}
             </button>
           )}
           {vis.reopen && (
@@ -205,6 +214,7 @@ export default function OrderDetailScreen() {
       />
       {dialog === 'cancel' && <CancelOrderDialog order={order} open onClose={() => setDialog(null)} />}
       {dialog === 'reopen' && <ReopenOrderDialog order={order} open onClose={() => setDialog(null)} />}
+      {dialog === 'return' && <ReturnOrderDialog order={order} open onClose={() => setDialog(null)} />}
       {dialog === 'assign' && <AssignDriverModal order={order} open onClose={() => setDialog(null)} />}
       <ConfirmDialog
         open={dialog === 'delete'}

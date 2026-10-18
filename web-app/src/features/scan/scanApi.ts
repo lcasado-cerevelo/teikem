@@ -10,8 +10,8 @@ import type { KnownOrder, ScanResult } from './scanRules'
 export type UnassignedQuery = NonNullable<paths['/api/v1/trips/unassigned-orders']['get']['parameters']['query']>
 export type ScanActionRequest = components['schemas']['ScanActionRequest']
 export type ScanActionResult = components['schemas']['ScanActionResultDto']
-/** Las cuatro acciones de la estación (Lote 107). */
-export const SCAN_ACTIONS = ['PICKUP', 'ARRIVE', 'ROUTE', 'DEPART'] as const
+/** Las acciones de la estación (Lote 107); «Devolver» (Lote 112) solo la ve quien tiene orders.return. */
+export const SCAN_ACTIONS = ['PICKUP', 'ARRIVE', 'ROUTE', 'DEPART', 'RETURN'] as const
 export type ScanActionKey = (typeof SCAN_ACTIONS)[number]
 
 export const scanKeys = {
@@ -60,7 +60,7 @@ export async function fetchOrderKnown(qc: QueryClient, publicId: string): Promis
  */
 export function toScanResult(r: ScanActionResult): ScanResult {
   const outcome =
-    r.outcome === 'APPLIED' ? 'FOUND_ASSIGNED'
+    r.outcome === 'APPLIED' || r.outcome === 'REAPPEARED' || r.outcome === 'RETURNED' ? 'FOUND_ASSIGNED'   // Lote 111/112: apareció una pieza perdida / viaja en la orden de vuelta
     : r.outcome === 'COUNTED' ? 'FOUND_ASSIGNED'   // Lote 110: la pieza se contó (la orden ya estaba en ese estatus)
     : r.outcome === 'ALREADY_BEYOND' || r.outcome === 'FINAL' || r.outcome === 'DUPLICATE' ? 'ALREADY_ASSIGNED'
     : r.outcome === 'NO_ROUTE' ? 'FOUND_UNASSIGNED'

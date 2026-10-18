@@ -32,6 +32,8 @@ public class TransportOrder : ITenantScoped, ISoftDeletable, IHasStatus, IAuditS
     public string PackBatchNumber { get; set; } = string.Empty;
     /// <summary>Lote 97: número de conduce, único por orden en la compañía (CND-#######); lo genera Teikem.</summary>
     public string WaybillNumber { get; set; } = string.Empty;
+    /// <summary>Lote 112: si es una orden de vuelta, la orden que se devolvió (que quedó «Devuelta»); NULL en las demás.</summary>
+    public int? ReturnOfOrderId { get; set; }
     public int ServiceTypeLookupId { get; set; }
     public int StatusCodeId { get; set; }
     public int? PriorityLookupId { get; set; }
