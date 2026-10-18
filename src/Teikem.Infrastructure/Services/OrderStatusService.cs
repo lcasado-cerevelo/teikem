@@ -190,6 +190,8 @@ public sealed class OrderStatusService(
     /// <summary>
     /// Reabre una orden en estatus final (Entregada, Cancelada, En almacén…): exige el permiso orders.reopen y la razón; sin ToCode vuelve al último estatus no final que tuvo. Queda en el historial; no recotiza ni revalida el crédito.
     /// </summary>
+    public const string ReturnOpenMessageFormat = "La orden ya salió a devolución: cancele primero la orden de vuelta {0} para poder reabrirla.";
+
     public async Task<OrderDetailDto> ReopenAsync(Guid publicId, OrderReopenRequest req, OrderScope scope, CancellationToken ct)
     {
         await permissions.EnsureAsync(ReopenPermission, ct);
@@ -200,6 +202,14 @@ public sealed class OrderStatusService(
             db.ApplyRowVersion(order, req.RowVersion);
             var current = await db.StatusCodes.AsNoTracking().Include(s => s.StageKind).FirstAsync(s => s.StatusCodeId == order.StatusCodeId, ct2);
             if (current.StageKind!.InternalCode != StageKinds.Terminal) throw new StatusRuleException(NotFinalMessage);
+            // Lote 112: una orden que salió a devolución no se reabre mientras su orden de vuelta siga viva; primero se cancela la vuelta
+            if (current.InternalCode == OrderStatuses.Returned)
+            {
+                var originalId = order.TransportOrderId;
+                var live = await db.TransportOrders.AsNoTracking().Include(o => o.Status)
+                    .Where(o => o.ReturnOfOrderId == originalId && o.IsActive && o.Status!.InternalCode != OrderStatuses.Cancelled).Select(o => o.OrderNumber).FirstOrDefaultAsync(ct2);
+                if (live is not null) throw new StatusRuleException(string.Format(ReturnOpenMessageFormat, live));
+            }
             string target;
             if (!string.IsNullOrWhiteSpace(req.ToCode)) target = req.ToCode.Trim();
             else

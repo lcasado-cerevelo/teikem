@@ -5,8 +5,8 @@ Lote 112 (2026-10-18, dictado por Luis). Una orden que no se pudo entregar vuelv
 **Quién puede:** `orders.return` (los administradores de la compañía ya lo traen) con el módulo **LTL_GROUND**. **Dónde:** la ficha de la orden (botón **Devolver**) y la estación de escaneo (acción **Devolver**, que solo ven quienes tienen el permiso).
 
 ## 1. Qué pasa al devolver
-- La orden queda **Devuelta** (final: ya no se edita, ni se cancela, ni se asigna). Reabrirla exige `orders.reopen`.
-- Se crea la **orden de vuelta**: una orden de entrega nueva del **mismo cliente** y el mismo tipo de servicio; su **recogido es el consignatario** (la entrega de la original) y su **entrega es el recogido del cliente** (el recogido de la original, o el recogido del cliente si la original no tenía). Conduce y número de orden nuevos.
+- La orden queda **Devuelta** (final: ya no se edita, ni se cancela, ni se asigna). Reabrirla exige `orders.reopen` **y que su orden de vuelta esté cancelada**: una orden que ya salió a devolución no se reabre mientras la vuelta siga viva (primero se cancela la vuelta).
+- Se crea la **orden de vuelta**: una orden de entrega nueva del **mismo cliente** y el mismo tipo de servicio; su **recogido es el consignatario** (la entrega de la original) y su **entrega es la dirección del cliente que puso la orden**: el recogido de la original o, si no tenía, el recogido del cliente y, si tampoco, la dirección que el cliente tenga registrada (recogido, corporativa o facturación). Conduce y número de orden nuevos.
 - Viajan **solo las piezas que se devuelven**: las mismas piezas con **sus mismos números** (los labels siguen valiendo); salen de la original y entran a la orden de vuelta. Las que no se devuelven siguen su flujo (si son faltantes, en Reclamaciones; ver capítulo 31).
 - **Sin facturación de flete:** la orden de vuelta no se cotiza ni se cobra. Si el contrato cobra **por entrega**, a la original se le quitan las piezas devueltas (lo que no se entregó no se cobra); si cobra **por recogido**, se cobra todo (capítulo 31, §4.2).
 - Se puede devolver una orden **Recogida, Sin asignar, Asignada, En tránsito o con Intento fallido**. Una **Sometida** no se devuelve (todavía no se recoge: se cancela). Una orden ya final (Entregada, Cancelada, En almacén…) tampoco.
@@ -28,11 +28,12 @@ El guarda escoge **Devolver** y escanea **las piezas que devuelve**, una por una
 | Indique al menos una pieza que se devuelve. | 400 | No quedó ninguna pieza que devolver. |
 | La pieza {n} no es de esa orden. | 400 | Un número de pieza ajeno a la orden. |
 | La pieza {n} figura como faltante: no se puede devolver. | 422 (ficha) / «No» (escaneo) | La pieza está Por verificar, Perdido o Reclamada. |
-| El cliente no tiene un recogido para el regreso: indíquelo en su ficha. | 422 | La orden no tiene recogido y el cliente no tiene dirección corporativa ni recogido por omisión. |
+| El cliente no tiene ninguna dirección registrada (de recogido, corporativa o de facturación) a la que regresar la orden: regístrela en su ficha. | 422 | La orden no tiene recogido y el cliente no tiene ninguna dirección registrada. |
+| La orden ya salió a devolución: cancele primero la orden de vuelta {n} para poder reabrirla. | 422 | Reabrir una orden Devuelta cuya vuelta sigue viva. |
 | No tiene permiso para esta acción. | 403 | Falta `orders.return`. |
 | Orden no encontrada. | 404 | Identificador inexistente (o de otra compañía). |
 
 ## 5. Casos frecuentes
-- *Devolví por error:* la orden Devuelta se reabre con `orders.reopen` (el permiso lo decide la compañía); la orden de vuelta ya creada se cancela aparte.
+- *Devolví por error:* primero se **cancela la orden de vuelta**; después la orden Devuelta se reabre con `orders.reopen`. Mientras la vuelta siga viva no se reabre.
 - *La orden tenía 4 piezas y solo escaneé 3 con «Devolver»:* al cerrar el conteo, la 4.ª queda «Por verificar» y se atiende en Reclamaciones.
 - *«Devolver tras N intentos»:* es una sugerencia por compañía (por omisión 2) que se construye en un lote posterior; nunca bloquea.

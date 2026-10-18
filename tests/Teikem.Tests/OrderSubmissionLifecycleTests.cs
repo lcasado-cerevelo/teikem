@@ -668,4 +668,26 @@ public sealed class OrderSubmissionLifecycleTests
         var waybills = await x.Db.TransportOrders.AsNoTracking().OrderBy(o => o.TransportOrderId).Select(o => o.WaybillNumber).ToListAsync();   // (InMemory no genera PublicId: se lee por id)
         Assert.Equal(new[] { prefix + "1", prefix + "2" }, waybills);
     }
+
+    [Fact]
+    public async Task Lote112_a_returned_order_is_not_reopened_while_its_return_order_is_alive_and_is_after_the_return_is_cancelled()
+    {
+        var x = await NewWorldAsync();
+        await using var _ = x.F;
+        var original = await QuotedOrderAsync(x, "T-DEV", OrderStatuses.Returned, 10m);
+        var back = await QuotedOrderAsync(x, "T-VUELTA", OrderStatuses.Submitted, null);
+        var tracked = await x.Db.TransportOrders.AsTracking().SingleAsync(r => r.TransportOrderId == back.TransportOrderId);
+        tracked.ReturnOfOrderId = original.TransportOrderId;
+        await x.Db.SaveChangesAsync();
+        x.Db.ChangeTracker.Clear();
+        x.F.SetPermissions(PermissionCatalog.OrdersReopen, PermissionCatalog.OrdersView);
+
+        var ex = await Assert.ThrowsAsync<StatusRuleException>(() => x.Statuses.ReopenAsync(original.PublicId, new OrderReopenRequest(OrderStatuses.Unassigned, "Error", null), OrderScope.Any, default));
+        Assert.Equal(string.Format(OrderStatusService.ReturnOpenMessageFormat, "T-VUELTA"), ex.Message);
+
+        // cancelada la vuelta, ya se puede reabrir
+        await MoveAsync(x, back.PublicId, OrderStatuses.Cancelled);
+        var after = await x.Statuses.ReopenAsync(original.PublicId, new OrderReopenRequest(OrderStatuses.Unassigned, "Error", null), OrderScope.Any, default);
+        Assert.Equal(OrderStatuses.Unassigned, after.Status);
+    }
 }

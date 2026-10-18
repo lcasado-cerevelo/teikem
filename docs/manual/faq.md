@@ -9205,7 +9205,9 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 
 **«La pieza … figura como faltante: no se puede devolver.»** (422) La pieza está Por verificar, Perdido o Reclamada: se atiende en Reclamaciones, no se devuelve.
 
-**«El cliente no tiene un recogido para el regreso: indíquelo en su ficha.»** (422) La orden no tiene parada de recogido y el cliente no tiene dirección corporativa ni recogido por omisión: dónde entregar la vuelta no se sabe.
+**«El cliente no tiene ninguna dirección registrada … a la que regresar la orden»** (422) La vuelta regresa al cliente que puso la orden: a su recogido, y si no tiene, a la dirección que tenga registrada. Esto solo sale si el cliente no tiene ninguna.
+
+**«La orden ya salió a devolución: cancele primero la orden de vuelta …»** (422) Una orden Devuelta no se reabre mientras su orden de vuelta siga viva; se cancela la vuelta y entonces se reabre.
 
 **No veo la acción «Devolver» en la estación.** Hace falta el permiso `orders.return`.
 

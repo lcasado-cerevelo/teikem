@@ -18,7 +18,7 @@ Luis dictó (2026-10-17/18): tras un intento fallido la orden vuelve al almacén
 
 ## Decisiones a revisar con Luis
 1. **«Devolver tras N intentos» (por omisión 2)** —la sugerencia por compañía— queda para el lote siguiente (marca en el resultado del escaneo y ajuste en Ajustes de la compañía); hoy nada sugiere ni bloquea.
-2. **Reabrir una orden Devuelta** funciona con `orders.reopen` pero **no cancela la orden de vuelta ya creada**: se cancela aparte.
-3. **El recogido de regreso** sale de la orden (su parada de recogido) o, si no tenía, de la dirección corporativa / recogido por omisión del cliente; sin ninguno responde 422 en vez de inventar una dirección.
+2. **Reabrir una orden Devuelta** (corrección de Luis): no se reabre mientras su orden de vuelta siga viva; hay que **cancelar la vuelta** y entonces se reabre (422 con el número de la vuelta).
+3. **El regreso va al cliente que puso la orden** (corrección de Luis): el recogido de la orden; si no tenía, el recogido del cliente y, si tampoco, cualquier dirección que el cliente tenga registrada (recogido, corporativa o facturación). Solo si no tiene ninguna responde 422.
 4. La orden de vuelta **hereda el contrato y el tipo de servicio** de la original; sin tarifa propia ni cobro (decisión tuya: «sin facturación de flete»). El **cargo por devolución** opcional (por tipo de paquete o por paquete) es el lote final de esta serie.
 5. La app móvil del almacén aún no existe: cuando se construya, «Devolver» y «Cerrar conteo» hacen lo mismo que la web.

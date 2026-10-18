@@ -369,6 +369,7 @@ internal sealed class WmsFixture : IAsyncDisposable
         S(StatusDomains.OrderStatus, OrderStatuses.Assigned, pipe, 4);
         S(StatusDomains.OrderStatus, OrderStatuses.InTransit, pipe, 5);
         S(StatusDomains.OrderStatus, OrderStatuses.Cancelled, term, 20);
+        S(StatusDomains.OrderStatus, OrderStatuses.Returned, term, 21);   // Lote 112
         S(StatusDomains.TripStatus, TripStatuses.Draft, pipe, 1, true);
         S(StatusDomains.TripStatus, TripStatuses.Planned, pipe, 2);
         S(StatusDomains.TripStatus, TripStatuses.Dispatched, pipe, 3);

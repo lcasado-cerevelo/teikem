@@ -27,7 +27,7 @@ public sealed class ReturnOrderService(TeikemDbContext db, ITenantContext tenant
     public const string NoPiecesMessage = "Indique al menos una pieza que se devuelve.";
     public const string PieceNotOfOrderMessage = "La pieza {0} no es de esa orden.";
     public const string PieceMissingMessage = "La pieza {0} figura como faltante: no se puede devolver.";
-    public const string NoPickupMessage = "El cliente no tiene un recogido para el regreso: indíquelo en su ficha.";
+    public const string NoPickupMessage = "El cliente no tiene ninguna dirección registrada (de recogido, corporativa o de facturación) a la que regresar la orden: regístrela en su ficha.";
     public const string CreatedMessageFormat = "La orden {0} quedó «Devuelta»: se creó la orden de vuelta {1} (conduce {2}) con {3} pieza(s).";
     public const string AddedMessageFormat = "La pieza {0} viaja en la orden de vuelta {1}.";
 
@@ -110,10 +110,15 @@ public sealed class ReturnOrderService(TeikemDbContext db, ITenantContext tenant
             var origDelivery = originalStops.LastOrDefault(s => s.StopTypeLookupId == deliveryTypeId) ?? originalStops.Last();
             var origPickup = originalStops.FirstOrDefault(s => s.StopTypeLookupId == pickupTypeId);
             OrderStop? backTo = origPickup is null ? null : Copy(origPickup, 0);
-            if (backTo is null && client is not null && await db.DefaultPickupAsync(client, ct) is Location loc)
+            // la vuelta regresa al cliente que puso la orden: a su recogido (el de la orden o el del cliente) o, si no tiene, a la dirección que tenga registrada (recogido, corporativa o facturación)
+            if (backTo is null && client is not null)
             {
-                backTo = new OrderStop { StopTypeLookupId = 0 };
-                OrderRules.ApplySnapshot(backTo, loc, (await lookups.GetAsync(loc.CountryLookupId, ct))?.InternalCode, null);
+                var loc = await db.DefaultPickupAsync(client, ct) ?? await ClientAddressAsync(clientId, ct);
+                if (loc is not null)
+                {
+                    backTo = new OrderStop { StopTypeLookupId = 0 };
+                    OrderRules.ApplySnapshot(backTo, loc, (await lookups.GetAsync(loc.CountryLookupId, ct))?.InternalCode, null);
+                }
             }
             if (backTo is null) throw new StatusRuleException(NoPickupMessage);
 
@@ -222,6 +227,15 @@ public sealed class ReturnOrderService(TeikemDbContext db, ITenantContext tenant
         }
         await partial.AdjustAsync(original.TransportOrderId, ct);
         return (target, created);
+    }
+
+    /// <summary>Cualquier dirección del cliente (no de un consignatario): de recogido, corporativa o de facturación, la más antigua primero.</summary>
+    private async Task<Location?> ClientAddressAsync(int clientId, CancellationToken ct)
+    {
+        var typeIds = await db.LookupCodes.AsNoTracking()
+            .Where(c => c.Entity == LookupDomains.LocationType && (c.InternalCode == LocationTypes.Pickup || c.InternalCode == LocationTypes.Both || c.InternalCode == LocationTypes.Corporate || c.InternalCode == LocationTypes.Billing))
+            .Select(c => c.LookupCodeId).ToListAsync(ct);
+        return await db.Locations.AsNoTracking().Where(l => l.ClientId == clientId && l.IsActive && typeIds.Contains(l.LocationTypeLookupId)).OrderBy(l => l.LocationId).FirstOrDefaultAsync(ct);
     }
 
     private static OrderStop Copy(OrderStop s, int sequence) => new()
