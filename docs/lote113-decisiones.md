@@ -15,3 +15,5 @@ Luis dictó: «devolver tras N intentos» (por omisión 2) es solo una **sugeren
 ## Decisiones a revisar con Luis
 1. La sugerencia **no cambia ningún estatus ni bloquea el reintento**; solo se ve en la ficha y en el mensaje del escaneo. Si también la quieres como columna o filtro de la lista de órdenes («por devolver»), es un lote chico.
 2. Cuentan los intentos **no entregados y vigentes** del registro de intentos (Lote 93); un intento anulado no cuenta.
+
+- (2026-10-18) Recorrido Playwright y capturas del ajuste y de la sugerencia: `web-app/e2e/lote112-devolucion.spec.ts`, capítulo `docs/manual/frontend/l112-devolucion.md`.
