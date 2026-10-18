@@ -365,6 +365,10 @@
     "damage": {
       "title": "Damage",
       "subtitle": "what arrived damaged or got damaged in the warehouse"
+    },
+    "claims": {
+      "title": "Claims",
+      "subtitle": "missing pieces and claims"
     }
   },
   "clients": {
@@ -9561,6 +9565,85 @@
         "modelMax": "The model cannot exceed 80 characters.",
         "notesMax": "The note cannot exceed 300 characters."
       }
+    }
+  },
+  "claims": {
+    "title": "Claims",
+    "subtitle": "missing pieces: to verify, lost and claimed",
+    "tabs": {
+      "label": "Claims sections",
+      "toVerify": "To verify",
+      "claims": "Claims"
+    },
+    "col": {
+      "order": "Order",
+      "waybill": "Waybill",
+      "client": "Client",
+      "orderStatus": "Order status",
+      "missing": "Missing",
+      "piece": "Piece",
+      "line": "Line",
+      "status": "Status",
+      "since": "Since",
+      "claim": "Claim",
+      "number": "Claim",
+      "description": "Description",
+      "pieces": "Pieces",
+      "value": "Declared value",
+      "created": "Created"
+    },
+    "missingOf": "{missing} of {total}",
+    "toVerify": {
+      "panel": "Orders with missing pieces",
+      "search": "Search by order, waybill or piece",
+      "empty": "No missing pieces to handle."
+    },
+    "list": {
+      "panel": "Claims",
+      "search": "Search by claim, order, waybill or piece",
+      "filterStatus": "Filter by status",
+      "allStatuses": "All statuses",
+      "empty": "No claims."
+    },
+    "statuses": {
+      "CLAIMED": "Claimed",
+      "RESOLVED": "Resolved"
+    },
+    "resolutions": {
+      "PAID": "Paid",
+      "REJECTED": "Rejected",
+      "CLOSED": "Closed"
+    },
+    "pieces": "Pieces",
+    "noPieces": "No pieces.",
+    "order": {
+      "title": "Missing pieces of {number}",
+      "gone": "This order has no pieces left to handle."
+    },
+    "claim": {
+      "title": "Claim {number}"
+    },
+    "markLost": "Mark {count} as lost",
+    "markedLost": "{count} piece(s) marked as lost.",
+    "create": "Create claim ({count})",
+    "created": "Claim {number} created.",
+    "newClaim": "New claim",
+    "declaredValue": "Declared value",
+    "notes": "Notes",
+    "resolve": "Resolve",
+    "resolveTitle": "Resolve the claim",
+    "resolution": "Resolution",
+    "pick": "Choose…",
+    "amountPaid": "Amount paid",
+    "resolvedAt": "Resolved on",
+    "resolved": "Claim {number} resolved.",
+    "close": "Close",
+    "errors": {
+      "badValue": "Enter a valid amount.",
+      "negativeValue": "The declared value cannot be negative.",
+      "notesTooLong": "Notes cannot exceed 1000 characters.",
+      "resolution": "Choose the resolution: paid, rejected or closed.",
+      "amountRequired": "Enter the amount paid."
     }
   }
 }

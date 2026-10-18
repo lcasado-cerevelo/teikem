@@ -56,4 +56,6 @@ public static class ScanActionOutcomes
     public const string Counted = "COUNTED";
     /// <summary>Lote 110: esa pieza ya se había escaneado con esa acción.</summary>
     public const string Duplicate = "DUPLICATE";
+    /// <summary>Lote 111: una pieza perdida o reclamada apareció: se quitó de su reclamación y su orden nueva se crea al cerrar el conteo.</summary>
+    public const string Reappeared = "REAPPEARED";
 }

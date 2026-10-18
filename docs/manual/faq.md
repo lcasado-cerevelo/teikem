@@ -9166,3 +9166,26 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **¿Cuándo uso «Cerrar conteo»?** Al terminar de escanear una orden en una acción (por ejemplo, al terminar de recibirla) para dejar anotadas las piezas que no llegaron, sin esperar a la siguiente acción.
 
 **¿Cómo se arma ahora el número de la orden?** Code del cliente + Code del consignatario (o su ID) + fecha (aammdd) + el número de orden del día de ese consignatario, sin separadores.
+
+## Reclamaciones y piezas faltantes (Lote 111)
+
+**¿Cuál es el camino de una pieza faltante?** Por verificar → Perdido → Reclamada → Resuelta. «Por verificar» lo pone la estación de escaneo; «Perdido» y la reclamación las hace quien tenga `claims.manage` en Operación → Reclamaciones; «Resuelta» es cuando se cierra la reclamación.
+
+**«Indique al menos una pieza.»** (400/422) No se mandó ninguna pieza, o la orden no tiene piezas «Por verificar» que marcar. Revise la pestaña «Por verificar».
+
+**«La pieza … no está «Por verificar».» / «La pieza … no está «Perdido»: márquela como perdida antes de reclamarla.»** (422) La pieza no está en el paso que pide esa acción. Primero se marca perdida, después se reclama.
+
+**«La pieza … no es de esa orden.»** (400) El número de pieza pertenece a otra orden.
+
+**«La orden no tiene piezas perdidas por reclamar.»** (422) Todas las piezas «Perdido» de esa orden ya están en una reclamación (o no hay ninguna perdida).
+
+**«El valor declarado no puede ser negativo.» / «Las notas no pueden pasar de 1000 caracteres.»** (400) Corrija el campo.
+
+**«Indique la resolución: pagada, rechazada o cerrada.» / «Indique el monto pagado.»** (400) Al resolver hay que elegir la resolución y, si es «Pagada», escribir el monto.
+
+**«La reclamación ya está resuelta.»** (409) Una reclamación resuelta no se vuelve a resolver.
+
+**«La pieza pertenece a una reclamación cerrada.»** (el audio dice «No») Se escaneó una pieza cuya reclamación ya está resuelta; no se acepta.
+
+**Se escaneó una pieza que estaba perdida o reclamada, ¿qué pasa?** Aparece: se quita de su reclamación (si no está cerrada) y, si la reclamación se queda sin piezas, se elimina. Su orden nueva se crea al cerrar el conteo (lote siguiente).
+

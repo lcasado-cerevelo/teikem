@@ -131,6 +131,7 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<OrderStop> OrderStops => Set<OrderStop>();
     public DbSet<CargoLine> CargoLines => Set<CargoLine>();
     public DbSet<OrderPiece> OrderPieces => Set<OrderPiece>();
+    public DbSet<Claim> Claims => Set<Claim>();   // Lote 111
     public DbSet<OrderPieceScan> OrderPieceScans => Set<OrderPieceScan>();   // Lote 110   // Lote 109: cada pieza con su número único
     public DbSet<OrderReference> OrderReferences => Set<OrderReference>();
     public DbSet<NumberSequence> NumberSequences => Set<NumberSequence>();

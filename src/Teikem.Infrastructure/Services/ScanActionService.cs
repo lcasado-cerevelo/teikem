@@ -53,7 +53,41 @@ public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant,
             var current = pipeline.First(s => s.Id == order.StatusCodeId);
             var orderId = order.TransportOrderId;
 
-            if (string.Equals(current.StageKind, StageKinds.Terminal, StringComparison.OrdinalIgnoreCase))
+            // Lote 111: una pieza de una reclamación cerrada no se acepta; una perdida o reclamada (o «Por verificar» de una orden ya cerrada) que aparece se quita de su reclamación y espera la orden nueva
+            var pieceRow = await db.OrderPieces.FirstAsync(p => p.OrderPieceId == piece.OrderPieceId, ct2);
+            var orderIsFinal = string.Equals(current.StageKind, StageKinds.Terminal, StringComparison.OrdinalIgnoreCase);
+            if (pieceRow.MissingStatus == PieceMissing.Resolved)
+            {
+                done = Plain(action, ScanActionOutcomes.NotFound, ClaimRules.ClosedClaimPieceMessage);
+                return;
+            }
+            if (pieceRow.MissingStatus is PieceMissing.Lost or PieceMissing.Claimed || pieceRow.ReappearedAtUtc is not null || (pieceRow.MissingStatus == PieceMissing.ToVerify && orderIsFinal))
+            {
+                if (await db.OrderPieceScans.AnyAsync(s => s.OrderPieceId == pieceRow.OrderPieceId && s.Action == action, ct2))
+                {
+                    done = await ResultAsync(action, ScanActionOutcomes.Duplicate, DuplicateMessage(piece.PackageNumber), orderFacts, current, null, null, null, piece.PackageNumber, orderId, ct2);
+                    return;
+                }
+                string? claimNumber = null;
+                if (pieceRow.ClaimId is int claimId)
+                {
+                    var claim = await db.Claims.FirstAsync(c => c.ClaimId == claimId, ct2);
+                    claimNumber = claim.Number;
+                    pieceRow.ClaimId = null;
+                    await db.SaveChangesAsync(ct2);
+                    if (!await db.OrderPieces.AnyAsync(p => p.ClaimId == claimId, ct2)) claim.IsActive = false;   // una reclamación sin cerrar que se queda sin piezas se da de baja
+                }
+                pieceRow.MissingStatus = null;
+                pieceRow.MissingAtUtc = null;
+                pieceRow.ReappearedAtUtc ??= DateTime.UtcNow;
+                if (pieceRow.ReappearedAction is null || ScanActions.Rank(action) > ScanActions.Rank(pieceRow.ReappearedAction)) pieceRow.ReappearedAction = action;
+                db.OrderPieceScans.Add(new OrderPieceScan { TenantId = order.TenantId, OrderPieceId = pieceRow.OrderPieceId, Action = action, ScannedAtUtc = DateTime.UtcNow, ScannedBy = tenant.UserId });
+                await db.SaveChangesAsync(ct2);
+                done = await ResultAsync(action, ScanActionOutcomes.Reappeared, ReappearedMessage(piece.PackageNumber, claimNumber), orderFacts, current, null, null, null, piece.PackageNumber, orderId, ct2);
+                return;
+            }
+
+            if (orderIsFinal)
             {
                 done = await ResultAsync(action, ScanActionOutcomes.Final, FinalMessage(orderFacts.OrderNumber, current.Label), orderFacts, current, null, null, null, piece.PackageNumber, orderId, ct2);
                 return;
@@ -190,7 +224,7 @@ public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant,
 
     private static string VoiceOf(string outcome) => outcome switch
     {
-        ScanActionOutcomes.Applied or ScanActionOutcomes.Counted => ScanVoices.Found,                 // «Sí»
+        ScanActionOutcomes.Applied or ScanActionOutcomes.Counted or ScanActionOutcomes.Reappeared => ScanVoices.Found,                 // «Sí»
         ScanActionOutcomes.Duplicate => ScanVoices.Duplicate,                                          // «Ok»
         _ => ScanVoices.NotFound,                                                                      // «No»
     };
@@ -209,6 +243,8 @@ public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant,
 
     public const string FinalMessageFormat = "La orden {0} está en un estatus final ({1}): no se cambia.";
     public static string FinalMessage(string orderNumber, string label) => string.Format(FinalMessageFormat, orderNumber, label);
+    public static string ReappearedMessage(string pieceNumber, string? claimNumber)
+        => claimNumber is null ? $"La pieza {pieceNumber} apareció: su orden nueva se crea al cerrar el conteo." : $"La pieza {pieceNumber} apareció: se quitó de la reclamación {claimNumber} y su orden nueva se crea al cerrar el conteo.";
     public static string DuplicateMessage(string pieceNumber) => $"La pieza {pieceNumber} ya se había escaneado con esta acción.";
     public static string CountedMessage(string pieceNumber, string statusLabel) => $"La pieza {pieceNumber} se contó ({statusLabel}).";
     public static string AppliedMessage(string orderNumber, string toLabel, int skipped)

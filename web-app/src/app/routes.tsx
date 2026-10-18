@@ -176,6 +176,14 @@ export const appRoutes: readonly AppRoute[] = [
     module: ModuleKeys.LtlGround,
     nav: { group: 'ops', key: 'monitor', order: 60 },
   },
+  // Lote 111 — Reclamaciones: piezas faltantes (Por verificar → Perdido → Reclamada → Resuelta).
+  {
+    path: '/ops/claims',
+    element: lazy(() => import('../features/claims/ClaimsScreen')),
+    perm: 'claims.view',
+    module: ModuleKeys.LtlGround,
+    nav: { group: 'ops', key: 'claims', order: 70 },
+  },
 
   // ===== Almacén =====
   // Lote F6 — Almacén e inventario (manual 06). Lecturas con inventory.view + WMS_LOTSERIAL; compras con

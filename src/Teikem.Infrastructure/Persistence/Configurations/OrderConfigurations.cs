@@ -178,6 +178,8 @@ public sealed class OrderPieceConfiguration : IEntityTypeConfiguration<OrderPiec
         b.HasKey(p => p.OrderPieceId);
         b.Property(p => p.PackageNumber).HasMaxLength(40).IsRequired();
         b.Property(p => p.MissingStatus).HasMaxLength(20);   // Lote 110
+        b.Property(p => p.ReappearedAction).HasMaxLength(10);   // Lote 111
+        b.HasOne<Claim>().WithMany().HasForeignKey(p => p.ClaimId).OnDelete(DeleteBehavior.NoAction);
         b.HasIndex(p => p.TransportOrderId).HasDatabaseName("IX_OrderPiece_Order");
         b.HasIndex(p => new { p.TenantId, p.PackageNumber }).IsUnique().HasFilter("[IsActive] = 1").HasDatabaseName("UX_OrderPiece_Number");
         b.HasOne(p => p.Order).WithMany().HasForeignKey(p => p.TransportOrderId).OnDelete(DeleteBehavior.NoAction);
@@ -195,5 +197,27 @@ public sealed class OrderPieceScanConfiguration : IEntityTypeConfiguration<Order
         b.Property(s => s.Action).HasMaxLength(10).IsRequired();
         b.HasIndex(s => new { s.OrderPieceId, s.Action }).IsUnique().HasDatabaseName("UX_OrderPieceScan_Piece_Action");
         b.HasOne(s => s.Piece).WithMany().HasForeignKey(s => s.OrderPieceId).OnDelete(DeleteBehavior.NoAction);
+    }
+}
+
+/// <summary>Lote 111 — reclamaciones REC-#####. Mapeo 1:1 con la sección «2026-10-18 (as)» de Diseño/logistica-db-update.sql.</summary>
+public sealed class ClaimConfiguration : IEntityTypeConfiguration<Claim>
+{
+    public void Configure(EntityTypeBuilder<Claim> b)
+    {
+        b.ToTable("Claim");
+        b.HasKey(c => c.ClaimId);
+        b.Property(c => c.Number).HasMaxLength(30).IsRequired();
+        b.Property(c => c.Description).HasMaxLength(500).IsRequired();
+        b.Property(c => c.Notes).HasMaxLength(1000);
+        b.Property(c => c.Resolution).HasMaxLength(10);
+        b.Property(c => c.ResolutionNotes).HasMaxLength(1000);
+        b.Property(c => c.DeclaredValue).HasColumnType("decimal(14,2)");
+        b.Property(c => c.AmountPaid).HasColumnType("decimal(14,2)");
+        b.Property(c => c.RowVersion).IsRowVersion();
+        b.HasIndex(c => new { c.TenantId, c.Number }).IsUnique().HasDatabaseName("UX_Claim_Number");
+        b.HasIndex(c => c.TransportOrderId).HasDatabaseName("IX_Claim_Order");
+        b.HasOne(c => c.Order).WithMany().HasForeignKey(c => c.TransportOrderId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne(c => c.Status).WithMany().HasForeignKey(c => c.StatusCodeId).OnDelete(DeleteBehavior.NoAction);
     }
 }

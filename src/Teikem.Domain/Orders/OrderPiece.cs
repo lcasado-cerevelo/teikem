@@ -22,6 +22,11 @@ public class OrderPiece : ITenantScoped
     /// <summary>Lote 110: null = normal; TO_VERIFY = faltante «Por verificar» (no se escaneó en un estatus por el que pasó la orden; las reclamaciones lo continúan en el Lote 111).</summary>
     public string? MissingStatus { get; set; }
     public DateTime? MissingAtUtc { get; set; }
+    /// <summary>Lote 111: la reclamación a la que pertenece (mientras esté Reclamada).</summary>
+    public int? ClaimId { get; set; }
+    /// <summary>Lote 111: apareció estando perdida o reclamada: se escaneó con esta acción y espera que se cierre el conteo para pasar a una orden nueva.</summary>
+    public DateTime? ReappearedAtUtc { get; set; }
+    public string? ReappearedAction { get; set; }
     [NotAudited] public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
     public TransportOrder? Order { get; set; }
@@ -57,10 +62,13 @@ public static class PieceNumbering
     public static string FromTyped(string typed, int index, int count) => count <= 1 ? typed : string.Concat(typed, index.ToString(CultureInfo.InvariantCulture));
 }
 
-/// <summary>Estados de un faltante (Lote 110: solo «Por verificar»; Perdido, Reclamada y Resuelta llegan con las reclamaciones).</summary>
+/// <summary>Estados de un faltante: «Por verificar» (Lote 110), «Perdido», «Reclamada» y «Resuelta» (Lote 111).</summary>
 public static class PieceMissing
 {
     public const string ToVerify = "TO_VERIFY";
+    public const string Lost = "LOST";
+    public const string Claimed = "CLAIMED";
+    public const string Resolved = "RESOLVED";
 }
 
 /// <summary>

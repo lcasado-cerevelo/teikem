@@ -426,7 +426,7 @@ public class PulseLayoutTests
         Assert.Equal(new[] { "pulse.activity", "pulse.charts", "pulse.indicators", "pulse.orders" }, Pulse("Dispatcher"));
         Assert.All(t.Where(kv => kv.Value.Contains(PermissionCatalog.PulseAttention)), kv => Assert.Contains(PermissionCatalog.InventoryView, kv.Value));
         Assert.Empty(Pulse("Driver"));
-        Assert.Equal(97, PermissionCatalog.All.Count);   // Lote 106: + orders.reopen;   // Lote 104: + clientmessages.reply, clientmessages.manage;   // Lote 94: + driverpay.approve, driverpay.export; 2026-10-08: + warehouse.damage;   // Lote 27: + rental.extend, rental.return; 2026-10-11: + warehouse.issue; 2026-10-12: + orders.view_price; 2026-10-12 (Lote 43): + printers.manage; 2026-10-12: + inventory.adjust.multi; 2026-10-16 (Lote 72): + billing.view
+        Assert.Equal(99, PermissionCatalog.All.Count);   // Lote 111: + claims.view, claims.manage; Lote 106: + orders.reopen;   // Lote 104: + clientmessages.reply, clientmessages.manage;   // Lote 94: + driverpay.approve, driverpay.export; 2026-10-08: + warehouse.damage;   // Lote 27: + rental.extend, rental.return; 2026-10-11: + warehouse.issue; 2026-10-12: + orders.view_price; 2026-10-12 (Lote 43): + printers.manage; 2026-10-12: + inventory.adjust.multi; 2026-10-16 (Lote 72): + billing.view
         Assert.All(PermissionCatalog.All.Where(p => p.Code.StartsWith("pulse.", StringComparison.Ordinal)), p => Assert.Equal("PULSE", p.Category));
 
         // PermissionSeeder real sobre InMemory: plantillas y un rol clonado de un tenant sin los pulse.* (versión anterior).

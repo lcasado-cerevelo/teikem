@@ -365,6 +365,10 @@
     "damage": {
       "title": "Daños",
       "subtitle": "lo que llegó dañado o se dañó en el almacén"
+    },
+    "claims": {
+      "title": "Reclamaciones",
+      "subtitle": "piezas faltantes y reclamaciones"
     }
   },
   "clients": {
@@ -9561,6 +9565,85 @@
         "modelMax": "El modelo no puede exceder 80 caracteres.",
         "notesMax": "La nota no puede exceder 300 caracteres."
       }
+    }
+  },
+  "claims": {
+    "title": "Reclamaciones",
+    "subtitle": "piezas faltantes: por verificar, perdidas y reclamadas",
+    "tabs": {
+      "label": "Secciones de reclamaciones",
+      "toVerify": "Por verificar",
+      "claims": "Reclamaciones"
+    },
+    "col": {
+      "order": "Orden",
+      "waybill": "Conduce",
+      "client": "Cliente",
+      "orderStatus": "Estatus de la orden",
+      "missing": "Faltantes",
+      "piece": "Pieza",
+      "line": "Línea",
+      "status": "Estatus",
+      "since": "Desde",
+      "claim": "Reclamación",
+      "number": "Reclamación",
+      "description": "Descripción",
+      "pieces": "Piezas",
+      "value": "Valor declarado",
+      "created": "Creada"
+    },
+    "missingOf": "{missing} de {total}",
+    "toVerify": {
+      "panel": "Órdenes con piezas faltantes",
+      "search": "Buscar por orden, conduce o pieza",
+      "empty": "No hay piezas faltantes por atender."
+    },
+    "list": {
+      "panel": "Reclamaciones",
+      "search": "Buscar por reclamación, orden, conduce o pieza",
+      "filterStatus": "Filtrar por estatus",
+      "allStatuses": "Todos los estatus",
+      "empty": "No hay reclamaciones."
+    },
+    "statuses": {
+      "CLAIMED": "Reclamada",
+      "RESOLVED": "Resuelta"
+    },
+    "resolutions": {
+      "PAID": "Pagada",
+      "REJECTED": "Rechazada",
+      "CLOSED": "Cerrada"
+    },
+    "pieces": "Piezas",
+    "noPieces": "Sin piezas.",
+    "order": {
+      "title": "Faltantes de {number}",
+      "gone": "Esta orden ya no tiene piezas por atender."
+    },
+    "claim": {
+      "title": "Reclamación {number}"
+    },
+    "markLost": "Marcar {count} como perdidas",
+    "markedLost": "{count} pieza(s) marcadas como perdidas.",
+    "create": "Crear reclamación ({count})",
+    "created": "Reclamación {number} creada.",
+    "newClaim": "Nueva reclamación",
+    "declaredValue": "Valor declarado",
+    "notes": "Notas",
+    "resolve": "Resolver",
+    "resolveTitle": "Resolver la reclamación",
+    "resolution": "Resolución",
+    "pick": "Elija…",
+    "amountPaid": "Monto pagado",
+    "resolvedAt": "Resuelta el",
+    "resolved": "Reclamación {number} resuelta.",
+    "close": "Cerrar",
+    "errors": {
+      "badValue": "Escriba un monto válido.",
+      "negativeValue": "El valor declarado no puede ser negativo.",
+      "notesTooLong": "Las notas no pueden pasar de 1000 caracteres.",
+      "resolution": "Indique la resolución: pagada, rechazada o cerrada.",
+      "amountRequired": "Indique el monto pagado."
     }
   }
 }

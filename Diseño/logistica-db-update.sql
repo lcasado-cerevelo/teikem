@@ -4243,3 +4243,87 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_OrderPieceScan_Piece_Action' AND object_id = OBJECT_ID('dbo.OrderPieceScan'))
     CREATE UNIQUE INDEX UX_OrderPieceScan_Piece_Action ON dbo.OrderPieceScan (OrderPieceId, Action);
 GO
+
+/* =========================================================================
+   2026-10-18 (as) — Lote 111: reclamaciones. Las piezas faltantes pasan Por verificar → Perdido → Reclamada → Resuelta; la reclamación (REC-#####) junta las piezas perdidas de una orden, con su valor declarado y su resolución.
+   Dominio de estatus ClaimStatus (CLAIMED inicial → RESOLVED terminal), EntityType CLAIM, permisos claims.view y claims.manage (propagados a los TenantAdmin ya clonados).
+   ========================================================================= */
+IF OBJECT_ID(N'dbo.Claim', N'U') IS NULL CREATE TABLE dbo.Claim (
+    ClaimId          INT IDENTITY(1,1) PRIMARY KEY,
+    PublicId         UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_Claim_PublicId DEFAULT NEWID(),
+    TenantId         INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    Number           NVARCHAR(30) NOT NULL,
+    TransportOrderId INT NOT NULL REFERENCES dbo.TransportOrder(TransportOrderId),
+    ClientId         INT NOT NULL REFERENCES dbo.Client(ClientId),
+    StatusCodeId     INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),
+    Description      NVARCHAR(500) NOT NULL,
+    DeclaredValue    DECIMAL(14,2) NULL,
+    Notes            NVARCHAR(1000) NULL,
+    Resolution       VARCHAR(10) NULL,
+    AmountPaid       DECIMAL(14,2) NULL,
+    ResolutionNotes  NVARCHAR(1000) NULL,
+    IsActive         BIT NOT NULL CONSTRAINT DF_Claim_IsActive DEFAULT 1,
+    CreatedAtUtc     DATETIME2 NOT NULL CONSTRAINT DF_Claim_Created DEFAULT SYSUTCDATETIME(),
+    CreatedBy        INT NULL,
+    ResolvedAtUtc    DATETIME2 NULL,
+    ResolvedBy       INT NULL,
+    RowVersion       ROWVERSION,
+    CONSTRAINT CK_Claim_Resolution CHECK (Resolution IS NULL OR Resolution IN ('PAID','REJECTED','CLOSED'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_Claim_Number' AND object_id = OBJECT_ID('dbo.Claim'))
+    CREATE UNIQUE INDEX UX_Claim_Number ON dbo.Claim (TenantId, Number);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Claim_Order' AND object_id = OBJECT_ID('dbo.Claim'))
+    CREATE INDEX IX_Claim_Order ON dbo.Claim (TransportOrderId);
+GO
+IF COL_LENGTH('dbo.OrderPiece', 'ClaimId') IS NULL ALTER TABLE dbo.OrderPiece ADD ClaimId INT NULL REFERENCES dbo.Claim(ClaimId);
+GO
+IF COL_LENGTH('dbo.OrderPiece', 'ReappearedAtUtc') IS NULL ALTER TABLE dbo.OrderPiece ADD ReappearedAtUtc DATETIME2 NULL;
+GO
+IF COL_LENGTH('dbo.OrderPiece', 'ReappearedAction') IS NULL ALTER TABLE dbo.OrderPiece ADD ReappearedAction VARCHAR(10) NULL;
+GO
+
+MERGE dbo.CatalogDomain AS t
+USING (SELECT N'ClaimStatus' AS DomainKey) AS s ON t.DomainKey = s.DomainKey
+WHEN NOT MATCHED THEN
+    INSERT (DomainKey, Scope, LabelJson, IsSystem, IsActive)
+    VALUES (N'ClaimStatus', 2, N'{"es":"Estatus de la reclamación","en":"Claim status"}', 1, 1);
+GO
+MERGE dbo.StatusCode AS t
+USING (
+    SELECT v.Code, v.LabelJson, v.Color, v.Srt, v.Init, k.LookupCodeId AS StageKindLookupId
+    FROM (VALUES
+        (N'CLAIMED',  N'{"es":"Reclamada","en":"Claimed"}',  '#F59E0B', 1, 1, 'PIPELINE'),
+        (N'RESOLVED', N'{"es":"Resuelta","en":"Resolved"}',  '#10B981', 2, 0, 'TERMINAL')
+    ) AS v (Code, LabelJson, Color, Srt, Init, Kind)
+    JOIN dbo.LookupCode k ON k.Entity = N'StageKind' AND k.InternalCode = v.Kind
+) AS s
+ON t.Entity = N'ClaimStatus' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, ColorHex, SortOrder, StageKindLookupId, IsInitial, IsActive)
+    VALUES (N'ClaimStatus', s.Code, s.LabelJson, s.Color, s.Srt, s.StageKindLookupId, s.Init, 1);
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES (N'CLAIM', N'{"es":"Reclamación","en":"Claim"}', 130)) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+MERGE dbo.Permission AS t
+USING (VALUES
+    ('claims.view',   N'{"es":"Ver los faltantes y las reclamaciones","en":"View missing pieces and claims"}'),
+    ('claims.manage', N'{"es":"Marcar piezas como perdidas, reclamar y resolver reclamaciones","en":"Mark pieces as lost, claim and resolve claims"}')
+) AS s (Code, LabelJson)
+ON t.Code = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES (s.Code, (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'ORDERS'), s.LabelJson, 1);
+GO
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT DISTINCT r.RoleId, p.PermissionId
+FROM dbo.Role r
+JOIN dbo.Permission p ON p.Code IN ('claims.view', 'claims.manage') AND r.Name = 'TenantAdmin'
+WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = p.PermissionId);
+GO

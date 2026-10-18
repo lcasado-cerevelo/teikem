@@ -27,6 +27,10 @@ public static class PermissionCatalog
     public const string OrdersCancel = "orders.cancel";
     /// <summary>Lote 106: reabrir una orden en estatus final (Entregada, Cancelada, En almacén…); exige razón y queda en el historial.</summary>
     public const string OrdersReopen = "orders.reopen";
+    /// <summary>Lote 111: ver los faltantes («Por verificar», «Perdido») y las reclamaciones.</summary>
+    public const string ClaimsView = "claims.view";
+    /// <summary>Lote 111: marcar piezas como perdidas, reclamarlas y resolver las reclamaciones.</summary>
+    public const string ClaimsManage = "claims.manage";
     /// <summary>Lote 3 (ajuste C): autorizar la confirmación de una orden que excede el límite de crédito del cliente (overrideCredit=true).</summary>
     public const string OrdersCreditOverride = "orders.credit_override";
     /// <summary>
@@ -250,6 +254,8 @@ public static class PermissionCatalog
         // Lote 3 — Órdenes de transporte (ajuste C: crédito excedido = aviso + autorización con permiso)
         new(OrdersCreditOverride, "ORDERS", "Autorizar órdenes sobre el límite de crédito", "Authorize orders over credit limit"),
         new(OrdersReopen, "ORDERS", "Reabrir órdenes en estatus final", "Reopen orders in a final status"),
+        new(ClaimsView, "ORDERS", "Ver los faltantes y las reclamaciones", "View missing pieces and claims"),
+        new(ClaimsManage, "ORDERS", "Marcar piezas como perdidas, reclamar y resolver reclamaciones", "Mark pieces as lost, claim and resolve claims"),
         // Lote 4 — Flota, choferes y mantenimiento (flota separada de la compensación, R8)
         new(FleetView, "FLEET", "Ver flota y choferes", "View fleet & drivers"),
         new(DriverPayView, "FLEET", "Ver tarifas y viajes de choferes", "View driver rates & trips"),

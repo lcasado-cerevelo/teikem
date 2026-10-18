@@ -190,6 +190,7 @@ public static class DependencyInjection
         services.AddScoped<TripDayPlanningService>();
         services.AddScoped<OutboundScanService>();
         services.AddScoped<ScanActionService>();   // Lote 107: escaneo con acción escogida
+        services.AddScoped<ClaimService>();   // Lote 111: faltantes y reclamaciones
         services.AddScoped<TripMonitorService>();
         services.AddScoped<IStatusTransitionEffect, TripStatusEffect>();
         services.AddScoped<IStatusTransitionEffect, TripOrderReleaseEffect>();

@@ -97,6 +97,7 @@ internal sealed class TripServiceFixture : IAsyncDisposable
         services.AddSingleton<OrderReadService>();
         services.AddSingleton<OutboundScanService>();
         services.AddSingleton<ScanActionService>();
+        services.AddSingleton<ClaimService>();
         // Edición de cabecera (UpdateAsync) y monitor: UpdateAsync no numera; el contador de prueba solo cubre la firma.
         services.AddSingleton<INumberSequenceService, InMemoryNumberSequence>();
         services.AddSingleton<TripService>();
@@ -128,6 +129,7 @@ internal sealed class TripServiceFixture : IAsyncDisposable
             L(LookupDomains.EntityType, EntityTypes.RouteStop),
             L(LookupDomains.EntityType, EntityTypes.OptimizationRun),
             L(LookupDomains.EntityType, EntityTypes.TransportOrder),
+            L(LookupDomains.EntityType, Teikem.Domain.Orders.ClaimStatuses.EntityType),   // Lote 111
             L(LookupDomains.EntityType, EntityTypes.Client),
             L(LookupDomains.EntityType, EntityTypes.Vehicle),
             L(LookupDomains.Capability, Capabilities.AssignTrip),
@@ -150,6 +152,8 @@ internal sealed class TripServiceFixture : IAsyncDisposable
             _statusIds[domain + "|" + code] = s.StatusCodeId;
         }
 
+        S(Teikem.Domain.Orders.ClaimStatuses.Domain, Teikem.Domain.Orders.ClaimStatuses.Claimed, pipe, 1, true);   // Lote 111
+        S(Teikem.Domain.Orders.ClaimStatuses.Domain, Teikem.Domain.Orders.ClaimStatuses.Resolved, term, 2);
         S(StatusDomains.OrderStatus, OrderStatuses.Submitted, pipe, 1, true);
         S(StatusDomains.OrderStatus, OrderStatuses.Pickup, pipe, 2);
         S(StatusDomains.OrderStatus, OrderStatuses.Unassigned, pipe, 3);

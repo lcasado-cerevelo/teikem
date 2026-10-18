@@ -27736,6 +27736,243 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/claims/to-verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    search?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MissingOrderDtoPagedResult"];
+                        "application/json": components["schemas"]["MissingOrderDtoPagedResult"];
+                        "text/json": components["schemas"]["MissingOrderDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/claims/lost": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["MarkLostRequest"];
+                    "text/json": components["schemas"]["MarkLostRequest"];
+                    "application/*+json": components["schemas"]["MarkLostRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MissingOrderDto"];
+                        "application/json": components["schemas"]["MissingOrderDto"];
+                        "text/json": components["schemas"]["MissingOrderDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/claims": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    status?: string;
+                    search?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClaimListItemDtoPagedResult"];
+                        "application/json": components["schemas"]["ClaimListItemDtoPagedResult"];
+                        "text/json": components["schemas"]["ClaimListItemDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ClaimCreateRequest"];
+                    "text/json": components["schemas"]["ClaimCreateRequest"];
+                    "application/*+json": components["schemas"]["ClaimCreateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClaimDto"];
+                        "application/json": components["schemas"]["ClaimDto"];
+                        "text/json": components["schemas"]["ClaimDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/claims/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClaimDto"];
+                        "application/json": components["schemas"]["ClaimDto"];
+                        "text/json": components["schemas"]["ClaimDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/claims/{publicId}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ClaimResolveRequest"];
+                    "text/json": components["schemas"]["ClaimResolveRequest"];
+                    "application/*+json": components["schemas"]["ClaimResolveRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClaimDto"];
+                        "application/json": components["schemas"]["ClaimDto"];
+                        "text/json": components["schemas"]["ClaimDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -37258,6 +37495,115 @@ export interface components {
         ScanCloseCountRequest: {
             /** Format: uuid */
             orderPublicId?: string | null;
+        };
+        ClaimDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            /** Format: uuid */
+            orderPublicId?: string;
+            orderNumber?: string | null;
+            waybillNumber?: string | null;
+            clientName?: string | null;
+            description?: string | null;
+            /** Format: double */
+            declaredValue?: number | null;
+            notes?: string | null;
+            resolution?: string | null;
+            /** Format: double */
+            amountPaid?: number | null;
+            resolutionNotes?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            /** Format: date-time */
+            resolvedAtUtc?: string | null;
+            pieces?: components["schemas"]["MissingPieceDto"][] | null;
+            rowVersion?: string | null;
+        };
+        ClaimCreateRequest: {
+            /** Format: uuid */
+            orderPublicId?: string | null;
+            pieceNumbers?: string[] | null;
+            /** Format: double */
+            declaredValue?: number | null;
+            notes?: string | null;
+        };
+        MarkLostRequest: {
+            /** Format: uuid */
+            orderPublicId?: string | null;
+            pieceNumbers?: string[] | null;
+        };
+        MissingPieceDto: {
+            packageNumber?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            /** Format: date-time */
+            missingAtUtc?: string | null;
+            claimNumber?: string | null;
+            lineDescription?: string | null;
+        };
+        MissingOrderDto: {
+            /** Format: uuid */
+            orderPublicId?: string;
+            orderNumber?: string | null;
+            waybillNumber?: string | null;
+            clientName?: string | null;
+            orderStatus?: string | null;
+            orderStatusLabel?: string | null;
+            /** Format: int32 */
+            totalPieces?: number;
+            pieces?: components["schemas"]["MissingPieceDto"][] | null;
+        };
+        ClaimListItemDtoPagedResult: {
+            items?: components["schemas"]["ClaimListItemDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        MissingOrderDtoPagedResult: {
+            items?: components["schemas"]["MissingOrderDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        ClaimResolveRequest: {
+            resolution?: string | null;
+            /** Format: double */
+            amountPaid?: number | null;
+            notes?: string | null;
+            rowVersion?: string | null;
+        };
+        ClaimListItemDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            /** Format: uuid */
+            orderPublicId?: string;
+            orderNumber?: string | null;
+            waybillNumber?: string | null;
+            clientName?: string | null;
+            description?: string | null;
+            /** Format: int32 */
+            pieces?: number;
+            /** Format: double */
+            declaredValue?: number | null;
+            resolution?: string | null;
+            /** Format: double */
+            amountPaid?: number | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            /** Format: date-time */
+            resolvedAtUtc?: string | null;
         };
     };
     responses: never;
