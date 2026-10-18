@@ -27,6 +27,9 @@ Luis confirmó que «la orden» es la **orden de entrega** (con recogida y entre
 - Pruebas (solo del área): `ClaimServiceTests` (16) y `ScanActionServiceTests` (cierre con confirmación); vitest de la estación (57). Contra SQL real: aparece la 3.ª pieza, cerrar sin confirmar pide confirmar, confirmar crea la orden nueva con Sometida y Recogida en las mismas fechas de la original y después Sin asignar; la nueva se cotiza y a la original se le quitó la pieza (4→3) con su nueva cotización.
 
 ### Decisiones a revisar con Luis (111b)
-1. **Piezas perdidas o reclamadas que siguen en la original** (por entrega): la regla «en entrega parcial se cobra lo entregado» para esas piezas todavía no está construida; hoy solo se le quitan a la original las que se mudaron a la orden nueva.
+1. ~~Piezas perdidas que siguen en la original~~ **Resuelto (111c):** ver abajo.
 2. **Enrutar sin ruta abierta** hace fallar el cierre del conteo (nada cambia) con el mensaje de la ruta; se reintenta al abrir una ruta.
 3. **La app del almacén** aún no tiene «Cerrar conteo»; cuando la tenga hará lo mismo que la web (mensaje con la lista y «Confirmar y cerrar el conteo»).
+
+## 111c — Entrega parcial y cobro (dictado por Luis)
+Si el contrato cobra **por entrega** (o mixto), se cobra lo que se entregó y lo que no se entregó no se cobra; si cobra **por recogido**, se cobra todo y el cliente reclama. `PartialBillingService.AdjustAsync`: para una orden por entrega, no facturada y ya cotizada, las líneas quedan con las piezas cobrables (las que siguen en la orden y no están Perdido, Reclamada ni Resuelta; las «Por verificar» cuentan, pueden aparecer) y la orden se vuelve a cotizar. Se recalcula al **marcar piezas perdidas** y al **mudar piezas a la orden nueva**. Por recogido no se toca nada. Verificado contra SQL real: 4 piezas, 2 perdidas y 1 mudada → la original queda con 2 piezas cobrables y la orden nueva con 1.

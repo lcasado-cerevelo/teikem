@@ -19,7 +19,7 @@ namespace Teikem.Infrastructure.Services;
 /// La orden nueva repite primero el historial de la original (Sometida y, si existe, Recogida, con las MISMAS fechas) y después se le aplica el estatus de la acción con que se escaneó la pieza, como a cualquier otra orden (Enrutar también la asigna a una ruta).
 /// Cobro: si el contrato cobra por recogido, la original ya se cobra completa y la nueva no se cobra de nuevo; si cobra por entrega (o mixto), la nueva se cotiza con sus piezas, se cobra cuando se entregue, y a la original se le quitan esas piezas para no cobrarlas dos veces.
 /// </summary>
-public sealed class ReappearedOrderService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, INumberSequenceService sequences, OutboundScanService outbound, ILookupCache lookups, OrderQuoteService? quotes = null, ITenantClock? clock = null)
+public sealed class ReappearedOrderService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, INumberSequenceService sequences, OutboundScanService outbound, ILookupCache lookups, PartialBillingService partial, OrderQuoteService? quotes = null, ITenantClock? clock = null)
 {
     private readonly ITenantClock _clock = clock ?? TenantClock.Default;
 
@@ -163,7 +163,6 @@ public sealed class ReappearedOrderService(TeikemDbContext db, ITenantContext te
         }
         await db.SaveChangesAsync(ct);
 
-        var movedByLine = pieces.GroupBy(p => p.CargoLineId).ToDictionary(g => g.Key, g => g.Count());
         // las piezas se mudan (mismos números), ya normales: dejan de estar «apareció» y perdidas/reclamadas
         var sequence = 0;
         foreach (var p in pieces)
@@ -180,7 +179,7 @@ public sealed class ReappearedOrderService(TeikemDbContext db, ITenantContext te
         await db.SaveChangesAsync(ct);
 
         // cobro: por recogido no se cobra de nuevo (la original se cobra completa); por entrega la nueva se cotiza con sus piezas y a la original se le quitan para no cobrarlas dos veces
-        await ApplyBillingAsync(order, original, movedByLine, pieces.Count, ct);
+        await ApplyBillingAsync(order, original, ct);
 
         // al estatus de la acción con que se escanearon, como a cualquier otra orden
         var pipeline = await statuses.GetPipelineAsync(StatusDomains.OrderStatus, includeDisabled: true, ct);
@@ -212,41 +211,20 @@ public sealed class ReappearedOrderService(TeikemDbContext db, ITenantContext te
     }
 
     /// <summary>
-    /// Por recogido: la nueva no se cotiza (nunca se factura; la original ya se cobra completa). Por entrega o mixto: si la original todavía no se facturó, la nueva se cotiza con sus piezas (se cobra al entregarse) y a la original se le quitan esas piezas y se
-    /// vuelve a cotizar (lo que no se entrega en ella no se cobra en ella).
+    /// Por recogido: la nueva no se cotiza (nunca se factura; la original ya se cobra completa y el cliente reclama). Por entrega o mixto: si la original todavía no se facturó, la nueva se cotiza con sus piezas (se cobra al entregarse) y la original se
+    /// recalcula sin esas piezas (<see cref="PartialBillingService"/>: lo que no se entrega en ella no se cobra en ella).
     /// </summary>
-    private async Task ApplyBillingAsync(TransportOrder created, TransportOrder originalSnapshot, Dictionary<int, int> moved, int movedCount, CancellationToken ct)
+    private async Task ApplyBillingAsync(TransportOrder created, TransportOrder originalSnapshot, CancellationToken ct)
     {
         if (quotes is null) return;
-        string? model = null;
-        if (originalSnapshot.ContractId is int contractId)
-        {
-            var modelId = await db.Contracts.AsNoTracking().Where(c => c.ContractId == contractId).Select(c => c.BillingModelLookupId).FirstOrDefaultAsync(ct);
-            if (modelId is int mid) model = (await lookups.GetAsync(mid, ct))?.InternalCode;
-        }
-        if (string.Equals(model, FreightRules.BillingModelPickup, StringComparison.OrdinalIgnoreCase)) return;
-        var original = await db.TransportOrders.FirstAsync(o => o.TransportOrderId == originalSnapshot.TransportOrderId, ct);
-        if (original.FreightInvoiced) return;   // ya se le cobró todo a la original
+        if (await partial.BillsByPickupAsync(originalSnapshot.ContractId, ct)) return;
+        var invoiced = await db.TransportOrders.AsNoTracking().Where(o => o.TransportOrderId == originalSnapshot.TransportOrderId).Select(o => o.FreightInvoiced).FirstAsync(ct);
+        if (invoiced) return;   // ya se le cobró todo a la original
         var client = await db.Clients.AsNoTracking().FirstOrDefaultAsync(c => c.ClientId == created.ClientId, ct);
         if (client is null) return;
         var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(_clock.UtcNow, _clock.Zone));
         await quotes.ApplyQuoteAsync(created, client, today, ct);
-
-        // a la original se le quitan las piezas que se mudaron y se vuelve a cotizar (si ya tenía cotización)
-        var origLines = await db.CargoLines.Where(l => moved.Keys.Contains(l.CargoLineId)).ToListAsync(ct);
-        foreach (var l in origLines)
-        {
-            var before = l.Quantity;
-            var left = Math.Max(0m, before - moved[l.CargoLineId]);
-            var keep = before <= 0 ? 0m : left / before;
-            l.Quantity = left;
-            if (l.WeightKg is not null) l.WeightKg *= keep;
-            if (l.VolumeM3 is not null) l.VolumeM3 *= keep;
-            if (left == 0m) l.IsActive = false;
-        }
-        original.TotalPieces = Math.Max(0, (original.TotalPieces ?? 0) - movedCount);
-        await db.SaveChangesAsync(ct);
-        if (original.QuotedAmount is not null) await quotes.ApplyQuoteAsync(original, client, today, ct);
+        await partial.AdjustAsync(originalSnapshot.TransportOrderId, ct);
     }
 
     private static string Auto(string kind, NumberingSettings settings, long seq)

@@ -33,6 +33,9 @@ Si se escanea una pieza que estaba **Por verificar, Perdido o Reclamada**:
   - **Cobro:** si el contrato **cobra por recogido**, la original ya se cobra completa y la orden nueva **no se cobra de nuevo**. Si **cobra por entrega** (o mixto), la orden nueva se **cotiza con sus piezas y se cobra cuando se entregue**, y a la original se le **quitan esas piezas** (y se vuelve a cotizar) para no cobrarlas dos veces; si la original ya se facturó completa, la nueva no se cobra.
 - Aunque la orden ya esté en un estatus final (entregada incompleta), la pieza faltante que aparece se acepta; no se rechaza como «final».
 
+## 4.2 Cobro de lo faltante
+Si el contrato cobra **por entrega** (o mixto), al marcar piezas como **Perdido** la orden se vuelve a cotizar solo con las piezas que siguen cobrables (lo que no se entrega no se cobra); si cobra **por recogido**, se cobra todo y el cliente reclama (la reclamación). Una orden ya facturada no se recalcula.
+
 ## 5. Mensajes de error
 | Mensaje | HTTP | Cuándo |
 |---|---|---|

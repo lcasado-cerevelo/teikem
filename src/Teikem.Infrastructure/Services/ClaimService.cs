@@ -13,7 +13,7 @@ namespace Teikem.Infrastructure.Services;
 /// orden con su valor declarado y notas) → «Resuelta» (Resolve: pagada, rechazada o cerrada). Mutaciones con claims.manage, lecturas con claims.view. El estatus de la reclamación (Reclamada → Resuelta) va por StatusService. Una pieza que aparece
 /// estando perdida o reclamada se atiende en el escaneo (ScanActionService): se quita de su reclamación y, si esta se queda sin piezas, se da de baja.
 /// </summary>
-public sealed class ClaimService(TeikemDbContext db, ITenantContext tenant, StatusService statuses)
+public sealed class ClaimService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, PartialBillingService partialBilling)
 {
     private TenantContext Ctx => (TenantContext)tenant;
 
@@ -60,6 +60,7 @@ public sealed class ClaimService(TeikemDbContext db, ITenantContext tenant, Stat
             var chosen = Choose(all, req?.PieceNumbers, p => p.MissingStatus == PieceMissing.ToVerify, ClaimRules.PieceNotToVerifyMessage, ClaimRules.NoPiecesMessage);
             foreach (var p in chosen) { p.MissingStatus = PieceMissing.Lost; p.MissingAtUtc ??= DateTime.UtcNow; }
             await db.SaveChangesAsync(ct2);
+            await partialBilling.AdjustAsync(orderId, ct2);   // Lote 111c: por entrega no se cobra lo que se perdió
         }, ct);
         return (await MissingOrderAsync(orderId, ct))!;
     }
