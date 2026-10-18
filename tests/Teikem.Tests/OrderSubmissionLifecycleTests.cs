@@ -134,6 +134,28 @@ public sealed class OrderSubmissionLifecycleTests
         return new World(f, await db.Clients.AsNoTracking().SingleAsync(x => x.ClientId == c.ClientId), consignee, security);
     }
 
+    [Fact]
+    public async Task A_by_delivery_order_whose_every_piece_left_is_requoted_to_zero_instead_of_failing()
+    {
+        // hallazgo del recorrido de Playwright del Lote 112 (2026-10-18): devolver TODAS las piezas de una orden cobrada por entrega daba 422 «no tiene líneas de paquete activas que cotizar»
+        var x = await NewWorldAsync();
+        await using var _ = x.F;
+        var dto = await x.Orders.CreateAsync(Req(x), OrderScope.Any, null, default);
+        var order = await OrderAsync(x, dto.PublicId);
+        Assert.Equal(Rate, order.QuotedAmount);
+        foreach (var p in await x.Db.OrderPieces.AsTracking().Where(p => p.TransportOrderId == order.TransportOrderId).ToListAsync()) p.IsActive = false;   // todas salieron de la orden (devueltas)
+        await x.Db.SaveChangesAsync();
+        x.Db.ChangeTracker.Clear();
+
+        var adjusted = await new PartialBillingService(x.Db, x.F.Lookups, x.F.Get<OrderQuoteService>()).AdjustAsync(order.TransportOrderId, default);
+
+        Assert.True(adjusted);
+        var after = await OrderAsync(x, dto.PublicId);
+        Assert.Equal(0m, after.QuotedAmount);
+        Assert.Equal(0, after.TotalPieces);
+        Assert.DoesNotContain(await x.Db.CargoLines.AsNoTracking().Where(l => l.TransportOrderId == order.TransportOrderId).ToListAsync(), l => l.IsActive);
+    }
+
     private static OrderCreateRequest Req(World x, bool overrideCredit = false)
         => new(x.C.PublicId, x.Consignee.PublicId, null, null, "STANDARD", null,
             new List<OrderPackageLineRequest> { new("BOX", "Caja") }, null, null, null, null, null, null, null, OverrideCredit: overrideCredit);

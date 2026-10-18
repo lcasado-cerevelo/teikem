@@ -60,6 +60,15 @@ public sealed class PartialBillingService(TeikemDbContext db, ILookupCache looku
         if (!changed) return false;
         order.TotalPieces = (int)lines.Where(l => l.IsActive).Sum(l => l.Quantity);
         await db.SaveChangesAsync(ct);
+        // Sin ninguna pieza cobrable (por ejemplo, se devolvieron todas) no hay nada que cotizar: el flete por entrega queda en cero en lugar de fallar con «no tiene líneas de paquete activas»
+        // (lo encontró el recorrido de Playwright del Lote 112: devolver todas las piezas de una orden por entrega daba 422 y la devolución no se hacía).
+        if (!lines.Any(l => l.IsActive))
+        {
+            order.QuotedAmount = 0m;
+            order.QuotedAtUtc = DateTime.UtcNow;
+            await db.SaveChangesAsync(ct);
+            return true;
+        }
         var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(_clock.UtcNow, _clock.Zone));
         await quotes.ApplyQuoteAsync(order, client, today, ct);
         await db.SaveChangesAsync(ct);
