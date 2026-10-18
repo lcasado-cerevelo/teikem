@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Teikem.Domain.Clients;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Messaging;
@@ -14,7 +15,7 @@ namespace Teikem.Infrastructure.Services;
 /// mensaje); la conversación sale del usuario, el cliente y el consignatario de la SESIÓN, nunca del request. <b>Lado del cliente</b>: sus administradores y operadores ven las conversaciones de sus consignatarios, las contestan
 /// (cualquiera; la lectura es compartida) y los de solo consulta las leen; nunca ven las de otro cliente. Los mensajes no se editan ni se borran. Mismo tope que el resto del portal (2000 caracteres, 30 por hora por persona).
 /// </summary>
-public sealed class ConsigneeMessagingService(TeikemDbContext db, ITenantContext tenant)
+public sealed class ConsigneeMessagingService(TeikemDbContext db, ITenantContext tenant, ITransactionalEmailSender? email = null, IConfiguration? config = null)
 {
     public const string ReadOnlyMessage = "Su rol en el portal es de solo consulta: puede leer los mensajes de los consignatarios, no contestarlos.";
     public const string ConversationNotFound = "Conversación";
@@ -57,9 +58,11 @@ public sealed class ConsigneeMessagingService(TeikemDbContext db, ITenantContext
         var cid = OwnClientId; var lid = OwnLocationId; var me = T.RequireUserId(); var tid = T.RequireTenantId();
         var body = ValidBody(req.Body);
         await EnsureNotTooManyAsync(me, ConsigneeMessageSenders.Consignee, ct);
+        var notify = true;   // Lote 117e: se le avisa al cliente por correo cuando no tenía ya un mensaje del consignatario sin leer (así varios seguidos son un solo correo)
         var message = await db.RunInTransactionAsync(async ct2 =>
         {
             var conv = await db.ConsigneeConversations.FirstOrDefaultAsync(c => c.ClientId == cid && c.LocationId == lid && c.ConsigneeUserId == me, ct2);
+            if (conv is not null) notify = !(conv.LastSenderKind == ConsigneeMessageSenders.Consignee && conv.LastMessageId > conv.ClientLastReadMessageId);
             if (conv is null)
             {
                 conv = new ConsigneeConversation { PublicId = Guid.NewGuid(), TenantId = tid, ClientId = cid, LocationId = lid, ConsigneeUserId = me };
@@ -71,7 +74,46 @@ public sealed class ConsigneeMessagingService(TeikemDbContext db, ITenantContext
             await db.SaveChangesAsync(ct2);
             return m;
         }, ct);
-        return ToDto(message, await NameOfAsync(me, ct), me);
+        var dto = ToDto(message, await NameOfAsync(me, ct), me);
+        if (notify) await NotifyClientAsync(cid, lid, ct);
+        return dto;
+    }
+
+    public const string BaseUrlKey = "ConsigneeNotices:ClientAppBaseUrl";
+
+    /// <summary>
+    /// Lote 117e (pedido por Luis, 2026-10-18): le avisa por correo a los administradores y operadores del cliente que un consignatario le escribió (sin el texto del mensaje, con el enlace a sus mensajes). Un solo correo mientras haya
+    /// mensajes del consignatario sin leer. Es de mejor esfuerzo: si el correo no está configurado o falla, el mensaje igual queda enviado.
+    /// </summary>
+    private async Task NotifyClientAsync(int clientId, int locationId, CancellationToken ct)
+    {
+        if (email is null || !email.IsConfigured) return;
+        try
+        {
+            var active = PortalUserStatuses.Active;
+            var recipients = await (from p in db.PortalUsers.AsNoTracking()
+                                    join r in db.LookupCodes.AsNoTracking() on p.RoleLookupId equals r.LookupCodeId
+                                    where p.ClientId == clientId && p.IsActive && p.Status!.InternalCode == active && (r.InternalCode == PortalRoles.ClientAdmin || r.InternalCode == PortalRoles.ClientOperator)
+                                    select new { p.Email, p.FullName }).ToListAsync(ct);
+            if (recipients.Count == 0) return;
+            var consignee = await db.Locations.AsNoTracking().Where(l => l.LocationId == locationId).Select(l => l.Name).FirstOrDefaultAsync(ct) ?? string.Empty;
+            var client = await db.Clients.AsNoTracking().Where(c => c.ClientId == clientId).Select(c => new { c.Name, c.NoticeLang }).FirstAsync(ct);
+            var company = await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(t => t.TenantId == T.RequireTenantId()).Select(t => t.Name).FirstOrDefaultAsync(ct);
+            var baseUrl = config?[BaseUrlKey]?.TrimEnd('/');
+            var en = client.NoticeLang == "en";
+            var subject = en ? $"{consignee} wrote to you" : $"{consignee} le escribió";
+            var link = string.IsNullOrEmpty(baseUrl) ? string.Empty : $"{baseUrl}/consignee-messages";
+            static string E(string s) => s.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;");
+            var html = en
+                ? $"<p><b>{E(consignee)}</b> sent you a new message.</p>" + (link.Length > 0 ? $"<p><a href=\"{link}\">Read and answer it</a></p>" : "<p>Open the Messages tab of the client app to read and answer it.</p>")
+                : $"<p><b>{E(consignee)}</b> le envió un mensaje nuevo.</p>" + (link.Length > 0 ? $"<p><a href=\"{link}\">Leerlo y contestarlo</a></p>" : "<p>Abra la pestaña Mensajes de la app del cliente para leerlo y contestarlo.</p>");
+            foreach (var r in recipients.DistinctBy(x => x.Email.ToLowerInvariant()))
+                await email.SendAsync(r.Email, r.FullName, subject, html, ct, company);
+        }
+        catch (Exception)
+        {
+            // el aviso es de mejor esfuerzo: nunca impide que el mensaje quede enviado
+        }
     }
 
     /// <summary>Marca como leído lo que escribió el cliente.</summary>

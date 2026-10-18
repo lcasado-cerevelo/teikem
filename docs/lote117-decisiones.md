@@ -22,7 +22,7 @@ Luis dictó (docs/p10-portal-diseno.md, aclaración del 2026-10-18): el consigna
 2. **El correo de la invitación** es el mismo texto de las invitaciones del portal (nombra al cliente); no hay uno propio para consignatarios.
 3. **Un correo, un consignatario por cliente** (índice único (compañía, cliente, correo)); la misma persona sí puede ser consignatario de varios clientes.
 4. **Quitar el acceso es baja definitiva** de esa persona (se reinvita con el mismo correo); no hay «suspender» desde el portal del cliente (el staff sí lo ve en el expediente).
-5. **Pendiente:** aviso por correo al cliente cuando un consignatario le escribe (sin decidir). **Luis corrigió: el consignatario NO crea órdenes, solo las ve** (envíos: 117d).
+5. **Luis corrigió: el consignatario NO crea órdenes, solo las ve** (envíos: 117d).
 
 ## 117b — Mensajes del consignatario con su cliente
 - **SQL (update.sql, sección (az))**: `ConsigneeConversation` (una por persona del consignatario: cliente, consignatario y usuario; último mensaje y hasta dónde leyó cada lado) y `ConsigneeMessage` (nunca se editan ni se borran).
@@ -47,3 +47,10 @@ Luis dictó (docs/p10-portal-diseno.md, aclaración del 2026-10-18): el consigna
 - **`ConsigneeOrdersService`** (`GET /api/v1/portal/consignee/orders` y `/{id}`): las órdenes de SU cliente con una parada de entrega en SU consignatario (cliente y consignatario de la sesión); otro consignatario, otro cliente o inexistente = 404; DTOs mínimos sin precios, factura, COD ni número de orden del cliente; paquetes sin pesos; con el avance de la barra y el `TrackToken`.
 - **App**: pestaña **Envíos** (lista con progreso, búsqueda por conduce, ficha) para el consignatario; sin Inicio. i18n es/en.
 - **Pruebas**: xunit `ConsigneeOrdersTests` (5), jest `ConsigneeOrders` (5; 115 en total con `npm run check` verde) y **contra SQL real**: 2 envíos propios, uno de otro consignatario 404, ficha sin dinero, y crear orden / formulario 403.
+
+## 117e — Aviso por correo al cliente (pedido por Luis, 2026-10-18)
+- Cuando un consignatario le escribe a su cliente, `ConsigneeMessagingService.NotifyClientAsync` manda un correo a los administradores y operadores activos del cliente (no a quien solo consulta): asunto «<consignatario> le escribió», enlace `<ConsigneeNotices:ClientAppBaseUrl>/consignee-messages` y **sin el texto del mensaje**; idioma del cliente (`NoticeLang`, por omisión español); remitente con el nombre de la compañía.
+- **Agrupado:** solo avisa si el cliente no tenía ya un mensaje del consignatario sin leer (varios seguidos = un correo); al leerlo, el siguiente vuelve a avisar. Contestar no manda correo.
+- **Mejor esfuerzo:** sin correo configurado o si falla, el mensaje igual se envía.
+- Pruebas: xunit +4 (administrador y operador sí, solo consulta y otro cliente no, sin el texto; agrupado y vuelve a avisar tras leer; sin correo configurado; contestar no avisa): `ConsigneeMessagingTests` 12.
+- **Decisiones a revisar:** (11) los destinatarios son los administradores y operadores (lo propuse yo; no se había dictado); (12) el correo no lleva el texto (privacidad), solo el enlace; (13) no se probó el envío real del correo (el proveedor no está en el entorno de desarrollo), solo con el remitente de prueba.

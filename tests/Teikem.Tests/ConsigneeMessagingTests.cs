@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Teikem.Domain.Catalogs;
 using Teikem.Domain.Clients;
 using Teikem.Domain.Constants;
@@ -22,7 +23,7 @@ public class ConsigneeMessagingTests
     private const int TiendaUser = 51, ColmadoUser = 52, OtroUser = 53;              // personas de los consignatarios
     private const int LocTienda = 7001, LocColmado = 7002, LocOtro = 7003;
 
-    private sealed record World(WmsFixture F, ConsigneeMessagingService Svc) : IAsyncDisposable
+    private sealed record World(WmsFixture F, ConsigneeMessagingService Svc, NoEmailSender Mail) : IAsyncDisposable
     {
         public ValueTask DisposeAsync() => F.DisposeAsync();
 
@@ -74,7 +75,8 @@ public class ConsigneeMessagingTests
         await db.SaveChangesAsync();
         f.Lookups.Load(db.LookupCodes.IgnoreQueryFilters().AsNoTracking().ToList());
         db.ChangeTracker.Clear();
-        return new World(f, new ConsigneeMessagingService(db, f.Tenant));
+        var mail = new NoEmailSender();
+        return new World(f, new ConsigneeMessagingService(db, f.Tenant, mail, new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { [ConsigneeMessagingService.BaseUrlKey] = "https://app.example.com" }).Build()), mail);
     }
 
     private static ClientMessageSendRequest Say(string? body) => new(body);
@@ -223,6 +225,62 @@ public class ConsigneeMessagingTests
         var ex = await Assert.ThrowsAsync<ForbiddenException>(() => w.Svc.SendAsConsigneeAsync(Say("soy el cliente"), default));
         Assert.Equal(ConsigneeSelfService.NotConsigneeMessage, ex.Message);
         await Assert.ThrowsAsync<ForbiddenException>(() => w.Svc.GetMineAsync(null, 0, default));
+    }
+
+    // ---------------------------------------------------------------- aviso por correo al cliente (Lote 117e)
+
+    [Fact]
+    public async Task When_the_consignee_writes_the_admins_and_operators_of_the_client_get_one_email_without_the_text()
+    {
+        await using var w = await WorldAsync();
+        w.AsConsignee(TiendaUser, ClientA, LocTienda);
+        await w.Svc.SendAsConsigneeAsync(Say("Mensaje privado del consignatario"), default);
+        Assert.Equal(new[] { "u41@x.co", "u42@x.co" }, w.Mail.Sent.Select(m => m.To).OrderBy(x => x));   // administrador y operador; quien solo consulta y el otro cliente, no
+        var mail = w.Mail.Sent[0];
+        Assert.Contains("Tienda Norte", mail.Subject);
+        Assert.Contains("https://app.example.com/consignee-messages", mail.Html);
+        Assert.DoesNotContain("Mensaje privado", mail.Html);   // el texto del mensaje no viaja por correo
+        Assert.DoesNotContain(w.Mail.Sent, m => m.To is "u43@x.co" or "u44@x.co");
+    }
+
+    [Fact]
+    public async Task Several_messages_in_a_row_are_one_email_and_after_the_client_reads_the_next_one_notifies_again()
+    {
+        await using var w = await WorldAsync();
+        w.AsConsignee(TiendaUser, ClientA, LocTienda);
+        await w.Svc.SendAsConsigneeAsync(Say("uno"), default);
+        w.AsConsignee(TiendaUser, ClientA, LocTienda);
+        await w.Svc.SendAsConsigneeAsync(Say("dos"), default);
+        Assert.Equal(2, w.Mail.Sent.Count);   // un correo por destinatario, no por mensaje
+
+        w.AsClientPerson(OperatorA, ClientA);
+        await w.Svc.MarkReadAsClientAsync((await w.Svc.ListAsync(false, null, 0, 25, default)).Items.Single().PublicId, default);
+        w.AsConsignee(TiendaUser, ClientA, LocTienda);
+        await w.Svc.SendAsConsigneeAsync(Say("tres"), default);
+        Assert.Equal(4, w.Mail.Sent.Count);
+    }
+
+    [Fact]
+    public async Task Without_mail_configured_or_when_it_fails_the_message_is_still_sent()
+    {
+        await using var w = await WorldAsync();
+        w.Mail.Configured = false;
+        w.AsConsignee(TiendaUser, ClientA, LocTienda);
+        await w.Svc.SendAsConsigneeAsync(Say("sin correo"), default);
+        Assert.Empty(w.Mail.Sent);
+        Assert.Single((await w.Svc.GetMineAsync(null, 0, default)).Messages);
+    }
+
+    [Fact]
+    public async Task The_client_answering_does_not_send_an_email_to_anyone()
+    {
+        await using var w = await WorldAsync();
+        w.AsConsignee(TiendaUser, ClientA, LocTienda);
+        await w.Svc.SendAsConsigneeAsync(Say("hola"), default);
+        var before = w.Mail.Sent.Count;
+        w.AsClientPerson(AdminA, ClientA);
+        await w.Svc.ReplyAsync((await w.Svc.ListAsync(false, null, 0, 25, default)).Items.Single().PublicId, Say("respuesta"), default);
+        Assert.Equal(before, w.Mail.Sent.Count);
     }
 
     [Fact]

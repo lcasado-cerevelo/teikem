@@ -9278,3 +9278,5 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **¿Puede el consignatario crear órdenes?** No. Solo ve sus envíos (pestaña Envíos). Las órdenes las crean el cliente desde su portal y el personal de la compañía (intake). Si el consignatario intenta crear una por la API, responde 403 `Esta ruta no está disponible para usuarios del portal.`
 
 **El consignatario no ve un envío.** Solo ve las órdenes de su cliente cuya entrega es en su consignatario; una de otro consignatario (aunque sea del mismo cliente) responde 404.
+
+**El cliente no recibió el correo de que un consignatario le escribió.** El correo va a los administradores y operadores activos del cliente, es uno solo mientras haya mensajes sin leer (cuando los lea, el siguiente avisa de nuevo) y solo sale si el correo de la compañía está configurado; el contador de «sin leer» de la app siempre está.

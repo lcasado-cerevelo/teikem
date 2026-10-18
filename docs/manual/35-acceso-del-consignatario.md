@@ -1,6 +1,6 @@
 # 35 — Acceso del consignatario
 
-Lote 117 (117a acceso, perfil y bandeja; 117b mensajes con su cliente; 117c pantallas; 117d envíos; 2026-10-18, dictado por Luis; diseño en `docs/p10-portal-diseno.md`). Un **consignatario** (quien recibe el paquete) puede tener **su propio acceso** al portal. **Solo el cliente se lo da**, por **invitación a un correo**; la mayoría de los consignatarios no tendrá acceso y seguirá recibiendo los avisos con el enlace de seguimiento (capítulo 34).
+Lote 117 (117a acceso, perfil y bandeja; 117b mensajes con su cliente; 117c pantallas; 117d envíos; 117e aviso por correo; 2026-10-18, dictado por Luis; diseño en `docs/p10-portal-diseno.md`). Un **consignatario** (quien recibe el paquete) puede tener **su propio acceso** al portal. **Solo el cliente se lo da**, por **invitación a un correo**; la mayoría de los consignatarios no tendrá acceso y seguirá recibiendo los avisos con el enlace de seguimiento (capítulo 34).
 
 ## 1. Quién y dónde
 - **Cliente (portal):** un administrador u operador del cliente **invita**, **reenvía** o **quita** el acceso de un consignatario suyo (módulo CLIENT_PORTAL). Quien solo consulta ve quién tiene acceso, sin cambiarlo.
@@ -57,6 +57,7 @@ El consignatario **ve las órdenes de su cliente que se entregan en su consignat
 El consignatario **le escribe a su cliente** y el cliente le contesta. Es aparte de los mensajes del cliente con el equipo de la compañía (capítulo 29).
 - **Del lado del consignatario:** una sola conversación con su cliente, que **abre con su primer mensaje**; ve lo que el cliente le contesta, cuántos mensajes nuevos tiene y los marca leídos. Nadie más de su empresa ve la suya.
 - **Del lado del cliente:** los **administradores y operadores** ven las conversaciones de sus consignatarios (la más reciente primero; filtro «sin leer»; buscar por consignatario, persona, correo o texto del último mensaje) y **contestan**; quien **solo consulta** las lee, sin contestar. La lectura es **compartida**: cuando uno la abre o contesta, queda leída para todos los de su cliente. Nunca ven las conversaciones de otro cliente.
+- **Aviso por correo al cliente (Lote 117e, pedido por Luis):** cuando un consignatario le escribe, los **administradores y operadores** del cliente reciben un correo («<consignatario> le escribió») con el enlace a sus mensajes y **sin el texto del mensaje**. Es **un solo correo mientras haya mensajes del consignatario sin leer** (varios seguidos no mandan varios); cuando el cliente los lee, el siguiente vuelve a avisar. Contestar el cliente no manda correo. Si el correo no está configurado (o falla), el mensaje igual queda enviado y queda el contador de «sin leer».
 - Los mensajes **no se editan ni se borran**. Tope de **2000 caracteres** y **30 mensajes por hora** por persona.
 
 | Situación | Respuesta |
