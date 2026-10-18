@@ -50,6 +50,7 @@ public class TripControllerSecurityTests
         [(typeof(TripPlanningController), nameof(TripPlanningController.PlanDay))] = PermissionCatalog.TripsPlan,
         [(typeof(ScanController), nameof(ScanController.Outbound))] = PermissionCatalog.TripsScan,
         [(typeof(ScanController), nameof(ScanController.Action))] = PermissionCatalog.TripsScan,
+        [(typeof(ScanController), nameof(ScanController.CloseCount))] = PermissionCatalog.TripsScan,
     };
 
     public static IEnumerable<object[]> ActionMap() => Expected.Select(kv => new object[] { kv.Key.Controller, kv.Key.Action, kv.Value });

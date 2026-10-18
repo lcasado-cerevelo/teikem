@@ -342,6 +342,11 @@ public sealed record OutboundScanRequest(string? Code, DateOnly? PlanDate = null
 /// <summary>Lote 107: escaneo con acción escogida: Action = PICKUP, ARRIVE, ROUTE o DEPART; Code = número de orden, empaque o factura.</summary>
 public sealed record ScanActionRequest(string? Action, string? Code, DateOnly? PlanDate = null);
 
+/// <summary>Lote 110: cerrar el conteo de una orden (la última acción escaneada): lo que no se escaneó queda faltante «Por verificar».</summary>
+public sealed record ScanCloseCountRequest(Guid? OrderPublicId);
+
+public sealed record ScanCloseCountResultDto(string Message, Guid? OrderPublicId, string? OrderNumber, int Scanned, int Total, int Missing, IReadOnlyList<string> MissingNumbers);
+
 /// <summary>Resultado de aplicar la acción: Outcome (APPLIED, ALREADY_BEYOND, FINAL, NO_ROUTE, NOT_FOUND, AMBIGUOUS), palabra de voz, mensaje, el estatus de antes y de después y los que se brincaron; con Enrutar, la zona y la ruta.</summary>
 public sealed record ScanActionResultDto(
     string Action,
@@ -360,7 +365,11 @@ public sealed record ScanActionResultDto(
     Guid? TripPublicId,
     string? TripCode,
     string? ReasonCode,
-    string? MatchedBy = null);
+    string? MatchedBy = null,
+    int? Scanned = null,      // Lote 110: piezas de la orden escaneadas con esta acción…
+    int? Total = null,        // …de las que tiene la orden
+    int? Missing = null,      // y las que ya quedaron faltantes «Por verificar»
+    string? PieceNumber = null);
 
 /// <summary>Resultado tipado del escaneo (Outcome), palabra de voz (found/dup/notfound) y mensaje exacto.</summary>
 public sealed record OutboundScanResultDto(

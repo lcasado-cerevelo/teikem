@@ -643,4 +643,29 @@ public sealed class OrderSubmissionLifecycleTests
         Assert.Equal("PQ-X", PieceNumbering.FromTyped("PQ-X", 1, 1));
         Assert.Equal("PQ-X2", PieceNumbering.FromTyped("PQ-X", 2, 3));
     }
+
+    // ---------------------------------------------------------------- número de la orden (conduce) del Lote 110
+
+    [Fact]
+    public void The_waybill_prefix_and_next_number_follow_the_day_of_the_consignee()
+    {
+        var prefix = WaybillCodes.DayPrefix("ACME", "PR0123", new DateTime(2026, 10, 18, 15, 34, 5, 123));
+        Assert.Equal("ACMEPR0123261018", prefix);
+        Assert.Equal("ACMEPR01232610181", WaybillCodes.Next(prefix, Array.Empty<string>()));
+        Assert.Equal("ACMEPR01232610183", WaybillCodes.Next(prefix, new string?[] { "ACMEPR01232610181", "ACMEPR01232610182", "OTRO", "CND-0000001", null }));
+        Assert.Equal("ACMEPR012326101811", WaybillCodes.Next(prefix, new string?[] { "ACMEPR012326101810", "ACMEPR01232610189" }));   // el mayor secuencial, no el último en orden de texto
+        Assert.Equal("ACMEPR01232610181", WaybillCodes.Next(prefix, new string?[] { "ACMEPR0123261018X", "ACMEPR0123261017" }));   // lo que no es número o es de otro día no cuenta
+    }
+
+    [Fact]
+    public async Task Each_order_gets_its_waybill_with_the_codes_the_day_and_the_consignees_daily_sequence()
+    {
+        var x = await NewWorldAsync();
+        await using var _ = x.F;
+        await x.Orders.CreateAsync(ReqWith(x, new OrderPackageLineRequest("BOX", "Uno", 1)), OrderScope.Any, null, default);
+        await x.Orders.CreateAsync(ReqWith(x, new OrderPackageLineRequest("BOX", "Dos", 1)), OrderScope.Any, null, default);
+        var prefix = $"{x.C.Code}{x.Consignee.LocationId}{TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TenantClock.Default.Zone):yyMMdd}";
+        var waybills = await x.Db.TransportOrders.AsNoTracking().OrderBy(o => o.TransportOrderId).Select(o => o.WaybillNumber).ToListAsync();   // (InMemory no genera PublicId: se lee por id)
+        Assert.Equal(new[] { prefix + "1", prefix + "2" }, waybills);
+    }
 }

@@ -11,15 +11,21 @@ using Teikem.Infrastructure.Persistence;
 namespace Teikem.Infrastructure.Services;
 
 /// <summary>
-/// Lote 107 — la estación de escaneo con acción escogida (ver <see cref="ScanActions"/>). El usuario escoge la acción y cada escaneo lleva la orden al estatus de esa acción:
-/// - Estatus final → se ignora (FINAL). Ya está en ese estatus o más adelante → no se hace nada (ALREADY_BEYOND).
-/// - Más atrás → se avanza de una vez: una fila de historial por estatus, todas con la misma fecha y hora y las de en medio «brincadas» (StatusService.AdvanceSkippingAsync); los avisos al cliente de los brincados no salen.
-/// - Desde Intento fallido (lateral), «Llegó» la devuelve a Sin asignar y las demás acciones la llevan a ese estatus pasando por Sin asignar (brincado).
-/// - Enrutar además la pone en una ruta abierta de su zona (el mismo escaneo Outbound de siempre); si no hay ruta que la reciba no cambia nada (NO_ROUTE).
-/// Nada de esto revisa tarifa, crédito ni cliente: eso se revisó al someter la orden. Silencioso: nunca pregunta ni interrumpe; cada escaneo contesta con su resultado.
+/// La estación de escaneo con acción escogida (ver <see cref="ScanActions"/>), Lotes 107 y 110. Lo que se escanea son las PIEZAS (su número único): el número de la orden no se escanea («no se encontró la pieza»). El usuario escoge la acción
+/// y cada escaneo la aplica a la pieza y a su orden:
+/// - La pieza se registra con esa acción (una vez por pieza y acción: repetirla es un DUPLICADO, sin cambios). El primer escaneo de una acción mueve la orden a ese estatus de una vez, brincando los de en medio (una fila de historial por estatus,
+///   todas con la misma fecha y hora y las de en medio «brincadas», sin avisos al cliente); los siguientes de la misma acción solo cuentan («4 de 5»).
+/// - Estatus final → se ignora (FINAL). Desde Intento fallido, «Llegó» la devuelve a Sin asignar y las demás acciones pasan por Sin asignar (brincado).
+/// - Enrutar además pone la orden en la ruta abierta de su zona (el escaneo Outbound de siempre); si no hay ruta que la reciba no cambia nada (NO_ROUTE).
+/// - Faltantes: cuando la orden pasa a la acción siguiente sin alguna pieza (o al cerrar el conteo), esa pieza queda «Por verificar». Si aparece (se escanea después) deja de ser faltante.
+/// Nada de esto revisa tarifa, crédito ni cliente: eso se revisó al someter la orden. Silencioso: nunca pregunta ni interrumpe; cada escaneo contesta con su resultado y su palabra (Sí / No / Ok).
 /// </summary>
-public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant, OrderReadService orders, StatusService statuses, OutboundScanService outbound)
+public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, OutboundScanService outbound)
 {
+    private readonly Dictionary<string, string> labels = new(StringComparer.OrdinalIgnoreCase);
+
+    private sealed record OrderFacts(Guid PublicId, string OrderNumber, string? PackBatchNumber, string? WaybillNumber);
+
     public async Task<ScanActionResultDto> ApplyAsync(ScanActionRequest? req, CancellationToken ct)
     {
         if (tenant.TenantId is null) throw new ForbiddenException("No hay tenant activo en la sesión.");
@@ -27,104 +33,184 @@ public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant,
         var (code, error) = OutboundScanRules.NormalizeCode(req?.Code);
         if (error is not null) throw new ValidationException("code", error);
 
-        var lookup = await orders.LookupAsync(code!, OrderScope.Any, ct);
-        matchedBy = lookup.MatchedBy;
-        if (lookup.Matches.Count != 1)
-        {
-            var none = OutboundScanRules.Decide(new ScanFacts(lookup.Matches.Count, lookup.MatchedBy, null, null, null, null, null, req?.PlanDate ?? DateOnly.FromDateTime(DateTime.UtcNow)));
-            return Result(action, lookup.Matches.Count > 1 ? ScanActionOutcomes.Ambiguous : ScanActionOutcomes.NotFound, none.Message, null, null, null, null, null);
-        }
+        // Lo que se escanea es una pieza: el número de la orden (o de empaque o factura) no se encuentra.
+        var piece = await db.OrderPieces.AsNoTracking().Where(p => p.IsActive && p.PackageNumber == code!).Select(p => new { p.OrderPieceId, p.TransportOrderId, p.PackageNumber }).FirstOrDefaultAsync(ct);
+        if (piece is null) return Plain(action, ScanActionOutcomes.NotFound, ScanActions.PieceNotFoundMessage);
+        var orderFacts = await db.TransportOrders.AsNoTracking().Where(o => o.TransportOrderId == piece.TransportOrderId && o.IsActive)
+            .Select(o => new OrderFacts(o.PublicId, o.OrderNumber, o.PackBatchNumber, o.WaybillNumber)).FirstOrDefaultAsync(ct);
+        if (orderFacts is null) return Plain(action, ScanActionOutcomes.NotFound, ScanActions.PieceNotFoundMessage);
 
-        var match = lookup.Matches[0];
         var targetCode = ScanActions.TargetStatus(action);
         var pipeline = await statuses.GetPipelineAsync(StatusDomains.OrderStatus, includeDisabled: true, ct);
         foreach (var s in pipeline) labels[s.Code] = s.Label;
         var stages = pipeline.Select(s => new PipelineStage(s.Code, s.SortOrder, s.StageKind, s.IsInitial, s.IsEnabled)).ToList();
+        var routeCode = string.IsNullOrWhiteSpace(orderFacts.WaybillNumber) ? orderFacts.OrderNumber : orderFacts.WaybillNumber;   // el conduce es único; el número de orden puede repetirse entre clientes
 
         ScanActionResultDto? done = null;
+        await db.RunInTransactionAsync(async ct2 =>
         {
-            await db.RunInTransactionAsync(async ct2 =>
+            var order = await db.ResolveOrderForWriteAsync(orderFacts.PublicId, OrderScope.Any, ct2);
+            var current = pipeline.First(s => s.Id == order.StatusCodeId);
+            var orderId = order.TransportOrderId;
+
+            if (string.Equals(current.StageKind, StageKinds.Terminal, StringComparison.OrdinalIgnoreCase))
             {
-                var order = await db.ResolveOrderForWriteAsync(match.PublicId, OrderScope.Any, ct2);
-                var current = pipeline.First(s => s.Id == order.StatusCodeId);
+                done = await ResultAsync(action, ScanActionOutcomes.Final, FinalMessage(orderFacts.OrderNumber, current.Label), orderFacts, current, null, null, null, piece.PackageNumber, orderId, ct2);
+                return;
+            }
 
-                if (string.Equals(current.StageKind, StageKinds.Terminal, StringComparison.OrdinalIgnoreCase))
-                {
-                    done = Result(action, ScanActionOutcomes.Final, FinalMessage(match.OrderNumber, current.Label), match, current, null, null, null);
-                    return;
-                }
+            // la pieza ya se escaneó con esta acción: duplicado, sin cambios
+            if (await db.OrderPieceScans.AnyAsync(s => s.OrderPieceId == piece.OrderPieceId && s.Action == action, ct2))
+            {
+                done = await ResultAsync(action, ScanActionOutcomes.Duplicate, DuplicateMessage(piece.PackageNumber), orderFacts, current, null, null, null, piece.PackageNumber, orderId, ct2);
+                return;
+            }
 
-                // Pasos desde el estatus actual: desde un lateral (Intento fallido) se cuenta desde «Recogida» (se regresa al almacén).
-                var fromCode = string.Equals(current.StageKind, StageKinds.Lateral, StringComparison.OrdinalIgnoreCase) ? OrderStatuses.Pickup : current.Code;
-                var steps = PipelinePath.StepsTo(stages, fromCode, targetCode);
-                if (steps.Count == 0)
+            // Pasos desde el estatus actual: desde un lateral (Intento fallido) se cuenta desde «Recogida» (se regresa al almacén).
+            var fromCode = string.Equals(current.StageKind, StageKinds.Lateral, StringComparison.OrdinalIgnoreCase) ? OrderStatuses.Pickup : current.Code;
+            var steps = PipelinePath.StepsTo(stages, fromCode, targetCode);
+            OutboundScanResultDto? route = null;
+            string? toCode = null;
+            IReadOnlyList<string>? skipped = null;
+            var message = CountedMessage(piece.PackageNumber, LabelOf(targetCode));
+
+            if (steps.Count == 0)
+            {
+                // La orden ya está en ese estatus o más adelante: la pieza solo se cuenta. Con Enrutar, si ya está en una ruta se dice cuál.
+                if (action == ScanActions.Route)
                 {
-                    // Enrutar sobre una orden que ya está Asignada o más adelante: si ya está en una ruta se dice cuál («Ya estaba en la ruta R-0001.»).
-                    OutboundScanResultDto? known = null;
-                    if (action == ScanActions.Route)
-                    {
-                        known = await outbound.ScanAsync(new OutboundScanRequest(match.OrderNumber, req?.PlanDate), ct2);
-                        if (known.Outcome is not (ScanOutcomes.AlreadyAssigned or ScanOutcomes.FoundAssigned)) known = null;
-                    }
-                    done = Result(action, ScanActionOutcomes.AlreadyBeyond, known?.Message ?? BeyondMessage(match.OrderNumber, current.Label), match, current, null, null, known);
-                    return;
+                    var known = await outbound.ScanAsync(new OutboundScanRequest(routeCode, req?.PlanDate), ct2);
+                    if (known.Outcome is ScanOutcomes.AlreadyAssigned or ScanOutcomes.FoundAssigned) { route = known; message = known.Message; }
                 }
+            }
+            else
+            {
+                // La orden pasa a la acción siguiente: las piezas que no estuvieron en la acción en que iba quedan faltantes «Por verificar»
+                var markedBefore = await MarkMissingAsync(orderId, piece.OrderPieceId, current.Code, ct2);
 
                 var entityTypeId = await db.LookupCodes.AsNoTracking().Where(l => l.Entity == LookupDomains.EntityType && l.InternalCode == EntityTypes.TransportOrder).Select(l => l.LookupCodeId).FirstAsync(ct2);
-                var orderId = order.TransportOrderId;
                 var historyFloor = await db.EntityStatusHistories.AsNoTracking().Where(h => h.EntityTypeLookupId == entityTypeId && h.EntityId == orderId).MaxAsync(h => (long?)h.EntityStatusHistoryId, ct2) ?? 0L;
                 var confirmedBefore = order.ConfirmedAtUtc;
-                var to = await statuses.AdvanceSkippingAsync(StatusDomains.OrderStatus, EntityTypes.TransportOrder, order.TransportOrderId, order.StatusCodeId, steps, null, ct2);
+                var to = await statuses.AdvanceSkippingAsync(StatusDomains.OrderStatus, EntityTypes.TransportOrder, orderId, order.StatusCodeId, steps, null, ct2);
                 order.StatusCodeId = to.StatusCodeId;
                 if (steps.Contains(OrderStatuses.Pickup) && order.ConfirmedAtUtc is null) order.ConfirmedAtUtc = DateTime.UtcNow;
                 await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
 
-                OutboundScanResultDto? route = null;
                 if (action == ScanActions.Route)
                 {
-                    // Ya está Asignada: ahora a una ruta abierta de su zona. Si no hay quién la reciba se revierte todo (no queda Asignada sin ruta).
-                    route = await outbound.ScanAsync(new OutboundScanRequest(match.OrderNumber, req?.PlanDate), ct2);
+                    // Ya está Asignada: ahora a una ruta abierta de su zona. Si no hay quién la reciba se deshace todo (no queda Asignada sin ruta ni piezas marcadas por este escaneo).
+                    route = await outbound.ScanAsync(new OutboundScanRequest(routeCode, req?.PlanDate), ct2);
                     if (route.Outcome is not (ScanOutcomes.FoundAssigned or ScanOutcomes.AlreadyAssigned))
                     {
-                        // Sin ruta que la reciba no queda Asignada: se deshace el avance (historial y estatus) y se contesta NO_ROUTE.
                         db.ChangeTracker.Clear();
                         var undo = await db.EntityStatusHistories.Where(h => h.EntityTypeLookupId == entityTypeId && h.EntityId == orderId && h.EntityStatusHistoryId > historyFloor).ToListAsync(ct2);
                         db.EntityStatusHistories.RemoveRange(undo);
                         var back = await db.TransportOrders.FirstAsync(o => o.TransportOrderId == orderId, ct2);
                         back.StatusCodeId = current.Id;
                         back.ConfirmedAtUtc = confirmedBefore;
+                        if (markedBefore.Count > 0)
+                            foreach (var p in await db.OrderPieces.Where(p => markedBefore.Contains(p.OrderPieceId)).ToListAsync(ct2)) { p.MissingStatus = null; p.MissingAtUtc = null; }
                         await db.SaveChangesAsync(ct2);
-                        done = Result(action, ScanActionOutcomes.NoRoute, route.Message, match, current, null, null, route);
+                        done = await ResultAsync(action, ScanActionOutcomes.NoRoute, route.Message, orderFacts, current, null, null, route, piece.PackageNumber, orderId, ct2);
                         return;
                     }
                 }
 
-                var message = route is not null
+                toCode = to.InternalCode;
+                skipped = steps.Take(steps.Count - 1).ToList();
+                message = route is not null
                     ? route.Message + (steps.Count > 1 ? $" (brincó {steps.Count - 1} estatus)" : string.Empty)   // «Asignada a la ruta 2026-0001.»
-                    : AppliedMessage(match.OrderNumber, LabelOf(to.InternalCode) ?? to.InternalCode, steps.Count - 1);
-                done = Result(action, ScanActionOutcomes.Applied, message, match, current,
-                    to.InternalCode, steps.Take(steps.Count - 1).ToList(), route);
-            }, ct);
-        }
+                    : AppliedMessage(orderFacts.OrderNumber, LabelOf(to.InternalCode), steps.Count - 1);
+            }
+
+            // la pieza queda escaneada con esta acción; si estaba como faltante, apareció
+            db.OrderPieceScans.Add(new OrderPieceScan { TenantId = order.TenantId, OrderPieceId = piece.OrderPieceId, Action = action, ScannedAtUtc = DateTime.UtcNow, ScannedBy = tenant.UserId });
+            var tracked = await db.OrderPieces.FirstAsync(p => p.OrderPieceId == piece.OrderPieceId, ct2);
+            if (tracked.MissingStatus == PieceMissing.ToVerify) { tracked.MissingStatus = null; tracked.MissingAtUtc = null; }
+            await db.SaveChangesAsync(ct2);
+
+            done = await ResultAsync(action, steps.Count > 0 ? ScanActionOutcomes.Applied : ScanActionOutcomes.Counted, message, orderFacts, current, toCode, skipped, route, piece.PackageNumber, orderId, ct2);
+        }, ct);
         return done!;
     }
 
-    private ScanActionResultDto Result(string action, string outcome, string message, OrderListItemDto? match, StatusDto? from, string? toCode, IReadOnlyList<string>? skipped, OutboundScanResultDto? route)
+    // ================================================================ faltantes y cierre del conteo
+
+    /// <summary>
+    /// Las piezas de la orden que no se escanearon en la acción en que iba la orden (ni en una posterior) quedan «Por verificar». Solo si en esa acción se escaneó alguna pieza (si la orden brincó esa acción no hay conteo que cerrar).
+    /// <paramref name="exceptPieceId"/> es la pieza que se está escaneando ahora (0 = ninguna). Devuelve los ids de las piezas marcadas.
+    /// </summary>
+    private async Task<List<int>> MarkMissingAsync(int orderId, int exceptPieceId, string currentStatusCode, CancellationToken ct)
     {
-        var toLabel = toCode is null ? null : LabelOf(toCode);
-        return new ScanActionResultDto(action, outcome, outcome == ScanActionOutcomes.Applied ? ScanVoices.Found : outcome is ScanActionOutcomes.NotFound or ScanActionOutcomes.Ambiguous or ScanActionOutcomes.NoRoute ? ScanVoices.NotFound : ScanVoices.Duplicate,
-            message, match?.PublicId, match?.OrderNumber, match?.PackBatchNumber, from?.Code, from?.Label, toCode, toLabel, skipped ?? Array.Empty<string>(),
-            route?.ZoneCode, route?.TripPublicId, route?.TripCode, route?.ReasonCode, matchedBy);
+        var marked = new List<int>();
+        var currentAction = ScanActions.ForStatus(currentStatusCode);
+        if (currentAction is null) return marked;
+        var pieces = await db.OrderPieces.Where(p => p.TransportOrderId == orderId && p.IsActive).ToListAsync(ct);
+        var ids = pieces.Select(p => p.OrderPieceId).ToList();
+        var scans = await db.OrderPieceScans.AsNoTracking().Where(s => ids.Contains(s.OrderPieceId)).Select(s => new { s.OrderPieceId, s.Action }).ToListAsync(ct);
+        if (!scans.Any(s => s.Action == currentAction)) return marked;
+        var rank = ScanActions.Rank(currentAction);
+        var now = DateTime.UtcNow;
+        foreach (var p in pieces.Where(p => p.OrderPieceId != exceptPieceId && p.MissingStatus is null))
+        {
+            if (scans.Any(s => s.OrderPieceId == p.OrderPieceId && ScanActions.Rank(s.Action) >= rank)) continue;
+            p.MissingStatus = PieceMissing.ToVerify;
+            p.MissingAtUtc = now;
+            marked.Add(p.OrderPieceId);
+        }
+        if (marked.Count > 0) await db.SaveChangesAsync(ct);
+        return marked;
     }
 
-    private string? matchedBy;   // por qué se encontró (número de orden, empaque o factura)
+    /// <summary>«Cerrar conteo» de una orden: las piezas que no se escanearon en la acción en que va quedan «Por verificar» (la orden no cambia de estatus).</summary>
+    public async Task<ScanCloseCountResultDto> CloseCountAsync(ScanCloseCountRequest? req, CancellationToken ct)
+    {
+        if (tenant.TenantId is null) throw new ForbiddenException("No hay tenant activo en la sesión.");
+        if (req?.OrderPublicId is not Guid publicId) throw new ValidationException("orderPublicId", "Indique la orden cuyo conteo se cierra.");
+        var order = await db.TransportOrders.AsNoTracking().Include(o => o.Status).Where(o => o.PublicId == publicId && o.IsActive).FirstOrDefaultAsync(ct) ?? throw new NotFoundException("Orden", feminine: true);
+        ScanCloseCountResultDto? done = null;
+        await db.RunInTransactionAsync(async ct2 =>
+        {
+            await MarkMissingAsync(order.TransportOrderId, 0, order.Status!.InternalCode, ct2);
+            var pieces = await db.OrderPieces.AsNoTracking().Where(p => p.TransportOrderId == order.TransportOrderId && p.IsActive).OrderBy(p => p.Sequence).ToListAsync(ct2);
+            var missing = pieces.Where(p => p.MissingStatus == PieceMissing.ToVerify).Select(p => p.PackageNumber).ToList();
+            var action = ScanActions.ForStatus(order.Status.InternalCode);
+            var ids = pieces.Select(p => p.OrderPieceId).ToList();
+            var scanned = action is null ? 0 : await db.OrderPieceScans.AsNoTracking().CountAsync(s => ids.Contains(s.OrderPieceId) && s.Action == action, ct2);
+            done = new ScanCloseCountResultDto(missing.Count == 0 ? $"Conteo cerrado: la orden {order.OrderNumber} está completa." : $"Conteo cerrado: a la orden {order.OrderNumber} le faltan {missing.Count} de {pieces.Count} piezas («Por verificar»).",
+                order.PublicId, order.OrderNumber, scanned, pieces.Count, missing.Count, missing);
+        }, ct);
+        return done!;
+    }
 
-    private string? LabelOf(string statusCode) => labels.TryGetValue(statusCode, out var l) ? l : statusCode;
-    private readonly Dictionary<string, string> labels = new(StringComparer.OrdinalIgnoreCase);
+    // ================================================================ resultado
+
+    private ScanActionResultDto Plain(string action, string outcome, string message)
+        => new(action, outcome, VoiceOf(outcome), message, null, null, null, null, null, null, null, Array.Empty<string>(), null, null, null, null);
+
+    private static string VoiceOf(string outcome) => outcome switch
+    {
+        ScanActionOutcomes.Applied or ScanActionOutcomes.Counted => ScanVoices.Found,                 // «Sí»
+        ScanActionOutcomes.Duplicate => ScanVoices.Duplicate,                                          // «Ok»
+        _ => ScanVoices.NotFound,                                                                      // «No»
+    };
+
+    private async Task<ScanActionResultDto> ResultAsync(string action, string outcome, string message, OrderFacts order, StatusDto? from, string? toCode, IReadOnlyList<string>? skipped, OutboundScanResultDto? route, string pieceNumber, int orderId, CancellationToken ct)
+    {
+        var pieces = await db.OrderPieces.AsNoTracking().Where(p => p.TransportOrderId == orderId && p.IsActive).Select(p => new { p.OrderPieceId, p.MissingStatus }).ToListAsync(ct);
+        var ids = pieces.Select(p => p.OrderPieceId).ToList();
+        var scanned = await db.OrderPieceScans.AsNoTracking().CountAsync(s => ids.Contains(s.OrderPieceId) && s.Action == action, ct);
+        var missing = pieces.Count(p => p.MissingStatus == PieceMissing.ToVerify);
+        return new ScanActionResultDto(action, outcome, VoiceOf(outcome), message, order.PublicId, order.OrderNumber, order.PackBatchNumber, from?.Code, from?.Label, toCode, toCode is null ? null : LabelOf(toCode),
+            skipped ?? Array.Empty<string>(), route?.ZoneCode, route?.TripPublicId, route?.TripCode, route?.ReasonCode, "PIECE", scanned, pieces.Count, missing, pieceNumber);
+    }
+
+    private string LabelOf(string statusCode) => labels.TryGetValue(statusCode, out var l) ? l : statusCode;
 
     public const string FinalMessageFormat = "La orden {0} está en un estatus final ({1}): no se cambia.";
     public static string FinalMessage(string orderNumber, string label) => string.Format(FinalMessageFormat, orderNumber, label);
-    public static string BeyondMessage(string orderNumber, string label) => $"La orden {orderNumber} ya está en {label} o más adelante: no se cambia.";
+    public static string DuplicateMessage(string pieceNumber) => $"La pieza {pieceNumber} ya se había escaneado con esta acción.";
+    public static string CountedMessage(string pieceNumber, string statusLabel) => $"La pieza {pieceNumber} se contó ({statusLabel}).";
     public static string AppliedMessage(string orderNumber, string toLabel, int skipped)
         => skipped > 0 ? $"La orden {orderNumber} pasó a {toLabel} (brincó {skipped} estatus)." : $"La orden {orderNumber} pasó a {toLabel}.";
 }

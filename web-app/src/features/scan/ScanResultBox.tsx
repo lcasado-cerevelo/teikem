@@ -17,7 +17,7 @@ const ICON = {
   notfound: <IconClose />,
 } as const
 
-export function ScanResultBox({ last, busy }: { last: LastScan | null; busy: number }) {
+export function ScanResultBox({ last, busy, onCloseCount, closing }: { last: LastScan | null; busy: number; onCloseCount?: (orderPublicId: string) => void; closing?: boolean }) {
   const t = useT()
   let tone: keyof typeof ICON | 'idle' = 'idle'
   let body: React.ReactNode = <p className="scn-res-msg">{t('scan.result.ready')}</p>
@@ -45,6 +45,17 @@ export function ScanResultBox({ last, busy }: { last: LastScan | null; busy: num
         </p>
         <p className="scn-res-msg">{last.result.message}</p>
         {matched && <p className="scn-res-sub">{t('scan.result.matchedBy', { by: matched })}</p>}
+        {last.result.total != null && last.result.total > 0 && (
+          <p className="scn-res-count" data-testid="scan-count">
+            {t('scan.result.count', { scanned: last.result.scanned ?? 0, total: last.result.total })}
+            {(last.result.missing ?? 0) > 0 && <span className="scn-res-missing"> · {t('scan.result.missing', { n: last.result.missing ?? 0 })}</span>}
+            {onCloseCount && last.result.orderPublicId && (
+              <button type="button" className="btn sm" style={{ marginLeft: 10 }} disabled={closing} onClick={() => onCloseCount(last.result.orderPublicId as string)}>
+                {t('scan.closeCount.button')}
+              </button>
+            )}
+          </p>
+        )}
         {hk && <p className="scn-res-hint">{t(hk)}</p>}
       </div>
     )

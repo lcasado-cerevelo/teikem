@@ -177,9 +177,23 @@ public sealed class OrderPieceConfiguration : IEntityTypeConfiguration<OrderPiec
         b.ToTable("OrderPiece");
         b.HasKey(p => p.OrderPieceId);
         b.Property(p => p.PackageNumber).HasMaxLength(40).IsRequired();
+        b.Property(p => p.MissingStatus).HasMaxLength(20);   // Lote 110
         b.HasIndex(p => p.TransportOrderId).HasDatabaseName("IX_OrderPiece_Order");
         b.HasIndex(p => new { p.TenantId, p.PackageNumber }).IsUnique().HasFilter("[IsActive] = 1").HasDatabaseName("UX_OrderPiece_Number");
         b.HasOne(p => p.Order).WithMany().HasForeignKey(p => p.TransportOrderId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne(p => p.Line).WithMany().HasForeignKey(p => p.CargoLineId).OnDelete(DeleteBehavior.NoAction);
+    }
+}
+
+/// <summary>Lote 110 — escaneo de una pieza con una acción. Mapeo 1:1 con la sección «2026-10-18 (ar)» de Diseño/logistica-db-update.sql.</summary>
+public sealed class OrderPieceScanConfiguration : IEntityTypeConfiguration<OrderPieceScan>
+{
+    public void Configure(EntityTypeBuilder<OrderPieceScan> b)
+    {
+        b.ToTable("OrderPieceScan");
+        b.HasKey(s => s.OrderPieceScanId);
+        b.Property(s => s.Action).HasMaxLength(10).IsRequired();
+        b.HasIndex(s => new { s.OrderPieceId, s.Action }).IsUnique().HasDatabaseName("UX_OrderPieceScan_Piece_Action");
+        b.HasOne(s => s.Piece).WithMany().HasForeignKey(s => s.OrderPieceId).OnDelete(DeleteBehavior.NoAction);
     }
 }

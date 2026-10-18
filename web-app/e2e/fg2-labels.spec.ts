@@ -213,7 +213,7 @@ test.describe('Labels y documentos (Lote F-G2)', () => {
       const input = page.getByRole('textbox', { name: 'Código a escanear' })
       await input.fill(`PKG-${s}2`)   // el número de UNA pieza (Lote 109)
       await input.press('Enter')
-      await expect(page.getByRole('status', { name: 'Resultado del último escaneo' })).toContainText('Encontrada por número de paquete.')
+      await expect(page.getByRole('status', { name: 'Resultado del último escaneo' })).toContainText('Encontrada por número de pieza.')
       const missing = await downloadFromPreview(page, () => page.getByRole('button', { name: 'Informe de faltantes' }).click(), 'Informe de faltantes')
       expect(missing.pages).toBeGreaterThanOrEqual(1)
       expect(missing.mediaBoxes[0]).toEqual([0, 0, 792, 612])

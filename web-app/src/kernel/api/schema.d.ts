@@ -27693,6 +27693,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/scan/close-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ScanCloseCountRequest"];
+                    "text/json": components["schemas"]["ScanCloseCountRequest"];
+                    "application/*+json": components["schemas"]["ScanCloseCountRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ScanCloseCountResultDto"];
+                        "application/json": components["schemas"]["ScanCloseCountResultDto"];
+                        "text/json": components["schemas"]["ScanCloseCountResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -37185,12 +37228,36 @@ export interface components {
             tripCode?: string | null;
             reasonCode?: string | null;
             matchedBy?: string | null;
+            /** Format: int32 */
+            scanned?: number | null;
+            /** Format: int32 */
+            total?: number | null;
+            /** Format: int32 */
+            missing?: number | null;
+            pieceNumber?: string | null;
         };
         ScanActionRequest: {
             action?: string | null;
             code?: string | null;
             /** Format: date */
             planDate?: string | null;
+        };
+        ScanCloseCountResultDto: {
+            message?: string | null;
+            /** Format: uuid */
+            orderPublicId?: string | null;
+            orderNumber?: string | null;
+            /** Format: int32 */
+            scanned?: number;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            missing?: number;
+            missingNumbers?: string[] | null;
+        };
+        ScanCloseCountRequest: {
+            /** Format: uuid */
+            orderPublicId?: string | null;
         };
     };
     responses: never;

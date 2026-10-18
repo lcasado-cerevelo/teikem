@@ -35,7 +35,7 @@ public static partial class TrackingRules
     /// <summary>
     /// ¿Parece un número de conduce? (letras, números y guiones, hasta 30 caracteres). Solo evita consultas absurdas; el formato real lo define cada compañía (por omisión CND-#######), así que no se exige uno concreto.
     /// </summary>
-    public static bool LooksLikeWaybill(string? value) => value is { Length: >= 3 and <= 30 } && WaybillPattern().IsMatch(value.Trim());
+    public static bool LooksLikeWaybill(string? value) => value is { Length: >= 3 and <= 40 } && WaybillPattern().IsMatch(value.Trim());
 
     [GeneratedRegex("^[A-Za-z0-9][A-Za-z0-9-]*$")]
     private static partial Regex WaybillPattern();

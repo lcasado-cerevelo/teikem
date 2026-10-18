@@ -9151,3 +9151,18 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **«Ya existe una pieza con ese número de paquete.» (409)** Dos piezas activas de la compañía no pueden tener el mismo número (por ejemplo, dos líneas con el mismo número tecleado). Cambie el número tecleado o déjelo en blanco.
 
 **Edité los paquetes de la orden y los números de los labels cambiaron.** Es lo esperado: al reemplazar los paquetes se crean piezas nuevas con números nuevos; reimprima los labels.
+
+
+## Escaneo por pieza y conduce nuevo (Lote 110)
+
+**«No se encontró la pieza.» al escanear el número de la orden.** En la estación se escanea el número de **cada pieza** (el del label), no el de la orden, el de empaque ni el de factura.
+
+**¿Qué dicen los audios?** «Sí» cuando se encontró lo escaneado, «No» cuando no se encontró y «Ok» cuando está duplicado.
+
+**«La pieza … ya se había escaneado con esta acción.»** Esa pieza ya se registró con esa acción: no se cuenta dos veces. Escanee las demás.
+
+**La orden quedó «4 de 5», ¿qué pasa con la que falta?** Si la orden pasa a la siguiente acción sin esa pieza, o si se pulsa «Cerrar conteo», la pieza queda faltante «Por verificar». Si aparece y se escanea, deja de ser faltante.
+
+**¿Cuándo uso «Cerrar conteo»?** Al terminar de escanear una orden en una acción (por ejemplo, al terminar de recibirla) para dejar anotadas las piezas que no llegaron, sin esperar a la siguiente acción.
+
+**¿Cómo se arma ahora el número de la orden?** Code del cliente + Code del consignatario (o su ID) + fecha (aammdd) + el número de orden del día de ese consignatario, sin separadores.

@@ -72,7 +72,7 @@ public class TrackingTests
         Assert.False(TrackingRules.IsReserved("advance"));
         Assert.True(TrackingRules.LooksLikeWaybill("CND-0000415"));
         Assert.True(TrackingRules.LooksLikeWaybill(" cnd-1 "));
-        foreach (var bad in new[] { null, "", "ab", "CND 123", "CND-1; DROP", "../etc", new string('9', 31) }) Assert.False(TrackingRules.LooksLikeWaybill(bad), bad ?? "null");
+        foreach (var bad in new[] { null, "", "ab", "CND 123", "CND-1; DROP", "../etc", new string('9', 41) }) Assert.False(TrackingRules.LooksLikeWaybill(bad), bad ?? "null");
     }
 
     // ---------------------------------------------------------------- consulta pública (servicio)

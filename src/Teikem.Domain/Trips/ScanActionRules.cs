@@ -16,6 +16,7 @@ public static class ScanActions
 
     public static readonly string[] All = { Pickup, Arrive, Route, Depart };
 
+    public const string PieceNotFoundMessage = "No se encontró la pieza.";   // el número de la orden no se escanea: lo que se escanea son las piezas
     public const string InvalidActionMessage = "Escoja la acción: recoger, llegó, enrutar o salir.";
 
     /// <summary>Acción normalizada (sin distinguir mayúsculas) o null si no es una de las cuatro.</summary>
@@ -24,6 +25,12 @@ public static class ScanActions
         var a = raw?.Trim().ToUpperInvariant();
         return a is not null && All.Contains(a) ? a : null;
     }
+
+    /// <summary>Orden de las acciones en el camino de la orden (Recoger 1, Llegó 2, Enrutar 3, Salir 4).</summary>
+    public static int Rank(string action) => Array.IndexOf(All, action) + 1;
+
+    /// <summary>La acción cuyo estatus es ese (Recogida → Recoger…); null si el estatus no es el de ninguna acción.</summary>
+    public static string? ForStatus(string? statusCode) => All.FirstOrDefault(a => string.Equals(TargetStatus(a), statusCode, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Estatus de la orden al que lleva cada acción.</summary>
     public static string TargetStatus(string action) => action switch
@@ -45,4 +52,8 @@ public static class ScanActionOutcomes
     public const string NoRoute = "NO_ROUTE";                // Enrutar sin una ruta abierta que reciba la orden: no se cambia nada
     public const string NotFound = "NOT_FOUND";
     public const string Ambiguous = "AMBIGUOUS";
+    /// <summary>Lote 110: la pieza se contó para esa acción sin mover la orden (la orden ya estaba en ese estatus o más adelante).</summary>
+    public const string Counted = "COUNTED";
+    /// <summary>Lote 110: esa pieza ya se había escaneado con esa acción.</summary>
+    public const string Duplicate = "DUPLICATE";
 }

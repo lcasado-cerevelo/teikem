@@ -53,7 +53,7 @@ Hecho a partir de lo que dictó Luis el 2026-10-17 y de sus respuestas a tres pr
 | **107** | **Escaneo por acción** escogida por el usuario (hecho): Recoger, Llegó, Enrutar y Salir llevan la orden al estatus de la acción brincando los de en medio (registrados «brincados», misma fecha y hora, sin avisos al cliente); el cernidor (tarifa, cliente, crédito) quedó al someter; web (estación de escaneo) hecha; la app móvil de entregas queda aparte | |
 | **108** | **Barra de progreso de cuatro etapas** (hecho): Sometida, Recibida, En ruta (con Intentada y Reprogramada) y Completada (el estatus final que sea); lo demás se encajona | |
 | **109** | **Piezas con número propio** (hecho): cada pieza con su número único (Codes del cliente y del consignatario + fecha y hora), labels por pieza, búsqueda por pieza | |
-| 110 | **Número de la orden** nuevo, **escaneo por pieza** (conteo, incompleta, «Cerrar conteo», audio Sí/No/Ok) | |
+| **110** | **Número de la orden** nuevo y **escaneo por pieza** (hecho): conteo «N de M», faltantes «Por verificar», «Cerrar conteo», audio Sí/No/Ok | |
 | 111 | **Reclamaciones** (paquetes faltantes: Por verificar → perdido → reclamación) | |
 | 112 | **Devolución**: estatus final Devuelta, orden de vuelta (round trip) y sugerencia «devolver tras N intentos» | |
 | 113 | **Tipo de servicio «pick up»** (con su marca y su flujo Sometida → Recogida → En almacén) y **cargo por devolución** opcional por cliente | |

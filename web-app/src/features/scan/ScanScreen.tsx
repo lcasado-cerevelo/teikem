@@ -18,7 +18,7 @@ import { usePrinting } from '../printing/usePrinting'
 import { missingReportSpec } from './missingReport'
 import { useDispatchZones } from '../drivers/api'
 import { useDebounced } from '../warehouse/lineRules'
-import { fetchOrderKnown, SCAN_ACTIONS, type ScanActionKey, useScanAction, useUnassignedOrders } from './scanApi'
+import { fetchOrderKnown, SCAN_ACTIONS, type ScanActionKey, useCloseCount, useScanAction, useUnassignedOrders } from './scanApi'
 import { ScanOrderModal, type PeekTarget } from './ScanOrderModal'
 import { ScanFeedPanel, ScanPendingPanel } from './ScanPanels'
 import { ScanResultBox, type LastScan } from './ScanResultBox'
@@ -76,6 +76,7 @@ export default function ScanScreen() {
   const [clientPublicId, setClientPublicId] = useState<string | null>(null)
 
   const scan = useScanAction()
+  const closeCount = useCloseCount()
   const [action, setAction] = useState<ScanActionKey>('ROUTE')   // Lote 107: el usuario escoge qué va a hacer; por omisión, Enrutar (lo de siempre)
   const zones = useDispatchZones(false, canFleet && catalogOn)
   const showZoneFilter = canTrips && canFleet && catalogOn && !zones.isError && (zones.data?.length ?? 0) > 0
@@ -268,7 +269,7 @@ export default function ScanScreen() {
           </button>
         </form>
         <div className="hint">{t('scan.input.hint')}</div>
-        <ScanResultBox last={last} busy={busy} />
+        <ScanResultBox last={last} busy={busy} closing={closeCount.isPending} onCloseCount={(id) => closeCount.mutate(id, { onSuccess: (r) => ((r.missing ?? 0) > 0 ? toast.error(r.message ?? '') : toast.success(r.message ?? '')), onError: (e) => toast.error(applyProblemDetails(e).title) })} />
         <div className="scn-date">
           <label htmlFor="scan-plan-date">{t('scan.planDate.label')}</label>
           <input

@@ -20,6 +20,11 @@ namespace Teikem.Api.Controllers;
 [RequireModule(ModuleKeys.LtlGround)]
 public sealed class ScanController(OutboundScanService scanner, ScanActionService actions) : ControllerBase
 {
+    /// <summary>Lote 110: «Cerrar conteo» de una orden: lo que no se escaneó en la acción en que va queda faltante «Por verificar».</summary>
+    [HttpPost("close-count"), RequirePermission(PermissionCatalog.TripsScan)]
+    public Task<ScanCloseCountResultDto> CloseCount([FromBody] ScanCloseCountRequest req, CancellationToken ct)
+        => actions.CloseCountAsync(req, ct);
+
     /// <summary>Lote 107: escaneo con acción escogida { action: PICKUP|ARRIVE|ROUTE|DEPART, code, planDate? }; brinca estatus y registra los de en medio; si ya está más adelante o es final no hace nada.</summary>
     [HttpPost("action"), RequirePermission(PermissionCatalog.TripsScan)]
     public Task<ScanActionResultDto> Action([FromBody] ScanActionRequest req, CancellationToken ct)

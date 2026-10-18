@@ -85,7 +85,13 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
         var initialClientStatus = await statuses.GetInitialAsync(StatusDomains.ClientStatus, ct);
         var initialContractStatus = contractReq is null ? null : await statuses.GetInitialAsync(StatusDomains.ContractStatus, ct);
 
-        var publicId = await db.RunInTransactionAsync(async ct2 =>
+        // Un código autogenerado puede chocar con otro alta simultánea (los códigos son cortos): se reintenta con el siguiente libre
+        Guid publicId = default;
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+        publicId = await db.RunInTransactionAsync(async ct2 =>
         {
             var code = await ResolveCodeAsync(explicitCode, name, ct2);
             var client = new Client
@@ -122,6 +128,14 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
             await db.SaveGuardedAsync("Ya existe un nivel de servicio para ese tipo de servicio en el contrato.", ct2);
             return client.PublicId;
         }, ct);
+                break;
+            }
+            catch (ConflictException ex) when (explicitCode is null && attempt < 5 && ex.Message == "Ya existe un cliente con ese código.")
+            {
+                db.ChangeTracker.Clear();
+                db.PendingAudits.Clear();
+            }
+        }
 
         return await GetAsync(publicId, ct);
     }

@@ -187,7 +187,6 @@ public sealed class OrderService(
         if (typedOrder is null) await sequences.EnsureAsync(NumberKinds.Order, orderSeqClient, ct);
         if (typedInvoice is null) await sequences.EnsureAsync(NumberKinds.Invoice, invoiceSeqClient, ct);
         if (packBatchOverride is null) await sequences.EnsureAsync(NumberKinds.PackBatch, packBatchSeqClient, ct);
-        await sequences.EnsureAsync(WaybillCodes.NumberKind, null, ct);   // Lote 97: el conduce siempre lo genera Teikem
         if (special is null && !string.IsNullOrWhiteSpace(settings.PackageNumberFormat) && lines.Any(l => l.TypedPackageNumber is null)) await sequences.EnsureAsync(NumberKinds.Package, packageSeqClient, ct);   // solo con formato propio del cliente: el del sistema no usa contador
 
         var pickupTypeId = await lookups.GetIdAsync(LookupDomains.StopType, StopTypes.Pickup, ct);
@@ -232,7 +231,10 @@ public sealed class OrderService(
                         await sequences.NextAsync(NumberKinds.Invoice, invoiceSeqClient, ct2));
                     var packBatchNumber = packBatchOverride ?? ResolveAuto(NumberKinds.PackBatch, settings,
                         await sequences.NextAsync(NumberKinds.PackBatch, packBatchSeqClient, ct2));
-                    var waybillNumber = NumberFormat.Resolve(WaybillCodes.NumberPattern, await sequences.NextAsync(WaybillCodes.NumberKind, null, ct2));
+                    // Lote 110: el conduce = {Code cliente}{Code consignatario o su ID}{aammdd}{secuencial del día de ese consignatario}; el siguiente se toma de los que ya empiezan con ese prefijo (el índice único cubre la carrera)
+                    var waybillDayPrefix = WaybillCodes.DayPrefix(PieceNumbering.Part(client.Code, client.ClientId), PieceNumbering.Part(consigneeLoc.Code, consigneeLoc.LocationId), TimeZoneInfo.ConvertTimeFromUtc(_clock.UtcNow, _clock.Zone));
+                    var sameDay = await db.TransportOrders.AsNoTracking().Where(o => o.WaybillNumber != null && o.WaybillNumber.StartsWith(waybillDayPrefix)).Select(o => o.WaybillNumber).ToListAsync(ct2);
+                    var waybillNumber = WaybillCodes.Next(waybillDayPrefix, sameDay);
 
                     var initial = await statuses.GetInitialAsync(StatusDomains.OrderStatus, ct2);
                     var order = new TransportOrder

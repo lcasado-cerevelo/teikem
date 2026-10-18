@@ -127,6 +127,18 @@ describe('Estación de escaneo — pantalla', () => {
     expect(posts()[1].body?.action).toBe('DEPART')
   })
 
+  it('Lote 110: muestra «N de M piezas», los faltantes y el botón «Cerrar conteo» que llama al servidor', async () => {
+    const user = userEvent.setup()
+    wrap(SCAN)
+    mock.scans['PZ-1'] = { ...assigned('o-1', 'OT-0001'), outcome: 'COUNTED', scanned: 4, total: 5, missing: 1, pieceNumber: 'PZ-1' } as never
+    await scanCode(user, 'PZ-1')
+    await waitFor(() => expect(screen.getByTestId('scan-count')).toHaveTextContent('4 de 5 piezas'))
+    expect(screen.getByTestId('scan-count')).toHaveTextContent('faltan por verificar: 1')
+    await user.click(screen.getByRole('button', { name: 'Cerrar conteo' }))
+    await waitFor(() => expect(callsTo('POST', '/api/v1/scan/close-count')).toHaveLength(1))
+    expect(callsTo('POST', '/api/v1/scan/close-count')[0].body).toEqual({ orderPublicId: 'o-1' })
+  })
+
   it('el botón «Registrar» hace lo mismo que Enter y las lecturas llevan cada una su Idempotency-Key', async () => {
     const user = userEvent.setup()
     wrap(SCAN)
@@ -141,7 +153,7 @@ describe('Estación de escaneo — pantalla', () => {
     expect(posts()[0].headers.get('Idempotency-Key')).not.toBe(posts()[1].headers.get('Idempotency-Key'))
   })
 
-  it('ALREADY_ASSIGNED: «Ya estaba…», chip propio, voz «Ya» y el medidor no cuenta de nuevo', async () => {
+  it('ALREADY_ASSIGNED: «Ya estaba…», chip propio, voz «Ok» y el medidor no cuenta de nuevo', async () => {
     const user = userEvent.setup()
     const speak = installVoice()
     wrap(ALL)
@@ -153,7 +165,7 @@ describe('Estación de escaneo — pantalla', () => {
     await waitFor(() => expect(result()).toHaveTextContent('Ya estaba en la ruta R-0001.'))
     expect(result()).toHaveTextContent('No hace falta hacer nada')
     expect(within(feed()).getAllByRole('button', { name: 'Ver la orden OT-0001' })).toHaveLength(2)
-    expect(speak.map((u) => u.text)).toEqual(['Sí', 'Ya'])
+    expect(speak.map((u) => u.text)).toEqual(['Sí', 'Ok'])
     expect(screen.getByRole('progressbar', { name: 'Avance de la sesión' }).closest('.scanmeter')?.querySelector('b')).toHaveTextContent('1')
   })
 
@@ -502,7 +514,7 @@ describe('Estación de escaneo — permisos', () => {
 })
 
 describe('Estación de escaneo — voz', () => {
-  it('activa por omisión: dice Sí / No / Ya según `voice`; el interruptor la silencia, lo recuerda y la reactiva', async () => {
+  it('activa por omisión: dice Sí / No / Ok según `voice`; el interruptor la silencia, lo recuerda y la reactiva', async () => {
     const user = userEvent.setup()
     const spoken = installVoice()
     wrap(SCAN)
@@ -513,7 +525,7 @@ describe('Estación de escaneo — voz', () => {
     await scanCode(user, 'NADA')
     mock.scans['DUP'] = { outcome: 'ALREADY_ASSIGNED', voice: 'dup', message: 'Ya estaba en la ruta R-0001.', orderPublicId: 'o-1', orderNumber: 'OT-0001', tripCode: 'R-0001', reasonCode: 'IN_TRIP' }
     await scanCode(user, 'DUP')
-    await waitFor(() => expect(spoken.map((u) => u.text)).toEqual(['Sí', 'No', 'Ya']))
+    await waitFor(() => expect(spoken.map((u) => u.text)).toEqual(['Sí', 'No', 'Ok']))
     expect(spoken.every((u) => u.lang === 'es-PR')).toBe(true)
 
     await user.click(toggle)

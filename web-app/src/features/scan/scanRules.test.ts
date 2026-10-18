@@ -68,7 +68,7 @@ describe('resultado → chip, tono, voz y qué hacer', () => {
     expect(voiceKind({ outcome: Outcomes.NotFound })).toBe('notfound')
     expect(es('scan.voice.found')).toBe('Sí')
     expect(es('scan.voice.notfound')).toBe('No')
-    expect(es('scan.voice.dup')).toBe('Ya')
+    expect(es('scan.voice.dup')).toBe('Ok')
   })
 
   it('cada motivo que no es «asignada» explica qué hacer; asignada no', () => {

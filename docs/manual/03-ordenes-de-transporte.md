@@ -248,6 +248,7 @@ Cómo se usa: `DELETE /api/v1/orders/{publicId}` → `204`.
 > - **Los Codes** del cliente y del consignatario tienen **máximo 10 caracteres** (un código, no un título): «El código no puede exceder 10 caracteres.» (400). Un Code ya guardado de más de 10 usa sus primeros 10 en el número. Los códigos autogenerados desde el nombre del cliente salen de 10 caracteres como máximo.
 > - **Formato propio del cliente** (ficha del cliente → Numeración): si lo tiene, cada pieza toma el siguiente número de su contador. **Línea con número tecleado**: una pieza → ese número; varias → ese número más el de la pieza (`PQ-B1`, `PQ-B2`…).
 > - Al **editar los paquetes** de una orden Sometida las piezas viejas se dan de baja y se crean las nuevas. Una entrega especial no lleva piezas.
+> - **Número de la orden (conduce), Lote 110:** `{Code del cliente}{Code del consignatario o su ID}{aammdd}{secuencial del día de ese consignatario}` — por ejemplo `ACMEPR0123261018` + `1` = `ACMEPR01232610181` (la segunda orden del mismo consignatario ese día termina en 2). Es único en la compañía; reemplaza al `CND-#######` (las órdenes anteriores lo conservan). Se genera al someter la orden; no se teclea.
 > - Buscar o escanear por el número de una pieza encuentra su orden; la ficha lista los números de cada pieza y los labels y la hoja de empaque los usan.
 
 Qué hace: toda orden recibe cuatro identificadores, cada uno con su propio contador atómico (tabla `NumberSequence`,

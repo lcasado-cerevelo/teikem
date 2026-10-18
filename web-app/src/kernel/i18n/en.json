@@ -1897,7 +1897,7 @@
       "unsupportedTitle": "This browser cannot speak. Results are shown on screen.",
       "found": "Yes",
       "notfound": "No",
-      "dup": "Already"
+      "dup": "Ok"
     },
     "mode": {
       "label": "Scan action",
@@ -1905,9 +1905,9 @@
     },
     "input": {
       "label": "Code to scan",
-      "placeholder": "Scan or type the reference…",
+      "placeholder": "Scan or type the piece number…",
       "go": "Register",
-      "hint": "The scanner types here and presses Enter by itself. You can scan the order number, the pack number or the client's invoice number."
+      "hint": "The scanner types here and presses Enter by itself. Scan each piece's number (the one on the label); the order number is not scanned."
     },
     "planDate": {
       "label": "Route day",
@@ -1922,13 +1922,16 @@
       "error": "Not registered",
       "zone": "Zone {zone}",
       "trip": "Route {trip}",
-      "matchedBy": "Found by {by}."
+      "matchedBy": "Found by {by}.",
+      "count": "{scanned} of {total} pieces",
+      "missing": "to verify: {n}"
     },
     "matchedBy": {
       "PACKAGE": "package number",
       "ORDER_NUMBER": "order number",
       "PACK_BATCH": "pack number",
-      "INVOICE": "client invoice"
+      "INVOICE": "client invoice",
+      "PIECE": "piece number"
     },
     "outcome": {
       "FOUND_ASSIGNED": "Assigned",
@@ -2009,6 +2012,9 @@
       "ARRIVE": "Arrived at the warehouse: whatever you scan becomes Unassigned (a failed attempt coming back too).",
       "ROUTE": "Route: whatever you scan becomes Assigned and joins the open route of its zone; with no route to take it, nothing changes.",
       "DEPART": "Depart: whatever you scan becomes In transit."
+    },
+    "closeCount": {
+      "button": "Close count"
     }
   },
   "routeMap": {

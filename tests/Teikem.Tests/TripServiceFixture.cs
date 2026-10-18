@@ -198,7 +198,7 @@ internal sealed class TripServiceFixture : IAsyncDisposable
 
     /// <summary>Orden activa, no especial, con una parada DELIVERY pendiente en ese CP (define la zona).</summary>
     /// <remarks>clientId/orderNumber permiten armar rutas multi-cliente (la numeración es por cliente: puede repetirse).</remarks>
-    public async Task<SeededOrder> SeedOrderAsync(string status, string postalCode = "00901", int clientId = 1, string? orderNumber = null)
+    public async Task<SeededOrder> SeedOrderAsync(string status, string postalCode = "00901", int clientId = 1, string? orderNumber = null, int pieces = 1)
     {
         var orderId = _nextOrderId++;
         var stopId = _nextStopId++;
@@ -219,6 +219,8 @@ internal sealed class TripServiceFixture : IAsyncDisposable
             GeocodeAccuracyLookupId = await Lookups.GetIdAsync(LookupDomains.GeocodeAccuracy, GeocodeAccuracies.ZipCentroid),
             StatusCodeId = Id(StatusDomains.StopStatus, StopStatuses.Pending),
         });
+        for (var i = 1; i <= pieces; i++)   // Lote 110: cada pieza con su número (lo que se escanea)
+            Db.OrderPieces.Add(new Teikem.Domain.Orders.OrderPiece { TenantId = TenantId, TransportOrderId = orderId, CargoLineId = orderId, Sequence = i, PackageNumber = PieceNumberOf(orderId, i), IsActive = true });
         await Db.SaveChangesAsync();
         return new SeededOrder(orderId, publicId, number, $"PB{orderId}", stopId);
     }
@@ -363,6 +365,9 @@ internal sealed class TripServiceFixture : IAsyncDisposable
 
     public async Task<string> TripStatusAsync(int tripId)
         => CodeOf(await Db.Trips.AsNoTracking().Where(t => t.TripId == tripId).Select(t => t.StatusCodeId).SingleAsync());
+
+    /// <summary>El número de la pieza i de una orden sembrada.</summary>
+    public static string PieceNumberOf(int orderId, int i) => $"PZ{orderId}-{i}";
 
     public async Task<string> OrderStatusAsync(int orderId)
         => CodeOf(await Db.TransportOrders.AsNoTracking().Where(o => o.TransportOrderId == orderId).Select(o => o.StatusCodeId).SingleAsync());

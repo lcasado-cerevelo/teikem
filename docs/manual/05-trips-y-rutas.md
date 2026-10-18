@@ -463,7 +463,13 @@ el resultado es `NO_OPEN_ROUTE`. Ocho escaneos simultáneos de órdenes distinta
 
 ---
 
-## 7b. Escaneo con acción escogida (Lote 107)
+## 7b. Escaneo con acción escogida (Lote 107) y por pieza (Lote 110)
+
+> **Lote 110 (2026-10-18): lo que se escanea son las PIEZAS.** Se escanea el **número de cada pieza** (el del label); el **número de la orden, el de empaque y el de factura no se escanean**: la estación responde «No se encontró la pieza.» (audio **«No»**). El audio de la estación es **«Sí»** (encontrada), **«No»** (no encontrada) y **«Ok»** (duplicada). Cada pieza se registra **una vez por acción**: escanearla otra vez con la misma acción es un **duplicado** (`DUPLICATE`, «La pieza … ya se había escaneado con esta acción.», sin cambios y sin contarla dos veces).
+> - **El primer escaneo de una acción mueve la orden** a ese estatus (brincando los de en medio, como se describe abajo); los siguientes de la misma acción **solo cuentan** (`COUNTED`, «La pieza … se contó…», o con Enrutar «Ya estaba en la ruta …»). La respuesta trae `scanned`/`total` («4 de 5 piezas») y `missing` (faltantes «Por verificar»).
+> - **Faltantes:** una pieza que no se escaneó en la acción en que iba la orden —ni en una posterior— queda **«Por verificar»** (`TO_VERIFY`) **cuando la orden pasa a la siguiente acción sin ella**, o al **«Cerrar conteo»**. Solo hay faltante si en esa acción se escaneó al menos una pieza (si la orden brincó la acción no hay conteo que cerrar). La orden avanza igual y muestra «4 de 5». Si la pieza aparece después (se escanea con cualquier acción) **deja de ser faltante**. Las reclamaciones (lote siguiente) continúan desde «Por verificar».
+> - **«Cerrar conteo»** (botón en la caja del resultado, `POST /api/v1/scan/close-count` con `{ "orderPublicId": … }`, permiso `trips.scan`): marca como «Por verificar» lo que no se escaneó en la acción en que va la orden, sin cambiar su estatus. Responde `Conteo cerrado: la orden … está completa.` o `Conteo cerrado: a la orden … le faltan N de M piezas («Por verificar»).`
+> - Enrutar sin ruta que reciba la orden (`NO_ROUTE`) no cambia nada y **no registra la pieza**.
 
 Qué hace: el usuario escoge la **acción** y escanea; cada escaneo lleva la orden al estatus de esa acción **brincando los estatus de en medio** (no hay que escanear varias veces). Los estatus brincados quedan en el historial con la marca **«(brincado)»** y **la misma fecha y hora** que el estatus al que llegó; los avisos al cliente de los estatus brincados **no** se mandan. No revisa tarifa, crédito ni cliente: eso se revisó al someter la orden.
 

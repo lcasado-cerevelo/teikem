@@ -167,6 +167,7 @@ test.describe('Estación de escaneo (Lote F-E1)', () => {
       await input.fill(code)
       await input.press('Enter')
     }
+    const pc = (o: OrderDetailDto, k = 0) => o.packages?.[0]?.pieceNumbers?.[k] ?? ''   // Lote 110: lo que se escanea es el número de cada pieza
 
     // ---- 0. La pantalla: solo «Salida», entrada con foco, voz, pendientes y filtros ----
     await expect(page.getByRole('heading', { level: 1, name: 'Estación de escaneo' })).toBeVisible()
@@ -187,42 +188,48 @@ test.describe('Estación de escaneo (Lote F-E1)', () => {
     await shot(page, isMobile, 'fe1-estacion-inicio', 1300)
 
     // ---- 1. Asignar por número de orden (FOUND_ASSIGNED) y por número de empaque ----
-    await scan(a1.orderNumber ?? '')
+    await scan(pc(a1))
     await expect(result).toContainText(`Asignada a la ruta ${tripCode}.`)
     await expect(result).toContainText('Asignada')
-    await expect(result).toContainText('Encontrada por número de orden.')
+    await expect(result).toContainText('Encontrada por número de pieza.')
+    await expect(page.getByTestId('scan-count')).toContainText('1 de 2 piezas')
     await expect(result).toContainText(`Zona FA${suffix}`)
     await expect(input).toHaveValue('')
     await expect(input).toBeFocused()
     await expect(pendingList.getByRole('button', { name: `Ver la orden ${a1.orderNumber}` })).toHaveCount(0)
     await shot(page, isMobile, 'fe1-resultado-asignada', 1000)
-    await scan(a2.packBatchNumber ?? '')
+    await scan(pc(a2))
     await expect(result).toContainText(`Asignada a la ruta ${tripCode}.`)
-    await expect(result).toContainText('Encontrada por número de empaque.')
+    await expect(result).toContainText('Encontrada por número de pieza.')
 
     // ---- 2. Repetir (ALREADY_ASSIGNED), inexistente, vacío, Sometida, sin ruta abierta, sin zona ----
-    await scan(a1.orderNumber ?? '')
-    await expect(result).toContainText(`Ya estaba en la ruta ${tripCode}.`)
-    await expect(result).toContainText('No hace falta hacer nada')
+    await scan(pc(a1))                                                                       // la misma pieza otra vez: duplicado (audio «Ok»)
+    await expect(result).toContainText('ya se había escaneado con esta acción')
+    await expect(page.getByTestId('scan-count')).toContainText('1 de 2 piezas')               // no se cuenta dos veces
+    await scan(pc(a1, 1))                                                                    // la segunda pieza solo cuenta
+    await expect(result).toContainText(`Ya estaba en la ruta ${tripCode}.`)   // la orden ya está en la ruta: la pieza solo cuenta
+    await expect(page.getByTestId('scan-count')).toContainText('2 de 2 piezas')
+    await scan(a1.orderNumber ?? '')                                                          // el número de la orden no se escanea
+    await expect(result).toContainText('No se encontró la pieza.')
     await scan(`NOEXISTE-${suffix}`)
-    await expect(result).toContainText('No se encontró la orden.')
+    await expect(result).toContainText('No se encontró la pieza.')
     await input.press('Enter')
     await expect(result).toContainText('Escanee o escriba un código.')
-    await scan(draft.orderNumber ?? '')
+    await scan(pc(draft))
     // Lote 106/107: una Sometida ya no se rechaza: «Enrutar» la lleva hasta Asignada brincando Recogida y Sin asignar (quedan registrados como brincados)
     await expect(result).toContainText('(brincó 2 estatus)')
     await expect(result).toContainText('Asignada')
-    await scan(b1.orderNumber ?? '')
+    await scan(pc(b1))
     await expect(result).toContainText(`No hay ruta abierta para la zona FB${suffix} en la fecha ${tenantDay()}; queda sin asignar.`)
     await expect(result).toContainText('Planifique el día o cree la ruta')
     await shot(page, isMobile, 'fe1-resultado-sin-ruta', 1000)
-    await scan(c1.orderNumber ?? '')
+    await scan(pc(c1))
     await expect(result).toContainText('No se pudo resolver la zona de despacho por código postal ni pueblo; queda sin asignar.')
 
     // ---- 3. Medidor «2 de 4», lista de la sesión con buscador, pendientes que quedan ----
     await expect(page.locator('.scanmeter .nums b')).toHaveText('3')   // a1, a2 y la Sometida que se enrutó
     await expect(page.locator('.scanmeter .nums .of')).toHaveText(/de [4-6]/)
-    await expect(feedList.getByRole('button')).toHaveCount(6) // a1, a2, a1 otra vez, Sometida, b1 y c1 (el inexistente no abre ventana)
+    await expect(feedList.getByRole('button')).toHaveCount(7) // a1, a2, a1 otra vez, a1 pieza 2, Sometida, b1 y c1 (el inexistente no abre ventana)
     await expect(feedList).toContainText(`NOEXISTE-${suffix}`)
     await expect(pendingList.getByRole('button', { name: `Ver la orden ${b1.orderNumber}` })).toBeVisible()
     await expect(pendingList.getByRole('button', { name: `Ver la orden ${c1.orderNumber}` })).toBeVisible()

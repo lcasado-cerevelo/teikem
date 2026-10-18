@@ -19,6 +19,9 @@ public class OrderPiece : ITenantScoped
     /// <summary>El número del label (código de barras): único dentro de la compañía mientras la pieza esté activa.</summary>
     public string PackageNumber { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
+    /// <summary>Lote 110: null = normal; TO_VERIFY = faltante «Por verificar» (no se escaneó en un estatus por el que pasó la orden; las reclamaciones lo continúan en el Lote 111).</summary>
+    public string? MissingStatus { get; set; }
+    public DateTime? MissingAtUtc { get; set; }
     [NotAudited] public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
     public TransportOrder? Order { get; set; }
@@ -52,4 +55,25 @@ public static class PieceNumbering
 
     /// <summary>Número de una pieza de una línea con número tecleado: el mismo si la línea tiene una sola pieza; con más, el tecleado más el número de la pieza (1 la primera).</summary>
     public static string FromTyped(string typed, int index, int count) => count <= 1 ? typed : string.Concat(typed, index.ToString(CultureInfo.InvariantCulture));
+}
+
+/// <summary>Estados de un faltante (Lote 110: solo «Por verificar»; Perdido, Reclamada y Resuelta llegan con las reclamaciones).</summary>
+public static class PieceMissing
+{
+    public const string ToVerify = "TO_VERIFY";
+}
+
+/// <summary>
+/// Lote 110 — el escaneo de una pieza con una acción (PICKUP, ARRIVE, ROUTE o DEPART). Una fila por pieza y acción (el mismo escaneo repetido es un duplicado). De ahí sale el conteo «4 de 5» y cuándo una orden queda incompleta.
+/// </summary>
+public class OrderPieceScan : ITenantScoped
+{
+    public long OrderPieceScanId { get; set; }
+    public int TenantId { get; set; }
+    public int OrderPieceId { get; set; }
+    public string Action { get; set; } = string.Empty;
+    public DateTime ScannedAtUtc { get; set; } = DateTime.UtcNow;
+    public int? ScannedBy { get; set; }
+
+    public OrderPiece? Piece { get; set; }
 }

@@ -4,7 +4,8 @@ import type { components } from '../../kernel/api/schema'
 import type { ChipTone } from '../../kernel/ui/Chip'
 import { matchesQ } from '../../kernel/ui/matchesQ'
 
-export type ScanResult = components['schemas']['OutboundScanResultDto']
+/** Lote 110: además del resultado de siempre, el conteo de piezas de la orden con esa acción. */
+export type ScanResult = components['schemas']['OutboundScanResultDto'] & { scanned?: number | null; total?: number | null; missing?: number | null; pieceNumber?: string | null }
 export type UnassignedOrder = components['schemas']['UnassignedOrderDto']
 
 /** Largo máximo del código (`OutboundScanRules.MaxCodeLength`). */

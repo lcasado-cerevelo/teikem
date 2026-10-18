@@ -68,6 +68,7 @@ function route(call: Call): unknown {
     const code = String(call.body?.code ?? '')
     return mock.scans[code] ?? { outcome: 'NOT_FOUND', voice: 'notfound', message: 'No se encontró la orden.', reasonCode: 'NO_MATCH' }
   }
+  if (method === 'POST' && p === '/api/v1/scan/close-count') return { message: 'Conteo cerrado: a la orden OT-0001 le faltan 1 de 5 piezas («Por verificar»).', orderPublicId: call.body?.orderPublicId, orderNumber: 'OT-0001', scanned: 4, total: 5, missing: 1, missingNumbers: ['PZ-5'] }
   if (method === 'GET' && p === '/api/v1/trips/unassigned-orders') {
     let items = mock.pending
     if (q.get('DispatchZoneId')) items = items.filter((o) => String(o.dispatchZoneId) === q.get('DispatchZoneId'))

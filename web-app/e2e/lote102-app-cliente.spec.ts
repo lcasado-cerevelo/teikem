@@ -106,8 +106,8 @@ test('App del cliente: computadora nueva, MFA, documento legal, órdenes, «No c
   const headers = { Authorization: `Bearer ${await adminToken(request)}` }
 
   // 0) dos clientes con órdenes y un usuario de portal para el primero
-  const a = await makeClientWithOrders(request, headers, `Cliente A ${suffix}`, 2)
-  const b = await makeClientWithOrders(request, headers, `Cliente B ${suffix}`, 1)
+  const a = await makeClientWithOrders(request, headers, `${suffix} Cliente A`, 2)
+  const b = await makeClientWithOrders(request, headers, `${suffix} Cliente B`, 1)
   const email = `app.${suffix.toLowerCase()}@demo.test`
   const password = `App_${suffix}_Clave-2026!`
   const invite = await request.post(`${API_URL}/api/v1/clients/${a.clientId}/portal-users/invite`, { headers, data: { email, fullName: 'Cliente Prueba', role: 'CLIENT_OPERATOR' } })
@@ -168,7 +168,7 @@ test('App del cliente: computadora nueva, MFA, documento legal, órdenes, «No c
 
   // 4) inicio: saludo, el cliente y cuántas órdenes tiene
   await expect(page.getByRole('heading', { name: 'Hola, Cliente' })).toBeVisible({ timeout: 30_000 })
-  await expect(page.getByText(`Cliente: Cliente A ${suffix}`)).toBeVisible()
+  await expect(page.getByText(`Cliente: ${suffix} Cliente A`)).toBeVisible()
   await expect(page.getByTestId('home-total')).toHaveText('2')
   expect(await noHScroll()).toBe(true)
   await shot(page, isMobile, 'l102-inicio')

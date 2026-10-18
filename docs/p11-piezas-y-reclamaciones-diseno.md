@@ -27,3 +27,4 @@ Dictado por Luis (2026-10-17/18). **Todavía no hay código**: este documento ju
 ## Estado (2026-10-18)
 - **109 hecho:** piezas con número único (formato del sistema con los Codes), labels por pieza, búsqueda por número de pieza. Ver `docs/lote109-decisiones.md`.
 - **Pendiente decidido por Luis para el 110:** el número de la **orden** (conduce) pasa a `{Code cliente}{Code consignatario}{aammdd}{secuencial del día por consignatario}`, sin rayas (reemplaza `CND-0000001`; afecta la búsqueda del portal y la página pública), el escaneo por pieza y el audio Sí/No/Ok.
+- **110 hecho:** el número de la orden (conduce) con el formato nuevo y el escaneo por pieza con conteo, «Cerrar conteo», faltantes «Por verificar» y audio Sí/No/Ok. Ver `docs/lote110-decisiones.md`. **Pendiente:** las reclamaciones (111) —Por verificar → Perdido → Reclamada → Resuelta—, la orden que se recrea al cerrar el conteo con las piezas que aparecen, y que la app móvil avise sin detenerse.

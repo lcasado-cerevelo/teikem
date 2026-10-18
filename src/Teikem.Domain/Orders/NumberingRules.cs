@@ -176,6 +176,7 @@ public static class NumberingRules
     public static string? CollidedKind(string? sqlMessage, bool orderAuto, bool packBatchAuto)
     {
         if (string.IsNullOrEmpty(sqlMessage)) return null;
+        if (sqlMessage.Contains(WaybillCodes.UniqueIndex, StringComparison.OrdinalIgnoreCase)) return WaybillCodes.NumberKind;   // Lote 110: otro alta del mismo consignatario ganó el secuencial: se reintenta
         if (orderAuto && sqlMessage.Contains(OrderNumberIndex, StringComparison.OrdinalIgnoreCase)) return NumberKinds.Order;
         if (packBatchAuto && sqlMessage.Contains(PackBatchIndex, StringComparison.OrdinalIgnoreCase)) return NumberKinds.PackBatch;
         return null;

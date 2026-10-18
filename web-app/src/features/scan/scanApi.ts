@@ -61,7 +61,8 @@ export async function fetchOrderKnown(qc: QueryClient, publicId: string): Promis
 export function toScanResult(r: ScanActionResult): ScanResult {
   const outcome =
     r.outcome === 'APPLIED' ? 'FOUND_ASSIGNED'
-    : r.outcome === 'ALREADY_BEYOND' || r.outcome === 'FINAL' ? 'ALREADY_ASSIGNED'
+    : r.outcome === 'COUNTED' ? 'FOUND_ASSIGNED'   // Lote 110: la pieza se contó (la orden ya estaba en ese estatus)
+    : r.outcome === 'ALREADY_BEYOND' || r.outcome === 'FINAL' || r.outcome === 'DUPLICATE' ? 'ALREADY_ASSIGNED'
     : r.outcome === 'NO_ROUTE' ? 'FOUND_UNASSIGNED'
     : r.outcome === 'NOT_FOUND' || r.outcome === 'AMBIGUOUS' ? 'NOT_FOUND'
     : r.outcome
@@ -85,5 +86,12 @@ export function useScanAction() {
         void qc.invalidateQueries({ queryKey: scanKeys.trips })
       }
     },
+  })
+}
+
+/** `POST /scan/close-count` (Lote 110): cierra el conteo de una orden; lo que no se escaneó queda faltante «Por verificar». */
+export function useCloseCount() {
+  return useMutation({
+    mutationFn: (orderPublicId: string) => unwrap(api.POST('/api/v1/scan/close-count', { body: { orderPublicId }, headers: { 'Idempotency-Key': crypto.randomUUID() } })),
   })
 }

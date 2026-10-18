@@ -4223,3 +4223,23 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_OrderPiece_Number' AND object_id = OBJECT_ID('dbo.OrderPiece'))
     CREATE UNIQUE INDEX UX_OrderPiece_Number ON dbo.OrderPiece (TenantId, PackageNumber) WHERE IsActive = 1;
 GO
+
+/* =========================================================================
+   2026-10-18 (ar) — Lote 110: escaneo por pieza. Cada pieza se registra por acción (PICKUP, ARRIVE, ROUTE, DEPART) y una pieza que no se escaneó queda faltante «Por verificar».
+   ========================================================================= */
+IF COL_LENGTH('dbo.OrderPiece', 'MissingStatus') IS NULL ALTER TABLE dbo.OrderPiece ADD MissingStatus VARCHAR(20) NULL;
+GO
+IF COL_LENGTH('dbo.OrderPiece', 'MissingAtUtc') IS NULL ALTER TABLE dbo.OrderPiece ADD MissingAtUtc DATETIME2 NULL;
+GO
+IF OBJECT_ID(N'dbo.OrderPieceScan', N'U') IS NULL CREATE TABLE dbo.OrderPieceScan (
+    OrderPieceScanId BIGINT IDENTITY(1,1) PRIMARY KEY,
+    TenantId         INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    OrderPieceId     INT NOT NULL REFERENCES dbo.OrderPiece(OrderPieceId),
+    Action           VARCHAR(10) NOT NULL,
+    ScannedAtUtc     DATETIME2 NOT NULL CONSTRAINT DF_OrderPieceScan_At DEFAULT SYSUTCDATETIME(),
+    ScannedBy        INT NULL
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_OrderPieceScan_Piece_Action' AND object_id = OBJECT_ID('dbo.OrderPieceScan'))
+    CREATE UNIQUE INDEX UX_OrderPieceScan_Piece_Action ON dbo.OrderPieceScan (OrderPieceId, Action);
+GO

@@ -1897,7 +1897,7 @@
       "unsupportedTitle": "Este navegador no sabe hablar. Los resultados se ven en pantalla.",
       "found": "Sí",
       "notfound": "No",
-      "dup": "Ya"
+      "dup": "Ok"
     },
     "mode": {
       "label": "Acción del escaneo",
@@ -1905,9 +1905,9 @@
     },
     "input": {
       "label": "Código a escanear",
-      "placeholder": "Escanea o teclea la referencia…",
+      "placeholder": "Escanea o teclea el número de la pieza…",
       "go": "Registrar",
-      "hint": "El lector escribe aquí y dispara Enter solo. Puede escanear el número de orden, el de empaque o el de factura del cliente."
+      "hint": "El lector escribe aquí y dispara Enter solo. Escanee el número de cada pieza (el del label); el número de la orden no se escanea."
     },
     "planDate": {
       "label": "Ruta del día",
@@ -1922,13 +1922,16 @@
       "error": "No se registró",
       "zone": "Zona {zone}",
       "trip": "Ruta {trip}",
-      "matchedBy": "Encontrada por {by}."
+      "matchedBy": "Encontrada por {by}.",
+      "count": "{scanned} de {total} piezas",
+      "missing": "faltan por verificar: {n}"
     },
     "matchedBy": {
       "PACKAGE": "número de paquete",
       "ORDER_NUMBER": "número de orden",
       "PACK_BATCH": "número de empaque",
-      "INVOICE": "factura del cliente"
+      "INVOICE": "factura del cliente",
+      "PIECE": "número de pieza"
     },
     "outcome": {
       "FOUND_ASSIGNED": "Asignada",
@@ -2009,6 +2012,9 @@
       "ARRIVE": "Llegó al almacén: lo que escanee pasa a Sin asignar (un intento fallido que vuelve también).",
       "ROUTE": "Enrutar: lo que escanee pasa a Asignada y entra a la ruta abierta de su zona; sin ruta que la reciba, no cambia.",
       "DEPART": "Salir: lo que escanee pasa a En tránsito."
+    },
+    "closeCount": {
+      "button": "Cerrar conteo"
     }
   },
   "routeMap": {
