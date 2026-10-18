@@ -51,11 +51,12 @@ Hecho a partir de lo que dictó Luis el 2026-10-17 y de sus respuestas a tres pr
 | **105** | **Entrada de órdenes** del cliente en el portal (hecho): roles administrador y operador, consignatario existente o nuevo, solo lo básico, entra directo al flujo normal | |
 | **106** | **Nuevo flujo de estatus de la orden de transporte** (hecho, dictado por Luis): Sometida → Recogida → Sin asignar → Asignada → En tránsito → Entregada; Intento fallido, Cancelada (con razón) y En almacén; se cotiza y se mide el crédito al crear; «Marcar como recogida»; permiso `orders.reopen` para reabrir. Ver `docs/lote106-decisiones.md` | Las órdenes del portal y las del consignatario nacen Sometidas |
 | **107** | **Escaneo por acción** escogida por el usuario (hecho): Recoger, Llegó, Enrutar y Salir llevan la orden al estatus de la acción brincando los de en medio (registrados «brincados», misma fecha y hora, sin avisos al cliente); el cernidor (tarifa, cliente, crédito) quedó al someter; web (estación de escaneo) hecha; la app móvil de entregas queda aparte | |
-| 108 | **Reclamaciones** (paquetes faltantes: Por verificar → perdido → reclamación) | |
-| 109 | **Devolución**: estatus final Devuelta, orden de vuelta (round trip) y sugerencia «devolver tras N intentos» | |
-| 110 | **Tipo de servicio «pick up»** (con su marca y su flujo Sometida → Recogida → En almacén) y **cargo por devolución** opcional por cliente | |
-| 111 | **Acceso del consignatario** (invitación, primer ingreso, avisos con su aceptación) y **órdenes que crean los consignatarios** (confirma el cliente) | SMS espera a Twilio |
-| 112+ | Consignatarios, configuración, perfil, indicadores del cliente; app móvil de entregas; seguimiento en vivo cuando exista P7 | |
+| **108** | **Barra de progreso de cuatro etapas** (hecho): Sometida, Recibida, En ruta (con Intentada y Reprogramada) y Completada (el estatus final que sea); lo demás se encajona | |
+| 109 | **Reclamaciones** (paquetes faltantes: Por verificar → perdido → reclamación) | |
+| 110 | **Devolución**: estatus final Devuelta, orden de vuelta (round trip) y sugerencia «devolver tras N intentos» | |
+| 111 | **Tipo de servicio «pick up»** (con su marca y su flujo Sometida → Recogida → En almacén) y **cargo por devolución** opcional por cliente | |
+| 112 | **Acceso del consignatario** (invitación, primer ingreso, avisos con su aceptación) y **órdenes que crean los consignatarios** (confirma el cliente) | SMS espera a Twilio |
+| 113+ | Consignatarios, configuración, perfil, indicadores del cliente; app móvil de entregas; seguimiento en vivo cuando exista P7 | |
 
 ## Decisiones propias a revisar con Luis
 - El número de conduce lo genera Teikem (patrón configurable, por omisión `CND-#######`); sigue habiendo número de orden del cliente (puede repetirse entre clientes) y número de empaque (EMP-#####). El label pasa a mostrar el conduce como «Waybill» (antes mostraba el número de orden).

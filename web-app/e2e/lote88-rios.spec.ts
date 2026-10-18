@@ -8,6 +8,7 @@ import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
 import type { components } from '../src/kernel/api/schema'
+import { contractData, withRates } from './rates'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
 
@@ -63,9 +64,11 @@ test('Pulso: los dos ríos con sus tarjetas y los enlaces a donde se atiende cad
   const headers = { Authorization: `Bearer ${await apiToken(request)}` }
 
   // una orden nueva con COD para que «Entrada» tenga al menos una de hoy
-  const client = await request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: `Rio ${suffix}` } })
+  const client = await request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: `Rio ${suffix}`, contract: contractData() } })
   expect(client.ok(), await client.text()).toBeTruthy()
-  const clientId = ((await client.json()) as { publicId: string }).publicId
+  const clientJson = (await client.json()) as { publicId: string; currentContract?: { publicId?: string } | null }
+  const clientId = clientJson.publicId
+  await withRates(request, headers, clientJson)
   const loc = await request.post(`${API_URL}/api/v1/locations`, {
     headers,
     data: { clientPublicId: clientId, name: `Sucursal ${suffix}`, locationType: 'DELIVERY', line1: 'Calle 5 #12', city: 'Ponce', postalCode: '00716', country: 'PR' },

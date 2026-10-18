@@ -35,35 +35,33 @@ public sealed class OrderProgressService(TeikemDbContext db, ITenantContext tena
         return _all;
     }
 
-    /// <summary>Las etapas de la barra: el camino normal de la compañía.</summary>
-    public async Task<IReadOnlyList<ProgressStatus>> StepsAsync(CancellationToken ct) => OrderProgress.StepsOf(await StatusesAsync(ct));
+    /// <summary>Las cuatro etapas de la barra (Sometida, Recibida, En ruta, Completada) en el idioma de quien mira.</summary>
+    public Task<IReadOnlyList<ProgressStatus>> StepsAsync(CancellationToken ct) => Task.FromResult(OrderProgress.Steps(tenant.Lang));
 
-    /// <summary>El avance de cada orden (id → avance). Las detenidas consultan su historial en una sola lectura.</summary>
+    /// <summary>El avance de cada orden (id → avance). Las que están Sin asignar o Asignadas consultan, en una sola lectura, si alguna vez tuvieron un Intento fallido (entonces son «Reprogramadas»).</summary>
     public async Task<Dictionary<int, OrderProgressResult>> ComputeAsync(IEnumerable<OrderProgressInput> orders, CancellationToken ct)
     {
         var list = orders.ToList();
         var all = await StatusesAsync(ct);
-        var steps = OrderProgress.StepsOf(all);
         var byCode = all.ToDictionary(s => s.Code, StringComparer.OrdinalIgnoreCase);
-        var stepCodes = steps.Select(s => s.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        // las que no están en una etapa (laterales y canceladas) necesitan su historial para dejar la barra donde iba
-        var needHistory = list.Where(o => !stepCodes.Contains(o.StatusCode)).Select(o => o.OrderId).Distinct().ToList();
-        var history = new Dictionary<int, List<string>>();
-        if (needHistory.Count > 0)
+        var maybeRescheduled = list.Where(o => string.Equals(o.StatusCode, OrderStatuses.Unassigned, StringComparison.OrdinalIgnoreCase)
+                                               || string.Equals(o.StatusCode, OrderStatuses.Assigned, StringComparison.OrdinalIgnoreCase)).Select(o => o.OrderId).Distinct().ToList();
+        var failedBefore = new HashSet<int>();
+        if (maybeRescheduled.Count > 0)
         {
             var typeId = await lookups.GetIdAsync(LookupDomains.EntityType, EntityTypes.TransportOrder, ct);
-            var rows = await db.EntityStatusHistories.AsNoTracking().Include(h => h.ToStatus)
-                .Where(h => h.EntityTypeLookupId == typeId && needHistory.Contains(h.EntityId))
-                .OrderByDescending(h => h.ChangedAtUtc).ThenByDescending(h => h.EntityStatusHistoryId).ToListAsync(ct);
-            history = rows.GroupBy(h => h.EntityId).ToDictionary(g => g.Key, g => g.Select(h => h.ToStatus?.InternalCode ?? string.Empty).ToList());
+            var ids = await db.EntityStatusHistories.AsNoTracking()
+                .Where(h => h.EntityTypeLookupId == typeId && maybeRescheduled.Contains(h.EntityId) && h.ToStatus!.InternalCode == OrderStatuses.Failed)
+                .Select(h => h.EntityId).Distinct().ToListAsync(ct);
+            failedBefore = ids.ToHashSet();
         }
 
         var result = new Dictionary<int, OrderProgressResult>();
         foreach (var o in list)
         {
             byCode.TryGetValue(o.StatusCode, out var current);
-            result[o.OrderId] = OrderProgress.Compute(steps, o.StatusCode, current?.Label ?? o.StatusCode, current?.Kind, history.GetValueOrDefault(o.OrderId));
+            result[o.OrderId] = OrderProgress.Compute(o.StatusCode, current?.Label ?? o.StatusCode, current?.Kind, failedBefore.Contains(o.OrderId), tenant.Lang);
         }
         return result;
     }

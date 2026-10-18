@@ -54,10 +54,11 @@ public sealed class PublicTrackingService(TeikemDbContext db, ITenantContext ten
         }
     }
 
-    /// <summary>Arma la respuesta: las etapas de la compañía con cuáles ya pasaron y cuál es la actual.</summary>
+    /// <summary>Arma la respuesta: las cuatro etapas con cuáles ya pasaron y cuál es la actual.</summary>
     public static PublicTrackDto Build(string waybill, string companyName, OrderProgressResult p, IReadOnlyList<ProgressStatus> steps, DateTime? lastUpdateUtc)
     {
-        var list = steps.Select((s, i) => new PublicTrackStepDto(s.Code, s.Label, i + 1 < p.Step || (i + 1 == p.Step && p.State == OrderProgress.Completed), i + 1 == p.Step && p.State != OrderProgress.Completed)).ToList();
+        var cancelled = p.State == OrderProgress.Cancelled;   // cancelada: la barra va apagada (ninguna etapa hecha ni actual)
+        var list = steps.Select((s, i) => new PublicTrackStepDto(s.Code, s.Label, !cancelled && (i + 1 < p.Step || (i + 1 == p.Step && p.State == OrderProgress.Completed)), !cancelled && i + 1 == p.Step && p.State != OrderProgress.Completed)).ToList();
         return new PublicTrackDto(waybill, companyName, p.Step, p.Total, p.State, p.StatusLabel, list, lastUpdateUtc);
     }
 

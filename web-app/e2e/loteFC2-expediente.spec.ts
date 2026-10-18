@@ -237,20 +237,15 @@ test.describe('Órdenes — expediente (Lote F-C2)', () => {
     await expect(toast(page, `Orden ${draft.orderNumber} re-cotizada.`)).toBeVisible()
     expect((await get<OrderDetailDto>(`/api/v1/orders/${draft.publicId}`)).quotedAmount).toBe(180) // caja 120 + sobre 60
 
-    // ---- 2. Marcar como recogida con crédito excedido ----
+    // ---- 2. Marcar como recogida (Lote 107: ya no cotiza ni mide el crédito —eso se revisó al someter—; solo congela el precio) ----
     await headBtn(page, 'Marcar como recogida').click()
     let dialog = page.getByRole('dialog')
     await expect(dialog).toContainText(`Marcar como recogida la orden ${draft.orderNumber}`)
     await shot(page, isMobile, 'fc2-confirmar')
     await dialog.getByRole('button', { name: 'Marcar como recogida', exact: true }).click()
-    const credit = page.getByRole('dialog', { name: 'El cliente excede su límite de crédito' })
-    await expect(credit).toContainText('límite 10.00')
-    await shot(page, isMobile, 'fc2-credito')
-    if (isMobile) await expectNoHorizontalScroll(page)
-    expect((await get<OrderDetailDto>(`/api/v1/orders/${draft.publicId}`)).status).toBe('SUBMITTED')
-    await credit.getByRole('button', { name: 'Autorizar y marcar como recogida' }).click()
     await expect(toast(page, `Orden ${draft.orderNumber} marcada como recogida.`)).toBeVisible()
-    await expect(credit).toBeHidden()
+    // el límite del cliente era 10 y la orden vale 180: no hay aviso de crédito porque pasó el cernidor al crearla (autorizado por API)
+    await expect(page.getByRole('dialog', { name: 'El cliente excede su límite de crédito' })).toHaveCount(0)
     saved = await get<OrderDetailDto>(`/api/v1/orders/${draft.publicId}`)
     expect(saved.status).toBe('PICKUP')
     expect(saved.quotedAmount).toBe(180) // el precio que tenía al marcarla recogida (caja 120 + sobre 60) queda congelado

@@ -16,6 +16,7 @@ import { mkdirSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Download, type Locator, type Page } from '@playwright/test'
 import type { components } from '../src/kernel/api/schema'
+import { contractData, withRates } from './rates'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
 type ClientDetailDto = components['schemas']['ClientDetailDto']
@@ -122,7 +123,8 @@ test.describe('Labels y documentos (Lote F-G2)', () => {
     const s = `${isMobile ? 'M' : 'D'}${RAND}`
     const headers = { Authorization: `Bearer ${await apiToken(request)}` }
     const created: string[] = []
-    const client = await ok<ClientDetailDto>(request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: `Cliente FG2 ${s}` } }), 'cliente')
+    const client = await ok<ClientDetailDto>(request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: `Cliente FG2 ${s}`, contract: contractData() } }), 'cliente')
+    await withRates(request, headers, client)
     const cons = await ok<LocationDto>(
       request.post(`${API_URL}/api/v1/locations`, { headers, data: { clientPublicId: client.publicId, locationType: 'DELIVERY', name: `Farmacia FG2 ${s}`, line1: 'Carr. 2 km 14.5', city: 'Toa Baja', postalCode: '00949', country: 'PR' } }),
       'consignatario',

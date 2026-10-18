@@ -58,6 +58,17 @@ async function adminToken(request: APIRequestContext): Promise<string> {
   return token
 }
 
+
+/** Lote 107: el cernidor es al someter: un cliente necesita contrato activo y tarifa para que se le puedan crear órdenes. */
+async function activateContract(request: APIRequestContext, headers: Record<string, string>, client: { currentContract?: { publicId?: string } | null }): Promise<void> {
+  const day = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10)
+  const contractId = client.currentContract?.publicId ?? ''
+  const r = await request.post(`${API_URL}/api/v1/contracts/${contractId}/rate-components`, { headers, data: { kind: 'PER_SERVICE', serviceType: 'STANDARD', packageType: 'BOX', rate: 10, effectiveFrom: day } })
+  expect(r.ok(), await r.text()).toBeTruthy()
+  const s = await request.post(`${API_URL}/api/v1/contracts/${contractId}/status`, { headers, data: { toCode: 'ACTIVE' } })
+  expect(s.ok(), await s.text()).toBeTruthy()
+}
+
 async function newOrder(request: APIRequestContext, headers: Record<string, string>, clientId: string, locId: string) {
   const o = await request.post(`${API_URL}/api/v1/orders`, { headers, data: { clientPublicId: clientId, consigneeLocationPublicId: locId, packages: [{ pieces: 1 }] } })
   expect(o.ok(), await o.text()).toBeTruthy()
@@ -75,8 +86,10 @@ test('Seguimiento público: la compañía lo enciende y la página muestra solo 
   const put = await request.put(`${API_URL}/api/v1/tenant/tracking`, { headers, data: { slug: SLUG } })
   expect(put.ok(), await put.text()).toBeTruthy()
   const clientName = `Seguimiento ${suffix}`
-  const c = await request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: clientName } })
-  const clientId = ((await c.json()) as { publicId: string }).publicId
+  const c = await request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: clientName, contract: { startDate: new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10), title: 'Contrato de prueba' } } })
+  const created = (await c.json()) as { publicId: string; currentContract?: { publicId?: string } | null }
+  const clientId = created.publicId
+  await activateContract(request, headers, created)
   const consignee = `Sucursal Secreta ${suffix}`
   const loc = await request.post(`${API_URL}/api/v1/locations`, { headers, data: { clientPublicId: clientId, name: consignee, locationType: 'DELIVERY', line1: 'Calle Privada 77', city: 'Ponce', postalCode: '00716', country: 'PR' } })
   const locId = ((await loc.json()) as { publicId: string }).publicId
@@ -98,7 +111,7 @@ test('Seguimiento público: la compañía lo enciende y la página muestra solo 
   await expect(page.getByTestId('track-result-waybill')).toHaveText(draft.waybill, { timeout: 30_000 })
   await expect(page.getByText(/^Paso 1 de \d+ · /).first()).toBeVisible()
   const total = await page.getByTestId(/^segment-/).count()
-  expect(total).toBeGreaterThanOrEqual(3)                                   // tantas etapas como estatus del camino normal de la compañía
+  expect(total).toBe(4)   // Sometida, Recibida, En ruta, Completada                                   // tantas etapas como estatus del camino normal de la compañía
   await expect(page.getByTestId('segment-current')).toHaveCount(1)
   await expect(page.getByTestId('segment-todo')).toHaveCount(total - 1)
   expect(await noHScroll()).toBe(true)
@@ -139,7 +152,7 @@ test('Seguimiento público: la compañía lo enciende y la página muestra solo 
   await page.getByLabel('Número de conduce').fill(held.waybill)
   await page.getByRole('button', { name: 'Consultar' }).click()
   await expect(page.getByTestId('track-result-waybill')).toHaveText(held.waybill, { timeout: 30_000 })
-  await expect(page.getByText(/^Intento fallido · va por el paso \d+ de \d+$/)).toBeVisible()
+  await expect(page.getByText(/^Intentada · va por el paso 3 de 4$/)).toBeVisible()   // Intento fallido = etapa «En ruta» en alerta
   await expect(page.getByTestId('segment-alert')).toHaveCount(1)
   await shot(page, isMobile, 'l103-publica-espera')
   await page.getByLabel('Número de conduce').fill(cancelled.waybill)

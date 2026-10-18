@@ -9,6 +9,7 @@ import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
 import type { components } from '../src/kernel/api/schema'
+import { contractData, withRates } from './rates'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
 
@@ -66,9 +67,11 @@ test('Pulso: el Radar de órdenes abiertas y el aviso de órdenes sin chofer', a
 
   // una orden nueva (borrador) de un cliente propio; con SQL pasa a «En almacén» sin chofer
   let invoice = ''
-  const client = await request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: `Radar ${suffix}` } })
+  const client = await request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: `Radar ${suffix}`, contract: contractData() } })
   expect(client.ok(), await client.text()).toBeTruthy()
-  const clientId = ((await client.json()) as { publicId: string }).publicId
+  const clientJson = (await client.json()) as { publicId: string; currentContract?: { publicId?: string } | null }
+  const clientId = clientJson.publicId
+  await withRates(request, headers, clientJson)
   const loc = await request.post(`${API_URL}/api/v1/locations`, {
     headers,
     data: { clientPublicId: clientId, name: `Sucursal ${suffix}`, locationType: 'DELIVERY', line1: 'Calle 5 #12', city: 'Ponce', postalCode: '00716', country: 'PR' },

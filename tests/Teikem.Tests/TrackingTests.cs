@@ -17,56 +17,45 @@ namespace Teikem.Tests;
 /// </summary>
 public class TrackingTests
 {
-    private static ProgressStatus S(string code, string kind, int sort, string? label = null, bool enabled = true) => new(code, label ?? code, kind, sort, enabled);
-
-    // ---------------------------------------------------------------- reglas de la barra
-
-    private static readonly ProgressStatus[] Seed =
-    {
-        S("DRAFT", "PIPELINE", 1), S("CONFIRMED", "PIPELINE", 2), S("PICKUP", "PIPELINE", 3), S("IN_TRANSIT", "PIPELINE", 6), S("DELIVERED", "TERMINAL", 8),
-        S("ON_HOLD", "LATERAL", 20), S("FAILED", "LATERAL", 22), S("CANCELLED", "TERMINAL", 30),
-    };
+    // ---------------------------------------------------------------- reglas de la barra (cuatro etapas fijas)
 
     [Fact]
-    public void The_steps_are_the_companys_normal_path_in_order_ending_at_the_first_terminal()
+    public void The_bar_has_four_fixed_steps_in_the_askers_language()
     {
-        var steps = OrderProgress.StepsOf(Seed);
-        Assert.Equal(new[] { "DRAFT", "CONFIRMED", "PICKUP", "IN_TRANSIT", "DELIVERED" }, steps.Select(s => s.Code));   // ni los laterales ni la cancelación son etapas
-        // si la compañía apaga un estatus o agrega otro, la barra cambia de tamaño
-        var custom = Seed.Where(s => s.Code != "PICKUP").Append(S("OUT_FOR_DELIVERY", "PIPELINE", 7, "Va para su casa")).Append(S("INBOUND", "PIPELINE", 4, enabled: false)).ToList();
-        var mine = OrderProgress.StepsOf(custom);
-        Assert.Equal(new[] { "DRAFT", "CONFIRMED", "IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED" }, mine.Select(s => s.Code));
-        Assert.Equal("Va para su casa", mine.Single(s => s.Code == "OUT_FOR_DELIVERY").Label);
-        Assert.Empty(OrderProgress.StepsOf(Array.Empty<ProgressStatus>()));
+        Assert.Equal(new[] { "SUBMITTED", "RECEIVED", "ON_ROUTE", "DONE" }, OrderProgress.Steps().Select(s => s.Code));
+        Assert.Equal(new[] { "Sometida", "Recibida", "En ruta", "Completada" }, OrderProgress.Steps("es").Select(s => s.Label));
+        Assert.Equal(new[] { "Submitted", "Received", "On route", "Completed" }, OrderProgress.Steps("en").Select(s => s.Label));
+        Assert.Equal(OrderProgress.TotalSteps, OrderProgress.Steps().Count);
+    }
+
+    [Theory]
+    [InlineData("SUBMITTED", "Sometida", "PIPELINE", false, 1, OrderProgress.InProgress, "Sometida")]
+    [InlineData("PICKUP", "Recogida", "PIPELINE", false, 2, OrderProgress.InProgress, "Recibida")]
+    [InlineData("UNASSIGNED", "Sin asignar", "PIPELINE", false, 2, OrderProgress.InProgress, "Recibida")]
+    [InlineData("ASSIGNED", "Asignada", "PIPELINE", false, 2, OrderProgress.InProgress, "Recibida")]
+    [InlineData("IN_TRANSIT", "En tránsito", "PIPELINE", false, 3, OrderProgress.InProgress, "En ruta")]
+    [InlineData("FAILED", "Intento fallido", "LATERAL", true, 3, OrderProgress.Alert, "Intentada")]
+    [InlineData("UNASSIGNED", "Sin asignar", "PIPELINE", true, 3, OrderProgress.InProgress, "Reprogramada")]   // volvió al almacén tras un intento
+    [InlineData("ASSIGNED", "Asignada", "PIPELINE", true, 3, OrderProgress.InProgress, "Reprogramada")]
+    [InlineData("IN_TRANSIT", "En tránsito", "PIPELINE", true, 3, OrderProgress.InProgress, "En ruta")]          // y cuando el chofer la vuelve a coger, «En ruta»
+    [InlineData("DELIVERED", "Entregada", "TERMINAL", false, 4, OrderProgress.Completed, "Entregada")]
+    [InlineData("IN_WAREHOUSE", "En almacén", "TERMINAL", false, 4, OrderProgress.Completed, "En almacén")]
+    [InlineData("RETURNED", "Devuelta", "TERMINAL", true, 4, OrderProgress.Completed, "Devuelta")]               // cualquier estatus final: prevalece el suyo
+    [InlineData("CANCELLED", "Cancelada", "TERMINAL", false, 4, OrderProgress.Cancelled, "Cancelada")]
+    public void Every_status_lands_in_one_of_the_four_steps(string code, string label, string kind, bool failedBefore, int step, string state, string shown)
+    {
+        var r = OrderProgress.Compute(code, label, kind, failedBefore, "es");
+        Assert.Equal((step, 4, state, code, shown), (r.Step, r.Total, r.State, r.StatusCode, r.StatusLabel));
     }
 
     [Fact]
-    public void Progress_of_an_order_on_the_normal_path_is_its_position_and_the_last_step_is_completed()
+    public void The_extra_wording_follows_the_language_and_an_unknown_company_status_waits_in_received_with_an_alert()
     {
-        var steps = OrderProgress.StepsOf(Seed);
-        var mid = OrderProgress.Compute(steps, "PICKUP", "Recogido", "PIPELINE", null);
-        Assert.Equal((3, 5, OrderProgress.InProgress), (mid.Step, mid.Total, mid.State));
-        var first = OrderProgress.Compute(steps, "draft", "Borrador", "PIPELINE", null);
-        Assert.Equal((1, OrderProgress.InProgress), (first.Step, first.State));
-        var done = OrderProgress.Compute(steps, "DELIVERED", "Entregada", "TERMINAL", null);
-        Assert.Equal((5, 5, OrderProgress.Completed), (done.Step, done.Total, done.State));
-    }
-
-    [Fact]
-    public void A_held_or_failed_order_stays_where_it_was_and_a_cancelled_one_is_empty()
-    {
-        var steps = OrderProgress.StepsOf(Seed);
-        // en espera: la barra se queda en el último estatus normal de su historial (del más reciente al más antiguo)
-        var held = OrderProgress.Compute(steps, "ON_HOLD", "En espera", "LATERAL", new[] { "CONFIRMED", "DRAFT" });
-        Assert.Equal((2, 5, OrderProgress.Alert, "ON_HOLD"), (held.Step, held.Total, held.State, held.StatusCode));
-        // varios laterales seguidos: salta los laterales del historial
-        var failed = OrderProgress.Compute(steps, "FAILED", "Fallida", "LATERAL", new[] { "ON_HOLD", "IN_TRANSIT", "PICKUP" });
-        Assert.Equal((4, OrderProgress.Alert), (failed.Step, failed.State));
-        // sin historial: queda en la primera etapa
-        Assert.Equal(1, OrderProgress.Compute(steps, "ON_HOLD", "En espera", "LATERAL", null).Step);
-        var cancelled = OrderProgress.Compute(steps, "CANCELLED", "Cancelada", "TERMINAL", new[] { "CONFIRMED" });
-        Assert.Equal((0, OrderProgress.Cancelled), (cancelled.Step, cancelled.State));
-        Assert.Equal("Cancelada", cancelled.StatusLabel);
+        Assert.Equal("Attempted", OrderProgress.Compute("FAILED", "x", "LATERAL", true, "en").StatusLabel);
+        Assert.Equal("Rescheduled", OrderProgress.Compute("ASSIGNED", "x", "PIPELINE", true, "en").StatusLabel);
+        Assert.Equal("On route", OrderProgress.Compute("in_transit", "x", "PIPELINE", false, "en").StatusLabel);
+        var other = OrderProgress.Compute("CUSTOM_HOLD", "Retenida", "LATERAL", false, "es");
+        Assert.Equal((2, OrderProgress.Alert, "Retenida"), (other.Step, other.State, other.StatusLabel));
     }
 
     // ---------------------------------------------------------------- identificador y número
@@ -117,8 +106,8 @@ public class TrackingTests
         var dto = await svc.TrackAsync("advance", "cnd-0000002", null, default);   // O2 está RECOGIDA
         Assert.Equal("CND-0000002", dto.Waybill);
         Assert.Equal("Advance Logistics", dto.CompanyName);
-        Assert.Equal(("PICKUP", 2, OrderProgress.InProgress), (dto.Steps[dto.Step - 1].Key, dto.Step, dto.State));
-        Assert.Equal(new[] { "SUBMITTED", "PICKUP", "IN_TRANSIT", "DELIVERED" }, dto.Steps.Select(s => s.Key));   // las etapas de ESTA compañía (4 aquí; 8 con el seed completo)
+        Assert.Equal(("RECEIVED", 2, OrderProgress.InProgress), (dto.Steps[dto.Step - 1].Key, dto.Step, dto.State));   // recogida = «Recibida»
+        Assert.Equal(new[] { "SUBMITTED", "RECEIVED", "ON_ROUTE", "DONE" }, dto.Steps.Select(s => s.Key));        // siempre las mismas cuatro etapas
         Assert.Equal(dto.Steps.Count, dto.Total);
         Assert.Equal(new[] { true, false, false, false }, dto.Steps.Select(s => s.Done));
         Assert.Equal(new[] { false, true, false, false }, dto.Steps.Select(s => s.Current));
@@ -140,7 +129,7 @@ public class TrackingTests
         Assert.Equal(("Otra Compañía", 2), (other.CompanyName, other.Step));
         // el idioma pedido se respeta (los estatus de la compañía en inglés)
         var en = await svc.TrackAsync("advance", "CND-0000001", "en", default);
-        Assert.Equal("SUBMITTED", en.StatusLabel.ToUpperInvariant());   // el fixture solo tiene etiqueta en español: cae a ella
+        Assert.Equal("Submitted", en.StatusLabel);
         Assert.Equal("es", f.Tenant.Lang);                           // y la petición no deja cambiado el idioma
     }
 
@@ -161,13 +150,13 @@ public class TrackingTests
         f.Db.ChangeTracker.Clear();
 
         var held = await svc.TrackAsync("advance", "CND-0000003", null, default);
-        Assert.Equal((2, OrderProgress.Alert, "FAILED"), (held.Step, held.State, held.StatusLabel));   // sigue en «Recogida»
-        Assert.True(held.Steps[0].Done);
-        Assert.True(held.Steps[1].Current);
+        Assert.Equal((3, OrderProgress.Alert, "Intentada"), (held.Step, held.State, held.StatusLabel));   // sigue en «En ruta», en alerta
+        Assert.Equal(new[] { true, true, false, false }, held.Steps.Select(s => s.Done));
+        Assert.True(held.Steps[2].Current);
         Assert.InRange((DateTime.UtcNow - held.LastUpdateUtc!.Value).TotalMinutes, 55, 65);   // el último movimiento fue hace una hora
 
         var cancelled = await svc.TrackAsync("advance", "CND-0000004", null, default);          // O4: cancelada
-        Assert.Equal((0, OrderProgress.Cancelled), (cancelled.Step, cancelled.State));
+        Assert.Equal((4, OrderProgress.Cancelled), (cancelled.Step, cancelled.State));
         Assert.All(cancelled.Steps, s => Assert.False(s.Done || s.Current));
     }
 

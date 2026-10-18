@@ -15,6 +15,7 @@ import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
 import type { components } from '../src/kernel/api/schema'
+import { contractData, withRates } from './rates'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
 type ClientDetailDto = components['schemas']['ClientDetailDto']
@@ -128,7 +129,8 @@ test.describe('Órdenes — alta detallada y lista (Lote F-C1)', () => {
     const clientName = `Cliente FC1 ${suffix}`
     const consigneeName = `Consignatario FC1 ${suffix}`
     const headers = { Authorization: `Bearer ${await apiToken(request)}` }
-    const client = await ok<ClientDetailDto>(request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: clientName } }), 'cliente')
+    const client = await ok<ClientDetailDto>(request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: clientName, contract: contractData() } }), 'cliente')
+    await withRates(request, headers, client)
     await ok(
       request.post(`${API_URL}/api/v1/locations`, {
         headers,

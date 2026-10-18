@@ -14,6 +14,7 @@ import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
 import type { components } from '../src/kernel/api/schema'
+import { contractData, withRates } from './rates'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
 type ClientDetailDto = components['schemas']['ClientDetailDto']
@@ -125,8 +126,10 @@ test.describe('Órdenes — entrada rápida e importación (Lote F-C3)', () => {
         `consignatario ${name}`,
       )
 
-    const client = await ok<ClientDetailDto>(request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: clientName } }), 'cliente')
-    const clientNum = await ok<ClientDetailDto>(request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: clientNumName } }), 'cliente que asigna')
+    const client = await ok<ClientDetailDto>(request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: clientName, contract: contractData() } }), 'cliente')
+    await withRates(request, headers, client)
+    const clientNum = await ok<ClientDetailDto>(request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: clientNumName, contract: contractData() } }), 'cliente que asigna')
+    await withRates(request, headers, clientNum)
     await ok(
       request.patch(`${API_URL}/api/v1/clients/${clientNum.publicId}/number-settings`, { headers, data: { clientAssignsOrderNumber: true } }),
       'el cliente asigna su número de orden',

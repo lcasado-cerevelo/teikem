@@ -9,6 +9,7 @@ import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
 import type { components } from '../src/kernel/api/schema'
+import { contractData, withRates } from './rates'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
 
@@ -81,9 +82,11 @@ test('Liquidación a choferes: intentos, generar, ajustar, revisar, aprobar y ex
   const driverName = `Chofer ${suffix}`
 
   // 1) chofer con tarifas, cliente, orden y un intento fallido
-  const client = await request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: `Liq ${suffix}` } })
+  const client = await request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: `Liq ${suffix}`, contract: contractData() } })
   expect(client.ok(), await client.text()).toBeTruthy()
-  const clientId = ((await client.json()) as { publicId: string }).publicId
+  const clientJson = (await client.json()) as { publicId: string; currentContract?: { publicId?: string } | null }
+  const clientId = clientJson.publicId
+  await withRates(request, headers, clientJson)
   const loc = await request.post(`${API_URL}/api/v1/locations`, {
     headers,
     data: { clientPublicId: clientId, name: `Sucursal ${suffix}`, locationType: 'DELIVERY', line1: 'Calle 5 #12', city: 'Ponce', postalCode: '00716', country: 'PR' },

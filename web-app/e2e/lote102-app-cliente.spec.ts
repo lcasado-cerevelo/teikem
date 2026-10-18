@@ -62,10 +62,23 @@ async function adminToken(request: APIRequestContext): Promise<string> {
   return token
 }
 
+
+/** Lote 107: el cernidor es al someter: un cliente necesita contrato activo y tarifa para que se le puedan crear órdenes. */
+async function activateContract(request: APIRequestContext, headers: Record<string, string>, client: { currentContract?: { publicId?: string } | null }): Promise<void> {
+  const day = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10)
+  const contractId = client.currentContract?.publicId ?? ''
+  const r = await request.post(`${API_URL}/api/v1/contracts/${contractId}/rate-components`, { headers, data: { kind: 'PER_SERVICE', serviceType: 'STANDARD', packageType: 'BOX', rate: 10, effectiveFrom: day } })
+  expect(r.ok(), await r.text()).toBeTruthy()
+  const s = await request.post(`${API_URL}/api/v1/contracts/${contractId}/status`, { headers, data: { toCode: 'ACTIVE' } })
+  expect(s.ok(), await s.text()).toBeTruthy()
+}
+
 async function makeClientWithOrders(request: APIRequestContext, headers: Record<string, string>, name: string, orders: number) {
-  const c = await request.post(`${API_URL}/api/v1/clients`, { headers, data: { name } })
+  const c = await request.post(`${API_URL}/api/v1/clients`, { headers, data: { name, contract: { startDate: new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10), title: 'Contrato de prueba' } } })
   expect(c.ok(), await c.text()).toBeTruthy()
-  const clientId = ((await c.json()) as { publicId: string }).publicId
+  const created = (await c.json()) as { publicId: string; currentContract?: { publicId?: string } | null }
+  const clientId = created.publicId
+  await activateContract(request, headers, created)
   const loc = await request.post(`${API_URL}/api/v1/locations`, {
     headers,
     data: { clientPublicId: clientId, name: `Sucursal ${name}`, locationType: 'DELIVERY', line1: 'Calle 5 #12', city: 'Ponce', postalCode: '00716', country: 'PR' },
