@@ -9032,3 +9032,22 @@ Está en Automático y el teléfono o el navegador está en modo oscuro. Escoja 
 **¿Puede otra persona de mi empresa leer mis mensajes?** No: cada persona tiene su propia conversación con el equipo.
 
 **¿Se pueden adjuntar archivos?** No, por ahora solo texto.
+
+
+## Nueva orden del cliente (Lote 105)
+
+**No veo «Nueva orden» en la app.** Su rol es de solo consulta (`CLIENT_READONLY`); por API da 403 «Su usuario solo puede consultar…». Pídale a la compañía que cambie su rol.
+
+**«Escoja el consignatario o escriba uno nuevo (nombre, dirección y ciudad).» (400)** — Falta el consignatario o el nuevo no tiene nombre, dirección y ciudad.
+
+**«Escoja un consignatario o escriba uno nuevo, no las dos cosas.» (400)** — Se mandaron los dos; quite uno.
+
+**«Agregue al menos un paquete.» (400)** / **«Una orden puede llevar hasta 50 paquetes.» (400)** — La orden lleva de 1 a 50 paquetes.
+
+**«Las notas no pueden pasar de 500 caracteres.» (400)** — Acorte las notas.
+
+**«El número de factura lo asigna Teikem para este cliente; déjelo en blanco.» (400)** — Su cuenta no teclea facturas: no escriba número de factura (el campo no aparece en la app).
+
+**¿La orden que creo necesita aprobación de la compañía?** No: entra directo al flujo normal, como una creada por la compañía.
+
+**¿Puedo ponerle precio o prioridad?** No; solo lo básico. La compañía completa el resto.

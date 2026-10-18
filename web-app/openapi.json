@@ -36257,6 +36257,52 @@
             }
           }
         }
+      },
+      "post": {
+        "tags": [
+          "Portal"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortalOrderCreateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortalOrderCreateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortalOrderCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalOrderCreatedDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalOrderCreatedDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalOrderCreatedDto"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/portal/orders/{publicId}": {
@@ -37021,6 +37067,35 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PortalUnreadDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/portal/order-form": {
+      "get": {
+        "tags": [
+          "Portal"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalOrderFormDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalOrderFormDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalOrderFormDto"
                 }
               }
             }
@@ -65434,6 +65509,189 @@
           },
           "hasMore": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PortalOrderCreateRequest": {
+        "type": "object",
+        "properties": {
+          "consigneePublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "newConsignee": {
+            "$ref": "#/components/schemas/PortalNewConsigneeRequest"
+          },
+          "pickupPublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "packages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PortalPackageRequest"
+            },
+            "nullable": true
+          },
+          "codAmount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "clientInvoiceNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "requestedDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PortalNewConsigneeRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "line1": {
+            "type": "string",
+            "nullable": true
+          },
+          "line2": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "type": "string",
+            "nullable": true
+          },
+          "postalCode": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PortalOrderFormDto": {
+        "type": "object",
+        "properties": {
+          "canCreate": {
+            "type": "boolean"
+          },
+          "consignees": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PortalPlaceDto"
+            },
+            "nullable": true
+          },
+          "pickups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PortalPlaceDto"
+            },
+            "nullable": true
+          },
+          "maxPackages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "clientTypesInvoiceNumber": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PortalPlaceDto": {
+        "type": "object",
+        "properties": {
+          "publicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "line1": {
+            "type": "string",
+            "nullable": true
+          },
+          "line2": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "type": "string",
+            "nullable": true
+          },
+          "postalCode": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PortalPackageRequest": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "pieces": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "weightKg": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PortalOrderCreatedDto": {
+        "type": "object",
+        "properties": {
+          "publicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "waybillNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "orderNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "statusLabel": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

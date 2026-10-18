@@ -9,7 +9,7 @@ import { Button, Card, Chip, Field, Muted, Notice, Screen, Spinner, Title, useCo
 import { formatDate, statusTone } from '../format'
 import { ProgressBar } from '../progress/ProgressBar'
 import { toProgressInfo } from '../progress/progressInfo'
-import { listOrders, PAGE_SIZE, type PortalOrderListItemDto } from '../portalApi'
+import { getOrderForm, listOrders, PAGE_SIZE, type PortalOrderListItemDto } from '../portalApi'
 
 export function OrdersScreen() {
   const colors = useColors()
@@ -22,6 +22,11 @@ export function OrdersScreen() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const seq = useRef(0)
+  const [canCreate, setCanCreate] = useState(false)   // solo los roles que pueden crear órdenes ven el botón
+
+  useEffect(() => {
+    getOrderForm().then((f) => setCanCreate(!!f.canCreate)).catch(() => setCanCreate(false))
+  }, [])
 
   // la búsqueda espera a que se deje de escribir
   useEffect(() => {
@@ -55,6 +60,7 @@ export function OrdersScreen() {
   return (
     <Screen>
       <Title>{t('orders.title')}</Title>
+      {canCreate && <Button title={t('orders.new')} onPress={() => router.push('/order/new')} testID="orders-new" />}
       <Field label={t('orders.search')} value={search} onChangeText={setSearch} placeholder={t('orders.searchPlaceholder')} autoCapitalize="none" returnKeyType="search" testID="orders-search" />
       {!!error && (
         <>

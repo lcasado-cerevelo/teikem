@@ -14,7 +14,7 @@ namespace Teikem.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/portal")]
-public sealed class PortalController(AuthService auth, PortalService portal, ClientMessagingService messages) : ControllerBase
+public sealed class PortalController(AuthService auth, PortalService portal, ClientMessagingService messages, PortalOrderEntryService entry) : ControllerBase
 {
     /// <summary>
     /// Login del portal: correo y contraseña (+ cliente opcional). Puede responder: <c>ok</c> (tokens), <c>mfa_required</c> (segundo paso; con challenge), <c>browser_confirmation_required</c> (computadora nueva: se manda un correo) o
@@ -63,6 +63,14 @@ public sealed class PortalController(AuthService auth, PortalService portal, Cli
     [HttpGet("orders"), Authorize, RequireModule(ModuleKeys.ClientPortal)]
     public Task<PagedResult<PortalOrderListItemDto>> Orders([FromQuery] string? search, [FromQuery] string? status, [FromQuery] DateTime? fromUtc, [FromQuery] DateTime? toUtc,
         [FromQuery] int skip, [FromQuery] int take, CancellationToken ct) => portal.ListOrdersAsync(search, status, fromUtc, toUtc, skip, take, ct);
+
+    /// <summary>Formulario de «Nueva orden»: si mi rol puede crear y mis consignatarios y puntos de recogida (solo los de mi cliente).</summary>
+    [HttpGet("order-form"), Authorize, RequireModule(ModuleKeys.ClientPortal)]
+    public Task<PortalOrderFormDto> OrderForm(CancellationToken ct) => entry.GetFormAsync(ct);
+
+    /// <summary>Crear una orden (solo lo básico; entra al flujo normal). Roles CLIENT_ADMIN y CLIENT_OPERATOR; el cliente sale de la sesión.</summary>
+    [HttpPost("orders"), Authorize, RequireModule(ModuleKeys.ClientPortal)]
+    public Task<PortalOrderCreatedDto> CreateOrder([FromBody] PortalOrderCreateRequest req, CancellationToken ct) => entry.CreateAsync(req, ct);
 
     /// <summary>Una orden mía con su línea de tiempo; 404 si es de otro cliente o no existe (igual respuesta).</summary>
     [HttpGet("orders/{publicId:guid}"), Authorize, RequireModule(ModuleKeys.ClientPortal)]

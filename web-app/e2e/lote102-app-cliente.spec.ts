@@ -97,7 +97,7 @@ test('App del cliente: computadora nueva, MFA, documento legal, órdenes, «No c
   const b = await makeClientWithOrders(request, headers, `Cliente B ${suffix}`, 1)
   const email = `app.${suffix.toLowerCase()}@demo.test`
   const password = `App_${suffix}_Clave-2026!`
-  const invite = await request.post(`${API_URL}/api/v1/clients/${a.clientId}/portal-users/invite`, { headers, data: { email, fullName: 'Cliente Prueba', role: 'CLIENT_READONLY' } })
+  const invite = await request.post(`${API_URL}/api/v1/clients/${a.clientId}/portal-users/invite`, { headers, data: { email, fullName: 'Cliente Prueba', role: 'CLIENT_OPERATOR' } })
   expect(invite.ok(), await invite.text()).toBeTruthy()
   const inviteToken = ((await invite.json()) as { inviteToken?: string }).inviteToken
   test.skip(!inviteToken, 'Portal:ReturnInviteTokenInResponse está apagado en este API')
@@ -181,6 +181,27 @@ test('App del cliente: computadora nueva, MFA, documento legal, órdenes, «No c
   await page.goto(`${APP_URL}/order/${b.orders[0].publicId}`)
   await expect(page.getByRole('alert')).toBeVisible({ timeout: 30_000 })
   await expect(page.getByText('Seguimiento')).toHaveCount(0)
+
+  // 6b) Lote 105: «Nueva orden» (el rol Operador puede crear): se escribe un consignatario nuevo, se manda y se abre la ficha con el seguimiento
+  await page.goto(`${APP_URL}/orders`)
+  await expect(page.getByTestId('orders-new')).toBeVisible({ timeout: 30_000 })
+  await page.getByTestId('orders-new').click()
+  await expect(page.getByText('Escribir un consignatario nuevo')).toBeVisible({ timeout: 30_000 })
+  await shot(page, isMobile, 'l105-nueva-orden')
+  await page.getByTestId('neworder-submit').click()                                  // vacío: avisa sin mandar
+  await expect(page.getByText(/Escoja el consignatario o escriba uno nuevo/)).toBeVisible()
+  await page.getByTestId('consignee-new').click()
+  await page.getByTestId('new-name').fill('Tienda Portal 105')
+  await page.getByTestId('new-line1').fill('Calle 9 #3')
+  await page.getByTestId('new-city').fill('Ponce')
+  await page.getByTestId('pkg-desc-0').fill('Caja chica')
+  await page.getByTestId('pkg-weight-0').fill('2,5')
+  await page.getByTestId('order-notes').fill('Entregar por la mañana')
+  await shot(page, isMobile, 'l105-nueva-orden-llena')
+  await page.getByTestId('neworder-submit').click()
+  await expect(page.getByText('Seguimiento')).toBeVisible({ timeout: 30_000 })      // la ficha de la orden recién creada
+  await expect(page.getByText(/Tienda Portal 105/)).toBeVisible()
+  await shot(page, isMobile, 'l105-orden-creada')
 
   // 7) avisos y ajustes
   await page.goto(`${APP_URL}/notices`)

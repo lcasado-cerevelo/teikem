@@ -91,6 +91,7 @@ function Gate() {
       <Stack screenOptions={{ headerShown: false, headerStyle: { backgroundColor: colors.brand }, headerTintColor: colors.onBrand, headerBackTitle: t('common.back') }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="order/[id]" options={{ headerShown: true }} />
+        <Stack.Screen name="order/new" options={{ headerShown: true, title: t('newOrder.title') }} />
       </Stack>
       {!!session && legalRequired === null && (
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.bg, justifyContent: 'center' }}>

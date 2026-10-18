@@ -66,3 +66,29 @@ public sealed record PortalSummaryDto(int TotalOrders, IReadOnlyList<PortalStatu
 
 /// <summary>Un aviso de la bandeja del portal: el resumen que la compañía configuró mandar a este cliente (canal «bandeja del portal»).</summary>
 public sealed record PortalNotificationDto(Guid PublicId, string Kind, string Subject, string BodyText, DateTime CreatedAtUtc);
+
+
+// ---------------------------------------------------------------- Lote 105: entrada de órdenes del cliente
+
+/// <summary>Un lugar del cliente para escoger en el formulario (consignatario o punto de recogida): sin códigos internos ni zonas.</summary>
+public sealed record PortalPlaceDto(Guid PublicId, string Name, string Line1, string? Line2, string City, string? State, string? PostalCode);
+
+/// <summary>Lo que el formulario de «Nueva orden» necesita: si esta persona puede crear, y los consignatarios y puntos de recogida del cliente.</summary>
+public sealed record PortalOrderFormDto(bool CanCreate, IReadOnlyList<PortalPlaceDto> Consignees, IReadOnlyList<PortalPlaceDto> Pickups, int MaxPackages, bool ClientTypesInvoiceNumber = false);
+
+public sealed record PortalNewConsigneeRequest(string? Name, string? Line1, string? Line2, string? City, string? State, string? PostalCode);
+
+public sealed record PortalPackageRequest(string? Description, int Pieces = 1, decimal? WeightKg = null);
+
+/// <summary>Nueva orden desde el portal. Exactamente uno de ConsigneePublicId / NewConsignee. Solo lo básico: sin precios, prioridad, tipo de servicio ni entrega especial.</summary>
+public sealed record PortalOrderCreateRequest(
+    Guid? ConsigneePublicId,
+    PortalNewConsigneeRequest? NewConsignee,
+    Guid? PickupPublicId,
+    IList<PortalPackageRequest>? Packages,
+    decimal? CodAmount,
+    string? ClientInvoiceNumber,
+    DateTime? RequestedDate,
+    string? Notes);
+
+public sealed record PortalOrderCreatedDto(Guid PublicId, string WaybillNumber, string OrderNumber, string Status, string StatusLabel);

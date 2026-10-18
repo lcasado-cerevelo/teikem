@@ -48,8 +48,9 @@ Hecho a partir de lo que dictó Luis el 2026-10-17 y de sus respuestas a tres pr
 | **102** | **app-cliente** (Expo web+móvil, instalable, hecho): login con «No confiar» recordada, computadora de confianza, MFA, documento legal, inicio, órdenes, ficha con seguimiento, avisos, ajustes y **Abrir con huella** (teléfono). Facturas, COD y mensajes llegan en lotes siguientes | La primera pantalla del portal |
 | **103** | **«¿Cómo va mi orden?»** público por conduce (hecho: solo el avance, sin nombres ni direcciones, tope de consultas, la compañía lo enciende con su identificador) y la **barra de progreso** (tantas etapas como estatus del camino normal de la compañía) en la lista, la ficha y la página pública; el portal del consignatario la reutiliza | |
 | **104** | **Mensajes** del portal con el equipo de servicio al cliente (hecho): una conversación por persona, equipo designado por cliente o, sin equipo, quien tenga `clientmessages.reply` (rol «Servicio al cliente»); el equipo puede escribirle primero desde el expediente; pestaña «Mensajes» en app-cliente y bandeja en la web; sin adjuntos ni aviso por correo todavía | |
-| 105 | **Entrada de órdenes** del cliente en el portal, **acceso del consignatario** (primer ingreso, avisos con su aceptación) y **órdenes que crean los consignatarios** | |
-| 106+ | Consignatarios, configuración, perfil, indicadores del cliente; seguimiento en vivo cuando exista P7 | |
+| **105** | **Entrada de órdenes** del cliente en el portal (hecho): roles administrador y operador, consignatario existente o nuevo, solo lo básico, entra directo al flujo normal | |
+| 106 | **Acceso del consignatario** (invitación, primer ingreso, avisos con su aceptación) y **órdenes que crean los consignatarios** (confirma el cliente) | SMS espera a Twilio |
+| 107+ | Consignatarios, configuración, perfil, indicadores del cliente; seguimiento en vivo cuando exista P7 | |
 
 ## Decisiones propias a revisar con Luis
 - El número de conduce lo genera Teikem (patrón configurable, por omisión `CND-#######`); sigue habiendo número de orden del cliente (puede repetirse entre clientes) y número de empaque (EMP-#####). El label pasa a mostrar el conduce como «Waybill» (antes mostraba el número de orden).

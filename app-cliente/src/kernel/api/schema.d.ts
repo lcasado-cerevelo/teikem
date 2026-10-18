@@ -26879,7 +26879,34 @@ export interface paths {
             };
         };
         put?: never;
-        post?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PortalOrderCreateRequest"];
+                    "text/json": components["schemas"]["PortalOrderCreateRequest"];
+                    "application/*+json": components["schemas"]["PortalOrderCreateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalOrderCreatedDto"];
+                        "application/json": components["schemas"]["PortalOrderCreatedDto"];
+                        "text/json": components["schemas"]["PortalOrderCreatedDto"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -27529,6 +27556,43 @@ export interface paths {
                         "text/plain": components["schemas"]["PortalUnreadDto"];
                         "application/json": components["schemas"]["PortalUnreadDto"];
                         "text/json": components["schemas"]["PortalUnreadDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/order-form": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalOrderFormDto"];
+                        "application/json": components["schemas"]["PortalOrderFormDto"];
+                        "text/json": components["schemas"]["PortalOrderFormDto"];
                     };
                 };
             };
@@ -36949,6 +37013,61 @@ export interface components {
             personEmail?: string | null;
             messages?: components["schemas"]["ClientMessageDto"][] | null;
             hasMore?: boolean;
+        };
+        PortalOrderCreateRequest: {
+            /** Format: uuid */
+            consigneePublicId?: string | null;
+            newConsignee?: components["schemas"]["PortalNewConsigneeRequest"];
+            /** Format: uuid */
+            pickupPublicId?: string | null;
+            packages?: components["schemas"]["PortalPackageRequest"][] | null;
+            /** Format: double */
+            codAmount?: number | null;
+            clientInvoiceNumber?: string | null;
+            /** Format: date-time */
+            requestedDate?: string | null;
+            notes?: string | null;
+        };
+        PortalNewConsigneeRequest: {
+            name?: string | null;
+            line1?: string | null;
+            line2?: string | null;
+            city?: string | null;
+            state?: string | null;
+            postalCode?: string | null;
+        };
+        PortalOrderFormDto: {
+            canCreate?: boolean;
+            consignees?: components["schemas"]["PortalPlaceDto"][] | null;
+            pickups?: components["schemas"]["PortalPlaceDto"][] | null;
+            /** Format: int32 */
+            maxPackages?: number;
+            clientTypesInvoiceNumber?: boolean;
+        };
+        PortalPlaceDto: {
+            /** Format: uuid */
+            publicId?: string;
+            name?: string | null;
+            line1?: string | null;
+            line2?: string | null;
+            city?: string | null;
+            state?: string | null;
+            postalCode?: string | null;
+        };
+        PortalPackageRequest: {
+            description?: string | null;
+            /** Format: int32 */
+            pieces?: number;
+            /** Format: double */
+            weightKg?: number | null;
+        };
+        PortalOrderCreatedDto: {
+            /** Format: uuid */
+            publicId?: string;
+            waybillNumber?: string | null;
+            orderNumber?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
         };
     };
     responses: never;

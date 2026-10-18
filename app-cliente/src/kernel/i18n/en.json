@@ -97,7 +97,8 @@
     "empty": "There are no orders yet.",
     "noMatches": "No order matches the search.",
     "orderNumber": "Order {number}",
-    "loadMore": "Load more ({shown} of {total})"
+    "loadMore": "Load more ({shown} of {total})",
+    "new": "New order"
   },
   "order": {
     "title": "Order",
@@ -184,5 +185,41 @@
     "send": "Send",
     "charsLeft": "{n} characters left",
     "tooMany": "Too many messages in a row; please wait a while before writing again."
+  },
+  "newOrder": {
+    "title": "New order",
+    "help": "Fill in the basics only; the order goes straight into the normal flow and you follow it from “Orders”.",
+    "readOnly": "Your user can only view. Ask an administrator at your company to let you create orders.",
+    "consignee": "Consignee",
+    "filter": "Search consignee",
+    "newConsignee": "Enter a new consignee",
+    "name": "Name",
+    "line1": "Address",
+    "line2": "Address (line 2)",
+    "city": "City",
+    "state": "State",
+    "postalCode": "Postal code",
+    "pickup": "Pickup",
+    "pickupDefault": "Where it is usually picked up",
+    "packages": "Packages",
+    "description": "Description",
+    "pieces": "Pieces",
+    "weight": "Weight (kg)",
+    "addPackage": "Add another package",
+    "removePackage": "Remove this package",
+    "cod": "Cash on delivery (COD), if any",
+    "invoice": "Your invoice number",
+    "requestedDate": "Requested date",
+    "notes": "Notes",
+    "submit": "Create order",
+    "errors": {
+      "consignee": "Choose the consignee or enter a new one (name, address and city).",
+      "packages": "Add 1 to {max} packages.",
+      "pieces": "Pieces must be a whole number, 1 or more.",
+      "weight": "Weight must be a number.",
+      "cod": "The amount must be a number.",
+      "date": "Write the date as YYYY-MM-DD, today or later.",
+      "notes": "Notes cannot exceed {max} characters."
+    }
   }
 }

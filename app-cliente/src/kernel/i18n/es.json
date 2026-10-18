@@ -97,7 +97,8 @@
     "empty": "Todavía no hay órdenes.",
     "noMatches": "Ninguna orden coincide con la búsqueda.",
     "orderNumber": "Orden {number}",
-    "loadMore": "Cargar más ({shown} de {total})"
+    "loadMore": "Cargar más ({shown} de {total})",
+    "new": "Nueva orden"
   },
   "order": {
     "title": "Orden",
@@ -184,5 +185,41 @@
     "send": "Enviar",
     "charsLeft": "{n} caracteres restantes",
     "tooMany": "Demasiados mensajes seguidos; espere un rato para volver a escribir."
+  },
+  "newOrder": {
+    "title": "Nueva orden",
+    "help": "Escriba solo lo básico; la orden entra directo al flujo normal y usted la sigue desde «Órdenes».",
+    "readOnly": "Su usuario solo puede consultar. Pídale a un administrador de su empresa que le dé permiso para crear órdenes.",
+    "consignee": "Consignatario",
+    "filter": "Buscar consignatario",
+    "newConsignee": "Escribir un consignatario nuevo",
+    "name": "Nombre",
+    "line1": "Dirección",
+    "line2": "Dirección (línea 2)",
+    "city": "Ciudad",
+    "state": "Estado",
+    "postalCode": "Código postal",
+    "pickup": "Recogida",
+    "pickupDefault": "Donde se recoge normalmente",
+    "packages": "Paquetes",
+    "description": "Descripción",
+    "pieces": "Piezas",
+    "weight": "Peso (kg)",
+    "addPackage": "Agregar otro paquete",
+    "removePackage": "Quitar este paquete",
+    "cod": "Cobro a la entrega (COD), si aplica",
+    "invoice": "Su número de factura",
+    "requestedDate": "Fecha pedida",
+    "notes": "Notas",
+    "submit": "Crear orden",
+    "errors": {
+      "consignee": "Escoja el consignatario o escriba uno nuevo (nombre, dirección y ciudad).",
+      "packages": "Agregue de 1 a {max} paquetes.",
+      "pieces": "Las piezas deben ser un número entero de 1 o más.",
+      "weight": "El peso debe ser un número.",
+      "cod": "El cobro debe ser un número.",
+      "date": "Escriba la fecha como AAAA-MM-DD, de hoy en adelante.",
+      "notes": "Las notas no pueden pasar de {max} caracteres."
+    }
   }
 }
