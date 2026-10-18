@@ -12,6 +12,7 @@
   "tabs": {
     "home": "Inicio",
     "orders": "Órdenes",
+    "shipments": "Envíos",
     "notices": "Avisos",
     "messages": "Mensajes",
     "settings": "Ajustes"
@@ -317,6 +318,15 @@
     "chatHelp": "Su conversación con {name}. Solo ese consignatario y las personas de su cliente la ven.",
     "readOnly": "Su rol es de solo consulta: puede leer los mensajes, no contestarlos.",
     "other": "Consignatario",
+    "loadMore": "Ver más ({shown} de {total})"
+  },
+  "consigneeOrders": {
+    "title": "Mis envíos",
+    "help": "Las órdenes de su cliente que se entregan a usted. Solo se consultan.",
+    "search": "Buscar por conduce",
+    "searchPlaceholder": "Número de conduce",
+    "empty": "Todavía no hay envíos para usted.",
+    "waybill": "Conduce {value}",
     "loadMore": "Ver más ({shown} de {total})"
   }
 }

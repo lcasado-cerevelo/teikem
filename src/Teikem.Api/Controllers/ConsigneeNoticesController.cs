@@ -81,7 +81,7 @@ public sealed class PortalConsigneeAccessController(ConsigneeAccessService acces
 [Route("api/v1/portal/consignee")]
 [Authorize]
 [RequireModule(ModuleKeys.ClientPortal)]
-public sealed class PortalConsigneeController(ConsigneeSelfService self, ConsigneeMessagingService messages) : ControllerBase
+public sealed class PortalConsigneeController(ConsigneeSelfService self, ConsigneeMessagingService messages, ConsigneeOrdersService orders) : ControllerBase
 {
     [HttpGet("me")]
     public Task<ConsigneeMeDto> Me(CancellationToken ct) => self.GetMeAsync(ct);
@@ -93,6 +93,14 @@ public sealed class PortalConsigneeController(ConsigneeSelfService self, Consign
     /// <summary>La bandeja: los avisos que se le enviaron (más nuevos primero).</summary>
     [HttpGet("notices")]
     public Task<PagedResult<ConsigneeInboxItemDto>> Notices([FromQuery] int skip, [FromQuery] int take, CancellationToken ct) => self.ListNoticesAsync(skip, take, ct);
+
+    /// <summary>Mis envíos: las órdenes de mi cliente que se entregan en mi consignatario (solo lectura; el consignatario NO crea órdenes). Búsqueda por conduce; paginado (máximo 100).</summary>
+    [HttpGet("orders")]
+    public Task<PagedResult<ConsigneeOrderListItemDto>> Orders([FromQuery] string? search, [FromQuery] int skip, [FromQuery] int take, CancellationToken ct) => orders.ListAsync(search, skip, take, ct);
+
+    /// <summary>Un envío mío con su avance y línea de tiempo; 404 si no es mío o no existe (igual respuesta).</summary>
+    [HttpGet("orders/{publicId:guid}")]
+    public Task<ConsigneeOrderDto> Order(Guid publicId, CancellationToken ct) => orders.GetAsync(publicId, ct);
 
     /// <summary>Mi conversación con mi cliente: los últimos mensajes (o los anteriores a <c>before</c>) en orden cronológico y cuántos del cliente no he leído.</summary>
     [HttpGet("messages")]

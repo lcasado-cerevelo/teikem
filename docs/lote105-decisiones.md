@@ -1,6 +1,6 @@
 # Lote 105 — Entrada de órdenes del cliente en el portal (portal de clientes, 9) (2026-10-17)
 
-El 105 original juntaba tres cosas; Luis eligió partirlo: **105 = entrada de órdenes del cliente**; **el acceso del consignatario pasó al lote 111** (invitación, primer ingreso, avisos con su aceptación y las órdenes que él crea, con confirmación del cliente). Decisiones suyas (preguntadas): la orden **entra directo al flujo normal** y el cliente escribe **solo lo básico**.
+El 105 original juntaba tres cosas; Luis eligió partirlo: **105 = entrada de órdenes del cliente**; **el acceso del consignatario pasó al lote 111** (invitación, primer ingreso y avisos con su aceptación; **corrección de Luis (2026-10-18): el consignatario no crea órdenes, solo las ve**). Decisiones suyas (preguntadas): la orden **entra directo al flujo normal** y el cliente escribe **solo lo básico**.
 
 ## Qué se construyó
 - **Servidor** (`PortalOrderEntryService`, `GET /api/v1/portal/order-form`, `POST /api/v1/portal/orders`): reutiliza `OrderService.CreateAsync` con el alcance del cliente de la sesión (mismas validaciones, numeración, conduce, crédito, duplicados); pueden crear `CLIENT_ADMIN` y `CLIENT_OPERATOR` (`CLIENT_READONLY` → 403); el formulario ofrece solo los consignatarios (DELIVERY) y recogidas (PICKUP/BOTH) activos del cliente; el campo de factura solo si el cliente la teclea; validaciones propias (consignatario, 1–50 paquetes, notas ≤ 500). Sin permiso nuevo ni cambio de esquema.

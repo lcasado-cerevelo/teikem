@@ -51,6 +51,11 @@ export const getConsigneeMe = () => unwrap(api.GET('/api/v1/portal/consignee/me'
 export const setConsigneeChannel = (channel: 'EMAIL' | 'SMS', enabled: boolean) =>
   unwrap(api.PUT('/api/v1/portal/consignee/me/notices/{channel}', { params: { path: { channel } }, body: { enabled } }))
 export const listConsigneeInbox = (skip = 0, take = PAGE_SIZE) => unwrap(api.GET('/api/v1/portal/consignee/notices', { params: { query: { skip, take } } }))
+export type ConsigneeOrderListItemDto = Schemas['ConsigneeOrderListItemDto']
+export type ConsigneeOrderDto = Schemas['ConsigneeOrderDto']
+/** Mis envíos (solo lectura: el consignatario no crea órdenes). */
+export const listConsigneeOrders = (search: string, skip = 0, take = PAGE_SIZE) => unwrap(api.GET('/api/v1/portal/consignee/orders', { params: { query: { search: search || undefined, skip, take } } }))
+export const getConsigneeOrder = (publicId: string) => unwrap(api.GET('/api/v1/portal/consignee/orders/{publicId}', { params: { path: { publicId } } }))
 export const getConsigneeOwnMessages = (before?: number, take = 30) => unwrap(api.GET('/api/v1/portal/consignee/messages', { params: { query: { before, take } } }))
 export const sendConsigneeOwnMessage = (body: string) => unwrap(api.POST('/api/v1/portal/consignee/messages', { body: { body } }))
 export const markConsigneeOwnMessagesRead = async () => {

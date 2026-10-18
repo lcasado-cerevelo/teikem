@@ -12,6 +12,7 @@
   "tabs": {
     "home": "Home",
     "orders": "Orders",
+    "shipments": "Shipments",
     "notices": "Notices",
     "messages": "Messages",
     "settings": "Settings"
@@ -317,6 +318,15 @@
     "chatHelp": "Your conversation with {name}. Only that consignee and the people at your client can see it.",
     "readOnly": "Your role is read-only: you can read the messages, not answer them.",
     "other": "Consignee",
+    "loadMore": "Show more ({shown} of {total})"
+  },
+  "consigneeOrders": {
+    "title": "My shipments",
+    "help": "Your client's orders that are delivered to you. View only.",
+    "search": "Search by waybill",
+    "searchPlaceholder": "Waybill number",
+    "empty": "There are no shipments for you yet.",
+    "waybill": "Waybill {value}",
     "loadMore": "Show more ({shown} of {total})"
   }
 }

@@ -1,0 +1,93 @@
+// Ficha de un envío del consignatario (Lote 117d): conduce, estatus y avance, su dirección de entrega, los paquetes y la línea de tiempo. Sin precios, factura ni COD. Un envío que no es suyo responde «no encontrado».
+import { Stack, useLocalSearchParams } from 'expo-router'
+import { Text, View } from 'react-native'
+
+import { apiErrorMessage } from '../../kernel/api/client'
+import { useT } from '../../kernel/i18n/useT'
+import { Button, Card, Chip, Muted, Notice, Screen, Spinner, Title, useColors } from '../../kernel/ui/ui'
+import { useAsync } from '../../kernel/ui/useAsync'
+import { formatDate, formatDateTime, statusTone } from '../format'
+import { ProgressBar, ProgressSteps } from '../progress/ProgressBar'
+import { toProgressInfo } from '../progress/progressInfo'
+import { getConsigneeOrder } from '../portalApi'
+
+export function ConsigneeOrderDetailScreen() {
+  const colors = useColors()
+  const { t, lang } = useT()
+  const { id } = useLocalSearchParams<{ id: string }>()
+  const order = useAsync(() => getConsigneeOrder(String(id)), [id])
+  const o = order.data
+
+  return (
+    <>
+      <Stack.Screen options={{ title: o?.waybillNumber || t('order.title'), headerShown: true }} />
+      <Screen>
+        {!!order.error && (
+          <>
+            <Notice>{apiErrorMessage(order.error)}</Notice>
+            <Button title={t('common.retry')} variant="secondary" onPress={order.reload} />
+          </>
+        )}
+        {order.loading && !o && <Spinner />}
+        {!!o && (
+          <>
+            <Title>{o.waybillNumber}</Title>
+            <Chip label={o.statusLabel ?? o.status ?? ''} tone={statusTone(o.status)} />
+            {toProgressInfo(o.progress) && (
+              <Card>
+                <ProgressBar progress={toProgressInfo(o.progress)!} />
+                {(o.stepLabels ?? []).length > 0 && <ProgressSteps labels={o.stepLabels ?? []} progress={toProgressInfo(o.progress)!} />}
+              </Card>
+            )}
+            <Card>
+              <Row label={t('order.waybill')} value={o.waybillNumber} />
+              <Row label={t('order.service')} value={o.serviceTypeLabel} />
+              <Row label={t('order.created')} value={formatDateTime(o.createdAtUtc, lang)} />
+              {!!o.promisedDate && <Row label={t('order.promised')} value={formatDate(o.promisedDate, lang)} />}
+              <Row label={t('order.pieces')} value={String(o.totalPieces ?? 0)} />
+            </Card>
+            {!!o.delivery && (
+              <Card>
+                <Text style={{ fontWeight: '700', color: colors.text }}>{t('order.delivery')}</Text>
+                {!!o.delivery.name && <Text style={{ color: colors.text }}>{o.delivery.name}</Text>}
+                <Text style={{ color: colors.text }}>{[o.delivery.line1, o.delivery.line2].filter(Boolean).join(', ')}</Text>
+                <Muted>{[o.delivery.city, o.delivery.state, o.delivery.postalCode].filter(Boolean).join(', ')}</Muted>
+              </Card>
+            )}
+            {(o.packages ?? []).length > 0 && (
+              <Card>
+                <Text style={{ fontWeight: '700', color: colors.text }}>{t('order.packages')}</Text>
+                {(o.packages ?? []).map((p, i) => (
+                  <Text key={i} style={{ color: colors.text }}>{`${p.pieces} × ${p.description}`}</Text>
+                ))}
+              </Card>
+            )}
+            <Card>
+              <Text style={{ fontWeight: '700', color: colors.text }}>{t('order.timeline')}</Text>
+              {(o.timeline ?? []).length === 0 && <Muted>{t('order.noTimeline')}</Muted>}
+              {(o.timeline ?? []).map((e, i) => (
+                <View key={i} style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start', paddingVertical: 4 }}>
+                  <View style={{ width: 10, height: 10, borderRadius: 5, marginTop: 5, backgroundColor: colors.flow }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontWeight: '600', color: colors.text }}>{e.statusLabel ?? e.status}</Text>
+                    <Muted>{formatDateTime(e.atUtc, lang)}</Muted>
+                  </View>
+                </View>
+              ))}
+            </Card>
+          </>
+        )}
+      </Screen>
+    </>
+  )
+}
+
+function Row({ label, value }: { label: string; value?: string | null }) {
+  const colors = useColors()
+  return (
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
+      <Muted>{label}</Muted>
+      <Text style={{ color: colors.text, fontWeight: '500', flexShrink: 1, textAlign: 'right' }}>{value || '—'}</Text>
+    </View>
+  )
+}

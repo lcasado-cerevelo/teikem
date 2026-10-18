@@ -11,7 +11,7 @@ export default function TabsLayout() {
   const colors = useColors()
   const { t } = useT()
   const unread = useUnreadMessages()
-  const consignee = useIsConsignee()   // Lote 117: el consignatario con acceso propio solo tiene Avisos, Mensajes y Ajustes
+  const consignee = useIsConsignee()   // Lote 117: el consignatario con acceso propio solo tiene Envíos, Avisos, Mensajes y Ajustes
   const icon = (name: keyof typeof Ionicons.glyphMap) => ({ color, size }: { color: unknown; size: number }) => <Ionicons name={name} color={color as string} size={size} />
   return (
     <Tabs
@@ -25,7 +25,7 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="home" options={{ title: t('tabs.home'), tabBarIcon: icon('home-outline'), href: consignee ? null : undefined }} />
-      <Tabs.Screen name="orders" options={{ title: t('tabs.orders'), tabBarIcon: icon('cube-outline'), href: consignee ? null : undefined }} />
+      <Tabs.Screen name="orders" options={{ title: consignee ? t('tabs.shipments') : t('tabs.orders'), tabBarIcon: icon('cube-outline') }} />
       <Tabs.Screen name="notices" options={{ title: t('tabs.notices'), tabBarIcon: icon('notifications-outline') }} />
       <Tabs.Screen name="messages" options={{ title: t('tabs.messages'), tabBarIcon: icon('chatbubbles-outline'), tabBarBadge: unread > 0 ? (unread > 99 ? '99+' : unread) : undefined }} />
       <Tabs.Screen name="settings" options={{ title: t('tabs.settings'), tabBarIcon: icon('settings-outline') }} />

@@ -28835,6 +28835,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portal/consignee/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    search?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsigneeOrderListItemDtoPagedResult"];
+                        "application/json": components["schemas"]["ConsigneeOrderListItemDtoPagedResult"];
+                        "text/json": components["schemas"]["ConsigneeOrderListItemDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/consignee/orders/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsigneeOrderDto"];
+                        "application/json": components["schemas"]["ConsigneeOrderDto"];
+                        "text/json": components["schemas"]["ConsigneeOrderDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -38660,6 +38740,50 @@ export interface components {
             noticesEnabled?: boolean;
             emailChannel?: components["schemas"]["ConsigneeChannelDto"];
             smsChannel?: components["schemas"]["ConsigneeChannelDto"];
+        };
+        ConsigneeOrderDto: {
+            /** Format: uuid */
+            publicId?: string;
+            waybillNumber?: string | null;
+            serviceTypeLabel?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            /** Format: int32 */
+            totalPieces?: number;
+            /** Format: date-time */
+            promisedDate?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            delivery?: components["schemas"]["PortalOrderStopDto"];
+            packages?: components["schemas"]["PortalOrderPackageDto"][] | null;
+            timeline?: components["schemas"]["PortalOrderEventDto"][] | null;
+            progress?: components["schemas"]["PortalProgressDto"];
+            stepLabels?: string[] | null;
+        };
+        ConsigneeOrderListItemDto: {
+            /** Format: uuid */
+            publicId?: string;
+            waybillNumber?: string | null;
+            serviceTypeLabel?: string | null;
+            /** Format: int32 */
+            totalPieces?: number;
+            status?: string | null;
+            statusLabel?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            /** Format: date-time */
+            promisedDate?: string | null;
+            progress?: components["schemas"]["PortalProgressDto"];
+            trackToken?: string | null;
+        };
+        ConsigneeOrderListItemDtoPagedResult: {
+            items?: components["schemas"]["ConsigneeOrderListItemDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
         };
     };
     responses: never;

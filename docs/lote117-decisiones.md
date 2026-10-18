@@ -1,4 +1,4 @@
-# Lote 117 — Acceso del consignatario (117a: acceso, perfil y bandeja; 117b: mensajes con su cliente; 117c: pantallas) (2026-10-18)
+# Lote 117 — Acceso del consignatario (117a: acceso, perfil y bandeja; 117b: mensajes con su cliente; 117c: pantallas; 117d: envíos de solo lectura) (2026-10-18)
 
 Luis dictó (docs/p10-portal-diseno.md, aclaración del 2026-10-18): el consignatario puede tener acceso propio al portal; **solo el cliente se lo da, por invitación a un correo**; entra con contraseña y computadora de confianza (**sin MFA**); el cliente decide los avisos y el medio, se le notifica al consignatario y **él puede apagarlos**; en su perfil cambia correo/teléfono de los avisos, tiene una **bandeja** con lo que se le envió y podrá **escribirle mensajes a su cliente** (117b).
 
@@ -22,7 +22,7 @@ Luis dictó (docs/p10-portal-diseno.md, aclaración del 2026-10-18): el consigna
 2. **El correo de la invitación** es el mismo texto de las invitaciones del portal (nombra al cliente); no hay uno propio para consignatarios.
 3. **Un correo, un consignatario por cliente** (índice único (compañía, cliente, correo)); la misma persona sí puede ser consignatario de varios clientes.
 4. **Quitar el acceso es baja definitiva** de esa persona (se reinvita con el mismo correo); no hay «suspender» desde el portal del cliente (el staff sí lo ve en el expediente).
-5. **Pendiente:** «Envíos del consignatario» (que vea sus órdenes) y que cree órdenes con confirmación del cliente (decidido en docs/p10, aún no pedido); aviso por correo al cliente cuando un consignatario le escribe.
+5. **Pendiente:** aviso por correo al cliente cuando un consignatario le escribe (sin decidir). **Luis corrigió: el consignatario NO crea órdenes, solo las ve** (envíos: 117d).
 
 ## 117b — Mensajes del consignatario con su cliente
 - **SQL (update.sql, sección (az))**: `ConsigneeConversation` (una por persona del consignatario: cliente, consignatario y usuario; último mensaje y hasta dónde leyó cada lado) y `ConsigneeMessage` (nunca se editan ni se borran).
@@ -41,3 +41,9 @@ Luis dictó (docs/p10-portal-diseno.md, aclaración del 2026-10-18): el consigna
 - **Pruebas (solo el área)**: jest de la app del cliente (110 en total, 33 nuevas: `role`, `unread`, bandeja y cuenta del consignatario, panel de acceso, conversaciones del cliente) y vitest de la ficha del cliente (186, +1). **Verificado a mano en el navegador contra el API y SQL reales**: el consignatario entra y ve solo sus 3 pestañas (avisos, mensajes con las burbujas de las dos partes, cuenta con las casillas; al apagar el correo aparece «Lo apagó usted: puede volver a prenderlo.»); la persona del cliente ve el contador de consignatarios en Mensajes, la lista, el hilo, y en «Configurar avisos → Acceso» invita al correo del consignatario («Invitación enviada a …»).
 - **No se hicieron recorridos Playwright ni capturas para el manual de pantallas** (como en el Lote 116b); queda para la revisión de pantallas.
 - Decisión a revisar: (9) la **bandeja del consignatario** muestra también los avisos «No enviados» (sin correo configurado o de texto) para que vea todo lo que se intentó; (10) el consignatario con sesión no ve **Inicio ni Órdenes** (no se pidió que viera sus envíos).
+
+## 117d — Envíos del consignatario (solo lectura) y corrección de Luis
+- **Corrección de Luis (2026-10-18): el consignatario NO crea órdenes, solo las VE**; las crean el cliente (portal) y el personal de la compañía (intake). Se buscó y se quitó de `docs/p10-portal-diseno.md` todo lo que decía lo contrario (órdenes «solicitadas por el consignatario», su confirmación por el cliente, tope diario y permiso del cliente); **en el código no había nada de eso**, y el consignatario tampoco alcanza `POST /api/v1/portal/orders` (403 por el aislamiento de rutas y por no ser administrador/operador).
+- **`ConsigneeOrdersService`** (`GET /api/v1/portal/consignee/orders` y `/{id}`): las órdenes de SU cliente con una parada de entrega en SU consignatario (cliente y consignatario de la sesión); otro consignatario, otro cliente o inexistente = 404; DTOs mínimos sin precios, factura, COD ni número de orden del cliente; paquetes sin pesos; con el avance de la barra y el `TrackToken`.
+- **App**: pestaña **Envíos** (lista con progreso, búsqueda por conduce, ficha) para el consignatario; sin Inicio. i18n es/en.
+- **Pruebas**: xunit `ConsigneeOrdersTests` (5), jest `ConsigneeOrders` (5; 115 en total con `npm run check` verde) y **contra SQL real**: 2 envíos propios, uno de otro consignatario 404, ficha sin dinero, y crear orden / formulario 403.

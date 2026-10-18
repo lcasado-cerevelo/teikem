@@ -9274,3 +9274,7 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **¿Dónde le doy acceso a un consignatario?** En la app del cliente: Ajustes → Avisos a mis consignatarios → Configurar avisos, en la tarjeta del consignatario pulse «Acceso» y «Dar acceso» (capítulo 35 §5). Solo administradores y operadores.
 
 **El consignatario entra y no ve Inicio ni Órdenes.** Es lo previsto: su espacio tiene Avisos, Mensajes y Ajustes. Si abre Inicio u Órdenes, la app lo manda a Avisos.
+
+**¿Puede el consignatario crear órdenes?** No. Solo ve sus envíos (pestaña Envíos). Las órdenes las crean el cliente desde su portal y el personal de la compañía (intake). Si el consignatario intenta crear una por la API, responde 403 `Esta ruta no está disponible para usuarios del portal.`
+
+**El consignatario no ve un envío.** Solo ve las órdenes de su cliente cuya entrega es en su consignatario; una de otro consignatario (aunque sea del mismo cliente) responde 404.

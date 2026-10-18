@@ -26,6 +26,16 @@ public sealed record ConsigneeChannelRequest(bool? Enabled);
 /// <summary>Un aviso que se le envió al consignatario (la bandeja). Title = «Su paquete va en camino»; TrackToken lleva a la página de seguimiento de la orden.</summary>
 public sealed record ConsigneeInboxItemDto(int Id, string Kind, string Channel, string Title, string? Waybill, string? TrackToken, string State, DateTime CreatedAtUtc, DateTime? SentAtUtc);
 
+// ---------------------------------------------------------------- los envíos del consignatario (Lote 117d): solo ve; NO crea órdenes (Luis, 2026-10-18)
+
+/// <summary>Un envío dirigido al consignatario. Sin precios, factura ni número de orden del cliente. TrackToken lleva a la página de seguimiento si la orden ya tiene enlace.</summary>
+public sealed record ConsigneeOrderListItemDto(Guid PublicId, string WaybillNumber, string ServiceTypeLabel, int TotalPieces, string Status, string StatusLabel, DateTime CreatedAtUtc,
+    DateTime? PromisedDate, PortalProgressDto? Progress, string? TrackToken);
+
+/// <summary>La ficha de un envío para el consignatario: su dirección de entrega, los paquetes (sin pesos), la línea de tiempo y el avance.</summary>
+public sealed record ConsigneeOrderDto(Guid PublicId, string WaybillNumber, string ServiceTypeLabel, string Status, string StatusLabel, int TotalPieces, DateTime? PromisedDate, DateTime CreatedAtUtc,
+    PortalOrderStopDto? Delivery, IReadOnlyList<PortalOrderPackageDto> Packages, IReadOnlyList<PortalOrderEventDto> Timeline, PortalProgressDto? Progress, IReadOnlyList<string>? StepLabels);
+
 // ---------------------------------------------------------------- mensajes del consignatario con su cliente (Lote 117b)
 // El consignatario usa PortalMessagesDto / PortalUnreadDto / ClientMessageDto / ClientMessageSendRequest del Lote 104 (SenderKind: CONSIGNEE o CLIENT).
 
