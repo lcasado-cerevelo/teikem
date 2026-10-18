@@ -1,4 +1,4 @@
-# Lote 117 — Acceso del consignatario (117a: acceso, perfil y bandeja; 117b: mensajes con su cliente) (2026-10-18)
+# Lote 117 — Acceso del consignatario (117a: acceso, perfil y bandeja; 117b: mensajes con su cliente; 117c: pantallas) (2026-10-18)
 
 Luis dictó (docs/p10-portal-diseno.md, aclaración del 2026-10-18): el consignatario puede tener acceso propio al portal; **solo el cliente se lo da, por invitación a un correo**; entra con contraseña y computadora de confianza (**sin MFA**); el cliente decide los avisos y el medio, se le notifica al consignatario y **él puede apagarlos**; en su perfil cambia correo/teléfono de los avisos, tiene una **bandeja** con lo que se le envió y podrá **escribirle mensajes a su cliente** (117b).
 
@@ -22,7 +22,7 @@ Luis dictó (docs/p10-portal-diseno.md, aclaración del 2026-10-18): el consigna
 2. **El correo de la invitación** es el mismo texto de las invitaciones del portal (nombra al cliente); no hay uno propio para consignatarios.
 3. **Un correo, un consignatario por cliente** (índice único (compañía, cliente, correo)); la misma persona sí puede ser consignatario de varios clientes.
 4. **Quitar el acceso es baja definitiva** de esa persona (se reinvita con el mismo correo); no hay «suspender» desde el portal del cliente (el staff sí lo ve en el expediente).
-5. **Pendiente de este lote:** pantallas en la app del cliente (117c); «Envíos del consignatario» y que cree órdenes (decidido en docs/p10, aún no pedido).
+5. **Pendiente:** «Envíos del consignatario» (que vea sus órdenes) y que cree órdenes con confirmación del cliente (decidido en docs/p10, aún no pedido); aviso por correo al cliente cuando un consignatario le escribe.
 
 ## 117b — Mensajes del consignatario con su cliente
 - **SQL (update.sql, sección (az))**: `ConsigneeConversation` (una por persona del consignatario: cliente, consignatario y usuario; último mensaje y hasta dónde leyó cada lado) y `ConsigneeMessage` (nunca se editan ni se borran).
@@ -30,3 +30,14 @@ Luis dictó (docs/p10-portal-diseno.md, aclaración del 2026-10-18): el consigna
 - **API**: `/api/v1/portal/consignee/messages*` (consignatario) y `/api/v1/portal/consignee-messages*` (cliente). Las rutas del cliente siguen cerradas al consignatario por `PortalScopeMiddleware`.
 - **Pruebas (solo el área)**: xunit `ConsigneeMessagingTests` (8: abre con el primer mensaje, vacío y largo, tope 429 por persona, el cliente ve/lee/contesta con la lectura compartida, el consignatario ve la respuesta y la marca leída, solo consulta no contesta y otro cliente 404, cada lado cerrado al otro, paginación hacia atrás) + `ConsigneeAccessTests` y mensajes del Lote 104: 40 sin fallos; y **contra SQL y API reales** (sin conversación, vacío 400, escribir, bandeja del cliente con 1 sin leer, leer, contestar, 1 sin leer del consignatario, leerlo, 403 cruzados y 404).
 - **Decisiones a revisar con Luis**: (6) **solo el consignatario abre la conversación** (el cliente no le escribe primero, a diferencia del equipo del Lote 104); (7) **no se manda correo** cuando alguien escribe: el aviso es el contador de «sin leer» de cada lado; (8) una conversación de un consignatario al que se le **quitó el acceso** sigue visible para el cliente (historial), aunque el consignatario ya no entra.
+
+## 117c — Pantallas (app del cliente)
+- **Un solo app para los dos**: `kernel/auth/role.ts` lee el claim `loc` del token (solo orienta la interfaz; el servidor es quien limita). El consignatario tiene tres pestañas (Avisos, Mensajes, Ajustes) y entra directo a Avisos; Inicio y Órdenes lo mandan a Avisos.
+- **Consignatario**: `ConsigneeInboxScreen` (bandeja con «Ver seguimiento» al `/track/<token>`), `ConsigneeMessagesScreen` (su conversación) y `ConsigneeAccountCard` en Ajustes (cuenta + casillas de correo y texto con las reglas de apagar/volver a prender).
+- **Cliente**: `ConsigneeAccessPanel` dentro de cada consignatario de «Configurar avisos» (lista, invitar, reenviar, quitar); `Mensajes → Mensajes de mis consignatarios` (`ConsigneeConversationsScreen` y `ConsigneeConversationScreen`, rutas `/consignee-messages` y `/consignee-messages/[id]`); la insignia de la pestaña Mensajes suma equipo + consignatarios.
+- **Refactor**: la conversación del Lote 104 pasó a `ChatScreen` (recibe las llamadas y los textos; `MessagesScreen` sigue igual para el equipo) y la usan también los dos lados nuevos; `unread.ts` lleva dos contadores (equipo y consignatarios).
+- **Web (staff)**: el rol «Consignatario» no se ofrece al invitar desde el expediente del cliente (el servidor igual responde 400).
+- **Contrato**: `openapi.json` con +13 rutas y +11 esquemas y los tres `schema.d.ts` regenerados.
+- **Pruebas (solo el área)**: jest de la app del cliente (110 en total, 33 nuevas: `role`, `unread`, bandeja y cuenta del consignatario, panel de acceso, conversaciones del cliente) y vitest de la ficha del cliente (186, +1). **Verificado a mano en el navegador contra el API y SQL reales**: el consignatario entra y ve solo sus 3 pestañas (avisos, mensajes con las burbujas de las dos partes, cuenta con las casillas; al apagar el correo aparece «Lo apagó usted: puede volver a prenderlo.»); la persona del cliente ve el contador de consignatarios en Mensajes, la lista, el hilo, y en «Configurar avisos → Acceso» invita al correo del consignatario («Invitación enviada a …»).
+- **No se hicieron recorridos Playwright ni capturas para el manual de pantallas** (como en el Lote 116b); queda para la revisión de pantallas.
+- Decisión a revisar: (9) la **bandeja del consignatario** muestra también los avisos «No enviados» (sin correo configurado o de texto) para que vea todo lo que se intentó; (10) el consignatario con sesión no ve **Inicio ni Órdenes** (no se pidió que viera sus envíos).

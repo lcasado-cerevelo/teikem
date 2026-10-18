@@ -28247,6 +28247,594 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portal/consignee/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsigneeMeDto"];
+                        "application/json": components["schemas"]["ConsigneeMeDto"];
+                        "text/json": components["schemas"]["ConsigneeMeDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/consignee/me/notices/{channel}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    channel: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ConsigneeChannelRequest"];
+                    "text/json": components["schemas"]["ConsigneeChannelRequest"];
+                    "application/*+json": components["schemas"]["ConsigneeChannelRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsigneeMeDto"];
+                        "application/json": components["schemas"]["ConsigneeMeDto"];
+                        "text/json": components["schemas"]["ConsigneeMeDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/consignee/notices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsigneeInboxItemDtoPagedResult"];
+                        "application/json": components["schemas"]["ConsigneeInboxItemDtoPagedResult"];
+                        "text/json": components["schemas"]["ConsigneeInboxItemDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/consignee/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    before?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalMessagesDto"];
+                        "application/json": components["schemas"]["PortalMessagesDto"];
+                        "text/json": components["schemas"]["PortalMessagesDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ClientMessageSendRequest"];
+                    "text/json": components["schemas"]["ClientMessageSendRequest"];
+                    "application/*+json": components["schemas"]["ClientMessageSendRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientMessageDto"];
+                        "application/json": components["schemas"]["ClientMessageDto"];
+                        "text/json": components["schemas"]["ClientMessageDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/consignee/messages/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/consignee/messages/unread": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalUnreadDto"];
+                        "application/json": components["schemas"]["PortalUnreadDto"];
+                        "text/json": components["schemas"]["PortalUnreadDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/consignee-access/{locationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    locationId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsigneeAccessDto"][];
+                        "application/json": components["schemas"]["ConsigneeAccessDto"][];
+                        "text/json": components["schemas"]["ConsigneeAccessDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    locationId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ConsigneeAccessInviteRequest"];
+                    "text/json": components["schemas"]["ConsigneeAccessInviteRequest"];
+                    "application/*+json": components["schemas"]["ConsigneeAccessInviteRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsigneeAccessInviteResultDto"];
+                        "application/json": components["schemas"]["ConsigneeAccessInviteResultDto"];
+                        "text/json": components["schemas"]["ConsigneeAccessInviteResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/consignee-access/{locationId}/{id}/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    locationId: string;
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsigneeAccessInviteResultDto"];
+                        "application/json": components["schemas"]["ConsigneeAccessInviteResultDto"];
+                        "text/json": components["schemas"]["ConsigneeAccessInviteResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/consignee-access/{locationId}/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    locationId: string;
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/consignee-messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    unreadOnly?: boolean;
+                    q?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsigneeConversationSummaryDtoPagedResult"];
+                        "application/json": components["schemas"]["ConsigneeConversationSummaryDtoPagedResult"];
+                        "text/json": components["schemas"]["ConsigneeConversationSummaryDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/consignee-messages/unread": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalUnreadDto"];
+                        "application/json": components["schemas"]["PortalUnreadDto"];
+                        "text/json": components["schemas"]["PortalUnreadDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/consignee-messages/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    before?: number;
+                    take?: number;
+                };
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConsigneeConversationDto"];
+                        "application/json": components["schemas"]["ConsigneeConversationDto"];
+                        "text/json": components["schemas"]["ConsigneeConversationDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ClientMessageSendRequest"];
+                    "text/json": components["schemas"]["ClientMessageSendRequest"];
+                    "application/*+json": components["schemas"]["ClientMessageSendRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientMessageDto"];
+                        "application/json": components["schemas"]["ClientMessageDto"];
+                        "text/json": components["schemas"]["ClientMessageDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/consignee-messages/{publicId}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -37975,6 +38563,103 @@ export interface components {
             channel?: string | null;
             accepted?: boolean | null;
             warningAccepted?: boolean | null;
+        };
+        ConsigneeAccessDto: {
+            /** Format: int32 */
+            id?: number;
+            email?: string | null;
+            fullName?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            /** Format: date-time */
+            lastLoginUtc?: string | null;
+        };
+        ConsigneeAccessInviteRequest: {
+            email?: string | null;
+            fullName?: string | null;
+        };
+        ConsigneeAccessInviteResultDto: {
+            access?: components["schemas"]["ConsigneeAccessDto"];
+            inviteToken?: string | null;
+            /** Format: date-time */
+            expiresAtUtc?: string | null;
+        };
+        ConsigneeChannelDto: {
+            contact?: string | null;
+            enabled?: boolean;
+            canTurnOn?: boolean;
+            unsubscribed?: boolean;
+        };
+        ConsigneeChannelRequest: {
+            enabled?: boolean | null;
+        };
+        ConsigneeConversationDto: {
+            /** Format: uuid */
+            publicId?: string;
+            /** Format: uuid */
+            locationPublicId?: string;
+            consigneeName?: string | null;
+            personName?: string | null;
+            personEmail?: string | null;
+            messages?: components["schemas"]["ClientMessageDto"][] | null;
+            hasMore?: boolean;
+        };
+        ConsigneeConversationSummaryDto: {
+            /** Format: uuid */
+            publicId?: string;
+            /** Format: uuid */
+            locationPublicId?: string;
+            consigneeName?: string | null;
+            personName?: string | null;
+            personEmail?: string | null;
+            lastMessagePreview?: string | null;
+            /** Format: date-time */
+            lastMessageAtUtc?: string;
+            lastSenderKind?: string | null;
+            /** Format: int32 */
+            unread?: number;
+        };
+        ConsigneeConversationSummaryDtoPagedResult: {
+            items?: components["schemas"]["ConsigneeConversationSummaryDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        ConsigneeInboxItemDto: {
+            /** Format: int32 */
+            id?: number;
+            kind?: string | null;
+            channel?: string | null;
+            title?: string | null;
+            waybill?: string | null;
+            trackToken?: string | null;
+            state?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            /** Format: date-time */
+            sentAtUtc?: string | null;
+        };
+        ConsigneeInboxItemDtoPagedResult: {
+            items?: components["schemas"]["ConsigneeInboxItemDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        ConsigneeMeDto: {
+            fullName?: string | null;
+            email?: string | null;
+            consigneeName?: string | null;
+            city?: string | null;
+            clientName?: string | null;
+            noticesEnabled?: boolean;
+            emailChannel?: components["schemas"]["ConsigneeChannelDto"];
+            smsChannel?: components["schemas"]["ConsigneeChannelDto"];
         };
     };
     responses: never;

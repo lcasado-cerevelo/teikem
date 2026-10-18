@@ -10,6 +10,7 @@ import { setLegalRequired, useLegalRequired } from '../features/legal/legalState
 import { getLegalStatus } from '../features/portalApi'
 import { setAuthLostHandler } from '../kernel/api/client'
 import { AppLockProvider, useAppLock } from '../kernel/auth/AppLock'
+import { useIsConsignee } from '../kernel/auth/role'
 import { loadSession, useSessionState } from '../kernel/auth/session'
 import { initLang } from '../kernel/i18n/i18n'
 import { initTheme } from '../kernel/ui/theme'
@@ -44,6 +45,7 @@ function Gate() {
   const { session } = useSessionState()
   const { locked } = useAppLock()
   const legalRequired = useLegalRequired()
+  const consignee = useIsConsignee()
   const [, setTick] = useState(0)
 
   // la sesión no se pudo renovar: de vuelta al login
@@ -83,8 +85,8 @@ function Gate() {
       if (pathname !== '/legal') router.replace('/legal')
       return
     }
-    if (legalRequired === false && (isPublic || pathname === '/lock' || pathname === '/legal' || pathname === '/')) router.replace('/home')
-  }, [session, locked, legalRequired, pathname, router])
+    if (legalRequired === false && (isPublic || pathname === '/lock' || pathname === '/legal' || pathname === '/')) router.replace(consignee ? '/notices' : '/home')   // el consignatario con acceso propio empieza en sus avisos
+  }, [session, locked, legalRequired, pathname, router, consignee])
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -93,6 +95,8 @@ function Gate() {
         <Stack.Screen name="order/[id]" options={{ headerShown: true }} />
         <Stack.Screen name="order/new" options={{ headerShown: true, title: t('newOrder.title') }} />
         <Stack.Screen name="consignee-notices" options={{ headerShown: true, title: t('consigneeNotices.title') }} />
+        <Stack.Screen name="consignee-messages/index" options={{ headerShown: true, title: t('consigneeMessages.title') }} />
+        <Stack.Screen name="consignee-messages/[id]" options={{ headerShown: true, title: t('consigneeMessages.title') }} />
       </Stack>
       {!!session && legalRequired === null && (
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.bg, justifyContent: 'center' }}>

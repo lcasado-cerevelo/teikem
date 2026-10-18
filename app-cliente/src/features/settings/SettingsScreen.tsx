@@ -9,12 +9,14 @@ import { useAppLock } from '../../kernel/auth/AppLock'
 import { getBiometricSupport, promptBiometric } from '../../kernel/auth/biometric'
 import type { BiometricSupport } from '../../kernel/auth/lockRules'
 import { logout, switchClient } from '../../kernel/auth/portalAuth'
+import { useIsConsignee } from '../../kernel/auth/role'
 import { getNoTrust, setNoTrust } from '../../kernel/auth/preferences'
 import { useT } from '../../kernel/i18n/useT'
 import { LanguageSwitch, ThemeSwitch } from '../../kernel/ui/PreferencesBar'
 import { Button, Card, Check, Chip, Muted, Notice, Screen, Spinner, Title, useColors } from '../../kernel/ui/ui'
 import { useAsync } from '../../kernel/ui/useAsync'
 import { formatDateTime } from '../format'
+import { ConsigneeAccountCard } from '../consigneeSpace/ConsigneeAccountCard'
 import { getMe, listTrustedBrowsers, revokeTrustedBrowser } from '../portalApi'
 
 export function SettingsScreen() {
@@ -22,7 +24,8 @@ export function SettingsScreen() {
   const { t, lang } = useT()
   const router = useRouter()
   const lock = useAppLock()
-  const me = useAsync(getMe, [])
+  const consignee = useIsConsignee()   // Lote 117: el consignatario con acceso propio ve su cuenta y sus avisos en lugar de los datos del cliente
+  const me = useAsync(() => (consignee ? Promise.resolve(null) : getMe()), [consignee])
   const computers = useAsync(listTrustedBrowsers, [])
   const [support, setSupport] = useState<BiometricSupport>('unavailable')
   const [noTrust, setNoTrustState] = useState(false)
@@ -71,11 +74,15 @@ export function SettingsScreen() {
       <Title>{t('settings.title')}</Title>
       {!!error && <Notice>{error}</Notice>}
 
-      <Card>
-        <Text style={{ fontWeight: '700', color: colors.text }}>{me.data?.fullName ?? '—'}</Text>
-        <Muted>{me.data?.email ?? ''}</Muted>
-        {!!me.data && <Chip label={me.data.currentClient?.name ?? ''} tone="info" />}
-      </Card>
+      {consignee ? (
+        <ConsigneeAccountCard />
+      ) : (
+        <Card>
+          <Text style={{ fontWeight: '700', color: colors.text }}>{me.data?.fullName ?? '—'}</Text>
+          <Muted>{me.data?.email ?? ''}</Muted>
+          {!!me.data && <Chip label={me.data.currentClient?.name ?? ''} tone="info" />}
+        </Card>
+      )}
 
       {clients.length > 1 && (
         <Card>
@@ -113,11 +120,13 @@ export function SettingsScreen() {
         />
       </Card>
 
-      <Card>
-        <Text style={{ fontWeight: '700', color: colors.text }}>{t('consigneeNotices.title')}</Text>
-        <Muted>{t('settings.consigneeNoticesHelp')}</Muted>
-        <Button title={t('settings.consigneeNoticesOpen')} variant="secondary" onPress={() => router.push('/consignee-notices')} testID="settings-consignee-notices" />
-      </Card>
+      {!consignee && (
+        <Card>
+          <Text style={{ fontWeight: '700', color: colors.text }}>{t('consigneeNotices.title')}</Text>
+          <Muted>{t('settings.consigneeNoticesHelp')}</Muted>
+          <Button title={t('settings.consigneeNoticesOpen')} variant="secondary" onPress={() => router.push('/consignee-notices')} testID="settings-consignee-notices" />
+        </Card>
+      )}
 
       <Card>
         <Text style={{ fontWeight: '700', color: colors.text }}>{t('settings.computers')}</Text>

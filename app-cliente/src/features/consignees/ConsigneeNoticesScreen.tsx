@@ -7,6 +7,7 @@ import { apiErrorMessage } from '../../kernel/api/client'
 import { useT } from '../../kernel/i18n/useT'
 import { Button, Card, Check, Chip, Field, Muted, Notice, Screen, Spinner, Title, useColors } from '../../kernel/ui/ui'
 import { useAsync } from '../../kernel/ui/useAsync'
+import { ConsigneeAccessPanel } from './ConsigneeAccessPanel'
 import { type ConsigneeNoticeConsigneeDto, getConsigneeNotices, listNoticeConsignees, markConsignee, setConsigneeNotices } from '../portalApi'
 
 type Pending = { consignee: ConsigneeNoticeConsigneeDto; channel: 'EMAIL' | 'SMS' }
@@ -18,6 +19,7 @@ export function ConsigneeNoticesScreen() {
   const [search, setSearch] = useState('')
   const list = useAsync(() => listNoticeConsignees(search.trim()), [search])
   const [pending, setPending] = useState<Pending | null>(null)
+  const [openAccess, setOpenAccess] = useState<string | null>(null)   // Lote 117: el consignatario cuyo acceso se está viendo
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -112,6 +114,13 @@ export function ConsigneeNoticesScreen() {
             testID={`notices-sms-${c.publicId}`}
           />
           {!!c.acceptsEmail && <Chip label={t('consigneeNotices.on')} tone="ok" />}
+          <Button
+            title={openAccess === c.publicId ? t('consigneeAccess.close') : t('consigneeAccess.open')}
+            variant="secondary"
+            onPress={() => setOpenAccess(openAccess === c.publicId ? null : (c.publicId as string))}
+            testID={`access-open-${c.publicId}`}
+          />
+          {openAccess === c.publicId && <ConsigneeAccessPanel locationId={c.publicId as string} canEdit={canEdit} defaultEmail={c.email} />}
         </Card>
       ))}
     </Screen>

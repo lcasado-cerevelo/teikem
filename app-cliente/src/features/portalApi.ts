@@ -43,6 +43,43 @@ export const listNoticeConsignees = (search: string, skip = 0, take = PAGE_SIZE)
 export const markConsignee = (publicId: string, channel: 'EMAIL' | 'SMS', accepted: boolean, warningAccepted: boolean) =>
   unwrap(api.PUT('/api/v1/portal/consignee-notices/consignees/{publicId}', { params: { path: { publicId } }, body: { channel, accepted, warningAccepted } }))
 
+// ---------------------------------------------------------------- consignatario con acceso propio (Lote 117): su espacio (perfil, bandeja, mensajes con su cliente)
+export type ConsigneeMeDto = Schemas['ConsigneeMeDto']
+export type ConsigneeChannelDto = Schemas['ConsigneeChannelDto']
+export type ConsigneeInboxItemDto = Schemas['ConsigneeInboxItemDto']
+export const getConsigneeMe = () => unwrap(api.GET('/api/v1/portal/consignee/me'))
+export const setConsigneeChannel = (channel: 'EMAIL' | 'SMS', enabled: boolean) =>
+  unwrap(api.PUT('/api/v1/portal/consignee/me/notices/{channel}', { params: { path: { channel } }, body: { enabled } }))
+export const listConsigneeInbox = (skip = 0, take = PAGE_SIZE) => unwrap(api.GET('/api/v1/portal/consignee/notices', { params: { query: { skip, take } } }))
+export const getConsigneeOwnMessages = (before?: number, take = 30) => unwrap(api.GET('/api/v1/portal/consignee/messages', { params: { query: { before, take } } }))
+export const sendConsigneeOwnMessage = (body: string) => unwrap(api.POST('/api/v1/portal/consignee/messages', { body: { body } }))
+export const markConsigneeOwnMessagesRead = async () => {
+  await unwrap(api.POST('/api/v1/portal/consignee/messages/read'))
+}
+export const getConsigneeOwnUnread = () => unwrap(api.GET('/api/v1/portal/consignee/messages/unread'))
+
+// ---------------------------------------------------------------- el cliente le da acceso a un consignatario y lee sus mensajes (Lote 117)
+export type ConsigneeAccessDto = Schemas['ConsigneeAccessDto']
+export type ConsigneeAccessInviteResultDto = Schemas['ConsigneeAccessInviteResultDto']
+export type ConsigneeConversationSummaryDto = Schemas['ConsigneeConversationSummaryDto']
+export type ConsigneeConversationDto = Schemas['ConsigneeConversationDto']
+export const listConsigneeAccess = (locationId: string) => unwrap(api.GET('/api/v1/portal/consignee-access/{locationId}', { params: { path: { locationId } } }))
+export const inviteConsigneeAccess = (locationId: string, email: string, fullName?: string) =>
+  unwrap(api.POST('/api/v1/portal/consignee-access/{locationId}', { params: { path: { locationId } }, body: { email: email || undefined, fullName: fullName || undefined } }))
+export const resendConsigneeAccess = (locationId: string, id: number) => unwrap(api.POST('/api/v1/portal/consignee-access/{locationId}/{id}/resend', { params: { path: { locationId, id } } }))
+export const removeConsigneeAccess = async (locationId: string, id: number) => {
+  await unwrap(api.DELETE('/api/v1/portal/consignee-access/{locationId}/{id}', { params: { path: { locationId, id } } }))
+}
+export const listConsigneeConversations = (unreadOnly: boolean, q: string, skip = 0, take = PAGE_SIZE) =>
+  unwrap(api.GET('/api/v1/portal/consignee-messages', { params: { query: { unreadOnly, q: q || undefined, skip, take } } }))
+export const getConsigneeConversationsUnread = () => unwrap(api.GET('/api/v1/portal/consignee-messages/unread'))
+export const getConsigneeConversation = (publicId: string, before?: number, take = 30) =>
+  unwrap(api.GET('/api/v1/portal/consignee-messages/{publicId}', { params: { path: { publicId }, query: { before, take } } }))
+export const replyConsigneeConversation = (publicId: string, body: string) => unwrap(api.POST('/api/v1/portal/consignee-messages/{publicId}', { params: { path: { publicId } }, body: { body } }))
+export const markConsigneeConversationRead = async (publicId: string) => {
+  await unwrap(api.POST('/api/v1/portal/consignee-messages/{publicId}/read', { params: { path: { publicId } } }))
+}
+
 // ---------------------------------------------------------------- nueva orden (Lote 105): el cliente sale de la sesión
 export const getOrderForm = () => unwrap(api.GET('/api/v1/portal/order-form'))
 export const createOrder = (body: PortalOrderCreateRequest) => unwrap(api.POST('/api/v1/portal/orders', { body, headers: { 'Idempotency-Key': newKey() } }))

@@ -69,6 +69,7 @@ function route({ method, url }: Call): unknown {
       { code: 'CLIENT_ADMIN', label: 'Admin cliente', isEnabled: true, sortOrder: 1 },
       { code: 'CLIENT_OPERATOR', label: 'Operador', isEnabled: true, sortOrder: 2 },
       { code: 'CLIENT_READONLY', label: 'Solo lectura', isEnabled: true, sortOrder: 3 },
+      { code: 'CONSIGNEE', label: 'Consignatario', isEnabled: true, sortOrder: 4 },   // Lote 117: lo da el cliente desde su portal, no el expediente
     ]
   if (p === '/api/v1/status/PortalUserStatus')
     return [
@@ -182,6 +183,18 @@ describe('Usuarios de portal — invitar', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Enviar invitación' }))
     expect(await within(dialog).findByText('Correo inválido.')).toBeInTheDocument()
     expect(callsTo('POST', '/api/v1/clients/c-1/portal-users/invite')).toHaveLength(0)
+  })
+
+  it('el rol Consignatario no se ofrece al invitar desde el expediente (lo invita el cliente desde su portal)', async () => {
+    const user = userEvent.setup()
+    wrap()
+    await screen.findByText('ana@acme.com')
+    await user.click(screen.getByRole('button', { name: 'Invitar usuario' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Invitar a una persona del cliente' })
+    const role = within(dialog).getByLabelText(/^Rol/)
+    await within(dialog).findByRole('option', { name: 'Operador' })
+    expect(within(role).queryByRole('option', { name: 'Consignatario' })).toBeNull()
+    expect(within(role).getAllByRole('option').map((o) => o.textContent)).toEqual(expect.arrayContaining(['Admin cliente', 'Operador', 'Solo lectura']))
   })
 
   it('envía correo, nombre y rol; sin Idempotency-Key; avisa cuándo vence el enlace y NUNCA muestra el token', async () => {

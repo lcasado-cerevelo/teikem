@@ -1,6 +1,6 @@
 # 35 — Acceso del consignatario
 
-Lote 117 (117a acceso, perfil y bandeja; 117b mensajes con su cliente; 2026-10-18, dictado por Luis; diseño en `docs/p10-portal-diseno.md`). Un **consignatario** (quien recibe el paquete) puede tener **su propio acceso** al portal. **Solo el cliente se lo da**, por **invitación a un correo**; la mayoría de los consignatarios no tendrá acceso y seguirá recibiendo los avisos con el enlace de seguimiento (capítulo 34).
+Lote 117 (117a acceso, perfil y bandeja; 117b mensajes con su cliente; 117c pantallas; 2026-10-18, dictado por Luis; diseño en `docs/p10-portal-diseno.md`). Un **consignatario** (quien recibe el paquete) puede tener **su propio acceso** al portal. **Solo el cliente se lo da**, por **invitación a un correo**; la mayoría de los consignatarios no tendrá acceso y seguirá recibiendo los avisos con el enlace de seguimiento (capítulo 34).
 
 ## 1. Quién y dónde
 - **Cliente (portal):** un administrador u operador del cliente **invita**, **reenvía** o **quita** el acceso de un consignatario suyo (módulo CLIENT_PORTAL). Quien solo consulta ve quién tiene acceso, sin cambiarlo.
@@ -76,6 +76,19 @@ El consignatario **le escribe a su cliente** y el cliente le contesta. Es aparte
 | `GET /api/v1/portal/consignee-messages/unread` | Cuántas conversaciones tienen mensajes sin leer | Persona del cliente |
 | `GET /api/v1/portal/consignee-messages/{id}?before=&take=` | Abrir una conversación | Persona del cliente |
 | `POST /api/v1/portal/consignee-messages/{id}` · `POST .../{id}/read` | Contestar · marcar leída | Admin/operador (contestar) |
+
+## 5. Las pantallas (app del cliente, Lote 117c)
+La app del cliente (`app-cliente`, web y móvil) sirve a los dos: según el token de la sesión (claim `loc`) muestra el espacio de la persona del cliente o el del consignatario. Es solo una **orientación de la interfaz**: quien limita es el servidor (403).
+
+**Del lado del cliente** (administrador u operador; quien solo consulta ve sin cambiar):
+- **Ajustes → Configurar avisos → «Acceso»** en la tarjeta de cada consignatario: la lista de quién tiene acceso (con su estado: Invitación pendiente, Con acceso…), **Dar acceso** (correo para la invitación —si se deja vacío se usa el principal del consignatario— y nombre opcional), **Reenviar invitación** (solo a quien no ha aceptado) y **Quitar acceso**. Avisa «Invitación enviada a …».
+- **Mensajes → «Mensajes de mis consignatarios»** (con las conversaciones sin leer): lista con búsqueda y «Solo sin leer»; al tocar una se abre el hilo (burbujas, «Cargar mensajes anteriores», escribir hasta 2000 caracteres) y se marca leída. Quien solo consulta lee sin cuadro para escribir (`Su rol es de solo consulta: puede leer los mensajes, no contestarlos.`). La pestaña Mensajes suma las del equipo y las de los consignatarios.
+
+**Del lado del consignatario** (solo tres pestañas, sin Inicio ni Órdenes; entra directo a Avisos):
+- **Avisos:** su bandeja (título, conduce, estado del envío, medio y fecha, y «Ver seguimiento» si la orden tiene enlace).
+- **Mensajes:** su conversación con su cliente (la abre con su primer mensaje).
+- **Ajustes:** su cuenta (nombre, correo, consignatario y cliente), **«Cómo recibo los avisos»** con una casilla por correo y otra por texto (apagar siempre; volver a prender solo lo que apagó él, y se explica por qué no puede en cada caso: «Solo su cliente puede prenderlo.», «Se dio de baja con el enlace de un aviso.»), idioma, tema claro/oscuro, computadoras de confianza y cerrar sesión.
+- Todo en **español e inglés** y en tema **claro u oscuro** como el resto de la app.
 
 ## Casos frecuentes
 - **«El consignatario no recibe la invitación»:** revise el correo escrito y la carpeta de no deseados; **Reenviar** manda un enlace nuevo (el anterior deja de servir).

@@ -12,6 +12,8 @@ export type PortalInviteResult = Schemas['PortalInviteResultDto']
 
 /** Dominio de catálogo de los roles de portal (CatalogDomains.PortalRole). */
 export const PORTAL_ROLE_DOMAIN = 'PortalRole'
+/** Lote 117: el rol del consignatario con acceso propio no se da desde el expediente (solo el cliente invita a su consignatario desde el portal); el servidor responde 400 si se intenta. */
+export const CONSIGNEE_ROLE = 'CONSIGNEE'
 /** Dominio de estatus del usuario de portal y su EntityType. */
 export const PORTAL_STATUS_DOMAIN = 'PortalUserStatus'
 

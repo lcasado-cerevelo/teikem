@@ -245,5 +245,78 @@
     "smsHelp": "El envío de texto todavía no está disponible; la preferencia se guarda.",
     "none": "sin registrar",
     "on": "Recibe avisos"
+  },
+  "consigneeSpace": {
+    "inbox": {
+      "title": "Mis avisos",
+      "help": "Los avisos que se le enviaron sobre sus envíos.",
+      "empty": "Todavía no se le ha enviado ningún aviso.",
+      "track": "Ver seguimiento",
+      "waybill": "Conduce {value}",
+      "email": "Correo",
+      "sms": "Texto",
+      "states": {
+        "SENT": "Enviado",
+        "PENDING": "Pendiente",
+        "SKIPPED": "No enviado",
+        "FAILED": "Fallido"
+      },
+      "loadMore": "Ver más ({shown} de {total})"
+    },
+    "chat": {
+      "help": "Su conversación con su cliente. Solo usted y las personas de su cliente la ven.",
+      "empty": "Todavía no hay mensajes. Escríbale a su cliente abajo.",
+      "client": "Su cliente"
+    },
+    "profile": {
+      "title": "Cómo recibo los avisos",
+      "help": "Su cliente decide si le avisa por correo o por texto. Usted puede apagarlos cuando quiera.",
+      "client": "Cliente: {name}",
+      "disabled": "Su cliente tiene apagados los avisos a consignatarios.",
+      "email": "Avisos por correo: {value}",
+      "sms": "Avisos por texto: {value}",
+      "none": "sin registrar",
+      "unsubscribed": "Se dio de baja con el enlace de un aviso.",
+      "clientOnly": "Solo su cliente puede prenderlo.",
+      "canTurnOn": "Lo apagó usted: puede volver a prenderlo."
+    }
+  },
+  "consigneeAccess": {
+    "title": "Acceso del consignatario",
+    "help": "Invite a una persona del consignatario por correo para que entre a su propio espacio: ve sus avisos, recibe mensajes de usted y decide si quiere los avisos.",
+    "open": "Acceso",
+    "close": "Cerrar",
+    "none": "Nadie tiene acceso todavía.",
+    "emailLabel": "Correo para la invitación",
+    "emailPlaceholder": "Si lo deja vacío se usa el principal del consignatario",
+    "nameLabel": "Nombre (opcional)",
+    "invite": "Dar acceso",
+    "resend": "Reenviar invitación",
+    "remove": "Quitar acceso",
+    "sent": "Invitación enviada a {email}.",
+    "resent": "Invitación reenviada.",
+    "removed": "Acceso quitado.",
+    "states": {
+      "INVITED": "Invitación pendiente",
+      "ACTIVE": "Con acceso",
+      "SUSPENDED": "Suspendido",
+      "DISABLED": "Sin acceso"
+    }
+  },
+  "consigneeMessages": {
+    "title": "Mensajes de mis consignatarios",
+    "open": "Mensajes de mis consignatarios",
+    "openButton": "Ver las conversaciones",
+    "openHelp": "Lo que le escriben los consignatarios que tienen acceso. Usted y su equipo les contestan.",
+    "search": "Buscar",
+    "searchPlaceholder": "Consignatario, persona o texto",
+    "unreadOnly": "Solo sin leer",
+    "all": "Todos",
+    "empty": "Ningún consignatario le ha escrito.",
+    "unread": "{n} sin leer",
+    "chatHelp": "Su conversación con {name}. Solo ese consignatario y las personas de su cliente la ven.",
+    "readOnly": "Su rol es de solo consulta: puede leer los mensajes, no contestarlos.",
+    "other": "Consignatario",
+    "loadMore": "Ver más ({shown} de {total})"
   }
 }

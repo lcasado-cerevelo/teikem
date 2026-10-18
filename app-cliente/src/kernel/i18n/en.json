@@ -245,5 +245,78 @@
     "smsHelp": "Text sending is not available yet; the preference is saved.",
     "none": "not registered",
     "on": "Receives notices"
+  },
+  "consigneeSpace": {
+    "inbox": {
+      "title": "My notices",
+      "help": "The notices that were sent to you about your shipments.",
+      "empty": "No notice has been sent to you yet.",
+      "track": "View tracking",
+      "waybill": "Waybill {value}",
+      "email": "Email",
+      "sms": "Text",
+      "states": {
+        "SENT": "Sent",
+        "PENDING": "Pending",
+        "SKIPPED": "Not sent",
+        "FAILED": "Failed"
+      },
+      "loadMore": "Show more ({shown} of {total})"
+    },
+    "chat": {
+      "help": "Your conversation with your client. Only you and the people at your client can see it.",
+      "empty": "There are no messages yet. Write to your client below.",
+      "client": "Your client"
+    },
+    "profile": {
+      "title": "How I receive notices",
+      "help": "Your client decides whether to notify you by email or text. You can turn them off whenever you want.",
+      "client": "Client: {name}",
+      "disabled": "Your client has consignee notices turned off.",
+      "email": "Email notices: {value}",
+      "sms": "Text notices: {value}",
+      "none": "not on file",
+      "unsubscribed": "You unsubscribed with the link in a notice.",
+      "clientOnly": "Only your client can turn it on.",
+      "canTurnOn": "You turned it off: you can turn it back on."
+    }
+  },
+  "consigneeAccess": {
+    "title": "Consignee access",
+    "help": "Invite a person from the consignee by email so they can enter their own space: they see their notices, get messages from you and decide whether they want the notices.",
+    "open": "Access",
+    "close": "Close",
+    "none": "Nobody has access yet.",
+    "emailLabel": "Email for the invitation",
+    "emailPlaceholder": "If left empty, the consignee's main email is used",
+    "nameLabel": "Name (optional)",
+    "invite": "Give access",
+    "resend": "Resend invitation",
+    "remove": "Remove access",
+    "sent": "Invitation sent to {email}.",
+    "resent": "Invitation resent.",
+    "removed": "Access removed.",
+    "states": {
+      "INVITED": "Invitation pending",
+      "ACTIVE": "Has access",
+      "SUSPENDED": "Suspended",
+      "DISABLED": "No access"
+    }
+  },
+  "consigneeMessages": {
+    "title": "Messages from my consignees",
+    "open": "Messages from my consignees",
+    "openButton": "View conversations",
+    "openHelp": "What consignees with access write to you. You and your team answer them.",
+    "search": "Search",
+    "searchPlaceholder": "Consignee, person or text",
+    "unreadOnly": "Unread only",
+    "all": "All",
+    "empty": "No consignee has written to you.",
+    "unread": "{n} unread",
+    "chatHelp": "Your conversation with {name}. Only that consignee and the people at your client can see it.",
+    "readOnly": "Your role is read-only: you can read the messages, not answer them.",
+    "other": "Consignee",
+    "loadMore": "Show more ({shown} of {total})"
   }
 }

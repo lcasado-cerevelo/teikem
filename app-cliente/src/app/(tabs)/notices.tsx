@@ -1,1 +1,1 @@
-export { NoticesScreen as default } from '../../features/notices/NoticesScreen'
+export { NoticesTab as default } from '../../features/notices/NoticesTab'

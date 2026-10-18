@@ -9270,3 +9270,7 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **¿Con quién habla el consignatario en los mensajes?** Con su cliente (no con la compañía): él abre la conversación con su primer mensaje y los administradores y operadores del cliente la contestan. Quien solo consulta la lee sin poder contestar (`Su rol en el portal es de solo consulta: puede leer los mensajes de los consignatarios, no contestarlos.`, 403).
 
 **El cliente no se entera de que el consignatario le escribió.** Por ahora el aviso es el número de conversaciones sin leer en su bandeja de mensajes de consignatarios; no se manda correo.
+
+**¿Dónde le doy acceso a un consignatario?** En la app del cliente: Ajustes → Avisos a mis consignatarios → Configurar avisos, en la tarjeta del consignatario pulse «Acceso» y «Dar acceso» (capítulo 35 §5). Solo administradores y operadores.
+
+**El consignatario entra y no ve Inicio ni Órdenes.** Es lo previsto: su espacio tiene Avisos, Mensajes y Ajustes. Si abre Inicio u Órdenes, la app lo manda a Avisos.

@@ -22,6 +22,7 @@ import {
   inviteSchema,
   PORTAL_EMAIL_MAX,
   PORTAL_NAME_MAX,
+  CONSIGNEE_ROLE,
   PORTAL_ROLE_DOMAIN,
   PORTAL_STATUS_DOMAIN,
   portalActions,
@@ -40,7 +41,8 @@ function InviteModal({ clientPublicId, initial, open, onClose }: { clientPublicI
   const t = useT()
   const f = useFormat()
   const { invite } = usePortalMutations(clientPublicId)
-  const { data: roles = [] } = useLookups(PORTAL_ROLE_DOMAIN)
+  const { data: allRoles = [] } = useLookups(PORTAL_ROLE_DOMAIN)
+  const roles = allRoles.filter((r) => r.code !== CONSIGNEE_ROLE)   // el consignatario lo invita el cliente desde su portal
   const schema = useMemo(
     () =>
       inviteSchema({
