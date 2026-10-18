@@ -1,17 +1,15 @@
-# L103 — «¿Cómo va mi orden?» y la barra de progreso (pantallas)
+# L103 — «¿Cómo va mi paquete?» y la barra de progreso (pantallas)
 
-Reglas y mensajes: [capítulo 28](../28-como-va-mi-orden.md). Capturas de la versión **web** a 1100 px (en el teléfono es la misma interfaz en una columna).
+Reglas y mensajes: [capítulo 28](../28-como-va-mi-orden.md). **Desde el Lote 116 la página es solo por enlace con token** (se quitaron la búsqueda por número de conduce y el ajuste «Seguimiento público» de la compañía); las capturas de esta página se tomaron con el recorrido `web-app/e2e/lote103-seguimiento.spec.ts`, reescrito para el enlace. Capturas de la versión **web** a 1100 px (en el teléfono es la misma interfaz en una columna).
 
 ## La página pública
 ![La página pública](img/l103-publica.png)
 
-Sin sesión: se escribe el número de conduce y se ve el **avance**: el nombre de la compañía, el conduce, la barra con **una etapa por estatus de la compañía** (con el flujo de fábrica del Lote 106, 6), «Paso 1 de 6 · Sometida», la lista de etapas con la actual resaltada y la última actualización. Abajo: «Solo mostramos el avance del paquete: nunca nombres, direcciones ni teléfonos» y el enlace al portal.
+Sin sesión, al abrir el enlace del aviso se ve el **avance**: el nombre de la compañía, el conduce, la barra de **cuatro etapas** (Sometida, Recibida, En ruta, Completada), «Paso 3 de 4 · En ruta», la lista de etapas con la actual resaltada y la última actualización. Abajo: «Solo mostramos el avance del paquete: nunca nombres, direcciones ni teléfonos» y el enlace al portal.
 
 ![Detenida](img/l103-publica-espera.png)
 
-Una orden con **Intento fallido**: la barra se queda donde iba, la etapa actual sale en ámbar y el texto dice «Intento fallido · va por el paso N de 6». Una **cancelada** sale con todas las etapas apagadas; una **entregada**, toda en verde.
-
-![Sin consulta](img/l103-publica-vacia.png)
+Una orden con **Intento fallido**: la barra se queda donde iba, la etapa actual sale en ámbar y el texto dice «Intentada · va por el paso 3 de 4». Una **cancelada** sale con todas las etapas apagadas; una **entregada**, toda en verde.
 
 ## Tema oscuro e inglés
 ![La página pública en oscuro](img/l103-publica-oscuro.png)
@@ -31,14 +29,5 @@ Cada orden de la **lista** (y del inicio) trae su barra baja con «Paso N de M �
 
 La **ficha** trae la barra y la **lista de etapas**.
 
-## En la web de la compañía: encender el seguimiento
-![Ajuste](img/l103-ajuste.png)
-
-**Ajustes de la compañía → General → Seguimiento público**: Encendido/Apagado, el identificador, el enlace para compartir (se agrega `?n=<conduce>` para abrirlo con la consulta hecha) y «Apagar».
-
-![Ajuste de la compañía en oscuro](img/l103-ajuste-oscuro.png)
-
-La web de la compañía ya trae su selector ☀/🌙 (arriba a la derecha): el panel de Seguimiento público se ve igual en los dos temas.
-
 ## Archivos
-`app-cliente/src/features/{progress,track}/` (`ProgressBar`, `ProgressSteps`, reglas, `TrackScreen`) y la ruta `src/app/track/[company].tsx` (pública: la compuerta de `_layout.tsx` no la redirige); `web-app/src/features/system/{trackingApi.ts,settings/TrackingPanel.tsx}`; textos es/en; pruebas jest (`progress.test.tsx`, `TrackScreen.test.tsx`), vitest (`TrackingPanel.test.tsx`) y el recorrido `web-app/e2e/lote103-seguimiento.spec.ts`.
+`app-cliente/src/features/{progress,track}/` (`ProgressBar`, `ProgressSteps`, reglas, `TrackScreen`) y la ruta pública `src/app/track/[token].tsx` (la compuerta de `_layout.tsx` no la redirige); textos es/en; pruebas jest (`progress.test.tsx`, `TrackScreen.test.tsx`) y el recorrido `web-app/e2e/lote103-seguimiento.spec.ts`.
