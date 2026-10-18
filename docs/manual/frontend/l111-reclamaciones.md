@@ -25,3 +25,16 @@ Al crearla (REC-#####) se abre su ficha: orden, conduce, cliente, valor declarad
 La pestaña Reclamaciones las lista con su estatus (Reclamada, Resuelta), con búsqueda y filtro por estatus.
 
 ![Reclamaciones](img/l111-reclamaciones.png)
+
+## Cerrar el conteo cuando aparece una pieza perdida (Lote 111b)
+En la **Estación de escaneo**, cuando se escanea una pieza que estaba perdida o reclamada (aparece), el resultado ofrece **Cerrar conteo**.
+
+![Apareció](img/l111-aparecio.png)
+
+Cerrar el conteo **no se hace de una vez**: primero se muestra qué va a pasar (se crea una orden nueva con las piezas que aparecieron, con las mismas fechas de Sometida y Recogida, y se listan las piezas que no se escanearon) y hay que **Confirmar y cerrar el conteo**.
+
+![Cerrar el conteo](img/l111-cerrar-conteo.png)
+
+Al confirmar nace la orden nueva (conduce nuevo, mismas piezas con sus mismos números).
+
+![Conteo cerrado](img/l111-conteo-cerrado.png)

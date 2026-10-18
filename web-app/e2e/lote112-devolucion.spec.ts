@@ -52,7 +52,7 @@ test('Devolución: la ficha sugiere devolver tras 2 intentos fallidos, se devuel
   await shot(page, isMobile, 'l112-devuelta')
 
   // la orden de vuelta: otra orden del mismo cliente que dice de cuál es la vuelta
-  const list = await ok<{ items: { publicId: string; orderNumber: string }[] }>(request.get(`${API_URL}/api/v1/orders?clientPublicId=${client.publicId}&take=10`, { headers }), 'órdenes del cliente')
+  const list = await ok<{ items: { publicId: string; orderNumber: string }[] }>(request.get(`${API_URL}/api/v1/orders?clientId=${client.publicId}&take=10`, { headers }), 'órdenes del cliente')
   const back = list.items.find((o) => o.publicId !== order.publicId)
   expect(back, 'debe haber una orden de vuelta').toBeTruthy()
   await page.goto(`/orders/${back!.publicId}`)

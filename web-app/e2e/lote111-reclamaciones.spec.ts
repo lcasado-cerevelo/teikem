@@ -65,3 +65,35 @@ test('Reclamaciones: por verificar → perdidas → reclamación → resolver', 
   const { scrollWidth, innerWidth } = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth }))
   expect(scrollWidth).toBeLessThanOrEqual(innerWidth)
 })
+
+test('Cerrar conteo: una pieza perdida que aparece crea una orden nueva y se confirma antes', async ({ page, request }, testInfo) => {
+  const isMobile = testInfo.project.name.startsWith('movil')
+  const suffix = `${isMobile ? 'M' : 'D'}${LETTERS}`
+  const headers = await apiHeaders(request)
+  const client = await createClient(request, headers, `Cliente 111b ${suffix}`)
+  const consignee = await createConsignee(request, headers, client.publicId, `Tienda 111b ${suffix}`)
+  const order = await createOrder(request, headers, client.publicId, consignee.publicId, 3)
+  await scan(request, headers, 'ARRIVE', order.pieceNumbers[2])                                                // llega una de las tres
+  await ok(request.post(`${API_URL}/api/v1/scan/close-count`, { headers, data: { orderPublicId: order.publicId, confirm: true } }), 'cerrar conteo')
+  await ok(request.post(`${API_URL}/api/v1/claims/lost`, { headers, data: { orderPublicId: order.publicId } }), 'marcar perdidas')   // las otras dos quedan perdidas
+
+  await login(page)
+  await page.goto('/ops/scan')
+  await page.getByRole('radio', { name: 'Llegó' }).check()
+  const input = page.getByLabel('Código a escanear')
+  await input.fill(order.pieceNumbers[0])                                                                      // una pieza perdida aparece
+  await input.press('Enter')
+  const closeBtn = page.getByRole('button', { name: 'Cerrar conteo' })
+  await expect(closeBtn).toBeVisible({ timeout: 30_000 })
+  await shot(page, isMobile, 'l111-aparecio')
+  await closeBtn.click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByText(/Al cerrar el conteo se creará una orden nueva con 1 pieza\(s\) que aparecieron/)).toBeVisible({ timeout: 30_000 })
+  await shot(page, isMobile, 'l111-cerrar-conteo')
+  await dialog.getByRole('button', { name: 'Confirmar y cerrar el conteo' }).click()
+  await expect(dialog).toHaveCount(0, { timeout: 30_000 })
+  const list = await ok<{ items: { publicId: string }[] }>(request.get(`${API_URL}/api/v1/orders?clientId=${client.publicId}&take=10`, { headers }), 'órdenes del cliente')
+  expect(list.items.length).toBe(2)                                                                            // la original y la orden nueva de la pieza que apareció
+  await shot(page, isMobile, 'l111-conteo-cerrado')
+})
+
