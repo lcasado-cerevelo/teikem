@@ -21,4 +21,4 @@ Luis dictó (docs/p12): la página pública se queda solo como consulta por enla
 - **web (staff)**: se quitó el panel «Seguimiento público» de Ajustes → General.
 - **Contrato**: se quitaron `/api/v1/tenant/tracking` y `/api/v1/public/track/{slug}/{waybill}`; se agregaron los de avisos al consignatario (portal) y los públicos por token.
 - Pruebas (solo el área): jest de la app del cliente (`TrackScreen`, `UnsubscribeScreen`, `ConsigneeNoticesScreen`, `SettingsScreen`: 23); xunit `TrackingTests` (por token: solo el avance, otro idioma/compañía sin mezclar, fallido y cancelada, 404 genérico) y `ConsigneeNotice*`; vitest `system` (150).
-- **No se hicieron capturas ni recorridos Playwright de estas pantallas** (el portal es la app Expo); queda para la revisión de pantallas.
+- **Recorrido Playwright y capturas** (agregado después, 2026-10-18): `web-app/e2e/lote116-avisos-consignatario.spec.ts` pasa en escritorio y móvil contra el API real; capturas `docs/manual/frontend/img/l116-*.png` y capítulo `docs/manual/frontend/l116-avisos-consignatario.md`.
