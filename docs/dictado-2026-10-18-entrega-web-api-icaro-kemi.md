@@ -44,3 +44,14 @@ Notas textuales de lo que Luis pidió mientras se discutía P10 / P7 / P11. Es d
 
 ## Orden vigente
 Sin cambio: P11 y P12 antes; luego P13; P7 y lo que depende de él al final. Esta discusión puede cambiar el alcance de P7 y P10 (la entrega registrada por la web).
+
+## Hallazgos de la revisión (2026-10-18)
+
+### Geocodificación con Google (carpeta `RentComparable`)
+- Usa la **Geocoding API** de Google (REST): `GET https://maps.googleapis.com/maps/api/geocode/json?address=…&components=country:PR&key=…`; la inversa (coordenadas → ZIP) con `latlng=`.
+- Lee `status`, `results[0].geometry.location` (lat/lng), `location_type`, `place_id`, `formatted_address` y el `postal_code` de `address_components`.
+- Código de referencia: `api/Services/GoogleGeocoder.cs` (con `MapConfidence`), caché en la tabla `dbo.GeocodeCache` (`api/Data/GeocodeRepository.cs`) e ingesta en `api/Services/CloseIngestionService.cs` (el caso más parecido a «entrega sin ubicación»).
+- Precisión: `ROOFTOP` = alta; `RANGE_INTERPOLATED` y `GEOMETRIC_CENTER` = media; `APPROXIMATE` = baja; hay un mínimo configurable. Rechaza coordenadas fuera de Puerto Rico (lat 17.8–18.7, lng −68.2 a −65.1).
+- La llave va en la configuración `GoogleMaps__ApiKey` (variable de entorno), nunca en el código.
+- Lo que ese código **no** tiene y Teikem sí debería: reintentos con espera, tiempo máximo, límite de uso, y una dirección de respaldo menos específica (pueblo + ZIP) marcada como **aproximada**. Prioridad de coordenadas: las que traiga la entrega → las del consignatario → geocodificar.
+- Si no se puede ubicar, la entrega se registra igual y la ubicación queda vacía.
