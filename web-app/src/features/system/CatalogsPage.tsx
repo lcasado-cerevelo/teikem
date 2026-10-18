@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { Can } from '../../kernel/access/Can'
 import { useT } from '../../kernel/i18n/useT'
+import { parseServiceTypeMarks, SERVICE_TYPE_ENTITY, serviceTypeMarksJson } from './serviceTypeMarks'
 import {
   CARDS_QUERY,
   Chip,
@@ -197,6 +198,24 @@ function NewListModal({ open, onClose, onCreated }: { open: boolean; onClose: ()
   )
 }
 
+/** Lote 114: las marcas de un tipo de servicio: «pick up» (recojo y traigo: termina En almacén) y «facturable» (interruptor de cobro). */
+function ServiceTypeMarkFields() {
+  const t = useT()
+  return (
+    <>
+      <div className="r2">
+        <Field name="pickUp" label={t('system.catalogs.marks.pickUp')}>
+          <Toggle />
+        </Field>
+        <Field name="billable" label={t('system.catalogs.marks.billable')}>
+          <Toggle />
+        </Field>
+      </div>
+      <p className="help">{t('system.catalogs.marks.help')}</p>
+    </>
+  )
+}
+
 // ---------------- Modal: ajustar valor de sistema (override) ----------------
 
 function AdjustValueModal({ entity, row, onClose }: { entity: string; row: LookupValue; onClose: () => void }) {
@@ -209,10 +228,14 @@ function AdjustValueModal({ entity, row, onClose }: { entity: string; row: Looku
         labelEn: z.string().trim(),
         sortOverride: z.number().nullable(),
         isEnabled: z.boolean(),
+        pickUp: z.boolean(),
+        billable: z.boolean(),
       }),
     [],
   )
   const labels = row.labels ?? {}
+  const marks = parseServiceTypeMarks(row.extraJson)
+  const isServiceType = entity === SERVICE_TYPE_ENTITY
   const form = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -220,6 +243,8 @@ function AdjustValueModal({ entity, row, onClose }: { entity: string; row: Looku
       labelEn: labels.en ?? '',
       sortOverride: row.sortOrder ?? null,
       isEnabled: row.isEnabled !== false,
+      pickUp: marks.pickUp,
+      billable: marks.billable,
     },
   })
   const formId = 'catalogs-adjust-value'
@@ -253,7 +278,7 @@ function AdjustValueModal({ entity, row, onClose }: { entity: string; row: Looku
               labels: v.labelEn.trim() ? { es: v.labelEs, en: v.labelEn } : { es: v.labelEs },
               isEnabled: v.isEnabled,
               sortOverride: v.sortOverride,
-              extraJson: null,
+              extraJson: isServiceType ? serviceTypeMarksJson({ pickUp: v.pickUp, billable: v.billable }) : null,   // Lote 114: las marcas del tipo de servicio
             },
           })
           toast.success(t('system.catalogs.adjusted'))
@@ -274,6 +299,7 @@ function AdjustValueModal({ entity, row, onClose }: { entity: string; row: Looku
             <Toggle />
           </Field>
         </div>
+        {isServiceType && <ServiceTypeMarkFields />}
         <p className="help">{t('system.catalogs.adjustHelp')}</p>
       </Form>
     </Modal>
@@ -304,10 +330,14 @@ function ValueFormModal({
         labelEs: z.string().trim().min(1, t('system.catalogs.errors.labelRequired')),
         labelEn: z.string().trim(),
         sortOrder: z.number().nullable(),
+        pickUp: z.boolean(),
+        billable: z.boolean(),
       }),
     [t],
   )
   const labels = row?.labels ?? {}
+  const ownMarks = parseServiceTypeMarks(row?.extraJson)
+  const isServiceType = entity === SERVICE_TYPE_ENTITY
   const form = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -315,6 +345,8 @@ function ValueFormModal({
       labelEs: labels.es ?? row?.label ?? '',
       labelEn: labels.en ?? '',
       sortOrder: row?.sortOrder ?? null,
+      pickUp: ownMarks.pickUp,
+      billable: ownMarks.billable,
     },
   })
   const formId = 'catalogs-value-form'
@@ -345,7 +377,7 @@ function ValueFormModal({
             code: v.code,
             labels: v.labelEn.trim() ? { es: v.labelEs, en: v.labelEn } : { es: v.labelEs },
             descriptions: null,
-            extraJson: null,
+            extraJson: isServiceType ? serviceTypeMarksJson({ pickUp: v.pickUp, billable: v.billable }) : null,   // Lote 114
             sortOrder: v.sortOrder,
           }
           if (editing && row?.code) {
@@ -372,6 +404,7 @@ function ValueFormModal({
         <Field name="sortOrder" label={t('system.catalogs.order')}>
           <NumberInput />
         </Field>
+        {isServiceType && <ServiceTypeMarkFields />}
       </Form>
     </Modal>
   )

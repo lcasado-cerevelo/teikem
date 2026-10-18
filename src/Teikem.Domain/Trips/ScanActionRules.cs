@@ -32,7 +32,10 @@ public static class ScanActions
     public static int Rank(string action) => Array.IndexOf(All, action) + 1;
 
     /// <summary>La acción cuyo estatus es ese (Recogida → Recoger…); null si el estatus no es el de ninguna acción.</summary>
-    public static string? ForStatus(string? statusCode) => All.FirstOrDefault(a => string.Equals(TargetStatus(a), statusCode, StringComparison.OrdinalIgnoreCase));
+    public static string? ForStatus(string? statusCode)
+        => string.Equals(statusCode, OrderStatuses.InWarehouse, StringComparison.OrdinalIgnoreCase)
+            ? Arrive   // Lote 114: «En almacén» (el final del pick up) es el estatus de «Llegó» para el conteo
+            : All.FirstOrDefault(a => string.Equals(TargetStatus(a), statusCode, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Estatus de la orden al que lleva cada acción.</summary>
     public static string TargetStatus(string action) => action switch

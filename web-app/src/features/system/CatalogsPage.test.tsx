@@ -26,6 +26,8 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
     if (req.method === 'GET' && p === '/api/v1/catalogs/domains') return json(DOMAINS)
     if (req.method === 'GET' && p === '/api/v1/catalogs/WarehouseTaskType') return json(TASK_TYPE_VALUES)
     if (req.method === 'GET' && p === '/api/v1/catalogs/AdjustmentReason') return json(ADJUSTMENT_VALUES)
+    if (req.method === 'GET' && p === '/api/v1/catalogs/ServiceType') return json(SERVICE_VALUES)
+    if (req.method === 'PUT' && p === '/api/v1/catalogs/ServiceType/PICK_UP/override') return json({ ...SERVICE_VALUES[0], isOverridden: true })
     if (req.method === 'GET' && p === '/api/v1/catalogs/T1_MOTIVO') return json(MOTIVO_VALUES)
     if (req.method === 'PUT' && p === '/api/v1/catalogs/WarehouseTaskType/CROSSDOCK/override') {
       return json({ ...TASK_TYPE_VALUES[3], isOverridden: true })
@@ -47,6 +49,7 @@ function json(body: unknown) {
 const DOMAINS = [
   { id: 1, domainKey: 'WarehouseTaskType', scope: 1, label: 'Tipo de tarea de almacén', labels: { es: 'Tipo de tarea de almacén', en: 'Warehouse task type' }, description: null, isSystem: true, isActive: true, tenantId: null },
   { id: 2, domainKey: 'AdjustmentReason', scope: 1, label: 'Motivo de ajuste', labels: { es: 'Motivo de ajuste', en: 'Adjustment reason' }, description: null, isSystem: true, isActive: true, tenantId: null },
+  { id: 4, domainKey: 'ServiceType', scope: 1, label: 'Tipo de servicio', labels: { es: 'Tipo de servicio', en: 'Service type' }, description: null, isSystem: true, isActive: true, tenantId: null },
   { id: 3, domainKey: 'T1_MOTIVO', scope: 1, label: 'Motivo (Advance)', labels: { es: 'Motivo (Advance)', en: 'Reason (Advance)' }, description: null, isSystem: false, isActive: true, tenantId: 1 },
 ]
 
@@ -61,6 +64,10 @@ const TASK_TYPE_VALUES = [
 // admin de la compañía solo puede Ajustar/Restaurar ahí, nunca Editar/Nuevo valor — eso es para listas propias).
 const ADJUSTMENT_VALUES = [
   { id: 20, entity: 'AdjustmentReason', code: 'DAMAGE', label: 'Daño', labels: { es: 'Daño', en: 'Damage' }, description: null, extraJson: null, sortOrder: 10, isSystem: true, isEnabled: true, isOverridden: false, tenantId: null, isActive: true },
+]
+
+const SERVICE_VALUES = [
+  { id: 40, entity: 'ServiceType', code: 'PICK_UP', label: 'Pick up', labels: { es: 'Pick up', en: 'Pick up' }, description: null, extraJson: '{"pickUp":true,"billable":true}', sortOrder: 5, isSystem: true, isEnabled: true, isOverridden: false, tenantId: null, isActive: true },
 ]
 
 // Motivo (Advance) es una lista propia del tenant (T1_MOTIVO): aquí sí aplican Nuevo valor/Editar/Desactivar.
@@ -90,6 +97,32 @@ describe('CatalogsPage', () => {
     await screen.findByText('Tipo de tarea de almacén', { selector: 'h2' })
     expect(await screen.findByText('PUTAWAY')).toBeInTheDocument()
     expect(screen.getAllByText('Cross-dock').length).toBeGreaterThan(0)
+  })
+
+  it('Lote 114: ajustar un tipo de servicio muestra «Pick up» y «Facturable» con lo que traiga y los manda en el ExtraJson', async () => {
+    const user = userEvent.setup()
+    wrap(<CatalogsPage />)
+    await screen.findByText('PUTAWAY')
+    await user.click(screen.getByText('Tipo de servicio'))
+    const row = (await screen.findByText('PICK_UP')).closest('tr')!
+    await user.click(within(row).getByRole('button', { name: 'Ajustar' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('Pick up (recojo y traigo)')).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('switch', { name: 'Facturable' }))   // se apaga el cobro
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(mock.requests.some((r) => r.method === 'PUT' && r.url.pathname === '/api/v1/catalogs/ServiceType/PICK_UP/override')).toBe(true))
+    const put = mock.requests.find((r) => r.method === 'PUT' && r.url.pathname === '/api/v1/catalogs/ServiceType/PICK_UP/override')!
+    expect(JSON.parse((put.body as { extraJson: string }).extraJson)).toEqual({ pickUp: true, billable: false })
+  })
+
+  it('Lote 114: un dominio que no es de tipos de servicio no muestra las marcas', async () => {
+    const user = userEvent.setup()
+    wrap(<CatalogsPage />)
+    await screen.findByText('CROSSDOCK')
+    const row = screen.getAllByRole('row').slice(1).find((r) => r.textContent?.includes('CROSSDOCK'))!
+    await user.click(within(row).getByRole('button', { name: 'Ajustar' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).queryByText('Pick up (recojo y traigo)')).toBeNull()
   })
 
   it('cambiar de dominio recarga la tabla derecha', async () => {

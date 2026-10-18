@@ -6853,6 +6853,11 @@
         "labelRequired": "The label is required.",
         "rowCodeRequired": "Row {row}: the code is required.",
         "rowLabelRequired": "Row {row}: the label is required."
+      },
+      "marks": {
+        "pickUp": "Pick up (collect and bring)",
+        "billable": "Billable",
+        "help": "A pick up collects and brings to the warehouse: the order ends «In warehouse» and does not go on a route. «Billable» off = not quoted nor charged."
       }
     },
     "settings": {

@@ -116,7 +116,17 @@ public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant,
                 return;
             }
 
-            if (orderIsFinal)
+            // Lote 114: tipo de servicio «pick up»: Sometida → Recogida → En almacén (final); no sale a ruta ni a chofer. Las piezas siguientes con «Llegó» se cuentan aunque la orden ya esté En almacén.
+            var pickUp = (await ServiceTypeMarkReader.LoadAsync(db, order.ServiceTypeLookupId, ct2)).PickUp;
+            var targetForOrder = pickUp && action == ScanActions.Arrive ? OrderStatuses.InWarehouse : targetCode;
+            if (pickUp && action is ScanActions.Route or ScanActions.Depart)
+            {
+                done = Plain(action, ScanActionOutcomes.NotFound, string.Format(ServiceTypeMarks.PickUpOnlyMessageFormat, orderFacts.OrderNumber));
+                return;
+            }
+            var countsAtWarehouse = pickUp && action == ScanActions.Arrive && current.Code == OrderStatuses.InWarehouse;
+
+            if (orderIsFinal && !countsAtWarehouse)
             {
                 done = await ResultAsync(action, ScanActionOutcomes.Final, FinalMessage(orderFacts.OrderNumber, current.Label), orderFacts, current, null, null, null, piece.PackageNumber, orderId, ct2);
                 return;
@@ -131,11 +141,14 @@ public sealed class ScanActionService(TeikemDbContext db, ITenantContext tenant,
 
             // Pasos desde el estatus actual: desde un lateral (Intento fallido) se cuenta desde «Recogida» (se regresa al almacén).
             var fromCode = string.Equals(current.StageKind, StageKinds.Lateral, StringComparison.OrdinalIgnoreCase) ? OrderStatuses.Pickup : current.Code;
-            var steps = PipelinePath.StepsTo(stages, fromCode, targetCode);
+            IReadOnlyList<string> steps;
+            if (countsAtWarehouse) steps = Array.Empty<string>();
+            else if (pickUp && action == ScanActions.Arrive) steps = fromCode == OrderStatuses.Submitted ? new[] { OrderStatuses.Pickup, OrderStatuses.InWarehouse } : new[] { OrderStatuses.InWarehouse };   // el pick up termina En almacén
+            else steps = PipelinePath.StepsTo(stages, fromCode, targetCode);
             OutboundScanResultDto? route = null;
             string? toCode = null;
             IReadOnlyList<string>? skipped = null;
-            var message = CountedMessage(piece.PackageNumber, LabelOf(targetCode));
+            var message = CountedMessage(piece.PackageNumber, LabelOf(targetForOrder));
 
             if (steps.Count == 0)
             {

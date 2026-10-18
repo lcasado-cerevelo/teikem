@@ -4373,3 +4373,14 @@ GO
    ========================================================================= */
 IF COL_LENGTH('dbo.Tenant', 'ReturnSuggestAfterAttempts') IS NULL ALTER TABLE dbo.Tenant ADD ReturnSuggestAfterAttempts INT NOT NULL CONSTRAINT DF_Tenant_ReturnSuggest DEFAULT 2 CONSTRAINT CK_Tenant_ReturnSuggest CHECK (ReturnSuggestAfterAttempts BETWEEN 0 AND 20);
 GO
+
+/* =========================================================================
+   2026-10-18 (av) — Lote 114: tipo de servicio «Pick up» (recojo y traigo): Sometida → Recogida → En almacén (final). La marca vive en el ExtraJson del tipo de servicio {"pickUp":true,"billable":true}
+   (billable = interruptor «facturable»; se edita en Listas, por compañía con su ajuste propio). Se siembra el tipo PICK_UP.
+   ========================================================================= */
+MERGE dbo.LookupCode AS t
+USING (SELECT N'ServiceType' AS Entity, N'PICK_UP' AS InternalCode) AS s ON t.Entity = s.Entity AND t.InternalCode = s.InternalCode AND t.TenantId IS NULL
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, ExtraJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'ServiceType', N'PICK_UP', N'{"es":"Pick up","en":"Pick up"}', N'{"pickUp":true,"billable":true}', 5, 1, 1);
+GO

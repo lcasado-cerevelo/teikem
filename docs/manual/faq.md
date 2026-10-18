@@ -9216,3 +9216,13 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **Sale «Se sugiere devolverla: N intento(s) fallido(s)», ¿tengo que devolverla?** No: es solo una sugerencia por compañía (Ajustes → General → Devolución, por omisión 2). La orden se puede seguir reintentando; si prefiere no ver la sugerencia, ponga 0.
 
 **«Indique con cuántos intentos fallidos se sugiere devolver: de 0 (sin sugerencia) a 20.»** (400) El ajuste solo acepta números enteros de 0 a 20.
+
+## Tipo de servicio «Pick up» (Lote 114)
+
+**¿Qué es un pick up?** Un tipo de servicio de recojo y traigo: la orden va Sometida → Recogida → **En almacén** (final) y no sale a ruta. Ver capítulo 33.
+
+**Escaneé «Enrutar» o «Salir» y dice «La orden … es de pick up: se queda en el almacén.»** Una orden de pick up no sale del almacén; para sacar lo recogido se crea otra orden (o el cliente viene a buscarlo).
+
+**«No hay tarifa vigente para PICK_UP/…» al someter un pick up.** Un pick up facturable necesita tarifa en el contrato del cliente. Si no se va a cobrar, apague **Facturable** en Listas → Tipo de servicio → Pick up → Ajustar.
+
+**¿Cuándo se cobra un pick up?** Al llegar a **En almacén** (con «Llegó»), sin importar el modelo de cobro del contrato; si «Facturable» está apagado, nunca.

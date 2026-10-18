@@ -168,6 +168,7 @@ internal sealed class TripServiceFixture : IAsyncDisposable
         S(StatusDomains.OrderStatus, OrderStatuses.Failed, lat, 20);
         S(StatusDomains.OrderStatus, OrderStatuses.Cancelled, term, 30);
         S(StatusDomains.OrderStatus, OrderStatuses.Returned, term, 10);   // Lote 112
+        S(StatusDomains.OrderStatus, OrderStatuses.InWarehouse, term, 9);   // Lote 114
 
         S(StatusDomains.StopStatus, StopStatuses.Pending, pipe, 1, true);
         S(StatusDomains.StopStatus, StopStatuses.Completed, term, 3);

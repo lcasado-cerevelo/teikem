@@ -78,6 +78,14 @@ public sealed class OrderStatusService(
     /// </summary>
     public async Task QuoteOnSubmissionAsync(TransportOrder order, bool overrideCredit, CancellationToken ct)
     {
+        // Lote 114: un tipo de servicio no facturable (por ejemplo un pick up sin cobro) no exige contrato ni tarifa, ni mide crédito: queda cotizado en cero
+        if (!(await ServiceTypeMarkReader.LoadAsync(db, order.ServiceTypeLookupId, ct)).Billable)
+        {
+            order.QuotedAmount = 0m;
+            order.QuotedAtUtc = DateTime.UtcNow;
+            await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct);
+            return;
+        }
         var client = await LoadClientAsync(order.ClientId, ct);
         var total = await quotes.ApplyQuoteAsync(order, client, Today(), ct);
         var pending = await balance.PendingBalanceAsync(client.ClientId, order.TransportOrderId, ct);

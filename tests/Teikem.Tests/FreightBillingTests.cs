@@ -152,6 +152,21 @@ public sealed class FreightBillingTests
     }
 
     [Fact]
+    public async Task Lote114_a_pick_up_order_is_billed_when_it_reaches_the_warehouse_whatever_the_contract_model_and_a_zero_one_is_not()
+    {
+        var x = await NewWorldAsync();
+        await using var _ = x.F;
+        var byDelivery = await ContractAsync(x, "BY_DELIVERY");
+        var inWarehouse = await QuotedOrderAsync(x, "T-PICKUP", OrderStatuses.InWarehouse, 15m, byDelivery);   // el pick up no se entrega nunca: se cobra En almacén
+        await QuotedOrderAsync(x, "T-FREE", OrderStatuses.InWarehouse, 0m, byDelivery);                        // pick up no facturable (cotizado en cero)
+        await QuotedOrderAsync(x, "T-ROUTE", OrderStatuses.Assigned, 9m, byDelivery);                          // por entrega: todavía no
+
+        var run = await x.Billing.GenerateAsync(Period(), default);
+        Assert.Equal(15m, Assert.Single(run.Invoices).Subtotal);
+        Assert.True(await InvoicedAsync(x, inWarehouse.TransportOrderId));
+    }
+
+    [Fact]
     public async Task Drafts_inactive_unquoted_and_zero_orders_are_not_billed()
     {
         var x = await NewWorldAsync();

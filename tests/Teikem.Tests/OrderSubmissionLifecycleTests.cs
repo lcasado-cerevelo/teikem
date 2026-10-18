@@ -690,4 +690,20 @@ public sealed class OrderSubmissionLifecycleTests
         var after = await x.Statuses.ReopenAsync(original.PublicId, new OrderReopenRequest(OrderStatuses.Unassigned, "Error", null), OrderScope.Any, default);
         Assert.Equal(OrderStatuses.Unassigned, after.Status);
     }
+
+    [Fact]
+    public async Task Lote114_a_non_billable_service_type_is_submitted_quoted_at_zero_and_does_not_count_against_the_credit()
+    {
+        var x = await NewWorldAsync();
+        await using var _ = x.F;
+        var standard = await x.Db.LookupCodes.SingleAsync(l => l.Entity == LookupDomains.ServiceType && l.InternalCode == "STANDARD");
+        standard.ExtraJson = "{\"pickUp\":true,\"billable\":false}";
+        await x.Db.SaveChangesAsync();
+        x.Db.ChangeTracker.Clear();
+
+        var dto = await x.Orders.CreateAsync(Req(x), OrderScope.Any, null, default);
+
+        Assert.Equal(0m, (await OrderAsync(x, dto.PublicId)).QuotedAmount);
+        Assert.Equal(0m, await x.F.Get<IClientBalanceProvider>().PendingBalanceAsync(x.C.ClientId, null, default));
+    }
 }

@@ -6853,6 +6853,11 @@
         "labelRequired": "La etiqueta es obligatoria.",
         "rowCodeRequired": "Fila {row}: el código es obligatorio.",
         "rowLabelRequired": "Fila {row}: la etiqueta es obligatoria."
+      },
+      "marks": {
+        "pickUp": "Pick up (recojo y traigo)",
+        "billable": "Facturable",
+        "help": "Un pick up recoge y trae al almacén: la orden termina «En almacén» y no sale a ruta. «Facturable» apagado = no se cotiza ni se cobra."
       }
     },
     "settings": {

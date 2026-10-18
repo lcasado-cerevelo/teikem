@@ -254,7 +254,8 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
         foreach (var m in modelIds) models[m.ContractId] = m.BillingModelLookupId is int lid ? (await lookups.GetAsync(lid, ct))?.InternalCode : null;
         string? ModelOf(TransportOrder o) => o.ContractId is int c ? models.GetValueOrDefault(c) : null;
 
-        var allowed = orders.Where(o => FreightRules.BillableStatuses(ModelOf(o)).Contains(statusMap[o.StatusCodeId])).ToList();
+        // Lote 114: un pick up facturable se cobra al llegar «En almacén» (su estatus final), sin importar el modelo de cobro del contrato
+        var allowed = orders.Where(o => statusMap[o.StatusCodeId] == OrderStatuses.InWarehouse || FreightRules.BillableStatuses(ModelOf(o)).Contains(statusMap[o.StatusCodeId])).ToList();
         if (allowed.Count == 0) return new List<FreightEligible>();
 
         // el hecho: la primera vez que la orden llegó a un estatus facturable de su modelo
@@ -272,7 +273,7 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
         var result = new List<FreightEligible>();
         foreach (var o in allowed)
         {
-            var billable = FreightRules.BillableStatuses(ModelOf(o));
+            var billable = FreightRules.BillableStatuses(ModelOf(o)).Append(OrderStatuses.InWarehouse).ToList();
             var fact = history.Where(h => h.OrderId == o.TransportOrderId && billable.Contains(h.Code)).Select(h => (DateTime?)h.At).Min()
                        ?? o.ConfirmedAtUtc ?? o.QuotedAtUtc ?? o.CreatedAtUtc;
             if ((rangeFrom != null && fact < rangeFrom) || (toExclusive != null && fact >= toExclusive)) continue;
