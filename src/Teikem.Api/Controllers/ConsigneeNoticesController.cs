@@ -49,3 +49,48 @@ public sealed class PublicConsigneeController(PublicTrackingService tracking, Co
         return NoContent();
     }
 }
+
+/// <summary>
+/// Lote 117 — el cliente le da acceso a un consignatario suyo (invitación por correo). Sesión de portal de una persona del cliente con el módulo CLIENT_PORTAL; invitar, reenviar y quitar exigen rol de administrador u operador.
+/// </summary>
+[ApiController]
+[Route("api/v1/portal/consignee-access")]
+[Authorize]
+[RequireModule(ModuleKeys.ClientPortal)]
+public sealed class PortalConsigneeAccessController(ConsigneeAccessService access) : ControllerBase
+{
+    /// <summary>Quién tiene acceso a ese consignatario.</summary>
+    [HttpGet("{locationId:guid}")]
+    public Task<IReadOnlyList<ConsigneeAccessDto>> List(Guid locationId, CancellationToken ct) => access.ListAsync(locationId, ct);
+
+    /// <summary>Invita a un correo (sin correo, el principal del consignatario). 400 sin correo; 409 si ese correo no está disponible.</summary>
+    [HttpPost("{locationId:guid}")]
+    public Task<ConsigneeAccessInviteResultDto> Invite(Guid locationId, [FromBody] ConsigneeAccessInviteRequest req, CancellationToken ct) => access.InviteAsync(locationId, req, ct);
+
+    /// <summary>Reenvía la invitación (el enlace anterior deja de servir).</summary>
+    [HttpPost("{locationId:guid}/{id:int}/resend")]
+    public Task<ConsigneeAccessInviteResultDto> Resend(Guid locationId, int id, CancellationToken ct) => access.ResendAsync(locationId, id, ct);
+
+    /// <summary>Quita el acceso de esa persona.</summary>
+    [HttpDelete("{locationId:guid}/{id:int}")]
+    public async Task<IActionResult> Remove(Guid locationId, int id, CancellationToken ct) { await access.RemoveAsync(locationId, id, ct); return NoContent(); }
+}
+
+/// <summary>Lote 117 — el espacio del consignatario con acceso propio: su perfil, cómo recibe los avisos y la bandeja de lo que se le avisó. Solo una sesión de consignatario (claim loc) entra; solo ve lo suyo.</summary>
+[ApiController]
+[Route("api/v1/portal/consignee")]
+[Authorize]
+[RequireModule(ModuleKeys.ClientPortal)]
+public sealed class PortalConsigneeController(ConsigneeSelfService self) : ControllerBase
+{
+    [HttpGet("me")]
+    public Task<ConsigneeMeDto> Me(CancellationToken ct) => self.GetMeAsync(ct);
+
+    /// <summary>Apaga o vuelve a prender un medio de aviso (EMAIL o SMS). 409 si intenta prender lo que solo el cliente puede prender.</summary>
+    [HttpPut("me/notices/{channel}")]
+    public Task<ConsigneeMeDto> SetChannel(string channel, [FromBody] ConsigneeChannelRequest req, CancellationToken ct) => self.SetChannelAsync(channel, req, ct);
+
+    /// <summary>La bandeja: los avisos que se le enviaron (más nuevos primero).</summary>
+    [HttpGet("notices")]
+    public Task<PagedResult<ConsigneeInboxItemDto>> Notices([FromQuery] int skip, [FromQuery] int take, CancellationToken ct) => self.ListNoticesAsync(skip, take, ct);
+}

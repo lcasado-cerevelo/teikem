@@ -439,6 +439,8 @@ public static class DependencyInjection
         services.AddScoped<Teikem.Infrastructure.Legal.LegalService>();   // Lote 99: documento legal único y su aceptación
         services.AddScoped<IStatusTransitionEffect, ClientNotificationOrderEffect>();
         services.AddScoped<ConsigneeNoticeService>();   // Lote 116: avisos al consignatario
+        services.AddScoped<ConsigneeAccessService>();   // Lote 117: el cliente le da acceso al consignatario
+        services.AddScoped<ConsigneeSelfService>();     // Lote 117: el espacio del consignatario (perfil y bandeja)
         services.AddScoped<IStatusTransitionEffect, ConsigneeNoticeOrderEffect>();
         services.AddScoped<IStatusTransitionEffect, ClientNotificationInvoiceEffect>();
         services.AddScoped<IStatusTransitionEffect, ClientNotificationRemittanceEffect>();

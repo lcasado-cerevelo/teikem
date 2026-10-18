@@ -17,6 +17,7 @@ public sealed class PortalScopeMiddleware(RequestDelegate next)
             var path = http.Request.Path.Value;
             string? deny = null;
             if (tenant.IsPortal && !PortalScopeRules.IsAllowedForPortal(path)) deny = PortalScopeRules.NotForPortalMessage;
+            else if (tenant.IsPortal && tenant.PortalLocationId is not null && !PortalScopeRules.IsAllowedForConsignee(path)) deny = PortalScopeRules.NotForPortalMessage;   // Lote 117: el consignatario solo toca su espacio
             else if (!tenant.IsPortal && PortalScopeRules.IsPortalOnlyPath(path) && !IsPublicPortalPath(path)) deny = PortalScopeRules.PortalOnlyMessage;
             if (deny is not null)
             {

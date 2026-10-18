@@ -91,7 +91,7 @@ public sealed class ConsigneeNoticeService(TeikemDbContext db, ITenantContext te
     }
 
     /// <summary>El correo y el teléfono principales de una localización (los contactos activos, el principal primero).</summary>
-    private async Task<(string? Email, string? Phone)> ContactsAsync(int locationId, CancellationToken ct)
+    public async Task<(string? Email, string? Phone)> ContactsAsync(int locationId, CancellationToken ct)
     {
         var ownerId = await lookups.GetIdAsync(LookupDomains.EntityType, EntityTypes.Location, ct);
         var rows = await (from c in db.ContactPoints.AsNoTracking()
@@ -166,7 +166,7 @@ public sealed class ConsigneeNoticeService(TeikemDbContext db, ITenantContext te
         db.ConsigneeNotices.Add(n);
     }
 
-    private async Task<bool> IsUnsubscribedAsync(string channel, string contact, CancellationToken ct)
+    public async Task<bool> IsUnsubscribedAsync(string channel, string contact, CancellationToken ct)
     {
         var c = contact.Trim().ToLowerInvariant();
         var local = db.ConsigneeUnsubscribes.Local.Any(u => u.Channel == channel && u.Contact == c);

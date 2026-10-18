@@ -1,0 +1,25 @@
+# Lote 117 — Acceso del consignatario (117a: acceso, perfil y bandeja) (2026-10-18)
+
+Luis dictó (docs/p10-portal-diseno.md, aclaración del 2026-10-18): el consignatario puede tener acceso propio al portal; **solo el cliente se lo da, por invitación a un correo**; entra con contraseña y computadora de confianza (**sin MFA**); el cliente decide los avisos y el medio, se le notifica al consignatario y **él puede apagarlos**; en su perfil cambia correo/teléfono de los avisos, tiene una **bandeja** con lo que se le envió y podrá **escribirle mensajes a su cliente** (117b).
+
+## Qué se construyó
+- **SQL (update.sql, sección (ay))**: `PortalUser.LocationId` (FK a `Location`, índice filtrado) y el rol de portal `CONSIGNEE` (LookupCode global).
+- **Invitación**: `PortalUserService.InviteAsync` acepta el consignatario (`locationId`): la fila lleva `LocationId` y el rol CONSIGNEE; el rol solo se da con consignatario (`El rol de consignatario solo se da desde el consignatario.`). Enlace de 48 h, un solo uso, el reenvío mata el anterior (lo existente).
+- **`ConsigneeAccessService`** (el cliente): listar, invitar (correo escrito o el principal del consignatario), reenviar, quitar. Admin/operador; solo consulta = 403; consignatario de otro cliente = 404.
+- **`ConsigneeSelfService`** (el consignatario): perfil, apagar/volver a prender un medio (bitácora `ConsigneeNoticeConsent`, origen CONSIGNEE) y bandeja de avisos. Todo sale de la sesión.
+- **Sesión**: claim nuevo `loc` (consignatario), `PortalAccessRow.LocationId`, `TenantContext.PortalLocationId`; se emite en el login, se conserva al renovar y al reautenticar. **Sin MFA** para el consignatario en `PortalLoginAsync`.
+- **Aislamiento**: `PortalScopeRules.IsAllowedForConsignee` + `PortalScopeMiddleware`: de `/api/v1/portal/*` solo `/auth/*` y `/consignee/*`; lo del cliente (órdenes, mensajes, avisos, dar acceso) responde 403 `portal_scope`. `/portal/consignee/me` queda exento de la compuerta del documento legal.
+- **API**: `/api/v1/portal/consignee-access/*` (cliente) y `/api/v1/portal/consignee/*` (consignatario); contratos en `ConsigneeAccessContracts.cs`.
+- `ConsigneeNoticeRules.Phrase` (frase del estatus) reutilizada por el asunto del correo y la bandeja; se corrigió de paso que la reautenticación (step-up) de una sesión de portal perdía su cliente.
+
+## Cómo se probó (solo el área)
+- xunit `ConsigneeAccessTests` (16): rutas permitidas al consignatario y al cliente, claim `loc`, invitar con correo propio, 409 de duplicado, sin correo, solo admin/operador, otro cliente 404, rol CONSIGNEE solo desde el consignatario, reenviar mata el enlace y quitar, ingreso sin MFA, la persona del cliente sigue con MFA, perfil, apagar y volver a prender (bitácora, sin aviso de alta), lo que el cliente nunca prendió / aviso apagado / baja por enlace / sin contacto, bandeja (solo lo suyo, título, token), la persona del cliente sin espacio de consignatario, token mal armado. Más las de portal, avisos, documento legal y JWT que ya existían: 317 en total, sin fallos.
+- **Contra SQL y API reales** (Teikem_fg2, `db-update` dos veces sin cambios): cliente + consignatario, persona del cliente con MFA, invitación con correo, reenviar (el enlace anterior da 400), aceptar, computadora nueva confirmada, **ingreso del consignatario sin MFA** con claims `cid` y `loc`, perfil y bandeja, 8 rutas del cliente/staff con 403, no puede invitar, la persona del cliente no entra a su espacio, la sesión se renueva conservando `loc`, quitar el acceso y la sesión deja de renovarse.
+- La base en memoria no traduce el UPDATE de «último ingreso»: la sesión completa del consignatario solo se comprobó contra SQL real.
+
+## Decisiones a revisar con Luis
+1. **Volver a prender:** el consignatario vuelve a prender únicamente el medio que **apagó él mismo** (y si el cliente sigue con el aviso prendido y no se dio de baja por el enlace). Lo que el cliente nunca prendió, solo el cliente. (Luis dijo «puede apagarlo»; lo de volver a prender lo propuse yo.)
+2. **El correo de la invitación** es el mismo texto de las invitaciones del portal (nombra al cliente); no hay uno propio para consignatarios.
+3. **Un correo, un consignatario por cliente** (índice único (compañía, cliente, correo)); la misma persona sí puede ser consignatario de varios clientes.
+4. **Quitar el acceso es baja definitiva** de esa persona (se reinvita con el mismo correo); no hay «suspender» desde el portal del cliente (el staff sí lo ve en el expediente).
+5. **Pendiente de este lote:** mensajes consignatario ↔ cliente (117b); pantallas en la app del cliente (117c); «Envíos del consignatario» y que cree órdenes (decidido en docs/p10, aún no pedido).

@@ -9,7 +9,7 @@ using Teikem.Infrastructure.Exceptions;
 namespace Teikem.Infrastructure.Services;
 
 /// <summary>Un cliente al que un usuario de portal tiene acceso ACTIVO (PortalUser ACTIVE, cliente y compañía vivos).</summary>
-public sealed record PortalAccessRow(int TenantId, string TenantName, int ClientId, Guid ClientPublicId, string ClientName);
+public sealed record PortalAccessRow(int TenantId, string TenantName, int ClientId, Guid ClientPublicId, string ClientName, int? LocationId = null);
 
 /// <summary>
 /// Lote 101 — acceso del portal por cliente. Login SEPARADO del del staff (<c>POST /api/v1/portal/auth/login</c>): solo cuentas de tipo PORTAL, con acceso ACTIVO a algún cliente. La sesión queda ligada a
@@ -32,7 +32,17 @@ public sealed partial class AuthService
                       join t in db.Tenants.AsNoTracking().IgnoreQueryFilters() on p.TenantId equals t.TenantId
                       where p.UserId == userId && p.IsActive && p.Status!.InternalCode == active && c.IsActive && t.IsActive
                       orderby t.Name, c.Name
-                      select new PortalAccessRow(p.TenantId, t.Name, p.ClientId, c.PublicId, c.Name)).ToListAsync(ct);
+                      select new PortalAccessRow(p.TenantId, t.Name, p.ClientId, c.PublicId, c.Name, p.LocationId)).ToListAsync(ct);
+    }
+
+    /// <summary>Lote 117: el consignatario (localización) de la persona en ese cliente, si su acceso es de consignatario; null si es una persona del cliente.</summary>
+    private async Task<int?> PortalLocationOfAsync(int userId, int? clientId, CancellationToken ct)
+    {
+        if (clientId is null) return null;
+        var active = PortalUserStatuses.Active;
+        return await db.PortalUsers.AsNoTracking().IgnoreQueryFilters()
+            .Where(p => p.UserId == userId && p.ClientId == clientId && p.IsActive && p.Status!.InternalCode == active)
+            .Select(p => p.LocationId).FirstOrDefaultAsync(ct);
     }
 
     /// <summary>El acceso con el que se entra: el pedido (si es de la cuenta), si no el de la compañía predeterminada y, a falta, el primero por nombre.</summary>
@@ -118,8 +128,9 @@ public sealed partial class AuthService
         }
 
         // MFA obligatorio; con la computadora de confianza y el código escrito hace menos de 30 días no se repite (la sesión nace sin AAL2: las acciones sensibles lo vuelven a pedir).
-        var totp = await ConfirmedTotpAsync(user.Id, ct);
-        if (totp is null || !trusted.MfaRecent)
+        // Lote 117: el consignatario NO tiene MFA (decidido con Luis; docs/p10): su acceso es contraseña + computadora de confianza.
+        var totp = pick.LocationId is null ? await ConfirmedTotpAsync(user.Id, ct) : null;
+        if (pick.LocationId is null && (totp is null || !trusted.MfaRecent))
         {
             var (challenge, _) = jwt.CreateMfaChallengeToken(user, pick.TenantId, req.DeviceInfo);
             await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Success, user.Id, pick.TenantId, new { portal = true, stage = "password", mfa = totp is not null ? "required" : "enrollment_required" }, ct);

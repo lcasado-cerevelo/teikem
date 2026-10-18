@@ -66,13 +66,18 @@ public sealed class PortalUserService(
 
     // ---------------- Invitar / reenviar ----------------
 
-    public async Task<PortalInviteResultDto> InviteAsync(Guid clientPublicId, PortalInviteRequest req, CancellationToken ct)
+    /// <summary>Rol CONSIGNEE sin consignatario (o un consignatario con otro rol): el acceso del consignatario solo se da desde el consignatario (Lote 117).</summary>
+    public const string ConsigneeRoleMessage = "El rol de consignatario solo se da desde el consignatario.";
+
+    /// <param name="locationId">Lote 117: el consignatario (localización de entrega del cliente) al que se le da acceso; con él el rol es CONSIGNEE. Null = una persona del cliente.</param>
+    public async Task<PortalInviteResultDto> InviteAsync(Guid clientPublicId, PortalInviteRequest req, CancellationToken ct, int? locationId = null)
     {
         var tenantId = ((TenantContext)tenant).RequireTenantId();
         var email = NormalizeEmail(req.Email);
         var fullName = OptionalText(req.FullName, "fullName", 150);
         if (string.IsNullOrWhiteSpace(req.Role)) throw new ValidationException("role", "El rol de portal es obligatorio.");
         var roleId = await lookups.GetIdAsync(LookupDomains.PortalRole, req.Role.Trim(), ct); // 404 si el código no existe
+        if ((locationId is not null) != string.Equals(req.Role.Trim(), PortalRoles.Consignee, StringComparison.OrdinalIgnoreCase)) throw new ValidationException("role", ConsigneeRoleMessage);
         var portalKindId = await lookups.GetIdAsync(LookupDomains.UserKind, UserKinds.Portal, ct);
 
         InviteOutcome result;
@@ -132,6 +137,7 @@ public sealed class PortalUserService(
                     pu.UserId = account.Id;
                     pu.FullName = fullName ?? pu.FullName;
                     pu.RoleLookupId = roleId;
+                    pu.LocationId = locationId;
                     pu.IsActive = true;
                 }
                 else
@@ -139,7 +145,7 @@ public sealed class PortalUserService(
                     var initial = await statuses.GetInitialAsync(StatusDomains.PortalUserStatus, ct2);
                     pu = new PortalUser
                     {
-                        TenantId = tenantId, ClientId = client.ClientId, UserId = account.Id, Email = email,
+                        TenantId = tenantId, ClientId = client.ClientId, UserId = account.Id, Email = email, LocationId = locationId,
                         FullName = fullName ?? account.FullName, RoleLookupId = roleId, StatusCodeId = initial.StatusCodeId, IsActive = true,
                     };
                     db.PortalUsers.Add(pu);

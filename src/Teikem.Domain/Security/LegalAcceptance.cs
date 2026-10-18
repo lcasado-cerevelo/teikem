@@ -34,6 +34,6 @@ public static class LegalRules
     {
         if (string.IsNullOrEmpty(path)) return true;
         var p = path.TrimEnd('/').ToLowerInvariant();
-        return p.StartsWith("/api/v1/auth") || p.StartsWith("/api/v1/legal") || p == "/api/v1/me" || p == "/api/v1/portal/me" || !p.StartsWith("/api/");
+        return p.StartsWith("/api/v1/auth") || p.StartsWith("/api/v1/legal") || p == "/api/v1/me" || p == "/api/v1/portal/me" || p == "/api/v1/portal/consignee/me" || !p.StartsWith("/api/");
     }
 }

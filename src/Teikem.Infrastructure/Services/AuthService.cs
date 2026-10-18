@@ -274,7 +274,7 @@ public sealed partial class AuthService(
         var now = DateTime.UtcNow;
         await db.Users.Where(u => u.Id == user.Id).ExecuteUpdateAsync(s => s.SetProperty(u => u.LastLoginUtc, now), ct);
         user.LastLoginUtc = now;
-        var (access, exp) = CreateAccess(user, tenantId, rt.RefreshTokenId, kind, aal2At, device?.PublicId, portalClientId);
+        var (access, exp) = CreateAccess(user, tenantId, rt.RefreshTokenId, kind, aal2At, device?.PublicId, portalClientId, await PortalLocationOfAsync(user.Id, portalClientId, ct));
         return new TokenPairDto(access, exp, raw, rt.ExpiresAtUtc, tenantId);
     }
 
@@ -384,9 +384,9 @@ public sealed partial class AuthService(
     /// Access token del usuario; en sesiones de aparato agrega el claim `did`. Se firma con la misma llave, emisor,
     /// audiencia y vigencia que JwtTokenService (se re-firma su token con el claim extra para no duplicar la lista de claims).
     /// </summary>
-    private (string Token, DateTime ExpiresAtUtc) CreateAccess(ApplicationUser user, int tenantId, long sessionId, string? kind, DateTime? aal2At, Guid? devicePublicId, int? portalClientId = null)
+    private (string Token, DateTime ExpiresAtUtc) CreateAccess(ApplicationUser user, int tenantId, long sessionId, string? kind, DateTime? aal2At, Guid? devicePublicId, int? portalClientId = null, int? portalLocationId = null)
     {
-        var (token, exp) = jwt.CreateAccessToken(user, tenantId, sessionId, kind, aal2At, portalClientId);
+        var (token, exp) = jwt.CreateAccessToken(user, tenantId, sessionId, kind, aal2At, portalClientId, portalLocationId);
         if (devicePublicId is not Guid did) return (token, exp);
         var handler = new JwtSecurityTokenHandler();
         var parsed = handler.ReadJwtToken(token);
@@ -448,7 +448,7 @@ public sealed partial class AuthService(
         await db.SaveChangesAsync(ct);
         db.SuppressAudit = false;
         var kind = user.UserKindLookupId is null ? UserKinds.Internal : (await lookups.GetAsync(user.UserKindLookupId.Value, ct))?.InternalCode;
-        var (access, exp) = CreateAccess(user, rt.TenantId, next.RefreshTokenId, kind, next.Aal2VerifiedAtUtc, device?.PublicId, rt.PortalClientId);
+        var (access, exp) = CreateAccess(user, rt.TenantId, next.RefreshTokenId, kind, next.Aal2VerifiedAtUtc, device?.PublicId, rt.PortalClientId, await PortalLocationOfAsync(user.Id, rt.PortalClientId, ct));
         return new TokenPairDto(access, exp, raw, next.ExpiresAtUtc, rt.TenantId);
     }
 
@@ -607,7 +607,7 @@ public sealed partial class AuthService(
         rt.Aal2VerifiedAtUtc = DateTime.UtcNow;
         db.SuppressAudit = true; await db.SaveChangesAsync(ct); db.SuppressAudit = false;
         var kind = user.UserKindLookupId is null ? UserKinds.Internal : (await lookups.GetAsync(user.UserKindLookupId.Value, ct))?.InternalCode;
-        var (access, exp) = CreateAccess(user, rt.TenantId, rt.RefreshTokenId, kind, rt.Aal2VerifiedAtUtc, device?.PublicId);
+        var (access, exp) = CreateAccess(user, rt.TenantId, rt.RefreshTokenId, kind, rt.Aal2VerifiedAtUtc, device?.PublicId, rt.PortalClientId, await PortalLocationOfAsync(userId, rt.PortalClientId, ct));   // Lote 117: la sesión del portal conserva su cliente y su consignatario
         await security.WriteAsync(SecurityEventTypes.Reauth, SecurityOutcomes.Success, userId, tenant.TenantId, null, ct);
         return new ReauthResultDto(access, exp, rt.Aal2VerifiedAtUtc.Value);
     }

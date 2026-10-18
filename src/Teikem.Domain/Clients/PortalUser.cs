@@ -16,6 +16,8 @@ public class PortalUser : ITenantScoped, ISoftDeletable, IHasStatus
     public int TenantId { get; set; }
     public int ClientId { get; set; }
     public int? UserId { get; set; }
+    /// <summary>Lote 117: si la persona es un CONSIGNATARIO (rol CONSIGNEE), el consignatario (localización de entrega) al que pertenece su acceso; null en las personas del cliente.</summary>
+    public int? LocationId { get; set; }
     public string Email { get; set; } = string.Empty;
     public string? FullName { get; set; }
     public int RoleLookupId { get; set; }
@@ -27,4 +29,5 @@ public class PortalUser : ITenantScoped, ISoftDeletable, IHasStatus
     public LookupCode? Role { get; set; }
     public StatusCode? Status { get; set; }
     public ApplicationUser? User { get; set; }
+    public Location? Location { get; set; }
 }

@@ -29,6 +29,20 @@ public static class PortalScopeRules
         return false;
     }
 
+    public const string ConsigneePrefix = PortalPrefix + "/consignee";
+
+    /// <summary>
+    /// Lote 117: el consignatario con acceso propio es un usuario de portal MÁS limitado: de <c>/api/v1/portal/*</c> solo toca su propio espacio (<c>/portal/consignee/*</c>) y el inicio de sesión
+    /// (<c>/portal/auth/*</c>); las rutas del cliente (órdenes, mensajes con el equipo, avisos al consignatario...) le responden 403, aunque su token sea válido. Lo demás (sesión, documento legal) es igual que el resto del portal.
+    /// </summary>
+    public static bool IsAllowedForConsignee(string? path)
+    {
+        var p = Norm(path);
+        if (p == PortalPrefix || p.StartsWith(PortalPrefix + "/"))
+            return p.StartsWith(PortalPrefix + "/auth/") || p == ConsigneePrefix || p.StartsWith(ConsigneePrefix + "/");
+        return IsAllowedForPortal(path);
+    }
+
     /// <summary>¿Es una ruta exclusiva del portal (a la que una sesión del staff no entra)?</summary>
     public static bool IsPortalOnlyPath(string? path)
     {

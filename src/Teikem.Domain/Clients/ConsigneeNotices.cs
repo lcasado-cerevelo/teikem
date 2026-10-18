@@ -68,10 +68,11 @@ public static class ConsigneeNoticeRules
         ? "By continuing you confirm that the consignee agreed to receive notices about their shipments through this medium. The consignee will be told that you marked them, every message will include a way to unsubscribe, and this change will be recorded."
         : "Si desea continuar, confirma que el consignatario aceptó recibir avisos sobre sus envíos por este medio. Se le notificará al consignatario que usted lo marcó, cada mensaje traerá la opción de darse de baja y este cambio quedará registrado en la bitácora.";
 
-    public static string Subject(string status, string company, string lang)
+    /// <summary>Lo que le pasó al paquete («va en camino», «fue entregado»...), para el asunto del aviso y para la bandeja del consignatario.</summary>
+    public static string Phrase(string? status, string lang)
     {
         var en = lang == "en";
-        var what = status switch
+        return status switch
         {
             OrderStatuses.InTransit => en ? "is on its way" : "va en camino",
             OrderStatuses.Failed => en ? "had a failed delivery attempt" : "tuvo un intento de entrega fallido",
@@ -81,6 +82,12 @@ public static class ConsigneeNoticeRules
             OrderStatuses.InWarehouse => en ? "is at our warehouse" : "está en nuestro almacén",
             _ => en ? "has an update" : "tiene una novedad",
         };
+    }
+
+    public static string Subject(string status, string company, string lang)
+    {
+        var en = lang == "en";
+        var what = Phrase(status, lang);
         return en ? $"{company}: your package {what}" : $"{company}: su paquete {what}";
     }
 

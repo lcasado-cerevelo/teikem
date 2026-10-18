@@ -138,7 +138,7 @@ internal sealed class WmsFixture : IAsyncDisposable
                      EntityTypes.Warehouse, EntityTypes.WarehouseDock, EntityTypes.Product, EntityTypes.Receipt, EntityTypes.Asn,
                      EntityTypes.InventorySerial, EntityTypes.WarehouseTask, EntityTypes.InventoryTransaction, EntityTypes.StockBalance,
                      EntityTypes.CycleCount, EntityTypes.PickBatch, EntityTypes.PurchaseOrder, EntityTypes.Supplier, EntityTypes.CrossDockPlan,
-                     EntityTypes.CrossDockAllocation, EntityTypes.DockAppointment, EntityTypes.TransportOrder, EntityTypes.Client, EntityTypes.Location,
+                     EntityTypes.CrossDockAllocation, EntityTypes.DockAppointment, EntityTypes.TransportOrder, EntityTypes.Client, EntityTypes.Location, EntityTypes.PortalUser,
                  })
             L(LookupDomains.EntityType, e);
         foreach (var c in new[] { TrackingTypes.None, TrackingTypes.Lot, TrackingTypes.Serial }) L(LookupDomains.TrackingType, c);
@@ -393,6 +393,7 @@ internal sealed class WmsFixture : IAsyncDisposable
         // Lote 98: usuarios del portal (destinatarios de los avisos al cliente)
         S(StatusDomains.PortalUserStatus, PortalUserStatuses.Invited, pipe, 1, true);
         S(StatusDomains.PortalUserStatus, PortalUserStatuses.Active, pipe, 2);
+        S(StatusDomains.PortalUserStatus, PortalUserStatuses.Disabled, term, 3);   // Lote 117: quitar el acceso de un consignatario
         ReceiptStatusSeed.AddLateralEntries(Db, LookupId(LookupDomains.EntityType, EntityTypes.Receipt), StatusId);
 
         // 3G: WAREHOUSE_TASK CANCELLED solo desde PENDING e IN_PROGRESS.

@@ -4489,3 +4489,21 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_ConsigneeUnsubscribe' AND object_id = OBJECT_ID('dbo.ConsigneeUnsubscribe'))
     CREATE UNIQUE INDEX UX_ConsigneeUnsubscribe ON dbo.ConsigneeUnsubscribe (TenantId, Channel, Contact);
 GO
+
+/* =========================================================================
+   2026-10-18 (ay) — Lote 117: acceso del consignatario (docs/p10-portal-diseno.md). El CLIENTE invita al consignatario por correo; la fila de PortalUser lleva el consignatario (LocationId, una localización de entrega
+   del cliente) y el rol de portal CONSIGNEE. El consignatario entra al portal con contraseña + computadora de confianza (sin MFA) y solo ve y cambia lo suyo.
+   ========================================================================= */
+IF COL_LENGTH('dbo.PortalUser', 'LocationId') IS NULL ALTER TABLE dbo.PortalUser ADD LocationId INT NULL CONSTRAINT FK_PortalUser_Location REFERENCES dbo.Location(LocationId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_PortalUser_Location' AND object_id = OBJECT_ID('dbo.PortalUser'))
+    CREATE INDEX IX_PortalUser_Location ON dbo.PortalUser (LocationId) WHERE LocationId IS NOT NULL;
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES (N'CONSIGNEE', N'{"es":"Consignatario","en":"Consignee"}', 4)) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'PortalRole' AND t.InternalCode = s.Code AND t.TenantId IS NULL
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'PortalRole', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+

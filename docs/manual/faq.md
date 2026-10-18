@@ -9257,3 +9257,12 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 
 **¿Dónde se prende el «Seguimiento público» en Ajustes?** Ya no existe (Lote 116): el seguimiento viaja en el enlace de cada aviso al consignatario, que prende el cliente en su portal.
 
+**¿Quién le da acceso a un consignatario?** Solo el cliente (administrador u operador), por invitación a un correo desde el portal (capítulo 35). La compañía no lo hace: si lo intenta desde el expediente del cliente responde `El rol de consignatario solo se da desde el consignatario.` (400).
+
+**El consignatario no puede volver a prender los avisos.** El cliente prende los avisos y el medio; el consignatario puede apagarlos y volver a prender solo el que apagó él. Si no se lo prendió el cliente: `Solo su cliente puede prender este aviso: usted puede volver a prender únicamente el que apagó.` (409). Si se dio de baja con el enlace de un aviso, la baja es definitiva (`El consignatario se dio de baja de los avisos por ese medio: no se puede volver a marcar.`).
+
+**El consignatario entra y las rutas del cliente le dan 403.** Es lo correcto: su sesión solo alcanza su espacio (`Esta ruta no está disponible para usuarios del portal.`); una persona del cliente, a su vez, no entra a ese espacio (`Este espacio es solo para consignatarios con acceso.`).
+
+**¿El consignatario usa verificación en dos pasos?** No: entra con contraseña y la computadora de confianza (se confirma por correo la primera vez y dura 30 días sin uso).
+
+**Invité al consignatario y responde «Ese correo no está disponible para el portal de esta compañía.» (409).** Ese correo ya tiene acceso en este cliente, o es de un usuario del staff o de otra compañía; el mensaje es el mismo en todos los casos para no revelar dónde está registrado. Use otro correo.

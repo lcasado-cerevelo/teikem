@@ -26,6 +26,8 @@ public interface ITenantContext
     bool IsPortal => false;
     /// <summary>Lote 101: el cliente de la sesión del portal (claim `cid`); null en sesiones del staff.</summary>
     int? PortalClientId => null;
+    /// <summary>Lote 117: el consignatario de la sesión (claim `loc`); null en sesiones del staff y en las personas del cliente.</summary>
+    int? PortalLocationId => null;
 }
 
 /// <summary>Implementación mutable (scoped). El middleware y los seeders la configuran.</summary>
@@ -45,6 +47,7 @@ public sealed class TenantContext : ITenantContext
     public IReadOnlyCollection<int>? ScopedClientIds { get; set; }
     public bool IsPortal { get; set; }
     public int? PortalClientId { get; set; }
+    public int? PortalLocationId { get; set; }
 
     public int RequireTenantId() => TenantId ?? throw new Exceptions.ForbiddenException("No hay tenant activo en la sesión.");
     public int RequireUserId() => UserId ?? throw new Exceptions.UnauthorizedException();

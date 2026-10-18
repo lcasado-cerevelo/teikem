@@ -37,6 +37,7 @@ public sealed class TenantContextMiddleware(RequestDelegate next)
                 tenant.IsPortal = true;
                 if (int.TryParse(user.FindFirst(TeikemClaims.ClientId)?.Value, out var cid)) { tenant.PortalClientId = cid; tenant.ScopedClientIds = new[] { cid }; }
                 else tenant.ScopedClientIds = new[] { -1 };   // un token de portal sin cliente no ve nada
+                if (int.TryParse(user.FindFirst(TeikemClaims.LocationId)?.Value, out var loc)) tenant.PortalLocationId = loc;   // Lote 117: consignatario
             }
             else await LoadDataScopeAsync(tenant, db, http.RequestAborted);
         }

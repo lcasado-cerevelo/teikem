@@ -251,5 +251,6 @@ public sealed class PortalUserConfiguration : IEntityTypeConfiguration<PortalUse
         b.HasOne(p => p.Role).WithMany().HasForeignKey(p => p.RoleLookupId);
         b.HasOne(p => p.Status).WithMany().HasForeignKey(p => p.StatusCodeId);
         b.HasOne(p => p.User).WithMany().HasForeignKey(p => p.UserId);
+        b.HasOne(p => p.Location).WithMany().HasForeignKey(p => p.LocationId);   // Lote 117: consignatario con acceso
     }
 }

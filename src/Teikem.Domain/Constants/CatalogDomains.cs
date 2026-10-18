@@ -349,6 +349,8 @@ public static class PortalRoles
     public const string ClientAdmin = "CLIENT_ADMIN";
     public const string ClientOperator = "CLIENT_OPERATOR";
     public const string ClientReadOnly = "CLIENT_READONLY";
+    /// <summary>Lote 117: el consignatario con acceso propio (invitado por el cliente); ve y cambia solo lo suyo.</summary>
+    public const string Consignee = "CONSIGNEE";
 }
 
 /// <summary>

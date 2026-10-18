@@ -28,6 +28,8 @@ public static class TeikemClaims
     public const string UserKind = "kind";
     /// <summary>Lote 101: cliente de la sesión de un usuario de PORTAL (segundo filtro, además del tenant).</summary>
     public const string ClientId = "cid";
+    /// <summary>Lote 117: consignatario (localización) de la sesión de un usuario de portal que es consignatario; solo ve y cambia lo suyo.</summary>
+    public const string LocationId = "loc";
     public const string SessionId = "sid";
     public const string SecurityStamp = "ss";
     public const string Aal2At = "aal2";
@@ -42,7 +44,7 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options)
 
     public SymmetricSecurityKey SigningKey => new(Encoding.UTF8.GetBytes(_o.SigningKey));
 
-    public (string Token, DateTime ExpiresAtUtc) CreateAccessToken(ApplicationUser user, int tenantId, long sessionId, string? userKind, DateTime? aal2At, int? portalClientId = null)
+    public (string Token, DateTime ExpiresAtUtc) CreateAccessToken(ApplicationUser user, int tenantId, long sessionId, string? userKind, DateTime? aal2At, int? portalClientId = null, int? portalLocationId = null)
     {
         var claims = new List<Claim>
         {
@@ -57,6 +59,7 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options)
         };
         if (user.IsPlatformAdmin) claims.Add(new Claim(TeikemClaims.PlatformAdmin, "1"));
         if (portalClientId is int cid) claims.Add(new Claim(TeikemClaims.ClientId, cid.ToString()));
+        if (portalLocationId is int loc) claims.Add(new Claim(TeikemClaims.LocationId, loc.ToString()));
         if (aal2At.HasValue) claims.Add(new Claim(TeikemClaims.Aal2At, new DateTimeOffset(aal2At.Value, TimeSpan.Zero).ToUnixTimeSeconds().ToString()));
         return Create(claims, TimeSpan.FromMinutes(_o.AccessTokenMinutes));
     }
