@@ -28915,6 +28915,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/orders/{publicId}/delivery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DeliveryProofDto"];
+                        "application/json": components["schemas"]["DeliveryProofDto"];
+                        "text/json": components["schemas"]["DeliveryProofDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["DeliveryRegisterRequest"];
+                    "text/json": components["schemas"]["DeliveryRegisterRequest"];
+                    "application/*+json": components["schemas"]["DeliveryRegisterRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DeliveryProofDto"];
+                        "application/json": components["schemas"]["DeliveryProofDto"];
+                        "text/json": components["schemas"]["DeliveryProofDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -38784,6 +38852,36 @@ export interface components {
             skip?: number;
             /** Format: int32 */
             take?: number;
+        };
+        DeliveryProofDto: {
+            /** Format: uuid */
+            publicId?: string;
+            /** Format: uuid */
+            orderPublicId?: string;
+            orderNumber?: string | null;
+            /** Format: date-time */
+            deliveredAtUtc?: string;
+            recipientName?: string | null;
+            notes?: string | null;
+            source?: string | null;
+            signatureKind?: string | null;
+            registeredByName?: string | null;
+            signedByName?: string | null;
+            geoStatus?: string | null;
+            geoAccuracy?: string | null;
+            /** Format: double */
+            latitude?: number | null;
+            /** Format: double */
+            longitude?: number | null;
+            orderStatusCode?: string | null;
+            orderStatusLabel?: string | null;
+            message?: string | null;
+        };
+        DeliveryRegisterRequest: {
+            recipientName?: string | null;
+            notes?: string | null;
+            /** Format: date-time */
+            deliveredAtUtc?: string | null;
         };
     };
     responses: never;

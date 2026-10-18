@@ -3663,7 +3663,29 @@
         "removeBody": "{value} will be removed from the contacts of this order."
       },
       "returnOf": "Return of {number}",
-      "suggestReturn": "Returning it is suggested: {count} failed attempt(s)"
+      "suggestReturn": "Returning it is suggested: {count} failed attempt(s)",
+      "proof": {
+        "title": "Proof of delivery",
+        "recipient": "Received by",
+        "at": "Delivered",
+        "notes": "Note",
+        "registeredBy": "Registered by",
+        "signature": "Signature",
+        "signedByUser": "Signed automatically by {name}",
+        "signedByRecipient": "Signed by the recipient",
+        "userSignatureNote": "The consignee did not sign: the delivery was registered by staff.",
+        "location": "Location",
+        "fromStop": "from the stop",
+        "geo": {
+          "NONE": "No location",
+          "FROM_STOP": "From the stop",
+          "PENDING": "Looking up…",
+          "RUNNING": "Looking up…",
+          "OK": "Found",
+          "NOT_FOUND": "Address not found",
+          "FAILED": "Lookup failed"
+        }
+      }
     },
     "actions": {
       "printLabel": "Print label",
@@ -3737,6 +3759,18 @@
         "confirm": "Return the order",
         "noPieces": "Tick at least one piece to return.",
         "done": "Order {number} was returned."
+      },
+      "deliver": {
+        "button": "Register delivery",
+        "title": "Register the delivery of {number}",
+        "body": "The order will be marked Delivered. The proof is signed automatically in your name (you are registering the delivery); the consignee does not sign.",
+        "recipient": "Who received it",
+        "recipientRequired": "Enter who received the delivery.",
+        "at": "Delivery date and time (optional)",
+        "atHint": "If left empty, the current time is used. It cannot be in the future.",
+        "notes": "Note (optional)",
+        "confirm": "Register the delivery",
+        "done": "Delivery of order {number} registered."
       }
     },
     "entry": {

@@ -9280,3 +9280,25 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **El consignatario no ve un envío.** Solo ve las órdenes de su cliente cuya entrega es en su consignatario; una de otro consignatario (aunque sea del mismo cliente) responde 404.
 
 **El cliente no recibió el correo de que un consignatario le escribió.** El correo va a los administradores y operadores activos del cliente, es uno solo mientras haya mensajes sin leer (cuando los lea, el siguiente avisa de nuevo) y solo sale si el correo de la compañía está configurado; el contador de «sin leer» de la app siempre está.
+
+## Registrar la entrega desde la web (Lote 118)
+
+**¿Dónde registro que una orden se entregó?** En la ficha de la orden (Operación → Órdenes) con el botón **Registrar entrega**. Hace falta el permiso `orders.deliver`.
+
+**No veo el botón «Registrar entrega».** Falta el permiso `orders.deliver` (lo da el administrador), o la orden ya está en un estatus final (Entregada, Devuelta, En almacén o Cancelada), o está inactiva.
+
+**«Indique quién recibió la entrega.»** El nombre de quien recibió es obligatorio (hasta 150 caracteres). Escríbalo y vuelva a registrar.
+
+**«La fecha y hora de la entrega no pueden ser futuras.»** La fecha y hora no pueden estar más de 5 minutos adelante. Déjela vacía para usar este momento.
+
+**«La orden {n} ya tiene registrada su entrega.»** (409) Esa orden ya tiene su comprobante; no se registra dos veces. Para ver el comprobante, abra la ficha de la orden.
+
+**«La orden {n} está en un estatus final ({estatus}): no se registra su entrega.»** (422) Una orden Entregada, Devuelta, En almacén o Cancelada no se entrega otra vez. Si se entregó por error, el permiso de reabrir permite devolverla a una etapa en curso.
+
+**«La orden {n} es Pick up: termina «En almacén» y no se entrega.»** (422) Las órdenes Pick up (recojo y traigo) no salen a entrega.
+
+**¿Quién firma el comprobante?** El usuario que lo registra, automáticamente (tiene el permiso, por eso está autorizado). El comprobante dice «Firmada automáticamente por [usuario]» y «El consignatario no firmó». Cuando exista la app del chofer, allá sí firma el consignatario.
+
+**El comprobante dice «Sin ubicación» o «No se pudo buscar».** La ubicación se busca aparte con Google, un solo intento de 30 segundos. Si Google está apagado en el servidor, la dirección no se encuentra, tarda más de 30 s o la llave falla, queda sin ubicación; la entrega vale igual. El administrador del servidor la enciende con `GoogleMaps:Enabled` y la llave en `GoogleMaps__ApiKey`.
+
+**¿Puedo adjuntar fotos a la entrega?** Todavía no: falta decidir dónde se guardan los archivos.

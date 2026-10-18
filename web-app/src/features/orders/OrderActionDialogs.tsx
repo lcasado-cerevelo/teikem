@@ -8,7 +8,7 @@ import { useStatuses } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
 import { ComboSelect, Modal, toast, type ComboOption } from '../../kernel/ui'
 import { useDrivers } from '../drivers/api'
-import { useAssignOrderDriver, useCancelOrder, useReopenOrder, useReturnOrder, type OrderDetailDto } from './api'
+import { useAssignOrderDriver, useCancelOrder, useRegisterDelivery, useReopenOrder, useReturnOrder, type OrderDetailDto } from './api'
 import { COMMENT_MAX, isCreditExceeded } from './orderRules'
 
 interface DialogProps {
@@ -268,6 +268,81 @@ export function ReturnOrderDialog({ order, open, onClose }: DialogProps) {
       <div className="f">
         <label htmlFor={notesId}>{t('orders.actions.return.notes')}</label>
         <input id={notesId} value={notes} maxLength={300} autoComplete="off" onChange={(e) => setNotes(e.target.value)} />
+      </div>
+    </Modal>
+  )
+}
+
+/**
+ * «Registrar entrega» (Lote 118, `orders.deliver`): quién recibió (obligatorio), una nota y, si no fue ahora, cuándo. La orden queda «Entregada» y el comprobante se firma AUTOMÁTICAMENTE a nombre de quien lo registra (no del
+ * consignatario): el diálogo lo dice. `POST /delivery`. La ubicación se busca aparte; el usuario no espera por ella.
+ */
+export function RegisterDeliveryDialog({ order, open, onClose }: DialogProps) {
+  const t = useT()
+  const register = useRegisterDelivery()
+  const recipientId = useId()
+  const notesId = useId()
+  const atId = useId()
+  const [recipient, setRecipient] = useState('')
+  const [notes, setNotes] = useState('')
+  const [at, setAt] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [recipientError, setRecipientError] = useState<string | null>(null)
+
+  async function submit() {
+    if (register.isPending) return
+    if (!recipient.trim()) {
+      setRecipientError(t('orders.actions.deliver.recipientRequired'))
+      return
+    }
+    setRecipientError(null)
+    setError(null)
+    try {
+      const r = await register.mutateAsync({ publicId: order.publicId ?? '', recipientName: recipient.trim(), notes: notes.trim() || null, deliveredAtUtc: at ? new Date(at).toISOString() : null })
+      toast.success(r.message ?? t('orders.actions.deliver.done', { number: order.orderNumber ?? '' }))
+      onClose()
+    } catch (err) {
+      setError(applyProblemDetails(err).title)
+    }
+  }
+
+  return (
+    <Modal
+      open={open}
+      size="sm"
+      title={t('orders.actions.deliver.title', { number: order.orderNumber ?? '' })}
+      onClose={onClose}
+      dismissible={!register.isPending}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={onClose} disabled={register.isPending}>
+            {t('orders.actions.back')}
+          </button>
+          <button type="button" className="btn flow" onClick={() => void submit()} disabled={register.isPending}>
+            {register.isPending ? t('common.loading') : t('orders.actions.deliver.confirm')}
+          </button>
+        </>
+      }
+    >
+      {error && (
+        <div className="form-alert" role="alert">
+          {error}
+        </div>
+      )}
+      <p>{t('orders.actions.deliver.body')}</p>
+      <div className="f">
+        <label htmlFor={recipientId}>{t('orders.actions.deliver.recipient')}</label>
+        <input id={recipientId} value={recipient} maxLength={150} autoComplete="off" aria-invalid={recipientError ? true : undefined} onChange={(e) => setRecipient(e.target.value)} />
+        {recipientError && <p className="ferr" role="alert">{recipientError}</p>}
+      </div>
+      <div className="f">
+        <label htmlFor={atId}>{t('orders.actions.deliver.at')}</label>
+        <input id={atId} type="datetime-local" value={at} onChange={(e) => setAt(e.target.value)} />
+        <p className="d">{t('orders.actions.deliver.atHint')}</p>
+      </div>
+      <div className="f">
+        <label htmlFor={notesId}>{t('orders.actions.deliver.notes')}</label>
+        <input id={notesId} value={notes} maxLength={500} autoComplete="off" onChange={(e) => setNotes(e.target.value)} />
       </div>
     </Modal>
   )

@@ -3663,7 +3663,29 @@
         "removeBody": "Se quitará {value} de los contactos de esta orden."
       },
       "returnOf": "Vuelta de {number}",
-      "suggestReturn": "Se sugiere devolverla: {count} intento(s) fallido(s)"
+      "suggestReturn": "Se sugiere devolverla: {count} intento(s) fallido(s)",
+      "proof": {
+        "title": "Comprobante de entrega",
+        "recipient": "Recibió",
+        "at": "Entregada",
+        "notes": "Nota",
+        "registeredBy": "Registrada por",
+        "signature": "Firma",
+        "signedByUser": "Firmada automáticamente por {name}",
+        "signedByRecipient": "Firmada por quien recibió",
+        "userSignatureNote": "El consignatario no firmó: la entrega la registró el personal.",
+        "location": "Ubicación",
+        "fromStop": "de la parada",
+        "geo": {
+          "NONE": "Sin ubicación",
+          "FROM_STOP": "De la parada",
+          "PENDING": "Buscando…",
+          "RUNNING": "Buscando…",
+          "OK": "Encontrada",
+          "NOT_FOUND": "No se encontró la dirección",
+          "FAILED": "No se pudo buscar"
+        }
+      }
     },
     "actions": {
       "printLabel": "Imprimir label",
@@ -3737,6 +3759,18 @@
         "confirm": "Devolver la orden",
         "noPieces": "Marque al menos una pieza que se devuelve.",
         "done": "La orden {number} quedó Devuelta."
+      },
+      "deliver": {
+        "button": "Registrar entrega",
+        "title": "Registrar la entrega de {number}",
+        "body": "La orden quedará «Entregada». El comprobante se firma automáticamente a su nombre (usted registra la entrega); el consignatario no firma.",
+        "recipient": "Quién recibió",
+        "recipientRequired": "Indique quién recibió la entrega.",
+        "at": "Fecha y hora de la entrega (opcional)",
+        "atHint": "Si lo deja vacío se usa este momento. No puede ser futura.",
+        "notes": "Nota (opcional)",
+        "confirm": "Registrar la entrega",
+        "done": "Entrega de la orden {number} registrada."
       }
     },
     "entry": {

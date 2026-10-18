@@ -10,10 +10,10 @@ import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
 import { lookupLabelOrCode, useLookups } from '../../kernel/catalogs'
 import { Chip, Form, Panel, toast } from '../../kernel/ui'
-import { IconCash, IconTag, IconUsers } from '../../kernel/ui/screenIcons'
+import { IconCash, IconCheckin, IconTag, IconUsers } from '../../kernel/ui/screenIcons'
 import { contactKeys, useContactPoints } from '../contacts/api'
 import { ContactPointsPanel } from '../contacts/ContactPointsPanel'
-import { useOrderQuote, type OrderDetailDto } from './api'
+import { useDeliveryProof, useOrderQuote, type OrderDetailDto } from './api'
 
 export const ORDER_ENTITY_TYPE = 'TRANSPORT_ORDER'
 
@@ -193,5 +193,34 @@ export function OrderContactsPanel({ order }: { order: OrderDetailDto }) {
       removeBodyKey="orders.detail.contacts.removeBody"
       onChanged={() => queryClient.invalidateQueries({ queryKey: contactKeys.of(ORDER_ENTITY_TYPE, order.id ?? 0) })}
     />
+  )
+}
+
+/**
+ * Comprobante de entrega (Lote 118): solo cuando la orden está Entregada y ya tiene comprobante. Dice quién recibió, cuándo, quién lo registró y que la firma es AUTOMÁTICA del usuario (el consignatario no firmó),
+ * y el estado de la ubicación (se busca aparte con Google; si no se logró, queda sin ubicación).
+ */
+export function DeliveryProofPanel({ order }: { order: OrderDetailDto }) {
+  const t = useT()
+  const f = useFormat()
+  const proof = useDeliveryProof(order.publicId, (order.status ?? '').toUpperCase() === 'DELIVERED')
+  const p = proof.data
+  if (!p) return null
+  const geo =
+    p.latitude != null && p.longitude != null
+      ? `${p.latitude.toFixed(5)}, ${p.longitude.toFixed(5)}${p.geoStatus === 'FROM_STOP' ? ` · ${t('orders.detail.proof.fromStop')}` : ''}`
+      : t(`orders.detail.proof.geo.${p.geoStatus}`)
+  return (
+    <Panel icon={<IconCheckin />} title={t('orders.detail.proof.title')}>
+      <div data-testid="delivery-proof">
+        {kv(t('orders.detail.proof.recipient'), p.recipientName)}
+        {kv(t('orders.detail.proof.at'), f.dateTime(p.deliveredAtUtc))}
+        {p.notes && kv(t('orders.detail.proof.notes'), p.notes)}
+        {kv(t('orders.detail.proof.registeredBy'), p.registeredByName ?? '—')}
+        {kv(t('orders.detail.proof.location'), geo)}
+        <p className="od-note"><b>{t('orders.detail.proof.signature')}:</b> {p.signatureKind === 'USER' ? t('orders.detail.proof.signedByUser', { name: p.signedByName ?? '—' }) : t('orders.detail.proof.signedByRecipient')}</p>
+        {p.signatureKind === 'USER' && <p className="d od-note">{t('orders.detail.proof.userSignatureNote')}</p>}
+      </div>
+    </Panel>
   )
 }

@@ -227,3 +227,34 @@ export function useReturnOrder() {
     },
   })
 }
+
+export type DeliveryProofDto = components['schemas']['DeliveryProofDto']
+
+/** `GET /orders/{publicId}/delivery` (Lote 118): el comprobante de entrega de la orden, o `null` si todavía no tiene (204). Solo se pide cuando la orden ya está Entregada. */
+export function useDeliveryProof(publicId: string | null | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: [...orderKeys.detail, 'delivery', publicId],
+    queryFn: async () => (await unwrap(api.GET('/api/v1/orders/{publicId}/delivery', { params: { path: { publicId: publicId ?? '' } } }))) ?? null,
+    enabled: !!publicId && enabled,
+    meta: { handleAccessDenied: false },
+  })
+}
+
+/** `POST /orders/{publicId}/delivery` (Lote 118, `orders.deliver`): registra la entrega desde la web; la orden queda Entregada y el comprobante lleva la firma automática del usuario. */
+export function useRegisterDelivery() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ publicId, recipientName, notes, deliveredAtUtc }: { publicId: string; recipientName: string; notes?: string | null; deliveredAtUtc?: string | null }) =>
+      unwrap(
+        api.POST('/api/v1/orders/{publicId}/delivery', {
+          params: { path: { publicId } },
+          body: { recipientName, notes: notes || null, deliveredAtUtc: deliveredAtUtc || null },
+          headers: idempotencyHeaders(),
+        }),
+      ),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: orderKeys.list })
+      void qc.invalidateQueries({ queryKey: orderKeys.detail })
+    },
+  })
+}

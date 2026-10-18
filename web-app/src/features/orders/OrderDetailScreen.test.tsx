@@ -103,6 +103,7 @@ const DRIVERS = [
   { id: 2, publicId: 'd-2', code: 'CH-002', fullName: 'María Soto', zoneCode: 'PO', status: 'Disponible', isActive: true },
 ]
 let history: unknown[] = HISTORY
+let proof: unknown = null
 let points: unknown[] = [{ id: 40, ownerEntity: 'TRANSPORT_ORDER', ownerId: 7, contactType: 'PHONE', contactTypeLabel: 'Teléfono', value: '7875550142', label: 'Recibe: Carmen Ortiz', isPrimary: true, isActive: true }]
 let definitions: unknown[] = []
 
@@ -118,6 +119,8 @@ function route({ method, url, body }: Call): unknown {
   if (p === '/api/v1/orders/o-7/quote') return { total: 130, lines: [{ serviceType: 'STANDARD', packageType: 'BOX', pieces: 2, baseRate: 60, lineTotal: 120 }], dispatchFee: 10, codFee: 0, credit: { creditLimit: 1000, pendingBalance: 200, orderTotal: 130, available: 800, exceeds: false } }
   if (/^\/api\/v1\/orders\/o-7\/(confirm|reprice|cancel|reopen|status|driver)$/.test(p)) return { ...current, rowVersion: 'CCC=' }
   if (p === '/api/v1/orders/o-7/return' && method === 'POST') return { returnOrderPublicId: 'o-8', returnOrderNumber: 'ORD-00008', returnWaybillNumber: 'W8', originalOrderNumber: 'ORD-00007', pieces: (body?.pieceNumbers as string[] | null)?.length ?? 3, message: 'La orden ORD-00007 quedó «Devuelta»: se creó la orden de vuelta ORD-00008.' }
+  if (p === '/api/v1/orders/o-7/delivery' && method === 'GET') return proof
+  if (p === '/api/v1/orders/o-7/delivery' && method === 'POST') return { publicId: 'pf-1', orderPublicId: 'o-7', orderNumber: 'ORD-00007', deliveredAtUtc: '2026-10-18T20:00:00Z', recipientName: body?.recipientName, notes: body?.notes ?? null, source: 'STAFF_WEB', signatureKind: 'USER', registeredByName: 'Dalys', signedByName: 'Dalys', geoStatus: 'NONE', geoAccuracy: null, latitude: null, longitude: null, orderStatusCode: 'DELIVERED', orderStatusLabel: 'Entregada', message: 'Entrega registrada.' }
   if (p === '/api/v1/status/OrderStatus') return STATUSES
   if (p === '/api/v1/status/OrderStatus/validate') return { isValid: true, errors: [], warnings: [] }
   if (p === '/api/v1/status/lateral-entries/TRANSPORT_ORDER') return []
@@ -962,5 +965,70 @@ describe('Expediente — Devolver (Lote 112)', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Devolver la orden' }))
     expect(await within(dialog).findByText('Marque al menos una pieza que se devuelve.')).toBeInTheDocument()
     expect(callsTo('POST', '/api/v1/orders/o-7/return')).toHaveLength(0)
+  })
+})
+
+describe('Expediente — Registrar entrega (Lote 118)', () => {
+  const IN_TRANSIT = { ...BASE_ORDER, status: 'IN_TRANSIT', statusLabel: 'En tránsito', isInitialStatus: false }
+
+  it('solo se ve con el permiso orders.deliver y en una orden que sigue en curso', async () => {
+    current = { ...IN_TRANSIT }
+    wrap([...ALL, 'orders.deliver'])
+    await loaded()
+    expect(headerBtn('Registrar entrega')).toBeInTheDocument()
+  })
+
+  it('sin el permiso no se pinta', async () => {
+    current = { ...IN_TRANSIT }
+    wrap(ALL)
+    await loaded()
+    expect(headerBtn('Registrar entrega')).toBeNull()
+  })
+
+  it('en una orden en estatus final no se pinta', async () => {
+    current = { ...BASE_ORDER, status: 'CANCELLED', statusLabel: 'Cancelada', isInitialStatus: false }
+    wrap([...ALL, 'orders.deliver'])
+    await loaded()
+    expect(headerBtn('Registrar entrega')).toBeNull()
+  })
+
+  it('el diálogo avisa que la firma es automática, exige quién recibió y manda POST /delivery', async () => {
+    current = { ...IN_TRANSIT }
+    wrap([...ALL, 'orders.deliver'])
+    await loaded()
+    const { user, dialog } = await openDialog('Registrar entrega')
+    expect(within(dialog).getByText(/se firma automáticamente a su nombre/i)).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Registrar la entrega' }))
+    expect(await within(dialog).findByText('Indique quién recibió la entrega.')).toBeInTheDocument()
+    expect(callsTo('POST', '/api/v1/orders/o-7/delivery')).toHaveLength(0)
+    await user.type(within(dialog).getByLabelText('Quién recibió'), 'Ana Rivera')
+    await user.type(within(dialog).getByLabelText('Nota (opcional)'), 'Con la vecina')
+    await user.click(within(dialog).getByRole('button', { name: 'Registrar la entrega' }))
+    await waitFor(() => expect(callsTo('POST', '/api/v1/orders/o-7/delivery')).toHaveLength(1))
+    const call = callsTo('POST', '/api/v1/orders/o-7/delivery')[0]
+    expect(call.body).toEqual({ recipientName: 'Ana Rivera', notes: 'Con la vecina', deliveredAtUtc: null })
+    expect(call.headers.get('Idempotency-Key')).toBeTruthy()
+    expect(await screen.findByText('Entrega registrada.')).toBeInTheDocument()
+  })
+
+  it('una orden entregada con comprobante lo muestra: quién recibió, quién lo registró y que el consignatario no firmó', async () => {
+    current = { ...BASE_ORDER, status: 'DELIVERED', statusLabel: 'Entregada', isInitialStatus: false }
+    proof = { publicId: 'pf-1', orderPublicId: 'o-7', orderNumber: 'ORD-00007', deliveredAtUtc: '2026-10-18T20:00:00Z', recipientName: 'Ana Rivera', notes: 'Con la vecina', source: 'STAFF_WEB', signatureKind: 'USER', registeredByName: 'Dalys', signedByName: 'Dalys', geoStatus: 'PENDING', latitude: null, longitude: null }
+    wrap(ALL)
+    await loaded()
+    const panel = await screen.findByTestId('delivery-proof')
+    expect(within(panel).getByText('Ana Rivera')).toBeInTheDocument()
+    expect(within(panel).getByText(/Firmada automáticamente por Dalys/)).toBeInTheDocument()
+    expect(within(panel).getByText('Buscando…')).toBeInTheDocument()
+    expect(within(panel).getByText('El consignatario no firmó: la entrega la registró el personal.')).toBeInTheDocument()
+    proof = null
+  })
+
+  it('una orden entregada sin comprobante no pinta el panel', async () => {
+    current = { ...BASE_ORDER, status: 'DELIVERED', statusLabel: 'Entregada', isInitialStatus: false }
+    proof = null
+    wrap(ALL)
+    await loaded()
+    expect(screen.queryByTestId('delivery-proof')).toBeNull()
   })
 })

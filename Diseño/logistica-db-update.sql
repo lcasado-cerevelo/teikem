@@ -4555,3 +4555,62 @@ GO
    ========================================================================= */
 UPDATE dbo.Claim SET PublicId = NEWID() WHERE PublicId = '00000000-0000-0000-0000-000000000000';
 GO
+
+/* =========================================================================
+   2026-10-18 (bb) — Lote 118: registrar la entrega desde la web (dictado de Luis). Tabla DeliveryProof (el comprobante: quién recibió, cuándo, quién lo registró, la firma automática del usuario y el estado de la
+   geocodificación asíncrona con Google), permiso orders.deliver (a TenantAdmin; Luis designa a quién más) y EntityType DELIVERY_PROOF para la bitácora. A lo sumo un comprobante vigente por orden. Solo AGREGA. Idempotente.
+   ========================================================================= */
+IF OBJECT_ID(N'dbo.DeliveryProof', N'U') IS NULL CREATE TABLE dbo.DeliveryProof (
+    DeliveryProofId INT IDENTITY(1,1) PRIMARY KEY,
+    PublicId UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_DeliveryProof_PublicId DEFAULT NEWID(),
+    TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    TransportOrderId INT NOT NULL REFERENCES dbo.TransportOrder(TransportOrderId),
+    DeliveredAtUtc DATETIME2 NOT NULL,
+    RecipientName NVARCHAR(150) NOT NULL,
+    Notes NVARCHAR(500) NULL,
+    Source VARCHAR(20) NOT NULL CONSTRAINT DF_DeliveryProof_Source DEFAULT 'STAFF_WEB',
+    RecordedBy INT NOT NULL,
+    SignedByUserId INT NOT NULL,
+    SignatureKind VARCHAR(20) NOT NULL CONSTRAINT DF_DeliveryProof_Signature DEFAULT 'USER',
+    GeoStatus VARCHAR(12) NOT NULL CONSTRAINT DF_DeliveryProof_GeoStatus DEFAULT 'NONE',
+    GeoAccuracy VARCHAR(8) NULL,
+    Latitude DECIMAL(9,6) NULL,
+    Longitude DECIMAL(9,6) NULL,
+    GeoCheckedAtUtc DATETIME2 NULL,
+    IsActive BIT NOT NULL CONSTRAINT DF_DeliveryProof_IsActive DEFAULT 1,
+    CreatedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_DeliveryProof_Created DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT CK_DeliveryProof_Source CHECK (Source IN ('STAFF_WEB','DRIVER_APP')),
+    CONSTRAINT CK_DeliveryProof_Signature CHECK (SignatureKind IN ('USER','RECIPIENT')),
+    CONSTRAINT CK_DeliveryProof_GeoStatus CHECK (GeoStatus IN ('NONE','FROM_STOP','PENDING','RUNNING','OK','NOT_FOUND','FAILED'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_DeliveryProof_PublicId' AND object_id = OBJECT_ID('dbo.DeliveryProof')) CREATE UNIQUE INDEX IX_DeliveryProof_PublicId ON dbo.DeliveryProof(PublicId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_DeliveryProof_Order' AND object_id = OBJECT_ID('dbo.DeliveryProof')) CREATE UNIQUE INDEX UX_DeliveryProof_Order ON dbo.DeliveryProof(TransportOrderId) WHERE IsActive = 1;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_DeliveryProof_Geo' AND object_id = OBJECT_ID('dbo.DeliveryProof')) CREATE INDEX IX_DeliveryProof_Geo ON dbo.DeliveryProof(GeoStatus, GeoCheckedAtUtc) WHERE GeoStatus IN ('PENDING','RUNNING');
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'DELIVERY_PROOF', N'{"es":"Comprobante de entrega","en":"Proof of delivery"}', 161)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+MERGE dbo.Permission AS t
+USING (VALUES
+    ('orders.deliver', N'{"es":"Registrar la entrega de una orden desde la web","en":"Register an order delivery from the web"}')
+) AS s (Code, LabelJson)
+ON t.Code = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES (s.Code, (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'ORDERS'), s.LabelJson, 1);
+GO
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT DISTINCT r.RoleId, p.PermissionId
+FROM dbo.Role r
+JOIN dbo.Permission p ON p.Code = 'orders.deliver' AND r.Name = 'TenantAdmin'
+WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = p.PermissionId);
+GO

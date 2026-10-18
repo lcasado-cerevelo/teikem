@@ -14,16 +14,16 @@ import { IconClock, IconPrint } from '../../kernel/ui/screenIcons'
 import { labelOrderFromDetail } from '../printing/orderLabels'
 import { usePrinting } from '../printing/usePrinting'
 import { useConfirmOrder, useDeleteOrder, useOrder, useOrderStatusChange, useRepriceOrder } from './api'
-import { AssignDriverModal, CancelOrderDialog, ReopenOrderDialog, ReturnOrderDialog } from './OrderActionDialogs'
+import { AssignDriverModal, CancelOrderDialog, RegisterDeliveryDialog, ReopenOrderDialog, ReturnOrderDialog } from './OrderActionDialogs'
 import { CreditOverrideDialog } from './CreditOverrideDialog'
 import { OrderDetailPanel } from './OrderDetailPanel'
-import { CodPanel, DriverPanel, ORDER_ENTITY_TYPE, OrderContactsPanel, OrderCustomFieldsPanel, QuotePanel } from './OrderSidePanels'
+import { CodPanel, DeliveryProofPanel, DriverPanel, ORDER_ENTITY_TYPE, OrderContactsPanel, OrderCustomFieldsPanel, QuotePanel } from './OrderSidePanels'
 import { isAssignableOrder, isCreditExceeded, orderActionVisibility } from './orderRules'
 import './orders.css'
 
 const STATUS_DOMAIN = 'OrderStatus'
 
-type Dialog = 'confirm' | 'reprice' | 'cancel' | 'reopen' | 'delete' | 'assign' | 'return' | null
+type Dialog = 'confirm' | 'reprice' | 'cancel' | 'reopen' | 'delete' | 'assign' | 'return' | 'deliver' | null
 
 export default function OrderDetailScreen() {
   const t = useT()
@@ -39,6 +39,7 @@ export default function OrderDetailScreen() {
   const cancel = useCan('orders.cancel')
   const reopen = useCan('orders.reopen')
   const canReturn = useCan('orders.return')   // Lote 112: Devolver
+  const canDeliver = useCan('orders.deliver')   // Lote 118: Registrar entrega
   const creditOverride = useCan('orders.credit_override')
   const dispatch = useCan('trips.dispatch')
   const viewPrice = useCan('orders.view_price')
@@ -69,6 +70,8 @@ export default function OrderDetailScreen() {
   // Lote 112: se devuelve una orden que ya se recogió y sigue en curso (ni Sometida ni final); el servidor decide con 422
   const currentStatus = statuses.find((s) => s.code.toLowerCase() === (order.status ?? '').toLowerCase())
   const returnable = canReturn && order.isActive !== false && !order.isSpecialDelivery && !!currentStatus && currentStatus.stageKind.toUpperCase() !== 'TERMINAL' && !currentStatus.isInitial
+  // Lote 118: se registra la entrega de una orden en curso; el servidor decide con 422 (final, Pick up) o 409 (ya tiene su entrega)
+  const deliverable = canDeliver && order.isActive !== false && !!currentStatus && currentStatus.stageKind.toUpperCase() !== 'TERMINAL'
   const label = (code: string) => statuses.find((s) => s.code.toLowerCase() === code.toLowerCase())?.label ?? code
   const lockReason = order.capabilities?.canEditCargo && !edit ? 'permission' : 'advanced'
 
@@ -122,6 +125,11 @@ export default function OrderDetailScreen() {
               {t('orders.actions.cancel.button')}
             </button>
           )}
+          {deliverable && (
+            <button type="button" className="btn flow" onClick={() => setDialog('deliver')}>
+              {t('orders.actions.deliver.button')}
+            </button>
+          )}
           {returnable && (
             <button type="button" className="btn" onClick={() => setDialog('return')}>
               {t('orders.actions.return.button')}
@@ -168,6 +176,7 @@ export default function OrderDetailScreen() {
           </Panel>
         </div>
         <div className="od-side">
+          <DeliveryProofPanel order={order} />
           <CodPanel order={order} />
           {vis.quote && <QuotePanel order={order} />}
           <DriverPanel order={order} />
@@ -217,6 +226,7 @@ export default function OrderDetailScreen() {
       {dialog === 'cancel' && <CancelOrderDialog order={order} open onClose={() => setDialog(null)} />}
       {dialog === 'reopen' && <ReopenOrderDialog order={order} open onClose={() => setDialog(null)} />}
       {dialog === 'return' && <ReturnOrderDialog order={order} open onClose={() => setDialog(null)} />}
+      {dialog === 'deliver' && <RegisterDeliveryDialog order={order} open onClose={() => setDialog(null)} />}
       {dialog === 'assign' && <AssignDriverModal order={order} open onClose={() => setDialog(null)} />}
       <ConfirmDialog
         open={dialog === 'delete'}

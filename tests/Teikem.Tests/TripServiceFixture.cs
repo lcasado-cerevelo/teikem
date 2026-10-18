@@ -99,6 +99,7 @@ internal sealed class TripServiceFixture : IAsyncDisposable
         services.AddSingleton<PartialBillingService>();
         services.AddSingleton<ReturnSuggestionService>();
         services.AddSingleton<ReturnOrderService>();
+        services.AddSingleton<DeliveryRegistrationService>();
         services.AddSingleton<ReappearedOrderService>();
         services.AddSingleton<ScanActionService>();
         services.AddSingleton<ClaimService>();

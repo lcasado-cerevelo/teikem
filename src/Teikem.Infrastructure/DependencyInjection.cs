@@ -297,6 +297,12 @@ public static class DependencyInjection
         services.AddScoped<INotificationChannelSender, AppChannelSender>();
         services.AddScoped<INotificationChannelSender, SmsChannelSender>();
         services.AddScoped<INotificationChannelSender, PushChannelSender>();
+        // Lote 118: registrar la entrega desde la web; la ubicación se busca aparte con Google (un solo intento, 30 s)
+        services.Configure<Teikem.Infrastructure.Geocoding.GoogleMapsOptions>(config.GetSection(Teikem.Infrastructure.Geocoding.GoogleMapsOptions.Section));
+        services.AddHttpClient<Teikem.Infrastructure.Geocoding.GoogleGeocoder>(c => c.Timeout = TimeSpan.FromSeconds(40)).RemoveAllLoggers();   // el registro estándar del cliente HTTP escribiría la URL: la llave y la dirección del consignatario
+        services.AddScoped<DeliveryRegistrationService>();
+        services.AddSingleton<Teikem.Infrastructure.Geocoding.DeliveryGeocodeProcessor>();
+        services.AddHostedService<Teikem.Infrastructure.Geocoding.DeliveryGeocodeWorker>();
         services.AddSingleton<NotificationProcessor>();
         services.AddHostedService<NotificationWorker>();
         services.AddScoped<NotificationRuleService>();

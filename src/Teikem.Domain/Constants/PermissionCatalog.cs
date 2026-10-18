@@ -32,6 +32,8 @@ public static class PermissionCatalog
     /// <summary>Lote 111: marcar piezas como perdidas, reclamarlas y resolver las reclamaciones.</summary>
     public const string ClaimsManage = "claims.manage";
     public const string OrdersReturn = "orders.return";
+    /// <summary>Lote 118: registrar la entrega de una orden desde la web (firma automática del usuario; la tiene quien Luis designe).</summary>
+    public const string OrdersDeliver = "orders.deliver";
     /// <summary>Lote 3 (ajuste C): autorizar la confirmación de una orden que excede el límite de crédito del cliente (overrideCredit=true).</summary>
     public const string OrdersCreditOverride = "orders.credit_override";
     /// <summary>
@@ -258,6 +260,7 @@ public static class PermissionCatalog
         new(ClaimsView, "ORDERS", "Ver los faltantes y las reclamaciones", "View missing pieces and claims"),
         new(ClaimsManage, "ORDERS", "Marcar piezas como perdidas, reclamar y resolver reclamaciones", "Mark pieces as lost, claim and resolve claims"),
         new(OrdersReturn, "ORDERS", "Devolver órdenes (crear la orden de vuelta)", "Return orders (create the return order)"),
+        new(OrdersDeliver, "ORDERS", "Registrar la entrega de una orden desde la web", "Register an order delivery from the web"),
         // Lote 4 — Flota, choferes y mantenimiento (flota separada de la compensación, R8)
         new(FleetView, "FLEET", "Ver flota y choferes", "View fleet & drivers"),
         new(DriverPayView, "FLEET", "Ver tarifas y viajes de choferes", "View driver rates & trips"),
