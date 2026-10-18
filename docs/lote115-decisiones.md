@@ -16,3 +16,5 @@ Luis dictó: cargo por devolución **opcional por cliente** (a todos los tipos d
 1. **Solo se acumula mientras no se haya facturado**: si el cargo ya se facturó y después se devuelven más piezas, ese excedente no se cobra (habría que generar otro cargo).
 2. **El cargo usa el contrato congelado de la orden** (`ContractId` de la orden), no el contrato vigente al devolver.
 3. **Por tipo de paquete**, un tipo sin monto no cobra (no se rechaza la devolución).
+
+- (2026-10-18) Recorrido Playwright y capturas: `web-app/e2e/lote115-cargo-devolucion.spec.ts` (contrato en los tres modos y devolver la orden; contra SQL real quedó `ReturnFeeAmount` = 7.00 por 2 piezas × 3.50), capítulo `docs/manual/frontend/l115-cargo-devolucion.md`. **Observación:** la ficha de la orden no muestra el cargo por devolución (solo sale en la factura, módulo BILLING): si Luis lo quiere ver en la ficha, es un cambio aparte.

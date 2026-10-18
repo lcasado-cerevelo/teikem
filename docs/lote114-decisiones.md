@@ -17,3 +17,5 @@ Luis dictó: los tipos de servicio «pick up» (recojo y traigo) se distinguen d
 1. **Las paradas** de una orden de pick up son las de siempre (recogido y entrega). Si «entrega» para un pick up debe ser el almacén de la compañía en vez del consignatario, hay que decidir de dónde sale esa dirección.
 2. **La Sometida de un pick up** se puede llevar directo a En almacén escaneando «Llegó» (Recogida queda brincada); la app del chofer, cuando exista, usará Recoger.
 3. **Un pick up no facturable** queda cotizado en **cero** (no sin cotizar) para que la orden no pida contrato ni tarifa y los informes la vean con monto 0.
+
+- (2026-10-18) Recorrido Playwright y capturas: `web-app/e2e/lote114-pick-up.spec.ts` (escritorio y móvil; las marcas del tipo de servicio solo en escritorio porque en móvil las listas son tarjetas), capítulo `docs/manual/frontend/l114-pick-up.md`.
