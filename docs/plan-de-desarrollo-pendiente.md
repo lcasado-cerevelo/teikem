@@ -351,7 +351,7 @@ Corrida `DriverSettlementRun`/`DriverSettlementLine` (el DDL trae `CarrierSettle
 reglas de lectura + alias/mapeos + bandeja de entrantes + acuse; las órdenes de venta (P4) son quien recibe lo que la integración confirma. Definir en el diseño de P11 antes de construir P4-T.
 
 ## P12 — Dashboards y Pulso completos (12)
-`KpiDailySnapshot` + job nocturno (P2.2); ríos de «paquetes en la calle» y «dinero COD»; Radar de órdenes abiertas; avisos sin chofer/COD/SLA; indicadores de COD, facturación, ventas y SLA (necesita POD); Actividad para Operación y Contabilidad (hoy solo Almacén); alertas operacionales fuera de almacén; programación de informes por correo. Kemi AI: **no verificado**, decidir si sigue en alcance.
+`KpiDailySnapshot` + job nocturno (P2.2); ríos de «paquetes en la calle» y «dinero COD»; Radar de órdenes abiertas; avisos sin chofer/COD/SLA (**SLA en riesgo hecho en el Lote 122**); indicadores de COD, facturación, ventas y SLA (el SLA ya se puede medir: campos `SlaState`… en la fuente de órdenes); Actividad para Operación y Contabilidad (hoy solo Almacén); alertas operacionales fuera de almacén; programación de informes por correo. Kemi AI: **no verificado**, decidir si sigue en alcance.
 
 ## P13 — App móvil para staff (idea del dueño, 2026-10-15)
 

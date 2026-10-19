@@ -3164,6 +3164,18 @@
           "group": "Orders without a driver",
           "reviewLabel": "Assign a driver to {count} orders"
         },
+        "SLA_AT_RISK": {
+          "titleOne": "1 order at risk of missing its SLA",
+          "title": "{count} orders at risk of missing their SLA",
+          "detail": "Picked up and not yet delivered, close to the contract deadline or already past it",
+          "atRisk": "At risk",
+          "breached": "Past due",
+          "tightest": "The tightest",
+          "left": "{n} h left",
+          "late": "Past due by {n} h",
+          "group": "Orders at risk of missing their SLA",
+          "reviewLabel": "Review {count} orders with the SLA at risk"
+        },
         "COD_UNRECONCILED": {
           "title": "{amount} of COD not reconciled",
           "detail": "Collected on the street, waiting to be reconciled against the sheets",

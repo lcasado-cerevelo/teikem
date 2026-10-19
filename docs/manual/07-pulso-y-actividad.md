@@ -585,7 +585,15 @@ Son filas **agregadas** (una sola fila con la cuenta, como en la maqueta) y van 
 | **Órdenes sin chofer** (`ORDERS_NO_DRIVER`) | «N órdenes sin chofer»: Sin asignar o Asignadas **sin una ruta con chofer**; la cifra «La más antigua» (días); rojo desde 2 días | `trips.dispatch` y módulo `LTL_GROUND` | Sala de despacho |
 | **COD sin cuadrar** (`COD_UNRECONCILED`) | «$X de COD sin cuadrar»: lo cobrado en la calle que todavía no se cuadra, con los cobros, las órdenes y «El más antiguo»; rojo desde 3 días | `cod.reconcile` y módulo `COD` | COD → Reconciliar |
 
-El aviso de **SLA en riesgo** de la maqueta espera al POD (P7): sin la hora real de entrega no se puede medir.
+### SLA en riesgo (Lote 122, P12)
+
+Con el comprobante de entrega (Lote 118) ya hay hora real de entrega, así que el SLA se mide. El **SLA** de una orden es el nivel de servicio de su **contrato** para su **tipo de servicio** (pestaña SLA del cliente: «horas máximas» de tránsito).
+
+- **Cuándo corre el reloj:** desde que la orden se **recoge** (el primer paso a «Recogida»; si no hay, desde que se confirmó) hasta que se **entrega**. Una orden que todavía no se recoge, cancelada, devuelta, en almacén (pick up) o de un servicio sin horas máximas **no tiene SLA**.
+- **Estados:** **A tiempo** (`ON_TRACK`); **En riesgo** (`AT_RISK`: le queda menos del 25 % del plazo, y al menos una hora de margen); **Vencida** (`BREACHED`: ya pasó el plazo y sigue abierta); **Cumplida** (`MET`: se entregó dentro del plazo); **Fuera de SLA** (`MISSED`: se entregó después); **Sin SLA** (`NO_SLA`).
+- **Aviso «SLA en riesgo»** (`SLA_AT_RISK`) en «Necesita tu atención»: una fila agregada «N órdenes en riesgo de pasar su SLA» con «En riesgo», «Vencidas» y «La más apretada» (cuánto le queda o cuánto lleva vencida); rojo si hay alguna vencida, amarillo si no. Lo ven quienes tienen `orders.view` y el módulo `LTL_GROUND`; «Revisar» abre Órdenes. Solo cuenta las órdenes abiertas ya recogidas (tope de 2.000 por lectura).
+- **Campos para vistas, indicadores y gráficos** (fuente `TRANSPORT_ORDER`): `SlaState`, `SlaMaxHours`, `SlaDueUtc` y `SlaHoursLeft`. Por ejemplo, filtre `SlaState = BREACHED` o agrupe por `SlaState` para ver el cumplimiento.
+- **No se avisa** de una orden entregada tarde: ya pasó; sale como «Fuera de SLA» en los campos.
 
 ### Casos frecuentes
 

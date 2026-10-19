@@ -9350,3 +9350,15 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **¿Quién controla a los usuarios de staff, de portal y de consignatarios?** El administrador de la plataforma y el administrador de cada compañía (los de su compañía): el personal en la pestaña Usuarios, las personas de los clientes en Clientes y los accesos de consignatarios en Consignatarios.
 
 **No veo a una persona dada de baja.** Active «Incluir dados de baja».
+
+## SLA en riesgo (Lote 122)
+
+**¿De dónde sale el SLA de una orden?** Del contrato del cliente: la pestaña SLA tiene un renglón por tipo de servicio con las «horas máximas». Si la orden no tiene contrato, o su tipo de servicio no tiene horas máximas, no tiene SLA y no entra al aviso.
+
+**¿Desde cuándo cuenta el plazo?** Desde que la orden se recoge («Recogida»), no desde que se crea. Una orden que todavía no se recoge no corre reloj.
+
+**¿Cuándo está «en riesgo»?** Cuando le queda menos del 25 % del plazo (mínimo una hora de margen). Con 48 horas de SLA, entra en riesgo cuando le quedan 12 horas o menos.
+
+**No veo el aviso «SLA en riesgo».** Hace falta `orders.view` y el módulo de Transporte (`LTL_GROUND`), y que haya alguna orden recogida, abierta y cerca del plazo (o vencida) con SLA en su contrato.
+
+**Entregué la orden y el aviso sigue.** El aviso solo cuenta órdenes abiertas; al entregarla desaparece en la siguiente lectura. Si fue tarde, queda como `MISSED` (Fuera de SLA) en el campo `SlaState`.

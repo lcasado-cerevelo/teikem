@@ -3164,6 +3164,18 @@
           "group": "Órdenes sin chofer",
           "reviewLabel": "Asignar chofer a {count} órdenes"
         },
+        "SLA_AT_RISK": {
+          "titleOne": "1 orden en riesgo de pasar su SLA",
+          "title": "{count} órdenes en riesgo de pasar su SLA",
+          "detail": "Recogidas y todavía sin entregar, cerca del plazo del contrato o ya vencidas",
+          "atRisk": "En riesgo",
+          "breached": "Vencidas",
+          "tightest": "La más apretada",
+          "left": "Quedan {n} h",
+          "late": "Vencida hace {n} h",
+          "group": "Órdenes en riesgo de pasar su SLA",
+          "reviewLabel": "Revisar {count} órdenes con el SLA en riesgo"
+        },
         "COD_UNRECONCILED": {
           "title": "{amount} de COD sin cuadrar",
           "detail": "Cobrado en la calle, pendiente de cuadrar con las hojas",

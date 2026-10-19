@@ -6,6 +6,7 @@ using Teikem.Domain.Trips;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Orders;
 using Teikem.Infrastructure.Persistence;
+using Teikem.Infrastructure.Services;
 using Teikem.Infrastructure.Trips;
 
 namespace Teikem.Infrastructure.Analytics;
@@ -27,7 +28,7 @@ namespace Teikem.Infrastructure.Analytics;
 /// - Lote 39: el campo QuotedAmount (monto cotizado) sale en null para quien no tiene orders.view_price (OrderPriceVisibility):
 ///   vistas, exportaciones, indicadores y gráficos sobre él no muestran precios. CodAmount sigue visible.
 /// </summary>
-public sealed class TransportOrderDataSource(TeikemDbContext db, ILookupCache lookups, ITenantContext tenant, OrderPriceVisibility? prices = null) : IDataSource
+public sealed class TransportOrderDataSource(TeikemDbContext db, ILookupCache lookups, ITenantContext tenant, OrderPriceVisibility? prices = null, SlaService? sla = null) : IDataSource
 {
     public string Key => EntityTypes.TransportOrder;
     public string LabelEs => "Órdenes";
@@ -80,6 +81,11 @@ public sealed class TransportOrderDataSource(TeikemDbContext db, ILookupCache lo
         new DataField("HasAssignedDriver", "Tiene chofer asignado", "Has assigned driver", DataFieldType.Bool),
         new DataField("DispatchZoneCode", "Zona de despacho", "Dispatch zone", DataFieldType.Text),
         new DataField("IsException", "En excepción", "In exception", DataFieldType.Bool),
+        // Lote 122 (P12): SLA del contrato por tipo de servicio (reloj desde que se recoge hasta que se entrega)
+        new DataField("SlaState", "Estado del SLA", "SLA state", DataFieldType.Text),
+        new DataField("SlaMaxHours", "SLA (horas)", "SLA (hours)", DataFieldType.Number),
+        new DataField("SlaDueUtc", "Vence el SLA", "SLA due", DataFieldType.Date),
+        new DataField("SlaHoursLeft", "Horas que quedan del SLA", "SLA hours left", DataFieldType.Number),
     };
 
     public IReadOnlyList<DataRelation> Relations { get; } = new[]
@@ -148,9 +154,14 @@ public sealed class TransportOrderDataSource(TeikemDbContext db, ILookupCache lo
         // Lote 39: el monto cotizado solo para quien ve precios (una consulta del permiso por carga).
         var canViewPrice = await OrderPriceVisibility.CanViewAsync(prices, ct);
 
+        // Lote 122: el SLA de cada orden (una consulta de niveles de servicio y una del historial por lote)
+        var slaByOrder = sla is null ? new Dictionary<int, SlaResult>() : await sla.EvaluateAsync(orders.Select(o => new SlaOrderInput(o.TransportOrderId, o.ContractId, o.ServiceTypeLookupId, o.CreatedAtUtc, o.ConfirmedAtUtc,
+            ClientDataSourceHelpers.StatusCodeOf(orderStatus, o.StatusCodeId))).ToList(), DateTime.UtcNow, ct);
+
         var rows = new List<DataRow>(orders.Count);
         foreach (var o in orders)
         {
+            var slaResult = slaByOrder.GetValueOrDefault(o.TransportOrderId) ?? SlaResult.None;
             var delivery = deliveryByOrder.GetValueOrDefault(o.TransportOrderId);
             var assignment = assignments.GetValueOrDefault(o.TransportOrderId);
             var statusCode = ClientDataSourceHelpers.StatusCodeOf(orderStatus, o.StatusCodeId);
@@ -202,6 +213,10 @@ public sealed class TransportOrderDataSource(TeikemDbContext db, ILookupCache lo
                 ["HasAssignedDriver"] = assignment?.DriverCode is not null,
                 ["DispatchZoneCode"] = zoneCode,
                 ["IsException"] = OrderDispatchFlags.IsException(statusCode ?? string.Empty),
+                ["SlaState"] = slaResult.State,
+                ["SlaMaxHours"] = slaResult.MaxHours,
+                ["SlaDueUtc"] = slaResult.DueUtc,
+                ["SlaHoursLeft"] = slaResult.HoursLeft,
             });
         }
         return rows;

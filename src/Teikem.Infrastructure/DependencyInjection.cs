@@ -462,6 +462,8 @@ public static class DependencyInjection
         services.AddScoped<IDataSource, KpiDailyDataSource>();
         services.AddScoped<IDataSource, CodCollectionDataSource>();   // Lote 91 (P12)
         services.AddScoped<IDataSource, InvoiceDataSource>();   // historial por día para indicadores y gráficos
+        services.AddScoped<SlaService>();   // Lote 122: SLA de las órdenes (nivel de servicio del contrato)
+        services.AddScoped<IAttentionItemProvider, SlaAtRiskAttentionProvider>();   // Lote 122: SLA en riesgo
         services.AddScoped<IAttentionItemProvider, OrdersNoDriverAttentionProvider>();   // Lote 89
         services.AddScoped<IAttentionItemProvider, CodUnreconciledAttentionProvider>();   // Lote 89
         services.AddScoped<BillingExportService>();

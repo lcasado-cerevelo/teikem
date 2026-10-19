@@ -50,3 +50,26 @@ describe('aviso COD_UNRECONCILED', () => {
     expect(attentionRowText(cod(), tEn, 'en').title).toBe('$2,230.00 of COD not reconciled')
   })
 })
+
+// Lote 122 (P12) — aviso SLA_AT_RISK (órdenes a punto de pasar su SLA o ya vencidas).
+const sla = (params: Record<string, string> = {}): AttentionItemDto => ({
+  code: 'SLA_AT_RISK', module: 'OPERATIONS', tone: 'danger', params: { atRisk: '4', breached: '2', minHours: '-3.5', ...params }, route: '/orders', query: null, sinceUtc: null,
+})
+
+describe('aviso SLA_AT_RISK', () => {
+  it('es un tipo conocido y se rotula', () => {
+    expect(isKnownAttention('SLA_AT_RISK')).toBe(true)
+    expect(attentionGroupLabel({ code: 'SLA_AT_RISK', total: 1, route: '/orders' }, t)).toBe('Órdenes en riesgo de pasar su SLA')
+  })
+  it('título con la suma, las cifras y la más apretada vencida', () => {
+    const text = attentionRowText(sla(), t, 'es')
+    expect(text.title).toBe('6 órdenes en riesgo de pasar su SLA')
+    expect(text.figures.map((f) => [f.label, f.value])).toEqual([['En riesgo', '4'], ['Vencidas', '2'], ['La más apretada', expect.stringMatching(/^Vencida hace 3[.,]5 h$/)]])
+    expect(text.reviewLabel).toBe('Revisar 6 órdenes con el SLA en riesgo')
+  })
+  it('una sola en singular; sin vencidas dice cuánto le queda; en inglés', () => {
+    expect(attentionRowText(sla({ atRisk: '1', breached: '0', minHours: '5' }), t, 'es')).toMatchObject({ title: '1 orden en riesgo de pasar su SLA' })
+    expect(attentionRowText(sla({ atRisk: '1', breached: '0', minHours: '5' }), t, 'es').figures[2].value).toBe('Quedan 5 h')
+    expect(attentionRowText(sla(), tEn, 'en').title).toBe('6 orders at risk of missing their SLA')
+  })
+})

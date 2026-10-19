@@ -14,7 +14,7 @@ export type AttentionGroupDto = components['schemas']['AttentionGroupDto']
 type Translate = (key: string, params?: TParams) => string
 
 /** Tipos de aviso que esta web sabe describir (el resto se pinta con su código y su "Revisar"). */
-export const ATTENTION_CODES = ['INVENTORY_DISCREPANCY', 'RENTAL_DUE', 'SALES_BACKORDER_READY', 'ORDERS_NO_DRIVER', 'COD_UNRECONCILED'] as const
+export const ATTENTION_CODES = ['INVENTORY_DISCREPANCY', 'RENTAL_DUE', 'SALES_BACKORDER_READY', 'ORDERS_NO_DRIVER', 'COD_UNRECONCILED', 'SLA_AT_RISK'] as const
 export type AttentionCode = (typeof ATTENTION_CODES)[number]
 
 export function isKnownAttention(code: string | null | undefined): code is AttentionCode {
@@ -109,6 +109,7 @@ export function attentionRowText(item: AttentionItemDto, t: Translate, lang: str
   if (item.code === 'SALES_BACKORDER_READY') return salesBackorderText(p, t, lang, since)
   if (item.code === 'ORDERS_NO_DRIVER') return noDriverText(p, t, since)
   if (item.code === 'COD_UNRECONCILED') return codUnreconciledText(p, t, since)
+  if (item.code === 'SLA_AT_RISK') return slaAtRiskText(p, t, since)
 
   const title = item.code ?? ''
   return { title, detail: '', figures: [], since, reviewLabel: title ? `${review} ${title}` : review }
@@ -212,4 +213,28 @@ function codUnreconciledText(p: Record<string, string>, t: Translate, since: str
 /** Nombre de un grupo para "Ver todos" cuando hay más de un tipo de aviso. */
 export function attentionGroupLabel(group: AttentionGroupDto, t: Translate): string {
   return isKnownAttention(group.code) ? t(`analytics.attention.items.${group.code}.group`) : (group.code ?? '')
+}
+
+/**
+ * Lote 122 (P12) — órdenes abiertas a punto de pasar su SLA o que ya lo pasaron (SLA_AT_RISK): una fila agregada. Params del servidor: atRisk (en riesgo), breached (vencidas) y minHours (horas que le quedan a la más apretada;
+ * negativo = lleva ese tiempo vencida). «Revisar» abre Órdenes.
+ */
+function slaAtRiskText(p: Record<string, string>, t: Translate, since: string): AttentionRowText {
+  const base = 'analytics.attention.items.SLA_AT_RISK'
+  const atRisk = Number(p.atRisk ?? '0')
+  const breached = Number(p.breached ?? '0')
+  const count = atRisk + breached
+  const hours = Number(p.minHours ?? '0')
+  const figures: AttentionFigure[] = [
+    { label: t(`${base}.atRisk`), value: formatNumber(atRisk) },
+    { label: t(`${base}.breached`), value: formatNumber(breached), emphasis: breached > 0 },
+  ]
+  if (Number.isFinite(hours)) figures.push({ label: t(`${base}.tightest`), value: t(hours < 0 ? `${base}.late` : `${base}.left`, { n: formatNumber(Math.abs(hours)) }), emphasis: hours < 0 })
+  return {
+    title: t(count === 1 ? `${base}.titleOne` : `${base}.title`, { count: formatNumber(count) }),
+    detail: t(`${base}.detail`),
+    figures,
+    since,
+    reviewLabel: t(`${base}.reviewLabel`, { count: formatNumber(count) }),
+  }
 }
