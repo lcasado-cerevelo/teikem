@@ -61,12 +61,13 @@ Write-Host "  Correo:     todo a $CorreoRedirigir$(if ($CorreoRedirigirExcepto.C
 
 # --------------------------------------------------------------------------------------------------------- 1. API + web + base
 Paso "1/3 API, web y base de datos ($Sitio)"
-$args_ = @('-Sitio', $Sitio, '-Carpeta', $Carpeta, '-Dominio', $Dominio, '-DbNombre', $DbNombre, '-Etiqueta', 'TEST',
-    '-LetsEncrypt', '-CorreoLetsEncrypt', $CorreoLetsEncrypt, '-ConDescargas')
-if ($CorreoRedirigir) { $args_ += @('-CorreoRedirigir', $CorreoRedirigir); if ($CorreoRedirigirExcepto.Count) { $args_ += @('-CorreoRedirigirExcepto', ($CorreoRedirigirExcepto -join ',')) } }
-if (-not $SinPortal) { $args_ += @('-OrigenesExtra', "https://$DominioPortal") }
-if ($SinBase) { $args_ += '-SinBase' }
-if ($RespaldoHecho) { $args_ += '-RespaldoHecho' }
+# Los parámetros van por NOMBRE (tabla): una lista se pasaría por posición y el sitio se llamaría «-Sitio».
+$args_ = @{ Sitio = $Sitio; Carpeta = $Carpeta; Dominio = $Dominio; DbNombre = $DbNombre; Etiqueta = 'TEST'
+    LetsEncrypt = $true; CorreoLetsEncrypt = $CorreoLetsEncrypt; ConDescargas = $true }
+if ($CorreoRedirigir) { $args_.CorreoRedirigir = $CorreoRedirigir; if ($CorreoRedirigirExcepto.Count) { $args_.CorreoRedirigirExcepto = $CorreoRedirigirExcepto } }
+if (-not $SinPortal) { $args_.OrigenesExtra = @("https://$DominioPortal") }
+if ($SinBase) { $args_.SinBase = $true }
+if ($RespaldoHecho) { $args_.RespaldoHecho = $true }
 & (Join-Path $PSScriptRoot 'instalar.ps1') @args_
 if ($LASTEXITCODE -ne 0) { Fallar "La instalación del API y la web falló (arriba). El portal no se tocó." }
 New-Item -ItemType Directory -Force $Carpeta | Out-Null
