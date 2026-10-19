@@ -48,7 +48,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
 $cliente = ($App -eq 'cliente')
-$app = Join-Path $repo $(if ($cliente) { 'app-cliente' } else { 'app-almacen' })
+$carpetaApp = Join-Path $repo $(if ($cliente) { 'app-cliente' } else { 'app-almacen' })
 function Paso([string]$m) { Write-Host ''; Write-Host "== $m" -ForegroundColor Cyan }
 function Fallar([string]$m) { Write-Host ''; Write-Host $m -ForegroundColor Red; exit 1 }
 
@@ -73,7 +73,7 @@ if ($CodigoVersion -le 0) {
 } elseif ($CodigoVersion -le $anterior -and -not $PermitirBajar) {
     Fallar "El código de versión $CodigoVersion no es mayor que el último que compiló ($anterior): Android no dejaría instalar este APK encima del anterior. Use uno mayor (o quite -CodigoVersion para que suba solo). Si de verdad lo quiere igual o menor, agregue -PermitirBajar."
 }
-if (-not $Version) { $Version = (Get-Content (Join-Path $app 'package.json') -Raw | ConvertFrom-Json).version }
+if (-not $Version) { $Version = (Get-Content (Join-Path $carpetaApp 'package.json') -Raw | ConvertFrom-Json).version }
 if ($Version -notmatch '^\d+\.\d+\.\d+$') { Fallar "La versión debe verse como 1.2.3 (tres números separados por puntos); recibí '$Version'." }
 Write-Host "Versión de este APK:           $Version" -ForegroundColor Cyan
 Write-Host "Código de versión de este APK: $CodigoVersion (el último que compiló fue el $anterior; tiene que ser mayor que el de los aparatos; no lo baje)" -ForegroundColor Cyan
@@ -122,7 +122,7 @@ $commit = (& git -C $repo rev-parse --short HEAD 2>$null)
 $env:TEIKEM_BUILD_STAMP = "$(Get-Date -Format 'yyyy-MM-dd HH:mm') $commit"
 
 # --- Compilar ---
-Set-Location $app
+Set-Location $carpetaApp
 if (-not (Test-Path 'node_modules')) { Paso 'Instalando dependencias'; npm ci --legacy-peer-deps; if ($LASTEXITCODE -ne 0) { Fallar 'npm ci falló.' } }
 $env:APP_VARIANT = $variante
 $env:EXPO_PUBLIC_API_URL = $ApiUrl
@@ -159,7 +159,7 @@ for ($intento = 1; $intento -le 3 -and -not $ok; $intento++) {
 }
 Pop-Location
 
-$apkOrigen = Join-Path $app 'android\app\build\outputs\apk\release\app-release.apk'
+$apkOrigen = Join-Path $carpetaApp 'android\app\build\outputs\apk\release\app-release.apk'
 if ($ok -and (Test-Path $apkOrigen)) {
     New-Item -ItemType Directory -Force $Salida | Out-Null
     New-Item -ItemType Directory -Force $dirLlave | Out-Null
