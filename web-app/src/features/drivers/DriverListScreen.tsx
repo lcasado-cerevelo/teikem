@@ -8,7 +8,8 @@ import { Can } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useT } from '../../kernel/i18n'
 import { CARDS_QUERY, Chip, EmptyState, FilterScope, IconDoc, IconPlus, IconUsers, Panel, QBox, SelectFilter, Spinner, useMediaQuery } from '../../kernel/ui'
-import { useDispatchZones, useDriverList, type DriverListItem, type DriverListQuery } from './api'
+import { CustomFieldFilterBar, EMPTY_CUSTOM_FIELD_FILTERS, withCustomFields, type CustomFieldFilterValues } from '../../kernel/custom-fields'
+import { DRIVER_ENTITY_TYPE, useDispatchZones, useDriverList, type DriverListItem, type DriverListQuery } from './api'
 import { DriverCreateModal } from './DriverCreateModal'
 import { DriverDetailPanel } from './DriverDetailPanel'
 import { DriverStatuses, driverState, FILTER_ANY, zoneLine } from './driverRules'
@@ -35,19 +36,24 @@ export default function DriverListScreen() {
   const [status, setStatus] = useState(FILTER_ANY)
   const [zone, setZone] = useState(FILTER_ANY)
   const [includeInactive, setIncludeInactive] = useState(false)
+  const [custom, setCustom] = useState<CustomFieldFilterValues>(EMPTY_CUSTOM_FIELD_FILTERS)   // Lote 130: campos personalizados con «Mostrar en la búsqueda»
   const [creating, setCreating] = useState(false)
   const cards = useMediaQuery(CARDS_QUERY)
   const detailRef = useRef<HTMLDivElement>(null)
   const search = useDebounced(q.trim(), 250)
 
   const query = useMemo<DriverListQuery>(
-    () => ({
-      includeInactive: includeInactive || status === DriverStatuses.Inactive,
-      ...(search ? { search } : {}),
-      ...(status ? { status: [status] } : {}),
-      ...(zone ? { dispatchZoneId: Number(zone) } : {}),
-    }),
-    [includeInactive, search, status, zone],
+    () =>
+      withCustomFields<DriverListQuery>(
+        {
+          includeInactive: includeInactive || status === DriverStatuses.Inactive,
+          ...(search ? { search } : {}),
+          ...(status ? { status: [status] } : {}),
+          ...(zone ? { dispatchZoneId: Number(zone) } : {}),
+        },
+        custom,
+      ),
+    [includeInactive, search, status, zone, custom],
   )
   const list = useDriverList(query)
   const zones = useDispatchZones()
@@ -130,6 +136,7 @@ export default function DriverListScreen() {
                 <span>{t('drivers.showInactive')}</span>
               </label>
             </div>
+            <CustomFieldFilterBar entityType={DRIVER_ENTITY_TYPE} value={custom} onChange={setCustom} />
           </FilterScope>
           {list.isError ? (
             <p className="pb ferr" role="alert">

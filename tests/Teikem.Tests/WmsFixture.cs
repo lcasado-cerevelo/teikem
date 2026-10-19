@@ -170,6 +170,7 @@ internal sealed class WmsFixture : IAsyncDisposable
         L(LookupDomains.Capability, Capabilities.EditPurchaseOrder);
         L(LookupDomains.Capability, Capabilities.EditContract);   // Lote 126
         L(LookupDomains.Capability, Capabilities.EditCargo);   // Lote 129 (la ficha de la orden evalúa EDIT_CARGO)
+        foreach (var t in new[] { "TEXT", "NUMBER", "SELECT", "MULTISELECT", "LOOKUP_REF", "BOOL", "DATE", "DATETIME" }) L(LookupDomains.CustomFieldDataType, t);   // Lote 130: tipos de campo personalizado
         // Pruebas de servicio (al final: no cambia los ids anteriores).
         L(LookupDomains.EntityType, EntityTypes.ReceiptLine);
         foreach (var c in new[] { ReceiptTypes.Asn, ReceiptTypes.Blind, ReceiptTypes.Return }) L(LookupDomains.ReceiptType, c);

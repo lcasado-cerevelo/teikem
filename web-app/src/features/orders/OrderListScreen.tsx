@@ -18,6 +18,8 @@ import { useFormat } from '../../kernel/format'
 import { useLang, useT } from '../../kernel/i18n'
 import { useDispatchZones } from '../drivers/api'
 import { useZoneGroups } from '../fleet/api'
+import { CustomFieldFilters } from '../../kernel/custom-fields'
+import { ORDER_ENTITY_TYPE } from './OrderSidePanels'
 import {
   CARDS_QUERY,
   ConfirmDialog,
@@ -407,6 +409,7 @@ export default function OrderListScreen() {
         <SearchSelect label={t('orders.list.filters.level')} options={levelOptions} value={filters.zoneGroupIds} onChange={(v) => patch({ zoneGroupIds: v })} placeholder={t('orders.list.filters.all')} />
         <SelectFilter label={t('orders.list.filters.processed')} options={processedOptions} value={filters.processed} onChange={(v) => patch({ processed: v as OrderFilters['processed'] })} />
         <DateRangeFilter label={t('orders.list.filters.processedRange')} value={processedRange} onChange={(r) => patch({ processedFrom: r.from, processedTo: r.to })} />
+        <CustomFieldFilters entityType={ORDER_ENTITY_TYPE} value={filters.custom} onChange={(custom) => patch({ custom })} />
       </Filters>
 
       <Panel

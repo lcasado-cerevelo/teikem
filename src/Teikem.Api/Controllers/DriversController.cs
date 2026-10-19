@@ -25,7 +25,7 @@ public sealed class DriversController(DriverService drivers, DriverDocumentServi
     [HttpGet, RequirePermission(PermissionCatalog.FleetView)]
     public Task<IReadOnlyList<DriverListItemDto>> List([FromQuery] string? search, [FromQuery] string[]? status, [FromQuery] int? dispatchZoneId,
         [FromQuery] bool includeInactive, CancellationToken ct)
-        => drivers.ListAsync(new DriverListQuery(search, status, dispatchZoneId, includeInactive), ct);
+        => drivers.ListAsync(new DriverListQuery(search, status, dispatchZoneId, includeInactive, CustomFieldFilters.FromQuery(Request.Query)), ct);
 
     /// <summary>Alta: código fijo, nombre, zona primaria, tope de paradas, fecha de ingreso y usuario (admin.users). Nace en el estatus inicial.</summary>
     [HttpPost, RequirePermission(PermissionCatalog.FleetManage)]

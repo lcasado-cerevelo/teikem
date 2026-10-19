@@ -2492,6 +2492,10 @@
     "skipped": "(brincado)"
   },
   "customFields": {
+    "filter": {
+      "from": "{label} (desde)",
+      "to": "{label} (hasta)"
+    },
     "choose": "Seleccione…",
     "yes": "Sí",
     "no": "No",
@@ -2533,7 +2537,7 @@
       "type": "Tipo",
       "required": "Requerido",
       "unique": "Único",
-      "showInList": "Mostrar en listados",
+      "showInList": "Mostrar en la búsqueda",
       "status": "Estado",
       "active": "Activo",
       "inactive": "Inactivo"
@@ -2580,7 +2584,7 @@
       "description": "Descripción",
       "required": "Requerido",
       "unique": "Único",
-      "showInList": "Mostrar en listados",
+      "showInList": "Mostrar en la búsqueda",
       "order": "Orden",
       "orderHelp": "Menor número = aparece antes en la ficha.",
       "default": "Valor por defecto",

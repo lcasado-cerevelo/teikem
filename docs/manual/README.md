@@ -431,3 +431,4 @@ L126. [L126 — Procesar entregas: la factura del cliente (web del personal)](fr
 38. [38 — Almacén de archivos: firma, fotos y documentos](38-almacen-de-archivos.md): Lote 127 (2026-10-18) — archivos cifrados por compañía con la referencia en la base; primer uso, el comprobante de entrega.
 L127. [L127 — Comprobante de entrega: firma y fotos (web del personal)](frontend/l127-anejos-comprobante.md): miniaturas, agregar y quitar; con capturas.
 L129. [L129 — Niveles de zona: Isla y Metro (web del personal)](frontend/l129-nivel-de-zona.md): niveles con chofer por omisión, zonas con nivel, ficha y filtros de órdenes; con capturas.
+L130. [L130 — Campos personalizados en la búsqueda (web del personal)](frontend/l130-campos-en-busqueda.md): filtro del tipo del campo en las listas; con capturas.

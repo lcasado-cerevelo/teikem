@@ -42,7 +42,9 @@ public sealed record LocationQuery(
     bool IncludeShared = true,
     bool IncludeInactive = false,
     string? LocationType = null,
-    string? Search = null);
+    string? Search = null,
+    // Lote 130: filtros por campos personalizados con «Mostrar en la búsqueda»
+    IReadOnlyList<Teikem.Infrastructure.Services.CustomFieldFilter>? CustomFields = null);
 
 /// <summary>Alta de localización. ClientPublicId null = compartida del tenant. Country por defecto 'PR'. ContactName (Lote 45): persona de contacto, opcional (150).</summary>
 public sealed record LocationUpsertRequest(

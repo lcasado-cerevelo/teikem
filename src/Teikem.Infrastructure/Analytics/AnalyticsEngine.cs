@@ -66,6 +66,7 @@ public sealed class AnalyticsEngine(IDataSourceRegistry registry, TeikemDbContex
         await MergeCustomFieldsAsync(source, rows, ct);
         var columnsMeta = new List<ReportColumn>();
         var lang = tenant.Lang;
+        var cfMeta = await CustomFieldColumnsAsync(source, lang, ct);   // Lote 130: etiqueta y tipo de cada campo personalizado
 
         // Fuentes combinadas (muchos-a-uno)
         var relations = new Dictionary<string, DataRelation>(StringComparer.OrdinalIgnoreCase);
@@ -94,7 +95,7 @@ public sealed class AnalyticsEngine(IDataSourceRegistry registry, TeikemDbContex
 
         // Metadatos de columnas
         IEnumerable<string> columnKeys = spec.Columns.Count > 0 ? spec.Columns : source.Fields.Select(f => f.Key);
-        foreach (var key in columnKeys) columnsMeta.Add(ResolveColumn(source, key, relations, lang));
+        foreach (var key in columnKeys) columnsMeta.Add(ResolveColumn(source, key, relations, lang, cfMeta));
 
         DataRow? totals = null;
         List<DataRow> output;
@@ -111,7 +112,7 @@ public sealed class AnalyticsEngine(IDataSourceRegistry registry, TeikemDbContex
                 row["$count"] = g.Count();
                 output.Add(row);
             }
-            columnsMeta = spec.GroupBy.Select(g => ResolveColumn(source, g, relations, lang))
+            columnsMeta = spec.GroupBy.Select(g => ResolveColumn(source, g, relations, lang, cfMeta))
                 .Concat(spec.Aggregates.Select(a => new ReportColumn(AggKey(a), AggLabel(a, lang), DataFieldType.Number, IsMoneyField(source, a.Field, relations))))
                 .ToList();
             if (spec.ShowTotals)
@@ -253,10 +254,25 @@ public sealed class AnalyticsEngine(IDataSourceRegistry registry, TeikemDbContex
         };
     }
 
-    private ReportColumn ResolveColumn(IDataSource source, string key, IReadOnlyDictionary<string, DataRelation> relations, string lang)
+    /// <summary>Lote 130: etiqueta (en el idioma) y tipo de cada campo personalizado de la fuente, por su columna «cf.clave».</summary>
+    private async Task<Dictionary<string, (string Label, DataFieldType Type)>> CustomFieldColumnsAsync(IDataSource source, string lang, CancellationToken ct)
+    {
+        var map = new Dictionary<string, (string, DataFieldType)>(StringComparer.OrdinalIgnoreCase);
+        if (source.EntityTypeCode is null) return map;
+        var defs = await db.CustomFieldDefinitions.AsNoTracking().Include(d => d.DataType)
+            .Where(d => d.IsActive && d.EntityType!.InternalCode == source.EntityTypeCode).ToListAsync(ct);
+        foreach (var d in defs)
+        {
+            var type = d.DataType!.InternalCode switch { CustomFieldDataTypes.Number => DataFieldType.Number, CustomFieldDataTypes.Bool => DataFieldType.Bool, CustomFieldDataTypes.Date or CustomFieldDataTypes.DateTime => DataFieldType.Date, _ => DataFieldType.Text };
+            map[CustomFieldPrefix + d.FieldKey] = (MultilingualText.Resolve(d.LabelJson, lang), type);
+        }
+        return map;
+    }
+
+    private ReportColumn ResolveColumn(IDataSource source, string key, IReadOnlyDictionary<string, DataRelation> relations, string lang, IReadOnlyDictionary<string, (string Label, DataFieldType Type)>? cfMeta = null)
     {
         if (key.StartsWith(CustomFieldPrefix, StringComparison.OrdinalIgnoreCase))
-            return new ReportColumn(key, key[CustomFieldPrefix.Length..], DataFieldType.Text, false);
+            return cfMeta is not null && cfMeta.TryGetValue(key, out var cf) ? new ReportColumn(key, cf.Label, cf.Type, false) : new ReportColumn(key, key[CustomFieldPrefix.Length..], DataFieldType.Text, false);
         var dot = key.IndexOf('.');
         if (dot > 0 && relations.TryGetValue(key[..dot], out var rel))
         {

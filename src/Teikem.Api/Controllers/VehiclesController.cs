@@ -23,7 +23,7 @@ public sealed class VehiclesController(VehicleService vehicles, VehicleDocumentS
     [HttpGet, RequirePermission(PermissionCatalog.FleetView)]
     public Task<IReadOnlyList<VehicleListItemDto>> List([FromQuery] string? search, [FromQuery] string[]? vehicleType, [FromQuery] string[]? ownership,
         [FromQuery] string[]? fuelType, [FromQuery] string[]? status, [FromQuery] bool includeInactive, CancellationToken ct)
-        => vehicles.ListAsync(new VehicleListQuery(search, NullIfEmpty(vehicleType), NullIfEmpty(ownership), NullIfEmpty(fuelType), NullIfEmpty(status), includeInactive), ct);
+        => vehicles.ListAsync(new VehicleListQuery(search, NullIfEmpty(vehicleType), NullIfEmpty(ownership), NullIfEmpty(fuelType), NullIfEmpty(status), includeInactive, CustomFieldFilters.FromQuery(Request.Query)), ct);
 
     /// <summary>Alta: el código es obligatorio, único por compañía e inmutable; nace en el estatus inicial (ACTIVE).</summary>
     [HttpPost, RequirePermission(PermissionCatalog.FleetManage)]

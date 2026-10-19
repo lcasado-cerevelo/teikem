@@ -22,3 +22,5 @@ export {
   validateCustomField,
 } from './values'
 export type { CustomFieldDefinitionDto, CustomFieldFormValue, CustomFieldIssue, CustomFieldValueDto } from './values'
+export { CustomFieldFilterBar, CustomFieldFilters, EMPTY_CUSTOM_FIELD_FILTERS, customFieldQuery, searchableDefinitions, withCustomFields } from './CustomFieldFilters'
+export type { CustomFieldFilterValues, CustomFieldFiltersProps } from './CustomFieldFilters'

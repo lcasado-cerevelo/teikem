@@ -26,7 +26,7 @@ public sealed class LocationsController(LocationService locations) : ControllerB
         [FromQuery] string? locationType,
         [FromQuery] string? search,
         CancellationToken ct)
-        => locations.GetListAsync(new LocationQuery(clientId, includeShared ?? true, includeInactive, locationType, search), ct);
+        => locations.GetListAsync(new LocationQuery(clientId, includeShared ?? true, includeInactive, locationType, search, CustomFieldFilters.FromQuery(Request.Query)), ct);
 
     [HttpPost, RequirePermission(PermissionCatalog.LocationsCreate)]
     public Task<LocationDto> Create([FromBody] LocationUpsertRequest req, CancellationToken ct) => locations.CreateAsync(req, ct);

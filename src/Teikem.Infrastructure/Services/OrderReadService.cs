@@ -337,6 +337,8 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
         if (q.InvoiceProcessed == false) query = query.Where(o => o.InvoiceProcessedAtUtc == null);
         if (q.ProcessedFromUtc is DateTime pf) query = query.Where(o => o.InvoiceProcessedAtUtc != null && o.InvoiceProcessedAtUtc >= pf);
         if (q.ProcessedToUtc is DateTime pt) query = query.Where(o => o.InvoiceProcessedAtUtc != null && o.InvoiceProcessedAtUtc < pt);
+        // Lote 130: campos personalizados con «Mostrar en la búsqueda»
+        query = await query.ApplyCustomFieldsAsync(db, EntityTypes.TransportOrder, q.CustomFields, o => o.TransportOrderId, ct);
         // Lote 129: zona de entrega y nivel de zona (varios valores = cualquiera de ellos); NoZone = las órdenes sin zona
         if (q.ZoneIds is { Count: > 0 } zoneIds) { var zl = zoneIds.ToList(); query = query.Where(o => o.DeliveryZoneId != null && zl.Contains(o.DeliveryZoneId.Value)); }
         if (q.ZoneGroupIds is { Count: > 0 } groupIds)

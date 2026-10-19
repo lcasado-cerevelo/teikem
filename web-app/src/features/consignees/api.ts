@@ -19,7 +19,7 @@ type Schemas = components['schemas']
 export const consigneeKeys = {
   /** Prefijo de todas las listas (se invalida entero). */
   list: ['/api/v1/locations'] as const,
-  listOf: (clientId: string | null, includeInactive: boolean) => ['/api/v1/locations', { clientId, includeInactive, locationType: DELIVERY_TYPE }] as const,
+  listOf: (clientId: string | null, includeInactive: boolean, custom: object = {}) => ['/api/v1/locations', { clientId, includeInactive, locationType: DELIVERY_TYPE, ...custom }] as const,
   forClient: (clientId: string) => ['/api/v1/locations', { forOrder: clientId, includeShared: true, locationType: DELIVERY_TYPE }] as const,
   detail: (publicId: string) => ['/api/v1/locations/{publicId}', publicId] as const,
   phones: (locationId: number) => ['/api/v1/contacts/{ownerEntity}/{ownerId}', 'LOCATION', locationId] as const,
@@ -31,13 +31,13 @@ export const consigneeKeys = {
 
 // ---- Lecturas ----
 /** Consignatarios (DELIVERY). Con cliente: solo los suyos (sin compartidos, como el filtro de la maqueta). Sin él: todos. */
-export function useConsignees(clientId: string | null, includeInactive: boolean) {
+export function useConsignees(clientId: string | null, includeInactive: boolean, custom: object = {}) {
   return useQuery({
-    queryKey: consigneeKeys.listOf(clientId, includeInactive),
+    queryKey: consigneeKeys.listOf(clientId, includeInactive, custom),
     queryFn: () =>
       unwrap(
         api.GET('/api/v1/locations', {
-          params: { query: { locationType: DELIVERY_TYPE, includeInactive, clientId: clientId ?? undefined, includeShared: clientId ? false : undefined } },
+          params: { query: { locationType: DELIVERY_TYPE, includeInactive, clientId: clientId ?? undefined, includeShared: clientId ? false : undefined, ...custom } as { locationType: string; includeInactive: boolean } },
         }),
       ),
     placeholderData: keepPreviousData,

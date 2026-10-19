@@ -25,10 +25,11 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
 
     // ---------------- Lista ----------------
 
-    public async Task<IReadOnlyList<ClientListItemDto>> GetListAsync(string? search, bool includeInactive, CancellationToken ct)
+    public async Task<IReadOnlyList<ClientListItemDto>> GetListAsync(string? search, bool includeInactive, CancellationToken ct, IReadOnlyList<CustomFieldFilter>? customFields = null)
     {
         var q = db.Clients.AsNoTracking();
         if (!includeInactive) q = q.Where(c => c.IsActive);
+        q = await q.ApplyCustomFieldsAsync(db, EntityTypes.Client, customFields, c => c.ClientId, ct);   // Lote 130
         if (!string.IsNullOrWhiteSpace(search))
         {
             var s = search.Trim();

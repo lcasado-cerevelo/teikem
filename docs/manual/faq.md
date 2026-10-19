@@ -9440,3 +9440,17 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **«El nivel tiene zonas activas; quíteselo a las zonas antes de inactivarlo.»** (409) Quite el nivel de sus zonas (o inactívelas) y vuelva a intentar.
 
 **La ruta no tomó el chofer de Isla.** El chofer por omisión del nivel aplica solo si la zona no tiene chofer propio (zona primaria de algún chofer); si la zona tiene chofer, manda ese.
+
+## Campos personalizados en la búsqueda y en las Vistas (Lote 130)
+
+**Marqué un campo y no me sale el filtro.** Active «Mostrar en la búsqueda» en el campo (Análisis → Campos personalizados) y recargue la pantalla: la lista de campos se recuerda unos minutos. Solo se ofrecen los campos activos; el filtro sale en la lista de la entidad del campo (Órdenes, Clientes, Consignatarios, Choferes, Vehículos).
+
+**«El campo personalizado 'X' no está habilitado para la búsqueda.»** (400) El campo existe pero no tiene «Mostrar en la búsqueda». Actívela, o use una Vista, que admite cualquier campo.
+
+**«El campo personalizado 'X' no existe.»** (400) La clave de `cf.<clave>` está mal escrita o el campo está inactivo.
+
+**«El valor del filtro 'X' no es válido.»** (400) Un número o una fecha mal escritos, o un sí/no que no es `true`/`false`.
+
+**¿Y en los reportes?** Todas las Vistas permiten los campos personalizados como columna y filtro, sin marcar nada.
+
+**Un filtro de selección múltiple no encuentra «frag».** Filtra por la opción completa (`fragil`), no por pedazos.

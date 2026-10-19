@@ -565,7 +565,7 @@ Requiere el módulo **CUSTOM_FIELDS** encendido (`[RequireModule]`); ese módulo
 Qué hace: permite agregar campos propios a una entidad (texto, número, fecha, fecha y hora, sí/no, lista de
 selección simple/múltiple, o referencia a una lista de lista) sin necesidad de desarrollo. Cada campo puede
 ser obligatorio, único, tener valor por defecto, reglas de validación (JSON con `regex`, `min`, `max`,
-`minLength`, `maxLength`) y mostrarse en listados (`showInList`).
+`minLength`, `maxLength`) y mostrarse en la búsqueda (`showInList`: «Mostrar en la búsqueda», ver 7.x).
 
 Quién puede: ver definiciones, cualquier autenticado; crear/editar/desactivar/reactivar definiciones,
 `admin.customfields`. Ver los **valores** de un registro exige el permiso de lectura de la entidad dueña y poner valores
@@ -623,6 +623,28 @@ FAQ:
   falló, el mensaje puntual (regla de validación, requerido, o duplicado si el campo es único).
 
 ---
+
+### 7.x Campos personalizados en la búsqueda y en las Vistas (Lote 130)
+
+> Dictado de Luis (2026-10-18). El antiguo «Mostrar en listados» (`showInList`) pasó a llamarse **«Mostrar en la búsqueda»**: es la ÚNICA opción del campo para esto.
+
+**Con «Mostrar en la búsqueda» activada**, la lista de la entidad ofrece un filtro con ese campo, **del tipo del campo**:
+
+| Tipo del campo | Filtro en la pantalla | Parámetro del API |
+|---|---|---|
+| Texto | cuadro de texto (contiene) | `cf.clave=texto` |
+| Número | «X (desde)» y «X (hasta)», ambos inclusivos | `cf.clave.from=` · `cf.clave.to=` (igual: `cf.clave=`) |
+| Fecha y fecha/hora | rangos sugeridos (Hoy, Esta semana, Este mes…) o Personalizado; el día final cuenta | `cf.clave.from=AAAA-MM-DD` · `cf.clave.to=` |
+| Sí/No | lista Sí / No | `cf.clave=true` o `false` |
+| Lista, lista de catálogo | lista de opciones (solo activas) | `cf.clave=CODIGO` |
+| Selección múltiple | lista de opciones; trae los registros que tienen esa opción (completa, no por pedazos) | `cf.clave=CODIGO` |
+
+- **Dónde:** Órdenes, Clientes, Consignatarios (ubicaciones), Choferes y Vehículos (Flota). «Limpiar» los quita. Entre filtros distintos se cumplen todos.
+- **API:** los mismos listados (`GET /orders`, `/clients`, `/locations`, `/drivers`, `/vehicles`) aceptan `cf.<clave del campo>` (la clave en minúsculas). Permiso: el de leer ese listado; sin cambios.
+- **Errores (400):** «El campo personalizado 'X' no existe.» · «El campo personalizado 'X' no está habilitado para la búsqueda.» (el campo existe pero no tiene «Mostrar en la búsqueda») · «El valor del filtro 'X' no es válido.» (número o fecha mal escritos; sí/no distinto de `true`/`false`).
+- **Cambiar la opción:** activar o quitar «Mostrar en la búsqueda» en Análisis → Campos personalizados muestra u oculta el filtro al instante (la lista de campos se guarda 10 minutos en el navegador: recargar la pantalla).
+
+**En las Vistas (reportes personalizados):** TODA fuente de datos de una entidad con campos personalizados los ofrece como **columnas y filtros** (`cf.clave`), **sin necesidad de «Mostrar en la búsqueda»**. La columna sale con la etiqueta del campo (en el idioma de quien mira) y su tipo real (número, sí/no, fecha o texto), así que ordena, suma y filtra como tal.
 
 ## 8. Vistas, indicadores, gráficos y Pulso del día (Análisis)
 

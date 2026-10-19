@@ -13,16 +13,16 @@ type Schemas = components['schemas']
 export const clientKeys = {
   /** Prefijo de todas las listas (se invalida entero). */
   list: ['/api/v1/clients'] as const,
-  listOf: (search: string, includeInactive: boolean) => ['/api/v1/clients', { search, includeInactive }] as const,
+  listOf: (search: string, includeInactive: boolean, custom: object = {}) => ['/api/v1/clients', { search, includeInactive, ...custom }] as const,
   detail: (publicId: string) => ['/api/v1/clients/{publicId}', publicId] as const,
   preview: (pattern: string, seq: number) => ['/api/v1/clients/number-format/preview', { pattern, seq }] as const,
 }
 
 // ---- Lecturas ----
-export function useClients(search: string, includeInactive: boolean) {
+export function useClients(search: string, includeInactive: boolean, custom: object = {}) {
   return useQuery({
-    queryKey: clientKeys.listOf(search, includeInactive),
-    queryFn: () => unwrap(api.GET('/api/v1/clients', { params: { query: { search: search || undefined, includeInactive } } })),
+    queryKey: clientKeys.listOf(search, includeInactive, custom),
+    queryFn: () => unwrap(api.GET('/api/v1/clients', { params: { query: { search: search || undefined, includeInactive, ...custom } as { search?: string; includeInactive?: boolean } } })),
     placeholderData: keepPreviousData,
   })
 }

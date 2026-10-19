@@ -16,7 +16,9 @@ public sealed record VehicleListQuery(
     string[]? Ownership = null,
     string[]? FuelType = null,
     string[]? Status = null,
-    bool IncludeInactive = false);
+    bool IncludeInactive = false,
+    // Lote 130: filtros por campos personalizados con «Mostrar en la búsqueda»
+    IReadOnlyList<Teikem.Infrastructure.Services.CustomFieldFilter>? CustomFields = null);
 
 public sealed record VehicleListItemDto(
     int Id,

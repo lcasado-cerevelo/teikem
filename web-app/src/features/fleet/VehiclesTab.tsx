@@ -8,7 +8,8 @@ import { applyProblemDetails } from '../../kernel/api/problem'
 import { useLookups } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
 import { CARDS_QUERY, Chip, EmptyState, FilterScope, IconTruck, Panel, QBox, SelectFilter, Spinner, SplitPane, useMediaQuery } from '../../kernel/ui'
-import { useVehicleList, type VehicleListItem, type VehicleListQuery } from './api'
+import { CustomFieldFilterBar, customFieldQuery, EMPTY_CUSTOM_FIELD_FILTERS, withCustomFields, type CustomFieldFilterValues } from '../../kernel/custom-fields'
+import { useVehicleList, VEHICLE_ENTITY_TYPE, type VehicleListItem, type VehicleListQuery } from './api'
 import { FILTER_ANY, vehicleMeta, vehicleState, VehicleStatuses } from './fleetRules'
 import { VehicleDetailPanel } from './VehicleDetailPanel'
 
@@ -40,20 +41,25 @@ export function VehiclesTab() {
   const { data: ownerships = [] } = useLookups('Ownership')
   const { data: fuels = [] } = useLookups('FuelType')
 
+  const [custom, setCustom] = useState<CustomFieldFilterValues>(EMPTY_CUSTOM_FIELD_FILTERS)   // Lote 130: campos personalizados con «Mostrar en la búsqueda»
   const query = useMemo<VehicleListQuery>(
-    () => ({
-      includeInactive: includeInactive || status === VehicleStatuses.Inactive,
-      ...(search ? { search } : {}),
-      ...(type ? { vehicleType: [type] } : {}),
-      ...(ownership ? { ownership: [ownership] } : {}),
-      ...(fuel ? { fuelType: [fuel] } : {}),
-      ...(status ? { status: [status] } : {}),
-    }),
-    [includeInactive, search, type, ownership, fuel, status],
+    () =>
+      withCustomFields<VehicleListQuery>(
+        {
+          includeInactive: includeInactive || status === VehicleStatuses.Inactive,
+          ...(search ? { search } : {}),
+          ...(type ? { vehicleType: [type] } : {}),
+          ...(ownership ? { ownership: [ownership] } : {}),
+          ...(fuel ? { fuelType: [fuel] } : {}),
+          ...(status ? { status: [status] } : {}),
+        },
+        custom,
+      ),
+    [includeInactive, search, type, ownership, fuel, status, custom],
   )
   const list = useVehicleList(query)
   const rows = list.data ?? NO_ROWS
-  const filtered = Boolean(search || type || ownership || fuel || status)
+  const filtered = Boolean(search || type || ownership || fuel || status || Object.keys(customFieldQuery(custom)).length > 0)
 
   const selectedParam = params.get('vehicle')
   // sin `?vehicle=` se abre el primero y se queda ahí: si ese vehículo sale de la lista (se desactiva) la ficha no salta a otro
@@ -112,6 +118,7 @@ export function VehiclesTab() {
               <span>{t('fleet.vehicle.showInactive')}</span>
             </label>
           </div>
+          <CustomFieldFilterBar entityType={VEHICLE_ENTITY_TYPE} value={custom} onChange={setCustom} />
         </FilterScope>
         {list.isError ? (
           <p className="pb ferr" role="alert">

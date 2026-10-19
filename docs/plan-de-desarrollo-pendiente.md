@@ -373,7 +373,10 @@ Nivel de zona, zona, factura procesada (sí/no) y fecha de procesamiento; los fi
 ## Lote 129 — Nivel de zona (Isla/Metro) — HECHO (2026-10-19)
 `ZoneGroup` por compañía con chofer por omisión; la zona tiene nivel; la orden guarda su zona de entrega (y de ahí el nivel) con filtros, columna, ficha y campos de Vistas; tarifas del chofer y del contrato con nivel OPCIONAL que gana sobre la general; las rutas de zonas sin chofer propio van al chofer del nivel. **Para la sesión de migración de Colavora:** importar `Zip.Zone` (METRO/ISLA) como niveles y asignar a cada zona de ruta el nivel mayoritario de sus ZIP; servicios ISLAND tal cual. Quedan los filtros de zona y nivel pedidos por Luis (hechos aquí).
 
-## Pedido de Luis (2026-10-18) — campos personalizados en búsquedas y reportes
+## Lote 130 — Campos personalizados en la búsqueda y en las Vistas — HECHO (2026-10-19)
+«Mostrar en la búsqueda» (antes «en listados») da un filtro del tipo del campo en Órdenes, Clientes, Consignatarios, Choferes y Vehículos (`cf.clave`, `.from`, `.to`); las Vistas llevan todos los campos como columna y filtro, con etiqueta y tipo reales. Ver `docs/lote130-decisiones.md`.
+
+## Pedido de Luis (2026-10-18) — campos personalizados en búsquedas y reportes (hecho en el Lote 130)
 Cada campo personalizado gana UNA opción, «Mostrar en la búsqueda»: con ella la lista de su entidad ofrece un filtro del tipo del campo (texto, número, fecha con rangos sugeridos, lista, sí/no). Y TODAS las Vistas (reportes personalizados) admiten los campos personalizados de la entidad como columna y filtro, sin opción aparte. Orden: después de Isla/Metro y antes de P11 (Lote 130).
 
 ## P13 — App móvil para staff (idea del dueño, 2026-10-15)

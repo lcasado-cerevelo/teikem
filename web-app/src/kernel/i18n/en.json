@@ -2492,6 +2492,10 @@
     "skipped": "(skipped)"
   },
   "customFields": {
+    "filter": {
+      "from": "{label} (from)",
+      "to": "{label} (to)"
+    },
     "choose": "Select…",
     "yes": "Yes",
     "no": "No",
@@ -2533,7 +2537,7 @@
       "type": "Type",
       "required": "Required",
       "unique": "Unique",
-      "showInList": "Show in lists",
+      "showInList": "Show in search",
       "status": "Status",
       "active": "Active",
       "inactive": "Inactive"
@@ -2580,7 +2584,7 @@
       "description": "Description",
       "required": "Required",
       "unique": "Unique",
-      "showInList": "Show in lists",
+      "showInList": "Show in search",
       "order": "Order",
       "orderHelp": "Lower number = shown earlier on the record.",
       "default": "Default value",

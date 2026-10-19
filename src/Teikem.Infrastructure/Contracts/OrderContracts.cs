@@ -303,7 +303,9 @@ public sealed record OrderListQuery(
     // Lote 129: zona de entrega y nivel de zona
     IReadOnlyList<int>? ZoneIds = null,
     IReadOnlyList<int>? ZoneGroupIds = null,
-    bool? NoZone = null);
+    bool? NoZone = null,
+    // Lote 130: filtros por campos personalizados con «Mostrar en la búsqueda» (cf.clave en la dirección)
+    IReadOnlyList<Teikem.Infrastructure.Services.CustomFieldFilter>? CustomFields = null);
 
 public sealed record OrderPageDto(int Total, IReadOnlyList<OrderListItemDto> Items);
 

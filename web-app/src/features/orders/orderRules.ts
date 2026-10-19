@@ -3,6 +3,7 @@
 // Sin React: se prueba en `orderRules.test.ts`.
 import { z } from 'zod'
 import { ApiError } from '../../kernel/api/problem'
+import { customFieldQuery } from '../../kernel/custom-fields'
 import type { OrderCreateRequest, OrderDetailDto, OrderListItemDto, OrderListQuery, OrderPackageLineDto, OrderPatchRequest } from './api'
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -10,6 +11,8 @@ import type { OrderCreateRequest, OrderDetailDto, OrderListItemDto, OrderListQue
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface OrderFilters {
+  /** Lote 130: campos personalizados con «Mostrar en la búsqueda» (claves `cf.clave`, `cf.clave.from`, `cf.clave.to`). */
+  custom: Record<string, string>
   /** 'YYYY-MM-DD' o ''; `to` incluye el día elegido. */
   from: string
   to: string
@@ -63,6 +66,7 @@ export const EMPTY_ORDER_FILTERS: OrderFilters = {
   processedTo: '',
   zoneIds: [],
   zoneGroupIds: [],
+  custom: {},
 }
 
 /** `to` del API es exclusivo sobre la fecha de creación: se manda el día siguiente para incluir el día elegido. */
@@ -98,6 +102,7 @@ export function buildOrderQuery(f: OrderFilters, page: number, pageSize: number)
     processedTo: exclusiveTo(f.processedTo),
     zoneIds: f.zoneIds.length > 0 ? f.zoneIds.map(Number) : undefined,
     zoneGroupIds: f.zoneGroupIds.length > 0 ? f.zoneGroupIds.map(Number) : undefined,
+    ...customFieldQuery(f.custom),
     skip: (page - 1) * pageSize,
     take: pageSize,
   }

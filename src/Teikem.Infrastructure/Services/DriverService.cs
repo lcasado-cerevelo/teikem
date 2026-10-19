@@ -38,6 +38,7 @@ public sealed class DriverService(TeikemDbContext db, ITenantContext tenant, ILo
 
         var q = db.Drivers.AsNoTracking();
         if (!query.IncludeInactive) q = q.Where(d => d.IsActive);
+        q = await q.ApplyCustomFieldsAsync(db, EntityTypes.Driver, query.CustomFields, d => d.DriverId, ct);   // Lote 130
         if (statusIds is not null) q = q.Where(d => statusIds.Contains(d.StatusCodeId));
         if (query.DispatchZoneId.HasValue)
         {

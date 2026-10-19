@@ -41,6 +41,7 @@ public sealed class LocationService(TeikemDbContext db, ITenantContext tenant, I
         }
 
         if (!q.IncludeInactive) query = query.Where(l => l.IsActive);
+        query = await query.ApplyCustomFieldsAsync(db, EntityTypes.Location, q.CustomFields, l => l.LocationId, ct);   // Lote 130
 
         if (!string.IsNullOrWhiteSpace(q.LocationType))
         {

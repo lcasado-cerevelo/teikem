@@ -12,11 +12,12 @@ import { useT } from '../../kernel/i18n'
 import { CARDS_QUERY, Chip, EmptyState, FilterScope, IconPlus, IconUpload, IconUsers, Panel, QBox, Spinner, SplitPane, useMediaQuery } from '../../kernel/ui'
 import { ExportMenu } from '../../kernel/ui/ExportMenu'
 import { useClientOptions, useConsignees } from './api'
+import { CustomFieldFilterBar, customFieldQuery, EMPTY_CUSTOM_FIELD_FILTERS, type CustomFieldFilterValues } from '../../kernel/custom-fields'
 import { exportConsignees } from './consigneeExport'
 import { ConsigneeDetailPanel } from './ConsigneeDetailPanel'
 import { ConsigneeFormModal } from './ConsigneeFormModal'
 import { ConsigneeImportModal } from './ConsigneeImportModal'
-import { applyOwnerFilter, FILTER_ALL, FILTER_SHARED, matchesConsignee, ownerLabel, SHARED, type Consignee } from './consigneeRules'
+import { applyOwnerFilter, FILTER_ALL, FILTER_SHARED, LOCATION_ENTITY_TYPE, matchesConsignee, ownerLabel, SHARED, type Consignee } from './consigneeRules'
 import './consignees.css'
 
 const NO_ROWS: Consignee[] = []
@@ -29,6 +30,7 @@ export default function ConsigneeListScreen() {
   // `?client=<publicId>` abre la lista ya filtrada por ese cliente (lo usa «Ver todos» del panel Consignatarios de la ficha del cliente)
   const [filter, setFilter] = useState(params.get('client') ?? FILTER_ALL)
   const [includeInactive, setIncludeInactive] = useState(false)
+  const [custom, setCustom] = useState<CustomFieldFilterValues>(EMPTY_CUSTOM_FIELD_FILTERS)   // Lote 130: campos personalizados con «Mostrar en la búsqueda»
   const [creating, setCreating] = useState(false)
   const [importing, setImporting] = useState(false)
   const cards = useMediaQuery(CARDS_QUERY)
@@ -36,7 +38,7 @@ export default function ConsigneeListScreen() {
 
   const clientFilter = filter === FILTER_ALL || filter === FILTER_SHARED ? null : filter
   const { data: clients = [] } = useClientOptions(true)
-  const list = useConsignees(clientFilter, includeInactive)
+  const list = useConsignees(clientFilter, includeInactive, customFieldQuery(custom))
 
   const labels = useMemo(
     () => ({ shared: t('consignees.shared'), active: t('consignees.active'), inactive: t('consignees.inactive') }),
@@ -111,6 +113,7 @@ export default function ConsigneeListScreen() {
                 <span>{t('consignees.showInactive')}</span>
               </label>
             </div>
+            <CustomFieldFilterBar entityType={LOCATION_ENTITY_TYPE} value={custom} onChange={setCustom} />
           </FilterScope>
           {list.isError ? (
             <p className="pb ferr" role="alert">

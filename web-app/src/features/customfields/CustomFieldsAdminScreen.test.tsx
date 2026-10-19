@@ -239,7 +239,7 @@ describe('Campos personalizados — lista por entidad', () => {
     expect(rows[0]).toHaveTextContent('Centro de costo')
     expect(rows[0]).toHaveTextContent('cost_center')
     expect(rows[0]).toHaveTextContent('Texto')
-    expect(within(rows[0]).getAllByRole('img', { name: /Requerido|Único|Mostrar en listados/ })).toHaveLength(3)
+    expect(within(rows[0]).getAllByRole('img', { name: /Requerido|Único|Mostrar en la búsqueda/ })).toHaveLength(3)
     // la lista del catálogo y su número de opciones
     await waitFor(() => expect(rows[1]).toHaveTextContent('Lista: Prioridad · 3 opciones'))
     expect(screen.queryByText('Campo viejo')).toBeNull()
@@ -293,7 +293,7 @@ describe('Campos personalizados — alta', () => {
     await user.type(within(dialog).getByLabelText('Longitud máxima'), '8')
     await user.type(within(dialog).getByLabelText('Valor por defecto'), 'S-1')
     await user.click(within(dialog).getByRole('switch', { name: 'Requerido' }))
-    await user.click(within(dialog).getByRole('switch', { name: 'Mostrar en listados' }))
+    await user.click(within(dialog).getByRole('switch', { name: 'Mostrar en la búsqueda' }))
     await user.click(within(dialog).getByRole('button', { name: 'Guardar campo' }))
 
     await waitFor(() => expect(writes()).toHaveLength(1))

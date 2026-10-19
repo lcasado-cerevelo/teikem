@@ -20,7 +20,7 @@ public sealed class ClientsController(ClientService clients) : ControllerBase
 {
     [HttpGet, RequirePermission(PermissionCatalog.ClientsRead)]
     public Task<IReadOnlyList<ClientListItemDto>> List([FromQuery] string? search, [FromQuery] bool includeInactive, CancellationToken ct)
-        => clients.GetListAsync(search, includeInactive, ct);
+        => clients.GetListAsync(search, includeInactive, ct, CustomFieldFilters.FromQuery(Request.Query));   // Lote 130: cf.clave
 
     /// <summary>Alta compuesta del modal '+ Nuevo cliente'. Devuelve la ficha completa (con currentContract si se creó contrato).</summary>
     [HttpPost, RequirePermission(PermissionCatalog.ClientsCreate)]

@@ -45,6 +45,7 @@ public sealed class VehicleService(TeikemDbContext db, ITenantContext tenant, IL
     {
         var query = db.Vehicles.AsNoTracking();
         if (!q.IncludeInactive) query = query.Where(v => v.IsActive);
+        query = await query.ApplyCustomFieldsAsync(db, EntityTypes.Vehicle, q.CustomFields, v => v.VehicleId, ct);   // Lote 130
 
         var typeIds = await LookupFilterAsync(LookupDomains.VehicleType, q.VehicleType, "vehicleType", "Tipo de vehículo desconocido", ct);
         if (typeIds is not null) query = query.Where(v => v.VehicleTypeLookupId != null && typeIds.Contains(v.VehicleTypeLookupId.Value));

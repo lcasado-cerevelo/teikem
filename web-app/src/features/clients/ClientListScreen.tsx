@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Can } from '../../kernel/access'
 import { StatusChip } from '../../kernel/catalogs'
+import { CustomFieldFilterBar, customFieldQuery, EMPTY_CUSTOM_FIELD_FILTERS, type CustomFieldFilterValues } from '../../kernel/custom-fields'
 import { useT } from '../../kernel/i18n'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { CARDS_QUERY, Chip, EmptyState, FilterScope, Panel, QBox, Spinner, SplitPane, useMediaQuery } from '../../kernel/ui'
@@ -13,7 +14,7 @@ import { IconUsers } from '../../kernel/ui/screenIcons'
 import { useClients } from './api'
 import { ClientCreateModal } from './ClientCreateModal'
 import { ClientDetailPanel } from './ClientDetailPanel'
-import { CLIENT_STATUS_DOMAIN, type ClientListItem } from './clientRules'
+import { CLIENT_ENTITY_TYPE, CLIENT_STATUS_DOMAIN, type ClientListItem } from './clientRules'
 import './clients.css'
 
 const NO_CLIENTS: ClientListItem[] = []
@@ -25,6 +26,7 @@ export default function ClientListScreen() {
   const [q, setQ] = useState('')
   const [debounced, setDebounced] = useState('')
   const [includeInactive, setIncludeInactive] = useState(false)
+  const [custom, setCustom] = useState<CustomFieldFilterValues>(EMPTY_CUSTOM_FIELD_FILTERS)   // Lote 130: campos personalizados con «Mostrar en la búsqueda»
   const [creating, setCreating] = useState(false)
   const cards = useMediaQuery(CARDS_QUERY)
   const detailRef = useRef<HTMLDivElement>(null)
@@ -35,7 +37,7 @@ export default function ClientListScreen() {
     return () => clearTimeout(id)
   }, [q])
 
-  const list = useClients(debounced, includeInactive)
+  const list = useClients(debounced, includeInactive, customFieldQuery(custom))
   const rows = list.data ?? NO_CLIENTS
 
   const selectedId = params.get('client')
@@ -79,6 +81,7 @@ export default function ClientListScreen() {
                 <span>{t('clients.showInactive')}</span>
               </label>
             </div>
+            <CustomFieldFilterBar entityType={CLIENT_ENTITY_TYPE} value={custom} onChange={setCustom} />
           </FilterScope>
           {list.isError ? (
             <p className="pb ferr" role="alert">

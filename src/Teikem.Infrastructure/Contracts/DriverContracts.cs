@@ -10,7 +10,9 @@ public sealed record DriverListQuery(
     string? Search = null,
     string[]? Status = null,
     int? DispatchZoneId = null,
-    bool IncludeInactive = false);
+    bool IncludeInactive = false,
+    // Lote 130: filtros por campos personalizados con «Mostrar en la búsqueda»
+    IReadOnlyList<Teikem.Infrastructure.Services.CustomFieldFilter>? CustomFields = null);
 
 /// <summary>Fila del maestro. Area = nombre de la zona primaria; EffectiveMaxStops = propio o default del tenant (R4).</summary>
 public sealed record DriverListItemDto(
