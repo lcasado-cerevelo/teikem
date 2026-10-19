@@ -64,9 +64,10 @@ El reporte (`.md` + `.csv` de resumen, rechazos y advertencias) queda en `report
    → Entregada), **todo el historial** con fechas y usuarios originales (D9; los eventos sin estatus como comentario), intentos
    de entrega (razones 306/307/315/… y 04–11 → Intento fallido), **un viaje por manifiesto** (D5, `Trip` `M-<manifiesto>`), el
    precio congelado desde los eventos `Price - *` (D13), la factura procesada desde PWBack (campos del Lote 126, D4/D8), y el
-   comprobante con **firma y foto en disco** (D10: `options.podFilesDir/<waybill>/firma.png|foto.jpg`; la nota del comprobante
-   dice qué archivos hay). **Pendiente**: registrar esos archivos en el almacén de archivos de Teikem (`StoredFile`, Lote 127) cuando
-   ese lote esté cerrado, para que la web los muestre en el comprobante.
+   comprobante con **la firma y la foto en el almacén de archivos** de Teikem (D10 + Lote 127: `StoredFile` cifrado, clases
+   `SIGNATURE` y `DELIVERY_PHOTO`, dueño = el comprobante; la web las muestra en el comprobante y se piden con `GET /files/{id}`).
+   Exige `Files:MasterKey` configurada en el API que corre la migración (en Development ya está; en producción la del servidor): sin
+   ella se avisa una vez y las imágenes no se registran. `options.podFilesDir`, si se pone, además las exporta a disco por waybill.
 
 Idempotente: volver a correr no duplica (clientes por código, consignatarios por número o dirección, choferes por código,
 zonas por código, órdenes por waybill, piezas por número). Las órdenes se escriben directo por EF con la auditoría apagada

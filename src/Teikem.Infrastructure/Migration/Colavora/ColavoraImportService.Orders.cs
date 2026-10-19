@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Teikem.Domain.Catalogs;
 using Teikem.Domain.Constants;
 using Teikem.Domain.CustomFields;
+using Teikem.Domain.Files;
 using Teikem.Domain.Fleet;
 using Teikem.Domain.Migration.Colavora;
 using Teikem.Domain.Orders;
@@ -73,6 +74,10 @@ public sealed partial class ColavoraImportService
         public List<string> Divisions { get; } = new();
         public CvPod? Pod { get; set; }
         public int? PodDriverId { get; set; }
+        public DeliveryProof? Proof { get; set; }
+        /// <summary>Firma (PNG) y foto (JPEG) decodificadas del POD, para el almacén de archivos (Lote 127).</summary>
+        public byte[]? Signature { get; set; }
+        public byte[]? Photo { get; set; }
     }
 
     private async Task ImportOrderBatchAsync(RunState s, List<CvShipment> batch, Dictionary<int, List<CvPiece>> pieces, Dictionary<int, List<CvEvent>> events, Dictionary<int, List<CvPod>> pods, CancellationToken ct)
@@ -144,8 +149,41 @@ public sealed partial class ColavoraImportService
                     db.CustomFieldValues.Add(new CustomFieldValue { TenantId = tenantId, CustomFieldDefinitionId = cf, EntityId = oid, ValueNumber = b.Src.ShipmentId, UpdatedAtUtc = b.Order.CreatedAtUtc, UpdatedBy = b.Order.CreatedBy });
             }
             await db.SaveChangesAsync(ct);
+
+            // 4) firma y foto al almacén de archivos (Lote 127, D10): un StoredFile por imagen, dueño = el comprobante recién creado
+            await AttachProofFilesAsync(s, builds, ct);
         }
         finally { db.SuppressAudit = false; db.ChangeTracker.Clear(); }
+    }
+
+    private bool _storeWarned;
+
+    private async Task AttachProofFilesAsync(RunState s, List<OrderBuild> builds, CancellationToken ct)
+    {
+        const string E = ColavoraEntities.ProofFiles;
+        var pending = builds.Where(b => b.Proof is { DeliveryProofId: > 0 } && (b.Signature is not null || b.Photo is not null)).ToList();
+        if (pending.Count == 0) return;
+        if (!fileStore.IsConfigured)
+        {
+            if (!_storeWarned) { s.Report.Warn(E, "almacén", "El almacén de archivos no está configurado (Files:MasterKey): las firmas y fotos no se registran en Teikem (solo quedan en options.podFilesDir si está puesta)."); _storeWarned = true; }
+            s.Report.CountSkipped(E, pending.Sum(b => (b.Signature is null ? 0 : 1) + (b.Photo is null ? 0 : 1)));
+            return;
+        }
+        foreach (var b in pending)
+        {
+            var proofId = b.Proof!.DeliveryProofId;
+            var key = $"{b.Src.ShipmentId} {b.Src.Waybill}";
+            if (b.Signature is { } sig)
+            {
+                var dto = await TryAsync(s, E, key, () => storedFiles.AttachAsync(DeliveryProofCodes.EntityType, proofId, StoredFileCodes.KindSignature, "firma.png", null, sig, ct, enforceOwnerWrite: false));
+                if (dto is not null) s.Report.CountCreated(E);
+            }
+            if (b.Photo is { } photo)
+            {
+                var dto = await TryAsync(s, E, key, () => storedFiles.AttachAsync(DeliveryProofCodes.EntityType, proofId, StoredFileCodes.KindDeliveryPhoto, "foto.jpg", null, photo, ct, enforceOwnerWrite: false));
+                if (dto is not null) s.Report.CountCreated(E);
+            }
+        }
     }
 
     /// <summary>Carga a la memoria los números de pieza de la compañía que podrían chocar con los del lote (índice único UX_OrderPiece).</summary>
@@ -493,41 +531,41 @@ public sealed partial class ColavoraImportService
             proof.GeoStatus = DeliveryProofCodes.GeoOk;
             proof.GeoAccuracy = "GPS";
         }
-        // D10: la firma y la foto se exportan a disco por waybill (options.podFilesDir/<waybill>/firma.png|foto.jpg). Registrarlas en el
-        // almacén de archivos de Teikem (StoredFile, Lote 127) es el paso siguiente cuando ese lote esté cerrado; mientras, la nota del
-        // comprobante dice qué archivos hay.
-        var dir = s.Config.Options.PodFilesDir;
-        if (dir is not null)
+        // D10 + Lote 127: la firma (PNG) y la foto (JPEG) del POD se decodifican aquí y, con el id del comprobante, van al almacén de
+        // archivos de Teikem (StoredFile cifrado; la web las muestra en el comprobante). options.podFilesDir, si está, además las exporta a disco.
+        b.Signature = hasSignature ? DecodeBase64(s, b.Src.Waybill, "firma.png", pod.Signature!) : null;
+        b.Photo = string.IsNullOrWhiteSpace(pod.Image) ? null : DecodeBase64(s, b.Src.Waybill, "foto.jpg", pod.Image!);
+        if (s.Config.Options.PodFilesDir is { } dir)
         {
             var folder = Path.Combine(dir, SafeName(b.Src.Waybill));
-            var files = new List<string>();
-            if (hasSignature && WriteBase64(s, folder, b.Src.Waybill, "firma.png", pod.Signature!) is { } sig) files.Add(sig);
-            if (!string.IsNullOrWhiteSpace(pod.Image) && WriteBase64(s, folder, b.Src.Waybill, "foto.jpg", pod.Image!) is { } photo) files.Add(photo);
-            if (files.Count > 0) proof.Notes = ColavoraRules.Trim(string.Join(" · ", new[] { proof.Notes, "Archivos de Colavora: " + string.Join(", ", files) }.Where(x => x is not null)), 500);
+            if (b.Signature is { } sig) WriteFile(s, folder, b.Src.Waybill, "firma.png", sig);
+            if (b.Photo is { } photo) WriteFile(s, folder, b.Src.Waybill, "foto.jpg", photo);
         }
+        b.Proof = proof;
         db.Set<DeliveryProof>().Add(proof);
         s.Report.CountCreated(E);
     }
 
-    private string? WriteBase64(RunState s, string folder, string waybill, string fileName, string base64)
+    private static byte[]? DecodeBase64(RunState s, string waybill, string fileName, string base64)
     {
-        try
-        {
-            var bytes = Convert.FromBase64String(base64.Trim());
-            Directory.CreateDirectory(folder);
-            File.WriteAllBytes(Path.Combine(folder, fileName), bytes);
-            s.Report.CountCreated(ColavoraEntities.ProofFiles);
-            return $"{SafeName(waybill)}/{fileName}";
-        }
+        try { return Convert.FromBase64String(base64.Trim()); }
         catch (FormatException)
         {
             s.Report.Warn(ColavoraEntities.ProofFiles, waybill, $"El archivo {fileName} del comprobante no es base64 válido; se omite.");
             return null;
         }
+    }
+
+    private static void WriteFile(RunState s, string folder, string waybill, string fileName, byte[] bytes)
+    {
+        try
+        {
+            Directory.CreateDirectory(folder);
+            File.WriteAllBytes(Path.Combine(folder, fileName), bytes);
+        }
         catch (IOException ex)
         {
-            s.Report.Reject(ColavoraEntities.ProofFiles, waybill, $"No se pudo escribir {fileName}: {ex.Message}");
-            return null;
+            s.Report.Warn(ColavoraEntities.ProofFiles, waybill, $"No se pudo exportar {fileName} a disco: {ex.Message}");
         }
     }
 

@@ -47,6 +47,8 @@ public sealed partial class ColavoraImportService(
     ContactPointService contacts,
     ContractService contractService,
     CustomFieldService customFields,
+    StoredFileService storedFiles,
+    Files.IFileStore fileStore,
     IConfiguration config,
     ILogger<ColavoraImportService> logger)
 {
