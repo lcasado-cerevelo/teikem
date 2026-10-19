@@ -39,6 +39,10 @@ public class TransportOrder : ITenantScoped, ISoftDeletable, IHasStatus, IAuditS
     /// <summary>Lote 115: lo que se le cobra a esta orden por devolverla (según el contrato; NULL = nada) y si ya se facturó (aparte del flete).</summary>
     public decimal? ReturnFeeAmount { get; set; }
     [NotAudited] public bool ReturnFeeInvoiced { get; set; }
+    /// <summary>Lote 126: la factura del cliente de esta orden ya se procesó (hoja de COD cuadrada o cotejo de factura): cuándo, quién y con qué lote de lectura (CodReconcileRun). NULL = no procesada. Una sola vez por orden.</summary>
+    public DateTime? InvoiceProcessedAtUtc { get; set; }
+    public int? InvoiceProcessedBy { get; set; }
+    public int? InvoiceProcessRunId { get; set; }
     public int ServiceTypeLookupId { get; set; }
     public int StatusCodeId { get; set; }
     public int? PriorityLookupId { get; set; }

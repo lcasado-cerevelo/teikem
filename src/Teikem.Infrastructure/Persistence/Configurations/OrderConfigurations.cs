@@ -32,6 +32,7 @@ public sealed class TransportOrderConfiguration : IEntityTypeConfiguration<Trans
         b.Property(o => o.WaybillNumber).HasMaxLength(40);   // Lote 97
         b.Property(o => o.ReturnFeeAmount).HasColumnType("decimal(14,2)");   // Lote 115
         b.Property(o => o.TrackToken).HasMaxLength(64);   // Lote 116
+        b.HasOne<Teikem.Domain.Cod.CodReconcileRun>().WithMany().HasForeignKey(o => o.InvoiceProcessRunId).OnDelete(DeleteBehavior.NoAction);   // Lote 126: factura procesada
         b.HasIndex(o => o.TrackToken).IsUnique().HasFilter("[TrackToken] IS NOT NULL").HasDatabaseName("UX_TransportOrder_TrackToken");
         b.HasIndex(o => new { o.TenantId, o.WaybillNumber }).IsUnique().HasFilter("[IsActive] = 1").HasDatabaseName(Teikem.Domain.Orders.WaybillCodes.UniqueIndex);
         b.HasIndex(o => new { o.TenantId, o.ClientInvoiceNumber }).HasDatabaseName("IX_Order_Invoice");

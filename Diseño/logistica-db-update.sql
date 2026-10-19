@@ -4631,3 +4631,22 @@ IF OBJECT_ID(N'dbo.PortalNoticePref', N'U') IS NULL CREATE TABLE dbo.PortalNotic
 GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_PortalNoticePref' AND object_id = OBJECT_ID('dbo.PortalNoticePref')) CREATE UNIQUE INDEX UQ_PortalNoticePref ON dbo.PortalNoticePref(PortalUserId, Kind);
 GO
+
+/* =========================================================================
+   2026-10-18 (bd) — Lote 126: PROCESAMIENTO DE LA FACTURA del cliente (dictado de Luis). La factura del cliente viaja con la orden (su número está en ClientInvoiceNumber; si no
+   viene, le pegan un label). Cuando la orden ya se entregó, la factura se PROCESA como «second check»: en la pantalla de leer hojas se sube el documento (o se teclea el número) y
+   el sistema valida. Sea hoja de COD (que además cuadra el cobro) o solo cotejo, la orden guarda cuándo se procesó su factura, quién y con qué lote de lectura (CodReconcileRun:
+   el archivo y la fila de cada hoja). Una sola vez por orden. El contrato puede cobrar el cotejo (apagado por omisión). Sin órdenes ficticias. Solo AGREGA. Idempotente.
+   ========================================================================= */
+IF COL_LENGTH('dbo.TransportOrder', 'InvoiceProcessedAtUtc') IS NULL ALTER TABLE dbo.TransportOrder ADD InvoiceProcessedAtUtc DATETIME2 NULL;
+GO
+IF COL_LENGTH('dbo.TransportOrder', 'InvoiceProcessedBy') IS NULL ALTER TABLE dbo.TransportOrder ADD InvoiceProcessedBy INT NULL;
+GO
+IF COL_LENGTH('dbo.TransportOrder', 'InvoiceProcessRunId') IS NULL ALTER TABLE dbo.TransportOrder ADD InvoiceProcessRunId INT NULL CONSTRAINT FK_TransportOrder_InvoiceProcessRun REFERENCES dbo.CodReconcileRun(CodReconcileRunId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_TransportOrder_InvoiceProcessRun' AND object_id = OBJECT_ID('dbo.TransportOrder')) CREATE INDEX IX_TransportOrder_InvoiceProcessRun ON dbo.TransportOrder(InvoiceProcessRunId) WHERE InvoiceProcessRunId IS NOT NULL;
+GO
+IF COL_LENGTH('dbo.Contract', 'BillInvoiceCheck') IS NULL ALTER TABLE dbo.Contract ADD BillInvoiceCheck BIT NOT NULL CONSTRAINT DF_Contract_BillInvoiceCheck DEFAULT 0;
+GO
+IF COL_LENGTH('dbo.Contract', 'InvoiceCheckFee') IS NULL ALTER TABLE dbo.Contract ADD InvoiceCheckFee DECIMAL(14,2) NULL;
+GO

@@ -102,6 +102,7 @@ public sealed class ContractConfiguration : IEntityTypeConfiguration<Contract>
         b.HasMany(c => c.ServiceLevels).WithOne(l => l.Contract).HasForeignKey(l => l.ContractId);
         b.Property(c => c.ReturnFeeMode).HasMaxLength(12);   // Lote 115
         b.Property(c => c.ReturnFeeAmount).HasColumnType("decimal(14,2)");
+        b.Property(c => c.InvoiceCheckFee).HasColumnType("decimal(14,2)");   // Lote 126
     }
 }
 

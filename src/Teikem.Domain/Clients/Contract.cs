@@ -44,6 +44,9 @@ public class Contract : ITenantScoped, ISoftDeletable, IHasStatus
     /// <summary>Lote 115: cargo por devolución (ORDER | PACKAGE_TYPE | PIECE; NULL = sin cargo). Monto de ORDER y PIECE; por tipo de paquete en ContractReturnFee.</summary>
     public string? ReturnFeeMode { get; set; }
     public decimal? ReturnFeeAmount { get; set; }
+    /// <summary>Lote 126: cobrar el cotejo de la factura del cliente (monto por factura cotejada); apagado por omisión.</summary>
+    public bool BillInvoiceCheck { get; set; }
+    public decimal? InvoiceCheckFee { get; set; }
 
     public Client? Client { get; set; }
     public StatusCode? Status { get; set; }
