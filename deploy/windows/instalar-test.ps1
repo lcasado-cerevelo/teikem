@@ -1,4 +1,4 @@
-<#
+﻿<#
   Instalador del AMBIENTE DE TEST de Teikem (2026-10-19): todo lo que hay en master, en el mismo servidor Windows donde ya viven producción y
   staging, sin tocarlos. Se corre en el SERVIDOR, como Administrador, desde la carpeta del paquete descomprimido (teikem-test-*.zip):
       powershell -ExecutionPolicy Bypass -File .\instalar-test.ps1

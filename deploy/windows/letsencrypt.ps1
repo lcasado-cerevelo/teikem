@@ -1,4 +1,4 @@
-# Certificado de Let's Encrypt para un sitio de IIS, con win-acme (wacs.exe), que se renueva solo (2026-10-19).
+﻿# Certificado de Let's Encrypt para un sitio de IIS, con win-acme (wacs.exe), que se renueva solo (2026-10-19).
 # Lo cargan instalar.ps1 (con -LetsEncrypt) e instalar-test.ps1 con  . .\letsencrypt.ps1  y llaman a Asegurar-CertificadoLetsEncrypt.
 #
 # Cómo funciona: win-acme es el cliente ACME más usado en Windows/IIS. La primera vez se descarga de GitHub a C:\Tools\win-acme (si el servidor ya
