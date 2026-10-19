@@ -117,6 +117,16 @@ falla de un destinatario no detiene a los demás, y el reintento repite **solo l
 - Un aviso que quedó `FAILED` en la cola (`NotificationOutbox.Status`) agotó sus reintentos; el error está en `LastError` y el detalle por destinatario en el registro.
 - Cada procesamiento corre **como la compañía, sin usuario** («Sistema»). Varias copias del sistema nunca procesan el mismo aviso a la vez.
 
-## Kemi: «Pregúntame cómo usar el sistema» (Lote 123, demostración)
+## Kemi: «Pregúntame cómo usar el sistema» (Lotes 123–124)
 
-Entre las opciones de Kemi (un clic en la mascota) aparece **«Pregúntame cómo usar el sistema»**. Abre una caja donde se escribe la pregunta y se pulsa **Preguntar** (sin texto el botón no se activa); Kemi muestra la pregunta y responde que **esa función está en construcción**. **Volver** regresa a las opciones. Es solo la interfaz de la demostración: todavía no busca ni responde. La siguiente etapa (sin IA) buscará en el manual y la FAQ y traerá opciones; la IA y el hacer operaciones por la persona vienen después. Cualquier usuario con Kemi despierta la ve; no requiere permiso ni módulo.
+Entre las opciones de Kemi (un clic en la mascota) está **«Pregúntame cómo usar el sistema»**. Kemi **busca**; no usa inteligencia artificial:
+
+1. La persona escribe su pregunta con sus propias palabras (por ejemplo «cómo cambio mi contraseña» o «no me deja entrar») y pulsa **Preguntar**.
+2. Kemi busca esas palabras en el **manual** y en la **FAQ** (sin acentos ni mayúsculas, singular o plural, y las formas del verbo juntas: «registro», «registrar»). Las palabras raras pesan más que las comunes, el título pesa más que el cuerpo y la forma de la pregunta decide dónde mirar primero («no me deja», «qué significa» → FAQ; «cómo se hace» → manual). No se dice de dónde salió cada opción.
+3. Kemi muestra hasta **5 opciones**; al elegir una se ve su **respuesta** ahí mismo.
+4. Kemi pregunta **«¿Te contesté?»**. **Sí** → agradece y deja hacer otra pregunta. **No** → **busca por otro lado**: trae otras opciones, sin repetir las ya mostradas.
+5. Si no hay nada que se parezca lo bastante, Kemi lo dice («No encontré nada sobre eso. Prueba con otras palabras.») en vez de adivinar. **Cambiar la pregunta** vuelve a la caja; **Volver** regresa a las opciones de Kemi.
+
+No requiere permiso ni módulo: la ve cualquier persona con Kemi despierta. El índice se baja **solo la primera vez que alguien pregunta** (es un archivo aparte, no pesa en el arranque de la web) y trabaja en el propio navegador: sin servicio, sin costo y sin enviar la pregunta a ninguna parte.
+
+**De dónde sale lo que Kemi sabe:** de `docs/manual/*.md` (capítulos y la FAQ), convertidos a un índice con `npm run help:index` (lo corre `npm run check`); al escribir o corregir el manual o la FAQ el índice se regenera y Kemi lo sabe en cuanto se compile la web. El manual está solo en español: en inglés Kemi busca igual en el texto en español.

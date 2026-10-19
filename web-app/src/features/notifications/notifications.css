@@ -114,3 +114,9 @@
 .kemi-askrow{display:flex;gap:7px}
 .kemi-askrow input{flex:1;min-width:0;border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:12px;padding:9px 12px;font-size:13px}
 .kemi-askrow .kemi-opt:disabled{opacity:.5;cursor:not-allowed}
+.kemi-ask{max-height:min(70vh,520px);overflow-y:auto}
+.kemi-hits{display:flex;flex-direction:column;gap:7px}
+.kemi-hit{align-items:flex-start;justify-content:flex-start}
+.kemi-hit small{display:block;margin-top:2px;font-weight:400;font-size:11.5px;opacity:.75}
+.kemi-answer{border:1px solid var(--line);background:var(--panel-2);border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.45;overflow-wrap:anywhere}
+.kemi-answer p{margin:6px 0 0;white-space:pre-line}

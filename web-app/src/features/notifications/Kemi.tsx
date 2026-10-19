@@ -3,13 +3,14 @@
 //   con el puntero encima se queda pendiente y las pupilas lo siguen; cuando llega un aviso brinca. Cuando llega un aviso nuevo parpadea y muestra el globo «Te llegó un aviso → Ver»
 //   (Ver abre la campanita). Un clic en Kemi abre sus opciones ya listas (sin escribir): ver mis avisos y dormir a Kemi.
 // - Dormida: se esconde en la esquina de la cabecera (junto a la campanita); un clic la despierta. Dormida no muestra globos.
-// «Pregúntame cómo usar el sistema» (Lote 123, demostración): la persona escribe su pregunta y Kemi, por ahora, responde que esa función está en construcción; el buscador en el manual y la FAQ viene después.
+// «Pregúntame cómo usar el sistema» (Lotes 123–124): la persona escribe su pregunta y Kemi BUSCA sus palabras en el manual y la FAQ (sin IA) y trae las opciones; ver KemiAsk.tsx.
 // El «cerebro» de Kemi (hacer cosas, proponer rutas, mensajes) es de lotes posteriores; las opciones de aquí son botones.
-import { useCallback, useEffect, useRef, useState, type FormEvent, type PointerEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useT } from '../../kernel/i18n'
 import { messageBubbleText } from '../messages/messageRules'
 import { useMessages } from '../messages/MessagesProvider'
+import { KemiAsk } from './KemiAsk'
 import { KemiMascot } from './KemiMascot'
 import { DEFAULT_POS, DRAG_THRESHOLD, anchorStyle, clampPos, isMoved, quadrant, readPos, writePos, type KemiPos } from './kemiLife'
 import { bubbleKey } from './kemiState'
@@ -37,8 +38,6 @@ export function KemiFloating() {
   const navigate = useNavigate()
   const root = useRef<HTMLDivElement>(null)
   const [asking, setAsking] = useState(false)
-  const [draft, setDraft] = useState('')
-  const [asked, setAsked] = useState<string | null>(null)
   const svg = useRef<SVGSVGElement>(null)
   const excited = bubble !== null || msg.bubble !== null
   const life = useKemiLife(svg, !asleep && !excited && !kemiOpen)
@@ -97,17 +96,6 @@ export function KemiFloating() {
     writePos(userKey, d.now)
     setKemiOpen(false)
   }
-  const closeAsk = () => {
-    setAsking(false)
-    setDraft('')
-    setAsked(null)
-  }
-  const sendQuestion = (e: FormEvent) => {
-    e.preventDefault()
-    const q = draft.trim()
-    if (q) setAsked(q)
-    setDraft('')
-  }
   const goHome = useCallback(() => {
     setPos(DEFAULT_POS)
     writePos(userKey, DEFAULT_POS)
@@ -153,26 +141,7 @@ export function KemiFloating() {
             </button>
           </div>
           {asking ? (
-            <form className="kemi-ask" onSubmit={sendQuestion}>
-              <p className="kemi-msg">{t('notifications.kemi.askIntro')}</p>
-              {asked !== null && (
-                <>
-                  <p className="kemi-you">{asked}</p>
-                  <p className="kemi-msg" role="status">
-                    {t('notifications.kemi.askSoon')}
-                  </p>
-                </>
-              )}
-              <div className="kemi-askrow">
-                <input type="text" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t('notifications.kemi.askPlaceholder')} aria-label={t('notifications.kemi.askLabel')} maxLength={300} />
-                <button type="submit" className="kemi-opt" disabled={draft.trim() === ''}>
-                  {t('notifications.kemi.askSend')}
-                </button>
-              </div>
-              <button type="button" className="kemi-opt" onClick={closeAsk}>
-                {t('notifications.kemi.askBack')}
-              </button>
-            </form>
+            <KemiAsk onBack={() => setAsking(false)} />
           ) : (
             <>
           <p className="kemi-msg">{unread > 0 ? t('notifications.kemi.hiUnread', { n: unread }) : t('notifications.kemi.hi')}</p>

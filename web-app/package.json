@@ -9,8 +9,9 @@
     "lint": "oxlint src e2e",
     "preview": "vite preview",
     "api:types": "openapi-typescript openapi.json -o src/kernel/api/schema.d.ts",
+    "help:index": "node scripts/build-help-index.mjs",
     "test": "vitest run --passWithNoTests",
-    "check": "npm run api:types && tsc -b && npm run lint && npm run test && npm run build",
+    "check": "npm run api:types && npm run help:index && tsc -b && npm run lint && npm run test && npm run build",
     "e2e": "playwright test"
   },
   "dependencies": {

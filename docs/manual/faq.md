@@ -9363,8 +9363,16 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 
 **Entregué la orden y el aviso sigue.** El aviso solo cuenta órdenes abiertas; al entregarla desaparece en la siguiente lectura. Si fue tarde, queda como `MISSED` (Fuera de SLA) en el campo `SlaState`.
 
-## Kemi (Lote 123)
+## Kemi (Lotes 123–124)
 
-**Le pregunté algo a Kemi y solo dice «en construcción».** Es lo esperado por ahora: la opción «Pregúntame cómo usar el sistema» es la demostración de la interfaz. Mientras tanto, busque en el manual y en esta FAQ.
+**¿Kemi usa inteligencia artificial?** No. Busca las palabras de la pregunta en el manual y en la FAQ y trae las opciones; la IA viene en una etapa posterior.
+
+**Kemi no encontró nada sobre mi pregunta.** Pruebe con otras palabras (el nombre de la pantalla, el mensaje de error entre comillas, o una sola palabra clave como «factura» o «SLA»). Si dice que no encuentra, es que nada en el manual ni en la FAQ se parece lo bastante: es mejor eso que contestar algo que no es.
+
+**Le dije «No» a «¿Te contesté?» y me mostró otras opciones.** Es lo esperado: busca por otro lado con lo que todavía no había mostrado. Si ya no queda nada, lo dice.
 
 **No veo la opción de preguntar.** Kemi debe estar despierta (si está dormida, un clic en el ícono de la cabecera la despierta); la opción es la primera de su lista.
+
+**Escribí la pregunta en inglés y Kemi no encuentra.** El manual y la FAQ están en español, así que Kemi busca en español; escriba las palabras en español.
+
+**Corregí el manual y Kemi sigue con lo viejo.** El índice se regenera con `npm run help:index` (o `npm run check`) y llega con la siguiente compilación de la web.
