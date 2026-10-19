@@ -158,6 +158,8 @@ Cómo se usa:
   |---|---|---|
   | `serviceTypes` | Tipo de servicio de la orden (códigos de la lista `ServiceType`; no importan las mayúsculas). | `serviceTypes=STANDARD&serviceTypes=EXPRESS` |
   | `packageTypes` | Tipo de paquete. Entra la orden que tenga **alguna** línea de paquete activa de ese tipo (códigos `PackageType`). | `packageTypes=BOX` |
+  | `invoiceProcessed` (Lote 128) | Si la factura del cliente de la orden ya se procesó (hoja de COD cuadrada o cotejo; ver cap. 21 §7): `true` solo procesadas, `false` solo sin procesar, vacío todas. | `invoiceProcessed=true` |
+  | `processedFrom` / `processedTo` (Lote 128) | La fecha de procesamiento de la factura: `processedFrom` inclusivo, `processedTo` exclusivo. En la pantalla, el filtro «Fecha de procesamiento» ofrece los rangos sugeridos (Hoy, Esta semana, Este mes… o Personalizado). | `processedFrom=2026-10-18&processedTo=2026-10-19` |
   | `cities` | Pueblo del consignatario (la parada de entrega). Debe ser igual al pueblo pedido; no importan las mayúsculas, las tildes ni los espacios de más. | `cities=bayamon` encuentra «Bayamón» |
   | `postalCodePrefix` | El código postal (ZIP) del consignatario **empieza con** este texto. | `postalCodePrefix=009` trae `00901`, `00961`… |
   | `clientIds` | Clientes (por su `publicId`). Se **suma** a `clientId` si también viene. | `clientIds=…&clientIds=…` |

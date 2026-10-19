@@ -360,7 +360,10 @@ La factura del cliente se procesa («second check») contra su orden entregada d
 `StoredFile` + `IFileStore` (disco cifrado por compañía) + `StoredFileService` + `GET/DELETE /files/{id}` + `POST /orders/{id}/delivery/files`; el comprobante trae `files[]` y la ficha de la orden muestra «Firma y fotos». Destraba los documentos adjuntos de órdenes y flota (basta registrar el resolver del dueño y un endpoint de subida) y la firma/fotos de la app del chofer (P7). Pendiente: decidir con Luis si la migración de Colavora usa el almacén (recomendado) o las rutas `SignaturePath/PhotoPath`.
 
 ## Pedido de Luis (2026-10-18) — filtros de la lista de Órdenes
-Nivel de zona, zona, factura procesada (sí/no) y fecha de procesamiento; los filtros de fecha con rangos sugeridos (hoy, esta semana, este mes… o personalizado) como en almacén. Los de «procesada» y «fecha de procesamiento» van en el Lote 128; zona y nivel con el lote de Isla/Metro.
+Nivel de zona, zona, factura procesada (sí/no) y fecha de procesamiento; los filtros de fecha con rangos sugeridos (hoy, esta semana, este mes… o personalizado) como en almacén. **Hechos en el Lote 128:** «factura procesada» (sí/no), «fecha de procesamiento» con rangos sugeridos y la columna. Zona y nivel con el lote de Isla/Metro.
+
+## Pedido de Luis (2026-10-18) — campos personalizados en búsquedas y reportes
+Cada campo personalizado gana UNA opción, «Mostrar en la búsqueda»: con ella la lista de su entidad ofrece un filtro del tipo del campo (texto, número, fecha con rangos sugeridos, lista, sí/no). Y TODAS las Vistas (reportes personalizados) admiten los campos personalizados de la entidad como columna y filtro, sin opción aparte. Orden: después de Isla/Metro y antes de P11 (Lote 130).
 
 ## P13 — App móvil para staff (idea del dueño, 2026-10-15)
 

@@ -86,7 +86,10 @@ public sealed class TransportOrderDataSource(TeikemDbContext db, ILookupCache lo
         new DataField("SlaMaxHours", "SLA (horas)", "SLA (hours)", DataFieldType.Number),
         new DataField("SlaDueUtc", "Vence el SLA", "SLA due", DataFieldType.Date),
         new DataField("SlaHoursLeft", "Horas que quedan del SLA", "SLA hours left", DataFieldType.Number),
-        new DataField("SlaMetPct", "Cumplió el SLA (%)", "Met the SLA (%)", DataFieldType.Number),   // 100 si se entregó dentro del SLA, 0 si fuera; vacío si no aplica (su promedio es el % de cumplimiento)
+        new DataField("SlaMetPct", "Cumplió el SLA (%)", "Met the SLA (%)", DataFieldType.Number),
+        // Lote 128: la factura del cliente procesada (hoja de COD cuadrada o cotejo) y cuándo
+        new DataField("InvoiceProcessed", "Factura procesada", "Invoice processed", DataFieldType.Bool),
+        new DataField("InvoiceProcessedAtUtc", "Fecha de procesamiento de la factura", "Invoice processed on", DataFieldType.Date),   // 100 si se entregó dentro del SLA, 0 si fuera; vacío si no aplica (su promedio es el % de cumplimiento)
     };
 
     public IReadOnlyList<DataRelation> Relations { get; } = new[]
@@ -219,6 +222,8 @@ public sealed class TransportOrderDataSource(TeikemDbContext db, ILookupCache lo
                 ["SlaDueUtc"] = slaResult.DueUtc,
                 ["SlaHoursLeft"] = slaResult.HoursLeft,
                 ["SlaMetPct"] = slaResult.State == SlaStates.Met ? 100m : slaResult.State == SlaStates.Missed ? 0m : (decimal?)null,
+                ["InvoiceProcessed"] = o.InvoiceProcessedAtUtc != null,
+                ["InvoiceProcessedAtUtc"] = o.InvoiceProcessedAtUtc,
             });
         }
         return rows;

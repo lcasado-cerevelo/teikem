@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Orders;
 using Teikem.Infrastructure.Contracts;
@@ -201,6 +202,24 @@ public sealed class OrderListFilterTests
         var page = await f.Reader.GetListAsync(Q(cities: new[] { "bayamon" }), scope, default);
         Assert.Equal(new[] { 1 }, page.Items.Select(i => i.Id).ToArray());
         await Assert.ThrowsAsync<NotFoundException>(() => f.Reader.GetListAsync(Q(clientIds: new[] { f.C1.PublicId, f.C2.PublicId }), scope, default));
+    }
+
+    [Fact]
+    public async Task Lote128_invoice_processed_and_processing_date_filters()
+    {
+        await using var f = await OrderReadFixture.CreateAsync();
+        var two = await f.Db.TransportOrders.SingleAsync(o => o.TransportOrderId == 2);
+        var three = await f.Db.TransportOrders.SingleAsync(o => o.TransportOrderId == 3);
+        two.InvoiceProcessedAtUtc = new DateTime(2026, 10, 10, 12, 0, 0, DateTimeKind.Utc);
+        three.InvoiceProcessedAtUtc = new DateTime(2026, 10, 18, 12, 0, 0, DateTimeKind.Utc);
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        Assert.Equal(new[] { 2, 3 }, await IdsAsync(f, Q() with { InvoiceProcessed = true }));
+        Assert.Equal(new[] { 1, 4 }, await IdsAsync(f, Q() with { InvoiceProcessed = false }));
+        Assert.Equal(new[] { 3 }, await IdsAsync(f, Q() with { ProcessedFromUtc = new DateTime(2026, 10, 15, 0, 0, 0, DateTimeKind.Utc) }));
+        Assert.Equal(new[] { 2 }, await IdsAsync(f, Q() with { ProcessedToUtc = new DateTime(2026, 10, 15, 0, 0, 0, DateTimeKind.Utc) }));
+        var page = await f.Reader.GetListAsync(Q() with { InvoiceProcessed = true }, OrderScope.Any, default);
+        Assert.All(page.Items, i => Assert.NotNull(i.InvoiceProcessedAtUtc));
     }
 
     [Fact]

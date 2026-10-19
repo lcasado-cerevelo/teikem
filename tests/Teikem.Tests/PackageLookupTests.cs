@@ -83,7 +83,7 @@ public sealed class PackageLookupTests
         var item = Assert.Single(r.Matches);
         Assert.Equal("Calle 1", item.ConsigneeLine1);
         Assert.Null(item.ConsigneeLine2);
-        var tail = typeof(OrderListItemDto).GetConstructors().Single().GetParameters().SkipLast(1).TakeLast(3).Select(p => p.Name).ToArray();   // Lote 97: WaybillNumber va al final
+        var tail = typeof(OrderListItemDto).GetConstructors().Single().GetParameters().SkipLast(2).TakeLast(3).Select(p => p.Name).ToArray();   // Lote 97: WaybillNumber va al final; Lote 128: InvoiceProcessedAtUtc después
         Assert.Equal(new[] { "ConsigneeLine1", "ConsigneeLine2", "ConsigneeState" }, tail);
     }
 

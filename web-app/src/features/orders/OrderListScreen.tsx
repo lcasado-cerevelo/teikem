@@ -21,6 +21,7 @@ import {
   ConfirmDialog,
   DataTable,
   DateRangeFilter,
+  SelectFilter,
   Filters,
   IconChevronRight,
   IconPlus,
@@ -94,6 +95,8 @@ export default function OrderListScreen() {
     setPage(1)
   }
   const range: DateRange = { from: filters.from, to: filters.to }
+  const processedRange: DateRange = { from: filters.processedFrom, to: filters.processedTo }
+  const processedOptions = useMemo(() => [{ value: 'yes', label: t('orders.list.filters.processedYes') }, { value: 'no', label: t('orders.list.filters.processedNo') }], [t])
 
   // ---- Opciones de los filtros ----
   const { data: clients = [] } = useClientOptions(true)
@@ -159,6 +162,8 @@ export default function OrderListScreen() {
         card: 'title',
       },
       { id: 'date', header: t('orders.list.columns.date'), cell: (o) => <span className="mono">{f.date(o.createdAtUtc)}</span>, sortValue: (o) => o.createdAtUtc, exportValue: (o) => f.date(o.createdAtUtc) },
+      // Lote 128: cuándo se procesó la factura del cliente
+      { id: 'processed', header: t('orders.list.columns.processed'), cell: (o) => (o.invoiceProcessedAtUtc ? <span className="mono">{f.date(o.invoiceProcessedAtUtc)}</span> : ''), sortValue: (o) => o.invoiceProcessedAtUtc ?? '', exportValue: (o) => (o.invoiceProcessedAtUtc ? f.date(o.invoiceProcessedAtUtc) : '') },
       { id: 'consignee', header: t('orders.list.columns.consignee'), cell: (o) => o.consigneeName, sortValue: (o) => o.consigneeName },
       { id: 'town', header: t('orders.list.columns.town'), cell: (o) => o.consigneeCity, sortValue: (o) => o.consigneeCity },
       { id: 'zip', header: t('orders.list.columns.zip'), cell: (o) => <span className="mono">{o.consigneePostalCode}</span>, sortValue: (o) => o.consigneePostalCode, exportValue: (o) => o.consigneePostalCode },
@@ -391,6 +396,8 @@ export default function OrderListScreen() {
         <TextFilter label={t('orders.list.filters.invoice')} value={filters.invoice} onChange={(v) => patch({ invoice: v })} placeholder={t('orders.list.filters.invoicePlaceholder')} />
         <TextFilter label={t('orders.list.filters.pack')} value={filters.packBatch} onChange={(v) => patch({ packBatch: v })} placeholder={t('orders.list.filters.packPlaceholder')} />
         <SearchSelect label={t('orders.list.filters.status')} options={statusOptions} value={filters.statuses} onChange={(v) => patch({ statuses: v })} placeholder={t('orders.list.filters.all')} />
+        <SelectFilter label={t('orders.list.filters.processed')} options={processedOptions} value={filters.processed} onChange={(v) => patch({ processed: v as OrderFilters['processed'] })} />
+        <DateRangeFilter label={t('orders.list.filters.processedRange')} value={processedRange} onChange={(r) => patch({ processedFrom: r.from, processedTo: r.to })} />
       </Filters>
 
       <Panel

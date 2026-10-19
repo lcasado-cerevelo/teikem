@@ -43,13 +43,16 @@ public sealed class OrdersController(OrderService orders, OrderReadService reade
         [FromQuery] string? postalCodePrefix,
         [FromQuery] Guid[]? clientIds,
         [FromQuery] string[]? statuses,
+        [FromQuery] bool? invoiceProcessed,
+        [FromQuery] DateTime? processedFrom,
+        [FromQuery] DateTime? processedTo,
         [FromQuery] bool includeInactive = false,
         [FromQuery] int skip = 0,
         [FromQuery] int take = 100,
         CancellationToken ct = default)
         => reader.GetListAsync(new OrderListQuery(clientId, status, orderNumber, invoice, packBatch, consignee, search, from, to, includeInactive, skip, take,
             ServiceTypes: serviceTypes, PackageTypes: packageTypes, Cities: cities, PostalCodePrefix: postalCodePrefix,
-            ClientPublicIds: clientIds, Statuses: statuses, Waybill: waybill), OrderScope.Any, ct);
+            ClientPublicIds: clientIds, Statuses: statuses, Waybill: waybill, InvoiceProcessed: invoiceProcessed, ProcessedFromUtc: processedFrom, ProcessedToUtc: processedTo), OrderScope.Any, ct);
 
     /// <summary>Buscar o escanear: coincidencia EXACTA por número de conduce, orden, empaque o factura (todas las coincidencias).</summary>
     [HttpGet("lookup"), RequirePermission(PermissionCatalog.OrdersView)]

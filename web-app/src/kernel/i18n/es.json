@@ -3608,6 +3608,7 @@
       "hideForm": "Ocultar formulario",
       "columns": {
         "waybill": "Conduce",
+        "processed": "Factura procesada",
         "packBatch": "Empaque",
         "orderNumber": "N.º orden",
         "client": "Cliente",
@@ -3634,6 +3635,10 @@
         "town": "Pueblo",
         "zip": "ZIP",
         "zipPlaceholder": "009…",
+        "processed": "Factura procesada",
+        "processedYes": "Procesada",
+        "processedNo": "Sin procesar",
+        "processedRange": "Fecha de procesamiento",
         "invoice": "Factura",
         "invoicePlaceholder": "FAC-…",
         "pack": "Empaque",

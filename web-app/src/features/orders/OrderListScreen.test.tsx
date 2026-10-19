@@ -132,7 +132,7 @@ describe('Órdenes — lista', () => {
     await screen.findByText('Farmacia Central')
     const heads = within(screen.getAllByRole('rowgroup')[0]).getAllByRole('columnheader').map((h) => h.textContent?.trim())
     // Lote F-G2: la casilla «Elegir» primero (para Imprimir label)
-    expect(heads.slice(0, 13)).toEqual(['Elegir', 'Empaque', 'Conduce', 'N.º orden', 'Fecha', 'Consignatario', 'Pueblo', 'ZIP', 'Servicio', 'Paquete', 'Piezas', 'COD', 'Estatus'])
+    expect(heads.slice(0, 14)).toEqual(['Elegir', 'Empaque', 'Conduce', 'N.º orden', 'Fecha', 'Factura procesada', 'Consignatario', 'Pueblo', 'ZIP', 'Servicio', 'Paquete', 'Piezas', 'COD', 'Estatus'])   // Lote 128: cuándo se procesó la factura
   })
 
   it('pide la primera página con skip/take', async () => {
@@ -166,6 +166,18 @@ describe('Órdenes — lista', () => {
     await user.type(screen.getByLabelText('Empaque'), 'EMP-1')
     await user.type(screen.getByLabelText('N.º de orden'), 'ORD-1')
     await user.type(screen.getByLabelText('Consignatario'), 'Farm')
+    // Lote 128: factura procesada (sí/no) y fecha de procesamiento (rangos sugeridos)
+    await user.selectOptions(screen.getByLabelText('Factura procesada'), 'yes')
+    await waitFor(() => expect(lastOrdersQuery().get('invoiceProcessed')).toBe('true'))
+    await user.selectOptions(screen.getByLabelText('Factura procesada'), 'no')
+    await waitFor(() => expect(lastOrdersQuery().get('invoiceProcessed')).toBe('false'))
+    await user.selectOptions(document.querySelectorAll<HTMLSelectElement>('.filters select[id$="-preset"]')[1], 'today')   // el segundo filtro de fechas es el de procesamiento
+    await waitFor(() => {
+      const q = lastOrdersQuery()
+      expect(q.get('processedFrom')).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+      expect(q.get('processedTo')).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    })
+    await user.selectOptions(screen.getByLabelText('Factura procesada'), '')
     await waitFor(() => {
       const q = lastOrdersQuery()
       expect(q.get('postalCodePrefix')).toBe('009')

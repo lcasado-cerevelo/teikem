@@ -15827,6 +15827,32 @@
             }
           },
           {
+            "name": "invoiceProcessed",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "nullable": true
+            }
+          },
+          {
+            "name": "processedFrom",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "nullable": true
+            }
+          },
+          {
+            "name": "processedTo",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "nullable": true
+            }
+          },
+          {
             "name": "includeInactive",
             "in": "query",
             "schema": {
@@ -49179,6 +49205,11 @@
           },
           "waybillNumber": {
             "type": "string",
+            "nullable": true
+          },
+          "invoiceProcessedAtUtc": {
+            "type": "string",
+            "format": "date-time",
             "nullable": true
           }
         },

@@ -3608,6 +3608,7 @@
       "hideForm": "Hide form",
       "columns": {
         "waybill": "Waybill",
+        "processed": "Invoice processed",
         "packBatch": "Pack",
         "orderNumber": "Order no.",
         "client": "Client",
@@ -3634,6 +3635,10 @@
         "town": "Town",
         "zip": "ZIP",
         "zipPlaceholder": "009…",
+        "processed": "Invoice processed",
+        "processedYes": "Processed",
+        "processedNo": "Not processed",
+        "processedRange": "Processing date",
         "invoice": "Invoice",
         "invoicePlaceholder": "FAC-…",
         "pack": "Pack",

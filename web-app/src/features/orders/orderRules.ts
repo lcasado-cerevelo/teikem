@@ -25,6 +25,10 @@ export interface OrderFilters {
   statuses: string[]
   /** Buscador libre (QBox): número, factura, empaque y consignatario. */
   search: string
+  /** Lote 128: factura del cliente procesada ('' = todas, 'yes', 'no') y la fecha de procesamiento ('YYYY-MM-DD' o ''). */
+  processed: '' | 'yes' | 'no'
+  processedFrom: string
+  processedTo: string
 }
 
 /**
@@ -51,6 +55,9 @@ export const EMPTY_ORDER_FILTERS: OrderFilters = {
   packBatch: '',
   statuses: [],
   search: '',
+  processed: '',
+  processedFrom: '',
+  processedTo: '',
 }
 
 /** `to` del API es exclusivo sobre la fecha de creación: se manda el día siguiente para incluir el día elegido. */
@@ -81,6 +88,9 @@ export function buildOrderQuery(f: OrderFilters, page: number, pageSize: number)
     packBatch: text(f.packBatch),
     statuses: list(f.statuses),
     search: text(f.search),
+    invoiceProcessed: f.processed === 'yes' ? true : f.processed === 'no' ? false : undefined,
+    processedFrom: f.processedFrom || undefined,
+    processedTo: exclusiveTo(f.processedTo),
     skip: (page - 1) * pageSize,
     take: pageSize,
   }

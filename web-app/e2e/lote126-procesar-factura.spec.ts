@@ -81,5 +81,22 @@ test('Procesar entregas: la factura de una orden sin COD se coteja contra la ord
   await page.goto(`/orders/${delivered.publicId}`)
   await expect(page.getByText('Factura procesada')).toBeVisible({ timeout: 30_000 })
   await shot(page, isMobile, 'l126-ficha')
+
+  // Lote 128: la lista filtra por factura procesada (sí/no) y por fecha de procesamiento con los rangos sugeridos
+  const processedToday = await ok<{ items: { publicId: string }[] }>(request.get(`${API_URL}/api/v1/orders?invoiceProcessed=true&clientIds=${client.publicId}`, { headers }), 'lista procesadas')
+  expect(processedToday.items.map((i) => i.publicId)).toEqual([delivered.publicId])
+  const notProcessed = await ok<{ items: { publicId: string }[] }>(request.get(`${API_URL}/api/v1/orders?invoiceProcessed=false&clientIds=${client.publicId}`, { headers }), 'lista sin procesar')
+  expect(notProcessed.items.map((i) => i.publicId)).toEqual([open.publicId])
+  await page.goto(`/orders?client=${client.publicId}`)
+  if (!isMobile) await expect(page.getByRole('columnheader', { name: 'Factura procesada' })).toBeVisible({ timeout: 30_000 })   // en móvil la lista son tarjetas
+  else await expect(page.getByLabel('Factura procesada', { exact: true })).toBeVisible({ timeout: 30_000 })
+  await page.getByLabel('Factura procesada', { exact: true }).selectOption('yes')
+  await expect(page.locator('tr, .dt-cards > li').filter({ hasText: delivered.orderNumber })).toHaveCount(1, { timeout: 30_000 })
+  await expect(page.locator('tr, .dt-cards > li').filter({ hasText: open.orderNumber })).toHaveCount(0)
+  await page.locator('.filters select[id$="-preset"]').nth(1).selectOption('today')
+  await expect(page.locator('tr, .dt-cards > li').filter({ hasText: delivered.orderNumber })).toHaveCount(1, { timeout: 30_000 })
+  await shot(page, isMobile, 'l128-filtros')
+  await page.getByLabel('Factura procesada', { exact: true }).selectOption('no')
+  await expect(page.locator('tr, .dt-cards > li').filter({ hasText: delivered.orderNumber })).toHaveCount(0, { timeout: 30_000 })
   if (isMobile) expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
 })

@@ -11615,6 +11615,9 @@ export interface paths {
                     postalCodePrefix?: string;
                     clientIds?: string[];
                     statuses?: string[];
+                    invoiceProcessed?: boolean | null;
+                    processedFrom?: string | null;
+                    processedTo?: string | null;
                     includeInactive?: boolean;
                     skip?: number;
                     take?: number;
@@ -32682,6 +32685,8 @@ export interface components {
             consigneeLine2?: string | null;
             consigneeState?: string | null;
             waybillNumber?: string | null;
+            /** Format: date-time */
+            invoiceProcessedAtUtc?: string | null;
         };
         OrderLookupDto: {
             code?: string | null;

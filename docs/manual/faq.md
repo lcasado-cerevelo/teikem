@@ -9420,3 +9420,9 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **«El almacén de archivos no está configurado (Files:MasterKey); avise a soporte.»** El servidor no tiene la llave maestra del almacén; soporte la configura (y la respalda).
 
 **Quité una foto por error.** Se quita en lógico: el contenido sigue en el almacén y soporte puede reactivarla en la base (`StoredFile.IsActive`).
+
+## Filtros de Órdenes por factura procesada (Lote 128)
+
+**¿Cómo veo las órdenes cuya factura ya se procesó (o las que faltan)?** En Órdenes, filtro **Factura procesada**: «Procesada» o «Sin procesar». La columna «Factura procesada» muestra la fecha. El filtro **Fecha de procesamiento** ofrece los rangos sugeridos (Hoy, Esta semana, Este mes…) o un rango personalizado, igual que los filtros de fecha de almacén.
+
+**El filtro de fecha de procesamiento no trae nada.** Solo cuenta las órdenes con factura procesada dentro de ese rango; las que no se han procesado no tienen fecha y quedan fuera (use «Sin procesar» para verlas).

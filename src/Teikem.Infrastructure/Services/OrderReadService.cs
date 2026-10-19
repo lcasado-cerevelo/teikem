@@ -318,6 +318,11 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
 
         if (q.FromUtc is DateTime from) query = query.Where(o => o.CreatedAtUtc >= from);   // desde inclusivo
         if (q.ToUtc is DateTime to) query = query.Where(o => o.CreatedAtUtc < to);           // hasta exclusivo
+        // Lote 128: factura del cliente procesada (sí/no) y cuándo
+        if (q.InvoiceProcessed == true) query = query.Where(o => o.InvoiceProcessedAtUtc != null);
+        if (q.InvoiceProcessed == false) query = query.Where(o => o.InvoiceProcessedAtUtc == null);
+        if (q.ProcessedFromUtc is DateTime pf) query = query.Where(o => o.InvoiceProcessedAtUtc != null && o.InvoiceProcessedAtUtc >= pf);
+        if (q.ProcessedToUtc is DateTime pt) query = query.Where(o => o.InvoiceProcessedAtUtc != null && o.InvoiceProcessedAtUtc < pt);
 
         var total = await query.CountAsync(ct);
         // Lote 42: con texto libre sobre las paradas (búsqueda o consignatario: LIKE '%…%', que SQL Server no sabe estimar) se ordena
@@ -447,7 +452,7 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
                 status.Code, status.Label, status.IsInitial,
                 o.IsSpecialDelivery, o.IsActive, o.CreatedAtUtc,
                 packages,
-                delivery?.SnapLine1, delivery?.SnapLine2, delivery?.SnapState, o.WaybillNumber), canViewPrice));   // Lote 44: dirección para labels y documentos; Lote 97: conduce
+                delivery?.SnapLine1, delivery?.SnapLine2, delivery?.SnapState, o.WaybillNumber, o.InvoiceProcessedAtUtc), canViewPrice));   // Lote 44: dirección para labels y documentos; Lote 97: conduce; Lote 128: factura procesada
         }
         return items;
     }

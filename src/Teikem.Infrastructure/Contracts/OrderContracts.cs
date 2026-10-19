@@ -257,7 +257,9 @@ public sealed record OrderListItemDto(
     string? ConsigneeLine2 = null,
     string? ConsigneeState = null,
     // Lote 97: número de conduce
-    string? WaybillNumber = null);
+    string? WaybillNumber = null,
+    // Lote 128: cuándo se procesó la factura del cliente (NULL = todavía no)
+    DateTime? InvoiceProcessedAtUtc = null);
 
 /// <summary>
 /// Filtros del listado (LIKE parcial en orden/factura/empaque/consignatario; FromUtc inclusivo, ToUtc exclusivo sobre CreatedAtUtc; Take 1..500).
@@ -285,7 +287,11 @@ public sealed record OrderListQuery(
     IReadOnlyList<Guid>? ClientPublicIds = null,
     IReadOnlyList<string>? Statuses = null,
     // Lote 97: búsqueda parcial por número de conduce
-    string? Waybill = null);
+    string? Waybill = null,
+    // Lote 128: factura del cliente procesada (sí/no) y cuándo (desde inclusivo, hasta exclusivo)
+    bool? InvoiceProcessed = null,
+    DateTime? ProcessedFromUtc = null,
+    DateTime? ProcessedToUtc = null);
 
 public sealed record OrderPageDto(int Total, IReadOnlyList<OrderListItemDto> Items);
 
