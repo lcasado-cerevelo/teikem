@@ -9362,3 +9362,9 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **No veo el aviso «SLA en riesgo».** Hace falta `orders.view` y el módulo de Transporte (`LTL_GROUND`), y que haya alguna orden recogida, abierta y cerca del plazo (o vencida) con SLA en su contrato.
 
 **Entregué la orden y el aviso sigue.** El aviso solo cuenta órdenes abiertas; al entregarla desaparece en la siguiente lectura. Si fue tarde, queda como `MISSED` (Fuera de SLA) en el campo `SlaState`.
+
+## Kemi (Lote 123)
+
+**Le pregunté algo a Kemi y solo dice «en construcción».** Es lo esperado por ahora: la opción «Pregúntame cómo usar el sistema» es la demostración de la interfaz. Mientras tanto, busque en el manual y en esta FAQ.
+
+**No veo la opción de preguntar.** Kemi debe estar despierta (si está dormida, un clic en el ícono de la cabecera la despierta); la opción es la primera de su lista.

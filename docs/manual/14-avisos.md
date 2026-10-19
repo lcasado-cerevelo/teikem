@@ -116,3 +116,7 @@ falla de un destinatario no detiene a los demás, y el reintento repite **solo l
   si una regla vieja lo tenía encendido, el registro dice `SKIPPED`.
 - Un aviso que quedó `FAILED` en la cola (`NotificationOutbox.Status`) agotó sus reintentos; el error está en `LastError` y el detalle por destinatario en el registro.
 - Cada procesamiento corre **como la compañía, sin usuario** («Sistema»). Varias copias del sistema nunca procesan el mismo aviso a la vez.
+
+## Kemi: «Pregúntame cómo usar el sistema» (Lote 123, demostración)
+
+Entre las opciones de Kemi (un clic en la mascota) aparece **«Pregúntame cómo usar el sistema»**. Abre una caja donde se escribe la pregunta y se pulsa **Preguntar** (sin texto el botón no se activa); Kemi muestra la pregunta y responde que **esa función está en construcción**. **Volver** regresa a las opciones. Es solo la interfaz de la demostración: todavía no busca ni responde. La siguiente etapa (sin IA) buscará en el manual y la FAQ y traerá opciones; la IA y el hacer operaciones por la persona vienen después. Cualquier usuario con Kemi despierta la ve; no requiere permiso ni módulo.

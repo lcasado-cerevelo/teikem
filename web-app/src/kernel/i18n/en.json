@@ -9274,6 +9274,13 @@
       "from": "From {name}"
     },
     "kemi": {
+      "optAsk": "Ask me how to use the system",
+      "askIntro": "Tell me what you want to know and I'll explain how it's done.",
+      "askPlaceholder": "Type your question…",
+      "askLabel": "Your question for Kemi",
+      "askSend": "Ask",
+      "askBack": "Back",
+      "askSoon": "I'm still learning to answer that: this feature is under construction. I'll be able to help you soon!",
       "name": "Kemi",
       "subtitle": "Teikem assistant",
       "fab": "Kemi, Teikem assistant",

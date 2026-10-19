@@ -185,6 +185,21 @@ describe('campanita y Kemi', () => {
     expect(localStorage.getItem('teikem.kemi.asleep.11')).toBeNull()
   })
 
+  it('«Pregúntame cómo usar el sistema»: escribe la pregunta y Kemi responde que está en construcción; «Volver» regresa a las opciones', async () => {
+    const user = userEvent.setup()
+    wrap()
+    await user.click(await screen.findByRole('button', { name: 'Kemi, asistente de Teikem' }))
+    const panel = await screen.findByRole('dialog', { name: 'Kemi' })
+    await user.click(within(panel).getByRole('button', { name: 'Pregúntame cómo usar el sistema' }))
+    expect(within(panel).getByRole('button', { name: 'Preguntar' })).toBeDisabled()          // sin texto no se puede preguntar
+    await user.type(within(panel).getByRole('textbox', { name: 'Tu pregunta para Kemi' }), '¿Cómo registro una entrega?')
+    await user.click(within(panel).getByRole('button', { name: 'Preguntar' }))
+    expect(within(panel).getByText('¿Cómo registro una entrega?')).toBeInTheDocument()
+    expect(within(panel).getByRole('status')).toHaveTextContent('en construcción')
+    await user.click(within(panel).getByRole('button', { name: 'Volver' }))
+    expect(within(panel).getByRole('button', { name: 'Dormir a Kemi' })).toBeInTheDocument()
+  })
+
   it('dormida no muestra globos', async () => {
     localStorage.setItem('teikem.kemi.asleep.11', '1')
     wrap()
