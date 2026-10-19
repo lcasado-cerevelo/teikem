@@ -192,7 +192,7 @@ Validaciones:
 | Caso | Mensaje exacto | HTTP |
 |---|---|---|
 | Contraseña actual incorrecta | `Contraseña incorrecta.` | 401 |
-| Nueva contraseña muy corta / con pocos caracteres distintos | mensaje de Identity (ej. `Passwords must be at least 12 characters.`) | 400 |
+| Nueva contraseña muy corta / con pocos caracteres distintos | mensaje de Identity en el idioma de la persona (ej. «La contraseña debe tener al menos 12 caracteres.») | 400 |
 | Nueva contraseña en una brecha conocida | `Esta contraseña aparece en brechas conocidas; elija otra.` | 400 |
 
 Nota: la verificación contra brechas conocidas (HIBP) está implementada como una interfaz (`IPasswordBreachChecker`)
@@ -352,7 +352,7 @@ Validaciones:
 |---|---|---|
 | Correo vacío | `El correo es obligatorio.` | 400 |
 | Alta de usuario de portal | `Los usuarios de portal se administran desde el expediente del cliente (Lote 2).` | 400 |
-| Contraseña inválida (Identity) | mensaje de Identity, ej. `Passwords must be at least 12 characters.` | 400 |
+| Contraseña inválida (Identity) | mensaje de Identity en el idioma de la persona, ej. «La contraseña debe tener al menos 12 caracteres.» | 400 |
 | Usuario ya pertenece al tenant | `El usuario ya pertenece a esta compañía.` | 409 |
 | El correo ya es de un usuario de portal (de esta u otra compañía) | `Ese correo ya pertenece a un usuario de portal; un usuario de portal no puede ser a la vez usuario interno.` (Lote 2: la cuenta de portal no se adjunta a la compañía ni se puede editar desde `/users`, que responde 404 para ella) | 409 |
 | Desactivarse a sí mismo | `No puede desactivarse a sí mismo.` | 409 |

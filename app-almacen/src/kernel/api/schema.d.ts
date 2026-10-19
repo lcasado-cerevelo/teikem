@@ -29127,6 +29127,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portal/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalProfileDto"];
+                        "application/json": components["schemas"]["PortalProfileDto"];
+                        "text/json": components["schemas"]["PortalProfileDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PortalProfileRequest"];
+                    "text/json": components["schemas"]["PortalProfileRequest"];
+                    "application/*+json": components["schemas"]["PortalProfileRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalProfileDto"];
+                        "application/json": components["schemas"]["PortalProfileDto"];
+                        "text/json": components["schemas"]["PortalProfileDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/indicators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    days?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalIndicatorsDto"];
+                        "application/json": components["schemas"]["PortalIndicatorsDto"];
+                        "text/json": components["schemas"]["PortalIndicatorsDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -39125,6 +39228,55 @@ export interface components {
         };
         PortalNoticePrefsRequest: {
             prefs?: components["schemas"]["PortalNoticePrefDto"][] | null;
+        };
+        PortalCompanyDto: {
+            name?: string | null;
+            code?: string | null;
+            legalName?: string | null;
+            taxId?: string | null;
+            line1?: string | null;
+            line2?: string | null;
+            city?: string | null;
+            state?: string | null;
+            postalCode?: string | null;
+        };
+        PortalIndicatorsDto: {
+            /** Format: int32 */
+            days?: number;
+            /** Format: int32 */
+            created?: number;
+            /** Format: int32 */
+            delivered?: number;
+            /** Format: int32 */
+            deliveredWithPromise?: number;
+            /** Format: int32 */
+            onTime?: number;
+            /** Format: double */
+            onTimePct?: number | null;
+            /** Format: double */
+            avgDeliveryHours?: number | null;
+            /** Format: int32 */
+            openNow?: number;
+            /** Format: int32 */
+            inTransitNow?: number;
+            /** Format: int32 */
+            failedAttempts?: number;
+            /** Format: double */
+            invoiceBalance?: number | null;
+            /** Format: int32 */
+            overdueInvoices?: number | null;
+            /** Format: double */
+            codToRemit?: number | null;
+        };
+        PortalProfileDto: {
+            fullName?: string | null;
+            email?: string | null;
+            roleCode?: string | null;
+            roleLabel?: string | null;
+            company?: components["schemas"]["PortalCompanyDto"];
+        };
+        PortalProfileRequest: {
+            fullName?: string | null;
         };
     };
     responses: never;

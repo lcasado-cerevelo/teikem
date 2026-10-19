@@ -76,6 +76,7 @@ public static class DependencyInjection
             })
             .AddRoles<ApplicationRole>()
             .AddEntityFrameworkStores<TeikemDbContext>()
+            .AddErrorDescriber<Teikem.Infrastructure.Identity.LocalizedIdentityErrorDescriber>()   // Lote 120: los mensajes de contraseña en el idioma de la persona
             .AddDefaultTokenProviders();
         services.Configure<PasswordHasherOptions>(o => o.IterationCount = 600_000); // PBKDF2 reforzado (Argon2id: ver decisiones)
         services.AddScoped<IPasswordBreachChecker, NoOpPasswordBreachChecker>();
@@ -301,6 +302,8 @@ public static class DependencyInjection
         services.Configure<Teikem.Infrastructure.Geocoding.GoogleMapsOptions>(config.GetSection(Teikem.Infrastructure.Geocoding.GoogleMapsOptions.Section));
         services.AddHttpClient<Teikem.Infrastructure.Geocoding.GoogleGeocoder>(c => c.Timeout = TimeSpan.FromSeconds(40)).RemoveAllLoggers();   // el registro estándar del cliente HTTP escribiría la URL: la llave y la dirección del consignatario
         services.AddScoped<DeliveryRegistrationService>();
+        services.AddScoped<PortalProfileService>();      // Lote 120: mi perfil y los datos de mi empresa
+        services.AddScoped<PortalIndicatorsService>();   // Lote 120: indicadores del cliente
         services.AddScoped<PortalNoticePrefService>();   // Lote 119: preferencias de aviso de cada persona del portal
         services.AddScoped<PortalInvoiceService>();   // Lote 119: facturas del cliente en su portal (solo lectura)
         services.AddSingleton<Teikem.Infrastructure.Geocoding.DeliveryGeocodeProcessor>();

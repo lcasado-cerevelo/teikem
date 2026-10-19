@@ -45,3 +45,28 @@ Ajustes → **Ver mis consignatarios**: la lista de los consignatarios del clien
 - **No veo «Mis facturas».** Es un botón del Inicio; si la compañía no tiene el módulo de facturación, la lista dice que no está habilitado.
 - **Una factura no aparece.** Solo salen las ya emitidas (no borradores) y solo las de su cliente.
 - **Apagué un aviso y sigo recibiéndolo.** Los correos que la compañía anotó como «correos extra» no son de una persona: siguen llegando. También el aviso se manda al resto de usuarios del cliente.
+
+## 5. Mi perfil (Lote 120)
+Ajustes → **Mi perfil y mi contraseña**.
+
+- **Mis datos:** mi **nombre** (lo único que cambio yo; se guarda también en mi cuenta, así que es el mismo en todos los clientes a los que pertenezco), mi **correo** (con el que entro; no se cambia aquí) y mi **rol** (lo da el administrador de mi empresa o de la compañía).
+- **Mi empresa (solo lectura):** nombre, código, razón social, identificación fiscal y dirección corporativa. Los cambia la compañía; si algo está mal, se le escribe desde Mensajes.
+- **Cambiar mi contraseña:** contraseña actual, nueva y repetida. Al cambiarla se cierran las demás sesiones. Los mensajes del servidor salen en el idioma de la persona: «La contraseña actual es incorrecta.», «La contraseña debe tener al menos 12 caracteres.»…
+
+| Método y ruta | Qué hace |
+|---|---|
+| `GET /api/v1/portal/profile` | Mi nombre, correo, rol y los datos de mi empresa. |
+| `PUT /api/v1/portal/profile` | Cambia mi nombre. 400 «Escriba su nombre.» si va vacío; 400 «El nombre no puede pasar de 150 caracteres.» |
+| `PUT /api/v1/auth/password` | Cambia mi contraseña (el mismo de siempre). |
+
+## 6. Indicadores del cliente (Lote 120)
+En el **Inicio**, de los últimos **7, 30 o 90 días**:
+
+- **Órdenes creadas** y **Entregadas** (las que pasaron a Entregada en el período).
+- **Entregas a tiempo:** de las entregadas que tenían fecha prometida, cuántas se entregaron hasta ese día (día de la compañía), con su porcentaje; si ninguna tenía fecha, no se muestra.
+- **Tiempo promedio de entrega** (horas desde la creación hasta la entrega).
+- **Intentos fallidos** del período.
+- **En curso ahora** (todo lo que no está en un estatus final) y cuántas van en tránsito.
+- **Saldo de facturas** (y cuántas vencidas), solo si la compañía tiene el módulo BILLING; **Cobrado por remesar**, solo si tiene COD y hay dinero cobrado por sus entregas que todavía no se le remite.
+
+`GET /api/v1/portal/indicators?days=30` (7, 30 o 90; 400 «Los días deben ser 7, 30 o 90.» con otro número). Son solo del cliente de la sesión: nada de otros clientes ni de choferes.

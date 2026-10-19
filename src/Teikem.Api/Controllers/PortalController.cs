@@ -14,7 +14,7 @@ namespace Teikem.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/portal")]
-public sealed class PortalController(AuthService auth, PortalService portal, ClientMessagingService messages, PortalOrderEntryService entry, PortalInvoiceService invoices, PortalNoticePrefService noticePrefs) : ControllerBase
+public sealed class PortalController(AuthService auth, PortalService portal, ClientMessagingService messages, PortalOrderEntryService entry, PortalInvoiceService invoices, PortalNoticePrefService noticePrefs, PortalProfileService profile, PortalIndicatorsService indicators) : ControllerBase
 {
     /// <summary>
     /// Login del portal: correo y contraseña (+ cliente opcional). Puede responder: <c>ok</c> (tokens), <c>mfa_required</c> (segundo paso; con challenge), <c>browser_confirmation_required</c> (computadora nueva: se manda un correo) o
@@ -91,4 +91,16 @@ public sealed class PortalController(AuthService auth, PortalService portal, Cli
     /// <summary>Guarda lo que quiero recibir de cada aviso: solo se puede APAGAR lo que la compañía encendió. 400 si un aviso no existe.</summary>
     [HttpPut("notice-prefs"), Authorize, RequireModule(ModuleKeys.ClientPortal)]
     public Task<PortalNoticePrefsDto> SaveNoticePrefs([FromBody] PortalNoticePrefsRequest? req, CancellationToken ct) => noticePrefs.SaveAsync(req, ct);
+
+    /// <summary>Lote 120 — mi perfil: mi nombre, mi correo y mi rol, y los datos de mi empresa (solo lectura).</summary>
+    [HttpGet("profile"), Authorize, RequireModule(ModuleKeys.ClientPortal)]
+    public Task<PortalProfileDto> Profile(CancellationToken ct) => profile.GetAsync(ct);
+
+    /// <summary>Cambia mi nombre (lo único que cambio sola). 400 si va vacío o pasa de 150 caracteres.</summary>
+    [HttpPut("profile"), Authorize, RequireModule(ModuleKeys.ClientPortal)]
+    public Task<PortalProfileDto> SaveProfile([FromBody] PortalProfileRequest? req, CancellationToken ct) => profile.SaveAsync(req, ct);
+
+    /// <summary>Lote 120 — indicadores de mi cliente de los últimos 7, 30 (por omisión) o 90 días; 400 con otro número.</summary>
+    [HttpGet("indicators"), Authorize, RequireModule(ModuleKeys.ClientPortal)]
+    public Task<PortalIndicatorsDto> Indicators([FromQuery] int? days, CancellationToken ct) => indicators.GetAsync(days, ct);
 }

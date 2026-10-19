@@ -81,6 +81,7 @@ export function SettingsScreen() {
           <Text style={{ fontWeight: '700', color: colors.text }}>{me.data?.fullName ?? '—'}</Text>
           <Muted>{me.data?.email ?? ''}</Muted>
           {!!me.data && <Chip label={me.data.currentClient?.name ?? ''} tone="info" />}
+          <Button title={t('settings.profileOpen')} variant="secondary" onPress={() => router.push('/profile')} testID="settings-profile" />
         </Card>
       )}
 

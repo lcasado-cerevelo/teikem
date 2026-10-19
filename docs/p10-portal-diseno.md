@@ -60,6 +60,7 @@ El consignatario con acceso propio **solo VE** (avisos, mensajes con su cliente 
 | 113 | **Tipo de servicio «pick up»** (con su marca y su flujo Sometida → Recogida → En almacén) y **cargo por devolución** opcional por cliente | |
 | 114 | **Acceso del consignatario** (invitación, primer ingreso, avisos con su aceptación; hecho en el 117: solo ve, no crea órdenes) | SMS espera a Twilio |
 | **119** | **Lo que se puede hacer ya del portal** (hecho): comprobante de entrega en la ficha de la orden, **facturas del cliente de solo lectura**, **preferencias de aviso por persona** (la compañía manda, la persona apaga) y la lista de consignatarios rotulada. Ver `docs/lote119-decisiones.md` | Luis: no todo depende de la app del chofer |
+| **120** | **Perfil, contraseña e indicadores del cliente** (hecho): mi nombre, mi empresa en solo lectura, cambio de contraseña y los indicadores del Inicio. Ver `docs/lote120-decisiones.md` | Luis: lo que no depende de la app del chofer |
 | 115+ | Consignatarios, configuración, perfil, indicadores del cliente; app móvil de entregas; seguimiento en vivo cuando exista P7 | |
 
 ## Decisiones propias a revisar con Luis

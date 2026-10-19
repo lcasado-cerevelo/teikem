@@ -124,3 +124,21 @@ public sealed record PortalNoticePrefsDto(IReadOnlyList<PortalNoticePrefDto> Pre
 
 /// <summary>Lo que la persona quiere recibir de cada aviso; solo cuentan <c>Kind</c>, <c>EmailEnabled</c> y <c>AppEnabled</c>. Un aviso que no venga no cambia.</summary>
 public sealed record PortalNoticePrefsRequest(IList<PortalNoticePrefDto>? Prefs);
+
+// Lote 120 (P10) — perfil de la persona, datos de su empresa e indicadores del cliente.
+
+/// <summary>Los datos de la empresa (el cliente) que la persona ve en su portal: solo lectura; los cambia la compañía.</summary>
+public sealed record PortalCompanyDto(string Name, string Code, string? LegalName, string? TaxId, string? Line1, string? Line2, string? City, string? State, string? PostalCode);
+
+/// <summary>Mi perfil: quién soy (nombre, correo —con el que entro— y rol) y los datos de mi empresa.</summary>
+public sealed record PortalProfileDto(string? FullName, string? Email, string? RoleCode, string? RoleLabel, PortalCompanyDto Company);
+
+/// <summary>Cambiar mi nombre (lo único que la persona cambia sola: el correo es con el que entra y la contraseña tiene su propio cambio).</summary>
+public sealed record PortalProfileRequest(string? FullName);
+
+/// <summary>
+/// Indicadores del cliente de los últimos <c>Days</c> días (7, 30 o 90): órdenes creadas y entregadas, entregas a tiempo (entregadas hasta su fecha prometida; solo cuenta las que tenían fecha), horas promedio de la creación a la
+/// entrega, intentos fallidos, lo que hay en curso ahora y, si la compañía tiene esos módulos, el saldo de facturas, las vencidas y el dinero cobrado por sus entregas que todavía no se le remite. Un número que no aplica viene nulo.
+/// </summary>
+public sealed record PortalIndicatorsDto(int Days, int Created, int Delivered, int DeliveredWithPromise, int OnTime, double? OnTimePct, double? AvgDeliveryHours, int OpenNow, int InTransitNow, int FailedAttempts,
+    decimal? InvoiceBalance, int? OverdueInvoices, decimal? CodToRemit);

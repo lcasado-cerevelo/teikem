@@ -38922,6 +38922,120 @@
           }
         }
       }
+    },
+    "/api/v1/portal/profile": {
+      "get": {
+        "tags": [
+          "Portal"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalProfileDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalProfileDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalProfileDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Portal"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortalProfileRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortalProfileRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortalProfileRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalProfileDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalProfileDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalProfileDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/portal/indicators": {
+      "get": {
+        "tags": [
+          "Portal"
+        ],
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalIndicatorsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalIndicatorsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalIndicatorsDto"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -69170,6 +69284,146 @@
             "items": {
               "$ref": "#/components/schemas/PortalNoticePrefDto"
             },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PortalCompanyDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "legalName": {
+            "type": "string",
+            "nullable": true
+          },
+          "taxId": {
+            "type": "string",
+            "nullable": true
+          },
+          "line1": {
+            "type": "string",
+            "nullable": true
+          },
+          "line2": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "type": "string",
+            "nullable": true
+          },
+          "postalCode": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PortalIndicatorsDto": {
+        "type": "object",
+        "properties": {
+          "days": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "created": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "delivered": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "deliveredWithPromise": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "onTime": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "onTimePct": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "avgDeliveryHours": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "openNow": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "inTransitNow": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failedAttempts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "invoiceBalance": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "overdueInvoices": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "codToRemit": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PortalProfileDto": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "roleCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "roleLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "company": {
+            "$ref": "#/components/schemas/PortalCompanyDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PortalProfileRequest": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "string",
             "nullable": true
           }
         },

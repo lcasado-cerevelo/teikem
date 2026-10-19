@@ -13,6 +13,8 @@ export type PortalNotificationDto = Schemas['PortalNotificationDto']
 export type PortalInvoiceListItemDto = Schemas['PortalInvoiceListItemDto']
 export type PortalInvoiceDto = Schemas['PortalInvoiceDto']
 export type PortalNoticePrefDto = Schemas['PortalNoticePrefDto']
+export type PortalProfileDto = Schemas['PortalProfileDto']
+export type PortalIndicatorsDto = Schemas['PortalIndicatorsDto']
 export type PortalNoticePrefsDto = Schemas['PortalNoticePrefsDto']
 export type LegalDocumentDto = Schemas['LegalDocumentDto']
 export type LegalStatusDto = Schemas['LegalStatusDto']
@@ -128,6 +130,12 @@ export const getInvoice = (publicId: string) => unwrap(api.GET('/api/v1/portal/i
 /** Lote 119: mis preferencias de aviso (la compañía manda; yo solo apago lo que no quiero recibir). */
 export const getNoticePrefs = () => unwrap(api.GET('/api/v1/portal/notice-prefs'))
 export const saveNoticePrefs = (prefs: PortalNoticePrefDto[]) => unwrap(api.PUT('/api/v1/portal/notice-prefs', { body: { prefs } }))
+
+/** Lote 120: mi perfil (solo cambio mi nombre), los datos de mi empresa, mi contraseña y los indicadores de mi cliente (7, 30 o 90 días). */
+export const getProfile = () => unwrap(api.GET('/api/v1/portal/profile'))
+export const saveProfile = (fullName: string) => unwrap(api.PUT('/api/v1/portal/profile', { body: { fullName } }))
+export const changePassword = (currentPassword: string, newPassword: string) => unwrap(api.PUT('/api/v1/auth/password', { body: { currentPassword, newPassword } }))
+export const getIndicators = (days: number) => unwrap(api.GET('/api/v1/portal/indicators', { params: { query: { days } } }))
 
 export const listNotifications = (skip = 0, take = PAGE_SIZE) => unwrap(api.GET('/api/v1/portal/notifications', { params: { query: { skip, take } } }))
 

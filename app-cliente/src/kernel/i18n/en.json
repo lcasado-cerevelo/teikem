@@ -157,7 +157,8 @@
     "consigneeNoticesHelp": "Your list of consignees: mark who gets notices by email and give them access to their space.",
     "consigneeNoticesOpen": "View my consignees",
     "noticePrefsHelp": "Which notices you want to receive and how.",
-    "noticePrefsOpen": "Set up my notices"
+    "noticePrefsOpen": "Set up my notices",
+    "profileOpen": "My profile and password"
   },
   "install": {
     "title": "Put it on my desktop",
@@ -388,5 +389,44 @@
       "COD_PROCESSED": "When the money collected on your deliveries is processed.",
       "INVOICE_ISSUED": "When one of your invoices is issued."
     }
+  },
+  "profile": {
+    "title": "My profile",
+    "me": "My details",
+    "name": "My name",
+    "email": "Email: {email}",
+    "role": "Role: {role}",
+    "emailHelp": "The email is the one you sign in with, and the role is set by your company or the provider administrator.",
+    "save": "Save my name",
+    "saved": "Your name was saved.",
+    "company": "My company",
+    "companyCode": "Code: {code}",
+    "legalName": "Legal name: {name}",
+    "taxId": "Tax ID: {id}",
+    "companyHelp": "These details are changed by the company. If something is wrong, write to them from Messages.",
+    "password": "Change my password",
+    "passwordHelp": "Changing it signs out your other sessions.",
+    "passwordCurrent": "Current password",
+    "passwordNew": "New password",
+    "passwordAgain": "Repeat the new password",
+    "passwordRequired": "Enter your current password and the new one.",
+    "passwordMismatch": "The new passwords do not match.",
+    "passwordSave": "Change the password",
+    "passwordDone": "Your password was changed."
+  },
+  "indicators": {
+    "title": "Indicators",
+    "days": "{n} days",
+    "created": "Orders created",
+    "delivered": "Delivered",
+    "onTime": "On-time deliveries",
+    "avgHours": "Average delivery time",
+    "hours": "{n} h",
+    "failed": "Failed attempts",
+    "open": "In progress now",
+    "inTransit": "{n} in transit",
+    "invoiceBalance": "Invoice balance",
+    "overdue": "{n} overdue",
+    "cod": "Collected, to be remitted"
   }
 }

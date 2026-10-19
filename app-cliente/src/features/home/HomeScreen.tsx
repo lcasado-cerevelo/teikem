@@ -10,6 +10,7 @@ import { statusTone } from '../format'
 import { ProgressBar } from '../progress/ProgressBar'
 import { toProgressInfo } from '../progress/progressInfo'
 import { getMe, getSummary } from '../portalApi'
+import { IndicatorsCard } from './IndicatorsCard'
 
 export function HomeScreen() {
   const colors = useColors()
@@ -34,6 +35,7 @@ export function HomeScreen() {
       ) : (
         !!summary.data && (
           <>
+            <IndicatorsCard />
             <Card>
               <Text style={{ fontSize: 34, fontWeight: '800', color: colors.brand }} testID="home-total">{summary.data.totalOrders}</Text>
               <Muted>{t('home.totalOrders')}</Muted>

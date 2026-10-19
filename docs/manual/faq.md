@@ -2226,12 +2226,8 @@ Elija una más larga.
 En "Mi cuenta › Contraseña", lo que escribió en "Repita la nueva contraseña" no es igual a "Nueva contraseña".
 Vuelva a escribirlas iguales.
 
-**¿Qué significa "Incorrect password." (en inglés) bajo "Nueva contraseña" al cambiar mi contraseña?**
-Es el mensaje que el servidor devuelve cuando la "Contraseña actual" que escribió no es la correcta; queda bajo
-el campo "Nueva contraseña" porque el servicio (`AuthService.ChangePasswordAsync`) agrupa ahí cualquier rechazo
-de ASP.NET Core Identity, sea por la contraseña actual o por la política de la nueva. Aparece en inglés porque
-Identity no tiene un traductor de errores configurado en este lote; es un mensaje real del servidor, no un error
-de la pantalla. Verifique que escribió bien su contraseña actual e inténtelo de nuevo.
+**¿Qué significa «La contraseña actual es incorrecta.» bajo "Nueva contraseña" al cambiar mi contraseña?**
+Que la "Contraseña actual" que escribió no es la correcta. (Hasta el Lote 120 este mensaje salía en inglés, «Incorrect password.»; ahora todos los mensajes de contraseña salen en el idioma de la persona.) El mensaje queda bajo el campo "Nueva contraseña" porque el servicio agrupa ahí cualquier rechazo de la contraseña, sea por la actual o por la política de la nueva. Verifique que escribió bien su contraseña actual e inténtelo de nuevo.
 
 **¿Qué significa "Escriba los 6 dígitos que muestra su app."?**
 Al confirmar la activación de la verificación en dos pasos (Mi cuenta › Verificación en dos pasos, o al enrolar
@@ -9320,3 +9316,23 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **¿Por qué el comprobante de entrega dice que el consignatario no firmó?** Porque la entrega la registró el personal de la compañía desde la web (con su permiso, la firma queda a nombre de la compañía). Cuando la entrega se registre con la app del chofer, la firma será de quien recibió.
 
 **¿Quién registró la entrega?** El comprobante del cliente no dice el nombre del usuario: solo «el personal de la compañía». La compañía sí lo ve en su ficha de la orden.
+
+## Portal del cliente: mi perfil e indicadores (Lote 120)
+
+**¿Puedo cambiar mi correo desde el portal?** No: el correo es con el que usted entra y cambiarlo exige verificarlo. Pídale al administrador de su empresa o de la compañía que lo cambie. Lo que sí cambia solo es su nombre y su contraseña (Ajustes → Mi perfil y mi contraseña).
+
+**«Escriba su nombre.» / «El nombre no puede pasar de 150 caracteres.»** (400) El nombre no puede ir vacío ni pasar de 150 caracteres.
+
+**Los datos de mi empresa están mal.** Se ven en solo lectura en Mi perfil → Mi empresa. Los cambia la compañía: escríbale desde Mensajes.
+
+**«La contraseña actual es incorrecta.»** La contraseña actual que escribió no es la correcta. Verifique e inténtelo de nuevo. Al cambiar la contraseña se cierran sus otras sesiones.
+
+**«La contraseña debe tener al menos 12 caracteres.»** / **«La contraseña debe tener al menos 4 caracteres distintos.»** La nueva contraseña debe cumplir la política (12 caracteres o más, sin repetir un solo carácter).
+
+**«Los días deben ser 7, 30 o 90.»** (400) Los indicadores solo se piden de los últimos 7, 30 o 90 días.
+
+**En Indicadores no sale «Entregas a tiempo».** Ninguna de las órdenes entregadas en el período tenía fecha prometida; sin fecha no se puede decir si llegó a tiempo.
+
+**En Indicadores no sale el saldo de facturas ni lo cobrado por remesar.** La compañía no tiene encendido el módulo de facturación o de cobro contra entrega.
+
+**¿Qué cuenta «En curso ahora»?** Todas las órdenes que todavía no están en un estatus final (Entregada, Devuelta, En almacén o Cancelada), y de ellas cuántas van en tránsito.

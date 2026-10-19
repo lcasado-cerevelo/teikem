@@ -157,7 +157,8 @@
     "consigneeNoticesHelp": "Su lista de consignatarios: marque a quién se le avisa por correo y dele acceso a su espacio.",
     "consigneeNoticesOpen": "Ver mis consignatarios",
     "noticePrefsHelp": "Qué avisos quiere recibir usted y por qué medio.",
-    "noticePrefsOpen": "Configurar mis avisos"
+    "noticePrefsOpen": "Configurar mis avisos",
+    "profileOpen": "Mi perfil y mi contraseña"
   },
   "install": {
     "title": "Poner en mi escritorio",
@@ -388,5 +389,44 @@
       "COD_PROCESSED": "Cuando se procesa el dinero cobrado por sus entregas.",
       "INVOICE_ISSUED": "Cuando se emite una factura suya."
     }
+  },
+  "profile": {
+    "title": "Mi perfil",
+    "me": "Mis datos",
+    "name": "Mi nombre",
+    "email": "Correo: {email}",
+    "role": "Rol: {role}",
+    "emailHelp": "El correo es con el que usted entra y el rol lo da el administrador de su empresa o de la compañía.",
+    "save": "Guardar mi nombre",
+    "saved": "Su nombre quedó guardado.",
+    "company": "Mi empresa",
+    "companyCode": "Código: {code}",
+    "legalName": "Razón social: {name}",
+    "taxId": "Identificación fiscal: {id}",
+    "companyHelp": "Estos datos los cambia la compañía. Si algo está mal, escríbale desde Mensajes.",
+    "password": "Cambiar mi contraseña",
+    "passwordHelp": "Al cambiarla se cierran sus otras sesiones.",
+    "passwordCurrent": "Contraseña actual",
+    "passwordNew": "Contraseña nueva",
+    "passwordAgain": "Repita la contraseña nueva",
+    "passwordRequired": "Escriba su contraseña actual y la nueva.",
+    "passwordMismatch": "Las contraseñas nuevas no coinciden.",
+    "passwordSave": "Cambiar la contraseña",
+    "passwordDone": "Su contraseña se cambió."
+  },
+  "indicators": {
+    "title": "Indicadores",
+    "days": "{n} días",
+    "created": "Órdenes creadas",
+    "delivered": "Entregadas",
+    "onTime": "Entregas a tiempo",
+    "avgHours": "Tiempo promedio de entrega",
+    "hours": "{n} h",
+    "failed": "Intentos fallidos",
+    "open": "En curso ahora",
+    "inTransit": "{n} en tránsito",
+    "invoiceBalance": "Saldo de facturas",
+    "overdue": "{n} vencida(s)",
+    "cod": "Cobrado por remesar"
   }
 }
