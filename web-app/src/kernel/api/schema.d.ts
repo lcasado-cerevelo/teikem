@@ -12665,7 +12665,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    key: string | null;
+                    key: string;
                 };
                 cookie?: never;
             };
@@ -12694,7 +12694,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    key: string | null;
+                    key: string;
                 };
                 cookie?: never;
             };
@@ -12735,7 +12735,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    key: string | null;
+                    key: string;
                 };
                 cookie?: never;
             };
@@ -12774,7 +12774,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    key: string | null;
+                    key: string;
                 };
                 cookie?: never;
             };
@@ -13624,8 +13624,8 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description No Content */
-                204: {
+                /** @description OK */
+                200: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -13704,8 +13704,8 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description No Content */
-                204: {
+                /** @description OK */
+                200: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -28983,6 +28983,150 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portal/invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    status?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalInvoiceListItemDtoPagedResult"];
+                        "application/json": components["schemas"]["PortalInvoiceListItemDtoPagedResult"];
+                        "text/json": components["schemas"]["PortalInvoiceListItemDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/invoices/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalInvoiceDto"];
+                        "application/json": components["schemas"]["PortalInvoiceDto"];
+                        "text/json": components["schemas"]["PortalInvoiceDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/notice-prefs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalNoticePrefsDto"];
+                        "application/json": components["schemas"]["PortalNoticePrefsDto"];
+                        "text/json": components["schemas"]["PortalNoticePrefsDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PortalNoticePrefsRequest"];
+                    "text/json": components["schemas"]["PortalNoticePrefsRequest"];
+                    "application/*+json": components["schemas"]["PortalNoticePrefsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalNoticePrefsDto"];
+                        "application/json": components["schemas"]["PortalNoticePrefsDto"];
+                        "text/json": components["schemas"]["PortalNoticePrefsDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -33071,7 +33215,7 @@ export interface components {
         SalesDeliveryRequest: {
             /** Format: uuid */
             pickBatchPublicId?: string | null;
-            order?: components["schemas"]["OrderCreateRequest"] | null;
+            order?: components["schemas"]["OrderCreateRequest"];
         };
         SalesDispatchInfoDto: {
             /** Format: uuid */
@@ -33097,9 +33241,9 @@ export interface components {
             lotId?: number | null;
         };
         SalesDispatchRequest: {
-            delivery?: components["schemas"]["OrderCreateRequest"] | null;
             lines?: components["schemas"]["SalesDispatchLineRequest"][] | null;
             note?: string | null;
+            delivery?: components["schemas"]["OrderCreateRequest"];
         };
         SalesDispatchResultDto: {
             /** Format: uuid */
@@ -38161,6 +38305,7 @@ export interface components {
             timeline?: components["schemas"]["PortalOrderEventDto"][] | null;
             progress?: components["schemas"]["PortalProgressDto"];
             stepLabels?: string[] | null;
+            deliveryProof?: components["schemas"]["PortalDeliveryProofDto"];
         };
         PortalAuthConfigDto: {
             captchaEnabled?: boolean;
@@ -38882,6 +39027,104 @@ export interface components {
             notes?: string | null;
             /** Format: date-time */
             deliveredAtUtc?: string | null;
+        };
+        PortalDeliveryProofDto: {
+            /** Format: date-time */
+            deliveredAtUtc?: string;
+            recipientName?: string | null;
+            registeredByStaff?: boolean;
+            signedByRecipient?: boolean;
+            /** Format: double */
+            latitude?: number | null;
+            /** Format: double */
+            longitude?: number | null;
+        };
+        PortalInvoiceDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            /** Format: date */
+            issueDate?: string | null;
+            /** Format: date */
+            dueDate?: string | null;
+            currency?: string | null;
+            /** Format: double */
+            subtotal?: number;
+            /** Format: double */
+            taxAmount?: number;
+            /** Format: double */
+            total?: number;
+            /** Format: double */
+            paid?: number;
+            /** Format: double */
+            credited?: number;
+            /** Format: double */
+            balance?: number;
+            lines?: components["schemas"]["PortalInvoiceLineDto"][] | null;
+            payments?: components["schemas"]["PortalInvoicePaymentDto"][] | null;
+        };
+        PortalInvoiceLineDto: {
+            description?: string | null;
+            /** Format: double */
+            quantity?: number;
+            /** Format: double */
+            unitAmount?: number;
+            /** Format: double */
+            lineSubtotal?: number;
+            /** Format: double */
+            taxAmount?: number;
+            orderNumber?: string | null;
+        };
+        PortalInvoiceListItemDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            /** Format: date */
+            issueDate?: string | null;
+            /** Format: date */
+            dueDate?: string | null;
+            currency?: string | null;
+            /** Format: double */
+            total?: number;
+            /** Format: double */
+            paid?: number;
+            /** Format: double */
+            balance?: number;
+        };
+        PortalInvoiceListItemDtoPagedResult: {
+            items?: components["schemas"]["PortalInvoiceListItemDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        PortalInvoicePaymentDto: {
+            /** Format: date */
+            date?: string;
+            /** Format: double */
+            amount?: number;
+            methodLabel?: string | null;
+            reference?: string | null;
+        };
+        PortalNoticePrefDto: {
+            kind?: string | null;
+            emailAvailable?: boolean;
+            appAvailable?: boolean;
+            emailEnabled?: boolean;
+            appEnabled?: boolean;
+        };
+        PortalNoticePrefsDto: {
+            prefs?: components["schemas"]["PortalNoticePrefDto"][] | null;
+            emailConfigured?: boolean;
+        };
+        PortalNoticePrefsRequest: {
+            prefs?: components["schemas"]["PortalNoticePrefDto"][] | null;
         };
     };
     responses: never;

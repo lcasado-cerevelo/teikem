@@ -56,7 +56,17 @@ public sealed class PortalService(TeikemDbContext db, ITenantContext tenant, Use
         PortalOrderStopDto? Stop(OrderStopDto? s) => s is null ? null : new PortalOrderStopDto(s.Name, s.Line1, s.Line2, s.City, s.State, s.PostalCode);
         return new PortalOrderDto(o.PublicId, o.WaybillNumber ?? string.Empty, o.OrderNumber, o.ClientInvoiceNumber, o.ServiceTypeLabel, o.Status, o.StatusLabel, o.TotalPieces, o.TotalWeightKg, o.CodAmount,
             o.CodStatusLabel, o.RequestedDate, o.PromisedDate, o.CreatedAtUtc, Stop(o.Pickup), Stop(o.Delivery)!,
-            o.Packages.Select(p => new PortalOrderPackageDto(p.Description, p.Pieces, p.WeightKg)).ToList(), timeline, ProgressOf(avance), stepLabels);
+            o.Packages.Select(p => new PortalOrderPackageDto(p.Description, p.Pieces, p.WeightKg)).ToList(), timeline, ProgressOf(avance), stepLabels, await DeliveryProofAsync(o.Id, ct));
+    }
+
+    /// <summary>Lote 119: el comprobante de entrega de la orden (si lo tiene): quién recibió y cuándo; «registrada por el personal» sin decir quién; coordenadas solo si se encontraron.</summary>
+    private async Task<PortalDeliveryProofDto?> DeliveryProofAsync(int orderId, CancellationToken ct)
+    {
+        var p = await db.Set<Teikem.Domain.Orders.DeliveryProof>().AsNoTracking().Where(x => x.TransportOrderId == orderId && x.IsActive).FirstOrDefaultAsync(ct);
+        if (p is null) return null;
+        var located = p.GeoStatus is Teikem.Domain.Orders.DeliveryProofCodes.GeoOk or Teikem.Domain.Orders.DeliveryProofCodes.GeoFromStop && p.Latitude is not null && p.Longitude is not null;
+        return new PortalDeliveryProofDto(p.DeliveredAtUtc, p.RecipientName, p.Source == Teikem.Domain.Orders.DeliveryProofCodes.SourceStaffWeb, p.SignatureKind == Teikem.Domain.Orders.DeliveryProofCodes.SignatureRecipient,
+            located ? (double?)p.Latitude : null, located ? (double?)p.Longitude : null);
     }
 
     /// <summary>Inicio: total de órdenes del cliente, por estatus y las 5 más recientes.</summary>
@@ -81,6 +91,11 @@ public sealed class PortalService(TeikemDbContext db, ITenantContext tenant, Use
         take = Math.Clamp(take <= 0 ? 25 : take, 1, MaxTake);
         skip = Math.Max(0, skip);
         var q = db.Set<Teikem.Domain.Clients.ClientNotification>().AsNoTracking().Where(n => n.ClientId == cid && n.InPortal);
+        // Lote 119: lo que ESTA persona apagó en sus preferencias no se le muestra (la compañía decide qué se genera; la persona, qué quiere ver)
+        var userId = ((TenantContext)tenant).UserId;
+        var hidden = userId is null ? new List<string>() : await db.Set<Teikem.Domain.Clients.PortalNoticePref>().AsNoTracking()
+            .Where(p => !p.AppEnabled && db.Set<Teikem.Domain.Clients.PortalUser>().Any(u => u.PortalUserId == p.PortalUserId && u.UserId == userId && u.ClientId == cid)).Select(p => p.Kind).ToListAsync(ct);
+        if (hidden.Count > 0) q = q.Where(n => !hidden.Contains(n.Kind));
         var total = await q.CountAsync(ct);
         var rows = await q.OrderByDescending(n => n.CreatedAtUtc).ThenByDescending(n => n.ClientNotificationId).Skip(skip).Take(take).ToListAsync(ct);
         return new PagedResult<PortalNotificationDto>(rows.Select(n => new PortalNotificationDto(n.PublicId, n.Kind, n.Subject, n.BodyText, n.CreatedAtUtc)).ToList(), total, skip, take);

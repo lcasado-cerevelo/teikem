@@ -211,6 +211,36 @@ public sealed class ClientNotificationTests
     }
 
     [Fact]
+    public async Task A_portal_person_who_turned_the_email_of_that_notice_off_does_not_get_it_but_the_others_do()
+    {
+        var x = await NewWorldAsync();
+        await using var _ = x.F;
+        await x.Svc.SaveSettingsAsync(x.Client.PublicId, On("OUT_FOR_DELIVERY"), default);
+        var o1 = await OrderAsync(x, "O-1", 3);
+        await TripWithAsync(x, "RUT-1", o1);
+        var active = x.F.StatusId(StatusDomains.PortalUserStatus, PortalUserStatuses.Active);
+        var pat = new PortalUser { TenantId = WmsFixture.TenantId, ClientId = x.Client.ClientId, Email = "pat@cliente.co", FullName = "Pat", StatusCodeId = active, IsActive = true };
+        var sam = new PortalUser { TenantId = WmsFixture.TenantId, ClientId = x.Client.ClientId, Email = "sam@cliente.co", FullName = "Sam", StatusCodeId = active, IsActive = true };
+        x.F.Db.Set<PortalUser>().AddRange(pat, sam);
+        await x.F.Db.SaveChangesAsync();
+        // Sam apagó el correo de este aviso (y el de otro aviso que no es este: no cuenta); Pat no tocó nada
+        x.F.Db.Set<PortalNoticePref>().AddRange(
+            new PortalNoticePref { TenantId = WmsFixture.TenantId, PortalUserId = sam.PortalUserId, Kind = "OUT_FOR_DELIVERY", EmailEnabled = false, AppEnabled = true },
+            new PortalNoticePref { TenantId = WmsFixture.TenantId, PortalUserId = pat.PortalUserId, Kind = "DELIVERED", EmailEnabled = false, AppEnabled = true });
+        await x.F.Db.SaveChangesAsync();
+        var effect = new ClientNotificationOrderEffect(x.Svc);
+        await effect.OnTransitionedAsync(Ctx(StatusDomains.OrderStatus, EntityTypes.TransportOrder, o1.TransportOrderId, OrderStatuses.InTransit), default);
+        await x.F.Db.SaveChangesAsync();
+        x.Clock.Now = x.Clock.Now.AddMinutes(ClientNotificationRules.SettleMinutes + 1);
+
+        await x.Svc.DigestAsync(default);
+
+        Assert.Equal(new[] { "pat@cliente.co" }, x.Email.Sent.Select(s => s.To).Distinct().ToArray());
+        // el número que ve la compañía («llegaría a N usuarios») sigue contando a todos los usuarios activos
+        Assert.Equal(2, (await x.Svc.GetSettingsAsync(x.Client.PublicId, default)).PortalRecipients);
+    }
+
+    [Fact]
     public async Task Delivered_summary_adds_the_cod_collected_and_switching_it_off_meanwhile_drops_the_events()
     {
         var x = await NewWorldAsync();

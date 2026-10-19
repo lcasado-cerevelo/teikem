@@ -102,6 +102,11 @@ export function SettingsScreen() {
       </Card>
 
       <Card>
+        <Text style={{ fontWeight: '700', color: colors.text }}>{t('noticePrefs.title')}</Text>
+        <Muted>{t('settings.noticePrefsHelp')}</Muted>
+        <Button title={t('settings.noticePrefsOpen')} variant="secondary" onPress={() => router.push('/notice-prefs')} testID="settings-notice-prefs" />
+      </Card>
+      <Card>
         <Text style={{ fontWeight: '700', color: colors.text }}>{t('settings.security')}</Text>
         {support === 'ready' ? (
           <Check label={t('settings.biometric')} help={t('settings.biometricHelp')} value={lock.enabled} onChange={(v) => void toggleBiometric(v)} testID="settings-biometric" />

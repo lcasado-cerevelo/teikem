@@ -10,6 +10,10 @@ export type PortalSummaryDto = Schemas['PortalSummaryDto']
 export type PortalOrderListItemDto = Schemas['PortalOrderListItemDto']
 export type PortalOrderDto = Schemas['PortalOrderDto']
 export type PortalNotificationDto = Schemas['PortalNotificationDto']
+export type PortalInvoiceListItemDto = Schemas['PortalInvoiceListItemDto']
+export type PortalInvoiceDto = Schemas['PortalInvoiceDto']
+export type PortalNoticePrefDto = Schemas['PortalNoticePrefDto']
+export type PortalNoticePrefsDto = Schemas['PortalNoticePrefsDto']
 export type LegalDocumentDto = Schemas['LegalDocumentDto']
 export type LegalStatusDto = Schemas['LegalStatusDto']
 export type TrustedBrowserDto = Schemas['TrustedBrowserDto']
@@ -115,6 +119,15 @@ export const listOrders = (q: OrderQuery) =>
   unwrap(api.GET('/api/v1/portal/orders', { params: { query: { search: q.search || undefined, status: q.status || undefined, skip: q.skip ?? 0, take: q.take ?? PAGE_SIZE } } }))
 
 export const getOrder = (publicId: string) => unwrap(api.GET('/api/v1/portal/orders/{publicId}', { params: { path: { publicId } } }))
+
+/** Lote 119: mis facturas (solo lectura; sin borradores). `status` opcional: ISSUED, OVERDUE, PAID o VOID. */
+export const listInvoices = (status: string | undefined, skip = 0, take = PAGE_SIZE) =>
+  unwrap(api.GET('/api/v1/portal/invoices', { params: { query: { status: status || undefined, skip, take } } }))
+export const getInvoice = (publicId: string) => unwrap(api.GET('/api/v1/portal/invoices/{publicId}', { params: { path: { publicId } } }))
+
+/** Lote 119: mis preferencias de aviso (la compañía manda; yo solo apago lo que no quiero recibir). */
+export const getNoticePrefs = () => unwrap(api.GET('/api/v1/portal/notice-prefs'))
+export const saveNoticePrefs = (prefs: PortalNoticePrefDto[]) => unwrap(api.PUT('/api/v1/portal/notice-prefs', { body: { prefs } }))
 
 export const listNotifications = (skip = 0, take = PAGE_SIZE) => unwrap(api.GET('/api/v1/portal/notifications', { params: { query: { skip, take } } }))
 

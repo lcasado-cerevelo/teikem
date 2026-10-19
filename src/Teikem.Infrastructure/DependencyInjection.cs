@@ -301,6 +301,8 @@ public static class DependencyInjection
         services.Configure<Teikem.Infrastructure.Geocoding.GoogleMapsOptions>(config.GetSection(Teikem.Infrastructure.Geocoding.GoogleMapsOptions.Section));
         services.AddHttpClient<Teikem.Infrastructure.Geocoding.GoogleGeocoder>(c => c.Timeout = TimeSpan.FromSeconds(40)).RemoveAllLoggers();   // el registro estándar del cliente HTTP escribiría la URL: la llave y la dirección del consignatario
         services.AddScoped<DeliveryRegistrationService>();
+        services.AddScoped<PortalNoticePrefService>();   // Lote 119: preferencias de aviso de cada persona del portal
+        services.AddScoped<PortalInvoiceService>();   // Lote 119: facturas del cliente en su portal (solo lectura)
         services.AddSingleton<Teikem.Infrastructure.Geocoding.DeliveryGeocodeProcessor>();
         services.AddHostedService<Teikem.Infrastructure.Geocoding.DeliveryGeocodeWorker>();
         services.AddSingleton<NotificationProcessor>();

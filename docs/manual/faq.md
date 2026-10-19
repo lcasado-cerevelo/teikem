@@ -9302,3 +9302,21 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **El comprobante dice «Sin ubicación» o «No se pudo buscar».** La ubicación se busca aparte con Google, un solo intento de 30 segundos. Si Google está apagado en el servidor, la dirección no se encuentra, tarda más de 30 s o la llave falla, queda sin ubicación; la entrega vale igual. El administrador del servidor la enciende con `GoogleMaps:Enabled` y la llave en `GoogleMaps__ApiKey`.
 
 **¿Puedo adjuntar fotos a la entrega?** Todavía no: falta decidir dónde se guardan los archivos.
+
+## Portal del cliente: facturas, mis avisos y comprobante (Lote 119)
+
+**¿Puedo pagar o marcar como pagada una factura desde la app?** No: las facturas son solo de consulta. Los pagos los registra la compañía; en cuanto lo hace, la factura muestra el pago y el saldo.
+
+**Una factura mía no aparece en «Mis facturas».** Solo salen las facturas ya emitidas (no los borradores) y solo las de su cliente. Si la compañía no tiene el módulo de facturación encendido, la lista responde «El módulo 'BILLING' no está habilitado para esta compañía.».
+
+**¿Qué es «Mis avisos»?** En Ajustes → Configurar mis avisos usted decide qué avisos quiere recibir por correo y cuáles ver en la bandeja. La compañía decide qué avisos recibe su empresa; usted solo puede apagar los que no quiera.
+
+**«La compañía no tiene este aviso encendido para su empresa.»** Ese aviso (o ese medio) no está encendido para su cliente: no se puede encender desde la app. Pídale a la compañía que lo encienda en el expediente del cliente (Avisos al cliente).
+
+**Apagué el correo de un aviso y me sigue llegando.** Si el correo llega a una dirección que la compañía anotó como «correo extra» del aviso, no es suyo: siga igual. También puede tardar hasta el próximo resumen.
+
+**«El aviso 'X' no existe.»** (400) Solo hay cinco avisos: PICKED_UP, OUT_FOR_DELIVERY, DELIVERED, COD_PROCESSED e INVOICE_ISSUED.
+
+**¿Por qué el comprobante de entrega dice que el consignatario no firmó?** Porque la entrega la registró el personal de la compañía desde la web (con su permiso, la firma queda a nombre de la compañía). Cuando la entrega se registre con la app del chofer, la firma será de quien recibió.
+
+**¿Quién registró la entrega?** El comprobante del cliente no dice el nombre del usuario: solo «el personal de la compañía». La compañía sí lo ve en su ficha de la orden.

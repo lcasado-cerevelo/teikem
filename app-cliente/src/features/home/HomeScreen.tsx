@@ -51,6 +51,7 @@ export function HomeScreen() {
                 </View>
               </Card>
             )}
+            <Button title={t('home.invoices')} variant="secondary" onPress={() => router.push('/invoices')} testID="home-invoices" />
             <Text style={{ fontWeight: '700', fontSize: 16, color: colors.text, marginTop: 4 }}>{t('home.recent')}</Text>
             {(summary.data.recentOrders ?? []).length === 0 && <Muted>{t('home.noOrders')}</Muted>}
             {(summary.data.recentOrders ?? []).map((o) => (

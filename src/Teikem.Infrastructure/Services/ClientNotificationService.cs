@@ -36,7 +36,7 @@ public sealed class ClientNotificationService(TeikemDbContext db, ITenantContext
             var r = rows.FirstOrDefault(x => x.Kind == k);
             return new ClientNotificationSettingDto(k, r?.EmailEnabled ?? false, r?.AppEnabled ?? false, r?.SmsEnabled ?? false, r?.ExtraEmails, r?.ExtraPhones);
         }).ToList();
-        return new ClientNotificationSettingsDto(client.PublicId, client.Name, (await PortalEmailsAsync(client.ClientId, ct)).Count, email.IsConfigured, false, list);
+        return new ClientNotificationSettingsDto(client.PublicId, client.Name, (await PortalEmailsAsync(client.ClientId, null, ct)).Count, email.IsConfigured, false, list);
     }
 
     public async Task<ClientNotificationSettingsDto> SaveSettingsAsync(Guid clientPublicId, ClientNotificationSettingsRequest? req, CancellationToken ct)
@@ -76,11 +76,13 @@ public sealed class ClientNotificationService(TeikemDbContext db, ITenantContext
         return await GetSettingsAsync(clientPublicId, ct);
     }
 
-    private async Task<List<string>> PortalEmailsAsync(int clientId, CancellationToken ct)
+    private async Task<List<string>> PortalEmailsAsync(int clientId, string? kind, CancellationToken ct)
     {
         var activeId = await db.StatusCodes.AsNoTracking().Where(s => s.Entity == StatusDomains.PortalUserStatus && s.InternalCode == PortalUserStatuses.Active).Select(s => (int?)s.StatusCodeId).FirstOrDefaultAsync(ct);
         if (activeId is null) return new List<string>();
-        return await db.Set<PortalUser>().AsNoTracking().Where(p => p.ClientId == clientId && p.IsActive && p.StatusCodeId == activeId && p.Email != "").Select(p => p.Email).ToListAsync(ct);
+        // Lote 119: la persona que apagó el correo de este aviso en sus preferencias no lo recibe (la compañía manda: solo se apaga, nunca se enciende)
+        var optedOut = db.Set<PortalNoticePref>().AsNoTracking().Where(x => kind != null && x.Kind == kind && !x.EmailEnabled).Select(x => x.PortalUserId);
+        return await db.Set<PortalUser>().AsNoTracking().Where(p => p.ClientId == clientId && p.IsActive && p.StatusCodeId == activeId && p.Email != "" && !optedOut.Contains(p.PortalUserId)).Select(p => p.Email).ToListAsync(ct);
     }
 
     // ================================================================ capturar hechos (solo si el cliente tiene el aviso encendido)
@@ -161,7 +163,7 @@ public sealed class ClientNotificationService(TeikemDbContext db, ITenantContext
         });
         if (s.EmailEnabled)
         {
-            var to = (await PortalEmailsAsync(n.ClientId, ct)).Concat(ClientNotificationRules.ParseEmails(s.ExtraEmails)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            var to = (await PortalEmailsAsync(n.ClientId, n.Kind, ct)).Concat(ClientNotificationRules.ParseEmails(s.ExtraEmails)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
             if (to.Count == 0) Add(ClientNotificationChannels.Email, string.Empty, ClientNotificationDeliveryStatuses.Skipped, "No hay destinatarios: el cliente no tiene usuarios activos en el portal ni correos extra.");
             foreach (var r in to) Add(ClientNotificationChannels.Email, r, ClientNotificationDeliveryStatuses.Pending, null);
         }

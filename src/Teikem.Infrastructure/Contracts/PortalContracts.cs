@@ -56,7 +56,13 @@ public sealed record PortalOrderDto(
     IReadOnlyList<PortalOrderPackageDto> Packages,
     IReadOnlyList<PortalOrderEventDto> Timeline,
     PortalProgressDto? Progress = null,
-    IReadOnlyList<string>? StepLabels = null);
+    IReadOnlyList<string>? StepLabels = null,
+    PortalDeliveryProofDto? DeliveryProof = null);
+
+/// <summary>
+/// Lote 119 — el comprobante de entrega que ve el cliente: quién recibió y cuándo, si lo registró el personal de la compañía (sin nombre del usuario) y si el consignatario firmó, y la ubicación si se encontró. Sin notas internas.
+/// </summary>
+public sealed record PortalDeliveryProofDto(DateTime DeliveredAtUtc, string RecipientName, bool RegisteredByStaff, bool SignedByRecipient, double? Latitude, double? Longitude);
 
 /// <summary>Cuántas órdenes del cliente hay en cada estatus (para el inicio del portal).</summary>
 public sealed record PortalStatusCountDto(string Status, string StatusLabel, int Count);
@@ -92,3 +98,29 @@ public sealed record PortalOrderCreateRequest(
     string? Notes);
 
 public sealed record PortalOrderCreatedDto(Guid PublicId, string WaybillNumber, string OrderNumber, string Status, string StatusLabel);
+
+// Lote 119 (P10) — facturas del cliente en su portal (solo lectura).
+
+/// <summary>Una factura en la lista del portal: número, estatus, fechas, moneda y lo que va pagado y lo que se debe. Sin borradores.</summary>
+public sealed record PortalInvoiceListItemDto(Guid PublicId, string Number, string Status, string StatusLabel, DateOnly? IssueDate, DateOnly? DueDate, string Currency, decimal Total, decimal Paid, decimal Balance);
+
+public sealed record PortalInvoiceLineDto(string Description, decimal Quantity, decimal UnitAmount, decimal LineSubtotal, decimal TaxAmount, string? OrderNumber);
+
+public sealed record PortalInvoicePaymentDto(DateOnly Date, decimal Amount, string MethodLabel, string? Reference);
+
+/// <summary>La factura con sus líneas y los pagos recibidos (sin los anulados). Nunca trae notas internas ni el detalle de un ajuste de la oficina.</summary>
+public sealed record PortalInvoiceDto(Guid PublicId, string Number, string Status, string StatusLabel, DateOnly? IssueDate, DateOnly? DueDate, string Currency, decimal Subtotal, decimal TaxAmount, decimal Total,
+    decimal Paid, decimal Credited, decimal Balance, IReadOnlyList<PortalInvoiceLineDto> Lines, IReadOnlyList<PortalInvoicePaymentDto> Payments);
+
+// Lote 119 (P10) — preferencias de aviso de la persona del portal.
+
+/// <summary>
+/// Un aviso con lo que la compañía tiene encendido para este cliente (<c>EmailAvailable</c>, <c>AppAvailable</c>: el techo, no se cambia aquí) y lo que la persona quiere recibir (<c>EmailEnabled</c>, <c>AppEnabled</c>; por omisión sí).
+/// </summary>
+public sealed record PortalNoticePrefDto(string Kind, bool EmailAvailable, bool AppAvailable, bool EmailEnabled, bool AppEnabled);
+
+/// <summary>Los cinco avisos con la configuración de la persona. <c>EmailConfigured</c>: el servidor puede mandar correo.</summary>
+public sealed record PortalNoticePrefsDto(IReadOnlyList<PortalNoticePrefDto> Prefs, bool EmailConfigured);
+
+/// <summary>Lo que la persona quiere recibir de cada aviso; solo cuentan <c>Kind</c>, <c>EmailEnabled</c> y <c>AppEnabled</c>. Un aviso que no venga no cambia.</summary>
+public sealed record PortalNoticePrefsRequest(IList<PortalNoticePrefDto>? Prefs);

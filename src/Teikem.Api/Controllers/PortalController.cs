@@ -14,7 +14,7 @@ namespace Teikem.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/portal")]
-public sealed class PortalController(AuthService auth, PortalService portal, ClientMessagingService messages, PortalOrderEntryService entry) : ControllerBase
+public sealed class PortalController(AuthService auth, PortalService portal, ClientMessagingService messages, PortalOrderEntryService entry, PortalInvoiceService invoices, PortalNoticePrefService noticePrefs) : ControllerBase
 {
     /// <summary>
     /// Login del portal: correo y contraseña (+ cliente opcional). Puede responder: <c>ok</c> (tokens), <c>mfa_required</c> (segundo paso; con challenge), <c>browser_confirmation_required</c> (computadora nueva: se manda un correo) o
@@ -75,4 +75,20 @@ public sealed class PortalController(AuthService auth, PortalService portal, Cli
     /// <summary>Una orden mía con su línea de tiempo; 404 si es de otro cliente o no existe (igual respuesta).</summary>
     [HttpGet("orders/{publicId:guid}"), Authorize, RequireModule(ModuleKeys.ClientPortal)]
     public Task<PortalOrderDto> Order(Guid publicId, CancellationToken ct) => portal.GetOrderAsync(publicId, ct);
+
+    /// <summary>Lote 119 — mis facturas (solo lectura; sin borradores). Exige el módulo BILLING además del portal.</summary>
+    [HttpGet("invoices"), Authorize, RequireModule(ModuleKeys.ClientPortal)]
+    public Task<PagedResult<PortalInvoiceListItemDto>> Invoices([FromQuery] string? status, [FromQuery] int skip, [FromQuery] int take, CancellationToken ct) => invoices.ListAsync(status, skip, take, ct);
+
+    /// <summary>Una factura mía con sus líneas y pagos; 404 si es de otro cliente, es un borrador o no existe (igual respuesta).</summary>
+    [HttpGet("invoices/{publicId:guid}"), Authorize, RequireModule(ModuleKeys.ClientPortal)]
+    public Task<PortalInvoiceDto> Invoice(Guid publicId, CancellationToken ct) => invoices.GetAsync(publicId, ct);
+
+    /// <summary>Lote 119 — mis preferencias de aviso: por cada aviso, lo que la compañía tiene encendido para mi cliente y lo que yo quiero recibir (correo y bandeja).</summary>
+    [HttpGet("notice-prefs"), Authorize, RequireModule(ModuleKeys.ClientPortal)]
+    public Task<PortalNoticePrefsDto> NoticePrefs(CancellationToken ct) => noticePrefs.GetAsync(ct);
+
+    /// <summary>Guarda lo que quiero recibir de cada aviso: solo se puede APAGAR lo que la compañía encendió. 400 si un aviso no existe.</summary>
+    [HttpPut("notice-prefs"), Authorize, RequireModule(ModuleKeys.ClientPortal)]
+    public Task<PortalNoticePrefsDto> SaveNoticePrefs([FromBody] PortalNoticePrefsRequest? req, CancellationToken ct) => noticePrefs.SaveAsync(req, ct);
 }

@@ -4614,3 +4614,20 @@ FROM dbo.Role r
 JOIN dbo.Permission p ON p.Code = 'orders.deliver' AND r.Name = 'TenantAdmin'
 WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = p.PermissionId);
 GO
+
+/* =========================================================================
+   2026-10-18 (bc) — Lote 119 (P10): preferencias de aviso de cada persona del portal (dictado de Luis: una pantalla para configurarlo). La COMPAÑÍA decide qué avisos recibe el cliente y por qué canal (techo); cada persona del
+   portal solo puede APAGAR lo que quiera dejar de recibir: una fila por persona y aviso con sus interruptores (por omisión, encendido). Solo AGREGA. Idempotente.
+   ========================================================================= */
+IF OBJECT_ID(N'dbo.PortalNoticePref', N'U') IS NULL CREATE TABLE dbo.PortalNoticePref (
+    PortalNoticePrefId INT IDENTITY(1,1) PRIMARY KEY,
+    TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    PortalUserId INT NOT NULL REFERENCES dbo.PortalUser(PortalUserId),
+    Kind VARCHAR(30) NOT NULL,
+    EmailEnabled BIT NOT NULL CONSTRAINT DF_PortalNoticePref_Email DEFAULT 1,
+    AppEnabled BIT NOT NULL CONSTRAINT DF_PortalNoticePref_App DEFAULT 1,
+    UpdatedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_PortalNoticePref_Updated DEFAULT SYSUTCDATETIME()
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_PortalNoticePref' AND object_id = OBJECT_ID('dbo.PortalNoticePref')) CREATE UNIQUE INDEX UQ_PortalNoticePref ON dbo.PortalNoticePref(PortalUserId, Kind);
+GO

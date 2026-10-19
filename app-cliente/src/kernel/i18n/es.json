@@ -89,7 +89,8 @@
     "byStatus": "Por estatus",
     "recent": "Órdenes recientes",
     "noOrders": "Todavía no hay órdenes.",
-    "seeAll": "Ver todas las órdenes"
+    "seeAll": "Ver todas las órdenes",
+    "invoices": "Mis facturas"
   },
   "orders": {
     "title": "Mis órdenes",
@@ -114,7 +115,15 @@
     "delivery": "Entrega",
     "packages": "Paquetes",
     "timeline": "Seguimiento",
-    "noTimeline": "Todavía no hay cambios de estatus."
+    "noTimeline": "Todavía no hay cambios de estatus.",
+    "proof": {
+      "title": "Comprobante de entrega",
+      "recipient": "Recibió",
+      "at": "Entregada",
+      "byStaff": "La entrega la registró el personal de la compañía; el consignatario no firmó.",
+      "signedByRecipient": "Firmada por quien recibió.",
+      "map": "Ver en el mapa"
+    }
   },
   "notices": {
     "title": "Avisos",
@@ -145,8 +154,10 @@
     "computerExpires": "Vence: {date}",
     "remove": "Quitar",
     "logout": "Cerrar sesión",
-    "consigneeNoticesHelp": "Avisos por correo a los consignatarios que usted marque.",
-    "consigneeNoticesOpen": "Configurar avisos"
+    "consigneeNoticesHelp": "Su lista de consignatarios: marque a quién se le avisa por correo y dele acceso a su espacio.",
+    "consigneeNoticesOpen": "Ver mis consignatarios",
+    "noticePrefsHelp": "Qué avisos quiere recibir usted y por qué medio.",
+    "noticePrefsOpen": "Configurar mis avisos"
   },
   "install": {
     "title": "Poner en mi escritorio",
@@ -228,7 +239,7 @@
     "done": "Listo: no recibirá más avisos por este medio."
   },
   "consigneeNotices": {
-    "title": "Avisos a mis consignatarios",
+    "title": "Mis consignatarios",
     "help": "Los consignatarios que usted marque reciben un enlace para ver el avance de sus paquetes cuando salen en ruta, tienen un intento fallido o llegan a un estatus final.",
     "readOnly": "Su rol es de solo consulta: puede ver los avisos, no cambiarlos.",
     "noEmail": "El envío de correo todavía no está configurado en la compañía: los avisos quedarán pendientes.",
@@ -328,5 +339,54 @@
     "empty": "Todavía no hay envíos para usted.",
     "waybill": "Conduce {value}",
     "loadMore": "Ver más ({shown} de {total})"
+  },
+  "invoices": {
+    "title": "Mis facturas",
+    "detailTitle": "Factura",
+    "readOnly": "Aquí solo puede consultarlas. Los pagos los registra la compañía.",
+    "empty": "No hay facturas.",
+    "filter": {
+      "all": "Todas",
+      "ISSUED": "Emitidas",
+      "OVERDUE": "Vencidas",
+      "PAID": "Pagadas"
+    },
+    "balance": "Saldo: {amount}",
+    "issued": "Emitida {date}",
+    "due": "Vence {date}",
+    "issuedLabel": "Emitida",
+    "dueLabel": "Vence",
+    "subtotal": "Subtotal",
+    "tax": "Impuesto",
+    "total": "Total",
+    "paid": "Pagado",
+    "credited": "Acreditado",
+    "balanceLabel": "Saldo",
+    "lines": "Detalle",
+    "order": "orden {number}",
+    "payments": "Pagos recibidos"
+  },
+  "noticePrefs": {
+    "title": "Mis avisos",
+    "help": "La compañía decide qué avisos recibe su empresa y por qué medio. Aquí usted solo puede apagar los que no quiera recibir.",
+    "emailNotConfigured": "El envío de correo todavía no está configurado en el servidor: sus preferencias se guardan, pero no saldrán correos.",
+    "email": "Recibir por correo",
+    "inbox": "Verlo en la bandeja de avisos",
+    "channelOff": "La compañía no lo tiene encendido.",
+    "unavailable": "La compañía no tiene este aviso encendido para su empresa.",
+    "kind": {
+      "PICKED_UP": "Paquetes recogidos",
+      "OUT_FOR_DELIVERY": "Salida a entrega",
+      "DELIVERED": "Entregas",
+      "COD_PROCESSED": "Cobros contra entrega",
+      "INVOICE_ISSUED": "Factura emitida"
+    },
+    "kindHelp": {
+      "PICKED_UP": "Un resumen cuando se recogen sus paquetes.",
+      "OUT_FOR_DELIVERY": "Un resumen cuando sus paquetes salen en ruta.",
+      "DELIVERED": "Un resumen de lo entregado y lo que no se pudo entregar.",
+      "COD_PROCESSED": "Cuando se procesa el dinero cobrado por sus entregas.",
+      "INVOICE_ISSUED": "Cuando se emite una factura suya."
+    }
   }
 }

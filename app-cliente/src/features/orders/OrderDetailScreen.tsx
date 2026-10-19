@@ -1,6 +1,6 @@
 // Ficha de una orden: conduce, estatus, dirección de entrega, paquetes, COD y la línea de tiempo (cada cambio de estatus con su fecha). Una orden de otro cliente responde igual que una inexistente: «no encontrada».
 import { Stack, useLocalSearchParams } from 'expo-router'
-import { Text, View } from 'react-native'
+import { Linking, Text, View } from 'react-native'
 
 import { apiErrorMessage } from '../../kernel/api/client'
 import { useT } from '../../kernel/i18n/useT'
@@ -61,6 +61,17 @@ export function OrderDetailScreen() {
                 {(o.packages ?? []).map((p, i) => (
                   <Text key={i} style={{ color: colors.text }}>{`${p.pieces} × ${p.description}`}</Text>
                 ))}
+              </Card>
+            )}
+            {!!o.deliveryProof && (
+              <Card>
+                <Text style={{ fontWeight: '700', color: colors.text }}>{t('order.proof.title')}</Text>
+                <Row label={t('order.proof.recipient')} value={o.deliveryProof.recipientName} />
+                <Row label={t('order.proof.at')} value={formatDateTime(o.deliveryProof.deliveredAtUtc, lang)} />
+                <Muted>{o.deliveryProof.signedByRecipient ? t('order.proof.signedByRecipient') : o.deliveryProof.registeredByStaff ? t('order.proof.byStaff') : ''}</Muted>
+                {o.deliveryProof.latitude != null && o.deliveryProof.longitude != null && (
+                  <Button title={t('order.proof.map')} variant="link" onPress={() => void Linking.openURL(`https://www.google.com/maps?q=${o.deliveryProof!.latitude},${o.deliveryProof!.longitude}`)} testID="order-proof-map" />
+                )}
               </Card>
             )}
             <Card>

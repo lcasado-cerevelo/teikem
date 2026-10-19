@@ -89,7 +89,8 @@
     "byStatus": "By status",
     "recent": "Recent orders",
     "noOrders": "There are no orders yet.",
-    "seeAll": "See all orders"
+    "seeAll": "See all orders",
+    "invoices": "My invoices"
   },
   "orders": {
     "title": "My orders",
@@ -114,7 +115,15 @@
     "delivery": "Delivery",
     "packages": "Packages",
     "timeline": "Tracking",
-    "noTimeline": "There are no status changes yet."
+    "noTimeline": "There are no status changes yet.",
+    "proof": {
+      "title": "Proof of delivery",
+      "recipient": "Received by",
+      "at": "Delivered",
+      "byStaff": "The delivery was registered by the company staff; the consignee did not sign.",
+      "signedByRecipient": "Signed by the recipient.",
+      "map": "View on the map"
+    }
   },
   "notices": {
     "title": "Notices",
@@ -145,8 +154,10 @@
     "computerExpires": "Expires: {date}",
     "remove": "Remove",
     "logout": "Sign out",
-    "consigneeNoticesHelp": "Email notices to the consignees you mark.",
-    "consigneeNoticesOpen": "Set up notices"
+    "consigneeNoticesHelp": "Your list of consignees: mark who gets notices by email and give them access to their space.",
+    "consigneeNoticesOpen": "View my consignees",
+    "noticePrefsHelp": "Which notices you want to receive and how.",
+    "noticePrefsOpen": "Set up my notices"
   },
   "install": {
     "title": "Put it on my desktop",
@@ -228,7 +239,7 @@
     "done": "Done: you will not receive more notices through this medium."
   },
   "consigneeNotices": {
-    "title": "Notices to my consignees",
+    "title": "My consignees",
     "help": "The consignees you mark get a link to follow their packages when they go out on route, have a failed attempt or reach a final status.",
     "readOnly": "Your role is read-only: you can see the notices but not change them.",
     "noEmail": "Email sending is not configured yet for the company: notices will stay pending.",
@@ -328,5 +339,54 @@
     "empty": "There are no shipments for you yet.",
     "waybill": "Waybill {value}",
     "loadMore": "Show more ({shown} of {total})"
+  },
+  "invoices": {
+    "title": "My invoices",
+    "detailTitle": "Invoice",
+    "readOnly": "You can only view them here. Payments are recorded by the company.",
+    "empty": "There are no invoices.",
+    "filter": {
+      "all": "All",
+      "ISSUED": "Issued",
+      "OVERDUE": "Overdue",
+      "PAID": "Paid"
+    },
+    "balance": "Balance: {amount}",
+    "issued": "Issued {date}",
+    "due": "Due {date}",
+    "issuedLabel": "Issued",
+    "dueLabel": "Due",
+    "subtotal": "Subtotal",
+    "tax": "Tax",
+    "total": "Total",
+    "paid": "Paid",
+    "credited": "Credited",
+    "balanceLabel": "Balance",
+    "lines": "Details",
+    "order": "order {number}",
+    "payments": "Payments received"
+  },
+  "noticePrefs": {
+    "title": "My notices",
+    "help": "The company decides which notices your business receives and how. Here you can only turn off the ones you do not want.",
+    "emailNotConfigured": "Email sending is not configured on the server yet: your preferences are saved, but no emails will go out.",
+    "email": "Receive by email",
+    "inbox": "Show it in the notice inbox",
+    "channelOff": "The company has it turned off.",
+    "unavailable": "The company does not have this notice turned on for your business.",
+    "kind": {
+      "PICKED_UP": "Packages picked up",
+      "OUT_FOR_DELIVERY": "Out for delivery",
+      "DELIVERED": "Deliveries",
+      "COD_PROCESSED": "Cash on delivery",
+      "INVOICE_ISSUED": "Invoice issued"
+    },
+    "kindHelp": {
+      "PICKED_UP": "A summary when your packages are picked up.",
+      "OUT_FOR_DELIVERY": "A summary when your packages go out on a route.",
+      "DELIVERED": "A summary of what was delivered and what could not be.",
+      "COD_PROCESSED": "When the money collected on your deliveries is processed.",
+      "INVOICE_ISSUED": "When one of your invoices is issued."
+    }
   }
 }

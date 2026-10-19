@@ -161,3 +161,18 @@ public static class ClientNotificationRules
         return list;
     }
 }
+
+/// <summary>
+/// Lote 119 (P10) — preferencia de una persona del portal sobre UN aviso: la COMPAÑÍA decide qué avisos recibe el cliente y por qué canal (<see cref="ClientNotificationSetting"/>, el techo) y la persona solo puede APAGAR lo
+/// que no quiere recibir (correo y/o bandeja del portal). Sin fila, recibe todo lo que la compañía encendió. El SMS no es por persona (va a los teléfonos que la compañía anote).
+/// </summary>
+public class PortalNoticePref : ITenantScoped
+{
+    public int PortalNoticePrefId { get; set; }
+    public int TenantId { get; set; }
+    public int PortalUserId { get; set; }
+    public string Kind { get; set; } = string.Empty;
+    public bool EmailEnabled { get; set; } = true;
+    public bool AppEnabled { get; set; } = true;
+    [NotAudited] public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
+}

@@ -420,6 +420,33 @@ public class PortalAccessTests
     }
 
     [Fact]
+    public async Task The_portal_order_carries_the_delivery_proof_without_the_staff_name_or_internal_notes()
+    {
+        await using var f = await OrderReadFixture.CreateAsync();
+        var portal = PortalOf(f, f.C1.ClientId);
+        Assert.Null((await portal.GetOrderAsync(f.O1.PublicId, default)).DeliveryProof);       // sin entrega registrada no hay comprobante
+        f.Db.Set<Teikem.Domain.Orders.DeliveryProof>().Add(new Teikem.Domain.Orders.DeliveryProof
+        {
+            PublicId = Guid.NewGuid(), TenantId = f.O1.TenantId, TransportOrderId = f.O1.TransportOrderId, DeliveredAtUtc = new DateTime(2026, 10, 18, 20, 0, 0, DateTimeKind.Utc), RecipientName = "Ana Rivera",
+            Notes = "nota interna", RecordedBy = 5, SignedByUserId = 5, GeoStatus = Teikem.Domain.Orders.DeliveryProofCodes.GeoOk, Latitude = 18.4655m, Longitude = -66.1057m,
+        });
+        await f.Db.SaveChangesAsync();
+        var proof = (await portal.GetOrderAsync(f.O1.PublicId, default)).DeliveryProof;
+        Assert.NotNull(proof);
+        Assert.Equal("Ana Rivera", proof!.RecipientName);
+        Assert.True(proof.RegisteredByStaff);
+        Assert.False(proof.SignedByRecipient);                                                  // firmó el usuario, no el consignatario
+        Assert.Equal(18.4655, proof.Latitude);
+        // sin ubicación encontrada no se mandan coordenadas
+        var row = f.Db.Set<Teikem.Domain.Orders.DeliveryProof>().Single();
+        row.GeoStatus = Teikem.Domain.Orders.DeliveryProofCodes.GeoFailed; row.Latitude = null; row.Longitude = null;
+        await f.Db.SaveChangesAsync();
+        Assert.Null((await portal.GetOrderAsync(f.O1.PublicId, default)).DeliveryProof!.Latitude);
+        // otro cliente de la compañía no ve nada de esa orden
+        await Assert.ThrowsAsync<NotFoundException>(() => PortalOf(f, f.C2.ClientId).GetOrderAsync(f.O1.PublicId, default));
+    }
+
+    [Fact]
     public async Task The_client_scope_is_a_data_filter_too_not_only_a_check_in_the_service()
     {
         await using var f = await OrderReadFixture.CreateAsync();
@@ -433,7 +460,7 @@ public class PortalAccessTests
     public async Task Portal_dtos_do_not_carry_prices_internal_notes_routes_or_drivers()
     {
         var forbidden = new[] { "QuotedAmount", "Notes", "AssignedDriverName", "AssignedDriverCode", "AssignedTripCode", "AssignedTripPublicId", "ContractPublicId", "Capabilities", "RowVersion", "SourceEntityType", "SpecialServiceName", "ClientName" };
-        foreach (var type in new[] { typeof(PortalOrderDto), typeof(PortalOrderListItemDto), typeof(PortalOrderEventDto), typeof(PortalOrderStopDto), typeof(PortalOrderPackageDto) })
+        foreach (var type in new[] { typeof(PortalOrderDto), typeof(PortalOrderListItemDto), typeof(PortalOrderEventDto), typeof(PortalOrderStopDto), typeof(PortalOrderPackageDto), typeof(PortalDeliveryProofDto) })
             foreach (var name in forbidden) Assert.DoesNotContain(type.GetProperties(), p => p.Name == name);
         await using var f = await OrderReadFixture.CreateAsync();
         var dto = await PortalOf(f, f.C1.ClientId).GetOrderAsync(f.O1.PublicId, default);

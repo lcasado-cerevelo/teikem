@@ -94,6 +94,9 @@ function Gate() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="order/[id]" options={{ headerShown: true }} />
         <Stack.Screen name="order/new" options={{ headerShown: true, title: t('newOrder.title') }} />
+        <Stack.Screen name="invoices" options={{ headerShown: true, title: t('invoices.title') }} />
+        <Stack.Screen name="invoice/[id]" options={{ headerShown: true }} />
+        <Stack.Screen name="notice-prefs" options={{ headerShown: true, title: t('noticePrefs.title') }} />
         <Stack.Screen name="consignee-notices" options={{ headerShown: true, title: t('consigneeNotices.title') }} />
         <Stack.Screen name="consignee-messages/index" options={{ headerShown: true, title: t('consigneeMessages.title') }} />
         <Stack.Screen name="consignee-messages/[id]" options={{ headerShown: true, title: t('consigneeMessages.title') }} />
