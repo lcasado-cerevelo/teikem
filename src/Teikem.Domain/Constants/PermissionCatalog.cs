@@ -180,6 +180,14 @@ public static class PermissionCatalog
     /// </summary>
     public const string PrintersManage = "printers.manage";
     public const string JobsManage = "jobs.manage";
+    /// <summary>Lote 132 (P11): integraciones. Ver y su historial; crear (base) más un permiso por familia de alcances; administrar (editar, apagar, correr); y la bandeja de lo que no se pudo procesar.</summary>
+    public const string IntegrationsView = "integrations.view";
+    public const string IntegrationsCreate = "integrations.create";
+    public const string IntegrationsCreateTransport = "integrations.create.transport";
+    public const string IntegrationsCreateWarehouse = "integrations.create.warehouse";
+    public const string IntegrationsCreateFiles = "integrations.create.files";
+    public const string IntegrationsManage = "integrations.manage";
+    public const string IntegrationsInbox = "integrations.inbox";
     public const string NotificationsManage = "notifications.manage";
     /// <summary>Lote 54: enviar avisos a otras personas (a personas, roles o todos).</summary>
     public const string NotificationsSend = "notifications.send";
@@ -302,6 +310,13 @@ public static class PermissionCatalog
         // Lote 43 — impresoras y plantillas de label (2026-10-12, F-G1)
         new(PrintersManage, "ADMIN", "Gestionar impresoras y plantillas de label", "Manage printers & label templates"),
         new(JobsManage, "ADMIN", "Gestionar los trabajos programados", "Manage scheduled jobs"),
+        new(IntegrationsView, "ADMIN", "Ver las integraciones y su historial", "View integrations and their history"),
+        new(IntegrationsCreate, "ADMIN", "Crear integraciones (base; además el permiso de cada familia)", "Create integrations (base; plus each family's permission)"),
+        new(IntegrationsCreateTransport, "ADMIN", "Crear integraciones de transporte (órdenes, tracking, facturas, consignatarios, perfil)", "Create transport integrations (orders, tracking, invoices, consignees, profile)"),
+        new(IntegrationsCreateWarehouse, "ADMIN", "Crear integraciones de almacén (inventario, productos, recibo, despacho, ajustes, transferencias, órdenes de compra y venta)", "Create warehouse integrations (inventory, products, receiving, dispatch, adjustments, transfers, purchase and sales orders)"),
+        new(IntegrationsCreateFiles, "ADMIN", "Crear integraciones por archivo (carpeta, SFTP, correo)", "Create file integrations (folder, SFTP, email)"),
+        new(IntegrationsManage, "ADMIN", "Administrar integraciones (editar, apagar, correr ahora)", "Manage integrations (edit, turn off, run now)"),
+        new(IntegrationsInbox, "ADMIN", "Trabajar la bandeja de las integraciones (corregir, reprocesar, descartar)", "Work the integrations inbox (fix, reprocess, discard)"),
         new(NotificationsManage, "ADMIN", "Gestionar las reglas de aviso", "Manage notification rules"),
         new(NotificationsSend, "ADMIN", "Enviar avisos a otras personas", "Send notices to other people"),
         new(MessagesUse, "ADMIN", "Usar la mensajería interna", "Use internal messaging"),

@@ -1,0 +1,13 @@
+/* Integraciones (Lote 132) */
+.int-tabs{margin:12px 0}
+.int-inactive{margin-bottom:10px}
+.int-file{display:none}
+.int-files{list-style:none;margin:6px 0 0;padding:0;font-size:.9em}
+.int-files li{margin:2px 0}
+.int-scopes,.int-notify{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:12px 0}
+.int-scopes legend,.int-notify legend{padding:0 6px;font-weight:600}
+.int-opt{margin:6px 0}
+.int-users{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:4px 12px;max-height:180px;overflow:auto;margin-bottom:8px}
+.int-grid-wrap{overflow:auto;max-width:100%}
+.int-grid td input{min-width:90px;width:100%}
+.int-pager{display:flex;gap:10px;align-items:center;margin-top:10px}

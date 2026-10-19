@@ -1,0 +1,85 @@
+// Lote 132 — reglas puras de Integraciones: esquema del formulario con sus mensajes, cuerpos del API, horario y edición de celdas de la bandeja.
+import { describe, expect, it } from 'vitest'
+import { buildCreateRequest, buildPatchRequest, integrationSchema, integrationValuesOf, scheduleText, withCell, type IntegrationValues } from './integrationRules'
+
+const M = {
+  nameRequired: 'nombre', nameMax: 'max', clientRequired: 'cliente', templateRequired: 'plantilla', folderRequired: 'carpeta', folderInvalid: 'carpeta inválida', interval: 'intervalo', retention: 'retención', scopes: 'alcances',
+}
+const t = (key: string, p?: Record<string, string | number>) => (p ? `${key}:${Object.values(p).join(',')}` : key)
+const base: IntegrationValues = {
+  name: ' AxisCare ', description: ' ', clientPublicId: 'c1', templatePublicId: 't1', connectorKind: 'FOLDER', folder: ' axis_1 ', scheduleKind: 'INTERVAL', intervalMinutes: '5', scopes: ['files.orders_import'], notifyUserIds: [3], includeMe: true, retentionDays: '30',
+}
+
+describe('integrationSchema', () => {
+  const issues = (v: Partial<IntegrationValues>, editing = false) => {
+    const r = integrationSchema(M, editing).safeParse({ ...base, ...v })
+    return r.success ? [] : r.error.issues.map((i) => `${i.path.join('.')}:${i.message}`)
+  }
+
+  it('acepta un alta completa y exige nombre, cliente, plantilla y al menos un alcance', () => {
+    expect(issues({})).toEqual([])
+    expect(issues({ name: ' ', clientPublicId: '', templatePublicId: '', scopes: [] })).toEqual(['name:nombre', 'templatePublicId:plantilla', 'scopes:alcances', 'clientPublicId:cliente'])
+  })
+
+  it('en la edición no se exige el cliente (no se cambia)', () => {
+    expect(issues({ clientPublicId: '' }, true)).toEqual([])
+  })
+
+  it('la carpeta solo admite letras, números, guion y guion bajo y es obligatoria en el conector de carpeta', () => {
+    expect(issues({ folder: '' })).toEqual(['folder:carpeta'])
+    expect(issues({ folder: '../fuera' })).toEqual(['folder:carpeta inválida'])
+    expect(issues({ folder: 'a b' })).toEqual(['folder:carpeta inválida'])
+    expect(issues({ connectorKind: 'MANUAL', folder: '' })).toEqual([])
+  })
+
+  it('el intervalo va de 1 a 10080 minutos y la retención de 1 a 365 días', () => {
+    expect(issues({ intervalMinutes: '0' })).toEqual(['intervalMinutes:intervalo'])
+    expect(issues({ intervalMinutes: '10081' })).toEqual(['intervalMinutes:intervalo'])
+    expect(issues({ scheduleKind: 'MANUAL', intervalMinutes: 'x' })).toEqual([])
+    expect(issues({ retentionDays: '0' })).toEqual(['retentionDays:retención'])
+    expect(issues({ retentionDays: '366' })).toEqual(['retentionDays:retención'])
+    expect(issues({ retentionDays: '1.5' })).toEqual(['retentionDays:retención'])
+  })
+})
+
+describe('cuerpos del API', () => {
+  it('el alta manda el intervalo en segundos, la carpeta recortada y los avisos con «incluirme»', () => {
+    expect(buildCreateRequest(base)).toEqual({
+      name: 'AxisCare', description: null, clientPublicId: 'c1', connectorKind: 'FOLDER', folder: 'axis_1', templatePublicId: 't1', scheduleKind: 'INTERVAL', intervalSeconds: 300, scopes: ['files.orders_import'], notifyUserIds: [3], includeMe: true, retentionDays: 30,
+    })
+  })
+
+  it('una subida manual no lleva carpeta ni horario', () => {
+    expect(buildCreateRequest({ ...base, connectorKind: 'MANUAL', scheduleKind: 'INTERVAL' })).toMatchObject({ connectorKind: 'MANUAL', folder: null, scheduleKind: 'MANUAL' })
+    expect(buildCreateRequest({ ...base, connectorKind: 'MANUAL', scheduleKind: 'INTERVAL' })).not.toHaveProperty('intervalSeconds')
+  })
+
+  it('la edición manda lo que cambia sin el cliente ni el conector y «incluirme» solo si se marca', () => {
+    const patch = buildPatchRequest({ ...base, includeMe: false }, { connectorKind: 'FOLDER' })
+    expect(patch).toMatchObject({ name: 'AxisCare', description: '', templatePublicId: 't1', folder: 'axis_1', scheduleKind: 'INTERVAL', intervalSeconds: 300 })
+    expect(patch).not.toHaveProperty('clientPublicId')
+    expect(patch.includeMe).toBeUndefined()
+    expect(buildPatchRequest(base, { connectorKind: 'MANUAL' })).not.toHaveProperty('folder')
+  })
+
+  it('el formulario de edición parte de la integración guardada (minutos, no segundos)', () => {
+    const v = integrationValuesOf({ id: 1, name: 'X', connectorKind: 'FOLDER', folder: 'f', scheduleKind: 'INTERVAL', intervalSeconds: 3600, scopes: ['a'], notifyUsers: [{ id: 4 }], retentionDays: 10, clientPublicId: 'c', templatePublicId: 't' } as never)
+    expect(v).toMatchObject({ intervalMinutes: '60', scopes: ['a'], notifyUserIds: [4], retentionDays: '10', includeMe: false })
+    expect(integrationValuesOf(null)).toMatchObject({ connectorKind: 'FOLDER', scheduleKind: 'MANUAL', includeMe: true, retentionDays: '30' })
+  })
+})
+
+describe('horario y celdas', () => {
+  it('resume el horario en días, horas o minutos', () => {
+    expect(scheduleText({ scheduleKind: 'MANUAL', intervalSeconds: null }, t)).toBe('integrations.schedule.manual')
+    expect(scheduleText({ scheduleKind: 'INTERVAL', intervalSeconds: 300 }, t)).toBe('integrations.schedule.everyMinutes:5')
+    expect(scheduleText({ scheduleKind: 'INTERVAL', intervalSeconds: 7200 }, t)).toBe('integrations.schedule.everyHours:2')
+    expect(scheduleText({ scheduleKind: 'INTERVAL', intervalSeconds: 172800 }, t)).toBe('integrations.schedule.everyDays:2')
+  })
+
+  it('cambia una celda de una fila sin tocar las demás ni mutar', () => {
+    const rows = [{ row: 2, cells: ['a', 'b'] }, { row: 3, cells: ['c', 'd'] }]
+    expect(withCell(rows, 3, 1, 'X')).toEqual([{ row: 2, cells: ['a', 'b'] }, { row: 3, cells: ['c', 'X'] }])
+    expect(rows[1].cells[1]).toBe('d')
+  })
+})

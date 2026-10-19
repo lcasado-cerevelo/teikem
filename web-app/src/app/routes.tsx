@@ -406,7 +406,7 @@ export const appRoutes: readonly AppRoute[] = [
   { path: '/system/users', element: lazy(() => import('../features/system/UsersPage')), perm: 'admin.users|admin.roles', module: ModuleKeys.System, nav: { group: 'system', key: 'users', order: 20 } },
   { path: '/system/devices', element: lazy(() => import('../features/system/DevicesPage')), perm: 'devices.manage', module: ModuleKeys.WmsLotSerial, nav: { group: 'system', key: 'devices', order: 30 } },
   { path: '/system/catalogs', element: lazy(() => import('../features/system/CatalogsPage')), perm: 'admin.catalogs', module: ModuleKeys.System, nav: { group: 'system', key: 'catalogs', order: 40 } },
-  pending({ path: '/system/integrations', perm: 'admin.tenant', module: ModuleKeys.System, nav: { group: 'system', key: 'integrations', order: 50 } }),
+  { path: '/system/integrations', element: lazy(() => import('../features/integrations/IntegrationsScreen')), perm: 'integrations.view|integrations.inbox', module: ModuleKeys.Integrations, nav: { group: 'system', key: 'integrations', order: 50 } },   // Lote 132 (P11)
   { path: '/system/notifications', element: lazy(() => import('../features/notifications/NotificationRulesScreen')), perm: 'notifications.manage', module: ModuleKeys.System, nav: { group: 'system', key: 'notifications', order: 60 } },   // Lote 52
   { path: '/system/announcements', element: lazy(() => import('../features/notifications/AnnouncementsScreen')), perm: 'notifications.send', module: ModuleKeys.System, nav: { group: 'system', key: 'announcements', order: 70 } },   // Lote 54
   { path: '/system/jobs', element: lazy(() => import('../features/system/JobsScreen')), perm: 'jobs.manage', module: ModuleKeys.System, nav: { group: 'system', key: 'jobs', order: 80 } },   // Lote 50

@@ -42,4 +42,6 @@ public static class JobKeys
     public const string ClientNotificationDigest = "CLIENT_NOTIFICATION_DIGEST";
     /// <summary>Lote 116: manda los avisos pendientes a los consignatarios.</summary>
     public const string ConsigneeNoticeDispatch = "CONSIGNEE_NOTICE_DISPATCH";
+    /// <summary>Lote 132 (P11): corre las integraciones que tocan por horario y purga la bandeja vieja.</summary>
+    public const string IntegrationRunDue = "INTEGRATION_RUN_DUE";
 }

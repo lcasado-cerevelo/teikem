@@ -4760,3 +4760,158 @@ GO
 IF COL_LENGTH('dbo.ImportTemplate', 'LineRulesJson') IS NULL
     ALTER TABLE dbo.ImportTemplate ADD LineRulesJson NVARCHAR(MAX) NULL;
 GO
+
+/* =========================================================================
+   2026-10-19 (bj) — Lote 132 (P11): INTEGRACIONES. dbo.Integration (de dónde o a dónde van los datos, con qué plantilla y cuándo; con su CUENTA DE SERVICIO y su rol),
+   dbo.IntegrationRun (bitácora de corridas), dbo.IntegrationFileLog (archivos procesados con su hash SHA-256: el mismo contenido no se procesa dos veces) y dbo.IntegrationInboxItem
+   (la bandeja de lo que no se pudo procesar solo: motivo exacto y datos tal como llegaron, para corregir y reprocesar; el detalle se purga pasados los días de retención).
+   NotificationRule.ScopeKey: regla de aviso administrada por una integración (solo dispara con los avisos de esa integración).
+   Módulo INTEGRATIONS (apagado: se enciende por compañía) y permisos integrations.view / .create / .create.transport / .create.warehouse / .create.files / .manage / .inbox
+   -> TenantAdmin de la plantilla Y de los roles YA CLONADOS de cada compañía. EntityTypes INTEGRATION e INTEGRATION_INBOX. Solo AGREGA. Idempotente.
+   ========================================================================= */
+IF OBJECT_ID(N'dbo.Integration', N'U') IS NULL CREATE TABLE dbo.Integration (
+    IntegrationId       INT IDENTITY(1,1) CONSTRAINT PK_Integration PRIMARY KEY,
+    PublicId            UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_Integration_PublicId DEFAULT NEWID(),
+    TenantId            INT NOT NULL CONSTRAINT FK_Integration_Tenant REFERENCES dbo.Tenant(TenantId),
+    Name                NVARCHAR(120) NOT NULL,
+    Description         NVARCHAR(400) NULL,
+    Direction           VARCHAR(10) NOT NULL CONSTRAINT DF_Integration_Direction DEFAULT 'INBOUND',
+    ClientId            INT NULL CONSTRAINT FK_Integration_Client REFERENCES dbo.Client(ClientId),
+    ConnectorKind       VARCHAR(20) NOT NULL CONSTRAINT DF_Integration_Connector DEFAULT 'MANUAL',
+    ConnectorConfigJson NVARCHAR(MAX) NULL,
+    SecretEnc           VARBINARY(MAX) NULL,
+    ImportTemplateId    INT NULL CONSTRAINT FK_Integration_Template REFERENCES dbo.ImportTemplate(ImportTemplateId),
+    ScheduleKind        VARCHAR(10) NOT NULL CONSTRAINT DF_Integration_ScheduleKind DEFAULT 'MANUAL',
+    IntervalSeconds     INT NULL,
+    NextRunUtc          DATETIME2 NULL,
+    ScopesJson          NVARCHAR(MAX) NOT NULL CONSTRAINT DF_Integration_Scopes DEFAULT '[]',
+    ServiceUserId       INT NULL CONSTRAINT FK_Integration_ServiceUser REFERENCES dbo.AspNetUsers(Id),
+    ServiceRoleId       INT NULL CONSTRAINT FK_Integration_ServiceRole REFERENCES dbo.Role(RoleId),
+    NotifyUserIdsJson   NVARCHAR(MAX) NOT NULL CONSTRAINT DF_Integration_Notify DEFAULT '[]',
+    NotifyRuleId        INT NULL,
+    RetentionDays       INT NOT NULL CONSTRAINT DF_Integration_Retention DEFAULT 30,
+    IsActive            BIT NOT NULL CONSTRAINT DF_Integration_IsActive DEFAULT 1,
+    LastStartedUtc      DATETIME2 NULL,
+    LastFinishedUtc     DATETIME2 NULL,
+    LastStatus          VARCHAR(10) NOT NULL CONSTRAINT DF_Integration_LastStatus DEFAULT 'NEVER',
+    LastMessage         NVARCHAR(400) NULL,
+    LockedBy            NVARCHAR(80) NULL,
+    LockedUntilUtc      DATETIME2 NULL,
+    CreatedAtUtc        DATETIME2 NOT NULL CONSTRAINT DF_Integration_CreatedAtUtc DEFAULT SYSUTCDATETIME(),
+    CreatedBy           INT NULL CONSTRAINT FK_Integration_CreatedBy REFERENCES dbo.AspNetUsers(Id),
+    UpdatedAtUtc        DATETIME2 NULL,
+    UpdatedBy           INT NULL CONSTRAINT FK_Integration_UpdatedBy REFERENCES dbo.AspNetUsers(Id),
+    RowVersion          ROWVERSION,
+    CONSTRAINT UQ_Integration_Name UNIQUE (TenantId, Name),
+    CONSTRAINT UQ_Integration_PublicId UNIQUE (PublicId),
+    CONSTRAINT CK_Integration_Direction CHECK (Direction IN ('INBOUND', 'OUTBOUND')),
+    CONSTRAINT CK_Integration_Connector CHECK (ConnectorKind IN ('FOLDER', 'MANUAL', 'EMAIL', 'SFTP')),
+    CONSTRAINT CK_Integration_Schedule CHECK ((ScheduleKind = 'MANUAL' AND IntervalSeconds IS NULL) OR (ScheduleKind = 'INTERVAL' AND IntervalSeconds BETWEEN 60 AND 604800)),
+    CONSTRAINT CK_Integration_Status CHECK (LastStatus IN ('NEVER', 'RUNNING', 'OK', 'PARTIAL', 'FAILED')),
+    CONSTRAINT CK_Integration_Retention CHECK (RetentionDays BETWEEN 1 AND 365)
+);
+GO
+IF OBJECT_ID(N'dbo.IntegrationRun', N'U') IS NULL CREATE TABLE dbo.IntegrationRun (
+    IntegrationRunId    BIGINT IDENTITY(1,1) CONSTRAINT PK_IntegrationRun PRIMARY KEY,
+    TenantId            INT NOT NULL CONSTRAINT FK_IntegrationRun_Tenant REFERENCES dbo.Tenant(TenantId),
+    IntegrationId       INT NOT NULL CONSTRAINT FK_IntegrationRun_Integration REFERENCES dbo.Integration(IntegrationId),
+    StartedUtc          DATETIME2 NOT NULL CONSTRAINT DF_IntegrationRun_Started DEFAULT SYSUTCDATETIME(),
+    FinishedUtc         DATETIME2 NULL,
+    Status              VARCHAR(10) NOT NULL CONSTRAINT DF_IntegrationRun_Status DEFAULT 'RUNNING',
+    TriggeredBy         VARCHAR(10) NOT NULL CONSTRAINT DF_IntegrationRun_Trigger DEFAULT 'MANUAL',
+    TriggeredByUserId   INT NULL CONSTRAINT FK_IntegrationRun_User REFERENCES dbo.AspNetUsers(Id),
+    FilesRead           INT NOT NULL CONSTRAINT DF_IntegrationRun_Files DEFAULT 0,
+    OrdersCreated       INT NOT NULL CONSTRAINT DF_IntegrationRun_Orders DEFAULT 0,
+    Rejected            INT NOT NULL CONSTRAINT DF_IntegrationRun_Rejected DEFAULT 0,
+    Message             NVARCHAR(1000) NULL,
+    CONSTRAINT CK_IntegrationRun_Status CHECK (Status IN ('RUNNING', 'OK', 'PARTIAL', 'FAILED'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_IntegrationRun_Integration' AND object_id = OBJECT_ID('dbo.IntegrationRun'))
+    CREATE INDEX IX_IntegrationRun_Integration ON dbo.IntegrationRun(TenantId, IntegrationId, IntegrationRunId DESC);
+GO
+IF OBJECT_ID(N'dbo.IntegrationFileLog', N'U') IS NULL CREATE TABLE dbo.IntegrationFileLog (
+    IntegrationFileLogId BIGINT IDENTITY(1,1) CONSTRAINT PK_IntegrationFileLog PRIMARY KEY,
+    TenantId            INT NOT NULL CONSTRAINT FK_IntegrationFileLog_Tenant REFERENCES dbo.Tenant(TenantId),
+    IntegrationId       INT NOT NULL CONSTRAINT FK_IntegrationFileLog_Integration REFERENCES dbo.Integration(IntegrationId),
+    IntegrationRunId    BIGINT NOT NULL CONSTRAINT FK_IntegrationFileLog_Run REFERENCES dbo.IntegrationRun(IntegrationRunId),
+    FileName            NVARCHAR(260) NOT NULL,
+    Sha256              CHAR(64) NOT NULL,
+    SizeBytes           BIGINT NOT NULL CONSTRAINT DF_IntegrationFileLog_Size DEFAULT 0,
+    Result              VARCHAR(12) NOT NULL CONSTRAINT DF_IntegrationFileLog_Result DEFAULT 'PROCESSED',
+    Message             NVARCHAR(1000) NULL,
+    OrdersCreated       INT NOT NULL CONSTRAINT DF_IntegrationFileLog_Orders DEFAULT 0,
+    Rejected            INT NOT NULL CONSTRAINT DF_IntegrationFileLog_Rejected DEFAULT 0,
+    ProcessedUtc        DATETIME2 NOT NULL CONSTRAINT DF_IntegrationFileLog_Processed DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT CK_IntegrationFileLog_Result CHECK (Result IN ('PROCESSED', 'DUPLICATE', 'FAILED', 'REPROCESSED'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_IntegrationFileLog_Hash' AND object_id = OBJECT_ID('dbo.IntegrationFileLog'))
+    CREATE UNIQUE INDEX UX_IntegrationFileLog_Hash ON dbo.IntegrationFileLog(IntegrationId, Sha256) WHERE Result = 'PROCESSED';
+GO
+IF OBJECT_ID(N'dbo.IntegrationInboxItem', N'U') IS NULL CREATE TABLE dbo.IntegrationInboxItem (
+    IntegrationInboxItemId BIGINT IDENTITY(1,1) CONSTRAINT PK_IntegrationInboxItem PRIMARY KEY,
+    TenantId            INT NOT NULL CONSTRAINT FK_IntegrationInbox_Tenant REFERENCES dbo.Tenant(TenantId),
+    IntegrationId       INT NOT NULL CONSTRAINT FK_IntegrationInbox_Integration REFERENCES dbo.Integration(IntegrationId),
+    IntegrationRunId    BIGINT NOT NULL CONSTRAINT FK_IntegrationInbox_Run REFERENCES dbo.IntegrationRun(IntegrationRunId),
+    IntegrationFileLogId BIGINT NULL CONSTRAINT FK_IntegrationInbox_File REFERENCES dbo.IntegrationFileLog(IntegrationFileLogId),
+    SourceRow           INT NULL,
+    ReferenceKey        NVARCHAR(80) NULL,
+    Reason              NVARCHAR(1000) NOT NULL,
+    DataJson            NVARCHAR(MAX) NULL,
+    Status              VARCHAR(12) NOT NULL CONSTRAINT DF_IntegrationInbox_Status DEFAULT 'PENDING',
+    CreatedAtUtc        DATETIME2 NOT NULL CONSTRAINT DF_IntegrationInbox_Created DEFAULT SYSUTCDATETIME(),
+    ResolvedAtUtc       DATETIME2 NULL,
+    ResolvedBy          INT NULL CONSTRAINT FK_IntegrationInbox_ResolvedBy REFERENCES dbo.AspNetUsers(Id),
+    Note                NVARCHAR(400) NULL,
+    OrderPublicId       UNIQUEIDENTIFIER NULL,
+    RowVersion          ROWVERSION,
+    CONSTRAINT CK_IntegrationInbox_Status CHECK (Status IN ('PENDING', 'REPROCESSED', 'DISCARDED'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_IntegrationInbox_Status' AND object_id = OBJECT_ID('dbo.IntegrationInboxItem'))
+    CREATE INDEX IX_IntegrationInbox_Status ON dbo.IntegrationInboxItem(TenantId, IntegrationId, Status, IntegrationInboxItemId DESC);
+GO
+IF COL_LENGTH('dbo.NotificationRule', 'ScopeKey') IS NULL ALTER TABLE dbo.NotificationRule ADD ScopeKey VARCHAR(40) NULL;
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'INTEGRATION', N'{"es":"Integración","en":"Integration"}', 164),
+    (N'INTEGRATION_INBOX', N'{"es":"Bandeja de integración","en":"Integration inbox"}', 165)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+MERGE dbo.ModuleDefinition AS t
+USING (VALUES
+ ('INTEGRATIONS', N'Integraciones', N'Integrations', N'Entrada y salida de datos por carpeta, correo, SFTP y API, con bandeja de lo que no se pudo procesar', N'Sistema', NULL, 130)
+) AS s(ModuleKey, Name, NameEn, Description, Category, DependsOnModuleKey, SortOrder)
+ON t.ModuleKey = s.ModuleKey
+WHEN MATCHED THEN UPDATE SET Name = s.Name, NameEn = s.NameEn, Description = s.Description, Category = s.Category, DependsOnModuleKey = s.DependsOnModuleKey, SortOrder = s.SortOrder, IsActive = 1
+WHEN NOT MATCHED THEN INSERT (ModuleKey, Name, NameEn, Description, Category, DependsOnModuleKey, SortOrder) VALUES (s.ModuleKey, s.Name, s.NameEn, s.Description, s.Category, s.DependsOnModuleKey, s.SortOrder);
+GO
+-- Permisos (categoría ADMIN)
+MERGE dbo.Permission AS t
+USING (VALUES
+    ('integrations.view', N'{"es":"Ver las integraciones y su historial","en":"View integrations and their history"}'),
+    ('integrations.create', N'{"es":"Crear integraciones (base; además el permiso de cada familia)","en":"Create integrations (base; plus each family''s permission)"}'),
+    ('integrations.create.transport', N'{"es":"Crear integraciones de transporte (órdenes, tracking, facturas, consignatarios, perfil)","en":"Create transport integrations (orders, tracking, invoices, consignees, profile)"}'),
+    ('integrations.create.warehouse', N'{"es":"Crear integraciones de almacén (inventario, productos, recibo, despacho, ajustes, transferencias, órdenes de compra y venta)","en":"Create warehouse integrations (inventory, products, receiving, dispatch, adjustments, transfers, purchase and sales orders)"}'),
+    ('integrations.create.files', N'{"es":"Crear integraciones por archivo (carpeta, SFTP, correo)","en":"Create file integrations (folder, SFTP, email)"}'),
+    ('integrations.manage', N'{"es":"Administrar integraciones (editar, apagar, correr ahora)","en":"Manage integrations (edit, turn off, run now)"}'),
+    ('integrations.inbox', N'{"es":"Trabajar la bandeja de las integraciones (corregir, reprocesar, descartar)","en":"Work the integrations inbox (fix, reprocess, discard)"}')
+) AS s (Code, LabelJson)
+ON t.Code = s.Code
+WHEN NOT MATCHED THEN INSERT (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES (s.Code, (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'ADMIN'), s.LabelJson, 1);
+GO
+-- Plantilla de sistema (TenantId NULL) y roles ya clonados de cada compañía: TenantAdmin
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT r.RoleId, p.PermissionId
+FROM dbo.Role r
+JOIN dbo.Permission p ON p.Code LIKE 'integrations.%'
+WHERE r.Name IN ('TenantAdmin')
+  AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
+GO

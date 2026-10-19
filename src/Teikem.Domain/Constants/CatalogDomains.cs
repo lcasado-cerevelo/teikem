@@ -604,6 +604,9 @@ public static class EntityTypes
     public const string LabelTemplate = "LABEL_TEMPLATE";
     // Lote 50 (P2.2, 2026-10-14): trabajo programado de la compañía.
     public const string ScheduledJob = "SCHEDULED_JOB";
+    /// <summary>Lote 132 (P11): integraciones y su bandeja.</summary>
+    public const string Integration = "INTEGRATION";
+    public const string IntegrationInbox = "INTEGRATION_INBOX";
 }
 
 // ---------------- Lote 43 — Impresoras y labels (F-G1) ----------------
@@ -740,6 +743,8 @@ public static class ModuleKeys
     public const string SalesOrders = "SALES_ORDERS";
     public const string Tax = "TAX";
     public const string Billing = "BILLING";
+    /// <summary>Lote 132 (P11): integraciones (carpeta, subida manual y, después, SFTP, correo y API).</summary>
+    public const string Integrations = "INTEGRATIONS";
 }
 
 // ---------------- Lote 4 — Flota, choferes y mantenimiento ----------------

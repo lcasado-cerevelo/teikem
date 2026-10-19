@@ -29634,6 +29634,645 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/integrations/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["IntegrationOptionsDto"];
+                        "application/json": components["schemas"]["IntegrationOptionsDto"];
+                        "text/json": components["schemas"]["IntegrationOptionsDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    includeInactive?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["IntegrationDto"][];
+                        "application/json": components["schemas"]["IntegrationDto"][];
+                        "text/json": components["schemas"]["IntegrationDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["IntegrationCreateRequest"];
+                    "text/json": components["schemas"]["IntegrationCreateRequest"];
+                    "application/*+json": components["schemas"]["IntegrationCreateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["IntegrationDto"];
+                        "application/json": components["schemas"]["IntegrationDto"];
+                        "text/json": components["schemas"]["IntegrationDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["IntegrationPatchRequest"];
+                    "text/json": components["schemas"]["IntegrationPatchRequest"];
+                    "application/*+json": components["schemas"]["IntegrationPatchRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["IntegrationDto"];
+                        "application/json": components["schemas"]["IntegrationDto"];
+                        "text/json": components["schemas"]["IntegrationDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/integrations/{publicId}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["IntegrationDto"];
+                        "application/json": components["schemas"]["IntegrationDto"];
+                        "text/json": components["schemas"]["IntegrationDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/{publicId}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["IntegrationDto"];
+                        "application/json": components["schemas"]["IntegrationDto"];
+                        "text/json": components["schemas"]["IntegrationDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/{publicId}/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["IntegrationRunDto"];
+                        "application/json": components["schemas"]["IntegrationRunDto"];
+                        "text/json": components["schemas"]["IntegrationRunDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/{publicId}/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        file?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["IntegrationRunDto"];
+                        "application/json": components["schemas"]["IntegrationRunDto"];
+                        "text/json": components["schemas"]["IntegrationRunDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/{publicId}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    take?: number;
+                };
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["IntegrationRunDto"][];
+                        "application/json": components["schemas"]["IntegrationRunDto"][];
+                        "text/json": components["schemas"]["IntegrationRunDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/inbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    integration?: string;
+                    status?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["InboxPageDto"];
+                        "application/json": components["schemas"]["InboxPageDto"];
+                        "text/json": components["schemas"]["InboxPageDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/inbox/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    integration?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/inbox/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["InboxItemDto"];
+                        "application/json": components["schemas"]["InboxItemDto"];
+                        "text/json": components["schemas"]["InboxItemDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["InboxFixRequest"];
+                    "text/json": components["schemas"]["InboxFixRequest"];
+                    "application/*+json": components["schemas"]["InboxFixRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["InboxItemDto"];
+                        "application/json": components["schemas"]["InboxItemDto"];
+                        "text/json": components["schemas"]["InboxItemDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/integrations/inbox/{id}/reprocess": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["InboxReprocessResultDto"];
+                        "application/json": components["schemas"]["InboxReprocessResultDto"];
+                        "text/json": components["schemas"]["InboxReprocessResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/inbox/{id}/discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["InboxDiscardRequest"];
+                    "text/json": components["schemas"]["InboxDiscardRequest"];
+                    "application/*+json": components["schemas"]["InboxDiscardRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["InboxItemDto"];
+                        "application/json": components["schemas"]["InboxItemDto"];
+                        "text/json": components["schemas"]["InboxItemDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/{publicId}/inbox/reprocess-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["InboxReprocessResultDto"];
+                        "application/json": components["schemas"]["InboxReprocessResultDto"];
+                        "text/json": components["schemas"]["InboxReprocessResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -39818,6 +40457,184 @@ export interface components {
             position?: number;
             operator?: string | null;
             value?: string | null;
+        };
+        InboxItemDto: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: uuid */
+            integrationPublicId?: string;
+            integrationName?: string | null;
+            /** Format: int64 */
+            runId?: number;
+            fileName?: string | null;
+            /** Format: int32 */
+            sourceRow?: number | null;
+            referenceKey?: string | null;
+            reason?: string | null;
+            status?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            /** Format: date-time */
+            resolvedAtUtc?: string | null;
+            resolvedByName?: string | null;
+            note?: string | null;
+            /** Format: uuid */
+            orderPublicId?: string | null;
+            hasData?: boolean;
+            header?: string[] | null;
+            rows?: components["schemas"]["InboxRowDto"][] | null;
+        };
+        IntegrationRunDto: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: uuid */
+            integrationPublicId?: string;
+            integrationName?: string | null;
+            /** Format: date-time */
+            startedUtc?: string;
+            /** Format: date-time */
+            finishedUtc?: string | null;
+            status?: string | null;
+            triggeredBy?: string | null;
+            triggeredByName?: string | null;
+            /** Format: int32 */
+            filesRead?: number;
+            /** Format: int32 */
+            ordersCreated?: number;
+            /** Format: int32 */
+            rejected?: number;
+            message?: string | null;
+            files?: components["schemas"]["IntegrationFileDto"][] | null;
+        };
+        IntegrationDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            publicId?: string;
+            name?: string | null;
+            description?: string | null;
+            direction?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string | null;
+            clientName?: string | null;
+            connectorKind?: string | null;
+            folder?: string | null;
+            /** Format: uuid */
+            templatePublicId?: string | null;
+            templateName?: string | null;
+            scheduleKind?: string | null;
+            /** Format: int32 */
+            intervalSeconds?: number | null;
+            /** Format: date-time */
+            nextRunUtc?: string | null;
+            scopes?: string[] | null;
+            serviceUserName?: string | null;
+            notifyUsers?: components["schemas"]["IntegrationNotifyUserDto"][] | null;
+            /** Format: int32 */
+            retentionDays?: number;
+            isActive?: boolean;
+            /** Format: date-time */
+            lastStartedUtc?: string | null;
+            /** Format: date-time */
+            lastFinishedUtc?: string | null;
+            lastStatus?: string | null;
+            lastMessage?: string | null;
+            /** Format: int32 */
+            pendingInbox?: number;
+            /** Format: date-time */
+            createdAtUtc?: string;
+        };
+        InboxPageDto: {
+            items?: components["schemas"]["InboxItemDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            pending?: number;
+        };
+        IntegrationFileDto: {
+            /** Format: int64 */
+            id?: number;
+            fileName?: string | null;
+            result?: string | null;
+            /** Format: int64 */
+            sizeBytes?: number;
+            /** Format: int32 */
+            ordersCreated?: number;
+            /** Format: int32 */
+            rejected?: number;
+            message?: string | null;
+            /** Format: date-time */
+            processedUtc?: string;
+        };
+        InboxFixRequest: {
+            rows?: components["schemas"]["InboxRowDto"][] | null;
+        };
+        InboxRowDto: {
+            /** Format: int32 */
+            row?: number;
+            cells?: string[] | null;
+        };
+        IntegrationOptionsDto: {
+            scopes?: components["schemas"]["IntegrationScopeOptionDto"][] | null;
+            connectors?: string[] | null;
+            users?: components["schemas"]["IntegrationNotifyUserDto"][] | null;
+        };
+        InboxReprocessResultDto: {
+            /** Format: int32 */
+            reprocessed?: number;
+            /** Format: int32 */
+            stillPending?: number;
+            items?: components["schemas"]["InboxItemDto"][] | null;
+        };
+        InboxDiscardRequest: {
+            note?: string | null;
+        };
+        IntegrationPatchRequest: {
+            name?: string | null;
+            description?: string | null;
+            /** Format: uuid */
+            templatePublicId?: string | null;
+            folder?: string | null;
+            scheduleKind?: string | null;
+            /** Format: int32 */
+            intervalSeconds?: number | null;
+            scopes?: string[] | null;
+            notifyUserIds?: number[] | null;
+            includeMe?: boolean | null;
+            /** Format: int32 */
+            retentionDays?: number | null;
+        };
+        IntegrationCreateRequest: {
+            name?: string | null;
+            description?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+            connectorKind?: string | null;
+            folder?: string | null;
+            /** Format: uuid */
+            templatePublicId?: string;
+            scheduleKind?: string | null;
+            /** Format: int32 */
+            intervalSeconds?: number | null;
+            scopes?: string[] | null;
+            notifyUserIds?: number[] | null;
+            includeMe?: boolean;
+            /** Format: int32 */
+            retentionDays?: number | null;
+        };
+        IntegrationNotifyUserDto: {
+            /** Format: int32 */
+            id?: number;
+            name?: string | null;
+            email?: string | null;
+        };
+        IntegrationScopeOptionDto: {
+            code?: string | null;
+            family?: string | null;
+            label?: string | null;
+            moduleKey?: string | null;
+            available?: boolean;
+            unavailableReason?: string | null;
         };
     };
     responses: never;

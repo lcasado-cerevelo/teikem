@@ -57,6 +57,11 @@ public class NotificationRule : ITenantScoped, IAuditStamped
     public string EventCode { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public bool IsActive { get; set; }
+    /// <summary>
+    /// Lote 132: regla administrada por una integración («integration:{id}»). Solo dispara con los avisos de esa integración (la variable scopeKey del aviso); una regla sin
+    /// ScopeKey dispara con todos los avisos del evento, como siempre.
+    /// </summary>
+    public string? ScopeKey { get; set; }
     [NotAudited] public DateTime CreatedAtUtc { get; set; }
     public int? CreatedBy { get; set; }
     [NotAudited] public DateTime? UpdatedAtUtc { get; set; }

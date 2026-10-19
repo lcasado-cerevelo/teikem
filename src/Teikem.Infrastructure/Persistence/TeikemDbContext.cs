@@ -230,6 +230,11 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     // Lote 50 (P2.2) — trabajos programados por compañía
     public DbSet<Teikem.Domain.Jobs.ScheduledJob> ScheduledJobs => Set<Teikem.Domain.Jobs.ScheduledJob>();
     public DbSet<Teikem.Domain.Jobs.ScheduledJobRun> ScheduledJobRuns => Set<Teikem.Domain.Jobs.ScheduledJobRun>();
+    // Lote 132 (P11): integraciones
+    public DbSet<Teikem.Domain.Integrations.Integration> Integrations => Set<Teikem.Domain.Integrations.Integration>();
+    public DbSet<Teikem.Domain.Integrations.IntegrationRun> IntegrationRuns => Set<Teikem.Domain.Integrations.IntegrationRun>();
+    public DbSet<Teikem.Domain.Integrations.IntegrationFileLog> IntegrationFileLogs => Set<Teikem.Domain.Integrations.IntegrationFileLog>();
+    public DbSet<Teikem.Domain.Integrations.IntegrationInboxItem> IntegrationInboxItems => Set<Teikem.Domain.Integrations.IntegrationInboxItem>();
     // Lote 51 — avisos (reglas, cola, registro y bandeja)
     public DbSet<Teikem.Domain.Notifications.NotificationRule> NotificationRules => Set<Teikem.Domain.Notifications.NotificationRule>();
     public DbSet<Teikem.Domain.Notifications.NotificationRuleChannel> NotificationRuleChannels => Set<Teikem.Domain.Notifications.NotificationRuleChannel>();

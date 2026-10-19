@@ -111,6 +111,10 @@ public sealed class NotificationProcessor(IServiceScopeFactory scopes, Notificat
 
         var tenant = await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(t => t.TenantId == outbox.TenantId).Select(t => new { t.Name, t.DefaultLangCode }).SingleAsync(ct);
         var values = NotificationRules.ParseValues(outbox.PayloadJson);
+        // Lote 132: una regla administrada por una integración (ScopeKey) solo dispara con los avisos de esa integración
+        values.TryGetValue("scopeKey", out var scopeKey);
+        rules = rules.Where(r => r.ScopeKey is null || string.Equals(r.ScopeKey, scopeKey, StringComparison.Ordinal)).ToList();
+        if (rules.Count == 0) return false;
         var senders = sp.GetServices<INotificationChannelSender>().ToDictionary(s => s.Channel, StringComparer.Ordinal);
         var link = def.LinkTemplate is null ? null : NotificationRules.Render(def.LinkTemplate, values);
         var anyFailed = false;

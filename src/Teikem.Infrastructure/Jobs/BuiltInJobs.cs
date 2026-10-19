@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Teikem.Domain.Constants;
+using Teikem.Domain.Integrations;
 using Teikem.Infrastructure.Persistence;
 using Teikem.Infrastructure.Services;
 
@@ -234,5 +235,42 @@ public sealed class ConsigneeNoticeDispatchJob : IScheduledJob
         var service = context.Services.GetRequiredService<ConsigneeNoticeService>();
         var (sent, skipped, failed) = await service.DispatchAsync(ct);
         return sent + skipped + failed == 0 ? "Ningún aviso por mandar." : $"{sent} enviado(s), {skipped} omitido(s), {failed} con error.";
+    }
+}
+
+/// <summary>
+/// Lote 132 (P11) — corre las integraciones de entrada que tocan por horario (cada una con su cuenta de servicio) y purga el detalle de la bandeja pasada la retención.
+/// Corre cada minuto; una integración sin horario (manual) nunca corre sola.
+/// </summary>
+public sealed class IntegrationRunDueJob : IScheduledJob
+{
+    public string Key => JobKeys.IntegrationRunDue;
+    public string NameEs => "Integraciones por horario";
+    public string NameEn => "Scheduled integrations";
+    public string DescriptionEs => "Corre las integraciones de entrada que tocan por horario y purga los datos viejos de la bandeja.";
+    public string DescriptionEn => "Runs the inbound integrations that are due on their schedule and purges old inbox data.";
+    public string DefaultKind => JobScheduleKinds.Interval;
+    public int? DefaultIntervalSeconds => 60;
+    public TimeSpan? DefaultDailyAt => null;
+    public bool DefaultEnabled => true;
+    public TimeSpan MaxRuntime => TimeSpan.FromMinutes(10);
+
+    public async Task<string?> RunAsync(JobRunContext context, CancellationToken ct)
+    {
+        var modules = context.Services.GetRequiredService<ModuleService>();
+        if (!(await modules.GetEnabledKeysAsync(context.TenantId, ct)).Contains(ModuleKeys.Integrations)) return "El módulo de integraciones está apagado.";
+        var db = context.Services.GetRequiredService<TeikemDbContext>();
+        var runner = context.Services.GetRequiredService<IntegrationRunner>();
+        var inbox = context.Services.GetRequiredService<IntegrationInboxService>();
+        var due = await db.Integrations.AsNoTracking().Where(i => i.IsActive && i.ScheduleKind == IntegrationScheduleKinds.Interval && i.NextRunUtc <= context.NowUtc
+                && (i.LockedUntilUtc == null || i.LockedUntilUtc < context.NowUtc)).OrderBy(i => i.NextRunUtc).Select(i => i.PublicId).ToListAsync(ct);
+        int ran = 0, failed = 0;
+        foreach (var id in due)
+        {
+            try { await runner.RunAsync(id, IntegrationTriggers.Schedule, null, ct); ran++; }
+            catch (Exception ex) when (ex is not OperationCanceledException) { failed++; }
+        }
+        var purged = await inbox.PurgeExpiredAsync(ct);
+        return ran + failed + purged == 0 ? "Ninguna integración por correr." : $"{ran} integración(es) corrida(s), {failed} con error, {purged} ítem(s) de bandeja purgado(s).";
     }
 }

@@ -16,6 +16,7 @@ public sealed class NotificationRuleConfiguration : IEntityTypeConfiguration<Not
         b.Property(r => r.PublicId).HasDefaultValueSql("NEWID()").ValueGeneratedOnAdd();
         b.Property(r => r.EventCode).HasMaxLength(60).IsUnicode(false).IsRequired();
         b.Property(r => r.Name).HasMaxLength(100).IsRequired();
+        b.Property(r => r.ScopeKey).HasMaxLength(40).IsUnicode(false);   // Lote 132: regla administrada por una integración
         b.Property(r => r.RowVersion).IsRowVersion();
         b.HasMany(r => r.Channels).WithOne().HasForeignKey(c => c.NotificationRuleId).OnDelete(DeleteBehavior.Restrict);
         b.HasMany(r => r.Recipients).WithOne().HasForeignKey(c => c.NotificationRuleId).OnDelete(DeleteBehavior.Restrict);

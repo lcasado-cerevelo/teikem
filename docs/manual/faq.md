@@ -9470,3 +9470,29 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **¿Dónde queda la descripción («dron»)?** En la descripción de las líneas de carga de la orden, no como pieza. **¿Y la factura?** En el número de factura de la orden.
 
 **El número de orden o de factura «lo asigna Teikem».** Con varias líneas por orden el archivo trae el número de orden: en el cliente, marque que el cliente numera sus órdenes (y sus facturas, si el archivo las trae).
+
+## Integraciones y su bandeja (Lote 132)
+
+**¿Cómo conecto un cliente que me manda archivos?** Sistema → Integraciones / API → Nueva integración: cliente, plantilla de importación, carpeta de entrada (o subida manual), horario y a quién avisar. Necesita el permiso `integrations.create` más `integrations.create.files`.
+
+**«No puede dar el alcance «X»: le falta el permiso…» / «…usted no tiene los permisos…».** Quien crea una integración no puede darle más de lo que tiene. Pídale al administrador el permiso de esa familia (`integrations.create.files`, `.transport` o `.warehouse`) o que la cree él.
+
+**«La compañía no tiene el módulo que necesita «X».»** El alcance depende de un módulo que la compañía no tiene encendido (Sistema → Módulos).
+
+**«Ya existe una integración con ese nombre.» (409)** Use otro nombre.
+
+**«La integración ya se está ejecutando; espere a que termine.» (409)** Hay una corrida en curso; espere a que termine.
+
+**«La integración está apagada; enciéndala para correrla.» (422)** Encienda la integración en la lista.
+
+**«Ese tipo de conector todavía no está disponible.»** Correo y SFTP llegan en los lotes siguientes; por ahora carpeta de entrada y subida manual.
+
+**Subí un archivo y quedó «Repetido».** El mismo contenido ya se procesó (se compara el hash del archivo); no se duplican órdenes.
+
+**Una orden quedó en la bandeja.** Lea el motivo, corrija las celdas con «Corregir» y use «Guardar y reprocesar». Si el motivo es del catálogo o del cliente (un consignatario que faltaba, una plantilla), arréglelo y use «Reprocesar todo». Si no hace falta, descártela con una nota.
+
+**«Los datos de este ítem ya no se guardan…» (409).** Pasaron los días de retención de la integración (o el archivo no se pudo leer): descarte el ítem y pida el archivo de nuevo.
+
+**¿A quién le llega el aviso de una corrida?** A los usuarios que se marcaron en la integración (y a quien creó la integración solo si marcó «Incluirme»). Llega a la campanita y al correo cuando la corrida creó órdenes, mandó filas a la bandeja o falló.
+
+**¿Dónde queda el archivo ya procesado?** En la subcarpeta `procesados` de la carpeta de entrada (los que fallaron, en `errores`); nunca se borra.

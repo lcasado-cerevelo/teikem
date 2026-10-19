@@ -285,6 +285,12 @@ public static class DependencyInjection
         services.AddSingleton<IScheduledJob, KpiSnapshotJob>();   // Lote 90
         services.AddSingleton<IScheduledJob, ReportDeliveryJob>();   // Lote 92
         services.AddSingleton<IScheduledJob, ClientNotificationDigestJob>();   // Lote 98
+        services.AddSingleton<IScheduledJob, IntegrationRunDueJob>();   // Lote 132 (P11)
+        services.Configure<IntegrationOptions>(config.GetSection(IntegrationOptions.Section));
+        services.AddScoped<IntegrationNotifier>();
+        services.AddScoped<IntegrationService>();
+        services.AddScoped<IntegrationRunner>();
+        services.AddScoped<IntegrationInboxService>();
         services.AddSingleton<IScheduledJob, ConsigneeNoticeDispatchJob>();   // Lote 116
         services.AddSingleton<ScheduledJobRunner>();
         services.AddHostedService<ScheduledJobWorker>();
@@ -296,6 +302,7 @@ public static class DependencyInjection
         services.Configure<NotificationsOptions>(config.GetSection(NotificationsOptions.Section));
         services.AddSingleton<INotificationEventProvider, TestEventProvider>();
         services.AddSingleton<INotificationEventProvider, SalesEventProvider>();   // Lote 66
+        services.AddSingleton<INotificationEventProvider, IntegrationEventProvider>();   // Lote 132 (P11)
         services.AddSingleton<NotificationEventCatalog>();
         services.AddScoped<INotificationPublisher, NotificationPublisher>();
         services.AddScoped<INotificationChannelSender, EmailChannelSender>();

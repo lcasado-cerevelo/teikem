@@ -111,6 +111,7 @@ public sealed partial class AuthService(
         await users.ResetAccessFailedCountAsync(user);
         var kind = user.UserKindLookupId is null ? UserKinds.Internal : (await lookups.GetAsync(user.UserKindLookupId.Value, ct))?.InternalCode ?? UserKinds.Internal;
         if (kind == UserKinds.Portal) throw new UnauthorizedException("Los usuarios de portal se autentican en el portal de clientes.");
+        if (kind == UserKinds.Service) throw new UnauthorizedException(InvalidCredentials);   // Lote 132: la cuenta de servicio de una integración nunca inicia sesión
 
         // Tenant activo: pedido → predeterminado del usuario → membresía marcada como predeterminada → la primera por nombre.
         // Nunca se pregunta (pedido de Luis, 2026-09-30): se entra directo y la compañía se cambia desde el selector de la cabecera.
@@ -319,7 +320,7 @@ public sealed partial class AuthService(
         var user = req.UserId > 0 ? await users.FindByIdAsync(req.UserId.ToString()) : null;
         var kind = user?.UserKindLookupId is null ? UserKinds.Internal : (await lookups.GetAsync(user.UserKindLookupId.Value, ct))?.InternalCode ?? UserKinds.Internal;
         // El admin de plataforma nunca entra por aparato (sin contraseña ni MFA abriría todas las compañías).
-        if (user is null || !user.IsActive || user.IsPlatformAdmin || kind == UserKinds.Portal || !(await ActiveMembershipsAsync(user, ct)).Any(m => m.TenantId == tenantId))
+        if (user is null || !user.IsActive || user.IsPlatformAdmin || kind == UserKinds.Portal || kind == UserKinds.Service || !(await ActiveMembershipsAsync(user, ct)).Any(m => m.TenantId == tenantId))
         {
             // Sin enumeración de usuarios: el mismo 401 que un PIN incorrecto. El evento va a la bitácora de la compañía del
             // aparato: solo se liga al usuario si es (o fue) miembro de ella; si no, userId null (como el login con
