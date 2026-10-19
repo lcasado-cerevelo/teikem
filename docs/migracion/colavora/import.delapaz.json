@@ -1,0 +1,32 @@
+{
+  // Migración de Colavora Courier → Teikem: De La Paz Transport (CompanyID 10030). Decisiones de Luis en analisis.md §7.
+  // Uso: dotnet run --project src/Teikem.Api -- import-colavora docs/migracion/colavora/import.delapaz.json --dry-run
+  "company": {
+    "colavoraCompanyId": "10030",
+    "name": "De La Paz Transport",
+    "legalName": "De La Paz Transport Corp",
+    "lang": "es",
+    "modules": ["LTL_GROUND", "COD", "CLIENT_PORTAL", "CUSTOM_FIELDS", "BILLING"],
+    "adminEmail": "teikem+admin@cerevelo.com",
+    "adminFullName": "Administrador Teikem"
+  },
+  "sources": {
+    "courierConnectionStringName": "ColavoraCourier",
+    "loginConnectionStringName": "ColavoraCourierLogin"
+  },
+  "options": {
+    "pendingCloseDays": 5,
+    "excludeSenders": ["99999N", "10100A"],
+    "excludeSenderPatterns": ["-DEV", "-PCK", "SAMPLE:"],
+    "batchSize": 500,
+    "descriptionPackageTypes": [],
+    "podFilesDir": "F:\\Download\\TeikemMigracion\\colavora\\comprobantes\\delapaz",
+    "divisionFieldKey": "division",
+    "colavoraIdFieldKey": "colavora_id",
+    "driverEmailDomain": "choferes.delapaztransport.com"
+  },
+  "report": {
+    "outputDir": "F:\\Download\\TeikemMigracion\\colavora\\reportes",
+    "prefix": "colavora"
+  }
+}

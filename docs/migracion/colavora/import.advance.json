@@ -1,0 +1,36 @@
+{
+  // Migración de Colavora Courier → Teikem: Advance Logistics (CompanyID 10029). Decisiones de Luis en analisis.md §7.
+  // Uso: dotnet run --project src/Teikem.Api -- import-colavora docs/migracion/colavora/import.advance.json --dry-run
+  "company": {
+    "colavoraCompanyId": "10029",
+    "name": "Advance Logistics",
+    "legalName": "Advance Logistics",
+    "lang": "es",
+    "modules": ["LTL_GROUND", "COD", "CLIENT_PORTAL", "CUSTOM_FIELDS", "BILLING"],
+    "adminEmail": "teikem+admin@cerevelo.com",
+    "adminFullName": "Administrador Teikem"
+  },
+  "sources": {
+    // nombres de las cadenas en ConnectionStrings (variables de entorno ConnectionStrings__ColavoraCourier / __ColavoraCourierLogin)
+    "courierConnectionStringName": "ColavoraCourier",
+    "loginConnectionStringName": "ColavoraCourierLogin"
+  },
+  "options": {
+    "pendingCloseDays": 5,
+    "excludeSenders": ["99999"],
+    "excludeSenderPatterns": ["-DEV", "-PCK", "SAMPLE:"],
+    "batchSize": 500,
+    // P11 (2026-10-19): el tipo 5 «Drum» es el ÍTEM de AxisCare (código de producto, no pieza): va como descripción de la línea de carga
+    "descriptionPackageTypes": [5],
+    // D10: firmas y fotos de los comprobantes como archivos (carpeta por waybill); fuera del repositorio
+    "podFilesDir": "F:\\Download\\TeikemMigracion\\colavora\\comprobantes\\advance",
+    "divisionFieldKey": "division",
+    "colavoraIdFieldKey": "colavora_id",
+    // choferes cuyo username no es correo: se les inventa uno con este dominio para poder crearles el usuario de la app (vacío = chofer sin usuario)
+    "driverEmailDomain": "choferes.advancelogisticspr.com"
+  },
+  "report": {
+    "outputDir": "F:\\Download\\TeikemMigracion\\colavora\\reportes",
+    "prefix": "colavora"
+  }
+}

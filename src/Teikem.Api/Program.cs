@@ -186,6 +186,12 @@ if (args.Contains(LegacyImportRunner.Verb, StringComparer.OrdinalIgnoreCase))
     Environment.ExitCode = await app.Services.GetRequiredService<LegacyImportRunner>().RunAsync(args);
     return;
 }
+// --- Modo CLI (2026-10-18): `dotnet run -- import-colavora <config.json> [--dry-run] [--solo …] [--desde N] [--hasta N]` migra una compañía de Colavora Courier ---
+if (args.Contains(Teikem.Infrastructure.Migration.Colavora.ColavoraImportRunner.Verb, StringComparer.OrdinalIgnoreCase))
+{
+    Environment.ExitCode = await app.Services.GetRequiredService<Teikem.Infrastructure.Migration.Colavora.ColavoraImportRunner>().RunAsync(args);
+    return;
+}
 if (app.Configuration.GetValue<bool>("Database:InitOnStartup"))
     await app.Services.GetRequiredService<DatabaseInitializer>().RunAsync();
 
