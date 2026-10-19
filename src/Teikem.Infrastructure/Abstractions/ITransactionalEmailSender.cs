@@ -1,4 +1,4 @@
-using System.Net.Http.Json;
+﻿using System.Net.Http.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -46,6 +46,14 @@ public sealed class BrevoEmailSender(HttpClient http, IConfiguration config, ILo
 
     public bool IsConfigured => !string.IsNullOrWhiteSpace(ApiKey) && !string.IsNullOrWhiteSpace(FromEmail);
 
+    /// <summary>Email:RedirectTo (2026-10-19): en test todo el correo va al buzón de Cerevelo; la etiqueta del asunto sale de Hosting:EnvironmentLabel.</summary>
+    private EmailRedirectOptions Redirect()
+    {
+        var o = config.GetSection(EmailRedirectOptions.Section).Get<EmailRedirectOptions>() ?? new EmailRedirectOptions();
+        if (string.IsNullOrWhiteSpace(o.Label)) o.Label = config["Hosting:EnvironmentLabel"];
+        return o;
+    }
+
     public async Task SendAsync(string toEmail, string? toName, string subject, string htmlContent, CancellationToken ct, string? companyName = null)
     {
         if (!IsConfigured)
@@ -53,6 +61,9 @@ public sealed class BrevoEmailSender(HttpClient http, IConfiguration config, ILo
             logger.LogWarning("Sin Brevo configurado (Brevo__ApiKey / Brevo__FromEmail): el correo '{Subject}' para {Email} no se envió.", subject, toEmail);
             return;
         }
+        var r = EmailRedirectRules.Apply(Redirect(), toEmail, toName, subject, htmlContent);
+        if (r.Redirected) logger.LogInformation("Correo '{Subject}' para {Email} redirigido a {Target} (Email:RedirectTo, ambiente de pruebas).", subject, toEmail, r.ToEmail);
+        toEmail = r.ToEmail; toName = r.ToName; subject = r.Subject; htmlContent = r.HtmlContent;
         using var req = new HttpRequestMessage(HttpMethod.Post, "https://api.brevo.com/v3/smtp/email");
         req.Headers.Add("api-key", ApiKey);
         req.Headers.Add("accept", "application/json");

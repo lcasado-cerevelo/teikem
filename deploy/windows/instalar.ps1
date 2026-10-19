@@ -25,6 +25,9 @@
             -OrigenesExtra <url,...>: orígenes adicionales permitidos (CORS), p. ej. el portal del cliente en otro dominio.
             -ConDescargas: copia la carpeta «descargas» del paquete (página de descarga de las apps) a wwwroot\descargas; los APK ya subidos
                 (wwwroot\descargas\apk) se conservan entre actualizaciones y los del paquete, si trae, los reemplazan.
+            -CorreoRedirigir <buzón>: TODO el correo que salga de este sitio va a ese buzón (Email:RedirectTo) con el destinatario original en el
+                asunto; nadie real lo recibe. -CorreoRedirigirExcepto <dominio,...>: dominios que sí reciben de verdad (los códigos del equipo).
+                Solo para ambientes de pruebas; en producción no se usa.
 #>
 param(
     [string]$Sitio = 'Teikem',
@@ -37,7 +40,9 @@ param(
     [switch]$LetsEncrypt,
     [string]$CorreoLetsEncrypt = '',
     [string[]]$OrigenesExtra = @(),
-    [switch]$ConDescargas
+    [switch]$ConDescargas,
+    [string]$CorreoRedirigir = '',
+    [string[]]$CorreoRedirigirExcepto = @()
 )
 
 $ErrorActionPreference = 'Stop'
@@ -249,6 +254,14 @@ $etiquetaAmbiente = if ($Etiqueta) { $Etiqueta.Trim().ToUpperInvariant() } elsei
 if ($etiquetaAmbiente) {
     if (-not $jc.Hosting) { $jc | Add-Member -NotePropertyName Hosting -NotePropertyValue ([pscustomobject]@{}) }
     if ($jc.Hosting.EnvironmentLabel -ne $etiquetaAmbiente) { $jc.Hosting | Add-Member -NotePropertyName EnvironmentLabel -NotePropertyValue $etiquetaAmbiente -Force; $cambiado = $true }
+}
+# Redirección de todo el correo (2026-10-19, ambientes de pruebas): Email:RedirectTo / ExceptDomains. Se escribe (o reemplaza) cada vez que se pasa la opción.
+if ($CorreoRedirigir) {
+    if ($Sitio -eq 'Teikem') { Fallar 'La redirección de correo (-CorreoRedirigir) no se usa en el sitio de producción.' }
+    $redir = [pscustomobject]@{ RedirectTo = $CorreoRedirigir.Trim(); PlusAddressing = $true; ExceptDomains = @($CorreoRedirigirExcepto | Where-Object { $_ } | ForEach-Object { $_.Trim().TrimStart('@') }) }
+    $jc | Add-Member -NotePropertyName Email -NotePropertyValue $redir -Force
+    $cambiado = $true
+    Ok "Correo: todo lo que salga de este sitio va a $($redir.RedirectTo)$(if ($redir.ExceptDomains.Count) { " (salvo @$($redir.ExceptDomains -join ', @'))" })."
 }
 # Orígenes extra de CORS (p. ej. el portal del cliente en otro dominio): se agregan a los que ya hay, sin repetir.
 if ($OrigenesExtra.Count -gt 0) {

@@ -13,6 +13,9 @@
     3) Certificados de Let's Encrypt de los dos nombres con win-acme (se descarga si falta) y su tarea programada de renovación automática;
        redirección de http a https.
   Requisitos: el DNS de test.advancelogisticspr.com y test-portal.advancelogisticspr.com apunta a este servidor y el puerto 80 llega desde Internet.
+    4) Correo: TODO lo que salga de test (clientes, consignatarios, staff) va al buzón teikem@cerevelo.com (con dirección «más» por destinatario:
+       teikem+cliente_suempresa.com@cerevelo.com, y «[TEST → quien@era.com]» en el asunto); nadie real recibe nada. Excepción: los correos
+       a @cerevelo.com llegan a cada quien (códigos de MFA y primer ingreso del equipo). Cámbielo con -CorreoRedirigir y -CorreoRedirigirExcepto.
   Opciones: -SinBase, -RespaldoHecho (igual que instalar.ps1), -CorreoLetsEncrypt <correo>, -SinPortal (no instala el portal).
 #>
 param(
@@ -24,6 +27,8 @@ param(
     [string]$CarpetaPortal = 'C:\inetpub\teikem-test-portal',
     [string]$DbNombre = 'Teikem_Test',
     [string]$CorreoLetsEncrypt = '',
+    [string]$CorreoRedirigir = 'teikem@cerevelo.com',
+    [string[]]$CorreoRedirigirExcepto = @('cerevelo.com'),
     [switch]$SinBase,
     [switch]$RespaldoHecho,
     [switch]$SinPortal
@@ -52,11 +57,13 @@ Write-Host 'AMBIENTE DE TEST' -ForegroundColor Red
 Write-Host "  API + web:  https://$Dominio   (sitio $Sitio, $Carpeta, base $DbNombre)"
 if (-not $SinPortal) { Write-Host "  Portal:     https://$DominioPortal   (sitio $SitioPortal, $CarpetaPortal)" }
 Write-Host "  Descargas:  https://$Dominio/descargas/"
+Write-Host "  Correo:     todo a $CorreoRedirigir$(if ($CorreoRedirigirExcepto.Count) { " (salvo @$($CorreoRedirigirExcepto -join ', @'))" }); nadie real recibe"
 
 # --------------------------------------------------------------------------------------------------------- 1. API + web + base
 Paso "1/3 API, web y base de datos ($Sitio)"
 $args_ = @('-Sitio', $Sitio, '-Carpeta', $Carpeta, '-Dominio', $Dominio, '-DbNombre', $DbNombre, '-Etiqueta', 'TEST',
     '-LetsEncrypt', '-CorreoLetsEncrypt', $CorreoLetsEncrypt, '-ConDescargas')
+if ($CorreoRedirigir) { $args_ += @('-CorreoRedirigir', $CorreoRedirigir); if ($CorreoRedirigirExcepto.Count) { $args_ += @('-CorreoRedirigirExcepto', ($CorreoRedirigirExcepto -join ',')) } }
 if (-not $SinPortal) { $args_ += @('-OrigenesExtra', "https://$DominioPortal") }
 if ($SinBase) { $args_ += '-SinBase' }
 if ($RespaldoHecho) { $args_ += '-RespaldoHecho' }
