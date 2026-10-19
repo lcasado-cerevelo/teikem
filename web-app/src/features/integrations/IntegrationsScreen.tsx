@@ -12,10 +12,12 @@ import { IconClock, IconSwap } from '../../kernel/ui/screenIcons'
 import { ApiKeysModal } from './ApiKeysModal'
 import { InboxTab } from './InboxTab'
 import { OutboxTab } from './OutboxTab'
+import { OutputPreviewModal } from './OutputPreviewModal'
+import { OutputsPanel } from './OutputsPanel'
 import { WebhooksModal } from './WebhooksModal'
 import { IntegrationFormModal } from './IntegrationFormModal'
 import { FILE_TONE, RUN_TONE, scheduleText } from './integrationRules'
-import { useIntegrationMutations, useIntegrationRuns, useIntegrations, useOutbox, type IntegrationDto, type IntegrationRunDto } from './integrationsApi'
+import { useIntegrationMutations, useIntegrationRuns, useIntegrations, useOutbox, useOutputs, type IntegrationDto, type IntegrationRunDto } from './integrationsApi'
 import './integrations.css'
 
 const NO_ROWS: IntegrationDto[] = []
@@ -84,11 +86,12 @@ export default function IntegrationsScreen() {
   const [history, setHistory] = useState<IntegrationDto | null>(null)
   const [keysFor, setKeysFor] = useState<IntegrationDto | null>(null)
   const [hooksFor, setHooksFor] = useState<IntegrationDto | null>(null)
+  const [previewFor, setPreviewFor] = useState<IntegrationDto | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploadFor, setUploadFor] = useState<IntegrationDto | null>(null)
   const wanted = params.get('tab')
   const tab: Tab = wanted === 'inbox' && canInbox ? 'inbox' : wanted === 'outbox' && canInbox ? 'outbox' : 'integrations'
-  const undelivered = useOutbox('', 'UNDELIVERED', 0, 1).data?.undelivered ?? 0
+  const undelivered = (useOutbox('', 'UNDELIVERED', 0, 1).data?.undelivered ?? 0) + (useOutputs('', 'UNDELIVERED', 0, 1).data?.undelivered ?? 0)
   const inboxIntegration = params.get('integration') ?? ''
   const rows = list.data ?? NO_ROWS
   const pendingTotal = rows.reduce((n, i) => n + (i.pendingInbox ?? 0), 0)
@@ -154,7 +157,7 @@ export default function IntegrationsScreen() {
         header: t('integrations.col.connector'),
         cell: (i) => (
           <>
-            {t(`integrations.connector.${i.connectorKind}`)}
+            {i.direction === 'OUTBOUND' && <Chip tone="route">{t('integrations.direction.OUTBOUND')}</Chip>} {t(`integrations.connector.${i.connectorKind}`)}
             {i.folder && <div className="help mono">{i.folder}</div>}
           </>
         ),
@@ -227,7 +230,10 @@ export default function IntegrationsScreen() {
       {tab === 'inbox' ? (
         <InboxTab integration={inboxIntegration} onIntegration={setIntegrationFilter} />
       ) : tab === 'outbox' ? (
-        <OutboxTab integration={inboxIntegration} onIntegration={setIntegrationFilter} />
+        <>
+          <OutboxTab integration={inboxIntegration} onIntegration={setIntegrationFilter} />
+          <OutputsPanel integration={inboxIntegration} onIntegration={setIntegrationFilter} />
+        </>
       ) : (
         <Panel flush icon={<IconSwap />} title={t('integrations.panel')} badge={list.isPending ? undefined : rows.length}>
           <div className="pb">
@@ -256,7 +262,14 @@ export default function IntegrationsScreen() {
                     label: t('integrations.runNow'),
                     icon: <IconPlay />,
                     onClick: (i) => void act(run.mutateAsync(i.publicId!), t('integrations.ran', { name: i.name ?? '' })),
-                    visible: (i) => canManage && !!i.isActive && (i.connectorKind === 'FOLDER' || i.connectorKind === 'EMAIL' || i.connectorKind === 'SFTP' || i.connectorKind === 'FTP') && i.lastStatus !== 'RUNNING',
+                    visible: (i) => canManage && !!i.isActive && i.direction !== 'OUTBOUND' && (i.connectorKind === 'FOLDER' || i.connectorKind === 'EMAIL' || i.connectorKind === 'SFTP' || i.connectorKind === 'FTP') && i.lastStatus !== 'RUNNING',
+                  },
+                  {
+                    key: 'send',
+                    label: t('integrations.out.sendNow'),
+                    icon: <IconPlay />,
+                    onClick: (i) => void act(run.mutateAsync(i.publicId!), t('integrations.ran', { name: i.name ?? '' })),
+                    visible: (i) => canManage && !!i.isActive && i.direction === 'OUTBOUND' && i.lastStatus !== 'RUNNING',
                   },
                   {
                     key: 'upload',
@@ -266,8 +279,9 @@ export default function IntegrationsScreen() {
                       setUploadFor(i)
                       fileRef.current?.click()
                     },
-                    visible: (i) => canManage && !!i.isActive && i.connectorKind !== 'API',
+                    visible: (i) => canManage && !!i.isActive && i.connectorKind !== 'API' && i.direction !== 'OUTBOUND',
                   },
+                  { key: 'outpreview', label: t('integrations.out.preview'), icon: <IconPlay />, onClick: (i) => setPreviewFor(i), visible: (i) => canManage && i.direction === 'OUTBOUND' },
                   { key: 'keys', label: t('integrations.api.open'), icon: <IconPlus />, onClick: (i) => setKeysFor(i), visible: (i) => canManage && i.connectorKind === 'API' },
                   { key: 'hooks', label: t('integrations.hooks.open'), icon: <IconPlus />, onClick: (i) => setHooksFor(i), visible: (i) => canManage && i.connectorKind === 'API' && (i.scopes ?? []).includes('webhooks:manage') },
                   {
@@ -279,7 +293,7 @@ export default function IntegrationsScreen() {
                         .mutateAsync(i.publicId!)
                         .then((r) => (r.ok ? toast.success(r.message ?? '') : toast.error(r.message ?? '')))
                         .catch((e) => toast.error(applyProblemDetails(e).title)),
-                    visible: (i) => canManage && (i.connectorKind === 'EMAIL' || i.connectorKind === 'SFTP' || i.connectorKind === 'FTP'),
+                    visible: (i) => canManage && (i.connectorKind === 'EMAIL' || i.connectorKind === 'SFTP' || i.connectorKind === 'FTP' || i.connectorKind === 'HTTP'),
                   },
                   { key: 'history', label: t('integrations.history.open'), icon: <IconClock />, onClick: (i) => setHistory(i) },
                   { key: 'edit', label: t('integrations.edit'), icon: <IconEdit />, onClick: (i) => setEditing(i), visible: () => canManage },
@@ -306,6 +320,7 @@ export default function IntegrationsScreen() {
         }}
       />
       {editing && <IntegrationFormModal key={editing === 'new' ? 'new' : editing.publicId} integration={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />}
+      {previewFor && <OutputPreviewModal key={previewFor.publicId} integration={previewFor} onClose={() => setPreviewFor(null)} />}
       {hooksFor && <WebhooksModal key={hooksFor.publicId} integration={hooksFor} onClose={() => setHooksFor(null)} />}
       {keysFor && <ApiKeysModal key={keysFor.publicId} integration={keysFor} onClose={() => setKeysFor(null)} />}
       {history && <HistoryModal key={history.publicId} integration={history} onClose={() => setHistory(null)} />}

@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildEmailConfig, emailIssues, emailValuesOf, emptyBodyField, emptyEmail, parseBlockColumns, parseSenders, parseTypes, type EmailMessages, type EmailValues } from './emailRules'
 import { emptyFormat } from './formatRules'
+import { emptyOutput } from './outputRules'
 import { emptyRemote } from './remoteRules'
 import { buildCreateRequest, buildPatchRequest, integrationSchema, type IntegrationValues } from './integrationRules'
 
@@ -83,7 +84,7 @@ describe('cuerpo del API', () => {
 describe('formulario de integración con correo', () => {
   const base: IntegrationValues = {
     name: 'Truss', description: '', clientPublicId: 'c1', templatePublicId: 't1', connectorKind: 'EMAIL', folder: '', scheduleKind: 'INTERVAL', intervalMinutes: '5', scopes: ['files.orders_import'], notifyUserIds: [], includeMe: true,
-    retentionDays: '30', email: ok(), remote: emptyRemote('SFTP'), format: emptyFormat(),
+    retentionDays: '30', email: ok(), remote: emptyRemote('SFTP'), format: emptyFormat(), direction: 'INBOUND', output: emptyOutput(),
   }
   const em = { hasSavedPassword: false, messages: M }
 

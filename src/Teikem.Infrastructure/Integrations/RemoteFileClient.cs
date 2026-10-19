@@ -13,6 +13,8 @@ public interface IRemoteSession : IAsyncDisposable
     Task<byte[]> DownloadAsync(string dir, string name, CancellationToken ct);
     /// <summary>Mueve el archivo a otra carpeta remota (se crea si falta). Si ya hay uno con ese nombre se le pone la fecha por delante.</summary>
     Task MoveAsync(string dir, string name, string toDir, CancellationToken ct);
+    /// <summary>Sube un archivo a la carpeta remota (Lote 137b, salida): primero con un nombre provisional («.part») y al terminar le pone el nombre final, para que quien lo recoge nunca lo vea a medias. Nunca pisa un archivo que ya exista (le pone la fecha por delante).</summary>
+    Task UploadAsync(string dir, string name, byte[] content, CancellationToken ct);
 }
 
 /// <summary>
@@ -106,6 +108,16 @@ internal sealed class SftpSession(SftpClient client) : IRemoteSession
         client.RenameFile(RemoteRules.Combine(dir, name), to);
     }, ct);
 
+    public Task UploadAsync(string dir, string name, byte[] content, CancellationToken ct) => Task.Run(() =>
+    {
+        if (!string.IsNullOrWhiteSpace(dir) && !client.Exists(dir)) client.CreateDirectory(dir);
+        var final = RemoteRules.Combine(dir, name);
+        if (client.Exists(final)) final = RemoteRules.Combine(dir, $"{DateTime.UtcNow:yyyyMMddHHmmss}-{name}");
+        var part = final + ".part";
+        using (var ms = new MemoryStream(content)) client.UploadFile(ms, part, true);
+        client.RenameFile(part, final);
+    }, ct);
+
     public ValueTask DisposeAsync()
     {
         try { if (client.IsConnected) client.Disconnect(); } catch (Exception) { /* cerrar nunca debe fallar */ }
@@ -161,6 +173,16 @@ internal sealed class FtpSession(AsyncFtpClient client) : IRemoteSession
         var to = RemoteRules.Combine(target, name);
         if (await client.FileExists(to, ct)) to = RemoteRules.Combine(target, $"{DateTime.UtcNow:yyyyMMddHHmmss}-{name}");
         await client.MoveFile(RemoteRules.Combine(dir, name), to, FtpRemoteExists.Overwrite, ct);
+    }
+
+    public async Task UploadAsync(string dir, string name, byte[] content, CancellationToken ct)
+    {
+        var final = RemoteRules.Combine(dir, name);
+        if (await client.FileExists(final, ct)) final = RemoteRules.Combine(dir, $"{DateTime.UtcNow:yyyyMMddHHmmss}-{name}");
+        var part = final + ".part";
+        var status = await client.UploadBytes(content, part, FtpRemoteExists.Overwrite, true, null, ct);
+        if (status == FtpStatus.Failed) throw new IOException($"No se pudo subir {name}.");
+        await client.MoveFile(part, final, FtpRemoteExists.Overwrite, ct);
     }
 
     public async ValueTask DisposeAsync()

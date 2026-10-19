@@ -19,7 +19,7 @@ namespace Teikem.Api.Controllers;
 [Route("api/v1/integrations")]
 [Authorize]
 [RequireModule(ModuleKeys.Integrations)]
-public sealed class IntegrationsController(IntegrationService integrations, IntegrationRunner runner, IntegrationInboxService inbox, ApiKeyService apiKeys, WebhookService webhooks, ITenantContext tenant) : ControllerBase
+public sealed class IntegrationsController(IntegrationService integrations, IntegrationRunner runner, IntegrationInboxService inbox, ApiKeyService apiKeys, WebhookService webhooks, IntegrationOutputService outputs, ITenantContext tenant) : ControllerBase
 {
     /// <summary>Lo que quien mira puede dar en el alta: alcances (y por qué alguno no se puede), conectores y a quién avisar.</summary>
     [HttpGet("options"), RequirePermission(PermissionCatalog.IntegrationsCreate + "|" + PermissionCatalog.IntegrationsManage)]
@@ -92,7 +92,8 @@ public sealed class IntegrationsController(IntegrationService integrations, Inte
 
     /// <summary>Prueba la conexión de la integración (correo, SFTP o FTP) sin tocar los correos ni los archivos; en SFTP devuelve la huella que presenta el servidor para fijarla.</summary>
     [HttpPost("{publicId:guid}/test-connection"), RequirePermission(PermissionCatalog.IntegrationsManage)]
-    public Task<ConnectionTestDto> TestConnection(Guid publicId, CancellationToken ct) => integrations.TestConnectionAsync(publicId, ct);
+    public async Task<ConnectionTestDto> TestConnection(Guid publicId, CancellationToken ct)
+        => (await integrations.GetAsync(publicId, ct)).ConnectorKind == IntegrationConnectorKinds.Http ? await outputs.TestHttpAsync(publicId, ct) : await integrations.TestConnectionAsync(publicId, ct);   // HTTP (API saliente): manda un cuerpo de prueba
 
     /// <summary>Historial de corridas con sus archivos (las más recientes primero; hasta 100).</summary>
     [HttpGet("{publicId:guid}/runs"), RequirePermission(PermissionCatalog.IntegrationsView)]
@@ -166,6 +167,25 @@ public sealed class IntegrationsController(IntegrationService integrations, Inte
     /// <summary>Descarta una salida que ya no se quiere entregar.</summary>
     [HttpPost("outbox/{id:long}/discard"), RequirePermission(PermissionCatalog.IntegrationsInbox)]
     public Task<WebhookDeliveryDto> DiscardOutbox(long id, CancellationToken ct) => webhooks.DiscardAsync(id, ct);
+
+    // ---------------------------------------------------------------- integraciones de salida (Lote 137b)
+
+    /// <summary>Arma el contenido de ejemplo de la salida con órdenes recientes del cliente, sin mandar nada.</summary>
+    [HttpPost("{publicId:guid}/output/preview"), RequirePermission(PermissionCatalog.IntegrationsManage)]
+    public Task<OutputPreviewDto> PreviewOutput(Guid publicId, CancellationToken ct) => outputs.PreviewAsync(publicId, ct);
+
+    /// <summary>Los envíos de las integraciones de salida (filtros: integración y estatus PENDING / SENT / UNDELIVERED / DISCARDED); «undelivered» = los que esperan atención.</summary>
+    [HttpGet("outputs"), RequirePermission(PermissionCatalog.IntegrationsInbox)]
+    public Task<OutputPageDto> Outputs([FromQuery] Guid? integration, [FromQuery] string? status, [FromQuery] int skip, [FromQuery] int take, CancellationToken ct)
+        => outputs.ListAsync(integration, status, skip, take, ct);
+
+    /// <summary>Reintenta un envío no entregado (vuelve a pendiente con los intentos en cero).</summary>
+    [HttpPost("outputs/{id:long}/retry"), RequirePermission(PermissionCatalog.IntegrationsInbox)]
+    public Task<OutputItemDto> RetryOutput(long id, CancellationToken ct) => outputs.RetryAsync(id, ct);
+
+    /// <summary>Descarta un envío que ya no se quiere mandar.</summary>
+    [HttpPost("outputs/{id:long}/discard"), RequirePermission(PermissionCatalog.IntegrationsInbox)]
+    public Task<OutputItemDto> DiscardOutput(long id, CancellationToken ct) => outputs.DiscardAsync(id, ct);
 
     // ---------------------------------------------------------------- bandeja
 

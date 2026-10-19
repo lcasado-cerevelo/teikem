@@ -301,6 +301,13 @@ public static class DependencyInjection
         services.AddScoped<IStatusTransitionEffect, WebhookOrderEffect>();
         services.AddScoped<IStatusTransitionEffect, WebhookInvoiceEffect>();
         services.AddSingleton<IScheduledJob, WebhookDeliveryJob>();
+        // Lote 137b (P11): integraciones de salida (SFTP/FTP y API saliente HTTP), con cola por estatus, reintentos y bandeja de salidas
+        services.AddScoped<OutputRecorder>();
+        services.AddScoped<OutputBuilder>();
+        services.AddScoped<OutputSender>();
+        services.AddScoped<IntegrationOutputService>();
+        services.AddScoped<IStatusTransitionEffect, OutputOrderEffect>();
+        services.AddSingleton<IScheduledJob, IntegrationOutputJob>();
         services.AddSingleton<Teikem.Infrastructure.Security.ISecretProtector, Teikem.Infrastructure.Security.SecretProtector>();   // Lote 133: secretos de conectores cifrados
         services.AddSingleton<Teikem.Infrastructure.Integrations.IMailboxReader, Teikem.Infrastructure.Integrations.ImapMailboxReader>();
         services.AddSingleton<Teikem.Infrastructure.Integrations.IRemoteFileClient, Teikem.Infrastructure.Integrations.RemoteFileClient>();   // Lote 134: SFTP/FTP

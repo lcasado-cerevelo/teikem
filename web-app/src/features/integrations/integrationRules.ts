@@ -4,6 +4,7 @@ import type { ChipTone } from '../../kernel/ui'
 import { buildRemoteConfig, buildRemoteSecret, emptyRemote, remoteIssues, remoteValuesOf, type RemoteMessages, type RemoteValues } from './remoteRules'
 import { buildEmailConfig, emailIssues, emailValuesOf, emptyEmail, type EmailMessages, type EmailValues } from './emailRules'
 import { buildFormatConfig, emptyFormat, formatIsPlain, formatIssues, formatValuesOf, type FormatMessages, type FormatValues } from './formatRules'
+import { buildHttpSecret, buildOutputConfig, emptyOutput, outputIssues, outputValuesOf, type OutputMessages, type OutputValues } from './outputRules'
 import type { IntegrationCreateRequest, IntegrationDto, IntegrationPatchRequest } from './integrationsApi'
 
 export const RUN_TONE: Record<string, ChipTone> = { OK: 'deliv', PARTIAL: 'warn', FAILED: 'fail', RUNNING: 'route', NEVER: 'neutral' }
@@ -57,10 +58,14 @@ export interface IntegrationValues {
   remote: RemoteValues
   /** Formato del archivo (Lote 137): Excel, JSON y XML con mapeo por ruta. */
   format: FormatValues
+  /** INBOUND (entrada) u OUTBOUND (salida: Lote 137b). Solo se escoge al crear. */
+  direction: string
+  /** Qué manda una integración de salida (Lote 137b). */
+  output: OutputValues
 }
 
 /** Esquema del formulario. En la edición (`editing`) el cliente y el conector no se cambian, así que no se exigen. */
-export function integrationSchema(m: IntegrationMessages, editing: boolean, email?: { messages: EmailMessages; hasSavedPassword: boolean }, remote?: { messages: RemoteMessages; hasSavedSecret: boolean }, api?: { needsClient: (scopes: string[]) => boolean; message: string }, format?: FormatMessages) {
+export function integrationSchema(m: IntegrationMessages, editing: boolean, email?: { messages: EmailMessages; hasSavedPassword: boolean }, remote?: { messages: RemoteMessages; hasSavedSecret: boolean }, api?: { needsClient: (scopes: string[]) => boolean; message: string }, format?: FormatMessages, output?: { messages: OutputMessages; hasSavedSecret: boolean }) {
   return z
     .object({
       name: z.string().trim().min(1, m.nameRequired).max(NAME_MAX, m.nameMax),
@@ -78,22 +83,26 @@ export function integrationSchema(m: IntegrationMessages, editing: boolean, emai
       email: z.custom<EmailValues>(),
       remote: z.custom<RemoteValues>(),
       format: z.custom<FormatValues>(),
+      direction: z.string(),
+      output: z.custom<OutputValues>(),
     })
     .superRefine((v, ctx) => {
       if ((v.connectorKind === 'SFTP' || v.connectorKind === 'FTP') && remote)
         for (const issue of remoteIssues(v.remote, v.connectorKind, remote.hasSavedSecret, remote.messages)) ctx.addIssue({ code: 'custom', path: ['remote', issue.path], message: issue.message })
-      if (v.connectorKind !== 'API' && format)
+      if (v.direction === 'OUTBOUND' && output)
+        for (const issue of outputIssues(v.output, v.connectorKind, output.hasSavedSecret, output.messages)) ctx.addIssue({ code: 'custom', path: ['output', ...issue.path.split('.').map((p) => (/^\d+$/.test(p) ? Number(p) : p))], message: issue.message })
+      if (v.connectorKind !== 'API' && v.direction !== 'OUTBOUND' && format)
         for (const issue of formatIssues(v.format, format)) ctx.addIssue({ code: 'custom', path: ['format', ...issue.path.split('.').map((p) => (/^\d+$/.test(p) ? Number(p) : p))], message: issue.message })
       if (v.connectorKind === 'EMAIL' && email)
         for (const issue of emailIssues(v.email, email.hasSavedPassword, email.messages)) ctx.addIssue({ code: 'custom', path: ['email', ...issue.path.split('.').map((p) => (/^\d+$/.test(p) ? Number(p) : p))], message: issue.message })
-      if (v.connectorKind !== 'API' && !v.templatePublicId) ctx.addIssue({ code: 'custom', path: ['templatePublicId'], message: m.templateRequired })
+      if (v.connectorKind !== 'API' && v.direction !== 'OUTBOUND' && !v.templatePublicId) ctx.addIssue({ code: 'custom', path: ['templatePublicId'], message: m.templateRequired })
       // la API pide el cliente solo si algún alcance es de transporte (la llave solo ve lo de ese cliente); las demás integraciones siempre
       if (!editing && !v.clientPublicId && (v.connectorKind !== 'API' || api?.needsClient(v.scopes))) ctx.addIssue({ code: 'custom', path: ['clientPublicId'], message: v.connectorKind === 'API' && api ? api.message : m.clientRequired })
       if (v.connectorKind === 'FOLDER') {
         if (!v.folder.trim()) ctx.addIssue({ code: 'custom', path: ['folder'], message: m.folderRequired })
         else if (!FOLDER_PATTERN.test(v.folder.trim())) ctx.addIssue({ code: 'custom', path: ['folder'], message: m.folderInvalid })
       }
-      if (v.scheduleKind === 'INTERVAL') {
+      if (v.scheduleKind === 'INTERVAL' || (v.direction === 'OUTBOUND' && v.output.trigger === 'SCHEDULE')) {
         const minutes = Number(v.intervalMinutes)
         if (!Number.isFinite(minutes) || minutes < 1 || minutes > 10080) ctx.addIssue({ code: 'custom', path: ['intervalMinutes'], message: m.interval })
       }
@@ -120,6 +129,8 @@ export function integrationValuesOf(i: IntegrationDto | null): IntegrationValues
       email: emptyEmail(),
       remote: emptyRemote('SFTP'),
       format: emptyFormat(),
+      direction: 'INBOUND',
+      output: emptyOutput(),
     }
   }
   return {
@@ -138,11 +149,17 @@ export function integrationValuesOf(i: IntegrationDto | null): IntegrationValues
     email: emailValuesOf(i.email),
     remote: remoteValuesOf(i.remote, i.connectorKind ?? 'SFTP'),
     format: formatValuesOf(i.format),
+    direction: i.direction ?? 'INBOUND',
+    output: outputValuesOf(i.output),
   }
 }
 
 const scheduleOf = (v: IntegrationValues) =>
-  v.connectorKind === 'MANUAL' || v.connectorKind === 'API' || v.scheduleKind !== 'INTERVAL' ? { scheduleKind: 'MANUAL' } : { scheduleKind: 'INTERVAL', intervalSeconds: Math.round(Number(v.intervalMinutes) * 60) }
+  v.direction === 'OUTBOUND'
+    ? v.output.trigger === 'SCHEDULE'
+      ? { scheduleKind: 'INTERVAL', intervalSeconds: Math.round(Number(v.intervalMinutes) * 60) }
+      : { scheduleKind: 'MANUAL' }
+    : v.connectorKind === 'MANUAL' || v.connectorKind === 'API' || v.scheduleKind !== 'INTERVAL' ? { scheduleKind: 'MANUAL' } : { scheduleKind: 'INTERVAL', intervalSeconds: Math.round(Number(v.intervalMinutes) * 60) }
 
 export function buildCreateRequest(v: IntegrationValues): IntegrationCreateRequest {
   return {
@@ -151,7 +168,8 @@ export function buildCreateRequest(v: IntegrationValues): IntegrationCreateReque
     clientPublicId: v.clientPublicId || null,
     connectorKind: v.connectorKind,
     folder: v.connectorKind === 'FOLDER' ? v.folder.trim() : null,
-    templatePublicId: v.connectorKind === 'API' ? null : v.templatePublicId,
+    templatePublicId: v.connectorKind === 'API' || v.direction === 'OUTBOUND' ? null : v.templatePublicId,
+    ...(v.direction === 'OUTBOUND' ? { direction: 'OUTBOUND', output: buildOutputConfig(v.output, v.connectorKind), httpSecret: buildHttpSecret(v.output, v.connectorKind) } : {}),
     ...scheduleOf(v),
     scopes: v.scopes,
     notifyUserIds: v.notifyUserIds,
@@ -159,15 +177,16 @@ export function buildCreateRequest(v: IntegrationValues): IntegrationCreateReque
     retentionDays: Math.round(Number(v.retentionDays)),
     ...(v.connectorKind === 'EMAIL' ? { email: buildEmailConfig(v.email), mailPassword: v.email.password } : {}),
     ...(v.connectorKind === 'SFTP' || v.connectorKind === 'FTP' ? { remote: buildRemoteConfig(v.remote, v.connectorKind), secret: buildRemoteSecret(v.remote, v.connectorKind) } : {}),
-    ...(v.connectorKind !== 'API' && !formatIsPlain(v.format) ? { format: buildFormatConfig(v.format) } : {}),
+    ...(v.connectorKind !== 'API' && v.direction !== 'OUTBOUND' && !formatIsPlain(v.format) ? { format: buildFormatConfig(v.format) } : {}),
   }
 }
 
-export function buildPatchRequest(v: IntegrationValues, current: Pick<IntegrationDto, 'connectorKind'>): IntegrationPatchRequest {
+export function buildPatchRequest(v: IntegrationValues, current: Pick<IntegrationDto, 'connectorKind' | 'direction'>): IntegrationPatchRequest {
   return {
     name: v.name.trim(),
     description: v.description.trim(),
-    ...(current.connectorKind === 'API' ? {} : { templatePublicId: v.templatePublicId }),
+    ...(current.connectorKind === 'API' || current.direction === 'OUTBOUND' ? {} : { templatePublicId: v.templatePublicId }),
+    ...(current.direction === 'OUTBOUND' ? { output: buildOutputConfig(v.output, current.connectorKind), httpSecret: buildHttpSecret(v.output, current.connectorKind) } : {}),
     ...(current.connectorKind === 'FOLDER' ? { folder: v.folder.trim() } : {}),
     ...scheduleOf(v),
     scopes: v.scopes,
@@ -178,7 +197,7 @@ export function buildPatchRequest(v: IntegrationValues, current: Pick<Integratio
     ...(current.connectorKind === 'SFTP' || current.connectorKind === 'FTP'
       ? { remote: buildRemoteConfig(v.remote, current.connectorKind), secret: buildRemoteSecret(v.remote, current.connectorKind) ?? undefined }
       : {}),
-    ...(current.connectorKind !== 'API' ? { format: buildFormatConfig(v.format) } : {}),
+    ...(current.connectorKind !== 'API' && current.direction !== 'OUTBOUND' ? { format: buildFormatConfig(v.format) } : {}),
   }
 }
 

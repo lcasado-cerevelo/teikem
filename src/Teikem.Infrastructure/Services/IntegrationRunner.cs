@@ -39,7 +39,7 @@ public sealed record FileOutcome(IntegrationFileLog Log, IReadOnlyList<Guid> Cre
 /// </summary>
 public sealed class IntegrationRunner(
     TeikemDbContext db, ITenantContext tenant, OrderImportService import, ImportTemplateService templates, IntegrationService integrations, IntegrationNotifier notifier,
-    IOptions<IntegrationOptions> options, ILogger<IntegrationRunner> logger, ISecretProtector protector, IMailboxReader mailbox, IRemoteFileClient remote)
+    IOptions<IntegrationOptions> options, ILogger<IntegrationRunner> logger, ISecretProtector protector, IMailboxReader mailbox, IRemoteFileClient remote, IntegrationOutputService outputs)
 {
     public static readonly string InstanceId = $"{Environment.MachineName}:{Environment.ProcessId}";
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull };
@@ -57,6 +57,7 @@ public sealed class IntegrationRunner(
     public async Task<IntegrationRunDto> RunAsync(Guid publicId, string trigger, int? byUserId, CancellationToken ct)
     {
         var integration = await db.Integrations.AsNoTracking().FirstOrDefaultAsync(i => i.PublicId == publicId, ct) ?? throw new NotFoundException(IntegrationService.NotFoundLabel);
+        if (integration.Direction == IntegrationDirections.Outbound) return await outputs.RunAsync(publicId, trigger, byUserId, ct);   // Lote 137b: las de salida arman y mandan
         if (integration.ConnectorKind is not (IntegrationConnectorKinds.Folder or IntegrationConnectorKinds.Email or IntegrationConnectorKinds.Sftp or IntegrationConnectorKinds.Ftp)) throw new ValidationException("connectorKind", NotSupportedMessage);
         if (IntegrationConnectorKinds.IsRemote(integration.ConnectorKind))
             return await ExecuteAsync(integration, trigger, byUserId, (run, template, client) => ReadRemoteAsync(integration, template, client, run, ct), ct);
@@ -80,6 +81,7 @@ public sealed class IntegrationRunner(
     public async Task<IntegrationRunDto> UploadAsync(Guid publicId, string fileName, byte[] bytes, int? byUserId, CancellationToken ct)
     {
         var integration = await db.Integrations.AsNoTracking().FirstOrDefaultAsync(i => i.PublicId == publicId, ct) ?? throw new NotFoundException(IntegrationService.NotFoundLabel);
+        if (integration.Direction == IntegrationDirections.Outbound) throw new ValidationException("direction", "Esta integración es de salida: no recibe archivos.");
         var name = string.IsNullOrWhiteSpace(fileName) ? "archivo.csv" : Path.GetFileName(fileName.Trim());
         if (integration.ConnectorKind == IntegrationConnectorKinds.Email && name.EndsWith(".eml", StringComparison.OrdinalIgnoreCase))
             return await ExecuteAsync(integration, IntegrationTriggers.Upload, byUserId, async (run, template, client) =>

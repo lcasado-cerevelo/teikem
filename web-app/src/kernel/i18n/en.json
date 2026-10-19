@@ -9631,7 +9631,8 @@
       "EMAIL": "Email",
       "SFTP": "SFTP",
       "FTP": "FTP",
-      "API": "Client API"
+      "API": "Client API",
+      "HTTP": "Outbound API (HTTP)"
     },
     "schedule": {
       "manual": "Manual only",
@@ -9715,6 +9716,129 @@
         "pathInvalid": "The path «{p}» is not valid. Use the format $.field.other[*] (also @.field or ^.field).",
         "orderRoot": "The path «{p}» uses ^ (the order), which is only allowed when there is a lines path."
       }
+    },
+    "out": {
+      "section": "What is sent",
+      "sectionHelp": "This integration's client orders that reach the chosen statuses. Each send is built with the columns below and sent through the connector; if it fails it is retried (1 min, 5, 30, 2 h and 12 h) and, once exhausted, lands in the «Outbox» tab.",
+      "statuses": "Statuses that trigger the output",
+      "status": {
+        "SUBMITTED": "Submitted",
+        "PICKUP": "Picked up",
+        "UNASSIGNED": "Unassigned",
+        "ASSIGNED": "Assigned",
+        "IN_TRANSIT": "In transit",
+        "DELIVERED": "Delivered",
+        "FAILED": "Failed",
+        "CANCELLED": "Cancelled",
+        "IN_WAREHOUSE": "In warehouse",
+        "RETURNED": "Returned"
+      },
+      "trigger": "When it is sent",
+      "triggers": {
+        "EVENT": "Immediately",
+        "SCHEDULE": "On a schedule"
+      },
+      "triggerHelp": {
+        "EVENT": "Each order goes in its own send as soon as it reaches the status (within a minute).",
+        "SCHEDULE": "Every so often a single send goes out with all the orders that arrived since the previous one."
+      },
+      "everyHelp": "How many minutes between sends (1 to 10080).",
+      "format": "Format",
+      "delimiter": "Delimiter",
+      "delimiters": {
+        "comma": "Comma (,)",
+        "semicolon": "Semicolon (;)",
+        "tab": "Tab"
+      },
+      "fileName": "File name",
+      "fileNameHelp": "Supports {date} (yyyymmdd), {time} (hhmmss), {id} (send number) and {ext}. Empty = ordenes-{date}-{time}.{ext}.",
+      "columns": "Columns",
+      "columnsHelpCsv": "File column name and which order field it carries.",
+      "columnsHelp": "Field name in JSON/XML (letters, numbers, hyphen and underscore) and which order field it carries.",
+      "header": "Name",
+      "field": "Order field",
+      "preview": "Preview",
+      "previewHelp": "Builds a sample with the client's recent orders; nothing is sent.",
+      "previewAfterSave": "Available after the integration is created.",
+      "previewTitle": "Preview of «{name}»",
+      "previewSample": "Sample with {orders} recent order(s) in the chosen statuses. File: {file} ({format}).",
+      "previewNoSample": "No orders in those statuses yet: sample with {orders} recent order(s) of the client. File: {file} ({format}).",
+      "sendNow": "Send now",
+      "remoteDir": "Destination folder",
+      "remoteDirHelp": "Server folder where each file is left (uploaded with a temporary «.part» name and then the final one; an existing file is never overwritten).",
+      "http": {
+        "section": "Outbound API",
+        "sectionHelp": "Teikem sends each send to the client's URL (https, public) with the authentication and headers below; reply 2xx within 10 seconds. The Idempotency-Key header is included so a retry is not processed twice.",
+        "url": "URL",
+        "urlHelp": "Must be https and public (internal addresses are not accepted).",
+        "method": "Method",
+        "auth": "Authentication",
+        "authKinds": {
+          "NONE": "None",
+          "BEARER": "Token (Bearer)",
+          "BASIC": "User and password (Basic)",
+          "HEADER": "Header with a key"
+        },
+        "user": "User",
+        "headerName": "Header name",
+        "token": "Token",
+        "password": "Password",
+        "headerValue": "Header value",
+        "secretOnce": "Stored encrypted and never shown again.",
+        "secretKept": "Leave empty to keep the saved one.",
+        "headers": "Additional headers",
+        "headersHelp": "Optional (up to 10); cannot be Authorization, Host or Content-Type.",
+        "headerNameLabel": "Header",
+        "headerValueLabel": "Value",
+        "addHeader": "Add header",
+        "removeHeader": "Remove header {n}"
+      },
+      "errors": {
+        "statuses": "Choose at least one status that triggers the output.",
+        "columnsRequired": "Add at least one column to the output.",
+        "columnsMax": "The output allows up to 40 columns.",
+        "headerRequired": "Every column needs a name.",
+        "headerMax": "A column name cannot exceed 60 characters.",
+        "headerRepeated": "Two columns are named «{h}».",
+        "headerName": "The column name «{h}» must start with a letter or underscore and contain only letters, numbers, hyphen and underscore (for JSON and XML).",
+        "fieldRequired": "Choose the order field.",
+        "url": "Enter the URL the notices will be sent to.",
+        "authName": "Enter the user (BASIC) or the header name (HEADER) of the authentication.",
+        "secret": "Enter the token, password or header value of the authentication.",
+        "headersMax": "Up to 10 additional headers are allowed.",
+        "headerPair": "Enter the header name."
+      }
+    },
+    "outputs": {
+      "title": "File and API outputs",
+      "help": "Sends of the outbound integrations (SFTP, FTP and outbound API). «Undelivered» ones exhausted their retries: fix the destination and retry.",
+      "empty": "No sends match this filter.",
+      "emptyUndelivered": "Nothing undelivered.",
+      "view": "View content",
+      "viewTitle": "Send «{file}»",
+      "viewInfo": "{format} · {orders} order(s) · {bytes} bytes. The first 4,000 characters are shown.",
+      "retried": "Send queued for retry.",
+      "discarded": "Send discarded.",
+      "status": {
+        "UNDELIVERED": "Undelivered",
+        "PENDING": "Pending",
+        "SENT": "Sent",
+        "DISCARDED": "Discarded"
+      },
+      "col": {
+        "status": "Status",
+        "integration": "Integration",
+        "dest": "Destination",
+        "file": "File",
+        "orders": "Orders",
+        "attempts": "Attempts",
+        "reason": "Reason",
+        "date": "Created"
+      }
+    },
+    "direction": {
+      "INBOUND": "Inbound",
+      "OUTBOUND": "Outbound"
     },
     "hooks": {
       "open": "Webhooks",
@@ -9838,6 +9962,8 @@
       }
     },
     "form": {
+      "direction": "Direction",
+      "directionHelp": {"INBOUND": "Teikem receives orders (folder, email, SFTP, FTP, manual upload or the client API).", "OUTBOUND": "Teikem sends the client's orders (SFTP, FTP or their system's API) when they reach a status."},
       "newTitle": "New integration",
       "editTitle": "Edit \"{name}\"",
       "name": "Name",

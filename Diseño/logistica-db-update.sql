@@ -5034,3 +5034,61 @@ GO
    ========================================================================= */
 IF COL_LENGTH('dbo.Integration', 'FormatJson') IS NULL ALTER TABLE dbo.Integration ADD FormatJson NVARCHAR(MAX) NULL;
 GO
+
+/* =========================================================================
+   2026-10-19 (bo) — Lote 137b (P11): INTEGRACIONES DE SALIDA. dbo.Integration.OutputJson (qué manda: estatus, disparador, formato, columnas y la API saliente), el conector 'HTTP' (API saliente genérica),
+   dbo.IntegrationOutput (cada envío: contenido ya armado, intentos y siguiente intento; los UNDELIVERED son la bandeja de salidas) y dbo.IntegrationOutputOrder (las órdenes que esperan ir en un envío).
+   Solo AMPLÍA. Idempotente.
+   ========================================================================= */
+IF COL_LENGTH('dbo.Integration', 'OutputJson') IS NULL ALTER TABLE dbo.Integration ADD OutputJson NVARCHAR(MAX) NULL;
+GO
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_Integration_Connector' AND parent_object_id = OBJECT_ID('dbo.Integration') AND definition NOT LIKE '%''HTTP''%')
+    ALTER TABLE dbo.Integration DROP CONSTRAINT CK_Integration_Connector;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_Integration_Connector' AND parent_object_id = OBJECT_ID('dbo.Integration'))
+    ALTER TABLE dbo.Integration ADD CONSTRAINT CK_Integration_Connector CHECK (ConnectorKind IN ('FOLDER', 'MANUAL', 'EMAIL', 'SFTP', 'FTP', 'API', 'HTTP'));
+GO
+IF OBJECT_ID(N'dbo.IntegrationOutput', N'U') IS NULL CREATE TABLE dbo.IntegrationOutput (
+    IntegrationOutputId BIGINT IDENTITY(1,1) CONSTRAINT PK_IntegrationOutput PRIMARY KEY,
+    TenantId       INT NOT NULL CONSTRAINT FK_IntegrationOutput_Tenant REFERENCES dbo.Tenant(TenantId),
+    IntegrationId  INT NOT NULL CONSTRAINT FK_IntegrationOutput_Integration REFERENCES dbo.Integration(IntegrationId),
+    FileName       NVARCHAR(160) NOT NULL,
+    Format         VARCHAR(4) NOT NULL,
+    OrderCount     INT NOT NULL CONSTRAINT DF_IntegrationOutput_Orders DEFAULT 0,
+    Content        NVARCHAR(MAX) NOT NULL,
+    SizeBytes      INT NOT NULL CONSTRAINT DF_IntegrationOutput_Size DEFAULT 0,
+    Status         VARCHAR(12) NOT NULL CONSTRAINT DF_IntegrationOutput_Status DEFAULT 'PENDING',
+    AttemptCount   INT NOT NULL CONSTRAINT DF_IntegrationOutput_Attempts DEFAULT 0,
+    NextAttemptUtc DATETIME2 NOT NULL CONSTRAINT DF_IntegrationOutput_Next DEFAULT SYSUTCDATETIME(),
+    LastAttemptUtc DATETIME2 NULL,
+    ResponseCode   INT NULL,
+    Error          NVARCHAR(500) NULL,
+    CreatedAtUtc   DATETIME2 NOT NULL CONSTRAINT DF_IntegrationOutput_Created DEFAULT SYSUTCDATETIME(),
+    SentAtUtc      DATETIME2 NULL,
+    ResolvedBy     INT NULL CONSTRAINT FK_IntegrationOutput_ResolvedBy REFERENCES dbo.AspNetUsers(Id),
+    CONSTRAINT CK_IntegrationOutput_Status CHECK (Status IN ('PENDING', 'SENT', 'UNDELIVERED', 'DISCARDED')),
+    CONSTRAINT CK_IntegrationOutput_Format CHECK (Format IN ('CSV', 'JSON', 'XML'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_IntegrationOutput_Due' AND object_id = OBJECT_ID('dbo.IntegrationOutput'))
+    CREATE INDEX IX_IntegrationOutput_Due ON dbo.IntegrationOutput(TenantId, Status, NextAttemptUtc);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_IntegrationOutput_Integration' AND object_id = OBJECT_ID('dbo.IntegrationOutput'))
+    CREATE INDEX IX_IntegrationOutput_Integration ON dbo.IntegrationOutput(TenantId, IntegrationId, IntegrationOutputId);
+GO
+IF OBJECT_ID(N'dbo.IntegrationOutputOrder', N'U') IS NULL CREATE TABLE dbo.IntegrationOutputOrder (
+    IntegrationOutputOrderId BIGINT IDENTITY(1,1) CONSTRAINT PK_IntegrationOutputOrder PRIMARY KEY,
+    TenantId            INT NOT NULL CONSTRAINT FK_IntegrationOutputOrder_Tenant REFERENCES dbo.Tenant(TenantId),
+    IntegrationId       INT NOT NULL CONSTRAINT FK_IntegrationOutputOrder_Integration REFERENCES dbo.Integration(IntegrationId),
+    TransportOrderId    INT NOT NULL CONSTRAINT FK_IntegrationOutputOrder_Order REFERENCES dbo.TransportOrder(TransportOrderId),
+    StatusCode          VARCHAR(30) NOT NULL,
+    QueuedAtUtc         DATETIME2 NOT NULL CONSTRAINT DF_IntegrationOutputOrder_Queued DEFAULT SYSUTCDATETIME(),
+    IntegrationOutputId BIGINT NULL CONSTRAINT FK_IntegrationOutputOrder_Output REFERENCES dbo.IntegrationOutput(IntegrationOutputId)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_IntegrationOutputOrder_Queue' AND object_id = OBJECT_ID('dbo.IntegrationOutputOrder'))
+    CREATE INDEX IX_IntegrationOutputOrder_Queue ON dbo.IntegrationOutputOrder(TenantId, IntegrationId, IntegrationOutputId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_IntegrationOutputOrder_Open' AND object_id = OBJECT_ID('dbo.IntegrationOutputOrder'))
+    CREATE UNIQUE INDEX UX_IntegrationOutputOrder_Open ON dbo.IntegrationOutputOrder(IntegrationId, TransportOrderId, StatusCode) WHERE IntegrationOutputId IS NULL;
+GO

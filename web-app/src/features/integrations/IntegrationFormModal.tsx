@@ -1,7 +1,7 @@
 // Alta y edición de una integración (Lote 132, P11). Alta: nombre, cliente, plantilla de importación, conector (carpeta de entrada o subida manual), horario, alcances (solo los que quien crea puede dar),
 // a quién avisar (con «incluirme») y retención de la bandeja; el servidor crea la cuenta de servicio con su rol. Edición: lo mismo salvo el cliente y el conector.
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { useT } from '../../kernel/i18n'
 import { Field, Select, TextInput, Toggle, toast } from '../../kernel/ui'
@@ -10,7 +10,10 @@ import { useClientOptions } from '../consignees/api'
 import { useOrderImportTemplates } from '../orders/importApi'
 import { EmailSection } from './EmailSection'
 import { FormatSection } from './FormatSection'
+import { OutputPreviewModal } from './OutputPreviewModal'
+import { OutputSection } from './OutputSection'
 import { RemoteSection } from './RemoteSection'
+import { EXPORT_SCOPE } from './outputRules'
 import { buildCreateRequest, buildPatchRequest, integrationSchema, integrationValuesOf, type IntegrationValues } from './integrationRules'
 import { useIntegrationMutations, useIntegrationOptions, type IntegrationDto } from './integrationsApi'
 
@@ -83,21 +86,49 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
           pathInvalid: (p) => t('integrations.format.errors.pathInvalid', { p }),
           orderRoot: (p) => t('integrations.format.errors.orderRoot', { p }),
         },
+        {
+          messages: {
+            statuses: t('integrations.out.errors.statuses'),
+            columnsRequired: t('integrations.out.errors.columnsRequired'),
+            columnsMax: t('integrations.out.errors.columnsMax'),
+            headerRequired: t('integrations.out.errors.headerRequired'),
+            headerMax: t('integrations.out.errors.headerMax'),
+            headerRepeated: (h) => t('integrations.out.errors.headerRepeated', { h }),
+            headerName: (h) => t('integrations.out.errors.headerName', { h }),
+            fieldRequired: t('integrations.out.errors.fieldRequired'),
+            url: t('integrations.out.errors.url'),
+            authName: t('integrations.out.errors.authName'),
+            secret: t('integrations.out.errors.secret'),
+            headersMax: t('integrations.out.errors.headersMax'),
+            headerPair: t('integrations.out.errors.headerPair'),
+          },
+          hasSavedSecret: integration?.hasHttpSecret === true,
+        },
       ),
-    [t, editing, integration?.hasMailPassword, integration?.hasRemoteSecret],
+    [t, editing, integration?.hasMailPassword, integration?.hasRemoteSecret, integration?.hasHttpSecret],
   )
   const form = useForm<IntegrationValues>({ resolver: zodResolver(schema), defaultValues: integrationValuesOf(integration) })
   const values = useWatch({ control: form.control })
   const clientId = values.clientPublicId ?? ''
   const templates = useOrderImportTemplates(clientId, false, clientId !== '')
   const connector = values.connectorKind ?? 'FOLDER'
+  const outbound = (values.direction ?? 'INBOUND') === 'OUTBOUND'
+  const [previewing, setPreviewing] = useState(false)
+  // al cambiar la dirección (solo al crear) se ofrece lo que corresponde: conector y alcance
+  const lastDirection = useRef(values.direction)
+  useEffect(() => {
+    if (editing || lastDirection.current === values.direction) return
+    lastDirection.current = values.direction
+    form.setValue('connectorKind', values.direction === 'OUTBOUND' ? 'HTTP' : 'FOLDER')
+    form.setValue('scopes', values.direction === 'OUTBOUND' ? [EXPORT_SCOPE] : [], { shouldDirty: true })
+  }, [editing, form, values.direction])
 
   const clientOptions = (clients.data ?? []).map((c) => ({ value: c.publicId ?? '', label: [c.code, c.name].filter(Boolean).join(' · ') }))
   const templateOptions = (templates.data ?? []).map((x) => ({ value: x.publicId ?? '', label: x.name ?? '' }))
   // al editar, la plantilla actual siempre es una opción (si la lista aún no llegó, el control no se queda en blanco)
   if (integration?.templatePublicId && !templateOptions.some((o) => o.value === integration.templatePublicId)) templateOptions.unshift({ value: integration.templatePublicId, label: integration.templateName ?? '' })
   // la API solo ofrece sus alcances; las demás integraciones, solo los de archivos
-  const scopeList = (options.data?.scopes ?? []).filter((s) => (connector === 'API') === !!s.isApi)
+  const scopeList = (options.data?.scopes ?? []).filter((s) => (outbound ? s.code === EXPORT_SCOPE : connector === 'API' ? !!s.isApi : !s.isApi && s.code !== EXPORT_SCOPE))
   needsClientRef.current = (options.data?.scopes ?? []).filter((s) => s.needsClient).map((s) => s.code ?? '')
   const clientNeeded = connector !== 'API' || (values.scopes ?? []).some((c) => needsClientRef.current.includes(c))
   const users = options.data?.users ?? []
@@ -109,6 +140,7 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
   const scopesError = form.formState.errors.scopes?.message
 
   return (
+    <>
     <FormModal
       id="integration-form"
       size="md"
@@ -137,7 +169,12 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
           <Select options={clientOptions} placeholder={t('integrations.form.pick')} />
         </Field>
       )}
-      {connector !== 'API' && (
+      {!editing && (
+        <Field name="direction" label={t('integrations.form.direction')} help={t(`integrations.form.directionHelp.${values.direction ?? 'INBOUND'}`)}>
+          <Select options={[{ value: 'INBOUND', label: t('integrations.direction.INBOUND') }, { value: 'OUTBOUND', label: t('integrations.direction.OUTBOUND') }]} />
+        </Field>
+      )}
+      {connector !== 'API' && !outbound && (
         <Field name="templatePublicId" label={t('integrations.form.template')} required help={t('integrations.form.templateHelp')}>
           <Select options={templateOptions} placeholder={clientId || editing ? t('integrations.form.pick') : t('integrations.form.pickClientFirst')} />
         </Field>
@@ -146,14 +183,10 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
         <Field name="connectorKind" label={t('integrations.form.connector')} required>
           <Select
             disabled={editing}
-            options={[
-              { value: 'FOLDER', label: t('integrations.connector.FOLDER') },
-              { value: 'EMAIL', label: t('integrations.connector.EMAIL') },
-              { value: 'SFTP', label: t('integrations.connector.SFTP') },
-              { value: 'FTP', label: t('integrations.connector.FTP') },
-              { value: 'MANUAL', label: t('integrations.connector.MANUAL') },
-              { value: 'API', label: t('integrations.connector.API') },
-            ]}
+            options={(outbound
+              ? ['HTTP', 'SFTP', 'FTP']
+              : ['FOLDER', 'EMAIL', 'SFTP', 'FTP', 'MANUAL', 'API']
+            ).map((k) => ({ value: k, label: t(`integrations.connector.${k}`) }))}
           />
         </Field>
         {connector === 'FOLDER' && (
@@ -162,7 +195,7 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
           </Field>
         )}
       </div>
-      {connector !== 'MANUAL' && connector !== 'API' && (
+      {connector !== 'MANUAL' && connector !== 'API' && !outbound && (
         <div className="r2">
           <Field name="scheduleKind" label={t('integrations.form.schedule')}>
             <Select
@@ -181,8 +214,9 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
       )}
 
       {connector === 'EMAIL' && <EmailSection form={form} hasSavedPassword={integration?.hasMailPassword === true} />}
-      {connector !== 'API' && <FormatSection form={form} />}
-      {(connector === 'SFTP' || connector === 'FTP') && <RemoteSection form={form} kind={connector} hasSavedSecret={integration?.hasRemoteSecret === true} />}
+      {connector !== 'API' && !outbound && <FormatSection form={form} />}
+      {(connector === 'SFTP' || connector === 'FTP') && <RemoteSection form={form} kind={connector} hasSavedSecret={integration?.hasRemoteSecret === true} outbound={outbound} />}
+      {outbound && <OutputSection form={form} connector={connector} options={options.data} hasSavedSecret={integration?.hasHttpSecret === true} onPreview={editing ? () => setPreviewing(true) : undefined} />}
 
       <fieldset className="int-scopes">
         <legend>{t('integrations.form.scopes')}</legend>
@@ -229,5 +263,8 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
         <TextInput inputMode="numeric" maxLength={3} />
       </Field>
     </FormModal>
+    {previewing && integration && <OutputPreviewModal integration={integration} onClose={() => setPreviewing(false)} />}
+    </>
   )
 }
+

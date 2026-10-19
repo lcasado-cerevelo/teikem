@@ -31317,6 +31317,165 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/integrations/{publicId}/output/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OutputPreviewDto"];
+                        "application/json": components["schemas"]["OutputPreviewDto"];
+                        "text/json": components["schemas"]["OutputPreviewDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/outputs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    integration?: string;
+                    status?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OutputPageDto"];
+                        "application/json": components["schemas"]["OutputPageDto"];
+                        "text/json": components["schemas"]["OutputPageDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/outputs/{id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OutputItemDto"];
+                        "application/json": components["schemas"]["OutputItemDto"];
+                        "text/json": components["schemas"]["OutputItemDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/outputs/{id}/discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OutputItemDto"];
+                        "application/json": components["schemas"]["OutputItemDto"];
+                        "text/json": components["schemas"]["OutputItemDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -41592,6 +41751,8 @@ export interface components {
             remote?: components["schemas"]["RemoteConfig"];
             hasRemoteSecret?: boolean;
             format?: components["schemas"]["FileFormatConfig"];
+            output?: components["schemas"]["OutputConfig"];
+            hasHttpSecret?: boolean;
         };
         InboxPageDto: {
             items?: components["schemas"]["InboxItemDto"][] | null;
@@ -41627,6 +41788,9 @@ export interface components {
             scopes?: components["schemas"]["IntegrationScopeOptionDto"][] | null;
             connectors?: string[] | null;
             users?: components["schemas"]["IntegrationNotifyUserDto"][] | null;
+            outputFields?: components["schemas"]["OutputFieldDto"][] | null;
+            orderStatuses?: string[] | null;
+            outboundConnectors?: string[] | null;
         };
         InboxReprocessResultDto: {
             /** Format: int32 */
@@ -41657,6 +41821,8 @@ export interface components {
             remote?: components["schemas"]["RemoteConfig"];
             secret?: components["schemas"]["RemoteSecret"];
             format?: components["schemas"]["FileFormatConfig"];
+            output?: components["schemas"]["OutputConfig"];
+            httpSecret?: components["schemas"]["HttpOutSecret"];
         };
         IntegrationCreateRequest: {
             name?: string | null;
@@ -41680,6 +41846,9 @@ export interface components {
             remote?: components["schemas"]["RemoteConfig"];
             secret?: components["schemas"]["RemoteSecret"];
             format?: components["schemas"]["FileFormatConfig"];
+            direction?: string | null;
+            output?: components["schemas"]["OutputConfig"];
+            httpSecret?: components["schemas"]["HttpOutSecret"];
         };
         IntegrationNotifyUserDto: {
             /** Format: int32 */
@@ -41928,6 +42097,82 @@ export interface components {
         FormatColumn: {
             header?: string | null;
             path?: string | null;
+        };
+        OutputItemDto: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: uuid */
+            integrationPublicId?: string;
+            integrationName?: string | null;
+            connectorKind?: string | null;
+            fileName?: string | null;
+            format?: string | null;
+            /** Format: int32 */
+            orderCount?: number;
+            /** Format: int32 */
+            sizeBytes?: number;
+            status?: string | null;
+            /** Format: int32 */
+            attemptCount?: number;
+            /** Format: date-time */
+            nextAttemptUtc?: string;
+            /** Format: date-time */
+            lastAttemptUtc?: string | null;
+            /** Format: int32 */
+            responseCode?: number | null;
+            error?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            /** Format: date-time */
+            sentAtUtc?: string | null;
+            preview?: string | null;
+        };
+        OutputPageDto: {
+            items?: components["schemas"]["OutputItemDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            undelivered?: number;
+        };
+        HttpOutSecret: {
+            value?: string | null;
+        };
+        OutputConfig: {
+            statuses?: string[] | null;
+            trigger?: string | null;
+            format?: string | null;
+            delimiter?: string | null;
+            fileName?: string | null;
+            columns?: components["schemas"]["OutputColumn"][] | null;
+            http?: components["schemas"]["HttpOutConfig"];
+        };
+        OutputFieldDto: {
+            code?: string | null;
+            label?: string | null;
+            kind?: string | null;
+        };
+        OutputColumn: {
+            header?: string | null;
+            field?: string | null;
+        };
+        HttpOutConfig: {
+            url?: string | null;
+            method?: string | null;
+            authKind?: string | null;
+            authName?: string | null;
+            headers?: components["schemas"]["HttpHeaderItem"][] | null;
+        };
+        OutputPreviewDto: {
+            fileName?: string | null;
+            format?: string | null;
+            content?: string | null;
+            /** Format: int32 */
+            orderCount?: number;
+            sample?: boolean;
+        };
+        HttpHeaderItem: {
+            name?: string | null;
+            value?: string | null;
         };
     };
     responses: never;

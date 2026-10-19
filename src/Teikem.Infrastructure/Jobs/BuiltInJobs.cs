@@ -239,6 +239,34 @@ public sealed class ConsigneeNoticeDispatchJob : IScheduledJob
 }
 
 /// <summary>
+/// Lote 137b (P11) — las integraciones de SALIDA: pasa a envíos la cola de órdenes de las que mandan «al instante», manda lo que toque (primer intento o reintento con espera creciente) por SFTP/FTP o por la
+/// API saliente y purga lo viejo. Corre cada minuto; las de «por horario» arman su envío cuando les toca (trabajo de integraciones por horario).
+/// </summary>
+public sealed class IntegrationOutputJob : IScheduledJob
+{
+    public string Key => JobKeys.IntegrationOutput;
+    public string NameEs => "Salida de integraciones";
+    public string NameEn => "Integration output";
+    public string DescriptionEs => "Arma y manda las salidas de órdenes de las integraciones (SFTP, FTP y API saliente) y reintenta las fallidas.";
+    public string DescriptionEn => "Builds and sends the integrations' order outputs (SFTP, FTP and outbound API) and retries failed ones.";
+    public string DefaultKind => JobScheduleKinds.Interval;
+    public int? DefaultIntervalSeconds => 60;
+    public TimeSpan? DefaultDailyAt => null;
+    public bool DefaultEnabled => true;
+    public TimeSpan MaxRuntime => TimeSpan.FromMinutes(10);
+
+    public async Task<string?> RunAsync(JobRunContext context, CancellationToken ct)
+    {
+        var modules = context.Services.GetRequiredService<ModuleService>();
+        if (!(await modules.GetEnabledKeysAsync(context.TenantId, ct)).Contains(ModuleKeys.Integrations)) return "El módulo de integraciones está apagado.";
+        var o = await context.Services.GetRequiredService<IntegrationOutputService>().ProcessAsync(context.NowUtc, ct);
+        return o.Created + o.Sent + o.Retrying + o.Undelivered + o.Purged == 0
+            ? "Ninguna salida por mandar."
+            : $"{o.Created} envío(s) armado(s), {o.Sent} enviado(s), {o.Retrying} por reintentar, {o.Undelivered} no entregado(s), {o.Purged} purgado(s).";
+    }
+}
+
+/// <summary>
 /// Lote 136 (P11) — entrega los webhooks de salida que ya tocan (primer intento o reintento con espera creciente), marca las no entregadas, suspende los webhooks que fallan seguido y purga las salidas
 /// viejas. Corre cada minuto; si el módulo de integraciones está apagado, no hace nada.
 /// </summary>

@@ -439,4 +439,4 @@ L133. [L133 — Integración por correo (web del personal)](frontend/l133-correo
 L134. [L134 — Integraciones por SFTP y FTP (web del personal)](frontend/l134-sftp-ftp.md): lista y formulario del conector remoto; con capturas.
 L135. [L135 — API para los clientes (web del personal)](frontend/l135-api-clientes.md): conector API, llaves con el secreto una sola vez y bitácora; con capturas.
 L136. [L136 — Webhooks de salida y bandeja de salidas (web del personal)](frontend/l136-webhooks.md): gestión de webhooks, secreto una sola vez y salidas no entregadas; con capturas.
-L137. [L137 — Formato del archivo: Excel, JSON y XML (web del personal)](frontend/l137-formatos.md): sección «Formato del archivo» con mapeo por ruta y prueba con un archivo; con capturas.
+L137. [L137 — Formatos de archivo y salida de integraciones (web del personal)](frontend/l137-formatos.md): formato Excel/JSON/XML con mapeo por ruta (137a) e integraciones de salida por SFTP/FTP y API saliente con su bandeja (137b); con capturas.

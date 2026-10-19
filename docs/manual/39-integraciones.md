@@ -264,3 +264,44 @@ Errores al **procesar un archivo** (el archivo queda anotado como «Con error» 
 | «El archivo supera el límite de 5.000 filas o 2 MB.» | límites |
 
 **Casos frecuentes:** *«No encontró ningún registro»* → pruebe el archivo de muestra: en XML la ruta empieza con el nombre del elemento raíz (`$.Pedidos…`). *«Una orden sale con la descripción vacía»* → revise que la columna esté en la posición que usa la plantilla. *«Mi integración de correo/SFTP ignora los .xlsx»* → agregue `.xlsx` a los tipos de archivo del conector.
+
+## 11. Integraciones de salida: archivos por SFTP/FTP y API saliente (Lote 137b)
+
+> Dictado de Luis (2026-10-19): Teikem también **manda** datos, por configuración: las órdenes del cliente que llegan a un estatus (p. ej. «Entregada») salen en un archivo (CSV, JSON o XML) por **SFTP o FTP**, o por la **API del sistema del cliente** (HTTP genérico). Es la salida de archivos por evento u horario que faltaba (los webhooks, §9, cubren el aviso mínimo por evento).
+
+**Cómo se crea** (Sistema → Integraciones / API → Nueva integración → **Dirección: Salida**; `integrations.create` + `integrations.create.files`, alcance **«Salida de órdenes por archivo o API»**, módulo de transporte y un **cliente**: solo salen órdenes de ese cliente). Conectores de salida: **API saliente (HTTP)**, **SFTP** y **FTP** (el correo no es de salida).
+
+**Qué se manda** (sección «Qué se manda»):
+- **Estatus que disparan la salida** (uno o varios): Sometida, Recogida, Sin asignar, Asignada, En tránsito, Entregada, Fallida, Cancelada, En almacén, Devuelta. Cada orden que **llega** a uno de ellos entra en la cola (una orden no entra dos veces mientras espera).
+- **Cuándo sale:** **Al instante** (cada orden en su propio envío, en menos de un minuto por el trabajo «Salida de integraciones») o **Por horario** (cada N minutos, 1 a 10080, un solo envío con todas las que llegaron desde el anterior; hasta 1.000 órdenes por envío).
+- **Formato:** **CSV** (delimitador coma, punto y coma o tabulador; encabezado y fin de línea `\r\n`), **JSON** (`{"orders":[{…}]}`; los números salen como números, las fechas en ISO 8601 UTC y lo que falta como `null`) o **XML** (`<orders><order><campo>…</campo></order></orders>`, UTF-8 sin BOM).
+- **Columnas:** el **nombre** (en JSON/XML debe empezar con letra o guion bajo y llevar letras, números, guion o guion bajo) y el **campo de la orden**: número de orden, conduce, factura del cliente, estatus (código y nombre), fecha de creación, fecha prometida, piezas, peso, monto COD, flete cotizado, notas, consignatario, dirección, pueblo y código postal de entrega, fecha y hora de entrega, quién recibió y notas de la entrega. Por omisión: orden, estatus, fecha de entrega y quién recibió. Hasta 40 columnas.
+- **Nombre del archivo** (SFTP/FTP): admite `{date}` (aaaammdd), `{time}` (hhmmss), `{id}` (número del envío) y `{ext}`; por omisión `ordenes-{date}-{time}.{ext}`. El archivo se sube con nombre provisional `.part` y se renombra al terminar (quien lo recoge nunca lo ve a medias) y **nunca pisa** uno existente (le pone la fecha por delante). La carpeta de destino es la «carpeta remota» del conector (se crea si falta); SFTP exige la huella del servidor fijada, como en la entrada (§7).
+- **API saliente (HTTP):** URL (**https y pública**, como los webhooks), método **POST** o **PUT**, autenticación **Ninguna**, **Token (Bearer)**, **Usuario y contraseña (Basic)** o **Encabezado con una llave**, y hasta **10 encabezados** adicionales (no Authorization, Host ni Content-Type). El token, la contraseña o el valor del encabezado se guardan **cifrados** y no se vuelven a mostrar. Cada llamada lleva `Idempotency-Key: teikem-output-{id}` y `X-Teikem-Output`; responda **2xx en menos de 10 s**; no se siguen redirecciones.
+
+**Acciones de la lista:** **Enviar ahora** (arma la cola y manda lo que toque), **Vista previa** (ejemplo con las últimas órdenes del cliente en esos estatus —si no hay, las últimas del cliente—; no manda nada), **Probar conexión** (SFTP/FTP: conecta y lista la carpeta; HTTP: manda un cuerpo de prueba sin órdenes y dice «La API respondió 200.»), **Historial** y **Editar**. Una integración de salida **no recibe archivos** y apagada no manda.
+
+**Reintentos y bandeja:** un envío que falla se reintenta a **1 minuto, 5, 30, 2 h y 12 h** (6 intentos); agotados queda **No entregado** en **Salidas → «Salidas de archivos y API»** con el motivo exacto («El servidor respondió 500.», «Tiempo de espera agotado (10 s).», «No se pudo conectar: …»), el contenido y **Reintentar** / **Descartar**. El contador de la pestaña suma webhooks y envíos. Se guardan 30 días. Si un destino falla 3 veces seguidas en una vuelta, el resto espera a la siguiente.
+
+| Mensaje | Código | Cuándo |
+|---|---|---|
+| «Indique qué se manda (estatus, formato y columnas).» | 400 | falta la salida |
+| «Escoja al menos un estatus que dispare la salida.» · «Estatus desconocido: X.» | 400 | estatus |
+| «Disparador desconocido: X. Use EVENT o SCHEDULE.» · «La salida por horario necesita un intervalo (minutos).» | 400 | cuándo sale |
+| «Formato de salida desconocido: X. Use CSV, JSON o XML.» · «El delimitador debe ser coma, punto y coma o tabulador.» | 400 | formato |
+| «Agregue al menos una columna a la salida.» · «La salida admite hasta 40 columnas.» · «Cada columna necesita un nombre.» · «Hay dos columnas llamadas «X».» · «Campo desconocido: X.» | 400 | columnas |
+| «El nombre de la columna «X» debe empezar con una letra o guion bajo y llevar solo letras, números, guion y guion bajo (para JSON y XML).» | 400 | nombre de columna en JSON/XML |
+| «El nombre del archivo no puede llevar carpetas ni saltos de línea.» · «Marcador desconocido en el nombre del archivo: {x}. Use {date}, {time}, {id} o {ext}.» | 400 | nombre del archivo |
+| «Indique la configuración de la API (URL, método y autenticación).» · «Método desconocido: X. Use POST o PUT.» · «Autenticación desconocida: X. Use NONE, BEARER, BASIC o HEADER.» | 400 | API saliente |
+| «Indique el usuario (BASIC) o el nombre del encabezado (HEADER) de la autenticación.» · «Indique el token, la contraseña o el valor del encabezado de la autenticación.» | 400 | autenticación |
+| «El encabezado «X» no es válido (nombre no permitido o valor con saltos de línea o de más de 500 caracteres).» · «Se admiten hasta 10 encabezados adicionales.» | 400 | encabezados |
+| «La URL debe usar https.» · «La URL apunta a una dirección interna o local, que no se permite.» | 400 | URL (igual que los webhooks) |
+| «Una integración de salida solo admite el alcance de salida de órdenes.» · «Una integración de entrada no admite el alcance de salida de órdenes.» | 400 | alcances |
+| «Una integración de salida usa SFTP, FTP o HTTP.» · «El conector HTTP es solo para integraciones de salida.» | 400 | conector |
+| «Indique el cliente de las órdenes de esta integración.» | 400 | sin cliente |
+| «Esta integración es de salida: no recibe archivos.» | 400 | subir un archivo |
+| «No hay órdenes pendientes de enviar.» | — (mensaje de la corrida) | «Enviar ahora» sin cola |
+| «Solo se puede reintentar un envío no entregado.» · «El envío ya fue descartado.» · «El envío ya se entregó.» | 409 | bandeja de salidas |
+| «La salida supera el tamaño permitido (2 MB); use una salida más frecuente o menos columnas.» | (envío no entregado) | contenido demasiado grande |
+
+**Casos frecuentes:** *«No sale nada»* → la integración está apagada, el estatus no es el elegido, la orden es de otro cliente, o llegó al estatus **antes** de crear la integración (solo salen las que llegan después). *«Por horario no manda»* → el trabajo de integraciones por horario corre cada minuto; use «Enviar ahora» para probar. *«No entregado: No se pudo conectar»* → revise URL, firewall y, en SFTP, la huella. *«El archivo llegó dos veces»* → es un reintento tras no recibir la respuesta: use el `Idempotency-Key` (API) o el número del envío en el nombre del archivo.

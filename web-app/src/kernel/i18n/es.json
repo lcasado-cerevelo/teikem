@@ -9634,7 +9634,8 @@
       "EMAIL": "Correo",
       "SFTP": "SFTP",
       "FTP": "FTP",
-      "API": "API para el cliente"
+      "API": "API para el cliente",
+      "HTTP": "API saliente (HTTP)"
     },
     "schedule": {
       "manual": "Solo a mano",
@@ -9718,6 +9719,129 @@
         "pathInvalid": "La ruta «{p}» no es válida. Use el formato $.campo.otro[*] (también @.campo o ^.campo).",
         "orderRoot": "La ruta «{p}» usa ^ (la orden), que solo se puede cuando hay una ruta de líneas."
       }
+    },
+    "out": {
+      "section": "Qué se manda",
+      "sectionHelp": "Las órdenes del cliente de esta integración que llegan a los estatus elegidos. Cada envío se arma con las columnas de abajo y se manda por el conector; si falla, se reintenta (1 min, 5, 30, 2 h y 12 h) y, agotados los intentos, queda en la pestaña «Salidas».",
+      "statuses": "Estatus que disparan la salida",
+      "status": {
+        "SUBMITTED": "Sometida",
+        "PICKUP": "Recogida",
+        "UNASSIGNED": "Sin asignar",
+        "ASSIGNED": "Asignada",
+        "IN_TRANSIT": "En tránsito",
+        "DELIVERED": "Entregada",
+        "FAILED": "Fallida",
+        "CANCELLED": "Cancelada",
+        "IN_WAREHOUSE": "En almacén",
+        "RETURNED": "Devuelta"
+      },
+      "trigger": "Cuándo sale",
+      "triggers": {
+        "EVENT": "Al instante",
+        "SCHEDULE": "Por horario"
+      },
+      "triggerHelp": {
+        "EVENT": "Cada orden sale en su propio envío en cuanto llega al estatus (en menos de un minuto).",
+        "SCHEDULE": "Cada cierto tiempo sale un solo envío con todas las órdenes que llegaron desde el anterior."
+      },
+      "everyHelp": "Cada cuántos minutos sale el envío (entre 1 y 10080).",
+      "format": "Formato",
+      "delimiter": "Delimitador",
+      "delimiters": {
+        "comma": "Coma (,)",
+        "semicolon": "Punto y coma (;)",
+        "tab": "Tabulador"
+      },
+      "fileName": "Nombre del archivo",
+      "fileNameHelp": "Admite {date} (aaaammdd), {time} (hhmmss), {id} (número del envío) y {ext}. Vacío = ordenes-{date}-{time}.{ext}.",
+      "columns": "Columnas",
+      "columnsHelpCsv": "Nombre de la columna del archivo y qué campo de la orden lleva.",
+      "columnsHelp": "Nombre del campo en JSON/XML (letras, números, guion y guion bajo) y qué campo de la orden lleva.",
+      "header": "Nombre",
+      "field": "Campo de la orden",
+      "preview": "Vista previa",
+      "previewHelp": "Arma un ejemplo con órdenes recientes del cliente; no manda nada.",
+      "previewAfterSave": "Disponible después de crear la integración.",
+      "previewTitle": "Vista previa de «{name}»",
+      "previewSample": "Ejemplo con {orders} orden(es) recientes de los estatus elegidos. Archivo: {file} ({format}).",
+      "previewNoSample": "Todavía no hay órdenes de esos estatus: ejemplo con {orders} orden(es) recientes del cliente. Archivo: {file} ({format}).",
+      "sendNow": "Enviar ahora",
+      "remoteDir": "Carpeta de destino",
+      "remoteDirHelp": "Carpeta del servidor donde se deja cada archivo (se sube con nombre provisional «.part» y luego con el final; nunca se pisa uno que ya exista).",
+      "http": {
+        "section": "API saliente",
+        "sectionHelp": "Teikem manda cada envío a la URL del cliente (https, pública) con la autenticación y los encabezados de abajo; responda 2xx en menos de 10 segundos. Va el encabezado Idempotency-Key para no procesar dos veces un reintento.",
+        "url": "URL",
+        "urlHelp": "Debe ser https y pública (no se aceptan direcciones internas).",
+        "method": "Método",
+        "auth": "Autenticación",
+        "authKinds": {
+          "NONE": "Ninguna",
+          "BEARER": "Token (Bearer)",
+          "BASIC": "Usuario y contraseña (Basic)",
+          "HEADER": "Encabezado con una llave"
+        },
+        "user": "Usuario",
+        "headerName": "Nombre del encabezado",
+        "token": "Token",
+        "password": "Contraseña",
+        "headerValue": "Valor del encabezado",
+        "secretOnce": "Se guarda cifrado y no se vuelve a mostrar.",
+        "secretKept": "Déjelo vacío para conservar el guardado.",
+        "headers": "Encabezados adicionales",
+        "headersHelp": "Opcionales (hasta 10); no pueden ser Authorization, Host ni Content-Type.",
+        "headerNameLabel": "Encabezado",
+        "headerValueLabel": "Valor",
+        "addHeader": "Agregar encabezado",
+        "removeHeader": "Quitar el encabezado {n}"
+      },
+      "errors": {
+        "statuses": "Escoja al menos un estatus que dispare la salida.",
+        "columnsRequired": "Agregue al menos una columna a la salida.",
+        "columnsMax": "La salida admite hasta 40 columnas.",
+        "headerRequired": "Cada columna necesita un nombre.",
+        "headerMax": "El nombre de una columna no puede pasar de 60 caracteres.",
+        "headerRepeated": "Hay dos columnas llamadas «{h}».",
+        "headerName": "El nombre de la columna «{h}» debe empezar con una letra o guion bajo y llevar solo letras, números, guion y guion bajo (para JSON y XML).",
+        "fieldRequired": "Escoja el campo de la orden.",
+        "url": "Indique la URL a la que se enviarán los avisos.",
+        "authName": "Indique el usuario (BASIC) o el nombre del encabezado (HEADER) de la autenticación.",
+        "secret": "Indique el token, la contraseña o el valor del encabezado de la autenticación.",
+        "headersMax": "Se admiten hasta 10 encabezados adicionales.",
+        "headerPair": "Escriba el nombre del encabezado."
+      }
+    },
+    "outputs": {
+      "title": "Salidas de archivos y API",
+      "help": "Envíos de las integraciones de salida (SFTP, FTP y API saliente). Los «No entregados» agotaron los reintentos: corrija el destino y reintente.",
+      "empty": "No hay envíos con ese filtro.",
+      "emptyUndelivered": "No hay envíos sin entregar.",
+      "view": "Ver contenido",
+      "viewTitle": "Envío «{file}»",
+      "viewInfo": "{format} · {orders} orden(es) · {bytes} bytes. Se muestran los primeros 4.000 caracteres.",
+      "retried": "Envío puesto a reintento.",
+      "discarded": "Envío descartado.",
+      "status": {
+        "UNDELIVERED": "No entregado",
+        "PENDING": "Pendiente",
+        "SENT": "Enviado",
+        "DISCARDED": "Descartado"
+      },
+      "col": {
+        "status": "Estatus",
+        "integration": "Integración",
+        "dest": "Destino",
+        "file": "Archivo",
+        "orders": "Órdenes",
+        "attempts": "Intentos",
+        "reason": "Motivo",
+        "date": "Creado"
+      }
+    },
+    "direction": {
+      "INBOUND": "Entrada",
+      "OUTBOUND": "Salida"
     },
     "hooks": {
       "open": "Webhooks",
@@ -9841,6 +9965,8 @@
       }
     },
     "form": {
+      "direction": "Dirección",
+      "directionHelp": {"INBOUND": "Teikem recibe órdenes (carpeta, correo, SFTP, FTP, subida manual o API del cliente).", "OUTBOUND": "Teikem manda órdenes del cliente (SFTP, FTP o la API de su sistema) cuando llegan a un estatus."},
       "newTitle": "Nueva integración",
       "editTitle": "Editar «{name}»",
       "name": "Nombre",

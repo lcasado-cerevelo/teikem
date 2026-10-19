@@ -7,7 +7,7 @@ import { MATCH_OPERATORS } from './emailRules'
 import type { IntegrationValues } from './integrationRules'
 import { AUTH_KINDS } from './remoteRules'
 
-export function RemoteSection({ form, kind, hasSavedSecret }: { form: UseFormReturn<IntegrationValues>; kind: 'SFTP' | 'FTP'; hasSavedSecret: boolean }) {
+export function RemoteSection({ form, kind, hasSavedSecret, outbound = false }: { form: UseFormReturn<IntegrationValues>; kind: 'SFTP' | 'FTP'; hasSavedSecret: boolean; outbound?: boolean }) {
   const t = useT()
   const remote = useWatch({ control: form.control, name: 'remote' })
   const key = kind === 'SFTP' && remote?.authKind === 'KEY'
@@ -41,9 +41,10 @@ export function RemoteSection({ form, kind, hasSavedSecret }: { form: UseFormRet
       <Field name="remote.password" label={key ? t('integrations.remote.passphrase') : t('integrations.remote.password')} required={!key && !hasSavedSecret} help={hasSavedSecret ? t('integrations.remote.secretKept') : t('integrations.remote.secretHelp')}>
         <TextInput type="password" autoComplete="new-password" />
       </Field>
-      <Field name="remote.dir" label={t('integrations.remote.dir')} required help={t('integrations.remote.dirHelp')}>
+      <Field name="remote.dir" label={t(outbound ? 'integrations.out.remoteDir' : 'integrations.remote.dir')} required help={t(outbound ? 'integrations.out.remoteDirHelp' : 'integrations.remote.dirHelp')}>
         <TextInput placeholder="/entrada" />
       </Field>
+      {!outbound && (
       <div className="r2">
         <Field name="remote.processedDir" label={t('integrations.remote.processed')} help={t('integrations.remote.processedHelp')}>
           <TextInput />
@@ -52,6 +53,7 @@ export function RemoteSection({ form, kind, hasSavedSecret }: { form: UseFormRet
           <TextInput />
         </Field>
       </div>
+      )}
       {kind === 'SFTP' ? (
         <Field name="remote.hostFingerprint" label={t('integrations.remote.fingerprint')} help={t('integrations.remote.fingerprintHelp')}>
           <TextInput placeholder="SHA256:…" autoComplete="off" />
@@ -61,6 +63,7 @@ export function RemoteSection({ form, kind, hasSavedSecret }: { form: UseFormRet
           <Toggle text={t('integrations.remote.useFtps')} />
         </Field>
       )}
+      {!outbound && (
       <div className="r2">
         <Field name="remote.fileNameOperator" label={t('integrations.remote.fileName')}>
           <Select options={MATCH_OPERATORS.map((o) => ({ value: o, label: t(`integrations.email.operator.${o}`) }))} />
@@ -69,9 +72,12 @@ export function RemoteSection({ form, kind, hasSavedSecret }: { form: UseFormRet
           <TextInput placeholder="ordenes-*.csv" />
         </Field>
       </div>
+      )}
+      {!outbound && (
       <Field name="remote.fileTypes" label={t('integrations.remote.types')} help={t('integrations.remote.typesHelp')}>
         <TextInput />
       </Field>
+      )}
     </fieldset>
   )
 }

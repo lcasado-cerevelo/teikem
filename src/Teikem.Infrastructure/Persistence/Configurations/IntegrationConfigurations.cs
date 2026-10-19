@@ -133,3 +133,30 @@ public sealed class IntegrationWebhookDeliveryConfiguration : IEntityTypeConfigu
         b.HasIndex(d => new { d.TenantId, d.IntegrationWebhookId, d.IntegrationWebhookDeliveryId }).HasDatabaseName("IX_IntegrationWebhookDelivery_Webhook");
     }
 }
+
+public sealed class IntegrationOutputConfiguration : IEntityTypeConfiguration<IntegrationOutput>
+{
+    public void Configure(EntityTypeBuilder<IntegrationOutput> b)
+    {
+        b.ToTable("IntegrationOutput");
+        b.HasKey(o => o.IntegrationOutputId);
+        b.Property(o => o.FileName).HasMaxLength(160).IsRequired();
+        b.Property(o => o.Format).HasMaxLength(4).IsUnicode(false).IsRequired();
+        b.Property(o => o.Content).IsRequired();
+        b.Property(o => o.Status).HasMaxLength(12).IsUnicode(false).IsRequired();
+        b.Property(o => o.Error).HasMaxLength(500);
+        b.HasIndex(o => new { o.TenantId, o.Status, o.NextAttemptUtc }).HasDatabaseName("IX_IntegrationOutput_Due");
+        b.HasIndex(o => new { o.TenantId, o.IntegrationId, o.IntegrationOutputId }).HasDatabaseName("IX_IntegrationOutput_Integration");
+    }
+}
+
+public sealed class IntegrationOutputOrderConfiguration : IEntityTypeConfiguration<IntegrationOutputOrder>
+{
+    public void Configure(EntityTypeBuilder<IntegrationOutputOrder> b)
+    {
+        b.ToTable("IntegrationOutputOrder");
+        b.HasKey(o => o.IntegrationOutputOrderId);
+        b.Property(o => o.StatusCode).HasMaxLength(30).IsUnicode(false).IsRequired();
+        b.HasIndex(o => new { o.TenantId, o.IntegrationId, o.IntegrationOutputId }).HasDatabaseName("IX_IntegrationOutputOrder_Queue");
+    }
+}

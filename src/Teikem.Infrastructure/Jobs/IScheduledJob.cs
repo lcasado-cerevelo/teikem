@@ -46,4 +46,6 @@ public static class JobKeys
     public const string IntegrationRunDue = "INTEGRATION_RUN_DUE";
     /// <summary>Lote 136 (P11): entrega los webhooks pendientes (con reintentos de espera creciente) y purga las salidas viejas.</summary>
     public const string WebhookDelivery = "WEBHOOK_DELIVERY";
+    /// <summary>Lote 137b (P11): arma y manda las salidas (archivos por SFTP/FTP y API saliente) con sus reintentos.</summary>
+    public const string IntegrationOutput = "INTEGRATION_OUTPUT";
 }

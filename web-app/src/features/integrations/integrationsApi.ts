@@ -18,6 +18,8 @@ export type ApiKeyCreatedDto = Schemas['ApiKeyCreatedDto']
 export type ApiLogDto = Schemas['ApiLogDto']
 export type FormatPreviewDto = Schemas['FormatPreviewDto']
 export type FileFormatConfig = Schemas['FileFormatConfig']
+export type OutputItemDto = Schemas['OutputItemDto']
+export type OutputPreviewDto = Schemas['OutputPreviewDto']
 export type WebhookDto = Schemas['WebhookDto']
 export type WebhookCreatedDto = Schemas['WebhookCreatedDto']
 export type WebhookDeliveryDto = Schemas['WebhookDeliveryDto']
@@ -32,6 +34,7 @@ export const integrationKeys = {
   apiLog: (id: string, key: string) => ['integrations', 'api-log', id, key] as const,
   webhooks: (id: string) => ['integrations', 'webhooks', id] as const,
   outbox: (integration: string, status: string, skip: number, take: number) => ['integrations', 'outbox', { integration, status, skip, take }] as const,
+  outputs: (integration: string, status: string, skip: number, take: number) => ['integrations', 'outputs', { integration, status, skip, take }] as const,
   item: (id: number) => ['integrations', 'inbox', 'item', id] as const,
 }
 
@@ -268,4 +271,33 @@ export function usePreviewFormat() {
       return unwrap(api.POST('/api/v1/integrations/format/preview', { body: body as never }))
     },
   })
+}
+
+// ---------------------------------------------------------------- integraciones de salida (Lote 137b)
+
+/** Arma un ejemplo de la salida con órdenes recientes del cliente, sin mandar nada. */
+export function usePreviewOutput() {
+  return useMutation({ mutationFn: (publicId: string) => unwrap(api.POST('/api/v1/integrations/{publicId}/output/preview', { params: { path: { publicId } } })) })
+}
+
+export function useOutputs(integration: string, status: string, skip: number, take: number) {
+  return useQuery({
+    queryKey: integrationKeys.outputs(integration, status, skip, take),
+    queryFn: () => unwrap(api.GET('/api/v1/integrations/outputs', { params: { query: { integration: integration || undefined, status: status || undefined, skip, take } } })),
+  })
+}
+
+export function useOutputMutations() {
+  const qc = useQueryClient()
+  const invalidate = () => qc.invalidateQueries({ queryKey: integrationKeys.all })
+  return {
+    retry: useMutation({
+      mutationFn: (id: number) => unwrap(api.POST('/api/v1/integrations/outputs/{id}/retry', { params: { path: { id } } })),
+      onSettled: invalidate,
+    }),
+    discard: useMutation({
+      mutationFn: (id: number) => unwrap(api.POST('/api/v1/integrations/outputs/{id}/discard', { params: { path: { id } } })),
+      onSettled: invalidate,
+    }),
+  }
 }

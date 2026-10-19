@@ -42,7 +42,10 @@ public sealed record IntegrationDto(
     RemoteConfig? Remote = null,
     bool HasRemoteSecret = false,
     /// <summary>Formato del archivo (Excel, JSON o XML con mapeo); null = CSV.</summary>
-    FileFormatConfig? Format = null);
+    FileFormatConfig? Format = null,
+    /// <summary>Lote 137b: qué manda una integración de SALIDA (estatus, disparador, formato, columnas y, en HTTP, la API); null en las de entrada.</summary>
+    OutputConfig? Output = null,
+    bool HasHttpSecret = false);
 
 /// <summary>
 /// Alta. Scopes: códigos de IntegrationScopes (solo los que quien crea puede dar). Folder: carpeta de entrada (conector CARPETA). IncludeMe: agrega a quien crea a los avisos.
@@ -67,7 +70,12 @@ public sealed record IntegrationCreateRequest(
     RemoteConfig? Remote = null,
     /// <summary>Contraseña o llave privada del servidor (SFTP/FTP): se guarda cifrada y no se vuelve a mostrar.</summary>
     RemoteSecret? Secret = null,
-    FileFormatConfig? Format = null);
+    FileFormatConfig? Format = null,
+    /// <summary>INBOUND (por omisión) u OUTBOUND (Lote 137b: la integración MANDA órdenes del cliente).</summary>
+    string? Direction = null,
+    OutputConfig? Output = null,
+    /// <summary>Token, contraseña o valor del encabezado de la API saliente: se guarda cifrado y no se vuelve a mostrar.</summary>
+    HttpOutSecret? HttpSecret = null);
 
 /// <summary>Edición parcial: null = sin cambio. NotifyUserIds reemplaza la lista; Scopes reemplaza los alcances (se revalidan contra quien edita).</summary>
 public sealed record IntegrationPatchRequest(
@@ -85,7 +93,9 @@ public sealed record IntegrationPatchRequest(
     string? MailPassword = null,
     RemoteConfig? Remote = null,
     RemoteSecret? Secret = null,
-    FileFormatConfig? Format = null);
+    FileFormatConfig? Format = null,
+    OutputConfig? Output = null,
+    HttpOutSecret? HttpSecret = null);
 
 /// <summary>Un alcance que se puede ofrecer en el alta: de qué familia es, si quien mira lo puede dar y, si no, por qué.</summary>
 public sealed record IntegrationScopeOptionDto(string Code, string Family, string Label, string? ModuleKey, bool Available, string? UnavailableReason, bool IsApi = false, bool NeedsClient = false);
@@ -94,7 +104,11 @@ public sealed record IntegrationScopeOptionDto(string Code, string Family, strin
 public sealed record IntegrationOptionsDto(
     IReadOnlyList<IntegrationScopeOptionDto> Scopes,
     IReadOnlyList<string> Connectors,
-    IReadOnlyList<IntegrationNotifyUserDto> Users);
+    IReadOnlyList<IntegrationNotifyUserDto> Users,
+    /// <summary>Lote 137b: los campos de orden que se pueden poner en una salida, los estatus que la pueden disparar y los conectores de salida.</summary>
+    IReadOnlyList<OutputFieldDto>? OutputFields = null,
+    IReadOnlyList<string>? OrderStatuses = null,
+    IReadOnlyList<string>? OutboundConnectors = null);
 
 public sealed record IntegrationFileDto(long Id, string FileName, string Result, long SizeBytes, int OrdersCreated, int Rejected, string? Message, DateTime ProcessedUtc);
 
@@ -198,3 +212,17 @@ public sealed record WebhookDeliveryPageDto(IReadOnlyList<WebhookDeliveryDto> It
 
 /// <summary>Vista previa de un archivo con el formato configurado: las hojas (Excel), el encabezado y las primeras filas tal como las leería la plantilla.</summary>
 public sealed record FormatPreviewDto(string Kind, IReadOnlyList<string> Sheets, IReadOnlyList<string> Header, IReadOnlyList<IReadOnlyList<string>> Rows, int TotalRows);
+
+// ---------------------------------------------------------------- Lote 137b: integraciones de salida
+
+public sealed record OutputFieldDto(string Code, string Label, string Kind);
+
+/// <summary>Un envío de una integración de salida: el archivo (o cuerpo) ya armado, su destino y cómo va (intentos, motivo, código HTTP). Preview = los primeros 4.000 caracteres del contenido.</summary>
+public sealed record OutputItemDto(
+    long Id, Guid IntegrationPublicId, string IntegrationName, string ConnectorKind, string FileName, string Format, int OrderCount, int SizeBytes, string Status, int AttemptCount, DateTime NextAttemptUtc,
+    DateTime? LastAttemptUtc, int? ResponseCode, string? Error, DateTime CreatedAtUtc, DateTime? SentAtUtc, string Preview);
+
+public sealed record OutputPageDto(IReadOnlyList<OutputItemDto> Items, int Total, int Undelivered);
+
+/// <summary>Contenido de ejemplo de una salida con órdenes recientes del cliente; Sample = true si eran de los estatus pedidos (si no, las últimas del cliente).</summary>
+public sealed record OutputPreviewDto(string FileName, string Format, string Content, int OrderCount, bool Sample);

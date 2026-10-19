@@ -9576,3 +9576,17 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **Formato del archivo — la carpeta, el correo o el SFTP no toma mis .xlsx/.json/.xml.** La carpeta toma las extensiones del formato (Automático: csv, txt, xlsx, json, xml). En correo, SFTP y FTP agregue el tipo a la lista de tipos de archivo del conector.
 
 **Formato del archivo — «El archivo XML trae una declaración DTD, que no se admite.»** Por seguridad el XML no puede traer DTD ni entidades externas; pídale al cliente el archivo sin ellas.
+
+**Salida — no sale nada.** Revise que la integración de salida esté encendida, que el estatus esté marcado, que la orden sea del cliente de la integración y que haya llegado al estatus **después** de crearla. «Vista previa» y «Enviar ahora» ayudan a probar.
+
+**Salida — envío «No entregado».** El destino falló en los 6 intentos (1 min, 5, 30, 2 h, 12 h). Vea el motivo en Salidas → «Salidas de archivos y API», corrija el destino (URL, credenciales, carpeta, huella) y **Reintente**, o **Descarte**.
+
+**Salida — «El nombre de la columna «X» debe empezar con una letra o guion bajo…» (400).** En JSON y XML el nombre de la columna es el nombre del campo: use letras, números, guion y guion bajo (sin espacios).
+
+**Salida — «Una integración de salida solo admite el alcance de salida de órdenes.» (400).** Las integraciones de salida usan solo «Salida de órdenes por archivo o API».
+
+**Salida — «La salida por horario necesita un intervalo (minutos).» (400).** Indique cada cuántos minutos sale el envío (1 a 10080).
+
+**Salida — «Esta integración es de salida: no recibe archivos.» (400).** «Subir archivo» es de las integraciones de entrada.
+
+**Salida — la API del cliente recibe el mismo envío dos veces.** Es un reintento (su respuesta no llegó a tiempo): cada llamada lleva `Idempotency-Key: teikem-output-{id}`; ignore los repetidos.

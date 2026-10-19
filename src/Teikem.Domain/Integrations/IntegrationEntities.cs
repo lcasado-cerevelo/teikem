@@ -15,9 +15,13 @@ public static class IntegrationConnectorKinds
     public const string Ftp = "FTP";
     /// <summary>Lote 135: la integración ES una API: el cliente llama a Teikem con una llave (ver ApiAccessRules).</summary>
     public const string Api = "API";
+    /// <summary>Lote 137b: API saliente genérica — Teikem manda lo armado por HTTP a la URL del cliente.</summary>
+    public const string Http = "HTTP";
     /// <summary>Los que ya corren (el resto se define pero aún no se puede elegir).</summary>
-    public static readonly IReadOnlyList<string> Available = [Folder, Manual, Email, Sftp, Ftp, Api];
-    public static readonly IReadOnlyList<string> All = [Folder, Manual, Email, Sftp, Ftp, Api];
+    public static readonly IReadOnlyList<string> Available = [Folder, Manual, Email, Sftp, Ftp, Api, Http];
+    public static readonly IReadOnlyList<string> All = [Folder, Manual, Email, Sftp, Ftp, Api, Http];
+    /// <summary>Los conectores de una integración de SALIDA.</summary>
+    public static readonly IReadOnlyList<string> Outbound = [Sftp, Ftp, Http];
     public static bool IsRemote(string? kind) => kind is Sftp or Ftp;
 }
 
@@ -95,6 +99,8 @@ public class Integration : ITenantScoped, IAuditStamped
     [SensitiveData] public byte[]? SecretEnc { get; set; }
     /// <summary>Formato del archivo que lee la integración (Lote 137: Excel, JSON y XML con mapeo por ruta); null = el de siempre (CSV).</summary>
     public string? FormatJson { get; set; }
+    /// <summary>Lote 137b: qué manda una integración de SALIDA (estatus, disparador, formato, columnas y, en HTTP, la API); null en las de entrada.</summary>
+    public string? OutputJson { get; set; }
     /// <summary>Plantilla de importación con la que se leen los archivos.</summary>
     public int? ImportTemplateId { get; set; }
     public string ScheduleKind { get; set; } = IntegrationScheduleKinds.Manual;
@@ -259,6 +265,43 @@ public class IntegrationWebhookDelivery : ITenantScoped
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime? DeliveredAtUtc { get; set; }
     public int? ResolvedBy { get; set; }
+}
+
+/// <summary>
+/// Lote 137b (P11) — un envío de una integración de SALIDA: el contenido ya armado (CSV, JSON o XML) de una o varias órdenes y su destino (SFTP/FTP o HTTP). PENDING → SENT, o tras agotar los reintentos
+/// UNDELIVERED (bandeja de salidas, con «Reintentar»). Se purga a los 30 días.
+/// </summary>
+public class IntegrationOutput : ITenantScoped
+{
+    public long IntegrationOutputId { get; set; }
+    public int TenantId { get; set; }
+    public int IntegrationId { get; set; }
+    public string FileName { get; set; } = string.Empty;
+    public string Format { get; set; } = OutputFormats.Csv;
+    public int OrderCount { get; set; }
+    public string Content { get; set; } = string.Empty;
+    public int SizeBytes { get; set; }
+    public string Status { get; set; } = OutputStatuses.Pending;
+    public int AttemptCount { get; set; }
+    public DateTime NextAttemptUtc { get; set; } = DateTime.UtcNow;
+    public DateTime? LastAttemptUtc { get; set; }
+    public int? ResponseCode { get; set; }
+    public string? Error { get; set; }
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime? SentAtUtc { get; set; }
+    public int? ResolvedBy { get; set; }
+}
+
+/// <summary>Una orden que llegó a un estatus de la salida y espera ir en un envío (IntegrationOutputId NULL = aún no tiene envío).</summary>
+public class IntegrationOutputOrder : ITenantScoped
+{
+    public long IntegrationOutputOrderId { get; set; }
+    public int TenantId { get; set; }
+    public int IntegrationId { get; set; }
+    public int TransportOrderId { get; set; }
+    public string StatusCode { get; set; } = string.Empty;
+    public DateTime QueuedAtUtc { get; set; } = DateTime.UtcNow;
+    public long? IntegrationOutputId { get; set; }
 }
 
 /// <summary>Bitácora de la API por llave: una fila por solicitud (método, ruta, estatus, milisegundos). Se purga a los 30 días.</summary>

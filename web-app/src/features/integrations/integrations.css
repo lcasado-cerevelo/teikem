@@ -24,3 +24,5 @@
 .int-col-n{padding-bottom:10px}
 .int-previewbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
 @media (max-width:560px){.int-col{grid-template-columns:minmax(0,1fr)}.int-col-n{padding-bottom:0}}
+.int-col-h{grid-template-columns:minmax(0,1fr) minmax(0,1.6fr) auto}
+@media (max-width:560px){.int-col-h{grid-template-columns:minmax(0,1fr)}}

@@ -30,11 +30,16 @@ public static class IntegrationScopes
 {
     /// <summary>Entrada de órdenes por archivo (carpeta, subida manual y, después, SFTP o correo): crea órdenes y los consignatarios que falten.</summary>
     public const string FilesOrdersImport = "files.orders_import";
+    /// <summary>Lote 137b: salida de órdenes del cliente por archivo (SFTP/FTP) o por API saliente (HTTP).</summary>
+    public const string FilesOrdersExport = "files.orders_export";
 
     public static readonly IReadOnlyList<IntegrationScope> All =
     [
         new(FilesOrdersImport, IntegrationFamilies.Files, ModuleKeys.LtlGround, "Entrada de órdenes por archivo", "Order intake by file",
             [PermissionCatalog.OrdersView, PermissionCatalog.OrdersCreate, PermissionCatalog.LocationsRead, PermissionCatalog.LocationsCreate, PermissionCatalog.ClientsRead], NeedsClient: true),
+
+        new(FilesOrdersExport, IntegrationFamilies.Files, ModuleKeys.LtlGround, "Salida de órdenes por archivo o API", "Order output by file or API",
+            [PermissionCatalog.OrdersView, PermissionCatalog.ClientsRead, PermissionCatalog.LocationsRead], NeedsClient: true),
 
         // ---- API del cliente (Lote 135): cada alcance abre un grupo de rutas (ApiAccessRules) y da a la cuenta de servicio solo los permisos que esas rutas piden
         new(ApiScopes.OrdersRead, IntegrationFamilies.Transport, ModuleKeys.LtlGround, "API: leer órdenes, su seguimiento y el comprobante de entrega", "API: read orders, tracking and proof of delivery",
@@ -93,6 +98,8 @@ public static class IntegrationScopes
 
     public const string NoScopesMessage = "Escoja al menos un alcance para la integración.";
     public const string ApiNeedsClientMessage = "Los alcances de transporte de la API necesitan el cliente: la llave solo ve lo de ese cliente.";
+    public const string OutboundScopeOnlyMessage = "Una integración de salida solo admite el alcance de salida de órdenes.";
+    public const string InboundScopeOnlyMessage = "Una integración de entrada no admite el alcance de salida de órdenes.";
     public const string ApiScopesOnlyMessage = "Una integración de tipo API solo admite alcances de la API.";
     public const string FileScopeOnlyMessage = "Esta integración recibe archivos: solo admite el alcance de entrada de órdenes por archivo.";
     public static string UnknownScopeMessage(string code) => $"El alcance '{code}' no existe.";
