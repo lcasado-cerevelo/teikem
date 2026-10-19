@@ -214,8 +214,12 @@ if (app.Configuration.GetValue<bool>("Hosting:RedirectToHttps"))
 }
 var webRoot = app.Environment.WebRootPath;
 var hasWeb = webRoot is not null && File.Exists(Path.Combine(webRoot, "index.html"));
+// 2026-10-19: la página de descargas del ambiente de test (wwwroot/descargas) sirve los APK de las apps; Kestrel no conoce .apk de fábrica.
+var contentTypes = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
+contentTypes.Mappings[".apk"] = "application/vnd.android.package-archive";
 var staticOptions = new StaticFileOptions
 {
+    ContentTypeProvider = contentTypes,
     OnPrepareResponse = ctx =>
     {
         // Los archivos de /assets llevan hash en el nombre (se pueden guardar un año); index.html nunca, para ver las versiones nuevas.

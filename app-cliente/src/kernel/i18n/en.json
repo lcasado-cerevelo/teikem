@@ -429,5 +429,8 @@
     "invoiceBalance": "Invoice balance",
     "overdue": "{n} overdue",
     "cod": "Collected, to be remitted"
+  },
+  "environment": {
+    "notProduction": "Test environment: not production"
   }
 }

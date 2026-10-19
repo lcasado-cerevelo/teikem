@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<link rel="icon" href="favicon.ico">
+<title>[TEST] Teikem — Descargas de las apps de prueba</title>
+<style>
+  :root { --brand: #1F6FE5; --navy: #0B2C66; --accent: #FF6A1A; --red: #DC2626; --green: #047857; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #f5f6f8; color: #1c1c1e; min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 44px 16px 32px;
+  }
+  .env-strip { position: fixed; top: 0; left: 0; right: 0; height: 5px; background: var(--red); z-index: 10; }
+  .env-tag {
+    position: fixed; top: 5px; left: 50%; transform: translateX(-50%); background: var(--red); color: #fff;
+    font-weight: 800; font-size: .8rem; letter-spacing: 1px; padding: 3px 14px; border-radius: 0 0 10px 10px; z-index: 10;
+  }
+  .logo { width: 240px; max-width: 70vw; margin-bottom: 14px; }
+  h1 { font-size: 1.5rem; color: var(--navy); margin-bottom: 4px; text-align: center; }
+  .subtitle { color: #6b7280; font-size: .95rem; margin-bottom: 20px; text-align: center; max-width: 460px; }
+  .warn {
+    width: 100%; max-width: 420px; background: #FEF2F2; border: 1.5px solid var(--red); color: #991B1B;
+    border-radius: 12px; padding: 12px 16px; font-size: .88rem; margin-bottom: 20px;
+  }
+  .cards { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 420px; }
+  .card {
+    background: #fff; border-radius: 14px; padding: 18px 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08); border: 2px dashed var(--red);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .card .info { flex: 1; }
+  .card .name { font-weight: 700; font-size: 1.05rem; }
+  .card .desc { color: #6b7280; font-size: .85rem; margin-top: 2px; }
+  .card .ver { color: #6b7280; font-size: .8rem; margin-top: 4px; }
+  .card .ver.missing { color: var(--red); }
+  .btn {
+    background: #fff; color: var(--red); border: 1.5px solid var(--red); text-decoration: none;
+    padding: 10px 18px; border-radius: 10px; font-weight: 600; font-size: .95rem; white-space: nowrap;
+  }
+  .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .btn.disabled { opacity: .45; pointer-events: none; }
+  .badge {
+    display: inline-block; background: var(--red); color: #fff;
+    font-size: .7rem; font-weight: 700; border-radius: 999px;
+    padding: 2px 10px; margin-bottom: 6px; letter-spacing: .3px;
+  }
+  .badge.green { background: var(--green); }
+  .links { margin-top: 18px; font-size: .9rem; text-align: center; color: #374151; }
+  .links a { color: var(--brand); font-weight: 600; }
+  .help {
+    width: 100%; max-width: 420px; margin-top: 26px; background: #fff; border-radius: 14px;
+    padding: 18px 20px; box-shadow: 0 1px 4px rgba(0,0,0,.08); font-size: .88rem;
+  }
+  .help h2 { font-size: 1rem; color: var(--navy); margin-bottom: 10px; }
+  .help ol { padding-left: 20px; display: flex; flex-direction: column; gap: 6px; color: #374151; }
+  footer { margin-top: 32px; color: #6b7280; font-size: .8rem; text-align: center; }
+  .env-ribbon {
+    position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); max-width: calc(100vw - 24px);
+    padding: 5px 14px; border-radius: 999px; background: var(--red); color: #fff; font-size: 12px; text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,.35); pointer-events: none;
+  }
+</style>
+</head>
+<body>
+  <div class="env-strip" aria-hidden="true"></div>
+  <div class="env-tag" role="status">TEST · AMBIENTE DE PRUEBAS</div>
+
+  <img class="logo" src="logo.png" alt="Teikem">
+  <h1>Apps de Teikem — ambiente de TEST</h1>
+  <p class="subtitle">Versiones de prueba para Android que trabajan contra <strong>test.advancelogisticspr.com</strong>. No son las de producción.</p>
+
+  <div class="warn">
+    Estas apps se instalan <strong>junto</strong> a las de producción y de staging (otro icono: verde con cinta <strong>TEST</strong>) y no las tocan.
+    Lo que haga aquí no afecta la operación real.
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="info">
+        <span class="badge">SOLO PRUEBAS</span>
+        <div class="name">Teikem Almacén TEST</div>
+        <div class="desc">App del almacén (recibir, acomodar, recolectar, contar, despachar) — Zebra y Android.</div>
+        <div class="ver" id="v-almacen"></div>
+      </div>
+      <a class="btn" id="b-almacen" href="apk/teikem-almacen-test.apk">Descargar</a>
+    </div>
+
+    <div class="card">
+      <div class="info">
+        <span class="badge green">PORTAL DEL CLIENTE</span>
+        <div class="name">Teikem Clientes TEST</div>
+        <div class="desc">App del portal del cliente (sus órdenes, avisos y cuenta). La misma web está en <a href="https://test-portal.advancelogisticspr.com">test-portal.advancelogisticspr.com</a>.</div>
+        <div class="ver" id="v-clientes"></div>
+      </div>
+      <a class="btn" id="b-clientes" href="apk/teikem-clientes-test.apk">Descargar</a>
+    </div>
+  </div>
+
+  <p class="links">Web de la plataforma (test): <a href="/">test.advancelogisticspr.com</a></p>
+
+  <div class="help">
+    <h2>Cómo instalar</h2>
+    <ol>
+      <li>Toca <strong>Descargar</strong>. Chrome avisará
+        <em>"El archivo podría ser dañino"</em> ("File might be harmful") — es el aviso
+        estándar para TODO archivo de instalación (APK), no significa que haya un problema.
+        Toca <strong>"Descargar de todos modos"</strong> ("Download anyway").</li>
+      <li>Cuando termine, abre el archivo descargado (barra de notificaciones o carpeta
+        Descargas).</li>
+      <li>La primera vez, el teléfono dirá que <em>no tiene permiso para instalar
+        aplicaciones desconocidas de esta fuente</em>. Toca <strong>"Ajustes"</strong>
+        ("Settings"), activa <strong>"Permitir de esta fuente"</strong> ("Allow from this
+        source") y regresa con el botón atrás — la instalación continúa sola.
+        Esto se hace una sola vez.</li>
+      <li>Si <strong>Google Play Protect</strong> muestra "App bloqueada" / "App blocked",
+        es normal: la app no se distribuye por Play Store y Google no la reconoce.
+        Toca el enlace pequeño <strong>"Instalar de todos modos"</strong> ("Install anyway").
+        <strong>OJO:</strong> el botón grande "Entendido" ("Got it") CANCELA la instalación — no lo uses.</li>
+      <li>Si ya tenías la app de TEST, se actualiza <strong>encima</strong> sin perder tu configuración.
+        <strong>No la desinstales antes.</strong> Las apps de producción y de staging no se tocan.</li>
+    </ol>
+  </div>
+
+  <footer>Powered by Cerevelo</footer>
+  <div class="env-ribbon" role="status"><strong>TEST</strong> · Ambiente de pruebas: no es producción</div>
+
+<script>
+  // versions.json (junto a este archivo, lo escribe crear-paquete-windows.ps1 -Test) controla los números mostrados:
+  // { "almacen": "1.0.0 (c7)", "clientes": "1.0.0 (c2)" }   — sin una clave, la tarjeta dice que aún no se publicó y apaga el botón.
+  fetch('versions.json', { cache: 'no-store' })
+    .then(function (r) { return r.json(); })
+    .then(function (v) {
+      ['almacen', 'clientes'].forEach(function (k) {
+        var el = document.getElementById('v-' + k), btn = document.getElementById('b-' + k);
+        if (!el) return;
+        if (v[k]) { el.textContent = 'Versión ' + v[k]; }
+        else { el.textContent = 'Todavía no se publicó el APK de test de esta app.'; el.className = 'ver missing'; if (btn) btn.className = 'btn disabled'; }
+      });
+    })
+    .catch(function () { /* sin versions.json la página funciona igual */ });
+</script>
+</body>
+</html>

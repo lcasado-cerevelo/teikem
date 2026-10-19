@@ -16,12 +16,28 @@
   su base de datos y su dominio), p. ej.:  .\instalar.ps1 -Sitio TeikemStaging -Carpeta C:\inetpub\teikem-staging
   Opciones: -Sitio <nombre> (por defecto Teikem)  -Carpeta <ruta> (por defecto C:\inetpub\teikem)
             -SinBase (no toca la base de datos)  -RespaldoHecho (no pregunta por el respaldo; para correrlo sin teclado)
+  AMBIENTE DE TEST (2026-10-19; lo usa instalar-test.ps1, que es lo que se corre para test):
+            -Dominio <host> y -DbNombre <base>: valores por defecto de las preguntas de la configuración (para no teclearlos).
+            -Etiqueta <TEXTO>: etiqueta del ambiente que la web muestra en su cinta roja (Hosting:EnvironmentLabel). Sin ella: nada en el sitio
+                «Teikem» (producción) y STAGING en cualquier otro.
+            -LetsEncrypt -CorreoLetsEncrypt <correo>: pide el certificado de Let's Encrypt con win-acme (lo descarga si falta), deja el enlace https y
+                la tarea de renovación automática, y activa la redirección a https en la misma corrida (ver letsencrypt.ps1).
+            -OrigenesExtra <url,...>: orígenes adicionales permitidos (CORS), p. ej. el portal del cliente en otro dominio.
+            -ConDescargas: copia la carpeta «descargas» del paquete (página de descarga de las apps) a wwwroot\descargas; los APK ya subidos
+                (wwwroot\descargas\apk) se conservan entre actualizaciones y los del paquete, si trae, los reemplazan.
 #>
 param(
     [string]$Sitio = 'Teikem',
     [string]$Carpeta = 'C:\inetpub\teikem',
     [switch]$SinBase,
-    [switch]$RespaldoHecho
+    [switch]$RespaldoHecho,
+    [string]$Dominio = '',
+    [string]$DbNombre = '',
+    [string]$Etiqueta = '',
+    [switch]$LetsEncrypt,
+    [string]$CorreoLetsEncrypt = '',
+    [string[]]$OrigenesExtra = @(),
+    [switch]$ConDescargas
 )
 
 $ErrorActionPreference = 'Stop'
@@ -47,6 +63,13 @@ function Texto-Seguro($seguro) { [Runtime.InteropServices.Marshal]::PtrToStringA
 
 $origen = Join-Path $PSScriptRoot 'app'
 if (-not (Test-Path (Join-Path $origen 'Teikem.Api.dll'))) { Fallar "No encuentro la carpeta 'app' del paquete junto a este script ($origen)." }
+if ($LetsEncrypt) {
+    $le = Join-Path $PSScriptRoot 'letsencrypt.ps1'
+    if (-not (Test-Path $le)) { Fallar "Falta letsencrypt.ps1 junto a este script (viene en el paquete)." }
+    . $le
+}
+$dominioDefecto = if ($Dominio) { $Dominio } else { 'teikem.advancelogisticspr.com' }
+$dbNombreDefecto = if ($DbNombre) { $DbNombre } else { 'Teikem' }
 $admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $admin) { Fallar 'Corra este script como Administrador (clic derecho en PowerShell > Ejecutar como administrador).' }
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
@@ -80,11 +103,11 @@ if (Test-Path $cfgArchivo) {
 
 if ($escribirCfg) {
     Paso 'Configuración'
-    $dominio = Preguntar 'Dominio de la web' 'teikem.advancelogisticspr.com'
+    $dominio = Preguntar 'Dominio de la web' $dominioDefecto
     Write-Host ''
     Write-Host 'Base de datos de Teikem (la que ya subió; autenticación de SQL Server):'
     $dbServidor = Preguntar '  Servidor y puerto (ej. localhost,1433 o 10.0.0.5,1433)'
-    $dbNombre = Preguntar '  Nombre de la base' 'Teikem'
+    $dbNombre = Preguntar '  Nombre de la base' $dbNombreDefecto
     $dbUsuario = Preguntar '  Usuario'
     $dbClave = Texto-Seguro (Read-Host '  Contraseña' -AsSecureString)
     if (-not $dbServidor -or -not $dbUsuario -or -not $dbClave) { Fallar 'Servidor, usuario y contraseña de la base son obligatorios.' }
@@ -111,7 +134,7 @@ if ($escribirCfg) {
     $cfg = [ordered]@{
         ConnectionStrings = @{ Teikem = "Server=$dbServidor;Database=$dbNombre;User Id=$dbUsuario;Password=$dbClave;TrustServerCertificate=True;Encrypt=True;MultipleActiveResultSets=True" }
         Jwt = @{ SigningKey = $jwt }
-        Cors = @{ Origins = @("https://$dominio", "http://$dominio") }
+        Cors = @{ Origins = @(@("https://$dominio", "http://$dominio") + $OrigenesExtra | Select-Object -Unique) }
         Seed = @{ Demo = @{ Enabled = $false } }
         Auth = @{ Onboarding = @{ ReturnEmailCodeInResponse = $false } }
         Hosting = @{ RedirectToHttps = $false; Dominio = $dominio }
@@ -120,7 +143,7 @@ if ($escribirCfg) {
 } else {
     $cfgActual = [IO.File]::ReadAllText($cfgArchivo, [Text.Encoding]::UTF8) | ConvertFrom-Json
     $dominio = $cfgActual.Hosting.Dominio
-    if (-not $dominio) { $dominio = Preguntar 'Dominio de la web' 'teikem.advancelogisticspr.com' }
+    if (-not $dominio) { $dominio = Preguntar 'Dominio de la web' $dominioDefecto }
 }
 
 # --------------------------------------------------------------------------------------------------------- grupo de aplicaciones
@@ -188,8 +211,19 @@ if ($SinBase) {
 }
 
 Paso 'Copiando los archivos'
-robocopy $origen $Carpeta /MIR /XF appsettings.Production.local.json app_offline.htm /XD logs /NFL /NDL /NJH /NJS /NP | Out-Null
+# wwwroot\descargas (página de descarga de las apps y sus APK) no es parte del paquete «app»: se conserva al reemplazar el sitio y se actualiza aparte.
+$descargasSitio = Join-Path $Carpeta 'wwwroot\descargas'
+robocopy $origen $Carpeta /MIR /XF appsettings.Production.local.json app_offline.htm /XD logs $descargasSitio /NFL /NDL /NJH /NJS /NP | Out-Null
 if ($LASTEXITCODE -ge 8) { Fallar "robocopy falló (código $LASTEXITCODE)." }
+$descargasPaquete = Join-Path $PSScriptRoot 'descargas'
+if ($ConDescargas -and (Test-Path (Join-Path $descargasPaquete 'index.html'))) {
+    # /E (no /MIR): los APK que ya estaban en el sitio se quedan; los que trae el paquete se copian encima (mismo nombre).
+    New-Item -ItemType Directory -Force (Join-Path $descargasSitio 'apk') | Out-Null
+    robocopy $descargasPaquete $descargasSitio /E /NFL /NDL /NJH /NJS /NP | Out-Null
+    if ($LASTEXITCODE -ge 8) { Fallar "robocopy (descargas) falló (código $LASTEXITCODE)." }
+    $apks = @(Get-ChildItem (Join-Path $descargasSitio 'apk') -Filter '*.apk' -ErrorAction SilentlyContinue)
+    Ok "Página de descargas en https://$dominio/descargas/ ($($apks.Count) APK)."
+}
 
 if ($escribirCfg) {
     $json = $cfg | ConvertTo-Json -Depth 6
@@ -210,10 +244,18 @@ if (-not $jc.DataProtection) {
     $cambiado = $true
 }
 # Cinta de ambiente (2026-10-12): un sitio que no es «Teikem» (producción) se identifica como STAGING en la web (cinta roja en todas las pantallas;
-# la lee de /health). Se puede cambiar el texto editando Hosting:EnvironmentLabel en appsettings.Production.local.json.
-if ($Sitio -ne 'Teikem') {
+# la lee de /health). Se puede cambiar el texto editando Hosting:EnvironmentLabel en appsettings.Production.local.json o con -Etiqueta (2026-10-19: TEST).
+$etiquetaAmbiente = if ($Etiqueta) { $Etiqueta.Trim().ToUpperInvariant() } elseif ($Sitio -ne 'Teikem') { 'STAGING' } else { '' }
+if ($etiquetaAmbiente) {
     if (-not $jc.Hosting) { $jc | Add-Member -NotePropertyName Hosting -NotePropertyValue ([pscustomobject]@{}) }
-    if (-not $jc.Hosting.EnvironmentLabel) { $jc.Hosting | Add-Member -NotePropertyName EnvironmentLabel -NotePropertyValue 'STAGING' -Force; $cambiado = $true }
+    if ($jc.Hosting.EnvironmentLabel -ne $etiquetaAmbiente) { $jc.Hosting | Add-Member -NotePropertyName EnvironmentLabel -NotePropertyValue $etiquetaAmbiente -Force; $cambiado = $true }
+}
+# Orígenes extra de CORS (p. ej. el portal del cliente en otro dominio): se agregan a los que ya hay, sin repetir.
+if ($OrigenesExtra.Count -gt 0) {
+    if (-not $jc.Cors) { $jc | Add-Member -NotePropertyName Cors -NotePropertyValue ([pscustomobject]@{ Origins = @() }) }
+    $actuales = @($jc.Cors.Origins)
+    $nuevos = @($OrigenesExtra | Where-Object { $_ -and ($actuales -notcontains $_) })
+    if ($nuevos.Count -gt 0) { $jc.Cors.Origins = @($actuales + $nuevos); $cambiado = $true }
 }
 if ($cambiado) { [IO.File]::WriteAllText($cfgArchivo, ($jc | ConvertTo-Json -Depth 6), (New-Object Text.UTF8Encoding $false)) }
 
@@ -290,6 +332,11 @@ if ($vivo) { Ok 'El API responde.' } else {
 # --------------------------------------------------------------------------------------------------------- HTTPS (Let's Encrypt)
 Paso 'HTTPS'
 $tieneHttps = [bool](Get-WebBinding -Name $Sitio -Protocol https -ErrorAction SilentlyContinue)
+if ($LetsEncrypt -and -not $tieneHttps) {
+    # 2026-10-19: con -LetsEncrypt el instalador pide el certificado él mismo (win-acme) y deja la renovación automática; ver letsencrypt.ps1.
+    if (-not $CorreoLetsEncrypt) { $CorreoLetsEncrypt = Preguntar "Correo para la cuenta de Let's Encrypt (avisos si no pudiera renovar)" }
+    $tieneHttps = Asegurar-CertificadoLetsEncrypt -Sitio $Sitio -Dominio $dominio -Correo $CorreoLetsEncrypt
+}
 if ($tieneHttps) {
     Ok "El sitio ya tiene su enlace HTTPS (el certificado lo renueva el proceso de Let's Encrypt del servidor)."
 } else {

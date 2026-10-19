@@ -14,6 +14,7 @@ import { useIsConsignee } from '../kernel/auth/role'
 import { loadSession, useSessionState } from '../kernel/auth/session'
 import { initLang } from '../kernel/i18n/i18n'
 import { initTheme } from '../kernel/ui/theme'
+import { EnvironmentBanner, EnvironmentFooter } from '../kernel/ui/EnvironmentBanner'
 import { useT } from '../kernel/i18n/useT'
 import { Spinner, useColors } from '../kernel/ui/ui'
 
@@ -90,6 +91,7 @@ function Gate() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <EnvironmentBanner />
       <Stack screenOptions={{ headerShown: false, headerStyle: { backgroundColor: colors.brand }, headerTintColor: colors.onBrand, headerBackTitle: t('common.back') }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="order/[id]" options={{ headerShown: true }} />
@@ -102,6 +104,7 @@ function Gate() {
         <Stack.Screen name="consignee-messages/index" options={{ headerShown: true, title: t('consigneeMessages.title') }} />
         <Stack.Screen name="consignee-messages/[id]" options={{ headerShown: true, title: t('consigneeMessages.title') }} />
       </Stack>
+      <EnvironmentFooter />
       {!!session && legalRequired === null && (
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.bg, justifyContent: 'center' }}>
           <Spinner />

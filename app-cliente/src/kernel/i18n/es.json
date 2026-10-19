@@ -429,5 +429,8 @@
     "invoiceBalance": "Saldo de facturas",
     "overdue": "{n} vencida(s)",
     "cod": "Cobrado por remesar"
+  },
+  "environment": {
+    "notProduction": "Ambiente de pruebas: no es producción"
   }
 }

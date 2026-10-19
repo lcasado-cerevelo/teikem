@@ -14,3 +14,9 @@ apk/teikem-staging.apk El APK de staging que deja scripts\construir-apk.ps1 -Sta
 - Cada versión nueva: copie el APK a `apk/teikem-almacen.apk` (el mismo nombre) y cambie el número en `versions.json`. Los aparatos que ya la tienen se actualizan **encima**, sin perder su configuración (misma llave de firma y código de versión mayor: ver `docs/mobile/actualizar-apk.md`).
 - Staging (2026-10-12): la tarjeta «Teikem Almacén STAGING» (borde rojo punteado) descarga `apk/teikem-staging.apk`; cada versión nueva: copie el APK con ese nombre y cambie `staging` en `versions.json`. Es otra app (paquete `com.teikem.almacen.staging`): se instala junto a la de producción y se actualiza sola encima, sin tocarla.
 - El servidor debe servir `.apk` como `application/vnd.android.package-archive`.
+
+## Página de descargas del ambiente de TEST (2026-10-19)
+La página hermana `deploy/descargas-test/index.html` (cinta roja TEST, tarjetas de **Teikem Almacén TEST** y **Teikem Clientes TEST**) no se sube a mano: `deploy\windows\crear-paquete-windows.ps1 -Test`
+la mete en el paquete con los APK más recientes de `F:\Download\TeikemApp` (`TeikemTest-*.apk` → `apk/teikem-almacen-test.apk`, `TeikemClientesTest-*.apk` → `apk/teikem-clientes-test.apk`) y escribe
+su `versions.json` (`{ "almacen": "1.0.0 (c7)", "clientes": "1.0.0 (c2)" }`; sin una clave la tarjeta dice que aún no se publicó). `instalar-test.ps1` la deja en
+`https://test.advancelogisticspr.com/descargas/` (el API sirve `.apk` con su tipo MIME).

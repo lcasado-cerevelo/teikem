@@ -25,6 +25,12 @@
     producción en el mismo aparato), nombre «Teikem Almacén STAGING», icono morado con cinta STAGING, y el servidor de fábrica
     https://teikem.isaxpr.com (cámbielo con -ApiUrl). Lleva su propio contador de código de versión (%USERPROFILE%\.teikem\apk-versioncode-staging.txt)
     y se llama TeikemStaging-<versión>-c<código>.apk. Firma con la misma llave. Ejemplo:  construir-apk.ps1 -Staging
+  TEST (2026-10-19): con  -Test  construye la app del ambiente de TEST (lo que hay en master): paquete com.teikem.almacen.test (se instala al lado de
+    producción y de staging), nombre «Teikem Almacén TEST», icono verde con cinta TEST, servidor de fábrica https://test.advancelogisticspr.com.
+    Contador propio (%USERPROFILE%\.teikem\apk-versioncode-test.txt); sale como TeikemTest-<versión>-c<código>.apk.
+  APP DEL CLIENTE (2026-10-19): con  -App cliente  construye el APK del portal del cliente (app-cliente) en vez del de almacén, con las mismas
+    variantes: producción (com.teikem.cliente, TeikemClientes-*.apk), -Staging (.staging) o -Test (.test, TeikemClientesTest-*.apk). Misma llave de
+    firma; contadores propios (apk-versioncode-cliente[-staging|-test].txt). Ejemplo:  construir-apk.ps1 -App cliente -Test
 #>
 param(
     [string]$ApiUrl = 'https://teikem.advancelogisticspr.com',
@@ -34,21 +40,31 @@ param(
     [string]$Version = '',
     [switch]$VerCodigo,
     [switch]$PermitirBajar,
-    [switch]$Staging
+    [switch]$Staging,
+    [switch]$Test,
+    [ValidateSet('almacen', 'cliente')][string]$App = 'almacen'
 )
 
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
-$app = Join-Path $repo 'app-almacen'
+$cliente = ($App -eq 'cliente')
+$app = Join-Path $repo $(if ($cliente) { 'app-cliente' } else { 'app-almacen' })
 function Paso([string]$m) { Write-Host ''; Write-Host "== $m" -ForegroundColor Cyan }
 function Fallar([string]$m) { Write-Host ''; Write-Host $m -ForegroundColor Red; exit 1 }
 
+if ($Staging -and $Test) { Fallar 'Use -Staging o -Test, no los dos.' }
 if ($Staging -and -not $PSBoundParameters.ContainsKey('ApiUrl')) { $ApiUrl = 'https://teikem.isaxpr.com' }
+if ($Test -and -not $PSBoundParameters.ContainsKey('ApiUrl')) { $ApiUrl = 'https://test.advancelogisticspr.com' }
+# Nombre de la variante (APP_VARIANT de app.config.ts), sufijo del contador y prefijo del archivo .apk
+$variante = if ($Staging) { 'staging' } elseif ($Test) { 'test' } else { 'production' }
+$sufijoContador = ($(if ($cliente) { '-cliente' } else { '' }) + $(if ($Staging) { '-staging' } elseif ($Test) { '-test' } else { '' }))
+$prefijoApk = if ($cliente) { $(if ($Staging) { 'TeikemClientesStaging' } elseif ($Test) { 'TeikemClientesTest' } else { 'TeikemClientes' }) }
+              else { $(if ($Staging) { 'TeikemStaging' } elseif ($Test) { 'TeikemTest' } else { 'TeikemAlmacen' }) }
 if ($ApiUrl -notmatch '^https://') { Fallar 'La dirección del servidor debe empezar con https:// (la app de producción no admite HTTP sin cifrar).' }
 
 # --- Versión y código de versión (siempre mayor que el anterior: si no, Android no deja instalar encima) ---
 $dirLlave = Join-Path $env:USERPROFILE '.teikem'
-$archivoCodigo = Join-Path $dirLlave $(if ($Staging) { 'apk-versioncode-staging.txt' } else { 'apk-versioncode.txt' })
+$archivoCodigo = Join-Path $dirLlave "apk-versioncode$sufijoContador.txt"
 $anterior = 1   # los aparatos ya instalados traen el código 1
 $hayArchivo = Test-Path $archivoCodigo
 if ($hayArchivo) { $leido = 0; if ([int]::TryParse((Get-Content $archivoCodigo -Raw).Trim(), [ref]$leido) -and $leido -ge 1) { $anterior = $leido } }
@@ -108,8 +124,9 @@ $env:TEIKEM_BUILD_STAMP = "$(Get-Date -Format 'yyyy-MM-dd HH:mm') $commit"
 # --- Compilar ---
 Set-Location $app
 if (-not (Test-Path 'node_modules')) { Paso 'Instalando dependencias'; npm ci --legacy-peer-deps; if ($LASTEXITCODE -ne 0) { Fallar 'npm ci falló.' } }
-$env:APP_VARIANT = $(if ($Staging) { 'staging' } else { 'production' })
+$env:APP_VARIANT = $variante
 $env:EXPO_PUBLIC_API_URL = $ApiUrl
+$env:TEIKEM_API_URL = $ApiUrl   # la app del cliente también la lee de extra.apiUrl
 $env:CI = '1'
 Paso "Generando el proyecto Android (variante $env:APP_VARIANT)"
 npx expo prebuild --platform android --clean
@@ -146,7 +163,7 @@ $apkOrigen = Join-Path $app 'android\app\build\outputs\apk\release\app-release.a
 if ($ok -and (Test-Path $apkOrigen)) {
     New-Item -ItemType Directory -Force $Salida | Out-Null
     New-Item -ItemType Directory -Force $dirLlave | Out-Null
-    $apk = Join-Path $Salida ($(if ($Staging) { "TeikemStaging" } else { "TeikemAlmacen" }) + "-$Version-c$CodigoVersion.apk")
+    $apk = Join-Path $Salida ("$prefijoApk-$Version-c$CodigoVersion.apk")
     Set-Content -Path $archivoCodigo -Value "$CodigoVersion" -Encoding ASCII   # solo si compiló: el próximo APK sube de aquí
     Copy-Item $apkOrigen $apk -Force
     $firmador = Get-ChildItem (Join-Path $env:ANDROID_HOME 'build-tools') -Recurse -Filter apksigner.bat -ErrorAction SilentlyContinue | Sort-Object FullName | Select-Object -Last 1
@@ -169,9 +186,11 @@ if (-not $SinRestaurar) {
     Remove-Item Env:TEIKEM_APP_VERSION -ErrorAction SilentlyContinue
     Remove-Item Env:TEIKEM_BUILD_STAMP -ErrorAction SilentlyContinue
     Remove-Item Env:EXPO_PUBLIC_API_URL -ErrorAction SilentlyContinue
+    Remove-Item Env:TEIKEM_API_URL -ErrorAction SilentlyContinue
     npx expo prebuild --platform android --clean
 }
 Remove-Item Env:TEIKEM_RELEASE_KEYSTORE_PASSWORD, Env:TEIKEM_RELEASE_KEY_PASSWORD -ErrorAction SilentlyContinue
 if (-not $ok) { exit 1 }
 Write-Host ''
-Write-Host "Para ACTUALIZAR los aparatos (sin desinstalar, conservan su configuración): scripts\actualizar-aparatos.ps1$(if ($Staging) { ' -Staging' })  o copie el APK al aparato y ábralo (diga «Actualizar»/«Instalar»)."
+$opciones = $(if ($cliente) { ' -App cliente' }) + $(if ($Staging) { ' -Staging' } elseif ($Test) { ' -Test' })
+Write-Host "Para ACTUALIZAR los aparatos (sin desinstalar, conservan su configuración): scripts\actualizar-aparatos.ps1$opciones  o copie el APK al aparato y ábralo (diga «Actualizar»/«Instalar»)."

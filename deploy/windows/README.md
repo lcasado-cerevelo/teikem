@@ -20,7 +20,7 @@ versión del paquete (agrega lo que falte; nunca borra datos), con simulación y
 | Base de datos | **Simula** (`db-update --dry-run`) y muestra qué le falta a la base; pide confirmar que ya hay respaldo; aplica los cambios en una sola transacción y corre los datos de referencia y los permisos. Va **antes** de copiar los archivos: si falla, el sitio sigue con la versión anterior. |
 | IIS | Crea el grupo de aplicaciones `Teikem` (sin código administrado, siempre encendido) y el sitio `Teikem` en `C:\inetpub\teikem` con el nombre de dominio en el puerto 80, y la regla de firewall para 80/443. |
 | Comprobación | Llama a `/health` y, si no responde, muestra los últimos eventos del módulo de IIS. |
-| HTTPS | **No instala ni emite certificados.** El sitio toma el certificado del proceso de Let's Encrypt que ya tiene el servidor. Cuando el sitio ya tiene su enlace HTTPS, el instalador (al volver a correrlo) activa la redirección de http a https. |
+| HTTPS | Sin `-LetsEncrypt`, **no instala ni emite certificados**: el sitio toma el certificado del proceso de Let's Encrypt que ya tiene el servidor y, cuando ya tiene su enlace HTTPS, el instalador (al volver a correrlo) activa la redirección de http a https. Con `-LetsEncrypt -CorreoLetsEncrypt <correo>` (2026-10-19; así lo usa `instalar-test.ps1`) pide el certificado él mismo con win-acme (`letsencrypt.ps1`), deja la tarea de renovación automática y activa la redirección en la misma corrida. |
 
 ## Pasos
 
@@ -107,6 +107,54 @@ correr el mismo comando para activar la redirección a https. Para actualizar st
 - Las variables de sistema de Brevo son las mismas: staging **sí envía correos reales**. Si no quiere eso, déjelas vacías al pedirlas y use otra llave solo para staging.
 - **APK de staging:** `scripts\construir-apk.ps1 -Staging` (paquete `com.teikem.almacen.staging`, icono morado con cinta STAGING, servidor
   `https://teikem.isaxpr.com`); se instala junto a la de producción. Ver `docs/mobile/actualizar-apk.md`.
+
+## Test en el mismo servidor (`test.advancelogisticspr.com`, 2026-10-19)
+
+Tercer ambiente, junto a producción y staging, con **todo lo que hay en `master`**: es donde se prueba lo nuevo antes de que llegue a producción
+(staging guarda la versión de producción). Un solo comando lo pone y lo actualiza:
+
+| Qué | Dónde |
+|---|---|
+| API + web | `https://test.advancelogisticspr.com` — sitio IIS `TeikemTest`, carpeta `C:\inetpub\teikem-test`, base `Teikem_Test`. Cinta roja **TEST** arriba de todas las pantallas, etiqueta al pie y `[TEST]` en el título de la pestaña (igual que staging; lo pone `Hosting:EnvironmentLabel = TEST`). |
+| Portal del cliente | `https://test-portal.advancelogisticspr.com` — sitio IIS `TeikemTestPortal`, carpeta `C:\inetpub\teikem-test-portal`: la web de `app-cliente` compilada apuntando al API de test, con la misma cinta TEST arriba y abajo. Es la **primera publicación del portal** (producción aún no lo tiene). |
+| Descargas de las apps | `https://test.advancelogisticspr.com/descargas/` — página para bajar los APK de test (Almacén TEST y Clientes TEST) desde el teléfono. |
+| Certificados | Let's Encrypt para los dos nombres, pedidos por el instalador con **win-acme** (lo descarga a `C:\Tools\win-acme` si el servidor no lo tiene) y renovados solos por su tarea programada. |
+
+**1. En su computadora** (hace falta Node y el SDK de .NET; para los APK, Android Studio):
+
+```powershell
+# los APK de test (opcional, pero sin ellos la página de descargas dice que aún no se publicaron); piden la contraseña de la llave de firma
+powershell -ExecutionPolicy Bypass -File "F:\Visual Studio 2022\Projects\teikem\scripts\construir-apk.ps1" -Test
+powershell -ExecutionPolicy Bypass -File "F:\Visual Studio 2022\Projects\teikem\scripts\construir-apk.ps1" -App cliente -Test
+# el paquete: API + web + scripts de la base + portal compilado + página de descargas con los APK más recientes de F:\Download\TeikemApp
+powershell -ExecutionPolicy Bypass -File "F:\Visual Studio 2022\Projects\teikem\deploy\windows\crear-paquete-windows.ps1" -Test
+```
+
+Deja `F:\Download\TeikemDeploy\teikem-test-AAAAMMDD-HHMM.zip`.
+
+**2. Antes de la primera vez:** el DNS de `test.advancelogisticspr.com` y de `test-portal.advancelogisticspr.com` apunta a este servidor (registros A, como los de producción)
+y el puerto 80 llega desde Internet (Let's Encrypt valida por http). La base `Teikem_Test` puede existir vacía (el instalador crea todo) o ser una copia de otra.
+
+**3. En el servidor**, PowerShell **como Administrador**, en la carpeta del .zip descomprimido:
+
+```powershell
+Expand-Archive C:\Temp\teikem-test-*.zip C:\Temp\teikem-test -Force
+cd C:\Temp\teikem-test
+powershell -ExecutionPolicy Bypass -File .\instalar-test.ps1
+```
+
+La primera vez pregunta: servidor, usuario y contraseña de SQL Server (la base ya viene como `Teikem_Test`) y el correo para la cuenta de Let's Encrypt
+(se recuerda en `C:\inetpub\teikem-test\letsencrypt-correo.txt`). Luego hace solo: base al día (`db-update`: simula, pide confirmar el respaldo, aplica),
+sitio del API y la web con la etiqueta TEST y el origen del portal en CORS, página de descargas, certificado y redirección a https; después el sitio del portal
+(instala el módulo URL Rewrite de IIS si falta, para que todas las rutas del portal abran `index.html`), su certificado y su redirección.
+
+**Actualizar test:** repetir 1 y 3 con el .zip nuevo y responder que **sí** conserva la configuración. Los APK que ya estaban en `wwwroot\descargas\apk` se
+conservan; los que trae el paquete los reemplazan. Opciones: `-SinBase`, `-RespaldoHecho`, `-SinPortal`, `-CorreoLetsEncrypt <correo>`.
+
+- Brevo: las mismas variables de sistema que producción, así que **test envía correos reales**. Si no lo quiere, déjelas vacías al pedirlas (solo la primera vez) y, si hace falta, quite `Brevo` de `appsettings.Production.local.json` del sitio.
+- `Auth:PasswordReset:WebBaseUrl` (enlaces de los correos de recuperar contraseña y confirmar computadora) no la pone el instalador; si se necesita en test, agregarla a `appsettings.Production.local.json` de `TeikemTest` (una sola para la web y el portal; ver decisiones).
+- Para copiar la base de producción sobre `Teikem_Test`: `scripts\restaurar-staging.bat` sirve cambiando `$Destino` a `Teikem_Test`, `$PoolIIS` a `TeikemTest` y `$LlavesStaging` a `C:\ProgramData\Teikem\keys-TeikemTest` (el destino debe llevar «test» o «staging» en el nombre).
+- Las apps: `scripts\construir-apk.ps1 -Test` (Almacén TEST: paquete `com.teikem.almacen.test`, icono verde con cinta TEST, servidor `https://test.advancelogisticspr.com`) y `-App cliente -Test` (Clientes TEST: `com.teikem.cliente.test`). Se instalan junto a las de producción y staging. Ver `docs/mobile/actualizar-apk.md`.
 
 ## IP preferida: encenderla en el servidor
 

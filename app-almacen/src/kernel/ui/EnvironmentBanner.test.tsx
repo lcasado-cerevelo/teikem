@@ -15,6 +15,12 @@ describe('EnvironmentBanner', () => {
     expect(screen.getByText('STAGING · AMBIENTE DE PRUEBAS')).toBeTruthy()
   })
 
+  it('en la variante test muestra siempre la cinta TEST', async () => {
+    mockVariant = 'test'
+    await render(<EnvironmentBanner />)
+    expect(screen.getByText('TEST · AMBIENTE DE PRUEBAS')).toBeTruthy()
+  })
+
   it('en producción y en desarrollo no muestra nada', async () => {
     for (const v of ['production', 'development', undefined]) {
       mockVariant = v

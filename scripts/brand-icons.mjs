@@ -6,6 +6,8 @@
 //
 // Uso (desde cualquier carpeta; no depende de rutas de la máquina):
 //   cd app-almacen && npm run brand:icons        (o bien: node scripts/brand-icons.mjs desde la raíz)
+//   node scripts/brand-icons.mjs staging [almacen|cliente]   iconos de la variante staging (fondo morado, cinta STAGING)
+//   node scripts/brand-icons.mjs test [almacen|cliente]      iconos de la variante test (fondo verde, cinta TEST) — 2026-10-19
 // `sharp` es devDependency de app-almacen; se resuelve desde ahí aunque el script viva en scripts/.
 //
 // Nota: el texto del lockup ("TEIKEM" + lema) usa 'Segoe UI' con respaldo system-ui/sans-serif; en Linux sin Segoe UI
@@ -22,10 +24,15 @@ const sharp = require('sharp')
 
 const BRAND_BLUE = '#0B2C66'
 // Staging (2026-10-12): fondo morado y cinta roja «STAGING», para no confundir el APK de pruebas con el de producción.
+// Test (2026-10-19): fondo verde y la misma cinta roja con «TEST» (test.advancelogisticspr.com).
 const STAGING_PURPLE = '#6D28D9'
+const TEST_GREEN = '#047857'
 const STAGING_RED = '#DC2626'
+const VARIANTS = { staging: { label: 'STAGING', background: STAGING_PURPLE }, test: { label: 'TEST', background: TEST_GREEN } }
 const logos = path.join(root, 'Logos')
-const out = path.join(root, 'app-almacen', 'assets')
+// Carpeta de salida: app-almacen/assets por omisión; `cliente` como segundo argumento → app-cliente/assets
+const appFolder = process.argv[3] === 'cliente' ? 'app-cliente' : 'app-almacen'
+const out = path.join(root, appFolder, 'assets')
 
 // Caja del símbolo dentro del viewBox 0 0 124 124 de teikem-symbol.svg: el hexágono con su trazo ocupa x 18..106 y
 // 8..110 (centro 62,59). Un cuadrado de 102 centrado ahí deja el símbolo ajustado y centrado de verdad.
@@ -88,11 +95,11 @@ async function lockup(sourceFile, lang, baseWidth) {
   }
 }
 
-/** Cinta «STAGING» (píldora roja con texto blanco) de w×h px centrada en x, con su borde superior en y, dentro de un lienzo `size`. */
-function stagingBand(size, w, h, y, knockout) {
+/** Cinta con la etiqueta del ambiente («STAGING» o «TEST»: píldora roja con texto blanco) de w×h px centrada en x, con su borde superior en y, dentro de un lienzo `size`. */
+function stagingBand(size, w, h, y, knockout, label = 'STAGING') {
   const x = Math.round((size - w) / 2)
   const font = Math.round(h * 0.56)
-  const text = `<text x="${size / 2}" y="${y + h / 2}" text-anchor="middle" dominant-baseline="central" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-weight="800" font-size="${font}" letter-spacing="${Math.round(font * 0.06)}">STAGING</text>`
+  const text = `<text x="${size / 2}" y="${y + h / 2}" text-anchor="middle" dominant-baseline="central" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-weight="800" font-size="${font}" letter-spacing="${Math.round(font * 0.06)}">${label}</text>`
   if (knockout) {
     // monocroma: píldora blanca con el texto recortado (transparente), porque ese icono solo usa el canal alfa
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><defs><mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="${size}" height="${size}"><rect width="${size}" height="${size}" fill="#fff"/><g fill="#000">${text}</g></mask></defs><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${h / 2}" fill="#fff" mask="url(#m)"/></svg>`
@@ -100,9 +107,10 @@ function stagingBand(size, w, h, y, knockout) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${h / 2}" fill="${STAGING_RED}" stroke="#fff" stroke-width="${Math.round(h * 0.06)}"/><g fill="#fff">${text}</g></svg>`
 }
 
-/** Iconos de la variante staging (app-almacen/assets/staging): los mismos de producción con fondo morado y la cinta STAGING. */
-async function stagingIcons() {
-  const dir = path.join(out, 'staging')
+/** Iconos de una variante de pruebas (<app>/assets/staging o /test): los mismos de producción con su fondo de color y la cinta con la etiqueta. */
+async function stagingIcons(variant) {
+  const { label, background } = VARIANTS[variant]
+  const dir = path.join(out, variant)
   await mkdir(dir, { recursive: true })
   const symbol = await readFile(path.join(logos, 'teikem-symbol.svg'), 'utf8')
   const size = 1024
@@ -114,20 +122,21 @@ async function stagingIcons() {
       .composite([{ input: sym, gravity: 'center' }, { input: Buffer.from(band) }])
       .png({ compressionLevel: 9 })
       .toFile(path.join(dir, file))
-    console.log(`  staging/${file} (${size}x${size})`)
+    console.log(`  ${variant}/${file} (${size}x${size})`)
   }
   // Icono general (a sangre): cinta más ancha. Adaptativo: la cinta cabe en el círculo seguro de 66/108.
-  await compose('icon.png', (px) => sizedSymbol(symbol, px), 0.72, STAGING_PURPLE, stagingBand(size, 640, 150, 760, false))
-  await compose('android-icon-foreground.png', (px) => sizedSymbol(symbol, px), 0.6, null, stagingBand(size, 400, 100, 690, false))
-  await compose('android-icon-monochrome.png', (px) => monochromeSymbol(symbol, px), 0.6, null, stagingBand(size, 400, 100, 690, true))
-  await sharp({ create: { width: size, height: size, channels: 4, background: STAGING_PURPLE } }).png({ compressionLevel: 9 }).toFile(path.join(dir, 'android-icon-background.png'))
-  console.log('  staging/android-icon-background.png (1024x1024)')
+  await compose('icon.png', (px) => sizedSymbol(symbol, px), 0.72, background, stagingBand(size, 640, 150, 760, false, label))
+  await compose('android-icon-foreground.png', (px) => sizedSymbol(symbol, px), 0.6, null, stagingBand(size, 400, 100, 690, false, label))
+  await compose('android-icon-monochrome.png', (px) => monochromeSymbol(symbol, px), 0.6, null, stagingBand(size, 400, 100, 690, true, label))
+  await sharp({ create: { width: size, height: size, channels: 4, background } }).png({ compressionLevel: 9 }).toFile(path.join(dir, 'android-icon-background.png'))
+  console.log(`  ${variant}/android-icon-background.png (1024x1024)`)
 }
 
 async function main() {
-  if (process.argv[2] === 'staging') {
-    console.log('Generando los iconos de staging en app-almacen/assets/staging:')
-    return stagingIcons()
+  const variant = process.argv[2]
+  if (variant in VARIANTS) {
+    console.log(`Generando los iconos de ${variant} en ${appFolder}/assets/${variant}:`)
+    return stagingIcons(variant)
   }
   await mkdir(out, { recursive: true })
   const symbol = await readFile(path.join(logos, 'teikem-symbol.svg'), 'utf8')
