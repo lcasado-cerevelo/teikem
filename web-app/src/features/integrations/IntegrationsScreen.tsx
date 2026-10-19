@@ -294,7 +294,7 @@ export default function IntegrationsScreen() {
       <input
         ref={fileRef}
         type="file"
-        accept=".csv,.txt,.eml,text/csv,text/plain,message/rfc822"
+        accept=".csv,.txt,.xlsx,.json,.xml,.eml,text/csv,text/plain,application/json,application/xml,text/xml,message/rfc822,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         className="int-file"
         aria-label={t('integrations.uploadFile')}
         onChange={(e) => {

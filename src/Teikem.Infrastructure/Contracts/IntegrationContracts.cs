@@ -40,7 +40,9 @@ public sealed record IntegrationDto(
     bool HasMailPassword = false,
     /// <summary>Configuración del conector SFTP/FTP (sin la contraseña ni la llave, que nunca salen del servidor).</summary>
     RemoteConfig? Remote = null,
-    bool HasRemoteSecret = false);
+    bool HasRemoteSecret = false,
+    /// <summary>Formato del archivo (Excel, JSON o XML con mapeo); null = CSV.</summary>
+    FileFormatConfig? Format = null);
 
 /// <summary>
 /// Alta. Scopes: códigos de IntegrationScopes (solo los que quien crea puede dar). Folder: carpeta de entrada (conector CARPETA). IncludeMe: agrega a quien crea a los avisos.
@@ -64,7 +66,8 @@ public sealed record IntegrationCreateRequest(
     string? MailPassword = null,
     RemoteConfig? Remote = null,
     /// <summary>Contraseña o llave privada del servidor (SFTP/FTP): se guarda cifrada y no se vuelve a mostrar.</summary>
-    RemoteSecret? Secret = null);
+    RemoteSecret? Secret = null,
+    FileFormatConfig? Format = null);
 
 /// <summary>Edición parcial: null = sin cambio. NotifyUserIds reemplaza la lista; Scopes reemplaza los alcances (se revalidan contra quien edita).</summary>
 public sealed record IntegrationPatchRequest(
@@ -81,7 +84,8 @@ public sealed record IntegrationPatchRequest(
     EmailConfig? Email = null,
     string? MailPassword = null,
     RemoteConfig? Remote = null,
-    RemoteSecret? Secret = null);
+    RemoteSecret? Secret = null,
+    FileFormatConfig? Format = null);
 
 /// <summary>Un alcance que se puede ofrecer en el alta: de qué familia es, si quien mira lo puede dar y, si no, por qué.</summary>
 public sealed record IntegrationScopeOptionDto(string Code, string Family, string Label, string? ModuleKey, bool Available, string? UnavailableReason, bool IsApi = false, bool NeedsClient = false);
@@ -189,3 +193,8 @@ public sealed record WebhookDeliveryDto(
     DateTime? LastAttemptUtc, int? ResponseCode, string? Error, DateTime CreatedAtUtc, DateTime? DeliveredAtUtc, string? PayloadJson);
 
 public sealed record WebhookDeliveryPageDto(IReadOnlyList<WebhookDeliveryDto> Items, int Total, int Undelivered);
+
+// ---------------------------------------------------------------- Lote 137: formato del archivo
+
+/// <summary>Vista previa de un archivo con el formato configurado: las hojas (Excel), el encabezado y las primeras filas tal como las leería la plantilla.</summary>
+public sealed record FormatPreviewDto(string Kind, IReadOnlyList<string> Sheets, IReadOnlyList<string> Header, IReadOnlyList<IReadOnlyList<string>> Rows, int TotalRows);

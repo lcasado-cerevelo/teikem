@@ -64,6 +64,28 @@ public sealed class IntegrationsController(IntegrationService integrations, Inte
         return await runner.UploadAsync(publicId, file.FileName, ms.ToArray(), tenant.UserId, ct);
     }
 
+    /// <summary>
+    /// Vista previa de un archivo de muestra con el formato que se está configurando (Excel, JSON o XML con mapeo por ruta, o CSV): las hojas, el encabezado y las primeras 20 filas como las leería la plantilla.
+    /// No guarda nada. «format» = la configuración en JSON (opcional); «delimiter» = el de la plantilla (por omisión coma); «hasHeader» como la plantilla.
+    /// </summary>
+    [HttpPost("format/preview"), Consumes("multipart/form-data"), RequirePermission(PermissionCatalog.IntegrationsCreate + "|" + PermissionCatalog.IntegrationsManage)]
+    [RequestSizeLimit(4 * 1024 * 1024)]
+    public async Task<FormatPreviewDto> PreviewFormat(IFormFile? file, [FromForm] string? format, [FromForm] string? delimiter, [FromForm] bool? hasHeader, CancellationToken ct)
+    {
+        if (file is null || file.Length == 0) throw new ValidationException("file", IntegrationRunner.EmptyFileMessage);
+        FileFormatConfig? config = null;
+        if (!string.IsNullOrWhiteSpace(format))
+        {
+            try { config = System.Text.Json.JsonSerializer.Deserialize<FileFormatConfig>(format, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)); }
+            catch (System.Text.Json.JsonException) { throw new ValidationException("format", "El formato no es un JSON válido."); }
+        }
+        await using var stream = file.OpenReadStream();
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms, ct);
+        var sep = string.IsNullOrEmpty(delimiter) ? ',' : delimiter == "\\t" || delimiter == "\t" ? '\t' : delimiter[0];
+        return integrations.PreviewFormat(ms.ToArray(), file.FileName, config, sep, hasHeader ?? true);
+    }
+
     /// <summary>Prueba la conexión con el buzón de la integración de correo (servidor, usuario, contraseña y carpeta) sin tocar los correos.</summary>
     [HttpPost("{publicId:guid}/email/test"), RequirePermission(PermissionCatalog.IntegrationsManage)]
     public Task<EmailTestResultDto> TestEmail(Guid publicId, CancellationToken ct) => integrations.TestEmailAsync(publicId, ct);

@@ -5028,3 +5028,9 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_IntegrationWebhookDelivery_Webhook' AND object_id = OBJECT_ID('dbo.IntegrationWebhookDelivery'))
     CREATE INDEX IX_IntegrationWebhookDelivery_Webhook ON dbo.IntegrationWebhookDelivery(TenantId, IntegrationWebhookId, IntegrationWebhookDeliveryId);
 GO
+
+/* =========================================================================
+   2026-10-19 (bn) — Lote 137 (P11): FORMATO DEL ARCHIVO DE UNA INTEGRACIÓN (hoja de Excel, JSON y XML con mapeo por ruta). dbo.Integration.FormatJson (NULL = CSV como siempre). Solo AMPLÍA. Idempotente.
+   ========================================================================= */
+IF COL_LENGTH('dbo.Integration', 'FormatJson') IS NULL ALTER TABLE dbo.Integration ADD FormatJson NVARCHAR(MAX) NULL;
+GO

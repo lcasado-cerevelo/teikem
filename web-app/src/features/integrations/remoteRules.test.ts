@@ -1,5 +1,6 @@
 // Lote 134 — reglas puras del formulario de SFTP/FTP: validación con los mismos mensajes del servidor, huella, secretos que no se mandan si no se escribieron y el cuerpo del API.
 import { describe, expect, it } from 'vitest'
+import { emptyFormat } from './formatRules'
 import { buildCreateRequest, buildPatchRequest, integrationSchema, type IntegrationValues } from './integrationRules'
 import { emptyEmail } from './emailRules'
 import { buildRemoteConfig, buildRemoteSecret, emptyRemote, normalizeFingerprint, parseFileTypes, remoteIssues, remoteValuesOf, type RemoteMessages, type RemoteValues } from './remoteRules'
@@ -72,7 +73,7 @@ describe('cuerpo del API', () => {
 describe('formulario de integración con SFTP/FTP', () => {
   const base: IntegrationValues = {
     name: 'AxisCare', description: '', clientPublicId: 'c1', templatePublicId: 't1', connectorKind: 'SFTP', folder: '', scheduleKind: 'INTERVAL', intervalMinutes: '5', scopes: ['files.orders_import'], notifyUserIds: [], includeMe: true,
-    retentionDays: '30', email: emptyEmail(), remote: ok(),
+    retentionDays: '30', email: emptyEmail(), remote: ok(), format: emptyFormat(),
   }
   const msgs = { nameRequired: 'n', nameMax: 'm', clientRequired: 'c', templateRequired: 't', folderRequired: 'f', folderInvalid: 'fi', interval: 'i', retention: 'r', scopes: 's' }
 

@@ -41538,6 +41538,73 @@
           }
         }
       }
+    },
+    "/api/v1/integrations/format/preview": {
+      "post": {
+        "tags": [
+          "Integrations"
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "format": {
+                    "type": "string"
+                  },
+                  "delimiter": {
+                    "type": "string"
+                  },
+                  "hasHeader": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "encoding": {
+                "file": {
+                  "style": "form"
+                },
+                "format": {
+                  "style": "form"
+                },
+                "delimiter": {
+                  "style": "form"
+                },
+                "hasHeader": {
+                  "style": "form"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormatPreviewDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormatPreviewDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormatPreviewDto"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -72633,6 +72700,9 @@
           },
           "hasRemoteSecret": {
             "type": "boolean"
+          },
+          "format": {
+            "$ref": "#/components/schemas/FileFormatConfig"
           }
         },
         "additionalProperties": false
@@ -72849,6 +72919,9 @@
           },
           "secret": {
             "$ref": "#/components/schemas/RemoteSecret"
+          },
+          "format": {
+            "$ref": "#/components/schemas/FileFormatConfig"
           }
         },
         "additionalProperties": false
@@ -72926,6 +72999,9 @@
           },
           "secret": {
             "$ref": "#/components/schemas/RemoteSecret"
+          },
+          "format": {
+            "$ref": "#/components/schemas/FileFormatConfig"
           }
         },
         "additionalProperties": false
@@ -73653,6 +73729,87 @@
           "createdAtUtc": {
             "type": "string",
             "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FormatPreviewDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "sheets": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "header": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "nullable": true
+          },
+          "totalRows": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FileFormatConfig": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "sheet": {
+            "type": "string",
+            "nullable": true
+          },
+          "recordsPath": {
+            "type": "string",
+            "nullable": true
+          },
+          "linesPath": {
+            "type": "string",
+            "nullable": true
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FormatColumn"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FormatColumn": {
+        "type": "object",
+        "properties": {
+          "header": {
+            "type": "string",
+            "nullable": true
+          },
+          "path": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

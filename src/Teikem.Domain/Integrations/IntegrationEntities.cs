@@ -93,6 +93,8 @@ public class Integration : ITenantScoped, IAuditStamped
     /// <summary>Configuración NO secreta del conector (CARPETA: {"folder":"nombre"}). Los secretos van aparte, cifrados.</summary>
     public string? ConnectorConfigJson { get; set; }
     [SensitiveData] public byte[]? SecretEnc { get; set; }
+    /// <summary>Formato del archivo que lee la integración (Lote 137: Excel, JSON y XML con mapeo por ruta); null = el de siempre (CSV).</summary>
+    public string? FormatJson { get; set; }
     /// <summary>Plantilla de importación con la que se leen los archivos.</summary>
     public int? ImportTemplateId { get; set; }
     public string ScheduleKind { get; set; } = IntegrationScheduleKinds.Manual;

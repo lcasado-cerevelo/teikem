@@ -212,3 +212,55 @@ Responda **2xx** en menos de **10 segundos**; cualquier otra cosa (o no responde
 **Casos frecuentes:** *«No me llegan avisos»* → el webhook está suspendido o apagado, la integración está apagada, el evento no está marcado o la orden es de otro cliente; revise la pestaña Salidas. *«La firma no coincide»* → use el cuerpo **crudo** (sin reformatear) y el secreto vigente (¿lo rotaron?). *«Recibo el mismo aviso dos veces»* → es un reintento (la primera respuesta no llegó a tiempo): descarte por `X-Teikem-Delivery`. *«Probar dice que no se pudo conectar»* → la URL debe ser pública y con https.
 
 **Fuera de este lote:** la salida de **archivos** por evento o por horario (SFTP, correo o API del cliente) necesita el mapeo de salida; llega con el Lote 137.
+
+## 10. Formato del archivo: Excel, JSON y XML (Lote 137)
+
+> Dictado de Luis (2026-10-19): integrar cualquier cosa **por configuración**. Además de CSV, una integración de archivos (carpeta, correo, SFTP, FTP o subida manual) lee **hojas de Excel (.xlsx)** y archivos **JSON** y **XML** con un mapeo por ruta. Todo se convierte al CSV de la **plantilla de importación** de la integración y sigue el camino de siempre: hash (el mismo contenido no se procesa dos veces), importador en nombre de la cuenta de servicio, varias líneas por orden y reglas de «no pieza» (Lote 131), y la bandeja.
+
+**Dónde:** Sistema → Integraciones / API → crear o editar una integración → sección **Formato del archivo** (no aplica a las de tipo API; `integrations.create` / `integrations.manage`).
+
+| Formato | Qué lee |
+|---|---|
+| **Automático** (por omisión) | Por la extensión: `.xlsx` → Excel, `.json` → JSON, `.xml` → XML, lo demás → CSV. (También reconoce un libro de Excel por su firma.) |
+| **CSV** | Como siempre (delimitador y codificación de la plantilla). |
+| **Excel (.xlsx)** | Una **hoja**: la que se escriba (sin distinguir mayúsculas) o, vacía, la primera. Cada celda se lee como la vería la persona (enteros sin decimales, ceros a la izquierda según el formato, fechas `aaaa-mm-dd`…). El `.xls` viejo no se admite. |
+| **JSON / XML** | Con **mapeo por ruta**: dónde están las órdenes, dónde están sus líneas (opcional) y de dónde sale cada columna de la plantilla. |
+
+**Qué archivos toma cada conector:** la **carpeta de entrada** toma las extensiones del formato (Automático: `.csv`, `.txt`, `.xlsx`, `.json`, `.xml`; Excel solo `.xlsx`; JSON solo `.json`; XML solo `.xml`; CSV `.csv` y `.txt`) y deja los demás donde están. En **correo, SFTP y FTP** manda la lista de **tipos de archivo** del conector (por omisión `.csv` y `.txt`): agregue `.xlsx`, `.json` o `.xml` ahí. La **subida manual** acepta cualquiera (el formato lo decide la configuración o la extensión).
+
+**El mapeo por ruta (JSON y XML).** Una ruta es `$.a.b[0].c`:
+- `$` = el documento; `.campo` entra a un campo; `[*]` = todos los elementos de una lista; `[0]` = uno. Un solo elemento se trata como una lista de uno (`[*]` sirve con uno o con varios).
+- **XML:** la ruta empieza con el nombre del elemento raíz (`$.Pedidos.Orden[*]`); un **atributo** se escribe `@atributo` y el **texto** de un elemento que también tiene atributos, `#text`; los elementos que se repiten forman una lista.
+- **Ruta de las órdenes** (obligatoria, empieza con `$`): dónde está cada orden. **Ruta de las líneas** (opcional, empieza con `@`, relativa a la orden): cada línea es una fila; una orden sin líneas da una fila con lo de la línea vacío.
+- **Columnas:** el **nombre** de la columna y la **ruta del valor**, en el **orden que espera la plantilla** (la primera es la columna 1). Con líneas, `@.x` lee de la línea, `^.x` de su orden y `$.x` del documento; sin líneas, `@.x` lee de la orden. Un valor es texto, número (`12.5`) o `true`/`false`; un objeto, una lista o un valor ausente dan vacío.
+
+Ejemplo JSON (órdenes con líneas): `{"orders":[{"ref":"A-1","to":{"name":"Colmado Uno"},"items":[{"type":"Box","label":"PCS-1"},{"type":"Invoice","label":"INV-1"}]}]}` con ruta de órdenes `$.orders[*]`, de líneas `@.items[*]` y columnas `Orden ← ^.ref`, `Tipo ← @.type`, `Label ← @.label`, `Consignatario ← ^.to.name`. Ejemplo XML: `<Pedidos><Orden ref="A-1"><Item tipo="Box"/></Orden></Pedidos>` con `$.Pedidos.Orden[*]`, `@.Item[*]` y columnas `^.@ref`, `@.@tipo`.
+
+**Probar con un archivo** (en la sección): se sube un archivo de muestra y se ve **cómo lo leería la plantilla** (formato detectado, hojas del libro, encabezado y las primeras 20 filas) sin guardar nada ni crear órdenes (`POST /api/v1/integrations/format/preview`, multipart: `file`, `format` en JSON, `delimiter`, `hasHeader`).
+
+**Seguridad y límites:** el archivo es entrada no confiable: el XML **no admite DTD ni entidades externas**, el JSON tiene profundidad máxima (64), no se ejecuta nada. Mismos límites que el CSV: **2 MB** y **5.000 filas**.
+
+| Mensaje | Código | Cuándo |
+|---|---|---|
+| «Formato desconocido: X. Use AUTO, CSV, EXCEL, JSON, XML.» | 400 | formato |
+| «El nombre de la hoja no puede pasar de 31 caracteres.» | 400 | hoja |
+| «Indique la ruta de las órdenes (por ejemplo $.orders[*]).» · «La ruta de las órdenes debe empezar con $ (por ejemplo $.orders[*]).» | 400 | ruta de órdenes |
+| «La ruta de las líneas debe ser relativa a la orden: empiece con @ (por ejemplo @.lines[*]).» | 400 | ruta de líneas |
+| «La ruta «X» no es válida. Use el formato $.campo.otro[*] (también @.campo o ^.campo).» | 400 | cualquier ruta mal formada |
+| «La ruta «^.x» usa ^ (la orden), que solo se puede cuando hay una ruta de líneas.» | 400 | `^` sin líneas |
+| «Agregue al menos una columna al mapeo.» · «El mapeo admite hasta 60 columnas.» · «Cada columna necesita un nombre.» · «Hay dos columnas llamadas «X».» | 400 | columnas |
+| «Una integración de tipo API no tiene formato de archivo.» | 400 | formato en una integración API |
+
+Errores al **procesar un archivo** (el archivo queda anotado como «Con error» y en la **bandeja** con el motivo «Archivo X: …»; no se crea nada):
+
+| Motivo | Cuándo |
+|---|---|
+| «El archivo es JSON, pero la integración no tiene el mapeo de rutas: configure «Formato del archivo».» (igual con XML) | llegó un .json/.xml a una integración sin mapeo |
+| «No se pudo leer el archivo JSON: …» / «No se pudo leer el archivo XML: …» | archivo roto o mal formado |
+| «El archivo XML trae una declaración DTD, que no se admite.» | XML con DTD |
+| «La ruta de las órdenes «$.orders[*]» no encontró ningún registro en el archivo.» | la ruta no encuentra órdenes (¿mapeo equivocado o archivo vacío?) |
+| «El libro no tiene la hoja 'X'.» | la hoja escrita no existe |
+| «El archivo no es un libro de Excel (.xlsx).» | formato Excel con un archivo que no lo es (o un .xls viejo) |
+| «El archivo supera el límite de 5.000 filas o 2 MB.» | límites |
+
+**Casos frecuentes:** *«No encontró ningún registro»* → pruebe el archivo de muestra: en XML la ruta empieza con el nombre del elemento raíz (`$.Pedidos…`). *«Una orden sale con la descripción vacía»* → revise que la columna esté en la posición que usa la plantilla. *«Mi integración de correo/SFTP ignora los .xlsx»* → agregue `.xlsx` a los tipos de archivo del conector.

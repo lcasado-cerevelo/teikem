@@ -9564,3 +9564,15 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **Webhooks — «Una integración puede tener hasta 10 webhooks; quite alguno.» (409).** Quite los que ya no use (se desactivan; el historial queda).
 
 **Webhooks — «Los webhooks necesitan una integración con cliente…» / «La integración no tiene el alcance «webhooks:manage».» (400).** Edite la integración API: debe tener cliente y el alcance de webhooks.
+
+**Formato del archivo — «El archivo es JSON, pero la integración no tiene el mapeo de rutas…» (bandeja).** La integración recibió un .json o .xml y no tiene el mapeo. Edítela: Formato del archivo → JSON o XML, ruta de las órdenes y columnas; pruebe con un archivo de muestra.
+
+**Formato del archivo — «La ruta de las órdenes «…» no encontró ningún registro en el archivo.»** La ruta no coincide con el archivo. En XML empiece con el nombre del elemento raíz (`$.Pedidos.Orden[*]`); un atributo es `@atributo`. Use «Probar con un archivo».
+
+**Formato del archivo — «La ruta «…» no es válida.» (400).** Use `$.campo.otro[*]`: raíz `$`, `@` o `^`, luego `.nombre`, `[0]` o `[*]`.
+
+**Formato del archivo — «El libro no tiene la hoja 'X'.» / «El archivo no es un libro de Excel (.xlsx).»** Escriba el nombre exacto de la hoja (o déjelo vacío para la primera) y guarde el archivo como .xlsx (el .xls viejo no se admite).
+
+**Formato del archivo — la carpeta, el correo o el SFTP no toma mis .xlsx/.json/.xml.** La carpeta toma las extensiones del formato (Automático: csv, txt, xlsx, json, xml). En correo, SFTP y FTP agregue el tipo a la lista de tipos de archivo del conector.
+
+**Formato del archivo — «El archivo XML trae una declaración DTD, que no se admite.»** Por seguridad el XML no puede traer DTD ni entidades externas; pídale al cliente el archivo sin ellas.

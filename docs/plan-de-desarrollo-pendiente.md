@@ -358,6 +358,9 @@ El archivo que manda un cliente como AxisCare trae **varias líneas por orden** 
 - **Decidido (no hacer):** no se agrega un campo `ClientLabelNumber` a la pieza; el número de label del bulto es su `PackageNumber`. El caso hipotético de un label de **producto** que se repite y es lo único que hay para escanear se diseña cuando aparezca un cliente así (escaneo por acción y «la próxima orden en curso sale»).
 - **La migración de Colavora ya sigue esta regla** (D8): los 1,46 M ítems tipo `Drum` de AxisCare y las piezas tipo `Invoice` no se migran como piezas; pendiente de confirmar con esa sesión que las piezas migradas quedan con `PackageNumber` único.
 
+### Lote 137a — HECHO (2026-10-19): Formato del archivo (Excel, JSON y XML)
+Cada integración de archivos lee hoja de Excel (.xlsx), JSON y XML con mapeo por ruta (`$ @ ^`, `[*]`, atributos `@x`), convertidos al CSV de la plantilla (varias líneas por orden y reglas de «no pieza» incluidas); formato automático por la extensión; carpeta por extensiones del formato; vista previa con archivo de muestra; XML sin DTD. Manual 39 §10, `docs/lote137-decisiones.md`. Falta 137b: salida de archivos por evento/horario y API saliente genérica.
+
 ### Lote 136 — HECHO (2026-10-19): Webhooks de salida y bandeja de salidas
 Webhooks por integración API (alcance `webhooks:manage`, también por la API del cliente): eventos `order.status_changed`, `order.delivered`, `invoice.issued` solo del cliente, firma HMAC-SHA256 con marca de tiempo, URL https pública (anti-SSRF), reintentos 1 min/5/30/2 h/12 h, bandeja «Salidas» (reintentar/descartar), suspensión a las 5 no entregadas seguidas con aviso, purga a 30 días. Manual 39 §9, `docs/lote136-decisiones.md`. La salida de archivos por evento/horario pasa al Lote 137 (mapeo de salida). Siguiente: Lote 137.
 

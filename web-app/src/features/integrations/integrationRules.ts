@@ -3,6 +3,7 @@ import { z } from 'zod'
 import type { ChipTone } from '../../kernel/ui'
 import { buildRemoteConfig, buildRemoteSecret, emptyRemote, remoteIssues, remoteValuesOf, type RemoteMessages, type RemoteValues } from './remoteRules'
 import { buildEmailConfig, emailIssues, emailValuesOf, emptyEmail, type EmailMessages, type EmailValues } from './emailRules'
+import { buildFormatConfig, emptyFormat, formatIsPlain, formatIssues, formatValuesOf, type FormatMessages, type FormatValues } from './formatRules'
 import type { IntegrationCreateRequest, IntegrationDto, IntegrationPatchRequest } from './integrationsApi'
 
 export const RUN_TONE: Record<string, ChipTone> = { OK: 'deliv', PARTIAL: 'warn', FAILED: 'fail', RUNNING: 'route', NEVER: 'neutral' }
@@ -54,10 +55,12 @@ export interface IntegrationValues {
   email: EmailValues
   /** Conectores SFTP y FTP (Lote 134). */
   remote: RemoteValues
+  /** Formato del archivo (Lote 137): Excel, JSON y XML con mapeo por ruta. */
+  format: FormatValues
 }
 
 /** Esquema del formulario. En la edición (`editing`) el cliente y el conector no se cambian, así que no se exigen. */
-export function integrationSchema(m: IntegrationMessages, editing: boolean, email?: { messages: EmailMessages; hasSavedPassword: boolean }, remote?: { messages: RemoteMessages; hasSavedSecret: boolean }, api?: { needsClient: (scopes: string[]) => boolean; message: string }) {
+export function integrationSchema(m: IntegrationMessages, editing: boolean, email?: { messages: EmailMessages; hasSavedPassword: boolean }, remote?: { messages: RemoteMessages; hasSavedSecret: boolean }, api?: { needsClient: (scopes: string[]) => boolean; message: string }, format?: FormatMessages) {
   return z
     .object({
       name: z.string().trim().min(1, m.nameRequired).max(NAME_MAX, m.nameMax),
@@ -74,10 +77,13 @@ export function integrationSchema(m: IntegrationMessages, editing: boolean, emai
       retentionDays: z.string(),
       email: z.custom<EmailValues>(),
       remote: z.custom<RemoteValues>(),
+      format: z.custom<FormatValues>(),
     })
     .superRefine((v, ctx) => {
       if ((v.connectorKind === 'SFTP' || v.connectorKind === 'FTP') && remote)
         for (const issue of remoteIssues(v.remote, v.connectorKind, remote.hasSavedSecret, remote.messages)) ctx.addIssue({ code: 'custom', path: ['remote', issue.path], message: issue.message })
+      if (v.connectorKind !== 'API' && format)
+        for (const issue of formatIssues(v.format, format)) ctx.addIssue({ code: 'custom', path: ['format', ...issue.path.split('.').map((p) => (/^\d+$/.test(p) ? Number(p) : p))], message: issue.message })
       if (v.connectorKind === 'EMAIL' && email)
         for (const issue of emailIssues(v.email, email.hasSavedPassword, email.messages)) ctx.addIssue({ code: 'custom', path: ['email', ...issue.path.split('.').map((p) => (/^\d+$/.test(p) ? Number(p) : p))], message: issue.message })
       if (v.connectorKind !== 'API' && !v.templatePublicId) ctx.addIssue({ code: 'custom', path: ['templatePublicId'], message: m.templateRequired })
@@ -113,6 +119,7 @@ export function integrationValuesOf(i: IntegrationDto | null): IntegrationValues
       retentionDays: String(DEFAULT_RETENTION_DAYS),
       email: emptyEmail(),
       remote: emptyRemote('SFTP'),
+      format: emptyFormat(),
     }
   }
   return {
@@ -130,6 +137,7 @@ export function integrationValuesOf(i: IntegrationDto | null): IntegrationValues
     retentionDays: String(i.retentionDays ?? DEFAULT_RETENTION_DAYS),
     email: emailValuesOf(i.email),
     remote: remoteValuesOf(i.remote, i.connectorKind ?? 'SFTP'),
+    format: formatValuesOf(i.format),
   }
 }
 
@@ -151,6 +159,7 @@ export function buildCreateRequest(v: IntegrationValues): IntegrationCreateReque
     retentionDays: Math.round(Number(v.retentionDays)),
     ...(v.connectorKind === 'EMAIL' ? { email: buildEmailConfig(v.email), mailPassword: v.email.password } : {}),
     ...(v.connectorKind === 'SFTP' || v.connectorKind === 'FTP' ? { remote: buildRemoteConfig(v.remote, v.connectorKind), secret: buildRemoteSecret(v.remote, v.connectorKind) } : {}),
+    ...(v.connectorKind !== 'API' && !formatIsPlain(v.format) ? { format: buildFormatConfig(v.format) } : {}),
   }
 }
 
@@ -169,6 +178,7 @@ export function buildPatchRequest(v: IntegrationValues, current: Pick<Integratio
     ...(current.connectorKind === 'SFTP' || current.connectorKind === 'FTP'
       ? { remote: buildRemoteConfig(v.remote, current.connectorKind), secret: buildRemoteSecret(v.remote, current.connectorKind) ?? undefined }
       : {}),
+    ...(current.connectorKind !== 'API' ? { format: buildFormatConfig(v.format) } : {}),
   }
 }
 

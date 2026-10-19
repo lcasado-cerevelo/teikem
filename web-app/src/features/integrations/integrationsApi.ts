@@ -16,6 +16,8 @@ export type InboxRowDto = Schemas['InboxRowDto']
 export type ApiKeyDto = Schemas['ApiKeyDto']
 export type ApiKeyCreatedDto = Schemas['ApiKeyCreatedDto']
 export type ApiLogDto = Schemas['ApiLogDto']
+export type FormatPreviewDto = Schemas['FormatPreviewDto']
+export type FileFormatConfig = Schemas['FileFormatConfig']
 export type WebhookDto = Schemas['WebhookDto']
 export type WebhookCreatedDto = Schemas['WebhookCreatedDto']
 export type WebhookDeliveryDto = Schemas['WebhookDeliveryDto']
@@ -250,4 +252,20 @@ export function useOutboxMutations() {
       onSettled: invalidate,
     }),
   }
+}
+
+// ---------------------------------------------------------------- formato del archivo (Lote 137)
+
+/** Vista previa de un archivo de muestra con el formato que se está configurando (no guarda nada). */
+export function usePreviewFormat() {
+  return useMutation({
+    mutationFn: (v: { file: File; config: FileFormatConfig; delimiter?: string; hasHeader?: boolean }) => {
+      const body = new FormData()
+      body.append('file', v.file)
+      body.append('format', JSON.stringify(v.config))
+      if (v.delimiter) body.append('delimiter', v.delimiter)
+      if (v.hasHeader !== undefined) body.append('hasHeader', String(v.hasHeader))
+      return unwrap(api.POST('/api/v1/integrations/format/preview', { body: body as never }))
+    },
+  })
 }

@@ -43,7 +43,6 @@ public sealed class IntegrationRunner(
 {
     public static readonly string InstanceId = $"{Environment.MachineName}:{Environment.ProcessId}";
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull };
-    private static readonly string[] Extensions = [".csv", ".txt"];
     private static readonly TimeSpan Lease = TimeSpan.FromMinutes(15);
 
     public const string FileTooBigMessage = "El archivo excede el tamaño máximo permitido.";
@@ -67,7 +66,7 @@ public sealed class IntegrationRunner(
         {
             var dir = FolderOf(integration);
             var outcomes = new List<FileOutcome>();
-            foreach (var path in Directory.EnumerateFiles(dir, "*.*", SearchOption.TopDirectoryOnly).Where(f => Extensions.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase)).OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
+            foreach (var path in Directory.EnumerateFiles(dir, "*.*", SearchOption.TopDirectoryOnly).Where(f => FileFormatRules.ExtensionsOf(IntegrationService.ParseFormat(integration.FormatJson)).Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase)).OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
             {
                 ct.ThrowIfCancellationRequested();
                 var outcome = await ProcessFileAsync(integration, template, client, run, path, ct);
@@ -319,13 +318,15 @@ public sealed class IntegrationRunner(
             log.Message = DuplicateFileMessage;
             return new FileOutcome(log, Array.Empty<Guid>(), Array.Empty<RejectedOrder>());
         }
-        var content = Decode(bytes);
+        var content = string.Empty;
         var scope = new OrderScope(client.ClientId);
         var created = new List<Guid>();
         var rejected = new List<RejectedOrder>();
         try
         {
             using var asService = ((TenantContext)tenant).As(integration.TenantId, integration.ServiceUserId);
+            // Excel, JSON y XML se convierten al CSV de la plantilla; un CSV sigue su camino de siempre
+            content = FileFormatConverter.Convert(bytes, fileName, IntegrationService.ParseFormat(integration.FormatJson), template)?.Content ?? Decode(bytes);
             var preview = await import.ValidateAsync(new ImportValidateRequest(template.PublicId, client.PublicId, content, fileName), scope, ct);
             IReadOnlyList<ImportRowDto> rows = preview.Rows;
             if (preview.ValidRows > 0) rows = (await import.ConfirmAsync(preview.BatchPublicId, new ImportConfirmRequest(), scope, ct)).Rows;

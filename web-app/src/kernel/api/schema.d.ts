@@ -31270,6 +31270,53 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/integrations/format/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        file?: string;
+                        format?: string;
+                        delimiter?: string;
+                        hasHeader?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["FormatPreviewDto"];
+                        "application/json": components["schemas"]["FormatPreviewDto"];
+                        "text/json": components["schemas"]["FormatPreviewDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -41544,6 +41591,7 @@ export interface components {
             hasMailPassword?: boolean;
             remote?: components["schemas"]["RemoteConfig"];
             hasRemoteSecret?: boolean;
+            format?: components["schemas"]["FileFormatConfig"];
         };
         InboxPageDto: {
             items?: components["schemas"]["InboxItemDto"][] | null;
@@ -41608,6 +41656,7 @@ export interface components {
             mailPassword?: string | null;
             remote?: components["schemas"]["RemoteConfig"];
             secret?: components["schemas"]["RemoteSecret"];
+            format?: components["schemas"]["FileFormatConfig"];
         };
         IntegrationCreateRequest: {
             name?: string | null;
@@ -41630,6 +41679,7 @@ export interface components {
             mailPassword?: string | null;
             remote?: components["schemas"]["RemoteConfig"];
             secret?: components["schemas"]["RemoteSecret"];
+            format?: components["schemas"]["FileFormatConfig"];
         };
         IntegrationNotifyUserDto: {
             /** Format: int32 */
@@ -41859,6 +41909,25 @@ export interface components {
             lastStatus?: string | null;
             /** Format: date-time */
             createdAtUtc?: string;
+        };
+        FormatPreviewDto: {
+            kind?: string | null;
+            sheets?: string[] | null;
+            header?: string[] | null;
+            rows?: string[][] | null;
+            /** Format: int32 */
+            totalRows?: number;
+        };
+        FileFormatConfig: {
+            kind?: string | null;
+            sheet?: string | null;
+            recordsPath?: string | null;
+            linesPath?: string | null;
+            columns?: components["schemas"]["FormatColumn"][] | null;
+        };
+        FormatColumn: {
+            header?: string | null;
+            path?: string | null;
         };
     };
     responses: never;

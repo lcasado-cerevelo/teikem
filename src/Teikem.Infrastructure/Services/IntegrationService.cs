@@ -100,7 +100,7 @@ public sealed class IntegrationService(
                 ParseIds(r.NotifyUserIdsJson).Where(people.ContainsKey).Select(id => new IntegrationNotifyUserDto(id, people[id].FullName ?? people[id].Email ?? "", people[id].Email)).ToList(),
                 r.RetentionDays, r.IsActive, r.LastStartedUtc, r.LastFinishedUtc, r.LastStatus, r.LastMessage, pending.GetValueOrDefault(r.IntegrationId), r.CreatedAtUtc,
                 r.ConnectorKind == IntegrationConnectorKinds.Email ? ParseEmail(r.ConnectorConfigJson) : null, r.ConnectorKind == IntegrationConnectorKinds.Email && r.SecretEnc is not null,
-                IntegrationConnectorKinds.IsRemote(r.ConnectorKind) ? ParseRemote(r.ConnectorConfigJson) : null, IntegrationConnectorKinds.IsRemote(r.ConnectorKind) && r.SecretEnc is not null);
+                IntegrationConnectorKinds.IsRemote(r.ConnectorKind) ? ParseRemote(r.ConnectorConfigJson) : null, IntegrationConnectorKinds.IsRemote(r.ConnectorKind) && r.SecretEnc is not null, ParseFormat(r.FormatJson));
         }).ToList();
     }
 
@@ -111,6 +111,74 @@ public sealed class IntegrationService(
         => string.IsNullOrWhiteSpace(json) ? Array.Empty<int>() : JsonSerializer.Deserialize<List<int>>(json, Json) ?? new List<int>();
 
     /// <summary>La configuración del conector de correo guardada (null si no hay o no es de correo).</summary>
+    public static FileFormatConfig? ParseFormat(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try { return JsonSerializer.Deserialize<FileFormatConfig>(json, Json); }
+        catch (JsonException) { return null; }
+    }
+
+    private static FileFormatConfig NormalizeFormat(FileFormatConfig c) => c with
+    {
+        Kind = (c.Kind ?? FileFormatKinds.Auto).Trim().ToUpperInvariant(),
+        Sheet = string.IsNullOrWhiteSpace(c.Sheet) ? null : c.Sheet.Trim(),
+        RecordsPath = string.IsNullOrWhiteSpace(c.RecordsPath) ? null : c.RecordsPath.Trim(),
+        LinesPath = string.IsNullOrWhiteSpace(c.LinesPath) ? null : c.LinesPath.Trim(),
+        Columns = (c.Columns ?? []).Select(x => new FormatColumn(x.Header.Trim(), x.Path.Trim())).ToList(),
+    };
+
+    /// <summary>Valida y normaliza el formato de una integración de archivos; null si no se manda. Una integración API no lleva formato.</summary>
+    private static string? FormatToJson(FileFormatConfig? format, bool isApi)
+    {
+        if (format is null) return null;
+        if (isApi) throw new ValidationException("format", FileFormatRules.FormatNotForApiMessage);
+        ThrowIfErrors(FileFormatRules.Validate(format));
+        var n = NormalizeFormat(format);
+        var plain = n.Kind == FileFormatKinds.Auto && n.Sheet is null && n.RecordsPath is null && n.LinesPath is null && n.Columns!.Count == 0;
+        return plain ? null : JsonSerializer.Serialize(n, Json);
+    }
+
+    /// <summary>Vista previa de un archivo con un formato (sin guardar nada): las hojas, el encabezado y las primeras 20 filas como las leería la plantilla.</summary>
+    public FormatPreviewDto PreviewFormat(byte[] bytes, string fileName, FileFormatConfig? format, char delimiter, bool hasHeader)
+    {
+        if (bytes.Length == 0) throw new ValidationException("file", IntegrationRunner.EmptyFileMessage);
+        if (format is not null) ThrowIfErrors(FileFormatRules.Validate(format));
+        var kind = FileFormatRules.Resolve(format is null ? null : NormalizeFormat(format), fileName, bytes);
+        IReadOnlyList<string> sheets = [];
+        IReadOnlyList<string> header;
+        List<IReadOnlyList<string>> rows;
+        switch (kind)
+        {
+            case FileFormatKinds.Excel:
+            {
+                if (!ImportFileReader.LooksLikeXlsx(bytes, fileName)) throw new ValidationException("file", FileFormatConverter.NotExcelMessage);
+                var t = FileFormatConverter.Read(bytes, fileName, delimiter, hasHeader, format?.Sheet);
+                sheets = t.Sheets;
+                header = t.Header ?? [];
+                rows = t.Rows.Select(r => (IReadOnlyList<string>)r.Cells).ToList();
+                break;
+            }
+            case FileFormatKinds.Json or FileFormatKinds.Xml:
+            {
+                var t = FileFormatRules.ToTable(bytes, kind, format ?? new FileFormatConfig(), out var error) ?? throw new ValidationException("file", error!);
+                header = t.Header;
+                rows = t.Rows.ToList();
+                break;
+            }
+            default:
+            {
+                var text = IntegrationRunner.Decode(bytes);
+                List<CsvRow> parsed;
+                try { parsed = CsvParser.Parse(text, delimiter, hasHeader: false).ToList(); }
+                catch (CsvLimitException) { throw new ValidationException("file", CsvParser.LimitMessage); }
+                header = hasHeader && parsed.Count > 0 ? parsed[0].Cells : [];
+                rows = parsed.Skip(hasHeader ? 1 : 0).Select(r => (IReadOnlyList<string>)r.Cells).ToList();
+                break;
+            }
+        }
+        return new FormatPreviewDto(kind, sheets, header, rows.Take(20).ToList(), rows.Count);
+    }
+
     public static EmailConfig? ParseEmail(string? json)
     {
         if (string.IsNullOrWhiteSpace(json)) return null;
@@ -229,6 +297,7 @@ public sealed class IntegrationService(
             template = await templates.ResolveForImportAsync(templateGuid, client.ClientId, ImportKinds.Order, ct);
         }
         var (connector, folder, scheduleKind, interval) = ValidateConnectorAndSchedule(req.ConnectorKind, req.Folder, req.ScheduleKind, req.IntervalSeconds);
+        var formatJson = FormatToJson(req.Format, isApi);
         EmailConfig? email = null;
         if (connector == IntegrationConnectorKinds.Email)
         {
@@ -259,7 +328,7 @@ public sealed class IntegrationService(
                 ConnectorKind = connector, ConnectorConfigJson = email is not null ? JsonSerializer.Serialize(email, Json) : remoteCfg is not null ? JsonSerializer.Serialize(remoteCfg, Json) : folder is null ? null : JsonSerializer.Serialize(new { folder }, Json),
                 SecretEnc = email is not null ? protector.Protect(tenantId, MailPurpose, req.MailPassword!) : remoteCfg is not null ? protector.Protect(tenantId, RemotePurpose, JsonSerializer.Serialize(req.Secret, Json)) : null, ImportTemplateId = template?.ImportTemplateId,
                 ScheduleKind = scheduleKind, IntervalSeconds = interval, NextRunUtc = IntegrationRules.NextRun(scheduleKind, interval, now), ScopesJson = JsonSerializer.Serialize(scopes, Json),
-                ServiceUserId = serviceUser, ServiceRoleId = role.RoleId, NotifyUserIdsJson = JsonSerializer.Serialize(notify, Json), RetentionDays = retention, IsActive = true,
+                ServiceUserId = serviceUser, ServiceRoleId = role.RoleId, NotifyUserIdsJson = JsonSerializer.Serialize(notify, Json), RetentionDays = retention, IsActive = true, FormatJson = formatJson,
                 CreatedAtUtc = now, CreatedBy = creatorId,
             };
             db.Integrations.Add(row);
@@ -328,6 +397,7 @@ public sealed class IntegrationService(
                 row.IntervalSeconds = interval;
                 row.NextRunUtc = row.IsActive ? IntegrationRules.NextRun(scheduleKind, interval, DateTime.UtcNow) : null;
             }
+            if (req.Format is not null) row.FormatJson = FormatToJson(req.Format, row.ConnectorKind == IntegrationConnectorKinds.Api);
             if (req.RetentionDays is not null) row.RetentionDays = ValidateRetention(req.RetentionDays);
             if (req.Scopes is not null)
             {

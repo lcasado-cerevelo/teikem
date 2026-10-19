@@ -9669,6 +9669,53 @@
       "result": "Result",
       "empty": "It has not run yet."
     },
+    "format": {
+      "section": "File format",
+      "sectionHelp": "How the file comes. «Automatic» decides by extension (.xlsx Excel, .json, .xml; anything else CSV). For JSON and XML, paths say where the orders are and where each import-template column comes from.",
+      "kind": "Format",
+      "sheet": "Excel sheet",
+      "sheetHelp": "Empty = the first sheet of the workbook.",
+      "kinds": {
+        "AUTO": "Automatic (by extension)",
+        "CSV": "CSV",
+        "EXCEL": "Excel (.xlsx)",
+        "JSON": "JSON",
+        "XML": "XML"
+      },
+      "pathHelp": {
+        "JSON": "Paths: $ = the document, .field, [*] = every item of a list, [0] = one. With lines: @ = the line, ^ = the order. Example: $.orders[*] and @.lines[*].",
+        "XML": "Paths: $ = the document (starts with the root element name), .Element, [*] = all, @attribute for an attribute and #text for the text of an element with attributes. With lines: @ = the line, ^ = the order."
+      },
+      "recordsPath": "Orders path",
+      "recordsPathHelp": "Where each order is. One order = one row (or several, if there are lines).",
+      "linesPath": "Lines path (optional)",
+      "linesPathHelp": "Relative to the order (starts with @). Each line is a row; an order without lines gives one row.",
+      "columns": "Columns",
+      "columnsHelp": "In the order the import template expects (the first one is column 1).",
+      "header": "Column name",
+      "path": "Value path",
+      "addColumn": "Add column",
+      "remove": "Remove",
+      "removeColumn": "Remove column {n}",
+      "test": "Test with a file",
+      "testHelp": "Shows how the template would read it; nothing is saved.",
+      "sampleFile": "Sample file",
+      "previewSummary": "Read as {kind}: {rows} row(s); showing {shown}.",
+      "sheets": "Workbook sheets: {sheets}.",
+      "errors": {
+        "sheet": "The sheet name cannot exceed 31 characters.",
+        "recordsRequired": "Enter the orders path (for example $.orders[*]).",
+        "recordsRoot": "The orders path must start with $ (for example $.orders[*]).",
+        "linesRoot": "The lines path must be relative to the order: start with @ (for example @.lines[*]).",
+        "columnsRequired": "Add at least one column to the mapping.",
+        "columnsMax": "The mapping allows up to 60 columns.",
+        "headerRequired": "Every column needs a name.",
+        "headerMax": "A column name cannot exceed 80 characters.",
+        "headerRepeated": "Two columns are named «{h}».",
+        "pathInvalid": "The path «{p}» is not valid. Use the format $.field.other[*] (also @.field or ^.field).",
+        "orderRoot": "The path «{p}» uses ^ (the order), which is only allowed when there is a lines path."
+      }
+    },
     "hooks": {
       "open": "Webhooks",
       "title": "Webhooks of «{name}»",

@@ -9672,6 +9672,53 @@
       "result": "Resultado",
       "empty": "Todavía no ha corrido."
     },
+    "format": {
+      "section": "Formato del archivo",
+      "sectionHelp": "Cómo viene el archivo. «Automático» decide por la extensión (.xlsx Excel, .json, .xml; lo demás CSV). En JSON y XML se declara con rutas dónde están las órdenes y de dónde sale cada columna de la plantilla de importación.",
+      "kind": "Formato",
+      "sheet": "Hoja de Excel",
+      "sheetHelp": "Vacío = la primera hoja del libro.",
+      "kinds": {
+        "AUTO": "Automático (por la extensión)",
+        "CSV": "CSV",
+        "EXCEL": "Excel (.xlsx)",
+        "JSON": "JSON",
+        "XML": "XML"
+      },
+      "pathHelp": {
+        "JSON": "Rutas: $ = el documento, .campo, [*] = todos los elementos de una lista, [0] = uno. Con líneas: @ = la línea, ^ = la orden. Ejemplo: $.orders[*] y @.lines[*].",
+        "XML": "Rutas: $ = el documento (empieza con el nombre del elemento raíz), .Elemento, [*] = todos, @atributo para un atributo y #text para el texto de un elemento con atributos. Con líneas: @ = la línea, ^ = la orden."
+      },
+      "recordsPath": "Ruta de las órdenes",
+      "recordsPathHelp": "Dónde está cada orden. Una orden = una fila (o varias, si hay líneas).",
+      "linesPath": "Ruta de las líneas (opcional)",
+      "linesPathHelp": "Relativa a la orden (empieza con @). Cada línea es una fila; una orden sin líneas da una fila.",
+      "columns": "Columnas",
+      "columnsHelp": "En el orden que espera la plantilla de importación (la primera es la columna 1).",
+      "header": "Nombre de la columna",
+      "path": "Ruta del valor",
+      "addColumn": "Agregar columna",
+      "remove": "Quitar",
+      "removeColumn": "Quitar la columna {n}",
+      "test": "Probar con un archivo",
+      "testHelp": "Muestra cómo lo leería la plantilla; no guarda nada.",
+      "sampleFile": "Archivo de muestra",
+      "previewSummary": "Se leyó como {kind}: {rows} fila(s); se muestran {shown}.",
+      "sheets": "Hojas del libro: {sheets}.",
+      "errors": {
+        "sheet": "El nombre de la hoja no puede pasar de 31 caracteres.",
+        "recordsRequired": "Indique la ruta de las órdenes (por ejemplo $.orders[*]).",
+        "recordsRoot": "La ruta de las órdenes debe empezar con $ (por ejemplo $.orders[*]).",
+        "linesRoot": "La ruta de las líneas debe ser relativa a la orden: empiece con @ (por ejemplo @.lines[*]).",
+        "columnsRequired": "Agregue al menos una columna al mapeo.",
+        "columnsMax": "El mapeo admite hasta 60 columnas.",
+        "headerRequired": "Cada columna necesita un nombre.",
+        "headerMax": "El nombre de una columna no puede pasar de 80 caracteres.",
+        "headerRepeated": "Hay dos columnas llamadas «{h}».",
+        "pathInvalid": "La ruta «{p}» no es válida. Use el formato $.campo.otro[*] (también @.campo o ^.campo).",
+        "orderRoot": "La ruta «{p}» usa ^ (la orden), que solo se puede cuando hay una ruta de líneas."
+      }
+    },
     "hooks": {
       "open": "Webhooks",
       "title": "Webhooks de «{name}»",

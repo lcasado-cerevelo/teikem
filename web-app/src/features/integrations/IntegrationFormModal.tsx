@@ -9,6 +9,7 @@ import { FormModal } from '../clients/contractUi'
 import { useClientOptions } from '../consignees/api'
 import { useOrderImportTemplates } from '../orders/importApi'
 import { EmailSection } from './EmailSection'
+import { FormatSection } from './FormatSection'
 import { RemoteSection } from './RemoteSection'
 import { buildCreateRequest, buildPatchRequest, integrationSchema, integrationValuesOf, type IntegrationValues } from './integrationRules'
 import { useIntegrationMutations, useIntegrationOptions, type IntegrationDto } from './integrationsApi'
@@ -69,6 +70,19 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
           },
         },
         { needsClient: (codes) => needsClientRef.current.some((c) => codes.includes(c)), message: t('integrations.api.errors.clientForScopes') },
+        {
+          sheet: t('integrations.format.errors.sheet'),
+          recordsRequired: t('integrations.format.errors.recordsRequired'),
+          recordsRoot: t('integrations.format.errors.recordsRoot'),
+          linesRoot: t('integrations.format.errors.linesRoot'),
+          columnsRequired: t('integrations.format.errors.columnsRequired'),
+          columnsMax: t('integrations.format.errors.columnsMax'),
+          headerRequired: t('integrations.format.errors.headerRequired'),
+          headerMax: t('integrations.format.errors.headerMax'),
+          headerRepeated: (h) => t('integrations.format.errors.headerRepeated', { h }),
+          pathInvalid: (p) => t('integrations.format.errors.pathInvalid', { p }),
+          orderRoot: (p) => t('integrations.format.errors.orderRoot', { p }),
+        },
       ),
     [t, editing, integration?.hasMailPassword, integration?.hasRemoteSecret],
   )
@@ -167,6 +181,7 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
       )}
 
       {connector === 'EMAIL' && <EmailSection form={form} hasSavedPassword={integration?.hasMailPassword === true} />}
+      {connector !== 'API' && <FormatSection form={form} />}
       {(connector === 'SFTP' || connector === 'FTP') && <RemoteSection form={form} kind={connector} hasSavedSecret={integration?.hasRemoteSecret === true} />}
 
       <fieldset className="int-scopes">
