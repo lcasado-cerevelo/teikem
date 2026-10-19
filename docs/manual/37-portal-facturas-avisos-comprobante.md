@@ -70,3 +70,7 @@ En el **Inicio**, de los últimos **7, 30 o 90 días**:
 - **Saldo de facturas** (y cuántas vencidas), solo si la compañía tiene el módulo BILLING; **Cobrado por remesar**, solo si tiene COD y hay dinero cobrado por sus entregas que todavía no se le remite.
 
 `GET /api/v1/portal/indicators?days=30` (7, 30 o 90; 400 «Los días deben ser 7, 30 o 90.» con otro número). Son solo del cliente de la sesión: nada de otros clientes ni de choferes.
+
+## 7. Factura procesada (Lote 126)
+
+La ficha de la orden en el portal muestra **Factura procesada: fecha** cuando la compañía ya procesó la factura del cliente contra esa orden (hoja de COD cuadrada o cotejo desde Procesar entregas). Si no aparece la fila, todavía no se ha procesado. Solo lectura; sin el nombre de quien la procesó. Campo `invoiceProcessedAtUtc` de `GET /api/v1/portal/orders/{publicId}`.

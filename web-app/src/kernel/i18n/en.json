@@ -8527,7 +8527,8 @@
       "reference": "The reference allows up to 80 characters.",
       "notes": "The note allows up to 300 characters.",
       "none": "Add at least one code.",
-      "tooMany": "A run allows up to 2000 codes."
+      "tooMany": "A run allows up to 2000 codes.",
+      "clientRequired": "To process invoices, choose the client of the sheets: invoice numbers repeat across clients."
     },
     "results": {
       "RECONCILED": "Will reconcile",

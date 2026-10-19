@@ -9399,6 +9399,10 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 
 **«El tipo de hojas debe ser AUTO, COD, INVOICE o BOTH.»** (400) El campo `mode` del API solo admite esos valores (o vacío = AUTO).
 
+**«Para procesar facturas elige el cliente de las hojas: el número de factura se repite entre clientes.»** Elige el cliente en «Cliente de las hojas» (arriba de las hojas y de los códigos a mano) y vuelve a Cuadrar. Las hojas de COD no lo exigen.
+
+**El cliente pregunta si ya procesamos su factura.** Lo ve él mismo en su portal: la ficha de la orden dice «Factura procesada: fecha».
+
 **¿Procesar la factura cuesta?** Solo si el contrato del cliente tiene encendido «Cobrar el cotejo de la factura del cliente» con un monto; entonces la siguiente corrida de facturación agrega la línea «Cotejo de factura de la orden X», una vez por orden. Apagado (lo normal), no cuesta.
 
 **«Indique el monto por factura cotejada.» / «El monto del cotejo no puede ser negativo.»** (400) Al encender el cobro en el contrato hay que dar un monto de cero o más.

@@ -48,6 +48,7 @@ export function OrderDetailScreen() {
               {!!o.promisedDate && <Row label={t('order.promised')} value={formatDate(o.promisedDate, lang)} />}
               <Row label={t('order.pieces')} value={String(o.totalPieces ?? 0)} />
               {o.codAmount != null && <Row label={t('order.cod')} value={`${formatMoney(o.codAmount, lang)}${o.codStatusLabel ? ` · ${o.codStatusLabel}` : ''}`} />}
+              {!!o.invoiceProcessedAtUtc && <Row label={t('order.invoiceProcessed')} value={formatDateTime(o.invoiceProcessedAtUtc, lang)} />}
             </Card>
             <Card>
               <Text style={{ fontWeight: '700', color: colors.text }}>{t('order.delivery')}</Text>

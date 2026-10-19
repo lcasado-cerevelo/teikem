@@ -116,6 +116,7 @@
     "packages": "Paquetes",
     "timeline": "Seguimiento",
     "noTimeline": "Todavía no hay cambios de estatus.",
+    "invoiceProcessed": "Factura procesada",
     "proof": {
       "title": "Comprobante de entrega",
       "recipient": "Recibió",

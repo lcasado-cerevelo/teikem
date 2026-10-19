@@ -116,6 +116,7 @@
     "packages": "Packages",
     "timeline": "Tracking",
     "noTimeline": "There are no status changes yet.",
+    "invoiceProcessed": "Invoice processed",
     "proof": {
       "title": "Proof of delivery",
       "recipient": "Received by",

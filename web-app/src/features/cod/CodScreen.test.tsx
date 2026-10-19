@@ -222,6 +222,10 @@ describe('COD', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Dijiste hojas de COD, pero algunas son de órdenes sin COD')
     expect(mock.lastMode).toBe('COD')
     expect(screen.getByRole('button', { name: 'Cuadrar' })).toBeEnabled()
+    // hay una factura y no se eligió cliente: Cuadrar pide el cliente en vez de abrir la confirmación
+    await user.click(screen.getByRole('button', { name: 'Cuadrar' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.getAllByText(/elige el cliente de las hojas/).length).toBeGreaterThan(0)
 
     // «Ambas» con los dos tipos no advierte; sin la factura, avisa que faltan facturas
     await user.click(screen.getByRole('radio', { name: 'Ambas' }))

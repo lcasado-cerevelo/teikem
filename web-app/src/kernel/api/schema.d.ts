@@ -38505,6 +38505,8 @@ export interface components {
             progress?: components["schemas"]["PortalProgressDto"];
             stepLabels?: string[] | null;
             deliveryProof?: components["schemas"]["PortalDeliveryProofDto"];
+            /** Format: date-time */
+            invoiceProcessedAtUtc?: string | null;
         };
         PortalAuthConfigDto: {
             captchaEnabled?: boolean;

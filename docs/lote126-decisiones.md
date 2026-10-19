@@ -15,5 +15,5 @@
 1. **Todo se procesa, el modo solo advierte** (propuesta aceptada por Luis): elegir mal nunca pierde una hoja.
 2. **La hoja de COD también marca la factura procesada** (idea de Luis): los tres campos significan «la factura de esta orden ya se procesó», sea COD o cotejo.
 3. **Solo cuenta «Entregada»** para cotejar; una orden devuelta o en almacén (pick up) sale «No entregada». Si hace falta cotejar devueltas, se amplía.
-4. **El cargo** sale del contrato de la orden al momento de facturar (no se congela al procesar); el portal del cliente todavía no muestra «Factura procesada» (se agrega cuando Luis lo pida).
+4. **El cargo** sale del contrato de la orden al momento de facturar (no se congela al procesar). **Luis (2026-10-18):** el cliente de las hojas es **obligatorio** para procesar facturas (la pantalla lo pide antes de Cuadrar) y el **portal del cliente** muestra «Factura procesada: fecha» en la ficha de la orden (hecho).
 5. **Migración:** las órdenes del sistema viejo con factura procesada pueden venir con fecha y usuario y `InvoiceProcessRunId` NULL; las órdenes ficticias no se migran.

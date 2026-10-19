@@ -56,7 +56,7 @@ public sealed class PortalService(TeikemDbContext db, ITenantContext tenant, Use
         PortalOrderStopDto? Stop(OrderStopDto? s) => s is null ? null : new PortalOrderStopDto(s.Name, s.Line1, s.Line2, s.City, s.State, s.PostalCode);
         return new PortalOrderDto(o.PublicId, o.WaybillNumber ?? string.Empty, o.OrderNumber, o.ClientInvoiceNumber, o.ServiceTypeLabel, o.Status, o.StatusLabel, o.TotalPieces, o.TotalWeightKg, o.CodAmount,
             o.CodStatusLabel, o.RequestedDate, o.PromisedDate, o.CreatedAtUtc, Stop(o.Pickup), Stop(o.Delivery)!,
-            o.Packages.Select(p => new PortalOrderPackageDto(p.Description, p.Pieces, p.WeightKg)).ToList(), timeline, ProgressOf(avance), stepLabels, await DeliveryProofAsync(o.Id, ct));
+            o.Packages.Select(p => new PortalOrderPackageDto(p.Description, p.Pieces, p.WeightKg)).ToList(), timeline, ProgressOf(avance), stepLabels, await DeliveryProofAsync(o.Id, ct), o.InvoiceProcessedAtUtc);
     }
 
     /// <summary>Lote 119: el comprobante de entrega de la orden (si lo tiene): quién recibió y cuándo; «registrada por el personal» sin decir quién; coordenadas solo si se encontraron.</summary>

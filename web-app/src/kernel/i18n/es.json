@@ -8527,7 +8527,8 @@
       "reference": "La referencia admite hasta 80 caracteres.",
       "notes": "La nota admite hasta 300 caracteres.",
       "none": "Agrega al menos un código.",
-      "tooMany": "Una corrida admite hasta 2000 códigos."
+      "tooMany": "Una corrida admite hasta 2000 códigos.",
+      "clientRequired": "Para procesar facturas elige el cliente de las hojas: el número de factura se repite entre clientes."
     },
     "results": {
       "RECONCILED": "Se cuadra",

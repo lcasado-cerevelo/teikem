@@ -66878,6 +66878,11 @@
           },
           "deliveryProof": {
             "$ref": "#/components/schemas/PortalDeliveryProofDto"
+          },
+          "invoiceProcessedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
           }
         },
         "additionalProperties": false

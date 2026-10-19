@@ -220,6 +220,8 @@ export function ReconcileTab() {
   }
 
   const canApply = preview !== null && ((preview.reconciled ?? 0) > 0 || (preview.checked ?? 0) > 0)
+  // Lote 126: las facturas se procesan con el cliente elegido (el número de factura se repite entre clientes)
+  const needsClient = preview !== null && clientId === null && (preview.items ?? []).some((i) => i.kind === 'INVOICE' && i.orderNumber)
   return (
     <Panel icon={<IconCart />} title={t('cod.reconcile.title')}>
       <div className="pb">
@@ -298,7 +300,7 @@ export function ReconcileTab() {
         {error && <p className="ferr" role="alert">{error}</p>}
         <div className="cod-actions">
           <button type="button" className="btn" disabled={rows.length === 0 || reading || reconcile.isPending} onClick={() => void run(true).catch(() => undefined)}>{t('cod.previewBtn')}</button>
-          <button type="button" className="btn flow" disabled={!canApply || reconcile.isPending} onClick={() => setConfirming(true)}>{t('cod.apply')}</button>
+          <button type="button" className="btn flow" disabled={!canApply || reconcile.isPending} onClick={() => (needsClient ? setError(t('cod.errors.clientRequired')) : setConfirming(true))}>{t('cod.apply')}</button>
           {rows.length > 0 && <button type="button" className="btn" onClick={reset}>{t('cod.clear')}</button>}
         </div>
 
@@ -306,6 +308,7 @@ export function ReconcileTab() {
           <>
             <h3 className="exp-h">{t('cod.previewTitle')}</h3>
             <p className="help">{t('cod.previewHelp')}</p>
+            {needsClient && <p className="cod-warn">{t('cod.errors.clientRequired')}</p>}
             <Summary result={preview} />
             <ResultsTable items={preview.items ?? []} label={t('cod.previewTitle')} />
           </>

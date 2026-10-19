@@ -129,6 +129,8 @@ El selector solo dice qué esperabas, y de ahí salen las **advertencias** (info
 
 **Resultados nuevos por hoja** (además de los de COD): **Factura procesada** (`INVOICE_CHECKED`: la orden está entregada; en la vista previa, «se procesaría»), **No entregada** (`NOT_DELIVERED`: la orden existe pero no se ha entregado; se procesa cuando se entregue) y **Ya procesada** (`ALREADY_PROCESSED`: esa orden ya traía su factura procesada en otra corrida). La columna **Tipo** dice si la hoja fue de COD o factura. El resumen cuenta «N factura(s) procesada(s)» aparte de lo cuadrado, y **Cuadrar** se habilita si hay algo que cuadrar o alguna factura por procesar.
 
+**El cliente de las hojas es obligatorio para procesar facturas:** el número de factura se repite entre clientes, así que si la vista previa trae facturas y no se eligió el cliente, «Cuadrar» pide elegirlo («Para procesar facturas elige el cliente de las hojas…»). Para hojas de COD sigue siendo opcional.
+
 **Qué queda en la orden:** `InvoiceProcessedAtUtc`, `InvoiceProcessedBy` e `InvoiceProcessRunId` (la corrida de lectura, con el archivo y la fila de cada hoja). **Una sola vez por orden**: la segunda hoja de la misma orden sale «Ya procesada» y no cambia nada. La ficha de la orden muestra **Factura procesada: fecha · quién** (o «Todavía no») en el panel COD.
 
 **Cobro configurable (contrato → Cotejo de factura):** apagado por omisión. Encendido con un monto, cada factura procesada (cotejo o hoja de COD) genera en la **siguiente corrida de facturación** una línea **«Cotejo de factura de la orden X»** (tipo de cargo `INVOICE_CHECK`, con impuesto según el perfil fiscal del cliente), una sola vez por orden. Sin contrato o con el cobro apagado, procesar no cuesta.

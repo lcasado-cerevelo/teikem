@@ -57,7 +57,9 @@ public sealed record PortalOrderDto(
     IReadOnlyList<PortalOrderEventDto> Timeline,
     PortalProgressDto? Progress = null,
     IReadOnlyList<string>? StepLabels = null,
-    PortalDeliveryProofDto? DeliveryProof = null);
+    PortalDeliveryProofDto? DeliveryProof = null,
+    // Lote 126: cuándo se procesó la factura del cliente de esta orden (hoja de COD cuadrada o cotejo); NULL = todavía no
+    DateTime? InvoiceProcessedAtUtc = null);
 
 /// <summary>
 /// Lote 119 — el comprobante de entrega que ve el cliente: quién recibió y cuándo, si lo registró el personal de la compañía (sin nombre del usuario) y si el consignatario firmó, y la ubicación si se encontró. Sin notas internas.
