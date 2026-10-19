@@ -15,6 +15,8 @@
 5. **Acuses = avisos del sistema**, no archivo de respuesta. Al crear la integración se define **a quién avisar** (usuarios o roles que se escojan) con la opción **«incluirme»**; no se avisa automáticamente a quien la creó.
 6. **Correo:** un buzón por integración.
 
+7. **Confirmado (2026-10-19, segunda ronda):** (a) las **órdenes de compra y de venta** (almacén) también entran a la API del cliente; (b) **«sender» = el propio cliente**; (c) **un permiso por familia** para crear integraciones: `integrations.create` (base) **más** el de cada familia que se quiera dar: `integrations.create.transport` (órdenes, tracking, facturas, consignatarios, perfil), `integrations.create.warehouse` (inventario, productos, recibo, despacho, ajustes, transferencias, órdenes de compra y de venta) e `integrations.create.files` (conectores de archivo, carpeta, SFTP y correo); (d) **integración por correo electrónico: se construye y es la que aplica a todos** (sección 3b).
+
 ## 1. Principios (dictados de Luis)
 1. **Integrar CUALQUIER cosa con Teikem, de entrada o de salida, por configuración, sin programar cada vez.** AxisCare es solo un ejemplo.
 2. **API mínima y controlada:** más lecturas que escrituras; la escritura es **crear órdenes** (lo mismo que hace la pantalla) y poco más.
@@ -41,6 +43,31 @@
 **Entrada (a Teikem).** Disparador → leer del conector → por archivo: calcular hash (si ya está, saltar) → aplicar plantilla → **validar** (el mismo importador: errores por fila/orden) → las órdenes válidas **se crean** (`orders.create` de una cuenta de servicio de la integración, nunca de un usuario) y las inválidas **van a la bandeja**. **Acuse = aviso del sistema** a quienes se definieron en la integración (resumen de la corrida: creadas, rechazadas, a la bandeja); un archivo de respuesta hacia el cliente no se hace por ahora.
 
 **Salida (de Teikem).** Dos formas: (a) **por evento/horario**: «cuando una orden pase a Entregada» o «cada noche las entregadas del día» → armar archivo con el mapeo de salida → enviarlo (SFTP, correo, API, webhook); (b) **webhook** de suscripción (sección 5). Una salida fallida se **reintenta con espera creciente** (outbox) y, agotados los reintentos, queda en la bandeja como «salida no entregada» con botón «Reintentar».
+
+## 3b. Integración por correo electrónico (aplica a todos los clientes)
+
+Un correo llega al **buzón de la integración** (uno por integración), Teikem lo lee y, según la configuración, lee **el cuerpo**, **los adjuntos** o ambos.
+
+**1. Qué correos se toman (el filtro corre en el servidor de correo; nunca se baja todo el buzón):**
+- **Remitente esperado:** lista de correos o dominios permitidos. Como casi siempre llega **reenviado**, el remitente que cuenta es el **remitente original**: Teikem lo saca de las cabeceras (`Reply-To`, `X-Original-Sender`, `Resent-From`) y, si no hay, del bloque reenviado del cuerpo («De:» / «From:», «Mensaje reenviado»). Un correo cuyo remitente original no esté permitido **no se procesa**: va a la bandeja con el motivo «Remitente no permitido: X».
+- **Asunto:** contiene / empieza con / expresión regular (p. ej. «PR Orden»). **Solo con adjunto:** sí/no.
+- Los correos ya leídos se marcan o se mueven a una carpeta «Procesados» del buzón; **nunca se borran**.
+
+**2. Qué se lee:**
+- **Adjuntos:** *todos*, *el primero*, o los que cumplan un criterio por **nombre** (contiene / comodín `*.csv` / regex) y por **tipo** (CSV, Excel .xlsx; .eml y PDF se guardan y quedan en la bandeja para revisión hasta que haya lector). Cada adjunto elegido se procesa con la **plantilla de importación** de la integración (la misma de archivos, con varias líneas por orden y reglas de «no pieza» si hace falta). Un adjunto fuera de los criterios se ignora (queda anotado).
+- **Cuerpo:** una lista de **campos a leer** que se declara en pantalla, sin programar. Cada campo = *qué se busca* + *a qué campo de Teikem va*:
+  - **Por etiqueta:** «Reference #:» → toma el texto que sigue en esa línea. (Ej.: `Reference #`, `Teléfono`, `Dirección`).
+  - **Por expresión regular** con un grupo de captura.
+  - **Bloque de líneas** (una tabla de renglones, p. ej. un «Order Summary»): marcador de inicio y de fin, separador de columnas y qué columna es descripción, cantidad y monto; cada renglón es una línea de la orden.
+  - Valores por defecto y transformaciones simples (quitar símbolos de moneda, mayúsculas, formato de teléfono).
+  - Los campos marcados **obligatorios** que no se encuentren mandan el correo a la bandeja («No se encontró Reference #»).
+- **Idempotencia:** clave de la orden = un campo del correo (p. ej. `Reference #`) o, si no hay, el `Message-ID`; el mismo correo o la misma clave por segunda vez se ignora y se anota.
+
+**3. Seguridad:** el contenido del correo es **entrada no confiable**: no se ejecuta nada, el HTML se reduce a texto, los adjuntos pasan por lista de tipos permitidos y tope de tamaño, y el remitente original se verifica contra la lista (y el buzón solo se lee con una credencial limitada a ese buzón: IMAP con contraseña de aplicación o Microsoft 365 con permiso al buzón compartido).
+
+**4. Acuse:** aviso del sistema a quienes se definieron en la integración (lo creado y lo que fue a la bandeja); si se quiere confirmar al remitente, se agrega luego como paso de salida «enviar correo».
+
+**5. Pruebas sin buzón real:** el lector de correo es una interfaz (`IMailboxReader`) con implementación IMAP y una de prueba con correos de muestra; además se puede **subir un `.eml`** a la integración para probar la configuración exactamente igual que si hubiera llegado.
 
 ## 4. La bandeja (cómo se resuelve la limitación)
 
@@ -91,15 +118,14 @@ Hoy, una orden con error queda solo en la vista previa y desaparece al cerrarla.
 Tema claro/oscuro y es/en como todo; Kemi busca en el manual y la FAQ de este capítulo.
 
 ## 8. Plan por lotes (cada uno cierra con manual, FAQ, pruebas y recorrido)
-| Lote | Contenido | Depende de |
-|---|---|---|
-| **132** | Modelo y pantalla **Integraciones** + conector **CARPETA** y **SUBIDA MANUAL** + disparador manual/horario + corrida e historial + **bandeja** (entrada) con corregir/reprocesar/descartar | Lotes 3, 131, `ScheduledJob` |
-| **133** | Conectores **SFTP/FTP** y **CORREO** (IMAP), vigilar, hash de archivos procesados, acuse por archivo; secretos cifrados + probar conexión | 132 |
-| **134** | **Llaves de API** por cliente (secreto una vez, scopes, rate limit) + lecturas de órdenes, tracking y facturas + `POST orders` | 132 (bitácora) |
-| **135** | **Webhooks** de salida (HMAC, reintentos, bandeja de salidas no entregadas) y salida por evento/horario con mapeo inverso | 133, 134 |
-| **136** | Mapeo por ruta para JSON/XML, hoja de Excel, API saliente genérica | 135 |
+| Lote | Contenido |
+|---|---|
+| **132** | Modelo e **Integraciones** (pantalla y API): cuenta de servicio y rol por integración con los permisos por familia, conector **CARPETA** y **SUBIDA MANUAL**, disparador manual/horario, corrida e historial, **bandeja** con corregir/reprocesar/descartar/descargar, avisos del sistema a quienes se definan (con «incluirme») |
+| **133** | Conector **CORREO** (sección 3b): lector IMAP, remitente original, filtros, adjuntos por nombre/tipo, campos del cuerpo (etiqueta, regex, bloque de líneas), idempotencia por clave o `Message-ID`, subir `.eml` de prueba |
+| **134** | **SFTP/FTP** y vigilar carpeta; hash de archivos procesados |
+| **135** | **Llaves de API** por cliente (alcances por familia validados contra módulos y permisos de quien crea) + lecturas, consignatarios propios, perfil del cliente, almacén (incl. órdenes de compra y de venta) y `POST orders` |
+| **136** | **Webhooks** de salida (HMAC, reintentos, bandeja de salidas no entregadas) y salida por evento/horario |
+| **137** | Mapeo por ruta para JSON/XML, hoja de Excel, API saliente genérica |
 
-## 9. Por confirmar (quedan pocas)
-1. **«Órdenes no» en almacén:** entendí que las órdenes de transporte siguen siendo parte de la API del cliente (leer y crear) y que lo que NO va en la parte de almacén son órdenes de venta/salida. ¿Correcto?
-2. **Remitente:** entendí «sender» como el propio cliente (sus datos y su remitente), editable solo por sí mismo. ¿Es eso, o es otra entidad?
-3. **Alcances por rol:** los alcances (`orders:read`, `warehouse:write`…) los elige quien crea la integración entre los que él tiene; ¿quieres además un permiso por familia (p. ej. `integrations.create.warehouse`) para que un rol pueda crear integraciones de transporte pero no de almacén?
+## 9. Por confirmar
+Nada abierto por ahora; las dudas de la ronda anterior quedaron resueltas en la sección 0. Se avisa si aparece alguna durante la construcción.
