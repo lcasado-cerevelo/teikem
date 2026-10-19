@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <link rel="icon" href="favicon.ico">
-<title>Teikem Almacén — Descargas</title>
+<title>Teikem — Descargas de las apps</title>
 <style>
   :root { --brand: #1F6FE5; --navy: #0B2C66; --accent: #FF6A1A; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -39,6 +39,14 @@
   .card.staging { border: 2px dashed #DC2626; }
   .badge.red { background: #DC2626; color: #fff; }
   .btn.red { background: #fff; color: #DC2626; border: 1.5px solid #DC2626; }
+  /* Test (2026-10-19): verde, como el icono de esas apps; los APK viven en el servidor de test */
+  .card.test { border: 2px dashed #047857; }
+  .badge.green { background: #047857; color: #fff; }
+  .btn.green { background: #fff; color: #047857; border: 1.5px solid #047857; }
+  .section { width: 100%; max-width: 420px; margin: 26px 0 10px; color: var(--navy); font-size: .95rem; font-weight: 700; }
+  .section small { display: block; color: #6b7280; font-weight: 400; margin-top: 2px; }
+  .card .ver.missing { color: #DC2626; }
+  .btn.disabled { opacity: .45; pointer-events: none; }
   .badge {
     display: inline-block; background: var(--accent); color: #1c1c1e;
     font-size: .7rem; font-weight: 700; border-radius: 999px;
@@ -55,8 +63,8 @@
 </head>
 <body>
   <img class="logo" src="logo.png" alt="Teikem">
-  <h1>Teikem Almacén</h1>
-  <p class="subtitle">Aplicación móvil para el almacén — Android</p>
+  <h1>Apps de Teikem</h1>
+  <p class="subtitle">Aplicaciones móviles para Android: producción, staging y test</p>
 
   <div class="cards">
     <div class="card featured">
@@ -80,6 +88,29 @@
     </div>
   </div>
 
+  <div class="section">Ambiente de TEST<small>Lo nuevo antes de producción (test.advancelogisticspr.com). Icono verde con cinta TEST; se instalan junto a las otras.</small></div>
+  <div class="cards">
+    <div class="card test">
+      <div class="info">
+        <span class="badge green">TEST</span>
+        <div class="name">Teikem Almacén TEST</div>
+        <div class="desc">App del almacén contra el ambiente de test. No es producción ni staging.</div>
+        <div class="ver" id="v-test"></div>
+      </div>
+      <a class="btn green" id="b-test" href="https://test.advancelogisticspr.com/descargas/apk/teikem-almacen-test.apk">Descargar</a>
+    </div>
+
+    <div class="card test">
+      <div class="info">
+        <span class="badge green">TEST · PORTAL DEL CLIENTE</span>
+        <div class="name">Teikem Clientes TEST</div>
+        <div class="desc">App del portal del cliente (órdenes, avisos y cuenta). La misma web: <a href="https://test-portal.advancelogisticspr.com">test-portal.advancelogisticspr.com</a>. Solo existe en test por ahora.</div>
+        <div class="ver" id="v-clientes-test"></div>
+      </div>
+      <a class="btn green" id="b-clientes-test" href="https://test.advancelogisticspr.com/descargas/apk/teikem-clientes-test.apk">Descargar</a>
+    </div>
+  </div>
+
   <div class="help">
     <h2>Cómo instalar</h2>
     <ol>
@@ -99,7 +130,8 @@
         Toca el enlace pequeño <strong>"Instalar de todos modos"</strong> ("Install anyway").
         <strong>OJO:</strong> el botón grande "Entendido" ("Got it") CANCELA la instalación — no lo uses.</li>
       <li>Si ya tenías la app, se actualiza <strong>encima</strong> sin perder tu configuración
-        ni tus datos. <strong>No la desinstales antes.</strong></li>
+        ni tus datos. <strong>No la desinstales antes.</strong> Las de staging y test son apps
+        aparte: no tocan la de producción.</li>
     </ol>
   </div>
 
@@ -107,13 +139,20 @@
 
 <script>
   // versions.json (junto a este archivo) controla los números mostrados:
-  // { "ultima": "1.0.0", "staging": "1.0.0" }
+  // { "ultima": "1.0.0", "staging": "1.0.0", "test": "1.0.0 (c2)", "clientes-test": "1.0.0 (c2)" }
+  // Las de test: sin su clave la tarjeta dice que aún no se publicó y apaga el botón (los APK viven en el servidor de test).
   fetch('versions.json', { cache: 'no-store' })
     .then(function (r) { return r.json(); })
     .then(function (v) {
       ['ultima', 'staging'].forEach(function (k) {
         var el = document.getElementById('v-' + k);
         if (v[k] && el) el.textContent = 'Versión ' + v[k];
+      });
+      ['test', 'clientes-test'].forEach(function (k) {
+        var el = document.getElementById('v-' + k), btn = document.getElementById('b-' + k);
+        if (!el) return;
+        if (v[k]) { el.textContent = 'Versión ' + v[k]; }
+        else { el.textContent = 'Todavía no se publicó el APK de test.'; el.className = 'ver missing'; if (btn) btn.className = 'btn green disabled'; }
       });
     })
     .catch(function () { /* sin versions.json la página funciona igual */ });

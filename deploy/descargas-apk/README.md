@@ -1,4 +1,4 @@
-# Página de descargas del APK (Teikem Almacén)
+# Página de descargas de las apps (producción, staging y test)
 
 Página estática, igual en estilo a la de Advance App. Súbala a cualquier servidor web (por ejemplo `https://.../descargas/`) con esta estructura:
 
@@ -14,6 +14,7 @@ apk/teikem-staging.apk El APK de staging que deja scripts\construir-apk.ps1 -Sta
 - Cada versión nueva: copie el APK a `apk/teikem-almacen.apk` (el mismo nombre) y cambie el número en `versions.json`. Los aparatos que ya la tienen se actualizan **encima**, sin perder su configuración (misma llave de firma y código de versión mayor: ver `docs/mobile/actualizar-apk.md`).
 - Staging (2026-10-12): la tarjeta «Teikem Almacén STAGING» (borde rojo punteado) descarga `apk/teikem-staging.apk`; cada versión nueva: copie el APK con ese nombre y cambie `staging` en `versions.json`. Es otra app (paquete `com.teikem.almacen.staging`): se instala junto a la de producción y se actualiza sola encima, sin tocarla.
 - El servidor debe servir `.apk` como `application/vnd.android.package-archive`.
+- **Test (2026-10-19):** la sección «Ambiente de TEST» tiene las tarjetas **Teikem Almacén TEST** y **Teikem Clientes TEST** (el portal del cliente, que solo existe en test). Sus botones NO bajan de esta carpeta: apuntan a `https://test.advancelogisticspr.com/descargas/apk/teikem-almacen-test.apk` y `.../teikem-clientes-test.apk`, que publica el paquete de test (`crear-paquete-windows.ps1 -Test` + `instalar-test.ps1`), así que no hay que copiar esos APK aquí. Lo único que se cambia aquí son las claves `test` y `clientes-test` de `versions.json` (el número que muestra la tarjeta; sin la clave dice que aún no se publicó y apaga el botón).
 
 ## Página de descargas del ambiente de TEST (2026-10-19)
 La página hermana `deploy/descargas-test/index.html` (cinta roja TEST, tarjetas de **Teikem Almacén TEST** y **Teikem Clientes TEST**) no se sube a mano: `deploy\windows\crear-paquete-windows.ps1 -Test`
