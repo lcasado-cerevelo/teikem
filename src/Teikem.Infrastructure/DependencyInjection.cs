@@ -288,6 +288,8 @@ public static class DependencyInjection
         services.AddSingleton<IScheduledJob, IntegrationRunDueJob>();   // Lote 132 (P11)
         services.Configure<IntegrationOptions>(config.GetSection(IntegrationOptions.Section));
         services.AddScoped<IntegrationNotifier>();
+        services.AddSingleton<Teikem.Infrastructure.Security.ISecretProtector, Teikem.Infrastructure.Security.SecretProtector>();   // Lote 133: secretos de conectores cifrados
+        services.AddSingleton<Teikem.Infrastructure.Integrations.IMailboxReader, Teikem.Infrastructure.Integrations.ImapMailboxReader>();
         services.AddScoped<IntegrationService>();
         services.AddScoped<IntegrationRunner>();
         services.AddScoped<IntegrationInboxService>();

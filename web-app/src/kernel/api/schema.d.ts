@@ -30273,6 +30273,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/integrations/{publicId}/email/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["EmailTestResultDto"];
+                        "application/json": components["schemas"]["EmailTestResultDto"];
+                        "text/json": components["schemas"]["EmailTestResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -40543,6 +40582,8 @@ export interface components {
             pendingInbox?: number;
             /** Format: date-time */
             createdAtUtc?: string;
+            email?: components["schemas"]["EmailConfig"];
+            hasMailPassword?: boolean;
         };
         InboxPageDto: {
             items?: components["schemas"]["InboxItemDto"][] | null;
@@ -40603,6 +40644,8 @@ export interface components {
             includeMe?: boolean | null;
             /** Format: int32 */
             retentionDays?: number | null;
+            email?: components["schemas"]["EmailConfig"];
+            mailPassword?: string | null;
         };
         IntegrationCreateRequest: {
             name?: string | null;
@@ -40621,6 +40664,8 @@ export interface components {
             includeMe?: boolean;
             /** Format: int32 */
             retentionDays?: number | null;
+            email?: components["schemas"]["EmailConfig"];
+            mailPassword?: string | null;
         };
         IntegrationNotifyUserDto: {
             /** Format: int32 */
@@ -40635,6 +40680,52 @@ export interface components {
             moduleKey?: string | null;
             available?: boolean;
             unavailableReason?: string | null;
+        };
+        EmailTestResultDto: {
+            ok?: boolean;
+            message?: string | null;
+            /** Format: int32 */
+            unseen?: number;
+        };
+        EmailConfig: {
+            host?: string | null;
+            /** Format: int32 */
+            port?: number;
+            useSsl?: boolean;
+            username?: string | null;
+            mailbox?: string | null;
+            processedFolder?: string | null;
+            subject?: components["schemas"]["EmailTextMatch"];
+            allowedSenders?: string[] | null;
+            requireAttachment?: boolean;
+            attachmentMode?: string | null;
+            attachmentName?: components["schemas"]["EmailTextMatch"];
+            attachmentTypes?: string[] | null;
+            readBody?: boolean;
+            bodyFields?: components["schemas"]["EmailBodyField"][] | null;
+        };
+        EmailTextMatch: {
+            operator?: string | null;
+            value?: string | null;
+        };
+        EmailBodyField: {
+            /** Format: int32 */
+            position?: number;
+            kind?: string | null;
+            label?: string | null;
+            pattern?: string | null;
+            required?: boolean;
+            transform?: string | null;
+            start?: string | null;
+            end?: string | null;
+            separator?: string | null;
+            columns?: components["schemas"]["EmailBlockColumn"][] | null;
+        };
+        EmailBlockColumn: {
+            /** Format: int32 */
+            position?: number;
+            /** Format: int32 */
+            index?: number;
         };
     };
     responses: never;

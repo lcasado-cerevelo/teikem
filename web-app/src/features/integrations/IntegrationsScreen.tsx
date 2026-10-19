@@ -76,7 +76,7 @@ export default function IntegrationsScreen() {
   const canInbox = useCan('integrations.inbox')
   const [showInactive, setShowInactive] = useState(false)
   const list = useIntegrations(showInactive)
-  const { run, setActive, upload } = useIntegrationMutations()
+  const { run, setActive, upload, testEmail } = useIntegrationMutations()
   const [editing, setEditing] = useState<IntegrationDto | 'new' | null>(null)
   const [history, setHistory] = useState<IntegrationDto | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -246,7 +246,7 @@ export default function IntegrationsScreen() {
                     label: t('integrations.runNow'),
                     icon: <IconPlay />,
                     onClick: (i) => void act(run.mutateAsync(i.publicId!), t('integrations.ran', { name: i.name ?? '' })),
-                    visible: (i) => canManage && !!i.isActive && i.connectorKind === 'FOLDER' && i.lastStatus !== 'RUNNING',
+                    visible: (i) => canManage && !!i.isActive && (i.connectorKind === 'FOLDER' || i.connectorKind === 'EMAIL') && i.lastStatus !== 'RUNNING',
                   },
                   {
                     key: 'upload',
@@ -257,6 +257,17 @@ export default function IntegrationsScreen() {
                       fileRef.current?.click()
                     },
                     visible: (i) => canManage && !!i.isActive,
+                  },
+                  {
+                    key: 'test',
+                    label: t('integrations.email.test'),
+                    icon: <IconPlay />,
+                    onClick: (i) =>
+                      void testEmail
+                        .mutateAsync(i.publicId!)
+                        .then((r) => (r.ok ? toast.success(r.message ?? '') : toast.error(r.message ?? '')))
+                        .catch((e) => toast.error(applyProblemDetails(e).title)),
+                    visible: (i) => canManage && i.connectorKind === 'EMAIL',
                   },
                   { key: 'history', label: t('integrations.history.open'), icon: <IconClock />, onClick: (i) => setHistory(i) },
                   { key: 'edit', label: t('integrations.edit'), icon: <IconEdit />, onClick: (i) => setEditing(i), visible: () => canManage },
@@ -271,7 +282,7 @@ export default function IntegrationsScreen() {
       <input
         ref={fileRef}
         type="file"
-        accept=".csv,.txt,text/csv,text/plain"
+        accept=".csv,.txt,.eml,text/csv,text/plain,message/rfc822"
         className="int-file"
         aria-label={t('integrations.uploadFile')}
         onChange={(e) => {

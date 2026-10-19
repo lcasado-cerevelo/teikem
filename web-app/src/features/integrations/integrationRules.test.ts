@@ -1,5 +1,6 @@
 // Lote 132 — reglas puras de Integraciones: esquema del formulario con sus mensajes, cuerpos del API, horario y edición de celdas de la bandeja.
 import { describe, expect, it } from 'vitest'
+import { emptyEmail } from './emailRules'
 import { buildCreateRequest, buildPatchRequest, integrationSchema, integrationValuesOf, scheduleText, withCell, type IntegrationValues } from './integrationRules'
 
 const M = {
@@ -7,7 +8,7 @@ const M = {
 }
 const t = (key: string, p?: Record<string, string | number>) => (p ? `${key}:${Object.values(p).join(',')}` : key)
 const base: IntegrationValues = {
-  name: ' AxisCare ', description: ' ', clientPublicId: 'c1', templatePublicId: 't1', connectorKind: 'FOLDER', folder: ' axis_1 ', scheduleKind: 'INTERVAL', intervalMinutes: '5', scopes: ['files.orders_import'], notifyUserIds: [3], includeMe: true, retentionDays: '30',
+  name: ' AxisCare ', description: ' ', clientPublicId: 'c1', templatePublicId: 't1', connectorKind: 'FOLDER', folder: ' axis_1 ', scheduleKind: 'INTERVAL', intervalMinutes: '5', scopes: ['files.orders_import'], notifyUserIds: [3], includeMe: true, retentionDays: '30', email: emptyEmail(),
 }
 
 describe('integrationSchema', () => {

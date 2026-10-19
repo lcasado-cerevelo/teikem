@@ -1,6 +1,7 @@
 // Reglas puras de Integraciones (Lote 132): tonos de los estatus, formulario de alta/edición (esquema zod y cuerpo del API) y resumen del horario. Sin React: se prueba en integrationRules.test.ts.
 import { z } from 'zod'
 import type { ChipTone } from '../../kernel/ui'
+import { buildEmailConfig, emailIssues, emailValuesOf, emptyEmail, type EmailMessages, type EmailValues } from './emailRules'
 import type { IntegrationCreateRequest, IntegrationDto, IntegrationPatchRequest } from './integrationsApi'
 
 export const RUN_TONE: Record<string, ChipTone> = { OK: 'deliv', PARTIAL: 'warn', FAILED: 'fail', RUNNING: 'route', NEVER: 'neutral' }
@@ -38,10 +39,12 @@ export interface IntegrationValues {
   notifyUserIds: number[]
   includeMe: boolean
   retentionDays: string
+  /** Conector de correo (Lote 133). */
+  email: EmailValues
 }
 
 /** Esquema del formulario. En la edición (`editing`) el cliente y el conector no se cambian, así que no se exigen. */
-export function integrationSchema(m: IntegrationMessages, editing: boolean) {
+export function integrationSchema(m: IntegrationMessages, editing: boolean, email?: { messages: EmailMessages; hasSavedPassword: boolean }) {
   return z
     .object({
       name: z.string().trim().min(1, m.nameRequired).max(NAME_MAX, m.nameMax),
@@ -56,8 +59,11 @@ export function integrationSchema(m: IntegrationMessages, editing: boolean) {
       notifyUserIds: z.array(z.number()),
       includeMe: z.boolean(),
       retentionDays: z.string(),
+      email: z.custom<EmailValues>(),
     })
     .superRefine((v, ctx) => {
+      if (v.connectorKind === 'EMAIL' && email)
+        for (const issue of emailIssues(v.email, email.hasSavedPassword, email.messages)) ctx.addIssue({ code: 'custom', path: ['email', ...issue.path.split('.').map((p) => (/^\d+$/.test(p) ? Number(p) : p))], message: issue.message })
       if (!editing && !v.clientPublicId) ctx.addIssue({ code: 'custom', path: ['clientPublicId'], message: m.clientRequired })
       if (v.connectorKind === 'FOLDER') {
         if (!v.folder.trim()) ctx.addIssue({ code: 'custom', path: ['folder'], message: m.folderRequired })
@@ -87,6 +93,7 @@ export function integrationValuesOf(i: IntegrationDto | null): IntegrationValues
       notifyUserIds: [],
       includeMe: true,
       retentionDays: String(DEFAULT_RETENTION_DAYS),
+      email: emptyEmail(),
     }
   }
   return {
@@ -102,6 +109,7 @@ export function integrationValuesOf(i: IntegrationDto | null): IntegrationValues
     notifyUserIds: (i.notifyUsers ?? []).map((u) => u.id ?? 0),
     includeMe: false,
     retentionDays: String(i.retentionDays ?? DEFAULT_RETENTION_DAYS),
+    email: emailValuesOf(i.email),
   }
 }
 
@@ -121,6 +129,7 @@ export function buildCreateRequest(v: IntegrationValues): IntegrationCreateReque
     notifyUserIds: v.notifyUserIds,
     includeMe: v.includeMe,
     retentionDays: Math.round(Number(v.retentionDays)),
+    ...(v.connectorKind === 'EMAIL' ? { email: buildEmailConfig(v.email), mailPassword: v.email.password } : {}),
   }
 }
 
@@ -135,6 +144,7 @@ export function buildPatchRequest(v: IntegrationValues, current: Pick<Integratio
     notifyUserIds: v.notifyUserIds,
     includeMe: v.includeMe || undefined,
     retentionDays: Math.round(Number(v.retentionDays)),
+    ...(current.connectorKind === 'EMAIL' ? { email: buildEmailConfig(v.email), mailPassword: v.email.password || undefined } : {}),
   }
 }
 

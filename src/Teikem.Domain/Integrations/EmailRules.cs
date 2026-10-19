@@ -1,0 +1,404 @@
+using System.Globalization;
+using System.Net;
+using System.Text;
+using System.Text.RegularExpressions;
+using Teikem.Domain.Catalogs;
+
+namespace Teikem.Domain.Integrations;
+
+/// <summary>Cómo se compara un texto (asunto, nombre de adjunto): igual, contiene, empieza, termina, comodín (*.csv) o expresión regular.</summary>
+public static class EmailMatchOperators
+{
+    public const string EqualTo = "EQUALS";
+    public const string Contains = "CONTAINS";
+    public const string StartsWith = "STARTS";
+    public const string EndsWith = "ENDS";
+    public const string Wildcard = "WILDCARD";
+    public const string Regex = "REGEX";
+    public static readonly IReadOnlyList<string> All = [EqualTo, Contains, StartsWith, EndsWith, Wildcard, Regex];
+}
+
+public static class EmailAttachmentModes
+{
+    public const string All = "ALL";
+    public const string First = "FIRST";
+    public const string ByName = "BY_NAME";
+    public static readonly IReadOnlyList<string> Modes = [All, First, ByName];
+}
+
+public static class EmailBodyKinds
+{
+    /// <summary>«Reference #: 123» → el texto que sigue a la etiqueta en esa línea.</summary>
+    public const string Label = "LABEL";
+    public const string Regex = "REGEX";
+    /// <summary>Un bloque de renglones (una tabla) entre un marcador de inicio y uno de fin: cada renglón es una línea del archivo.</summary>
+    public const string Block = "BLOCK";
+    public static readonly IReadOnlyList<string> All = [Label, Regex, Block];
+}
+
+public static class EmailTransforms
+{
+    public const string None = "NONE";
+    public const string Upper = "UPPER";
+    /// <summary>Solo los dígitos (teléfonos, códigos).</summary>
+    public const string Digits = "DIGITS";
+    /// <summary>Quita el símbolo de moneda y las comas de miles («$1,234.50» → «1234.50»).</summary>
+    public const string Money = "MONEY";
+    public static readonly IReadOnlyList<string> All = [None, Upper, Digits, Money];
+}
+
+/// <summary>Un texto y cómo compararlo (asunto o nombre de adjunto).</summary>
+public sealed record EmailTextMatch(string Operator, string Value);
+
+/// <summary>Cuál columna del renglón de un bloque va a cuál posición de columna de la plantilla.</summary>
+public sealed record EmailBlockColumn(int Position, int Index);
+
+/// <summary>
+/// Un campo a leer del cuerpo del correo. Position = la columna de la plantilla de importación (1…n) a la que va el valor: el cuerpo se convierte en una fila de archivo (o varias, con un bloque) y
+/// la MISMA plantilla de la integración la lee. LABEL usa Label; REGEX usa Pattern (grupo 1 si lo hay); BLOCK usa Start, End, Separator y Columns.
+/// </summary>
+public sealed record EmailBodyField(
+    int Position, string Kind, string? Label = null, string? Pattern = null, bool Required = false, string Transform = EmailTransforms.None,
+    string? Start = null, string? End = null, string? Separator = null, IReadOnlyList<EmailBlockColumn>? Columns = null);
+
+/// <summary>Configuración NO secreta de un conector de correo (la contraseña va aparte, cifrada).</summary>
+public sealed record EmailConfig(
+    string Host, int Port, bool UseSsl, string Username, string Mailbox = "INBOX", string ProcessedFolder = "Procesados",
+    EmailTextMatch? Subject = null, IReadOnlyList<string>? AllowedSenders = null, bool RequireAttachment = false,
+    string AttachmentMode = EmailAttachmentModes.All, EmailTextMatch? AttachmentName = null, IReadOnlyList<string>? AttachmentTypes = null,
+    bool ReadBody = false, IReadOnlyList<EmailBodyField>? BodyFields = null);
+
+/// <summary>Un correo ya leído (de un buzón o de un .eml): lo que las reglas necesitan.</summary>
+public sealed record MailAttachmentData(string Name, string ContentType, byte[] Content);
+public sealed record MailMessageData(string MessageId, string? Uid, DateTime? DateUtc, string From, string? ReplyTo, IReadOnlyDictionary<string, string> Headers, string Subject, string TextBody, IReadOnlyList<MailAttachmentData> Attachments);
+
+/// <summary>
+/// Lote 133 (P11) — reglas puras de la integración por correo, para cualquier cliente: validación de la configuración, remitente original (los correos llegan reenviados), filtros de asunto, adjuntos por nombre y
+/// tipo, y lectura del cuerpo por etiqueta, expresión regular o bloque de renglones. El contenido del correo es entrada NO confiable: nunca se ejecuta nada, el HTML se reduce a texto.
+/// </summary>
+public static class EmailRules
+{
+    public const int MaxBodyFields = 40;
+    public const int MaxAllowedSenders = 50;
+    public const int MaxPosition = 500;
+    public static readonly IReadOnlyList<string> DefaultAttachmentTypes = [".csv", ".txt"];
+
+    public static string HostRequiredMessage => "Indique el servidor del buzón (IMAP).";
+    public static string PortMessage => "El puerto debe estar entre 1 y 65535.";
+    public static string UsernameRequiredMessage => "Indique el usuario del buzón.";
+    public static string PasswordRequiredMessage => "Indique la contraseña del buzón.";
+    public static string MailboxRequiredMessage => "Indique la carpeta del buzón que se lee (p. ej. INBOX).";
+    public static string UnknownOperatorMessage(string op) => $"Condición desconocida: {op}. Use EQUALS, CONTAINS, STARTS, ENDS, WILDCARD o REGEX.";
+    public static string MatchValueMessage => "Indique el texto de la condición.";
+    public static string BadRegexMessage(string pattern) => $"La expresión regular '{pattern}' no es válida.";
+    public static string UnknownModeMessage(string mode) => $"Modo de adjuntos desconocido: {mode}. Use ALL, FIRST o BY_NAME.";
+    public static string NameFilterRequiredMessage => "Con «por nombre» indique la condición del nombre del adjunto.";
+    public static string SendersMessage => $"Máximo {MaxAllowedSenders} remitentes permitidos.";
+    public static string SenderFormatMessage(string s) => $"El remitente permitido '{s}' no es un correo ni un dominio válido.";
+    public static string NoBodyFieldsMessage => "Con «leer el cuerpo» indique al menos un campo a leer.";
+    public static string TooManyFieldsMessage => $"Máximo {MaxBodyFields} campos a leer.";
+    public static string PositionMessage => $"La columna debe estar entre 1 y {MaxPosition}.";
+    public static string UnknownKindMessage(string kind) => $"Tipo de campo desconocido: {kind}. Use LABEL, REGEX o BLOCK.";
+    public static string LabelRequiredMessage => "Indique la etiqueta que se busca en el correo.";
+    public static string PatternRequiredMessage => "Indique la expresión regular.";
+    public static string BlockMarkersMessage => "Un bloque necesita el texto de inicio y el de fin.";
+    public static string BlockColumnsMessage => "Un bloque necesita al menos una columna (posición y número de columna del renglón).";
+    public static string UnknownTransformMessage(string t) => $"Transformación desconocida: {t}. Use NONE, UPPER, DIGITS o MONEY.";
+    public static string NothingToReadMessage => "Marque al menos una cosa a leer: los adjuntos o el cuerpo del correo.";
+    public static string SenderNotAllowedMessage(string sender) => $"Remitente no permitido: {sender}.";
+    public static string NoAttachmentMessage => "El correo no trae ningún adjunto que cumpla el criterio.";
+    public static string RequiredFieldMissingMessage(int position, string what) => $"No se encontró el campo obligatorio de la columna {position} ({what}).";
+    public static string NoBodyDataMessage => "No se encontró ningún dato en el cuerpo del correo.";
+
+    // ---------------------------------------------------------------- validación
+
+    /// <summary>Errores (campo → mensaje) de la configuración; <paramref name="hasPassword"/> = ya hay contraseña guardada o viene una nueva.</summary>
+    public static IReadOnlyDictionary<string, string> Validate(EmailConfig? c, bool hasPassword)
+    {
+        var errors = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (c is null) { errors["email"] = HostRequiredMessage; return errors; }
+        if (string.IsNullOrWhiteSpace(c.Host)) errors["email.host"] = HostRequiredMessage;
+        if (c.Port is < 1 or > 65535) errors["email.port"] = PortMessage;
+        if (string.IsNullOrWhiteSpace(c.Username)) errors["email.username"] = UsernameRequiredMessage;
+        if (!hasPassword) errors["email.password"] = PasswordRequiredMessage;
+        if (string.IsNullOrWhiteSpace(c.Mailbox)) errors["email.mailbox"] = MailboxRequiredMessage;
+        ValidateMatch(c.Subject, "email.subject", errors);
+        var senders = c.AllowedSenders ?? Array.Empty<string>();
+        if (senders.Count > MaxAllowedSenders) errors["email.allowedSenders"] = SendersMessage;
+        foreach (var s in senders) if (!IsSenderPattern(s)) { errors["email.allowedSenders"] = SenderFormatMessage(s); break; }
+        var mode = (c.AttachmentMode ?? EmailAttachmentModes.All).ToUpperInvariant();
+        if (!EmailAttachmentModes.Modes.Contains(mode)) errors["email.attachmentMode"] = UnknownModeMessage(c.AttachmentMode ?? string.Empty);
+        else if (mode == EmailAttachmentModes.ByName)
+        {
+            if (c.AttachmentName is null) errors["email.attachmentName"] = NameFilterRequiredMessage;
+            else ValidateMatch(c.AttachmentName, "email.attachmentName", errors);
+        }
+        var fields = c.BodyFields ?? Array.Empty<EmailBodyField>();
+        if (c.ReadBody && fields.Count == 0) errors["email.bodyFields"] = NoBodyFieldsMessage;
+        if (fields.Count > MaxBodyFields) errors["email.bodyFields"] = TooManyFieldsMessage;
+        for (var i = 0; i < fields.Count; i++) ValidateField(fields[i], $"email.bodyFields[{i}]", errors);
+        return errors;
+    }
+
+    private static void ValidateMatch(EmailTextMatch? m, string key, Dictionary<string, string> errors)
+    {
+        if (m is null) return;
+        var op = m.Operator?.Trim().ToUpperInvariant() ?? string.Empty;
+        if (!EmailMatchOperators.All.Contains(op)) { errors[key] = UnknownOperatorMessage(m.Operator ?? string.Empty); return; }
+        if (string.IsNullOrWhiteSpace(m.Value)) { errors[key] = MatchValueMessage; return; }
+        if (op == EmailMatchOperators.Regex && !IsValidRegex(m.Value)) errors[key] = BadRegexMessage(m.Value);
+    }
+
+    private static void ValidateField(EmailBodyField f, string key, Dictionary<string, string> errors)
+    {
+        if (f.Position is < 1 or > MaxPosition) errors[$"{key}.position"] = PositionMessage;
+        var kind = f.Kind?.Trim().ToUpperInvariant() ?? string.Empty;
+        if (!EmailBodyKinds.All.Contains(kind)) { errors[$"{key}.kind"] = UnknownKindMessage(f.Kind ?? string.Empty); return; }
+        if (!EmailTransforms.All.Contains((f.Transform ?? EmailTransforms.None).ToUpperInvariant())) errors[$"{key}.transform"] = UnknownTransformMessage(f.Transform ?? string.Empty);
+        switch (kind)
+        {
+            case EmailBodyKinds.Label when string.IsNullOrWhiteSpace(f.Label): errors[$"{key}.label"] = LabelRequiredMessage; break;
+            case EmailBodyKinds.Regex:
+                if (string.IsNullOrWhiteSpace(f.Pattern)) errors[$"{key}.pattern"] = PatternRequiredMessage;
+                else if (!IsValidRegex(f.Pattern)) errors[$"{key}.pattern"] = BadRegexMessage(f.Pattern);
+                break;
+            case EmailBodyKinds.Block:
+                if (string.IsNullOrWhiteSpace(f.Start) || string.IsNullOrWhiteSpace(f.End)) errors[$"{key}.start"] = BlockMarkersMessage;
+                if (f.Columns is null || f.Columns.Count == 0) errors[$"{key}.columns"] = BlockColumnsMessage;
+                else if (f.Columns.Any(c => c.Position is < 1 or > MaxPosition || c.Index < 1)) errors[$"{key}.columns"] = PositionMessage;
+                break;
+        }
+    }
+
+    private static bool IsValidRegex(string pattern)
+    {
+        try { _ = new Regex(pattern, RegexOptions.None, TimeSpan.FromMilliseconds(250)); return true; }
+        catch (ArgumentException) { return false; }
+    }
+
+    /// <summary>Un remitente permitido es un correo completo (a@b.com), un dominio (b.com) o «@b.com».</summary>
+    public static bool IsSenderPattern(string? s)
+    {
+        var v = s?.Trim();
+        return !string.IsNullOrEmpty(v) && Regex.IsMatch(v, @"^(@?[A-Za-z0-9.-]+\.[A-Za-z]{2,}|[^@\s]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})$");
+    }
+
+    // ---------------------------------------------------------------- remitente original
+
+    private static readonly Regex EmailPattern = new(@"[A-Za-z0-9._%+'-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", RegexOptions.Compiled);
+    private static readonly Regex ForwardedFrom = new(@"^\s*(?:>+\s*)?(?:De|From|Remitente|Enviado por)\s*:\s*(.+)$", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Multiline);
+
+    /// <summary>
+    /// El remitente que cuenta. Como casi siempre el correo llega REENVIADO, se busca en este orden: X-Original-Sender, Resent-From, Reply-To, el «De:» del bloque reenviado del cuerpo y, si nada,
+    /// el From. Devuelve el correo en minúsculas (o null si no hay ninguno).
+    /// </summary>
+    public static string? OriginalSender(MailMessageData m)
+    {
+        foreach (var header in new[] { "X-Original-Sender", "X-Original-From", "Resent-From", "Reply-To" })
+            if (m.Headers.TryGetValue(header, out var v) && FirstEmail(v) is string h) return h;
+        if (m.ReplyTo is not null && FirstEmail(m.ReplyTo) is string r) return r;
+        // el bloque reenviado: la PRIMERA línea «De:/From:» del cuerpo (la del mensaje original)
+        var forwarded = ForwardedFrom.Match(m.TextBody ?? string.Empty);
+        if (forwarded.Success && FirstEmail(forwarded.Groups[1].Value) is string f) return f;
+        return FirstEmail(m.From);
+    }
+
+    private static string? FirstEmail(string? text)
+    {
+        var match = EmailPattern.Match(WebUtility.HtmlDecode(text ?? string.Empty));
+        return match.Success ? match.Value.ToLowerInvariant() : null;
+    }
+
+    /// <summary>¿El remitente está en la lista? Lista vacía = cualquiera. Cada entrada: correo completo, dominio (b.com) o «@b.com» (incluye subdominios).</summary>
+    public static bool SenderAllowed(string? sender, IReadOnlyList<string>? allowed)
+    {
+        if (allowed is null || allowed.Count == 0) return true;
+        if (string.IsNullOrWhiteSpace(sender)) return false;
+        var s = sender.Trim().ToLowerInvariant();
+        var domain = s[(s.LastIndexOf('@') + 1)..];
+        foreach (var raw in allowed)
+        {
+            var a = raw.Trim().ToLowerInvariant().TrimStart('@');
+            if (a.Contains('@')) { if (a == s) return true; }
+            else if (domain == a || domain.EndsWith("." + a, StringComparison.Ordinal)) return true;
+        }
+        return false;
+    }
+
+    // ---------------------------------------------------------------- comparar texto
+
+    public static bool TextMatches(string? text, EmailTextMatch? m)
+    {
+        if (m is null) return true;
+        var t = text ?? string.Empty;
+        var v = m.Value ?? string.Empty;
+        return (m.Operator ?? string.Empty).Trim().ToUpperInvariant() switch
+        {
+            EmailMatchOperators.EqualTo => PostalLocalityRules.Normalize(t) == PostalLocalityRules.Normalize(v),
+            EmailMatchOperators.Contains => PostalLocalityRules.Normalize(t).Contains(PostalLocalityRules.Normalize(v), StringComparison.Ordinal),
+            EmailMatchOperators.StartsWith => PostalLocalityRules.Normalize(t).StartsWith(PostalLocalityRules.Normalize(v), StringComparison.Ordinal),
+            EmailMatchOperators.EndsWith => PostalLocalityRules.Normalize(t).EndsWith(PostalLocalityRules.Normalize(v), StringComparison.Ordinal),
+            EmailMatchOperators.Wildcard => Regex.IsMatch(t, "^" + Regex.Escape(v).Replace("\\*", ".*").Replace("\\?", ".") + "$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(250)),
+            EmailMatchOperators.Regex => SafeRegex(t, v),
+            _ => false,
+        };
+    }
+
+    private static bool SafeRegex(string text, string pattern)
+    {
+        try { return Regex.IsMatch(text, pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(250)); }
+        catch (Exception ex) when (ex is ArgumentException or RegexMatchTimeoutException) { return false; }
+    }
+
+    // ---------------------------------------------------------------- adjuntos
+
+    /// <summary>Los adjuntos que se leen: por tipo (extensión permitida), y según el modo todos, el primero o los que cumplan la condición del nombre. El resto se ignora.</summary>
+    public static IReadOnlyList<MailAttachmentData> SelectAttachments(IReadOnlyList<MailAttachmentData> attachments, EmailConfig c)
+    {
+        var types = (c.AttachmentTypes is { Count: > 0 } ? c.AttachmentTypes : DefaultAttachmentTypes).Select(t => t.Trim().ToLowerInvariant().StartsWith('.') ? t.Trim().ToLowerInvariant() : "." + t.Trim().ToLowerInvariant()).ToList();
+        var byType = attachments.Where(a => !string.IsNullOrWhiteSpace(a.Name) && types.Contains(Path.GetExtension(a.Name).ToLowerInvariant())).ToList();
+        return (c.AttachmentMode ?? EmailAttachmentModes.All).ToUpperInvariant() switch
+        {
+            EmailAttachmentModes.First => byType.Take(1).ToList(),
+            EmailAttachmentModes.ByName => byType.Where(a => TextMatches(a.Name, c.AttachmentName)).ToList(),
+            _ => byType,
+        };
+    }
+
+    // ---------------------------------------------------------------- texto del correo
+
+    /// <summary>Reduce el HTML a texto: quita scripts y estilos, convierte los saltos de bloque en renglones y decodifica las entidades. Nunca se ejecuta nada.</summary>
+    public static string HtmlToText(string? html)
+    {
+        if (string.IsNullOrEmpty(html)) return string.Empty;
+        var s = Regex.Replace(html, @"<(script|style)\b[^>]*>.*?</\1>", " ", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+        s = Regex.Replace(s, @"<\s*br\s*/?>|</\s*(p|div|tr|li|h[1-6]|table)\s*>", "\n", RegexOptions.IgnoreCase);
+        s = Regex.Replace(s, @"</\s*t[dh]\s*>", "\t", RegexOptions.IgnoreCase);
+        s = Regex.Replace(s, "<[^>]+>", string.Empty);
+        s = WebUtility.HtmlDecode(s).Replace(' ', ' ').Replace("\r\n", "\n").Replace('\r', '\n');
+        s = Regex.Replace(s, @"[ \f\v]+", " ");
+        s = Regex.Replace(s, @" *\n *", "\n");
+        return Regex.Replace(s, @"\n{3,}", "\n\n").Trim();
+    }
+
+    // ---------------------------------------------------------------- cuerpo → filas
+
+    /// <summary>Lo leído del cuerpo: valores sueltos por posición y, si hay un bloque, un renglón de valores por línea del archivo; Missing = los obligatorios que no se encontraron.</summary>
+    public sealed record BodyReading(IReadOnlyDictionary<int, string> Single, IReadOnlyList<IReadOnlyDictionary<int, string>> Lines, IReadOnlyList<string> Missing)
+    {
+        public bool HasData => Single.Count > 0 || Lines.Count > 0;
+    }
+
+    public static BodyReading ReadBody(string? text, IReadOnlyList<EmailBodyField> fields)
+    {
+        var lines = (text ?? string.Empty).Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
+        var single = new Dictionary<int, string>();
+        var block = new List<IReadOnlyDictionary<int, string>>();
+        var missing = new List<string>();
+        foreach (var f in fields)
+        {
+            var kind = (f.Kind ?? string.Empty).Trim().ToUpperInvariant();
+            if (kind == EmailBodyKinds.Block)
+            {
+                var rows = ReadBlock(lines, f);
+                if (rows.Count == 0 && f.Required) missing.Add(RequiredFieldMissingMessage(f.Position, f.Start ?? "bloque"));
+                if (block.Count == 0) block.AddRange(rows);
+                continue;
+            }
+            var value = kind == EmailBodyKinds.Label ? ReadLabel(lines, f.Label) : ReadRegex(text ?? string.Empty, f.Pattern);
+            if (value is null) { if (f.Required) missing.Add(RequiredFieldMissingMessage(f.Position, f.Label ?? f.Pattern ?? kind)); continue; }
+            single[f.Position] = Transform(value, f.Transform);
+        }
+        return new BodyReading(single, block, missing);
+    }
+
+    private static string? ReadLabel(string[] lines, string? label)
+    {
+        if (string.IsNullOrWhiteSpace(label)) return null;
+        var wanted = PostalLocalityRules.Normalize(label).TrimEnd(':').Trim();
+        foreach (var raw in lines)
+        {
+            var line = raw.Trim();
+            var colon = line.IndexOf(':');
+            if (colon <= 0) continue;
+            if (PostalLocalityRules.Normalize(line[..colon]).Trim() != wanted) continue;
+            var value = line[(colon + 1)..].Trim();
+            if (value.Length > 0) return value;
+        }
+        // sin dos puntos: «Reference # 123» (la etiqueta al principio de la línea)
+        foreach (var raw in lines)
+        {
+            var line = raw.Trim();
+            if (PostalLocalityRules.Normalize(line).StartsWith(wanted + " ", StringComparison.Ordinal)) return line[wanted.Length..].Trim(' ', ':', '\t');
+        }
+        return null;
+    }
+
+    private static string? ReadRegex(string text, string? pattern)
+    {
+        if (string.IsNullOrWhiteSpace(pattern)) return null;
+        try
+        {
+            var m = Regex.Match(text, pattern, RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(250));
+            if (!m.Success) return null;
+            var v = (m.Groups.Count > 1 && m.Groups[1].Success ? m.Groups[1].Value : m.Value).Trim();
+            return v.Length == 0 ? null : v;
+        }
+        catch (Exception ex) when (ex is ArgumentException or RegexMatchTimeoutException) { return null; }
+    }
+
+    private static List<IReadOnlyDictionary<int, string>> ReadBlock(string[] lines, EmailBodyField f)
+    {
+        var rows = new List<IReadOnlyDictionary<int, string>>();
+        var start = PostalLocalityRules.Normalize(f.Start ?? string.Empty);
+        var end = PostalLocalityRules.Normalize(f.End ?? string.Empty);
+        var inside = false;
+        var sepText = string.IsNullOrEmpty(f.Separator) ? "\t" : f.Separator!.Replace("\\t", "\t");
+        foreach (var raw in lines)
+        {
+            var line = raw.Trim();
+            var norm = PostalLocalityRules.Normalize(line);
+            if (!inside) { if (start.Length > 0 && norm.Contains(start, StringComparison.Ordinal)) inside = true; continue; }
+            if (end.Length > 0 && norm.Contains(end, StringComparison.Ordinal)) break;
+            if (line.Length == 0) continue;
+            var parts = sepText == " " ? Regex.Split(line, @"\s{2,}|\t") : line.Split(sepText);
+            var row = new Dictionary<int, string>();
+            foreach (var c in f.Columns ?? Array.Empty<EmailBlockColumn>())
+                if (c.Index >= 1 && c.Index <= parts.Length && parts[c.Index - 1].Trim().Length > 0) row[c.Position] = Transform(parts[c.Index - 1].Trim(), f.Transform);
+            if (row.Count > 0) rows.Add(row);
+        }
+        return rows;
+    }
+
+    public static string Transform(string value, string? transform) => (transform ?? EmailTransforms.None).Trim().ToUpperInvariant() switch
+    {
+        EmailTransforms.Upper => value.ToUpperInvariant(),
+        EmailTransforms.Digits => new string(value.Where(char.IsDigit).ToArray()),
+        EmailTransforms.Money => Regex.Replace(value, @"[^\d.,-]", string.Empty).Replace(",", string.Empty),
+        _ => value,
+    };
+
+    /// <summary>
+    /// El cuerpo leído como un archivo CSV para la plantilla de la integración: una fila por línea del bloque (o una sola) con los valores sueltos repetidos; las columnas van en su posición
+    /// (1…n). <paramref name="withHeader"/> agrega la fila de encabezado que la plantilla espera (los números de columna). Coma como delimitador.
+    /// </summary>
+    public static string ToCsv(BodyReading reading, bool withHeader, char delimiter)
+    {
+        var rows = reading.Lines.Count > 0 ? reading.Lines.Select(l => Merge(reading.Single, l)).ToList() : new List<Dictionary<int, string>> { new(reading.Single) };
+        var width = rows.SelectMany(r => r.Keys).DefaultIfEmpty(1).Max();
+        var sb = new StringBuilder();
+        if (withHeader) sb.AppendLine(string.Join(delimiter, Enumerable.Range(1, width).Select(i => i.ToString(CultureInfo.InvariantCulture))));
+        foreach (var r in rows) sb.AppendLine(string.Join(delimiter, Enumerable.Range(1, width).Select(i => Quote(r.TryGetValue(i, out var v) ? v : string.Empty, delimiter))));
+        return sb.ToString();
+    }
+
+    private static Dictionary<int, string> Merge(IReadOnlyDictionary<int, string> single, IReadOnlyDictionary<int, string> line)
+    {
+        var d = new Dictionary<int, string>(single);
+        foreach (var (k, v) in line) d[k] = v;
+        return d;
+    }
+
+    private static string Quote(string value, char delimiter)
+        => value.IndexOfAny(new[] { delimiter, '"', '\r', '\n' }) >= 0 ? "\"" + value.Replace("\"", "\"\"") + "\"" : value;
+}

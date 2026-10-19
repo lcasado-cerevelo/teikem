@@ -15,6 +15,7 @@
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="6.9.0" />
     <!-- Lote 45 (F-B2): lectura de .xlsx en la importación de consignatarios (MIT) -->
     <PackageVersion Include="ExcelDataReader" Version="3.9.0" />
+    <PackageVersion Include="MailKit" Version="4.17.0" />
     <!-- Tests -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageVersion Include="xunit" Version="2.9.2" />

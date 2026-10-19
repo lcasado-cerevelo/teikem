@@ -13,7 +13,7 @@ public static class IntegrationConnectorKinds
     public const string Email = "EMAIL";
     public const string Sftp = "SFTP";
     /// <summary>Los que ya corren (el resto se define pero aún no se puede elegir).</summary>
-    public static readonly IReadOnlyList<string> Available = [Folder, Manual];
+    public static readonly IReadOnlyList<string> Available = [Folder, Manual, Email];
     public static readonly IReadOnlyList<string> All = [Folder, Manual, Email, Sftp];
 }
 

@@ -10,7 +10,9 @@ using Teikem.Domain.Orders;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
+using Teikem.Infrastructure.Integrations;
 using Teikem.Infrastructure.Persistence;
+using Teikem.Infrastructure.Security;
 
 namespace Teikem.Infrastructure.Services;
 
@@ -37,7 +39,7 @@ public sealed record FileOutcome(IntegrationFileLog Log, IReadOnlyList<Guid> Cre
 /// </summary>
 public sealed class IntegrationRunner(
     TeikemDbContext db, ITenantContext tenant, OrderImportService import, ImportTemplateService templates, IntegrationService integrations, IntegrationNotifier notifier,
-    IOptions<IntegrationOptions> options, ILogger<IntegrationRunner> logger)
+    IOptions<IntegrationOptions> options, ILogger<IntegrationRunner> logger, ISecretProtector protector, IMailboxReader mailbox)
 {
     public static readonly string InstanceId = $"{Environment.MachineName}:{Environment.ProcessId}";
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull };
@@ -56,7 +58,9 @@ public sealed class IntegrationRunner(
     public async Task<IntegrationRunDto> RunAsync(Guid publicId, string trigger, int? byUserId, CancellationToken ct)
     {
         var integration = await db.Integrations.AsNoTracking().FirstOrDefaultAsync(i => i.PublicId == publicId, ct) ?? throw new NotFoundException(IntegrationService.NotFoundLabel);
-        if (integration.ConnectorKind != IntegrationConnectorKinds.Folder) throw new ValidationException("connectorKind", NotSupportedMessage);
+        if (integration.ConnectorKind is not (IntegrationConnectorKinds.Folder or IntegrationConnectorKinds.Email)) throw new ValidationException("connectorKind", NotSupportedMessage);
+        if (integration.ConnectorKind == IntegrationConnectorKinds.Email)
+            return await ExecuteAsync(integration, trigger, byUserId, (run, template, client) => ReadMailboxAsync(integration, template, client, run, ct), ct);
         return await ExecuteAsync(integration, trigger, byUserId, async (run, template, client) =>
         {
             var dir = FolderOf(integration);
@@ -76,6 +80,12 @@ public sealed class IntegrationRunner(
     {
         var integration = await db.Integrations.AsNoTracking().FirstOrDefaultAsync(i => i.PublicId == publicId, ct) ?? throw new NotFoundException(IntegrationService.NotFoundLabel);
         var name = string.IsNullOrWhiteSpace(fileName) ? "archivo.csv" : Path.GetFileName(fileName.Trim());
+        if (integration.ConnectorKind == IntegrationConnectorKinds.Email && name.EndsWith(".eml", StringComparison.OrdinalIgnoreCase))
+            return await ExecuteAsync(integration, IntegrationTriggers.Upload, byUserId, async (run, template, client) =>
+            {
+                var cfg = IntegrationService.ParseEmail(integration.ConnectorConfigJson) ?? throw new ValidationException("email", EmailRules.HostRequiredMessage);
+                return await ProcessMessageAsync(integration, template, client, run, cfg, MailMessageMapper.FromEml(bytes), ct);
+            }, ct);
         return await ExecuteAsync(integration, IntegrationTriggers.Upload, byUserId, async (run, template, client) =>
         {
             var outcome = await ProcessBytesAsync(integration, template, client, run, name, bytes, checkDuplicate: true, ct);
@@ -154,6 +164,71 @@ public sealed class IntegrationRunner(
                 SourceRow = r.SourceRow, ReferenceKey = Truncate(r.ReferenceKey, 80), Reason = Truncate(r.Reason, 1000)!, DataJson = r.DataJson,
             });
         await db.SaveChangesAsync(ct);
+    }
+
+    // ---------------------------------------------------------------- correo
+
+    public const string MailTooManyNote = "Quedan correos por leer; se leen en la próxima corrida.";
+    private const int MaxMessagesPerRun = 50;
+
+    /// <summary>Lee el buzón de la integración: los correos nuevos (NO leídos), uno por uno por las reglas; al terminar cada uno se marca como leído y se mueve a «Procesados» (nunca se borra).</summary>
+    private async Task<List<FileOutcome>> ReadMailboxAsync(Integration integration, ImportTemplate template, Client client, IntegrationRun run, CancellationToken ct)
+    {
+        var cfg = IntegrationService.ParseEmail(integration.ConnectorConfigJson) ?? throw new ValidationException("email", EmailRules.HostRequiredMessage);
+        if (integration.SecretEnc is null) throw new ValidationException("email.password", EmailRules.PasswordRequiredMessage);
+        var password = protector.Unprotect(integration.TenantId, IntegrationService.MailPurpose, integration.SecretEnc);
+        IReadOnlyList<MailboxMessage> messages;
+        try { messages = await mailbox.FetchAsync(cfg, password, MaxMessagesPerRun, ct); }
+        catch (Exception ex) when (ex is not OperationCanceledException and not TeikemException) { throw new ValidationException("email", $"{ImapMailboxReader.ConnectionFailedMessage}: {ex.Message}"); }
+        var outcomes = new List<FileOutcome>();
+        var handled = new List<uint>();
+        foreach (var m in messages)
+        {
+            ct.ThrowIfCancellationRequested();
+            outcomes.AddRange(await ProcessMessageAsync(integration, template, client, run, cfg, m.Data, ct));
+            handled.Add(m.Uid);
+        }
+        try { await mailbox.MarkProcessedAsync(cfg, password, handled, ct); }
+        catch (Exception ex) when (ex is not OperationCanceledException) { logger.LogWarning(ex, "No se pudieron marcar los correos de la integración {Integration}; el hash evita procesarlos otra vez.", integration.IntegrationId); }
+        return outcomes;
+    }
+
+    /// <summary>
+    /// Un correo por las reglas de la integración: asunto, remitente ORIGINAL permitido, adjuntos elegidos (cada uno por la plantilla) y/o el cuerpo (convertido en filas de la misma plantilla).
+    /// Lo que no cumple va a la bandeja con su motivo; nada se pierde ni se ejecuta.
+    /// </summary>
+    public async Task<List<FileOutcome>> ProcessMessageAsync(Integration integration, ImportTemplate template, Client client, IntegrationRun run, EmailConfig cfg, MailMessageData m, CancellationToken ct)
+    {
+        var outcomes = new List<FileOutcome>();
+        if (!EmailRules.TextMatches(m.Subject, cfg.Subject)) return outcomes;   // otro tema: no es de esta integración
+        var label = $"correo: {(string.IsNullOrWhiteSpace(m.Subject) ? m.MessageId : m.Subject)}";
+        var messageSha = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(m.MessageId))).ToLowerInvariant();
+        var sender = EmailRules.OriginalSender(m);
+        if (!EmailRules.SenderAllowed(sender, cfg.AllowedSenders))
+        {
+            outcomes.Add(Failed(integration, run, label, messageSha, 0, EmailRules.SenderNotAllowedMessage(sender ?? m.From)));
+            return outcomes;
+        }
+        var selected = EmailRules.SelectAttachments(m.Attachments, cfg);
+        if (cfg.RequireAttachment && selected.Count == 0)
+        {
+            outcomes.Add(Failed(integration, run, label, messageSha, 0, EmailRules.NoAttachmentMessage));
+            return outcomes;
+        }
+        foreach (var a in selected) outcomes.Add(await ProcessBytesAsync(integration, template, client, run, a.Name, a.Content, checkDuplicate: true, ct));
+        if (cfg.ReadBody)
+        {
+            var reading = EmailRules.ReadBody(m.TextBody, cfg.BodyFields ?? Array.Empty<EmailBodyField>());
+            if (reading.Missing.Count > 0) outcomes.Add(Failed(integration, run, label, messageSha, 0, string.Join(" | ", reading.Missing)));
+            else if (!reading.HasData) outcomes.Add(Failed(integration, run, label, messageSha, 0, EmailRules.NoBodyDataMessage));
+            else
+            {
+                var csv = EmailRules.ToCsv(reading, template.HasHeader, ImportTemplateService.DelimiterOf(template));
+                outcomes.Add(await ProcessBytesAsync(integration, template, client, run, $"{label}.csv", Encoding.UTF8.GetBytes(csv), checkDuplicate: true, ct));
+            }
+        }
+        else if (selected.Count == 0) outcomes.Add(Failed(integration, run, label, messageSha, 0, EmailRules.NoAttachmentMessage));
+        return outcomes;
     }
 
     // ---------------------------------------------------------------- un archivo

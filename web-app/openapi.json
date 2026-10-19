@@ -40266,6 +40266,46 @@
           }
         }
       }
+    },
+    "/api/v1/integrations/{publicId}/email/test": {
+      "post": {
+        "tags": [
+          "Integrations"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailTestResultDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailTestResultDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailTestResultDto"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -71349,6 +71389,12 @@
           "createdAtUtc": {
             "type": "string",
             "format": "date-time"
+          },
+          "email": {
+            "$ref": "#/components/schemas/EmailConfig"
+          },
+          "hasMailPassword": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -71552,6 +71598,13 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          },
+          "email": {
+            "$ref": "#/components/schemas/EmailConfig"
+          },
+          "mailPassword": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -71614,6 +71667,13 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          },
+          "email": {
+            "$ref": "#/components/schemas/EmailConfig"
+          },
+          "mailPassword": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -71661,6 +71721,165 @@
           "unavailableReason": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "EmailTestResultDto": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "unseen": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "EmailConfig": {
+        "type": "object",
+        "properties": {
+          "host": {
+            "type": "string",
+            "nullable": true
+          },
+          "port": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "useSsl": {
+            "type": "boolean"
+          },
+          "username": {
+            "type": "string",
+            "nullable": true
+          },
+          "mailbox": {
+            "type": "string",
+            "nullable": true
+          },
+          "processedFolder": {
+            "type": "string",
+            "nullable": true
+          },
+          "subject": {
+            "$ref": "#/components/schemas/EmailTextMatch"
+          },
+          "allowedSenders": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "requireAttachment": {
+            "type": "boolean"
+          },
+          "attachmentMode": {
+            "type": "string",
+            "nullable": true
+          },
+          "attachmentName": {
+            "$ref": "#/components/schemas/EmailTextMatch"
+          },
+          "attachmentTypes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "readBody": {
+            "type": "boolean"
+          },
+          "bodyFields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EmailBodyField"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "EmailTextMatch": {
+        "type": "object",
+        "properties": {
+          "operator": {
+            "type": "string",
+            "nullable": true
+          },
+          "value": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "EmailBodyField": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "pattern": {
+            "type": "string",
+            "nullable": true
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "transform": {
+            "type": "string",
+            "nullable": true
+          },
+          "start": {
+            "type": "string",
+            "nullable": true
+          },
+          "end": {
+            "type": "string",
+            "nullable": true
+          },
+          "separator": {
+            "type": "string",
+            "nullable": true
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EmailBlockColumn"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "EmailBlockColumn": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "index": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false

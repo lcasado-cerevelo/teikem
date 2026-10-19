@@ -358,6 +358,9 @@ El archivo que manda un cliente como AxisCare trae **varias líneas por orden** 
 - **Decidido (no hacer):** no se agrega un campo `ClientLabelNumber` a la pieza; el número de label del bulto es su `PackageNumber`. El caso hipotético de un label de **producto** que se repite y es lo único que hay para escanear se diseña cuando aparezca un cliente así (escaneo por acción y «la próxima orden en curso sale»).
 - **La migración de Colavora ya sigue esta regla** (D8): los 1,46 M ítems tipo `Drum` de AxisCare y las piezas tipo `Invoice` no se migran como piezas; pendiente de confirmar con esa sesión que las piezas migradas quedan con `PackageNumber` único.
 
+### Lote 133 — HECHO (2026-10-19): Integración por correo
+Conector de correo para cualquier cliente: buzón IMAP (uno por integración, contraseña cifrada), remitente original (reenviados), asunto, adjuntos por nombre y tipo, campos del cuerpo (etiqueta, regex, bloque de renglones) hacia la misma plantilla, bandeja, probar conexión y subir `.eml`. Ver `docs/lote133-decisiones.md`. **Sigue:** 134 SFTP/FTP → 135 llaves de API → 136 webhooks → 137 mapeo JSON/XML y Excel.
+
 ### Lote 132 — HECHO (2026-10-19): Integraciones de entrada (carpeta y subida manual) con bandeja
 Cuenta de servicio por integración con permisos por familia (sin escalada de privilegios), corridas con hash de archivos, bandeja persistente (corregir/reprocesar/descartar/CSV, purga a los 30 días) y avisos del sistema a quienes se definan en la integración. Ver `docs/lote132-decisiones.md`. **Sigue:** 133 correo → 134 SFTP/FTP → 135 llaves de API → 136 webhooks → 137 mapeo JSON/XML y Excel.
 

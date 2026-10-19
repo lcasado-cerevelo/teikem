@@ -64,6 +64,10 @@ public sealed class IntegrationsController(IntegrationService integrations, Inte
         return await runner.UploadAsync(publicId, file.FileName, ms.ToArray(), tenant.UserId, ct);
     }
 
+    /// <summary>Prueba la conexión con el buzón de la integración de correo (servidor, usuario, contraseña y carpeta) sin tocar los correos.</summary>
+    [HttpPost("{publicId:guid}/email/test"), RequirePermission(PermissionCatalog.IntegrationsManage)]
+    public Task<EmailTestResultDto> TestEmail(Guid publicId, CancellationToken ct) => integrations.TestEmailAsync(publicId, ct);
+
     /// <summary>Historial de corridas con sus archivos (las más recientes primero; hasta 100).</summary>
     [HttpGet("{publicId:guid}/runs"), RequirePermission(PermissionCatalog.IntegrationsView)]
     public Task<IReadOnlyList<IntegrationRunDto>> Runs(Guid publicId, [FromQuery] int take, CancellationToken ct) => integrations.RunsAsync(publicId, take <= 0 ? 20 : take, ct);

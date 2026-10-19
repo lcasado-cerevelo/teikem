@@ -9496,3 +9496,25 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **¿A quién le llega el aviso de una corrida?** A los usuarios que se marcaron en la integración (y a quien creó la integración solo si marcó «Incluirme»). Llega a la campanita y al correo cuando la corrida creó órdenes, mandó filas a la bandeja o falló.
 
 **¿Dónde queda el archivo ya procesado?** En la subcarpeta `procesados` de la carpeta de entrada (los que fallaron, en `errores`); nunca se borra.
+
+## Integración por correo (Lote 133)
+
+**¿Cómo leo las órdenes que un cliente manda por correo?** Nueva integración con el conector «Correo»: buzón IMAP (uno por integración), qué correos se toman (asunto y remitente original permitido) y qué se lee (adjuntos por nombre y tipo, el cuerpo con campos a leer, o ambos). La plantilla de importación de la integración lee lo que salga.
+
+**«No se pudo conectar con el buzón: …».** El servidor, el puerto, el usuario o la contraseña están mal (o el buzón no permite IMAP). Pruebe con «Probar conexión»; en Microsoft 365 use un buzón compartido con IMAP y una contraseña de aplicación.
+
+**¿La contraseña del buzón dónde queda?** Cifrada con la llave de la compañía; nunca se muestra ni va en registros. Al editar, déjela vacía para conservarla.
+
+**«No se pueden guardar contraseñas de conectores: falta la llave maestra del servidor (Files:MasterKey).»** El servidor no tiene configurada la llave maestra; pídale al administrador del servidor que la ponga (y la respalde).
+
+**«Remitente no permitido: x@y.com.»** El remitente ORIGINAL del correo no está en la lista. Si el correo llega reenviado, agregue el dominio del que lo escribió, no el de quien lo reenvía.
+
+**«No se encontró el campo obligatorio de la columna N (…).»** El cuerpo del correo no trae esa etiqueta (o cambió el formato). Corrija la etiqueta del campo o descarte el ítem de la bandeja.
+
+**«El correo no trae ningún adjunto que cumpla el criterio.»** No hay adjuntos del tipo o del nombre configurado (o el correo no trae adjunto y el cuerpo no se lee).
+
+**Un correo no aparece en ninguna parte.** Si el asunto no cumple el filtro de la integración, se ignora (no es de ella). Si cumple y no se procesó, revise que esté no leído y en la carpeta correcta.
+
+**¿Cómo pruebo sin tocar el buzón?** Suba un archivo `.eml` con «Subir archivo»: se procesa igual que un correo recibido.
+
+**¿Se borra algún correo?** Nunca: los atendidos se marcan como leídos y se mueven a la carpeta de procesados.

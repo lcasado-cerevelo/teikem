@@ -11,7 +11,9 @@ using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Clients;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
+using Teikem.Infrastructure.Integrations;
 using Teikem.Infrastructure.Persistence;
+using Teikem.Infrastructure.Security;
 
 namespace Teikem.Infrastructure.Services;
 
@@ -21,7 +23,7 @@ namespace Teikem.Infrastructure.Services;
 /// </summary>
 public sealed class IntegrationService(
     TeikemDbContext db, ITenantContext tenant, UserManager<ApplicationUser> users, PermissionService permissions, ModuleService modules, ILookupCache lookups,
-    ImportTemplateService templates, IntegrationNotifier notifier)
+    ImportTemplateService templates, IntegrationNotifier notifier, ISecretProtector protector, IMailboxReader mailbox)
 {
     public const string NotFoundLabel = "Integración";
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
@@ -95,7 +97,8 @@ public sealed class IntegrationService(
                 r.ImportTemplate?.PublicId, r.ImportTemplate?.Name, r.ScheduleKind, r.IntervalSeconds, r.NextRunUtc, ParseStrings(r.ScopesJson),
                 r.ServiceUserId is int sid && people.TryGetValue(sid, out var su) ? su.FullName : null,
                 ParseIds(r.NotifyUserIdsJson).Where(people.ContainsKey).Select(id => new IntegrationNotifyUserDto(id, people[id].FullName ?? people[id].Email ?? "", people[id].Email)).ToList(),
-                r.RetentionDays, r.IsActive, r.LastStartedUtc, r.LastFinishedUtc, r.LastStatus, r.LastMessage, pending.GetValueOrDefault(r.IntegrationId), r.CreatedAtUtc);
+                r.RetentionDays, r.IsActive, r.LastStartedUtc, r.LastFinishedUtc, r.LastStatus, r.LastMessage, pending.GetValueOrDefault(r.IntegrationId), r.CreatedAtUtc,
+                r.ConnectorKind == IntegrationConnectorKinds.Email ? ParseEmail(r.ConnectorConfigJson) : null, r.SecretEnc is not null);
         }).ToList();
     }
 
@@ -104,6 +107,48 @@ public sealed class IntegrationService(
 
     public static IReadOnlyList<int> ParseIds(string? json)
         => string.IsNullOrWhiteSpace(json) ? Array.Empty<int>() : JsonSerializer.Deserialize<List<int>>(json, Json) ?? new List<int>();
+
+    /// <summary>La configuración del conector de correo guardada (null si no hay o no es de correo).</summary>
+    public static EmailConfig? ParseEmail(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try { return JsonSerializer.Deserialize<EmailConfig>(json, Json); }
+        catch (JsonException) { return null; }
+    }
+
+    private static EmailConfig NormalizeEmail(EmailConfig c) => c with
+    {
+        Host = c.Host.Trim(), Username = c.Username.Trim(), Mailbox = string.IsNullOrWhiteSpace(c.Mailbox) ? "INBOX" : c.Mailbox.Trim(),
+        ProcessedFolder = string.IsNullOrWhiteSpace(c.ProcessedFolder) ? string.Empty : c.ProcessedFolder.Trim(),
+        AllowedSenders = (c.AllowedSenders ?? Array.Empty<string>()).Select(s => s.Trim().ToLowerInvariant()).Where(s => s.Length > 0).Distinct().ToList(),
+        AttachmentMode = (c.AttachmentMode ?? EmailAttachmentModes.All).Trim().ToUpperInvariant(),
+        Subject = c.Subject is null ? null : c.Subject with { Operator = c.Subject.Operator.Trim().ToUpperInvariant(), Value = c.Subject.Value.Trim() },
+        AttachmentName = c.AttachmentName is null ? null : c.AttachmentName with { Operator = c.AttachmentName.Operator.Trim().ToUpperInvariant(), Value = c.AttachmentName.Value.Trim() },
+        AttachmentTypes = (c.AttachmentTypes is { Count: > 0 } ? c.AttachmentTypes : EmailRules.DefaultAttachmentTypes).Select(t => t.Trim().ToLowerInvariant()).Distinct().ToList(),
+        BodyFields = (c.BodyFields ?? Array.Empty<EmailBodyField>()).Select(f => f with { Kind = f.Kind.Trim().ToUpperInvariant(), Transform = (f.Transform ?? EmailTransforms.None).Trim().ToUpperInvariant() }).ToList(),
+    };
+
+    /// <summary>Prueba la conexión con el buzón de la integración (servidor, usuario, contraseña y carpeta) sin tocar los correos.</summary>
+    public async Task<EmailTestResultDto> TestEmailAsync(Guid publicId, CancellationToken ct)
+    {
+        var row = await db.Integrations.AsNoTracking().FirstOrDefaultAsync(i => i.PublicId == publicId, ct) ?? throw new NotFoundException(NotFoundLabel);
+        if (row.ConnectorKind != IntegrationConnectorKinds.Email) throw new ValidationException("connectorKind", "Esta integración no es de correo.");
+        var cfg = ParseEmail(row.ConnectorConfigJson) ?? throw new ValidationException("email", EmailRules.HostRequiredMessage);
+        if (row.SecretEnc is null) throw new ValidationException("email.password", EmailRules.PasswordRequiredMessage);
+        try
+        {
+            var password = protector.Unprotect(row.TenantId, MailPurpose, row.SecretEnc);
+            var unseen = await mailbox.TestAsync(cfg, password, ct);
+            return new EmailTestResultDto(true, $"Conexión correcta: {unseen} correo(s) sin leer en {cfg.Mailbox}.", unseen);
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            return new EmailTestResultDto(false, $"{ImapMailboxReader.ConnectionFailedMessage}: {ex.Message}", 0);
+        }
+    }
+
+    public const string MailPurpose = "integration-mail";
 
     public static string? FolderOf(Integration i)
     {
@@ -127,6 +172,13 @@ public sealed class IntegrationService(
         var client = await db.ResolveClientAsync(req.ClientPublicId, ct);
         var template = await templates.ResolveForImportAsync(req.TemplatePublicId, client.ClientId, ImportKinds.Order, ct);
         var (connector, folder, scheduleKind, interval) = ValidateConnectorAndSchedule(req.ConnectorKind, req.Folder, req.ScheduleKind, req.IntervalSeconds);
+        EmailConfig? email = null;
+        if (connector == IntegrationConnectorKinds.Email)
+        {
+            ThrowIfErrors(EmailRules.Validate(req.Email, !string.IsNullOrEmpty(req.MailPassword)));
+            email = NormalizeEmail(req.Email!);
+            if (!protector.IsConfigured) throw new ValidationException("email.password", SecretProtector.NotConfiguredMessage);
+        }
         var retention = ValidateRetention(req.RetentionDays);
         var notify = await ValidateNotifyAsync(req.NotifyUserIds, req.IncludeMe ? creatorId : null, ct);
 
@@ -139,7 +191,8 @@ public sealed class IntegrationService(
             var row = new Integration
             {
                 PublicId = publicId, TenantId = tenantId, Name = name, Description = NullIfEmpty(req.Description), Direction = IntegrationDirections.Inbound, ClientId = client.ClientId,
-                ConnectorKind = connector, ConnectorConfigJson = folder is null ? null : JsonSerializer.Serialize(new { folder }, Json), ImportTemplateId = template.ImportTemplateId,
+                ConnectorKind = connector, ConnectorConfigJson = email is not null ? JsonSerializer.Serialize(email, Json) : folder is null ? null : JsonSerializer.Serialize(new { folder }, Json),
+                SecretEnc = email is not null ? protector.Protect(tenantId, MailPurpose, req.MailPassword!) : null, ImportTemplateId = template.ImportTemplateId,
                 ScheduleKind = scheduleKind, IntervalSeconds = interval, NextRunUtc = IntegrationRules.NextRun(scheduleKind, interval, now), ScopesJson = JsonSerializer.Serialize(scopes, Json),
                 ServiceUserId = serviceUser, ServiceRoleId = role.RoleId, NotifyUserIdsJson = JsonSerializer.Serialize(notify, Json), RetentionDays = retention, IsActive = true,
                 CreatedAtUtc = now, CreatedBy = creatorId,
@@ -175,11 +228,23 @@ public sealed class IntegrationService(
             if (req.Description is not null) row.Description = NullIfEmpty(req.Description);
             if (req.TemplatePublicId is Guid tpl)
                 row.ImportTemplateId = (await templates.ResolveForImportAsync(tpl, row.ClientId ?? 0, ImportKinds.Order, ct2)).ImportTemplateId;
-            if (req.Folder is not null || req.ScheduleKind is not null || req.IntervalSeconds is not null)
+            if (row.ConnectorKind == IntegrationConnectorKinds.Email && (req.Email is not null || req.MailPassword is not null))
+            {
+                var cfg = req.Email ?? ParseEmail(row.ConnectorConfigJson);
+                ThrowIfErrors(EmailRules.Validate(cfg, row.SecretEnc is not null || !string.IsNullOrEmpty(req.MailPassword)));
+                if (!string.IsNullOrEmpty(req.MailPassword))
+                {
+                    if (!protector.IsConfigured) throw new ValidationException("email.password", SecretProtector.NotConfiguredMessage);
+                    row.SecretEnc = protector.Protect(row.TenantId, MailPurpose, req.MailPassword);
+                }
+                row.ConnectorConfigJson = JsonSerializer.Serialize(NormalizeEmail(cfg!), Json);
+            }
+            if (row.ConnectorKind != IntegrationConnectorKinds.Email && (req.Folder is not null || req.ScheduleKind is not null || req.IntervalSeconds is not null)
+                || row.ConnectorKind == IntegrationConnectorKinds.Email && (req.ScheduleKind is not null || req.IntervalSeconds is not null))
             {
                 var (_, folder, scheduleKind, interval) = ValidateConnectorAndSchedule(row.ConnectorKind, req.Folder ?? FolderOf(row), req.ScheduleKind ?? row.ScheduleKind,
                     req.IntervalSeconds ?? (req.ScheduleKind == IntegrationScheduleKinds.Manual ? null : row.IntervalSeconds));
-                row.ConnectorConfigJson = folder is null ? null : JsonSerializer.Serialize(new { folder }, Json);
+                if (row.ConnectorKind != IntegrationConnectorKinds.Email) row.ConnectorConfigJson = folder is null ? null : JsonSerializer.Serialize(new { folder }, Json);
                 row.ScheduleKind = scheduleKind;
                 row.IntervalSeconds = interval;
                 row.NextRunUtc = row.IsActive ? IntegrationRules.NextRun(scheduleKind, interval, DateTime.UtcNow) : null;

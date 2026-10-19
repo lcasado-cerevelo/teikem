@@ -8,6 +8,7 @@ import { Field, Select, TextInput, Toggle, toast } from '../../kernel/ui'
 import { FormModal } from '../clients/contractUi'
 import { useClientOptions } from '../consignees/api'
 import { useOrderImportTemplates } from '../orders/importApi'
+import { EmailSection } from './EmailSection'
 import { buildCreateRequest, buildPatchRequest, integrationSchema, integrationValuesOf, type IntegrationValues } from './integrationRules'
 import { useIntegrationMutations, useIntegrationOptions, type IntegrationDto } from './integrationsApi'
 
@@ -32,8 +33,26 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
           scopes: t('integrations.form.errors.scopes'),
         },
         editing,
+        {
+          hasSavedPassword: integration?.hasMailPassword === true,
+          messages: {
+            host: t('integrations.email.errors.host'),
+            port: t('integrations.email.errors.port'),
+            username: t('integrations.email.errors.username'),
+            password: t('integrations.email.errors.password'),
+            mailbox: t('integrations.email.errors.mailbox'),
+            noFields: t('integrations.email.errors.noFields'),
+            position: t('integrations.email.errors.position'),
+            label: t('integrations.email.errors.label'),
+            pattern: t('integrations.email.errors.pattern'),
+            block: t('integrations.email.errors.block'),
+            blockColumns: t('integrations.email.errors.blockColumns'),
+            nameFilter: t('integrations.email.errors.nameFilter'),
+            senders: t('integrations.email.errors.senders'),
+          },
+        },
       ),
-    [t, editing],
+    [t, editing, integration?.hasMailPassword],
   )
   const form = useForm<IntegrationValues>({ resolver: zodResolver(schema), defaultValues: integrationValuesOf(integration) })
   const values = useWatch({ control: form.control })
@@ -43,6 +62,8 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
 
   const clientOptions = (clients.data ?? []).map((c) => ({ value: c.publicId ?? '', label: [c.code, c.name].filter(Boolean).join(' · ') }))
   const templateOptions = (templates.data ?? []).map((x) => ({ value: x.publicId ?? '', label: x.name ?? '' }))
+  // al editar, la plantilla actual siempre es una opción (si la lista aún no llegó, el control no se queda en blanco)
+  if (integration?.templatePublicId && !templateOptions.some((o) => o.value === integration.templatePublicId)) templateOptions.unshift({ value: integration.templatePublicId, label: integration.templateName ?? '' })
   const scopeList = options.data?.scopes ?? []
   const users = options.data?.users ?? []
   const toggle = (name: 'scopes' | 'notifyUserIds', value: string | number, on: boolean) => {
@@ -90,6 +111,7 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
             disabled={editing}
             options={[
               { value: 'FOLDER', label: t('integrations.connector.FOLDER') },
+              { value: 'EMAIL', label: t('integrations.connector.EMAIL') },
               { value: 'MANUAL', label: t('integrations.connector.MANUAL') },
             ]}
           />
@@ -100,7 +122,7 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
           </Field>
         )}
       </div>
-      {connector === 'FOLDER' && (
+      {connector !== 'MANUAL' && (
         <div className="r2">
           <Field name="scheduleKind" label={t('integrations.form.schedule')}>
             <Select
@@ -117,6 +139,8 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
           )}
         </div>
       )}
+
+      {connector === 'EMAIL' && <EmailSection form={form} hasSavedPassword={integration?.hasMailPassword === true} />}
 
       <fieldset className="int-scopes">
         <legend>{t('integrations.form.scopes')}</legend>

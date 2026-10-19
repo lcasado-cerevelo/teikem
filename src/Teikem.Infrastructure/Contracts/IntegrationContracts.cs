@@ -1,3 +1,5 @@
+using Teikem.Domain.Integrations;
+
 namespace Teikem.Infrastructure.Contracts;
 
 // Lote 132 (P11) — integraciones: configuración, corridas, archivos y bandeja. Permisos integrations.* (ver PermissionCatalog).
@@ -32,7 +34,10 @@ public sealed record IntegrationDto(
     string LastStatus,
     string? LastMessage,
     int PendingInbox,
-    DateTime CreatedAtUtc);
+    DateTime CreatedAtUtc,
+    /// <summary>Configuración del conector de correo (sin la contraseña, que nunca sale del servidor).</summary>
+    EmailConfig? Email = null,
+    bool HasMailPassword = false);
 
 /// <summary>
 /// Alta. Scopes: códigos de IntegrationScopes (solo los que quien crea puede dar). Folder: carpeta de entrada (conector CARPETA). IncludeMe: agrega a quien crea a los avisos.
@@ -50,7 +55,10 @@ public sealed record IntegrationCreateRequest(
     IList<string> Scopes,
     IList<int>? NotifyUserIds = null,
     bool IncludeMe = false,
-    int? RetentionDays = null);
+    int? RetentionDays = null,
+    EmailConfig? Email = null,
+    /// <summary>Contraseña del buzón (conector EMAIL): se guarda cifrada y no se vuelve a mostrar.</summary>
+    string? MailPassword = null);
 
 /// <summary>Edición parcial: null = sin cambio. NotifyUserIds reemplaza la lista; Scopes reemplaza los alcances (se revalidan contra quien edita).</summary>
 public sealed record IntegrationPatchRequest(
@@ -63,7 +71,9 @@ public sealed record IntegrationPatchRequest(
     IList<string>? Scopes = null,
     IList<int>? NotifyUserIds = null,
     bool? IncludeMe = null,
-    int? RetentionDays = null);
+    int? RetentionDays = null,
+    EmailConfig? Email = null,
+    string? MailPassword = null);
 
 /// <summary>Un alcance que se puede ofrecer en el alta: de qué familia es, si quien mira lo puede dar y, si no, por qué.</summary>
 public sealed record IntegrationScopeOptionDto(string Code, string Family, string Label, string? ModuleKey, bool Available, string? UnavailableReason);
@@ -123,3 +133,6 @@ public sealed record InboxDiscardRequest(string? Note);
 
 /// <summary>Resultado de reprocesar: lo que se creó, lo que sigue en la bandeja y su motivo.</summary>
 public sealed record InboxReprocessResultDto(int Reprocessed, int StillPending, IReadOnlyList<InboxItemDto> Items);
+
+/// <summary>Resultado de probar la conexión con el buzón (sin datos sensibles).</summary>
+public sealed record EmailTestResultDto(bool Ok, string Message, int Unseen);

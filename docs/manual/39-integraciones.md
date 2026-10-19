@@ -44,3 +44,34 @@ Lo que entró y no se pudo procesar solo. **Una orden con problemas nunca se cre
 - *«Se creó la integración pero no corre sola».* Falta el horario («Cada…») o la integración está apagada.
 - *«Mi carpeta no encuentra el archivo».* Debe ser `.csv` o `.txt`, directamente en la carpeta (no en subcarpetas).
 - *«Subí el mismo archivo y no creó nada».* Es el hash: ya se procesó; el historial lo marca «Repetido».
+
+## 6. Integración por correo electrónico (Lote 133)
+
+> Dictado de Luis (2026-10-19): un conector de correo que aplica a **cualquier cliente**. Llega un correo al buzón de la integración y Teikem lee **los adjuntos**, **el cuerpo** o ambos, y los pasa por la **misma plantilla de importación** de la integración. Un buzón por integración; el contenido del correo es **entrada no confiable**: nunca se ejecuta nada y el HTML se reduce a texto.
+
+**Cómo se configura** (conector **Correo** al crear la integración; permisos `integrations.create` + `integrations.create.files`):
+- **Buzón (IMAP):** servidor, puerto, conexión cifrada, usuario, **contraseña** (se guarda **cifrada** con la llave de la compañía y no se vuelve a mostrar: al editar, vacía = se conserva; requiere `Files:MasterKey` en el servidor), carpeta que se lee (INBOX) y carpeta de procesados. Teikem lee solo los correos **no leídos**; al atenderlos los marca como leídos y los mueve a «Procesados» (se crea si falta). **Nunca borra.** Hasta 50 correos por corrida.
+- **Qué correos se toman:** **asunto** (contiene / es igual / empieza / termina / comodín / expresión regular; el filtro «contiene» corre en el servidor de correo) y **remitentes originales permitidos** (correos o dominios; vacío = cualquiera).
+- **El remitente original:** como el correo casi siempre llega **reenviado**, el remitente que cuenta se busca en este orden: `X-Original-Sender`, `X-Original-From`, `Resent-From`, `Reply-To`, la primera línea «De:» / «From:» del bloque reenviado del cuerpo y, si no hay, el `From`. Un correo de otro remitente **no se procesa**: va a la bandeja con «Remitente no permitido: x@y.com.»
+- **Adjuntos:** todos los que cumplan el **tipo** (extensiones, `csv, txt` por omisión), solo el primero, o los que cumplan el **nombre** (contiene / comodín `ordenes-*.csv` / expresión regular…). Cada adjunto se procesa como un archivo de la carpeta (hash, importador, bandeja). «El correo debe traer adjunto»: si no trae, va a la bandeja con «El correo no trae ningún adjunto que cumpla el criterio.»
+- **Cuerpo:** «Leer también el cuerpo» con una lista de **campos a leer**. Cada campo va a una **columna de la plantilla** (1, 2, 3…): el cuerpo se convierte en una fila de archivo (o varias, con un bloque) y la misma plantilla la lee, con sus reglas (p. ej. varias líneas por orden). Tipos de campo:
+  - **Etiqueta:** «Reference #» → el texto que sigue en esa línea («Reference #: 123»; sin importar acentos ni mayúsculas).
+  - **Expresión regular:** el primer grupo entre paréntesis (o todo lo que coincida).
+  - **Bloque de renglones** (una tabla, p. ej. «Order Summary»): texto de inicio, texto de fin, separador de columnas y qué columna del renglón va a qué columna de la plantilla (`6=1, 7=2`); cada renglón es una línea del archivo y los valores sueltos se repiten en todos.
+  - **Transformación** opcional: mayúsculas, solo dígitos (teléfonos) o monto (quita `$` y comas). **Obligatorio:** si no se encuentra, el correo va a la bandeja con «No se encontró el campo obligatorio de la columna N (…).»
+- **Repetidos:** el mismo contenido (hash del adjunto o del cuerpo leído) no se procesa dos veces; el número de orden repetido ya lo rechaza el importador.
+
+**Probar sin buzón:** en la lista, **Probar conexión** (`POST /{id}/email/test`) comprueba servidor, usuario, contraseña y carpeta y dice cuántos correos sin leer hay (sin tocarlos; el mensaje nunca trae la contraseña). Y **Subir archivo** acepta un **`.eml`**: se procesa EXACTAMENTE igual que uno recibido por IMAP (mismas reglas de remitente, asunto, adjuntos y cuerpo), así que se puede probar la configuración antes de apuntar el buzón.
+
+**Correr:** por horario (cada N minutos) o **Correr ahora**. Si el buzón no responde, la corrida queda *Falló* con «No se pudo conectar con el buzón: …» y no pasa nada más (los correos siguen sin leer).
+
+| Mensaje (400) | Cuándo |
+|---|---|
+| «Indique el servidor del buzón (IMAP).» · «El puerto debe estar entre 1 y 65535.» · «Indique el usuario del buzón.» · «Indique la contraseña del buzón.» · «Indique la carpeta del buzón que se lee (p. ej. INBOX).» | buzón |
+| «No se pueden guardar contraseñas de conectores: falta la llave maestra del servidor (Files:MasterKey).» | el servidor no tiene la llave maestra |
+| «Condición desconocida: X. Use EQUALS, CONTAINS, STARTS, ENDS, WILDCARD o REGEX.» · «Indique el texto de la condición.» · «La expresión regular 'X' no es válida.» | asunto y nombre del adjunto |
+| «El remitente permitido 'X' no es un correo ni un dominio válido.» · «Máximo 50 remitentes permitidos.» | remitentes |
+| «Modo de adjuntos desconocido: X. Use ALL, FIRST o BY_NAME.» · «Con «por nombre» indique la condición del nombre del adjunto.» | adjuntos |
+| «Con «leer el cuerpo» indique al menos un campo a leer.» · «La columna debe estar entre 1 y 500.» · «Tipo de campo desconocido: X. Use LABEL, REGEX o BLOCK.» · «Indique la etiqueta que se busca en el correo.» · «Indique la expresión regular.» · «Un bloque necesita el texto de inicio y el de fin.» · «Un bloque necesita al menos una columna (posición y número de columna del renglón).» · «Transformación desconocida: X. Use NONE, UPPER, DIGITS o MONEY.» | campos del cuerpo |
+
+**Casos frecuentes:** *«No se pudo conectar con el buzón»* → revise servidor, puerto (993 con SSL), usuario y la **contraseña de aplicación** del buzón (Microsoft 365: buzón compartido con IMAP habilitado). *«Remitente no permitido»* con un correo que sí es de ellos → agregue el dominio del remitente ORIGINAL (no el de quien reenvía). *El correo no se leyó* → debe estar **no leído** y en la carpeta configurada; el asunto debe cumplir el filtro (si no cumple, se ignora y no deja rastro).

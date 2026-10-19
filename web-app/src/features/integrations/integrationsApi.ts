@@ -74,6 +74,9 @@ export function useIntegrationMutations() {
       mutationFn: (publicId: string) => unwrap(api.POST('/api/v1/integrations/{publicId}/run', { params: { path: { publicId } } })),
       onSettled: invalidate,
     }),
+    testEmail: useMutation({
+      mutationFn: (publicId: string) => unwrap(api.POST('/api/v1/integrations/{publicId}/email/test', { params: { path: { publicId } } })),
+    }),
     upload: useMutation({
       mutationFn: (v: { publicId: string; file: File }) => {
         const body = new FormData()

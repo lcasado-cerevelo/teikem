@@ -61,7 +61,8 @@ public sealed class IntegrationRulesTests
         Assert.Equal("integration-11111111222233334444555555555555@service.teikem.local", IntegrationRules.ServiceEmail(id));
         Assert.Equal("Integración: AxisCare", IntegrationRules.ServiceRoleName(" AxisCare "));
         Assert.Contains(IntegrationConnectorKinds.Folder, IntegrationConnectorKinds.Available);
-        Assert.DoesNotContain(IntegrationConnectorKinds.Email, IntegrationConnectorKinds.Available);
+        Assert.Contains(IntegrationConnectorKinds.Email, IntegrationConnectorKinds.Available);
+        Assert.DoesNotContain(IntegrationConnectorKinds.Sftp, IntegrationConnectorKinds.Available);
     }
 
     [Fact]
