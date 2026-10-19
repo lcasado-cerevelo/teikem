@@ -2,6 +2,19 @@
 
 > Estado: **diseño presentado, nada construido.** Parte de lo ya hecho: plantillas de importación (Lotes 3 y 131), `ScheduledJob` + worker (P2.2), outbox de notificaciones (P2.1), `IntegrationMessageLog` (idempotencia), tablas `ApiCredential`, `WebhookSubscription` y `WebhookDelivery` ya creadas en el esquema (sin backend).
 
+## 0. Decisiones de Luis (2026-10-19) — mandan sobre el resto del documento
+1. **Orden de los lotes:** da igual; se hacen las dos partes (archivos y API). Se empieza por archivos.
+2. **Cuenta de servicio propia por integración, creada al crear la integración.** Para crear una integración el usuario necesita un **permiso propio** (`integrations.create`; Luis se lo da a uno o varios roles). Quien la crea **no puede darle a la integración más permisos de los que él mismo tiene** (sin escalada de privilegios): al crearla solo se le ofrecen los alcances (scopes) que el creador posee y que la compañía tiene contratados.
+3. **Bandeja:** los datos crudos se guardan 30 días y luego se purga el detalle (el motivo queda).
+4. **La API es para los CLIENTES** y cada llave solo toca lo **de su propio cliente/compañía**. Alcances ofrecidos:
+   - **Transporte:** leer órdenes, tracking y facturas; crear órdenes.
+   - **Consignatarios (solo los propios):** leer, **agregar y editar**; **nunca borrar** (eso solo se hace en la aplicación).
+   - **Remitente (sender) / perfil del cliente:** cada cliente puede leer y editar **sus propios datos**.
+   - **Almacén (si la compañía tiene el módulo de almacén):** ver inventario, crear productos, despacho, recibo, ajustes y transferencias — sin órdenes de transporte en esta parte.
+   - **Validación por módulo:** si la compañía no tiene el módulo de almacén, esos alcances **no se ofrecen** al crear la integración y los endpoints responden como módulo no contratado (`[RequireModule]`); la documentación de la API de cada cliente solo lista lo que su compañía tiene.
+5. **Acuses = avisos del sistema**, no archivo de respuesta. Al crear la integración se define **a quién avisar** (usuarios o roles que se escojan) con la opción **«incluirme»**; no se avisa automáticamente a quien la creó.
+6. **Correo:** un buzón por integración.
+
 ## 1. Principios (dictados de Luis)
 1. **Integrar CUALQUIER cosa con Teikem, de entrada o de salida, por configuración, sin programar cada vez.** AxisCare es solo un ejemplo.
 2. **API mínima y controlada:** más lecturas que escrituras; la escritura es **crear órdenes** (lo mismo que hace la pantalla) y poco más.
@@ -25,7 +38,7 @@
 
 ## 3. Entrada y salida
 
-**Entrada (a Teikem).** Disparador → leer del conector → por archivo: calcular hash (si ya está, saltar) → aplicar plantilla → **validar** (el mismo importador: errores por fila/orden) → las órdenes válidas **se crean** (`orders.create` de una cuenta de servicio de la integración, nunca de un usuario) y las inválidas **van a la bandeja**. Acuse opcional: archivo de respuesta (el «Excel de respuestas» de AxisCare es el ejemplo) con el resultado por orden, por el mismo conector o por correo.
+**Entrada (a Teikem).** Disparador → leer del conector → por archivo: calcular hash (si ya está, saltar) → aplicar plantilla → **validar** (el mismo importador: errores por fila/orden) → las órdenes válidas **se crean** (`orders.create` de una cuenta de servicio de la integración, nunca de un usuario) y las inválidas **van a la bandeja**. **Acuse = aviso del sistema** a quienes se definieron en la integración (resumen de la corrida: creadas, rechazadas, a la bandeja); un archivo de respuesta hacia el cliente no se hace por ahora.
 
 **Salida (de Teikem).** Dos formas: (a) **por evento/horario**: «cuando una orden pase a Entregada» o «cada noche las entregadas del día» → armar archivo con el mapeo de salida → enviarlo (SFTP, correo, API, webhook); (b) **webhook** de suscripción (sección 5). Una salida fallida se **reintenta con espera creciente** (outbox) y, agotados los reintentos, queda en la bandeja como «salida no entregada» con botón «Reintentar».
 
@@ -36,7 +49,7 @@ Hoy, una orden con error queda solo en la vista previa y desaparece al cerrarla.
 - **Qué entra:** (1) orden o fila con errores de validación (sin pieza, label repetido, consignatario sin dirección…); (2) fila que el mapeo no logró clasificar; (3) archivo ilegible o con columnas distintas a la plantilla; (4) salida no entregada tras los reintentos; (5) webhook recibido con firma inválida o cuerpo no interpretable (solo se registra, no se procesa).
 - **Qué guarda:** integración, corrida, archivo y fila de origen, **los datos tal como llegaron** (cifrados si traen datos personales; se purgan a los N días configurables), el **motivo exacto** (mismo mensaje que da la vista previa) y el estatus: `PENDIENTE` → `CORREGIDA` / `DESCARTADA` / `REPROCESADA`.
 - **Qué se puede hacer:** ver el motivo y los datos; **corregir en pantalla** los campos (el mismo editor de la vista previa) y **reprocesar** solo esa orden; **reprocesar todo** al cambiar la plantilla o el catálogo (ej. un consignatario que ya se creó); **descartar** con nota; **descargar** las pendientes como CSV para devolverlas al cliente.
-- **Quién se entera:** contador en el menú, aviso por correo/notificación al responsable de la integración cuando entran ítems nuevos (resumen por corrida, no uno por fila) y alerta operacional si un ítem lleva más de N horas pendiente (se enchufa a las alertas ya construidas en P12).
+- **Quién se entera:** contador en el menú y aviso del sistema a **quienes se definieron en la integración** (con «incluirme») cuando entran ítems nuevos (resumen por corrida, no uno por fila) y alerta operacional si un ítem lleva más de N horas pendiente (se enchufa a las alertas ya construidas en P12).
 - **Reglas que no se rompen:** una orden de la bandeja **nunca crea una orden a medias**; reprocesar es idempotente (por número de orden y hash de archivo); el acuse al cliente lista lo aceptado y lo rechazado con su motivo.
 - La **vista previa manual de hoy sigue igual**; es la misma lógica de validación, solo que en la integración el resultado se guarda.
 
@@ -44,15 +57,19 @@ Hoy, una orden con error queda solo en la vista previa y desaparece al cerrarla.
 
 **Llave por cliente** (`ApiCredential`): `client_id` + secreto → token de corta vida con **scopes**; el **secreto se muestra una sola vez y se guarda hasheado**; **solo ve lo de su cliente** (el filtro de tenant y el de cliente ya existen como `OrderScope`); **límite de uso** por llave (solicitudes por minuto) y bitácora (`IntegrationMessageLog`); se puede suspender o rotar. Idempotencia con la cabecera `Idempotency-Key` que ya existe.
 
-**Propuesta de endpoints** (a decidir por Luis; todos bajo `/api/v1/integration/`):
-| Scope | Endpoint | Qué hace |
+**Endpoints** (bajo `/api/v1/integration/`; cada uno exige su alcance, que la compañía tenga el módulo y limita todo al cliente de la llave):
+| Alcance | Endpoint | Qué hace |
 |---|---|---|
-| `orders:read` | `GET orders`, `GET orders/{id}` | lista y ficha de las órdenes del cliente (con estatus y piezas) |
-| `orders:track` | `GET orders/{id}/tracking` | historial de estatus, entrega (hora, quién recibió) y archivos de la firma/foto (enlace con caducidad) |
-| `invoices:read` | `GET invoices` | facturas del cliente y su estado |
+| `orders:read` | `GET orders`, `GET orders/{id}`, `GET orders/{id}/tracking` | lista, ficha, historial de estatus y comprobante (firma/foto con enlace de caducidad) |
 | `orders:create` | `POST orders` | crear una orden (lo mismo que la pantalla; con `Idempotency-Key`) |
-| `orders:create` | `POST orders/import` | subir un archivo con la plantilla del cliente (lo que no pasa va a la **bandeja**) |
+| `invoices:read` | `GET invoices` | facturas del cliente y su estado |
+| `consignees:read` / `consignees:write` | `GET/POST/PATCH consignees` | consignatarios propios: leer, agregar, editar. **Sin borrar** |
+| `client:read` / `client:write` | `GET/PATCH client` | el cliente lee y edita su propio perfil (remitente) |
+| `warehouse:read` | `GET inventory`, `GET products` | ver inventario y productos (solo con módulo de almacén) |
+| `warehouse:write` | `POST products`, `POST receipts`, `POST dispatches`, `POST adjustments`, `POST transfers` | crear productos, recibo, despacho, ajustes y transferencias |
 | `webhooks:manage` | `POST/GET/DELETE webhooks` | suscribirse a eventos (`order.status_changed`, `order.delivered`, `invoice.issued`) |
+
+*(Se quitó «subir un archivo con la plantilla del cliente» por la API: era la variante de crear órdenes mandando un CSV en vez de JSON; no hace falta si `POST orders` existe y los archivos entran por los conectores de la sección 3. Si algún cliente lo necesita se agrega después.)*
 
 **Webhooks de salida** (`WebhookSubscription`/`WebhookDelivery`): URL del cliente, **firma HMAC-SHA256** con secreto propio (cabecera con marca de tiempo contra repetición), cuerpo mínimo (id + estatus; los detalles se consultan por la API), **reintentos con espera creciente** (1 min, 5, 30, 2 h, 12 h) y registro de cada entrega; agotados, a la bandeja y suspensión automática de la suscripción tras N fallas seguidas.
 
@@ -61,7 +78,7 @@ Hoy, una orden con error queda solo en la vista previa y desaparece al cerrarla.
 ## 6. Seguridad y control
 - Secretos de conector y de API: cifrados/hasheados, auditados (quién los vio o rotó), nunca en logs ni en el cliente web.
 - Cuenta de servicio por integración con permisos mínimos (`orders.create` + el cliente); no usa usuarios humanos.
-- Permisos nuevos: `integrations.view`, `integrations.manage`, `integrations.inbox` (y se propagan a los roles ya clonados, regla del proyecto); módulo `INTEGRATIONS`.
+- Permisos nuevos: `integrations.view`, **`integrations.create`** (crear la integración y su cuenta de servicio), `integrations.manage`, `integrations.inbox` (y se propagan a los roles ya clonados, regla del proyecto); módulo `INTEGRATIONS`.
 - SFTP: huella del servidor fijada; tamaño y filas máximas por archivo (como el CSV de hoy: 5.000 filas / 2 MB, configurable con tope); ningún archivo se ejecuta.
 - Todo cambio de integración y toda corrida quedan en la auditoría; rate limit y bitácora por llave.
 
@@ -82,10 +99,7 @@ Tema claro/oscuro y es/en como todo; Kemi busca en el manual y la FAQ de este ca
 | **135** | **Webhooks** de salida (HMAC, reintentos, bandeja de salidas no entregadas) y salida por evento/horario con mapeo inverso | 133, 134 |
 | **136** | Mapeo por ruta para JSON/XML, hoja de Excel, API saliente genérica | 135 |
 
-## 9. Decisiones que necesito de Luis
-1. **Orden de los lotes:** ¿primero archivos (132–133, lo que necesita AxisCare) y luego API (134), como arriba, o la API antes?
-2. **Cuenta de servicio:** ¿cada integración crea con una cuenta de servicio propia (recomendado, así la auditoría dice «integración X») o con el usuario que la configuró?
-3. **Retención de la bandeja:** ¿cuántos días se guardan los datos crudos (propuesta: 30 y luego se purga el detalle; el motivo queda)?
-4. **Endpoints de la sección 5:** ¿esa lista de lecturas y `POST orders` + `POST orders/import` es la que quieres, o quitas/agregas alguno?
-5. **Acuse a AxisCare:** ¿el Excel de respuestas por el mismo SFTP (como hoy en Ícaro) o por correo?
-6. **Correo (IMAP):** ¿un buzón por integración o uno de la compañía con reglas por remitente? (el caso Truss del P4-T usa correo).
+## 9. Por confirmar (quedan pocas)
+1. **«Órdenes no» en almacén:** entendí que las órdenes de transporte siguen siendo parte de la API del cliente (leer y crear) y que lo que NO va en la parte de almacén son órdenes de venta/salida. ¿Correcto?
+2. **Remitente:** entendí «sender» como el propio cliente (sus datos y su remitente), editable solo por sí mismo. ¿Es eso, o es otra entidad?
+3. **Alcances por rol:** los alcances (`orders:read`, `warehouse:write`…) los elige quien crea la integración entre los que él tiene; ¿quieres además un permiso por familia (p. ej. `integrations.create.warehouse`) para que un rol pueda crear integraciones de transporte pero no de almacén?
