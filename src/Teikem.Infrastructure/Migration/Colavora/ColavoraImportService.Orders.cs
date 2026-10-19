@@ -23,10 +23,10 @@ public sealed partial class ColavoraImportService
     private async Task ImportOrdersAsync(RunState s, CancellationToken ct)
     {
         var opt = s.Config.Options;
-        var (minId, maxId, count) = await s.Reader.ShipmentRangeAsync(s.CompanyId, ct);
+        var (minId, maxId, count) = await s.Reader.ShipmentRangeAsync(s.CompanyId, opt.SinceDate, ct);
         var from = Math.Max(opt.FromShipmentId ?? minId, minId);
         var to = Math.Min(opt.ToShipmentId ?? maxId, maxId);
-        s.Report.AddInfo("Órdenes en Colavora", $"{count:N0} (ShipmentID {minId}–{maxId}); se procesa {from}–{to} en lotes de {opt.BatchSize}");
+        s.Report.AddInfo("Órdenes en Colavora", $"{count:N0}{(opt.SinceDate is DateTime sd ? $" creadas desde {sd:yyyy-MM-dd}" : "")} (ShipmentID {minId}–{maxId}); se procesa {from}–{to} en lotes de {opt.BatchSize}");
         if (!s.DryRun && s.TenantId is null) return;
 
         if (s.TenantId is int tid0)
@@ -44,7 +44,7 @@ public sealed partial class ColavoraImportService
         while (cursor <= to)
         {
             ct.ThrowIfCancellationRequested();
-            var batch = await s.Reader.ReadShipmentsAsync(s.CompanyId, cursor, to, opt.BatchSize, ct);
+            var batch = await s.Reader.ReadShipmentsAsync(s.CompanyId, cursor, to, opt.BatchSize, opt.SinceDate, ct);
             if (batch.Count == 0) break;
             var first = batch[0].ShipmentId;
             var last = batch[^1].ShipmentId;

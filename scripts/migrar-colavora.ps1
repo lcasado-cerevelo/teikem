@@ -8,6 +8,8 @@
 #   .\scripts\migrar-colavora.ps1 -Compania delapaz                      # carga real de De La Paz Transport
 #   .\scripts\migrar-colavora.ps1 -Compania advance -Solo catalogos,usuarios,zonas,clientes,consignatarios,contratos
 #   .\scripts\migrar-colavora.ps1 -Compania advance -Solo ordenes -Desde 1200000 -Hasta 1276964
+#   .\scripts\migrar-colavora.ps1 -Compania advance -Meses 3            # pruebas: solo las órdenes de los últimos 3 meses
+#   .\scripts\migrar-colavora.ps1 -Compania delapaz -DesdeFecha 2026-01-01
 # Detalle: docs/migracion/colavora/README.md
 [CmdletBinding()]
 param(
@@ -16,6 +18,9 @@ param(
     [string[]] $Solo,
     [int] $Desde,
     [int] $Hasta,
+    # Para pruebas: solo las órdenes creadas en los últimos N meses, o desde una fecha (aaaa-mm-dd). Los maestros van completos.
+    [int] $Meses,
+    [string] $DesdeFecha,
     [ValidateSet('Debug', 'Release')] [string] $Configuracion = 'Release'
 )
 $ErrorActionPreference = 'Stop'
@@ -40,6 +45,8 @@ if ($DryRun) { $args += '--dry-run' }
 if ($Solo) { $args += @('--solo', ($Solo -join ',')) }
 if ($PSBoundParameters.ContainsKey('Desde')) { $args += @('--desde', $Desde) }
 if ($PSBoundParameters.ContainsKey('Hasta')) { $args += @('--hasta', $Hasta) }
+if ($PSBoundParameters.ContainsKey('Meses')) { $args += @('--meses', $Meses) }
+if ($DesdeFecha) { $args += @('--desde-fecha', $DesdeFecha) }
 
 Write-Host "dotnet $($args -join ' ')" -ForegroundColor Cyan
 $sw = [Diagnostics.Stopwatch]::StartNew()

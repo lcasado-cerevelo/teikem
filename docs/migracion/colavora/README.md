@@ -27,6 +27,7 @@ dotnet run --project src/Teikem.Api -- import-colavora <config.json> [--dry-run]
 | `--dry-run` | Lee todo, cuenta lo que se crearía y escribe el reporte; **no toca la base de Teikem**. |
 | `--solo catalogos,usuarios,zonas,clientes,consignatarios,contratos,ordenes` | Solo esas fases (las demás se leen de lo que ya está en Teikem). La compañía y los catálogos van siempre. |
 | `--desde N` / `--hasta N` | Rango de `ShipmentID` de las órdenes (para reanudar o para probar con pocas). |
+| `--meses N` / `--desde-fecha aaaa-mm-dd` | Para pruebas: solo las órdenes creadas en los últimos N meses o desde esa fecha (los maestros van completos). En el script: `-Meses 3` / `-DesdeFecha 2026-01-01`. |
 
 | Código de salida | Significado |
 |---|---|

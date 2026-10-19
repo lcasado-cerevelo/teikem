@@ -112,22 +112,22 @@ public sealed class ColavoraReader(string courierConnectionString, string loginC
 
     // ---------------------------------------------------------------- órdenes (por rangos)
 
-    public async Task<(int Min, int Max, long Count)> ShipmentRangeAsync(string companyId, CancellationToken ct)
+    public async Task<(int Min, int Max, long Count)> ShipmentRangeAsync(string companyId, DateTime? since, CancellationToken ct)
     {
-        var row = await OneAsync(courierConnectionString, "SELECT ISNULL(MIN(ShipmentID),0), ISNULL(MAX(ShipmentID),0), COUNT_BIG(*) FROM dbo.Shipments WHERE RTRIM(CompanyID) = @c",
-            r => (r.GetInt32(0), r.GetInt32(1), r.GetInt64(2)), ct, ("@c", companyId));
+        var row = await OneAsync(courierConnectionString, "SELECT ISNULL(MIN(ShipmentID),0), ISNULL(MAX(ShipmentID),0), COUNT_BIG(*) FROM dbo.Shipments WHERE RTRIM(CompanyID) = @c AND (@since IS NULL OR CreatedDate >= @since)",
+            r => (r.GetInt32(0), r.GetInt32(1), r.GetInt64(2)), ct, ("@c", companyId), ("@since", (object?)since ?? DBNull.Value));
         return row;
     }
 
     /// <summary>Lote de órdenes: las siguientes <paramref name="take"/> con ShipmentID &gt;= <paramref name="fromId"/> (y &lt;= toId si se indica), en orden.</summary>
-    public Task<List<CvShipment>> ReadShipmentsAsync(string companyId, int fromId, int? toId, int take, CancellationToken ct)
+    public Task<List<CvShipment>> ReadShipmentsAsync(string companyId, int fromId, int? toId, int take, DateTime? since, CancellationToken ct)
         => ListAsync(courierConnectionString,
             "SELECT TOP (@take) ShipmentID, Waybill, ServiceType, PackageType, ReadyDate, DueDate, CODType, CODAmount, Sender, SenderName, SenderAddressLine1, SenderAddressLine2, SenderZip, SenderPhoneNumber, SenderContactPerson, OrderNotes, "
             + "ConsigneeNum, ConsigneeName, AddressLine1, AddressLine2, Zip, PhoneNumber, ContactPerson, CreatedUserID, CreatedDate, Status, Qty, Items, ManifestDL, ManifestPk, AssignPK, AssignDL, Division, LastEventComment, Reason, Barcode, ReferenceNo, ManifestDL_Date, ManifestPk_Date, Weight, PONumber "
-            + "FROM dbo.Shipments WHERE RTRIM(CompanyID) = @c AND ShipmentID >= @from AND (@to IS NULL OR ShipmentID <= @to) AND Waybill IS NOT NULL ORDER BY ShipmentID",
+            + "FROM dbo.Shipments WHERE RTRIM(CompanyID) = @c AND ShipmentID >= @from AND (@to IS NULL OR ShipmentID <= @to) AND (@since IS NULL OR CreatedDate >= @since) AND Waybill IS NOT NULL ORDER BY ShipmentID",
             r => new CvShipment(r.GetInt32(0), r.GetString(1).Trim(), I(r, 2), I(r, 3), D(r, 4), D(r, 5), S(r, 6), M(r, 7), S(r, 8), S(r, 9), S(r, 10), S(r, 11), S(r, 12), S(r, 13), S(r, 14), S(r, 15),
                 S(r, 16), S(r, 17), S(r, 18), S(r, 19), S(r, 20), S(r, 21), S(r, 22), I(r, 23), D(r, 24), S(r, 25), I(r, 26), I(r, 27), S(r, 28), S(r, 29), I(r, 30), I(r, 31), S(r, 32), S(r, 33), S(r, 34), S(r, 35), S(r, 36), D(r, 37), D(r, 38), S(r, 39), S(r, 40)),
-            ct, ("@c", companyId), ("@from", fromId), ("@to", (object?)toId ?? DBNull.Value), ("@take", take));
+            ct, ("@c", companyId), ("@from", fromId), ("@to", (object?)toId ?? DBNull.Value), ("@take", take), ("@since", (object?)since ?? DBNull.Value));
 
     public Task<List<CvPiece>> ReadPiecesAsync(int fromId, int toId, CancellationToken ct)
         => ListAsync(courierConnectionString, "SELECT PieceID, ShipmentID, Barcode, PackageType, Comments FROM dbo.Shipments_Pieces WHERE ShipmentID BETWEEN @from AND @to ORDER BY ShipmentID, PieceID",

@@ -131,6 +131,8 @@ public sealed class ColavoraOptionsConfig
     public List<int> DescriptionPackageTypes { get; set; } = new();
     public int? FromShipmentId { get; set; }
     public int? ToShipmentId { get; set; }
+    /// <summary>Solo las órdenes creadas en Colavora desde esta fecha (local de Puerto Rico), para pruebas: --desde-fecha o --meses N.</summary>
+    public DateTime? SinceDate { get; set; }
     /// <summary>D10: carpeta donde se guardan firmas y fotos de los comprobantes (archivos en disco). Sin ella no se guardan imágenes.</summary>
     public string? PodFilesDir { get; set; }
     /// <summary>Clave del campo personalizado de la orden para la división de AxisCare (D6).</summary>
