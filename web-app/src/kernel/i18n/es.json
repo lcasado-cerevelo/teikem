@@ -6849,6 +6849,41 @@
         "resultTitle": "Contraseña temporal",
         "resultHint": "Dele esta contraseña a {name} ahora: vale {minutes} minutos y no se vuelve a mostrar.",
         "expiresAt": "Vence a las {time}."
+      },
+      "tabClients": "Clientes",
+      "tabConsignees": "Consignatarios",
+      "portal": {
+        "titleClients": "Personas de los clientes",
+        "titleConsignees": "Accesos de consignatarios",
+        "helpClients": "Las personas del portal de TODOS los clientes de la compañía. Las invita la compañía desde el expediente del cliente; aquí se suspenden, reactivan y dan de baja.",
+        "helpConsignees": "Los accesos propios de los consignatarios. Los invita el cliente desde su portal; aquí la compañía los suspende, reactiva y da de baja.",
+        "search": "Buscar por nombre, correo, cliente o consignatario…",
+        "includeRemoved": "Incluir dados de baja",
+        "colName": "Nombre",
+        "colEmail": "Correo",
+        "colClient": "Cliente",
+        "colConsignee": "Consignatario",
+        "colType": "Tipo",
+        "colRole": "Rol",
+        "colStatus": "Estatus",
+        "colLastLogin": "Último acceso",
+        "typeClient": "Cliente",
+        "typeConsignee": "Consignatario",
+        "openClient": "Abrir el cliente",
+        "resend": "Reenviar invitación",
+        "suspend": "Suspender",
+        "reactivate": "Reactivar",
+        "remove": "Dar de baja",
+        "suspendTitle": "Suspender el acceso",
+        "suspendBody": "{name} no podrá entrar al portal hasta que se reactive. Se pueden reactivar cuando quiera.",
+        "removeTitle": "Dar de baja el acceso",
+        "removeBody": "{name} dejará de tener acceso al portal. Para devolvérselo hay que invitarle de nuevo.",
+        "done": {
+          "suspend": "Acceso de {name} suspendido.",
+          "reactivate": "Acceso de {name} reactivado.",
+          "remove": "Acceso de {name} dado de baja.",
+          "resend": "Invitación reenviada a {name}."
+        }
       }
     },
     "catalogs": {

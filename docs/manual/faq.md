@@ -9336,3 +9336,17 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **En Indicadores no sale el saldo de facturas ni lo cobrado por remesar.** La compañía no tiene encendido el módulo de facturación o de cobro contra entrega.
 
 **¿Qué cuenta «En curso ahora»?** Todas las órdenes que todavía no están en un estatus final (Entregada, Devuelta, En almacén o Cancelada), y de ellas cuántas van en tránsito.
+
+## Clientes y Consignatarios en «Roles y usuarios» (Lote 121)
+
+**¿Dónde veo a todas las personas del portal y a los consignatarios con acceso?** En Sistema → Roles y usuarios, pestañas **Clientes** y **Consignatarios**. Hace falta el permiso `portalusers.manage` y el módulo Portal de clientes encendido; si no, esas pestañas no aparecen.
+
+**¿Puedo invitar a alguien desde esas pestañas?** No: a las personas de un cliente las invita la compañía desde el expediente del cliente (Usuarios de portal) y a los consignatarios los invita el cliente desde su portal. Aquí se controlan: suspender, reactivar, dar de baja y reenviar la invitación.
+
+**Suspendí a alguien y sigue viendo el portal.** No debería: al suspender o dar de baja, su sesión abierta se corta al instante (hasta el Lote 120 podía durar hasta un minuto). Si pasa, cierre sus sesiones y avise a soporte.
+
+**«El tipo debe ser CLIENT o CONSIGNEE.»** (400) El filtro `kind` de `GET /portal-users` solo admite CLIENT o CONSIGNEE (o ninguno, para todos).
+
+**¿Quién controla a los usuarios de staff, de portal y de consignatarios?** El administrador de la plataforma y el administrador de cada compañía (los de su compañía): el personal en la pestaña Usuarios, las personas de los clientes en Clientes y los accesos de consignatarios en Consignatarios.
+
+**No veo a una persona dada de baja.** Active «Incluir dados de baja».

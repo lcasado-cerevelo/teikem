@@ -28,7 +28,7 @@ namespace Teikem.Infrastructure.Services;
 /// Nota 2: la fila que transiciona todavía tiene en BD su estatus anterior (el servicio asigna StatusCodeId después del
 /// efecto), por eso se excluye por id al contar las filas vivas restantes.
 /// </summary>
-public sealed class PortalUserStatusEffect(TeikemDbContext db, UserManager<ApplicationUser> users, ITenantContext tenant, ILookupCache lookups) : IStatusTransitionEffect
+public sealed class PortalUserStatusEffect(TeikemDbContext db, UserManager<ApplicationUser> users, ITenantContext tenant, ILookupCache lookups, Microsoft.Extensions.Caching.Memory.IMemoryCache cache) : IStatusTransitionEffect
 {
     public string StatusDomain => StatusDomains.PortalUserStatus;
 
@@ -58,6 +58,7 @@ public sealed class PortalUserStatusEffect(TeikemDbContext db, UserManager<Appli
 
         user.IsActive = false;
         await users.UpdateSecurityStampAsync(user); // persiste IsActive y rota el stamp: los access tokens vivos dejan de valer
+        cache.Remove(JwtTokenService.StampCacheKey(user.Id));   // Lote 121: sin esperar el minuto de la caché del sello, la sesión abierta de quien se suspende o se da de baja se corta al instante
 
         var tokens = await db.RefreshTokens.IgnoreQueryFilters().Where(t => t.UserId == user.Id && t.RevokedAtUtc == null).ToListAsync(ct);
         if (tokens.Count > 0)
@@ -88,6 +89,7 @@ public sealed class PortalUserStatusEffect(TeikemDbContext db, UserManager<Appli
         if (user is null || user.IsActive) return;
         user.IsActive = true;
         await users.UpdateAsync(user);
+        cache.Remove(JwtTokenService.StampCacheKey(user.Id));   // Lote 121: que el estado «inactiva» guardado en la caché no impida entrar al reactivarla
     }
 
     private static bool Same(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);

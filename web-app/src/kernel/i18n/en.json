@@ -6849,6 +6849,41 @@
         "resultTitle": "Temporary password",
         "resultHint": "Give this password to {name} now: it lasts {minutes} minutes and is not shown again.",
         "expiresAt": "Expires at {time}."
+      },
+      "tabClients": "Clients",
+      "tabConsignees": "Consignees",
+      "portal": {
+        "titleClients": "Client people",
+        "titleConsignees": "Consignee access",
+        "helpClients": "The portal people of ALL the clients of the company. They are invited from the client file; here they are suspended, reactivated and removed.",
+        "helpConsignees": "The access consignees have to their own space. They are invited by the client from the portal; here the company suspends, reactivates and removes them.",
+        "search": "Search by name, email, client or consignee…",
+        "includeRemoved": "Include removed",
+        "colName": "Name",
+        "colEmail": "Email",
+        "colClient": "Client",
+        "colConsignee": "Consignee",
+        "colType": "Type",
+        "colRole": "Role",
+        "colStatus": "Status",
+        "colLastLogin": "Last access",
+        "typeClient": "Client",
+        "typeConsignee": "Consignee",
+        "openClient": "Open the client",
+        "resend": "Resend invitation",
+        "suspend": "Suspend",
+        "reactivate": "Reactivate",
+        "remove": "Remove",
+        "suspendTitle": "Suspend access",
+        "suspendBody": "{name} will not be able to sign in to the portal until reactivated. You can reactivate at any time.",
+        "removeTitle": "Remove access",
+        "removeBody": "{name} will lose access to the portal. To restore it you must invite them again.",
+        "done": {
+          "suspend": "Access for {name} suspended.",
+          "reactivate": "Access for {name} reactivated.",
+          "remove": "Access for {name} removed.",
+          "resend": "Invitation resent to {name}."
+        }
       }
     },
     "catalogs": {

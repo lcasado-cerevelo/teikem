@@ -15,8 +15,12 @@ namespace Teikem.Api.Controllers;
 [ApiController]
 [Route("api/v1")]
 [Authorize]
-public sealed class PortalUsersController(PortalUserService portalUsers) : ControllerBase
+public sealed class PortalUsersController(PortalUserService portalUsers, PortalUserDirectoryService directory) : ControllerBase
 {
+    /// <summary>Lote 121 — TODAS las personas de portal de la compañía (de los clientes y los consignatarios), con su tipo. <c>kind</c>: CLIENT o CONSIGNEE (vacío = todas); <c>includeRemoved</c>: también las dadas de baja.</summary>
+    [HttpGet("portal-users"), RequireModule(ModuleKeys.ClientPortal), RequirePermission(PermissionCatalog.PortalUsersManage)]
+    public Task<IReadOnlyList<PortalUserAdminDto>> ListAll([FromQuery] string? kind, [FromQuery] bool includeRemoved, CancellationToken ct) => directory.ListAsync(kind, includeRemoved, ct);
+
     [HttpGet("clients/{publicId:guid}/portal-users"), RequireModule(ModuleKeys.ClientPortal), RequirePermission(PermissionCatalog.PortalUsersManage)]
     public Task<IReadOnlyList<PortalUserDto>> List(Guid publicId, CancellationToken ct) => portalUsers.GetForClientAsync(publicId, ct);
 

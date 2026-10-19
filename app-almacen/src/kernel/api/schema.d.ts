@@ -29230,6 +29230,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portal-users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    kind?: string;
+                    includeRemoved?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalUserAdminDto"][];
+                        "application/json": components["schemas"]["PortalUserAdminDto"][];
+                        "text/json": components["schemas"]["PortalUserAdminDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -39277,6 +39317,25 @@ export interface components {
         };
         PortalProfileRequest: {
             fullName?: string | null;
+        };
+        PortalUserAdminDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            clientCode?: string | null;
+            kind?: string | null;
+            consigneeName?: string | null;
+            email?: string | null;
+            fullName?: string | null;
+            role?: string | null;
+            roleLabel?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            /** Format: date-time */
+            lastLoginUtc?: string | null;
+            isActive?: boolean;
         };
     };
     responses: never;

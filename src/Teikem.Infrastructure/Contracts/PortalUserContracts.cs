@@ -23,3 +23,10 @@ public sealed record PortalInviteResultDto(PortalUserDto User, string? InviteTok
 
 /// <summary>Aceptación anónima de la invitación: el invitado fija su propia contraseña (R41).</summary>
 public sealed record PortalAcceptInviteRequest(string Email, string Token, string Password);
+
+/// <summary>
+/// Lote 121 — una persona de portal en la lista de TODA la compañía (Sistema → Roles y usuarios → Clientes y Consignatarios). <c>Kind</c> = CLIENT (persona de un cliente) o CONSIGNEE (acceso propio de un consignatario, con
+/// su <c>ConsigneeName</c>). Las acciones (suspender, reactivar, dar de baja, reenviar la invitación) usan los mismos endpoints por cliente que el expediente: <c>ClientPublicId</c> + <c>Id</c>.
+/// </summary>
+public sealed record PortalUserAdminDto(int Id, Guid ClientPublicId, string ClientName, string ClientCode, string Kind, string? ConsigneeName, string Email, string? FullName, string Role, string RoleLabel,
+    string Status, string StatusLabel, DateTime? LastLoginUtc, bool IsActive);

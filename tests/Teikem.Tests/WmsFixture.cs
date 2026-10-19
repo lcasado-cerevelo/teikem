@@ -394,6 +394,7 @@ internal sealed class WmsFixture : IAsyncDisposable
         S(StatusDomains.PortalUserStatus, PortalUserStatuses.Invited, pipe, 1, true);
         S(StatusDomains.PortalUserStatus, PortalUserStatuses.Active, pipe, 2);
         S(StatusDomains.PortalUserStatus, PortalUserStatuses.Disabled, term, 3);   // Lote 117: quitar el acceso de un consignatario
+        S(StatusDomains.PortalUserStatus, PortalUserStatuses.Suspended, lat, 4);   // Lote 121: la lista de personas de portal las muestra suspendidas
         ReceiptStatusSeed.AddLateralEntries(Db, LookupId(LookupDomains.EntityType, EntityTypes.Receipt), StatusId);
 
         // 3G: WAREHOUSE_TASK CANCELLED solo desde PENDING e IN_PROGRESS.

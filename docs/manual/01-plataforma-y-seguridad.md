@@ -1148,3 +1148,26 @@ Validaciones:
 
 ## Ajuste de sesiones: `Auth:Sessions:SingleSessionPerBrowser`
 Por omisión (`true`) al iniciar sesión se cierran las sesiones anteriores de la misma persona, con el mismo navegador y la misma IP. Solo en **pruebas** se pone en `false` (variable de entorno `Auth__Sessions__SingleSessionPerBrowser=false`, como ya hace el CI): los recorridos de Playwright entran en paralelo con el mismo administrador desde el mismo navegador y, con la regla activa, unos cerraban la sesión de otros («Sesión inválida.» al reautenticar). **Nunca se apaga en producción.**
+
+## Clientes y Consignatarios en «Roles y usuarios» (Lote 121)
+
+> Regla del dueño (2026-10-18): **todos los usuarios —de staff, de portal y de consignatario— los controlan el administrador de la plataforma y el administrador de la compañía** (los de su compañía).
+
+**Sistema → Roles y usuarios** tiene cuatro pestañas: **Roles**, **Usuarios** (el personal de la compañía), **Clientes** (las personas del portal de TODOS los clientes de la compañía) y **Consignatarios** (los accesos propios de los consignatarios). Las dos últimas se ven con el permiso **`portalusers.manage`** y el módulo **CLIENT_PORTAL** encendido.
+
+Cada fila dice el **tipo** (Cliente / Consignatario), el cliente (nombre y código), el consignatario (en la pestaña Consignatarios), el rol, el estatus (Invitado, Activo, Suspendido, Inhabilitado) y el último acceso. Acciones por fila (las mismas del expediente del cliente, con el mismo permiso):
+
+- **Abrir el cliente:** va a su expediente.
+- **Reenviar invitación** (si está Invitado).
+- **Suspender** (si está Activo; pide confirmar): no entra al portal hasta que se reactive y **su sesión abierta se corta al instante**.
+- **Reactivar** (si está Suspendido).
+- **Dar de baja** (pide confirmar): pierde el acceso; para devolvérselo hay que invitarle de nuevo. Las personas dadas de baja salen con **Incluir dados de baja**.
+
+**No se invita desde aquí:** a las personas de un cliente las invita la compañía desde el expediente del cliente y a los consignatarios los invita el cliente desde su portal. Todo lo que se hace queda en la bitácora de seguridad con quién lo hizo (y si fue el administrador de la plataforma).
+
+El **administrador de la plataforma** trabaja dentro de la compañía que tenga activa (la cambia como siempre); desde ahí ve y controla a todas las personas de portal y consignatarios de esa compañía.
+
+| Método y ruta | Permiso | Qué hace |
+|---|---|---|
+| `GET /api/v1/portal-users?kind=CLIENT\|CONSIGNEE&includeRemoved=false` | `portalusers.manage` + módulo CLIENT_PORTAL | La lista de la compañía (solo lectura). 400 «El tipo debe ser CLIENT o CONSIGNEE.»; una persona de portal responde 403. |
+| `POST /api/v1/clients/{publicId}/portal-users/{id}/suspend` · `reactivate` · `remove` · `resend-invite` | `portalusers.manage` | Las acciones de siempre, con el cliente de la fila. |
