@@ -47,6 +47,18 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
     public const string OrdersWithoutDriverFilter =
         "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"StatusCode\",\"op\":\"in\",\"value\":[\"SUBMITTED\",\"PICKUP\",\"UNASSIGNED\",\"ASSIGNED\"]},{\"field\":\"HasAssignedDriver\",\"op\":\"isFalse\"}]}";
 
+    /// <summary>Lote 125: órdenes abiertas con el SLA en riesgo o ya vencido (campo SlaState de TransportOrderDataSource).</summary>
+    public const string OrdersSlaRiskFilter =
+        "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"SlaState\",\"op\":\"in\",\"value\":[\"AT_RISK\",\"BREACHED\"]}]}";
+
+    /// <summary>Lote 125: órdenes ya entregadas que tenían SLA (cumplido o fuera de SLA): su promedio de SlaMetPct es el % de entregas dentro del SLA.</summary>
+    public const string OrdersSlaDeliveredFilter =
+        "{\"and\":[{\"field\":\"SlaState\",\"op\":\"in\",\"value\":[\"MET\",\"MISSED\"]}]}";
+
+    /// <summary>Lote 125: órdenes con SLA (las que tienen reloj o ya se entregaron con él), para repartirlas por estado.</summary>
+    public const string OrdersWithSlaFilter =
+        "{\"and\":[{\"field\":\"SlaState\",\"op\":\"in\",\"value\":[\"ON_TRACK\",\"AT_RISK\",\"BREACHED\",\"MET\",\"MISSED\"]}]}";
+
     /// <summary>Lote 5: órdenes activas en excepción (FAILED, el intento fallido; CANCELLED no cuenta).</summary>
     public const string OrdersInExceptionFilter =
         "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"IsException\",\"op\":\"isTrue\"}]}";
@@ -295,6 +307,11 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
             EntityTypes.TransportOrder, null, count, OrdersWithoutDriverFilter, all, true, 72, module: ops);
         Indicator("Órdenes en excepción", "Órdenes activas en espera, entrega parcial o fallida", "Active orders on hold, partial or failed",
             EntityTypes.TransportOrder, null, count, OrdersInExceptionFilter, all, true, 73, module: ops);
+        // Lote 125 (P12) — SLA de las órdenes (nivel de servicio del contrato; reloj desde que se recoge hasta que se entrega)
+        Indicator("Órdenes con SLA en riesgo", "Órdenes abiertas a punto de pasar el SLA de su contrato o que ya lo pasaron", "Open orders about to miss their contract SLA or already past it",
+            EntityTypes.TransportOrder, null, count, OrdersSlaRiskFilter, all, true, 74, module: ops);
+        Indicator("Entregas dentro del SLA", "Porcentaje de las órdenes entregadas en los últimos 30 días (con SLA) que se entregaron dentro del plazo de su contrato", "Share of orders delivered in the last 30 days (with an SLA) delivered within their contract deadline",
+            EntityTypes.TransportOrder, "SlaMetPct", avg, OrdersSlaDeliveredFilter, last30, false, 75, module: ops);
         Indicator("Rutas sobre el máximo de paradas", "Rutas abiertas o en curso con más paradas que el máximo del chofer", "Open or running trips over the driver's stop limit",
             EntityTypes.Trip, null, count, TripsOverStopLimitFilter, all, true, 82, module: ops);
         // Lote 6 — Inventario y almacén (módulo WAREHOUSE). PRODUCT y STOCK_BALANCE son estado actual sin DateField (sin rango);
@@ -453,6 +470,8 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
         Chart("Contratos por estatus", "Distribución de contratos por estatus", "Contracts by status", EntityTypes.Contract, "Status", donut, null, all, false, 60);
         // Lote 3 — Órdenes de transporte
         Chart("Órdenes por estatus", "Distribución de las órdenes de los últimos 30 días por estatus", "Orders of the last 30 days by status", EntityTypes.TransportOrder, "Status", donut, null, last30, true, 70);
+        Chart("Órdenes por estado del SLA", "Órdenes de los últimos 30 días con SLA, por estado (a tiempo, en riesgo, vencida, cumplida, fuera de SLA)", "Orders of the last 30 days with an SLA, by state (on track, at risk, past due, met, missed)",
+            EntityTypes.TransportOrder, "SlaState", donut, OrdersWithSlaFilter, last30, false, 71);
         // Lote 5 — Rutas (por fecha de la ruta, PlanDate)
         Chart("Rutas por estatus", "Distribución de las rutas de los últimos 7 días por estatus", "Trips of the last 7 days by status", EntityTypes.Trip, "Status", donut, null, last7, true, 80);
         // Lote 6 — Inventario y almacén (módulo WAREHOUSE)

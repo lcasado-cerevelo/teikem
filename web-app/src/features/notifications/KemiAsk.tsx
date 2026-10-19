@@ -2,8 +2,9 @@
 // Kemi trae las opciones sin decir de dónde salen; al abrir una muestra la respuesta y pregunta «¿Te contesté?». Si no, busca por otro lado con lo que todavía no mostró.
 // Si no hay nada por encima del suelo de calidad, lo dice. El índice (~1,4 MB) se baja solo la primera vez que alguien pregunta.
 import { useRef, useState, type FormEvent } from 'react'
-import { useT } from '../../kernel/i18n'
-import { buildIndex, type HelpEntry, type HelpIndex } from './helpSearch'
+import { useLocation } from 'react-router-dom'
+import { useLang, useT } from '../../kernel/i18n'
+import { buildIndex, screenTopics, type HelpEntry, type HelpIndex } from './helpSearch'
 
 let indexPromise: Promise<HelpIndex> | null = null
 /** Carga el índice una sola vez por sesión (un chunk aparte: no pesa en el arranque). */
@@ -17,6 +18,8 @@ type Phase = 'ask' | 'results' | 'answer' | 'none' | 'thanks' | 'error'
 
 export function KemiAsk({ onBack }: { onBack: () => void }) {
   const t = useT()
+  const lang = useLang()
+  const { pathname } = useLocation()
   const [phase, setPhase] = useState<Phase>('ask')
   const [draft, setDraft] = useState('')
   const [question, setQuestion] = useState('')
@@ -30,7 +33,7 @@ export function KemiAsk({ onBack }: { onBack: () => void }) {
     setBusy(true)
     try {
       const idx = await loadIndex()
-      const found = idx.search(q, 5, other ? seen.current : undefined).hits.map((h) => h.entry)
+      const found = idx.search(q, 5, other ? seen.current : undefined, screenTopics(pathname)).hits.map((h) => h.entry)
       for (const e of found) seen.current.add(e)
       setHits(found)
       setRound(other ? round + 1 : 0)
@@ -65,6 +68,7 @@ export function KemiAsk({ onBack }: { onBack: () => void }) {
       {phase === 'ask' && (
         <form onSubmit={submit}>
           <p className="kemi-msg">{t('notifications.kemi.askIntro')}</p>
+          {lang === 'en' && <p className="kemi-msg kemi-note">{t('notifications.kemi.askSpanishNote')}</p>}
           <div className="kemi-askrow">
             <input type="text" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t('notifications.kemi.askPlaceholder')} aria-label={t('notifications.kemi.askLabel')} maxLength={300} autoFocus />
             <button type="submit" className="kemi-opt" disabled={draft.trim() === '' || busy}>

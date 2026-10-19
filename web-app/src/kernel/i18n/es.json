@@ -3164,6 +3164,46 @@
           "group": "Órdenes sin chofer",
           "reviewLabel": "Asignar chofer a {count} órdenes"
         },
+        "ORDERS_FAILED": {
+          "titleOne": "1 orden en intento fallido",
+          "title": "{count} órdenes en intento fallido",
+          "detail": "La entrega no se pudo: hay que reprogramarla, devolverla o contactar al consignatario",
+          "oldest": "La más antigua",
+          "days": "{n} días",
+          "group": "Órdenes en intento fallido",
+          "reviewLabel": "Revisar {count} órdenes en intento fallido"
+        },
+        "CLAIMS_OPEN": {
+          "titleOne": "1 reclamación abierta",
+          "title": "{count} reclamaciones abiertas",
+          "detail": "Piezas reclamadas que todavía no se resuelven (pagada, rechazada o cerrada)",
+          "oldest": "La más antigua",
+          "days": "{n} días",
+          "amount": "Valor declarado",
+          "group": "Reclamaciones abiertas",
+          "reviewLabel": "Revisar {count} reclamaciones abiertas"
+        },
+        "FLEET_DOCS_DUE": {
+          "titleOne": "1 documento de flota vencido o por vencer",
+          "title": "{count} documentos de flota vencidos o por vencer",
+          "detail": "Documentos de vehículos y choferes vencidos o que vencen en 30 días",
+          "expired": "Vencidos",
+          "expiring": "Por vencer",
+          "first": "El primero",
+          "left": "Vence en {n} días",
+          "late": "Vencido hace {n} días",
+          "group": "Documentos de flota por vencer",
+          "reviewLabel": "Revisar {count} documentos de flota"
+        },
+        "INVOICES_OVERDUE": {
+          "titleOne": "1 factura vencida",
+          "title": "{count} facturas vencidas",
+          "detail": "Pasó su plazo de pago y siguen con saldo",
+          "oldest": "La más vencida",
+          "days": "{n} días",
+          "group": "Facturas vencidas",
+          "reviewLabel": "Revisar {count} facturas vencidas"
+        },
         "SLA_AT_RISK": {
           "titleOne": "1 orden en riesgo de pasar su SLA",
           "title": "{count} órdenes en riesgo de pasar su SLA",
@@ -9292,6 +9332,7 @@
       "askChange": "Cambiar la pregunta",
       "askToList": "Volver a la lista",
       "askError": "No pude cargar la ayuda. Intenta de nuevo.",
+      "askSpanishNote": "Aviso: el manual y la FAQ están escritos en español.",
       "askBack": "Volver",
       "name": "Kemi",
       "subtitle": "Asistente de Teikem",

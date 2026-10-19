@@ -1,7 +1,7 @@
 // Lote 124 — la búsqueda de Kemi sin IA: palabras sin acentos ni plurales, intención por la forma de la pregunta, suelo de calidad y búsqueda "por otro lado".
 import { describe, expect, it } from 'vitest'
 import idx from './helpIndex.json'
-import { buildIndex, intentOf, norm, palabras, type HelpEntry } from './helpSearch'
+import { buildIndex, expandQuery, intentOf, norm, palabras, screenTopics, type HelpEntry } from './helpSearch'
 
 const e = (k: 'f' | 'm', t: string, x: string, c = 'Capítulo'): HelpEntry => ({ k, t, c, x })
 const small = buildIndex([
@@ -68,5 +68,29 @@ describe('con el manual y la FAQ de verdad', () => {
   })
   it('algo que no existe responde vacío', () => {
     expect(real.search('xyzzy plugh').hits).toEqual([])
+  })
+})
+
+describe('inglés y pantalla', () => {
+  it('las palabras comunes en inglés se acompañan de su equivalente en español', () => {
+    expect(expandQuery('how do I change my password')).toContain('contraseña')
+    expect(expandQuery('cambiar contraseña')).toBe('cambiar contraseña')
+    expect(intentOf('how do I register a delivery')).toBe('how')
+    expect(small.search('how do I change my password').hits[0].entry.t).toBe('Cambio de contraseña')
+    expect(small.search('invoices').hits[0].entry.t).toBe('Facturas')
+  })
+  it('la pantalla donde está la persona sube lo documentado de ella', () => {
+    expect(screenTopics('/orders/abc')).toContain('ordenes de transporte')
+    expect(screenTopics('/warehouse/rentals/1')).toEqual(['rentas'])
+    expect(screenTopics('/warehouse/products')).toContain('inventario y almacen')
+    expect(screenTopics('/nada/raro')).toEqual([])
+    const ctx = buildIndex([
+      { k: 'm', t: 'Cancelar', c: 'Rentas (submódulo de Almacén)', x: 'Cómo cancelar una renta antes del despacho del equipo.' },
+      { k: 'm', t: 'Cancelar', c: 'Órdenes de transporte', x: 'Cómo cancelar una orden antes del despacho del equipo.' },
+    ])
+    const plain = ctx.search('cancelar despacho')
+    const onOrders = ctx.search('cancelar despacho', 5, undefined, screenTopics('/orders'))
+    expect(onOrders.hits[0].entry.c).toBe('Órdenes de transporte')
+    expect(onOrders.hits[0].score).toBeGreaterThan(plain.hits.find((h) => h.entry.c === 'Órdenes de transporte')!.score)
   })
 })

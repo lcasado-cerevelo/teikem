@@ -14,7 +14,7 @@ export type AttentionGroupDto = components['schemas']['AttentionGroupDto']
 type Translate = (key: string, params?: TParams) => string
 
 /** Tipos de aviso que esta web sabe describir (el resto se pinta con su código y su "Revisar"). */
-export const ATTENTION_CODES = ['INVENTORY_DISCREPANCY', 'RENTAL_DUE', 'SALES_BACKORDER_READY', 'ORDERS_NO_DRIVER', 'COD_UNRECONCILED', 'SLA_AT_RISK'] as const
+export const ATTENTION_CODES = ['INVENTORY_DISCREPANCY', 'RENTAL_DUE', 'SALES_BACKORDER_READY', 'ORDERS_NO_DRIVER', 'COD_UNRECONCILED', 'SLA_AT_RISK', 'ORDERS_FAILED', 'CLAIMS_OPEN', 'FLEET_DOCS_DUE', 'INVOICES_OVERDUE'] as const
 export type AttentionCode = (typeof ATTENTION_CODES)[number]
 
 export function isKnownAttention(code: string | null | undefined): code is AttentionCode {
@@ -110,6 +110,10 @@ export function attentionRowText(item: AttentionItemDto, t: Translate, lang: str
   if (item.code === 'ORDERS_NO_DRIVER') return noDriverText(p, t, since)
   if (item.code === 'COD_UNRECONCILED') return codUnreconciledText(p, t, since)
   if (item.code === 'SLA_AT_RISK') return slaAtRiskText(p, t, since)
+  if (item.code === 'ORDERS_FAILED') return countAlertText('ORDERS_FAILED', p, t, since, daysFigure('oldestDays'))
+  if (item.code === 'CLAIMS_OPEN') return countAlertText('CLAIMS_OPEN', p, t, since, daysFigure('oldestDays'), (q, tt, base) => [{ label: tt(`${base}.amount`), value: formatMoney(Number(q.amount ?? '0')) }])
+  if (item.code === 'FLEET_DOCS_DUE') return fleetDocsText(p, t, since)
+  if (item.code === 'INVOICES_OVERDUE') return countAlertText('INVOICES_OVERDUE', p, t, since, daysFigure('oldestDays'))
 
   const title = item.code ?? ''
   return { title, detail: '', figures: [], since, reviewLabel: title ? `${review} ${title}` : review }
@@ -230,6 +234,57 @@ function slaAtRiskText(p: Record<string, string>, t: Translate, since: string): 
     { label: t(`${base}.breached`), value: formatNumber(breached), emphasis: breached > 0 },
   ]
   if (Number.isFinite(hours)) figures.push({ label: t(`${base}.tightest`), value: t(hours < 0 ? `${base}.late` : `${base}.left`, { n: formatNumber(Math.abs(hours)) }), emphasis: hours < 0 })
+  return {
+    title: t(count === 1 ? `${base}.titleOne` : `${base}.title`, { count: formatNumber(count) }),
+    detail: t(`${base}.detail`),
+    figures,
+    since,
+    reviewLabel: t(`${base}.reviewLabel`, { count: formatNumber(count) }),
+  }
+}
+
+/** Lote 125 (P12) — la cifra «La más antigua: N días» de un aviso agregado cuyo param es `key` (días); no sale si es 0. */
+function daysFigure(key: string) {
+  return (p: Record<string, string>, t: Translate, base: string): AttentionFigure[] => {
+    const days = Number(p[key] ?? '0')
+    return Number.isFinite(days) && days > 0 ? [{ label: t(`${base}.oldest`), value: t(`${base}.days`, { n: formatNumber(days) }), emphasis: days >= 2 }] : []
+  }
+}
+
+/**
+ * Lote 125 (P12) — alertas operacionales agregadas con la misma forma: ORDERS_FAILED (intento fallido), CLAIMS_OPEN (reclamaciones abiertas) e INVOICES_OVERDUE (facturas vencidas). Params del servidor: count y las cifras de cada una
+ * (oldestDays; amount en reclamaciones). «Revisar» abre la pantalla de cada una.
+ */
+function countAlertText(
+  code: string,
+  p: Record<string, string>,
+  t: Translate,
+  since: string,
+  ...figureFns: Array<(p: Record<string, string>, t: Translate, base: string) => AttentionFigure[]>
+): AttentionRowText {
+  const base = `analytics.attention.items.${code}`
+  const count = Number(p.count ?? '0')
+  return {
+    title: t(count === 1 ? `${base}.titleOne` : `${base}.title`, { count: formatNumber(count) }),
+    detail: t(`${base}.detail`),
+    figures: figureFns.flatMap((fn) => fn(p, t, base)),
+    since,
+    reviewLabel: t(`${base}.reviewLabel`, { count: formatNumber(count) }),
+  }
+}
+
+/** Lote 125 (P12) — documentos de flota vencidos o por vencer (FLEET_DOCS_DUE). Params: expired, expiring y minDays (negativo = lleva ese tiempo vencido el que primero vence). */
+function fleetDocsText(p: Record<string, string>, t: Translate, since: string): AttentionRowText {
+  const base = 'analytics.attention.items.FLEET_DOCS_DUE'
+  const expired = Number(p.expired ?? '0')
+  const expiring = Number(p.expiring ?? '0')
+  const count = expired + expiring
+  const days = Number(p.minDays ?? '0')
+  const figures: AttentionFigure[] = [
+    { label: t(`${base}.expired`), value: formatNumber(expired), emphasis: expired > 0 },
+    { label: t(`${base}.expiring`), value: formatNumber(expiring) },
+  ]
+  if (Number.isFinite(days)) figures.push({ label: t(`${base}.first`), value: t(days < 0 ? `${base}.late` : `${base}.left`, { n: formatNumber(Math.abs(days)) }), emphasis: days < 0 })
   return {
     title: t(count === 1 ? `${base}.titleOne` : `${base}.title`, { count: formatNumber(count) }),
     detail: t(`${base}.detail`),

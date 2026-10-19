@@ -9373,6 +9373,16 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 
 **No veo la opción de preguntar.** Kemi debe estar despierta (si está dormida, un clic en el ícono de la cabecera la despierta); la opción es la primera de su lista.
 
-**Escribí la pregunta en inglés y Kemi no encuentra.** El manual y la FAQ están en español, así que Kemi busca en español; escriba las palabras en español.
+**Escribí la pregunta en inglés.** Kemi entiende las palabras comunes en inglés (order, invoice, password, driver, delivery…) y busca su equivalente, pero el manual y la FAQ están en español: las respuestas salen en español. Si no encuentra, pruebe con la palabra en español.
 
 **Corregí el manual y Kemi sigue con lo viejo.** El índice se regenera con `npm run help:index` (o `npm run check`) y llega con la siguiente compilación de la web.
+
+## Alertas operacionales y SLA (Lote 125)
+
+**¿Qué avisos nuevos hay en «Necesita tu atención»?** Órdenes en intento fallido, reclamaciones abiertas, documentos de flota vencidos o por vencer y facturas vencidas. Cada uno lo ve quien tiene el permiso (`orders.view`, `claims.view`, `fleet.view`, `billing.view`) y el módulo encendido; si no hay nada que avisar, no aparece.
+
+**El aviso de intento fallido sigue después de reprogramar la orden.** El aviso cuenta las órdenes que están en «Intento fallido»; en cuanto la orden cambia de estatus, desaparece en la siguiente lectura.
+
+**Las facturas vencidas no coinciden con las que veo en Facturación.** El aviso cuenta las facturas en estatus «Vencida» (las que el trabajo programado marcó al pasar su plazo con saldo); una factura recién pasada de plazo se marca en la siguiente corrida del trabajo.
+
+**¿Dónde veo el porcentaje de entregas dentro del SLA?** En el indicador «Entregas dentro del SLA» (se enciende desde «Organizar» en el Pulso) y en el gráfico «Órdenes por estado del SLA». Solo cuenta órdenes con SLA en su contrato.

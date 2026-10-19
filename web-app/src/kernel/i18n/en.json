@@ -3164,6 +3164,46 @@
           "group": "Orders without a driver",
           "reviewLabel": "Assign a driver to {count} orders"
         },
+        "ORDERS_FAILED": {
+          "titleOne": "1 order with a failed attempt",
+          "title": "{count} orders with a failed attempt",
+          "detail": "The delivery could not be made: reschedule it, return it or contact the consignee",
+          "oldest": "The oldest",
+          "days": "{n} days",
+          "group": "Orders with a failed attempt",
+          "reviewLabel": "Review {count} orders with a failed attempt"
+        },
+        "CLAIMS_OPEN": {
+          "titleOne": "1 open claim",
+          "title": "{count} open claims",
+          "detail": "Claimed pieces that are not resolved yet (paid, rejected or closed)",
+          "oldest": "The oldest",
+          "days": "{n} days",
+          "amount": "Declared value",
+          "group": "Open claims",
+          "reviewLabel": "Review {count} open claims"
+        },
+        "FLEET_DOCS_DUE": {
+          "titleOne": "1 fleet document expired or expiring",
+          "title": "{count} fleet documents expired or expiring",
+          "detail": "Vehicle and driver documents expired or expiring within 30 days",
+          "expired": "Expired",
+          "expiring": "Expiring",
+          "first": "The first one",
+          "left": "Expires in {n} days",
+          "late": "Expired {n} days ago",
+          "group": "Fleet documents expiring",
+          "reviewLabel": "Review {count} fleet documents"
+        },
+        "INVOICES_OVERDUE": {
+          "titleOne": "1 overdue invoice",
+          "title": "{count} overdue invoices",
+          "detail": "Past their payment deadline and still with a balance",
+          "oldest": "The most overdue",
+          "days": "{n} days",
+          "group": "Overdue invoices",
+          "reviewLabel": "Review {count} overdue invoices"
+        },
         "SLA_AT_RISK": {
           "titleOne": "1 order at risk of missing its SLA",
           "title": "{count} orders at risk of missing their SLA",
@@ -9292,6 +9332,7 @@
       "askChange": "Change the question",
       "askToList": "Back to the list",
       "askError": "I couldn't load the help. Please try again.",
+      "askSpanishNote": "Heads up: the manual and FAQ are written in Spanish, so my answers will be in Spanish.",
       "askBack": "Back",
       "name": "Kemi",
       "subtitle": "Teikem assistant",

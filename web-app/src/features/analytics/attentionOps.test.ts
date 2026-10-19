@@ -73,3 +73,35 @@ describe('aviso SLA_AT_RISK', () => {
     expect(attentionRowText(sla(), tEn, 'en').title).toBe('6 orders at risk of missing their SLA')
   })
 })
+
+// Lote 125 (P12) — alertas operacionales: intento fallido, reclamaciones abiertas, documentos de flota e facturas vencidas.
+const alert = (code: string, params: Record<string, string>, route: string): AttentionItemDto => ({ code, module: 'OPERATIONS', tone: 'warn', params, route, query: null, sinceUtc: null })
+
+describe('alertas operacionales', () => {
+  it('son tipos conocidos y se rotulan', () => {
+    for (const [code, label] of [['ORDERS_FAILED', 'Órdenes en intento fallido'], ['CLAIMS_OPEN', 'Reclamaciones abiertas'], ['FLEET_DOCS_DUE', 'Documentos de flota por vencer'], ['INVOICES_OVERDUE', 'Facturas vencidas']] as const) {
+      expect(isKnownAttention(code)).toBe(true)
+      expect(attentionGroupLabel({ code, total: 1, route: '/orders' }, t)).toBe(label)
+    }
+  })
+  it('intento fallido y facturas vencidas: título con la cuenta y la más antigua', () => {
+    const failed = attentionRowText(alert('ORDERS_FAILED', { count: '4', oldestDays: '3' }, '/orders'), t, 'es')
+    expect(failed.title).toBe('4 órdenes en intento fallido')
+    expect(failed.figures).toEqual([{ label: 'La más antigua', value: '3 días', emphasis: true }])
+    expect(attentionRowText(alert('ORDERS_FAILED', { count: '1', oldestDays: '0' }, '/orders'), t, 'es')).toMatchObject({ title: '1 orden en intento fallido', figures: [] })
+    const inv = attentionRowText(alert('INVOICES_OVERDUE', { count: '2', oldestDays: '12' }, '/money/billing'), t, 'es')
+    expect(inv.title).toBe('2 facturas vencidas')
+    expect(inv.reviewLabel).toBe('Revisar 2 facturas vencidas')
+  })
+  it('reclamaciones abiertas: cuenta, la más antigua y el valor declarado', () => {
+    const text = attentionRowText(alert('CLAIMS_OPEN', { count: '2', oldestDays: '9', amount: '75.50' }, '/ops/claims'), t, 'es')
+    expect(text.title).toBe('2 reclamaciones abiertas')
+    expect(text.figures.map((f) => f.label)).toEqual(['La más antigua', 'Valor declarado'])
+  })
+  it('documentos de flota: vencidos, por vencer y el primero', () => {
+    const text = attentionRowText(alert('FLEET_DOCS_DUE', { expired: '2', expiring: '3', minDays: '-4' }, '/catalog/fleet'), t, 'es')
+    expect(text.title).toBe('5 documentos de flota vencidos o por vencer')
+    expect(text.figures.map((f) => [f.label, f.value])).toEqual([['Vencidos', '2'], ['Por vencer', '3'], ['El primero', 'Vencido hace 4 días']])
+    expect(attentionRowText(alert('FLEET_DOCS_DUE', { expired: '0', expiring: '1', minDays: '12' }, '/catalog/fleet'), tEn, 'en').figures[2].value).toBe('Expires in 12 days')
+  })
+})

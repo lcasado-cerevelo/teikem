@@ -56,8 +56,8 @@ export const palabras = (s: string): string[] =>
     .filter((w) => w.length > 2 && !VACIAS.has(w))
     .map(raiz)
 
-const BLOCKED = /(no me deja|no me permite|no puedo|no se puede|me dice|me sale|dice que|error|falla|bloque|por que no|porque no|rechaz|invalid|no aparece|no encuentro|que significa)/
-const HOW = /(^| )(como|de que forma|donde (se|esta|puedo)|para que sirve|pasos|se hace|se crea|se registra|se configura|que es)( |$)/
+const BLOCKED = /(cannot|can t|won t|doesn t|not working|what does|no me deja|no me permite|no puedo|no se puede|me dice|me sale|dice que|error|falla|bloque|por que no|porque no|rechaz|invalid|no aparece|no encuentro|que significa)/
+const HOW = /(^| )(how do|how to|how can|how does|como|de que forma|donde (se|esta|puedo)|para que sirve|pasos|se hace|se crea|se registra|se configura|que es)( |$)/
 
 /** La forma de la pregunta: un fallo («no me deja…», «qué significa…») es de la FAQ y un procedimiento («cómo se hace…») es del manual. */
 export function intentOf(question: string): HelpIntent {
@@ -84,16 +84,73 @@ interface Prepared {
   title: Set<string>
   /** Las palabras del capítulo o tema: los apartados genéricos («Qué hace») se encuentran por el nombre de su capítulo. */
   ctx: Set<string>
+  /** Capítulo y tema, normalizados, para el contexto de pantalla. */
+  where: string
+}
+
+/** El manual y la FAQ están en español: las palabras de uso común en inglés se acompañan de su equivalente para que quien pregunta en inglés también encuentre. */
+const GLOSSARY: Record<string, string> = {
+  order: 'orden', orders: 'orden', delivery: 'entrega', deliver: 'entrega', delivered: 'entrega', invoice: 'factura', invoices: 'factura', billing: 'facturación', claim: 'reclamación', claims: 'reclamación',
+  password: 'contraseña', login: 'entrar acceso', sign: 'entrar acceso', driver: 'chofer', drivers: 'chofer', route: 'ruta', routes: 'ruta', client: 'cliente', clients: 'cliente', customer: 'cliente',
+  consignee: 'consignatario', consignees: 'consignatario', warehouse: 'almacén', inventory: 'inventario', stock: 'inventario', return: 'devolución', returns: 'devolución', user: 'usuario', users: 'usuario',
+  permission: 'permiso', permissions: 'permiso', report: 'informe', reports: 'informe', rental: 'renta', rentals: 'renta', tax: 'impuesto', taxes: 'impuesto', receipt: 'recibo', receiving: 'recibo',
+  count: 'conteo', counting: 'conteo', label: 'etiqueta', labels: 'etiqueta', printer: 'impresora', notification: 'aviso', notifications: 'aviso', alert: 'aviso', alerts: 'aviso', message: 'mensaje',
+  messages: 'mensaje', payment: 'pago', payments: 'pago', vehicle: 'vehículo', fleet: 'flota', document: 'documento', documents: 'documento', status: 'estatus', cancel: 'cancelar', create: 'crear',
+  register: 'registrar', suspend: 'suspender', reactivate: 'reactivar', account: 'cuenta', profile: 'perfil', language: 'idioma', theme: 'tema', dark: 'oscuro', light: 'claro', error: 'error',
+  scan: 'escaneo', pickup: 'pick up', cod: 'cod', sla: 'sla', indicator: 'indicador', indicators: 'indicador', chart: 'gráfico', charts: 'gráfico', email: 'correo', mail: 'correo', device: 'aparato',
+  shipping: 'envío', shipment: 'envío', price: 'precio', prices: 'precio', contract: 'contrato', contracts: 'contrato', rate: 'tarifa', rates: 'tarifa', settlement: 'liquidación', dispatch: 'despacho',
+}
+
+/** La pregunta con el equivalente en español de las palabras comunes en inglés (si no hay ninguna, queda igual). */
+export function expandQuery(question: string): string {
+  const extra = norm(question).split(' ').map((w) => GLOSSARY[w]).filter(Boolean)
+  return extra.length ? `${question} ${extra.join(' ')}` : question
+}
+
+/** Dónde está la persona: palabras (sin acentos) del capítulo o tema del manual que le interesan en cada pantalla; lo documentado de su pantalla sube en el ranking. */
+const SCREEN_TOPICS: Array<[string, string[]]> = [
+  ['/orders', ['ordenes de transporte', 'estatus de la orden', 'registrar la entrega', 'pick up', 'devolucion de ordenes', 'piezas faltantes']],
+  ['/catalog/clients', ['clientes y contratos', 'usuarios de portal']],
+  ['/catalog/consignees', ['consignatarios', 'clientes y contratos']],
+  ['/catalog/drivers', ['flota', 'choferes']],
+  ['/catalog/fleet', ['flota', 'choferes', 'mantenimiento']],
+  ['/ops/dispatch', ['trips y rutas', 'despacho']],
+  ['/ops/monitor', ['trips y rutas']],
+  ['/ops/scan', ['escaneo', 'ordenes de transporte']],
+  ['/ops/claims', ['reclamaciones', 'piezas faltantes']],
+  ['/money/cod', ['cod']],
+  ['/money/billing', ['facturacion', 'pagos', 'notas de credito']],
+  ['/money/driver-pay', ['liquidacion']],
+  ['/money/tax', ['impuestos']],
+  ['/sales-orders', ['ordenes de venta', 'kits', 'backorder']],
+  ['/warehouse/rental', ['rentas']],
+  ['/warehouse', ['inventario y almacen', 'recibo', 'conteo', 'almacen']],
+  ['/system/users', ['plataforma y seguridad', 'usuarios', 'roles']],
+  ['/system/jobs', ['trabajos programados']],
+  ['/system/notifications', ['avisos']],
+  ['/system/announcements', ['enviar avisos']],
+  ['/system/printers', ['impresoras y labels']],
+  ['/system', ['plataforma y seguridad']],
+  ['/analytics', ['pulso del dia', 'indicadores', 'vistas']],
+  ['/messages', ['mensajeria']],
+  ['/', ['pulso del dia']],
+]
+
+/** Los temas del manual que corresponden a la pantalla donde está la persona (la ruta más específica gana). */
+export function screenTopics(pathname: string): string[] {
+  const p = pathname.replace(/\/+$/, '') || '/'
+  const hit = SCREEN_TOPICS.find(([prefix]) => (prefix === '/' ? p === '/' : p === prefix || p.startsWith(`${prefix}/`) || (prefix === '/warehouse/rental' && p.startsWith(prefix))))
+  return hit ? hit[1] : []
 }
 
 export interface HelpIndex {
   size: number
-  search(question: string, limit?: number, skip?: ReadonlySet<HelpEntry>): { intent: HelpIntent; hits: HelpHit[] }
+  search(question: string, limit?: number, skip?: ReadonlySet<HelpEntry>, topics?: readonly string[]): { intent: HelpIntent; hits: HelpHit[] }
 }
 
 /** Arma el índice una vez (idf incluido); cada pregunta después solo puntúa. */
 export function buildIndex(entries: readonly HelpEntry[]): HelpIndex {
-  const prepared: Prepared[] = entries.map((entry) => ({ entry, body: new Set(palabras(`${entry.t} ${entry.c} ${entry.x}`)), title: new Set(palabras(entry.t)), ctx: new Set(palabras(entry.c)) }))
+  const prepared: Prepared[] = entries.map((entry) => ({ entry, body: new Set(palabras(`${entry.t} ${entry.c} ${entry.x}`)), title: new Set(palabras(entry.t)), ctx: new Set(palabras(entry.c)), where: norm(entry.c) }))
   const df = new Map<string, number>()
   for (const p of prepared) for (const w of p.body) df.set(w, (df.get(w) ?? 0) + 1)
   const n = prepared.length || 1
@@ -118,8 +175,8 @@ export function buildIndex(entries: readonly HelpEntry[]): HelpIndex {
 
   return {
     size: prepared.length,
-    search(question, limit = 5, skip) {
-      const query = new Set(palabras(question))
+    search(question, limit = 5, skip, topics = []) {
+      const query = new Set(palabras(expandQuery(question)))
       const intent = intentOf(question)
       if (query.size === 0) return { intent, hits: [] }
       const w = WEIGHT[intent]
@@ -131,6 +188,8 @@ export function buildIndex(entries: readonly HelpEntry[]): HelpIndex {
         s *= w[p.entry.k]
         // el título ES la pregunta: si coincide palabra por palabra, gana
         if (p.title.size === query.size && [...query].every((q) => p.title.has(q))) s *= 1.5
+        // lo documentado de la pantalla donde está la persona sube
+        if (topics.length && topics.some((tp) => p.where.includes(tp))) s *= 1.35
         if (s >= FLOOR) scored.push({ entry: p.entry, score: Number(s.toFixed(3)) })
       }
       scored.sort((a, b) => b.score - a.score)

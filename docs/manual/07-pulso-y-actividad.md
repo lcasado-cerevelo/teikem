@@ -595,6 +595,19 @@ Con el comprobante de entrega (Lote 118) ya hay hora real de entrega, así que e
 - **Campos para vistas, indicadores y gráficos** (fuente `TRANSPORT_ORDER`): `SlaState`, `SlaMaxHours`, `SlaDueUtc` y `SlaHoursLeft`. Por ejemplo, filtre `SlaState = BREACHED` o agrupe por `SlaState` para ver el cumplimiento.
 - **No se avisa** de una orden entregada tarde: ya pasó; sale como «Fuera de SLA» en los campos.
 
+### Alertas operacionales y SLA como indicador (Lote 125, P12)
+
+Cuatro avisos agregados más en «Necesita tu atención» (una fila cada uno, con la cuenta; cada quien ve los suyos por su permiso y módulo):
+
+| Aviso | Qué dice | Quién lo ve | «Revisar» |
+|---|---|---|---|
+| **Intento fallido** (`ORDERS_FAILED`) | «N órdenes en intento fallido» con «La más antigua» (días desde que quedó en Intento fallido); rojo si pasa de 2 días | `orders.view` y módulo `LTL_GROUND` | Órdenes filtradas por Intento fallido |
+| **Reclamaciones abiertas** (`CLAIMS_OPEN`) | «N reclamaciones abiertas» (sin resolver) con la más antigua y el valor declarado; rojo si pasa de 7 días | `claims.view` y módulo `LTL_GROUND` | Reclamaciones |
+| **Documentos de flota** (`FLEET_DOCS_DUE`) | «N documentos de flota vencidos o por vencer» (los del panel «Documentos por vencer», ventana de 30 días) con vencidos, por vencer y cuánto falta al primero; rojo si hay alguno vencido | `fleet.view` y módulo Catálogos | Flota |
+| **Facturas vencidas** (`INVOICES_OVERDUE`) | «N facturas vencidas» con «La más vencida» (días); siempre rojo | `billing.view` y módulo Facturación | Facturación |
+
+Si no hay nada que avisar, la fila no aparece. **Indicadores y gráfico de SLA** (se siembran en toda compañía; se encienden desde «Organizar»): **Órdenes con SLA en riesgo** (en el Pulso por omisión), **Entregas dentro del SLA** (porcentaje de las entregadas en los últimos 30 días con SLA que llegaron dentro del plazo de su contrato; campo `SlaMetPct`: 100 si cumplió, 0 si no) y el gráfico **Órdenes por estado del SLA** (últimos 30 días).
+
 ### Casos frecuentes
 
 - **El Radar no muestra mi orden:** solo cuenta lo abierto; una orden entregada, cancelada o En almacén no sale. Búsquela en Órdenes.

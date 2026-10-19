@@ -129,4 +129,6 @@ Entre las opciones de Kemi (un clic en la mascota) está **«Pregúntame cómo u
 
 No requiere permiso ni módulo: la ve cualquier persona con Kemi despierta. El índice se baja **solo la primera vez que alguien pregunta** (es un archivo aparte, no pesa en el arranque de la web) y trabaja en el propio navegador: sin servicio, sin costo y sin enviar la pregunta a ninguna parte.
 
-**De dónde sale lo que Kemi sabe:** de `docs/manual/*.md` (capítulos y la FAQ), convertidos a un índice con `npm run help:index` (lo corre `npm run check`); al escribir o corregir el manual o la FAQ el índice se regenera y Kemi lo sabe en cuanto se compile la web. El manual está solo en español: en inglés Kemi busca igual en el texto en español.
+**De dónde sale lo que Kemi sabe:** de `docs/manual/*.md` (capítulos y la FAQ), convertidos a un índice con `npm run help:index` (lo corre `npm run check`); al escribir o corregir el manual o la FAQ el índice se regenera y Kemi lo sabe en cuanto se compile la web. El manual está solo en español. **En inglés** Kemi entiende las palabras comunes (order, invoice, password, delivery, driver…: se acompañan de su equivalente en español para buscar) y avisa que sus respuestas salen en español.
+
+**La pantalla donde está la persona cuenta:** lo documentado de esa pantalla sube en las opciones (estando en Órdenes, una pregunta de «cancelar» trae primero lo de Órdenes; en Rentas, lo de Rentas; en Facturación, lo de Facturación…).
