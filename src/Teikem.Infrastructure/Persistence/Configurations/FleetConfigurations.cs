@@ -131,6 +131,7 @@ public sealed class DispatchZoneConfiguration : IEntityTypeConfiguration<Dispatc
         b.Property(z => z.Code).HasMaxLength(20).IsRequired();
         b.Property(z => z.Name).HasMaxLength(120);
         b.HasIndex(z => new { z.TenantId, z.Code }).IsUnique().HasDatabaseName("UQ_DispatchZone");
+        b.HasOne(z => z.ZoneGroup).WithMany().HasForeignKey(z => z.ZoneGroupId).OnDelete(DeleteBehavior.NoAction);   // Lote 129
         b.HasMany(z => z.Members).WithOne(m => m.DispatchZone).HasForeignKey(m => m.DispatchZoneId).OnDelete(DeleteBehavior.NoAction);
     }
 }

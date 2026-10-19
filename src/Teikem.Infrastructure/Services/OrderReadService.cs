@@ -163,6 +163,7 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
                 returnOfNumber = await db.TransportOrders.AsNoTracking().Where(o => o.TransportOrderId == returnOfId).Select(o => o.OrderNumber).FirstOrDefaultAsync(ct);
         }
 
+        var zoneInfo = (await ZonesOfAsync(new[] { order.DeliveryZoneId }, ct)).GetValueOrDefault(order.DeliveryZoneId ?? 0);   // Lote 129
         var detail = new OrderDetailDto(
             order.TransportOrderId, order.PublicId, order.OrderNumber, order.ClientInvoiceNumber, order.PackBatchNumber,
             client.PublicId, client.Name, contractPublicId,
@@ -192,10 +193,23 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
             SuggestReturn: suggestReturn,
             ReturnOfOrderNumber: returnOfNumber,
             InvoiceProcessedAtUtc: order.InvoiceProcessedAtUtc,
-            InvoiceProcessedByName: order.InvoiceProcessedBy is int ipb ? await db.Users.AsNoTracking().Where(u => u.Id == ipb).Select(u => u.FullName ?? u.Email).FirstOrDefaultAsync(ct) : null);
+            InvoiceProcessedByName: order.InvoiceProcessedBy is int ipb ? await db.Users.AsNoTracking().Where(u => u.Id == ipb).Select(u => u.FullName ?? u.Email).FirstOrDefaultAsync(ct) : null,
+            ZoneCode: zoneInfo?.Code, ZoneName: zoneInfo?.Name, ZoneGroupCode: zoneInfo?.GroupCode, ZoneGroupName: zoneInfo?.GroupName);
         // Lote 39: el monto cotizado solo para quien ve precios (orders.view_price).
         return OrderPriceRules.Apply(detail, await OrderPriceVisibility.CanViewAsync(prices, ct));
     }
+
+    /// <summary>Lote 129: código y nombre de las zonas pedidas y de su nivel, por id de zona.</summary>
+    private async Task<Dictionary<int, ZoneInfo>> ZonesOfAsync(IEnumerable<int?> zoneIds, CancellationToken ct)
+    {
+        var ids = zoneIds.Where(z => z != null).Select(z => z!.Value).Distinct().ToList();
+        if (ids.Count == 0) return new Dictionary<int, ZoneInfo>();
+        return await db.DispatchZones.AsNoTracking().Where(z => ids.Contains(z.DispatchZoneId))
+            .Select(z => new ZoneInfo(z.DispatchZoneId, z.Code, z.Name, z.ZoneGroup != null ? z.ZoneGroup.Code : null, z.ZoneGroup != null ? (z.ZoneGroup.Name ?? z.ZoneGroup.Code) : null))
+            .ToDictionaryAsync(z => z.Id, ct);
+    }
+
+    private sealed record ZoneInfo(int Id, string Code, string? Name, string? GroupCode, string? GroupName);
 
     // ---------------------------------------------------------------- listado paginado
 
@@ -323,6 +337,15 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
         if (q.InvoiceProcessed == false) query = query.Where(o => o.InvoiceProcessedAtUtc == null);
         if (q.ProcessedFromUtc is DateTime pf) query = query.Where(o => o.InvoiceProcessedAtUtc != null && o.InvoiceProcessedAtUtc >= pf);
         if (q.ProcessedToUtc is DateTime pt) query = query.Where(o => o.InvoiceProcessedAtUtc != null && o.InvoiceProcessedAtUtc < pt);
+        // Lote 129: zona de entrega y nivel de zona (varios valores = cualquiera de ellos); NoZone = las órdenes sin zona
+        if (q.ZoneIds is { Count: > 0 } zoneIds) { var zl = zoneIds.ToList(); query = query.Where(o => o.DeliveryZoneId != null && zl.Contains(o.DeliveryZoneId.Value)); }
+        if (q.ZoneGroupIds is { Count: > 0 } groupIds)
+        {
+            var gl = groupIds.ToList();
+            var zonesOfGroups = db.DispatchZones.Where(z => z.ZoneGroupId != null && gl.Contains(z.ZoneGroupId.Value)).Select(z => z.DispatchZoneId);
+            query = query.Where(o => o.DeliveryZoneId != null && zonesOfGroups.Contains(o.DeliveryZoneId.Value));
+        }
+        if (q.NoZone == true) query = query.Where(o => o.DeliveryZoneId == null);
 
         var total = await query.CountAsync(ct);
         // Lote 42: con texto libre sobre las paradas (búsqueda o consignatario: LIKE '%…%', que SQL Server no sabe estimar) se ordena
@@ -415,6 +438,7 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
         var clientIds = orders.Select(o => o.ClientId).Distinct().ToList();
         var clients = await db.Clients.AsNoTracking().Where(c => clientIds.Contains(c.ClientId))
             .Select(c => new { c.ClientId, c.PublicId, c.Name }).ToDictionaryAsync(c => c.ClientId, ct);
+        var zones = await ZonesOfAsync(orders.Select(o => o.DeliveryZoneId), ct);   // Lote 129
 
         var specialIds = orders.Where(o => o.SpecialServiceId.HasValue).Select(o => o.SpecialServiceId!.Value).Distinct().ToList();
         var specialNames = specialIds.Count == 0
@@ -452,7 +476,8 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
                 status.Code, status.Label, status.IsInitial,
                 o.IsSpecialDelivery, o.IsActive, o.CreatedAtUtc,
                 packages,
-                delivery?.SnapLine1, delivery?.SnapLine2, delivery?.SnapState, o.WaybillNumber, o.InvoiceProcessedAtUtc), canViewPrice));   // Lote 44: dirección para labels y documentos; Lote 97: conduce; Lote 128: factura procesada
+                delivery?.SnapLine1, delivery?.SnapLine2, delivery?.SnapState, o.WaybillNumber, o.InvoiceProcessedAtUtc,
+                zones.GetValueOrDefault(o.DeliveryZoneId ?? 0)?.Code, zones.GetValueOrDefault(o.DeliveryZoneId ?? 0)?.GroupCode), canViewPrice));   // Lote 44: dirección para labels y documentos; Lote 97: conduce; Lote 128: factura procesada; Lote 129: zona y nivel
         }
         return items;
     }

@@ -52,8 +52,9 @@ public sealed class RateService(TeikemDbContext db, ITenantContext tenant, ILook
             if (c.ComponentTypeLookupId == baseId)
             {
                 var (svc, svcLabel, pkg, pkgLabel) = await CodesAsync(c, ct);
+                var level = await ZoneGroupOfAsync(c.ZoneGroupId, ct);   // Lote 129
                 perService.Add(new RateRowDto(c.RateComponentId, svc, svcLabel, pkg, pkgLabel, c.FlatAmount ?? 0m,
-                    c.EffectiveFrom, c.EffectiveTo, EffectiveDated.IsCurrentOn(c, date)));
+                    c.EffectiveFrom, c.EffectiveTo, EffectiveDated.IsCurrentOn(c, date), level?.Code, level?.Name ?? level?.Code));
             }
             else if (c.ComponentTypeLookupId == extraId)
             {
@@ -76,6 +77,7 @@ public sealed class RateService(TeikemDbContext db, ITenantContext tenant, ILook
         var serviceTypeId = await RequireLookupAsync(LookupDomains.ServiceType, req.ServiceType, "serviceType", "El tipo de servicio es obligatorio.", ct);
         var packageTypeId = await RequireLookupAsync(LookupDomains.PackageType, req.PackageType, "packageType", "El tipo de paquete es obligatorio.", ct);
         var effectiveFrom = req.EffectiveFrom ?? Today();
+        var zoneGroupId = await ZoneGroupIdAsync(req.ZoneGroup, ct);   // Lote 129: nivel opcional
         decimal? rate = null;
         if (kind == RateKinds.PerService)
         {
@@ -100,14 +102,14 @@ public sealed class RateService(TeikemDbContext db, ITenantContext tenant, ILook
             // (EffectiveTo NULL o > effectiveFrom). UQ_RateComponent_Open solo cubre filas abiertas: es la segunda barrera.
             var duplicate = await db.RateComponents.AnyAsync(c =>
                 c.ContractId == contract.ContractId && c.IsActive && (c.EffectiveTo == null || c.EffectiveTo > effectiveFrom)
-                && c.ComponentTypeLookupId == typeId && c.ServiceTypeLookupId == serviceTypeId && c.PackageTypeLookupId == packageTypeId, ct2);
+                && c.ComponentTypeLookupId == typeId && c.ServiceTypeLookupId == serviceTypeId && c.PackageTypeLookupId == packageTypeId && c.ZoneGroupId == zoneGroupId, ct2);
             if (duplicate) throw new ConflictException(DuplicateOpenRow);
 
             var row = new RateComponent
             {
                 TenantId = tenantId, ContractId = contract.ContractId, RateCardId = null,
                 ComponentTypeLookupId = typeId, BasisLookupId = basisId, PricingModeLookupId = pricingModeId, TierModeLookupId = tierModeId,
-                ServiceTypeLookupId = serviceTypeId, PackageTypeLookupId = packageTypeId,
+                ServiceTypeLookupId = serviceTypeId, PackageTypeLookupId = packageTypeId, ZoneGroupId = zoneGroupId,
                 FlatAmount = rate, UnitAmount = null, MinCharge = null,
                 EffectiveFrom = effectiveFrom, EffectiveTo = null, IsActive = true,
             };
@@ -151,7 +153,7 @@ public sealed class RateService(TeikemDbContext db, ITenantContext tenant, ILook
                 ComponentTypeLookupId = current.ComponentTypeLookupId, BasisLookupId = current.BasisLookupId,
                 PricingModeLookupId = current.PricingModeLookupId, TierModeLookupId = current.TierModeLookupId,
                 ServiceTypeLookupId = current.ServiceTypeLookupId, PackageTypeLookupId = current.PackageTypeLookupId,
-                FromZoneId = current.FromZoneId, ToZoneId = current.ToZoneId, MinCharge = current.MinCharge,
+                FromZoneId = current.FromZoneId, ToZoneId = current.ToZoneId, MinCharge = current.MinCharge, ZoneGroupId = current.ZoneGroupId,
                 FlatAmount = req.Rate, UnitAmount = null,
                 EffectiveFrom = newFrom, EffectiveTo = null, IsActive = true,
             };
@@ -272,7 +274,7 @@ public sealed class RateService(TeikemDbContext db, ITenantContext tenant, ILook
     public async Task<RateQuoteDto> QuoteAsync(RateQuoteRequest req, CancellationToken ct)
     {
         var p = await PrepareQuoteAsync(req, ct);
-        var result = ContractRateResolver.QuoteOrder(p.Rows, p.Flags, p.Lines, req.CodAmount ?? 0m);
+        var result = ContractRateResolver.QuoteOrder(p.Rows, p.Flags, p.Lines, req.CodAmount ?? 0m, req.ZoneGroupId);
         return new RateQuoteDto(p.Contract?.PublicId, p.ContractStatus, p.AsOf,
             result.Lines.Select(l => new QuoteLineDto(l.ServiceType, l.PackageType, l.Pieces, l.BaseRate, l.BaseSource, l.ExtraPieces, l.ExtraSource, l.LineTotal)).ToList(),
             result.DispatchFee, result.CodFee, result.Total, result.RateComponentIds);
@@ -285,7 +287,7 @@ public sealed class RateService(TeikemDbContext db, ITenantContext tenant, ILook
     public async Task<FreightBreakdown> BreakdownAsync(RateQuoteRequest req, CancellationToken ct)
     {
         var p = await PrepareQuoteAsync(req, ct);
-        var pieces = ContractRateResolver.Breakdown(p.Rows, p.Flags, p.Lines, req.CodAmount ?? 0m);
+        var pieces = ContractRateResolver.Breakdown(p.Rows, p.Flags, p.Lines, req.CodAmount ?? 0m, req.ZoneGroupId);
         return new FreightBreakdown(pieces, Money.Round4(pieces.Sum(x => x.Amount)), p.Contract?.ContractId);
     }
 
@@ -456,10 +458,23 @@ public sealed class RateService(TeikemDbContext db, ITenantContext tenant, ILook
         var today = Today();
         var (svc, svcLabel, pkg, pkgLabel) = await CodesAsync(c, ct);
         var isBase = c.ComponentTypeLookupId == baseId;
+        var group = await ZoneGroupOfAsync(c.ZoneGroupId, ct);
         return new RateComponentDto(c.RateComponentId, isBase ? RateKinds.PerService : RateKinds.ExtraPiece, svc, svcLabel, pkg, pkgLabel,
             isBase ? c.FlatAmount ?? 0m : null, c.EffectiveFrom, c.EffectiveTo, EffectiveDated.IsCurrentOn(c, today),
-            isBase ? Array.Empty<TierDto>() : TiersOf(c, today, includeHistory: true));
+            isBase ? Array.Empty<TierDto>() : TiersOf(c, today, includeHistory: true), group?.Code, group?.Name ?? group?.Code);
     }
+
+    /// <summary>Lote 129: el id del nivel de zona por su código (activo, de la compañía); vacío = sin nivel (general); desconocido = 400.</summary>
+    private async Task<int?> ZoneGroupIdAsync(string? code, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(code)) return null;
+        var c = code.Trim().ToUpperInvariant();
+        return await db.ZoneGroups.AsNoTracking().Where(g => g.IsActive && g.Code == c).Select(g => (int?)g.ZoneGroupId).FirstOrDefaultAsync(ct)
+               ?? throw new ValidationException("zoneGroup", Teikem.Domain.Fleet.ZoneGroupRules.NotFoundMessage);
+    }
+
+    private async Task<Teikem.Domain.Fleet.ZoneGroup?> ZoneGroupOfAsync(int? id, CancellationToken ct)
+        => id is int g ? await db.ZoneGroups.AsNoTracking().FirstOrDefaultAsync(x => x.ZoneGroupId == g, ct) : null;
 
     private async Task<TierDto> GetTierDtoAsync(Guid contractPublicId, int componentId, int tierId, CancellationToken ct)
     {
@@ -505,7 +520,7 @@ public sealed class RateService(TeikemDbContext db, ITenantContext tenant, ILook
                 .OrderBy(t => t.MinValue)
                 .Select(t => new TierRow(t.RateTierId, (int)t.MinValue, t.MaxValue.HasValue ? (int)t.MaxValue.Value : null, t.UnitAmount ?? t.FlatAmount ?? 0m))
                 .ToList();
-            result.Add(new RateRow(c.RateComponentId, c.ContractId, kind, svc, pkg, c.FlatAmount ?? c.UnitAmount ?? 0m, tiers));
+            result.Add(new RateRow(c.RateComponentId, c.ContractId, kind, svc, pkg, c.FlatAmount ?? c.UnitAmount ?? 0m, tiers, c.ZoneGroupId));
         }
         return result;
     }

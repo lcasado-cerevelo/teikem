@@ -15,6 +15,7 @@ import { ConfirmDialog, DataTable, DateInput, EmptyState, Field, Filters, Form, 
 import { IconCash } from '../../kernel/ui/screenIcons'
 import { lookupOptions, renameErrors, rethrowRenamed } from '../clients/contractRules'
 import { FormModal } from '../clients/contractUi'
+import { useZoneGroups } from '../fleet/api'
 import { useAddAttemptLevel, useDriverRates, useDriverTripTypes, useRateMutations, type AttemptRate, type DeliveryRate, type DriverDetail, type TripRate } from './api'
 import {
   attemptCellKind,
@@ -80,6 +81,8 @@ function DeliveryAddForm({ publicId }: { publicId: string }) {
   const today = tenantToday()
   const mutations = useRateMutations(publicId)
   const { data: services = [] } = useLookups('ServiceType')
+  const levels = useZoneGroups()
+  const levelOptions = useMemo(() => (levels.data ?? []).map((g) => ({ value: g.code ?? '', label: g.name || g.code || '' })), [levels.data])
   const { data: packages = [] } = useLookups('PackageType')
   const schema = useMemo(() => rateSchema(t, { needs: 'delivery', needsDate: false, today }), [t, today])
   const form = useForm({ resolver: zodResolver(schema), defaultValues: emptyRateValues(today) })
@@ -98,6 +101,9 @@ function DeliveryAddForm({ publicId }: { publicId: string }) {
       </Field>
       <Field name="packageType" label={t('drivers.rates.package')}>
         <Select options={lookupOptions(packages)} placeholder={t('drivers.choose')} />
+      </Field>
+      <Field name="zoneGroup" label={t('drivers.rates.level')}>
+        <Select options={levelOptions} placeholder={t('drivers.rates.allLevels')} />
       </Field>
       <Field name="rate" label={t('drivers.rates.rate')}>
         <NumberInput min={0} step="0.01" />
@@ -187,6 +193,7 @@ export function DriverRatesPanels({ driver }: { driver: DriverDetail }) {
   const deliveryColumns: DataColumn<DeliveryRate>[] = [
     { id: 'service', header: t('drivers.rates.service'), cell: (r) => <b>{r.serviceType ?? r.serviceTypeCode}</b>, sortValue: (r) => r.serviceType ?? '', card: 'title' },
     { id: 'package', header: t('drivers.rates.package'), cell: (r) => r.packageType ?? r.packageTypeCode, sortValue: (r) => r.packageType ?? '' },
+    { id: 'level', header: t('drivers.rates.level'), cell: (r) => r.zoneGroup ?? t('drivers.rates.allLevels'), sortValue: (r) => r.zoneGroup ?? '' },   // Lote 129
     { id: 'rate', header: t('drivers.rates.rate'), align: 'end', cell: (r) => <span className="mono">{money(r.rate)}</span>, sortValue: (r) => r.rate },
     ...datesCols<DeliveryRate>(),
   ]
@@ -196,7 +203,7 @@ export function DriverRatesPanels({ driver }: { driver: DriverDetail }) {
     ...datesCols<TripRate>(),
   ]
 
-  const deliveryName = (r: DeliveryRate) => `${r.serviceType ?? r.serviceTypeCode} · ${r.packageType ?? r.packageTypeCode}`
+  const deliveryName = (r: DeliveryRate) => `${r.serviceType ?? r.serviceTypeCode} · ${r.packageType ?? r.packageTypeCode}${r.zoneGroup ? ` · ${r.zoneGroup}` : ''}`
 
   const editDelivery = (r: DeliveryRate) =>
     setEdit({

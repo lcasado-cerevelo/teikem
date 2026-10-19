@@ -28,7 +28,7 @@ namespace Teikem.Infrastructure.Services;
 /// - Inactivar una zona con rutas abiertas (DRAFT/PLANNED) es 409; reactivarla con miembros que chocan con otra zona
 ///   activa es 409 con el mensaje de conflicto.
 /// </summary>
-public sealed class DispatchZoneService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups)
+public sealed class DispatchZoneService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, ZoneGroupService? zoneGroups = null)
 {
     // ---------------- Mensajes exactos (los cita el manual y la FAQ) ----------------
 
@@ -47,7 +47,7 @@ public sealed class DispatchZoneService(TeikemDbContext db, ITenantContext tenan
 
     public async Task<IReadOnlyList<DispatchZoneDto>> ListAsync(bool includeInactive, CancellationToken ct)
     {
-        var q = db.DispatchZones.AsNoTracking();
+        var q = db.DispatchZones.AsNoTracking().Include(z => z.ZoneGroup).AsQueryable();
         if (!includeInactive) q = q.Where(z => z.IsActive);
         var zones = await q.OrderBy(z => z.Code).ToListAsync(ct);
         if (zones.Count == 0) return Array.Empty<DispatchZoneDto>();
@@ -65,8 +65,10 @@ public sealed class DispatchZoneService(TeikemDbContext db, ITenantContext tenan
         if (await db.DispatchZones.AnyAsync(z => z.Code == code, ct)) throw new ConflictException(DriverRules.DuplicateZoneMessage);
 
         var zone = new DispatchZone { TenantId = tenantId, Code = code!, Name = name, IsActive = true };
+        if (req.ZoneGroupId is int g) zone.ZoneGroupId = (await RequireGroupAsync(g, ct)).ZoneGroupId;   // Lote 129
         db.DispatchZones.Add(zone);
         await db.SaveGuardedAsync(DriverRules.DuplicateZoneMessage, ct); // UQ_DispatchZone (TenantId, Code) es la segunda barrera
+        await db.Entry(zone).Reference(z => z.ZoneGroup).LoadAsync(ct);
         return ToDto(zone, 0);
     }
 
@@ -75,13 +77,19 @@ public sealed class DispatchZoneService(TeikemDbContext db, ITenantContext tenan
     {
         if (req.Code is not null) throw new ValidationException("code", DriverRules.ZoneCodeImmutableMessage);
         var zone = await LoadAsync(id, ct);
+        var changed = false;
         if (req.Name is not null)
         {
             var (name, nameError) = DriverRules.ValidateZoneName(req.Name);
             if (nameError is not null) throw new ValidationException("name", nameError);
             zone.Name = name;
-            await db.SaveGuardedAsync(DriverRules.DuplicateZoneMessage, ct);
+            changed = true;
         }
+        // Lote 129: el nivel de la zona
+        if (req.ZoneGroupId is int g) { zone.ZoneGroupId = (await RequireGroupAsync(g, ct)).ZoneGroupId; changed = true; }
+        else if (req.ClearZoneGroup) { zone.ZoneGroupId = null; changed = true; }
+        if (changed) await db.SaveGuardedAsync(DriverRules.DuplicateZoneMessage, ct);
+        await db.Entry(zone).Reference(z => z.ZoneGroup).LoadAsync(ct);
         return ToDto(zone, (await DriverCountsAsync(new List<int> { zone.DispatchZoneId }, ct)).GetValueOrDefault(zone.DispatchZoneId));
     }
 
@@ -214,7 +222,7 @@ public sealed class DispatchZoneService(TeikemDbContext db, ITenantContext tenan
 
     private async Task<DispatchZone> LoadAsync(int id, CancellationToken ct, bool track = true)
     {
-        var q = track ? db.DispatchZones : db.DispatchZones.AsNoTracking();
+        var q = track ? db.DispatchZones.Include(z => z.ZoneGroup) : db.DispatchZones.AsNoTracking().Include(z => z.ZoneGroup);
         return await q.FirstOrDefaultAsync(z => z.DispatchZoneId == id, ct)
                ?? throw new NotFoundException("Zona de despacho", null, true);
     }
@@ -267,7 +275,45 @@ public sealed class DispatchZoneService(TeikemDbContext db, ITenantContext tenan
     private async Task<string> MatchTypeCodeAsync(int lookupId, CancellationToken ct)
         => (await lookups.GetAsync(lookupId, ct))?.InternalCode ?? string.Empty;
 
-    private static DispatchZoneDto ToDto(DispatchZone z, int driverCount) => new(z.DispatchZoneId, z.Code, z.Name, driverCount, z.IsActive);
+    private static DispatchZoneDto ToDto(DispatchZone z, int driverCount)
+        => new(z.DispatchZoneId, z.Code, z.Name, driverCount, z.IsActive, z.ZoneGroupId, z.ZoneGroup?.Code, z.ZoneGroup?.Name ?? z.ZoneGroup?.Code);
+
+    private async Task<Teikem.Domain.Fleet.ZoneGroup> RequireGroupAsync(int id, CancellationToken ct)
+        => zoneGroups is not null ? await zoneGroups.RequireActiveAsync(id, ct)
+            : await db.ZoneGroups.AsNoTracking().FirstOrDefaultAsync(g => g.ZoneGroupId == id && g.IsActive, ct) ?? throw new ValidationException("zoneGroupId", Teikem.Domain.Fleet.ZoneGroupRules.NotFoundMessage);
+
+    /// <summary>
+    /// Lote 129: pone la zona de entrega (DeliveryZoneId) a las órdenes activas que no la tienen (o a todas, con all = true: después de cambiar los miembros de las zonas). Resuelve por ZIP y
+    /// pueblo de la parada de entrega como al crear la orden; las ambiguas o sin coincidencia quedan sin zona. Devuelve cuántas se examinaron, cuántas quedaron con zona y cuántas sin resolver.
+    /// </summary>
+    public async Task<AssignOrderZonesResultDto> AssignOrdersAsync(bool all, CancellationToken ct)
+    {
+        var members = await db.ActiveZoneMembersAsync(ct);
+        var deliveryTypeId = await lookups.GetIdAsync(LookupDomains.StopType, StopTypes.Delivery, ct);
+        var codes = await db.DispatchZones.AsNoTracking().Where(z => z.IsActive).ToDictionaryAsync(z => z.Code, z => z.DispatchZoneId, StringComparer.OrdinalIgnoreCase, ct);
+        var query = db.TransportOrders.AsNoTracking().Where(o => o.IsActive);
+        if (!all) query = query.Where(o => o.DeliveryZoneId == null);
+        var rows = await query.Select(o => new { o.TransportOrderId, o.DeliveryZoneId, Stop = o.Stops.Where(s => s.StopTypeLookupId == deliveryTypeId).OrderBy(s => s.Sequence).Select(s => new { s.SnapPostalCode, s.SnapCity }).FirstOrDefault() }).ToListAsync(ct);
+        var assigned = 0;
+        var unresolved = 0;
+        var changes = new Dictionary<int?, List<int>>();
+        foreach (var row in rows)
+        {
+            var zoneId = Teikem.Infrastructure.Orders.OrderZoneResolver.Resolve(members, codes, row.Stop?.SnapPostalCode, row.Stop?.SnapCity);
+            if (zoneId is null) unresolved++; else assigned++;
+            if (row.DeliveryZoneId == zoneId) continue;
+            if (!changes.TryGetValue(zoneId, out var list)) changes[zoneId] = list = new List<int>();
+            list.Add(row.TransportOrderId);
+        }
+        // Se escribe por lotes con ExecuteUpdate (sin el token de concurrencia de la orden: es mantenimiento masivo y otra edición simultánea no debe tumbarlo)
+        foreach (var (zoneId, ids) in changes)
+            foreach (var chunk in ids.Chunk(500))
+            {
+                var target = zoneId;
+                await db.TransportOrders.Where(o => chunk.Contains(o.TransportOrderId)).ExecuteUpdateAsync(u => u.SetProperty(o => o.DeliveryZoneId, target), ct);
+            }
+        return new AssignOrderZonesResultDto(rows.Count, assigned, unresolved);
+    }
 
     // ================================================================ adaptadores a las costuras de P0 (DispatchZoneMatcher, TripQueries)
     // Toda dependencia de las firmas de DispatchZoneMatcher y TripQueries.ActiveZoneMembersAsync vive aquí.

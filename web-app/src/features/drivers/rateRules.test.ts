@@ -76,7 +76,7 @@ describe('rateSchema', () => {
 describe('requests de tarifa', () => {
   it('alta por entrega y por viaje no llevan fecha (el servidor usa hoy)', () => {
     const v = { ...emptyRateValues(TODAY), serviceType: 'STANDARD', packageType: 'BOX', tripTypeId: '4', rate: 3.5 }
-    expect(buildDeliveryRateCreate(v)).toEqual({ serviceType: 'STANDARD', packageType: 'BOX', rate: 3.5 })
+    expect(buildDeliveryRateCreate(v)).toEqual({ serviceType: 'STANDARD', packageType: 'BOX', rate: 3.5, zoneGroup: null })
     expect(buildTripRateCreate(v)).toEqual({ specialServiceTypeId: 4, rate: 3.5 })
   })
 

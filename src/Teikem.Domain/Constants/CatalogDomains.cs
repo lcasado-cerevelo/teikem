@@ -550,6 +550,8 @@ public static class EntityTypes
     public const string DriverRate = "DRIVER_RATE";
     public const string DriverTrip = "DRIVER_TRIP";
     public const string DispatchZone = "DISPATCH_ZONE";
+    /// <summary>Lote 129: nivel de zona (Isla/Metro…).</summary>
+    public const string ZoneGroup = "ZONE_GROUP";
     // Agregados por el Lote 5 (Trips y rutas); TRIP ya existía.
     /// <summary>Versión del plan de una ruta (Route); su ciclo es RouteStatus.</summary>
     public const string Route = "ROUTE";

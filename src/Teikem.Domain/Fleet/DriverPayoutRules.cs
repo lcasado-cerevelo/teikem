@@ -27,6 +27,18 @@ public readonly record struct AttemptRatePick(decimal Amount, int? LevelUsed, st
 /// </summary>
 public static class DriverPayoutRules
 {
+    /// <summary>Lote 129: las tarifas por entrega que aplican a un nivel de zona: las del nivel si hay alguna; si no, las generales (sin nivel). Sin nivel en la orden, solo las generales.</summary>
+    public static IReadOnlyList<DriverDeliveryRate> ForZoneGroup(IEnumerable<DriverDeliveryRate> rows, int? zoneGroupId)
+    {
+        var list = rows as IReadOnlyList<DriverDeliveryRate> ?? rows.ToList();
+        if (zoneGroupId is int g)
+        {
+            var ofLevel = list.Where(r => r.ZoneGroupId == g).ToList();
+            if (ofLevel.Count > 0) return ofLevel;
+        }
+        return list.Where(r => r.ZoneGroupId == null).ToList();
+    }
+
     /// <summary>Tope de niveles de intento por compañía (CK_DriverPayPolicy_Levels).</summary>
     public const int MaxAttemptLevels = 20;
 

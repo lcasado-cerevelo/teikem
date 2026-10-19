@@ -29,6 +29,9 @@ export interface OrderFilters {
   processed: '' | 'yes' | 'no'
   processedFrom: string
   processedTo: string
+  /** Lote 129: ids (como texto) de las zonas de entrega y de los niveles de zona. */
+  zoneIds: string[]
+  zoneGroupIds: string[]
 }
 
 /**
@@ -58,6 +61,8 @@ export const EMPTY_ORDER_FILTERS: OrderFilters = {
   processed: '',
   processedFrom: '',
   processedTo: '',
+  zoneIds: [],
+  zoneGroupIds: [],
 }
 
 /** `to` del API es exclusivo sobre la fecha de creación: se manda el día siguiente para incluir el día elegido. */
@@ -91,6 +96,8 @@ export function buildOrderQuery(f: OrderFilters, page: number, pageSize: number)
     invoiceProcessed: f.processed === 'yes' ? true : f.processed === 'no' ? false : undefined,
     processedFrom: f.processedFrom || undefined,
     processedTo: exclusiveTo(f.processedTo),
+    zoneIds: f.zoneIds.length > 0 ? f.zoneIds.map(Number) : undefined,
+    zoneGroupIds: f.zoneGroupIds.length > 0 ? f.zoneGroupIds.map(Number) : undefined,
     skip: (page - 1) * pageSize,
     take: pageSize,
   }

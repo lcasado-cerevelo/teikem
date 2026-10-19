@@ -18,7 +18,9 @@ public sealed record DriverDeliveryRateDto(
     decimal Rate,
     DateOnly EffectiveFrom,
     DateOnly? EffectiveTo,
-    bool IsCurrent);
+    bool IsCurrent,
+    string? ZoneGroupCode = null,   // Lote 129: nivel de zona de la tarifa (nulo = general)
+    string? ZoneGroup = null);
 
 /// <summary>Una entrada por nivel 1..AttemptLevels; Id/Rate null = 'sin tarifa'.</summary>
 public sealed record DriverAttemptRateDto(
@@ -56,7 +58,8 @@ public sealed record DriverDeliveryRateCreateRequest(
     string? ServiceType,
     string? PackageType,
     decimal Rate,
-    DateOnly? EffectiveFrom = null);
+    DateOnly? EffectiveFrom = null,
+    string? ZoneGroup = null);   // Lote 129: código del nivel de zona (opcional)
 
 /// <summary>Editar una tarifa = cerrar y abrir. Servicio/paquete/tipo de viaje llegan en Extra y responden 400.</summary>
 public sealed record DriverRateUpdateRequest(decimal Rate, DateOnly? EffectiveFrom = null)

@@ -89,7 +89,10 @@ public sealed class TransportOrderDataSource(TeikemDbContext db, ILookupCache lo
         new DataField("SlaMetPct", "Cumplió el SLA (%)", "Met the SLA (%)", DataFieldType.Number),
         // Lote 128: la factura del cliente procesada (hoja de COD cuadrada o cotejo) y cuándo
         new DataField("InvoiceProcessed", "Factura procesada", "Invoice processed", DataFieldType.Bool),
-        new DataField("InvoiceProcessedAtUtc", "Fecha de procesamiento de la factura", "Invoice processed on", DataFieldType.Date),   // 100 si se entregó dentro del SLA, 0 si fuera; vacío si no aplica (su promedio es el % de cumplimiento)
+        new DataField("InvoiceProcessedAtUtc", "Fecha de procesamiento de la factura", "Invoice processed on", DataFieldType.Date),
+        // Lote 129: zona de entrega y nivel de zona (Isla/Metro)
+        new DataField("ZoneCode", "Zona de entrega", "Delivery zone", DataFieldType.Text),
+        new DataField("ZoneGroup", "Nivel de zona", "Zone level", DataFieldType.Text),   // 100 si se entregó dentro del SLA, 0 si fuera; vacío si no aplica (su promedio es el % de cumplimiento)
     };
 
     public IReadOnlyList<DataRelation> Relations { get; } = new[]
@@ -162,6 +165,10 @@ public sealed class TransportOrderDataSource(TeikemDbContext db, ILookupCache lo
         var slaByOrder = sla is null ? new Dictionary<int, SlaResult>() : await sla.EvaluateAsync(orders.Select(o => new SlaOrderInput(o.TransportOrderId, o.ContractId, o.ServiceTypeLookupId, o.CreatedAtUtc, o.ConfirmedAtUtc,
             ClientDataSourceHelpers.StatusCodeOf(orderStatus, o.StatusCodeId))).ToList(), DateTime.UtcNow, ct);
 
+        var zoneIds = orders.Where(o => o.DeliveryZoneId != null).Select(o => o.DeliveryZoneId!.Value).Distinct().ToList();   // Lote 129
+        var zonesById = zoneIds.Count == 0 ? new Dictionary<int, (string Code, string? Group)>() : await db.DispatchZones.AsNoTracking().Where(z => zoneIds.Contains(z.DispatchZoneId))
+            .Select(z => new { z.DispatchZoneId, z.Code, Group = z.ZoneGroup != null ? z.ZoneGroup.Code : null }).ToDictionaryAsync(z => z.DispatchZoneId, z => (z.Code, z.Group), ct);
+
         var rows = new List<DataRow>(orders.Count);
         foreach (var o in orders)
         {
@@ -224,6 +231,8 @@ public sealed class TransportOrderDataSource(TeikemDbContext db, ILookupCache lo
                 ["SlaMetPct"] = slaResult.State == SlaStates.Met ? 100m : slaResult.State == SlaStates.Missed ? 0m : (decimal?)null,
                 ["InvoiceProcessed"] = o.InvoiceProcessedAtUtc != null,
                 ["InvoiceProcessedAtUtc"] = o.InvoiceProcessedAtUtc,
+                ["ZoneCode"] = o.DeliveryZoneId is int dz && zonesById.TryGetValue(dz, out var zi) ? zi.Code : null,
+                ["ZoneGroup"] = o.DeliveryZoneId is int dz2 && zonesById.TryGetValue(dz2, out var zi2) ? zi2.Group : null,
             });
         }
         return rows;

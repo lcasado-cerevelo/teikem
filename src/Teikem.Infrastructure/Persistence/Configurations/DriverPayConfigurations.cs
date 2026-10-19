@@ -27,8 +27,9 @@ public sealed class DriverDeliveryRateConfiguration : IEntityTypeConfiguration<D
         b.ToTable("DriverDeliveryRate");
         b.HasKey(r => r.DriverDeliveryRateId);
         b.Property(r => r.Rate).HasColumnType("decimal(18,4)");
-        b.HasIndex(r => new { r.DriverId, r.ServiceTypeLookupId, r.PackageTypeLookupId }).IsUnique()
-            .HasFilter("[EffectiveTo] IS NULL AND [IsActive] = 1").HasDatabaseName("UQ_DriverDeliveryRate_Open");
+        // Lote 129: una sola fila abierta por (chofer, servicio, paquete, nivel); sin nivel (NULL) cuenta como un valor más
+        b.HasIndex(r => new { r.DriverId, r.ServiceTypeLookupId, r.PackageTypeLookupId, r.ZoneGroupId }).IsUnique()
+            .HasFilter("[EffectiveTo] IS NULL AND [IsActive] = 1").HasDatabaseName("UQ_DriverDeliveryRate_Open2");
         b.HasIndex(r => new { r.TenantId, r.DriverId }).HasDatabaseName("IX_DriverDeliveryRate_Driver");
         b.HasOne(r => r.Driver).WithMany().HasForeignKey(r => r.DriverId);
         b.HasOne(r => r.ServiceType).WithMany().HasForeignKey(r => r.ServiceTypeLookupId);

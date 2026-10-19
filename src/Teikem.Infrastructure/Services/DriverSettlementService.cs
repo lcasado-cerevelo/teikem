@@ -61,7 +61,10 @@ public sealed class DriverSettlementService(TeikemDbContext db, ITenantContext t
         if (attempts.Count > 0)
         {
             var orderIds = attempts.Select(a => a.TransportOrderId).Distinct().ToList();
-            var orders = await db.TransportOrders.AsNoTracking().Where(o => orderIds.Contains(o.TransportOrderId)).Select(o => new { o.TransportOrderId, o.OrderNumber, o.ServiceTypeLookupId, o.ClientId }).ToDictionaryAsync(o => o.TransportOrderId, ct);
+            var orders = await db.TransportOrders.AsNoTracking().Where(o => orderIds.Contains(o.TransportOrderId)).Select(o => new { o.TransportOrderId, o.OrderNumber, o.ServiceTypeLookupId, o.ClientId, o.DeliveryZoneId }).ToDictionaryAsync(o => o.TransportOrderId, ct);
+            // Lote 129: el nivel de zona de cada orden (por su zona de entrega): la tarifa del nivel gana sobre la general
+            var zoneIdsOfOrders = orders.Values.Where(o => o.DeliveryZoneId != null).Select(o => o.DeliveryZoneId!.Value).Distinct().ToList();
+            var groupOfZone = zoneIdsOfOrders.Count == 0 ? new Dictionary<int, int?>() : await db.DispatchZones.AsNoTracking().Where(z => zoneIdsOfOrders.Contains(z.DispatchZoneId)).ToDictionaryAsync(z => z.DispatchZoneId, z => z.ZoneGroupId, ct);
             var clientIds = orders.Values.Select(o => o.ClientId).Distinct().ToList();
             var clientNames = await db.Set<Client>().AsNoTracking().Where(c => clientIds.Contains(c.ClientId)).ToDictionaryAsync(c => c.ClientId, c => c.Name, ct);
             var cargo = await db.Set<CargoLine>().AsNoTracking().Where(c => orderIds.Contains(c.TransportOrderId) && c.IsActive && c.PackageTypeLookupId != null)
@@ -79,7 +82,8 @@ public sealed class DriverSettlementService(TeikemDbContext db, ITenantContext t
                 var date = clock.DayOf(last.AttemptedAtUtc);
                 decimal? deliveryRate = null;
                 if (order is not null && packageOf.TryGetValue(g.Key.Order, out var package))
-                    deliveryRate = DriverPayoutRules.PickCurrent(deliveryRates.Where(r => r.DriverId == g.Key.Driver && r.ServiceTypeLookupId == order.ServiceTypeLookupId && r.PackageTypeLookupId == package), date)?.Rate;
+                    deliveryRate = DriverPayoutRules.PickCurrent(DriverPayoutRules.ForZoneGroup(deliveryRates.Where(r => r.DriverId == g.Key.Driver && r.ServiceTypeLookupId == order.ServiceTypeLookupId && r.PackageTypeLookupId == package),
+                        order.DeliveryZoneId is int dz ? groupOfZone.GetValueOrDefault(dz) : null), date)?.Rate;
                 var rates = new Dictionary<int, decimal>();
                 foreach (var byLevel in attemptRates.Where(r => r.DriverId == g.Key.Driver).GroupBy(r => r.AttemptNumber))
                     if (DriverPayoutRules.PickCurrent(byLevel, date) is { } pick) rates[byLevel.Key] = pick.Rate;

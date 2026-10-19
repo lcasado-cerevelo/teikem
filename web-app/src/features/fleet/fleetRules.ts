@@ -332,15 +332,18 @@ export interface ZoneValues {
   /** Solo en el alta (después es inmutable). */
   code: string
   name: string
+  /** Lote 129: id del nivel de zona como texto; '' = sin nivel. */
+  zoneGroupId: string
 }
 
-export const emptyZoneValues = (): ZoneValues => ({ code: '', name: '' })
+export const emptyZoneValues = (): ZoneValues => ({ code: '', name: '', zoneGroupId: '' })
 
 export function zoneSchema(t: TFn, opts: { creating: boolean }) {
   return z
     .object({
       code: z.string(),
       name: z.string().trim().max(ZONE_NAME_MAX, t('fleet.errors.zoneNameMax', { max: ZONE_NAME_MAX })),
+      zoneGroupId: z.string().default(''),
     })
     .superRefine((v, ctx) => {
       if (!opts.creating) return
@@ -351,8 +354,8 @@ export function zoneSchema(t: TFn, opts: { creating: boolean }) {
 }
 
 /** Alta: código en mayúsculas y recortado; el nombre es opcional. */
-export function buildZoneCreate(v: ZoneValues): { code: string; name: string } {
-  return { code: v.code.trim().toUpperCase(), name: v.name.trim() }
+export function buildZoneCreate(v: ZoneValues): { code: string; name: string; zoneGroupId: number | null } {
+  return { code: v.code.trim().toUpperCase(), name: v.name.trim(), zoneGroupId: v.zoneGroupId ? Number(v.zoneGroupId) : null }
 }
 
 // ---------------------------------------------------------------- documentos por vencer

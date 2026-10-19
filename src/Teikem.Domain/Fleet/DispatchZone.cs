@@ -16,7 +16,10 @@ public class DispatchZone : ITenantScoped, ISoftDeletable
     public string Code { get; set; } = string.Empty;
     public string? Name { get; set; }
     public bool IsActive { get; set; } = true;
+    /// <summary>Lote 129: el nivel de la zona (Isla/Metro…); NULL = sin nivel.</summary>
+    public int? ZoneGroupId { get; set; }
 
+    public ZoneGroup? ZoneGroup { get; set; }
     public ICollection<DispatchZoneMember> Members { get; set; } = new List<DispatchZoneMember>();
 }
 

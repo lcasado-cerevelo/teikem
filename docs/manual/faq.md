@@ -9426,3 +9426,17 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **¿Cómo veo las órdenes cuya factura ya se procesó (o las que faltan)?** En Órdenes, filtro **Factura procesada**: «Procesada» o «Sin procesar». La columna «Factura procesada» muestra la fecha. El filtro **Fecha de procesamiento** ofrece los rangos sugeridos (Hoy, Esta semana, Este mes…) o un rango personalizado, igual que los filtros de fecha de almacén.
 
 **El filtro de fecha de procesamiento no trae nada.** Solo cuenta las órdenes con factura procesada dentro de ese rango; las que no se han procesado no tienen fecha y quedan fuera (use «Sin procesar» para verlas).
+
+## Niveles de zona: Isla y Metro (Lote 129)
+
+**¿Cómo pongo Isla y Metro?** Flota → Zonas de despacho → panel «Niveles de zona»: cree ISLA y METRO (a Isla póngale su chofer por omisión) y en cada zona elija su nivel. Las órdenes nuevas heredan el nivel de su zona de entrega; para las que ya existían, pulse «Asignar zona a las órdenes».
+
+**Una orden no tiene zona.** Su ZIP o pueblo no está en ninguna zona activa, o cae en dos (ambigua). Revise los miembros de las zonas y pulse «Asignar zona a las órdenes» (o edite el consignatario de la orden).
+
+**¿Las tarifas tienen que cambiar por nivel?** No. El nivel en la tarifa es opcional: sin nivel, la tarifa es la general. Si agrega una tarifa con nivel (Isla), esa gana para las entregas de Isla y la general sigue para el resto.
+
+**«El chofer ya tiene una tarifa vigente para X + Y en el nivel Z».** (409) Ya hay una tarifa abierta para ese servicio, paquete y nivel; edítela o ciérrela.
+
+**«El nivel tiene zonas activas; quíteselo a las zonas antes de inactivarlo.»** (409) Quite el nivel de sus zonas (o inactívelas) y vuelva a intentar.
+
+**La ruta no tomó el chofer de Isla.** El chofer por omisión del nivel aplica solo si la zona no tiene chofer propio (zona primaria de algún chofer); si la zona tiene chofer, manda ese.

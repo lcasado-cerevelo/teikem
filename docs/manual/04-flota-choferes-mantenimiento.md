@@ -833,3 +833,25 @@ dispositivo del chofer nunca aparece en el diff (es un dato sensible).
 
 Ver [faq.md](faq.md), sección "Lote 4 — Flota, choferes y mantenimiento", para cada mensaje de error citado en este
 capítulo con su causa y qué hacer.
+
+## Niveles de zona (Isla/Metro) — Lote 129
+
+> Dictado de Luis (2026-10-19). Advance Logistics divide su operación en **Isla** y **Metro**; la frontera la trazan ellos con sus zonas. Teikem lo modela de forma genérica: cada compañía define los **niveles** que quiera (o ninguno).
+
+**Qué es un nivel:** un grupo de zonas de despacho (`ZoneGroup`): código, nombre, orden y, opcional, **chofer por omisión**. Es un dato de la zona, no una tarifa.
+
+**Dónde:** Flota → **Zonas de despacho**: arriba el panel **Niveles de zona** (crear, editar, inactivar, reactivar; «Asignar zona a las órdenes») y en cada zona el campo **Nivel**. Lectura con `fleet.view`, escritura con `fleet.manage`, módulo Catálogos.
+
+**Qué hace el nivel:**
+- **La orden hereda la zona y el nivel de su parada de entrega** (`DeliveryZoneId`, resuelta por ZIP y pueblo contra los miembros de las zonas activas al crear la orden o al cambiar su consignatario; ambigua o sin coincidencia = sin zona). Se ven en la ficha (Zona de entrega), en la lista (columna Zona = zona · nivel; filtros **Zona de entrega** y **Nivel de zona**) y en las Vistas (campos «Zona de entrega» y «Nivel de zona»). Las órdenes que ya existían se completan con **Asignar zona a las órdenes** (solo las que no tienen; `POST /dispatch-zones/assign-orders?all=true` las recalcula todas después de cambiar miembros).
+- **Chofer por omisión del nivel:** al crear una ruta de una zona que **no tiene chofer propio** (sin `DriverZone` primaria), el chofer por omisión es el del nivel de esa zona (Advance: toda Isla a un solo chofer, la compañía externa registrada como chofer). Si la zona tiene chofer propio, manda el de la zona.
+- **Tarifa del chofer por nivel (opcional):** en Choferes → Tarifas por entrega, campo **Nivel de zona**. Una tarifa con nivel aplica solo a las entregas de ese nivel y **gana** sobre la general (sin nivel); si la orden es de un nivel sin tarifa propia, rige la general. Una sola tarifa abierta por (servicio, paquete, nivel). La liquidación la aplica por pieza.
+- **Tarifa del contrato por nivel (opcional):** en el contrato → Tarifas, campo **Nivel de zona** al agregar. Misma regla: la del nivel de la orden gana; sin ella, la general. La cotización y la facturación del flete la aplican solas (`RateQuoteRequest.zoneGroupId`).
+
+| Método y ruta | Permiso | Qué hace |
+|---|---|---|
+| `GET /api/v1/zone-groups?includeInactive=` · `POST` · `PATCH /{id}` · `POST /{id}/deactivate` · `/reactivate` | `fleet.view` / `fleet.manage` | Niveles. 400 «Indique el código del nivel.» · «El código del nivel se fija al crearlo y no se puede cambiar.» · «El chofer por omisión no existe o está inactivo.» · 409 «Ya existe un nivel de zona con ese código.» · «El nivel tiene zonas activas; quíteselo a las zonas antes de inactivarlo.» |
+| `POST/PATCH /api/v1/dispatch-zones` (`zoneGroupId`, `clearZoneGroup`) | `fleet.manage` | El nivel de la zona. 400 «El nivel de zona no existe o está inactivo.» |
+| `POST /api/v1/dispatch-zones/assign-orders?all=` | `fleet.manage` | Zona de entrega a las órdenes existentes; devuelve examinadas, con zona y sin zona. |
+| `GET /api/v1/orders?zoneIds=&zoneGroupIds=&noZone=` | `orders.view` | Filtros de zona, nivel y «sin zona». |
+| `POST /drivers/{id}/delivery-rates` (`zoneGroup`) · `POST /contracts/{id}/rate-components` (`zoneGroup`) | `driverpay.manage` / `contracts.update` | Tarifa con nivel (código). 400 «El nivel de zona no existe o está inactivo.»; 409 «…ya tiene una tarifa vigente para X + Y en el nivel Z…». |

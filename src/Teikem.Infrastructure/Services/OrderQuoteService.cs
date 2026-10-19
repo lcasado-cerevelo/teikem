@@ -72,7 +72,7 @@ public sealed class OrderQuoteService(TeikemDbContext db, ILookupCache lookups, 
 
         var request = new RateQuoteRequest(client.PublicId,
             lines.Select(l => new RateQuoteLineRequest(l.ServiceType, l.PackageType, l.Pieces)).ToList(),
-            order.CodAmount ?? 0m, asOf);
+            order.CodAmount ?? 0m, asOf, await ZoneGroupOfOrderAsync(order, ct));
         var quote = await rates.QuoteAsync(request, ct);
 
         var missing = quote.Lines.FirstOrDefault(l => string.Equals(l.BaseSource, RateSources.None, StringComparison.OrdinalIgnoreCase));
@@ -106,9 +106,13 @@ public sealed class OrderQuoteService(TeikemDbContext db, ILookupCache lookups, 
         var lines = OrderQuoteLines.Build(serviceType.InternalCode, raw);
         if (lines.Count == 0) throw new StatusRuleException(NoLinesMessage);
         var request = new RateQuoteRequest(client.PublicId,
-            lines.Select(l => new RateQuoteLineRequest(l.ServiceType, l.PackageType, l.Pieces)).ToList(), order.CodAmount ?? 0m, asOf);
+            lines.Select(l => new RateQuoteLineRequest(l.ServiceType, l.PackageType, l.Pieces)).ToList(), order.CodAmount ?? 0m, asOf, await ZoneGroupOfOrderAsync(order, ct));
         return await rates.BreakdownAsync(request, ct);
     }
+
+    /// <summary>Lote 129: el nivel de zona de la entrega (por la zona de despacho de la orden), o nulo sin zona o sin nivel.</summary>
+    private async Task<int?> ZoneGroupOfOrderAsync(TransportOrder order, CancellationToken ct)
+        => order.DeliveryZoneId is int z ? await db.Set<Teikem.Domain.Fleet.DispatchZone>().AsNoTracking().Where(x => x.DispatchZoneId == z).Select(x => x.ZoneGroupId).FirstOrDefaultAsync(ct) : null;
 
     /// <summary>
     /// Cotiza y congela en la entidad tracked: QuotedAmount, QuotedAtUtc, ContractId (contrato vigente en asOf) y la moneda

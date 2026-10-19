@@ -35,7 +35,7 @@ public sealed class DriverRateService(TeikemDbContext db, ITenantContext tenant,
     private const string InactiveTripTypeMessage = "El tipo de servicio especial está inactivo; reactívelo o elija otro.";
 
     private static readonly string[] DeliveryImmutableKeys =
-        { "serviceType", "packageType", "serviceTypeCode", "packageTypeCode", "serviceTypeLookupId", "packageTypeLookupId" };
+        { "serviceType", "packageType", "serviceTypeCode", "packageTypeCode", "serviceTypeLookupId", "packageTypeLookupId", "zoneGroup" };
     private static readonly string[] TripImmutableKeys =
         { "specialServiceTypeId", "tripType", "tripTypeId", "typeId" };
 
@@ -108,10 +108,11 @@ public sealed class DriverRateService(TeikemDbContext db, ITenantContext tenant,
                 "Indique el servicio y el tipo de paquete de la tarifa.");
         var serviceTypeId = await LookupOrFailAsync(LookupDomains.ServiceType, req.ServiceType, "serviceType", "Tipo de servicio desconocido", ct);
         var packageTypeId = await LookupOrFailAsync(LookupDomains.PackageType, req.PackageType, "packageType", "Tipo de paquete desconocido", ct);
+        var zoneGroupId = await ZoneGroupIdAsync(req.ZoneGroup, ct);   // Lote 129: nivel opcional
         ValidateRate(req.Rate);
         var effectiveFrom = req.EffectiveFrom ?? Today();
         EnsureNotPast(effectiveFrom, "effectiveFrom");
-        var duplicate = await DeliveryDuplicateMessageAsync(serviceTypeId, packageTypeId, ct);
+        var duplicate = await DeliveryDuplicateMessageAsync(serviceTypeId, packageTypeId, zoneGroupId, ct);
 
         var row = await db.RunInTransactionAsync(async ct2 =>
         {
@@ -120,14 +121,14 @@ public sealed class DriverRateService(TeikemDbContext db, ITenantContext tenant,
             // Guarda por intervalo: la fila nueva nace abierta y choca con toda fila que no haya terminado antes de effectiveFrom.
             // UQ_DriverDeliveryRate_Open (solo abiertas) es la segunda barrera.
             if (await db.DriverDeliveryRates.AnyAsync(r => r.DriverId == driverId && r.IsActive
-                                                           && r.ServiceTypeLookupId == serviceTypeId && r.PackageTypeLookupId == packageTypeId
+                                                           && r.ServiceTypeLookupId == serviceTypeId && r.PackageTypeLookupId == packageTypeId && r.ZoneGroupId == zoneGroupId
                                                            && (r.EffectiveTo == null || r.EffectiveTo > effectiveFrom), ct2))
                 throw new ConflictException(duplicate);
 
             var next = new DriverDeliveryRate
             {
                 TenantId = tenantId, DriverId = driverId,
-                ServiceTypeLookupId = serviceTypeId, PackageTypeLookupId = packageTypeId,
+                ServiceTypeLookupId = serviceTypeId, PackageTypeLookupId = packageTypeId, ZoneGroupId = zoneGroupId,
                 Rate = req.Rate, EffectiveFrom = effectiveFrom, EffectiveTo = null, IsActive = true,
                 CreatedAtUtc = DateTime.UtcNow, CreatedBy = tenant.UserId,
             };
@@ -154,7 +155,7 @@ public sealed class DriverRateService(TeikemDbContext db, ITenantContext tenant,
             var current = await db.DriverDeliveryRates.FirstOrDefaultAsync(r => r.DriverDeliveryRateId == id && r.DriverId == driver.DriverId && r.IsActive, ct2)
                           ?? throw new NotFoundException(RateWhat, null, true);
             if (current.EffectiveTo is not null) throw new ConflictException(ClosedMessage);
-            var duplicate = await DeliveryDuplicateMessageAsync(current.ServiceTypeLookupId, current.PackageTypeLookupId, ct2);
+            var duplicate = await DeliveryDuplicateMessageAsync(current.ServiceTypeLookupId, current.PackageTypeLookupId, current.ZoneGroupId, ct2);
 
             NewVersion(current, newFrom, "effectiveFrom");
             await db.SaveGuardedAsync(duplicate, ct2);
@@ -162,7 +163,7 @@ public sealed class DriverRateService(TeikemDbContext db, ITenantContext tenant,
             var next = new DriverDeliveryRate
             {
                 TenantId = tenantId, DriverId = current.DriverId,
-                ServiceTypeLookupId = current.ServiceTypeLookupId, PackageTypeLookupId = current.PackageTypeLookupId,
+                ServiceTypeLookupId = current.ServiceTypeLookupId, PackageTypeLookupId = current.PackageTypeLookupId, ZoneGroupId = current.ZoneGroupId,
                 Rate = req.Rate, EffectiveFrom = newFrom, EffectiveTo = null, IsActive = true,
                 CreatedAtUtc = DateTime.UtcNow, CreatedBy = tenant.UserId,
             };
@@ -392,11 +393,23 @@ public sealed class DriverRateService(TeikemDbContext db, ITenantContext tenant,
                ?? throw new ValidationException(field, $"{unknownPrefix}: '{code.Trim()}'.");
     }
 
-    private async Task<string> DeliveryDuplicateMessageAsync(int serviceTypeLookupId, int packageTypeLookupId, CancellationToken ct)
+    private async Task<string> DeliveryDuplicateMessageAsync(int serviceTypeLookupId, int packageTypeLookupId, int? zoneGroupId, CancellationToken ct)
     {
         var (_, svc) = await LabelAsync(serviceTypeLookupId, ct);
         var (_, pkg) = await LabelAsync(packageTypeLookupId, ct);
-        return $"El chofer ya tiene una tarifa vigente para {svc} + {pkg}; edite esa tarifa o ciérrela antes de agregar otra.";
+        var level = zoneGroupId is int g ? await db.ZoneGroups.AsNoTracking().Where(x => x.ZoneGroupId == g).Select(x => x.Name ?? x.Code).FirstOrDefaultAsync(ct) : null;
+        return level is null
+            ? $"El chofer ya tiene una tarifa vigente para {svc} + {pkg}; edite esa tarifa o ciérrela antes de agregar otra."
+            : $"El chofer ya tiene una tarifa vigente para {svc} + {pkg} en el nivel {level}; edite esa tarifa o ciérrela antes de agregar otra.";
+    }
+
+    /// <summary>Lote 129: el id del nivel de zona por su código (activo); vacío = tarifa general; desconocido = 400.</summary>
+    private async Task<int?> ZoneGroupIdAsync(string? code, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(code)) return null;
+        var c = code.Trim().ToUpperInvariant();
+        return await db.ZoneGroups.AsNoTracking().Where(g => g.IsActive && g.Code == c).Select(g => (int?)g.ZoneGroupId).FirstOrDefaultAsync(ct)
+               ?? throw new ValidationException("zoneGroup", Teikem.Domain.Fleet.ZoneGroupRules.NotFoundMessage);
     }
 
     private static string TripDuplicateMessage(string typeName)
@@ -454,8 +467,9 @@ public sealed class DriverRateService(TeikemDbContext db, ITenantContext tenant,
     {
         var (svcCode, svc) = await LabelAsync(r.ServiceTypeLookupId, ct);
         var (pkgCode, pkg) = await LabelAsync(r.PackageTypeLookupId, ct);
+        var group = r.ZoneGroupId is int g ? await db.ZoneGroups.AsNoTracking().Where(x => x.ZoneGroupId == g).Select(x => new { x.Code, x.Name }).FirstOrDefaultAsync(ct) : null;   // Lote 129
         return new DriverDeliveryRateDto(r.DriverDeliveryRateId, svcCode, svc, pkgCode, pkg, r.Rate, r.EffectiveFrom, r.EffectiveTo,
-            EffectiveDated.IsCurrentOn(r, asOf));
+            EffectiveDated.IsCurrentOn(r, asOf), group?.Code, group?.Name ?? group?.Code);
     }
 
     private static DriverAttemptRateDto AttemptDto(DriverAttemptRate r, DateOnly asOf)

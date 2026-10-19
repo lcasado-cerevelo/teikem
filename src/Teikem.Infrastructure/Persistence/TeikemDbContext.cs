@@ -105,6 +105,7 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     // Auditoría / contactos / campos / análisis
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<ContactPoint> ContactPoints => Set<ContactPoint>();
+    public DbSet<Teikem.Domain.Fleet.ZoneGroup> ZoneGroups => Set<Teikem.Domain.Fleet.ZoneGroup>();   // Lote 129
     public DbSet<CustomFieldDefinition> CustomFieldDefinitions => Set<CustomFieldDefinition>();
     public DbSet<CustomFieldOption> CustomFieldOptions => Set<CustomFieldOption>();
     public DbSet<CustomFieldValue> CustomFieldValues => Set<CustomFieldValue>();

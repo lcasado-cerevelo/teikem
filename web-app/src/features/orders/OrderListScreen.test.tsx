@@ -132,7 +132,7 @@ describe('Órdenes — lista', () => {
     await screen.findByText('Farmacia Central')
     const heads = within(screen.getAllByRole('rowgroup')[0]).getAllByRole('columnheader').map((h) => h.textContent?.trim())
     // Lote F-G2: la casilla «Elegir» primero (para Imprimir label)
-    expect(heads.slice(0, 14)).toEqual(['Elegir', 'Empaque', 'Conduce', 'N.º orden', 'Fecha', 'Factura procesada', 'Consignatario', 'Pueblo', 'ZIP', 'Servicio', 'Paquete', 'Piezas', 'COD', 'Estatus'])   // Lote 128: cuándo se procesó la factura
+    expect(heads.slice(0, 15)).toEqual(['Elegir', 'Empaque', 'Conduce', 'N.º orden', 'Fecha', 'Zona', 'Factura procesada', 'Consignatario', 'Pueblo', 'ZIP', 'Servicio', 'Paquete', 'Piezas', 'COD', 'Estatus'])   // Lote 128: cuándo se procesó la factura
   })
 
   it('pide la primera página con skip/take', async () => {

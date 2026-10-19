@@ -232,7 +232,7 @@ describe('zonas de despacho (manual 04 §2.7)', () => {
   })
 
   it('alta: código en mayúsculas y recortado, nombre recortado', () => {
-    expect(buildZoneCreate({ code: ' z-01 ', name: ' Toa Baja ' })).toEqual({ code: 'Z-01', name: 'Toa Baja' })
+    expect(buildZoneCreate({ zoneGroupId: '', code: ' z-01 ', name: ' Toa Baja ' })).toEqual({ code: 'Z-01', name: 'Toa Baja', zoneGroupId: null })
   })
 })
 

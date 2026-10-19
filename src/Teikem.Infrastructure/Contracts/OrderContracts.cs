@@ -223,7 +223,12 @@ public sealed record OrderDetailDto(
     string? ReturnOfOrderNumber = null,
     // Lote 126: la factura del cliente de esta orden ya se procesó (hoja de COD cuadrada o cotejo): cuándo y quién
     DateTime? InvoiceProcessedAtUtc = null,
-    string? InvoiceProcessedByName = null);
+    string? InvoiceProcessedByName = null,
+    // Lote 129: zona de entrega y nivel
+    string? ZoneCode = null,
+    string? ZoneName = null,
+    string? ZoneGroupCode = null,
+    string? ZoneGroupName = null);
 
 /// <summary>
 /// Fila del listado: Empaque es la primera columna de negocio (siempre con valor). Lote 44 (F-G2): ConsigneeLine1/2 y ConsigneeState
@@ -259,7 +264,10 @@ public sealed record OrderListItemDto(
     // Lote 97: número de conduce
     string? WaybillNumber = null,
     // Lote 128: cuándo se procesó la factura del cliente (NULL = todavía no)
-    DateTime? InvoiceProcessedAtUtc = null);
+    DateTime? InvoiceProcessedAtUtc = null,
+    // Lote 129: zona de entrega y su nivel (Isla/Metro)
+    string? ZoneCode = null,
+    string? ZoneGroupCode = null);
 
 /// <summary>
 /// Filtros del listado (LIKE parcial en orden/factura/empaque/consignatario; FromUtc inclusivo, ToUtc exclusivo sobre CreatedAtUtc; Take 1..500).
@@ -291,7 +299,11 @@ public sealed record OrderListQuery(
     // Lote 128: factura del cliente procesada (sí/no) y cuándo (desde inclusivo, hasta exclusivo)
     bool? InvoiceProcessed = null,
     DateTime? ProcessedFromUtc = null,
-    DateTime? ProcessedToUtc = null);
+    DateTime? ProcessedToUtc = null,
+    // Lote 129: zona de entrega y nivel de zona
+    IReadOnlyList<int>? ZoneIds = null,
+    IReadOnlyList<int>? ZoneGroupIds = null,
+    bool? NoZone = null);
 
 public sealed record OrderPageDto(int Total, IReadOnlyList<OrderListItemDto> Items);
 

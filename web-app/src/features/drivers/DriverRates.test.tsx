@@ -55,7 +55,7 @@ describe('Tarifas por entrega', () => {
     await user.type(within(region).getByLabelText('Tarifa'), '4.5')
     await user.click(within(region).getByRole('button', { name: /Agregar/ }))
     await waitFor(() => expect(callsTo('POST', '/api/v1/drivers/d-1/delivery-rates')).toHaveLength(1))
-    expect(callsTo('POST', '/api/v1/drivers/d-1/delivery-rates')[0].body).toEqual({ serviceType: 'STANDARD', packageType: 'BOX', rate: 4.5 })
+    expect(callsTo('POST', '/api/v1/drivers/d-1/delivery-rates')[0].body).toEqual({ serviceType: 'STANDARD', packageType: 'BOX', rate: 4.5, zoneGroup: null })
     expect(await screen.findByText('Tarifa agregada.')).toBeInTheDocument()
     await waitFor(() => expect(within(region).getByLabelText('Tarifa')).toHaveValue(null))
   })

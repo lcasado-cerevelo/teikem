@@ -4702,3 +4702,50 @@ WHEN NOT MATCHED THEN
     INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
     VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
 GO
+
+/* =========================================================================
+   2026-10-19 (bh) — Lote 129: NIVEL DE ZONA (Isla/Metro; dictado de Luis). ZoneGroup = grupo de zonas por compañía (código, nombre, orden, chofer por omisión del nivel). La zona de despacho
+   gana su nivel (ZoneGroupId); la orden guarda la zona de su parada de entrega (DeliveryZoneId, resuelta por ZIP y pueblo) y de ahí sale su nivel para listas, filtros y vistas. Las tarifas
+   del chofer (por pieza) y del contrato ganan un nivel OPCIONAL: con nivel aplican solo a las órdenes de ese nivel y ganan sobre la general; los índices únicos de «una sola fila abierta»
+   se rehacen incluyendo el nivel (NULL cuenta como un valor). Solo AGREGA. Idempotente.
+   ========================================================================= */
+IF OBJECT_ID(N'dbo.ZoneGroup', N'U') IS NULL CREATE TABLE dbo.ZoneGroup (
+    ZoneGroupId INT IDENTITY(1,1) PRIMARY KEY,
+    TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    Code NVARCHAR(20) NOT NULL,
+    Name NVARCHAR(120) NULL,
+    SortOrder INT NOT NULL CONSTRAINT DF_ZoneGroup_Sort DEFAULT 0,
+    DefaultDriverId INT NULL REFERENCES dbo.Driver(DriverId),
+    IsActive BIT NOT NULL CONSTRAINT DF_ZoneGroup_IsActive DEFAULT 1,
+    CONSTRAINT UQ_ZoneGroup UNIQUE (TenantId, Code)
+);
+GO
+IF COL_LENGTH('dbo.DispatchZone', 'ZoneGroupId') IS NULL ALTER TABLE dbo.DispatchZone ADD ZoneGroupId INT NULL CONSTRAINT FK_DispatchZone_ZoneGroup REFERENCES dbo.ZoneGroup(ZoneGroupId);
+GO
+IF COL_LENGTH('dbo.TransportOrder', 'DeliveryZoneId') IS NULL ALTER TABLE dbo.TransportOrder ADD DeliveryZoneId INT NULL CONSTRAINT FK_TransportOrder_DeliveryZone REFERENCES dbo.DispatchZone(DispatchZoneId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_TransportOrder_DeliveryZone' AND object_id = OBJECT_ID('dbo.TransportOrder')) CREATE INDEX IX_TransportOrder_DeliveryZone ON dbo.TransportOrder(DeliveryZoneId) WHERE DeliveryZoneId IS NOT NULL;
+GO
+IF COL_LENGTH('dbo.DriverDeliveryRate', 'ZoneGroupId') IS NULL ALTER TABLE dbo.DriverDeliveryRate ADD ZoneGroupId INT NULL CONSTRAINT FK_DriverDeliveryRate_ZoneGroup REFERENCES dbo.ZoneGroup(ZoneGroupId);
+GO
+IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_DriverDeliveryRate_Open' AND object_id = OBJECT_ID('dbo.DriverDeliveryRate')) DROP INDEX UQ_DriverDeliveryRate_Open ON dbo.DriverDeliveryRate;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_DriverDeliveryRate_Open2' AND object_id = OBJECT_ID('dbo.DriverDeliveryRate'))
+    CREATE UNIQUE INDEX UQ_DriverDeliveryRate_Open2 ON dbo.DriverDeliveryRate(DriverId, ServiceTypeLookupId, PackageTypeLookupId, ZoneGroupId) WHERE EffectiveTo IS NULL AND IsActive = 1;
+GO
+IF COL_LENGTH('dbo.RateComponent', 'ZoneGroupId') IS NULL ALTER TABLE dbo.RateComponent ADD ZoneGroupId INT NULL CONSTRAINT FK_RateComponent_ZoneGroup REFERENCES dbo.ZoneGroup(ZoneGroupId);
+GO
+IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_RateComponent_Open' AND object_id = OBJECT_ID('dbo.RateComponent')) DROP INDEX UQ_RateComponent_Open ON dbo.RateComponent;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_RateComponent_Open2' AND object_id = OBJECT_ID('dbo.RateComponent'))
+    CREATE UNIQUE INDEX UQ_RateComponent_Open2 ON dbo.RateComponent(TenantId, ContractId, ComponentTypeLookupId, ServiceTypeLookupId, PackageTypeLookupId, ZoneGroupId) WHERE EffectiveTo IS NULL AND IsActive = 1;
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'ZONE_GROUP', N'{"es":"Nivel de zona","en":"Zone level"}', 163)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO

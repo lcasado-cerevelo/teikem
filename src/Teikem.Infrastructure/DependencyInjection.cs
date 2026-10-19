@@ -158,6 +158,7 @@ public static class DependencyInjection
         services.AddScoped<DriverService>();
         services.AddScoped<DriverDocumentService>();
         services.AddScoped<DispatchZoneService>();
+        services.AddScoped<ZoneGroupService>();   // Lote 129: niveles de zona
         services.AddScoped<FleetDocumentService>();
         // Disponibilidad para despacho (R7): costura que consumirá tal cual el planificador de Despacho.
         services.AddScoped<IFleetAvailabilityService, FleetAvailabilityService>();

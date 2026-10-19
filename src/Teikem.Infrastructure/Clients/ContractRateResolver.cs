@@ -39,7 +39,7 @@ public sealed record TierRow(int Id, int FromUnit, int? ToUnit, decimal Rate);
 /// Fila de tarifa vigente ya resuelta (sin ids de catálogo): ContractId null = tarifa genérica del tenant,
 /// donde ServiceType/PackageType null = comodín. Kind = RateKinds. Rate = FlatAmount en PER_SERVICE (ignorado en EXTRA_PIECE).
 /// </summary>
-public sealed record RateRow(int Id, int? ContractId, string Kind, string? ServiceType, string? PackageType, decimal Rate, IReadOnlyList<TierRow> Tiers)
+public sealed record RateRow(int Id, int? ContractId, string Kind, string? ServiceType, string? PackageType, decimal Rate, IReadOnlyList<TierRow> Tiers, int? ZoneGroupId = null)
 {
     public bool IsGeneric => ContractId is null;
 }
@@ -83,13 +83,14 @@ public static class ContractRateResolver
     /// Mejor fila para (kind, servicio, paquete): filas del contrato antes que genéricas y, dentro de cada grupo, la más específica.
     /// Dos filas con la misma especificidad dentro del mismo grupo violan la invariante del índice UQ_RateComponent_Open.
     /// </summary>
-    public static RateRow? Match(IEnumerable<RateRow> rows, string kind, string serviceType, string packageType)
+    public static RateRow? Match(IEnumerable<RateRow> rows, string kind, string serviceType, string packageType, int? zoneGroupId = null)
     {
-        var contract = Best(rows.Where(r => !r.IsGeneric), kind, serviceType, packageType);
-        return contract ?? Best(rows.Where(r => r.IsGeneric), kind, serviceType, packageType);
+        var list = rows as IReadOnlyCollection<RateRow> ?? rows.ToList();
+        var contract = Best(list.Where(r => !r.IsGeneric), kind, serviceType, packageType, zoneGroupId);
+        return contract ?? Best(list.Where(r => r.IsGeneric), kind, serviceType, packageType, zoneGroupId);
     }
 
-    private static RateRow? Best(IEnumerable<RateRow> rows, string kind, string serviceType, string packageType)
+    private static RateRow? Best(IEnumerable<RateRow> rows, string kind, string serviceType, string packageType, int? zoneGroupId)
     {
         RateRow? best = null;
         var bestScore = -1;
@@ -97,8 +98,11 @@ public static class ContractRateResolver
         foreach (var r in rows)
         {
             if (!Same(r.Kind, kind)) continue;
+            // Lote 129: una fila con nivel de zona solo aplica a las órdenes de ese nivel y gana sobre la general (+4, por encima de cualquier especificidad)
+            if (r.ZoneGroupId is int g && g != zoneGroupId) continue;
             var score = Specificity(r, serviceType, packageType);
             if (score < 0) continue;
+            if (r.ZoneGroupId is not null) score += 4;
             if (score > bestScore) { best = r; bestScore = score; tie = false; }
             else if (score == bestScore) tie = true;
         }
@@ -124,11 +128,11 @@ public static class ContractRateResolver
     }
 
     /// <summary>Tarifa base por servicio (R35): contrato encendido y con fila ⇒ CONTRACT; si no, genérica ⇒ GENERIC; si no, null/NONE.</summary>
-    public static RateMatch BaseRate(IEnumerable<RateRow> rows, ContractFlags flags, string serviceType, string packageType)
+    public static RateMatch BaseRate(IEnumerable<RateRow> rows, ContractFlags flags, string serviceType, string packageType, int? zoneGroupId = null)
     {
         var list = rows as IReadOnlyCollection<RateRow> ?? rows.ToList();
         var candidates = flags.BillPerService ? list : list.Where(r => r.IsGeneric);
-        var row = Match(candidates, RateKinds.PerService, serviceType, packageType);
+        var row = Match(candidates, RateKinds.PerService, serviceType, packageType, zoneGroupId);
         if (row is null) return new RateMatch(null, RateSources.None, null);
         return new RateMatch(Money.Round4(row.Rate), row.IsGeneric ? RateSources.Generic : RateSources.Contract, row.Id);
     }
@@ -138,15 +142,15 @@ public static class ContractRateResolver
     /// (si el componente está encendido); si no hay, el tramo genérico; si tampoco, la pieza paga 0.
     /// Source: CONTRACT si alguna pieza usó tramo del contrato; GENERIC si solo genéricos; NONE si ninguna pieza encontró tramo.
     /// </summary>
-    public static ExtraPiecesResult ExtraPieces(IEnumerable<RateRow> rows, ContractFlags flags, string serviceType, string packageType, int pieces)
+    public static ExtraPiecesResult ExtraPieces(IEnumerable<RateRow> rows, ContractFlags flags, string serviceType, string packageType, int pieces, int? zoneGroupId = null)
     {
         if (pieces < 2) return new ExtraPiecesResult(0m, RateSources.None, Array.Empty<int>());
         var list = rows as IReadOnlyCollection<RateRow> ?? rows.ToList();
 
         var contractRow = flags.BillExtraPiece
-            ? Best(list.Where(r => !r.IsGeneric), RateKinds.ExtraPiece, serviceType, packageType)
+            ? Best(list.Where(r => !r.IsGeneric), RateKinds.ExtraPiece, serviceType, packageType, zoneGroupId)
             : null;
-        var genericRow = Best(list.Where(r => r.IsGeneric), RateKinds.ExtraPiece, serviceType, packageType);
+        var genericRow = Best(list.Where(r => r.IsGeneric), RateKinds.ExtraPiece, serviceType, packageType, zoneGroupId);
 
         decimal total = 0m;
         var usedContract = false;
@@ -170,7 +174,7 @@ public static class ContractRateResolver
     /// Lote 74: lo mismo que <see cref="QuoteOrder"/> pero por concepto, con la fila de tarifa de cada monto: la base y las piezas extra de cada línea (los montos en cero no se listan) y, una sola vez por orden,
     /// el cargo por despacho y el de COD. La suma de los conceptos es el Total de QuoteOrder.
     /// </summary>
-    public static IReadOnlyList<FreightPiece> Breakdown(IEnumerable<RateRow> rows, ContractFlags flags, IEnumerable<QuoteLine> lines, decimal codAmount)
+    public static IReadOnlyList<FreightPiece> Breakdown(IEnumerable<RateRow> rows, ContractFlags flags, IEnumerable<QuoteLine> lines, decimal codAmount, int? zoneGroupId = null)
     {
         var list = rows as IReadOnlyCollection<RateRow> ?? rows.ToList();
         var pieces = new List<FreightPiece>();
@@ -178,9 +182,9 @@ public static class ContractRateResolver
         foreach (var line in lines)
         {
             any = true;
-            var baseRate = BaseRate(list, flags, line.ServiceType, line.PackageType);
+            var baseRate = BaseRate(list, flags, line.ServiceType, line.PackageType, zoneGroupId);
             if (baseRate.Amount is decimal b && b != 0m) pieces.Add(new FreightPiece(FreightComponents.BaseFreight, line.ServiceType, line.PackageType, b, baseRate.RowId));
-            var extra = ExtraPieces(list, flags, line.ServiceType, line.PackageType, line.Pieces);
+            var extra = ExtraPieces(list, flags, line.ServiceType, line.PackageType, line.Pieces, zoneGroupId);
             if (extra.Amount != 0m) pieces.Add(new FreightPiece(FreightComponents.ExtraPieces, line.ServiceType, line.PackageType, extra.Amount, extra.RowIds.Count > 0 ? extra.RowIds[0] : null));
         }
         if (!any) return pieces;
@@ -239,7 +243,7 @@ public static class ContractRateResolver
     /// sumados a la primera línea (R31–R33). RateComponentIds = filas realmente usadas (R30), sin duplicados.
     /// Las líneas repetidas no se consolidan aquí: RateService las rechaza con FindDuplicateLine.
     /// </summary>
-    public static QuoteResult QuoteOrder(IEnumerable<RateRow> rows, ContractFlags flags, IEnumerable<QuoteLine> lines, decimal codAmount)
+    public static QuoteResult QuoteOrder(IEnumerable<RateRow> rows, ContractFlags flags, IEnumerable<QuoteLine> lines, decimal codAmount, int? zoneGroupId = null)
     {
         var list = rows as IReadOnlyCollection<RateRow> ?? rows.ToList();
         var dispatch = DispatchFee(flags);
@@ -251,8 +255,8 @@ public static class ContractRateResolver
 
         foreach (var line in lines)
         {
-            var baseRate = BaseRate(list, flags, line.ServiceType, line.PackageType);
-            var extra = ExtraPieces(list, flags, line.ServiceType, line.PackageType, line.Pieces);
+            var baseRate = BaseRate(list, flags, line.ServiceType, line.PackageType, zoneGroupId);
+            var extra = ExtraPieces(list, flags, line.ServiceType, line.PackageType, line.Pieces, zoneGroupId);
             if (baseRate.RowId is int baseId && !ids.Contains(baseId)) ids.Add(baseId);
             foreach (var id in extra.RowIds) if (!ids.Contains(id)) ids.Add(id);
 

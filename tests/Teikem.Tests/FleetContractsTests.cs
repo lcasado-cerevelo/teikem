@@ -83,7 +83,7 @@ public class FleetContractsTests
     {
         // Lote 5: al trío AssignedDriver* le siguen AssignedTripPublicId y AssignedTripCode (ruta vigente), todos con default.
         var ctor = typeof(OrderDetailDto).GetConstructors().Single();
-        var tail = ctor.GetParameters().SkipLast(6).TakeLast(5).ToArray();   // Lote 97: WaybillNumber va al final (Lotes 112/113: y después FailedAttempts, SuggestReturn; Lote 126: InvoiceProcessedAtUtc, InvoiceProcessedByName y ReturnOfOrderNumber)
+        var tail = ctor.GetParameters().SkipLast(10).TakeLast(5).ToArray();   // Lote 97: WaybillNumber va al final (Lotes 112/113: y después FailedAttempts, SuggestReturn; Lote 126: InvoiceProcessedAtUtc, InvoiceProcessedByName; Lote 129: ZoneCode, ZoneName, ZoneGroupCode, ZoneGroupName y ReturnOfOrderNumber)
         Assert.Equal(new[] { "AssignedDriverPublicId", "AssignedDriverCode", "AssignedDriverName", "AssignedTripPublicId", "AssignedTripCode" },
             tail.Select(p => p.Name));
         Assert.All(tail, p => Assert.True(p.HasDefaultValue));

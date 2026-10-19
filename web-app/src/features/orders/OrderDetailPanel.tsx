@@ -239,6 +239,7 @@ export function OrderDetailPanel({ order, editable, lockReason = 'advanced' }: O
           <ReadField label={t('orders.entry.zip')} mono>
             {zip}
           </ReadField>
+          <ReadField label={t('orders.detail.zone')}>{order.zoneCode ? `${order.zoneCode}${order.zoneName ? ` · ${order.zoneName}` : ''}${order.zoneGroupName ? ` (${order.zoneGroupName})` : ''}` : t('orders.detail.noZone')}</ReadField>
           {editable ? (
             <Field name="priority" label={t('orders.detail.priority')}>
               <Select options={priorityOptions} placeholder={t('orders.detail.noPriority')} />

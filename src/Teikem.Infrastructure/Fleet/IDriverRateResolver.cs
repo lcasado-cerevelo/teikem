@@ -12,7 +12,8 @@ public sealed record DriverPayPolicySnapshot(int AttemptLevels, string FormulaCo
 /// </summary>
 public interface IDriverRateResolver
 {
-    Task<DriverRateResolution> DeliveryRateAsync(int driverId, int serviceTypeLookupId, int packageTypeLookupId, DateOnly asOf, CancellationToken ct);
+    /// <summary>Lote 129: con zoneGroupId, la tarifa de ese nivel gana; si no hay, la general (sin nivel).</summary>
+    Task<DriverRateResolution> DeliveryRateAsync(int driverId, int serviceTypeLookupId, int packageTypeLookupId, DateOnly asOf, CancellationToken ct, int? zoneGroupId = null);
 
     /// <summary>Tarifa vigente por nivel de intento (solo los niveles con fila vigente).</summary>
     Task<IReadOnlyDictionary<int, decimal>> AttemptRatesAsync(int driverId, DateOnly asOf, CancellationToken ct);

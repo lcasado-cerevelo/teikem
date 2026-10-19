@@ -15853,6 +15853,42 @@
             }
           },
           {
+            "name": "zoneIds",
+            "in": "query",
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int32"
+              },
+              "nullable": true
+            }
+          },
+          {
+            "name": "zoneGroupIds",
+            "in": "query",
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int32"
+              },
+              "nullable": true
+            }
+          },
+          {
+            "name": "noZone",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "nullable": true
+            }
+          },
+          {
             "name": "includeInactive",
             "in": "query",
             "schema": {
@@ -39285,6 +39321,192 @@
           }
         }
       }
+    },
+    "/api/v1/zone-groups": {
+      "get": {
+        "tags": [
+          "ZoneGroups"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ZoneGroupDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "includeInactive",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "ZoneGroups"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZoneGroupDto"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ZoneGroupRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/zone-groups/{id}": {
+      "patch": {
+        "tags": [
+          "ZoneGroups"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZoneGroupDto"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ZoneGroupRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/zone-groups/{id}/deactivate": {
+      "post": {
+        "tags": [
+          "ZoneGroups"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZoneGroupDto"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/zone-groups/{id}/reactivate": {
+      "post": {
+        "tags": [
+          "ZoneGroups"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZoneGroupDto"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/dispatch-zones/assign-orders": {
+      "post": {
+        "tags": [
+          "DispatchZones"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignOrderZonesResultDto"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "all",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -44165,6 +44387,19 @@
           },
           "isActive": {
             "type": "boolean"
+          },
+          "zoneGroupId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "zoneGroupCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "zoneGroupName": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -44243,6 +44478,14 @@
           "name": {
             "type": "string",
             "nullable": true
+          },
+          "zoneGroupId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "clearZoneGroup": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -44619,6 +44862,10 @@
             "type": "string",
             "format": "date",
             "nullable": true
+          },
+          "zoneGroup": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -44661,6 +44908,14 @@
           },
           "isCurrent": {
             "type": "boolean"
+          },
+          "zoneGroupCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "zoneGroup": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -49090,6 +49345,22 @@
           "invoiceProcessedByName": {
             "type": "string",
             "nullable": true
+          },
+          "zoneCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "zoneName": {
+            "type": "string",
+            "nullable": true
+          },
+          "zoneGroupCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "zoneGroupName": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -49210,6 +49481,14 @@
           "invoiceProcessedAtUtc": {
             "type": "string",
             "format": "date-time",
+            "nullable": true
+          },
+          "zoneCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "zoneGroupCode": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -54045,6 +54324,10 @@
             "type": "string",
             "format": "date",
             "nullable": true
+          },
+          "zoneGroup": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -54098,6 +54381,14 @@
             "items": {
               "$ref": "#/components/schemas/TierDto"
             },
+            "nullable": true
+          },
+          "zoneGroupCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "zoneGroup": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -54218,6 +54509,11 @@
             "type": "string",
             "format": "date",
             "nullable": true
+          },
+          "zoneGroupId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -54260,6 +54556,14 @@
           },
           "isCurrent": {
             "type": "boolean"
+          },
+          "zoneGroupCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "zoneGroup": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -69851,6 +70155,92 @@
           "uploadedByName": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ZoneGroupDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "defaultDriverPublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "defaultDriverCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "defaultDriverName": {
+            "type": "string",
+            "nullable": true
+          },
+          "zoneCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ZoneGroupRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "defaultDriverPublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "clearDefaultDriver": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AssignOrderZonesResultDto": {
+        "type": "object",
+        "properties": {
+          "examined": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "assigned": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unresolved": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false

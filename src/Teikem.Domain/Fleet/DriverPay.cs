@@ -34,6 +34,8 @@ public class DriverDeliveryRate : ITenantScoped, ISoftDeletable, IEffectiveDated
     public int DriverId { get; set; }
     public int ServiceTypeLookupId { get; set; }
     public int PackageTypeLookupId { get; set; }
+    /// <summary>Lote 129: nivel de zona de la tarifa (opcional): con nivel aplica solo a las órdenes de ese nivel; sin nivel es la general.</summary>
+    public int? ZoneGroupId { get; set; }
     public decimal Rate { get; set; }
     public DateOnly EffectiveFrom { get; set; }
     public DateOnly? EffectiveTo { get; set; }

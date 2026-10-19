@@ -298,6 +298,7 @@ public sealed class OrderService(
                     }
                     var deliveryStop = new OrderStop { TransportOrderId = order.TransportOrderId, StopTypeLookupId = deliveryTypeId, Sequence = 2, StatusCodeId = stopInitial.StatusCodeId };
                     OrderRules.ApplySnapshot(deliveryStop, consigneeLoc, consigneeCountry, req.RequestedDate);
+                    order.DeliveryZoneId = await OrderZoneResolver.ResolveAsync(db, deliveryStop.SnapPostalCode, deliveryStop.SnapCity, ct2);   // Lote 129: zona (y nivel) de la entrega
                     db.OrderStops.Add(deliveryStop);
                     await db.SaveChangesAsync(ct2);
                     if (pickupStop is not null) await BornStopAsync(pickupStop, stopInitial.InternalCode, ct2);
@@ -450,6 +451,7 @@ public sealed class OrderService(
                     loc = await db.Locations.AsNoTracking().FirstAsync(l => l.LocationId == created.Id, ct2);
                 }
                 OrderRules.ApplySnapshot(deliveryStop, loc, await CountryCodeAsync(loc.CountryLookupId, ct2), requestedDate);
+                order.DeliveryZoneId = await OrderZoneResolver.ResolveAsync(db, deliveryStop.SnapPostalCode, deliveryStop.SnapCity, ct2);   // Lote 129
             }
             else if (req.RequestedDate is not null && deliveryStop.LocationId is int deliveryLocId)
             {

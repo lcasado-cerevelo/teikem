@@ -15,13 +15,13 @@ namespace Teikem.Infrastructure.Services;
 /// </summary>
 public sealed class DriverRateResolver(TeikemDbContext db, ILookupCache lookups) : IDriverRateResolver
 {
-    public async Task<DriverRateResolution> DeliveryRateAsync(int driverId, int serviceTypeLookupId, int packageTypeLookupId, DateOnly asOf, CancellationToken ct)
+    public async Task<DriverRateResolution> DeliveryRateAsync(int driverId, int serviceTypeLookupId, int packageTypeLookupId, DateOnly asOf, CancellationToken ct, int? zoneGroupId = null)
     {
         var rows = await db.DriverDeliveryRates.AsNoTracking()
             .Where(r => r.DriverId == driverId && r.ServiceTypeLookupId == serviceTypeLookupId && r.PackageTypeLookupId == packageTypeLookupId
                         && r.IsActive && r.EffectiveFrom <= asOf && (r.EffectiveTo == null || r.EffectiveTo > asOf))
             .ToListAsync(ct);
-        var pick = DriverPayoutRules.PickCurrent(rows, asOf);
+        var pick = DriverPayoutRules.PickCurrent(DriverPayoutRules.ForZoneGroup(rows, zoneGroupId), asOf);
         return pick is null ? Missing() : new DriverRateResolution(pick.Rate, pick.DriverDeliveryRateId, false);
     }
 

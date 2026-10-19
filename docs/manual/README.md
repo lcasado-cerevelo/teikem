@@ -430,3 +430,4 @@ L121. [L121 — Roles y usuarios: pestañas Clientes y Consignatarios (web del p
 L126. [L126 — Procesar entregas: la factura del cliente (web del personal)](frontend/l126-procesar-factura.md): el selector «¿Qué vas a subir?», la vista previa con el tipo de cada hoja, la advertencia del modo, la corrida y la ficha de la orden; con capturas.
 38. [38 — Almacén de archivos: firma, fotos y documentos](38-almacen-de-archivos.md): Lote 127 (2026-10-18) — archivos cifrados por compañía con la referencia en la base; primer uso, el comprobante de entrega.
 L127. [L127 — Comprobante de entrega: firma y fotos (web del personal)](frontend/l127-anejos-comprobante.md): miniaturas, agregar y quitar; con capturas.
+L129. [L129 — Niveles de zona: Isla y Metro (web del personal)](frontend/l129-nivel-de-zona.md): niveles con chofer por omisión, zonas con nivel, ficha y filtros de órdenes; con capturas.

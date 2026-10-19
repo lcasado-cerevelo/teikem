@@ -43,9 +43,11 @@ export interface RateValues {
   rate: number | null
   /** 'YYYY-MM-DD'. Solo se pide al editar; en el alta el servidor usa hoy. */
   effectiveFrom: string
+  /** Lote 129: código del nivel de zona de la tarifa; '' = general. */
+  zoneGroup: string
 }
 
-export const emptyRateValues = (effectiveFrom: string): RateValues => ({ serviceType: '', packageType: '', tripTypeId: '', rate: null, effectiveFrom })
+export const emptyRateValues = (effectiveFrom: string): RateValues => ({ serviceType: '', packageType: '', tripTypeId: '', rate: null, effectiveFrom, zoneGroup: '' })
 
 export interface RateSchemaOptions {
   /** 'delivery' exige servicio y paquete; 'trip' exige el tipo de viaje; false = solo la tarifa (editar o intento). */
@@ -64,6 +66,7 @@ export function rateSchema(t: TFn, opts: RateSchemaOptions) {
       tripTypeId: z.string(),
       rate: z.number(t('drivers.rates.errors.rateRequired')).nullable(),
       effectiveFrom: z.string(),
+      zoneGroup: z.string(),
     })
     .superRefine((v, ctx) => {
       if (opts.needs === 'delivery') {
@@ -80,7 +83,7 @@ export function rateSchema(t: TFn, opts: RateSchemaOptions) {
     })
 }
 
-export const buildDeliveryRateCreate = (v: RateValues) => ({ serviceType: v.serviceType, packageType: v.packageType, rate: v.rate ?? 0 })
+export const buildDeliveryRateCreate = (v: RateValues) => ({ serviceType: v.serviceType, packageType: v.packageType, rate: v.rate ?? 0, zoneGroup: v.zoneGroup || null })
 export const buildTripRateCreate = (v: RateValues) => ({ specialServiceTypeId: Number(v.tripTypeId), rate: v.rate ?? 0 })
 /** Editar = nueva versión: la tarifa y desde cuándo rige (el servidor cierra la fila abierta ahí). */
 export const buildRateUpdate = (v: RateValues) => ({ rate: v.rate ?? 0, effectiveFrom: v.effectiveFrom })

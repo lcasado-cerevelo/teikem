@@ -187,8 +187,9 @@ public sealed class RateComponentConfiguration : IEntityTypeConfiguration<RateCo
         b.Property(r => r.EffectiveFrom).HasColumnType("date");
         b.Property(r => r.EffectiveTo).HasColumnType("date");
         // Una sola fila abierta por (tenant, contrato, tipo, servicio, paquete)
-        b.HasIndex(r => new { r.TenantId, r.ContractId, r.ComponentTypeLookupId, r.ServiceTypeLookupId, r.PackageTypeLookupId })
-            .IsUnique().HasFilter("[EffectiveTo] IS NULL AND [IsActive] = 1").HasDatabaseName("UQ_RateComponent_Open");
+        // Lote 129: ... y nivel de zona (NULL = general)
+        b.HasIndex(r => new { r.TenantId, r.ContractId, r.ComponentTypeLookupId, r.ServiceTypeLookupId, r.PackageTypeLookupId, r.ZoneGroupId })
+            .IsUnique().HasFilter("[EffectiveTo] IS NULL AND [IsActive] = 1").HasDatabaseName("UQ_RateComponent_Open2");
         b.HasIndex(r => r.ContractId).HasFilter("[ContractId] IS NOT NULL").HasDatabaseName("IX_RateComponent_Contract");
         b.HasOne(r => r.Contract).WithMany().HasForeignKey(r => r.ContractId);
         b.HasMany(r => r.Tiers).WithOne(t => t.Component).HasForeignKey(t => t.RateComponentId);

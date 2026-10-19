@@ -587,7 +587,7 @@ describe('Pestaña Tarifas', () => {
     await user.type(within(dialog).getByLabelText(/^Tarifa/), '5')
     await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
     await waitFor(() => expect(callsTo('POST', '/api/v1/contracts/k-1/rate-components')).toHaveLength(1))
-    expect(lastBody('POST', '/api/v1/contracts/k-1/rate-components')).toEqual({ kind: 'PER_SERVICE', serviceType: 'EXPRESS', packageType: 'ENVELOPE', rate: 5, effectiveFrom: today() })
+    expect(lastBody('POST', '/api/v1/contracts/k-1/rate-components')).toEqual({ kind: 'PER_SERVICE', serviceType: 'EXPRESS', packageType: 'ENVELOPE', rate: 5, effectiveFrom: today(), zoneGroup: null })
   })
 
   it('muestra el 409 de «ya existe una tarifa vigente» tal cual', async () => {

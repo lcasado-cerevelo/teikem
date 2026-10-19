@@ -169,6 +169,12 @@ export function useZoneMutations() {
       mutationFn: (v: { id: number; name: string }) => unwrap(api.PATCH('/api/v1/dispatch-zones/{id}', { params: { path: { id: v.id } }, body: { name: v.name } })),
       onSuccess,
     }),
+    /** Lote 129: el nivel de la zona (null = sin nivel). */
+    setLevel: useMutation({
+      mutationFn: (v: { id: number; zoneGroupId: number | null }) =>
+        unwrap(api.PATCH('/api/v1/dispatch-zones/{id}', { params: { path: { id: v.id } }, body: v.zoneGroupId === null ? { clearZoneGroup: true } : { zoneGroupId: v.zoneGroupId } })),
+      onSuccess,
+    }),
     setActive: useMutation({
       mutationFn: (v: { id: number; active: boolean }) =>
         v.active
@@ -176,5 +182,35 @@ export function useZoneMutations() {
           : unwrap(api.POST('/api/v1/dispatch-zones/{id}/deactivate', { params: { path: { id: v.id } } })),
       onSuccess,
     }),
+  }
+}
+
+// ---------------------------------------------------------------- Lote 129: niveles de zona (Isla/Metro…)
+export type ZoneGroup = Schemas['ZoneGroupDto']
+export type ZoneGroupRequest = Schemas['ZoneGroupRequest']
+export const zoneGroupKeys = { all: ['zone-groups'] as const, list: (includeInactive: boolean) => ['zone-groups', { includeInactive }] as const }
+
+/** `GET /zone-groups` (fleet.view). */
+export function useZoneGroups(includeInactive = false, enabled = true) {
+  return useQuery({ queryKey: zoneGroupKeys.list(includeInactive), queryFn: () => unwrap(api.GET('/api/v1/zone-groups', { params: { query: { includeInactive } } })), enabled })
+}
+
+/** Alta, edición, baja y reactivación de niveles (fleet.manage); al cambiar se refrescan las zonas (traen su nivel). */
+export function useZoneGroupMutations() {
+  const qc = useQueryClient()
+  const onSuccess = () => {
+    void qc.invalidateQueries({ queryKey: zoneGroupKeys.all })
+    void qc.invalidateQueries({ queryKey: driverKeys.zones })
+  }
+  return {
+    create: useMutation({ mutationFn: (body: ZoneGroupRequest) => unwrap(api.POST('/api/v1/zone-groups', { body })), onSuccess }),
+    update: useMutation({ mutationFn: (v: { id: number; body: ZoneGroupRequest }) => unwrap(api.PATCH('/api/v1/zone-groups/{id}', { params: { path: { id: v.id } }, body: v.body })), onSuccess }),
+    setActive: useMutation({
+      mutationFn: (v: { id: number; active: boolean }) =>
+        v.active ? unwrap(api.POST('/api/v1/zone-groups/{id}/reactivate', { params: { path: { id: v.id } } })) : unwrap(api.POST('/api/v1/zone-groups/{id}/deactivate', { params: { path: { id: v.id } } })),
+      onSuccess,
+    }),
+    /** `POST /dispatch-zones/assign-orders`: pone la zona de entrega a las órdenes que no la tienen (all = a todas). */
+    assignOrders: useMutation({ mutationFn: (all: boolean) => unwrap(api.POST('/api/v1/dispatch-zones/assign-orders', { params: { query: { all } } })) }),
   }
 }

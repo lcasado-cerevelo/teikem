@@ -135,9 +135,20 @@ public sealed record DriverPatchRequest(
 /// <summary>DELETE /drivers/{publicId}: baja definitiva (estatus terminal) con comentario opcional.</summary>
 public sealed record DriverRetireRequest(string? Comment = null);
 
-public sealed record DispatchZoneDto(int Id, string Code, string? Name, int DriverCount, bool IsActive);
+/// <summary>Lote 129: ZoneGroup* = el nivel de la zona (Isla/Metro…), o nulos sin nivel.</summary>
+public sealed record DispatchZoneDto(int Id, string Code, string? Name, int DriverCount, bool IsActive, int? ZoneGroupId = null, string? ZoneGroupCode = null, string? ZoneGroupName = null);
 
-public sealed record DispatchZoneRequest(string? Code = null, string? Name = null);
+/// <summary>Lote 129: ZoneGroupId pone el nivel; ClearZoneGroup = true lo quita.</summary>
+public sealed record DispatchZoneRequest(string? Code = null, string? Name = null, int? ZoneGroupId = null, bool ClearZoneGroup = false);
+
+/// <summary>Lote 129 — nivel de zona.</summary>
+public sealed record ZoneGroupDto(int Id, string Code, string? Name, int SortOrder, Guid? DefaultDriverPublicId, string? DefaultDriverCode, string? DefaultDriverName, int ZoneCount, bool IsActive);
+
+/// <summary>Alta/edición del nivel. Code solo al crear. DefaultDriverPublicId pone el chofer por omisión; ClearDefaultDriver lo quita.</summary>
+public sealed record ZoneGroupRequest(string? Code = null, string? Name = null, int? SortOrder = null, Guid? DefaultDriverPublicId = null, bool ClearDefaultDriver = false);
+
+/// <summary>Resultado de asignar zona a las órdenes existentes (Lote 129).</summary>
+public sealed record AssignOrderZonesResultDto(int Examined, int Assigned, int Unresolved);
 
 // ---------------- Lote 5 — miembros de la zona de despacho y resolución 'CP/pueblo → zona' ----------------
 

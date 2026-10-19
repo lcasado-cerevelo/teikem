@@ -66,7 +66,7 @@ describe('Flota — zonas de despacho', () => {
     await user.type(within(dialog).getByLabelText('Nombre'), ' Norte ')
     await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
     await waitFor(() => expect(callsTo('POST', '/api/v1/dispatch-zones')).toHaveLength(1))
-    expect(callsTo('POST', '/api/v1/dispatch-zones')[0].body).toEqual({ code: 'Z-77', name: 'Norte' })
+    expect(callsTo('POST', '/api/v1/dispatch-zones')[0].body).toEqual({ code: 'Z-77', name: 'Norte', zoneGroupId: null })
     expect(await screen.findByText('Zona creada.')).toBeInTheDocument()
     expect(within(rowOf(await table(), 'Z-77')).getByText('Norte')).toBeInTheDocument()
   })

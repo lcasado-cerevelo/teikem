@@ -11618,6 +11618,9 @@ export interface paths {
                     invoiceProcessed?: boolean | null;
                     processedFrom?: string | null;
                     processedTo?: string | null;
+                    zoneIds?: number[] | null;
+                    zoneGroupIds?: number[] | null;
+                    noZone?: boolean | null;
                     includeInactive?: boolean;
                     skip?: number;
                     take?: number;
@@ -29419,6 +29422,218 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/zone-groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    includeInactive?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ZoneGroupDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ZoneGroupRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ZoneGroupDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/zone-groups/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ZoneGroupRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ZoneGroupDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/zone-groups/{id}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ZoneGroupDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/zone-groups/{id}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ZoneGroupDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatch-zones/assign-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: {
+                    all?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AssignOrderZonesResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -31003,6 +31218,10 @@ export interface components {
             /** Format: int32 */
             driverCount?: number;
             isActive?: boolean;
+            /** Format: int32 */
+            zoneGroupId?: number | null;
+            zoneGroupCode?: string | null;
+            zoneGroupName?: string | null;
         };
         DispatchZoneMemberDto: {
             /** Format: int32 */
@@ -31026,6 +31245,9 @@ export interface components {
         DispatchZoneRequest: {
             code?: string | null;
             name?: string | null;
+            /** Format: int32 */
+            zoneGroupId?: number | null;
+            clearZoneGroup?: boolean;
         };
         DispatchableTripDto: {
             trip?: components["schemas"]["TripListItemDto"];
@@ -31154,6 +31376,7 @@ export interface components {
             rate?: number;
             /** Format: date */
             effectiveFrom?: string | null;
+            zoneGroup?: string | null;
         };
         DriverDeliveryRateDto: {
             /** Format: int32 */
@@ -31169,6 +31392,8 @@ export interface components {
             /** Format: date */
             effectiveTo?: string | null;
             isCurrent?: boolean;
+            zoneGroupCode?: string | null;
+            zoneGroup?: string | null;
         };
         DriverDetailDto: {
             /** Format: int32 */
@@ -32649,6 +32874,10 @@ export interface components {
             /** Format: date-time */
             invoiceProcessedAtUtc?: string | null;
             invoiceProcessedByName?: string | null;
+            zoneCode?: string | null;
+            zoneName?: string | null;
+            zoneGroupCode?: string | null;
+            zoneGroupName?: string | null;
         };
         OrderListItemDto: {
             /** Format: int32 */
@@ -32687,6 +32916,8 @@ export interface components {
             waybillNumber?: string | null;
             /** Format: date-time */
             invoiceProcessedAtUtc?: string | null;
+            zoneCode?: string | null;
+            zoneGroupCode?: string | null;
         };
         OrderLookupDto: {
             code?: string | null;
@@ -34276,6 +34507,7 @@ export interface components {
             rate?: number | null;
             /** Format: date */
             effectiveFrom?: string | null;
+            zoneGroup?: string | null;
         };
         RateComponentDto: {
             /** Format: int32 */
@@ -34293,6 +34525,8 @@ export interface components {
             effectiveTo?: string | null;
             isCurrent?: boolean;
             tiers?: components["schemas"]["TierDto"][] | null;
+            zoneGroupCode?: string | null;
+            zoneGroup?: string | null;
         };
         RateComponentsDto: {
             /** Format: uuid */
@@ -34331,6 +34565,8 @@ export interface components {
             codAmount?: number | null;
             /** Format: date */
             asOf?: string | null;
+            /** Format: int32 */
+            zoneGroupId?: number | null;
         };
         RateRowDto: {
             /** Format: int32 */
@@ -34346,6 +34582,8 @@ export interface components {
             /** Format: date */
             effectiveTo?: string | null;
             isCurrent?: boolean;
+            zoneGroupCode?: string | null;
+            zoneGroup?: string | null;
         };
         RateUpdateRequest: {
             /** Format: double */
@@ -39523,6 +39761,38 @@ export interface components {
             /** Format: date-time */
             createdAtUtc?: string;
             uploadedByName?: string | null;
+        };
+        ZoneGroupDto: {
+            /** Format: int32 */
+            id?: number;
+            code?: string;
+            name?: string | null;
+            /** Format: int32 */
+            sortOrder?: number;
+            /** Format: uuid */
+            defaultDriverPublicId?: string | null;
+            defaultDriverCode?: string | null;
+            defaultDriverName?: string | null;
+            /** Format: int32 */
+            zoneCount?: number;
+            isActive?: boolean;
+        };
+        ZoneGroupRequest: {
+            code?: string | null;
+            name?: string | null;
+            /** Format: int32 */
+            sortOrder?: number | null;
+            /** Format: uuid */
+            defaultDriverPublicId?: string | null;
+            clearDefaultDriver?: boolean;
+        };
+        AssignOrderZonesResultDto: {
+            /** Format: int32 */
+            examined?: number;
+            /** Format: int32 */
+            assigned?: number;
+            /** Format: int32 */
+            unresolved?: number;
         };
     };
     responses: never;

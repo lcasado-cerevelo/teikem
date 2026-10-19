@@ -11,6 +11,7 @@ import { tenantToday } from '../../kernel/api/tenantZone'
 import { useLookups } from '../../kernel/catalogs'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
+import { useZoneGroups } from '../fleet/api'
 import { Chip, ConfirmDialog, DataTable, type DataColumn, DateInput, EmptyState, Field, IconEdit, IconTrash, NumberInput, Select, Spinner, toast, useElementWidth } from '../../kernel/ui'
 import { IconCash } from '../../kernel/ui/screenIcons'
 import { useRateComponents, useRateMutations } from './contractApi'
@@ -36,6 +37,8 @@ function RateModal({ contract, kind, row, open, onClose }: { contract: ContractD
   const t = useT()
   const mutations = useRateMutations(contract.publicId ?? '')
   const { data: services = [] } = useLookups('ServiceType')
+  const levels = useZoneGroups()
+  const levelOptions = useMemo(() => (levels.data ?? []).map((g) => ({ value: g.code ?? '', label: g.name || g.code || '' })), [levels.data])
   const { data: packages = [] } = useLookups('PackageType')
   const editing = row !== null
   const isExtra = kind === 'EXTRA_PIECE'
@@ -56,7 +59,7 @@ function RateModal({ contract, kind, row, open, onClose }: { contract: ContractD
   )
   const form = useForm({
     resolver: zodResolver(schema),
-    defaultValues: { serviceType: row?.serviceType ?? '', packageType: row?.packageType ?? '', rate: row?.rate ?? null, effectiveFrom: defaultEffectiveDate(tenantToday()) },
+    defaultValues: { serviceType: row?.serviceType ?? '', packageType: row?.packageType ?? '', rate: row?.rate ?? null, effectiveFrom: defaultEffectiveDate(tenantToday()), zoneGroup: row?.zoneGroupCode ?? '' },
   })
 
   const title = isExtra ? t('clients.rates.addExtraTitle') : editing ? t('clients.rates.editTitle') : t('clients.rates.addTitle')
@@ -69,7 +72,7 @@ function RateModal({ contract, kind, row, open, onClose }: { contract: ContractD
       form={form}
       onSubmit={async (v) => {
         if (editing) await mutations.update.mutateAsync({ id: row.id, body: { rate: v.rate ?? 0, effectiveFrom: v.effectiveFrom } })
-        else await mutations.add.mutateAsync({ kind, serviceType: v.serviceType, packageType: v.packageType, rate: isExtra ? null : v.rate, effectiveFrom: v.effectiveFrom })
+        else await mutations.add.mutateAsync({ kind, serviceType: v.serviceType, packageType: v.packageType, rate: isExtra ? null : v.rate, effectiveFrom: v.effectiveFrom, zoneGroup: v.zoneGroup || null })
         toast.success(t('clients.rates.saved'))
         onClose()
       }}
@@ -90,6 +93,11 @@ function RateModal({ contract, kind, row, open, onClose }: { contract: ContractD
             <Select options={lookupOptions(packages)} placeholder={t('clients.rates.choose')} />
           </Field>
         </div>
+      )}
+      {!editing && (
+        <Field name="zoneGroup" label={t('clients.rates.level')} help={t('clients.rates.levelHelp')}>
+          <Select options={levelOptions} placeholder={t('clients.rates.allLevels')} />
+        </Field>
       )}
       <div className="r2">
         {!isExtra && (
@@ -194,6 +202,7 @@ export function ContractRatesTab({ contract }: { contract: ContractDetail }) {
     () => [
       { id: 'service', header: t('clients.rates.service'), cell: (r) => <b>{r.serviceTypeLabel ?? r.serviceType}</b>, sortValue: (r) => r.serviceTypeLabel ?? r.serviceType, card: 'title' },
       { id: 'package', header: t('clients.rates.package'), cell: (r) => r.packageTypeLabel ?? r.packageType, sortValue: (r) => r.packageTypeLabel ?? r.packageType },
+      { id: 'level', header: t('clients.rates.level'), cell: (r) => r.zoneGroup ?? t('clients.rates.allLevels'), sortValue: (r) => r.zoneGroup ?? '' },   // Lote 129
       { id: 'rate', header: t('clients.rates.rate'), align: 'end', cell: (r) => <span className="mono">{r.rate == null ? '—' : f.money(r.rate, { currency, unitPrice: true })}</span>, sortValue: (r) => r.rate },
       { id: 'from', header: t('clients.rates.from'), cell: (r) => f.date(r.effectiveFrom), sortValue: (r) => r.effectiveFrom },
       ...(history ? [{ id: 'to', header: t('clients.rates.to'), cell: (r: RateRow) => (r.effectiveTo ? f.date(r.effectiveTo) : '—'), sortValue: (r: RateRow) => r.effectiveTo }] : []),

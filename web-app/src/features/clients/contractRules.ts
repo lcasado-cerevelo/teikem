@@ -382,6 +382,7 @@ export function rateSchema(m: RateMessages, opts: { needsKeys: boolean; needsRat
       packageType: z.string(),
       rate: z.number(m.rateRequired).min(0, m.rateMin).nullable(),
       effectiveFrom: z.string().min(1, m.dateRequired),
+      zoneGroup: z.string().optional(),   // Lote 129: código del nivel de zona; vacío = general
     })
     .superRefine((v, ctx) => {
       if (opts.needsKeys && !v.serviceType) ctx.addIssue({ code: 'custom', path: ['serviceType'], message: m.serviceRequired })

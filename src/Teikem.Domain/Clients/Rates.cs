@@ -21,6 +21,8 @@ public class RateComponent : ITenantScoped, ISoftDeletable, IEffectiveDated
     public int? ToZoneId { get; set; }
     public int? ServiceTypeLookupId { get; set; }
     public int? PackageTypeLookupId { get; set; }
+    /// <summary>Lote 129: nivel de zona de la tarifa (opcional): con nivel aplica solo a las órdenes de ese nivel y gana sobre la general.</summary>
+    public int? ZoneGroupId { get; set; }
     public int PricingModeLookupId { get; set; }
     public int? TierModeLookupId { get; set; }
     public decimal? FlatAmount { get; set; }

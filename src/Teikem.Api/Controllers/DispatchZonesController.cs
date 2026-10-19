@@ -44,6 +44,10 @@ public sealed class DispatchZonesController(DispatchZoneService zones) : Control
     public Task<ZoneResolutionDto> Resolve([FromQuery] string? postalCode, [FromQuery] string? city, CancellationToken ct)
         => zones.ResolveAsync(postalCode, city, ct);
 
+    /// <summary>Lote 129: pone la zona de entrega a las órdenes activas que no la tienen (all = true: a todas, después de cambiar miembros). Devuelve cuántas se examinaron, asignaron y quedaron sin zona.</summary>
+    [HttpPost("assign-orders"), RequirePermission(PermissionCatalog.FleetManage)]
+    public Task<AssignOrderZonesResultDto> AssignOrders([FromQuery] bool all, CancellationToken ct) => zones.AssignOrdersAsync(all, ct);
+
     /// <summary>Miembros de la zona (activa o no).</summary>
     [HttpGet("{id:int}/members"), RequirePermission(PermissionCatalog.FleetView)]
     public Task<DispatchZoneMembersDto> ListMembers(int id, CancellationToken ct) => zones.ListMembersAsync(id, ct);

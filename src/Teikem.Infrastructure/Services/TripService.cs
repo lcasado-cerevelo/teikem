@@ -429,6 +429,12 @@ public sealed class TripService(
                          join d in db.Drivers.AsNoTracking() on dz.DriverId equals d.DriverId
                          where dz.DispatchZoneId == zoneId && dz.IsPrimary && d.IsActive
                          select d.DriverId).Distinct().ToListAsync(ct);
+        if (ids.Count == 0)
+        {
+            // Lote 129: sin chofer propio, el chofer por omisión del NIVEL de la zona (Advance: Isla entera a un solo chofer)
+            var levelDriver = await db.DispatchZones.AsNoTracking().Where(z => z.DispatchZoneId == zoneId && z.ZoneGroup != null && z.ZoneGroup.IsActive).Select(z => z.ZoneGroup!.DefaultDriverId).FirstOrDefaultAsync(ct);
+            if (levelDriver is int ld && await db.Drivers.AsNoTracking().AnyAsync(d => d.DriverId == ld && d.IsActive, ct)) ids.Add(ld);
+        }
         if (ids.Count != 1) return null; // ninguno o varios: sin chofer por defecto (no hace falta evaluar disponibilidad)
         var check = await availability.CheckDriverAsync(ids[0], date, ct);
         return TripPlanningRules.PickDefaultDriver(new[] { new DefaultDriverCandidate(ids[0], check.Available) });

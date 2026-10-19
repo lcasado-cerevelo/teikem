@@ -43,6 +43,8 @@ public class TransportOrder : ITenantScoped, ISoftDeletable, IHasStatus, IAuditS
     public DateTime? InvoiceProcessedAtUtc { get; set; }
     public int? InvoiceProcessedBy { get; set; }
     public int? InvoiceProcessRunId { get; set; }
+    /// <summary>Lote 129: la zona de despacho de la parada de entrega (resuelta por ZIP y pueblo al crear o editar la orden; NULL = sin zona o ambigua). De ella sale el nivel (Isla/Metro).</summary>
+    public int? DeliveryZoneId { get; set; }
     public int ServiceTypeLookupId { get; set; }
     public int StatusCodeId { get; set; }
     public int? PriorityLookupId { get; set; }

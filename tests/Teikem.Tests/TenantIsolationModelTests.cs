@@ -86,7 +86,7 @@ public class TenantIsolationModelTests
 
         // Y todas las demás de flota tienen filtro de tenant.
         var fleetWithTenant = DomainEntities(db).Where(e => e.ClrType.Namespace == "Teikem.Domain.Fleet" && e.FindProperty("TenantId") is not null).ToList();
-        Assert.Equal(15, fleetWithTenant.Count);   // Lote 93: + DeliveryAttempt; Lote 94: + DriverSettlementRun, DriverSettlementLine
+        Assert.Equal(16, fleetWithTenant.Count);   // Lote 93: + DeliveryAttempt; Lote 94: + DriverSettlementRun, DriverSettlementLine; Lote 129: + ZoneGroup
         Assert.All(fleetWithTenant, e => Assert.NotNull(e.GetQueryFilter()));
     }
 
@@ -119,7 +119,7 @@ public class TenantIsolationModelTests
     [InlineData(typeof(Driver), "UX_Driver_User", new[] { "TenantId", "UserId" }, "[UserId] IS NOT NULL")]
     [InlineData(typeof(DispatchZone), "UQ_DispatchZone", new[] { "TenantId", "Code" }, null)]
     [InlineData(typeof(MaintenanceWorkOrder), "UQ_WorkOrder_Number", new[] { "TenantId", "Number" }, null)]
-    [InlineData(typeof(DriverDeliveryRate), "UQ_DriverDeliveryRate_Open", new[] { "DriverId", "ServiceTypeLookupId", "PackageTypeLookupId" }, "[EffectiveTo] IS NULL AND [IsActive] = 1")]
+    [InlineData(typeof(DriverDeliveryRate), "UQ_DriverDeliveryRate_Open2", new[] { "DriverId", "ServiceTypeLookupId", "PackageTypeLookupId", "ZoneGroupId" }, "[EffectiveTo] IS NULL AND [IsActive] = 1")]   // Lote 129: + nivel de zona
     [InlineData(typeof(DriverAttemptRate), "UQ_DriverAttemptRate_Open", new[] { "DriverId", "AttemptNumber" }, "[EffectiveTo] IS NULL AND [IsActive] = 1")]
     [InlineData(typeof(DriverTripRate), "UQ_DriverTripRate_Open", new[] { "DriverId", "SpecialServiceTypeId" }, "[EffectiveTo] IS NULL AND [IsActive] = 1")]
     [InlineData(typeof(DriverTrip), "UX_DriverTrip_Order", new[] { "TransportOrderId" }, "[TransportOrderId] IS NOT NULL AND [IsActive] = 1")]
