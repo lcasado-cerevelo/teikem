@@ -17,11 +17,11 @@ public sealed class ApiAccessRulesTests
     }
 
     [Fact]
-    public void Routes_outside_the_list_are_never_allowed_and_deletes_are_never_opened()
+    public void Routes_outside_the_list_are_never_allowed_and_the_only_delete_is_removing_a_webhook()
     {
         Assert.False(ApiAccessRules.IsAllowed("GET", "/api/v1/users", [.. ApiAccessRules.Routes.Select(r => r.Scope)], out var needed));
         Assert.Null(needed);
-        Assert.DoesNotContain(ApiAccessRules.Routes, r => r.Method == "DELETE");
+        Assert.All(ApiAccessRules.Routes.Where(r => r.Method == "DELETE"), r => Assert.Equal("/api/v1/webhooks/{id}", r.Pattern));   // Lote 136: «quitar» un webhook
         Assert.False(ApiAccessRules.IsAllowed("DELETE", "/api/v1/locations/abc", [ApiScopes.ConsigneesWrite], out _));
     }
 

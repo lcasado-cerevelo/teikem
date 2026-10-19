@@ -17,3 +17,4 @@
 .int-newkey label{display:flex;flex-direction:column;gap:4px;font-size:.85em;color:var(--muted)}
 .int-newkey input{padding:9px 11px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--panel-2);color:var(--text);font:inherit;min-width:0}
 @media (max-width:560px){.int-newkey{grid-template-columns:1fr}}
+.int-json{background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px 12px;overflow:auto;max-height:50vh;font-family:var(--mono);font-size:.85em;white-space:pre-wrap;overflow-wrap:anywhere}

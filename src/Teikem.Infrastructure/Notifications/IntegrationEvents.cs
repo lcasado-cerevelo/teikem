@@ -7,6 +7,8 @@ public static class IntegrationEventCodes
 {
     /// <summary>Una corrida terminó con algo que reportar: órdenes creadas, filas a la bandeja o una falla.</summary>
     public const string RunFinished = "INTEGRATION_RUN";
+    /// <summary>Lote 136: un webhook se suspendió solo tras varias salidas seguidas sin entregarse.</summary>
+    public const string WebhookSuspended = "INTEGRATION_WEBHOOK";
 }
 
 /// <summary>
@@ -32,5 +34,19 @@ public sealed class IntegrationEventProvider : INotificationEventProvider
             IsOptional: false, LinkTemplate: "/integrations?integration={integrationId}",
             "Integración «{integration}»: {status}", "Integration “{integration}”: {status}",
             "{message} Creadas: {created}. A la bandeja: {rejected}.", "{message} Created: {created}. To the inbox: {rejected}."),
+        new NotificationEventDef(
+            IntegrationEventCodes.WebhookSuspended, ModuleKeys.Integrations, "Webhook suspendido", "Webhook suspended",
+            new[]
+            {
+                new NotificationVariable("integration", "Integración", "Integration", "API de Truss"),
+                new NotificationVariable("url", "URL", "URL", "https://cliente.example.com/hooks"),
+                new NotificationVariable("failures", "Salidas seguidas sin entregar", "Consecutive undelivered", "5"),
+                new NotificationVariable("message", "Último motivo", "Last reason", "El servidor respondió 500."),
+                new NotificationVariable("integrationId", "Número de la integración", "Integration id", "7"),
+            },
+            IsOptional: false, LinkTemplate: "/integrations?tab=outbox&integration={integrationId}",
+            "Webhook suspendido: «{integration}»", "Webhook suspended: “{integration}”",
+            "Se suspendió el webhook {url} tras {failures} salidas seguidas sin entregarse. Último motivo: {message} Revise la bandeja de salidas y reactívelo.",
+            "The webhook {url} was suspended after {failures} consecutive undelivered notices. Last reason: {message} Check the outbox and resume it."),
     };
 }

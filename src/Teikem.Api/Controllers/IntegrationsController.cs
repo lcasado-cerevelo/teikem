@@ -19,7 +19,7 @@ namespace Teikem.Api.Controllers;
 [Route("api/v1/integrations")]
 [Authorize]
 [RequireModule(ModuleKeys.Integrations)]
-public sealed class IntegrationsController(IntegrationService integrations, IntegrationRunner runner, IntegrationInboxService inbox, ApiKeyService apiKeys, ITenantContext tenant) : ControllerBase
+public sealed class IntegrationsController(IntegrationService integrations, IntegrationRunner runner, IntegrationInboxService inbox, ApiKeyService apiKeys, WebhookService webhooks, ITenantContext tenant) : ControllerBase
 {
     /// <summary>Lo que quien mira puede dar en el alta: alcances (y por qué alguno no se puede), conectores y a quién avisar.</summary>
     [HttpGet("options"), RequirePermission(PermissionCatalog.IntegrationsCreate + "|" + PermissionCatalog.IntegrationsManage)]
@@ -96,6 +96,54 @@ public sealed class IntegrationsController(IntegrationService integrations, Inte
     /// <summary>Las últimas solicitudes de la llave (método, ruta, estatus y milisegundos).</summary>
     [HttpGet("{publicId:guid}/api-keys/{keyId}/log"), RequirePermission(PermissionCatalog.IntegrationsView)]
     public Task<IReadOnlyList<ApiLogDto>> ApiKeyLog(Guid publicId, string keyId, [FromQuery] int take, CancellationToken ct) => apiKeys.LogAsync(publicId, keyId, take <= 0 ? 50 : take, ct);
+
+    // ---------------------------------------------------------------- webhooks de salida (Lote 136; integraciones de tipo API con el alcance webhooks:manage)
+
+    /// <summary>Los webhooks de la integración (sin el secreto: solo los últimos 4 caracteres).</summary>
+    [HttpGet("{publicId:guid}/webhooks"), RequirePermission(PermissionCatalog.IntegrationsView)]
+    public Task<IReadOnlyList<WebhookDto>> Webhooks(Guid publicId, CancellationToken ct) => webhooks.ListAsync(publicId, ct);
+
+    /// <summary>Crea un webhook: el SECRETO de firma viene en esta respuesta y en ninguna otra (se guarda cifrado). URL https pública y al menos un evento.</summary>
+    [HttpPost("{publicId:guid}/webhooks"), RequirePermission(PermissionCatalog.IntegrationsManage)]
+    public Task<WebhookCreatedDto> CreateWebhook(Guid publicId, [FromBody] WebhookCreateRequest req, CancellationToken ct) => webhooks.CreateAsync(publicId, req, ct);
+
+    [HttpPatch("{publicId:guid}/webhooks/{webhookId:guid}"), RequirePermission(PermissionCatalog.IntegrationsManage)]
+    public Task<WebhookDto> UpdateWebhook(Guid publicId, Guid webhookId, [FromBody] WebhookPatchRequest req, CancellationToken ct) => webhooks.UpdateAsync(publicId, webhookId, req, ct);
+
+    /// <summary>Quita el webhook (se desactiva; el historial de salidas queda).</summary>
+    [HttpDelete("{publicId:guid}/webhooks/{webhookId:guid}"), RequirePermission(PermissionCatalog.IntegrationsManage)]
+    public async Task<IActionResult> RemoveWebhook(Guid publicId, Guid webhookId, CancellationToken ct)
+    {
+        await webhooks.RemoveAsync(publicId, webhookId, ct);
+        return NoContent();
+    }
+
+    /// <summary>Reactiva un webhook suspendido.</summary>
+    [HttpPost("{publicId:guid}/webhooks/{webhookId:guid}/resume"), RequirePermission(PermissionCatalog.IntegrationsManage)]
+    public Task<WebhookDto> ResumeWebhook(Guid publicId, Guid webhookId, CancellationToken ct) => webhooks.ResumeAsync(publicId, webhookId, ct);
+
+    /// <summary>Cambia el secreto de firma (el nuevo viene en la respuesta; el anterior deja de servir).</summary>
+    [HttpPost("{publicId:guid}/webhooks/{webhookId:guid}/rotate-secret"), RequirePermission(PermissionCatalog.IntegrationsManage)]
+    public Task<WebhookCreatedDto> RotateWebhookSecret(Guid publicId, Guid webhookId, CancellationToken ct) => webhooks.RotateSecretAsync(publicId, webhookId, ct);
+
+    /// <summary>Manda un «webhook.ping» firmado a la URL y dice cómo respondió.</summary>
+    [HttpPost("{publicId:guid}/webhooks/{webhookId:guid}/test"), RequirePermission(PermissionCatalog.IntegrationsManage)]
+    public Task<WebhookTestResultDto> TestWebhook(Guid publicId, Guid webhookId, CancellationToken ct) => webhooks.TestAsync(publicId, webhookId, ct);
+
+    // ---------------------------------------------------------------- salidas (bandeja de lo no entregado)
+
+    /// <summary>Las salidas por webhook (filtros: integración, webhook y estatus PENDING / DELIVERED / UNDELIVERED / DISCARDED); «undelivered» = las que esperan atención.</summary>
+    [HttpGet("outbox"), RequirePermission(PermissionCatalog.IntegrationsInbox)]
+    public Task<WebhookDeliveryPageDto> Outbox([FromQuery] Guid? integration, [FromQuery] Guid? webhook, [FromQuery] string? status, [FromQuery] int skip, [FromQuery] int take, CancellationToken ct)
+        => webhooks.DeliveriesAsync(integration, webhook, status, skip, take, true, ct);
+
+    /// <summary>Reintenta una salida no entregada (vuelve a pendiente con los intentos en cero).</summary>
+    [HttpPost("outbox/{id:long}/retry"), RequirePermission(PermissionCatalog.IntegrationsInbox)]
+    public Task<WebhookDeliveryDto> RetryOutbox(long id, CancellationToken ct) => webhooks.RetryAsync(id, ct);
+
+    /// <summary>Descarta una salida que ya no se quiere entregar.</summary>
+    [HttpPost("outbox/{id:long}/discard"), RequirePermission(PermissionCatalog.IntegrationsInbox)]
+    public Task<WebhookDeliveryDto> DiscardOutbox(long id, CancellationToken ct) => webhooks.DiscardAsync(id, ct);
 
     // ---------------------------------------------------------------- bandeja
 

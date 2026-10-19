@@ -239,6 +239,34 @@ public sealed class ConsigneeNoticeDispatchJob : IScheduledJob
 }
 
 /// <summary>
+/// Lote 136 (P11) — entrega los webhooks de salida que ya tocan (primer intento o reintento con espera creciente), marca las no entregadas, suspende los webhooks que fallan seguido y purga las salidas
+/// viejas. Corre cada minuto; si el módulo de integraciones está apagado, no hace nada.
+/// </summary>
+public sealed class WebhookDeliveryJob : IScheduledJob
+{
+    public string Key => JobKeys.WebhookDelivery;
+    public string NameEs => "Entrega de webhooks";
+    public string NameEn => "Webhook delivery";
+    public string DescriptionEs => "Envía los avisos por webhook pendientes y reintenta los fallidos con espera creciente.";
+    public string DescriptionEn => "Sends the pending webhook notices and retries the failed ones with growing delays.";
+    public string DefaultKind => JobScheduleKinds.Interval;
+    public int? DefaultIntervalSeconds => 60;
+    public TimeSpan? DefaultDailyAt => null;
+    public bool DefaultEnabled => true;
+    public TimeSpan MaxRuntime => TimeSpan.FromMinutes(5);
+
+    public async Task<string?> RunAsync(JobRunContext context, CancellationToken ct)
+    {
+        var modules = context.Services.GetRequiredService<ModuleService>();
+        if (!(await modules.GetEnabledKeysAsync(context.TenantId, ct)).Contains(ModuleKeys.Integrations)) return "El módulo de integraciones está apagado.";
+        var o = await context.Services.GetRequiredService<WebhookProcessor>().ProcessDueAsync(context.NowUtc, 100, ct);
+        return o.Sent + o.Retrying + o.Undelivered + o.Suspended + o.Purged == 0
+            ? "Ningún webhook por entregar."
+            : $"{o.Sent} entregado(s), {o.Retrying} por reintentar, {o.Undelivered} no entregado(s), {o.Suspended} webhook(s) suspendido(s), {o.Purged} salida(s) purgada(s).";
+    }
+}
+
+/// <summary>
 /// Lote 132 (P11) — corre las integraciones de entrada que tocan por horario (cada una con su cuenta de servicio) y purga el detalle de la bandeja pasada la retención.
 /// Corre cada minuto; una integración sin horario (manual) nunca corre sola.
 /// </summary>

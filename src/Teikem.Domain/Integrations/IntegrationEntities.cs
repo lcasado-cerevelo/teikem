@@ -210,6 +210,55 @@ public class IntegrationApiKey : ITenantScoped
     public int? RevokedBy { get; set; }
 }
 
+/// <summary>
+/// Lote 136 (P11) — un webhook de salida de una integración de tipo API: Teikem avisa por HTTP POST a la URL del cliente cuando pasa algo con lo suyo (ver <see cref="WebhookEvents"/>). El secreto de
+/// firma (HMAC-SHA256) se guarda cifrado y se muestra una sola vez. Tras N entregas seguidas sin lograrse se suspende solo (SuspendedAtUtc); quitarlo lo desactiva (RemovedAtUtc), nunca se borra.
+/// </summary>
+[AuditEntity(Constants.EntityTypes.Integration)]
+public class IntegrationWebhook : ITenantScoped
+{
+    public int IntegrationWebhookId { get; set; }
+    [NotAudited] public Guid PublicId { get; set; }
+    public int TenantId { get; set; }
+    public int IntegrationId { get; set; }
+    public string Url { get; set; } = string.Empty;
+    /// <summary>Lista JSON de eventos suscritos.</summary>
+    public string EventsJson { get; set; } = "[]";
+    [SensitiveData] public byte[] SecretEnc { get; set; } = [];
+    public string SecretLast4 { get; set; } = string.Empty;
+    public bool IsActive { get; set; } = true;
+    [NotAudited] public int ConsecutiveFailures { get; set; }
+    public DateTime? SuspendedAtUtc { get; set; }
+    [NotAudited] public DateTime? LastDeliveryUtc { get; set; }
+    [NotAudited] public string? LastStatus { get; set; }
+    [NotAudited] public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public int? CreatedBy { get; set; }
+    public DateTime? RemovedAtUtc { get; set; }
+}
+
+/// <summary>
+/// Una entrega de webhook (la «salida»): el cuerpo ya armado, cuántos intentos lleva y cuándo toca el siguiente. PENDING → DELIVERED, o tras agotar los reintentos UNDELIVERED (bandeja de salidas
+/// no entregadas, con «Reintentar»). Se purga a los 30 días.
+/// </summary>
+public class IntegrationWebhookDelivery : ITenantScoped
+{
+    public long IntegrationWebhookDeliveryId { get; set; }
+    public int TenantId { get; set; }
+    public int IntegrationWebhookId { get; set; }
+    public Guid EventId { get; set; }
+    public string EventType { get; set; } = string.Empty;
+    public string PayloadJson { get; set; } = string.Empty;
+    public string Status { get; set; } = WebhookDeliveryStatuses.Pending;
+    public int AttemptCount { get; set; }
+    public DateTime NextAttemptUtc { get; set; } = DateTime.UtcNow;
+    public DateTime? LastAttemptUtc { get; set; }
+    public int? ResponseCode { get; set; }
+    public string? Error { get; set; }
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime? DeliveredAtUtc { get; set; }
+    public int? ResolvedBy { get; set; }
+}
+
 /// <summary>Bitácora de la API por llave: una fila por solicitud (método, ruta, estatus, milisegundos). Se purga a los 30 días.</summary>
 public class IntegrationApiLog : ITenantScoped
 {

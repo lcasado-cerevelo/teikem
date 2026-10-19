@@ -9615,7 +9615,8 @@
     "tabs": {
       "label": "Secciones de Integraciones",
       "integrations": "Integraciones",
-      "inbox": "Bandeja"
+      "inbox": "Bandeja",
+      "outbox": "Salidas"
     },
     "col": {
       "name": "Integración",
@@ -9670,6 +9671,76 @@
       "rejected": "A la bandeja",
       "result": "Resultado",
       "empty": "Todavía no ha corrido."
+    },
+    "hooks": {
+      "open": "Webhooks",
+      "title": "Webhooks de «{name}»",
+      "help": "Teikem avisa por HTTP a la URL del cliente cuando pasa algo con lo suyo. Cada aviso va firmado (HMAC-SHA256) y, si falla, se reintenta a 1 minuto, 5, 30, 2 horas y 12 horas; agotados, queda en la pestaña «Salidas». Cinco salidas seguidas sin entregar suspenden el webhook.",
+      "url": "URL del cliente (https)",
+      "events": "Eventos",
+      "event": {
+        "order_status_changed": "Cambió el estatus de una orden",
+        "order_delivered": "Una orden se entregó",
+        "invoice_issued": "Se emitió una factura"
+      },
+      "create": "Crear webhook",
+      "saveChanges": "Guardar cambios",
+      "cancelEdit": "Cancelar edición",
+      "saved": "Webhook guardado.",
+      "secretOnce": "Copie el secreto de firma ahora: no se vuelve a mostrar.",
+      "secretIs": "Secreto:",
+      "secretEnds": "Secreto …{last}",
+      "verifyHelp": "Quien recibe verifica que X-Teikem-Signature sea «sha256=» + HMAC-SHA256 de «{X-Teikem-Timestamp}.{cuerpo}» con este secreto, y que la marca de tiempo no tenga más de 5 minutos.",
+      "empty": "Todavía no hay webhooks.",
+      "col": {
+        "url": "URL",
+        "events": "Eventos",
+        "state": "Estado",
+        "failures": "Fallas seguidas",
+        "last": "Última entrega",
+        "secret": "Secreto"
+      },
+      "state": {
+        "ACTIVE": "Activo",
+        "SUSPENDED": "Suspendido",
+        "OFF": "Apagado"
+      },
+      "test": "Probar",
+      "edit": "Editar",
+      "resume": "Reactivar",
+      "resumed": "Webhook reactivado.",
+      "rotate": "Rotar secreto",
+      "rotateConfirm": "¿Cambiar el secreto de firma? El anterior deja de servir de inmediato.",
+      "remove": "Quitar",
+      "removeConfirm": "¿Quitar el webhook {url}? Deja de recibir avisos; el historial queda.",
+      "removed": "Webhook quitado."
+    },
+    "outbox": {
+      "title": "Salidas por webhook",
+      "help": "Avisos que no se pudieron entregar tras todos los reintentos. Si el webhook está suspendido, reactívelo primero en Integraciones → Webhooks y luego reintente.",
+      "empty": "No hay salidas con ese filtro.",
+      "emptyUndelivered": "No hay salidas sin entregar.",
+      "view": "Ver cuerpo",
+      "viewTitle": "Aviso «{event}»",
+      "retry": "Reintentar",
+      "retried": "Salida puesta a reintento.",
+      "discard": "Descartar",
+      "discarded": "Salida descartada.",
+      "status": {
+        "UNDELIVERED": "No entregada",
+        "PENDING": "Pendiente",
+        "DELIVERED": "Entregada",
+        "DISCARDED": "Descartada"
+      },
+      "col": {
+        "status": "Estatus",
+        "integration": "Integración",
+        "event": "Evento",
+        "url": "URL",
+        "attempts": "Intentos",
+        "reason": "Motivo",
+        "date": "Creada"
+      }
     },
     "api": {
       "open": "Llaves de API",

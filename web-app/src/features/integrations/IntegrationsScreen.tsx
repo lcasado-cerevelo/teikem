@@ -11,13 +11,15 @@ import { Chip, DataTable, IconEdit, IconPlay, IconPlus, Modal, Panel, Spinner, T
 import { IconClock, IconSwap } from '../../kernel/ui/screenIcons'
 import { ApiKeysModal } from './ApiKeysModal'
 import { InboxTab } from './InboxTab'
+import { OutboxTab } from './OutboxTab'
+import { WebhooksModal } from './WebhooksModal'
 import { IntegrationFormModal } from './IntegrationFormModal'
 import { FILE_TONE, RUN_TONE, scheduleText } from './integrationRules'
-import { useIntegrationMutations, useIntegrationRuns, useIntegrations, type IntegrationDto, type IntegrationRunDto } from './integrationsApi'
+import { useIntegrationMutations, useIntegrationRuns, useIntegrations, useOutbox, type IntegrationDto, type IntegrationRunDto } from './integrationsApi'
 import './integrations.css'
 
 const NO_ROWS: IntegrationDto[] = []
-type Tab = 'integrations' | 'inbox'
+type Tab = 'integrations' | 'inbox' | 'outbox'
 
 function RunSummary({ run }: { run: IntegrationRunDto }) {
   const t = useT()
@@ -81,9 +83,12 @@ export default function IntegrationsScreen() {
   const [editing, setEditing] = useState<IntegrationDto | 'new' | null>(null)
   const [history, setHistory] = useState<IntegrationDto | null>(null)
   const [keysFor, setKeysFor] = useState<IntegrationDto | null>(null)
+  const [hooksFor, setHooksFor] = useState<IntegrationDto | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploadFor, setUploadFor] = useState<IntegrationDto | null>(null)
-  const tab: Tab = params.get('tab') === 'inbox' && canInbox ? 'inbox' : 'integrations'
+  const wanted = params.get('tab')
+  const tab: Tab = wanted === 'inbox' && canInbox ? 'inbox' : wanted === 'outbox' && canInbox ? 'outbox' : 'integrations'
+  const undelivered = useOutbox('', 'UNDELIVERED', 0, 1).data?.undelivered ?? 0
   const inboxIntegration = params.get('integration') ?? ''
   const rows = list.data ?? NO_ROWS
   const pendingTotal = rows.reduce((n, i) => n + (i.pendingInbox ?? 0), 0)
@@ -211,6 +216,7 @@ export default function IntegrationsScreen() {
           tabs={[
             { key: 'integrations' as const, label: t('integrations.tabs.integrations') },
             ...(canInbox ? [{ key: 'inbox' as const, label: `${t('integrations.tabs.inbox')}${pendingTotal > 0 ? ` (${pendingTotal})` : ''}` }] : []),
+            ...(canInbox ? [{ key: 'outbox' as const, label: `${t('integrations.tabs.outbox')}${undelivered > 0 ? ` (${undelivered})` : ''}` }] : []),
           ]}
           value={tab}
           onChange={go}
@@ -220,6 +226,8 @@ export default function IntegrationsScreen() {
 
       {tab === 'inbox' ? (
         <InboxTab integration={inboxIntegration} onIntegration={setIntegrationFilter} />
+      ) : tab === 'outbox' ? (
+        <OutboxTab integration={inboxIntegration} onIntegration={setIntegrationFilter} />
       ) : (
         <Panel flush icon={<IconSwap />} title={t('integrations.panel')} badge={list.isPending ? undefined : rows.length}>
           <div className="pb">
@@ -261,6 +269,7 @@ export default function IntegrationsScreen() {
                     visible: (i) => canManage && !!i.isActive && i.connectorKind !== 'API',
                   },
                   { key: 'keys', label: t('integrations.api.open'), icon: <IconPlus />, onClick: (i) => setKeysFor(i), visible: (i) => canManage && i.connectorKind === 'API' },
+                  { key: 'hooks', label: t('integrations.hooks.open'), icon: <IconPlus />, onClick: (i) => setHooksFor(i), visible: (i) => canManage && i.connectorKind === 'API' && (i.scopes ?? []).includes('webhooks:manage') },
                   {
                     key: 'test',
                     label: t('integrations.testConnection'),
@@ -297,6 +306,7 @@ export default function IntegrationsScreen() {
         }}
       />
       {editing && <IntegrationFormModal key={editing === 'new' ? 'new' : editing.publicId} integration={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />}
+      {hooksFor && <WebhooksModal key={hooksFor.publicId} integration={hooksFor} onClose={() => setHooksFor(null)} />}
       {keysFor && <ApiKeysModal key={keysFor.publicId} integration={keysFor} onClose={() => setKeysFor(null)} />}
       {history && <HistoryModal key={history.publicId} integration={history} onClose={() => setHistory(null)} />}
     </div>

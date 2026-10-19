@@ -54,6 +54,7 @@ public static class IntegrationScopes
         new(ApiScopes.SalesWrite, IntegrationFamilies.Warehouse, ModuleKeys.SalesOrders, "API: crear y solicitar órdenes de venta", "API: create and request sales orders", [PermissionCatalog.SalesView, PermissionCatalog.SalesCreate]),
         new(ApiScopes.PurchasingRead, IntegrationFamilies.Warehouse, ModuleKeys.Purchasing, "API: leer órdenes de compra", "API: read purchase orders", [PermissionCatalog.PurchasingView]),
         new(ApiScopes.PurchasingWrite, IntegrationFamilies.Warehouse, ModuleKeys.Purchasing, "API: crear y enviar órdenes de compra", "API: create and send purchase orders", [PermissionCatalog.PurchasingView, PermissionCatalog.PurchasingManage]),
+        new(ApiScopes.WebhooksManage, IntegrationFamilies.Transport, ModuleKeys.LtlGround, "API: avisos por webhook de las órdenes y facturas del cliente", "API: webhook notices for the client's orders and invoices", [PermissionCatalog.ClientsRead], NeedsClient: true),
     ];
 
     /// <summary>¿Alguno de los alcances necesita un cliente? (los de transporte: la llave solo ve lo de ese cliente.)</summary>

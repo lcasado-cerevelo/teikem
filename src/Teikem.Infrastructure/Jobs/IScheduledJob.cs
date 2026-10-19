@@ -44,4 +44,6 @@ public static class JobKeys
     public const string ConsigneeNoticeDispatch = "CONSIGNEE_NOTICE_DISPATCH";
     /// <summary>Lote 132 (P11): corre las integraciones que tocan por horario y purga la bandeja vieja.</summary>
     public const string IntegrationRunDue = "INTEGRATION_RUN_DUE";
+    /// <summary>Lote 136 (P11): entrega los webhooks pendientes (con reintentos de espera creciente) y purga las salidas viejas.</summary>
+    public const string WebhookDelivery = "WEBHOOK_DELIVERY";
 }

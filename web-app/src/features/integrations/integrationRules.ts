@@ -6,6 +6,16 @@ import { buildEmailConfig, emailIssues, emailValuesOf, emptyEmail, type EmailMes
 import type { IntegrationCreateRequest, IntegrationDto, IntegrationPatchRequest } from './integrationsApi'
 
 export const RUN_TONE: Record<string, ChipTone> = { OK: 'deliv', PARTIAL: 'warn', FAILED: 'fail', RUNNING: 'route', NEVER: 'neutral' }
+export const OUTBOX_TONE: Record<string, ChipTone> = { PENDING: 'warn', DELIVERED: 'deliv', UNDELIVERED: 'fail', DISCARDED: 'neutral' }
+/** Los eventos a los que se puede suscribir un webhook (Lote 136), con los códigos exactos del API. */
+export const WEBHOOK_EVENTS = ['order.status_changed', 'order.delivered', 'invoice.issued'] as const
+/** Clave de traducción de un evento (los códigos llevan punto y las claves de i18n son anidadas). */
+export const eventKey = (e: string) => e.replace('.', '_')
+/** Estado de un webhook para la lista: suspendido (por fallas), apagado o activo. */
+export function webhookState(w: { isActive?: boolean; suspendedAtUtc?: string | null }): 'ACTIVE' | 'SUSPENDED' | 'OFF' {
+  if (w.suspendedAtUtc) return 'SUSPENDED'
+  return w.isActive ? 'ACTIVE' : 'OFF'
+}
 export const INBOX_TONE: Record<string, ChipTone> = { PENDING: 'warn', REPROCESSED: 'deliv', DISCARDED: 'neutral' }
 export const FILE_TONE: Record<string, ChipTone> = { PROCESSED: 'deliv', REPROCESSED: 'deliv', DUPLICATE: 'neutral', FAILED: 'fail' }
 

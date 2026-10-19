@@ -168,3 +168,24 @@ public sealed record ApiTokenDto(string AccessToken, string TokenType, int Expir
 
 /// <summary>Lo que una llave puede saber de sí misma.</summary>
 public sealed record ApiInfoDto(string Integration, string KeyId, string Label, IReadOnlyList<string> Scopes, Guid? ClientPublicId, string? ClientName, int RateLimitPerMinute, DateTime? ExpiresAtUtc);
+
+// ---------------------------------------------------------------- Lote 136: webhooks de salida
+
+public sealed record WebhookDto(
+    Guid PublicId, Guid IntegrationPublicId, string IntegrationName, string Url, IReadOnlyList<string> Events, string SecretLast4, bool IsActive, int ConsecutiveFailures,
+    DateTime? SuspendedAtUtc, DateTime? LastDeliveryUtc, string? LastStatus, DateTime CreatedAtUtc);
+
+/// <summary>Un webhook recién creado (o con el secreto rotado): el SECRETO de firma viene aquí y en ninguna otra respuesta.</summary>
+public sealed record WebhookCreatedDto(WebhookDto Webhook, string Secret);
+
+public sealed record WebhookCreateRequest(string Url, IReadOnlyList<string> Events);
+
+public sealed record WebhookPatchRequest(string? Url = null, IReadOnlyList<string>? Events = null, bool? IsActive = null);
+
+public sealed record WebhookTestResultDto(bool Ok, int? ResponseCode, string Message);
+
+public sealed record WebhookDeliveryDto(
+    long Id, Guid WebhookPublicId, Guid IntegrationPublicId, string IntegrationName, string Url, string EventType, string Status, int AttemptCount, DateTime NextAttemptUtc,
+    DateTime? LastAttemptUtc, int? ResponseCode, string? Error, DateTime CreatedAtUtc, DateTime? DeliveredAtUtc, string? PayloadJson);
+
+public sealed record WebhookDeliveryPageDto(IReadOnlyList<WebhookDeliveryDto> Items, int Total, int Undelivered);

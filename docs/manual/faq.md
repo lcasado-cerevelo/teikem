@@ -9548,3 +9548,19 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **API de clientes — «Los alcances de transporte de la API necesitan el cliente…» (400).** Escoja el cliente: la llave solo verá sus órdenes, consignatarios y perfil.
 
 **API de clientes — «Una integración puede tener hasta 10 llaves activas; revoque alguna.» (409).** Revoque las que ya no se usen.
+
+**Webhooks — no me llegan avisos.** Revise que el webhook esté **Activo** (no suspendido ni apagado), que la integración esté encendida, que el evento esté marcado y que la orden o factura sea del cliente de la integración. Lo que no se pudo entregar está en Integraciones → **Salidas**.
+
+**Webhooks — «La URL debe usar https.» / «La URL apunta a una dirección interna o local, que no se permite.» (400).** La URL del cliente debe ser https y pública; no se aceptan localhost, nombres de intranet ni direcciones privadas.
+
+**Webhooks — el webhook quedó «Suspendido».** Tuvo 5 salidas seguidas sin entregarse. Corrija la causa (la URL del cliente), pruebe con **Probar**, **Reactívelo** y luego **Reintente** las salidas de la pestaña Salidas.
+
+**Webhooks — «El webhook está suspendido: reactívelo antes de reintentar.» (409).** Reactive el webhook (Integraciones → Webhooks → Reactivar) y vuelva a intentar.
+
+**Webhooks — ¿cómo verifico la firma?** `X-Teikem-Signature` = `sha256=` + HMAC-SHA256 (hex) de «marca de tiempo.cuerpo» con el secreto `whsec_…`; use el cuerpo crudo y rechace marcas de tiempo de más de 5 minutos. Ver manual 39 §9.
+
+**Webhooks — ¿dónde veo el secreto?** Solo al crear o rotar el webhook. Si se perdió, **Rotar secreto** (el anterior deja de servir).
+
+**Webhooks — «Una integración puede tener hasta 10 webhooks; quite alguno.» (409).** Quite los que ya no use (se desactivan; el historial queda).
+
+**Webhooks — «Los webhooks necesitan una integración con cliente…» / «La integración no tiene el alcance «webhooks:manage».» (400).** Edite la integración API: debe tener cliente y el alcance de webhooks.

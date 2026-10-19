@@ -290,6 +290,17 @@ public static class DependencyInjection
         services.AddScoped<IntegrationNotifier>();
         services.AddSingleton<ApiRateLimiter>();   // Lote 135: API de los clientes
         services.AddScoped<ApiKeyService>();
+        // Lote 136 (P11): webhooks de salida (firma HMAC, reintentos, bandeja de salidas; solo salen a direcciones públicas salvo AllowInsecure de desarrollo)
+        services.Configure<WebhookOptions>(config.GetSection(WebhookOptions.Section));
+        services.AddHttpClient(WebhookSender.ClientName, c => c.Timeout = TimeSpan.FromSeconds(Teikem.Domain.Integrations.WebhookRules.TimeoutSeconds + 5)).RemoveAllLoggers()
+            .ConfigurePrimaryHttpMessageHandler(sp => WebhookSender.CreateHandler(sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<WebhookOptions>>().Value.AllowInsecure));
+        services.AddScoped<WebhookSender>();
+        services.AddScoped<WebhookRecorder>();
+        services.AddScoped<WebhookService>();
+        services.AddScoped<WebhookProcessor>();
+        services.AddScoped<IStatusTransitionEffect, WebhookOrderEffect>();
+        services.AddScoped<IStatusTransitionEffect, WebhookInvoiceEffect>();
+        services.AddSingleton<IScheduledJob, WebhookDeliveryJob>();
         services.AddSingleton<Teikem.Infrastructure.Security.ISecretProtector, Teikem.Infrastructure.Security.SecretProtector>();   // Lote 133: secretos de conectores cifrados
         services.AddSingleton<Teikem.Infrastructure.Integrations.IMailboxReader, Teikem.Infrastructure.Integrations.ImapMailboxReader>();
         services.AddSingleton<Teikem.Infrastructure.Integrations.IRemoteFileClient, Teikem.Infrastructure.Integrations.RemoteFileClient>();   // Lote 134: SFTP/FTP

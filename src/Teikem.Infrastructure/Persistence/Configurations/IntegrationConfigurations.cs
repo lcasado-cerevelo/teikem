@@ -101,3 +101,35 @@ public sealed class IntegrationApiLogConfiguration : IEntityTypeConfiguration<In
         b.HasIndex(l => new { l.TenantId, l.IntegrationApiKeyId, l.IntegrationApiLogId }).HasDatabaseName("IX_IntegrationApiLog_Key");
     }
 }
+
+public sealed class IntegrationWebhookConfiguration : IEntityTypeConfiguration<IntegrationWebhook>
+{
+    public void Configure(EntityTypeBuilder<IntegrationWebhook> b)
+    {
+        b.ToTable("IntegrationWebhook");
+        b.HasKey(w => w.IntegrationWebhookId);
+        b.Property(w => w.PublicId).HasDefaultValueSql("NEWID()").ValueGeneratedOnAdd();
+        b.Property(w => w.Url).HasMaxLength(500).IsRequired();
+        b.Property(w => w.EventsJson).HasMaxLength(400).IsRequired();
+        b.Property(w => w.SecretEnc).HasMaxLength(400).IsRequired();
+        b.Property(w => w.SecretLast4).HasMaxLength(4).IsUnicode(false).IsRequired();
+        b.Property(w => w.LastStatus).HasMaxLength(12).IsUnicode(false);
+        b.HasIndex(w => w.PublicId).IsUnique().HasDatabaseName("UQ_IntegrationWebhook_Public");
+        b.HasIndex(w => new { w.TenantId, w.IntegrationId }).HasDatabaseName("IX_IntegrationWebhook_Integration");
+    }
+}
+
+public sealed class IntegrationWebhookDeliveryConfiguration : IEntityTypeConfiguration<IntegrationWebhookDelivery>
+{
+    public void Configure(EntityTypeBuilder<IntegrationWebhookDelivery> b)
+    {
+        b.ToTable("IntegrationWebhookDelivery");
+        b.HasKey(d => d.IntegrationWebhookDeliveryId);
+        b.Property(d => d.EventType).HasMaxLength(40).IsUnicode(false).IsRequired();
+        b.Property(d => d.PayloadJson).IsRequired();
+        b.Property(d => d.Status).HasMaxLength(12).IsUnicode(false).IsRequired();
+        b.Property(d => d.Error).HasMaxLength(500);
+        b.HasIndex(d => new { d.TenantId, d.Status, d.NextAttemptUtc }).HasDatabaseName("IX_IntegrationWebhookDelivery_Due");
+        b.HasIndex(d => new { d.TenantId, d.IntegrationWebhookId, d.IntegrationWebhookDeliveryId }).HasDatabaseName("IX_IntegrationWebhookDelivery_Webhook");
+    }
+}

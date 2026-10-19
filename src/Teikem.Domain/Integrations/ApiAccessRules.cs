@@ -20,6 +20,8 @@ public static class ApiScopes
     public const string SalesWrite = "sales:write";
     public const string PurchasingRead = "purchasing:read";
     public const string PurchasingWrite = "purchasing:write";
+    /// <summary>Lote 136: suscribirse a webhooks de su cliente (órdenes y facturas) y ver sus entregas.</summary>
+    public const string WebhooksManage = "webhooks:manage";
 }
 
 /// <summary>Una ruta de la API que un alcance abre: método HTTP y ruta con <c>{x}</c> por cada tramo variable.</summary>
@@ -70,6 +72,10 @@ public static class ApiAccessRules
         new(ApiScopes.SalesWrite, "POST", "/api/v1/sales-orders"), new(ApiScopes.SalesWrite, "PATCH", "/api/v1/sales-orders/{id}"), new(ApiScopes.SalesWrite, "POST", "/api/v1/sales-orders/{id}/request"),
         new(ApiScopes.PurchasingRead, "GET", "/api/v1/purchase-orders"), new(ApiScopes.PurchasingRead, "GET", "/api/v1/purchase-orders/{id}"),
         new(ApiScopes.PurchasingWrite, "POST", "/api/v1/purchase-orders"), new(ApiScopes.PurchasingWrite, "PATCH", "/api/v1/purchase-orders/{id}"), new(ApiScopes.PurchasingWrite, "POST", "/api/v1/purchase-orders/{id}/send"),
+        // webhooks de salida (Lote 136): el único DELETE de la API, y es un «quitar» (el webhook se desactiva; sus entregas quedan en el historial)
+        new(ApiScopes.WebhooksManage, "GET", "/api/v1/webhooks"), new(ApiScopes.WebhooksManage, "POST", "/api/v1/webhooks"), new(ApiScopes.WebhooksManage, "GET", "/api/v1/webhooks/{id}"),
+        new(ApiScopes.WebhooksManage, "PATCH", "/api/v1/webhooks/{id}"), new(ApiScopes.WebhooksManage, "DELETE", "/api/v1/webhooks/{id}"), new(ApiScopes.WebhooksManage, "POST", "/api/v1/webhooks/{id}/test"),
+        new(ApiScopes.WebhooksManage, "POST", "/api/v1/webhooks/{id}/rotate-secret"), new(ApiScopes.WebhooksManage, "GET", "/api/v1/webhooks/{id}/deliveries"),
     ];
 
     /// <summary>Rutas que cualquier llave puede usar: sus propios datos y los catálogos que necesita para armar una solicitud (tipos de servicio, de paquete…).</summary>

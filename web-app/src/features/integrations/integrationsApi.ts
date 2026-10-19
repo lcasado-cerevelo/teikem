@@ -16,6 +16,9 @@ export type InboxRowDto = Schemas['InboxRowDto']
 export type ApiKeyDto = Schemas['ApiKeyDto']
 export type ApiKeyCreatedDto = Schemas['ApiKeyCreatedDto']
 export type ApiLogDto = Schemas['ApiLogDto']
+export type WebhookDto = Schemas['WebhookDto']
+export type WebhookCreatedDto = Schemas['WebhookCreatedDto']
+export type WebhookDeliveryDto = Schemas['WebhookDeliveryDto']
 
 export const integrationKeys = {
   all: ['integrations'] as const,
@@ -25,6 +28,8 @@ export const integrationKeys = {
   inbox: (integration: string, status: string, skip: number, take: number) => ['integrations', 'inbox', { integration, status, skip, take }] as const,
   apiKeys: (id: string) => ['integrations', 'api-keys', id] as const,
   apiLog: (id: string, key: string) => ['integrations', 'api-log', id, key] as const,
+  webhooks: (id: string) => ['integrations', 'webhooks', id] as const,
+  outbox: (integration: string, status: string, skip: number, take: number) => ['integrations', 'outbox', { integration, status, skip, take }] as const,
   item: (id: number) => ['integrations', 'inbox', 'item', id] as const,
 }
 
@@ -178,6 +183,70 @@ export function useApiKeyMutations(publicId: string) {
     }),
     revoke: useMutation({
       mutationFn: (keyId: string) => unwrap(api.POST('/api/v1/integrations/{publicId}/api-keys/{keyId}/revoke', { params: { path: { publicId, keyId } } })),
+      onSettled: invalidate,
+    }),
+  }
+}
+
+// ---------------------------------------------------------------- webhooks de salida y su bandeja (Lote 136)
+
+export function useWebhooks(publicId: string | null) {
+  return useQuery({
+    queryKey: integrationKeys.webhooks(publicId ?? ''),
+    queryFn: () => unwrap(api.GET('/api/v1/integrations/{publicId}/webhooks', { params: { path: { publicId: publicId! } } })),
+    enabled: publicId !== null,
+  })
+}
+
+export function useWebhookMutations(publicId: string) {
+  const qc = useQueryClient()
+  const invalidate = () => qc.invalidateQueries({ queryKey: integrationKeys.all })
+  const path = (id: string) => ({ params: { path: { publicId, webhookId: id } } })
+  return {
+    create: useMutation({
+      mutationFn: (body: { url: string; events: string[] }) => unwrap(api.POST('/api/v1/integrations/{publicId}/webhooks', { params: { path: { publicId } }, body })),
+      onSettled: invalidate,
+    }),
+    update: useMutation({
+      mutationFn: (v: { id: string; url?: string; events?: string[]; isActive?: boolean }) =>
+        unwrap(api.PATCH('/api/v1/integrations/{publicId}/webhooks/{webhookId}', { ...path(v.id), body: { url: v.url, events: v.events, isActive: v.isActive } })),
+      onSettled: invalidate,
+    }),
+    remove: useMutation({
+      mutationFn: (id: string) => unwrap(api.DELETE('/api/v1/integrations/{publicId}/webhooks/{webhookId}', path(id))),
+      onSettled: invalidate,
+    }),
+    resume: useMutation({
+      mutationFn: (id: string) => unwrap(api.POST('/api/v1/integrations/{publicId}/webhooks/{webhookId}/resume', path(id))),
+      onSettled: invalidate,
+    }),
+    rotate: useMutation({
+      mutationFn: (id: string) => unwrap(api.POST('/api/v1/integrations/{publicId}/webhooks/{webhookId}/rotate-secret', path(id))),
+      onSettled: invalidate,
+    }),
+    test: useMutation({
+      mutationFn: (id: string) => unwrap(api.POST('/api/v1/integrations/{publicId}/webhooks/{webhookId}/test', path(id))),
+    }),
+  }
+}
+
+export function useOutbox(integration: string, status: string, skip: number, take: number) {
+  return useQuery({
+    queryKey: integrationKeys.outbox(integration, status, skip, take),
+    queryFn: () => unwrap(api.GET('/api/v1/integrations/outbox', { params: { query: { integration: integration || undefined, status: status || undefined, skip, take } } })),
+  })
+}
+
+export function useOutboxMutations() {
+  const qc = useQueryClient()
+  const invalidate = () => qc.invalidateQueries({ queryKey: integrationKeys.all })
+  return {
+    retry: useMutation({
+      mutationFn: (id: number) => unwrap(api.POST('/api/v1/integrations/outbox/{id}/retry', { params: { path: { id } } })),
+      onSettled: invalidate,
+    }),
+    discard: useMutation({
+      mutationFn: (id: number) => unwrap(api.POST('/api/v1/integrations/outbox/{id}/discard', { params: { path: { id } } })),
       onSettled: invalidate,
     }),
   }

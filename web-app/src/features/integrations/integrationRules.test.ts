@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { emptyEmail } from './emailRules'
 import { emptyRemote } from './remoteRules'
-import { buildCreateRequest, buildPatchRequest, integrationSchema, integrationValuesOf, scheduleText, withCell, type IntegrationValues } from './integrationRules'
+import { OUTBOX_TONE, WEBHOOK_EVENTS, buildCreateRequest, buildPatchRequest, eventKey, integrationSchema, integrationValuesOf, scheduleText, webhookState, withCell, type IntegrationValues } from './integrationRules'
 
 const M = {
   nameRequired: 'nombre', nameMax: 'max', clientRequired: 'cliente', templateRequired: 'plantilla', folderRequired: 'carpeta', folderInvalid: 'carpeta inválida', interval: 'intervalo', retention: 'retención', scopes: 'alcances',
@@ -105,5 +105,24 @@ describe('conector API (Lote 135)', () => {
     expect(body.clientPublicId).toBeNull()
     expect(body.folder).toBeNull()
     expect(body.scheduleKind).toBe('MANUAL')
+  })
+})
+
+describe('webhooks (Lote 136)', () => {
+  it('el estado de un webhook: suspendido manda sobre apagado y activo', () => {
+    expect(webhookState({ isActive: true, suspendedAtUtc: null })).toBe('ACTIVE')
+    expect(webhookState({ isActive: true, suspendedAtUtc: '2026-10-19T10:00:00Z' })).toBe('SUSPENDED')
+    expect(webhookState({ isActive: false })).toBe('OFF')
+  })
+
+  it('los eventos son los del API y su clave de traducción no lleva punto', () => {
+    expect([...WEBHOOK_EVENTS]).toEqual(['order.status_changed', 'order.delivered', 'invoice.issued'])
+    expect(WEBHOOK_EVENTS.map(eventKey)).toEqual(['order_status_changed', 'order_delivered', 'invoice_issued'])
+    expect(WEBHOOK_EVENTS.map(eventKey).every((k) => !k.includes('.'))).toBe(true)
+  })
+
+  it('cada estatus de una salida tiene su tono', () => {
+    expect(Object.keys(OUTBOX_TONE).sort()).toEqual(['DELIVERED', 'DISCARDED', 'PENDING', 'UNDELIVERED'])
+    expect(OUTBOX_TONE.UNDELIVERED).toBe('fail')
   })
 })

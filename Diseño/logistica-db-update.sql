@@ -4975,3 +4975,56 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_IntegrationApiLog_Key' AND object_id = OBJECT_ID('dbo.IntegrationApiLog'))
     CREATE INDEX IX_IntegrationApiLog_Key ON dbo.IntegrationApiLog(TenantId, IntegrationApiKeyId, IntegrationApiLogId DESC);
 GO
+
+/* =========================================================================
+   2026-10-19 (bm) — Lote 136 (P11): WEBHOOKS DE SALIDA. dbo.IntegrationWebhook (URL del cliente, eventos, secreto de firma HMAC cifrado, suspensión automática, quitado lógico) y
+   dbo.IntegrationWebhookDelivery (cada salida: cuerpo, intentos, siguiente intento; la bandeja de «salidas no entregadas» son las UNDELIVERED; se purga a los 30 días). Solo AMPLÍA. Idempotente.
+   ========================================================================= */
+IF OBJECT_ID(N'dbo.IntegrationWebhook', N'U') IS NULL CREATE TABLE dbo.IntegrationWebhook (
+    IntegrationWebhookId INT IDENTITY(1,1) CONSTRAINT PK_IntegrationWebhook PRIMARY KEY,
+    PublicId             UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_IntegrationWebhook_Public DEFAULT NEWID(),
+    TenantId             INT NOT NULL CONSTRAINT FK_IntegrationWebhook_Tenant REFERENCES dbo.Tenant(TenantId),
+    IntegrationId        INT NOT NULL CONSTRAINT FK_IntegrationWebhook_Integration REFERENCES dbo.Integration(IntegrationId),
+    Url                  NVARCHAR(500) NOT NULL,
+    EventsJson           NVARCHAR(400) NOT NULL CONSTRAINT DF_IntegrationWebhook_Events DEFAULT '[]',
+    SecretEnc            VARBINARY(400) NOT NULL,
+    SecretLast4          VARCHAR(4) NOT NULL,
+    IsActive             BIT NOT NULL CONSTRAINT DF_IntegrationWebhook_IsActive DEFAULT 1,
+    ConsecutiveFailures  INT NOT NULL CONSTRAINT DF_IntegrationWebhook_Failures DEFAULT 0,
+    SuspendedAtUtc       DATETIME2 NULL,
+    LastDeliveryUtc      DATETIME2 NULL,
+    LastStatus           VARCHAR(12) NULL,
+    CreatedAtUtc         DATETIME2 NOT NULL CONSTRAINT DF_IntegrationWebhook_Created DEFAULT SYSUTCDATETIME(),
+    CreatedBy            INT NULL CONSTRAINT FK_IntegrationWebhook_CreatedBy REFERENCES dbo.AspNetUsers(Id),
+    RemovedAtUtc         DATETIME2 NULL,
+    CONSTRAINT UQ_IntegrationWebhook_Public UNIQUE (PublicId)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_IntegrationWebhook_Integration' AND object_id = OBJECT_ID('dbo.IntegrationWebhook'))
+    CREATE INDEX IX_IntegrationWebhook_Integration ON dbo.IntegrationWebhook(TenantId, IntegrationId);
+GO
+IF OBJECT_ID(N'dbo.IntegrationWebhookDelivery', N'U') IS NULL CREATE TABLE dbo.IntegrationWebhookDelivery (
+    IntegrationWebhookDeliveryId BIGINT IDENTITY(1,1) CONSTRAINT PK_IntegrationWebhookDelivery PRIMARY KEY,
+    TenantId             INT NOT NULL CONSTRAINT FK_IntegrationWebhookDelivery_Tenant REFERENCES dbo.Tenant(TenantId),
+    IntegrationWebhookId INT NOT NULL CONSTRAINT FK_IntegrationWebhookDelivery_Webhook REFERENCES dbo.IntegrationWebhook(IntegrationWebhookId),
+    EventId              UNIQUEIDENTIFIER NOT NULL,
+    EventType            VARCHAR(40) NOT NULL,
+    PayloadJson          NVARCHAR(MAX) NOT NULL,
+    Status               VARCHAR(12) NOT NULL CONSTRAINT DF_IntegrationWebhookDelivery_Status DEFAULT 'PENDING',
+    AttemptCount         INT NOT NULL CONSTRAINT DF_IntegrationWebhookDelivery_Attempts DEFAULT 0,
+    NextAttemptUtc       DATETIME2 NOT NULL CONSTRAINT DF_IntegrationWebhookDelivery_Next DEFAULT SYSUTCDATETIME(),
+    LastAttemptUtc       DATETIME2 NULL,
+    ResponseCode         INT NULL,
+    Error                NVARCHAR(500) NULL,
+    CreatedAtUtc         DATETIME2 NOT NULL CONSTRAINT DF_IntegrationWebhookDelivery_Created DEFAULT SYSUTCDATETIME(),
+    DeliveredAtUtc       DATETIME2 NULL,
+    ResolvedBy           INT NULL CONSTRAINT FK_IntegrationWebhookDelivery_ResolvedBy REFERENCES dbo.AspNetUsers(Id),
+    CONSTRAINT CK_IntegrationWebhookDelivery_Status CHECK (Status IN ('PENDING', 'DELIVERED', 'UNDELIVERED', 'DISCARDED'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_IntegrationWebhookDelivery_Due' AND object_id = OBJECT_ID('dbo.IntegrationWebhookDelivery'))
+    CREATE INDEX IX_IntegrationWebhookDelivery_Due ON dbo.IntegrationWebhookDelivery(TenantId, Status, NextAttemptUtc);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_IntegrationWebhookDelivery_Webhook' AND object_id = OBJECT_ID('dbo.IntegrationWebhookDelivery'))
+    CREATE INDEX IX_IntegrationWebhookDelivery_Webhook ON dbo.IntegrationWebhookDelivery(TenantId, IntegrationWebhookId, IntegrationWebhookDeliveryId);
+GO

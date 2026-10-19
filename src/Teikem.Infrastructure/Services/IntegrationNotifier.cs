@@ -20,12 +20,18 @@ public sealed class IntegrationNotifier(TeikemDbContext db, ITenantContext tenan
     /// <summary>Crea o actualiza la regla de avisos de la integración (activa solo si la integración está encendida y tiene a quién avisar). Guarda los cambios.</summary>
     public async Task SyncRuleAsync(Integration row, CancellationToken ct)
     {
-        var def = catalog.Find(IntegrationEventCodes.RunFinished) ?? throw new InvalidOperationException("Falta el evento INTEGRATION_RUN.");
+        await SyncOneAsync(row, IntegrationEventCodes.RunFinished, "avisos", true, ct);
+        await SyncOneAsync(row, IntegrationEventCodes.WebhookSuspended, "webhooks", false, ct);   // Lote 136: misma gente, otro aviso
+    }
+
+    private async Task SyncOneAsync(Integration row, string eventCode, string suffix, bool setRuleId, CancellationToken ct)
+    {
+        var def = catalog.Find(eventCode) ?? throw new InvalidOperationException($"Falta el evento {eventCode}.");
         var scopeKey = ScopeKeyOf(row.IntegrationId);
         var userIds = IntegrationService.ParseIds(row.NotifyUserIdsJson).Distinct().ToList();
-        var rule = await db.NotificationRules.Include(r => r.Channels).Include(r => r.Recipients).FirstOrDefaultAsync(r => r.ScopeKey == scopeKey, ct);
+        var rule = await db.NotificationRules.Include(r => r.Channels).Include(r => r.Recipients).FirstOrDefaultAsync(r => r.ScopeKey == scopeKey && r.EventCode == eventCode, ct);
         if (rule is null && userIds.Count == 0) return;
-        var name = $"Integración: {row.Name} (avisos)";
+        var name = $"Integración: {row.Name} ({suffix})";
         if (name.Length > 100) name = name[..100];
         var now = DateTime.UtcNow;
         var tenantId = ((TenantContext)tenant).RequireTenantId();
@@ -52,7 +58,7 @@ public sealed class IntegrationNotifier(TeikemDbContext db, ITenantContext tenan
         foreach (var id in userIds) rule.Recipients.Add(new NotificationRuleRecipient { TenantId = tenantId, Kind = NotificationRecipientKinds.User, UserId = id });
         rule.IsActive = row.IsActive && userIds.Count > 0;
         await db.SaveChangesAsync(ct);
-        row.NotifyRuleId = rule.NotificationRuleId;
+        if (setRuleId) row.NotifyRuleId = rule.NotificationRuleId;
     }
 
     /// <summary>Avisa del resultado de una corrida (solo si hizo algo que reportar: órdenes creadas, filas a la bandeja o una falla).</summary>
@@ -71,6 +77,18 @@ public sealed class IntegrationNotifier(TeikemDbContext db, ITenantContext tenan
             ["message"] = run.Message ?? string.Empty, ["integrationId"] = integration.IntegrationId.ToString(), ["scopeKey"] = ScopeKeyOf(integration.IntegrationId),
         };
         await publisher.PublishAsync(IntegrationEventCodes.RunFinished, values, $"integration-run-{run.IntegrationRunId}", ct);
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Lote 136: avisa a quienes se definieron en la integración que un webhook se suspendió solo.</summary>
+    public async Task PublishWebhookSuspendedAsync(Integration integration, IntegrationWebhook webhook, string? reason, CancellationToken ct)
+    {
+        var values = new Dictionary<string, string?>
+        {
+            ["integration"] = integration.Name, ["url"] = webhook.Url, ["failures"] = webhook.ConsecutiveFailures.ToString(), ["message"] = reason ?? string.Empty,
+            ["integrationId"] = integration.IntegrationId.ToString(), ["scopeKey"] = ScopeKeyOf(integration.IntegrationId),
+        };
+        await publisher.PublishAsync(IntegrationEventCodes.WebhookSuspended, values, $"integration-webhook-{webhook.IntegrationWebhookId}-{webhook.SuspendedAtUtc:yyyyMMddHHmmss}", ct);
         await db.SaveChangesAsync(ct);
     }
 }

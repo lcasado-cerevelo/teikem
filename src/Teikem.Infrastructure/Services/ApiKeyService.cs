@@ -115,6 +115,13 @@ public sealed class ApiKeyService(TeikemDbContext db, ITenantContext tenant, Jwt
             .Select(l => new ApiLogDto(l.CreatedAtUtc, l.Method, l.Path, l.StatusCode, l.DurationMs)).ToListAsync(ct);
     }
 
+    /// <summary>El id público de la integración a la que pertenece la llave (para las rutas del API del cliente que trabajan sobre su propia integración).</summary>
+    public async Task<Guid> IntegrationPublicIdOfKeyAsync(string keyId, CancellationToken ct)
+    {
+        var id = await (from k in db.IntegrationApiKeys.AsNoTracking() join i in db.Integrations.AsNoTracking() on k.IntegrationId equals i.IntegrationId where k.KeyId == keyId select (Guid?)i.PublicId).FirstOrDefaultAsync(ct);
+        return id ?? throw new NotFoundException("Llave de API");
+    }
+
     private async Task<Integration> LoadApiIntegrationAsync(Guid publicId, CancellationToken ct)
     {
         var integration = await db.Integrations.AsNoTracking().FirstOrDefaultAsync(i => i.PublicId == publicId, ct) ?? throw new NotFoundException(IntegrationService.NotFoundLabel);

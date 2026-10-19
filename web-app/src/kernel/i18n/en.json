@@ -9612,7 +9612,8 @@
     "tabs": {
       "label": "Integrations sections",
       "integrations": "Integrations",
-      "inbox": "Inbox"
+      "inbox": "Inbox",
+      "outbox": "Outbox"
     },
     "col": {
       "name": "Integration",
@@ -9667,6 +9668,76 @@
       "rejected": "To the inbox",
       "result": "Result",
       "empty": "It has not run yet."
+    },
+    "hooks": {
+      "open": "Webhooks",
+      "title": "Webhooks of «{name}»",
+      "help": "Teikem notifies the client's URL by HTTP when something happens with their data. Each notice is signed (HMAC-SHA256) and, if it fails, retried after 1 minute, 5, 30, 2 hours and 12 hours; once exhausted it lands in the «Outbox» tab. Five undelivered notices in a row suspend the webhook.",
+      "url": "Client URL (https)",
+      "events": "Events",
+      "event": {
+        "order_status_changed": "An order changed status",
+        "order_delivered": "An order was delivered",
+        "invoice_issued": "An invoice was issued"
+      },
+      "create": "Create webhook",
+      "saveChanges": "Save changes",
+      "cancelEdit": "Cancel edit",
+      "saved": "Webhook saved.",
+      "secretOnce": "Copy the signing secret now: it is never shown again.",
+      "secretIs": "Secret:",
+      "secretEnds": "Secret …{last}",
+      "verifyHelp": "The receiver checks that X-Teikem-Signature is «sha256=» + HMAC-SHA256 of «{X-Teikem-Timestamp}.{body}» with this secret, and that the timestamp is no more than 5 minutes old.",
+      "empty": "No webhooks yet.",
+      "col": {
+        "url": "URL",
+        "events": "Events",
+        "state": "Status",
+        "failures": "Consecutive failures",
+        "last": "Last delivery",
+        "secret": "Secret"
+      },
+      "state": {
+        "ACTIVE": "Active",
+        "SUSPENDED": "Suspended",
+        "OFF": "Off"
+      },
+      "test": "Test",
+      "edit": "Edit",
+      "resume": "Resume",
+      "resumed": "Webhook resumed.",
+      "rotate": "Rotate secret",
+      "rotateConfirm": "Change the signing secret? The old one stops working immediately.",
+      "remove": "Remove",
+      "removeConfirm": "Remove the webhook {url}? It stops receiving notices; the history stays.",
+      "removed": "Webhook removed."
+    },
+    "outbox": {
+      "title": "Webhook outbox",
+      "help": "Notices that could not be delivered after all the retries. If the webhook is suspended, resume it first in Integrations → Webhooks and then retry.",
+      "empty": "No notices match this filter.",
+      "emptyUndelivered": "Nothing undelivered.",
+      "view": "View body",
+      "viewTitle": "Notice «{event}»",
+      "retry": "Retry",
+      "retried": "Notice queued for retry.",
+      "discard": "Discard",
+      "discarded": "Notice discarded.",
+      "status": {
+        "UNDELIVERED": "Undelivered",
+        "PENDING": "Pending",
+        "DELIVERED": "Delivered",
+        "DISCARDED": "Discarded"
+      },
+      "col": {
+        "status": "Status",
+        "integration": "Integration",
+        "event": "Event",
+        "url": "URL",
+        "attempts": "Attempts",
+        "reason": "Reason",
+        "date": "Created"
+      }
     },
     "api": {
       "open": "API keys",

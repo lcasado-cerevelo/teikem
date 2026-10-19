@@ -111,7 +111,7 @@ Lo que entró y no se pudo procesar solo. **Una orden con problemas nunca se cre
 - En la lista, la acción **Llaves de API** (`integrations.manage`) abre la gestión: **crear** (nombre y límite por minuto opcional), **cambiar el límite**, **revocar** y ver la **bitácora** de cada llave. Hasta **10 llaves activas** por integración.
 - **El secreto se muestra una sola vez**, al crear la llave (con botones Copiar). En Teikem solo se guarda su hash SHA-256; después solo se ve la llave `tk_…` y los últimos 4 caracteres. Si se pierde, se revoca y se crea otra.
 
-**Alcances y rutas** (lista cerrada; todo lo demás responde 403 aunque el token sea válido; nunca hay `DELETE`):
+**Alcances y rutas** (lista cerrada; todo lo demás responde 403 aunque el token sea válido; el único `DELETE` es «quitar un webhook»):
 
 | Alcance | Qué abre |
 |---|---|
@@ -123,6 +123,7 @@ Lo que entró y no se pudo procesar solo. **Una orden con problemas nunca se cre
 | `warehouse:read` / `warehouse:write` | productos, inventario, recibos y despachos manuales: lectura / crear productos, recibir, despachar, ajustar y transferir |
 | `sales:read` / `sales:write` | `/api/v1/sales-orders`: leer / crear, editar y solicitar |
 | `purchasing:read` / `purchasing:write` | `/api/v1/purchase-orders`: leer / crear, editar y enviar |
+| `webhooks:manage` | `/api/v1/webhooks…`: suscribirse a avisos de su cliente, probar, rotar el secreto y ver sus salidas (ver §9; el único `DELETE` de la API: quitar un webhook) |
 
 Siempre permitidas con cualquier llave: `GET /api/v1/api-auth/me` (quién es la llave) y `GET /api/v1/catalogs…`.
 
@@ -158,3 +159,56 @@ curl https://SERVIDOR/api/v1/orders -H "Authorization: Bearer ACCESS_TOKEN"
 | «Una integración de tipo API solo admite alcances de la API.» | 400 | alcances de archivos en una API (y al revés) |
 
 **Casos frecuentes:** *«Mi sistema recibe 403»* → falta el alcance de esa ruta: agréguelo en la integración (se aplica en el siguiente token). *«Veo 429»* → suba el límite de la llave o espacie las llamadas (`Retry-After`). *«Perdí el secreto»* → revoque y cree otra llave. *«La llave ve vacío»* → solo ve lo del cliente de la integración.
+
+## 9. Webhooks de salida y bandeja de salidas (Lote 136)
+
+> Dictado de Luis (2026-10-19): Teikem avisa por HTTP al sistema del cliente cuando pasa algo con lo suyo, con firma, reintentos y una bandeja para lo que no se pudo entregar. Requiere una integración de tipo **API** con **cliente** y el alcance **`webhooks:manage`**.
+
+**Quién y cómo** (módulo `INTEGRATIONS`):
+- **El personal** (Sistema → Integraciones / API): la acción **Webhooks** de la integración (`integrations.manage` para crear, probar, rotar, reactivar y quitar; `integrations.view` para ver). Solo aparece en integraciones API con el alcance `webhooks:manage`.
+- **El propio cliente**, con su llave: `GET/POST /api/v1/webhooks`, `GET/PATCH/DELETE /api/v1/webhooks/{id}`, `POST /api/v1/webhooks/{id}/test`, `POST /api/v1/webhooks/{id}/rotate-secret`, `GET /api/v1/webhooks/{id}/deliveries`. Solo ve y toca los webhooks de **su** integración. Una persona (no llave) recibe 403 «Esta ruta es para llaves de API; el personal administra los webhooks desde Integraciones.».
+- Hasta **10 webhooks** por integración. `DELETE` solo **quita** el webhook (se desactiva y deja de aparecer; el historial queda): es el único `DELETE` de la API.
+
+**Eventos** (`events`, al menos uno): `order.status_changed` (cada cambio de estatus de una orden del cliente; una entrega que salta estatus manda uno por cada estatus), `order.delivered` (la orden se entregó) e `invoice.issued` (se emitió una factura del cliente). Solo salen eventos de **lo del cliente** de la integración. Más `webhook.ping` (la prueba), que no se suscribe.
+
+**Qué recibe el cliente** (POST, `Content-Type: application/json`; cuerpo mínimo: el detalle se consulta por la API con el id):
+```json
+{"id":"7f0c…","type":"order.delivered","createdAt":"2026-10-19T14:03:11Z",
+ "data":{"orderId":"3b1e…","orderNumber":"ORD-000123","status":"DELIVERED","deliveredAt":"2026-10-19T14:03:11Z"}}
+```
+Cabeceras: `X-Teikem-Event` (tipo), `X-Teikem-Delivery` (el `id` del cuerpo: úselo para no procesar dos veces una repetición), `X-Teikem-Timestamp` (segundos Unix) y `X-Teikem-Signature` = `sha256=` + HMAC-SHA256 en hexadecimal de `«timestamp».«cuerpo»` con el **secreto** del webhook.
+
+**Cómo verificar** (receptor): recalcular la firma con el secreto, compararla en tiempo constante y **rechazar si la marca de tiempo tiene más de 5 minutos** (contra repetición).
+```js
+const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(`${timestamp}.${rawBody}`).digest('hex')
+const ok = crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature)) && Math.abs(Date.now()/1000 - Number(timestamp)) < 300
+```
+Responda **2xx** en menos de **10 segundos**; cualquier otra cosa (o no responder) cuenta como fallo.
+
+**El secreto** (`whsec_…`) sale **una sola vez**, al crear el webhook o al **rotarlo** (el anterior deja de servir ya). Se guarda cifrado; después solo se ve su final.
+
+**Reintentos y bandeja:** un aviso que falla se reintenta a **1 minuto, 5, 30, 2 horas y 12 horas** (6 intentos en total). Agotados, queda **No entregada** en la pestaña **Salidas** (`integrations.inbox`) con el motivo exacto («El servidor respondió 500.», «Tiempo de espera agotado (10 s).», «No se pudo conectar: …»), el cuerpo y los botones **Reintentar** (vuelve a pendiente con los intentos en cero) y **Descartar**. La pestaña muestra el contador de no entregadas. Las salidas se guardan 30 días.
+
+**Suspensión automática:** **5** salidas seguidas sin entregarse suspenden el webhook (deja de generar avisos nuevos); se avisa con un aviso del sistema a quienes se definieron en la integración. Se **reactiva** (personal: **Reactivar**; también editarlo y encenderlo) y mientras esté suspendido no se pueden reintentar sus salidas.
+
+**Seguridad:** la URL debe ser **https**, sin usuario ni contraseña y **pública**: se rechazan `localhost`, nombres sin dominio, `*.local`/`*.internal` y direcciones privadas, de bucle o de enlace local (la conexión revisa además la dirección ya resuelta, contra el rebote por DNS), y nunca se siguen redirecciones. (`Integrations:Webhooks:AllowInsecure` solo se enciende en desarrollo y pruebas.)
+
+| Mensaje | Código | Cuándo |
+|---|---|---|
+| «Indique la URL a la que se enviarán los avisos.» · «La URL no puede pasar de 500 caracteres.» | 400 | URL |
+| «La URL no es válida: debe ser una dirección completa (https://…) sin usuario ni contraseña.» | 400 | URL mal formada |
+| «La URL debe usar https.» · «La URL apunta a una dirección interna o local, que no se permite.» | 400 | URL no permitida |
+| «Escoja al menos un evento.» · «Evento desconocido: X. Use order.status_changed, order.delivered, invoice.issued.» | 400 | eventos |
+| «Los webhooks necesitan una integración con cliente: solo se avisa de lo de ese cliente.» | 400 | integración sin cliente |
+| «La integración no tiene el alcance «webhooks:manage».» | 400 | falta el alcance |
+| «Solo las integraciones de tipo API tienen webhooks.» | 400 | otro conector |
+| «Una integración puede tener hasta 10 webhooks; quite alguno.» | 409 | demasiados |
+| «El webhook no está suspendido.» | 409 | reactivar uno que no lo está |
+| «Solo se puede reintentar una salida no entregada.» · «El webhook está suspendido: reactívelo antes de reintentar.» | 409 | reintentar |
+| «La salida ya fue descartada.» · «La salida ya no está pendiente.» | 409 | descartar |
+| «No se pueden guardar secretos de webhooks: falta la llave maestra del servidor (Files:MasterKey).» | 400 | servidor sin llave maestra |
+| 404 «Webhook» / «Salida» | 404 | no existe (o es de otra integración, o ya se quitó) |
+
+**Casos frecuentes:** *«No me llegan avisos»* → el webhook está suspendido o apagado, la integración está apagada, el evento no está marcado o la orden es de otro cliente; revise la pestaña Salidas. *«La firma no coincide»* → use el cuerpo **crudo** (sin reformatear) y el secreto vigente (¿lo rotaron?). *«Recibo el mismo aviso dos veces»* → es un reintento (la primera respuesta no llegó a tiempo): descarte por `X-Teikem-Delivery`. *«Probar dice que no se pudo conectar»* → la URL debe ser pública y con https.
+
+**Fuera de este lote:** la salida de **archivos** por evento o por horario (SFTP, correo o API del cliente) necesita el mapeo de salida; llega con el Lote 137.
