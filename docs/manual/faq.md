@@ -9406,3 +9406,17 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **¿Procesar la factura cuesta?** Solo si el contrato del cliente tiene encendido «Cobrar el cotejo de la factura del cliente» con un monto; entonces la siguiente corrida de facturación agrega la línea «Cotejo de factura de la orden X», una vez por orden. Apagado (lo normal), no cuesta.
 
 **«Indique el monto por factura cotejada.» / «El monto del cotejo no puede ser negativo.»** (400) Al encender el cobro en el contrato hay que dar un monto de cero o más.
+
+## Almacén de archivos: firma y fotos (Lote 127)
+
+**¿Dónde se guardan la firma y las fotos de la entrega?** Como archivos cifrados en el servidor; en la base solo la referencia. Se ven en la ficha de la orden → Comprobante → «Firma y fotos», siempre con la sesión (nunca hay un enlace al disco).
+
+**«La orden X no tiene registrada su entrega; registre la entrega antes de adjuntar archivos.»** (422) Primero se registra la entrega (Registrar entrega); después se adjuntan la firma o las fotos.
+
+**«Solo se admiten imágenes (JPG, PNG, WEBP, GIF) y PDF.» / «El contenido del archivo no corresponde a su tipo.»** El tipo se decide por el contenido real del archivo, no por su nombre ni por lo que diga el navegador.
+
+**«El archivo no puede pasar de 10 MB.»** Reduzca la foto (la app la comprime sola; desde la web, use una imagen más chica).
+
+**«El almacén de archivos no está configurado (Files:MasterKey); avise a soporte.»** El servidor no tiene la llave maestra del almacén; soporte la configura (y la respalda).
+
+**Quité una foto por error.** Se quita en lógico: el contenido sigue en el almacén y soporte puede reactivarla en la base (`StoredFile.IsActive`).

@@ -18,7 +18,8 @@ namespace Teikem.Infrastructure.Services;
 /// que lo registra (nunca del consignatario: el comprobante lo dice). La ubicación se busca aparte y sin hacer esperar (Google, un solo intento, 30 s): aquí solo se deja en cola; si no se logra, queda sin ubicación.
 /// No hay fotos todavía (falta decidir dónde se guardan los archivos). Una entrega por orden: registrarla otra vez es 409.
 /// </summary>
-public sealed class DeliveryRegistrationService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, IOptions<GoogleMapsOptions>? maps = null, ITenantClock? clock = null)
+public sealed class DeliveryRegistrationService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, IOptions<GoogleMapsOptions>? maps = null, ITenantClock? clock = null,
+    StoredFileService? files = null)
 {
     private readonly ITenantClock _clock = clock ?? TenantClock.Default;
     private TenantContext Ctx => (TenantContext)tenant;
@@ -104,9 +105,20 @@ public sealed class DeliveryRegistrationService(TeikemDbContext db, ITenantConte
         var order = await db.TransportOrders.AsNoTracking().Where(o => o.TransportOrderId == p.TransportOrderId).Select(o => new { o.PublicId, o.OrderNumber, o.StatusCodeId }).FirstAsync(ct);
         var status = await db.StatusCodes.AsNoTracking().Where(s => s.StatusCodeId == order.StatusCodeId).Select(s => new { s.InternalCode, s.LabelJson }).FirstAsync(ct);
         var names = await db.Users.AsNoTracking().Where(u => u.Id == p.RecordedBy || u.Id == p.SignedByUserId).ToDictionaryAsync(u => u.Id, u => u.FullName ?? u.Email, ct);
+        // Lote 127: la firma y las fotos adjuntas (quien pide el comprobante ya pasó orders.view / orders.deliver)
+        var attached = files is null ? null : await files.ListAsync(DeliveryProofCodes.EntityType, p.DeliveryProofId, ct, enforceOwnerRead: false);
         return new DeliveryProofDto(p.PublicId, order.PublicId, order.OrderNumber, p.DeliveredAtUtc, p.RecipientName, p.Notes, p.Source, p.SignatureKind,
             names.GetValueOrDefault(p.RecordedBy), names.GetValueOrDefault(p.SignedByUserId), p.GeoStatus, p.GeoAccuracy, (double?)p.Latitude, (double?)p.Longitude,
-            status.InternalCode, Domain.Common.MultilingualText.Resolve(status.LabelJson, tenant.Lang), message);
+            status.InternalCode, Domain.Common.MultilingualText.Resolve(status.LabelJson, tenant.Lang), message, attached);
+    }
+
+    /// <summary>Lote 127: el id del comprobante vigente de la orden, para adjuntarle archivos; 422 si la orden no tiene registrada su entrega.</summary>
+    public async Task<int> RequireProofIdAsync(Guid orderPublicId, CancellationToken ct)
+    {
+        var order = await db.TransportOrders.AsNoTracking().Where(o => o.PublicId == orderPublicId).Select(o => new { o.TransportOrderId, o.OrderNumber }).FirstOrDefaultAsync(ct)
+                    ?? throw new NotFoundException("Orden", orderPublicId);
+        var proofId = await db.Set<DeliveryProof>().AsNoTracking().Where(p => p.TransportOrderId == order.TransportOrderId && p.IsActive).Select(p => (int?)p.DeliveryProofId).FirstOrDefaultAsync(ct);
+        return proofId ?? throw new StatusRuleException(string.Format(DeliveryProofRules.NoProofFormat, order.OrderNumber));
     }
 
     private async Task<string> UserNameAsync(int userId, CancellationToken ct)

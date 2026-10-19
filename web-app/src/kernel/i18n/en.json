@@ -3738,6 +3738,20 @@
         "signedByUser": "Signed automatically by {name}",
         "signedByRecipient": "Signed by the recipient",
         "userSignatureNote": "The consignee did not sign: the delivery was registered by staff.",
+        "files": "Signature and photos",
+        "noFiles": "No signature or photos attached yet.",
+        "addPhoto": "Add photo",
+        "addPhotoInput": "Proof photo or document",
+        "addPhotoHelp": "JPG, PNG, WEBP, GIF or PDF, up to 10 MB. Stored encrypted and visible only with permission.",
+        "remove": "Remove",
+        "removeFile": "Remove {name}",
+        "fileError": "The file could not be loaded",
+        "kind": {
+          "SIGNATURE": "Signature",
+          "DELIVERY_PHOTO": "Delivery photo",
+          "DAMAGE_PHOTO": "Damage photo",
+          "DOCUMENT": "Document"
+        },
         "location": "Location",
         "fromStop": "from the stop",
         "geo": {

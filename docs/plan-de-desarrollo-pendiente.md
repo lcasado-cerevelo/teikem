@@ -356,6 +356,12 @@ Hecho: `KpiDailySnapshot` + job nocturno; ríos de «paquetes en la calle» y «
 ## Lote 126 — Procesar la factura del cliente sin órdenes ficticias (dictado de Luis, 2026-10-18) — HECHO
 La factura del cliente se procesa («second check») contra su orden entregada desde Procesar entregas → Reconciliar, con el selector «¿Qué vas a subir?» (Detectar/COD/Facturas/Ambas; todo se procesa, el modo solo advierte), la marca en la orden (`InvoiceProcessedAtUtc/By/RunId`) que también deja la hoja de COD, y el cobro configurable en el contrato (`BillInvoiceCheck/InvoiceCheckFee` → línea `INVOICE_CHECK` en la corrida). El cliente de las hojas es obligatorio para procesar facturas y el portal del cliente muestra «Factura procesada».
 
+## Lote 127 — Almacén de archivos (firma, fotos, documentos) (dictado de Luis, 2026-10-18) — HECHO
+`StoredFile` + `IFileStore` (disco cifrado por compañía) + `StoredFileService` + `GET/DELETE /files/{id}` + `POST /orders/{id}/delivery/files`; el comprobante trae `files[]` y la ficha de la orden muestra «Firma y fotos». Destraba los documentos adjuntos de órdenes y flota (basta registrar el resolver del dueño y un endpoint de subida) y la firma/fotos de la app del chofer (P7). Pendiente: decidir con Luis si la migración de Colavora usa el almacén (recomendado) o las rutas `SignaturePath/PhotoPath`.
+
+## Pedido de Luis (2026-10-18) — filtros de la lista de Órdenes
+Nivel de zona, zona, factura procesada (sí/no) y fecha de procesamiento; los filtros de fecha con rangos sugeridos (hoy, esta semana, este mes… o personalizado) como en almacén. Los de «procesada» y «fecha de procesamiento» van en el Lote 128; zona y nivel con el lote de Isla/Metro.
+
 ## P13 — App móvil para staff (idea del dueño, 2026-10-15)
 
 > ## ⛔ ANTES DE EMPEZAR NADA: SENTARNOS A DISEÑARLO CON LUIS

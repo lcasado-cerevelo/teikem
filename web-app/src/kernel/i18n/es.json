@@ -3738,6 +3738,20 @@
         "signedByUser": "Firmada automáticamente por {name}",
         "signedByRecipient": "Firmada por quien recibió",
         "userSignatureNote": "El consignatario no firmó: la entrega la registró el personal.",
+        "files": "Firma y fotos",
+        "noFiles": "Todavía no hay firma ni fotos adjuntas.",
+        "addPhoto": "Agregar foto",
+        "addPhotoInput": "Foto o documento del comprobante",
+        "addPhotoHelp": "JPG, PNG, WEBP, GIF o PDF, hasta 10 MB. Se guarda cifrado y solo se ve con permiso.",
+        "remove": "Quitar",
+        "removeFile": "Quitar {name}",
+        "fileError": "No se pudo cargar el archivo",
+        "kind": {
+          "SIGNATURE": "Firma",
+          "DELIVERY_PHOTO": "Foto de la entrega",
+          "DAMAGE_PHOTO": "Foto del daño",
+          "DOCUMENT": "Documento"
+        },
         "location": "Ubicación",
         "fromStop": "de la parada",
         "geo": {

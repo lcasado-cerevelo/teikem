@@ -3,6 +3,7 @@
 // `orders.credit_override`), eliminación `orders.cancel` (baja lógica solo en el estatus inicial). `quotedAmount` solo llega con
 // `orders.view_price`; sin él viene null. Lecturas con `useQuery` (clave `[ruta, params]`); escrituras con `useMutation`.
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect } from 'react'
 import { api, unwrap } from '../../kernel/api/client'
 import { fetchAllPages } from '../../kernel/api/fetchAllPages'
 import { catalogKeys } from '../../kernel/catalogs'
@@ -257,4 +258,49 @@ export function useRegisterDelivery() {
       void qc.invalidateQueries({ queryKey: orderKeys.detail })
     },
   })
+}
+
+/** Lote 127: `POST /orders/{publicId}/delivery/files` (multipart `kind` + `file`, `orders.deliver`): adjunta al comprobante la firma o una foto. */
+export function useAttachProofFile() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ publicId, kind, file }: { publicId: string; kind: 'SIGNATURE' | 'DELIVERY_PHOTO'; file: File }) => {
+      const form = new FormData()
+      form.append('kind', kind)
+      form.append('file', file)
+      return unwrap(api.POST('/api/v1/orders/{publicId}/delivery/files', { params: { path: { publicId } }, body: {}, bodySerializer: () => form }))
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: orderKeys.detail }),
+  })
+}
+
+/** Lote 127: `DELETE /files/{publicId}`: quita un archivo (el permiso lo decide su dueño). */
+export function useRemoveStoredFile() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (publicId: string) => unwrap(api.DELETE('/api/v1/files/{publicId}', { params: { path: { publicId } } })),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: orderKeys.detail }),
+  })
+}
+
+/** Lote 127: el contenido de un archivo del almacén como URL de objeto (se pide con la sesión; nunca hay un enlace directo al disco). Se libera al desmontar. */
+export function useStoredFileUrl(publicId: string | null | undefined) {
+  const q = useQuery({
+    queryKey: ['files', 'blob', publicId],
+    queryFn: async () => {
+      const res = await api.GET('/api/v1/files/{publicId}', { params: { path: { publicId: publicId ?? '' } }, parseAs: 'blob' })
+      if (res.error || !res.data) throw res.error ?? new Error('file')
+      return URL.createObjectURL(res.data as Blob)
+    },
+    enabled: !!publicId,
+    staleTime: 5 * 60_000,
+    gcTime: 60_000,
+  })
+  useEffect(() => {
+    const url = q.data
+    return () => {
+      if (url) URL.revokeObjectURL(url)
+    }
+  }, [q.data])
+  return q
 }

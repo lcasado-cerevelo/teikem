@@ -173,9 +173,10 @@ public class DeliveryRegistrationTests
         Assert.NotNull(t.GetCustomAttribute<AuthorizeAttribute>());
         Assert.Null(t.GetCustomAttribute<AllowAnonymousAttribute>());
         var actions = t.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
-        var post = Assert.Single(actions, a => a.GetCustomAttribute<HttpPostAttribute>() is not null);
+        var posts = actions.Where(a => a.GetCustomAttribute<HttpPostAttribute>() is not null).ToList();   // Lote 127: registrar la entrega y adjuntar archivos, los dos con orders.deliver
+        Assert.Equal(2, posts.Count);
         var get = Assert.Single(actions, a => a.GetCustomAttribute<HttpGetAttribute>() is not null);
-        Assert.Equal(new[] { RequirePermissionAttribute.Prefix + PermissionCatalog.OrdersDeliver }, post.GetCustomAttributes<RequirePermissionAttribute>().Select(p => p.Policy));
+        Assert.All(posts, post => Assert.Equal(new[] { RequirePermissionAttribute.Prefix + PermissionCatalog.OrdersDeliver }, post.GetCustomAttributes<RequirePermissionAttribute>().Select(p => p.Policy)));
         Assert.Equal(new[] { RequirePermissionAttribute.Prefix + PermissionCatalog.OrdersView }, get.GetCustomAttributes<RequirePermissionAttribute>().Select(p => p.Policy));
         Assert.All(actions, a => Assert.DoesNotContain(a.GetParameters(), p => string.Equals(p.Name, "tenantId", StringComparison.OrdinalIgnoreCase)));
     }

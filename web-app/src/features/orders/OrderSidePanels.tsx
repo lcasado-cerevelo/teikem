@@ -1,7 +1,7 @@
 // Paneles de la columna derecha del expediente de la orden (Lote F-C2; maqueta `record()`): COD (solo lectura), Cotización (solo con
 // `orders.view_price`), Chofer asignado, Campos personalizados (TRANSPORT_ORDER) y Contactos (ContactPoint de TRANSPORT_ORDER).
 import { useQueryClient } from '@tanstack/react-query'
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { Can, useCan } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
@@ -13,7 +13,9 @@ import { Chip, Form, Panel, toast } from '../../kernel/ui'
 import { IconCash, IconCheckin, IconTag, IconUsers } from '../../kernel/ui/screenIcons'
 import { contactKeys, useContactPoints } from '../contacts/api'
 import { ContactPointsPanel } from '../contacts/ContactPointsPanel'
-import { useDeliveryProof, useOrderQuote, type OrderDetailDto } from './api'
+import { useAttachProofFile, useDeliveryProof, useOrderQuote, useRemoveStoredFile, useStoredFileUrl, type OrderDetailDto } from './api'
+
+type StoredFileDto = import('../../kernel/api/schema').components['schemas']['StoredFileDto']
 
 export const ORDER_ENTITY_TYPE = 'TRANSPORT_ORDER'
 
@@ -226,7 +228,77 @@ export function DeliveryProofPanel({ order }: { order: OrderDetailDto }) {
         {kv(t('orders.detail.proof.location'), geo)}
         <p className="od-note"><b>{t('orders.detail.proof.signature')}:</b> {p.signatureKind === 'USER' ? t('orders.detail.proof.signedByUser', { name: p.signedByName ?? '—' }) : t('orders.detail.proof.signedByRecipient')}</p>
         {p.signatureKind === 'USER' && <p className="d od-note">{t('orders.detail.proof.userSignatureNote')}</p>}
+        <ProofFiles order={order} files={p.files ?? []} />
       </div>
     </Panel>
+  )
+}
+
+/** Lote 127: la firma y las fotos del comprobante (miniaturas que se piden con la sesión) y, con orders.deliver, adjuntar una foto o quitar una. */
+function ProofFiles({ order, files }: { order: OrderDetailDto; files: StoredFileDto[] }) {
+  const t = useT()
+  const canDeliver = useCan('orders.deliver')
+  const attach = useAttachProofFile()
+  const remove = useRemoveStoredFile()
+  const input = useRef<HTMLInputElement>(null)
+  const [error, setError] = useState<string | null>(null)
+  const pick = async (list: FileList | null) => {
+    const file = list?.[0]
+    if (!file) return
+    setError(null)
+    try {
+      await attach.mutateAsync({ publicId: order.publicId, kind: 'DELIVERY_PHOTO', file })
+    } catch (e) {
+      setError(applyProblemDetails(e).title)
+    }
+  }
+  if (files.length === 0 && !canDeliver) return null
+  return (
+    <div className="od-files" data-testid="proof-files">
+      <span className="od-k">{t('orders.detail.proof.files')}</span>
+      {files.length === 0 && <p className="d od-note">{t('orders.detail.proof.noFiles')}</p>}
+      <ul className="od-file-list">
+        {files.map((f) => (
+          <li key={f.publicId}>
+            <StoredFileThumb file={f} />
+            {canDeliver && (
+              <button type="button" className="btn sm" aria-label={t('orders.detail.proof.removeFile', { name: f.fileName })} disabled={remove.isPending} onClick={() => void remove.mutateAsync(f.publicId).catch((e) => setError(applyProblemDetails(e).title))}>
+                {t('orders.detail.proof.remove')}
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+      {canDeliver && (
+        <div className="od-file-add">
+          <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" className="cod-file" aria-label={t('orders.detail.proof.addPhotoInput')} onChange={(e) => (void pick(e.target.files), (e.target.value = ''))} />
+          <button type="button" className="btn" disabled={attach.isPending} onClick={() => input.current?.click()}>
+            {attach.isPending ? t('common.loading') : t('orders.detail.proof.addPhoto')}
+          </button>
+          <p className="d od-note">{t('orders.detail.proof.addPhotoHelp')}</p>
+        </div>
+      )}
+      {error && <p className="ferr" role="alert">{error}</p>}
+    </div>
+  )
+}
+
+/** Una miniatura (imagen) o el enlace (PDF) de un archivo del almacén; el contenido viaja con la sesión. */
+function StoredFileThumb({ file }: { file: StoredFileDto }) {
+  const t = useT()
+  const url = useStoredFileUrl(file.publicId)
+  const label = `${t(`orders.detail.proof.kind.${file.kind}`)} · ${file.fileName}`
+  if (!url.data) return <span className="od-file-pending">{url.isError ? t('orders.detail.proof.fileError') : t('common.loading')}</span>
+  if (file.contentType?.startsWith('image/')) {
+    return (
+      <a href={url.data} target="_blank" rel="noreferrer" title={label}>
+        <img src={url.data} alt={label} className="od-thumb" />
+      </a>
+    )
+  }
+  return (
+    <a href={url.data} target="_blank" rel="noreferrer" className="od-file-link">
+      {label}
+    </a>
   )
 }

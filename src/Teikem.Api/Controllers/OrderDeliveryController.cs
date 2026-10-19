@@ -15,8 +15,21 @@ namespace Teikem.Api.Controllers;
 [Route("api/v1/orders/{publicId:guid}/delivery")]
 [Authorize]
 [RequireModule(ModuleKeys.LtlGround)]
-public sealed class OrderDeliveryController(DeliveryRegistrationService delivery) : ControllerBase
+public sealed class OrderDeliveryController(DeliveryRegistrationService delivery, StoredFileService files) : ControllerBase
 {
+    /// <summary>Lote 127: adjunta al comprobante la imagen de la firma (kind SIGNATURE) o una foto de la entrega (DELIVERY_PHOTO); JPG, PNG, WEBP, GIF o PDF, hasta Files:MaxMegabytes.</summary>
+    [HttpPost("files"), Consumes("multipart/form-data"), RequirePermission(PermissionCatalog.OrdersDeliver)]
+    [RequestSizeLimit(32 * 1024 * 1024)]
+    public async Task<StoredFileDto> AttachFile(Guid publicId, [FromForm] string? kind, IFormFile? file, CancellationToken ct)
+    {
+        if (file is null || file.Length == 0) throw new Teikem.Infrastructure.Exceptions.ValidationException("file", Teikem.Domain.Files.StoredFileRules.FileRequired);
+        if (file.Length > files.MaxBytes) throw new Teikem.Infrastructure.Exceptions.ValidationException("file", Teikem.Domain.Files.StoredFileRules.TooLarge(files.MaxBytes / 1024 / 1024));
+        var proofId = await delivery.RequireProofIdAsync(publicId, ct);
+        using var buffer = new MemoryStream((int)file.Length);
+        await file.CopyToAsync(buffer, ct);
+        return await files.AttachAsync(Teikem.Domain.Orders.DeliveryProofCodes.EntityType, proofId, kind ?? Teikem.Domain.Files.StoredFileCodes.KindDeliveryPhoto, file.FileName, file.ContentType, buffer.ToArray(), ct);
+    }
+
     [HttpPost, RequirePermission(PermissionCatalog.OrdersDeliver)]
     public Task<DeliveryProofDto> Register(Guid publicId, [FromBody] DeliveryRegisterRequest? req, CancellationToken ct) => delivery.RegisterAsync(publicId, req, ct);
 

@@ -76,3 +76,6 @@ El comprobante trae: `recipientName`, `notes`, `deliveredAtUtc`, `source` (`STAF
 - **No veo «Registrar entrega».** Falta el permiso `orders.deliver`, o la orden ya está en un estatus final, o está inactiva.
 - **El comprobante dice «Sin ubicación».** Google está apagado en este servidor, la parada no tiene dirección o no se pudo encontrar; la entrega vale igual.
 - **Quiero que el consignatario firme.** Eso es de la app del chofer (todavía no existe); desde la web la firma es siempre la del usuario.
+
+## Firma y fotos del comprobante (Lote 127)
+El panel del comprobante tiene **«Firma y fotos»**: las imágenes y documentos adjuntos al comprobante (la firma del que recibió cuando venga de la app del chofer; las fotos de la entrega). Con `orders.deliver` se puede **Agregar foto** (JPG, PNG, WEBP, GIF o PDF, hasta 10 MB) y **Quitar**. Se guardan cifrados y solo se ven con permiso: ver [capítulo 38](38-almacen-de-archivos.md).

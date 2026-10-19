@@ -82,6 +82,9 @@ public static class DependencyInjection
         services.AddScoped<IPasswordBreachChecker, NoOpPasswordBreachChecker>();
 
         services.Configure<JwtOptions>(config.GetSection("Jwt"));
+        services.Configure<Teikem.Infrastructure.Files.FileStoreOptions>(config.GetSection(Teikem.Infrastructure.Files.FileStoreOptions.Section));   // Lote 127: almacén de archivos
+        services.AddSingleton<Teikem.Infrastructure.Files.IFileStore, Teikem.Infrastructure.Files.EncryptedDiskFileStore>();
+        services.AddScoped<StoredFileService>();
         services.Configure<OnboardingOptions>(config.GetSection("Auth:Onboarding"));
         services.Configure<TurnstileOptions>(config.GetSection("Auth:Turnstile"));   // Lote 101: apagado por omisión
         services.Configure<TrustedBrowserOptions>(config.GetSection("Auth:TrustedBrowsers"));   // Lote 100: apagado por omisión
@@ -336,6 +339,7 @@ public static class DependencyInjection
         services.AddScoped<IDataSource, SecurityEventDataSource>();
         services.AddScoped<IDataSource, UserDataSource>();
         services.AddScoped<IOwnedEntityResolver, UserOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, DeliveryProofOwnedEntityResolver>();   // Lote 127
         // Lote 2
         services.AddScoped<IDataSource, ClientDataSource>();
         services.AddScoped<IDataSource, ContractDataSource>();
@@ -484,6 +488,9 @@ public static class DependencyInjection
         services.AddSingleton<DatabaseInitializer>();
         // Lote 10 — migración de datos heredados (QuickBooks + WMS MSWM): comando CLI import-legacy, fuera del pipeline HTTP.
         services.AddScoped<LegacyImportService>();
+        // Migración de Colavora Courier (2026-10-18): aparte del importador de almacén.
+        services.AddScoped<Migration.Colavora.ColavoraImportService>();
+        services.AddSingleton<Migration.Colavora.ColavoraImportRunner>();
         services.AddSingleton<LegacyImportRunner>();
         return services;
     }

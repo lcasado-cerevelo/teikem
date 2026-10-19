@@ -29315,6 +29315,107 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/v1/files/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders/{publicId}/delivery/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "multipart/form-data": {
+                        kind?: string;
+                        /** Format: binary */
+                        file?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["StoredFileDto"];
+                        "application/json": components["schemas"]["StoredFileDto"];
+                        "text/json": components["schemas"]["StoredFileDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -39222,6 +39323,7 @@ export interface components {
             orderStatusCode?: string | null;
             orderStatusLabel?: string | null;
             message?: string | null;
+            files?: components["schemas"]["StoredFileDto"][] | null;
         };
         DeliveryRegisterRequest: {
             recipientName?: string | null;
@@ -39404,6 +39506,18 @@ export interface components {
             enabled?: boolean | null;
             /** Format: double */
             amount?: number | null;
+        };
+        StoredFileDto: {
+            /** Format: uuid */
+            publicId?: string;
+            kind?: string | null;
+            fileName?: string | null;
+            contentType?: string | null;
+            /** Format: int64 */
+            sizeBytes?: number;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            uploadedByName?: string | null;
         };
     };
     responses: never;

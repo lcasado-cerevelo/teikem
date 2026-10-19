@@ -4664,3 +4664,41 @@ WHEN NOT MATCHED THEN
     INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
     VALUES (N'ChargeType', s.Code, s.LabelJson, s.Srt, 1, 1);
 GO
+
+/* =========================================================================
+   2026-10-18 (bg) — Lote 127: ALMACÉN DE ARCHIVOS (dictado de Luis): la firma del que recibió, las fotos de la entrega o de un daño y los documentos se guardan como ARCHIVOS cifrados en el
+   almacén del servidor (IFileStore; llave por compañía) y en la base solo la REFERENCIA: a quién pertenece (EntityType + id, el patrón polimórfico de ContactPoint), la clase, nombre, tipo,
+   tamaño, hash y la llave en el almacén. Se sirven solo por el API con el permiso del dueño; se quitan en lógico. Solo AGREGA. Idempotente.
+   ========================================================================= */
+IF OBJECT_ID(N'dbo.StoredFile', N'U') IS NULL CREATE TABLE dbo.StoredFile (
+    StoredFileId INT IDENTITY(1,1) PRIMARY KEY,
+    PublicId UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_StoredFile_PublicId DEFAULT NEWID(),
+    TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    OwnerEntityLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),
+    OwnerId INT NOT NULL,
+    Kind VARCHAR(30) NOT NULL,
+    FileName NVARCHAR(200) NOT NULL,
+    ContentType VARCHAR(100) NOT NULL,
+    SizeBytes BIGINT NOT NULL,
+    Sha256 CHAR(64) NOT NULL,
+    StorageKey NVARCHAR(300) NOT NULL,
+    IsEncrypted BIT NOT NULL CONSTRAINT DF_StoredFile_Encrypted DEFAULT 1,
+    UploadedBy INT NULL,
+    IsActive BIT NOT NULL CONSTRAINT DF_StoredFile_IsActive DEFAULT 1,
+    CreatedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_StoredFile_Created DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT CK_StoredFile_Kind CHECK (Kind IN ('SIGNATURE','DELIVERY_PHOTO','DAMAGE_PHOTO','DOCUMENT'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_StoredFile_PublicId' AND object_id = OBJECT_ID('dbo.StoredFile')) CREATE UNIQUE INDEX UX_StoredFile_PublicId ON dbo.StoredFile(PublicId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_StoredFile_Owner' AND object_id = OBJECT_ID('dbo.StoredFile')) CREATE INDEX IX_StoredFile_Owner ON dbo.StoredFile(OwnerEntityLookupId, OwnerId) INCLUDE (IsActive, Kind);
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'STORED_FILE', N'{"es":"Archivo","en":"File"}', 162)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
