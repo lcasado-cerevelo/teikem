@@ -13,9 +13,11 @@ public static class IntegrationConnectorKinds
     public const string Email = "EMAIL";
     public const string Sftp = "SFTP";
     public const string Ftp = "FTP";
+    /// <summary>Lote 135: la integración ES una API: el cliente llama a Teikem con una llave (ver ApiAccessRules).</summary>
+    public const string Api = "API";
     /// <summary>Los que ya corren (el resto se define pero aún no se puede elegir).</summary>
-    public static readonly IReadOnlyList<string> Available = [Folder, Manual, Email, Sftp, Ftp];
-    public static readonly IReadOnlyList<string> All = [Folder, Manual, Email, Sftp, Ftp];
+    public static readonly IReadOnlyList<string> Available = [Folder, Manual, Email, Sftp, Ftp, Api];
+    public static readonly IReadOnlyList<string> All = [Folder, Manual, Email, Sftp, Ftp, Api];
     public static bool IsRemote(string? kind) => kind is Sftp or Ftp;
 }
 
@@ -182,4 +184,41 @@ public class IntegrationInboxItem : ITenantScoped
     public string? Note { get; set; }
     public Guid? OrderPublicId { get; set; }
     [NotAudited] public byte[]? RowVersion { get; set; }
+}
+
+/// <summary>
+/// Lote 135 (P11) — una llave de API de una integración de tipo API. KeyId es público (tk_…); del secreto solo se guarda su hash SHA-256 y los últimos 4 caracteres (el secreto se muestra una sola vez al crearla).
+/// RateLimitPerMinute = solicitudes por minuto. Nunca se borra: se revoca.
+/// </summary>
+[AuditEntity(Constants.EntityTypes.Integration)]
+public class IntegrationApiKey : ITenantScoped
+{
+    public int IntegrationApiKeyId { get; set; }
+    public int TenantId { get; set; }
+    public int IntegrationId { get; set; }
+    public string KeyId { get; set; } = string.Empty;
+    [SensitiveData] public string SecretHash { get; set; } = string.Empty;
+    public string SecretLast4 { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public int RateLimitPerMinute { get; set; } = ApiKeyRules.DefaultRateLimit;
+    public bool IsActive { get; set; } = true;
+    public DateTime? ExpiresAtUtc { get; set; }
+    [NotAudited] public DateTime? LastUsedUtc { get; set; }
+    [NotAudited] public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public int? CreatedBy { get; set; }
+    public DateTime? RevokedAtUtc { get; set; }
+    public int? RevokedBy { get; set; }
+}
+
+/// <summary>Bitácora de la API por llave: una fila por solicitud (método, ruta, estatus, milisegundos). Se purga a los 30 días.</summary>
+public class IntegrationApiLog : ITenantScoped
+{
+    public long IntegrationApiLogId { get; set; }
+    public int TenantId { get; set; }
+    public int IntegrationApiKeyId { get; set; }
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public string Method { get; set; } = string.Empty;
+    public string Path { get; set; } = string.Empty;
+    public int StatusCode { get; set; }
+    public int DurationMs { get; set; }
 }

@@ -13,6 +13,9 @@ export type IntegrationRunDto = Schemas['IntegrationRunDto']
 export type InboxItemDto = Schemas['InboxItemDto']
 export type InboxPageDto = Schemas['InboxPageDto']
 export type InboxRowDto = Schemas['InboxRowDto']
+export type ApiKeyDto = Schemas['ApiKeyDto']
+export type ApiKeyCreatedDto = Schemas['ApiKeyCreatedDto']
+export type ApiLogDto = Schemas['ApiLogDto']
 
 export const integrationKeys = {
   all: ['integrations'] as const,
@@ -20,6 +23,8 @@ export const integrationKeys = {
   options: ['integrations', '/api/v1/integrations/options'] as const,
   runs: (id: string) => ['integrations', '/api/v1/integrations/{publicId}/runs', id] as const,
   inbox: (integration: string, status: string, skip: number, take: number) => ['integrations', 'inbox', { integration, status, skip, take }] as const,
+  apiKeys: (id: string) => ['integrations', 'api-keys', id] as const,
+  apiLog: (id: string, key: string) => ['integrations', 'api-log', id, key] as const,
   item: (id: number) => ['integrations', 'inbox', 'item', id] as const,
 }
 
@@ -138,4 +143,42 @@ export async function downloadInboxCsv(integration: string): Promise<void> {
   a.download = 'bandeja-integraciones.csv'
   a.click()
   URL.revokeObjectURL(url)
+}
+
+// ---------------------------------------------------------------- llaves de API (Lote 135)
+
+export function useApiKeys(publicId: string | null) {
+  return useQuery({
+    queryKey: integrationKeys.apiKeys(publicId ?? ''),
+    queryFn: () => unwrap(api.GET('/api/v1/integrations/{publicId}/api-keys', { params: { path: { publicId: publicId! } } })),
+    enabled: publicId !== null,
+  })
+}
+
+export function useApiKeyLog(publicId: string, keyId: string | null) {
+  return useQuery({
+    queryKey: integrationKeys.apiLog(publicId, keyId ?? ''),
+    queryFn: () => unwrap(api.GET('/api/v1/integrations/{publicId}/api-keys/{keyId}/log', { params: { path: { publicId, keyId: keyId! }, query: { take: 50 } } })),
+    enabled: keyId !== null,
+  })
+}
+
+export function useApiKeyMutations(publicId: string) {
+  const qc = useQueryClient()
+  const invalidate = () => qc.invalidateQueries({ queryKey: integrationKeys.all })
+  return {
+    create: useMutation({
+      mutationFn: (body: { label: string; rateLimitPerMinute?: number | null }) => unwrap(api.POST('/api/v1/integrations/{publicId}/api-keys', { params: { path: { publicId } }, body })),
+      onSettled: invalidate,
+    }),
+    update: useMutation({
+      mutationFn: (v: { keyId: string; label?: string; rateLimitPerMinute?: number }) =>
+        unwrap(api.PATCH('/api/v1/integrations/{publicId}/api-keys/{keyId}', { params: { path: { publicId, keyId: v.keyId } }, body: { label: v.label, rateLimitPerMinute: v.rateLimitPerMinute } })),
+      onSettled: invalidate,
+    }),
+    revoke: useMutation({
+      mutationFn: (keyId: string) => unwrap(api.POST('/api/v1/integrations/{publicId}/api-keys/{keyId}/revoke', { params: { path: { publicId, keyId } } })),
+      onSettled: invalidate,
+    }),
+  }
 }

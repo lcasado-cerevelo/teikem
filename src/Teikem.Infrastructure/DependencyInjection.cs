@@ -288,6 +288,8 @@ public static class DependencyInjection
         services.AddSingleton<IScheduledJob, IntegrationRunDueJob>();   // Lote 132 (P11)
         services.Configure<IntegrationOptions>(config.GetSection(IntegrationOptions.Section));
         services.AddScoped<IntegrationNotifier>();
+        services.AddSingleton<ApiRateLimiter>();   // Lote 135: API de los clientes
+        services.AddScoped<ApiKeyService>();
         services.AddSingleton<Teikem.Infrastructure.Security.ISecretProtector, Teikem.Infrastructure.Security.SecretProtector>();   // Lote 133: secretos de conectores cifrados
         services.AddSingleton<Teikem.Infrastructure.Integrations.IMailboxReader, Teikem.Infrastructure.Integrations.ImapMailboxReader>();
         services.AddSingleton<Teikem.Infrastructure.Integrations.IRemoteFileClient, Teikem.Infrastructure.Integrations.RemoteFileClient>();   // Lote 134: SFTP/FTP

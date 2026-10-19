@@ -46,6 +46,8 @@ public sealed class TenantContext : ITenantContext
     public IReadOnlyCollection<int>? ScopedWarehouseIds { get; set; }
     public IReadOnlyCollection<int>? ScopedClientIds { get; set; }
     public bool IsPortal { get; set; }
+    /// <summary>Lote 135: la sesión es una llave de API (token con kind=API); solo puede usar las rutas de sus alcances.</summary>
+    public bool IsApiKey { get; set; }
     public int? PortalClientId { get; set; }
     public int? PortalLocationId { get; set; }
 

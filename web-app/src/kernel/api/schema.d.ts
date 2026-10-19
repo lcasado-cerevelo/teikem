@@ -30351,6 +30351,282 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/api-auth/token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ApiTokenRequest"];
+                    "text/json": components["schemas"]["ApiTokenRequest"];
+                    "application/*+json": components["schemas"]["ApiTokenRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ApiTokenDto"];
+                        "application/json": components["schemas"]["ApiTokenDto"];
+                        "text/json": components["schemas"]["ApiTokenDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/api-auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ApiInfoDto"];
+                        "application/json": components["schemas"]["ApiInfoDto"];
+                        "text/json": components["schemas"]["ApiInfoDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/{publicId}/api-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ApiKeyDto"][];
+                        "application/json": components["schemas"]["ApiKeyDto"][];
+                        "text/json": components["schemas"]["ApiKeyDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ApiKeyCreateRequest"];
+                    "text/json": components["schemas"]["ApiKeyCreateRequest"];
+                    "application/*+json": components["schemas"]["ApiKeyCreateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ApiKeyCreatedDto"];
+                        "application/json": components["schemas"]["ApiKeyCreatedDto"];
+                        "text/json": components["schemas"]["ApiKeyCreatedDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/{publicId}/api-keys/{keyId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    keyId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ApiKeyPatchRequest"];
+                    "text/json": components["schemas"]["ApiKeyPatchRequest"];
+                    "application/*+json": components["schemas"]["ApiKeyPatchRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ApiKeyDto"];
+                        "application/json": components["schemas"]["ApiKeyDto"];
+                        "text/json": components["schemas"]["ApiKeyDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/integrations/{publicId}/api-keys/{keyId}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    keyId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ApiKeyDto"];
+                        "application/json": components["schemas"]["ApiKeyDto"];
+                        "text/json": components["schemas"]["ApiKeyDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/{publicId}/api-keys/{keyId}/log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    take?: number;
+                };
+                header?: never;
+                path: {
+                    publicId: string;
+                    keyId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ApiLogDto"][];
+                        "application/json": components["schemas"]["ApiLogDto"][];
+                        "text/json": components["schemas"]["ApiLogDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -40694,11 +40970,11 @@ export interface components {
             name?: string | null;
             description?: string | null;
             /** Format: uuid */
-            clientPublicId?: string;
+            clientPublicId?: string | null;
             connectorKind?: string | null;
             folder?: string | null;
             /** Format: uuid */
-            templatePublicId?: string;
+            templatePublicId?: string | null;
             scheduleKind?: string | null;
             /** Format: int32 */
             intervalSeconds?: number | null;
@@ -40725,6 +41001,8 @@ export interface components {
             moduleKey?: string | null;
             available?: boolean;
             unavailableReason?: string | null;
+            isApi?: boolean;
+            needsClient?: boolean;
         };
         EmailTestResultDto: {
             ok?: boolean;
@@ -40797,6 +41075,75 @@ export interface components {
             /** Format: int32 */
             count?: number;
             fingerprint?: string | null;
+        };
+        ApiKeyCreateRequest: {
+            label?: string | null;
+            /** Format: int32 */
+            rateLimitPerMinute?: number | null;
+            /** Format: date-time */
+            expiresAtUtc?: string | null;
+        };
+        ApiKeyDto: {
+            /** Format: int32 */
+            id?: number;
+            keyId?: string | null;
+            label?: string | null;
+            secretLast4?: string | null;
+            /** Format: int32 */
+            rateLimitPerMinute?: number;
+            isActive?: boolean;
+            /** Format: date-time */
+            expiresAtUtc?: string | null;
+            /** Format: date-time */
+            lastUsedUtc?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            /** Format: date-time */
+            revokedAtUtc?: string | null;
+        };
+        ApiLogDto: {
+            /** Format: date-time */
+            atUtc?: string;
+            method?: string | null;
+            path?: string | null;
+            /** Format: int32 */
+            statusCode?: number;
+            /** Format: int32 */
+            durationMs?: number;
+        };
+        ApiTokenDto: {
+            accessToken?: string | null;
+            tokenType?: string | null;
+            /** Format: int32 */
+            expiresIn?: number;
+            scopes?: string[] | null;
+            clientPublicId?: string | null;
+        };
+        ApiKeyCreatedDto: {
+            key?: components["schemas"]["ApiKeyDto"];
+            secret?: string | null;
+        };
+        ApiKeyPatchRequest: {
+            label?: string | null;
+            /** Format: int32 */
+            rateLimitPerMinute?: number | null;
+        };
+        ApiInfoDto: {
+            integration?: string | null;
+            keyId?: string | null;
+            label?: string | null;
+            scopes?: string[] | null;
+            /** Format: uuid */
+            clientPublicId?: string | null;
+            clientName?: string | null;
+            /** Format: int32 */
+            rateLimitPerMinute?: number;
+            /** Format: date-time */
+            expiresAtUtc?: string | null;
+        };
+        ApiTokenRequest: {
+            clientId?: string | null;
+            clientSecret?: string | null;
         };
     };
     responses: never;

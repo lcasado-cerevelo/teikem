@@ -55,3 +55,9 @@ public sealed class ModuleDisabledException(string moduleKey)
 /// <summary>Acción sensible: exige reautenticación reciente (AAL2).</summary>
 public sealed class StepUpRequiredException()
     : TeikemException("Esta acción requiere reautenticación reciente (AAL2).", 403, "aal2_required");
+
+/// <summary>Lote 135: 429 (superó el límite de uso de una llave de API); RetryAfterSeconds va en la cabecera Retry-After.</summary>
+public sealed class RateLimitedException(string message, int retryAfterSeconds) : TeikemException(message, 429, "rate_limited")
+{
+    public int RetryAfterSeconds { get; } = retryAfterSeconds;
+}

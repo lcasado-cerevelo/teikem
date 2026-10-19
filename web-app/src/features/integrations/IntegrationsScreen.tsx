@@ -9,6 +9,7 @@ import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
 import { Chip, DataTable, IconEdit, IconPlay, IconPlus, Modal, Panel, Spinner, Tabs, toast, type DataColumn } from '../../kernel/ui'
 import { IconClock, IconSwap } from '../../kernel/ui/screenIcons'
+import { ApiKeysModal } from './ApiKeysModal'
 import { InboxTab } from './InboxTab'
 import { IntegrationFormModal } from './IntegrationFormModal'
 import { FILE_TONE, RUN_TONE, scheduleText } from './integrationRules'
@@ -79,6 +80,7 @@ export default function IntegrationsScreen() {
   const { run, setActive, upload, testConnection } = useIntegrationMutations()
   const [editing, setEditing] = useState<IntegrationDto | 'new' | null>(null)
   const [history, setHistory] = useState<IntegrationDto | null>(null)
+  const [keysFor, setKeysFor] = useState<IntegrationDto | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploadFor, setUploadFor] = useState<IntegrationDto | null>(null)
   const tab: Tab = params.get('tab') === 'inbox' && canInbox ? 'inbox' : 'integrations'
@@ -256,8 +258,9 @@ export default function IntegrationsScreen() {
                       setUploadFor(i)
                       fileRef.current?.click()
                     },
-                    visible: (i) => canManage && !!i.isActive,
+                    visible: (i) => canManage && !!i.isActive && i.connectorKind !== 'API',
                   },
+                  { key: 'keys', label: t('integrations.api.open'), icon: <IconPlus />, onClick: (i) => setKeysFor(i), visible: (i) => canManage && i.connectorKind === 'API' },
                   {
                     key: 'test',
                     label: t('integrations.testConnection'),
@@ -294,6 +297,7 @@ export default function IntegrationsScreen() {
         }}
       />
       {editing && <IntegrationFormModal key={editing === 'new' ? 'new' : editing.publicId} integration={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />}
+      {keysFor && <ApiKeysModal key={keysFor.publicId} integration={keysFor} onClose={() => setKeysFor(null)} />}
       {history && <HistoryModal key={history.publicId} integration={history} onClose={() => setHistory(null)} />}
     </div>
   )

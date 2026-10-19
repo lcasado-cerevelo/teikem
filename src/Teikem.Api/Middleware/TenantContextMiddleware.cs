@@ -39,6 +39,12 @@ public sealed class TenantContextMiddleware(RequestDelegate next)
                 else tenant.ScopedClientIds = new[] { -1 };   // un token de portal sin cliente no ve nada
                 if (int.TryParse(user.FindFirst(TeikemClaims.LocationId)?.Value, out var loc)) tenant.PortalLocationId = loc;   // Lote 117: consignatario
             }
+            else if (user.FindFirst(TeikemClaims.UserKind)?.Value == Teikem.Domain.Integrations.ApiAccessRules.UserKind)
+            {
+                // Llave de API (Lote 135): si la integración tiene cliente, ese cliente es el alcance de datos (segundo filtro, además de la compañía), igual que el portal.
+                tenant.IsApiKey = true;
+                if (int.TryParse(user.FindFirst(TeikemClaims.ClientId)?.Value, out var apiCid)) tenant.ScopedClientIds = new[] { apiCid };
+            }
             else await LoadDataScopeAsync(tenant, db, http.RequestAborted);
         }
         await next(http);
@@ -81,6 +87,7 @@ public sealed class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Ex
         {
             if (http.Response.HasStarted) throw;
             http.Response.StatusCode = ex.StatusCode;
+            if (ex is Teikem.Infrastructure.Exceptions.RateLimitedException limited) http.Response.Headers["Retry-After"] = limited.RetryAfterSeconds.ToString();
             await http.Response.WriteAsJsonAsync(ProblemBody(ex, tenant.CorrelationId));
         }
         catch (Microsoft.AspNetCore.Http.BadHttpRequestException ex) when (ex.StatusCode == StatusCodes.Status413PayloadTooLarge)

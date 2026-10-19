@@ -20,7 +20,7 @@ describe('integrationSchema', () => {
 
   it('acepta un alta completa y exige nombre, cliente, plantilla y al menos un alcance', () => {
     expect(issues({})).toEqual([])
-    expect(issues({ name: ' ', clientPublicId: '', templatePublicId: '', scopes: [] })).toEqual(['name:nombre', 'templatePublicId:plantilla', 'scopes:alcances', 'clientPublicId:cliente'])
+    expect(issues({ name: ' ', clientPublicId: '', templatePublicId: '', scopes: [] })).toEqual(['name:nombre', 'scopes:alcances', 'templatePublicId:plantilla', 'clientPublicId:cliente'])
   })
 
   it('en la edición no se exige el cliente (no se cambia)', () => {
@@ -83,5 +83,27 @@ describe('horario y celdas', () => {
     const rows = [{ row: 2, cells: ['a', 'b'] }, { row: 3, cells: ['c', 'd'] }]
     expect(withCell(rows, 3, 1, 'X')).toEqual([{ row: 2, cells: ['a', 'b'] }, { row: 3, cells: ['c', 'X'] }])
     expect(rows[1].cells[1]).toBe('d')
+  })
+})
+
+describe('conector API (Lote 135)', () => {
+  const api = { needsClient: (codes: string[]) => codes.includes('orders:create'), message: 'cliente por alcance' }
+  const issues = (v: Partial<IntegrationValues>) => {
+    const r = integrationSchema(M, false, undefined, undefined, api).safeParse({ ...base, connectorKind: 'API', folder: '', templatePublicId: '', clientPublicId: '', scopes: ['warehouse:read'], ...v })
+    return r.success ? [] : r.error.issues.map((i) => `${i.path.join('.')}:${i.message}`)
+  }
+
+  it('no pide plantilla ni carpeta, y el cliente solo si algún alcance es de transporte', () => {
+    expect(issues({})).toEqual([])
+    expect(issues({ scopes: ['orders:create'] })).toEqual(['clientPublicId:cliente por alcance'])
+    expect(issues({ scopes: ['orders:create'], clientPublicId: 'c1' })).toEqual([])
+  })
+
+  it('el alta no manda plantilla, carpeta ni horario y el cliente puede ir vacío', () => {
+    const body = buildCreateRequest({ ...base, connectorKind: 'API', clientPublicId: '', templatePublicId: '', scopes: ['warehouse:read'] })
+    expect(body.templatePublicId).toBeNull()
+    expect(body.clientPublicId).toBeNull()
+    expect(body.folder).toBeNull()
+    expect(body.scheduleKind).toBe('MANUAL')
   })
 })

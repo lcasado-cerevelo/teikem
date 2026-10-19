@@ -235,6 +235,8 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<Teikem.Domain.Integrations.IntegrationRun> IntegrationRuns => Set<Teikem.Domain.Integrations.IntegrationRun>();
     public DbSet<Teikem.Domain.Integrations.IntegrationFileLog> IntegrationFileLogs => Set<Teikem.Domain.Integrations.IntegrationFileLog>();
     public DbSet<Teikem.Domain.Integrations.IntegrationInboxItem> IntegrationInboxItems => Set<Teikem.Domain.Integrations.IntegrationInboxItem>();
+    public DbSet<Teikem.Domain.Integrations.IntegrationApiKey> IntegrationApiKeys => Set<Teikem.Domain.Integrations.IntegrationApiKey>();   // Lote 135
+    public DbSet<Teikem.Domain.Integrations.IntegrationApiLog> IntegrationApiLogs => Set<Teikem.Domain.Integrations.IntegrationApiLog>();
     // Lote 51 — avisos (reglas, cola, registro y bandeja)
     public DbSet<Teikem.Domain.Notifications.NotificationRule> NotificationRules => Set<Teikem.Domain.Notifications.NotificationRule>();
     public DbSet<Teikem.Domain.Notifications.NotificationRuleChannel> NotificationRuleChannels => Set<Teikem.Domain.Notifications.NotificationRuleChannel>();

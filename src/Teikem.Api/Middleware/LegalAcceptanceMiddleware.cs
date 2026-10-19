@@ -14,7 +14,7 @@ public sealed class LegalAcceptanceMiddleware(RequestDelegate next)
     public async Task InvokeAsync(HttpContext http, TenantContext tenant, LegalService legal)
     {
         if (legal.Enforced && tenant.IsAuthenticated && tenant.UserId is int uid
-            && !LegalRules.IsExemptPath(http.Request.Path.Value) && http.User.FindFirst(DeviceClaims.DeviceId) is null
+            && !tenant.IsApiKey && !LegalRules.IsExemptPath(http.Request.Path.Value) && http.User.FindFirst(DeviceClaims.DeviceId) is null
             && !await legal.HasAcceptedAsync(uid, http.RequestAborted))
         {
             http.Response.StatusCode = StatusCodes.Status403Forbidden;

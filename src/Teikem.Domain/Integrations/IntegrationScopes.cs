@@ -20,7 +20,7 @@ public static class IntegrationFamilies
 }
 
 /// <summary>Un alcance que se le puede dar a una integración: de qué familia es, qué módulo de la compañía necesita y qué permisos le da a la cuenta de servicio.</summary>
-public sealed record IntegrationScope(string Code, string Family, string? ModuleKey, string LabelEs, string LabelEn, IReadOnlyList<string> Permissions);
+public sealed record IntegrationScope(string Code, string Family, string? ModuleKey, string LabelEs, string LabelEn, IReadOnlyList<string> Permissions, bool NeedsClient = false);
 
 /// <summary>
 /// Lote 132 (P11) — catálogo de alcances. Quien crea una integración solo puede darle alcances cuyos permisos él mismo tiene, de una familia que él puede crear y de un
@@ -34,8 +34,33 @@ public static class IntegrationScopes
     public static readonly IReadOnlyList<IntegrationScope> All =
     [
         new(FilesOrdersImport, IntegrationFamilies.Files, ModuleKeys.LtlGround, "Entrada de órdenes por archivo", "Order intake by file",
-            [PermissionCatalog.OrdersView, PermissionCatalog.OrdersCreate, PermissionCatalog.LocationsRead, PermissionCatalog.LocationsCreate, PermissionCatalog.ClientsRead]),
+            [PermissionCatalog.OrdersView, PermissionCatalog.OrdersCreate, PermissionCatalog.LocationsRead, PermissionCatalog.LocationsCreate, PermissionCatalog.ClientsRead], NeedsClient: true),
+
+        // ---- API del cliente (Lote 135): cada alcance abre un grupo de rutas (ApiAccessRules) y da a la cuenta de servicio solo los permisos que esas rutas piden
+        new(ApiScopes.OrdersRead, IntegrationFamilies.Transport, ModuleKeys.LtlGround, "API: leer órdenes, su seguimiento y el comprobante de entrega", "API: read orders, tracking and proof of delivery",
+            [PermissionCatalog.OrdersView, PermissionCatalog.ClientsRead, PermissionCatalog.LocationsRead], NeedsClient: true),
+        new(ApiScopes.OrdersCreate, IntegrationFamilies.Transport, ModuleKeys.LtlGround, "API: crear órdenes", "API: create orders",
+            [PermissionCatalog.OrdersView, PermissionCatalog.OrdersCreate, PermissionCatalog.ClientsRead, PermissionCatalog.LocationsRead, PermissionCatalog.LocationsCreate], NeedsClient: true),
+        new(ApiScopes.InvoicesRead, IntegrationFamilies.Transport, ModuleKeys.Billing, "API: leer facturas", "API: read invoices", [PermissionCatalog.BillingView, PermissionCatalog.ClientsRead], NeedsClient: true),
+        new(ApiScopes.ConsigneesRead, IntegrationFamilies.Transport, ModuleKeys.LtlGround, "API: leer consignatarios propios", "API: read own consignees", [PermissionCatalog.LocationsRead, PermissionCatalog.ClientsRead], NeedsClient: true),
+        new(ApiScopes.ConsigneesWrite, IntegrationFamilies.Transport, ModuleKeys.LtlGround, "API: agregar y editar consignatarios propios (sin borrar)", "API: add and edit own consignees (no delete)",
+            [PermissionCatalog.LocationsRead, PermissionCatalog.LocationsCreate, PermissionCatalog.LocationsUpdate, PermissionCatalog.ClientsRead], NeedsClient: true),
+        new(ApiScopes.ClientRead, IntegrationFamilies.Transport, ModuleKeys.LtlGround, "API: leer el perfil del propio cliente", "API: read own client profile", [PermissionCatalog.ClientsRead], NeedsClient: true),
+        new(ApiScopes.ClientWrite, IntegrationFamilies.Transport, ModuleKeys.LtlGround, "API: editar el perfil del propio cliente", "API: edit own client profile", [PermissionCatalog.ClientsRead, PermissionCatalog.ClientsUpdate], NeedsClient: true),
+        new(ApiScopes.WarehouseRead, IntegrationFamilies.Warehouse, ModuleKeys.WmsLotSerial, "API: ver inventario, productos, recibos y despachos", "API: view inventory, products, receipts and dispatches", [PermissionCatalog.InventoryView]),
+        new(ApiScopes.WarehouseWrite, IntegrationFamilies.Warehouse, ModuleKeys.WmsLotSerial, "API: crear productos, recibir, despachar, ajustar y transferir", "API: create products, receive, dispatch, adjust and transfer",
+            [PermissionCatalog.InventoryView, PermissionCatalog.InventoryManage, PermissionCatalog.InventoryAdjust, PermissionCatalog.WarehouseReceive, PermissionCatalog.WarehouseIssue, PermissionCatalog.WarehouseTransfer, PermissionCatalog.WarehouseAdjust]),
+        new(ApiScopes.SalesRead, IntegrationFamilies.Warehouse, ModuleKeys.SalesOrders, "API: leer órdenes de venta", "API: read sales orders", [PermissionCatalog.SalesView]),
+        new(ApiScopes.SalesWrite, IntegrationFamilies.Warehouse, ModuleKeys.SalesOrders, "API: crear y solicitar órdenes de venta", "API: create and request sales orders", [PermissionCatalog.SalesView, PermissionCatalog.SalesCreate]),
+        new(ApiScopes.PurchasingRead, IntegrationFamilies.Warehouse, ModuleKeys.Purchasing, "API: leer órdenes de compra", "API: read purchase orders", [PermissionCatalog.PurchasingView]),
+        new(ApiScopes.PurchasingWrite, IntegrationFamilies.Warehouse, ModuleKeys.Purchasing, "API: crear y enviar órdenes de compra", "API: create and send purchase orders", [PermissionCatalog.PurchasingView, PermissionCatalog.PurchasingManage]),
     ];
+
+    /// <summary>¿Alguno de los alcances necesita un cliente? (los de transporte: la llave solo ve lo de ese cliente.)</summary>
+    public static bool AnyNeedsClient(IEnumerable<string> scopeCodes) => scopeCodes.Select(Find).Any(s => s is { NeedsClient: true });
+
+    /// <summary>Los alcances de la API (los que abren rutas), sin el de importar archivos.</summary>
+    public static bool IsApiScope(string code) => ApiAccessRules.Routes.Any(r => string.Equals(r.Scope, code, StringComparison.OrdinalIgnoreCase));
 
     public static IntegrationScope? Find(string? code)
         => All.FirstOrDefault(s => string.Equals(s.Code, code?.Trim(), StringComparison.OrdinalIgnoreCase));
@@ -66,6 +91,9 @@ public static class IntegrationScopes
         => scopeCodes.Select(Find).Where(s => s is not null).SelectMany(s => s!.Permissions).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(p => p, StringComparer.Ordinal).ToList();
 
     public const string NoScopesMessage = "Escoja al menos un alcance para la integración.";
+    public const string ApiNeedsClientMessage = "Los alcances de transporte de la API necesitan el cliente: la llave solo ve lo de ese cliente.";
+    public const string ApiScopesOnlyMessage = "Una integración de tipo API solo admite alcances de la API.";
+    public const string FileScopeOnlyMessage = "Esta integración recibe archivos: solo admite el alcance de entrada de órdenes por archivo.";
     public static string UnknownScopeMessage(string code) => $"El alcance '{code}' no existe.";
     public static string ModuleOffMessage(string label) => $"La compañía no tiene el módulo que necesita «{label}».";
     public static string FamilyForbiddenMessage(string label, string permission) => $"No puede dar el alcance «{label}»: le falta el permiso '{permission}'.";

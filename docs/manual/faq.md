@@ -9536,3 +9536,15 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **«Atención: FTP sin cifrar…».** El conector FTP sin FTPS manda usuario, contraseña y archivos en claro. Active FTPS o use SFTP si el servidor lo admite.
 
 **¿Dónde queda la contraseña o la llave?** Cifradas con la llave de la compañía; nunca se muestran ni van en registros. Al editar, déjelas vacías para conservarlas.
+
+**API de clientes — «Credenciales inválidas.» (401).** La llave o el secreto no coinciden, la llave fue revocada o la integración (o su cuenta de servicio) está apagada. Por seguridad no se dice cuál. Cree una llave nueva en Integraciones → Llaves de API.
+
+**API de clientes — «Esta llave de API no tiene el alcance «X» que pide esta ruta.» (403).** Agregue ese alcance a la integración (Editar) y pida un token nuevo.
+
+**API de clientes — «Superó el límite de uso de la llave…» (429).** Espere los segundos de `Retry-After` o suba el límite de la llave (1 a 6000 por minuto).
+
+**API de clientes — ¿Dónde veo el secreto de una llave?** Solo al crearla; después no se puede recuperar. Revoque la llave y cree otra.
+
+**API de clientes — «Los alcances de transporte de la API necesitan el cliente…» (400).** Escoja el cliente: la llave solo verá sus órdenes, consignatarios y perfil.
+
+**API de clientes — «Una integración puede tener hasta 10 llaves activas; revoque alguna.» (409).** Revoque las que ya no se usen.

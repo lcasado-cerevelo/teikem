@@ -9632,7 +9632,8 @@
       "MANUAL": "Subida manual",
       "EMAIL": "Correo",
       "SFTP": "SFTP",
-      "FTP": "FTP"
+      "FTP": "FTP",
+      "API": "API para el cliente"
     },
     "schedule": {
       "manual": "Solo a mano",
@@ -9669,6 +9670,57 @@
       "rejected": "A la bandeja",
       "result": "Resultado",
       "empty": "Todavía no ha corrido."
+    },
+    "api": {
+      "open": "Llaves de API",
+      "title": "Llaves de API de «{name}»",
+      "help": "Cada llave es un usuario y una contraseña para que el sistema del cliente llame al API. Solo ve lo que los alcances de esta integración permiten y, si hay cliente, solo lo de ese cliente.",
+      "clientHelp": "Obligatorio solo si algún alcance es de órdenes de transporte: la llave solo verá lo de este cliente.",
+      "secretOnce": "Copie el secreto ahora: no se vuelve a mostrar.",
+      "keyIs": "Llave:",
+      "secretIs": "Secreto:",
+      "copy": "Copiar",
+      "copied": "Copiado.",
+      "copyFailed": "No se pudo copiar; selecciónelo a mano.",
+      "saved": "Ya lo guardé",
+      "newLabel": "Nombre de la llave",
+      "newLabelPlaceholder": "Sistema de facturación",
+      "newLimit": "Límite por minuto (opcional)",
+      "create": "Crear llave",
+      "empty": "Todavía no hay llaves.",
+      "never": "Nunca",
+      "active": "Activa",
+      "revokedState": "Revocada",
+      "changeLimit": "Cambiar límite",
+      "limitPrompt": "Solicitudes por minuto (1 a 6000):",
+      "limitSaved": "Límite guardado.",
+      "revoke": "Revocar",
+      "revokeConfirm": "¿Revocar la llave {key}? Deja de servir de inmediato y no se puede reactivar.",
+      "revoked": "Llave revocada.",
+      "col": {
+        "label": "Nombre",
+        "key": "Llave",
+        "secret": "Secreto",
+        "limit": "Límite/min",
+        "last": "Último uso",
+        "state": "Estado"
+      },
+      "log": {
+        "open": "Bitácora",
+        "title": "Bitácora de la llave",
+        "titleFor": "Bitácora de {key}",
+        "at": "Cuándo",
+        "method": "Método",
+        "path": "Ruta",
+        "status": "Código",
+        "ms": "ms",
+        "empty": "Sin solicitudes todavía."
+      },
+      "errors": {
+        "label": "Escriba el nombre de la llave.",
+        "limit": "El límite debe ser un número entero entre 1 y 6000.",
+        "clientForScopes": "Escoja el cliente: algún alcance elegido es de órdenes de transporte."
+      }
     },
     "form": {
       "newTitle": "Nueva integración",

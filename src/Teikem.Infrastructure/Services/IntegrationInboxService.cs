@@ -186,6 +186,9 @@ public sealed class IntegrationInboxService(TeikemDbContext db, ITenantContext t
             purged += await db.IntegrationInboxItems.Where(i => i.IntegrationId == integration.IntegrationId && i.DataJson != null && i.CreatedAtUtc < cutoff)
                 .ExecuteUpdateAsync(s => s.SetProperty(i => i.DataJson, (string?)null), ct);
         }
+        // la bitácora de las llaves de API (Lote 135) se guarda 30 días
+        var logCutoff = now.AddDays(-IntegrationRules.DefaultRetentionDays);
+        purged += await db.IntegrationApiLogs.Where(l => l.CreatedAtUtc < logCutoff).ExecuteDeleteAsync(ct);
         return purged;
     }
 

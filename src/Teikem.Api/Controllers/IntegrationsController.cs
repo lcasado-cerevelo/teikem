@@ -19,7 +19,7 @@ namespace Teikem.Api.Controllers;
 [Route("api/v1/integrations")]
 [Authorize]
 [RequireModule(ModuleKeys.Integrations)]
-public sealed class IntegrationsController(IntegrationService integrations, IntegrationRunner runner, IntegrationInboxService inbox, ITenantContext tenant) : ControllerBase
+public sealed class IntegrationsController(IntegrationService integrations, IntegrationRunner runner, IntegrationInboxService inbox, ApiKeyService apiKeys, ITenantContext tenant) : ControllerBase
 {
     /// <summary>Lo que quien mira puede dar en el alta: alcances (y por qué alguno no se puede), conectores y a quién avisar.</summary>
     [HttpGet("options"), RequirePermission(PermissionCatalog.IntegrationsCreate + "|" + PermissionCatalog.IntegrationsManage)]
@@ -75,6 +75,27 @@ public sealed class IntegrationsController(IntegrationService integrations, Inte
     /// <summary>Historial de corridas con sus archivos (las más recientes primero; hasta 100).</summary>
     [HttpGet("{publicId:guid}/runs"), RequirePermission(PermissionCatalog.IntegrationsView)]
     public Task<IReadOnlyList<IntegrationRunDto>> Runs(Guid publicId, [FromQuery] int take, CancellationToken ct) => integrations.RunsAsync(publicId, take <= 0 ? 20 : take, ct);
+
+    // ---------------------------------------------------------------- llaves de API (integraciones de tipo API)
+
+    /// <summary>Las llaves de la integración (nunca con el secreto: solo los últimos 4 caracteres).</summary>
+    [HttpGet("{publicId:guid}/api-keys"), RequirePermission(PermissionCatalog.IntegrationsView)]
+    public Task<IReadOnlyList<ApiKeyDto>> ApiKeys(Guid publicId, CancellationToken ct) => apiKeys.ListAsync(publicId, ct);
+
+    /// <summary>Crea una llave: el SECRETO viene en esta respuesta y en ninguna otra (se guarda solo su hash). 409 si ya hay 10 activas.</summary>
+    [HttpPost("{publicId:guid}/api-keys"), RequirePermission(PermissionCatalog.IntegrationsManage)]
+    public Task<ApiKeyCreatedDto> CreateApiKey(Guid publicId, [FromBody] ApiKeyCreateRequest req, CancellationToken ct) => apiKeys.CreateAsync(publicId, req, ct);
+
+    [HttpPatch("{publicId:guid}/api-keys/{keyId}"), RequirePermission(PermissionCatalog.IntegrationsManage)]
+    public Task<ApiKeyDto> UpdateApiKey(Guid publicId, string keyId, [FromBody] ApiKeyPatchRequest req, CancellationToken ct) => apiKeys.UpdateAsync(publicId, keyId, req, ct);
+
+    /// <summary>Revoca la llave (deja de servir de inmediato, aunque su token siga vivo). Rotar = crear otra y revocar la vieja.</summary>
+    [HttpPost("{publicId:guid}/api-keys/{keyId}/revoke"), RequirePermission(PermissionCatalog.IntegrationsManage)]
+    public Task<ApiKeyDto> RevokeApiKey(Guid publicId, string keyId, CancellationToken ct) => apiKeys.RevokeAsync(publicId, keyId, ct);
+
+    /// <summary>Las últimas solicitudes de la llave (método, ruta, estatus y milisegundos).</summary>
+    [HttpGet("{publicId:guid}/api-keys/{keyId}/log"), RequirePermission(PermissionCatalog.IntegrationsView)]
+    public Task<IReadOnlyList<ApiLogDto>> ApiKeyLog(Guid publicId, string keyId, [FromQuery] int take, CancellationToken ct) => apiKeys.LogAsync(publicId, keyId, take <= 0 ? 50 : take, ct);
 
     // ---------------------------------------------------------------- bandeja
 

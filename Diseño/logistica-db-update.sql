@@ -4927,3 +4927,51 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_Integration_Connector' AND parent_object_id = OBJECT_ID('dbo.Integration'))
     ALTER TABLE dbo.Integration ADD CONSTRAINT CK_Integration_Connector CHECK (ConnectorKind IN ('FOLDER', 'MANUAL', 'EMAIL', 'SFTP', 'FTP'));
 GO
+
+/* =========================================================================
+   2026-10-19 (bl) — Lote 135 (P11): API DE LOS CLIENTES. El conector 'API' (el cliente llama a Teikem con una llave), dbo.IntegrationApiKey (llave pública tk_…, hash SHA-256 del secreto, límite
+   de uso por minuto, vencimiento, revocación) y dbo.IntegrationApiLog (bitácora de cada solicitud, 30 días). Solo AMPLÍA. Idempotente.
+   ========================================================================= */
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_Integration_Connector' AND parent_object_id = OBJECT_ID('dbo.Integration') AND definition NOT LIKE '%''API''%')
+    ALTER TABLE dbo.Integration DROP CONSTRAINT CK_Integration_Connector;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_Integration_Connector' AND parent_object_id = OBJECT_ID('dbo.Integration'))
+    ALTER TABLE dbo.Integration ADD CONSTRAINT CK_Integration_Connector CHECK (ConnectorKind IN ('FOLDER', 'MANUAL', 'EMAIL', 'SFTP', 'FTP', 'API'));
+GO
+IF OBJECT_ID(N'dbo.IntegrationApiKey', N'U') IS NULL CREATE TABLE dbo.IntegrationApiKey (
+    IntegrationApiKeyId INT IDENTITY(1,1) CONSTRAINT PK_IntegrationApiKey PRIMARY KEY,
+    TenantId            INT NOT NULL CONSTRAINT FK_IntegrationApiKey_Tenant REFERENCES dbo.Tenant(TenantId),
+    IntegrationId       INT NOT NULL CONSTRAINT FK_IntegrationApiKey_Integration REFERENCES dbo.Integration(IntegrationId),
+    KeyId               VARCHAR(40) NOT NULL,
+    SecretHash          CHAR(64) NOT NULL,
+    SecretLast4         VARCHAR(4) NOT NULL,
+    Label               NVARCHAR(80) NOT NULL,
+    RateLimitPerMinute  INT NOT NULL CONSTRAINT DF_IntegrationApiKey_Rate DEFAULT 60,
+    IsActive            BIT NOT NULL CONSTRAINT DF_IntegrationApiKey_IsActive DEFAULT 1,
+    ExpiresAtUtc        DATETIME2 NULL,
+    LastUsedUtc         DATETIME2 NULL,
+    CreatedAtUtc        DATETIME2 NOT NULL CONSTRAINT DF_IntegrationApiKey_Created DEFAULT SYSUTCDATETIME(),
+    CreatedBy           INT NULL CONSTRAINT FK_IntegrationApiKey_CreatedBy REFERENCES dbo.AspNetUsers(Id),
+    RevokedAtUtc        DATETIME2 NULL,
+    RevokedBy           INT NULL CONSTRAINT FK_IntegrationApiKey_RevokedBy REFERENCES dbo.AspNetUsers(Id),
+    CONSTRAINT UQ_IntegrationApiKey_KeyId UNIQUE (KeyId),
+    CONSTRAINT CK_IntegrationApiKey_Rate CHECK (RateLimitPerMinute BETWEEN 1 AND 6000)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_IntegrationApiKey_Integration' AND object_id = OBJECT_ID('dbo.IntegrationApiKey'))
+    CREATE INDEX IX_IntegrationApiKey_Integration ON dbo.IntegrationApiKey(TenantId, IntegrationId);
+GO
+IF OBJECT_ID(N'dbo.IntegrationApiLog', N'U') IS NULL CREATE TABLE dbo.IntegrationApiLog (
+    IntegrationApiLogId BIGINT IDENTITY(1,1) CONSTRAINT PK_IntegrationApiLog PRIMARY KEY,
+    TenantId            INT NOT NULL CONSTRAINT FK_IntegrationApiLog_Tenant REFERENCES dbo.Tenant(TenantId),
+    IntegrationApiKeyId INT NOT NULL CONSTRAINT FK_IntegrationApiLog_Key REFERENCES dbo.IntegrationApiKey(IntegrationApiKeyId),
+    CreatedAtUtc        DATETIME2 NOT NULL CONSTRAINT DF_IntegrationApiLog_Created DEFAULT SYSUTCDATETIME(),
+    Method              VARCHAR(8) NOT NULL,
+    Path                NVARCHAR(300) NOT NULL,
+    StatusCode          INT NOT NULL,
+    DurationMs          INT NOT NULL CONSTRAINT DF_IntegrationApiLog_Ms DEFAULT 0
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_IntegrationApiLog_Key' AND object_id = OBJECT_ID('dbo.IntegrationApiLog'))
+    CREATE INDEX IX_IntegrationApiLog_Key ON dbo.IntegrationApiLog(TenantId, IntegrationApiKeyId, IntegrationApiLogId DESC);
+GO

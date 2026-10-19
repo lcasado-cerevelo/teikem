@@ -74,3 +74,30 @@ public sealed class IntegrationInboxItemConfiguration : IEntityTypeConfiguration
         b.HasIndex(i => new { i.TenantId, i.IntegrationId, i.Status, i.IntegrationInboxItemId }).HasDatabaseName("IX_IntegrationInbox_Status");
     }
 }
+
+public sealed class IntegrationApiKeyConfiguration : IEntityTypeConfiguration<IntegrationApiKey>
+{
+    public void Configure(EntityTypeBuilder<IntegrationApiKey> b)
+    {
+        b.ToTable("IntegrationApiKey");
+        b.HasKey(k => k.IntegrationApiKeyId);
+        b.Property(k => k.KeyId).HasMaxLength(40).IsUnicode(false).IsRequired();
+        b.Property(k => k.SecretHash).HasMaxLength(64).IsUnicode(false).IsFixedLength().IsRequired();
+        b.Property(k => k.SecretLast4).HasMaxLength(4).IsUnicode(false).IsRequired();
+        b.Property(k => k.Label).HasMaxLength(80).IsRequired();
+        b.HasIndex(k => k.KeyId).IsUnique().HasDatabaseName("UQ_IntegrationApiKey_KeyId");
+        b.HasIndex(k => new { k.TenantId, k.IntegrationId }).HasDatabaseName("IX_IntegrationApiKey_Integration");
+    }
+}
+
+public sealed class IntegrationApiLogConfiguration : IEntityTypeConfiguration<IntegrationApiLog>
+{
+    public void Configure(EntityTypeBuilder<IntegrationApiLog> b)
+    {
+        b.ToTable("IntegrationApiLog");
+        b.HasKey(l => l.IntegrationApiLogId);
+        b.Property(l => l.Method).HasMaxLength(8).IsUnicode(false).IsRequired();
+        b.Property(l => l.Path).HasMaxLength(300).IsRequired();
+        b.HasIndex(l => new { l.TenantId, l.IntegrationApiKeyId, l.IntegrationApiLogId }).HasDatabaseName("IX_IntegrationApiLog_Key");
+    }
+}

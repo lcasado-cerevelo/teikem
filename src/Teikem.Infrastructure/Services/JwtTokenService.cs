@@ -31,6 +31,9 @@ public static class TeikemClaims
     /// <summary>Lote 117: consignatario (localización) de la sesión de un usuario de portal que es consignatario; solo ve y cambia lo suyo.</summary>
     public const string LocationId = "loc";
     public const string SessionId = "sid";
+    /// <summary>Lote 135: alcances de una llave de API (separados por espacio) y el id público de la llave.</summary>
+    public const string Scopes = "scp";
+    public const string ApiKeyId = "akid";
     public const string SecurityStamp = "ss";
     public const string Aal2At = "aal2";
     public const string Purpose = "purpose";
@@ -61,6 +64,25 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options)
         if (portalClientId is int cid) claims.Add(new Claim(TeikemClaims.ClientId, cid.ToString()));
         if (portalLocationId is int loc) claims.Add(new Claim(TeikemClaims.LocationId, loc.ToString()));
         if (aal2At.HasValue) claims.Add(new Claim(TeikemClaims.Aal2At, new DateTimeOffset(aal2At.Value, TimeSpan.Zero).ToUnixTimeSeconds().ToString()));
+        return Create(claims, TimeSpan.FromMinutes(_o.AccessTokenMinutes));
+    }
+
+    /// <summary>Lote 135: access token de una llave de API: a nombre de la cuenta de servicio de la integración, con sus alcances y, si tiene cliente, limitado a él (claim cid). Sin sesión ni MFA.</summary>
+    public (string Token, DateTime ExpiresAtUtc) CreateApiToken(ApplicationUser serviceUser, int tenantId, int? clientId, IReadOnlyCollection<string> scopes, string keyId)
+    {
+        var claims = new List<Claim>
+        {
+            new(TeikemClaims.Subject, serviceUser.Id.ToString()),
+            new(TeikemClaims.Email, serviceUser.Email ?? string.Empty),
+            new(TeikemClaims.Name, serviceUser.FullName ?? serviceUser.Email ?? string.Empty),
+            new(TeikemClaims.TenantId, tenantId.ToString()),
+            new(TeikemClaims.SecurityStamp, StampHash(serviceUser.SecurityStamp)),
+            new(TeikemClaims.Purpose, TeikemClaims.PurposeAccess),
+            new(TeikemClaims.UserKind, "API"),
+            new(TeikemClaims.Scopes, string.Join(' ', scopes)),
+            new(TeikemClaims.ApiKeyId, keyId),
+        };
+        if (clientId is int cid) claims.Add(new Claim(TeikemClaims.ClientId, cid.ToString()));
         return Create(claims, TimeSpan.FromMinutes(_o.AccessTokenMinutes));
     }
 

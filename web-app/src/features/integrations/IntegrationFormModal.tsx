@@ -1,7 +1,7 @@
 // Alta y edición de una integración (Lote 132, P11). Alta: nombre, cliente, plantilla de importación, conector (carpeta de entrada o subida manual), horario, alcances (solo los que quien crea puede dar),
 // a quién avisar (con «incluirme») y retención de la bandeja; el servidor crea la cuenta de servicio con su rol. Edición: lo mismo salvo el cliente y el conector.
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { useT } from '../../kernel/i18n'
 import { Field, Select, TextInput, Toggle, toast } from '../../kernel/ui'
@@ -19,6 +19,7 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
   const { create, update } = useIntegrationMutations()
   const options = useIntegrationOptions(true)
   const clients = useClientOptions(true)
+  const needsClientRef = useRef<string[]>([])
   const schema = useMemo(
     () =>
       integrationSchema(
@@ -67,6 +68,7 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
             fileName: t('integrations.remote.errors.fileName'),
           },
         },
+        { needsClient: (codes) => needsClientRef.current.some((c) => codes.includes(c)), message: t('integrations.api.errors.clientForScopes') },
       ),
     [t, editing, integration?.hasMailPassword, integration?.hasRemoteSecret],
   )
@@ -80,7 +82,10 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
   const templateOptions = (templates.data ?? []).map((x) => ({ value: x.publicId ?? '', label: x.name ?? '' }))
   // al editar, la plantilla actual siempre es una opción (si la lista aún no llegó, el control no se queda en blanco)
   if (integration?.templatePublicId && !templateOptions.some((o) => o.value === integration.templatePublicId)) templateOptions.unshift({ value: integration.templatePublicId, label: integration.templateName ?? '' })
-  const scopeList = options.data?.scopes ?? []
+  // la API solo ofrece sus alcances; las demás integraciones, solo los de archivos
+  const scopeList = (options.data?.scopes ?? []).filter((s) => (connector === 'API') === !!s.isApi)
+  needsClientRef.current = (options.data?.scopes ?? []).filter((s) => s.needsClient).map((s) => s.code ?? '')
+  const clientNeeded = connector !== 'API' || (values.scopes ?? []).some((c) => needsClientRef.current.includes(c))
   const users = options.data?.users ?? []
   const toggle = (name: 'scopes' | 'notifyUserIds', value: string | number, on: boolean) => {
     const current = (form.getValues(name) as (string | number)[]) ?? []
@@ -114,13 +119,15 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
         <TextInput maxLength={400} />
       </Field>
       {!editing && (
-        <Field name="clientPublicId" label={t('integrations.form.client')} required help={t('integrations.form.clientHelp')}>
+        <Field name="clientPublicId" label={t('integrations.form.client')} required={clientNeeded} help={t(connector === 'API' ? 'integrations.api.clientHelp' : 'integrations.form.clientHelp')}>
           <Select options={clientOptions} placeholder={t('integrations.form.pick')} />
         </Field>
       )}
-      <Field name="templatePublicId" label={t('integrations.form.template')} required help={t('integrations.form.templateHelp')}>
-        <Select options={templateOptions} placeholder={clientId || editing ? t('integrations.form.pick') : t('integrations.form.pickClientFirst')} />
-      </Field>
+      {connector !== 'API' && (
+        <Field name="templatePublicId" label={t('integrations.form.template')} required help={t('integrations.form.templateHelp')}>
+          <Select options={templateOptions} placeholder={clientId || editing ? t('integrations.form.pick') : t('integrations.form.pickClientFirst')} />
+        </Field>
+      )}
       <div className="r2">
         <Field name="connectorKind" label={t('integrations.form.connector')} required>
           <Select
@@ -131,6 +138,7 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
               { value: 'SFTP', label: t('integrations.connector.SFTP') },
               { value: 'FTP', label: t('integrations.connector.FTP') },
               { value: 'MANUAL', label: t('integrations.connector.MANUAL') },
+              { value: 'API', label: t('integrations.connector.API') },
             ]}
           />
         </Field>
@@ -140,7 +148,7 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
           </Field>
         )}
       </div>
-      {connector !== 'MANUAL' && (
+      {connector !== 'MANUAL' && connector !== 'API' && (
         <div className="r2">
           <Field name="scheduleKind" label={t('integrations.form.schedule')}>
             <Select

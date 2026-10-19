@@ -9629,7 +9629,8 @@
       "MANUAL": "Manual upload",
       "EMAIL": "Email",
       "SFTP": "SFTP",
-      "FTP": "FTP"
+      "FTP": "FTP",
+      "API": "Client API"
     },
     "schedule": {
       "manual": "Manual only",
@@ -9666,6 +9667,57 @@
       "rejected": "To the inbox",
       "result": "Result",
       "empty": "It has not run yet."
+    },
+    "api": {
+      "open": "API keys",
+      "title": "API keys of «{name}»",
+      "help": "Each key is a user and password for the client's system to call the API. It only sees what this integration's scopes allow and, if a client is set, only that client's data.",
+      "clientHelp": "Required only if a scope covers transport orders: the key will only see this client's data.",
+      "secretOnce": "Copy the secret now: it is never shown again.",
+      "keyIs": "Key:",
+      "secretIs": "Secret:",
+      "copy": "Copy",
+      "copied": "Copied.",
+      "copyFailed": "Could not copy; select it by hand.",
+      "saved": "I saved it",
+      "newLabel": "Key name",
+      "newLabelPlaceholder": "Billing system",
+      "newLimit": "Limit per minute (optional)",
+      "create": "Create key",
+      "empty": "No keys yet.",
+      "never": "Never",
+      "active": "Active",
+      "revokedState": "Revoked",
+      "changeLimit": "Change limit",
+      "limitPrompt": "Requests per minute (1 to 6000):",
+      "limitSaved": "Limit saved.",
+      "revoke": "Revoke",
+      "revokeConfirm": "Revoke key {key}? It stops working immediately and cannot be reactivated.",
+      "revoked": "Key revoked.",
+      "col": {
+        "label": "Name",
+        "key": "Key",
+        "secret": "Secret",
+        "limit": "Limit/min",
+        "last": "Last used",
+        "state": "Status"
+      },
+      "log": {
+        "open": "Log",
+        "title": "Key log",
+        "titleFor": "Log of {key}",
+        "at": "When",
+        "method": "Method",
+        "path": "Path",
+        "status": "Code",
+        "ms": "ms",
+        "empty": "No requests yet."
+      },
+      "errors": {
+        "label": "Enter the key name.",
+        "limit": "The limit must be a whole number between 1 and 6000.",
+        "clientForScopes": "Pick the client: a chosen scope covers transport orders."
+      }
     },
     "form": {
       "newTitle": "New integration",

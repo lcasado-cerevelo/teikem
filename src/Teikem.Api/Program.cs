@@ -242,6 +242,7 @@ app.UseCors();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseMiddleware<TenantContextMiddleware>();
+app.UseMiddleware<ApiKeyAccessMiddleware>();   // Lote 135: una llave de API solo usa las rutas de sus alcances, con límite de uso y bitácora
 app.UseMiddleware<PortalScopeMiddleware>();   // Lote 101: el portal no entra a las rutas del staff ni el staff a las del portal
 app.UseMiddleware<LegalAcceptanceMiddleware>();   // Lote 99: sin aceptar el documento legal vigente, 403 'legal_acceptance_required'
 app.UseAuthorization();

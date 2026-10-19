@@ -100,3 +100,61 @@ Lo que entró y no se pudo procesar solo. **Una orden con problemas nunca se cre
 | «No se pueden guardar contraseñas de conectores: falta la llave maestra del servidor (Files:MasterKey).» | el servidor no tiene la llave maestra |
 
 **Casos frecuentes:** *«Falta confirmar la huella del servidor SFTP»* → use Probar conexión, compare y pegue la huella. *«La huella del servidor no coincide»* → el proveedor la cambió o es otro servidor; confírmela con el proveedor antes de actualizarla. *«0 listos para leer» con archivos en la carpeta* → no cumplen el tipo o el nombre, o se modificaron hace menos de 10 s. *FTP que lista pero no baja* → modo pasivo bloqueado por un firewall; use SFTP o abra el rango pasivo. *El archivo sigue en la carpeta* → no se pudo mover (permisos de escritura); el hash evita duplicar las órdenes, pero conviene dar permiso de escritura.
+
+## 8. API para los clientes (Lote 135)
+
+> Dictado de Luis (2026-10-19): el cliente (o su sistema) puede hablar con Teikem sin pantalla, **solo sobre lo suyo**: sus órdenes, consignatarios, perfil y —según los módulos de la compañía— su almacén y sus órdenes de compra y de venta. Se activa con un conector de tipo **API para el cliente** y una o más **llaves**.
+
+**Cómo se configura** (permiso `integrations.create` + el de cada familia; mismo formulario que las demás integraciones, módulo `INTEGRATIONS`):
+- En **Sistema → Integraciones / API → Nueva integración** se elige el conector **API para el cliente**. No lleva plantilla, carpeta ni horario. Se escogen los **alcances** (solo se ofrece lo que quien crea puede dar y lo que la compañía tiene contratado). La cuenta de servicio de la integración recibe exactamente los permisos de esos alcances.
+- **Cliente:** obligatorio solo si se elige algún alcance de **transporte** (órdenes, facturas, consignatarios, perfil): la llave verá únicamente lo de ese cliente (otro cliente «no existe» para ella). Los alcances de almacén, ventas y compras no lo piden.
+- En la lista, la acción **Llaves de API** (`integrations.manage`) abre la gestión: **crear** (nombre y límite por minuto opcional), **cambiar el límite**, **revocar** y ver la **bitácora** de cada llave. Hasta **10 llaves activas** por integración.
+- **El secreto se muestra una sola vez**, al crear la llave (con botones Copiar). En Teikem solo se guarda su hash SHA-256; después solo se ve la llave `tk_…` y los últimos 4 caracteres. Si se pierde, se revoca y se crea otra.
+
+**Alcances y rutas** (lista cerrada; todo lo demás responde 403 aunque el token sea válido; nunca hay `DELETE`):
+
+| Alcance | Qué abre |
+|---|---|
+| `orders:read` | `GET /api/v1/orders`, `/orders/{id}`, `/orders/{id}/delivery`, `/files/{id}` |
+| `orders:create` | `POST /api/v1/orders` |
+| `invoices:read` | `GET /api/v1/billing/invoices`, `/billing/invoices/{id}` |
+| `consignees:read` / `consignees:write` | `GET` / `POST` y `PATCH` sobre `/api/v1/locations` (sin borrar) |
+| `client:read` / `client:write` | `GET /api/v1/clients…` (el propio) / `PATCH /clients/{id}/profile` y contactos |
+| `warehouse:read` / `warehouse:write` | productos, inventario, recibos y despachos manuales: lectura / crear productos, recibir, despachar, ajustar y transferir |
+| `sales:read` / `sales:write` | `/api/v1/sales-orders`: leer / crear, editar y solicitar |
+| `purchasing:read` / `purchasing:write` | `/api/v1/purchase-orders`: leer / crear, editar y enviar |
+
+Siempre permitidas con cualquier llave: `GET /api/v1/api-auth/me` (quién es la llave) y `GET /api/v1/catalogs…`.
+
+**Cómo se usa** (3 pasos):
+
+```bash
+# 1) token (15 minutos): llave y secreto
+curl -X POST https://SERVIDOR/api/v1/api-auth/token -H "Content-Type: application/json" \
+  -d '{"clientId":"tk_…","clientSecret":"tks_…"}'
+# → {"accessToken":"…","tokenType":"Bearer","expiresIn":900,"scopes":["orders:read"],"clientPublicId":"…"}
+# 2) llamar con el token
+curl https://SERVIDOR/api/v1/orders -H "Authorization: Bearer ACCESS_TOKEN"
+# 3) al vencer, pedir otro token con la misma llave
+```
+
+- **Límite de uso** por llave (por omisión 60 por minuto; de 1 a 6000): al pasarlo, **429** con `Retry-After` (segundos) y cabeceras `X-RateLimit-Limit` / `X-RateLimit-Remaining`. El intercambio de token también se frena por dirección (30 por minuto).
+- **Bitácora** por llave (método, ruta, código y milisegundos), 30 días.
+- **Revocar** deja de servir de inmediato (aunque el token siga vivo) y no se puede reactivar. **Apagar la integración** apaga su cuenta de servicio: los tokens vivos dejan de servir.
+- Las sesiones de llave de API **no** pasan por la aceptación de documentos legales (no son personas).
+
+| Mensaje | Código | Cuándo |
+|---|---|---|
+| «Credenciales inválidas.» | 401 | llave o secreto incorrectos, llave revocada o vencida, integración o cuenta apagada (no dice cuál) |
+| «Esta llave de API no tiene el alcance «X» que pide esta ruta.» | 403 (`api_scope`) | la ruta existe pero el alcance no está |
+| «Esta llave de API no puede usar esta ruta: no forma parte de la API de integraciones.» | 403 (`api_scope`) | ruta fuera de la lista |
+| «Superó el límite de uso de la llave; vuelva a intentar en N s.» | 429 | límite por minuto |
+| «Indique un nombre para la llave.» · «Máximo 80 caracteres.» | 400 | nombre de la llave |
+| «El límite de uso debe estar entre 1 y 6000 solicitudes por minuto.» | 400 | límite |
+| «Una integración puede tener hasta 10 llaves activas; revoque alguna.» | 409 | demasiadas llaves |
+| «La llave ya está revocada.» | 409 | revocar o editar una revocada |
+| «Solo las integraciones de tipo API tienen llaves.» | 400 | llaves en otro conector |
+| «Los alcances de transporte de la API necesitan el cliente: la llave solo ve lo de ese cliente.» | 400 | falta el cliente |
+| «Una integración de tipo API solo admite alcances de la API.» | 400 | alcances de archivos en una API (y al revés) |
+
+**Casos frecuentes:** *«Mi sistema recibe 403»* → falta el alcance de esa ruta: agréguelo en la integración (se aplica en el siguiente token). *«Veo 429»* → suba el límite de la llave o espacie las llamadas (`Retry-After`). *«Perdí el secreto»* → revoque y cree otra llave. *«La llave ve vacío»* → solo ve lo del cliente de la integración.

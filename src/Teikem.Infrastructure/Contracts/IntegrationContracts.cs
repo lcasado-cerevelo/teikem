@@ -49,10 +49,10 @@ public sealed record IntegrationDto(
 public sealed record IntegrationCreateRequest(
     string Name,
     string? Description,
-    Guid ClientPublicId,
+    Guid? ClientPublicId,
     string ConnectorKind,
     string? Folder,
-    Guid TemplatePublicId,
+    Guid? TemplatePublicId,
     string? ScheduleKind,
     int? IntervalSeconds,
     IList<string> Scopes,
@@ -84,7 +84,7 @@ public sealed record IntegrationPatchRequest(
     RemoteSecret? Secret = null);
 
 /// <summary>Un alcance que se puede ofrecer en el alta: de qué familia es, si quien mira lo puede dar y, si no, por qué.</summary>
-public sealed record IntegrationScopeOptionDto(string Code, string Family, string Label, string? ModuleKey, bool Available, string? UnavailableReason);
+public sealed record IntegrationScopeOptionDto(string Code, string Family, string Label, string? ModuleKey, bool Available, string? UnavailableReason, bool IsApi = false, bool NeedsClient = false);
 
 /// <summary>Opciones del formulario de alta: alcances, conectores disponibles y usuarios a quienes se puede avisar.</summary>
 public sealed record IntegrationOptionsDto(
@@ -147,3 +147,24 @@ public sealed record EmailTestResultDto(bool Ok, string Message, int Unseen);
 
 /// <summary>Resultado de probar la conexión de un conector (correo, SFTP o FTP). Fingerprint = la huella SHA-256 que presenta un servidor SFTP (para fijarla).</summary>
 public sealed record ConnectionTestDto(bool Ok, string Message, int Count, string? Fingerprint);
+
+// ---------------------------------------------------------------- Lote 135: llaves de API
+
+public sealed record ApiKeyDto(int Id, string KeyId, string Label, string SecretLast4, int RateLimitPerMinute, bool IsActive, DateTime? ExpiresAtUtc, DateTime? LastUsedUtc, DateTime CreatedAtUtc, DateTime? RevokedAtUtc);
+
+/// <summary>La llave recién creada: el SECRETO viene aquí y en ningún otro lado (no se guarda, solo su hash).</summary>
+public sealed record ApiKeyCreatedDto(ApiKeyDto Key, string Secret);
+
+public sealed record ApiKeyCreateRequest(string Label, int? RateLimitPerMinute = null, DateTime? ExpiresAtUtc = null);
+
+public sealed record ApiKeyPatchRequest(string? Label = null, int? RateLimitPerMinute = null);
+
+public sealed record ApiLogDto(DateTime AtUtc, string Method, string Path, int StatusCode, int DurationMs);
+
+/// <summary>Autenticación de la API: la llave (tk_…) y su secreto.</summary>
+public sealed record ApiTokenRequest(string ClientId, string ClientSecret);
+
+public sealed record ApiTokenDto(string AccessToken, string TokenType, int ExpiresIn, IReadOnlyList<string> Scopes, string? ClientPublicId);
+
+/// <summary>Lo que una llave puede saber de sí misma.</summary>
+public sealed record ApiInfoDto(string Integration, string KeyId, string Label, IReadOnlyList<string> Scopes, Guid? ClientPublicId, string? ClientName, int RateLimitPerMinute, DateTime? ExpiresAtUtc);

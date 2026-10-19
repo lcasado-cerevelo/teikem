@@ -47,13 +47,13 @@ export interface IntegrationValues {
 }
 
 /** Esquema del formulario. En la edición (`editing`) el cliente y el conector no se cambian, así que no se exigen. */
-export function integrationSchema(m: IntegrationMessages, editing: boolean, email?: { messages: EmailMessages; hasSavedPassword: boolean }, remote?: { messages: RemoteMessages; hasSavedSecret: boolean }) {
+export function integrationSchema(m: IntegrationMessages, editing: boolean, email?: { messages: EmailMessages; hasSavedPassword: boolean }, remote?: { messages: RemoteMessages; hasSavedSecret: boolean }, api?: { needsClient: (scopes: string[]) => boolean; message: string }) {
   return z
     .object({
       name: z.string().trim().min(1, m.nameRequired).max(NAME_MAX, m.nameMax),
       description: z.string(),
       clientPublicId: z.string(),
-      templatePublicId: z.string().min(1, m.templateRequired),
+      templatePublicId: z.string(),
       connectorKind: z.string(),
       folder: z.string(),
       scheduleKind: z.string(),
@@ -70,7 +70,9 @@ export function integrationSchema(m: IntegrationMessages, editing: boolean, emai
         for (const issue of remoteIssues(v.remote, v.connectorKind, remote.hasSavedSecret, remote.messages)) ctx.addIssue({ code: 'custom', path: ['remote', issue.path], message: issue.message })
       if (v.connectorKind === 'EMAIL' && email)
         for (const issue of emailIssues(v.email, email.hasSavedPassword, email.messages)) ctx.addIssue({ code: 'custom', path: ['email', ...issue.path.split('.').map((p) => (/^\d+$/.test(p) ? Number(p) : p))], message: issue.message })
-      if (!editing && !v.clientPublicId) ctx.addIssue({ code: 'custom', path: ['clientPublicId'], message: m.clientRequired })
+      if (v.connectorKind !== 'API' && !v.templatePublicId) ctx.addIssue({ code: 'custom', path: ['templatePublicId'], message: m.templateRequired })
+      // la API pide el cliente solo si algún alcance es de transporte (la llave solo ve lo de ese cliente); las demás integraciones siempre
+      if (!editing && !v.clientPublicId && (v.connectorKind !== 'API' || api?.needsClient(v.scopes))) ctx.addIssue({ code: 'custom', path: ['clientPublicId'], message: v.connectorKind === 'API' && api ? api.message : m.clientRequired })
       if (v.connectorKind === 'FOLDER') {
         if (!v.folder.trim()) ctx.addIssue({ code: 'custom', path: ['folder'], message: m.folderRequired })
         else if (!FOLDER_PATTERN.test(v.folder.trim())) ctx.addIssue({ code: 'custom', path: ['folder'], message: m.folderInvalid })
@@ -122,16 +124,16 @@ export function integrationValuesOf(i: IntegrationDto | null): IntegrationValues
 }
 
 const scheduleOf = (v: IntegrationValues) =>
-  v.connectorKind === 'MANUAL' || v.scheduleKind !== 'INTERVAL' ? { scheduleKind: 'MANUAL' } : { scheduleKind: 'INTERVAL', intervalSeconds: Math.round(Number(v.intervalMinutes) * 60) }
+  v.connectorKind === 'MANUAL' || v.connectorKind === 'API' || v.scheduleKind !== 'INTERVAL' ? { scheduleKind: 'MANUAL' } : { scheduleKind: 'INTERVAL', intervalSeconds: Math.round(Number(v.intervalMinutes) * 60) }
 
 export function buildCreateRequest(v: IntegrationValues): IntegrationCreateRequest {
   return {
     name: v.name.trim(),
     description: v.description.trim() || null,
-    clientPublicId: v.clientPublicId,
+    clientPublicId: v.clientPublicId || null,
     connectorKind: v.connectorKind,
     folder: v.connectorKind === 'FOLDER' ? v.folder.trim() : null,
-    templatePublicId: v.templatePublicId,
+    templatePublicId: v.connectorKind === 'API' ? null : v.templatePublicId,
     ...scheduleOf(v),
     scopes: v.scopes,
     notifyUserIds: v.notifyUserIds,
@@ -146,7 +148,7 @@ export function buildPatchRequest(v: IntegrationValues, current: Pick<Integratio
   return {
     name: v.name.trim(),
     description: v.description.trim(),
-    templatePublicId: v.templatePublicId,
+    ...(current.connectorKind === 'API' ? {} : { templatePublicId: v.templatePublicId }),
     ...(current.connectorKind === 'FOLDER' ? { folder: v.folder.trim() } : {}),
     ...scheduleOf(v),
     scopes: v.scopes,

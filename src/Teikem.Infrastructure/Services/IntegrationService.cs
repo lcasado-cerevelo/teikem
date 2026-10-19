@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Teikem.Domain.Clients;
 using Teikem.Domain.Common;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Identity;
@@ -38,7 +39,7 @@ public sealed class IntegrationService(
         var scopes = IntegrationScopes.All.Select(s =>
         {
             var errors = IntegrationScopes.Validate(new[] { s.Code }, perms, mods);
-            return new IntegrationScopeOptionDto(s.Code, s.Family, tenant.Lang == "en" ? s.LabelEn : s.LabelEs, s.ModuleKey, errors.Count == 0, errors.Count == 0 ? null : errors.Values.First());
+            return new IntegrationScopeOptionDto(s.Code, s.Family, tenant.Lang == "en" ? s.LabelEn : s.LabelEs, s.ModuleKey, errors.Count == 0, errors.Count == 0 ? null : errors.Values.First(), IntegrationScopes.IsApiScope(s.Code), s.NeedsClient);
         }).ToList();
         return new IntegrationOptionsDto(scopes, IntegrationConnectorKinds.Available, await NotifyCandidatesAsync(tenantId, ct));
     }
@@ -211,9 +212,22 @@ public sealed class IntegrationService(
         var scopes = req.Scopes?.Select(s => IntegrationScopes.Find(s)?.Code ?? s?.Trim() ?? string.Empty).Distinct(StringComparer.OrdinalIgnoreCase).ToList() ?? new List<string>();
         var (perms, mods) = await CreatorAsync(ct);
         ThrowIfErrors(IntegrationScopes.Validate(scopes, perms, mods));
+        var isApi = string.Equals(req.ConnectorKind?.Trim(), IntegrationConnectorKinds.Api, StringComparison.OrdinalIgnoreCase);
+        ThrowIfErrors(ValidateScopeKinds(scopes, isApi));
 
-        var client = await db.ResolveClientAsync(req.ClientPublicId, ct);
-        var template = await templates.ResolveForImportAsync(req.TemplatePublicId, client.ClientId, ImportKinds.Order, ct);
+        Client? client = null;
+        ImportTemplate? template = null;
+        if (req.ClientPublicId is Guid clientGuid && clientGuid != Guid.Empty) client = await db.ResolveClientAsync(clientGuid, ct);
+        if (isApi)
+        {
+            if (client is null && IntegrationScopes.AnyNeedsClient(scopes)) throw new ValidationException("clientPublicId", IntegrationScopes.ApiNeedsClientMessage);
+        }
+        else
+        {
+            if (client is null) throw new ValidationException("clientPublicId", IntegrationRules.ClientRequiredMessage);
+            if (req.TemplatePublicId is not Guid templateGuid) throw new ValidationException("templatePublicId", IntegrationRules.TemplateRequiredMessage);
+            template = await templates.ResolveForImportAsync(templateGuid, client.ClientId, ImportKinds.Order, ct);
+        }
         var (connector, folder, scheduleKind, interval) = ValidateConnectorAndSchedule(req.ConnectorKind, req.Folder, req.ScheduleKind, req.IntervalSeconds);
         EmailConfig? email = null;
         if (connector == IntegrationConnectorKinds.Email)
@@ -241,9 +255,9 @@ public sealed class IntegrationService(
             var serviceUser = await CreateServiceUserAsync(tenantId, publicId, name, role.RoleId, ct2);
             var row = new Integration
             {
-                PublicId = publicId, TenantId = tenantId, Name = name, Description = NullIfEmpty(req.Description), Direction = IntegrationDirections.Inbound, ClientId = client.ClientId,
+                PublicId = publicId, TenantId = tenantId, Name = name, Description = NullIfEmpty(req.Description), Direction = IntegrationDirections.Inbound, ClientId = client?.ClientId,
                 ConnectorKind = connector, ConnectorConfigJson = email is not null ? JsonSerializer.Serialize(email, Json) : remoteCfg is not null ? JsonSerializer.Serialize(remoteCfg, Json) : folder is null ? null : JsonSerializer.Serialize(new { folder }, Json),
-                SecretEnc = email is not null ? protector.Protect(tenantId, MailPurpose, req.MailPassword!) : remoteCfg is not null ? protector.Protect(tenantId, RemotePurpose, JsonSerializer.Serialize(req.Secret, Json)) : null, ImportTemplateId = template.ImportTemplateId,
+                SecretEnc = email is not null ? protector.Protect(tenantId, MailPurpose, req.MailPassword!) : remoteCfg is not null ? protector.Protect(tenantId, RemotePurpose, JsonSerializer.Serialize(req.Secret, Json)) : null, ImportTemplateId = template?.ImportTemplateId,
                 ScheduleKind = scheduleKind, IntervalSeconds = interval, NextRunUtc = IntegrationRules.NextRun(scheduleKind, interval, now), ScopesJson = JsonSerializer.Serialize(scopes, Json),
                 ServiceUserId = serviceUser, ServiceRoleId = role.RoleId, NotifyUserIdsJson = JsonSerializer.Serialize(notify, Json), RetentionDays = retention, IsActive = true,
                 CreatedAtUtc = now, CreatedBy = creatorId,
@@ -320,6 +334,8 @@ public sealed class IntegrationService(
                 var scopes = req.Scopes.Select(s => IntegrationScopes.Find(s)?.Code ?? s?.Trim() ?? string.Empty).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
                 var (perms, mods) = await CreatorAsync(ct2);
                 ThrowIfErrors(IntegrationScopes.Validate(scopes, perms, mods));
+                ThrowIfErrors(ValidateScopeKinds(scopes, row.ConnectorKind == IntegrationConnectorKinds.Api));
+                if (row.ConnectorKind == IntegrationConnectorKinds.Api && row.ClientId is null && IntegrationScopes.AnyNeedsClient(scopes)) throw new ValidationException("scopes", IntegrationScopes.ApiNeedsClientMessage);
                 row.ScopesJson = JsonSerializer.Serialize(scopes, Json);
                 await ReplaceRolePermissionsAsync(row.ServiceRoleId, scopes, ct2);
             }
@@ -428,6 +444,15 @@ public sealed class IntegrationService(
     }
 
     // ---------------------------------------------------------------- validaciones
+
+    /// <summary>Una integración de tipo API solo admite alcances de la API; las demás, solo el de entrada de órdenes por archivo.</summary>
+    private static IReadOnlyDictionary<string, string> ValidateScopeKinds(IReadOnlyList<string> scopes, bool isApi)
+    {
+        var errors = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (isApi && scopes.Any(s => !IntegrationScopes.IsApiScope(s))) errors["scopes"] = IntegrationScopes.ApiScopesOnlyMessage;
+        else if (!isApi && scopes.Any(IntegrationScopes.IsApiScope)) errors["scopes"] = IntegrationScopes.FileScopeOnlyMessage;
+        return errors;
+    }
 
     private static string RequireName(string? name)
     {

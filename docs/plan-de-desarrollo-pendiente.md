@@ -358,6 +358,9 @@ El archivo que manda un cliente como AxisCare trae **varias líneas por orden** 
 - **Decidido (no hacer):** no se agrega un campo `ClientLabelNumber` a la pieza; el número de label del bulto es su `PackageNumber`. El caso hipotético de un label de **producto** que se repite y es lo único que hay para escanear se diseña cuando aparezca un cliente así (escaneo por acción y «la próxima orden en curso sale»).
 - **La migración de Colavora ya sigue esta regla** (D8): los 1,46 M ítems tipo `Drum` de AxisCare y las piezas tipo `Invoice` no se migran como piezas; pendiente de confirmar con esa sesión que las piezas migradas quedan con `PackageNumber` único.
 
+### Lote 135 — HECHO (2026-10-19): API para los clientes
+Conector API con llaves (`tk_…` + secreto que se muestra una sola vez, hash SHA-256), token de 15 min, lista cerrada de rutas por alcance (órdenes, facturas, consignatarios, perfil, almacén, ventas, compras; sin DELETE), todo limitado al cliente de la integración, límite de uso (429 + Retry-After), revocación inmediata y bitácora de 30 días. Manual 39 §8, `docs/lote135-decisiones.md`. Siguiente: Lote 136 (webhooks de salida).
+
 ### Lote 134 — HECHO (2026-10-19): Integración por SFTP y FTP
 Conectores SFTP (huella SHA-256 del servidor fijada; contraseña o llave privada) y FTP/FTPS: lista, baja, procesa con la plantilla y MUEVE a procesados/errores (nunca borra); probar conexión genérico; probado contra servidores reales de prueba. Ver `docs/lote134-decisiones.md`. **Sigue:** 135 llaves de API → 136 webhooks → 137 mapeo JSON/XML y Excel.
 
