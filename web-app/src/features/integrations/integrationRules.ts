@@ -1,6 +1,7 @@
 // Reglas puras de Integraciones (Lote 132): tonos de los estatus, formulario de alta/edición (esquema zod y cuerpo del API) y resumen del horario. Sin React: se prueba en integrationRules.test.ts.
 import { z } from 'zod'
 import type { ChipTone } from '../../kernel/ui'
+import { buildRemoteConfig, buildRemoteSecret, emptyRemote, remoteIssues, remoteValuesOf, type RemoteMessages, type RemoteValues } from './remoteRules'
 import { buildEmailConfig, emailIssues, emailValuesOf, emptyEmail, type EmailMessages, type EmailValues } from './emailRules'
 import type { IntegrationCreateRequest, IntegrationDto, IntegrationPatchRequest } from './integrationsApi'
 
@@ -41,10 +42,12 @@ export interface IntegrationValues {
   retentionDays: string
   /** Conector de correo (Lote 133). */
   email: EmailValues
+  /** Conectores SFTP y FTP (Lote 134). */
+  remote: RemoteValues
 }
 
 /** Esquema del formulario. En la edición (`editing`) el cliente y el conector no se cambian, así que no se exigen. */
-export function integrationSchema(m: IntegrationMessages, editing: boolean, email?: { messages: EmailMessages; hasSavedPassword: boolean }) {
+export function integrationSchema(m: IntegrationMessages, editing: boolean, email?: { messages: EmailMessages; hasSavedPassword: boolean }, remote?: { messages: RemoteMessages; hasSavedSecret: boolean }) {
   return z
     .object({
       name: z.string().trim().min(1, m.nameRequired).max(NAME_MAX, m.nameMax),
@@ -60,8 +63,11 @@ export function integrationSchema(m: IntegrationMessages, editing: boolean, emai
       includeMe: z.boolean(),
       retentionDays: z.string(),
       email: z.custom<EmailValues>(),
+      remote: z.custom<RemoteValues>(),
     })
     .superRefine((v, ctx) => {
+      if ((v.connectorKind === 'SFTP' || v.connectorKind === 'FTP') && remote)
+        for (const issue of remoteIssues(v.remote, v.connectorKind, remote.hasSavedSecret, remote.messages)) ctx.addIssue({ code: 'custom', path: ['remote', issue.path], message: issue.message })
       if (v.connectorKind === 'EMAIL' && email)
         for (const issue of emailIssues(v.email, email.hasSavedPassword, email.messages)) ctx.addIssue({ code: 'custom', path: ['email', ...issue.path.split('.').map((p) => (/^\d+$/.test(p) ? Number(p) : p))], message: issue.message })
       if (!editing && !v.clientPublicId) ctx.addIssue({ code: 'custom', path: ['clientPublicId'], message: m.clientRequired })
@@ -94,6 +100,7 @@ export function integrationValuesOf(i: IntegrationDto | null): IntegrationValues
       includeMe: true,
       retentionDays: String(DEFAULT_RETENTION_DAYS),
       email: emptyEmail(),
+      remote: emptyRemote('SFTP'),
     }
   }
   return {
@@ -110,6 +117,7 @@ export function integrationValuesOf(i: IntegrationDto | null): IntegrationValues
     includeMe: false,
     retentionDays: String(i.retentionDays ?? DEFAULT_RETENTION_DAYS),
     email: emailValuesOf(i.email),
+    remote: remoteValuesOf(i.remote, i.connectorKind ?? 'SFTP'),
   }
 }
 
@@ -130,6 +138,7 @@ export function buildCreateRequest(v: IntegrationValues): IntegrationCreateReque
     includeMe: v.includeMe,
     retentionDays: Math.round(Number(v.retentionDays)),
     ...(v.connectorKind === 'EMAIL' ? { email: buildEmailConfig(v.email), mailPassword: v.email.password } : {}),
+    ...(v.connectorKind === 'SFTP' || v.connectorKind === 'FTP' ? { remote: buildRemoteConfig(v.remote, v.connectorKind), secret: buildRemoteSecret(v.remote, v.connectorKind) } : {}),
   }
 }
 
@@ -145,6 +154,9 @@ export function buildPatchRequest(v: IntegrationValues, current: Pick<Integratio
     includeMe: v.includeMe || undefined,
     retentionDays: Math.round(Number(v.retentionDays)),
     ...(current.connectorKind === 'EMAIL' ? { email: buildEmailConfig(v.email), mailPassword: v.email.password || undefined } : {}),
+    ...(current.connectorKind === 'SFTP' || current.connectorKind === 'FTP'
+      ? { remote: buildRemoteConfig(v.remote, current.connectorKind), secret: buildRemoteSecret(v.remote, current.connectorKind) ?? undefined }
+      : {}),
   }
 }
 

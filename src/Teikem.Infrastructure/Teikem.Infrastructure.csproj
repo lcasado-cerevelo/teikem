@@ -12,6 +12,8 @@
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="ExcelDataReader" />
     <PackageReference Include="MailKit" />
+    <PackageReference Include="SSH.NET" />
+    <PackageReference Include="FluentFTP" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Teikem.Domain\Teikem.Domain.csproj" />

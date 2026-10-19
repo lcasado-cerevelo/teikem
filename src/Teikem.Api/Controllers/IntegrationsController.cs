@@ -68,6 +68,10 @@ public sealed class IntegrationsController(IntegrationService integrations, Inte
     [HttpPost("{publicId:guid}/email/test"), RequirePermission(PermissionCatalog.IntegrationsManage)]
     public Task<EmailTestResultDto> TestEmail(Guid publicId, CancellationToken ct) => integrations.TestEmailAsync(publicId, ct);
 
+    /// <summary>Prueba la conexión de la integración (correo, SFTP o FTP) sin tocar los correos ni los archivos; en SFTP devuelve la huella que presenta el servidor para fijarla.</summary>
+    [HttpPost("{publicId:guid}/test-connection"), RequirePermission(PermissionCatalog.IntegrationsManage)]
+    public Task<ConnectionTestDto> TestConnection(Guid publicId, CancellationToken ct) => integrations.TestConnectionAsync(publicId, ct);
+
     /// <summary>Historial de corridas con sus archivos (las más recientes primero; hasta 100).</summary>
     [HttpGet("{publicId:guid}/runs"), RequirePermission(PermissionCatalog.IntegrationsView)]
     public Task<IReadOnlyList<IntegrationRunDto>> Runs(Guid publicId, [FromQuery] int take, CancellationToken ct) => integrations.RunsAsync(publicId, take <= 0 ? 20 : take, ct);

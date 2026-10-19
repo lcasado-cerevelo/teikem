@@ -40306,6 +40306,46 @@
           }
         }
       }
+    },
+    "/api/v1/integrations/{publicId}/test-connection": {
+      "post": {
+        "tags": [
+          "Integrations"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionTestDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionTestDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionTestDto"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -71395,6 +71435,12 @@
           },
           "hasMailPassword": {
             "type": "boolean"
+          },
+          "remote": {
+            "$ref": "#/components/schemas/RemoteConfig"
+          },
+          "hasRemoteSecret": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -71605,6 +71651,12 @@
           "mailPassword": {
             "type": "string",
             "nullable": true
+          },
+          "remote": {
+            "$ref": "#/components/schemas/RemoteConfig"
+          },
+          "secret": {
+            "$ref": "#/components/schemas/RemoteSecret"
           }
         },
         "additionalProperties": false
@@ -71674,6 +71726,12 @@
           "mailPassword": {
             "type": "string",
             "nullable": true
+          },
+          "remote": {
+            "$ref": "#/components/schemas/RemoteConfig"
+          },
+          "secret": {
+            "$ref": "#/components/schemas/RemoteSecret"
           }
         },
         "additionalProperties": false
@@ -71880,6 +71938,96 @@
           "index": {
             "type": "integer",
             "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RemoteSecret": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string",
+            "nullable": true
+          },
+          "privateKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "passphrase": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RemoteConfig": {
+        "type": "object",
+        "properties": {
+          "host": {
+            "type": "string",
+            "nullable": true
+          },
+          "port": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "username": {
+            "type": "string",
+            "nullable": true
+          },
+          "dir": {
+            "type": "string",
+            "nullable": true
+          },
+          "processedDir": {
+            "type": "string",
+            "nullable": true
+          },
+          "errorDir": {
+            "type": "string",
+            "nullable": true
+          },
+          "authKind": {
+            "type": "string",
+            "nullable": true
+          },
+          "hostFingerprint": {
+            "type": "string",
+            "nullable": true
+          },
+          "useFtps": {
+            "type": "boolean"
+          },
+          "fileName": {
+            "$ref": "#/components/schemas/EmailTextMatch"
+          },
+          "fileTypes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConnectionTestDto": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "fingerprint": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

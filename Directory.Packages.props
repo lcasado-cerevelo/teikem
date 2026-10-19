@@ -16,6 +16,8 @@
     <!-- Lote 45 (F-B2): lectura de .xlsx en la importación de consignatarios (MIT) -->
     <PackageVersion Include="ExcelDataReader" Version="3.9.0" />
     <PackageVersion Include="MailKit" Version="4.17.0" />
+    <PackageVersion Include="SSH.NET" Version="2026.0.0" />
+    <PackageVersion Include="FluentFTP" Version="53.0.2" />
     <!-- Tests -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageVersion Include="xunit" Version="2.9.2" />

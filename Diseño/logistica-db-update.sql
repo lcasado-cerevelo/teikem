@@ -4915,3 +4915,15 @@ JOIN dbo.Permission p ON p.Code LIKE 'integrations.%'
 WHERE r.Name IN ('TenantAdmin')
   AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
 GO
+
+/* =========================================================================
+   2026-10-19 (bk) — Lote 134 (P11): conector FTP (además de SFTP). El CHECK de dbo.Integration.ConnectorKind ahora admite 'FTP'. Solo AMPLÍA. Idempotente.
+   ========================================================================= */
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_Integration_Connector' AND parent_object_id = OBJECT_ID('dbo.Integration') AND definition NOT LIKE '%''FTP''%')
+BEGIN
+    ALTER TABLE dbo.Integration DROP CONSTRAINT CK_Integration_Connector;
+END
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_Integration_Connector' AND parent_object_id = OBJECT_ID('dbo.Integration'))
+    ALTER TABLE dbo.Integration ADD CONSTRAINT CK_Integration_Connector CHECK (ConnectorKind IN ('FOLDER', 'MANUAL', 'EMAIL', 'SFTP', 'FTP'));
+GO

@@ -9593,6 +9593,7 @@
     "showInactive": "Show turned-off integrations",
     "empty": "There are no integrations yet. Create the first one with \"New integration\".",
     "help": "Each integration has its own service account: what comes in is attributed to it. Anything that cannot be processed goes to the inbox, it is never lost.",
+    "testConnection": "Test connection",
     "runNow": "Run now",
     "ran": "\"{name}\" ran.",
     "upload": "Upload file",
@@ -9627,7 +9628,8 @@
       "FOLDER": "Input folder",
       "MANUAL": "Manual upload",
       "EMAIL": "Email",
-      "SFTP": "SFTP"
+      "SFTP": "SFTP",
+      "FTP": "FTP"
     },
     "schedule": {
       "manual": "Manual only",
@@ -9792,6 +9794,49 @@
           "blockColumns": "A block needs at least one column (position and line column number).",
           "nameFilter": "With \"by name\" enter the attachment name condition.",
           "senders": "An allowed sender is not a valid email or domain."
+        }
+      },
+      "remote": {
+        "section": "Remote server",
+        "sectionHelp": "Teikem connects to the server, downloads the new files from the folder, processes them with the template and MOVES them to \"procesados\" (or \"errores\"). It never deletes anything.",
+        "host": "Server",
+        "port": "Port",
+        "username": "User",
+        "auth": "Authentication",
+        "password": "Password",
+        "passphrase": "Key passphrase (if any)",
+        "privateKey": "Private key (PEM)",
+        "secretHelp": "Stored encrypted and never shown again.",
+        "secretKept": "Leave empty to keep the saved one.",
+        "dir": "Remote folder",
+        "dirHelp": "Where the client drops the files (e.g. /entrada).",
+        "processed": "Processed folder",
+        "processedHelp": "Inside the remote folder, or a full path starting with /. Empty = files stay where they are (the hash prevents processing them twice).",
+      "errorsDir": "Errors folder",
+        "errors": {
+          "host": "Enter the connector server (host).",
+          "port": "The port must be between 1 and 65535.",
+          "username": "Enter the connector user.",
+          "secretPassword": "Enter the connector password.",
+          "secretKey": "Enter the connector private key.",
+          "dir": "Enter the remote folder where files arrive.",
+          "dirInvalid": "Folders cannot contain \"..\" or line breaks.",
+          "fingerprint": "The fingerprint must be the server SHA-256 (SHA256:… in base64).",
+          "keyOnlySftp": "The private key is only used with SFTP.",
+          "fileName": "Enter the condition text."
+        },
+        "fingerprint": "Server fingerprint (SHA-256)",
+        "fingerprintHelp": "Required for SFTP: without it nothing connects. Use \"Test connection\", compare the fingerprint it shows with the provider's and paste it here.",
+        "useFtps": "FTPS (explicit TLS)",
+        "useFtpsHelp": "Without FTPS the user, password and files travel in clear text. Use it whenever the server supports it.",
+        "fileName": "File name: condition",
+        "fileNameValue": "File name",
+        "fileNameHelp": "Empty = any name (wildcard: ordenes-*.csv).",
+        "types": "Allowed file types",
+        "typesHelp": "Extensions separated by commas (csv, txt). Files modified less than 10 s ago wait for the next run.",
+        "authOption": {
+          "PASSWORD": "Password",
+          "KEY": "Private key (SFTP only)"
         }
       },
     "inbox": {

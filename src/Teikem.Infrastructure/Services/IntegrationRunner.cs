@@ -39,7 +39,7 @@ public sealed record FileOutcome(IntegrationFileLog Log, IReadOnlyList<Guid> Cre
 /// </summary>
 public sealed class IntegrationRunner(
     TeikemDbContext db, ITenantContext tenant, OrderImportService import, ImportTemplateService templates, IntegrationService integrations, IntegrationNotifier notifier,
-    IOptions<IntegrationOptions> options, ILogger<IntegrationRunner> logger, ISecretProtector protector, IMailboxReader mailbox)
+    IOptions<IntegrationOptions> options, ILogger<IntegrationRunner> logger, ISecretProtector protector, IMailboxReader mailbox, IRemoteFileClient remote)
 {
     public static readonly string InstanceId = $"{Environment.MachineName}:{Environment.ProcessId}";
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull };
@@ -58,7 +58,9 @@ public sealed class IntegrationRunner(
     public async Task<IntegrationRunDto> RunAsync(Guid publicId, string trigger, int? byUserId, CancellationToken ct)
     {
         var integration = await db.Integrations.AsNoTracking().FirstOrDefaultAsync(i => i.PublicId == publicId, ct) ?? throw new NotFoundException(IntegrationService.NotFoundLabel);
-        if (integration.ConnectorKind is not (IntegrationConnectorKinds.Folder or IntegrationConnectorKinds.Email)) throw new ValidationException("connectorKind", NotSupportedMessage);
+        if (integration.ConnectorKind is not (IntegrationConnectorKinds.Folder or IntegrationConnectorKinds.Email or IntegrationConnectorKinds.Sftp or IntegrationConnectorKinds.Ftp)) throw new ValidationException("connectorKind", NotSupportedMessage);
+        if (IntegrationConnectorKinds.IsRemote(integration.ConnectorKind))
+            return await ExecuteAsync(integration, trigger, byUserId, (run, template, client) => ReadRemoteAsync(integration, template, client, run, ct), ct);
         if (integration.ConnectorKind == IntegrationConnectorKinds.Email)
             return await ExecuteAsync(integration, trigger, byUserId, (run, template, client) => ReadMailboxAsync(integration, template, client, run, ct), ct);
         return await ExecuteAsync(integration, trigger, byUserId, async (run, template, client) =>
@@ -164,6 +166,49 @@ public sealed class IntegrationRunner(
                 SourceRow = r.SourceRow, ReferenceKey = Truncate(r.ReferenceKey, 80), Reason = Truncate(r.Reason, 1000)!, DataJson = r.DataJson,
             });
         await db.SaveChangesAsync(ct);
+    }
+
+    // ---------------------------------------------------------------- SFTP / FTP
+
+    public const string RemoteConnectionFailedMessage = "No se pudo conectar con el servidor";
+
+    /// <summary>
+    /// Lee la carpeta remota (SFTP o FTP): lista, toma los archivos por nombre y tipo (sin los que todavía se están escribiendo), los baja, los pasa por la plantilla y los MUEVE a «procesados» o «errores» del
+    /// servidor (nunca los borra). Si no se puede mover, el hash del contenido evita procesarlos otra vez.
+    /// </summary>
+    private async Task<List<FileOutcome>> ReadRemoteAsync(Integration integration, ImportTemplate template, Client client, IntegrationRun run, CancellationToken ct)
+    {
+        var cfg = IntegrationService.ParseRemote(integration.ConnectorConfigJson) ?? throw new ValidationException("remote", RemoteRules.HostRequiredMessage);
+        if (integration.SecretEnc is null) throw new ValidationException("remote.secret", RemoteRules.SecretRequiredMessage(cfg.AuthKind));
+        var secret = System.Text.Json.JsonSerializer.Deserialize<RemoteSecret>(protector.Unprotect(integration.TenantId, IntegrationService.RemotePurpose, integration.SecretEnc), new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)) ?? new RemoteSecret();
+        IRemoteSession session;
+        try { session = await remote.OpenAsync(integration.ConnectorKind, cfg, secret, ct); }
+        catch (Exception ex) when (ex is not OperationCanceledException and not TeikemException) { throw new ValidationException("remote", $"{RemoteConnectionFailedMessage}: {ex.Message}"); }
+        var outcomes = new List<FileOutcome>();
+        await using (session)
+        {
+            IReadOnlyList<RemoteFileInfo> listing;
+            try { listing = await session.ListAsync(cfg.Dir, ct); }
+            catch (Exception ex) when (ex is not OperationCanceledException) { throw new ValidationException("remote", $"No se pudo leer la carpeta {cfg.Dir}: {ex.Message}"); }
+            foreach (var file in RemoteRules.SelectFiles(listing, cfg, DateTime.UtcNow))
+            {
+                ct.ThrowIfCancellationRequested();
+                FileOutcome outcome;
+                try
+                {
+                    if (file.Size > options.Value.MaxFileMegabytes * 1024L * 1024L) outcome = Failed(integration, run, file.Name, string.Empty, file.Size, FileTooBigMessage);
+                    else outcome = await ProcessBytesAsync(integration, template, client, run, file.Name, await session.DownloadAsync(cfg.Dir, file.Name, ct), checkDuplicate: true, ct);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException and not TeikemException)
+                {
+                    outcome = Failed(integration, run, file.Name, string.Empty, file.Size, $"No se pudo bajar el archivo: {ex.Message}");
+                }
+                outcomes.Add(outcome);
+                try { await session.MoveAsync(cfg.Dir, file.Name, outcome.Log.Result == IntegrationFileResults.Failed ? cfg.ErrorDir : cfg.ProcessedDir, ct); }
+                catch (Exception ex) when (ex is not OperationCanceledException) { logger.LogWarning(ex, "No se pudo mover {File} en el servidor de la integración {Integration}.", file.Name, integration.IntegrationId); }
+            }
+        }
+        return outcomes;
     }
 
     // ---------------------------------------------------------------- correo

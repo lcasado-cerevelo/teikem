@@ -9518,3 +9518,21 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **¿Cómo pruebo sin tocar el buzón?** Suba un archivo `.eml` con «Subir archivo»: se procesa igual que un correo recibido.
 
 **¿Se borra algún correo?** Nunca: los atendidos se marcan como leídos y se mueven a la carpeta de procesados.
+
+## Integración por SFTP y FTP (Lote 134)
+
+**¿Cómo leo los archivos que un cliente deja en su servidor?** Nueva integración con el conector SFTP (o FTP): servidor, usuario, contraseña o llave, la carpeta remota y, en SFTP, la huella del servidor. Teikem baja los archivos nuevos, los procesa con la plantilla y los mueve a «procesados». Necesita `integrations.create` más `integrations.create.files`.
+
+**«Falta confirmar la huella del servidor SFTP…».** En SFTP hay que fijar la huella SHA-256 del servidor. Pulse «Probar conexión»: le muestra la huella que presenta el servidor; compárela con la que le dio el proveedor y péguela en «Huella del servidor».
+
+**«La huella del servidor no coincide con la configurada…».** El servidor presenta otra huella que la fijada: el proveedor la cambió o se está hablando con otro servidor. Confírmela con el proveedor antes de actualizarla.
+
+**«No se pudo conectar con el servidor: …».** Revise servidor, puerto, usuario y contraseña (o la llave), y que el servidor sea alcanzable desde el servidor de Teikem. En FTP revise también el modo pasivo.
+
+**La prueba dice «0 listo(s) para leer» pero hay archivos.** No cumplen el tipo (csv, txt) o el nombre configurado, o se modificaron hace menos de 10 segundos (puede estar subiéndose): esperan a la próxima corrida.
+
+**¿Se borran los archivos del servidor?** Nunca: se mueven a «procesados» (o a «errores» si no se pudieron procesar). Si el usuario no tiene permiso de escritura, quedan donde están y el hash del contenido evita crear las órdenes dos veces.
+
+**«Atención: FTP sin cifrar…».** El conector FTP sin FTPS manda usuario, contraseña y archivos en claro. Active FTPS o use SFTP si el servidor lo admite.
+
+**¿Dónde queda la contraseña o la llave?** Cifradas con la llave de la compañía; nunca se muestran ni van en registros. Al editar, déjelas vacías para conservarlas.

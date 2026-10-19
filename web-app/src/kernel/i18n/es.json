@@ -9596,6 +9596,7 @@
     "showInactive": "Mostrar integraciones apagadas",
     "empty": "Todavía no hay integraciones. Cree la primera con «Nueva integración».",
     "help": "Cada integración tiene su propia cuenta de servicio: lo que entra queda atribuido a ella. Lo que no se pueda procesar va a la bandeja, nunca se pierde.",
+    "testConnection": "Probar conexión",
     "runNow": "Correr ahora",
     "ran": "Se corrió «{name}».",
     "upload": "Subir archivo",
@@ -9630,7 +9631,8 @@
       "FOLDER": "Carpeta de entrada",
       "MANUAL": "Subida manual",
       "EMAIL": "Correo",
-      "SFTP": "SFTP"
+      "SFTP": "SFTP",
+      "FTP": "FTP"
     },
     "schedule": {
       "manual": "Solo a mano",
@@ -9795,6 +9797,49 @@
           "blockColumns": "Un bloque necesita al menos una columna (posición y número de columna del renglón).",
           "nameFilter": "Con «por nombre» indique la condición del nombre del adjunto.",
           "senders": "Un remitente permitido no es un correo ni un dominio válido."
+        }
+      },
+      "remote": {
+        "section": "Servidor remoto",
+        "sectionHelp": "Teikem se conecta al servidor, baja los archivos nuevos de la carpeta, los procesa con la plantilla y los MUEVE a «procesados» (o «errores»). Nunca borra nada.",
+        "host": "Servidor",
+        "port": "Puerto",
+        "username": "Usuario",
+        "auth": "Autenticación",
+        "password": "Contraseña",
+        "passphrase": "Frase de la llave (si tiene)",
+        "privateKey": "Llave privada (PEM)",
+        "secretHelp": "Se guarda cifrada y no se vuelve a mostrar.",
+        "secretKept": "Déjela vacía para conservar la guardada.",
+        "dir": "Carpeta remota",
+        "dirHelp": "Donde el cliente deja los archivos (p. ej. /entrada).",
+        "processed": "Carpeta de procesados",
+        "processedHelp": "Dentro de la carpeta remota, o una ruta completa que empiece con /. Vacía = los archivos se quedan donde están (el hash evita procesarlos dos veces).",
+      "errorsDir": "Carpeta de errores",
+        "errors": {
+          "host": "Indique el servidor (host) del conector.",
+          "port": "El puerto debe estar entre 1 y 65535.",
+          "username": "Indique el usuario del conector.",
+          "secretPassword": "Indique la contraseña del conector.",
+          "secretKey": "Indique la llave privada del conector.",
+          "dir": "Indique la carpeta remota donde llegan los archivos.",
+          "dirInvalid": "Las carpetas no pueden contener «..» ni saltos de línea.",
+          "fingerprint": "La huella debe ser la SHA-256 del servidor (SHA256:… en base64).",
+          "keyOnlySftp": "La llave privada solo se usa con SFTP.",
+          "fileName": "Indique el texto de la condición."
+        },
+        "fingerprint": "Huella del servidor (SHA-256)",
+        "fingerprintHelp": "Obligatoria en SFTP: sin ella no se conecta. Use «Probar conexión», compare la huella que muestra con la del proveedor y péguela aquí.",
+        "useFtps": "FTPS (TLS explícito)",
+        "useFtpsHelp": "Sin FTPS el usuario, la contraseña y los archivos viajan en claro. Úselo siempre que el servidor lo admita.",
+        "fileName": "Nombre del archivo: condición",
+        "fileNameValue": "Nombre del archivo",
+        "fileNameHelp": "Vacío = cualquier nombre (comodín: ordenes-*.csv).",
+        "types": "Tipos de archivo permitidos",
+        "typesHelp": "Extensiones separadas por coma (csv, txt). Los archivos que se modificaron hace menos de 10 s esperan a la próxima corrida.",
+        "authOption": {
+          "PASSWORD": "Contraseña",
+          "KEY": "Llave privada (solo SFTP)"
         }
       },
     "inbox": {

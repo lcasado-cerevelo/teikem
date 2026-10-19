@@ -37,7 +37,10 @@ public sealed record IntegrationDto(
     DateTime CreatedAtUtc,
     /// <summary>Configuración del conector de correo (sin la contraseña, que nunca sale del servidor).</summary>
     EmailConfig? Email = null,
-    bool HasMailPassword = false);
+    bool HasMailPassword = false,
+    /// <summary>Configuración del conector SFTP/FTP (sin la contraseña ni la llave, que nunca salen del servidor).</summary>
+    RemoteConfig? Remote = null,
+    bool HasRemoteSecret = false);
 
 /// <summary>
 /// Alta. Scopes: códigos de IntegrationScopes (solo los que quien crea puede dar). Folder: carpeta de entrada (conector CARPETA). IncludeMe: agrega a quien crea a los avisos.
@@ -58,7 +61,10 @@ public sealed record IntegrationCreateRequest(
     int? RetentionDays = null,
     EmailConfig? Email = null,
     /// <summary>Contraseña del buzón (conector EMAIL): se guarda cifrada y no se vuelve a mostrar.</summary>
-    string? MailPassword = null);
+    string? MailPassword = null,
+    RemoteConfig? Remote = null,
+    /// <summary>Contraseña o llave privada del servidor (SFTP/FTP): se guarda cifrada y no se vuelve a mostrar.</summary>
+    RemoteSecret? Secret = null);
 
 /// <summary>Edición parcial: null = sin cambio. NotifyUserIds reemplaza la lista; Scopes reemplaza los alcances (se revalidan contra quien edita).</summary>
 public sealed record IntegrationPatchRequest(
@@ -73,7 +79,9 @@ public sealed record IntegrationPatchRequest(
     bool? IncludeMe = null,
     int? RetentionDays = null,
     EmailConfig? Email = null,
-    string? MailPassword = null);
+    string? MailPassword = null,
+    RemoteConfig? Remote = null,
+    RemoteSecret? Secret = null);
 
 /// <summary>Un alcance que se puede ofrecer en el alta: de qué familia es, si quien mira lo puede dar y, si no, por qué.</summary>
 public sealed record IntegrationScopeOptionDto(string Code, string Family, string Label, string? ModuleKey, bool Available, string? UnavailableReason);
@@ -136,3 +144,6 @@ public sealed record InboxReprocessResultDto(int Reprocessed, int StillPending, 
 
 /// <summary>Resultado de probar la conexión con el buzón (sin datos sensibles).</summary>
 public sealed record EmailTestResultDto(bool Ok, string Message, int Unseen);
+
+/// <summary>Resultado de probar la conexión de un conector (correo, SFTP o FTP). Fingerprint = la huella SHA-256 que presenta un servidor SFTP (para fijarla).</summary>
+public sealed record ConnectionTestDto(bool Ok, string Message, int Count, string? Fingerprint);

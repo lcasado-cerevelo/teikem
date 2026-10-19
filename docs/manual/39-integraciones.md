@@ -75,3 +75,28 @@ Lo que entró y no se pudo procesar solo. **Una orden con problemas nunca se cre
 | «Con «leer el cuerpo» indique al menos un campo a leer.» · «La columna debe estar entre 1 y 500.» · «Tipo de campo desconocido: X. Use LABEL, REGEX o BLOCK.» · «Indique la etiqueta que se busca en el correo.» · «Indique la expresión regular.» · «Un bloque necesita el texto de inicio y el de fin.» · «Un bloque necesita al menos una columna (posición y número de columna del renglón).» · «Transformación desconocida: X. Use NONE, UPPER, DIGITS o MONEY.» | campos del cuerpo |
 
 **Casos frecuentes:** *«No se pudo conectar con el buzón»* → revise servidor, puerto (993 con SSL), usuario y la **contraseña de aplicación** del buzón (Microsoft 365: buzón compartido con IMAP habilitado). *«Remitente no permitido»* con un correo que sí es de ellos → agregue el dominio del remitente ORIGINAL (no el de quien reenvía). *El correo no se leyó* → debe estar **no leído** y en la carpeta configurada; el asunto debe cumplir el filtro (si no cumple, se ignora y no deja rastro).
+
+## 7. Integración por SFTP y FTP (Lote 134)
+
+> Dictado de Luis (2026-10-19): conectores **SFTP** y **FTP** para cualquier cliente. Teikem se conecta al servidor del cliente (o al nuestro), baja los archivos nuevos de una carpeta, los pasa por la plantilla de importación de la integración (hash, importador, bandeja) y los **mueve** a «procesados» o «errores» del servidor. **Nunca borra.** Permisos: `integrations.create` + `integrations.create.files`.
+
+**Cómo se configura** (conector **SFTP** o **FTP** al crear la integración):
+- **Servidor, puerto** (22 SFTP, 21 FTP) y **usuario**. **Autenticación:** contraseña o, en SFTP, **llave privada** (texto PEM, con su frase si la tiene). La contraseña o la llave se guardan **cifradas** con la llave de la compañía (`Files:MasterKey`) y **no se vuelven a mostrar**: al editar, vacía = se conserva la guardada.
+- **Carpeta remota** (p. ej. `/entrada`), **carpeta de procesados** y **carpeta de errores** (dentro de la remota, o una ruta completa que empiece con `/`; se crean si faltan). Procesados vacía = los archivos se quedan donde están y el **hash** evita procesarlos dos veces. Las rutas no admiten «..».
+- **SFTP: huella del servidor fijada.** Sin la huella SHA-256 del servidor **no se conecta** (así nunca se habla con un impostor). Con la huella vacía, **Probar conexión** (o una corrida) responde «Falta confirmar la huella del servidor SFTP…» y **muestra la huella que presenta el servidor** (`SHA256:…`): compárela con la que da el proveedor y péguela en el campo. Si después el servidor presenta otra, la conexión se rechaza («La huella del servidor no coincide con la configurada…»).
+- **FTP:** **FTPS** (TLS explícito, con validación del certificado) o FTP sin cifrar; sin FTPS el aviso dice «Atención: FTP sin cifrar; usuario, contraseña y archivos viajan en claro.»
+- **Qué archivos se toman:** por **tipo** (`csv`, `txt` por omisión) y **nombre** (igual, contiene, empieza, termina, comodín `ordenes-*.csv` o expresión regular), hasta 100 por corrida y en orden de nombre; se ignoran los ocultos (`.x`) y los que se **modificaron hace menos de 10 segundos** (puede estar subiéndose todavía): esperan a la próxima corrida.
+- **Horario:** a mano o cada N minutos (1 a 10080), como la carpeta y el correo. **Correr ahora** y **Probar conexión** (`POST /{id}/test-connection`, `integrations.manage`) en la lista; la prueba dice cuántos archivos hay y cuántos están listos para leer, y nunca muestra la contraseña.
+
+**Qué pasa con cada archivo:** se baja, se calcula su hash (el mismo contenido no se procesa dos veces: «Repetido»), pasa por el importador **en nombre de la cuenta de servicio** y las órdenes con problemas van a la **bandeja**; el archivo se mueve a «procesados» (o a «errores» si no se pudo procesar). Si no se puede mover, queda donde estaba y el hash lo protege. Si el servidor no responde, la corrida queda *Falló* con «No se pudo conectar con el servidor: …» y no pasa nada más.
+
+| Mensaje (400) | Cuándo |
+|---|---|
+| «Indique el servidor (host) del conector.» · «El puerto debe estar entre 1 y 65535.» · «Indique el usuario del conector.» | servidor |
+| «Indique la contraseña del conector.» · «Indique la llave privada del conector.» · «Autenticación desconocida: X. Use PASSWORD o KEY.» · «La llave privada solo se usa con SFTP.» | secreto |
+| «Indique la carpeta remota donde llegan los archivos.» · «Las carpetas no pueden contener «..» ni saltos de línea.» | carpetas |
+| «La huella debe ser la SHA-256 del servidor (SHA256:… en base64).» | huella |
+| «Condición desconocida: X. Use EQUALS, CONTAINS, STARTS, ENDS, WILDCARD o REGEX.» · «Indique el texto de la condición.» | filtro de nombre |
+| «No se pueden guardar contraseñas de conectores: falta la llave maestra del servidor (Files:MasterKey).» | el servidor no tiene la llave maestra |
+
+**Casos frecuentes:** *«Falta confirmar la huella del servidor SFTP»* → use Probar conexión, compare y pegue la huella. *«La huella del servidor no coincide»* → el proveedor la cambió o es otro servidor; confírmela con el proveedor antes de actualizarla. *«0 listos para leer» con archivos en la carpeta* → no cumplen el tipo o el nombre, o se modificaron hace menos de 10 s. *FTP que lista pero no baja* → modo pasivo bloqueado por un firewall; use SFTP o abra el rango pasivo. *El archivo sigue en la carpeta* → no se pudo mover (permisos de escritura); el hash evita duplicar las órdenes, pero conviene dar permiso de escritura.

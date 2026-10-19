@@ -1,6 +1,7 @@
 // Lote 133 — reglas puras del formulario de correo: validación con los mismos mensajes del servidor, bloques «6=1, 7=2» y el cuerpo del API (sin la contraseña en la configuración).
 import { describe, expect, it } from 'vitest'
 import { buildEmailConfig, emailIssues, emailValuesOf, emptyBodyField, emptyEmail, parseBlockColumns, parseSenders, parseTypes, type EmailMessages, type EmailValues } from './emailRules'
+import { emptyRemote } from './remoteRules'
 import { buildCreateRequest, buildPatchRequest, integrationSchema, type IntegrationValues } from './integrationRules'
 
 const M: EmailMessages = {
@@ -81,7 +82,7 @@ describe('cuerpo del API', () => {
 describe('formulario de integración con correo', () => {
   const base: IntegrationValues = {
     name: 'Truss', description: '', clientPublicId: 'c1', templatePublicId: 't1', connectorKind: 'EMAIL', folder: '', scheduleKind: 'INTERVAL', intervalMinutes: '5', scopes: ['files.orders_import'], notifyUserIds: [], includeMe: true,
-    retentionDays: '30', email: ok(),
+    retentionDays: '30', email: ok(), remote: emptyRemote('SFTP'),
   }
   const em = { hasSavedPassword: false, messages: M }
 

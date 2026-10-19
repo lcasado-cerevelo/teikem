@@ -12,9 +12,11 @@ public static class IntegrationConnectorKinds
     public const string Manual = "MANUAL";
     public const string Email = "EMAIL";
     public const string Sftp = "SFTP";
+    public const string Ftp = "FTP";
     /// <summary>Los que ya corren (el resto se define pero aún no se puede elegir).</summary>
-    public static readonly IReadOnlyList<string> Available = [Folder, Manual, Email];
-    public static readonly IReadOnlyList<string> All = [Folder, Manual, Email, Sftp];
+    public static readonly IReadOnlyList<string> Available = [Folder, Manual, Email, Sftp, Ftp];
+    public static readonly IReadOnlyList<string> All = [Folder, Manual, Email, Sftp, Ftp];
+    public static bool IsRemote(string? kind) => kind is Sftp or Ftp;
 }
 
 public static class IntegrationDirections

@@ -436,3 +436,4 @@ L131. [L131 — Archivos con varias líneas por orden (web del personal)](fronte
 39. [39 — Integraciones (carpeta y subida manual) y su bandeja](39-integraciones.md): Lote 132 (2026-10-19) — cuenta de servicio por integración con permisos por familia, corridas con hash de archivos, bandeja con corregir/reprocesar/descartar y avisos del sistema.
 L132. [L132 — Integraciones (web del personal)](frontend/l132-integraciones.md): lista, alta, historial, bandeja y corregir; con capturas.
 L133. [L133 — Integración por correo (web del personal)](frontend/l133-correo.md): formulario del conector de correo; con captura.
+L134. [L134 — Integraciones por SFTP y FTP (web del personal)](frontend/l134-sftp-ftp.md): lista y formulario del conector remoto; con capturas.

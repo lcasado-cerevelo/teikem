@@ -23,7 +23,7 @@ namespace Teikem.Infrastructure.Services;
 /// </summary>
 public sealed class IntegrationService(
     TeikemDbContext db, ITenantContext tenant, UserManager<ApplicationUser> users, PermissionService permissions, ModuleService modules, ILookupCache lookups,
-    ImportTemplateService templates, IntegrationNotifier notifier, ISecretProtector protector, IMailboxReader mailbox)
+    ImportTemplateService templates, IntegrationNotifier notifier, ISecretProtector protector, IMailboxReader mailbox, IRemoteFileClient remote)
 {
     public const string NotFoundLabel = "Integración";
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
@@ -98,7 +98,8 @@ public sealed class IntegrationService(
                 r.ServiceUserId is int sid && people.TryGetValue(sid, out var su) ? su.FullName : null,
                 ParseIds(r.NotifyUserIdsJson).Where(people.ContainsKey).Select(id => new IntegrationNotifyUserDto(id, people[id].FullName ?? people[id].Email ?? "", people[id].Email)).ToList(),
                 r.RetentionDays, r.IsActive, r.LastStartedUtc, r.LastFinishedUtc, r.LastStatus, r.LastMessage, pending.GetValueOrDefault(r.IntegrationId), r.CreatedAtUtc,
-                r.ConnectorKind == IntegrationConnectorKinds.Email ? ParseEmail(r.ConnectorConfigJson) : null, r.SecretEnc is not null);
+                r.ConnectorKind == IntegrationConnectorKinds.Email ? ParseEmail(r.ConnectorConfigJson) : null, r.ConnectorKind == IntegrationConnectorKinds.Email && r.SecretEnc is not null,
+                IntegrationConnectorKinds.IsRemote(r.ConnectorKind) ? ParseRemote(r.ConnectorConfigJson) : null, IntegrationConnectorKinds.IsRemote(r.ConnectorKind) && r.SecretEnc is not null);
         }).ToList();
     }
 
@@ -127,6 +128,48 @@ public sealed class IntegrationService(
         AttachmentTypes = (c.AttachmentTypes is { Count: > 0 } ? c.AttachmentTypes : EmailRules.DefaultAttachmentTypes).Select(t => t.Trim().ToLowerInvariant()).Distinct().ToList(),
         BodyFields = (c.BodyFields ?? Array.Empty<EmailBodyField>()).Select(f => f with { Kind = f.Kind.Trim().ToUpperInvariant(), Transform = (f.Transform ?? EmailTransforms.None).Trim().ToUpperInvariant() }).ToList(),
     };
+
+    public const string RemotePurpose = "integration-remote";
+
+    public static RemoteConfig? ParseRemote(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try { return JsonSerializer.Deserialize<RemoteConfig>(json, Json); }
+        catch (JsonException) { return null; }
+    }
+
+    private static RemoteConfig NormalizeRemote(RemoteConfig c) => c with
+    {
+        Host = c.Host.Trim(), Username = c.Username.Trim(), Dir = string.IsNullOrWhiteSpace(c.Dir) ? "/" : c.Dir.Trim(),
+        ProcessedDir = c.ProcessedDir?.Trim() ?? string.Empty, ErrorDir = c.ErrorDir?.Trim() ?? string.Empty,
+        AuthKind = (c.AuthKind ?? RemoteAuthKinds.Password).Trim().ToUpperInvariant(),
+        HostFingerprint = RemoteRules.NormalizeFingerprint(c.HostFingerprint) is string f ? "SHA256:" + f : null,
+        FileName = c.FileName is null ? null : c.FileName with { Operator = c.FileName.Operator.Trim().ToUpperInvariant(), Value = c.FileName.Value.Trim() },
+        FileTypes = (c.FileTypes is { Count: > 0 } ? c.FileTypes : EmailRules.DefaultAttachmentTypes).Select(t => t.Trim().ToLowerInvariant().TrimStart('.')).Where(t => t.Length > 0).Distinct().ToList(),
+    };
+
+    private static bool HasUsableSecret(string authKind, RemoteSecret? s)
+        => s is not null && (authKind == RemoteAuthKinds.Key ? !string.IsNullOrWhiteSpace(s.PrivateKey) : !string.IsNullOrEmpty(s.Password));
+
+    public RemoteSecret? ReadRemoteSecret(Integration row)
+        => row.SecretEnc is null ? null : JsonSerializer.Deserialize<RemoteSecret>(protector.Unprotect(row.TenantId, RemotePurpose, row.SecretEnc), Json);
+
+    /// <summary>Prueba la conexión de la integración (correo, SFTP o FTP) sin tocar los correos ni los archivos.</summary>
+    public async Task<ConnectionTestDto> TestConnectionAsync(Guid publicId, CancellationToken ct)
+    {
+        var row = await db.Integrations.AsNoTracking().FirstOrDefaultAsync(i => i.PublicId == publicId, ct) ?? throw new NotFoundException(NotFoundLabel);
+        if (row.ConnectorKind == IntegrationConnectorKinds.Email)
+        {
+            var r = await TestEmailAsync(publicId, ct);
+            return new ConnectionTestDto(r.Ok, r.Message, r.Unseen, null);
+        }
+        if (!IntegrationConnectorKinds.IsRemote(row.ConnectorKind)) throw new ValidationException("connectorKind", "Esta integración no tiene una conexión que probar.");
+        var cfg = ParseRemote(row.ConnectorConfigJson) ?? throw new ValidationException("remote", RemoteRules.HostRequiredMessage);
+        var secret = ReadRemoteSecret(row) ?? throw new ValidationException("remote.secret", RemoteRules.SecretRequiredMessage(cfg.AuthKind));
+        var info = await remote.TestAsync(row.ConnectorKind, cfg, secret, ct);
+        var warning = row.ConnectorKind == IntegrationConnectorKinds.Ftp && !cfg.UseFtps && info.Ok ? " " + RemoteRules.FtpPlainWarning : string.Empty;
+        return new ConnectionTestDto(info.Ok, info.Message + warning, info.Files, info.Fingerprint is null ? null : "SHA256:" + info.Fingerprint);
+    }
 
     /// <summary>Prueba la conexión con el buzón de la integración (servidor, usuario, contraseña y carpeta) sin tocar los correos.</summary>
     public async Task<EmailTestResultDto> TestEmailAsync(Guid publicId, CancellationToken ct)
@@ -179,6 +222,14 @@ public sealed class IntegrationService(
             email = NormalizeEmail(req.Email!);
             if (!protector.IsConfigured) throw new ValidationException("email.password", SecretProtector.NotConfiguredMessage);
         }
+        RemoteConfig? remoteCfg = null;
+        if (IntegrationConnectorKinds.IsRemote(connector))
+        {
+            var authKind = (req.Remote?.AuthKind ?? RemoteAuthKinds.Password).Trim().ToUpperInvariant();
+            ThrowIfErrors(RemoteRules.Validate(req.Remote, connector, HasUsableSecret(authKind, req.Secret)));
+            remoteCfg = NormalizeRemote(req.Remote!);
+            if (!protector.IsConfigured) throw new ValidationException("remote.secret", SecretProtector.NotConfiguredMessage);
+        }
         var retention = ValidateRetention(req.RetentionDays);
         var notify = await ValidateNotifyAsync(req.NotifyUserIds, req.IncludeMe ? creatorId : null, ct);
 
@@ -191,8 +242,8 @@ public sealed class IntegrationService(
             var row = new Integration
             {
                 PublicId = publicId, TenantId = tenantId, Name = name, Description = NullIfEmpty(req.Description), Direction = IntegrationDirections.Inbound, ClientId = client.ClientId,
-                ConnectorKind = connector, ConnectorConfigJson = email is not null ? JsonSerializer.Serialize(email, Json) : folder is null ? null : JsonSerializer.Serialize(new { folder }, Json),
-                SecretEnc = email is not null ? protector.Protect(tenantId, MailPurpose, req.MailPassword!) : null, ImportTemplateId = template.ImportTemplateId,
+                ConnectorKind = connector, ConnectorConfigJson = email is not null ? JsonSerializer.Serialize(email, Json) : remoteCfg is not null ? JsonSerializer.Serialize(remoteCfg, Json) : folder is null ? null : JsonSerializer.Serialize(new { folder }, Json),
+                SecretEnc = email is not null ? protector.Protect(tenantId, MailPurpose, req.MailPassword!) : remoteCfg is not null ? protector.Protect(tenantId, RemotePurpose, JsonSerializer.Serialize(req.Secret, Json)) : null, ImportTemplateId = template.ImportTemplateId,
                 ScheduleKind = scheduleKind, IntervalSeconds = interval, NextRunUtc = IntegrationRules.NextRun(scheduleKind, interval, now), ScopesJson = JsonSerializer.Serialize(scopes, Json),
                 ServiceUserId = serviceUser, ServiceRoleId = role.RoleId, NotifyUserIdsJson = JsonSerializer.Serialize(notify, Json), RetentionDays = retention, IsActive = true,
                 CreatedAtUtc = now, CreatedBy = creatorId,
@@ -239,12 +290,26 @@ public sealed class IntegrationService(
                 }
                 row.ConnectorConfigJson = JsonSerializer.Serialize(NormalizeEmail(cfg!), Json);
             }
-            if (row.ConnectorKind != IntegrationConnectorKinds.Email && (req.Folder is not null || req.ScheduleKind is not null || req.IntervalSeconds is not null)
-                || row.ConnectorKind == IntegrationConnectorKinds.Email && (req.ScheduleKind is not null || req.IntervalSeconds is not null))
+            if (IntegrationConnectorKinds.IsRemote(row.ConnectorKind) && (req.Remote is not null || req.Secret is not null))
+            {
+                var cfg = req.Remote ?? ParseRemote(row.ConnectorConfigJson);
+                var authKind = (cfg?.AuthKind ?? RemoteAuthKinds.Password).Trim().ToUpperInvariant();
+                var current = row.SecretEnc is null ? null : ReadRemoteSecret(row);
+                var effective = req.Secret is not null && HasUsableSecret(authKind, req.Secret) ? req.Secret : current;
+                ThrowIfErrors(RemoteRules.Validate(cfg, row.ConnectorKind, HasUsableSecret(authKind, effective)));
+                if (req.Secret is not null && HasUsableSecret(authKind, req.Secret))
+                {
+                    if (!protector.IsConfigured) throw new ValidationException("remote.secret", SecretProtector.NotConfiguredMessage);
+                    row.SecretEnc = protector.Protect(row.TenantId, RemotePurpose, JsonSerializer.Serialize(req.Secret, Json));
+                }
+                row.ConnectorConfigJson = JsonSerializer.Serialize(NormalizeRemote(cfg!), Json);
+            }
+            if (row.ConnectorKind != IntegrationConnectorKinds.Email && !IntegrationConnectorKinds.IsRemote(row.ConnectorKind) && (req.Folder is not null || req.ScheduleKind is not null || req.IntervalSeconds is not null)
+                || (row.ConnectorKind == IntegrationConnectorKinds.Email || IntegrationConnectorKinds.IsRemote(row.ConnectorKind)) && (req.ScheduleKind is not null || req.IntervalSeconds is not null))
             {
                 var (_, folder, scheduleKind, interval) = ValidateConnectorAndSchedule(row.ConnectorKind, req.Folder ?? FolderOf(row), req.ScheduleKind ?? row.ScheduleKind,
                     req.IntervalSeconds ?? (req.ScheduleKind == IntegrationScheduleKinds.Manual ? null : row.IntervalSeconds));
-                if (row.ConnectorKind != IntegrationConnectorKinds.Email) row.ConnectorConfigJson = folder is null ? null : JsonSerializer.Serialize(new { folder }, Json);
+                if (row.ConnectorKind == IntegrationConnectorKinds.Folder) row.ConnectorConfigJson = folder is null ? null : JsonSerializer.Serialize(new { folder }, Json);
                 row.ScheduleKind = scheduleKind;
                 row.IntervalSeconds = interval;
                 row.NextRunUtc = row.IsActive ? IntegrationRules.NextRun(scheduleKind, interval, DateTime.UtcNow) : null;

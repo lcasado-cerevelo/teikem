@@ -9,6 +9,7 @@ import { FormModal } from '../clients/contractUi'
 import { useClientOptions } from '../consignees/api'
 import { useOrderImportTemplates } from '../orders/importApi'
 import { EmailSection } from './EmailSection'
+import { RemoteSection } from './RemoteSection'
 import { buildCreateRequest, buildPatchRequest, integrationSchema, integrationValuesOf, type IntegrationValues } from './integrationRules'
 import { useIntegrationMutations, useIntegrationOptions, type IntegrationDto } from './integrationsApi'
 
@@ -51,8 +52,23 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
             senders: t('integrations.email.errors.senders'),
           },
         },
+        {
+          hasSavedSecret: integration?.hasRemoteSecret === true,
+          messages: {
+            host: t('integrations.remote.errors.host'),
+            port: t('integrations.remote.errors.port'),
+            username: t('integrations.remote.errors.username'),
+            secretPassword: t('integrations.remote.errors.secretPassword'),
+            secretKey: t('integrations.remote.errors.secretKey'),
+            dir: t('integrations.remote.errors.dir'),
+            dirInvalid: t('integrations.remote.errors.dirInvalid'),
+            fingerprint: t('integrations.remote.errors.fingerprint'),
+            keyOnlySftp: t('integrations.remote.errors.keyOnlySftp'),
+            fileName: t('integrations.remote.errors.fileName'),
+          },
+        },
       ),
-    [t, editing, integration?.hasMailPassword],
+    [t, editing, integration?.hasMailPassword, integration?.hasRemoteSecret],
   )
   const form = useForm<IntegrationValues>({ resolver: zodResolver(schema), defaultValues: integrationValuesOf(integration) })
   const values = useWatch({ control: form.control })
@@ -112,6 +128,8 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
             options={[
               { value: 'FOLDER', label: t('integrations.connector.FOLDER') },
               { value: 'EMAIL', label: t('integrations.connector.EMAIL') },
+              { value: 'SFTP', label: t('integrations.connector.SFTP') },
+              { value: 'FTP', label: t('integrations.connector.FTP') },
               { value: 'MANUAL', label: t('integrations.connector.MANUAL') },
             ]}
           />
@@ -141,6 +159,7 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
       )}
 
       {connector === 'EMAIL' && <EmailSection form={form} hasSavedPassword={integration?.hasMailPassword === true} />}
+      {(connector === 'SFTP' || connector === 'FTP') && <RemoteSection form={form} kind={connector} hasSavedSecret={integration?.hasRemoteSecret === true} />}
 
       <fieldset className="int-scopes">
         <legend>{t('integrations.form.scopes')}</legend>

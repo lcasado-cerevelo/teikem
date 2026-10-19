@@ -62,7 +62,7 @@ public sealed class IntegrationRulesTests
         Assert.Equal("Integración: AxisCare", IntegrationRules.ServiceRoleName(" AxisCare "));
         Assert.Contains(IntegrationConnectorKinds.Folder, IntegrationConnectorKinds.Available);
         Assert.Contains(IntegrationConnectorKinds.Email, IntegrationConnectorKinds.Available);
-        Assert.DoesNotContain(IntegrationConnectorKinds.Sftp, IntegrationConnectorKinds.Available);
+        Assert.Contains(IntegrationConnectorKinds.Sftp, IntegrationConnectorKinds.Available);
     }
 
     [Fact]

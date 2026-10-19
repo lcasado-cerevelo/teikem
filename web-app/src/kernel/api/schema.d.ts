@@ -30312,6 +30312,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/integrations/{publicId}/test-connection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ConnectionTestDto"];
+                        "application/json": components["schemas"]["ConnectionTestDto"];
+                        "text/json": components["schemas"]["ConnectionTestDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -40584,6 +40623,8 @@ export interface components {
             createdAtUtc?: string;
             email?: components["schemas"]["EmailConfig"];
             hasMailPassword?: boolean;
+            remote?: components["schemas"]["RemoteConfig"];
+            hasRemoteSecret?: boolean;
         };
         InboxPageDto: {
             items?: components["schemas"]["InboxItemDto"][] | null;
@@ -40646,6 +40687,8 @@ export interface components {
             retentionDays?: number | null;
             email?: components["schemas"]["EmailConfig"];
             mailPassword?: string | null;
+            remote?: components["schemas"]["RemoteConfig"];
+            secret?: components["schemas"]["RemoteSecret"];
         };
         IntegrationCreateRequest: {
             name?: string | null;
@@ -40666,6 +40709,8 @@ export interface components {
             retentionDays?: number | null;
             email?: components["schemas"]["EmailConfig"];
             mailPassword?: string | null;
+            remote?: components["schemas"]["RemoteConfig"];
+            secret?: components["schemas"]["RemoteSecret"];
         };
         IntegrationNotifyUserDto: {
             /** Format: int32 */
@@ -40726,6 +40771,32 @@ export interface components {
             position?: number;
             /** Format: int32 */
             index?: number;
+        };
+        RemoteSecret: {
+            password?: string | null;
+            privateKey?: string | null;
+            passphrase?: string | null;
+        };
+        RemoteConfig: {
+            host?: string | null;
+            /** Format: int32 */
+            port?: number;
+            username?: string | null;
+            dir?: string | null;
+            processedDir?: string | null;
+            errorDir?: string | null;
+            authKind?: string | null;
+            hostFingerprint?: string | null;
+            useFtps?: boolean;
+            fileName?: components["schemas"]["EmailTextMatch"];
+            fileTypes?: string[] | null;
+        };
+        ConnectionTestDto: {
+            ok?: boolean;
+            message?: string | null;
+            /** Format: int32 */
+            count?: number;
+            fingerprint?: string | null;
         };
     };
     responses: never;

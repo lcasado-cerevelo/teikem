@@ -76,7 +76,7 @@ export default function IntegrationsScreen() {
   const canInbox = useCan('integrations.inbox')
   const [showInactive, setShowInactive] = useState(false)
   const list = useIntegrations(showInactive)
-  const { run, setActive, upload, testEmail } = useIntegrationMutations()
+  const { run, setActive, upload, testConnection } = useIntegrationMutations()
   const [editing, setEditing] = useState<IntegrationDto | 'new' | null>(null)
   const [history, setHistory] = useState<IntegrationDto | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -246,7 +246,7 @@ export default function IntegrationsScreen() {
                     label: t('integrations.runNow'),
                     icon: <IconPlay />,
                     onClick: (i) => void act(run.mutateAsync(i.publicId!), t('integrations.ran', { name: i.name ?? '' })),
-                    visible: (i) => canManage && !!i.isActive && (i.connectorKind === 'FOLDER' || i.connectorKind === 'EMAIL') && i.lastStatus !== 'RUNNING',
+                    visible: (i) => canManage && !!i.isActive && (i.connectorKind === 'FOLDER' || i.connectorKind === 'EMAIL' || i.connectorKind === 'SFTP' || i.connectorKind === 'FTP') && i.lastStatus !== 'RUNNING',
                   },
                   {
                     key: 'upload',
@@ -260,14 +260,14 @@ export default function IntegrationsScreen() {
                   },
                   {
                     key: 'test',
-                    label: t('integrations.email.test'),
+                    label: t('integrations.testConnection'),
                     icon: <IconPlay />,
                     onClick: (i) =>
-                      void testEmail
+                      void testConnection
                         .mutateAsync(i.publicId!)
                         .then((r) => (r.ok ? toast.success(r.message ?? '') : toast.error(r.message ?? '')))
                         .catch((e) => toast.error(applyProblemDetails(e).title)),
-                    visible: (i) => canManage && i.connectorKind === 'EMAIL',
+                    visible: (i) => canManage && (i.connectorKind === 'EMAIL' || i.connectorKind === 'SFTP' || i.connectorKind === 'FTP'),
                   },
                   { key: 'history', label: t('integrations.history.open'), icon: <IconClock />, onClick: (i) => setHistory(i) },
                   { key: 'edit', label: t('integrations.edit'), icon: <IconEdit />, onClick: (i) => setEditing(i), visible: () => canManage },
