@@ -9454,3 +9454,19 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **¿Y en los reportes?** Todas las Vistas permiten los campos personalizados como columna y filtro, sin marcar nada.
 
 **Un filtro de selección múltiple no encuentra «frag».** Filtra por la opción completa (`fragil`), no por pedazos.
+
+## Archivos con varias líneas por orden (Lote 131)
+
+**Mi cliente manda varias líneas por orden y algunas no son piezas (descripción, factura).** En la plantilla de órdenes encienda «El archivo trae varias líneas por orden» y agregue reglas: por ejemplo, si la columna «tipo» es igual a `Invoice` la línea es Factura, y si es una de `Drum | Item` es Descripción. Lo que no marque es pieza.
+
+**«La orden no trae ninguna pieza (todas sus líneas son descripción o factura).»** Todas las líneas de esa orden cayeron en una regla de descripción o factura. Revise las reglas o el archivo: cada orden necesita al menos una pieza.
+
+**«El número de pieza X se repite en la fila N del archivo.» / «El número de pieza X ya existe en otra orden.»** El label de cada pieza es único en la compañía. Corrija el archivo (o, si el archivo ya se importó, no lo suba de nuevo). Las descripciones y facturas repetidas no dan este error.
+
+**«La línea no trae número de orden; en un archivo con varias líneas por orden todas lo necesitan.»** Una fila sin número de orden no se puede agrupar; complete la columna.
+
+**«Un archivo con varias líneas por orden necesita la columna orderNumber en la plantilla.» (400)** Asigne una columna al campo «N.º de orden» en la plantilla; es lo que agrupa las filas.
+
+**¿Dónde queda la descripción («dron»)?** En la descripción de las líneas de carga de la orden, no como pieza. **¿Y la factura?** En el número de factura de la orden.
+
+**El número de orden o de factura «lo asigna Teikem».** Con varias líneas por orden el archivo trae el número de orden: en el cliente, marque que el cliente numera sus órdenes (y sus facturas, si el archivo las trae).

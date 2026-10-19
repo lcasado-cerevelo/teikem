@@ -1,10 +1,13 @@
 // Lote F-C3 — reglas puras de la importación de órdenes: plantilla estándar, reglas de la definición (consignatario y paquete, en columna
 // o en defaults), plantillas que sirven a un cliente, cuerpo del confirm (permisos y dependencias de las opciones) y estado de cada fila.
 import { describe, expect, it } from 'vitest'
+import { templateMultiLine } from '../consignees/consigneeRules'
 import {
   buildConfirmRequest,
   confirmSignature,
   failedRows,
+  lineProblems,
+  lineSummary,
   orderStandardTemplateRequest,
   orderTemplateIssues,
   rowStatus,
@@ -120,5 +123,44 @@ describe('estado de las filas', () => {
     expect(rowStatus(row({ skipped: true }), true)).toBe('skipped')
     expect(failedRows([row({ orderPublicId: 'o-1' }), row({ error: 'x' }), row({ skipped: true })])).toHaveLength(1)
     expect(failedRows(null)).toEqual([])
+  })
+})
+
+// Lote 131 — varias líneas por orden: reglas de línea (qué NO es pieza), resumen y problemas de las líneas de una orden
+describe('varias líneas por orden (Lote 131)', () => {
+  const cols = (...fields: string[]) => fields.map((field) => ({ field }))
+  const M2 = { ...M, multiLineOrder: 'Con varias líneas por orden la plantilla necesita la columna orderNumber.', ruleColumn: (n: number) => `columna ${n}`, ruleValue: (n: number) => `valor ${n}` }
+
+  it('exige orderNumber y reglas bien escritas solo cuando el archivo trae varias líneas por orden', () => {
+    const base = { columns: cols('consigneeName', 'pieces'), defaults: [] }
+    expect(orderTemplateIssues({ ...base, multiLine: false }, FIELDS, M2)).toEqual([])
+    expect(orderTemplateIssues({ ...base, multiLine: true, lineRules: [] }, FIELDS, M2).map((i) => i.message)).toEqual([M2.multiLineOrder])
+    const withOrder = { columns: cols('orderNumber', 'consigneeName', 'pieces'), defaults: [] }
+    expect(orderTemplateIssues({ ...withOrder, multiLine: true, lineRules: [{ kind: 'INVOICE', position: '5', operator: 'EQUALS', value: 'Invoice' }] }, FIELDS, M2)).toEqual([])
+    const bad = orderTemplateIssues({ ...withOrder, multiLine: true, lineRules: [{ kind: 'INVOICE', position: 'x', operator: 'EQUALS', value: '' }, { kind: 'DESCRIPTION', position: '2', operator: 'NOT_EMPTY', value: '' }] }, FIELDS, M2)
+    expect(bad.map((i) => [i.path, i.message])).toEqual([['lineRules.0.position', 'columna 1'], ['lineRules.0.value', 'valor 1']])
+  })
+
+  it('resume las líneas (piezas, descripciones, factura) y lista los errores por línea', () => {
+    const lines = [
+      { row: 2, kind: 'INVOICE', values: { clientInvoiceNumber: 'F-1' } },
+      { row: 3, kind: 'DESCRIPTION', values: {} },
+      { row: 4, kind: 'PIECE', values: {}, errors: { pieceNumber: 'repetido' } },
+      { row: 5, kind: 'PIECE', values: {} },
+    ]
+    expect(lineSummary(lines)).toEqual({ pieces: 2, descriptions: 1, invoice: 'F-1' })
+    expect(lineSummary([])).toBeNull()
+    expect(lineSummary(undefined)).toBeNull()
+    expect(lineProblems(lines, (n) => `Fila ${n}`, (f) => f)).toEqual(['Fila 4 · pieceNumber: repetido'])
+  })
+
+  it('el formulario manda multiLine y las reglas (columna como número, sin valor en EMPTY / NOT_EMPTY) y apagarlo las vacía', () => {
+    expect(templateMultiLine({})).toEqual({})
+    expect(templateMultiLine({ multiLine: false })).toEqual({})                                      // nunca lo usó: nada nuevo
+    expect(templateMultiLine({ multiLine: false, lineRules: [{ kind: 'INVOICE', position: '5', operator: 'EQUALS', value: 'x' }] }, true)).toEqual({ multiLine: false, lineRules: [] })   // lo apagó
+    expect(templateMultiLine({ multiLine: true, lineRules: [{ kind: 'INVOICE', position: '5', operator: 'EQUALS', value: ' Invoice ' }, { kind: 'DESCRIPTION', position: '6', operator: 'NOT_EMPTY', value: 'x' }] })).toEqual({
+      multiLine: true,
+      lineRules: [{ kind: 'INVOICE', position: 5, operator: 'EQUALS', value: 'Invoice' }, { kind: 'DESCRIPTION', position: 6, operator: 'NOT_EMPTY' }],
+    })
   })
 })

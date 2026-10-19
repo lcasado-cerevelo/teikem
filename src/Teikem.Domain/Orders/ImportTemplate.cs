@@ -35,6 +35,12 @@ public class ImportTemplate : ITenantScoped, ISoftDeletable
     /// guarda las columnas de la primera (para quien lea solo ColumnsJson).
     /// </summary>
     public string? VariantsJson { get; set; }
+    /// <summary>
+    /// Lote 131 (solo ORDER): el archivo trae VARIAS líneas por orden (se agrupan por orderNumber). LineRulesJson dice cuáles NO son pieza
+    /// ([{kind: DESCRIPTION|INVOICE, position, operator, value}]); todo lo demás es pieza.
+    /// </summary>
+    public bool MultiLine { get; set; }
+    public string? LineRulesJson { get; set; }
     public bool IsActive { get; set; } = true;
     [NotAudited] public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     [NotAudited] public DateTime? UpdatedAtUtc { get; set; }

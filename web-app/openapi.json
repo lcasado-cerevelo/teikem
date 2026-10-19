@@ -46338,6 +46338,13 @@
           },
           "skipped": {
             "type": "boolean"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportLineDto"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -46411,6 +46418,16 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ImportTemplateVariantDto"
+            },
+            "nullable": true
+          },
+          "multiLine": {
+            "type": "boolean"
+          },
+          "lineRules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportLineRuleDto"
             },
             "nullable": true
           }
@@ -46493,6 +46510,16 @@
               "$ref": "#/components/schemas/ImportTemplateVariantDto"
             },
             "nullable": true
+          },
+          "multiLine": {
+            "type": "boolean"
+          },
+          "lineRules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportLineRuleDto"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -46552,6 +46579,17 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ImportTemplateVariantDto"
+            },
+            "nullable": true
+          },
+          "multiLine": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "lineRules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportLineRuleDto"
             },
             "nullable": true
           }
@@ -70241,6 +70279,56 @@
           "unresolved": {
             "type": "integer",
             "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ImportLineDto": {
+        "type": "object",
+        "properties": {
+          "row": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "values": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ImportLineRuleDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "position": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "operator": {
+            "type": "string",
+            "nullable": true
+          },
+          "value": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

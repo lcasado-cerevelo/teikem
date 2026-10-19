@@ -338,6 +338,17 @@ export interface TemplateValues {
   /** Una fila por columna del archivo, en orden; '' = «— no importar —». */
   columns: { field: string }[]
   defaults: { field: string; value: string }[]
+  /** Lote 131 (solo plantillas de órdenes): el archivo trae varias líneas por orden y las reglas que dicen cuáles NO son pieza. */
+  multiLine?: boolean
+  lineRules?: LineRuleValues[]
+}
+
+/** Regla de línea en el formulario: la columna se escribe como texto (1…500). */
+export interface LineRuleValues {
+  kind: string
+  position: string
+  operator: string
+  value: string
 }
 
 /** Errores de la definición (espejo de ConsigneeImportMapping.ValidateColumns): ruta → mensaje. */
@@ -382,9 +393,9 @@ export interface TemplateIssue {
 export function templateSchema(
   m: Pick<TemplateMessages, 'nameRequired' | 'nameMax'> & Partial<TemplateMessages>,
   fields: readonly ImportField[],
-  issues?: (v: Pick<TemplateValues, 'columns' | 'defaults'>) => TemplateIssue[],
+  issues?: (v: TemplateValues) => TemplateIssue[],
 ) {
-  const rules = issues ?? ((v: Pick<TemplateValues, 'columns' | 'defaults'>) => templateIssues(v, fields, m as TemplateMessages))
+  const rules = issues ?? ((v: TemplateValues) => templateIssues(v, fields, m as TemplateMessages))
   return z
     .object({
       name: z.string().trim().min(1, m.nameRequired).max(TEMPLATE_NAME_MAX, m.nameMax),
@@ -392,6 +403,8 @@ export function templateSchema(
       hasHeader: z.boolean(),
       columns: z.array(z.object({ field: z.string() })),
       defaults: z.array(z.object({ field: z.string(), value: z.string() })),
+      multiLine: z.boolean().optional(),
+      lineRules: z.array(z.object({ kind: z.string(), position: z.string(), operator: z.string(), value: z.string() })).optional(),
     })
     .superRefine((v, ctx) => {
       for (const issue of rules(v)) ctx.addIssue({ code: 'custom', path: issue.path.split('.').map((p) => (/^\d+$/.test(p) ? Number(p) : p)), message: issue.message })
@@ -410,6 +423,9 @@ export function templateValuesOf(t: ImportTemplate | null): TemplateValues {
     // las posiciones sin campo se muestran como «— no importar —»
     columns: Array.from({ length: Math.max(last, 1) }, (_, i) => ({ field: byPosition.get(i + 1) ?? '' })),
     defaults: Object.entries(t.defaults ?? {}).map(([field, value]) => ({ field, value })),
+    ...(t.multiLine === true
+      ? { multiLine: true, lineRules: (t.lineRules ?? []).map((r) => ({ kind: r.kind ?? 'DESCRIPTION', position: String(r.position ?? ''), operator: r.operator ?? 'EQUALS', value: r.value ?? '' })) }
+      : {}),
   }
 }
 
@@ -422,6 +438,23 @@ export function templateDefaults(v: Pick<TemplateValues, 'defaults'>): Record<st
   return Object.fromEntries(v.defaults.filter((d) => d.field && d.value.trim()).map((d) => [d.field, d.value.trim()]))
 }
 
+/**
+ * Lote 131: varias líneas por orden y sus reglas. Solo se manda si está encendido o si la plantilla ya lo tenía (`was`): apagarlo manda `multiLine: false` y las
+ * reglas vacías; una plantilla que nunca lo usó no lleva nada nuevo.
+ */
+export function templateMultiLine(v: Pick<TemplateValues, 'multiLine' | 'lineRules'>, was = false): { multiLine?: boolean; lineRules?: { kind: string; position: number; operator: string; value?: string }[] } {
+  if (!v.multiLine) return was ? { multiLine: false, lineRules: [] } : {}
+  return {
+    multiLine: true,
+    lineRules: (v.lineRules ?? []).map((r) => ({
+      kind: r.kind,
+      position: Number(r.position),
+      operator: r.operator,
+      ...(r.operator === 'EMPTY' || r.operator === 'NOT_EMPTY' || !r.value.trim() ? {} : { value: r.value.trim() }),
+    })),
+  }
+}
+
 export function buildTemplateCreate(v: TemplateValues): ImportTemplateCreateRequest {
   const defaults = templateDefaults(v)
   return {
@@ -430,11 +463,12 @@ export function buildTemplateCreate(v: TemplateValues): ImportTemplateCreateRequ
     hasHeader: v.hasHeader,
     columns: templateColumns(v),
     defaults: Object.keys(defaults).length > 0 ? defaults : null,
+    ...templateMultiLine(v),
   }
 }
 
 /** PATCH: columnas y defaults reemplazan la lista completa; sin defaults se manda `clearDefaults`. */
-export function buildTemplatePatch(v: TemplateValues): ImportTemplatePatchRequest {
+export function buildTemplatePatch(v: TemplateValues, wasMultiLine = false): ImportTemplatePatchRequest {
   const defaults = templateDefaults(v)
   const hasDefaults = Object.keys(defaults).length > 0
   return {
@@ -444,6 +478,7 @@ export function buildTemplatePatch(v: TemplateValues): ImportTemplatePatchReques
     columns: templateColumns(v),
     defaults: hasDefaults ? defaults : null,
     clearDefaults: hasDefaults ? null : true,
+    ...templateMultiLine(v, wasMultiLine),
   }
 }
 

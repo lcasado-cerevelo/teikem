@@ -4127,8 +4127,37 @@
         "packages": "La plantilla debe indicar el paquete: packageType o pieces, en una columna o en defaults.",
         "repeated": "El campo {field} está repetido.",
         "noDefault": "El campo {field} no admite valor por defecto.",
-        "defaultValueRequired": "Escriba el valor por defecto de {field}."
+        "defaultValueRequired": "Escriba el valor por defecto de {field}.",
+        "multiLineOrder": "Con varias líneas por orden la plantilla necesita la columna orderNumber.",
+        "ruleColumn": "La columna de la regla {n} debe ser un número entre 1 y 500.",
+        "ruleValue": "Escriba el valor de la regla {n}."
       },
+        "multiLine": "El archivo trae varias líneas por orden",
+        "multiLineHelp": "Las filas con el mismo número de orden son UNA orden. Lo que no marques abajo como descripción o factura es una pieza (puede haber varias piezas por orden).",
+        "rulesTitle": "¿Qué líneas NO son pieza?",
+        "rulesHelp": "Si la celda de la columna indicada cumple la condición, la línea es una descripción de lo que se envía o la factura. Cualquiera de las reglas basta; la primera que se cumple manda.",
+        "addRule": "Agregar regla",
+        "removeRuleN": "Quitar la regla {n}",
+        "ruleKind": "Clase de línea de la regla {n}",
+        "ruleColumn": "Columna de la regla {n}",
+        "ruleOperator": "Condición de la regla {n}",
+        "ruleValue": "Valor de la regla {n}",
+        "lineKinds": {
+          "DESCRIPTION": "Descripción",
+          "INVOICE": "Factura",
+          "PIECE": "Pieza"
+        },
+        "lineOperators": {
+          "EMPTY": "está vacía",
+          "NOT_EMPTY": "trae algo",
+          "EQUALS": "es igual a",
+          "CONTAINS": "contiene",
+          "IN": "es una de (separe con |)"
+        },
+        "lines": "Líneas de la orden",
+      "rowN": "Fila {n}",
+        "linesSummary": "{pieces} pieza(s) · {descriptions} descripción(es){invoice}",
+        "linesInvoice": " · factura {number}",
       "fields": {
         "orderNumber": "N.º de orden",
         "clientInvoiceNumber": "N.º de factura",
@@ -4150,7 +4179,9 @@
         "codAmount": "Monto COD",
         "requestedDate": "Fecha solicitada",
         "notes": "Notas",
-        "reference": "Referencia"
+        "reference": "Referencia",
+        "pieceNumber": "N.º de pieza (label)",
+        "lines": "Líneas"
       }
     }
   },

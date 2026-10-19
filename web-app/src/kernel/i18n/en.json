@@ -4127,8 +4127,37 @@
         "packages": "The template must define the package: packageType or pieces, in a column or in defaults.",
         "repeated": "The field {field} is repeated.",
         "noDefault": "The field {field} does not accept a default value.",
-        "defaultValueRequired": "Enter the default value of {field}."
+        "defaultValueRequired": "Enter the default value of {field}.",
+        "multiLineOrder": "With several lines per order the template needs the orderNumber column.",
+        "ruleColumn": "The column of rule {n} must be a number between 1 and 500.",
+        "ruleValue": "Enter the value of rule {n}."
       },
+        "multiLine": "The file has several lines per order",
+        "multiLineHelp": "Rows with the same order number are ONE order. Anything you do not mark below as a description or an invoice is a piece (an order can have several pieces).",
+        "rulesTitle": "Which lines are NOT a piece?",
+        "rulesHelp": "If the cell of the given column meets the condition, the line is a description of what is shipped or the invoice. Any rule is enough; the first that matches wins.",
+        "addRule": "Add rule",
+        "removeRuleN": "Remove rule {n}",
+        "ruleKind": "Line kind of rule {n}",
+        "ruleColumn": "Column of rule {n}",
+        "ruleOperator": "Condition of rule {n}",
+        "ruleValue": "Value of rule {n}",
+        "lineKinds": {
+          "DESCRIPTION": "Description",
+          "INVOICE": "Invoice",
+          "PIECE": "Piece"
+        },
+        "lineOperators": {
+          "EMPTY": "is empty",
+          "NOT_EMPTY": "has content",
+          "EQUALS": "equals",
+          "CONTAINS": "contains",
+          "IN": "is one of (separate with |)"
+        },
+        "lines": "Order lines",
+      "rowN": "Row {n}",
+        "linesSummary": "{pieces} piece(s) · {descriptions} description(s){invoice}",
+        "linesInvoice": " · invoice {number}",
       "fields": {
         "orderNumber": "Order no.",
         "clientInvoiceNumber": "Invoice no.",
@@ -4150,7 +4179,9 @@
         "codAmount": "COD amount",
         "requestedDate": "Requested date",
         "notes": "Notes",
-        "reference": "Reference"
+        "reference": "Reference",
+        "pieceNumber": "Piece no. (label)",
+        "lines": "Lines"
       }
     }
   },

@@ -31,6 +31,10 @@ export function orderStandardTemplateRequest(name: string): ImportTemplateCreate
 
 /** Mensajes de la definición (ya traducidos; los del servidor, tal cual el manual 03 §7.1). */
 export interface OrderTemplateMessages {
+  /** Lote 131 (varias líneas por orden); si no vienen, no se validan. */
+  multiLineOrder?: string
+  ruleColumn?: (n: number) => string
+  ruleValue?: (n: number) => string
   columnsRequired: string
   consignee: string
   packages: string
@@ -44,7 +48,7 @@ export interface OrderTemplateMessages {
  * o sin valor, sin columnas, sin consignatario (consigneeName o consigneeCode) y sin paquete (packageType o pieces).
  */
 export function orderTemplateIssues(
-  v: Pick<TemplateValues, 'columns' | 'defaults'>,
+  v: Pick<TemplateValues, 'columns' | 'defaults' | 'multiLine' | 'lineRules'>,
   fields: readonly ImportField[],
   m: OrderTemplateMessages,
 ): TemplateIssue[] {
@@ -68,6 +72,15 @@ export function orderTemplateIssues(
   if (chosen.length === 0) issues.push({ path: 'columns', message: m.columnsRequired })
   else if (!has(CONSIGNEE_FIELDS)) issues.push({ path: 'columns', message: m.consignee })
   else if (!has(PACKAGE_FIELDS)) issues.push({ path: 'columns', message: m.packages })
+  // Lote 131: varias líneas por orden — necesita orderNumber y las reglas bien escritas
+  if (v.multiLine) {
+    if (m.multiLineOrder && !seen.has('orderNumber')) issues.push({ path: 'columns', message: m.multiLineOrder })
+    ;(v.lineRules ?? []).forEach((r, i) => {
+      const col = Number(r.position)
+      if (m.ruleColumn && (!Number.isInteger(col) || col < 1 || col > 500)) issues.push({ path: `lineRules.${i}.position`, message: m.ruleColumn(i + 1) })
+      if (m.ruleValue && r.operator !== 'EMPTY' && r.operator !== 'NOT_EMPTY' && !r.value.trim()) issues.push({ path: `lineRules.${i}.value`, message: m.ruleValue(i + 1) })
+    })
+  }
   return issues
 }
 
@@ -114,4 +127,31 @@ export function rowStatus(row: OrderImportRow, confirmed: boolean): RowStatus {
 /** Filas del resultado que no se crearon por un error (las que el usuario debe revisar). */
 export function failedRows(rows: readonly OrderImportRow[] | null | undefined): OrderImportRow[] {
   return (rows ?? []).filter((r) => !r.orderPublicId && !r.skipped)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Lote 131: varias líneas por orden — resumen y problemas de las líneas de una orden de la vista previa
+// ---------------------------------------------------------------------------------------------------------------------
+
+interface PreviewLine {
+  row?: number
+  kind?: string
+  values?: { [key: string]: string }
+  errors?: { [key: string]: string }
+}
+
+/** Cuántas piezas, descripciones y facturas trae la orden (las líneas son de clase PIECE, DESCRIPTION o INVOICE) y el número de la primera factura. */
+export function lineSummary(lines: readonly PreviewLine[] | null | undefined): { pieces: number; descriptions: number; invoice: string | null } | null {
+  if (!lines || lines.length === 0) return null
+  const invoice = lines.find((l) => l.kind === 'INVOICE')
+  return {
+    pieces: lines.filter((l) => l.kind === 'PIECE').length,
+    descriptions: lines.filter((l) => l.kind === 'DESCRIPTION').length,
+    invoice: invoice ? (invoice.values?.clientInvoiceNumber ?? null) : null,
+  }
+}
+
+/** «Fila 7 · N.º de pieza: …» por cada error de cada línea. */
+export function lineProblems(lines: readonly PreviewLine[] | null | undefined, rowLabel: (row: number) => string, label: (field: string) => string): string[] {
+  return (lines ?? []).flatMap((l) => Object.entries(l.errors ?? {}).map(([field, message]) => `${rowLabel(l.row ?? 0)} · ${label(field)}: ${message}`))
 }

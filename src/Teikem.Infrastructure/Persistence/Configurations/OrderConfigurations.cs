@@ -148,6 +148,8 @@ public sealed class ImportTemplateConfiguration : IEntityTypeConfiguration<Impor
         b.Property(t => t.Delimiter).HasColumnType("nchar(1)").HasMaxLength(1).IsRequired();
         b.Property(t => t.ColumnsJson).IsRequired();
         b.Property(t => t.VariantsJson); // Lote 46 (F-B3): NVARCHAR(MAX) NULL
+        b.Property(t => t.MultiLine);    // Lote 131: BIT NOT NULL DEFAULT 0
+        b.Property(t => t.LineRulesJson); // Lote 131: NVARCHAR(MAX) NULL
         b.HasIndex(t => new { t.TenantId, t.Kind, t.Name }).IsUnique().HasDatabaseName("UQ_ImportTemplate");
         b.HasIndex(t => t.PublicId);
         b.HasOne(t => t.Client).WithMany().HasForeignKey(t => t.ClientId);

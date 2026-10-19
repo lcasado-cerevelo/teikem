@@ -99,6 +99,8 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
         if (variants.Count > 0 && req.Columns is { Count: > 0 }) throw new ValidationException("columns", ConsigneeImportVariants.ColumnsInsideVariantsMessage);
         var columns = variants.Count > 0 ? variants[0].Columns : ToColumns(req.Columns);
         ThrowIfErrors(variants.Count > 0 ? ValidateVariants(variants, defaults) : ValidateColumns(kind, columns, defaults));
+        var lineRules = ToLineRules(req.LineRules);
+        ThrowIfErrors(ValidateMultiLine(kind, req.MultiLine, lineRules, columns));
 
         int? clientId = null;
         if (req.ClientPublicId is Guid cpid) clientId = (await db.ResolveClientAsync(cpid, ct)).ClientId;
@@ -117,6 +119,8 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
             ColumnsJson = SerializeColumns(columns, kind),
             DefaultsJson = defaults.Count == 0 ? null : SerializeDefaults(defaults, kind),
             VariantsJson = variants.Count > 0 ? SerializeVariants(variants) : null,
+            MultiLine = req.MultiLine,
+            LineRulesJson = req.MultiLine && lineRules.Count > 0 ? SerializeLineRules(lineRules) : null,
             IsActive = true,
             CreatedAtUtc = DateTime.UtcNow,
         };
@@ -160,6 +164,10 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
                 ? new Dictionary<string, string>(StringComparer.Ordinal)
                 : req.Defaults is null ? ParseDefaults(row.DefaultsJson) : ToDefaults(req.Defaults);
             ThrowIfErrors(variants.Count > 0 ? ValidateVariants(variants, defaults) : ValidateColumns(kind, columns, defaults));
+            // Lote 131: varias líneas por orden y sus reglas (null = sin cambio; apagar MultiLine borra las reglas)
+            var multiLine = req.MultiLine ?? row.MultiLine;
+            var lineRules = !multiLine ? new List<ImportLineRule>() : req.LineRules is null ? ParseLineRules(row.LineRulesJson).ToList() : ToLineRules(req.LineRules);
+            ThrowIfErrors(ValidateMultiLine(kind, multiLine, lineRules, columns));
 
             if (req.Name is not null) row.Name = RequireName(req.Name);
             if (req.Delimiter is not null) row.Delimiter = NormalizeDelimiter(req.Delimiter).ToString();
@@ -171,6 +179,8 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
             EnsureDefaultClientMatches(row.ClientId, row.DefaultClientId);
             if (req.Columns is not null || req.Variants is not null) row.ColumnsJson = SerializeColumns(columns, kind);
             if (req.Variants is not null) row.VariantsJson = variants.Count > 0 ? SerializeVariants(variants) : null;
+            row.MultiLine = multiLine;
+            row.LineRulesJson = multiLine && lineRules.Count > 0 ? SerializeLineRules(lineRules) : null;
             if (req.ClearDefaults == true || req.Defaults is not null) row.DefaultsJson = defaults.Count == 0 ? null : SerializeDefaults(defaults, kind);
             row.UpdatedAtUtc = DateTime.UtcNow;
             await db.SaveGuardedAsync(NameTakenMessage, ct2);
@@ -214,6 +224,36 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
         if (string.IsNullOrWhiteSpace(json)) return Array.Empty<ImportColumn>();
         var items = JsonSerializer.Deserialize<List<ImportTemplateColumnDto>>(json, JsonOptions) ?? new List<ImportTemplateColumnDto>();
         return items.Select(i => new ImportColumn(i.Position, i.Field, i.Part, i.Separator)).ToList();
+    }
+
+    // ---------------------------------------------------------------- Lote 131: varias líneas por orden
+
+    public static IReadOnlyList<ImportLineRule> ParseLineRules(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return Array.Empty<ImportLineRule>();
+        var items = JsonSerializer.Deserialize<List<ImportLineRuleDto>>(json, JsonOptions) ?? new List<ImportLineRuleDto>();
+        return items.Select(i => new ImportLineRule(i.Kind ?? string.Empty, i.Position, i.Operator ?? string.Empty, i.Value)).ToList();
+    }
+
+    public static string SerializeLineRules(IReadOnlyList<ImportLineRule> rules)
+        => JsonSerializer.Serialize(rules.Select(ImportLineRules.Normalize).Select(r => new ImportLineRuleDto(r.Kind, r.Position, r.Operator, r.Value)).ToList(), JsonOptions);
+
+    private static List<ImportLineRule> ToLineRules(IList<ImportLineRuleDto>? rules)
+        => rules is null ? new List<ImportLineRule>() : rules.Where(r => r is not null).Select(r => new ImportLineRule(r.Kind ?? string.Empty, r.Position, r.Operator ?? string.Empty, r.Value)).ToList();
+
+    /// <summary>Solo las plantillas ORDER pueden traer varias líneas por orden; necesitan la columna orderNumber; las reglas solo con MultiLine y bien formadas.</summary>
+    private static IReadOnlyDictionary<string, string> ValidateMultiLine(string kind, bool multiLine, IReadOnlyList<ImportLineRule> rules, IReadOnlyList<ImportColumn> columns)
+    {
+        var errors = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (!multiLine)
+        {
+            if (rules.Count > 0) errors["lineRules"] = ImportLineRules.RulesNeedMultiLineMessage;
+            return errors;
+        }
+        if (kind != ImportKinds.Order) { errors["multiLine"] = "Solo las plantillas de órdenes pueden traer varias líneas por orden."; return errors; }
+        if (!columns.Any(c => string.Equals(c.Field, ImportFields.OrderNumber, StringComparison.OrdinalIgnoreCase))) errors["columns"] = ImportLineRules.NeedsOrderNumberMessage;
+        foreach (var (key, message) in ImportLineRules.Validate(rules)) errors[key.Replace("rules", "lineRules", StringComparison.Ordinal)] = message;
+        return errors;
     }
 
     /// <summary>Lote 46 (F-B3): variantes guardadas (vacío si la plantilla no tiene: una sola variante, ColumnsJson).</summary>
@@ -426,6 +466,8 @@ public sealed class ImportTemplateService(TeikemDbContext db, ITenantContext ten
             defaults.Count == 0 ? null : defaults,
             t.IsActive, t.CreatedAtUtc, t.UpdatedAtUtc,
             defaultClient?.PublicId, defaultClient?.Name,
-            string.IsNullOrWhiteSpace(t.VariantsJson) ? null : ParseVariants(t.VariantsJson).Select(ToVariantDto).ToList());
+            string.IsNullOrWhiteSpace(t.VariantsJson) ? null : ParseVariants(t.VariantsJson).Select(ToVariantDto).ToList(),
+            t.MultiLine,
+            t.MultiLine && !string.IsNullOrWhiteSpace(t.LineRulesJson) ? ParseLineRules(t.LineRulesJson).Select(r => new ImportLineRuleDto(r.Kind, r.Position, r.Operator, r.Value)).ToList() : null);
     }
 }

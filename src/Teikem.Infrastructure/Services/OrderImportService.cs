@@ -105,7 +105,10 @@ public sealed class OrderImportService(
         if (csvRows.Count == 0) throw new ValidationException("content", NoRowsMessage);
 
         var ctx = await LoadContextAsync(client, tenantId, ct);
-        var records = csvRows.Select(r => ValidateRow(r, columns, defaults, ctx)).ToList();
+        var records = template.MultiLine
+            ? BuildMultiLineRecords(csvRows, columns, defaults, ImportTemplateService.ParseLineRules(template.LineRulesJson), ctx)
+            : csvRows.Select(r => ValidateRow(r, columns, defaults, ctx)).ToList();
+        if (template.MultiLine) await CheckExistingPieceNumbersAsync(records, ct);
         CheckDuplicatesWithinFile(records);
         await CheckExistingOrderNumbersAsync(records, client.ClientId, ct);
         await CheckDuplicateInvoicesAsync(records, ctx, scope, ct);
@@ -382,6 +385,154 @@ public sealed class OrderImportService(
         return rec;
     }
 
+    // ================================================================ varias líneas por orden (Lote 131)
+
+    public static string PieceNumberRepeatedMessage(string number, int firstRow) => $"El número de pieza {number} se repite en la fila {firstRow} del archivo.";
+    public static string PieceNumberTakenMessage(string number) => $"El número de pieza {number} ya existe en otra orden.";
+    public const string PieceNumberOnePieceMessage = "Una línea con número de pieza propio lleva una sola pieza.";
+    public const string InvoiceLineNumberMessage = "La línea de factura no trae número.";
+    public const string LinesWithErrorsMessage = "Hay líneas con errores; revise el detalle de la orden.";
+    public static string MoreThanOneInvoiceWarning(string used) => $"La orden trae más de una factura; se usa la primera ({used}).";
+
+    /// <summary>
+    /// Archivo con varias líneas por orden: agrupa las filas por número de orden (en el orden en que aparecen) y arma UN registro por orden.
+    /// Cada línea se clasifica con las reglas de la plantilla (lo que NO es pieza: descripción o factura; todo lo demás es pieza). Los datos de la orden
+    /// salen de la primera celda con contenido de cada columna entre sus líneas (las piezas primero), así que el domicilio puede venir en cualquiera.
+    /// </summary>
+    private static List<ImportRowRecord> BuildMultiLineRecords(IReadOnlyList<CsvRow> csvRows, IReadOnlyList<ImportColumn> columns, IReadOnlyDictionary<string, string> defaults,
+        IReadOnlyList<ImportLineRule> rules, RowContext ctx)
+    {
+        var entries = new List<object>();
+        var groups = new Dictionary<string, List<(CsvRow Row, string Kind, IReadOnlyDictionary<string, string> Values)>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var row in csvRows)
+        {
+            var values = ImportMapping.Map(row.Cells, columns, defaults);
+            if (!values.TryGetValue(ImportFields.OrderNumber, out var key))
+            {
+                var orphan = new ImportRowRecord { Row = row.RowNumber, Line = row.Line, Values = new Dictionary<string, string>(values, StringComparer.Ordinal) };
+                orphan.Errors[ImportFields.OrderNumber] = ImportLineRules.MissingOrderNumberMessage;
+                entries.Add(orphan);
+                continue;
+            }
+            if (!groups.TryGetValue(key, out var list)) { list = new(); groups[key] = list; entries.Add(list); }
+            list.Add((row, ImportLineRules.Classify(row.Cells, rules), values));
+        }
+
+        var pieceNumbers = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var records = new List<ImportRowRecord>();
+        foreach (var entry in entries)
+        {
+            if (entry is ImportRowRecord orphan) { records.Add(orphan); continue; }
+            var lines = (List<(CsvRow Row, string Kind, IReadOnlyDictionary<string, string> Values)>)entry;
+            var ordered = lines.Where(l => l.Kind == ImportLineKinds.Piece).Concat(lines.Where(l => l.Kind != ImportLineKinds.Piece)).ToList();
+            var width = lines.Max(l => l.Row.Cells.Count);
+            var merged = new string[width];
+            for (var j = 0; j < width; j++)
+                merged[j] = ordered.Select(l => j < l.Row.Cells.Count ? l.Row.Cells[j] : null).FirstOrDefault(c => !string.IsNullOrWhiteSpace(c)) ?? string.Empty;
+            var first = lines[0].Row;
+            var rec = ValidateRow(new CsvRow(first.RowNumber, first.Line, merged), columns, defaults, ctx);
+            // el detalle de paquete se valida línea por línea
+            foreach (var f in new[] { ImportFields.PackageType, ImportFields.Pieces, ImportFields.WeightKg, ImportFields.VolumeM3, ImportFields.Description }) rec.Errors.Remove(f);
+
+            var recLines = new List<ImportLineRecord>();
+            var invoices = new List<string>();
+            foreach (var (row, kind, values) in lines)
+            {
+                var line = new ImportLineRecord { Row = row.RowNumber, Kind = kind, Values = new Dictionary<string, string>(values, StringComparer.Ordinal) };
+                switch (kind)
+                {
+                    case ImportLineKinds.Piece: ValidatePieceLine(line, ctx, pieceNumbers); break;
+                    case ImportLineKinds.Invoice:
+                    {
+                        var number = values.GetValueOrDefault(ImportFields.ClientInvoiceNumber) ?? values.GetValueOrDefault(ImportFields.PieceNumber) ?? values.GetValueOrDefault(ImportFields.Description);
+                        if (number is null) line.Errors[ImportFields.ClientInvoiceNumber] = InvoiceLineNumberMessage;
+                        else
+                        {
+                            try
+                            {
+                                var normalized = NumberingRules.EnsureTypedAllowed(NumberKinds.Invoice, ctx.Settings, number);
+                                if (normalized is not null) { line.Values[ImportFields.ClientInvoiceNumber] = normalized; invoices.Add(normalized); }
+                            }
+                            catch (ArgumentException ex) { line.Errors[ImportFields.ClientInvoiceNumber] = ex.Message; }
+                        }
+                        break;
+                    }
+                }
+                recLines.Add(line);
+            }
+            rec.Lines = recLines;
+            if (recLines.All(l => l.Kind != ImportLineKinds.Piece)) rec.Errors["lines"] = ImportLineRules.NoPieceMessage;
+            else if (recLines.Any(l => l.Errors.Count > 0)) rec.Errors["lines"] = LinesWithErrorsMessage;
+            if (invoices.Count > 0)
+            {
+                rec.Values[ImportFields.ClientInvoiceNumber] = invoices[0];
+                rec.Errors.Remove(ImportFields.ClientInvoiceNumber);
+                if (invoices.Distinct(StringComparer.OrdinalIgnoreCase).Count() > 1) rec.Warnings.Add(MoreThanOneInvoiceWarning(invoices[0]));
+            }
+            records.Add(rec);
+        }
+        return records;
+    }
+
+    /// <summary>Línea que es pieza: tipo de paquete, piezas, peso, volumen y número de pieza (label) con las mismas reglas que la captura; el número no se repite en el archivo.</summary>
+    private static void ValidatePieceLine(ImportLineRecord line, RowContext ctx, Dictionary<string, int> pieceNumbers)
+    {
+        string? Get(string field) => line.Values.TryGetValue(field, out var v) ? v : null;
+        void Error(string field, string message) { if (!line.Errors.ContainsKey(field)) line.Errors[field] = message; }
+        if (Get(ImportFields.PackageType) is string pt)
+        {
+            var code = pt.ToUpperInvariant();
+            line.Values[ImportFields.PackageType] = code;
+            if (!ctx.PackageTypes.Contains(code)) Error(ImportFields.PackageType, $"Tipo de paquete desconocido: {code}.");
+        }
+        else if (ctx.TenantRow.DefaultPackageTypeLookupId is null) Error(ImportFields.PackageType, "El tipo de paquete es obligatorio.");
+
+        var pieces = 1;
+        if (Get(ImportFields.Pieces) is string piecesText)
+        {
+            if (ImportMapping.TryParseInt(piecesText, out var p)) pieces = p;
+            else Error(ImportFields.Pieces, "La cantidad de piezas debe ser un número entero.");
+        }
+        decimal? weight = null, volume = null;
+        if (Get(ImportFields.WeightKg) is string w) { if (ImportMapping.TryParseDecimal(w, out var wv)) weight = wv; else Error(ImportFields.WeightKg, "El peso debe ser un número."); }
+        if (Get(ImportFields.VolumeM3) is string v3) { if (ImportMapping.TryParseDecimal(v3, out var vv)) volume = vv; else Error(ImportFields.VolumeM3, "El volumen debe ser un número."); }
+        foreach (var (key, message) in OrderRules.ValidatePackages(new[] { new PackageLineInput(Get(ImportFields.Description), pieces, weight, volume) }, isSpecialDelivery: false, null))
+            Error(key.StartsWith("packages[0].", StringComparison.Ordinal) ? key["packages[0].".Length..] : ImportFields.Pieces, message);
+
+        if (Get(ImportFields.PieceNumber) is string typed)
+        {
+            try
+            {
+                var normalized = NumberingRules.EnsureTypedAllowed(NumberKinds.Package, ctx.Settings, typed);
+                if (normalized is null) line.Values.Remove(ImportFields.PieceNumber);
+                else
+                {
+                    line.Values[ImportFields.PieceNumber] = normalized;
+                    if (pieces != 1) Error(ImportFields.PieceNumber, PieceNumberOnePieceMessage);
+                    else if (pieceNumbers.TryGetValue(normalized, out var firstRow)) Error(ImportFields.PieceNumber, PieceNumberRepeatedMessage(normalized, firstRow));
+                    else pieceNumbers[normalized] = line.Row;
+                }
+            }
+            catch (ArgumentException ex) { Error(ImportFields.PieceNumber, ex.Message); }
+        }
+    }
+
+    /// <summary>Números de pieza (label) que ya existen en la compañía: la línea queda con error y la orden no se crea (no se duplica la pieza).</summary>
+    private async Task CheckExistingPieceNumbersAsync(List<ImportRowRecord> records, CancellationToken ct)
+    {
+        var lines = records.Where(r => r.Lines is not null).SelectMany(r => r.Lines!).Where(l => l.Kind == ImportLineKinds.Piece && l.Values.ContainsKey(ImportFields.PieceNumber)).ToList();
+        if (lines.Count == 0) return;
+        var numbers = lines.Select(l => l.Values[ImportFields.PieceNumber]).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var taken = (await db.OrderPieces.AsNoTracking().Where(p => numbers.Contains(p.PackageNumber)).Select(p => p.PackageNumber).ToListAsync(ct)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (taken.Count == 0) return;
+        foreach (var r in records.Where(r => r.Lines is not null))
+        {
+            foreach (var l in r.Lines!.Where(l => l.Kind == ImportLineKinds.Piece && l.Values.TryGetValue(ImportFields.PieceNumber, out var n) && taken.Contains(n)))
+                l.Errors.TryAdd(ImportFields.PieceNumber, PieceNumberTakenMessage(l.Values[ImportFields.PieceNumber]));
+            if (r.Lines!.Any(l => l.Errors.Count > 0)) r.Errors.TryAdd("lines", LinesWithErrorsMessage);
+        }
+    }
+
     private static decimal? ParseDecimal(ImportRowRecord rec, string field, string message)
     {
         if (!rec.Values.TryGetValue(field, out var text)) return null;
@@ -587,6 +738,26 @@ public sealed class OrderImportService(
     }
 
     /// <summary>Mismo request que POST /orders: cada fila se crea con el comportamiento de la captura (numeración, consignatario, R36).</summary>
+    /// <summary>
+    /// Líneas del archivo → líneas de carga: cada línea que es pieza es una línea con su número de label (PackageNumber); la descripción de la línea es la suya o, si
+    /// no trae, las descripciones de la orden (las líneas de descripción no son piezas, no llevan label y no tocan el índice único). La factura ya viajó como ClientInvoiceNumber.
+    /// </summary>
+    private static List<OrderPackageLineRequest> MultiLinePackages(IReadOnlyList<ImportLineRecord> lines)
+    {
+        var descriptions = string.Join("; ", lines.Where(l => l.Kind == ImportLineKinds.Description)
+            .Select(l => l.Values.GetValueOrDefault(ImportFields.Description) ?? l.Values.GetValueOrDefault(ImportFields.PieceNumber))
+            .Where(d => !string.IsNullOrWhiteSpace(d)).Distinct(StringComparer.OrdinalIgnoreCase));
+        return lines.Where(l => l.Kind == ImportLineKinds.Piece).Select(l =>
+        {
+            string? Get(string f) => l.Values.TryGetValue(f, out var v) ? v : null;
+            var pieces = ImportMapping.TryParseInt(Get(ImportFields.Pieces), out var p) ? p : 1;
+            decimal? weight = ImportMapping.TryParseDecimal(Get(ImportFields.WeightKg), out var w) ? w : null;
+            decimal? volume = ImportMapping.TryParseDecimal(Get(ImportFields.VolumeM3), out var v3) ? v3 : null;
+            var description = Get(ImportFields.Description) ?? (descriptions.Length > 0 ? descriptions : null);
+            return new OrderPackageLineRequest(Get(ImportFields.PackageType), description, pieces, weight, volume, Get(ImportFields.PieceNumber));
+        }).ToList();
+    }
+
     private static OrderCreateRequest ToOrderRequest(ImportRowRecord r, Client client, bool confirmDuplicateInvoice)
     {
         string? Get(string field) => r.Values.TryGetValue(field, out var v) ? v : null;
@@ -629,7 +800,7 @@ public sealed class OrderImportService(
             PickupLocationPublicId: null,
             ServiceType: Get(ImportFields.ServiceType),
             Priority: null,
-            Packages: new List<OrderPackageLineRequest>
+            Packages: r.Lines is { Count: > 0 } ? MultiLinePackages(r.Lines) : new List<OrderPackageLineRequest>
             {
                 new(PackageType: Get(ImportFields.PackageType), Description: Get(ImportFields.Description), Pieces: pieces, WeightKg: weight, VolumeM3: volume),
             },

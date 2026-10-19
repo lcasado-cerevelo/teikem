@@ -64,6 +64,9 @@ export function ImportTemplateEditorModal({ kind = 'CONSIGNEE', template, fields
                 repeated: (field) => tr('orders.import.errors.repeated', { field }),
                 noDefault: (field) => tr('orders.import.errors.noDefault', { field }),
                 defaultValueRequired: (field) => tr('orders.import.errors.defaultValueRequired', { field: fieldLabel(field) }),
+                multiLineOrder: tr('orders.import.errors.multiLineOrder'),
+                ruleColumn: (n) => tr('orders.import.errors.ruleColumn', { n }),
+                ruleValue: (n) => tr('orders.import.errors.ruleValue', { n }),
               }),
           )
         : templateSchema(
@@ -82,9 +85,15 @@ export function ImportTemplateEditorModal({ kind = 'CONSIGNEE', template, fields
           ),
     [tr, isOrder, fields, fieldLabel],
   )
-  const form = useForm({ resolver: zodResolver(schema), values: templateValuesOf(template) })
+  const initial = useMemo(() => {
+    const v = templateValuesOf(template)
+    return isOrder ? { ...v, multiLine: v.multiLine ?? false, lineRules: v.lineRules ?? [] } : v
+  }, [template, isOrder])
+  const form = useForm({ resolver: zodResolver(schema), values: initial })
   const columns = useFieldArray({ control: form.control, name: 'columns' })
   const defaults = useFieldArray({ control: form.control, name: 'defaults' })
+  const lineRules = useFieldArray({ control: form.control, name: 'lineRules' })
+  const multiLine = form.watch('multiLine') === true
 
   // tras un intento de guardar, el error de la lista completa («Indique al menos una columna», name y line1, ciudad…) se
   // vuelve a evaluar con cada cambio de columnas o valores por defecto; si no, se queda en pantalla aunque ya esté corregido
@@ -136,7 +145,7 @@ export function ImportTemplateEditorModal({ kind = 'CONSIGNEE', template, fields
         form={form}
         onSubmit={async (v) => {
           const saved = template?.publicId
-            ? await save.mutateAsync({ action: 'update', publicId: template.publicId, body: buildTemplatePatch(v) })
+            ? await save.mutateAsync({ action: 'update', publicId: template.publicId, body: buildTemplatePatch(v, template.multiLine === true) })
             : await save.mutateAsync({ action: 'create', body: buildTemplateCreate(v) })
           toast.success(t(isNew ? 'consignees.import.tplCreated' : 'consignees.import.tplUpdated', { name: saved.name ?? '' }))
           onSaved(saved)
@@ -215,6 +224,44 @@ export function ImportTemplateEditorModal({ kind = 'CONSIGNEE', template, fields
         <button type="button" className="btn sm" onClick={() => defaults.append({ field: '', value: '' })}>
           <IconPlus /> {t('consignees.import.addDefault')}
         </button>
+
+        {isOrder && (
+          <>
+            <h3 className="cs-sub">{t('consignees.import.multiLine')}</h3>
+            <Field name="multiLine" label={t('consignees.import.multiLine')} hideLabel>
+              <Toggle text={t('consignees.import.multiLine')} />
+            </Field>
+            <p className="help">{t('consignees.import.multiLineHelp')}</p>
+            {multiLine && (
+              <>
+                <h4 className="cs-sub">{t('consignees.import.rulesTitle')}</h4>
+                <p className="help">{t('consignees.import.rulesHelp')}</p>
+                {lineRules.fields.map((r, i) => (
+                  <div className="cs-default cs-rule" key={r.id}>
+                    <Field name={`lineRules.${i}.kind`} label={t('consignees.import.ruleKind', { n: i + 1 })} hideLabel>
+                      <Select options={['DESCRIPTION', 'INVOICE'].map((k) => ({ value: k, label: t(`consignees.import.lineKinds.${k}`) }))} />
+                    </Field>
+                    <Field name={`lineRules.${i}.position`} label={t('consignees.import.ruleColumn', { n: i + 1 })} hideLabel>
+                      <TextInput maxLength={3} inputMode="numeric" placeholder={t('consignees.import.colHeader')} />
+                    </Field>
+                    <Field name={`lineRules.${i}.operator`} label={t('consignees.import.ruleOperator', { n: i + 1 })} hideLabel>
+                      <Select options={['EQUALS', 'IN', 'CONTAINS', 'NOT_EMPTY', 'EMPTY'].map((o) => ({ value: o, label: t(`consignees.import.lineOperators.${o}`) }))} />
+                    </Field>
+                    <Field name={`lineRules.${i}.value`} label={t('consignees.import.ruleValue', { n: i + 1 })} hideLabel>
+                      <TextInput maxLength={200} placeholder={t('consignees.import.defaultValuePlaceholder')} />
+                    </Field>
+                    <button type="button" className="rowbtn" title={t('consignees.import.removeRuleN', { n: i + 1 })} aria-label={t('consignees.import.removeRuleN', { n: i + 1 })} onClick={() => lineRules.remove(i)}>
+                      <IconTrash />
+                    </button>
+                  </div>
+                ))}
+                <button type="button" className="btn sm" onClick={() => lineRules.append({ kind: 'DESCRIPTION', position: '', operator: 'EQUALS', value: '' })}>
+                  <IconPlus /> {t('consignees.import.addRule')}
+                </button>
+              </>
+            )}
+          </>
+        )}
       </Form>
     </Modal>
   )

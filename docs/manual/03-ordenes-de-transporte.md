@@ -646,6 +646,31 @@ Cómo se usa: `POST /api/v1/orders/import/{batchPublicId}/discard`.
 
 ---
 
+### 7.5 Archivos con varias líneas por orden (Lote 131; para cualquier cliente)
+
+> Dictado de Luis (2026-10-19). Hay clientes (AxisCare es el primero) cuyo archivo trae **varias líneas por orden** y **no todas son piezas**: unas son el bulto físico con su label pegado, otras describen lo que se envía (p. ej. «dron», «equipo») y otra es la **factura**. El mapeo de la plantilla dice **qué NO es pieza**; **todo lo demás es pieza** (puede haber varias por orden).
+
+**Cómo se configura (sin programar):** en la plantilla de órdenes (Órdenes → Importar → Nueva plantilla o Editar) se enciende **«El archivo trae varias líneas por orden»** y se agregan **reglas de línea**: *si la columna N [está vacía / trae algo / es igual a / contiene / es una de (separe con |)] «valor», la línea es una **Descripción** o una **Factura***. Cualquiera de las reglas basta y la primera que se cumple manda; si ninguna aplica, la línea es **pieza**. Los textos se comparan sin acentos ni mayúsculas. API: `multiLine` y `lineRules: [{kind: DESCRIPTION|INVOICE, position, operator: EMPTY|NOT_EMPTY|EQUALS|CONTAINS|IN, value}]` en `POST/PATCH /api/v1/import-templates` (`orders.edit`).
+
+**Qué se hace con cada clase de línea:**
+| Clase | Qué es | Dónde queda |
+|---|---|---|
+| Pieza | el bulto físico | una línea de carga con su número de label (campo **N.º de pieza (label)**, `pieceNumber` = su `PackageNumber`, único en la compañía) y sus datos (tipo de paquete, peso, volumen) |
+| Descripción | lo que se envía (no es un bulto) | la **descripción de las líneas de carga** de la orden (si la pieza no trae la suya); sin pieza, sin label, sin tocar el índice único |
+| Factura | la factura del cliente | `ClientInvoiceNumber` de la orden (su número sale de la columna de factura mapeada o, si no, del label de esa línea) |
+
+**Cómo se arma la orden:** las filas con el **mismo número de orden** son UNA orden (el número lo trae el archivo: el cliente debe numerar sus órdenes, `clientAssignsOrderNumber`; la factura, `clientAssignsInvoiceNumber`). Los datos de la orden (consignatario, dirección, servicio, COD…) salen de la primera celda con contenido de cada columna entre sus líneas, así que el domicilio puede venir en cualquiera. La vista previa muestra **una fila por orden** con su resumen («2 pieza(s) · 1 descripción(es) · factura INV-1») y los errores de cada línea («Fila 7 · N.º de pieza (label): …»).
+
+**Validaciones (mensaje exacto; la orden queda con error y no se crea, el resto del archivo sí):**
+- «La orden no trae ninguna pieza (todas sus líneas son descripción o factura).» (al menos una pieza por orden).
+- «La línea no trae número de orden; en un archivo con varias líneas por orden todas lo necesitan.»
+- «El número de pieza X se repite en la fila N del archivo.» · «El número de pieza X ya existe en otra orden.» (la pieza no se duplica) · «Una línea con número de pieza propio lleva una sola pieza.»
+- «La línea de factura no trae número.» Una orden con más de una factura usa la primera y avisa.
+- Las descripciones y las facturas repetidas **no** cuentan como duplicado; solo el número de cada pieza es único.
+- Al guardar la plantilla (400): «Un archivo con varias líneas por orden necesita la columna orderNumber en la plantilla.» · «Las reglas de línea solo se usan en una plantilla con varias líneas por orden.» · «Clase de línea desconocida: X. Use DESCRIPTION o INVOICE.» · «Condición desconocida: X. Use EMPTY, NOT_EMPTY, EQUALS, CONTAINS o IN.» · «La condición X necesita un valor.» · «Máximo 20 reglas.»
+
+**Decidido:** no existe un campo `ClientLabelNumber` en la pieza (el label del bulto es su `PackageNumber`). Una línea que es pieza es una línea de carga de 1 pieza con su label; sin label, la fila con `pieces` N crea N piezas numeradas por Teikem.
+
 ## 8. Permisos y módulos
 
 | Permiso | Qué habilita |

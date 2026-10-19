@@ -31885,6 +31885,7 @@ export interface components {
             orderStatus?: string | null;
             error?: string | null;
             skipped?: boolean;
+            lines?: components["schemas"]["ImportLineDto"][] | null;
         };
         ImportTemplateColumnDto: {
             /** Format: int32 */
@@ -31908,6 +31909,8 @@ export interface components {
             /** Format: uuid */
             defaultClientPublicId?: string | null;
             variants?: components["schemas"]["ImportTemplateVariantDto"][] | null;
+            multiLine?: boolean;
+            lineRules?: components["schemas"]["ImportLineRuleDto"][] | null;
         };
         ImportTemplateDto: {
             /** Format: int32 */
@@ -31934,6 +31937,8 @@ export interface components {
             defaultClientPublicId?: string | null;
             defaultClientName?: string | null;
             variants?: components["schemas"]["ImportTemplateVariantDto"][] | null;
+            multiLine?: boolean;
+            lineRules?: components["schemas"]["ImportLineRuleDto"][] | null;
         };
         ImportTemplatePatchRequest: {
             name?: string | null;
@@ -31951,6 +31956,8 @@ export interface components {
             defaultClientPublicId?: string | null;
             clearDefaultClient?: boolean | null;
             variants?: components["schemas"]["ImportTemplateVariantDto"][] | null;
+            multiLine?: boolean | null;
+            lineRules?: components["schemas"]["ImportLineRuleDto"][] | null;
         };
         ImportValidateRequest: {
             /** Format: uuid */
@@ -39793,6 +39800,24 @@ export interface components {
             assigned?: number;
             /** Format: int32 */
             unresolved?: number;
+        };
+        ImportLineDto: {
+            /** Format: int32 */
+            row?: number;
+            kind?: string | null;
+            values?: {
+                [key: string]: string;
+            } | null;
+            errors?: {
+                [key: string]: string;
+            } | null;
+        };
+        ImportLineRuleDto: {
+            kind?: string | null;
+            /** Format: int32 */
+            position?: number;
+            operator?: string | null;
+            value?: string | null;
         };
     };
     responses: never;

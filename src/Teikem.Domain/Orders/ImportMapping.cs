@@ -53,11 +53,13 @@ public static class ImportFields
     public const string RequestedDate = "requestedDate";
     public const string Notes = "notes";
     public const string Reference = "reference";
+    /// <summary>Lote 131: número de label del bulto (su PackageNumber), único por compañía; solo tiene sentido en una línea que es pieza.</summary>
+    public const string PieceNumber = "pieceNumber";
 
     public static readonly IReadOnlyList<string> All =
     [
         OrderNumber, ClientInvoiceNumber, ServiceType, ConsigneeName, ConsigneeCode, Line1, Line2, City, State, PostalCode,
-        Country, ContactPhone, PackageType, Pieces, WeightKg, VolumeM3, Description, CodAmount, RequestedDate, Notes, Reference,
+        Country, ContactPhone, PackageType, Pieces, WeightKg, VolumeM3, Description, CodAmount, RequestedDate, Notes, Reference, PieceNumber,
     ];
 
     /// <summary>
@@ -65,7 +67,7 @@ public static class ImportFields
     /// plantillas no los ofrece como valor por defecto, porque repetirían el mismo valor en todas las filas del archivo.
     /// Es una guía para la pantalla (GET /import-templates/fields); el servidor de plantillas no los rechaza.
     /// </summary>
-    public static readonly IReadOnlySet<string> NoDefault = new HashSet<string>(StringComparer.Ordinal) { OrderNumber, ClientInvoiceNumber, ConsigneeName };
+    public static readonly IReadOnlySet<string> NoDefault = new HashSet<string>(StringComparer.Ordinal) { OrderNumber, ClientInvoiceNumber, ConsigneeName, PieceNumber };
 
     /// <summary>Nombre canónico (camelCase del catálogo) o null si el campo no existe.</summary>
     public static string? Canonical(string? field)

@@ -30,6 +30,8 @@ import {
   confirmSignature,
   DEFAULT_IMPORT_OPTIONS,
   failedRows,
+  lineProblems,
+  lineSummary,
   orderStandardTemplateRequest,
   rowStatus,
   type ImportOptions,
@@ -487,6 +489,8 @@ export function OrderImportModal({ defaultClient = '', onClose }: OrderImportMod
                 <tbody>
                   {shownRows.map((r) => {
                     const p = rowProblems(r, fieldLabel)
+                    const summary = lineSummary(r.lines)
+                    const lineErrors = lineProblems(r.lines, (n) => t('orders.import.rowN', { n }), fieldLabel)
                     return (
                       <tr key={r.row} className={r.isValid ? undefined : 'cs-badrow'}>
                         <td className="mono">{r.line ?? r.row}</td>
@@ -496,7 +500,17 @@ export function OrderImportModal({ defaultClient = '', onClose }: OrderImportMod
                         ))}
                         <td>{consigneeCell(r)}</td>
                         <td className="cs-remarks">
+                          {summary && (
+                            <span className="cs-lines">
+                              {t('orders.import.linesSummary', { pieces: summary.pieces, descriptions: summary.descriptions, invoice: summary.invoice ? t('orders.import.linesInvoice', { number: summary.invoice }) : '' })}
+                            </span>
+                          )}
                           {p.errors.map((m) => (
+                            <span key={m} className="cs-err">
+                              {m}
+                            </span>
+                          ))}
+                          {lineErrors.map((m) => (
                             <span key={m} className="cs-err">
                               {m}
                             </span>
@@ -506,7 +520,7 @@ export function OrderImportModal({ defaultClient = '', onClose }: OrderImportMod
                               {m}
                             </span>
                           ))}
-                          {p.errors.length + p.warnings.length === 0 && '—'}
+                          {p.errors.length + lineErrors.length + p.warnings.length === 0 && !summary && '—'}
                         </td>
                       </tr>
                     )

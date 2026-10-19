@@ -26,6 +26,9 @@ public sealed record ImportVariantConditionDto(int Position, string Operator, st
 /// </summary>
 public sealed record ImportTemplateVariantDto(string? Name, IReadOnlyList<ImportVariantConditionDto>? Conditions, IReadOnlyList<ImportTemplateColumnDto> Columns);
 
+/// <summary>Lote 131: regla de línea de un archivo con varias líneas por orden (Kind DESCRIPTION o INVOICE; si la celda de la columna Position cumple la condición, la línea no es pieza).</summary>
+public sealed record ImportLineRuleDto(string Kind, int Position, string Operator, string? Value = null);
+
 /// <summary>
 /// Plantilla reutilizable. ClientPublicId null = plantilla general del tenant (sirve para cualquier cliente). DefaultClientPublicId
 /// (Lote 45): cliente que la importación propone por defecto («todo el archivo es de X»); no limita el uso de la plantilla.
@@ -46,7 +49,9 @@ public sealed record ImportTemplateDto(
     DateTime? UpdatedAtUtc,
     Guid? DefaultClientPublicId = null,
     string? DefaultClientName = null,
-    IReadOnlyList<ImportTemplateVariantDto>? Variants = null);
+    IReadOnlyList<ImportTemplateVariantDto>? Variants = null,
+    bool MultiLine = false,
+    IReadOnlyList<ImportLineRuleDto>? LineRules = null);
 
 /// <summary>
 /// Alta de plantilla. Columns: posiciones únicas &gt;= 1 y campos del catálogo (al menos consigneeName o consigneeCode y
@@ -61,7 +66,9 @@ public sealed record ImportTemplateCreateRequest(
     bool HasHeader = true,
     string? Kind = null,
     Guid? DefaultClientPublicId = null,
-    IList<ImportTemplateVariantDto>? Variants = null);
+    IList<ImportTemplateVariantDto>? Variants = null,
+    bool MultiLine = false,
+    IList<ImportLineRuleDto>? LineRules = null);
 
 /// <summary>
 /// Edición parcial: null = sin cambio. Columns/Defaults reemplazan la lista completa; ClearDefaults borra los defaults; MakeGeneral quita el cliente.
@@ -80,7 +87,9 @@ public sealed record ImportTemplatePatchRequest(
     bool? HasHeader = null,
     Guid? DefaultClientPublicId = null,
     bool? ClearDefaultClient = null,
-    IList<ImportTemplateVariantDto>? Variants = null);
+    IList<ImportTemplateVariantDto>? Variants = null,
+    bool? MultiLine = null,
+    IList<ImportLineRuleDto>? LineRules = null);
 
 // ---------------------------------------------------------------- lotes (validar → confirmar)
 
@@ -107,7 +116,11 @@ public sealed record ImportRowDto(
     string? OrderNumber,
     string? OrderStatus,
     string? Error,
-    bool Skipped);
+    bool Skipped,
+    IReadOnlyList<ImportLineDto>? Lines = null);
+
+/// <summary>Lote 131: una línea del archivo dentro de su orden (Kind: PIECE, DESCRIPTION o INVOICE; Row = fila del archivo; sus propios errores).</summary>
+public sealed record ImportLineDto(int Row, string Kind, IReadOnlyDictionary<string, string> Values, IReadOnlyDictionary<string, string> Errors);
 
 /// <summary>Vista previa del lote (resultado de validar y de GET del lote). Created/Failed solo tras confirmar.</summary>
 public sealed record ImportPreviewDto(
@@ -174,9 +187,21 @@ public sealed class ImportRowRecord
     public string? OrderStatus { get; set; }
     public string? Error { get; set; }
     public bool? Skipped { get; set; }
+    /// <summary>Lote 131: las líneas del archivo de esta orden (solo plantillas con varias líneas por orden).</summary>
+    public List<ImportLineRecord>? Lines { get; set; }
 
     [JsonIgnore] public bool IsValid => Errors.Count == 0;
 
     public ImportRowDto ToDto() => new(Row, Line, Values, Consignee is null ? null : new ImportConsigneeDto(Consignee.Action, Consignee.Name, Consignee.LocationPublicId),
-        Errors, Warnings, IsValid, OrderPublicId, OrderNumber, OrderStatus, Error, Skipped == true);
+        Errors, Warnings, IsValid, OrderPublicId, OrderNumber, OrderStatus, Error, Skipped == true,
+        Lines?.Select(l => new ImportLineDto(l.Row, l.Kind, l.Values, l.Errors)).ToList());
+}
+
+/// <summary>Lote 131: línea del archivo guardada en RowsJson (sus valores mapeados y sus errores).</summary>
+public sealed class ImportLineRecord
+{
+    public int Row { get; set; }
+    public string Kind { get; set; } = Teikem.Domain.Orders.ImportLineKinds.Piece;
+    public Dictionary<string, string> Values { get; set; } = new(StringComparer.Ordinal);
+    public Dictionary<string, string> Errors { get; set; } = new(StringComparer.Ordinal);
 }

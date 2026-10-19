@@ -432,3 +432,4 @@ L126. [L126 — Procesar entregas: la factura del cliente (web del personal)](fr
 L127. [L127 — Comprobante de entrega: firma y fotos (web del personal)](frontend/l127-anejos-comprobante.md): miniaturas, agregar y quitar; con capturas.
 L129. [L129 — Niveles de zona: Isla y Metro (web del personal)](frontend/l129-nivel-de-zona.md): niveles con chofer por omisión, zonas con nivel, ficha y filtros de órdenes; con capturas.
 L130. [L130 — Campos personalizados en la búsqueda (web del personal)](frontend/l130-campos-en-busqueda.md): filtro del tipo del campo en las listas; con capturas.
+L131. [L131 — Archivos con varias líneas por orden (web del personal)](frontend/l131-lineas-por-orden.md): reglas de línea de la plantilla de órdenes y vista previa con las líneas; con capturas.

@@ -4749,3 +4749,14 @@ WHEN NOT MATCHED THEN
     INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
     VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
 GO
+
+/* =========================================================================
+   2026-10-19 (bi) — Lote 131 (P11): archivos con VARIAS líneas por orden (caso AxisCare, para cualquier cliente). La plantilla de órdenes gana MultiLine (agrupa las filas por número de orden)
+   y LineRulesJson (reglas que dicen qué líneas NO son pieza: descripción o factura; todo lo demás es pieza). Solo AGREGA. Idempotente.
+   ========================================================================= */
+IF COL_LENGTH('dbo.ImportTemplate', 'MultiLine') IS NULL
+    ALTER TABLE dbo.ImportTemplate ADD MultiLine BIT NOT NULL CONSTRAINT DF_ImportTemplate_MultiLine DEFAULT 0;
+GO
+IF COL_LENGTH('dbo.ImportTemplate', 'LineRulesJson') IS NULL
+    ALTER TABLE dbo.ImportTemplate ADD LineRulesJson NVARCHAR(MAX) NULL;
+GO
