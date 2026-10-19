@@ -26,3 +26,9 @@
 .ret-window{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;margin:12px 16px 16px}
 .ret-window .f{margin:0;min-width:0;flex:1 1 260px}
 .ret-window .help,.ret-window .ferr{flex-basis:100%;margin:0}
+/* Lote 126: tipo de hojas y advertencias */
+.cod-mode{border:1px solid var(--line);border-radius:12px;padding:8px 12px 10px;margin:0 0 12px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
+.cod-mode legend{font-weight:600;font-size:13px;padding:0 4px}
+.cod-mode-opt{display:inline-flex;align-items:center;gap:6px;font-size:13px}
+.cod-mode .help{flex-basis:100%;margin:2px 0 0}
+.cod-warnings{margin:8px 0 0;padding:8px 12px 8px 28px;border:1px solid var(--warn,#d97706);border-radius:10px;background:color-mix(in srgb,var(--warn,#d97706) 10%,var(--panel));font-size:13px}

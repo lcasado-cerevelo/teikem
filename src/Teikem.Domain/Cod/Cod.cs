@@ -47,6 +47,13 @@ public static class CodReconcileResults
     public const string NothingCollected = "NOTHING_COLLECTED";
     /// <summary>El mismo código ya venía antes en esta corrida (la misma hoja dos veces).</summary>
     public const string Duplicate = "DUPLICATE";
+    // Lote 126 — procesamiento de la factura del cliente (orden SIN COD): el «second check» de la factura contra la orden entregada.
+    /// <summary>La factura quedó procesada (cotejada) contra su orden entregada (con dryRun: se procesaría).</summary>
+    public const string InvoiceChecked = "INVOICE_CHECKED";
+    /// <summary>La orden existe pero todavía no se entregó: la factura se procesa cuando se entregue.</summary>
+    public const string NotDelivered = "NOT_DELIVERED";
+    /// <summary>La factura de esa orden ya se había procesado antes (otra corrida).</summary>
+    public const string AlreadyProcessed = "ALREADY_PROCESSED";
     public static readonly string[] All = { Reconciled, AlreadyReconciled, NotFound, Ambiguous, NoCod, NothingCollected, Duplicate };
 }
 
@@ -107,8 +114,42 @@ public class CodReconcileItem
     public int Collections { get; set; }
 }
 
+/// <summary>Lote 126: de qué son las hojas que se suben, según quien las sube. AUTO = el sistema clasifica cada orden (con COD → hoja de COD; sin COD → factura) sin advertir; los demás advierten si lo que vino no es lo esperado.</summary>
+public static class CodReconcileModes
+{
+    public const string Auto = "AUTO", Cod = "COD", Invoice = "INVOICE", Both = "BOTH";
+    public static readonly string[] All = { Auto, Cod, Invoice, Both };
+    /// <summary>Normaliza (vacío = AUTO); devuelve null si no es un modo válido.</summary>
+    public static string? Normalize(string? mode)
+    {
+        var m = (mode ?? string.Empty).Trim().ToUpperInvariant();
+        if (m.Length == 0) return Auto;
+        return All.Contains(m) ? m : null;
+    }
+}
+
+/// <summary>Lote 126: qué resultó ser cada hoja: de COD (la orden tiene COD) o de factura (la orden no tiene COD).</summary>
+public static class CodReconcileKinds
+{
+    public const string Cod = "COD", Invoice = "INVOICE";
+}
+
+/// <summary>Lote 126: advertencias de una corrida según el modo elegido (informativas: lo leído se procesa igual).</summary>
+public static class CodReconcileWarnings
+{
+    /// <summary>Dijo COD y vinieron hojas de órdenes sin COD (se cotejaron como facturas).</summary>
+    public const string NotCodSheets = "NOT_COD_SHEETS";
+    /// <summary>Dijo Facturas y vinieron hojas de órdenes con COD (se cuadraron como COD).</summary>
+    public const string CodSheets = "COD_SHEETS";
+    /// <summary>Dijo Ambos y no vino ninguna hoja de factura (órdenes sin COD).</summary>
+    public const string NoInvoiceSheets = "NO_INVOICE_SHEETS";
+    /// <summary>Dijo Ambos y no vino ninguna hoja de COD.</summary>
+    public const string NoCodSheets = "NO_COD_SHEETS";
+}
+
 public static class CodRules
 {
+    public const string ModeInvalid = "El tipo de hojas debe ser AUTO, COD, INVOICE o BOTH.";
     public const int MaxCodeLength = 80;
     public const int MaxCodesPerRun = 2000;
     public const int MaxSourceLength = 300;

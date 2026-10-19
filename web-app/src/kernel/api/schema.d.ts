@@ -29270,6 +29270,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/contracts/{publicId}/invoice-check-fee": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["InvoiceCheckFeeRequest"];
+                    "text/json": components["schemas"]["InvoiceCheckFeeRequest"];
+                    "application/*+json": components["schemas"]["InvoiceCheckFeeRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ContractDetailDto"];
+                        "application/json": components["schemas"]["ContractDetailDto"];
+                        "text/json": components["schemas"]["ContractDetailDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -30065,6 +30110,7 @@ export interface components {
             isActive?: boolean;
             rowVersion?: string | null;
             returnFee?: components["schemas"]["ReturnFeeDto"];
+            invoiceCheckFee?: components["schemas"]["InvoiceCheckFeeDto"];
         };
         ContractPatchRequest: {
             title?: string | null;
@@ -32496,6 +32542,9 @@ export interface components {
             failedAttempts?: number | null;
             suggestReturn?: boolean | null;
             returnOfOrderNumber?: string | null;
+            /** Format: date-time */
+            invoiceProcessedAtUtc?: string | null;
+            invoiceProcessedByName?: string | null;
         };
         OrderListItemDto: {
             /** Format: int32 */
@@ -37816,6 +37865,8 @@ export interface components {
             createdAtUtc?: string;
             createdByName?: string | null;
             items?: components["schemas"]["CodReconcileItemDto"][] | null;
+            /** Format: int32 */
+            checked?: number;
         };
         CodReconcileItemDto: {
             code?: string | null;
@@ -37833,6 +37884,7 @@ export interface components {
             reconciled?: number;
             /** Format: int32 */
             collections?: number;
+            kind?: string | null;
         };
         CodCollectionRequest: {
             method?: string | null;
@@ -37855,6 +37907,9 @@ export interface components {
             /** Format: int32 */
             issues?: number;
             items?: components["schemas"]["CodReconcileItemDto"][] | null;
+            /** Format: int32 */
+            checked?: number;
+            warnings?: string[] | null;
         };
         CodReconcileRequest: {
             codes?: components["schemas"]["CodReconcileCode"][] | null;
@@ -37862,6 +37917,7 @@ export interface components {
             dryRun?: boolean | null;
             /** Format: uuid */
             clientPublicId?: string | null;
+            mode?: string | null;
         };
         CodOrderListItemDto: {
             /** Format: uuid */
@@ -39336,6 +39392,16 @@ export interface components {
             /** Format: date-time */
             lastLoginUtc?: string | null;
             isActive?: boolean;
+        };
+        InvoiceCheckFeeDto: {
+            enabled?: boolean;
+            /** Format: double */
+            amount?: number | null;
+        };
+        InvoiceCheckFeeRequest: {
+            enabled?: boolean | null;
+            /** Format: double */
+            amount?: number | null;
         };
     };
     responses: never;

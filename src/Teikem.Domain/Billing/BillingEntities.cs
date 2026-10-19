@@ -12,6 +12,8 @@ public static class BillingCodes
     public const string InvoiceStatusDomain = "InvoiceStatus";
     public const string RunStatusDomain = "BillingRunStatus";
     public const string ChargeTypeDomain = "ChargeType";
+    /// <summary>Lote 126: tipo de cargo del cotejo de la factura del cliente (cuando el contrato lo cobra).</summary>
+    public const string InvoiceCheck = "INVOICE_CHECK";
     public const string PaymentMethodDomain = "PaymentMethod";
     /// <summary>Tipo de cargo de la venta de producto (sembrado en el seed original).</summary>
     public const string ProductSale = "PRODUCT_SALE";

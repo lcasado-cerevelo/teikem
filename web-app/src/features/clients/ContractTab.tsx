@@ -9,6 +9,7 @@ import { useCan } from '../../kernel/access'
 import { StatusHistory, StatusPipeline, useLookups } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
 import { DateInput, Field, Form, NumberInput, Select, TextArea, TextInput, Toggle, toast } from '../../kernel/ui'
+import { InvoiceCheckFeeSection } from './InvoiceCheckFeeSection'
 import { ReturnFeeSection } from './ReturnFeeSection'
 import { contractKeys, useBillingMutations, useTransitionContract, useUpdateContract } from './contractApi'
 import {
@@ -231,6 +232,9 @@ export function ContractTab({ contract, clientPublicId }: { contract: ContractDe
 
       <h3 className="cl-ctr-h">{t('clients.contracts.returnFee.title')}</h3>
       <ReturnFeeSection contract={contract} clientPublicId={clientPublicId} canWrite={canWrite} />
+
+      <h3 className="cl-ctr-h">{t('clients.contracts.invoiceCheck.title')}</h3>
+      <InvoiceCheckFeeSection contract={contract} clientPublicId={clientPublicId} canWrite={canWrite} />
 
       <h3 className="cl-ctr-h">{t('status.history')}</h3>
       <StatusHistory entityType={CONTRACT_ENTITY_TYPE} entityId={contract.id} domain={CONTRACT_STATUS_DOMAIN} />

@@ -4650,3 +4650,17 @@ IF COL_LENGTH('dbo.Contract', 'BillInvoiceCheck') IS NULL ALTER TABLE dbo.Contra
 GO
 IF COL_LENGTH('dbo.Contract', 'InvoiceCheckFee') IS NULL ALTER TABLE dbo.Contract ADD InvoiceCheckFee DECIMAL(14,2) NULL;
 GO
+
+/* =========================================================================
+   2026-10-18 (be) — Lote 126: tipo de cargo «Cotejo de factura» (INVOICE_CHECK) para la línea de factura que cobra el procesamiento de la factura del cliente cuando el contrato
+   lo tiene encendido (Contract.BillInvoiceCheck / InvoiceCheckFee). Solo datos. Idempotente.
+   ========================================================================= */
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'INVOICE_CHECK', N'{"es":"Cotejo de factura","en":"Invoice check"}', 9)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'ChargeType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'ChargeType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO

@@ -23,6 +23,11 @@ public sealed record ReturnFeeTypeDto(string PackageType, string PackageTypeLabe
 /// <summary>Mode vacío o nulo = sin cargo por devolución. Amount para ORDER y PIECE; ByType para PACKAGE_TYPE (la lista se reemplaza completa).</summary>
 public sealed record ReturnFeeRequest(string? Mode, decimal? Amount, IList<ReturnFeeTypeAmount>? ByType);
 
+/// <summary>Lote 126: cobro del cotejo de la factura del cliente (Enabled y monto por factura procesada).</summary>
+public sealed record InvoiceCheckFeeDto(bool Enabled, decimal? Amount);
+
+public sealed record InvoiceCheckFeeRequest(bool? Enabled, decimal? Amount);
+
 public sealed record ReturnFeeTypeAmount(string PackageType, decimal Amount);
 
 public sealed record ServiceLevelDto(
@@ -39,7 +44,8 @@ public sealed record ContractDetailDto(
     string Status, string StatusLabel, string? Currency, string? BillingTrigger, string? Notes,
     ContractBillingModelDto BillingModel, decimal? DispatchFee, CodFeeDto? CodFee,
     IReadOnlyList<ServiceLevelDto> ServiceLevels, bool CanEdit, bool IsActive, string RowVersion,
-    ReturnFeeDto? ReturnFee = null);   // Lote 115
+    ReturnFeeDto? ReturnFee = null,   // Lote 115
+    InvoiceCheckFeeDto? InvoiceCheckFee = null);   // Lote 126
 
 /// <summary>
 /// Alta de contrato adicional (el inicial se crea con el cliente). ContractNumber vacío = '{Code}-C{n}' automático.

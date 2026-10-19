@@ -138,7 +138,7 @@ internal sealed class WmsFixture : IAsyncDisposable
                      EntityTypes.Warehouse, EntityTypes.WarehouseDock, EntityTypes.Product, EntityTypes.Receipt, EntityTypes.Asn,
                      EntityTypes.InventorySerial, EntityTypes.WarehouseTask, EntityTypes.InventoryTransaction, EntityTypes.StockBalance,
                      EntityTypes.CycleCount, EntityTypes.PickBatch, EntityTypes.PurchaseOrder, EntityTypes.Supplier, EntityTypes.CrossDockPlan,
-                     EntityTypes.CrossDockAllocation, EntityTypes.DockAppointment, EntityTypes.TransportOrder, EntityTypes.Client, EntityTypes.Location, EntityTypes.PortalUser,
+                     EntityTypes.CrossDockAllocation, EntityTypes.DockAppointment, EntityTypes.TransportOrder, EntityTypes.Client, EntityTypes.Location, EntityTypes.PortalUser, EntityTypes.Contract,
                  })
             L(LookupDomains.EntityType, e);
         foreach (var c in new[] { TrackingTypes.None, TrackingTypes.Lot, TrackingTypes.Serial }) L(LookupDomains.TrackingType, c);
@@ -166,6 +166,7 @@ internal sealed class WmsFixture : IAsyncDisposable
         L(LookupDomains.Country, "PR");
         L(LookupDomains.Country, "US");
         L(LookupDomains.Capability, Capabilities.EditPurchaseOrder);
+        L(LookupDomains.Capability, Capabilities.EditContract);   // Lote 126
         // Pruebas de servicio (al final: no cambia los ids anteriores).
         L(LookupDomains.EntityType, EntityTypes.ReceiptLine);
         foreach (var c in new[] { ReceiptTypes.Asn, ReceiptTypes.Blind, ReceiptTypes.Return }) L(LookupDomains.ReceiptType, c);
@@ -229,7 +230,7 @@ internal sealed class WmsFixture : IAsyncDisposable
         L(Teikem.Domain.Billing.BillingCodes.PaymentMethodDomain, "CASH");
         foreach (var m in new[] { "ACH", "CHECK", "CARD" }) L(Teikem.Domain.Billing.BillingCodes.PaymentMethodDomain, m);   // Lote 75
         // Lote 74 (flete): tipos de cargo y modelos de cobro (al final: ids previos intactos).
-        foreach (var c in new[] { "FREIGHT", "HANDLING", "SURCHARGE" }) L(Teikem.Domain.Billing.BillingCodes.ChargeTypeDomain, c);
+        foreach (var c in new[] { "FREIGHT", "HANDLING", "SURCHARGE", Teikem.Domain.Billing.BillingCodes.InvoiceCheck }) L(Teikem.Domain.Billing.BillingCodes.ChargeTypeDomain, c);
         foreach (var m in new[] { Teikem.Domain.Billing.FreightRules.BillingModelPickup, Teikem.Domain.Billing.FreightRules.BillingModelDelivery, Teikem.Domain.Billing.FreightRules.BillingModelMixed })
             L(LookupDomains.BillingModel, m);
         Db.LookupCodes.AddRange(all);

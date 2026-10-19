@@ -86,3 +86,10 @@ public class ContractServiceLevel : ISoftDeletable
     public Contract? Contract { get; set; }
     public LookupCode? ServiceType { get; set; }
 }
+
+/// <summary>Lote 126: reglas del cobro del cotejo de factura.</summary>
+public static class InvoiceCheckFeeRules
+{
+    public const string AmountRequiredMessage = "Indique el monto por factura cotejada.";
+    public const string NegativeMessage = "El monto del cotejo no puede ser negativo.";
+}

@@ -35,6 +35,12 @@ export function CodPanel({ order }: { order: OrderDetailDto }) {
       {hasCod && kv(t('orders.detail.cod.type'), order.codType || t('orders.detail.cod.typePending'))}
       {hasCod && kv(t('orders.detail.cod.state'), order.codStatusLabel ? <Chip tone="cod">{order.codStatusLabel}</Chip> : '—')}
       {hasCod && <p className="d od-note">{t('orders.detail.cod.note')}</p>}
+      {kv(
+        t('orders.detail.cod.invoiceProcessed'),
+        order.invoiceProcessedAtUtc
+          ? `${f.dateTime(order.invoiceProcessedAtUtc)}${order.invoiceProcessedByName ? ` · ${order.invoiceProcessedByName}` : ''}`
+          : t('orders.detail.cod.invoiceNotProcessed'),
+      )}
     </Panel>
   )
 }

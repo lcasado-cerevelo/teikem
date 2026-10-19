@@ -190,7 +190,9 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
             WaybillNumber: order.WaybillNumber,
             FailedAttempts: failedAttempts,
             SuggestReturn: suggestReturn,
-            ReturnOfOrderNumber: returnOfNumber);
+            ReturnOfOrderNumber: returnOfNumber,
+            InvoiceProcessedAtUtc: order.InvoiceProcessedAtUtc,
+            InvoiceProcessedByName: order.InvoiceProcessedBy is int ipb ? await db.Users.AsNoTracking().Where(u => u.Id == ipb).Select(u => u.FullName ?? u.Email).FirstOrDefaultAsync(ct) : null);
         // Lote 39: el monto cotizado solo para quien ve precios (orders.view_price).
         return OrderPriceRules.Apply(detail, await OrderPriceVisibility.CanViewAsync(prices, ct));
     }

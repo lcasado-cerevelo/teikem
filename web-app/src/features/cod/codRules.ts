@@ -5,7 +5,7 @@ import type { ScannedCode } from './barcodeReader'
 
 export const COD_STATUSES = ['PENDING', 'PARTIAL', 'COLLECTED', 'RECONCILED', 'REMITTED'] as const
 export const COD_METHODS = ['CASH', 'CHECK', 'COMPANY_CHECK', 'ATH_MOVIL', 'CARD'] as const
-export const RESULTS = ['RECONCILED', 'ALREADY_RECONCILED', 'NOT_FOUND', 'AMBIGUOUS', 'NO_COD', 'NOTHING_COLLECTED', 'DUPLICATE'] as const
+export const RESULTS = ['RECONCILED', 'ALREADY_RECONCILED', 'NOT_FOUND', 'AMBIGUOUS', 'NO_COD', 'NOTHING_COLLECTED', 'DUPLICATE', 'INVOICE_CHECKED', 'NOT_DELIVERED', 'ALREADY_PROCESSED'] as const
 export const MAX_CODES = 2000
 
 export function needsCheckNumber(method: string): boolean {
@@ -78,13 +78,18 @@ export function rowsFromManual(text: string, firstKey: number): CodeRow[] {
 
 export const MANUAL_SOURCE = 'Manual'
 
+/** Lote 126: qué dice quien sube que son las hojas. AUTO = el sistema clasifica cada orden (con COD → COD; sin COD → factura) sin advertir; los demás advierten si lo que vino no coincide. */
+export const RECONCILE_MODES = ['AUTO', 'COD', 'INVOICE', 'BOTH'] as const
+export type ReconcileMode = (typeof RECONCILE_MODES)[number]
+
 /** El cuerpo de POST /cod/reconcile. */
-export function toReconcileRequest(rows: readonly CodeRow[], clientPublicId: string | null, source: string, dryRun: boolean) {
+export function toReconcileRequest(rows: readonly CodeRow[], clientPublicId: string | null, source: string, dryRun: boolean, mode: ReconcileMode = 'AUTO') {
   return {
     codes: rows.map((r) => ({ code: r.code, source: r.source })),
     source: source || undefined,
     clientPublicId: clientPublicId ?? undefined,
     dryRun,
+    mode,
   }
 }
 
@@ -107,8 +112,10 @@ export type ResultTone = 'ok' | 'info' | 'warn' | 'bad'
 export function resultTone(result: string | null | undefined): ResultTone {
   switch (result) {
     case 'RECONCILED':
+    case 'INVOICE_CHECKED':
       return 'ok'
     case 'ALREADY_RECONCILED':
+    case 'ALREADY_PROCESSED':
     case 'DUPLICATE':
       return 'info'
     case 'NOT_FOUND':
@@ -123,6 +130,11 @@ export function countResults(items: readonly CodReconcileItemDto[]): Record<stri
   const out: Record<string, number> = {}
   for (const i of items) out[i.result ?? ''] = (out[i.result ?? ''] ?? 0) + 1
   return out
+}
+
+/** Lote 126: cuántas facturas se procesan (órdenes sin COD cotejadas). */
+export function checkedCount(items: readonly CodReconcileItemDto[]): number {
+  return items.filter((i) => i.result === 'INVOICE_CHECKED').length
 }
 
 /** Lo que se va a cuadrar en dinero en total (suma de las filas que se cuadrarían). */

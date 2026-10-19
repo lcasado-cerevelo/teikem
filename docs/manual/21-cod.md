@@ -115,3 +115,26 @@ Por cada cobro: **monto × % ÷ 100**, redondeado a 2 decimales (el medio hacia 
 
 La **pestaña Remesas** de la misma pantalla ([L87](frontend/l87-remesas.md)) cubre §6: lista, nueva remesa con los candidatos y la comisión, ficha con el flujo, exportar y la comisión por omisión.
 
+## 7. Procesar la factura del cliente («second check», Lote 126)
+
+> Dictado de Luis (2026-10-18). En el sistema viejo, para «procesar» la factura del cliente creaban una orden de entrega ficticia cuya pieza era la factura. **En Teikem no hay órdenes ficticias:** la factura del cliente viaja con la orden (`ClientInvoiceNumber`; si no viene, le pegan un label) y, cuando la orden ya se entregó, la factura se **procesa** contra ella como comprobación.
+
+**Dónde:** la misma pantalla **Procesar entregas → Reconciliar** (COD). Se suben las hojas escaneadas (PDF o imágenes) o se teclean los números, igual que para COD. Permiso `cod.reconcile`, módulo `COD`.
+
+**¿Qué vas a subir?** Un selector al principio: **Detectar** (por omisión), **Hojas de COD**, **Facturas** o **Ambas**. El sistema **siempre procesa todo lo que leyó**: a cada hoja le busca su orden y la clasifica él:
+- la orden **tiene COD** → es una **hoja de COD**: cuadra el cobro (como siempre) **y** deja procesada la factura de la orden;
+- la orden **no tiene COD** → es una **factura**: la coteja contra la orden entregada y la deja procesada.
+
+El selector solo dice qué esperabas, y de ahí salen las **advertencias** (informativas, nada se descarta): «Dijiste hojas de COD, pero algunas son de órdenes sin COD: las procesé como facturas» · «Dijiste facturas, pero algunas son hojas de órdenes con COD: las cuadré como COD» · «Dijiste ambas, pero no subiste facturas de órdenes sin COD» · «Dijiste ambas, pero no subiste hojas de COD». Con **Detectar** no hay advertencias.
+
+**Resultados nuevos por hoja** (además de los de COD): **Factura procesada** (`INVOICE_CHECKED`: la orden está entregada; en la vista previa, «se procesaría»), **No entregada** (`NOT_DELIVERED`: la orden existe pero no se ha entregado; se procesa cuando se entregue) y **Ya procesada** (`ALREADY_PROCESSED`: esa orden ya traía su factura procesada en otra corrida). La columna **Tipo** dice si la hoja fue de COD o factura. El resumen cuenta «N factura(s) procesada(s)» aparte de lo cuadrado, y **Cuadrar** se habilita si hay algo que cuadrar o alguna factura por procesar.
+
+**Qué queda en la orden:** `InvoiceProcessedAtUtc`, `InvoiceProcessedBy` e `InvoiceProcessRunId` (la corrida de lectura, con el archivo y la fila de cada hoja). **Una sola vez por orden**: la segunda hoja de la misma orden sale «Ya procesada» y no cambia nada. La ficha de la orden muestra **Factura procesada: fecha · quién** (o «Todavía no») en el panel COD.
+
+**Cobro configurable (contrato → Cotejo de factura):** apagado por omisión. Encendido con un monto, cada factura procesada (cotejo o hoja de COD) genera en la **siguiente corrida de facturación** una línea **«Cotejo de factura de la orden X»** (tipo de cargo `INVOICE_CHECK`, con impuesto según el perfil fiscal del cliente), una sola vez por orden. Sin contrato o con el cobro apagado, procesar no cuesta.
+
+| Método y ruta | Permiso | Qué hace |
+|---|---|---|
+| `POST /api/v1/cod/reconcile` (`mode`: AUTO · COD · INVOICE · BOTH) | `cod.reconcile` | Lee los códigos; devuelve `items[].kind`, `checked` y `warnings[]`. 400 «El tipo de hojas debe ser AUTO, COD, INVOICE o BOTH.» |
+| `GET /api/v1/cod/runs/{publicId}` | `cod.view` | El detalle trae `kind` por hoja y `checked`. |
+| `PATCH /api/v1/contracts/{publicId}/invoice-check-fee` (`enabled`, `amount`) | `contracts.update` | 400 «Indique el monto por factura cotejada.» · «El monto del cotejo no puede ser negativo.» |

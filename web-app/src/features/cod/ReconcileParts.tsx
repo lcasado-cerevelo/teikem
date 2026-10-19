@@ -9,9 +9,11 @@ import { IconCart } from '../../kernel/ui/screenIcons'
 import { ACCEPTED_TYPES, fileKind, readCodesFromFile } from './barcodeReader'
 import { useCodMutations, useCodRun, useCodRuns, type CodReconcileItemDto, type CodReconcileResultDto, type CodRunListItemDto } from './codApi'
 import {
+  checkedCount,
   codesError,
   countResults,
   reconcilableAmount,
+  RECONCILE_MODES,
   resultTone,
   RESULTS,
   rowsFromManual,
@@ -19,6 +21,7 @@ import {
   runSource,
   toReconcileRequest,
   type CodeRow,
+  type ReconcileMode,
 } from './codRules'
 
 interface FileStatus {
@@ -47,6 +50,7 @@ function ResultsTable({ items, label }: { items: CodReconcileItemDto[]; label: s
     () => [
       { id: 'code', header: t('cod.col.code'), cell: (i) => <b>{i.code}</b>, exportValue: (i) => i.code ?? '', sortValue: (i) => i.code ?? '', card: 'title' },
       { id: 'result', header: t('cod.col.result'), cell: (i) => <ResultChip result={i.result} />, exportValue: (i) => t(`cod.results.${i.result}`), sortValue: (i) => i.result ?? '' },
+      { id: 'kind', header: t('cod.col.kind'), cell: (i) => (i.orderNumber ? t(`cod.kinds.${i.kind ?? 'COD'}`) : '—'), exportValue: (i) => (i.orderNumber ? t(`cod.kinds.${i.kind ?? 'COD'}`) : ''), sortValue: (i) => i.kind ?? '' },
       { id: 'order', header: t('cod.col.order'), cell: (i) => i.orderNumber ?? '—', exportValue: (i) => i.orderNumber ?? '', sortValue: (i) => i.orderNumber ?? '' },
       { id: 'invoice', header: t('cod.col.invoice'), cell: (i) => i.invoiceNumber ?? '—', exportValue: (i) => i.invoiceNumber ?? '', sortValue: (i) => i.invoiceNumber ?? '' },
       { id: 'client', header: t('cod.col.client'), cell: (i) => i.clientName ?? '—', exportValue: (i) => i.clientName ?? '', sortValue: (i) => i.clientName ?? '' },
@@ -67,7 +71,15 @@ function Summary({ result }: { result: CodReconcileResultDto }) {
     <div className="cod-summary" role="status">
       <p>
         <b>{t('cod.summary.total', { n: result.total ?? 0 })}</b> · {t('cod.summary.amount', { amount: f.money(reconcilableAmount(result.items ?? [])) })}
+        {checkedCount(result.items ?? []) > 0 && <> · {t('cod.summary.checked', { n: checkedCount(result.items ?? []) })}</>}
       </p>
+      {(result.warnings ?? []).length > 0 && (
+        <ul className="cod-warnings" role="alert" aria-label={t('cod.warnings.title')}>
+          {(result.warnings ?? []).map((wk) => (
+            <li key={wk}>{t(`cod.warnings.${wk}`)}</li>
+          ))}
+        </ul>
+      )}
       <div className="cod-chips">
         {RESULTS.filter((r) => counts[r]).map((r) => (
           <span key={r}>
@@ -87,6 +99,7 @@ export function ReconcileTab() {
   const [rows, setRows] = useState<CodeRow[]>([])
   const [files, setFiles] = useState<FileStatus[]>([])
   const [clientId, setClientId] = useState<string | null>(null)
+  const [mode, setMode] = useState<ReconcileMode>('AUTO')
   const [manual, setManual] = useState('')
   const [preview, setPreview] = useState<CodReconcileResultDto | null>(null)
   const [done, setDone] = useState<CodReconcileResultDto | null>(null)
@@ -155,11 +168,11 @@ export function ReconcileTab() {
     if (problem) return setError(t(`cod.errors.${problem}`))
     setError(null)
     try {
-      const res = await reconcile.mutateAsync(toReconcileRequest(rows, clientId, runSource(rows), dryRun))
+      const res = await reconcile.mutateAsync(toReconcileRequest(rows, clientId, runSource(rows), dryRun, mode))
       if (dryRun) setPreview(res)
       else {
         setDone(res)
-        toast.success(t('cod.reconciledToast', { n: res.reconciled ?? 0 }))
+        toast.success(t('cod.reconciledToast', { n: res.reconciled ?? 0, c: res.checked ?? 0 }))
       }
     } catch (e) {
       setError(applyProblemDetails(e).title)
@@ -206,11 +219,21 @@ export function ReconcileTab() {
     )
   }
 
-  const canApply = preview !== null && (preview.reconciled ?? 0) > 0
+  const canApply = preview !== null && ((preview.reconciled ?? 0) > 0 || (preview.checked ?? 0) > 0)
   return (
     <Panel icon={<IconCart />} title={t('cod.reconcile.title')}>
       <div className="pb">
         <p className="help">{t('cod.reconcile.help')}</p>
+        <fieldset className="cod-mode">
+          <legend>{t('cod.mode.label')}</legend>
+          {RECONCILE_MODES.map((m) => (
+            <label key={m} className="cod-mode-opt">
+              <input type="radio" name="cod-mode" value={m} checked={mode === m} onChange={() => (changed(), setMode(m))} />
+              <span>{t(`cod.mode.${m}`)}</span>
+            </label>
+          ))}
+          <p className="help">{t(`cod.mode.help.${mode}`)}</p>
+        </fieldset>
         <div className="f">
           <label htmlFor="cod-client">{t('cod.reconcile.client')}</label>
           <ClientPicker id="cod-client" value={clientId} onChange={(v) => (changed(), setClientId(v))} />
@@ -291,7 +314,7 @@ export function ReconcileTab() {
       <ConfirmDialog
         open={confirming}
         title={t('cod.confirm.title')}
-        message={<p>{t('cod.confirm.body', { n: preview?.reconciled ?? 0 })}</p>}
+        message={<p>{t('cod.confirm.body', { n: preview?.reconciled ?? 0, c: preview?.checked ?? 0 })}</p>}
         confirmLabel={t('cod.apply')}
         onConfirm={() => run(false)}
         onClose={() => setConfirming(false)}
@@ -367,7 +390,7 @@ function RunModal({ id, onClose }: { id: string; onClose: () => void }) {
             <p className="help">
               {[data.source, data.createdByName].filter(Boolean).join(' · ')}
             </p>
-            <Summary result={{ dryRun: false, total: data.total, reconciled: data.reconciled, issues: data.issues, items: data.items }} />
+            <Summary result={{ dryRun: false, total: data.total, reconciled: data.reconciled, issues: data.issues, items: data.items, checked: data.checked }} />
             <ResultsTable items={data.items ?? []} label={t('cod.runs.panel')} />
           </>
         )}

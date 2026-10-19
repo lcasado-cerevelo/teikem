@@ -184,6 +184,19 @@ public sealed class ContractService(TeikemDbContext db, ITenantContext tenant, I
         return await GetByIdAsync(contract.ContractId, ct);
     }
 
+    /// <summary>Lote 126: cobrar (o no) el cotejo de la factura del cliente, con el monto por factura procesada (>= 0). Encendido sin monto no vale.</summary>
+    public async Task<ContractDetailDto> SetInvoiceCheckFeeAsync(Guid publicId, InvoiceCheckFeeRequest? req, CancellationToken ct)
+    {
+        var enabled = req?.Enabled == true;
+        if (enabled && req!.Amount is null) throw new ValidationException("amount", InvoiceCheckFeeRules.AmountRequiredMessage);
+        if (enabled && req!.Amount < 0) throw new ValidationException("amount", InvoiceCheckFeeRules.NegativeMessage);
+        var contract = await LoadForWriteAsync(publicId, ct);
+        contract.BillInvoiceCheck = enabled;
+        contract.InvoiceCheckFee = enabled ? req!.Amount : null;
+        await db.SaveGuardedAsync(ConcurrencyMessage, ct);
+        return await GetByIdAsync(contract.ContractId, ct);
+    }
+
     /// <summary>
     /// Lote 115: cargo por devolución del contrato. Mode vacío = sin cargo; ORDER (monto por orden devuelta) y PIECE (monto por pieza devuelta) llevan Amount; PACKAGE_TYPE lleva el monto de cada tipo de paquete
     /// (la lista se reemplaza completa). Montos >= 0. No toca los demás cargos.
@@ -390,6 +403,7 @@ public sealed class ContractService(TeikemDbContext db, ITenantContext tenant, I
             new ContractBillingModelDto(c.BillPerService, c.BillExtraPiece, c.BillDispatchFee, c.BillCodFee, c.BillSpecialServices, Summary(c)),
             c.DispatchFee, codFee, levelDtos, canEdit, c.IsActive,
             Convert.ToBase64String(c.RowVersion ?? Array.Empty<byte>()),
-            returnFee);
+            returnFee,
+            InvoiceCheckFee: new InvoiceCheckFeeDto(c.BillInvoiceCheck, c.InvoiceCheckFee));
     }
 }

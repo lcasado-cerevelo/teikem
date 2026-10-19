@@ -68,7 +68,9 @@ describe('códigos', () => {
       source: 'h1.pdf, Manual',
       clientPublicId: 'cli-1',
       dryRun: true,
+      mode: 'AUTO',
     })
+    expect(toReconcileRequest(rows, null, '', true, 'BOTH').mode).toBe('BOTH')
     expect(toReconcileRequest(rows, null, '', false)).toMatchObject({ clientPublicId: undefined, source: undefined, dryRun: false })
   })
 })

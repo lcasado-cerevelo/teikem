@@ -220,7 +220,10 @@ public sealed record OrderDetailDto(
     int? FailedAttempts = null,
     bool? SuggestReturn = null,
     // Lote 112: si es una orden de vuelta, el número de la orden que se devolvió
-    string? ReturnOfOrderNumber = null);
+    string? ReturnOfOrderNumber = null,
+    // Lote 126: la factura del cliente de esta orden ya se procesó (hoja de COD cuadrada o cotejo): cuándo y quién
+    DateTime? InvoiceProcessedAtUtc = null,
+    string? InvoiceProcessedByName = null);
 
 /// <summary>
 /// Fila del listado: Empaque es la primera columna de negocio (siempre con valor). Lote 44 (F-G2): ConsigneeLine1/2 y ConsigneeState

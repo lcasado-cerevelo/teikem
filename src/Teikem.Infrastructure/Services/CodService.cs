@@ -188,6 +188,9 @@ public sealed class CodService(TeikemDbContext db, ITenantContext tenant, Status
         CodReconcileResults.NoCod => CodRules.OrderHasNoCod,
         CodReconcileResults.NothingCollected => "La orden tiene COD, pero todavía no se registró ningún cobro.",
         CodReconcileResults.Duplicate => "El código ya venía antes en esta corrida.",
+        CodReconcileResults.InvoiceChecked => "Factura procesada: la orden está entregada.",
+        CodReconcileResults.NotDelivered => "La orden todavía no se entregó; la factura se procesa cuando se entregue.",
+        CodReconcileResults.AlreadyProcessed => "La factura de esta orden ya se había procesado.",
         _ => string.Empty,
     };
 
@@ -228,6 +231,7 @@ public sealed class CodService(TeikemDbContext db, ITenantContext tenant, Status
         var runSource = req.Source?.Trim();
         if (runSource is { Length: > CodRules.MaxSourceLength }) throw new ValidationException("source", CodRules.SourceTooLong);
         var dry = req.DryRun == true;
+        var mode = CodReconcileModes.Normalize(req.Mode) ?? throw new ValidationException("mode", CodRules.ModeInvalid);
         int? scopeClientId = null;
         if (req.ClientPublicId is Guid scopeClient)
             scopeClientId = await db.Set<Client>().AsNoTracking().Where(c => c.PublicId == scopeClient).Select(c => (int?)c.ClientId).FirstOrDefaultAsync(ct) ?? throw new ValidationException("clientPublicId", CodRules.ClientInvalid);
@@ -251,6 +255,7 @@ public sealed class CodService(TeikemDbContext db, ITenantContext tenant, Status
             var colMap = await StatusMapAsync(CodCodes.CollectionStatusDomain, ct2);
             var collectedId = colMap.First(kv => kv.Value.Code == CodCollectionStatuses.Collected).Key;
             var reconciledId = colMap.First(kv => kv.Value.Code == CodCollectionStatuses.Reconciled).Key;
+            var deliveredId = (await StatusMapAsync(StatusDomains.OrderStatus, ct2)).First(kv => kv.Value.Code == OrderStatuses.Delivered).Key;   // Lote 126
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             CodReconcileRun? run = null;
             if (!dry)
@@ -268,6 +273,7 @@ public sealed class CodService(TeikemDbContext db, ITenantContext tenant, Status
                 TransportOrder? order = null;
                 decimal amount = 0m;
                 var count = 0;
+                var kind = CodReconcileKinds.Cod;
                 if (!seen.Add(code)) result = CodReconcileResults.Duplicate;
                 else
                 {
@@ -277,7 +283,18 @@ public sealed class CodService(TeikemDbContext db, ITenantContext tenant, Status
                     else
                     {
                         order = dry ? orders[0] : await db.TransportOrders.AsTracking().FirstAsync(o => o.TransportOrderId == orders[0].TransportOrderId, ct2);
-                        if (order.CodStatusCodeId is null) result = CodReconcileResults.NoCod;
+                        if (order.CodStatusCodeId is null)
+                        {
+                            // Lote 126: sin COD, la hoja es la factura del cliente: se procesa («second check») contra la orden entregada, una sola vez
+                            kind = CodReconcileKinds.Invoice;
+                            if (order.InvoiceProcessedAtUtc is not null) result = CodReconcileResults.AlreadyProcessed;
+                            else if (order.StatusCodeId != deliveredId) result = CodReconcileResults.NotDelivered;
+                            else
+                            {
+                                result = CodReconcileResults.InvoiceChecked;
+                                if (!dry) MarkInvoiceProcessed(order, run!);
+                            }
+                        }
                         else
                         {
                             var rows = await (dry ? db.Set<CodCollection>().AsNoTracking() : db.Set<CodCollection>().AsTracking()).Where(c => c.TransportOrderId == order.TransportOrderId).ToListAsync(ct2);
@@ -304,6 +321,8 @@ public sealed class CodService(TeikemDbContext db, ITenantContext tenant, Status
                                         var to = await statuses.TransitionAsync(StatusDomains.CodStatus, EntityTypes.OrderCod, order.TransportOrderId, order.CodStatusCodeId, CodStatuses.Reconciled, null, ct2);
                                         order.CodStatusCodeId = to.StatusCodeId;
                                     }
+                                    // Lote 126: la hoja de COD también deja procesada la factura de la orden (la primera vez)
+                                    MarkInvoiceProcessed(order, run!);
                                 }
                             }
                         }
@@ -316,14 +335,14 @@ public sealed class CodService(TeikemDbContext db, ITenantContext tenant, Status
                         clients[order.ClientId] = clientName = (await db.Set<Client>().AsNoTracking().FirstAsync(c => c.ClientId == order.ClientId, ct2)).Name;
                 }
                 items.Add(new CodReconcileItemDto(code, source, result, MessageFor(result, amount, count), order?.PublicId, order?.OrderNumber, order is null ? null : NullIfEmpty(order.ClientInvoiceNumber), clientName,
-                    order?.CodAmount ?? 0m, amount, count));
+                    order?.CodAmount ?? 0m, amount, count, kind));
                 run?.Items.Add(new CodReconcileItem { Code = code, Source = source, Result = result, TransportOrderId = order?.TransportOrderId, Amount = amount, Collections = count });
             }
             if (run is not null)
             {
                 run.Total = items.Count;
                 run.Reconciled = items.Count(i => i.Result == CodReconcileResults.Reconciled);
-                run.Issues = items.Count - run.Reconciled - items.Count(i => i.Result == CodReconcileResults.AlreadyReconciled);
+                run.Issues = IssuesOf(items);
                 await db.SaveGuardedAsync(Concurrency, ct2);
             }
         }
@@ -332,8 +351,44 @@ public sealed class CodService(TeikemDbContext db, ITenantContext tenant, Status
         else await db.RunInTransactionAsync(RunAsync, ct);
 
         var reconciled = items.Count(i => i.Result == CodReconcileResults.Reconciled);
-        var issues = items.Count - reconciled - items.Count(i => i.Result == CodReconcileResults.AlreadyReconciled);
-        return new CodReconcileResultDto(runPublicId, dry, items.Count, reconciled, issues, items);
+        return new CodReconcileResultDto(runPublicId, dry, items.Count, reconciled, IssuesOf(items), items, CheckedOf(items), WarningsFor(mode, items));
+    }
+
+    /// <summary>Lote 126: la factura de la orden queda procesada (la primera vez): cuándo, quién y con qué corrida.</summary>
+    private void MarkInvoiceProcessed(TransportOrder order, CodReconcileRun run)
+    {
+        if (order.InvoiceProcessedAtUtc is not null) return;
+        order.InvoiceProcessedAtUtc = clock.UtcNow;
+        order.InvoiceProcessedBy = tenant.UserId;
+        order.InvoiceProcessRunId = run.CodReconcileRunId;
+    }
+
+    /// <summary>Lo que salió bien o ya estaba hecho no es un problema: cuadrados, facturas procesadas y los «ya estaba» no cuentan.</summary>
+    public static int IssuesOf(IReadOnlyList<CodReconcileItemDto> items)
+        => items.Count(i => i.Result is not (CodReconcileResults.Reconciled or CodReconcileResults.AlreadyReconciled or CodReconcileResults.InvoiceChecked or CodReconcileResults.AlreadyProcessed));
+
+    public static int CheckedOf(IReadOnlyList<CodReconcileItemDto> items) => items.Count(i => i.Result == CodReconcileResults.InvoiceChecked);
+
+    /// <summary>
+    /// Lote 126: las advertencias según lo que dijo quien subió las hojas. Solo cuentan las hojas que dieron con una orden (las no encontradas, ambiguas o repetidas no dicen de qué tipo eran).
+    /// AUTO no advierte. Son informativas: todo lo leído se procesó igual.
+    /// </summary>
+    public static IReadOnlyList<string> WarningsFor(string mode, IReadOnlyList<CodReconcileItemDto> items)
+    {
+        var found = items.Where(i => i.OrderPublicId != null && i.Result != CodReconcileResults.Duplicate).ToList();
+        var codSheets = found.Count(i => i.Kind == CodReconcileKinds.Cod);
+        var invoiceSheets = found.Count(i => i.Kind == CodReconcileKinds.Invoice);
+        var warnings = new List<string>();
+        switch (mode)
+        {
+            case CodReconcileModes.Cod when invoiceSheets > 0: warnings.Add(CodReconcileWarnings.NotCodSheets); break;
+            case CodReconcileModes.Invoice when codSheets > 0: warnings.Add(CodReconcileWarnings.CodSheets); break;
+            case CodReconcileModes.Both:
+                if (found.Count > 0 && invoiceSheets == 0) warnings.Add(CodReconcileWarnings.NoInvoiceSheets);
+                if (found.Count > 0 && codSheets == 0) warnings.Add(CodReconcileWarnings.NoCodSheets);
+                break;
+        }
+        return warnings;
     }
 
     // ================================================================ corridas
@@ -369,8 +424,9 @@ public sealed class CodService(TeikemDbContext db, ITenantContext tenant, Status
         {
             var o = i.TransportOrderId is int id ? orders.GetValueOrDefault(id) : null;
             return new CodReconcileItemDto(i.Code, i.Source, i.Result, MessageFor(i.Result, i.Amount, i.Collections), o?.PublicId, o?.OrderNumber, o is null ? null : NullIfEmpty(o.ClientInvoiceNumber),
-                o is null ? null : clients.GetValueOrDefault(o.ClientId), o?.CodAmount ?? 0m, i.Amount, i.Collections);
+                o is null ? null : clients.GetValueOrDefault(o.ClientId), o?.CodAmount ?? 0m, i.Amount, i.Collections,
+                i.Result is CodReconcileResults.InvoiceChecked or CodReconcileResults.NotDelivered or CodReconcileResults.AlreadyProcessed ? CodReconcileKinds.Invoice : CodReconcileKinds.Cod);
         }).ToList();
-        return new CodRunDto(run.PublicId, run.Source, run.Total, run.Reconciled, run.Issues, run.CreatedAtUtc, run.CreatedBy is int u ? names.GetValueOrDefault(u) : null, items);
+        return new CodRunDto(run.PublicId, run.Source, run.Total, run.Reconciled, run.Issues, run.CreatedAtUtc, run.CreatedBy is int u ? names.GetValueOrDefault(u) : null, items, CheckedOf(items));
     }
 }

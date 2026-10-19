@@ -640,6 +640,16 @@
         "codPercentRange": "El por ciento del cargo por COD debe estar entre 0 y 100.",
         "codRequired": "Indique el valor del cargo por COD."
       },
+      "invoiceCheck": {
+        "title": "Cotejo de factura",
+        "enabled": "Cobrar el cotejo de la factura del cliente",
+        "help": "Cuando se procesa la factura del cliente contra su orden entregada (hoja subida o número tecleado en Procesar entregas), la corrida de facturación agrega una línea «Cotejo de factura» con este monto. Apagado, el cotejo no cuesta.",
+        "amount": "Monto por factura cotejada",
+        "errors": {
+          "amount": "Indique el monto por factura cotejada.",
+          "negative": "El monto del cotejo no puede ser negativo."
+        }
+      },
       "returnFee": {
         "title": "Cargo por devolución",
         "mode": "Cargo por devolución",
@@ -3678,7 +3688,9 @@
         "type": "Tipo",
         "typePending": "Se registra al entregar",
         "state": "Estado",
-        "note": "El tipo de cobro (efectivo, cheque…) se registra al momento de entregar, no al capturar la orden."
+        "note": "El tipo de cobro (efectivo, cheque…) se registra al momento de entregar, no al capturar la orden.",
+        "invoiceProcessed": "Factura procesada",
+        "invoiceNotProcessed": "Todavía no"
       },
       "quote": {
         "title": "Cotización",
@@ -8500,6 +8512,7 @@
       "detail": "Detalle",
       "codes": "Códigos",
       "reconciledCount": "Cuadrados",
+      "kind": "Tipo",
       "issues": "Con problema",
       "by": "Quién"
     },
@@ -8523,7 +8536,34 @@
       "AMBIGUOUS": "Ambiguo",
       "NO_COD": "Sin COD",
       "NOTHING_COLLECTED": "Nada cobrado",
-      "DUPLICATE": "Repetido"
+      "DUPLICATE": "Repetido",
+      "INVOICE_CHECKED": "Factura procesada",
+      "NOT_DELIVERED": "No entregada",
+      "ALREADY_PROCESSED": "Ya procesada"
+    },
+    "kinds": {
+      "COD": "Hoja de COD",
+      "INVOICE": "Factura"
+    },
+    "mode": {
+      "label": "¿Qué vas a subir?",
+      "AUTO": "Detectar",
+      "COD": "Hojas de COD",
+      "INVOICE": "Facturas",
+      "BOTH": "Ambas",
+      "help": {
+        "AUTO": "El sistema clasifica cada hoja: si la orden tiene COD, cuadra el cobro; si no, procesa la factura.",
+        "COD": "Se procesa todo igual, pero te aviso si alguna hoja es de una orden sin COD.",
+        "INVOICE": "Se procesa todo igual, pero te aviso si alguna hoja es de una orden con COD.",
+        "BOTH": "Se procesa todo igual y te aviso si no vino de alguno de los dos tipos."
+      }
+    },
+    "warnings": {
+      "title": "Advertencias",
+      "NOT_COD_SHEETS": "Dijiste hojas de COD, pero algunas son de órdenes sin COD: las procesé como facturas.",
+      "COD_SHEETS": "Dijiste facturas, pero algunas son hojas de órdenes con COD: las cuadré como COD.",
+      "NO_INVOICE_SHEETS": "Dijiste ambas, pero no subiste facturas de órdenes sin COD.",
+      "NO_COD_SHEETS": "Dijiste ambas, pero no subiste hojas de COD."
     },
     "reconcile": {
       "title": "Reconciliar con hojas escaneadas",
@@ -8566,13 +8606,14 @@
     "clear": "Empezar de nuevo",
     "summary": {
       "total": "{n} códigos",
-      "amount": "se cuadran {amount}"
+      "amount": "se cuadran {amount}",
+      "checked": "{n} factura(s) procesada(s)"
     },
     "confirm": {
-      "title": "Cuadrar lo cobrado",
-      "body": "Se van a cuadrar los cobros de {n} código(s). La corrida queda guardada."
+      "title": "Procesar las hojas",
+      "body": "Se van a cuadrar los cobros de {n} código(s) y a procesar {c} factura(s). La corrida queda guardada."
     },
-    "reconciledToast": "Corrida hecha: {n} cuadrados.",
+    "reconciledToast": "Corrida hecha: {n} cuadrados, {c} facturas procesadas.",
     "done": {
       "title": "Corrida hecha"
     },

@@ -151,10 +151,10 @@ public sealed class CodTests
 
         var result = await x.Cod.ReconcileAsync(new CodReconcileRequest(codes, "hojas.pdf"), default);
         Assert.NotNull(result.RunPublicId);
-        Assert.Equal((7, 3, 4), (result.Total, result.Reconciled, result.Issues));
+        Assert.Equal((7, 3, 3), (result.Total, result.Reconciled, result.Issues));   // Lote 126: la orden sin COD ya no es un problema: su factura se procesa
         Assert.Equal(new[]
         {
-            CodReconcileResults.Reconciled, CodReconcileResults.Reconciled, CodReconcileResults.Reconciled, CodReconcileResults.NothingCollected, CodReconcileResults.NoCod, CodReconcileResults.NotFound,
+            CodReconcileResults.Reconciled, CodReconcileResults.Reconciled, CodReconcileResults.Reconciled, CodReconcileResults.NothingCollected, CodReconcileResults.InvoiceChecked, CodReconcileResults.NotFound,
             CodReconcileResults.Duplicate,
         }, result.Items.Select(i => i.Result).ToArray());
         Assert.Equal(("T-1", "FAC-1", "Cliente C1", 100m, 1), (result.Items[0].OrderNumber, result.Items[0].InvoiceNumber, result.Items[0].ClientName, result.Items[0].Reconciled, result.Items[0].Collections));

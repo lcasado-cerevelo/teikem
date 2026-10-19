@@ -104,6 +104,16 @@ export function useSetReturnFee(publicId: string, clientPublicId: string) {
   })
 }
 
+/** Cotejo de factura (Lote 126): `PATCH /contracts/{publicId}/invoice-check-fee`. */
+export function useSetInvoiceCheckFee(publicId: string, clientPublicId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { enabled: boolean; amount: number | null }) =>
+      unwrap(api.PATCH('/api/v1/contracts/{publicId}/invoice-check-fee', { params: { path: { publicId } }, body })),
+    onSuccess: (d: ContractDetail) => settleContract(qc, clientPublicId, d),
+  })
+}
+
 /** SLA: PUT reemplaza la lista completa (los tipos ausentes se dan de baja). */
 export function useSetServiceLevels(publicId: string, clientPublicId: string) {
   const qc = useQueryClient()

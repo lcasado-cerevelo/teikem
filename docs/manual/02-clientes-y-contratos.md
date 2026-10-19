@@ -786,6 +786,10 @@ Cómo se usa:
 
 ---
 
+## 6b. Cotejo de factura (Lote 126)
+
+En la pestaña del contrato, sección **Cotejo de factura**: «Cobrar el cotejo de la factura del cliente» (apagado por omisión) y «Monto por factura cotejada». Cuando se procesa la factura del cliente contra su orden entregada (hoja subida o número tecleado en Procesar entregas), la corrida de facturación agrega una línea «Cotejo de factura» con ese monto, una vez por orden. Permiso `contracts.update`. Ver [capítulo 21, §7](21-cod.md).
+
 ## 7. Usuarios de portal del cliente
 
 Qué hace: desde el expediente del cliente se **invita** por correo a las personas del cliente que usarán el portal. Nadie

@@ -640,6 +640,16 @@
         "codPercentRange": "The COD fee percentage must be between 0 and 100.",
         "codRequired": "Enter the COD fee value."
       },
+      "invoiceCheck": {
+        "title": "Invoice check",
+        "enabled": "Charge for checking the client's invoice",
+        "help": "When the client's invoice is processed against its delivered order (sheet uploaded or number typed in Process deliveries), the billing run adds an \"Invoice check\" line with this amount. Off, the check is free.",
+        "amount": "Amount per checked invoice",
+        "errors": {
+          "amount": "Enter the amount per checked invoice.",
+          "negative": "The check amount cannot be negative."
+        }
+      },
       "returnFee": {
         "title": "Return fee",
         "mode": "Return fee",
@@ -3678,7 +3688,9 @@
         "type": "Type",
         "typePending": "Recorded on delivery",
         "state": "Status",
-        "note": "The payment type (cash, check…) is recorded at delivery, not when the order is entered."
+        "note": "The payment type (cash, check…) is recorded at delivery, not when the order is entered.",
+        "invoiceProcessed": "Invoice processed",
+        "invoiceNotProcessed": "Not yet"
       },
       "quote": {
         "title": "Quote",
@@ -8500,6 +8512,7 @@
       "detail": "Detail",
       "codes": "Codes",
       "reconciledCount": "Reconciled",
+      "kind": "Kind",
       "issues": "With issues",
       "by": "By"
     },
@@ -8524,6 +8537,30 @@
       "NO_COD": "No COD",
       "NOTHING_COLLECTED": "Nothing collected",
       "DUPLICATE": "Repeated"
+    },
+    "kinds": {
+      "COD": "COD sheet",
+      "INVOICE": "Invoice"
+    },
+    "mode": {
+      "label": "What are you uploading?",
+      "AUTO": "Detect",
+      "COD": "COD sheets",
+      "INVOICE": "Invoices",
+      "BOTH": "Both",
+      "help": {
+        "AUTO": "The system sorts each sheet: if the order has COD, it squares the collection; if not, it processes the invoice.",
+        "COD": "Everything is processed anyway, but I will warn you if a sheet belongs to an order without COD.",
+        "INVOICE": "Everything is processed anyway, but I will warn you if a sheet belongs to an order with COD.",
+        "BOTH": "Everything is processed anyway and I will warn you if one of the two kinds is missing."
+      }
+    },
+    "warnings": {
+      "title": "Warnings",
+      "NOT_COD_SHEETS": "You said COD sheets, but some belong to orders without COD: I processed them as invoices.",
+      "COD_SHEETS": "You said invoices, but some are sheets of orders with COD: I squared them as COD.",
+      "NO_INVOICE_SHEETS": "You said both, but no invoices of orders without COD came in.",
+      "NO_COD_SHEETS": "You said both, but no COD sheets came in."
     },
     "reconcile": {
       "title": "Reconcile with scanned sheets",
@@ -8566,13 +8603,14 @@
     "clear": "Start over",
     "summary": {
       "total": "{n} codes",
-      "amount": "{amount} will be reconciled"
+      "amount": "{amount} will be reconciled",
+      "checked": "{n} invoice(s) processed"
     },
     "confirm": {
       "title": "Reconcile what was collected",
-      "body": "The collections of {n} code(s) will be reconciled. The run is saved."
+      "body": "The collections of {n} code(s) will be squared and {c} invoice(s) processed. The run is saved."
     },
-    "reconciledToast": "Run done: {n} reconciled.",
+    "reconciledToast": "Run done: {n} squared, {c} invoices processed.",
     "done": {
       "title": "Run done"
     },

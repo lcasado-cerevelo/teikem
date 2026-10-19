@@ -1,3 +1,4 @@
+using Teikem.Domain.Cod;
 namespace Teikem.Infrastructure.Contracts;
 
 // Lote 84 (P8) — ciclo COD: cobro contra entrega y reconciliación de las hojas (facturas) que regresan de la calle.
@@ -22,13 +23,16 @@ public sealed record CodReconcileCode(string? Code = null, string? Source = null
 /// POST /cod/reconcile: los códigos de la corrida. DryRun = solo dice qué pasaría (no cuadra nada ni guarda la corrida). ClientPublicId = las hojas son de ese cliente (el número de factura se cuenta por cliente
 /// y se repite entre clientes: con el cliente, el código solo busca entre sus órdenes).
 /// </summary>
-public sealed record CodReconcileRequest(IReadOnlyList<CodReconcileCode>? Codes = null, string? Source = null, bool? DryRun = null, Guid? ClientPublicId = null);
+/// <summary>Mode (Lote 126): AUTO (por omisión), COD, INVOICE o BOTH: qué hojas dice quien sube que son; el sistema procesa todo igual y advierte si no coincide.</summary>
+public sealed record CodReconcileRequest(IReadOnlyList<CodReconcileCode>? Codes = null, string? Source = null, bool? DryRun = null, Guid? ClientPublicId = null, string? Mode = null);
 
+/// <summary>Kind (Lote 126): COD (la orden tiene COD: la hoja cuadra el cobro) o INVOICE (sin COD: la hoja procesa la factura del cliente).</summary>
 public sealed record CodReconcileItemDto(string Code, string? Source, string Result, string Message, Guid? OrderPublicId, string? OrderNumber, string? InvoiceNumber, string? ClientName, decimal CodAmount,
-    decimal Reconciled, int Collections);
+    decimal Reconciled, int Collections, string Kind = CodReconcileKinds.Cod);
 
-public sealed record CodReconcileResultDto(Guid? RunPublicId, bool DryRun, int Total, int Reconciled, int Issues, IReadOnlyList<CodReconcileItemDto> Items);
+/// <summary>Checked (Lote 126): facturas procesadas (órdenes sin COD); Warnings: códigos de CodReconcileWarnings según el modo pedido.</summary>
+public sealed record CodReconcileResultDto(Guid? RunPublicId, bool DryRun, int Total, int Reconciled, int Issues, IReadOnlyList<CodReconcileItemDto> Items, int Checked = 0, IReadOnlyList<string>? Warnings = null);
 
 public sealed record CodRunListItemDto(Guid PublicId, string? Source, int Total, int Reconciled, int Issues, DateTime CreatedAtUtc, string? CreatedByName);
 
-public sealed record CodRunDto(Guid PublicId, string? Source, int Total, int Reconciled, int Issues, DateTime CreatedAtUtc, string? CreatedByName, IReadOnlyList<CodReconcileItemDto> Items);
+public sealed record CodRunDto(Guid PublicId, string? Source, int Total, int Reconciled, int Issues, DateTime CreatedAtUtc, string? CreatedByName, IReadOnlyList<CodReconcileItemDto> Items, int Checked = 0);

@@ -39090,6 +39090,65 @@
           }
         }
       }
+    },
+    "/api/v1/contracts/{publicId}/invoice-check-fee": {
+      "patch": {
+        "tags": [
+          "Contracts"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvoiceCheckFeeRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvoiceCheckFeeRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvoiceCheckFeeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractDetailDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractDetailDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractDetailDto"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -41572,6 +41631,9 @@
           },
           "returnFee": {
             "$ref": "#/components/schemas/ReturnFeeDto"
+          },
+          "invoiceCheckFee": {
+            "$ref": "#/components/schemas/InvoiceCheckFeeDto"
           }
         },
         "additionalProperties": false
@@ -48881,6 +48943,15 @@
             "nullable": true
           },
           "returnOfOrderNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "invoiceProcessedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "invoiceProcessedByName": {
             "type": "string",
             "nullable": true
           }
@@ -64907,6 +64978,10 @@
               "$ref": "#/components/schemas/CodReconcileItemDto"
             },
             "nullable": true
+          },
+          "checked": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -64958,6 +65033,10 @@
           "collections": {
             "type": "integer",
             "format": "int32"
+          },
+          "kind": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -65023,6 +65102,17 @@
               "$ref": "#/components/schemas/CodReconcileItemDto"
             },
             "nullable": true
+          },
+          "checked": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -65048,6 +65138,10 @@
           "clientPublicId": {
             "type": "string",
             "format": "uuid",
+            "nullable": true
+          },
+          "mode": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -69541,6 +69635,35 @@
           },
           "isActive": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "InvoiceCheckFeeDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "amount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "InvoiceCheckFeeRequest": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "amount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
           }
         },
         "additionalProperties": false

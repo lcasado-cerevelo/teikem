@@ -159,7 +159,7 @@ test('COD: cobrar y reconciliar con hojas escaneadas (PDF e imagen) leídas en e
   expect(await noHScroll(page)).toBe(true)
   await shot(page, isMobile, 'l85-vista-previa')
   await page.getByRole('button', { name: 'Cuadrar' }).click()
-  const confirm = page.getByRole('dialog', { name: 'Cuadrar lo cobrado' })
+  const confirm = page.getByRole('dialog', { name: 'Procesar las hojas' })
   await confirm.getByRole('button', { name: 'Cuadrar' }).click()
   await expect(page.getByText('Corrida hecha').first()).toBeVisible({ timeout: 30_000 })
   await shot(page, isMobile, 'l85-corrida')

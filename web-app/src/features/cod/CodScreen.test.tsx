@@ -14,6 +14,7 @@ const mock = vi.hoisted(() => ({
   codStatus: 'PENDING',
   collected: 0,
   reconcileItems: [] as unknown[],
+  lastMode: null as string | null,
   read: vi.fn(),
 }))
 
@@ -41,14 +42,23 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
       return json(DTO())
     }
     if (m === 'POST' && p === '/api/v1/cod/reconcile') {
-      const b = body as { dryRun?: boolean; codes: { code: string; source?: string }[] }
+      const b = body as { dryRun?: boolean; mode?: string; codes: { code: string; source?: string }[] }
+      mock.lastMode = b.mode ?? null
+      // Lote 126: un código que empieza por «FAC-S» es la factura de una orden SIN COD (se procesa, Kind INVOICE)
+      const inv = (code: string) => code.startsWith('FAC-S')
       const items = b.codes.map((c) => ({
-        code: c.code, source: c.source ?? null, result: c.code === 'NADA' ? 'NOT_FOUND' : 'RECONCILED', message: c.code === 'NADA' ? 'No hay ninguna orden con ese número de factura ni de orden.' : 'Cuadrado: 1 cobro(s) por 60.00.',
+        code: c.code, source: c.source ?? null, result: c.code === 'NADA' ? 'NOT_FOUND' : inv(c.code) ? 'INVOICE_CHECKED' : 'RECONCILED',
+        message: c.code === 'NADA' ? 'No hay ninguna orden con ese número de factura ni de orden.' : inv(c.code) ? 'Factura procesada: la orden está entregada.' : 'Cuadrado: 1 cobro(s) por 60.00.',
         orderPublicId: c.code === 'NADA' ? null : ORD, orderNumber: c.code === 'NADA' ? null : 'ORD-00001', invoiceNumber: c.code === 'NADA' ? null : c.code, clientName: c.code === 'NADA' ? null : 'Farmacia Central',
-        codAmount: 100, reconciled: c.code === 'NADA' ? 0 : 60, collections: c.code === 'NADA' ? 0 : 1,
+        codAmount: inv(c.code) ? 0 : 100, reconciled: c.code === 'NADA' || inv(c.code) ? 0 : 60, collections: c.code === 'NADA' || inv(c.code) ? 0 : 1,
+        kind: inv(c.code) ? 'INVOICE' : 'COD',
       }))
       mock.reconcileItems = items
-      return json({ runPublicId: b.dryRun ? null : RUN, dryRun: !!b.dryRun, total: items.length, reconciled: items.filter((i) => i.result === 'RECONCILED').length, issues: items.filter((i) => i.result !== 'RECONCILED').length, items })
+      const hasInvoice = items.some((i) => i.kind === 'INVOICE' && i.orderNumber)
+      const hasCod = items.some((i) => i.kind === 'COD' && i.orderNumber)
+      const warnings = b.mode === 'COD' && hasInvoice ? ['NOT_COD_SHEETS'] : b.mode === 'INVOICE' && hasCod ? ['COD_SHEETS'] : b.mode === 'BOTH' && !hasInvoice ? ['NO_INVOICE_SHEETS'] : []
+      return json({ runPublicId: b.dryRun ? null : RUN, dryRun: !!b.dryRun, total: items.length, reconciled: items.filter((i) => i.result === 'RECONCILED').length, checked: items.filter((i) => i.result === 'INVOICE_CHECKED').length,
+        issues: items.filter((i) => i.result === 'NOT_FOUND').length, items, warnings })
     }
     if (m === 'GET' && p === '/api/v1/cod/runs') return json({ items: [{ publicId: RUN, source: 'hojas.pdf', total: 2, reconciled: 1, issues: 1, createdAtUtc: '2026-10-17T12:00:00Z', createdByName: 'Admin' }], total: 1, skip: 0, take: 25 })
     if (m === 'GET' && p === `/api/v1/cod/runs/${RUN}`) {
@@ -182,13 +192,45 @@ describe('COD', () => {
     expect(screen.getAllByText('No encontrado').length).toBeGreaterThan(0)
 
     await user.click(screen.getByRole('button', { name: 'Cuadrar' }))
-    const confirm = await screen.findByRole('dialog', { name: 'Cuadrar lo cobrado' })
+    const confirm = await screen.findByRole('dialog', { name: 'Procesar las hojas' })
     await user.click(within(confirm).getByRole('button', { name: 'Cuadrar' }))
     await waitFor(() => expect(sent('POST', '/api/v1/cod/reconcile')).toHaveLength(2))
     expect((sent('POST', '/api/v1/cod/reconcile')[1].body as { dryRun: boolean }).dryRun).toBe(false)
     expect(await screen.findByText('Corrida hecha')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Nueva corrida' }))
     expect(await screen.findByText('Códigos por procesar (0)')).toBeInTheDocument()
+  })
+
+  it('Lote 126: «¿Qué vas a subir?» viaja como modo; la factura de una orden sin COD se procesa (tipo Factura) y la advertencia del modo se muestra', async () => {
+    const user = userEvent.setup()
+    wrap()
+    await user.click(await screen.findByRole('tab', { name: 'Reconciliar' }))
+    expect(await screen.findByRole('radio', { name: 'Detectar' })).toBeChecked()                 // por omisión el sistema clasifica solo
+    await user.type(screen.getByLabelText('Códigos escritos a mano'), 'FAC-00001 FAC-S0002')
+    await user.click(screen.getByRole('button', { name: 'Agregar' }))
+    await user.click(screen.getByRole('button', { name: 'Vista previa' }))
+    await screen.findByText('Esto es solo una simulación: todavía no se cuadró nada.')
+    expect(mock.lastMode).toBe('AUTO')
+    expect(screen.queryByRole('alert')).toBeNull()                                                 // Detectar no advierte
+    expect(screen.getAllByText('Factura procesada').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Factura').length).toBeGreaterThan(0)                               // la columna Tipo
+    expect(screen.getByText(/1 factura\(s\) procesada\(s\)/)).toBeInTheDocument()
+
+    // dice «Hojas de COD» pero una es de una orden sin COD: se procesa igual y avisa
+    await user.click(screen.getByRole('radio', { name: 'Hojas de COD' }))
+    await user.click(screen.getByRole('button', { name: 'Vista previa' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Dijiste hojas de COD, pero algunas son de órdenes sin COD')
+    expect(mock.lastMode).toBe('COD')
+    expect(screen.getByRole('button', { name: 'Cuadrar' })).toBeEnabled()
+
+    // «Ambas» con los dos tipos no advierte; sin la factura, avisa que faltan facturas
+    await user.click(screen.getByRole('radio', { name: 'Ambas' }))
+    await user.click(screen.getByRole('button', { name: 'Vista previa' }))
+    await screen.findByText('Esto es solo una simulación: todavía no se cuadró nada.')
+    expect(screen.queryByRole('alert')).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Quitar el código FAC-S0002' }))
+    await user.click(screen.getByRole('button', { name: 'Vista previa' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('no subiste facturas')
   })
 
   it('un código se puede quitar de la lista y cambiar la lista descarta la vista previa', async () => {

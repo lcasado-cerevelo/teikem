@@ -50,6 +50,10 @@ public sealed class ContractsController(ContractService contracts) : ControllerB
     [HttpPatch("{publicId:guid}/return-fee"), RequirePermission(PermissionCatalog.ContractsUpdate)]
     public Task<ContractDetailDto> SetReturnFee(Guid publicId, [FromBody] ReturnFeeRequest req, CancellationToken ct) => contracts.SetReturnFeeAsync(publicId, req, ct);
 
+    /// <summary>Lote 126: cobrar el cotejo de la factura del cliente (encendido/apagado y monto por factura procesada).</summary>
+    [HttpPatch("{publicId:guid}/invoice-check-fee"), RequirePermission(PermissionCatalog.ContractsUpdate)]
+    public Task<ContractDetailDto> SetInvoiceCheckFee(Guid publicId, [FromBody] InvoiceCheckFeeRequest req, CancellationToken ct) => contracts.SetInvoiceCheckFeeAsync(publicId, req, ct);
+
     /// <summary>Reemplazo completo de los niveles de servicio (los ausentes se dan de baja; uno por tipo de servicio).</summary>
     [HttpPut("{publicId:guid}/service-levels"), RequirePermission(PermissionCatalog.ContractsUpdate)]
     public Task<ContractDetailDto> SetServiceLevels(Guid publicId, [FromBody] IList<ServiceLevelUpsert> items, CancellationToken ct) => contracts.SetServiceLevelsAsync(publicId, items, ct);

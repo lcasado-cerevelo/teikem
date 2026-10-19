@@ -9386,3 +9386,19 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **Las facturas vencidas no coinciden con las que veo en Facturación.** El aviso cuenta las facturas en estatus «Vencida» (las que el trabajo programado marcó al pasar su plazo con saldo); una factura recién pasada de plazo se marca en la siguiente corrida del trabajo.
 
 **¿Dónde veo el porcentaje de entregas dentro del SLA?** En el indicador «Entregas dentro del SLA» (se enciende desde «Organizar» en el Pulso) y en el gráfico «Órdenes por estado del SLA». Solo cuenta órdenes con SLA en su contrato.
+
+## Procesar la factura del cliente (Lote 126)
+
+**En el sistema viejo creábamos una orden para procesar la factura. ¿Aquí cómo?** No se crea nada: la factura ya viene en la orden. Cuando la orden se entregó, en Procesar entregas → Reconciliar se sube la hoja (o se teclea el número) y el sistema la coteja contra la orden. Si la orden tiene COD, la misma hoja cuadra el cobro.
+
+**¿Qué pongo en «¿Qué vas a subir?»?** Si no sabes, deja **Detectar**: el sistema clasifica cada hoja solo. Elegir COD, Facturas o Ambas solo sirve para que te avise si lo que subiste no es lo que dijiste; todo se procesa igual.
+
+**Me salió «No entregada».** La orden existe pero todavía no se entregó; la factura se procesa cuando se entregue. No hay que hacer nada ahora.
+
+**Me salió «Ya procesada».** Esa orden ya traía su factura procesada en otra corrida (la ficha de la orden dice cuándo y quién). No se procesa dos veces.
+
+**«El tipo de hojas debe ser AUTO, COD, INVOICE o BOTH.»** (400) El campo `mode` del API solo admite esos valores (o vacío = AUTO).
+
+**¿Procesar la factura cuesta?** Solo si el contrato del cliente tiene encendido «Cobrar el cotejo de la factura del cliente» con un monto; entonces la siguiente corrida de facturación agrega la línea «Cotejo de factura de la orden X», una vez por orden. Apagado (lo normal), no cuesta.
+
+**«Indique el monto por factura cotejada.» / «El monto del cotejo no puede ser negativo.»** (400) Al encender el cobro en el contrato hay que dar un monto de cero o más.
