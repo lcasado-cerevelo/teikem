@@ -9,6 +9,7 @@ using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Clients;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
+using Teikem.Infrastructure.Notifications;
 using Teikem.Infrastructure.Persistence;
 using Teikem.Infrastructure.Wms;
 
@@ -24,7 +25,7 @@ namespace Teikem.Infrastructure.Services;
 /// Lecturas con InventoryScope (D44): con OwnerClientId solo los ASN de ese cliente; los demás dan 404, sin oráculo.
 /// El ASN tiene TenantId (filtro global); sus líneas (sin TenantId) se alcanzan SIEMPRE por el ASN filtrado.
 /// </summary>
-public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, PermissionService? permissions = null)
+public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, PermissionService? permissions = null, INotificationPublisher? notifications = null)
 {
     public const string AsnWhat = "Aviso de llegada";
 
@@ -102,6 +103,46 @@ public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, Status
         if (lines.Count > ReceiptRules.MaxLines) errors["lines"] = new[] { ReceiptRules.AsnTooManyLines };
         if (errors.Count > 0) throw new ValidationException(errors);
 
+        var validated = await ValidateLinesAsync(lines, client, errors, ct);
+        var newLines = validated.Lines;
+        var newCosts = validated.NewCosts;
+
+        var initial = await statuses.GetInitialAsync(StatusDomains.AsnStatus, ct);
+        var id = await db.RunInTransactionAsync(async ct2 =>
+        {
+            var asn = new Asn
+            {
+                TenantId = tenantId, WarehouseId = warehouse.WarehouseId, ClientId = client.ClientId, Reference = reference,
+                ExpectedDate = req.ExpectedDate, StatusCodeId = initial.StatusCodeId, IsActive = true,
+                CreatedAtUtc = DateTime.UtcNow, CreatedBy = tenant.UserId,
+            };
+            db.Set<Asn>().Add(asn);
+            await db.SaveChangesAsync(ct2);
+            foreach (var nl in newLines) nl.AsnId = asn.AsnId;
+            db.Set<AsnLine>().AddRange(newLines);
+            var born = await statuses.TransitionAsync(StatusDomains.AsnStatus, EntityTypes.Asn, asn.AsnId, null, initial.InternalCode, null, ct2);
+            asn.StatusCodeId = born.StatusCodeId;
+            if (newCosts.Count > 0)
+            {
+                var ids = newCosts.Keys.ToList();
+                foreach (var p in await db.Set<Product>().Where(p => ids.Contains(p.ProductId)).ToListAsync(ct2)) p.PurchaseCost = newCosts[p.ProductId];
+            }
+            await NotifyAsync(AsnEventCodes.Requested, asn, newLines.Count, ct2);
+            await db.SaveChangesAsync(ct2);
+            return asn.AsnId;
+        }, ct);
+
+        return await GetAsync(id, InventoryScope.Any, ct);
+    }
+
+    private sealed record ValidatedLines(List<AsnLine> Lines, Dictionary<int, decimal> NewCosts);
+
+    /// <summary>
+    /// Valida las líneas de un aviso de cliente (las mismas reglas al crear y al editar): productos activos DEL cliente, cantidad, lote solo si el producto es por lote, precio, y el plan del precio del
+    /// producto (ProductPriceRules). Acumula los errores por línea en <paramref name="errors"/> y los lanza juntos.
+    /// </summary>
+    private async Task<ValidatedLines> ValidateLinesAsync(IReadOnlyList<AsnLineRequest> lines, Client client, Dictionary<string, string[]> errors, CancellationToken ct)
+    {
         var products = await ReceivingSupport.ProductsByPublicIdAsync(db, lines.Select(l => l.ProductPublicId), ct);
         var tracking = await ReceivingSupport.TrackingCodesAsync(db, products.Values.Select(p => p.TrackingTypeLookupId), ct);
         var newLines = new List<AsnLine>();
@@ -130,9 +171,10 @@ public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, Status
                 if (lotError is not null) { errors[key + ".lotNumber"] = new[] { lotError }; continue; }
                 lotNumber = n;
             }
+            else if (l.ExpiryDate is not null) { errors[key + ".expiryDate"] = new[] { ReceiptRules.AsnExpiryNeedsLot }; continue; }
             var priceError = CostLayerRules.ValidateUnitPrice(l.UnitPrice);
             if (priceError is not null) { errors[key + ".unitPrice"] = new[] { priceError }; continue; }
-            newLines.Add(new AsnLine { ProductId = product.ProductId, ExpectedQty = l.ExpectedQty!.Value, LotNumber = lotNumber, UnitPrice = l.UnitPrice });
+            newLines.Add(new AsnLine { ProductId = product.ProductId, ExpectedQty = l.ExpectedQty!.Value, LotNumber = lotNumber, UnitPrice = l.UnitPrice, ExpiryDate = lotNumber is null ? null : l.ExpiryDate });
         }
         if (errors.Count > 0) throw new ValidationException(errors);
 
@@ -141,32 +183,7 @@ public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, Status
         if (lines.Any(l => l.UpdateProductPrice == true) && (permissions is null || !await permissions.HasPermissionAsync(PermissionCatalog.InventoryManage, ct)))
             throw new ForbiddenException(ProductPriceRules.UpdateNeedsPermission);
         var newCosts = ProductPriceRules.Plan(priceLines);
-
-        var initial = await statuses.GetInitialAsync(StatusDomains.AsnStatus, ct);
-        var id = await db.RunInTransactionAsync(async ct2 =>
-        {
-            var asn = new Asn
-            {
-                TenantId = tenantId, WarehouseId = warehouse.WarehouseId, ClientId = client.ClientId, Reference = reference,
-                ExpectedDate = req.ExpectedDate, StatusCodeId = initial.StatusCodeId, IsActive = true,
-                CreatedAtUtc = DateTime.UtcNow, CreatedBy = tenant.UserId,
-            };
-            db.Set<Asn>().Add(asn);
-            await db.SaveChangesAsync(ct2);
-            foreach (var nl in newLines) nl.AsnId = asn.AsnId;
-            db.Set<AsnLine>().AddRange(newLines);
-            var born = await statuses.TransitionAsync(StatusDomains.AsnStatus, EntityTypes.Asn, asn.AsnId, null, initial.InternalCode, null, ct2);
-            asn.StatusCodeId = born.StatusCodeId;
-            if (newCosts.Count > 0)
-            {
-                var ids = newCosts.Keys.ToList();
-                foreach (var p in await db.Set<Product>().Where(p => ids.Contains(p.ProductId)).ToListAsync(ct2)) p.PurchaseCost = newCosts[p.ProductId];
-            }
-            await db.SaveChangesAsync(ct2);
-            return asn.AsnId;
-        }, ct);
-
-        return await GetAsync(id, InventoryScope.Any, ct);
+        return new ValidatedLines(newLines, newCosts);
     }
 
     // ================================================================ cancelación
@@ -189,10 +206,95 @@ public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, Status
             if (openReceipt) throw new ConflictException(ReceiptRules.AsnHasOpenReceipt);
             var to = await statuses.TransitionAsync(StatusDomains.AsnStatus, EntityTypes.Asn, asn.AsnId, asn.StatusCodeId, AsnStatuses.Cancelled, null, ct2);
             asn.StatusCodeId = to.StatusCodeId;
+            await NotifyAsync(AsnEventCodes.Cancelled, asn, null, ct2);
             await db.SaveChangesAsync(ct2);
         }, ct);
 
         return await GetAsync(id, InventoryScope.Any, ct);
+    }
+
+    // ================================================================ edición antes de que llegue
+
+    /// <summary>
+    /// Edita un aviso de llegada de CLIENTE que sigue esperado y sin recibo abierto (por si cambió el almacén de recibo o el aviso se capturó mal): almacén, referencia, llegada esperada y/o las líneas
+    /// (reemplazo completo, con las mismas reglas del alta). null = sin cambio; referencia "" la quita. Uno nacido de una orden de compra se cambia en la orden (409).
+    /// </summary>
+    public async Task<AsnDto> UpdateAsync(int id, AsnUpdateRequest req, CancellationToken ct)
+    {
+        if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
+        var current = await db.Set<Asn>().AsNoTracking().FirstOrDefaultAsync(a => a.AsnId == id && a.IsActive, ct) ?? throw new NotFoundException(AsnWhat);
+        if (current.PurchaseOrderId is not null || current.ClientId is null) throw new ConflictException(ReceiptRules.AsnFromPurchaseOrderNotEditable);
+        var client = ClientQueries.EnsureClientActive(await db.Set<Client>().FirstOrDefaultAsync(c => c.ClientId == current.ClientId, ct));
+        var errors = new Dictionary<string, string[]>();
+
+        Warehouse? warehouse = null;
+        if (req.WarehousePublicId is Guid wp)
+        {
+            warehouse = await ReceivingSupport.ResolveWarehouseOrDefaultAsync(db, wp, ct);
+            if (!warehouse.IsActive) throw new StatusRuleException(ReceiptRules.WarehouseInactive);
+        }
+        string? reference = null;
+        if (req.Reference is not null)
+        {
+            reference = string.IsNullOrWhiteSpace(req.Reference) ? string.Empty : req.Reference.Trim();
+            if (reference.Length > ReceiptRules.ReferenceMaxLength) errors["reference"] = new[] { ReceiptRules.ReferenceTooLong };
+        }
+        ValidatedLines? validated = null;
+        if (req.Lines is not null)
+        {
+            if (req.Lines.Count == 0) errors["lines"] = new[] { ReceiptRules.LinesRequired };
+            else if (req.Lines.Count > ReceiptRules.MaxLines) errors["lines"] = new[] { ReceiptRules.AsnTooManyLines };
+            if (errors.Count > 0) throw new ValidationException(errors);
+            validated = await ValidateLinesAsync(req.Lines, client, errors, ct);
+            if (req.Lines.Any(l => l.UpdateProductPrice == true) && (permissions is null || !await permissions.HasPermissionAsync(PermissionCatalog.InventoryManage, ct)))
+                throw new ForbiddenException(ProductPriceRules.UpdateNeedsPermission);
+        }
+        if (errors.Count > 0) throw new ValidationException(errors);
+
+        var expectedId = await db.StatusIdAsync(StatusDomains.AsnStatus, AsnStatuses.Expected, ct);
+        await db.RunInTransactionAsync(async ct2 =>
+        {
+            var asn = await ReceivingSupport.LockAsnAsync(db, id, ct2);
+            if (asn.StatusCodeId != expectedId) throw new StatusRuleException(ReceiptRules.AsnNotExpected);
+            if (await db.Set<ReceiptHeader>().AsNoTracking().AnyAsync(r => r.AsnId == asn.AsnId && r.IsActive, ct2)) throw new ConflictException(ReceiptRules.AsnHasOpenReceiptEdit);
+            if (warehouse is not null) asn.WarehouseId = warehouse.WarehouseId;
+            if (reference is not null) asn.Reference = reference.Length == 0 ? null : reference;
+            if (req.ExpectedDate is DateOnly expected) asn.ExpectedDate = expected;
+            if (validated is not null)
+            {
+                db.Set<AsnLine>().RemoveRange(await db.Set<AsnLine>().Where(l => l.AsnId == asn.AsnId).ToListAsync(ct2));
+                foreach (var nl in validated.Lines) nl.AsnId = asn.AsnId;
+                db.Set<AsnLine>().AddRange(validated.Lines);
+                if (validated.NewCosts.Count > 0)
+                {
+                    var ids = validated.NewCosts.Keys.ToList();
+                    foreach (var p in await db.Set<Product>().Where(p => ids.Contains(p.ProductId)).ToListAsync(ct2)) p.PurchaseCost = validated.NewCosts[p.ProductId];
+                }
+            }
+            await db.SaveChangesAsync(ct2);
+            var lineCount = await db.Set<AsnLine>().CountAsync(l => l.AsnId == asn.AsnId, ct2);
+            await NotifyAsync(AsnEventCodes.Updated, asn, lineCount, ct2);
+            await db.SaveChangesAsync(ct2);
+        }, ct);
+
+        return await GetAsync(id, InventoryScope.Any, ct);
+    }
+
+    // ================================================================ avisos
+
+    /// <summary>Publica un evento del aviso de llegada de un cliente (los nacidos de una orden de compra no avisan).</summary>
+    public async Task NotifyAsync(string eventCode, Asn asn, int? lineCount, CancellationToken ct)
+    {
+        if (notifications is null || asn.ClientId is null) return;
+        var client = await db.Set<Client>().AsNoTracking().Where(c => c.ClientId == asn.ClientId).Select(c => c.Name).FirstOrDefaultAsync(ct) ?? string.Empty;
+        var warehouse = await db.Set<Warehouse>().AsNoTracking().Where(w => w.WarehouseId == asn.WarehouseId).Select(w => w.Name).FirstOrDefaultAsync(ct) ?? string.Empty;
+        var values = new Dictionary<string, string?>
+        {
+            ["number"] = $"#{asn.AsnId}", ["reference"] = asn.Reference ?? "—", ["client"] = client, ["warehouse"] = warehouse,
+            ["expected"] = asn.ExpectedDate?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) ?? "—",
+            ["lineCount"] = (lineCount ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture),
+        };
+        await notifications.PublishAsync(eventCode, values, null, ct);
     }
 
     // ================================================================ uso interno: ASN por lo pendiente de una PO
@@ -256,8 +358,9 @@ public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, Status
                            join p in db.Set<Product>().AsNoTracking() on l.ProductId equals p.ProductId
                            where asnIds.Contains(l.AsnId)
                            orderby l.AsnLineId
-                           select new { l.AsnId, l.AsnLineId, p.PublicId, p.Sku, p.Name, l.ExpectedQty, l.LotNumber, l.PurchaseOrderLineId, l.UnitPrice })
+                           select new { l.AsnId, l.AsnLineId, p.PublicId, p.Sku, p.Name, l.ExpectedQty, l.LotNumber, l.PurchaseOrderLineId, l.UnitPrice, l.ExpiryDate, p.TrackingTypeLookupId })
             .ToListAsync(ct);
+        var trackingCodes = await ReceivingSupport.TrackingCodesAsync(db, lines.Select(l => l.TrackingTypeLookupId), ct);
         var receipts = await db.Set<ReceiptHeader>().AsNoTracking().Where(r => r.AsnId != null && asnIds.Contains(r.AsnId.Value) && r.IsActive)
             .Select(r => new { AsnId = r.AsnId!.Value, r.PublicId, r.Number }).ToListAsync(ct);
         var receiptByAsn = receipts.GroupBy(r => r.AsnId).ToDictionary(g => g.Key, g => g.First());
@@ -271,7 +374,7 @@ public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, Status
             var s = statusMap.GetValueOrDefault(a.StatusCodeId);
             var r = receiptByAsn.GetValueOrDefault(a.AsnId);
             var lineDtos = lines.Where(l => l.AsnId == a.AsnId)
-                .Select(l => new AsnLineDto(l.AsnLineId, l.PublicId, l.Sku, l.Name, l.ExpectedQty, l.LotNumber, l.PurchaseOrderLineId, l.UnitPrice))
+                .Select(l => new AsnLineDto(l.AsnLineId, l.PublicId, l.Sku, l.Name, l.ExpectedQty, l.LotNumber, l.PurchaseOrderLineId, l.UnitPrice, trackingCodes.GetValueOrDefault(l.TrackingTypeLookupId, TrackingTypes.None), l.ExpiryDate))
                 .ToList();
             return new AsnDto(a.AsnId, w?.PublicId ?? Guid.Empty, w?.Code ?? "", c?.PublicId, c?.Name, p?.PublicId, p?.Number,
                 a.Reference, a.ExpectedDate, s?.Code ?? "", s?.Label ?? "", a.IsActive, lineDtos, r?.PublicId, r?.Number);

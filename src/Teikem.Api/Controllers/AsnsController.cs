@@ -38,6 +38,10 @@ public sealed class AsnsController(AsnService asns) : ControllerBase
     public Task<AsnDto> Create([FromBody] AsnCreateRequest req, CancellationToken ct) => asns.CreateAsync(req, ct);
 
     /// <summary>Cancela un aviso EXPECTED (422 si ya se recibió o canceló; 409 con un recibo abierto).</summary>
+    /// <summary>Edita un aviso de llegada de cliente mientras siga esperado y sin recibo abierto: almacén, referencia, llegada esperada y/o líneas (reemplazo completo).</summary>
+    [HttpPatch("{id:int}"), RequirePermission(PermissionCatalog.WarehouseReceive)]
+    public Task<AsnDto> Update(int id, [FromBody] AsnUpdateRequest req, CancellationToken ct) => asns.UpdateAsync(id, req, ct);
+
     [HttpPost("{id:int}/cancel"), RequirePermission(PermissionCatalog.WarehouseReceive)]
     public Task<AsnDto> Cancel(int id, CancellationToken ct) => asns.CancelAsync(id, ct);
 }

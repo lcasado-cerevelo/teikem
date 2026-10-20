@@ -43,6 +43,7 @@ export function AsnsTab({ onReceive }: { onReceive: (asn: AsnDto) => void }) {
   const [expected, setExpected] = useState<DateRange>(EMPTY_RANGE)
   const [creating, setCreating] = useState(false)
   const [toCancel, setToCancel] = useState<AsnDto | null>(null)
+  const [toEdit, setToEdit] = useState<AsnDto | null>(null)
   const save = useSaveAsn()
   const ref = useDebounced(reference.trim())
 
@@ -114,6 +115,14 @@ export function AsnsTab({ onReceive }: { onReceive: (asn: AsnDto) => void }) {
         visible: (a) => a.statusCode === 'EXPECTED' && !a.receiptPublicId,
         onClick: onReceive,
         tone: 'flow',
+      },
+      {
+        key: 'edit',
+        label: t('warehouse.asns.edit'),
+        perm: 'warehouse.receive',
+        // solo un aviso de cliente que sigue esperado y sin recibo abierto (uno nacido de una orden de compra se cambia en la orden)
+        visible: (a) => a.statusCode === 'EXPECTED' && !a.receiptPublicId && !a.purchaseOrderPublicId,
+        onClick: (a) => setToEdit(a),
       },
       {
         key: 'cancel',
@@ -192,6 +201,7 @@ export function AsnsTab({ onReceive }: { onReceive: (asn: AsnDto) => void }) {
         )}
       </Panel>
       {creating && <AsnCreateModal onClose={() => setCreating(false)} />}
+      {toEdit && <AsnCreateModal key={toEdit.id} asn={toEdit} onClose={() => setToEdit(null)} />}
       <ConfirmDialog
         open={toCancel !== null}
         tone="danger"

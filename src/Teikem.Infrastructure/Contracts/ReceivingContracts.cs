@@ -3,17 +3,20 @@ namespace Teikem.Infrastructure.Contracts;
 // Lote 6 — Recepción (ASN, recibos). Firma posicional FIJA. El recibo se identifica por PublicId; el ASN y las líneas por id
 // int, SIEMPRE resueltos dentro de su encabezado filtrado.
 
-public sealed record AsnLineRequest(Guid? ProductPublicId, decimal? ExpectedQty, string? LotNumber = null, decimal? UnitPrice = null, bool? UpdateProductPrice = null);
+public sealed record AsnLineRequest(Guid? ProductPublicId, decimal? ExpectedQty, string? LotNumber = null, decimal? UnitPrice = null, bool? UpdateProductPrice = null, DateOnly? ExpiryDate = null);
 
 public sealed record AsnCreateRequest(Guid? WarehousePublicId, Guid? ClientPublicId, string? Reference = null, DateOnly? ExpectedDate = null,
     IReadOnlyList<AsnLineRequest>? Lines = null);
 
 public sealed record AsnLineDto(int Id, Guid ProductPublicId, string Sku, string ProductName, decimal ExpectedQty, string? LotNumber,
-    int? PurchaseOrderLineId, decimal? UnitPrice = null);
+    int? PurchaseOrderLineId, decimal? UnitPrice = null, string? TrackingType = null, DateOnly? ExpiryDate = null);
 
 public sealed record AsnDto(int Id, Guid WarehousePublicId, string WarehouseCode, Guid? ClientPublicId, string? ClientName,
     Guid? PurchaseOrderPublicId, string? PurchaseOrderNumber, string? Reference, DateOnly? ExpectedDate, string StatusCode, string Status,
     bool IsActive, IReadOnlyList<AsnLineDto> Lines, Guid? ReceiptPublicId, string? ReceiptNumber);
+
+/// <summary>Lote 157: edita un aviso de llegada de cliente esperado. null = sin cambio; Reference "" la quita; Lines reemplaza todas las líneas.</summary>
+public sealed record AsnUpdateRequest(Guid? WarehousePublicId = null, string? Reference = null, DateOnly? ExpectedDate = null, IReadOnlyList<AsnLineRequest>? Lines = null);
 
 /// <summary>Lote 13: Reference (contiene) y ExpectedFrom/ExpectedTo sobre la llegada esperada del aviso (inclusive).</summary>
 public sealed record AsnQuery(Guid? WarehousePublicId = null, string[]? Status = null, Guid? ClientPublicId = null, string? Search = null,

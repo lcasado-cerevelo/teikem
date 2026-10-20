@@ -335,6 +335,7 @@ public static class DependencyInjection
         services.AddSingleton<INotificationEventProvider, IntegrationEventProvider>();   // Lote 132 (P11)
         services.AddSingleton<INotificationEventProvider, InventoryEventProvider>();   // Lote 141
         services.AddSingleton<INotificationEventProvider, ExitNoticeEventProvider>();   // Lote 143
+        services.AddSingleton<INotificationEventProvider, AsnEventProvider>();   // Lote 157: avisos de llegada
         services.AddSingleton<NotificationEventCatalog>();
         services.AddScoped<INotificationPublisher, NotificationPublisher>();
         services.AddScoped<INotificationChannelSender, EmailChannelSender>();

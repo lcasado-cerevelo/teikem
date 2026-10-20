@@ -6001,6 +6001,8 @@
       "title": "Advance shipping notices",
       "new": "New notice",
       "created": "Advance shipping notice created.",
+      "edit": "Edit",
+      "updated": "Advance shipping notice updated.",
       "receive": "Receive",
       "cancel": "Cancel notice",
       "cancelTitle": "Cancel advance shipping notice",
@@ -6039,6 +6041,8 @@
       "lines": {
         "unitPrice": "Unit price (optional)",
         "unitPriceOf": "Unit price of line {n}",
+        "lotAndExpiry": "Lot and expiry",
+        "expiryOf": "Expiry of line {n}",
         "priceDiffers": "The product has {stored} on file; this price is different.",
         "updateProductPrice": "Update the product price with this one",
         "title": "Lines",

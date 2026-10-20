@@ -495,6 +495,7 @@
       "product": "Product",
       "qty": "Quantity",
       "lot": "Lot (optional)",
+        "expiry": "Lot expiry (YYYY-MM-DD, optional)",
       "price": "Unit price (optional)",
       "add": "Add line",
       "remove": "Remove line"

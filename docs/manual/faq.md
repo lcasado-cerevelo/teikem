@@ -9719,3 +9719,15 @@ La compañía no encendió esa opción para su cliente. El administrador la enci
 
 **¿Qué significa «Su acceso es de solo lectura y no puede crear documentos.»? (403)**
 Su acceso al portal es de solo lectura. Pida al administrador de su cliente un acceso de administrador u operador.
+
+**¿Para qué es el lote y el vencimiento en la línea del aviso de llegada?**
+Solo aplica a productos por lote: el cliente anuncia qué lote viene y cuándo vence, y al recibir el lote nace con esa fecha. En un producto sin lote no aparece.
+
+**¿Qué significa «El vencimiento solo se indica junto con el número de lote.»? (400)**
+Se escribió un vencimiento sin número de lote. Escriba el lote o quite la fecha.
+
+**¿Qué significa «El aviso de llegada tiene un recibo abierto; elimínelo antes de editarlo.»? (409)**
+Ya se empezó a recibir contra ese aviso. Elimine el recibo abierto para poder editar el aviso.
+
+**¿Qué significa «Un aviso de llegada nacido de una orden de compra se cambia en la orden de compra.»? (409)**
+Ese aviso lo generó una orden de compra; edite la orden, no el aviso.

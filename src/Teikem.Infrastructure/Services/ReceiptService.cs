@@ -8,6 +8,7 @@ using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Clients;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
+using Teikem.Infrastructure.Notifications;
 using Teikem.Infrastructure.Orders;
 using Teikem.Infrastructure.Persistence;
 using Teikem.Infrastructure.Wms;
@@ -871,6 +872,7 @@ public sealed class ReceiptService(
             {
                 var asnTo = await statuses.TransitionAsync(StatusDomains.AsnStatus, EntityTypes.Asn, asn.AsnId, asn.StatusCodeId, AsnStatuses.Received, null, ct2);
                 asn.StatusCodeId = asnTo.StatusCodeId;
+                await asns.NotifyAsync(AsnEventCodes.Received, asn, null, ct2);   // Lote 157
             }
 
             // 9. Recibo abierto → RECEIVED (o RECEIVED_VARIANCE si hay diferencia, Lote 13) con fecha de confirmación (insumo
@@ -1158,7 +1160,7 @@ public sealed class ReceiptService(
                 throw new ValidationException("purchaseOrderPublicId", ReceiptRules.OwnProductsOnly(p.Sku));
             int? lotId = null;
             if (!string.IsNullOrWhiteSpace(al.LotNumber) && tracking.GetValueOrDefault(p.TrackingTypeLookupId) == TrackingTypes.Lot)
-                lotId = await ReceivingSupport.EnsureLotAsync(db, p.ProductId, al.LotNumber.Trim(), null, null, ct);
+                lotId = await ReceivingSupport.EnsureLotAsync(db, p.ProductId, al.LotNumber.Trim(), null, al.ExpiryDate, ct);
             result.Add(new ReceiptLine
             {
                 AsnLineId = al.AsnLineId, ProductId = al.ProductId, LotId = lotId,

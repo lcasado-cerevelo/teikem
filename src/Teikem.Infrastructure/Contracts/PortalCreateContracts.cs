@@ -5,7 +5,7 @@ namespace Teikem.Infrastructure.Contracts;
 public sealed record PortalProductCreateRequest(string? Sku, string? Name, string? BaseUom = null, string? TrackingType = null, string? Barcode = null, string? Brand = null,
     string? Model = null, decimal? WeightKg = null, decimal? VolumeM3 = null, decimal? PurchaseCost = null);
 
-public sealed record PortalArrivalLineRequest(Guid? ProductPublicId, decimal? ExpectedQty, string? LotNumber = null, decimal? UnitPrice = null);
+public sealed record PortalArrivalLineRequest(Guid? ProductPublicId, decimal? ExpectedQty, string? LotNumber = null, decimal? UnitPrice = null, DateOnly? ExpiryDate = null);
 
 public sealed record PortalArrivalRequest(Guid? WarehousePublicId = null, string? Reference = null, DateOnly? ExpectedDate = null, IReadOnlyList<PortalArrivalLineRequest>? Lines = null);
 
@@ -16,7 +16,7 @@ public sealed record PortalExitRequest(Guid? WarehousePublicId = null, string? R
 
 public sealed record PortalWarehouseOptionDto(Guid PublicId, string Code, string Name);
 
-public sealed record PortalArrivalLineDto(string Sku, string ProductName, decimal ExpectedQty, string? LotNumber, decimal? UnitPrice);
+public sealed record PortalArrivalLineDto(string Sku, string ProductName, decimal ExpectedQty, string? LotNumber, decimal? UnitPrice, DateOnly? ExpiryDate = null);
 
 /// <summary>Un aviso de llegada del cliente. CanCancel = todavía esperado y sin recibo abierto.</summary>
 public sealed record PortalArrivalDto(int Id, Guid WarehousePublicId, string WarehouseCode, string? Reference, DateOnly? ExpectedDate, string StatusCode, string Status, bool CanCancel,

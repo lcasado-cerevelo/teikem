@@ -1,3 +1,4 @@
+// Lote 157: el mismo formulario edita un aviso esperado (`PATCH /api/v1/asns/{id}`; el cliente no cambia). El lote y su vencimiento solo salen en las líneas de productos por lote.
 // Lote 13 — alta de un aviso de llegada (ASN) de un cliente 3PL (`POST /api/v1/asns`, warehouse.receive), extraído de la
 // lista de Recibo: Almacén, Cliente dueño (`ClientPickerInput`, buscador), Referencia (máx. 80) y Llegada esperada; las
 // líneas en una misma rejilla (Producto del dueño con buscador, Cantidad esperada > 0 con 3 decimales, Lote), hasta 200.
@@ -8,7 +9,7 @@ import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { useT } from '../../kernel/i18n'
 import { ClientPickerInput, DateInput, Field, Form, IconTrash, Modal, NumberInput, TextInput, toast } from '../../kernel/ui'
-import { useSaveAsn } from './api'
+import { useSaveAsn, type AsnDto } from './api'
 import { decimalsOf } from './lineRules'
 import { ProductPickerInput, WarehousePickerInput } from './pickers'
 import { preloadCost, priceDiffers, ProductPriceNote } from './ProductPriceNote'
@@ -19,6 +20,10 @@ interface AsnLineForm {
   productPublicId: string | null
   expectedQty: number | null
   lotNumber: string
+  /** Vencimiento del lote que llega (solo productos por lote, junto al número de lote). */
+  expiryDate: string
+  /** El producto es por lote: solo entonces se piden lote y vencimiento. */
+  isLot: boolean
   /** Lote 147: precio unitario opcional (alimenta la capa de costo al recibir). */
   unitPrice: number | null
   /** Costo que hoy tiene el producto (precarga el precio y avisa si el escrito es distinto). */
@@ -26,10 +31,11 @@ interface AsnLineForm {
   /** «Actualizar el precio del producto con este» (solo con inventory.manage). */
   updatePrice: boolean
 }
-const EMPTY_ASN_LINE: AsnLineForm = { productPublicId: null, expectedQty: null, lotNumber: '', unitPrice: null, storedCost: null, updatePrice: false }
+const EMPTY_ASN_LINE: AsnLineForm = { productPublicId: null, expectedQty: null, lotNumber: '', expiryDate: '', isLot: false, unitPrice: null, storedCost: null, updatePrice: false }
 
-export function AsnCreateModal({ onClose }: { onClose: () => void }) {
+export function AsnCreateModal({ onClose, asn }: { onClose: () => void; asn?: AsnDto }) {
   const t = useT()
+  const editing = asn != null
   const save = useSaveAsn()
   const schema = useMemo(
     () =>
@@ -44,6 +50,8 @@ export function AsnCreateModal({ onClose }: { onClose: () => void }) {
               productPublicId: z.string().nullable(),
               expectedQty: z.number().nullable(),
               lotNumber: z.string().max(60, t('warehouse.lineRules.lotTooLong')),
+              expiryDate: z.string(),
+              isLot: z.boolean(),
               unitPrice: z.number().nullable(),
               storedCost: z.number().nullable(),
               updatePrice: z.boolean(),
@@ -67,7 +75,24 @@ export function AsnCreateModal({ onClose }: { onClose: () => void }) {
   )
   const form = useForm({
     resolver: zodResolver(schema),
-    defaultValues: { warehousePublicId: null, clientPublicId: null, reference: '', expectedDate: '', lines: [EMPTY_ASN_LINE] },
+    defaultValues: asn
+      ? {
+          warehousePublicId: asn.warehousePublicId ?? null,
+          clientPublicId: asn.clientPublicId ?? null,
+          reference: asn.reference ?? '',
+          expectedDate: asn.expectedDate ?? '',
+          lines: (asn.lines ?? []).map((l) => ({
+            productPublicId: l.productPublicId ?? null,
+            expectedQty: l.expectedQty ?? null,
+            lotNumber: l.lotNumber ?? '',
+            expiryDate: l.expiryDate ?? '',
+            isLot: l.trackingType === 'LOT',
+            unitPrice: l.unitPrice ?? null,
+            storedCost: null,
+            updatePrice: false,
+          })),
+        }
+      : { warehousePublicId: null, clientPublicId: null, reference: '', expectedDate: '', lines: [EMPTY_ASN_LINE] },
   })
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'lines' })
   const clientPublicId = useWatch({ control: form.control, name: 'clientPublicId' })
@@ -78,7 +103,7 @@ export function AsnCreateModal({ onClose }: { onClose: () => void }) {
     <Modal
       open
       size="lg"
-      title={t('warehouse.asns.new')}
+      title={editing ? t('warehouse.asns.edit') : t('warehouse.asns.new')}
       onClose={onClose}
       dismissible={!form.formState.isSubmitting}
       footer={
@@ -96,17 +121,17 @@ export function AsnCreateModal({ onClose }: { onClose: () => void }) {
         id={formId}
         form={form}
         onSubmit={async (v) => {
-          await save.mutateAsync({
-            action: 'create',
-            body: {
-              warehousePublicId: v.warehousePublicId,
-              clientPublicId: v.clientPublicId,
-              reference: v.reference.trim() || null,
-              expectedDate: v.expectedDate || null,
-              lines: v.lines.map((l) => ({ productPublicId: l.productPublicId, expectedQty: l.expectedQty, lotNumber: l.lotNumber.trim() || null, unitPrice: l.unitPrice, updateProductPrice: l.updatePrice && priceDiffers(l.unitPrice, l.storedCost) ? true : null })),
-            },
-          })
-          toast.success(t('warehouse.asns.created'))
+          const lines = v.lines.map((l) => ({
+            productPublicId: l.productPublicId,
+            expectedQty: l.expectedQty,
+            lotNumber: l.isLot ? l.lotNumber.trim() || null : null,
+            expiryDate: l.isLot && l.lotNumber.trim() ? l.expiryDate || null : null,
+            unitPrice: l.unitPrice,
+            updateProductPrice: l.updatePrice && priceDiffers(l.unitPrice, l.storedCost) ? true : null,
+          }))
+          if (asn) await save.mutateAsync({ action: 'update', id: asn.id as number, body: { warehousePublicId: v.warehousePublicId, reference: v.reference.trim(), expectedDate: v.expectedDate || null, lines } })
+          else await save.mutateAsync({ action: 'create', body: { warehousePublicId: v.warehousePublicId, clientPublicId: v.clientPublicId, reference: v.reference.trim() || null, expectedDate: v.expectedDate || null, lines } })
+          toast.success(t(editing ? 'warehouse.asns.updated' : 'warehouse.asns.created'))
           onClose()
         }}
       >
@@ -114,9 +139,16 @@ export function AsnCreateModal({ onClose }: { onClose: () => void }) {
           <Field name="warehousePublicId" label={t('warehouse.receipts.fields.warehouse')} required>
             <WarehousePickerInput />
           </Field>
-          <Field name="clientPublicId" label={t('warehouse.asns.fields.client')} required>
-            <ClientPickerInput />
-          </Field>
+          {editing ? (
+            <div className="f">
+              <label>{t('warehouse.asns.fields.client')}</label>
+              <p>{asn?.clientName}</p>
+            </div>
+          ) : (
+            <Field name="clientPublicId" label={t('warehouse.asns.fields.client')} required>
+              <ClientPickerInput />
+            </Field>
+          )}
         </div>
         <div className="r2">
           <Field name="reference" label={t('warehouse.asns.fields.reference')}>
@@ -133,7 +165,7 @@ export function AsnCreateModal({ onClose }: { onClose: () => void }) {
           <div className="rcp-asn-head" aria-hidden="true">
             <span>{t('warehouse.asns.lines.product')}</span>
             <span>{t('warehouse.asns.lines.expectedQty')}</span>
-            <span>{t('warehouse.asns.lines.lot')}</span>
+            <span>{t('warehouse.asns.lines.lotAndExpiry')}</span>
             <span>{t('warehouse.asns.lines.unitPrice')}</span>
             <span />
           </div>
@@ -143,6 +175,11 @@ export function AsnCreateModal({ onClose }: { onClose: () => void }) {
               <Field name={`lines.${i}.productPublicId`} label={t('warehouse.asns.lines.productOf', { n: i + 1 })} hideLabel required>
                 <ProductPickerInput
                   onPicked={(p) => {
+                    form.setValue(`lines.${i}.isLot`, p?.trackingTypeCode === 'LOT')
+                    if (p?.trackingTypeCode !== 'LOT') {
+                      form.setValue(`lines.${i}.lotNumber`, '')
+                      form.setValue(`lines.${i}.expiryDate`, '')
+                    }
                     // precarga el precio con el costo del producto (si no se escribió otro) y recuerda el guardado para avisar si difiere
                     form.setValue(`lines.${i}.storedCost`, p?.purchaseCost ?? null)
                     form.setValue(`lines.${i}.updatePrice`, false)
@@ -156,9 +193,18 @@ export function AsnCreateModal({ onClose }: { onClose: () => void }) {
               <Field name={`lines.${i}.expectedQty`} label={t('warehouse.asns.lines.qtyOf', { n: i + 1 })} hideLabel required>
                 <NumberInput min={0} step="0.001" />
               </Field>
-              <Field name={`lines.${i}.lotNumber`} label={t('warehouse.asns.lines.lotOf', { n: i + 1 })} hideLabel>
-                <TextInput maxLength={60} />
-              </Field>
+              {watched?.[i]?.isLot ? (
+                <div>
+                  <Field name={`lines.${i}.lotNumber`} label={t('warehouse.asns.lines.lotOf', { n: i + 1 })} hideLabel>
+                    <TextInput maxLength={60} placeholder={t('warehouse.asns.lines.lot')} />
+                  </Field>
+                  <Field name={`lines.${i}.expiryDate`} label={t('warehouse.asns.lines.expiryOf', { n: i + 1 })} hideLabel>
+                    <DateInput />
+                  </Field>
+                </div>
+              ) : (
+                <span aria-hidden="true" />
+              )}
               <Field name={`lines.${i}.unitPrice`} label={t('warehouse.asns.lines.unitPriceOf', { n: i + 1 })} hideLabel>
                 <NumberInput min={0} step="0.0001" />
               </Field>

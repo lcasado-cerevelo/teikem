@@ -1488,6 +1488,63 @@
             }
           }
         }
+      },
+      "patch": {
+        "tags": [
+          "Asns"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AsnUpdateRequest"
+                }
+              },
+            "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AsnUpdateRequest"
+                }
+              },
+            "application/*+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AsnUpdateRequest"
+                }
+              }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AsnDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AsnDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AsnDto"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/asns/{id}/cancel": {
@@ -42859,6 +42916,33 @@
         },
         "additionalProperties": false
       },
+      "AsnUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "warehousePublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "expectedDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AsnLineRequest"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "AsnLineDto": {
         "type": "object",
         "properties": {
@@ -42895,6 +42979,15 @@
             "type": "number",
             "format": "double",
             "nullable": true
+          },
+          "trackingType": {
+            "type": "string",
+            "nullable": true
+          },
+          "expiryDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -42923,6 +43016,11 @@
           },
           "updateProductPrice": {
             "type": "boolean",
+            "nullable": true
+          },
+          "expiryDate": {
+            "type": "string",
+            "format": "date",
             "nullable": true
           }
         },

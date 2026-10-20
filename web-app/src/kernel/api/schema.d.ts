@@ -1106,7 +1106,36 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["AsnUpdateRequest"];
+                    "text/json": components["schemas"]["AsnUpdateRequest"];
+                    "application/*+json": components["schemas"]["AsnUpdateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AsnDto"];
+                        "application/json": components["schemas"]["AsnDto"];
+                        "text/json": components["schemas"]["AsnDto"];
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/api/v1/asns/{id}/cancel": {
@@ -32074,6 +32103,14 @@ export interface components {
             receiptPublicId?: string | null;
             receiptNumber?: string | null;
         };
+        AsnUpdateRequest: {
+            /** Format: uuid */
+            warehousePublicId?: string | null;
+            reference?: string | null;
+            /** Format: date */
+            expectedDate?: string | null;
+            lines?: components["schemas"]["AsnLineRequest"][] | null;
+        };
         AsnLineDto: {
             /** Format: int32 */
             id?: number;
@@ -32088,6 +32125,9 @@ export interface components {
             purchaseOrderLineId?: number | null;
             /** Format: double */
             unitPrice?: number | null;
+            trackingType?: string | null;
+            /** Format: date */
+            expiryDate?: string | null;
         };
         AsnLineRequest: {
             /** Format: uuid */
@@ -32098,6 +32138,8 @@ export interface components {
             /** Format: double */
             unitPrice?: number | null;
             updateProductPrice?: boolean | null;
+            /** Format: date */
+            expiryDate?: string | null;
         };
         AssignableCompanyDto: {
             /** Format: int32 */

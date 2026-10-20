@@ -25,6 +25,7 @@ public sealed class PortalCreateTests
         {
             s.AddSingleton<ITenantClock>(TenantClock.Default);
             s.AddSingleton<INotificationEventProvider, ExitNoticeEventProvider>();
+            s.AddSingleton<INotificationEventProvider, AsnEventProvider>();
             s.AddSingleton<NotificationEventCatalog>();
             s.AddSingleton<INotificationPublisher, NotificationPublisher>();
             s.AddSingleton<ExitNoticeService>();

@@ -81,9 +81,10 @@ export interface DraftLine {
   product: PortalProductDto | null
   qty: string
   lot: string
+  expiry: string
   price: string
 }
-const emptyLine = (): DraftLine => ({ product: null, qty: '', lot: '', price: '' })
+const emptyLine = (): DraftLine => ({ product: null, qty: '', lot: '', expiry: '', price: '' })
 
 function ProductPicker({ value, onPick }: { value: PortalProductDto | null; onPick: (p: PortalProductDto | null) => void }) {
   const { t } = useT()
@@ -124,9 +125,14 @@ function LinesEditor({ lines, setLines, withLotAndPrice }: { lines: DraftLine[];
       <Text style={{ fontWeight: '700', color: colors.text }}>{t('create.lines')}</Text>
       {lines.map((l, i) => (
         <View key={i} style={{ gap: 6, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: colors.line }}>
-          <ProductPicker value={l.product} onPick={(p) => patch(i, { product: p })} />
+          <ProductPicker value={l.product} onPick={(p) => patch(i, { product: p, lot: '', expiry: '' })} />
           <Field label={t('create.line.qty')} value={l.qty} onChangeText={(v) => patch(i, { qty: v })} keyboardType="decimal-pad" testID={`create-qty-${i}`} />
-          {withLotAndPrice && l.product?.trackingType === 'LOT' && <Field label={t('create.line.lot')} value={l.lot} onChangeText={(v) => patch(i, { lot: v })} autoCapitalize="characters" />}
+          {withLotAndPrice && l.product?.trackingType === 'LOT' && (
+            <>
+              <Field label={t('create.line.lot')} value={l.lot} onChangeText={(v) => patch(i, { lot: v })} autoCapitalize="characters" />
+              {!!l.lot.trim() && <Field label={t('create.line.expiry')} value={l.expiry} onChangeText={(v) => patch(i, { expiry: v })} placeholder="2027-03-01" autoCapitalize="none" />}
+            </>
+          )}
           {withLotAndPrice && <Field label={t('create.line.price')} value={l.price} onChangeText={(v) => patch(i, { price: v })} keyboardType="decimal-pad" />}
           {lines.length > 1 && <Button title={t('create.line.remove')} variant="link" onPress={() => setLines(lines.filter((_, n) => n !== i))} />}
         </View>
@@ -181,7 +187,7 @@ export function NewArrivalForm({ onDone, onCancel }: { onDone: () => void; onCan
         warehousePublicId: warehouse,
         reference: reference || null,
         expectedDate: date.trim() || null,
-        lines: lines.map((l) => ({ productPublicId: l.product?.publicId ?? null, expectedQty: parseNumber(l.qty), lotNumber: l.lot.trim() || null, unitPrice: parseNumber(l.price) })),
+        lines: lines.map((l) => ({ productPublicId: l.product?.publicId ?? null, expectedQty: parseNumber(l.qty), lotNumber: l.lot.trim() || null, expiryDate: l.lot.trim() ? l.expiry.trim() || null : null, unitPrice: parseNumber(l.price) })),
       })
       onDone()
     } catch (e) {

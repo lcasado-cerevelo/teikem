@@ -84,6 +84,10 @@ Módulo **Inventario por lote y serie**. Todos opcionales (se silencian en la ba
 | **Pendiente de un aviso de salida ya reservado** (`EXIT_NOTICE_BACKORDER_RESERVED`) | Cuando el trabajo `EXIT_NOTICE_BACKORDER_SCAN` reserva pendiente. Una vez por situación. | `{lines}` `{units}` |
 | **Aviso de salida despachado** (`EXIT_NOTICE_SHIPPED`) | Cuando queda despachado **por completo** (un despacho parcial no avisa). | `{shipped}` |
 | **Aviso de salida cancelado** (`EXIT_NOTICE_CANCELLED`) | Al cancelarlo, y también cuando se cancela solo porque todas sus líneas se cerraron con faltante sin despachar nada. | `{reason}` |
+| **Aviso de llegada solicitado** (`ASN_REQUESTED`) | Al crear un aviso de llegada de un cliente (por el personal o desde el portal). | `{number}`, `{reference}`, `{client}`, `{warehouse}`, `{expected}`, `{lineCount}` |
+| **Aviso de llegada modificado** (`ASN_UPDATED`) | Al editar un aviso de llegada esperado (almacén, referencia, fecha o líneas). | las mismas |
+| **Aviso de llegada recibido** (`ASN_RECEIVED`) | Al confirmar el recibo contra ese aviso. | `{number}`, `{reference}`, `{client}`, `{warehouse}`, `{expected}` |
+| **Aviso de llegada cancelado** (`ASN_CANCELLED`) | Al cancelar el aviso. | las mismas |
 
 ## 4. Las reglas
 
@@ -173,3 +177,5 @@ No requiere permiso ni módulo: la ve cualquier persona con Kemi despierta. El �
 **De dónde sale lo que Kemi sabe:** de `docs/manual/*.md` (capítulos y la FAQ), convertidos a un índice con `npm run help:index` (lo corre `npm run check`); al escribir o corregir el manual o la FAQ el índice se regenera y Kemi lo sabe en cuanto se compile la web. El manual está solo en español. **En inglés** Kemi entiende las palabras comunes (order, invoice, password, delivery, driver…: se acompañan de su equivalente en español para buscar) y avisa que sus respuestas salen en español.
 
 **La pantalla donde está la persona cuenta:** lo documentado de esa pantalla sube en las opciones (estando en Órdenes, una pregunta de «cancelar» trae primero lo de Órdenes; en Rentas, lo de Rentas; en Facturación, lo de Facturación…).
+
+Los avisos de llegada nacidos de una orden de compra son internos y no publican estos eventos. Como los demás, son opcionales y sin reglas sembradas: se arman en Sistema → Reglas de aviso.

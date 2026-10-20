@@ -2530,3 +2530,11 @@ Error: 403 «Actualizar el precio del producto requiere el permiso de administra
 ### Lo mismo en la orden de compra
 
 La línea de la orden de compra (alta y edición, `POST/PATCH /purchase-orders`, `unitCost` y `updateProductPrice`) funciona igual: el costo se precarga con el del producto elegido; el producto sin costo toma el escrito en la primera línea que lo trae; con otro costo guardado aparece el aviso «ⓘ El producto tiene guardado X; este precio es distinto.» y, con `inventory.manage`, la casilla «Actualizar el precio del producto con este». Si el costo se omite, la línea usa el del producto y nada cambia. Mismo 403 sin el permiso.
+
+## Aviso de llegada: lote, vencimiento y edición (Lote 157, 2026-10-20)
+
+**Para qué es el lote en la línea.** El cliente anuncia *qué lote* viene en esa línea y *cuándo vence*, para que el receptor compare contra lo que llega y para que el lote nazca ya con su vencimiento al recibir (antes el receptor lo capturaba a mano). Por eso **solo sale en productos por lote**: en uno sin lote no aparece ni el lote ni el vencimiento. El vencimiento solo se acepta junto con el número de lote (400 «El vencimiento solo se indica junto con el número de lote.»).
+
+**Editar antes de que llegue** (`PATCH /asns/{id}`, `warehouse.receive`; botón «Editar» en la lista de avisos): se cambian el almacén (por si se recibe en otro), la referencia, la llegada esperada y/o las líneas (se reemplazan todas, con las mismas reglas del alta). El cliente no cambia. Solo mientras el aviso siga esperado y sin recibo abierto; con un recibo abierto, 409 «El aviso de llegada tiene un recibo abierto; elimínelo antes de editarlo.»; cancelado o ya recibido, 422 «El aviso de llegada no está pendiente de recibir.»; uno nacido de una orden de compra, 409 «Un aviso de llegada nacido de una orden de compra se cambia en la orden de compra.»
+
+**Avisos (Reglas de aviso):** Aviso de llegada solicitado, modificado, recibido y cancelado (manual 14).

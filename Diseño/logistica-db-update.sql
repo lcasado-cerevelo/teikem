@@ -5497,3 +5497,10 @@ GO
 IF COL_LENGTH('dbo.Client', 'PortalCanCreateExits') IS NULL
     ALTER TABLE dbo.Client ADD PortalCanCreateExits BIT NOT NULL CONSTRAINT DF_Client_PortalCanCreateExits DEFAULT 0;
 GO
+/* ----------------------------------------------------------------------------
+   2026-10-20 (Lote 157) — Vencimiento del lote en la línea del aviso de llegada: dbo.AsnLine.ExpiryDate DATE NULL. Solo con número de lote en un producto por lote; al recibir, el lote nace con
+   esa fecha (antes el receptor la capturaba). Idempotente.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.AsnLine', 'ExpiryDate') IS NULL
+    ALTER TABLE dbo.AsnLine ADD ExpiryDate DATE NULL;
+GO

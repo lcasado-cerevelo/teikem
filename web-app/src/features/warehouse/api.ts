@@ -845,14 +845,16 @@ export function useAsns(query: GetQuery<'/api/v1/asns'> = {}, options?: Warehous
   })
 }
 
-/** `POST /api/v1/asns` y `POST /api/v1/asns/{id}/cancel` (`warehouse.receive`). */
+/** `POST /api/v1/asns`, `PATCH /api/v1/asns/{id}` y `POST /api/v1/asns/{id}/cancel` (`warehouse.receive`). */
 export function useSaveAsn() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (v: { action: 'create'; body: Schemas['AsnCreateRequest'] } | { action: 'cancel'; id: number }) =>
+    mutationFn: (v: { action: 'create'; body: Schemas['AsnCreateRequest'] } | { action: 'update'; id: number; body: Schemas['AsnUpdateRequest'] } | { action: 'cancel'; id: number }) =>
       v.action === 'create'
         ? unwrap(api.POST('/api/v1/asns', { body: v.body }))
-        : unwrap(api.POST('/api/v1/asns/{id}/cancel', { params: { path: { id: v.id } } })),
+        : v.action === 'update'
+          ? unwrap(api.PATCH('/api/v1/asns/{id}', { params: { path: { id: v.id } }, body: v.body }))
+          : unwrap(api.POST('/api/v1/asns/{id}/cancel', { params: { path: { id: v.id } } })),
     onSuccess: () => invalidate(qc, 'asns', 'dockAppointments'),
   })
 }

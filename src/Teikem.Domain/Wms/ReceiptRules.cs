@@ -63,6 +63,9 @@ public static class ReceiptRules
     public const string StagingBinInactive = "La posición de recepción está desactivada.";
     public static string ProductInactive(string sku) => $"El producto {sku} está dado de baja; no se puede recibir.";
     public const string ClientRequired = "Indique el cliente dueño de la mercancía del aviso de llegada.";
+    public const string AsnFromPurchaseOrderNotEditable = "Un aviso de llegada nacido de una orden de compra se cambia en la orden de compra.";
+    public const string AsnHasOpenReceiptEdit = "El aviso de llegada tiene un recibo abierto; elimínelo antes de editarlo.";
+    public const string AsnExpiryNeedsLot = "El vencimiento solo se indica junto con el número de lote.";
     public const string AsnHasOpenReceipt = "El aviso de llegada tiene un recibo abierto; elimínelo antes de cancelar.";
     public const string ReferenceTooLong = "La referencia admite como máximo 80 caracteres.";
     public const string LineNotFoundWhat = "Línea del recibo";

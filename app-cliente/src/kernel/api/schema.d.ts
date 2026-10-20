@@ -39054,6 +39054,7 @@ export interface components {
             lotNumber?: string | null;
             /** Format: double */
             unitPrice?: number | null;
+            expiryDate?: string | null;
         };
         PortalArrivalRequest: {
             /** Format: uuid */
@@ -39096,6 +39097,7 @@ export interface components {
             lotNumber?: string | null;
             /** Format: double */
             unitPrice?: number | null;
+            expiryDate?: string | null;
         };
         PortalArrivalDto: {
             /** Format: int32 */

@@ -37,6 +37,8 @@ public class AsnLine
     public int? PurchaseOrderLineId { get; set; }
     /// <summary>Lote 147: precio unitario opcional del aviso (solo avisos de un cliente; en uno de una PO manda el costo de la orden). Alimenta la capa de costo al recibir.</summary>
     public decimal? UnitPrice { get; set; }
+    /// <summary>Lote 157: vencimiento del lote que llega (solo con número de lote en un producto por lote). Al recibir, el lote nace con esta fecha.</summary>
+    public DateOnly? ExpiryDate { get; set; }
 }
 
 /// <summary>

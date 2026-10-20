@@ -6001,6 +6001,8 @@
       "title": "Avisos de llegada",
       "new": "Nuevo aviso",
       "created": "Aviso de llegada creado.",
+      "edit": "Editar",
+      "updated": "Aviso de llegada actualizado.",
       "receive": "Recibir",
       "cancel": "Cancelar aviso",
       "cancelTitle": "Cancelar aviso de llegada",
@@ -6039,6 +6041,8 @@
       "lines": {
         "unitPrice": "Precio unitario (opcional)",
         "unitPriceOf": "Precio unitario de la línea {n}",
+        "lotAndExpiry": "Lote y vencimiento",
+        "expiryOf": "Vencimiento de la línea {n}",
         "priceDiffers": "El producto tiene guardado {stored}; este precio es distinto.",
         "updateProductPrice": "Actualizar el precio del producto con este",
         "title": "Líneas",

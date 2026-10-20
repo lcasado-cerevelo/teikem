@@ -58,7 +58,7 @@ public sealed class PortalCreateService(TeikemDbContext db, ITenantContext tenan
     {
         if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
         var s = await RequireAsync(c => c.PortalCanCreateArrivals, PortalCreateRules.ArrivalsOff, ct);
-        var lines = (req.Lines ?? Array.Empty<PortalArrivalLineRequest>()).Select(l => new AsnLineRequest(l.ProductPublicId, l.ExpectedQty, l.LotNumber, l.UnitPrice)).ToList();
+        var lines = (req.Lines ?? Array.Empty<PortalArrivalLineRequest>()).Select(l => new AsnLineRequest(l.ProductPublicId, l.ExpectedQty, l.LotNumber, l.UnitPrice, ExpiryDate: l.ExpiryDate)).ToList();
         var created = await asns.CreateAsync(new AsnCreateRequest(req.WarehousePublicId, s.ClientPublicId, req.Reference, req.ExpectedDate, lines), ct);
         return ToArrival(created);
     }
@@ -80,7 +80,7 @@ public sealed class PortalCreateService(TeikemDbContext db, ITenantContext tenan
     }
 
     private static PortalArrivalDto ToArrival(AsnDto a) => new(a.Id, a.WarehousePublicId, a.WarehouseCode, a.Reference, a.ExpectedDate, a.StatusCode, a.Status,
-        a.StatusCode == AsnStatuses.Expected && a.ReceiptPublicId is null && a.IsActive, a.Lines.Select(l => new PortalArrivalLineDto(l.Sku, l.ProductName, l.ExpectedQty, l.LotNumber, l.UnitPrice)).ToList());
+        a.StatusCode == AsnStatuses.Expected && a.ReceiptPublicId is null && a.IsActive, a.Lines.Select(l => new PortalArrivalLineDto(l.Sku, l.ProductName, l.ExpectedQty, l.LotNumber, l.UnitPrice, l.ExpiryDate)).ToList());
 
     // ================================================================ avisos de salida
 
