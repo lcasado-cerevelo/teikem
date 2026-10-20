@@ -20,7 +20,7 @@ public sealed record TenantSettingsDto(
     string CountExpectedReveal = "MARKED", decimal CountRecountTolerancePct = 0m, bool CountRevealShowsNumber = true,
     bool CountAutoCloseMatching = false, string? DefaultManualIssueReason = null, int? DefaultProductCategoryId = null, string RotationMethod = "FEFO",
     int SessionMinutes = 43200, int DeviceSessionMinutes = 43200, string RotationEnforcement = "SUGGEST",
-    int InventoryExpiryWarnDays = 30, int InventoryNoMovementDays = 90);
+    int InventoryExpiryWarnDays = 30, int InventoryNoMovementDays = 90, string RotationMethodNoLot = "FIFO");
 
 /// <summary>
 /// Cambio parcial de los ajustes: null = sin cambio. Región y formatos: si RegionCode es distinto del actual se cargan los valores
@@ -32,6 +32,7 @@ public sealed record TenantSettingsDto(
 /// DefaultProductCategoryId (2026-10-11 c): categoría de producto que se preselecciona en un producto nuevo; null = sin cambio; 0 = quitar;
 /// un id = debe existir y estar activa en la compañía.
 /// RotationMethod (2026-10-11, Lote 34): método de rotación del inventario de la compañía, 'FEFO' (por omisión) o 'FIFO'; null = sin cambio.
+/// RotationMethodNoLot (2026-10-20): método de rotación de los productos sin lote ni series, 'FIFO' (por omisión) o 'POSITION' (por posición); RotationMethod queda para los productos por lote (FEFO | FIFO); null = sin cambio.
 /// InventoryExpiryWarnDays / InventoryNoMovementDays (2026-10-20, Lote 141): días de anticipación del aviso de lotes por vencer (1 a 365) y días sin movimiento del aviso de productos sin movimiento (1 a 3650); null = sin cambio.
 /// RotationEnforcement (2026-10-20): cómo se aplica en las salidas, 'SUGGEST' (por omisión: se propone y se puede cambiar con advertencia) o 'ENFORCE' (el sistema escoge solo); null = sin cambio.
 /// </summary>
@@ -44,7 +45,7 @@ public sealed record TenantSettingsUpdateRequest(
     string? CountExpectedReveal = null, decimal? CountRecountTolerancePct = null, bool? CountRevealShowsNumber = null,
     bool? CountAutoCloseMatching = null, string? DefaultManualIssueReason = null, int? DefaultProductCategoryId = null, string? RotationMethod = null,
     int? SessionMinutes = null, int? DeviceSessionMinutes = null, string? RotationEnforcement = null,
-    int? InventoryExpiryWarnDays = null, int? InventoryNoMovementDays = null);
+    int? InventoryExpiryWarnDays = null, int? InventoryNoMovementDays = null, string? RotationMethodNoLot = null);
 
 /// <summary>Juego de valores de región y formatos (los de una región en <see cref="TenantFormatOptionsDto"/>).</summary>
 public sealed record TenantFormatDto(

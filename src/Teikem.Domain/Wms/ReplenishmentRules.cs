@@ -57,7 +57,9 @@ public static class ReplenishmentRules
             .Where(s => s.BinActive && s.BinId != pickBinId
                         && string.Equals(s.ZoneTypeCode, ZoneTypes.Reserve, StringComparison.OrdinalIgnoreCase)
                         && Available(s.QtyOnHand, s.QtyReserved) > 0m);
-        IOrderedEnumerable<ReplenishmentSource> ordered = RotationRules.IsFifo(method)
+        IOrderedEnumerable<ReplenishmentSource> ordered = RotationRules.IsPosition(method)
+            ? q.OrderBy(s => 0)   // por posición (2026-10-20): sin fechas; manda el desempate de abajo
+            : RotationRules.IsFifo(method)
             ? q.OrderBy(s => RotationRules.FifoKey(s.ReceivedAtUtc).HasNoDate)
                .ThenBy(s => RotationRules.FifoKey(s.ReceivedAtUtc).Date)
                .ThenBy(s => s.ExpiryDate is null ? 1 : 0)

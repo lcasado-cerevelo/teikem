@@ -501,16 +501,16 @@ describe('Ajustes de la compañía', () => {
     const user = userEvent.setup()
     wrap('/system/settings?tab=ops')
     const panel = (await screen.findByRole('heading', { name: 'Rotación del inventario' })).closest('.panel') as HTMLElement
-    const select = within(panel).getByLabelText('Método de rotación de la compañía')
+    const select = within(panel).getByLabelText('Método de rotación de la compañía (productos con lote)')
     expect(select).toHaveValue('FEFO')
-    expect(within(panel).getByRole('option', { name: 'FIFO — entra primero, sale primero' })).toBeInTheDocument()
+    expect(within(select).getByRole('option', { name: 'FIFO — entra primero, sale primero' })).toBeInTheDocument()
     await user.selectOptions(select, 'FIFO')
     await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
     await waitFor(() => expect(put()).toHaveLength(1))
-    expect(put()[0].body).toEqual({ rotationMethod: 'FIFO', rotationEnforcement: 'SUGGEST' })
+    expect(put()[0].body).toEqual({ rotationMethod: 'FIFO', rotationMethodNoLot: 'FIFO', rotationEnforcement: 'SUGGEST' })
 
     mock.settingsFail = { status: 400, title: 'El método de rotación debe ser FEFO o FIFO.', field: 'rotationMethod' }
-    await user.selectOptions(within(panel).getByLabelText('Método de rotación de la compañía'), 'FEFO')
+    await user.selectOptions(within(panel).getByLabelText('Método de rotación de la compañía (productos con lote)'), 'FEFO')
     await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
     expect((await within(panel).findAllByText('El método de rotación debe ser FEFO o FIFO.')).length).toBeGreaterThan(0)
   })
@@ -524,7 +524,7 @@ describe('Ajustes de la compañía', () => {
     await user.selectOptions(select, 'ENFORCE')
     await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
     await waitFor(() => expect(put()).toHaveLength(1))
-    expect(put()[0].body).toEqual({ rotationMethod: 'FEFO', rotationEnforcement: 'ENFORCE' })
+    expect(put()[0].body).toEqual({ rotationMethod: 'FEFO', rotationMethodNoLot: 'FIFO', rotationEnforcement: 'ENFORCE' })
   })
 
   it('Operación → avisos de inventario (2026-10-20): 30 y 90 días por omisión; guarda los dos y valida los rangos con su mensaje', async () => {
@@ -551,10 +551,24 @@ describe('Ajustes de la compañía', () => {
     expect(put()[0].body).toEqual({ inventoryExpiryWarnDays: 45, inventoryNoMovementDays: 120 })
   })
 
+  it('Operación → rotación (2026-10-20): los productos sin lote ni series tienen su propio método (FIFO o por posición, sin FEFO)', async () => {
+    const user = userEvent.setup()
+    wrap('/system/settings?tab=ops')
+    const panel = (await screen.findByRole('heading', { name: 'Rotación del inventario' })).closest('.panel') as HTMLElement
+    const select = within(panel).getByLabelText('Método de rotación de la compañía (productos sin lote ni series)')
+    expect(select).toHaveValue('FIFO')
+    expect(within(select).queryByRole('option', { name: /FEFO/ })).toBeNull()   // sin lote no hay vencimiento
+    expect(within(panel).getByLabelText('Método de rotación de la compañía (productos con lote)')).toHaveValue('FEFO')
+    await user.selectOptions(select, 'POSITION')
+    await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
+    await waitFor(() => expect(put()).toHaveLength(1))
+    expect(put()[0].body).toEqual({ rotationMethod: 'FEFO', rotationMethodNoLot: 'POSITION', rotationEnforcement: 'SUGGEST' })
+  })
+
   it('Operación → rotación: sin admin.tenant el selector es de solo lectura', async () => {
     wrap('/system/settings?tab=ops', ['inventory.view'])
     const panel = (await screen.findByRole('heading', { name: 'Rotación del inventario' })).closest('.panel') as HTMLElement
-    expect(within(panel).getByLabelText('Método de rotación de la compañía')).toBeDisabled()
+    expect(within(panel).getByLabelText('Método de rotación de la compañía (productos con lote)')).toBeDisabled()
     expect(within(panel).queryByRole('button', { name: 'Guardar cambios' })).toBeNull()
   })
 

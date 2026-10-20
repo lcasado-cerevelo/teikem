@@ -44,7 +44,9 @@ public static class StockAllocator
             .Where(c => lotId is null || c.LotId == lotId)
             .Where(c => binId is null || c.BinId == binId);
         // Lote 34: FEFO por omisión; FIFO por fecha de primera entrada del saldo (sin fecha al final), luego vencimiento.
-        IOrderedEnumerable<StockCandidate> byRotation = RotationRules.IsFifo(method)
+        IOrderedEnumerable<StockCandidate> byRotation = RotationRules.IsPosition(method)
+            ? q.OrderBy(c => 0)   // por posición (2026-10-20): sin fechas; manda el desempate de abajo
+            : RotationRules.IsFifo(method)
             ? q.OrderBy(c => RotationRules.FifoKey(c.ReceivedAtUtc).HasNoDate)
                 .ThenBy(c => RotationRules.FifoKey(c.ReceivedAtUtc).Date)
                 .ThenBy(c => c.ExpiryDate.HasValue ? 0 : 1)

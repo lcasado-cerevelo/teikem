@@ -62174,6 +62174,9 @@
           "inventoryNoMovementDays": {
             "type": "integer",
             "format": "int32"
+          },
+          "rotationMethodNoLot": {
+            "type": "string"
           }
         },
         "additionalProperties": false
@@ -62349,6 +62352,10 @@
           "inventoryNoMovementDays": {
             "type": "integer",
             "format": "int32",
+            "nullable": true
+          },
+          "rotationMethodNoLot": {
+            "type": "string",
             "nullable": true
           }
         },

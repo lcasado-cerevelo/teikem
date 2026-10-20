@@ -82,7 +82,11 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         if (req.CountAutoCloseMatching.HasValue) t.CountAutoCloseMatching = req.CountAutoCloseMatching.Value;
         await ApplyDefaultManualIssueReasonAsync(t, req.DefaultManualIssueReason, ct);
         if (req.RotationMethod is not null)
-            t.RotationMethod = RotationRules.Parse(req.RotationMethod) ?? throw new ValidationException("rotationMethod", RotationRules.InvalidMethod);
+            t.RotationMethod = RotationRules.Parse(req.RotationMethod) is string lotMethod && RotationMethods.ForLot.Contains(lotMethod) ? lotMethod
+                : throw new ValidationException("rotationMethod", RotationRules.InvalidMethod);
+        if (req.RotationMethodNoLot is not null)
+            t.RotationMethodNoLot = RotationRules.Parse(req.RotationMethodNoLot) is string noLotMethod && RotationMethods.ForNoLot.Contains(noLotMethod) ? noLotMethod
+                : throw new ValidationException("rotationMethodNoLot", RotationRules.InvalidNoLotMethod);
         if (req.RotationEnforcement is not null)
             t.RotationEnforcement = RotationRules.ParseEnforcement(req.RotationEnforcement) ?? throw new ValidationException("rotationEnforcement", RotationRules.InvalidEnforcement);
         if (req.InventoryExpiryWarnDays.HasValue)
@@ -238,5 +242,6 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         RotationRules.Parse(t.RotationMethod) ?? RotationMethods.Fefo,        // 2026-10-11 Lote 34
         SessionRules.Minutes(t.SessionMinutes, t.SessionDays), SessionRules.Minutes(t.DeviceSessionMinutes, t.DeviceSessionDays),   // 2026-10-12
         RotationRules.ParseEnforcement(t.RotationEnforcement) ?? RotationEnforcements.Suggest,   // 2026-10-20
-        t.InventoryExpiryWarnDays, t.InventoryNoMovementDays);
+        t.InventoryExpiryWarnDays, t.InventoryNoMovementDays,
+        RotationRules.Parse(t.RotationMethodNoLot) is string nl && RotationMethods.ForNoLot.Contains(nl) ? nl : RotationMethods.Fifo);   // 2026-10-20
 }

@@ -145,4 +145,57 @@ public class RotationTests
         Assert.False(PickBatchRules.SameAllocation(a, otherLot));
         Assert.False(PickBatchRules.SameAllocation(a, otherQty));
     }
+
+    // ---- 2026-10-20: dos métodos por compañía (con lote: FEFO | FIFO; sin lote ni series: FIFO | por posición) ----
+
+    [Theory]
+    [InlineData("position", "POSITION")]
+    [InlineData(" Position ", "POSITION")]
+    public void Parse_accepts_position(string input, string expected) => Assert.Equal(expected, RotationRules.Parse(input));
+
+    [Theory]
+    [InlineData("FEFO", true, true)]
+    [InlineData("FIFO", true, true)]
+    [InlineData("POSITION", true, false)]
+    [InlineData("FEFO", false, false)]    // sin lote no hay vencimiento: FEFO no aplica
+    [InlineData("FIFO", false, true)]
+    [InlineData("POSITION", false, true)]
+    [InlineData(null, false, false)]
+    public void A_method_only_applies_to_the_product_types_that_can_use_it(string? method, bool lotTracked, bool applies)
+        => Assert.Equal(applies, RotationRules.AppliesTo(method, lotTracked));
+
+    [Fact]
+    public void Resolve_uses_the_company_method_for_the_product_type_and_the_factory_default_when_nothing_applies()
+    {
+        var company = new CompanyRotation("FIFO", "POSITION");
+        Assert.Equal("FIFO", RotationRules.Resolve(null, company, lotTracked: true));         // con lote → el de lote
+        Assert.Equal("POSITION", RotationRules.Resolve(null, company, lotTracked: false));    // sin lote → el de sin lote
+        Assert.Equal("FEFO", RotationRules.Resolve(null, new CompanyRotation(null, null), true));   // fábrica con lote
+        Assert.Equal("FIFO", RotationRules.Resolve(null, new CompanyRotation(null, null), false));  // fábrica sin lote
+        Assert.Equal("FIFO", RotationRules.Resolve(null, new CompanyRotation("FEFO", "FEFO"), false)); // un valor que no aplica al tipo se ignora
+    }
+
+    [Fact]
+    public void The_product_exception_wins_only_when_it_applies_to_its_type()
+    {
+        var company = new CompanyRotation("FEFO", "FIFO");
+        Assert.Equal("FIFO", RotationRules.Resolve("FIFO", company, true));
+        Assert.Equal("POSITION", RotationRules.Resolve("POSITION", company, false));
+        Assert.Equal("FEFO", RotationRules.Resolve("POSITION", company, true));   // por posición no aplica a un producto con lote: manda la compañía
+        Assert.Equal("FIFO", RotationRules.Resolve("FEFO", company, false));      // FEFO no aplica a uno sin lote
+    }
+
+    [Fact]
+    public void Position_ignores_dates_and_follows_zone_then_bin_code()
+    {
+        var picking = Candidates();   // A01..A04, todos en picking, con fechas y vencimientos distintos
+        var byPosition = PickBatchRules.Eligible(picking, null, null, "POSITION").Select(c => c.BinCode).ToArray();
+        Assert.Equal(new[] { "A01", "A02", "A03", "A04" }, byPosition);
+        var mixed = new List<PickCandidate>
+        {
+            new(BinId: 9, "A01", ZoneTypes.Reserve, true, null, null, 5m, Jan),
+            new(BinId: 8, "Z99", ZoneTypes.Picking, true, null, null, 5m, Mar),
+        };
+        Assert.Equal(new[] { "Z99", "A01" }, PickBatchRules.Eligible(mixed, null, null, "POSITION").Select(c => c.BinCode).ToArray());   // picking antes que reserva, aunque el código sea mayor
+    }
 }

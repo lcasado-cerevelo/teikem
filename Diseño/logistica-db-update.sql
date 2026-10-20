@@ -5124,3 +5124,24 @@ GO
 IF OBJECT_ID('dbo.CK_Tenant_InventoryNoMovementDays', 'C') IS NULL
     ALTER TABLE dbo.Tenant ADD CONSTRAINT CK_Tenant_InventoryNoMovementDays CHECK (InventoryNoMovementDays BETWEEN 1 AND 3650);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-20 — Rotacion por tipo de producto: con lote (FEFO o FIFO) y sin lote ni series (FIFO o por posicion).
+   - dbo.Tenant.RotationMethodNoLot VARCHAR(10) NOT NULL DEFAULT 'FIFO' (CHECK FIFO|POSITION): metodo de los productos SIN lote y por serie (no vencen).
+     dbo.Tenant.RotationMethod (FEFO|FIFO) pasa a ser el de los productos CON lote; no cambia ningun valor existente.
+   - dbo.Product.RotationMethod: la excepcion del producto ahora admite tambien POSITION (CHECK FEFO|FIFO|POSITION). Una excepcion que no aplica al tipo del
+     producto (p. ej. FEFO en uno sin lote) se ignora al resolver y manda el de la compania para ese tipo.
+   Solo AGREGA o AMPLIA un CHECK. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.Tenant', 'RotationMethodNoLot') IS NULL
+    ALTER TABLE dbo.Tenant ADD RotationMethodNoLot VARCHAR(10) NOT NULL CONSTRAINT DF_Tenant_RotationMethodNoLot DEFAULT 'FIFO';
+GO
+IF OBJECT_ID('dbo.CK_Tenant_RotationMethodNoLot', 'C') IS NULL
+    ALTER TABLE dbo.Tenant ADD CONSTRAINT CK_Tenant_RotationMethodNoLot CHECK (RotationMethodNoLot IN ('FIFO', 'POSITION'));
+GO
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_Product_RotationMethod' AND parent_object_id = OBJECT_ID('dbo.Product') AND definition NOT LIKE '%POSITION%')
+    ALTER TABLE dbo.Product DROP CONSTRAINT CK_Product_RotationMethod;
+GO
+IF OBJECT_ID('dbo.CK_Product_RotationMethod', 'C') IS NULL
+    ALTER TABLE dbo.Product ADD CONSTRAINT CK_Product_RotationMethod CHECK (RotationMethod IS NULL OR RotationMethod IN ('FEFO', 'FIFO', 'POSITION'));
+GO

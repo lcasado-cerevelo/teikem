@@ -622,6 +622,28 @@ Dónde se cambia en las pantallas (2026-10-11): **web, Ajustes de la compañía 
 **Productos e inventario → ficha del producto → «Rotación»** (opciones «Igual que la compañía», FEFO y FIFO; al volver a «Igual que la compañía» se quita la excepción). La app del almacén **no** tiene pantallas de ajustes ni de edición de
 productos, así que ahí no hay selector: sus pantallas de salida (selector de posiciones de Recolección, «Despachar») ya usan el orden que calcula el servidor y **respetan el método** sin cambios.
 
+### 2.2b Dos métodos de rotación: con lote y sin lote (2026-10-20, Lote 142)
+
+Qué cambia: el método de rotación de la compañía (§2.2) ahora son **dos campos**, porque FEFO necesita una fecha de vencimiento y solo los productos por lote la tienen.
+
+| Campo (Ajustes de la compañía → Operación → «Rotación del inventario») | Aplica a | Opciones | Por omisión |
+|---|---|---|---|
+| **Método de rotación de la compañía (productos con lote)** — `rotationMethod` | Productos por lote | **FEFO** (vence primero) o **FIFO** (entra primero) | FEFO (no cambió ningún valor) |
+| **Método de rotación de la compañía (productos sin lote ni series)** — `rotationMethodNoLot` | Productos sin seguimiento y por serie (no vencen) | **FIFO** (entra primero) o **Por posición** (`POSITION`) | **FIFO** |
+
+- **Por posición:** sin mirar fechas, sale de la posición que toca por su zona (picking, luego reserva, refrigerada, preparación) y el código de la posición.
+- **Las series se tratan como productos sin lote** (no expiran).
+- **Excepción por producto** (se mantiene): en la ficha, «Rotación». Las opciones dependen del tipo del producto: con lote, FEFO o FIFO; sin lote ni series, FIFO o por posición; «Igual que la compañía» usa el campo de la compañía que le toca. Una excepción que no aplica al tipo (por ejemplo FEFO en un producto que se volvió sin lote) se **ignora** y manda la de la compañía.
+- **Cambio de comportamiento:** los productos **sin lote** pasan de salir por el código de la posición (el desempate de FEFO sin vencimiento) a salir por **antigüedad** (FIFO). Quien quiera lo de antes elige «Por posición».
+- «Sugerir / Obligar» (§2.3) aplica igual con cualquiera de los métodos. Lo usan la recolección, el despacho manual, la reserva de las órdenes de venta, el reabasto y el orden de salida del aparato.
+
+| Caso | Mensaje exacto | HTTP |
+|---|---|---|
+| `rotationMethod` (productos con lote) distinto de FEFO o FIFO | `El método de rotación debe ser FEFO o FIFO.` | 400 (campo `rotationMethod`) |
+| `rotationMethodNoLot` distinto de FIFO o POSITION | `El método de rotación de los productos sin lote debe ser FIFO o POSITION (por posición).` | 400 (campo `rotationMethodNoLot`) |
+| Excepción de un producto con lote que no es FEFO ni FIFO | `Un producto con lote solo admite rotación FEFO o FIFO.` | 400 (campo `rotationMethod`) |
+| Excepción de un producto sin lote ni series que no es FIFO ni POSITION | `Un producto sin lote ni series solo admite rotación FIFO o POSITION (por posición).` | 400 (campo `rotationMethod`) |
+
 ### 2.3 Rotación: sugerir u obligar en las salidas (2026-10-20, Lote 139)
 
 Qué hace: el método de rotación (§2.2) dice **qué lote y qué posición tocan primero**; este ajuste dice **qué pasa si quien despacha quiere otro**. Aplica a la

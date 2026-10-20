@@ -422,6 +422,9 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
         // Lote 34: excepción de rotación del producto (vacío o ausente = la de la compañía).
         var rotation = string.IsNullOrWhiteSpace(req.RotationMethod) ? null
             : RotationRules.Parse(req.RotationMethod) ?? throw new ValidationException("rotationMethod", RotationRules.InvalidMethod);
+        // 2026-10-20: la excepción debe aplicar al tipo del producto (con lote: FEFO o FIFO; sin lote ni series: FIFO o por posición)
+        if (rotation is not null && !RotationRules.AppliesTo(rotation, trackingCode == TrackingTypes.Lot))
+            throw new ValidationException("rotationMethod", trackingCode == TrackingTypes.Lot ? RotationRules.InvalidProductMethodForLot : RotationRules.InvalidProductMethodForNoLot);
 
         var minQty = ZeroAsNull(req.MinQty);
         var minPick = ZeroAsNull(req.MinPickQty);
@@ -587,6 +590,14 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
             if (req.RotationMethod is not null)
                 rotationTarget = string.IsNullOrWhiteSpace(req.RotationMethod) ? null
                     : RotationRules.Parse(req.RotationMethod) ?? throw new ValidationException("rotationMethod", RotationRules.InvalidMethod);
+            if (req.RotationMethod is not null && rotationTarget is not null)
+            {
+                // 2026-10-20: debe aplicar al tipo FINAL del producto (el que pide este cambio o el que ya tiene)
+                var finalTracking = (await lookups.GetAsync(trackingId is int newTracking ? newTracking : product.TrackingTypeLookupId, ct2))?.InternalCode;
+                var lotTracked = string.Equals(finalTracking, TrackingTypes.Lot, StringComparison.OrdinalIgnoreCase);
+                if (!RotationRules.AppliesTo(rotationTarget, lotTracked))
+                    throw new ValidationException("rotationMethod", lotTracked ? RotationRules.InvalidProductMethodForLot : RotationRules.InvalidProductMethodForNoLot);
+            }
 
             // 4. Mínimos sobre el estado final (lo actual combinado con lo pedido; 0 = sin mínimo).
             var minQty = req.MinQty.HasValue ? ZeroAsNull(req.MinQty) : product.MinQty;

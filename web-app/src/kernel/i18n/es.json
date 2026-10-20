@@ -4797,10 +4797,11 @@
         "packQty": "Unidades por empaque",
         "packHelp": "Ej.: Caja de 12 o Barril de 50 (galones). El inventario siempre se lleva en la unidad base; el empaque solo ayuda a contar y a leer cantidades.",
         "rotation": "Rotación",
-        "rotationHelp": "De qué saldo de este producto sale primero la mercancía. «Igual que la compañía» sigue el método de Ajustes de la compañía; elija FEFO o FIFO solo si este producto necesita el otro.",
+        "rotationHelp": "De qué saldo de este producto sale primero la mercancía. «Igual que la compañía» sigue el método de Ajustes de la compañía para su tipo (con lote, o sin lote ni series); elige otro solo si este producto lo necesita.",
         "rotationCompany": "Igual que la compañía",
         "rotationFefo": "FEFO — vence primero",
-        "rotationFifo": "FIFO — entra primero"
+        "rotationFifo": "FIFO — entra primero",
+        "rotationPosition": "Por posición — zona y código"
       },
       "fields": {
         "sku": "SKU",
@@ -7323,7 +7324,7 @@
         "productCategoryHelp": "Al crear un producto desde la pantalla de Productos llega con esta categoría ya elegida; se puede cambiar o quitar ahí mismo. No afecta a los productos que ya existen ni a los que entran por importación o por la API.",
         "productCategoryNone": "Sin categoría por defecto",
         "rotationTitle": "Rotación del inventario",
-        "rotationLabel": "Método de rotación de la compañía",
+        "rotationLabel": "Método de rotación de la compañía (productos con lote)",
         "rotationHelp": "De qué saldo sale primero la mercancía cuando el sistema asigna una salida (recolección, despacho manual, reabasto y el orden de salida del aparato). FEFO: vence primero, sale primero (el de siempre). FIFO: entra primero, sale primero, según la fecha de primera entrada del saldo. Un producto puede tener su propia excepción en su ficha. Vale desde la siguiente asignación; no cambia lo ya recolectado.",
         "rotationFefo": "FEFO — vence primero, sale primero",
         "rotationFifo": "FIFO — entra primero, sale primero",
@@ -7331,6 +7332,9 @@
         "rotationEnforce": "Obligar: el sistema escoge solo",
         "rotationEnforcementLabel": "Cómo se aplica en las salidas",
         "rotationEnforcementHelp": "Sugerir: al despachar, el sistema propone la posición y el lote que corresponden según el método; quien despacha puede cambiarlos y la pantalla le advierte que se salta la rotación. Obligar: el sistema escoge solo y reparte la cantidad entre posiciones y lotes; nadie puede escoger posición ni lote, y el servidor rechaza cualquier otro. Aplica a la recolección y al despacho manual, en la web y en el aparato de almacén; transferencias y ajustes no se ven afectados.",
+        "rotationPosition": "Por posición — según la zona y el código de la posición",
+        "rotationNoLotLabel": "Método de rotación de la compañía (productos sin lote ni series)",
+        "rotationNoLotHelp": "Los productos sin lote y los de series no vencen, así que no hay FEFO. FIFO (el de siempre para ellos desde ahora): sale primero lo que entró primero. Por posición: sale de la posición que toca por su zona y su código, sin mirar fechas. Un producto puede tener su propia excepción en su ficha.",
         "invAlertsTitle": "Avisos de inventario",
         "invExpiryLabel": "Avisar lotes por vencer con (días)",
         "invExpiryHelp": "Con cuántos días de anticipación avisa «Lotes por vencer» (1 a 365; 30 por omisión).",

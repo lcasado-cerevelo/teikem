@@ -286,7 +286,10 @@ public static class PickBatchRules
             .Where(c => c.BinActive && IsPickableZone(c.ZoneTypeCode) && c.Available > 0m)
             .Where(c => binId is null || c.BinId == binId)
             .Where(c => lotId is null || c.LotId == lotId);
-        IOrderedEnumerable<PickCandidate> ordered = RotationRules.IsFifo(method)
+        // Por posición (2026-10-20): sin mirar fechas; el orden lo da el desempate de abajo (tipo de zona, código de posición, posición y lote)
+        IOrderedEnumerable<PickCandidate> ordered = RotationRules.IsPosition(method)
+            ? q.OrderBy(c => 0)
+            : RotationRules.IsFifo(method)
             ? q.OrderBy(c => RotationRules.FifoKey(c.ReceivedAtUtc).HasNoDate)
                .ThenBy(c => RotationRules.FifoKey(c.ReceivedAtUtc).Date)
                .ThenBy(c => c.ExpiryDate is null ? 1 : 0)

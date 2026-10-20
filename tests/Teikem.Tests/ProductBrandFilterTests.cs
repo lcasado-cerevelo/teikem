@@ -443,4 +443,30 @@ public sealed class ProductBrandFilterTests
             .Select(p => p.Brand).Distinct().ToQueryString();
         Assert.Contains("DISTINCT", brandSql);
     }
+
+    // 2026-10-20: la excepción de rotación del producto debe aplicar a su tipo (con lote: FEFO o FIFO; sin lote ni series: FIFO o por posición)
+    [Fact]
+    public async Task The_rotation_exception_must_fit_the_product_type()
+    {
+        await using var f = await CreateAsync();
+        var products = f.Get<ProductService>();
+
+        var plain = await products.CreateAsync(new ProductCreateRequest("PN-1", "Sin lote", RotationMethod: "position"), default);
+        Assert.Equal("POSITION", plain.RotationMethod);
+        var noFefo = await Assert.ThrowsAsync<ValidationException>(() => products.CreateAsync(new ProductCreateRequest("PN-2", "Sin lote", RotationMethod: "FEFO"), default));
+        Assert.Equal(RotationRules.InvalidProductMethodForNoLot, Assert.Single(noFefo.Errors!["rotationMethod"]));
+
+        var lot = await products.CreateAsync(new ProductCreateRequest("PL-1", "Con lote", TrackingType: "LOT", RotationMethod: "FIFO"), default);
+        Assert.Equal("FIFO", lot.RotationMethod);
+        var noPosition = await Assert.ThrowsAsync<ValidationException>(() => products.CreateAsync(new ProductCreateRequest("PL-2", "Con lote", TrackingType: "LOT", RotationMethod: "POSITION"), default));
+        Assert.Equal(RotationRules.InvalidProductMethodForLot, Assert.Single(noPosition.Errors!["rotationMethod"]));
+
+        // al editar se valida contra el tipo que ya tiene el producto
+        var edit = await Assert.ThrowsAsync<ValidationException>(() => products.UpdateAsync(lot.Product.PublicId, new ProductPatchRequest(RotationMethod: "POSITION"), default));
+        Assert.Equal(RotationRules.InvalidProductMethodForLot, Assert.Single(edit.Errors!["rotationMethod"]));
+        var ok = await products.UpdateAsync(plain.Product.PublicId, new ProductPatchRequest(RotationMethod: "FIFO"), default);
+        Assert.Equal("FIFO", ok.RotationMethod);
+        var cleared = await products.UpdateAsync(plain.Product.PublicId, new ProductPatchRequest(RotationMethod: ""), default);
+        Assert.Null(cleared.RotationMethod);
+    }
 }

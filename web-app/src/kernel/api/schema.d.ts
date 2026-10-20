@@ -38192,6 +38192,7 @@ export interface components {
             inventoryExpiryWarnDays?: number;
             /** Format: int32 */
             inventoryNoMovementDays?: number;
+            rotationMethodNoLot?: string;
         };
         TenantSettingsUpdateRequest: {
             name?: string | null;
@@ -38247,6 +38248,7 @@ export interface components {
             inventoryExpiryWarnDays?: number | null;
             /** Format: int32 */
             inventoryNoMovementDays?: number | null;
+            rotationMethodNoLot?: string | null;
         };
         TenantSummaryDto: {
             /** Format: int32 */

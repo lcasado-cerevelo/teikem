@@ -504,8 +504,8 @@ public sealed class PickBatchService(
         var expiries = balances.ToDictionary(b => (b.ProductId, b.BinId, b.LotId), b => b.Expiry);
         // Lote 34: fecha de primera entrada de cada saldo (para FIFO) y método de rotación de la compañía (el producto puede tener excepción).
         var received = balances.ToDictionary(b => (b.ProductId, b.BinId, b.LotId), b => b.FirstReceivedAtUtc);
-        var tenantRot = await db.Tenants.AsNoTracking().Where(t => t.TenantId == db.CurrentTenantId).Select(t => new { t.RotationMethod, t.RotationEnforcement }).FirstOrDefaultAsync(ct);
-        var tenantMethod = tenantRot?.RotationMethod;
+        var tenantRot = await db.Tenants.AsNoTracking().Where(t => t.TenantId == db.CurrentTenantId).Select(t => new { t.RotationMethod, t.RotationMethodNoLot, t.RotationEnforcement }).FirstOrDefaultAsync(ct);
+        var company = new CompanyRotation(tenantRot?.RotationMethod, tenantRot?.RotationMethodNoLot);   // 2026-10-20: método con lote / sin lote
         var enforced = RotationRules.IsEnforced(tenantRot?.RotationEnforcement);   // 2026-10-20: rotación obligatoria
 
         var serialStatus = await db.StatusCodes.AsNoTracking()
@@ -571,7 +571,7 @@ public sealed class PickBatchService(
                     return new PickCandidate(bin.BinId, bin.Code, bin.ZoneTypeCode, bin.Active, kv.Key.LotId, expiries[kv.Key], kv.Value, received.GetValueOrDefault(kv.Key));
                 })
                 .ToList();
-            var method = RotationRules.Resolve(product.RotationMethod, tenantMethod);
+            var method = RotationRules.Resolve(product.RotationMethod, company, string.Equals(product.TrackingCode, TrackingTypes.Lot, StringComparison.OrdinalIgnoreCase));
             var allocation = PickBatchRules.Allocate(qty, candidates, line.BinId, line.LotId, method);
             if (enforced && (line.BinId is not null || line.LotId is not null))
             {

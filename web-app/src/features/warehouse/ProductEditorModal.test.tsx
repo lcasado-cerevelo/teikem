@@ -402,6 +402,21 @@ describe('ProductEditorModal', () => {
     expect(patch.model).toBeNull()
   })
 
+  it('rotación (2026-10-20): las opciones de la excepción dependen del tipo — con lote FEFO o FIFO; sin lote ni series FIFO o por posición', async () => {
+    const { unmount } = wrap(<ProductEditorModal open product={detail({ trackingTypeCode: 'LOT' })} onClose={() => {}} />, ['inventory.view', 'inventory.manage'])
+    let dialog = await findDialog('Editar producto')
+    let rotation = within(dialog).getByLabelText('Rotación')
+    expect(within(rotation).getByRole('option', { name: /^FEFO/ })).toBeInTheDocument()
+    expect(within(rotation).queryByRole('option', { name: /posición/i })).toBeNull()
+    unmount()
+
+    wrap(<ProductEditorModal open product={detail({ trackingTypeCode: 'NONE' })} onClose={() => {}} />, ['inventory.view', 'inventory.manage'])
+    dialog = await findDialog('Editar producto')
+    rotation = within(dialog).getByLabelText('Rotación')
+    expect(within(rotation).getByRole('option', { name: /Por posición/ })).toBeInTheDocument()
+    expect(within(rotation).queryByRole('option', { name: /^FEFO/ })).toBeNull()
+  })
+
   it('rotación (Lote 34): alta con FIFO manda rotationMethod; edición: sin tocarla va null, y volver a «Igual que la compañía» manda "" (quita la excepción)', async () => {
     const user = userEvent.setup()
     const { unmount } = wrap(<ProductEditorModal open product={null} onClose={() => {}} />, ['inventory.view', 'inventory.manage'])

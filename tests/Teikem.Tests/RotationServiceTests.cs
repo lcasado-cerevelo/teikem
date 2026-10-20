@@ -159,4 +159,99 @@ public class RotationServiceTests
         await SetEnforcementAsync(s, RotationEnforcements.Enforce);
         Assert.Equal(RotationEnforcements.Enforce, (await service.ListAsync(s.W.PublicId, null, 0, 50, default)).RotationEnforcement);
     }
+
+    // ---- 2026-10-20: producto SIN lote — FIFO por omisión (lo que entró primero), o por posición ----
+
+    private sealed record NoLotScene(WmsFixture F, Warehouse W, Product P, WarehouseBin Old, WarehouseBin New);
+
+    /// <summary>Producto sin lote en dos posiciones: «Z-OLD» (código mayor) entró hace 30 días y «A-NEW» (código menor) entró ayer.</summary>
+    private static async Task<NoLotScene> NoLotSeedAsync()
+    {
+        var f = await FixtureAsync();
+        var w = await f.AddWarehouseAsync("W1");
+        var zone = await f.AddZoneAsync(w, "PCK", ZoneTypes.Picking);
+        var oldBin = await f.AddBinAsync(zone, "Z-OLD");
+        var newBin = await f.AddBinAsync(zone, "A-NEW");
+        var p = await f.AddProductAsync("PN");
+        await f.PostAsync(
+            new InventoryPosting(InventoryTxnTypes.Receipt, p.ProductId, 5m, ToWarehouseId: w.WarehouseId, ToBinId: oldBin.WarehouseBinId),
+            new InventoryPosting(InventoryTxnTypes.Receipt, p.ProductId, 5m, ToWarehouseId: w.WarehouseId, ToBinId: newBin.WarehouseBinId));
+        foreach (var b in await f.Db.StockBalances.Where(b => b.ProductId == p.ProductId).ToListAsync())
+            b.FirstReceivedAtUtc = b.WarehouseBinId == oldBin.WarehouseBinId ? DateTime.UtcNow.AddDays(-30) : DateTime.UtcNow.AddDays(-1);
+        await f.Db.SaveChangesAsync();
+        return new NoLotScene(f, w, p, oldBin, newBin);
+    }
+
+    private static async Task<int?> CollectedBinAsync(NoLotScene s)
+    {
+        var dto = await s.F.Get<PickBatchService>().CollectAsync(new PickBatchCreateRequest(s.W.PublicId, new[] { new PickBatchLineRequest(s.P.PublicId, 1m) }), default);
+        return dto.Lines.Single().BinId;
+    }
+
+    [Fact]
+    public async Task A_product_without_lot_goes_out_fifo_by_default_even_if_another_position_has_a_lower_code()
+    {
+        var s = await NoLotSeedAsync();
+        await using var _ = s.F;
+        Assert.Equal(s.Old.WarehouseBinId, await CollectedBinAsync(s));
+    }
+
+    [Fact]
+    public async Task The_company_can_choose_position_for_products_without_lot()
+    {
+        var s = await NoLotSeedAsync();
+        await using var _ = s.F;
+        (await s.F.Db.Tenants.SingleAsync(t => t.TenantId == WmsFixture.TenantId)).RotationMethodNoLot = RotationMethods.Position;
+        await s.F.Db.SaveChangesAsync();
+        Assert.Equal(s.New.WarehouseBinId, await CollectedBinAsync(s));   // «A-NEW» por su código, aunque entró después
+    }
+
+    [Fact]
+    public async Task The_lot_method_does_not_change_how_products_without_lot_go_out()
+    {
+        var s = await NoLotSeedAsync();
+        await using var _ = s.F;
+        (await s.F.Db.Tenants.SingleAsync(t => t.TenantId == WmsFixture.TenantId)).RotationMethod = RotationMethods.Fifo;   // el de lote
+        await s.F.Db.SaveChangesAsync();
+        Assert.Equal(s.Old.WarehouseBinId, await CollectedBinAsync(s));   // el de «sin lote» sigue FIFO
+    }
+
+    [Fact]
+    public async Task A_product_exception_can_ask_for_position_even_if_the_company_is_fifo()
+    {
+        var s = await NoLotSeedAsync();
+        await using var _ = s.F;
+        (await s.F.Db.Products.SingleAsync(x => x.ProductId == s.P.ProductId)).RotationMethod = RotationMethods.Position;
+        await s.F.Db.SaveChangesAsync();
+        Assert.Equal(s.New.WarehouseBinId, await CollectedBinAsync(s));
+    }
+
+    [Fact]
+    public async Task An_exception_that_does_not_fit_the_product_type_is_ignored()
+    {
+        var s = await NoLotSeedAsync();
+        await using var _ = s.F;
+        (await s.F.Db.Products.SingleAsync(x => x.ProductId == s.P.ProductId)).RotationMethod = RotationMethods.Fefo;   // FEFO no aplica a un producto sin lote
+        await s.F.Db.SaveChangesAsync();
+        Assert.Equal(s.Old.WarehouseBinId, await CollectedBinAsync(s));   // manda el de la compañía para sin lote (FIFO)
+    }
+
+    // ---- ajustes de la compañía: validación de los dos métodos ----
+
+    [Fact]
+    public async Task Settings_expose_and_validate_the_two_methods()
+    {
+        await using var f = await WmsFixture.CreateAsync(sv => { sv.AddSingleton<TenantZoneCache>(); sv.AddSingleton<TenantService>(); });
+        var svc = f.Get<TenantService>();
+        var s = await svc.GetSettingsAsync(default);
+        Assert.Equal(("FEFO", "FIFO"), (s.RotationMethod, s.RotationMethodNoLot));   // lo de siempre y el nuevo por omisión
+
+        var saved = await svc.UpdateSettingsAsync(new TenantSettingsUpdateRequest(null, null, null, null, null, null, null, null, null, null, null, null, null, RotationMethod: "fifo", RotationMethodNoLot: "position"), default);
+        Assert.Equal(("FIFO", "POSITION"), (saved.RotationMethod, saved.RotationMethodNoLot));
+
+        var badLot = await Assert.ThrowsAsync<ValidationException>(() => svc.UpdateSettingsAsync(new TenantSettingsUpdateRequest(null, null, null, null, null, null, null, null, null, null, null, null, null, RotationMethod: "POSITION"), default));
+        Assert.Contains(RotationRules.InvalidMethod, badLot.Errors.SelectMany(e => e.Value));   // por posición no es un método de productos con lote
+        var badNoLot = await Assert.ThrowsAsync<ValidationException>(() => svc.UpdateSettingsAsync(new TenantSettingsUpdateRequest(null, null, null, null, null, null, null, null, null, null, null, null, null, RotationMethodNoLot: "FEFO"), default));
+        Assert.Contains(RotationRules.InvalidNoLotMethod, badNoLot.Errors.SelectMany(e => e.Value));   // FEFO no existe sin vencimiento
+    }
 }

@@ -84,6 +84,8 @@ public class Tenant : ISoftDeletable
     public int? DefaultProductCategoryId { get; set; }
     /// <summary>Lote 34: método de rotación del inventario de la compañía ('FEFO' | 'FIFO'). FEFO para todas las existentes.</summary>
     public string RotationMethod { get; set; } = "FEFO";
+    /// <summary>2026-10-20: método de rotación de los productos SIN lote y por serie (no vencen): 'FIFO' (por omisión) | 'POSITION' (por posición). <see cref="RotationMethod"/> queda para los productos por lote (FEFO | FIFO).</summary>
+    public string RotationMethodNoLot { get; set; } = "FIFO";
     /// <summary>2026-10-20: cómo se aplica la rotación en las salidas: 'SUGGEST' (se propone y se puede cambiar, con advertencia) | 'ENFORCE' (el sistema escoge y el servidor rechaza lo distinto). SUGGEST para todas las existentes.</summary>
     public string RotationEnforcement { get; set; } = "SUGGEST";
     /// <summary>2026-10-20: días de anticipación del aviso «lotes por vencer» (1 a 365; 30 por omisión).</summary>

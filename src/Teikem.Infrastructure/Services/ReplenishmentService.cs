@@ -73,7 +73,8 @@ public sealed class ReplenishmentService(
             if (products.Count == 0) return;
 
             var productIds = products.Select(p => p.ProductId).ToList();
-            var tenantMethod = await db.Tenants.AsNoTracking().Where(t => t.TenantId == db.CurrentTenantId).Select(t => t.RotationMethod).FirstOrDefaultAsync(ct2);   // Lote 34: rotación de la compañía
+            var company = await RotationQueries.CompanyAsync(db, ct2);   // Lote 34 + 2026-10-20: rotación de la compañía (con lote / sin lote)
+            var lotTracked = await RotationQueries.LotTrackedAsync(db, productIds, ct2);
             var balances = await db.Set<StockBalance>().AsNoTracking()
                 .Where(b => b.WarehouseId == warehouseId && productIds.Contains(b.ProductId))
                 .Select(b => new { b.ProductId, b.WarehouseBinId, b.LotId, b.QtyOnHand, b.QtyReserved, b.FirstReceivedAtUtc })
@@ -101,7 +102,7 @@ public sealed class ReplenishmentService(
                 var own = balances.Where(b => b.ProductId == p.ProductId).ToList();
                 var candidate = new ReplenishmentProduct(p.ProductId, p.Sku, p.PickBinId, p.MinPickQty, p.MaxPickQty,
                     own.Where(b => b.WarehouseBinId == p.PickBinId).Sum(b => ReplenishmentRules.Available(b.QtyOnHand, b.QtyReserved)),
-                    open.Any(t => t.ProductId == p.ProductId && t.ToBinId == p.PickBinId), RotationRules.Resolve(p.RotationMethod, tenantMethod));
+                    open.Any(t => t.ProductId == p.ProductId && t.ToBinId == p.PickBinId), RotationRules.Resolve(p.RotationMethod, company, lotTracked.Contains(p.ProductId)));
                 var sources = own.Where(b => b.WarehouseBinId is int binId && bins.ContainsKey(binId))
                     .Select(b =>
                     {

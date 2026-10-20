@@ -40,6 +40,7 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         b.Property(t => t.CurrencySymbolPosition).HasColumnType("char(1)").IsRequired();
         b.Property(t => t.CurrencyDecimals).HasColumnType("tinyint");
         b.Property(t => t.RotationMethod).HasColumnType("varchar(10)").IsRequired();
+        b.Property(t => t.RotationMethodNoLot).HasColumnType("varchar(10)").IsRequired();   // 2026-10-20
         b.Property(t => t.RotationEnforcement).HasColumnType("varchar(10)").IsRequired();   // 2026-10-20
         b.Property(t => t.SalesBillingTrigger).HasColumnType("varchar(12)").IsRequired();   // Lote 72
         b.Property(t => t.DateOrder).HasColumnType("char(3)").IsRequired();

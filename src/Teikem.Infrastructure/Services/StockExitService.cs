@@ -4,6 +4,7 @@ using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
 using Teikem.Infrastructure.Persistence;
+using Teikem.Infrastructure.Wms;
 
 namespace Teikem.Infrastructure.Services;
 
@@ -55,8 +56,10 @@ public sealed class StockExitService(TeikemDbContext db, ILookupCache lookups)
         foreach (var id in list.Where(r => r.ZoneTypeLookupId != null).Select(r => r.ZoneTypeLookupId!.Value).Distinct())
             zoneTypes[id] = (await lookups.GetAsync(id, ct))?.InternalCode;
 
-        var tenantRot = await db.Tenants.AsNoTracking().Where(t => t.TenantId == db.CurrentTenantId).Select(t => new { t.RotationMethod, t.RotationEnforcement }).FirstOrDefaultAsync(ct);
-        var tenantMethod = tenantRot?.RotationMethod;   // Lote 34: rotación de la compañía; el producto puede tener excepción
+        var tenantRot = await db.Tenants.AsNoTracking().Where(t => t.TenantId == db.CurrentTenantId).Select(t => new { t.RotationMethod, t.RotationMethodNoLot, t.RotationEnforcement }).FirstOrDefaultAsync(ct);
+        // Lote 34 + 2026-10-20: rotación de la compañía (con lote / sin lote); el producto puede tener excepción
+        var company = new CompanyRotation(tenantRot?.RotationMethod, tenantRot?.RotationMethodNoLot);
+        var lotTracked = await RotationQueries.LotTrackedAsync(db, list.Select(r => r.ProductId).Distinct().ToList(), ct);
         var ranked = new List<StockExitOptionDto>();
         foreach (var g in list.GroupBy(r => (r.ProductId, r.ProductPublicId)).OrderBy(g => g.Key.ProductId))
         {
@@ -64,7 +67,7 @@ public sealed class StockExitService(TeikemDbContext db, ILookupCache lookups)
             var candidates = g.Select(r => new PickCandidate(r.WarehouseBinId, r.BinCode, r.ZoneTypeLookupId is int zt ? zoneTypes.GetValueOrDefault(zt) : null,
                 BinActive: true, r.LotId, r.Expiry, r.Available, r.FirstReceivedAtUtc));
             var rank = 0;
-            var method = RotationRules.Resolve(g.First().RotationMethod, tenantMethod);
+            var method = RotationRules.Resolve(g.First().RotationMethod, company, lotTracked.Contains(g.Key.ProductId));
             foreach (var c in PickBatchRules.Eligible(candidates, null, null, method))
             {
                 var r = byKey[(c.BinId, c.LotId)];

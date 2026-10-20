@@ -326,7 +326,8 @@ public sealed partial class SalesOrderService
                               where b.WarehouseId == warehouseId && productIds.Contains(b.ProductId) && b.WarehouseBinId != null && b.QtyOnHand > 0
                               select new { b.ProductId, BinId = b.WarehouseBinId!.Value, b.LotId, b.QtyOnHand, b.QtyReserved, b.FirstReceivedAtUtc, Expiry = lot == null ? (DateOnly?)null : lot.ExpiryDate })
             .ToListAsync(ct);
-        var tenantMethod = await db.Tenants.AsNoTracking().Where(t => t.TenantId == db.CurrentTenantId).Select(t => t.RotationMethod).FirstOrDefaultAsync(ct);
+        var company = await RotationQueries.CompanyAsync(db, ct);   // 2026-10-20: rotación con lote / sin lote
+        var lotTracked = await RotationQueries.LotTrackedAsync(db, productIds, ct);
         var rotations = await db.Set<Product>().AsNoTracking().Where(p => productIds.Contains(p.ProductId)).ToDictionaryAsync(p => p.ProductId, p => p.RotationMethod, ct);
 
         List<PickCandidate> CandidatesOf(int productId)
@@ -341,11 +342,11 @@ public sealed partial class SalesOrderService
         {
             if (kitProducts.Contains(w.ProductId))
             {
-                result[w.LineId] = PlanKit(w, snapshots.GetValueOrDefault(w.LineId), CandidatesOf, SellableOf, rotations, tenantMethod);
+                result[w.LineId] = PlanKit(w, snapshots.GetValueOrDefault(w.LineId), CandidatesOf, SellableOf, rotations, company, lotTracked);
                 continue;
             }
             var candidates = CandidatesOf(w.ProductId);
-            var allocation = PickBatchRules.Allocate(w.Quantity, candidates, null, w.LotId, RotationRules.Resolve(rotations.GetValueOrDefault(w.ProductId), tenantMethod));
+            var allocation = PickBatchRules.Allocate(w.Quantity, candidates, null, w.LotId, RotationRules.Resolve(rotations.GetValueOrDefault(w.ProductId), company, lotTracked.Contains(w.ProductId)));
             result[w.LineId] = new Availability(allocation.Allocations.Select(a => new LineAllocation(w.ProductId, a.BinId, a.LotId, a.Quantity)).ToList(), allocation.Allocated,
                 SellableOf(candidates, w.LotId), Math.Max(0m, w.Quantity - allocation.Allocated));
         }
@@ -357,7 +358,7 @@ public sealed partial class SalesOrderService
     /// cada componente se asigna por su rotación (FEFO/FIFO). Available = kits que se podrían armar; Allocated = kits que se reservan; Shortage = kits que faltan.
     /// </summary>
     private static Availability PlanKit(Want w, List<(int ProductId, decimal Quantity)>? comps, Func<int, List<PickCandidate>> candidatesOf, Func<List<PickCandidate>, int?, decimal> sellableOf,
-        Dictionary<int, string?> rotations, string? tenantMethod)
+        Dictionary<int, string?> rotations, CompanyRotation company, HashSet<int> lotTracked)
     {
         if (comps is null || comps.Count == 0) return new Availability(Array.Empty<LineAllocation>(), 0m, 0m, w.Quantity);
         var byProduct = comps.ToDictionary(c => c.ProductId, c => candidatesOf(c.ProductId));
@@ -370,7 +371,7 @@ public sealed partial class SalesOrderService
             var achievable = kits;
             foreach (var c in comps)
             {
-                var r = PickBatchRules.Allocate(kits * c.Quantity, byProduct[c.ProductId], null, null, RotationRules.Resolve(rotations.GetValueOrDefault(c.ProductId), tenantMethod));
+                var r = PickBatchRules.Allocate(kits * c.Quantity, byProduct[c.ProductId], null, null, RotationRules.Resolve(rotations.GetValueOrDefault(c.ProductId), company, lotTracked.Contains(c.ProductId)));
                 allocations.AddRange(r.Allocations.Select(a => new LineAllocation(c.ProductId, a.BinId, a.LotId, a.Quantity)));
                 achievable = Math.Min(achievable, Math.Floor(r.Allocated / c.Quantity));
             }

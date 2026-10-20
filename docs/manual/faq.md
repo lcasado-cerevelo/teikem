@@ -9644,3 +9644,20 @@ Escribiste un número fuera de ese rango (o no entero) en el ajuste correspondie
 **Un producto nuevo sin existencia no me avisa «sin existencia». ¿Es un error?**
 No: «sin existencia» solo avisa productos que sí tuvieron movimientos y se quedaron en cero. Uno recién creado que nunca se recibió no cuenta.
 
+## Rotación con lote y sin lote (Lote 142, 2026-10-20)
+
+**¿Por qué ahora hay dos métodos de rotación en los ajustes?**
+Porque FEFO (vence primero) solo se puede aplicar a productos con lote y vencimiento. Los productos por lote usan «productos con lote» (FEFO o FIFO). Los productos sin lote y los de series no vencen, y usan «productos sin lote ni series» (FIFO o por posición). Está en Ajustes de la compañía → Operación → «Rotación del inventario».
+
+**Mis productos sin lote ahora salen distinto. ¿Qué pasó?**
+Antes, sin vencimiento, FEFO desempataba por el código de la posición. Ahora el método de «sin lote» es FIFO por omisión: sale primero lo que entró primero. Si prefieres lo de antes, cambia ese campo a «Por posición».
+
+**¿Qué significa «El método de rotación de los productos sin lote debe ser FIFO o POSITION (por posición).» (400)?**
+Mandaste FEFO (o cualquier otro valor) en `rotationMethodNoLot`. Sin lote no hay vencimiento, así que FEFO no existe ahí. Usa FIFO o POSITION.
+
+**¿Qué significan «Un producto con lote solo admite rotación FEFO o FIFO.» y «Un producto sin lote ni series solo admite rotación FIFO o POSITION (por posición).» (400)?**
+La excepción de rotación de un producto debe ser de las que aplican a su tipo. Con lote: FEFO o FIFO. Sin lote ni series: FIFO o por posición. En la ficha, el selector «Rotación» ya solo muestra las que aplican.
+
+**Cambié un producto de sin lote a con lote y tenía rotación «por posición». ¿Qué pasa?**
+La excepción deja de aplicar y el producto sigue el método de la compañía para productos con lote. En la ficha, al cambiar el tipo, la excepción que no aplica vuelve sola a «Igual que la compañía».
+

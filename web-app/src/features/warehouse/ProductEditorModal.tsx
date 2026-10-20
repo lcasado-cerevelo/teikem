@@ -18,7 +18,7 @@
 //   dejaría el inventario negativo) el mensaje del servidor queda dentro del bloque, que sigue abierto.
 // - "Ver lotes" / "Ver series" llevan a la vista de solo lectura de la ficha (`/warehouse/products/{id}?tab=lots|serials`).
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useContext, useId, useMemo, useState, type ReactNode } from 'react'
+import { useContext, useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { Link } from 'react-router-dom'
 import { z } from 'zod'
@@ -290,6 +290,29 @@ function ProductEditorForm({
     },
   })
 
+  // 2026-10-20: la excepción de rotación depende del tipo: con lote FEFO o FIFO; sin lote ni series FIFO o por posición
+  const trackingChosen = useWatch({ control: form.control, name: 'trackingType' })
+  const lotTracked = trackingChosen === 'LOT'
+  const rotationOptions = useMemo(
+    () => [
+      { value: '', label: t('warehouse.products.editor.rotationCompany') },
+      ...(lotTracked
+        ? [
+            { value: 'FEFO', label: t('warehouse.products.editor.rotationFefo') },
+            { value: 'FIFO', label: t('warehouse.products.editor.rotationFifo') },
+          ]
+        : [
+            { value: 'FIFO', label: t('warehouse.products.editor.rotationFifo') },
+            { value: 'POSITION', label: t('warehouse.products.editor.rotationPosition') },
+          ]),
+    ],
+    [lotTracked, t],
+  )
+  const rotationChosen = useWatch({ control: form.control, name: 'rotationMethod' })
+  useEffect(() => {
+    // al cambiar el tipo, una excepción que ya no aplica se quita (vuelve a «Igual que la compañía»)
+    if (rotationChosen && !rotationOptions.some((o) => o.value === rotationChosen)) form.setValue('rotationMethod', '', { shouldDirty: true })
+  }, [rotationChosen, rotationOptions, form])
   const preferredWarehousePublicId = useWatch({ control: form.control, name: 'preferredWarehousePublicId' })
   const preferredBinId = useWatch({ control: form.control, name: 'preferredBinId' })
   // Solo hace falta el tipo de zona de la posición por defecto ya guardada (la elegida en el picker llega en `pickedBin`):
@@ -493,13 +516,7 @@ function ProductEditorForm({
             ))}
           </datalist>
           <Field name="rotationMethod" label={t('warehouse.products.editor.rotation')} help={t('warehouse.products.editor.rotationHelp')}>
-            <Select
-              options={[
-                { value: '', label: t('warehouse.products.editor.rotationCompany') },
-                { value: 'FEFO', label: t('warehouse.products.editor.rotationFefo') },
-                { value: 'FIFO', label: t('warehouse.products.editor.rotationFifo') },
-              ]}
-            />
+            <Select options={rotationOptions} />
           </Field>
           <div className="r2">
             <Field name="purchaseCost" label={t('warehouse.products.editor.purchaseCost')}>

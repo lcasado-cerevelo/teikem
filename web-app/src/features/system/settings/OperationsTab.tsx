@@ -215,11 +215,18 @@ function RotationPanel({ settings, canEdit }: { settings: TenantSettingsDto; can
   const t = useT()
   const save = useSaveTenantSettings()
   const current = settings.rotationMethod ?? 'FEFO'
-  const form = useForm<{ rotationMethod: string; rotationEnforcement: string }>({ values: { rotationMethod: current, rotationEnforcement: settings.rotationEnforcement ?? 'SUGGEST' } })
+  const form = useForm<{ rotationMethod: string; rotationMethodNoLot: string; rotationEnforcement: string }>({
+    values: { rotationMethod: current, rotationMethodNoLot: settings.rotationMethodNoLot ?? 'FIFO', rotationEnforcement: settings.rotationEnforcement ?? 'SUGGEST' },
+  })
   const dirty = form.formState.isDirty
+  // 2026-10-20: dos métodos — con lote (FEFO o FIFO) y sin lote ni series (FIFO o por posición; no vencen)
   const options = [
     { value: 'FEFO', label: t('system.settings.ops.rotationFefo') },
     { value: 'FIFO', label: t('system.settings.ops.rotationFifo') },
+  ]
+  const noLotOptions = [
+    { value: 'FIFO', label: t('system.settings.ops.rotationFifo') },
+    { value: 'POSITION', label: t('system.settings.ops.rotationPosition') },
   ]
   // 2026-10-20: cómo se aplica en las salidas: sugerir (se propone y se puede cambiar, con advertencia) u obligar (el sistema escoge solo)
   const enforcementOptions = [
@@ -232,13 +239,16 @@ function RotationPanel({ settings, canEdit }: { settings: TenantSettingsDto; can
       <Form
         form={form}
         onSubmit={async (v) => {
-          await save.mutateAsync({ rotationMethod: v.rotationMethod, rotationEnforcement: v.rotationEnforcement })
+          await save.mutateAsync({ rotationMethod: v.rotationMethod, rotationMethodNoLot: v.rotationMethodNoLot, rotationEnforcement: v.rotationEnforcement })
           toast.success(t('system.settings.saved'))
         }}
       >
         <fieldset className="set-fs" disabled={!canEdit}>
           <Field name="rotationMethod" label={t('system.settings.ops.rotationLabel')} help={t('system.settings.ops.rotationHelp')}>
             <Select options={options} />
+          </Field>
+          <Field name="rotationMethodNoLot" label={t('system.settings.ops.rotationNoLotLabel')} help={t('system.settings.ops.rotationNoLotHelp')}>
+            <Select options={noLotOptions} />
           </Field>
           <Field name="rotationEnforcement" label={t('system.settings.ops.rotationEnforcementLabel')} help={t('system.settings.ops.rotationEnforcementHelp')}>
             <Select options={enforcementOptions} />
