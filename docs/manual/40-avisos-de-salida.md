@@ -114,3 +114,7 @@ completo) y **Aviso de salida cancelado** (`EXIT_NOTICE_CANCELLED`, a mano o sol
 
 ## Pantalla (Lote 144)
 En la web: **Recibo → pestaña «Avisos de salida»** (`/warehouse/receipts?tab=exit-notices`). Ver la lista requiere `inventory.view`; **Nuevo aviso de salida**, **Reservar el pendiente**, cambiar cantidad, cerrar con faltante y cancelar requieren `exitnotice.create`. La lista tiene buscador libre, filtro de estatus y «Solo con pendiente»; un aviso con faltante muestra la marca «Con pendiente». Despachar contra el aviso se hace desde Recolección o Despacho manual (lote 145).
+
+## Despachar y «el despacho exige documento» (Lote 145)
+- **Despachar desde el aviso:** abra el aviso (Recibo → Avisos de salida) y pulse **Despachar** (permiso `warehouse.pick`, solo si hay algo reservado). Escriba cuánto sale de cada línea (por omisión todo lo reservado; 0 = esa línea no sale). Error en pantalla: «No puede despachar más de lo reservado.».
+- **Ajuste de la compañía** (Ajustes → Operación → «El despacho exige documento»): Libre (por omisión), Aviso de salida u orden de venta, Solo aviso de salida, Solo orden de venta. Con cualquier valor distinto de Libre el **despacho manual** se bloquea: HTTP 409 «La compañía exige despachar contra un aviso de salida. Cree el aviso y despache desde él.» (o «…contra una orden de venta…», o «…contra un documento (aviso de salida u orden de venta)…»). Empacar no se ve afectado.

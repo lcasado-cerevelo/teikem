@@ -234,6 +234,10 @@ public sealed class PickBatchService(
         if (errors.Count == 1) { var e = errors.First(); throw new ValidationException(e.Key, e.Value[0]); }
         if (errors.Count > 1) throw new ValidationException(errors);
 
+        // Lote 145: la compañía puede exigir que todo despacho sea contra un documento; el despacho manual no lo es.
+        var requirement = await db.Tenants.AsNoTracking().Where(t => t.TenantId == db.CurrentTenantId).Select(t => t.DispatchRequirement).FirstOrDefaultAsync(ct);
+        if (DispatchRequirementRules.Requires(requirement)) throw new ConflictException(DispatchRequirementRules.ManualBlocked(requirement));
+
         var reason = await ResolveManualReasonAsync(reasonCode!, ct)
                      ?? throw new ValidationException("reasonCode", PickBatchRules.ManualReasonUnknown(reasonCode!));
         var publicId = await CollectCoreAsync(new PickBatchCreateRequest(req.WarehousePublicId, req.Lines), ct,

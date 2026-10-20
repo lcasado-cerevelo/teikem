@@ -37,3 +37,24 @@ export function canHandlePending(notice: Pick<ExitNoticeDto, 'statusCode'>, line
 export function toShip(line: ExitNoticeLineDto): number {
   return (line.qtyReserved ?? 0) + (line.isClosed ? 0 : (line.qtyBackordered ?? 0))
 }
+
+/** ¿Se puede despachar contra el aviso? Solicitado o parcial y alguna línea con algo reservado. */
+export function canDispatch(notice: Pick<ExitNoticeDto, 'statusCode' | 'lines'>): boolean {
+  return (notice.statusCode === 'REQUESTED' || notice.statusCode === 'PARTIAL') && (notice.lines ?? []).some((l) => (l.qtyReserved ?? 0) > 0)
+}
+
+/** Clave i18n del error de la cantidad a despachar de una línea (null = válida; vacío o 0 = no se despacha esa línea). */
+export function dispatchQuantityIssue(qty: number | null | undefined, reserved: number): string | null {
+  if (qty == null || qty === 0) return null
+  if (Number.isNaN(qty) || qty < 0) return 'warehouse.exitNotices.errors.quantityRequired'
+  if (qty > reserved) return 'warehouse.exitNotices.errors.overReserved'
+  if (Math.round(qty * 1000) / 1000 !== qty) return 'warehouse.exitNotices.errors.quantityDecimals'
+  return null
+}
+
+/** Líneas del cuerpo del despacho: solo las de cantidad mayor que cero. */
+export function dispatchLines(qtys: Record<number, number | null | undefined>): { lineId: number; quantity: number }[] {
+  return Object.entries(qtys)
+    .map(([id, q]) => ({ lineId: Number(id), quantity: q ?? 0 }))
+    .filter((l) => l.quantity > 0)
+}

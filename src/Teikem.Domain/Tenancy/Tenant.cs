@@ -88,6 +88,8 @@ public class Tenant : ISoftDeletable
     public string RotationMethodNoLot { get; set; } = "FIFO";
     /// <summary>2026-10-20: cómo se aplica la rotación en las salidas: 'SUGGEST' (se propone y se puede cambiar, con advertencia) | 'ENFORCE' (el sistema escoge y el servidor rechaza lo distinto). SUGGEST para todas las existentes.</summary>
     public string RotationEnforcement { get; set; } = "SUGGEST";
+    /// <summary>2026-10-20 (Lote 145): el despacho exige documento: 'FREE' (por omisión) | 'ANY_DOCUMENT' | 'EXIT_NOTICE' | 'SALES_ORDER'. Aplica al despacho manual; Empacar queda fuera.</summary>
+    public string DispatchRequirement { get; set; } = "FREE";
     /// <summary>2026-10-20: días de anticipación del aviso «lotes por vencer» (1 a 365; 30 por omisión).</summary>
     public int InventoryExpiryWarnDays { get; set; } = 30;
     /// <summary>2026-10-20: días sin movimientos para el aviso «productos sin movimiento» (1 a 3650; 90 por omisión).</summary>

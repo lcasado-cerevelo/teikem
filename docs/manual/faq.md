@@ -9684,3 +9684,6 @@ La compañía tiene la rotación en «Obligar»: el despacho solo puede salir de
 **¿Se puede empacar el despacho de un aviso de salida?**
 No: es una salida de inventario sin entrega (`El despacho {número} es de un aviso de salida y no se empaca…`, 422). Para entregar con una orden de transporte se usa el flujo de la orden de venta o de la recolección normal.
 
+
+## Despacho exige documento (Lote 145)
+**«La compañía exige despachar contra un aviso de salida / una orden de venta / un documento…» (409).** La compañía activó «El despacho exige documento». Cree el aviso de salida (o la orden de venta) y despache desde su ficha con **Despachar**. Un administrador puede volver a «Libre» en Ajustes → Operación.

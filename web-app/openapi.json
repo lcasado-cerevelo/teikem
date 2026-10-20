@@ -62737,6 +62737,10 @@
           "rotationMethodNoLot": {
             "type": "string",
             "nullable": true
+          },
+          "dispatchRequirement": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -62915,6 +62919,10 @@
             "nullable": true
           },
           "rotationMethodNoLot": {
+            "type": "string",
+            "nullable": true
+          },
+          "dispatchRequirement": {
             "type": "string",
             "nullable": true
           }

@@ -27,6 +27,40 @@ public static class RotationMethods
 /// </summary>
 public sealed record CompanyRotation(string? Lot, string? NoLot);
 
+/// <summary>Lote 145: valores de «el despacho exige documento».</summary>
+public static class DispatchRequirements
+{
+    public const string Free = "FREE";
+    public const string AnyDocument = "ANY_DOCUMENT";
+    public const string ExitNotice = "EXIT_NOTICE";
+    public const string SalesOrder = "SALES_ORDER";
+    public static readonly string[] All = { Free, AnyDocument, ExitNotice, SalesOrder };
+}
+
+/// <summary>Lote 145: «el despacho exige documento» de la compañía (Tenant.DispatchRequirement).</summary>
+public static class DispatchRequirementRules
+{
+    public const string Invalid = "El despacho exige documento debe ser FREE (libre), ANY_DOCUMENT (cualquier documento), EXIT_NOTICE (aviso de salida) o SALES_ORDER (orden de venta).";
+
+    /// <summary>Normaliza a uno de los cuatro valores; null si no es ninguno.</summary>
+    public static string? Parse(string? value)
+    {
+        var v = value?.Trim().ToUpperInvariant();
+        return v is not null && DispatchRequirements.All.Contains(v) ? v : null;
+    }
+
+    /// <summary>¿Hay que despachar contra un documento? Todo lo que no sea una exigencia válida es libre, lo de siempre.</summary>
+    public static bool Requires(string? value) => Parse(value) is string v && v != DispatchRequirements.Free;
+
+    /// <summary>Mensaje 409 del despacho manual sin documento cuando la compañía exige uno.</summary>
+    public static string ManualBlocked(string? value) => Parse(value) switch
+    {
+        DispatchRequirements.ExitNotice => "La compañía exige despachar contra un aviso de salida. Cree el aviso y despache desde él.",
+        DispatchRequirements.SalesOrder => "La compañía exige despachar contra una orden de venta. Cree la orden y despache desde ella.",
+        _ => "La compañía exige despachar contra un documento (aviso de salida u orden de venta). Cree uno y despache desde él.",
+    };
+}
+
 /// <summary>
 /// Cómo se aplica el método de rotación en las SALIDAS (recolección y despacho manual) — 2026-10-20: SUGGEST (por omisión) = el sistema propone el lote y la posición
 /// que corresponden y quien despacha puede cambiarlos (las pantallas advierten); ENFORCE = el sistema escoge solo y reparte la cantidad, y el servidor rechaza una

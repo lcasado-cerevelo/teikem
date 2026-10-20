@@ -5922,6 +5922,7 @@
         "notesMax": "Las notas no pueden pasar de 500 caracteres.",
         "quantityRequired": "La cantidad debe ser mayor que cero.",
         "quantityDecimals": "La cantidad admite como máximo 3 decimales.",
+        "overReserved": "No puede despachar más de lo reservado.",
         "quantityTooLarge": "La cantidad excede el máximo permitido."
       },
       "noLines": "Sin líneas.",
@@ -5940,6 +5941,13 @@
       "cancelBody": "Se cancela el aviso {number}: se libera lo que tenía reservado y se borra el pendiente. No se puede deshacer.",
       "cancelled": "Aviso de salida cancelado.",
       "detailHelp": "Reservado = ya apartado para este aviso. Pendiente = falta existencia: se reserva solo cuando entre mercancía, o con «Reservar el pendiente».",
+      "dispatch": "Despachar",
+      "dispatchTitle": "Despachar contra {number}",
+      "dispatchHelp": "Escriba cuánto sale de cada línea (por omisión todo lo reservado; 0 = esa línea no sale). Sale de las posiciones y lotes reservados, que ya siguen la rotación.",
+      "dispatchReserved": "reservado {qty}",
+      "dispatchNote": "Nota (opcional)",
+      "dispatchConfirm": "Despachar",
+      "dispatched": "Despacho {number} registrado.",
       "dispatches": "Despachos",
       "noDispatches": "Todavía no se ha despachado nada de este aviso.",
       "dispatchUndone": "Deshecho"
@@ -6177,6 +6185,12 @@
         "deleteBody": "¿Eliminar el despacho manual {number}? El inventario vuelve a su posición original.",
         "deleted": "Despacho manual {number} eliminado."
       },
+      "requiresDocument": {
+        "ANY_DOCUMENT": "La compañía exige despachar contra un documento (aviso de salida u orden de venta). Cree uno y despache desde él.",
+        "EXIT_NOTICE": "La compañía exige despachar contra un aviso de salida. Cree el aviso y despache desde él.",
+        "SALES_ORDER": "La compañía exige despachar contra una orden de venta. Cree la orden y despache desde ella."
+      },
+      "goToExitNotices": "Ir a Avisos de salida",
       "mode": "Despacho manual (sin entrega)",
       "modeHelp": "Baja el inventario sin entrega ni empaque: pide un motivo y genera un documento DMA."
     },
@@ -7421,6 +7435,14 @@
         "rotationFifo": "FIFO — entra primero, sale primero",
         "rotationSuggest": "Sugerir: se propone y se puede cambiar",
         "rotationEnforce": "Obligar: el sistema escoge solo",
+        "requirementLabel": "El despacho exige documento",
+        "requirementHelp": "Libre: se puede despachar sin documento (como siempre). Los demás valores bloquean el despacho manual sin documento y obligan a despachar desde un aviso de salida, una orden de venta o cualquiera de los dos. Empacar no se ve afectado.",
+        "requirement": {
+          "FREE": "Libre — no exige documento",
+          "ANY_DOCUMENT": "Aviso de salida u orden de venta",
+          "EXIT_NOTICE": "Solo aviso de salida",
+          "SALES_ORDER": "Solo orden de venta"
+        },
         "rotationEnforcementLabel": "Cómo se aplica en las salidas",
         "rotationEnforcementHelp": "Sugerir: al despachar, el sistema propone la posición y el lote que corresponden según el método; quien despacha puede cambiarlos y la pantalla le advierte que se salta la rotación. Obligar: el sistema escoge solo y reparte la cantidad entre posiciones y lotes; nadie puede escoger posición ni lote, y el servidor rechaza cualquier otro. Aplica a la recolección y al despacho manual, en la web y en el aparato de almacén; transferencias y ajustes no se ven afectados.",
         "rotationPosition": "Por posición — según la zona y el código de la posición",

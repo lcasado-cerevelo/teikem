@@ -38603,6 +38603,7 @@ export interface components {
             /** Format: int32 */
             inventoryNoMovementDays?: number;
             rotationMethodNoLot?: string | null;
+            dispatchRequirement?: string | null;
         };
         TenantSettingsUpdateRequest: {
             name?: string | null;
@@ -38659,6 +38660,7 @@ export interface components {
             /** Format: int32 */
             inventoryNoMovementDays?: number | null;
             rotationMethodNoLot?: string | null;
+            dispatchRequirement?: string | null;
         };
         TenantSummaryDto: {
             /** Format: int32 */

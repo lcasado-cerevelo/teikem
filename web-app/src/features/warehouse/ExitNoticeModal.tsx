@@ -11,7 +11,8 @@ import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
 import { Chip, ConfirmDialog, DataTable, Field, Form, Modal, NumberInput, Spinner, toast, type DataColumn, type RowAction } from '../../kernel/ui'
 import { useExitNotice, useExitNoticeMutations, type ExitNoticeLineDto } from './exitNoticeApi'
-import { canHandlePending, canModifyLine, exitQuantityIssue } from './exitNoticeRules'
+import { ExitNoticeDispatchModal } from './ExitNoticeDispatchModal'
+import { canDispatch, canHandlePending, canModifyLine, exitQuantityIssue } from './exitNoticeRules'
 
 function QuantityModal({ publicId, line, onClose }: { publicId: string; line: ExitNoticeLineDto; onClose: () => void }) {
   const t = useT()
@@ -68,6 +69,7 @@ export function ExitNoticeModal({ publicId, onClose }: { publicId: string; onClo
   const { fulfillLine, closeLine, cancel } = useExitNoticeMutations()
   const [editing, setEditing] = useState<ExitNoticeLineDto | null>(null)
   const [cancelling, setCancelling] = useState(false)
+  const [dispatching, setDispatching] = useState(false)
   const notice = q.data
 
   const run = async (p: Promise<unknown>, ok: string) => {
@@ -158,6 +160,13 @@ export function ExitNoticeModal({ publicId, onClose }: { publicId: string; onClo
                 </button>
               </Can>
             )}
+            {notice && canDispatch(notice) && (
+              <Can perm="warehouse.pick">
+                <button type="button" className="btn flow" onClick={() => setDispatching(true)}>
+                  {t('warehouse.exitNotices.dispatch')}
+                </button>
+              </Can>
+            )}
             <button type="button" className="btn" onClick={onClose}>
               {t('common.close')}
             </button>
@@ -234,6 +243,7 @@ export function ExitNoticeModal({ publicId, onClose }: { publicId: string; onClo
           </>
         )}
       </Modal>
+      {dispatching && notice && <ExitNoticeDispatchModal notice={notice} onClose={() => setDispatching(false)} />}
       {editing && <QuantityModal publicId={publicId} line={editing} onClose={() => setEditing(null)} />}
       <ConfirmDialog
         open={cancelling}

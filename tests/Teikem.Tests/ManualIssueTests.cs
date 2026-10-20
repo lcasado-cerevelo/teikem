@@ -215,6 +215,34 @@ public sealed class ManualIssueTests
         Assert.Equal("DMA-00002", (await svc.ManualIssueAsync(Req(x, 1m, ManualIssueReasons.InternalUse), default)).Number);
     }
 
+    [Theory]
+    [InlineData(null, false)]
+    [InlineData("", false)]
+    [InlineData("FREE", false)]
+    [InlineData("basura", false)]
+    [InlineData("any_document", true)]
+    [InlineData("EXIT_NOTICE", true)]
+    [InlineData(" SALES_ORDER ", true)]
+    public void Dispatch_requirement_is_only_active_with_a_valid_non_free_value(string? value, bool requires)
+        => Assert.Equal(requires, DispatchRequirementRules.Requires(value));
+
+    [Fact]
+    public async Task Manual_issue_is_blocked_when_the_company_requires_a_document()
+    {
+        var x = await WorldAsync();
+        await using var _ = x.F;
+        var svc = x.F.Get<PickBatchService>();
+        var tenant = await x.F.Db.Tenants.SingleAsync(t => t.TenantId == WmsFixture.TenantId);
+        tenant.DispatchRequirement = DispatchRequirements.ExitNotice;
+        await x.F.Db.SaveChangesAsync();
+        x.F.Db.ChangeTracker.Clear();
+        var before = (await x.F.TransactionsAsync()).Count;
+
+        var ex = await Assert.ThrowsAsync<ConflictException>(() => svc.ManualIssueAsync(Req(x, 1m, ManualIssueReasons.InternalUse), default));
+        Assert.Equal(DispatchRequirementRules.ManualBlocked(DispatchRequirements.ExitNotice), ex.Message);
+        Assert.Equal(before, (await x.F.TransactionsAsync()).Count);
+    }
+
     [Fact]
     public async Task Missing_or_unknown_reason_and_long_note_are_400_without_effects()
     {

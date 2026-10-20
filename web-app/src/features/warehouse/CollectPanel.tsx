@@ -15,6 +15,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useController, useFieldArray, useForm, useFormContext, useWatch } from 'react-hook-form'
 import { useCan } from '../../kernel/access'
+import { Link } from 'react-router-dom'
 import { useTenantSettings } from '../../kernel/catalogs/api'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useLang, useT } from '../../kernel/i18n'
@@ -504,6 +505,9 @@ export function CollectPanel({ onCollected }: CollectPanelProps) {
   )
 
   const submitting = form.formState.isSubmitting
+  // Lote 145: con «el despacho exige documento» el despacho manual está bloqueado (el servidor también responde 409)
+  const requirement = tenantSettings.data?.dispatchRequirement ?? 'FREE'
+  const blockedByDocument = manual && requirement !== 'FREE'
 
   const reasonOptions = (reasons.data ?? []).map((r) => ({ value: r.code ?? '', label: r.label ?? r.code ?? '' }))
 
@@ -558,6 +562,12 @@ export function CollectPanel({ onCollected }: CollectPanelProps) {
             <p className="help">{t('warehouse.manualIssues.modeHelp')}</p>
           </div>
         )}
+        {blockedByDocument && (
+          <p className="ferr" role="alert">
+            {t(`warehouse.manualIssues.requiresDocument.${requirement}`)}{' '}
+            <Link to="/warehouse/receipts?tab=exit-notices">{t('warehouse.manualIssues.goToExitNotices')}</Link>
+          </p>
+        )}
         {manual && (
           <>
             <Field name="reasonCode" label={t('warehouse.manualIssues.fields.reason')} required>
@@ -604,7 +614,7 @@ export function CollectPanel({ onCollected }: CollectPanelProps) {
           <button type="button" className="btn" onClick={clearAll} disabled={submitting}>
             {t('warehouse.pickBatches.collectPanel.clear')}
           </button>
-          <button type="submit" className="btn flow" disabled={submitting}>
+          <button type="submit" className="btn flow" disabled={submitting || blockedByDocument}>
             {submitting ? t('common.loading') : manual ? t('warehouse.manualIssues.submit') : t('warehouse.pickBatches.collectPanel.submit')}
           </button>
         </span>

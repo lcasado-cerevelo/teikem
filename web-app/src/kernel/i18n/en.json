@@ -5922,6 +5922,7 @@
         "notesMax": "The notes cannot exceed 500 characters.",
         "quantityRequired": "The quantity must be greater than zero.",
         "quantityDecimals": "The quantity admits at most 3 decimals.",
+        "overReserved": "You cannot dispatch more than what is reserved.",
         "quantityTooLarge": "The quantity exceeds the maximum allowed."
       },
       "noLines": "No lines.",
@@ -5940,6 +5941,13 @@
       "cancelBody": "Notice {number} will be cancelled: what it had reserved is released and the pending part is deleted. This cannot be undone.",
       "cancelled": "Exit notice cancelled.",
       "detailHelp": "Reserved = already set aside for this notice. Pending = there is not enough stock: it is reserved automatically when stock arrives, or with \"Reserve the backorder\".",
+      "dispatch": "Dispatch",
+      "dispatchTitle": "Dispatch against {number}",
+      "dispatchHelp": "Enter how much leaves from each line (all the reserved quantity by default; 0 = that line does not leave). It leaves from the reserved positions and lots, which already follow the rotation.",
+      "dispatchReserved": "reserved {qty}",
+      "dispatchNote": "Note (optional)",
+      "dispatchConfirm": "Dispatch",
+      "dispatched": "Dispatch {number} recorded.",
       "dispatches": "Dispatches",
       "noDispatches": "Nothing has been dispatched from this notice yet.",
       "dispatchUndone": "Undone"
@@ -6177,6 +6185,12 @@
         "deleteBody": "Delete manual issue {number}? The inventory goes back to its original bin.",
         "deleted": "Manual issue {number} deleted."
       },
+      "requiresDocument": {
+        "ANY_DOCUMENT": "The company requires dispatching against a document (exit notice or sales order). Create one and dispatch from it.",
+        "EXIT_NOTICE": "The company requires dispatching against an exit notice. Create the notice and dispatch from it.",
+        "SALES_ORDER": "The company requires dispatching against a sales order. Create the order and dispatch from it."
+      },
+      "goToExitNotices": "Go to Exit notices",
       "mode": "Manual issue (no delivery)",
       "modeHelp": "Takes inventory out with no delivery or packing: asks for a reason and creates a DMA document."
     },
@@ -7421,6 +7435,14 @@
         "rotationFifo": "FIFO — first in, first out",
         "rotationSuggest": "Suggest: proposed and can be changed",
         "rotationEnforce": "Enforce: the system picks alone",
+        "requirementLabel": "Dispatch requires a document",
+        "requirementHelp": "Free: you can dispatch without a document (as always). The other values block manual dispatch without a document and require dispatching from an exit notice, a sales order or either. Packing is not affected.",
+        "requirement": {
+          "FREE": "Free — no document required",
+          "ANY_DOCUMENT": "Exit notice or sales order",
+          "EXIT_NOTICE": "Exit notice only",
+          "SALES_ORDER": "Sales order only"
+        },
         "rotationEnforcementLabel": "How it is applied on issues",
         "rotationEnforcementHelp": "Suggest: when issuing, the system proposes the position and lot the method calls for; the person issuing can change them and the screen warns that the rotation is being skipped. Enforce: the system picks alone and splits the quantity across positions and lots; nobody can choose a position or lot, and the server rejects any other. It applies to picking and manual issue, on the web and on the warehouse device; transfers and adjustments are not affected.",
         "rotationPosition": "By position — by zone and position code",

@@ -5291,3 +5291,15 @@ JOIN dbo.Permission p ON p.Code = 'exitnotice.create'
 WHERE r.Name IN ('TenantAdmin', 'WarehouseOperator')
   AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-20 — El despacho exige documento (Lote 145).
+   - dbo.Tenant.DispatchRequirement VARCHAR(15) NOT NULL DEFAULT 'FREE' (CHECK FREE|ANY_DOCUMENT|EXIT_NOTICE|SALES_ORDER): FREE = como siempre; los demas
+     rechazan (409) el despacho manual sin documento. Empacar queda fuera. FREE para todas las companias existentes. Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.Tenant', 'DispatchRequirement') IS NULL
+    ALTER TABLE dbo.Tenant ADD DispatchRequirement VARCHAR(15) NOT NULL CONSTRAINT DF_Tenant_DispatchRequirement DEFAULT 'FREE';
+GO
+IF OBJECT_ID('dbo.CK_Tenant_DispatchRequirement', 'C') IS NULL
+    ALTER TABLE dbo.Tenant ADD CONSTRAINT CK_Tenant_DispatchRequirement CHECK (DispatchRequirement IN ('FREE', 'ANY_DOCUMENT', 'EXIT_NOTICE', 'SALES_ORDER'));
+GO

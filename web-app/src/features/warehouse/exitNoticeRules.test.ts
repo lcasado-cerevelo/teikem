@@ -1,7 +1,7 @@
 // Lote 144 — reglas puras del aviso de salida en pantalla.
 import { describe, expect, it } from 'vitest'
 import type { ExitNoticeLineDto } from './exitNoticeApi'
-import { canHandlePending, canModifyLine, exitQuantityIssue, pendingLines, toShip } from './exitNoticeRules'
+import { canDispatch, canHandlePending, dispatchLines, dispatchQuantityIssue, canModifyLine, exitQuantityIssue, pendingLines, toShip } from './exitNoticeRules'
 
 const line = (o: Partial<ExitNoticeLineDto>) => ({ id: 1, ...o }) as ExitNoticeLineDto
 
@@ -34,5 +34,24 @@ describe('líneas', () => {
   it('por despachar: reservado + pendiente, sin pendiente si está cerrada', () => {
     expect(toShip(line({ qtyReserved: 3, qtyBackordered: 2 }))).toBe(5)
     expect(toShip(line({ qtyReserved: 3, qtyBackordered: 2, isClosed: true }))).toBe(3)
+  })
+})
+
+describe('despachar', () => {
+  it('solo con aviso abierto y algo reservado', () => {
+    expect(canDispatch({ statusCode: 'REQUESTED', lines: [line({ qtyReserved: 1 })] })).toBe(true)
+    expect(canDispatch({ statusCode: 'REQUESTED', lines: [line({ qtyReserved: 0, qtyBackordered: 3 })] })).toBe(false)
+    expect(canDispatch({ statusCode: 'SHIPPED', lines: [line({ qtyReserved: 1 })] })).toBe(false)
+  })
+  it('cantidad: 0 o vacío no despacha; no puede pasar de lo reservado', () => {
+    expect(dispatchQuantityIssue(null, 4)).toBeNull()
+    expect(dispatchQuantityIssue(0, 4)).toBeNull()
+    expect(dispatchQuantityIssue(5, 4)).toBe('warehouse.exitNotices.errors.overReserved')
+    expect(dispatchQuantityIssue(-1, 4)).toBe('warehouse.exitNotices.errors.quantityRequired')
+    expect(dispatchQuantityIssue(1.0005, 4)).toBe('warehouse.exitNotices.errors.quantityDecimals')
+    expect(dispatchQuantityIssue(4, 4)).toBeNull()
+  })
+  it('el cuerpo lleva solo las líneas con cantidad', () => {
+    expect(dispatchLines({ 1: 2, 2: 0, 3: null })).toEqual([{ lineId: 1, quantity: 2 }])
   })
 })

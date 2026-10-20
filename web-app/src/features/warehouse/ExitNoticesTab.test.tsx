@@ -56,6 +56,7 @@ function route({ method, url }: Call): unknown {
   if (method === 'GET' && p === `/api/v1/exit-notices/${NOTICE}`) return DETAIL
   if (method === 'POST' && p === '/api/v1/exit-notices/backorders/fulfill') return { unitsReserved: 6, linesReserved: 1, lines: [{}] }
   if (p.startsWith('/api/v1/catalogs/') || p.startsWith('/api/v1/status/')) return []
+  if (method === 'POST' && p.endsWith('/dispatch')) return { pickBatchNumber: 'EMP-00007', notice: DETAIL }
   if (method !== 'GET') return DETAIL
   return new Response(JSON.stringify({ title: 'No encontrado', code: 'not_found' }), { status: 404 })
 }
@@ -109,5 +110,29 @@ describe('Avisos de salida: ficha', () => {
     wrap(['exitnotice.create'], NOTICE)
     expect(await screen.findByText('Tornillo')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Cerrar con faltante' })).toBeInTheDocument()
+  })
+
+  it('Despachar exige warehouse.pick y manda lo reservado por línea', async () => {
+    const user = userEvent.setup()
+    const { unmount } = wrap(['exitnotice.create'], NOTICE)
+    await screen.findByText('Tornillo')
+    expect(screen.queryByRole('button', { name: 'Despachar' })).toBeNull()
+    unmount()
+
+    wrap(['warehouse.pick'], NOTICE)
+    await screen.findByText('Tornillo')
+    await user.click(screen.getByRole('button', { name: 'Despachar' }))
+    const qty = await screen.findByLabelText(/TORN-01/)
+    expect(qty).toHaveValue(4)
+    await user.clear(qty)
+    await user.type(qty, '9')
+    expect(await screen.findByText('No puede despachar más de lo reservado.')).toBeInTheDocument()
+    await user.clear(qty)
+    await user.type(qty, '3')
+    await user.click(screen.getAllByRole('button', { name: 'Despachar' }).at(-1)!)
+    await waitFor(() => {
+      const call = mock.calls.find((c) => c.method === 'POST' && c.url.pathname.endsWith('/dispatch'))
+      expect(call?.body).toMatchObject({ lines: [{ lineId: 5, quantity: 3 }] })
+    })
   })
 })
