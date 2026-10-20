@@ -8,6 +8,7 @@
 //   y con su detalle listo para capturar (vacío si es ciego; con las líneas del documento si nació de un aviso u OC), aunque
 //   los filtros lo excluyan (`withPinned`), hasta que se cambie un filtro.
 // - `?tab=asns`: avisos de llegada (`AsnsTab`); "Recibir" abre el modal con el aviso precargado.
+// - `?tab=exit-notices`: avisos de salida (`ExitNoticesTab`, Lote 144; `?notice=` abre uno): el dueño avisa qué quiere que el almacén saque.
 // - `?tab=putaway`: 'Acomodo pendiente' (`PutawayPendingTab`): recibos confirmados con tareas de acomodo abiertas.
 // Al cambiar de pestaña se quita `?receipt=`. Estatus: Esperado → Recibiendo ⇄ Discrepancia → Completado / Completado con
 // diferencia → Acomodado (los cambia el servidor; manual 06 §4).
@@ -18,6 +19,7 @@ import { useT } from '../../kernel/i18n'
 import { FilterScope, IconCheckin, Panel, Tabs } from '../../kernel/ui'
 import { useReceipt, type AsnDto, type ReceiptDetailDto, type ReceiptListItemDto } from './api'
 import { AsnsTab } from './AsnsTab'
+import { ExitNoticesTab } from './ExitNoticesTab'
 import { PutawayPendingTab } from './PutawayPendingTab'
 import { ReceiptDetailPanel } from './ReceiptDetailPanel'
 import { ReceiptFilterBar } from './ReceiptFilterBar'
@@ -27,7 +29,7 @@ import { ReceiptMasterList } from './ReceiptMasterList'
 import { useReceiptList } from './useReceiptList'
 import './warehouse.css'
 
-const TAB_KEYS = ['receipts', 'asns', 'putaway'] as const
+const TAB_KEYS = ['receipts', 'asns', 'exit-notices', 'putaway'] as const
 type TabKey = (typeof TAB_KEYS)[number]
 const isTabKey = (v: string | null): v is TabKey => (TAB_KEYS as readonly string[]).includes(v ?? '')
 const NO_ITEMS: ReceiptListItemDto[] = []
@@ -183,6 +185,7 @@ export default function ReceiptListScreen() {
           tabs={[
             { key: 'receipts', label: t('warehouse.receipts.tabReceipts') },
             { key: 'asns', label: t('warehouse.receipts.tabAsns') },
+            { key: 'exit-notices', label: t('warehouse.receipts.tabExitNotices') },
             { key: 'putaway', label: t('warehouse.receipts.tabPutaway') },
           ]}
         />
@@ -192,6 +195,7 @@ export default function ReceiptListScreen() {
         <ReceiptsTab selectedParam={receiptParam} onSelect={select} onOpenHeader={openHeader} pinned={pinned} onUnpin={() => setPinned(null)} />
       )}
       {tab === 'asns' && <AsnsTab onReceive={receiveAsn} />}
+      {tab === 'exit-notices' && <ExitNoticesTab initialOpen={params.get('notice')} />}
       {tab === 'putaway' && <PutawayPendingTab selectedParam={receiptParam} onSelect={select} onOpenHeader={openHeader} />}
 
       {modal !== null && (

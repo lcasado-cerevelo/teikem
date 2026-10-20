@@ -297,6 +297,8 @@ button.whs-zone-main:focus-visible{outline:2px solid var(--flow);outline-offset:
 .rcp-asn-head{font-size:11.5px;font-weight:600;color:var(--muted)}
 .rcp-asn-row .f{margin-bottom:0}
 .rcp-asn-row .rcp-asn-del{margin-top:4px}
+/* aviso de salida (Lote 144): producto, cantidad y papelera (sin la columna de lote del aviso de llegada) */
+@media(min-width:481px){.rcp-exit-grid .rcp-asn-head,.rcp-exit-grid .rcp-asn-row{grid-template-columns:minmax(0,2fr) minmax(0,1fr) 28px}}
 @media(max-width:720px){
   .rcp-cols{grid-template-columns:minmax(0,1fr)}
   .rcp-list{max-height:260px}

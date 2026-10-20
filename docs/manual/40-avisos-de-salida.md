@@ -111,3 +111,6 @@ completo) y **Aviso de salida cancelado** (`EXIT_NOTICE_CANCELLED`, a mano o sol
 - **Ya no quiero el pendiente.** «Cerrar con faltante» en esa línea: deja de esperar inventario y lo ya reservado sigue para despacharse.
 - **Despaché por error.** Elimina la recolección (Recolección → eliminar): la existencia vuelve a su posición, lo despachado se vuelve a reservar y el aviso se reabre.
 - **¿Se puede ver el aviso desde el portal del cliente?** Todavía no; llega con el portal de almacén. El filtro por cliente ya existe en el servidor, así que un cliente solo verá lo suyo.
+
+## Pantalla (Lote 144)
+En la web: **Recibo → pestaña «Avisos de salida»** (`/warehouse/receipts?tab=exit-notices`). Ver la lista requiere `inventory.view`; **Nuevo aviso de salida**, **Reservar el pendiente**, cambiar cantidad, cerrar con faltante y cancelar requieren `exitnotice.create`. La lista tiene buscador libre, filtro de estatus y «Solo con pendiente»; un aviso con faltante muestra la marca «Con pendiente». Despachar contra el aviso se hace desde Recolección o Despacho manual (lote 145).
