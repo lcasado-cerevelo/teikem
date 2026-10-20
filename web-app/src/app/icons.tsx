@@ -98,3 +98,12 @@ export function IconMessage() {
     </Svg>
   )
 }
+
+/** Pulso del día: línea de pulso. */
+export function IconPulse() {
+  return (
+    <Svg>
+      <path d="M3 12h4l3-8 4 16 3-8h4" />
+    </Svg>
+  )
+}

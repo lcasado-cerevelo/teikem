@@ -12,14 +12,12 @@
 // - `?tab=putaway`: 'Acomodo pendiente' (`PutawayPendingTab`): recibos confirmados con tareas de acomodo abiertas.
 // Al cambiar de pestaña se quita `?receipt=`. Estatus: Esperado → Recibiendo ⇄ Discrepancia → Completado / Completado con
 // diferencia → Acomodado (los cambia el servidor; manual 06 §4).
-import { useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Navigate, useLocation, useSearchParams } from 'react-router-dom'
 import { Can } from '../../kernel/access'
 import { useT } from '../../kernel/i18n'
 import { FilterScope, IconCheckin, Panel, Tabs } from '../../kernel/ui'
 import { useReceipt, type AsnDto, type ReceiptDetailDto, type ReceiptListItemDto } from './api'
-import { AsnsTab } from './AsnsTab'
-import { ExitNoticesTab } from './ExitNoticesTab'
 import { PutawayPendingTab } from './PutawayPendingTab'
 import { ReceiptDetailPanel } from './ReceiptDetailPanel'
 import { ReceiptFilterBar } from './ReceiptFilterBar'
@@ -29,7 +27,7 @@ import { ReceiptMasterList } from './ReceiptMasterList'
 import { useReceiptList } from './useReceiptList'
 import './warehouse.css'
 
-const TAB_KEYS = ['receipts', 'asns', 'exit-notices', 'putaway'] as const
+const TAB_KEYS = ['receipts', 'putaway'] as const
 type TabKey = (typeof TAB_KEYS)[number]
 const isTabKey = (v: string | null): v is TabKey => (TAB_KEYS as readonly string[]).includes(v ?? '')
 const NO_ITEMS: ReceiptListItemDto[] = []
@@ -158,8 +156,17 @@ export default function ReceiptListScreen() {
       setParams(next, { replace: true })
     }
   }
-  const receiveAsn = (a: AsnDto) =>
-    setModal({ mode: 'create', preset: { asnId: a.id ?? 0, warehousePublicId: a.warehousePublicId ?? null, warehouseCode: a.warehouseCode ?? null } })
+  // «Recibir» desde Llegadas y salidas llega aquí con el aviso en el estado de la navegación: abre el modal de alta con el aviso precargado
+  const location = useLocation()
+  const asnToReceive = (location.state as { receiveAsn?: AsnDto } | null)?.receiveAsn
+  useEffect(() => {
+    if (!asnToReceive) return
+    setModal({ mode: 'create', preset: { asnId: asnToReceive.id ?? 0, warehousePublicId: asnToReceive.warehousePublicId ?? null, warehouseCode: asnToReceive.warehouseCode ?? null } })
+    window.history.replaceState({}, '')
+  }, [asnToReceive])
+
+  // direcciones de antes: los avisos de llegada y de salida ya no son pestañas de Recibo
+  if (raw === 'asns' || raw === 'exit-notices') return <Navigate to={`/warehouse/notices?${params.toString()}`} replace />
 
   return (
     <div className="wrap rcp">
@@ -184,8 +191,6 @@ export default function ReceiptListScreen() {
           onChange={setTab}
           tabs={[
             { key: 'receipts', label: t('warehouse.receipts.tabReceipts') },
-            { key: 'asns', label: t('warehouse.receipts.tabAsns') },
-            { key: 'exit-notices', label: t('warehouse.receipts.tabExitNotices') },
             { key: 'putaway', label: t('warehouse.receipts.tabPutaway') },
           ]}
         />
@@ -194,8 +199,6 @@ export default function ReceiptListScreen() {
       {tab === 'receipts' && (
         <ReceiptsTab selectedParam={receiptParam} onSelect={select} onOpenHeader={openHeader} pinned={pinned} onUnpin={() => setPinned(null)} />
       )}
-      {tab === 'asns' && <AsnsTab onReceive={receiveAsn} />}
-      {tab === 'exit-notices' && <ExitNoticesTab initialOpen={params.get('notice')} />}
       {tab === 'putaway' && <PutawayPendingTab selectedParam={receiptParam} onSelect={select} onOpenHeader={openHeader} />}
 
       {modal !== null && (

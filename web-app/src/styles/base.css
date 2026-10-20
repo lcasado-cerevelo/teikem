@@ -38,6 +38,7 @@ h1,h2,h3{letter-spacing:-.01em}
 .navit{display:flex;align-items:center;gap:10px;padding:7px 10px 7px 13px;margin:1px 4px 1px 8px;border-radius:8px;color:var(--text);font-size:13px;font-weight:500;cursor:pointer;position:relative;text-decoration:none}
 .navit::before{content:"";position:absolute;left:-2px;top:8px;bottom:8px;width:2px;border-radius:2px;background:transparent}
 .navit .di{width:5px;height:5px;border-radius:50%;background:var(--faint);flex:none;margin-left:2px}
+.navit.top{margin:2px 4px 6px 4px;padding:9px 9px;gap:11px;font-weight:600}.navit.top .gi{display:flex;color:var(--faint)}.navit.top .gi svg{width:16px;height:16px}.navit.top.on .gi{color:var(--flow-2)}
 .navit:hover{background:var(--panel-2)}
 .navit.on{background:var(--flow-bg);color:var(--flow-2);font-weight:600}
 .navit.on::before{background:var(--flow)} .navit.on .di{background:var(--flow)}

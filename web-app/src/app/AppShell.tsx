@@ -19,10 +19,10 @@ import {
   type CommandItem,
 } from '../kernel/ui/commandPaletteStore'
 import { setTheme, useTheme, type Theme } from '../kernel/ui/theme'
-import { IconChev, IconCollapse, IconLogout, IconMenu, IconMoon, IconSearch, IconSun } from './icons'
+import { IconChev, IconCollapse, IconLogout, IconMenu, IconMoon, IconPulse, IconSearch, IconSun } from './icons'
 import { LangSelect } from './LangSelect'
 import { switchableMemberships } from './memberships'
-import { isNavActive, navSubtitleKey, navTitleKey, visibleNav, type NavGroup, type NavGroupKey } from './navigation'
+import { isNavActive, navSubtitleKey, navTitleKey, visibleNav, visibleTopNav, type NavGroup, type NavGroupKey } from './navigation'
 import { appRoutes, type AppRoute } from './routes'
 import { useSession } from './session'
 import { Splash } from './Splash'
@@ -52,6 +52,12 @@ function readCollapsed(): boolean {
 function useVisibleNav(): (NavGroup & { items: AppRoute[] })[] {
   const { permissions, modules } = useAccess()
   return useMemo(() => visibleNav(appRoutes, permissions, modules), [permissions, modules])
+}
+
+/** Ítems de primer nivel (Pulso del día), fuera de los grupos. */
+function useTopNav(): AppRoute[] {
+  const { permissions, modules } = useAccess()
+  return useMemo(() => visibleTopNav(appRoutes, permissions, modules), [permissions, modules])
 }
 
 /**
@@ -114,6 +120,7 @@ export function AppShell() {
   const location = useLocation()
   const navigate = useNavigate()
   const groups = useVisibleNav()
+  const topItems = useTopNav()
   const [collapsed, setCollapsed] = useState(readCollapsed)
   const [drawer, setDrawer] = useState(false)
   const activeGroup = groups.find((g) => g.items.some((r) => isNavActive(r, location.pathname)))?.key
@@ -136,7 +143,17 @@ export function AppShell() {
   // Destinos de la paleta: los mismos ítems visibles del menú, en su orden y agrupados igual.
   const commands = useMemo<(CommandItem & { path: string })[]>(
     () =>
-      groups.flatMap((g) => {
+      [
+        ...topItems.map((r) => ({
+          id: r.path,
+          path: r.path,
+          group: 'top',
+          groupLabel: t(navTitleKey(r.nav?.key ?? '')),
+          title: t(navTitleKey(r.nav?.key ?? '')),
+          subtitle: t(navSubtitleKey(r.nav?.key ?? '')),
+          icon: <IconPulse />,
+        })),
+        ...groups.flatMap((g) => {
         const GroupIcon = g.icon
         return g.items.map((r) => ({
           id: r.path,
@@ -148,7 +165,8 @@ export function AppShell() {
           icon: <GroupIcon />,
         }))
       }),
-    [groups, t],
+      ],
+    [groups, topItems, t],
   )
 
   function toggleCollapsed() {
@@ -186,6 +204,14 @@ export function AppShell() {
           {collapsed && <BrandMark size={44} alt="" className="brand-mini" />}
         </Link>
         <nav className="rnav">
+          {topItems.map((r) => (
+            <NavLink key={r.path} to={r.path} end className={({ isActive }) => (isActive || isNavActive(r, location.pathname) ? 'navit top on' : 'navit top')}>
+              <span className="gi">
+                <IconPulse />
+              </span>
+              <span>{t(navTitleKey(r.nav?.key ?? ''))}</span>
+            </NavLink>
+          ))}
           {groups.map((g) => {
             const GroupIcon = g.icon
             const isOpen = openGroup === g.key

@@ -84,8 +84,8 @@ describe('App (shell)', () => {
     // la pantalla es de carga diferida: con la máquina ocupada (npm run check) puede pasar del segundo por defecto
     const current = await screen.findByLabelText(/Contraseña actual/, undefined, { timeout: 4000 })
     await user.type(current, 'escrito-a-medias')
-    // el usuario cierra el grupo "Operación" del menú
-    const group = screen.getByRole('button', { name: 'Operación' })
+    // el usuario cierra el grupo "Análisis" del menú
+    const group = screen.getByRole('button', { name: 'Análisis' })
     expect(group).toHaveAttribute('aria-expanded', 'true')
     await user.click(group)
     expect(group).toHaveAttribute('aria-expanded', 'false')
@@ -95,11 +95,11 @@ describe('App (shell)', () => {
 
     // textos en inglés
     expect(await screen.findByLabelText(/Current password/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Operations' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Analytics' })).toBeInTheDocument()
     // misma pantalla, misma pestaña, mismo grupo cerrado y lo escrito se conserva (nada se desmontó)
     expect(window.location.pathname).toBe('/account')
     expect(window.location.search).toBe('?tab=password')
-    expect(screen.getByRole('button', { name: 'Operations' })).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByRole('button', { name: 'Analytics' })).toHaveAttribute('aria-expanded', 'false')
     expect(screen.getByLabelText(/Current password/)).toBe(current)
     expect(current).toHaveValue('escrito-a-medias')
     await waitFor(() => expect(document.documentElement.lang).toBe('en'))

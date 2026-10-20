@@ -131,7 +131,7 @@ export const publicRoutes: readonly AppRoute[] = [
 /** Pantallas internas (dentro del shell, con sesión). */
 export const appRoutes: readonly AppRoute[] = [
   // ===== Operación =====
-  { path: '/', element: lazy(() => import('../features/analytics/Pulse')), nav: { group: 'ops', key: 'pulse', order: 10 } },
+  { path: '/', element: lazy(() => import('../features/analytics/Pulse')), nav: { group: 'ops', key: 'pulse', order: 0, top: true } },
   { path: '/messages', element: lazy(() => import('../features/messages/MessagesScreen')), perm: 'messages.use', module: ModuleKeys.System },   // Lote 53 (sin ítem de menú: va en la cabecera y en Kemi)
   { path: '/account', element: lazy(() => import('../features/account/AccountPage')) },
 
@@ -141,10 +141,10 @@ export const appRoutes: readonly AppRoute[] = [
     element: lazy(() => import('../features/orders/OrderListScreen')),
     perm: 'orders.view',
     module: ModuleKeys.LtlGround,
-    nav: { group: 'ops', key: 'orders', order: 20 },
+    nav: { group: 'ops', key: 'orders', order: 10 },
   },
   // Lote 60 (P4, S1): órdenes de venta y backorders
-  { path: '/sales-orders', element: lazy(() => import('../features/sales/SalesOrdersScreen')), perm: 'sales.view', module: ModuleKeys.SalesOrders, nav: { group: 'ops', key: 'salesOrders', order: 30 } },
+  { path: '/sales-orders', element: lazy(() => import('../features/sales/SalesOrdersScreen')), perm: 'sales.view', module: ModuleKeys.SalesOrders, nav: { group: 'money', key: 'salesOrders', order: 10 } },
   {
     path: '/orders/:publicId',
     element: lazy(() => import('../features/orders/OrderDetailScreen')),
@@ -158,7 +158,7 @@ export const appRoutes: readonly AppRoute[] = [
     element: lazy(() => import('../features/scan/ScanScreen')),
     perm: 'trips.scan',
     module: ModuleKeys.LtlGround,
-    nav: { group: 'ops', key: 'scan', order: 40 },
+    nav: { group: 'ops', key: 'scan', order: 20 },
   },
   // Lote F-E2a — Sala de despacho (sin mapa: el mapa esquemático y el arrastre llegan en F-E2b).
   {
@@ -166,7 +166,7 @@ export const appRoutes: readonly AppRoute[] = [
     element: lazy(() => import('../features/dispatch/DispatchScreen')),
     perm: 'trips.dispatch',
     module: ModuleKeys.LtlGround,
-    nav: { group: 'ops', key: 'dispatch', order: 50 },
+    nav: { group: 'ops', key: 'dispatch', order: 30 },
   },
   // Lote F-E3 — Monitoreo de ruta (solo lectura; reutiliza el plano `RouteMap` de F-E2b).
   {
@@ -174,7 +174,7 @@ export const appRoutes: readonly AppRoute[] = [
     element: lazy(() => import('../features/monitor/MonitorScreen')),
     perm: 'trips.view',
     module: ModuleKeys.LtlGround,
-    nav: { group: 'ops', key: 'monitor', order: 60 },
+    nav: { group: 'ops', key: 'monitor', order: 40 },
   },
   // Lote 111 — Reclamaciones: piezas faltantes (Por verificar → Perdido → Reclamada → Resuelta).
   {
@@ -182,7 +182,7 @@ export const appRoutes: readonly AppRoute[] = [
     element: lazy(() => import('../features/claims/ClaimsScreen')),
     perm: 'claims.view',
     module: ModuleKeys.LtlGround,
-    nav: { group: 'ops', key: 'claims', order: 70 },
+    nav: { group: 'ops', key: 'claims', order: 50 },
   },
 
   // ===== Almacén =====
@@ -241,13 +241,21 @@ export const appRoutes: readonly AppRoute[] = [
     element: lazy(() => import('../features/warehouse/PurchaseOrderListScreen')),
     perm: 'purchasing.view',
     module: ModuleKeys.Purchasing,
-    nav: { group: 'warehouse', key: 'purchaseOrders', order: 50 },
+    nav: { group: 'money', key: 'purchaseOrders', order: 20 },
   },
   {
     path: '/warehouse/purchase-orders/:publicId',
     element: lazy(() => import('../features/warehouse/PurchaseOrderDetailScreen')),
     perm: 'purchasing.view',
     module: ModuleKeys.Purchasing,
+  },
+  // 2026-10-20: «Llegadas y salidas» — los avisos de llegada y de salida, con su propio ítem de menú (antes pestañas de Recibo).
+  {
+    path: '/warehouse/notices',
+    element: lazy(() => import('../features/warehouse/NoticesScreen')),
+    perm: 'inventory.view',
+    module: ModuleKeys.WmsLotSerial,
+    nav: { group: 'warehouse', key: 'notices', order: 50 },
   },
   // Recibo: incluye la pestaña 'Acomodo pendiente' (tareas PUTAWAY; antes 'Tareas de almacén', que no está en la maqueta).
   {
@@ -382,12 +390,12 @@ export const appRoutes: readonly AppRoute[] = [
   { path: '/warehouse/inventory', element: redirectKeepingQuery('/warehouse/kardex', legacyInventorySearch) },
 
   // ===== Contabilidad (7C) =====
-  pending({ path: '/money/purchases', perm: 'purchasing.view', module: ModuleKeys.Purchasing, nav: { group: 'money', key: 'purchaseAccounting', order: 10 } }),
-  pending({ path: '/money/dispatch', perm: 'billing.export', module: ModuleKeys.LtlGround, nav: { group: 'money', key: 'dispatchAccounting', order: 20 } }),
-  { path: '/money/cod', element: lazy(() => import('../features/cod/CodScreen')), perm: 'cod.view', module: ModuleKeys.Cod, nav: { group: 'money', key: 'cod', order: 30 } },   // Lote 85
-  { path: '/money/billing', element: lazy(() => import('../features/billing/BillingScreen')), perm: 'billing.view', module: ModuleKeys.Billing, nav: { group: 'money', key: 'billing', order: 40 } },   // Lote 73
-  { path: '/money/driver-pay', element: lazy(() => import('../features/driverpay/DriverPayScreen')), perm: 'driverpay.view', module: ModuleKeys.LtlGround, nav: { group: 'money', key: 'driverPay', order: 50 } },   // Lote 96
-  { path: '/money/tax', element: lazy(() => import('../features/tax/TaxScreen')), perm: 'tax.manage', module: ModuleKeys.Tax, nav: { group: 'money', key: 'tax', order: 60 } },   // Lote 56
+  pending({ path: '/money/purchases', perm: 'purchasing.view', module: ModuleKeys.Purchasing, nav: { group: 'money', key: 'purchaseAccounting', order: 30 } }),
+  pending({ path: '/money/dispatch', perm: 'billing.export', module: ModuleKeys.LtlGround, nav: { group: 'money', key: 'dispatchAccounting', order: 40 } }),
+  { path: '/money/billing', element: lazy(() => import('../features/billing/BillingScreen')), perm: 'billing.view', module: ModuleKeys.Billing, nav: { group: 'money', key: 'billing', order: 50 } },   // Lote 73
+  { path: '/money/cod', element: lazy(() => import('../features/cod/CodScreen')), perm: 'cod.view', module: ModuleKeys.Cod, nav: { group: 'money', key: 'cod', order: 60 } },   // Lote 85
+  { path: '/money/driver-pay', element: lazy(() => import('../features/driverpay/DriverPayScreen')), perm: 'driverpay.view', module: ModuleKeys.LtlGround, nav: { group: 'money', key: 'driverPay', order: 70 } },   // Lote 96
+  { path: '/money/tax', element: lazy(() => import('../features/tax/TaxScreen')), perm: 'tax.manage', module: ModuleKeys.Tax, nav: { group: 'money', key: 'tax', order: 80 } },   // Lote 56
 
   // ===== Catálogo (F2, F4) =====
   { path: '/catalog/clients', element: lazy(() => import('../features/clients/ClientListScreen')), perm: 'clients.read', module: ModuleKeys.Catalog, nav: { group: 'catalog', key: 'clients', order: 10 } },

@@ -162,7 +162,7 @@
   },
   "nav": {
     "groups": {
-      "ops": "Operación",
+      "ops": "Transporte",
       "warehouse": "Almacén",
       "money": "Contabilidad",
       "catalog": "Listas",
@@ -175,7 +175,7 @@
       "subtitle": "las dos corrientes en vivo"
     },
     "orders": {
-      "title": "Órdenes",
+      "title": "Envíos",
       "subtitle": "lista maestra con filtros — incluye la entrada de nuevas órdenes"
     },
     "scan": {
@@ -205,6 +205,10 @@
     "kardex": {
       "title": "Kárdex de movimientos",
       "subtitle": "el ledger: fuente de verdad del stock"
+    },
+    "notices": {
+      "title": "Llegadas y salidas",
+      "subtitle": "avisos de llegada y avisos de salida"
     },
     "receipts": {
       "title": "Recibo",
@@ -287,7 +291,7 @@
       "subtitle": "tareas automáticas de la compañía"
     },
     "salesOrders": {
-      "title": "Órdenes de venta",
+      "title": "Ventas",
       "subtitle": "pedidos a almacén, reservas y backorders"
     },
     "tax": {
@@ -4186,6 +4190,10 @@
     }
   },
   "warehouse": {
+    "notices": {
+      "title": "Llegadas y salidas",
+      "subtitle": "Avisos de llegada y avisos de salida: lo que el dueño de la mercancía anuncia que entra y lo que pide que salga."
+    },
     "valuation": {
       "tab": "Valor del inventario",
       "title": "Valor del inventario",

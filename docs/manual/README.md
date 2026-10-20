@@ -441,3 +441,5 @@ L134. [L134 — Integraciones por SFTP y FTP (web del personal)](frontend/l134-s
 L135. [L135 — API para los clientes (web del personal)](frontend/l135-api-clientes.md): conector API, llaves con el secreto una sola vez y bitácora; con capturas.
 L136. [L136 — Webhooks de salida y bandeja de salidas (web del personal)](frontend/l136-webhooks.md): gestión de webhooks, secreto una sola vez y salidas no entregadas; con capturas.
 L137. [L137 — Formatos de archivo y salida de integraciones (web del personal)](frontend/l137-formatos.md): formato Excel/JSON/XML con mapeo por ruta (137a) e integraciones de salida por SFTP/FTP y API saliente con su bandeja (137b); con capturas.
+
+> **Menú (2026-10-20, Lote 150):** Pulso del día va solo arriba; «Operación» ahora es **Transporte** (Envíos, Estación de escaneo, Sala de despacho, Monitoreo de ruta, Reclamaciones); **Ventas** y **Compras** están en Contabilidad; en Almacén, **Llegadas y salidas** reúne los avisos de llegada y de salida (antes pestañas de Recibo). El portal del cliente ya no aparece en el menú del personal.

@@ -16,7 +16,7 @@ describe('NAV_GROUPS', () => {
   it('son los 6 grupos del menú, en su orden', () => {
     expect(NAV_GROUPS.map((g) => g.key)).toEqual(['ops', 'warehouse', 'money', 'catalog', 'analytics', 'system'])
     expect(NAV_GROUPS.map((g) => translate('es', g.labelKey))).toEqual([
-      'Operación',
+      'Transporte',
       'Almacén',
       'Contabilidad',
       'Listas',
@@ -24,7 +24,7 @@ describe('NAV_GROUPS', () => {
       'Sistema',
     ])
     expect(NAV_GROUPS.map((g) => translate('en', g.labelKey))).toEqual([
-      'Operations',
+      'Transport',
       'Warehouse',
       'Accounting',
       'Lists',
@@ -38,17 +38,15 @@ describe('menú completo (routes.tsx)', () => {
   it('con todos los permisos y módulos se ven los 6 grupos y los 43 ítems, en el orden de la maqueta', () => {
     const groups = visibleNav(appRoutes, ALL_PERMS, ALL_MODULES)
     expect(groups.map((g) => [g.key, g.items.length])).toEqual([
-      ['ops', 7],
+      ['ops', 5],
       ['warehouse', 12],
-      ['money', 6],
+      ['money', 8],
       ['catalog', 4],
       ['analytics', 4],
       ['system', 10],
     ])
     expect(groups.flatMap((g) => g.items.map((r) => translate('es', navTitleKey(r.nav!.key))))).toEqual([
-      'Pulso del día',
-      'Órdenes',
-      'Órdenes de venta',
+      'Envíos',
       'Estación de escaneo',
       'Sala de despacho',
       'Monitoreo de ruta',
@@ -57,7 +55,7 @@ describe('menú completo (routes.tsx)', () => {
       'Posiciones',
       'Productos e inventario',
       'Proveedores',
-      'Compras',
+      'Llegadas y salidas',
       'Recibo',
       'Recolección y empaque',
       'Transferencias y ajustes',
@@ -65,10 +63,12 @@ describe('menú completo (routes.tsx)', () => {
       'Cruce de plataforma',
       'Rentas',
       'Kárdex de movimientos',
+      'Ventas',
+      'Compras',
       'Contabilización de compras',
       'Contabilización de despachos',
-      'Procesar entregas',
       'Facturación',
+      'Procesar entregas',
       'Liquidación a choferes',
       'Impuestos',
       'Clientes y contratos',
@@ -93,7 +93,7 @@ describe('menú completo (routes.tsx)', () => {
   })
 
   it('cada ítem tiene título y subtítulo en español e inglés, y `order` = posición × 10', () => {
-    expect(navRoutes).toHaveLength(43)
+    expect(navRoutes).toHaveLength(44)
     for (const r of navRoutes) {
       for (const lang of ['es', 'en'] as const) {
         expect(translate(lang, navTitleKey(r.nav!.key)), `${lang} ${r.path}`).not.toBe(navTitleKey(r.nav!.key))
@@ -101,7 +101,7 @@ describe('menú completo (routes.tsx)', () => {
       }
     }
     for (const g of NAV_GROUPS) {
-      const orders = navRoutes.filter((r) => r.nav!.group === g.key).map((r) => r.nav!.order)
+      const orders = navRoutes.filter((r) => r.nav!.group === g.key && !r.nav!.top).map((r) => r.nav!.order)
       const expected = orders.map((_, i) => (i + 1) * 10)
       expect(orders).toEqual(expected)
     }
@@ -113,11 +113,11 @@ describe('menú completo (routes.tsx)', () => {
     expect(byPath('/analytics/custom-fields').pending).toBeUndefined() // Lote F-F1
     expect(byPath('/analytics/custom-fields')).toMatchObject({ perm: 'admin.customfields', module: 'CUSTOM_FIELDS', nav: { group: 'analytics', key: 'customFields', order: 20 } })
     expect(byPath('/ops/monitor').pending).toBeUndefined() // Lote F-E3
-    expect(byPath('/ops/monitor')).toMatchObject({ perm: 'trips.view', module: 'LTL_GROUND', nav: { group: 'ops', key: 'monitor', order: 60 } })
+    expect(byPath('/ops/monitor')).toMatchObject({ perm: 'trips.view', module: 'LTL_GROUND', nav: { group: 'ops', key: 'monitor', order: 40 } })
     expect(byPath('/ops/dispatch').pending).toBeUndefined() // Lote F-E2a
-    expect(byPath('/ops/dispatch')).toMatchObject({ perm: 'trips.dispatch', module: 'LTL_GROUND', nav: { group: 'ops', key: 'dispatch', order: 50 } })
+    expect(byPath('/ops/dispatch')).toMatchObject({ perm: 'trips.dispatch', module: 'LTL_GROUND', nav: { group: 'ops', key: 'dispatch', order: 30 } })
     expect(byPath('/ops/scan').pending).toBeUndefined() // Lote F-E1
-    expect(byPath('/ops/scan')).toMatchObject({ perm: 'trips.scan', module: 'LTL_GROUND', nav: { group: 'ops', key: 'scan', order: 40 } })
+    expect(byPath('/ops/scan')).toMatchObject({ perm: 'trips.scan', module: 'LTL_GROUND', nav: { group: 'ops', key: 'scan', order: 20 } })
     expect(byPath('/catalog/fleet').pending).toBeUndefined()
     expect(byPath('/catalog/drivers').pending).toBeUndefined()
     expect(byPath('/catalog/consignees').pending).toBeUndefined()
@@ -161,7 +161,7 @@ describe('menú completo (routes.tsx)', () => {
       '/warehouse/locations',
       '/warehouse/products',
       '/warehouse/suppliers',
-      '/warehouse/purchase-orders',
+      '/warehouse/notices',
       '/warehouse/receipts',
       '/warehouse/pick-batches',
       '/warehouse/transfers-adjustments',
@@ -260,13 +260,13 @@ describe('menú completo (routes.tsx)', () => {
   it('un grupo cuyos ítems no se pueden ver no se pinta (usuario solo de almacén)', () => {
     const groups = visibleNav(appRoutes, new Set(['inventory.view', 'warehouse.receive']), new Set(['WMS_LOTSERIAL', 'SYSTEM', 'ANALYTICS']))
     expect(paths(groups)).toEqual([
-      ['ops', ['/']],
       [
         'warehouse',
         [
           '/warehouse/warehouses',
           '/warehouse/locations',
           '/warehouse/products',
+          '/warehouse/notices',
           '/warehouse/receipts',
           '/warehouse/pick-batches',
           '/warehouse/transfers-adjustments',
@@ -297,7 +297,6 @@ describe("perm 'a|b' (cualquiera de los dos)", () => {
     expect(routeAllowed(users, new Set(['admin.audit']), sys)).toBe(false)
     expect(routeAllowed(users, new Set(['admin.users']), new Set())).toBe(false)
     expect(paths(visibleNav(appRoutes, new Set(['admin.roles']), sys))).toEqual([
-      ['ops', ['/']],
       ['system', ['/system/users']],
     ])
   })

@@ -565,7 +565,7 @@ export function CollectPanel({ onCollected }: CollectPanelProps) {
         {blockedByDocument && (
           <p className="ferr" role="alert">
             {t(`warehouse.manualIssues.requiresDocument.${requirement}`)}{' '}
-            <Link to="/warehouse/receipts?tab=exit-notices">{t('warehouse.manualIssues.goToExitNotices')}</Link>
+            <Link to="/warehouse/notices?tab=exit-notices">{t('warehouse.manualIssues.goToExitNotices')}</Link>
           </p>
         )}
         {manual && (

@@ -162,7 +162,7 @@
   },
   "nav": {
     "groups": {
-      "ops": "Operations",
+      "ops": "Transport",
       "warehouse": "Warehouse",
       "money": "Accounting",
       "catalog": "Lists",
@@ -175,7 +175,7 @@
       "subtitle": "the two live currents"
     },
     "orders": {
-      "title": "Orders",
+      "title": "Shipments",
       "subtitle": "master list with filters — includes new order entry"
     },
     "scan": {
@@ -205,6 +205,10 @@
     "kardex": {
       "title": "Movement ledger",
       "subtitle": "the ledger: single source of truth for stock"
+    },
+    "notices": {
+      "title": "Arrivals & departures",
+      "subtitle": "arrival notices and exit notices"
     },
     "receipts": {
       "title": "Receiving",
@@ -287,7 +291,7 @@
       "subtitle": "the company's automatic tasks"
     },
     "salesOrders": {
-      "title": "Sales orders",
+      "title": "Sales",
       "subtitle": "warehouse requests, reservations and backorders"
     },
     "tax": {
@@ -4186,6 +4190,10 @@
     }
   },
   "warehouse": {
+    "notices": {
+      "title": "Arrivals & departures",
+      "subtitle": "Arrival notices and exit notices: what the goods owner announces is coming in and asks to go out."
+    },
     "valuation": {
       "tab": "Inventory value",
       "title": "Inventory value",

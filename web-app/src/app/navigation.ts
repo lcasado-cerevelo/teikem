@@ -30,6 +30,8 @@ export interface NavEntry {
   order?: number
   /** Prefijos de dirección que también dejan este ítem marcado (pantallas hermanas del mismo submódulo, p. ej. las pestañas de Rentas). */
   alsoActive?: readonly string[]
+  /** 2026-10-20: ítem de primer nivel, sin grupo (Pulso del día): se pinta solo, encima de los grupos. */
+  top?: boolean
 }
 
 /** Clave i18n del título del ítem (menú, paleta, pantalla pendiente). */
@@ -73,8 +75,15 @@ export function visibleNav<R extends NavRoute>(
   return NAV_GROUPS.map((g) => ({
     ...g,
     items: routes
-      .filter((r) => r.nav?.group === g.key)
+      .filter((r) => r.nav?.group === g.key && !r.nav.top)
       .filter((r) => routeAllowed(r, permissions, modules))
       .sort((a, b) => (a.nav?.order ?? 1000) - (b.nav?.order ?? 1000)),
   })).filter((g) => g.items.length > 0)
+}
+
+/** Ítems de primer nivel (`nav.top`): los que el usuario puede ver, por `nav.order`. */
+export function visibleTopNav<R extends NavRoute>(routes: readonly R[], permissions: ReadonlySet<string>, modules: ReadonlySet<string>): R[] {
+  return routes
+    .filter((r) => r.nav?.top === true && routeAllowed(r, permissions, modules))
+    .sort((a, b) => (a.nav?.order ?? 1000) - (b.nav?.order ?? 1000))
 }

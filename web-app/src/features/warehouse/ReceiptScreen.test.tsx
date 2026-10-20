@@ -13,6 +13,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AccessProvider } from '../../kernel/access'
 import { setLang } from '../../kernel/i18n/i18n'
+import NoticesScreen from './NoticesScreen'
 import ReceiptListScreen from './ReceiptListScreen'
 
 interface Call {
@@ -241,6 +242,7 @@ function wrap(path = '/warehouse/receipts', permissions = ['inventory.view', 'wa
         <AccessProvider permissions={permissions} modules={['WMS_LOTSERIAL']}>
           <Routes>
             <Route path="/warehouse/receipts" element={<ReceiptListScreen />} />
+            <Route path="/warehouse/notices" element={<NoticesScreen />} />
           </Routes>
           <LocationProbe />
         </AccessProvider>
@@ -397,7 +399,7 @@ describe('Recibo: maestro-detalle', () => {
 describe('Recibo: pestañas', () => {
   it('Avisos de llegada: filtros al API (referencia, llegada esperada) y sin buscador libre', async () => {
     const user = userEvent.setup()
-    const { container } = wrap('/warehouse/receipts?tab=asns')
+    const { container } = wrap('/warehouse/notices')
     await waitFor(() => expect(calls('GET', '/api/v1/asns').length).toBeGreaterThan(0))
     expect(container.querySelector('.qbox')).toBeNull()
     expect(screen.getByRole('combobox', { name: 'Cliente dueño' })).toBeInTheDocument()
@@ -424,8 +426,15 @@ describe('Recibo: pestañas', () => {
     const user = userEvent.setup()
     wrap(`/warehouse/receipts?receipt=${R2}`)
     await rowButton('REC-0002')
-    await user.click(screen.getByRole('tab', { name: 'Avisos de llegada' }))
-    await waitFor(() => expect(probe.location).toBe('/warehouse/receipts?tab=asns'))
+    await user.click(screen.getByRole('tab', { name: 'Acomodo pendiente' }))
+    await waitFor(() => expect(probe.location).toBe('/warehouse/receipts?tab=putaway'))
+  })
+
+  it('Lote 150: las pestañas de avisos ya no son de Recibo; las direcciones de antes llevan a «Llegadas y salidas»', async () => {
+    wrap('/warehouse/receipts?tab=exit-notices&notice=N1')
+    await waitFor(() => expect(probe.location).toBe('/warehouse/notices?tab=exit-notices&notice=N1'))
+    expect(await screen.findByRole('heading', { name: 'Llegadas y salidas' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Avisos de salida' })).toHaveAttribute('aria-selected', 'true')
   })
 })
 

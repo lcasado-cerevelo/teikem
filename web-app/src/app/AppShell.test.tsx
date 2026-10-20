@@ -145,7 +145,7 @@ describe('AppShell — cabecera', () => {
     await user.keyboard('/')
     const dialog = screen.getByRole('dialog', { name: 'Paleta de comandos' })
     // solo lo que el usuario puede ver (analytics.view + ANALYTICS), agrupado como el menú
-    expect(within(dialog).getAllByRole('group').map((g) => g.querySelector('.pgrp')?.textContent)).toEqual(['Operación', 'Análisis'])
+    expect(within(dialog).getAllByRole('group').map((g) => g.querySelector('.pgrp')?.textContent)).toEqual(['Pulso del día', 'Análisis'])
     expect(within(dialog).queryByText('Sala de despacho')).toBeNull()
     await user.keyboard('informes')
     await user.keyboard('{Enter}')
@@ -190,7 +190,8 @@ describe('AppShell — cabecera', () => {
   it('el menú muestra los grupos de la maqueta que el usuario puede ver', () => {
     renderShell({ permissions: ['admin.roles', 'devices.manage'], modules: ['SYSTEM', 'WMS_LOTSERIAL'] })
     const menu = screen.getByRole('complementary', { name: 'Menú principal' })
-    expect(within(menu).getByRole('button', { name: 'Operación' })).toBeInTheDocument()
+    expect(within(menu).getByRole('link', { name: 'Pulso del día' })).toHaveAttribute('href', '/')   // 2026-10-20: el Pulso va solo, encima de los grupos
+    expect(within(menu).queryByRole('button', { name: 'Transporte' })).toBeNull()
     expect(within(menu).getByRole('button', { name: 'Sistema' })).toBeInTheDocument()
     expect(within(menu).queryByRole('button', { name: 'Almacén' })).toBeNull()
     expect(within(menu).getByRole('link', { name: 'Roles y usuarios' })).toHaveAttribute('href', '/system/users')
