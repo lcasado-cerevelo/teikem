@@ -86,6 +86,15 @@ public sealed class SyncController(SyncService sync) : ControllerBase
         => sync.SalesOrdersAsync(new SyncQuery(since, cursor, take, warehousePublicId), ct);
 
     /// <summary>
+    /// Avisos de salida por despachar (solicitados o parciales con algo reservado) con sus líneas y de qué posición y lote reservó el sistema cada parte (Lote 146). Siempre llegan todos los
+    /// abiertos; con since llegan además los cerrados o cancelados (isActive = false). Exige el módulo WMS_LOTSERIAL e inventory.view; despachar usa warehouse.pick.
+    /// </summary>
+    [HttpGet("exit-notices"), RequireModule(ModuleKeys.WmsLotSerial), RequirePermission(PermissionCatalog.InventoryView)]
+    public Task<SyncPage<SyncExitNoticeDto>> ExitNotices([FromQuery] Guid? warehousePublicId, [FromQuery] DateTime? since, [FromQuery] string? cursor,
+        [FromQuery] int take = SyncRules.DefaultTake, CancellationToken ct = default)
+        => sync.ExitNoticesAsync(new SyncQuery(since, cursor, take, warehousePublicId), ct);
+
+    /// <summary>
     /// Devoluciones de venta por recibir (autorizadas, o recibidas en parte con algo pendiente) con lo pendiente de cada línea: la guía de «Devoluciones» en el aparato (Lote 83). Siempre llegan todas las
     /// abiertas; con since llegan además las cerradas o canceladas (isActive = false). Exige el módulo SALES_ORDERS y warehouse.receive (recibir la devolución usa ese mismo permiso).
     /// </summary>

@@ -69,6 +69,14 @@ namespace Teikem.Infrastructure.Contracts
     public sealed record SyncSalesOrderDto(int Id, Guid PublicId, string Number, Guid WarehousePublicId, string ClientName, string? ConsigneeName, string StatusCode,
         DateOnly? RequiredDate, DateTime? RequestedAtUtc, bool IsActive, IReadOnlyList<SyncSalesOrderLineDto> Lines);
 
+    /// <summary>Lote 146: línea de un aviso de salida por despachar (sin kits, sin precio): lo reservado y de qué posición/lote.</summary>
+    public sealed record SyncExitNoticeLineDto(int Id, Guid ProductPublicId, string Sku, string ProductName, decimal QtyOrdered, decimal QtyReserved, decimal QtyShipped,
+        decimal QtyBackordered, IReadOnlyList<SyncSalesReservationDto> Reservations);
+
+    /// <summary>Aviso de salida por despachar (Lote 146). IsActive = solicitado o parcial CON algo reservado; si no, el aparato lo borra.</summary>
+    public sealed record SyncExitNoticeDto(int Id, Guid PublicId, string Number, Guid WarehousePublicId, string ClientName, string? Reference, string? Destination, string StatusCode,
+        DateOnly? RequiredDate, DateTime? RequestedAtUtc, bool IsActive, IReadOnlyList<SyncExitNoticeLineDto> Lines);
+
     /// <summary>Lote 83: una línea de devolución por recibir (lo que falta es Pending); TrackingTypeCode = NONE o LOT (la serie no se devuelve en esta versión).</summary>
     public sealed record SyncSalesReturnLineDto(int Id, Guid ProductPublicId, string Sku, string ProductName, string TrackingTypeCode, decimal QtyRequested, decimal QtyReceived, decimal QtyDamaged, decimal Pending);
 
@@ -477,6 +485,64 @@ namespace Teikem.Infrastructure.Services
                     o.ConsigneeId is int cid ? consignees.GetValueOrDefault(cid) : null, code, o.RequiredDate, o.RequestedAtUtc, open, dto);
             }).ToList();
             return new SyncPage<SyncSalesOrderDto>(items, next, w.Now);
+        }
+
+        // ================================================================ avisos de salida por despachar (Lote 146)
+
+        /// <summary>
+        /// Avisos de salida solicitados o parciales con lo reservado y de qué posición/lote (el aparato guía el despacho). Igual que las órdenes de venta: llegan TODAS las abiertas;
+        /// con since llegan además las cerradas o canceladas (isActive = false) para que el aparato las borre.
+        /// </summary>
+        public async Task<SyncPage<SyncExitNoticeDto>> ExitNoticesAsync(SyncQuery q, CancellationToken ct)
+        {
+            var w = Prepare(q);
+            var warehouseId = await WarehouseIdAsync(q.WarehousePublicId, ct);
+            var statuses = await StatusMapAsync(Teikem.Domain.ExitNotices.ExitNoticeCodes.StatusDomain, ct);
+            var openIds = statuses.Where(kv => kv.Value is Teikem.Domain.ExitNotices.ExitNoticeStatuses.Requested or Teikem.Domain.ExitNotices.ExitNoticeStatuses.Partial).Select(kv => kv.Key).ToList();
+
+            var query = db.Set<Teikem.Domain.ExitNotices.ExitNotice>().AsNoTracking();
+            if (warehouseId is int whId) query = query.Where(o => o.WarehouseId == whId);
+            if (w.Since is DateTime since)
+            {
+                var c = await ChangedAsync(Teikem.Domain.ExitNotices.ExitNoticeCodes.EntityType, since, ct);
+                query = query.Where(o => openIds.Contains(o.StatusCodeId) || o.CreatedAtUtc >= since || c.Audit.Contains(o.ExitNoticeId) || c.History.Contains(o.ExitNoticeId));
+            }
+            else query = query.Where(o => openIds.Contains(o.StatusCodeId));
+            if (w.AfterId is int after) query = query.Where(o => o.ExitNoticeId > after);
+
+            var rows = await query.OrderBy(o => o.ExitNoticeId).Take(w.Take + 1).ToListAsync(ct);
+            var (page, next) = SyncRules.Cut(rows, w.Take, o => o.ExitNoticeId);
+            var ids = page.Select(o => o.ExitNoticeId).ToList();
+            var warehouses = await WarehousePublicIdsAsync(page.Select(o => o.WarehouseId), ct);
+            var clientIds = page.Select(o => o.ClientId).Distinct().ToList();
+            var clients = await db.Set<Client>().AsNoTracking().Where(c => clientIds.Contains(c.ClientId)).ToDictionaryAsync(c => c.ClientId, c => c.Name, ct);
+            var lines = await (from l in db.Set<Teikem.Domain.ExitNotices.ExitNoticeLine>().AsNoTracking()
+                               join p in db.Set<Product>().AsNoTracking() on l.ProductId equals p.ProductId
+                               where ids.Contains(l.ExitNoticeId)
+                               orderby l.LineNo
+                               select new { l.ExitNoticeId, l.ExitNoticeLineId, p.PublicId, p.Sku, p.Name, l.QtyOrdered, l.QtyReserved, l.QtyShipped, l.QtyBackordered })
+                .ToListAsync(ct);
+            var lineIds = lines.Select(l => l.ExitNoticeLineId).ToList();
+            var reservations = await (from r in db.Set<Teikem.Domain.ExitNotices.ExitNoticeReservation>().AsNoTracking()
+                                      join b in db.Set<WarehouseBin>().AsNoTracking() on r.WarehouseBinId equals b.WarehouseBinId
+                                      join lot in db.Set<InventoryLot>().AsNoTracking() on r.LotId equals (int?)lot.LotId into lj
+                                      from lot in lj.DefaultIfEmpty()
+                                      where lineIds.Contains(r.ExitNoticeLineId)
+                                      orderby r.ExitNoticeReservationId
+                                      select new { r.ExitNoticeLineId, r.WarehouseBinId, b.Code, r.LotId, LotNumber = lot == null ? null : lot.LotNumber, r.Quantity }).ToListAsync(ct);
+            var byLine = reservations.ToLookup(r => r.ExitNoticeLineId);
+            var linesByNotice = lines.ToLookup(l => l.ExitNoticeId);
+
+            var items = page.Select(o =>
+            {
+                var code = statuses.GetValueOrDefault(o.StatusCodeId, string.Empty);
+                var dto = linesByNotice[o.ExitNoticeId].Select(l => new SyncExitNoticeLineDto(l.ExitNoticeLineId, l.PublicId, l.Sku, l.Name, l.QtyOrdered, l.QtyReserved, l.QtyShipped, l.QtyBackordered,
+                    byLine[l.ExitNoticeLineId].Select(r => new SyncSalesReservationDto(r.WarehouseBinId, r.Code, r.LotId, r.LotNumber, r.Quantity)).ToList())).ToList();
+                var open = code is Teikem.Domain.ExitNotices.ExitNoticeStatuses.Requested or Teikem.Domain.ExitNotices.ExitNoticeStatuses.Partial && dto.Any(l => l.QtyReserved > 0m);
+                return new SyncExitNoticeDto(o.ExitNoticeId, o.PublicId, o.Number, warehouses.GetValueOrDefault(o.WarehouseId), clients.GetValueOrDefault(o.ClientId, string.Empty),
+                    o.Reference, o.Destination, code, o.RequiredDate, o.RequestedAtUtc, open, dto);
+            }).ToList();
+            return new SyncPage<SyncExitNoticeDto>(items, next, w.Now);
         }
 
         // ================================================================ devoluciones de venta por recibir (Lote 83)

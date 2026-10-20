@@ -45,6 +45,8 @@ export const KvKeys = {
   manualIssueReasons: 'manualIssueReasons',
   /** 2026-10-20: cómo se aplica la rotación en las salidas ('SUGGEST' | 'ENFORCE'), copia de GET /inventory/exit-options para decidirlo sin señal. */
   rotationEnforcement: 'rotationEnforcement',
+  /** 2026-10-20 (Lote 146): «el despacho exige documento» de la compañía ('FREE' | 'ANY_DOCUMENT' | 'EXIT_NOTICE' | 'SALES_ORDER'), copia de GET /inventory/exit-options. */
+  dispatchRequirement: 'dispatchRequirement',
   /** 2026-10-11 (b): último motivo del despacho manual que usó cada operario en este aparato (JSON {userId: código}, features/dispatch/manualIssueReasons.ts). */
   manualIssueLastReason: 'manualIssueLastReason',
 } as const

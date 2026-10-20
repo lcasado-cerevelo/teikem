@@ -95,6 +95,7 @@ public class ExitNoticeTests
             s.AddSingleton<NotificationEventCatalog>();
             s.AddSingleton<INotificationPublisher, NotificationPublisher>();
             s.AddSingleton<ExitNoticeService>();
+            s.AddSingleton<SyncService>();
         });
         var w = await f.AddWarehouseAsync("W1");
         var pick = await f.AddBinAsync(await f.AddZoneAsync(w, "PZ", ZoneTypes.Picking), "P-01");
@@ -387,5 +388,30 @@ public class ExitNoticeTests
         Assert.Single((await x.Svc.ListAsync(null, null, "Retiro", false, null, null, 0, 1, default)).Items);   // texto en el destino (la base real no distingue mayúsculas)
         Assert.Equal(2, (await x.Svc.ListAsync(null, x.Owner.PublicId, "ASICS", false, null, null, 0, 50, default)).Total);
         Assert.Empty((await x.Svc.ListAsync(null, null, "nadie", false, null, null, 0, 50, default)).Items);
+    }
+
+    [Fact]
+    public async Task The_device_sync_sends_open_notices_with_the_reserved_bins_and_marks_the_closed_ones_inactive()
+    {
+        var x = await WorldAsync();
+        await using var _ = x.F;
+        await ReceiveAsync(x, x.Plain, 10m);
+        var n = await x.Svc.CreateAsync(Req(x, (x.Plain, 4m)), default);
+        var sync = x.F.Get<SyncService>();
+
+        var page = await sync.ExitNoticesAsync(new SyncQuery(WarehousePublicId: x.W.PublicId), default);
+        var notice = Assert.Single(page.Items);
+        Assert.True(notice.IsActive);
+        Assert.Equal(("SAL-00001", ExitNoticeStatuses.Requested, "Cliente ASICS"), (notice.Number, notice.StatusCode, notice.ClientName));
+        var line = Assert.Single(notice.Lines);
+        Assert.Equal((4m, 4m, 0m), (line.QtyOrdered, line.QtyReserved, line.QtyBackordered));
+        var res = Assert.Single(line.Reservations);
+        Assert.Equal(("P-01", 4m), (res.BinCode, res.Quantity));
+
+        // cancelado: solo llega con since, y como inactivo (el aparato lo borra)
+        await x.Svc.CancelAsync(n.PublicId, null, default);
+        Assert.Empty((await sync.ExitNoticesAsync(new SyncQuery(WarehousePublicId: x.W.PublicId), default)).Items);
+        var since = await sync.ExitNoticesAsync(new SyncQuery(Since: DateTime.UtcNow.AddMinutes(-30), WarehousePublicId: x.W.PublicId), default);
+        Assert.False(Assert.Single(since.Items).IsActive);
     }
 }

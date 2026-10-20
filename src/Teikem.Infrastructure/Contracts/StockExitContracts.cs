@@ -13,4 +13,4 @@ public sealed record StockExitOptionDto(Guid ProductPublicId, int BinId, string 
 
 /// <summary>Página de opciones de salida, por producto y luego por Rank. ServerTimeUtc = instante en que se calculó (la app lo guarda). RotationEnforcement (2026-10-20) = SUGGEST | ENFORCE de la compañía: con ENFORCE la app no deja escoger posición ni lote.</summary>
 public sealed record StockExitPageDto(int Total, int Skip, int Take, DateTime ServerTimeUtc, IReadOnlyList<StockExitOptionDto> Items,
-    string RotationEnforcement = "SUGGEST");
+    string RotationEnforcement = "SUGGEST", string DispatchRequirement = "FREE");

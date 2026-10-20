@@ -56,7 +56,7 @@ public sealed class StockExitService(TeikemDbContext db, ILookupCache lookups)
         foreach (var id in list.Where(r => r.ZoneTypeLookupId != null).Select(r => r.ZoneTypeLookupId!.Value).Distinct())
             zoneTypes[id] = (await lookups.GetAsync(id, ct))?.InternalCode;
 
-        var tenantRot = await db.Tenants.AsNoTracking().Where(t => t.TenantId == db.CurrentTenantId).Select(t => new { t.RotationMethod, t.RotationMethodNoLot, t.RotationEnforcement }).FirstOrDefaultAsync(ct);
+        var tenantRot = await db.Tenants.AsNoTracking().Where(t => t.TenantId == db.CurrentTenantId).Select(t => new { t.RotationMethod, t.RotationMethodNoLot, t.RotationEnforcement, t.DispatchRequirement }).FirstOrDefaultAsync(ct);
         // Lote 34 + 2026-10-20: rotación de la compañía (con lote / sin lote); el producto puede tener excepción
         var company = new CompanyRotation(tenantRot?.RotationMethod, tenantRot?.RotationMethodNoLot);
         var lotTracked = await RotationQueries.LotTrackedAsync(db, list.Select(r => r.ProductId).Distinct().ToList(), ct);
@@ -76,6 +76,7 @@ public sealed class StockExitService(TeikemDbContext db, ILookupCache lookups)
             }
         }
         return new StockExitPageDto(ranked.Count, skip, take, DateTime.UtcNow, ranked.Skip(skip).Take(take).ToList(),
-            RotationRules.ParseEnforcement(tenantRot?.RotationEnforcement) ?? RotationEnforcements.Suggest);
+            RotationRules.ParseEnforcement(tenantRot?.RotationEnforcement) ?? RotationEnforcements.Suggest,
+            DispatchRequirementRules.Parse(tenantRot?.DispatchRequirement) ?? DispatchRequirements.Free);   // Lote 146
     }
 }

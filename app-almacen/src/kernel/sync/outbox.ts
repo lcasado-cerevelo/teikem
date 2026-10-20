@@ -10,7 +10,7 @@ import { recordSkippedFromResult } from '../../features/count/countSkipped'
 import { getDb } from '../db/database'
 import { projectRow, type Delta } from '../warehouse/balanceProjection'
 
-export type OutboxKind = 'receipt' | 'pack' | 'collect' | 'countBatch' | 'countFinish' | 'countOffline' | 'transfer' | 'adjust' | 'damage' | 'manualIssue' | 'salesDispatch' | 'salesReturnReceive'
+export type OutboxKind = 'receipt' | 'pack' | 'collect' | 'countBatch' | 'countFinish' | 'countOffline' | 'transfer' | 'adjust' | 'damage' | 'manualIssue' | 'salesDispatch' | 'exitDispatch' | 'salesReturnReceive'
 type OutboxMethod = 'POST' | 'PUT'
 
 interface EnqueueInput {
@@ -85,6 +85,7 @@ const METHOD: Record<OutboxKind, OutboxMethod> = {
   damage: 'POST',
   manualIssue: 'POST',
   salesDispatch: 'POST',
+  exitDispatch: 'POST',
   salesReturnReceive: 'POST',
 }
 

@@ -119,3 +119,24 @@ export function saveRotationEnforcement(value: string | null | undefined): void 
     // es una comodidad sin señal: el servidor decide igual al recibir el despacho
   }
 }
+
+const REQUIREMENTS = ['FREE', 'ANY_DOCUMENT', 'EXIT_NOTICE', 'SALES_ORDER'] as const
+export type DispatchRequirement = (typeof REQUIREMENTS)[number]
+
+/** Lote 146: «el despacho exige documento» de la compañía, según la última respuesta de GET /inventory/exit-options; sin copia, libre (el servidor decide igual: 409). */
+export function readDispatchRequirement(): DispatchRequirement {
+  try {
+    const v = getKv(KvKeys.dispatchRequirement)
+    return (REQUIREMENTS as readonly string[]).includes(v ?? '') ? (v as DispatchRequirement) : 'FREE'
+  } catch {
+    return 'FREE'
+  }
+}
+
+export function saveDispatchRequirement(value: string | null | undefined): void {
+  try {
+    setKv(KvKeys.dispatchRequirement, (REQUIREMENTS as readonly string[]).includes(value ?? '') ? value! : 'FREE')
+  } catch {
+    // comodidad sin señal
+  }
+}

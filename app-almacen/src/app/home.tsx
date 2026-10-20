@@ -8,6 +8,7 @@ import { useMyPermissions } from '../kernel/auth/permissions'
 import { getOpenReceipt } from '../features/receive/localLookup'
 import { getOpenPick } from '../features/dispatch/localPick'
 import { getOpenCount } from '../features/count/localCount'
+import { listExitNotices } from '../features/exitDispatch/localExit'
 import { listSalesOrders } from '../features/salesDispatch/localSales'
 import { listSalesReturns } from '../features/salesReturn/localReturns'
 import { getOpenCountHints, refreshOpenCountHints } from '../features/count/openCountHints'
@@ -54,6 +55,8 @@ export default function HomeScreen() {
   const [hasSalesOrders, setHasSalesOrders] = useState(false)
   // Lote 83: «Devoluciones» solo se ofrece si el aparato tiene devoluciones autorizadas por recibir (sin el módulo o sin permiso nunca bajan)
   const [hasSalesReturns, setHasSalesReturns] = useState(false)
+  // Lote 146: «Avisos de salida» solo se ofrece si el aparato tiene avisos por despachar
+  const [hasExitNotices, setHasExitNotices] = useState(false)
   const userId = session?.userId
   const warehouseId = activeWarehouse.publicId
   useFocusEffect(
@@ -69,6 +72,7 @@ export default function HomeScreen() {
       compute()
       setHasSalesOrders(warehouseId ? listSalesOrders(warehouseId).length > 0 : false)
       setHasSalesReturns(warehouseId ? listSalesReturns(warehouseId).length > 0 : false)
+      setHasExitNotices(warehouseId ? listExitNotices(warehouseId).length > 0 : false)
       let alive = true
       if (warehouseId && userId != null) {
         void refreshOpenCountHints(warehouseId, userId).then(() => {
@@ -115,7 +119,7 @@ export default function HomeScreen() {
 
   /** Navega a `path`, salvo que haya un documento distinto abierto (avisa cuál en vez de navegar). `ownKind` es el
    *  tipo de documento que esa pantalla retoma (undefined si no maneja ninguno, como Acomodar o Consultar). */
-  function go(path: '/receive' | '/putaway' | '/dispatch' | '/count' | '/lookup' | '/damage' | '/adjust' | '/sales-dispatch' | '/sales-return', ownKind?: OpenKind) {
+  function go(path: '/receive' | '/putaway' | '/dispatch' | '/count' | '/lookup' | '/damage' | '/adjust' | '/sales-dispatch' | '/exit-dispatch' | '/sales-return', ownKind?: OpenKind) {
     if (openKind && openKind !== ownKind) {
       Alert.alert(t(`lock.${openKind}InProgress`))
       return
@@ -186,6 +190,11 @@ export default function HomeScreen() {
         {hasSalesOrders ? (
           <View style={styles.cell}>
             <BigButton layout="tile" label={t('home.salesDispatch')} icon="🧾" variant="secondary" onPress={() => go('/sales-dispatch')} testID="home-sales-dispatch" />
+          </View>
+        ) : null}
+        {hasExitNotices ? (
+          <View style={styles.cell}>
+            <BigButton layout="tile" label={t('home.exitDispatch')} icon="📤" variant="secondary" onPress={() => go('/exit-dispatch')} testID="home-exit-dispatch" />
           </View>
         ) : null}
         {hasSalesReturns && canReceive ? (

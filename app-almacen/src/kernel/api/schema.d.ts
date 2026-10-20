@@ -19094,6 +19094,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sync/exit-notices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    warehousePublicId?: string;
+                    since?: string;
+                    cursor?: string;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SyncExitNoticeDtoSyncPage"];
+                        "application/json": components["schemas"]["SyncExitNoticeDtoSyncPage"];
+                        "text/json": components["schemas"]["SyncExitNoticeDtoSyncPage"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sync/sales-orders": {
         parameters: {
             query?: never;
@@ -35430,6 +35472,7 @@ export interface components {
             serverTimeUtc?: string;
             items?: components["schemas"]["StockExitOptionDto"][] | null;
             rotationEnforcement?: string;
+            dispatchRequirement?: string;
         };
         StopLocationRequest: {
             /** Format: double */
@@ -35640,6 +35683,48 @@ export interface components {
             nextCursor?: string | null;
             /** Format: date-time */
             serverTimeUtc?: string;
+        };
+        SyncExitNoticeDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            clientName?: string | null;
+            reference?: string | null;
+            destination?: string | null;
+            statusCode?: string | null;
+            /** Format: date */
+            requiredDate?: string | null;
+            /** Format: date-time */
+            requestedAtUtc?: string | null;
+            isActive?: boolean;
+            lines?: components["schemas"]["SyncExitNoticeLineDto"][] | null;
+        };
+        SyncExitNoticeDtoSyncPage: {
+            items?: components["schemas"]["SyncExitNoticeDto"][] | null;
+            nextCursor?: string | null;
+            /** Format: date-time */
+            serverTimeUtc?: string;
+        };
+        SyncExitNoticeLineDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            /** Format: double */
+            qtyOrdered?: number;
+            /** Format: double */
+            qtyReserved?: number;
+            /** Format: double */
+            qtyShipped?: number;
+            /** Format: double */
+            qtyBackordered?: number;
+            reservations?: components["schemas"]["SyncSalesReservationDto"][] | null;
         };
         SyncSalesOrderDto: {
             /** Format: int32 */

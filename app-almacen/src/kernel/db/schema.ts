@@ -1,6 +1,6 @@
 // Lote 8A-app — esquema de la base local (expo-sqlite). Ver docs/mobile/app-almacen-plan.md §1 "Base local".
 // Migraciones por PRAGMA user_version: cada versión agrega su bloque de SQL; nunca se reescribe uno ya publicado.
-export const SCHEMA_VERSION = 16
+export const SCHEMA_VERSION = 17
 
 export const MIGRATIONS: readonly string[] = [
   // v1: kv, catálogos sincronizados, documentos abiertos, cola de salida y marcas de agua.
@@ -493,5 +493,44 @@ export const MIGRATIONS: readonly string[] = [
     qty_damaged REAL NOT NULL
   );
   CREATE INDEX IF NOT EXISTS ix_sales_return_line_return ON sales_return_line(sales_return_id);
+  `,
+  // v17 (2026-10-20, Lote 146: despachar contra un aviso de salida): los avisos de salida por despachar (GET /sync/exit-notices: solicitados o parciales con algo reservado), con
+  // sus líneas y de qué posición y lote reservó el sistema cada parte. Como las órdenes de venta pero sin kits ni consignatario: la copia se reemplaza completa en cada sincronización.
+  `
+  CREATE TABLE IF NOT EXISTS exit_notice (
+    id INTEGER PRIMARY KEY NOT NULL,
+    public_id TEXT NOT NULL,
+    number TEXT NOT NULL,
+    warehouse_public_id TEXT NOT NULL,
+    client_name TEXT,
+    reference TEXT,
+    destination TEXT,
+    status_code TEXT,
+    required_date TEXT,
+    requested_at_utc TEXT
+  );
+  CREATE INDEX IF NOT EXISTS ix_exit_notice_warehouse ON exit_notice(warehouse_public_id);
+  CREATE TABLE IF NOT EXISTS exit_notice_line (
+    id INTEGER PRIMARY KEY NOT NULL,
+    exit_notice_id INTEGER NOT NULL,
+    product_public_id TEXT NOT NULL,
+    sku TEXT,
+    product_name TEXT,
+    qty_ordered REAL NOT NULL,
+    qty_reserved REAL NOT NULL,
+    qty_shipped REAL NOT NULL,
+    qty_backordered REAL NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS ix_exit_notice_line_notice ON exit_notice_line(exit_notice_id);
+  CREATE TABLE IF NOT EXISTS exit_notice_reservation (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    exit_notice_line_id INTEGER NOT NULL,
+    bin_id INTEGER NOT NULL,
+    bin_code TEXT NOT NULL,
+    lot_id INTEGER,
+    lot_number TEXT,
+    quantity REAL NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS ix_exit_notice_reservation_line ON exit_notice_reservation(exit_notice_line_id);
   `,
 ]

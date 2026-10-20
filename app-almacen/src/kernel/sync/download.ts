@@ -8,9 +8,10 @@ import { api, ApiError, unwrap } from '../api/client'
 import { getActiveWarehousePublicId } from '../warehouse/activeWarehouse'
 import { getDb, type SQLiteDatabase } from '../db/database'
 import { deltaKey, pendingDeltas } from '../warehouse/balanceProjection'
-import { mapExitRow, replaceStockExit, saveRotationEnforcement, type StockExitRow } from '../../features/dispatch/stockExit'
+import { mapExitRow, replaceStockExit, saveDispatchRequirement, saveRotationEnforcement, type StockExitRow } from '../../features/dispatch/stockExit'
 import { downloadManualIssueReasons } from '../../features/dispatch/manualIssueReasons'
 import { deleteLocalSalesOrder, reapplyPendingSalesDispatches } from '../../features/salesDispatch/localSales'
+import { deleteLocalExitNotice, reapplyPendingExitDispatches } from '../../features/exitDispatch/localExit'
 import { deleteLocalSalesReturn, reapplyPendingReturnReceipts } from '../../features/salesReturn/localReturns'
 
 const TAKE = 500
@@ -712,6 +713,7 @@ export async function downloadStockExit(warehousePublicId: string, force = false
       const page = await unwrap(api.GET('/api/v1/inventory/exit-options', { params: { query: { warehousePublicId, skip, take: TAKE } } }))
       serverTime ??= page.serverTimeUtc ?? new Date().toISOString()
       saveRotationEnforcement(page.rotationEnforcement)   // 2026-10-20
+      saveDispatchRequirement(page.dispatchRequirement)   // 2026-10-20 (Lote 146)
       const got = page.items ?? []
       for (const r of got) items.push(mapExitRow(r))
       pages += 1
@@ -731,6 +733,95 @@ export async function downloadStockExit(warehousePublicId: string, force = false
   }
 }
 
+// ================================================================ avisos de salida por despachar (Lote 146)
+
+interface SyncExitNotice {
+  id?: number
+  publicId?: string
+  number?: string | null
+  warehousePublicId?: string
+  clientName?: string | null
+  reference?: string | null
+  destination?: string | null
+  statusCode?: string | null
+  requiredDate?: string | null
+  requestedAtUtc?: string | null
+  isActive?: boolean
+  lines?: Array<{
+    id?: number
+    productPublicId?: string
+    sku?: string | null
+    productName?: string | null
+    qtyOrdered?: number
+    qtyReserved?: number
+    qtyShipped?: number
+    qtyBackordered?: number
+    reservations?: Array<{ binId?: number; binCode?: string | null; lotId?: number | null; lotNumber?: string | null; quantity?: number }> | null
+  }> | null
+}
+
+/** Reemplaza la copia local de los avisos de salida del almacén por lo que mandó el servidor (llegan TODOS los abiertos; uno inactivo se borra). */
+export function applyExitNotices(db: SQLiteDatabase, warehousePublicId: string, items: SyncExitNotice[]): void {
+  for (const o of items) {
+    if (o.id == null) continue
+    deleteLocalExitNotice(db, o.id)
+    if (o.isActive === false) continue
+    db.runSync(
+      `INSERT INTO exit_notice (id, public_id, number, warehouse_public_id, client_name, reference, destination, status_code, required_date, requested_at_utc)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [o.id, o.publicId ?? '', o.number ?? '', o.warehousePublicId ?? warehousePublicId, o.clientName ?? null, o.reference ?? null, o.destination ?? null, o.statusCode ?? null, o.requiredDate ?? null, o.requestedAtUtc ?? null],
+    )
+    for (const l of o.lines ?? []) {
+      db.runSync(
+        `INSERT INTO exit_notice_line (id, exit_notice_id, product_public_id, sku, product_name, qty_ordered, qty_reserved, qty_shipped, qty_backordered)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [l.id ?? 0, o.id, l.productPublicId ?? '', l.sku ?? null, l.productName ?? null, l.qtyOrdered ?? 0, l.qtyReserved ?? 0, l.qtyShipped ?? 0, l.qtyBackordered ?? 0],
+      )
+      for (const r of l.reservations ?? [])
+        db.runSync('INSERT INTO exit_notice_reservation (exit_notice_line_id, bin_id, bin_code, lot_id, lot_number, quantity) VALUES (?, ?, ?, ?, ?, ?)', [
+          l.id ?? 0, r.binId ?? 0, r.binCode ?? '', r.lotId ?? null, r.lotNumber ?? null, r.quantity ?? 0,
+        ])
+    }
+  }
+}
+
+/** Avisos de salida por despachar del almacén (GET /sync/exit-notices: llegan todos los abiertos, así que la pasada reemplaza la copia local de ese almacén). */
+export async function downloadExitNotices(warehousePublicId: string): Promise<DownloadResult> {
+  const all: SyncExitNotice[] = []
+  let cursor: string | undefined
+  let pages = 0
+  do {
+    const page = await unwrap(api.GET('/api/v1/sync/exit-notices', { params: { query: { warehousePublicId, cursor, take: TAKE } } }))
+    all.push(...((page.items ?? []) as SyncExitNotice[]))
+    cursor = page.nextCursor ?? undefined
+    pages += 1
+  } while (cursor)
+  const db = getDb()
+  db.withTransactionSync(() => {
+    for (const row of db.getAllSync<{ id: number }>('SELECT id FROM exit_notice WHERE warehouse_public_id = ?', [warehousePublicId])) deleteLocalExitNotice(db, row.id)
+    applyExitNotices(db, warehousePublicId, all)
+    // los despachos que siguen en la cola todavía no están en el servidor: se vuelven a reflejar en la copia que acaba de llegar
+    reapplyPendingExitDispatches(db)
+  })
+  return { resource: 'exitNotices', pages, items: all.length }
+}
+
+/** Sin el módulo de lotes y series o sin `inventory.view` el API responde 403: no es una falla; se borra lo que hubiera de antes y se sigue. */
+export async function downloadExitNoticesIfAllowed(warehousePublicId: string): Promise<DownloadResult> {
+  try {
+    return await downloadExitNotices(warehousePublicId)
+  } catch (err) {
+    if (!(err instanceof ApiError) || err.status !== 403) throw err
+    const db = getDb()
+    db.withTransactionSync(() => {
+      db.runSync('DELETE FROM exit_notice_reservation')
+      db.runSync('DELETE FROM exit_notice_line')
+      db.runSync('DELETE FROM exit_notice')
+    })
+    return { resource: 'exitNotices', pages: 0, items: 0 }
+  }
+}
+
 /** Corre los recursos que usa Recibir, en orden (uno a la vez; no compite por la misma base local). Las posiciones solo
  *  si el aparato tiene almacén por defecto (Lote 16). */
 export async function downloadForReceiving(options: { forceStockExit?: boolean } = {}): Promise<DownloadResult[]> {
@@ -742,6 +833,8 @@ export async function downloadForReceiving(options: { forceStockExit?: boolean }
     results.push(await downloadStockExit(warehousePublicId, options.forceStockExit === true))
     // 2026-10-15 (Lote 65): órdenes de venta por despachar (un 403 se salta)
     results.push(await downloadSalesOrdersIfAllowed(warehousePublicId))
+    // 2026-10-20 (Lote 146): avisos de salida por despachar (un 403 se salta)
+    results.push(await downloadExitNoticesIfAllowed(warehousePublicId))
     // 2026-10-16 (Lote 83): devoluciones de venta por recibir (un 403 se salta)
     results.push(await downloadSalesReturnsIfAllowed(warehousePublicId))
   }

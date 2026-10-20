@@ -241,7 +241,7 @@ describe('órdenes de compra sin permiso (403)', () => {
       path === '/api/v1/sync/purchase-orders' ? forbidden() : Promise.resolve(page([], null, '2026-01-01T00:00:00.000Z')),
     )
     const results = await downloadForReceiving()
-    expect(results.map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins', 'balances', 'stockExit', 'salesOrders', 'salesReturns', 'clients', 'consigneeLocations', 'manualIssueReasons'])
+    expect(results.map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins', 'balances', 'stockExit', 'salesOrders', 'exitNotices', 'salesReturns', 'clients', 'consigneeLocations', 'manualIssueReasons'])
     expect(results[1]).toEqual({ resource: 'purchaseOrders', pages: 0, items: 0 })
   })
 
@@ -267,7 +267,7 @@ describe('downloadForReceiving', () => {
     expect((await downloadForReceiving()).map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'clients', 'consigneeLocations', 'manualIssueReasons'])
 
     await saveDeviceIdentity({ devicePublicId: 'dev-1', deviceSecret: 's', tenantName: 'T', defaultWarehousePublicId: 'wh-1', theme: null })
-    expect((await downloadForReceiving()).map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins', 'balances', 'stockExit', 'salesOrders', 'salesReturns', 'clients', 'consigneeLocations', 'manualIssueReasons'])
+    expect((await downloadForReceiving()).map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins', 'balances', 'stockExit', 'salesOrders', 'exitNotices', 'salesReturns', 'clients', 'consigneeLocations', 'manualIssueReasons'])
   })
 })
 

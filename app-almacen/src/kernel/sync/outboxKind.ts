@@ -16,6 +16,7 @@ const KIND_KEYS: Record<OutboxKind, string> = {
   damage: 'sync.kindDamage',
   manualIssue: 'sync.kindManualIssue',
   salesDispatch: 'sync.kindSalesDispatch',
+  exitDispatch: 'sync.kindExitDispatch',
   salesReturnReceive: 'sync.kindSalesReturnReceive',
 }
 

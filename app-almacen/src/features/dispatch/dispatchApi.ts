@@ -13,7 +13,7 @@ import { buildManualIssueBody } from './manualIssueLogic'
 import { discardLocalPick } from './localPick'
 import { findBinByCode } from '../../kernel/warehouse/binLookup'
 import { findLocalBin } from '../count/countApi'
-import { hasStockExitCopy, mapExitRow, readRotationEnforced, readStockExit, replaceStockExitFor, saveRotationEnforcement } from './stockExit'
+import { hasStockExitCopy, mapExitRow, readRotationEnforced, readStockExit, replaceStockExitFor, saveDispatchRequirement, saveRotationEnforcement } from './stockExit'
 import { buildCollectAndPackBody, type StockOption, type ClientChoice, type ConsigneeChoice, type PickLine, type ResolvedPickLine, uniqueBinCodes } from './dispatchLogic'
 
 /** De dónde puede salir el producto y de qué fuente: `server` = recién preguntado (orden de salida del servidor, GET /inventory/exit-options; se
@@ -35,6 +35,7 @@ export async function fetchStockOptions(warehousePublicId: string, productPublic
     const rows = (page.items ?? []).map(mapExitRow)
     replaceStockExitFor(warehousePublicId, productPublicId, rows)
     saveRotationEnforcement(page.rotationEnforcement)
+    saveDispatchRequirement(page.dispatchRequirement)
     return { options: rows, source: 'server', enforced: page.rotationEnforcement === 'ENFORCE' }
   } catch {
     // sin señal (o sin permiso para consultar): lo que bajó el aparato

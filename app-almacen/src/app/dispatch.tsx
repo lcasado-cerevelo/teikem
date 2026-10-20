@@ -17,6 +17,8 @@ import { KeyboardInput } from '../kernel/ui/KeyboardInput'
 import { colors, fontSize, radius, spacing } from '../kernel/ui/theme'
 import { vibrateError, vibrateOk } from '../kernel/ui/feedback'
 import { KeyboardScreen } from '../kernel/ui/KeyboardScreen'
+import { DispatchDocumentChooser } from '../features/dispatch/DispatchDocumentChooser'
+import { readDispatchRequirement } from '../features/dispatch/stockExit'
 import { BinMarkList } from '../features/positions/BinMarkList'
 import { capMarks, markRecommended, marksToRows, toggleMark, type MarkOption, type Marks } from '../features/positions/binMarks'
 import { fetchClientsForOwnDispatch, fetchConsigneesForClient, fetchStockOptions, queueManualIssue, resolveBinCodes, submitCollectAndPack } from '../features/dispatch/dispatchApi'
@@ -76,7 +78,14 @@ type Step = { name: 'scan' } | { name: 'client' } | { name: 'consignee' } | { na
  *  opcional, solo con el permiso warehouse.issue; va a la cola de salida (kind 'manualIssue') como Transferir y Ajustar. «Empacar» no cambia.
  *  2026-10-11 (b) (decisión del dueño: no complicar el aparato): con motivo por default o último usado, completar = 2 toques (Completar → Despachar),
  *  sin teclado; la nota queda detrás de «Agregar nota». */
+/** Lote 146: con «el despacho exige documento» y sin un despacho libre ya abierto en el aparato, primero se escoge contra qué documento se despacha. */
 export default function DispatchScreen() {
+  const requirement = readDispatchRequirement()
+  if (requirement !== 'FREE' && getOpenPick() === null) return <DispatchDocumentChooser requirement={requirement} />
+  return <FreeDispatchScreen />
+}
+
+function FreeDispatchScreen() {
   const { t, lang } = useT()
   const router = useRouter()
   const activeWarehouse = useActiveWarehouse()

@@ -1,0 +1,321 @@
+// Lote 146 — despachar contra un aviso de salida en el aparato: la lista de avisos con algo reservado, el escaneo del número (SAL-…) y el despacho GUIADO por lo que el sistema reservó
+// (posición → cantidad), igual que el de órdenes de venta pero sin kits, consignatario ni entrega. Va por la cola de salida (sirve sin señal); el servidor valida la existencia
+// de la posición y que no se despache más de lo reservado al sincronizar.
+import { useMemo, useRef, useState } from 'react'
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useRouter } from 'expo-router'
+
+import { useFormat } from '../kernel/format/useFormat'
+import { useActiveWarehouse } from '../kernel/warehouse/activeWarehouse'
+import { resolveBinLocalFirst } from '../kernel/warehouse/binLookup'
+import { useT } from '../kernel/i18n/useT'
+import { downloadExitNoticesIfAllowed } from '../kernel/sync/download'
+import { flushNow } from '../kernel/sync/engine'
+import { discardRow, outboxResult } from '../kernel/sync/outbox'
+import { BigButton } from '../kernel/ui/BigButton'
+import { KeyboardInput } from '../kernel/ui/KeyboardInput'
+import { KeyboardScreen } from '../kernel/ui/KeyboardScreen'
+import { ScanField } from '../kernel/ui/ScanField'
+import { vibrateError, vibrateOk } from '../kernel/ui/feedback'
+import { colors, fontSize, radius, spacing } from '../kernel/ui/theme'
+import { findExitNoticeByNumber, getExitNoticeLines, listExitNotices, queueExitDispatch, type LocalExitNotice } from '../features/exitDispatch/localExit'
+import {
+  buildTasks,
+  checkPickQty,
+  dispatchBatchNumber,
+  nextTask,
+  parseQty,
+  totalPicked,
+  type SalesPick,
+  type SalesTask,
+} from '../features/salesDispatch/salesDispatchLogic'
+
+type Step = 'list' | 'pick' | 'finish' | 'sending'
+
+export default function ExitDispatchScreen() {
+  const { t } = useT()
+  const f = useFormat()
+  const router = useRouter()
+  const warehousePublicId = useActiveWarehouse().publicId
+  const [step, setStep] = useState<Step>('list')
+  const [tick, setTick] = useState(0)
+  const [notice, setNotice] = useState<LocalExitNotice | null>(null)
+  const [picks, setPicks] = useState<SalesPick[]>([])
+  const [skipped, setSkipped] = useState<Set<string>>(new Set())
+  const [qtyText, setQtyText] = useState('')
+  const [scanError, setScanError] = useState<string | null>(null)
+  const [binError, setBinError] = useState<string | null>(null)
+  const [info, setInfo] = useState<string | null>(null)
+  const lock = useRef(false)
+
+  // tick fuerza releer la copia local tras volver de enviar.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const notices = useMemo(() => (warehousePublicId ? listExitNotices(warehousePublicId) : []), [warehousePublicId, tick])
+  const lines = useMemo(() => (notice ? getExitNoticeLines(notice.id) : []), [notice])
+  const tasks = useMemo(() => buildTasks(lines), [lines])
+  const current = notice && step === 'pick' ? nextTask(tasks, picks, skipped) : null
+  const doneAll = step === 'pick' && notice !== null && current === null
+
+  if (!warehousePublicId) {
+    return (
+      <View style={styles.fill}>
+        <Text style={styles.error}>{t('errors.generic')}</Text>
+      </View>
+    )
+  }
+
+  function open(o: LocalExitNotice) {
+    setNotice(o)
+    setPicks([])
+    setSkipped(new Set())
+    setBinError(null)
+    setScanError(null)
+    setInfo(null)
+    setStep('pick')
+    const first = nextTask(buildTasks(getExitNoticeLines(o.id)), [], new Set())
+    setQtyText(first ? String(first.qty) : '')
+    vibrateOk()
+  }
+
+  function scanNotice(code: string) {
+    const found = findExitNoticeByNumber(warehousePublicId!, code)
+    if (!found || found.reserved <= 0) {
+      setScanError(t('exitDispatch.noticeNotFound'))
+      vibrateError()
+      return
+    }
+    open(found)
+  }
+
+  function advance(nextPicks: SalesPick[], nextSkipped: Set<string>) {
+    setPicks(nextPicks)
+    setSkipped(nextSkipped)
+    const n = nextTask(tasks, nextPicks, nextSkipped)
+    setQtyText(n ? String(n.qty) : '')
+    setBinError(null)
+  }
+
+  /** Lee la posición de la tarea actual: la reservada o cualquier otra (la reserva se mueve ahí si tiene existencia; con la rotación obligatoria el servidor lo rechaza). */
+  async function scanBin(task: SalesTask, code: string) {
+    const block = checkPickQty(task, qtyText)
+    if (block) {
+      setBinError(t(block === 'qtyInvalid' ? 'exitDispatch.qtyInvalid' : 'exitDispatch.qtyTooMuch', { qty: f.qty(task.qty) }))
+      vibrateError()
+      return
+    }
+    const bin = await resolveBinLocalFirst(warehousePublicId!, code).catch(() => null)
+    if (!bin) {
+      setBinError(t('exitDispatch.binNotFound'))
+      vibrateError()
+      return
+    }
+    const qty = parseQty(qtyText) ?? 0
+    advance([...picks, { taskKey: task.key, binId: bin.id, binCode: bin.code, qty }], skipped)
+    setInfo(bin.id !== task.binId ? t('exitDispatch.binMoves', { bin: bin.code }) : null)
+    vibrateOk()
+  }
+
+  function skip(task: SalesTask) {
+    advance(picks, new Set([...skipped, task.key]))
+  }
+
+  function undo(key: string) {
+    advance(
+      picks.filter((p) => p.taskKey !== key),
+      new Set([...skipped].filter((k) => k !== key)),
+    )
+  }
+
+  async function send() {
+    if (!notice || lock.current) return
+    lock.current = true
+    setStep('sending')
+    let id = 0
+    try {
+      id = queueExitDispatch(notice, tasks, picks)
+    } catch {
+      lock.current = false
+      setStep('finish')
+      setScanError(t('errors.generic'))
+      vibrateError()
+      return
+    }
+    const result = await flushNow(id)
+    lock.current = false
+    if (result.status === 'rejected') {
+      // el servidor ya deshizo los saldos (runOutbox); la fila no queda en Sincronización: se muestra el mensaje exacto y se baja el aviso como está
+      discardRow(id)
+      void downloadExitNoticesIfAllowed(warehousePublicId!).catch(() => undefined)
+      setNotice(null)
+      setPicks([])
+      setStep('list')
+      setScanError(result.error || t('errors.generic'))
+      setInfo(null)
+      setTick((x) => x + 1)
+      vibrateError()
+      return
+    }
+    const number = result.status === 'sent' ? dispatchBatchNumber(outboxResult(id)) : null
+    setInfo(result.status === 'sent' ? (number ? t('exitDispatch.sent', { number }) : t('exitDispatch.sentNoNumber')) : t('exitDispatch.queued'))
+    setScanError(null)
+    setNotice(null)
+    setPicks([])
+    setStep('list')
+    setTick((x) => x + 1)
+    vibrateOk()
+  }
+
+  if (step === 'sending') {
+    return (
+      <KeyboardScreen contentContainerStyle={styles.fill}>
+        <Text style={styles.title}>{t('exitDispatch.title')}</Text>
+        <ActivityIndicator color={colors.brand} />
+        <Text style={styles.help}>{t('exitDispatch.sending')}</Text>
+      </KeyboardScreen>
+    )
+  }
+
+  if (step === 'list' || !notice) {
+    return (
+      <KeyboardScreen contentContainerStyle={styles.fill}>
+        <Text style={styles.title}>{t('exitDispatch.title')}</Text>
+        <ScanField label={t('exitDispatch.scanNotice')} help={t('exitDispatch.scanNoticeHelp')} error={scanError} notice={info} onSubmit={scanNotice} testID="exit-scan-notice" />
+        {notices.length === 0 ? <Text style={styles.help}>{t('exitDispatch.noNotices')}</Text> : null}
+        {notices.map((o) => (
+          <Pressable
+            key={o.id}
+            accessibilityRole="button"
+            accessibilityLabel={t('exitDispatch.openNotice', { number: o.number })}
+            onPress={() => open(o)}
+            style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+            testID={`exit-notice-${o.number}`}
+          >
+            <Text style={styles.cardTitle}>{o.number}</Text>
+            <Text style={styles.help}>{[o.clientName, o.destination ?? o.reference].filter(Boolean).join(' · ')}</Text>
+            <Text style={styles.help}>
+              {t('exitDispatch.toDispatch', { qty: f.qty(o.reserved) })}
+              {o.requiredDate ? ' · ' + t('exitDispatch.required', { date: f.date(o.requiredDate) }) : ''}
+            </Text>
+          </Pressable>
+        ))}
+        <View style={styles.bottom}>
+          <BigButton label={t('common.back')} variant="danger" onPress={() => router.replace('/home')} />
+        </View>
+      </KeyboardScreen>
+    )
+  }
+
+  if (step === 'finish') {
+    const total = totalPicked(picks)
+    return (
+      <KeyboardScreen contentContainerStyle={styles.fill}>
+        <Text style={styles.title}>{t('exitDispatch.finishTitle', { number: notice.number })}</Text>
+        <Text style={styles.label}>{t('exitDispatch.finishSummary', { lines: picks.length, qty: f.qty(total) })}</Text>
+        <Text style={styles.help}>{t('exitDispatch.finishHelp')}</Text>
+        {scanError ? <Text style={styles.error}>{scanError}</Text> : null}
+        <BigButton label={t('exitDispatch.send')} onPress={() => void send()} testID="exit-send" />
+        <BigButton label={t('common.back')} variant="secondary" onPress={() => setStep('pick')} />
+      </KeyboardScreen>
+    )
+  }
+
+  // step === 'pick'
+  return (
+    <KeyboardScreen contentContainerStyle={styles.fill}>
+      <Text style={styles.title}>{notice.number}</Text>
+      <Text style={styles.help}>{[notice.clientName, notice.destination ?? notice.reference].filter(Boolean).join(' · ')}</Text>
+      {info ? <Text style={styles.okText}>{info}</Text> : null}
+
+      {current ? (
+        <View style={styles.current} testID="exit-current">
+          <Text style={styles.cardTitle}>{t('exitDispatch.goTo', { bin: current.binCode })}</Text>
+          <Text style={styles.label}>
+            {current.sku} · {current.productName}
+          </Text>
+          {current.lotNumber ? <Text style={styles.help}>{t('dispatch.lotNumber', { lot: current.lotNumber })}</Text> : null}
+          <Text style={styles.label}>{t('exitDispatch.qtyToTake', { qty: f.qty(current.qty) })}</Text>
+          <KeyboardInput
+            value={qtyText}
+            onChangeText={(v) => {
+              setBinError(null)
+              setQtyText(v)
+            }}
+            keyboardType="decimal-pad"
+            style={styles.input}
+            accessibilityLabel={t('dispatch.qtyLabel')}
+            testID="exit-qty"
+          />
+          <ScanField
+            label={t('exitDispatch.scanBin')}
+            help={t('exitDispatch.scanBinHelp', { bin: current.binCode })}
+            suggestedValue={current.binCode}
+            autoFocus={false}
+            error={binError}
+            onSubmit={(code) => void scanBin(current, code)}
+            pick="bin"
+            testID="exit-scan-bin"
+          />
+          <BigButton label={t('exitDispatch.skip')} variant="secondary" onPress={() => skip(current)} testID="exit-skip" />
+        </View>
+      ) : doneAll ? (
+        <Text style={styles.okText}>{t('exitDispatch.allDone')}</Text>
+      ) : null}
+
+      {picks.length > 0 ? <Text style={styles.label}>{t('exitDispatch.taken')}</Text> : null}
+      {picks.map((p) => {
+        const task = tasks.find((x) => x.key === p.taskKey)
+        return (
+          <Pressable
+            key={p.taskKey}
+            accessibilityRole="button"
+            accessibilityLabel={t('exitDispatch.undoA11y', { sku: task?.sku ?? '', bin: p.binCode })}
+            onPress={() => undo(p.taskKey)}
+            style={({ pressed }) => [styles.doneRow, pressed && styles.cardPressed]}
+          >
+            <Text style={styles.label}>
+              ✓ {f.qty(p.qty)} × {task?.sku} · {p.binCode}
+            </Text>
+            <Text style={styles.help}>{t('exitDispatch.tapToUndo')}</Text>
+          </Pressable>
+        )
+      })}
+
+      <BigButton label={t('exitDispatch.finish')} onPress={() => setStep('finish')} disabled={picks.length === 0} testID="exit-finish" />
+      <BigButton
+        label={t('exitDispatch.cancel')}
+        variant="danger"
+        onPress={() => {
+          setNotice(null)
+          setPicks([])
+          setStep('list')
+        }}
+      />
+    </KeyboardScreen>
+  )
+}
+
+const styles = StyleSheet.create({
+  fill: { flexGrow: 1, backgroundColor: colors.bg, padding: spacing.lg, gap: spacing.md },
+  title: { color: colors.text, fontSize: fontSize.title, fontWeight: '700' },
+  label: { color: colors.text, fontSize: fontSize.label, fontWeight: '600' },
+  help: { color: colors.muted, fontSize: fontSize.message },
+  error: { color: colors.error, fontSize: fontSize.message },
+  okText: { color: colors.brand, fontSize: fontSize.message, fontWeight: '700' },
+  field: { gap: spacing.xs },
+  bottom: { marginTop: 'auto' },
+  card: { gap: 2, padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panelAlt },
+  cardPressed: { backgroundColor: colors.panel },
+  cardTitle: { color: colors.text, fontSize: fontSize.label, fontWeight: '700' },
+  current: { gap: spacing.sm, padding: spacing.md, borderRadius: 12, borderWidth: 2, borderColor: colors.brand, backgroundColor: colors.panelAlt },
+  doneRow: { gap: 2, padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line },
+  input: {
+    minHeight: 56,
+    borderWidth: 2,
+    borderColor: colors.line,
+    borderRadius: 12,
+    paddingHorizontal: spacing.md,
+    fontSize: 20,
+    color: colors.text,
+    backgroundColor: colors.panelAlt,
+  },
+})
