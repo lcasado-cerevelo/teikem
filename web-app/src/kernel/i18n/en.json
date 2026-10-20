@@ -7467,6 +7467,17 @@
         "rotationFifo": "FIFO — first in, first out",
         "rotationSuggest": "Suggest: proposed and can be changed",
         "rotationEnforce": "Enforce: the system picks alone",
+        "inboundTitle": "Inbound",
+        "outboundTitle": "Outbound",
+        "valuationTitle": "Valuation",
+        "receiptRequirementLabel": "Receiving requires a document",
+        "receiptRequirementHelp": "Free: you can receive blind or by manual return (as always). The other values block receiving without a document and require receiving against a client arrival notice, a purchase order or either. Receipts from a sales return are not affected.",
+        "receiptRequirement": {
+          "FREE": "Free — no document required",
+          "ANY_DOCUMENT": "Arrival notice or purchase order",
+          "ASN": "Arrival notice only",
+          "PURCHASE_ORDER": "Purchase order only"
+        },
         "valuationLabel": "Inventory valuation",
         "valuationHelp": "Average cost: the cost of each issue and the inventory value come from the weighted average of what was received. By layers: first in, first out, and what remains is valued with the newest layers. Based on the cost frozen on each receipt (purchase order, arrival notice price or product cost).",
         "valuation": {

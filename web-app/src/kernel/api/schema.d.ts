@@ -38653,6 +38653,7 @@ export interface components {
             rotationMethodNoLot?: string | null;
             dispatchRequirement?: string | null;
             valuationMethod?: string | null;
+            receiptRequirement?: string | null;
         };
         TenantSettingsUpdateRequest: {
             name?: string | null;
@@ -38711,6 +38712,7 @@ export interface components {
             rotationMethodNoLot?: string | null;
             dispatchRequirement?: string | null;
             valuationMethod?: string | null;
+            receiptRequirement?: string | null;
         };
         ValuationReportDto: {
             /** Format: int32 */

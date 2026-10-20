@@ -9696,3 +9696,7 @@ No: es una salida de inventario sin entrega (`El despacho {número} es de un avi
 **«El método de valuación debe ser AVERAGE (costo promedio) o LAYERS (por capas).» (400, `valuationMethod`).** Escoja una de las dos opciones de la lista en Ajustes → Operación.
 **No veo la pestaña «Valor del inventario».** Requiere el permiso `inventory.value` (Administrador y Facturación lo traen); pídaselo a su administrador.
 **¿Por qué hay «Unidades sin costo»?** Esas unidades no tienen costo congelado en un recibo ni costo de compra en el producto. Capture el costo del producto; el reporte se actualiza solo.
+
+## El recibo exige documento (Lote 149)
+**«La compañía exige recibir contra un documento / un aviso de llegada / una orden de compra…» (409).** Escoja un aviso de llegada o una orden de compra del tipo que pide la compañía; un administrador puede volver a «Libre» en Ajustes → Operación → Entradas.
+**«La compañía exige recibir contra un aviso de llegada de un cliente, no contra una orden de compra.» / «…contra una orden de compra, no contra el aviso de llegada de un cliente.» (409).** El documento escogido no es del tipo exigido; use el correcto o cambie la exigencia.

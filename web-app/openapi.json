@@ -62831,6 +62831,10 @@
           "valuationMethod": {
             "type": "string",
             "nullable": true
+          },
+          "receiptRequirement": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -63017,6 +63021,10 @@
             "nullable": true
           },
           "valuationMethod": {
+            "type": "string",
+            "nullable": true
+          },
+          "receiptRequirement": {
             "type": "string",
             "nullable": true
           }

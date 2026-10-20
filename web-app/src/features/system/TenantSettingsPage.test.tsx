@@ -507,7 +507,7 @@ describe('Ajustes de la compañía', () => {
     await user.selectOptions(select, 'FIFO')
     await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
     await waitFor(() => expect(put()).toHaveLength(1))
-    expect(put()[0].body).toEqual({ rotationMethod: 'FIFO', rotationMethodNoLot: 'FIFO', rotationEnforcement: 'SUGGEST', dispatchRequirement: 'FREE', valuationMethod: 'AVERAGE' })
+    expect(put()[0].body).toEqual({ rotationMethod: 'FIFO', rotationMethodNoLot: 'FIFO', rotationEnforcement: 'SUGGEST', dispatchRequirement: 'FREE', valuationMethod: 'AVERAGE', receiptRequirement: 'FREE' })
 
     mock.settingsFail = { status: 400, title: 'El método de rotación debe ser FEFO o FIFO.', field: 'rotationMethod' }
     await user.selectOptions(within(panel).getByLabelText('Método de rotación de la compañía (productos con lote)'), 'FEFO')
@@ -524,7 +524,7 @@ describe('Ajustes de la compañía', () => {
     await user.selectOptions(select, 'ENFORCE')
     await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
     await waitFor(() => expect(put()).toHaveLength(1))
-    expect(put()[0].body).toEqual({ rotationMethod: 'FEFO', rotationMethodNoLot: 'FIFO', rotationEnforcement: 'ENFORCE', dispatchRequirement: 'FREE', valuationMethod: 'AVERAGE' })
+    expect(put()[0].body).toEqual({ rotationMethod: 'FEFO', rotationMethodNoLot: 'FIFO', rotationEnforcement: 'ENFORCE', dispatchRequirement: 'FREE', valuationMethod: 'AVERAGE', receiptRequirement: 'FREE' })
   })
 
   it('Operación → el despacho exige documento (Lote 145): libre por omisión; guarda dispatchRequirement', async () => {
@@ -536,7 +536,21 @@ describe('Ajustes de la compañía', () => {
     await user.selectOptions(select, 'EXIT_NOTICE')
     await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
     await waitFor(() => expect(put()).toHaveLength(1))
-    expect(put()[0].body).toEqual({ rotationMethod: 'FEFO', rotationMethodNoLot: 'FIFO', rotationEnforcement: 'SUGGEST', dispatchRequirement: 'EXIT_NOTICE', valuationMethod: 'AVERAGE' })
+    expect(put()[0].body).toEqual({ rotationMethod: 'FEFO', rotationMethodNoLot: 'FIFO', rotationEnforcement: 'SUGGEST', dispatchRequirement: 'EXIT_NOTICE', valuationMethod: 'AVERAGE', receiptRequirement: 'FREE' })
+  })
+
+  it('Operación → el recibo exige documento (Lote 149): libre por omisión, va antes que las salidas; guarda receiptRequirement', async () => {
+    const user = userEvent.setup()
+    wrap('/system/settings?tab=ops')
+    const panel = (await screen.findByRole('heading', { name: 'Rotación del inventario' })).closest('.panel') as HTMLElement
+    const select = within(panel).getByLabelText('El recibo exige documento')
+    expect(select).toHaveValue('FREE')
+    const headings = within(panel).getAllByRole('heading', { level: 3 }).map((h) => h.textContent)
+    expect(headings.indexOf('Entradas')).toBeLessThan(headings.indexOf('Salidas'))
+    await user.selectOptions(select, 'PURCHASE_ORDER')
+    await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
+    await waitFor(() => expect(put()).toHaveLength(1))
+    expect(put()[0].body).toEqual({ rotationMethod: 'FEFO', rotationMethodNoLot: 'FIFO', rotationEnforcement: 'SUGGEST', dispatchRequirement: 'FREE', valuationMethod: 'AVERAGE', receiptRequirement: 'PURCHASE_ORDER' })
   })
 
   it('Operación → valuación del inventario (Lote 148): costo promedio por omisión; guarda valuationMethod', async () => {
@@ -548,7 +562,7 @@ describe('Ajustes de la compañía', () => {
     await user.selectOptions(select, 'LAYERS')
     await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
     await waitFor(() => expect(put()).toHaveLength(1))
-    expect(put()[0].body).toEqual({ rotationMethod: 'FEFO', rotationMethodNoLot: 'FIFO', rotationEnforcement: 'SUGGEST', dispatchRequirement: 'FREE', valuationMethod: 'LAYERS' })
+    expect(put()[0].body).toEqual({ rotationMethod: 'FEFO', rotationMethodNoLot: 'FIFO', rotationEnforcement: 'SUGGEST', dispatchRequirement: 'FREE', valuationMethod: 'LAYERS', receiptRequirement: 'FREE' })
   })
 
   it('Operación → avisos de inventario (2026-10-20): 30 y 90 días por omisión; guarda los dos y valida los rangos con su mensaje', async () => {
@@ -586,7 +600,7 @@ describe('Ajustes de la compañía', () => {
     await user.selectOptions(select, 'POSITION')
     await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
     await waitFor(() => expect(put()).toHaveLength(1))
-    expect(put()[0].body).toEqual({ rotationMethod: 'FEFO', rotationMethodNoLot: 'POSITION', rotationEnforcement: 'SUGGEST', dispatchRequirement: 'FREE', valuationMethod: 'AVERAGE' })
+    expect(put()[0].body).toEqual({ rotationMethod: 'FEFO', rotationMethodNoLot: 'POSITION', rotationEnforcement: 'SUGGEST', dispatchRequirement: 'FREE', valuationMethod: 'AVERAGE', receiptRequirement: 'FREE' })
   })
 
   it('Operación → rotación: sin admin.tenant el selector es de solo lectura', async () => {

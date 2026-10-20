@@ -215,8 +215,8 @@ function RotationPanel({ settings, canEdit }: { settings: TenantSettingsDto; can
   const t = useT()
   const save = useSaveTenantSettings()
   const current = settings.rotationMethod ?? 'FEFO'
-  const form = useForm<{ rotationMethod: string; rotationMethodNoLot: string; rotationEnforcement: string; dispatchRequirement: string; valuationMethod: string }>({
-    values: { rotationMethod: current, rotationMethodNoLot: settings.rotationMethodNoLot ?? 'FIFO', rotationEnforcement: settings.rotationEnforcement ?? 'SUGGEST', dispatchRequirement: settings.dispatchRequirement ?? 'FREE', valuationMethod: settings.valuationMethod ?? 'AVERAGE' },
+  const form = useForm<{ rotationMethod: string; rotationMethodNoLot: string; rotationEnforcement: string; dispatchRequirement: string; valuationMethod: string; receiptRequirement: string }>({
+    values: { rotationMethod: current, rotationMethodNoLot: settings.rotationMethodNoLot ?? 'FIFO', rotationEnforcement: settings.rotationEnforcement ?? 'SUGGEST', dispatchRequirement: settings.dispatchRequirement ?? 'FREE', valuationMethod: settings.valuationMethod ?? 'AVERAGE', receiptRequirement: settings.receiptRequirement ?? 'FREE' },
   })
   const dirty = form.formState.isDirty
   // 2026-10-20: dos métodos — con lote (FEFO o FIFO) y sin lote ni series (FIFO o por posición; no vencen)
@@ -237,6 +237,9 @@ function RotationPanel({ settings, canEdit }: { settings: TenantSettingsDto; can
   // 2026-10-20 (Lote 145): el despacho exige documento
   const requirementOptions = ['FREE', 'ANY_DOCUMENT', 'EXIT_NOTICE', 'SALES_ORDER'].map((value) => ({ value, label: t(`system.settings.ops.requirement.${value}`) }))
 
+  // 2026-10-20 (Lote 149): el recibo exige documento (las entradas van antes que las salidas)
+  const receiptOptions = ['FREE', 'ANY_DOCUMENT', 'ASN', 'PURCHASE_ORDER'].map((value) => ({ value, label: t(`system.settings.ops.receiptRequirement.${value}`) }))
+
   // 2026-10-20 (Lote 148): método de valuación del inventario
   const valuationOptions = ['AVERAGE', 'LAYERS'].map((value) => ({ value, label: t(`system.settings.ops.valuation.${value}`) }))
 
@@ -245,11 +248,16 @@ function RotationPanel({ settings, canEdit }: { settings: TenantSettingsDto; can
       <Form
         form={form}
         onSubmit={async (v) => {
-          await save.mutateAsync({ rotationMethod: v.rotationMethod, rotationMethodNoLot: v.rotationMethodNoLot, rotationEnforcement: v.rotationEnforcement, dispatchRequirement: v.dispatchRequirement, valuationMethod: v.valuationMethod })
+          await save.mutateAsync({ rotationMethod: v.rotationMethod, rotationMethodNoLot: v.rotationMethodNoLot, rotationEnforcement: v.rotationEnforcement, dispatchRequirement: v.dispatchRequirement, valuationMethod: v.valuationMethod, receiptRequirement: v.receiptRequirement })
           toast.success(t('system.settings.saved'))
         }}
       >
         <fieldset className="set-fs" disabled={!canEdit}>
+          <h3 className="set-h3">{t('system.settings.ops.inboundTitle')}</h3>
+          <Field name="receiptRequirement" label={t('system.settings.ops.receiptRequirementLabel')} help={t('system.settings.ops.receiptRequirementHelp')}>
+            <Select options={receiptOptions} />
+          </Field>
+          <h3 className="set-h3">{t('system.settings.ops.outboundTitle')}</h3>
           <Field name="rotationMethod" label={t('system.settings.ops.rotationLabel')} help={t('system.settings.ops.rotationHelp')}>
             <Select options={options} />
           </Field>
@@ -262,6 +270,7 @@ function RotationPanel({ settings, canEdit }: { settings: TenantSettingsDto; can
           <Field name="dispatchRequirement" label={t('system.settings.ops.requirementLabel')} help={t('system.settings.ops.requirementHelp')}>
             <Select options={requirementOptions} />
           </Field>
+          <h3 className="set-h3">{t('system.settings.ops.valuationTitle')}</h3>
           <Field name="valuationMethod" label={t('system.settings.ops.valuationLabel')} help={t('system.settings.ops.valuationHelp')}>
             <Select options={valuationOptions} />
           </Field>

@@ -5356,3 +5356,16 @@ JOIN dbo.Permission p ON p.Code = 'inventory.value'
 WHERE r.Name IN ('TenantAdmin', 'Billing')
   AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-20 — El recibo exige documento (Lote 149).
+   - dbo.Tenant.ReceiptRequirement VARCHAR(15) NOT NULL DEFAULT 'FREE' (CHECK FREE|ANY_DOCUMENT|ASN|PURCHASE_ORDER): FREE = como siempre; los demas rechazan (409) el recibo
+     a ciegas o la devolucion manual sin documento, o contra un documento de otro tipo. Los recibos de una devolucion de venta quedan fuera. FREE para todas las companias existentes.
+   Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.Tenant', 'ReceiptRequirement') IS NULL
+    ALTER TABLE dbo.Tenant ADD ReceiptRequirement VARCHAR(15) NOT NULL CONSTRAINT DF_Tenant_ReceiptRequirement DEFAULT 'FREE';
+GO
+IF OBJECT_ID('dbo.CK_Tenant_ReceiptRequirement', 'C') IS NULL
+    ALTER TABLE dbo.Tenant ADD CONSTRAINT CK_Tenant_ReceiptRequirement CHECK (ReceiptRequirement IN ('FREE', 'ANY_DOCUMENT', 'ASN', 'PURCHASE_ORDER'));
+GO

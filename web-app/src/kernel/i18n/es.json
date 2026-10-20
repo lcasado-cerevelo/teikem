@@ -7467,6 +7467,17 @@
         "rotationFifo": "FIFO — entra primero, sale primero",
         "rotationSuggest": "Sugerir: se propone y se puede cambiar",
         "rotationEnforce": "Obligar: el sistema escoge solo",
+        "inboundTitle": "Entradas",
+        "outboundTitle": "Salidas",
+        "valuationTitle": "Valuación",
+        "receiptRequirementLabel": "El recibo exige documento",
+        "receiptRequirementHelp": "Libre: se puede recibir a ciegas o por devolución manual (como siempre). Los demás valores bloquean el recibo sin documento y obligan a recibir contra un aviso de llegada de un cliente, una orden de compra o cualquiera de los dos. Los recibos de una devolución de venta no se ven afectados.",
+        "receiptRequirement": {
+          "FREE": "Libre — no exige documento",
+          "ANY_DOCUMENT": "Aviso de llegada u orden de compra",
+          "ASN": "Solo aviso de llegada",
+          "PURCHASE_ORDER": "Solo orden de compra"
+        },
         "valuationLabel": "Valuación del inventario",
         "valuationHelp": "Costo promedio: el costo de cada salida y el valor del inventario salen del promedio ponderado de lo recibido. Por capas: lo primero que entró sale primero, y lo que queda se valúa con las capas más nuevas. Se basa en el costo congelado de cada recibo (orden de compra, precio del aviso o costo del producto).",
         "valuation": {

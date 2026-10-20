@@ -253,6 +253,17 @@ public sealed class ReceiptService(
         {
             throw new ValidationException("type", ReceiptRules.UnknownType(req.Type.Trim()));
         }
+        // Lote 149: «el recibo exige documento» — un recibo a ciegas o una devolución manual no tiene documento; contra un aviso o una orden de compra se revisa que sea del tipo que se exige.
+        var requirement = await db.Tenants.AsNoTracking().Where(x => x.TenantId == tenantId).Select(x => x.ReceiptRequirement).FirstOrDefaultAsync(ct);
+        if (ReceiptRequirementRules.Requires(requirement))
+        {
+            var hasDocument = req.AsnId is not null || req.PurchaseOrderPublicId is not null;
+            var fromPo = req.PurchaseOrderPublicId is not null;
+            if (req.AsnId is int asnIdToCheck)
+                fromPo = await db.Set<Asn>().AsNoTracking().Where(a => a.AsnId == asnIdToCheck).Select(a => a.PurchaseOrderId != null).FirstOrDefaultAsync(ct);
+            var violation = ReceiptRequirementRules.Violation(requirement, hasDocument, fromPo);
+            if (violation is not null) throw new ConflictException(violation);
+        }
         var typeLookupId = await lookups.GetIdAsync(LookupDomains.ReceiptType, typeCode, ct);
 
         // Almacén: el del aviso/PO; si la solicitud trae uno distinto → 400. Ciego/devolución: el indicado o el único activo.

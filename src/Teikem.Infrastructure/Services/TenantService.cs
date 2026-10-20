@@ -87,6 +87,8 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         if (req.RotationMethodNoLot is not null)
             t.RotationMethodNoLot = RotationRules.Parse(req.RotationMethodNoLot) is string noLotMethod && RotationMethods.ForNoLot.Contains(noLotMethod) ? noLotMethod
                 : throw new ValidationException("rotationMethodNoLot", RotationRules.InvalidNoLotMethod);
+        if (req.ReceiptRequirement is not null)
+            t.ReceiptRequirement = ReceiptRequirementRules.Parse(req.ReceiptRequirement) ?? throw new ValidationException("receiptRequirement", ReceiptRequirementRules.Invalid);
         if (req.ValuationMethod is not null)
             t.ValuationMethod = ValuationRules.Parse(req.ValuationMethod) ?? throw new ValidationException("valuationMethod", ValuationRules.Invalid);
         if (req.DispatchRequirement is not null)
@@ -249,5 +251,6 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         t.InventoryExpiryWarnDays, t.InventoryNoMovementDays,
         RotationRules.Parse(t.RotationMethodNoLot) is string nl && RotationMethods.ForNoLot.Contains(nl) ? nl : RotationMethods.Fifo,   // 2026-10-20
         DispatchRequirementRules.Parse(t.DispatchRequirement) ?? DispatchRequirements.Free,   // 2026-10-20 Lote 145
-        ValuationRules.Parse(t.ValuationMethod) ?? ValuationMethods.Average);   // 2026-10-20 Lote 148
+        ValuationRules.Parse(t.ValuationMethod) ?? ValuationMethods.Average,   // 2026-10-20 Lote 148
+        ReceiptRequirementRules.Parse(t.ReceiptRequirement) ?? ReceiptRequirements.Free);   // 2026-10-20 Lote 149
 }
