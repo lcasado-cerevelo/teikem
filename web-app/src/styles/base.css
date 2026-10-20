@@ -25,6 +25,8 @@ h1,h2,h3{letter-spacing:-.01em}
 /* marca (P7): lockup a todo el ancho con el brillo de la maqueta; colapsada, la marca cuadrada de 44 px */
 .rbrand .brand-full{width:100%;filter:drop-shadow(0 4px 14px var(--brand-glow))}
 .rbrand .brand-mini{width:44px;height:44px;margin:0 auto}
+/* el logo propio de la compañía va centrado en la barra (el kit lo alinea a la izquierda para otros sitios) */
+.rbrand .brand-lockup.own{object-position:center center}
 .rnav{flex:1;overflow-y:auto;padding:6px 9px}
 .grp{margin-bottom:1px}
 .grp-h{display:flex;align-items:center;gap:11px;width:100%;padding:9px 9px;border:none;background:transparent;border-radius:9px;color:var(--on-navbar-muted);font-weight:600;font-size:11px;letter-spacing:.07em;text-transform:uppercase}

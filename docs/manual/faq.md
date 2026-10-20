@@ -3911,6 +3911,9 @@ avisa antes con "Escribe la fecha y el nombre del feriado".
 Se intentó encender un módulo cuyo módulo requerido está apagado. Encienda primero el requerido (la pantalla lo indica con
 "Primero activa: …" y deja el interruptor deshabilitado).
 
+**¿Qué significa "Solo el administrador de la plataforma puede encender o apagar módulos." (403)**
+Ajustes de la compañía → Módulos es solo del administrador de la plataforma. El administrador de la compañía ve la lista en solo lectura (sin interruptores). Para encender o apagar un módulo, pídalo al administrador de la plataforma.
+
 **¿Qué significa "'SYSTEM' es un módulo núcleo y no se puede apagar."? (409)**
 Los módulos núcleo siempre están encendidos; la pantalla los marca "Núcleo — siempre activo" y no ofrece apagarlos.
 

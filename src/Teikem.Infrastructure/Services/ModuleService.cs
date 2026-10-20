@@ -55,6 +55,8 @@ public sealed class ModuleService(TeikemDbContext db, ITenantContext tenant, IMe
 
     public async Task<IReadOnlyList<ModuleDto>> SetEnabledAsync(string moduleKey, bool enabled, CancellationToken ct)
     {
+        // Encender o apagar módulos es solo del administrador de la plataforma; el de la compañía los ve en solo lectura.
+        if (!((TenantContext)tenant).IsPlatformAdmin) throw new ForbiddenException("Solo el administrador de la plataforma puede encender o apagar módulos.");
         var tenantId = ((TenantContext)tenant).RequireTenantId();
         var defs = await db.ModuleDefinitions.AsNoTracking().Where(m => m.IsActive).ToListAsync(ct);
         var def = defs.FirstOrDefault(m => m.ModuleKey.Equals(moduleKey, StringComparison.OrdinalIgnoreCase)) ?? throw new NotFoundException("Módulo", moduleKey);

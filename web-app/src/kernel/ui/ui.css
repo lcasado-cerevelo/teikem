@@ -144,6 +144,8 @@
 .pal .pi.kit-ph .kit-title{color:var(--on-navbar)}
 .pal .pi.kit-ph .iconbtn{color:var(--on-navbar-muted)}.pal .pi.kit-ph .iconbtn:hover{background:var(--navbar-hover);color:var(--on-navbar)}
 .pal .pi.kit-ph svg{color:inherit}
+/* el modal no recorta (overflow:visible): la barra cubre el borde de 1 px y redondea sus esquinas para no dejar un filo claro alrededor */
+.pal.kit-pal>.pi.kit-ph{margin:-1px -1px 0;border-radius:15px 15px 0 0}
 
 /* ===== Toast ===== */
 .toast.err{border-color:var(--danger)}

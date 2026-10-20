@@ -76,16 +76,26 @@ expect 200 "$(req PUT /api/v1/status/OrderStatus/INBOUND/override '{"isEnabled":
 expect 200 "$(req PUT '/api/v1/status/capabilities/TRANSPORT_ORDER?statusDomain=OrderStatus' '[{"statusCode":"IN_TRANSIT","capability":"EDIT_CARGO","isAllowed":false}]')" | jq -e 'length>=1' >/dev/null || fail "capabilities"
 expect 200 "$(req PUT '/api/v1/status/lateral-entries/TRANSPORT_ORDER?statusDomain=OrderStatus' '[{"lateralStatusCode":"CANCELLED","fromStatusCode":"PICKUP","isAllowed":true}]')" >/dev/null; ok "capacidades y entrada lateral (Caguas cancela desde PICKUP)"
 
+# Encender/apagar módulos es solo del administrador de la plataforma (el de la compañía recibe 403): ptokfor entra como la cuenta de
+# plataforma a la MISMA compañía del token dado y con AAL2; mreq es req con ese token (el 4.º argumento, si viene, indica de qué compañía).
+ptokfor() {
+  local tid tk; tid=$(req GET /api/v1/me '' "$1" | sed '$d' | jq -r .tenantId)
+  tk=$(TOKEN= req POST /api/v1/auth/login "{\"email\":\"${TEIKEM_PLATFORM_EMAIL:-teikem+support@cerevelo.com}\",\"password\":\"${TEIKEM_PLATFORM_PASSWORD:-$PASS}\",\"tenantId\":$tid,\"deviceInfo\":\"smoke-platform\"}" | sed '$d' | jq -r .tokens.accessToken)
+  req POST /api/v1/auth/reauth "{\"password\":\"${TEIKEM_PLATFORM_PASSWORD:-$PASS}\"}" "$tk" | sed '$d' | jq -r .accessToken
+}
+mreq() { req "$1" "$2" "${3:-}" "$(ptokfor "${4:-$TOKEN}")"; }
+
 step "módulos (0B) — exige AAL2"
 expect 403 "$(req PUT /api/v1/modules/CROSSDOCK '{"isEnabled":true}')" | jq -e '.code=="aal2_required"' >/dev/null || fail "aal2"
 RE=$(expect 200 "$(req POST /api/v1/auth/reauth "{\"password\":\"$PASS\"}")"); TOKEN=$(echo "$RE" | jq -r .accessToken); ok "reauth"
-expect 200 "$(req PUT /api/v1/modules/CROSSDOCK '{"isEnabled":true}')" | jq -e '.[] | select(.key=="CROSSDOCK") | .isEnabled' >/dev/null || fail "encender CROSSDOCK"
-expect 200 "$(req PUT /api/v1/modules/RENTAL_EQUIPMENT '{"isEnabled":false}')" >/dev/null      # apaga también RENTAL_BILLING en cascada
-expect 409 "$(req PUT /api/v1/modules/RENTAL_BILLING '{"isEnabled":true}')" >/dev/null           # depende de RENTAL_EQUIPMENT
-expect 409 "$(req PUT /api/v1/modules/LTL_GROUND '{"isEnabled":false}')" >/dev/null              # núcleo
+expect 403 "$(req PUT /api/v1/modules/CROSSDOCK '{"isEnabled":true}')" | jq -e '.title|test("administrador de la plataforma")' >/dev/null || fail "el admin de la compañía no puede cambiar módulos"; ok "el admin de la compañía no cambia módulos"
+expect 200 "$(mreq PUT /api/v1/modules/CROSSDOCK '{"isEnabled":true}')" | jq -e '.[] | select(.key=="CROSSDOCK") | .isEnabled' >/dev/null || fail "encender CROSSDOCK"
+expect 200 "$(mreq PUT /api/v1/modules/RENTAL_EQUIPMENT '{"isEnabled":false}')" >/dev/null      # apaga también RENTAL_BILLING en cascada
+expect 409 "$(mreq PUT /api/v1/modules/RENTAL_BILLING '{"isEnabled":true}')" >/dev/null           # depende de RENTAL_EQUIPMENT
+expect 409 "$(mreq PUT /api/v1/modules/LTL_GROUND '{"isEnabled":false}')" >/dev/null              # núcleo
 ok "dependencias, cascada y núcleo"
-expect 200 "$(req PUT /api/v1/modules/RENTAL_EQUIPMENT '{"isEnabled":true}')" >/dev/null
-expect 200 "$(req PUT /api/v1/modules/CROSSDOCK '{"isEnabled":false}')" >/dev/null
+expect 200 "$(mreq PUT /api/v1/modules/RENTAL_EQUIPMENT '{"isEnabled":true}')" >/dev/null
+expect 200 "$(mreq PUT /api/v1/modules/CROSSDOCK '{"isEnabled":false}')" >/dev/null
 
 step "tenant settings"
 expect 200 "$(req PUT /api/v1/tenant/settings '{"defaultServiceType":"STANDARD","defaultPackageType":"BOX","maxStopsPerRouteDefault":30}')" | jq -e '.defaultPackageType=="BOX"' >/dev/null || fail "settings"
@@ -663,10 +673,10 @@ expect 403 "$(req GET "/api/v1/contacts/CLIENT_CONTACT/$CONTACT2_ID" '' "$T4")" 
 expect 403 "$(req GET "/api/v1/status/history/CLIENT/$CLIENT_ID" '' "$T4")" >/dev/null
 expect 403 "$(req GET "/api/v1/status/history/PORTAL_USER/$PU_ID" '' "$T4")" >/dev/null
 expect 403 "$(req GET "/api/v1/custom-fields/values/CLIENT/$CLIENT_ID" '' "$T4")" >/dev/null
-expect 200 "$(req PUT /api/v1/modules/CLIENT_PORTAL '{"isEnabled":false}')" >/dev/null
+expect 200 "$(mreq PUT /api/v1/modules/CLIENT_PORTAL '{"isEnabled":false}')" >/dev/null
 expect 403 "$(req GET "/api/v1/clients/$CLIENT_PID/portal-users")" | jq -e '.code=="module_disabled"' >/dev/null || fail "módulo apagado"
 expect 400 "$(anon POST /api/v1/portal-users/accept-invite "{\"email\":\"portal2$TS@lasmarias.pr\",\"token\":\"$TOKEN_INV_P2\",\"password\":\"otra-contrasena-larga-2\"}")" >/dev/null   # módulo apagado
-expect 200 "$(req PUT /api/v1/modules/CLIENT_PORTAL '{"isEnabled":true}')" >/dev/null
+expect 200 "$(mreq PUT /api/v1/modules/CLIENT_PORTAL '{"isEnabled":true}')" >/dev/null
 expect 204 "$(req POST "/api/v1/clients/$CLIENT_PID/portal-users/$PU2_ID/remove")" >/dev/null   # baja de una invitación nunca aceptada
 expect 200 "$(req GET "/api/v1/clients/$CLIENT_PID/portal-users")" | jq -e --argjson i "$PU2_ID" '.[] | select(.id==$i) | .status=="DISABLED"' >/dev/null || fail "portal2 DISABLED"
 expect 400 "$(anon POST /api/v1/portal-users/accept-invite "{\"email\":\"portal2$TS@lasmarias.pr\",\"token\":\"$TOKEN_INV_P2\",\"password\":\"otra-contrasena-larga-2\"}")" >/dev/null   # cuenta inactiva
@@ -1629,9 +1639,9 @@ expect 404 "$(req GET "/api/v1/locations/import/$B_PID")" >/dev/null
 expect 404 "$(req GET "/api/v1/orders/import/$BC")" >/dev/null
 expect 404 "$(req POST /api/v1/locations/import/validate "$(cbody "$CSVC" "$TPL_PID")")" >/dev/null   # plantilla de órdenes en la ruta de consignatarios
 # Módulo CATALOG apagado → 403 module_disabled; se vuelve a encender
-expect 200 "$(req PUT /api/v1/modules/CATALOG '{"isEnabled":false}')" >/dev/null
+expect 200 "$(mreq PUT /api/v1/modules/CATALOG '{"isEnabled":false}')" >/dev/null
 expect 403 "$(req POST /api/v1/locations/import/validate "$(cbody "$CSVC")")" | jq -e '.code=="module_disabled"' >/dev/null || fail "importar consignatarios con CATALOG apagado"
-expect 200 "$(req PUT /api/v1/modules/CATALOG '{"isEnabled":true}')" >/dev/null
+expect 200 "$(mreq PUT /api/v1/modules/CATALOG '{"isEnabled":true}')" >/dev/null
 ok "plantillas por tipo (kind cruzado 400/404, defaults tipados, reglas de columnas, 409 por nombre, baja/reactivación), 18 campos, F-B2 (inspect-file, «No usar», columnas unidas, cliente por defecto, contacto, ZIP 00901), 415, validar JSON y multipart (dueño por fila o del lote, cliente de otro lote, de baja o inexistente, duplicados en el archivo y en el directorio, aviso D8), confirmar (400 por fila elegida, 3 creados con teléfono, ventana y minutos), reconfirmar 409, descartar 200/409/422, sin filas válidas 400, carreras (mismo lote, confirmar/descartar, mismo código en dos lotes), 5.000 filas, RBAC/tenant/módulo"
 
 # ============================================================================================================
@@ -2260,13 +2270,13 @@ expect 403 "$(req POST "/api/v1/orders/$SP4_PID/driver" "{\"driverPublicId\":\"$
 expect 404 "$(req POST "/api/v1/orders/$SP4_PID/driver" "{\"driverPublicId\":\"$DT3_PID\"}")" | jq -e '.title=="Chofer no encontrado."' >/dev/null || fail "chofer de otro tenant"
 expect 404 "$(req POST "/api/v1/orders/$SP4_PID/driver" "{\"driverPublicId\":\"$DT3_PID\"}" "$T3")" >/dev/null   # orden de otro tenant
 RE=$(expect 200 "$(req POST /api/v1/auth/reauth "{\"password\":\"$PASS\"}")"); TOKEN=$(echo "$RE" | jq -r .accessToken)
-expect 200 "$(req PUT /api/v1/modules/CATALOG '{"isEnabled":false}')" >/dev/null
+expect 200 "$(mreq PUT /api/v1/modules/CATALOG '{"isEnabled":false}')" >/dev/null
 expect 403 "$(req POST "/api/v1/orders/$SP4_PID/driver" "{\"driverPublicId\":\"$DR3_PID\"}")" | jq -e '.code=="module_disabled"' >/dev/null || fail "asignar chofer con CATALOG apagado"
 expect 403 "$(req GET /api/v1/vehicles)" | jq -e '.code=="module_disabled"' >/dev/null || fail "flota con CATALOG apagado"
 for P in /api/v1/driver-pay-policy "/api/v1/drivers/$DR1_PID/trips" /api/v1/maintenance-schedules /api/v1/fuel-logs /api/v1/dispatch-zones; do
   expect 403 "$(req GET "$P")" | jq -e '.code=="module_disabled"' >/dev/null || fail "$P con CATALOG apagado"
 done
-expect 200 "$(req PUT /api/v1/modules/CATALOG '{"isEnabled":true}')" >/dev/null
+expect 200 "$(mreq PUT /api/v1/modules/CATALOG '{"isEnabled":true}')" >/dev/null
 # Hallazgo de revisión: en un lateral (o después de IN_TRANSIT) no se asigna ni reasigna; desde DRAFT se confirma y avanza
 expect 200 "$(req POST "/api/v1/orders/$SP4_PID/status" '{"toCode":"ON_HOLD","comment":"smoke"}')" | jq -e '.status=="ON_HOLD"' >/dev/null || fail "entrega especial en ON_HOLD"
 expect 422 "$(req POST "/api/v1/orders/$SP4_PID/driver" "{\"driverPublicId\":\"$DR3_PID\"}")" | jq -e '.title=="La entrega especial ya llegó a destino o terminó; no se puede asignar ni reasignar el chofer."' >/dev/null || fail "asignar chofer fuera del pipeline"
@@ -2890,12 +2900,12 @@ expect 200 "$(req POST "/api/v1/trips/$TRP/optimize" '{}' "$T2")" >/dev/null
 expect 200 "$(dispatch "$TRP" "$T2")" | jq -e '.statusCode=="DISPATCHED"' >/dev/null || fail "el Despachador despacha"
 expect 200 "$(req POST "/api/v1/trips/$TRP/start" '{}' "$T2")" | jq -e '.statusCode=="IN_PROGRESS"' >/dev/null || fail "el Despachador registra la salida"
 # Con CATALOG apagado solo se capturan las respuestas; el módulo se vuelve a encender ANTES de verificarlas.
-expect 200 "$(req PUT /api/v1/modules/CATALOG '{"isEnabled":false}')" >/dev/null
+expect 200 "$(mreq PUT /api/v1/modules/CATALOG '{"isEnabled":false}')" >/dev/null
 TMD=$(tpost "{\"driverPublicId\":\"$D2\"}"); TNC=$(tpost "{\"dispatchZoneId\":$Z1}")
 # Las guardas de CATALOG van antes de bloquear o escribir: TRP (en curso) no cambia de estado.
 TMDISP=$(dispatch "$TRP"); TMBAT=$(req POST /api/v1/trips/dispatch "{\"tripPublicIds\":[\"$TRP\"]}")
 TMREA=$(reassign "[$Z1]" "$D2"); TMPD=$(req PATCH "/api/v1/trips/$TRP" "{\"driverPublicId\":\"$D2\"}"); TMPV=$(req PATCH "/api/v1/trips/$TRP" "{\"vehiclePublicId\":\"$V2\"}")
-expect 200 "$(req PUT /api/v1/modules/CATALOG '{"isEnabled":true}')" >/dev/null
+expect 200 "$(mreq PUT /api/v1/modules/CATALOG '{"isEnabled":true}')" >/dev/null
 for R in "$TMD" "$TMDISP" "$TMBAT" "$TMREA" "$TMPD" "$TMPV"; do
   expect 403 "$R" | jq -e '.code=="module_disabled"' >/dev/null || fail "acción con chofer/vehículo y CATALOG apagado: $R"
 done
@@ -3630,7 +3640,7 @@ step "cruce de muelle (Lote 6, módulo CROSSDOCK): 403 apagado, citas solapadas 
 expect 403 "$(req GET /api/v1/cross-dock-plans)" | jq -e '.code=="module_disabled"' >/dev/null || fail "CROSSDOCK apagado"
 expect 403 "$(req GET /api/v1/dock-appointments)" | jq -e '.code=="module_disabled"' >/dev/null || fail "citas con CROSSDOCK apagado"
 RE=$(expect 200 "$(req POST /api/v1/auth/reauth "{\"password\":\"$PASS\"}")"); TOKEN=$(echo "$RE" | jq -r .accessToken)
-expect 200 "$(req PUT /api/v1/modules/CROSSDOCK '{"isEnabled":true}')" >/dev/null
+expect 200 "$(mreq PUT /api/v1/modules/CROSSDOCK '{"isEnabled":true}')" >/dev/null
 ST=$(date -u -d "tomorrow 09:00" +%FT%T); EN=$(date -u -d "tomorrow 10:00" +%FT%T); ST2=$(date -u -d "tomorrow 09:30" +%FT%T)
 TMP6=$(mktemp -d)
 req POST /api/v1/dock-appointments "{\"warehousePublicId\":\"$W6P\",\"dockId\":$DK,\"direction\":\"INBOUND\",\"scheduledStartUtc\":\"${ST}Z\",\"scheduledEndUtc\":\"${EN}Z\"}" > "$TMP6/1" &
@@ -3695,17 +3705,17 @@ XT=$(echo "$AL" | jq -r '.allocations[0].taskId'); [[ "$XT" =~ ^[0-9]+$ ]] || fa
 expect 200 "$(req GET "/api/v1/products?onlyAvailable=true&warehousePublicId=$W6P&search=PX$TS")" | jq -e '.total==1 and .items[0].qtyAvailable==1' >/dev/null || fail "onlyAvailable con disponible 1"
 # CROSSDOCK no depende de WMS_LOTSERIAL en el catálogo: con WMS apagado, mover (escribe el ledger) → 403 module_disabled.
 ALID=$(echo "$AL" | jq -r '.allocations[0].id')
-expect 200 "$(req PUT /api/v1/modules/WMS_LOTSERIAL '{"isEnabled":false}')" >/dev/null
+expect 200 "$(mreq PUT /api/v1/modules/WMS_LOTSERIAL '{"isEnabled":false}')" >/dev/null
 M4=$(req POST "/api/v1/cross-dock-plans/$PLAN/allocations/$ALID/move" '{}'); M5=$(req DELETE "/api/v1/cross-dock-plans/$PLAN/allocations/$ALID")
-expect 200 "$(req PUT /api/v1/modules/WMS_LOTSERIAL '{"isEnabled":true}')" >/dev/null
+expect 200 "$(mreq PUT /api/v1/modules/WMS_LOTSERIAL '{"isEnabled":true}')" >/dev/null
 expect 403 "$M4" | jq -e '.code=="module_disabled"' >/dev/null || fail "mover el cruce con WMS_LOTSERIAL apagado"
 expect 403 "$M5" | jq -e '.code=="module_disabled"' >/dev/null || fail "cancelar la asignación con WMS_LOTSERIAL apagado"
 [[ $(reserved "$W6P" "$B_STG" "$PX") == 2 ]] || fail "el cruce se movió con WMS_LOTSERIAL apagado"
-expect 200 "$(req PUT /api/v1/modules/CROSSDOCK '{"isEnabled":false}')" >/dev/null
+expect 200 "$(mreq PUT /api/v1/modules/CROSSDOCK '{"isEnabled":false}')" >/dev/null
 expect 403 "$(req POST "/api/v1/warehouse-tasks/$XT/complete" '{}')" | jq -e '.code=="module_disabled"' >/dev/null || fail "tarea CROSSDOCK desde la cola con el módulo apagado"
 expect 403 "$(req POST "/api/v1/warehouse-tasks/$XT/start" '{}')" | jq -e '.code=="module_disabled"' >/dev/null || fail "iniciar CROSSDOCK con el módulo apagado"
 [[ $(reserved "$W6P" "$B_STG" "$PX") == 2 ]] || fail "la cola movió el cruce con el módulo apagado"
-expect 200 "$(req PUT /api/v1/modules/CROSSDOCK '{"isEnabled":true}')" >/dev/null
+expect 200 "$(mreq PUT /api/v1/modules/CROSSDOCK '{"isEnabled":true}')" >/dev/null
 expect 400 "$(req POST "/api/v1/warehouse-tasks/$XT/complete" '{"quantity":1}')" >/dev/null   # ExactQty
 expect 200 "$(req POST "/api/v1/warehouse-tasks/$XT/complete" '{}')" | jq -e '.statusCode=="DONE"' >/dev/null || fail "mover desde la cola"
 kardex "productPublicIds=$PX&types=CROSSDOCK&binIds=$B_STG" | jq -e '.total==1 and .items[0].quantity==-2' >/dev/null || fail "CROSSDOCK −2"
@@ -3724,7 +3734,7 @@ expect 200 "$(req POST "/api/v1/cross-dock-plans/$PLAN/allocations/$ASX/move" '{
 expect 200 "$(req GET "/api/v1/products/$PSX/serials?status=SHIPPED")" | jq -e --arg s "XS1$TS" '[.[] | .serialNumber]==[$s]' >/dev/null || fail "serie movida SHIPPED"
 [[ $(reserved "$W6P" "$B_STG" "$PSX") == 0 && $(onhand "$W6P" "$B_STG" "$PSX") == 1 ]] || fail "saldo de la serie tras mover"
 expect 200 "$(req POST "/api/v1/cross-dock-plans/$PLAN/complete" '{}')" | jq -e '.statusCode=="COMPLETED"' >/dev/null || fail "completar el plan"
-expect 200 "$(req PUT /api/v1/modules/CROSSDOCK '{"isEnabled":false}')" >/dev/null
+expect 200 "$(mreq PUT /api/v1/modules/CROSSDOCK '{"isEnabled":false}')" >/dev/null
 ok "agenda: reprogramar sobre otra cita 409, ARRIVED → muelle OCCUPIED, COMPLETED → FREE; candidatos del plan (abierto y confirmado); onlyAvailable de productos y saldos descuenta lo reservado; modo (a): asignar sobre recibo abierto (Exceeds 409), confirmar reparte FIFO (4 y 4 con faltante 2), sin PUTAWAY, 8 reservados que no se recolectan, conteo menor que lo reservado 409 sin efectos, mover desde la cola y el plan deja el staging en cero; apagado 403 module_disabled (planes y citas); con WMS_LOTSERIAL apagado mover y cancelar la asignación 403 sin efecto; citas solapadas en paralelo 200 + 409; asignar sobre recibo confirmado reserva 2; con CROSSDOCK apagado la cola responde 403 module_disabled sin mover; encendido: ExactQty 400, mover → CROSSDOCK −2 y reserva 0; serie asignada RESERVED (no se recolecta, 409) y SHIPPED al moverla; plan COMPLETED; módulo apagado de nuevo"
 
 step "RBAC, módulos, resolvers cerrados y aislamiento (Lote 6)"
@@ -3734,17 +3744,17 @@ expect 403 "$(adjust "$PN" "$W6P" "$B_PCK" 1 FOUND "$TREAD6")" >/dev/null
 expect 200 "$(collect "$W6P" "$PN" 1 "$TWH6")" >/dev/null   # el Operador recolecta (warehouse.pick)
 expect 403 "$(req GET /api/v1/inventory/reconciliation '' "$TREAD6")" >/dev/null
 expect 200 "$(req GET '/api/v1/audit/security-events?eventType=PERMISSION_DENIED&take=5')" | jq -e '.total >= 1' >/dev/null || fail "PERMISSION_DENIED"
-expect 200 "$(req PUT /api/v1/modules/WMS_LOTSERIAL '{"isEnabled":false}')" >/dev/null
-M1=$(req GET /api/v1/warehouses); expect 200 "$(req PUT /api/v1/modules/WMS_LOTSERIAL '{"isEnabled":true}')" >/dev/null
+expect 200 "$(mreq PUT /api/v1/modules/WMS_LOTSERIAL '{"isEnabled":false}')" >/dev/null
+M1=$(req GET /api/v1/warehouses); expect 200 "$(mreq PUT /api/v1/modules/WMS_LOTSERIAL '{"isEnabled":true}')" >/dev/null
 expect 403 "$M1" | jq -e '.code=="module_disabled"' >/dev/null || fail "WMS_LOTSERIAL apagado"
 PO4=$(po "[{\"productPublicId\":\"$PN\",\"qtyOrdered\":1,\"unitCost\":2.5}]"); PO4P=$(pid "$PO4")
 expect 200 "$(req POST "/api/v1/purchase-orders/$PO4P/send" '{}')" >/dev/null
 # Maestro L305 / L762: una PO SENT sin recibos confirmados no tiene faltante.
 expect 200 "$(req GET /api/v1/purchase-orders/shortages)" | jq -e --arg p "$PO4P" 'all(.[]; .publicId!=$p)' >/dev/null || fail "PO SENT sin recibos en faltantes"
 expect 200 "$(req GET "/api/v1/purchase-orders/$PO4P/shortage-lines")" | jq -e 'length==0' >/dev/null || fail "líneas de faltante de una PO sin recibos"
-expect 200 "$(req PUT /api/v1/modules/PURCHASING '{"isEnabled":false}')" >/dev/null
+expect 200 "$(mreq PUT /api/v1/modules/PURCHASING '{"isEnabled":false}')" >/dev/null
 M2=$(req POST /api/v1/receipts "{\"purchaseOrderPublicId\":\"$PO4P\",\"stagingBinId\":$B_STG}"); M3=$(req GET /api/v1/purchase-orders)
-expect 200 "$(req PUT /api/v1/modules/PURCHASING '{"isEnabled":true}')" >/dev/null
+expect 200 "$(mreq PUT /api/v1/modules/PURCHASING '{"isEnabled":true}')" >/dev/null
 expect 403 "$M2" | jq -e '.code=="module_disabled"' >/dev/null || fail "recibo contra PO con PURCHASING apagado"
 expect 403 "$M3" | jq -e '.code=="module_disabled"' >/dev/null || fail "compras con PURCHASING apagado"
 # D6: un recibo OPEN contra PO eliminado cancela su ASN; con solo un recibo OPEN la PO sigue sin faltante.
@@ -3759,7 +3769,7 @@ for P in "STOCK_BALANCE/$SB" "STOCK_BALANCE/999999" "INVENTORY_TRANSACTION/1" "R
   expect 404 "$(req PUT "/api/v1/custom-fields/values/$P" '{"values":{}}')" >/dev/null
 done
 RE3=$(expect 200 "$(req POST /api/v1/auth/reauth '{"password":"Smoke_Admin_2026!"}' "$T3")"); T3A=$(echo "$RE3" | jq -r .accessToken)
-expect 200 "$(req PUT /api/v1/modules/WMS_LOTSERIAL '{"isEnabled":true}' "$T3A")" >/dev/null
+expect 200 "$(mreq PUT /api/v1/modules/WMS_LOTSERIAL '{"isEnabled":true}' '' "$T3A")" >/dev/null
 expect 404 "$(req GET "/api/v1/warehouses/$W6P" '' "$T3A")" >/dev/null
 expect 404 "$(req GET "/api/v1/products/$PN" '' "$T3A")" >/dev/null
 expect 404 "$(req GET "/api/v1/receipts/$R6P" '' "$T3A")" >/dev/null
@@ -4326,12 +4336,12 @@ RW6=$(expect 200 "$(blind "$W6P" "$B_STG" "$PZ" 1 "$DTW6")")
 [[ $(AUW6) -gt $AUW6A ]] || fail "el recibo creado con la sesión de aparato de Operador 6 no quedó a su nombre en AuditLog"
 expect 204 "$(req DELETE "/api/v1/receipts/$(echo "$RW6" | jq -r .header.publicId)")" >/dev/null
 # Con el módulo WMS_LOTSERIAL apagado la sesión del aparato no se renueva (401 y queda revocada), igual que device/login.
-expect 200 "$(req PUT /api/v1/modules/WMS_LOTSERIAL '{"isEnabled":false}')" >/dev/null
+expect 200 "$(mreq PUT /api/v1/modules/WMS_LOTSERIAL '{"isEnabled":false}')" >/dev/null
 R_MOD8=$(anon POST /api/v1/auth/refresh "{\"refreshToken\":\"$(echo "$DW6" | jq -r .refreshToken)\"}")
 R_MODL=$(DLOGIN 4826 "$UWH6")
 R_MODU=$(anon POST /api/v1/auth/device/users "{\"devicePublicId\":\"$DEVP\",\"deviceSecret\":\"$SECRET\"}")
 R_MODH=$(HB)
-expect 200 "$(req PUT /api/v1/modules/WMS_LOTSERIAL '{"isEnabled":true}')" >/dev/null
+expect 200 "$(mreq PUT /api/v1/modules/WMS_LOTSERIAL '{"isEnabled":true}')" >/dev/null
 expect 401 "$R_MOD8" | jq -e --arg m "$BADDEV" "$HASM" >/dev/null || fail "refresh de una sesión de aparato con WMS_LOTSERIAL apagado → 401"
 # Con el módulo apagado tampoco se entra por aparato: device/login y device/users 401; el heartbeat responde isActive=false sin error.
 expect 401 "$R_MODL" | jq -e --arg m "$BADDEV" "$HASM" >/dev/null || fail "device/login con WMS_LOTSERIAL apagado → 401"
@@ -4437,10 +4447,10 @@ replayed && fail "la primera llamada no debe marcarse como repetida"
 replayed || fail "la repetición no trae Idempotent-Replayed: true"
 # La repetición vuelve a aplicar [RequireModule]: con WMS_LOTSERIAL apagado la misma clave responde 403 (sin repetir).
 TOKEN=$(expect 200 "$(req POST /api/v1/auth/reauth "{\"password\":\"$PASS\"}")" | jq -r .accessToken)
-expect 200 "$(req PUT /api/v1/modules/WMS_LOTSERIAL '{"isEnabled":false}')" >/dev/null || fail "apagar WMS_LOTSERIAL"
+expect 200 "$(mreq PUT /api/v1/modules/WMS_LOTSERIAL '{"isEnabled":false}')" >/dev/null || fail "apagar WMS_LOTSERIAL"
 expect 403 "$(idem POST /api/v1/receipts "$KEY8" "$BODY8")" | jq -e '.code=="module_disabled"' >/dev/null || fail "repetición con el módulo apagado → 403 module_disabled"
 replayed && fail "la repetición con el módulo apagado no debe traer Idempotent-Replayed"
-expect 200 "$(req PUT /api/v1/modules/WMS_LOTSERIAL '{"isEnabled":true}')" >/dev/null || fail "volver a encender WMS_LOTSERIAL"
+expect 200 "$(mreq PUT /api/v1/modules/WMS_LOTSERIAL '{"isEnabled":true}')" >/dev/null || fail "volver a encender WMS_LOTSERIAL"
 [[ $(expect 200 "$(idem POST /api/v1/receipts "$KEY8" "$BODY8")" | jq -r .header.number) == "$N8" ]] || fail "con el módulo encendido de nuevo la repetición no devolvió el mismo recibo"
 replayed || fail "la repetición tras reencender el módulo no trae Idempotent-Replayed: true"
 # La repetición vuelve a aplicar [RequireAal2]: la misma clave con un token del mismo usuario sin AAL2 (login con
@@ -4448,7 +4458,7 @@ replayed || fail "la repetición tras reencender el módulo no trae Idempotent-R
 TNOAAL=$(login "$EMAIL" "$PASS")
 TOKEN=$(expect 200 "$(req POST /api/v1/auth/reauth "{\"password\":\"$PASS\"}")" | jq -r .accessToken)
 KA8="smoke-$TS-aal2"; BA8='{"isEnabled":true}'
-expect 200 "$(idem PUT /api/v1/modules/WMS_LOTSERIAL "$KA8" "$BA8" "$TOKEN")" >/dev/null || fail "PUT de módulo con Idempotency-Key → 200"
+expect 200 "$(idem PUT /api/v1/modules/WMS_LOTSERIAL "$KA8" "$BA8" "$(ptokfor "$TOKEN")")" >/dev/null || fail "PUT de módulo con Idempotency-Key → 200"
 expect 403 "$(idem PUT /api/v1/modules/WMS_LOTSERIAL "$KA8" "$BA8" "$TNOAAL")" | jq -e '.code=="aal2_required"' >/dev/null || fail "repetición sin AAL2 → 403 aal2_required"
 replayed && fail "la repetición sin AAL2 no debe traer Idempotent-Replayed"
 expect 409 "$(idem POST /api/v1/receipts "$KEY8" "$(echo "$BODY8" | jq -c '.lines[0].receivedQty=3')")" | jq -e --arg m "La clave de idempotencia ya se usó con otro contenido." "$HASM" >/dev/null || fail "misma clave con otro cuerpo → 409"
@@ -5195,7 +5205,7 @@ step "rentas (Lote 27, Rentas R1): alta con equipos por serie, programar y despa
 # Usa el producto P26 convertido a serie en el paso anterior (S1 y S2 en P-26A, S3 en P-26B). El módulo Rentas depende ahora de
 # WMS_LOTSERIAL (apagarlo en pasos anteriores lo apagó en cascada): se vuelve a encender (exige AAL2).
 TOKEN=$(expect 200 "$(req POST /api/v1/auth/reauth "{\"password\":\"$PASS\"}")" | jq -r .accessToken)
-expect 200 "$(req PUT /api/v1/modules/RENTAL_EQUIPMENT '{"isEnabled":true}')" | jq -e '.[] | select(.key=="RENTAL_EQUIPMENT") | .isEnabled and .name=="Rentas" and .dependsOn=="WMS_LOTSERIAL" and .category=="Almacen"' >/dev/null || fail "módulo Rentas encendido, con su nombre y dependencia"
+expect 200 "$(mreq PUT /api/v1/modules/RENTAL_EQUIPMENT '{"isEnabled":true}')" | jq -e '.[] | select(.key=="RENTAL_EQUIPMENT") | .isEnabled and .name=="Rentas" and .dependsOn=="WMS_LOTSERIAL" and .category=="Almacen"' >/dev/null || fail "módulo Rentas encendido, con su nombre y dependencia"
 expect 200 "$(req GET /api/v1/status/RentalStatus)" | jq -e '([.[] | select(.stageKind=="PIPELINE") | .code])==["DRAFT","SCHEDULED","ON_RENT"] and any(.[]; .code=="CANCELLED" and .stageKind=="TERMINAL")' >/dev/null || fail "RentalStatus sembrado"
 expect 200 "$(req GET /api/v1/status/SerialStatus)" | jq -e 'any(.[]; .code=="ON_RENT" and .stageKind=="LATERAL") and any(.[]; .code=="IN_PROCESS" and .stageKind=="LATERAL")' >/dev/null || fail "SerialStatus ON_RENT/IN_PROCESS laterales"
 expect 200 "$(req GET /api/v1/catalogs/RentalBillingFrequency)" | jq -e 'any(.[]; .code=="DAILY") and any(.[]; .code=="ONE_TIME" and .label=="Fija")' >/dev/null || fail "frecuencias de cobro (DAILY y 'Fija')"
@@ -5336,8 +5346,8 @@ expect 200 "$(req GET "/api/v1/products/$P26")" | jq -e '.product.qtyOnHand==2 a
 kardex "refEntity=RENTAL_PROCESS&refId=$PROC2" | jq -e --arg r "Proceso #$PROC2" '.total==1 and (.items[0] | .typeCode=="ADJUSTMENT" and .signedQuantity==-1 and .reasonCode=="DAMAGE" and .refLabel==$r)' >/dev/null || fail "Kárdex de la baja (ADJUSTMENT − DAMAGE)"
 # Smoke 7: otra compañía (con Rentas encendido) recibe 404 en todo lo de esta renta.
 TB28=$(expect 200 "$(req POST /api/v1/auth/reauth '{"password":"Smoke_Admin_2026!"}' "$(login "admin$TS@smoke.local" "Smoke_Admin_2026!")")" | jq -r .accessToken)
-expect 200 "$(req PUT /api/v1/modules/WMS_LOTSERIAL '{"isEnabled":true}' "$TB28")" >/dev/null
-expect 200 "$(req PUT /api/v1/modules/RENTAL_EQUIPMENT '{"isEnabled":true}' "$TB28")" >/dev/null
+expect 200 "$(mreq PUT /api/v1/modules/WMS_LOTSERIAL '{"isEnabled":true}' '' "$TB28")" >/dev/null
+expect 200 "$(mreq PUT /api/v1/modules/RENTAL_EQUIPMENT '{"isEnabled":true}' '' "$TB28")" >/dev/null
 expect 404 "$(req GET "/api/v1/rentals/$RP" '' "$TB28")" >/dev/null
 expect 404 "$(req GET "/api/v1/rental-returns/$DRNP" '' "$TB28")" >/dev/null
 expect 404 "$(req POST "/api/v1/rentals/$RSP/returns" "$(jq -cn --arg s "$S2" '{reason:"END_OF_CONTRACT",lines:[{serialNumber:$s}]}')" "$TB28")" >/dev/null
@@ -5382,17 +5392,17 @@ expect 200 "$(req GET "/api/v1/analytics/charts/$CH29/data")" | jq -e '([.points
 IND29=$(expect 200 "$(req GET /api/v1/analytics/indicators)" | jq -r '[.[] | select(.name=="Rentas vencidas")][0].id')
 # Otra compañía (con Rentas encendido) no ve nada de esta: sin aviso y sin filas en la fuente.
 TB29=$(expect 200 "$(req POST /api/v1/auth/reauth '{"password":"Smoke_Admin_2026!"}' "$(login "admin$TS@smoke.local" "Smoke_Admin_2026!")")" | jq -r .accessToken)
-expect 200 "$(req PUT /api/v1/modules/ANALYTICS '{"isEnabled":true}' "$TB29")" >/dev/null
+expect 200 "$(mreq PUT /api/v1/modules/ANALYTICS '{"isEnabled":true}' '' "$TB29")" >/dev/null
 expect 200 "$(req GET /api/v1/analytics/attention '' "$TB29")" | jq -e 'all(.groups[]; .code!="RENTAL_DUE")' >/dev/null || fail "otra compañía ve el aviso de rentas ajeno"
 expect 200 "$(req POST '/api/v1/analytics/reports/RENTAL/preview?dateRangeMode=ALL' '{"name":"x","columns":["Number"]}' "$TB29")" | jq -e '.total==0' >/dev/null || fail "otra compañía ve rentas ajenas en la fuente RENTAL"
 # Módulo Rentas apagado: ni fuentes, ni indicadores, ni aviso (404 al leer el indicador); al encenderlo vuelve todo.
 TOKEN=$(expect 200 "$(req POST /api/v1/auth/reauth "{\"password\":\"$PASS\"}")" | jq -r .accessToken)
-expect 200 "$(req PUT /api/v1/modules/RENTAL_EQUIPMENT '{"isEnabled":false}')" >/dev/null
+expect 200 "$(mreq PUT /api/v1/modules/RENTAL_EQUIPMENT '{"isEnabled":false}')" >/dev/null
 expect 200 "$(req GET /api/v1/analytics/data-sources)" | jq -e 'all(.[]; .key!="RENTAL" and .key!="RENTAL_RETURN" and .key!="RENTAL_PROCESS")' >/dev/null || fail "fuentes de rentas con el módulo apagado"
 expect 200 "$(req GET /api/v1/analytics/indicators)" | jq -e 'all(.[]; .dataSource!="RENTAL")' >/dev/null || fail "indicadores de rentas con el módulo apagado"
 expect 404 "$(req GET "/api/v1/analytics/indicators/$IND29/value")" >/dev/null
 expect 200 "$(req GET /api/v1/analytics/attention)" | jq -e 'all(.groups[]; .code!="RENTAL_DUE")' >/dev/null || fail "aviso de rentas con el módulo apagado"
-expect 200 "$(req PUT /api/v1/modules/RENTAL_EQUIPMENT '{"isEnabled":true}')" >/dev/null
+expect 200 "$(mreq PUT /api/v1/modules/RENTAL_EQUIPMENT '{"isEnabled":true}')" >/dev/null
 expect 200 "$(req GET "/api/v1/analytics/indicators/$IND29/value")" | jq -e '.value==1' >/dev/null || fail "indicador de rentas al volver a encender el módulo"
 ok "fuentes RENTAL/RENTAL_RETURN/RENTAL_PROCESS con su campo de fecha; una renta vencida (Programada) y una que vence en 3 días (En renta): 'Necesita tu atención' con el grupo RENTAL_DUE (2, 'Ver todos' con dueWithinDays=7&overdue=true) y la vencida en 'danger'; Solo lectura sin rental.view no lo ve; indicadores 'Rentas por vencer (7 días)' 1 y 'Rentas vencidas' 1; vistas 'Rentas vencidas', 'Rentas por vencer (7 días)', 'Equipos en renta por cliente' (1 cliente, 1 equipo), 'Devoluciones de renta por motivo' (3) y 'Equipos en proceso' (0); gráfico por motivo (3); otra compañía sin aviso ni filas; módulo apagado: sin fuentes, sin indicadores (404) y sin aviso, y al encenderlo vuelve"
 

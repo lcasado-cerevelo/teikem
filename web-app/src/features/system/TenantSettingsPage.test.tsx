@@ -11,6 +11,7 @@ import { AccessProvider } from '../../kernel/access'
 import { FormatProvider, getFormatSettings, resetFormatSettings } from '../../kernel/format'
 import { setLang } from '../../kernel/i18n/i18n'
 import { TenantBrand } from '../../kernel/ui'
+import { SessionContext, type Session } from '../../app/session'
 import TenantSettingsPage from './TenantSettingsPage'
 
 type Req = { method: string; url: URL; body: unknown }
@@ -181,10 +182,11 @@ function Where() {
   return <span data-testid="where">{loc.pathname + loc.search}</span>
 }
 
-function wrap(path = '/system/settings', permissions = ALL, modules = ['SYSTEM', 'LTL_GROUND', 'WMS_LOTSERIAL']) {
+function wrap(path = '/system/settings', permissions = ALL, modules = ['SYSTEM', 'LTL_GROUND', 'WMS_LOTSERIAL'], platformAdmin = false) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const ui: ReactNode = (
     <QueryClientProvider client={client}>
+      <SessionContext.Provider value={{ me: { isPlatformAdmin: platformAdmin } } as unknown as Session}>
       <AccessProvider permissions={permissions} modules={modules}>
         <FormatProvider enabled>
           <TenantBrand enabled />
@@ -197,6 +199,7 @@ function wrap(path = '/system/settings', permissions = ALL, modules = ['SYSTEM',
           </MemoryRouter>
         </FormatProvider>
       </AccessProvider>
+      </SessionContext.Provider>
     </QueryClientProvider>
   )
   return render(ui)
@@ -368,7 +371,7 @@ describe('Ajustes de la compañía', () => {
 
   it('Módulos: núcleo bloqueado, dependencia apagada y apagar en cascada con confirmación', async () => {
     const user = userEvent.setup()
-    wrap('/system/settings?tab=modules')
+    wrap('/system/settings?tab=modules', ALL, ['SYSTEM', 'LTL_GROUND', 'WMS_LOTSERIAL'], true)
     expect(await screen.findByText('Núcleo — siempre activo')).toBeInTheDocument()
     expect(screen.getByRole('switch', { name: 'Encender o apagar Cross-dock' })).toBeDisabled()
     expect(screen.getAllByText(/Requiere:/).length).toBeGreaterThan(0)
@@ -378,6 +381,12 @@ describe('Ajustes de la compañía', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Apagar' }))
     await waitFor(() => expect(mock.requests.some((r) => r.method === 'PUT' && r.url.pathname === '/api/v1/modules/LTL_GROUND')).toBe(true))
     expect(mock.requests.find((r) => r.url.pathname === '/api/v1/modules/LTL_GROUND')?.body).toEqual({ isEnabled: false })
+  })
+
+  it('Módulos: el administrador de la compañía (no de la plataforma) lo ve en solo lectura, sin interruptores', async () => {
+    wrap('/system/settings?tab=modules')
+    expect(await screen.findByText('Núcleo — siempre activo')).toBeInTheDocument()
+    expect(screen.queryAllByRole('switch')).toHaveLength(0)
   })
 
   it('Operación: valores por defecto, matriz de acciones y recepción por almacén (aviso sin posición y Abrir almacén)', async () => {
@@ -434,7 +443,7 @@ describe('Ajustes de la compañía', () => {
   it('Operación → despacho manual: motivo por default (guardar, quitar con "" y error del servidor tal cual)', async () => {
     const user = userEvent.setup()
     wrap('/system/settings?tab=ops')
-    const panel = (await screen.findByRole('heading', { name: 'Despacho manual' })).closest('.panel') as HTMLElement
+    const panel = (await screen.findByRole('heading', { name: 'Valores por defecto' })).closest('.panel') as HTMLElement
     const select = within(panel).getByLabelText('Motivo por default del despacho manual')
     expect(select).toHaveValue('')
     expect(within(panel).getByText('Llega preseleccionado al despachar; el motivo sigue siendo obligatorio.')).toBeInTheDocument()
@@ -444,14 +453,14 @@ describe('Ajustes de la compañía', () => {
     await user.selectOptions(select, 'SALE')
     await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
     await waitFor(() => expect(put()).toHaveLength(1))
-    expect(put()[0].body).toEqual({ defaultManualIssueReason: 'SALE' })
+    expect(put()[0].body).toMatchObject({ defaultManualIssueReason: 'SALE' })
     await waitFor(() => expect(within(panel).getByLabelText('Motivo por default del despacho manual')).toHaveValue('SALE'))
 
     // quitar: '' = sin default
     await user.selectOptions(within(panel).getByLabelText('Motivo por default del despacho manual'), '')
     await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
     await waitFor(() => expect(put()).toHaveLength(2))
-    expect(put()[1].body).toEqual({ defaultManualIssueReason: '' })
+    expect(put()[1].body).toMatchObject({ defaultManualIssueReason: '' })
 
     // error del servidor: título y error por campo, sin guardar
     mock.settingsFail = { status: 400, title: 'El motivo REGALO no existe o está inactivo.', field: 'defaultManualIssueReason' }
@@ -462,7 +471,7 @@ describe('Ajustes de la compañía', () => {
 
   it('Operación → despacho manual: sin admin.tenant el selector es de solo lectura', async () => {
     wrap('/system/settings?tab=ops', ['inventory.view'])
-    const panel = (await screen.findByRole('heading', { name: 'Despacho manual' })).closest('.panel') as HTMLElement
+    const panel = (await screen.findByRole('heading', { name: 'Valores por defecto' })).closest('.panel') as HTMLElement
     expect(within(panel).getByLabelText('Motivo por default del despacho manual')).toBeDisabled()
     expect(within(panel).queryByRole('button', { name: 'Guardar cambios' })).toBeNull()
   })
@@ -470,7 +479,7 @@ describe('Ajustes de la compañía', () => {
   it('Operación → productos nuevos: categoría por defecto (solo activas, guardar, quitar con 0 y error del servidor tal cual)', async () => {
     const user = userEvent.setup()
     wrap('/system/settings?tab=ops')
-    const panel = (await screen.findByRole('heading', { name: 'Productos nuevos: categoría por defecto' })).closest('.panel') as HTMLElement
+    const panel = (await screen.findByRole('heading', { name: 'Valores por defecto' })).closest('.panel') as HTMLElement
     const select = within(panel).getByLabelText('Categoría por defecto')
     expect(select).toHaveValue('')
     expect(within(panel).getByRole('option', { name: 'Sin categoría por defecto' })).toBeInTheDocument()
@@ -481,14 +490,14 @@ describe('Ajustes de la compañía', () => {
     await user.selectOptions(select, 'AxisCare')
     await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
     await waitFor(() => expect(put()).toHaveLength(1))
-    expect(put()[0].body).toEqual({ defaultProductCategoryId: 3 })
+    expect(put()[0].body).toMatchObject({ defaultProductCategoryId: 3 })
     await waitFor(() => expect(within(panel).getByLabelText('Categoría por defecto')).toHaveValue('3'))
 
     // quitar: 0 = sin default (el API lo entiende así)
     await user.selectOptions(within(panel).getByLabelText('Categoría por defecto'), '')
     await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
     await waitFor(() => expect(put()).toHaveLength(2))
-    expect(put()[1].body).toEqual({ defaultProductCategoryId: 0 })
+    expect(put()[1].body).toMatchObject({ defaultProductCategoryId: 0 })
 
     // error del servidor: el mensaje exacto bajo el selector, sin guardar
     mock.settingsFail = { status: 400, title: 'La categoría por defecto no existe o está inactiva.', field: 'defaultProductCategoryId' }
@@ -612,7 +621,7 @@ describe('Ajustes de la compañía', () => {
 
   it('Operación → productos nuevos: sin admin.tenant el selector es de solo lectura', async () => {
     wrap('/system/settings?tab=ops', ['inventory.view'])
-    const panel = (await screen.findByRole('heading', { name: 'Productos nuevos: categoría por defecto' })).closest('.panel') as HTMLElement
+    const panel = (await screen.findByRole('heading', { name: 'Valores por defecto' })).closest('.panel') as HTMLElement
     expect(within(panel).getByLabelText('Categoría por defecto')).toBeDisabled()
     expect(within(panel).queryByRole('button', { name: 'Guardar cambios' })).toBeNull()
   })
@@ -620,7 +629,7 @@ describe('Ajustes de la compañía', () => {
   it('Operación → despacho manual: motivo por default (guardar, quitar con "" y error del servidor tal cual)', async () => {
     const user = userEvent.setup()
     wrap('/system/settings?tab=ops')
-    const panel = (await screen.findByRole('heading', { name: 'Despacho manual' })).closest('.panel') as HTMLElement
+    const panel = (await screen.findByRole('heading', { name: 'Valores por defecto' })).closest('.panel') as HTMLElement
     const select = within(panel).getByLabelText('Motivo por default del despacho manual')
     expect(select).toHaveValue('')
     expect(within(panel).getByText('Llega preseleccionado al despachar; el motivo sigue siendo obligatorio.')).toBeInTheDocument()
@@ -630,14 +639,14 @@ describe('Ajustes de la compañía', () => {
     await user.selectOptions(select, 'SALE')
     await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
     await waitFor(() => expect(put()).toHaveLength(1))
-    expect(put()[0].body).toEqual({ defaultManualIssueReason: 'SALE' })
+    expect(put()[0].body).toMatchObject({ defaultManualIssueReason: 'SALE' })
     await waitFor(() => expect(within(panel).getByLabelText('Motivo por default del despacho manual')).toHaveValue('SALE'))
 
     // quitar: '' = sin default
     await user.selectOptions(within(panel).getByLabelText('Motivo por default del despacho manual'), '')
     await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
     await waitFor(() => expect(put()).toHaveLength(2))
-    expect(put()[1].body).toEqual({ defaultManualIssueReason: '' })
+    expect(put()[1].body).toMatchObject({ defaultManualIssueReason: '' })
 
     // error del servidor: título y error por campo, sin guardar
     mock.settingsFail = { status: 400, title: 'El motivo REGALO no existe o está inactivo.', field: 'defaultManualIssueReason' }
@@ -648,7 +657,7 @@ describe('Ajustes de la compañía', () => {
 
   it('Operación → despacho manual: sin admin.tenant el selector es de solo lectura', async () => {
     wrap('/system/settings?tab=ops', ['inventory.view'])
-    const panel = (await screen.findByRole('heading', { name: 'Despacho manual' })).closest('.panel') as HTMLElement
+    const panel = (await screen.findByRole('heading', { name: 'Valores por defecto' })).closest('.panel') as HTMLElement
     expect(within(panel).getByLabelText('Motivo por default del despacho manual')).toBeDisabled()
     expect(within(panel).queryByRole('button', { name: 'Guardar cambios' })).toBeNull()
   })

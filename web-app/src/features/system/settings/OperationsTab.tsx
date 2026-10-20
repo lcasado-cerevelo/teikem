@@ -42,11 +42,15 @@ interface DefaultsValues {
   defaultServiceType: string
   defaultPackageType: string
   maxStopsPerRouteDefault: number | null
+  defaultManualIssueReason: string
+  defaultProductCategoryId: string
 }
 
-function DefaultsPanel({ settings, canEdit }: { settings: TenantSettingsDto; canEdit: boolean }) {
+function DefaultsPanel({ settings, canEdit, wms }: { settings: TenantSettingsDto; canEdit: boolean; wms: boolean }) {
   const t = useT()
   const save = useSaveTenantSettings()
+  const { data: reasons = [] } = useLookups('ManualIssueReason')
+  const { data: categories = [] } = useProductCategories()
   const { data: services = [] } = useLookups('ServiceType', { includeDisabled: true })
   const { data: packages = [] } = useLookups('PackageType', { includeDisabled: true })
   const form = useForm<DefaultsValues>({
@@ -54,9 +58,12 @@ function DefaultsPanel({ settings, canEdit }: { settings: TenantSettingsDto; can
       defaultServiceType: settings.defaultServiceType ?? '',
       defaultPackageType: settings.defaultPackageType ?? '',
       maxStopsPerRouteDefault: settings.maxStopsPerRouteDefault ?? 1,
+      defaultManualIssueReason: settings.defaultManualIssueReason ?? '',
+      defaultProductCategoryId: settings.defaultProductCategoryId != null ? String(settings.defaultProductCategoryId) : '',
     },
   })
   const dirty = form.formState.isDirty
+  const categoryOptions = categories.filter((c) => c.isActive).map((c) => ({ value: String(c.id), label: c.path || c.name || '' }))
   const withCurrent = (opts: { code: string; label: string }[], current: string) =>
     (current && !opts.some((o) => o.code.toUpperCase() === current.toUpperCase()) ? [...opts, { code: current, label: current }] : opts).map((o) => ({
       value: o.code,
@@ -74,7 +81,13 @@ function DefaultsPanel({ settings, canEdit }: { settings: TenantSettingsDto; can
             return
           }
           // '' = quitar el valor por defecto (el API lo entiende así)
-          await save.mutateAsync({ defaultServiceType: v.defaultServiceType, defaultPackageType: v.defaultPackageType, maxStopsPerRouteDefault: n })
+          // los de almacén solo se mandan con el módulo; '' = quitar el motivo, 0 = quitar la categoría (el API lo entiende así)
+          await save.mutateAsync({
+            defaultServiceType: v.defaultServiceType,
+            defaultPackageType: v.defaultPackageType,
+            maxStopsPerRouteDefault: n,
+            ...(wms ? { defaultManualIssueReason: v.defaultManualIssueReason, defaultProductCategoryId: v.defaultProductCategoryId === '' ? 0 : Number(v.defaultProductCategoryId) } : {}),
+          })
           toast.success(t('system.settings.saved'))
         }}
       >
@@ -93,102 +106,16 @@ function DefaultsPanel({ settings, canEdit }: { settings: TenantSettingsDto; can
           <Field name="maxStopsPerRouteDefault" label={t('system.settings.ops.maxStopsLabel')} help={t('system.settings.ops.maxStopsHint')}>
             <NumberInput min={1} step={1} className="mono" />
           </Field>
-        </fieldset>
-        {canEdit && (
-          <div className="set-actions">
-            <button type="button" className="btn" disabled={!dirty || form.formState.isSubmitting} onClick={() => form.reset()}>
-              {t('system.settings.discard')}
-            </button>
-            <button type="submit" className="btn flow" disabled={!dirty || form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? t('system.settings.saving') : t('system.settings.save')}
-            </button>
-          </div>
-        )}
-      </Form>
-    </Panel>
-  )
-}
-
-// ------------------------------------------------------------------ despacho manual: motivo por default (2026-10-11 b)
-
-/**
- * «Motivo por default del despacho manual» (`defaultManualIssueReason`, admin.tenant): llega preseleccionado al despachar en
- * Recolección y empaque y en la app; el motivo sigue siendo obligatorio. '' = sin default. Los motivos son los activos del
- * catálogo `ManualIssueReason`; el 400 del servidor ("El motivo X no existe o está inactivo.") sale bajo el selector.
- */
-function ManualReasonPanel({ settings, canEdit }: { settings: TenantSettingsDto; canEdit: boolean }) {
-  const t = useT()
-  const save = useSaveTenantSettings()
-  const { data: reasons = [] } = useLookups('ManualIssueReason')
-  const current = settings.defaultManualIssueReason ?? ''
-  const form = useForm<{ defaultManualIssueReason: string }>({ values: { defaultManualIssueReason: current } })
-  const dirty = form.formState.isDirty
-  // un default guardado que ya no está entre los activos se sigue mostrando (con su código) para poder cambiarlo o quitarlo
-  const options = (current && !reasons.some((r) => r.code.toUpperCase() === current.toUpperCase()) ? [...reasons, { code: current, label: current }] : reasons).map((r) => ({
-    value: r.code,
-    label: r.label,
-  }))
-
-  return (
-    <Panel className="set-gap" icon={<IconGear />} title={t('system.settings.ops.manualReasonTitle')}>
-      <Form
-        form={form}
-        onSubmit={async (v) => {
-          // '' = quitar el default (el API lo entiende así)
-          await save.mutateAsync({ defaultManualIssueReason: v.defaultManualIssueReason })
-          toast.success(t('system.settings.saved'))
-        }}
-      >
-        <fieldset className="set-fs" disabled={!canEdit}>
-          <Field name="defaultManualIssueReason" label={t('system.settings.ops.manualReasonLabel')} help={t('system.settings.ops.manualReasonHelp')}>
-            <Select options={options} placeholder={t('system.settings.ops.manualReasonNone')} />
-          </Field>
-        </fieldset>
-        {canEdit && (
-          <div className="set-actions">
-            <button type="button" className="btn" disabled={!dirty || form.formState.isSubmitting} onClick={() => form.reset()}>
-              {t('system.settings.discard')}
-            </button>
-            <button type="submit" className="btn flow" disabled={!dirty || form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? t('system.settings.saving') : t('system.settings.save')}
-            </button>
-          </div>
-        )}
-      </Form>
-    </Panel>
-  )
-}
-
-// ------------------------------------------------------------------ productos nuevos: categoría por defecto (2026-10-11 c)
-
-/**
- * «Categoría por defecto de los productos nuevos» (`defaultProductCategoryId`, admin.tenant): la pantalla de Productos la preselecciona
- * al crear un producto (se puede cambiar o quitar ahí); la API no la aplica sola. '' = sin default (se manda 0 = quitar). Solo salen las
- * categorías activas; el 400 del servidor ("La categoría por defecto no existe o está inactiva.") sale bajo el selector.
- */
-function ProductCategoryPanel({ settings, canEdit }: { settings: TenantSettingsDto; canEdit: boolean }) {
-  const t = useT()
-  const save = useSaveTenantSettings()
-  const { data: categories = [] } = useProductCategories()
-  const current = settings.defaultProductCategoryId != null ? String(settings.defaultProductCategoryId) : ''
-  const form = useForm<{ defaultProductCategoryId: string }>({ values: { defaultProductCategoryId: current } })
-  const dirty = form.formState.isDirty
-  // la ruta completa ("Raíz / Hija") como etiqueta, igual que en la ficha del producto
-  const options = categories.filter((c) => c.isActive).map((c) => ({ value: String(c.id), label: c.path || c.name || '' }))
-
-  return (
-    <Panel className="set-gap" icon={<IconGear />} title={t('system.settings.ops.productCategoryTitle')}>
-      <Form
-        form={form}
-        onSubmit={async (v) => {
-          await save.mutateAsync({ defaultProductCategoryId: v.defaultProductCategoryId === '' ? 0 : Number(v.defaultProductCategoryId) })
-          toast.success(t('system.settings.saved'))
-        }}
-      >
-        <fieldset className="set-fs" disabled={!canEdit}>
-          <Field name="defaultProductCategoryId" label={t('system.settings.ops.productCategoryLabel')} help={t('system.settings.ops.productCategoryHelp')}>
-            <Select options={options} placeholder={t('system.settings.ops.productCategoryNone')} />
-          </Field>
+          {wms && (
+            <>
+              <Field name="defaultManualIssueReason" label={t('system.settings.ops.manualReasonLabel')} help={t('system.settings.ops.manualReasonHelp')}>
+                <Select options={withCurrent(reasons, settings.defaultManualIssueReason ?? '')} placeholder={t('system.settings.ops.manualReasonNone')} />
+              </Field>
+              <Field name="defaultProductCategoryId" label={t('system.settings.ops.productCategoryLabel')} help={t('system.settings.ops.productCategoryHelp')}>
+                <Select options={categoryOptions} placeholder={t('system.settings.ops.productCategoryNone')} />
+              </Field>
+            </>
+          )}
         </fieldset>
         {canEdit && (
           <div className="set-actions">
@@ -253,23 +180,29 @@ function RotationPanel({ settings, canEdit }: { settings: TenantSettingsDto; can
         }}
       >
         <fieldset className="set-fs" disabled={!canEdit}>
-          <h3 className="set-h3">{t('system.settings.ops.inboundTitle')}</h3>
-          <Field name="receiptRequirement" label={t('system.settings.ops.receiptRequirementLabel')} help={t('system.settings.ops.receiptRequirementHelp')}>
-            <Select options={receiptOptions} />
-          </Field>
-          <h3 className="set-h3">{t('system.settings.ops.outboundTitle')}</h3>
-          <Field name="rotationMethod" label={t('system.settings.ops.rotationLabel')} help={t('system.settings.ops.rotationHelp')}>
-            <Select options={options} />
-          </Field>
-          <Field name="rotationMethodNoLot" label={t('system.settings.ops.rotationNoLotLabel')} help={t('system.settings.ops.rotationNoLotHelp')}>
-            <Select options={noLotOptions} />
-          </Field>
-          <Field name="rotationEnforcement" label={t('system.settings.ops.rotationEnforcementLabel')} help={t('system.settings.ops.rotationEnforcementHelp')}>
-            <Select options={enforcementOptions} />
-          </Field>
-          <Field name="dispatchRequirement" label={t('system.settings.ops.requirementLabel')} help={t('system.settings.ops.requirementHelp')}>
-            <Select options={requirementOptions} />
-          </Field>
+          <div className="r2 set-inout">
+            <div>
+              <h3 className="set-h3">{t('system.settings.ops.inboundTitle')}</h3>
+              <Field name="receiptRequirement" label={t('system.settings.ops.receiptRequirementLabel')} help={t('system.settings.ops.receiptRequirementHelp')}>
+                <Select options={receiptOptions} />
+              </Field>
+            </div>
+            <div>
+              <h3 className="set-h3">{t('system.settings.ops.outboundTitle')}</h3>
+              <Field name="rotationMethod" label={t('system.settings.ops.rotationLabel')} help={t('system.settings.ops.rotationHelp')}>
+                <Select options={options} />
+              </Field>
+              <Field name="rotationMethodNoLot" label={t('system.settings.ops.rotationNoLotLabel')} help={t('system.settings.ops.rotationNoLotHelp')}>
+                <Select options={noLotOptions} />
+              </Field>
+              <Field name="rotationEnforcement" label={t('system.settings.ops.rotationEnforcementLabel')} help={t('system.settings.ops.rotationEnforcementHelp')}>
+                <Select options={enforcementOptions} />
+              </Field>
+              <Field name="dispatchRequirement" label={t('system.settings.ops.requirementLabel')} help={t('system.settings.ops.requirementHelp')}>
+                <Select options={requirementOptions} />
+              </Field>
+            </div>
+          </div>
           <h3 className="set-h3">{t('system.settings.ops.valuationTitle')}</h3>
           <Field name="valuationMethod" label={t('system.settings.ops.valuationLabel')} help={t('system.settings.ops.valuationHelp')}>
             <Select options={valuationOptions} />
@@ -608,13 +541,11 @@ export function OperationsTab({ settings, canEdit }: { settings: TenantSettingsD
   return (
     <>
       <div className="set-cols">
-        <DefaultsPanel settings={settings} canEdit={canEdit} />
+        <DefaultsPanel settings={settings} canEdit={canEdit} wms={wms} />
         {orders && <PipelinePanel />}
       </div>
-      {wms && <ProductCategoryPanel settings={settings} canEdit={canEdit} />}
       {wms && <RotationPanel settings={settings} canEdit={canEdit} />}
       {wms && <InventoryAlertsPanel settings={settings} canEdit={canEdit} />}
-      {wms && <ManualReasonPanel settings={settings} canEdit={canEdit} />}
       {wms && <CountRevealPanel settings={settings} canEdit={canEdit} />}
       {wms && <RecvSummaryPanel />}
     </>
