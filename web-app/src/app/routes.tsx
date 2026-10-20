@@ -419,19 +419,14 @@ export const appRoutes: readonly AppRoute[] = [
     nav: { group: 'system', key: 'settings', order: 100 },
   },
 
-  // ===== Portal de clientes (Lote 104: Mensajes de clientes es real; el resto sin backend todavía) =====
+  // Mensajes de clientes (Lote 104): la bandeja del personal para atender los mensajes del portal. SIN ítem de menú (2026-10-20, Luis): el portal del cliente tiene su propia aplicación
+  // (app-cliente) y no va en el menú del personal; la pantalla sigue en su dirección.
   {
     path: '/portal/messages',
     element: lazy(() => import('../features/clientMessages/ClientMessagesScreen')),
     perm: 'clientmessages.reply',
     module: ModuleKeys.ClientPortal,
-    nav: { group: 'portal', key: 'portalMessages', order: 5 },
   },
-  pending({ path: '/portal/home', perm: 'portalusers.manage', module: ModuleKeys.ClientPortal, nav: { group: 'portal', key: 'portalHome', order: 10 } }),
-  pending({ path: '/portal/orders', perm: 'portalusers.manage', module: ModuleKeys.ClientPortal, nav: { group: 'portal', key: 'portalOrders', order: 20 } }),
-  pending({ path: '/portal/consignees', perm: 'portalusers.manage', module: ModuleKeys.ClientPortal, nav: { group: 'portal', key: 'portalConsignees', order: 30 } }),
-  pending({ path: '/portal/settings', perm: 'portalusers.manage', module: ModuleKeys.ClientPortal, nav: { group: 'portal', key: 'portalSettings', order: 40 } }),
-  pending({ path: '/portal/profile', perm: 'portalusers.manage', module: ModuleKeys.ClientPortal, nav: { group: 'portal', key: 'portalProfile', order: 50 } }),
 
   { path: '/forbidden', element: ForbiddenScreen },
   { path: '/module-off', element: ModuleOffScreen },

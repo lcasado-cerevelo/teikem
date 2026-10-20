@@ -29,7 +29,6 @@ import { Splash } from './Splash'
 import { KemiFloating, KemiSleepButton } from '../features/notifications/Kemi'
 import { NotificationBell } from '../features/notifications/NotificationBell'
 import { NotificationsProvider } from '../features/notifications/NotificationsProvider'
-import { NavUnreadBadge } from '../features/clientMessages/NavUnreadBadge'
 import { MessagesButton } from '../features/messages/MessagesButton'
 import { MessagesProvider } from '../features/messages/MessagesProvider'
 import { NewMessageHost } from '../features/messages/NewMessageModal'
@@ -215,7 +214,6 @@ export function AppShell() {
                     <NavLink key={r.path} to={r.path} end className={({ isActive }) => (isActive || isNavActive(r, location.pathname) ? 'navit on' : 'navit')}>
                       <span className="di" />
                       <span>{t(navTitleKey(r.nav?.key ?? ''))}</span>
-                      {r.nav?.key === 'portalMessages' && <NavUnreadBadge />}
                     </NavLink>
                   ))}
                 </div>

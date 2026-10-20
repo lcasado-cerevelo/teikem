@@ -4,7 +4,7 @@ import type { ComponentType } from 'react'
 import { permAllowed } from '../kernel/access/accessContext'
 import { IconBox, IconCash, IconChart, IconGear, IconLayers, IconUsers } from './icons'
 
-export type NavGroupKey = 'ops' | 'warehouse' | 'money' | 'catalog' | 'analytics' | 'system' | 'portal'
+export type NavGroupKey = 'ops' | 'warehouse' | 'money' | 'catalog' | 'analytics' | 'system'
 
 export interface NavGroup {
   key: NavGroupKey
@@ -20,7 +20,6 @@ export const NAV_GROUPS: readonly NavGroup[] = [
   { key: 'catalog', labelKey: 'nav.groups.catalog', icon: IconUsers },
   { key: 'analytics', labelKey: 'nav.groups.analytics', icon: IconChart },
   { key: 'system', labelKey: 'nav.groups.system', icon: IconGear },
-  { key: 'portal', labelKey: 'nav.groups.portal', icon: IconUsers },
 ]
 
 export interface NavEntry {

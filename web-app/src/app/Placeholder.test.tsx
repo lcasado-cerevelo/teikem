@@ -15,9 +15,9 @@ describe('Placeholder (pantalla pendiente)', () => {
   it('muestra el título y el subtítulo del ítem, el aviso y "Abrir otra pantalla" abre la paleta', async () => {
     setLang('es')
     const user = userEvent.setup()
-    render(<Placeholder navKey="portalProfile" />)
-    expect(screen.getByRole('heading', { level: 1, name: 'Perfil' })).toBeInTheDocument()
-    expect(screen.getByText('información de tu cuenta')).toBeInTheDocument()
+    render(<Placeholder navKey="purchaseAccounting" />)
+    expect(screen.getByRole('heading', { level: 1, name: 'Contabilización de compras' })).toBeInTheDocument()
+    expect(screen.getByText('ver, aceptar y exportar a tu sistema contable')).toBeInTheDocument()
     expect(screen.getByText('Esta pantalla llega en un lote posterior.')).toBeInTheDocument()
     expect(isCommandPaletteOpen()).toBe(false)
     await user.click(screen.getByRole('button', { name: 'Abrir otra pantalla' }))
@@ -50,12 +50,12 @@ describe('Placeholder (pantalla pendiente)', () => {
     setLang('es')
     expect(appRoutes.find((r) => r.path === '/ops/dispatch')!.pending).toBeUndefined() // Lote F-E2a: ya es pantalla
     expect(appRoutes.find((r) => r.path === '/ops/monitor')!.pending).toBeUndefined() // Lote F-E3: ya es pantalla
-    const route = appRoutes.find((r) => r.path === '/portal/profile')!
+    const route = appRoutes.find((r) => r.path === '/money/purchases')!
     expect(route.pending).toBe(true)
     const Screen = route.element
     render(<Screen />)
     expect(screen.getByTestId('placeholder-screen')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 1, name: 'Perfil' })).toBeInTheDocument()
-    expect(screen.getByText('información de tu cuenta')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Contabilización de compras' })).toBeInTheDocument()
+    expect(screen.getByText('ver, aceptar y exportar a tu sistema contable')).toBeInTheDocument()
   })
 })

@@ -13,8 +13,8 @@ const byPath = (path: string) => appRoutes.find((r) => r.path === path) as AppRo
 const paths = (groups: ReturnType<typeof visibleNav<AppRoute>>) => groups.map((g) => [g.key, g.items.map((r) => r.path)])
 
 describe('NAV_GROUPS', () => {
-  it('son los 7 grupos de la maqueta, en su orden', () => {
-    expect(NAV_GROUPS.map((g) => g.key)).toEqual(['ops', 'warehouse', 'money', 'catalog', 'analytics', 'system', 'portal'])
+  it('son los 6 grupos del menú, en su orden', () => {
+    expect(NAV_GROUPS.map((g) => g.key)).toEqual(['ops', 'warehouse', 'money', 'catalog', 'analytics', 'system'])
     expect(NAV_GROUPS.map((g) => translate('es', g.labelKey))).toEqual([
       'Operación',
       'Almacén',
@@ -22,7 +22,6 @@ describe('NAV_GROUPS', () => {
       'Listas',
       'Análisis',
       'Sistema',
-      'Portal de clientes',
     ])
     expect(NAV_GROUPS.map((g) => translate('en', g.labelKey))).toEqual([
       'Operations',
@@ -31,13 +30,12 @@ describe('NAV_GROUPS', () => {
       'Lists',
       'Analytics',
       'System',
-      'Client portal',
     ])
   })
 })
 
 describe('menú completo (routes.tsx)', () => {
-  it('con todos los permisos y módulos se ven los 7 grupos y los 49 ítems, en el orden de la maqueta', () => {
+  it('con todos los permisos y módulos se ven los 6 grupos y los 43 ítems, en el orden de la maqueta', () => {
     const groups = visibleNav(appRoutes, ALL_PERMS, ALL_MODULES)
     expect(groups.map((g) => [g.key, g.items.length])).toEqual([
       ['ops', 7],
@@ -46,7 +44,6 @@ describe('menú completo (routes.tsx)', () => {
       ['catalog', 4],
       ['analytics', 4],
       ['system', 10],
-      ['portal', 6],
     ])
     expect(groups.flatMap((g) => g.items.map((r) => translate('es', navTitleKey(r.nav!.key))))).toEqual([
       'Pulso del día',
@@ -92,17 +89,11 @@ describe('menú completo (routes.tsx)', () => {
       'Trabajos programados',
       'Seguridad y auditoría',
       'Ajustes de la compañía',
-      'Mensajes de clientes',
-      'Página principal',
-      'Entrada de órdenes',
-      'Consignatarios',
-      'Configuración',
-      'Perfil',
     ])
   })
 
   it('cada ítem tiene título y subtítulo en español e inglés, y `order` = posición × 10', () => {
-    expect(navRoutes).toHaveLength(49)
+    expect(navRoutes).toHaveLength(43)
     for (const r of navRoutes) {
       for (const lang of ['es', 'en'] as const) {
         expect(translate(lang, navTitleKey(r.nav!.key)), `${lang} ${r.path}`).not.toBe(navTitleKey(r.nav!.key))
@@ -111,8 +102,7 @@ describe('menú completo (routes.tsx)', () => {
     }
     for (const g of NAV_GROUPS) {
       const orders = navRoutes.filter((r) => r.nav!.group === g.key).map((r) => r.nav!.order)
-      // Lote 104: «Mensajes de clientes» abre el grupo del portal con order 5 (los demás siguen en 10, 20…)
-      const expected = g.key === 'portal' ? [5, 10, 20, 30, 40, 50] : orders.map((_, i) => (i + 1) * 10)
+      const expected = orders.map((_, i) => (i + 1) * 10)
       expect(orders).toEqual(expected)
     }
   })
@@ -132,7 +122,10 @@ describe('menú completo (routes.tsx)', () => {
     expect(byPath('/catalog/drivers').pending).toBeUndefined()
     expect(byPath('/catalog/consignees').pending).toBeUndefined()
     expect(byPath('/catalog/clients').pending).toBeUndefined()
-    expect(byPath('/portal/profile').pending).toBe(true)
+    expect(byPath('/money/purchases').pending).toBe(true)
+    // 2026-10-20: el portal del cliente tiene su propia aplicación; el menú del personal ya no lo trae (la bandeja de mensajes sigue en su dirección, sin ítem)
+    expect(byPath('/portal/messages').nav).toBeUndefined()
+    expect(appRoutes.some((r) => r.path.startsWith('/portal/') && r.path !== '/portal/messages')).toBe(false)
     expect(byPath('/orders').pending).toBeUndefined()
     expect(byPath('/warehouse/receipts').pending).toBeUndefined()
     expect(byPath('/system/users').pending).toBeUndefined()
