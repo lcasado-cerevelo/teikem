@@ -112,7 +112,7 @@ public class WmsContractsTests
         { typeof(InventoryDiscrepancyDetailDto), "InventoryDiscrepancyDto Discrepancy, decimal? CurrentReserved, IReadOnlyList<KardexRowDto> RecentMovements, IReadOnlyList<StatusHistoryDto> History" },
         { typeof(DiscrepancyResolveRequest), "string? Action, string? Notes, string? RowVersion" },
         { typeof(BinSearchItemDto), "int Id, string Code, string? ZoneCode, Guid WarehousePublicId, string WarehouseCode, bool IsActive, bool IsProvisional" },
-        { typeof(AsnLineRequest), "Guid? ProductPublicId, decimal? ExpectedQty, string? LotNumber, decimal? UnitPrice" },   // Lote 147
+        { typeof(AsnLineRequest), "Guid? ProductPublicId, decimal? ExpectedQty, string? LotNumber, decimal? UnitPrice, bool? UpdateProductPrice" },   // Lote 147 + precio del producto
         { typeof(AsnCreateRequest), "Guid? WarehousePublicId, Guid? ClientPublicId, string? Reference, DateOnly? ExpectedDate, IReadOnlyList<AsnLineRequest>? Lines" },
         { typeof(AsnLineDto), "int Id, Guid ProductPublicId, string Sku, string ProductName, decimal ExpectedQty, string? LotNumber, int? PurchaseOrderLineId, decimal? UnitPrice" },   // Lote 147
         { typeof(AsnDto), "int Id, Guid WarehousePublicId, string WarehouseCode, Guid? ClientPublicId, string? ClientName, Guid? PurchaseOrderPublicId, string? PurchaseOrderNumber, string? Reference, DateOnly? ExpectedDate, string StatusCode, string Status, bool IsActive, IReadOnlyList<AsnLineDto> Lines, Guid? ReceiptPublicId, string? ReceiptNumber" },
