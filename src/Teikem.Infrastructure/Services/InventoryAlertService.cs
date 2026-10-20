@@ -8,9 +8,9 @@ using Teikem.Infrastructure.Persistence;
 namespace Teikem.Infrastructure.Services;
 
 /// <summary>Cuántos avisos nuevos salieron por evento en una revisión (0 = nada nuevo que avisar o ya se había avisado esta semana).</summary>
-public sealed record InventoryAlertScanResult(int Expiring, int Expired, int Low, int Out, int NoMovement)
+public sealed record InventoryAlertScanResult(int Expiring, int Expired, int Low, int Out, int NoMovement, int NoCost = 0)
 {
-    public int Total => Expiring + Expired + Low + Out + NoMovement;
+    public int Total => Expiring + Expired + Low + Out + NoMovement + NoCost;
 }
 
 /// <summary>
@@ -33,14 +33,15 @@ public sealed class InventoryAlertService(TeikemDbContext db, ITenantClock clock
 
         var (expiring, expired) = await DetectLotsAsync(warnDays, ct);
         var low = await DetectLowAsync(ct);
-        var (outOfStock, stale) = await DetectStockAsync(staleDays, ct);
+        var (outOfStock, stale, noCost) = await DetectStockAsync(staleDays, ct);
 
         var result = new InventoryAlertScanResult(
             await PublishAsync(InventoryEventCodes.LotExpiring, "LEX", expiring, new Dictionary<string, string?> { ["days"] = warnDays.ToString(CultureInfo.InvariantCulture) }, ct),
             await PublishAsync(InventoryEventCodes.LotExpired, "LEXD", expired, null, ct),
             await PublishAsync(InventoryEventCodes.StockLow, "LOW", low, null, ct),
             await PublishAsync(InventoryEventCodes.StockOut, "OUT", outOfStock, null, ct),
-            await PublishAsync(InventoryEventCodes.NoMovement, "NMV", stale, new Dictionary<string, string?> { ["days"] = staleDays.ToString(CultureInfo.InvariantCulture) }, ct));
+            await PublishAsync(InventoryEventCodes.NoMovement, "NMV", stale, new Dictionary<string, string?> { ["days"] = staleDays.ToString(CultureInfo.InvariantCulture) }, ct),
+            await PublishAsync(InventoryEventCodes.NoCost, "NCO", noCost, null, ct));
         if (result.Total > 0) await db.SaveChangesAsync(ct);
         return result;
     }
@@ -101,26 +102,29 @@ public sealed class InventoryAlertService(TeikemDbContext db, ITenantClock clock
     }
 
     /// <summary>Sin existencia (tuvo movimientos y ya no queda nada en mano) y sin movimiento (hay existencia y el último movimiento es viejo).</summary>
-    private async Task<(List<Detected> Out, List<Detected> Stale)> DetectStockAsync(int staleDays, CancellationToken ct)
+    private async Task<(List<Detected> Out, List<Detected> Stale, List<Detected> NoCost)> DetectStockAsync(int staleDays, CancellationToken ct)
     {
         var now = clock.UtcNow;
         var onHand = await db.StockBalances.AsNoTracking().GroupBy(b => b.ProductId)
             .Select(g => new { ProductId = g.Key, OnHand = g.Sum(b => b.QtyOnHand) }).ToDictionaryAsync(x => x.ProductId, x => x.OnHand, ct);
         var last = await db.InventoryTransactions.AsNoTracking().GroupBy(t => t.ProductId)
             .Select(g => new { ProductId = g.Key, Last = g.Max(t => t.CreatedAtUtc) }).ToDictionaryAsync(x => x.ProductId, x => x.Last, ct);
-        var products = await db.Products.AsNoTracking().Where(p => p.IsActive).Select(p => new { p.ProductId, p.Sku }).ToListAsync(ct);
+        var products = await db.Products.AsNoTracking().Where(p => p.IsActive).Select(p => new { p.ProductId, p.Sku, p.PurchaseCost }).ToListAsync(ct);
 
+        var noCostList = new List<Detected>();
         var outList = new List<Detected>();
         var staleList = new List<Detected>();
         foreach (var p in products.OrderBy(p => p.Sku, StringComparer.Ordinal))
         {
             var qty = onHand.GetValueOrDefault(p.ProductId);
             last.TryGetValue(p.ProductId, out var lastUtc);
+            if (InventoryAlertRules.IsMissingCost(qty, p.PurchaseCost))
+                noCostList.Add(new Detected(p.ProductId.ToString(CultureInfo.InvariantCulture), $"{p.Sku} · {Qty(qty)}"));
             if (InventoryAlertRules.IsOutOfStock(last.ContainsKey(p.ProductId), qty))
                 outList.Add(new Detected(p.ProductId.ToString(CultureInfo.InvariantCulture), p.Sku));
             else if (InventoryAlertRules.IsStale(last.ContainsKey(p.ProductId) ? lastUtc : null, now, staleDays, qty))
                 staleList.Add(new Detected(p.ProductId.ToString(CultureInfo.InvariantCulture), $"{p.Sku} · {(int)(now - lastUtc).TotalDays} · {Qty(qty)}"));
         }
-        return (outList, staleList);
+        return (outList, staleList, noCostList);
     }
 }

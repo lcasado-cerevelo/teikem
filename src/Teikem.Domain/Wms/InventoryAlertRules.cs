@@ -42,6 +42,9 @@ public static class InventoryAlertRules
     public static bool IsStale(DateTime? lastMovementUtc, DateTime nowUtc, int days, decimal onHand)
         => onHand > 0m && lastMovementUtc is DateTime last && (nowUtc - last).TotalDays >= days;
 
+    /// <summary>Sin costo = hay existencia pero el producto no tiene costo de compra (vacío o cero): no se puede valorar el inventario ni calcular el costo de las salidas.</summary>
+    public static bool IsMissingCost(decimal onHand, decimal? purchaseCost) => onHand > 0m && ProductPriceRules.IsEmpty(purchaseCost);
+
     /// <summary>
     /// Clave de no repetición del aviso: evento + semana ISO + huella de LO QUE se avisa. El mismo conjunto no se repite en la misma semana; si cambia (entra un lote nuevo al
     /// plazo, otro producto baja del mínimo) sale un aviso nuevo, y mientras el problema siga vivo hay un recordatorio semanal. Hasta 100 caracteres.

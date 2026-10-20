@@ -58,6 +58,7 @@ e `{items}` (un renglón por cada uno, hasta 10 y «… +N») están en todos.
 | **Productos bajo el mínimo** (`INVENTORY_STOCK_LOW`) | Productos **activos** con mínimo (`minQty`) cuyo disponible total (en mano − reservado, todos los almacenes) es menor que el mínimo. | `producto · disponible · mínimo` |
 | **Productos sin existencia** (`INVENTORY_STOCK_OUT`) | Productos activos que **sí tuvieron movimientos** y hoy no tienen nada en mano (un producto recién creado que nunca se recibió no cuenta). | `producto` |
 | **Productos sin movimiento** (`INVENTORY_NO_MOVEMENT`) | Productos activos **con existencia** cuyo último movimiento del Kárdex tiene N días o más (N = ajuste, 90 por omisión). | `{days}`; `producto · días · en mano` |
+| **Productos con existencia sin costo** (`INVENTORY_NO_COST`) | Productos activos **con existencia** y sin costo de compra (vacío o cero): sin costo no se puede valorar el inventario. | `producto · en mano` |
 
 **No se repite lo mismo:** la clave de no repetición es *evento + semana + huella del conjunto*. Si el conjunto no cambió en la semana, no vuelve a avisar; si entra un lote nuevo al
 plazo o otro producto baja del mínimo, sale un aviso nuevo con el conjunto completo; y mientras el problema siga vivo hay un **recordatorio semanal**.

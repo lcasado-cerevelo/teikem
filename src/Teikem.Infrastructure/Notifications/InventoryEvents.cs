@@ -10,8 +10,9 @@ public static class InventoryEventCodes
     public const string StockLow = "INVENTORY_STOCK_LOW";
     public const string StockOut = "INVENTORY_STOCK_OUT";
     public const string NoMovement = "INVENTORY_NO_MOVEMENT";
+    public const string NoCost = "INVENTORY_NO_COST";
 
-    public static readonly string[] All = { LotExpiring, LotExpired, StockLow, StockOut, NoMovement };
+    public static readonly string[] All = { LotExpiring, LotExpired, StockLow, StockOut, NoMovement, NoCost };
 }
 
 /// <summary>
@@ -62,5 +63,12 @@ public sealed class InventoryEventProvider : INotificationEventProvider
             "{count} producto(s) sin movimiento en {days} días", "{count} product(s) with no movement in {days} days",
             "Hay {count} producto(s) con existencia y sin movimientos hace {days} días o más (producto · días · en mano):\n{items}",
             "{count} product(s) have stock and no movement for {days} days or more (product · days · on hand):\n{items}"),
+        new NotificationEventDef(
+            InventoryEventCodes.NoCost, ModuleKeys.WmsLotSerial, "Productos con existencia sin costo", "Products in stock without a cost",
+            new[] { Count("3"), Items("MED-1 · 40 en mano") },
+            IsOptional: true, LinkTemplate: "/warehouse/products",
+            "{count} producto(s) con existencia sin costo", "{count} product(s) in stock without a cost",
+            "Hay {count} producto(s) con existencia y sin costo de compra; sin costo no se puede valorar el inventario (producto · en mano):\n{items}",
+            "{count} product(s) have stock but no purchase cost, so inventory cannot be valued (product · on hand):\n{items}"),
     };
 }

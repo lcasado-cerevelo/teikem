@@ -260,6 +260,34 @@ public class InventoryAlertTests
     }
 
     [Fact]
+    public async Task No_cost_reports_stocked_products_without_a_purchase_cost()
+    {
+        var x = await WorldAsync();
+        await using var _ = x.F;
+        var bare = await x.F.AddProductAsync("BARE-1");
+        var priced = await x.F.AddProductAsync("PRICED-1");
+        var empty = await x.F.AddProductAsync("EMPTY-1");
+        foreach (var p in await x.F.Db.Products.AsTracking().Where(p => p.ProductId == bare.ProductId || p.ProductId == empty.ProductId).ToListAsync()) p.PurchaseCost = p.ProductId == bare.ProductId ? 0m : null;
+        (await x.F.Db.Products.AsTracking().SingleAsync(p => p.ProductId == priced.ProductId)).PurchaseCost = 4m;
+        await x.F.Db.SaveChangesAsync();
+        await ReceiveAsync(x, bare, 6m);
+        await ReceiveAsync(x, priced, 6m);   // EMPTY-1 no tiene existencia: no se avisa
+
+        Assert.Equal(1, (await x.Svc.ScanAsync(default)).NoCost);
+        var notice = Assert.Single(await OutboxAsync(x.F, InventoryEventCodes.NoCost));
+        Assert.Equal("BARE-1 · 6", ItemsOf(notice));
+    }
+
+    [Fact]
+    public void Missing_cost_needs_stock_and_an_empty_cost()
+    {
+        Assert.True(InventoryAlertRules.IsMissingCost(3m, null));
+        Assert.True(InventoryAlertRules.IsMissingCost(3m, 0m));
+        Assert.False(InventoryAlertRules.IsMissingCost(3m, 1m));
+        Assert.False(InventoryAlertRules.IsMissingCost(0m, null));
+    }
+
+    [Fact]
     public async Task An_empty_company_scans_without_publishing_anything()
     {
         var x = await WorldAsync();

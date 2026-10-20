@@ -163,7 +163,7 @@ public sealed class InventoryAlertScanJob : IScheduledJob
         var r = await context.Services.GetRequiredService<InventoryAlertService>().ScanAsync(ct);
         return r.Total == 0
             ? "Nada nuevo que avisar."
-            : $"Avisos nuevos: {r.Expiring} por vencer, {r.Expired} vencidos, {r.Low} bajo el mínimo, {r.Out} sin existencia, {r.NoMovement} sin movimiento.";
+            : $"Avisos nuevos: {r.Expiring} por vencer, {r.Expired} vencidos, {r.Low} bajo el mínimo, {r.Out} sin existencia, {r.NoMovement} sin movimiento, {r.NoCost} sin costo.";
     }
 }
 
