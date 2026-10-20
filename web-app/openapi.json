@@ -60555,6 +60555,9 @@
               "$ref": "#/components/schemas/StockExitOptionDto"
             },
             "nullable": true
+          },
+          "rotationEnforcement": {
+            "type": "string"
           }
         },
         "additionalProperties": false
@@ -62160,6 +62163,9 @@
           "deviceSessionMinutes": {
             "type": "integer",
             "format": "int32"
+          },
+          "rotationEnforcement": {
+            "type": "string"
           }
         },
         "additionalProperties": false
@@ -62321,6 +62327,10 @@
           "deviceSessionMinutes": {
             "type": "integer",
             "format": "int32",
+            "nullable": true
+          },
+          "rotationEnforcement": {
+            "type": "string",
             "nullable": true
           }
         },

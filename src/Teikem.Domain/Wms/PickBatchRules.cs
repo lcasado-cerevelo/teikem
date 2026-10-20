@@ -320,6 +320,19 @@ public static class PickBatchRules
         return new PickAllocationResult(result, Math.Max(0m, remaining));
     }
 
+    /// <summary>
+    /// 2026-10-20 — ¿Dos asignaciones sacan lo mismo (misma posición, lote y cantidad por saldo)? Es la comparación de la rotación obligatoria:
+    /// lo que pidió quien llama (posición/lote explícitos) contra lo que asigna la rotación sin restricciones. No importa el orden de las partes.
+    /// </summary>
+    public static bool SameAllocation(PickAllocationResult a, PickAllocationResult b)
+    {
+        static List<(int Bin, int Lot, decimal Qty)> Key(PickAllocationResult r)
+            => r.Allocations.Select(x => (x.BinId, x.LotId ?? 0, x.Quantity)).OrderBy(x => x.Item1).ThenBy(x => x.Item2).ToList();
+        var ka = Key(a);
+        var kb = Key(b);
+        return ka.Count == kb.Count && ka.Zip(kb).All(p => p.First == p.Second);
+    }
+
     // ---------------------------------------------------------------- listado: filtros y después búsqueda final
 
     /// <summary>

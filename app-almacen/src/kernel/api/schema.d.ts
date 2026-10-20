@@ -35429,6 +35429,7 @@ export interface components {
             /** Format: date-time */
             serverTimeUtc?: string;
             items?: components["schemas"]["StockExitOptionDto"][] | null;
+            rotationEnforcement?: string;
         };
         StopLocationRequest: {
             /** Format: double */

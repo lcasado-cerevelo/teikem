@@ -8,7 +8,7 @@ import { api, ApiError, unwrap } from '../api/client'
 import { getActiveWarehousePublicId } from '../warehouse/activeWarehouse'
 import { getDb, type SQLiteDatabase } from '../db/database'
 import { deltaKey, pendingDeltas } from '../warehouse/balanceProjection'
-import { mapExitRow, replaceStockExit, type StockExitRow } from '../../features/dispatch/stockExit'
+import { mapExitRow, replaceStockExit, saveRotationEnforcement, type StockExitRow } from '../../features/dispatch/stockExit'
 import { downloadManualIssueReasons } from '../../features/dispatch/manualIssueReasons'
 import { deleteLocalSalesOrder, reapplyPendingSalesDispatches } from '../../features/salesDispatch/localSales'
 import { deleteLocalSalesReturn, reapplyPendingReturnReceipts } from '../../features/salesReturn/localReturns'
@@ -711,6 +711,7 @@ export async function downloadStockExit(warehousePublicId: string, force = false
     for (;;) {
       const page = await unwrap(api.GET('/api/v1/inventory/exit-options', { params: { query: { warehousePublicId, skip, take: TAKE } } }))
       serverTime ??= page.serverTimeUtc ?? new Date().toISOString()
+      saveRotationEnforcement(page.rotationEnforcement)   // 2026-10-20
       const got = page.items ?? []
       for (const r of got) items.push(mapExitRow(r))
       pages += 1

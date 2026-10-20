@@ -84,6 +84,8 @@ public class Tenant : ISoftDeletable
     public int? DefaultProductCategoryId { get; set; }
     /// <summary>Lote 34: método de rotación del inventario de la compañía ('FEFO' | 'FIFO'). FEFO para todas las existentes.</summary>
     public string RotationMethod { get; set; } = "FEFO";
+    /// <summary>2026-10-20: cómo se aplica la rotación en las salidas: 'SUGGEST' (se propone y se puede cambiar, con advertencia) | 'ENFORCE' (el sistema escoge y el servidor rechaza lo distinto). SUGGEST para todas las existentes.</summary>
+    public string RotationEnforcement { get; set; } = "SUGGEST";
     /// <summary>Lote 72 (P5): base de facturación del producto vendido: 'ON_DISPATCH' (al despachar) | 'ON_DELIVERY' (al entregar).</summary>
     public string SalesBillingTrigger { get; set; } = "ON_DISPATCH";
     /// <summary>Lote 72 (P5): días entre la emisión de una factura y su vencimiento.</summary>

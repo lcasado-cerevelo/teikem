@@ -161,6 +161,11 @@ export function nextStockOption(options: readonly StockOption[], alreadyPicked: 
   return null
 }
 
+/** ¿Dos códigos de posición son el mismo? (sin distinguir mayúsculas ni espacios en los extremos). */
+export function sameBinCode(a: string, b: string): boolean {
+  return a.trim().toUpperCase() === b.trim().toUpperCase()
+}
+
 /** Producto con lote: la posición NO es opcional, es la del próximo lote en salir (FEFO). `ok` = la posición escaneada es esa y alcanza
  *  la cantidad; `otherBin` = es otra; `tooMuch` = es esa pero no alcanza (hay que sacar lo que hay y escanear la siguiente). */
 export type LotBinCheck = { kind: 'ok' } | { kind: 'otherBin'; expected: StockOption } | { kind: 'tooMuch'; expected: StockOption }

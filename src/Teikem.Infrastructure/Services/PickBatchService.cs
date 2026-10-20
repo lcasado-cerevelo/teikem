@@ -504,7 +504,9 @@ public sealed class PickBatchService(
         var expiries = balances.ToDictionary(b => (b.ProductId, b.BinId, b.LotId), b => b.Expiry);
         // Lote 34: fecha de primera entrada de cada saldo (para FIFO) y método de rotación de la compañía (el producto puede tener excepción).
         var received = balances.ToDictionary(b => (b.ProductId, b.BinId, b.LotId), b => b.FirstReceivedAtUtc);
-        var tenantMethod = await db.Tenants.AsNoTracking().Where(t => t.TenantId == db.CurrentTenantId).Select(t => t.RotationMethod).FirstOrDefaultAsync(ct);
+        var tenantRot = await db.Tenants.AsNoTracking().Where(t => t.TenantId == db.CurrentTenantId).Select(t => new { t.RotationMethod, t.RotationEnforcement }).FirstOrDefaultAsync(ct);
+        var tenantMethod = tenantRot?.RotationMethod;
+        var enforced = RotationRules.IsEnforced(tenantRot?.RotationEnforcement);   // 2026-10-20: rotación obligatoria
 
         var serialStatus = await db.StatusCodes.AsNoTracking()
             .Where(s => s.Entity == StatusDomains.SerialStatus && s.InternalCode == SerialStatuses.Available)
@@ -569,7 +571,15 @@ public sealed class PickBatchService(
                     return new PickCandidate(bin.BinId, bin.Code, bin.ZoneTypeCode, bin.Active, kv.Key.LotId, expiries[kv.Key], kv.Value, received.GetValueOrDefault(kv.Key));
                 })
                 .ToList();
-            var allocation = PickBatchRules.Allocate(qty, candidates, line.BinId, line.LotId, RotationRules.Resolve(product.RotationMethod, tenantMethod));
+            var method = RotationRules.Resolve(product.RotationMethod, tenantMethod);
+            var allocation = PickBatchRules.Allocate(qty, candidates, line.BinId, line.LotId, method);
+            if (enforced && (line.BinId is not null || line.LotId is not null))
+            {
+                // Rotación obligatoria: una posición o lote explícitos solo valen si son EXACTAMENTE lo que la rotación asigna (quien manda lo mismo que se le propuso pasa).
+                var auto = PickBatchRules.Allocate(qty, candidates, null, null, method);
+                if (auto.IsComplete && !PickBatchRules.SameAllocation(allocation, auto))
+                    throw new ConflictException(RotationRules.EnforcedMismatch(product.Sku, string.Join(", ", auto.Allocations.Select(a => bins[a.BinId].Code).Distinct())));
+            }
             if (!allocation.IsComplete)
             {
                 var where = explicitBin?.Code ?? warehouse.Code;

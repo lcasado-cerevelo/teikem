@@ -12,8 +12,8 @@ export function buildManualIssueBody(values: {
   lines: readonly CollectLineLike[]
   reasonCode?: string
   note?: string
-}): { body: ManualIssueCreateRequest; indexMap: number[] } {
-  const { body, indexMap } = buildCollectBody(values)
+}, opts: { auto?: boolean } = {}): { body: ManualIssueCreateRequest; indexMap: number[] } {
+  const { body, indexMap } = buildCollectBody(values, opts)
   const note = (values.note ?? '').trim()
   return { body: { ...body, reasonCode: (values.reasonCode ?? '').trim() || null, note: note || null }, indexMap }
 }

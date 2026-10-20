@@ -4,6 +4,7 @@ using Teikem.Domain.Constants;
 using Teikem.Domain.Wms;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
+using Teikem.Infrastructure.Exceptions;
 using Teikem.Infrastructure.Orders;
 using Teikem.Infrastructure.Services;
 using Teikem.Infrastructure.Wms;
@@ -97,5 +98,65 @@ public class RotationServiceTests
         await SetMethodsAsync(s, tenant: "FIFO", product: null);
         var fifo = await service.ListAsync(s.W.PublicId, new[] { s.P.PublicId }, 0, 50, default);
         Assert.Equal(new int?[] { s.Late.LotId, s.Early.LotId }, fifo.Items.OrderBy(i => i.Rank).Select(i => i.LotId).ToArray());
+    }
+
+    private static async Task SetEnforcementAsync(Scene s, string value)
+    {
+        (await s.F.Db.Tenants.SingleAsync(t => t.TenantId == WmsFixture.TenantId)).RotationEnforcement = value;
+        await s.F.Db.SaveChangesAsync();
+    }
+
+    private static Task<PickBatchDto> CollectLotAsync(Scene s, int? lotId, decimal qty = 1m)
+        => s.F.Get<PickBatchService>().CollectAsync(new PickBatchCreateRequest(s.W.PublicId, new[] { new PickBatchLineRequest(s.P.PublicId, qty, LotId: lotId) }), default);
+
+    [Fact]
+    public async Task Suggest_mode_lets_the_user_pick_another_lot()
+    {
+        var s = await SeedAsync();
+        await using var _ = s.F;
+        var dto = await CollectLotAsync(s, s.Late.LotId);   // por omisión SUGGEST: el lote que NO toca sale igual
+        Assert.Equal(s.Late.LotId, dto.Lines.Single().LotId);
+    }
+
+    [Fact]
+    public async Task Enforce_mode_rejects_a_lot_that_rotation_does_not_assign()
+    {
+        var s = await SeedAsync();
+        await using var _ = s.F;
+        await SetEnforcementAsync(s, RotationEnforcements.Enforce);
+        var ex = await Assert.ThrowsAsync<ConflictException>(() => CollectLotAsync(s, s.Late.LotId));
+        Assert.Equal(RotationRules.EnforcedMismatch(s.P.Sku, "P-01"), ex.Message);
+    }
+
+    [Fact]
+    public async Task Enforce_mode_accepts_the_lot_rotation_assigns_and_picks_it_alone_when_none_is_given()
+    {
+        var s = await SeedAsync();
+        await using var _ = s.F;
+        await SetEnforcementAsync(s, RotationEnforcements.Enforce);
+        Assert.Equal(s.Early.LotId, (await CollectLotAsync(s, s.Early.LotId)).Lines.Single().LotId);
+        Assert.Equal(s.Early.LotId, await CollectedLotAsync(s));
+    }
+
+    [Fact]
+    public async Task Enforce_mode_splits_the_quantity_across_lots_in_rotation_order()
+    {
+        var s = await SeedAsync();
+        await using var _ = s.F;
+        await SetEnforcementAsync(s, RotationEnforcements.Enforce);
+        var lines = (await CollectLotAsync(s, null, 7m)).Lines;   // 5 del que vence primero y 2 del otro
+        Assert.Equal(new int?[] { s.Early.LotId, s.Late.LotId }, lines.OrderByDescending(l => l.Quantity).Select(l => l.LotId).ToArray());
+        Assert.Equal(7m, lines.Sum(l => l.Quantity));
+    }
+
+    [Fact]
+    public async Task Exit_options_tell_the_app_whether_rotation_is_enforced()
+    {
+        var s = await SeedAsync();
+        await using var _ = s.F;
+        var service = new StockExitService(s.F.Db, s.F.Get<ILookupCache>());
+        Assert.Equal(RotationEnforcements.Suggest, (await service.ListAsync(s.W.PublicId, null, 0, 50, default)).RotationEnforcement);
+        await SetEnforcementAsync(s, RotationEnforcements.Enforce);
+        Assert.Equal(RotationEnforcements.Enforce, (await service.ListAsync(s.W.PublicId, null, 0, 50, default)).RotationEnforcement);
     }
 }

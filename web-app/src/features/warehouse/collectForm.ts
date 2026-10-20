@@ -88,18 +88,23 @@ export function compactPickLines<T extends CollectLineLike>(lines: readonly T[])
 }
 
 /** Cuerpo de `POST /api/v1/pick-batches` (solo las líneas con datos) + el mapa de índices. */
-export function buildCollectBody(values: { warehousePublicId?: string | null; lines: readonly CollectLineLike[] }): { body: PickBatchCreateRequest; indexMap: number[] } {
+export function buildCollectBody(
+  values: { warehousePublicId?: string | null; lines: readonly CollectLineLike[] },
+  opts: { auto?: boolean } = {},
+): { body: PickBatchCreateRequest; indexMap: number[] } {
   const { lines, indexMap } = compactPickLines(values.lines)
   return {
     body: {
       warehousePublicId: values.warehousePublicId ?? null,
       lines: lines.map((l) => {
         const serials = parseSerials(l.serialNumbers)
+        // Rotación obligatoria (2026-10-20): el sistema escoge posición y lote; no se manda ninguno (las series sí se escogen una por una).
+        const auto = opts.auto === true && serials.length === 0
         return {
           productPublicId: l.productPublicId ?? null,
           quantity: l.quantity ?? null,
-          binId: l.binId ? Number(l.binId) : null,
-          lotId: l.lotId ? Number(l.lotId) : null,
+          binId: !auto && l.binId ? Number(l.binId) : null,
+          lotId: !auto && l.lotId ? Number(l.lotId) : null,
           serialNumbers: serials.length > 0 ? serials : null,
         }
       }),
@@ -320,4 +325,36 @@ export function planCollect(
     left = Math.round((left - take) * 1000) / 1000
   }
   return { parts, short: left }
+}
+
+/** Una fila de `GET /inventory/exit-options` (lo que usa la advertencia de rotación). */
+export interface ExitRow {
+  binId?: number
+  binCode?: string | null
+  lotId?: number | null
+  lotNumber?: string | null
+  rank?: number
+}
+
+/** La existencia que debe salir primero según la rotación del servidor (rank menor); undefined si no hay. */
+export function firstExit(rows: readonly ExitRow[] | undefined): ExitRow | undefined {
+  if (!rows || rows.length === 0) return undefined
+  return rows.reduce((best, r) => ((r.rank ?? Infinity) < (best.rank ?? Infinity) ? r : best))
+}
+
+/**
+ * Rotación obligatoria sugerida (2026-10-20): si quien despacha escogió una posición o un lote que NO son los que la rotación pone primero, devuelve la existencia que
+ * debía salir (para advertirle); null si no escogió nada o escogió lo propuesto.
+ */
+export function skippedRotation(rows: readonly ExitRow[] | undefined, chosen: { binId?: number | null; lotId?: number | null }): ExitRow | null {
+  const first = firstExit(rows)
+  if (!first) return null
+  if (chosen.binId != null && chosen.binId !== first.binId) return first
+  if (chosen.lotId != null && chosen.lotId !== (first.lotId ?? null)) return first
+  return null
+}
+
+/** Texto corto de dónde sale: «A-01 · L-123». */
+export function exitLabel(r: ExitRow): string {
+  return [r.binCode, r.lotNumber].filter(Boolean).join(' · ')
 }

@@ -117,4 +117,32 @@ public class RotationTests
         Assert.Equal(2, fefoPlan.Moves[0].FromBinId);
         Assert.Equal(3, fifoPlan.Moves[0].FromBinId);
     }
+
+    [Theory]
+    [InlineData("suggest", "SUGGEST")]
+    [InlineData(" Enforce ", "ENFORCE")]
+    [InlineData("otro", null)]
+    [InlineData(null, null)]
+    public void ParseEnforcement_normalizes_or_returns_null(string? input, string? expected)
+        => Assert.Equal(expected, RotationRules.ParseEnforcement(input));
+
+    [Theory]
+    [InlineData("ENFORCE", true)]
+    [InlineData("enforce", true)]
+    [InlineData("SUGGEST", false)]
+    [InlineData(null, false)]
+    [InlineData("basura", false)]
+    public void Only_enforce_is_enforced(string? input, bool expected) => Assert.Equal(expected, RotationRules.IsEnforced(input));
+
+    [Fact]
+    public void SameAllocation_ignores_order_and_detects_differences()
+    {
+        var a = new PickAllocationResult(new[] { new PickAllocation(1, 10, 5m), new PickAllocation(2, 11, 2m) }, 0m);
+        var sameReordered = new PickAllocationResult(new[] { new PickAllocation(2, 11, 2m), new PickAllocation(1, 10, 5m) }, 0m);
+        var otherLot = new PickAllocationResult(new[] { new PickAllocation(1, 12, 5m), new PickAllocation(2, 11, 2m) }, 0m);
+        var otherQty = new PickAllocationResult(new[] { new PickAllocation(1, 10, 4m), new PickAllocation(2, 11, 2m) }, 0m);
+        Assert.True(PickBatchRules.SameAllocation(a, sameReordered));
+        Assert.False(PickBatchRules.SameAllocation(a, otherLot));
+        Assert.False(PickBatchRules.SameAllocation(a, otherQty));
+    }
 }

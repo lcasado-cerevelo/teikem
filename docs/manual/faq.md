@@ -9604,3 +9604,17 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **«El contraste del color de acción en modo oscuro es X:1; el mínimo es 4.5:1.» (400).** El color de acción (botones y enlaces) que escribió no se lee sobre el fondo del tema. Escoja uno más claro para el modo oscuro y más oscuro para el claro; la pantalla lo valida antes de guardar.
 
 **¿Qué es el color de acción?** Es opcional: si no lo pone, los botones y enlaces usan el color primario. Solo se escoge uno aparte si la compañía quiere, por ejemplo, barras de un color y botones de otro.
+
+## Rotación obligatoria o sugerida (Lote 139, 2026-10-20)
+
+**¿Cuál es la diferencia entre «Sugerir» y «Obligar» en la rotación?**
+Con *sugerir* el sistema propone de dónde debe salir la mercancía (según FEFO o FIFO) y se puede escoger otra posición o lote; la pantalla advierte que se salta la rotación. Con *obligar* el sistema escoge solo y reparte la cantidad; no hay dónde escoger. Se cambia en Ajustes de la compañía → Operación → «Rotación del inventario» → «Cómo se aplica en las salidas». Todas las compañías existentes están en *sugerir*. No afecta transferencias ni ajustes.
+
+**¿Qué significa «La rotación es obligatoria: {SKU} debe salir de {posiciones}. No escoja posición ni lote; el sistema los asigna.» (409)?**
+La compañía tiene la rotación en *obligar* y la línea pidió una posición o un lote distintos de los que la rotación asigna. Quita la posición y el lote de la línea (o usa los que indica el mensaje) y vuelve a enviar. En la web y en el aparato esto no debería pasar: ya no ofrecen elegir; si ocurre en el aparato, sincroniza para que baje la configuración nueva.
+
+**¿Qué significa «La aplicación de la rotación debe ser SUGGEST (sugerir) o ENFORCE (obligar).» (400)?**
+Mandaste un valor distinto de `SUGGEST` o `ENFORCE` en `rotationEnforcement` de los ajustes de la compañía.
+
+**En la app de almacén me sale «Se salta la rotación». ¿Qué hago?**
+Escaneaste una posición distinta de la que debía salir según la rotación. Toca **Cancelar** para escanear la correcta o **Continuar** si de verdad vas a sacarlo de ahí (queda registrado el movimiento tal cual). Si la compañía obliga la rotación, esta pregunta no sale: la app te dice de dónde sale y tú tocas «Sacar así».

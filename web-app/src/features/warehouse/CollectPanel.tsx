@@ -15,6 +15,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useController, useFieldArray, useForm, useFormContext, useWatch } from 'react-hook-form'
 import { useCan } from '../../kernel/access'
+import { useTenantSettings } from '../../kernel/catalogs/api'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useLang, useT } from '../../kernel/i18n'
 import {
@@ -41,6 +42,7 @@ import { api, unwrap } from '../../kernel/api/client'
 import {
   useCreateManualIssue,
   useCreatePickBatch,
+  useExitOptions,
   useInventoryBalances,
   useManualIssueReasons,
   useProductLots,
@@ -63,6 +65,9 @@ import {
   ownerFilterFor,
   planCollect,
   remapCollectErrors,
+  exitLabel,
+  firstExit,
+  skippedRotation,
   type CollectFormValues,
   type CollectLine,
 } from './collectForm'
@@ -143,13 +148,14 @@ function QuantityCell({ index }: { index: number }) {
   )
 }
 
-function BinCell({ index, warehousePublicId }: { index: number; warehousePublicId: string | null }) {
+function BinCell({ index, warehousePublicId, enforced }: { index: number; warehousePublicId: string | null; enforced: boolean }) {
   const t = useT()
   const lang = useLang()
   const productPublicId = useWatch({ name: `lines.${index}.productPublicId` }) as string | null
   const lotId = useWatch({ name: `lines.${index}.lotId` }) as string
   const binId = useWatch({ name: `lines.${index}.binId` }) as string
   const { items: stock, loading, failed } = useLineStock(warehousePublicId, productPublicId)
+  const exit = useExitOptions(warehousePublicId, productPublicId, { enabled: !enforced, handleAccessDenied: false })
   const lot = lotId ? Number(lotId) : null
   // solo donde hay disponible del producto (y del lote), en orden FEFO; sin producto, ninguna
   const options = useMemo<BinPickerOption[]>(
@@ -165,11 +171,18 @@ function BinCell({ index, warehousePublicId }: { index: number; warehousePublicI
         : NO_BIN_OPTIONS,
     [stock, productPublicId, lot, t, lang],
   )
-  const suggested = useMemo(() => (options.length > 0 ? [options[0].id] : []), [options])
+  // La propuesta es la del servidor (rank 1: FEFO o FIFO según la compañía y el producto); sin ella (sin inventory.view) la réplica FEFO de la pantalla
+  const exitRows = exit.data?.items
+  const proposed = firstExit(exitRows)
+  const suggested = useMemo(() => (proposed?.binId != null ? [proposed.binId] : options.length > 0 ? [options[0].id] : []), [proposed, options])
   const first = stock && productPublicId && !binId ? fefoCandidates(stock, lot)[0] : undefined
-  const hint = first ? t('warehouse.pickBatches.collectPanel.fefoHint', { bin: [first.binCode, first.lotNumber].filter(Boolean).join(' · ') }) : undefined
+  const hint = proposed && !binId ? t('warehouse.pickBatches.collectPanel.fefoHint', { bin: exitLabel(proposed) }) : first && !binId && !proposed ? t('warehouse.pickBatches.collectPanel.fefoHint', { bin: [first.binCode, first.lotNumber].filter(Boolean).join(' · ') }) : undefined
+  // Rotación en modo «sugerir»: si escogió otra posición, se le advierte (puede seguir)
+  const skipped = binId ? skippedRotation(exitRows, { binId: Number(binId) }) : null
+  const warning = skipped ? t('warehouse.pickBatches.collectPanel.rotationSkips', { bin: exitLabel(skipped) }) : undefined
+  if (enforced) return productPublicId ? <span className="collect-na">{t('warehouse.pickBatches.collectPanel.rotationAuto')}</span> : <span className="collect-na">—</span>
   return (
-    <Field name={`lines.${index}.binId`} label={t('warehouse.pickBatches.collectPanel.lineBin', { n: index + 1 })} hideLabel help={hint}>
+    <Field name={`lines.${index}.binId`} label={t('warehouse.pickBatches.collectPanel.lineBin', { n: index + 1 })} hideLabel help={warning ? <span className="collect-warn" role="alert">{warning}</span> : hint}>
       {/* vacío = el servidor elige por FEFO; al cambiar de almacén, producto o lote una posición que ya no aplica se quita sola */}
       <BinPickerInput
         warehousePublicId={warehousePublicId}
@@ -185,12 +198,15 @@ function BinCell({ index, warehousePublicId }: { index: number; warehousePublicI
   )
 }
 
-function LotCell({ index }: { index: number }) {
+function LotCell({ index, warehousePublicId, enforced }: { index: number; warehousePublicId: string | null; enforced: boolean }) {
   const t = useT()
   const productPublicId = useWatch({ name: `lines.${index}.productPublicId` }) as string | null
   const tracking = useWatch({ name: `lines.${index}.trackingTypeCode` }) as string
   const tracked = isLotTracked(tracking)
+  const lotId = useWatch({ name: `lines.${index}.lotId` }) as string
   const lots = useProductLots(productPublicId, { enabled: tracked, handleAccessDenied: false })
+  const exit = useExitOptions(warehousePublicId, productPublicId, { enabled: tracked && !enforced, handleAccessDenied: false })
+  const skipped = lotId ? skippedRotation(exit.data?.items, { lotId: Number(lotId) }) : null
   const options = useMemo(
     () =>
       (lots.data ?? [])
@@ -199,8 +215,14 @@ function LotCell({ index }: { index: number }) {
     [lots.data],
   )
   if (!tracked) return <span className="collect-na">—</span>
+  if (enforced) return <span className="collect-na">{t('warehouse.pickBatches.collectPanel.rotationAuto')}</span>
   return (
-    <Field name={`lines.${index}.lotId`} label={t('warehouse.pickBatches.collectPanel.lineLot', { n: index + 1 })} hideLabel>
+    <Field
+      name={`lines.${index}.lotId`}
+      label={t('warehouse.pickBatches.collectPanel.lineLot', { n: index + 1 })}
+      hideLabel
+      help={skipped ? <span className="collect-warn" role="alert">{t('warehouse.pickBatches.collectPanel.rotationSkips', { bin: exitLabel(skipped) })}</span> : undefined}
+    >
       <ComboSelectInput options={options} loading={lots.isLoading} placeholder={t('warehouse.pickBatches.fefo')} />
     </Field>
   )
@@ -322,6 +344,9 @@ export function CollectPanel({ onCollected }: CollectPanelProps) {
       if (code) form.setValue('reasonCode', code)
     }
   }, [manual, reasons.data, form, preselectedReason])
+  // Rotación obligatoria (2026-10-20): GET /tenant/settings solo exige sesión; sin respuesta se trata como «sugerir» y el servidor decide igual
+  const tenantSettings = useTenantSettings()
+  const enforced = tenantSettings.data?.rotationEnforcement === 'ENFORCE'
   const { fields, append, remove, insert } = useFieldArray({ control: form.control, name: 'lines' })
   const warehousePublicId = useWatch({ control: form.control, name: 'warehousePublicId' })
   const lines = useWatch({ control: form.control, name: 'lines' })
@@ -434,12 +459,12 @@ export function CollectPanel({ onCollected }: CollectPanelProps) {
         card: 'title',
       },
       { id: 'quantity', header: t('warehouse.pickBatches.fields.quantity'), cell: (r) => <QuantityCell index={r.index} /> },
-      { id: 'bin', header: t('warehouse.pickBatches.fields.bin'), cell: (r) => <BinCell index={r.index} warehousePublicId={warehousePublicId} /> },
+      { id: 'bin', header: t('warehouse.pickBatches.fields.bin'), cell: (r) => <BinCell index={r.index} warehousePublicId={warehousePublicId} enforced={enforced} /> },
     ]
-    if (showLot) cols.push({ id: 'lot', header: t('warehouse.pickBatches.fields.lot'), cell: (r) => <LotCell index={r.index} /> })
+    if (showLot) cols.push({ id: 'lot', header: t('warehouse.pickBatches.fields.lot'), cell: (r) => <LotCell index={r.index} warehousePublicId={warehousePublicId} enforced={enforced} /> })
     if (showSerials) cols.push({ id: 'serials', header: t('warehouse.pickBatches.collectPanel.serials'), cell: (r) => <SerialsCell index={r.index} /> })
     return cols
-  }, [t, warehousePublicId, onPicked, showLot, showSerials])
+  }, [t, warehousePublicId, onPicked, showLot, showSerials, enforced])
 
   const rowActions = useMemo<RowAction<GridRow>[]>(
     () => [
@@ -450,7 +475,7 @@ export function CollectPanel({ onCollected }: CollectPanelProps) {
         // producto y cantidad puestos, sin posición elegida y sin series (las series se escogen una por una)
         visible: (r) => {
           const l = lines?.[r.index]
-          return Boolean(l?.productPublicId && Number(l.quantity) > 0 && !l.binId && l.trackingTypeCode !== 'SERIAL')
+          return !enforced && Boolean(l?.productPublicId && Number(l.quantity) > 0 && !l.binId && l.trackingTypeCode !== 'SERIAL')
         },
         onClick: (r) => void suggestPositions(r.index),
       },
@@ -475,7 +500,7 @@ export function CollectPanel({ onCollected }: CollectPanelProps) {
         onClick: (r) => removeLine(r.index),
       },
     ],
-    [t, rows.length, lines, removeLine, suggestPositions, duplicateLine],
+    [t, rows.length, lines, removeLine, suggestPositions, duplicateLine, enforced],
   )
 
   const submitting = form.formState.isSubmitting
@@ -488,7 +513,7 @@ export function CollectPanel({ onCollected }: CollectPanelProps) {
       form={form}
       onSubmit={async (v) => {
         if (manual) {
-          const { body, indexMap } = buildManualIssueBody(v)
+          const { body, indexMap } = buildManualIssueBody(v, { auto: enforced })
           // mismo cuerpo = misma llave (reintento tras un corte); otro cuerpo o ya grabado = llave nueva
           attempt.current = nextIdempotencyKey(attempt.current, body, () => crypto.randomUUID())
           let issued: PickBatchDto
@@ -507,7 +532,7 @@ export function CollectPanel({ onCollected }: CollectPanelProps) {
           onCollected?.(issued)
           return
         }
-        const { body, indexMap } = buildCollectBody(v)
+        const { body, indexMap } = buildCollectBody(v, { auto: enforced })
         let created: PickBatchDto
         try {
           created = await create.mutateAsync(body)

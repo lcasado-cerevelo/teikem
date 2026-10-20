@@ -622,6 +622,38 @@ Dónde se cambia en las pantallas (2026-10-11): **web, Ajustes de la compañía 
 **Productos e inventario → ficha del producto → «Rotación»** (opciones «Igual que la compañía», FEFO y FIFO; al volver a «Igual que la compañía» se quita la excepción). La app del almacén **no** tiene pantallas de ajustes ni de edición de
 productos, así que ahí no hay selector: sus pantallas de salida (selector de posiciones de Recolección, «Despachar») ya usan el orden que calcula el servidor y **respetan el método** sin cambios.
 
+### 2.3 Rotación: sugerir u obligar en las salidas (2026-10-20, Lote 139)
+
+Qué hace: el método de rotación (§2.2) dice **qué lote y qué posición tocan primero**; este ajuste dice **qué pasa si quien despacha quiere otro**. Aplica a la
+**recolección** y al **despacho manual**, en la web y en el aparato de almacén. **No** aplica a transferencias ni a ajustes.
+
+| Modo | Qué hace el sistema | Qué puede hacer quien despacha |
+|---|---|---|
+| **Sugerir** (`SUGGEST`, el de **todas las compañías existentes**) | Propone la posición y el lote que corresponden según FEFO o FIFO. | Cambiarlos. La pantalla le **advierte** que se salta la rotación y le dice de dónde debía salir. |
+| **Obligar** (`ENFORCE`) | Escoge solo la posición y el lote y **reparte la cantidad** entre ellos en el orden de la rotación. | Nada: no hay selector de posición ni de lote. |
+
+Dónde se configura: **web, Ajustes de la compañía → Operación → «Rotación del inventario» → «Cómo se aplica en las salidas»** (exige `admin.tenant`) o
+`PUT /api/v1/tenant/settings` con `{ "rotationEnforcement": "ENFORCE" }`. `GET /api/v1/tenant/settings` lo devuelve en `rotationEnforcement`
+(`SUGGEST` por omisión). Vale desde la siguiente salida; no cambia lo ya recolectado.
+
+Cómo se ve:
+- **Web, Recolección y Despacho manual.** En *sugerir*, la posición propuesta (la de rango 1 del servidor) aparece como «FEFO: A-01 · L-7»; si se escoge otra
+  posición u otro lote sale en rojo «Se salta la rotación: debería salir de A-01 · L-7» y se puede continuar. En *obligar*, las columnas Posición y Lote
+  dicen «Automática (rotación)», se esconde «Sugerir posiciones» y la web no manda posición ni lote (salvo en productos por serie, que se escogen una por una).
+- **App de almacén, Despachar.** En *sugerir*, escanear una posición distinta de la propuesta abre «Se salta la rotación» con **Cancelar / Continuar**
+  (antes, con un producto por lote, se rechazaba sin más; ahora se advierte y se deja decidir). En *obligar*, el campo de la posición desaparece: se
+  teclea la cantidad, se ve «5 de A-01 · 2 de B-02» y un solo botón **«Sacar así»** agrega todas las partes. Sin señal usa la última respuesta del servidor
+  y la copia de existencias del aparato; el servidor decide igual al recibir el despacho.
+- **Servidor (API).** En *obligar*, una línea con `binId` o `lotId` explícitos solo se acepta si es **exactamente** lo que la rotación asigna (quien manda
+  lo mismo que se le propuso pasa); si no, **409**. Las líneas sin posición ni lote se asignan solas. Los productos por serie no cambian.
+  `GET /api/v1/inventory/exit-options` trae `rotationEnforcement` para que las pantallas lo sepan.
+
+| Caso | Mensaje exacto | HTTP |
+|---|---|---|
+| `rotationEnforcement` distinto de SUGGEST o ENFORCE | `La aplicación de la rotación debe ser SUGGEST (sugerir) o ENFORCE (obligar).` | 400 (campo `rotationEnforcement`) |
+| *Obligar* y la línea pide una posición o lote que la rotación no asigna | `La rotación es obligatoria: {SKU} debe salir de {posiciones}. No escoja posición ni lote; el sistema los asigna.` | 409 |
+| Cambiarlo sin `admin.tenant` | respuesta estándar de permiso denegado | 403 |
+
 ## 3. Inventario: saldos, Kárdex, ajustes, transferencias, conciliación y descuadres, genealogía y rastro de serie
 
 Qué hace: expone el saldo por almacén/posición/lote, el Kárdex de solo lectura del ledger (con resumen, filtros y detalle de cada

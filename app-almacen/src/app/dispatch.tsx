@@ -39,6 +39,7 @@ import {
   nextStockOption,
   pickedQty,
   planExit,
+  sameBinCode,
   stockKey,
   pickQtyState,
   type StockOption,
@@ -59,6 +60,8 @@ interface StockHint {
   options: StockOption[] | null
   /** `device` = sin señal, con la copia bajada al aparato; `none` = sin señal y sin copia (no hay sugerencia ni se exige posición). */
   source: 'server' | 'device' | 'none' | null
+  /** 2026-10-20: rotación obligatoria — el sistema escoge de dónde sale y no se escoge posición. */
+  enforced: boolean
 }
 
 // 'reason' (2026-10-11): «Completar despacho» = despacho manual. Desde 2026-10-11 (b) abre directo la confirmación con el motivo ya puesto (el que ya
@@ -130,7 +133,7 @@ export default function DispatchScreen() {
   const typedQty = draft && pickQtyState(draft.qtyText) === 'ok' ? Number(draft.qtyText.trim().replace(',', '.')) : 0
   const alreadyPicked = draft ? pickedQty(openPick?.lineRows ?? [], draft.productPublicId) : 0
   const plan =
-    draft && hint && !hint.lot && hint.productPublicId === draft.productPublicId && hint.options && typedQty > 0 ? planExit(hint.options, typedQty, alreadyPicked) : null
+    draft && hint && (!hint.lot || hint.enforced) && hint.productPublicId === draft.productPublicId && hint.options && typedQty > 0 ? planExit(hint.options, typedQty, alreadyPicked) : null
   const markOptions: MarkOption[] | null =
     plan && hint?.options
       ? availableAfterPicked(hint.options, alreadyPicked).map((o) => ({
@@ -145,7 +148,9 @@ export default function DispatchScreen() {
   const effectiveMarks = markOptions ? capMarks(markOptions, marks, typedQty) : {}
   // la cantidad no cabe en la sugerida: hace falta más de una posición
   const doesNotFit = Boolean(suggestion && typedQty > suggestion.available)
-  const listVisible = Boolean(markOptions && markOptions.length > 0 && (doesNotFit || showAll))
+  // Rotación obligatoria (2026-10-20): el plan del servidor se usa tal cual; no se escanea ni se marca posición
+  const autoPlan = Boolean(hint?.enforced && plan && plan.rows.length > 0 && plan.short === 0)
+  const listVisible = Boolean(!hint?.enforced && markOptions && markOptions.length > 0 && (doesNotFit || showAll))
   /** "lote L-3, vence 12/31/2026, disponible 40" (solo lo que existe). */
   function stockDetail(o: StockOption): string {
     return [
@@ -193,9 +198,9 @@ export default function DispatchScreen() {
 
   /** Posición sugerida: el orden de salida del servidor (en línea, o la copia del aparato sin señal). Sin ninguna de las dos, sin sugerencia. */
   async function loadHint(productPublicId: string, lot: boolean) {
-    setHint({ productPublicId, lot, options: null, source: null })
+    setHint({ productPublicId, lot, options: null, source: null, enforced: false })
     const result = await fetchStockOptions(warehousePublicId!, productPublicId)
-    setHint((h) => (h && h.productPublicId === productPublicId ? { ...h, options: result.options, source: result.source } : h))
+    setHint((h) => (h && h.productPublicId === productPublicId ? { ...h, options: result.options, source: result.source, enforced: result.enforced } : h))
   }
 
   function addLine(line: PickLine) {
@@ -216,21 +221,31 @@ export default function DispatchScreen() {
    *  escribirla y volver a escanear. La posición no se guarda: no queda una línea a medias. */
   function scanFromBin(code: string) {
     if (!draft) return
-    // Producto con lote: la posición es la del próximo lote en salir (FEFO), no se escoge (pedido del dueño 2026-10-05)
+    // Producto con lote: si lo escaneado es la posición propuesta, la cantidad tiene que caber en ella (hay que sacar lo que hay y escanear la siguiente).
+    // 2026-10-20: escanear OTRA posición ya no se bloquea: con la rotación en «sugerir» se advierte y se deja seguir (en «obligar» no hay escaneo, ver autoPlan).
     if (hint?.lot && suggestion && pickQtyState(draft.qtyText) === 'ok') {
       const check = checkLotBin(suggestion, code, Number(draft.qtyText.trim().replace(',', '.')))
-      if (check.kind !== 'ok') {
-        setBinError(
-          check.kind === 'otherBin'
-            ? t('dispatch.lotMustUse', { bin: suggestion.binCode, detail: stockDetail(suggestion) })
-            : t('dispatch.lotTooMuch', { bin: suggestion.binCode, qty: f.qty(suggestion.available) }),
-        )
+      if (check.kind === 'tooMuch') {
+        setBinError(t('dispatch.lotTooMuch', { bin: suggestion.binCode, qty: f.qty(suggestion.available) }))
         vibrateError()
         return
       }
     }
     const outcome = binScanOutcome(draft, code)
     if (outcome.kind === 'add') {
+      if (suggestion && !sameBinCode(code, suggestion.binCode)) {
+        // Rotación en «sugerir»: se advierte que se salta lo propuesto y se deja continuar (o cancelar)
+        const line = outcome.line
+        Alert.alert(
+          t('dispatch.skipRotationTitle'),
+          t('dispatch.skipRotationBody', { bin: suggestion.binCode, detail: stockDetail(suggestion) }),
+          [
+            { text: t('common.cancel'), style: 'cancel' },
+            { text: t('dispatch.skipRotationContinue'), onPress: () => addLine(line) },
+          ],
+        )
+        return
+      }
       addLine(outcome.line)
       return
     }
@@ -254,6 +269,22 @@ export default function DispatchScreen() {
     setShowAll(false)
     setBinError(null)
     setNotice(t('dispatch.planAdded', { sku: draft.sku, count: rows.length }))
+    vibrateOk()
+    refresh()
+  }
+
+  /** Rotación obligatoria (2026-10-20): agrega una línea por cada parte del plan del servidor, sin escoger nada. */
+  function addPlanLines() {
+    if (!draft || !openPick || !plan || plan.rows.length === 0 || plan.short > 0) return
+    for (const r of plan.rows) {
+      addLocalPickLine(openPick.id, { productPublicId: draft.productPublicId, sku: draft.sku, productName: draft.productName, quantity: r.qty, fromBinCode: r.binCode })
+    }
+    setDraft(null)
+    setHint(null)
+    setMarks({})
+    setShowAll(false)
+    setBinError(null)
+    setNotice(t('dispatch.planAdded', { sku: draft.sku, count: plan.rows.length }))
     vibrateOk()
     refresh()
   }
@@ -498,11 +529,11 @@ export default function DispatchScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={t('positions.tapToUse')}
-                onPress={tapSuggestion}
+                onPress={hint?.enforced ? undefined : tapSuggestion}
                 style={styles.suggest}
                 testID="dispatch-suggestion"
               >
-                <Text style={styles.suggestTitle}>{t(hint?.lot ? 'dispatch.mustTakeFrom' : 'dispatch.suggestedFrom', { bin: suggestion.binCode })}</Text>
+                <Text style={styles.suggestTitle}>{t(hint?.lot || hint?.enforced ? 'dispatch.mustTakeFrom' : 'dispatch.suggestedFrom', { bin: suggestion.binCode })}</Text>
                 <Text style={styles.help}>{stockDetail(suggestion)}</Text>
                 {doesNotFit ? <Text style={styles.warnText}>{t('positions.doesNotFit', { short: f.qty(typedQty - suggestion.available) })}</Text> : null}
               </Pressable>
@@ -510,7 +541,7 @@ export default function DispatchScreen() {
               <Text style={styles.help}>{t('dispatch.stockOffline')}</Text>
             ) : null}
             {suggestion && hint?.source === 'device' ? <Text style={styles.help}>{t('dispatch.stockFromDevice')}</Text> : null}
-            {markOptions && markOptions.length > 1 && !doesNotFit ? (
+            {!hint?.enforced && markOptions && markOptions.length > 1 && !doesNotFit ? (
               <BigButton label={t(showAll ? 'positions.hideAll' : 'positions.showAll')} variant="secondary" onPress={() => setShowAll((v) => !v)} />
             ) : null}
             {listVisible && markOptions ? (
@@ -526,8 +557,21 @@ export default function DispatchScreen() {
               />
             ) : null}
             {(plan?.short ?? 0) > 0 ? <Text style={styles.error}>{t('dispatch.planShort', { short: f.qty(plan?.short ?? 0) })}</Text> : null}
+            {/* Rotación obligatoria (2026-10-20): el sistema reparte la cantidad; un solo botón, sin escanear posición */}
+            {hint?.enforced && plan && plan.rows.length > 0 ? (
+              <View style={styles.field} testID="dispatch-auto-plan">
+                <Text style={styles.label}>{t('dispatch.autoPlanTitle')}</Text>
+                {plan.rows.map((r) => (
+                  <Text key={stockKey(r)} style={styles.help}>
+                    {t('dispatch.autoPlanRow', { qty: f.qty(r.qty), bin: r.binCode })}
+                    {r.lotNumber ? ` · ${t('dispatch.lotNumber', { lot: r.lotNumber })}` : ''}
+                  </Text>
+                ))}
+                <BigButton label={t('dispatch.autoPlanUse')} onPress={addPlanLines} disabled={!autoPlan} testID="dispatch-auto-use" />
+              </View>
+            ) : null}
             {/* sin botón "Agregar": la lectura de la posición (o Aceptar del campo) es la que agrega la línea */}
-            <ScanField
+            {hint?.enforced ? null : <ScanField
               label={t('dispatch.fromBinLabel')}
               help={suggestion ? t(hint?.lot ? 'dispatch.fromBinHelpLot' : 'dispatch.fromBinHelpSuggested') : t('dispatch.fromBinHelp')}
               suggestedValue={suggestion?.binCode ?? null}
@@ -537,7 +581,7 @@ export default function DispatchScreen() {
               onSubmit={scanFromBin}
               pick="bin"
               testID="dispatch-from-bin"
-            />
+            />}
             <BigButton
               label={t('common.cancel')}
               variant="secondary"

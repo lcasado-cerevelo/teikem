@@ -215,11 +215,16 @@ function RotationPanel({ settings, canEdit }: { settings: TenantSettingsDto; can
   const t = useT()
   const save = useSaveTenantSettings()
   const current = settings.rotationMethod ?? 'FEFO'
-  const form = useForm<{ rotationMethod: string }>({ values: { rotationMethod: current } })
+  const form = useForm<{ rotationMethod: string; rotationEnforcement: string }>({ values: { rotationMethod: current, rotationEnforcement: settings.rotationEnforcement ?? 'SUGGEST' } })
   const dirty = form.formState.isDirty
   const options = [
     { value: 'FEFO', label: t('system.settings.ops.rotationFefo') },
     { value: 'FIFO', label: t('system.settings.ops.rotationFifo') },
+  ]
+  // 2026-10-20: cómo se aplica en las salidas: sugerir (se propone y se puede cambiar, con advertencia) u obligar (el sistema escoge solo)
+  const enforcementOptions = [
+    { value: 'SUGGEST', label: t('system.settings.ops.rotationSuggest') },
+    { value: 'ENFORCE', label: t('system.settings.ops.rotationEnforce') },
   ]
 
   return (
@@ -227,13 +232,16 @@ function RotationPanel({ settings, canEdit }: { settings: TenantSettingsDto; can
       <Form
         form={form}
         onSubmit={async (v) => {
-          await save.mutateAsync({ rotationMethod: v.rotationMethod })
+          await save.mutateAsync({ rotationMethod: v.rotationMethod, rotationEnforcement: v.rotationEnforcement })
           toast.success(t('system.settings.saved'))
         }}
       >
         <fieldset className="set-fs" disabled={!canEdit}>
           <Field name="rotationMethod" label={t('system.settings.ops.rotationLabel')} help={t('system.settings.ops.rotationHelp')}>
             <Select options={options} />
+          </Field>
+          <Field name="rotationEnforcement" label={t('system.settings.ops.rotationEnforcementLabel')} help={t('system.settings.ops.rotationEnforcementHelp')}>
+            <Select options={enforcementOptions} />
           </Field>
         </fieldset>
         {canEdit && (

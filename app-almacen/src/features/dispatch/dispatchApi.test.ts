@@ -122,9 +122,18 @@ describe('fetchStockOptions', () => {
     expect(readStockExit('wh-1', 'p1').map((r) => r.binCode)).toEqual(['A-01', 'B-02'])
   })
 
+  it('2026-10-20 recuerda si la compañía obliga la rotación y lo usa también sin señal', async () => {
+    getMock.mockResolvedValueOnce(ok({ total: 1, skip: 0, take: 500, rotationEnforcement: 'ENFORCE', items: [ROW] }))
+    expect((await fetchStockOptions('wh-1', 'p1')).enforced).toBe(true)
+    getMock.mockRejectedValue(new TypeError('Network request failed'))
+    expect((await fetchStockOptions('wh-1', 'p1')).enforced).toBe(true)   // sin señal: la última respuesta
+    getMock.mockResolvedValueOnce(ok({ total: 1, skip: 0, take: 500, rotationEnforcement: 'SUGGEST', items: [ROW] }))
+    expect((await fetchStockOptions('wh-1', 'p1')).enforced).toBe(false)
+  })
+
   it('sin señal usa la copia del aparato (la que bajó la sincronización); sin copia no se sabe (none)', async () => {
     getMock.mockRejectedValue(new TypeError('Network request failed'))
-    expect(await fetchStockOptions('wh-1', 'p1')).toEqual({ options: [], source: 'none' })
+    expect(await fetchStockOptions('wh-1', 'p1')).toEqual({ options: [], source: 'none', enforced: false })
     getDb().runSync("INSERT INTO sync_watermark (resource, since_utc, last_run_utc) VALUES ('stockExit:wh-1', 'x', 'y')")
     replaceStockExit('wh-1', [mapExitRow(ROW)])
     const offline = await fetchStockOptions('wh-1', 'p1')

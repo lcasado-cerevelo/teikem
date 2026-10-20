@@ -2,6 +2,7 @@
 // de salida con disponible: vence primero, luego zona y código) y se puede ignorar escaneando otra; con un producto con LOTE la posición
 // deja de ser opcional: es la del próximo lote en salir (FEFO) y otra posición, o más de lo que hay ahí, se rechaza. Sin señal no hay
 // sugerencia. En archivo propio: renderRouter() no aísla del todo su estado global de navegación (ver homeLock.test.tsx).
+import { Alert } from 'react-native'
 import { __resetAllForTests } from 'expo-sqlite'
 import { __resetSecureStoreForTests } from 'expo-secure-store'
 import { cleanup, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library'
@@ -30,10 +31,21 @@ function laterScan() {
 
 const BIN_FIELD = 'Escanea de qué posición sale'
 // orden de salida del servidor: ya viene ordenado y con su rank (la app no reordena)
-const stock = (...items: Array<Record<string, unknown>>) => (c: { method: string; path: string }) =>
+const stock = (...items: Array<Record<string, unknown>>) => stockWith('SUGGEST', ...items)
+// 2026-10-20: `rotationEnforcement` = lo que la compañía configuró (SUGGEST | ENFORCE)
+const stockWith = (rotationEnforcement: string, ...items: Array<Record<string, unknown>>) => (c: { method: string; path: string }) =>
   c.method === 'GET' && c.path === '/api/v1/inventory/exit-options'
-    ? json(200, { total: items.length, skip: 0, take: 500, serverTimeUtc: '2026-10-05T12:00:00Z', items: items.map((it, i) => ({ binId: i + 1, rank: i + 1, ...it })) })
+    ? json(200, { total: items.length, skip: 0, take: 500, serverTimeUtc: '2026-10-05T12:00:00Z', rotationEnforcement, items: items.map((it, i) => ({ binId: i + 1, rank: i + 1, ...it })) })
     : null
+
+/** Pulsa «Continuar» de la advertencia de rotación (Alert) y devuelve su texto. */
+function acceptSkipWarning(spy: jest.SpyInstance): string {
+  expect(spy).toHaveBeenCalled()
+  const [title, body, buttons] = spy.mock.calls[spy.mock.calls.length - 1] as [string, string, Array<{ text: string; onPress?: () => void }>]
+  expect(title).toBe('Se salta la rotación')
+  buttons.find((b) => b.text === 'Continuar')?.onPress?.()
+  return body
+}
 
 async function openDraft(code: string) {
   await renderRouter('src/app', { initialUrl: '/dispatch' })
@@ -60,10 +72,12 @@ describe('Despacho — posición sugerida y lote obligatorio (FEFO)', () => {
     await waitFor(() => expect(screen.getByText('Sugerida: P-01')).toBeTruthy())
     expect(screen.getByText('Escanea la posición o toca «Usar»; puedes escanear otra.')).toBeTruthy()
 
-    // otra posición distinta de la sugerida se acepta (no es obligatoria)
+    // otra posición distinta de la sugerida se acepta (no es obligatoria), pero antes se advierte que se salta la rotación
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
     await fireEvent.changeText(screen.getByLabelText('Cantidad'), '3')
     laterScan()
     await fireEvent(screen.getByLabelText(BIN_FIELD), 'submitEditing', { nativeEvent: { text: 'R-02' } })
+    expect(acceptSkipWarning(alert)).toContain('debe salir de P-01')
     await waitFor(() => expect(getOpenPick()?.lineRows.map((l) => [l.fromBinCode, l.quantity])).toEqual([['R-02', 3]]))
   })
 
@@ -79,7 +93,7 @@ describe('Despacho — posición sugerida y lote obligatorio (FEFO)', () => {
     await waitFor(() => expect(getOpenPick()?.lineRows.map((l) => [l.fromBinCode, l.quantity])).toEqual([['P-01', 2]]))
   })
 
-  it('producto con lote: la posición es la del lote que vence primero; otra se rechaza; más de lo que hay ahí también; la siguiente sugerencia descuenta lo sacado', async () => {
+  it('producto con lote: la posición propuesta es la del lote que vence primero; otra se advierte; más de lo que hay ahí se rechaza; la siguiente sugerencia descuenta lo sacado', async () => {
     await setupDevice()
     insertProduct(1, 'p-lot', 'LOT-1', 'Pintura', '7601', 'LOT')
     mockFetch([
@@ -92,11 +106,12 @@ describe('Despacho — posición sugerida y lote obligatorio (FEFO)', () => {
     await waitFor(() => expect(screen.getByText('Debe salir de A-01')).toBeTruthy())
     expect(screen.getByText(/lote L-3 · vence 12\/31\/2026 · disponible 5/)).toBeTruthy()
 
-    // otra posición: no se agrega nada y el aviso dice cuál
+    // otra posición: con la rotación en «sugerir» se advierte cuál debía ser; si no se confirma, no se agrega nada
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
     await fireEvent.changeText(screen.getByLabelText('Cantidad'), '2')
     laterScan()
     await fireEvent(screen.getByLabelText(BIN_FIELD), 'submitEditing', { nativeEvent: { text: 'B-02' } })
-    await waitFor(() => expect(screen.getByText(/debe salir de A-01/)).toBeTruthy())
+    expect(alert).toHaveBeenCalledTimes(1)
     expect(getOpenPick()?.lineRows).toEqual([])
 
     // más de lo que hay en ese lote
@@ -140,8 +155,43 @@ describe('Despacho — posición sugerida y lote obligatorio (FEFO)', () => {
     expect(screen.getByText('Según el inventario bajado al aparato (sin señal).')).toBeTruthy()
     await fireEvent.changeText(screen.getByLabelText('Cantidad'), '2')
     laterScan()
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
     await fireEvent(screen.getByLabelText(BIN_FIELD), 'submitEditing', { nativeEvent: { text: 'B-02' } })
-    await waitFor(() => expect(screen.getByText(/debe salir de A-01/)).toBeTruthy())
+    expect(alert).toHaveBeenCalledTimes(1)
+    expect(getOpenPick()?.lineRows).toEqual([])
+  })
+
+  it('2026-10-20 rotación OBLIGATORIA: no hay posición que escanear; «Sacar así» reparte la cantidad en el orden del servidor', async () => {
+    await setupDevice()
+    insertProduct(1, 'p-lot', 'LOT-1', 'Pintura', '7601', 'LOT')
+    mockFetch([
+      stockWith(
+        'ENFORCE',
+        { binCode: 'A-01', zoneTypeCode: 'RESERVE', lotNumber: 'L-3', expiryDate: '2026-12-31', available: 5 },
+        { binCode: 'B-02', zoneTypeCode: 'RESERVE', lotNumber: 'L-9', expiryDate: '2027-03-01', available: 20 },
+      ),
+    ])
+    await openDraft('7601')
+    await waitFor(() => expect(screen.getByText('Debe salir de A-01')).toBeTruthy())
+    // el campo de la posición no existe: no se escoge nada
+    expect(screen.queryByLabelText(BIN_FIELD)).toBeNull()
+    await fireEvent.changeText(screen.getByLabelText('Cantidad'), '7')
+    await waitFor(() => expect(screen.getByTestId('dispatch-auto-plan')).toBeTruthy())
+    expect(screen.getByText(/5 de A-01/)).toBeTruthy()
+    expect(screen.getByText(/2 de B-02/)).toBeTruthy()
+    await fireEvent.press(screen.getByTestId('dispatch-auto-use'))
+    await waitFor(() => expect(getOpenPick()?.lineRows.map((l) => [l.fromBinCode, l.quantity])).toEqual([['A-01', 5], ['B-02', 2]]))
+  })
+
+  it('2026-10-20 rotación obligatoria: sin existencia suficiente no deja sacar y avisa cuánto falta', async () => {
+    await setupDevice()
+    insertProduct(1, 'p1', 'SKU-1', 'Tornillo', '7501', 'NONE')
+    mockFetch([stockWith('ENFORCE', { binCode: 'P-01', zoneTypeCode: 'PICKING', available: 8 })])
+    await openDraft('7501')
+    await waitFor(() => expect(screen.getByText('Debe salir de P-01')).toBeTruthy())
+    await fireEvent.changeText(screen.getByLabelText('Cantidad'), '10')
+    await waitFor(() => expect(screen.getAllByText(/faltan 2/).length).toBeGreaterThan(0))
+    await fireEvent.press(screen.getByTestId('dispatch-auto-use'))
     expect(getOpenPick()?.lineRows).toEqual([])
   })
 })

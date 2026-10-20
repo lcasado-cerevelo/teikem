@@ -2,6 +2,7 @@
 // schema v6). El ORDEN lo calcula el servidor (rank 1 = sale primero, la misma regla de la recolección): aquí no se ordena nada, solo se
 // guarda y se lee por rank. Es una foto: se reemplaza completa (bajada de todo el almacén) o solo la de un producto (consulta en línea).
 import { getDb } from '../../kernel/db/database'
+import { getKv, KvKeys, setKv } from '../../kernel/db/kv'
 import type { StockOption } from './dispatchLogic'
 
 export interface StockExitRow extends StockOption {
@@ -98,5 +99,23 @@ export function mapExitRow(r: {
     lotNumber: r.lotNumber ?? null,
     expiryDate: r.expiryDate ?? null,
     available: r.available ?? 0,
+  }
+}
+
+/** 2026-10-20: ¿la compañía obliga la rotación en las salidas? Lo dice la última respuesta de GET /inventory/exit-options (`rotationEnforcement`); sin copia, no. */
+export function readRotationEnforced(): boolean {
+  try {
+    return getKv(KvKeys.rotationEnforcement) === 'ENFORCE'
+  } catch {
+    return false
+  }
+}
+
+/** Guarda lo que contestó el servidor ('ENFORCE' → obligar; cualquier otra cosa → sugerir). */
+export function saveRotationEnforcement(value: string | null | undefined): void {
+  try {
+    setKv(KvKeys.rotationEnforcement, value === 'ENFORCE' ? 'ENFORCE' : 'SUGGEST')
+  } catch {
+    // es una comodidad sin señal: el servidor decide igual al recibir el despacho
   }
 }

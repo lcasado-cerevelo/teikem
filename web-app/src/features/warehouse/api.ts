@@ -623,6 +623,25 @@ export function useInventoryBalances(query: GetQuery<'/api/v1/inventory/balances
   })
 }
 
+/**
+ * `GET /api/v1/inventory/exit-options` (`inventory.view`): de dónde debe salir cada producto, en el orden de rotación del servidor (rank 1 = sale primero; FEFO o FIFO según la
+ * compañía y el producto). Es la ÚNICA implementación de la regla: la pantalla de recolección la usa para proponer y para advertir cuando alguien la cambia (2026-10-20).
+ */
+export function useExitOptions(warehousePublicId: string | null, productPublicId: string | null, options?: WarehouseQueryOptions) {
+  const on = Boolean(warehousePublicId && productPublicId)
+  return useQuery({
+    queryKey: [warehouseKeys.balances[0], 'exit-options', warehousePublicId, productPublicId],
+    queryFn: () =>
+      unwrap(
+        api.GET('/api/v1/inventory/exit-options', {
+          params: { query: { warehousePublicId: warehousePublicId ?? undefined, productPublicIds: productPublicId ? [productPublicId] : undefined, take: 500 } },
+        }),
+      ),
+    enabled: on && (options?.enabled ?? true),
+    meta: meta(options),
+  })
+}
+
 /** `GET /api/v1/inventory/transactions` (Kárdex paginado). */
 export function useInventoryTransactions(query: GetQuery<'/api/v1/inventory/transactions'> = {}, options?: WarehouseQueryOptions) {
   return useQuery({

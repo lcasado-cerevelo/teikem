@@ -5092,3 +5092,16 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_IntegrationOutputOrder_Open' AND object_id = OBJECT_ID('dbo.IntegrationOutputOrder'))
     CREATE UNIQUE INDEX UX_IntegrationOutputOrder_Open ON dbo.IntegrationOutputOrder(IntegrationId, TransportOrderId, StatusCode) WHERE IntegrationOutputId IS NULL;
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-20 — Rotacion obligatoria o sugerida en las salidas.
+   - dbo.Tenant.RotationEnforcement VARCHAR(10) NOT NULL DEFAULT 'SUGGEST' (CHECK SUGGEST|ENFORCE): SUGGEST = el sistema propone el lote/posicion que
+     toca y se puede cambiar (las pantallas advierten); ENFORCE = el sistema escoge solo y el servidor rechaza (409) una posicion o lote distintos.
+     SUGGEST para todas las companias existentes (asi era siempre). Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.Tenant', 'RotationEnforcement') IS NULL
+    ALTER TABLE dbo.Tenant ADD RotationEnforcement VARCHAR(10) NOT NULL CONSTRAINT DF_Tenant_RotationEnforcement DEFAULT 'SUGGEST';
+GO
+IF OBJECT_ID('dbo.CK_Tenant_RotationEnforcement', 'C') IS NULL
+    ALTER TABLE dbo.Tenant ADD CONSTRAINT CK_Tenant_RotationEnforcement CHECK (RotationEnforcement IN ('SUGGEST', 'ENFORCE'));
+GO

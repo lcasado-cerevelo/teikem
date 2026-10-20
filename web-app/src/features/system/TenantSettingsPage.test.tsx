@@ -507,12 +507,24 @@ describe('Ajustes de la compañía', () => {
     await user.selectOptions(select, 'FIFO')
     await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
     await waitFor(() => expect(put()).toHaveLength(1))
-    expect(put()[0].body).toEqual({ rotationMethod: 'FIFO' })
+    expect(put()[0].body).toEqual({ rotationMethod: 'FIFO', rotationEnforcement: 'SUGGEST' })
 
     mock.settingsFail = { status: 400, title: 'El método de rotación debe ser FEFO o FIFO.', field: 'rotationMethod' }
     await user.selectOptions(within(panel).getByLabelText('Método de rotación de la compañía'), 'FEFO')
     await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
     expect((await within(panel).findAllByText('El método de rotación debe ser FEFO o FIFO.')).length).toBeGreaterThan(0)
+  })
+
+  it('Operación → rotación (2026-10-20): sugerir por omisión; obligar guarda rotationEnforcement', async () => {
+    const user = userEvent.setup()
+    wrap('/system/settings?tab=ops')
+    const panel = (await screen.findByRole('heading', { name: 'Rotación del inventario' })).closest('.panel') as HTMLElement
+    const select = within(panel).getByLabelText('Cómo se aplica en las salidas')
+    expect(select).toHaveValue('SUGGEST')
+    await user.selectOptions(select, 'ENFORCE')
+    await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
+    await waitFor(() => expect(put()).toHaveLength(1))
+    expect(put()[0].body).toEqual({ rotationMethod: 'FEFO', rotationEnforcement: 'ENFORCE' })
   })
 
   it('Operación → rotación: sin admin.tenant el selector es de solo lectura', async () => {

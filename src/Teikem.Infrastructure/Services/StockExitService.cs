@@ -55,7 +55,8 @@ public sealed class StockExitService(TeikemDbContext db, ILookupCache lookups)
         foreach (var id in list.Where(r => r.ZoneTypeLookupId != null).Select(r => r.ZoneTypeLookupId!.Value).Distinct())
             zoneTypes[id] = (await lookups.GetAsync(id, ct))?.InternalCode;
 
-        var tenantMethod = await db.Tenants.AsNoTracking().Where(t => t.TenantId == db.CurrentTenantId).Select(t => t.RotationMethod).FirstOrDefaultAsync(ct);   // Lote 34: rotación de la compañía; el producto puede tener excepción
+        var tenantRot = await db.Tenants.AsNoTracking().Where(t => t.TenantId == db.CurrentTenantId).Select(t => new { t.RotationMethod, t.RotationEnforcement }).FirstOrDefaultAsync(ct);
+        var tenantMethod = tenantRot?.RotationMethod;   // Lote 34: rotación de la compañía; el producto puede tener excepción
         var ranked = new List<StockExitOptionDto>();
         foreach (var g in list.GroupBy(r => (r.ProductId, r.ProductPublicId)).OrderBy(g => g.Key.ProductId))
         {
@@ -71,6 +72,7 @@ public sealed class StockExitService(TeikemDbContext db, ILookupCache lookups)
                     InventoryRules.Round4(c.Available), ++rank));
             }
         }
-        return new StockExitPageDto(ranked.Count, skip, take, DateTime.UtcNow, ranked.Skip(skip).Take(take).ToList());
+        return new StockExitPageDto(ranked.Count, skip, take, DateTime.UtcNow, ranked.Skip(skip).Take(take).ToList(),
+            RotationRules.ParseEnforcement(tenantRot?.RotationEnforcement) ?? RotationEnforcements.Suggest);
     }
 }

@@ -8,6 +8,9 @@ import { setLang } from '../../kernel/i18n/i18n'
 import type { components } from '../../kernel/api/schema'
 import {
   planCollect,
+  skippedRotation,
+  firstExit,
+  exitLabel,
   isPickableZone,
   buildCollectBody,
   collectSchema,
@@ -246,5 +249,45 @@ describe('planCollect (plan de salida)', () => {
 
   it('las zonas no recolectables (cuarentena, recepción) no entran', () => {
     expect(planCollect([bal(1, 'Q-01', 99, { zoneTypeCode: 'QUARANTINE' })], 5).short).toBe(5)
+  })
+})
+
+// 2026-10-20 — rotación obligatoria o sugerida: la propuesta es la fila de menor rank del servidor; la advertencia sale si se escoge otra cosa
+describe('rotación sugerida / obligatoria', () => {
+  const rows = [
+    { binId: 2, binCode: 'B-02', lotId: 8, lotNumber: 'L-8', rank: 2 },
+    { binId: 1, binCode: 'A-01', lotId: 7, lotNumber: 'L-7', rank: 1 },
+  ]
+
+  it('firstExit devuelve la de menor rank (aunque la lista llegue desordenada) y undefined si no hay', () => {
+    expect(firstExit(rows)?.binCode).toBe('A-01')
+    expect(firstExit([])).toBeUndefined()
+    expect(firstExit(undefined)).toBeUndefined()
+  })
+
+  it('skippedRotation: nada escogido o lo propuesto no advierte; otra posición u otro lote sí', () => {
+    expect(skippedRotation(rows, {})).toBeNull()
+    expect(skippedRotation(rows, { binId: 1 })).toBeNull()
+    expect(skippedRotation(rows, { lotId: 7 })).toBeNull()
+    expect(skippedRotation(rows, { binId: 2 })?.binCode).toBe('A-01')
+    expect(skippedRotation(rows, { lotId: 8 })?.lotNumber).toBe('L-7')
+    expect(skippedRotation(undefined, { binId: 2 })).toBeNull()
+  })
+
+  it('exitLabel junta posición y lote', () => {
+    expect(exitLabel(rows[1])).toBe('A-01 · L-7')
+    expect(exitLabel({ binCode: 'A-01' })).toBe('A-01')
+  })
+
+  it('con rotación obligatoria el cuerpo no manda posición ni lote (salvo líneas con series)', () => {
+    const lines = [
+      { productPublicId: 'p1', quantity: 5, binId: '3', lotId: '9', serialNumbers: '' },
+      { productPublicId: 'p2', quantity: 1, binId: '4', lotId: '', serialNumbers: 'S1' },
+    ]
+    const manual = buildCollectBody({ warehousePublicId: 'w', lines })
+    expect(manual.body.lines?.[0]).toMatchObject({ binId: 3, lotId: 9 })
+    const auto = buildCollectBody({ warehousePublicId: 'w', lines }, { auto: true })
+    expect(auto.body.lines?.[0]).toMatchObject({ binId: null, lotId: null })
+    expect(auto.body.lines?.[1]).toMatchObject({ binId: 4, serialNumbers: ['S1'] })
   })
 })

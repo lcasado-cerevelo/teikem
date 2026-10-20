@@ -13,7 +13,7 @@ import { buildManualIssueBody } from './manualIssueLogic'
 import { discardLocalPick } from './localPick'
 import { findBinByCode } from '../../kernel/warehouse/binLookup'
 import { findLocalBin } from '../count/countApi'
-import { hasStockExitCopy, mapExitRow, readStockExit, replaceStockExitFor } from './stockExit'
+import { hasStockExitCopy, mapExitRow, readRotationEnforced, readStockExit, replaceStockExitFor, saveRotationEnforcement } from './stockExit'
 import { buildCollectAndPackBody, type StockOption, type ClientChoice, type ConsigneeChoice, type PickLine, type ResolvedPickLine, uniqueBinCodes } from './dispatchLogic'
 
 /** De dónde puede salir el producto y de qué fuente: `server` = recién preguntado (orden de salida del servidor, GET /inventory/exit-options; se
@@ -21,6 +21,8 @@ import { buildCollectAndPackBody, type StockOption, type ClientChoice, type Cons
 export interface StockOptionsResult {
   options: StockOption[]
   source: 'server' | 'device' | 'none'
+  /** 2026-10-20: la compañía obliga la rotación (el sistema escoge de dónde sale; no se escoge posición ni lote). */
+  enforced: boolean
 }
 
 /** Existencias DISPONIBLES del producto en el almacén, en el orden de salida del servidor (rank). En línea pide la foto actual; sin señal usa la
@@ -32,10 +34,12 @@ export async function fetchStockOptions(warehousePublicId: string, productPublic
     )
     const rows = (page.items ?? []).map(mapExitRow)
     replaceStockExitFor(warehousePublicId, productPublicId, rows)
-    return { options: rows, source: 'server' }
+    saveRotationEnforcement(page.rotationEnforcement)
+    return { options: rows, source: 'server', enforced: page.rotationEnforcement === 'ENFORCE' }
   } catch {
     // sin señal (o sin permiso para consultar): lo que bajó el aparato
-    return hasStockExitCopy(warehousePublicId) ? { options: readStockExit(warehousePublicId, productPublicId), source: 'device' } : { options: [], source: 'none' }
+    const enforced = readRotationEnforced()
+    return hasStockExitCopy(warehousePublicId) ? { options: readStockExit(warehousePublicId, productPublicId), source: 'device', enforced } : { options: [], source: 'none', enforced }
   }
 }
 

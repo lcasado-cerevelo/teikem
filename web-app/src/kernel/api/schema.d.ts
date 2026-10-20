@@ -37671,6 +37671,7 @@ export interface components {
             /** Format: date-time */
             serverTimeUtc?: string;
             items?: components["schemas"]["StockExitOptionDto"][] | null;
+            rotationEnforcement?: string;
         };
         StopLocationRequest: {
             /** Format: double */
@@ -38186,6 +38187,7 @@ export interface components {
             sessionMinutes?: number;
             /** Format: int32 */
             deviceSessionMinutes?: number;
+            rotationEnforcement?: string;
         };
         TenantSettingsUpdateRequest: {
             name?: string | null;
@@ -38236,6 +38238,7 @@ export interface components {
             sessionMinutes?: number | null;
             /** Format: int32 */
             deviceSessionMinutes?: number | null;
+            rotationEnforcement?: string | null;
         };
         TenantSummaryDto: {
             /** Format: int32 */
