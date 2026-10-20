@@ -164,7 +164,7 @@ test('Marca por API: una marca inválida da 400 con el mensaje exacto y no cambi
   const saved = ((await ok.json()) as TenantSettingsDto).brandingJson
 
   const cases: [string, string][] = [
-    ['{"useCustom":true,"custom":{"flow":"#000000"}}', 'El contraste del color de operación en modo oscuro es 1.34:1; el mínimo es 4.5:1.'],
+    ['{"useCustom":true,"custom":{"flow":"#000000"}}', 'El contraste del color de operación en modo oscuro es 1.33:1; el mínimo es 4.5:1.'],
     ['{"useCustom":true,"custom":{"flow":"#1F6FE5","money":"#2060E0"}}', 'Los colores de operación y de dinero son demasiado parecidos: 4° de separación y el mínimo es 40°.'],
     ['{"danger":"#00FF00"}', "Los colores de estado (ok, warn, danger, info) no se pueden personalizar: 'danger'."],
     ['{"preset":"neon"}', "El tema predefinido 'neon' no existe."],

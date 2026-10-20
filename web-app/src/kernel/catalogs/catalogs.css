@@ -7,7 +7,7 @@
 .stpipe-step.done{color:var(--muted)}
 .stpipe-step.done .dot{background:var(--ok);border-color:var(--ok);color:#fff}
 .stpipe-step.current{color:var(--text)}
-.stpipe-step.current .dot{background:var(--flow);border-color:var(--flow);color:#fff;box-shadow:0 0 0 3px var(--flow-bg)}
+.stpipe-step.current .dot{background:var(--flow);border-color:var(--flow);color:var(--on-flow);box-shadow:0 0 0 3px var(--flow-bg)}
 .stpipe-sep{width:14px;height:2px;border-radius:2px;background:var(--line);flex:none}
 .stpipe-side{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-width:0}
 .stpipe-k{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-right:2px}

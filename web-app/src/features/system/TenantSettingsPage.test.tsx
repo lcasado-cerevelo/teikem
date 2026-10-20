@@ -578,7 +578,7 @@ describe('Ajustes de la compañía', () => {
     expect(JSON.parse(String((put()[0].body as { brandingJson: string }).brandingJson))).toMatchObject({ preset: 'bosque', useCustom: false })
     // colores propios que no pasan: no se guarda
     await user.click(await screen.findByRole('switch', { name: 'Usar colores propios' }))
-    const money = screen.getByLabelText('Color de dinero (hexadecimal)')
+    const money = screen.getByLabelText('Color de acento (hexadecimal)')
     await user.clear(money)
     await user.type(money, '#1E8E5B')
     await user.tab()

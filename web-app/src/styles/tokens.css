@@ -1,33 +1,42 @@
-/* Tokens de diseño portados de Diseño/teikem-mockups.html (bloque <style>): paleta oscura por defecto y tema claro
-   con data-theme="light" en <html>. Dos acentos: flow (operación, azul) y money (dinero, naranja). */
+/* Tokens de diseño: paleta oscura por defecto y tema claro con data-theme="light" en <html>. Lote 138 (2026-10-19): el tema por
+   omisión es el de la página de Advance Logistics: AZUL MARINO (de ahí salen fondos, paneles y líneas; tono 216), NARANJA
+   (--flow: botones, enlaces, navegación y foco) y GRIS (--money: marcas, contadores y el dinero). Estos valores son exactamente lo
+   que calcula `brandTheme.ts` para el tema `advance` (una prueba lo comprueba); otro tema los sobrescribe en <html>.
+   Tres roles por elemento: Primario = --flow (barras, navegación, pestañas); Acción = --action (botones, enlaces, foco; por
+   omisión el primario); Acento = --accent (chips, marcas, contadores, dinero; por omisión --money). --on-* = color del texto
+   sobre cada color de marca (blanco si da contraste AA; si no, azul marino oscuro: el texto blanco sobre naranja no se lee). */
 :root{
-  --bg:#0D1220; --bg-2:#0A0E18; --panel:#141B2E; --panel-2:#182136; --raise:#1F2A44;
-  --line:#243252; --line-2:#1C2740;
-  --text:#E8ECF5; --muted:#8C97AD; --faint:#5B6680;
-  --money:#FF6A1A; --money-2:#FF8B4D; --money-bg:rgba(255,106,26,.13); --money-line:rgba(255,106,26,.35);
-  --flow:#1F6FE5; --flow-2:#6EA8FF; --flow-bg:rgba(31,111,229,.14); --flow-line:rgba(31,111,229,.40);
+  --bg:#0D1520; --bg-2:#0A1018; --panel:#131E2F; --panel-2:#172437; --raise:#1D2D46;
+  --line:#223654; --line-2:#1B2A41;
+  --text:#E7EDF5; --muted:#8A99AF; --faint:#596982;
+  --money:#6C757D; --money-2:#A2A8AD; --money-bg:rgba(108,117,125,.14); --money-line:rgba(108,117,125,.40);
+  --flow:#F37123; --flow-2:#F4B188; --flow-bg:rgba(243,113,35,.14); --flow-line:rgba(243,113,35,.40);
+  --action:var(--flow); --action-2:var(--flow-2); --action-bg:var(--flow-bg); --action-line:var(--flow-line);
+  --accent:var(--money); --accent-2:var(--money-2); --accent-bg:var(--money-bg); --accent-line:var(--money-line);
+  --on-flow:#0A1B33; --on-action:#0A1B33; --on-action-2:#0A1B33; --on-accent:#FFFFFF;
   --ok:#46CE82; --okbg:rgba(70,206,130,.13); --warn:#E6A93E; --warnbg:rgba(230,169,62,.13);
   --danger:#F26A60; --dangerbg:rgba(242,106,96,.13); --info:#6293FF; --infobg:rgba(98,147,255,.13);
   --violet:#9A8CF8; --violetbg:rgba(154,140,248,.13);
-  --neutral-fg:#9aa3b2; --neutral-bg:rgba(255,255,255,.06);
-  --brand-wash:rgba(31,111,229,.14); --brand-glow:rgba(46,124,246,.4);
-  --app-bg:radial-gradient(1200px 600px at 80% -10%,#14203A 0%,#0D1220 55%);
+  --neutral-fg:#8E9AAB; --neutral-bg:rgba(255,255,255,.06);
+  --brand-wash:rgba(243,113,35,.14); --brand-glow:rgba(243,113,35,.40);
+  --app-bg:radial-gradient(1200px 600px at 80% -10%,#162336 0%,#0D1520 55%);
   --label-paper:#fff; --label-ink:#0B2C66;
-  --hexd:#0B2C66; --hexl:#1F6FE5;
+  --hexd:#9D4009; --hexl:#F37123;
   --mono:'JetBrains Mono',ui-monospace,monospace; --ui:'Space Grotesk',system-ui,sans-serif;
 }
 [data-theme="light"]{
-  --bg:#F0F2F7; --bg-2:#FAFBFD; --panel:#FFFFFF; --panel-2:#F2F5FA; --raise:#E5EAF3;
-  --line:#DDE4F0; --line-2:#E9EDF5;
-  --text:#182136; --muted:#5B6880; --faint:#8C97AD;
-  --money:#E05A0F; --money-2:#B94A0C; --money-bg:rgba(224,90,15,.10); --money-line:rgba(224,90,15,.30);
-  --flow:#1F6FE5; --flow-2:#0B4DB8; --flow-bg:rgba(31,111,229,.10); --flow-line:rgba(31,111,229,.30);
+  --bg:#EFF3F8; --bg-2:#FAFBFD; --panel:#FFFFFF; --panel-2:#F2F5FA; --raise:#E4EAF4;
+  --line:#DCE4F1; --line-2:#E8EEF6;
+  --text:#172437; --muted:#596982; --faint:#8A99AF;
+  --money:#6C757D; --money-2:#3C4751; --money-bg:rgba(108,117,125,.10); --money-line:rgba(108,117,125,.30);
+  --flow:#F37123; --flow-2:#B84602; --flow-bg:rgba(243,113,35,.10); --flow-line:rgba(243,113,35,.30);
+  --on-flow:#0A1B33; --on-action:#0A1B33; --on-action-2:#FFFFFF; --on-accent:#FFFFFF;
   --ok:#1E9457; --okbg:rgba(30,148,87,.12); --warn:#B5811F; --warnbg:rgba(181,129,31,.13);
   --danger:#CC4B41; --dangerbg:rgba(204,75,65,.12); --info:#3C6BE0; --infobg:rgba(60,107,224,.12);
   --violet:#6D5FE0; --violetbg:rgba(109,95,224,.12);
-  --neutral-fg:#5B6880; --neutral-bg:rgba(0,0,0,.05);
-  --brand-wash:rgba(31,111,229,.10); --brand-glow:rgba(31,111,229,.22);
-  --app-bg:radial-gradient(1100px 560px at 82% -12%,#ffffff 0%,#F0F2F7 60%);
+  --neutral-fg:#5D6A7E; --neutral-bg:rgba(0,0,0,.05);
+  --brand-wash:rgba(243,113,35,.10); --brand-glow:rgba(243,113,35,.22);
+  --app-bg:radial-gradient(1100px 560px at 82% -12%,#ffffff 0%,#EFF3F8 60%);
 }
 /* Medidas del shell (no están en la maqueta como variables; se toman de sus valores fijos). */
 :root{

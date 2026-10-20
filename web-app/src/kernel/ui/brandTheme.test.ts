@@ -1,5 +1,8 @@
+/// <reference types="node" />
 // Marca de la compañía (portada de la maqueta): contraste WCAG, matiz, presets que pasan las validaciones, derivación del
 // tema, BrandingJson y vista previa sobre <html>.
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { applyBrandVars } from './brandPreview'
 import {
@@ -11,6 +14,8 @@ import {
   brandCssVars,
   contrastRatio,
   DEFAULT_BRAND,
+  DEFAULT_PRESET,
+  defaultBrandVars,
   deriveAccent,
   deriveSurfaces,
   hexToRgb,
@@ -19,9 +24,12 @@ import {
   isDefaultBrand,
   isValidHex,
   normalizeHex,
+  ON_DARK,
+  onColor,
   parseBranding,
   rgbToHsl,
   serializeBranding,
+  validateBrandingJson,
   type BrandSettings,
 } from './brandTheme'
 
@@ -61,11 +69,31 @@ describe('colores', () => {
 })
 
 describe('temas', () => {
-  it('los 13 temas de la maqueta pasan todas las validaciones (contraste en los dos modos y matiz ≥ 40°)', () => {
-    expect(BRAND_PRESETS).toHaveLength(13)
+  it('los 14 temas (los 13 de la maqueta y el de Advance Logistics) pasan todas las validaciones (contraste en los dos modos y matiz ≥ 40°)', () => {
+    expect(BRAND_PRESETS).toHaveLength(14)
+    expect(BRAND_PRESETS[0].id).toBe(DEFAULT_PRESET)
     for (const p of BRAND_PRESETS) {
       const b: BrandSettings = { preset: p.id, useCustom: false, custom: DEFAULT_BRAND.custom }
       expect(brandChecksPass(b), p.id).toBe(true)
+    }
+  })
+
+  it('Lote 138: la paleta por omisión de tokens.css es exactamente la del tema Advance calculado (oscuro y claro)', () => {
+    const css = readFileSync(resolve(__dirname, '../../styles/tokens.css'), 'utf8')
+    const block = (re: RegExp) => css.match(re)?.[0] ?? ''
+    const vars = (b: string) => Object.fromEntries([...b.matchAll(/(--[a-z0-9-]+)\s*:\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]))
+    // sin espacios, mayúsculas, y la opacidad como número (.14 = 0.14)
+    const norm = (s: string) =>
+      s
+        .replace(/\s+/g, '')
+        .replace(/rgba\((\d+),(\d+),(\d+),([\d.]+)\)/g, (_a, r, g, bl, a) => `rgba(${r},${g},${bl},${Number(a)})`)
+        .toUpperCase()
+    for (const [mode, re] of [['dark', /:root\{[^}]*--bg:[^}]*\}/], ['light', /\[data-theme="light"\]\{[^}]*\}/]] as const) {
+      const fromCss = { ...vars(block(/:root{[^}]*--bg:[^}]*}/)), ...vars(block(re)) }   // el claro hereda lo que no redefine (--hexd, --hexl)
+      for (const [k, v] of Object.entries(defaultBrandVars(mode))) {
+        if (k === '--action' || k.startsWith('--action-')) continue   // en tokens.css son var(--flow…): mismo valor por omisión
+        expect(norm(fromCss[k] ?? '<falta>'), `${mode} ${k}`).toBe(norm(v))
+      }
     }
   })
 
@@ -96,6 +124,36 @@ describe('temas', () => {
     expect(text).toMatchObject({ min: 7, pass: true })
   })
 
+  it('onColor: blanco si llega a AA; si no, el azul marino oscuro (naranja) y blanco sobre el gris', () => {
+    expect(onColor('#1F6FE5')).toBe('#FFFFFF')
+    expect(onColor('#F37123')).toBe(ON_DARK)
+    expect(onColor('#6C757D')).toBe('#FFFFFF')
+    for (const c of ['#F37123', '#6C757D', '#1F6FE5', '#7A4FD1']) expect(contrastRatio(onColor(c), c), c).toBeGreaterThanOrEqual(4)
+  })
+
+  it('Lote 138: el color de acción es opcional, por omisión el primario, y solo se comprueba cuando es distinto', () => {
+    const two: BrandSettings = { preset: 'teikem', useCustom: true, custom: { flow: '#7A4FD1', money: '#D98324', neutral: '#2B3A5C' } }
+    expect(brandColors(two).action).toBe('#7A4FD1')
+    expect(brandChecks(two)).toHaveLength(9)
+    const three: BrandSettings = { ...two, custom: { ...two.custom, action: '#1F6FE5' } }
+    expect(brandColors(three).action).toBe('#1F6FE5')
+    const checks = brandChecks(three)
+    expect(checks).toHaveLength(11)
+    expect(checks.slice(0, 5).map((c) => (c.type === 'contrast' ? c.key : c.type))).toEqual(['text', 'muted', 'flow', 'money', 'action'])
+    expect(brandChecksPass(three)).toBe(true)
+    // la acción negra no se lee sobre el panel oscuro: mismo mensaje que el servidor
+    const v = validateBrandingJson('{"useCustom":true,"custom":{"action":"#000000"}}')
+    expect(v.code).toBe('contrast')
+    expect(v.message).toBe('El contraste del color de acción en modo oscuro es 1.33:1; el mínimo es 4.5:1.')
+    // las variables --action* salen del color de acción; sin él, del primario
+    expect(brandCssVars(three, 'dark')['--action']).toBe('#1F6FE5')
+    expect(brandCssVars(two, 'dark')['--action']).toBe('#7A4FD1')
+    expect(BRAND_CSS_VARS).toContain('--action-bg')
+    // se guarda solo cuando existe, y se lee de vuelta
+    expect(JSON.parse(serializeBranding(two)).custom.action).toBeUndefined()
+    expect(parseBranding(serializeBranding(three)).custom.action).toBe('#1F6FE5')
+  })
+
   it('la marca de siempre no sobrescribe nada; otro tema sí (sin los colores de estado)', () => {
     expect(isDefaultBrand(DEFAULT_BRAND)).toBe(true)
     expect(brandCssVars(DEFAULT_BRAND, 'dark')).toEqual({})
@@ -121,9 +179,9 @@ describe('BrandingJson', () => {
     expect(parseBranding(null)).toEqual(DEFAULT_BRAND)
     expect(parseBranding('no es json')).toEqual(DEFAULT_BRAND)
     expect(parseBranding('{"preset":"nada","useCustom":true,"custom":{"flow":"#abc","money":"zz"}}')).toEqual({
-      preset: 'teikem',
+      preset: DEFAULT_PRESET,
       useCustom: true,
-      custom: { flow: '#AABBCC', money: '#FF6A1A', neutral: '#2B3A5C' },
+      custom: { flow: '#AABBCC', money: '#6C757D', neutral: '#03204B' },
     })
     const json = serializeBranding({ ...DEFAULT_BRAND, preset: 'acero' })
     expect(JSON.parse(json)).toEqual({ preset: 'acero', useCustom: false, custom: DEFAULT_BRAND.custom })

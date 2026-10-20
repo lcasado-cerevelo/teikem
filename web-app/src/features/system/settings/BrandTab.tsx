@@ -1,4 +1,4 @@
-// Ajustes → Marca (maqueta `tenantBrandPanelHtml`): 13 temas predefinidos o colores propios (operación, dinero y tono base),
+// Ajustes → Marca (maqueta `tenantBrandPanelHtml`): 14 temas predefinidos (el de Advance Logistics es el de por defecto) o colores propios (primario, acción, acento y tono base),
 // con la validación de contraste WCAG en los dos modos y de separación de matiz (`brandChecks`, kernel/ui/brandTheme). La app
 // se ve con el borrador mientras se edita (`setBrandPreview`); "Guardar" lo deja en `Tenant.BrandingJson` y "Descartar" vuelve
 // a lo guardado. El servidor repite las validaciones (BrandingRules) y su 400 se muestra junto a los colores. Los cuatro logos
@@ -33,7 +33,7 @@ import { IconAlert, IconCheck } from '../../../kernel/ui/icons'
 import { problemText } from '../../warehouse/problemText'
 import { useRemoveBrandLogo, useSaveTenantSettings, useUploadBrandLogo, type TenantSettingsDto } from '../tenantSettingsApi'
 
-type ColorKey = 'flow' | 'money' | 'neutral'
+type ColorKey = 'flow' | 'action' | 'money' | 'neutral'
 
 function sameBrand(a: BrandSettings, b: BrandSettings): boolean {
   return JSON.stringify(a) === JSON.stringify(b)
@@ -194,9 +194,20 @@ function BrandEditor({ settings, canEdit }: { settings: TenantSettingsDto; canEd
   const choosePreset = (id: string) => {
     const p = BRAND_PRESETS.find((x) => x.id === id)
     if (!p) return
-    setDraft((d) => ({ preset: id, useCustom: false, custom: { ...d.custom, flow: p.flow, money: p.money } }))
+    setDraft((d) => {
+      const custom = { ...d.custom, flow: p.flow, money: p.money }
+      delete custom.action   // un tema predefinido no tiene color de acción aparte
+      return { preset: id, useCustom: false, custom }
+    })
   }
   const setColor = (k: ColorKey, hex: string) => setDraft((d) => ({ ...d, useCustom: true, custom: { ...d.custom, [k]: hex } }))
+  // Lote 138: el color de acción es opcional (vacío = el primario); al escoger uno distinto del primario se guarda aparte
+  const clearAction = () =>
+    setDraft((d) => {
+      const rest = { ...d.custom }
+      delete rest.action
+      return { ...d, useCustom: true, custom: rest }
+    })
 
   const submit = async () => {
     if (!pass) {
@@ -247,6 +258,7 @@ function BrandEditor({ settings, canEdit }: { settings: TenantSettingsDto; canEd
           return (
             <button key={p.id} type="button" className={on ? 'btn sm flow' : 'btn sm'} aria-pressed={on} disabled={!canEdit} onClick={() => choosePreset(p.id)}>
               {swatch(p.flow)}
+              {swatch(p.flow)}
               {swatch(p.money)} {lang === 'en' ? p.nameEn : p.nameEs}
             </button>
           )
@@ -261,10 +273,36 @@ function BrandEditor({ settings, canEdit }: { settings: TenantSettingsDto; canEd
       {draft.useCustom && (
         <div className="r3" style={{ margin: '10px 0' }}>
           <ColorField key={`flow-${colors.flow}`} k="flow" value={colors.flow} disabled={!canEdit} onChange={(h) => setColor('flow', h)} />
+          <div>
+            <ColorField key={`action-${colors.action}`} k="action" value={colors.action} disabled={!canEdit} onChange={(h) => setColor('action', h)} />
+            {draft.custom.action && canEdit && (
+              <button type="button" className="btn sm" style={{ marginTop: 6 }} onClick={clearAction}>
+                {t('system.settings.brand.actionSameAsPrimary')}
+              </button>
+            )}
+          </div>
           <ColorField key={`money-${colors.money}`} k="money" value={colors.money} disabled={!canEdit} onChange={(h) => setColor('money', h)} />
           <ColorField key={`neutral-${draft.custom.neutral}`} k="neutral" value={draft.custom.neutral} disabled={!canEdit} onChange={(h) => setColor('neutral', h)} />
         </div>
       )}
+
+      {/* Lote 138: muestra con los tres roles juntos (barra, botón, marca y dinero); la app entera ya se ve con el borrador */}
+      <div className="set-brand-sample" data-testid="brand-sample" aria-label={t('system.settings.brand.sampleTitle')}>
+        <div className="set-brand-sample-bar" style={{ background: colors.flow }}>
+          <span>{t('system.settings.brand.sampleBar')}</span>
+        </div>
+        <div className="set-brand-sample-body">
+          <span className="btn flow" style={{ background: colors.action, borderColor: colors.action, pointerEvents: 'none' }}>
+            {t('system.settings.brand.sampleButton')}
+          </span>
+          <span className="tag" style={{ color: colors.money, borderColor: colors.money, background: 'transparent' }}>
+            {t('system.settings.brand.sampleChip')}
+          </span>
+          <span className="cash" style={{ color: colors.money }}>
+            {t('system.settings.brand.sampleMoney')}
+          </span>
+        </div>
+      </div>
 
       <div className={`note set-checks ${pass ? 'ok' : 'bad'}`} role="status" data-testid="brand-checks">
         <b>

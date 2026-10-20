@@ -1047,7 +1047,7 @@ Casos frecuentes:
 
 ### 11.2 Marca por compañía: colores y logos (Lote 19)
 
-Qué hace: la compañía elige el **tema de color** de su interfaz (uno de 13 predefinidos o colores propios) y sube sus **logos**.
+Qué hace: la compañía elige el **tema de color** de su interfaz (uno de 14 predefinidos —el de **Advance Logistics**, azul marino, naranja y gris, es el de por defecto— o colores propios) y sube sus **logos**.
 Los colores se guardan en `Tenant.BrandingJson`; los cuatro logos, en la tabla `TenantBrandLogo` de la base. El servidor **valida
 la marca con las mismas reglas y los mismos números que la pantalla** (un tema inválido entrado por API dejaría la interfaz
 ilegible para toda la compañía) y valida el **contenido real** de cada logo.
@@ -1058,12 +1058,15 @@ Quién puede: **ver** la marca y los logos, cualquier usuario con sesión (es la
 
 #### Colores (`brandingJson`)
 
-Forma: `{ "preset": "bosque", "useCustom": false, "custom": { "flow": "#1F6FE5", "money": "#FF6A1A", "neutral": "#2B3A5C" } }`.
-Los tres campos son opcionales (por defecto: tema `teikem`, sin colores propios); con `useCustom: true` mandan `custom.flow`
-(color de operación), `custom.money` (color de dinero) y `custom.neutral` (tono base, de donde salen fondos, paneles, líneas y
-texto; su saturación se acota a 0.45). Temas: `teikem`, `marino`, `acero`, `carretera`, `granate`, `vino`, `bosque`, `selva`,
+Forma: `{ "preset": "bosque", "useCustom": false, "custom": { "flow": "#F37123", "action": "#F37123", "money": "#6C757D", "neutral": "#03204B" } }`.
+Los campos son opcionales (por defecto: tema `advance`, sin colores propios); con `useCustom: true` mandan **tres roles por elemento**
+(Lote 138): `custom.flow` = **primario** (barras, navegación, pestañas), `custom.action` = **acción** (botones principales, enlaces y
+foco; opcional: sin él es el mismo que el primario), `custom.money` = **acento** (chips, marcas, contadores y el dinero: COD,
+facturación, liquidación) y `custom.neutral` (tono base, de donde salen fondos, paneles, líneas y texto; su saturación se
+acota a 0.45). El texto sobre cada color de marca lo escoge el sistema: blanco si da contraste AA (4.5:1) y, si no, azul marino
+oscuro (un botón naranja no lleva letras blancas). Temas: `advance` (por defecto), `teikem` (azul y naranja), `marino`, `acero`, `carretera`, `granate`, `vino`, `bosque`, `selva`,
 `oliva`, `turquesa`, `indigo`, `violeta`, `grafito`. Los colores de estado (verde, ámbar, rojo) **no** se personalizan. Un
-`brandingJson` vacío (`""`) quita la marca (vuelve la de Teikem).
+`brandingJson` vacío (`""`) quita la marca (vuelve la de por defecto, Advance Logistics).
 
 Se revisa en este orden y se informa **el primer fallo** (400, campo `brandingJson` en `errors`, el mensaje también en `title`):
 
@@ -1078,9 +1081,9 @@ Se revisa en este orden y se informa **el primer fallo** (400, campo `brandingJs
 | Color que no es hexadecimal `#RGB` o `#RRGGBB` (el `#` es opcional; sin espacios) | `El color 'custom.<flow\|money\|neutral>' no es hexadecimal (use #RGB o #RRGGBB).` |
 | Tema predefinido que no existe (se distingue mayúscula) | `El tema predefinido '<id>' no existe.` |
 | Contraste insuficiente contra el panel del propio tema: texto ≥ 7:1; texto atenuado, color de operación y color de dinero ≥ 4.5:1; en modo oscuro y luego en claro | `El contraste <del texto\|del texto atenuado\|del color de operación\|del color de dinero> en modo <oscuro\|claro> es <r>:1; el mínimo es <m>:1.` |
-| Los dos acentos a menos de 40° de matiz | `Los colores de operación y de dinero son demasiado parecidos: <d>° de separación y el mínimo es 40°.` |
+| Los dos acentos (primario y acento) a menos de 40° de matiz | `Los colores de operación y de dinero son demasiado parecidos: <d>° de separación y el mínimo es 40°.` |
 
-Los 13 temas predefinidos pasan todas las comprobaciones. Con `useCustom: false` los colores de `custom` se revisan en su formato
+Los 14 temas predefinidos pasan todas las comprobaciones. El color de acción propio se comprueba como los demás (≥ 4.5:1 contra el panel, en los dos modos: `El contraste del color de acción en modo <oscuro|claro> es <r>:1; el mínimo es 4.5:1.`) y solo cuando es distinto del primario. Con `useCustom: false` los colores de `custom` se revisan en su formato
 pero no entran en el contraste (manda el tema).
 
 #### Logos (`/api/v1/tenant/brand/logos`)

@@ -45,7 +45,7 @@ public sealed class TenantBrandSettingsTests
     [InlineData("{\"warn\":\"#FFA500\"}", "Los colores de estado (ok, warn, danger, info) no se pueden personalizar: 'warn'.")]
     [InlineData("{\"useCustom\":true,\"custom\":{\"flow\":\"azul\"}}", "El color 'custom.flow' no es hexadecimal (use #RGB o #RRGGBB).")]
     [InlineData("{\"preset\":\"neon\"}", "El tema predefinido 'neon' no existe.")]
-    [InlineData("{\"useCustom\":true,\"custom\":{\"flow\":\"#000000\"}}", "El contraste del color de operación en modo oscuro es 1.34:1; el mínimo es 4.5:1.")]
+    [InlineData("{\"useCustom\":true,\"custom\":{\"flow\":\"#000000\"}}", "El contraste del color de operación en modo oscuro es 1.33:1; el mínimo es 4.5:1.")]
     [InlineData("{\"useCustom\":true,\"custom\":{\"flow\":\"#1F6FE5\",\"money\":\"#2060E0\"}}", "Los colores de operación y de dinero son demasiado parecidos: 4° de separación y el mínimo es 40°.")]
     public async Task An_invalid_brand_is_a_400_with_the_exact_message_on_brandingJson_and_nothing_is_saved(string json, string message)
     {

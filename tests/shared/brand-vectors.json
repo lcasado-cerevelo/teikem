@@ -6,6 +6,83 @@
  },
  "cases": [
   {
+   "name": "predefinido advance",
+   "input": "{\"preset\":\"advance\",\"useCustom\":false,\"custom\":{\"flow\":\"#F37123\",\"money\":\"#6C757D\",\"neutral\":\"#03204B\"}}",
+   "valid": true,
+   "checks": [
+    {
+     "type": "contrast",
+     "key": "text",
+     "mode": "dark",
+     "ratio": 14.21,
+     "min": 7,
+     "pass": true
+    },
+    {
+     "type": "contrast",
+     "key": "muted",
+     "mode": "dark",
+     "ratio": 5.78,
+     "min": 4.5,
+     "pass": true
+    },
+    {
+     "type": "contrast",
+     "key": "flow",
+     "mode": "dark",
+     "ratio": 9.16,
+     "min": 4.5,
+     "pass": true
+    },
+    {
+     "type": "contrast",
+     "key": "money",
+     "mode": "dark",
+     "ratio": 6.97,
+     "min": 4.5,
+     "pass": true
+    },
+    {
+     "type": "contrast",
+     "key": "text",
+     "mode": "light",
+     "ratio": 15.63,
+     "min": 7,
+     "pass": true
+    },
+    {
+     "type": "contrast",
+     "key": "muted",
+     "mode": "light",
+     "ratio": 5.57,
+     "min": 4.5,
+     "pass": true
+    },
+    {
+     "type": "contrast",
+     "key": "flow",
+     "mode": "light",
+     "ratio": 5.36,
+     "min": 4.5,
+     "pass": true
+    },
+    {
+     "type": "contrast",
+     "key": "money",
+     "mode": "light",
+     "ratio": 9.49,
+     "min": 4.5,
+     "pass": true
+    },
+    {
+     "type": "hue",
+     "distance": 174,
+     "min": 40,
+     "pass": true
+    }
+   ]
+  },
+  {
    "name": "predefinido teikem",
    "input": "{\"preset\":\"teikem\",\"useCustom\":false,\"custom\":{\"flow\":\"#1F6FE5\",\"money\":\"#FF6A1A\",\"neutral\":\"#2B3A5C\"}}",
    "valid": true,
@@ -1020,7 +1097,7 @@
      "type": "contrast",
      "key": "text",
      "mode": "dark",
-     "ratio": 14.37,
+     "ratio": 14.21,
      "min": 7,
      "pass": true
     },
@@ -1028,7 +1105,7 @@
      "type": "contrast",
      "key": "muted",
      "mode": "dark",
-     "ratio": 5.73,
+     "ratio": 5.78,
      "min": 4.5,
      "pass": true
     },
@@ -1036,7 +1113,7 @@
      "type": "contrast",
      "key": "flow",
      "mode": "dark",
-     "ratio": 7.23,
+     "ratio": 9.16,
      "min": 4.5,
      "pass": true
     },
@@ -1044,7 +1121,7 @@
      "type": "contrast",
      "key": "money",
      "mode": "dark",
-     "ratio": 9.28,
+     "ratio": 6.97,
      "min": 4.5,
      "pass": true
     },
@@ -1052,7 +1129,7 @@
      "type": "contrast",
      "key": "text",
      "mode": "light",
-     "ratio": 16.03,
+     "ratio": 15.63,
      "min": 7,
      "pass": true
     },
@@ -1060,7 +1137,7 @@
      "type": "contrast",
      "key": "muted",
      "mode": "light",
-     "ratio": 5.74,
+     "ratio": 5.57,
      "min": 4.5,
      "pass": true
     },
@@ -1068,7 +1145,7 @@
      "type": "contrast",
      "key": "flow",
      "mode": "light",
-     "ratio": 8.83,
+     "ratio": 5.36,
      "min": 4.5,
      "pass": true
     },
@@ -1076,13 +1153,13 @@
      "type": "contrast",
      "key": "money",
      "mode": "light",
-     "ratio": 5.33,
+     "ratio": 9.49,
      "min": 4.5,
      "pass": true
     },
     {
      "type": "hue",
-     "distance": 165,
+     "distance": 174,
      "min": 40,
      "pass": true
     }
@@ -2852,6 +2929,201 @@
    "valid": false,
    "code": "badType",
    "message": "El campo 'useCustom' tiene un tipo inválido."
+  },
+  {
+   "name": "acción propia distinta del primario (tres colores)",
+   "input": "{\"useCustom\":true,\"custom\":{\"flow\":\"#7A4FD1\",\"action\":\"#1F6FE5\",\"money\":\"#D98324\",\"neutral\":\"#2B3A5C\"}}",
+   "valid": true,
+   "checks": [
+    {
+     "type": "contrast",
+     "key": "text",
+     "mode": "dark",
+     "ratio": 14.35,
+     "min": 7,
+     "pass": true
+    },
+    {
+     "type": "contrast",
+     "key": "muted",
+     "mode": "dark",
+     "ratio": 5.74,
+     "min": 4.5,
+     "pass": true
+    },
+    {
+     "type": "contrast",
+     "key": "flow",
+     "mode": "dark",
+     "ratio": 7.59,
+     "min": 4.5,
+     "pass": true
+    },
+    {
+     "type": "contrast",
+     "key": "money",
+     "mode": "dark",
+     "ratio": 9.03,
+     "min": 4.5,
+     "pass": true
+    },
+    {
+     "type": "contrast",
+     "key": "action",
+     "mode": "dark",
+     "ratio": 7.22,
+     "min": 4.5,
+     "pass": true
+    },
+    {
+     "type": "contrast",
+     "key": "text",
+     "mode": "light",
+     "ratio": 15.89,
+     "min": 7,
+     "pass": true
+    },
+    {
+     "type": "contrast",
+     "key": "muted",
+     "mode": "light",
+     "ratio": 5.67,
+     "min": 4.5,
+     "pass": true
+    },
+    {
+     "type": "contrast",
+     "key": "flow",
+     "mode": "light",
+     "ratio": 10.23,
+     "min": 4.5,
+     "pass": true
+    },
+    {
+     "type": "contrast",
+     "key": "money",
+     "mode": "light",
+     "ratio": 6.04,
+     "min": 4.5,
+     "pass": true
+    },
+    {
+     "type": "contrast",
+     "key": "action",
+     "mode": "light",
+     "ratio": 8.83,
+     "min": 4.5,
+     "pass": true
+    },
+    {
+     "type": "hue",
+     "distance": 132,
+     "min": 40,
+     "pass": true
+    }
+   ]
+  },
+  {
+   "name": "acción ilegible: negro",
+   "input": "{\"useCustom\":true,\"custom\":{\"action\":\"#000000\"}}",
+   "valid": false,
+   "code": "contrast",
+   "message": "El contraste del color de acción en modo oscuro es 1.33:1; el mínimo es 4.5:1.",
+   "checks": [
+    {
+     "type": "contrast",
+     "key": "text",
+     "mode": "dark",
+     "ratio": 14.23,
+     "min": 7,
+     "pass": true
+    },
+    {
+     "type": "contrast",
+     "key": "muted",
+     "mode": "dark",
+     "ratio": 5.78,
+     "min": 4.5,
+     "pass": true
+    },
+    {
+     "type": "contrast",
+     "key": "flow",
+     "mode": "dark",
+     "ratio": 9.16,
+     "min": 4.5,
+     "pass": true
+    },
+    {
+     "type": "contrast",
+     "key": "money",
+     "mode": "dark",
+     "ratio": 6.97,
+     "min": 4.5,
+     "pass": true
+    },
+    {
+     "type": "contrast",
+     "key": "action",
+     "mode": "dark",
+     "ratio": 1.33,
+     "min": 4.5,
+     "pass": false
+    },
+    {
+     "type": "contrast",
+     "key": "text",
+     "mode": "light",
+     "ratio": 15.63,
+     "min": 7,
+     "pass": true
+    },
+    {
+     "type": "contrast",
+     "key": "muted",
+     "mode": "light",
+     "ratio": 5.58,
+     "min": 4.5,
+     "pass": true
+    },
+    {
+     "type": "contrast",
+     "key": "flow",
+     "mode": "light",
+     "ratio": 5.36,
+     "min": 4.5,
+     "pass": true
+    },
+    {
+     "type": "contrast",
+     "key": "money",
+     "mode": "light",
+     "ratio": 9.49,
+     "min": 4.5,
+     "pass": true
+    },
+    {
+     "type": "contrast",
+     "key": "action",
+     "mode": "light",
+     "ratio": 13.04,
+     "min": 4.5,
+     "pass": true
+    },
+    {
+     "type": "hue",
+     "distance": 174,
+     "min": 40,
+     "pass": true
+    }
+   ]
+  },
+  {
+   "name": "acción con formato inválido",
+   "input": "{\"custom\":{\"action\":\"azul\"}}",
+   "valid": false,
+   "code": "badHex",
+   "message": "El color 'custom.action' no es hexadecimal (use #RGB o #RRGGBB)."
   }
  ]
 }

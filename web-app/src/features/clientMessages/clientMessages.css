@@ -11,7 +11,7 @@
 .cm-row-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cm-row-time { flex: none; font-size: 11px; }
 .cm-row-client, .cm-row-preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.cm-badge { flex: none; min-width: 20px; padding: 1px 6px; border-radius: 20px; background: var(--flow); color: #fff; font-size: 11px; font-weight: 700; text-align: center; }
+.cm-badge { flex: none; min-width: 20px; padding: 1px 6px; border-radius: 20px; background: var(--flow); color:var(--on-flow); font-size: 11px; font-weight: 700; text-align: center; }
 .cm-more { margin: 10px 12px; width: calc(100% - 24px); }
 
 .cm-chat { display: flex; flex-direction: column; min-width: 0; flex: 1; }
@@ -26,7 +26,7 @@
 .cm-msg.staff { justify-content: flex-end; }
 .cm-msg.person { justify-content: flex-start; }
 .cm-bubble { display: flex; flex-direction: column; gap: 3px; max-width: min(78%, 560px); padding: 8px 12px; border-radius: 12px; overflow-wrap: anywhere; }
-.cm-msg.staff .cm-bubble { background: var(--flow); color: #fff; border-bottom-right-radius: 3px; }
+.cm-msg.staff .cm-bubble { background: var(--flow); color:var(--on-flow); border-bottom-right-radius: 3px; }
 .cm-msg.person .cm-bubble { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-bottom-left-radius: 3px; }
 .cm-sender { font-size: 11px; font-weight: 700; opacity: 0.9; }
 .cm-body { white-space: pre-wrap; font-size: 13.5px; }
@@ -47,7 +47,7 @@
 }
 
 /* Insignia de no leídos junto al ítem del menú */
-.navit .cm-nav-badge { margin-left: auto; min-width: 18px; padding: 0 6px; border-radius: 20px; background: var(--flow); color: #fff; font-size: 10.5px; font-weight: 700; text-align: center; line-height: 1.6; }
+.navit .cm-nav-badge { margin-left: auto; min-width: 18px; padding: 0 6px; border-radius: 20px; background: var(--flow); color:var(--on-flow); font-size: 10.5px; font-weight: 700; text-align: center; line-height: 1.6; }
 
 /* Panel «Equipo de servicio al cliente» de la ficha y el modal de escribir primero */
 .cm-team-list { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 6px; }

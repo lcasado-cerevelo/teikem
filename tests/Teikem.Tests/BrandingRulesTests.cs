@@ -5,7 +5,7 @@ using Xunit;
 namespace Teikem.Tests;
 
 /// <summary>
-/// Marca por compañía (2026-10) — BrandingRules: los 13 temas predefinidos pasan, cada regla falla con su mensaje exacto y el orden de
+/// Marca por compañía (2026-10) — BrandingRules: los 14 temas predefinidos pasan, cada regla falla con su mensaje exacto y el orden de
 /// las comprobaciones es el del contrato. La PARIDAD con la web se prueba contra los vectores compartidos
 /// (tests/shared/brand-vectors.json, el mismo archivo que lee vitest): entrada → válido/código/mensaje/comprobaciones idénticos.
 /// </summary>
@@ -81,9 +81,10 @@ public sealed class BrandingRulesTests
     // ------------------------------------------------------------------ reglas
 
     [Fact]
-    public void All_thirteen_presets_pass_every_check()
+    public void All_fourteen_presets_pass_every_check()
     {
-        Assert.Equal(13, BrandingRules.Presets.Count);
+        Assert.Equal(14, BrandingRules.Presets.Count);
+        Assert.Equal("advance", BrandingRules.Presets[0].Id);   // Lote 138: el primero y el de por defecto
         foreach (var p in BrandingRules.Presets)
         {
             var v = BrandingRules.Validate(Std(p.Id));
@@ -100,7 +101,8 @@ public sealed class BrandingRulesTests
         Assert.Empty(BrandingRules.Validate("").Checks);
         var v = BrandingRules.Validate("{}");
         Assert.True(v.Ok);
-        Assert.Equal(BrandingRules.Validate(Std("teikem")).Checks, v.Checks);
+        Assert.Equal(BrandingRules.Validate(Std("advance")).Checks, v.Checks);
+        Assert.Equal("advance", BrandingRules.DefaultPreset);
     }
 
     [Fact]
@@ -125,9 +127,41 @@ public sealed class BrandingRulesTests
         Fail("{\"custom\":{\"money\":\"rojo\"}}", "badHex", "El color 'custom.money' no es hexadecimal (use #RGB o #RRGGBB).");
         Fail("{\"custom\":{\"flow\":\"#fff\\n\"}}", "badHex", "El color 'custom.flow' no es hexadecimal (use #RGB o #RRGGBB).");
         Fail("{\"preset\":\"neon\"}", "unknownPreset", "El tema predefinido 'neon' no existe.");
-        Fail("{\"useCustom\":true,\"custom\":{\"flow\":\"#000000\"}}", "contrast", "El contraste del color de operación en modo oscuro es 1.34:1; el mínimo es 4.5:1.");
+        Fail("{\"useCustom\":true,\"custom\":{\"flow\":\"#000000\"}}", "contrast", "El contraste del color de operación en modo oscuro es 1.33:1; el mínimo es 4.5:1.");
         Fail("{\"useCustom\":true,\"custom\":{\"money\":\"#FFFF00\"}}", "contrast", "El contraste del color de dinero en modo claro es 2.69:1; el mínimo es 4.5:1.");
         Fail("{\"useCustom\":true,\"custom\":{\"flow\":\"#1F6FE5\",\"money\":\"#1F6FE5\"}}", "hue", "Los colores de operación y de dinero son demasiado parecidos: 0° de separación y el mínimo es 40°.");
+        // Lote 138: el color de acción (botones y enlaces) también debe leerse sobre el panel
+        Fail("{\"useCustom\":true,\"custom\":{\"action\":\"#000000\"}}", "contrast", "El contraste del color de acción en modo oscuro es 1.33:1; el mínimo es 4.5:1.");
+    }
+
+    // ------------------------------------------------------------------ Lote 138: tres colores por elemento
+
+    [Fact]
+    public void Action_color_is_optional_defaults_to_the_primary_and_is_checked_only_when_it_differs()
+    {
+        // sin acción: los mismos 9 cheques de siempre y el color efectivo de acción es el primario
+        var plain = BrandingRules.Validate("{\"useCustom\":true,\"custom\":{\"flow\":\"#7A4FD1\",\"money\":\"#D98324\"}}");
+        Assert.True(plain.Ok);
+        Assert.Equal(9, plain.Checks.Count);
+        Assert.DoesNotContain(plain.Checks, c => c.Key == "action");
+        Assert.Equal("#7A4FD1", BrandingRules.Colors(new BrandSettings("teikem", true, "#7A4FD1", "#D98324", "#2B3A5C")).Action);
+
+        // con acción distinta: un cheque más por modo (después de money), y el color efectivo es el propio
+        var three = BrandingRules.Validate("{\"useCustom\":true,\"custom\":{\"flow\":\"#7A4FD1\",\"action\":\"#1F6FE5\",\"money\":\"#D98324\"}}");
+        Assert.True(three.Ok);
+        Assert.Equal(11, three.Checks.Count);
+        Assert.Equal(new[] { "text", "muted", "flow", "money", "action" }, three.Checks.Take(5).Select(c => c.Key));
+        Assert.All(three.Checks.Where(c => c.Key == "action"), c => Assert.True(c.Pass));
+        Assert.Equal("#1F6FE5", BrandingRules.Colors(new BrandSettings("teikem", true, "#7A4FD1", "#D98324", "#2B3A5C", "#1F6FE5")).Action);
+
+        // acción igual al primario (escrita con minúsculas): no se repite el cheque
+        var same = BrandingRules.Validate("{\"useCustom\":true,\"custom\":{\"flow\":\"#7A4FD1\",\"action\":\"#7a4fd1\",\"money\":\"#D98324\"}}");
+        Assert.Equal(9, same.Checks.Count);
+
+        // un tema predefinido nunca trae acción aparte
+        Assert.Equal("#1E8E5A", BrandingRules.Colors(new BrandSettings("bosque", false, "#000", "#000", "#000")).Action);
+        // acción con formato inválido: mismo mensaje que los demás colores
+        Assert.Equal("badHex", BrandingRules.Validate("{\"custom\":{\"action\":\"azul\"}}").Code);
     }
 
     [Fact]

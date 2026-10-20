@@ -7,10 +7,11 @@ namespace Teikem.Domain.Tenancy;
 public sealed record BrandPreset(string Id, string NameEs, string NameEn, string Flow, string Money, double Nh, double Ns);
 
 /// <summary>Lo que se guarda en <c>Tenant.BrandingJson</c> ya validado (colores normalizados a #RRGGBB).</summary>
-public sealed record BrandSettings(string Preset, bool UseCustom, string Flow, string Money, string Neutral);
+/// <summary>Action = color de acción (botones y enlaces; Lote 138); null = el mismo que Flow.</summary>
+public sealed record BrandSettings(string Preset, bool UseCustom, string Flow, string Money, string Neutral, string? Action = null);
 
 /// <summary>
-/// Una comprobación de la marca: <c>contrast</c> (Key = text|muted|flow|money, Mode = dark|light, Value = razón de contraste con dos
+/// Una comprobación de la marca: <c>contrast</c> (Key = text|muted|flow|money|action, Mode = dark|light, Value = razón de contraste con dos
 /// decimales) o <c>hue</c> (Value = distancia de matiz en grados enteros entre los dos acentos).
 /// </summary>
 public sealed record BrandCheck(string Type, string? Key, string? Mode, double Value, double Min, bool Pass);
@@ -36,7 +37,7 @@ public sealed record BrandValidation(bool Ok, string? Code, string? Message, IRe
 /// </summary>
 public static class BrandingRules
 {
-    public const string DefaultPreset = "teikem";
+    public const string DefaultPreset = "advance";   // Lote 138: la paleta de la página de Advance Logistics
     /// <summary>Tamaño máximo del JSON en caracteres.</summary>
     public const int MaxJsonChars = 4096;
     /// <summary>Separación mínima de matiz entre los dos acentos, en grados.</summary>
@@ -44,12 +45,14 @@ public static class BrandingRules
     /// <summary>Techo de la saturación del neutro propio (apenas por encima del 0.39 original de Teikem).</summary>
     public const double NeutralSatMax = 0.45;
 
-    public static readonly BrandSettings DefaultSettings = new(DefaultPreset, false, "#1F6FE5", "#FF6A1A", "#2B3A5C");
+    public static readonly BrandSettings DefaultSettings = new(DefaultPreset, false, "#F37123", "#6C757D", "#03204B");
 
-    /// <summary>Los 13 temas de la maqueta; cada uno pasa todas las comprobaciones (lo prueba la suite).</summary>
+    /// <summary>Los 14 temas (los 13 de la maqueta y el de Advance Logistics, que es el de por defecto); cada uno pasa todas las comprobaciones (lo prueba la suite).</summary>
     public static readonly IReadOnlyList<BrandPreset> Presets =
     [
-        new("teikem", "Teikem (por defecto)", "Teikem (default)", "#1F6FE5", "#FF6A1A", 222, 0.39),
+        // Lote 138: la paleta de la página de Advance Logistics (azul marino de fondos, naranja de botones y enlaces, gris secundario)
+        new("advance", "Advance Logistics (por defecto)", "Advance Logistics (default)", "#F37123", "#6C757D", 216, 0.42),
+        new("teikem", "Teikem (azul y naranja)", "Teikem (blue and orange)", "#1F6FE5", "#FF6A1A", 222, 0.39),
         new("marino", "Marino", "Navy", "#1F59A3", "#E08A17", 215, 0.42),
         new("acero", "Acero", "Steel", "#3D6E9C", "#D2691E", 210, 0.26),
         new("carretera", "Carretera", "Highway", "#D32F2F", "#0E8F8F", 8, 0.15),
@@ -68,7 +71,7 @@ public static class BrandingRules
     public static readonly IReadOnlyList<string> StatusKeys = ["ok", "warn", "danger", "info", "status", "statuscolors"];
 
     private static readonly string[] TopKeys = ["preset", "useCustom", "custom"];
-    private static readonly string[] CustomKeys = ["flow", "money", "neutral"];
+    private static readonly string[] CustomKeys = ["flow", "money", "neutral", "action"];
 
     // ------------------------------------------------------------------ mensajes (los usan el servicio, las pruebas y el manual)
     public static string TooLargeMessage => $"La marca es demasiado grande (máximo {MaxJsonChars} caracteres); los logos se suben aparte.";
@@ -89,6 +92,7 @@ public static class BrandingRules
         "text" => "del texto",
         "muted" => "del texto atenuado",
         "flow" => "del color de operación",
+        "action" => "del color de acción",
         _ => "del color de dinero",
     };
 
@@ -123,6 +127,7 @@ public static class BrandingRules
             if (hasUse && useEl.ValueKind is not (JsonValueKind.True or JsonValueKind.False)) return BrandValidation.Fail("badType", BadTypeMessage("useCustom"));
 
             string flow = DefaultSettings.Flow, money = DefaultSettings.Money, neutral = DefaultSettings.Neutral;
+            string? action = null;
             if (root.TryGetProperty("custom", out var customEl))
             {
                 if (customEl.ValueKind != JsonValueKind.Object) return BrandValidation.Fail("badType", BadTypeMessage("custom"));
@@ -135,13 +140,13 @@ public static class BrandingRules
                     var text = v.GetString()!;
                     if (!IsValidHex(text)) return BrandValidation.Fail("badHex", BadHexMessage("custom." + k));
                     var hex = NormalizeHex(text);
-                    if (k == "flow") flow = hex; else if (k == "money") money = hex; else neutral = hex;
+                    if (k == "flow") flow = hex; else if (k == "money") money = hex; else if (k == "action") action = hex; else neutral = hex;
                 }
             }
 
             var preset = hasPreset ? presetEl.GetString()! : DefaultPreset;
             if (PresetById(preset) is null) return BrandValidation.Fail("unknownPreset", UnknownPresetMessage(preset));
-            var settings = new BrandSettings(preset, hasUse && useEl.ValueKind == JsonValueKind.True, flow, money, neutral);
+            var settings = new BrandSettings(preset, hasUse && useEl.ValueKind == JsonValueKind.True, flow, money, neutral, action);
 
             var checks = Checks(settings);
             foreach (var c in checks)
@@ -169,15 +174,16 @@ public static class BrandingRules
     // ------------------------------------------------------------------ comprobaciones
 
     /// <summary>Colores efectivos: los del tema, o los propios con el neutro acotado (tono y saturación).</summary>
-    public static (string Flow, string Money, double Nh, double Ns) Colors(BrandSettings b)
+    public static (string Flow, string Money, double Nh, double Ns, string Action) Colors(BrandSettings b)
     {
         if (!b.UseCustom)
         {
             var p = PresetById(b.Preset) ?? Presets[0];
-            return (p.Flow, p.Money, p.Nh, p.Ns);
+            return (p.Flow, p.Money, p.Nh, p.Ns, p.Flow);
         }
         var (h, s, _) = HslOf(IsValidHex(b.Neutral) ? b.Neutral : DefaultSettings.Neutral);
-        return (NormalizeHex(b.Flow), NormalizeHex(b.Money), h, Math.Min(NeutralSatMax, s));
+        var flow = NormalizeHex(b.Flow);
+        return (flow, NormalizeHex(b.Money), h, Math.Min(NeutralSatMax, s), IsValidHex(b.Action) ? NormalizeHex(b.Action!) : flow);
     }
 
     /// <summary>
@@ -199,6 +205,8 @@ public static class BrandingRules
                 ("flow", AccentV2(c.Flow, mode), 4.5),
                 ("money", AccentV2(c.Money, mode), 4.5),
             ];
+            // Lote 138: el color de acción solo se comprueba cuando es propio y distinto del primario (los vectores anteriores no cambian).
+            if (!string.Equals(c.Action, c.Flow, StringComparison.OrdinalIgnoreCase)) rows = [.. rows, ("action", AccentV2(c.Action, mode), 4.5)];
             foreach (var (key, color, min) in rows)
             {
                 var ratio = JsRound(ContrastRatio(color, panel) * 100) / 100;

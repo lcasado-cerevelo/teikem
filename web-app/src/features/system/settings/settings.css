@@ -253,3 +253,8 @@
   min-width: 0;
   max-width: 100%;
 }
+
+/* Lote 138: muestra de los tres roles de color de la marca */
+.set-brand-sample { border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden; margin: 0 0 14px; max-width: 520px; }
+.set-brand-sample-bar { color: #fff; font-weight: 700; font-size: 12px; letter-spacing: .04em; padding: 8px 12px; }
+.set-brand-sample-body { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px; background: var(--panel); }

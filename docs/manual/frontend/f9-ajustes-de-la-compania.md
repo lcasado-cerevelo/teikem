@@ -160,13 +160,15 @@ repite sola. Al terminar, el menú y el buscador muestran u ocultan las pantalla
 
 ![Marca](img/f9-marca.png)
 
-- **Temas predefinidos** (13, con sus dos colores) o **Usar colores propios**: color de operación, color de dinero y tono base
-  (selector de color o hexadecimal; uno mal escrito: "Escriba un color hexadecimal, por ejemplo #1F6FE5.").
+- **Temas predefinidos** (14, con sus colores; **Advance Logistics** —azul marino, naranja y gris— es el de por defecto) o **Usar colores
+  propios**: color **primario** (barras, navegación, pestañas), color de **acción** (botones y enlaces; opcional, «Usar el mismo que el
+  primario»), color de **acento** (marcas, contadores y dinero) y tono base (selector de color o hexadecimal; uno mal escrito:
+  "Escriba un color hexadecimal, por ejemplo #1F6FE5."). Debajo, una **muestra** con barra, botón, marca y monto en los tres colores.
 - **Validaciones** en vivo: contraste del texto, el texto atenuado y los dos acentos contra el panel en modo oscuro y claro, y
   separación entre los dos acentos (mínimo 40°). Si algo falla, "Revisa estos puntos antes de usarla" y no se puede guardar
   ("Corrija las validaciones antes de guardar.").
 - Mientras edita, **toda la aplicación** se ve con el borrador; **Guardar cambios** lo deja en la compañía ("Marca guardada");
-  **Descartar cambios** o salir de la pestaña vuelve a lo guardado. **Restaurar** vuelve al tema Teikem (hay que guardar).
+  **Descartar cambios** o salir de la pestaña vuelve a lo guardado. **Restaurar** vuelve al tema por defecto, Advance Logistics (hay que guardar).
 - Los colores de estado (verde, ámbar, rojo) no se cambian a propósito.
 - **Logo:** los cuatro logos de la compañía se suben, se ven y se quitan desde esta pestaña desde el lote 19 (ver
   [F11](f11-marca-por-compania.md)); sin logo propio se usan los de Teikem. El servidor también repite las validaciones de
