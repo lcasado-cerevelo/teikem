@@ -9627,3 +9627,20 @@ Un producto por lote necesita el **número de lote** (el vencimiento y la fabric
 **¿Dónde pongo el lote de una línea que ya guardé o que viene de un aviso de llegada?**
 Con el ícono «Lote y series» de la fila (solo aparece en productos por lote o por serie). Los campos dentro de la línea son solo para líneas nuevas de un recibo sin documento.
 
+## Avisos de inventario (Lote 141, 2026-10-20)
+
+**¿Qué avisos de inventario hay y cómo recibo uno?**
+Cinco: lotes por vencer, lotes vencidos con existencia, productos bajo el mínimo, sin existencia y sin movimiento. Un trabajo los revisa todos los días a las 6:00. No viene ninguna regla armada: el administrador crea la regla en Sistema → Reglas de aviso, escoge el evento «Inventario…» y a quién (rol, usuario, correo) y por qué canal le llega.
+
+**Armé la regla pero no me llega nada. ¿Por qué?**
+Revisa que (1) haya algo que avisar: lotes con existencia que venzan en el plazo, productos con mínimo por debajo, etc.; (2) el trabajo «Avisos de inventario» esté activo en Sistema → Trabajos programados (puedes usar «Ejecutar ahora»); (3) la regla esté activa y con destinatario y canal; y (4) no sea el mismo conjunto que ya se avisó esta semana (no se repite hasta que cambie el conjunto o pase la semana).
+
+**¿Cómo cambio con cuántos días de anticipación avisa los lotes por vencer?**
+Ajustes de la compañía → Operación → «Avisos de inventario» → «Avisar lotes por vencer con (días)» (1 a 365; 30 por omisión). Lo mismo para los días sin movimiento (1 a 3650; 90).
+
+**¿Qué significa «Los días de aviso de vencimiento deben estar entre 1 y 365.» (400)? ¿Y «Los días sin movimiento deben estar entre 1 y 3650.»?**
+Escribiste un número fuera de ese rango (o no entero) en el ajuste correspondiente. Corrígelo y guarda.
+
+**Un producto nuevo sin existencia no me avisa «sin existencia». ¿Es un error?**
+No: «sin existencia» solo avisa productos que sí tuvieron movimientos y se quedaron en cero. Uno recién creado que nunca se recibió no cuenta.
+

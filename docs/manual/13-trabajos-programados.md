@@ -23,6 +23,7 @@ dentro del API (sin programas externos).
 | `KPI_SNAPSHOT` | **Foto diaria de indicadores** (Lote 90): guarda las cifras del día (órdenes por etapa y dinero COD) para el historial del Pulso y los gráficos; «Ejecutar ahora» reemplaza la de hoy. | Diario 23:55 | Sí |
 | `REPORT_DELIVERY` | **Enviar informes programados** (Lote 92): manda por correo las vistas con programación y destinatarios cuando les toca (hora de la compañía), corridas como su dueño. | Cada 5 minutos | Sí |
 | `SALES_BACKORDER_SCAN` | **Avisar backorders que ya se pueden surtir** (Lote 66): revisa las órdenes de venta con backorder y publica el aviso «Backorder que ya se puede surtir» cuando hay inventario disponible. Solo avisa; no surte solo. Si el módulo Órdenes de venta está apagado no hace nada. | Cada 10 minutos | Sí |
+| `INVENTORY_ALERT_SCAN` | **Avisos de inventario** (Lote 141): revisa el inventario y publica los avisos «Lotes por vencer», «Lotes vencidos con existencia», «Productos bajo el mínimo», «Productos sin existencia» y «Productos sin movimiento» ([capítulo 14 §3.2](14-avisos.md)). Un aviso por evento con el conjunto completo; no repite el mismo conjunto en la misma semana. Si el módulo de inventario está apagado no hace nada. | Todos los días 6:00 a. m. | Sí |
 
 Las horas diarias son **hora de Puerto Rico** (la de la compañía). Los trabajos nuevos de versiones futuras aparecen solos en la lista, con
 su horario de fábrica; **lo que usted cambie (interruptor u horario) nunca se pisa**.

@@ -527,6 +527,30 @@ describe('Ajustes de la compañía', () => {
     expect(put()[0].body).toEqual({ rotationMethod: 'FEFO', rotationEnforcement: 'ENFORCE' })
   })
 
+  it('Operación → avisos de inventario (2026-10-20): 30 y 90 días por omisión; guarda los dos y valida los rangos con su mensaje', async () => {
+    const user = userEvent.setup()
+    wrap('/system/settings?tab=ops')
+    const panel = (await screen.findByRole('heading', { name: 'Avisos de inventario' })).closest('.panel') as HTMLElement
+    const expiry = within(panel).getByLabelText('Avisar lotes por vencer con (días)')
+    const idle = within(panel).getByLabelText('Avisar productos sin movimiento desde (días)')
+    expect(expiry).toHaveValue(30)
+    expect(idle).toHaveValue(90)
+
+    await user.clear(expiry)
+    await user.type(expiry, '400')
+    await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
+    expect((await within(panel).findAllByText('Los días de aviso de vencimiento deben estar entre 1 y 365.')).length).toBeGreaterThan(0)
+    expect(put()).toHaveLength(0)
+
+    await user.clear(expiry)
+    await user.type(expiry, '45')
+    await user.clear(idle)
+    await user.type(idle, '120')
+    await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
+    await waitFor(() => expect(put()).toHaveLength(1))
+    expect(put()[0].body).toEqual({ inventoryExpiryWarnDays: 45, inventoryNoMovementDays: 120 })
+  })
+
   it('Operación → rotación: sin admin.tenant el selector es de solo lectura', async () => {
     wrap('/system/settings?tab=ops', ['inventory.view'])
     const panel = (await screen.findByRole('heading', { name: 'Rotación del inventario' })).closest('.panel') as HTMLElement

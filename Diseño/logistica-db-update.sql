@@ -5105,3 +5105,22 @@ GO
 IF OBJECT_ID('dbo.CK_Tenant_RotationEnforcement', 'C') IS NULL
     ALTER TABLE dbo.Tenant ADD CONSTRAINT CK_Tenant_RotationEnforcement CHECK (RotationEnforcement IN ('SUGGEST', 'ENFORCE'));
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-20 — Avisos de inventario (Lote 141).
+   - dbo.Tenant.InventoryExpiryWarnDays INT NOT NULL DEFAULT 30 (1 a 365): dias de anticipacion del aviso de lotes por vencer.
+   - dbo.Tenant.InventoryNoMovementDays INT NOT NULL DEFAULT 90 (1 a 3650): dias sin movimientos del aviso de productos sin movimiento.
+   Solo AGREGA. Idempotente. Los eventos (INVENTORY_*) y el trabajo INVENTORY_ALERT_SCAN se registran desde codigo: no hay datos que sembrar.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.Tenant', 'InventoryExpiryWarnDays') IS NULL
+    ALTER TABLE dbo.Tenant ADD InventoryExpiryWarnDays INT NOT NULL CONSTRAINT DF_Tenant_InventoryExpiryWarnDays DEFAULT 30;
+GO
+IF COL_LENGTH('dbo.Tenant', 'InventoryNoMovementDays') IS NULL
+    ALTER TABLE dbo.Tenant ADD InventoryNoMovementDays INT NOT NULL CONSTRAINT DF_Tenant_InventoryNoMovementDays DEFAULT 90;
+GO
+IF OBJECT_ID('dbo.CK_Tenant_InventoryExpiryWarnDays', 'C') IS NULL
+    ALTER TABLE dbo.Tenant ADD CONSTRAINT CK_Tenant_InventoryExpiryWarnDays CHECK (InventoryExpiryWarnDays BETWEEN 1 AND 365);
+GO
+IF OBJECT_ID('dbo.CK_Tenant_InventoryNoMovementDays', 'C') IS NULL
+    ALTER TABLE dbo.Tenant ADD CONSTRAINT CK_Tenant_InventoryNoMovementDays CHECK (InventoryNoMovementDays BETWEEN 1 AND 3650);
+GO

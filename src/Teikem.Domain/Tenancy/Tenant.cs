@@ -86,6 +86,10 @@ public class Tenant : ISoftDeletable
     public string RotationMethod { get; set; } = "FEFO";
     /// <summary>2026-10-20: cómo se aplica la rotación en las salidas: 'SUGGEST' (se propone y se puede cambiar, con advertencia) | 'ENFORCE' (el sistema escoge y el servidor rechaza lo distinto). SUGGEST para todas las existentes.</summary>
     public string RotationEnforcement { get; set; } = "SUGGEST";
+    /// <summary>2026-10-20: días de anticipación del aviso «lotes por vencer» (1 a 365; 30 por omisión).</summary>
+    public int InventoryExpiryWarnDays { get; set; } = 30;
+    /// <summary>2026-10-20: días sin movimientos para el aviso «productos sin movimiento» (1 a 3650; 90 por omisión).</summary>
+    public int InventoryNoMovementDays { get; set; } = 90;
     /// <summary>Lote 72 (P5): base de facturación del producto vendido: 'ON_DISPATCH' (al despachar) | 'ON_DELIVERY' (al entregar).</summary>
     public string SalesBillingTrigger { get; set; } = "ON_DISPATCH";
     /// <summary>Lote 72 (P5): días entre la emisión de una factura y su vencimiento.</summary>

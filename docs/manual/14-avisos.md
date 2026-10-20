@@ -44,6 +44,35 @@ Los cuatro primeros salen **en la misma operación** que los causa (si la operac
 (`SALES_BACKORDER_SCAN`, [capítulo 13](13-trabajos-programados.md)) cada 10 minutos: cubre **cualquier forma** en que entra inventario (recibo, ajuste,
 transferencia, liberar cuarentena, cancelar otra orden), sin tocar esos módulos.
 
+### 3.2 Eventos de inventario (Lote 141, 2026-10-20)
+
+Módulo **Inventario por lote y serie** (`WMS_LOTSERIAL`). Los publica el trabajo programado `INVENTORY_ALERT_SCAN` ([capítulo 13](13-trabajos-programados.md)), **todos los
+días a las 6:00** (hora de la compañía; «Ejecutar ahora» lo repite). **No viene ninguna regla armada**: el administrador las crea en Sistema → Reglas de aviso (a quién y por qué
+canal). Todos se pueden silenciar en la bandeja de cada usuario. Cada evento sale como **un solo aviso con el conjunto completo** (no uno por lote); las variables `{count}` (cuántos)
+e `{items}` (un renglón por cada uno, hasta 10 y «… +N») están en todos.
+
+| Evento (código) | Qué avisa | Variables extra y formato de `{items}` |
+|---|---|---|
+| **Lotes por vencer** (`INVENTORY_LOT_EXPIRING`) | Lotes **con existencia** que vencen hoy o dentro de los próximos N días (N = ajuste de la compañía, 30 por omisión). | `{days}`; `producto · lote · vencimiento · cantidad · almacén` |
+| **Lotes vencidos con existencia** (`INVENTORY_LOT_EXPIRED`) | Lotes cuyo vencimiento es **anterior a hoy** y todavía tienen existencia. | `producto · lote · vencimiento · cantidad · almacén` |
+| **Productos bajo el mínimo** (`INVENTORY_STOCK_LOW`) | Productos **activos** con mínimo (`minQty`) cuyo disponible total (en mano − reservado, todos los almacenes) es menor que el mínimo. | `producto · disponible · mínimo` |
+| **Productos sin existencia** (`INVENTORY_STOCK_OUT`) | Productos activos que **sí tuvieron movimientos** y hoy no tienen nada en mano (un producto recién creado que nunca se recibió no cuenta). | `producto` |
+| **Productos sin movimiento** (`INVENTORY_NO_MOVEMENT`) | Productos activos **con existencia** cuyo último movimiento del Kárdex tiene N días o más (N = ajuste, 90 por omisión). | `{days}`; `producto · días · en mano` |
+
+**No se repite lo mismo:** la clave de no repetición es *evento + semana + huella del conjunto*. Si el conjunto no cambió en la semana, no vuelve a avisar; si entra un lote nuevo al
+plazo o otro producto baja del mínimo, sale un aviso nuevo con el conjunto completo; y mientras el problema siga vivo hay un **recordatorio semanal**.
+
+Ajustes (web: **Ajustes de la compañía → Operación → «Avisos de inventario»**, `admin.tenant`; API: `PUT /api/v1/tenant/settings`):
+`inventoryExpiryWarnDays` (1 a 365, 30) e `inventoryNoMovementDays` (1 a 3650, 90).
+
+| Caso | Mensaje exacto | HTTP |
+|---|---|---|
+| `inventoryExpiryWarnDays` fuera de 1 a 365 | `Los días de aviso de vencimiento deben estar entre 1 y 365.` | 400 (campo `inventoryExpiryWarnDays`) |
+| `inventoryNoMovementDays` fuera de 1 a 3650 | `Los días sin movimiento deben estar entre 1 y 3650.` | 400 (campo `inventoryNoMovementDays`) |
+
+**Agregar otro aviso de inventario más adelante** (p. ej. exceso de inventario, conteo con diferencias): un código en `InventoryEventCodes`, su definición en `InventoryEventProvider` y su
+detección en `InventoryAlertService`; el motor de avisos, las reglas y la bandeja no cambian.
+
 ## 4. Las reglas
 
 Una regla = **un evento** + **un nombre** (único en la compañía, hasta 100 caracteres) + **canales** + **destinatarios**.

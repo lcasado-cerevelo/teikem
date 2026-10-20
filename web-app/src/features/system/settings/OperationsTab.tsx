@@ -259,6 +259,69 @@ function RotationPanel({ settings, canEdit }: { settings: TenantSettingsDto; can
   )
 }
 
+// ------------------------------------------------------------------ avisos de inventario: umbrales (2026-10-20, Lote 141)
+
+interface InventoryAlertValues {
+  inventoryExpiryWarnDays: number | null
+  inventoryNoMovementDays: number | null
+}
+
+/**
+ * «Avisos de inventario»: con cuántos días de anticipación avisa «Lotes por vencer» (1 a 365) y a partir de cuántos días sin movimientos avisa «Productos sin movimiento» (1 a 3650).
+ * A quién le llega cada aviso se arma en Sistema → Reglas de aviso (eventos de inventario). Los 400 del servidor salen bajo su campo.
+ */
+function InventoryAlertsPanel({ settings, canEdit }: { settings: TenantSettingsDto; canEdit: boolean }) {
+  const t = useT()
+  const save = useSaveTenantSettings()
+  const form = useForm<InventoryAlertValues>({
+    values: { inventoryExpiryWarnDays: settings.inventoryExpiryWarnDays ?? 30, inventoryNoMovementDays: settings.inventoryNoMovementDays ?? 90 },
+  })
+  const dirty = form.formState.isDirty
+  return (
+    <Panel className="set-gap" icon={<IconGear />} title={t('system.settings.ops.invAlertsTitle')}>
+      <Form
+        form={form}
+        onSubmit={async (v) => {
+          const expiry = v.inventoryExpiryWarnDays
+          const idle = v.inventoryNoMovementDays
+          if (expiry == null || !Number.isInteger(expiry) || expiry < 1 || expiry > 365) {
+            form.setError('inventoryExpiryWarnDays', { message: t('system.settings.ops.invExpiryRange') })
+            return
+          }
+          if (idle == null || !Number.isInteger(idle) || idle < 1 || idle > 3650) {
+            form.setError('inventoryNoMovementDays', { message: t('system.settings.ops.invIdleRange') })
+            return
+          }
+          await save.mutateAsync({ inventoryExpiryWarnDays: expiry, inventoryNoMovementDays: idle })
+          toast.success(t('system.settings.saved'))
+        }}
+      >
+        <fieldset className="set-fs" disabled={!canEdit}>
+          <div className="r2">
+            <Field name="inventoryExpiryWarnDays" label={t('system.settings.ops.invExpiryLabel')} help={t('system.settings.ops.invExpiryHelp')}>
+              <NumberInput min={1} max={365} step={1} className="mono" />
+            </Field>
+            <Field name="inventoryNoMovementDays" label={t('system.settings.ops.invIdleLabel')} help={t('system.settings.ops.invIdleHelp')}>
+              <NumberInput min={1} max={3650} step={1} className="mono" />
+            </Field>
+          </div>
+          <p className="set-d">{t('system.settings.ops.invAlertsHint')}</p>
+        </fieldset>
+        {canEdit && (
+          <div className="set-actions">
+            <button type="button" className="btn" disabled={!dirty || form.formState.isSubmitting} onClick={() => form.reset()}>
+              {t('system.settings.discard')}
+            </button>
+            <button type="submit" className="btn flow" disabled={!dirty || form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? t('system.settings.saving') : t('system.settings.save')}
+            </button>
+          </div>
+        )}
+      </Form>
+    </Panel>
+  )
+}
+
 // ------------------------------------------------------------------ conteo cíclico: lo esperado al contar (tarea 25)
 
 interface CountRevealValues {
@@ -519,6 +582,7 @@ export function OperationsTab({ settings, canEdit }: { settings: TenantSettingsD
       </div>
       {wms && <ProductCategoryPanel settings={settings} canEdit={canEdit} />}
       {wms && <RotationPanel settings={settings} canEdit={canEdit} />}
+      {wms && <InventoryAlertsPanel settings={settings} canEdit={canEdit} />}
       {wms && <ManualReasonPanel settings={settings} canEdit={canEdit} />}
       {wms && <CountRevealPanel settings={settings} canEdit={canEdit} />}
       {wms && <RecvSummaryPanel />}

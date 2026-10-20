@@ -246,24 +246,30 @@ public sealed class ManualIssueDefaultReasonTests
         // 2026-10-11 (Lote 34): y después de esa, el método de rotación (en el DTO siempre trae valor, FEFO por omisión; en el cambio parcial, null = sin cambio).
         // 2026-10-12: al final se agregaron SessionMinutes y DeviceSessionMinutes (duración de la sesión en minutos); lo anterior conserva su orden relativo.
         var dto = typeof(TenantSettingsDto).GetConstructors().Single().GetParameters();
-        Assert.Equal(("DefaultManualIssueReason", typeof(string)), (dto[^6].Name, dto[^6].ParameterType));
-        Assert.Equal(("DefaultProductCategoryId", typeof(int?)), (dto[^5].Name, dto[^5].ParameterType));
-        Assert.Equal(("RotationMethod", typeof(string)), (dto[^4].Name, dto[^4].ParameterType));
-        foreach (var p in new[] { dto[^6], dto[^5] }) { Assert.True(p.HasDefaultValue); Assert.Null(p.DefaultValue); }
-        Assert.True(dto[^4].HasDefaultValue);
-        Assert.Equal("FEFO", dto[^4].DefaultValue);
-        Assert.Equal(("SessionMinutes", typeof(int)), (dto[^3].Name, dto[^3].ParameterType));
-        Assert.Equal(("DeviceSessionMinutes", typeof(int)), (dto[^2].Name, dto[^2].ParameterType));
-        Assert.Equal(("RotationEnforcement", typeof(string)), (dto[^1].Name, dto[^1].ParameterType));   // 2026-10-20 (al final, SUGGEST por omisión)
-        Assert.Equal("SUGGEST", dto[^1].DefaultValue);
+        Assert.Equal(("DefaultManualIssueReason", typeof(string)), (dto[^8].Name, dto[^8].ParameterType));
+        Assert.Equal(("DefaultProductCategoryId", typeof(int?)), (dto[^7].Name, dto[^7].ParameterType));
+        Assert.Equal(("RotationMethod", typeof(string)), (dto[^6].Name, dto[^6].ParameterType));
+        foreach (var p in new[] { dto[^8], dto[^7] }) { Assert.True(p.HasDefaultValue); Assert.Null(p.DefaultValue); }
+        Assert.True(dto[^6].HasDefaultValue);
+        Assert.Equal("FEFO", dto[^6].DefaultValue);
+        Assert.Equal(("SessionMinutes", typeof(int)), (dto[^5].Name, dto[^5].ParameterType));
+        Assert.Equal(("DeviceSessionMinutes", typeof(int)), (dto[^4].Name, dto[^4].ParameterType));
+        Assert.Equal(("RotationEnforcement", typeof(string)), (dto[^3].Name, dto[^3].ParameterType));   // 2026-10-20 (al final, SUGGEST por omisión)
+        Assert.Equal("SUGGEST", dto[^3].DefaultValue);
         var req = typeof(TenantSettingsUpdateRequest).GetConstructors().Single().GetParameters();
-        Assert.Equal(("DefaultManualIssueReason", typeof(string)), (req[^6].Name, req[^6].ParameterType));
-        Assert.Equal(("DefaultProductCategoryId", typeof(int?)), (req[^5].Name, req[^5].ParameterType));
-        Assert.Equal(("RotationMethod", typeof(string)), (req[^4].Name, req[^4].ParameterType));
-        Assert.Equal(("SessionMinutes", typeof(int?)), (req[^3].Name, req[^3].ParameterType));
-        Assert.Equal(("DeviceSessionMinutes", typeof(int?)), (req[^2].Name, req[^2].ParameterType));
-        Assert.Equal(("RotationEnforcement", typeof(string)), (req[^1].Name, req[^1].ParameterType));   // 2026-10-20 (al final, opcional)
-        foreach (var p in new[] { req[^5], req[^4], req[^3], req[^2], req[^1] }) { Assert.True(p.HasDefaultValue); Assert.Null(p.DefaultValue); }
+        Assert.Equal(("DefaultManualIssueReason", typeof(string)), (req[^8].Name, req[^8].ParameterType));
+        Assert.Equal(("DefaultProductCategoryId", typeof(int?)), (req[^7].Name, req[^7].ParameterType));
+        Assert.Equal(("RotationMethod", typeof(string)), (req[^6].Name, req[^6].ParameterType));
+        Assert.Equal(("SessionMinutes", typeof(int?)), (req[^5].Name, req[^5].ParameterType));
+        Assert.Equal(("DeviceSessionMinutes", typeof(int?)), (req[^4].Name, req[^4].ParameterType));
+        Assert.Equal(("RotationEnforcement", typeof(string)), (req[^3].Name, req[^3].ParameterType));   // 2026-10-20 (al final, opcional)
+        foreach (var p in new[] { req[^7], req[^6], req[^5], req[^4], req[^3] }) { Assert.True(p.HasDefaultValue); Assert.Null(p.DefaultValue); }
+        // 2026-10-20 (Lote 141): al final, los días de los avisos de inventario (en el DTO con valor por omisión; en el cambio parcial, null = sin cambio)
+        Assert.Equal(("InventoryExpiryWarnDays", typeof(int)), (dto[^2].Name, dto[^2].ParameterType));
+        Assert.Equal(("InventoryNoMovementDays", typeof(int)), (dto[^1].Name, dto[^1].ParameterType));
+        Assert.Equal((30, 90), (dto[^2].DefaultValue, dto[^1].DefaultValue));
+        Assert.Equal(("InventoryExpiryWarnDays", typeof(int?)), (req[^2].Name, req[^2].ParameterType));
+        Assert.Equal(("InventoryNoMovementDays", typeof(int?)), (req[^1].Name, req[^1].ParameterType));
     }
 
     // ================================================================ espejo SQL

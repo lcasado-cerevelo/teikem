@@ -48,4 +48,6 @@ public static class JobKeys
     public const string WebhookDelivery = "WEBHOOK_DELIVERY";
     /// <summary>Lote 137b (P11): arma y manda las salidas (archivos por SFTP/FTP y API saliente) con sus reintentos.</summary>
     public const string IntegrationOutput = "INTEGRATION_OUTPUT";
+    /// <summary>Lote 141: revisa el inventario y avisa lotes por vencer o vencidos, saldo bajo, sin existencia y sin movimiento.</summary>
+    public const string InventoryAlertScan = "INVENTORY_ALERT_SCAN";
 }

@@ -38188,6 +38188,10 @@ export interface components {
             /** Format: int32 */
             deviceSessionMinutes?: number;
             rotationEnforcement?: string;
+            /** Format: int32 */
+            inventoryExpiryWarnDays?: number;
+            /** Format: int32 */
+            inventoryNoMovementDays?: number;
         };
         TenantSettingsUpdateRequest: {
             name?: string | null;
@@ -38239,6 +38243,10 @@ export interface components {
             /** Format: int32 */
             deviceSessionMinutes?: number | null;
             rotationEnforcement?: string | null;
+            /** Format: int32 */
+            inventoryExpiryWarnDays?: number | null;
+            /** Format: int32 */
+            inventoryNoMovementDays?: number | null;
         };
         TenantSummaryDto: {
             /** Format: int32 */

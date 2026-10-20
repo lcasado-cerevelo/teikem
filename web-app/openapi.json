@@ -62166,6 +62166,14 @@
           },
           "rotationEnforcement": {
             "type": "string"
+          },
+          "inventoryExpiryWarnDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "inventoryNoMovementDays": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -62331,6 +62339,16 @@
           },
           "rotationEnforcement": {
             "type": "string",
+            "nullable": true
+          },
+          "inventoryExpiryWarnDays": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "inventoryNoMovementDays": {
+            "type": "integer",
+            "format": "int32",
             "nullable": true
           }
         },

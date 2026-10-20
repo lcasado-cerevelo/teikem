@@ -85,6 +85,12 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
             t.RotationMethod = RotationRules.Parse(req.RotationMethod) ?? throw new ValidationException("rotationMethod", RotationRules.InvalidMethod);
         if (req.RotationEnforcement is not null)
             t.RotationEnforcement = RotationRules.ParseEnforcement(req.RotationEnforcement) ?? throw new ValidationException("rotationEnforcement", RotationRules.InvalidEnforcement);
+        if (req.InventoryExpiryWarnDays.HasValue)
+            t.InventoryExpiryWarnDays = InventoryAlertRules.ValidExpiryWarnDays(req.InventoryExpiryWarnDays.Value) ? req.InventoryExpiryWarnDays.Value
+                : throw new ValidationException("inventoryExpiryWarnDays", InventoryAlertRules.ExpiryWarnDaysRange);
+        if (req.InventoryNoMovementDays.HasValue)
+            t.InventoryNoMovementDays = InventoryAlertRules.ValidNoMovementDays(req.InventoryNoMovementDays.Value) ? req.InventoryNoMovementDays.Value
+                : throw new ValidationException("inventoryNoMovementDays", InventoryAlertRules.NoMovementDaysRange);
         if (req.DefaultProductCategoryId.HasValue) await ApplyDefaultProductCategoryAsync(t, req.DefaultProductCategoryId.Value, ct);
         var formatChanges = FormatChanges(req);
         if (!formatChanges.IsEmpty) ApplyFormat(t, TenantFormatRules.Read(t), formatChanges);
@@ -231,5 +237,6 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         await UsableDefaultCategoryAsync(t.DefaultProductCategoryId, ct),   // 2026-10-11 c
         RotationRules.Parse(t.RotationMethod) ?? RotationMethods.Fefo,        // 2026-10-11 Lote 34
         SessionRules.Minutes(t.SessionMinutes, t.SessionDays), SessionRules.Minutes(t.DeviceSessionMinutes, t.DeviceSessionDays),   // 2026-10-12
-        RotationRules.ParseEnforcement(t.RotationEnforcement) ?? RotationEnforcements.Suggest);   // 2026-10-20
+        RotationRules.ParseEnforcement(t.RotationEnforcement) ?? RotationEnforcements.Suggest,   // 2026-10-20
+        t.InventoryExpiryWarnDays, t.InventoryNoMovementDays);
 }
