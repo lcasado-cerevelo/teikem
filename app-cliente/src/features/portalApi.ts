@@ -31,6 +31,18 @@ export type PortalOrderCreatedDto = Schemas['PortalOrderCreatedDto']
 
 export const PAGE_SIZE = 20
 
+// ---------------------------------------------------------------- portal de almacén (Lote 154): existencias, productos, movimientos y valor de MI inventario (solo lectura)
+export type PortalCapabilitiesDto = Schemas['PortalCapabilitiesDto']
+export type PortalStockItemDto = Schemas['PortalStockItemDto']
+export type PortalProductDto = Schemas['PortalProductDto']
+export type PortalMovementDto = Schemas['PortalMovementDto']
+export type ValuationReportDto = Schemas['ValuationReportDto']
+export type ValuationRowDto = Schemas['ValuationRowDto']
+export const listStock = (search: string, skip = 0, take = PAGE_SIZE) => unwrap(api.GET('/api/v1/portal/warehouse/stock', { params: { query: { search: search || undefined, skip, take } } }))
+export const listWarehouseProducts = (search: string, skip = 0, take = PAGE_SIZE) => unwrap(api.GET('/api/v1/portal/warehouse/products', { params: { query: { search: search || undefined, skip, take } } }))
+export const listMovements = (search: string, skip = 0, take = PAGE_SIZE) => unwrap(api.GET('/api/v1/portal/warehouse/movements', { params: { query: { search: search || undefined, skip, take } } }))
+export const getValuation = (search: string, skip = 0, take = PAGE_SIZE) => unwrap(api.GET('/api/v1/portal/warehouse/valuation', { params: { query: { search: search || undefined, skip, take } } }))
+
 /** «¿Cómo va mi orden?»: consulta PÚBLICA por el ENLACE (token propio de la orden, imposible de adivinar). Solo devuelve el avance. */
 export const trackByLink = (token: string, lang: string) => unwrap(api.GET('/api/v1/public/track/link/{token}', { params: { path: { token }, query: { lang } } }))
 

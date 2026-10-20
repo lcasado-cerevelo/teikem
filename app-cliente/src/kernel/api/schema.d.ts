@@ -26765,6 +26765,175 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portal/warehouse/stock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    search?: string;
+                    warehousePublicId?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalStockPageDto"];
+                        "application/json": components["schemas"]["PortalStockPageDto"];
+                        "text/json": components["schemas"]["PortalStockPageDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/warehouse/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    search?: string;
+                    includeInactive?: boolean;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalProductPageDto"];
+                        "application/json": components["schemas"]["PortalProductPageDto"];
+                        "text/json": components["schemas"]["PortalProductPageDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/warehouse/movements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    from?: string;
+                    to?: string;
+                    search?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalMovementPageDto"];
+                        "application/json": components["schemas"]["PortalMovementPageDto"];
+                        "text/json": components["schemas"]["PortalMovementPageDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/warehouse/valuation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    search?: string;
+                    warehousePublicId?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ValuationReportDto"];
+                        "application/json": components["schemas"]["ValuationReportDto"];
+                        "text/json": components["schemas"]["ValuationReportDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/portal/summary": {
         parameters: {
             query?: never;
@@ -38540,12 +38709,137 @@ export interface components {
             createdAtUtc?: string;
             progress?: components["schemas"]["PortalProgressDto"];
         };
+        PortalCapabilitiesDto: {
+            companyName?: string | null;
+            warehouse?: boolean;
+            transport?: boolean;
+            canSeeValue?: boolean;
+        };
+        PortalStockItemDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            warehouseCode?: string | null;
+            warehouseName?: string | null;
+            lotNumber?: string | null;
+            /** Format: date */
+            expiryDate?: string | null;
+            /** Format: double */
+            onHand?: number;
+            /** Format: double */
+            reserved?: number;
+            /** Format: double */
+            available?: number;
+        };
+        PortalStockPageDto: {
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+            /** Format: double */
+            totalOnHand?: number;
+            /** Format: double */
+            totalAvailable?: number;
+            items?: components["schemas"]["PortalStockItemDto"][] | null;
+        };
+        PortalProductDto: {
+            /** Format: uuid */
+            publicId?: string;
+            sku?: string | null;
+            name?: string | null;
+            barcode?: string | null;
+            brand?: string | null;
+            category?: string | null;
+            trackingType?: string | null;
+            isActive?: boolean;
+            /** Format: double */
+            onHand?: number;
+            /** Format: double */
+            available?: number;
+        };
+        PortalProductPageDto: {
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+            items?: components["schemas"]["PortalProductDto"][] | null;
+        };
+        PortalMovementDto: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            typeCode?: string | null;
+            type?: string | null;
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            /** Format: double */
+            quantity?: number;
+            warehouseCode?: string | null;
+            lotNumber?: string | null;
+            reference?: string | null;
+            reason?: string | null;
+        };
+        PortalMovementPageDto: {
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+            items?: components["schemas"]["PortalMovementDto"][] | null;
+        };
+        ValuationReportDto: {
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+            items?: components["schemas"]["ValuationRowDto"][] | null;
+            /** Format: double */
+            totalValue?: number;
+            /** Format: double */
+            totalQty?: number;
+            /** Format: double */
+            unvaluedQty?: number;
+            method?: string | null;
+        };
+        ValuationRowDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string | null;
+            clientName?: string | null;
+            /** Format: double */
+            onHand?: number;
+            /** Format: double */
+            unitCost?: number | null;
+            /** Format: double */
+            value?: number;
+            /** Format: double */
+            unvaluedQty?: number;
+            /** Format: double */
+            productCost?: number | null;
+        };
         PortalMeDto: {
             fullName?: string | null;
             email?: string | null;
             mfaEnabled?: boolean;
             currentClient?: components["schemas"]["PortalClientDto"];
             clients?: components["schemas"]["PortalClientDto"][] | null;
+            capabilities?: components["schemas"]["PortalCapabilitiesDto"];
         };
         PortalNotificationDtoPagedResult: {
             items?: components["schemas"]["PortalNotificationDto"][] | null;

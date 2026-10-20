@@ -12,10 +12,47 @@
   "tabs": {
     "home": "Inicio",
     "orders": "Órdenes",
+    "warehouse": "Almacén",
     "shipments": "Envíos",
     "notices": "Avisos",
     "messages": "Mensajes",
     "settings": "Ajustes"
+  },
+  "warehouse": {
+    "title": "Mi almacén",
+    "search": "Buscar",
+    "searchStock": "SKU, nombre o código de barras",
+    "searchProducts": "SKU, nombre, marca o código de barras",
+    "sections": {
+      "stock": "Existencias",
+      "products": "Productos",
+      "movements": "Movimientos",
+      "value": "Valor"
+    },
+    "onHand": "En mano",
+    "available": "Disponible",
+    "reserved": "Reservado",
+    "lot": "Lote {lot}",
+    "expires": "vence {date}",
+    "loadMore": "Cargar más ({shown} de {total})",
+    "noMatches": "Nada coincide con la búsqueda.",
+    "emptyStock": "Todavía no hay existencias de su mercancía en el almacén.",
+    "emptyProducts": "Todavía no hay productos registrados.",
+    "emptyMovements": "Todavía no hay movimientos.",
+    "tracking": {
+      "LOT": "Por lote",
+      "SERIAL": "Por serie"
+    },
+    "valueTotal": "Valor de mi inventario",
+    "valueUnits": "{qty} unidades",
+    "unvalued": "{qty} unidades todavía no tienen costo: no suman al valor.",
+    "valueHelp": "Calculado con el costo de cada recibo, según el método de valuación del almacén.",
+    "unitCost": "Costo unitario",
+    "value": "Valor",
+    "method": {
+      "AVERAGE": "costo promedio",
+      "LAYERS": "por capas (lo primero que entró)"
+    }
   },
   "login": {
     "title": "Portal de clientes",

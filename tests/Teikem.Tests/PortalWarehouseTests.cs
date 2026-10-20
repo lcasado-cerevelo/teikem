@@ -109,8 +109,14 @@ public sealed class PortalWarehouseTests
     {
         var x = await WorldAsync();
         await using var _ = x.F;
-        x.F.SetModules(ModuleKeys.ClientPortal);   // sin almacén: solo transporte
-        Assert.False((await x.Svc.CapabilitiesAsync(default)).Warehouse);
+        x.F.SetModules(ModuleKeys.ClientPortal, ModuleKeys.LtlGround);   // sin almacén: solo transporte
+        var caps = await x.Svc.CapabilitiesAsync(default);
+        Assert.False(caps.Warehouse);
+        Assert.True(caps.Transport);
+        x.F.SetModules(ModuleKeys.ClientPortal, ModuleKeys.WmsLotSerial);   // solo almacén
+        var only = await x.Svc.CapabilitiesAsync(default);
+        Assert.True(only.Warehouse);
+        Assert.False(only.Transport);
     }
 
     [Fact]

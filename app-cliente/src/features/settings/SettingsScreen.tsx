@@ -89,7 +89,7 @@ export function SettingsScreen() {
         <Card>
           <Text style={{ fontWeight: '700', color: colors.text }}>{t('settings.switchClient')}</Text>
           {clients.map((c) => (
-            <Button key={c.clientPublicId} title={c.name ?? ''} variant={c.isCurrent ? 'primary' : 'secondary'} disabled={!!c.isCurrent || busy} onPress={() => void onSwitch(c.clientPublicId as string)} />
+            <Button key={c.clientPublicId} title={clients.some((o) => o.tenantName !== c.tenantName) ? `${c.name ?? ''} · ${c.tenantName ?? ''}` : (c.name ?? '')} variant={c.isCurrent ? 'primary' : 'secondary'} disabled={!!c.isCurrent || busy} onPress={() => void onSwitch(c.clientPublicId as string)} />
           ))}
         </Card>
       )}

@@ -29,8 +29,8 @@ public sealed class PortalWarehouseService(TeikemDbContext db, ITenantContext te
         var tc = (TenantContext)tenant;
         var tenantId = tc.TenantId ?? throw new ForbiddenException(AuthService.PortalNoAccessMessage);
         var company = await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(t => t.TenantId == tenantId).Select(t => t.Name).FirstOrDefaultAsync(ct) ?? string.Empty;
-        var warehouse = (await modules.GetEnabledKeysAsync(tenantId, ct)).Contains(ModuleKeys.WmsLotSerial);
-        return new PortalCapabilitiesDto(company, warehouse, await CanSeeValueAsync(ct));
+        var enabled = await modules.GetEnabledKeysAsync(tenantId, ct);
+        return new PortalCapabilitiesDto(company, enabled.Contains(ModuleKeys.WmsLotSerial), enabled.Contains(ModuleKeys.LtlGround), await CanSeeValueAsync(ct));
     }
 
     private async Task<bool> CanSeeValueAsync(CancellationToken ct)

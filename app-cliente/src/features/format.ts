@@ -16,6 +16,11 @@ export function formatDate(iso: string | null | undefined, lang: Lang): string {
   return new Intl.DateTimeFormat(lang === 'en' ? 'en-US' : 'es-PR', { dateStyle: 'medium' }).format(date)
 }
 
+export function formatQty(n: number | null | undefined, lang: Lang): string {
+  if (n === null || n === undefined) return '—'
+  return new Intl.NumberFormat(lang === 'en' ? 'en-US' : 'es-PR', { maximumFractionDigits: 3 }).format(n)
+}
+
 export function formatMoney(amount: number | null | undefined, lang: Lang): string {
   if (amount === null || amount === undefined) return '—'
   return new Intl.NumberFormat(lang === 'en' ? 'en-US' : 'es-PR', { style: 'currency', currency: 'USD' }).format(amount)

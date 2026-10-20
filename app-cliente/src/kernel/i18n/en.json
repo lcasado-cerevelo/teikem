@@ -12,10 +12,47 @@
   "tabs": {
     "home": "Home",
     "orders": "Orders",
+    "warehouse": "Warehouse",
     "shipments": "Shipments",
     "notices": "Notices",
     "messages": "Messages",
     "settings": "Settings"
+  },
+  "warehouse": {
+    "title": "My warehouse",
+    "search": "Search",
+    "searchStock": "SKU, name or barcode",
+    "searchProducts": "SKU, name, brand or barcode",
+    "sections": {
+      "stock": "Stock",
+      "products": "Products",
+      "movements": "Movements",
+      "value": "Value"
+    },
+    "onHand": "On hand",
+    "available": "Available",
+    "reserved": "Reserved",
+    "lot": "Lot {lot}",
+    "expires": "expires {date}",
+    "loadMore": "Load more ({shown} of {total})",
+    "noMatches": "Nothing matches the search.",
+    "emptyStock": "There is no stock of your goods in the warehouse yet.",
+    "emptyProducts": "There are no registered products yet.",
+    "emptyMovements": "There are no movements yet.",
+    "tracking": {
+      "LOT": "By lot",
+      "SERIAL": "By serial"
+    },
+    "valueTotal": "Value of my inventory",
+    "valueUnits": "{qty} units",
+    "unvalued": "{qty} units have no cost yet: they do not add to the value.",
+    "valueHelp": "Calculated with the cost of each receipt, using the warehouse's valuation method.",
+    "unitCost": "Unit cost",
+    "value": "Value",
+    "method": {
+      "AVERAGE": "average cost",
+      "LAYERS": "by layers (first in)"
+    }
   },
   "login": {
     "title": "Client portal",
