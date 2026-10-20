@@ -9707,3 +9707,9 @@ No: es una salida de inventario sin entrega (`El despacho {número} es de un avi
 ## Portal del cliente de almacén (Lote 153)
 **«Su acceso no incluye ver el valor del inventario.» (403).** Su acceso al portal es de solo lectura; el valor lo ven los accesos de administrador y de operador del cliente. Pídaselo al administrador de su empresa.
 **No veo Inventario en el portal.** La compañía de este acceso no tiene el módulo de almacén; si tiene otro acceso en una compañía con almacén, cámbiese a él con «Cambiar de acceso».
+
+**¿Qué significa "Actualizar el precio del producto requiere el permiso de administrar inventario." (403)**
+Marcó «Actualizar el precio del producto con este» en un aviso de llegada sin tener `inventory.manage`. Desmarque la casilla (el aviso se guarda con su precio y el producto sigue con el suyo) o pida el permiso a su administrador.
+
+**El aviso de llegada me muestra «El producto tiene guardado X; este precio es distinto.» ¿Es un error?**
+No, es solo informativo. El precio del aviso se usa para esa recepción; el costo del producto cambia solo si el producto no tenía costo o si marca «Actualizar el precio del producto con este».

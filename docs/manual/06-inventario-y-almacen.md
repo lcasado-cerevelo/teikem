@@ -2517,3 +2517,12 @@ Al **confirmar** un recibo, cada línea con cantidad recibida congela su **costo
 
 ## El recibo exige documento (Lote 149, 2026-10-20)
 Ajustes de la compañía → Operación → **Entradas** → «El recibo exige documento»: *Libre* (por omisión), *Aviso de llegada u orden de compra*, *Solo aviso de llegada* o *Solo orden de compra*. Con cualquier valor distinto de Libre no se puede crear un recibo **a ciegas** ni una **devolución manual** (HTTP 409): «La compañía exige recibir contra un documento (aviso de llegada u orden de compra). Escójalo; no se puede recibir sin documento.» (o la variante «…contra un aviso de llegada…» / «…contra una orden de compra…»). Si el documento no es del tipo exigido: «La compañía exige recibir contra un aviso de llegada de un cliente, no contra una orden de compra.» / «La compañía exige recibir contra una orden de compra, no contra el aviso de llegada de un cliente.» Los recibos de una devolución de venta no se ven afectados.
+
+## Precio del producto en el aviso de llegada (2026-10-20)
+
+Al elegir el producto en una línea del aviso de llegada, el **precio unitario** se precarga con el costo que tiene el producto (si no se había escrito otro). Al guardar el aviso (`POST /asns`, campo `unitPrice` y `updateProductPrice` por línea):
+- Si el producto **no tiene costo** (vacío o cero) y la línea trae un precio mayor que cero, el producto toma ese precio (si varias líneas son del mismo producto, gana la primera). El cambio queda en la auditoría del producto.
+- Si el producto ya tiene un costo **distinto** al escrito, la pantalla muestra «ⓘ El producto tiene guardado X; este precio es distinto.» (no bloquea). Quien tiene `inventory.manage` ve la casilla «Actualizar el precio del producto con este»; marcándola, el producto toma el precio escrito.
+- Si es igual, no se toca nada. Una capa de costo ya congelada nunca cambia.
+
+Error: 403 «Actualizar el precio del producto requiere el permiso de administrar inventario.» (se pidió actualizar sin `inventory.manage`).

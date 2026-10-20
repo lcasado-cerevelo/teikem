@@ -3,6 +3,7 @@ using Teikem.Domain.Catalogs;
 using Teikem.Domain.Clients;
 using Teikem.Domain.Common;
 using Teikem.Domain.Constants;
+using Teikem.Domain.Security;
 using Teikem.Domain.Wms;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Clients;
@@ -23,7 +24,7 @@ namespace Teikem.Infrastructure.Services;
 /// Lecturas con InventoryScope (D44): con OwnerClientId solo los ASN de ese cliente; los demás dan 404, sin oráculo.
 /// El ASN tiene TenantId (filtro global); sus líneas (sin TenantId) se alcanzan SIEMPRE por el ASN filtrado.
 /// </summary>
-public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, StatusService statuses)
+public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, PermissionService? permissions = null)
 {
     public const string AsnWhat = "Aviso de llegada";
 
@@ -135,6 +136,12 @@ public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, Status
         }
         if (errors.Count > 0) throw new ValidationException(errors);
 
+        // precio del producto: si no tiene costo lo toma de la primera línea con precio; «actualizar» lo cambia (solo con inventory.manage)
+        var priceLines = lines.Select(l => new ProductPriceLine(l.ProductPublicId is Guid g ? products[g].ProductId : 0, l.UnitPrice, l.UpdateProductPrice == true, l.ProductPublicId is Guid g2 ? products[g2].PurchaseCost : null)).ToList();
+        if (lines.Any(l => l.UpdateProductPrice == true) && (permissions is null || !await permissions.HasPermissionAsync(PermissionCatalog.InventoryManage, ct)))
+            throw new ForbiddenException(ProductPriceRules.UpdateNeedsPermission);
+        var newCosts = ProductPriceRules.Plan(priceLines);
+
         var initial = await statuses.GetInitialAsync(StatusDomains.AsnStatus, ct);
         var id = await db.RunInTransactionAsync(async ct2 =>
         {
@@ -150,6 +157,11 @@ public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, Status
             db.Set<AsnLine>().AddRange(newLines);
             var born = await statuses.TransitionAsync(StatusDomains.AsnStatus, EntityTypes.Asn, asn.AsnId, null, initial.InternalCode, null, ct2);
             asn.StatusCodeId = born.StatusCodeId;
+            if (newCosts.Count > 0)
+            {
+                var ids = newCosts.Keys.ToList();
+                foreach (var p in await db.Set<Product>().Where(p => ids.Contains(p.ProductId)).ToListAsync(ct2)) p.PurchaseCost = newCosts[p.ProductId];
+            }
             await db.SaveChangesAsync(ct2);
             return asn.AsnId;
         }, ct);

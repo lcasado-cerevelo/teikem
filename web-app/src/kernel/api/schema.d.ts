@@ -32097,6 +32097,7 @@ export interface components {
             lotNumber?: string | null;
             /** Format: double */
             unitPrice?: number | null;
+            updateProductPrice?: boolean | null;
         };
         AssignableCompanyDto: {
             /** Format: int32 */

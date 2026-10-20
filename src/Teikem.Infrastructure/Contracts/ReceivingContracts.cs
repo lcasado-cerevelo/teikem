@@ -3,7 +3,7 @@ namespace Teikem.Infrastructure.Contracts;
 // Lote 6 — Recepción (ASN, recibos). Firma posicional FIJA. El recibo se identifica por PublicId; el ASN y las líneas por id
 // int, SIEMPRE resueltos dentro de su encabezado filtrado.
 
-public sealed record AsnLineRequest(Guid? ProductPublicId, decimal? ExpectedQty, string? LotNumber = null, decimal? UnitPrice = null);
+public sealed record AsnLineRequest(Guid? ProductPublicId, decimal? ExpectedQty, string? LotNumber = null, decimal? UnitPrice = null, bool? UpdateProductPrice = null);
 
 public sealed record AsnCreateRequest(Guid? WarehousePublicId, Guid? ClientPublicId, string? Reference = null, DateOnly? ExpectedDate = null,
     IReadOnlyList<AsnLineRequest>? Lines = null);

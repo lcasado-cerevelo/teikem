@@ -6031,6 +6031,8 @@
       "lines": {
         "unitPrice": "Unit price (optional)",
         "unitPriceOf": "Unit price of line {n}",
+        "priceDiffers": "The product has {stored} on file; this price is different.",
+        "updateProductPrice": "Update the product price with this one",
         "title": "Lines",
         "product": "Product",
         "expectedQty": "Expected quantity",

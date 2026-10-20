@@ -6031,6 +6031,8 @@
       "lines": {
         "unitPrice": "Precio unitario (opcional)",
         "unitPriceOf": "Precio unitario de la línea {n}",
+        "priceDiffers": "El producto tiene guardado {stored}; este precio es distinto.",
+        "updateProductPrice": "Actualizar el precio del producto con este",
         "title": "Líneas",
         "product": "Producto",
         "expectedQty": "Cantidad esperada",

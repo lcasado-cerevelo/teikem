@@ -3,9 +3,10 @@
 // líneas en una misma rejilla (Producto del dueño con buscador, Cantidad esperada > 0 con 3 decimales, Lote), hasta 200.
 // El producto se busca solo entre los del cliente dueño (se elige primero). Mensajes exactos del manual 06 §4.
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMemo } from 'react'
+import { Fragment, useMemo } from 'react'
 import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
+import { useCan } from '../../kernel/access'
 import { useT } from '../../kernel/i18n'
 import { ClientPickerInput, DateInput, Field, Form, IconTrash, Modal, NumberInput, TextInput, toast } from '../../kernel/ui'
 import { useSaveAsn } from './api'
@@ -14,14 +15,21 @@ import { ProductPickerInput, WarehousePickerInput } from './pickers'
 
 const MAX_LINES = 200
 
+/** El precio escrito difiere del que guarda el producto (ambos con valor): mismo criterio del servidor (ProductPriceRules.Differs). */
+const differs = (entered: number | null, stored: number | null) => entered != null && entered > 0 && stored != null && stored > 0 && entered !== stored
+
 interface AsnLineForm {
   productPublicId: string | null
   expectedQty: number | null
   lotNumber: string
   /** Lote 147: precio unitario opcional (alimenta la capa de costo al recibir). */
   unitPrice: number | null
+  /** Costo que hoy tiene el producto (precarga el precio y avisa si el escrito es distinto). */
+  storedCost: number | null
+  /** «Actualizar el precio del producto con este» (solo con inventory.manage). */
+  updatePrice: boolean
 }
-const EMPTY_ASN_LINE: AsnLineForm = { productPublicId: null, expectedQty: null, lotNumber: '', unitPrice: null }
+const EMPTY_ASN_LINE: AsnLineForm = { productPublicId: null, expectedQty: null, lotNumber: '', unitPrice: null, storedCost: null, updatePrice: false }
 
 export function AsnCreateModal({ onClose }: { onClose: () => void }) {
   const t = useT()
@@ -40,6 +48,8 @@ export function AsnCreateModal({ onClose }: { onClose: () => void }) {
               expectedQty: z.number().nullable(),
               lotNumber: z.string().max(60, t('warehouse.lineRules.lotTooLong')),
               unitPrice: z.number().nullable(),
+              storedCost: z.number().nullable(),
+              updatePrice: z.boolean(),
             }),
           ),
         })
@@ -64,6 +74,8 @@ export function AsnCreateModal({ onClose }: { onClose: () => void }) {
   })
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'lines' })
   const clientPublicId = useWatch({ control: form.control, name: 'clientPublicId' })
+  const watched = useWatch({ control: form.control, name: 'lines' })
+  const canUpdatePrice = useCan('inventory.manage')
   const formId = 'asn-create'
 
   return (
@@ -95,7 +107,7 @@ export function AsnCreateModal({ onClose }: { onClose: () => void }) {
               clientPublicId: v.clientPublicId,
               reference: v.reference.trim() || null,
               expectedDate: v.expectedDate || null,
-              lines: v.lines.map((l) => ({ productPublicId: l.productPublicId, expectedQty: l.expectedQty, lotNumber: l.lotNumber.trim() || null, unitPrice: l.unitPrice })),
+              lines: v.lines.map((l) => ({ productPublicId: l.productPublicId, expectedQty: l.expectedQty, lotNumber: l.lotNumber.trim() || null, unitPrice: l.unitPrice, updateProductPrice: l.updatePrice && differs(l.unitPrice, l.storedCost) ? true : null })),
             },
           })
           toast.success(t('warehouse.asns.created'))
@@ -130,9 +142,16 @@ export function AsnCreateModal({ onClose }: { onClose: () => void }) {
             <span />
           </div>
           {fields.map((f, i) => (
-            <div key={f.id} className="rcp-asn-row">
+            <Fragment key={f.id}>
+            <div className="rcp-asn-row">
               <Field name={`lines.${i}.productPublicId`} label={t('warehouse.asns.lines.productOf', { n: i + 1 })} hideLabel required>
                 <ProductPickerInput
+                  onPicked={(p) => {
+                    // precarga el precio con el costo del producto (si no se escribió otro) y recuerda el guardado para avisar si difiere
+                    form.setValue(`lines.${i}.storedCost`, p?.purchaseCost ?? null)
+                    form.setValue(`lines.${i}.updatePrice`, false)
+                    if (p?.purchaseCost != null && p.purchaseCost > 0 && form.getValues(`lines.${i}.unitPrice`) == null) form.setValue(`lines.${i}.unitPrice`, p.purchaseCost)
+                  }}
                   ownerClientPublicId={clientPublicId}
                   disabled={!clientPublicId}
                   placeholder={clientPublicId ? undefined : t('warehouse.asns.pickClientFirst')}
@@ -158,6 +177,19 @@ export function AsnCreateModal({ onClose }: { onClose: () => void }) {
                 <IconTrash />
               </button>
             </div>
+            {differs(watched?.[i]?.unitPrice ?? null, watched?.[i]?.storedCost ?? null) && (
+              <p className="help" role="note">
+                <span aria-hidden="true">ⓘ </span>
+                {t('warehouse.asns.lines.priceDiffers', { stored: String(watched?.[i]?.storedCost ?? '') })}
+                {canUpdatePrice && (
+                  <label style={{ display: 'inline-flex', gap: 6, marginLeft: 10, alignItems: 'center' }}>
+                    <input type="checkbox" checked={watched?.[i]?.updatePrice ?? false} onChange={(e) => form.setValue(`lines.${i}.updatePrice`, e.target.checked)} />
+                    {t('warehouse.asns.lines.updateProductPrice')}
+                  </label>
+                )}
+              </p>
+            )}
+            </Fragment>
           ))}
         </div>
         <button type="button" className="btn sm" disabled={fields.length >= MAX_LINES} onClick={() => append(EMPTY_ASN_LINE)}>
