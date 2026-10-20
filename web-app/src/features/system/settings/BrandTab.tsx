@@ -10,6 +10,7 @@ import {
   BRAND_PRESETS,
   brandChecks,
   brandColors,
+  deriveBar,
   DEFAULT_BRAND,
   IconTag,
   isInvertedSlot,
@@ -258,7 +259,7 @@ function BrandEditor({ settings, canEdit }: { settings: TenantSettingsDto; canEd
           const on = !draft.useCustom && draft.preset === p.id
           return (
             <button key={p.id} type="button" className={on ? 'btn sm flow' : 'btn sm'} aria-pressed={on} disabled={!canEdit} onClick={() => choosePreset(p.id)}>
-              {swatch(p.flow)}
+              {swatch(deriveBar(p.nh, p.ns, 'light').bar)}
               {swatch(p.flow)}
               {swatch(p.money)} {lang === 'en' ? p.nameEn : p.nameEs}
             </button>
@@ -289,7 +290,7 @@ function BrandEditor({ settings, canEdit }: { settings: TenantSettingsDto; canEd
 
       {/* Lote 138: muestra con los tres roles juntos (barra, botón, marca y dinero); la app entera ya se ve con el borrador */}
       <div className="set-brand-sample" data-testid="brand-sample" aria-label={t('system.settings.brand.sampleTitle')}>
-        <div className="set-brand-sample-bar" style={{ background: colors.flow, color: onColor(colors.flow) }}>
+        <div className="set-brand-sample-bar" style={{ background: deriveBar(colors.nh, colors.ns, 'light').bar, color: '#FFFFFF' }}>
           <span>{t('system.settings.brand.sampleBar')}</span>
         </div>
         <div className="set-brand-sample-body">

@@ -139,6 +139,11 @@
 .scrim .pal.sm{width:440px}
 .pal .ft.kit-ft{font-size:13px;color:var(--text)}
 .modal-x{margin-left:auto}
+/* encabezado de las ventanas: azul marino con letras blancas (2026-10-20), como las barras */
+.pal .pi.kit-ph{background:var(--navbar);color:var(--on-navbar);border-bottom:1px solid var(--navbar-line)}
+.pal .pi.kit-ph .kit-title{color:var(--on-navbar)}
+.pal .pi.kit-ph .iconbtn{color:var(--on-navbar-muted)}.pal .pi.kit-ph .iconbtn:hover{background:var(--navbar-hover);color:var(--on-navbar)}
+.pal .pi.kit-ph svg{color:inherit}
 
 /* ===== Toast ===== */
 .toast.err{border-color:var(--danger)}

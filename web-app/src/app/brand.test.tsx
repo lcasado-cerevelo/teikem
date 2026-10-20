@@ -97,7 +97,8 @@ describe('Marca Teikem en la interfaz', () => {
     expect(lockup).toHaveAttribute('src', '/brand/teikem-1a-horizontal-tagline-en-inv.svg')
     await user.click(within(screen.getByRole('group', { name: 'Theme' })).getByRole('button', { name: 'Light' }))
     expect(within(home).getByTestId('brand-lockup')).toBe(lockup)
-    expect(lockup).toHaveAttribute('src', '/brand/teikem-1a-horizontal-tagline-en.svg')
+    // 2026-10-20: la barra lateral es azul marino en los dos temas: siempre la variante para fondo oscuro
+    expect(lockup).toHaveAttribute('src', '/brand/teikem-1a-horizontal-tagline-en-inv.svg')
     expect(screen.getByLabelText('campo de prueba')).toBe(field)
 
     await user.click(screen.getByRole('button', { name: 'Collapse' }))

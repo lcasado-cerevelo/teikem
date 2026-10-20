@@ -51,7 +51,7 @@ public static class BrandingRules
     public static readonly IReadOnlyList<BrandPreset> Presets =
     [
         // Lote 138: la paleta de la página de Advance Logistics (azul marino de fondos, naranja de botones y enlaces, gris secundario)
-        new("advance", "Advance Logistics (por defecto)", "Advance Logistics (default)", "#F37123", "#6C757D", 216, 0.42),
+        new("advance", "Enterprise (por defecto)", "Enterprise (default)", "#F37123", "#6C757D", 216, 0.42),
         new("teikem", "Teikem (azul y naranja)", "Teikem (blue and orange)", "#1F6FE5", "#FF6A1A", 222, 0.39),
         new("marino", "Marino", "Navy", "#1F59A3", "#E08A17", 215, 0.42),
         new("acero", "Acero", "Steel", "#3D6E9C", "#D2691E", 210, 0.26),

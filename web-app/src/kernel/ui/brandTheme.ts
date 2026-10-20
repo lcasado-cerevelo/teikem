@@ -27,7 +27,7 @@ export interface BrandPreset {
 /** Los 13 temas de la maqueta y el de Advance Logistics (el primero y el de por defecto); cada uno pasa `brandChecks` (lo comprueba la prueba). */
 export const BRAND_PRESETS: readonly BrandPreset[] = [
   // Lote 138: la paleta de la página de Advance Logistics (azul marino de fondos, naranja de botones y enlaces, gris secundario)
-  { id: 'advance', nameEs: 'Advance Logistics (por defecto)', nameEn: 'Advance Logistics (default)', flow: '#F37123', money: '#6C757D', nh: 216, ns: 0.42 },
+  { id: 'advance', nameEs: 'Enterprise (por defecto)', nameEn: 'Enterprise (default)', flow: '#F37123', money: '#6C757D', nh: 216, ns: 0.42 },
   { id: 'teikem', nameEs: 'Teikem (azul y naranja)', nameEn: 'Teikem (blue and orange)', flow: '#1F6FE5', money: '#FF6A1A', nh: 222, ns: 0.39 },
   { id: 'marino', nameEs: 'Marino', nameEn: 'Navy', flow: '#1F59A3', money: '#E08A17', nh: 215, ns: 0.42 },
   { id: 'acero', nameEs: 'Acero', nameEn: 'Steel', flow: '#3D6E9C', money: '#D2691E', nh: 210, ns: 0.26 },
@@ -231,6 +231,22 @@ export function deriveSecondary(nh: number, ns: number, mode: ThemeMode): { base
     : { base: fit(nh, sat * 0.85, 0.3), hover: fit(nh, sat * 0.85, 0.37), line: hslToHex(nh, sat * 0.85, 0.45), on: '#FFFFFF' }
 }
 
+/**
+ * Barras y navegación (2026-10-20): el azul marino de la marca —el tono del neutro, muy saturado y oscuro— para el menú lateral, la barra de arriba y el encabezado de las ventanas, SIEMPRE con letras blancas
+ * (≥ 7:1: se oscurece de 1 % en 1 % hasta lograrlo). Con el tema Enterprise es el #03204B de la página de Advance Logistics. Sin validación propia: el contraste con el blanco queda garantizado por construcción.
+ * `title` = color de los títulos de pantalla (la barra en claro; el texto principal en oscuro).
+ */
+export function deriveBar(nh: number, ns: number, mode: ThemeMode): { bar: string; hover: string; line: string; on: string; muted: string; title: string } {
+  const sat = Math.min(0.92, Math.max(0.1, ns * 2.2))
+  let l = mode === 'light' ? 0.15 : 0.105
+  let hex = hslToHex(nh, sat, l)
+  while (contrastRatio('#FFFFFF', hex) < 7 && l > 0.04) {
+    l -= 0.01
+    hex = hslToHex(nh, sat, l)
+  }
+  return { bar: hex, hover: hslToHex(nh, sat, l + 0.07), line: 'rgba(255,255,255,.14)', on: '#FFFFFF', muted: 'rgba(255,255,255,.68)', title: mode === 'light' ? hex : '' }
+}
+
 export function presetById(id: string | null | undefined): BrandPreset | undefined {
   return BRAND_PRESETS.find((p) => p.id === id)
 }
@@ -295,6 +311,7 @@ export function brandCssVars(b: BrandSettings, mode: ThemeMode, force = false): 
   const m = deriveAccent(c.money, mode)
   const a = deriveAccent(c.action, mode)
   const sec = deriveSecondary(c.nh, c.ns, mode)
+  const nav = deriveBar(c.nh, c.ns, mode)
   Object.assign(vars, {
     '--flow': f.base,
     '--flow-2': f.v2,
@@ -312,6 +329,12 @@ export function brandCssVars(b: BrandSettings, mode: ThemeMode, force = false): 
     '--secondary-hover': sec.hover,
     '--secondary-line': sec.line,
     '--on-secondary': sec.on,
+    '--navbar': nav.bar,
+    '--navbar-hover': nav.hover,
+    '--navbar-line': nav.line,
+    '--on-navbar': nav.on,
+    '--on-navbar-muted': nav.muted,
+    '--title': nav.title || deriveSurfaces(c.nh, c.ns, mode)['--text'],
     '--money': m.base,
     '--money-2': m.v2,
     '--money-bg': m.bg,

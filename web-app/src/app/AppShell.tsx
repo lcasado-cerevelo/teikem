@@ -200,8 +200,8 @@ export function AppShell() {
       <aside className="rail" id="app-rail" aria-label={t('shell.menu')}>
         {/* Marca (P7): lockup a todo el ancho; colapsada, la marca cuadrada de 44 px (en el cajón móvil, el lockup). */}
         <Link to="/" className="rbrand" aria-label="Teikem">
-          <BrandLockup className="brand-full" />
-          {collapsed && <BrandMark size={44} alt="" className="brand-mini" />}
+          <BrandLockup className="brand-full" onDark />
+          {collapsed && <BrandMark size={44} alt="" className="brand-mini" onDark />}
         </Link>
         <nav className="rnav">
           {topItems.map((r) => (

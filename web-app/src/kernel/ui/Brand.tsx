@@ -15,12 +15,15 @@ export interface BrandLockupProps {
   /** Con lema ("Inteligencia de Entregas" / "Delivery Intelligence"); por defecto true. */
   tagline?: boolean
   className?: string
+  /** Sobre un fondo azul marino (la barra lateral): siempre la variante para fondo oscuro, sea cual sea el tema. */
+  onDark?: boolean
 }
 
 /** Lockup completo (símbolo + TEIKEM + lema) en `<img>`: ocupa el ancho de su contenedor con su proporción. */
-export function BrandLockup({ tagline = true, className }: BrandLockupProps) {
+export function BrandLockup({ tagline = true, className, onDark = false }: BrandLockupProps) {
   const lang = useLang()
-  const theme = useTheme()
+  const appTheme = useTheme()
+  const theme = onDark ? 'dark' : appTheme
   const company = useCompanyLogos()
   const own = pickLogoUrl(company.urls, 'lockup', theme)
   if (own) {
@@ -56,11 +59,14 @@ export interface BrandMarkProps {
   /** Texto alternativo; `''` cuando es decorativa (ya hay un título al lado). */
   alt?: string
   className?: string
+  /** Sobre un fondo azul marino: variante para fondo oscuro en cualquier tema. */
+  onDark?: boolean
 }
 
 /** Solo el símbolo, para espacios chicos (barra colapsada, pantallas pendientes). El de Teikem es igual en ambos temas; el de la compañía, uno por tema. */
-export function BrandMark({ size = 44, alt = 'Teikem', className }: BrandMarkProps) {
-  const theme = useTheme()
+export function BrandMark({ size = 44, alt = 'Teikem', className, onDark = false }: BrandMarkProps) {
+  const appTheme = useTheme()
+  const theme = onDark ? 'dark' : appTheme
   const company = useCompanyLogos()
   const own = pickLogoUrl(company.urls, 'mark', theme)
   return (
