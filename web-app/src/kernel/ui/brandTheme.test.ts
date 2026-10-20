@@ -17,6 +17,7 @@ import {
   DEFAULT_PRESET,
   defaultBrandVars,
   deriveAccent,
+  deriveSecondary,
   deriveSurfaces,
   hexToRgb,
   hslToHex,
@@ -122,6 +123,24 @@ describe('temas', () => {
     // los contrastes llevan modo, razón redondeada a 2 decimales y su mínimo
     const text = checks.find((c) => c.type === 'contrast' && c.key === 'text' && c.mode === 'dark')
     expect(text).toMatchObject({ min: 7, pass: true })
+  })
+
+  it('Lote 138b: el botón secundario sale del tono del tema, con letras blancas legibles (AA) y visible contra el panel en los dos modos', () => {
+    for (const p of BRAND_PRESETS) {
+      for (const mode of ['dark', 'light'] as const) {
+        const s = deriveSecondary(p.nh, p.ns, mode)
+        expect(contrastRatio(s.on, s.base), `${p.id} ${mode} letras`).toBeGreaterThanOrEqual(4.5)
+        expect(contrastRatio(s.on, s.hover), `${p.id} ${mode} letras en hover`).toBeGreaterThanOrEqual(4.5)
+        // se distingue del panel (en oscuro con borde más claro: el borde sí se ve)
+        const panel = deriveSurfaces(p.nh, p.ns, mode)['--panel']
+        expect(contrastRatio(mode === "dark" ? s.line : s.base, panel), `${p.id} ${mode} contra el panel`).toBeGreaterThanOrEqual(1.8)
+      }
+    }
+    // con el tema Advance el secundario claro es el azul marino de su página (#03204B), a ±3 por canal
+    const adv = BRAND_PRESETS.find((p) => p.id === 'advance')!
+    const got = hexToRgb(deriveSecondary(adv.nh, adv.ns, 'light').base)
+    const site = hexToRgb('#03204B')
+    expect(Math.max(Math.abs(got.r - site.r), Math.abs(got.g - site.g), Math.abs(got.b - site.b))).toBeLessThanOrEqual(3)
   })
 
   it('onColor: blanco si llega a AA; si no, el azul marino oscuro (naranja) y blanco sobre el gris', () => {

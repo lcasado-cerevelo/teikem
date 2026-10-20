@@ -210,6 +210,27 @@ export function deriveSurfaces(nh: number, ns: number, mode: ThemeMode): Record<
   return o
 }
 
+/**
+ * Lote 138b: color del botón SECUNDARIO (Cancelar, Cerrar, acciones de apoyo), derivado del tono del neutro: el azul marino de
+ * Advance Logistics con su tema, grafito con Grafito. En claro es oscuro con letras blancas (como «Track order» de su página); en
+ * oscuro es una variante más clara con borde, para que no se pierda contra los fondos. Siempre con letras blancas (≥ 4.5:1, AA).
+ */
+export function deriveSecondary(nh: number, ns: number, mode: ThemeMode): { base: string; hover: string; line: string; on: string } {
+  const sat = Math.min(0.92, Math.max(0.1, ns * 2.2))
+  // oscurece (de 1 % en 1 %) hasta que las letras blancas lleguen a AA: los verdes y amarillos son más luminosos que los azules
+  const fit = (h: number, s: number, l: number) => {
+    let hex = hslToHex(h, s, l)
+    while (contrastRatio('#FFFFFF', hex) < 4.6 && l > 0.08) {
+      l -= 0.01
+      hex = hslToHex(h, s, l)
+    }
+    return hex
+  }
+  return mode === 'light'
+    ? { base: fit(nh, sat, 0.15), hover: fit(nh, sat, 0.23), line: fit(nh, sat, 0.15), on: '#FFFFFF' }
+    : { base: fit(nh, sat * 0.85, 0.3), hover: fit(nh, sat * 0.85, 0.37), line: hslToHex(nh, sat * 0.85, 0.45), on: '#FFFFFF' }
+}
+
 export function presetById(id: string | null | undefined): BrandPreset | undefined {
   return BRAND_PRESETS.find((p) => p.id === id)
 }
@@ -273,6 +294,7 @@ export function brandCssVars(b: BrandSettings, mode: ThemeMode, force = false): 
   const f = deriveAccent(c.flow, mode)
   const m = deriveAccent(c.money, mode)
   const a = deriveAccent(c.action, mode)
+  const sec = deriveSecondary(c.nh, c.ns, mode)
   Object.assign(vars, {
     '--flow': f.base,
     '--flow-2': f.v2,
@@ -286,6 +308,10 @@ export function brandCssVars(b: BrandSettings, mode: ThemeMode, force = false): 
     '--on-action': onColor(a.base),
     '--on-action-2': onColor(a.v2),
     '--on-accent': onColor(m.base),
+    '--secondary': sec.base,
+    '--secondary-hover': sec.hover,
+    '--secondary-line': sec.line,
+    '--on-secondary': sec.on,
     '--money': m.base,
     '--money-2': m.v2,
     '--money-bg': m.bg,

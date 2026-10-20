@@ -99,6 +99,9 @@ h1,h2,h3{letter-spacing:-.01em}
 .subtle{color:var(--faint);font-size:12.5px;margin:0 0 20px}
 .btn{border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:8px 13px;font-weight:600;font-size:13px;display:inline-flex;align-items:center;justify-content:center;gap:7px;white-space:nowrap;color:var(--text);text-decoration:none}
 .btn:hover{background:var(--panel-2)}
+/* Lote 138b: el botón por omisión es el SECUNDARIO (azul marino, letras blancas); el primario es .btn.flow (naranja). Peligro y fantasma conservan su aspecto. */
+.btn:not(.flow):not(.money):not(.danger):not(.ghost){background:var(--secondary);border-color:var(--secondary-line);color:var(--on-secondary)}
+.btn:not(.flow):not(.money):not(.danger):not(.ghost):hover{background:var(--secondary-hover)}
 .btn svg{width:15px;height:15px}
 .btn.flow{background:var(--action);border-color:var(--action);color:var(--on-action)}.btn.flow:hover{background:var(--action-2);color:var(--on-action-2)}
 .btn.money{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}.btn.money:hover{background:var(--accent-2)}

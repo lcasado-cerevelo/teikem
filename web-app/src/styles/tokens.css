@@ -14,6 +14,8 @@
   --action:var(--flow); --action-2:var(--flow-2); --action-bg:var(--flow-bg); --action-line:var(--flow-line);
   --accent:var(--money); --accent-2:var(--money-2); --accent-bg:var(--money-bg); --accent-line:var(--money-line);
   --on-flow:#0A1B33; --on-action:#0A1B33; --on-action-2:#0A1B33; --on-accent:#FFFFFF;
+  /* botón SECUNDARIO (Cancelar, Cerrar, apoyo): azul marino del tono del neutro; en oscuro, más claro y con borde para que se vea */
+  --secondary:#114188; --secondary-hover:#1550A8; --secondary-line:#1961CC; --on-secondary:#FFFFFF;
   --ok:#46CE82; --okbg:rgba(70,206,130,.13); --warn:#E6A93E; --warnbg:rgba(230,169,62,.13);
   --danger:#F26A60; --dangerbg:rgba(242,106,96,.13); --info:#6293FF; --infobg:rgba(98,147,255,.13);
   --violet:#9A8CF8; --violetbg:rgba(154,140,248,.13);
@@ -31,6 +33,7 @@
   --money:#6C757D; --money-2:#3C4751; --money-bg:rgba(108,117,125,.10); --money-line:rgba(108,117,125,.30);
   --flow:#F37123; --flow-2:#B84602; --flow-bg:rgba(243,113,35,.10); --flow-line:rgba(243,113,35,.30);
   --on-flow:#0A1B33; --on-action:#0A1B33; --on-action-2:#FFFFFF; --on-accent:#FFFFFF;
+  --secondary:#031F49; --secondary-hover:#053071; --secondary-line:#031F49; --on-secondary:#FFFFFF;
   --ok:#1E9457; --okbg:rgba(30,148,87,.12); --warn:#B5811F; --warnbg:rgba(181,129,31,.13);
   --danger:#CC4B41; --dangerbg:rgba(204,75,65,.12); --info:#3C6BE0; --infobg:rgba(60,107,224,.12);
   --violet:#6D5FE0; --violetbg:rgba(109,95,224,.12);

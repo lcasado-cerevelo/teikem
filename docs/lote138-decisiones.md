@@ -17,3 +17,9 @@
 2. **El azul marino solo tiñe fondos y texto;** no hay todavía un «botón secundario azul marino» como el «Track order» de su página (sería un estilo de botón nuevo).
 3. **Las marcas guardadas siguen igual** (el tema `teikem` se conserva y los colores propios no cambian); solo las compañías sin marca guardada pasan al tema Advance.
 4. Las apps móviles (`app-cliente`, `app-almacen`) tienen su propia paleta: no se tocaron.
+
+## 138b — Botón primario naranja y secundario azul marino (decidido con Luis, 2026-10-19)
+- **Primario = naranja** (`.btn.flow`: Guardar, Crear, Confirmar), igual en tema claro y oscuro, como en su página («Login», «Ver servicios»). **Secundario = azul marino** (`.btn` por omisión: Cancelar, Cerrar y acciones de apoyo; como «Track order»). Luis propuso el marino como primario; se le explicó que solo se ve en el tema claro (en oscuro se pierde contra los fondos azul marino) y aceptó la recomendación.
+- Tokens `--secondary`, `--secondary-hover`, `--secondary-line`, `--on-secondary` calculados por el tema (`deriveSecondary`) desde el tono del neutro: con el tema Advance el claro es `#031F49` (el `#03204B` de su página a ±3); en oscuro es una variante más clara con borde. Letras blancas; si un tema luminoso (verde, amarillo) no llega a AA el cálculo oscurece solo (lo encontró la prueba con Selva). `tokens.css` trae los valores por omisión y la prueba de paridad los comprueba.
+- Peligro (`.btn.danger`) y fantasma (`.btn.ghost`) y los botones de acento (`.btn.money`) conservan su aspecto. Aplica a los ~440 botones neutros de la web, incluidos los `sm` de las filas de tablas: si en alguna pantalla densa se ve pesado, se pasa esa a `ghost`.
+- No se vio en el navegador (no se corrió Playwright ni el API); lo valida Luis mirando la pantalla.
