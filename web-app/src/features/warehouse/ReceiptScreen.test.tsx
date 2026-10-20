@@ -137,7 +137,7 @@ const DETAILS: Record<string, unknown> = {
   ]),
   [R3]: detail(
     H3,
-    [{ id: 30, productPublicId: P1, sku: 'A-1', productName: 'Tornillo', trackingTypeCode: 'NONE', expectedQty: null, receivedQty: 4, varianceQty: 0, allocatedToCrossDock: 0 }],
+    [{ id: 30, productPublicId: P1, sku: 'A-1', productName: 'Tornillo', trackingTypeCode: 'NONE', expectedQty: null, receivedQty: 4, varianceQty: 0, allocatedToCrossDock: 0, unitCost: 7.25, costSource: 'ASN' }],
     {
       putawayTasks: [
         { id: 70, typeCode: 'PUTAWAY', type: 'Acomodo', statusCode: 'PENDING', status: 'Pendiente', sku: 'A-1', productName: 'Tornillo', quantity: 4, fromBinCode: 'STG-01', completableFromQueue: true },
@@ -297,6 +297,9 @@ describe('Recibo: maestro-detalle', () => {
     expect(screen.queryByRole('textbox', { name: 'Recibido de la línea 1' })).toBeNull()
     expect(screen.getByRole('heading', { name: /Tareas de acomodo/ })).toBeInTheDocument()
     expect(screen.getByText('STG-01')).toBeInTheDocument()
+    // Lote 147: la capa de costo congelada se ve en el recibo confirmado, con su origen
+    expect(screen.getByRole('columnheader', { name: 'Costo unitario' })).toBeInTheDocument()
+    expect(screen.getAllByTitle('Precio del aviso de llegada').some((el) => /7[.,]25/.test(el.textContent ?? ''))).toBe(true)
   })
 
   it('"Nuevo recibo": queda primero y elegido con la fila vacía; lo recibido se copia al esperado mientras se teclea', async () => {

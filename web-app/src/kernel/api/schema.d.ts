@@ -32043,6 +32043,8 @@ export interface components {
             lotNumber?: string | null;
             /** Format: int32 */
             purchaseOrderLineId?: number | null;
+            /** Format: double */
+            unitPrice?: number | null;
         };
         AsnLineRequest: {
             /** Format: uuid */
@@ -32050,6 +32052,8 @@ export interface components {
             /** Format: double */
             expectedQty?: number | null;
             lotNumber?: string | null;
+            /** Format: double */
+            unitPrice?: number | null;
         };
         AssignableCompanyDto: {
             /** Format: int32 */
@@ -36964,6 +36968,7 @@ export interface components {
             damageReportId?: number | null;
             damageReportCode?: string | null;
             damageFinalDestinationCode?: string | null;
+            costSource?: string | null;
         };
         ReceiptLineRequest: {
             /** Format: uuid */

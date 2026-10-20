@@ -42818,6 +42818,11 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          },
+          "unitPrice": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -42837,6 +42842,11 @@
           },
           "lotNumber": {
             "type": "string",
+            "nullable": true
+          },
+          "unitPrice": {
+            "type": "number",
+            "format": "double",
             "nullable": true
           }
         },
@@ -57804,6 +57814,10 @@
             "nullable": true
           },
           "damageFinalDestinationCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "costSource": {
             "type": "string",
             "nullable": true
           }

@@ -3,13 +3,13 @@ namespace Teikem.Infrastructure.Contracts;
 // Lote 6 — Recepción (ASN, recibos). Firma posicional FIJA. El recibo se identifica por PublicId; el ASN y las líneas por id
 // int, SIEMPRE resueltos dentro de su encabezado filtrado.
 
-public sealed record AsnLineRequest(Guid? ProductPublicId, decimal? ExpectedQty, string? LotNumber = null);
+public sealed record AsnLineRequest(Guid? ProductPublicId, decimal? ExpectedQty, string? LotNumber = null, decimal? UnitPrice = null);
 
 public sealed record AsnCreateRequest(Guid? WarehousePublicId, Guid? ClientPublicId, string? Reference = null, DateOnly? ExpectedDate = null,
     IReadOnlyList<AsnLineRequest>? Lines = null);
 
 public sealed record AsnLineDto(int Id, Guid ProductPublicId, string Sku, string ProductName, decimal ExpectedQty, string? LotNumber,
-    int? PurchaseOrderLineId);
+    int? PurchaseOrderLineId, decimal? UnitPrice = null);
 
 public sealed record AsnDto(int Id, Guid WarehousePublicId, string WarehouseCode, Guid? ClientPublicId, string? ClientName,
     Guid? PurchaseOrderPublicId, string? PurchaseOrderNumber, string? Reference, DateOnly? ExpectedDate, string StatusCode, string Status,
@@ -104,7 +104,7 @@ public sealed record ReceiptLineDto(int Id, int? AsnLineId, Guid ProductPublicId
     decimal AllocatedToCrossDock, int? TargetBinId = null, string? TargetBinCode = null, string? TargetZoneTypeCode = null,
     decimal? TargetFreeQty = null, decimal DamagedQty = 0m, string? DamageCauseCode = null, string? DamageNote = null, int? DamageBinId = null,
     string? DamageBinCode = null, bool DamageDiscard = false, int? DamageReportId = null, string? DamageReportCode = null,
-    string? DamageFinalDestinationCode = null);
+    string? DamageFinalDestinationCode = null, string? CostSource = null);
 
 /// <summary>
 /// Lote 16 — posición destino sugerida para una línea (GET /receipts/{id}/lines/{lineId}/target-suggestions): razón (la del

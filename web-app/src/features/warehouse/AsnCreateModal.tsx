@@ -18,8 +18,10 @@ interface AsnLineForm {
   productPublicId: string | null
   expectedQty: number | null
   lotNumber: string
+  /** Lote 147: precio unitario opcional (alimenta la capa de costo al recibir). */
+  unitPrice: number | null
 }
-const EMPTY_ASN_LINE: AsnLineForm = { productPublicId: null, expectedQty: null, lotNumber: '' }
+const EMPTY_ASN_LINE: AsnLineForm = { productPublicId: null, expectedQty: null, lotNumber: '', unitPrice: null }
 
 export function AsnCreateModal({ onClose }: { onClose: () => void }) {
   const t = useT()
@@ -37,6 +39,7 @@ export function AsnCreateModal({ onClose }: { onClose: () => void }) {
               productPublicId: z.string().nullable(),
               expectedQty: z.number().nullable(),
               lotNumber: z.string().max(60, t('warehouse.lineRules.lotTooLong')),
+              unitPrice: z.number().nullable(),
             }),
           ),
         })
@@ -50,6 +53,7 @@ export function AsnCreateModal({ onClose }: { onClose: () => void }) {
             if (l.expectedQty == null || l.expectedQty <= 0)
               ctx.addIssue({ code: 'custom', path: ['lines', i, 'expectedQty'], message: t('warehouse.asns.errors.expectedQtyPositive') })
             else if (decimalsOf(l.expectedQty) > 3) ctx.addIssue({ code: 'custom', path: ['lines', i, 'expectedQty'], message: t('warehouse.lineRules.qtyDecimals') })
+            if (l.unitPrice != null && (l.unitPrice < 0 || decimalsOf(l.unitPrice) > 4)) ctx.addIssue({ code: 'custom', path: ['lines', i, 'unitPrice'], message: t('warehouse.asns.errors.unitPrice') })
           })
         }),
     [t],
@@ -91,7 +95,7 @@ export function AsnCreateModal({ onClose }: { onClose: () => void }) {
               clientPublicId: v.clientPublicId,
               reference: v.reference.trim() || null,
               expectedDate: v.expectedDate || null,
-              lines: v.lines.map((l) => ({ productPublicId: l.productPublicId, expectedQty: l.expectedQty, lotNumber: l.lotNumber.trim() || null })),
+              lines: v.lines.map((l) => ({ productPublicId: l.productPublicId, expectedQty: l.expectedQty, lotNumber: l.lotNumber.trim() || null, unitPrice: l.unitPrice })),
             },
           })
           toast.success(t('warehouse.asns.created'))
@@ -117,11 +121,12 @@ export function AsnCreateModal({ onClose }: { onClose: () => void }) {
 
         <p className="help">{t('warehouse.asns.lines.title')}</p>
         {/* una sola rejilla: encabezados arriba y una fila por línea (a 480 px cada campo con su etiqueta, uno debajo del otro) */}
-        <div className="rcp-asn-grid" role="group" aria-label={t('warehouse.asns.lines.title')}>
+        <div className="rcp-asn-grid rcp-asn-price" role="group" aria-label={t('warehouse.asns.lines.title')}>
           <div className="rcp-asn-head" aria-hidden="true">
             <span>{t('warehouse.asns.lines.product')}</span>
             <span>{t('warehouse.asns.lines.expectedQty')}</span>
             <span>{t('warehouse.asns.lines.lot')}</span>
+            <span>{t('warehouse.asns.lines.unitPrice')}</span>
             <span />
           </div>
           {fields.map((f, i) => (
@@ -138,6 +143,9 @@ export function AsnCreateModal({ onClose }: { onClose: () => void }) {
               </Field>
               <Field name={`lines.${i}.lotNumber`} label={t('warehouse.asns.lines.lotOf', { n: i + 1 })} hideLabel>
                 <TextInput maxLength={60} />
+              </Field>
+              <Field name={`lines.${i}.unitPrice`} label={t('warehouse.asns.lines.unitPriceOf', { n: i + 1 })} hideLabel>
+                <NumberInput min={0} step="0.0001" />
               </Field>
               <button
                 type="button"

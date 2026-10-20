@@ -9687,3 +9687,7 @@ No: es una salida de inventario sin entrega (`El despacho {número} es de un avi
 
 ## Despacho exige documento (Lote 145)
 **«La compañía exige despachar contra un aviso de salida / una orden de venta / un documento…» (409).** La compañía activó «El despacho exige documento». Cree el aviso de salida (o la orden de venta) y despache desde su ficha con **Despachar**. Un administrador puede volver a «Libre» en Ajustes → Operación.
+
+## Capa de costo (Lote 147)
+**«El precio unitario debe ser cero o mayor y de 4 decimales como máximo.» / «El precio unitario excede el máximo permitido.» (400, `lines[i].unitPrice`).** Corrija el precio de esa línea del aviso de llegada (0 o más, hasta 4 decimales) o déjelo vacío.
+**¿Por qué el recibo muestra un costo distinto al del producto?** El recibo congeló el costo de la orden de compra o el precio del aviso, que mandan sobre el costo del producto. El cambio posterior del catálogo no lo modifica.

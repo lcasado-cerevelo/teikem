@@ -129,7 +129,9 @@ public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, Status
                 if (lotError is not null) { errors[key + ".lotNumber"] = new[] { lotError }; continue; }
                 lotNumber = n;
             }
-            newLines.Add(new AsnLine { ProductId = product.ProductId, ExpectedQty = l.ExpectedQty!.Value, LotNumber = lotNumber });
+            var priceError = CostLayerRules.ValidateUnitPrice(l.UnitPrice);
+            if (priceError is not null) { errors[key + ".unitPrice"] = new[] { priceError }; continue; }
+            newLines.Add(new AsnLine { ProductId = product.ProductId, ExpectedQty = l.ExpectedQty!.Value, LotNumber = lotNumber, UnitPrice = l.UnitPrice });
         }
         if (errors.Count > 0) throw new ValidationException(errors);
 
@@ -242,7 +244,7 @@ public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, Status
                            join p in db.Set<Product>().AsNoTracking() on l.ProductId equals p.ProductId
                            where asnIds.Contains(l.AsnId)
                            orderby l.AsnLineId
-                           select new { l.AsnId, l.AsnLineId, p.PublicId, p.Sku, p.Name, l.ExpectedQty, l.LotNumber, l.PurchaseOrderLineId })
+                           select new { l.AsnId, l.AsnLineId, p.PublicId, p.Sku, p.Name, l.ExpectedQty, l.LotNumber, l.PurchaseOrderLineId, l.UnitPrice })
             .ToListAsync(ct);
         var receipts = await db.Set<ReceiptHeader>().AsNoTracking().Where(r => r.AsnId != null && asnIds.Contains(r.AsnId.Value) && r.IsActive)
             .Select(r => new { AsnId = r.AsnId!.Value, r.PublicId, r.Number }).ToListAsync(ct);
@@ -257,7 +259,7 @@ public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, Status
             var s = statusMap.GetValueOrDefault(a.StatusCodeId);
             var r = receiptByAsn.GetValueOrDefault(a.AsnId);
             var lineDtos = lines.Where(l => l.AsnId == a.AsnId)
-                .Select(l => new AsnLineDto(l.AsnLineId, l.PublicId, l.Sku, l.Name, l.ExpectedQty, l.LotNumber, l.PurchaseOrderLineId))
+                .Select(l => new AsnLineDto(l.AsnLineId, l.PublicId, l.Sku, l.Name, l.ExpectedQty, l.LotNumber, l.PurchaseOrderLineId, l.UnitPrice))
                 .ToList();
             return new AsnDto(a.AsnId, w?.PublicId ?? Guid.Empty, w?.Code ?? "", c?.PublicId, c?.Name, p?.PublicId, p?.Number,
                 a.Reference, a.ExpectedDate, s?.Code ?? "", s?.Label ?? "", a.IsActive, lineDtos, r?.PublicId, r?.Number);

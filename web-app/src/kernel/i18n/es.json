@@ -5758,6 +5758,8 @@
         "direct": "Directo"
       },
       "lines": {
+        "cost": "Costo unitario",
+        "costSource": {"PO": "Costo de la orden de compra", "ASN": "Precio del aviso de llegada", "PRODUCT": "Costo del producto"},
         "title": "Líneas del recibo",
         "sku": "SKU",
         "product": "Producto",
@@ -5977,6 +5979,7 @@
         "expectedDate": "Llegada esperada"
       },
       "errors": {
+        "unitPrice": "El precio debe ser cero o mayor y de 4 decimales como máximo.",
         "clientRequired": "Indique el cliente dueño de la mercancía del aviso de llegada.",
         "referenceMax": "La referencia admite como máximo 80 caracteres.",
         "expectedQtyPositive": "La cantidad esperada debe ser mayor que cero.",
@@ -5991,6 +5994,8 @@
         "expected": "Llegada esperada"
       },
       "lines": {
+        "unitPrice": "Precio unitario (opcional)",
+        "unitPriceOf": "Precio unitario de la línea {n}",
         "title": "Líneas",
         "product": "Producto",
         "expectedQty": "Cantidad esperada",

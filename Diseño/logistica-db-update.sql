@@ -5303,3 +5303,26 @@ GO
 IF OBJECT_ID('dbo.CK_Tenant_DispatchRequirement', 'C') IS NULL
     ALTER TABLE dbo.Tenant ADD CONSTRAINT CK_Tenant_DispatchRequirement CHECK (DispatchRequirement IN ('FREE', 'ANY_DOCUMENT', 'EXIT_NOTICE', 'SALES_ORDER'));
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-20 — Capa de costo por linea de recibo (Lote 147).
+   - dbo.AsnLine.UnitPrice DECIMAL(18,4) NULL: precio unitario opcional del aviso de llegada (solo avisos de un cliente).
+   - dbo.ReceiptLine.UnitCost DECIMAL(18,4) NULL y CostSource VARCHAR(10) NULL (PO|ASN|PRODUCT): costo congelado al confirmar el recibo (la linea ES la capa).
+     Prioridad: costo de la linea de la orden de compra > precio del aviso > Product.PurchaseCost. Sin sincronizacion en ningun sentido.
+   Los recibos ya confirmados quedan sin capa (NULL): no se inventa costo historico. Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.AsnLine', 'UnitPrice') IS NULL
+    ALTER TABLE dbo.AsnLine ADD UnitPrice DECIMAL(18,4) NULL;
+GO
+IF OBJECT_ID('dbo.CK_AsnLine_UnitPrice', 'C') IS NULL
+    ALTER TABLE dbo.AsnLine ADD CONSTRAINT CK_AsnLine_UnitPrice CHECK (UnitPrice IS NULL OR UnitPrice >= 0);
+GO
+IF COL_LENGTH('dbo.ReceiptLine', 'UnitCost') IS NULL
+    ALTER TABLE dbo.ReceiptLine ADD UnitCost DECIMAL(18,4) NULL;
+GO
+IF COL_LENGTH('dbo.ReceiptLine', 'CostSource') IS NULL
+    ALTER TABLE dbo.ReceiptLine ADD CostSource VARCHAR(10) NULL;
+GO
+IF OBJECT_ID('dbo.CK_ReceiptLine_Cost', 'C') IS NULL
+    ALTER TABLE dbo.ReceiptLine ADD CONSTRAINT CK_ReceiptLine_Cost CHECK ((UnitCost IS NULL AND CostSource IS NULL) OR (UnitCost >= 0 AND CostSource IN ('PO', 'ASN', 'PRODUCT')));
+GO

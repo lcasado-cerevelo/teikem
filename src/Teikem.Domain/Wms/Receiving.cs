@@ -35,6 +35,8 @@ public class AsnLine
     public decimal ExpectedQty { get; set; }
     public string? LotNumber { get; set; }
     public int? PurchaseOrderLineId { get; set; }
+    /// <summary>Lote 147: precio unitario opcional del aviso (solo avisos de un cliente; en uno de una PO manda el costo de la orden). Alimenta la capa de costo al recibir.</summary>
+    public decimal? UnitPrice { get; set; }
 }
 
 /// <summary>
@@ -112,4 +114,7 @@ public class ReceiptLine
     /// <summary>A dónde va lo dañado si se le da salida de una vez (LookupCode 'DamageFinalDestination'); null = tirado.</summary>
     public int? DamageFinalDestinationLookupId { get; set; }
     public int? DamageReportId { get; set; }
+    /// <summary>Lote 147: capa de costo — costo unitario congelado al confirmar el recibo (null = sin costo) y su origen (<see cref="CostSources"/>).</summary>
+    public decimal? UnitCost { get; set; }
+    public string? CostSource { get; set; }
 }

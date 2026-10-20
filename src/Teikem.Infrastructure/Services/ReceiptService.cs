@@ -775,6 +775,26 @@ public sealed class ReceiptService(
                 if (quantities.Count > 0) await purchaseOrders.ApplyReceiptAsync(poId, quantities, ct2);
             }
 
+            // Lote 147: capa de costo — cada línea con algo recibido congela su costo unitario y su origen: costo de la línea de la orden de compra > precio del aviso >
+            // costo del producto. Una vez congelado no se vuelve a tocar (un recibo confirmado ya no se edita).
+            var costAsnLineIds = lines.Where(l => l.AsnLineId != null && l.ReceivedQty > 0m).Select(l => l.AsnLineId!.Value).ToList();
+            var asnCosts = asn is null || costAsnLineIds.Count == 0
+                ? new Dictionary<int, (decimal? PoCost, decimal? AsnPrice)>()
+                : (await (from al in db.Set<AsnLine>().AsNoTracking()
+                          join pl in db.Set<PurchaseOrderLine>().AsNoTracking() on al.PurchaseOrderLineId equals (int?)pl.PurchaseOrderLineId into plj
+                          from pl in plj.DefaultIfEmpty()
+                          where al.AsnId == asn.AsnId && costAsnLineIds.Contains(al.AsnLineId)
+                          select new { al.AsnLineId, PoCost = pl == null ? (decimal?)null : pl.UnitCost, al.UnitPrice }).ToListAsync(ct2))
+                    .ToDictionary(x => x.AsnLineId, x => (PoCost: x.PoCost, AsnPrice: x.UnitPrice));
+            foreach (var l in lines)
+            {
+                if (l.ReceivedQty <= 0m || l.UnitCost is not null) continue;
+                var fromAsn = l.AsnLineId is int cal && asnCosts.TryGetValue(cal, out var ac) ? ac : (PoCost: (decimal?)null, AsnPrice: (decimal?)null);
+                var (cost, source) = CostLayerRules.Resolve(fromAsn.PoCost, fromAsn.AsnPrice, products[l.ProductId].PurchaseCost);
+                l.UnitCost = cost;
+                l.CostSource = source;
+            }
+
             // 5. Asientos en MAGNITUD (el ledger pone el signo), To/From la posición de recepción, Ref RECEIPT + id.
             // Lote 16: en directo, To/From la posición destino (RECEIPT y RECEIPT_VARIANCE ahí mismo, sin tareas); una línea
             // con cruce de muelle asignado entra a la de recepción como siempre (D11).
@@ -1650,7 +1670,7 @@ public sealed class ReceiptService(
                     targetFree = ReceivingModeRules.FreeQty(info.MaxCapacityQty, binOnHand.GetValueOrDefault(tb),
                         receiptBinQty.GetValueOrDefault((r.ReceiptHeaderId, tb)) - l.ReceivedQty);
             }
-            decimal? unitCost = l.AsnLineId is int al && unitCosts.TryGetValue(al, out var cost) && cost.AsnId == r.AsnId ? cost.UnitCost : null;
+            decimal? unitCost = l.UnitCost ?? (l.AsnLineId is int al && unitCosts.TryGetValue(al, out var cost) && cost.AsnId == r.AsnId ? cost.UnitCost : null);   // Lote 147: la capa congelada manda
             var dto = new ReceiptLineDto(l.ReceiptLineId, l.AsnLineId, x.PublicId, x.Sku, x.Name,
                 tracking.GetValueOrDefault(x.TrackingTypeLookupId, TrackingTypes.None), l.ExpectedQty, l.ReceivedQty,
                 ReceiptRules.LineVariance(expects, l.ExpectedQty, l.ReceivedQty), l.LotId, lot?.LotNumber, lot?.ExpiryDate,
@@ -1659,7 +1679,8 @@ public sealed class ReceiptService(
                 l.DamagedQty, l.DamageCauseLookupId is int dc ? (await lookups.GetAsync(dc, ct))?.InternalCode : null, l.DamageNote, l.DamageBinId,
                 l.DamageBinId is int db0 && bins.TryGetValue(db0, out var dbin) && dbin.WarehouseId == r.WarehouseId ? dbin.Code : null, l.DamageDiscard,
                 l.DamageReportId, l.DamageReportId is int dr ? DamageRules.Code(dr) : null,
-                l.DamageFinalDestinationLookupId is int fd ? (await lookups.GetAsync(fd, ct))?.InternalCode : null);
+                l.DamageFinalDestinationLookupId is int fd ? (await lookups.GetAsync(fd, ct))?.InternalCode : null,
+                l.CostSource);
             if (!byReceipt.TryGetValue(l.ReceiptHeaderId, out var list)) byReceipt[l.ReceiptHeaderId] = list = new List<ReceiptLineDto>();
             list.Add(dto);
         }

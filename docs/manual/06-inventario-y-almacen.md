@@ -2504,3 +2504,8 @@ Lote 12: `GET /api/v1/products/brands` pide `inventory.view` (como la lista de p
 Excepción (Lote 11): `GET /api/v1/postal-localities` (lista de ciudades y códigos postales) no pide permiso ni módulo, solo una
 sesión iniciada. La pantalla solo lo consulta cuando alguien con `warehouse.manage` abre el selector de ciudad al crear o
 editar un almacén.
+
+## Capa de costo del recibo (Lote 147, 2026-10-20)
+Al **confirmar** un recibo, cada línea con cantidad recibida congela su **costo unitario** y de dónde salió: **«Costo de la orden de compra»** (si el recibo viene de una orden de compra), **«Precio del aviso de llegada»** (si el aviso trae precio) o **«Costo del producto»** (el costo de compra del catálogo). Se ve en la columna **Costo unitario** de un recibo confirmado (el origen, al pasar el cursor). Cambiar después el costo del producto, el precio del aviso o el costo de la orden **no** cambia el costo ya congelado.
+- **Precio en el aviso de llegada (opcional):** en *Nuevo aviso de llegada*, columna «Precio unitario (opcional)» por línea; solo avisos de un cliente. Error 400: «El precio unitario debe ser cero o mayor y de 4 decimales como máximo.» / «El precio unitario excede el máximo permitido.»
+- Los recibos confirmados antes de esta versión no tienen costo congelado.

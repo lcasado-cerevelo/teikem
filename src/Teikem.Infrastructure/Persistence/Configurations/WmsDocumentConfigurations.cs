@@ -105,6 +105,7 @@ public sealed class AsnLineConfiguration : IEntityTypeConfiguration<AsnLine>
         b.HasKey(l => l.AsnLineId);
         b.Property(l => l.ExpectedQty).HasColumnType("decimal(16,3)");
         b.Property(l => l.LotNumber).HasMaxLength(60);
+        b.Property(l => l.UnitPrice).HasColumnType("decimal(18,4)");   // Lote 147
 
         b.HasOne<Product>().WithMany().HasForeignKey(l => l.ProductId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<PurchaseOrderLine>().WithMany().HasForeignKey(l => l.PurchaseOrderLineId).OnDelete(DeleteBehavior.NoAction);
@@ -149,6 +150,8 @@ public sealed class ReceiptLineConfiguration : IEntityTypeConfiguration<ReceiptL
         b.HasKey(l => l.ReceiptLineId);
         b.Property(l => l.ReceivedQty).HasColumnType("decimal(16,3)");
         b.Property(l => l.ExpectedQty).HasColumnType("decimal(16,3)");
+        b.Property(l => l.UnitCost).HasColumnType("decimal(18,4)");   // Lote 147: capa de costo
+        b.Property(l => l.CostSource).HasColumnType("varchar(10)");
 
         b.HasIndex(l => l.ReceiptHeaderId).HasDatabaseName("IX_ReceiptLine_Header");
 

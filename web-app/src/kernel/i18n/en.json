@@ -5758,6 +5758,8 @@
         "direct": "Direct"
       },
       "lines": {
+        "cost": "Unit cost",
+        "costSource": {"PO": "Purchase order cost", "ASN": "Arrival notice price", "PRODUCT": "Product cost"},
         "title": "Receipt lines",
         "sku": "SKU",
         "product": "Product",
@@ -5977,6 +5979,7 @@
         "expectedDate": "Expected arrival"
       },
       "errors": {
+        "unitPrice": "The price must be zero or more with at most 4 decimals.",
         "clientRequired": "Enter the client that owns the goods of the notice.",
         "referenceMax": "The reference allows at most 80 characters.",
         "expectedQtyPositive": "The expected quantity must be greater than zero.",
@@ -5991,6 +5994,8 @@
         "expected": "Expected arrival"
       },
       "lines": {
+        "unitPrice": "Unit price (optional)",
+        "unitPriceOf": "Unit price of line {n}",
         "title": "Lines",
         "product": "Product",
         "expectedQty": "Expected quantity",

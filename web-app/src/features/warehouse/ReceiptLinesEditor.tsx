@@ -350,6 +350,26 @@ export function ReceiptLinesEditor({ receipt, state }: ReceiptLinesEditorProps) 
         },
         sortValue: (r) => rowVariance(r, manual) ?? undefined,
       },
+      // Lote 147: costo de la capa (congelado al confirmar) y de dónde salió; solo en recibos ya confirmados
+      ...(!editable
+        ? [
+            {
+              id: 'cost',
+              header: t('warehouse.receipts.lines.cost'),
+              align: 'end',
+              cell: (r: LineRow) => {
+                const dto = (receipt.lines ?? []).find((l) => l.id === r.lineId)
+                if (dto?.unitCost == null) return <span className="rcp-faint">—</span>
+                return (
+                  <span className="mono" title={dto.costSource ? t(`warehouse.receipts.lines.costSource.${dto.costSource}`) : undefined}>
+                    {formatNumber(dto.unitCost, lang)}
+                  </span>
+                )
+              },
+              sortValue: (r: LineRow) => (receipt.lines ?? []).find((l) => l.id === r.lineId)?.unitCost ?? undefined,
+            } satisfies DataColumn<LineRow>,
+          ]
+        : []),
       // Lote 16: solo en recibos directos
       ...(direct
         ? [
@@ -362,7 +382,7 @@ export function ReceiptLinesEditor({ receipt, state }: ReceiptLinesEditorProps) 
           ]
         : []),
     ],
-    [t, lang, editable, manual, direct],
+    [t, lang, editable, manual, direct, receipt.lines],
   )
 
   const rowActions = useMemo<RowAction<LineRow>[]>(
