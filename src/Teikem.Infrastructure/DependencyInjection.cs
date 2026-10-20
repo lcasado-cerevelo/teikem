@@ -489,6 +489,7 @@ public static class DependencyInjection
         services.AddScoped<OrderProgressService>();   // Lote 103: barra de progreso (etapas = estatus de la compañía)
         services.AddScoped<PublicTrackingService>();   // Lote 103/116: «¿Cómo va mi orden?» público por enlace
         services.AddScoped<PortalOrderEntryService>();   // Lote 105: entrada de órdenes del cliente
+        services.AddScoped<PortalWarehouseService>();   // Lote 153: portal del cliente de almacén (lectura)
         services.AddScoped<PortalService>();   // Lote 101: lecturas del portal del cliente
         services.AddHttpClient<ITurnstileVerifier, CloudflareTurnstileVerifier>(c => c.Timeout = TimeSpan.FromSeconds(8));   // Lote 101: reto anti-robot de los portales
         services.AddScoped<TrustedBrowserService>();   // Lote 100: computadoras de confianza

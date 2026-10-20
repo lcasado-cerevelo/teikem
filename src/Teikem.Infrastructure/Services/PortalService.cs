@@ -16,7 +16,7 @@ namespace Teikem.Infrastructure.Services;
 /// datos) y cada lectura lo vuelve a exigir (<c>OrderScope(ClientId)</c>). Una orden de otro cliente (de la misma compañía o de otra) responde 404, igual que una que no existe (sin oráculo).
 /// Se devuelven DTOs propios y mínimos (<c>PortalContracts</c>): sin precios cotizados, notas internas, rutas, choferes ni datos de otros clientes.
 /// </summary>
-public sealed class PortalService(TeikemDbContext db, ITenantContext tenant, UserManager<ApplicationUser> users, AuthService auth, OrderReadService orders, ILookupCache lookups, OrderProgressService progress)
+public sealed class PortalService(TeikemDbContext db, ITenantContext tenant, UserManager<ApplicationUser> users, AuthService auth, OrderReadService orders, ILookupCache lookups, OrderProgressService progress, PortalWarehouseService? warehouse = null)
 {
     public const int MaxTake = 100;
 
@@ -30,7 +30,7 @@ public sealed class PortalService(TeikemDbContext db, ITenantContext tenant, Use
         var clients = await auth.PortalClientsOfAsync(userId, ct);
         var list = clients.Select(c => new PortalClientDto(c.ClientPublicId, c.ClientName, c.TenantName, c.ClientId == cid && c.TenantId == tenant.TenantId)).ToList();
         var current = list.FirstOrDefault(c => c.IsCurrent) ?? throw new ForbiddenException(AuthService.PortalNoAccessMessage);
-        return new PortalMeDto(user.FullName, user.Email, user.TwoFactorEnabled, current, list);
+        return new PortalMeDto(user.FullName, user.Email, user.TwoFactorEnabled, current, list, warehouse is null ? null : await warehouse.CapabilitiesAsync(ct));   // Lote 153: qué ofrece la compañía a este acceso
     }
 
     public async Task<PagedResult<PortalOrderListItemDto>> ListOrdersAsync(string? search, string? status, DateTime? fromUtc, DateTime? toUtc, int skip, int take, CancellationToken ct)

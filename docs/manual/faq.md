@@ -9700,3 +9700,7 @@ No: es una salida de inventario sin entrega (`El despacho {número} es de un avi
 ## El recibo exige documento (Lote 149)
 **«La compañía exige recibir contra un documento / un aviso de llegada / una orden de compra…» (409).** Escoja un aviso de llegada o una orden de compra del tipo que pide la compañía; un administrador puede volver a «Libre» en Ajustes → Operación → Entradas.
 **«La compañía exige recibir contra un aviso de llegada de un cliente, no contra una orden de compra.» / «…contra una orden de compra, no contra el aviso de llegada de un cliente.» (409).** El documento escogido no es del tipo exigido; use el correcto o cambie la exigencia.
+
+## Portal del cliente de almacén (Lote 153)
+**«Su acceso no incluye ver el valor del inventario.» (403).** Su acceso al portal es de solo lectura; el valor lo ven los accesos de administrador y de operador del cliente. Pídaselo al administrador de su empresa.
+**No veo Inventario en el portal.** La compañía de este acceso no tiene el módulo de almacén; si tiene otro acceso en una compañía con almacén, cámbiese a él con «Cambiar de acceso».

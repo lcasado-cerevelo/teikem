@@ -5,7 +5,7 @@ namespace Teikem.Infrastructure.Contracts;
 public sealed record PortalClientDto(Guid ClientPublicId, string Name, string TenantName, bool IsCurrent);
 
 /// <summary>La cuenta que entró al portal: quién es, con qué cliente está trabajando y a qué otros clientes tiene acceso.</summary>
-public sealed record PortalMeDto(string? FullName, string? Email, bool MfaEnabled, PortalClientDto CurrentClient, IReadOnlyList<PortalClientDto> Clients);
+public sealed record PortalMeDto(string? FullName, string? Email, bool MfaEnabled, PortalClientDto CurrentClient, IReadOnlyList<PortalClientDto> Clients, PortalCapabilitiesDto? Capabilities = null);
 
 public sealed record PortalOrderListItemDto(
     Guid PublicId,
