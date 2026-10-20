@@ -144,7 +144,7 @@ public sealed class SyncRulesTests
         var actions = typeof(SyncController).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
             .Where(m => m.GetCustomAttributes<HttpMethodAttribute>().Any()).ToList();
         var routes = actions.Select(a => a.GetCustomAttribute<HttpGetAttribute>()!.Template).OrderBy(x => x).ToArray();
-        Assert.Equal(new[] { "asns", "balances", "bins", "clients", "consignee-locations", "product-categories", "products", "purchase-orders", "sales-orders", "sales-returns", "warehouse-tasks" }, routes);
+        Assert.Equal(new[] { "asns", "balances", "bins", "clients", "consignee-locations", "exit-notices", "product-categories", "products", "purchase-orders", "sales-orders", "sales-returns", "warehouse-tasks" }, routes);
         foreach (var action in actions)
         {
             var policies = action.GetCustomAttributes<RequirePermissionAttribute>().Select(a => a.Policy).ToList();

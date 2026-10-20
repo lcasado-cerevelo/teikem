@@ -89,7 +89,7 @@ public sealed class SyncController(SyncService sync) : ControllerBase
     /// Avisos de salida por despachar (solicitados o parciales con algo reservado) con sus líneas y de qué posición y lote reservó el sistema cada parte (Lote 146). Siempre llegan todos los
     /// abiertos; con since llegan además los cerrados o cancelados (isActive = false). Exige el módulo WMS_LOTSERIAL e inventory.view; despachar usa warehouse.pick.
     /// </summary>
-    [HttpGet("exit-notices"), RequireModule(ModuleKeys.WmsLotSerial), RequirePermission(PermissionCatalog.InventoryView)]
+    [HttpGet("exit-notices"), RequirePermission(PermissionCatalog.InventoryView)]
     public Task<SyncPage<SyncExitNoticeDto>> ExitNotices([FromQuery] Guid? warehousePublicId, [FromQuery] DateTime? since, [FromQuery] string? cursor,
         [FromQuery] int take = SyncRules.DefaultTake, CancellationToken ct = default)
         => sync.ExitNoticesAsync(new SyncQuery(since, cursor, take, warehousePublicId), ct);
