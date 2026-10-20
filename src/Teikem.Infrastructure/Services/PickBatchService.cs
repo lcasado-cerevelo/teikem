@@ -57,7 +57,8 @@ public sealed class PickBatchService(
     InventoryLedger ledger,
     OrderService orders,
     Teikem.Infrastructure.Abstractions.ISalesDispatchReversal? salesReversal = null,
-    Teikem.Infrastructure.Abstractions.IExitNoticeDispatchReversal? exitReversal = null)
+    Teikem.Infrastructure.Abstractions.IExitNoticeDispatchReversal? exitReversal = null,
+    ValuationService? valuation = null)   // Lote 148: costo de la salida según el método de valuación (sin él, el costo del producto)
 {
     public const string PickBatchLabel = "Recolección";
 
@@ -412,7 +413,8 @@ public sealed class PickBatchService(
                 .ToList();
             var txnIds = await ledger.PostAsync(postings, ct2);
 
-            // (2e) líneas con el costo congelado (D35) y su movimiento
+            // (2e) líneas con el costo congelado (D35; Lote 148: según el método de valuación) y su movimiento
+            var issueCosts = valuation is null ? null : await valuation.IssueCostsAsync(plan.Select(p => (p.Product.ProductId, p.Quantity)).ToList(), ct2);
             var kitCounted = new HashSet<int>();
             for (var i = 0; i < plan.Count; i++)
             {
@@ -426,7 +428,7 @@ public sealed class PickBatchService(
                     SerialId = x.SerialId,
                     FromBinId = x.BinId,
                     Quantity = x.Quantity,
-                    UnitCost = x.Product.PurchaseCost,
+                    UnitCost = issueCosts is null ? x.Product.PurchaseCost : issueCosts[i],
                     IssueTxnId = txnIds[i],
                     KitProductId = ex.KitProductId,
                     KitQuantity = ex.KitProductId is not null && kitCounted.Add(ex.Origin) ? ex.KitUnits : null,   // los kits se anotan una sola vez (para deshacer en kits)

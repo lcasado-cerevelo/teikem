@@ -217,6 +217,7 @@ public static class DependencyInjection
         services.AddScoped<ProductSerialConversionService>();   // Lote 26 (Rentas R0): conversión a serie
         services.AddScoped<ProductCategoryService>();
         services.AddScoped<InventoryReadService>();
+        services.AddScoped<ValuationService>();   // Lote 148: valuación del inventario (reporte y costo de las salidas)
         services.AddScoped<StockExitService>();   // orden de salida (FEFO) de lo disponible, una sola regla para la app y las pantallas
         services.AddScoped<InventoryAdjustmentService>();
         services.AddScoped<MultiAdjustmentService>();   // 2026-10-12: ajuste múltiple AJM-######

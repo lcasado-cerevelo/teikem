@@ -21,6 +21,7 @@ import { useSearchParams } from 'react-router-dom'
 import { Can, useCan } from '../../kernel/access'
 import { useLookups } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n'
+import { ValuationPanel } from './ValuationPanel'
 import { Chip, DataTable, Filters, IconBox, IconLayers, IconTag, Panel, SearchSelect, Tabs, useRegisterFilter, type DataColumn } from '../../kernel/ui'
 import { IconAlert } from '../../kernel/ui/icons'
 import {
@@ -49,7 +50,7 @@ import { parseKpiParam, productListQuery, toggleKpi, type ProductFilterState, ty
 import '../analytics/pulse.css'
 import './warehouse.css'
 
-type ListTab = 'products' | 'categories' | 'damage'
+type ListTab = 'products' | 'categories' | 'damage' | 'valuation'
 
 const PAGE_SIZE = 25
 const NO_ROWS: ProductListItemDto[] = []
@@ -413,8 +414,10 @@ export default function ProductListScreen() {
   const [params, setParams] = useSearchParams()
   // «Daños» (2026-10-08) solo con warehouse.damage; sin él la dirección ?tab=damage cae en Productos.
   const canDamage = useCan('warehouse.damage')
+  // «Valor del inventario» (Lote 148) solo con inventory.value; sin él ?tab=valuation cae en Productos.
+  const canValue = useCan('inventory.value')
   const raw = params.get('tab')
-  const tab: ListTab = raw === 'categories' ? 'categories' : raw === 'damage' && canDamage ? 'damage' : 'products'
+  const tab: ListTab = raw === 'categories' ? 'categories' : raw === 'damage' && canDamage ? 'damage' : raw === 'valuation' && canValue ? 'valuation' : 'products'
   const setTab = (key: ListTab) => setParams(key === 'products' ? {} : { tab: key }, { replace: true })
 
   return (
@@ -428,10 +431,11 @@ export default function ProductListScreen() {
             { key: 'products', label: t('warehouse.products.tabProducts') },
             { key: 'categories', label: t('warehouse.products.tabCategories') },
             ...(canDamage ? [{ key: 'damage' as const, label: t('warehouse.damage.tab') }] : []),
+            ...(canValue ? [{ key: 'valuation' as const, label: t('warehouse.valuation.tab') }] : []),
           ]}
         />
       </div>
-      {tab === 'products' ? <ProductsTab /> : tab === 'categories' ? <ProductCategoriesPanel /> : <DamagePanel />}
+      {tab === 'products' ? <ProductsTab /> : tab === 'categories' ? <ProductCategoriesPanel /> : tab === 'valuation' ? <ValuationPanel /> : <DamagePanel />}
     </div>
   )
 }

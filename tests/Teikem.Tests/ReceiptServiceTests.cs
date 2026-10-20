@@ -660,6 +660,7 @@ internal sealed class ReceivingFixture : IAsyncDisposable
         services.AddSingleton<IReceiptConfirmationParticipant>(crossDock);
         services.AddSingleton<AsnService>();
         services.AddSingleton<ReceiptService>();
+        services.AddSingleton<ValuationService>();   // Lote 148
         services.AddReceiptDamageDeps();
         var provider = services.BuildServiceProvider();
 

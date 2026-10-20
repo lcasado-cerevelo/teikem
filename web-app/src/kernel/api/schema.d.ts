@@ -9166,6 +9166,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/inventory/valuation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    warehousePublicId?: string;
+                    clientPublicId?: string;
+                    q?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ValuationReportDto"];
+                        "application/json": components["schemas"]["ValuationReportDto"];
+                        "text/json": components["schemas"]["ValuationReportDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/inventory/exit-options": {
         parameters: {
             query?: never;
@@ -38609,6 +38652,7 @@ export interface components {
             inventoryNoMovementDays?: number;
             rotationMethodNoLot?: string | null;
             dispatchRequirement?: string | null;
+            valuationMethod?: string | null;
         };
         TenantSettingsUpdateRequest: {
             name?: string | null;
@@ -38666,6 +38710,42 @@ export interface components {
             inventoryNoMovementDays?: number | null;
             rotationMethodNoLot?: string | null;
             dispatchRequirement?: string | null;
+            valuationMethod?: string | null;
+        };
+        ValuationReportDto: {
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+            items?: components["schemas"]["ValuationRowDto"][] | null;
+            /** Format: double */
+            totalValue?: number;
+            /** Format: double */
+            totalQty?: number;
+            /** Format: double */
+            unvaluedQty?: number;
+            method?: string | null;
+        };
+        ValuationRowDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string | null;
+            clientName?: string | null;
+            /** Format: double */
+            onHand?: number;
+            /** Format: double */
+            unitCost?: number | null;
+            /** Format: double */
+            value?: number;
+            /** Format: double */
+            unvaluedQty?: number;
+            /** Format: double */
+            productCost?: number | null;
         };
         TenantSummaryDto: {
             /** Format: int32 */

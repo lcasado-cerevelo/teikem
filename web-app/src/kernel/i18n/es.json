@@ -4186,6 +4186,33 @@
     }
   },
   "warehouse": {
+    "valuation": {
+      "tab": "Valor del inventario",
+      "title": "Valor del inventario",
+      "search": "Buscar por SKU o nombre",
+      "warehouse": "Almacén",
+      "allWarehouses": "Todos los almacenes",
+      "totalValue": "Valor total",
+      "totalQty": "Unidades en mano",
+      "unvalued": "Unidades sin costo",
+      "method": "Método",
+      "methods": {
+        "AVERAGE": "Costo promedio",
+        "LAYERS": "Por capas (lo primero que entró)"
+      },
+      "own": "Propio",
+      "empty": "No hay inventario con esos filtros.",
+      "col": {
+        "sku": "SKU",
+        "product": "Producto",
+        "owner": "Dueño",
+        "onHand": "En mano",
+        "unitCost": "Costo unitario",
+        "value": "Valor",
+        "unvalued": "Sin costo"
+      },
+      "help": "El valor sale del costo congelado en cada recibo (orden de compra, precio del aviso o costo del producto). «Sin costo» son unidades que no tienen costo en ningún lado: captúrelo en el producto. El método se cambia en Ajustes de la compañía → Operación."
+    },
     "list": {
       "title": "Almacenes",
       "subtitle": "Alta y mantenimiento de tus almacenes — cada uno con sus propias zonas y posiciones",
@@ -7440,6 +7467,12 @@
         "rotationFifo": "FIFO — entra primero, sale primero",
         "rotationSuggest": "Sugerir: se propone y se puede cambiar",
         "rotationEnforce": "Obligar: el sistema escoge solo",
+        "valuationLabel": "Valuación del inventario",
+        "valuationHelp": "Costo promedio: el costo de cada salida y el valor del inventario salen del promedio ponderado de lo recibido. Por capas: lo primero que entró sale primero, y lo que queda se valúa con las capas más nuevas. Se basa en el costo congelado de cada recibo (orden de compra, precio del aviso o costo del producto).",
+        "valuation": {
+          "AVERAGE": "Costo promedio",
+          "LAYERS": "Por capas (lo primero que entró)"
+        },
         "requirementLabel": "El despacho exige documento",
         "requirementHelp": "Libre: se puede despachar sin documento (como siempre). Los demás valores bloquean el despacho manual sin documento y obligan a despachar desde un aviso de salida, una orden de venta o cualquiera de los dos. Empacar no se ve afectado.",
         "requirement": {

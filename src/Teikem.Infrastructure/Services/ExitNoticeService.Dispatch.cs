@@ -162,11 +162,12 @@ public sealed partial class ExitNoticeService
                     var postings = picks.Select(pk => new InventoryPosting(InventoryTxnTypes.Issue, pk.ProductId, pk.Quantity, LotId: pk.LotId, FromWarehouseId: notice.WarehouseId, FromBinId: pk.BinId,
                         RefEntityType: EntityTypes.PickBatch, RefId: batch.PickBatchId, Notes: $"{batch.Number} · {notice.Number}")).ToList();
                     var txnIds = await ledger.PostAsync(postings, ct2);
+                    var issueCosts = valuation is null ? null : await valuation.IssueCostsAsync(picks.Select(p => (p.ProductId, p.Quantity)).ToList(), ct2);   // Lote 148
                     for (var i = 0; i < picks.Count; i++)
                         db.Set<PickBatchLine>().Add(new PickBatchLine
                         {
                             PickBatchId = batch.PickBatchId, ProductId = picks[i].ProductId, LotId = picks[i].LotId, FromBinId = picks[i].BinId, Quantity = picks[i].Quantity,
-                            UnitCost = products[picks[i].ProductId].PurchaseCost, IssueTxnId = txnIds[i], ExitNoticeLineId = picks[i].LineId,
+                            UnitCost = issueCosts is null ? products[picks[i].ProductId].PurchaseCost : issueCosts[i], IssueTxnId = txnIds[i], ExitNoticeLineId = picks[i].LineId,
                         });
 
                     // 4) lo despachado y lo reservado de cada línea; el estatus del aviso

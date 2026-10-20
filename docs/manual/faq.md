@@ -9691,3 +9691,8 @@ No: es una salida de inventario sin entrega (`El despacho {número} es de un avi
 ## Capa de costo (Lote 147)
 **«El precio unitario debe ser cero o mayor y de 4 decimales como máximo.» / «El precio unitario excede el máximo permitido.» (400, `lines[i].unitPrice`).** Corrija el precio de esa línea del aviso de llegada (0 o más, hasta 4 decimales) o déjelo vacío.
 **¿Por qué el recibo muestra un costo distinto al del producto?** El recibo congeló el costo de la orden de compra o el precio del aviso, que mandan sobre el costo del producto. El cambio posterior del catálogo no lo modifica.
+
+## Valuación (Lote 148)
+**«El método de valuación debe ser AVERAGE (costo promedio) o LAYERS (por capas).» (400, `valuationMethod`).** Escoja una de las dos opciones de la lista en Ajustes → Operación.
+**No veo la pestaña «Valor del inventario».** Requiere el permiso `inventory.value` (Administrador y Facturación lo traen); pídaselo a su administrador.
+**¿Por qué hay «Unidades sin costo»?** Esas unidades no tienen costo congelado en un recibo ni costo de compra en el producto. Capture el costo del producto; el reporte se actualiza solo.

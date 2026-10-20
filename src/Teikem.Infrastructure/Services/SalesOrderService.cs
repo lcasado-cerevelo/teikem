@@ -22,7 +22,7 @@ namespace Teikem.Infrastructure.Services;
 /// </summary>
 public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, INumberSequenceService numbers, PermissionService permissions,
     ModuleService modules, TaxService tax, ITenantClock clock, Teikem.Infrastructure.Wms.InventoryLedger ledger, ILookupCache lookups, IClientBalanceProvider balance,
-    ISecurityEventWriter security, Teikem.Infrastructure.Notifications.INotificationPublisher? notifications = null) : ISalesDispatchReversal
+    ISecurityEventWriter security, Teikem.Infrastructure.Notifications.INotificationPublisher? notifications = null, ValuationService? valuation = null) : ISalesDispatchReversal
 {
     public const int MaxPageSize = 200;
     private TenantContext T => (TenantContext)tenant;

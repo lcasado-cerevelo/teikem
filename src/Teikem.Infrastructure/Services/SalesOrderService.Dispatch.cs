@@ -177,11 +177,12 @@ public sealed partial class SalesOrderService
                         RefEntityType: EntityTypes.PickBatch, RefId: batch.PickBatchId,
                         Notes: pk.KitProductId is int kp ? $"{skus[kp].Sku} × {kitUnits[pk.LineId]:0.###} · {batch.Number} · {order.Number}" : $"{batch.Number} · {order.Number}")).ToList();
                     var txnIds = await ledger.PostAsync(postings, ct2);
+                    var issueCosts = valuation is null ? null : await valuation.IssueCostsAsync(picks.Select(p => (p.ProductId, p.Quantity)).ToList(), ct2);   // Lote 148
                     for (var i = 0; i < picks.Count; i++)
                         db.Set<PickBatchLine>().Add(new PickBatchLine
                         {
                             PickBatchId = batch.PickBatchId, ProductId = picks[i].ProductId, LotId = picks[i].LotId, FromBinId = picks[i].BinId, Quantity = picks[i].Quantity,
-                            UnitCost = skus[picks[i].ProductId].PurchaseCost, IssueTxnId = txnIds[i], SalesOrderLineId = picks[i].LineId,
+                            UnitCost = issueCosts is null ? skus[picks[i].ProductId].PurchaseCost : issueCosts[i], IssueTxnId = txnIds[i], SalesOrderLineId = picks[i].LineId,
                             KitProductId = picks[i].KitProductId, KitQuantity = picks[i].KitQuantity,
                         });
 

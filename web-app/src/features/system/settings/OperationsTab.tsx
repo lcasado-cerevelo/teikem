@@ -215,8 +215,8 @@ function RotationPanel({ settings, canEdit }: { settings: TenantSettingsDto; can
   const t = useT()
   const save = useSaveTenantSettings()
   const current = settings.rotationMethod ?? 'FEFO'
-  const form = useForm<{ rotationMethod: string; rotationMethodNoLot: string; rotationEnforcement: string; dispatchRequirement: string }>({
-    values: { rotationMethod: current, rotationMethodNoLot: settings.rotationMethodNoLot ?? 'FIFO', rotationEnforcement: settings.rotationEnforcement ?? 'SUGGEST', dispatchRequirement: settings.dispatchRequirement ?? 'FREE' },
+  const form = useForm<{ rotationMethod: string; rotationMethodNoLot: string; rotationEnforcement: string; dispatchRequirement: string; valuationMethod: string }>({
+    values: { rotationMethod: current, rotationMethodNoLot: settings.rotationMethodNoLot ?? 'FIFO', rotationEnforcement: settings.rotationEnforcement ?? 'SUGGEST', dispatchRequirement: settings.dispatchRequirement ?? 'FREE', valuationMethod: settings.valuationMethod ?? 'AVERAGE' },
   })
   const dirty = form.formState.isDirty
   // 2026-10-20: dos métodos — con lote (FEFO o FIFO) y sin lote ni series (FIFO o por posición; no vencen)
@@ -237,12 +237,15 @@ function RotationPanel({ settings, canEdit }: { settings: TenantSettingsDto; can
   // 2026-10-20 (Lote 145): el despacho exige documento
   const requirementOptions = ['FREE', 'ANY_DOCUMENT', 'EXIT_NOTICE', 'SALES_ORDER'].map((value) => ({ value, label: t(`system.settings.ops.requirement.${value}`) }))
 
+  // 2026-10-20 (Lote 148): método de valuación del inventario
+  const valuationOptions = ['AVERAGE', 'LAYERS'].map((value) => ({ value, label: t(`system.settings.ops.valuation.${value}`) }))
+
   return (
     <Panel className="set-gap" icon={<IconGear />} title={t('system.settings.ops.rotationTitle')}>
       <Form
         form={form}
         onSubmit={async (v) => {
-          await save.mutateAsync({ rotationMethod: v.rotationMethod, rotationMethodNoLot: v.rotationMethodNoLot, rotationEnforcement: v.rotationEnforcement, dispatchRequirement: v.dispatchRequirement })
+          await save.mutateAsync({ rotationMethod: v.rotationMethod, rotationMethodNoLot: v.rotationMethodNoLot, rotationEnforcement: v.rotationEnforcement, dispatchRequirement: v.dispatchRequirement, valuationMethod: v.valuationMethod })
           toast.success(t('system.settings.saved'))
         }}
       >
@@ -258,6 +261,9 @@ function RotationPanel({ settings, canEdit }: { settings: TenantSettingsDto; can
           </Field>
           <Field name="dispatchRequirement" label={t('system.settings.ops.requirementLabel')} help={t('system.settings.ops.requirementHelp')}>
             <Select options={requirementOptions} />
+          </Field>
+          <Field name="valuationMethod" label={t('system.settings.ops.valuationLabel')} help={t('system.settings.ops.valuationHelp')}>
+            <Select options={valuationOptions} />
           </Field>
         </fieldset>
         {canEdit && (

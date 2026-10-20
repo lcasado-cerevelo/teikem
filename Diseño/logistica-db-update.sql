@@ -5326,3 +5326,33 @@ GO
 IF OBJECT_ID('dbo.CK_ReceiptLine_Cost', 'C') IS NULL
     ALTER TABLE dbo.ReceiptLine ADD CONSTRAINT CK_ReceiptLine_Cost CHECK ((UnitCost IS NULL AND CostSource IS NULL) OR (UnitCost >= 0 AND CostSource IN ('PO', 'ASN', 'PRODUCT')));
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-20 — Valuacion del inventario (Lote 148).
+   - dbo.Tenant.ValuationMethod VARCHAR(10) NOT NULL DEFAULT 'AVERAGE' (CHECK AVERAGE|LAYERS): costo promedio (por omision) o por capas (lo primero que entro). Con el, el
+     costo congelado de las salidas sale de las capas del Lote 147 y el reporte «Valor del inventario» valua lo que hay en mano. AVERAGE para todas las companias existentes.
+   - Permiso inventory.value (ver el valor del inventario, con costos): TenantAdmin y Billing (plantilla y roles YA clonados; el PermissionSeeder solo propaga lo nuevo en su corrida).
+   Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.Tenant', 'ValuationMethod') IS NULL
+    ALTER TABLE dbo.Tenant ADD ValuationMethod VARCHAR(10) NOT NULL CONSTRAINT DF_Tenant_ValuationMethod DEFAULT 'AVERAGE';
+GO
+IF OBJECT_ID('dbo.CK_Tenant_ValuationMethod', 'C') IS NULL
+    ALTER TABLE dbo.Tenant ADD CONSTRAINT CK_Tenant_ValuationMethod CHECK (ValuationMethod IN ('AVERAGE', 'LAYERS'));
+GO
+MERGE dbo.Permission AS t
+USING (VALUES
+    ('inventory.value', N'{"es":"Ver el valor del inventario","en":"View inventory value"}')
+) AS s (Code, LabelJson)
+ON t.Code = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES (s.Code, (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'WAREHOUSE'), s.LabelJson, 1);
+GO
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT r.RoleId, p.PermissionId
+FROM dbo.Role r
+JOIN dbo.Permission p ON p.Code = 'inventory.value'
+WHERE r.Name IN ('TenantAdmin', 'Billing')
+  AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
+GO

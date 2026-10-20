@@ -4186,6 +4186,33 @@
     }
   },
   "warehouse": {
+    "valuation": {
+      "tab": "Inventory value",
+      "title": "Inventory value",
+      "search": "Search by SKU or name",
+      "warehouse": "Warehouse",
+      "allWarehouses": "All warehouses",
+      "totalValue": "Total value",
+      "totalQty": "Units on hand",
+      "unvalued": "Units without cost",
+      "method": "Method",
+      "methods": {
+        "AVERAGE": "Average cost",
+        "LAYERS": "By layers (first in)"
+      },
+      "own": "Own",
+      "empty": "No inventory with those filters.",
+      "col": {
+        "sku": "SKU",
+        "product": "Product",
+        "owner": "Owner",
+        "onHand": "On hand",
+        "unitCost": "Unit cost",
+        "value": "Value",
+        "unvalued": "No cost"
+      },
+      "help": "The value comes from the cost frozen on each receipt (purchase order, arrival notice price or product cost). “No cost” are units with no cost anywhere: enter it on the product. The method is changed in Company settings → Operation."
+    },
     "list": {
       "title": "Warehouses",
       "subtitle": "Create and manage your warehouses — each with its own zones and slots",
@@ -7440,6 +7467,12 @@
         "rotationFifo": "FIFO — first in, first out",
         "rotationSuggest": "Suggest: proposed and can be changed",
         "rotationEnforce": "Enforce: the system picks alone",
+        "valuationLabel": "Inventory valuation",
+        "valuationHelp": "Average cost: the cost of each issue and the inventory value come from the weighted average of what was received. By layers: first in, first out, and what remains is valued with the newest layers. Based on the cost frozen on each receipt (purchase order, arrival notice price or product cost).",
+        "valuation": {
+          "AVERAGE": "Average cost",
+          "LAYERS": "By layers (first in)"
+        },
         "requirementLabel": "Dispatch requires a document",
         "requirementHelp": "Free: you can dispatch without a document (as always). The other values block manual dispatch without a document and require dispatching from an exit notice, a sales order or either. Packing is not affected.",
         "requirement": {

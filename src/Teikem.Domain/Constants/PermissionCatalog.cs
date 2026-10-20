@@ -67,6 +67,8 @@ public static class PermissionCatalog
     public const string WarehouseManage = "warehouse.manage";
     /// <summary>Lote 6: ver inventario, productos, Kárdex, trazabilidad y documentos de almacén (incluye costos, D31).</summary>
     public const string InventoryView = "inventory.view";
+    /// <summary>Lote 148: ver el valor del inventario (reporte de valuación, con costos). Lo traen TenantAdmin y Billing.</summary>
+    public const string InventoryValue = "inventory.value";
     /// <summary>Lote 6: maestro de productos y categorías.</summary>
     public const string InventoryManage = "inventory.manage";
     /// <summary>Lote 6: ajustes manuales, transferencias, conciliación y resolución de faltantes de compras.</summary>
@@ -283,6 +285,7 @@ public static class PermissionCatalog
         // Lote 6 — Inventario y almacén
         new(InventoryView, "WAREHOUSE", "Ver inventario y almacén", "View inventory & warehouse"),
         new(InventoryManage, "WAREHOUSE", "Gestionar productos", "Manage products"),
+        new(InventoryValue, "WAREHOUSE", "Ver el valor del inventario", "View inventory value"),
         new(InventoryAdjust, "WAREHOUSE", "Ajustar y transferir inventario", "Adjust & transfer inventory"),
         new(InventoryAdjustMulti, "WAREHOUSE", "Ajuste múltiple de inventario", "Multi-position inventory adjustment"),
         new(WarehouseManage, "WAREHOUSE", "Gestionar almacenes y tareas", "Manage warehouses & tasks"),
@@ -506,7 +509,7 @@ public static class PermissionCatalog
         ["Dispatcher"] = new[] { OrdersView, OrdersCreate, OrdersEdit, OrdersCancel, TripsPlan, TripsDispatch, TripsClose, TripsOptimize, AnalyticsView, ClientsRead, LocationsRead, LocationsCreate, FleetView, TripsView, TripsScan,
             PulseIndicators, PulseCharts, PulseActivity,   // Lote F8a
             PulseOrders },   // Lote 88: el río Paquetes en la calle
-        ["Billing"] = new[] { OrdersView, BillingView, BillingCredit, BillingGenerate, BillingApprove, BillingExport, CodView, CodReconcile, CodRemit, RentalBilling, RentalView, PurchasingView, PurchasingManage, AnalyticsView, ClientsRead, ContractsRead, OrdersCreditOverride, DriverPayView, InventoryView,
+        ["Billing"] = new[] { OrdersView, BillingView, BillingCredit, BillingGenerate, BillingApprove, BillingExport, CodView, CodReconcile, CodRemit, RentalBilling, RentalView, PurchasingView, PurchasingManage, AnalyticsView, ClientsRead, ContractsRead, OrdersCreditOverride, DriverPayView, InventoryView, InventoryValue,
             PulseIndicators, PulseCharts, PulseActivity,   // Lote F8a
             PulseAttention,   // Lote 14 (D6): la ve quien ve inventario
             PulseOrders, PulseCod,   // Lote 88: los dos ríos

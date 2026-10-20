@@ -26,7 +26,7 @@ namespace Teikem.Infrastructure.Services;
 /// - Nunca DELETE: se cancela (libera lo reservado). El número SAL-##### se toma al final de la transacción.
 /// </summary>
 public sealed partial class ExitNoticeService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, INumberSequenceService numbers, ITenantClock clock,
-    InventoryLedger ledger, ILookupCache lookups, INotificationPublisher? notifications = null) : IExitNoticeDispatchReversal
+    InventoryLedger ledger, ILookupCache lookups, INotificationPublisher? notifications = null, ValuationService? valuation = null) : IExitNoticeDispatchReversal
 {
     public const int MaxPageSize = 200;
     private const int MaxReserveAttempts = 3;

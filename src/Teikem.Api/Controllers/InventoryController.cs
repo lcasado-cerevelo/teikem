@@ -24,7 +24,7 @@ namespace Teikem.Api.Controllers;
 [Authorize]
 [RequireModule(ModuleKeys.WmsLotSerial)]
 public sealed class InventoryController(InventoryReadService reads, InventoryAdjustmentService adjustments, TraceabilityService trace,
-    InventoryReconciliationService reconciliation, WarehousePulseService pulse, StockExitService stockExit)
+    InventoryReconciliationService reconciliation, WarehousePulseService pulse, StockExitService stockExit, ValuationService valuation)
     : ControllerBase
 {
     /// <summary>
@@ -38,6 +38,16 @@ public sealed class InventoryController(InventoryReadService reads, InventoryAdj
     public Task<StockExitPageDto> ExitOptions([FromQuery] Guid? warehousePublicId, [FromQuery] Guid[]? productPublicIds, CancellationToken ct,
         [FromQuery] int skip = 0, [FromQuery] int take = StockExitService.DefaultTake)
         => stockExit.ListAsync(warehousePublicId, productPublicIds is { Length: > 0 } ? productPublicIds : null, skip, take, ct);
+
+    /// <summary>
+    /// Lote 148 — valor del inventario: por producto con existencia, lo que hay en mano, su costo unitario y su valor según el método de valuación de la compañía (costo promedio o por capas,
+    /// sobre el costo congelado de los recibos). Filtros: almacén, cliente dueño y buscador (SKU o nombre). Ordenado por valor. Paginado (take ≤ 500); los totales son de todo el filtro.
+    /// Exige inventory.value (muestra costos).
+    /// </summary>
+    [HttpGet("valuation"), RequirePermission(PermissionCatalog.InventoryValue)]
+    public Task<ValuationReportDto> Valuation([FromQuery] Guid? warehousePublicId, [FromQuery] Guid? clientPublicId, [FromQuery] string? q, CancellationToken ct,
+        [FromQuery] int skip = 0, [FromQuery] int take = ValuationService.MaxTake)
+        => valuation.ReportAsync(warehousePublicId, clientPublicId, q, skip, take, ct);
 
     /// <summary>
     /// Lote 15 — franja "Almacén hoy" del Pulso del día: los últimos <c>days</c> días LOCALES de la compañía incluido hoy (hora de
