@@ -125,7 +125,7 @@ export function ChatScreen({ api, help, empty, otherLabel, onUnread, readOnlyNot
             <View key={m.id} testID={m.mine ? 'bubble-mine' : 'bubble-team'} style={{ alignSelf: m.mine ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
               {!m.mine && <Text style={{ fontSize: 12, fontWeight: '700', color: colors.muted, marginBottom: 2 }}>{m.senderName} · {otherLabel}</Text>}
               <View style={{ backgroundColor: m.mine ? colors.flow : colors.card, borderColor: colors.line, borderWidth: m.mine ? 0 : 1, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 8 }}>
-                <Text selectable style={{ fontSize: 15, lineHeight: 21, color: m.mine ? '#fff' : colors.text }}>{m.body}</Text>
+                <Text selectable style={{ fontSize: 15, lineHeight: 21, color: m.mine ? colors.onFlow : colors.text }}>{m.body}</Text>
               </View>
               <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2, alignSelf: m.mine ? 'flex-end' : 'flex-start' }}>{formatDateTime(m.createdAtUtc, lang)}</Text>
             </View>

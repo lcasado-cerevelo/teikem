@@ -19,13 +19,13 @@ function makeStyles(c: Palette) {
     pressed: { opacity: 0.85 },
     btn: { minHeight: 48, borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
     btn_primary: { backgroundColor: c.flow },
-    btn_secondary: { backgroundColor: c.card, borderWidth: 1, borderColor: c.line },
+    btn_secondary: { backgroundColor: c.secondary, borderWidth: 1, borderColor: c.secondaryLine },
     btn_danger: { backgroundColor: c.dangerSolid },
     btn_link: { backgroundColor: 'transparent' },
     btnOff: { opacity: 0.5 },
     btnText: { fontSize: 16, fontWeight: '600' },
-    btnText_primary: { color: '#fff' },
-    btnText_secondary: { color: c.link },
+    btnText_primary: { color: c.onFlow },
+    btnText_secondary: { color: c.onSecondary },
     btnText_danger: { color: '#fff' },
     btnText_link: { color: c.link },
     field: { gap: 4 },
@@ -36,7 +36,7 @@ function makeStyles(c: Palette) {
     check: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', paddingVertical: 4, minHeight: 44 },
     box: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: c.muted, alignItems: 'center', justifyContent: 'center', backgroundColor: c.card, marginTop: 1 },
     boxOn: { backgroundColor: c.flow, borderColor: c.flow },
-    tick: { color: '#fff', fontWeight: '800', fontSize: 15, lineHeight: 18 },
+    tick: { color: c.onFlow, fontWeight: '800', fontSize: 15, lineHeight: 18 },
     checkText: { flex: 1, gap: 2 },
     checkLabel: { fontSize: 15, color: c.text, fontWeight: '500' },
     chip: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3, maxWidth: '100%' },
@@ -100,7 +100,7 @@ export function Button({ title, onPress, variant = 'primary', disabled, busy, te
       onPress={onPress}
       style={({ pressed }) => [styles.btn, styles[`btn_${variant}`], off && styles.btnOff, pressed && styles.pressed]}
     >
-      {busy ? <ActivityIndicator color={variant === 'primary' || variant === 'danger' ? '#fff' : c.link} /> : <Text style={[styles.btnText, styles[`btnText_${variant}`]]}>{title}</Text>}
+      {busy ? <ActivityIndicator color={variant === 'primary' ? c.onFlow : variant === 'secondary' ? c.onSecondary : variant === 'danger' ? '#fff' : c.link} /> : <Text style={[styles.btnText, styles[`btnText_${variant}`]]}>{title}</Text>}
     </Pressable>
   )
 }

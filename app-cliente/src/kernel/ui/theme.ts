@@ -21,8 +21,13 @@ export interface Palette {
   /** barra superior (la marca) y su texto */
   brand: string
   onBrand: string
-  /** relleno de los botones principales y del tramo actual (con texto blanco encima) */
+  /** relleno de los botones principales (naranja de Advance Logistics, Lote 138) con `onFlow` (azul marino oscuro: el blanco sobre naranja no llega a AA) encima */
   flow: string
+  onFlow: string
+  /** botón secundario (Cancelar, apoyo): azul marino con texto blanco */
+  secondary: string
+  secondaryLine: string
+  onSecondary: string
   /** texto de los enlaces y de lo seleccionado */
   link: string
   /** lo ya recorrido en la barra de progreso */
@@ -49,11 +54,15 @@ export const LIGHT: Palette = {
   line: '#D9DDE3',
   text: '#111827',
   muted: '#566071',
-  brand: '#0B2C66',
+  brand: '#03204B',
   onBrand: '#FFFFFF',
-  flow: '#1D6FE8',
-  link: '#1558C0',
-  done: '#0B2C66',
+  flow: '#F37123',
+  onFlow: '#0A1B33',
+  secondary: '#03204B',
+  secondaryLine: '#03204B',
+  onSecondary: '#FFFFFF',
+  link: '#B84602',
+  done: '#03204B',
   segTodo: '#DCE0E8',
   segCancelled: '#C4C9D2',
   segAlert: '#C26A05',
@@ -77,9 +86,13 @@ export const DARK: Palette = {
   muted: '#9AA6BA',
   brand: '#0B2C66',
   onBrand: '#FFFFFF',
-  flow: '#2563EB',
-  link: '#7FB0FF',
-  done: '#5B9BFF',
+  flow: '#F37123',
+  onFlow: '#0A1B33',
+  secondary: '#114188',
+  secondaryLine: '#1961CC',
+  onSecondary: '#FFFFFF',
+  link: '#F4B188',
+  done: '#F4B188',
   segTodo: '#2B3750',
   segCancelled: '#3A4558',
   segAlert: '#F59E0B',

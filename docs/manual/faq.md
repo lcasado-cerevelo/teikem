@@ -9590,3 +9590,17 @@ La actualización de la base reescribió los filtros guardados de órdenes que n
 **Salida — «Esta integración es de salida: no recibe archivos.» (400).** «Subir archivo» es de las integraciones de entrada.
 
 **Salida — la API del cliente recibe el mismo envío dos veces.** Es un reintento (su respuesta no llegó a tiempo): cada llamada lleva `Idempotency-Key: teikem-output-{id}`; ignore los repetidos.
+
+## Marca: colores y botones (Lote 138)
+
+**¿Qué colores trae la aplicación por defecto?** Los de Advance Logistics: azul marino de fondos y texto, naranja en los botones principales, enlaces y navegación, y gris en las marcas, contadores y montos. Cada compañía puede escoger otro de los 14 temas o sus propios colores en Sistema → Ajustes de la compañía → Marca.
+
+**¿Cuál es el botón principal y cuál el secundario?** El principal (Guardar, Crear, Confirmar) es **naranja**. El secundario (Cancelar, Cerrar y las acciones de apoyo) es **azul marino** con letras blancas; en el tema oscuro es un azul más claro con borde para que se vea contra el fondo. Los de peligro (rojo) y los discretos no cambian.
+
+**¿Por qué las letras del botón naranja son oscuras y no blancas como en la página de Advance?** Porque el blanco sobre ese naranja da 2.9:1 de contraste y no se lee bien (el mínimo del sistema es 4.5:1). La aplicación escoge sola el color del texto de cada botón: blanco si se lee bien y, si no, azul marino oscuro.
+
+**¿Cómo vuelvo al azul y naranja de antes?** Ajustes → Marca → tema «Teikem (azul y naranja)» → Guardar cambios. Las compañías que ya habían guardado su marca no cambiaron.
+
+**«El contraste del color de acción en modo oscuro es X:1; el mínimo es 4.5:1.» (400).** El color de acción (botones y enlaces) que escribió no se lee sobre el fondo del tema. Escoja uno más claro para el modo oscuro y más oscuro para el claro; la pantalla lo valida antes de guardar.
+
+**¿Qué es el color de acción?** Es opcional: si no lo pone, los botones y enlaces usan el color primario. Solo se escoge uno aparte si la compañía quiere, por ejemplo, barras de un color y botones de otro.

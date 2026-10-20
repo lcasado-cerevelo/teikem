@@ -31,8 +31,9 @@ describe('paletas', () => {
     }
     // las etiquetas y avisos: texto de cada tono sobre su propio fondo
     for (const [fg, bg] of [[p.ok, p.okBg], [p.warn, p.warnBg], [p.danger, p.dangerBg], [p.info, p.infoBg], [p.muted, p.neutralBg]] as const) expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(AA)
-    // texto blanco sobre los rellenos (botón principal, peligroso, casilla marcada) y sobre la barra de la marca
-    expect(contrastRatio('#FFFFFF', p.flow)).toBeGreaterThanOrEqual(AA)
+    // texto sobre los rellenos: el botón principal (naranja) lleva azul marino oscuro (el blanco no llega a AA sobre naranja), el secundario (azul marino) y el peligroso, blanco; y la barra de la marca
+    expect(contrastRatio(p.onFlow, p.flow)).toBeGreaterThanOrEqual(AA)
+    expect(contrastRatio(p.onSecondary, p.secondary)).toBeGreaterThanOrEqual(AA)
     expect(contrastRatio('#FFFFFF', p.dangerSolid)).toBeGreaterThanOrEqual(AA)
     expect(contrastRatio(p.onBrand, p.brand)).toBeGreaterThanOrEqual(7)
   })
@@ -41,7 +42,7 @@ describe('paletas', () => {
     for (const p of [LIGHT, DARK]) {
       for (const bg of [p.bg, p.card]) {
         expect(contrastRatio(p.done, bg)).toBeGreaterThanOrEqual(3)
-        expect(contrastRatio(p.flow, bg)).toBeGreaterThanOrEqual(3)
+        expect(contrastRatio(p.link, bg)).toBeGreaterThanOrEqual(3)   // el tramo actual se pinta con el color de enlace (naranja legible)
         expect(contrastRatio(p.segAlert, bg)).toBeGreaterThanOrEqual(3)
         expect(contrastRatio(p.segTodo, bg)).toBeGreaterThanOrEqual(1.15)   // apagado a propósito, pero visible
       }

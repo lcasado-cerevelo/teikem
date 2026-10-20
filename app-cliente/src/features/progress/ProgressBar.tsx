@@ -7,7 +7,7 @@ import { useColors, type Palette } from '../../kernel/ui/theme'
 import { progressPercent, segmentKinds, stepKind, type ProgressState, type SegmentKind } from './progressRules'
 
 function fillOf(c: Palette): Record<SegmentKind, string> {
-  return { done: c.done, current: c.flow, alert: c.segAlert, todo: c.segTodo, cancelled: c.segCancelled }
+  return { done: c.done, current: c.link, alert: c.segAlert, todo: c.segTodo, cancelled: c.segCancelled }
 }
 
 export interface ProgressInfo {

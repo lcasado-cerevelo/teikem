@@ -10,7 +10,8 @@
 ## Cómo se probó
 - xunit (Release, una corrida, prioridad baja): `BrandingRulesTests`, `TenantBrandSettingsTests`, `BrandLogoTests`: 119 pasan (paridad con los vectores, 14 temas, acción opcional/distinta/inválida).
 - vitest: `kernel/ui`, `features/system` y `app` (69 archivos, 637 pruebas) y `tsc --noEmit` limpios; incluye la prueba de que `tokens.css` = tema Advance calculado y la de `onColor`.
-- No se corrió Playwright ni se revisó la pantalla en el navegador (se ajustó el número del recorrido `loteF11-marca.spec.ts`: 1.34 → 1.33 por el nuevo neutro).
+- **Compuerta de la web completa (2026-10-19):** `tsc -b` limpio, `oxlint` 0 errores, vitest 282 archivos / 3,253 pruebas, `vite build` correcto.
+- **Playwright contra el API real** (base de pruebas `Teikem_e2e` al día con `db-update`, no la de producción): recorridos F11 (marca: logos, 400 del servidor, tema aplicado y restaurado) y F9 pasan; se regeneraron 14 capturas del manual (`f1-login`, `f9-*`, `f11-*`). Se miraron además Pulso, Órdenes y Ajustes → Marca en oscuro, claro y móvil 360 px: el naranja y el azul marino se ven como se decidió; la muestra de Ajustes llevaba texto blanco sobre el naranja y se corrigió (`onColor`).
 
 ## Decisiones a revisar
 1. **Texto sobre el naranja:** en su página los botones llevan letras blancas (2.9:1, no pasa AA); en Teikem lo hice azul marino oscuro para cumplir la regla de contraste. Si prefieres el blanco como en su página, es cambiar `onColor` (y se pierde AA).
@@ -22,4 +23,9 @@
 - **Primario = naranja** (`.btn.flow`: Guardar, Crear, Confirmar), igual en tema claro y oscuro, como en su página («Login», «Ver servicios»). **Secundario = azul marino** (`.btn` por omisión: Cancelar, Cerrar y acciones de apoyo; como «Track order»). Luis propuso el marino como primario; se le explicó que solo se ve en el tema claro (en oscuro se pierde contra los fondos azul marino) y aceptó la recomendación.
 - Tokens `--secondary`, `--secondary-hover`, `--secondary-line`, `--on-secondary` calculados por el tema (`deriveSecondary`) desde el tono del neutro: con el tema Advance el claro es `#031F49` (el `#03204B` de su página a ±3); en oscuro es una variante más clara con borde. Letras blancas; si un tema luminoso (verde, amarillo) no llega a AA el cálculo oscurece solo (lo encontró la prueba con Selva). `tokens.css` trae los valores por omisión y la prueba de paridad los comprueba.
 - Peligro (`.btn.danger`) y fantasma (`.btn.ghost`) y los botones de acento (`.btn.money`) conservan su aspecto. Aplica a los ~440 botones neutros de la web, incluidos los `sm` de las filas de tablas: si en alguna pantalla densa se ve pesado, se pasa esa a `ghost`.
-- No se vio en el navegador (no se corrió Playwright ni el API); lo valida Luis mirando la pantalla.
+- Visto en el navegador con el API de pruebas: «Nueva orden» naranja, «Importar» y «Limpiar» azul marino (claro) o azul más claro con borde (oscuro).
+
+## 138c — App del cliente (portal móvil y web)
+- `app-cliente/src/kernel/ui/theme.ts`: `flow` pasa a naranja con `onFlow` (azul marino oscuro) encima, `brand` azul marino, `link` y `done` naranja legible, y botón secundario `secondary/onSecondary` (azul marino; en oscuro más claro con borde). Botón principal, casilla marcada, selector de preferencias, burbujas propias del chat y el tramo actual del progreso usan esos pares; el enlace de entrar del seguimiento usa `link` (el naranja puro no se lee como texto). La prueba de contraste (AA) cubre los pares nuevos en claro y oscuro.
+- Verificado: `tsc -b` limpio, oxlint sin errores, jest 30 suites / 135 pruebas. **No se vio en pantalla** (no se levantó Expo).
+- **No se tocó `app-almacen`** (aparatos Zebra, kit oscuro de alto contraste para trabajar con guantes): usa el azul de marca como relleno con texto blanco en unos 60 sitios; pasarlo a naranja exige texto oscuro en todos y revisar cada pantalla. Se deja para un lote propio si Luis lo pide.

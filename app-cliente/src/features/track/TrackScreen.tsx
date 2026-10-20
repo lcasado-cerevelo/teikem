@@ -55,7 +55,7 @@ export function TrackScreen() {
       )}
       <Muted>{t('track.privacy')}</Muted>
       <PreferencesBar />
-      <Link href="/login" style={{ color: colors.flow, fontSize: 15, fontWeight: '600', paddingVertical: 8 }}>
+      <Link href="/login" style={{ color: colors.link, fontSize: 15, fontWeight: '600', paddingVertical: 8 }}>
         {t('track.portalLink')}
       </Link>
     </Screen>

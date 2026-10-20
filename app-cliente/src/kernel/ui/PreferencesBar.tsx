@@ -20,7 +20,7 @@ function Segment({ label, selected, onPress, testID, accessibilityLabel }: { lab
       onPress={onPress}
       style={{ paddingHorizontal: 12, minHeight: 36, justifyContent: 'center', borderRadius: 8, backgroundColor: selected ? colors.flow : 'transparent' }}
     >
-      <Text style={{ fontSize: 13, fontWeight: '700', color: selected ? '#fff' : colors.link }}>{label}</Text>
+      <Text style={{ fontSize: 13, fontWeight: '700', color: selected ? colors.onFlow : colors.link }}>{label}</Text>
     </Pressable>
   )
 }

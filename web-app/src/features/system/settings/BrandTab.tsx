@@ -18,6 +18,7 @@ import {
   LOGO_MAX_BYTES,
   LOGO_SLOTS,
   normalizeHex,
+  onColor,
   Panel,
   parseBranding,
   serializeBranding,
@@ -288,11 +289,11 @@ function BrandEditor({ settings, canEdit }: { settings: TenantSettingsDto; canEd
 
       {/* Lote 138: muestra con los tres roles juntos (barra, botón, marca y dinero); la app entera ya se ve con el borrador */}
       <div className="set-brand-sample" data-testid="brand-sample" aria-label={t('system.settings.brand.sampleTitle')}>
-        <div className="set-brand-sample-bar" style={{ background: colors.flow }}>
+        <div className="set-brand-sample-bar" style={{ background: colors.flow, color: onColor(colors.flow) }}>
           <span>{t('system.settings.brand.sampleBar')}</span>
         </div>
         <div className="set-brand-sample-body">
-          <span className="btn flow" style={{ background: colors.action, borderColor: colors.action, pointerEvents: 'none' }}>
+          <span className="btn flow" style={{ background: colors.action, borderColor: colors.action, color: onColor(colors.action), pointerEvents: "none" }}>
             {t('system.settings.brand.sampleButton')}
           </span>
           <span className="tag" style={{ color: colors.money, borderColor: colors.money, background: 'transparent' }}>
