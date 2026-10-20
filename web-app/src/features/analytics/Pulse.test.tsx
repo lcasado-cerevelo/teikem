@@ -261,7 +261,7 @@ describe('Pulse — paneles del API', () => {
     expect(await screen.findByText('COD por cobrar')).toBeInTheDocument()
     // "Tus indicadores" sigue siendo el h2 de la sección; las líneas son h3 (nunca h2 "Almacén", hallazgo 13)
     const section = screen.getByRole('heading', { level: 2, name: 'Tus indicadores' }).closest('section') as HTMLElement
-    expect(within(section).getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Operación', 'Almacén', 'Contabilidad'])
+    expect(within(section).getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Transporte', 'Almacén', 'Contabilidad'])
     expect(within(section).queryByRole('heading', { level: 2, name: 'Almacén' })).not.toBeInTheDocument()
     const lines = Array.from(container.querySelectorAll('.pulse-line'))
     expect(lines.map((l) => l.getAttribute('data-line'))).toEqual(['ops', 'warehouse', 'money'])

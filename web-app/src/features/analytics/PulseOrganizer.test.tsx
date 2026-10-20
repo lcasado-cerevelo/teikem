@@ -132,7 +132,7 @@ describe('PulseOrganizer', () => {
     // el foco se queda en el botón del panel movido
     expect(screen.getByRole('button', { name: 'Bajar Tus indicadores' })).toHaveFocus()
     // el oculto se queda en su sitio, atenuado, con "Mostrar"
-    const items = screen.getByRole('list', { name: 'Elementos de Tus indicadores: Operación' })
+    const items = screen.getByRole('list', { name: 'Elementos de Tus indicadores: Transporte' })
     expect(rowNames(items)).toEqual(['Ventas', 'Órdenes'])
     expect(screen.getByRole('button', { name: 'Mostrar Ventas' }).closest('li')).toHaveClass('off')
     expect(mock.writes).toEqual([])
@@ -232,7 +232,7 @@ describe('PulseOrganizer', () => {
     fireEvent.dragStart(rowOf('Órdenes'), { dataTransfer })
     fireEvent.dragOver(rowOf('Ventas'), { dataTransfer })
     fireEvent.drop(rowOf('Ventas'), { dataTransfer })
-    expect(rowNames(screen.getByRole('list', { name: 'Elementos de Tus indicadores: Operación' }))).toEqual(['Órdenes', 'Ventas'])
+    expect(rowNames(screen.getByRole('list', { name: 'Elementos de Tus indicadores: Transporte' }))).toEqual(['Órdenes', 'Ventas'])
 
     await user.click(screen.getByRole('button', { name: 'Listo' }))
     await waitFor(() => expect(onClose).toHaveBeenCalled())
@@ -304,7 +304,7 @@ describe('PulseOrganizer', () => {
     ])
   })
 
-  it('Lote 15 (D8): indicadores en una lista por línea (Operación, Almacén, Contabilidad), con ayuda; se ordenan solo dentro de su línea', async () => {
+  it('Lote 15 (D8): indicadores en una lista por línea (Transporte, Almacén, Contabilidad), con ayuda; se ordenan solo dentro de su línea', async () => {
     const user = userEvent.setup()
     const pulse: PulseDto = {
       ...PULSE,
@@ -317,10 +317,10 @@ describe('PulseOrganizer', () => {
     }
     const { onClose } = renderOrganizer('mine', pulse)
     expect(screen.getByText('Los indicadores se muestran en una línea por módulo; aquí se ordenan dentro de su línea.')).toBeInTheDocument()
-    expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Operación', 'Almacén', 'Contabilidad'])
+    expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Transporte', 'Almacén', 'Contabilidad'])
     const wh = screen.getByRole('list', { name: 'Elementos de Tus indicadores: Almacén' })
     expect(rowNames(wh)).toEqual(['Recibidas', 'Bajo mínimo'])
-    expect(rowNames(screen.getByRole('list', { name: 'Elementos de Tus indicadores: Operación' }))).toEqual(['Órdenes'])
+    expect(rowNames(screen.getByRole('list', { name: 'Elementos de Tus indicadores: Transporte' }))).toEqual(['Órdenes'])
     // el primero y el último de cada línea no salen de ella
     expect(screen.getByRole('button', { name: 'Subir Recibidas' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Bajar Órdenes' })).toBeDisabled()
