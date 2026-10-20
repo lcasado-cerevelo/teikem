@@ -268,6 +268,8 @@ public static class DependencyInjection
         services.AddScoped<InventoryReconciler>();
         services.AddScoped<InventoryReconciliationService>();
         services.AddScoped<InventoryAlertService>();   // Lote 141: avisos de inventario
+        services.AddScoped<ExitNoticeService>();   // Lote 143: avisos de salida
+        services.AddScoped<IExitNoticeDispatchReversal>(sp => sp.GetRequiredService<ExitNoticeService>());   // Lote 143: deshacer una recolección de un aviso de salida
         // Lote 15 — franja "Almacén hoy" del Pulso (días locales con el mismo ITenantClock).
         services.AddScoped<WarehousePulseService>();
         // P2 (D14): revisión en segundo plano segundos después de cada movimiento. Cola en memoria acotada (singleton) y un
@@ -283,6 +285,7 @@ public static class DependencyInjection
         services.AddSingleton<IScheduledJob, TestJob>();
         services.AddSingleton<IScheduledJob, SalesBackorderScanJob>();   // Lote 66
         services.AddSingleton<IScheduledJob, InventoryAlertScanJob>();   // Lote 141
+        services.AddSingleton<IScheduledJob, ExitNoticeBackorderScanJob>();   // Lote 143
         services.AddSingleton<IScheduledJob, BillingOverdueScanJob>();   // Lote 75
         services.AddSingleton<IScheduledJob, KpiSnapshotJob>();   // Lote 90
         services.AddSingleton<IScheduledJob, ReportDeliveryJob>();   // Lote 92
@@ -329,6 +332,7 @@ public static class DependencyInjection
         services.AddSingleton<INotificationEventProvider, SalesEventProvider>();   // Lote 66
         services.AddSingleton<INotificationEventProvider, IntegrationEventProvider>();   // Lote 132 (P11)
         services.AddSingleton<INotificationEventProvider, InventoryEventProvider>();   // Lote 141
+        services.AddSingleton<INotificationEventProvider, ExitNoticeEventProvider>();   // Lote 143
         services.AddSingleton<NotificationEventCatalog>();
         services.AddScoped<INotificationPublisher, NotificationPublisher>();
         services.AddScoped<INotificationChannelSender, EmailChannelSender>();

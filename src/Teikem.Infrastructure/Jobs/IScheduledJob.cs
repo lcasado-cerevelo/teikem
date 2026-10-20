@@ -50,4 +50,6 @@ public static class JobKeys
     public const string IntegrationOutput = "INTEGRATION_OUTPUT";
     /// <summary>Lote 141: revisa el inventario y avisa lotes por vencer o vencidos, saldo bajo, sin existencia y sin movimiento.</summary>
     public const string InventoryAlertScan = "INVENTORY_ALERT_SCAN";
+    /// <summary>Lote 143: reserva el pendiente de los avisos de salida cuando entra mercancía y avisa.</summary>
+    public const string ExitNoticeBackorderScan = "EXIT_NOTICE_BACKORDER_SCAN";
 }

@@ -9661,3 +9661,26 @@ La excepción de rotación de un producto debe ser de las que aplican a su tipo.
 **Cambié un producto de sin lote a con lote y tenía rotación «por posición». ¿Qué pasa?**
 La excepción deja de aplicar y el producto sigue el método de la compañía para productos con lote. En la ficha, al cambiar el tipo, la excepción que no aplica vuelve sola a «Igual que la compañía».
 
+## Avisos de salida (Lote 143, 2026-10-20)
+
+**¿Qué es un aviso de salida y en qué se diferencia de una orden de venta?**
+Es el aviso del dueño de la mercancía (un cliente de almacén) de qué quiere que el almacén saque. No tiene precio, impuesto ni factura: es solo el movimiento físico. La orden de venta es para vender (precio, impuesto, crédito, factura). Un almacén de terceros normalmente solo usa avisos; una compañía que compra y vende su propio inventario usa órdenes de compra y de venta.
+
+**Pedí más de lo que hay y no me dio error. ¿Es normal?**
+Sí. El aviso de salida nunca se rechaza por falta de existencia: reserva lo que hay y deja el resto como pendiente. Cuando entre mercancía, el trabajo «Reservar el pendiente de los avisos de salida» (cada 10 minutos) lo reserva, el aviso más antiguo primero; también puedes usar «Reservar» en la línea.
+
+**¿Qué significa «El producto {SKU} no pertenece al cliente del aviso de salida.» (400)?**
+El producto de esa línea es de otro dueño (otro cliente) o es propio de la compañía. En un aviso de salida solo se piden productos del cliente dueño. Revisa el cliente del aviso o el dueño del producto en su ficha.
+
+**¿Qué significa «No se puede despachar más de lo reservado de {SKU} ({n}). Reserve primero el pendiente.» (409)?**
+Solo se despacha lo que el aviso tiene reservado. Si la cantidad que quieres sacar es mayor, primero reserva el pendiente (si ya entró mercancía) o despacha solo lo reservado.
+
+**¿Qué significa «Solo se puede cancelar un aviso de salida solicitado que no se haya despachado.» (422)?**
+Un aviso al que ya se le despachó algo no se cancela. Cierra con faltante lo que falta (las líneas con pendiente) o, si el despacho fue un error, elimina la recolección: el aviso se reabre y entonces se puede cancelar.
+
+**¿Por qué «La rotación es obligatoria…» (409) al despachar?**
+La compañía tiene la rotación en «Obligar»: el despacho solo puede salir de lo que el aviso tiene reservado (que ya sigue la rotación). Despacha sin escoger posición ni lote. Ver el capítulo 6 §2.3.
+
+**¿Se puede empacar el despacho de un aviso de salida?**
+No: es una salida de inventario sin entrega (`El despacho {número} es de un aviso de salida y no se empaca…`, 422). Para entregar con una orden de transporte se usa el flujo de la orden de venta o de la recolección normal.
+

@@ -208,6 +208,7 @@ internal sealed class WmsFixture : IAsyncDisposable
         foreach (var c in ManualIssueReasons.All) L(LookupDomains.ManualIssueReason, c);
         // Lote 57 (órdenes de venta): entidad (al final: ids previos intactos).
         L(LookupDomains.EntityType, Teikem.Domain.Sales.SalesCodes.EntityType);
+        L(LookupDomains.EntityType, Teikem.Domain.ExitNotices.ExitNoticeCodes.EntityType);   // Lote 143
         // Lote 68 (kits): tipo de producto (al final: ids previos intactos).
         L(Teikem.Domain.Wms.KitCodes.ProductTypeDomain, Teikem.Domain.Wms.ProductTypes.Standard);
         L(Teikem.Domain.Wms.KitCodes.ProductTypeDomain, Teikem.Domain.Wms.ProductTypes.Kit);
@@ -336,6 +337,11 @@ internal sealed class WmsFixture : IAsyncDisposable
         S(Teikem.Domain.Sales.SalesCodes.StatusDomain, Teikem.Domain.Sales.SalesOrderStatuses.Partial, lat, 3);
         S(Teikem.Domain.Sales.SalesCodes.StatusDomain, Teikem.Domain.Sales.SalesOrderStatuses.Shipped, lat, 4);   // Lote 62: laterales (sección (n)): se pueden reabrir al deshacer un despacho
         S(Teikem.Domain.Sales.SalesCodes.StatusDomain, Teikem.Domain.Sales.SalesOrderStatuses.Cancelled, term, 5);
+        // Lote 143 (aviso de salida): PARTIAL y SHIPPED laterales, como en la orden de venta (al final: ids previos intactos).
+        S(Teikem.Domain.ExitNotices.ExitNoticeCodes.StatusDomain, Teikem.Domain.ExitNotices.ExitNoticeStatuses.Requested, pipe, 1, true);
+        S(Teikem.Domain.ExitNotices.ExitNoticeCodes.StatusDomain, Teikem.Domain.ExitNotices.ExitNoticeStatuses.Partial, lat, 2);
+        S(Teikem.Domain.ExitNotices.ExitNoticeCodes.StatusDomain, Teikem.Domain.ExitNotices.ExitNoticeStatuses.Shipped, lat, 3);
+        S(Teikem.Domain.ExitNotices.ExitNoticeCodes.StatusDomain, Teikem.Domain.ExitNotices.ExitNoticeStatuses.Cancelled, term, 4);
         // Lote 72 (facturación): como logistica-db-seed.sql y la sección (r) de update.sql (al final: ids previos intactos).
         S(Teikem.Domain.Billing.BillingCodes.InvoiceStatusDomain, Teikem.Domain.Billing.InvoiceStatuses.Draft, pipe, 1, true);
         S(Teikem.Domain.Billing.BillingCodes.InvoiceStatusDomain, Teikem.Domain.Billing.InvoiceStatuses.Issued, pipe, 2);

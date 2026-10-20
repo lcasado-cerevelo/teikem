@@ -113,6 +113,32 @@ public sealed class SalesBackorderScanJob : IScheduledJob
 }
 
 /// <summary>
+/// Lote 143 (2026-10-20) — reserva el pendiente (backorder) de los avisos de salida cuando entra mercancía (por cualquier vía), el aviso más antiguo primero, y avisa
+/// (evento «Pendiente de un aviso de salida ya reservado»). Cada 10 minutos. Si el módulo de inventario está apagado no hace nada.
+/// </summary>
+public sealed class ExitNoticeBackorderScanJob : IScheduledJob
+{
+    public string Key => JobKeys.ExitNoticeBackorderScan;
+    public string NameEs => "Reservar el pendiente de los avisos de salida";
+    public string NameEn => "Reserve exit notice backorders";
+    public string DescriptionEs => "Reserva el pendiente de los avisos de salida cuando entra mercancía, el aviso más antiguo primero, y avisa (evento «Pendiente de un aviso de salida ya reservado»).";
+    public string DescriptionEn => "Reserves the pending part of exit notices when stock arrives, oldest notice first, and notifies (event \"Exit notice backorder reserved\").";
+    public string DefaultKind => JobScheduleKinds.Interval;
+    public int? DefaultIntervalSeconds => 600;
+    public TimeSpan? DefaultDailyAt => null;
+    public bool DefaultEnabled => true;
+    public TimeSpan MaxRuntime => TimeSpan.FromMinutes(5);
+
+    public async Task<string?> RunAsync(JobRunContext context, CancellationToken ct)
+    {
+        var modules = context.Services.GetRequiredService<ModuleService>();
+        if (!await modules.IsEnabledAsync(ModuleKeys.WmsLotSerial, ct)) return "El módulo de inventario está apagado; no se hizo nada.";
+        var n = await context.Services.GetRequiredService<ExitNoticeService>().ReserveBackordersAsync(ct);
+        return n == 0 ? "Ningún pendiente nuevo por reservar." : $"{n} aviso(s) de salida con pendiente reservado.";
+    }
+}
+
+/// <summary>
 /// Lote 141 (2026-10-20) — revisa el inventario cada día y publica los avisos de inventario: lotes por vencer o vencidos, productos bajo el mínimo, sin existencia y sin
 /// movimiento (<see cref="Services.InventoryAlertService"/>). Un aviso por evento con el conjunto completo; no repite el mismo conjunto en la misma semana. Si el módulo
 /// de inventario está apagado no hace nada.

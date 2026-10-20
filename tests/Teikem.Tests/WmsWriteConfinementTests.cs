@@ -38,7 +38,12 @@ public class WmsWriteConfinementTests
         var salesText = SourceFiles().Single(f => f.Name == SalesLineFile).Text;
         Assert.False(Regex.IsMatch(salesText, @"StockBalances?\s*\.\s*(Add|AddRange|Update|Remove)\b|Set<StockBalance>\(\)\s*\.\s*(Add|AddRange|Update|Remove)\b|new\s+StockBalance\b"),
             "La orden de venta no escribe saldos: reserva y libera por el ledger.");
-        var offenders = Offenders(new Regex(@"\b(QtyOnHand|QtyReserved)\s*(\+|-)?=(?![=>])"), LedgerFile, SalesLineFile);
+        // Lote 143: ExitNoticeService (.cs y .Reserve.cs) escribe QtyReserved de ExitNoticeLine (la línea del aviso de salida, NO el saldo): igual que ventas, nada de StockBalance.
+        string[] exitNoticeLineFiles = { "ExitNoticeService.cs", "ExitNoticeService.Reserve.cs" };
+        foreach (var name in exitNoticeLineFiles)
+            Assert.False(Regex.IsMatch(SourceFiles().Single(f => f.Name == name).Text, @"StockBalances?\s*\.\s*(Add|AddRange|Update|Remove)\b|Set<StockBalance>\(\)\s*\.\s*(Add|AddRange|Update|Remove)\b|new\s+StockBalance\b"),
+                "El aviso de salida no escribe saldos: reserva y libera por el ledger.");
+        var offenders = Offenders(new Regex(@"\b(QtyOnHand|QtyReserved)\s*(\+|-)?=(?![=>])"), LedgerFile, SalesLineFile, exitNoticeLineFiles[0], exitNoticeLineFiles[1]);
         Assert.True(offenders.Count == 0, "Escritura de saldos fuera del ledger: " + string.Join(", ", offenders));
         Assert.Empty(Offenders(new Regex(@"new\s+StockBalance\b"), LedgerFile));
     }

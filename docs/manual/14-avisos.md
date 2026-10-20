@@ -73,6 +73,17 @@ Ajustes (web: **Ajustes de la compañía → Operación → «Avisos de inventar
 **Agregar otro aviso de inventario más adelante** (p. ej. exceso de inventario, conteo con diferencias): un código en `InventoryEventCodes`, su definición en `InventoryEventProvider` y su
 detección en `InventoryAlertService`; el motor de avisos, las reglas y la bandeja no cambian.
 
+### 3.3 Eventos del aviso de salida (Lote 143)
+
+Módulo **Inventario por lote y serie**. Todos opcionales (se silencian en la bandeja); **no viene ninguna regla armada**. Variables comunes: `{number}` `{client}` `{warehouse}`.
+
+| Evento (código) | Cuándo se dispara | Variables extra |
+|---|---|---|
+| **Aviso de salida solicitado** (`EXIT_NOTICE_REQUESTED`) | Al crearse el aviso (en la misma operación). | `{lineCount}` `{detail}` (si quedó pendiente por falta de existencia) |
+| **Pendiente de un aviso de salida ya reservado** (`EXIT_NOTICE_BACKORDER_RESERVED`) | Cuando el trabajo `EXIT_NOTICE_BACKORDER_SCAN` reserva pendiente. Una vez por situación. | `{lines}` `{units}` |
+| **Aviso de salida despachado** (`EXIT_NOTICE_SHIPPED`) | Cuando queda despachado **por completo** (un despacho parcial no avisa). | `{shipped}` |
+| **Aviso de salida cancelado** (`EXIT_NOTICE_CANCELLED`) | Al cancelarlo, y también cuando se cancela solo porque todas sus líneas se cerraron con faltante sin despachar nada. | `{reason}` |
+
 ## 4. Las reglas
 
 Una regla = **un evento** + **un nombre** (único en la compañía, hasta 100 caracteres) + **canales** + **destinatarios**.

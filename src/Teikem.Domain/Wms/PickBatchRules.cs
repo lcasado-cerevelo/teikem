@@ -96,6 +96,10 @@ public static class PickBatchRules
 
     public static string ManualReasonUnknown(string code) => $"El motivo {code} no existe o está inactivo.";
 
+    /// <summary>Lote 143: un despacho de un aviso de salida no se empaca (no es una entrega: es una salida del inventario del dueño).</summary>
+    public static string ExitNoticeNotPackable(string number)
+        => $"El despacho {number} es de un aviso de salida y no se empaca: es una salida de inventario sin entrega.";
+
     public static string ManualNotPackable(string number)
         => $"El despacho manual {number} no se empaca: es una salida de inventario sin entrega.";
 

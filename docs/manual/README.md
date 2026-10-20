@@ -434,6 +434,7 @@ L129. [L129 — Niveles de zona: Isla y Metro (web del personal)](frontend/l129-
 L130. [L130 — Campos personalizados en la búsqueda (web del personal)](frontend/l130-campos-en-busqueda.md): filtro del tipo del campo en las listas; con capturas.
 L131. [L131 — Archivos con varias líneas por orden (web del personal)](frontend/l131-lineas-por-orden.md): reglas de línea de la plantilla de órdenes y vista previa con las líneas; con capturas.
 39. [39 — Integraciones (carpeta y subida manual) y su bandeja](39-integraciones.md): Lote 132 (2026-10-19) — cuenta de servicio por integración con permisos por familia, corridas con hash de archivos, bandeja con corregir/reprocesar/descartar y avisos del sistema.
+40. [40 — Avisos de salida](40-avisos-de-salida.md): Lote 143 (2026-10-20) — el dueño de la mercancía avisa qué quiere que el almacén saque; reserva en el acto, pendiente (backorder) que se reserva solo al entrar mercancía, despacho contra el aviso y deshacerlo.
 L132. [L132 — Integraciones (web del personal)](frontend/l132-integraciones.md): lista, alta, historial, bandeja y corregir; con capturas.
 L133. [L133 — Integración por correo (web del personal)](frontend/l133-correo.md): formulario del conector de correo; con captura.
 L134. [L134 — Integraciones por SFTP y FTP (web del personal)](frontend/l134-sftp-ftp.md): lista y formulario del conector remoto; con capturas.

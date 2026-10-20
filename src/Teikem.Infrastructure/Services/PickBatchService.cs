@@ -56,7 +56,8 @@ public sealed class PickBatchService(
     PermissionService permissions,
     InventoryLedger ledger,
     OrderService orders,
-    Teikem.Infrastructure.Abstractions.ISalesDispatchReversal? salesReversal = null)
+    Teikem.Infrastructure.Abstractions.ISalesDispatchReversal? salesReversal = null,
+    Teikem.Infrastructure.Abstractions.IExitNoticeDispatchReversal? exitReversal = null)
 {
     public const string PickBatchLabel = "Recolección";
 
@@ -605,9 +606,10 @@ public sealed class PickBatchService(
         // 2026-10-11: un despacho manual no se empaca (422 antes de pedir orders.create o los datos de la orden). Si no existe, el
         // orden de siempre (403 sin orders.create, luego 404) no cambia.
         var target = await db.Set<PickBatch>().AsNoTracking().Where(b => b.PublicId == publicId && b.IsActive)
-            .Select(b => new { b.Number, b.ManualIssueReasonId }).FirstOrDefaultAsync(ct);
+            .Select(b => new { b.Number, b.ManualIssueReasonId, b.ExitNoticeId }).FirstOrDefaultAsync(ct);
         if (target is not null && PickBatchRules.IsManual(target.ManualIssueReasonId))
             throw new StatusRuleException(PickBatchRules.ManualNotPackable(target.Number));
+        if (target?.ExitNoticeId is not null) throw new StatusRuleException(PickBatchRules.ExitNoticeNotPackable(target.Number));   // Lote 143
         await ValidatePackRequestAsync(req, ct);
         var orderDetail = await PackCoreAsync(publicId, req, ct);
         return new PickBatchPackResultDto(await GetAsync(publicId, ct), orderDetail);
@@ -631,6 +633,7 @@ public sealed class PickBatchService(
             var batch = await LockAsync(current.PickBatchId, ct2);
             if (!batch.IsActive) throw NotFound();
             if (PickBatchRules.IsManual(batch.ManualIssueReasonId)) throw new StatusRuleException(PickBatchRules.ManualNotPackable(batch.Number));
+            if (batch.ExitNoticeId is not null) throw new StatusRuleException(PickBatchRules.ExitNoticeNotPackable(batch.Number));   // Lote 143
             var code = await StatusCodeOfAsync(batch.StatusCodeId, ct2);
             if (!PickBatchRules.CanPack(code, batch.IsActive)) throw new StatusRuleException(PickBatchRules.NotCollected(batch.Number));
             db.ApplyRowVersion(batch, req.RowVersion);
@@ -739,6 +742,10 @@ public sealed class PickBatchService(
                 if (batch.SalesOrderId is int salesOrderId && salesReversal is not null)
                     await salesReversal.OnPickBatchReversedAsync(salesOrderId, batch.Number,
                         lines.Where(l => l.SalesOrderLineId != null).Select(l => new Teikem.Infrastructure.Abstractions.SalesReversedLine(l.SalesOrderLineId!.Value, l.ProductId, l.FromBinId, l.LotId, l.Quantity, l.KitProductId, l.KitQuantity)).ToList(), ct2);
+                // Lote 143: lo mismo para una recolección de un aviso de salida
+                if (batch.ExitNoticeId is int exitNoticeId && exitReversal is not null)
+                    await exitReversal.OnPickBatchReversedAsync(exitNoticeId, batch.Number,
+                        lines.Where(l => l.ExitNoticeLineId != null).Select(l => new Teikem.Infrastructure.Abstractions.ExitNoticeReversedLine(l.ExitNoticeLineId!.Value, l.ProductId, l.FromBinId, l.LotId, l.Quantity)).ToList(), ct2);
             }
 
             var cancelled = await statuses.TransitionAsync(StatusDomains.PickBatchStatus, EntityTypes.PickBatch, batch.PickBatchId,
@@ -842,7 +849,7 @@ public sealed class PickBatchService(
                 orderStatus?.InternalCode, orderStatus is null ? null : MultilingualText.Resolve(orderStatus.LabelJson, lang),
                 order?.ClientName,
                 order is null ? null : PickBatchRules.DisplayNumbers(order.OrderNumber, invoice),
-                PickBatchRules.CanPack(statusCode, b.IsActive, isManual), canDelete,
+                PickBatchRules.CanPack(statusCode, b.IsActive, isManual || b.ExitNoticeId != null), canDelete,
                 own.Sum(x => x.Line.Quantity),
                 PickBatchRules.TotalCost(own.Select(x => (x.Line.Quantity, x.Line.UnitCost))),
                 lineDtos, b.IsActive,

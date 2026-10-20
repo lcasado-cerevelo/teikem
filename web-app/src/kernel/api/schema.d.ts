@@ -31476,6 +31476,416 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/exit-notices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    status?: string;
+                    clientPublicId?: string;
+                    q?: string;
+                    backorderOnly?: boolean;
+                    from?: string;
+                    to?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExitNoticeListItemDtoPagedResult"];
+                        "application/json": components["schemas"]["ExitNoticeListItemDtoPagedResult"];
+                        "text/json": components["schemas"]["ExitNoticeListItemDtoPagedResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ExitNoticeRequest"];
+                    "text/json": components["schemas"]["ExitNoticeRequest"];
+                    "application/*+json": components["schemas"]["ExitNoticeRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExitNoticeDto"];
+                        "application/json": components["schemas"]["ExitNoticeDto"];
+                        "text/json": components["schemas"]["ExitNoticeDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exit-notices/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExitNoticeDto"];
+                        "application/json": components["schemas"]["ExitNoticeDto"];
+                        "text/json": components["schemas"]["ExitNoticeDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exit-notices/{publicId}/lines/{lineId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    lineId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ExitNoticeLineModifyRequest"];
+                    "text/json": components["schemas"]["ExitNoticeLineModifyRequest"];
+                    "application/*+json": components["schemas"]["ExitNoticeLineModifyRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExitNoticeDto"];
+                        "application/json": components["schemas"]["ExitNoticeDto"];
+                        "text/json": components["schemas"]["ExitNoticeDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/exit-notices/{publicId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ExitNoticeCommentRequest"];
+                    "text/json": components["schemas"]["ExitNoticeCommentRequest"];
+                    "application/*+json": components["schemas"]["ExitNoticeCommentRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExitNoticeDto"];
+                        "application/json": components["schemas"]["ExitNoticeDto"];
+                        "text/json": components["schemas"]["ExitNoticeDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exit-notices/backorders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    q?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExitNoticeBackorderLineDto"][];
+                        "application/json": components["schemas"]["ExitNoticeBackorderLineDto"][];
+                        "text/json": components["schemas"]["ExitNoticeBackorderLineDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exit-notices/backorders/fulfill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExitNoticeFulfillResultDto"];
+                        "application/json": components["schemas"]["ExitNoticeFulfillResultDto"];
+                        "text/json": components["schemas"]["ExitNoticeFulfillResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exit-notices/{publicId}/lines/{lineId}/fulfill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    lineId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExitNoticeDto"];
+                        "application/json": components["schemas"]["ExitNoticeDto"];
+                        "text/json": components["schemas"]["ExitNoticeDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exit-notices/{publicId}/lines/{lineId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    lineId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ExitNoticeCommentRequest"];
+                    "text/json": components["schemas"]["ExitNoticeCommentRequest"];
+                    "application/*+json": components["schemas"]["ExitNoticeCommentRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExitNoticeDto"];
+                        "application/json": components["schemas"]["ExitNoticeDto"];
+                        "text/json": components["schemas"]["ExitNoticeDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exit-notices/{publicId}/dispatch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ExitNoticeDispatchRequest"];
+                    "text/json": components["schemas"]["ExitNoticeDispatchRequest"];
+                    "application/*+json": components["schemas"]["ExitNoticeDispatchRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExitNoticeDispatchResultDto"];
+                        "application/json": components["schemas"]["ExitNoticeDispatchResultDto"];
+                        "text/json": components["schemas"]["ExitNoticeDispatchResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -37671,7 +38081,7 @@ export interface components {
             /** Format: date-time */
             serverTimeUtc?: string;
             items?: components["schemas"]["StockExitOptionDto"][] | null;
-            rotationEnforcement?: string;
+            rotationEnforcement?: string | null;
         };
         StopLocationRequest: {
             /** Format: double */
@@ -38187,12 +38597,12 @@ export interface components {
             sessionMinutes?: number;
             /** Format: int32 */
             deviceSessionMinutes?: number;
-            rotationEnforcement?: string;
+            rotationEnforcement?: string | null;
             /** Format: int32 */
             inventoryExpiryWarnDays?: number;
             /** Format: int32 */
             inventoryNoMovementDays?: number;
-            rotationMethodNoLot?: string;
+            rotationMethodNoLot?: string | null;
         };
         TenantSettingsUpdateRequest: {
             name?: string | null;
@@ -42186,6 +42596,209 @@ export interface components {
         HttpHeaderItem: {
             name?: string | null;
             value?: string | null;
+        };
+        ExitNoticeBackorderLineDto: {
+            /** Format: uuid */
+            noticePublicId?: string;
+            number?: string | null;
+            statusCode?: string | null;
+            clientName?: string | null;
+            warehouseName?: string | null;
+            /** Format: int32 */
+            lineId?: number;
+            /** Format: int32 */
+            lineNo?: number;
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            /** Format: double */
+            qtyOrdered?: number;
+            /** Format: double */
+            qtyReserved?: number;
+            /** Format: double */
+            qtyBackordered?: number;
+            /** Format: double */
+            available?: number;
+            /** Format: double */
+            fulfillable?: number;
+            /** Format: date-time */
+            requestedAtUtc?: string;
+            /** Format: int32 */
+            daysWaiting?: number;
+        };
+        ExitNoticeCommentRequest: {
+            comment?: string | null;
+        };
+        ExitNoticeDispatchInfoDto: {
+            /** Format: uuid */
+            pickBatchPublicId?: string;
+            number?: string | null;
+            statusCode?: string | null;
+            /** Format: date-time */
+            collectedAtUtc?: string;
+            /** Format: double */
+            quantity?: number;
+        };
+        ExitNoticeDispatchLineRequest: {
+            /** Format: int32 */
+            lineId?: number | null;
+            /** Format: double */
+            quantity?: number | null;
+            /** Format: int32 */
+            binId?: number | null;
+            /** Format: int32 */
+            lotId?: number | null;
+        };
+        ExitNoticeDispatchRequest: {
+            lines?: components["schemas"]["ExitNoticeDispatchLineRequest"][] | null;
+            note?: string | null;
+        };
+        ExitNoticeDispatchResultDto: {
+            /** Format: uuid */
+            pickBatchPublicId?: string;
+            pickBatchNumber?: string | null;
+            notice?: components["schemas"]["ExitNoticeDto"];
+        };
+        ExitNoticeDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            statusCode?: string | null;
+            status?: string | null;
+            statusColor?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            warehouseCode?: string | null;
+            warehouseName?: string | null;
+            reference?: string | null;
+            destination?: string | null;
+            /** Format: date */
+            requestedDate?: string;
+            /** Format: date */
+            requiredDate?: string | null;
+            notes?: string | null;
+            hasBackorder?: boolean;
+            canModify?: boolean;
+            canCancel?: boolean;
+            canDispatch?: boolean;
+            requestedByName?: string | null;
+            /** Format: date-time */
+            requestedAtUtc?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            rowVersion?: string | null;
+            lines?: components["schemas"]["ExitNoticeLineDto"][] | null;
+            dispatches?: components["schemas"]["ExitNoticeDispatchInfoDto"][] | null;
+        };
+        ExitNoticeFulfillLineDto: {
+            /** Format: uuid */
+            noticePublicId?: string;
+            number?: string | null;
+            /** Format: int32 */
+            lineId?: number;
+            sku?: string | null;
+            /** Format: double */
+            reserved?: number;
+            /** Format: double */
+            stillPending?: number;
+        };
+        ExitNoticeFulfillResultDto: {
+            /** Format: int32 */
+            linesReserved?: number;
+            /** Format: double */
+            unitsReserved?: number;
+            lines?: components["schemas"]["ExitNoticeFulfillLineDto"][] | null;
+        };
+        ExitNoticeLineDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: int32 */
+            lineNo?: number;
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            trackingTypeCode?: string | null;
+            /** Format: int32 */
+            lotId?: number | null;
+            lotNumber?: string | null;
+            /** Format: double */
+            qtyOrdered?: number;
+            /** Format: double */
+            qtyReserved?: number;
+            /** Format: double */
+            qtyBackordered?: number;
+            /** Format: double */
+            qtyShipped?: number;
+            isClosed?: boolean;
+        };
+        ExitNoticeLineModifyRequest: {
+            /** Format: double */
+            quantity?: number | null;
+        };
+        ExitNoticeLineRequest: {
+            /** Format: uuid */
+            productPublicId?: string | null;
+            /** Format: double */
+            quantity?: number | null;
+            /** Format: int32 */
+            lotId?: number | null;
+        };
+        ExitNoticeListItemDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            statusCode?: string | null;
+            status?: string | null;
+            statusColor?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            warehouseCode?: string | null;
+            warehouseName?: string | null;
+            reference?: string | null;
+            destination?: string | null;
+            /** Format: date */
+            requestedDate?: string;
+            /** Format: date */
+            requiredDate?: string | null;
+            /** Format: int32 */
+            lineCount?: number;
+            /** Format: double */
+            qtyOrdered?: number;
+            /** Format: double */
+            qtyShipped?: number;
+            hasBackorder?: boolean;
+            requestedByName?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+        };
+        ExitNoticeListItemDtoPagedResult: {
+            items?: components["schemas"]["ExitNoticeListItemDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        ExitNoticeRequest: {
+            /** Format: uuid */
+            warehousePublicId?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string | null;
+            reference?: string | null;
+            destination?: string | null;
+            /** Format: date */
+            requiredDate?: string | null;
+            notes?: string | null;
+            lines?: components["schemas"]["ExitNoticeLineRequest"][] | null;
         };
     };
     responses: never;

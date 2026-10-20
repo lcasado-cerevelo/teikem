@@ -36,6 +36,8 @@ public class PickBatch : ITenantScoped, ISoftDeletable, IHasStatus
     public string? Note { get; set; }
     /// <summary>Lote 61: la orden de venta que atiende esta recolección (despacho contra orden de venta); NULL = recolección normal.</summary>
     public int? SalesOrderId { get; set; }
+    /// <summary>Lote 143: el aviso de salida que atiende esta recolección (despacho contra aviso de salida); NULL = recolección normal.</summary>
+    public int? ExitNoticeId { get; set; }
 
     public StatusCode? Status { get; set; }
     public ICollection<PickBatchLine> Lines { get; set; } = new List<PickBatchLine>();
@@ -60,6 +62,8 @@ public class PickBatchLine
     public long? ReversalTxnId { get; set; }
     /// <summary>Lote 61: la línea de la orden de venta que atendió; NULL = recolección normal.</summary>
     public int? SalesOrderLineId { get; set; }
+    /// <summary>Lote 143: la línea del aviso de salida que atendió; NULL = recolección normal.</summary>
+    public int? ExitNoticeLineId { get; set; }
     /// <summary>Lote 69: si esta línea sale de un kit, el kit (la línea es de un componente); NULL = producto normal.</summary>
     public int? KitProductId { get; set; }
     /// <summary>Lote 69: cuántos kits representa este despacho; solo en UNA de las líneas de componentes de cada kit (el resto NULL), para deshacer en kits.</summary>

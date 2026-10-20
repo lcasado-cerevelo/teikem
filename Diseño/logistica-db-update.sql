@@ -5145,3 +5145,149 @@ GO
 IF OBJECT_ID('dbo.CK_Product_RotationMethod', 'C') IS NULL
     ALTER TABLE dbo.Product ADD CONSTRAINT CK_Product_RotationMethod CHECK (RotationMethod IS NULL OR RotationMethod IN ('FEFO', 'FIFO', 'POSITION'));
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-20 — Aviso de salida (Lote 143): el dueño de la mercancia (un cliente de almacen) avisa que quiere que el almacen saque. Sin precio.
+   - dbo.ExitNotice, dbo.ExitNoticeLine (reservado / pendiente / despachado) y dbo.ExitNoticeReservation (que saldo reservo cada linea; el ledger reserva por saldo).
+   - dbo.PickBatch.ExitNoticeId y dbo.PickBatchLine.ExitNoticeLineId enlazan la recoleccion con el aviso que atiende (NULL = recoleccion normal).
+   - Contador EXITNOTICE (SAL-#####, por compania, ClientId NULL): se amplia CK_NumberSequence_Kind. La fila del contador la crea el API.
+   - Dominio de estatus ExitNoticeStatus (REQUESTED inicial -> PARTIAL -> SHIPPED; CANCELLED) y EntityType EXIT_NOTICE.
+   - Permiso exitnotice.create (crear, modificar, cancelar y atender el pendiente); ver usa inventory.view y despachar warehouse.pick. Se agrega a los roles ya
+     clonados (TenantAdmin y WarehouseOperator). Solo AGREGA. Idempotente. El modulo es WMS_LOTSERIAL (ya existe).
+   ---------------------------------------------------------------------------- */
+IF OBJECT_ID(N'dbo.ExitNotice', N'U') IS NULL CREATE TABLE dbo.ExitNotice (
+    ExitNoticeId   INT IDENTITY(1,1) CONSTRAINT PK_ExitNotice PRIMARY KEY,
+    PublicId       UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_ExitNotice_PublicId DEFAULT NEWID(),
+    TenantId       INT NOT NULL CONSTRAINT FK_ExitNotice_Tenant REFERENCES dbo.Tenant(TenantId),
+    Number         VARCHAR(40) NOT NULL,
+    WarehouseId    INT NOT NULL CONSTRAINT FK_ExitNotice_Warehouse REFERENCES dbo.Warehouse(WarehouseId),
+    ClientId       INT NOT NULL CONSTRAINT FK_ExitNotice_Client REFERENCES dbo.Client(ClientId),
+    Reference      NVARCHAR(80) NULL,
+    Destination    NVARCHAR(200) NULL,
+    RequestedBy    INT NULL CONSTRAINT FK_ExitNotice_RequestedBy REFERENCES dbo.AspNetUsers(Id),
+    RequestedDate  DATE NOT NULL,
+    RequiredDate   DATE NULL,
+    Notes          NVARCHAR(500) NULL,
+    StatusCodeId   INT NOT NULL CONSTRAINT FK_ExitNotice_Status REFERENCES dbo.StatusCode(StatusCodeId),
+    RequestedAtUtc DATETIME2 NULL,
+    CreatedAtUtc   DATETIME2 NOT NULL CONSTRAINT DF_ExitNotice_CreatedAtUtc DEFAULT SYSUTCDATETIME(),
+    CreatedBy      INT NULL CONSTRAINT FK_ExitNotice_CreatedBy REFERENCES dbo.AspNetUsers(Id),
+    UpdatedAtUtc   DATETIME2 NULL,
+    UpdatedBy      INT NULL CONSTRAINT FK_ExitNotice_UpdatedBy REFERENCES dbo.AspNetUsers(Id),
+    RowVersion     ROWVERSION NOT NULL,
+    CONSTRAINT UQ_ExitNotice_PublicId UNIQUE (PublicId),
+    CONSTRAINT UQ_ExitNotice_Number UNIQUE (TenantId, Number)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ExitNotice_Client' AND object_id = OBJECT_ID('dbo.ExitNotice'))
+    CREATE INDEX IX_ExitNotice_Client ON dbo.ExitNotice(TenantId, ClientId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ExitNotice_Status' AND object_id = OBJECT_ID('dbo.ExitNotice'))
+    CREATE INDEX IX_ExitNotice_Status ON dbo.ExitNotice(TenantId, StatusCodeId);
+GO
+IF OBJECT_ID(N'dbo.ExitNoticeLine', N'U') IS NULL CREATE TABLE dbo.ExitNoticeLine (
+    ExitNoticeLineId INT IDENTITY(1,1) CONSTRAINT PK_ExitNoticeLine PRIMARY KEY,
+    TenantId       INT NOT NULL CONSTRAINT FK_ExitNoticeLine_Tenant REFERENCES dbo.Tenant(TenantId),
+    ExitNoticeId   INT NOT NULL CONSTRAINT FK_ExitNoticeLine_Notice REFERENCES dbo.ExitNotice(ExitNoticeId),
+    [LineNo]       INT NOT NULL,
+    ProductId      INT NOT NULL CONSTRAINT FK_ExitNoticeLine_Product REFERENCES dbo.Product(ProductId),
+    LotId          INT NULL CONSTRAINT FK_ExitNoticeLine_Lot REFERENCES dbo.InventoryLot(LotId),
+    QtyOrdered     DECIMAL(14,3) NOT NULL,
+    QtyReserved    DECIMAL(14,3) NOT NULL CONSTRAINT DF_ExitNoticeLine_QtyReserved DEFAULT 0,
+    QtyBackordered DECIMAL(14,3) NOT NULL CONSTRAINT DF_ExitNoticeLine_QtyBackordered DEFAULT 0,
+    QtyShipped     DECIMAL(14,3) NOT NULL CONSTRAINT DF_ExitNoticeLine_QtyShipped DEFAULT 0,
+    IsClosed       BIT NOT NULL CONSTRAINT DF_ExitNoticeLine_IsClosed DEFAULT 0,
+    CONSTRAINT CK_ExitNoticeLine_Qty CHECK (QtyOrdered > 0 AND QtyReserved >= 0 AND QtyBackordered >= 0 AND QtyShipped >= 0)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_ExitNoticeLine_No' AND object_id = OBJECT_ID('dbo.ExitNoticeLine'))
+    CREATE UNIQUE INDEX UX_ExitNoticeLine_No ON dbo.ExitNoticeLine(ExitNoticeId, [LineNo]);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ExitNoticeLine_Product' AND object_id = OBJECT_ID('dbo.ExitNoticeLine'))
+    CREATE INDEX IX_ExitNoticeLine_Product ON dbo.ExitNoticeLine(TenantId, ProductId);
+GO
+IF OBJECT_ID(N'dbo.ExitNoticeReservation', N'U') IS NULL CREATE TABLE dbo.ExitNoticeReservation (
+    ExitNoticeReservationId INT IDENTITY(1,1) CONSTRAINT PK_ExitNoticeReservation PRIMARY KEY,
+    TenantId         INT NOT NULL CONSTRAINT FK_ExitNoticeReservation_Tenant REFERENCES dbo.Tenant(TenantId),
+    ExitNoticeLineId INT NOT NULL CONSTRAINT FK_ExitNoticeReservation_Line REFERENCES dbo.ExitNoticeLine(ExitNoticeLineId),
+    WarehouseId      INT NOT NULL CONSTRAINT FK_ExitNoticeReservation_Warehouse REFERENCES dbo.Warehouse(WarehouseId),
+    WarehouseBinId   INT NOT NULL CONSTRAINT FK_ExitNoticeReservation_Bin REFERENCES dbo.WarehouseBin(WarehouseBinId),
+    LotId            INT NULL CONSTRAINT FK_ExitNoticeReservation_Lot REFERENCES dbo.InventoryLot(LotId),
+    Quantity         DECIMAL(14,3) NOT NULL,
+    CONSTRAINT CK_ExitNoticeReservation_Qty CHECK (Quantity > 0)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ExitNoticeReservation_Line' AND object_id = OBJECT_ID('dbo.ExitNoticeReservation'))
+    CREATE INDEX IX_ExitNoticeReservation_Line ON dbo.ExitNoticeReservation(ExitNoticeLineId);
+GO
+
+IF COL_LENGTH('dbo.PickBatch', 'ExitNoticeId') IS NULL
+    ALTER TABLE dbo.PickBatch ADD ExitNoticeId INT NULL CONSTRAINT FK_PickBatch_ExitNotice REFERENCES dbo.ExitNotice(ExitNoticeId);
+GO
+IF COL_LENGTH('dbo.PickBatchLine', 'ExitNoticeLineId') IS NULL
+    ALTER TABLE dbo.PickBatchLine ADD ExitNoticeLineId INT NULL CONSTRAINT FK_PickBatchLine_ExitNoticeLine REFERENCES dbo.ExitNoticeLine(ExitNoticeLineId);
+GO
+
+-- Contador EXITNOTICE (SAL-#####)
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_NumberSequence_Kind' AND parent_object_id = OBJECT_ID('dbo.NumberSequence')
+           AND definition NOT LIKE '%EXITNOTICE%')
+BEGIN
+    ALTER TABLE dbo.NumberSequence DROP CONSTRAINT CK_NumberSequence_Kind;
+    ALTER TABLE dbo.NumberSequence ADD CONSTRAINT CK_NumberSequence_Kind CHECK (Kind IN ('ORDER','INVOICE','PACKAGE','PACKBATCH','WORKORDER','TRIP','RECEIPT','CYCLECOUNT','CROSSDOCK','PURCHASE','RENTAL','RENTALRETURN','MANUALISSUE','MULTIADJUST','SALESORDER','BILLINVOICE','CREDITNOTE','SALESRETURN','CODREMIT','DRIVERSETTLE','WAYBILL','EXITNOTICE'));
+END
+GO
+
+-- Dominio de estatus ExitNoticeStatus y sus estatus
+MERGE dbo.CatalogDomain AS t
+USING (SELECT N'ExitNoticeStatus' AS DomainKey) AS s ON t.DomainKey = s.DomainKey
+WHEN NOT MATCHED THEN
+    INSERT (DomainKey, Scope, LabelJson, IsSystem, IsActive)
+    VALUES (N'ExitNoticeStatus', 2, N'{"es":"Estatus del aviso de salida","en":"Exit notice status"}', 1, 1);
+GO
+MERGE dbo.StatusCode AS t
+USING (
+    SELECT v.Code, v.LabelJson, v.Color, v.Srt, v.Init, k.LookupCodeId AS StageKindLookupId
+    FROM (VALUES
+        (N'REQUESTED', N'{"es":"Solicitado","en":"Requested"}',                 '#3B82F6', 1, 1, 'PIPELINE'),
+        -- PARTIAL y SHIPPED son LATERALES (como en la orden de venta): deshacer una recoleccion reabre el aviso
+        (N'PARTIAL',   N'{"es":"Despachado parcial","en":"Partially shipped"}', '#F59E0B', 2, 0, 'LATERAL'),
+        (N'SHIPPED',   N'{"es":"Despachado","en":"Shipped"}',                   '#10B981', 3, 0, 'LATERAL'),
+        (N'CANCELLED', N'{"es":"Cancelado","en":"Cancelled"}',                  '#6B7280', 4, 0, 'TERMINAL')
+    ) AS v (Code, LabelJson, Color, Srt, Init, Kind)
+    JOIN dbo.LookupCode k ON k.Entity = N'StageKind' AND k.InternalCode = v.Kind
+) AS s
+ON t.Entity = N'ExitNoticeStatus' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, ColorHex, SortOrder, StageKindLookupId, IsInitial, IsActive)
+    VALUES (N'ExitNoticeStatus', s.Code, s.LabelJson, s.Color, s.Srt, s.StageKindLookupId, s.Init, 1);
+GO
+
+-- EntityType de la bitacora y del historial de estatus
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'EXIT_NOTICE', N'{"es":"Aviso de salida","en":"Exit notice"}', 127)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+
+-- Permiso exitnotice.create
+MERGE dbo.Permission AS t
+USING (VALUES
+    ('exitnotice.create', N'{"es":"Crear, modificar y cancelar avisos de salida y atender su pendiente","en":"Create, edit and cancel exit notices and handle their backorder"}')
+) AS s (Code, LabelJson)
+ON t.Code = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES (s.Code, (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'WAREHOUSE'), s.LabelJson, 1);
+GO
+-- TenantAdmin y operador de almacen (plantilla y roles YA clonados): el PermissionSeeder solo propaga a los roles lo que es nuevo en su corrida
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT r.RoleId, p.PermissionId
+FROM dbo.Role r
+JOIN dbo.Permission p ON p.Code = 'exitnotice.create'
+WHERE r.Name IN ('TenantAdmin', 'WarehouseOperator')
+  AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission rp WHERE rp.RoleId = r.RoleId AND rp.PermissionId = p.PermissionId);
+GO

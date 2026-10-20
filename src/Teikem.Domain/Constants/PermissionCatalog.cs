@@ -205,6 +205,8 @@ public static class PermissionCatalog
     public const string SalesReturn = "sales.return";
     /// <summary>Lote 81 (P6): autorizar o rechazar una devolución de venta (también la que está fuera de la ventana).</summary>
     public const string SalesReturnAuthorize = "sales.return.authorize";
+    /// <summary>Lote 143 (2026-10-20): crear, modificar y cancelar avisos de salida y atender su pendiente (ver usa inventory.view y despachar warehouse.pick).</summary>
+    public const string ExitNoticeCreate = "exitnotice.create";
 
     public static readonly IReadOnlyList<PermissionDef> All = new List<PermissionDef>
     {
@@ -328,6 +330,7 @@ public static class PermissionCatalog
         new(SalesBackorder, "ORDERS", "Surtir y cerrar backorders", "Fulfill and close backorders"),
         new(SalesReturn, "ORDERS", "Pedir devoluciones de venta", "Request sales returns"),
         new(SalesReturnAuthorize, "ORDERS", "Autorizar devoluciones de venta", "Authorize sales returns"),
+        new(ExitNoticeCreate, "WAREHOUSE", "Crear, modificar y cancelar avisos de salida y atender su pendiente", "Create, edit and cancel exit notices and handle their backorder"),
     };
 
     /// <summary>
@@ -518,7 +521,8 @@ public static class PermissionCatalog
             AnalyticsView, PulseWarehouse, PulseIndicators, PulseCharts, PulseActivity,   // Lote F8a
             PulseAttention,   // Lote 14 (D6)
             RentalExtend, RentalReturn,   // Lote 27 (Rentas R1)
-            SalesView, SalesBackorder },   // Lote 57: ve las órdenes de venta y surte los backorders
+            SalesView, SalesBackorder,   // Lote 57: ve las órdenes de venta y surte los backorders
+            ExitNoticeCreate },   // Lote 143: avisos de salida
         // Lote 57: quien arma las ventas (sin precio ni backorder: eso lo da el administrador)
         ["Sales"] = new[] { SalesView, SalesCreate, SalesCancel, SalesReturn, InventoryView, ClientsRead },
         // Lote 104: el rol «Servicio al cliente» atiende los mensajes de los clientes (si un cliente no tiene equipo designado, lo atiende quien tenga ClientMessagesReply)

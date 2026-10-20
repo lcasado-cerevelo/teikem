@@ -260,6 +260,9 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<Teikem.Domain.Sales.SalesOrder> SalesOrders => Set<Teikem.Domain.Sales.SalesOrder>();
     public DbSet<Teikem.Domain.Sales.SalesOrderLine> SalesOrderLines => Set<Teikem.Domain.Sales.SalesOrderLine>();
     public DbSet<Teikem.Domain.Sales.SalesOrderReservation> SalesOrderReservations => Set<Teikem.Domain.Sales.SalesOrderReservation>();
+    public DbSet<Teikem.Domain.ExitNotices.ExitNotice> ExitNotices => Set<Teikem.Domain.ExitNotices.ExitNotice>();   // Lote 143
+    public DbSet<Teikem.Domain.ExitNotices.ExitNoticeLine> ExitNoticeLines => Set<Teikem.Domain.ExitNotices.ExitNoticeLine>();
+    public DbSet<Teikem.Domain.ExitNotices.ExitNoticeReservation> ExitNoticeReservations => Set<Teikem.Domain.ExitNotices.ExitNoticeReservation>();
     // Lote 53 — mensajería interna (hilos, participantes, mensajes y presencia)
     public DbSet<Teikem.Domain.Messaging.MessageThread> MessageThreads => Set<Teikem.Domain.Messaging.MessageThread>();
     public DbSet<Teikem.Domain.Messaging.MessageThreadMember> MessageThreadMembers => Set<Teikem.Domain.Messaging.MessageThreadMember>();
