@@ -30,19 +30,31 @@ public sealed class PortalWarehouseService(TeikemDbContext db, ITenantContext te
         var tenantId = tc.TenantId ?? throw new ForbiddenException(AuthService.PortalNoAccessMessage);
         var company = await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(t => t.TenantId == tenantId).Select(t => t.Name).FirstOrDefaultAsync(ct) ?? string.Empty;
         var enabled = await modules.GetEnabledKeysAsync(tenantId, ct);
-        return new PortalCapabilitiesDto(company, enabled.Contains(ModuleKeys.WmsLotSerial), enabled.Contains(ModuleKeys.LtlGround), await CanSeeValueAsync(ct));
+        var role = await RoleAsync(ct);
+        var wms = enabled.Contains(ModuleKeys.WmsLotSerial);
+        var flags = wms && PortalCreateRules.RoleCanCreate(role) && tc.PortalClientId is int cid
+            ? await db.Set<Client>().AsNoTracking().Where(c => c.ClientId == cid).Select(c => new { c.PortalCanCreateProducts, c.PortalCanCreateArrivals, c.PortalCanCreateExits }).FirstOrDefaultAsync(ct)
+            : null;
+        return new PortalCapabilitiesDto(company, wms, enabled.Contains(ModuleKeys.LtlGround), role is PortalRoles.ClientAdmin or PortalRoles.ClientOperator,
+            flags?.PortalCanCreateProducts ?? false, flags?.PortalCanCreateArrivals ?? false, flags?.PortalCanCreateExits ?? false);
     }
 
-    private async Task<bool> CanSeeValueAsync(CancellationToken ct)
+    /// <summary>Rol del acceso (ADMIN, OPERADOR, solo lectura…) en el cliente de la sesión; null si no hay acceso activo.</summary>
+    private async Task<string?> RoleAsync(CancellationToken ct)
     {
         var tc = (TenantContext)tenant;
         var cid = tc.PortalClientId;
         var userId = tc.UserId;
-        if (cid is null || userId is null) return false;
-        var role = await (from p in db.PortalUsers.AsNoTracking().IgnoreQueryFilters()
-                          join r in db.LookupCodes.AsNoTracking() on p.RoleLookupId equals r.LookupCodeId
-                          where p.UserId == userId && p.ClientId == cid && p.TenantId == tc.TenantId && p.IsActive
-                          select r.InternalCode).FirstOrDefaultAsync(ct);
+        if (cid is null || userId is null) return null;
+        return await (from p in db.PortalUsers.AsNoTracking().IgnoreQueryFilters()
+                      join r in db.LookupCodes.AsNoTracking() on p.RoleLookupId equals r.LookupCodeId
+                      where p.UserId == userId && p.ClientId == cid && p.TenantId == tc.TenantId && p.IsActive
+                      select r.InternalCode).FirstOrDefaultAsync(ct);
+    }
+
+    private async Task<bool> CanSeeValueAsync(CancellationToken ct)
+    {
+        var role = await RoleAsync(ct);
         return role is PortalRoles.ClientAdmin or PortalRoles.ClientOperator;
     }
 

@@ -9713,3 +9713,9 @@ Marcó «Actualizar el precio del producto con este» en un aviso de llegada sin
 
 **El aviso de llegada me muestra «El producto tiene guardado X; este precio es distinto.» ¿Es un error?**
 No, es solo informativo. El precio del aviso se usa para esa recepción; el costo del producto cambia solo si el producto no tenía costo o si marca «Actualizar el precio del producto con este».
+
+**¿Qué significa «Su compañía no le permite crear productos / avisos de llegada / avisos de salida desde el portal.»? (403)**
+La compañía no encendió esa opción para su cliente. El administrador la enciende en Clientes → perfil del cliente → «Lo que el cliente crea desde su portal».
+
+**¿Qué significa «Su acceso es de solo lectura y no puede crear documentos.»? (403)**
+Su acceso al portal es de solo lectura. Pida al administrador de su cliente un acceso de administrador u operador.

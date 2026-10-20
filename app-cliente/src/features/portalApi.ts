@@ -41,6 +41,22 @@ export type ValuationRowDto = Schemas['ValuationRowDto']
 export const listStock = (search: string, skip = 0, take = PAGE_SIZE) => unwrap(api.GET('/api/v1/portal/warehouse/stock', { params: { query: { search: search || undefined, skip, take } } }))
 export const listWarehouseProducts = (search: string, skip = 0, take = PAGE_SIZE) => unwrap(api.GET('/api/v1/portal/warehouse/products', { params: { query: { search: search || undefined, skip, take } } }))
 export const listMovements = (search: string, skip = 0, take = PAGE_SIZE) => unwrap(api.GET('/api/v1/portal/warehouse/movements', { params: { query: { search: search || undefined, skip, take } } }))
+export type PortalProductCreateRequest = Schemas['PortalProductCreateRequest']
+export type PortalArrivalRequest = Schemas['PortalArrivalRequest']
+export type PortalArrivalDto = Schemas['PortalArrivalDto']
+export type PortalExitRequest = Schemas['PortalExitRequest']
+export type PortalExitDto = Schemas['PortalExitDto']
+export type PortalExitListItemDto = Schemas['PortalExitListItemDto']
+export type PortalWarehouseOptionDto = Schemas['PortalWarehouseOptionDto']
+/** Lote 156: lo que el cliente crea desde su portal (si la compañía se lo permite): productos, avisos de llegada y avisos de salida. */
+export const listWarehouseOptions = () => unwrap(api.GET('/api/v1/portal/warehouse/warehouses'))
+export const createProduct = (body: PortalProductCreateRequest) => unwrap(api.POST('/api/v1/portal/warehouse/products', { body }))
+export const listArrivals = (search: string) => unwrap(api.GET('/api/v1/portal/warehouse/arrivals', { params: { query: { search: search || undefined } } }))
+export const createArrival = (body: PortalArrivalRequest) => unwrap(api.POST('/api/v1/portal/warehouse/arrivals', { body }))
+export const cancelArrival = (id: number) => unwrap(api.POST('/api/v1/portal/warehouse/arrivals/{id}/cancel', { params: { path: { id } } }))
+export const listExits = (search: string, skip = 0, take = PAGE_SIZE) => unwrap(api.GET('/api/v1/portal/warehouse/exits', { params: { query: { search: search || undefined, skip, take } } }))
+export const createExit = (body: PortalExitRequest) => unwrap(api.POST('/api/v1/portal/warehouse/exits', { body }))
+export const cancelExit = (publicId: string) => unwrap(api.POST('/api/v1/portal/warehouse/exits/{publicId}/cancel', { params: { path: { publicId } }, body: {} }))
 export const getValuation = (search: string, skip = 0, take = PAGE_SIZE) => unwrap(api.GET('/api/v1/portal/warehouse/valuation', { params: { query: { search: search || undefined, skip, take } } }))
 
 /** «¿Cómo va mi orden?»: consulta PÚBLICA por el ENLACE (token propio de la orden, imposible de adivinar). Solo devuelve el avance. */

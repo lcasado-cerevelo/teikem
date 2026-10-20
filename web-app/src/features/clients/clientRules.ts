@@ -163,6 +163,10 @@ export interface ProfileValues {
   autoPrintLabels: boolean
   /** Lote 43: «Imprimir la factura automáticamente» (solo la bandera; la impresión de la factura llega con facturación). */
   autoPrintInvoice: boolean
+  /** Lote 156: lo que el cliente crea solo desde su portal de almacén. */
+  portalCanCreateProducts: boolean
+  portalCanCreateArrivals: boolean
+  portalCanCreateExits: boolean
 }
 
 export function profileValuesOf(c: ClientDetail): ProfileValues {
@@ -174,6 +178,9 @@ export function profileValuesOf(c: ClientDetail): ProfileValues {
     currency: c.currency ?? '',
     autoPrintLabels: c.autoPrintLabels ?? false,
     autoPrintInvoice: c.autoPrintInvoice ?? false,
+    portalCanCreateProducts: c.portalCanCreateProducts ?? false,
+    portalCanCreateArrivals: c.portalCanCreateArrivals ?? false,
+    portalCanCreateExits: c.portalCanCreateExits ?? false,
   }
 }
 
@@ -191,6 +198,9 @@ export function profileSchema(m: Pick<CreateMessages, 'legalNameMax' | 'taxIdMax
     currency: z.string(),
     autoPrintLabels: z.boolean(),
     autoPrintInvoice: z.boolean(),
+    portalCanCreateProducts: z.boolean(),
+    portalCanCreateArrivals: z.boolean(),
+    portalCanCreateExits: z.boolean(),
   })
 }
 
@@ -212,6 +222,9 @@ export function buildProfileRequest(v: ProfileInput, original: ProfileValues, ro
   }
   if (v.autoPrintLabels !== original.autoPrintLabels) req.autoPrintLabels = v.autoPrintLabels
   if (v.autoPrintInvoice !== original.autoPrintInvoice) req.autoPrintInvoice = v.autoPrintInvoice
+  if (v.portalCanCreateProducts !== original.portalCanCreateProducts) req.portalCanCreateProducts = v.portalCanCreateProducts
+  if (v.portalCanCreateArrivals !== original.portalCanCreateArrivals) req.portalCanCreateArrivals = v.portalCanCreateArrivals
+  if (v.portalCanCreateExits !== original.portalCanCreateExits) req.portalCanCreateExits = v.portalCanCreateExits
   return req
 }
 

@@ -26807,6 +26807,301 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portal/warehouse/warehouses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalWarehouseOptionDto"][];
+                        "application/json": components["schemas"]["PortalWarehouseOptionDto"][];
+                        "text/json": components["schemas"]["PortalWarehouseOptionDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/warehouse/arrivals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    search?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalArrivalDto"][];
+                        "application/json": components["schemas"]["PortalArrivalDto"][];
+                        "text/json": components["schemas"]["PortalArrivalDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PortalArrivalRequest"];
+                    "text/json": components["schemas"]["PortalArrivalRequest"];
+                    "application/*+json": components["schemas"]["PortalArrivalRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalArrivalDto"];
+                        "application/json": components["schemas"]["PortalArrivalDto"];
+                        "text/json": components["schemas"]["PortalArrivalDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/warehouse/arrivals/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalArrivalDto"];
+                        "application/json": components["schemas"]["PortalArrivalDto"];
+                        "text/json": components["schemas"]["PortalArrivalDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/warehouse/exits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    status?: string;
+                    search?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalExitPageDto"];
+                        "application/json": components["schemas"]["PortalExitPageDto"];
+                        "text/json": components["schemas"]["PortalExitPageDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PortalExitRequest"];
+                    "text/json": components["schemas"]["PortalExitRequest"];
+                    "application/*+json": components["schemas"]["PortalExitRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalExitDto"];
+                        "application/json": components["schemas"]["PortalExitDto"];
+                        "text/json": components["schemas"]["PortalExitDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/warehouse/exits/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalExitDto"];
+                        "application/json": components["schemas"]["PortalExitDto"];
+                        "text/json": components["schemas"]["PortalExitDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/warehouse/exits/{publicId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PortalCancelRequest"];
+                    "text/json": components["schemas"]["PortalCancelRequest"];
+                    "application/*+json": components["schemas"]["PortalCancelRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalExitDto"];
+                        "application/json": components["schemas"]["PortalExitDto"];
+                        "text/json": components["schemas"]["PortalExitDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/portal/warehouse/products": {
         parameters: {
             query?: never;
@@ -26842,7 +27137,34 @@ export interface paths {
             };
         };
         put?: never;
-        post?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PortalProductCreateRequest"];
+                    "text/json": components["schemas"]["PortalProductCreateRequest"];
+                    "application/*+json": components["schemas"]["PortalProductCreateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PortalProductDto"];
+                        "application/json": components["schemas"]["PortalProductDto"];
+                        "text/json": components["schemas"]["PortalProductDto"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -38709,11 +39031,152 @@ export interface components {
             createdAtUtc?: string;
             progress?: components["schemas"]["PortalProgressDto"];
         };
+        PortalProductCreateRequest: {
+            sku?: string | null;
+            name?: string | null;
+            baseUom?: string | null;
+            trackingType?: string | null;
+            barcode?: string | null;
+            brand?: string | null;
+            model?: string | null;
+            /** Format: double */
+            weightKg?: number | null;
+            /** Format: double */
+            volumeM3?: number | null;
+            /** Format: double */
+            purchaseCost?: number | null;
+        };
+        PortalArrivalLineRequest: {
+            /** Format: uuid */
+            productPublicId?: string | null;
+            /** Format: double */
+            expectedQty?: number | null;
+            lotNumber?: string | null;
+            /** Format: double */
+            unitPrice?: number | null;
+        };
+        PortalArrivalRequest: {
+            /** Format: uuid */
+            warehousePublicId?: string | null;
+            reference?: string | null;
+            expectedDate?: string | null;
+            lines?: components["schemas"]["PortalArrivalLineRequest"][] | null;
+        };
+        PortalExitLineRequest: {
+            /** Format: uuid */
+            productPublicId?: string | null;
+            /** Format: double */
+            quantity?: number | null;
+            /** Format: int32 */
+            lotId?: number | null;
+        };
+        PortalExitRequest: {
+            /** Format: uuid */
+            warehousePublicId?: string | null;
+            reference?: string | null;
+            destination?: string | null;
+            requiredDate?: string | null;
+            notes?: string | null;
+            lines?: components["schemas"]["PortalExitLineRequest"][] | null;
+        };
+        PortalCancelRequest: {
+            comment?: string | null;
+        };
+        PortalWarehouseOptionDto: {
+            /** Format: uuid */
+            publicId?: string;
+            code?: string | null;
+            name?: string | null;
+        };
+        PortalArrivalLineDto: {
+            sku?: string | null;
+            productName?: string | null;
+            /** Format: double */
+            expectedQty?: number;
+            lotNumber?: string | null;
+            /** Format: double */
+            unitPrice?: number | null;
+        };
+        PortalArrivalDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            warehouseCode?: string | null;
+            reference?: string | null;
+            expectedDate?: string | null;
+            statusCode?: string | null;
+            status?: string | null;
+            canCancel?: boolean;
+            lines?: components["schemas"]["PortalArrivalLineDto"][] | null;
+        };
+        PortalExitLineDto: {
+            sku?: string | null;
+            productName?: string | null;
+            lotNumber?: string | null;
+            /** Format: double */
+            qtyOrdered?: number;
+            /** Format: double */
+            qtyReserved?: number;
+            /** Format: double */
+            qtyBackordered?: number;
+            /** Format: double */
+            qtyShipped?: number;
+        };
+        PortalExitDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            statusCode?: string | null;
+            status?: string | null;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            warehouseCode?: string | null;
+            reference?: string | null;
+            destination?: string | null;
+            requestedDate?: string;
+            requiredDate?: string | null;
+            notes?: string | null;
+            hasBackorder?: boolean;
+            canCancel?: boolean;
+            lines?: components["schemas"]["PortalExitLineDto"][] | null;
+        };
+        PortalExitListItemDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            statusCode?: string | null;
+            status?: string | null;
+            warehouseCode?: string | null;
+            reference?: string | null;
+            destination?: string | null;
+            requestedDate?: string;
+            requiredDate?: string | null;
+            /** Format: int32 */
+            lineCount?: number;
+            /** Format: double */
+            qtyOrdered?: number;
+            /** Format: double */
+            qtyShipped?: number;
+            hasBackorder?: boolean;
+        };
+        PortalExitPageDto: {
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+            items?: components["schemas"]["PortalExitListItemDto"][] | null;
+        };
         PortalCapabilitiesDto: {
             companyName?: string | null;
             warehouse?: boolean;
             transport?: boolean;
             canSeeValue?: boolean;
+            canCreateProducts?: boolean;
+            canCreateArrivals?: boolean;
+            canCreateExits?: boolean;
         };
         PortalStockItemDto: {
             /** Format: uuid */

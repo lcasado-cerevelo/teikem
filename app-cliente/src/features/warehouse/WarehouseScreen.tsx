@@ -6,13 +6,15 @@ import { Text, View } from 'react-native'
 import { apiErrorMessage } from '../../kernel/api/client'
 import { useT } from '../../kernel/i18n/useT'
 import { Button, Card, Chip, Field, Muted, Notice, Screen, Spinner, Title, useColors } from '../../kernel/ui/ui'
+import { useAsync } from '../../kernel/ui/useAsync'
 import { formatDate, formatDateTime, formatMoney, formatQty } from '../format'
 import { useOffer } from '../capabilities'
-import { getValuation, listMovements, listStock, listWarehouseProducts, PAGE_SIZE } from '../portalApi'
+import { cancelArrival, cancelExit, getValuation, listArrivals, listExits, listMovements, listStock, listWarehouseProducts, PAGE_SIZE } from '../portalApi'
+import { NewArrivalForm, NewExitForm, NewProductForm } from './CreateForms'
 import { Segments } from './Segments'
 import type { Lang } from '../../kernel/i18n/i18n'
 
-type Section = 'stock' | 'products' | 'movements' | 'value'
+type Section = 'stock' | 'products' | 'movements' | 'value' | 'arrivals' | 'exits'
 
 interface Page<T> {
   items?: T[] | null
@@ -97,12 +99,15 @@ function StockSection({ lang }: { lang: Lang }) {
   )
 }
 
-function ProductsSection({ lang }: { lang: Lang }) {
+function ProductsSection({ lang, canCreate }: { lang: Lang; canCreate: boolean }) {
   const colors = useColors()
   const { t } = useT()
+  const [creating, setCreating] = useState(false)
   const list = usePaged(useCallback((s: string, skip: number) => listWarehouseProducts(s, skip, PAGE_SIZE), []))
   return (
     <>
+      {canCreate && !creating && <Button title={t('create.product.title')} onPress={() => setCreating(true)} testID="create-product" />}
+      {creating && <NewProductForm onCancel={() => setCreating(false)} onDone={() => { setCreating(false); list.reload() }} />}
       <Field label={t('warehouse.search')} value={list.search} onChangeText={list.setSearch} placeholder={t('warehouse.searchProducts')} autoCapitalize="none" returnKeyType="search" testID="warehouse-search" />
       {list.items.map((p) => (
         <Card key={p.publicId}>
@@ -143,6 +148,86 @@ function MovementsSection({ lang }: { lang: Lang }) {
         )
       })}
       <Footer loading={list.loading} error={list.error} shown={list.items.length} total={list.total} empty={list.query ? t('warehouse.noMatches') : t('warehouse.emptyMovements')} onRetry={list.reload} onMore={list.more} />
+    </>
+  )
+}
+
+/** Mis avisos de llegada: los creo aquí (si la compañía me lo permite) y puedo cancelar los que siguen esperados. */
+function ArrivalsSection({ lang }: { lang: Lang }) {
+  const colors = useColors()
+  const { t } = useT()
+  const [creating, setCreating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const list = useAsync(() => listArrivals(''), [])
+  async function cancel(id: number) {
+    setError(null)
+    try {
+      await cancelArrival(id)
+      list.reload()
+    } catch (e) {
+      setError(apiErrorMessage(e))
+    }
+  }
+  return (
+    <>
+      {!creating && <Button title={t('create.arrival.title')} onPress={() => setCreating(true)} testID="create-arrival" />}
+      {creating && <NewArrivalForm onCancel={() => setCreating(false)} onDone={() => { setCreating(false); list.reload() }} />}
+      {!!error && <Notice>{error}</Notice>}
+      {(list.data ?? []).map((a) => (
+        <Card key={String(a.id)}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <Text style={{ fontWeight: '700', color: colors.text }}>{a.reference || `#${a.id}`}</Text>
+            <Chip label={a.status ?? ''} tone={a.statusCode === 'EXPECTED' ? 'info' : a.statusCode === 'CANCELLED' ? 'neutral' : 'ok'} />
+          </View>
+          <Muted>{[a.warehouseCode, a.expectedDate ? t('create.arrivals.expected', { date: formatDate(a.expectedDate, lang) }) : null].filter(Boolean).join(' · ')}</Muted>
+          {(a.lines ?? []).map((l, n) => (
+            <Text key={n} style={{ color: colors.text }}>{l.sku} · {l.productName} — <Text style={{ fontWeight: '700' }}>{formatQty(l.expectedQty, lang)}</Text>{l.lotNumber ? ` · ${t('warehouse.lot', { lot: l.lotNumber })}` : ''}</Text>
+          ))}
+          {a.canCancel && <Button title={t('create.cancelNotice')} variant="secondary" onPress={() => void cancel(a.id as number)} />}
+        </Card>
+      ))}
+      {list.loading && <Spinner />}
+      {!!list.error && <Notice>{apiErrorMessage(list.error)}</Notice>}
+      {!list.loading && !list.error && (list.data ?? []).length === 0 && <Muted>{t('create.arrivals.empty')}</Muted>}
+    </>
+  )
+}
+
+/** Mis avisos de salida: los creo aquí (si la compañía me lo permite) y cancelo los que siguen solicitados. */
+function ExitsSection({ lang }: { lang: Lang }) {
+  const colors = useColors()
+  const { t } = useT()
+  const [creating, setCreating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const list = usePaged(useCallback((s: string, skip: number) => listExits(s, skip, PAGE_SIZE), []))
+  async function cancel(publicId: string) {
+    setError(null)
+    try {
+      await cancelExit(publicId)
+      list.reload()
+    } catch (e) {
+      setError(apiErrorMessage(e))
+    }
+  }
+  return (
+    <>
+      {!creating && <Button title={t('create.exit.title')} onPress={() => setCreating(true)} testID="create-exit" />}
+      {creating && <NewExitForm onCancel={() => setCreating(false)} onDone={() => { setCreating(false); list.reload() }} />}
+      {!!error && <Notice>{error}</Notice>}
+      <Field label={t('warehouse.search')} value={list.search} onChangeText={list.setSearch} autoCapitalize="none" returnKeyType="search" testID="warehouse-search" />
+      {list.items.map((n) => (
+        <Card key={n.publicId}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <Text style={{ fontWeight: '700', color: colors.text }}>{n.number}</Text>
+            <Chip label={n.status ?? ''} tone={n.statusCode === 'REQUESTED' ? 'info' : n.statusCode === 'CANCELLED' ? 'neutral' : 'ok'} />
+            {n.hasBackorder && <Chip label={t('create.exits.pending')} tone="warn" />}
+          </View>
+          <Muted>{[n.warehouseCode, n.reference, n.destination, n.requestedDate ? formatDate(n.requestedDate, lang) : null].filter(Boolean).join(' · ')}</Muted>
+          <Text style={{ color: colors.text }}>{formatQty(n.qtyShipped, lang)} / {formatQty(n.qtyOrdered, lang)}</Text>
+          {n.statusCode === 'REQUESTED' && <Button title={t('create.cancelNotice')} variant="secondary" onPress={() => void cancel(n.publicId as string)} />}
+        </Card>
+      ))}
+      <Footer loading={list.loading} error={list.error} shown={list.items.length} total={list.total} empty={t('create.exits.empty')} onRetry={list.reload} onMore={list.more} />
     </>
   )
 }
@@ -193,6 +278,8 @@ export function WarehouseScreen() {
     { key: 'products', label: t('warehouse.sections.products') },
     { key: 'movements', label: t('warehouse.sections.movements') },
     ...(offer.canSeeValue ? [{ key: 'value' as const, label: t('warehouse.sections.value') }] : []),
+    ...(offer.canCreateArrivals ? [{ key: 'arrivals' as const, label: t('warehouse.sections.arrivals') }] : []),
+    ...(offer.canCreateExits ? [{ key: 'exits' as const, label: t('warehouse.sections.exits') }] : []),
   ]
   const current = sections.some((s) => s.key === section) ? section : 'stock'
   return (
@@ -201,9 +288,11 @@ export function WarehouseScreen() {
       {!!offer.companyName && <Muted>{offer.companyName}</Muted>}
       <Segments value={current} onChange={(k) => setSection(k as Section)} options={sections} />
       {current === 'stock' && <StockSection lang={lang} />}
-      {current === 'products' && <ProductsSection lang={lang} />}
+      {current === 'products' && <ProductsSection lang={lang} canCreate={offer.canCreateProducts} />}
       {current === 'movements' && <MovementsSection lang={lang} />}
       {current === 'value' && offer.canSeeValue && <ValueSection lang={lang} />}
+      {current === 'arrivals' && offer.canCreateArrivals && <ArrivalsSection lang={lang} />}
+      {current === 'exits' && offer.canCreateExits && <ExitsSection lang={lang} />}
     </Screen>
   )
 }

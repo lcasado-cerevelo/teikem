@@ -56,6 +56,14 @@ public class Client : ITenantScoped, ISoftDeletable, IHasStatus, IAuditStamped
     /// </summary>
     public bool AutoPrintLabels { get; set; }
 
+    // --- Lote 156 (2026-10-20): lo que el cliente puede crear solo desde su portal (todas apagadas por defecto; las enciende el administrador de la compañía) ---
+    /// <summary>El cliente crea sus propios productos desde el portal.</summary>
+    public bool PortalCanCreateProducts { get; set; }
+    /// <summary>El cliente crea sus avisos de llegada (órdenes de recibo) desde el portal.</summary>
+    public bool PortalCanCreateArrivals { get; set; }
+    /// <summary>El cliente crea sus avisos de salida desde el portal.</summary>
+    public bool PortalCanCreateExits { get; set; }
+
     public StatusCode? Status { get; set; }
     public LookupCode? PaymentTerm { get; set; }
     public LookupCode? Currency { get; set; }

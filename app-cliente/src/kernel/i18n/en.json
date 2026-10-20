@@ -27,7 +27,9 @@
       "stock": "Stock",
       "products": "Products",
       "movements": "Movements",
-      "value": "Value"
+      "value": "Value",
+      "arrivals": "Arrivals",
+      "exits": "Exits"
     },
     "onHand": "On hand",
     "available": "Available",
@@ -469,5 +471,55 @@
   },
   "environment": {
     "notProduction": "Test environment: not production"
+  },
+  "create": {
+    "save": "Save",
+    "change": "Change",
+    "lines": "Lines",
+    "warehouse": "Warehouse",
+    "reference": "Reference",
+    "new": "New",
+    "cancelNotice": "Cancel notice",
+    "product": {
+      "title": "New product",
+      "sku": "SKU",
+      "name": "Name",
+      "barcode": "Barcode (optional)",
+      "brand": "Brand (optional)",
+      "cost": "Purchase cost (optional)",
+      "costHelp": "The cost is used to value your inventory (insurance basis).",
+      "lot": "Tracked by lot",
+      "lotHelp": "Check it if the product has a lot number and expiry date."
+    },
+    "line": {
+      "product": "Product",
+      "qty": "Quantity",
+      "lot": "Lot (optional)",
+      "price": "Unit price (optional)",
+      "add": "Add line",
+      "remove": "Remove line"
+    },
+    "arrival": {
+      "title": "New arrival notice",
+      "date": "Expected arrival (YYYY-MM-DD, optional)",
+      "priceHelp": "If the product has no cost, the price on the first line becomes its cost."
+    },
+    "exit": {
+      "title": "New exit notice",
+      "destination": "Destination (pickup, address or note)",
+      "date": "Required date (YYYY-MM-DD, optional)",
+      "notes": "Notes (optional)",
+      "help": "What is available is reserved right away; the rest stays pending."
+    },
+    "arrivals": {
+      "title": "Arrival notices",
+      "empty": "There are no arrival notices yet.",
+      "expected": "arrives {date}"
+    },
+    "exits": {
+      "title": "Exit notices",
+      "empty": "There are no exit notices yet.",
+      "pending": "with backorder"
+    }
   }
 }

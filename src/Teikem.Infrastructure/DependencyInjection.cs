@@ -268,7 +268,8 @@ public static class DependencyInjection
             sp.GetRequiredService<ITenantContext>(), sp.GetRequiredService<TeikemDbContext>(), sp.GetRequiredService<TenantZoneCache>()));
         services.AddScoped<InventoryReconciler>();
         services.AddScoped<InventoryReconciliationService>();
-        services.AddScoped<InventoryAlertService>();   // Lote 141: avisos de inventario
+        services.AddScoped<InventoryAlertService>();
+        services.AddScoped<PortalCreateService>();   // Lote 156: lo que el cliente crea desde el portal   // Lote 141: avisos de inventario
         services.AddScoped<ExitNoticeService>();   // Lote 143: avisos de salida
         services.AddScoped<IExitNoticeDispatchReversal>(sp => sp.GetRequiredService<ExitNoticeService>());   // Lote 143: deshacer una recolección de un aviso de salida
         // Lote 15 — franja "Almacén hoy" del Pulso (días locales con el mismo ITenantClock).

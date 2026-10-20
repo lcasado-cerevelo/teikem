@@ -32472,6 +32472,9 @@ export interface components {
             rowVersion?: string | null;
             autoPrintInvoice?: boolean;
             autoPrintLabels?: boolean;
+            portalCanCreateProducts?: boolean;
+            portalCanCreateArrivals?: boolean;
+            portalCanCreateExits?: boolean;
         };
         ClientInitialContractRequest: {
             /** Format: date */
@@ -32548,6 +32551,9 @@ export interface components {
             rowVersion?: string | null;
             autoPrintInvoice?: boolean | null;
             autoPrintLabels?: boolean | null;
+            portalCanCreateProducts?: boolean | null;
+            portalCanCreateArrivals?: boolean | null;
+            portalCanCreateExits?: boolean | null;
         };
         CodFeeDto: {
             type?: string | null;

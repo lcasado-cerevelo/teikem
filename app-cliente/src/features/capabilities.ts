@@ -10,15 +10,19 @@ export interface Offer {
   /** Existencias, productos, movimientos y valor (almacén). */
   warehouse: boolean
   canSeeValue: boolean
+  /** Lote 156: lo que este cliente puede crear desde su portal (lo enciende la compañía por cliente). */
+  canCreateProducts: boolean
+  canCreateArrivals: boolean
+  canCreateExits: boolean
   companyName: string
   known: boolean
 }
 
-export const DEFAULT_OFFER: Offer = { transport: true, warehouse: false, canSeeValue: false, companyName: '', known: false }
+export const DEFAULT_OFFER: Offer = { transport: true, warehouse: false, canSeeValue: false, canCreateProducts: false, canCreateArrivals: false, canCreateExits: false, companyName: '', known: false }
 
 export function offerOf(caps: PortalCapabilitiesDto | null | undefined): Offer {
   if (!caps) return DEFAULT_OFFER
-  return { transport: !!caps.transport, warehouse: !!caps.warehouse, canSeeValue: !!caps.canSeeValue, companyName: caps.companyName ?? '', known: true }
+  return { transport: !!caps.transport, warehouse: !!caps.warehouse, canSeeValue: !!caps.canSeeValue, canCreateProducts: !!caps.canCreateProducts, canCreateArrivals: !!caps.canCreateArrivals, canCreateExits: !!caps.canCreateExits, companyName: caps.companyName ?? '', known: true }
 }
 
 /** Qué pestañas lleva la barra: el consignatario solo Envíos/Avisos/Mensajes/Ajustes; el cliente, Inicio y Órdenes con transporte y Almacén con almacén. */

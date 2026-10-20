@@ -27,7 +27,9 @@
       "stock": "Existencias",
       "products": "Productos",
       "movements": "Movimientos",
-      "value": "Valor"
+      "value": "Valor",
+      "arrivals": "Llegadas",
+      "exits": "Salidas"
     },
     "onHand": "En mano",
     "available": "Disponible",
@@ -469,5 +471,55 @@
   },
   "environment": {
     "notProduction": "Ambiente de pruebas: no es producción"
+  },
+  "create": {
+    "save": "Guardar",
+    "change": "Cambiar",
+    "lines": "Líneas",
+    "warehouse": "Almacén",
+    "reference": "Referencia",
+    "new": "Nuevo",
+    "cancelNotice": "Cancelar aviso",
+    "product": {
+      "title": "Nuevo producto",
+      "sku": "SKU",
+      "name": "Nombre",
+      "barcode": "Código de barras (opcional)",
+      "brand": "Marca (opcional)",
+      "cost": "Costo de compra (opcional)",
+      "costHelp": "El costo sirve para valorar su inventario (base del seguro).",
+      "lot": "Se controla por lote",
+      "lotHelp": "Márquelo si el producto tiene número de lote y vencimiento."
+    },
+    "line": {
+      "product": "Producto",
+      "qty": "Cantidad",
+      "lot": "Lote (opcional)",
+      "price": "Precio unitario (opcional)",
+      "add": "Agregar línea",
+      "remove": "Quitar línea"
+    },
+    "arrival": {
+      "title": "Nuevo aviso de llegada",
+      "date": "Llegada esperada (AAAA-MM-DD, opcional)",
+      "priceHelp": "Si el producto no tiene costo, el precio de la primera línea pasa a ser su costo."
+    },
+    "exit": {
+      "title": "Nuevo aviso de salida",
+      "destination": "Destino (retiro, dirección o nota)",
+      "date": "Fecha requerida (AAAA-MM-DD, opcional)",
+      "notes": "Notas (opcional)",
+      "help": "Se reserva en el acto lo que haya; lo que falte queda pendiente."
+    },
+    "arrivals": {
+      "title": "Avisos de llegada",
+      "empty": "Todavía no hay avisos de llegada.",
+      "expected": "llega {date}"
+    },
+    "exits": {
+      "title": "Avisos de salida",
+      "empty": "Todavía no hay avisos de salida.",
+      "pending": "con pendiente"
+    }
   }
 }

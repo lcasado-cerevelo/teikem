@@ -218,7 +218,8 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
             ToNumberSettings(client),
             contactDtos, clientPoints,
             contractDtos, currentDto, currentDto?.BillingSummary ?? "",
-            client.CreatedAtUtc, client.UpdatedAtUtc, RowVersionOf(client.RowVersion), client.AutoPrintInvoice, client.AutoPrintLabels);
+            client.CreatedAtUtc, client.UpdatedAtUtc, RowVersionOf(client.RowVersion), client.AutoPrintInvoice, client.AutoPrintLabels,
+            client.PortalCanCreateProducts, client.PortalCanCreateArrivals, client.PortalCanCreateExits);
     }
 
     // ---------------- Perfil ----------------
@@ -239,6 +240,9 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
         if (req.Currency is not null) client.CurrencyLookupId = await OptionalLookupAsync(LookupDomains.Currency, req.Currency, ct);
         if (req.AutoPrintInvoice is { } autoPrint) client.AutoPrintInvoice = autoPrint;   // Lote 43: solo la bandera
         if (req.AutoPrintLabels is { } autoLabels) client.AutoPrintLabels = autoLabels;    // Lote 48: labels automáticos de sus órdenes
+        if (req.PortalCanCreateProducts is { } canProducts) client.PortalCanCreateProducts = canProducts;   // Lote 156: lo que crea solo desde el portal
+        if (req.PortalCanCreateArrivals is { } canArrivals) client.PortalCanCreateArrivals = canArrivals;
+        if (req.PortalCanCreateExits is { } canExits) client.PortalCanCreateExits = canExits;
 
         if (req.ClearDefaultPickup) client.DefaultPickupLocationId = null; // vuelve a 'se recoge en la corporativa'
         else if (req.DefaultPickupLocationPublicId.HasValue)

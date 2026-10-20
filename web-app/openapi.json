@@ -44104,6 +44104,15 @@
           },
           "autoPrintLabels": {
             "type": "boolean"
+          },
+          "portalCanCreateProducts": {
+            "type": "boolean"
+          },
+          "portalCanCreateArrivals": {
+            "type": "boolean"
+          },
+          "portalCanCreateExits": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -44358,6 +44367,18 @@
             "nullable": true
           },
           "autoPrintLabels": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "portalCanCreateProducts": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "portalCanCreateArrivals": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "portalCanCreateExits": {
             "type": "boolean",
             "nullable": true
           }

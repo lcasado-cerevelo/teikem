@@ -5484,3 +5484,16 @@ FROM dbo.Role r
 JOIN dbo.Permission p ON p.Code = 'pulse.view'
 WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = p.PermissionId);
 GO
+/* ----------------------------------------------------------------------------
+   2026-10-20 (Lote 156) — Lo que el cliente puede crear solo desde su portal: dbo.Client.PortalCanCreateProducts / PortalCanCreateArrivals / PortalCanCreateExits
+   (BIT NOT NULL DEFAULT 0). Las enciende el administrador de la compañía por cliente; apagadas por defecto: ningún cliente cambia de comportamiento. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.Client', 'PortalCanCreateProducts') IS NULL
+    ALTER TABLE dbo.Client ADD PortalCanCreateProducts BIT NOT NULL CONSTRAINT DF_Client_PortalCanCreateProducts DEFAULT 0;
+GO
+IF COL_LENGTH('dbo.Client', 'PortalCanCreateArrivals') IS NULL
+    ALTER TABLE dbo.Client ADD PortalCanCreateArrivals BIT NOT NULL CONSTRAINT DF_Client_PortalCanCreateArrivals DEFAULT 0;
+GO
+IF COL_LENGTH('dbo.Client', 'PortalCanCreateExits') IS NULL
+    ALTER TABLE dbo.Client ADD PortalCanCreateExits BIT NOT NULL CONSTRAINT DF_Client_PortalCanCreateExits DEFAULT 0;
+GO

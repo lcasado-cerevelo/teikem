@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
 import { useId, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
-import { Can, useCan } from '../../kernel/access'
+import { Can, ModuleGate, ModuleKeys, useCan } from '../../kernel/access'
 import { useLookups, type LookupOption } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
 import { Field, Form, NumberInput, Panel, Select, TextInput, Toggle, toast } from '../../kernel/ui'
@@ -106,6 +106,19 @@ export function ClientProfilePanel({ client }: { client: ClientDetail }) {
           <Field name="autoPrintInvoice" label={t('clients.profile.autoPrintInvoice')} help={t('clients.profile.autoPrintInvoiceHelp')}>
             <Toggle text={t('clients.profile.autoPrintInvoiceText')} />
           </Field>
+          <ModuleGate module={ModuleKeys.WmsLotSerial}>
+            <h3 className="set-h3">{t('clients.profile.portalCreateTitle')}</h3>
+            <p className="help">{t('clients.profile.portalCreateHelp')}</p>
+            <Field name="portalCanCreateProducts" label={t('clients.profile.portalCreateProducts')}>
+              <Toggle text={t('clients.profile.portalCreateProductsText')} />
+            </Field>
+            <Field name="portalCanCreateArrivals" label={t('clients.profile.portalCreateArrivals')}>
+              <Toggle text={t('clients.profile.portalCreateArrivalsText')} />
+            </Field>
+            <Field name="portalCanCreateExits" label={t('clients.profile.portalCreateExits')}>
+              <Toggle text={t('clients.profile.portalCreateExitsText')} />
+            </Field>
+          </ModuleGate>
         </fieldset>
 
         <Can perm="clients.update">

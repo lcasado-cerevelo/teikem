@@ -22,3 +22,18 @@ Lote 154 (2026-10-20). La barra de pestañas de `app-cliente` sigue a la **compa
 | Ambos | Todas | Inicio |
 
 La pestaña **Almacén** tiene cuatro secciones: **Existencias** (por producto, lote y almacén), **Productos**, **Movimientos** y **Valor** (solo si el acceso es ADMIN u OPERADOR). Cada lista tiene buscador y «Cargar más». Las cantidades y los precios van en la moneda de la compañía. En Ajustes, quien tiene accesos en varias compañías ve «Cliente · Compañía» y al cambiar, el menú se rehace con lo que ofrece la nueva compañía.
+
+## Lo que el cliente crea desde su portal (Lote 156)
+
+Tres cosas que la compañía enciende **por cliente** en la ficha del cliente (Clientes → perfil → «Lo que el cliente crea desde su portal»; con el módulo de almacén; apagadas por omisión). Solo las usan los accesos **ADMIN u OPERADOR** del cliente; el de solo lectura no. Todo se crea a nombre del cliente de la sesión (no se elige cliente) y con **las mismas reglas y mensajes del personal** (mismos servicios): lo que se rechaza en la pantalla del personal se rechaza igual aquí.
+
+| Qué | Ruta | Detalle |
+|---|---|---|
+| Almacenes para elegir | `GET /portal/warehouse/warehouses` | los activos de la compañía; con uno solo se elige solo |
+| Crear producto | `POST /portal/warehouse/products` | SKU, nombre, código de barras, marca, costo de compra opcional, por lote o no; el dueño es el cliente |
+| Mis avisos de llegada | `GET/POST /portal/warehouse/arrivals`, `POST …/arrivals/{id}/cancel` | solo productos del cliente; precio unitario opcional (si el producto no tiene costo, toma el de la primera línea); cancelar solo si sigue esperado y sin recibo |
+| Mis avisos de salida | `GET/POST /portal/warehouse/exits`, `GET …/exits/{id}`, `POST …/exits/{id}/cancel` | reserva en el acto lo que haya y deja lo demás pendiente; cancelar solo si sigue solicitado |
+
+En la app, las pestañas «Llegadas» y «Salidas» y el botón «Nuevo producto» aparecen solo si la compañía lo encendió para ese cliente (`capabilities.canCreateProducts/Arrivals/Exits` de `GET /portal/me`).
+
+Errores: 403 «Su compañía no le permite crear productos desde el portal.» / «…avisos de llegada…» / «…avisos de salida…» (bandera apagada), 403 «Su acceso es de solo lectura y no puede crear documentos.», 404 si el aviso es de otro cliente (nunca se ve ni se cancela lo ajeno), y los 400/422 del personal (producto de otro cliente, cantidad inválida, SKU repetido, etc.).

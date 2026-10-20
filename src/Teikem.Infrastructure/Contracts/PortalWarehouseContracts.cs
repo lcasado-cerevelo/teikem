@@ -6,7 +6,8 @@ namespace Teikem.Infrastructure.Contracts;
 /// Qué ofrece la compañía de la sesión a este acceso: CompanyName, Warehouse = tiene el módulo de almacén (el menú muestra Inventario, Productos y Movimientos), Transport = tiene el de transporte (Órdenes, Inicio) y CanSeeValue = su rol puede ver el valor de su
 /// inventario (ADMIN y OPERADOR del cliente; el de solo lectura no).
 /// </summary>
-public sealed record PortalCapabilitiesDto(string CompanyName, bool Warehouse, bool Transport, bool CanSeeValue);
+public sealed record PortalCapabilitiesDto(string CompanyName, bool Warehouse, bool Transport, bool CanSeeValue,
+    bool CanCreateProducts = false, bool CanCreateArrivals = false, bool CanCreateExits = false);
 
 /// <summary>Una fila de existencias: producto y lote en un almacén, sumadas todas las posiciones (el cliente no ve la estantería).</summary>
 public sealed record PortalStockItemDto(Guid ProductPublicId, string Sku, string ProductName, Guid WarehousePublicId, string WarehouseCode, string WarehouseName, string? LotNumber,
