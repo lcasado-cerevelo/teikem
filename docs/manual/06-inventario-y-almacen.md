@@ -983,6 +983,12 @@ Cómo se usa:
   (o `clearExpected: true`) solo en ciegos y devoluciones; `productPublicId` cambia el producto de una línea que **no**
   viene del aviso u orden de compra (mismo dueño que exige el alta de línea; el lote y las series del producto anterior se
   limpian si no se mandan nuevos).
+- **Lote, vencimiento y series en la misma línea (web, 2026-10-20, Lote 140).** En un recibo sin documento (ciego o devolución), al escoger un producto **por lote**
+  la propia línea muestra, debajo del producto, **Lote\* · Fabricación · Vencimiento**; con un producto **por serie** muestra el cuadro **«Series, una por renglón»**
+  (lo recibido es el número de series). La línea se graba cuando ya están lo recibido y el lote (o las series) y se sale de esos campos; pasar del lote a las fechas
+  **no** la graba antes de tiempo. Va en el mismo `POST …/lines` (`lot` y `serialNumbers`); no cambió el API. Mientras falte el lote (o las series) la línea queda
+  «sin guardar» y Confirmar lo avisa. Una línea **ya guardada** (o la que viene de un aviso u orden de compra) sigue usando el ícono **«Lote y series»**.
+  Los mensajes son los de siempre (`El producto … lleva lote…`, `La fecha de vencimiento no puede ser anterior a la de fabricación.`, series repetidas, etc.).
 - `POST/DELETE /api/v1/receipts/{publicId}/lines` (línea extra, solo recibos abiertos). Lote 13: `expectedQty` solo en
   ciegos y devoluciones; la línea sin `stagingBinId` toma la posición por defecto del encabezado (si no hay, la de otra
   línea o la primera `STAGING`).

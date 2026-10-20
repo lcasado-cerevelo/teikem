@@ -26,7 +26,7 @@ import { BinPicker, ProductPicker } from './pickers'
 import { ReceiptLineCaptureModal } from './ReceiptLineCaptureModal'
 import { ReceiptLineDamageModal } from './ReceiptLineDamageModal'
 import { ReceiptSplitModal } from './ReceiptSplitModal'
-import { canDuplicateRow, isEmptyRow, parseQtyText, rowNeedsTarget, rowVariance, type LineRow } from './receiptLineEdit'
+import { canDuplicateRow, isEmptyRow, needsInlineCapture, parseQtyText, rowNeedsTarget, rowVariance, type LineRow } from './receiptLineEdit'
 import { exceedsCapacity, TARGET_EXCLUDED_ZONE_TYPES, topSuggestion } from './receivingMode'
 import type { ReceiptLineRowsState } from './useReceiptLineRows'
 
@@ -118,10 +118,85 @@ function ProductCell({ row, editable }: { row: LineRow; editable: boolean }) {
           {row.errors.row}
         </span>
       )}
+      {editable && <InlineCapture row={row} />}
       <DamageChip row={row} />
       {row.saving && (
         <span className="rcp-faint" role="status">
           {t('warehouse.receipts.lines.saving')}
+        </span>
+      )}
+    </span>
+  )
+}
+
+/**
+ * 2026-10-20 (pedido de Luis): al escoger un producto por LOTE o por SERIE, el lote (con fabricación y vencimiento) o las series se piden ahí mismo, en la línea,
+ * sin esperar a que se grabe. Guarda al salir de cualquiera de los campos, cuando ya está lo recibido. En una línea ya guardada se usa «Lote y series».
+ */
+function InlineCapture({ row }: { row: LineRow }) {
+  const t = useT()
+  const { state, position } = useEditor()
+  if (!needsInlineCapture(row)) return null
+  const n = position.get(row.key) ?? 0
+  const save = () => void state.save(row.key)
+  if (row.trackingTypeCode === 'SERIAL') {
+    return (
+      <span className="rcp-inline">
+        <textarea
+          className="rcp-inline-serials"
+          rows={3}
+          autoComplete="off"
+          placeholder={t('warehouse.receipts.lines.serialsInline')}
+          aria-label={t('warehouse.receipts.lines.serialsOf', { n })}
+          aria-invalid={row.errors.serials ? true : undefined}
+          value={row.serialsText}
+          disabled={row.saving}
+          onChange={(e) => state.inputSerials(row.key, e.target.value)}
+          onBlur={save}
+        />
+        {row.errors.serials && (
+          <span className="ferr" role="alert">
+            {row.errors.serials}
+          </span>
+        )}
+      </span>
+    )
+  }
+  return (
+    <span className="rcp-inline">
+      {/* se guarda al salir del GRUPO (no al pasar del lote al vencimiento: grabaría la línea sin la fecha) */}
+      <span className="rcp-inline-lot" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) save() }}>
+        <input
+          type="text"
+          maxLength={60}
+          autoComplete="off"
+          placeholder={`${t('warehouse.receipts.fields.lot')} *`}
+          aria-label={t('warehouse.receipts.lines.lotOf', { n })}
+          aria-invalid={row.errors.lot ? true : undefined}
+          value={row.lot}
+          disabled={row.saving}
+          onChange={(e) => state.inputLot(row.key, 'lot', e.target.value)}
+        />
+        <input
+          type="date"
+          aria-label={t('warehouse.receipts.lines.manufactureOf', { n })}
+          title={t('warehouse.receipts.fields.manufactureDate')}
+          value={row.lotMfg}
+          disabled={row.saving}
+          onChange={(e) => state.inputLot(row.key, 'lotMfg', e.target.value)}
+        />
+        <input
+          type="date"
+          aria-label={t('warehouse.receipts.lines.expiryOf', { n })}
+          title={t('warehouse.receipts.fields.expiryDate')}
+          value={row.lotExp}
+          disabled={row.saving}
+          onChange={(e) => state.inputLot(row.key, 'lotExp', e.target.value)}
+        />
+      </span>
+      {row.errors.lot && (
+        <span className="ferr" role="alert">
+          {row.errors.lot}
         </span>
       )}
     </span>

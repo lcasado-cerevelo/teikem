@@ -43,6 +43,7 @@ const R2 = 'rrrrrrrr-0000-0000-0000-000000000002'
 const R3 = 'rrrrrrrr-0000-0000-0000-000000000003'
 const NEW = 'rrrrrrrr-0000-0000-0000-000000000009'
 const P1 = 'aaaaaaaa-0000-0000-0000-000000000001'
+const PLOT = '00000000-0000-4000-8000-0000000000a2'
 
 const head = (over: Record<string, unknown>) => ({
   id: 1,
@@ -209,7 +210,7 @@ function route(method: string, url: URL, body: unknown): [number, unknown] {
   if (p === `/api/v1/warehouses/${WH}`) return [200, { id: 1, publicId: WH, code: 'ALM-01', name: 'Almacén principal', isActive: true }]
   if (p === `/api/v1/warehouses/${WH}/bins`) return [200, { total: 0, skip: 0, take: 50, items: [] }]
   if (p === '/api/v1/products')
-    return [200, { total: 1, skip: 0, take: 20, items: [{ id: 1, publicId: P1, sku: 'A-1', name: 'Tornillo', isOwn: true, trackingTypeCode: 'NONE', isActive: true }] }]
+    return [200, { total: 1, skip: 0, take: 20, items: [{ id: 1, publicId: P1, sku: 'A-1', name: 'Tornillo', isOwn: true, trackingTypeCode: 'NONE', isActive: true }, { id: 2, publicId: PLOT, sku: 'LOT-1', name: 'Pintura', isOwn: true, trackingTypeCode: 'LOT', isActive: true }] }]
   if (p === '/api/v1/status/ReceiptStatus')
     return [
       200,
@@ -330,6 +331,41 @@ describe('Recibo: maestro-detalle', () => {
     await waitFor(() => expect(calls('POST', `/api/v1/receipts/${NEW}/lines`)).toHaveLength(1))
     expect(calls('POST', `/api/v1/receipts/${NEW}/lines`)[0].body).toEqual({ productPublicId: P1, receivedQty: 12, expectedQty: 12 })
     expect(await screen.findByRole('combobox', { name: 'Producto de la línea 2' })).toBeInTheDocument()
+  })
+
+  it('2026-10-20: al escoger un producto por lote, el lote y el vencimiento se piden en la misma línea y van en el POST', async () => {
+    const user = userEvent.setup()
+    wrap()
+    await rowButton('REC-0001')
+    await user.click(screen.getByRole('button', { name: 'Nuevo recibo' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Nuevo recibo' })
+    await user.click(within(dialog).getByRole('combobox', { name: /^Almacén/ }))
+    await user.click(await within(dialog).findByRole('option', { name: /ALM-01/ }))
+    await user.click(within(dialog).getByRole('button', { name: 'Crear recibo' }))
+    await waitFor(() => expect(calls('POST', '/api/v1/receipts')).toHaveLength(1))
+    expect(await screen.findByText('Línea nueva')).toBeInTheDocument()
+
+    // un producto SIN lote no muestra los campos; uno por lote sí, ahí mismo y antes de grabar
+    await user.click(screen.getByRole('combobox', { name: 'Producto de la línea 1' }))
+    await user.click(await screen.findByRole('option', { name: /LOT-1/ }))
+    const lot = await screen.findByRole('textbox', { name: 'Número de lote de la línea 1' })
+    expect(screen.getByLabelText('Vencimiento del lote de la línea 1')).toBeInTheDocument()
+
+    await user.type(screen.getByRole('textbox', { name: 'Recibido de la línea 1' }), '6')
+    await user.tab()
+    // sin lote todavía: no se manda nada
+    expect(calls('POST', `/api/v1/receipts/${NEW}/lines`)).toHaveLength(0)
+
+    await user.type(lot, 'L-77')
+    await user.type(screen.getByLabelText('Vencimiento del lote de la línea 1'), '2027-03-01')
+    await user.tab()
+    await waitFor(() => expect(calls('POST', `/api/v1/receipts/${NEW}/lines`)).toHaveLength(1))
+    expect(calls('POST', `/api/v1/receipts/${NEW}/lines`)[0].body).toEqual({
+      productPublicId: PLOT,
+      receivedQty: 6,
+      expectedQty: 6,
+      lot: { number: 'L-77', manufactureDate: null, expiryDate: '2027-03-01' },
+    })
   })
 
   it('borrar desde el modal del encabezado (con confirmación)', async () => {

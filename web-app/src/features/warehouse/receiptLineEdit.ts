@@ -12,7 +12,7 @@
 //   necesitan y no la tienen y `confirmBlockers(…, direct)` bloquea con 'noTarget'.
 // Pruebas en receiptLineEdit.test.ts.
 import type { components } from '../../kernel/api/schema'
-import { decimalsOf, QTY_LIMIT } from './lineRules'
+import { decimalsOf, parseSerials, QTY_LIMIT, receiptLineIssues } from './lineRules'
 import { needsTarget } from './receivingMode'
 
 type Schemas = components['schemas']
@@ -21,7 +21,7 @@ type LineDto = Schemas['ReceiptLineDto']
 /** Máximo de líneas de un recibo (ReceiptRules.MaxLines). */
 export const MAX_RECEIPT_LINES = 200
 
-export type RowField = 'product' | 'expected' | 'received' | 'target' | 'row'
+export type RowField = 'product' | 'expected' | 'received' | 'target' | 'lot' | 'serials' | 'row'
 /** Errores de una fila por campo: texto ya traducido (o el del servidor). */
 export type RowErrors = Partial<Record<RowField, string>>
 
@@ -49,6 +49,11 @@ export interface LineRow {
   targetBinCode: string | null
   targetZoneTypeCode: string | null
   targetFreeQty: number | null
+  /** 2026-10-20: lote y series capturados EN LA MISMA LÍNEA al escoger un producto por lote o por serie (solo filas nuevas; en una guardada se usa «Lote y series»). */
+  lot: string
+  lotMfg: string
+  lotExp: string
+  serialsText: string
   /** Lo guardado en el servidor (null = fila nueva). */
   original: { productPublicId: string | null; expected: number | null; received: number | null; targetBinId: number | null } | null
   errors: RowErrors
@@ -99,6 +104,10 @@ export function emptyRow(key: string): LineRow {
     targetBinCode: null,
     targetZoneTypeCode: null,
     targetFreeQty: null,
+    lot: '',
+    lotMfg: '',
+    lotExp: '',
+    serialsText: '',
     original: null,
     errors: {},
     saving: false,
@@ -123,6 +132,10 @@ export function rowFromLine(line: LineDto, key = `line-${line.id ?? 0}`): LineRo
     serialCount: line.serialNumbers?.length ?? 0,
     allocatedToCrossDock: line.allocatedToCrossDock ?? 0,
     ...targetFromLine(line),
+    lot: '',
+    lotMfg: '',
+    lotExp: '',
+    serialsText: '',
     original: {
       productPublicId: line.productPublicId ?? null,
       expected: line.expectedQty ?? null,
@@ -243,7 +256,32 @@ export function onProductPicked(
     sku: product?.sku ?? '',
     productName: product?.name ?? '',
     trackingTypeCode: product?.trackingTypeCode ?? '',
-    errors: withoutErrors(row.errors, 'product', 'row'),
+    // otro producto = otro lote y otras series
+    ...(product?.publicId === row.productPublicId ? {} : { lot: '', lotMfg: '', lotExp: '', serialsText: '' }),
+    errors: withoutErrors(row.errors, 'product', 'row', 'lot', 'serials'),
+  }
+}
+
+/** 2026-10-20: ¿la fila NUEVA pide el lote o las series en la misma línea? (producto por lote o por serie ya escogido). */
+export function needsInlineCapture(row: LineRow): boolean {
+  return row.lineId === null && Boolean(row.productPublicId) && (row.trackingTypeCode === 'LOT' || row.trackingTypeCode === 'SERIAL')
+}
+
+/** Se teclea el lote, la fabricación o el vencimiento de la fila nueva. */
+export function onLotInput(row: LineRow, field: 'lot' | 'lotMfg' | 'lotExp', text: string): LineRow {
+  return { ...row, [field]: text, errors: withoutErrors(row.errors, 'lot', 'row') }
+}
+
+/** Se teclean las series de la fila nueva (una por renglón): lo recibido es el número de series (como en «Lote y series»). */
+export function onSerialsInput(row: LineRow, text: string): LineRow {
+  const n = parseSerials(text).length
+  const received = n > 0 ? String(n) : ''
+  return {
+    ...row,
+    serialsText: text,
+    received,
+    expected: row.mirror ? received : row.expected,
+    errors: withoutErrors(row.errors, 'serials', 'received', 'row'),
   }
 }
 
@@ -328,13 +366,33 @@ export function linePayload(row: LineRow, manual: boolean): LinePayload {
   if (row.lineId === null || row.original === null) {
     if (isEmptyRow(row)) return { kind: 'none' }
     if (!row.productPublicId || received === null) return { kind: 'incomplete' }
+    // producto por lote o por serie (2026-10-20): se espera a que el lote / las series estén en la misma línea
+    const serials = parseSerials(row.serialsText)
+    if (row.trackingTypeCode === 'LOT' && row.lot.trim() === '' && received > 0) return { kind: 'incomplete' }
+    if (row.trackingTypeCode === 'SERIAL' && serials.length === 0) return { kind: 'incomplete' }
     const issues: Partial<Record<RowField, RowIssue>> = {}
     const ri = qtyIssue(received, 'received')
     if (ri) issues.received = ri
     const ei = manual ? qtyIssue(expected, 'expected') : null
     if (ei) issues.expected = ei
+    if (!ri && (row.trackingTypeCode === 'LOT' || row.trackingTypeCode === 'SERIAL')) {
+      for (const li of receiptLineIssues({
+        sku: row.sku,
+        trackingTypeCode: row.trackingTypeCode,
+        receivedQty: received,
+        lot: row.lot,
+        lotManufactureDate: row.lotMfg,
+        lotExpiryDate: row.lotExp,
+        serials,
+      })) {
+        const field: RowField | null = li.field === 'lot' ? 'lot' : li.field === 'serialNumbers' ? 'serials' : null
+        if (field) issues[field] = { key: `warehouse.lineRules.${li.code}`, params: li.params }
+      }
+    }
     if (Object.keys(issues).length > 0) return { kind: 'invalid', issues }
     const body: Schemas['ReceiptLineRequest'] = { productPublicId: row.productPublicId, receivedQty: received }
+    if (row.trackingTypeCode === 'LOT' && row.lot.trim() !== '') body.lot = { number: row.lot.trim(), manufactureDate: row.lotMfg || null, expiryDate: row.lotExp || null }
+    if (row.trackingTypeCode === 'SERIAL') body.serialNumbers = serials
     if (manual && expected !== null) body.expectedQty = expected
     if (row.targetBinId !== null) body.targetBinId = row.targetBinId
     return { kind: 'add', body }
@@ -382,6 +440,10 @@ export function mergeSaved(current: LineRow, sent: LineRow, line: LineDto): Line
     current.expected === sent.expected &&
     current.received === sent.received &&
     current.productPublicId === sent.productPublicId &&
+    current.lot === sent.lot &&
+    current.lotMfg === sent.lotMfg &&
+    current.lotExp === sent.lotExp &&
+    current.serialsText === sent.serialsText &&
     current.targetBinId === sent.targetBinId
   if (untouched) return fresh
   return { ...current, lineId: fresh.lineId, asnLineId: fresh.asnLineId, original: fresh.original, saving: false, errors: {} }
@@ -453,7 +515,11 @@ export function rowErrorsFromProblem(problem: { title: string; errors: Record<st
             ? 'product'
             : k === 'targetbinid' || k === 'targetbincode' || k === 'cleartargetbin'
               ? 'target'
-              : 'row'
+              : k === 'lot' || k.startsWith('lot.')
+                ? 'lot'
+                : k === 'serialnumbers'
+                  ? 'serials'
+                  : 'row'
     out[field] = out[field] ? `${out[field]} ${msg}` : msg
   }
   if (Object.keys(out).length === 0) out.row = problem.title

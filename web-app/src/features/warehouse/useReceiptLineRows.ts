@@ -20,8 +20,10 @@ import {
   mergeSaved,
   newLineFrom,
   onExpectedInput,
+  onLotInput,
   onProductPicked,
   onReceivedInput,
+  onSerialsInput,
   onTargetPicked,
   reconcileRows,
   rowErrorsFromProblem,
@@ -46,6 +48,10 @@ export interface ReceiptLineRowsState {
   mode: RowsMode
   /** Se teclea el esperado o lo recibido de una fila. */
   input: (key: string, field: 'expected' | 'received', text: string) => void
+  /** 2026-10-20: se teclea el lote, la fabricación o el vencimiento de una fila nueva (en la misma línea). */
+  inputLot: (key: string, field: 'lot' | 'lotMfg' | 'lotExp', text: string) => void
+  /** 2026-10-20: se teclean las series de una fila nueva (una por renglón); lo recibido es su número. */
+  inputSerials: (key: string, text: string) => void
   /** Se elige el producto de una fila (sin documento): si ya hay recibido, se guarda. */
   pickProduct: (key: string, product: PickedProduct) => void
   /** Lote 16: se elige (o se quita) la posición destino de una fila: se guarda al elegir. */
@@ -143,6 +149,12 @@ export function useReceiptLineRows(receipt: ReceiptDetailDto, mode: RowsMode): R
     [trailing, update],
   )
 
+  const inputLot = useCallback(
+    (key: string, field: 'lot' | 'lotMfg' | 'lotExp', text: string) => update(key, (r) => onLotInput(r, field, text)),
+    [update],
+  )
+  const inputSerials = useCallback((key: string, text: string) => update(key, (r) => onSerialsInput(r, text)), [update])
+
   const pickProduct = useCallback(
     (key: string, product: PickedProduct) => {
       update(key, (r) => onProductPicked(r, product))
@@ -210,7 +222,7 @@ export function useReceiptLineRows(receipt: ReceiptDetailDto, mode: RowsMode): R
   )
 
   return useMemo(
-    () => ({ rows, mode: { manual, editable, direct }, input, pickProduct, pickTarget, save, duplicate, remove, applyLine, setLineErrors }),
-    [rows, manual, editable, direct, input, pickProduct, pickTarget, save, duplicate, remove, applyLine, setLineErrors],
+    () => ({ rows, mode: { manual, editable, direct }, input, inputLot, inputSerials, pickProduct, pickTarget, save, duplicate, remove, applyLine, setLineErrors }),
+    [rows, manual, editable, direct, input, inputLot, inputSerials, pickProduct, pickTarget, save, duplicate, remove, applyLine, setLineErrors],
   )
 }

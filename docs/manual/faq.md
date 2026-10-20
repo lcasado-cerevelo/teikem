@@ -9618,3 +9618,12 @@ Mandaste un valor distinto de `SUGGEST` o `ENFORCE` en `rotationEnforcement` de 
 
 **En la app de almacén me sale «Se salta la rotación». ¿Qué hago?**
 Escaneaste una posición distinta de la que debía salir según la rotación. Toca **Cancelar** para escanear la correcta o **Continuar** si de verdad vas a sacarlo de ahí (queda registrado el movimiento tal cual). Si la compañía obliga la rotación, esta pregunta no sale: la app te dice de dónde sale y tú tocas «Sacar así».
+
+## Lote y vencimiento en la línea del recibo (Lote 140, 2026-10-20)
+
+**Escogí un producto por lote en el recibo y no me deja grabar la línea. ¿Por qué?**
+Un producto por lote necesita el **número de lote** (el vencimiento y la fabricación son opcionales). Al escoger el producto, la línea muestra los campos «Lote», «Fabricación» y «Vencimiento» debajo del producto: escribe el lote, teclea lo recibido y sal del campo; entonces se graba. Con un producto por serie, el cuadro «Series, una por renglón» reemplaza la cantidad: lo recibido es cuántas series escribas.
+
+**¿Dónde pongo el lote de una línea que ya guardé o que viene de un aviso de llegada?**
+Con el ícono «Lote y series» de la fila (solo aparece en productos por lote o por serie). Los campos dentro de la línea son solo para líneas nuevas de un recibo sin documento.
+

@@ -15,10 +15,13 @@ import {
   linePayload,
   mergeSaved,
   missingTargets,
+  needsInlineCapture,
   newLineFrom,
   onExpectedInput,
+  onLotInput,
   onProductPicked,
   onReceivedInput,
+  onSerialsInput,
   onTargetPicked,
   parseQtyText,
   reconcileRows,
@@ -341,5 +344,57 @@ describe('duplicar línea (recibo directo)', () => {
     const c = emptyRow('c')
     expect(insertRowAfter([a, b], 'a', c).map((r) => r.key)).toEqual(['a', 'c', 'b'])
     expect(insertRowAfter([a, b], 'zz', c).map((r) => r.key)).toEqual(['a', 'b', 'c'])
+  })
+})
+
+// 2026-10-20 (pedido de Luis): al escoger un producto por lote o por serie, el lote y el vencimiento (o las series) se piden en la misma línea
+describe('lote y series en la misma línea (fila nueva)', () => {
+  const LOT = { publicId: 'PL', sku: 'L-1', name: 'Pintura', trackingTypeCode: 'LOT' }
+  const SERIAL = { publicId: 'PS', sku: 'S-1', name: 'Equipo', trackingTypeCode: 'SERIAL' }
+
+  it('solo una fila NUEVA con producto por lote o serie pide captura en línea', () => {
+    expect(needsInlineCapture(emptyRow('n'))).toBe(false)
+    expect(needsInlineCapture(onProductPicked(emptyRow('n'), PRODUCT))).toBe(false)
+    expect(needsInlineCapture(onProductPicked(emptyRow('n'), LOT))).toBe(true)
+    expect(needsInlineCapture(onProductPicked(emptyRow('n'), SERIAL))).toBe(true)
+    expect(needsInlineCapture(rowFromLine(line({ trackingTypeCode: 'LOT' })))).toBe(false)   // guardada: «Lote y series»
+  })
+
+  it('lote: espera a que haya número de lote; el POST lleva lote, fabricación y vencimiento', () => {
+    const r = onReceivedInput(onProductPicked(emptyRow('n'), LOT), '10')
+    expect(linePayload(r, true)).toEqual({ kind: 'incomplete' })
+    const withLot = onLotInput(onLotInput(onLotInput(r, 'lot', ' L-77 '), 'lotMfg', '2026-01-05'), 'lotExp', '2027-01-05')
+    expect(linePayload(withLot, true)).toEqual({
+      kind: 'add',
+      body: { productPublicId: 'PL', receivedQty: 10, expectedQty: 10, lot: { number: 'L-77', manufactureDate: '2026-01-05', expiryDate: '2027-01-05' } },
+    })
+  })
+
+  it('lote: el vencimiento puede quedar vacío y un vencimiento anterior a la fabricación no se manda', () => {
+    const base = onLotInput(onReceivedInput(onProductPicked(emptyRow('n'), LOT), '4'), 'lot', 'L-1')
+    expect(linePayload(base, true)).toMatchObject({ kind: 'add', body: { lot: { number: 'L-1', manufactureDate: null, expiryDate: null } } })
+    const bad = onLotInput(onLotInput(base, 'lotMfg', '2026-05-01'), 'lotExp', '2026-01-01')
+    expect(linePayload(bad, true)).toMatchObject({ kind: 'invalid', issues: { lot: { key: 'warehouse.lineRules.lotDates' } } })
+  })
+
+  it('serie: lo recibido es el número de series y el POST las lleva', () => {
+    let r = onProductPicked(emptyRow('n'), SERIAL)
+    expect(linePayload(r, true)).toEqual({ kind: 'incomplete' })
+    r = onSerialsInput(r, 'A1\nA2\nA3')
+    expect(r.received).toBe('3')
+    expect(r.expected).toBe('3')
+    expect(linePayload(r, true)).toEqual({ kind: 'add', body: { productPublicId: 'PS', receivedQty: 3, expectedQty: 3, serialNumbers: ['A1', 'A2', 'A3'] } })
+    expect(linePayload(onSerialsInput(r, 'A1\nA1'), true)).toMatchObject({ kind: 'invalid', issues: { serials: { key: 'warehouse.lineRules.serialDuplicated' } } })
+  })
+
+  it('cambiar de producto limpia el lote y las series tecleados; el mismo producto los conserva', () => {
+    const r = onLotInput(onProductPicked(emptyRow('n'), LOT), 'lot', 'L-9')
+    expect(onProductPicked(r, LOT).lot).toBe('L-9')
+    expect(onProductPicked(r, PRODUCT).lot).toBe('')
+  })
+
+  it('los errores del servidor sobre el lote y las series van a su campo', () => {
+    expect(rowErrorsFromProblem({ title: 'x', errors: { 'line.lot': ['Indique el lote.'] } })).toEqual({ lot: 'Indique el lote.' })
+    expect(rowErrorsFromProblem({ title: 'x', errors: { 'line.serialNumbers': ['Serie repetida.'] } })).toEqual({ serials: 'Serie repetida.' })
   })
 })
