@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Teikem.Domain.Clients;
 using Teikem.Domain.Common;
 using Teikem.Domain.Constants;
+using Teikem.Domain.Security;
 using Teikem.Domain.Wms;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Clients;
@@ -34,7 +35,8 @@ public sealed class PurchaseOrderService(
     ILookupCache lookups,
     StatusService statuses,
     INumberSequenceService numbers,
-    ITenantClock? clock = null)
+    ITenantClock? clock = null,
+    PermissionService? permissions = null)
 {
     private readonly ITenantClock _clock = clock ?? TenantClock.Default;
 
@@ -143,11 +145,13 @@ public sealed class PurchaseOrderService(
         var warehouse = await ResolveWarehouseOrDefaultAsync(req.WarehousePublicId, ct);
         if (!warehouse.IsActive) throw new StatusRuleException(PurchaseOrderRules.WarehouseInactive);
         var lines = await ValidateLinesAsync(req.Lines, ct);
+        await EnsureProductPriceUpdateAllowedAsync(req.Lines, ct);
 
         await EnsureNumberingAsync(ct);
         var poId = await db.RunInTransactionAsync(async ct2 =>
         {
             var po = await CreateDraftAsync(supplier.SupplierId, warehouse.WarehouseId, orderDate, req.ExpectedDate, currencyId, notes, lines, ct2);
+            await ApplyProductPricesAsync(req.Lines, ct2);
             return po.PurchaseOrderId;
         }, ct);
         return await GetByIdAsync(poId, ct);
@@ -215,6 +219,7 @@ public sealed class PurchaseOrderService(
         var (notes, notesError) = NormalizeNotes(req.Notes);
         if (notesError is not null) throw new ValidationException("notes", notesError);
         var requested = req.Lines is null ? null : await ValidateLinesAsync(req.Lines, ct);
+        await EnsureProductPriceUpdateAllowedAsync(req.Lines, ct);
         var poId = await ResolveIdAsync(publicId, ct);
 
         await db.RunInTransactionAsync(async ct2 =>
@@ -292,6 +297,7 @@ public sealed class PurchaseOrderService(
                 // Solo líneas sin recepciones ni referencias (nunca tocaron el ledger ni un aviso): se quitan de la orden.
                 foreach (var lineId in changes.Removals)
                     db.Set<PurchaseOrderLine>().Remove(current.First(l => l.PurchaseOrderLineId == lineId));
+                await ApplyProductPricesAsync(req.Lines, ct2);
             }
             await db.SaveGuardedAsync(ConcurrencyMessage, ct2);
         }, ct);
@@ -480,6 +486,30 @@ public sealed class PurchaseOrderService(
         }
         if (errors.Count > 0) throw new ValidationException(errors);
         return plans;
+    }
+
+    /// <summary>Pedir «actualizar el precio del producto» exige inventory.manage (403 si no).</summary>
+    private async Task EnsureProductPriceUpdateAllowedAsync(IReadOnlyList<PurchaseOrderLineRequest>? lines, CancellationToken ct)
+    {
+        if (lines is null || !lines.Any(l => l?.UpdateProductPrice == true)) return;
+        if (permissions is null || !await permissions.HasPermissionAsync(PermissionCatalog.InventoryManage, ct)) throw new ForbiddenException(ProductPriceRules.UpdateNeedsPermission);
+    }
+
+    /// <summary>
+    /// Precio del producto (ProductPriceRules): el producto sin costo toma el de la primera línea con costo escrito; con otro costo guardado solo cambia con «actualizar».
+    /// Solo cuenta el costo escrito explícitamente (si se omite, la línea ya usa el del producto).
+    /// </summary>
+    private async Task ApplyProductPricesAsync(IReadOnlyList<PurchaseOrderLineRequest>? lines, CancellationToken ct)
+    {
+        if (lines is null || lines.Count == 0) return;
+        var publicIds = lines.Where(l => l?.ProductPublicId != null).Select(l => l.ProductPublicId!.Value).Distinct().ToList();
+        var products = await db.Set<Product>().Where(p => publicIds.Contains(p.PublicId)).ToListAsync(ct);
+        var byPublicId = products.ToDictionary(p => p.PublicId);
+        var plan = ProductPriceRules.Plan(lines.Where(l => l?.ProductPublicId != null && byPublicId.ContainsKey(l.ProductPublicId.Value))
+            .Select(l => { var p = byPublicId[l.ProductPublicId!.Value]; return new ProductPriceLine(p.ProductId, l.UnitCost, l.UpdateProductPrice == true, p.PurchaseCost); }));
+        foreach (var p in products)
+            if (plan.TryGetValue(p.ProductId, out var cost)) p.PurchaseCost = cost;
+        if (plan.Count > 0) await db.SaveChangesAsync(ct);
     }
 
     private static (string? Notes, string? Error) NormalizeNotes(string? notes)

@@ -57054,6 +57054,10 @@
             "type": "number",
             "format": "double",
             "nullable": true
+          },
+          "updateProductPrice": {
+            "type": "boolean",
+            "nullable": true
           }
         },
         "additionalProperties": false

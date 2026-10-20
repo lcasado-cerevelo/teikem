@@ -2526,3 +2526,7 @@ Al elegir el producto en una línea del aviso de llegada, el **precio unitario**
 - Si es igual, no se toca nada. Una capa de costo ya congelada nunca cambia.
 
 Error: 403 «Actualizar el precio del producto requiere el permiso de administrar inventario.» (se pidió actualizar sin `inventory.manage`).
+
+### Lo mismo en la orden de compra
+
+La línea de la orden de compra (alta y edición, `POST/PATCH /purchase-orders`, `unitCost` y `updateProductPrice`) funciona igual: el costo se precarga con el del producto elegido; el producto sin costo toma el escrito en la primera línea que lo trae; con otro costo guardado aparece el aviso «ⓘ El producto tiene guardado X; este precio es distinto.» y, con `inventory.manage`, la casilla «Actualizar el precio del producto con este». Si el costo se omite, la línea usa el del producto y nada cambia. Mismo 403 sin el permiso.

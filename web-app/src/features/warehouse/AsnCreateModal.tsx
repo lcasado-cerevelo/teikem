@@ -6,17 +6,14 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Fragment, useMemo } from 'react'
 import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
-import { useCan } from '../../kernel/access'
 import { useT } from '../../kernel/i18n'
 import { ClientPickerInput, DateInput, Field, Form, IconTrash, Modal, NumberInput, TextInput, toast } from '../../kernel/ui'
 import { useSaveAsn } from './api'
 import { decimalsOf } from './lineRules'
 import { ProductPickerInput, WarehousePickerInput } from './pickers'
+import { preloadCost, priceDiffers, ProductPriceNote } from './ProductPriceNote'
 
 const MAX_LINES = 200
-
-/** El precio escrito difiere del que guarda el producto (ambos con valor): mismo criterio del servidor (ProductPriceRules.Differs). */
-const differs = (entered: number | null, stored: number | null) => entered != null && entered > 0 && stored != null && stored > 0 && entered !== stored
 
 interface AsnLineForm {
   productPublicId: string | null
@@ -75,7 +72,6 @@ export function AsnCreateModal({ onClose }: { onClose: () => void }) {
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'lines' })
   const clientPublicId = useWatch({ control: form.control, name: 'clientPublicId' })
   const watched = useWatch({ control: form.control, name: 'lines' })
-  const canUpdatePrice = useCan('inventory.manage')
   const formId = 'asn-create'
 
   return (
@@ -107,7 +103,7 @@ export function AsnCreateModal({ onClose }: { onClose: () => void }) {
               clientPublicId: v.clientPublicId,
               reference: v.reference.trim() || null,
               expectedDate: v.expectedDate || null,
-              lines: v.lines.map((l) => ({ productPublicId: l.productPublicId, expectedQty: l.expectedQty, lotNumber: l.lotNumber.trim() || null, unitPrice: l.unitPrice, updateProductPrice: l.updatePrice && differs(l.unitPrice, l.storedCost) ? true : null })),
+              lines: v.lines.map((l) => ({ productPublicId: l.productPublicId, expectedQty: l.expectedQty, lotNumber: l.lotNumber.trim() || null, unitPrice: l.unitPrice, updateProductPrice: l.updatePrice && priceDiffers(l.unitPrice, l.storedCost) ? true : null })),
             },
           })
           toast.success(t('warehouse.asns.created'))
@@ -150,7 +146,7 @@ export function AsnCreateModal({ onClose }: { onClose: () => void }) {
                     // precarga el precio con el costo del producto (si no se escribió otro) y recuerda el guardado para avisar si difiere
                     form.setValue(`lines.${i}.storedCost`, p?.purchaseCost ?? null)
                     form.setValue(`lines.${i}.updatePrice`, false)
-                    if (p?.purchaseCost != null && p.purchaseCost > 0 && form.getValues(`lines.${i}.unitPrice`) == null) form.setValue(`lines.${i}.unitPrice`, p.purchaseCost)
+                    if (preloadCost(p?.purchaseCost) != null && form.getValues(`lines.${i}.unitPrice`) == null) form.setValue(`lines.${i}.unitPrice`, preloadCost(p?.purchaseCost))
                   }}
                   ownerClientPublicId={clientPublicId}
                   disabled={!clientPublicId}
@@ -177,18 +173,12 @@ export function AsnCreateModal({ onClose }: { onClose: () => void }) {
                 <IconTrash />
               </button>
             </div>
-            {differs(watched?.[i]?.unitPrice ?? null, watched?.[i]?.storedCost ?? null) && (
-              <p className="help" role="note">
-                <span aria-hidden="true">ⓘ </span>
-                {t('warehouse.asns.lines.priceDiffers', { stored: String(watched?.[i]?.storedCost ?? '') })}
-                {canUpdatePrice && (
-                  <label style={{ display: 'inline-flex', gap: 6, marginLeft: 10, alignItems: 'center' }}>
-                    <input type="checkbox" checked={watched?.[i]?.updatePrice ?? false} onChange={(e) => form.setValue(`lines.${i}.updatePrice`, e.target.checked)} />
-                    {t('warehouse.asns.lines.updateProductPrice')}
-                  </label>
-                )}
-              </p>
-            )}
+            <ProductPriceNote
+              entered={watched?.[i]?.unitPrice}
+              stored={watched?.[i]?.storedCost}
+              checked={watched?.[i]?.updatePrice ?? false}
+              onToggle={(v) => form.setValue(`lines.${i}.updatePrice`, v)}
+            />
             </Fragment>
           ))}
         </div>

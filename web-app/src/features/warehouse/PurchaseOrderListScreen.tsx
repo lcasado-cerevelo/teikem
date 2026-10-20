@@ -4,7 +4,7 @@
 // línea con cantidad > 0.
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
-import { useFieldArray, useForm } from 'react-hook-form'
+import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 import { Can } from '../../kernel/access'
@@ -29,6 +29,7 @@ import {
   type DateRange,
 } from '../../kernel/ui'
 import { exportPurchaseOrders, useCreatePurchaseOrder, usePurchaseOrders, useSuppliers, useWarehouses, warehouseLabel, type PurchaseOrderDto } from './api'
+import { preloadCost, priceDiffers, ProductPriceNote } from './ProductPriceNote'
 import { ProductPickerInput, ProductSearchSelect, WarehousePickerInput, type ProductFilterItem } from './pickers'
 import { IconCart } from '../../kernel/ui/screenIcons'
 import { formatDate as formatCompanyDate } from '../../kernel/format'
@@ -52,6 +53,10 @@ interface LineFormValues {
   productPublicId: string
   qtyOrdered: number | null
   unitCost: number | null
+  /** Costo que hoy tiene el producto (precarga y aviso de diferencia). */
+  storedCost: number | null
+  /** «Actualizar el precio del producto con este» (inventory.manage). */
+  updatePrice: boolean
 }
 
 function CreatePurchaseOrderModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -80,6 +85,8 @@ function CreatePurchaseOrderModal({ open, onClose }: { open: boolean; onClose: (
             if (v < 0) ctx.addIssue({ code: z.ZodIssueCode.custom, message: t('warehouse.purchaseOrders.errors.costNegative') })
             else if (decimals(v) > 4) ctx.addIssue({ code: z.ZodIssueCode.custom, message: t('warehouse.purchaseOrders.errors.costDecimals') })
           }),
+        storedCost: z.number().nullable(),
+        updatePrice: z.boolean(),
       }),
     [t],
   )
@@ -109,12 +116,13 @@ function CreatePurchaseOrderModal({ open, onClose }: { open: boolean; onClose: (
     [t, lineSchema],
   )
 
-  const emptyLine: LineFormValues = { productPublicId: '', qtyOrdered: null, unitCost: null }
+  const emptyLine: LineFormValues = { productPublicId: '', qtyOrdered: null, unitCost: null, storedCost: null, updatePrice: false }
   const form = useForm({
     resolver: zodResolver(schema),
     defaultValues: { supplierId: '', warehousePublicId: null as string | null, expectedDate: '', notes: '', lines: [emptyLine] },
   })
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'lines' })
+  const watched = useWatch({ control: form.control, name: 'lines' })
   const formId = 'purchase-order-create'
   const linesErrors = form.formState.errors.lines
   const linesError = linesErrors?.message ?? linesErrors?.root?.message
@@ -151,7 +159,7 @@ function CreatePurchaseOrderModal({ open, onClose }: { open: boolean; onClose: (
             warehousePublicId: v.warehousePublicId || null,
             expectedDate: v.expectedDate || null,
             notes: v.notes || null,
-            lines: v.lines.map((l) => ({ productPublicId: l.productPublicId, qtyOrdered: l.qtyOrdered, unitCost: l.unitCost })),
+            lines: v.lines.map((l) => ({ productPublicId: l.productPublicId, qtyOrdered: l.qtyOrdered, unitCost: l.unitCost, updateProductPrice: l.updatePrice && priceDiffers(l.unitCost, l.storedCost) ? true : null })),
           })
           toast.success(t('warehouse.purchaseOrders.created'))
           close()
@@ -185,7 +193,15 @@ function CreatePurchaseOrderModal({ open, onClose }: { open: boolean; onClose: (
           <div key={f.id} style={{ padding: 12, marginBottom: 10, border: '1px solid var(--line)', borderRadius: 9 }}>
             <div className="r3">
               <Field name={`lines.${i}.productPublicId`} label={t('warehouse.purchaseOrders.fields.product')} required>
-                <ProductPickerInput ownOnly />
+                <ProductPickerInput
+                  ownOnly
+                  onPicked={(p) => {
+                    // precarga el costo con el del producto (si no se escribió otro) y recuerda el guardado para avisar si difiere
+                    form.setValue(`lines.${i}.storedCost`, p?.purchaseCost ?? null)
+                    form.setValue(`lines.${i}.updatePrice`, false)
+                    if (preloadCost(p?.purchaseCost) != null && form.getValues(`lines.${i}.unitCost`) == null) form.setValue(`lines.${i}.unitCost`, preloadCost(p?.purchaseCost))
+                  }}
+                />
               </Field>
               <Field name={`lines.${i}.qtyOrdered`} label={t('warehouse.purchaseOrders.fields.qtyOrdered')} required>
                 <NumberInput step="0.001" />
@@ -194,6 +210,12 @@ function CreatePurchaseOrderModal({ open, onClose }: { open: boolean; onClose: (
                 <NumberInput step="0.0001" />
               </Field>
             </div>
+            <ProductPriceNote
+              entered={watched?.[i]?.unitCost}
+              stored={watched?.[i]?.storedCost}
+              checked={watched?.[i]?.updatePrice ?? false}
+              onToggle={(v) => form.setValue(`lines.${i}.updatePrice`, v)}
+            />
             {fields.length > 1 && (
               <button type="button" className="btn sm danger" onClick={() => remove(i)}>
                 {t('warehouse.purchaseOrders.fields.removeLine')}

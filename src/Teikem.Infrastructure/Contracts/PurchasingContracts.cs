@@ -15,7 +15,7 @@ public sealed record SupplierPatchRequest(string? Name = null, string? ContactNa
 public sealed record SupplierDto(int Id, string Name, string? ContactName, string? Phone, string? Email, string? PaymentTermCode, string? Notes,
     bool IsActive, string RowVersion);
 
-public sealed record PurchaseOrderLineRequest(Guid? ProductPublicId, decimal? QtyOrdered, decimal? UnitCost = null);
+public sealed record PurchaseOrderLineRequest(Guid? ProductPublicId, decimal? QtyOrdered, decimal? UnitCost = null, bool? UpdateProductPrice = null);
 
 public sealed record PurchaseOrderCreateRequest(int? SupplierId, Guid? WarehousePublicId = null, DateOnly? OrderDate = null,
     DateOnly? ExpectedDate = null, string? Currency = null, string? Notes = null, IReadOnlyList<PurchaseOrderLineRequest>? Lines = null);

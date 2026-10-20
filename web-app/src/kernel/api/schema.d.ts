@@ -36737,6 +36737,7 @@ export interface components {
             qtyOrdered?: number | null;
             /** Format: double */
             unitCost?: number | null;
+            updateProductPrice?: boolean | null;
         };
         PurchaseOrderPageDto: {
             /** Format: int32 */

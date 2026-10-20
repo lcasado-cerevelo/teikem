@@ -166,7 +166,7 @@ public class WmsContractsTests
         { typeof(SupplierRequest), "string? Name, string? ContactName, string? Phone, string? Email, string? PaymentTerm, string? Notes" },
         { typeof(SupplierPatchRequest), "string? Name, string? ContactName, string? Phone, string? Email, string? PaymentTerm, string? Notes, string? RowVersion" },
         { typeof(SupplierDto), "int Id, string Name, string? ContactName, string? Phone, string? Email, string? PaymentTermCode, string? Notes, bool IsActive, string RowVersion" },
-        { typeof(PurchaseOrderLineRequest), "Guid? ProductPublicId, decimal? QtyOrdered, decimal? UnitCost" },
+        { typeof(PurchaseOrderLineRequest), "Guid? ProductPublicId, decimal? QtyOrdered, decimal? UnitCost, bool? UpdateProductPrice" },
         { typeof(PurchaseOrderCreateRequest), "int? SupplierId, Guid? WarehousePublicId, DateOnly? OrderDate, DateOnly? ExpectedDate, string? Currency, string? Notes, IReadOnlyList<PurchaseOrderLineRequest>? Lines" },
         { typeof(PurchaseOrderPatchRequest), "DateOnly? ExpectedDate, string? Notes, IReadOnlyList<PurchaseOrderLineRequest>? Lines, string? RowVersion, int? SupplierId, Guid? WarehousePublicId" },
         { typeof(PurchaseOrderStatusRequest), "string? Comment, string? RowVersion" },

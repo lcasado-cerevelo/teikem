@@ -9,7 +9,7 @@
 // Pipeline: solo SENT y CANCELLED son manuales; PARTIAL/RECEIVED los pone la confirmación del recibo o la resolución.
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
-import { useFieldArray, useForm } from 'react-hook-form'
+import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { z } from 'zod'
 import { Can, useCan } from '../../kernel/access'
@@ -44,6 +44,7 @@ import {
 } from './api'
 import { decimalsOf } from './lineRules'
 import { ProductPickerInput, WarehousePickerInput } from './pickers'
+import { preloadCost, priceDiffers, ProductPriceNote } from './ProductPriceNote'
 import { isDraftPurchaseOrder, partyErrorField, purchaseOrderPartyChanges, supplierOptionsWithCurrent } from './purchaseOrderEdit'
 import { ResolveShortageModal } from './ResolveShortageModal'
 import { IconCart } from '../../kernel/ui/screenIcons'
@@ -71,6 +72,9 @@ interface LineFormValues {
   qtyReceived: number
   qtyOrdered: number | null
   unitCost: number | null
+  /** Solo líneas nuevas: costo del producto elegido y «actualizar el precio del producto con este». */
+  storedCost: number | null
+  updatePrice: boolean
 }
 
 function LinesTab({ po }: { po: PurchaseOrderDto }) {
@@ -109,6 +113,8 @@ function LinesTab({ po }: { po: PurchaseOrderDto }) {
             if (v < 0) ctx.addIssue({ code: z.ZodIssueCode.custom, message: t('warehouse.purchaseOrders.errors.costNegative') })
             else if (decimalsOf(v) > 4) ctx.addIssue({ code: z.ZodIssueCode.custom, message: t('warehouse.purchaseOrders.errors.costDecimals') })
           }),
+        storedCost: z.number().nullable(),
+        updatePrice: z.boolean(),
       }),
     [t],
   )
@@ -152,13 +158,16 @@ function LinesTab({ po }: { po: PurchaseOrderDto }) {
         qtyReceived: l.qtyReceived ?? 0,
         qtyOrdered: l.qtyOrdered ?? null,
         unitCost: l.unitCost ?? null,
+        storedCost: null,
+        updatePrice: false,
       })),
     },
   })
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'lines' })
+  const watched = useWatch({ control: form.control, name: 'lines' })
   const linesErrors = form.formState.errors.lines
   const linesError = linesErrors?.message ?? linesErrors?.root?.message
-  const emptyLine: LineFormValues = { productPublicId: '', sku: '', productName: '', qtyReceived: 0, qtyOrdered: null, unitCost: null }
+  const emptyLine: LineFormValues = { productPublicId: '', sku: '', productName: '', qtyReceived: 0, qtyOrdered: null, unitCost: null, storedCost: null, updatePrice: false }
 
   return (
     <Form
@@ -173,7 +182,7 @@ function LinesTab({ po }: { po: PurchaseOrderDto }) {
             body: {
               expectedDate: v.expectedDate || null,
               notes: v.notes,
-              lines: v.lines.map((l) => ({ productPublicId: l.productPublicId, qtyOrdered: l.qtyOrdered, unitCost: l.unitCost })),
+              lines: v.lines.map((l) => ({ productPublicId: l.productPublicId, qtyOrdered: l.qtyOrdered, unitCost: l.unitCost, updateProductPrice: l.updatePrice && priceDiffers(l.unitCost, l.storedCost) ? true : null })),
               rowVersion: po.rowVersion ?? null,
               ...parties,
             },
@@ -241,7 +250,14 @@ function LinesTab({ po }: { po: PurchaseOrderDto }) {
                   </div>
                 ) : (
                   <Field name={`lines.${i}.productPublicId`} label={t('warehouse.purchaseOrders.fields.product')} required>
-                    <ProductPickerInput ownOnly />
+                    <ProductPickerInput
+                      ownOnly
+                      onPicked={(p) => {
+                        form.setValue(`lines.${i}.storedCost`, p?.purchaseCost ?? null)
+                        form.setValue(`lines.${i}.updatePrice`, false)
+                        if (preloadCost(p?.purchaseCost) != null && form.getValues(`lines.${i}.unitCost`) == null) form.setValue(`lines.${i}.unitCost`, preloadCost(p?.purchaseCost))
+                      }}
+                    />
                   </Field>
                 )}
                 <Field name={`lines.${i}.qtyOrdered`} label={t('warehouse.purchaseOrders.fields.qtyOrdered')} required>
@@ -251,6 +267,12 @@ function LinesTab({ po }: { po: PurchaseOrderDto }) {
                   <NumberInput step="0.0001" disabled={locked} />
                 </Field>
               </div>
+              <ProductPriceNote
+                entered={watched?.[i]?.unitCost}
+                stored={watched?.[i]?.storedCost}
+                checked={watched?.[i]?.updatePrice ?? false}
+                onToggle={(v) => form.setValue(`lines.${i}.updatePrice`, v)}
+              />
               {locked ? (
                 <p className="note">{t('warehouse.purchaseOrders.lineHasReceipts')}</p>
               ) : (
