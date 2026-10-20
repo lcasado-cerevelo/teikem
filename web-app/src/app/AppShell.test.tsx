@@ -54,7 +54,7 @@ function Where() {
 }
 
 /** Shell con las rutas pendientes reales y una pantalla de prueba con un campo (para ver que nada se desmonta). */
-function renderShell(access: { permissions: string[]; modules: string[] } = { permissions: ['analytics.view'], modules: ['ANALYTICS'] }) {
+function renderShell(access: { permissions: string[]; modules: string[] } = { permissions: ['pulse.view', 'reports.view'], modules: ['ANALYTICS'] }) {
   return render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
     <SessionContext.Provider value={SESSION}>
@@ -188,7 +188,7 @@ describe('AppShell — cabecera', () => {
   })
 
   it('el menú muestra los grupos de la maqueta que el usuario puede ver', () => {
-    renderShell({ permissions: ['admin.roles', 'devices.manage'], modules: ['SYSTEM', 'WMS_LOTSERIAL'] })
+    renderShell({ permissions: ['pulse.view', 'users.view', 'devices.view'], modules: ['SYSTEM', 'WMS_LOTSERIAL'] })
     const menu = screen.getByRole('complementary', { name: 'Menú principal' })
     expect(within(menu).getByRole('link', { name: 'Pulso del día' })).toHaveAttribute('href', '/')   // 2026-10-20: el Pulso va solo, encima de los grupos
     expect(within(menu).queryByRole('button', { name: 'Transporte' })).toBeNull()

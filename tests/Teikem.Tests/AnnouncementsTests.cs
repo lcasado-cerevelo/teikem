@@ -66,7 +66,7 @@ public class AnnouncementsTests
     public void The_permission_is_admin_only_and_not_given_to_other_roles()
     {
         var p = Assert.Single(PermissionCatalog.All, x => x.Code == "notifications.send");
-        Assert.Equal("ADMIN", p.Category);
+        Assert.Equal("MENU", p.Category);   // Lote 152: acceso al menú
         Assert.Contains(PermissionCatalog.NotificationsSend, PermissionCatalog.RoleTemplates["TenantAdmin"]);
         foreach (var role in PermissionCatalog.RoleTemplates.Keys.Where(r => r != "TenantAdmin"))
             Assert.DoesNotContain(PermissionCatalog.NotificationsSend, PermissionCatalog.RoleTemplates[role]);

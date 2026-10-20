@@ -1196,3 +1196,6 @@ El **administrador de la plataforma** trabaja dentro de la compañía que tenga 
 |---|---|---|
 | `GET /api/v1/portal-users?kind=CLIENT\|CONSIGNEE&includeRemoved=false` | `portalusers.manage` + módulo CLIENT_PORTAL | La lista de la compañía (solo lectura). 400 «El tipo debe ser CLIENT o CONSIGNEE.»; una persona de portal responde 403. |
 | `POST /api/v1/clients/{publicId}/portal-users/{id}/suspend` · `reactivate` · `remove` · `resend-invite` | `portalusers.manage` | Las acciones de siempre, con el cliente de la fila. |
+
+## Acceso al menú (Lote 152, 2026-10-20)
+En Roles y usuarios, los permisos empiezan con la categoría **«Acceso al menú»**: uno por opción del menú, en el orden del menú. Dar solo el permiso de acceso deja **entrar a la pantalla y verla**, sin crear ni editar nada; para actuar hace falta además el permiso de la acción (por ejemplo, `warehouse.pick` para recolectar). Quien tiene un permiso de acción entra solo a su pantalla sin que se lo den aparte, y entrar a una pantalla incluye leer los datos que muestra. Pulso del día también tiene su permiso (`pulse.view`). Al actualizar, cada rol conservó las pantallas que ya veía.

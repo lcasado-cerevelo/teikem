@@ -63,9 +63,9 @@ describe('menú completo (routes.tsx)', () => {
       'Cruce de plataforma',
       'Rentas',
       'Kárdex de movimientos',
-      'Ventas',
       'Compras',
       'Contabilización de compras',
+      'Ventas',
       'Contabilización de despachos',
       'Facturación',
       'Procesar entregas',
@@ -109,13 +109,13 @@ describe('menú completo (routes.tsx)', () => {
 
   it('los ítems sin pantalla usan la pantalla pendiente; los que ya existen no', () => {
     expect(byPath('/analytics/reports').pending).toBeUndefined() // Lote F-F2
-    expect(byPath('/analytics/reports')).toMatchObject({ perm: 'analytics.view', module: 'ANALYTICS', nav: { group: 'analytics', key: 'reports', order: 10 } })
+    expect(byPath('/analytics/reports')).toMatchObject({ perm: 'reports.view', module: 'ANALYTICS', nav: { group: 'analytics', key: 'reports', order: 10 } })
     expect(byPath('/analytics/custom-fields').pending).toBeUndefined() // Lote F-F1
-    expect(byPath('/analytics/custom-fields')).toMatchObject({ perm: 'admin.customfields', module: 'CUSTOM_FIELDS', nav: { group: 'analytics', key: 'customFields', order: 20 } })
+    expect(byPath('/analytics/custom-fields')).toMatchObject({ perm: 'customfields.view', module: 'CUSTOM_FIELDS', nav: { group: 'analytics', key: 'customFields', order: 20 } })
     expect(byPath('/ops/monitor').pending).toBeUndefined() // Lote F-E3
     expect(byPath('/ops/monitor')).toMatchObject({ perm: 'trips.view', module: 'LTL_GROUND', nav: { group: 'ops', key: 'monitor', order: 40 } })
     expect(byPath('/ops/dispatch').pending).toBeUndefined() // Lote F-E2a
-    expect(byPath('/ops/dispatch')).toMatchObject({ perm: 'trips.dispatch', module: 'LTL_GROUND', nav: { group: 'ops', key: 'dispatch', order: 30 } })
+    expect(byPath('/ops/dispatch')).toMatchObject({ perm: 'dispatch.view', module: 'LTL_GROUND', nav: { group: 'ops', key: 'dispatch', order: 30 } })
     expect(byPath('/ops/scan').pending).toBeUndefined() // Lote F-E1
     expect(byPath('/ops/scan')).toMatchObject({ perm: 'trips.scan', module: 'LTL_GROUND', nav: { group: 'ops', key: 'scan', order: 20 } })
     expect(byPath('/catalog/fleet').pending).toBeUndefined()
@@ -130,13 +130,13 @@ describe('menú completo (routes.tsx)', () => {
     expect(byPath('/warehouse/receipts').pending).toBeUndefined()
     expect(byPath('/system/users').pending).toBeUndefined()
     expect(byPath('/system/printers').pending).toBeUndefined() // Lote F-G1
-    expect(byPath('/system/printers')).toMatchObject({ perm: 'printers.manage', module: 'SYSTEM', nav: { group: 'system', key: 'printers', order: 10 } })
+    expect(byPath('/system/printers')).toMatchObject({ perm: 'printers.view', module: 'SYSTEM', nav: { group: 'system', key: 'printers', order: 10 } })
     expect(byPath('/').pending).toBeUndefined()
   })
 
   it("Lote 14 (D1): 'Transferencias y ajustes' va justo después de Recolección y empaque (Recibo 60 → Recolección 70 → Transferencias y ajustes 80 → Conteo 90); la vieja 'Ajustes de inventario' salió del menú y redirige a Compras", () => {
     const ta = byPath('/warehouse/transfers-adjustments')
-    expect(ta).toMatchObject({ perm: 'inventory.view', module: 'WMS_LOTSERIAL', nav: { group: 'warehouse', key: 'transfersAdjustments', order: 80 } })
+    expect(ta).toMatchObject({ perm: 'adjustments.view', module: 'WMS_LOTSERIAL', nav: { group: 'warehouse', key: 'transfersAdjustments', order: 80 } })
     expect(ta.pending).toBeUndefined()
     expect(byPath('/warehouse/receipts').nav).toMatchObject({ order: 60 })
     expect(byPath('/warehouse/pick-batches').nav).toMatchObject({ key: 'pickBatches', order: 70 })
@@ -144,7 +144,7 @@ describe('menú completo (routes.tsx)', () => {
     const warehouse = visibleNav(appRoutes, ALL_PERMS, ALL_MODULES).find((g) => g.key === 'warehouse')!.items.map((r) => r.path)
     expect(warehouse.indexOf('/warehouse/pick-batches')).toBe(warehouse.indexOf('/warehouse/receipts') + 1)
     expect(warehouse.indexOf('/warehouse/transfers-adjustments')).toBe(warehouse.indexOf('/warehouse/pick-batches') + 1)
-    expect(routeAllowed(ta, new Set(['inventory.view']), new Set(['WMS_LOTSERIAL']))).toBe(true)
+    expect(routeAllowed(ta, new Set(['adjustments.view']), new Set(['WMS_LOTSERIAL']))).toBe(true)
     expect(routeAllowed(ta, new Set(['purchasing.view']), new Set(['PURCHASING']))).toBe(false)
     expect(translate('en', navTitleKey('transfersAdjustments'))).toBe('Transfers & adjustments')
     // la dirección vieja existe (enlaces guardados), sin ítem, guarda ni módulo propios: redirige a Compras
@@ -172,7 +172,7 @@ describe('menú completo (routes.tsx)', () => {
     ])
     expect(translate('en', navTitleKey('products'))).toBe('Products & inventory')
     expect(translate('en', navTitleKey('kardex'))).toBe('Movement ledger')
-    expect(byPath('/warehouse/kardex')).toMatchObject({ perm: 'inventory.view', module: 'WMS_LOTSERIAL' })
+    expect(byPath('/warehouse/kardex')).toMatchObject({ perm: 'kardex.view', module: 'WMS_LOTSERIAL' })
     expect(byPath('/warehouse/kardex').pending).toBeUndefined()
     // la dirección anterior sigue existiendo (enlaces guardados), sin ítem, guarda ni módulo propios: redirige
     expect(byPath('/warehouse/inventory')).toMatchObject({ path: '/warehouse/inventory' })
@@ -236,7 +236,7 @@ describe('menú completo (routes.tsx)', () => {
     expect(old.nav).toBeUndefined()
     expect(old.perm).toBeUndefined()
     expect(old.module).toBeUndefined()
-    expect(byPath('/warehouse/cycle-counts')).toMatchObject({ perm: 'inventory.view', module: 'WMS_LOTSERIAL', nav: { key: 'cycleCounts', order: 90 } })
+    expect(byPath('/warehouse/cycle-counts')).toMatchObject({ perm: 'counts.view', module: 'WMS_LOTSERIAL', nav: { key: 'cycleCounts', order: 90 } })
   })
 
   it('la ficha vieja del recibo es una redirección sin ítem, guarda ni módulo propios (la guarda es la de la lista)', () => {
@@ -258,7 +258,7 @@ describe('menú completo (routes.tsx)', () => {
   })
 
   it('un grupo cuyos ítems no se pueden ver no se pinta (usuario solo de almacén)', () => {
-    const groups = visibleNav(appRoutes, new Set(['inventory.view', 'warehouse.receive']), new Set(['WMS_LOTSERIAL', 'SYSTEM', 'ANALYTICS']))
+    const groups = visibleNav(appRoutes, new Set(['warehouses.view', 'bins.view', 'products.view', 'notices.view', 'receipts.view', 'pickbatches.view', 'adjustments.view', 'counts.view', 'kardex.view', 'warehouse.receive']), new Set(['WMS_LOTSERIAL', 'SYSTEM', 'ANALYTICS']))
     expect(paths(groups)).toEqual([
       [
         'warehouse',
@@ -288,15 +288,15 @@ describe("perm 'a|b' (cualquiera de los dos)", () => {
     expect(permAllowed('admin.users|admin.audit', perms)).toBe(false)
   })
 
-  it('Roles y usuarios aparece con admin.users o con admin.roles (y el módulo SYSTEM)', () => {
+  it('Roles y usuarios aparece con users.view (Lote 152; quien administra usuarios o roles lo tiene implícito) y el módulo SYSTEM', () => {
     const users = byPath('/system/users')
-    expect(users.perm).toBe('admin.users|admin.roles')
+    expect(users.perm).toBe('users.view')
     const sys = new Set(['SYSTEM'])
-    expect(routeAllowed(users, new Set(['admin.users']), sys)).toBe(true)
-    expect(routeAllowed(users, new Set(['admin.roles']), sys)).toBe(true)
+    expect(routeAllowed(users, new Set(['users.view']), sys)).toBe(true)
+    expect(routeAllowed(users, new Set(['admin.roles']), sys)).toBe(false)   // el implícito lo agrega el servidor en los permisos efectivos
     expect(routeAllowed(users, new Set(['admin.audit']), sys)).toBe(false)
-    expect(routeAllowed(users, new Set(['admin.users']), new Set())).toBe(false)
-    expect(paths(visibleNav(appRoutes, new Set(['admin.roles']), sys))).toEqual([
+    expect(routeAllowed(users, new Set(['users.view']), new Set())).toBe(false)
+    expect(paths(visibleNav(appRoutes, new Set(['users.view']), sys))).toEqual([
       ['system', ['/system/users']],
     ])
   })

@@ -210,7 +210,7 @@ public static class PermissionCatalog
     /// <summary>Lote 143 (2026-10-20): crear, modificar y cancelar avisos de salida y atender su pendiente (ver usa inventory.view y despachar warehouse.pick).</summary>
     public const string ExitNoticeCreate = "exitnotice.create";
 
-    public static readonly IReadOnlyList<PermissionDef> All = new List<PermissionDef>
+    private static readonly IReadOnlyList<PermissionDef> AllByResource = new List<PermissionDef>
     {
         new(OrdersView, "ORDERS", "Ver órdenes", "View orders"),
         new(OrdersCreate, "ORDERS", "Crear órdenes", "Create orders"),
@@ -337,6 +337,14 @@ public static class PermissionCatalog
     };
 
     /// <summary>
+    /// El catálogo en orden de aparición (la pantalla de roles agrupa por categoría en este orden): primero «Acceso al menú» (<see cref="MenuPermissions.Items"/>, 44 permisos en el orden del menú) y
+    /// después los demás por recurso. Los 16 permisos de acceso que ya existían se mueven a la categoría MENU (conservan su código).
+    /// </summary>
+    public static readonly IReadOnlyList<PermissionDef> All = MenuPermissions.Items
+        .Concat(AllByResource.Where(p => !MenuPermissions.Items.Any(m => string.Equals(m.Code, p.Code, StringComparison.OrdinalIgnoreCase))))
+        .ToList();
+
+    /// <summary>
     /// Permisos implícitos (Lote 8A): tener la llave de la izquierda da también las de la derecha en los permisos efectivos
     /// (PermissionService). warehouse.count (contar en modo informado y reconciliar) incluye capturar a ciegas, para que los
     /// roles propios que ya cuentan con warehouse.count no pierdan la captura al separarse el permiso.
@@ -350,9 +358,17 @@ public static class PermissionCatalog
     /// <summary>Agrega al conjunto los permisos implícitos de los que ya contiene (lógica pura, probada con xunit).</summary>
     public static void ExpandImplied(ISet<string> codes)
     {
-        foreach (var (code, implied) in Implied)
-            if (codes.Contains(code))
-                foreach (var i in implied) codes.Add(i);
+        // hasta que no se agregue nada: editar ⇒ ver (acceso al menú) ⇒ leer los datos (Lote 152)
+        bool grew;
+        do
+        {
+            grew = false;
+            foreach (var rules in new[] { Implied, MenuPermissions.EditImplies, MenuPermissions.ViewImplies })
+                foreach (var (code, implied) in rules)
+                    if (codes.Contains(code))
+                        foreach (var i in implied)
+                            grew |= codes.Add(i);
+        } while (grew);
     }
 
     /// <summary>
@@ -501,7 +517,17 @@ public static class PermissionCatalog
     /// <summary>Plantillas de rol de sistema (TenantId NULL) y sus permisos por defecto — clonables al aprovisionar.</summary>
     /// <summary>Lote 53: a cada plantilla se le suma <see cref="MessagesUse"/> (todos los roles se pueden escribir).</summary>
     private static IReadOnlyDictionary<string, string[]> WithMessaging(Dictionary<string, string[]> templates)
-        => templates.ToDictionary(kv => kv.Key, kv => kv.Value.Contains(MessagesUse) ? kv.Value : kv.Value.Append(MessagesUse).ToArray());
+        => templates.ToDictionary(kv => kv.Key, kv => WithMenuAccess(kv.Value.Contains(MessagesUse) ? kv.Value : kv.Value.Append(MessagesUse).ToArray()));
+
+    /// <summary>Lote 152: a cada plantilla se le suman los permisos de acceso al menú que reemplazan a los que ya tenía (<see cref="MenuPermissions.Grants"/>) y pulse.view (todos los roles).</summary>
+    private static string[] WithMenuAccess(string[] codes)
+    {
+        var set = new HashSet<string>(codes, StringComparer.OrdinalIgnoreCase) { MenuPermissions.PulseView };
+        foreach (var (old, news) in MenuPermissions.Grants)
+            if (codes.Contains(old, StringComparer.OrdinalIgnoreCase))
+                foreach (var n in news) set.Add(n);
+        return set.ToArray();
+    }
 
     public static readonly IReadOnlyDictionary<string, string[]> RoleTemplates = WithMessaging(new Dictionary<string, string[]>
     {

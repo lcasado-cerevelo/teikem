@@ -1,9 +1,10 @@
 // Ícono del grupo del menú por categoría de permiso (`PermissionCategory`), para agrupar casillas en el editor de rol
 // y en "Permisos de {name}". Reusa los íconos del shell (`app/icons.tsx`); no inventa unos nuevos.
 import type { ComponentType } from 'react'
-import { IconBox, IconCash, IconChart, IconGear, IconLayers, IconUsers } from '../../app/icons'
+import { IconBox, IconCash, IconChart, IconGear, IconLayers, IconMenu, IconUsers } from '../../app/icons'
 
 const CATEGORY_ICON: Record<string, ComponentType> = {
+  MENU: IconMenu,
   ORDERS: IconBox,
   TRIPS: IconBox,
   WAREHOUSE: IconLayers,

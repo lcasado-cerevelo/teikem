@@ -88,13 +88,13 @@ public class TripCatalogTests
     [Fact]
     public void Permission_catalog_has_69_codes_with_trips_view_and_scan()
     {
-        Assert.Equal(110, PermissionCatalog.All.Count);   // Lote 143 (2026-10-20): + exitnotice.create; Lote 118: + orders.deliver; Lote 112: + orders.return; Lote 111: + claims.view, claims.manage; Lote 106: + orders.reopen;   // Lote 104: + clientmessages.reply, clientmessages.manage;   // Lote 14: + pulse.attention; Lote 27: + rental.extend, rental.return; 2026-10-11: + warehouse.issue; 2026-10-12: + orders.view_price; 2026-10-12 (Lote 43): + printers.manage; 2026-10-12: + inventory.adjust.multi; 2026-10-16 (Lote 72): + billing.view
-        Assert.Equal(110, PermissionCatalog.All.Select(p => p.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        Assert.Equal(138, PermissionCatalog.All.Count);   // Lote 143 (2026-10-20): + exitnotice.create; Lote 118: + orders.deliver; Lote 112: + orders.return; Lote 111: + claims.view, claims.manage; Lote 106: + orders.reopen;   // Lote 104: + clientmessages.reply, clientmessages.manage;   // Lote 14: + pulse.attention; Lote 27: + rental.extend, rental.return; 2026-10-11: + warehouse.issue; 2026-10-12: + orders.view_price; 2026-10-12 (Lote 43): + printers.manage; 2026-10-12: + inventory.adjust.multi; 2026-10-16 (Lote 72): + billing.view
+        Assert.Equal(138, PermissionCatalog.All.Select(p => p.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count());
 
         var view = Assert.Single(PermissionCatalog.All, p => p.Code == "trips.view");
-        Assert.Equal(("TRIPS", "Ver rutas y despacho", "View trips & dispatch"), (view.Category, view.LabelEs, view.LabelEn));
+        Assert.Equal(("MENU", "Monitoreo de ruta: entrar y ver", "Route monitor: open and view"), (view.Category, view.LabelEs, view.LabelEn));
         var scan = Assert.Single(PermissionCatalog.All, p => p.Code == "trips.scan");
-        Assert.Equal(("TRIPS", "Escanear salida (Outbound)", "Scan outbound"), (scan.Category, scan.LabelEs, scan.LabelEn));
+        Assert.Equal(("MENU", "Estación de escaneo: entrar y ver", "Scan station: open and view"), (scan.Category, scan.LabelEs, scan.LabelEn));
         Assert.Equal("trips.view", PermissionCatalog.TripsView);
         Assert.Equal("trips.scan", PermissionCatalog.TripsScan);
 

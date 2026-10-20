@@ -15,7 +15,7 @@ const ME = {
   tenantName: 'Demo Logística',
   lang: 'es',
   memberships: [{ tenantId: 1, tenantName: 'Demo Logística', status: 'ACTIVE', isDefault: true }],
-  permissions: ['analytics.view'],
+  permissions: ['analytics.view', 'pulse.view'],
   enabledModules: ['ANALYTICS'],
   mfaEnabled: false,
 }

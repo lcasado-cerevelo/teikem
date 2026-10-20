@@ -5369,3 +5369,118 @@ GO
 IF OBJECT_ID('dbo.CK_Tenant_ReceiptRequirement', 'C') IS NULL
     ALTER TABLE dbo.Tenant ADD CONSTRAINT CK_Tenant_ReceiptRequirement CHECK (ReceiptRequirement IN ('FREE', 'ANY_DOCUMENT', 'ASN', 'PURCHASE_ORDER'));
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-10-20 — Permiso de ACCESO por item del menu (Lote 152).
+   - Categoria nueva MENU («Acceso al menu», orden 0) con los 44 permisos de entrada, en el orden del menu: los 16 que ya existian y servian (orders.view, trips.scan, trips.view, claims.view, rental.view,
+     sales.view, purchasing.view, billing.view, cod.view, driverpay.view, clients.read, locations.read, fleet.view, integrations.view, notifications.send, admin.audit) se MUEVEN a esa categoria con su codigo
+     y su etiqueta nueva, y se crean 28 (pulse.view, dispatch.view, warehouses.view, bins.view, products.view, suppliers.view, notices.view, receipts.view, pickbatches.view, adjustments.view, counts.view,
+     crossdock.view, kardex.view, purchaseaccounting.view, dispatchaccounting.view, tax.view, drivers.view, reports.view, customfields.view, indicators.view, charts.view, printers.view, users.view,
+     devices.view, catalogs.view, notifications.view, jobs.view, settings.view).
+   - Nadie pierde un item: cada rol (plantillas y ya clonados) que tenia el permiso que antes daba la entrada recibe los nuevos que lo reemplazan; pulse.view lo reciben todos los roles. Solo AGREGA a los roles.
+   Idempotente.
+   ---------------------------------------------------------------------------- */
+IF NOT EXISTS (SELECT 1 FROM dbo.LookupCode WHERE Entity = N'PermissionCategory' AND InternalCode = N'MENU')
+    INSERT INTO dbo.LookupCode (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'PermissionCategory', N'MENU', N'{"es":"Acceso al menú","en":"Menu access"}', 0, 1, 1);
+GO
+MERGE dbo.Permission AS t
+USING (VALUES
+    ('pulse.view', N'{"es":"Pulso del día: entrar y ver","en":"Day pulse: open and view"}'),
+    ('orders.view', N'{"es":"Envíos: entrar y ver","en":"Shipments: open and view"}'),
+    ('trips.scan', N'{"es":"Estación de escaneo: entrar y ver","en":"Scan station: open and view"}'),
+    ('dispatch.view', N'{"es":"Sala de despacho: entrar y ver","en":"Dispatch room: open and view"}'),
+    ('trips.view', N'{"es":"Monitoreo de ruta: entrar y ver","en":"Route monitor: open and view"}'),
+    ('claims.view', N'{"es":"Reclamaciones: entrar y ver","en":"Claims: open and view"}'),
+    ('warehouses.view', N'{"es":"Almacenes: entrar y ver","en":"Warehouses: open and view"}'),
+    ('bins.view', N'{"es":"Posiciones: entrar y ver","en":"Bins: open and view"}'),
+    ('products.view', N'{"es":"Productos e inventario: entrar y ver","en":"Products & inventory: open and view"}'),
+    ('suppliers.view', N'{"es":"Proveedores: entrar y ver","en":"Suppliers: open and view"}'),
+    ('notices.view', N'{"es":"Llegadas y salidas: entrar y ver","en":"Arrivals & departures: open and view"}'),
+    ('receipts.view', N'{"es":"Recibo: entrar y ver","en":"Receiving: open and view"}'),
+    ('pickbatches.view', N'{"es":"Recolección y empaque: entrar y ver","en":"Picking & packing: open and view"}'),
+    ('adjustments.view', N'{"es":"Transferencias y ajustes: entrar y ver","en":"Transfers & adjustments: open and view"}'),
+    ('counts.view', N'{"es":"Conteo cíclico: entrar y ver","en":"Cycle count: open and view"}'),
+    ('crossdock.view', N'{"es":"Cruce de plataforma: entrar y ver","en":"Cross-dock: open and view"}'),
+    ('rental.view', N'{"es":"Rentas: entrar y ver","en":"Rentals: open and view"}'),
+    ('kardex.view', N'{"es":"Kárdex de movimientos: entrar y ver","en":"Movement ledger: open and view"}'),
+    ('purchasing.view', N'{"es":"Compras: entrar y ver","en":"Purchases: open and view"}'),
+    ('purchaseaccounting.view', N'{"es":"Contabilización de compras: entrar y ver","en":"Purchase accounting: open and view"}'),
+    ('sales.view', N'{"es":"Ventas: entrar y ver","en":"Sales: open and view"}'),
+    ('dispatchaccounting.view', N'{"es":"Contabilización de despachos: entrar y ver","en":"Dispatch accounting: open and view"}'),
+    ('billing.view', N'{"es":"Facturación: entrar y ver","en":"Billing: open and view"}'),
+    ('cod.view', N'{"es":"Procesar entregas: entrar y ver","en":"Process deliveries: open and view"}'),
+    ('driverpay.view', N'{"es":"Liquidación a choferes: entrar y ver","en":"Driver settlement: open and view"}'),
+    ('tax.view', N'{"es":"Impuestos: entrar y ver","en":"Taxes: open and view"}'),
+    ('clients.read', N'{"es":"Clientes y contratos: entrar y ver","en":"Clients & contracts: open and view"}'),
+    ('locations.read', N'{"es":"Consignatarios: entrar y ver","en":"Consignees: open and view"}'),
+    ('drivers.view', N'{"es":"Choferes y tarifas: entrar y ver","en":"Drivers & rates: open and view"}'),
+    ('fleet.view', N'{"es":"Flota y mantenimiento: entrar y ver","en":"Fleet & maintenance: open and view"}'),
+    ('reports.view', N'{"es":"Vistas e informes: entrar y ver","en":"Views & reports: open and view"}'),
+    ('customfields.view', N'{"es":"Campos personalizados: entrar y ver","en":"Custom fields: open and view"}'),
+    ('indicators.view', N'{"es":"Indicadores: entrar y ver","en":"Indicators: open and view"}'),
+    ('charts.view', N'{"es":"Gráficos: entrar y ver","en":"Charts: open and view"}'),
+    ('printers.view', N'{"es":"Impresoras y labels: entrar y ver","en":"Printers & labels: open and view"}'),
+    ('users.view', N'{"es":"Roles y usuarios: entrar y ver","en":"Roles & users: open and view"}'),
+    ('devices.view', N'{"es":"Aparatos móviles: entrar y ver","en":"Mobile devices: open and view"}'),
+    ('catalogs.view', N'{"es":"Listas de valores: entrar y ver","en":"Value lists: open and view"}'),
+    ('integrations.view', N'{"es":"Integraciones / API: entrar y ver","en":"Integrations / API: open and view"}'),
+    ('notifications.view', N'{"es":"Reglas de aviso: entrar y ver","en":"Notification rules: open and view"}'),
+    ('notifications.send', N'{"es":"Enviar avisos: entrar y ver","en":"Send notices: open and view"}'),
+    ('jobs.view', N'{"es":"Trabajos programados: entrar y ver","en":"Scheduled jobs: open and view"}'),
+    ('admin.audit', N'{"es":"Seguridad y auditoría: entrar y ver","en":"Security & audit: open and view"}'),
+    ('settings.view', N'{"es":"Ajustes de la compañía: entrar y ver","en":"Tenant settings: open and view"}')
+) AS s (Code, LabelJson)
+ON t.Code = s.Code
+WHEN MATCHED THEN
+    UPDATE SET LabelJson = s.LabelJson,
+               CategoryLookupId = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'MENU')
+WHEN NOT MATCHED THEN
+    INSERT (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES (s.Code, (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'MENU'), s.LabelJson, 1);
+GO
+-- el permiso que antes daba la entrada => los de acceso que lo reemplazan (a todos los roles, plantillas y clonados)
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT DISTINCT rp.RoleId, pn.PermissionId
+FROM (VALUES
+    ('inventory.view', 'warehouses.view'),
+    ('inventory.view', 'bins.view'),
+    ('inventory.view', 'products.view'),
+    ('inventory.view', 'notices.view'),
+    ('inventory.view', 'receipts.view'),
+    ('inventory.view', 'pickbatches.view'),
+    ('inventory.view', 'adjustments.view'),
+    ('inventory.view', 'counts.view'),
+    ('inventory.view', 'crossdock.view'),
+    ('inventory.view', 'kardex.view'),
+    ('purchasing.view', 'suppliers.view'),
+    ('purchasing.view', 'purchaseaccounting.view'),
+    ('trips.dispatch', 'dispatch.view'),
+    ('billing.export', 'dispatchaccounting.view'),
+    ('tax.manage', 'tax.view'),
+    ('fleet.view', 'drivers.view'),
+    ('analytics.view', 'reports.view'),
+    ('analytics.view', 'indicators.view'),
+    ('analytics.view', 'charts.view'),
+    ('admin.customfields', 'customfields.view'),
+    ('printers.manage', 'printers.view'),
+    ('admin.users', 'users.view'),
+    ('admin.roles', 'users.view'),
+    ('devices.manage', 'devices.view'),
+    ('admin.catalogs', 'catalogs.view'),
+    ('notifications.manage', 'notifications.view'),
+    ('jobs.manage', 'jobs.view'),
+    ('admin.tenant', 'settings.view')
+) AS g (OldCode, NewCode)
+JOIN dbo.Permission po ON po.Code = g.OldCode
+JOIN dbo.Permission pn ON pn.Code = g.NewCode
+JOIN dbo.RolePermission rp ON rp.PermissionId = po.PermissionId
+WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = rp.RoleId AND x.PermissionId = pn.PermissionId);
+GO
+-- pulse.view: todos los roles
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT r.RoleId, p.PermissionId
+FROM dbo.Role r
+JOIN dbo.Permission p ON p.Code = 'pulse.view'
+WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = p.PermissionId);
+GO

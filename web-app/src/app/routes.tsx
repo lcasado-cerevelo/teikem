@@ -131,7 +131,7 @@ export const publicRoutes: readonly AppRoute[] = [
 /** Pantallas internas (dentro del shell, con sesión). */
 export const appRoutes: readonly AppRoute[] = [
   // ===== Operación =====
-  { path: '/', element: lazy(() => import('../features/analytics/Pulse')), nav: { group: 'ops', key: 'pulse', order: 0, top: true } },
+  { path: '/', perm: 'pulse.view', element: lazy(() => import('../features/analytics/Pulse')), nav: { group: 'ops', key: 'pulse', order: 0, top: true } },
   { path: '/messages', element: lazy(() => import('../features/messages/MessagesScreen')), perm: 'messages.use', module: ModuleKeys.System },   // Lote 53 (sin ítem de menú: va en la cabecera y en Kemi)
   { path: '/account', element: lazy(() => import('../features/account/AccountPage')) },
 
@@ -144,7 +144,6 @@ export const appRoutes: readonly AppRoute[] = [
     nav: { group: 'ops', key: 'orders', order: 10 },
   },
   // Lote 60 (P4, S1): órdenes de venta y backorders
-  { path: '/sales-orders', element: lazy(() => import('../features/sales/SalesOrdersScreen')), perm: 'sales.view', module: ModuleKeys.SalesOrders, nav: { group: 'money', key: 'salesOrders', order: 10 } },
   {
     path: '/orders/:publicId',
     element: lazy(() => import('../features/orders/OrderDetailScreen')),
@@ -164,7 +163,7 @@ export const appRoutes: readonly AppRoute[] = [
   {
     path: '/ops/dispatch',
     element: lazy(() => import('../features/dispatch/DispatchScreen')),
-    perm: 'trips.dispatch',
+    perm: 'dispatch.view',
     module: ModuleKeys.LtlGround,
     nav: { group: 'ops', key: 'dispatch', order: 30 },
   },
@@ -194,21 +193,21 @@ export const appRoutes: readonly AppRoute[] = [
   {
     path: '/warehouse/warehouses',
     element: lazy(() => import('../features/warehouse/WarehouseListScreen')),
-    perm: 'inventory.view',
+    perm: 'warehouses.view',
     module: ModuleKeys.WmsLotSerial,
     nav: { group: 'warehouse', key: 'warehouses', order: 10 },
   },
   {
     path: '/warehouse/warehouses/:publicId',
     element: lazy(() => import('../features/warehouse/WarehouseDetailScreen')),
-    perm: 'inventory.view',
+    perm: 'warehouses.view',
     module: ModuleKeys.WmsLotSerial,
   },
   {
     // Ubicaciones (maqueta ubicaciones()): ocupación por zona y posiciones de un almacén; mismo acceso que Almacenes.
     path: '/warehouse/locations',
     element: lazy(() => import('../features/warehouse/LocationsScreen')),
-    perm: 'inventory.view',
+    perm: 'bins.view',
     module: ModuleKeys.WmsLotSerial,
     nav: { group: 'warehouse', key: 'locations', order: 20 },
   },
@@ -217,21 +216,21 @@ export const appRoutes: readonly AppRoute[] = [
     // pestaña Categorías (?tab=categories). Alta y edición en ProductEditorModal.
     path: '/warehouse/products',
     element: lazy(() => import('../features/warehouse/ProductListScreen')),
-    perm: 'inventory.view',
+    perm: 'products.view',
     module: ModuleKeys.WmsLotSerial,
     nav: { group: 'warehouse', key: 'products', order: 30 },
   },
   {
     path: '/warehouse/products/:publicId',
     element: lazy(() => import('../features/warehouse/ProductDetailScreen')),
-    perm: 'inventory.view',
+    perm: 'products.view',
     module: ModuleKeys.WmsLotSerial,
   },
   // Proveedores no está en la maqueta: va antes de Compras (Lote 2).
   {
     path: '/warehouse/suppliers',
     element: lazy(() => import('../features/warehouse/SupplierListScreen')),
-    perm: 'purchasing.view',
+    perm: 'suppliers.view',
     module: ModuleKeys.Purchasing,
     nav: { group: 'warehouse', key: 'suppliers', order: 40 },
   },
@@ -241,7 +240,7 @@ export const appRoutes: readonly AppRoute[] = [
     element: lazy(() => import('../features/warehouse/PurchaseOrderListScreen')),
     perm: 'purchasing.view',
     module: ModuleKeys.Purchasing,
-    nav: { group: 'money', key: 'purchaseOrders', order: 20 },
+    nav: { group: 'money', key: 'purchaseOrders', order: 10 },
   },
   {
     path: '/warehouse/purchase-orders/:publicId',
@@ -253,7 +252,7 @@ export const appRoutes: readonly AppRoute[] = [
   {
     path: '/warehouse/notices',
     element: lazy(() => import('../features/warehouse/NoticesScreen')),
-    perm: 'inventory.view',
+    perm: 'notices.view',
     module: ModuleKeys.WmsLotSerial,
     nav: { group: 'warehouse', key: 'notices', order: 50 },
   },
@@ -261,7 +260,7 @@ export const appRoutes: readonly AppRoute[] = [
   {
     path: '/warehouse/receipts',
     element: lazy(() => import('../features/warehouse/ReceiptListScreen')),
-    perm: 'inventory.view',
+    perm: 'receipts.view',
     module: ModuleKeys.WmsLotSerial,
     nav: { group: 'warehouse', key: 'receipts', order: 60 },
   },
@@ -272,14 +271,14 @@ export const appRoutes: readonly AppRoute[] = [
   {
     path: '/warehouse/pick-batches',
     element: lazy(() => import('../features/warehouse/PickBatchListScreen')),
-    perm: 'inventory.view',
+    perm: 'pickbatches.view',
     module: ModuleKeys.WmsLotSerial,
     nav: { group: 'warehouse', key: 'pickBatches', order: 70 },
   },
   {
     path: '/warehouse/pick-batches/:publicId',
     element: lazy(() => import('../features/warehouse/PickBatchDetailScreen')),
-    perm: 'inventory.view',
+    perm: 'pickbatches.view',
     module: ModuleKeys.WmsLotSerial,
   },
   // Lote 14 (D1): 'Transferencias y ajustes' ocupa el lugar de la vieja 'Ajustes de inventario' (faltantes de compra), justo
@@ -288,7 +287,7 @@ export const appRoutes: readonly AppRoute[] = [
   {
     path: '/warehouse/transfers-adjustments',
     element: lazy(() => import('../features/warehouse/TransfersAdjustmentsScreen')),
-    perm: 'inventory.view',
+    perm: 'adjustments.view',
     module: ModuleKeys.WmsLotSerial,
     nav: { group: 'warehouse', key: 'transfersAdjustments', order: 80 },
   },
@@ -308,7 +307,7 @@ export const appRoutes: readonly AppRoute[] = [
   {
     path: '/warehouse/cycle-counts',
     element: lazy(() => import('../features/warehouse/CycleCountListScreen')),
-    perm: 'inventory.view',
+    perm: 'counts.view',
     module: ModuleKeys.WmsLotSerial,
     nav: { group: 'warehouse', key: 'cycleCounts', order: 90 },
   },
@@ -318,14 +317,14 @@ export const appRoutes: readonly AppRoute[] = [
   {
     path: '/warehouse/cross-dock-plans',
     element: lazy(() => import('../features/warehouse/CrossDockPlanListScreen')),
-    perm: 'inventory.view',
+    perm: 'crossdock.view',
     module: ModuleKeys.CrossDock,
     nav: { group: 'warehouse', key: 'crossDockPlans', order: 100 },
   },
   {
     path: '/warehouse/cross-dock-plans/:id',
     element: lazy(() => import('../features/warehouse/CrossDockPlanDetailScreen')),
-    perm: 'inventory.view',
+    perm: 'crossdock.view',
     module: ModuleKeys.CrossDock,
   },
   // Lote F17 (Rentas F-R1): Rentas (submódulo de Almacén, manual 11), justo antes del Kárdex (que sigue siendo el último de
@@ -377,7 +376,7 @@ export const appRoutes: readonly AppRoute[] = [
   {
     path: '/warehouse/kardex',
     element: lazy(() => import('../features/warehouse/InventoryScreen')),
-    perm: 'inventory.view',
+    perm: 'kardex.view',
     module: ModuleKeys.WmsLotSerial,
     nav: { group: 'warehouse', key: 'kardex', order: 120 },
   },
@@ -390,39 +389,40 @@ export const appRoutes: readonly AppRoute[] = [
   { path: '/warehouse/inventory', element: redirectKeepingQuery('/warehouse/kardex', legacyInventorySearch) },
 
   // ===== Contabilidad (7C) =====
-  pending({ path: '/money/purchases', perm: 'purchasing.view', module: ModuleKeys.Purchasing, nav: { group: 'money', key: 'purchaseAccounting', order: 30 } }),
-  pending({ path: '/money/dispatch', perm: 'billing.export', module: ModuleKeys.LtlGround, nav: { group: 'money', key: 'dispatchAccounting', order: 40 } }),
+  pending({ path: '/money/purchases', perm: 'purchaseaccounting.view', module: ModuleKeys.Purchasing, nav: { group: 'money', key: 'purchaseAccounting', order: 20 } }),
+  { path: '/sales-orders', element: lazy(() => import('../features/sales/SalesOrdersScreen')), perm: 'sales.view', module: ModuleKeys.SalesOrders, nav: { group: 'money', key: 'salesOrders', order: 30 } },
+  pending({ path: '/money/dispatch', perm: 'dispatchaccounting.view', module: ModuleKeys.LtlGround, nav: { group: 'money', key: 'dispatchAccounting', order: 40 } }),
   { path: '/money/billing', element: lazy(() => import('../features/billing/BillingScreen')), perm: 'billing.view', module: ModuleKeys.Billing, nav: { group: 'money', key: 'billing', order: 50 } },   // Lote 73
   { path: '/money/cod', element: lazy(() => import('../features/cod/CodScreen')), perm: 'cod.view', module: ModuleKeys.Cod, nav: { group: 'money', key: 'cod', order: 60 } },   // Lote 85
   { path: '/money/driver-pay', element: lazy(() => import('../features/driverpay/DriverPayScreen')), perm: 'driverpay.view', module: ModuleKeys.LtlGround, nav: { group: 'money', key: 'driverPay', order: 70 } },   // Lote 96
-  { path: '/money/tax', element: lazy(() => import('../features/tax/TaxScreen')), perm: 'tax.manage', module: ModuleKeys.Tax, nav: { group: 'money', key: 'tax', order: 80 } },   // Lote 56
+  { path: '/money/tax', element: lazy(() => import('../features/tax/TaxScreen')), perm: 'tax.view', module: ModuleKeys.Tax, nav: { group: 'money', key: 'tax', order: 80 } },   // Lote 56
 
   // ===== Catálogo (F2, F4) =====
   { path: '/catalog/clients', element: lazy(() => import('../features/clients/ClientListScreen')), perm: 'clients.read', module: ModuleKeys.Catalog, nav: { group: 'catalog', key: 'clients', order: 10 } },
   { path: '/catalog/consignees', element: lazy(() => import('../features/consignees/ConsigneeListScreen')), perm: 'locations.read', module: ModuleKeys.Catalog, nav: { group: 'catalog', key: 'consignees', order: 20 } },
-  { path: '/catalog/drivers', element: lazy(() => import('../features/drivers/DriverListScreen')), perm: 'fleet.view', module: ModuleKeys.Catalog, nav: { group: 'catalog', key: 'drivers', order: 30 } },
+  { path: '/catalog/drivers', element: lazy(() => import('../features/drivers/DriverListScreen')), perm: 'drivers.view', module: ModuleKeys.Catalog, nav: { group: 'catalog', key: 'drivers', order: 30 } },
   { path: '/catalog/fleet', element: lazy(() => import('../features/fleet/FleetScreen')), perm: 'fleet.view', module: ModuleKeys.Catalog, nav: { group: 'catalog', key: 'fleet', order: 40 } },
 
   // ===== Análisis (F8b; Indicadores y Gráficos: F8a P3) =====
-  { path: '/analytics/reports', element: lazy(() => import('../features/analytics/ReportsScreen')), perm: 'analytics.view', module: ModuleKeys.Analytics, nav: { group: 'analytics', key: 'reports', order: 10 } },
-  { path: '/analytics/custom-fields', element: lazy(() => import('../features/customfields/CustomFieldsAdminScreen')), perm: 'admin.customfields', module: ModuleKeys.CustomFields, nav: { group: 'analytics', key: 'customFields', order: 20 } },
-  { path: '/analytics/indicators', element: lazy(() => import('../features/analytics/IndicatorsPage')), perm: 'analytics.view', module: ModuleKeys.Analytics, nav: { group: 'analytics', key: 'indicators', order: 30 } },
-  { path: '/analytics/charts', element: lazy(() => import('../features/analytics/ChartsPage')), perm: 'analytics.view', module: ModuleKeys.Analytics, nav: { group: 'analytics', key: 'charts', order: 40 } },
+  { path: '/analytics/reports', element: lazy(() => import('../features/analytics/ReportsScreen')), perm: 'reports.view', module: ModuleKeys.Analytics, nav: { group: 'analytics', key: 'reports', order: 10 } },
+  { path: '/analytics/custom-fields', element: lazy(() => import('../features/customfields/CustomFieldsAdminScreen')), perm: 'customfields.view', module: ModuleKeys.CustomFields, nav: { group: 'analytics', key: 'customFields', order: 20 } },
+  { path: '/analytics/indicators', element: lazy(() => import('../features/analytics/IndicatorsPage')), perm: 'indicators.view', module: ModuleKeys.Analytics, nav: { group: 'analytics', key: 'indicators', order: 30 } },
+  { path: '/analytics/charts', element: lazy(() => import('../features/analytics/ChartsPage')), perm: 'charts.view', module: ModuleKeys.Analytics, nav: { group: 'analytics', key: 'charts', order: 40 } },
 
   // ===== Sistema (Impresoras y labels: F-G1; Roles y usuarios: F8a P4; Aparatos móviles: P5; Catálogos de valores: P6; Seguridad y auditoría: F10; el resto F8b o sin backend) =====
-  { path: '/system/printers', element: lazy(() => import('../features/system/PrintersScreen')), perm: 'printers.manage', module: ModuleKeys.System, nav: { group: 'system', key: 'printers', order: 10 } },   // Lote F-G1
-  { path: '/system/users', element: lazy(() => import('../features/system/UsersPage')), perm: 'admin.users|admin.roles', module: ModuleKeys.System, nav: { group: 'system', key: 'users', order: 20 } },
-  { path: '/system/devices', element: lazy(() => import('../features/system/DevicesPage')), perm: 'devices.manage', module: ModuleKeys.WmsLotSerial, nav: { group: 'system', key: 'devices', order: 30 } },
-  { path: '/system/catalogs', element: lazy(() => import('../features/system/CatalogsPage')), perm: 'admin.catalogs', module: ModuleKeys.System, nav: { group: 'system', key: 'catalogs', order: 40 } },
+  { path: '/system/printers', element: lazy(() => import('../features/system/PrintersScreen')), perm: 'printers.view', module: ModuleKeys.System, nav: { group: 'system', key: 'printers', order: 10 } },   // Lote F-G1
+  { path: '/system/users', element: lazy(() => import('../features/system/UsersPage')), perm: 'users.view', module: ModuleKeys.System, nav: { group: 'system', key: 'users', order: 20 } },
+  { path: '/system/devices', element: lazy(() => import('../features/system/DevicesPage')), perm: 'devices.view', module: ModuleKeys.WmsLotSerial, nav: { group: 'system', key: 'devices', order: 30 } },
+  { path: '/system/catalogs', element: lazy(() => import('../features/system/CatalogsPage')), perm: 'catalogs.view', module: ModuleKeys.System, nav: { group: 'system', key: 'catalogs', order: 40 } },
   { path: '/system/integrations', element: lazy(() => import('../features/integrations/IntegrationsScreen')), perm: 'integrations.view|integrations.inbox', module: ModuleKeys.Integrations, nav: { group: 'system', key: 'integrations', order: 50 } },   // Lote 132 (P11)
-  { path: '/system/notifications', element: lazy(() => import('../features/notifications/NotificationRulesScreen')), perm: 'notifications.manage', module: ModuleKeys.System, nav: { group: 'system', key: 'notifications', order: 60 } },   // Lote 52
+  { path: '/system/notifications', element: lazy(() => import('../features/notifications/NotificationRulesScreen')), perm: 'notifications.view', module: ModuleKeys.System, nav: { group: 'system', key: 'notifications', order: 60 } },   // Lote 52
   { path: '/system/announcements', element: lazy(() => import('../features/notifications/AnnouncementsScreen')), perm: 'notifications.send', module: ModuleKeys.System, nav: { group: 'system', key: 'announcements', order: 70 } },   // Lote 54
-  { path: '/system/jobs', element: lazy(() => import('../features/system/JobsScreen')), perm: 'jobs.manage', module: ModuleKeys.System, nav: { group: 'system', key: 'jobs', order: 80 } },   // Lote 50
+  { path: '/system/jobs', element: lazy(() => import('../features/system/JobsScreen')), perm: 'jobs.view', module: ModuleKeys.System, nav: { group: 'system', key: 'jobs', order: 80 } },   // Lote 50
   { path: '/system/audit', element: lazy(() => import('../features/system/AuditScreen')), perm: 'admin.audit', module: ModuleKeys.System, nav: { group: 'system', key: 'audit', order: 90 } },
   {
     path: '/system/settings',
     element: lazy(() => import('../features/system/TenantSettingsPage')),
-    perm: 'admin.tenant',
+    perm: 'settings.view',
     module: ModuleKeys.System,
     nav: { group: 'system', key: 'settings', order: 100 },
   },
