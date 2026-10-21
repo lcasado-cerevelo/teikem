@@ -1,5 +1,5 @@
 // Inicio con «Ajustar» (2026-10-11): solo con el permiso warehouse.adjust y en el orden pedido por el dueño:
-// Consultar, Ajustar, Recibir, Acomodar, Despacho, Conteo y Daño. «Transferir» ya NO está en el menú (se transfiere con «Mover» en Consultar).
+// Mis tareas, Consultar, Recibir, Acomodar, Despacho, Conteo, Ajustar y Daño (orden del dueño, 2026-10-21). «Transferir» ya NO está en el menú (se transfiere con «Mover» en Consultar).
 // En archivo propio por el estado global de renderRouter().
 import { __resetAllForTests } from 'expo-sqlite'
 import { __resetSecureStoreForTests } from 'expo-secure-store'
@@ -31,10 +31,10 @@ async function openHome(perms: string[]) {
 }
 
 describe('Inicio — Ajustar', () => {
-  it('con el permiso aparece segundo (tras Consultar), el orden es el pedido y lleva a Ajustar con el primer paso: la posición', async () => {
+  it('con el permiso aparece al final (antes de Daño), el orden es el pedido y lleva a Ajustar con el primer paso: la posición', async () => {
     await openHome(['warehouse.adjust', 'warehouse.damage'])
     await waitFor(() => expect(screen.getByTestId('home-adjust')).toBeTruthy())
-    const labels = ['Consultar', 'Ajustar', 'Recibir', 'Acomodar', 'Despacho', 'Conteo', 'Daño']
+    const labels = ['Consultar', 'Recibir', 'Acomodar', 'Despacho', 'Conteo', 'Ajustar', 'Daño']
     // el orden en la pantalla = el orden de aparición de los rótulos en el árbol
     const tree = JSON.stringify(screen.toJSON())
     const grid = tree.slice(tree.indexOf('home-grid'), tree.indexOf('Sincronizar ahora'))

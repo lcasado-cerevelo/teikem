@@ -1,4 +1,4 @@
-// Lote 184 — «Recibir juntos» (el camión): los recibos de un camión viajan a la cola con su llave y el primero fija el dueño; un documento de otro dueño no entra. En archivo propio (ver homeLock.test.tsx).
+// Lote 184 — «Recibir juntos» (la carga): los recibos de una carga viajan a la cola con su llave y el primero fija el dueño; un documento de otro dueño no entra. En archivo propio (ver homeLock.test.tsx).
 import { __resetAllForTests } from 'expo-sqlite'
 import { __resetSecureStoreForTests } from 'expo-secure-store'
 import { cleanup, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library'
@@ -31,7 +31,7 @@ afterEach(() => {
   jest.restoreAllMocks()
 })
 
-describe('Recibir — camión (recibir juntos)', () => {
+describe('Recibir — carga (recibir juntos)', () => {
   it('el recibo de un documento del camión se encola con la llave del camión, fija el dueño y cuenta el documento', async () => {
     await signIn()
     getDb().runSync("INSERT INTO product (id, public_id, sku, name, barcode, tracking_type_code, is_active) VALUES (1, 'p1', 'SKU-1', 'Tornillo', '7501', 'NONE', 1)")
@@ -64,7 +64,7 @@ describe('Recibir — camión (recibir juntos)', () => {
     await renderRouter('src/app', { initialUrl: '/receive' })
     await waitFor(() => expect(screen.getByTestId('receive-truck')).toBeTruthy())
     await fireEvent(screen.getByLabelText('Escanea la orden o el aviso'), 'submitEditing', { nativeEvent: { text: 'LLE-00006' } })
-    await waitFor(() => expect(screen.getByText(/otro dueño que los de este camión/)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/otro dueño que los de esta carga/)).toBeTruthy())
     expect(getOpenReceipt()).toBeNull()
   })
 })

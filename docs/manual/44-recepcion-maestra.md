@@ -57,13 +57,13 @@ Estatus de la maestra (derivado de sus recibos): **Abierta** si algún recibo no
 - **«Quiero recibir por tandas un documento de la maestra».** Se abre ese recibo y se usan las tandas de siempre (capítulo 6); **Confirmar todo** cierra los que quedan abiertos.
 - **Órdenes de compra:** «Recibir juntos» en la web ofrece también las órdenes de compra por recibir (enviadas o con recibido parcial). Son **lo propio** de la compañía: no se juntan con avisos de un cliente.
 
-## 6. Desde la app de almacén («Recibir juntos / camión»)
+## 6. Desde la app de almacén («Recibir juntos / carga»)
 
-En **Recibir**, antes de elegir el documento, **Recibir juntos (abrir camión)** abre un camión. Mientras esté abierto, se recibe **un documento tras otro como siempre** (escaneando o eligiendo de la lista, también por tandas) y **cada recibo viaja a la cola con la llave del camión**: el servidor los reúne en una **recepción maestra** (`RCM-#####`) que nace con el primero.
+En **Recibir**, antes de elegir el documento, **Recibir juntos (abrir carga)** abre una carga (un camión, un vagón, un contenedor… lo que llegue). Mientras esté abierto, se recibe **un documento tras otro como siempre** (escaneando o eligiendo de la lista, también por tandas) y **cada recibo viaja a la cola con la llave del camión**: el servidor los reúne en una **recepción maestra** (`RCM-#####`) que nace con el primero.
 
-- **El primer documento fija el dueño** (el cliente del aviso, o lo propio si es una orden de compra o un aviso nacido de una). Un documento de otro dueño **no entra al camión** (la app lo avisa antes de empezar su recibo); para recibirlo hay que **Terminar camión**.
-- El camión muestra cuántos documentos se han enviado. **Terminar camión** lo cierra; los recibos ya enviados quedan en su maestra.
-- Funciona **sin señal**: la llave va con cada envío de la cola. Si un envío llega y el camión ya se eliminó en la web («La recepción maestra ya se eliminó; abra una nueva.»), ese envío se rechaza y se vuelve a recibir con un camión nuevo.
+- **El primer documento fija el dueño** (el cliente del aviso, o lo propio si es una orden de compra o un aviso nacido de una). Un documento de otro dueño **no entra al camión** (la app lo avisa antes de empezar su recibo); para recibirlo hay que **Terminar carga**.
+- La carga muestra cuántos documentos se han enviado. **Terminar carga** lo cierra; los recibos ya enviados quedan en su maestra.
+- Funciona **sin señal**: la llave va con cada envío de la cola. Si un envío llega y la carga ya se eliminó en la web («La recepción maestra ya se eliminó; abra una nueva.»), ese envío se rechaza y se vuelve a recibir con un camión nuevo.
 - Lo ya descrito para la web (avance de todos, «Abrir recibo», «Confirmar todo» de los que queden abiertos) se ve en la pestaña **Maestros**. Un recibo a ciegas no se puede meter a un camión (solo documentos).
 
 Mensajes nuevos de la API (`groupKey` en `POST /receipts` y `POST /receipts/part`): «Este documento es de otro dueño que los de la recepción maestra RCM-#####: reciba por separado lo de dueños distintos.» y «Este documento es de otro almacén que los de la recepción maestra RCM-#####.» (400, campo `groupKey`); «Recibir juntos es solo de documentos: indique un aviso de llegada o una orden de compra.» (400); «La recepción maestra ya se eliminó; abra una nueva.» (409).

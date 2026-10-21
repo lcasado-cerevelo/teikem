@@ -172,7 +172,7 @@ export default function HomeScreen() {
       ) : null}
 
       <View style={styles.grid} testID="home-grid">
-        {/* Orden del menú (dueño, 2026-10-11): Consultar, Ajustar, Recibir, Acomodar, Despacho, Conteo y Daño. Transferir ya no está aquí: se hace con «Mover» en Consultar. */}
+        {/* Orden del menú (dueño, 2026-10-21): Mis tareas, Consultar, Recibir, Acomodar, Despacho, Conteo y, al final, Ajustar y Daño. Transferir ya no está aquí: se hace con «Mover» en Consultar. */}
         {/* Lote 172: lo que el supervisor le asignó (avisos de llegada, avisos de salida y acomodos); con la cuenta de documentos asignados */}
         <View style={styles.cell}>
           <BigButton layout="tile" label={myDocs > 0 ? t('home.myTasksCount', { count: myDocs }) : t('home.myTasks')} icon="✅" onPress={() => go('/my-tasks')} testID="home-my-tasks" />
@@ -180,12 +180,6 @@ export default function HomeScreen() {
         <View style={styles.cell}>
           <BigButton layout="tile" label={t('home.lookup')} icon="🔎" variant="secondary" onPress={() => go('/lookup')} />
         </View>
-        {/* 2026-10-11: solo con el permiso warehouse.adjust (lo da el administrador a un rol propio): posición → producto → subir o bajar */}
-        {canAdjust ? (
-          <View style={styles.cell}>
-            <BigButton layout="tile" label={t('home.adjust')} icon="⚖️" variant="secondary" onPress={() => go('/adjust')} testID="home-adjust" />
-          </View>
-        ) : null}
         <View style={styles.cell}>
           <BigButton layout="tile" label={t('home.receive')} icon="📥" onPress={() => go('/receive', 'receive')} />
         </View>
@@ -213,6 +207,12 @@ export default function HomeScreen() {
         <View style={styles.cell}>
           <BigButton layout="tile" label={t('home.count')} icon="🔢" variant="secondary" onPress={() => go('/count', 'count')} />
         </View>
+        {/* 2026-10-11: solo con el permiso warehouse.adjust (lo da el administrador a un rol propio): posición → producto → subir o bajar */}
+        {canAdjust ? (
+          <View style={styles.cell}>
+            <BigButton layout="tile" label={t('home.adjust')} icon="⚖️" variant="secondary" onPress={() => go('/adjust')} testID="home-adjust" />
+          </View>
+        ) : null}
         {/* 2026-10-08: solo con el permiso warehouse.damage (sin saberlo, no se ofrece) */}
         {canReportDamage ? (
           <View style={styles.cell}>

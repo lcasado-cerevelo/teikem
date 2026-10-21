@@ -10054,7 +10054,7 @@ En la ventana «Exportar» de la corrida, con **Configurar…**: formato CSV o T
 ## Recepción maestra (Lotes 182-183)
 
 **¿Para qué sirve «Recibir juntos»?**
-Para un camión que trae varios documentos (avisos de llegada y/o órdenes de compra) del mismo dueño y almacén: se abre un recibo por documento bajo una recepción maestra (RCM-#####), con el mismo transporte y referencia, y se confirman juntos. Cada documento conserva su recibo de siempre.
+Para una llegada (camión, vagón, contenedor…) que trae varios documentos (avisos de llegada y/o órdenes de compra) del mismo dueño y almacén: se abre un recibo por documento bajo una recepción maestra (RCM-#####), con el mismo transporte y referencia, y se confirman juntos. Cada documento conserva su recibo de siempre.
 
 **«Los documentos deben ser del mismo dueño: … Reciba por separado lo de dueños distintos.»**
 Una recepción maestra es de un solo dueño (un cliente, o lo propio de la compañía). Haga una recepción por dueño.
@@ -10093,13 +10093,13 @@ Toda plantilla de productos necesita la columna sku y el nombre (en una columna 
 La columna ownerClientCode debe traer el código de un cliente activo (el que ves en Clientes); déjala vacía si el producto es propio.
 
 **¿Cómo recibo varios documentos juntos desde el aparato?**
-En Recibir toque «Recibir juntos (abrir camión)», reciba un documento tras otro como siempre y, al terminar, «Terminar camión». Los recibos se reúnen solos en una recepción maestra. Todos los documentos del camión deben ser del mismo dueño.
+En Recibir toque «Recibir juntos (abrir carga)», reciba un documento tras otro como siempre y, al terminar, «Terminar carga». Los recibos se reúnen solos en una recepción maestra. Todos los documentos de la carga deben ser del mismo dueño.
 
-**En el aparato sale «Ese documento es de otro dueño que los de este camión».**
-El primer documento fija el dueño del camión. Termine el camión para recibir ese documento (o ábralo en otro camión).
+**En el aparato sale «Ese documento es de otro dueño que los de esta carga».**
+El primer documento fija el dueño de la carga. Termine el camión para recibir ese documento (o ábralo en otra carga).
 
 **«Este documento es de otro dueño que los de la recepción maestra …» / «La recepción maestra ya se eliminó; abra una nueva.»**
-El envío del aparato quedó rechazado: el camión ya tenía documentos de otro dueño o la maestra se eliminó en la web. Reciba ese documento en un camión nuevo.
+El envío del aparato quedó rechazado: la carga ya tenía documentos de otro dueño o la maestra se eliminó en la web. Reciba ese documento en un camión nuevo.
 
 **¿Cómo cargo muchos proveedores de una vez?**
 Compras → Proveedores → Importar. Igual que con productos: elige o crea una plantilla (mínimo la columna name), elige el archivo, «Revisar» y «Importar N». Si el nombre ya existe entre los proveedores activos, esa fila se rechaza; no se actualiza.
