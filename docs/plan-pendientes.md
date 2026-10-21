@@ -69,8 +69,7 @@ Documento vivo: cada vez que se cierre o se decida algo se actualiza aquí. Esta
 - ☐ Revisar `scripts/smoke.sh`: falla antes de llegar a lo nuevo, en el estatus de órdenes `INBOUND` (no se sabe si ya fallaba).
 - ☐ «Mensajes de clientes» sin ítem de menú (decidir dónde).
 - ☐ Ocultar opciones de recibo a ciegas en la web cuando la compañía exige documento.
-- ☐ Gris claro de las superficies del modo claro.
-- ☐ **Encabezado de las tarjetas y paneles (decidido por el dueño, 2026-10-21):** fondo = el **tercer color de la marca (el más clarito)** aclarado casi del todo (mezcla con el fondo de la tarjeta; sale de la marca y del tema, igual que la barra lateral), con un filete fino del color del borde y, si acaso, una sombra casi invisible; el texto del título conserva su color. Tres niveles: azul marino solo en lo que flota (modales, barra superior), gris muy claro en los encabezados de las tarjetas, naranja solo en acciones. Cuidados: no aplica a los encabezados de las tablas; limitar cuánto color pasa al fondo si el tercer color es muy saturado; extender la prueba de contraste AA a esta pareja; revisar con Teikem, Advance Logistics, Advance Depot y Enterprise; en oscuro, apenas más claro que la tarjeta.
+- ☐ **Encabezado de las tarjetas y paneles (decidido por el dueño, 2026-10-21):** fondo = el **tercer color de la marca (el más clarito)** aclarado casi del todo (mezcla con el fondo de la tarjeta; sale de la marca y del tema, igual que la barra lateral), con un filete fino del color del borde y, si acaso, una sombra casi invisible; el texto del título conserva su color. Tres niveles: azul marino solo en lo que flota (modales, barra superior), el tercer color de la marca, clarísimo, en los encabezados de las tarjetas y paneles, naranja solo en acciones. Cuidados: no aplica a los encabezados de las tablas; limitar cuánto color pasa al fondo si el tercer color es muy saturado; extender la prueba de contraste AA a esta pareja; revisar con Teikem, Advance Logistics, Advance Depot y Enterprise; en oscuro, apenas más claro que la tarjeta.
 - ☐ Endurecer los endpoints con los permisos de acceso por ítem de menú.
 - ☐ Prueba de `db-update` en simulación contra SQL Server.
 - ☐ Capturas / Playwright de las pantallas nuevas (portal del cliente, avisos, filtros).
@@ -86,4 +85,4 @@ Documento vivo: cada vez que se cierre o se decida algo se actualiza aquí. Esta
 - Comitear y subir al terminar cada lote; avisar antes de seguir cuando el dueño lo pida.
 
 ---
-Quedan pendientes los menores de siempre (mensajes de clientes sin ítem de menú, opciones de recibo a ciegas cuando se exige documento, el gris claro del modo claro, endurecer endpoints con permisos de menú) y revisar el smoke.sh.
+Quedan pendientes los menores de siempre (mensajes de clientes sin ítem de menú, opciones de recibo a ciegas cuando se exige documento, endurecer endpoints con permisos de menú) y revisar el smoke.sh.
