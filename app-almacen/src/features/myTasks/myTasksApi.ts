@@ -2,20 +2,23 @@
 import { api, unwrap } from '../../kernel/api/client'
 import { getKv, setKv } from '../../kernel/db/kv'
 
-export async function takeAsn(id: number): Promise<void> {
-  await unwrap(api.POST('/api/v1/asns/{id}/take', { params: { path: { id } } }))
+/** Desde dónde se toma: queda en la bitácora del documento como el porqué de la autoasignación. */
+export type TakeOrigin = 'MOBILE_MY_TASKS' | 'MOBILE_RECEIVE' | 'MOBILE_DISPATCH' | 'MOBILE_PUTAWAY'
+
+export async function takeAsn(id: number, origin: TakeOrigin = 'MOBILE_MY_TASKS'): Promise<void> {
+  await unwrap(api.POST('/api/v1/asns/{id}/take', { params: { path: { id } }, body: { origin } }))
 }
 
-export async function takeExitNotice(publicId: string): Promise<void> {
-  await unwrap(api.POST('/api/v1/exit-notices/{publicId}/take', { params: { path: { publicId } } }))
+export async function takeExitNotice(publicId: string, origin: TakeOrigin = 'MOBILE_MY_TASKS'): Promise<void> {
+  await unwrap(api.POST('/api/v1/exit-notices/{publicId}/take', { params: { path: { publicId } }, body: { origin } }))
 }
 
-export async function takePurchaseOrder(publicId: string): Promise<void> {
-  await unwrap(api.POST('/api/v1/purchase-orders/{publicId}/take', { params: { path: { publicId } } }))
+export async function takePurchaseOrder(publicId: string, origin: TakeOrigin = 'MOBILE_MY_TASKS'): Promise<void> {
+  await unwrap(api.POST('/api/v1/purchase-orders/{publicId}/take', { params: { path: { publicId } }, body: { origin } }))
 }
 
-export async function takeSalesOrder(publicId: string): Promise<void> {
-  await unwrap(api.POST('/api/v1/sales-orders/{publicId}/take', { params: { path: { publicId } } }))
+export async function takeSalesOrder(publicId: string, origin: TakeOrigin = 'MOBILE_MY_TASKS'): Promise<void> {
+  await unwrap(api.POST('/api/v1/sales-orders/{publicId}/take', { params: { path: { publicId } }, body: { origin } }))
 }
 
 export interface MyPutawayTask {

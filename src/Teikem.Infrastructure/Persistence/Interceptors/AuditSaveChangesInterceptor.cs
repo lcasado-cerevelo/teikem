@@ -204,6 +204,7 @@ public sealed class AuditSaveChangesInterceptor(ITenantContext tenant, ILookupCa
 
                 var (entityId, keyJson) = ResolveKey(p.Entry);
                 if (keyJson is not null) p.Changes["$key"] = keyJson;
+                if (!string.IsNullOrWhiteSpace(ctx.AuditNote)) p.Changes["$reason"] = ctx.AuditNote;
 
                 rows.Add(new AuditLog
                 {
@@ -228,6 +229,7 @@ public sealed class AuditSaveChangesInterceptor(ITenantContext tenant, ILookupCa
         finally
         {
             ctx.SuppressAudit = false;
+            ctx.AuditNote = null;
         }
     }
 

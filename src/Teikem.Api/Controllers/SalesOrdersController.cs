@@ -33,7 +33,7 @@ public sealed class SalesOrdersController(SalesOrderService sales) : ControllerB
 
     /// <summary>Lote 195: «tomar» una orden de venta sin asignar. Quien puede recolectar.</summary>
     [HttpPost("{publicId:guid}/take"), RequirePermission(PermissionCatalog.WarehousePick)]
-    public Task<SalesOrderDto> Take(Guid publicId, CancellationToken ct) => sales.TakeAsync(publicId, ct);
+    public Task<SalesOrderDto> Take(Guid publicId, [FromBody] TaskTakeRequest? req, CancellationToken ct) => sales.TakeAsync(publicId, req, ct);
 
     [HttpGet("{publicId:guid}"), RequirePermission(PermissionCatalog.SalesView)]
     public Task<SalesOrderDto> Get(Guid publicId, CancellationToken ct) => sales.GetAsync(publicId, ct);

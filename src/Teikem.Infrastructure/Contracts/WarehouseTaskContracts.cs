@@ -22,6 +22,9 @@ public sealed record WarehouseTaskPageDto(int Total, int Skip, int Take, IReadOn
 
 public sealed record TaskAssignRequest(int? UserId);
 
+/// <summary>Cuerpo opcional de «tomar»: <c>Origin</c> dice desde dónde (la app móvil lo manda) y queda en la bitácora como el porqué de la autoasignación.</summary>
+public sealed record TaskTakeRequest(string? Origin = null);
+
 public sealed record TaskCompleteRequest(int? ToBinId = null, decimal? Quantity = null, IReadOnlyList<string>? SerialNumbers = null, string? Comment = null);
 
 /// <summary>Reparto de una tarea de acomodo: la misma cantidad en cada posición, en el orden dado (ids de posición del almacén de la tarea).</summary>

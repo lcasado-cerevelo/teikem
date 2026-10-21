@@ -230,13 +230,13 @@ public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, Status
     }
 
     /// <summary>«Tomar» un aviso sin asignar (o ya asignado a quien lo pide): queda asignado a quien lo toma. Uno de otra persona se rechaza (409).</summary>
-    public async Task<AsnDto> TakeAsync(int id, CancellationToken ct)
+    public async Task<AsnDto> TakeAsync(int id, TaskTakeRequest? req, CancellationToken ct)
     {
-        await SetAssigneeAsync(id, tenant.UserId, takeOnly: true, ct);
+        await SetAssigneeAsync(id, tenant.UserId, takeOnly: true, ct, req?.Origin);
         return await GetAsync(id, InventoryScope.Any, ct);
     }
 
-    private async Task SetAssigneeAsync(int id, int? userId, bool takeOnly, CancellationToken ct)
+    private async Task SetAssigneeAsync(int id, int? userId, bool takeOnly, CancellationToken ct, string? origin = null)
     {
         var current = await db.Set<Asn>().AsNoTracking().FirstOrDefaultAsync(a => a.AsnId == id && a.IsActive, ct) ?? throw new NotFoundException(AsnWhat);
         var expectedId = await db.StatusIdAsync(StatusDomains.AsnStatus, AsnStatuses.Expected, ct);
@@ -246,6 +246,7 @@ public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, Status
             if (asn.StatusCodeId != expectedId) throw new StatusRuleException(DocumentAssignmentRules.AsnNotOpen);
             if (takeOnly && !DocumentAssignmentRules.CanTake(asn.AssignedToUserId, tenant.UserId)) throw new ConflictException(DocumentAssignmentRules.AlreadyAssigned);
             asn.AssignedToUserId = userId;
+            if (takeOnly) db.AuditNote = DocumentAssignmentRules.TakeNote(origin);
             await db.SaveChangesAsync(ct2);
         }, ct);
     }

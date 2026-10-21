@@ -48,7 +48,7 @@ public sealed class AsnsController(AsnService asns) : ControllerBase
 
     /// <summary>Lote 171: «tomar» un aviso de llegada sin asignar. Quien puede recibir.</summary>
     [HttpPost("{id:int}/take"), RequirePermission(PermissionCatalog.WarehouseReceive)]
-    public Task<AsnDto> Take(int id, CancellationToken ct) => asns.TakeAsync(id, ct);
+    public Task<AsnDto> Take(int id, [FromBody] TaskTakeRequest? req, CancellationToken ct) => asns.TakeAsync(id, req, ct);
 
     [HttpPost("{id:int}/cancel"), RequirePermission(PermissionCatalog.WarehouseReceive)]
     public Task<AsnDto> Cancel(int id, CancellationToken ct) => asns.CancelAsync(id, ct);

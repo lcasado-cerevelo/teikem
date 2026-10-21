@@ -20,13 +20,13 @@ public sealed partial class SalesOrderService
     }
 
     /// <summary>«Tomar» una orden sin asignar (o ya asignada a quien lo pide). Una de otra persona se rechaza (409).</summary>
-    public async Task<SalesOrderDto> TakeAsync(Guid publicId, CancellationToken ct)
+    public async Task<SalesOrderDto> TakeAsync(Guid publicId, TaskTakeRequest? req, CancellationToken ct)
     {
-        await SetAssigneeAsync(publicId, tenant.UserId, takeOnly: true, ct);
+        await SetAssigneeAsync(publicId, tenant.UserId, takeOnly: true, ct, req?.Origin);
         return await GetAsync(publicId, ct);
     }
 
-    private async Task SetAssigneeAsync(Guid publicId, int? userId, bool takeOnly, CancellationToken ct)
+    private async Task SetAssigneeAsync(Guid publicId, int? userId, bool takeOnly, CancellationToken ct, string? origin = null)
     {
         await db.RunInTransactionAsync(async ct2 =>
         {
@@ -35,6 +35,7 @@ public sealed partial class SalesOrderService
             if (code is not (SalesOrderStatuses.Requested or SalesOrderStatuses.Partial)) throw new StatusRuleException(DocumentAssignmentRules.SalesOrderNotOpen);
             if (takeOnly && !DocumentAssignmentRules.CanTake(order.AssignedToUserId, tenant.UserId)) throw new ConflictException(DocumentAssignmentRules.AlreadyAssigned);
             order.AssignedToUserId = userId;
+            if (takeOnly) db.AuditNote = DocumentAssignmentRules.TakeNote(origin);
             await db.SaveChangesAsync(ct2);
         }, ct);
     }

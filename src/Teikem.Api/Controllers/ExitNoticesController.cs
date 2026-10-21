@@ -66,7 +66,7 @@ public sealed class ExitNoticesController(ExitNoticeService notices) : Controlle
 
     /// <summary>Lote 171: «tomar» un aviso de salida sin asignar. Quien puede recolectar.</summary>
     [HttpPost("{publicId:guid}/take"), RequirePermission(PermissionCatalog.WarehousePick)]
-    public Task<ExitNoticeDto> Take(Guid publicId, CancellationToken ct) => notices.TakeAsync(publicId, ct);
+    public Task<ExitNoticeDto> Take(Guid publicId, [FromBody] TaskTakeRequest? req, CancellationToken ct) => notices.TakeAsync(publicId, req, ct);
 
     [HttpPost("{publicId:guid}/dispatch"), RequirePermission(PermissionCatalog.WarehousePick)]
     public Task<ExitNoticeDispatchResultDto> Dispatch(Guid publicId, [FromBody] ExitNoticeDispatchRequest? req, CancellationToken ct) => notices.DispatchAsync(publicId, req, ct);

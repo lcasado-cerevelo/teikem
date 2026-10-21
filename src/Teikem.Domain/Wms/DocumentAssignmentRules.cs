@@ -13,6 +13,16 @@ public static class DocumentAssignmentRules
     public const string SalesOrderNotOpen = "Solo se puede asignar una orden de venta solicitada o despachada en parte.";
     public const string AlreadyAssigned = "Ese documento ya está asignado a otra persona; pídale a un supervisor que lo reasigne.";
 
+    /// <summary>De dónde se tomó: la app móvil manda un origen corto (MOBILE_MY_TASKS, MOBILE_RECEIVE, MOBILE_DISPATCH, MOBILE_PUTAWAY); sin origen es la web.</summary>
+    public static string TakeNote(string? origin) => origin?.Trim().ToUpperInvariant() switch
+    {
+        "MOBILE_MY_TASKS" => "Autoasignado al tomarlo desde la app móvil (Mis tareas).",
+        "MOBILE_RECEIVE" => "Autoasignado al empezar a recibirlo desde la app móvil.",
+        "MOBILE_DISPATCH" => "Autoasignado al empezar a despacharlo desde la app móvil.",
+        "MOBILE_PUTAWAY" => "Autoasignado al empezar a acomodarlo desde la app móvil.",
+        _ => "Autoasignado al tomarlo desde la web.",
+    };
+
     /// <summary>¿Puede «tomarlo» quien lo pide? Sin asignar, o ya asignado a esa misma persona.</summary>
     public static bool CanTake(int? assignedTo, int? me) => me is not null && (assignedTo is null || assignedTo == me);
 }

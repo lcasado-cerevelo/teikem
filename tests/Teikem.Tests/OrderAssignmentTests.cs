@@ -85,9 +85,9 @@ public sealed class OrderAssignmentTests
         await using var f = await CreateAsync();
         var o = await NewOrderAsync(f, SalesOrderStatuses.Partial);
         var svc = f.Get<SalesOrderService>();
-        Assert.Equal(Me, (await svc.TakeAsync(o.PublicId, default)).AssignedToUserId);
+        Assert.Equal(Me, (await svc.TakeAsync(o.PublicId, null, default)).AssignedToUserId);
         await svc.AssignAsync(o.PublicId, new TaskAssignRequest(Ana), default);
-        var e = await Assert.ThrowsAsync<ConflictException>(() => svc.TakeAsync(o.PublicId, default));
+        var e = await Assert.ThrowsAsync<ConflictException>(() => svc.TakeAsync(o.PublicId, null, default));
         Assert.Equal(DocumentAssignmentRules.AlreadyAssigned, e.Message);
     }
 

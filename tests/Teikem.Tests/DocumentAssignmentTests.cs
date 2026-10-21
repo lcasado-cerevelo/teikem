@@ -96,12 +96,20 @@ public sealed class DocumentAssignmentTests
         await using var _ = x.F;
         var asn = await NewAsnAsync(x);
         x.F.Tenant.UserId = Me;
-        Assert.Equal(Me, (await x.Asns.TakeAsync(asn.Id, default)).AssignedToUserId);
-        Assert.Equal(Me, (await x.Asns.TakeAsync(asn.Id, default)).AssignedToUserId);   // tomarlo otra vez es inofensivo
+        Assert.Equal(Me, (await x.Asns.TakeAsync(asn.Id, null, default)).AssignedToUserId);
+        Assert.Equal(Me, (await x.Asns.TakeAsync(asn.Id, null, default)).AssignedToUserId);   // tomarlo otra vez es inofensivo
 
         await x.Asns.AssignAsync(asn.Id, new TaskAssignRequest(Ana), default);
-        var ex = await Assert.ThrowsAsync<ConflictException>(() => x.Asns.TakeAsync(asn.Id, default));
+        var ex = await Assert.ThrowsAsync<ConflictException>(() => x.Asns.TakeAsync(asn.Id, null, default));
         Assert.Equal(DocumentAssignmentRules.AlreadyAssigned, ex.Message);
+    }
+
+    [Fact]
+    public void The_take_note_says_where_it_was_taken_from()
+    {
+        Assert.Contains("app móvil (Mis tareas)", DocumentAssignmentRules.TakeNote("mobile_my_tasks"));
+        Assert.Contains("recibirlo", DocumentAssignmentRules.TakeNote("MOBILE_RECEIVE"));
+        Assert.Contains("web", DocumentAssignmentRules.TakeNote(null));
     }
 
     [Fact]
@@ -127,7 +135,7 @@ public sealed class DocumentAssignmentTests
         var n = await NewNoticeAsync(x);
         Assert.Null(n.AssignedToUserId);
         x.F.Tenant.UserId = Me;
-        var taken = await x.Exits.TakeAsync(n.PublicId, default);
+        var taken = await x.Exits.TakeAsync(n.PublicId, null, default);
         Assert.Equal(Me, taken.AssignedToUserId);
         var mine = await x.Exits.ListAsync(null, null, null, false, null, null, 0, 50, default, assignedToMe: true);
         Assert.Equal(n.PublicId, Assert.Single(mine.Items).PublicId);
@@ -135,7 +143,7 @@ public sealed class DocumentAssignmentTests
 
         var reassigned = await x.Exits.AssignAsync(n.PublicId, new TaskAssignRequest(Ana), default);
         Assert.Equal(Ana, reassigned.AssignedToUserId);
-        await Assert.ThrowsAsync<ConflictException>(() => x.Exits.TakeAsync(n.PublicId, default));
+        await Assert.ThrowsAsync<ConflictException>(() => x.Exits.TakeAsync(n.PublicId, null, default));
         Assert.Empty((await x.Exits.ListAsync(null, null, null, false, null, null, 0, 50, default, assignedToMe: true)).Items);
     }
 

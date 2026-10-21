@@ -20,13 +20,13 @@ public sealed partial class ExitNoticeService
     }
 
     /// <summary>«Tomar» un aviso de salida sin asignar (o ya asignado a quien lo pide). Uno de otra persona se rechaza (409).</summary>
-    public async Task<ExitNoticeDto> TakeAsync(Guid publicId, CancellationToken ct)
+    public async Task<ExitNoticeDto> TakeAsync(Guid publicId, TaskTakeRequest? req, CancellationToken ct)
     {
-        await SetAssigneeAsync(publicId, tenant.UserId, takeOnly: true, ct);
+        await SetAssigneeAsync(publicId, tenant.UserId, takeOnly: true, ct, req?.Origin);
         return await GetAsync(publicId, ct);
     }
 
-    private async Task SetAssigneeAsync(Guid publicId, int? userId, bool takeOnly, CancellationToken ct)
+    private async Task SetAssigneeAsync(Guid publicId, int? userId, bool takeOnly, CancellationToken ct, string? origin = null)
     {
         await db.RunInTransactionAsync(async ct2 =>
         {
@@ -35,6 +35,7 @@ public sealed partial class ExitNoticeService
             if (code is not (ExitNoticeStatuses.Requested or ExitNoticeStatuses.Partial)) throw new StatusRuleException(DocumentAssignmentRules.ExitNoticeNotOpen);
             if (takeOnly && !DocumentAssignmentRules.CanTake(notice.AssignedToUserId, tenant.UserId)) throw new ConflictException(DocumentAssignmentRules.AlreadyAssigned);
             notice.AssignedToUserId = userId;
+            if (takeOnly) db.AuditNote = DocumentAssignmentRules.TakeNote(origin);
             await db.SaveGuardedAsync(ExitNoticeRules.Concurrency, ct2);
         }, ct);
     }

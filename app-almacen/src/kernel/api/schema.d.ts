@@ -1166,7 +1166,11 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TaskTakeRequest"];
+                };
+            };
             responses: {
                 /** @description OK */
                 200: {
@@ -1205,7 +1209,11 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TaskTakeRequest"];
+                };
+            };
             responses: {
                 /** @description OK */
                 200: {
@@ -1240,7 +1248,11 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TaskTakeRequest"];
+                };
+            };
             responses: {
                 /** @description OK */
                 200: {
@@ -1275,7 +1287,11 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TaskTakeRequest"];
+                };
+            };
             responses: {
                 /** @description OK */
                 200: {
@@ -36017,6 +36033,9 @@ export interface components {
         TaskAssignRequest: {
             /** Format: int32 */
             userId?: number | null;
+        };
+        TaskTakeRequest: {
+            origin?: string | null;
         };
         TaskCancelRequest: {
             comment?: string | null;

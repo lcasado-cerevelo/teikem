@@ -65,6 +65,8 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
 
     /// <summary>Bandera interna del interceptor de auditoría para no auditar la escritura del propio AuditLog.</summary>
     internal bool SuppressAudit { get; set; }
+    /// <summary>El porqué de los cambios del próximo guardado (p. ej. «Autoasignado al tomarlo desde la app móvil»): el interceptor lo anota como <c>$reason</c> en cada AuditLog de ese guardado.</summary>
+    internal string? AuditNote { get; set; }
     internal List<Interceptors.PendingAudit> PendingAudits { get; } = new();
 
     // Tenancy / módulos

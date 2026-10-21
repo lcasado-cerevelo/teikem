@@ -52,7 +52,7 @@ public sealed class PurchaseOrdersController(PurchaseOrderService purchaseOrders
 
     /// <summary>Lote 195: «tomar» una orden de compra sin asignar. Quien puede recibir contra órdenes de compra.</summary>
     [HttpPost("{publicId:guid}/take"), RequirePermission(PermissionCatalog.PurchasingReceive)]
-    public Task<PurchaseOrderDto> Take(Guid publicId, CancellationToken ct) => purchaseOrders.TakeAsync(publicId, ct);
+    public Task<PurchaseOrderDto> Take(Guid publicId, [FromBody] TaskTakeRequest? req, CancellationToken ct) => purchaseOrders.TakeAsync(publicId, req, ct);
 
     [HttpGet("{publicId:guid}"), RequirePermission(PermissionCatalog.PurchasingView)]
     public Task<PurchaseOrderDto> Get(Guid publicId, CancellationToken ct) => purchaseOrders.GetAsync(publicId, ct);

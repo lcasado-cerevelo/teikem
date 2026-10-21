@@ -452,14 +452,14 @@ public sealed class PurchaseOrderService(
     }
 
     /// <summary>«Tomar» una orden sin asignar (o ya asignada a quien lo pide). Una de otra persona se rechaza (409).</summary>
-    public async Task<PurchaseOrderDto> TakeAsync(Guid publicId, CancellationToken ct)
+    public async Task<PurchaseOrderDto> TakeAsync(Guid publicId, TaskTakeRequest? req, CancellationToken ct)
     {
         var poId = await ResolveIdAsync(publicId, ct);
-        await SetAssigneeAsync(poId, tenant.UserId, takeOnly: true, ct);
+        await SetAssigneeAsync(poId, tenant.UserId, takeOnly: true, ct, req?.Origin);
         return await GetByIdAsync(poId, ct);
     }
 
-    private async Task SetAssigneeAsync(int poId, int? userId, bool takeOnly, CancellationToken ct)
+    private async Task SetAssigneeAsync(int poId, int? userId, bool takeOnly, CancellationToken ct, string? origin = null)
     {
         await db.RunInTransactionAsync(async ct2 =>
         {
@@ -469,6 +469,7 @@ public sealed class PurchaseOrderService(
             if (code is not (PurchaseOrderStatuses.Sent or PurchaseOrderStatuses.Partial)) throw new StatusRuleException(DocumentAssignmentRules.PurchaseOrderNotOpen);
             if (takeOnly && !DocumentAssignmentRules.CanTake(po.AssignedToUserId, tenant.UserId)) throw new ConflictException(DocumentAssignmentRules.AlreadyAssigned);
             po.AssignedToUserId = userId;
+            if (takeOnly) db.AuditNote = DocumentAssignmentRules.TakeNote(origin);
             await db.SaveGuardedAsync(ConcurrencyMessage, ct2);
         }, ct);
     }
