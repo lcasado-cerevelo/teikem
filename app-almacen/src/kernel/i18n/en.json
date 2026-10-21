@@ -114,6 +114,7 @@
     "build": "Version {build}"
   },
   "salesDispatch": {
+    "productNotPending": "That product is not among what is left to pick in this order.",
     "title": "Dispatch sales order",
     "scanOrder": "Order number",
     "scanOrderHelp": "Scan or type the order number (SO-…), or tap one from the list.",
@@ -162,6 +163,10 @@
     "skipped": "skipped"
   },
   "exitDispatch": {
+    "scanProduct": "Product to pick",
+    "scanProductHelp": "Scan or type the product. It works for any of the selected documents.",
+    "productNotPending": "That product is not among what is left to pick in these documents.",
+    "binChosen": "Position: {bin}",
     "noneMine": "Nothing assigned to you. Tap “Show unassigned”.",
     "unassigned": "Unassigned (dispatching it assigns it to you)",
     "assignedToYou": "Assigned to you",

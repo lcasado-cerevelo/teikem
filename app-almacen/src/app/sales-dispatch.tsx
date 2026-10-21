@@ -19,14 +19,15 @@ import { findSalesOrderByNumber, getSalesOrderLines, listSalesOrders, queueSales
 import { dispatchScope } from '../features/dispatch/dispatchScope'
 import { useMyPermissions } from '../kernel/auth/permissions'
 import { useSession } from '../kernel/auth/useSession'
-import { TaskChooser } from '../features/salesDispatch/TaskChooser'
+import { findProductByCode } from '../kernel/warehouse/productLookup'
 import {
   buildTasks,
   checkPickQty,
   kitSummaries,
   dispatchBatchNumber,
-  currentTask,
   nextTask,
+  pendingTasks,
+  taskForProduct,
   parseQty,
   totalPicked,
   type SalesPick,
@@ -56,7 +57,9 @@ export default function SalesDispatchScreen() {
   const [picks, setPicks] = useState<SalesPick[]>([])
   const [skipped, setSkipped] = useState<Set<string>>(new Set())
   const [qtyText, setQtyText] = useState('')
-  const [focusKey, setFocusKey] = useState<string | null>(null)   // Lote 192: la tarea que el operario eligió de la lista
+  const [activeKey, setActiveKey] = useState<string | null>(null)   // Lote 198: la tarea del producto aceptado (posición y cantidad en curso)
+  const [binChosen, setBinChosen] = useState<{ id: number; code: string } | null>(null)
+  const [productError, setProductError] = useState<string | null>(null)
   const [pieces, setPieces] = useState('1')
   const [scanError, setScanError] = useState<string | null>(null)
   const [binError, setBinError] = useState<string | null>(null)
@@ -68,8 +71,9 @@ export default function SalesDispatchScreen() {
   const orders = useMemo(() => (warehousePublicId ? listSalesOrders(warehousePublicId, scope) : []), [warehousePublicId, tick, scope])
   const lines = useMemo(() => (order ? getSalesOrderLines(order.id) : []), [order])
   const tasks = useMemo(() => buildTasks(lines), [lines])
-  const current = order && step === 'pick' ? currentTask(tasks, picks, skipped, focusKey) : null
-  const doneAll = step === 'pick' && order !== null && current === null
+  const active = activeKey ? tasks.find((x) => x.key === activeKey) ?? null : null
+  const doneAll = step === 'pick' && order !== null && nextTask(tasks, picks, skipped) === null
+  const pendingProductIds = useMemo(() => pendingTasks(tasks, picks, skipped).map((x) => x.productPublicId), [tasks, picks, skipped])
 
   if (!warehousePublicId) {
     return (
@@ -110,37 +114,56 @@ export default function SalesDispatchScreen() {
   }
 
   function advance(nextPicks: SalesPick[], nextSkipped: Set<string>) {
-    setFocusKey(null)
+    setActiveKey(null)
+    setBinChosen(null)
     setPicks(nextPicks)
     setSkipped(nextSkipped)
-    const n = nextTask(tasks, nextPicks, nextSkipped)
-    setQtyText(n ? String(n.qty) : '')
+    setQtyText('')
     setBinError(null)
+    setProductError(null)
   }
 
-  /** Lee la posición de la tarea actual: la reservada o cualquier otra (la reserva se mueve ahí si tiene existencia; el servidor lo valida). */
-  async function scanBin(task: SalesTask, code: string) {
-    const block = checkPickQty(task, qtyText)
-    if (block) {
-      setBinError(t(block === 'qtyInvalid' ? 'salesDispatch.qtyInvalid' : 'salesDispatch.qtyTooMuch', { qty: f.qty(task.qty) }))
+  /** Lote 198: el producto escaneado o escrito; toma la primera línea pendiente de la orden (un kit: sus piezas, en orden). */
+  function scanProduct(code: string) {
+    const found = findProductByCode(code)
+    const task = taskForProduct(tasks, picks, skipped, found?.publicId ?? null, code)
+    if (!task) {
+      setProductError(t('salesDispatch.productNotPending'))
       vibrateError()
       return
     }
+    setProductError(null)
+    setBinError(null)
+    setBinChosen(null)
+    setQtyText(String(task.qty))
+    setActiveKey(task.key)
+    vibrateOk()
+  }
+
+  /** Lee la posición de la tarea actual: la reservada o cualquier otra (la reserva se mueve ahí si tiene existencia; el servidor lo valida). Sigue la cantidad. */
+  async function scanBin(task: SalesTask, code: string) {
     const bin = await resolveBinLocalFirst(warehousePublicId!, code).catch(() => null)
     if (!bin) {
       setBinError(t('salesDispatch.binNotFound'))
       vibrateError()
       return
     }
-    const qty = parseQty(qtyText) ?? 0
-    advance([...picks, { taskKey: task.key, binId: bin.id, binCode: bin.code, qty }], skipped)
-    if (bin.id !== task.binId) setNotice(t('salesDispatch.binMoves', { bin: bin.code }))
-    else setNotice(null)
+    setBinError(null)
+    setBinChosen({ id: bin.id, code: bin.code })
+    setNotice(bin.id !== task.binId ? t('salesDispatch.binMoves', { bin: bin.code }) : null)
     vibrateOk()
   }
 
-  function skip(task: SalesTask) {
-    advance(picks, new Set([...skipped, task.key]))
+  function acceptQty(task: SalesTask) {
+    if (!binChosen) return
+    const block = checkPickQty(task, qtyText)
+    if (block) {
+      setBinError(t(block === 'qtyInvalid' ? 'salesDispatch.qtyInvalid' : 'salesDispatch.qtyTooMuch', { qty: f.qty(task.qty) }))
+      vibrateError()
+      return
+    }
+    advance([...picks, { taskKey: task.key, binId: binChosen.id, binCode: binChosen.code, qty: parseQty(qtyText) ?? 0 }], skipped)
+    vibrateOk()
   }
 
   function undo(key: string) {
@@ -278,53 +301,64 @@ export default function SalesDispatchScreen() {
       <Text style={styles.help}>{[order.clientName, order.consigneeName].filter(Boolean).join(' · ')}</Text>
       {notice ? <Text style={styles.okText}>{notice}</Text> : null}
 
-      {current ? (
-        <View style={styles.current} testID="sales-current">
-          <Text style={styles.cardTitle}>{t('salesDispatch.goTo', { bin: current.binCode })}</Text>
-          <Text style={styles.label}>
-            {current.sku} · {current.productName}
-          </Text>
-          {current.kitSku ? <Text style={styles.help}>{t('salesDispatch.kitPart', { kit: current.kitSku, per: f.qty(current.perKit ?? 1) })}</Text> : null}
-          {current.lotNumber ? <Text style={styles.help}>{t('dispatch.lotNumber', { lot: current.lotNumber })}</Text> : null}
-          <Text style={styles.label}>{t('salesDispatch.qtyToTake', { qty: f.qty(current.qty) })}</Text>
-          <KeyboardInput
-            value={qtyText}
-            onChangeText={(v) => {
-              setBinError(null)
-              setQtyText(v)
-            }}
-            keyboardType="decimal-pad"
-            style={styles.input}
-            accessibilityLabel={t('dispatch.qtyLabel')}
-            testID="sales-qty"
-          />
+      {/* Lote 198: producto → posición → cantidad, un solo campo activo a la vez */}
+      {!active ? (
+        doneAll ? (
+          <Text style={styles.okText}>{t('salesDispatch.allDone')}</Text>
+        ) : (
           <ScanField
-            label={t('salesDispatch.scanBin')}
-            help={t('salesDispatch.scanBinHelp', { bin: current.binCode })}
-            suggestedValue={current.binCode}
-            autoFocus={false}
-            error={binError}
-            onSubmit={(code) => void scanBin(current, code)}
-            pick="bin"
-            testID="sales-scan-bin"
+            label={t('exitDispatch.scanProduct')}
+            help={t('exitDispatch.scanProductHelp')}
+            error={productError}
+            onSubmit={scanProduct}
+            pick="product"
+            onlyProductIds={pendingProductIds}
+            testID="sales-scan-product"
           />
-          <BigButton label={t('salesDispatch.skip')} variant="secondary" onPress={() => skip(current)} testID="sales-skip" />
+        )
+      ) : (
+        <View style={styles.current} testID="sales-current">
+          <Text style={styles.label}>
+            {active.sku} · {active.productName}
+          </Text>
+          {active.kitSku ? <Text style={styles.help}>{t('salesDispatch.kitPart', { kit: active.kitSku, per: f.qty(active.perKit ?? 1) })}</Text> : null}
+          {active.lotNumber ? <Text style={styles.help}>{t('dispatch.lotNumber', { lot: active.lotNumber })}</Text> : null}
+          {!binChosen ? (
+            <>
+              <ScanField
+                label={t('salesDispatch.scanBin')}
+                help={t('salesDispatch.scanBinHelp', { bin: active.binCode })}
+                suggestedValue={active.binCode}
+                autoFocus={false}
+                error={binError}
+                onSubmit={(code) => void scanBin(active, code)}
+                pick="bin"
+                testID="sales-scan-bin"
+              />
+              <BigButton label={t('common.back')} variant="secondary" onPress={() => setActiveKey(null)} testID="sales-back-product" />
+            </>
+          ) : (
+            <>
+              <Text style={styles.help}>{t('exitDispatch.binChosen', { bin: binChosen.code })}</Text>
+              <Text style={styles.label}>{t('salesDispatch.qtyToTake', { qty: f.qty(active.qty) })}</Text>
+              <KeyboardInput
+                value={qtyText}
+                onChangeText={(v) => {
+                  setBinError(null)
+                  setQtyText(v)
+                }}
+                keyboardType="decimal-pad"
+                style={styles.input}
+                accessibilityLabel={t('dispatch.qtyLabel')}
+                testID="sales-qty"
+              />
+              {binError ? <Text style={styles.error}>{binError}</Text> : null}
+              <BigButton label={t('scan.accept')} onPress={() => acceptQty(active)} testID="sales-qty-accept" />
+              <BigButton label={t('common.back')} variant="secondary" onPress={() => setBinChosen(null)} testID="sales-back-bin" />
+            </>
+          )}
         </View>
-      ) : doneAll ? (
-        <Text style={styles.okText}>{t('salesDispatch.allDone')}</Text>
-      ) : null}
-
-      <TaskChooser
-        tasks={tasks}
-        picks={picks}
-        skipped={skipped}
-        currentKey={current?.key ?? null}
-        onChoose={(task) => {
-          setFocusKey(task.key)
-          setQtyText(String(task.qty))
-          setBinError(null)
-        }}
-      />
+      )}
 
       {picks.length > 0 ? <Text style={styles.label}>{t('salesDispatch.taken')}</Text> : null}
       {picks.map((p) => {

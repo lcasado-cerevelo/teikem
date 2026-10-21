@@ -114,6 +114,7 @@
     "build": "Versión {build}"
   },
   "salesDispatch": {
+    "productNotPending": "Ese producto no está entre lo que falta por sacar de esta orden.",
     "title": "Despachar orden de venta",
     "scanOrder": "Número de la orden",
     "scanOrderHelp": "Escanea o escribe el número de la orden (OV-…), o toca una de la lista.",
@@ -162,6 +163,10 @@
     "skipped": "omitido"
   },
   "exitDispatch": {
+    "scanProduct": "Producto a sacar",
+    "scanProductHelp": "Escanea o escribe el producto. Sirve para cualquiera de los documentos marcados.",
+    "productNotPending": "Ese producto no está entre lo que falta por sacar de estos documentos.",
+    "binChosen": "Posición: {bin}",
     "noneMine": "Nada asignado a ti. Toca «Ver lo que nadie tiene asignado».",
     "unassigned": "Sin asignar (al despacharlo queda a tu nombre)",
     "assignedToYou": "Asignado a ti",

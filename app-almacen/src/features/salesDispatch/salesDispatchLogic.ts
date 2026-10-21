@@ -125,6 +125,18 @@ export function nextTask(tasks: readonly SalesTask[], picks: readonly SalesPick[
   return tasks.find((t) => !done.has(t.key) && !skipped.has(t.key)) ?? null
 }
 
+/** Lote 198: las tareas que faltan (ni cumplidas ni omitidas), en el orden de la ruta (con varios documentos, el orden en que se marcaron). */
+export function pendingTasks(tasks: readonly SalesTask[], picks: readonly SalesPick[], skipped: ReadonlySet<string> = new Set()): SalesTask[] {
+  const done = new Set(picks.map((p) => p.taskKey))
+  return tasks.filter((t) => !done.has(t.key) && !skipped.has(t.key))
+}
+
+/** Lote 198: la primera tarea pendiente del producto escaneado (por id del producto, o por SKU escrito si el código no está en el catálogo local); null si no hay. */
+export function taskForProduct(tasks: readonly SalesTask[], picks: readonly SalesPick[], skipped: ReadonlySet<string>, productPublicId: string | null, code: string): SalesTask | null {
+  const wanted = code.trim().toLowerCase()
+  return pendingTasks(tasks, picks, skipped).find((t) => (productPublicId !== null && t.productPublicId === productPublicId) || (wanted !== '' && t.sku.toLowerCase() === wanted)) ?? null
+}
+
 /** Lote 192: la tarea actual: la que el operario eligió de la lista (si sigue pendiente) o, si no, la siguiente de la ruta. */
 export function currentTask(tasks: readonly SalesTask[], picks: readonly SalesPick[], skipped: ReadonlySet<string>, focusKey: string | null): SalesTask | null {
   if (focusKey) {

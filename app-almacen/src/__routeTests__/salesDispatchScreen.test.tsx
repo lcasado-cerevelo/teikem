@@ -47,17 +47,26 @@ async function seed() {
   applySalesOrders(db, 'wh-1', [ORDER])
 }
 
+/** Lote 198: producto → posición → cantidad (viene rellena con lo reservado; `qty` la cambia). */
+async function pickSales(sku: string, bin: string, qty?: string) {
+  await waitFor(() => expect(screen.getByLabelText('Producto a sacar')).toBeTruthy())
+  await fireEvent.changeText(screen.getByLabelText('Producto a sacar'), sku)
+  await fireEvent.press(screen.getAllByLabelText('Aceptar')[0])
+  await waitFor(() => expect(screen.getByLabelText('Posición de donde sacas')).toBeTruthy())
+  await fireEvent.changeText(screen.getByLabelText('Posición de donde sacas'), bin)
+  await fireEvent.press(screen.getAllByLabelText('Aceptar')[0])
+  await waitFor(() => expect(screen.getByTestId('sales-qty')).toBeTruthy())
+  if (qty) await fireEvent.changeText(screen.getByTestId('sales-qty'), qty)
+  await fireEvent.press(screen.getByTestId('sales-qty-accept'))
+}
+
 const onHand = () => getDb().getFirstSync<{ q: number }>('SELECT qty_on_hand AS q FROM stock_balance WHERE id = 1')?.q
 
 async function openOrderAndTake() {
   await renderRouter('src/app', { initialUrl: '/sales-dispatch' })
   await waitFor(() => expect(screen.getByText('Despachar orden de venta')).toBeTruthy())
   await fireEvent.press(await screen.findByTestId('sales-order-OV-00005'))
-  await waitFor(() => expect(screen.getByText('Ve a A-01')).toBeTruthy())
-  // la cantidad viene puesta con lo reservado; se lee la posición
-  expect((screen.getByTestId('sales-qty').props as { value: string }).value).toBe('4')
-  await fireEvent.changeText(screen.getByLabelText('Posición de donde sacas'), 'a-01')
-  await fireEvent.press(screen.getAllByLabelText('Aceptar')[0])
+  await pickSales('MED', 'a-01')
   await waitFor(() => expect(screen.getByText(/✓ 4 × MED · A-01/)).toBeTruthy())
 }
 
@@ -128,12 +137,9 @@ describe('Despachar orden de venta en el aparato', () => {
     mockFetch([ME])
     await renderRouter('src/app', { initialUrl: '/sales-dispatch' })
     await fireEvent.press(await screen.findByTestId('sales-order-OV-00005'))
-    await waitFor(() => expect(screen.getByText('Ve a A-01')).toBeTruthy())
-    await fireEvent.changeText(screen.getByTestId('sales-qty'), '5')
-    await fireEvent.changeText(screen.getByLabelText('Posición de donde sacas'), 'A-01')
-    await fireEvent.press(screen.getAllByLabelText('Aceptar')[0])
+    await pickSales('MED', 'A-01', '5')
     await waitFor(() => expect(screen.getByText('No puedes sacar más de lo reservado (4).')).toBeTruthy())
-    await fireEvent.changeText(screen.getByTestId('sales-qty'), '2')
+    await fireEvent.press(screen.getByTestId('sales-back-bin'))
     await fireEvent.changeText(screen.getByLabelText('Posición de donde sacas'), 'ZZ-99')
     await fireEvent.press(screen.getAllByLabelText('Aceptar')[0])
     await waitFor(() => expect(screen.getByText('Esa posición no existe en este almacén.')).toBeTruthy())
@@ -175,15 +181,8 @@ describe('Despachar una orden con kits en el aparato', () => {
     ])
     await renderRouter('src/app', { initialUrl: '/sales-dispatch' })
     await fireEvent.press(await screen.findByTestId('sales-order-OV-00009'))
-    await waitFor(() => expect(screen.getByText('Ve a A-01')).toBeTruthy())
-    expect(screen.getByText('Pieza del kit KIT-1 (2 por kit)')).toBeTruthy()
-    await fireEvent.changeText(screen.getByTestId('sales-qty'), '4')   // 4 tornillos = 2 kits
-    await fireEvent.changeText(screen.getByLabelText('Posición de donde sacas'), 'A-01')
-    await fireEvent.press(screen.getAllByLabelText('Aceptar')[0])
-    await waitFor(() => expect(screen.getByText('Ve a A-02')).toBeTruthy())
-    await fireEvent.changeText(screen.getByTestId('sales-qty'), '3')
-    await fireEvent.changeText(screen.getByLabelText('Posición de donde sacas'), 'A-02')
-    await fireEvent.press(screen.getAllByLabelText('Aceptar')[0])
+    await pickSales('TORN', 'A-01', '4')   // 4 tornillos = 2 kits
+    await pickSales('TUER', 'A-02', '3')
     await waitFor(() => expect(screen.getByText(/Listo: no quedan más posiciones/)).toBeTruthy())
     await fireEvent.press(screen.getByTestId('sales-finish'))
     expect(await screen.findByText('Kit KIT-1: 2 completos')).toBeTruthy()
@@ -200,11 +199,7 @@ describe('Despachar una orden con kits en el aparato', () => {
     mockFetch([ME])
     await renderRouter('src/app', { initialUrl: '/sales-dispatch' })
     await fireEvent.press(await screen.findByTestId('sales-order-OV-00009'))
-    await waitFor(() => expect(screen.getByText('Ve a A-01')).toBeTruthy())
-    await fireEvent.changeText(screen.getByLabelText('Posición de donde sacas'), 'A-01')
-    await fireEvent.press(screen.getAllByLabelText('Aceptar')[0])
-    await waitFor(() => expect(screen.getByText('Ve a A-02')).toBeTruthy())
-    await fireEvent.press(screen.getByTestId('sales-skip'))   // no se recoge la tuerca
+    await pickSales('TORN', 'A-01')   // no se recoge la tuerca
     await fireEvent.press(await screen.findByTestId('sales-finish'))
     await fireEvent.press(await screen.findByTestId('sales-pickup'))
     await waitFor(() => expect(screen.getByText(/no se completa ningún kit KIT-1/)).toBeTruthy())

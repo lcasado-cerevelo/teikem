@@ -47,6 +47,18 @@ async function seed() {
   applyExitNotices(db, 'wh-1', [notice(1, 'ASICS', 4), notice(2, 'ASICS', 3), notice(3, 'NIKE', 3)])
 }
 
+/** Lote 198: producto → posición → cantidad (la cantidad viene rellena con lo reservado). */
+async function pickLine(sku: string, bin: string) {
+  await waitFor(() => expect(screen.getByLabelText('Producto a sacar')).toBeTruthy())
+  await fireEvent.changeText(screen.getByLabelText('Producto a sacar'), sku)
+  await fireEvent.press(screen.getAllByLabelText('Aceptar')[0])
+  await waitFor(() => expect(screen.getByLabelText('Posición de donde sacas')).toBeTruthy())
+  await fireEvent.changeText(screen.getByLabelText('Posición de donde sacas'), bin)
+  await fireEvent.press(screen.getAllByLabelText('Aceptar')[0])
+  await waitFor(() => expect(screen.getByTestId('exit-qty')).toBeTruthy())
+  await fireEvent.press(screen.getByTestId('exit-qty-accept'))
+}
+
 const onHand = () => getDb().getFirstSync<{ q: number }>('SELECT qty_on_hand AS q FROM stock_balance WHERE id = 1')?.q
 
 describe('Recolectar juntos (aviso de salida)', () => {
@@ -66,16 +78,11 @@ describe('Recolectar juntos (aviso de salida)', () => {
     await fireEvent.press(screen.getByTestId('exit-notice-SAL-00002'))
     await fireEvent.press(await screen.findByTestId('exit-group-go'))
 
-    // primera tarea (aviso 1)
-    await waitFor(() => expect(screen.getByText('Ve a A-01')).toBeTruthy())
-    expect(screen.getByText('SAL-00001 + SAL-00002')).toBeTruthy()
-    expect(screen.getByTestId('task-chooser')).toBeTruthy()   // Lote 192: la lista de productos por sacar
-    await fireEvent.changeText(screen.getByLabelText('Posición de donde sacas'), 'a-01')
-    await fireEvent.press(screen.getAllByLabelText('Aceptar')[0])
+    // el producto sirve para cualquiera de los avisos: primero toma la línea del aviso 1, luego la del 2 (el orden en que se marcaron)
+    await waitFor(() => expect(screen.getByText('SAL-00001 + SAL-00002')).toBeTruthy())
+    await pickLine('MED', 'a-01')
     await waitFor(() => expect(screen.getByText(/✓ 4 × MED · A-01/)).toBeTruthy())
-    // segunda tarea (aviso 2)
-    await fireEvent.changeText(screen.getByLabelText('Posición de donde sacas'), 'A-01')
-    await fireEvent.press(screen.getAllByLabelText('Aceptar')[0])
+    await pickLine('MED', 'A-01')
     await waitFor(() => expect(screen.getByText(/✓ 3 × MED · A-01/)).toBeTruthy())
 
     await fireEvent.press(screen.getByTestId('exit-finish'))
@@ -104,10 +111,8 @@ describe('Recolectar juntos (aviso de salida)', () => {
     await fireEvent.press(await screen.findByTestId('exit-notice-SAL-00001'))
     await fireEvent.press(screen.getByTestId('exit-notice-SAL-00002'))
     await fireEvent.press(await screen.findByTestId('exit-group-go'))
-    await waitFor(() => expect(screen.getByText('Ve a A-01')).toBeTruthy())
     for (const [text, code] of [[/✓ 4 × MED/, 'a-01'], [/✓ 3 × MED/, 'A-01']] as const) {
-      await fireEvent.changeText(screen.getByLabelText('Posición de donde sacas'), code)
-      await fireEvent.press(screen.getAllByLabelText('Aceptar')[0])
+      await pickLine('MED', code)
       await waitFor(() => expect(screen.getByText(text)).toBeTruthy())
     }
     await fireEvent.press(screen.getByTestId('exit-finish'))
@@ -136,12 +141,9 @@ describe('Recolectar juntos (aviso de salida)', () => {
     await fireEvent.press(await screen.findByTestId('exit-order-OV-00009'))
     await fireEvent.press(await screen.findByTestId('exit-group-go'))
 
-    await waitFor(() => expect(screen.getByText('Ve a A-01')).toBeTruthy())
-    await fireEvent.changeText(screen.getByLabelText('Posición de donde sacas'), 'A-01')
-    await fireEvent.press(screen.getAllByLabelText('Aceptar')[0])
+    await pickLine('MED', 'A-01')
     await waitFor(() => expect(screen.getByText(/✓ 2 × MED · A-01/)).toBeTruthy())
-    await fireEvent.changeText(screen.getByLabelText('Posición de donde sacas'), 'a-01')
-    await fireEvent.press(screen.getAllByLabelText('Aceptar')[0])
+    await pickLine('MED', 'a-01')
     await waitFor(() => expect(screen.getByText(/✓ 3 × MED · A-01/)).toBeTruthy())
     await fireEvent.press(screen.getByTestId('exit-finish'))
     await fireEvent.press(await screen.findByTestId('exit-send'))
@@ -154,7 +156,7 @@ describe('Recolectar juntos (aviso de salida)', () => {
     })
   })
 
-  it('Lote 192: de la lista de productos por sacar se elige cuál se saca ahora', async () => {
+  it('Lote 198: un producto que no falta por sacar se rechaza, y Volver en la posición regresa al producto', async () => {
     await seed()
     mockFetch([ME])
     assignAllToMe()
@@ -163,8 +165,15 @@ describe('Recolectar juntos (aviso de salida)', () => {
     await fireEvent.press(await screen.findByTestId('exit-notice-SAL-00001'))
     await fireEvent.press(screen.getByTestId('exit-notice-SAL-00002'))
     await fireEvent.press(await screen.findByTestId('exit-group-go'))
-    await waitFor(() => expect(screen.getByText('Reservado: 4. Cantidad que sacas:')).toBeTruthy())   // la ruta empieza por el primero
-    await fireEvent.press(screen.getAllByLabelText('Sacar MED de A-01')[1])
-    await waitFor(() => expect(screen.getByText('Reservado: 3. Cantidad que sacas:')).toBeTruthy())   // el elegido pasa a ser el actual
+    await waitFor(() => expect(screen.getByLabelText('Producto a sacar')).toBeTruthy())
+    await fireEvent.changeText(screen.getByLabelText('Producto a sacar'), 'NOPE')
+    await fireEvent.press(screen.getAllByLabelText('Aceptar')[0])
+    await waitFor(() => expect(screen.getByText('Ese producto no está entre lo que falta por sacar de estos documentos.')).toBeTruthy())
+    await fireEvent.changeText(screen.getByLabelText('Producto a sacar'), 'MED')
+    await fireEvent.press(screen.getAllByLabelText('Aceptar')[0])
+    await waitFor(() => expect(screen.getByLabelText('Posición de donde sacas')).toBeTruthy())
+    expect(screen.queryByLabelText('Producto a sacar')).toBeNull()   // el campo del producto desaparece mientras se pide la posición
+    await fireEvent.press(screen.getByTestId('exit-back-product'))
+    await waitFor(() => expect(screen.getByLabelText('Producto a sacar')).toBeTruthy())
   })
 })
