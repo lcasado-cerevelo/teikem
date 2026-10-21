@@ -40,3 +40,16 @@
 **Preguntas abiertas.**
 - ¿Las variantes Isla (SAME DAY / NEXT DAY / PICKUP ISLAND) se quedan como servicios propios de la compañía? (Por defecto sí, con la decisión de arriba.)
 - ¿Una compañía nueva de transporte parte de cero o con plantilla inicial de servicios y paquetes? (No afecta la migración.)
+
+## 3. Piezas y contenido: una sola línea de paquete con el contenido en la descripción
+
+**Hallazgo (2026-10-20, orden `0079372073221100AXM`, AxisCare).** Colavora tiene 2 piezas físicas (`Qty = 2`) y 52 ítems de contenido. La migración guardó `TotalPieces = 2` y una línea con el número de paquete, pero los 52 ítems quedaron como **52 líneas de carga separadas** (tipo Caja, cantidad 1, sin número de paquete). En la pantalla de Envíos eso se ve como «cada cosa es un paquete», el encabezado dice «54 piezas» (suma las cantidades de todas las líneas) y la tabla de paquetes no tiene columna de número de paquete. La línea real además quedó con descripción `0` (comentario de la pieza en Colavora).
+
+**Decisión de Luis (2026-10-20):** NO listar los ítems. Una sola línea por tipo de paquete real, con el contenido dentro de su descripción; se puede ampliar el campo `Description` a un máximo (recomendado `NVARCHAR(MAX)`).
+
+**Qué cambia (sin hacerlo todavía):**
+- **Migración:** las piezas de tipo descripción (`DescriptionPackageTypes`) ya no crean líneas: su texto se concatena en la descripción de la línea del paquete físico, un ítem por renglón con su cantidad (`1 × 166-1199 · DYNASHIELD…`). Si la orden no tiene pieza física, la línea de «sin piezas» (waybill-n) lleva ese contenido. La descripción `0` (comentario sin valor) queda vacía. Revisar `ColavoraImportService.Orders.cs` (~líneas 244–275) y `ColavoraRules.LineDescription`.
+- **Estructura:** `CargoLine.Description` a `NVARCHAR(MAX)`: sección nueva al final de `Diseño/logistica-db-update.sql` (idempotente). Antes, revisar que ningún índice incluya la columna y los límites de longitud en el API, el importador y las apps.
+- **Pantallas (Envíos y ficha de la orden):** el encabezado muestra las piezas reales (no la suma de cantidades de todas las líneas); columna **número de paquete** en la tabla de paquetes; en la lista, la columna Paquete se corta con «…» y el texto completo solo en la ficha.
+- Se pierde la cantidad por ítem como dato aparte y el filtro exacto por producto; queda la búsqueda de texto en la descripción.
+- **Cuándo:** con las otras sesiones en calma (toca esquema, API y pantallas compartidas).
