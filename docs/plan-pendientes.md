@@ -62,7 +62,7 @@ Documento vivo: cada vez que se cierre o se decida algo se actualiza aquí. Esta
 - ☐ **H1.** Regla acordada por el análisis del 2026-10-21 (**por confirmar con el dueño**): se contabiliza por **dueño del inventario** (lo propio sí, lo de un cliente no), sin importar el tipo de documento (orden de compra o aviso de llegada), con el **costo congelado de cada línea** (capas, Lotes 147-148). Corridas Generada → Aceptada → Exportada con plantilla de exportación.
 
 ## I. Defectos conocidos por arreglar
-- ☐ **I1.** «Avisos que puedo silenciar» (campana → lista) sale con los interruptores **sin texto**; sospecha de color tras el cambio de marca o nombre vacío del servidor; por revisar.
+- ☑ **I1.** «Avisos que puedo silenciar» (campana → lista) sale con los interruptores **sin texto**; sospecha de color tras el cambio de marca o nombre vacío del servidor; por revisar.
 
 ## D. Pendientes menores
 - ☐ Líneas existentes de una orden de compra: mostrar el aviso de diferencia de precio al editar.
