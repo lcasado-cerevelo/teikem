@@ -3,11 +3,13 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
+import { useCan } from '../../kernel/access'
 import { useT } from '../../kernel/i18n'
 import { Field, Select, TextInput, Toggle, toast } from '../../kernel/ui'
 import { FormModal } from '../clients/contractUi'
 import { useClientOptions } from '../consignees/api'
-import { useOrderImportTemplates } from '../orders/importApi'
+import { ImportTemplateEditorModal } from '../consignees/ImportTemplateEditorModal'
+import { useOrderImportFields, useOrderImportTemplates } from '../orders/importApi'
 import { EmailSection } from './EmailSection'
 import { FormatSection } from './FormatSection'
 import { OutputPreviewModal } from './OutputPreviewModal'
@@ -114,6 +116,16 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
   const connector = values.connectorKind ?? 'FOLDER'
   const outbound = (values.direction ?? 'INBOUND') === 'OUTBOUND'
   const [previewing, setPreviewing] = useState(false)
+  // «Nueva plantilla» sin salir de la integración (dictado de Luis, 2026-10-19): el mismo editor del asistente de Importar; al guardar queda elegida
+  const canTemplates = useCan('orders.edit')
+  const orderFields = useOrderImportFields(canTemplates)
+  const [creatingTemplate, setCreatingTemplate] = useState(false)
+  const [justCreated, setJustCreated] = useState<{ value: string; label: string } | null>(null)
+  const fieldLabel = (field: string) => {
+    const key = `orders.import.fields.${field}`
+    const text = t(key)
+    return text === key ? field : text
+  }
   // al cambiar la dirección (solo al crear) se ofrece lo que corresponde: conector y alcance
   const lastDirection = useRef(values.direction)
   useEffect(() => {
@@ -125,6 +137,7 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
 
   const clientOptions = (clients.data ?? []).map((c) => ({ value: c.publicId ?? '', label: [c.code, c.name].filter(Boolean).join(' · ') }))
   const templateOptions = (templates.data ?? []).map((x) => ({ value: x.publicId ?? '', label: x.name ?? '' }))
+  if (justCreated && !templateOptions.some((o) => o.value === justCreated.value)) templateOptions.push(justCreated)
   // al editar, la plantilla actual siempre es una opción (si la lista aún no llegó, el control no se queda en blanco)
   if (integration?.templatePublicId && !templateOptions.some((o) => o.value === integration.templatePublicId)) templateOptions.unshift({ value: integration.templatePublicId, label: integration.templateName ?? '' })
   // la API solo ofrece sus alcances; las demás integraciones, solo los de archivos
@@ -178,6 +191,13 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
         <Field name="templatePublicId" label={t('integrations.form.template')} required help={t('integrations.form.templateHelp')}>
           <Select options={templateOptions} placeholder={clientId || editing ? t('integrations.form.pick') : t('integrations.form.pickClientFirst')} />
         </Field>
+      )}
+      {connector !== 'API' && !outbound && canTemplates && (
+        <p>
+          <button type="button" className="btn sm" onClick={() => setCreatingTemplate(true)} disabled={(orderFields.data ?? []).length === 0}>
+            {t('integrations.form.newTemplate')}
+          </button>
+        </p>
       )}
       <div className="r2">
         <Field name="connectorKind" label={t('integrations.form.connector')} required>
@@ -263,6 +283,20 @@ export function IntegrationFormModal({ integration, onClose, onSaved }: { integr
         <TextInput inputMode="numeric" maxLength={3} />
       </Field>
     </FormModal>
+    {creatingTemplate && (
+      <ImportTemplateEditorModal
+        kind="ORDER"
+        template={null}
+        fields={orderFields.data ?? []}
+        fieldLabel={fieldLabel}
+        onClose={() => setCreatingTemplate(false)}
+        onSaved={(saved) => {
+          setCreatingTemplate(false)
+          setJustCreated({ value: saved.publicId ?? '', label: saved.name ?? '' })
+          form.setValue('templatePublicId', saved.publicId ?? '', { shouldDirty: true, shouldValidate: true })
+        }}
+      />
+    )}
     {previewing && integration && <OutputPreviewModal integration={integration} onClose={() => setPreviewing(false)} />}
     </>
   )
