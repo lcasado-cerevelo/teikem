@@ -12,7 +12,7 @@ Reglas: trabajar en `master`, `git pull --rebase` antes de cada commit, un commi
 | B | Recibo web: pedir lote y vencimiento en el mismo formulario de la línea | ✅ ya estaba hecha (Lote 140) |
 | C | Atar la orden de venta a su despacho del almacén (ver y abrir el despacho desde la venta) | ✅ hecha |
 | D | Plantillas de importación para más entidades | 📝 diseño escrito; espera decisión de Luis |
-| E | Restos de la marca (botón secundario azul marino, apps móviles) | pendiente |
+| E | Restos de la marca (botón secundario azul marino, apps móviles) | ✅ ya estaba hecha (Lote 138b) |
 
 ## Registro (una entrada por parte terminada)
 
@@ -28,7 +28,13 @@ El vínculo ya existía en los datos (`PickBatch.SalesOrderId`) y la venta ya li
 ### D — Plantillas de más entidades (diseño, sin construir)
 Hoy solo envíos y consignatarios tienen importación, cada una con ~700-900 líneas propias. Escribí `docs/plantillas-mas-entidades-diseno.md`: motor genérico (`IImportEntity` por entidad), plantilla única para importar y exportar, orden sugerido (productos, proveedores/clientes, almacenes/posiciones, choferes, órdenes de venta/recibos/despachos/ajustes) y estimado. No lo construí porque cambia el modelo de importación entero y tiene decisiones que son tuyas (abajo).
 
-_(las demás partes se agregan debajo)_
+### E — Restos de la marca (ya estaba hecha)
+El Lote 138b ya dejó botón primario naranja, secundario azul marino y la paleta de `app-cliente`. Queda como decisión tuya solo el texto sobre naranja: azul marino oscuro (cumple contraste AA) o blanco como su página (no cumple). `app-almacen` se queda solo en tema claro por tu decisión del 2026-10-17.
+
+### Sin verificar en navegador (todo lo de hoy)
+El API y la web de tu máquina están corriendo, pero con la base de producción restaurada y sin la sección SQL nueva (columna `Kind` de los labels de factura); no me conecté (no uso tus credenciales). Antes de probar el label de factura: aplicar `db-update` y reiniciar el API.
+
+_(fin del registro del día)_
 
 ## Decisiones para Luis
 
