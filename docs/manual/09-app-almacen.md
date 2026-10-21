@@ -1379,3 +1379,16 @@ Asignar se hace en la web: Recibo → Avisos de llegada / Avisos de salida, bot�
 **Reintentos.** Cada parte lleva una clave propia: si el envío se repite (se cortó la señal al responder), el servidor reconoce la parte y **no la suma dos veces**.
 
 **Servidor.** `POST /api/v1/receipts/part` (permiso `warehouse.receive`; con orden de compra, también `purchasing.receive`). Cuerpo: `asnId` **o** `purchaseOrderPublicId`, `lines` (producto, cantidad, lote), `clientKey`, `comment`. Más en el capítulo 06 («Recibo con tandas»).
+
+## Recolectar juntos: varios avisos de salida, una maestra (Lote 178, 2026-10-21)
+
+**Para qué.** Cuando varios avisos de salida **del mismo cliente** salen juntos, se recogen en **una sola ruta** y quedan reunidos en una **recolección maestra** (con un solo envío al empacar, desde la web). Se ven todos los movimientos —de qué posición salió cada cosa y para cuál aviso— en la ficha de la maestra.
+
+**Cómo se usa (Despachar aviso de salida, permiso `warehouse.pick`).**
+1. En la lista de avisos pulse **«Recolectar juntos»** (aparece si hay 2 o más avisos por despachar).
+2. Toque los avisos que salen juntos (☐ → ☑). Los de **otro cliente quedan atenuados** y avisan «Es de otro cliente»: una maestra es de un solo cliente. Pulse **«Recolectar juntos (N)»** (mínimo 2).
+3. La ruta guiada mezcla las posiciones de todos los avisos elegidos (en el orden elegido); en cada paso lea la posición y confirme la cantidad, igual que en un aviso solo. Puede cambiar de posición u omitir una.
+4. **Terminar → Despachar.** Hace falta haber recogido algo de **al menos dos** avisos (si no, el aparato lo indica). Se encola **un solo envío** (`POST /api/v1/pick-batches/groups`) que sirve sin señal; el saldo local y cada aviso se actualizan al instante. Si el servidor lo rechaza (por ejemplo, inventario insuficiente) se muestra su mensaje exacto, no queda nada en la cola y los saldos vuelven; el aviso se baja otra vez como está.
+5. Con señal, el aparato avisa: «Recolección maestra EMP-##### enviada.»
+
+**Qué no hace todavía.** Solo avisos de salida (las órdenes de venta se juntan desde la web). Sumar documentos después no se puede (se decide al recolectar). El envío se crea al **empacar la maestra en la web**.

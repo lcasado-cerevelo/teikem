@@ -18,7 +18,8 @@ import { KeyboardScreen } from '../kernel/ui/KeyboardScreen'
 import { ScanField } from '../kernel/ui/ScanField'
 import { vibrateError, vibrateOk } from '../kernel/ui/feedback'
 import { colors, fontSize, radius, spacing } from '../kernel/ui/theme'
-import { findExitNoticeByNumber, getExitNoticeLines, listExitNotices, queueExitDispatch, type LocalExitNotice } from '../features/exitDispatch/localExit'
+import { findExitNoticeByNumber, getExitNoticeLines, getGroupTasks, listExitNotices, queueExitDispatch, queueExitGroup, type LocalExitNotice } from '../features/exitDispatch/localExit'
+import { buildGroupBody, groupBlock, groupNumber, groupReady, MIN_GROUP } from '../features/exitDispatch/exitGroupLogic'
 import {
   buildTasks,
   checkPickQty,
@@ -49,13 +50,18 @@ export default function ExitDispatchScreen() {
   const [scanError, setScanError] = useState<string | null>(null)
   const [binError, setBinError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
+  // Lote 178: «Recolectar juntos» — avisos elegidos (modo selección) y, ya en la ruta, el grupo que se recolecta
+  const [choosing, setChoosing] = useState(false)
+  const [chosen, setChosen] = useState<LocalExitNotice[]>([])
+  const [group, setGroup] = useState<LocalExitNotice[] | null>(null)
   const lock = useRef(false)
 
   // tick fuerza releer la copia local tras volver de enviar.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const notices = useMemo(() => (warehousePublicId ? listExitNotices(warehousePublicId) : []), [warehousePublicId, tick])
   const lines = useMemo(() => (notice ? getExitNoticeLines(notice.id) : []), [notice])
-  const tasks = useMemo(() => buildTasks(lines), [lines])
+  const groupData = useMemo(() => (group ? getGroupTasks(group) : null), [group])
+  const tasks = useMemo(() => (groupData ? groupData.tasks : buildTasks(lines)), [lines, groupData])
   const current = notice && step === 'pick' ? nextTask(tasks, picks, skipped) : null
   const doneAll = step === 'pick' && notice !== null && current === null
 
@@ -75,6 +81,7 @@ export default function ExitDispatchScreen() {
   }
 
   function open(o: LocalExitNotice) {
+    setGroup(null)
     setNotice(o)
     setPicks([])
     setSkipped(new Set())
@@ -83,6 +90,29 @@ export default function ExitDispatchScreen() {
     setInfo(null)
     setStep('pick')
     const first = nextTask(buildTasks(getExitNoticeLines(o.id)), [], new Set())
+    setQtyText(first ? String(first.qty) : '')
+    vibrateOk()
+  }
+
+  function toggleChosen(o: LocalExitNotice) {
+    setScanError(null)
+    setChosen((cur) => (cur.some((c) => c.id === o.id) ? cur.filter((c) => c.id !== o.id) : groupBlock(o, cur) ? cur : [...cur, o]))
+  }
+
+  /** Empieza la ruta guiada de todos los avisos elegidos juntos. */
+  function startGroup() {
+    if (chosen.length < MIN_GROUP) return
+    const data = getGroupTasks(chosen)
+    setGroup(chosen)
+    setNotice(chosen[0])
+    setPicks([])
+    setSkipped(new Set())
+    setBinError(null)
+    setScanError(null)
+    setInfo(null)
+    setChoosing(false)
+    setStep('pick')
+    const first = nextTask(data.tasks, [], new Set())
     setQtyText(first ? String(first.qty) : '')
     vibrateOk()
   }
@@ -142,7 +172,13 @@ export default function ExitDispatchScreen() {
     setStep('sending')
     let id = 0
     try {
-      id = queueExitDispatch(notice, tasks, picks)
+      if (group && groupData) {
+        const queued = queueExitGroup(group, tasks, picks, groupData.lineNotice)
+        if (queued === null) throw new Error('group')
+        id = queued
+      } else {
+        id = queueExitDispatch(notice, tasks, picks)
+      }
     } catch {
       lock.current = false
       setStep('finish')
@@ -157,6 +193,8 @@ export default function ExitDispatchScreen() {
       discardRow(id)
       void downloadExitNoticesIfAllowed(warehousePublicId!).catch(() => undefined)
       setNotice(null)
+      setGroup(null)
+      setChosen([])
       setPicks([])
       setStep('list')
       setScanError(result.error || t('errors.generic'))
@@ -165,9 +203,11 @@ export default function ExitDispatchScreen() {
       vibrateError()
       return
     }
-    const number = result.status === 'sent' ? dispatchBatchNumber(outboxResult(id)) : null
-    setInfo(result.status === 'sent' ? (number ? t('exitDispatch.sent', { number }) : t('exitDispatch.sentNoNumber')) : t('exitDispatch.queued'))
+    const number = result.status === 'sent' ? (group ? groupNumber(outboxResult(id)) : dispatchBatchNumber(outboxResult(id))) : null
+    setInfo(result.status === 'sent' ? (number ? t(group ? 'exitDispatch.groupSent' : 'exitDispatch.sent', { number }) : t('exitDispatch.sentNoNumber')) : t('exitDispatch.queued'))
     setScanError(null)
+    setGroup(null)
+    setChosen([])
     setNotice(null)
     setPicks([])
     setStep('list')
@@ -191,23 +231,43 @@ export default function ExitDispatchScreen() {
         <Text style={styles.title}>{t('exitDispatch.title')}</Text>
         <ScanField label={t('exitDispatch.scanNotice')} help={t('exitDispatch.scanNoticeHelp')} error={scanError} notice={info} onSubmit={scanNotice} testID="exit-scan-notice" />
         {notices.length === 0 ? <Text style={styles.help}>{t('exitDispatch.noNotices')}</Text> : null}
-        {notices.map((o) => (
+        {notices.length >= MIN_GROUP ? (
+          <BigButton
+            label={choosing ? t('exitDispatch.groupCancel') : t('exitDispatch.groupStart')}
+            variant="secondary"
+            onPress={() => {
+              setChoosing((v) => !v)
+              setChosen([])
+            }}
+            testID="exit-group-toggle"
+          />
+        ) : null}
+        {choosing ? <Text style={styles.help}>{t('exitDispatch.groupHelp')}</Text> : null}
+        {notices.map((o) => {
+          const on = chosen.some((c) => c.id === o.id)
+          const blocked = choosing && !on && groupBlock(o, chosen) !== null
+          return (
           <Pressable
             key={o.id}
-            accessibilityRole="button"
-            accessibilityLabel={t('exitDispatch.openNotice', { number: o.number })}
-            onPress={() => open(o)}
-            style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+            accessibilityRole={choosing ? 'checkbox' : 'button'}
+            accessibilityState={choosing ? { checked: on, disabled: blocked } : undefined}
+            accessibilityLabel={t(choosing ? 'exitDispatch.groupPick' : 'exitDispatch.openNotice', { number: o.number })}
+            onPress={() => (choosing ? (blocked ? setScanError(t('exitDispatch.groupOtherClient')) : toggleChosen(o)) : open(o))}
+            style={({ pressed }) => [styles.card, pressed && styles.cardPressed, on && styles.cardOn, blocked && styles.cardDim]}
             testID={`exit-notice-${o.number}`}
           >
-            <Text style={styles.cardTitle}>{o.number}</Text>
+            <Text style={styles.cardTitle}>{choosing ? (on ? '☑ ' : '☐ ') : ''}{o.number}</Text>
             <Text style={styles.help}>{[o.clientName, o.destination ?? o.reference].filter(Boolean).join(' · ')}</Text>
             <Text style={styles.help}>
               {t('exitDispatch.toDispatch', { qty: f.qty(o.reserved) })}
               {o.requiredDate ? ' · ' + t('exitDispatch.required', { date: f.date(o.requiredDate) }) : ''}
             </Text>
           </Pressable>
-        ))}
+          )
+        })}
+        {choosing ? (
+          <BigButton label={t('exitDispatch.groupGo', { n: chosen.length })} onPress={startGroup} disabled={chosen.length < MIN_GROUP} testID="exit-group-go" />
+        ) : null}
         <View style={styles.bottom}>
           <BigButton label={t('common.back')} variant="danger" onPress={() => router.replace('/home')} />
         </View>
@@ -219,11 +279,17 @@ export default function ExitDispatchScreen() {
     const total = totalPicked(picks)
     return (
       <KeyboardScreen contentContainerStyle={styles.fill}>
-        <Text style={styles.title}>{t('exitDispatch.finishTitle', { number: notice.number })}</Text>
+        <Text style={styles.title}>{t('exitDispatch.finishTitle', { number: group ? group.map((g) => g.number).join(' + ') : notice.number })}</Text>
         <Text style={styles.label}>{t('exitDispatch.finishSummary', { lines: picks.length, qty: f.qty(total) })}</Text>
         <Text style={styles.help}>{t('exitDispatch.finishHelp')}</Text>
         {scanError ? <Text style={styles.error}>{scanError}</Text> : null}
-        <BigButton label={t('exitDispatch.send')} onPress={() => void send()} testID="exit-send" />
+        {group && groupData && !groupReady(buildGroupBody(group, tasks, picks, groupData.lineNotice, notice.warehousePublicId)) ? <Text style={styles.error}>{t('exitDispatch.groupNeedTwo')}</Text> : null}
+        <BigButton
+          label={t('exitDispatch.send')}
+          onPress={() => void send()}
+          disabled={group !== null && groupData !== null && !groupReady(buildGroupBody(group, tasks, picks, groupData.lineNotice, notice.warehousePublicId))}
+          testID="exit-send"
+        />
         <BigButton label={t('common.back')} variant="secondary" onPress={() => setStep('pick')} />
       </KeyboardScreen>
     )
@@ -232,8 +298,8 @@ export default function ExitDispatchScreen() {
   // step === 'pick'
   return (
     <KeyboardScreen contentContainerStyle={styles.fill}>
-      <Text style={styles.title}>{notice.number}</Text>
-      <Text style={styles.help}>{[notice.clientName, notice.destination ?? notice.reference].filter(Boolean).join(' · ')}</Text>
+      <Text style={styles.title}>{group ? group.map((g) => g.number).join(' + ') : notice.number}</Text>
+      <Text style={styles.help}>{group ? t('exitDispatch.groupBanner', { client: notice.clientName }) : [notice.clientName, notice.destination ?? notice.reference].filter(Boolean).join(' · ')}</Text>
       {info ? <Text style={styles.okText}>{info}</Text> : null}
 
       {current ? (
@@ -296,6 +362,8 @@ export default function ExitDispatchScreen() {
         variant="danger"
         onPress={() => {
           setNotice(null)
+          setGroup(null)
+          setChosen([])
           setPicks([])
           setStep('list')
         }}
@@ -315,6 +383,8 @@ const styles = StyleSheet.create({
   bottom: { marginTop: 'auto' },
   card: { gap: 2, padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panelAlt },
   cardPressed: { backgroundColor: colors.panel },
+  cardOn: { borderColor: colors.brand, borderWidth: 2 },
+  cardDim: { opacity: 0.45 },
   cardTitle: { color: colors.text, fontSize: fontSize.label, fontWeight: '700' },
   current: { gap: spacing.sm, padding: spacing.md, borderRadius: 12, borderWidth: 2, borderColor: colors.brand, backgroundColor: colors.panelAlt },
   doneRow: { gap: 2, padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line },

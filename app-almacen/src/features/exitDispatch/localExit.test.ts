@@ -5,7 +5,7 @@ import { applyExitNotices } from '../../kernel/sync/download'
 import { listOutbox } from '../../kernel/sync/outbox'
 import { buildTasks } from '../salesDispatch/salesDispatchLogic'
 import { readDispatchRequirement, saveDispatchRequirement } from '../dispatch/stockExit'
-import { findExitNoticeByNumber, getExitNoticeLines, listExitNotices, queueExitDispatch, reapplyPendingExitDispatches } from './localExit'
+import { findExitNoticeByNumber, getExitNoticeLines, getGroupTasks, listExitNotices, queueExitDispatch, queueExitGroup, reapplyPendingExitDispatches } from './localExit'
 
 beforeEach(() => {
   __resetAllForTests()
@@ -94,5 +94,57 @@ describe('el despacho exige documento (copia en el aparato)', () => {
     expect(readDispatchRequirement()).toBe('EXIT_NOTICE')
     saveDispatchRequirement('basura')
     expect(readDispatchRequirement()).toBe('FREE')
+  })
+})
+
+describe('recolectar juntos (Lote 178)', () => {
+  const NOTICE2 = {
+    ...NOTICE, id: 8, publicId: 'sn-8', number: 'SAL-00008',
+    lines: [{ id: 80, productPublicId: 'p1', sku: 'MED', productName: 'Medicina', qtyOrdered: 3, qtyReserved: 3, qtyShipped: 0, qtyBackordered: 0, reservations: [{ binId: 1, binCode: 'P-01', lotId: 3, lotNumber: 'L1', quantity: 3 }] }],
+  }
+
+  it('junta las tareas de varios avisos y manda UNA recolección maestra que se refleja en cada aviso y en los saldos', () => {
+    seed()
+    applyExitNotices(getDb(), WH, [NOTICE, NOTICE2])
+    const notices = [findExitNoticeByNumber(WH, 'SAL-00007')!, findExitNoticeByNumber(WH, 'SAL-00008')!]
+    const { tasks, lineNotice } = getGroupTasks(notices)
+    expect(tasks.map((t) => t.lineId)).toEqual([70, 70, 80])
+    expect(lineNotice.get(80)).toBe(8)
+
+    const picks = [
+      { taskKey: tasks[0].key, binId: 1, binCode: 'P-01', qty: 4 },
+      { taskKey: tasks[2].key, binId: 1, binCode: 'P-01', qty: 3 },
+    ]
+    const id = queueExitGroup(notices, tasks, picks, lineNotice)!
+
+    const row = listOutbox().find((r) => r.id === id)!
+    expect([row.kind, row.path]).toEqual(['pickGroup', '/api/v1/pick-batches/groups'])
+    const body = JSON.parse(row.body)
+    expect(body.documents.map((d: { publicId: string; lines: unknown[] }) => [d.publicId, d.lines.length])).toEqual([['sn-7', 1], ['sn-8', 1]])
+    expect(getExitNoticeLines(7)[0].qtyReserved).toBe(2)
+    expect(listExitNotices(WH).map((o) => o.number)).toEqual(['SAL-00007'])   // el segundo se despachó completo
+    expect(getDb().getFirstSync<{ q: number }>('SELECT qty_on_hand AS q FROM stock_balance WHERE id = 1')?.q).toBe(3)
+  })
+
+  it('con menos de dos avisos con algo recogido no encola nada', () => {
+    seed()
+    applyExitNotices(getDb(), WH, [NOTICE, NOTICE2])
+    const notices = [findExitNoticeByNumber(WH, 'SAL-00007')!, findExitNoticeByNumber(WH, 'SAL-00008')!]
+    const { tasks, lineNotice } = getGroupTasks(notices)
+    expect(queueExitGroup(notices, tasks, [{ taskKey: tasks[0].key, binId: 1, binCode: 'P-01', qty: 4 }], lineNotice)).toBeNull()
+    expect(listOutbox()).toHaveLength(0)
+  })
+
+  it('al volver a bajar los avisos se reaplica la maestra que sigue en la cola', () => {
+    seed()
+    applyExitNotices(getDb(), WH, [NOTICE, NOTICE2])
+    const notices = [findExitNoticeByNumber(WH, 'SAL-00007')!, findExitNoticeByNumber(WH, 'SAL-00008')!]
+    const { tasks, lineNotice } = getGroupTasks(notices)
+    queueExitGroup(notices, tasks, [{ taskKey: tasks[0].key, binId: 1, binCode: 'P-01', qty: 4 }, { taskKey: tasks[2].key, binId: 1, binCode: 'P-01', qty: 3 }], lineNotice)
+    applyExitNotices(getDb(), WH, [NOTICE, NOTICE2])   // llega la copia del servidor, que todavía no sabe de la cola
+    expect(getExitNoticeLines(7)[0].qtyReserved).toBe(6)
+    reapplyPendingExitDispatches(getDb())
+    expect(getExitNoticeLines(7)[0].qtyReserved).toBe(2)
+    expect(findExitNoticeByNumber(WH, 'SAL-00008')).toBeNull()
   })
 })

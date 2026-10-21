@@ -9970,3 +9970,20 @@ El inventario volvió a su posición y cada documento recuperó su reserva y su 
 
 **¿Dónde creo la llave de API de un cliente y qué le mando?**
 Integraciones → en la integración de tipo «API para el cliente», botón «Llaves de API» (debajo del nombre) → ponle nombre → «Crear llave». Sale un bloque con la URL base, la llave, el secreto, los alcances y cómo pedir el token; «Copiar todo» y pégaselo al cliente. El secreto solo se ve en ese momento: si se pierde, revoca la llave y crea otra.
+
+## Recolectar juntos desde el aparato (Lote 178)
+
+**No me aparece «Recolectar juntos».**
+Solo se ofrece en Despachar aviso de salida cuando hay 2 o más avisos por despachar en el almacén.
+
+**Un aviso se ve atenuado y dice «Es de otro cliente».**
+Una recolección maestra es de un solo cliente y un solo destino. Recolecte primero los de un cliente y luego haga otra con los del otro.
+
+**«Hace falta haber recogido algo de al menos dos avisos.»**
+Al terminar, la ruta debe incluir algo de dos avisos o más. Vuelva y complete la ruta, o despache cada aviso por separado.
+
+**¿Dónde se empaca la maestra?**
+En la web, Recolección y empaque → Maestras → Empacar: crea un solo envío para todo lo recolectado.
+
+**Mandé la maestra sin señal, ¿qué pasa si el servidor la rechaza?**
+Al sincronizar se muestra el mensaje del servidor, el saldo local se deshace y el aviso se vuelve a bajar como estaba.

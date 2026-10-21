@@ -10,7 +10,7 @@ import { recordSkippedFromResult } from '../../features/count/countSkipped'
 import { getDb } from '../db/database'
 import { projectRow, type Delta } from '../warehouse/balanceProjection'
 
-export type OutboxKind = 'receipt' | 'pack' | 'collect' | 'countBatch' | 'countFinish' | 'countOffline' | 'transfer' | 'adjust' | 'damage' | 'manualIssue' | 'salesDispatch' | 'exitDispatch' | 'salesReturnReceive' | 'receiptPart'
+export type OutboxKind = 'receipt' | 'pack' | 'collect' | 'countBatch' | 'countFinish' | 'countOffline' | 'transfer' | 'adjust' | 'damage' | 'manualIssue' | 'salesDispatch' | 'exitDispatch' | 'salesReturnReceive' | 'receiptPart' | 'pickGroup'
 type OutboxMethod = 'POST' | 'PUT'
 
 interface EnqueueInput {
@@ -60,6 +60,8 @@ const DEFAULT_PATH: Partial<Record<OutboxKind, string>> = {
   receipt: '/api/v1/receipts',
   // Lote 175: «Recibir una parte» (tanda): suma al recibo abierto del documento y confirma una tanda; el recibo sigue abierto
   receiptPart: '/api/v1/receipts/part',
+  // Lote 178: «Recolectar juntos» — varios avisos de salida del mismo cliente en una recolección maestra (un solo envío al empacar)
+  pickGroup: '/api/v1/pick-batches/groups',
   pack: '/api/v1/pick-batches/collect-and-pack',
   // completar el despacho sin empacar: solo recolecta (el inventario sale; sin orden ni empaque)
   collect: '/api/v1/pick-batches',
@@ -78,6 +80,7 @@ const DEFAULT_PATH: Partial<Record<OutboxKind, string>> = {
 const METHOD: Record<OutboxKind, OutboxMethod> = {
   receipt: 'POST',
   receiptPart: 'POST',
+  pickGroup: 'POST',
   pack: 'POST',
   collect: 'POST',
   countBatch: 'PUT',

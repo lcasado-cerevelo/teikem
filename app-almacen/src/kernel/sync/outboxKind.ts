@@ -7,6 +7,7 @@ import type { OutboxKind } from './outbox'
 const KIND_KEYS: Record<OutboxKind, string> = {
   receipt: 'sync.kindReceipt',
   receiptPart: 'sync.kindReceiptPart',
+  pickGroup: 'sync.kindPickGroup',
   pack: 'sync.kindPack',
   collect: 'sync.kindCollect',
   countBatch: 'sync.kindCountBatch',

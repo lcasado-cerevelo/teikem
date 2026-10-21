@@ -153,6 +153,15 @@
     "queued": "Despacho guardado: se envía cuando haya señal."
   },
   "exitDispatch": {
+    "groupStart": "Recolectar juntos",
+    "groupCancel": "Cancelar selección",
+    "groupHelp": "Toca los avisos que salen juntos (mínimo 2, del mismo cliente). Se recoge todo en una sola ruta y queda una recolección maestra con un solo envío.",
+    "groupPick": "Elegir el aviso {number}",
+    "groupOtherClient": "Es de otro cliente: una recolección maestra es de un solo cliente.",
+    "groupGo": "Recolectar juntos ({n})",
+    "groupBanner": "Recolección maestra · {client}",
+    "groupNeedTwo": "Hace falta haber recogido algo de al menos dos avisos. Vuelve y completa la ruta, o despacha cada aviso por separado.",
+    "groupSent": "Recolección maestra {number} enviada.",
     "title": "Despachar aviso de salida",
     "scanNotice": "Número del aviso",
     "scanNoticeHelp": "Escanea o escribe el número del aviso (SAL-…), o toca uno de la lista.",
@@ -642,6 +651,7 @@
     "discard": "Descartar",
     "kindReceipt": "Recibo",
     "kindReceiptPart": "Parte de recibo",
+    "kindPickGroup": "Recolección maestra",
     "kindPack": "Despacho (recolectar y empacar)",
     "kindCollect": "Despacho (solo recolectar)",
     "kindCountBatch": "Conteo (líneas capturadas)",

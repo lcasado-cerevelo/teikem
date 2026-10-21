@@ -153,6 +153,15 @@
     "queued": "Dispatch saved: it is sent when there is signal."
   },
   "exitDispatch": {
+    "groupStart": "Collect together",
+    "groupCancel": "Cancel selection",
+    "groupHelp": "Tap the notices that leave together (at least 2, same client). Everything is collected on one route and a master pick batch with a single shipment is created.",
+    "groupPick": "Choose notice {number}",
+    "groupOtherClient": "It belongs to another client: a master pick batch is for one client only.",
+    "groupGo": "Collect together ({n})",
+    "groupBanner": "Master pick batch · {client}",
+    "groupNeedTwo": "You must have picked something from at least two notices. Go back and finish the route, or dispatch each notice separately.",
+    "groupSent": "Master pick batch {number} sent.",
     "title": "Dispatch exit notice",
     "scanNotice": "Notice number",
     "scanNoticeHelp": "Scan or type the notice number (SAL-…), or tap one from the list.",
@@ -642,6 +651,7 @@
     "discard": "Discard",
     "kindReceipt": "Receipt",
     "kindReceiptPart": "Receipt part",
+    "kindPickGroup": "Master pick batch",
     "kindPack": "Dispatch (pick and pack)",
     "kindCollect": "Dispatch (pick only)",
     "kindCountBatch": "Count (captured lines)",

@@ -5,7 +5,8 @@
 import { getDb, type SQLiteDatabase } from '../../kernel/db/database'
 import { enqueue } from '../../kernel/sync/outbox'
 import { applyDeltasIn, issueDeltas } from '../../kernel/warehouse/balanceProjection'
-import { buildDispatchLines, type LocalSalesLine, type SalesPick, type SalesTask } from '../salesDispatch/salesDispatchLogic'
+import { buildDispatchLines, buildTasks, type LocalSalesLine, type SalesPick, type SalesTask } from '../salesDispatch/salesDispatchLogic'
+import { buildGroupBody, type GroupableNotice } from './exitGroupLogic'
 
 export interface LocalExitNotice {
   id: number
@@ -152,6 +153,19 @@ export function reapplyPendingExitDispatches(db: SQLiteDatabase): void {
       // un cuerpo ilegible no detiene la bajada
     }
   }
+  // Lote 178: lo mismo para las recolecciones maestras pendientes (cada documento lleva sus líneas)
+  const groups = db.getAllSync<{ body: string }>("SELECT body FROM outbox WHERE kind = 'pickGroup' AND status = 'pending' ORDER BY id")
+  for (const row of groups) {
+    try {
+      const body = JSON.parse(row.body) as { documents?: Array<{ publicId: string; lines?: DispatchLine[] }> }
+      for (const d of body.documents ?? []) {
+        const notice = db.getFirstSync<{ id: number }>('SELECT id FROM exit_notice WHERE public_id = ?', [d.publicId])
+        if (notice) applyExitDispatchLocally(db, notice.id, d.lines ?? [])
+      }
+    } catch {
+      // un cuerpo ilegible no detiene la bajada
+    }
+  }
 }
 
 /**
@@ -171,6 +185,44 @@ export function queueExitDispatch(notice: LocalExitNotice, tasks: readonly Sales
     id = enqueue({ kind: 'exitDispatch', path: `/api/v1/exit-notices/${notice.publicId}/dispatch`, body: { lines }, projection })
     applyDeltasIn(db, projection, 1)
     applyExitDispatchLocally(db, notice.id, lines)
+  })
+  return id
+}
+
+/** Las tareas guiadas de varios avisos juntas (en el orden elegido) y a qué aviso pertenece cada línea. */
+export function getGroupTasks(notices: readonly LocalExitNotice[]): { tasks: SalesTask[]; lineNotice: Map<number, number> } {
+  const tasks: SalesTask[] = []
+  const lineNotice = new Map<number, number>()
+  for (const n of notices) {
+    const lines = getExitNoticeLines(n.id)
+    for (const l of lines) lineNotice.set(l.id, n.id)
+    tasks.push(...buildTasks(lines))
+  }
+  return { tasks, lineNotice }
+}
+
+/**
+ * Lote 178 — encola la recolección maestra de varios avisos (POST /pick-batches/groups) y la refleja de inmediato en cada aviso y en los saldos locales, todo en una transacción. Devuelve el id
+ * de la cola (para `flushNow`) o null si no alcanzan dos avisos con algo recogido. Si el servidor la rechaza, los saldos se deshacen solos (runOutbox).
+ */
+export function queueExitGroup(notices: readonly LocalExitNotice[], tasks: readonly SalesTask[], picks: readonly SalesPick[], lineNotice: ReadonlyMap<number, number>, note?: string | null): number | null {
+  if (notices.length === 0) return null
+  const warehousePublicId = notices[0].warehousePublicId
+  const body = buildGroupBody(notices as readonly GroupableNotice[], tasks, picks, lineNotice, warehousePublicId)
+  if (body.documents.length < 2) return null
+  const db = getDb()
+  let id = 0
+  db.withTransactionSync(() => {
+    const issue = body.documents.flatMap((d) =>
+      d.lines.map((l) => ({ productPublicId: tasks.find((t) => t.lineId === l.lineId)?.productPublicId ?? '', quantity: l.quantity, binId: l.binId ?? 0, lotId: l.lotId ?? null })),
+    )
+    const projection = issueDeltas({ warehousePublicId, lines: issue }, db)
+    id = enqueue({ kind: 'pickGroup', body: { documents: body.documents, note: note?.trim() || null }, projection })
+    applyDeltasIn(db, projection, 1)
+    for (const d of body.documents) {
+      const notice = notices.find((n) => n.publicId === d.publicId)
+      if (notice) applyExitDispatchLocally(db, notice.id, d.lines)
+    }
   })
   return id
 }

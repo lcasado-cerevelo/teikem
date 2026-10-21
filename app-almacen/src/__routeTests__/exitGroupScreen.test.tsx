@@ -1,0 +1,110 @@
+// Lote 178 — «Recolectar juntos» en Despachar aviso de salida: se eligen dos avisos del mismo cliente, se recoge todo en una sola ruta guiada y se manda UNA recolección maestra
+// (POST /pick-batches/groups) con las líneas de cada aviso. Un aviso de otro cliente no se puede elegir. En archivo propio: renderRouter() no aísla del todo su estado global de navegación.
+import { __resetAllForTests } from 'expo-sqlite'
+import { __resetSecureStoreForTests } from 'expo-secure-store'
+import { cleanup, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library'
+
+import { __resetSessionForTests } from '../kernel/auth/session'
+import { __resetDbForTests, getDb } from '../kernel/db/database'
+import { applyExitNotices } from '../kernel/sync/download'
+import { __resetSyncEngineForTests } from '../kernel/sync/engine'
+import { listOutbox } from '../kernel/sync/outbox'
+import { json, mockFetch, setupDevice } from './countKit'
+
+beforeEach(() => {
+  __resetAllForTests()
+  __resetDbForTests()
+  __resetSecureStoreForTests()
+  __resetSessionForTests()
+  __resetSyncEngineForTests()
+})
+
+afterEach(() => {
+  cleanup()
+  jest.restoreAllMocks()
+})
+
+const notice = (id: number, client: string, qty: number) => ({
+  id, publicId: `sn-${id}`, number: `SAL-0000${id}`, warehousePublicId: 'wh-1', clientName: client, reference: null, destination: null, statusCode: 'REQUESTED', requiredDate: null, requestedAtUtc: null, isActive: true,
+  lines: [
+    { id: id * 10, productPublicId: 'p1', sku: 'MED', productName: 'Medicina', qtyOrdered: qty, qtyReserved: qty, qtyShipped: 0, qtyBackordered: 0, reservations: [{ binId: 55, binCode: 'A-01', lotId: null, lotNumber: null, quantity: qty }] },
+  ],
+})
+
+const ME = (c: { path: string }) => (c.path === '/api/v1/me' ? json(200, { userId: 7, permissions: ['warehouse.pick', 'inventory.view'] }) : null)
+
+async function seed() {
+  await setupDevice()
+  const db = getDb()
+  db.runSync("INSERT INTO bin (id, code, warehouse_public_id, zone_id, is_active) VALUES (55, 'A-01', 'wh-1', 1, 1)")
+  db.runSync(`INSERT INTO stock_balance (id, warehouse_public_id, bin_id, product_id, product_public_id, qty_on_hand, qty_reserved, updated_at_utc) VALUES (1, 'wh-1', 55, 1, 'p1', 20, 10, '2026-10-15T10:00:00.000Z')`)
+  applyExitNotices(db, 'wh-1', [notice(1, 'ASICS', 4), notice(2, 'ASICS', 3), notice(3, 'NIKE', 3)])
+}
+
+const onHand = () => getDb().getFirstSync<{ q: number }>('SELECT qty_on_hand AS q FROM stock_balance WHERE id = 1')?.q
+
+describe('Recolectar juntos (aviso de salida)', () => {
+  it('elige dos avisos del mismo cliente, recoge la ruta de ambos y manda UNA maestra', async () => {
+    await seed()
+    const calls = mockFetch([
+      ME,
+      (c) => (c.method === 'POST' && c.path === '/api/v1/pick-batches/groups' ? json(200, { publicId: 'g1', number: 'EMP-00020', documents: [], movements: [] }) : null),
+    ])
+    await renderRouter('src/app', { initialUrl: '/exit-dispatch' })
+    await fireEvent.press(await screen.findByTestId('exit-group-toggle'))
+    await fireEvent.press(await screen.findByTestId('exit-notice-SAL-00001'))
+    await fireEvent.press(screen.getByTestId('exit-notice-SAL-00003'))   // otro cliente: no se elige
+    await waitFor(() => expect(screen.getByText('Es de otro cliente: una recolección maestra es de un solo cliente.')).toBeTruthy())
+    expect(screen.getByTestId('exit-group-go')).toBeDisabled?.()
+    await fireEvent.press(screen.getByTestId('exit-notice-SAL-00002'))
+    await fireEvent.press(await screen.findByTestId('exit-group-go'))
+
+    // primera tarea (aviso 1)
+    await waitFor(() => expect(screen.getByText('Ve a A-01')).toBeTruthy())
+    expect(screen.getByText('SAL-00001 + SAL-00002')).toBeTruthy()
+    await fireEvent.changeText(screen.getByLabelText('Posición de donde sacas'), 'a-01')
+    await fireEvent.press(screen.getAllByLabelText('Aceptar')[0])
+    await waitFor(() => expect(screen.getByText(/✓ 4 × MED · A-01/)).toBeTruthy())
+    // segunda tarea (aviso 2)
+    await fireEvent.changeText(screen.getByLabelText('Posición de donde sacas'), 'A-01')
+    await fireEvent.press(screen.getAllByLabelText('Aceptar')[0])
+    await waitFor(() => expect(screen.getByText(/✓ 3 × MED · A-01/)).toBeTruthy())
+
+    await fireEvent.press(screen.getByTestId('exit-finish'))
+    await fireEvent.press(await screen.findByTestId('exit-send'))
+    await waitFor(() => expect(screen.getByText('Recolección maestra EMP-00020 enviada.')).toBeTruthy())
+    const post = calls.find((c) => c.method === 'POST' && c.path === '/api/v1/pick-batches/groups')
+    expect(post?.body).toMatchObject({
+      documents: [
+        { kind: 'EXIT_NOTICE', publicId: 'sn-1', lines: [{ lineId: 10, quantity: 4, binId: 55 }] },
+        { kind: 'EXIT_NOTICE', publicId: 'sn-2', lines: [{ lineId: 20, quantity: 3, binId: 55 }] },
+      ],
+    })
+    expect(listOutbox().map((r) => [r.kind, r.status])).toEqual([['pickGroup', 'sent']])
+    expect(onHand()).toBe(13)
+  })
+
+  it('el servidor lo rechaza: se muestra su mensaje y el saldo vuelve', async () => {
+    await seed()
+    mockFetch([
+      ME,
+      (c) => (c.method === 'POST' && c.path === '/api/v1/pick-batches/groups' ? json(409, { title: 'No hay existencia suficiente en A-01.', status: 409, code: 'conflict' }) : null),
+    ])
+    await renderRouter('src/app', { initialUrl: '/exit-dispatch' })
+    await fireEvent.press(await screen.findByTestId('exit-group-toggle'))
+    await fireEvent.press(await screen.findByTestId('exit-notice-SAL-00001'))
+    await fireEvent.press(screen.getByTestId('exit-notice-SAL-00002'))
+    await fireEvent.press(await screen.findByTestId('exit-group-go'))
+    await waitFor(() => expect(screen.getByText('Ve a A-01')).toBeTruthy())
+    for (const [text, code] of [[/✓ 4 × MED/, 'a-01'], [/✓ 3 × MED/, 'A-01']] as const) {
+      await fireEvent.changeText(screen.getByLabelText('Posición de donde sacas'), code)
+      await fireEvent.press(screen.getAllByLabelText('Aceptar')[0])
+      await waitFor(() => expect(screen.getByText(text)).toBeTruthy())
+    }
+    await fireEvent.press(screen.getByTestId('exit-finish'))
+    await fireEvent.press(await screen.findByTestId('exit-send'))
+    await waitFor(() => expect(screen.getByText('No hay existencia suficiente en A-01.')).toBeTruthy())
+    expect(listOutbox()).toEqual([])
+    expect(onHand()).toBe(20)
+  })
+})
