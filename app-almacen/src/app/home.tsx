@@ -191,18 +191,8 @@ export default function HomeScreen() {
           <BigButton layout="tile" label={t('home.putaway')} icon="📦" variant="secondary" onPress={() => go('/putaway')} />
         </View>
         <View style={styles.cell}>
-          <BigButton layout="tile" label={t('home.dispatch')} icon="🚚" variant="secondary" onPress={() => go('/dispatch', 'dispatch')} />
+          <BigButton layout="tile" label={t('home.dispatch')} icon="🚚" variant="secondary" onPress={() => go(openKind !== 'dispatch' && (hasSalesOrders || hasExitNotices) ? '/exit-dispatch' : '/dispatch', 'dispatch')} />
         </View>
-        {hasSalesOrders ? (
-          <View style={styles.cell}>
-            <BigButton layout="tile" label={t('home.salesDispatch')} icon="🧾" variant="secondary" onPress={() => go('/sales-dispatch')} testID="home-sales-dispatch" />
-          </View>
-        ) : null}
-        {hasExitNotices ? (
-          <View style={styles.cell}>
-            <BigButton layout="tile" label={t('home.exitDispatch')} icon="📤" variant="secondary" onPress={() => go('/exit-dispatch')} testID="home-exit-dispatch" />
-          </View>
-        ) : null}
         {hasSalesReturns && canReceive ? (
           <View style={styles.cell}>
             <BigButton layout="tile" label={t('home.salesReturn')} icon="↩️" variant="secondary" onPress={() => go('/sales-return')} testID="home-sales-return" />

@@ -23,6 +23,7 @@ import { dispatchScope } from '../features/dispatch/dispatchScope'
 import { useMyPermissions } from '../kernel/auth/permissions'
 import { useSession } from '../kernel/auth/useSession'
 import { buildGroupBody, docKey, groupBlock, groupNumber, groupReady, MIN_GROUP } from '../features/exitDispatch/exitGroupLogic'
+import { mineFirst, takeDispatchIfFree } from '../features/dispatch/dispatchTake'
 import { TaskChooser } from '../features/salesDispatch/TaskChooser'
 import {
   buildTasks,
@@ -68,10 +69,15 @@ export default function ExitDispatchScreen() {
 
   // tick fuerza releer la copia local tras volver de enviar.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const notices = useMemo(() => (warehousePublicId ? listExitNotices(warehousePublicId, scope) : []), [warehousePublicId, tick, scope])
+  const noticesRaw = useMemo(() => (warehousePublicId ? listExitNotices(warehousePublicId, scope) : []), [warehousePublicId, tick, scope])
   // Lote 186: en «Recolectar juntos» también se eligen órdenes de venta (se ven solo al elegir)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const orders = useMemo(() => (warehousePublicId ? listGroupableOrders(warehousePublicId, scope) : []), [warehousePublicId, tick, scope])
+  const ordersRaw = useMemo(() => (warehousePublicId ? listGroupableOrders(warehousePublicId, scope) : []), [warehousePublicId, tick, scope])
+  const myId = session?.userId ?? null
+  // Lote 198: avisos y órdenes en una sola lista, lo asignado a esta persona primero
+  const notices = useMemo(() => mineFirst(noticesRaw, myId), [noticesRaw, myId])
+  const orders = useMemo(() => mineFirst(ordersRaw, myId), [ordersRaw, myId])
+  const allDocs = useMemo(() => mineFirst([...noticesRaw, ...ordersRaw], myId), [noticesRaw, ordersRaw, myId])
   const lines = useMemo(() => (notice ? getExitNoticeLines(notice.id) : []), [notice])
   const groupData = useMemo(() => (group ? getGroupTasks(group) : null), [group])
   const tasks = useMemo(() => (groupData ? groupData.tasks : buildTasks(lines)), [lines, groupData])
@@ -94,6 +100,13 @@ export default function ExitDispatchScreen() {
   }
 
   function open(o: LocalExitNotice) {
+    // una orden de venta tiene su propia pantalla (kits, consignatario y entrega)
+    if (o.kind === 'SALES_ORDER') {
+      void takeDispatchIfFree(o, myId)
+      router.push({ pathname: '/sales-dispatch', params: { order: o.number } })
+      return
+    }
+    void takeDispatchIfFree(o, myId)
     setGroup(null)
     setNotice(o)
     setPicks([])
@@ -115,6 +128,7 @@ export default function ExitDispatchScreen() {
   /** Empieza la ruta guiada de todos los avisos elegidos juntos. */
   function startGroup() {
     if (chosen.length < MIN_GROUP) return
+    for (const c of chosen) void takeDispatchIfFree(c, myId)
     const data = getGroupTasks(chosen)
     setGroup(chosen)
     setNotice(chosen[0])
@@ -244,8 +258,8 @@ export default function ExitDispatchScreen() {
       <KeyboardScreen contentContainerStyle={styles.fill}>
         <Text style={styles.title}>{t('exitDispatch.title')}</Text>
         <ScanField label={t('exitDispatch.scanNotice')} help={t('exitDispatch.scanNoticeHelp')} error={scanError} notice={info} onSubmit={scanNotice} testID="exit-scan-notice" />
-        {notices.length === 0 ? <Text style={styles.help}>{t('exitDispatch.noNotices')}</Text> : null}
-        {notices.length + orders.length >= MIN_GROUP ? (
+        {allDocs.length === 0 ? <Text style={styles.help}>{t('exitDispatch.noNotices')}</Text> : null}
+        {allDocs.length >= MIN_GROUP ? (
           <BigButton
             label={choosing ? t('exitDispatch.groupCancel') : t('exitDispatch.groupStart')}
             variant="secondary"
@@ -257,7 +271,7 @@ export default function ExitDispatchScreen() {
           />
         ) : null}
         {choosing ? <Text style={styles.help}>{t('exitDispatch.groupHelp')}</Text> : null}
-        {(choosing ? [...notices, ...orders] : notices).map((o) => {
+        {allDocs.map((o) => {
           const on = chosen.some((c) => docKey(c) === docKey(o))
           const blocked = choosing && !on && groupBlock(o, chosen) !== null
           const isOrder = o.kind === 'SALES_ORDER'
@@ -273,6 +287,9 @@ export default function ExitDispatchScreen() {
           >
             <Text style={styles.cardTitle}>{choosing ? (on ? '☑ ' : '☐ ') : ''}{o.number}{isOrder ? ' · ' + t('exitDispatch.orderTag') : ''}</Text>
             <Text style={styles.help}>{[o.clientName, o.destination ?? o.reference].filter(Boolean).join(' · ')}</Text>
+            <Text style={o.assignedToUserId != null && o.assignedToUserId === myId ? styles.mine : styles.help}>
+              {t(o.assignedToUserId == null ? 'exitDispatch.unassigned' : o.assignedToUserId === myId ? 'exitDispatch.assignedToYou' : 'exitDispatch.assignedOther')}
+            </Text>
             <Text style={styles.help}>
               {t('exitDispatch.toDispatch', { qty: f.qty(o.reserved) })}
               {o.requiredDate ? ' · ' + t('exitDispatch.required', { date: f.date(o.requiredDate) }) : ''}
@@ -283,6 +300,7 @@ export default function ExitDispatchScreen() {
         {choosing ? (
           <BigButton label={t('exitDispatch.groupGo', { n: chosen.length })} onPress={startGroup} disabled={chosen.length < MIN_GROUP} testID="exit-group-go" />
         ) : null}
+        <BigButton label={t('exitDispatch.noDocument')} variant="secondary" onPress={() => router.replace('/dispatch')} testID="exit-no-document" />
         <View style={styles.bottom}>
           <BigButton label={t('common.back')} variant="secondary" onPress={() => router.replace('/home')} />
         </View>
@@ -407,6 +425,7 @@ const styles = StyleSheet.create({
   error: { color: colors.error, fontSize: fontSize.message },
   okText: { color: colors.brand, fontSize: fontSize.message, fontWeight: '700' },
   field: { gap: spacing.xs },
+  mine: { color: colors.brand, fontSize: fontSize.message, fontWeight: '600' },
   bottom: { marginTop: 'auto' },
   card: { gap: 2, padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panelAlt },
   cardPressed: { backgroundColor: colors.panel },
