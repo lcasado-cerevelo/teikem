@@ -46,6 +46,12 @@ public sealed class ColavoraReader(string courierConnectionString, string loginC
             "SELECT RTRIM(CompanyID), CompanyName, Tel1, Address1, City, State, Zip, Contact, ContactEmail, CompanyEmail FROM dbo.Company WHERE RTRIM(CompanyID) = @c",
             r => new CvCompany(r.GetString(0), S(r, 1) ?? string.Empty, S(r, 2), S(r, 3), S(r, 4), S(r, 5), S(r, 6), S(r, 7), S(r, 8), S(r, 9)), ct, ("@c", companyId));
 
+    /// <summary>Los IDs de usuario que aparecen como chofer de entrega (AssignDL) o de recogida (AssignPK) en alguna orden de la compañía: esos son los choferes (no el grupo de seguridad del usuario).</summary>
+    public async Task<HashSet<int>> ReadAssignedUserIdsAsync(string companyId, CancellationToken ct)
+        => (await ListAsync(courierConnectionString,
+            "SELECT AssignDL FROM dbo.Shipments WHERE RTRIM(CompanyID) = @c AND AssignDL IS NOT NULL UNION SELECT AssignPK FROM dbo.Shipments WHERE RTRIM(CompanyID) = @c AND AssignPK IS NOT NULL",
+            r => r.GetInt32(0), ct, ("@c", companyId))).ToHashSet();
+
     public Task<List<CvUser>> ReadUsersAsync(string companyId, CancellationToken ct)
         => ListAsync(loginConnectionString,
             "SELECT UserID, RTRIM(CompanyID), Username, FirstName, LastName, SecAdmin, Active, SecGroup, TypeID, CreatedDate FROM dbo.Users WHERE RTRIM(CompanyID) = @c ORDER BY UserID",

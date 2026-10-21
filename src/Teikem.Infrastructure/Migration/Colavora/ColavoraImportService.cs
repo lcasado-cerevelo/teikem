@@ -82,6 +82,8 @@ public sealed partial class ColavoraImportService(
         public Dictionary<string, int> CodTypes { get; } = new(StringComparer.OrdinalIgnoreCase);
         /// <summary>Código de razón de Colavora (306, 03…) → LookupCodeId (DeliveryFailureReason) y descripción.</summary>
         public Dictionary<string, (int LookupId, string Description)> Reasons { get; } = new(StringComparer.Ordinal);
+        /// <summary>Usuarios de Colavora que aparecen asignados en las órdenes (AssignDL/AssignPK): son los choferes. Se carga una vez.</summary>
+        public HashSet<int>? AssignedUserIds { get; set; }
         public int DefaultServiceTypeId { get; set; }
         public int DefaultPackageTypeId { get; set; }
         /// <summary>Los globales con que arranca el estado (solo para saber si ya se cambió al tipo de la compañía).</summary>

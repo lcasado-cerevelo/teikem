@@ -128,6 +128,10 @@ public sealed partial class ColavoraImportService
         const string U = ColavoraEntities.Users;
         const string D = ColavoraEntities.Drivers;
         var users = await s.Reader.ReadUsersAsync(s.CompanyId, ct);
+        var assigned = s.AssignedUserIds ??= await s.Reader.ReadAssignedUserIdsAsync(s.CompanyId, ct);
+        var userIds = users.Select(x => x.UserId).ToHashSet();
+        s.Report.AddInfo("Choferes = usuarios asignados en las órdenes (AssignDL/AssignPK)",
+            $"{assigned.Count} IDs asignados; {assigned.Count(userIds.Contains)} son usuarios de la compañía ({users.Count(x => assigned.Contains(x.UserId) && !ColavoraRules.IsDriver(x.SecGroup))} de ellos NO están en el grupo de choferes de Colavora); {users.Count(x => ColavoraRules.IsDriver(x.SecGroup) && !assigned.Contains(x.UserId))} usuarios del grupo de choferes nunca aparecen asignados y no se crean como chofer; {assigned.Count(a => !userIds.Contains(a))} IDs asignados no son usuarios de la compañía");
         var existingDrivers = s.TenantId is null ? new Dictionary<string, Driver>(StringComparer.OrdinalIgnoreCase)
             : await db.Drivers.IgnoreQueryFilters().AsNoTracking().Where(d => d.TenantId == s.TenantId).ToDictionaryAsync(d => d.EmployeeCode, d => d, StringComparer.OrdinalIgnoreCase, ct);   // también los inactivos: el índice único los cuenta
         var existingUsers = s.TenantId is null ? new Dictionary<string, (int Id, bool Member)>(StringComparer.OrdinalIgnoreCase)
@@ -136,7 +140,7 @@ public sealed partial class ColavoraImportService
 
         foreach (var u in users)
         {
-            var isDriver = ColavoraRules.IsDriver(u.SecGroup);
+            var isDriver = assigned.Contains(u.UserId);   // chofer = aparece asignado en las órdenes (decisión de Luis, 2026-10-20), no por su grupo de seguridad
             s.Report.CountRead(U);
             if (isDriver) s.Report.CountRead(D);
             var fullName = ColavoraRules.FullName(u.FirstName, u.LastName, u.Username);
@@ -157,14 +161,14 @@ public sealed partial class ColavoraImportService
                     else if (s.DryRun) s.Report.CountCreated(U);
                     else
                     {
-                        var created = await TryAsync(s, U, email, () => userAdmin.CreateUserCoreAsync(new UserCreateRequest(email, fullName, null, new[] { isDriver ? "Dispatcher" : ColavoraRules.StaffRole(u.SecAdmin) }, UserKinds.Internal), ct));
+                        var created = await TryAsync(s, U, email, () => userAdmin.CreateUserCoreAsync(new UserCreateRequest(email, fullName, null, new[] { isDriver || ColavoraRules.IsDriver(u.SecGroup) ? "Dispatcher" : ColavoraRules.StaffRole(u.SecAdmin) }, UserKinds.Internal), ct));
                         if (created is not null) { userId = created.User.Id; s.Report.CountCreated(U); if (!active) await SuspendAsync(s, userId.Value, ct); }
                     }
                 }
                 else if (s.DryRun) { s.Report.CountCreated(U); }
                 else
                 {
-                    var created = await TryAsync(s, U, email, () => userAdmin.CreateUserCoreAsync(new UserCreateRequest(email, fullName, null, new[] { isDriver ? "Dispatcher" : ColavoraRules.StaffRole(u.SecAdmin) }, UserKinds.Internal), ct));
+                    var created = await TryAsync(s, U, email, () => userAdmin.CreateUserCoreAsync(new UserCreateRequest(email, fullName, null, new[] { isDriver || ColavoraRules.IsDriver(u.SecGroup) ? "Dispatcher" : ColavoraRules.StaffRole(u.SecAdmin) }, UserKinds.Internal), ct));
                     if (created is not null)
                     {
                         userId = created.User.Id;
@@ -177,7 +181,7 @@ public sealed partial class ColavoraImportService
             else if (!isDriver)
             {
                 s.Report.CountSkipped(U);
-                s.Report.Warn(U, u.Username, "El usuario de staff no tiene correo como nombre de usuario; no se crea (no se le puede invitar).");
+                s.Report.Warn(U, u.Username, "El usuario no es chofer (no aparece asignado en ninguna orden) y no tiene correo como nombre de usuario; no se crea (no se le puede invitar).");
             }
             if (userId is int uid) s.Users[u.UserId] = uid;
 
@@ -218,15 +222,16 @@ public sealed partial class ColavoraImportService
     {
         if (s.TenantId is null) return;
         var users = await s.Reader.ReadUsersAsync(s.CompanyId, ct);
+        var assigned = s.AssignedUserIds ??= await s.Reader.ReadAssignedUserIdsAsync(s.CompanyId, ct);
         var byEmail = (await db.Users.IgnoreQueryFilters().AsNoTracking().Where(u => u.Email != null).Select(u => new { u.Id, u.Email }).ToListAsync(ct))
             .GroupBy(u => u.Email!, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First().Id, StringComparer.OrdinalIgnoreCase);
         var driversByCode = await db.Drivers.IgnoreQueryFilters().AsNoTracking().Where(d => d.TenantId == s.TenantId).ToDictionaryAsync(d => d.EmployeeCode, d => d.DriverId, StringComparer.OrdinalIgnoreCase, ct);
         foreach (var u in users)
         {
             var email = ColavoraRules.LooksLikeEmail(u.Username) ? u.Username.Trim()
-                : ColavoraRules.IsDriver(u.SecGroup) && !string.IsNullOrWhiteSpace(s.Config.Options.DriverEmailDomain) ? $"{ColavoraRules.DriverCode(u.Username).ToLowerInvariant()}@{s.Config.Options.DriverEmailDomain!.Trim()}" : null;
+                : assigned.Contains(u.UserId) && !string.IsNullOrWhiteSpace(s.Config.Options.DriverEmailDomain) ? $"{ColavoraRules.DriverCode(u.Username).ToLowerInvariant()}@{s.Config.Options.DriverEmailDomain!.Trim()}" : null;
             if (email is not null && byEmail.TryGetValue(email, out var id)) s.Users[u.UserId] = id;
-            if (ColavoraRules.IsDriver(u.SecGroup))
+            if (assigned.Contains(u.UserId))
             {
                 var code = ColavoraRules.DriverCode(u.Username);
                 s.DriverCodeByUser[u.UserId] = code;
