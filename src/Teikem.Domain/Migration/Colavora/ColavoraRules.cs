@@ -275,26 +275,20 @@ public static class ColavoraRules
         return sb.ToString().Normalize(NormalizationForm.FormC);
     }
 
-    /// <summary>Tipos de servicio de Colavora que ya existen globales en Teikem (se reutilizan; el resto se crea por compañía).</summary>
-    public static string? GlobalServiceType(string? colavoraType) => (colavoraType ?? string.Empty).Trim().ToUpperInvariant() switch
+    /// <summary>
+    /// Código de un tipo de servicio o de paquete de una compañía (decisión de Luis, 2026-10-20: son de cada compañía, no globales). Lleva el
+    /// CompanyID porque <c>UQ_LookupCode(Entity, InternalCode)</c> es global: dos compañías no pueden repetir el mismo código («NEXT_DAY_10029»,
+    /// «NEXT_DAY_10030»). El nombre que ve el usuario sale de las etiquetas, no del código.
+    /// </summary>
+    public static string CompanyCatalogCode(string? name, string companyId)
     {
-        "ND" => "STANDARD",
-        "SD" => "SAMEDAY",
-        _ => null,
-    };
+        var suffix = "_" + Regex.Replace((companyId ?? string.Empty).Trim().ToUpperInvariant(), "[^A-Z0-9]", string.Empty);
+        return ToCode(name, 40 - suffix.Length) + suffix;
+    }
 
     /// <summary>Abreviaturas de servicio de Colavora que son «pick up» (recojo y traigo), para la marca del tipo de servicio.</summary>
     public static bool IsPickupServiceType(string? colavoraType, bool isForPickupFlag)
         => isForPickupFlag || (colavoraType ?? string.Empty).Trim().ToUpperInvariant() is "PK" or "PI" or "PV";
-
-    /// <summary>Tipos de paquete de Colavora que ya existen globales en Teikem.</summary>
-    public static string? GlobalPackageType(string? colavoraType) => (colavoraType ?? string.Empty).Trim().ToUpperInvariant() switch
-    {
-        "BX" => "BOX",
-        "EN" => "ENVELOPE",
-        "PL" => "PALLET",
-        _ => null,
-    };
 
     /// <summary>¿La pieza es la factura del cliente (tipo de paquete Invoice) y no una pieza física (D8)?</summary>
     public static bool IsInvoicePackageType(string? colavoraType) => string.Equals((colavoraType ?? string.Empty).Trim(), "IN", StringComparison.OrdinalIgnoreCase);

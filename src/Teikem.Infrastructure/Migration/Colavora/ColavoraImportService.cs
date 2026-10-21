@@ -84,6 +84,9 @@ public sealed partial class ColavoraImportService(
         public Dictionary<string, (int LookupId, string Description)> Reasons { get; } = new(StringComparer.Ordinal);
         public int DefaultServiceTypeId { get; set; }
         public int DefaultPackageTypeId { get; set; }
+        /// <summary>Los globales con que arranca el estado (solo para saber si ya se cambió al tipo de la compañía).</summary>
+        public int GlobalServiceTypeId { get; set; }
+        public int GlobalPackageTypeId { get; set; }
         public int EntityTypeOrderId { get; set; }
         public int StopTypePickupId { get; set; }
         public int StopTypeDeliveryId { get; set; }
@@ -274,8 +277,9 @@ public sealed partial class ColavoraImportService(
         s.CountryPrId = await lookups.GetIdAsync(LookupDomains.Country, "PR", ct);
         s.ContactPhoneId = await lookups.GetIdAsync(LookupDomains.ContactType, "PHONE", ct);
         s.ContactEmailId = await lookups.GetIdAsync(LookupDomains.ContactType, "EMAIL", ct);
-        s.DefaultServiceTypeId = await lookups.GetIdAsync(LookupDomains.ServiceType, "STANDARD", ct);
-        s.DefaultPackageTypeId = await lookups.GetIdAsync(LookupDomains.PackageType, "BOX", ct);
+        // arranque: los globales; el catálogo de la compañía los reemplaza por su «Next Day» y su «Box» (tipos de cada compañía, decisión de Luis 2026-10-20)
+        s.DefaultServiceTypeId = s.GlobalServiceTypeId = await lookups.GetIdAsync(LookupDomains.ServiceType, "STANDARD", ct);
+        s.DefaultPackageTypeId = s.GlobalPackageTypeId = await lookups.GetIdAsync(LookupDomains.PackageType, "BOX", ct);
     }
 
     // ================================================================ utilidades

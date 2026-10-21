@@ -141,18 +141,25 @@ public sealed class ColavoraRulesTests
     public void Catalog_names_become_codes(string name, string code) => Assert.Equal(code, ColavoraRules.ToCode(name));
 
     [Fact]
-    public void Global_catalogs_are_reused_and_pickup_services_are_marked()
+    public void Pickup_services_and_invoice_packages_are_marked()
     {
-        Assert.Equal("STANDARD", ColavoraRules.GlobalServiceType("ND"));
-        Assert.Equal("SAMEDAY", ColavoraRules.GlobalServiceType("SD"));
-        Assert.Null(ColavoraRules.GlobalServiceType("RT"));
         Assert.True(ColavoraRules.IsPickupServiceType("PV", false));
         Assert.True(ColavoraRules.IsPickupServiceType("XX", true));
         Assert.False(ColavoraRules.IsPickupServiceType("ND", false));
-        Assert.Equal("BOX", ColavoraRules.GlobalPackageType("BX"));
-        Assert.Null(ColavoraRules.GlobalPackageType("DR"));
         Assert.True(ColavoraRules.IsInvoicePackageType("IN"));
     }
+
+    [Theory]
+    [InlineData("NEXT DAY", "10029", "NEXT_DAY_10029")]
+    [InlineData("NEXT DAY", "10030", "NEXT_DAY_10030")]
+    [InlineData("Box", "10029", "BOX_10029")]
+    [InlineData("5 GAL CONTAINER", "10029", "N5_GAL_CONTAINER_10029")]
+    public void Service_and_package_types_belong_to_each_company(string name, string companyId, string code)
+        => Assert.Equal(code, ColavoraRules.CompanyCatalogCode(name, companyId));
+
+    [Fact]
+    public void Company_catalog_codes_never_exceed_the_column_length()
+        => Assert.True(ColavoraRules.CompanyCatalogCode(new string('A', 80), "10029").Length <= 40);
 
     [Theory]
     [InlineData("None", null, "NONE")]

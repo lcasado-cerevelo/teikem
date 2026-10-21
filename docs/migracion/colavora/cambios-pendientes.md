@@ -28,6 +28,8 @@
 
 ## 2. Tipos de servicio y de paquete: siempre por compañía (no globales)
 
+> ✅ **HECHO (2026-10-21).** La migración ya no usa los tipos globales: todos los tipos de servicio y de paquete de Colavora se crean **propios de cada compañía** (`ColavoraRules.CompanyCatalogCode`; se quitaron `GlobalServiceType`/`GlobalPackageType`). El servicio y paquete «por omisión» (cuando una orden no trae el suyo) pasan a ser el «Next Day» y el «Box» de la compañía. **Limitación encontrada:** `UQ_LookupCode(Entity, InternalCode)` es **único a nivel global**, así que dos compañías no pueden tener el mismo código sin sufijo; por eso el código lleva siempre el CompanyID (`NEXT_DAY_10029`, `NEXT_DAY_10030`, `BOX_10029`…), de forma uniforme y sin depender del orden de las corridas. El nombre que ve el usuario sale de las etiquetas, no del código. Quitar el sufijo exigiría cambiar ese índice (estructura, `update.sql`) y todo lo que resuelve catálogos por código: no se hizo. Pendiente aparte: traducir las etiquetas es/en (hoy casi todas iguales).
+
 **Estado hoy.** Mezcla: ND→`STANDARD`, SD→`SAMEDAY`, PK→`PICK_UP`, BX→`BOX`, EN→`ENVELOPE`, PL→`PALLET` apuntan a los catálogos **globales**; el resto se crea propio de la compañía, con sufijo `_10030` cuando el código choca (`PACKAGE_10030`, `INVOICE_10030`, `DRUM_10030`, `OTHER_10030`, `ROUNDTRIP_10030`). Las etiquetas en español salen sin traducir.
 
 **Decisión de Luis (2026-10-20):** transporte aún no está en producción, así que **tipo de servicio y tipo de paquete dependen de la compañía**, no de catálogos globales.

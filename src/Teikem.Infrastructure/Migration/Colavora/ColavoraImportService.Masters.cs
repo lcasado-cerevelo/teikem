@@ -38,12 +38,15 @@ public sealed partial class ColavoraImportService
         {
             s.Report.CountRead(E);
             var pickUp = ColavoraRules.IsPickupServiceType(st.Type, st.IsForPickup);
-            var global = ColavoraRules.GlobalServiceType(st.Type);
-            int? id = global is null ? null : await lookups.TryGetIdAsync(LookupDomains.ServiceType, global, ct);
-            if (id is int gid) { s.Report.CountExisting(E); s.ServiceTypes[st.Id] = (gid, st.Name, pickUp); continue; }
+            // decisión de Luis (2026-10-20): los tipos de servicio son de cada compañía, nunca los globales; el código lleva el CompanyID
+            // porque UQ_LookupCode(Entity, InternalCode) es global y dos compañías no pueden repetir el mismo código
             var extra = pickUp ? "{\"pickUp\":true,\"billable\":true}" : null;
-            id = await EnsureTenantLookupAsync(s, LookupDomains.ServiceType, ColavoraRules.ToCode(st.Name), Labels("SERVICETYPE", st.Id, st.Name), extra, $"servicio {st.Name}", ct);
-            if (id is int sid) s.ServiceTypes[st.Id] = (sid, st.Name, pickUp);
+            var id = await EnsureTenantLookupAsync(s, LookupDomains.ServiceType, ColavoraRules.CompanyCatalogCode(st.Name, s.CompanyId), Labels("SERVICETYPE", st.Id, st.Name), extra, $"servicio {st.Name}", ct);
+            if (id is int sid)
+            {
+                s.ServiceTypes[st.Id] = (sid, st.Name, pickUp);
+                if (string.Equals(st.Type?.Trim(), "ND", StringComparison.OrdinalIgnoreCase) || s.DefaultServiceTypeId == s.GlobalServiceTypeId) s.DefaultServiceTypeId = sid;
+            }
         }
 
         // tipos de paquete
@@ -51,11 +54,12 @@ public sealed partial class ColavoraImportService
         {
             s.Report.CountRead(E);
             var isInvoice = ColavoraRules.IsInvoicePackageType(pt.Type);
-            var global = ColavoraRules.GlobalPackageType(pt.Type);
-            int? id = global is null ? null : await lookups.TryGetIdAsync(LookupDomains.PackageType, global, ct);
-            if (id is int gid) { s.Report.CountExisting(E); s.PackageTypes[pt.Id] = (gid, pt.Name, isInvoice); continue; }
-            id = await EnsureTenantLookupAsync(s, LookupDomains.PackageType, ColavoraRules.ToCode(pt.Name), Labels("PACKAGETYPE", pt.Id, pt.Name), null, $"paquete {pt.Name}", ct);
-            if (id is int pid) s.PackageTypes[pt.Id] = (pid, pt.Name, isInvoice);
+            var id = await EnsureTenantLookupAsync(s, LookupDomains.PackageType, ColavoraRules.CompanyCatalogCode(pt.Name, s.CompanyId), Labels("PACKAGETYPE", pt.Id, pt.Name), null, $"paquete {pt.Name}", ct);
+            if (id is int pid)
+            {
+                s.PackageTypes[pt.Id] = (pid, pt.Name, isInvoice);
+                if (string.Equals(pt.Type?.Trim(), "BX", StringComparison.OrdinalIgnoreCase) || (s.DefaultPackageTypeId == s.GlobalPackageTypeId && !isInvoice)) s.DefaultPackageTypeId = pid;
+            }
         }
 
         // tipos de COD: los textos de la orden (None, Cash or check…) y el catálogo de cobro
