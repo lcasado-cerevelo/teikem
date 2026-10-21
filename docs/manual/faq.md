@@ -10097,3 +10097,9 @@ El primer documento fija el dueño del camión. Termine el camión para recibir 
 
 **«Este documento es de otro dueño que los de la recepción maestra …» / «La recepción maestra ya se eliminó; abra una nueva.»**
 El envío del aparato quedó rechazado: el camión ya tenía documentos de otro dueño o la maestra se eliminó en la web. Reciba ese documento en un camión nuevo.
+
+**¿Cómo cargo muchos proveedores de una vez?**
+Compras → Proveedores → Importar. Igual que con productos: elige o crea una plantilla (mínimo la columna name), elige el archivo, «Revisar» y «Importar N». Si el nombre ya existe entre los proveedores activos, esa fila se rechaza; no se actualiza.
+
+**«La plantilla debe incluir la columna name.» (proveedores)**
+En una plantilla de proveedores el nombre siempre va en una columna: no admite valor por defecto, igual que contacto, teléfono y correo.

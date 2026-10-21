@@ -10815,41 +10815,57 @@
       }
     }
   },
-  "products": {
-    "import": {
-      "open": "Importar",
-      "title": "Importar productos",
-      "help": "Sube un archivo (CSV o Excel) y elige la plantilla que dice qué columna es cada campo. «Revisar» no guarda nada; «Importar» crea los productos válidos. Solo crea: un SKU o un código de barras que ya existe se rechaza, no se actualiza.",
-      "template": "Plantilla",
-      "noTemplates": "Todavía no hay plantillas de productos.",
-      "newTemplate": "Nueva plantilla",
-      "createStandard": "Crear formato estándar",
-      "standardName": "Formato estándar",
-      "file": "Archivo",
-      "choose": "Elegir archivo",
-      "changeFile": "Cambiar archivo",
-      "review": "Revisar",
-      "confirm": "Importar {n}",
-      "close": "Cerrar",
-      "reviewSummary": "{total} filas · {valid} válidas · {rejected} con errores",
-      "doneSummary": "Se crearon {created} productos · {rejected} rechazados",
-      "firstRows": "Se muestran las primeras {n} filas.",
-      "col": {
-        "row": "Fila",
-        "name": "Nombre",
-        "status": "Estado",
-        "detail": "Detalle"
-      },
-      "status": {
-        "OK": "Lista",
-        "CREATED": "Creada",
-        "ERROR": "Rechazada"
-      },
-      "errors": {
+  "entityImport": {
+    "open": "Importar",
+    "title": "Importar {entity}",
+    "help": "Sube un archivo (CSV o Excel) y elige la plantilla que dice qué columna es cada campo. «Revisar» no guarda nada; «Importar» crea los registros válidos. Solo crea: lo que ya existe se rechaza, no se actualiza.",
+    "template": "Plantilla",
+    "noTemplates": "Todavía no hay plantillas.",
+    "newTemplate": "Nueva plantilla",
+    "createStandard": "Crear formato estándar",
+    "standardName": "Formato estándar",
+    "file": "Archivo",
+    "choose": "Elegir archivo",
+    "changeFile": "Cambiar archivo",
+    "review": "Revisar",
+    "confirm": "Importar {n}",
+    "close": "Cerrar",
+    "reviewSummary": "{total} filas · {valid} válidas · {rejected} con errores",
+    "doneSummary": "Se crearon {created} registros · {rejected} rechazados",
+    "firstRows": "Se muestran las primeras {n} filas.",
+    "col": {
+      "row": "Fila",
+      "status": "Estado",
+      "detail": "Detalle"
+    },
+    "keyCol": {
+      "PRODUCT": "SKU",
+      "SUPPLIER": "Proveedor"
+    },
+    "labelCol": {
+      "PRODUCT": "Nombre",
+      "SUPPLIER": "Correo"
+    },
+    "entities": {
+      "PRODUCT": "productos",
+      "SUPPLIER": "proveedores"
+    },
+    "status": {
+      "OK": "Lista",
+      "CREATED": "Creada",
+      "ERROR": "Rechazada"
+    },
+    "errors": {
+      "PRODUCT": {
         "sku": "La plantilla debe incluir la columna sku.",
         "name": "La plantilla debe incluir la columna name o un valor por defecto para name."
       },
-      "fields": {
+      "SUPPLIER": {
+        "name": "La plantilla debe incluir la columna name."
+      }
+    },
+    "fields": {
+      "PRODUCT": {
         "sku": "SKU",
         "name": "Nombre",
         "ownerClientCode": "Código del cliente dueño",
@@ -10868,6 +10884,15 @@
         "packUom": "Unidad de empaque",
         "packQty": "Cantidad por empaque",
         "rotationMethod": "Rotación"
+      },
+      "SUPPLIER": {
+        "name": "Nombre",
+        "contactName": "Contacto",
+        "phone": "Teléfono",
+        "phoneCountryCallingCode": "Prefijo del teléfono",
+        "email": "Correo",
+        "paymentTerm": "Condición de pago",
+        "notes": "Notas"
       }
     }
   },
@@ -10879,7 +10904,8 @@
     "entities": {
       "ORDER": "Envíos",
       "CONSIGNEE": "Consignatarios",
-      "PRODUCT": "Productos"
+      "PRODUCT": "Productos",
+      "SUPPLIER": "Proveedores"
     },
     "col": {
       "name": "Nombre",

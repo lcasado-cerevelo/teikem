@@ -7,7 +7,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { SessionContext, type Session } from '../../app/session'
 import { AccessProvider } from '../../kernel/access'
 import { setLang } from '../../kernel/i18n/i18n'
-import { ProductImportModal } from './ProductImportModal'
+import { EntityImportModal } from './EntityImportModal'
 
 const mock = vi.hoisted(() => ({ requests: [] as { method: string; path: string; form: Record<string, string> }[], templates: [] as unknown[], uploads: [] as { field: string; value: unknown }[] }))
 
@@ -36,8 +36,8 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
         rejected: 1,
         created: commit ? 1 : 0,
         rows: [
-          { row: 1, line: 2, sku: 'A-1', name: 'Uno', status: commit ? 'CREATED' : 'OK', errors: {} },
-          { row: 2, line: 3, sku: 'A-2', name: 'Dos', status: 'ERROR', errors: { sku: 'Ya existe un producto con ese SKU para ese dueño.' } },
+          { row: 1, line: 2, key: 'A-1', label: 'Uno', status: commit ? 'CREATED' : 'OK', errors: {} },
+          { row: 2, line: 3, key: 'A-2', label: 'Dos', status: 'ERROR', errors: { sku: 'Ya existe un producto con ese SKU para ese dueño.' } },
         ],
       })
     }
@@ -71,7 +71,7 @@ function wrap() {
     <QueryClientProvider client={client}>
       <SessionContext.Provider value={SESSION}>
         <AccessProvider permissions={['inventory.manage']} modules={['WMS_LOT_SERIAL']}>
-          <ProductImportModal onClose={() => {}} />
+          <EntityImportModal entity="PRODUCT" onClose={() => {}} />
         </AccessProvider>
       </SessionContext.Provider>
     </QueryClientProvider>,
@@ -84,7 +84,7 @@ class RecordingFormData {
   }
 }
 
-describe('ProductImportModal', () => {
+describe('EntityImportModal', () => {
   beforeAll(() => setLang('es'))
   beforeEach(() => {
     vi.stubGlobal('FormData', RecordingFormData)
@@ -118,7 +118,7 @@ describe('ProductImportModal', () => {
     expect(review.form).toMatchObject({ templatePublicId: 't-1', commit: 'false', file: 'file' })
 
     await user.click(screen.getByRole('button', { name: 'Importar 1' }))
-    expect(await screen.findByText('Se crearon 1 productos · 1 rechazados')).toBeInTheDocument()
+    expect(await screen.findByText('Se crearon 1 registros · 1 rechazados')).toBeInTheDocument()
     expect(mock.requests.filter((r) => r.path === '/api/v1/products/import').at(-1)!.form.commit).toBe('true')
   })
 

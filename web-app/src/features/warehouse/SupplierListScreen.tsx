@@ -5,6 +5,7 @@
 // dígitos) y término de pago con buscador.
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
+import { EntityImportModal } from '../imports/EntityImportModal'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { Can, useCan } from '../../kernel/access'
@@ -212,6 +213,7 @@ function SupplierListScreenBody() {
   const [filters, setFilters] = useState<SupplierFilters>(() => ({ ...EMPTY_FILTERS, name: new URLSearchParams(window.location.search).get('q') ?? '' }))
   const canManage = useCan('purchasing.manage')
   const [modal, setModal] = useState<ModalState>(null)
+  const [importing, setImporting] = useState(false)   // 2026-10-21: importar proveedores con plantilla
   const [confirm, setConfirm] = useState<{ supplier: SupplierDto; active: boolean } | null>(null)
   const save = useSaveSupplier()
 
@@ -280,6 +282,9 @@ function SupplierListScreenBody() {
         </div>
         <div className="act">
           <Can perm="purchasing.manage">
+            <button type="button" className="btn" onClick={() => setImporting(true)}>
+              {t('entityImport.open')}
+            </button>
             <button type="button" className="btn flow" onClick={() => setModal('create')}>
               {t('warehouse.suppliers.new')}
             </button>
@@ -347,6 +352,7 @@ function SupplierListScreenBody() {
         }}
         onClose={() => setConfirm(null)}
       />
+      {importing && <EntityImportModal entity="SUPPLIER" onClose={() => setImporting(false)} />}
     </div>
   )
 }

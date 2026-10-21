@@ -45,7 +45,7 @@ import type { BinFilterItem } from './kardexView'
 import { DamagePanel } from './DamageListScreen'
 import { ProductCategoriesPanel } from './ProductCategoriesPanel'
 import { ProductEditorByIdModal, ProductEditorModal } from './ProductEditorModal'
-import { ProductImportModal } from './ProductImportModal'
+import { EntityImportModal } from '../imports/EntityImportModal'
 import { ProductLabelsButton } from './ProductLabelsPanel'
 import { parseKpiParam, productListQuery, toggleKpi, type ProductFilterState, type ProductKpi } from './productFilters'
 import '../analytics/pulse.css'
@@ -345,7 +345,7 @@ function ProductsTab() {
           <ProductLabelsButton filters={filters} />
           <Can perm="inventory.manage">
             <button type="button" className="btn" onClick={() => setImporting(true)}>
-              {t('products.import.open')}
+              {t('entityImport.open')}
             </button>
             <button type="button" className="btn flow" onClick={() => setCreating(true)}>
               {t('warehouse.products.new')}
@@ -407,7 +407,7 @@ function ProductsTab() {
       </Panel>
 
       <ProductEditorModal open={creating} product={null} onClose={() => setCreating(false)} />
-      {importing && <ProductImportModal onClose={() => setImporting(false)} />}
+      {importing && <EntityImportModal entity="PRODUCT" onClose={() => setImporting(false)} />}
       <ProductEditorByIdModal publicId={editingPublicId} onClose={() => setEditingPublicId(null)} />
     </>
   )

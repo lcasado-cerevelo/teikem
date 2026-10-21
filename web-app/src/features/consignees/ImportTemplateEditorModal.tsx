@@ -11,8 +11,8 @@ import { useT } from '../../kernel/i18n'
 import { Field, Form, IconPlus, IconTrash, Modal, Select, TextInput, Toggle, toast } from '../../kernel/ui'
 import { useSaveOrderImportTemplate } from '../orders/importApi'
 import { orderTemplateIssues } from '../orders/orderImportRules'
-import { productTemplateIssues } from '../warehouse/productImportRules'
-import { useSaveProductImportTemplate } from '../warehouse/productImportApi'
+import { useSaveEntityImportTemplate } from '../imports/entityImportApi'
+import { entityTemplateIssues, type ImportEntity } from '../imports/entityImportRules'
 import { useSaveImportTemplate } from './api'
 import {
   buildTemplateCreate,
@@ -27,7 +27,7 @@ import {
 
 export interface ImportTemplateEditorModalProps {
   /** Tipo de plantilla: consignatarios (por omisión) u órdenes (Lote F-C3). */
-  kind?: 'CONSIGNEE' | 'ORDER' | 'PRODUCT'
+  kind?: 'CONSIGNEE' | 'ORDER' | ImportEntity
   /** null = plantilla nueva. */
   template: ImportTemplate | null
   fields: readonly ImportField[]
@@ -42,16 +42,17 @@ const DELIMITER_KEYS: Record<string, string> = { ',': 'comma', ';': 'semicolon',
 export function ImportTemplateEditorModal({ kind = 'CONSIGNEE', template, fields, fieldLabel, onClose, onSaved }: ImportTemplateEditorModalProps) {
   const tr = useT()
   const isOrder = kind === 'ORDER'
-  const isProduct = kind === 'PRODUCT'   // 2026-10-21: plantilla de productos (motor genérico); sus textos comunes son los de `orders.import.*`
+  const isProduct = kind === 'PRODUCT' || kind === 'SUPPLIER'   // 2026-10-21: plantilla de una entidad del motor genérico (productos, proveedores); sus textos comunes son los de `orders.import.*`
   // los textos de las plantillas de órdenes viven en `orders.import.*`; los comunes (cancelar, cargando, tope de nombre) no cambian
   const ns = isOrder || isProduct ? 'orders.import' : 'consignees.import'
   // el editor se escribió con las claves `consignees.import.*`: con órdenes se leen de `orders.import.*` (mismas subclaves, mismos textos comunes)
   const t = (key: string, params?: Record<string, string | number>) => (key.startsWith('consignees.import.') ? tr(`${ns}.${key.slice('consignees.import.'.length)}`, params) : tr(key, params))
   const saveConsignee = useSaveImportTemplate()
   const saveOrder = useSaveOrderImportTemplate()
-  const saveProduct = useSaveProductImportTemplate()
-  const save = isProduct ? saveProduct : isOrder ? saveOrder : saveConsignee
-  const formId = isProduct ? 'product-template' : isOrder ? 'order-template' : 'consignee-template'
+  const entity: ImportEntity = kind === 'SUPPLIER' ? 'SUPPLIER' : 'PRODUCT'
+  const saveEntity = useSaveEntityImportTemplate(entity)
+  const save = isProduct ? saveEntity : isOrder ? saveOrder : saveConsignee
+  const formId = isProduct ? 'entity-template' : isOrder ? 'order-template' : 'consignee-template'
   const isNew = template === null
 
   const schema = useMemo(
@@ -61,10 +62,9 @@ export function ImportTemplateEditorModal({ kind = 'CONSIGNEE', template, fields
             { nameRequired: tr('orders.import.errors.nameRequired'), nameMax: tr('consignees.errors.max', { max: TEMPLATE_NAME_MAX }) },
             fields,
             (v) =>
-              productTemplateIssues(v, fields, {
+              entityTemplateIssues(entity, v, fields, {
                 columnsRequired: tr('orders.import.errors.columnsRequired'),
-                sku: tr('products.import.errors.sku'),
-                name: tr('products.import.errors.name'),
+                requirement: (key) => tr(key),
                 repeated: (field) => tr('orders.import.errors.repeated', { field }),
                 noDefault: (field) => tr('orders.import.errors.noDefault', { field }),
                 defaultValueRequired: (field) => tr('orders.import.errors.defaultValueRequired', { field: fieldLabel(field) }),
@@ -101,7 +101,7 @@ export function ImportTemplateEditorModal({ kind = 'CONSIGNEE', template, fields
             },
             fields,
           ),
-    [tr, isOrder, isProduct, fields, fieldLabel],
+    [tr, isOrder, isProduct, entity, fields, fieldLabel],
   )
   const initial = useMemo(() => {
     const v = templateValuesOf(template)

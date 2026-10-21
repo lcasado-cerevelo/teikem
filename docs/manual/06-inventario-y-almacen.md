@@ -684,7 +684,9 @@ Primera entidad del motor genérico de plantillas (dictado de Luis, 2026-10-19).
 
 **Plantilla (Kind `PRODUCT`):** `GET/POST /api/v1/products/import-templates`, `GET/PATCH …/{publicId}`, `POST …/{publicId}/deactivate|reactivate`, `GET …/fields`. También se administra en Integraciones → Plantillas (pestaña Productos). Campos: `sku` (obligatorio, siempre en columna), `name` (en columna o como valor por defecto), `ownerClientCode`, `baseUom`, `trackingType`, `weightKg`, `volumeM3`, `barcode`, `purchaseCost`, `salePrice`, `minQty`, `minPickQty`, `maxPickQty`, `brand`, `model`, `packUom`, `packQty`, `rotationMethod`. `sku` y `barcode` no admiten valor por defecto.
 
-**Importar:** `POST /api/v1/products/import` (multipart: `templatePublicId`, `file`, `commit` false = revisar / true = crear). Cada fila trae `status` OK, CREATED o ERROR y sus errores por campo.
+**Importar:** `POST /api/v1/products/import` (multipart: `templatePublicId`, `file`, `commit` false = revisar / true = crear). Cada fila trae `key` (el SKU), `label` (el nombre), `status` OK, CREATED o ERROR y sus errores por campo (`errors`).
+
+**Motor genérico:** productos y proveedores usan el mismo motor (`ImportEntities` + `EntityImportService`; ver §8b para proveedores). Una entidad nueva solo declara sus campos y reglas de grupo y cómo revisar y crear una fila.
 
 | Mensaje | HTTP / dónde | Qué hacer |
 |---|---|---|
@@ -2460,6 +2462,21 @@ cada una con su posición por FEFO/FIFO como cualquier producto; todo en la mism
 | No alcanza un componente | el mensaje de inventario insuficiente de ese componente | 409 |
 
 La pantalla de Recolección todavía no ofrece kits en su selector (muestra productos con existencia): se usan desde las órdenes de venta o por el API.
+
+### 8b. Importar proveedores con una plantilla (2026-10-21)
+
+Segunda entidad del motor genérico de plantillas. **Quién puede:** `purchasing.manage` (módulo Compras); ver las plantillas, `purchasing.view`.
+
+**Cómo se usa:** Compras → Proveedores → **Importar**: igual que en Productos (§2b): plantilla, archivo CSV o .xlsx, **Revisar** (no guarda nada) e **Importar N** (crea las filas válidas). **Solo crea**: un proveedor activo con el mismo nombre se rechaza.
+
+**Plantilla (Kind `SUPPLIER`):** `GET/POST /api/v1/suppliers/import-templates`, `GET/PATCH …/{publicId}`, `POST …/{publicId}/deactivate|reactivate`, `GET …/fields`; también en Integraciones → Plantillas (pestaña Proveedores). Campos: `name` (obligatorio, siempre en columna), `contactName`, `phone`, `phoneCountryCallingCode`, `email`, `paymentTerm`, `notes`. `name`, `contactName`, `phone` y `email` no admiten valor por defecto. **Importar:** `POST /api/v1/suppliers/import` (multipart: `templatePublicId`, `file`, `commit`).
+
+| Mensaje | HTTP / dónde | Qué hacer |
+|---|---|---|
+| «La plantilla debe incluir la columna name.» | 400, plantilla | Agregue la columna name. |
+| «El campo name no admite valor por defecto.» (y contactName, phone, email) | 400, plantilla | Esos datos trae cada fila. |
+| «El proveedor está repetido en el archivo.» | fila | El mismo nombre dos veces en el archivo. |
+| «Ya existe un proveedor activo con ese nombre.» (y las demás reglas del alta manual: correo, teléfono, condición de pago, largos) | fila | Son las mismas del alta manual de proveedores (§8). |
 
 ## 9. Cruce de plataforma (demo): citas y planes
 

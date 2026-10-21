@@ -10812,41 +10812,57 @@
       }
     }
   },
-  "products": {
-    "import": {
-      "open": "Import",
-      "title": "Import products",
-      "help": "Upload a file (CSV or Excel) and pick the template that says which column is each field. “Review” saves nothing; “Import” creates the valid products. Create-only: an existing SKU or barcode is rejected, never updated.",
-      "template": "Template",
-      "noTemplates": "There are no product templates yet.",
-      "newTemplate": "New template",
-      "createStandard": "Create standard format",
-      "standardName": "Standard format",
-      "file": "File",
-      "choose": "Choose file",
-      "changeFile": "Change file",
-      "review": "Review",
-      "confirm": "Import {n}",
-      "close": "Close",
-      "reviewSummary": "{total} rows · {valid} valid · {rejected} with errors",
-      "doneSummary": "{created} products created · {rejected} rejected",
-      "firstRows": "Showing the first {n} rows.",
-      "col": {
-        "row": "Row",
-        "name": "Name",
-        "status": "Status",
-        "detail": "Detail"
-      },
-      "status": {
-        "OK": "Ready",
-        "CREATED": "Created",
-        "ERROR": "Rejected"
-      },
-      "errors": {
+  "entityImport": {
+    "open": "Import",
+    "title": "Import {entity}",
+    "help": "Upload a file (CSV or Excel) and pick the template that says which column is each field. “Review” saves nothing; “Import” creates the valid records. Create-only: anything that already exists is rejected, never updated.",
+    "template": "Template",
+    "noTemplates": "There are no templates yet.",
+    "newTemplate": "New template",
+    "createStandard": "Create standard format",
+    "standardName": "Standard format",
+    "file": "File",
+    "choose": "Choose file",
+    "changeFile": "Change file",
+    "review": "Review",
+    "confirm": "Import {n}",
+    "close": "Close",
+    "reviewSummary": "{total} rows · {valid} valid · {rejected} with errors",
+    "doneSummary": "{created} records created · {rejected} rejected",
+    "firstRows": "Showing the first {n} rows.",
+    "col": {
+      "row": "Row",
+      "status": "Status",
+      "detail": "Detail"
+    },
+    "keyCol": {
+      "PRODUCT": "SKU",
+      "SUPPLIER": "Supplier"
+    },
+    "labelCol": {
+      "PRODUCT": "Name",
+      "SUPPLIER": "Email"
+    },
+    "entities": {
+      "PRODUCT": "products",
+      "SUPPLIER": "suppliers"
+    },
+    "status": {
+      "OK": "Ready",
+      "CREATED": "Created",
+      "ERROR": "Rejected"
+    },
+    "errors": {
+      "PRODUCT": {
         "sku": "The template must include the sku column.",
         "name": "The template must include the name column or a default value for name."
       },
-      "fields": {
+      "SUPPLIER": {
+        "name": "The template must include the name column."
+      }
+    },
+    "fields": {
+      "PRODUCT": {
         "sku": "SKU",
         "name": "Name",
         "ownerClientCode": "Owner client code",
@@ -10865,6 +10881,15 @@
         "packUom": "Pack unit",
         "packQty": "Quantity per pack",
         "rotationMethod": "Rotation"
+      },
+      "SUPPLIER": {
+        "name": "Name",
+        "contactName": "Contact",
+        "phone": "Phone",
+        "phoneCountryCallingCode": "Phone prefix",
+        "email": "Email",
+        "paymentTerm": "Payment term",
+        "notes": "Notes"
       }
     }
   },
@@ -10876,7 +10901,8 @@
     "entities": {
       "ORDER": "Shipments",
       "CONSIGNEE": "Consignees",
-      "PRODUCT": "Products"
+      "PRODUCT": "Products",
+      "SUPPLIER": "Suppliers"
     },
     "col": {
       "name": "Name",

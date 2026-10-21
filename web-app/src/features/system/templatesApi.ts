@@ -6,22 +6,24 @@ import { api, unwrap } from '../../kernel/api/client'
 import type { ImportTemplate } from '../consignees/consigneeRules'
 import { consigneeKeys } from '../consignees/api'
 import { orderImportKeys } from '../orders/importApi'
-import { productImportKeys } from '../warehouse/productImportApi'
+import { entityImportKeys, fetchEntityTemplates } from '../imports/entityImportApi'
+import { ENTITY_CONFIG, type ImportEntity } from '../imports/entityImportRules'
 
-export type TemplateEntity = 'ORDER' | 'CONSIGNEE' | 'PRODUCT'
+export type TemplateEntity = 'ORDER' | 'CONSIGNEE' | ImportEntity
 
 /** Permiso para ver y para cambiar las plantillas de cada entidad (el mismo que ya exige su asistente de importación). */
-export const TEMPLATE_PERMISSION: Record<TemplateEntity, string> = { ORDER: 'orders.edit', CONSIGNEE: 'locations.create', PRODUCT: 'inventory.manage' }
+export const TEMPLATE_PERMISSION: Record<TemplateEntity, string> = { ORDER: 'orders.edit', CONSIGNEE: 'locations.create', PRODUCT: ENTITY_CONFIG.PRODUCT.manage, SUPPLIER: ENTITY_CONFIG.SUPPLIER.manage }
 
 export function useAllTemplates(entity: TemplateEntity, enabled = true) {
   return useQuery({
-    queryKey: entity === 'ORDER' ? [...orderImportKeys.templates, 'all'] : entity === 'PRODUCT' ? [...productImportKeys.templates, 'all'] : [...consigneeKeys.templates, 'all'],
+    queryKey: entity === 'ORDER' ? [...orderImportKeys.templates, 'all'] : entity === 'CONSIGNEE' ? [...consigneeKeys.templates, 'all'] : [...entityImportKeys.templates(entity), 'all'],
     queryFn: (): Promise<ImportTemplate[]> =>
       entity === 'ORDER'
         ? unwrap(api.GET('/api/v1/import-templates', { params: { query: { kind: 'ORDER', includeInactive: true } } }))
-        : entity === 'PRODUCT'
-          ? unwrap(api.GET('/api/v1/products/import-templates', { params: { query: { includeInactive: true } } }))
-          : unwrap(api.GET('/api/v1/locations/import-templates', { params: { query: { includeInactive: true } } })),
+        : entity === 'CONSIGNEE'
+          ? unwrap(api.GET('/api/v1/locations/import-templates', { params: { query: { includeInactive: true } } }))
+          : fetchEntityTemplates(entity, true),
+     
     enabled,
     meta: { handleAccessDenied: false },
   })

@@ -12,10 +12,10 @@ import { ConsigneeTemplateEditorModal } from '../consignees/ConsigneeTemplateEdi
 import { templateSummary, type ImportTemplate } from '../consignees/consigneeRules'
 import { ImportTemplateEditorModal } from '../consignees/ImportTemplateEditorModal'
 import { useOrderImportFields, useSetOrderTemplateActive } from '../orders/importApi'
-import { useProductImportFields, useSetProductTemplateActive } from '../warehouse/productImportApi'
+import { useEntityImportFields, useSetEntityTemplateActive } from '../imports/entityImportApi'
 import { sortTemplates, TEMPLATE_PERMISSION, useAllTemplates, type TemplateEntity } from './templatesApi'
 
-const ENTITIES = ['ORDER', 'CONSIGNEE', 'PRODUCT'] as const
+const ENTITIES = ['ORDER', 'CONSIGNEE', 'PRODUCT', 'SUPPLIER'] as const
 
 export default function TemplatesScreen() {
   const t = useT()
@@ -24,8 +24,10 @@ export default function TemplatesScreen() {
   const list = useAllTemplates(entity, canChange)
   const orderFields = useOrderImportFields(canChange && entity === 'ORDER')
   const consigneeFields = useImportFields(canChange && entity === 'CONSIGNEE')
-  const productFields = useProductImportFields(canChange && entity === 'PRODUCT')
-  const setProductActive = useSetProductTemplateActive()
+  const productFields = useEntityImportFields('PRODUCT', canChange && entity === 'PRODUCT')
+  const supplierFields = useEntityImportFields('SUPPLIER', canChange && entity === 'SUPPLIER')
+  const setProductActive = useSetEntityTemplateActive('PRODUCT')
+  const setSupplierActive = useSetEntityTemplateActive('SUPPLIER')
   const clients = useClientOptions(false)
   const setOrderActive = useSetOrderTemplateActive()
   const setConsigneeActive = useSetTemplateActive()
@@ -33,7 +35,7 @@ export default function TemplatesScreen() {
 
   const fieldLabel = useCallback(
     (field: string) => {
-      const key = `${entity === 'ORDER' ? 'orders' : entity === 'PRODUCT' ? 'products' : 'consignees'}.import.fields.${field}`
+      const key = entity === 'PRODUCT' || entity === 'SUPPLIER' ? `entityImport.fields.${entity}.${field}` : `${entity === 'ORDER' ? 'orders' : 'consignees'}.import.fields.${field}`
       const text = t(key)
       return text === key ? field : text
     },
@@ -44,7 +46,7 @@ export default function TemplatesScreen() {
 
   const setActive = async (tpl: ImportTemplate, active: boolean) => {
     try {
-      await (entity === 'ORDER' ? setOrderActive : entity === 'PRODUCT' ? setProductActive : setConsigneeActive).mutateAsync({ publicId: tpl.publicId!, active })
+      await (entity === 'ORDER' ? setOrderActive : entity === 'PRODUCT' ? setProductActive : entity === 'SUPPLIER' ? setSupplierActive : setConsigneeActive).mutateAsync({ publicId: tpl.publicId!, active })
       toast.success(t(active ? 'templates.reactivated' : 'templates.deactivated', { name: tpl.name ?? '' }))
     } catch (e) {
       toast.error(applyProblemDetails(e).title)
@@ -67,7 +69,7 @@ export default function TemplatesScreen() {
     [t, fieldLabel],
   )
 
-  const fields = entity === 'ORDER' ? (orderFields.data ?? []) : entity === 'PRODUCT' ? (productFields.data ?? []) : (consigneeFields.data ?? [])
+  const fields = entity === 'ORDER' ? (orderFields.data ?? []) : entity === 'PRODUCT' ? (productFields.data ?? []) : entity === 'SUPPLIER' ? (supplierFields.data ?? []) : (consigneeFields.data ?? [])
 
   return (
     <div className="wrap">
@@ -111,7 +113,7 @@ export default function TemplatesScreen() {
         </div>
       </Panel>
       {editor &&
-        (entity === 'ORDER' || entity === 'PRODUCT' ? (
+        (entity !== 'CONSIGNEE' ? (
           <ImportTemplateEditorModal kind={entity} template={editor.template} fields={fields} fieldLabel={fieldLabel} onClose={() => setEditor(null)} onSaved={() => setEditor(null)} />
         ) : (
           <ConsigneeTemplateEditorModal template={editor.template} fields={fields} fieldLabel={fieldLabel} clients={clientList} onClose={() => setEditor(null)} onSaved={() => setEditor(null)} />
