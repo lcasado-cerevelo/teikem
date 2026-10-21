@@ -47,7 +47,7 @@ public sealed record ReceiptLineRequest(Guid? ProductPublicId, decimal? Received
 /// </summary>
 public sealed record ReceiptCreateRequest(Guid? WarehousePublicId = null, string? Type = null, int? AsnId = null, Guid? PurchaseOrderPublicId = null,
     int? DockId = null, int? StagingBinId = null, IReadOnlyList<ReceiptLineRequest>? Lines = null, bool Confirm = false,
-    string? Carrier = null, string? Reference = null, string? ReceivingMode = null);
+    string? Carrier = null, string? Reference = null, string? ReceivingMode = null, Guid? GroupKey = null);
 
 /// <summary>
 /// Lote 13: ProductPublicId cambia el producto (solo en líneas sin línea del aviso; limpia lote y series si no vienen);
@@ -135,7 +135,7 @@ public sealed record ReceiptDetailDto(ReceiptListItemDto Header, IReadOnlyList<R
 /// documento (o lo crea) y confirma una tanda. ClientKey = id del envío en la cola (idempotente). Sin series ni daño (van en la confirmación final).
 /// </summary>
 public sealed record ReceiptPartRequest(Guid? WarehousePublicId = null, int? AsnId = null, Guid? PurchaseOrderPublicId = null,
-    IReadOnlyList<ReceiptLineRequest>? Lines = null, string? Comment = null, Guid? ClientKey = null);
+    IReadOnlyList<ReceiptLineRequest>? Lines = null, string? Comment = null, Guid? ClientKey = null, Guid? GroupKey = null);
 
 /// <summary>Lote 174 (C2): una tanda del recibo (confirmación parcial): consecutivo, quién y cuándo, líneas y unidades.</summary>
 public sealed record ReceiptBatchDto(int Id, int Number, DateTime ConfirmedAtUtc, string? ConfirmedByName, string? Comment, int LineCount, decimal UnitCount);

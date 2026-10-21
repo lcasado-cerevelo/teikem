@@ -26,6 +26,8 @@ public class ReceiptGroup : ITenantScoped, ISoftDeletable
     public string? Note { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public int? CreatedBy { get; set; }
+    /// <summary>Lote 184: id de la recepción juntos que armó el aparato (cola): los recibos que llegan con la misma llave entran a la misma maestra; hace el reintento idempotente. NULL = maestra de la web.</summary>
+    public Guid? ClientKey { get; set; }
     public bool IsActive { get; set; } = true;
     [NotAudited] public byte[]? RowVersion { get; set; }
 }
@@ -52,6 +54,10 @@ public static class ReceiptGroupRules
     public const string StatusConfirmed = "CONFIRMED";
     public const string StatusCancelled = "CANCELLED";
 
+    public const string GroupNeedsDocument = "Recibir juntos es solo de documentos: indique un aviso de llegada o una orden de compra.";
+    public const string GroupGone = "La recepción maestra ya se eliminó; abra una nueva.";
+    public static string JoinOtherOwner(string number) => $"Este documento es de otro dueño que los de la recepción maestra {number}: reciba por separado lo de dueños distintos.";
+    public static string JoinOtherWarehouse(string number) => $"Este documento es de otro almacén que los de la recepción maestra {number}.";
     public static string OtherOwner(string a, string b) => $"Los documentos deben ser del mismo dueño: «{a}» y «{b}» son de dueños distintos. Reciba por separado lo de dueños distintos.";
     public static string OtherWarehouse(string a, string b) => $"Los documentos deben ser del mismo almacén: «{a}» y «{b}» son de almacenes distintos.";
 

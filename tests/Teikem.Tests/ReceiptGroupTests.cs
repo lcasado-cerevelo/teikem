@@ -129,6 +129,35 @@ public sealed class ReceiptGroupTests
     }
 
     [Fact]
+    public async Task Receipts_that_arrive_with_the_same_device_key_join_one_master_and_a_foreign_owner_or_a_blind_receipt_is_refused()
+    {
+        await using var f = await ReceivingFixture.CreateAsync();
+        var a1 = await AsnOfClientAsync(f, 4m);
+        var a2 = await AsnOfClientAsync(f, 6m);
+        var receipts = f.Get<ReceiptService>();
+        var svc = f.Get<ReceiptGroupService>();
+        var key = Guid.NewGuid();
+
+        var r1 = await receipts.CreateAsync(new ReceiptCreateRequest(AsnId: a1.Id, GroupKey: key), default);
+        var r2 = await receipts.CreateAsync(new ReceiptCreateRequest(AsnId: a2.Id, GroupKey: key), default);
+        var groups = (await svc.ListAsync(new ReceiptGroupQuery(), default)).Items;
+        var group = Assert.Single(groups);
+        Assert.Equal(("RCM-00001", 2, "Cliente Uno"), (group.Number, group.MemberCount, group.OwnerName));
+        Assert.Equal(new[] { r1.Header.Number, r2.Header.Number }, group.Members.Select(m => m.ReceiptNumber));
+
+        // una orden de compra (lo propio) no entra a la maestra de un cliente; un recibo a ciegas no lleva llave
+        var owner = await Assert.ThrowsAsync<ValidationException>(() => receipts.CreateAsync(new ReceiptCreateRequest(PurchaseOrderPublicId: f.PoPublicId, GroupKey: key), default));
+        Assert.Equal(ReceiptGroupRules.JoinOtherOwner("RCM-00001"), owner.Message);
+        var blind = await Assert.ThrowsAsync<ValidationException>(() => receipts.CreateAsync(new ReceiptCreateRequest(Type: Teikem.Domain.Constants.ReceiptTypes.Blind, Lines: new[] { new ReceiptLineRequest(f.ProductNonePublicId, 1m) }, GroupKey: Guid.NewGuid()), default));
+        Assert.Equal(ReceiptGroupRules.GroupNeedsDocument, blind.Message);
+
+        // la maestra eliminada no recibe más
+        await svc.DeleteAsync(group.PublicId, default);
+        var a3 = await AsnOfClientAsync(f, 1m);
+        await Assert.ThrowsAsync<ConflictException>(() => receipts.CreateAsync(new ReceiptCreateRequest(AsnId: a3.Id, GroupKey: key), default));
+    }
+
+    [Fact]
     public async Task The_list_filters_by_status_and_finds_a_group_by_the_number_of_one_of_its_documents()
     {
         await using var f = await ReceivingFixture.CreateAsync();

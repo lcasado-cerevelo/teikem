@@ -312,6 +312,12 @@ public sealed class ReceiptService(
         }
 
         await numbers.EnsureAsync(NumberKinds.Receipt, null, ct);
+        // Lote 184: «recibir juntos» desde el aparato — solo documentos; el contador de la maestra en autocommit antes de la transacción
+        if (req.GroupKey is not null)
+        {
+            if (typeCode != ReceiptTypes.Asn) throw new ValidationException("groupKey", ReceiptGroupRules.GroupNeedsDocument);
+            await numbers.EnsureAsync(ReceiptGroupCodes.NumberKind, null, ct);
+        }
         var initial = await statuses.GetInitialAsync(StatusDomains.ReceiptStatus, ct);
         var expectedAsnId = await db.StatusIdAsync(StatusDomains.AsnStatus, AsnStatuses.Expected, ct);
         var openReceiptIds = await db.StatusIdsAsync(StatusDomains.ReceiptStatus, ReceiptStatuses.OpenCodes, ct);
@@ -400,6 +406,7 @@ public sealed class ReceiptService(
                 ReceiptTypeLookupId = typeLookupId, Number = NumberFormat.Resolve(NumberPattern, seq),
                 StatusCodeId = initial.StatusCodeId, IsActive = true, CreatedAtUtc = DateTime.UtcNow, CreatedBy = tenant.UserId,
             };
+            if (req.GroupKey is Guid groupKey) await ReceiptGroupJoin.JoinAsync(db, numbers, tenant, groupKey, receipt, asn?.ClientId, ct2);   // Lote 184
             db.Set<ReceiptHeader>().Add(receipt);
             await SaveReceiptAsync(ct2);
             foreach (var l in lines) l.ReceiptHeaderId = receipt.ReceiptHeaderId;
@@ -1148,7 +1155,7 @@ public sealed class ReceiptService(
             var open = await FindOpenReceiptAsync(req.AsnId, req.PurchaseOrderPublicId, ct2);
             Guid id;
             if (open is null)
-                id = await CreateCoreAsync(new ReceiptCreateRequest(req.WarehousePublicId, null, req.AsnId, req.PurchaseOrderPublicId, Lines: requestLines), ct2);
+                id = await CreateCoreAsync(new ReceiptCreateRequest(req.WarehousePublicId, null, req.AsnId, req.PurchaseOrderPublicId, Lines: requestLines, GroupKey: req.GroupKey), ct2);
             else
             {
                 id = open.PublicId;

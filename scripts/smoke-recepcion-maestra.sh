@@ -62,4 +62,12 @@ expect 204 "$(req DELETE "/api/v1/receipts/groups/$G2P")" >/dev/null
 expect 200 "$(req GET "/api/v1/receipts/groups/$G2P")" | jq -e '.statusCode=="CANCELLED" and .isActive==false' >/dev/null || fail "maestra cancelada"
 G3=$(expect 200 "$(req POST /api/v1/receipts/groups "$(body "{documents:[{asnId:$A4},{asnId:$A5}],stagingBinId:\$b}")")"); echo "$G3" | jq -e '.statusCode=="OPEN"' >/dev/null || fail "los avisos deben quedar libres"; ok "eliminada y vuelta a abrir"
 
+step "recibir juntos desde el aparato: la misma llave arma la maestra"
+A6=$(asn "$CA" "$PA" 2); A7=$(asn "$CA" "$PA" 3); A8=$(asn "$CB" "$PB" 1); KEY=$(cat /proc/sys/kernel/random/uuid)
+rc() { jq -cn --argjson a "$1" --arg k "$2" --argjson b "$BS" '{asnId:$a,stagingBinId:$b,groupKey:$k}'; }
+expect 200 "$(req POST /api/v1/receipts "$(rc "$A6" "$KEY")")" >/dev/null
+expect 200 "$(req POST /api/v1/receipts "$(rc "$A7" "$KEY")")" >/dev/null
+expect 400 "$(req POST /api/v1/receipts "$(rc "$A8" "$KEY")")" | jq -e '.errors.groupKey[0] | contains("otro dueño")' >/dev/null || fail "otro dueño con la misma llave"
+expect 200 "$(req GET "/api/v1/receipts/groups?search=LLE")" | jq -e --arg a "$A6" '[.items[] | select(.memberCount==2 and (.members|length)==2)] | length>=1' >/dev/null || fail "la maestra del aparato con dos recibos"; ok "dos recibos en una maestra y 400 por otro dueño"
+
 printf '\n\033[1;32mSMOKE RECEPCIÓN MAESTRA OK\033[0m\n'

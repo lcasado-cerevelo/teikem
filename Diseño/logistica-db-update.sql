@@ -5939,3 +5939,14 @@ BEGIN
     ALTER TABLE dbo.NumberSequence ADD CONSTRAINT CK_NumberSequence_Kind CHECK (Kind IN ('ORDER','INVOICE','PACKAGE','PACKBATCH','WORKORDER','TRIP','RECEIPT','CYCLECOUNT','CROSSDOCK','PURCHASE','RENTAL','RENTALRETURN','MANUALISSUE','MULTIADJUST','SALESORDER','BILLINVOICE','CREDITNOTE','SALESRETURN','CODREMIT','DRIVERSETTLE','WAYBILL','EXITNOTICE','ASN','ACCTPURCH','ACCTDISP','RECEIPTGROUP'));
 END
 GO
+/* ----------------------------------------------------------------------------
+   2026-10-21 (Lote 184, C4) — Recibir juntos desde el aparato: llave de la maestra.
+   - dbo.ReceiptGroup.ClientKey: la llave del camión que arma el aparato; los recibos que llegan con la misma llave entran a la misma maestra (índice único filtrado).
+   Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF COL_LENGTH('dbo.ReceiptGroup', 'ClientKey') IS NULL
+    ALTER TABLE dbo.ReceiptGroup ADD ClientKey UNIQUEIDENTIFIER NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_ReceiptGroup_ClientKey' AND object_id = OBJECT_ID('dbo.ReceiptGroup'))
+    CREATE UNIQUE INDEX UX_ReceiptGroup_ClientKey ON dbo.ReceiptGroup (TenantId, ClientKey) WHERE ClientKey IS NOT NULL;
+GO

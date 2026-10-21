@@ -296,6 +296,7 @@ public sealed class ReceiptGroupConfiguration : IEntityTypeConfiguration<Receipt
         b.Property(p => p.RowVersion).IsRowVersion();
         b.HasIndex(p => new { p.TenantId, p.Number }).IsUnique().HasDatabaseName("UQ_ReceiptGroup_Number");
         b.HasIndex(p => new { p.TenantId, p.CreatedAtUtc }).HasDatabaseName("IX_ReceiptGroup_Tenant_Date");
+        b.HasIndex(p => new { p.TenantId, p.ClientKey }).IsUnique().HasFilter("[ClientKey] IS NOT NULL").HasDatabaseName("UX_ReceiptGroup_ClientKey");
         b.HasOne<Warehouse>().WithMany().HasForeignKey(p => p.WarehouseId).OnDelete(DeleteBehavior.NoAction);
     }
 }
