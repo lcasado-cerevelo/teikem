@@ -6342,6 +6342,7 @@
       "detail": {
         "summary": "Summary",
         "packedAt": "Packed",
+        "salesOrder": "Sales order",
         "order": "Shipment",
         "invoice": "Invoice",
         "totalCost": "Total cost",

@@ -153,6 +153,18 @@ export function PickBatchDetailBody({ batch, variant = 'screen' }: PickBatchDeta
             <span className="collect-lbl">{t('warehouse.pickBatches.detail.invoice')}</span>
             <p>{batch.clientInvoiceNumber ?? '—'}</p>
           </div>
+          {batch.salesOrderPublicId && (
+            <div className="f">
+              <span className="collect-lbl">{t('warehouse.pickBatches.detail.salesOrder')}</span>
+              <p>
+                <Can perm="sales.view" fallback={<span className="ref">{batch.salesOrderNumber}</span>}>
+                  <Link className="ref" to={`/sales-orders?order=${batch.salesOrderPublicId}`}>
+                    {batch.salesOrderNumber}
+                  </Link>
+                </Can>
+              </p>
+            </div>
+          )}
             </>
           )}
           <div className="f">

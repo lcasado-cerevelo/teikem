@@ -10,7 +10,7 @@ Reglas: trabajar en `master`, `git pull --rebase` antes de cada commit, un commi
 |---|---|---|
 | A | Crear la plantilla desde la pantalla de la integración (sin salir) | ✅ hecha |
 | B | Recibo web: pedir lote y vencimiento en el mismo formulario de la línea | ✅ ya estaba hecha (Lote 140) |
-| C | Atar la orden de venta a su despacho del almacén (ver y abrir el despacho desde la venta) | pendiente |
+| C | Atar la orden de venta a su despacho del almacén (ver y abrir el despacho desde la venta) | ✅ hecha |
 | D | Plantillas de importación para más entidades (primero las que ya tienen importación: productos, proveedores…) | pendiente |
 | E | Restos de la marca (botón secundario azul marino, apps móviles) | pendiente |
 
@@ -21,6 +21,9 @@ En el formulario de integración (entrada) aparece «Nueva plantilla» (si el us
 
 ### B — Lote y vencimiento en la línea del recibo (ya estaba hecha)
 Al revisar, el recibo web ya los pide en la misma línea (Lote 140, `InlineCapture` en `ReceiptLinesEditor.tsx`: lote con fabricación y vencimiento, o series, guardando al salir del grupo). El plan viejo estaba desactualizado; no hubo cambios.
+
+### C — Venta ↔ despacho (hecha)
+El vínculo ya existía en los datos (`PickBatch.SalesOrderId`) y la venta ya listaba sus despachos; faltaba poder saltar de uno al otro. Ahora el despacho trae `salesOrderPublicId`/`salesOrderNumber` (`PickBatchService`), la ficha del despacho muestra «Orden de venta» con enlace, y en la venta el número del despacho es enlace a su ficha. Manual 18, FAQ, `openapi.json` y tipos. Pruebas: 57 de backend (pick batch/ventas) y 716 de web (ventas/almacén) pasan. No se probó en navegador. *Lo que sigue sin existir:* amarrar ventas con un aviso de salida (otro vínculo); no se pidió.
 
 _(las demás partes se agregan debajo)_
 

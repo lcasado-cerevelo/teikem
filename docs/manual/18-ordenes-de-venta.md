@@ -280,3 +280,8 @@ Por dentro, todo se mueve en sus **componentes**.
 
 Para soporte: tabla `SalesOrderLineComponent` (la foto, se borra con la línea) y columnas `SalesOrderReservation.ProductId`, `PickBatchLine.KitProductId` y `KitQuantity`
 (sección **2026-10-16 (q)** de `Diseño/logistica-db-update.sql`).
+
+## Ver el despacho desde la venta y la venta desde el despacho (2026-10-21)
+
+- En la ficha de la orden de venta, la tabla **Despachos de la orden** muestra el número del despacho (recolección y empaque) **como enlace**: abre la ficha del despacho (necesita `pickbatches.view`; sin él se ve el número sin enlace). El envío que se creó al empacar sigue mostrándose en su columna.
+- En la ficha del despacho (Recolección y empaque) aparece el campo **Orden de venta** con su número como enlace a la venta (necesita `sales.view`; sin él, solo el número). Sale solo cuando el despacho nació de una orden de venta (API: `salesOrderPublicId` y `salesOrderNumber` en el despacho).

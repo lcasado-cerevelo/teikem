@@ -838,6 +838,12 @@ public sealed class PickBatchService(
             : (await db.Set<PickGroup>().AsNoTracking().Where(g => groupIds.Contains(g.PickGroupId)).Select(g => new { g.PickGroupId, g.PublicId, g.Number }).ToListAsync(ct))
                 .ToDictionary(g => g.PickGroupId, g => (g.PublicId, g.Number));
 
+        var salesIds = batches.Where(b => b.SalesOrderId != null).Select(b => b.SalesOrderId!.Value).Distinct().ToList();
+        var salesById = salesIds.Count == 0
+            ? new Dictionary<int, (Guid PublicId, string Number)>()
+            : (await db.Set<Teikem.Domain.Sales.SalesOrder>().AsNoTracking().Where(s => salesIds.Contains(s.SalesOrderId)).Select(s => new { s.SalesOrderId, s.PublicId, s.Number }).ToListAsync(ct))
+                .ToDictionary(s => s.SalesOrderId, s => (s.PublicId, s.Number));
+
         var lang = tenant.Lang;
         var linesByBatch = lines.GroupBy(x => x.Line.PickBatchId).ToDictionary(g => g.Key, g => g.ToList());
         foreach (var b in batches)
@@ -877,7 +883,8 @@ public sealed class PickBatchService(
                 lineDtos, b.IsActive,
                 Convert.ToBase64String(b.RowVersion ?? Array.Empty<byte>()),
                 isManual, reason?.Code, reason?.Label, b.Note, ownerName,
-                b.PickGroupId is int pg && groupsById.TryGetValue(pg, out var grp) ? grp.PublicId : null, b.PickGroupId is int pg2 && groupsById.TryGetValue(pg2, out var grp2) ? grp2.Number : null);
+                b.PickGroupId is int pg && groupsById.TryGetValue(pg, out var grp) ? grp.PublicId : null, b.PickGroupId is int pg2 && groupsById.TryGetValue(pg2, out var grp2) ? grp2.Number : null,
+                b.SalesOrderId is int so && salesById.TryGetValue(so, out var sale) ? sale.PublicId : null, b.SalesOrderId is int so2 && salesById.TryGetValue(so2, out var sale2) ? sale2.Number : null);
         }
         return result;
     }

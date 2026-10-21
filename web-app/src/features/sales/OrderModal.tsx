@@ -3,6 +3,7 @@
 // faltante) con las salidas que da el servidor (reservar lo disponible y dejar el resto en backorder, o volver a editar). Una orden SOLICITADA se ve con
 // lo reservado y lo pendiente y permite cambiar la cantidad de una línea, surtir o cerrar con faltante y cancelar.
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Can, useCan } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useFormat } from '../../kernel/format'
@@ -482,7 +483,7 @@ function OrderView({ order, onClose, onReturn }: { order: SalesOrderDto; onClose
 
   const dispatchColumns = useMemo<DataColumn<SalesDispatchInfoDto>[]>(
     () => [
-      { id: 'number', header: t('sales.dispatches.number'), cell: (d) => <b>{d.number}</b>, exportValue: (d) => d.number ?? '', sortValue: (d) => d.number ?? '', card: 'title' },
+      { id: 'number', header: t('sales.dispatches.number'), cell: (d) => (d.pickBatchPublicId ? <Can perm="pickbatches.view" fallback={<b>{d.number}</b>}><Link to={`/warehouse/pick-batches/${d.pickBatchPublicId}`}><b>{d.number}</b></Link></Can> : <b>{d.number}</b>), exportValue: (d) => d.number ?? '', sortValue: (d) => d.number ?? '', card: 'title' },
       {
         id: 'status',
         header: t('sales.col.status'),

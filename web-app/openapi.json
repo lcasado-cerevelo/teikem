@@ -54270,6 +54270,15 @@
           "groupNumber": {
             "type": "string",
             "nullable": true
+          },
+          "salesOrderPublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "salesOrderNumber": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

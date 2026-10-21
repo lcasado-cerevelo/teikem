@@ -9993,3 +9993,6 @@ Sistema → Integraciones → botón «Plantillas». Hay una pestaña para Enví
 
 **Mi plantilla no sale en el asistente de Importar.**
 Revisa en Integraciones → Plantillas que esté **Activa** y que sea de «Todos los clientes» o del cliente que elegiste.
+
+**¿Cómo veo qué despacho salió de una orden de venta, y al revés?**
+En la orden de venta, la tabla «Despachos de la orden» tiene el número de cada despacho como enlace; en la ficha del despacho el campo «Orden de venta» lleva de vuelta a la venta. Necesitas `pickbatches.view` para abrir el despacho y `sales.view` para abrir la venta.

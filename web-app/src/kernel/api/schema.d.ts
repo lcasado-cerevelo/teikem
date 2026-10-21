@@ -36176,6 +36176,9 @@ export interface components {
             /** Format: uuid */
             groupPublicId?: string | null;
             groupNumber?: string | null;
+            /** Format: uuid */
+            salesOrderPublicId?: string | null;
+            salesOrderNumber?: string | null;
         };
         PickBatchLineDto: {
             /** Format: int32 */
