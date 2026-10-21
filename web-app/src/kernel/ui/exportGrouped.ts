@@ -10,6 +10,7 @@
 // Las hijas se preparan con `exportChildren` (exportChildren.ts, liviano: lo importan las pantallas); este módulo lo carga
 // `exportTable` bajo demanda. Las funciones de armado (buildGroupedExportData, flattenGroupedExport, formatExportNumber)
 // son puras y se prueban sin DOM; `renderGroupedPdf` arma el documento en memoria y `exportGroupedTable` descarga.
+import { hasCompanyLogo, loadCompanyPdfLogo } from './pdfLogo'
 import type { jsPDF } from 'jspdf'
 import { formatNumber } from '../format/format'
 import { t as translate } from '../i18n'
@@ -162,6 +163,7 @@ export async function renderGroupedPdf(data: GroupedExportData, options: RenderG
   }
 
   // ---- compañía, título, fecha de generación y filtros (página 1; el mismo encabezado que el PDF de las tablas) ----
+  if (options.logo === undefined && hasCompanyLogo()) options = { ...options, logo: await loadCompanyPdfLogo('light') }
   let y = drawPdfHeading(doc, options, MARGIN, MARGIN - 6, W - MARGIN * 2)
 
   const childCols = data.child.headers.length

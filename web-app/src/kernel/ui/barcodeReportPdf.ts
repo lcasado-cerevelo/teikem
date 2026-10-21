@@ -34,6 +34,7 @@ import {
   type ReportFilter,
   type ReportSummaryItem,
 } from './reportPdf'
+import { hasCompanyLogo, loadCompanyPdfLogo, type PdfLogo } from './pdfLogo'
 
 /** Puntos por milímetro (el PDF se arma en puntos). */
 export const PT_PER_MM = 72 / 25.4
@@ -343,7 +344,8 @@ function codeBlockHeight(cell: PlannedBarcodeCell, valueLines: number): number {
 }
 
 export interface RenderBarcodeReportOptions {
-  logo?: string | null
+  /** Logo de la compañía o símbolo de Teikem (PNG); omitido = el logo de la compañía si subió uno. */
+  logo?: string | PdfLogo | null
   /** false = sin comprimir (pruebas). Por defecto true. */
   compress?: boolean
 }
@@ -377,7 +379,7 @@ export async function renderBarcodeReportPdf(spec: BarcodeReportSpec, options: R
       summary: barcodeReportSummary(plan),
       notices: barcodeTopNotices(spec, plan),
     },
-    options.logo,
+    options.logo !== undefined ? options.logo : hasCompanyLogo() ? await loadCompanyPdfLogo('dark') : null,
   )
 
   const bodyBottom = H - REPORT_LAYOUT.footerHeight - 14
@@ -505,7 +507,7 @@ export async function renderBarcodeReportPdf(spec: BarcodeReportSpec, options: R
 
 /** Arma el reporte (con el logo si se puede rasterizar) y lo descarga como `reportFileName(spec)`. */
 export async function downloadBarcodeReportPdf(spec: BarcodeReportSpec): Promise<void> {
-  const logo = await loadReportLogo()
+  const logo = (await loadCompanyPdfLogo('dark')) ?? (await loadReportLogo())
   const doc = await renderBarcodeReportPdf(spec, { logo })
   doc.save(reportFileName(spec, spec.generatedAt))
 }

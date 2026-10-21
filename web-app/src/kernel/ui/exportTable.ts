@@ -2,6 +2,7 @@
 // cargadas. Las funciones de armado (buildExportData, toCsv, exportFileName…) son puras y se prueban sin DOM; las de
 // descarga cargan SheetJS / jsPDF bajo demanda (import dinámico) para no inflar el paquete inicial.
 import type { jsPDF } from 'jspdf'
+import { fitLogo, hasCompanyLogo, loadCompanyPdfLogo, type PdfLogo } from './pdfLogo'
 import { isValidElement, type ReactNode } from 'react'
 import { parseApiDate } from '../api/dates'
 import { tenantTimeZone, tenantToday } from '../api/tenantZone'
@@ -305,6 +306,8 @@ export interface ExportHeadingSpec {
   /** Oración de filtros ("Filtros: …" / "Sin filtros"); null = sin línea (tabla sin barra o en un modal). */
   filters?: string | null
   locale?: string
+  /** Logo de la compañía (`loadCompanyPdfLogo('light')`) arriba del encabezado del PDF; null = sin logo; omitido = el de la compañía si subió uno. */
+  logo?: PdfLogo | null
 }
 
 export type ExportHeadingKind = 'company' | 'title' | 'generated' | 'filters'
@@ -339,6 +342,20 @@ const PDF_MUTED: Rgb = [91, 104, 128]
  */
 export function drawPdfHeading(doc: jsPDF, spec: ExportHeadingSpec, x: number, y: number, maxWidth: number): number {
   let cy = y
+  // Lote 188: el logo de la compañía arriba del encabezado
+  if (spec.logo) {
+    try {
+      const { w, h } = fitLogo(spec.logo, Math.min(150, maxWidth), 34)
+      if (spec.logo.plate) {
+        doc.setFillColor(...(spec.logo.plate === 'white' ? ([255, 255, 255] as [number, number, number]) : ([11, 44, 102] as [number, number, number])))
+        doc.roundedRect(x - 3, cy + 1, w + 6, h + 6, 3, 3, 'F')
+      }
+      doc.addImage(spec.logo.dataUrl, 'PNG', x, cy + 4, w, h)
+      cy += h + 12
+    } catch {
+      // un PNG ilegible no impide la exportación
+    }
+  }
   for (const line of exportHeadingLines(spec)) {
     const text = pdfSafeText(line.text)
     if (line.kind === 'company') {
@@ -432,6 +449,7 @@ export async function renderTablePdf(data: ExportData, options: RenderTablePdfOp
     compress: options.compress ?? true,
   })
   const margin = 32
+  if (options.logo === undefined && hasCompanyLogo()) options = { ...options, logo: await loadCompanyPdfLogo('light') }
   const startY = drawPdfHeading(doc, options, margin, margin - 6, doc.internal.pageSize.getWidth() - margin * 2)
   const columnStyles: Record<number, { halign: 'right' }> = {}
   data.numeric.forEach((n, i) => {

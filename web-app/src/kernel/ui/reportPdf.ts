@@ -16,6 +16,7 @@ import { formatDateLongTime, formatMoney, formatNumber } from '../format/format'
 import { t as translate } from '../i18n'
 import { BRAND_SYMBOL_SRC } from './brandAssets'
 import { exportFileName, pdfSafeText } from './exportTable'
+import { fitLogo, hasCompanyLogo, loadCompanyPdfLogo, type PdfLogo } from './pdfLogo'
 
 /** Valor de una celda del reporte: número (se formatea según la columna), texto tal cual o vacío. */
 export type ReportValue = string | number | null | undefined
@@ -258,8 +259,8 @@ export const REPORT_COLORS = { navy: NAVY, blue: BLUE, orange: ORANGE, ink: INK,
 export type ReportHeaderSpec = Pick<ReportSpec, 'title' | 'subtitle' | 'company' | 'user' | 'generatedAt' | 'locale' | 'filters' | 'summary' | 'notices'>
 
 export interface RenderReportOptions {
-  /** PNG (data URL) del símbolo de la marca; null/omitido = encabezado solo con texto. */
-  logo?: string | null
+  /** Logo de la compañía (`loadCompanyPdfLogo('dark')`) o PNG (data URL) del símbolo de Teikem; null = encabezado solo con texto; omitido = el logo de la compañía si subió uno. */
+  logo?: string | PdfLogo | null
   /** false = sin comprimir (pruebas: el texto queda legible en el PDF). Por defecto true. */
   compress?: boolean
 }
@@ -269,7 +270,7 @@ export async function renderReportPdf(spec: ReportSpec, options: RenderReportOpt
   const [{ jsPDF: JsPdf }, { autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')])
   const safe = (s: string) => pdfSafeText(s)
   const doc = new JsPdf({ orientation: reportOrientation(spec), unit: 'pt', format: spec.paper ?? 'a4', compress: options.compress ?? true })
-  const y = drawReportHeader(doc, spec, options.logo)
+  const y = drawReportHeader(doc, spec, options.logo !== undefined ? options.logo : hasCompanyLogo() ? await loadCompanyPdfLogo('dark') : null)
 
   // ---- tabla ----
   const rows = buildReportBody({ ...spec, emptyText: spec.emptyText ?? translate('ui.report.empty') })
@@ -339,7 +340,7 @@ export async function renderReportPdf(spec: ReportSpec, options: RenderReportOpt
  * subtítulo, "Generado el … por …", recuadro "Filtros aplicados", tarjetas de resumen y avisos. Devuelve la `y` (pt) donde
  * empieza el cuerpo. Lo usan `renderReportPdf` y el reporte de códigos de barras (Lote F14).
  */
-export function drawReportHeader(doc: jsPDF, spec: ReportHeaderSpec, logo?: string | null): number {
+export function drawReportHeader(doc: jsPDF, spec: ReportHeaderSpec, logo?: string | PdfLogo | null): number {
   const safe = (s: string) => pdfSafeText(s)
   const W = doc.internal.pageSize.getWidth()
   const inner = W - MARGIN * 2
@@ -355,7 +356,23 @@ export function drawReportHeader(doc: jsPDF, spec: ReportHeaderSpec, logo?: stri
   doc.setFillColor(...ORANGE)
   doc.rect(0, BAND_H, 96, 3, 'F')
   let brandX = MARGIN
-  if (logo) {
+  let companyLogoDrawn = false
+  if (logo && typeof logo === 'object') {
+    // Lote 188: el logo de la compañía reemplaza al de Teikem (símbolo, "TEIKEM" y lema)
+    try {
+      const { w, h } = fitLogo(logo, 190, 46)
+      const x = MARGIN - 4
+      const y = (BAND_H - h) / 2
+      if (logo.plate) {
+        doc.setFillColor(...(logo.plate === 'white' ? ([255, 255, 255] as Rgb) : NAVY))
+        doc.roundedRect(x - 5, y - 4, w + 10, h + 8, 4, 4, 'F')
+      }
+      doc.addImage(logo.dataUrl, 'PNG', x, y, w, h)
+      companyLogoDrawn = true
+    } catch {
+      // un PNG ilegible no impide el reporte: queda el encabezado de Teikem
+    }
+  } else if (logo) {
     try {
       doc.addImage(logo, 'PNG', MARGIN - 4, 14, 44, 44)
       brandX = MARGIN + 48
@@ -363,14 +380,16 @@ export function drawReportHeader(doc: jsPDF, spec: ReportHeaderSpec, logo?: stri
       // un PNG ilegible no impide el reporte: queda solo el texto
     }
   }
-  doc.setTextColor(255, 255, 255)
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(19)
-  doc.text('TEIKEM', brandX, 38)
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8)
-  doc.setTextColor(...BAND_TEXT)
-  doc.text(safe(translate('ui.report.tagline')).toUpperCase(), brandX + 1, 52)
+  if (!companyLogoDrawn) {
+    doc.setTextColor(255, 255, 255)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(19)
+    doc.text('TEIKEM', brandX, 38)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    doc.setTextColor(...BAND_TEXT)
+    doc.text(safe(translate('ui.report.tagline')).toUpperCase(), brandX + 1, 52)
+  }
   if (company) {
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(13)
@@ -550,7 +569,7 @@ export function drawReportPageChrome(doc: jsPDF, spec: Pick<ReportSpec, 'title' 
 
 /** Arma el reporte (con el logo si se puede rasterizar) y lo descarga como `reportFileName(spec)`. */
 export async function downloadReportPdf(spec: ReportSpec): Promise<void> {
-  const logo = await loadReportLogo()
+  const logo = (await loadCompanyPdfLogo('dark')) ?? (await loadReportLogo())
   const doc = await renderReportPdf(spec, { logo })
   doc.save(reportFileName(spec, spec.generatedAt))
 }

@@ -10132,3 +10132,11 @@ Revisa que la integración esté encendida y haya sido creada antes del cambio. 
 
 **¿Qué columnas lleva el archivo de productos?**
 Las de la plantilla de productos, en su orden; el encabezado es el nombre del campo. Si falta una, agrégala a la plantilla (Integraciones → Plantillas → Productos).
+
+## Logo de la compañía en los PDF (Lote 188)
+
+**¿Qué logo llevan los reportes y las exportaciones a PDF?**
+El que la compañía subió en Ajustes → Marca. Los reportes de marca (inventario, ajustes, códigos de barras y los documentos que se imprimen, como los de Órdenes) lo llevan en la banda azul del encabezado, en lugar del símbolo y el nombre de Teikem; las exportaciones a PDF de las tablas lo llevan arriba del nombre de la compañía y del título. Se usa el lockup (símbolo + nombre); si solo subió la marca cuadrada, se usa esa. En la banda azul se prefiere la variante «para fondo oscuro» (invertida); si solo hay la de fondo claro, el logo sale sobre una placa blanca, y al revés en las tablas.
+
+**Mi PDF sale sin logo (o con el de Teikem).**
+Suba el logo en Ajustes → Marca (lockup y/o marca cuadrada). Si la compañía no ha subido ninguno, los reportes de marca conservan el de Teikem y las tablas salen sin logo. Si lo subió y no aparece, recargue la página (los logos se descargan al entrar) y vuelva a exportar. Los CSV y los Excel no llevan logo.
