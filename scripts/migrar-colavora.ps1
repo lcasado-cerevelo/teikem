@@ -10,7 +10,7 @@
 #   .scriptsmigrar-colavora.ps1 -Compania advance -Solo ordenes -Desde 1200000 -Hasta 1276964
 #   .scriptsmigrar-colavora.ps1 -Compania advance -Meses 3            # pruebas: solo las órdenes de los últimos 3 meses
 #   .scriptsmigrar-colavora.ps1 -Compania delapaz -DesdeFecha 2026-01-01
-#   .scriptsmigrar-colavora.ps1 -Compania advance -DiasAbiertas 30    # lo abierto de más de 30 días se migra como Entregada
+#   .\scripts\migrar-colavora.ps1 -Compania advance -DiasAbiertas 30    # lo abierto de más de 30 días se migra como Entregada
 # Detalle: docs/migracion/colavora/README.md
 [CmdletBinding()]
 param(
