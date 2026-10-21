@@ -10050,6 +10050,7 @@
     "title": "Integrations",
     "subtitle": "Data in and out with other systems, without programming each time",
     "new": "New integration",
+    "templates": "Templates",
     "panel": "Integrations",
     "showInactive": "Show turned-off integrations",
     "empty": "There are no integrations yet. Create the first one with \"New integration\".",
@@ -10652,6 +10653,33 @@
         "DISCARDED": "Discarded"
       }
     }
+  },
+  "templates": {
+    "title": "Templates",
+    "subtitle": "How the files of each entity are read (column → field). The same templates serve the Import wizard and integrations.",
+    "new": "New template",
+    "entity": "Entity",
+    "entities": {
+      "ORDER": "Shipments",
+      "CONSIGNEE": "Consignees"
+    },
+    "col": {
+      "name": "Name",
+      "client": "Client",
+      "mapping": "Columns → fields",
+      "columns": "Columns",
+      "state": "Status"
+    },
+    "allClients": "All clients",
+    "active": "Active",
+    "inactive": "Inactive",
+    "empty": "There are no templates for this entity yet.",
+    "edit": "Edit",
+    "deactivate": "Deactivate",
+    "reactivate": "Reactivate",
+    "deactivated": "Template «{name}» deactivated.",
+    "reactivated": "Template «{name}» reactivated.",
+    "noPermission": "You need the {perm} permission to view and change these templates."
   },
   "jobs": {
     "title": "Scheduled jobs",

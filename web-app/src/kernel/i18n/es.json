@@ -10053,6 +10053,7 @@
     "title": "Integraciones",
     "subtitle": "Entrada y salida de datos con otros sistemas, sin programar cada vez",
     "new": "Nueva integración",
+    "templates": "Plantillas",
     "panel": "Integraciones",
     "showInactive": "Mostrar integraciones apagadas",
     "empty": "Todavía no hay integraciones. Cree la primera con «Nueva integración».",
@@ -10655,6 +10656,33 @@
         "DISCARDED": "Descartado"
       }
     }
+  },
+  "templates": {
+    "title": "Plantillas",
+    "subtitle": "Cómo se leen los archivos de cada entidad (columna → campo). Las mismas plantillas sirven al asistente de Importar y a las integraciones.",
+    "new": "Nueva plantilla",
+    "entity": "Entidad",
+    "entities": {
+      "ORDER": "Envíos",
+      "CONSIGNEE": "Consignatarios"
+    },
+    "col": {
+      "name": "Nombre",
+      "client": "Cliente",
+      "mapping": "Columnas → campos",
+      "columns": "Columnas",
+      "state": "Estado"
+    },
+    "allClients": "Todos los clientes",
+    "active": "Activa",
+    "inactive": "Inactiva",
+    "empty": "Todavía no hay plantillas de esta entidad.",
+    "edit": "Editar",
+    "deactivate": "Desactivar",
+    "reactivate": "Reactivar",
+    "deactivated": "Plantilla «{name}» desactivada.",
+    "reactivated": "Plantilla «{name}» reactivada.",
+    "noPermission": "Para ver y cambiar estas plantillas necesitas el permiso {perm}."
   },
   "jobs": {
     "title": "Trabajos programados",

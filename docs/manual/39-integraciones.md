@@ -306,3 +306,13 @@ Errores al **procesar un archivo** (el archivo queda anotado como «Con error» 
 | «La salida supera el tamaño permitido (2 MB); use una salida más frecuente o menos columnas.» | (envío no entregado) | contenido demasiado grande |
 
 **Casos frecuentes:** *«No sale nada»* → la integración está apagada, el estatus no es el elegido, el envío es de otro cliente, o llegó al estatus **antes** de crear la integración (solo salen las que llegan después). *«Por horario no manda»* → el trabajo de integraciones por horario corre cada minuto; use «Enviar ahora» para probar. *«No entregado: No se pudo conectar»* → revise URL, firewall y, en SFTP, la huella. *«El archivo llegó dos veces»* → es un reintento tras no recibir la respuesta: use el `Idempotency-Key` (API) o el número del envío en el nombre del archivo.
+
+## 14. Pantalla «Plantillas» (desde Integraciones, 2026-10-21)
+
+Dictado de Luis: ver, crear, editar, desactivar y reactivar las plantillas de importación **sin pasar por el asistente de Importar**. Las mismas plantillas sirven a ese asistente y a las integraciones.
+
+- **Dónde:** botón **Plantillas** arriba en Sistema → Integraciones (`/system/templates`; no es un ítem del menú, que se queda como la maqueta). Entra quien tenga `integrations.view` y el módulo Integraciones.
+- **Pestañas por entidad:** **Envíos** (órdenes de transporte; ver y cambiar exige `orders.edit`) y **Consignatarios** (exige `locations.create`). Sin el permiso de la entidad la pestaña solo dice cuál hace falta: «Para ver y cambiar estas plantillas necesitas el permiso {perm}.».
+- **Lista:** nombre, cliente (o «Todos los clientes»), el resumen «columna → campo», cuántas columnas y estado (Activa/Inactiva). Las activas salen primero y luego por nombre; las inactivas se muestran siempre.
+- **Acciones:** *Nueva plantilla* y *Editar* abren el mismo editor que ya usa cada asistente de Importar (para consignatarios con variantes, uniones de columnas y cliente por defecto); *Desactivar* y *Reactivar* no borran nada. Los mensajes de error son los del servidor de cada editor (ver manual 03 §7 y el de consignatarios).
+- **Todavía no:** plantillas de las demás entidades (órdenes de venta, almacenes, posiciones, productos, proveedores, recibos, despachos, ajustes, clientes, choferes), la plantilla como **salida** (exportación) y crearla desde la pantalla de la integración. Siguen en el plan P11.

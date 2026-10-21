@@ -2,7 +2,7 @@
 // cliente, conector, horario, último resultado y pendientes en la bandeja; acciones «Correr ahora», «Subir archivo», «Historial», «Editar». Alta con integrations.create (+ el permiso de la familia de cada alcance).
 // Módulo INTEGRATIONS (la ruta lo exige). Nunca se borra: se apaga.
 import { useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Can, useCan } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useFormat } from '../../kernel/format'
@@ -213,6 +213,9 @@ export default function IntegrationsScreen() {
           <p>{t('integrations.subtitle')}</p>
         </div>
         <div className="act">
+          <Link className="btn" to="/system/templates">
+            {t('integrations.templates')}
+          </Link>
           <Can perm="integrations.create">
             <button type="button" className="btn flow" onClick={() => setEditing('new')}>
               <IconPlus /> {t('integrations.new')}

@@ -9987,3 +9987,9 @@ En la web, Recolección y empaque → Maestras → Empacar: crea un solo envío 
 
 **Mandé la maestra sin señal, ¿qué pasa si el servidor la rechaza?**
 Al sincronizar se muestra el mensaje del servidor, el saldo local se deshace y el aviso se vuelve a bajar como estaba.
+
+**¿Dónde veo y edito las plantillas de importación sin entrar a Importar?**
+Sistema → Integraciones → botón «Plantillas». Hay una pestaña para Envíos y otra para Consignatarios; ahí las creas, editas, desactivas y reactivas (necesitas `orders.edit` para envíos y `locations.create` para consignatarios). Las inactivas también se ven y se pueden reactivar.
+
+**Mi plantilla no sale en el asistente de Importar.**
+Revisa en Integraciones → Plantillas que esté **Activa** y que sea de «Todos los clientes» o del cliente que elegiste.
