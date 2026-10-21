@@ -9,7 +9,7 @@ Reglas: trabajar en `master`, `git pull --rebase` antes de cada commit, un commi
 | # | Parte | Estado |
 |---|---|---|
 | A | Crear la plantilla desde la pantalla de la integración (sin salir) | ✅ hecha |
-| B | Recibo web: pedir lote y vencimiento en el mismo formulario de la línea | pendiente |
+| B | Recibo web: pedir lote y vencimiento en el mismo formulario de la línea | ✅ ya estaba hecha (Lote 140) |
 | C | Atar la orden de venta a su despacho del almacén (ver y abrir el despacho desde la venta) | pendiente |
 | D | Plantillas de importación para más entidades (primero las que ya tienen importación: productos, proveedores…) | pendiente |
 | E | Restos de la marca (botón secundario azul marino, apps móviles) | pendiente |
@@ -18,6 +18,9 @@ Reglas: trabajar en `master`, `git pull --rebase` antes de cada commit, un commi
 
 ### A — Plantilla desde la integración (hecha)
 En el formulario de integración (entrada) aparece «Nueva plantilla» (si el usuario tiene `orders.edit`); abre el editor de plantillas de envíos y, al guardar, la deja elegida. Archivos: `IntegrationFormModal.tsx`, textos es/en, manual 39 §14. Pruebas de Integraciones pasan (59); sin prueba nueva de pantalla ni verificación en navegador.
+
+### B — Lote y vencimiento en la línea del recibo (ya estaba hecha)
+Al revisar, el recibo web ya los pide en la misma línea (Lote 140, `InlineCapture` en `ReceiptLinesEditor.tsx`: lote con fabricación y vencimiento, o series, guardando al salir del grupo). El plan viejo estaba desactualizado; no hubo cambios.
 
 _(las demás partes se agregan debajo)_
 
