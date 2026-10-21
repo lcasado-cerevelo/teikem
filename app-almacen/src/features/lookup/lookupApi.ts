@@ -48,16 +48,23 @@ function readCache(key: string): { rows: BalanceRow[]; fetchedAtUtc: string } | 
   return { rows: JSON.parse(row.payload_json) as BalanceRow[], fetchedAtUtc: row.fetched_at_utc }
 }
 
+const BALANCE_PAGE = 200
+const BALANCE_MAX_PAGES = 25
+
 /** Busca saldos por producto (ya conocido localmente) o, si no, por código libre (posición u otro): sin red, cae a
  *  la última respuesta guardada para ese mismo código; sin red y sin nada guardado, propaga el error. */
 export async function searchBalances(warehousePublicId: string, code: string, productPublicId: string | null): Promise<LookupResult> {
   const key = cacheKey(warehousePublicId, code)
   try {
-    const query = productPublicId
-      ? { warehousePublicIds: [warehousePublicId], productPublicIds: [productPublicId], take: 50 }
-      : { warehousePublicIds: [warehousePublicId], search: code, take: 50 }
-    const page = await unwrap(api.GET('/api/v1/inventory/balances', { params: { query } }))
-    const rows = mapRows(page.items)
+    // Lote 161: sin tope de 50 — se piden páginas hasta traer todo lo que coincide (con un máximo de seguridad de 5,000 filas)
+    const base = productPublicId ? { warehousePublicIds: [warehousePublicId], productPublicIds: [productPublicId] } : { warehousePublicIds: [warehousePublicId], search: code }
+    const rows: BalanceRow[] = []
+    for (let pageNo = 0; pageNo < BALANCE_MAX_PAGES; pageNo++) {
+      const page = await unwrap(api.GET('/api/v1/inventory/balances', { params: { query: { ...base, skip: pageNo * BALANCE_PAGE, take: BALANCE_PAGE } } }))
+      const got = mapRows(page.items)
+      rows.push(...got)
+      if (got.length < BALANCE_PAGE || rows.length >= (page.total ?? 0)) break
+    }
     const fetchedAtUtc = new Date().toISOString()
     writeCache(key, rows, fetchedAtUtc)
     return { rows, fromCache: false, fetchedAtUtc }

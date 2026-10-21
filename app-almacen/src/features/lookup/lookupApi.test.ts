@@ -27,7 +27,7 @@ describe('searchBalances', () => {
   it('busca por productPublicId cuando el producto ya se conoce localmente', async () => {
     getMock.mockResolvedValueOnce(ok({ items: [ITEM] }))
     const result = await searchBalances('wh-1', 'ABC', 'p1')
-    expect(getMock.mock.calls[0][1].params.query).toEqual({ warehousePublicIds: ['wh-1'], productPublicIds: ['p1'], take: 50 })
+    expect(getMock.mock.calls[0][1].params.query).toEqual({ warehousePublicIds: ['wh-1'], productPublicIds: ['p1'], skip: 0, take: 200 })
     expect(result.fromCache).toBe(false)
     expect(result.rows).toEqual([{ id: 1, binId: null, lotId: null, zoneTypeCode: null, binCode: 'B-5', productPublicId: 'p1', sku: 'A', productName: 'Uno', lotNumber: null, qtyOnHand: 10, qtyAvailable: 8 }])
   })
@@ -35,7 +35,17 @@ describe('searchBalances', () => {
   it('sin producto local, busca por texto libre (cubre posición)', async () => {
     getMock.mockResolvedValueOnce(ok({ items: [] }))
     await searchBalances('wh-1', 'B-5', null)
-    expect(getMock.mock.calls[0][1].params.query).toEqual({ warehousePublicIds: ['wh-1'], search: 'B-5', take: 50 })
+    expect(getMock.mock.calls[0][1].params.query).toEqual({ warehousePublicIds: ['wh-1'], search: 'B-5', skip: 0, take: 200 })
+  })
+
+  it('sin tope de 50: pide páginas hasta traer todo lo que coincide', async () => {
+    const many = (from: number, n: number) => Array.from({ length: n }, (_, i) => ({ ...ITEM, id: from + i }))
+    getMock.mockResolvedValueOnce(ok({ items: many(1, 200), total: 230 }))
+    getMock.mockResolvedValueOnce(ok({ items: many(201, 30), total: 230 }))
+    const result = await searchBalances('wh-1', 'ABC', 'p1')
+    expect(getMock).toHaveBeenCalledTimes(2)
+    expect(getMock.mock.calls[1][1].params.query).toMatchObject({ skip: 200, take: 200 })
+    expect(result.rows).toHaveLength(230)
   })
 
   it('guarda la respuesta y una segunda consulta sin red la recupera de la caché', async () => {

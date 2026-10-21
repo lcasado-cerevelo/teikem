@@ -295,7 +295,7 @@ public sealed class DeviceService(
 
         var tenantName = await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(t => t.TenantId == device.TenantId).Select(t => t.Name).FirstAsync(ct);
         var (warehousePublicId, theme, receivingMode) = await PreferencesAsync(device, ct);
-        return new DeviceEnrolledDto(device.PublicId, secret, tenantName, warehousePublicId, theme, receivingMode);
+        return new DeviceEnrolledDto(device.PublicId, secret, tenantName, warehousePublicId, theme, receivingMode, await ReceiptRequirementAsync(device.TenantId, ct));
     }
 
     /// <summary>
@@ -325,6 +325,10 @@ public sealed class DeviceService(
         return list.OrderBy(u => u.FullName, StringComparer.CurrentCultureIgnoreCase).ToList();
     }
 
+    /// <summary>«El recibo exige documento» de la compañía del aparato (Lote 149); la app lo usa para no ofrecer el recibo a ciegas.</summary>
+    private async Task<string> ReceiptRequirementAsync(int tenantId, CancellationToken ct)
+        => ReceiptRequirementRules.Parse(await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(t => t.TenantId == tenantId).Select(t => t.ReceiptRequirement).FirstOrDefaultAsync(ct)) ?? ReceiptRequirements.Free;
+
     /// <summary>
     /// Heartbeat: aparato + secreto → LastSeenUtc y AppVersion; devuelve estado, almacén por defecto, tema y hora del
     /// servidor. Un aparato desactivado (o de una compañía inactiva o sin el módulo) recibe IsActive = false, no un error,
@@ -337,7 +341,7 @@ public sealed class DeviceService(
         var usable = device.IsActive && await TenantUsableAsync(device.TenantId, ct);
         await TouchAsync(device, null, req.AppVersion, ct);
         var (warehousePublicId, theme, receivingMode) = await PreferencesAsync(device, ct);
-        return new DeviceHeartbeatDto(usable, warehousePublicId, theme, DateTime.UtcNow, receivingMode);
+        return new DeviceHeartbeatDto(usable, warehousePublicId, theme, DateTime.UtcNow, receivingMode, await ReceiptRequirementAsync(device.TenantId, ct));
     }
 
     // ---------------------------------------------------------------- costuras para AuthService

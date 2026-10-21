@@ -12,15 +12,15 @@ export interface PickItem {
   subtitle: string | null
 }
 
-/** Tope de filas de la lista; más que esto se pide escribir para acotar. */
-export const PICK_LIMIT = 50
+/** Filas que se traen por página de la lista (Lote 161: ya no hay tope; la lista sigue cargando al deslizar hasta el final). */
+export const PICK_PAGE = 100
 
 /** Escapa % _ \ para usar el texto escrito como subcadena literal en LIKE ... ESCAPE '\'. */
 export function likeTerm(text: string): string {
   return `%${text.trim().replace(/[\\%_]/g, (c) => `\\${c}`)}%`
 }
 
-export function searchProducts(query: string, limit = PICK_LIMIT): PickItem[] {
+export function searchProducts(query: string, limit = PICK_PAGE): PickItem[] {
   const term = likeTerm(query)
   return getDb()
     .getAllSync<{ sku: string; name: string; barcode: string | null }>(
@@ -32,7 +32,7 @@ export function searchProducts(query: string, limit = PICK_LIMIT): PickItem[] {
     .map((p) => ({ kind: 'product' as const, code: p.sku, title: p.sku, subtitle: [p.name, p.barcode].filter(Boolean).join(' · ') || null }))
 }
 
-export function searchBins(warehousePublicId: string, query: string, limit = PICK_LIMIT): PickItem[] {
+export function searchBins(warehousePublicId: string, query: string, limit = PICK_PAGE): PickItem[] {
   const term = likeTerm(query)
   return getDb()
     .getAllSync<{ code: string; zone_code: string | null; zone_name: string | null }>(
@@ -47,9 +47,10 @@ export function searchBins(warehousePublicId: string, query: string, limit = PIC
 }
 
 /** Búsqueda del selector: producto, posición o las dos (productos primero). */
-export function searchPicker(kind: PickKind, warehousePublicId: string | null, query: string): PickItem[] {
+/** `limit` = cuántas filas de CADA tipo (productos y posiciones); la lista pide más al llegar al final. */
+export function searchPicker(kind: PickKind, warehousePublicId: string | null, query: string, limit = PICK_PAGE): PickItem[] {
   const out: PickItem[] = []
-  if (kind !== 'bin') out.push(...searchProducts(query))
-  if (kind !== 'product' && warehousePublicId) out.push(...searchBins(warehousePublicId, query))
+  if (kind !== 'bin') out.push(...searchProducts(query, limit))
+  if (kind !== 'product' && warehousePublicId) out.push(...searchBins(warehousePublicId, query, limit))
   return out
 }

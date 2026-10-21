@@ -669,7 +669,8 @@
     "titleBin": "Find bin",
     "titleAny": "Find product or bin",
     "empty": "No matches on this device. Sync if something is missing.",
-    "more": "Showing the first {max}; type more to narrow down."
+    "count": "{count} matches",
+    "seeAll": "See all"
   },
   "positions": {
     "listTitle": "Positions with stock",

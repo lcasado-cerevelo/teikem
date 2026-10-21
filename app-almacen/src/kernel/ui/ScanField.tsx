@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Keyboard, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
 
 import { useActiveWarehouse } from '../warehouse/activeWarehouse'
 import { useT } from '../i18n/useT'
-import type { PickKind } from '../warehouse/pickerSearch'
+import { searchPicker, type PickItem, type PickKind } from '../warehouse/pickerSearch'
 import { PickerModal } from './PickerModal'
 import { useScanner } from '../scanner/useScanner'
 import { useFieldFocus, type MeasurableField } from './keyboardScroll'
@@ -42,6 +42,8 @@ export interface ScanFieldProps {
 /** Una misma lectura que llega dos veces seguidas (por teclas y por intent, si el perfil del lector quedara mal) se toma
  *  una sola vez. Nadie escanea el mismo código dos veces en menos de esto. */
 const DUPLICATE_WINDOW_MS = 400
+/** Coincidencias que se muestran bajo el campo mientras se escribe (el resto, en «Ver todas»). */
+const SUGGESTIONS = 5
 
 /**
  * Campo único de captura (docs/mobile/app-almacen-plan.md §2, "un solo campo enfocado; el escaneo escribe y avanza").
@@ -146,6 +148,12 @@ export function ScanField({
 
   const keyboardLabel = t(keyboard ? 'scan.hideKeyboard' : 'scan.showKeyboard')
 
+  // Autocompletado (Lote 161): al ESCRIBIR a mano (teclado en pantalla) se muestran las coincidencias parciales de la base local; tocar una equivale a escanearla.
+  // «Ver todas» abre la lista completa ya filtrada con lo escrito. Un lector que escribe de golpe no pasa por aquí (se acepta solo).
+  const typed = value.trim()
+  const suggestions = useMemo<PickItem[]>(() => (pick && keyboard && typed.length >= 2 ? searchPicker(pick, activeWarehouse.publicId, typed, SUGGESTIONS) : []), [pick, keyboard, typed, activeWarehouse.publicId])
+  const [listQuery, setListQuery] = useState('')
+
   return (
     <View style={styles.wrap}>
       <Text style={styles.label}>{label}</Text>
@@ -200,8 +208,21 @@ export function ScanField({
           <Text style={styles.suggestLabel}>{t('scan.useSuggested', { value: suggestedValue })}</Text>
         </Pressable>
       ) : null}
+      {suggestions.length > 0 ? (
+        <View style={styles.suggestList} testID="scan-suggestions">
+          {suggestions.map((s) => (
+            <Pressable key={`${s.kind}:${s.code}`} accessibilityRole="button" accessibilityLabel={s.code} onPress={() => submit(s.code)} style={styles.suggestRow}>
+              <Text style={styles.suggestLabel}>{s.title}</Text>
+              {s.subtitle ? <Text style={styles.help}>{s.subtitle}</Text> : null}
+            </Pressable>
+          ))}
+          <Pressable accessibilityRole="button" accessibilityLabel={t('picker.seeAll')} onPress={() => { setListQuery(typed); setPicking(true) }} style={styles.suggestBtn}>
+            <Text style={styles.suggestLabel}>☰ {t('picker.seeAll')}</Text>
+          </Pressable>
+        </View>
+      ) : null}
       {pick ? (
-        <Pressable accessibilityRole="button" accessibilityLabel={t('picker.open')} onPress={() => setPicking(true)} style={styles.suggestBtn}>
+        <Pressable accessibilityRole="button" accessibilityLabel={t('picker.open')} onPress={() => { setListQuery(''); setPicking(true) }} style={styles.suggestBtn}>
           <Text style={styles.suggestLabel}>☰ {t('picker.open')}</Text>
         </Pressable>
       ) : null}
@@ -209,6 +230,7 @@ export function ScanField({
         <PickerModal
           visible={picking}
           kind={pick}
+          initialQuery={listQuery}
           warehousePublicId={activeWarehouse.publicId}
           onClose={() => setPicking(false)}
           onSelect={(code) => {
@@ -272,6 +294,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: spacing.md,
   },
+  suggestList: { gap: spacing.xs },
+  suggestRow: { minHeight: 56, justifyContent: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.md, backgroundColor: colors.panelAlt, borderWidth: 1, borderColor: colors.line },
   suggestLabel: { color: colors.text, fontSize: fontSize.message, fontWeight: '700' },
   help: { color: colors.muted, fontSize: fontSize.message },
 })

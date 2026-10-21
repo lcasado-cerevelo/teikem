@@ -45,7 +45,7 @@ public sealed record DeviceEnrollRequest(string? EnrollCode, string? Model, stri
 /// tema. Lote 16: DefaultWarehouseReceivingMode = modo de recepción del almacén por defecto (PUTAWAY | DIRECT; null sin almacén).
 /// </summary>
 public sealed record DeviceEnrolledDto(Guid DevicePublicId, string DeviceSecret, string TenantName, Guid? DefaultWarehousePublicId, string? Theme,
-    string? DefaultWarehouseReceivingMode = null);
+    string? DefaultWarehouseReceivingMode = null, string? ReceiptRequirement = null);
 
 /// <summary>Lista de usuarios que pueden entrar en el aparato (anónimo: se autentica con aparato + secreto).</summary>
 public sealed record DeviceUsersRequest(Guid DevicePublicId, string? DeviceSecret);
@@ -70,7 +70,8 @@ public sealed record HeartbeatRequest(Guid DevicePublicId, string? DeviceSecret,
 
 /// <summary>
 /// Respuesta del heartbeat: el aparato desactivado recibe IsActive = false (la app bloquea la entrada). Lote 16:
-/// DefaultWarehouseReceivingMode = modo de recepción del almacén por defecto (PUTAWAY | DIRECT; null sin almacén).
+/// DefaultWarehouseReceivingMode = modo de recepción del almacén por defecto (PUTAWAY | DIRECT; null sin almacén). Lote 161: ReceiptRequirement = «el recibo exige documento» de la compañía
+/// (FREE | ANY_DOCUMENT | ASN | PURCHASE_ORDER): la app deja de ofrecer el recibo a ciegas cuando se exige documento.
 /// </summary>
 public sealed record DeviceHeartbeatDto(bool IsActive, Guid? DefaultWarehousePublicId, string? Theme, DateTime ServerTimeUtc,
-    string? DefaultWarehouseReceivingMode = null);
+    string? DefaultWarehouseReceivingMode = null, string? ReceiptRequirement = null);

@@ -10,10 +10,10 @@ Documento vivo: cada vez que se cierre o se decida algo se actualiza aquí. Esta
 - Cambios de estructura solo como secciones nuevas del script de actualización; lo existente sigue válido.
 
 ## A. App móvil (`app-almacen`) — urgente, se están quejando
-- ☐ **A1. El recibo exige documento en la app.** Bajar `receiptRequirement` en la sincronización (como `dispatchRequirement`); al entrar a Recibo, selector «Aviso de llegada / Orden de compra» (solo lo que exija la compañía); el ciego desaparece o se bloquea. El servidor ya valida (Lote 149).
+- ◐ **A1. El recibo exige documento en la app.** (hecho: el servidor manda `receiptRequirement` en el registro y el latido del aparato; falta guardarlo en la app, la pantalla de Recibo y el listado A2) Bajar `receiptRequirement` en la sincronización (como `dispatchRequirement`); al entrar a Recibo, selector «Aviso de llegada / Orden de compra» (solo lo que exija la compañía); el ciego desaparece o se bloquea. El servidor ya valida (Lote 149).
 - ☐ **A2. Listado de avisos y órdenes pendientes** en la app tras escoger el tipo, con buscador (igual que las posiciones).
-- ☐ **A3. Búsqueda parcial** de producto (SKU, nombre, código de barras) y de posición sobre la base local del aparato (hoy es exacta: `barcode = ? OR sku = ?`, `code = ?`). Lista que carga de 30 en 30 al deslizar, sin tope y sin señal; «no hay coincidencias» en vez de no hacer nada.
-- ☐ **A4. Quitar el tope de 50** de las consultas en línea (`lookupApi`: `take: 50`) → «Cargar más».
+- ☑ **A3. Búsqueda parcial** de producto (SKU, nombre, código de barras) y de posición sobre la base local del aparato (hoy es exacta: `barcode = ? OR sku = ?`, `code = ?`). Lista que carga de 30 en 30 al deslizar, sin tope y sin señal; «no hay coincidencias» en vez de no hacer nada. (Hecho: la lista sin tope de 50 y las sugerencias al escribir a mano bajo el campo, con «Ver todas».)
+- ☑ **A4. Quitar el tope de 50** de las consultas en línea (`lookupApi`: `take: 50`) → «Cargar más».
 
 ## B. Tareas y asignación (decisión del 2026-10-21: la asignación solo vale si la app la usa)
 - ☐ **B1. «Mis tareas» en la app** (acomodo, recibo, recolección): lo asignado al usuario, sin señal, aviso al asignar, tomar una tarea sin asignar. Hoy solo ordena el acomodo con lo asignado primero.

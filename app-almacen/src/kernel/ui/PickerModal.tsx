@@ -1,10 +1,10 @@
 // Tarea 26 — lista con buscador para los campos de producto y de posición (se abre desde ScanField con `pick`). Escribir cualquier cosa filtra la
 // lista (SKU, nombre o código de barras; código, zona, pasillo, rack, nivel o posición); tocar una fila la entrega al campo como si se hubiera escaneado.
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { useT } from '../i18n/useT'
-import { searchPicker, PICK_LIMIT, type PickItem, type PickKind } from '../warehouse/pickerSearch'
+import { searchPicker, PICK_PAGE, type PickItem, type PickKind } from '../warehouse/pickerSearch'
 import { BigButton } from './BigButton'
 import { KeyboardInput } from './KeyboardInput'
 import { colors, fontSize, radius, spacing } from './theme'
@@ -15,12 +15,24 @@ export interface PickerModalProps {
   warehousePublicId: string | null
   onSelect: (code: string) => void
   onClose: () => void
+  /** Lo ya escrito en el campo: la lista abre filtrada con eso. */
+  initialQuery?: string
 }
 
-export function PickerModal({ visible, kind, warehousePublicId, onSelect, onClose }: PickerModalProps) {
+export function PickerModal({ visible, kind, warehousePublicId, onSelect, onClose, initialQuery = '' }: PickerModalProps) {
   const { t } = useT()
-  const [query, setQuery] = useState('')
-  const items = useMemo<PickItem[]>(() => (visible ? searchPicker(kind, warehousePublicId, query) : []), [visible, kind, warehousePublicId, query])
+  const [query, setQuery] = useState(initialQuery)
+  // sin tope: al llegar al final de la lista se trae otra página (la búsqueda es local, sin señal)
+  const [pages, setPages] = useState(1)
+  useEffect(() => {
+    if (visible) {
+      setQuery(initialQuery)
+      setPages(1)
+    }
+  }, [visible, initialQuery])
+  const limit = pages * PICK_PAGE
+  const items = useMemo<PickItem[]>(() => (visible ? searchPicker(kind, warehousePublicId, query, limit) : []), [visible, kind, warehousePublicId, query, limit])
+  const mayHaveMore = items.length >= limit
   const title = t(kind === 'product' ? 'picker.titleProduct' : kind === 'bin' ? 'picker.titleBin' : 'picker.titleAny')
 
   function close() {
@@ -34,7 +46,10 @@ export function PickerModal({ visible, kind, warehousePublicId, onSelect, onClos
         <Text style={styles.title}>{title}</Text>
         <KeyboardInput
           value={query}
-          onChangeText={setQuery}
+          onChangeText={(q) => {
+            setQuery(q)
+            setPages(1)
+          }}
           autoFocus
           autoCapitalize="none"
           autoCorrect={false}
@@ -49,13 +64,18 @@ export function PickerModal({ visible, kind, warehousePublicId, onSelect, onClos
           keyExtractor={(it) => `${it.kind}:${it.code}`}
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={<Text style={styles.help}>{t('picker.empty')}</Text>}
-          ListFooterComponent={items.length >= PICK_LIMIT ? <Text style={styles.help}>{t('picker.more', { max: PICK_LIMIT })}</Text> : null}
+          onEndReachedThreshold={0.5}
+          onEndReached={() => {
+            if (mayHaveMore) setPages((n) => n + 1)
+          }}
+          ListHeaderComponent={items.length > 0 ? <Text style={styles.help}>{t('picker.count', { count: items.length })}{mayHaveMore ? '+' : ''}</Text> : null}
           renderItem={({ item }) => (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={item.code}
               onPress={() => {
                 setQuery('')
+                setPages(1)
                 onSelect(item.code)
               }}
               style={styles.row}
