@@ -10140,3 +10140,6 @@ El que la compañía subió en Ajustes → Marca. Los reportes de marca (inventa
 
 **Mi PDF sale sin logo (o con el de Teikem).**
 Suba el logo en Ajustes → Marca (lockup y/o marca cuadrada). Si la compañía no ha subido ninguno, los reportes de marca conservan el de Teikem y las tablas salen sin logo. Si lo subió y no aparece, recargue la página (los logos se descargan al entrar) y vuelva a exportar. Los CSV y los Excel no llevan logo.
+
+**¿Cómo pongo la posición de recepción por omisión de un almacén?** (Lote 189)
+En Almacenes → el almacén → sección «Recepción» → «Posición de recepción por defecto» (una posición de una zona de recepción o de cruce de muelle). Al crear un recibo con ese almacén, la posición de recepción sale ya puesta con ese valor (se puede cambiar en el encabezado). Sin valor, el sistema usa la primera posición de recepción activa del almacén, como antes. En el aparato, los recibos con acomodo usan esa misma posición por omisión.

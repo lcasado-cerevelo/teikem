@@ -207,7 +207,7 @@ function route(method: string, url: URL, body: unknown): [number, unknown] {
     return [
       200,
       [
-        { id: 1, publicId: WH, code: 'ALM-01', name: 'Almacén principal', isActive: true, receivingModeCode: 'PUTAWAY' },
+        { id: 1, publicId: WH, code: 'ALM-01', name: 'Almacén principal', isActive: true, receivingModeCode: 'PUTAWAY', defaultReceivingBinId: 101 },
         { id: 2, publicId: WHD, code: 'ALM-DIR', name: 'Directo', isActive: true, receivingModeCode: 'DIRECT' },
       ],
     ]
@@ -563,6 +563,19 @@ describe('Lote 16: recibo directo a posición', () => {
     const binGets = calls('GET', `/api/v1/warehouses/${WHD}/bins`).filter((c) => !c.url.searchParams.has('binIds'))
     expect(binGets.length).toBeGreaterThan(0)
     expect(binGets.every((c) => c.url.searchParams.getAll('zoneIds').join() === '5')).toBe(true)
+  })
+
+  it('Lote 189: al crear un recibo la posición de recepción sale ya puesta con la del almacén', async () => {
+    const user = userEvent.setup()
+    wrap()
+    await rowButton('REC-0001')
+    await user.click(screen.getByRole('button', { name: 'Nuevo recibo' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Nuevo recibo' })
+    await user.click(within(dialog).getByRole('combobox', { name: /^Almacén/ }))
+    await user.click(await within(dialog).findByRole('option', { name: /ALM-01/ }))
+    await user.click(within(dialog).getByRole('button', { name: 'Crear recibo' }))
+    await waitFor(() => expect(calls('POST', '/api/v1/receipts')).toHaveLength(1))
+    expect(calls('POST', '/api/v1/receipts')[0].body).toMatchObject({ warehousePublicId: WH, stagingBinId: 101 })
   })
 
   it('encabezado: en un almacén directo el modo nace "Directo a posición" y se oculta la posición de recepción', async () => {

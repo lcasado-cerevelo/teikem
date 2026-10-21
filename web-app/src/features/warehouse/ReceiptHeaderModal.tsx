@@ -176,6 +176,12 @@ function HeaderForm({
     form.setValue('receivingMode', warehousePublicId && warehouseMode ? normalizeReceivingMode(warehouseMode) : '')
   }, [editing, form, warehousePublicId, warehouseMode])
   const direct = isDirectMode(modeValue || warehouseMode)
+  // alta: la posición de recepción sale ya puesta con la que el almacén tiene por omisión (Almacén → Recepción), mientras no se haya elegido otra a mano
+  const warehouseDefaultBin = warehouses.data?.find((w) => w.publicId === warehousePublicId)?.defaultReceivingBinId ?? null
+  useEffect(() => {
+    if (editing || form.getFieldState('stagingBinId').isDirty) return
+    form.setValue('stagingBinId', warehouseDefaultBin != null ? String(warehouseDefaultBin) : '')
+  }, [editing, form, warehousePublicId, warehouseDefaultBin])
 
   // al cambiar de almacén el muelle y el documento ya no aplican (la posición la quita el propio BinPicker)
   const lastWarehouse = useRef(warehousePublicId)
