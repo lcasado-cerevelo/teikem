@@ -72,7 +72,7 @@ Documento vivo: cada vez que se cierre o se decida algo se actualiza aquí. Esta
 - ☐ Endurecer los endpoints con los permisos de acceso por ítem de menú.
 - ☐ Prueba de `db-update` en simulación contra SQL Server.
 - ☐ Capturas / Playwright de las pantallas nuevas (portal del cliente, avisos, filtros).
-- ☐ EXIT_NOTICE como fuente de datos para Vistas.
+- ☑ EXIT_NOTICE como fuente de datos para Vistas (menores, autónomo).
 - ☑ Saldos y Conciliación: filtro de zona (menores, autónomo).
 - ☐ El portal: adjuntar documentos y editar productos ya creados.
 

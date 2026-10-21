@@ -524,6 +524,7 @@ public static class DependencyInjection
         services.AddScoped<IAttentionItemProvider, CodUnreconciledAttentionProvider>();   // Lote 89
         services.AddScoped<BillingExportService>();
         services.AddScoped<IDataSource, SalesOrderDataSource>();        // Lote 67: órdenes de venta
+        services.AddScoped<IDataSource, ExitNoticeDataSource>();        // menores 2026-10-21: avisos de salida como fuente de Vistas
         services.AddScoped<IDataSource, SalesOrderLineDataSource>();
         services.AddScoped<IDataSource, RentalProcessDataSource>();
         services.AddScoped<IAttentionItemProvider, RentalDueAttentionProvider>();

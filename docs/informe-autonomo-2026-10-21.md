@@ -27,3 +27,7 @@ Pedido de Luis: hacer sin supervisión las partes que faltan —C4, H1, G2 y los
 ### Menores — parte 3: filtro de zona en Saldos y Conciliación ✔
 - `GET /inventory/balances` y `GET /inventory/discrepancies` aceptan `zoneIds` (como el Kárdex desde el Lote 159: equivale a las posiciones de esas zonas; con posiciones elegidas deben cumplirse las dos; en Conciliación el total de un producto sin posición queda fuera). La barra de filtros compartida ya los aplica a las tres pestañas.
 - Pruebas: 2 xunit nuevas (saldos por zona, descuadres por zona) + 1 vitest; contrato regenerado de los dos endpoints.
+
+### Menores — parte 4: EXIT_NOTICE como fuente de Vistas ✔
+- Nueva fuente de datos `EXIT_NOTICE` (avisos de salida, una fila por aviso: cliente, almacén, referencia, destino, estatus, abierto/atrasado/con pendiente/asignado, unidades pedidas/reservadas/despachadas/pendientes, cumplimiento). Lectura con `inventory.view` y módulo de almacén con lotes/series; se puede usar en Vistas, indicadores y gráficos desde la web sin más cambios. No sembré vistas de sistema nuevas (las arma cada compañía).
+- Pruebas: 2 nuevas (permiso y filas con atraso/pendiente/cumplimiento/ids) + las de análisis, permisos y seeders (425 verdes).
